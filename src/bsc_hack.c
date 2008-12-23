@@ -1,0 +1,543 @@
+/* A hackish minimal BSC (+MSC +HLR) implementation */
+
+/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+
+
+#include "gsm_data.h"
+#include "abis_rsl.h"
+#include "abis_nm.h"
+
+/* global pointer to the gsm network data structure */
+static struct gsm_network *gsmnet;
+
+/* The following definitions are for OM and NM packets that we cannot yet
+ * generate by code but we just pass on */
+
+// BTS Site Manager, SET ATTRIBUTES
+
+/*
+  Object Class: BTS Site Manager
+  Instance 1: FF
+  Instance 2: FF
+  Instance 3: FF
+SET ATTRIBUTES
+  sAbisExternalTime: 2007/09/08   14:36:11
+  omLAPDRelTimer: 30sec
+  shortLAPDIntTimer: 5sec
+  emergencyTimer1: 10 minutes
+  emergencyTimer2: 0 minutes
+*/
+
+unsigned char msg_1[] = 
+{
+	0xD0, 0x00, 0xFF, 0xFF, 0xFF, 0x91, 0x07, 0xD7, 0x09, 0x08, 0x0E, 0x24,
+	0x0B, 0xCE, 0x02, 0x00, 0x1E, 0xE8, 0x01, 0x05, 0x42, 0x02, 0x00, 0x0A, 0x44,
+	0x02, 0x00, 0x00
+};
+
+// BTS, SET BTS ATTRIBUTES
+
+/*
+  Object Class: BTS
+  BTS relat. Number: 0 
+  Instance 2: FF
+  Instance 3: FF
+SET BTS ATTRIBUTES
+  bsIdentityCode / BSIC:
+    PLMN_colour_code: 7h
+    BS_colour_code:   7h
+  BTS Air Timer T3105: 4  ,unit 10 ms
+  btsIsHopping: FALSE
+  periodCCCHLoadIndication: 255sec
+  thresholdCCCHLoadIndication: 100%
+  cellAllocationNumber: 00h = GSM 900
+  enableInterferenceClass: 00h =  Disabled
+  fACCHQual: 6 (FACCH stealing flags minus 1)
+  intaveParameter: 31 SACCH multiframes
+  interferenceLevelBoundaries:
+    Interference Boundary 1: 0Ah 
+    Interference Boundary 2: 0Fh
+    Interference Boundary 3: 14h
+    Interference Boundary 4: 19h
+    Interference Boundary 5: 1Eh
+  mSTxPwrMax: 11
+      GSM range:     2=39dBm, 15=13dBm, stepsize 2 dBm 
+      DCS1800 range: 0=30dBm, 15=0dBm, stepsize 2 dBm 
+      PCS1900 range: 0=30dBm, 15=0dBm, stepsize 2 dBm 
+                    30=33dBm, 31=32dBm 
+  ny1:
+    Maximum number of repetitions for PHYSICAL INFORMATION message (GSM 04.08): 20
+  powerOutputThresholds:
+    Out Power Fault Threshold:     -10 dB
+    Red Out Power Threshold:       - 6 dB
+    Excessive Out Power Threshold:   5 dB
+  rACHBusyThreshold: -127 dBm 
+  rACHLoadAveragingSlots: 250 ,number of RACH burst periods
+  rfResourceIndicationPeriod: 125  SACCH multiframes 
+  T200:
+    SDCCH:                044 in  5 ms
+    FACCH/Full rate:      031 in  5 ms
+    FACCH/Half rate:      041 in  5 ms
+    SACCH with TCH SAPI0: 090 in 10 ms
+    SACCH with SDCCH:     090 in 10 ms
+    SDCCH with SAPI3:     090 in  5 ms
+    SACCH with TCH SAPI3: 135 in 10 ms
+  tSync: 9000 units of 10 msec
+  tTrau: 9000 units of 10 msec
+  enableUmLoopTest: 00h =  disabled
+  enableExcessiveDistance: 00h =  Disabled
+  excessiveDistance: 64km
+  hoppingMode: 00h = baseband hopping
+  cellType: 00h =  Standard Cell
+  BCCH ARFCN / bCCHFrequency: 1
+*/
+
+unsigned char msg_2[] = 
+{
+	0x41, 0x01, 0x00, 0xFF, 0xFF, 0x09, 0x3F, 0x0A, 0x04, 0x61, 0x00, 0x0B,
+	0xFF, 0x0C, 0x64, 0x62, 0x00, 0x66, 0x00, 0x6E, 0x06, 0x18, 0x1F, 0x19,
+	0x0A, 0x0F, 0x14, 0x19, 0x1E, 0x7B, 0x0B, 0x23, 0x14, 0x28, 0x00, 0x04,
+	0x03, 0x2A, 0x7F, 0x2B, 0x00, 0xFA, 0x8F, 0x7D, 0x33, 0x2C, 0x1F, 0x29,
+	0x5A, 0x5A, 0x5A, 0x87, 0x94, 0x23, 0x28, 0x95, 0x23, 0x28, 0x35, 0x01,
+	0x00, 0x46, 0x01, 0x00, 0x58, 0x01, 0x40, 0xC5, 0x01, 0x00, 0xF2, 0x01,
+	0x00, 0x08, 0x00, HARDCODED_ARFCN/*0x01*/, 
+};
+
+// Handover Recognition, SET ATTRIBUTES
+
+/*
+Illegal Contents GSM Formatted O&M Msg 
+  Object Class: Handover Recognition
+  BTS relat. Number: 0 
+  Instance 2: FF
+  Instance 3: FF
+SET ATTRIBUTES
+  enableDelayPowerBudgetHO: 00h = Disabled
+  enableDistanceHO: 00h =  Disabled
+  enableInternalInterCellHandover: 00h = Disabled
+  enableInternalIntraCellHandover: 00h =  Disabled
+  enablePowerBudgetHO: 00h = Disabled
+  enableRXLEVHO: 00h =  Disabled
+  enableRXQUALHO: 00h =  Disabled
+  hoAveragingDistance: 8  SACCH multiframes 
+  hoAveragingLev:
+    A_LEV_HO: 8  SACCH multiframes 
+    W_LEV_HO: 1  SACCH multiframes 
+  hoAveragingPowerBudget:  16  SACCH multiframes 
+  hoAveragingQual:
+    A_QUAL_HO: 8  SACCH multiframes 
+    W_QUAL_HO: 2  SACCH multiframes 
+  hoLowerThresholdLevDL: (10 - 110) dBm
+  hoLowerThresholdLevUL: (5 - 110) dBm
+  hoLowerThresholdQualDL: 06h =   6.4% < BER < 12.8%
+  hoLowerThresholdQualUL: 06h =   6.4% < BER < 12.8%
+  hoThresholdLevDLintra : (20 - 110) dBm
+  hoThresholdLevULintra: (20 - 110) dBm
+  hoThresholdMsRangeMax: 20 km 
+  nCell: 06h
+  timerHORequest: 3  ,unit 2 SACCH multiframes 
+*/
+
+unsigned char msg_3[] = 
+{
+	0xD0, 0xA1, 0x00, 0xFF, 0xFF, 0xD0, 0x00, 0x64, 0x00, 0x67, 0x00, 0x68,
+	0x00, 0x6A, 0x00, 0x6C, 0x00, 0x6D, 0x00, 0x6F, 0x08, 0x70, 0x08, 0x01,
+	0x71, 0x10, 0x10, 0x10, 0x72, 0x08, 0x02, 0x73, 0x0A, 0x74, 0x05, 0x75,
+	0x06, 0x76, 0x06, 0x78, 0x14, 0x79, 0x14, 0x7A, 0x14, 0x7D, 0x06, 0x92,
+	0x03, 0x20, 0x01, 0x00, 0x45, 0x01, 0x00, 0x48, 0x01, 0x00, 0x5A, 0x01,
+	0x00, 0x5B, 0x01, 0x05, 0x5E, 0x01, 0x1A, 0x5F, 0x01, 0x20, 0x9D, 0x01,
+	0x00, 0x47, 0x01, 0x00, 0x5C, 0x01, 0x64, 0x5D, 0x01, 0x1E, 0x97, 0x01,
+	0x20, 0xF7, 0x01, 0x3C,
+};
+
+// Power Control, SET ATTRIBUTES
+
+/*
+  Object Class: Power Control
+  BTS relat. Number: 0 
+  Instance 2: FF
+  Instance 3: FF
+SET ATTRIBUTES
+  enableMsPowerControl: 00h =  Disabled
+  enablePowerControlRLFW: 00h =  Disabled
+  pcAveragingLev:
+    A_LEV_PC: 4  SACCH multiframes 
+    W_LEV_PC: 1  SACCH multiframes 
+  pcAveragingQual:
+    A_QUAL_PC: 4  SACCH multiframes 
+    W_QUAL_PC: 2  SACCH multiframes 
+  pcLowerThresholdLevDL: 0Fh
+  pcLowerThresholdLevUL: 0Ah
+  pcLowerThresholdQualDL: 05h =   3.2% < BER <  6.4%
+  pcLowerThresholdQualUL: 05h =   3.2% < BER <  6.4%
+  pcRLFThreshold: 0Ch
+  pcUpperThresholdLevDL: 14h
+  pcUpperThresholdLevUL: 0Fh
+  pcUpperThresholdQualDL: 04h =   1.6% < BER <  3.2%
+  pcUpperThresholdQualUL: 04h =   1.6% < BER <  3.2%
+  powerConfirm: 2  ,unit 2 SACCH multiframes 
+  powerControlInterval: 2  ,unit 2 SACCH multiframes 
+  powerIncrStepSize: 02h = 4 dB
+  powerRedStepSize: 01h = 2 dB
+  radioLinkTimeoutBs: 64  SACCH multiframes 
+  enableBSPowerControl: 00h =  disabled
+*/
+
+unsigned char msg_4[] = 
+{
+	0xD0, 0xA2, 0x00, 0xFF, 0xFF, 0x69, 0x00, 0x6B, 0x00, 0x7E, 0x04, 0x01,
+	0x7F, 0x04, 0x02, 0x80, 0x0F, 0x81, 0x0A, 0x82, 0x05, 0x83, 0x05, 0x84,
+	0x0C, 0x85, 0x14, 0x86, 0x0F, 0x87, 0x04, 0x88, 0x04, 0x89, 0x02, 0x8A,
+	0x02, 0x8B, 0x02, 0x8C, 0x01, 0x8D, 0x40, 0x65, 0x01, 0x00 // set to 0x01 to enable BSPowerControl
+};
+
+
+// Transceiver, SET TRX ATTRIBUTES (TRX 0)
+
+/*
+  Object Class: Transceiver
+  BTS relat. Number: 0 
+  Tranceiver number: 0 
+  Instance 3: FF
+SET TRX ATTRIBUTES
+  aRFCNList (HEX):  0001
+  txPwrMaxReduction: 00h =   0dB
+  radioMeasGran: 254  SACCH multiframes 
+  radioMeasRep: 01h =  enabled
+  memberOfEmergencyConfig: 01h =  TRUE
+  trxArea: 00h = TRX doesn't belong to a concentric cell
+*/
+
+unsigned char msg_6[] = 
+{
+	0x44, 0x02, 0x00, 0x00, 0xFF, 0x05, 0x01, 0x00, HARDCODED_ARFCN /*0x01*/, 0x2D,
+	0x00, 0xDC, 0x01, 0xFE, 0xDD, 0x01, 0x01, 0x9B, 0x01, 0x01, 0x9F, 0x01, 0x00, 
+};
+
+
+static void bootstrap_om(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx = &bts->trx[0];
+
+	/* stop sending event reports */
+	abis_nm_event_reports(bts, 0);
+
+	/* begin DB transmission */
+	abis_nm_db_transmission(bts, 1);
+
+	abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
+	abis_nm_raw_msg(bts, sizeof(msg_2), msg_2); /* set BTS attr */
+	abis_nm_raw_msg(bts, sizeof(msg_3), msg_3); /* set BTS handover attr */
+	abis_nm_raw_msg(bts, sizeof(msg_4), msg_4); /* set BTS power control attr */
+
+	/* Connect signalling of bts0/trx0 to e1_0/ts1/64kbps */
+	abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+	abis_nm_raw_msg(bts, sizeof(msg_6), msg_6); /* SET TRX ATTRIBUTES */
+
+	/* Use TEI 1 for signalling */
+	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
+	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
+#if 0
+	/* TRX 1 */
+	abis_nm_conn_terr_sign(&bts->trx[1], 0, 1, 0xff);
+	/* FIXME: TRX ATTRIBUTE */
+	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x02);
+#endif
+
+	/* SET CHANNEL ATTRIBUTE TS1 */
+	abis_nm_set_channel_attr(&trx->ts[1], 0x09);
+	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
+	abis_nm_conn_terr_traf(&trx->ts[1], 0, 2, 1);
+	
+	/* SET CHANNEL ATTRIBUTE TS2 */
+	abis_nm_set_channel_attr(&trx->ts[2], 0x09);
+	/* Connect traffic of bts0/trx0/ts2 to e1_0/ts2/c */
+	abis_nm_conn_terr_traf(&trx->ts[2], 0, 2, 2);
+
+	/* SET CHANNEL ATTRIBUTE TS3 */
+	abis_nm_set_channel_attr(&trx->ts[3], 0x09);
+	/* Connect traffic of bts0/trx0/ts3 to e1_0/ts2/d */
+	abis_nm_conn_terr_traf(&trx->ts[3], 0, 2, 3);
+
+	/* SET CHANNEL ATTRIBUTE TS4 */
+	abis_nm_set_channel_attr(&trx->ts[4], 0x09);
+	/* Connect traffic of bts0/trx0/ts4 to e1_0/ts3/a */
+	abis_nm_conn_terr_traf(&trx->ts[4], 0, 3, 0);
+
+	/* SET CHANNEL ATTRIBUTE TS5 */
+	abis_nm_set_channel_attr(&trx->ts[5], 0x09);
+	/* Connect traffic of bts0/trx0/ts5 to e1_0/ts3/b */
+	abis_nm_conn_terr_traf(&trx->ts[5], 0, 3, 1);
+
+	/* SET CHANNEL ATTRIBUTE TS6 */
+	abis_nm_set_channel_attr(&trx->ts[6], 0x09);
+	/* Connect traffic of bts0/trx0/ts6 to e1_0/ts3/c */
+	abis_nm_conn_terr_traf(&trx->ts[6], 0, 3, 2);
+
+	/* SET CHANNEL ATTRIBUTE TS7 */
+	abis_nm_set_channel_attr(&trx->ts[7], 0x09);
+	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
+	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
+
+	/* end DB transmission */
+	abis_nm_db_transmission(bts, 0);
+
+	/* Reset BTS Site manager resource */
+	abis_nm_reset_resource(bts);
+
+	/* restart sending event reports */
+	abis_nm_event_reports(bts, 1);
+}
+
+
+
+struct bcch_info {
+	u_int8_t type;
+	u_int8_t len;
+	const u_int8_t *data;
+};
+
+/*
+SYSTEM INFORMATION TYPE 1
+  Cell channel description
+    Format-ID bit map 0
+    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
+  RACH Control Parameters
+    maximum 7 retransmissions
+    8 slots used to spread transmission
+    cell not barred for access
+    call reestablishment not allowed
+    Access Control Class = 0000
+*/
+static const u_int8_t si1[] = {
+	0x55, 0x06, 0x19, 0x04 /*0x00*/, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 /*0x01*/,0xD5, 
+	0x00, 0x00, 0x2B
+};
+
+/*
+ SYSTEM INFORMATION TYPE 2
+  Neighbour Cells Description
+    EXT-IND: Carries the complete BA
+    BA-IND = 0
+    Format-ID bit map 0
+    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  NCC permitted (NCC) = FF
+  RACH Control Parameters
+    maximum 7 retransmissions
+    8 slots used to spread transmission
+    cell not barred for access
+    call reestablishment not allowed
+    Access Control Class = 0000
+*/
+static const u_int8_t si2[] = {
+	0x59, 0x06, 0x1A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xD5, 0x00,
+	0x00
+};
+
+/*
+SYSTEM INFORMATION TYPE 3
+  Cell identity = 00001 (1h)
+  Location area identification
+    Mobile Country Code (MCC): 001
+    Mobile Network Code (MNC): 01
+    Location Area Code  (LAC): 00001 (1h)
+  Control Channel Description
+    Attach-detach: MSs in the cell are not allowed to apply IMSI attach /detach
+    0 blocks reserved for access grant
+    1 channel used for CCCH, with SDCCH
+    5 multiframes period for PAGING REQUEST
+    Time-out T3212 = 0
+  Cell Options BCCH
+    Power control indicator: not set
+    MSs shall not use uplink DTX
+    Radio link timeout = 36
+  Cell Selection Parameters
+    Cell reselect hysteresis = 6 dB RXLEV hysteresis for LA re-selection
+    max.TX power level MS may use for CCH = 2
+    Additional Reselect Parameter Indication (ACS) = only SYSTEM INFO 4: The SI rest octets, if present, shall be used to derive the value of PI and possibly C2 parameters
+    Half rate support (NECI): New establishment causes are not supported
+    min.RX signal level for MS = 0
+  RACH Control Parameters
+    maximum 7 retransmissions
+    8 slots used to spread transmission
+    cell not barred for access
+    call reestablishment not allowed
+    Access Control Class = 0000
+  SI 3 Rest Octets
+    Cell Bar Qualify (CBQ): 0
+    Cell Reselect Offset = 0 dB
+    Temporary Offset = 0 dB
+    Penalty Time = 20 s
+    System Information 2ter Indicator (2TI): 0 = not available
+    Early Classmark Sending Control (ECSC):  0 = forbidden
+    Scheduling Information is not sent in SYSTEM INFORMATION TYPE 9 on the BCCH
+*/
+unsigned char si3[] = {
+	0x49, 0x06, 0x1B, 0x00, 0x01, 0x00, 0xF1, 0x10, 0x00, 0x01,
+	0x01, 0x03, 0x00, 0x28, 0x62, 0x00, 0xD5, 0x00, 0x00, 0x80,
+	0x00, 0x00, 0x2B
+};
+
+/*
+SYSTEM INFORMATION TYPE 4
+  Location area identification
+    Mobile Country Code (MCC): 001
+    Mobile Network Code (MNC): 01
+    Location Area Code  (LAC): 00001 (1h)
+  Cell Selection Parameters
+    Cell reselect hysteresis = 6 dB RXLEV hysteresis for LA re-selection
+    max.TX power level MS may use for CCH = 2
+    Additional Reselect Parameter Indication (ACS) = only SYSTEM INFO 4: The SI rest octets, if present, shall be used to derive the value of PI and possibly C2 parameters
+    Half rate support (NECI): New establishment causes are not supported
+    min.RX signal level for MS = 0
+  RACH Control Parameters
+    maximum 7 retransmissions
+    8 slots used to spread transmission
+    cell not barred for access
+    call reestablishment not allowed
+    Access Control Class = 0000
+  Channel Description
+    Type = SDCCH/4[2]
+    Timeslot Number: 0
+    Training Sequence Code: 7h
+    ARFCN: 1
+  SI Rest Octets
+    Cell Bar Qualify (CBQ): 0
+    Cell Reselect Offset = 0 dB
+    Temporary Offset = 0 dB
+    Penalty Time = 20 s
+*/
+static const u_int8_t si4[] = {
+	0x41, 0x06, 0x1C, 0x00, 0xF1, 0x10, 0x00, 0x01, 0x62, 0x00, 
+	0xD5, 0x00, 0x00, 0x64, 0x30, 0xE0, HARDCODED_ARFCN/*0x01*/, 0x80, 0x00, 0x00, 
+	0x2B, 0x2B, 0x2B
+};
+
+/*
+ SYSTEM INFORMATION TYPE 5
+  Neighbour Cells Description
+    EXT-IND: Carries the complete BA
+    BA-IND = 0
+    Format-ID bit map 0
+    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+*/
+
+static const u_int8_t si5[] = {
+	0x06, 0x1D, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+};
+
+// SYSTEM INFORMATION TYPE 6
+
+/*
+SACCH FILLING
+  System Info Type: SYSTEM INFORMATION 6
+  L3 Information (Hex): 06 1E 00 01 xx xx 10 00 01 28 FF
+
+SYSTEM INFORMATION TYPE 6
+  Cell identity = 00001 (1h)
+  Location area identification
+    Mobile Country Code (MCC): 001
+    Mobile Network Code (MNC): 01
+    Location Area Code  (LAC): 00001 (1h)
+  Cell Options SACCH
+    Power control indicator: not set
+    MSs shall not use uplink DTX on a TCH-F. MS shall not use uplink DTX on TCH-H.
+    Radio link timeout = 36
+  NCC permitted (NCC) = FF
+*/
+
+static const u_int8_t si6[] = {
+	0x06, 0x1E, 0x00, 0x01, 0x00, 0xF1, 0x10, 0x00, 0x01, 0x28, 0xFF, 
+};
+
+
+
+static const struct bcch_info bcch_infos[] = {
+	{
+		.type = RSL_SYSTEM_INFO_1,
+		.len = sizeof(si1),
+		.data = si1,
+	}, {
+		.type = RSL_SYSTEM_INFO_2,
+		.len = sizeof(si2),
+		.data = si2,
+	}, {
+		.type = RSL_SYSTEM_INFO_3,
+		.len = sizeof(si3),
+		.data = si3,
+	}, {
+		.type = RSL_SYSTEM_INFO_4,
+		.len = sizeof(si4),
+		.data = si4,
+	},
+};
+
+/* set all system information types */
+static int set_system_infos(struct gsm_bts *bts)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
+		rsl_bcch_info(bts, bcch_infos[i].type,
+			      bcch_infos[i].data,
+			      bcch_infos[i].len);
+	}
+	rsl_sacch_filling(bts, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
+	rsl_sacch_filling(bts, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
+}
+
+static void activate_traffic_channels(struct gsm_bts_trx *trx)
+{
+	int i;
+
+	/* channel 0 is CCCH */
+	for (i = 1; i < 8; i++)
+		rsl_chan_activate_tch_f(&trx->ts[i]);
+}
+
+static void bootstrap_bts(struct gsm_bts *bts)
+{
+	bootstrap_om(bts);
+
+	set_system_infos(bts);
+
+	/* FIXME: defer this until the channels are used */
+	activate_traffic_channels(&bts->trx[0]);
+}
+
+static void bootstrap_network()
+{
+	struct gsm_bts *bts;
+
+	/* initialize our data structures */
+	gsmnet = gsm_network_init(1, 1, 1);
+	bts = &gsmnet->bts[0];
+	bts->location_area_code = 1;
+	bts->trx[0].arfcn = HARDCODED_ARFCN;
+
+	/* initialize the BTS */
+	bootstrap_bts(&gsmnet->bts[0]);
+
+
+}

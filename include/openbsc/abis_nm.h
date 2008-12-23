@@ -1,0 +1,316 @@
+/* GSM Network Management messages on the A-bis interface 
+ * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
+
+/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+#ifndef _NM_H
+#define _NM_H
+
+#include <sys/types.h>
+
+/* PRIVATE */
+
+/* generic header in front of every OML message */
+struct abis_om_hdr {
+	u_int8_t	mdisc;
+	u_int8_t	placement;
+	u_int8_t	sequence;
+	u_int8_t	length;
+	u_int8_t	data[0];
+} __attribute__ ((packed));
+
+#define ABIS_OM_MDISC_FOM		0x80
+#define ABIS_OM_MDISC_MMI		0x40
+#define ABIS_OM_MDISC_TRAU		0x20
+#define ABIS_OM_MDISC_MANUF		0x10
+#define ABIS_OM_PLACEMENT_ONLY		0x80
+#define ABIS_OM_PLACEMENT_FIRST 	0x40
+#define ABIS_OM_PLACEMENT_MIDDLE	0x20
+#define ABIS_OM_PLACEMENT_LAST		0x10
+
+struct abis_om_obj_inst {
+	u_int8_t	bts_nr;
+	u_int8_t	trx_nr;
+	u_int8_t	ts_nr;
+} __attribute__ ((packed));
+
+struct abis_om_fom_hdr {
+	u_int8_t	msg_type;
+	u_int8_t	obj_class;
+	struct abis_om_obj_inst	obj_inst;
+} __attribute__ ((packed));
+
+#define ABIS_OM_FOM_HDR_SIZE	(sizeof(struct abis_om_hdr) + sizeof(struct abis_om_fom_hdr))
+
+/* Section 9.1: Message Types */
+enum abis_nm_msgtype {
+	/* SW Download Management Messages */
+	NM_MT_LOAD_INIT			= 0x01,
+	NM_MT_LOAD_INIT_ACK,
+	NM_MT_LOAD_INIT_NACK,
+	NM_MT_LOAD_SEG,
+	NM_MT_LOAD_SEG_ACK,
+	NM_MT_LOAD_ABORT,
+	NM_MT_LOAD_END,
+	NM_MT_LOAD_END_ACK,
+	NM_MT_LOAD_END_NACK,
+	NM_MT_SW_ACT_REQ,		/* BTS->BSC */
+	NM_MT_SW_ACT_REQ_ACK,
+	NM_MT_SW_ACT_REQ_NACK,
+	NM_MT_ACTIVATE_SW,		/* BSC->BTS */
+	NM_MT_ACTIVATE_SW_ACK,
+	NM_MT_ACTIVATE_SW_NACK,
+	NM_MT_SW_ACTIVATED_REP,		/* 0x10 */
+	/* A-bis Interface Management Messages */
+	NM_MT_ESTABLISH_TEI		= 0x21,
+	NM_MT_ESTABLISH_TEI_ACK,
+	NM_MT_ESTABLISH_TEI_NACK,
+	NM_MT_CONN_TERR_SIGN,
+	NM_MT_CONN_TERR_SIGN_ACK,
+	NM_MT_CONN_TERR_SIGN_NACK,
+	NM_MT_DISC_TERR_SIGN,
+	NM_MT_DISC_TERR_SIGN_ACK,
+	NM_MT_DISC_TERR_SIGN_NACK,
+	NM_MT_CONN_TERR_TRAF,
+	NM_MT_CONN_TERR_TRAF_ACK,
+	NM_MT_CONN_TERR_TRAF_NACK,
+	NM_MT_DISC_TERR_TRAF,
+	NM_MT_DISC_TERR_TRAF_ACK,
+	NM_MT_DISC_TERR_TRAF_NACK,
+	/* Transmission Management Messages */
+	NM_MT_CONN_MDROP_LINK		= 0x31,
+	NM_MT_CONN_MDROP_LINK_ACK,
+	NM_MT_CONN_MDROP_LINK_NACK,
+	NM_MT_DISC_MDROP_LINK,
+	NM_MT_DISC_MDROP_LINK_ACK,
+	NM_MT_DISC_MDROP_LINK_NACK,
+	/* Air Interface Management Messages */
+	NM_MT_SET_BTS_ATTR		= 0x41,
+	NM_MT_SET_BTS_ATTR_ACK,
+	NM_MT_SET_BTS_ATTR_NACK,
+	NM_MT_SET_RADIO_ATTR,
+	NM_MT_SET_RADIO_ATTR_ACK,
+	NM_MT_SET_RADIO_ATTR_NACK,
+	NM_MT_SET_CHAN_ATTR,
+	NM_MT_SET_CHAN_ATTR_ACK,
+	NM_MT_SET_CHAN_ATTR_NACK,
+	/* Test Management Messages */
+	NM_MT_PERF_TEST			= 0x51,
+	NM_MT_PERF_TESET_ACK,
+	NM_MT_PERF_TEST_NACK,
+	NM_MT_TEST_REP,
+	NM_MT_SEND_TEST_REP,
+	NM_MT_SEND_TEST_REP_ACK,
+	NM_MT_SEND_TEST_REP_NACK,
+	NM_MT_STOP_TEST,
+	NM_MT_STOP_TEST_ACK,
+	NM_MT_STOP_TEST_NACK,
+	/* State Management and Event Report Messages */
+	NM_MT_STATECHG_EVENT_REP	= 0x61,
+	NM_MT_FAILURE_EVENT_REP,
+	NM_MT_STOP_EVENT_REP,
+	NM_MT_STOP_EVENT_REP_ACK,
+	NM_MT_STOP_EVENT_REP_NACK,
+	NM_MT_REST_EVENT_REP,
+	NM_MT_REST_EVENT_REP_ACK,
+	NM_MT_REST_EVENT_REP_NACK,
+	NM_MT_CHG_ADM_STATE,
+	NM_MT_CHG_ADM_STATE_ACK,
+	NM_MT_CHG_ADM_STATE_NACK,
+	NM_MT_CHG_ADM_STATE_REQ,
+	NM_MT_CHG_ADM_STATE_REQ_ACK,
+	NM_MT_CHG_ADM_STATE_REQ_NACK,
+	NM_MT_REP_OUTST_ALARMS		= 0x93,
+	NM_MT_REP_OUTST_ALARMS_ACK,
+	NM_MT_REP_OUTST_ALARMS_NACK,
+	/* Equipment Management Messages */
+	NM_MT_CHANGEOVER		= 0x71,
+	NM_MT_CHANGEOVER_ACK,
+	NM_MT_CHANGEOVER_NACK,
+	NM_MT_OPSTART,
+	NM_MT_OPSTART_ACK,
+	NM_MT_OPSTART_NACK,
+	NM_MT_REINIT,
+	NM_MT_REINIT_ACK,
+	NM_MT_REINIT_NACK,
+	NM_MT_SET_SITE_OUT,
+	NM_MT_SET_SITE_OUT_ACK,
+	NM_MT_SET_SITE_OUT_NACK,
+	NM_MT_CHG_HW_CONF		= 0x90,
+	NM_MT_CHG_HW_CONF_ACK,
+	NM_MT_CHG_HW_CONF_NACK,
+	/* Measurement Management Messages */
+	NM_MT_MEAS_RES_REQ		= 0x8a,
+	NM_MT_MEAS_RES_RESP,
+	NM_MT_STOP_MEAS,
+	NM_MT_START_MEAS,
+	/* Other Messages */
+	NM_MT_GET_ATTR			= 0x81,
+	NM_MT_GET_ATTR_RESP,
+	NM_MT_GET_ATTR_NACK,
+	NM_MT_SET_ALARM_THRES,
+	NM_MT_SET_ALARM_THRES_ACK,
+	NM_MT_SET_ALARM_THRES_NACK,
+};
+
+/* Section 9.2: Object Class */
+enum abis_nm_obj_class {
+	NM_OC_SITE_MANAGER		= 0x00,
+	NM_OC_BTS,
+	NM_OC_RADIO_CARRIER,
+	NM_OC_BASEB_TRANSC,
+	NM_OC_CHANNEL,
+	/* RFU: 05-FE */
+	NM_OC_NULL			= 0xff,
+};
+
+/* Section 9.4: Attributes */
+enum abis_nm_attr {
+	NM_ATT_CHANNEL	= 0x01,
+	NM_ATT_ADD_INFO,
+	NM_ATT_ADD_TEXT,
+	NM_ATT_ADM_STATE,
+	NM_ATT_ARFCN_LIST,
+	NM_ATT_AUTON_REPORT,
+	NM_ATT_AVAIL_STATUS,
+	NM_ATT_BCCH_ARFCN,
+	NM_ATT_BSIC,
+	NM_ATT_BTS_AIR_TIMER,
+	NM_ATT_CCCH_L_I_P,
+	NM_ATT_CCCH_L_T,
+	NM_ATT_CHAN_COMB,
+	NM_ATT_CONN_FAIL_CRIT,
+	NM_ATT_DEST,
+	/* res */
+	NM_ATT_EVENT_TYPE	= 0x11,
+	NM_ATT_FILE_ID,
+	NM_ATT_FILE_VERSION,
+	NM_ATT_GSM_TIME,
+	NM_ATT_HSN,
+	NM_ATT_HW_CONFIG,
+	NM_ATT_HW_DESC,
+	NM_ATT_INTAVE_PARAM,
+	NM_ATT_INTERF_BOUND,
+	NM_ATT_LIST_REQ_ATTR,
+	NM_ATT_MAIO,
+	NM_ATT_MANUF_STATE,
+	NM_ATT_MANUF_THRESH,
+	NM_ATT_MANUF_ID,
+	NM_ATT_MAX_TA,
+	NM_ATT_MDROP_LINK,	/* 0x20 */
+	NM_ATT_MDROP_NEXT,
+	NM_ATT_NACK_CAUSES,
+	NM_ATT_NY1,
+	NM_ATT_OPER_STATE,
+	NM_ATT_OVERL_PERIOD,
+	NM_ATT_PHYS_CONF,
+	NM_ATT_POWER_CLASS,
+	NM_ATT_POWER_THRESH,
+	NM_ATT_PROB_CAUSE,
+	NM_ATT_RACH_B_THRESH,
+	NM_ATT_LDAVG_SLOTS,
+	NM_ATT_RAD_SUBC,
+	NM_ATT_RF_MAXPOWR_R,
+	NM_ATT_SITE_INPUTS,
+	NM_ATT_SITE_OUTPUTS,
+	NM_ATT_SOURCE,		/* 0x30 */
+	NM_ATT_SPEC_PROB,
+	NM_ATT_START_TIME,
+	NM_ATT_T200,
+	NM_ATT_TEI,
+	NM_ATT_TEST_DUR,
+	NM_ATT_TEST_NO,
+	NM_ATT_TEST_REPORT,
+	NM_ATT_VSWR_THRESH,
+	NM_ATT_WINDOW_SIZE,
+	/* Res  */
+	NM_ATT_TSC		= 0x40,
+	NM_ATT_SW_CONFIG,
+	NM_ATT_SW_DESCR,
+	NM_ATT_SEVERITY,
+	NM_ATT_GET_ARI,
+	NM_ATT_HW_CONF_CHG,
+	NM_ATT_OUTST_ALARM,
+	NM_ATT_FILE_DATA,
+	NM_ATT_MEAS_RES,
+	NM_ATT_MEAS_TYPE,
+};
+
+/* Section 9.4.4: Administrative State */
+enum abis_nm_adm_state {
+	NM_STATE_LOCKED		= 0x01,
+	NM_STATE_UNLOCKED	= 0x02,
+	NM_STATE_SHUTDOWN	= 0x03,
+	NM_STATE_NULL		= 0xff,
+};
+
+/* Section 9.4.13: Channel Combination */
+enum abis_nm_chan_comb {
+	NM_CHANC_TCHFull	= 0x00,
+	NM_CHANC_TCHHalf	= 0x01,
+	NM_CHANC_TCHHalf2	= 0x02,
+	NM_CHANC_SDCCH		= 0x03,
+	NM_CHANC_mainBCCH	= 0x04,
+	NM_CHANC_BCCCHComb	= 0x05,
+	NM_CHANC_BCCH		= 0x06,
+	NM_CHANC_BCCH_CBCH	= 0x07,
+	NM_CHANC_SDCCH_CBCH	= 0x08,
+};
+
+/* Section 9.4.1 */
+struct abis_nm_abis_channel {
+	u_int8_t	attrib;
+	u_int8_t	bts_port;
+	u_int8_t	timeslot;
+	u_int8_t	subslot;
+} __attribute__ ((packed));
+
+/* PUBLIC */
+
+struct msgb;
+
+struct abis_nm_cfg {
+	/* callback for unidirectional reports */
+	int (*report_cb)(struct msgb *,
+			 struct abis_om_fom_hdr *);
+	/* callback for software activate requests from BTS */
+	int (*sw_act_req)(struct msgb *);
+};
+
+extern int abis_nm_rx(struct msgb *msg);
+//extern struct abis_nm_h *abis_nm_init(struct abis_nm_cfg *cfg);
+//extern void abis_nm_fini(struct abis_nm_h *nmh);
+
+int abis_nm_rx(struct msgb *msg);
+int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
+			  u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot,
+			  u_int8_t tei);
+int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
+			   u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot);
+int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
+			   u_int8_t e1_port, u_int8_t e1_timeslot,
+			   u_int8_t e1_subslot);
+int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
+int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
+int abis_nm_event_reports(struct gsm_bts *bts, int on);
+int abis_nm_reset_resource(struct gsm_bts *bts);
+int abis_nm_db_transaction(struct gsm_bts *bts, int begin);
+
+#endif /* _NM_H */
