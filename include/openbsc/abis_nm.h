@@ -275,7 +275,7 @@ enum abis_nm_chan_comb {
 };
 
 /* Section 9.4.1 */
-struct abis_nm_abis_channel {
+struct abis_nm_channel {
 	u_int8_t	attrib;
 	u_int8_t	bts_port;
 	u_int8_t	timeslot;
@@ -294,7 +294,7 @@ struct abis_nm_cfg {
 	int (*sw_act_req)(struct msgb *);
 };
 
-extern int abis_nm_rx(struct msgb *msg);
+extern int abis_nm_rcvmsg(struct msgb *msg);
 //extern struct abis_nm_h *abis_nm_init(struct abis_nm_cfg *cfg);
 //extern void abis_nm_fini(struct abis_nm_h *nmh);
 

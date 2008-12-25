@@ -20,11 +20,19 @@
  *
  */
 
+#include <openbsc/linuxlist.h>
+
 struct bts_link;
 
 struct msgb {
-	/* ptr to the incoming (RX) or outgoing (TX) BTS link */
+	struct llist_head list;
+
+	/* ptr to the physical E1 link to the BTS(s) */
 	struct gsm_bts_link *bts_link;
+
+	/* Part of which TRX logical channel we were received / transmitted */
+	struct gsm_bts_trx *trx;
+	struct gsm_lchan *lchan;
 
 	u_int8_t l2_off;
 	u_int8_t l3_off;
@@ -40,6 +48,8 @@ struct msgb {
 
 extern struct msgb *msgb_alloc(u_int16_t size);
 extern void msgb_free(struct msgb *m);
+extern void msgb_enqueue(struct llist_head *queue, struct msgb *msg);
+extern struct msgb *msgb_dequeue(struct llist_head *queue);
 
 #define msgb_l2(m)	((void *)(m->data + m->l2_off))
 #define msgb_l3(m)	((void *)(m->data + m->l3_off))
@@ -69,6 +79,21 @@ static inline unsigned char *msgb_pull(struct msgb *msgb, unsigned int len)
 static inline int msgb_tailroom(const struct msgb *msgb)
 {
 	return (msgb->data + msgb->data_len) - msgb->tail;
+}
+
+/* increase the headroom of an empty msgb, reducing the tailroom */
+static inline void msgb_reserve(struct msgb *msg, int len)
+{
+	msg->data += len;
+	msg->tail += len;
+}
+
+static inline struct msgb *msgb_alloc_headroom(int size, int headroom)
+{
+	struct msgb *msg = msgb_alloc(size);
+	if (msg)
+		msgb_reserve(msg, headroom);
+	return msg;
 }
 
 #endif /* _MSGB_H */

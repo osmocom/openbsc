@@ -2,6 +2,7 @@
  * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,13 +25,16 @@
 #include <errno.h>
 #include <stdio.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 
-#include "gsm_data.h"
-#include "debug.h"
-#include "msgb.h"
-#include "abis_nm.h"
+#include <openbsc/gsm_data.h>
+#include <openbsc/debug.h>
+#include <openbsc/msgb.h>
+#include <openbsc/tlv.h>
+#include <openbsc/abis_nm.h>
 
-#define OM_ALLOC_SIZE	1024
+#define OM_ALLOC_SIZE		1024
+#define OM_HEADROOM_SIZE	128
 
 /* unidirectional messages from BTS to BSC */
 static const enum abis_nm_msgtype reports[] = {
@@ -97,7 +101,7 @@ static int is_ack_nack(enum abis_nm_msgtype mt)
 /* is this msgtype a report ? */
 static int is_report(enum abis_nm_msgtype mt)
 {
-	return is_in_arr(mt, reports, ARRA_YSIZE(reports));
+	return is_in_arr(mt, reports, ARRAY_SIZE(reports));
 }
 
 #define MT_ACK(x)	(x+1)
@@ -126,6 +130,11 @@ static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
 	foh->obj_inst.ts_nr = ts_nr;
 }
 
+static struct msgb *nm_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE);
+}
+
 /* Send a OML NM Message from BSC to BTS */
 int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
@@ -133,7 +142,7 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 }
 
 /* Receive a OML NM Message from BTS */
-static int abis_nm_rcvmsg(struct msgb *mb)
+static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
@@ -164,11 +173,11 @@ static int abis_nm_rcvmsg(struct msgb *mb)
 
 /* High-Level API */
 /* Entry-point where L2 OML from BTS enters the NM code */
-int abis_nm_rx(struct msgb *msg)
+int abis_nm_rcvmsg(struct msgb *msg)
 {
 	int rc;
 	struct abis_om_hdr *oh = msgb_l2(msg);
-	unsigned int l2_len = msg->tail - msg_l2(msg);
+	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
@@ -193,7 +202,7 @@ int abis_nm_rx(struct msgb *msg)
 
 	switch (oh->mdisc) {
 	case ABIS_OM_MDISC_FOM:
-		rc = abis_nm_rcvmsg(msg);
+		rc = abis_nm_rcvmsg_fom(msg);
 		break;
 	case ABIS_OM_MDISC_MMI:
 	case ABIS_OM_MDISC_TRAU:
@@ -264,7 +273,7 @@ int abis_nm_sw_activate(struct abis_nm_h *h)
 }
 #endif
 
-static fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
+static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
 		       u_int8_t ts_nr, u_int8_t subslot_nr)
 {
 	ch->attrib = NM_ATT_CHANNEL;
@@ -281,13 +290,13 @@ int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 	struct abis_nm_channel *ch;
 	u_int8_t *tei_attr;
 	u_int8_t len = 2 + sizeof(*ch);
-	struct mgsb *msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_ESTABLISH_TEI, NM_OC_RADIO_CARRIER,
 			bts->bts_nr, trx_nr, 0xff);
 	
-	msgb_tv_put(msgb, NM_ATT_TEI, tei);
+	msgb_tv_put(msg, NM_ATT_TEI, tei);
 
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
 	fill_nm_channel(ch, e1_port, e1_timeslot, e1_subslot);
@@ -299,10 +308,10 @@ int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
 			   u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot)
 {
-	struct gsm_bts *bts = ts->trx->bts;
+	struct gsm_bts *bts = trx->bts;
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
-	struct mgsb *msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_SIGN,
@@ -328,7 +337,7 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 	struct gsm_bts *bts = ts->trx->bts;
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
-	struct msgb *msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_TRAF,
@@ -352,12 +361,12 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 {
 	struct gsm_bts *bts = ts->trx->bts;
 	struct abis_om_hdr *oh;
-	u_int8_t arfcn = htons(ts->trx->arfcn);
+	u_int16_t arfcn = htons(ts->trx->arfcn);
 	u_int8_t zero = 0x00;
-	struct msgb *msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_SET_CHAN_ATTR,
+	fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_SET_CHAN_ATTR,
 			NM_OC_BASEB_TRANSC, bts->bts_nr,
 			ts->trx->nr, ts->nr);
 	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
@@ -371,15 +380,16 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg)
+int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
 {
-	struct msgb *msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
+	struct abis_om_hdr *oh;
 	u_int8_t *data;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, sizeof(*oh));
 	fill_om_hdr(oh, len);
 	data = msgb_put(msg, len);
-	memcpy(msgb->data, msg, len);
+	memcpy(msg->data, rawmsg, len);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -388,10 +398,10 @@ int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg)
 static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
 {
 	struct abis_om_hdr *oh;
-	struct msg = msgb_alloc(OM_ALLOC_SIZE);
+	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*ch), msg_type, NM_OC_SITE_MANAGER,
+	fill_om_fom_hdr(oh, sizeof(*oh), msg_type, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
 
 	return abis_nm_sendmsg(bts, msg);

@@ -3,14 +3,46 @@
 
 #include <sys/types.h>
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 #define GSM_MAX_BTS	8
 #define BTS_MAX_TRX	8
+#define TS_MAX_LCHAN	8
 
 #define HARDCODED_ARFCN 123
 
 /* communications link with a BTS */
 struct gsm_bts_link {
 	struct gsm_bts *bts;
+};
+
+enum gsm_phys_chan_config {
+	GSM_PCHAN_NONE,
+	GSM_PCHAN_CCCH,
+	GSM_PCHAN_CCCH_SDCCH4,
+	GSM_PCHAN_TCH_F,
+	GSM_PCHAN_TCH_H,
+	GSM_PCHAN_SDCCH8_SACCH8C,
+	GSM_PCHAN_UNKNOWN,
+};
+
+enum gsm_chan_t {
+	GSM_LCHAN_NONE,
+	GSM_LCHAN_SDCCH,
+	GSM_LCHAN_TCH_F,
+	GSM_LCHAN_TCH_H,
+	GSM_LCHAN_UNKNOWN,
+};
+
+struct gsm_lchan {
+	/* The TS that we're part of */
+	struct gsm_bts_trx_ts *ts;
+	/* The logical subslot number in the TS */
+	u_int8_t nr;
+	/* The lotical channel type */
+	enum gsm_chan_t type;
+	/* To whom we are allocated at the moment */
+	struct gsm_subscriber *subscr;
 };
 
 #define BTS_TRX_F_ACTIVATED	0x0001
@@ -20,7 +52,11 @@ struct gsm_bts_trx_ts {
 	/* number of this timeslot at the TRX */
 	u_int8_t nr;
 
+	enum gsm_phys_chan_config pchan;
+
 	unsigned int flags;
+
+	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
 /* One TRX in a BTS */
@@ -71,4 +107,24 @@ struct gsm_network {
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code,
 				     u_int8_t network_code);
+
+enum gsm_call_type {
+	GSM_CT_NONE,
+	GSM_CT_MO,
+	GSM_CT_MT,
+};
+
+enum gsm_call_state {
+	GSM_CSTATE_NONE,
+};
+
+/* One end of a call */
+struct gsm_call {
+	enum gsm_call_type type;
+	enum gsm_call_state state;
+
+	/* the 'local' subscriber */
+	struct gsm_subscriber *subscr;
+};
+	
 #endif

@@ -1,6 +1,7 @@
 /* Dummy implementation of a subscriber database, roghly HLR/VLR functionality */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -20,7 +21,7 @@
  */
 
 
-#include "gsm_subscriber.h"
+#include <openbsc/gsm_subscriber.h>
 
 static struct gsm_subscriber subscr = {
 	.name = "Test User 1",

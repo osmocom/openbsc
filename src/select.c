@@ -32,11 +32,11 @@ int bsc_register_fd(struct bsc_fd *fd)
 	/* make FD nonblocking */
 	flags = fcntl(fd->fd, F_GETFL);
 	if (flags < 0)
-		return -1;
+		return flags;
 	flags |= O_NONBLOCK;
 	flags = fcntl(fd->fd, F_SETFL, flags);
 	if (flags < 0)
-		return -1;
+		return flags;
 
 	/* Register FD */
 	if (fd->fd > maxfd)

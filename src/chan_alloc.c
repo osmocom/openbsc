@@ -1,0 +1,150 @@
+/* GSM Channel allocation routines
+ *
+ * (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/chan_alloc.h>
+
+struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
+				   enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx *trx = &bts->trx[0];	
+	struct gsm_bts_trx_ts *ts = &trx->ts[0];
+
+	if (pchan != GSM_PCHAN_CCCH &&
+	    pchan != GSM_PCHAN_CCCH_SDCCH4)
+		return NULL;
+
+	if (ts->pchan != GSM_PCHAN_NONE)
+		return NULL;
+
+	ts->pchan = pchan;
+
+	return ts;
+}
+
+
+/* Allocate a logical channel (TS) */
+struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
+				enum gsm_phys_chan_config pchan)
+{
+	int i, j;
+	for (i = 0; i < bts->num_trx; i++) {
+		struct gsm_bts_trx *trx = &bts->trx[i];
+		for (j = 0; j < 8; j++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[j];
+			if (ts->pchan == GSM_PCHAN_NONE) {
+				ts->pchan = pchan;
+				return ts;
+			}
+		}
+	}
+	return NULL;
+}
+
+/* Free a physical channel (TS) */
+void ts_free(struct gsm_bts_trx_ts *ts)
+{
+	ts->pchan = GSM_PCHAN_NONE;
+}
+
+static const u_int8_t subslots_per_pchan[] = {
+	[GSM_PCHAN_NONE] = 0,
+	[GSM_PCHAN_CCCH] = 0,
+	[GSM_PCHAN_CCCH_SDCCH4] = 4,
+	[GSM_PCHAN_TCH_F] = 1,
+	[GSM_PCHAN_TCH_H] = 2,
+	[GSM_PCHAN_SDCCH8_SACCH8C] = 8.
+};
+
+static struct gsm_lchan *
+_lc_find(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+	int i, j, ss;
+	for (i = 0; i < bts->num_trx; i++) {
+		trx = &bts->trx[i];
+		for (j = 0; j < 8; j++) {
+			ts = &trx->ts[j];
+			if (ts->pchan != pchan)
+				continue;
+			/* check if all sub-slots are allocated yet */
+			for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
+				struct gsm_lchan *lc = &ts->lchan[ss];
+				if (lc->type == GSM_LCHAN_NONE)
+					return lc;
+			}
+		}
+	}
+	/* we cannot allocate more of these */
+	if (pchan == GSM_PCHAN_CCCH_SDCCH4)
+		return NULL;
+
+	/* if we've reached here, we need to allocate a new physical
+	 * channel for the logical channel type requested */
+	ts = ts_alloc(bts, pchan);
+	if (!ts) {
+		/* no more radio resources */
+		return NULL;
+	}
+	return &ts->lchan[0];
+}
+
+/* Allocate a logical channel */
+struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
+{
+	struct gsm_lchan *lchan = NULL;
+
+	switch (type) {
+	case GSM_LCHAN_SDCCH:
+		lchan = _lc_find(bts, GSM_PCHAN_CCCH_SDCCH4);
+		if (lchan == NULL)
+			lchan = _lc_find(bts, GSM_PCHAN_SDCCH8_SACCH8C);
+		break;
+	case GSM_LCHAN_TCH_F:
+		lchan = _lc_find(bts, GSM_PCHAN_TCH_F);
+		break;
+	case GSM_LCHAN_TCH_H:
+		lchan =_lc_find(bts, GSM_PCHAN_TCH_H);
+		break;
+	default:
+		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
+	}
+
+	if (lchan)
+		lchan->type = type;
+
+	return lchan;
+}
+
+/* Free a logical channel */
+void lchan_free(struct gsm_lchan *lchan)
+{
+	lchan->type = GSM_LCHAN_NONE;
+	/* FIXME: ts_free() the timeslot, if we're the last logical
+	 * channel using it */
+}

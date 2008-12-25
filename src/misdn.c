@@ -1,6 +1,6 @@
-/* OpenBSC Abis interface to mISDNuser
- *
- * (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* OpenBSC Abis interface to mISDNuser */
+
+/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -30,26 +30,38 @@
 #include <sys/ioctl.h>
 #include <mISDNif.h>
 
-#define AF_COMPATIBILITY_FUNC
-#include <compat_af_isdn.h>
+//#define AF_COMPATIBILITY_FUNC
+//#include <compat_af_isdn.h>
+#define AF_ISDN 34
+#define PF_ISDN AF_ISDN
+
+#include <openbsc/select.h>
+#include <openbsc/msgb.h>
+#include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/abis_rsl.h>
 
 #define NUM_E1_TS	32
 
 /* data structure for one E1 interface with A-bis */
 struct mi_e1_handle {
 	struct gsm_bts *bts;
-
 	/* The mISDN card number of the card we use */
 	int cardnr;
-
 	/* The RSL adress */
 	struct sockaddr_mISDN l2addr;
-
 	/* The OML adress */
 	struct sockaddr_mISDN omladdr;
+	/* list (queue) of to-be-sent msgb's */
+	struct llist_head rsl_tx_list;
+	struct llist_head oml_tx_list;
 
-	struct gsm_fd fd[NUM_E1_TS];
+	struct bsc_fd fd[NUM_E1_TS];
 };
+
+/* FIXME: this needs to go */
+static struct mi_e1_handle *global_e1h;
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
@@ -74,13 +86,18 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 {
 	struct mi_e1_handle *e1h = bfd->data;
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
-	struct sockaddr_mISDN l2dadr;
+	struct sockaddr_mISDN l2addr;
+	struct mISDNhead *hh;
 	socklen_t alen;
+	int ret;
 
 	if (!msg)
 		return -ENOMEM;
 
-	msg->bts = e1h->bts;
+	hh = (struct mISDNhead *) msg->data;
+
+	/* FIXME: Map TEI/SAPI to TRX */
+	msg->trx = e1h->bts->c0;
 
 	alen = sizeof(l2addr);
 	ret = recvfrom(bfd->fd, msg->data, 300, 0,
@@ -104,7 +121,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
 		DEBUGP(DMI, "got DL_INFORMATION_IND\n");
-		struct sockaddr_mISDN *sa;
+		struct sockaddr_mISDN *sa = NULL;
 		char *lstr = "UNKN";
 
 		switch (l2addr.tei) {
@@ -117,11 +134,13 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 			lstr = "RSL";
 			break;
 		default:
-			continue;
+			break;
 		}
-		DEBUGP(DMI, "%s use channel(%d) sapi(%d) tei(%d) for now\n",
-			lstr, l2addr.channel, l2addr.sapi, l2addr.tei);
-		memcpy(sa, &l2addr, sizeof(l2addr));
+		if (sa) {
+			DEBUGP(DMI, "%s use channel(%d) sapi(%d) tei(%d) for now\n",
+				lstr, l2addr.channel, l2addr.sapi, l2addr.tei);
+			memcpy(sa, &l2addr, sizeof(l2addr));
+		}
 		break;
 	case DL_ESTABLISH_IND:
 		DEBUGP(DMI, "got DL_ESTABLISH_IND\n");
@@ -164,14 +183,39 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 static int handle_ts1_write(struct bsc_fd *bfd)
 {
 	struct mi_e1_handle *e1h = bfd->data;
+	struct msgb *msg;
+	struct mISDNhead *hh;
+	int ret, no_rsl = 0;
 
-	/* FIXME: dequeue a pending msgb for RSL / OML */
-	
-	/* prepend the mISDNhead */
-	hh = (struct mISDNhed *) msg_
-	hh->prim = DL_DATA_REQ;
+	msg = msgb_dequeue(&e1h->rsl_tx_list);
+	if (!msg)
+		no_rsl = 1;
+	else {
+		/* prepend the mISDNhead */
+		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
+		hh->prim = DL_DATA_REQ;
 
-	/* FIXME: send it off */
+		ret = sendto(bfd->fd, msg->data, msg->len, 0,
+			     (struct sockaddr *)&e1h->l2addr,
+			     sizeof(e1h->l2addr));
+		usleep(100000);
+	}
+	msg = msgb_dequeue(&e1h->rsl_tx_list);
+	if (!msg) {
+		if (no_rsl)
+			bfd->when &= ~BSC_FD_WRITE;
+	} else {
+		/* prepend the mISDNhead */
+		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
+		hh->prim = DL_DATA_REQ;
+
+		ret = sendto(bfd->fd, msg->data, msg->len, 0,
+			     (struct sockaddr *)&e1h->omladdr,
+			     sizeof(e1h->omladdr));
+		usleep(100000);
+	}
+
+	return ret;
 }
 
 static int handle_tsX_read(struct bsc_fd *bfd)
@@ -179,13 +223,13 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	/* FIXME: read from a B channel TS */
 }
 
-static int handle_TsX_write(struct bsc_fd *bfd)
+static int handle_tsX_write(struct bsc_fd *bfd)
 {
 	/* FIXME: write to a B channel TS */
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int misdn_fd_cb(struct gsm_fd *bfd, unsigned int what)
+static int misdn_fd_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	unsigned int e1_ts = bfd->priv_nr;
 	int rc = 0;
@@ -208,13 +252,33 @@ static int misdn_fd_cb(struct gsm_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static int mi_setup(devinfo_t *di)
+int abis_rsl_sendmsg(struct msgb *msg)
 {
-	int ts, sk, ret;
-	struct mISDN_devinfo	devinfo;
+	struct mi_e1_handle *e1h = global_e1h;
+
+	msgb_enqueue(&e1h->rsl_tx_list, msg);
+	e1h->fd[0].when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+int abis_nm_sendmsg(struct msgb *msg)
+{
+	struct mi_e1_handle *e1h = global_e1h;
+
+	msgb_enqueue(&e1h->oml_tx_list, msg);
+	e1h->fd[0].when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+static int mi_e1_setup(struct mi_e1_handle *e1h)
+{
+	int ts, sk, ret, cnt;
+	struct mISDN_devinfo devinfo;
 
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
-	if (sk < 0)
+	if (sk < 0) {
 		fprintf(stderr, "could not open socket %s\n", strerror(errno));
 		return sk;
 	}
@@ -245,16 +309,22 @@ static int mi_setup(devinfo_t *di)
 
 	/* TS0 is CRC4, don't need any fd for it */
 	for (ts = 1; ts < NUM_E1_TS; ts++) {
-		unsigned int idx = i-1;
+		unsigned int idx = ts-1;
 		struct bsc_fd *bfd = &e1h->fd[idx];
 		struct sockaddr_mISDN addr;
 
-		if (ts == 1)
+		bfd->data = e1h;
+		bfd->priv_nr = ts;
+		bfd->cb = misdn_fd_cb;
+
+		if (ts == 1) {
 			bfd->fd = socket(PF_ISDN, SOCK_RAW, ISDN_P_LAPD_NT);
-		else
+			bfd->when = BSC_FD_READ;
+		} else
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 
-		if (bfd->fd < 0)
+
+		if (bfd->fd < 0) {
 			fprintf(stderr, "could not open socket %s\n",
 				strerror(errno));
 			return bfd->fd;
@@ -272,10 +342,35 @@ static int mi_setup(devinfo_t *di)
 
 		ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 		if (ret < 0) {
-			fprintf(stdout, "could not bind l2 socket %s\n",
+			fprintf(stderr, "could not bind l2 socket %s\n",
 				strerror(errno));
 			return -EIO;
 		}
+
+		ret = bsc_register_fd(bfd);
+		if (ret < 0) {
+			fprintf(stderr, "could not register FD: %s\n",
+				strerror(ret));
+			return ret;
+		}
 	}
+
+	return 0;
 }
 
+int mi_setup(struct gsm_bts *bts, int cardnr)
+{
+	struct mi_e1_handle *e1h;
+
+	e1h = malloc(sizeof(*e1h));
+	memset(e1h, 0, sizeof(*e1h));
+
+	e1h->cardnr = cardnr;
+	e1h->bts = bts;
+	INIT_LLIST_HEAD(&e1h->oml_tx_list);
+	INIT_LLIST_HEAD(&e1h->rsl_tx_list);
+
+	global_e1h = e1h;
+
+	return mi_e1_setup(e1h);
+}

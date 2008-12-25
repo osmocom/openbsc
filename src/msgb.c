@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#include "msgb.h"
+#include <openbsc/msgb.h>
 
 struct msgb *msgb_alloc(u_int16_t size)
 {
@@ -38,7 +38,7 @@ struct msgb *msgb_alloc(u_int16_t size)
 	msg->head = msg->data;
 	msg->data = msg->data;
 	/* reset tail pointer */
-	msg->tail = msg->data - msg->head;
+	msg->tail = msg->data;
 	//msg->end = msg->tail + size;
 
 	return msg;
@@ -47,4 +47,21 @@ struct msgb *msgb_alloc(u_int16_t size)
 void msgb_free(struct msgb *m)
 {
 	free(m);
+}
+
+void msgb_enqueue(struct llist_head *queue, struct msgb *msg)
+{
+	llist_add_tail(&msg->list, queue);
+}
+
+struct msgb *msgb_dequeue(struct llist_head *queue)
+{
+	struct llist_head *lh;
+
+	if (llist_empty(queue))
+		return NULL;
+
+	lh = queue->next;
+
+	return llist_entry(lh, struct msgb, list);
 }

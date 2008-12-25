@@ -5,7 +5,7 @@
 #include "gsm_data.h"
 
 struct gsm_subscriber {
-	u_int8_t *name;
+	char *name;
 	u_int8_t tmsi[4];
 };
 

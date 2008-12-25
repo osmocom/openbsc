@@ -105,7 +105,7 @@ enum abis_rsl_msgtype {
 	RSL_MT_PHY_CONTEXT_CONF,
 	RSL_MT_RF_CHAN_REL,
 	RSL_MT_MS_POWER_CONTROL,
-	RSL_MT_BS_POWER_CONTROL,
+	RSL_MT_BS_POWER_CONTROL,		/* 0x30 */
 	RSL_MT_PREPROC_CONFIG,
 	RSL_MT_PREPROC_MEAS_RES,
 	RSL_MT_RF_CHAN_REL_ACK,
@@ -290,14 +290,18 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 		      u_int8_t ta);
 int rsl_chan_activate_tch_f(struct gsm_bts_trx_ts *ts);
 int rsl_chan_activate_sdcch(struct gsm_bts_trx_ts *ts);
-int rsl_chan_release(struct gsm_bts_trx_ts *ts, u_int8_t chan_nr);
+int rsl_chan_release(struct gsm_lchan *lchan);
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 		   u_int8_t *ms_ident, u_int8_t chan_needed);
 int rsl_paging_cmd_imsi(struct gsm_bts *bts, u_int8_t chan_needed, const char *imsi_str);
 int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
-int rsl_data_request(struct gsm_bts *bts, struct msgb *msg);
 
-int abis_rsl_rx(struct msgb *msg);
+int rsl_data_request(struct msgb *msg, u_int8_t link_id);
+
+int abis_rsl_rcvmsg(struct msgb *msg);
+
+/* to be provided by external code */
+int abis_rsl_sendmsg(struct msgb *msg);
 
 #endif /* RSL_MT_H */
 

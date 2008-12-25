@@ -235,4 +235,11 @@ struct gsm48_hdr {
 #define GSM_MI_TYPE_TMSI	0x04
 #define GSM_MI_ODD		0x08
 
+struct msgb;
+struct gsm_bts;
+
+int gsm0408_rcvmsg(struct msgb *msg);
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
+
+
 #endif

@@ -21,9 +21,9 @@
 
 
 
-#include "gsm_data.h"
-#include "abis_rsl.h"
-#include "abis_nm.h"
+#include <openbsc/gsm_data.h>
+#include <openbsc/abis_rsl.h>
+#include <openbsc/abis_nm.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -536,8 +536,8 @@ static void bootstrap_network()
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
 
+	mi_setup();
+
 	/* initialize the BTS */
 	bootstrap_bts(&gsmnet->bts[0]);
-
-
 }

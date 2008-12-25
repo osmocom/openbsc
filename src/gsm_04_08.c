@@ -2,6 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,13 +27,15 @@
 #include <string.h>
 #include <errno.h>
 
-#include "msgb.h"
-#include "debug.h"
-#include "gsm_data.h"
-#include "gsm_subscriber.h"
-#include "gsm_04_08.h"
+#include <openbsc/msgb.h>
+#include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_04_08.h>
+#include <openbsc/abis_rsl.h>
 
-#define GSM0408_ALLOC_SIZE	1024
+#define GSM48_ALLOC_SIZE	1024
+#define GSM48_ALLOC_HEADROOM	128
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -79,8 +82,8 @@ static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 	lai48->digits[1] = bcd[2];
 
 	to_bcd(bcd, mnc);
-	lai48->digits[2] |= bcd[2] << 4;
-	lai48->digits[3] = bcd[0] | (bcd[1] << 4);
+	lai48->digits[1] |= bcd[2] << 4;
+	lai48->digits[2] = bcd[0] | (bcd[1] << 4);
 	
 	lai48->lac = lac;
 }
@@ -98,11 +101,17 @@ static void generate_mid_from_tmsi(u_int8_t *buf, u_int8_t *tmsi_bcd)
 	buf[5] = tmsi_bcd[3];
 }
 
+static struct msgb *gsm48_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
+}
+
 static int gsm0408_sendmsg(struct msgb *msg)
 {
-	/* FIXME: set data pointer to beginning of L3 data object */
+	if (msg->lchan)
+		msg->trx = msg->lchan->ts->trx;
 
-	return rsl_data_request(msg);
+	return rsl_data_request(msg, 0);
 }
 
 static int gsm0408_rcv_cc(struct msgb *msg)
@@ -138,15 +147,17 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 			gh->msg_type);
 		break;
 	}
+
+	return 0;
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATE REJECT */
-int gsm0408_loc_upd_rej(struct gsm_bts_link *bts_link, u_int8_t cause)
+int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
-	struct msgb *msg = msgb_alloc(GSM0408_ALLOC_SIZE);
+	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	
-	msg->bts_link = bts_link;
+	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -159,15 +170,15 @@ int gsm0408_loc_upd_rej(struct gsm_bts_link *bts_link, u_int8_t cause)
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
-int gsm0408_loc_upd_acc(struct gsm_bts_link *bts_link, u_int8_t *tmsi)
+int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int8_t *tmsi)
 {
-	struct gsm_bts *bts = bts_link->bts;
-	struct msgb *msg = msgb_alloc(GSM0408_ALLOC_SIZE);
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	u_int8_t *mid;
 	
-	msg->bts_link = bts_link;
+	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -185,15 +196,18 @@ int gsm0408_loc_upd_acc(struct gsm_bts_link *bts_link, u_int8_t *tmsi)
 	return gsm0408_sendmsg(msg);
 }
 
-
 /* Chapter 9.2.15 */
 static int mm_loc_upd_req(struct msgb *msg)
 {
+	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_bts *bts = msg->bts_link->bts;
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
+	u_int8_t mi_type;
 
-	u_int8_t mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
+ 	lu = (struct gsm48_loc_upd_req *) gh->data;
+
+	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
@@ -220,12 +234,14 @@ static int mm_loc_upd_req(struct msgb *msg)
 
 	if (!subscr) {
 		/* 0x16 is congestion */
-		gsm0408_loc_upd_rej(msg->bts_link, 0x16);
+		gsm0408_loc_upd_rej(msg->lchan, 0x16);
 		return -EINVAL;
 	}
 
+	msg->lchan->subscr = subscr;
 	subscr_update(subscr, bts);
-	return gsm0408_loc_upd_acc(msg->bts_link, subscr->tmsi);
+
+	return gsm0408_loc_upd_acc(msg->lchan, subscr->tmsi);
 }
 
 static int gsm0408_rcv_mm(struct msgb *msg)
@@ -279,7 +295,7 @@ int gsm0408_rcvmsg(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
-	int rc;
+	int rc = 0;
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
@@ -303,4 +319,83 @@ int gsm0408_rcvmsg(struct msgb *msg)
 	}
 
 	return rc;
+}
+
+enum chreq_type {
+	CHREQ_T_EMERG_CALL,
+	CHREQ_T_CALL_REEST_TCH_F,
+	CHREQ_T_CALL_REEST_TCH_H,
+	CHREQ_T_CALL_REEST_TCH_H_DBL,
+	CHREQ_T_SDCCH,
+	CHREQ_T_TCH_F,
+	CHREQ_T_VOICE_CALL_TCH_H,
+	CHREQ_T_DATA_CALL_TCH_H,
+	CHREQ_T_LOCATION_UPD,
+	CHREQ_T_PAG_R_ANY,
+	CHREQ_T_PAG_R_TCH_F,
+	CHREQ_T_PAG_R_TCH_FH,
+};
+
+/* Section 9.1.8 / Table 9.9 */
+struct chreq {
+	u_int8_t val;
+	u_int8_t mask;
+	enum chreq_type type;
+};
+
+/* If SYSTEM INFORMATION TYPE 4 NECI bit == 1 */
+static const struct chreq chreq_type_neci1[] = {
+	{ 0xa0, 0xe0, CHREQ_T_EMERG_CALL },
+	{ 0xc0, 0xe0, CHREQ_T_CALL_REEST_TCH_F },
+	{ 0x68, 0xfc, CHREQ_T_CALL_REEST_TCH_H },
+	{ 0x6c, 0xfc, CHREQ_T_CALL_REEST_TCH_H_DBL },
+	{ 0xe0, 0xe0, CHREQ_T_SDCCH },
+	{ 0x40, 0xf0, CHREQ_T_VOICE_CALL_TCH_H },
+	{ 0x50, 0xf0, CHREQ_T_DATA_CALL_TCH_H },
+	{ 0x00, 0xf0, CHREQ_T_LOCATION_UPD },
+	{ 0x10, 0xf0, CHREQ_T_SDCCH },
+	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY },
+	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
+	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+};
+
+/* If SYSTEM INFORMATION TYPE 4 NECI bit == 0 */
+static const struct chreq chreq_type_neci0[] = {
+	{ 0xa0, 0xe0, CHREQ_T_EMERG_CALL },
+	{ 0xc0, 0xe0, CHREQ_T_CALL_REEST_TCH_H },
+	{ 0xe0, 0xe0, CHREQ_T_TCH_F },
+	{ 0x50, 0xf0, CHREQ_T_DATA_CALL_TCH_H },
+	{ 0x00, 0xe0, CHREQ_T_LOCATION_UPD },
+	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY },
+	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
+	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+};
+
+static const enum gsm_chan_t ctype_by_chreq[] = {
+	[CHREQ_T_EMERG_CALL]		= GSM_LCHAN_TCH_F,
+	[CHREQ_T_CALL_REEST_TCH_F]	= GSM_LCHAN_TCH_F,
+	[CHREQ_T_CALL_REEST_TCH_H]	= GSM_LCHAN_TCH_H,
+	[CHREQ_T_CALL_REEST_TCH_H_DBL]	= GSM_LCHAN_TCH_H,
+	[CHREQ_T_SDCCH]			= GSM_LCHAN_SDCCH,
+	[CHREQ_T_TCH_F]			= GSM_LCHAN_TCH_F,
+	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_LCHAN_TCH_H,
+	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_LCHAN_TCH_H,
+	[CHREQ_T_LOCATION_UPD]		= GSM_LCHAN_SDCCH,
+	[CHREQ_T_PAG_R_ANY]		= GSM_LCHAN_SDCCH,
+	[CHREQ_T_PAG_R_TCH_F]		= GSM_LCHAN_TCH_F,
+	[CHREQ_T_PAG_R_TCH_FH]		= GSM_LCHAN_TCH_F,
+};
+
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
+{
+	int i;
+	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+
+	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
+		const struct chreq *chr = &chreq_type_neci0[i];
+		if ((ra & chr->mask) == chr->val)
+			return ctype_by_chreq[chr->type];
+	}
+	fprintf(stderr, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
+	return GSM_LCHAN_SDCCH;
 }

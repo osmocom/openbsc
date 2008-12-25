@@ -1,4 +1,5 @@
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "gsm_data.h"
+#include <openbsc/gsm_data.h>
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code,
 				     u_int8_t network_code)
@@ -57,12 +58,24 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code
 
 			for (k = 0; k < 8; k++) {
 				struct gsm_bts_trx_ts *ts = &trx->ts[k];
+				int l;
 				
 				ts->trx = trx;
 				ts->nr = k;
+				ts->pchan = GSM_PCHAN_NONE;
+
+				for (l = 0; l < TS_MAX_LCHAN; l++) {
+					struct gsm_lchan *lchan;
+					lchan = &ts->lchan[l];
+
+					lchan->ts = ts;
+					lchan->nr = l;
+					lchan->type = GSM_LCHAN_NONE;
+				}
 			}
 		}
 
 		bts->num_trx = 1;	/* FIXME */
 	}
+	return net;
 }
