@@ -198,6 +198,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->l2addr,
 			     sizeof(e1h->l2addr));
+		msgb_free(msg);
 		usleep(100000);
 	}
 	msg = msgb_dequeue(&e1h->rsl_tx_list);
@@ -212,6 +213,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->omladdr,
 			     sizeof(e1h->omladdr));
+		msgb_free(msg);
 		usleep(100000);
 	}
 
