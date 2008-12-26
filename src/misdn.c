@@ -72,7 +72,7 @@ static struct mi_e1_handle *global_e1h;
 #define TEI_OML		25
 #define TEI_RSL		1
 
-static void hexdump(unsigned char *buf, int len)
+void hexdump(unsigned char *buf, int len)
 {
 	int i;
 	for (i = 0; i < len; i++) {
@@ -169,9 +169,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	case DL_DATA_IND:
 		DEBUGP(DMI, "got DL_DATA_IND\n");
 
-		/* FIXME: this stinks */
-		msg->trx = e1h->bts->c0;
-
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		
 		fprintf(stdout, "RX: ");
@@ -243,6 +240,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 			     sizeof(e1h->l2addr));
 		msgb_free(msg);
 		usleep(100000);
+		//sleep(1);
 	}
 
 	return ret;

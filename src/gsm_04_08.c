@@ -200,7 +200,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int8_t *tmsi)
 static int mm_loc_upd_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_bts *bts = msg->bts_link->bts;
+	struct gsm_bts *bts = msg->trx->bts;
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
 	u_int8_t mi_type;

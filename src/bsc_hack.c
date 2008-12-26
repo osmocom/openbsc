@@ -31,6 +31,7 @@
 #include <openbsc/select.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/debug.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -248,6 +249,15 @@ static void bootstrap_om(struct gsm_bts *bts)
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
+
+	/* begin DB transmission */
+	abis_nm_db_transmission(bts, 1);
+
+	/* end DB transmission */
+	abis_nm_db_transmission(bts, 0);
+
+	/* Reset BTS Site manager resource */
+	abis_nm_reset_resource(bts);
 
 	/* begin DB transmission */
 	abis_nm_db_transmission(bts, 1);
@@ -533,7 +543,7 @@ static void bootstrap_rsl(struct gsm_bts *bts)
 	set_system_infos(bts);
 
 	/* FIXME: defer this until the channels are used */
-	activate_traffic_channels(&bts->trx[0]);
+	//activate_traffic_channels(&bts->trx[0]);
 }
 
 static void mi_cb(int event, struct gsm_bts *bts)
@@ -570,12 +580,17 @@ static int bootstrap_network(void)
 	return 0;
 }
 
-void debugp(int subsys, char *file, int line, const char *format, ...)
+static unsigned int debug_mask = 0xffffffff & ~DMI;
+
+void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 {
 	char *timestr;
 	va_list ap;
 	time_t tm;
 	FILE *outfd = stderr;
+
+	if (!(debug_mask & subsys))
+		return;
 
 	va_start(ap, format);
 	

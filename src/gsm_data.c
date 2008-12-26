@@ -76,6 +76,8 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code
 		}
 
 		bts->num_trx = 1;	/* FIXME */
+		bts->c0 = &bts->trx[0];
+		bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 	}
 	return net;
 }

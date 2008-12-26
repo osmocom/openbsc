@@ -30,6 +30,7 @@ struct msgb *msgb_alloc(u_int16_t size)
 
 	if (!msg)
 		return NULL;
+	memset(msg, 0, sizeof(*msg)+size);
 
 	msg->data_len = size;
 	msg->len = 0;

@@ -122,7 +122,7 @@ static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
 	struct abis_om_fom_hdr *foh =
 			(struct abis_om_fom_hdr *) oh->data;
 
-	fill_om_hdr(oh, len);
+	fill_om_hdr(oh, len+sizeof(*foh));
 	foh->msg_type = msg_type;
 	foh->obj_class = obj_class;
 	foh->obj_inst.bts_nr = bts_nr;
@@ -183,6 +183,7 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	int rc;
 	struct abis_om_hdr *oh = msgb_l2(msg);
 	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
+	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
@@ -195,14 +196,15 @@ int abis_nm_rcvmsg(struct msgb *msg)
 			oh->sequence);
 		return -EINVAL;
 	}
-	if (oh->length + sizeof(*oh) > l2_len) {
+#if 0
+	if (oh->length + hlen > l2_len) {
 		fprintf(stderr, "ABIS OML truncated message (%u > %u)\n",
 			oh->length + sizeof(*oh), l2_len);
 		return -EINVAL;
 	}
-	if (oh->length + sizeof(*oh) < l2_len)
-		fprintf(stderr, "ABIS OML message with extra trailer?!?\n");
-
+	if (oh->length + hlen < l2_len)
+		fprintf(stderr, "ABIS OML message with extra trailer?!? (oh->len=%d, sizeof_oh=%d l2_len=%d\n", oh->length, sizeof(*oh), l2_len);
+#endif
 	msg->l3h = (unsigned char *)oh + sizeof(*oh);
 
 	switch (oh->mdisc) {
@@ -295,7 +297,7 @@ int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
 	u_int8_t *tei_attr;
-	u_int8_t len = 2 + sizeof(*ch);
+	u_int8_t len = sizeof(*ch) + 2;
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
@@ -320,7 +322,7 @@ int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_SIGN,
+	fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_CONN_TERR_SIGN,
 			NM_OC_RADIO_CARRIER, bts->bts_nr, trx->nr, 0xff);
 	
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
@@ -370,9 +372,10 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	u_int16_t arfcn = htons(ts->trx->arfcn);
 	u_int8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = 4 + 2 + 2 + 2 + 2 +3;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_SET_CHAN_ATTR,
+	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
 			NM_OC_BASEB_TRANSC, bts->bts_nr,
 			ts->trx->nr, ts->nr);
 	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
@@ -407,7 +410,7 @@ static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*oh), msg_type, NM_OC_SITE_MANAGER,
+	fill_om_fom_hdr(oh, 0, msg_type, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
 
 	return abis_nm_sendmsg(bts, msg);

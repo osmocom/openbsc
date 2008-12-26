@@ -17,6 +17,6 @@
 #define DEBUGP(xss, fmt, args...) 
 #endif
 
-void debugp(int subsys, char *file, int line, const char *format, ...);
+void debugp(unsigned int subsys, char *file, int line, const char *format, ...);
 
 #endif /* _DEBUG_H */
