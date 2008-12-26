@@ -19,7 +19,12 @@
  *
  */
 
-
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <time.h>
+#include <string.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
@@ -536,8 +541,36 @@ static void bootstrap_network()
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
 
-	mi_setup();
-
 	/* initialize the BTS */
 	bootstrap_bts(&gsmnet->bts[0]);
+}
+
+void debugp(int subsys, char *file, int line, const char *format, ...)
+{
+	char *timestr;
+	va_list ap;
+	time_t tm;
+	FILE *outfd = stderr;
+
+	va_start(ap, format);
+	
+	tm = time(NULL);
+	timestr = ctime(&tm);
+	timestr[strlen(timestr)-1] = '\0';
+	fprintf(outfd, "%s <%4.4x> %s:%d ", timestr, subsys, file, line);
+	vsprintf(outfd, format, ap);
+	va_end(ap);
+	fflush(outfd);
+}
+
+int main(int argc, char **argv)
+{
+	if (mi_setup() < 0)
+		exit(1);
+
+	bootstrap_network();
+
+	while (1) {
+		bsc_select_main();
+	}
 }
