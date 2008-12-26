@@ -166,7 +166,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
 			e1h->cb(EVT_E1_RSL_DN, e1h->bts);
 		break;
-		break;
 	case DL_DATA_IND:
 		DEBUGP(DMI, "got DL_DATA_IND\n");
 
@@ -217,8 +216,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
-			     (struct sockaddr *)&e1h->l2addr,
-			     sizeof(e1h->l2addr));
+			     (struct sockaddr *)&e1h->omladdr,
+			     sizeof(e1h->omladdr));
 		msgb_free(msg);
 		usleep(100000);
 		/* we always dequeue all OML messages */
@@ -240,8 +239,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
-			     (struct sockaddr *)&e1h->omladdr,
-			     sizeof(e1h->omladdr));
+			     (struct sockaddr *)&e1h->l2addr,
+			     sizeof(e1h->l2addr));
 		msgb_free(msg);
 		usleep(100000);
 	}
