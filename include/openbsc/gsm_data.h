@@ -126,5 +126,13 @@ struct gsm_call {
 	/* the 'local' subscriber */
 	struct gsm_subscriber *subscr;
 };
-	
+
+enum gsm_e1_event {
+	EVT_E1_NONE,
+	EVT_E1_OML_UP,
+	EVT_E1_RSL_UP,
+	EVT_E1_OML_DN,
+	EVT_E1_RSL_DN,
+};
+
 #endif

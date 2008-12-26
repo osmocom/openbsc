@@ -34,8 +34,8 @@ struct msgb {
 	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 
-	u_int8_t l2_off;
-	u_int8_t l3_off;
+	unsigned char *l2h;
+	unsigned char *l3h;
 
 	u_int16_t data_len;
 	u_int16_t len;
@@ -51,8 +51,8 @@ extern void msgb_free(struct msgb *m);
 extern void msgb_enqueue(struct llist_head *queue, struct msgb *msg);
 extern struct msgb *msgb_dequeue(struct llist_head *queue);
 
-#define msgb_l2(m)	((void *)(m->data + m->l2_off))
-#define msgb_l3(m)	((void *)(m->data + m->l3_off))
+#define msgb_l2(m)	((void *)(m->l2h))
+#define msgb_l3(m)	((void *)(m->l3h))
 
 static inline unsigned int msgb_headlen(const struct msgb *msgb)
 {

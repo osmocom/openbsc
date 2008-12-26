@@ -25,8 +25,10 @@
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/select.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
 
@@ -241,6 +243,8 @@ unsigned char msg_6[] =
 static void bootstrap_om(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = &bts->trx[0];
+
+	fprintf(stdout, "bootstrapping OML\n");
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -510,6 +514,8 @@ static int set_system_infos(struct gsm_bts *bts)
 	}
 	rsl_sacch_filling(bts, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
 	rsl_sacch_filling(bts, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
+
+	return 0;
 }
 
 static void activate_traffic_channels(struct gsm_bts_trx *trx)
@@ -521,28 +527,47 @@ static void activate_traffic_channels(struct gsm_bts_trx *trx)
 		rsl_chan_activate_tch_f(&trx->ts[i]);
 }
 
-static void bootstrap_bts(struct gsm_bts *bts)
+static void bootstrap_rsl(struct gsm_bts *bts)
 {
-	bootstrap_om(bts);
-
+	fprintf(stdout, "bootstrapping RSL\n");
 	set_system_infos(bts);
 
 	/* FIXME: defer this until the channels are used */
 	activate_traffic_channels(&bts->trx[0]);
 }
 
-static void bootstrap_network()
+static void mi_cb(int event, struct gsm_bts *bts)
+{
+	switch (event) {
+	case EVT_E1_OML_UP:
+		bootstrap_om(bts);
+		break;
+	case EVT_E1_RSL_UP:
+		bootstrap_rsl(bts);
+		break;
+	default:
+		/* FIXME: deal with TEI or L1 link loss */
+		break;
+	}
+}
+
+static int bootstrap_network(void)
 {
 	struct gsm_bts *bts;
 
 	/* initialize our data structures */
 	gsmnet = gsm_network_init(1, 1, 1);
+	if (!gsmnet)
+		return -ENOMEM;
+		
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
 
-	/* initialize the BTS */
-	bootstrap_bts(&gsmnet->bts[0]);
+	if (mi_setup(bts, 0, mi_cb) < 0)
+		return -EIO;
+
+	return 0;
 }
 
 void debugp(int subsys, char *file, int line, const char *format, ...)
@@ -558,16 +583,15 @@ void debugp(int subsys, char *file, int line, const char *format, ...)
 	timestr = ctime(&tm);
 	timestr[strlen(timestr)-1] = '\0';
 	fprintf(outfd, "%s <%4.4x> %s:%d ", timestr, subsys, file, line);
-	vsprintf(outfd, format, ap);
+	vfprintf(outfd, format, ap);
+
 	va_end(ap);
+
 	fflush(outfd);
 }
 
 int main(int argc, char **argv)
 {
-	if (mi_setup() < 0)
-		exit(1);
-
 	bootstrap_network();
 
 	while (1) {

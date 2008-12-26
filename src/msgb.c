@@ -62,6 +62,7 @@ struct msgb *msgb_dequeue(struct llist_head *queue)
 		return NULL;
 
 	lh = queue->next;
-
+	llist_del(lh);
+	
 	return llist_entry(lh, struct msgb, list);
 }

@@ -618,13 +618,13 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	case RSL_MT_DATA_IND:
 		DEBUGP(DRLL, "DATA INDICATION\n");
 		/* FIXME: Verify L3 info element */
-		msg->l3_off = &rllh->data[2] - msg->data;
+		msg->l3h = &rllh->data[2];
 		rc = gsm0408_rcvmsg(msg);
 		break;
 	case RSL_MT_EST_IND:
 		DEBUGP(DRLL, "ESTABLISH INDICATION\n");
 		/* FIXME: Verify L3 info element */
-		msg->l3_off = &rllh->data[2] - msg->data;
+		msg->l3h = &rllh->data[2];
 		rc = gsm0408_rcvmsg(msg);
 		break;
 	case RSL_MT_ERROR_IND:

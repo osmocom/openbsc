@@ -138,7 +138,7 @@ static struct msgb *nm_msgb_alloc(void)
 /* Send a OML NM Message from BSC to BTS */
 int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
-	/* FIXME */
+	return _abis_nm_sendmsg(msg);
 }
 
 /* Receive a OML NM Message from BTS */
@@ -149,10 +149,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	/* check for unsolicited message */
 	if (is_report(mt)) {
-		nmh->cfg->report_cb(mb, foh);
+		DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
+		//nmh->cfg->report_cb(mb, foh);
 		return 0;
 	}
 
+#if 0
 	/* check if last message is to be acked */
 	if (is_ack_nack(nmh->last_msgtype)) {
 		if (mt == MT_ACK(nmh->last_msgtype)) {
@@ -169,6 +171,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 			return -EINVAL;
 		}
 	}
+#endif
+
+	return 0;
 }
 
 /* High-Level API */
@@ -198,7 +203,7 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	if (oh->length + sizeof(*oh) < l2_len)
 		fprintf(stderr, "ABIS OML message with extra trailer?!?\n");
 
-	msg->l3_off = ((unsigned char *)oh + sizeof(*oh)) - msg->head;
+	msg->l3h = (unsigned char *)oh + sizeof(*oh);
 
 	switch (oh->mdisc) {
 	case ABIS_OM_MDISC_FOM:
@@ -213,6 +218,7 @@ int abis_nm_rcvmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 
+	msgb_free(msg);
 	return rc;
 }
 
@@ -389,7 +395,7 @@ int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
 	oh = (struct abis_om_hdr *) msgb_put(msg, sizeof(*oh));
 	fill_om_hdr(oh, len);
 	data = msgb_put(msg, len);
-	memcpy(msg->data, rawmsg, len);
+	memcpy(data, rawmsg, len);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -420,7 +426,7 @@ int abis_nm_reset_resource(struct gsm_bts *bts)
 	return __simple_cmd(bts, 0x74);
 }
 
-int abis_nm_db_transaction(struct gsm_bts *bts, int begin)
+int abis_nm_db_transmission(struct gsm_bts *bts, int begin)
 {
 	if (begin)
 		return __simple_cmd(bts, 0xA3);

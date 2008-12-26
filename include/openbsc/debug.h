@@ -12,9 +12,11 @@
 #define DMI		0x1000
 
 #ifdef DEBUG
-#define DEBUGP(ss, args...)	debugp(ss, __FILE__, __LINE__, ## args)
+#define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, fmt, ## args)
 #else
-#define DEBUGP(xss, args, ...) 
+#define DEBUGP(xss, fmt, args...) 
 #endif
+
+void debugp(int subsys, char *file, int line, const char *format, ...);
 
 #endif /* _DEBUG_H */

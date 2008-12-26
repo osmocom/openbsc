@@ -57,6 +57,7 @@ struct mi_e1_handle {
 	struct llist_head rsl_tx_list;
 	struct llist_head oml_tx_list;
 
+	void (*cb)(int event, struct gsm_bts *bts);
 	struct bsc_fd fd[NUM_E1_TS];
 };
 
@@ -65,7 +66,7 @@ static struct mi_e1_handle *global_e1h;
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
-#define SAPI_RSL	63
+#define SAPI_RSL	0	/* 63 ? */
 
 #define TEI_L2ML	127
 #define TEI_OML		25
@@ -149,17 +150,32 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		DEBUGP(DMI, "got DL_ESTABLISH_CNF\n");
 		break;
 	case DL_RELEASE_IND:
-		DEBUGP(DMI, "got DL_RELEASE_IND\n");
+		DEBUGP(DMI, "got DL_RELEASE_IND: E1 Layer 1 disappeared?\n");
 		break;
 	case MPH_ACTIVATE_IND:
 		DEBUGP(DMI, "got MPH_ACTIVATE_IND\n");
+		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
+			e1h->cb(EVT_E1_OML_UP, e1h->bts);
+		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
+			e1h->cb(EVT_E1_RSL_UP, e1h->bts);
 		break;
 	case MPH_DEACTIVATE_IND:
-		DEBUGP(DMI, "got MPH_DEACTIVATE_IND\n");
+		DEBUGP(DMI, "got MPH_DEACTIVATE_IND: TEI link closed?\n");
+		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
+			e1h->cb(EVT_E1_OML_DN, e1h->bts);
+		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
+			e1h->cb(EVT_E1_RSL_DN, e1h->bts);
+		break;
 		break;
 	case DL_DATA_IND:
 		DEBUGP(DMI, "got DL_DATA_IND\n");
-		msg->l2_off = MISDN_HEADER_LEN;
+
+		/* FIXME: this stinks */
+		msg->trx = e1h->bts->c0;
+
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		
+		fprintf(stdout, "RX: ");
 		hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
 		switch (l2addr.tei) {
 		case TEI_OML:
@@ -185,30 +201,43 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct mi_e1_handle *e1h = bfd->data;
 	struct msgb *msg;
 	struct mISDNhead *hh;
-	int ret, no_rsl = 0;
+	int ret, no_oml = 0;
 
-	msg = msgb_dequeue(&e1h->rsl_tx_list);
+	msg = msgb_dequeue(&e1h->oml_tx_list);
 	if (!msg)
-		no_rsl = 1;
+		no_oml = 1;
 	else {
+		u_int8_t *l2_data = msg->data;
+
 		/* prepend the mISDNhead */
 		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 		hh->prim = DL_DATA_REQ;
+
+		fprintf(stdout, "OML TX: ");
+		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->l2addr,
 			     sizeof(e1h->l2addr));
 		msgb_free(msg);
 		usleep(100000);
+		/* we always dequeue all OML messages */
+		return ret;
 	}
+
 	msg = msgb_dequeue(&e1h->rsl_tx_list);
 	if (!msg) {
-		if (no_rsl)
+		if (no_oml)
 			bfd->when &= ~BSC_FD_WRITE;
 	} else {
+		u_int8_t *l2_data = msg->data;
+
 		/* prepend the mISDNhead */
 		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 		hh->prim = DL_DATA_REQ;
+
+		fprintf(stdout, "RSL TX: ");
+		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->omladdr,
@@ -258,16 +287,18 @@ int abis_rsl_sendmsg(struct msgb *msg)
 {
 	struct mi_e1_handle *e1h = global_e1h;
 
+	msg->l2h = msg->data;
 	msgb_enqueue(&e1h->rsl_tx_list, msg);
 	e1h->fd[0].when |= BSC_FD_WRITE;
 
 	return 0;
 }
 
-int abis_nm_sendmsg(struct msgb *msg)
+int _abis_nm_sendmsg(struct msgb *msg)
 {
 	struct mi_e1_handle *e1h = global_e1h;
 
+	msg->l2h = msg->data;
 	msgb_enqueue(&e1h->oml_tx_list, msg);
 	e1h->fd[0].when |= BSC_FD_WRITE;
 
@@ -292,13 +323,14 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 		close(sk);
 		return -ENODEV;
 	}
-	DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
-#if 0
-	devinfo.id = di->cardnr;
+	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
+	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
+#if 1
+	devinfo.id = e1h->cardnr;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
 		fprintf(stdout, "error getting info for device %d: %s\n",
-			di->cardnr, strerror(errno));
+			e1h->cardnr, strerror(errno));
 		return -ENODEV;
 	}
 	fprintf(stdout, "        id:             %d\n", devinfo.id);
@@ -320,7 +352,7 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 		bfd->cb = misdn_fd_cb;
 
 		if (ts == 1) {
-			bfd->fd = socket(PF_ISDN, SOCK_RAW, ISDN_P_LAPD_NT);
+			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_LAPD_NT);
 			bfd->when = BSC_FD_READ;
 		} else
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
@@ -360,7 +392,8 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 	return 0;
 }
 
-int mi_setup(struct gsm_bts *bts, int cardnr)
+int mi_setup(struct gsm_bts *bts, int cardnr, 
+	     void (cb)(int event, struct gsm_bts *bts))
 {
 	struct mi_e1_handle *e1h;
 
@@ -369,6 +402,7 @@ int mi_setup(struct gsm_bts *bts, int cardnr)
 
 	e1h->cardnr = cardnr;
 	e1h->bts = bts;
+	e1h->cb = cb;
 	INIT_LLIST_HEAD(&e1h->oml_tx_list);
 	INIT_LLIST_HEAD(&e1h->rsl_tx_list);
 
