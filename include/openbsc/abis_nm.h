@@ -311,6 +311,6 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
-int abis_nm_db_transaction(struct gsm_bts *bts, int begin);
+int abis_nm_db_transmission(struct gsm_bts *bts, int begin);
 
 #endif /* _NM_H */
