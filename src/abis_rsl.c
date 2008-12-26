@@ -666,5 +666,6 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 			rslh->msg_discr);
 		return -EINVAL;
 	}
+	msgb_free(msg);
 	return rc;
 }
