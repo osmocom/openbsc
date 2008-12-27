@@ -542,7 +542,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
-		DEBUGP(DRSL, "rsl_rx_dchan: Connection Fail\n");
+		DEBUGP(DRSL, "rsl_rx_dchan: Connection Fail, release channel\n");
+		rc = rsl_chan_release(msg->lchan);
 		break;
 	case RSL_MT_MEAS_RES:
 		DEBUGP(DRSL, "rsl_rx_dchan: Measurement Result\n");
