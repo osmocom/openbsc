@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
@@ -59,6 +60,8 @@ struct mi_e1_handle {
 
 	void (*cb)(int event, struct gsm_bts *bts);
 	struct bsc_fd fd[NUM_E1_TS];
+
+	int ts2_fd;
 };
 
 /* FIXME: this needs to go */
@@ -246,10 +249,56 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	return ret;
 }
 
+#define TSX_ALLOC_SIZE 4096
+
+/* FIXME: read from a B channel TS */
 static int handle_tsX_read(struct bsc_fd *bfd)
 {
-	/* FIXME: read from a B channel TS */
-	return -1;
+	struct mi_e1_handle *e1h = bfd->data;
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
+	struct mISDNhead *hh;
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	hh = (struct mISDNhead *) msg->data;
+
+	/* FIXME: Map TEI/SAPI to TRX */
+	msg->trx = e1h->bts->c0;
+
+	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
+	if (ret < 0) {
+		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		return ret;
+	}
+
+	msgb_put(msg, ret);
+
+	DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x)\n", ret, hh->prim, hh->id);
+
+	switch (hh->prim) {
+	case PH_CONTROL_IND:
+		DEBUGP(DMIB, "got PH_CONTROL_IND\n");
+		break;
+	case PH_DATA_IND:
+		DEBUGP(DMIB, "got PH_DATA_IND\n");
+
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		
+		fprintf(stdout, "BCHAN RX: ");
+		hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		if (!e1h->ts2_fd)
+			e1h->ts2_fd = open("/tmp/ts2.dump", O_WRONLY|O_APPEND|O_CREAT, 0660);
+		
+		write(e1h->ts2_fd, msgb_l2(msg), ret - MISDN_HEADER_LEN);
+
+		break;
+	default:
+		DEBUGP(DMIB, "got unexpected 0x%x prim\n", hh->prim);
+		break;
+	}
+	return ret;
 }
 
 static int handle_tsX_write(struct bsc_fd *bfd)
@@ -304,6 +353,25 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	return 0;
 }
 
+static int activate_bchan(struct mi_e1_handle *e1h, int ts)
+{
+	struct mISDNhead hh;
+	int ret;
+	struct bsc_fd *bfd = &e1h->fd[ts-1];
+
+	fprintf(stdout, "activate bchan\n");
+	hh.prim = PH_ACTIVATE_REQ;
+	hh.id = MISDN_ID_ANY;
+	ret = sendto(bfd->fd, &hh, sizeof(hh), 0, NULL, 0);
+	if (ret < 0) {
+		fprintf(stdout, "could not send ACTIVATE_RQ %s\n",
+			strerror(errno));
+		return 0;
+	}
+
+	return ret;
+}
+
 static int mi_e1_setup(struct mi_e1_handle *e1h)
 {
 	int ts, sk, ret, cnt;
@@ -356,7 +424,6 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 		} else
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 
-
 		if (bfd->fd < 0) {
 			fprintf(stderr, "could not open socket %s\n",
 				strerror(errno));
@@ -378,6 +445,11 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 			fprintf(stderr, "could not bind l2 socket %s\n",
 				strerror(errno));
 			return -EIO;
+		}
+
+		if (ts == 2) {
+			bfd->when = BSC_FD_READ;
+			activate_bchan(e1h, ts);
 		}
 
 		ret = bsc_register_fd(bfd);
