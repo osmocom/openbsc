@@ -32,6 +32,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
+#include <openbsc/misdn.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
