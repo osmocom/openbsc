@@ -332,7 +332,7 @@ int rsl_chan_activate_sdcch4(struct gsm_bts_trx_ts *ts, int subslot)
 	ci.chan_desc.oct3 = (TSC << 5) | ((arfcn & 0x3ff) >> 8);
 	ci.chan_desc.oct4 = arfcn & 0xff;
 
-	/* FIXME: we're sending BS power IE, whcih Abissim doesn't */
+	/* FIXME: we're sending BS power IE, which Abissim doesn't */
 	return rsl_chan_activate(ts->trx->bts, chan_nr, 0x00, &cm, &ci, 0x01, 0x0f, 0x00);
 }
 
