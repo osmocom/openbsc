@@ -10,6 +10,7 @@
 #define DRSL		0x0010
 #define DNM		0x0020
 #define DMI		0x1000
+#define DMIB		0x2000
 
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, fmt, ## args)

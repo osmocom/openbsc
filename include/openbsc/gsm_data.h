@@ -16,6 +16,30 @@ struct gsm_bts_link {
 	struct gsm_bts *bts;
 };
 
+enum gsm_call_type {
+	GSM_CT_NONE,
+	GSM_CT_MO,
+	GSM_CT_MT,
+};
+
+enum gsm_call_state {
+	GSM_CSTATE_NULL,
+	GSM_CSTATE_INITIATED,
+	GSM_CSTATE_ACTIVE,
+	GSM_CSTATE_RELEASE_REQ,
+};
+
+/* One end of a call */
+struct gsm_call {
+	enum gsm_call_type type;
+	enum gsm_call_state state;
+	u_int8_t transaction_id;	/* 10.3.2 */
+
+	/* the 'local' subscriber */
+	struct gsm_subscriber *subscr;
+};
+
+
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -43,6 +67,9 @@ struct gsm_lchan {
 	enum gsm_chan_t type;
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
+
+	/* local end of a call, if any */
+	struct gsm_call call;
 };
 
 #define BTS_TRX_F_ACTIVATED	0x0001
@@ -107,25 +134,6 @@ struct gsm_network {
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code,
 				     u_int8_t network_code);
-
-enum gsm_call_type {
-	GSM_CT_NONE,
-	GSM_CT_MO,
-	GSM_CT_MT,
-};
-
-enum gsm_call_state {
-	GSM_CSTATE_NONE,
-};
-
-/* One end of a call */
-struct gsm_call {
-	enum gsm_call_type type;
-	enum gsm_call_state state;
-
-	/* the 'local' subscriber */
-	struct gsm_subscriber *subscr;
-};
 
 enum gsm_e1_event {
 	EVT_E1_NONE,
