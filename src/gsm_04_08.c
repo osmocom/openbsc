@@ -293,17 +293,49 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	return str_cur - string;
 }
 
-#define MI_SIZE 20
+/* Chapter 9.2.10 */
+static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
 
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_ID_REQ;
+	gh->data[0] = id_type;
+
+	return gsm0408_sendmsg(msg);
+}
+
+#define MI_SIZE 32
+
+/* Chapter 9.2.11 */
+static int mm_rx_id_resp(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
+	char mi_string[MI_SIZE];
+
+	mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
+	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x (MI(%s)\n",
+		mi_type, mi_string);
+
+	/* FIXME: update subscribe <-> IMEI mapping */
+}
+
+#define MI_SIZE 32
 /* Chapter 9.2.15 */
-static int mm_loc_upd_req(struct msgb *msg)
+static int mm_rx_loc_upd_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_bts *bts = msg->trx->bts;
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
 	u_int8_t mi_type;
-	char mi_string[20];
+	char mi_string[MI_SIZE];
+	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
 
@@ -311,18 +343,22 @@ static int mm_loc_upd_req(struct msgb *msg)
 
 	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
-	DEBUGP(DMM, "LUPDREQ: mi_type = 0x%02x MI(%s)\n", mi_type, mi_string);
+	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s)\n", mi_type, mi_string);
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
+		/* we always want the IMEI, too */
+		rc = mm_tx_identity_req(msg->lchan, GSM_MI_TYPE_IMEISV);
 		/* look up subscriber based on IMSI */
 		subscr = subscr_get_by_imsi(lu->mi);
 		break;
 	case GSM_MI_TYPE_TMSI:
+		/* we always want the IMEI, too */
+		rc = mm_tx_identity_req(msg->lchan, GSM_MI_TYPE_IMEISV);
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
 		subscr = subscr_get_by_tmsi(lu->mi);
 		if (!subscr) {
-			/* FIXME: send IDENTITY REQUEST message to get IMSI */
-			//gsm0408_identity_request(...GSM_MI_TYPE_IMSI);
+			/* send IDENTITY REQUEST message to get IMSI */
+			rc = mm_tx_identity_req(msg->lchan, GSM_MI_TYPE_IMSI);
 		}
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -378,16 +414,21 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	switch (gh->msg_type & 0xbf) {
 	case GSM48_MT_MM_LOC_UPD_REQUEST:
 		DEBUGP(DMM, "LOCATION UPDATE REQUEST\n");
-		rc = mm_loc_upd_req(msg);
+		rc = mm_rx_loc_upd_req(msg);
 		break;
 	case GSM48_MT_MM_ID_RESP:
-	case GSM48_MT_MM_TMSI_REALL_COMPL:
-	case GSM48_MT_MM_AUTH_RESP:
-	case GSM48_MT_MM_IMSI_DETACH_IND:
+		rc = mm_rx_id_resp(msg);
+		break;
 	case GSM48_MT_MM_CM_SERV_REQ:
 		rc = gsm48_rx_mm_serv_req(msg);
 		break;
+	case GSM48_MT_MM_STATUS:
+		DEBUGP(DMM, "MM STATUS: FIXME parse error cond.\n");
+		break;
 	case GSM48_MT_MM_CM_REEST_REQ:
+	case GSM48_MT_MM_TMSI_REALL_COMPL:
+	case GSM48_MT_MM_AUTH_RESP:
+	case GSM48_MT_MM_IMSI_DETACH_IND:
 		fprintf(stderr, "Unimplemented GSM 04.08 MM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
