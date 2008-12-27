@@ -43,13 +43,15 @@ struct debug_info {
 #define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
 
 static const struct debug_info debug_info[] = {
-	DEBUG_CATEGORY(DRLL,  "DRLL", "", "")
-	DEBUG_CATEGORY(DCC,   "DCC",  "", "")
-	DEBUG_CATEGORY(DNM,   "DMM",  "", "")
-	DEBUG_CATEGORY(DRR,   "DRR",  "", "")
-	DEBUG_CATEGORY(DRSL,  "DRSSL","", "")
-	DEBUG_CATEGORY(DNM,   "DNM",  "", "")
+	DEBUG_CATEGORY(DRLL,  "DRLL", "\033[1;31m", "")
+	DEBUG_CATEGORY(DCC,   "DCC",  "\033[1;32m", "")
+	DEBUG_CATEGORY(DNM,   "DMM",  "\033[1;33m", "")
+	DEBUG_CATEGORY(DRR,   "DRR",  "\033[1;34m", "")
+	DEBUG_CATEGORY(DRSL,  "DRSSL","\033[1;35m", "")
+	DEBUG_CATEGORY(DNM,   "DNM",  "\033[1;36m", "")
 };
+
+static int use_color = 1;
 
 /*
  * Parse the category mask.
@@ -75,6 +77,18 @@ void parse_category_mask(const char *_mask)
 	debug_mask = new_mask;
 }
 
+const char* color(int subsys)
+{
+	int i = 0;
+
+	for (i = 0; use_color && i < ARRAY_SIZE(debug_info); ++i) {
+		if (debug_info[i].number == subsys)
+			return debug_info[i].color;
+	}
+
+	return "";
+}
+
 void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 {
 	char *timestr;
@@ -90,8 +104,9 @@ void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 	tm = time(NULL);
 	timestr = ctime(&tm);
 	timestr[strlen(timestr)-1] = '\0';
-	fprintf(outfd, "%s <%4.4x> %s:%d ", timestr, subsys, file, line);
+	fprintf(outfd, "%s%s <%4.4x> %s:%d ", color(subsys), timestr, subsys, file, line);
 	vfprintf(outfd, format, ap);
+	fprintf(outfd, "\033[0;m");
 
 	va_end(ap);
 
