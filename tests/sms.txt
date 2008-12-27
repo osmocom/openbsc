@@ -1,1 +1,33 @@
 03 02 01 0a 02 43 0b 00 1d 39 01 1a 00 01 00 07 91 55 11 18 31 28 00 0e 31 20 04 81 21 43 00 00 ff 04 d4 f2 9c 0e 
+
+03 -
+02 -
+01 -
+0a -
+02 -
+43 -
+0b -
+00 -
+1d -
+39 - TransactionID 3, SMS messages
+01 - CP-DATA
+1a - Length: 26
+00 - MTI 0 RP-DATA (ms-> n)
+01 - MR 1
+00 - RP-OA
+07 - RP-DA (SMSC Length)
+91 - International No, Numbering Plan
+55 11 18 31 28 00 - 551181138200
+0e - RP-UD len (14)
+
+TPDU (14 byte):
+31 - MTI(01), VPF(2:relative), MMS(0), SRI(1), UDHI(0), RP(0)
+20 - Message Reference
+04 - DA length
+81 - Numbering Plan, National number
+21 43 - DA 1234
+00 - PID
+00 - DCS
+ff - Validity period
+04 - User Data length (04)
+d4 f2 9c 0e - gsm_default 7bit encoded "Test" (4 byte)
