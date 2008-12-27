@@ -1,5 +1,6 @@
 /* Debugging/Logging support code */
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -19,13 +20,60 @@
  */
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
 
 #include <openbsc/debug.h>
 
 static unsigned int debug_mask = 0xffffffff & ~DMI;
+
+struct debug_info {
+	const char *name;
+	const char *color;
+	const char *description;
+	int number;
+};
+
+#define DEBUG_CATEGORY(NUMBER, NAME, COLOR, DESCRIPTION) \
+	{ .name = NAME, .color = COLOR, .description = DESCRIPTION, .number = NUMBER },
+
+#define ARRAY_SIZE(array) (sizeof(array)/sizeof(array[0]))
+
+static const struct debug_info debug_info[] = {
+	DEBUG_CATEGORY(DRLL,  "DRLL", "", "")
+	DEBUG_CATEGORY(DCC,   "DCC",  "", "")
+	DEBUG_CATEGORY(DNM,   "DMM",  "", "")
+	DEBUG_CATEGORY(DRR,   "DRR",  "", "")
+	DEBUG_CATEGORY(DRSL,  "DRSSL","", "")
+	DEBUG_CATEGORY(DNM,   "DNM",  "", "")
+};
+
+/*
+ * Parse the category mask.
+ * category1:category2:category3
+ */
+void parse_category_mask(const char *_mask)
+{
+	unsigned int new_mask = 0;
+	int i = 0;
+	char *mask = strdup(_mask);
+	char *category_token = NULL;
+
+	category_token = strtok(mask, ":");
+	do {
+		for (i = 0; i < ARRAY_SIZE(debug_info); ++i) {
+			if (strcasecmp(debug_info[i].name, category_token) == 0)
+				new_mask |= debug_info[i].number;
+		}
+	} while (category_token = strtok(NULL, ":"));
+
+
+	free(mask);
+	debug_mask = new_mask;
+}
 
 void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 {

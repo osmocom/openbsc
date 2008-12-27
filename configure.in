@@ -21,5 +21,6 @@ AC_OUTPUT(
     include/Makefile
     src/Makefile
     tests/Makefile
+    tests/debug/Makefile
     tests/timer/Makefile
     Makefile)

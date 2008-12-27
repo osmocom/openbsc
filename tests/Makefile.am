@@ -1,1 +1,1 @@
-SUBDIRS = timer
+SUBDIRS = debug timer
