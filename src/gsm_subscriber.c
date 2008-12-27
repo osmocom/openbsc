@@ -20,24 +20,63 @@
  *
  */
 
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/db.h>
 
-static struct gsm_subscriber subscr = {
-	.name = "Test User 1",
-	.tmsi = { 0x22, 0x33, 0x44, 0x55 },
-};
-
-struct gsm_subscriber *subscr_get_by_tmsi(u_int8_t *tmsi)
+struct gsm_subscriber *subscr_alloc(void)
 {
-	return &subscr;
+	struct gsm_subscriber *s;
+
+	s = malloc(sizeof(struct gsm_subscriber));
+	if (!s)
+		return NULL;
+
+	memset(s, 0, sizeof(*s));
+
+	return s;
 }
-struct gsm_subscriber *subscr_get_by_imsi(u_int8_t *imsi)
+
+void subscr_free(struct gsm_subscriber *subscr)
 {
-	return &subscr;
+	free(subscr);
+}
+
+struct gsm_subscriber *subscr_get_by_tmsi(char *tmsi)
+{
+	struct gsm_subscriber *subscr = subscr_alloc();
+
+	strncpy(subscr->tmsi, tmsi, sizeof(subscr->tmsi));
+	subscr->tmsi[sizeof(subscr->tmsi)-1] = '\0';
+
+	if (db_get_subscriber(GSM_SUBSCRIBER_TMSI, subscr) != 0) {
+		subscr_free(subscr);
+		subscr = NULL;
+	}
+
+	return subscr;
+}
+
+struct gsm_subscriber *subscr_get_by_imsi(char *imsi)
+{
+	struct gsm_subscriber *subscr = subscr_alloc();
+
+	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi));
+	subscr->imsi[sizeof(subscr->imsi)-1] = '\0';
+
+	if (db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscr) != 0) {
+		subscr_free(subscr);
+		subscr = NULL;
+	}
+
+	return subscr;
 }
 
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts)
 {
-	return 0;
+	return db_set_subscriber(s);
 }

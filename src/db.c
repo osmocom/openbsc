@@ -69,7 +69,7 @@ int db_prepare() {
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
 		"imsi NUMERIC UNIQUE NOT NULL, "
-		"tmsi NUMERIC UNIQUE, "
+		"tmsi TEXT UNIQUE, "
 		"extension TEXT UNIQUE, "
 		"lac INTEGER NOT NULL DEFAULT 0, "
 		"authorized INTEGER NOT NULL DEFAULT 0" 
@@ -146,6 +146,8 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 
 int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber) {
 	dbi_result result;
+	char *string;
+
 	switch (field) {
 	case GSM_SUBSCRIBER_IMSI:
 		result = dbi_conn_queryf(conn,
@@ -174,9 +176,16 @@ int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* su
 		dbi_result_free(result);
 		return 1;
 	}
+	memset(subscriber, 0, sizeof(*subscriber));
 	subscriber->id = dbi_result_get_ulonglong(result, "id");
-	strncpy(subscriber->imsi, dbi_result_get_string(result, "imsi"), GSM_IMSI_LENGTH);
-	strncpy(subscriber->tmsi, dbi_result_get_string(result, "tmsi"), GSM_TMSI_LENGTH);
+	string = dbi_result_get_string(result, "imsi");
+	if (string)
+		strncpy(subscriber->imsi, string, GSM_IMSI_LENGTH);
+
+	string = dbi_result_get_string(result, "tmsi");
+	if (string)
+		strncpy(subscriber->tmsi, string, GSM_TMSI_LENGTH);
+	
 	// FIXME handle extension
 	subscriber->lac = dbi_result_get_uint(result, "lac");
 	subscriber->authorized = dbi_result_get_uint(result, "authorized");

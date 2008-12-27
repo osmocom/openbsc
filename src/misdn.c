@@ -286,8 +286,10 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		
+#if 0
 		fprintf(stdout, "BCHAN RX: ");
 		hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+#endif
 		if (!e1h->ts2_fd)
 			e1h->ts2_fd = open("/tmp/ts2.dump", O_WRONLY|O_APPEND|O_CREAT, 0660);
 		

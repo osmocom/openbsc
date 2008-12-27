@@ -610,9 +610,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
-	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u\n",
-		arfcn, ts_number, subch, lchan->type);
-
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
@@ -630,6 +627,9 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	memcpy(&ia.req_ref, rqd_ref, sizeof(ia.req_ref));
 	ia.timing_advance = rqd_ta;
 	ia.mob_alloc_len = 0;
+
+	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u chan_nr=0x%02x\n",
+		arfcn, ts_number, subch, lchan->type, ia.chan_desc.chan_nr);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	return rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);

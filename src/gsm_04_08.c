@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 
+#include <openbsc/db.h>
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -98,15 +99,12 @@ static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 #define TMSI_LEN	4
 #define MID_TMSI_LEN	(TMSI_LEN + 2)
 
-static void generate_mid_from_tmsi(u_int8_t *buf, u_int8_t *tmsi_bcd)
+static void generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 {
 	buf[0] = GSM48_IE_MOBILE_ID;
 	buf[1] = MID_TMSI_LEN;
 	buf[2] = 0xf0 | GSM_MI_TYPE_TMSI;
-	buf[3] = tmsi_bcd[0];
-	buf[4] = tmsi_bcd[1];
-	buf[5] = tmsi_bcd[2];
-	buf[6] = tmsi_bcd[3];
+	*((u_int32_t *) &buf[3]) = htonl(tmsi);
 }
 
 static struct msgb *gsm48_msgb_alloc(void)
@@ -144,7 +142,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
-int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int8_t *tmsi)
+int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -241,14 +239,33 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 static int mm_rx_id_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm_lchan *lchan = msg->lchan;
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
+	u_int32_t tmsi;
 
 	mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
-	/* FIXME: update subscribe <-> IMEI mapping */
+	switch (mi_type) {
+	case GSM_MI_TYPE_IMSI:
+		if (!lchan->subscr)
+			lchan->subscr = db_create_subscriber(mi_string);
+		if (lchan->subscr && lchan->subscr->authorized) {
+			/* FIXME: check if we've recently received UPDATE REQUEST */
+			db_subscriber_alloc_tmsi(lchan->subscr);
+			tmsi = strtoul(lchan->subscr->tmsi, NULL, 16);
+			return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		}
+		break;
+	case GSM_MI_TYPE_IMEI:
+		/* update subscribe <-> IMEI mapping */
+		if (lchan->subscr)
+			db_subscriber_assoc_imei(lchan->subscr, mi_string);
+		break;
+	}
+	return 0;
 }
 
 #define MI_SIZE 32
@@ -260,6 +277,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
 	u_int8_t mi_type;
+	u_int32_t tmsi;
 	char mi_string[MI_SIZE];
 	int rc;
 
@@ -275,7 +293,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		/* we always want the IMEI, too */
 		rc = mm_tx_identity_req(msg->lchan, GSM_MI_TYPE_IMEISV);
 		/* look up subscriber based on IMSI */
-		subscr = subscr_get_by_imsi(lu->mi);
+		subscr = db_create_subscriber(mi_string);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		/* we always want the IMEI, too */
@@ -297,17 +315,20 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		break;
 	}
 
-	if (!subscr) {
+	if (!subscr || !subscr->authorized) {
 		/* 0x16 is congestion */
 		gsm0408_loc_upd_rej(msg->lchan, 0x16);
 		rsl_chan_release(msg->lchan);
 		return -EINVAL;
 	}
 
+	db_subscriber_alloc_tmsi(subscr);
+
 	msg->lchan->subscr = subscr;
 	subscr_update(subscr, bts);
+	tmsi = strtoul(subscr->tmsi, NULL, 16);
 
-	return gsm0408_loc_upd_acc(msg->lchan, subscr->tmsi);
+	return gsm0408_loc_upd_acc(msg->lchan, tmsi);
 }
 
 static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
