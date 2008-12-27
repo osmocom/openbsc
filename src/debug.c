@@ -57,7 +57,7 @@ static int use_color = 1;
  * Parse the category mask.
  * category1:category2:category3
  */
-void parse_category_mask(const char *_mask)
+void debug_parse_category_mask(const char *_mask)
 {
 	unsigned int new_mask = 0;
 	int i = 0;

@@ -18,6 +18,6 @@
 #endif
 
 void debugp(unsigned int subsys, char *file, int line, const char *format, ...);
-void parse_category_mask(const char* mask);
+void debug_parse_category_mask(const char* mask);
 
 #endif /* _DEBUG_H */

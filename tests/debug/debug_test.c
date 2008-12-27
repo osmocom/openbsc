@@ -24,10 +24,10 @@
 
 int main(int argc, char** argv)
 {
-    parse_category_mask("DRLL");
+    debug_parse_category_mask("DRLL");
     DEBUGP(DCC, "You should not see this\n");
 
-    parse_category_mask("DRLL:DCC");
+    debug_parse_category_mask("DRLL:DCC");
     DEBUGP(DRLL, "You should see this\n");
     DEBUGP(DCC, "You should see this\n");
     DEBUGP(DMM, "You should not see this\n");
