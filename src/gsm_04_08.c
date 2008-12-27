@@ -102,7 +102,7 @@ static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 static void generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 {
 	buf[0] = GSM48_IE_MOBILE_ID;
-	buf[1] = MID_TMSI_LEN;
+	buf[1] = TMSI_LEN;
 	buf[2] = 0xf0 | GSM_MI_TYPE_TMSI;
 	*((u_int32_t *) &buf[3]) = htonl(tmsi);
 }
