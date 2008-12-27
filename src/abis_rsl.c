@@ -49,7 +49,7 @@ static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 		else
 			return ABIS_RSL_MDISC_COM_CHAN;
 	}
-	if ((msg_type & 0xc) == 0x00)
+	if ((msg_type & 0xe0) == 0x20)
 		return ABIS_RSL_MDISC_DED_CHAN;
 	
 	return ABIS_RSL_MDISC_LOC;
@@ -290,52 +290,6 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 
 #define TSC	7
 
-int rsl_chan_activate_tch_f(struct gsm_bts_trx_ts *ts)
-{
-	u_int8_t chan_nr = rsl_enc_chan_nr(RSL_CHAN_Bm_ACCHs, 0, ts->nr);
-	u_int16_t arfcn = ts->trx->arfcn;
-	struct rsl_ie_chan_mode cm;
-	struct rsl_ie_chan_ident ci;
-
-	cm.dtx_dtu = 0;
-	cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-	cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-	cm.chan_rate = RSL_CMOD_SP_GSM1;
-
-	ci.chan_desc.iei = 0x64;
-	ci.chan_desc.chan_nr = chan_nr;
-	/* FIXME: this doesn't support hopping */
-	ci.chan_desc.oct3 = (TSC << 5) | ((arfcn & 0x3ff) >> 8);
-	ci.chan_desc.oct4 = arfcn & 0xff;
-#if 0
-	ci.mobile_alloc.tag = 0x72;
-	ci.mobile_alloc.len = 0;	/* as per Section 9.3.5 */
-#endif
-
-	return rsl_chan_activate(ts->trx->bts, chan_nr, 0x01, &cm, &ci, 0x01, 0x0f, 0x00);
-}
-
-int rsl_chan_activate_sdcch4(struct gsm_bts_trx_ts *ts, int subslot)
-{
-	u_int8_t chan_nr = rsl_enc_chan_nr(RSL_CHAN_SDCCH4_ACCH, subslot, ts->nr);
-	u_int16_t arfcn = ts->trx->arfcn;
-	struct rsl_ie_chan_mode cm;
-	struct rsl_ie_chan_ident ci;
-
-	cm.dtx_dtu = 0x00;
-	cm.spd_ind = RSL_CMOD_SPD_SIGN;
-	cm.chan_rt = RSL_CMOD_CRT_SDCCH;
-	cm.chan_rate = 0x00;
-
-	ci.chan_desc.iei = 0x64;
-	ci.chan_desc.chan_nr = chan_nr;
-	ci.chan_desc.oct3 = (TSC << 5) | ((arfcn & 0x3ff) >> 8);
-	ci.chan_desc.oct4 = arfcn & 0xff;
-
-	/* FIXME: we're sending BS power IE, which Abissim doesn't */
-	return rsl_chan_activate(ts->trx->bts, chan_nr, 0x00, &cm, &ci, 0x01, 0x0f, 0x00);
-}
-
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t ta)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -403,6 +357,8 @@ int rsl_chan_release(struct gsm_lchan *lchan)
 
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
+
+	DEBUGP(DRSL, "Channel Release CMD, chan_nr=0x%02x\n", dh->chan_nr);
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -542,19 +498,21 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
-		DEBUGP(DRSL, "rsl_rx_dchan: Connection Fail, release channel\n");
+		DEBUGP(DRSL, "Connection Fail, release channel\n");
 		rc = rsl_chan_release(msg->lchan);
-		/* FIXME: only free it after channel release ACK */
-		lchan_free(msg->lchan);
+		/* only free it after channel release ACK */
 		break;
 	case RSL_MT_MEAS_RES:
-		DEBUGP(DRSL, "rsl_rx_dchan: Measurement Result\n");
+		DEBUGP(DRSL, "Measurement Result\n");
+		break;
+	case RSL_MT_RF_CHAN_REL_ACK:
+		DEBUGP(DRSL, "RF CHANNEL RELEASE ACK chan_nr=0x%02x\n", rslh->chan_nr);
+		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
 	case RSL_MT_MODE_MODIFY_NACK:
 	case RSL_MT_PHY_CONTEXT_CONF:
 	case RSL_MT_PREPROC_MEAS_RES:
-	case RSL_MT_RF_CHAN_REL_ACK:
 	case RSL_MT_TALKER_DET:
 	case RSL_MT_LISTENER_DET:
 	case RSL_MT_REMOTE_CODEC_CONF_REP:
@@ -655,22 +613,14 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u\n",
 		arfcn, ts_number, subch, lchan->type);
 
-#if 0
-	/* send CHANNEL ACTIVATION on RSL to BTS */
-	if (lchan->ts->pchan == GSM_PCHAN_CCCH_SDCCH4)
-		rsl_chan_activate_sdcch4(lchan->ts, subch);
-	else
-		rsl_chan_activate_tch_f(lchan->ts);
-#else
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
-#endif
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));
 	ia.l2_plen = 0x2d;
 	ia.proto_discr = GSM48_PDISC_RR;
 	ia.msg_type = GSM48_MT_RR_IMM_ASS;
-	ia.page_mode = GSM48_PM_NORMAL;
+	ia.page_mode = GSM48_PM_SAME;
 	ia.chan_desc.chan_nr = lchan2chan_nr(lchan);
 	ia.chan_desc.h0.h = 0;
 	ia.chan_desc.h0.arfcn_high = arfcn >> 8;
@@ -753,9 +703,9 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		break;
 	case RSL_MT_REL_IND:
 		DEBUGP(DRLL, "RELEASE INDICATION chan_nr=0x%02x\n", rllh->chan_nr);
-		rc = rsl_chan_release(msg->lchan);
-		/* FIXME: only free it after channel release ACK */
-		lchan_free(msg->lchan);
+		break;
+	case RSL_MT_REL_CONF:
+		DEBUGP(DRLL, "RELEASE CONFIRMATION chan_nr=0x%02x\n", rllh->chan_nr);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
