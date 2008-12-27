@@ -20,31 +20,46 @@
 #include <openbsc/db.h>
 
 #include <stdio.h>
+#include <string.h>
 
 int main() {
 
-    if (db_init()) {
-        printf("DB: Failed to init database. Please check the option settings.\n");
-        return 1;
-    }    
-    printf("DB: Database initialized.\n");
+	if (db_init()) {
+		printf("DB: Failed to init database. Please check the option settings.\n");
+		return 1;
+	}	 
+	printf("DB: Database initialized.\n");
 
-    if (db_prepare()) {
-        printf("DB: Failed to prepare database.\n");
-        return 1;
-    }
-    printf("DB: Database prepared.\n");
+	if (db_prepare()) {
+		printf("DB: Failed to prepare database.\n");
+		return 1;
+	}
+	printf("DB: Database prepared.\n");
 
-    db_insert_imsi(3243245432351LLU);
-    db_insert_imsi(3243245432352LLU);
-    db_imsi_set_tmsi(3243245432345LLU, 99999999LLU);
-    db_imsi_set_lac(3243245432345LLU, 42);
+	struct gsm_subscriber *alice = NULL;
 
-    db_subscriber alice;
-    db_imsi_get_subscriber(3243245432345LLU, &alice);
-    db_tmsi_get_subscriber(99999999LLU, &alice);
+	alice = db_create_subscriber("3243245432345");
+	db_subscriber_alloc_tmsi(alice);
+	alice->lac=42;
+	db_set_subscriber(alice);
+	db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice);
+	free(alice);
 
-    db_fini();
+	alice = db_create_subscriber("3693245423445");
+	db_subscriber_alloc_tmsi(alice);
+	alice->lac=42;
+	db_set_subscriber(alice);
+	db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice);
+	free(alice);
 
-    return 0;
+	alice = db_create_subscriber("9993245423445");
+	db_subscriber_alloc_tmsi(alice);
+	alice->lac=42;
+	db_set_subscriber(alice);
+	db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice);
+	free(alice);
+
+	db_fini();
+
+	return 0;
 }

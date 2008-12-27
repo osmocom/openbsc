@@ -4,13 +4,20 @@
 #include <sys/types.h>
 #include "gsm_data.h"
 
+#define GSM_IMSI_LENGTH 17
+#define GSM_TMSI_LENGTH 17
+#define GSM_NAME_LENGTH 128
+
 struct gsm_subscriber {
-	char *name;
-	u_int8_t tmsi[4];
+	char imsi[GSM_IMSI_LENGTH];
+	char tmsi[GSM_TMSI_LENGTH];
+	u_int16_t lac;
+	char name[GSM_NAME_LENGTH];
 };
 
-struct gsm_subscriber *subscr_get_by_tmsi(u_int8_t *tmsi);
-struct gsm_subscriber *subscr_get_by_imsi(u_int8_t *imsi);
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts);
+enum gsm_subscriber_field {
+	GSM_SUBSCRIBER_IMSI,
+	GSM_SUBSCRIBER_TMSI,
+};
 
 #endif /* _GSM_SUBSCR_H */
