@@ -89,29 +89,27 @@ int db_prepare() {
 		return 1;
 	}
 	dbi_result_free(result);
+	result = dbi_conn_query(conn,
+		"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id NUMERIC NOT NULL, "
+		"equipment_id NUMERIC NOT NULL, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
+		"UNIQUE (subscriber_id, equipment_id) "
+		")"
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create Equipment table.\n");
+		return 1;
+	}
+	dbi_result_free(result);
 	return 0;
 }
 
 int db_fini() {
 	dbi_conn_close(conn);
 	dbi_shutdown();
-	return 0;
-}
-
-int db_insert_imei(u_int64_t imei) {
-	dbi_result result;
-	result = dbi_conn_queryf(conn,
-		"INSERT OR IGNORE INTO Equipment "
-		"(imei) "
-		"VALUES "
-		"(%llu) ",
-		imei
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Equipment by IMEI.\n");
-		return 1;
-	}
-	dbi_result_free(result);
 	return 0;
 }
 
@@ -136,8 +134,9 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 	if (result==NULL) {
 		printf("DB: Failed to create Subscriber by IMSI.\n");
 	}
+	subscriber->id = dbi_conn_sequence_last(conn, NULL);
 	dbi_result_free(result);
-	printf("DB: New Subscriber: IMSI %s\n", subscriber->imsi);
+	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscriber->id, subscriber->imsi);
 	return subscriber;
 }
 
@@ -171,13 +170,14 @@ int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* su
 		dbi_result_free(result);
 		return 1;
 	}
+	subscriber->id = dbi_result_get_ulonglong(result, "id");
 	strncpy(subscriber->imsi, dbi_result_get_string(result, "imsi"), GSM_IMSI_LENGTH);
 	strncpy(subscriber->tmsi, dbi_result_get_string(result, "tmsi"), GSM_TMSI_LENGTH);
 	// FIXME handle extension
 	subscriber->lac = dbi_result_get_uint(result, "lac");
 	subscriber->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: IMSI %s, TMSI %s, LAC %hu, AUTH %u\n",
-		subscriber->imsi, subscriber->tmsi, subscriber->lac, subscriber->authorized);
+	printf("DB: Found Subscriber: ID %llu, IMSI %s, TMSI %s, LAC %hu, AUTH %u\n",
+		subscriber->id, subscriber->imsi, subscriber->tmsi, subscriber->lac, subscriber->authorized);
 	dbi_result_free(result);
 	return 0;
 }
@@ -224,6 +224,79 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 		}
 		dbi_result_free(result);
 	}
+	return 0;
+}
+
+int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]) {
+	u_int64_t equipment_id, watch_id;
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+		"INSERT OR IGNORE INTO Equipment "
+		"(imei) "
+		"VALUES "
+		"(%s) ",
+		imei
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create Equipment by IMEI.\n");
+		return 1;
+	}
+	equipment_id = dbi_conn_sequence_last(conn, NULL);
+	dbi_result_free(result);
+	if (equipment_id) {
+		printf("DB: New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
+	}
+	else {
+		result = dbi_conn_queryf(conn,
+			"SELECT id FROM Equipment "
+			"WHERE imei = %s ",
+			imei
+		);
+		if (result==NULL) {
+			printf("DB: Failed to query Equipment by IMEI.\n");
+			return 1;
+		}
+		if (!dbi_result_next_row(result)) {
+			printf("DB: Failed to find the Equipment.\n");
+			dbi_result_free(result);
+			return 1;
+		}
+		equipment_id = dbi_result_get_ulonglong(result, "id");
+		dbi_result_free(result);
+	}
+
+	result = dbi_conn_queryf(conn,
+		"INSERT OR IGNORE INTO EquipmentWatch "
+		"(subscriber_id, equipment_id, created, updated) "
+		"VALUES "
+		"(%llu, %llu, datetime('now'), datetime('now')) ",
+		subscriber->id, equipment_id
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create EquipmentWatch.\n");
+		return 1;
+	}
+	watch_id = dbi_conn_sequence_last(conn, NULL);
+	dbi_result_free(result);
+	if (watch_id) {
+		printf("DB: New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
+	}
+	else {
+		result = dbi_conn_queryf(conn,
+			"UPDATE EquipmentWatch "
+			"SET updated = datetime('now') "
+			"WHERE subscriber_id = %llu AND equipment_id = %llu ",
+			subscriber->id, equipment_id
+		);
+		if (result==NULL) {
+			printf("DB: Failed to update EquipmentWatch.\n");
+			return 1;
+		}
+		dbi_result_free(result);
+		printf("DB: Updated EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
+	}
+
 	return 0;
 }
 

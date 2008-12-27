@@ -56,6 +56,8 @@ int main() {
 	db_subscriber_alloc_tmsi(alice);
 	alice->lac=42;
 	db_set_subscriber(alice);
+	db_subscriber_assoc_imei(alice, "1234567890");
+	db_subscriber_assoc_imei(alice, "6543560920");
 	db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice);
 	free(alice);
 

@@ -32,5 +32,6 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]);
 int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber);
 int db_set_subscriber(struct gsm_subscriber* subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
+int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]);
 
 #endif /* _DB_H */
