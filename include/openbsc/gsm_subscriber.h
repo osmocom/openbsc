@@ -8,6 +8,7 @@
 #define GSM_IMSI_LENGTH 17
 #define GSM_TMSI_LENGTH 17
 #define GSM_NAME_LENGTH 128
+#define GSM_EXTENSION_LENGTH 128
 
 struct gsm_subscriber {
 	u_int64_t id;
@@ -15,6 +16,7 @@ struct gsm_subscriber {
 	char tmsi[GSM_TMSI_LENGTH];
 	u_int16_t lac;
 	char name[GSM_NAME_LENGTH];
+	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
 };
 

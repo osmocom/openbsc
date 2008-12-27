@@ -64,15 +64,39 @@ int db_init() {
 int db_prepare() {
 	dbi_result result;
 	result = dbi_conn_query(conn,
+		"CREATE TABLE IF NOT EXISTS Meta ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"key TEXT UNIQUE NOT NULL, "
+		"value TEXT NOT NULL"
+		")"
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create Meta table.\n");
+		return 1;
+	}
+	dbi_result_free(result);
+	result = dbi_conn_query(conn,
+		"INSERT OR IGNORE INTO Meta "
+		"(key, value) "
+		"VALUES "
+		"('revision', '1')"
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create Meta table.\n");
+		return 1;
+	}
+	dbi_result_free(result);
+	result = dbi_conn_query(conn,
 		"CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
 		"imsi NUMERIC UNIQUE NOT NULL, "
-		"tmsi TEXT UNIQUE, "
+		"name TEXT, "
 		"extension TEXT UNIQUE, "
-		"lac INTEGER NOT NULL DEFAULT 0, "
-		"authorized INTEGER NOT NULL DEFAULT 0" 
+		"authorized INTEGER NOT NULL DEFAULT 0, "
+		"tmsi TEXT UNIQUE, "
+		"lac INTEGER NOT NULL DEFAULT 0"
 		")"
 	);
 	if (result==NULL) {
@@ -129,7 +153,7 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 		return subscriber;
 	}
 	result = dbi_conn_queryf(conn,
-		"INSERT OR IGNORE INTO Subscriber "
+		"INSERT INTO Subscriber "
 		"(imsi, created, updated) "
 		"VALUES "
 		"(%s, datetime('now'), datetime('now')) ",
@@ -146,21 +170,24 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 
 int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber) {
 	dbi_result result;
-	char *string;
+	const char *string;
+	char *quoted;
 
 	switch (field) {
 	case GSM_SUBSCRIBER_IMSI:
+		dbi_conn_quote_string_copy(conn, subscriber->imsi, &quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE imsi = %s ",
-			subscriber->imsi
+			quoted
 		);
 		break;
 	case GSM_SUBSCRIBER_TMSI:
+		dbi_conn_quote_string_copy(conn, subscriber->tmsi, &quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
-			subscriber->tmsi
+			quoted
 		);
 		break;
 	default:
@@ -185,12 +212,21 @@ int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* su
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
 		strncpy(subscriber->tmsi, string, GSM_TMSI_LENGTH);
-	
+
+	string = dbi_result_get_string(result, "name");
+	if (string)
+		strncpy(subscriber->name, string, GSM_NAME_LENGTH);
+
+	string = dbi_result_get_string(result, "extension");
+	if (string)
+		strncpy(subscriber->extension, string, GSM_EXTENSION_LENGTH);
+
 	// FIXME handle extension
 	subscriber->lac = dbi_result_get_uint(result, "lac");
 	subscriber->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, TMSI %s, LAC %hu, AUTH %u\n",
-		subscriber->id, subscriber->imsi, subscriber->tmsi, subscriber->lac, subscriber->authorized);
+	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME %s TMSI %s, LAC %hu, AUTH %u\n",
+		subscriber->id, subscriber->imsi, subscriber->name, subscriber->tmsi,
+		subscriber->lac, subscriber->authorized);
 	dbi_result_free(result);
 	return 0;
 }
@@ -199,7 +235,10 @@ int db_set_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
-		"SET updated = datetime('now'), tmsi = %s, lac = %i, authorized = %i "
+		"SET updated = datetime('now'), "
+		"tmsi = %s, "
+		"lac = %i, "
+		"authorized = %i "
 		"WHERE imsi = %s ",
 		subscriber->tmsi, subscriber->lac, subscriber->authorized, subscriber->imsi
 	);
@@ -212,18 +251,18 @@ int db_set_subscriber(struct gsm_subscriber* subscriber) {
 }
 
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
-	int error;
 	dbi_result result=NULL;
 	char* tmsi_quoted;
 	for (;;) {
-		sprintf(subscriber->tmsi, "%i", rand() % 1000000); // FIXME how many nibbles do we want for the tmsi?
+		sprintf(subscriber->tmsi, "%i", rand());
+		dbi_conn_quote_string_copy(conn, subscriber->tmsi, &tmsi_quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
-			subscriber->tmsi
+			tmsi_quoted
 		);
 		if (result==NULL) {
-			printf("DB: Failed to query Subscriber.\n");
+			printf("DB: Failed to query Subscriber while allocating new TMSI.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)){
@@ -255,7 +294,10 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 		printf("DB: Failed to create Equipment by IMEI.\n");
 		return 1;
 	}
-	equipment_id = dbi_conn_sequence_last(conn, NULL);
+	equipment_id = 0;
+	if (dbi_result_get_numrows_affected(result)) {
+		equipment_id = dbi_conn_sequence_last(conn, NULL);
+	}
 	dbi_result_free(result);
 	if (equipment_id) {
 		printf("DB: New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
@@ -290,7 +332,10 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 		printf("DB: Failed to create EquipmentWatch.\n");
 		return 1;
 	}
-	watch_id = dbi_conn_sequence_last(conn, NULL);
+	watch_id = 0;
+	if (dbi_result_get_numrows_affected(result)) {
+		watch_id = dbi_conn_sequence_last(conn, NULL);
+	}
 	dbi_result_free(result);
 	if (watch_id) {
 		printf("DB: New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);

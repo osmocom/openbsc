@@ -39,13 +39,12 @@ int main() {
 	struct gsm_subscriber *alice = NULL;
 
 	alice = db_create_subscriber("3243245432345");
-	db_subscriber_alloc_tmsi(alice);
-	alice->lac=42;
 	db_set_subscriber(alice);
 	db_get_subscriber(GSM_SUBSCRIBER_IMSI, alice);
 	free(alice);
 
 	alice = db_create_subscriber("3693245423445");
+	db_subscriber_assoc_imei(alice, "1234567890");
 	db_subscriber_alloc_tmsi(alice);
 	alice->lac=42;
 	db_set_subscriber(alice);
