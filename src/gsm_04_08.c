@@ -124,80 +124,6 @@ static int gsm0408_sendmsg(struct msgb *msg)
 	return rsl_data_request(msg, 0);
 }
 
-static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
-{
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	u_int8_t *cause, *call_state;
-
-	msg->lchan = lchan;
-
-	gh->proto_discr = GSM48_PDISC_CC;
-	gh->msg_type = GSM48_MT_CC_STATUS;
-
-	cause = msgb_put(msg, 3);
-	cause[0] = 2;
-	cause[1] = GSM48_CAUSE_CS_GSM | GSM48_CAUSE_LOC_USER;
-	cause[2] = 0x80 | 30;	/* response to status inquiry */
-
-	call_state = msgb_put(msg, 1);
-	call_state[0] = 0xc0 | 0x00;
-
-	return gsm0408_sendmsg(msg);
-}
-
-static int gsm48_cc_rx_status_enq(struct msgb *msg)
-{
-	return gsm48_cc_tx_status(msg->lchan);
-}
-
-static int gsm0408_rcv_cc(struct msgb *msg)
-{
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t msg_type = gh->msg_type & 0xbf;
-	int rc = 0;
-
-	switch (msg_type) {
-	case GSM48_MT_CC_CALL_CONF:
-		/* Response to SETUP */
-		DEBUGP(DCC, "CALL CONFIRM\n");
-		break;
-	case GSM48_MT_CC_RELEASE_COMPL:
-		DEBUGP(DCC, "RELEASE COMPLETE\n");
-		break;
-	case GSM48_MT_CC_ALERTING:
-		DEBUGP(DCC, "ALERTING\n");
-		break;
-	case GSM48_MT_CC_CONNECT:
-		DEBUGP(DCC, "CONNECT\n");
-		/* need to respond with CONNECT_ACK */
-		break;
-	case GSM48_MT_CC_RELEASE:
-		DEBUGP(DCC, "RELEASE\n");
-		/* need to respond with RELEASE_COMPLETE */
-		break;
-	case GSM48_MT_CC_STATUS_ENQ:
-		rc = gsm48_cc_rx_status_enq(msg);
-		break;
-	case GSM48_MT_CC_DISCONNECT:
-		DEBUGP(DCC, "DISCONNECT\n");
-		break;
-	case GSM48_MT_CC_SETUP:
-		DEBUGP(DCC, "SETUP\n");
-		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
-		break;
-	case GSM48_MT_CC_EMERG_SETUP:
-		DEBUGP(DCC, "EMERGENCY SETUP\n");
-		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
-		break;
-	default:
-		fprintf(stderr, "Unimplemented GSM 04.08 msg type 0x%02x\n",
-			msg_type);
-		break;
-	}
-
-	return rc;
-}
 
 /* Chapter 9.2.14 : Send LOCATION UPDATE REJECT */
 int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
@@ -460,6 +386,139 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	}
 
 	return 0;
+}
+
+/* Call Control */
+
+/* Send a 04.08 call control message, add transaction ID and TI flag */
+static int gsm48_cc_sendmsg(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msg->data;
+	struct gsm_call *call = &msg->lchan->call;
+
+	gh->proto_discr |= msg->lchan->call.transaction_id;
+
+	/* GSM 04.07 Section 11.2.3.1.3 */
+	switch (call->type) {
+	case GSM_CT_MO:
+		gh->proto_discr |= 0x80;
+		break;
+	case GSM_CT_MT:
+		break;
+	}
+
+	return gsm0408_sendmsg(msg);
+}
+
+
+static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	u_int8_t *cause, *call_state;
+
+	msg->lchan = lchan;
+
+	gh->proto_discr = GSM48_PDISC_CC;
+	gh->msg_type = GSM48_MT_CC_STATUS;
+
+	cause = msgb_put(msg, 3);
+	cause[0] = 2;
+	cause[1] = GSM48_CAUSE_CS_GSM | GSM48_CAUSE_LOC_USER;
+	cause[2] = 0x80 | 30;	/* response to status inquiry */
+
+	call_state = msgb_put(msg, 1);
+	call_state[0] = 0xc0 | 0x00;
+
+	return gsm48_cc_sendmsg(msg);
+}
+
+static int gsm48_cc_tx_simple(struct gsm_lchan *lchan, u_int8_t msg_type)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+
+	msg->lchan = lchan;
+
+	gh->proto_discr = GSM48_PDISC_CC;
+	gh->msg_type = msg_type;
+
+	return gsm48_cc_sendmsg(msg);
+}
+
+static int gsm48_cc_rx_status_enq(struct msgb *msg)
+{
+	return gsm48_cc_tx_status(msg->lchan);
+}
+
+static int gsm48_cc_rx_setup(struct msgb *msg)
+{
+	return gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CALL_CONF);
+}
+
+static int gsm0408_rcv_cc(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t msg_type = gh->msg_type & 0xbf;
+	struct gsm_call *call = &msg->lchan->call;
+	int rc = 0;
+
+	switch (msg_type) {
+	case GSM48_MT_CC_CALL_CONF:
+		/* Response to SETUP */
+		DEBUGP(DCC, "CALL CONFIRM\n");
+		break;
+	case GSM48_MT_CC_RELEASE_COMPL:
+		/* Answer from MS to RELEASE */
+		DEBUGP(DCC, "RELEASE COMPLETE (state->NULL)\n");
+		call->state = GSM_CSTATE_NULL;
+		break;
+	case GSM48_MT_CC_ALERTING:
+		DEBUGP(DCC, "ALERTING\n");
+		break;
+	case GSM48_MT_CC_CONNECT:
+		DEBUGP(DCC, "CONNECT\n");
+		/* MT: need to respond with CONNECT_ACK */
+		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CONNECT_ACK);
+		break;
+	case GSM48_MT_CC_CONNECT_ACK:
+		/* MO: Answer to CONNECT */
+		call->state = GSM_CSTATE_ACTIVE;
+		DEBUGP(DCC, "CONNECT_ACK (state->ACTIVE)\n");
+		break;
+	case GSM48_MT_CC_RELEASE:
+		DEBUGP(DCC, "RELEASE\n");
+		/* need to respond with RELEASE_COMPLETE */
+		break;
+	case GSM48_MT_CC_STATUS_ENQ:
+		rc = gsm48_cc_rx_status_enq(msg);
+		break;
+	case GSM48_MT_CC_DISCONNECT:
+		/* Section 5.4.3.2 */
+		DEBUGP(DCC, "DISCONNECT (state->RELEASE_REQ)\n");
+		call->state = GSM_CSTATE_RELEASE_REQ;
+		/* FIXME: clear the network connection */
+		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_RELEASE);
+		break;
+	case GSM48_MT_CC_SETUP:
+		call->type = GSM_CT_MO;
+		call->state = GSM_CSTATE_INITIATED;
+		call->transaction_id = gh->proto_discr & 0xf0;
+		DEBUGP(DCC, "SETUP(tid=0x%02x)\n", call->transaction_id);
+		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CONNECT);
+		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		break;
+	case GSM48_MT_CC_EMERG_SETUP:
+		DEBUGP(DCC, "EMERGENCY SETUP\n");
+		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		break;
+	default:
+		fprintf(stderr, "Unimplemented GSM 04.08 msg type 0x%02x\n",
+			msg_type);
+		break;
+	}
+
+	return rc;
 }
 
 /* here we pass in a msgb from the RSL->RLL.  We expect the l3 pointer to be set */
