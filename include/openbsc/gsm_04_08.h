@@ -46,6 +46,7 @@ struct gsm48_imm_ass {
 	u_int8_t mob_alloc[0];
 };
 
+/* Chapter 10.5.1.3 */
 struct gsm48_loc_area_id {
 	u_int8_t digits[3];	/* BCD! */
 	u_int16_t lac;
@@ -57,7 +58,6 @@ struct gsm48_loc_upd_req {
 		 key_seq:4;
 	struct gsm48_loc_area_id lai;
 	u_int8_t classmark1;
-	u_int8_t ie_mi;
 	u_int8_t mi_len;
 	u_int8_t mi[0];
 } __attribute__ ((packed));
@@ -70,7 +70,7 @@ struct gsm48_hdr {
 } __attribute__ ((packed));
 
 /* Section 10.2 */
-#define GSM48_PDISC_CC		0x02
+#define GSM48_PDISC_CC		0x03
 #define GSM48_PDISC_MM		0x05
 #define GSM48_PDISC_RR		0x06
 #define GSM48_PDISC_MM_GPRS	0x08
@@ -234,6 +234,23 @@ struct gsm48_hdr {
 #define GSM_MI_TYPE_IMEISV	0x03
 #define GSM_MI_TYPE_TMSI	0x04
 #define GSM_MI_ODD		0x08
+
+#define GSM48_IE_MOBILE_ID	0x17
+
+/* Section 10.5.4.11 / Table 10.5.122 */
+#define GSM48_CAUSE_CS_GSM	0x60
+
+enum gsm48_cause_loc {
+	GSM48_CAUSE_LOC_USER		= 0x00,
+	GSM48_CAUSE_LOC_PRN_S_LU	= 0x01,
+	GSM48_CAUSE_LOC_PUN_S_LU	= 0x02,
+	GSM48_CAUSE_LOC_TRANS_NET	= 0x03,
+	GSM48_CAUSE_LOC_PUN_S_RU	= 0x04,
+	GSM48_CAUSE_LOC_PRN_S_RU	= 0x05,
+	/* not defined */
+	GSM48_CAUSE_LOC_INN_NET		= 0x07,
+	GSM48_CAUSE_LOC_NET_BEYOND	= 0x0a,
+};
 
 struct msgb;
 struct gsm_bts;

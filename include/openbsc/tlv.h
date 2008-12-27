@@ -57,6 +57,15 @@ static inline u_int8_t *tv_put(u_int8_t *buf, u_int8_t tag,
 	return buf;
 }
 
+static inline u_int8_t *tv16_put(u_int8_t *buf, u_int8_t tag, 
+				 u_int16_t val)
+{
+	*buf++ = tag;
+	*buf++ = val >> 8;
+	*buf++ = val & 0xff;
+	return buf;
+}
+
 static inline u_int8_t *msgb_tlv_put(struct msgb *msg, u_int8_t tag, u_int8_t len, const u_int8_t *val)
 {
 	u_int8_t *buf = msgb_put(msg, TLV_GROSS_LEN(len));
@@ -67,6 +76,12 @@ static inline u_int8_t *msgb_tv_put(struct msgb *msg, u_int8_t tag, u_int8_t val
 {
 	u_int8_t *buf = msgb_put(msg, 2);
 	return tv_put(buf, tag, val);
+}
+
+static inline u_int8_t *msgb_tv16_put(struct msgb *msg, u_int8_t tag, u_int16_t val)
+{
+	u_int8_t *buf = msgb_put(msg, 3);
+	return tv16_put(buf, tag, val);
 }
 
 static inline u_int8_t *msgb_tlv_push(struct msgb *msg, u_int8_t tag, u_int8_t len, const u_int8_t *val)
@@ -80,5 +95,12 @@ static inline u_int8_t *msgb_tv_push(struct msgb *msg, u_int8_t tag, u_int8_t va
 	u_int8_t *buf = msgb_push(msg, 2);
 	return tv_put(buf, tag, val);
 }
+
+static inline u_int8_t *msgb_tv16_push(struct msgb *msg, u_int8_t tag, u_int16_t val)
+{
+	u_int8_t *buf = msgb_push(msg, 3);
+	return tv16_put(buf, tag, val);
+}
+
 
 #endif /* _TLV_H */

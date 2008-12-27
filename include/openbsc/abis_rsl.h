@@ -244,6 +244,22 @@ struct rsl_ie_chan_ident {
 #endif
 } __attribute__ ((packed));
 
+/* Chapter 9.3.22 */
+#define RLL_CAUSE_T200_EXPIRED		0x01
+#define RLL_CAUSE_REEST_REQ		0x02
+#define RLL_CAUSE_UNSOL_UA_RESP		0x03
+#define RLL_CAUSE_UNSOL_DM_RESP		0x04
+#define RLL_CAUSE_UNSOL_DM_RESP_MF	0x05
+#define RLL_CAUSE_UNSOL_SPRV_RESP	0x06
+#define RLL_CAUSE_SEQ_ERR		0x07
+#define RLL_CAUSE_UFRM_INC_PARAM	0x08
+#define RLL_CAUSE_SFRM_INC_PARAM	0x09
+#define RLL_CAUSE_IFRM_INC_MBITS	0x0a
+#define RLL_CAUSE_IFRM_INC_LEN		0x0b
+#define RLL_CAUSE_FRM_UNIMPL		0x0c
+#define RLL_CAUSE_SABM_MF		0x0d
+#define RLL_CAUSE_SABM_INFO_NOTALL	0x0e
+
 /* Chapter 9.3.26 */
 #define RSL_ERRCLS_NORMAL		0x00
 #define RSL_ERRCLS_RESOURCE_UNAVAIL	0x20

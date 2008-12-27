@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <netinet/in.h>
 
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
@@ -64,11 +65,11 @@ static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48
 
 static void to_bcd(u_int8_t *bcd, u_int16_t val)
 {
-	bcd[0] = val % 10;
+	bcd[2] = val % 10;
 	val = val / 10;
 	bcd[1] = val % 10;
 	val = val / 10;
-	bcd[2] = val % 10;
+	bcd[0] = val % 10;
 	val = val / 10;
 }
 
@@ -82,10 +83,16 @@ static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 	lai48->digits[1] = bcd[2];
 
 	to_bcd(bcd, mnc);
+	/* FIXME: do we need three-digit MNC? See Table 10.5.3 */
+#if 0
 	lai48->digits[1] |= bcd[2] << 4;
 	lai48->digits[2] = bcd[0] | (bcd[1] << 4);
+#else
+	lai48->digits[1] |= 0xf << 4;
+	lai48->digits[2] = bcd[1] | (bcd[2] << 4);
+#endif
 	
-	lai48->lac = lac;
+	lai48->lac = htons(lac);
 }
 
 #define TMSI_LEN	4
@@ -93,12 +100,13 @@ static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 
 static void generate_mid_from_tmsi(u_int8_t *buf, u_int8_t *tmsi_bcd)
 {
-	buf[0] = MID_TMSI_LEN;
-	buf[1] = 0xf0 | GSM_MI_TYPE_TMSI;
-	buf[2] = tmsi_bcd[0];
-	buf[3] = tmsi_bcd[1];
-	buf[4] = tmsi_bcd[2];
-	buf[5] = tmsi_bcd[3];
+	buf[0] = GSM48_IE_MOBILE_ID;
+	buf[1] = MID_TMSI_LEN;
+	buf[2] = 0xf0 | GSM_MI_TYPE_TMSI;
+	buf[3] = tmsi_bcd[0];
+	buf[4] = tmsi_bcd[1];
+	buf[5] = tmsi_bcd[2];
+	buf[6] = tmsi_bcd[3];
 }
 
 static struct msgb *gsm48_msgb_alloc(void)
@@ -111,14 +119,45 @@ static int gsm0408_sendmsg(struct msgb *msg)
 	if (msg->lchan)
 		msg->trx = msg->lchan->ts->trx;
 
+	msg->l3h = msg->data;
+
 	return rsl_data_request(msg, 0);
+}
+
+static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	u_int8_t *cause, *call_state;
+
+	msg->lchan = lchan;
+
+	gh->proto_discr = GSM48_PDISC_CC;
+	gh->msg_type = GSM48_MT_CC_STATUS;
+
+	cause = msgb_put(msg, 3);
+	cause[0] = 2;
+	cause[1] = GSM48_CAUSE_CS_GSM | GSM48_CAUSE_LOC_USER;
+	cause[2] = 0x80 | 30;	/* response to status inquiry */
+
+	call_state = msgb_put(msg, 1);
+	call_state[0] = 0xc0 | 0x00;
+
+	return gsm0408_sendmsg(msg);
+}
+
+static int gsm48_cc_rx_status_enq(struct msgb *msg)
+{
+	return gsm48_cc_tx_status(msg->lchan);
 }
 
 static int gsm0408_rcv_cc(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t msg_type = gh->msg_type & 0xbf;
+	int rc = 0;
 
-	switch (gh->msg_type & 0xbf) {
+	switch (msg_type) {
 	case GSM48_MT_CC_CALL_CONF:
 		/* Response to SETUP */
 		DEBUGP(DCC, "CALL CONFIRM\n");
@@ -137,18 +176,27 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "RELEASE\n");
 		/* need to respond with RELEASE_COMPLETE */
 		break;
-	case GSM48_MT_CC_EMERG_SETUP:
-		//DEBUGP(DCC, "EMERGENCY SETUP\n");
+	case GSM48_MT_CC_STATUS_ENQ:
+		rc = gsm48_cc_rx_status_enq(msg);
+		break;
+	case GSM48_MT_CC_DISCONNECT:
+		DEBUGP(DCC, "DISCONNECT\n");
+		break;
 	case GSM48_MT_CC_SETUP:
-		//DEBUGP(DCC, "SETUP\n");
+		DEBUGP(DCC, "SETUP\n");
 		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		break;
+	case GSM48_MT_CC_EMERG_SETUP:
+		DEBUGP(DCC, "EMERGENCY SETUP\n");
+		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 msg type 0x%02x\n",
-			gh->msg_type);
+			msg_type);
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATE REJECT */
@@ -209,11 +257,12 @@ static int mm_loc_upd_req(struct msgb *msg)
 
 	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
+	DEBUGP(DMM, "LUPDREQ: mi_type = 0x%02x\n", mi_type);
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI */
 		subscr = subscr_get_by_imsi(&lu->mi[1]);
-		break;	
+		break;
 	case GSM_MI_TYPE_TMSI:
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
 		subscr = subscr_get_by_tmsi(&lu->mi[1]);
@@ -244,6 +293,29 @@ static int mm_loc_upd_req(struct msgb *msg)
 	return gsm0408_loc_upd_acc(msg->lchan, subscr->tmsi);
 }
 
+static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+
+	msg->lchan = lchan;
+
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
+
+	DEBUGP(DMM, "-> CM SERVICE ACK\n");
+
+	return gsm0408_sendmsg(msg);
+}
+		
+static int gsm48_rx_mm_serv_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMM, "CM SERVICE REQUEST\n");
+	return gsm48_tx_mm_serv_ack(msg->lchan);
+}
+
 static int gsm0408_rcv_mm(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -259,6 +331,8 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	case GSM48_MT_MM_AUTH_RESP:
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 	case GSM48_MT_MM_CM_SERV_REQ:
+		rc = gsm48_rx_mm_serv_req(msg);
+		break;
 	case GSM48_MT_MM_CM_REEST_REQ:
 		fprintf(stderr, "Unimplemented GSM 04.08 MM msg type 0x%02x\n",
 			gh->msg_type);
