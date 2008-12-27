@@ -750,8 +750,8 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		break;
 	case RSL_MT_REL_IND:
 		DEBUGP(DRLL, "RELEASE INDICATION chan_nr=0x%02x\n", rllh->chan_nr);
+		rc = rsl_chan_release(msg->lchan);
 		lchan_free(msg->lchan);
-		rc = 0;
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
