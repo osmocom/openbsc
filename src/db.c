@@ -66,6 +66,8 @@ int db_prepare() {
 	result = dbi_conn_query(conn,
 		"CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
 		"imsi NUMERIC UNIQUE NOT NULL, "
 		"tmsi NUMERIC UNIQUE, "
 		"extension TEXT UNIQUE, "
@@ -81,6 +83,8 @@ int db_prepare() {
 	result = dbi_conn_query(conn,
 		"CREATE TABLE IF NOT EXISTS Equipment ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
 		"imei NUMERIC UNIQUE NOT NULL"
 		")"
 	);
@@ -92,10 +96,10 @@ int db_prepare() {
 	result = dbi_conn_query(conn,
 		"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"subscriber_id NUMERIC NOT NULL, "
-		"equipment_id NUMERIC NOT NULL, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
+		"subscriber_id NUMERIC NOT NULL, "
+		"equipment_id NUMERIC NOT NULL, "
 		"UNIQUE (subscriber_id, equipment_id) "
 		")"
 	);
@@ -126,9 +130,9 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 	}
 	result = dbi_conn_queryf(conn,
 		"INSERT OR IGNORE INTO Subscriber "
-		"(imsi) "
+		"(imsi, created, updated) "
 		"VALUES "
-		"(%s) ",
+		"(%s, datetime('now'), datetime('now')) ",
 		imsi
 	);
 	if (result==NULL) {
@@ -186,7 +190,7 @@ int db_set_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
-		"SET tmsi = %s, lac = %i, authorized = %i "
+		"SET updated = datetime('now'), tmsi = %s, lac = %i, authorized = %i "
 		"WHERE imsi = %s ",
 		subscriber->tmsi, subscriber->lac, subscriber->authorized, subscriber->imsi
 	);
@@ -233,9 +237,9 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 
 	result = dbi_conn_queryf(conn,
 		"INSERT OR IGNORE INTO Equipment "
-		"(imei) "
+		"(imei, created, updated) "
 		"VALUES "
-		"(%s) ",
+		"(%s, datetime('now'), datetime('now')) ",
 		imei
 	);
 	if (result==NULL) {
