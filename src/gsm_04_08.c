@@ -244,6 +244,57 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int8_t *tmsi)
 	return gsm0408_sendmsg(msg);
 }
 
+static char bcd2char(u_int8_t bcd)
+{
+	if (bcd < 0xa)
+		return '0' + bcd;
+	else
+		return 'A' + (bcd - 0xa);
+}
+
+/* 10.5.1.4 */
+static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
+{
+	int i;
+	u_int8_t mi_type;
+	char *str_cur = string;
+
+	mi_type = mi[0] & GSM_MI_TYPE_MASK;
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_NONE:
+		break;
+	case GSM_MI_TYPE_TMSI:
+		for (i = 1; i < mi_len - 1; i++) {
+			if (str_cur + 2 >= string + str_len)
+				return str_cur - string;
+			*str_cur++ = bcd2char(mi[i] >> 4);
+			*str_cur++ = bcd2char(mi[i] & 0xf);
+		}
+		break;
+	case GSM_MI_TYPE_IMSI:
+	case GSM_MI_TYPE_IMEI:
+	case GSM_MI_TYPE_IMEISV:
+		if (mi[0] & GSM_MI_ODD)
+			*str_cur++ = bcd2char(mi[0] >> 4);
+	
+		for (i = 1; i < mi_len - 1; i++) {
+			if (str_cur + 2 >= string + str_len)
+				return str_cur - string;
+			*str_cur++ = bcd2char(mi[i] & 0xf);
+			*str_cur++ = bcd2char(mi[i] >> 4);
+		}
+		break;
+	default:
+		break;
+	}
+
+	*str_cur++ = '\0';
+	return str_cur - string;
+}
+
+#define MI_SIZE 20
+
 /* Chapter 9.2.15 */
 static int mm_loc_upd_req(struct msgb *msg)
 {
@@ -252,20 +303,23 @@ static int mm_loc_upd_req(struct msgb *msg)
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
 	u_int8_t mi_type;
+	char mi_string[20];
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
 
 	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
-	DEBUGP(DMM, "LUPDREQ: mi_type = 0x%02x\n", mi_type);
+	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
+
+	DEBUGP(DMM, "LUPDREQ: mi_type = 0x%02x MI(%s)\n", mi_type, mi_string);
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI */
-		subscr = subscr_get_by_imsi(&lu->mi[1]);
+		subscr = subscr_get_by_imsi(lu->mi);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(&lu->mi[1]);
+		subscr = subscr_get_by_tmsi(lu->mi);
 		if (!subscr) {
 			/* FIXME: send IDENTITY REQUEST message to get IMSI */
 			//gsm0408_identity_request(...GSM_MI_TYPE_IMSI);
@@ -353,6 +407,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	case GSM48_MT_RR_CLSM_CHG:
 		DEBUGP(DRR, "CLASSMARK CHANGE\n");
 		/* FIXME: what to do ?!? */
+		break;
+	case GSM48_MT_RR_GPRS_SUSP_REQ:
+		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
 	default:
