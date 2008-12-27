@@ -17,34 +17,30 @@
  *
  */
 
-#include <openbsc/db.h>
+#ifndef _DB_H
+#define _DB_H
 
-#include <stdio.h>
+#include <stdint.h>
 
-int main() {
+#define NUMBER_LENGTH 32
 
-    if (db_init()) {
-        printf("DB: Failed to init database. Please check the option settings.\n");
-        return 1;
-    }    
-    printf("DB: Database initialized.\n");
+typedef struct {
+    uint64_t imsi;
+    uint64_t tmsi;
+    char number[NUMBER_LENGTH];
+    uint16_t lac;
+} db_subscriber;
 
-    if (db_prepare()) {
-        printf("DB: Failed to prepare database.\n");
-        return 1;
-    }
-    printf("DB: Database prepared.\n");
+int db_init();
+int db_prepare();
+int db_fini();
 
-    db_insert_imsi(3243245432351LLU);
-    db_insert_imsi(3243245432352LLU);
-    db_imsi_set_tmsi(3243245432345LLU, 99999999LLU);
-    db_imsi_set_lac(3243245432345LLU, 42);
+int db_insert_imei(uint64_t imei);
 
-    db_subscriber alice;
-    db_imsi_get_subscriber(3243245432345LLU, &alice);
-    db_tmsi_get_subscriber(99999999LLU, &alice);
+int db_insert_imsi(uint64_t imsi);
+int db_imsi_set_tmsi(uint64_t imsi, uint64_t tmsi);
+int db_imsi_set_lac(uint64_t imsi, uint16_t lac);
+int db_imsi_get_subscriber(uint64_t imsi, db_subscriber* subscriber);
+int db_tmsi_get_subscriber(uint64_t tmsi, db_subscriber* subscriber);
 
-    db_fini();
-
-    return 0;
-}
+#endif /* _DB_H */
