@@ -214,18 +214,11 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 			printf("DB: Failed to query Subscriber.\n");
 			return 1;
 		}
-		printf("%s\n", subscriber->tmsi);
-		printf("count %llu\n", dbi_result_get_numrows(result));
-		printf("curr %llu\n", dbi_result_get_currow(result));
-		printf("next %llu\n", dbi_result_next_row(result));
-		printf("count %llu\n", dbi_result_get_numrows(result));
-		printf("curr %llu\n", dbi_result_get_currow(result));
 		if (dbi_result_get_numrows(result)){
 			dbi_result_free(result);
 			continue;
 		}
 		if (!dbi_result_next_row(result)) {
-			printf("curr %llu\n", dbi_result_get_currow(result));
 			dbi_result_free(result);
 			printf("DB: Allocated TMSI %s for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
 			return db_set_subscriber(subscriber);
