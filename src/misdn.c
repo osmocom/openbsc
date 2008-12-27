@@ -239,7 +239,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 			     (struct sockaddr *)&e1h->l2addr,
 			     sizeof(e1h->l2addr));
 		msgb_free(msg);
-		usleep(100000);
+		usleep(10000);
 		//sleep(1);
 	}
 
