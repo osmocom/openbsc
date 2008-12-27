@@ -544,6 +544,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	case RSL_MT_CONN_FAIL:
 		DEBUGP(DRSL, "rsl_rx_dchan: Connection Fail, release channel\n");
 		rc = rsl_chan_release(msg->lchan);
+		/* FIXME: only free it after channel release ACK */
+		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MEAS_RES:
 		DEBUGP(DRSL, "rsl_rx_dchan: Measurement Result\n");
@@ -752,6 +754,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	case RSL_MT_REL_IND:
 		DEBUGP(DRLL, "RELEASE INDICATION chan_nr=0x%02x\n", rllh->chan_nr);
 		rc = rsl_chan_release(msg->lchan);
+		/* FIXME: only free it after channel release ACK */
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_ERROR_IND:
