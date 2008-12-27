@@ -319,7 +319,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 	char mi_string[MI_SIZE];
 
 	mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
-	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x (MI(%s)\n",
+	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
 	/* FIXME: update subscribe <-> IMEI mapping */
