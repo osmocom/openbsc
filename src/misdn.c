@@ -249,11 +249,13 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 static int handle_tsX_read(struct bsc_fd *bfd)
 {
 	/* FIXME: read from a B channel TS */
+	return -1;
 }
 
 static int handle_tsX_write(struct bsc_fd *bfd)
 {
 	/* FIXME: write to a B channel TS */
+	return -1;
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
