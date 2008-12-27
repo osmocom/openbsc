@@ -69,7 +69,8 @@ int db_prepare() {
 		"imsi NUMERIC UNIQUE NOT NULL, "
 		"tmsi NUMERIC UNIQUE, "
 		"extension TEXT UNIQUE, "
-		"lac INTEGER"
+		"lac INTEGER NOT NULL DEFAULT 0, "
+		"authorized INTEGER NOT NULL DEFAULT 0" 
 		")"
 	);
 	if (result==NULL) {
@@ -140,10 +141,6 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 	return subscriber;
 }
 
-int db__parse_subscriber(dbi_result result, struct gsm_subscriber* subscriber) {
-	return 0;
-}
-
 int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber) {
 	dbi_result result;
 	switch (field) {
@@ -178,7 +175,9 @@ int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* su
 	strncpy(subscriber->tmsi, dbi_result_get_string(result, "tmsi"), GSM_TMSI_LENGTH);
 	// FIXME handle extension
 	subscriber->lac = dbi_result_get_uint(result, "lac");
-	printf("DB: Found Subscriber: IMSI %s, TMSI %s, LAC %hu\n", subscriber->imsi, subscriber->tmsi, subscriber->lac);
+	subscriber->authorized = dbi_result_get_uint(result, "authorized");
+	printf("DB: Found Subscriber: IMSI %s, TMSI %s, LAC %hu, AUTH %u\n",
+		subscriber->imsi, subscriber->tmsi, subscriber->lac, subscriber->authorized);
 	dbi_result_free(result);
 	return 0;
 }
@@ -187,9 +186,9 @@ int db_set_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
-		"SET tmsi = %s, lac = %i "
+		"SET tmsi = %s, lac = %i, authorized = %i "
 		"WHERE imsi = %s ",
-		subscriber->tmsi, subscriber->lac, subscriber->imsi
+		subscriber->tmsi, subscriber->lac, subscriber->authorized, subscriber->imsi
 	);
 	if (result==NULL) {
 		printf("DB: Failed to update Subscriber (by IMSI).\n");

@@ -13,6 +13,7 @@ struct gsm_subscriber {
 	char tmsi[GSM_TMSI_LENGTH];
 	u_int16_t lac;
 	char name[GSM_NAME_LENGTH];
+	int authorized;
 };
 
 enum gsm_subscriber_field {
