@@ -53,6 +53,11 @@ static const struct debug_info debug_info[] = {
 
 static int use_color = 1;
 
+void debug_use_color(int color)
+{
+	use_color = color;
+}
+
 /*
  * Parse the category mask.
  * category1:category2:category3

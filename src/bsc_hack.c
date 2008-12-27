@@ -27,6 +27,9 @@
 #include <string.h>
 #include <errno.h>
 
+#define _GNU_SOURCE
+#include <getopt.h>
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/select.h>
 #include <openbsc/abis_rsl.h>
@@ -581,8 +584,58 @@ static int bootstrap_network(void)
 	return 0;
 }
 
+static void print_usage()
+{
+	printf("Usage: bsc_hack\n");
+}
+
+static void print_help()
+{
+	printf("  Some useful help...\n");
+	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
+	printf("  -n --disable-color\n");
+	printf("  -h --help this text\n");
+}
+
+static void handle_options(int argc, char** argv)
+{
+	while (1) {
+		int option_index = 0, c;
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"debug", 1, 0, 'd'},
+			{"disable-color", 0, 0, 'n'},
+			{0, 0, 0, 0}
+		};
+
+		c = getopt_long(argc, argv, "hnd:",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			print_usage();
+			print_help();
+			exit(0);
+		case 'n':
+			debug_use_color(0);
+			break;
+		case 'd':
+			debug_parse_category_mask(optarg);
+			break;
+		default:
+			/* ignore */
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
+	/* parse options */
+	handle_options(argc, argv);
+
 	bootstrap_network();
 
 	while (1) {

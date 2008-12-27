@@ -19,5 +19,6 @@
 
 void debugp(unsigned int subsys, char *file, int line, const char *format, ...);
 void debug_parse_category_mask(const char* mask);
+void debug_use_color(int use_color);
 
 #endif /* _DEBUG_H */
