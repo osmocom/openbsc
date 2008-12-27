@@ -69,12 +69,19 @@ struct gsm48_hdr {
 	u_int8_t data[0];
 } __attribute__ ((packed));
 
-/* Section 10.2 */
+/* Section 10.2 + GSM 04.07 12.2.3.1.1 */
+#define GSM48_PDISC_GROUP_CC	0x00
+#define GSM48_PDISC_BCAST_CC	0x01
+#define GSM48_PDISC_PDSS1	0x02
 #define GSM48_PDISC_CC		0x03
+#define GSM48_PDISC_PDSS2	0x04
 #define GSM48_PDISC_MM		0x05
 #define GSM48_PDISC_RR		0x06
 #define GSM48_PDISC_MM_GPRS	0x08
-#define GSM48_PDISC_SM		0x0a
+#define GSM48_PDISC_SMS		0x09
+#define GSM48_PDISC_SM_GPRS	0x0a
+#define GSM48_PDISC_NC_SS	0x0b
+#define GSM48_PDISC_LOC		0x0c
 
 /* Section 10.4 */
 #define GSM48_MT_RR_INIT_REQ		0x3c

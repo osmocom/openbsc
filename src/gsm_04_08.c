@@ -349,8 +349,10 @@ static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 static int gsm48_rx_mm_serv_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t serv_type = gh->data[0] & 0x0f;
 
-	DEBUGP(DMM, "CM SERVICE REQUEST\n");
+	DEBUGP(DMM, "CM SERVICE REQUEST serv_type=0x%02x\n", serv_type);
+
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
 
@@ -543,6 +545,12 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	return rc;
 }
 
+static int gsm0408_rcv_sms(struct msgb *msg)
+{
+	DEBUGP(DSMS, "SMS Message\n");
+	return 0;
+}
+
 /* here we pass in a msgb from the RSL->RLL.  We expect the l3 pointer to be set */
 int gsm0408_rcvmsg(struct msgb *msg)
 {
@@ -560,8 +568,11 @@ int gsm0408_rcvmsg(struct msgb *msg)
 	case GSM48_PDISC_RR:
 		rc = gsm0408_rcv_rr(msg);
 		break;
+	case GSM48_PDISC_SMS:
+		rc = gsm0408_rcv_sms(msg);
+		break;
 	case GSM48_PDISC_MM_GPRS:
-	case GSM48_PDISC_SM:
+	case GSM48_PDISC_SM_GPRS:
 		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02d\n",
 			pdisc);
 		break;

@@ -9,6 +9,7 @@
 #define DRR		0x0008
 #define DRSL		0x0010
 #define DNM		0x0020
+#define DSMS		0x0100
 #define DMI		0x1000
 #define DMIB		0x2000
 
