@@ -21,6 +21,7 @@
 #include <fcntl.h>
 #include <openbsc/select.h>
 #include <openbsc/linuxlist.h>
+#include <openbsc/timer.h>
 
 static int maxfd = 0;
 static LLIST_HEAD(bsc_fds);
@@ -74,24 +75,29 @@ int bsc_select_main()
 			FD_SET(ufd->fd, &exceptset);
 	}
 
-	i = select(maxfd+1, &readset, &writeset, &exceptset, NULL);
-	if (i > 0) {
-		/* call registered callback functions */
-		llist_for_each_entry(ufd, &bsc_fds, list) {
-			int flags = 0;
+	prepare_timers();
+	i = select(maxfd+1, &readset, &writeset, &exceptset, nearest_timer());
+	if (i < 0)
+		return i;
 
-			if (FD_ISSET(ufd->fd, &readset))
-				flags |= BSC_FD_READ;
+	/* fire timers */
+	update_timers();
 
-			if (FD_ISSET(ufd->fd, &writeset))
-				flags |= BSC_FD_WRITE;
+	/* call registered callback functions */
+	llist_for_each_entry(ufd, &bsc_fds, list) {
+	    int flags = 0;
 
-			if (FD_ISSET(ufd->fd, &exceptset))
-				flags |= BSC_FD_EXCEPT;
+	    if (FD_ISSET(ufd->fd, &readset))
+		flags |= BSC_FD_READ;
 
-			if (flags)
-				ufd->cb(ufd, flags);
-		}
+	    if (FD_ISSET(ufd->fd, &writeset))
+		flags |= BSC_FD_WRITE;
+
+	    if (FD_ISSET(ufd->fd, &exceptset))
+		flags |= BSC_FD_EXCEPT;
+
+	    if (flags)
+		ufd->cb(ufd, flags);
 	}
 	return i;
 }

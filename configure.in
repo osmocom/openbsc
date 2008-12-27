@@ -16,4 +16,10 @@ AC_CHECK_HEADERS(mISDNif.h)
 
 dnl Checks for typedefs, structures and compiler characteristics
 
-AC_OUTPUT(include/openbsc/Makefile include/Makefile src/Makefile Makefile)
+AC_OUTPUT(
+    include/openbsc/Makefile
+    include/Makefile
+    src/Makefile
+    tests/Makefile
+    tests/timer/Makefile
+    Makefile)
