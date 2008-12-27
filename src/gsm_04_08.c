@@ -300,6 +300,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	if (!subscr) {
 		/* 0x16 is congestion */
 		gsm0408_loc_upd_rej(msg->lchan, 0x16);
+		rsl_chan_release(msg->lchan);
 		return -EINVAL;
 	}
 
