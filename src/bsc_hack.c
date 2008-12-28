@@ -524,6 +524,13 @@ static const struct bcch_info bcch_infos[] = {
 	},
 };
 
+static_assert(sizeof(si1) == sizeof(struct gsm48_system_information_type_1), type1)
+static_assert(sizeof(si2) == sizeof(struct gsm48_system_information_type_2), type2)
+static_assert(sizeof(si3) == sizeof(struct gsm48_system_information_type_3), type3)
+static_assert(sizeof(si4) >= sizeof(struct gsm48_system_information_type_4), type4)
+static_assert(sizeof(si5) == sizeof(struct gsm48_system_information_type_5)-1, type5)
+static_assert(sizeof(si6) >= sizeof(struct gsm48_system_information_type_6)-1, type6)
+
 /* set all system information types */
 static int set_system_infos(struct gsm_bts *bts)
 {
