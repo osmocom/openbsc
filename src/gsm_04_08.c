@@ -75,7 +75,7 @@ static void to_bcd(u_int8_t *bcd, u_int16_t val)
 	val = val / 10;
 }
 
-static void generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
+void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 			 u_int16_t mnc, u_int16_t lac)
 {
 	u_int8_t bcd[3];
@@ -162,7 +162,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	generate_lai(lai, bts->network->country_code,
+	gsm0408_generate_lai(lai, bts->network->country_code,
 		     bts->network->network_code, bts->location_area_code);
 
 	mid = msgb_put(msg, MID_TMSI_LEN);
