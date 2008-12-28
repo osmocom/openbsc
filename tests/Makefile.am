@@ -1,1 +1,1 @@
-SUBDIRS = debug timer sms
+SUBDIRS = debug timer sms gsm0408
