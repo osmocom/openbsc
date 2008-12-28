@@ -358,7 +358,7 @@ SYSTEM INFORMATION TYPE 1
     call reestablishment not allowed
     Access Control Class = 0000
 */
-static const u_int8_t si1[] = {
+static u_int8_t si1[] = {
 	/* header */0x55, 0x06, 0x19,
 	/* ccdesc */0x04 /*0x00*/, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 /*0x01*/,
@@ -381,7 +381,7 @@ static const u_int8_t si1[] = {
     call reestablishment not allowed
     Access Control Class = 0000
 */
-static const u_int8_t si2[] = {
+static u_int8_t si2[] = {
 	/* header */0x59, 0x06, 0x1A,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -427,7 +427,7 @@ SYSTEM INFORMATION TYPE 3
     Early Classmark Sending Control (ECSC):  0 = forbidden
     Scheduling Information is not sent in SYSTEM INFORMATION TYPE 9 on the BCCH
 */
-unsigned char si3[] = {
+static u_int8_t si3[] = {
 	/* header */0x49, 0x06, 0x1B,
 	/* cell */0x00, 0x01,
 	/* lai  */0x00, 0xF1, 0x10, 0x00, 0x01,
@@ -467,7 +467,7 @@ SYSTEM INFORMATION TYPE 4
     Temporary Offset = 0 dB
     Penalty Time = 20 s
 */
-static const u_int8_t si4[] = {
+static u_int8_t si4[] = {
 	/* header */0x41, 0x06, 0x1C,
 	/* lai */0x00, 0xF1, 0x10, 0x00, 0x01,
 	/* sel */0x62, 0x00,
@@ -485,7 +485,7 @@ static const u_int8_t si4[] = {
     CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
 */
 
-static const u_int8_t si5[] = {
+static u_int8_t si5[] = {
 	/* header without l2 len*/0x06, 0x1D,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -511,7 +511,7 @@ SYSTEM INFORMATION TYPE 6
   NCC permitted (NCC) = FF
 */
 
-static const u_int8_t si6[] = {
+static u_int8_t si6[] = {
 	/* header */0x06, 0x1E,
 	/* cell id*/ 0x00, 0x01,
 	/* lai */ 0x00, 0xF1, 0x10, 0x00, 0x01,
@@ -573,9 +573,34 @@ static void activate_traffic_channels(struct gsm_bts_trx *trx)
 		rsl_chan_activate_tch_f(&trx->ts[i]);
 }
 
+/*
+ * Patch the various SYSTEM INFORMATION tables to update
+ * the LAI
+ */
+static void patch_tables(struct gsm_bts *bts)
+{
+	/* covert the raw packet to the struct */
+	struct gsm48_system_information_type_3 *type_3 =
+		(struct gsm48_system_information_type_3*)&si3;
+	struct gsm48_system_information_type_4 *type_4 =
+		(struct gsm48_system_information_type_4*)&si4;
+	struct gsm48_system_information_type_6 *type_6 =
+		(struct gsm48_system_information_type_6*)&si6;
+
+	/* assign the MCC and MNC */
+	gsm0408_generate_lai(&type_3->lai, bts->network->country_code,
+				bts->network->network_code, bts->location_area_code);
+	gsm0408_generate_lai(&type_4->lai, bts->network->country_code,
+				bts->network->network_code, bts->location_area_code);
+	gsm0408_generate_lai(&type_6->lai, bts->network->country_code,
+				bts->network->network_code, bts->location_area_code);
+}
+
+
 static void bootstrap_rsl(struct gsm_bts *bts)
 {
 	fprintf(stdout, "bootstrapping RSL\n");
+	patch_tables(bts);
 	set_system_infos(bts);
 
 	/* FIXME: defer this until the channels are used */
@@ -595,14 +620,6 @@ static void mi_cb(int event, struct gsm_bts *bts)
 		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	}
-}
-
-/*
- * Patch the various SYSTEM INFORMATION tables to update
- * the LAI
- */
-static void patch_tables(void)
-{
 }
 
 static int bootstrap_network(void)
@@ -766,7 +783,6 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
-	patch_tables();
 	bootstrap_network();
 
 	pag_timer.cb = pag_timer_cb;
