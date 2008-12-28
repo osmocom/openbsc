@@ -33,6 +33,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 
@@ -545,12 +546,6 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	return rc;
 }
 
-static int gsm0408_rcv_sms(struct msgb *msg)
-{
-	DEBUGP(DSMS, "SMS Message\n");
-	return 0;
-}
-
 /* here we pass in a msgb from the RSL->RLL.  We expect the l3 pointer to be set */
 int gsm0408_rcvmsg(struct msgb *msg)
 {
@@ -569,7 +564,7 @@ int gsm0408_rcvmsg(struct msgb *msg)
 		rc = gsm0408_rcv_rr(msg);
 		break;
 	case GSM48_PDISC_SMS:
-		rc = gsm0408_rcv_sms(msg);
+		rc = gsm0411_rcv_sms(msg);
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:

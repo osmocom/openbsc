@@ -9,9 +9,9 @@
 0b -
 00 -
 1d -
-39 - TransactionID 3, SMS messages
-01 - CP-DATA
-1a - Length: 26
+39 - TransactionID 3, SMS messages	:: gh->proto_discr
+01 - CP-DATA				:: gh->msg_type
+1a - Length: 26				:: gh->data[0]
 00 - MTI 0 RP-DATA (ms-> n)
 01 - MR 1
 00 - RP-OA
