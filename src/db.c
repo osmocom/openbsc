@@ -19,11 +19,14 @@
 
 #include <openbsc/db.h>
 
+#include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dbi/dbi.h>
 
+static char *db_basename = NULL;
+static char *db_dirname = NULL;
 dbi_conn conn;
 
 void db__error_func(dbi_conn conn, void* data) {
@@ -32,7 +35,7 @@ void db__error_func(dbi_conn conn, void* data) {
 	printf("DBI: %s\n", msg);
 }
 
-int db_init() {
+int db_init(const char *name) {
 	dbi_initialize(NULL);
 	conn = dbi_conn_new("sqlite3");
 	if (conn==NULL) {
@@ -51,10 +54,15 @@ int db_init() {
 	*/
 
 	/* SqLite 3 */
-	dbi_conn_set_option(conn, "sqlite3_dbdir", "/tmp");
-	dbi_conn_set_option(conn, "dbname", "hlr.sqlite3");
+	char *db_basename = strdup(name);
+	char *db_dirname = strdup(name);
+	dbi_conn_set_option(conn, "sqlite3_dbdir", dirname(db_dirname));
+	dbi_conn_set_option(conn, "dbname", basename(db_basename));
 
 	if (dbi_conn_connect(conn) < 0) {
+		free(db_dirname);
+		free(db_basename);
+		db_dirname = db_basename = NULL;
 		return 1;
 	}
 
@@ -138,6 +146,11 @@ int db_prepare() {
 int db_fini() {
 	dbi_conn_close(conn);
 	dbi_shutdown();
+
+	if (db_dirname)
+	    free(db_dirname);
+	if (db_basename)
+	    free(db_basename);
 	return 0;
 }
 

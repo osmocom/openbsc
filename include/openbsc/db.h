@@ -24,7 +24,7 @@
 
 #include <openbsc/gsm_subscriber.h>
 
-int db_init();
+int db_init(const char *name);
 int db_prepare();
 int db_fini();
 

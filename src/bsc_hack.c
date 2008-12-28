@@ -46,6 +46,7 @@ static struct gsm_network *gsmnet;
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
 static int MNC = 1;
+static const char *database_name = "hlr.sqlite3";
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -653,6 +654,7 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -n --network-code number(MNC) \n");
 	printf("  -c --country-code number (MCC) \n");
+	printf("  -l --database db-name The database to use\n");
 	printf("  -h --help this text\n");
 }
 
@@ -666,6 +668,7 @@ static void handle_options(int argc, char** argv)
 			{"disable-color", 0, 0, 's'},
 			{"network-code", 1, 0, 'n'},
 			{"country-code", 1, 0, 'c'},
+			{"database", 1, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 
@@ -690,6 +693,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			MCC = atoi(optarg);
+			break;
+                case 'l':
+			database_name = strdup(optarg);
 			break;
 		default:
 			/* ignore */
@@ -771,7 +777,7 @@ int main(int argc, char **argv)
 	/* parse options */
 	handle_options(argc, argv);
 
-	if (db_init()) {
+	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
 		return 1;
 	}	 
