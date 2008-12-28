@@ -224,7 +224,7 @@ int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* su
 	// FIXME handle extension
 	subscriber->lac = dbi_result_get_uint(result, "lac");
 	subscriber->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME %s TMSI %s, LAC %hu, AUTH %u\n",
+	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, LAC %hu, AUTH %u\n",
 		subscriber->id, subscriber->imsi, subscriber->name, subscriber->tmsi,
 		subscriber->lac, subscriber->authorized);
 	dbi_result_free(result);
