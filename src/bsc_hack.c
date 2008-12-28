@@ -43,6 +43,11 @@
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
 
+/* MCC and MNC for the Location Area Identifier */
+static int MCC = 1;
+static int MNC = 1;
+
+
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
 
@@ -568,12 +573,20 @@ static void mi_cb(int event, struct gsm_bts *bts)
 	}
 }
 
+/*
+ * Patch the various SYSTEM INFORMATION tables to update
+ * the LAI
+ */
+static void patch_tables(void)
+{
+}
+
 static int bootstrap_network(void)
 {
 	struct gsm_bts *bts;
 
 	/* initialize our data structures */
-	gsmnet = gsm_network_init(1, 1, 1);
+	gsmnet = gsm_network_init(1, MCC, MNC);
 	if (!gsmnet)
 		return -ENOMEM;
 		
@@ -596,7 +609,9 @@ static void print_help()
 {
 	printf("  Some useful help...\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
-	printf("  -n --disable-color\n");
+	printf("  -s --disable-color\n");
+	printf("  -n --network-code number(MNC) \n");
+	printf("  -c --country-code number (MCC) \n");
 	printf("  -h --help this text\n");
 }
 
@@ -607,7 +622,9 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
-			{"disable-color", 0, 0, 'n'},
+			{"disable-color", 0, 0, 's'},
+			{"network-code", 1, 0, 'n'},
+			{"country-code", 1, 0, 'c'},
 			{0, 0, 0, 0}
 		};
 
@@ -621,11 +638,17 @@ static void handle_options(int argc, char** argv)
 			print_usage();
 			print_help();
 			exit(0);
-		case 'n':
+		case 's':
 			debug_use_color(0);
 			break;
 		case 'd':
 			debug_parse_category_mask(optarg);
+			break;
+		case 'n':
+			MNC = atoi(optarg);
+			break;
+		case 'c':
+			MCC = atoi(optarg);
 			break;
 		default:
 			/* ignore */
@@ -719,6 +742,7 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
+	patch_tables();
 	bootstrap_network();
 
 	pag_timer.cb = pag_timer_cb;
