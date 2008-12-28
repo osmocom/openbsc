@@ -69,6 +69,74 @@ struct gsm48_hdr {
 	u_int8_t data[0];
 } __attribute__ ((packed));
 
+/* Section 9.1.3x System information Type header */
+struct gsm48_system_information_type_header {
+	u_int8_t l2_plen;
+	u_int8_t rr_protocol_discriminator :4,
+		skip_indicator:4; 
+	u_int8_t system_information;
+} __attribute__ ((packed));
+
+/* Section 9.1.31 System information Type 1 */
+struct gsm48_system_information_type_1 {
+	struct gsm48_system_information_type_header header;
+	u_int8_t cell_channel_description[16];
+	u_int8_t rach_control_parameter[3];
+	u_int8_t s1_reset;
+} __attribute__ ((packed));
+
+/* Section 9.1.32 System information Type 2 */
+struct gsm48_system_information_type_2 {
+	struct gsm48_system_information_type_header header;
+	u_int8_t bcch_frequency_list[16];
+	u_int8_t ncc_permitted;
+	u_int8_t rach_control_parameter[3]; 
+} __attribute__ ((packed));
+
+/* Section 9.1.35 System information Type 3 */
+struct gsm48_system_information_type_3 {
+	struct gsm48_system_information_type_header header;
+	u_int16_t cell_identity;
+	struct gsm48_loc_area_id lai;
+	u_int8_t control_channel_description[3];
+	u_int8_t cell_options;
+	u_int8_t cell_selection[2];
+	u_int8_t rach_control_parameter[3];
+	u_int8_t s3_reset_octets[4];
+} __attribute__ ((packed));
+
+/* Section 9.1.36 System information Type 4 */
+struct gsm48_system_information_type_4 {
+	struct gsm48_system_information_type_header header;
+	struct gsm48_loc_area_id lai;
+	u_int8_t cell_selection[2];
+	u_int8_t rach_control_parameter[3];
+	/*	optional CBCH conditional CBCH... followed by
+		mandantory SI 4 Reset Octets
+	 */
+	u_int8_t data[0];
+} __attribute__ ((packed));
+
+/* Section 9.1.37 System information Type 5 */
+struct gsm48_system_information_type_5 {
+	u_int8_t rr_protocol_discriminator :4,
+		skip_indicator:4; 
+	u_int8_t system_information;
+	u_int8_t bcch_frequency_list[16];
+} __attribute__ ((packed));
+
+/* Section 9.1.40 System information Type 6 */
+struct gsm48_system_information_type_6 {
+	u_int8_t rr_protocol_discriminator :4,
+		skip_indicator:4; 
+	u_int8_t system_information;
+	u_int8_t cell_identity[2];
+	struct gsm48_loc_area_id lai;
+	u_int8_t cell_options;
+	u_int8_t ncc_permitted;
+	u_int8_t si_6_reset[0];
+} __attribute__ ((packed));
+
 /* Section 10.2 + GSM 04.07 12.2.3.1.1 */
 #define GSM48_PDISC_GROUP_CC	0x00
 #define GSM48_PDISC_BCAST_CC	0x01
