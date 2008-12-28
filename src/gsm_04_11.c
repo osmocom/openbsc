@@ -40,12 +40,13 @@ static int gsm411_cp_data(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	int rc = 0;
 
-	struct gsm411_rp_data_hdr *rp_data = (struct gsm411_rp_data_hdr*)msg->data;
+	struct gsm411_rp_data_hdr *rp_data = (struct gsm411_rp_data_hdr*)&gh->data;
 	u_int8_t msg_type =  rp_data->msg_type & 0x07;
 
 	switch (msg_type) {
 	case GSM411_MT_RP_DATA_MO:
     DEBUGP(DSMS, "SMS RP-DATA (MO)\n");
+
 		break;
 	default:
 		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);

@@ -23,4 +23,5 @@ AC_OUTPUT(
     tests/Makefile
     tests/debug/Makefile
     tests/timer/Makefile
+    tests/sms/Makefile
     Makefile)

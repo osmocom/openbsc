@@ -22,6 +22,7 @@
 
 /* Chapter 8.1.1 */
 struct gsm411_rp_data_hdr {
+  u_int8_t len;
   u_int8_t msg_type;
 	u_int8_t msg_ref;
 	u_int8_t data[0];
