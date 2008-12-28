@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+#include <openbsc/timer.h>
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
 #define GSM_MAX_BTS	8
@@ -67,6 +69,8 @@ struct gsm_lchan {
 	enum gsm_chan_t type;
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
+	/* Universal timer, undefined use ;) */
+	struct timer_list timer;
 
 	/* local end of a call, if any */
 	struct gsm_call call;

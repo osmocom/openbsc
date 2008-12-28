@@ -374,7 +374,7 @@ int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 	dh->chan_nr = RSL_CHAN_PCH_AGCH;
 
 	msgb_tv_put(msg, RSL_IE_PAGING_GROUP, paging_group);
-	msgb_tlv_put(msg, RSL_IE_MS_IDENTITY, len, ms_ident);
+	msgb_tlv_put(msg, RSL_IE_MS_IDENTITY, len-2, ms_ident+2);
 	msgb_tv_put(msg, RSL_IE_CHAN_NEEDED, chan_needed);
 
 	msg->trx = bts->c0;

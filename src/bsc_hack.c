@@ -30,7 +30,10 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
+#include <openbsc/db.h>
+#include <openbsc/timer.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_08.h>
 #include <openbsc/select.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
@@ -631,6 +634,74 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+static struct timer_list pag_timer;
+
+/* handles uppercase decimal and hexadecimal */
+static u_int8_t char2bcd(char c)
+{
+	if (c <= '9')
+		return c - '0';
+	else
+		return c - 'A';
+}
+
+static int string_to_mi(u_int8_t *mi, const char *string,
+			u_int8_t type)
+{
+	u_int8_t *cur = mi+3;
+
+	mi[0] = GSM48_IE_MOBILE_ID;
+	//mi[1] = TMSI_LEN;
+	mi[2] = type & GSM_MI_TYPE_MASK;
+
+	if (strlen(string) & 0x01)
+		mi[2] |= char2bcd(*string++) << 4;
+	else
+		mi[2] |= 0xf0;
+
+	while (*string && *(string+1))
+		*cur++ = char2bcd(*string++) | (char2bcd(*string++) << 4);
+
+	mi[1] = cur - mi;
+
+	return cur - mi;
+}
+
+static const char *nokia_imsi = "7240311131388";
+static const char *rokr_imsi = "4660198001300";
+
+void pag_timer_cb(void *data)
+{
+	struct gsm_bts *bts = &gsmnet->bts[0];
+	u_int8_t mi[128];
+	struct gsm_subscriber _subscr, *subscr = &_subscr;
+	unsigned int paging_group, mi_len;
+	u_int64_t num_imsi;
+	const char *imsi = nokia_imsi;
+
+	printf("FEUER\n");
+
+#if 1
+	memset(subscr, 0, sizeof(*subscr));
+	strcpy(subscr->imsi, imsi);
+	db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscr);
+	if (!subscr) 
+		return;
+
+	mi_len = generate_mid_from_tmsi(mi, strtoul(subscr->tmsi, NULL, 10));
+#else
+	mi_len = string_to_mi(mi, imsi, GSM_MI_TYPE_IMSI);
+#endif
+
+	num_imsi = strtoull(imsi, NULL, 10);
+	paging_group = get_paging_group(num_imsi, 1, 3);
+
+	for (paging_group = 0; paging_group < 3; paging_group++)
+		rsl_paging_cmd(bts, paging_group, mi_len, mi, RSL_CHANNEED_TCH_F);
+
+	schedule_timer(&pag_timer, 10, 0);
+}
+
 int main(int argc, char **argv)
 {
 	/* parse options */
@@ -649,6 +720,9 @@ int main(int argc, char **argv)
 	printf("DB: Database prepared.\n");
 
 	bootstrap_network();
+
+	pag_timer.cb = pag_timer_cb;
+	schedule_timer(&pag_timer, 10, 0);
 
 	while (1) {
 		bsc_select_main();
