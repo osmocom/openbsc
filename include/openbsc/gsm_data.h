@@ -126,8 +126,8 @@ struct gsm_ms {
 
 struct gsm_network {
 	/* global parameters */
-	u_int8_t country_code;
-	u_int8_t network_code;
+	u_int16_t country_code;
+	u_int16_t network_code;
 
 	unsigned int num_bts;
 	/* private lists */
@@ -136,8 +136,8 @@ struct gsm_network {
 	struct gsm_subscriber *subscriber;
 };
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code,
-				     u_int8_t network_code);
+struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
+				     u_int16_t network_code);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,

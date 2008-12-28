@@ -24,8 +24,8 @@
 
 #include <openbsc/gsm_data.h>
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, u_int8_t country_code,
-				     u_int8_t network_code)
+struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
+				     u_int16_t network_code)
 {
 	int i;
 	struct gsm_network *net;

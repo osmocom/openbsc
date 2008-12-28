@@ -587,20 +587,21 @@ static void patch_tables(struct gsm_bts *bts)
 		(struct gsm48_system_information_type_4*)&si4;
 	struct gsm48_system_information_type_6 *type_6 =
 		(struct gsm48_system_information_type_6*)&si6;
+	struct gsm48_loc_area_id lai;
+
+	gsm0408_generate_lai(&lai, bts->network->country_code,
+				bts->network->network_code, bts->location_area_code);
 
 	/* assign the MCC and MNC */
-	gsm0408_generate_lai(&type_3->lai, bts->network->country_code,
-				bts->network->network_code, bts->location_area_code);
-	gsm0408_generate_lai(&type_4->lai, bts->network->country_code,
-				bts->network->network_code, bts->location_area_code);
-	gsm0408_generate_lai(&type_6->lai, bts->network->country_code,
-				bts->network->network_code, bts->location_area_code);
+	type_3->lai = lai;
+	type_4->lai = lai;
+	type_6->lai = lai;
 }
 
 
 static void bootstrap_rsl(struct gsm_bts *bts)
 {
-	fprintf(stdout, "bootstrapping RSL\n");
+	fprintf(stdout, "bootstrapping RSL MCC=%u MNC=%u\n", MCC, MNC);
 	patch_tables(bts);
 	set_system_infos(bts);
 

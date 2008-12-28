@@ -22,7 +22,7 @@ struct gsm48_chan_desc {
 			u_int8_t arfcn_low;
 		} h0;
 	};
-};
+} __attribute__ ((packed));
 
 /* Chapter 10.5.2.30 */
 struct gsm48_req_ref {
@@ -31,7 +31,7 @@ struct gsm48_req_ref {
 		 t1_:5;
 	u_int8_t t2:5,
 		 t3_low:3;
-};
+} __attribute__ ((packed));
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
@@ -44,7 +44,7 @@ struct gsm48_imm_ass {
 	u_int8_t timing_advance;
 	u_int8_t mob_alloc_len;
 	u_int8_t mob_alloc[0];
-};
+} __attribute__ ((packed));
 
 /* Chapter 10.5.1.3 */
 struct gsm48_loc_area_id {
