@@ -50,6 +50,8 @@ struct gsm_lai {
 	u_int16_t lac;
 };
 
+
+
 static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48)
 {
 	u_int8_t dig[4];
@@ -176,6 +178,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	u_int8_t *mid;
+	int ret;
 	
 	msg->lchan = lchan;
 
@@ -195,7 +198,13 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	gsm48_sendmsg(msg);
 
 	/* free the channel afterwards */   
-	return rsl_chan_release(lchan);	
+	ret = rsl_chan_release(lchan);
+
+	/* inform the upper layer on the progress */
+	if (bts->network->update_request_accepted)
+		(*bts->network->update_request_accepted)(bts, tmsi);
+
+	return ret;
 }
 
 static char bcd2char(u_int8_t bcd)

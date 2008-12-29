@@ -144,6 +144,8 @@ struct gsm_network {
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
 	struct gsm_ms	*ms;
 	struct gsm_subscriber *subscriber;
+
+	void (*update_request_accepted)(struct gsm_bts *, u_int32_t);
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,

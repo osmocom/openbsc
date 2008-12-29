@@ -48,6 +48,9 @@ static int MCC = 1;
 static int MNC = 1;
 static const char *database_name = "hlr.sqlite3";
 
+/* forward declarations */
+static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t assigned_tmi);
+
 
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
@@ -636,6 +639,7 @@ static int bootstrap_network(void)
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
+	gsmnet->update_request_accepted = bsc_hack_update_request_accepted;
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -738,41 +742,74 @@ static int string_to_mi(u_int8_t *mi, const char *string,
 	return cur - mi;
 }
 
-static const char *nokia_imsi = "7240311131388";
-static const char *rokr_imsi = "4660198001300";
+/*
+ * Stations that registered and that we need to page
+ */
+struct pending_registered_station {
+	struct llist_head entry;
 
-void pag_timer_cb(void *data)
+	/* the tmsi of the subscriber */
+	u_int32_t tmsi;
+	int last_page_group;
+};
+
+static LLIST_HEAD(pending_stations);
+
+static void pag_timer_cb(void *data);
+static struct timer_list pag_timer = {
+	.cb = pag_timer_cb,
+};
+
+/* page the tmsi and wait for the channel request */
+static void pag_timer_cb(void *data)
 {
 	struct gsm_bts *bts = &gsmnet->bts[0];
+	struct pending_registered_station *pending_station;
 	u_int8_t mi[128];
-	struct gsm_subscriber _subscr, *subscr = &_subscr;
-	unsigned int paging_group, mi_len;
-	u_int64_t num_imsi;
-	const char *imsi = nokia_imsi;
+	unsigned int mi_len;
 
-	printf("FEUER\n");
-
-#if 1
-	memset(subscr, 0, sizeof(*subscr));
-	strcpy(subscr->imsi, imsi);
-	db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscr);
-	if (!subscr) 
+	if (llist_empty(&pending_stations)) {
+		DEBUGP(DPAG, "pag_timer_cb but no pending mobile stations\n");
 		return;
+	}
 
-	mi_len = generate_mid_from_tmsi(mi, strtoul(subscr->tmsi, NULL, 10));
-#else
-	mi_len = string_to_mi(mi, imsi, GSM_MI_TYPE_IMSI);
-#endif
+	/* get the station to page */
+	pending_station = (struct pending_registered_station*) pending_stations.next;
+	mi_len = generate_mid_from_tmsi(mi, pending_station->tmsi);
+	rsl_paging_cmd(bts, pending_station->last_page_group, mi_len, mi, RSL_CHANNEED_TCH_F);
 
-	num_imsi = strtoull(imsi, NULL, 10);
-	paging_group = get_paging_group(num_imsi, 1, 3);
+	/* which group to page next */
+	pending_station->last_page_group = (pending_station->last_page_group+1) % 12;
+	schedule_timer(&pag_timer, 1, 0);
+}
 
-#if 0
-	for (paging_group = 0; paging_group < 3; paging_group++)
-		rsl_paging_cmd(bts, paging_group, mi_len, mi, RSL_CHANNEED_TCH_F);
+/*
+ * initiate the a page command for the given
+ * station and retry until we get a channel request
+ */
+static void station_timer_cb(void *data)
+{
+	DEBUGP(DPAG, "Initiating paging of a channel\n");
+	pag_timer_cb(0);
+}
 
-	schedule_timer(&pag_timer, 10, 0);
-#endif
+static struct timer_list station_timer = {
+	.cb = station_timer_cb,
+};
+
+/*
+ * schedule work
+ */
+static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t tmsi)
+{
+	struct pending_registered_station *station =
+				(struct pending_registered_station*)malloc(sizeof(*station));
+	station->tmsi = tmsi;
+	station->last_page_group = 0;
+	llist_add_tail(&station->entry, &pending_stations);
+
+	if (!timer_pending(&station_timer))
+		schedule_timer(&station_timer, 1, 0);
 }
 
 int main(int argc, char **argv)
@@ -793,9 +830,6 @@ int main(int argc, char **argv)
 	printf("DB: Database prepared.\n");
 
 	bootstrap_network();
-
-	pag_timer.cb = pag_timer_cb;
-	schedule_timer(&pag_timer, 10, 0);
 
 	while (1) {
 		bsc_select_main();
