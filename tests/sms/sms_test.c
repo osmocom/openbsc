@@ -85,4 +85,6 @@ int main(int argc, char** argv)
 		gsm0411_rcv_sms(msg);
 		msgb_free(msg);
 	}
+
+	gsm0411_send_sms(0, 0);
 }

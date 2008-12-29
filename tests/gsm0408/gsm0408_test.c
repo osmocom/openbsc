@@ -78,3 +78,4 @@ void db_subscriber_alloc_tmsi(void) {}
 void db_create_subscriber(void) {}
 void rsl_chan_release(void) {}
 void msgb_alloc(void) {}
+void gsm0411_send_sms(void) {}

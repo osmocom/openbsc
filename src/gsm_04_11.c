@@ -73,6 +73,12 @@ static char *gsm411_7bit_decode(u_int8_t *user_data, u_int8_t length)
 	return text;
 }
 
+static u_int8_t gsm0411_tpdu_from_sms(u_int8_t *tpdu, struct sms_deliver *sms)
+{
+	u_int8_t len = 0;
+
+}
+
 static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 {
 	u_int8_t *smsp = msgb_sms(msg);
@@ -214,5 +220,47 @@ int gsm0411_rcv_sms(struct msgb *msg)
 
 
 	return rc;
+}
+
+/* Test TPDU */
+static u_int8_t tpdu_test[] = {
+	0x00, 0x01, 0x00, 0x04, 0x81, 0x32, 0x24, 0x00, 0x00, 0x24, 0xD7, 0x32, 0x7B, 0xFC, 0x6E, 0x97, 0x41, 0xF4, 0x37, 0x88, 0x8E, 0x2E, 0x83, 0x64, 0xB5, 0xE1, 0x0C, 0x74, 0x9C, 0x36, 0x41, 0xF4, 0xF2, 0x9C, 0x0E, 0x72, 0x97, 0xE9, 0xF7, 0xB7, 0x7C, 0x0D
+};
+
+int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm411_rp_hdr *rp;
+	u_int8_t *data, *tpdu, smslen;
+
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SMS;
+	gh->msg_type = GSM411_MT_CP_DATA;
+
+	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
+	rp->msg_type = GSM411_MT_RP_DATA_MT;
+	rp->msg_ref = 42; /* FIXME: Choose randomly */
+	/* No OA or DA for now */
+	data = (u_int8_t *)msgb_put(msg, 1);
+	data[0] = 0;
+	data = (u_int8_t *)msgb_put(msg, 1);
+	data[0] = 0;
+
+	/* FIXME: Hardcoded for now */
+	smslen = gsm0411_tpdu_from_sms(tpdu, sms);
+
+	data = (u_int8_t *)msgb_put(msg, sizeof(tpdu_test));
+
+	//memcpy(data, tpdu, smslen);
+	memcpy(data, tpdu_test, sizeof(tpdu_test));
+
+	free(tpdu);
+
+	DEBUGP(DSMS, "TX: SMS SUBMIT\n");
+
+	return gsm0411_sendmsg(msg);
 }
 

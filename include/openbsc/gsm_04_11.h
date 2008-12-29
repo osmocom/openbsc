@@ -46,8 +46,28 @@ struct sms_submit {
 	u_int8_t *user_data;
 };
 
+/* SMS deliver PDU */
+struct sms_deliver {
+	u_int8_t *smsc;
+	u_int8_t mti:2;
+	u_int8_t rd:1;
+	u_int8_t vpf:2;
+	u_int8_t srr:1;
+	u_int8_t udhi:1;
+	u_int8_t rp:1;
+	u_int8_t msg_ref;
+	u_int8_t *orig_addr;
+	u_int8_t pid;
+	u_int8_t dcs;
+	u_int8_t vp;
+	u_int8_t ud_len;
+	u_int8_t *user_data;
+};
+
 struct msgb;
 
 int gsm0411_rcv_sms(struct msgb *msg);
+
+int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms);
 
 #endif

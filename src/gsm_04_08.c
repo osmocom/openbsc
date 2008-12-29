@@ -193,6 +193,8 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	gsm48_sendmsg(msg);
 
+	gsm0411_send_sms(lchan, 0);
+
 	return gsm48_cc_tx_setup(lchan);
 }
 
