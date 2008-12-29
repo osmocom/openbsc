@@ -475,14 +475,15 @@ static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
 	return gsm48_cc_sendmsg(msg);
 }
 
-static int gsm48_cc_tx_simple(struct gsm_lchan *lchan, u_int8_t msg_type)
+static int gsm48_tx_simple(struct gsm_lchan *lchan,
+			   u_int8_t pdisc, u_int8_t msg_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	msg->lchan = lchan;
 
-	gh->proto_discr = GSM48_PDISC_CC;
+	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
 
 	return gsm48_cc_sendmsg(msg);
@@ -495,7 +496,8 @@ static int gsm48_cc_rx_status_enq(struct msgb *msg)
 
 static int gsm48_cc_rx_setup(struct msgb *msg)
 {
-	return gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CALL_CONF);
+	return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+			       GSM48_MT_CC_CALL_CONF);
 }
 
 static int gsm0408_rcv_cc(struct msgb *msg)
@@ -521,7 +523,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	case GSM48_MT_CC_CONNECT:
 		DEBUGP(DCC, "CONNECT\n");
 		/* MT: need to respond with CONNECT_ACK */
-		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CONNECT_ACK);
+		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				     GSM48_MT_CC_CONNECT_ACK);
 		break;
 	case GSM48_MT_CC_CONNECT_ACK:
 		/* MO: Answer to CONNECT */
@@ -540,14 +543,16 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "DISCONNECT (state->RELEASE_REQ)\n");
 		call->state = GSM_CSTATE_RELEASE_REQ;
 		/* FIXME: clear the network connection */
-		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_RELEASE);
+		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				     GSM48_MT_CC_RELEASE);
 		break;
 	case GSM48_MT_CC_SETUP:
 		call->type = GSM_CT_MO;
 		call->state = GSM_CSTATE_INITIATED;
 		call->transaction_id = gh->proto_discr & 0xf0;
 		DEBUGP(DCC, "SETUP(tid=0x%02x)\n", call->transaction_id);
-		rc = gsm48_cc_tx_simple(msg->lchan, GSM48_MT_CC_CONNECT);
+		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				     GSM48_MT_CC_CONNECT);
 		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
 		break;
 	case GSM48_MT_CC_EMERG_SETUP:
