@@ -492,7 +492,6 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV_ACK:
 		rc = rsl_rx_chan_act_ack(msg);
-		rc = rsl_rx_chan_act_ack(msg);
 		break;
 	case RSL_MT_CHAN_ACTIV_NACK:
 		rc = rsl_rx_chan_act_nack(msg);
