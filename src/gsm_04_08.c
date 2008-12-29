@@ -2,6 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -193,9 +194,8 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	gsm48_sendmsg(msg);
 
-	gsm0411_send_sms(lchan, 0);
-
-	return gsm48_cc_tx_setup(lchan);
+	/* free the channel afterwards */   
+	return rsl_chan_release(lchan);	
 }
 
 static char bcd2char(u_int8_t bcd)
