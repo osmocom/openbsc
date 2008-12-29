@@ -577,6 +577,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	struct gsm48_req_ref *rqd_ref;
 	struct gsm48_imm_ass ia;
 	enum gsm_chan_t lctype;
+	enum gsm_chreq_reason_t chreq_reason;
 	struct gsm_lchan *lchan;
 	u_int8_t rqd_ta;
 
@@ -597,6 +598,11 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* determine channel type (SDCCH/TCH_F/TCH_H) based on
 	 * request reference RA */
 	lctype = get_ctype_by_chreq(bts, rqd_ref->ra);
+	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra);
+
+	if (chreq_reason == GSM_CHREQ_REASON_PAG) {
+		DEBUGP(DPAG, "CHAN RQD due PAG %d\n", lctype);
+	}
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
@@ -628,8 +634,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.timing_advance = rqd_ta;
 	ia.mob_alloc_len = 0;
 
-	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u chan_nr=0x%02x\n",
-		arfcn, ts_number, subch, lchan->type, ia.chan_desc.chan_nr);
+	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u chan_nr=0x%02x r%d\n",
+		arfcn, ts_number, subch, lchan->type, ia.chan_desc.chan_nr, chreq_reason);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	return rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
