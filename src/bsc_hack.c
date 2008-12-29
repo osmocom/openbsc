@@ -767,10 +767,12 @@ void pag_timer_cb(void *data)
 	num_imsi = strtoull(imsi, NULL, 10);
 	paging_group = get_paging_group(num_imsi, 1, 3);
 
+#if 0
 	for (paging_group = 0; paging_group < 3; paging_group++)
 		rsl_paging_cmd(bts, paging_group, mi_len, mi, RSL_CHANNEED_TCH_F);
 
 	schedule_timer(&pag_timer, 10, 0);
+#endif
 }
 
 int main(int argc, char **argv)

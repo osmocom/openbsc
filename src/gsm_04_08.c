@@ -40,6 +40,9 @@
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
 
+static int gsm48_tx_simple(struct gsm_lchan *lchan,
+			   u_int8_t pdisc, u_int8_t msg_type);
+
 struct gsm_lai {
 	u_int16_t mcc;
 	u_int16_t mnc;
@@ -102,7 +105,7 @@ void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 {
-	u_int32_t *tptr = &buf[3];
+	u_int32_t *tptr = (u_int32_t *) &buf[3];
 
 	buf[0] = GSM48_IE_MOBILE_ID;
 	buf[1] = TMSI_LEN;
@@ -117,10 +120,28 @@ static struct msgb *gsm48_msgb_alloc(void)
 	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
 }
 
-static int gsm0408_sendmsg(struct msgb *msg)
+static int gsm48_sendmsg(struct msgb *msg)
 {
-	if (msg->lchan)
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
+
+	if (msg->lchan) {
 		msg->trx = msg->lchan->ts->trx;
+
+		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC) {
+			/* Send a 04.08 call control message, add transaction
+			 * ID and TI flag */
+			gh->proto_discr |= msg->lchan->call.transaction_id;
+
+			/* GSM 04.07 Section 11.2.3.1.3 */
+			switch (msg->lchan->call.type) {
+			case GSM_CT_MO:
+				gh->proto_discr |= 0x80;
+				break;
+			case GSM_CT_MT:
+				break;
+			}
+		}
+	}
 
 	msg->l3h = msg->data;
 
@@ -143,7 +164,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE REJECT\n");
 
-	return gsm0408_sendmsg(msg);
+	return gsm48_sendmsg(msg);
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
@@ -170,7 +191,9 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	return gsm0408_sendmsg(msg);
+	gsm48_sendmsg(msg);
+
+	return gsm48_cc_tx_setup(lchan);
 }
 
 static char bcd2char(u_int8_t bcd)
@@ -235,7 +258,7 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 	gh->msg_type = GSM48_MT_MM_ID_REQ;
 	gh->data[0] = id_type;
 
-	return gsm0408_sendmsg(msg);
+	return gsm48_sendmsg(msg);
 }
 
 #define MI_SIZE 32
@@ -351,17 +374,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-
-	msg->lchan = lchan;
-
-	gh->proto_discr = GSM48_PDISC_MM;
-	gh->msg_type = GSM48_MT_MM_CM_SERV_ACC;
-
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
-
-	return gsm0408_sendmsg(msg);
+	return gsm48_tx_simple(lchan, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
 }
 		
 static int gsm48_rx_mm_serv_req(struct msgb *msg)
@@ -369,7 +383,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t serv_type = gh->data[0] & 0x0f;
 
-	DEBUGP(DMM, "CM SERVICE REQUEST serv_type=0x%02x\n", serv_type);
+	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x\n", serv_type);
 
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
@@ -432,36 +446,16 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 
 /* Call Control */
 
-/* Send a 04.08 call control message, add transaction ID and TI flag */
-static int gsm48_cc_sendmsg(struct msgb *msg)
-{
-	struct gsm48_hdr *gh = msg->data;
-	struct gsm_call *call = &msg->lchan->call;
-
-	gh->proto_discr |= msg->lchan->call.transaction_id;
-
-	/* GSM 04.07 Section 11.2.3.1.3 */
-	switch (call->type) {
-	case GSM_CT_MO:
-		gh->proto_discr |= 0x80;
-		break;
-	case GSM_CT_MT:
-		break;
-	}
-
-	return gsm0408_sendmsg(msg);
-}
-
-
 static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	u_int8_t *cause, *call_state;
 
+	gh->proto_discr = GSM48_PDISC_CC;
+
 	msg->lchan = lchan;
 
-	gh->proto_discr = GSM48_PDISC_CC;
 	gh->msg_type = GSM48_MT_CC_STATUS;
 
 	cause = msgb_put(msg, 3);
@@ -472,7 +466,7 @@ static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
 	call_state = msgb_put(msg, 1);
 	call_state[0] = 0xc0 | 0x00;
 
-	return gsm48_cc_sendmsg(msg);
+	return gsm48_sendmsg(msg);
 }
 
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
@@ -486,7 +480,7 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
 
-	return gsm48_cc_sendmsg(msg);
+	return gsm48_sendmsg(msg);
 }
 
 static int gsm48_cc_rx_status_enq(struct msgb *msg)
@@ -498,6 +492,33 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 {
 	return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_CALL_CONF);
+}
+
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm_call *call = &lchan->call;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 8);
+
+	call->type = GSM_CT_MT;
+	msg->lchan = lchan;
+
+	gh->proto_discr = GSM48_PDISC_CC;
+	gh->msg_type = GSM48_MT_CC_SETUP;
+	gh->data[0] = 0x34;
+	gh->data[1] = 0x00;
+	gh->data[2] = 0x5c;
+	gh->data[3] = 0x04;
+	gh->data[4] = 0xb9;
+	gh->data[5] = 0x83;
+	gh->data[6] = 0x32;
+	gh->data[7] = 0x24;
+
+	DEBUGP(DCC, "Sending SETUP\n");
+
+	return gsm48_sendmsg(msg);
 }
 
 static int gsm0408_rcv_cc(struct msgb *msg)
