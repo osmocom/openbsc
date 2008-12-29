@@ -53,6 +53,7 @@ static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t assi
 static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
 			enum gsm_chreq_reason_t reason);
 static void bsc_hack_channel_response(struct gsm_lchan *chan, int acked);
+static void bsc_hack_call_released(struct gsm_lchan *chan);
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -645,6 +646,7 @@ static int bootstrap_network(void)
 	gsmnet->update_request_accepted = bsc_hack_update_request_accepted;
 	gsmnet->channel_allocated = bsc_hack_channel_allocated;
 	gsmnet->channel_response = bsc_hack_channel_response;
+	gsmnet->call_released = bsc_hack_call_released;
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -873,6 +875,15 @@ static void bsc_hack_channel_response(struct gsm_lchan *lchan, int ack)
 		free(station);
 		pag_timer_cb(0);
 	}
+}
+
+static void bsc_hack_call_released(struct gsm_lchan *lchan)
+{
+	DEBUGP(DPAG, "Call released jumping to the next...\n");
+	rsl_chan_release(lchan);
+
+	/* next!!! */
+	pag_timer_cb(0);
 }
 
 int main(int argc, char **argv)

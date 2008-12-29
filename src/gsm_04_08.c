@@ -537,6 +537,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
 	struct gsm_call *call = &msg->lchan->call;
+	struct gsm_network *network = msg->lchan->ts->trx->bts->network;
 	int rc = 0;
 
 	switch (msg_type) {
@@ -548,6 +549,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		/* Answer from MS to RELEASE */
 		DEBUGP(DCC, "RELEASE COMPLETE (state->NULL)\n");
 		call->state = GSM_CSTATE_NULL;
+		if (network->call_released)
+			(*network->call_released)(msg->lchan);
 		break;
 	case GSM48_MT_CC_ALERTING:
 		DEBUGP(DCC, "ALERTING\n");
