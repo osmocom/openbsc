@@ -300,6 +300,9 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 		DEBUGP(DMIB, "got unexpected 0x%x prim\n", hh->prim);
 		break;
 	}
+	/* FIXME: don't free it if we still hold reference! */
+	msgb_free(msg);
+
 	return ret;
 }
 
