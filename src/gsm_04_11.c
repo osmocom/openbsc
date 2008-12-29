@@ -117,7 +117,8 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 	return 0;
 }
 
-static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t msg_ref)
+static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t trans_id,
+		u_int8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -126,7 +127,7 @@ static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t msg_ref)
 	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SMS;
+	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4;
 	gh->msg_type = GSM411_MT_CP_ACK;
 
 	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
@@ -138,7 +139,8 @@ static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t msg_ref)
 	return gsm0411_sendmsg(msg);
 }
 
-static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t msg_ref)
+static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
+		u_int8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -147,7 +149,7 @@ static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t msg_ref)
 	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SMS;
+	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4;
 	gh->msg_type = GSM411_MT_CP_ERROR;
 
 	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
@@ -173,7 +175,7 @@ static int gsm411_cp_data(struct msgb *msg)
 		/* Skip SMSC no and RP-UD length */
 		msg->smsh = &rp_data->data[1] + rp_data->data[1] + 2;
 		gsm411_sms_submit_from_msgb(msg);
-		gsm411_send_rp_ack(msg->lchan, rp_data->msg_ref);
+		gsm411_send_rp_ack(msg->lchan, (gh->proto_discr & 0xf0)>>4, rp_data->msg_ref);
 		break;
 	default:
 		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);
