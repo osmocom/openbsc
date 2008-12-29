@@ -226,6 +226,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 static u_int8_t tpdu_test[] = {
 	0x00, 0x01, 0x00, 0x04, 0x81, 0x32, 0x24, 0x00, 0x00, 0x24, 0xD7, 0x32, 0x7B, 0xFC, 0x6E, 0x97, 0x41, 0xF4, 0x37, 0x88, 0x8E, 0x2E, 0x83, 0x64, 0xB5, 0xE1, 0x0C, 0x74, 0x9C, 0x36, 0x41, 0xF4, 0xF2, 0x9C, 0x0E, 0x72, 0x97, 0xE9, 0xF7, 0xB7, 0x7C, 0x0D
 };
+/* Alternative TPDU 040DD0F334FC1CA6970100008080312170224008D4F29CDE0EA7D9 */
 
 int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 {
@@ -241,11 +242,19 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	gh->msg_type = GSM411_MT_CP_DATA;
 
 	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
+	rp->len = sizeof(tpdu_test) + 10;
 	rp->msg_type = GSM411_MT_RP_DATA_MT;
 	rp->msg_ref = 42; /* FIXME: Choose randomly */
 	/* No OA or DA for now */
-	data = (u_int8_t *)msgb_put(msg, 1);
-	data[0] = 0;
+	data = (u_int8_t *)msgb_put(msg, 8);
+	data[0] = 0x07;
+	data[1] = 0x91;
+	data[2] = 0x44;
+	data[3] = 0x77;
+	data[4] = 0x58;
+	data[5] = 0x10;
+	data[6] = 0x06;
+	data[7] = 0x50;
 	data = (u_int8_t *)msgb_put(msg, 1);
 	data[0] = 0;
 
