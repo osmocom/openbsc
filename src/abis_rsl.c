@@ -455,6 +455,8 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 /* Chapter 8.4.2: Channel Activate Acknowledge */
 static int rsl_rx_chan_act_ack(struct msgb *msg)
 {
+	struct gsm_lchan *lchan;
+	struct gsm_network *network;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 
 	/* BTS has confirmed channel activation, we now need
@@ -464,12 +466,20 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	
 	DEBUGP(DRSL, "Channel Activate ACK Channel 0x%02x\n", rslh->chan_nr);
 
+	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
+	network = msg->trx->bts->network;
+	if (network->channel_acked)
+		(*network->channel_acked)(lchan);
+
+
 	return 0;
 }
 
 /* Chapter 8.4.3: Channel Activate NACK */
 static int rsl_rx_chan_act_nack(struct msgb *msg)
 {
+	struct gsm_lchan *lchan;
+	struct gsm_network *network;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 
 	/* BTS has confirmed channel activation, we now need
@@ -478,6 +488,11 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		return -EINVAL;
 	
 	DEBUGP(DRSL, "Channel Activate NACK Channel 0x%02x\n", rslh->chan_nr);
+
+	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
+	network = msg->trx->bts->network;
+	if (network->channel_nacked)
+		(*network->channel_nacked)(lchan);
 
 	return 0;
 }

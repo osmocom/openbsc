@@ -150,6 +150,8 @@ struct gsm_network {
 
 	void (*update_request_accepted)(struct gsm_bts *, u_int32_t);
 	void (*channel_allocated)(struct gsm_lchan *bts, enum gsm_chreq_reason_t);
+	void (*channel_acked)(struct gsm_lchan *);
+	void (*channel_nacked)(struct gsm_lchan *);
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,

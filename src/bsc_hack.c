@@ -52,6 +52,8 @@ static const char *database_name = "hlr.sqlite3";
 static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t assigned_tmi);
 static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
 			enum gsm_chreq_reason_t reason);
+static void bsc_hack_channel_acked(struct gsm_lchan *chan);
+static void bsc_hack_channel_nacked(struct gsm_lchan *chan);
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -643,6 +645,8 @@ static int bootstrap_network(void)
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
 	gsmnet->update_request_accepted = bsc_hack_update_request_accepted;
 	gsmnet->channel_allocated = bsc_hack_channel_allocated;
+	gsmnet->channel_acked = bsc_hack_channel_acked;
+	gsmnet->channel_nacked = bsc_hack_channel_nacked;
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -834,6 +838,55 @@ static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
 	/* allocate some token in the chan for us */
 	chan->user_data = (void*)station->tmsi;
 	del_timer(&pag_timer);
+}
+
+static void bsc_hack_channel_acked(struct gsm_lchan *lchan)
+{
+	struct pending_registered_station *station;
+	if (llist_empty(&pending_stations)) {
+		DEBUGP(DPAG, "Channel nacked but nothing pending\n");
+		return;
+	}
+
+	station = (struct pending_registered_station*) pending_stations.next;
+	if (station->tmsi != (u_int32_t)lchan->user_data) {
+		DEBUGP(DPAG, "Hmmm the channel is not allocated by the"
+					 "station we wanted channel: %u us:%u\n",
+					  (u_int32_t)(lchan->user_data), station->tmsi);
+		return;
+	}
+
+	DEBUGP(DPAG, "We have probably paged a channel for tmsi: %u on %d\n",
+			station->tmsi, lchan->nr);
+		
+	llist_del(&station->entry);
+	free(station);
+}
+
+/* failed... remove from the list */
+static void bsc_hack_channel_nacked(struct gsm_lchan *lchan)
+{
+	struct pending_registered_station *station;
+	if (llist_empty(&pending_stations)) {
+		DEBUGP(DPAG, "Channel nacked but nothing pending\n");
+		return;
+	}
+
+	station = (struct pending_registered_station*) pending_stations.next;
+	if (station->tmsi != (u_int32_t)lchan->user_data) {
+		DEBUGP(DPAG, "Hmmm the channel is not allocated by the"
+					 "station we wanted channel: %u us:%u\n",
+					  (u_int32_t)(lchan->user_data), station->tmsi);
+		return;
+	}
+
+
+	/*
+	 * give up and go to the next channel
+	 */
+	llist_del(&station->entry);
+	free(station);
+	pag_timer_cb(0);
 }
 
 int main(int argc, char **argv)
