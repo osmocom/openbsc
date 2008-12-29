@@ -31,9 +31,29 @@
 
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
+
+#define GSM411_ALLOC_SIZE	1024
+#define GSM411_ALLOC_HEADROOM	128
+
+static struct msgb *gsm411_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM);
+}
+
+static int gsm0411_sendmsg(struct msgb *msg)
+{
+	if (msg->lchan)
+		msg->trx = msg->lchan->ts->trx;
+
+	msg->l3h = msg->data;
+
+	return rsl_data_request(msg, 0);
+}
 
 static char *gsm411_7bit_decode(u_int8_t *user_data, u_int8_t length)
 {
@@ -97,12 +117,54 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 	return 0;
 }
 
+static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t msg_ref)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm411_rp_hdr *rp;
+
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SMS;
+	gh->msg_type = GSM411_MT_CP_ACK;
+
+	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
+	rp->msg_type = GSM411_MT_RP_ACK_MT;
+	rp->msg_ref = msg_ref;
+
+	DEBUGP(DSMS, "TX: SMS RP ACK\n");
+
+	return gsm0411_sendmsg(msg);
+}
+
+static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t msg_ref)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm411_rp_hdr *rp;
+
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SMS;
+	gh->msg_type = GSM411_MT_CP_ERROR;
+
+	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
+	rp->msg_type = GSM411_MT_RP_ERROR_MT;
+	rp->msg_ref = msg_ref;
+
+	DEBUGP(DSMS, "TX: SMS RP ERROR\n");
+
+	return gsm0411_sendmsg(msg);
+}
+
 static int gsm411_cp_data(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	int rc = 0;
 
-	struct gsm411_rp_data_hdr *rp_data = (struct gsm411_rp_data_hdr*)&gh->data;
+	struct gsm411_rp_hdr *rp_data = (struct gsm411_rp_hdr*)&gh->data;
 	u_int8_t msg_type =  rp_data->msg_type & 0x07;
 
 	switch (msg_type) {
@@ -111,6 +173,7 @@ static int gsm411_cp_data(struct msgb *msg)
 		/* Skip SMSC no and RP-UD length */
 		msg->smsh = &rp_data->data[1] + rp_data->data[1] + 2;
 		gsm411_sms_submit_from_msgb(msg);
+		gsm411_send_rp_ack(msg->lchan, rp_data->msg_ref);
 		break;
 	default:
 		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);

@@ -20,8 +20,8 @@
 #define GSM411_MT_RP_ERROR_MT	0x04
 #define GSM411_MT_RP_SMMA_MO	0x05
 
-/* Chapter 8.1.1 */
-struct gsm411_rp_data_hdr {
+/* Chapter 8.2.1 */
+struct gsm411_rp_hdr {
 	u_int8_t len;
 	u_int8_t msg_type;
 	u_int8_t msg_ref;
