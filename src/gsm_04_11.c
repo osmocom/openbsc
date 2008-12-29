@@ -202,7 +202,11 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		rc = gsm411_cp_data(msg);
 		break;
 	case GSM411_MT_CP_ACK:
+		DEBUGP(DSMS, "SMS CP-ACK\n");
+		break;
 	case GSM411_MT_CP_ERROR:
+		DEBUGP(DSMS, "SMS CP-ERROR, cause 0x%02x\n", gh->data[0]);
+		break;
 	default:
 		DEBUGP(DSMS, "Unimplemented CP msg_type: 0x%02x\n", msg_type);
 		break;
