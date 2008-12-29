@@ -50,6 +50,8 @@ static const char *database_name = "hlr.sqlite3";
 
 /* forward declarations */
 static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t assigned_tmi);
+static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
+			enum gsm_chreq_reason_t reason);
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -640,6 +642,7 @@ static int bootstrap_network(void)
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
 	gsmnet->update_request_accepted = bsc_hack_update_request_accepted;
+	gsmnet->channel_allocated = bsc_hack_channel_allocated;
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -810,6 +813,27 @@ static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t tmsi
 
 	if (!timer_pending(&station_timer))
 		schedule_timer(&station_timer, 1, 0);
+}
+
+static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
+									enum gsm_chreq_reason_t chreq_reason)
+{
+	struct pending_registered_station *station;
+	if (chreq_reason != GSM_CHREQ_REASON_PAG)
+		return;
+
+	if (llist_empty(&pending_stations)) {
+		DEBUGP(DPAG, "Channel allocated for pag but not waitin for it\n");
+		return;
+	}
+
+	station = (struct pending_registered_station*) pending_stations.next;
+
+	DEBUGP(DPAG, "CHAN RQD due PAG %d on %d for %u\n", chan->type, chan->nr, station->tmsi);
+
+	/* allocate some token in the chan for us */
+	chan->user_data = (void*)station->tmsi;
+	del_timer(&pag_timer);
 }
 
 int main(int argc, char **argv)

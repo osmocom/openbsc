@@ -579,6 +579,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	enum gsm_chreq_reason_t chreq_reason;
 	struct gsm_lchan *lchan;
 	u_int8_t rqd_ta;
+	int ret;
 
 	u_int16_t arfcn;
 	u_int8_t ts_number, subch;
@@ -598,10 +599,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	 * request reference RA */
 	lctype = get_ctype_by_chreq(bts, rqd_ref->ra);
 	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra);
-
-	if (chreq_reason == GSM_CHREQ_REASON_PAG) {
-		DEBUGP(DPAG, "CHAN RQD due PAG %d\n", lctype);
-	}
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
@@ -636,8 +633,13 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u chan_nr=0x%02x r%d\n",
 		arfcn, ts_number, subch, lchan->type, ia.chan_desc.chan_nr, chreq_reason);
 
+
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
-	return rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
+	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
+
+	/* inform the bsc that a channel has been allocated */
+	if (bts->network->channel_allocated)
+		(*bts->network->channel_allocated)(lchan, chreq_reason);
 }
 
 static int abis_rsl_rx_cchan(struct msgb *msg)

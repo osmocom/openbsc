@@ -84,6 +84,9 @@ struct gsm_lchan {
 
 	/* local end of a call, if any */
 	struct gsm_call call;
+
+	/* temporary user data, to be removed... and merged into gsm_call */
+	void *user_data;
 };
 
 #define BTS_TRX_F_ACTIVATED	0x0001
@@ -146,6 +149,7 @@ struct gsm_network {
 	struct gsm_subscriber *subscriber;
 
 	void (*update_request_accepted)(struct gsm_bts *, u_int32_t);
+	void (*channel_allocated)(struct gsm_lchan *bts, enum gsm_chreq_reason_t);
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
