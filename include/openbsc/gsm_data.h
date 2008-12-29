@@ -87,6 +87,10 @@ struct gsm_lchan {
 
 	/* temporary user data, to be removed... and merged into gsm_call */
 	void *user_data;
+
+	/* use count. how many users use this channel */
+	unsigned int use_count;
+	unsigned int pending_update_request : 1;
 };
 
 #define BTS_TRX_F_ACTIVATED	0x0001
@@ -148,10 +152,13 @@ struct gsm_network {
 	struct gsm_ms	*ms;
 	struct gsm_subscriber *subscriber;
 
-	void (*update_request_accepted)(struct gsm_bts *, u_int32_t);
+	/* management of the lower layers to allow the bsc to hook into it */
+	void (*update_request)(struct gsm_bts *, u_int32_t tmsi, int accepted);
 	void (*channel_allocated)(struct gsm_lchan *bts, enum gsm_chreq_reason_t);
+	void (*channel_deallocated)(struct gsm_lchan *bts);
 	void (*channel_response)(struct gsm_lchan *, int acked);
-	void (*call_released)(struct gsm_lchan *);
+	void (*channel_subscriber_assigned)(struct gsm_lchan *);
+	void (*call_state_changed)(struct gsm_lchan *, enum gsm_call_state new_state);
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,

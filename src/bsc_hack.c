@@ -49,11 +49,13 @@ static int MNC = 1;
 static const char *database_name = "hlr.sqlite3";
 
 /* forward declarations */
-static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t assigned_tmi);
+static void bsc_hack_update_request(struct gsm_bts *bts,
+			u_int32_t assigned_tmi, int accepted);
 static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
 			enum gsm_chreq_reason_t reason);
 static void bsc_hack_channel_response(struct gsm_lchan *chan, int acked);
-static void bsc_hack_call_released(struct gsm_lchan *chan);
+static void bsc_hack_call_state_changed(struct gsm_lchan *chan,
+			enum gsm_call_state new_state);
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -643,10 +645,10 @@ static int bootstrap_network(void)
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
-	gsmnet->update_request_accepted = bsc_hack_update_request_accepted;
+	gsmnet->update_request = bsc_hack_update_request;
 	gsmnet->channel_allocated = bsc_hack_channel_allocated;
 	gsmnet->channel_response = bsc_hack_channel_response;
-	gsmnet->call_released = bsc_hack_call_released;
+	gsmnet->call_state_changed = bsc_hack_call_state_changed;
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -807,10 +809,19 @@ static struct timer_list station_timer = {
 /*
  * schedule work
  */
-static void bsc_hack_update_request_accepted(struct gsm_bts *bts, u_int32_t tmsi)
+static void bsc_hack_update_request(struct gsm_bts *bts, u_int32_t tmsi, int accepted)
 {
 	struct pending_registered_station *station =
 				(struct pending_registered_station*)malloc(sizeof(*station));
+
+	/*
+	 * Only deal with LOCATION UPDATE REQUEST we have
+	 * accepted.
+	 */
+	if (!accepted)
+		return;
+
+
 	station->tmsi = tmsi;
 	station->last_page_group = 0;
 	llist_add_tail(&station->entry, &pending_stations);
@@ -877,9 +888,15 @@ static void bsc_hack_channel_response(struct gsm_lchan *lchan, int ack)
 	}
 }
 
-static void bsc_hack_call_released(struct gsm_lchan *lchan)
+static void bsc_hack_call_state_changed(struct gsm_lchan *lchan,
+					enum gsm_call_state new_state)
 {
 	DEBUGP(DPAG, "Call released jumping to the next...\n");
+
+	/* only handle the transition back to the NULL state */
+	if (new_state != GSM_CSTATE_NULL)
+		return;
+
 	rsl_chan_release(lchan);
 
 	/* next!!! */

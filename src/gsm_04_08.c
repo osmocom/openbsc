@@ -43,6 +43,7 @@
 
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
+static void schedule_reject(struct gsm_lchan *lchan);
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -193,18 +194,13 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	mid = msgb_put(msg, MID_TMSI_LEN);
 	generate_mid_from_tmsi(mid, tmsi);
 
+	lchan->pending_update_request = 0;
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	gsm48_sendmsg(msg);
-
-	gsm0411_send_sms(lchan, 0);
-
-	/* free the channel afterwards */   
-	ret = rsl_chan_release(lchan);
 
 	/* inform the upper layer on the progress */
-	if (bts->network->update_request_accepted)
-		(*bts->network->update_request_accepted)(bts, tmsi);
+	if (bts->network->update_request)
+		(*bts->network->update_request)(bts, tmsi, 1);
 
 	return ret;
 }
@@ -293,11 +289,16 @@ static int mm_rx_id_resp(struct msgb *msg)
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
 			lchan->subscr = db_create_subscriber(mi_string);
-		if (lchan->subscr && lchan->subscr->authorized) {
-			/* FIXME: check if we've recently received UPDATE REQUEST */
-			db_subscriber_alloc_tmsi(lchan->subscr);
-			tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
-			return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+
+		/* We have a pending UPDATE REQUEST handle it now */
+		if (lchan->pending_update_request) {
+			if (lchan->subscr->authorized) {
+				db_subscriber_alloc_tmsi(lchan->subscr);
+				tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
+				return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+			} else {
+				schedule_reject(lchan);
+			}
 		}
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -317,6 +318,14 @@ static void loc_upd_rej_cb(void *data)
 
 	gsm0408_loc_upd_rej(lchan, 0x16);
 	rsl_chan_release(lchan);
+}
+
+static void schedule_reject(struct gsm_lchan *lchan)
+{
+    lchan->timer.cb = loc_upd_rej_cb;
+    lchan->timer.data = lchan;
+    lchan->pending_update_request = 0;
+    schedule_timer(&lchan->timer, 1, 0);
 }
 
 #define MI_SIZE 32
@@ -369,11 +378,14 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	lchan->subscr = subscr;
 
-	if (!subscr || !subscr->authorized) {
-		/* 0x16 is congestion */
-		lchan->timer.cb = loc_upd_rej_cb;
-		lchan->timer.data = lchan;
-		schedule_timer(&lchan->timer, 1, 0);
+	/* we know who we deal with and don't want him */
+	if (subscr && !subscr->authorized) {
+		schedule_reject(lchan);
+		return 0;
+	} else if (!subscr) {
+		/* we have asked for the imsi and should get a
+		 * IDENTITY RESPONSE */
+		lchan->pending_update_request = 1;
 		return 0;
 	}
 
@@ -550,9 +562,9 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	case GSM48_MT_CC_RELEASE_COMPL:
 		/* Answer from MS to RELEASE */
 		DEBUGP(DCC, "RELEASE COMPLETE (state->NULL)\n");
+		if (network->call_state_changed)
+			(*network->call_state_changed)(msg->lchan, call->state);
 		call->state = GSM_CSTATE_NULL;
-		if (network->call_released)
-			(*network->call_released)(msg->lchan);
 		break;
 	case GSM48_MT_CC_ALERTING:
 		DEBUGP(DCC, "ALERTING\n");
