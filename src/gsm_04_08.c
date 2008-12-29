@@ -688,6 +688,21 @@ static const enum gsm_chan_t ctype_by_chreq[] = {
 	[CHREQ_T_PAG_R_TCH_FH]		= GSM_LCHAN_TCH_F,
 };
 
+static const enum gsm_chreq_reason_t reason_by_chreq[] = {
+	[CHREQ_T_EMERG_CALL]		= GSM_CHREQ_REASON_EMERG,
+	[CHREQ_T_CALL_REEST_TCH_F]	= GSM_CHREQ_REASON_CALL,
+	[CHREQ_T_CALL_REEST_TCH_H]	= GSM_CHREQ_REASON_CALL,
+	[CHREQ_T_CALL_REEST_TCH_H_DBL]	= GSM_CHREQ_REASON_CALL,
+	[CHREQ_T_SDCCH]			= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_TCH_F]			= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_LOCATION_UPD]		= GSM_CHREQ_REASON_LOCATION_UPD,
+	[CHREQ_T_PAG_R_ANY]		= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_PAG_R_TCH_F]		= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_PAG_R_TCH_FH]		= GSM_CHREQ_REASON_PAG,
+};
+
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 {
 	int i;
@@ -700,4 +715,18 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 	}
 	fprintf(stderr, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
 	return GSM_LCHAN_SDCCH;
+}
+
+enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra)
+{
+	int i;
+	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+
+	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
+		const struct chreq *chr = &chreq_type_neci0[i];
+		if ((ra & chr->mask) == chr->val)
+			return reason_by_chreq[chr->type];
+	}
+	fprintf(stderr, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
+	return GSM_CHREQ_REASON_OTHER;
 }

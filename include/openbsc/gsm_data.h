@@ -60,6 +60,16 @@ enum gsm_chan_t {
 	GSM_LCHAN_UNKNOWN,
 };
 
+
+/* Channel Request reason */
+enum gsm_chreq_reason_t {
+	GSM_CHREQ_REASON_EMERG,
+	GSM_CHREQ_REASON_PAG,
+	GSM_CHREQ_REASON_CALL,
+	GSM_CHREQ_REASON_LOCATION_UPD,
+	GSM_CHREQ_REASON_OTHER,
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
