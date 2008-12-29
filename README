@@ -1,0 +1,18 @@
+About OpenBSC
+=============
+
+OpenBSC is a minimalistic implementation of the GSM Network, with particular
+emphasis on the functionality typically provided by the BSC, MSC, HLR, VLR.
+
+Its only current interface is a mISDN based E1 interface utilizing the A-bis
+protocol between BSC and BTS.  In other words, you can connect an existing
+GSM Base Transceiver Station (BTS) through E1 to OpenBSC.
+
+So far, it has only been tested with the Siemens microBTS BS-11.  Test reports
+with other BTS are appreciated!
+
+This project is still in its early days, and there are lots of areas where it
+doesn't behave as per GSM spec.
+
+December 29, 2008
+	Harald Welte <laforge@gnumonks.org>
