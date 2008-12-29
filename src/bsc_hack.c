@@ -409,7 +409,7 @@ SYSTEM INFORMATION TYPE 3
     Radio link timeout = 36
   Cell Selection Parameters
     Cell reselect hysteresis = 6 dB RXLEV hysteresis for LA re-selection
-    max.TX power level MS may use for CCH = 2
+    max.TX power level MS may use for CCH = 2 <- according to GSM05.05 39dBm (max)
     Additional Reselect Parameter Indication (ACS) = only SYSTEM INFO 4: The SI rest octets, if present, shall be used to derive the value of PI and possibly C2 parameters
     Half rate support (NECI): New establishment causes are not supported
     min.RX signal level for MS = 0
