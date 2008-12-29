@@ -127,10 +127,12 @@ static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t trans_id,
 	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4;
-	gh->msg_type = GSM411_MT_CP_ACK;
+	// Outgoing needs the highest bit set
+	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
+	gh->msg_type = GSM411_MT_CP_DATA;
 
 	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
+	rp->len = 2;
 	rp->msg_type = GSM411_MT_RP_ACK_MT;
 	rp->msg_ref = msg_ref;
 
@@ -149,8 +151,9 @@ static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
 	msg->lchan = lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4;
-	gh->msg_type = GSM411_MT_CP_ERROR;
+	// Outgoing needs the highest bit set
+	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
+	gh->msg_type = GSM411_MT_CP_DATA;
 
 	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
 	rp->msg_type = GSM411_MT_RP_ERROR_MT;
