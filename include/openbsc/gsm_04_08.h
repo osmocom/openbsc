@@ -77,11 +77,20 @@ struct gsm48_system_information_type_header {
 	u_int8_t system_information;
 } __attribute__ ((packed));
 
+struct gsm48_rach_control {
+	u_int8_t re :1,
+		 cell_bar :1,
+		 tx_integer :4,
+		 max_trans :2;
+	u_int8_t t2;
+	u_int8_t t3;
+} __attribute__ ((packed));
+
 /* Section 9.1.31 System information Type 1 */
 struct gsm48_system_information_type_1 {
 	struct gsm48_system_information_type_header header;
 	u_int8_t cell_channel_description[16];
-	u_int8_t rach_control_parameter[3];
+	struct gsm48_rach_control rach_control;
 	u_int8_t s1_reset;
 } __attribute__ ((packed));
 
@@ -90,7 +99,7 @@ struct gsm48_system_information_type_2 {
 	struct gsm48_system_information_type_header header;
 	u_int8_t bcch_frequency_list[16];
 	u_int8_t ncc_permitted;
-	u_int8_t rach_control_parameter[3]; 
+	struct gsm48_rach_control rach_control;
 } __attribute__ ((packed));
 
 /* Section 9.1.35 System information Type 3 */
@@ -101,7 +110,7 @@ struct gsm48_system_information_type_3 {
 	u_int8_t control_channel_description[3];
 	u_int8_t cell_options;
 	u_int8_t cell_selection[2];
-	u_int8_t rach_control_parameter[3];
+	struct gsm48_rach_control rach_control;
 	u_int8_t s3_reset_octets[4];
 } __attribute__ ((packed));
 
@@ -110,7 +119,7 @@ struct gsm48_system_information_type_4 {
 	struct gsm48_system_information_type_header header;
 	struct gsm48_loc_area_id lai;
 	u_int8_t cell_selection[2];
-	u_int8_t rach_control_parameter[3];
+	struct gsm48_rach_control rach_control;
 	/*	optional CBCH conditional CBCH... followed by
 		mandantory SI 4 Reset Octets
 	 */
@@ -150,6 +159,7 @@ struct gsm48_system_information_type_6 {
 #define GSM48_PDISC_SM_GPRS	0x0a
 #define GSM48_PDISC_NC_SS	0x0b
 #define GSM48_PDISC_LOC		0x0c
+#define GSM48_PDISC_MASK	0x0f
 
 /* Section 10.4 */
 #define GSM48_MT_RR_INIT_REQ		0x3c
