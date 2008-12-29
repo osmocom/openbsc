@@ -343,6 +343,7 @@ struct gsm_bts;
 int gsm0408_rcvmsg(struct msgb *msg);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 

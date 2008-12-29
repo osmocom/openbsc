@@ -860,6 +860,11 @@ static void bsc_hack_channel_response(struct gsm_lchan *lchan, int ack)
 		
 		llist_del(&station->entry);
 		free(station);
+
+		/*
+		 * start a call
+		 */
+		gsm48_cc_tx_setup(lchan);
 	} else {
 		/*
 		 * give up and go to the next channel
