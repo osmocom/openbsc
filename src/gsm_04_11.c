@@ -250,7 +250,11 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	data[0] = 0;
 
 	/* FIXME: Hardcoded for now */
-	smslen = gsm0411_tpdu_from_sms(tpdu, sms);
+	//smslen = gsm0411_tpdu_from_sms(tpdu, sms);
+
+	/* RPDU length */
+	data = (u_int8_t *)msgb_put(msg, 1);
+	data[0] = sizeof(tpdu_test);
 
 	data = (u_int8_t *)msgb_put(msg, sizeof(tpdu_test));
 
