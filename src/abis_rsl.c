@@ -468,8 +468,8 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 
 	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
 	network = msg->trx->bts->network;
-	if (network->channel_acked)
-		(*network->channel_acked)(lchan);
+	if (network->channel_response)
+		(*network->channel_response)(lchan, 1);
 
 
 	return 0;
@@ -491,8 +491,8 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 
 	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
 	network = msg->trx->bts->network;
-	if (network->channel_nacked)
-		(*network->channel_nacked)(lchan);
+	if (network->channel_response)
+		(*network->channel_response)(lchan, 0);
 
 	return 0;
 }
