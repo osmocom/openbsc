@@ -36,6 +36,7 @@ struct msgb {
 
 	unsigned char *l2h;
 	unsigned char *l3h;
+	unsigned char *smsh;
 
 	u_int16_t data_len;
 	u_int16_t len;
@@ -53,6 +54,7 @@ extern struct msgb *msgb_dequeue(struct llist_head *queue);
 
 #define msgb_l2(m)	((void *)(m->l2h))
 #define msgb_l3(m)	((void *)(m->l3h))
+#define msgb_sms(m)	((void *)(m->smsh))
 
 static inline unsigned int msgb_headlen(const struct msgb *msgb)
 {

@@ -35,6 +35,68 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 
+static char *gsm411_7bit_decode(u_int8_t *user_data, u_int8_t length)
+{
+	u_int8_t d_off = 0, b_off = 0;
+	u_int8_t i;
+	char *text = malloc(length+1);
+
+	for (i=0;i<length;i++) {
+		text[i] = ((user_data[d_off] + (user_data[d_off+1]<<8)) & (0x7f<<b_off))>>b_off;
+		b_off += 7;
+		if (b_off >= 8) {
+			d_off += 1;
+			b_off -= 8;
+		}
+	}
+	text[i] = 0;
+	return text;
+}
+
+static int gsm411_sms_submit_from_msgb(struct msgb *msg)
+{
+	u_int8_t *smsp = msgb_sms(msg);
+	struct sms_submit *sms;
+
+	sms = malloc(sizeof(*sms));
+	sms->mti = *smsp & 0x03;
+	sms->mms = !!(*smsp & 0x04);
+	sms->vpf = (*smsp & 0x18) >> 3;
+	sms->sri = !!(*smsp & 0x20);
+	sms->udhi= !!(*smsp & 0x40);
+	sms->rp  = !!(*smsp & 0x80);
+
+	smsp++;
+	sms->msg_ref = *smsp++;
+
+	/* Skip destination address for now */
+	smsp += 2 + *smsp/2 + *smsp%2;
+
+	sms->pid = *smsp++;
+	sms->dcs = *smsp++;
+	switch (sms->vpf)
+	{
+	case 2: /* relative */
+		sms->vp = *smsp++;
+		break;
+	default:
+		DEBUGP(DSMS, "SMS Validity period not implemented: 0x%02x\n",
+				sms->vpf);
+	}
+	sms->ud_len = *smsp++;
+
+	sms->user_data = gsm411_7bit_decode(smsp, sms->ud_len);
+
+	DEBUGP(DSMS, "SMS:\nMTI: 0x%02x, VPF: 0x%02x, MR: 0x%02x\n"
+			"PID: 0x%02x, DCS: 0x%02x, UserDataLength: 0x%02x\n"
+			"UserData: \"%s\"\n", sms->mti, sms->vpf, sms->msg_ref,
+			sms->pid, sms->dcs, sms->ud_len, sms->user_data);
+
+	free(sms);
+
+	return 0;
+}
+
 static int gsm411_cp_data(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -45,8 +107,10 @@ static int gsm411_cp_data(struct msgb *msg)
 
 	switch (msg_type) {
 	case GSM411_MT_RP_DATA_MO:
-    DEBUGP(DSMS, "SMS RP-DATA (MO)\n");
-
+		DEBUGP(DSMS, "SMS RP-DATA (MO)\n");
+		/* Skip SMSC no and RP-UD length */
+		msg->smsh = &rp_data->data[1] + rp_data->data[1] + 2;
+		gsm411_sms_submit_from_msgb(msg);
 		break;
 	default:
 		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);

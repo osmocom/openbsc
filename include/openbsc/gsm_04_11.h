@@ -22,11 +22,29 @@
 
 /* Chapter 8.1.1 */
 struct gsm411_rp_data_hdr {
-  u_int8_t len;
-  u_int8_t msg_type;
+	u_int8_t len;
+	u_int8_t msg_type;
 	u_int8_t msg_ref;
 	u_int8_t data[0];
 } __attribute__ ((packed));
+
+/* SMS submit PDU */
+struct sms_submit {
+	u_int8_t *smsc;
+	u_int8_t mti:2;
+	u_int8_t mms:1;
+	u_int8_t vpf:2;
+	u_int8_t sri:1;
+	u_int8_t udhi:1;
+	u_int8_t rp:1;
+	u_int8_t msg_ref;
+	u_int8_t *dest_addr;
+	u_int8_t pid;
+	u_int8_t dcs;
+	u_int8_t vp;
+	u_int8_t ud_len;
+	u_int8_t *user_data;
+};
 
 struct msgb;
 
