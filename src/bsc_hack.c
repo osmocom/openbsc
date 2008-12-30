@@ -855,7 +855,6 @@ static void bsc_hack_channel_response(struct gsm_lchan *lchan, int ack)
 {
 	struct pending_registered_station *station;
 	if (llist_empty(&pending_stations)) {
-		DEBUGP(DPAG, "Channel nacked but nothing pending\n");
 		return;
 	}
 
