@@ -153,7 +153,7 @@ static int gsm48_sendmsg(struct msgb *msg)
 }
 
 
-/* Chapter 9.2.14 : Send LOCATION UPDATE REJECT */
+/* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -166,7 +166,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 
-	DEBUGP(DMM, "-> LOCATION UPDATE REJECT\n");
+	DEBUGP(DMM, "-> LOCATION UPDATING REJECT\n");
 
 	return gsm48_sendmsg(msg);
 }
@@ -290,7 +290,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 		if (!lchan->subscr)
 			lchan->subscr = db_create_subscriber(mi_string);
 
-		/* We have a pending UPDATE REQUEST handle it now */
+		/* We have a pending UPDATING REQUEST handle it now */
 		if (lchan->pending_update_request) {
 			if (lchan->subscr->authorized) {
 				db_subscriber_alloc_tmsi(lchan->subscr);
@@ -420,7 +420,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 
 	switch (gh->msg_type & 0xbf) {
 	case GSM48_MT_MM_LOC_UPD_REQUEST:
-		DEBUGP(DMM, "LOCATION UPDATE REQUEST\n");
+		DEBUGP(DMM, "LOCATION UPDATING REQUEST\n");
 		rc = mm_rx_loc_upd_req(msg);
 		break;
 	case GSM48_MT_MM_ID_RESP:
