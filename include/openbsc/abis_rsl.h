@@ -57,7 +57,7 @@ struct abis_rsl_dchan_hdr {
 
 #define ABIS_RSL_MDISC_IS_TRANSP(x)	(x & 0x01)
 
-/* Chapter 9.2 */
+/* Chapter 9.1 */
 enum abis_rsl_msgtype {
 	/* Radio Link Layer Management */
 	RSL_MT_DATA_REQ			= 0x01,
