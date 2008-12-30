@@ -641,14 +641,18 @@ static int bootstrap_network(void)
 	gsmnet = gsm_network_init(1, MCC, MNC);
 	if (!gsmnet)
 		return -ENOMEM;
-		
+
+	gsmnet->name_short = "25C3";
+	gsmnet->name_long = "25C3 GSM";
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
+#if 0
 	gsmnet->update_request = bsc_hack_update_request;
 	gsmnet->channel_allocated = bsc_hack_channel_allocated;
 	gsmnet->channel_response = bsc_hack_channel_response;
 	gsmnet->call_state_changed = bsc_hack_call_state_changed;
+#endif
 
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
@@ -781,6 +785,8 @@ static void pag_timer_cb(void *data)
 	struct pending_registered_station *pending_station;
 	u_int8_t mi[128];
 	unsigned int mi_len;
+
+return 0;
 
 	if (llist_empty(&pending_stations)) {
 		DEBUGP(DPAG, "pag_timer_cb but no pending mobile stations\n");
