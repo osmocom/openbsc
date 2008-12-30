@@ -197,6 +197,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	lchan->pending_update_request = 0;
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
+	ret = gsm48_sendmsg(msg);
 
 	/* inform the upper layer on the progress */
 	if (bts->network->update_request)
