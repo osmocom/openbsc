@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <netinet/in.h>
 
 #include <openbsc/db.h>
@@ -97,6 +98,17 @@ static void to_bcd(u_int8_t *bcd, u_int16_t val)
 	val = val / 10;
 	bcd[0] = val % 10;
 	val = val / 10;
+}
+
+static u_int8_t to_bcd8(unsigned int val)
+{
+	u_int8_t bcd;
+	
+	bcd = (val % 10) & 0x0f;
+	val = val / 10;
+	bcd |= (val % 10) << 4;
+
+	return bcd;
 }
 
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
@@ -183,7 +195,9 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 
-	DEBUGP(DMM, "-> LOCATION UPDATING REJECT\n");
+	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
+	
+	//gsm0411_send_sms(lchan, NULL);
 
 	return gsm48_sendmsg(msg);
 }
@@ -214,11 +228,15 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	lchan->pending_update_request = 0;
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	ret = gsm48_sendmsg(msg);
-
 	/* inform the upper layer on the progress */
 	if (bts->network->update_request)
 		(*bts->network->update_request)(bts, tmsi, 1);
+
+	ret = gsm48_sendmsg(msg);
+
+	/* return gsm48_cc_tx_setup(lchan); */
+	ret = gsm48_tx_mm_info(lchan);
+	ret = gsm0411_send_sms(lchan, NULL);
 
 	return ret;
 }
@@ -244,7 +262,8 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	case GSM_MI_TYPE_NONE:
 		break;
 	case GSM_MI_TYPE_TMSI:
-		for (i = 1; i < mi_len - 1; i++) {
+		/* skip padding nibble at the beginning, start at offset 1... */
+		for (i = 1; i < mi_len; i++) {
 			if (str_cur + 2 >= string + str_len)
 				return str_cur - string;
 			*str_cur++ = bcd2char(mi[i] >> 4);
@@ -254,21 +273,22 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	case GSM_MI_TYPE_IMSI:
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
-		if (mi[0] & GSM_MI_ODD)
-			*str_cur++ = bcd2char(mi[0] >> 4);
-	
-		for (i = 1; i < mi_len - 1; i++) {
+		*str_cur++ = bcd2char(mi[0] >> 4);
+		
+                for (i = 1; i < mi_len; i++) {
 			if (str_cur + 2 >= string + str_len)
 				return str_cur - string;
 			*str_cur++ = bcd2char(mi[i] & 0xf);
-			*str_cur++ = bcd2char(mi[i] >> 4);
+			/* skip last nibble in last input byte when GSM_EVEN */
+			if( (i != mi_len-1) || (mi[0] & GSM_MI_ODD))
+				*str_cur++ = bcd2char(mi[i] >> 4);
 		}
 		break;
 	default:
 		break;
 	}
-
 	*str_cur++ = '\0';
+
 	return str_cur - string;
 }
 
@@ -313,6 +333,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 			if (authorize_subscriber(lchan->subscr)) {
 				db_subscriber_alloc_tmsi(lchan->subscr);
 				tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
+				del_timer(&lchan->timer);
 				return gsm0408_loc_upd_acc(msg->lchan, tmsi);
 			} else {
 				schedule_reject(lchan);
@@ -334,7 +355,8 @@ static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	gsm0408_loc_upd_rej(lchan, 0x16);
+	/* 0x16 is congestion */
+	gsm0408_loc_upd_rej(lchan, 0x04);
 	rsl_chan_release(lchan);
 }
 
@@ -412,7 +434,79 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	tmsi = strtoul(subscr->tmsi, NULL, 10);
 
+	del_timer(&lchan->timer);
 	return gsm0408_loc_upd_acc(lchan, tmsi);
+}
+
+/* Section 9.2.15a */
+int gsm48_tx_mm_info(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+	time_t cur_t;
+	struct tm* cur_time;
+	u_int8_t *ptr8;
+	u_int16_t *ptr16;
+	int name_len;
+	int tz15min;
+	int i;
+
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_INFO;
+
+	if (net->name_long) {
+		name_len = strlen(net->name_long);
+		/* 10.5.3.5a */
+		ptr8 = msgb_put(msg, 3);
+		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[1] = name_len*2 +1;
+		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
+
+		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
+		for (i = 0; i < name_len; i++)
+			ptr16[i] = net->name_long[i];
+
+		/* FIXME: Use Cell Broadcast, not UCS-2, since
+		 * UCS-2 is only supported by later revisions of the spec */
+	}
+
+	if (net->name_short) {
+		name_len = strlen(net->name_short);
+		/* 10.5.3.5a */
+		ptr8 = (u_int8_t *) msgb_put(msg, 3);
+		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[1] = name_len*2 + 1;
+		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
+
+		ptr16 = msgb_put(msg, name_len*2);
+		for (i = 0; i < name_len; i++)
+			ptr16[i] = net->name_short[i];
+	}
+
+#if 0
+	/* Section 10.5.3.9 */
+	cur_t = time(NULL);
+	cur_time = gmtime(cur_t);
+	ptr8 = msgb_put(msg, 8);
+	ptr8[0] = GSM48_IE_NET_TIME_TZ;
+	ptr8[1] = to_bcd8(cur_time->tm_year % 100);
+	ptr8[2] = to_bcd8(cur_time->tm_mon);
+	ptr8[3] = to_bcd8(cur_time->tm_mday);
+	ptr8[4] = to_bcd8(cur_time->tm_hour);
+	ptr8[5] = to_bcd8(cur_time->tm_min);
+	ptr8[6] = to_bcd8(cur_time->tm_sec);
+	/* 02.42: coded as BCD encoded signed value in units of 15 minutes */
+	tz15min = (cur_time->tm_gmtoff)/(60*15);
+	ptr8[6] = to_bcd8(tz15min);
+	if (tz15min < 0)
+		ptr8[6] |= 0x80;
+#endif
+
+	return gsm48_sendmsg(msg);
 }
 
 static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
