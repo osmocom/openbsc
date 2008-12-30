@@ -174,8 +174,10 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		
-		fprintf(stdout, "RX: ");
-		hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		if (debug_mask & DMI) { 
+			fprintf(stdout, "RX: ");
+			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		}
 		switch (l2addr.tei) {
 		case TEI_OML:
 			ret = abis_nm_rcvmsg(msg);
@@ -212,9 +214,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 		hh->prim = DL_DATA_REQ;
 
-		fprintf(stdout, "OML TX: ");
-		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
-
+		if (debug_mask & DMI) {
+			fprintf(stdout, "OML TX: ");
+			hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
+		}
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->omladdr,
 			     sizeof(e1h->omladdr));
@@ -235,8 +238,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 		hh->prim = DL_DATA_REQ;
 
-		fprintf(stdout, "RSL TX: ");
-		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
+		if (debug_mask & DMI) {
+			fprintf(stdout, "RSL TX: ");
+			hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
+		}
 
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->l2addr,
@@ -286,10 +291,10 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		
-#if 0
-		fprintf(stdout, "BCHAN RX: ");
-		hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
-#endif
+		if (debug_mask & DMIB) {
+			fprintf(stdout, "BCHAN RX: ");
+			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		}
 		if (!e1h->ts2_fd)
 			e1h->ts2_fd = open("/tmp/ts2.dump", O_WRONLY|O_APPEND|O_CREAT, 0660);
 		
@@ -426,7 +431,7 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 		if (ts == 1) {
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_LAPD_NT);
 			bfd->when = BSC_FD_READ;
-		} else
+		} else 
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
 
 		if (bfd->fd < 0) {
@@ -443,7 +448,7 @@ static int mi_e1_setup(struct mi_e1_handle *e1h)
 			addr.sapi = 0;/* SAPI not supported yet in kernel */
 			addr.tei = TEI_L2ML;
 		} else
-			addr.channel = ts;
+			addr.channel = ts; 
 
 		ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 		if (ret < 0) {
