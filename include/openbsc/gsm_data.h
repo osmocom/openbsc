@@ -145,6 +145,8 @@ struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
 	u_int16_t network_code;
+	char *name_long;
+	char *name_short;
 
 	unsigned int num_bts;
 	/* private lists */

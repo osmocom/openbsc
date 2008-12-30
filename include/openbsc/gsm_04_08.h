@@ -321,6 +321,11 @@ struct gsm48_system_information_type_6 {
 #define GSM_MI_ODD		0x08
 
 #define GSM48_IE_MOBILE_ID	0x17
+#define GSM48_IE_NAME_LONG	0x43	/* 10.5.3.5a */
+#define GSM48_IE_NAME_SHORT	0x45	/* 10.5.3.5a */
+#define GSM48_IE_UTC		0x46	/* 10.5.3.8 */
+#define GSM48_IE_NET_TIME_TZ	0x47	/* 10.5.3.9 */
+#define GSM48_IE_LSA_IDENT	0x48	/* 10.5.3.11 */
 
 /* Section 10.5.4.11 / Table 10.5.122 */
 #define GSM48_CAUSE_CS_GSM	0x60
@@ -382,6 +387,8 @@ void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 int gsm48_cc_tx_setup(struct gsm_lchan *lchan);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
+
+int gsm48_tx_mm_info(struct gsm_lchan *lchan);
 
 
 #endif
