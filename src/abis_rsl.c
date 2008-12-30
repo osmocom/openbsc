@@ -346,6 +346,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Chapter 9.1.7 of 04.08 */
 int rsl_chan_release(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
