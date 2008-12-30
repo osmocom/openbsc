@@ -471,7 +471,6 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	if (network->channel_response)
 		(*network->channel_response)(lchan, 1);
 
-
 	return 0;
 }
 
@@ -655,6 +654,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* inform the bsc that a channel has been allocated */
 	if (bts->network->channel_allocated)
 		(*bts->network->channel_allocated)(lchan, chreq_reason);
+
+	return ret;
 }
 
 static int abis_rsl_rx_cchan(struct msgb *msg)
