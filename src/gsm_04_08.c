@@ -51,6 +51,23 @@ struct gsm_lai {
 	u_int16_t lac;
 };
 
+static int authorize_everonye = 0;
+void gsm0408_allow_everyone(int everyone)
+{
+	printf("Allowing everyone?\n");
+	authorize_everonye = everyone;
+}
+
+static int authorize_subscriber(struct gsm_subscriber *subscriber)
+{
+	if (!subscriber)
+		return 0;
+
+	if (authorize_everonye)
+		return 1;
+
+	return subscriber->authorized;
+}
 
 
 static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48)
@@ -293,7 +310,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 
 		/* We have a pending UPDATING REQUEST handle it now */
 		if (lchan->pending_update_request) {
-			if (lchan->subscr->authorized) {
+			if (authorize_subscriber(lchan->subscr)) {
 				db_subscriber_alloc_tmsi(lchan->subscr);
 				tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
 				return gsm0408_loc_upd_acc(msg->lchan, tmsi);
@@ -380,7 +397,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	lchan->subscr = subscr;
 
 	/* we know who we deal with and don't want him */
-	if (subscr && !subscr->authorized) {
+	if (subscr && !authorize_subscriber(subscr)) {
 		schedule_reject(lchan);
 		return 0;
 	} else if (!subscr) {
