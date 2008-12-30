@@ -163,6 +163,14 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 	memset(subscriber, 0, sizeof(*subscriber));
 	strncpy(subscriber->imsi, imsi, GSM_IMSI_LENGTH-1);
 	if (!db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscriber)) {
+		result = dbi_conn_queryf(conn,
+                         "UPDATE Subscriber set updated = datetime('now') "
+                         "WHERE imsi = %s " , imsi);
+		if (result==NULL) {
+			printf("DB: failed to update timestamp\n");
+		} else {
+			dbi_result_free(result);
+		}
 		return subscriber;
 	}
 	result = dbi_conn_queryf(conn,
