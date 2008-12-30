@@ -13,6 +13,18 @@
 
 #define HARDCODED_ARFCN 123
 
+/*
+ * Use the channel. As side effect the lchannel recycle timer
+ * will be started.
+ */
+#define LCHAN_RELEASE_TIMEOUT 4, 0
+#define use_lchan(lchan) \
+	do {	lchan->use_count++; \
+		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
+
+#define put_lchan(lchan) \
+	do { lchan->use_count--; } while(0);
+
 /* communications link with a BTS */
 struct gsm_bts_link {
 	struct gsm_bts *bts;
@@ -79,8 +91,10 @@ struct gsm_lchan {
 	enum gsm_chan_t type;
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
-	/* Universal timer, undefined use ;) */
-	struct timer_list timer;
+
+	/* Timer started to release the channel */
+	struct timer_list release_timer;
+	struct timer_list updating_timer;
 
 	/* local end of a call, if any */
 	struct gsm_call call;

@@ -323,6 +323,11 @@ static int mm_rx_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
+	/*
+	 * Rogue messages could trick us but so is life
+	 */
+	put_lchan(lchan);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
@@ -362,10 +367,10 @@ static void loc_upd_rej_cb(void *data)
 
 static void schedule_reject(struct gsm_lchan *lchan)
 {
-	lchan->timer.cb = loc_upd_rej_cb;
-	lchan->timer.data = lchan;
+	lchan->updating_timer.cb = loc_upd_rej_cb;
+	lchan->updating_timer.data = lchan;
 	lchan->pending_update_request = 0;
-	schedule_timer(&lchan->timer, 1, 0);
+	schedule_timer(&lchan->updating_timer, 1, 0);
 }
 
 #define MI_SIZE 32
@@ -392,17 +397,22 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* we always want the IMEI, too */
+		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+
 		/* look up subscriber based on IMSI */
 		subscr = db_create_subscriber(mi_string);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		/* we always want the IMEI, too */
+		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
 		subscr = subscr_get_by_tmsi(lu->mi);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
+			use_lchan(lchan);
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
 		}
 		break;

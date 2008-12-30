@@ -1,6 +1,7 @@
 /* GSM Channel allocation routines
  *
  * (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -28,6 +29,9 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/debug.h>
+
+static void auto_release_channel(struct gsm_lchan* lchan);
 
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
@@ -164,8 +168,15 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
 	}
 
-	if (lchan)
+	if (lchan) {
 		lchan->type = type;
+		lchan->use_count = 0;
+
+		/* Configure the time and start it so it will be closed */
+		lchan->release_timer.cb = auto_release_channel;
+		lchan->release_timer.data = lchan;
+		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+	}
 
 	return lchan;
 }
@@ -174,6 +185,35 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 void lchan_free(struct gsm_lchan *lchan)
 {
 	lchan->type = GSM_LCHAN_NONE;
+
+	/* stop the timer */
+	del_timer(&lchan->release_timer);
+
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }
+
+/*
+ * Auto release the channel when the use count is zero
+ */
+static void auto_release_channel(struct gsm_lchan* lchan)
+{
+	/*
+	 * Busy...
+	 */
+	if (lchan->use_count > 0) {
+		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		return;
+	}
+
+	/*
+	 * spoofed? message
+	 */
+	if (lchan->use_count < 0) {
+		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
+	}
+
+	DEBUGP(DRLL, "Recylcing the channel with: %d (%x)\n", lchan->nr, lchan->nr);
+	rsl_chan_release(lchan);
+}
+
