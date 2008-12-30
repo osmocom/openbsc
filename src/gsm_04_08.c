@@ -362,10 +362,10 @@ static void loc_upd_rej_cb(void *data)
 
 static void schedule_reject(struct gsm_lchan *lchan)
 {
-    lchan->timer.cb = loc_upd_rej_cb;
-    lchan->timer.data = lchan;
-    lchan->pending_update_request = 0;
-    schedule_timer(&lchan->timer, 1, 0);
+	lchan->timer.cb = loc_upd_rej_cb;
+	lchan->timer.data = lchan;
+	lchan->pending_update_request = 0;
+	schedule_timer(&lchan->timer, 1, 0);
 }
 
 #define MI_SIZE 32
