@@ -338,7 +338,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 			if (authorize_subscriber(lchan->subscr)) {
 				db_subscriber_alloc_tmsi(lchan->subscr);
 				tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
-				del_timer(&lchan->timer);
+				del_timer(&lchan->updating_timer);
 				return gsm0408_loc_upd_acc(msg->lchan, tmsi);
 			} else {
 				schedule_reject(lchan);
@@ -444,7 +444,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	tmsi = strtoul(subscr->tmsi, NULL, 10);
 
-	del_timer(&lchan->timer);
+	del_timer(&lchan->updating_timer);
 	return gsm0408_loc_upd_acc(lchan, tmsi);
 }
 
