@@ -87,7 +87,7 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 
 static void release_loc_updating_req(struct gsm_lchan *lchan)
 {
-	if (lchan->loc_operation)
+	if (!lchan->loc_operation)
 		return;
 
 	del_timer(&lchan->loc_operation->updating_timer);
@@ -514,7 +514,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 
 		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
-			ptr16[i] = net->name_long[i];
+			ptr16[i] = htons(net->name_long[i]);
 
 		/* FIXME: Use Cell Broadcast, not UCS-2, since
 		 * UCS-2 is only supported by later revisions of the spec */
@@ -530,7 +530,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 
 		ptr16 = msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
-			ptr16[i] = net->name_short[i];
+			ptr16[i] = htons(net->name_short[i]);
 	}
 
 #if 0
