@@ -82,6 +82,19 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_OTHER,
 };
 
+/*
+ * LOCATION UPDATING REQUEST state
+ *
+ * Our current operation is:
+ *	- Get imei/tmsi
+ *	- Accept/Reject according to global policy
+ */
+struct gsm_loc_updating_operation {
+        struct timer_list updating_timer;
+	int waiting_for_imsi : 1;
+	int waiting_for_imei : 1;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -94,7 +107,6 @@ struct gsm_lchan {
 
 	/* Timer started to release the channel */
 	struct timer_list release_timer;
-	struct timer_list updating_timer;
 
 	/* local end of a call, if any */
 	struct gsm_call call;
@@ -102,9 +114,13 @@ struct gsm_lchan {
 	/* temporary user data, to be removed... and merged into gsm_call */
 	void *user_data;
 
+	/*
+	 * Operations that have a state and might be pending
+	 */
+	struct gsm_loc_updating_operation *loc_operation;
+
 	/* use count. how many users use this channel */
 	unsigned int use_count;
-	unsigned int pending_update_request : 1;
 };
 
 #define BTS_TRX_F_ACTIVATED	0x0001

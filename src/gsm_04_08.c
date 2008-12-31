@@ -65,9 +65,18 @@ void gsm0408_set_reject_cause(int cause)
 	reject_cause = cause;
 }
 
-static int authorize_subscriber(struct gsm_subscriber *subscriber)
+static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
+				struct gsm_subscriber *subscriber)
 {
 	if (!subscriber)
+		return 0;
+
+	/*
+	 * Do not send accept yet as more information should arrive. Some
+	 * phones will not send us the information and we will have to check
+	 * what we want to do with that.
+	 */
+	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
 		return 0;
 
 	if (authorize_everonye)
@@ -76,6 +85,24 @@ static int authorize_subscriber(struct gsm_subscriber *subscriber)
 	return subscriber->authorized;
 }
 
+static void release_loc_updating_req(struct gsm_lchan *lchan)
+{
+	if (lchan->loc_operation)
+		return;
+
+	del_timer(&lchan->loc_operation->updating_timer);
+	free(lchan->loc_operation);
+	lchan->loc_operation = 0;
+}
+
+static void allocate_loc_updating_req(struct gsm_lchan *lchan)
+{
+	release_loc_updating_req(lchan);
+
+	lchan->loc_operation = (struct gsm_loc_updating_operation *)
+				malloc(sizeof(*lchan->loc_operation));
+	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
+}
 
 static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48)
 {
@@ -231,7 +258,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	mid = msgb_put(msg, MID_TMSI_LEN);
 	generate_mid_from_tmsi(mid, tmsi);
 
-	lchan->pending_update_request = 0;
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
 	/* inform the upper layer on the progress */
@@ -338,26 +364,27 @@ static int mm_rx_id_resp(struct msgb *msg)
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
 			lchan->subscr = db_create_subscriber(mi_string);
-
-		/* We have a pending UPDATING REQUEST handle it now */
-		if (lchan->pending_update_request) {
-			if (authorize_subscriber(lchan->subscr)) {
-				db_subscriber_alloc_tmsi(lchan->subscr);
-				tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
-				del_timer(&lchan->updating_timer);
-				return gsm0408_loc_upd_acc(msg->lchan, tmsi);
-			} else {
-				schedule_reject(lchan);
-			}
-		}
+		if (lchan->loc_operation)
+			lchan->loc_operation->waiting_for_imsi = 0;
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* update subscribe <-> IMEI mapping */
 		if (lchan->subscr)
 			db_subscriber_assoc_imei(lchan->subscr, mi_string);
+		if (lchan->loc_operation)
+			lchan->loc_operation->waiting_for_imei = 0;
 		break;
 	}
+
+	/* Check if we can let the mobile station enter */
+	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
+		db_subscriber_alloc_tmsi(lchan->subscr);
+		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
+		release_loc_updating_req(lchan);
+		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+	}
+
 	return 0;
 }
 
@@ -366,16 +393,16 @@ static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
+	release_loc_updating_req(lchan);
 	gsm0408_loc_upd_rej(lchan, reject_cause);
 	rsl_chan_release(lchan);
 }
 
 static void schedule_reject(struct gsm_lchan *lchan)
 {
-	lchan->updating_timer.cb = loc_upd_rej_cb;
-	lchan->updating_timer.data = lchan;
-	lchan->pending_update_request = 0;
-	schedule_timer(&lchan->updating_timer, 1, 0);
+	lchan->loc_operation->updating_timer.cb = loc_upd_rej_cb;
+	lchan->loc_operation->updating_timer.data = lchan;
+	schedule_timer(&lchan->loc_operation->updating_timer, 5, 0);
 }
 
 #define MI_SIZE 32
@@ -399,11 +426,15 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
 	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s)\n", mi_type, mi_string);
+
+	allocate_loc_updating_req(lchan);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* we always want the IMEI, too */
 		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI */
 		subscr = db_create_subscriber(mi_string);
@@ -412,6 +443,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		/* we always want the IMEI, too */
 		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
 		subscr = subscr_get_by_tmsi(lu->mi);
@@ -419,6 +451,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 			/* send IDENTITY REQUEST message to get IMSI */
 			use_lchan(lchan);
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
+			lchan->loc_operation->waiting_for_imsi = 1;
 		}
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -433,23 +466,21 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	lchan->subscr = subscr;
 
-	/* we know who we deal with and don't want him */
-	if (subscr && !authorize_subscriber(subscr)) {
-		schedule_reject(lchan);
-		return 0;
-	} else if (!subscr) {
-		/* we have asked for the imsi and should get a
-		 * IDENTITY RESPONSE */
-		lchan->pending_update_request = 1;
-		return 0;
-	}
+	/*
+	 * Schedule the reject timer and check if we can let the
+	 * subscriber into our network immediately or if we need to wait
+	 * for identity responses.
+	 */
+	schedule_reject(lchan);
+	if (!authorize_subscriber(lchan->loc_operation, subscr))
+		return;
 
 	db_subscriber_alloc_tmsi(subscr);
 	subscr_update(subscr, bts);
 
 	tmsi = strtoul(subscr->tmsi, NULL, 10);
 
-	del_timer(&lchan->updating_timer);
+	release_loc_updating_req(lchan);
 	return gsm0408_loc_upd_acc(lchan, tmsi);
 }
 
