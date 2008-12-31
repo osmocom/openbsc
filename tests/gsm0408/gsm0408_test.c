@@ -71,6 +71,7 @@ int main(int argc, char** argv)
 void rsl_data_request(void) {}
 void gsm0411_rcv_sms(void) {}
 void schedule_timer(void) {}
+void del_timer(void) {}
 void subscr_get_by_tmsi(void) {}
 void subscr_update(void) {}
 void db_subscriber_assoc_imei(void) {}
