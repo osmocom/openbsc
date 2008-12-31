@@ -59,6 +59,12 @@ void gsm0408_allow_everyone(int everyone)
 	authorize_everonye = everyone;
 }
 
+static int reject_cause = 0;
+void gsm0408_set_reject_cause(int cause)
+{
+	reject_cause = cause;
+}
+
 static int authorize_subscriber(struct gsm_subscriber *subscriber)
 {
 	if (!subscriber)
@@ -360,8 +366,7 @@ static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	/* 0x16 is congestion */
-	gsm0408_loc_upd_rej(lchan, 0x04);
+	gsm0408_loc_upd_rej(lchan, reject_cause);
 	rsl_chan_release(lchan);
 }
 

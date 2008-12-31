@@ -380,7 +380,10 @@ enum gsm48_reject_value {
 struct msgb;
 struct gsm_bts;
 
+/* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
+void gsm0408_set_reject_cause(int cause);
+
 int gsm0408_rcvmsg(struct msgb *msg);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);

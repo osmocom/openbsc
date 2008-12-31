@@ -674,6 +674,7 @@ static void print_help()
 	printf("  -c --country-code number (MCC) \n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
+	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -h --help this text\n");
 }
 
@@ -689,10 +690,11 @@ static void handle_options(int argc, char** argv)
 			{"country-code", 1, 0, 'c'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
+			{"reject-cause", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sa",
+		c = getopt_long(argc, argv, "hc:n:d:sar:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -719,6 +721,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'a':
 			gsm0408_allow_everyone(1);
+			break;
+		case 'r':
+			gsm0408_set_reject_cause(atoi(optarg));
 			break;
 		default:
 			/* ignore */
