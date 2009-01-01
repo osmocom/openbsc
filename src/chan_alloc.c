@@ -31,7 +31,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 
-static void auto_release_channel(struct gsm_lchan* lchan);
+static void auto_release_channel(void *_lchan);
 
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
@@ -83,6 +83,8 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 		case GSM_PCHAN_TCH_H:
 			from = 2; to = 7;
 			break;
+		default:
+			return NULL;
 		}
 
 		for (j = from; j <= to; j++) {
@@ -197,8 +199,9 @@ void lchan_free(struct gsm_lchan *lchan)
 /*
  * Auto release the channel when the use count is zero
  */
-static void auto_release_channel(struct gsm_lchan* lchan)
+static void auto_release_channel(void *_lchan)
 {
+	struct gsm_lchan *lchan = _lchan;
 	/*
 	 * Busy...
 	 */
