@@ -29,6 +29,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 
 static void auto_release_channel(void *_lchan);
@@ -196,28 +197,29 @@ void lchan_free(struct gsm_lchan *lchan)
 	 * channel using it */
 }
 
-/*
- * Auto release the channel when the use count is zero
- */
-static void auto_release_channel(void *_lchan)
+/* Consider releasing the channel now */
+int lchan_auto_release(struct gsm_lchan *lchan)
 {
-	struct gsm_lchan *lchan = _lchan;
-	/*
-	 * Busy...
-	 */
 	if (lchan->use_count > 0) {
-		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
-		return;
+		return 0;
 	}
 
-	/*
-	 * spoofed? message
-	 */
+	/* spoofed? message */
 	if (lchan->use_count < 0) {
 		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
 	}
 
 	DEBUGP(DRLL, "Recylcing the channel with: %d (%x)\n", lchan->nr, lchan->nr);
 	rsl_chan_release(lchan);
+	return 1;
+}
+
+/* Auto release the channel when the use count is zero */
+static void auto_release_channel(void *_lchan)
+{
+	struct gsm_lchan *lchan = _lchan;
+
+	if (!lchan_auto_release(lchan))
+		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 

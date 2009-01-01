@@ -345,7 +345,6 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 		      u_int8_t ta);
 int rsl_chan_activate_tch_f(struct gsm_bts_trx_ts *ts);
 int rsl_chan_activate_sdcch(struct gsm_bts_trx_ts *ts);
-int rsl_chan_release(struct gsm_lchan *lchan);
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 		   u_int8_t *ms_ident, u_int8_t chan_needed);
 int rsl_paging_cmd_imsi(struct gsm_bts *bts, u_int8_t chan_needed, const char *imsi_str);
@@ -357,6 +356,7 @@ int abis_rsl_rcvmsg(struct msgb *msg);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
+int rsl_chan_release(struct gsm_lchan *lchan);
 
 #endif /* RSL_MT_H */
 
