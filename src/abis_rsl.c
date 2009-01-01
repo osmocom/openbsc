@@ -400,14 +400,6 @@ int imsi_str2bcd(u_int8_t *bcd_out, const char *str_in)
 	return 0;
 }
 
-# if 0
-int rsl_paging_cmd_imsi(struct gsm_bts *bts, u_int8_t chan_needed, const char *imsi_str)
-{
-	/* FIXME: derive the MS Identity */
-	return rsl_paging_cmd(bts, paging_group, x, y, chan_needed);
-}
-#endif
-
 /* Chapter 8.5.6 */
 int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val)
 {

@@ -827,6 +827,7 @@ return;
 		return;
 	}
 
+	/* FIXME: 05.02  6.5.2 Determination of CCCH_GROUP and PAGING_GROUP... */
 	/* get the station to page */
 	pending_station = (struct pending_registered_station*) pending_stations.next;
 	mi_len = generate_mid_from_tmsi(mi, pending_station->tmsi);
