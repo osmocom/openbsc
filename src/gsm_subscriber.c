@@ -1,6 +1,7 @@
 /* Dummy implementation of a subscriber database, roghly HLR/VLR functionality */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -28,6 +29,9 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/db.h>
 
+
+LLIST_HEAD(active_subscribers);
+
 struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;
@@ -37,46 +41,57 @@ struct gsm_subscriber *subscr_alloc(void)
 		return NULL;
 
 	memset(s, 0, sizeof(*s));
+	llist_add_tail(&s->entry, &active_subscribers);
+	s->use_count = 1;
 
 	return s;
 }
 
-void subscr_free(struct gsm_subscriber *subscr)
+static void subscr_free(struct gsm_subscriber *subscr)
 {
+	llist_del(&subscr->entry);
 	free(subscr);
 }
 
 struct gsm_subscriber *subscr_get_by_tmsi(char *tmsi)
 {
-	struct gsm_subscriber *subscr = subscr_alloc();
+	struct gsm_subscriber *subscr;
 
-	strncpy(subscr->tmsi, tmsi, sizeof(subscr->tmsi));
-	subscr->tmsi[sizeof(subscr->tmsi)-1] = '\0';
-
-	if (db_get_subscriber(GSM_SUBSCRIBER_TMSI, subscr) != 0) {
-		subscr_free(subscr);
-		subscr = NULL;
+	/* we might have a record in memory already */
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		if (strcmp(subscr->tmsi, tmsi) == 0)
+			return subscr_get(subscr);
 	}
 
-	return subscr;
+	return db_get_subscriber(GSM_SUBSCRIBER_TMSI, tmsi);
 }
 
 struct gsm_subscriber *subscr_get_by_imsi(char *imsi)
 {
-	struct gsm_subscriber *subscr = subscr_alloc();
+	struct gsm_subscriber *subscr;
 
-	strncpy(subscr->imsi, imsi, sizeof(subscr->imsi));
-	subscr->imsi[sizeof(subscr->imsi)-1] = '\0';
-
-	if (db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscr) != 0) {
-		subscr_free(subscr);
-		subscr = NULL;
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		if (strcmp(subscr->imsi, imsi) == 0)
+			return subscr_get(subscr);
 	}
 
-	return subscr;
+	return db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 }
 
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts)
 {
-	return db_set_subscriber(s);
+	return db_sync_subscriber(s);
+}
+
+struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr)
+{
+	subscr->use_count++;
+	return subscr;
+}
+
+struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
+{
+	if (--subscr->use_count <= 0)
+		subscr_free(subscr);
+	return NULL;
 }

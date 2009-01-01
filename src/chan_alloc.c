@@ -188,7 +188,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 void lchan_free(struct gsm_lchan *lchan)
 {
 	lchan->type = GSM_LCHAN_NONE;
-	lchan->subscr = 0;
+	if (lchan->subscr) {
+		subscr_put(lchan->subscr);
+		lchan->subscr = 0;
+	}
 
 	/* stop the timer */
 	del_timer(&lchan->release_timer);

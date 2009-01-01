@@ -1,4 +1,5 @@
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,14 +25,16 @@
 
 #include <openbsc/gsm_subscriber.h>
 
+/* one time initialisation */
 int db_init(const char *name);
 int db_prepare();
 int db_fini();
 
-struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]);
-int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber);
-int db_set_subscriber(struct gsm_subscriber* subscriber);
+/* subscriber management */
+struct gsm_subscriber* db_create_subscriber(char *imsi);
+struct gsm_subscriber* db_get_subscriber(enum gsm_subscriber_field field, char *subscr);
+int db_sync_subscriber(struct gsm_subscriber* subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
-int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]);
+int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
 
 #endif /* _DB_H */

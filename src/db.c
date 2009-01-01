@@ -1,4 +1,6 @@
+/* Simple HLR/VLR database backend using dbi */
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,7 +31,7 @@ static char *db_basename = NULL;
 static char *db_dirname = NULL;
 dbi_conn conn;
 
-void db__error_func(dbi_conn conn, void* data) {
+void db_error_func(dbi_conn conn, void* data) {
 	const char* msg;
 	dbi_conn_error(conn, &msg);
 	printf("DBI: %s\n", msg);
@@ -43,7 +45,7 @@ int db_init(const char *name) {
 		return 1;
 	}
 
-	dbi_conn_error_handler( conn, db__error_func, NULL );
+	dbi_conn_error_handler( conn, db_error_func, NULL );
 
 	/* MySQL
 	dbi_conn_set_option(conn, "host", "localhost");
@@ -54,8 +56,8 @@ int db_init(const char *name) {
 	*/
 
 	/* SqLite 3 */
-	char *db_basename = strdup(name);
-	char *db_dirname = strdup(name);
+	db_basename = strdup(name);
+	db_dirname = strdup(name);
 	dbi_conn_set_option(conn, "sqlite3_dbdir", dirname(db_dirname));
 	dbi_conn_set_option(conn, "dbname", basename(db_basename));
 
@@ -154,15 +156,13 @@ int db_fini() {
 	return 0;
 }
 
-struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
+struct gsm_subscriber* db_create_subscriber(char *imsi) {
 	dbi_result result;
-	struct gsm_subscriber* subscriber;
-	subscriber = malloc(sizeof(*subscriber));
-	if (!subscriber)
-		return NULL;
-	memset(subscriber, 0, sizeof(*subscriber));
-	strncpy(subscriber->imsi, imsi, GSM_IMSI_LENGTH-1);
-	if (!db_get_subscriber(GSM_SUBSCRIBER_IMSI, subscriber)) {
+	struct gsm_subscriber* subscr;
+
+	/* Is this subscriber known in the db? */
+	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi); 
+	if (subscr) {
 		result = dbi_conn_queryf(conn,
                          "UPDATE Subscriber set updated = datetime('now') "
                          "WHERE imsi = %s " , imsi);
@@ -171,8 +171,12 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 		} else {
 			dbi_result_free(result);
 		}
-		return subscriber;
+		return subscr;
 	}
+
+	subscr = subscr_alloc();
+	if (!subscr)
+		return NULL;
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO Subscriber "
 		"(imsi, created, updated) "
@@ -183,76 +187,81 @@ struct gsm_subscriber* db_create_subscriber(char imsi[GSM_IMSI_LENGTH]) {
 	if (result==NULL) {
 		printf("DB: Failed to create Subscriber by IMSI.\n");
 	}
-	subscriber->id = dbi_conn_sequence_last(conn, NULL);
+	subscr->id = dbi_conn_sequence_last(conn, NULL);
+	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
-	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscriber->id, subscriber->imsi);
-	return subscriber;
+	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
+	return subscr;
 }
 
-int db_get_subscriber(enum gsm_subscriber_field field, struct gsm_subscriber* subscriber) {
+struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, char *id) {
 	dbi_result result;
 	const char *string;
 	char *quoted;
+	struct gsm_subscriber *subscr;
 
 	switch (field) {
 	case GSM_SUBSCRIBER_IMSI:
-		dbi_conn_quote_string_copy(conn, subscriber->imsi, &quoted);
+		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE imsi = %s ",
 			quoted
 		);
+		free(quoted);
 		break;
 	case GSM_SUBSCRIBER_TMSI:
-		dbi_conn_quote_string_copy(conn, subscriber->tmsi, &quoted);
+		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
 			quoted
 		);
+		free(quoted);
 		break;
 	default:
 		printf("DB: Unknown query selector for Subscriber.\n");
-		return 1;
+		return NULL;
 	}
 	if (result==NULL) {
 		printf("DB: Failed to query Subscriber.\n");
-		return 1;
+		return NULL;
 	}
 	if (!dbi_result_next_row(result)) {
 		printf("DB: Failed to find the Subscriber.\n");
 		dbi_result_free(result);
-		return 1;
+		return NULL;
 	}
-	memset(subscriber, 0, sizeof(*subscriber));
-	subscriber->id = dbi_result_get_ulonglong(result, "id");
+
+	subscr = subscr_alloc();
+	subscr->id = dbi_result_get_ulonglong(result, "id");
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
-		strncpy(subscriber->imsi, string, GSM_IMSI_LENGTH);
+		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH);
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
-		strncpy(subscriber->tmsi, string, GSM_TMSI_LENGTH);
+		strncpy(subscr->tmsi, string, GSM_TMSI_LENGTH);
 
 	string = dbi_result_get_string(result, "name");
 	if (string)
-		strncpy(subscriber->name, string, GSM_NAME_LENGTH);
+		strncpy(subscr->name, string, GSM_NAME_LENGTH);
 
 	string = dbi_result_get_string(result, "extension");
 	if (string)
-		strncpy(subscriber->extension, string, GSM_EXTENSION_LENGTH);
+		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
 	// FIXME handle extension
-	subscriber->lac = dbi_result_get_uint(result, "lac");
-	subscriber->authorized = dbi_result_get_uint(result, "authorized");
+	subscr->lac = dbi_result_get_uint(result, "lac");
+	subscr->authorized = dbi_result_get_uint(result, "authorized");
 	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, LAC %hu, AUTH %u\n",
-		subscriber->id, subscriber->imsi, subscriber->name, subscriber->tmsi,
-		subscriber->lac, subscriber->authorized);
+		subscr->id, subscr->imsi, subscr->name, subscr->tmsi,
+		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
-	return 0;
+	return subscr;
 }
 
-int db_set_subscriber(struct gsm_subscriber* subscriber) {
+int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
@@ -263,6 +272,7 @@ int db_set_subscriber(struct gsm_subscriber* subscriber) {
 		"WHERE imsi = %s ",
 		subscriber->tmsi, subscriber->lac, subscriber->authorized, subscriber->imsi
 	);
+
 	if (result==NULL) {
 		printf("DB: Failed to update Subscriber (by IMSI).\n");
 		return 1;
@@ -282,6 +292,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 			"WHERE tmsi = %s ",
 			tmsi_quoted
 		);
+		free(tmsi_quoted);
 		if (result==NULL) {
 			printf("DB: Failed to query Subscriber while allocating new TMSI.\n");
 			return 1;
@@ -293,7 +304,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 		if (!dbi_result_next_row(result)) {
 			dbi_result_free(result);
 			printf("DB: Allocated TMSI %s for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
-			return db_set_subscriber(subscriber);
+			return db_sync_subscriber(subscriber);
 		}
 		dbi_result_free(result);
 	}
