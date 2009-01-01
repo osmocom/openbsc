@@ -93,6 +93,7 @@ static void release_loc_updating_req(struct gsm_lchan *lchan)
 	del_timer(&lchan->loc_operation->updating_timer);
 	free(lchan->loc_operation);
 	lchan->loc_operation = 0;
+	put_lchan(lchan);
 }
 
 static void allocate_loc_updating_req(struct gsm_lchan *lchan)
@@ -102,6 +103,7 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	lchan->loc_operation = (struct gsm_loc_updating_operation *)
 				malloc(sizeof(*lchan->loc_operation));
 	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
+	use_lchan(lchan);
 }
 
 static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48)
