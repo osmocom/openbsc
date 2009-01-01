@@ -473,7 +473,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	 */
 	schedule_reject(lchan);
 	if (!authorize_subscriber(lchan->loc_operation, subscr))
-		return;
+		return 0;
 
 	db_subscriber_alloc_tmsi(subscr);
 	subscr_update(subscr, bts);
@@ -528,7 +528,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		ptr8[1] = name_len*2 + 1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
-		ptr16 = msgb_put(msg, name_len*2);
+		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_short[i]);
 	}
