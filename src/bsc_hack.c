@@ -791,7 +791,7 @@ static void pag_timer_cb(void *data)
 	u_int8_t mi[128];
 	unsigned int mi_len;
 
-return 0;
+return;
 
 	if (llist_empty(&pending_stations)) {
 		DEBUGP(DPAG, "pag_timer_cb but no pending mobile stations\n");
