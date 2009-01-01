@@ -26,6 +26,7 @@
 #include <time.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -348,7 +349,35 @@ static void bootstrap_om(struct gsm_bts *bts)
 	abis_nm_event_reports(bts, 1);
 }
 
+static int shutdown_om(struct gsm_bts *bts)
+{
+	/* stop sending event reports */
+	abis_nm_event_reports(bts, 0);
 
+	/* begin DB transmission */
+	abis_nm_db_transmission(bts, 1);
+
+	/* end DB transmission */
+	abis_nm_db_transmission(bts, 0);
+
+	/* Reset BTS Site manager resource */
+	abis_nm_reset_resource(bts);
+
+	return 0;
+}
+
+static int shutdown_net(struct gsm_network *net)
+{
+	int i;
+	for (i = 0; i < net->num_bts; i++) {
+		int rc;
+		rc = shutdown_om(&net->bts[i]);
+		if (rc < 0)
+			return rc;
+	}
+
+	return 0;
+}
 
 struct bcch_info {
 	u_int8_t type;
@@ -918,6 +947,20 @@ static void bsc_hack_call_state_changed(struct gsm_lchan *lchan,
 	pag_timer_cb(0);
 }
 
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGHUP:
+	case SIGABRT:
+		shutdown_net(gsmnet);
+		break;
+	default:
+		break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	/* parse options */
@@ -936,6 +979,9 @@ int main(int argc, char **argv)
 	printf("DB: Database prepared.\n");
 
 	bootstrap_network();
+
+	signal(SIGHUP, &signal_handler);
+	signal(SIGABRT, &signal_handler);
 
 	while (1) {
 		bsc_select_main();
