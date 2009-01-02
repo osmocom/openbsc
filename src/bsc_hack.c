@@ -1,6 +1,7 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -42,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 #include <openbsc/misdn.h>
+#include <openbsc/telnet_interface.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -685,6 +687,7 @@ static int bootstrap_network(void)
 	gsmnet->call_state_changed = bsc_hack_call_state_changed;
 #endif
 
+	telnet_init(gsmnet, 4242);
 	if (mi_setup(bts, 0, mi_cb) < 0)
 		return -EIO;
 
