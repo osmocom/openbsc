@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 #include <sys/fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -106,6 +107,8 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 		return;
 
 	int ret;
+	time_t cur_time;
+	struct tm *tm;
 	struct fake_lapd_frame header = {
 		.ea1		= 0,
 		.cr		= PCAP_OUTPUT ? 1 : 0,
@@ -121,6 +124,10 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 		.incl_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
 		.orig_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
 	};
+
+	cur_time = time(NULL);
+	tm = localtime(&cur_time);
+	payload_header.ts_sec = mktime(tm);
 
 	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
