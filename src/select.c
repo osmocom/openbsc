@@ -55,7 +55,7 @@ void bsc_unregister_fd(struct bsc_fd *fd)
 
 int bsc_select_main()
 {
-	struct bsc_fd *ufd;
+	struct bsc_fd *ufd, *tmp;
 	fd_set readset, writeset, exceptset;
 	int i;
 
@@ -84,7 +84,7 @@ int bsc_select_main()
 	update_timers();
 
 	/* call registered callback functions */
-	llist_for_each_entry(ufd, &bsc_fds, list) {
+	llist_for_each_entry_safe(ufd, tmp, &bsc_fds, list) {
 	    int flags = 0;
 
 	    if (FD_ISSET(ufd->fd, &readset))
