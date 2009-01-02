@@ -27,6 +27,8 @@
 #include <string.h>
 #include <errno.h>
 #include <signal.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -689,6 +691,20 @@ static int bootstrap_network(void)
 	return 0;
 }
 
+
+static void create_pcap_file(char *file)
+{
+	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	int fd = open(file, O_WRONLY|O_TRUNC|O_CREAT, mode);
+
+	if (fd < 0) {
+		perror("Failed to open file for pcap");
+		return;
+	}
+
+	mi_set_pcap_fd(fd);
+}
+
 static void print_usage()
 {
 	printf("Usage: bsc_hack\n");
@@ -704,6 +720,7 @@ static void print_help()
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
+	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -h --help this text\n");
 }
 
@@ -720,10 +737,11 @@ static void handle_options(int argc, char** argv)
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
 			{"reject-cause", 1, 0, 'r'},
+			{"pcap", 1, 0, 'p'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -753,6 +771,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'r':
 			gsm0408_set_reject_cause(atoi(optarg));
+			break;
+		case 'p':
+			create_pcap_file(optarg);
 			break;
 		default:
 			/* ignore */

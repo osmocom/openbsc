@@ -1,6 +1,7 @@
 /* OpenBSC Abis interface to mISDNuser */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -44,6 +45,88 @@
 #include <openbsc/abis_rsl.h>
 
 #define NUM_E1_TS	32
+
+
+/*
+ * pcap writing of the misdn load
+ * pcap format is from http://wiki.wireshark.org/Development/LibpcapFileFormat
+ */
+#define WTAP_ENCAP_ISDN		17
+#define PCAP_INPUT		0
+#define PCAP_OUTPUT		1
+
+struct pcap_hdr {
+	u_int32_t magic_number;
+	u_int16_t version_major;
+	u_int16_t version_minor;
+	int32_t  thiszone;
+	u_int32_t sigfigs;
+	u_int32_t snaplen;
+	u_int32_t network;
+} __attribute__((packed));
+
+struct pcaprec_hdr {
+	u_int32_t ts_sec;
+	u_int32_t ts_usec;
+	u_int32_t incl_len;
+	u_int32_t orig_len;
+} __attribute__((packed));
+
+struct fake_lapd_frame {
+	u_int8_t ea1 : 1;
+	u_int8_t cr : 1;
+	u_int8_t sapi : 6;
+	u_int8_t ea2 : 1;
+	u_int8_t tei : 7;
+	u_int8_t control_foo; /* fake UM's ... */
+} __attribute__((packed));
+
+static int pcap_fd = -1;
+
+void mi_set_pcap_fd(int fd)
+{
+	int ret;
+	struct pcap_hdr header = {
+		.magic_number	= 0xa1b2c3d4,
+		.version_major	= 2,
+		.version_minor	= 4,
+		.thiszone	= 0,
+		.sigfigs	= 0,
+		.snaplen	= 65535,
+		.network	= WTAP_ENCAP_ISDN,
+	};
+
+	pcap_fd = fd;
+	ret = write(pcap_fd, &header, sizeof(header));
+}
+
+static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
+			      struct msgb *msg) {
+	if (pcap_fd < 0)
+		return;
+
+	int ret;
+	struct fake_lapd_frame header = {
+		.ea1		= 0,
+		.cr		= PCAP_OUTPUT ? 1 : 0,
+		.sapi		= addr->sapi & 0x3F,
+		.ea2		= 1,
+		.tei		= addr->tei & 0x7F,
+		.control_foo	= 0x13 /* UI with P set */,
+	};
+
+	struct pcaprec_hdr payload_header = {
+		.ts_sec	    = 0,
+		.ts_usec    = 0,
+		.incl_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
+		.orig_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
+	};
+
+	ret = write(pcap_fd, &header, sizeof(header));
+	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
+	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
+			msg->len - MISDN_HEADER_LEN);
+}
 
 /* data structure for one E1 interface with A-bis */
 struct mi_e1_handle {
@@ -121,6 +204,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x)\n",
 		ret, hh->prim, hh->id);
+
+	write_pcap_packet(PCAP_INPUT, &l2addr, msg);
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
@@ -218,6 +303,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 			fprintf(stdout, "OML TX: ");
 			hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 		}
+
+		write_pcap_packet(PCAP_OUTPUT, &e1h->omladdr, msg);
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->omladdr,
 			     sizeof(e1h->omladdr));
@@ -243,6 +330,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 			hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 		}
 
+		write_pcap_packet(PCAP_OUTPUT, &e1h->l2addr, msg);
 		ret = sendto(bfd->fd, msg->data, msg->len, 0,
 			     (struct sockaddr *)&e1h->l2addr,
 			     sizeof(e1h->l2addr));
