@@ -1,5 +1,5 @@
 /*
- * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -46,6 +46,7 @@ struct timer_list {
 	struct timeval timeout;
 	int active  : 1;
 	int handled : 1;
+	int in_list : 1;
 
 	void (*cb)(void*);
 	void *data;
