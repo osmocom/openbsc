@@ -212,7 +212,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x)\n",
 		ret, hh->prim, hh->id);
 
-	write_pcap_packet(PCAP_INPUT, &l2addr, msg);
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
@@ -263,6 +262,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case DL_DATA_IND:
 		DEBUGP(DMI, "got DL_DATA_IND\n");
+		write_pcap_packet(PCAP_INPUT, &l2addr, msg);
 
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		
