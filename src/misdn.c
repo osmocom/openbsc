@@ -82,6 +82,15 @@ struct fake_linux_lapd_header {
 	int16_t protocol;
 } __attribute__((packed));
 
+struct lapd_header {
+	u_int8_t ea1 : 1;
+	u_int8_t cr : 1;
+	u_int8_t sapi : 6;
+	u_int8_t ea2 : 1;
+	u_int8_t tei : 7;
+	u_int8_t control_foo; /* fake UM's ... */
+} __attribute__((packed));
+
 static_assert((int)&((struct fake_linux_lapd_header*)NULL)->hatype == 2,	hatype_offset);
 static_assert((int)&((struct fake_linux_lapd_header*)NULL)->halen == 4,		halen_offset);
 static_assert((int)&((struct fake_linux_lapd_header*)NULL)->addr == 6,		addr_offset);
@@ -122,17 +131,27 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 		.pkttype	= 4,
 		.hatype		= 0,
 		.halen		= 0,
-		.addr		= 0x1,
+		.addr		= direction == PCAP_OUTPUT ? 0x0 : 0x1,
 		.protocol	= ntohs(48),
 	};
-		
+
+	struct lapd_header lapd_header = {
+		.ea1		= 0,
+		.cr		= direction == PCAP_OUTPUT ? 1 : 0,
+		.sapi		= addr->sapi & 0x3F,
+		.ea2		= 1,
+		.tei		= addr->tei & 0x7F,
+		.control_foo	= 0x13 /* UI with P set */,
+	};	
 
 	struct pcaprec_hdr payload_header = {
 		.ts_sec	    = 0,
 		.ts_usec    = 0,
 		.incl_len   = msg->len + sizeof(struct fake_linux_lapd_header)
+				+ sizeof(struct lapd_header)
 				- MISDN_HEADER_LEN,
 		.orig_len   = msg->len + sizeof(struct fake_linux_lapd_header)
+				+ sizeof(struct lapd_header)
 				- MISDN_HEADER_LEN,
 	};
 
@@ -143,6 +162,7 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
 	ret = write(pcap_fd, &header, sizeof(header));
+	ret = write(pcap_fd, &lapd_header, sizeof(lapd_header));
 	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
 			msg->len - MISDN_HEADER_LEN);
 }
