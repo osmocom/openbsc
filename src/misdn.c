@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <arpa/inet.h>
 #include <mISDNif.h>
 
 //#define AF_COMPATIBILITY_FUNC
@@ -73,19 +74,20 @@ struct pcaprec_hdr {
 	u_int32_t orig_len;
 } __attribute__((packed));
 
-struct pseudo_isdn_header {
-	int32_t uton;
-	u_int8_t channel;
+struct fake_linux_lapd_header {
+        u_int16_t pkttype;
+	u_int16_t hatype;
+	u_int16_t halen;
+	u_int64_t addr;
+	int16_t protocol;
 } __attribute__((packed));
 
-struct fake_lapd_frame {
-	u_int8_t ea1 : 1;
-	u_int8_t cr : 1;
-	u_int8_t sapi : 6;
-	u_int8_t ea2 : 1;
-	u_int8_t tei : 7;
-	u_int8_t control_foo; /* fake UM's ... */
-} __attribute__((packed));
+static_assert((int)&((struct fake_linux_lapd_header*)NULL)->hatype == 2,	hatype_offset);
+static_assert((int)&((struct fake_linux_lapd_header*)NULL)->halen == 4,		halen_offset);
+static_assert((int)&((struct fake_linux_lapd_header*)NULL)->addr == 6,		addr_offset);
+static_assert((int)&((struct fake_linux_lapd_header*)NULL)->protocol == 14,	proto_offset);
+static_assert(sizeof(struct fake_linux_lapd_header) == 16,			lapd_header_size);
+
 
 static int pcap_fd = -1;
 
@@ -116,32 +118,23 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	time_t cur_time;
 	struct tm *tm;
 
-	struct pseudo_isdn_header isdn = {
-		/* user to network.. we are the network.. gboolean is a init */
-		.uton		= 0,
-		.channel	= addr->channel,
+	struct fake_linux_lapd_header header = {
+		.pkttype	= 4,
+		.hatype		= 0,
+		.halen		= 0,
+		.addr		= 0x1,
+		.protocol	= ntohs(48),
 	};
-
-	struct fake_lapd_frame header = {
-		.ea1		= 0,
-		.cr		= PCAP_OUTPUT ? 1 : 0,
-		.sapi		= addr->sapi & 0x3F,
-		.ea2		= 1,
-		.tei		= addr->tei & 0x7F,
-		.control_foo	= 0x13 /* UI with P set */,
-	};
+		
 
 	struct pcaprec_hdr payload_header = {
 		.ts_sec	    = 0,
 		.ts_usec    = 0,
-		.incl_len   = msg->len + sizeof(struct fake_lapd_frame)
-				+ sizeof(struct pseudo_isdn_header)
+		.incl_len   = msg->len + sizeof(struct fake_linux_lapd_header)
 				- MISDN_HEADER_LEN,
-		.orig_len   = msg->len + sizeof(struct fake_lapd_frame)
-				+ sizeof(struct pseudo_isdn_header)
+		.orig_len   = msg->len + sizeof(struct fake_linux_lapd_header)
 				- MISDN_HEADER_LEN,
 	};
-
 
 
 	cur_time = time(NULL);
@@ -149,7 +142,6 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	payload_header.ts_sec = mktime(tm);
 
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
-	ret = write(pcap_fd, &isdn, sizeof(isdn));
 	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
 			msg->len - MISDN_HEADER_LEN);
