@@ -52,7 +52,7 @@
  * pcap writing of the misdn load
  * pcap format is from http://wiki.wireshark.org/Development/LibpcapFileFormat
  */
-#define WTAP_ENCAP_ISDN		17
+#define DLT_LINUX_LAPD		177
 #define PCAP_INPUT		0
 #define PCAP_OUTPUT		1
 
@@ -71,6 +71,11 @@ struct pcaprec_hdr {
 	u_int32_t ts_usec;
 	u_int32_t incl_len;
 	u_int32_t orig_len;
+} __attribute__((packed));
+
+struct pseudo_isdn_header {
+	int32_t uton;
+	u_int8_t channel;
 } __attribute__((packed));
 
 struct fake_lapd_frame {
@@ -94,13 +99,14 @@ void mi_set_pcap_fd(int fd)
 		.thiszone	= 0,
 		.sigfigs	= 0,
 		.snaplen	= 65535,
-		.network	= WTAP_ENCAP_ISDN,
+		.network	= DLT_LINUX_LAPD,
 	};
 
 	pcap_fd = fd;
 	ret = write(pcap_fd, &header, sizeof(header));
 }
 
+/* This currently only works for the D-Channel */
 static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 			      struct msgb *msg) {
 	if (pcap_fd < 0)
@@ -109,6 +115,13 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	int ret;
 	time_t cur_time;
 	struct tm *tm;
+
+	struct pseudo_isdn_header isdn = {
+		/* user to network.. we are the network.. gboolean is a init */
+		.uton		= 0,
+		.channel	= addr->channel,
+	};
+
 	struct fake_lapd_frame header = {
 		.ea1		= 0,
 		.cr		= PCAP_OUTPUT ? 1 : 0,
@@ -121,15 +134,22 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	struct pcaprec_hdr payload_header = {
 		.ts_sec	    = 0,
 		.ts_usec    = 0,
-		.incl_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
-		.orig_len   = msg->len + sizeof(header) - MISDN_HEADER_LEN,
+		.incl_len   = msg->len + sizeof(struct fake_lapd_frame)
+				+ sizeof(struct pseudo_isdn_header)
+				- MISDN_HEADER_LEN,
+		.orig_len   = msg->len + sizeof(struct fake_lapd_frame)
+				+ sizeof(struct pseudo_isdn_header)
+				- MISDN_HEADER_LEN,
 	};
+
+
 
 	cur_time = time(NULL);
 	tm = localtime(&cur_time);
 	payload_header.ts_sec = mktime(tm);
 
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
+	ret = write(pcap_fd, &isdn, sizeof(isdn));
 	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
 			msg->len - MISDN_HEADER_LEN);
