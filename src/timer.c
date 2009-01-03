@@ -164,7 +164,7 @@ restart:
 	llist_for_each_entry_safe(timer, tmp, &timer_list, entry) {
 		timer->handled = 0;
 		if (!timer->active) {
-			llist_del(&timer->entry);
+			del_timer(timer);
 		}
 	}
 }
