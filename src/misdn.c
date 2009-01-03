@@ -141,7 +141,7 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 		.sapi		= addr->sapi & 0x3F,
 		.ea2		= 1,
 		.tei		= addr->tei & 0x7F,
-		.control_foo	= 0x13 /* UI with P set */,
+		.control_foo	= 0x03 /* UI */,
 	};	
 
 	struct pcaprec_hdr payload_header = {
