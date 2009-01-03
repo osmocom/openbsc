@@ -167,10 +167,6 @@ struct gsm_bts {
 	struct gsm_bts_trx trx[BTS_MAX_TRX+1];
 };
 
-struct gsm_ms {
-	unsigned long imei;
-};
-
 struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
@@ -181,8 +177,6 @@ struct gsm_network {
 	unsigned int num_bts;
 	/* private lists */
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
-	struct gsm_ms	*ms;
-	struct gsm_subscriber *subscriber;
 
 	/* management of the lower layers to allow the bsc to hook into it */
 	void (*update_request)(struct gsm_bts *, u_int32_t tmsi, int accepted);
