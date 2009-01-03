@@ -129,8 +129,8 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	tm = localtime(&cur_time);
 	payload_header.ts_sec = mktime(tm);
 
-	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
+	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
 			msg->len - MISDN_HEADER_LEN);
 }
