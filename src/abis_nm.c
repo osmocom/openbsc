@@ -419,9 +419,9 @@ static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
 int abis_nm_event_reports(struct gsm_bts *bts, int on)
 {
 	if (on == 0)
-		return __simple_cmd(bts, 0x63);
+		return __simple_cmd(bts, NM_MT_STOP_EVENT_REP);
 	else
-		return __simple_cmd(bts, 0x66);
+		return __simple_cmd(bts, NM_MT_REST_EVENT_REP);
 }
 
 int abis_nm_reset_resource(struct gsm_bts *bts)
