@@ -40,12 +40,12 @@
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
 
-static struct msgb *gsm411_msgb_alloc(void)
+struct msgb *gsm411_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM);
 }
 
-static int gsm0411_sendmsg(struct msgb *msg)
+int gsm0411_sendmsg(struct msgb *msg)
 {
 	if (msg->lchan)
 		msg->trx = msg->lchan->ts->trx;
