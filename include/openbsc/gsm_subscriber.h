@@ -30,8 +30,12 @@ enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_TMSI,
 };
 
-struct gsm_subscriber *subscr_alloc();
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
+struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
+struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
+
+/* internal */
+struct gsm_subscriber *subscr_alloc(void);
 
 #endif /* _GSM_SUBSCR_H */

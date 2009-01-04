@@ -53,7 +53,7 @@ static void subscr_free(struct gsm_subscriber *subscr)
 	free(subscr);
 }
 
-struct gsm_subscriber *subscr_get_by_tmsi(char *tmsi)
+struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
 {
 	struct gsm_subscriber *subscr;
 
@@ -66,7 +66,7 @@ struct gsm_subscriber *subscr_get_by_tmsi(char *tmsi)
 	return db_get_subscriber(GSM_SUBSCRIBER_TMSI, tmsi);
 }
 
-struct gsm_subscriber *subscr_get_by_imsi(char *imsi)
+struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
 {
 	struct gsm_subscriber *subscr;
 
