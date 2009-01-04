@@ -27,6 +27,7 @@
 
 #include <openbsc/telnet_interface.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/chan_alloc.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -136,12 +137,50 @@ void telnet_page(struct telnet_connection *connection, const char *imsi, int pag
 	printf("going to page: '%s' %d\n", imsi, page);
 }
 
+static struct gsm_lchan* find_channel(struct gsm_bts *bts, const char *imsi,
+			    const char **error, int fd) {
+	int ret;
+	struct gsm_lchan *lchan;
+	struct gsm_subscriber *subscr;
+
+	subscr = subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		ret = write(fd, error[0], strlen(error[0]));
+		return NULL;
+	}
+
+	lchan = lchan_find(bts, subscr);
+	if (!lchan)
+		ret = write(fd, error[1], strlen(error[1]));
+
+	subscr_put(subscr);
+	return lchan;
+}
+
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {
-	printf("put_channel: '%s'\n", imsi);
+	static const char* error[] = {
+		"put_channel: IMSI not found\n",
+		"put_channel: No channel allocated for IMSI\n" };
+	struct gsm_bts *bts = &connection->network->bts[connection->bts];
+	struct gsm_lchan *lchan = find_channel(bts, imsi, error, connection->fd.fd);
+
+	if (!lchan)
+		return;
+
+	put_lchan(lchan);
 }
 
 void telnet_get_channel(struct telnet_connection *connection, const char *imsi) {
-	printf("get_channel: '%s'\n", imsi);
+	static const char* error[] = {
+		"get_channel: IMSI not found\n",
+		"get_channel: No channel allocated for IMSI\n" };
+	struct gsm_bts *bts = &connection->network->bts[connection->bts];
+	struct gsm_lchan *lchan = find_channel(bts, imsi, error, connection->fd.fd);
+
+	if (!lchan)
+		return;
+
+	use_lchan(lchan);
 }
 
 void telnet_call(struct telnet_connection *connection, const char* imsi,
@@ -245,6 +284,7 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	connection->fd.fd = new_connection;
 	connection->fd.when = BSC_FD_READ;
 	connection->fd.cb = client_data;
+	connection->bts = 0;
 	bsc_register_fd(&connection->fd);
 	llist_add_tail(&connection->entry, &active_connections);
 
