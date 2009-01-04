@@ -29,6 +29,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/msgb.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -93,7 +94,7 @@ void telnet_write_help(int fd) {
 		"get_channel IMSI Add use count on an active channel\n"
 		"put_channel IMSI Remove use count on an active channel\n"
 		"show  This will show the channel allocation\n"
-		"48 IMSI 0xAB 0xEF...Send GSM 04.08\n"
+		"48 IMSI 0xAB 0xEF...Send GSM 04.08. proto and msg byte then data\n"
 		"11 IMSI 0xAB 0xEF...Send GSM 04.11\n";
 
 	ret = write(fd, msg, strlen(msg));
@@ -200,7 +201,28 @@ void telnet_call(struct telnet_connection *connection, const char* imsi,
 }
 
 void telnet_send_gsm_48(struct telnet_connection *connection) {
-	printf("sending gsm04.08 message\n");
+	static const char* error[] = {
+		"48: IMSI not found\n",
+		"48: No channel allocated for IMSI\n" };
+	struct gsm_bts *bts = &connection->network->bts[connection->bts];
+	struct gsm_lchan *lchan = find_channel(bts, connection->imsi, error, connection->fd.fd);
+
+	if (!lchan)
+		return;
+
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	int i;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + connection->read-2);
+	msg->lchan = lchan;
+
+	gh->proto_discr = connection->commands[0];
+	gh->msg_type = connection->commands[1];
+	for (i = 2; i < connection->read; ++i)
+	    gh->data[i-2] = connection->commands[i];
+
+	return gsm48_sendmsg(msg);
 }
 
 void telnet_send_gsm_11(struct telnet_connection *connection) {
