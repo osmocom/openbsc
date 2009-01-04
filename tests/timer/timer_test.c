@@ -35,6 +35,11 @@ static struct timer_list timer_two = {
     .data = (void*)2,
 };
 
+static struct timer_list timer_three = {
+    .cb = timer_fired,
+    .data = (void*)3,
+};
+
 static void timer_fired(unsigned long data)
 {
     printf("Fired timer: %lu\n", data);
@@ -44,6 +49,8 @@ static void timer_fired(unsigned long data)
         del_timer(&timer_two);
     } else if (data == 2) {
         printf("Should not be fired... bug in del_timer\n");
+    } else if (data == 3) {
+        printf("Timer fired not registering again\n");
     } else  {
         printf("wtf... wrong data\n");
     }
@@ -55,6 +62,7 @@ int main(int argc, char** argv)
 
     schedule_timer(&timer_one, 3, 0);
     schedule_timer(&timer_two, 5, 0);
+    schedule_timer(&timer_three, 4, 0);
 
     while (1) {
         bsc_select_main();
