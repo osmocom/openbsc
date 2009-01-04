@@ -244,15 +244,15 @@ static void show_trx(int fd, struct gsm_bts_trx *trx) {
 
 static void show_ts(int fd, struct gsm_bts_trx_ts *ts) {
 	WRITE_CONNECTION(fd,
-		"     TS: #%u pchan: %d flags: %u\n",
-		ts->nr, ts->pchan, ts->flags);
+		"     TS: #%u pchan: %12s flags: %u\n",
+		ts->nr, gsm_pchan_name(ts->pchan), ts->flags);
 }
 
 static void show_lchan(int fd, struct gsm_lchan *lchan) {
 	struct gsm_subscriber *subscr = lchan->subscr;
 	WRITE_CONNECTION(fd,
-		"       LCHAN: #%u type: %d  subscriber: %s/%s/%s use: %d loc: %p\n",
-		lchan->nr, lchan->type,
+		"       LCHAN: #%u type: %7s  subscriber: %s/%s/%s use: %d loc: %p\n",
+		lchan->nr, gsm_lchan_name(lchan->type),
 		subscr ? subscr->imsi : "na",
 		subscr ? subscr->tmsi : "na",
 		subscr ? subscr->name : "na",
