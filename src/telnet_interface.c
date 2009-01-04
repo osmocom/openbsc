@@ -28,6 +28,7 @@
 #include <openbsc/telnet_interface.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/gsm_04_08.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -185,7 +186,17 @@ void telnet_get_channel(struct telnet_connection *connection, const char *imsi) 
 
 void telnet_call(struct telnet_connection *connection, const char* imsi,
 		const char *origin) {
-	printf("calling: '%s' from: '%s'\n", imsi, origin);
+	static const char* error[] = {
+		"call: IMSI not found\n",
+		"call: No channel allocated for IMSI\n" };
+	struct gsm_bts *bts = &connection->network->bts[connection->bts];
+	struct gsm_lchan *lchan = find_channel(bts, imsi, error, connection->fd.fd);
+
+	if (!lchan)
+		return;
+
+	/* TODO: add the origin */
+	gsm48_cc_tx_setup(lchan);
 }
 
 void telnet_send_gsm_48(struct telnet_connection *connection) {
