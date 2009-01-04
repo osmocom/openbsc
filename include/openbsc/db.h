@@ -32,7 +32,7 @@ int db_fini();
 
 /* subscriber management */
 struct gsm_subscriber* db_create_subscriber(char *imsi);
-struct gsm_subscriber* db_get_subscriber(enum gsm_subscriber_field field, char *subscr);
+struct gsm_subscriber* db_get_subscriber(enum gsm_subscriber_field field, const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber* subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);

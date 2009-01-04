@@ -38,6 +38,7 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/chan_alloc.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -106,25 +107,6 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
 }
 
-static void parse_lai(struct gsm_lai *lai, const struct gsm48_loc_area_id *lai48)
-{
-	u_int8_t dig[4];
-
-	/* MCC */
-	dig[1] = lai48->digits[0] & 0x0f;
-	dig[2] = lai48->digits[0] >> 4;
-	dig[3] = lai48->digits[1] & 0x0f;
-	lai->mcc = dig[3] * 100 + dig[2];
-
-	/* MNC */
-	dig[1] = lai48->digits[1] >> 4;
-	dig[2] = lai48->digits[2] & 0x0f;
-	dig[3] = lai48->digits[2] >> 4;
-	lai->mnc = dig[3] * 100 + dig[2];
-
-	lai->lac = lai48->lac;
-}
-
 static void to_bcd(u_int8_t *bcd, u_int16_t val)
 {
 	bcd[2] = val % 10;
@@ -133,17 +115,6 @@ static void to_bcd(u_int8_t *bcd, u_int16_t val)
 	val = val / 10;
 	bcd[0] = val % 10;
 	val = val / 10;
-}
-
-static u_int8_t to_bcd8(unsigned int val)
-{
-	u_int8_t bcd;
-	
-	bcd = (val % 10) & 0x0f;
-	val = val / 10;
-	bcd |= (val % 10) << 4;
-
-	return bcd;
 }
 
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
@@ -207,6 +178,8 @@ int gsm48_sendmsg(struct msgb *msg)
 				break;
 			case GSM_CT_MT:
 				break;
+			case GSM_CT_NONE:
+				break;
 			}
 		}
 	}
@@ -261,10 +234,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	generate_mid_from_tmsi(mid, tmsi);
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
-
-	/* inform the upper layer on the progress */
-	if (bts->network->update_request)
-		(*bts->network->update_request)(bts, tmsi, 1);
 
 	ret = gsm48_sendmsg(msg);
 
@@ -448,7 +417,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(lu->mi);
+		subscr = subscr_get_by_tmsi((char *)lu->mi);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			use_lchan(lchan);
@@ -492,12 +461,9 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
-	time_t cur_t;
-	struct tm* cur_time;
 	u_int8_t *ptr8;
 	u_int16_t *ptr16;
 	int name_len;
-	int tz15min;
 	int i;
 
 	msg->lchan = lchan;
@@ -536,6 +502,10 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	}
 
 #if 0
+	/* move back to the top */
+	time_t cur_t;
+	struct tm* cur_time;
+	int tz15min;
 	/* Section 10.5.3.9 */
 	cur_t = time(NULL);
 	cur_time = gmtime(cur_t);
@@ -673,11 +643,13 @@ static int gsm48_cc_rx_status_enq(struct msgb *msg)
 	return gsm48_cc_tx_status(msg->lchan);
 }
 
+#if 0
 static int gsm48_cc_rx_setup(struct msgb *msg)
 {
 	return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_CALL_CONF);
 }
+#endif
 
 int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 {
@@ -711,7 +683,6 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
 	struct gsm_call *call = &msg->lchan->call;
-	struct gsm_network *network = msg->lchan->ts->trx->bts->network;
 	int rc = 0;
 
 	switch (msg_type) {
@@ -722,8 +693,6 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	case GSM48_MT_CC_RELEASE_COMPL:
 		/* Answer from MS to RELEASE */
 		DEBUGP(DCC, "RELEASE COMPLETE (state->NULL)\n");
-		if (network->call_state_changed)
-			(*network->call_state_changed)(msg->lchan, call->state);
 		call->state = GSM_CSTATE_NULL;
 		break;
 	case GSM48_MT_CC_ALERTING:

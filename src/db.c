@@ -194,7 +194,7 @@ struct gsm_subscriber* db_create_subscriber(char *imsi) {
 	return subscr;
 }
 
-struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, char *id) {
+struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const char *id) {
 	dbi_result result;
 	const char *string;
 	char *quoted;

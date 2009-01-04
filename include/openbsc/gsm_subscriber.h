@@ -34,6 +34,7 @@ struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
+int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

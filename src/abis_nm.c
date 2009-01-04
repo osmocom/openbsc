@@ -32,6 +32,7 @@
 #include <openbsc/msgb.h>
 #include <openbsc/tlv.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/misdn.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -92,11 +93,13 @@ static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, i
 	return 0;
 }
 
+#if 0
 /* is this msgtype the usual ACK/NACK type ? */
 static int is_ack_nack(enum abis_nm_msgtype mt)
 {
 	return !is_in_arr(mt, no_ack_nack, ARRAY_SIZE(no_ack_nack));
 }
+#endif
 
 /* is this msgtype a report ? */
 static int is_report(enum abis_nm_msgtype mt)
@@ -182,8 +185,6 @@ int abis_nm_rcvmsg(struct msgb *msg)
 {
 	int rc;
 	struct abis_om_hdr *oh = msgb_l2(msg);
-	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
-	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
@@ -197,6 +198,8 @@ int abis_nm_rcvmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 #if 0
+	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
+	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 	if (oh->length + hlen > l2_len) {
 		fprintf(stderr, "ABIS OML truncated message (%u > %u)\n",
 			oh->length + sizeof(*oh), l2_len);
@@ -296,7 +299,6 @@ int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 {
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
-	u_int8_t *tei_attr;
 	u_int8_t len = sizeof(*ch) + 2;
 	struct msgb *msg = nm_msgb_alloc();
 

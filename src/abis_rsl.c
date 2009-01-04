@@ -264,7 +264,6 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
-	u_int8_t encr_info = 0x01;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
@@ -295,9 +294,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
 	/* FXIME: don't hardcode these!! */
-	u_int8_t encr_info = 0x01;
 	u_int8_t ms_power = 0x0f;
-	u_int8_t bs_power = 0x01;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
@@ -317,6 +314,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t
 		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
 		cm.chan_rate = 0x11; /* speech coding alg version 2*/
 		break;
+	case GSM_LCHAN_TCH_H:
+		DEBUGP(DRSL, "Unimplemented TCH_H activation in %s:%d\n", __FILE__, __LINE__);
+		return -1;
+	case GSM_LCHAN_UNKNOWN:
+	case GSM_LCHAN_NONE:
+		return -1;
 	}
 
 	ci.chan_desc.iei = 0x64;
@@ -334,7 +337,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t
 		     (u_int8_t *) &cm);
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) &ci);
-	/* FIXME: this shoould be optional */
+	/* FIXME: this should be optional */
 #if 0
 	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
 		     (u_int8_t *) &encr_info);
@@ -386,9 +389,11 @@ int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 int rsl_paging_cmd_subscr(struct gsm_bts *bts, u_int8_t chan_need,
 			  struct gsm_subscriber *subscr)
 {
+#if 0
 	u_int8_t mi[128];
 	unsigned int mi_len;
 	u_int8_t paging_group;
+#endif
 
 	return -1;
 }
@@ -458,8 +463,6 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 /* Chapter 8.4.2: Channel Activate Acknowledge */
 static int rsl_rx_chan_act_ack(struct msgb *msg)
 {
-	struct gsm_lchan *lchan;
-	struct gsm_network *network;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 
 	/* BTS has confirmed channel activation, we now need
@@ -469,19 +472,12 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	
 	DEBUGP(DRSL, "Channel Activate ACK Channel 0x%02x\n", rslh->chan_nr);
 
-	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
-	network = msg->trx->bts->network;
-	if (network->channel_response)
-		(*network->channel_response)(lchan, 1);
-
 	return 0;
 }
 
 /* Chapter 8.4.3: Channel Activate NACK */
 static int rsl_rx_chan_act_nack(struct msgb *msg)
 {
-	struct gsm_lchan *lchan;
-	struct gsm_network *network;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 
 	/* BTS has confirmed channel activation, we now need
@@ -490,11 +486,6 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		return -EINVAL;
 	
 	DEBUGP(DRSL, "Channel Activate NACK Channel 0x%02x\n", rslh->chan_nr);
-
-	lchan = lchan_lookup(msg->trx, rslh->chan_nr);
-	network = msg->trx->bts->network;
-	if (network->channel_response)
-		(*network->channel_response)(lchan, 0);
 
 	return 0;
 }
@@ -655,10 +646,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
 
-	/* inform the bsc that a channel has been allocated */
-	if (bts->network->channel_allocated)
-		(*bts->network->channel_allocated)(lchan, chreq_reason);
-
 	return ret;
 }
 
@@ -752,7 +739,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 int abis_rsl_rcvmsg(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg)	;
-	unsigned int l2_len = (void *)msg->tail - msgb_l2(msg);
 	int rc;
 
 	switch (rslh->msg_discr & 0xfe) {

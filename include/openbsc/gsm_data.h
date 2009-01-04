@@ -177,14 +177,6 @@ struct gsm_network {
 	unsigned int num_bts;
 	/* private lists */
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
-
-	/* management of the lower layers to allow the bsc to hook into it */
-	void (*update_request)(struct gsm_bts *, u_int32_t tmsi, int accepted);
-	void (*channel_allocated)(struct gsm_lchan *bts, enum gsm_chreq_reason_t);
-	void (*channel_deallocated)(struct gsm_lchan *bts);
-	void (*channel_response)(struct gsm_lchan *, int acked);
-	void (*channel_subscriber_assigned)(struct gsm_lchan *);
-	void (*call_state_changed)(struct gsm_lchan *, enum gsm_call_state new_state);
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,

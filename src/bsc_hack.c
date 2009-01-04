@@ -53,16 +53,6 @@ static int MCC = 1;
 static int MNC = 1;
 static const char *database_name = "hlr.sqlite3";
 
-/* forward declarations */
-static void bsc_hack_update_request(struct gsm_bts *bts,
-			u_int32_t assigned_tmi, int accepted);
-static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
-			enum gsm_chreq_reason_t reason);
-static void bsc_hack_channel_response(struct gsm_lchan *chan, int acked);
-static void bsc_hack_call_state_changed(struct gsm_lchan *chan,
-			enum gsm_call_state new_state);
-
-
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
 
@@ -607,15 +597,6 @@ static int set_system_infos(struct gsm_bts *bts)
 	return 0;
 }
 
-static void activate_traffic_channels(struct gsm_bts_trx *trx)
-{
-	int i;
-
-	/* channel 0 is CCCH */
-	for (i = 1; i < 8; i++)
-		rsl_chan_activate_tch_f(&trx->ts[i]);
-}
-
 /*
  * Patch the various SYSTEM INFORMATION tables to update
  * the LAI
@@ -646,9 +627,6 @@ static void bootstrap_rsl(struct gsm_bts *bts)
 	fprintf(stdout, "bootstrapping RSL MCC=%u MNC=%u\n", MCC, MNC);
 	patch_tables(bts);
 	set_system_infos(bts);
-
-	/* FIXME: defer this until the channels are used */
-	//activate_traffic_channels(&bts->trx[0]);
 }
 
 static void mi_cb(int event, struct gsm_bts *bts)
@@ -680,12 +658,6 @@ static int bootstrap_network(void)
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = HARDCODED_ARFCN;
-#if 0
-	gsmnet->update_request = bsc_hack_update_request;
-	gsmnet->channel_allocated = bsc_hack_channel_allocated;
-	gsmnet->channel_response = bsc_hack_channel_response;
-	gsmnet->call_state_changed = bsc_hack_call_state_changed;
-#endif
 
 	telnet_init(gsmnet, 4242);
 	if (mi_setup(bts, 0, mi_cb) < 0)
@@ -783,193 +755,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		}
 	}
-}
-
-static struct timer_list pag_timer;
-
-/* handles uppercase decimal and hexadecimal */
-static u_int8_t char2bcd(char c)
-{
-	if (c <= '9')
-		return c - '0';
-	else
-		return c - 'A';
-}
-
-static int string_to_mi(u_int8_t *mi, const char *string,
-			u_int8_t type)
-{
-	u_int8_t *cur = mi+3;
-
-	mi[0] = GSM48_IE_MOBILE_ID;
-	//mi[1] = TMSI_LEN;
-	mi[2] = type & GSM_MI_TYPE_MASK;
-
-	if (strlen(string) & 0x01)
-		mi[2] |= char2bcd(*string++) << 4;
-	else
-		mi[2] |= 0xf0;
-
-	while (*string && *(string+1))
-		*cur++ = char2bcd(*string++) | (char2bcd(*string++) << 4);
-
-	mi[1] = cur - mi;
-
-	return cur - mi;
-}
-
-/*
- * Stations that registered and that we need to page
- */
-struct pending_registered_station {
-	struct llist_head entry;
-
-	/* the tmsi of the subscriber */
-	u_int32_t tmsi;
-	int last_page_group;
-};
-
-static LLIST_HEAD(pending_stations);
-
-static void pag_timer_cb(void *data);
-static struct timer_list pag_timer = {
-	.cb = pag_timer_cb,
-};
-
-/* page the tmsi and wait for the channel request */
-static void pag_timer_cb(void *data)
-{
-	struct gsm_bts *bts = &gsmnet->bts[0];
-	struct pending_registered_station *pending_station;
-	u_int8_t mi[128];
-	unsigned int mi_len;
-
-return;
-
-	if (llist_empty(&pending_stations)) {
-		DEBUGP(DPAG, "pag_timer_cb but no pending mobile stations\n");
-		return;
-	}
-
-	/* FIXME: 05.02  6.5.2 Determination of CCCH_GROUP and PAGING_GROUP... */
-	/* get the station to page */
-	pending_station = (struct pending_registered_station*) pending_stations.next;
-	mi_len = generate_mid_from_tmsi(mi, pending_station->tmsi);
-	rsl_paging_cmd(bts, pending_station->last_page_group, mi_len, mi, RSL_CHANNEED_TCH_F);
-
-	/* which group to page next */
-	pending_station->last_page_group = (pending_station->last_page_group+1) % 12;
-	schedule_timer(&pag_timer, 1, 0);
-}
-
-/*
- * initiate the a page command for the given
- * station and retry until we get a channel request
- */
-static void station_timer_cb(void *data)
-{
-	DEBUGP(DPAG, "Initiating paging of a channel\n");
-	pag_timer_cb(0);
-}
-
-static struct timer_list station_timer = {
-	.cb = station_timer_cb,
-};
-
-/*
- * schedule work
- */
-static void bsc_hack_update_request(struct gsm_bts *bts, u_int32_t tmsi, int accepted)
-{
-	struct pending_registered_station *station =
-				(struct pending_registered_station*)malloc(sizeof(*station));
-
-	/*
-	 * Only deal with LOCATION UPDATE REQUEST we have
-	 * accepted.
-	 */
-	if (!accepted)
-		return;
-
-
-	station->tmsi = tmsi;
-	station->last_page_group = 0;
-	llist_add_tail(&station->entry, &pending_stations);
-
-	if (!timer_pending(&station_timer))
-		schedule_timer(&station_timer, 1, 0);
-}
-
-static void bsc_hack_channel_allocated(struct gsm_lchan *chan,
-									enum gsm_chreq_reason_t chreq_reason)
-{
-	struct pending_registered_station *station;
-	if (chreq_reason != GSM_CHREQ_REASON_PAG)
-		return;
-
-	if (llist_empty(&pending_stations)) {
-		DEBUGP(DPAG, "Channel allocated for pag but not waitin for it\n");
-		return;
-	}
-
-	station = (struct pending_registered_station*) pending_stations.next;
-
-	DEBUGP(DPAG, "CHAN RQD due PAG %d on %d for %u\n", chan->type, chan->nr, station->tmsi);
-
-	/* allocate some token in the chan for us */
-	chan->user_data = (void*)station->tmsi;
-	del_timer(&pag_timer);
-}
-
-static void bsc_hack_channel_response(struct gsm_lchan *lchan, int ack)
-{
-	struct pending_registered_station *station;
-	if (llist_empty(&pending_stations)) {
-		return;
-	}
-
-	station = (struct pending_registered_station*) pending_stations.next;
-	if (station->tmsi != (u_int32_t)lchan->user_data) {
-		DEBUGP(DPAG, "Hmmm the channel is not allocated by the"
-					 "station we wanted channel: %u us:%u\n",
-					  (u_int32_t)(lchan->user_data), station->tmsi);
-		return;
-	}
-
-	if (ack) {
-		DEBUGP(DPAG, "We have probably paged a channel for tmsi: %u on %d\n",
-				station->tmsi, lchan->nr);
-		
-		llist_del(&station->entry);
-		free(station);
-
-		/*
-		 * start a call
-		 */
-		gsm48_cc_tx_setup(lchan);
-	} else {
-		/*
-		 * give up and go to the next channel
-		*/
-		llist_del(&station->entry);
-		free(station);
-		pag_timer_cb(0);
-	}
-}
-
-static void bsc_hack_call_state_changed(struct gsm_lchan *lchan,
-					enum gsm_call_state new_state)
-{
-	DEBUGP(DPAG, "Call released jumping to the next...\n");
-
-	/* only handle the transition back to the NULL state */
-	if (new_state != GSM_CSTATE_NULL)
-		return;
-
-	rsl_chan_release(lchan);
-
-	/* next!!! */
-	pag_timer_cb(0);
 }
 
 static void signal_handler(int signal)

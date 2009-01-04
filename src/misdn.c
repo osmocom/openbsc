@@ -197,15 +197,6 @@ static struct mi_e1_handle *global_e1h;
 #define TEI_OML		25
 #define TEI_RSL		1
 
-void hexdump(unsigned char *buf, int len)
-{
-	int i;
-	for (i = 0; i < len; i++) {
-		fprintf(stdout, "%02x ", buf[i]);
-	}
-	fprintf(stdout, "\n");
-}
-
 #define TS1_ALLOC_SIZE	300
 
 static int handle_ts1_read(struct bsc_fd *bfd)
@@ -389,7 +380,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	struct mi_e1_handle *e1h = bfd->data;
 	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
 	struct mISDNhead *hh;
-	int ret;
+	int ret, dummy;
 
 	if (!msg)
 		return -ENOMEM;
@@ -425,7 +416,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 		if (!e1h->ts2_fd)
 			e1h->ts2_fd = open("/tmp/ts2.dump", O_WRONLY|O_APPEND|O_CREAT, 0660);
 		
-		write(e1h->ts2_fd, msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		dummy = write(e1h->ts2_fd, msgb_l2(msg), ret - MISDN_HEADER_LEN);
 
 		break;
 	default:

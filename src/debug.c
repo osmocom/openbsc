@@ -77,7 +77,7 @@ void debug_parse_category_mask(const char *_mask)
 			if (strcasecmp(debug_info[i].name, category_token) == 0)
 				new_mask |= debug_info[i].number;
 		}
-	} while (category_token = strtok(NULL, ":"));
+	} while ((category_token = strtok(NULL, ":")));
 
 
 	free(mask);
@@ -118,5 +118,14 @@ void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 	va_end(ap);
 
 	fflush(outfd);
+}
+
+void hexdump(unsigned char *buf, int len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		fprintf(stdout, "%02x ", buf[i]);
+	}
+	fprintf(stdout, "\n");
 }
 

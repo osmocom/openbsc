@@ -73,11 +73,11 @@ static char *gsm411_7bit_decode(u_int8_t *user_data, u_int8_t length)
 	return text;
 }
 
+#if 0
 static u_int8_t gsm0411_tpdu_from_sms(u_int8_t *tpdu, struct sms_deliver *sms)
 {
-	u_int8_t len = 0;
-
 }
+#endif
 
 static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 {
@@ -111,7 +111,7 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 	}
 	sms->ud_len = *smsp++;
 
-	sms->user_data = gsm411_7bit_decode(smsp, sms->ud_len);
+	sms->user_data = (u_int8_t *)gsm411_7bit_decode(smsp, sms->ud_len);
 
 	DEBUGP(DSMS, "SMS:\nMTI: 0x%02x, VPF: 0x%02x, MR: 0x%02x\n"
 			"PID: 0x%02x, DCS: 0x%02x, UserDataLength: 0x%02x\n"
@@ -147,6 +147,7 @@ static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t trans_id,
 	return gsm0411_sendmsg(msg);
 }
 
+#if 0
 static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
 		u_int8_t msg_ref)
 {
@@ -169,6 +170,7 @@ static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
 
 	return gsm0411_sendmsg(msg);
 }
+#endif
 
 static int gsm411_cp_data(struct msgb *msg)
 {
@@ -248,7 +250,7 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm411_rp_hdr *rp;
-	u_int8_t *data, *tpdu, smslen;
+	u_int8_t *data;
 
 	msg->lchan = lchan;
 

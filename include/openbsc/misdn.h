@@ -23,5 +23,6 @@
 int mi_setup(struct gsm_bts *bts, int cardnr, 
 	     void (cb)(int event, struct gsm_bts *bts));
 void mi_set_pcap_fd(int fd);
+int _abis_nm_sendmsg(struct msgb *msg);
 
 #endif

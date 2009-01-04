@@ -182,3 +182,9 @@ void telnet_parse(struct telnet_connection *conn, char *buf)
 		conn->imsi = NULL;
 	}
 }
+
+__attribute__((unused)) void telnet_unused(void)
+{
+	yyunput(0, 0, 0);
+	input(0);
+}

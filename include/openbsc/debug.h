@@ -22,6 +22,7 @@
 
 #define static_assert(exp, name) typedef int dummy##name [(exp) ? 1 : -1];
 
+void hexdump(unsigned char *buf, int len);
 void debugp(unsigned int subsys, char *file, int line, const char *format, ...);
 void debug_parse_category_mask(const char* mask);
 void debug_use_color(int use_color);
