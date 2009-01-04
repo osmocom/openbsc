@@ -183,7 +183,7 @@ int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 	return 7;
 }
 
-static struct msgb *gsm48_msgb_alloc(void)
+struct msgb *gsm48_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
 }
