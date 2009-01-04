@@ -204,11 +204,18 @@ void telnet_send_gsm_48(struct telnet_connection *connection) {
 	static const char* error[] = {
 		"48: IMSI not found\n",
 		"48: No channel allocated for IMSI\n" };
+	int ret;
 	struct gsm_bts *bts = &connection->network->bts[connection->bts];
 	struct gsm_lchan *lchan = find_channel(bts, connection->imsi, error, connection->fd.fd);
 
 	if (!lchan)
 		return;
+
+	if (connection->read < 2) {
+		static const char *msg = "48: Need at least two bytes";
+		ret = write(connection->fd.fd, msg, strlen(msg));
+		return;
+	}
 
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
