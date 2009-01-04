@@ -27,7 +27,7 @@
 
 /* PRIVATE */
 
-/* generic header in front of every OML message */
+/* generic header in front of every OML message according to TS 08.59 */
 struct abis_om_hdr {
 	u_int8_t	mdisc;
 	u_int8_t	placement;
@@ -150,7 +150,7 @@ enum abis_nm_msgtype {
 	NM_MT_REINIT,
 	NM_MT_REINIT_ACK,
 	NM_MT_REINIT_NACK,
-	NM_MT_SET_SITE_OUT,
+	NM_MT_SET_SITE_OUT,		/* BS11: get alarm ?!? */
 	NM_MT_SET_SITE_OUT_ACK,
 	NM_MT_SET_SITE_OUT_NACK,
 	NM_MT_CHG_HW_CONF		= 0x90,
@@ -184,7 +184,7 @@ enum abis_nm_msgtype {
 	NM_MT_BS11_DELETE_OBJ_ACK,
 	NM_MT_BS11_DELETE_OBJ_NACK,
 
-	NM_MT_BS11_DEACT_TRX1		= 0xd0,
+	NM_MT_BS11_DEACT_TRX1		= 0xd0, /* BS11: Set attr */
 
 	NM_MT_BS11_RESTART		= 0xe7,
 	NM_MT_BS11_DISCONNECT		= 0xe9,
@@ -199,7 +199,10 @@ enum abis_nm_obj_class {
 	NM_OC_BASEB_TRANSC,
 	NM_OC_CHANNEL,
 	/* RFU: 05-FE */
-	NM_OC_BS11			= 0xa3,
+	NM_OC_BS11_unknown		= 0xa3,
+	NM_OC_BS11			= 0xa5,
+	NM_OC_BS11_ENVABTSE		= 0xa8,
+	NM_OC_BS11_BPORT		= 0xa9,
 
 	NM_OC_NULL			= 0xff,
 };
@@ -222,7 +225,7 @@ enum abis_nm_attr {
 	NM_ATT_CONN_FAIL_CRIT,
 	NM_ATT_DEST,
 	/* res */
-	NM_ATT_EVENT_TYPE	= 0x11,
+	NM_ATT_EVENT_TYPE	= 0x11, /* BS11: file data ?!? */
 	NM_ATT_FILE_ID,
 	NM_ATT_FILE_VERSION,
 	NM_ATT_GSM_TIME,
@@ -305,6 +308,17 @@ struct abis_nm_channel {
 	u_int8_t	subslot;
 } __attribute__ ((packed));
 
+/* Siemens BS-11 specific */
+enum abis_bs11_objtype {
+	BS11_OBJ_ALCO		= 0x01,
+	BS11_OBJ_BBSIG		= 0x02,	/* obj_class: 0,1 */
+	BS11_OBJ_TRX1		= 0x03,	/* only DEACTIVATE TRX1 */
+	BS11_OBJ_CCLK		= 0x04,
+	BS11_OBJ_GPSU		= 0x06,
+	BS11_OBJ_LI		= 0x07,
+	BS11_OBJ_PA		= 0x09,	/* obj_class: 0, 1*/
+};
+
 /* PUBLIC */
 
 struct msgb;
@@ -334,6 +348,12 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
+
+/* Siemens / BS-11 specific */
 int abis_nm_db_transmission(struct gsm_bts *bts, int begin);
+int abis_nm_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
+			  u_int8_t idx);
+int abis_nm_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
+int abis_nm_create_bport(struct gsm_bts *bts, u_int8_t idx);
 
 #endif /* _NM_H */

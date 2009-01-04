@@ -424,6 +424,8 @@ int abis_nm_event_reports(struct gsm_bts *bts, int on)
 		return __simple_cmd(bts, NM_MT_REST_EVENT_REP);
 }
 
+/* Siemens (or BS-11) specific commands */
+
 int abis_nm_reset_resource(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_RESET_RESOURCE);
@@ -435,4 +437,41 @@ int abis_nm_db_transmission(struct gsm_bts *bts, int begin)
 		return __simple_cmd(bts, NM_MT_BS11_BEGIN_DB_TX);
 	else
 		return __simple_cmd(bts, NM_MT_BS11_END_DB_TX);
+}
+
+int abis_nm_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
+			  u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11,
+			type, idx, 0);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_ENVABTSE,
+			0, idx, 0);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_create_bport(struct gsm_bts *bts, u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_BPORT,
+			idx, 0, 0);
+
+	return abis_nm_sendmsg(bts, msg);
 }
