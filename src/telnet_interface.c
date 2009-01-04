@@ -229,7 +229,7 @@ void telnet_send_gsm_48(struct telnet_connection *connection) {
 	for (i = 2; i < connection->read; ++i)
 	    gh->data[i-2] = connection->commands[i];
 
-	return gsm48_sendmsg(msg);
+	gsm48_sendmsg(msg);
 }
 
 void telnet_send_gsm_11(struct telnet_connection *connection) {
