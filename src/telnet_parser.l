@@ -41,12 +41,14 @@ extern void telnet_put_channel(struct telnet_connection*, const char *imsi);
 extern void telnet_get_channel(struct telnet_connection*, const char *imsi);
 extern void telnet_send_gsm_48(struct telnet_connection*);
 extern void telnet_send_gsm_11(struct telnet_connection*);
+extern void telnet_list_channels(struct telnet_connection*);
 
 static const int PAGE_LEN = 5; /* "page " */
 static const int CALL_LEN = 5; /* "call " */
 static const int PUT_LEN = 12; /* "put_channel " */
 static const int GET_LEN = 12; /* "get_channel " */
 static const int NET_LEN = 3;  /* "48 " "11 " */
+static const int SHOW_LEN = 5; /* "show " */
 
 #define YY_EXTRA_TYPE struct telnet_connection*
 
@@ -77,6 +79,7 @@ CMD_PUT_CHANNEL "put_channel"
 CMD_CALL	"call"
 CMD_48		"48"
 CMD_11		"11"
+CMD_SHOW	"show"
 
 LINE_END	\n|\r\n
 HEX		[0][x][0-9a-zA-Z][0-9a-zA-Z]
@@ -87,6 +90,7 @@ HEX		[0][x][0-9a-zA-Z][0-9a-zA-Z]
 {CMD_HELP}{LINE_END}		{telnet_write_help(yyextra->fd.fd); yyterminate();}
 {CMD_EXIT}{LINE_END}		{telnet_close_client(&yyextra->fd); yyterminate();}
 {CMD_CLOSE}{LINE_END}		{telnet_close_client(&yyextra->fd); yyterminate();}
+{CMD_SHOW}{LINE_END}		{telnet_list_channels(yyextra); yyterminate();}
 {CMD_PAGE}[ ][0-9]+{LINE_END} {
 				    PREPARE_STRING(PAGE_LEN)
                                     telnet_page(yyextra, str, 0);

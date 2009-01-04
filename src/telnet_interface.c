@@ -26,8 +26,16 @@
 #include <unistd.h>
 
 #include <openbsc/telnet_interface.h>
+#include <openbsc/gsm_subscriber.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
+
+#define WRITE_CONNECTION(fd, msg...) \
+	int ret; \
+	char buf[4096]; \
+	snprintf(buf, sizeof(buf), msg); \
+	ret = write(fd, buf, strlen(buf));
+
 
 /* per connection data */
 LLIST_HEAD(active_connections);
@@ -82,6 +90,7 @@ void telnet_write_help(int fd) {
 		"call IMSI (number)\n"
 		"get_channel IMSI Add use count on an active channel\n"
 		"put_channel IMSI Remove use count on an active channel\n"
+		"show  This will show the channel allocation\n"
 		"48 IMSI 0xAB 0xEF...Send GSM 04.08\n"
 		"11 IMSI 0xAB 0xEF...Send GSM 04.11\n";
 
@@ -146,6 +155,58 @@ void telnet_send_gsm_48(struct telnet_connection *connection) {
 
 void telnet_send_gsm_11(struct telnet_connection *connection) {
 	printf("sending gsm04.11 message\n");
+}
+
+static void show_bts(int fd, struct gsm_bts *bts) {
+	WRITE_CONNECTION(fd,
+		 "BTS #%u on link %u  LOC: %u TRX: %d CCCH0: arfcn:%u,#%u\n",
+		 bts->nr, bts->bts_nr, bts->location_area_code,
+		 bts->num_trx, bts->c0->arfcn, bts->c0->nr)
+}
+
+static void show_trx(int fd, struct gsm_bts_trx *trx) {
+	WRITE_CONNECTION(fd,
+		 "  TRX: %u ARFCN: %u\n",
+		trx->nr, trx->arfcn)
+}
+
+static void show_ts(int fd, struct gsm_bts_trx_ts *ts) {
+	WRITE_CONNECTION(fd,
+		"     TS: #%u pchan: %d flags: %u\n",
+		ts->nr, ts->pchan, ts->flags);
+}
+
+static void show_lchan(int fd, struct gsm_lchan *lchan) {
+	struct gsm_subscriber *subscr = lchan->subscr;
+	WRITE_CONNECTION(fd,
+		"       LCHAN: #%u type: %d  subscriber: %s/%s/%s use: %d loc: %p\n",
+		lchan->nr, lchan->type,
+		subscr ? subscr->imsi : "na",
+		subscr ? subscr->tmsi : "na",
+		subscr ? subscr->name : "na",
+		lchan->use_count, lchan->loc_operation);
+}
+
+void telnet_list_channels(struct telnet_connection *connection) {
+	int bts_no, trx, lchan_no, ts_no;
+	struct gsm_network *network = connection->network;
+
+	for (bts_no = 0; bts_no < network->num_bts; ++bts_no) {
+		struct gsm_bts *bts = &network->bts[bts_no];
+		show_bts(connection->fd.fd, bts);
+
+		for (trx = 0; trx < bts->num_trx; ++trx) {
+			show_trx(connection->fd.fd, &bts->trx[trx]);
+			for (ts_no = 0; ts_no < 8; ++ts_no) {
+				show_ts(connection->fd.fd, &bts->trx[trx].ts[ts_no]);
+				for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
+					struct gsm_lchan *lchan =
+						&bts->trx[trx].ts[ts_no].lchan[lchan_no];
+					show_lchan(connection->fd.fd, lchan);
+				}
+			}
+		}
+	}
 }
 
 static int client_data(struct bsc_fd *fd, unsigned int what) {
