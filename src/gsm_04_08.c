@@ -188,7 +188,7 @@ struct msgb *gsm48_msgb_alloc(void)
 	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
 }
 
-static int gsm48_sendmsg(struct msgb *msg)
+int gsm48_sendmsg(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
 

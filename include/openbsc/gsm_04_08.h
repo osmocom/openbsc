@@ -393,6 +393,7 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
 struct msgb *gsm48_msgb_alloc(void);
+int gsm48_sendmsg(struct msgb *msg);
 
 
 #endif
