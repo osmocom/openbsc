@@ -226,3 +226,19 @@ static void auto_release_channel(void *_lchan)
 		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
+struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
+	int trx, ts_no, lchan_no; 
+
+	for (trx = 0; trx < bts->num_trx; ++trx) {
+		for (ts_no = 0; ts_no < 8; ++ts_no) {
+			for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
+				struct gsm_lchan *lchan =
+					&bts->trx[trx].ts[ts_no].lchan[lchan_no];
+				if (subscr == lchan->subscr)
+					return lchan;
+			}
+		}
+	}
+
+	return NULL;
+}
