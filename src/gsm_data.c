@@ -24,6 +24,56 @@
 
 #include <openbsc/gsm_data.h>
 
+static const char *pchan_names[] = {
+	[GSM_PCHAN_NONE]	= "NONE",
+	[GSM_PCHAN_CCCH]	= "CCCH",
+	[GSM_PCHAN_CCCH_SDCCH4]	= "CCCH+SDCCH4",
+	[GSM_PCHAN_TCH_F]	= "TCH/F",
+	[GSM_PCHAN_TCH_H]	= "TCH/H",
+	[GSM_PCHAN_SDCCH8_SACCH8C] = "SDCCH8",
+	[GSM_PCHAN_UNKNOWN]	= "UNKNOWN",
+};
+
+const char *gsm_pchan_name(enum gsm_phys_chan_config c)
+{
+	if (c >= ARRAY_SIZE(pchan_names))
+		return "INVALID";
+
+	return pchan_names[c];
+}
+
+static const char *lchan_names[] = {
+	[GSM_LCHAN_NONE]	= "NONE",
+	[GSM_LCHAN_SDCCH]	= "SDCCH",
+	[GSM_LCHAN_TCH_F]	= "TCH/F",
+	[GSM_LCHAN_TCH_H]	= "TCH/H",
+	[GSM_LCHAN_UNKNOWN]	= "UNKNOWN",
+};
+
+const char *gsm_lchan_name(enum gsm_chan_t c)
+{
+	if (c >= ARRAY_SIZE(lchan_names))
+		return "INVALID";
+
+	return lchan_names[c];
+}
+
+static const char *chreq_names[] = {
+	[GSM_CHREQ_REASON_EMERG]	= "EMERGENCY",
+	[GSM_CHREQ_REASON_PAG]		= "PAGING",
+	[GSM_CHREQ_REASON_CALL]		= "CALL",
+	[GSM_CHREQ_REASON_LOCATION_UPD]	= "LOCATION_UPDATE",
+	[GSM_CHREQ_REASON_OTHER]	= "OTHER",
+};
+
+const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
+{
+	if (c >= ARRAY_SIZE(chreq_names))
+		return "INVALID";
+
+	return chreq_names[c];
+}
+
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
 				     u_int16_t network_code)
 {

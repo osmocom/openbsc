@@ -190,6 +190,10 @@ struct gsm_network {
 struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
 				     u_int16_t network_code);
 
+const char *gsm_pchan_name(enum gsm_phys_chan_config c);
+const char *gsm_lchan_name(enum gsm_chan_t c);
+const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
+
 enum gsm_e1_event {
 	EVT_E1_NONE,
 	EVT_E1_OML_UP,
