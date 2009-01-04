@@ -637,8 +637,9 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.timing_advance = rqd_ta;
 	ia.mob_alloc_len = 0;
 
-	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %u chan_nr=0x%02x r%d\n",
-		arfcn, ts_number, subch, lchan->type, ia.chan_desc.chan_nr, chreq_reason);
+	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s chan_nr=0x%02x r=%s\n",
+		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
+		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason));
 
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
