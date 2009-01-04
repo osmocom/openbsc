@@ -30,6 +30,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/msgb.h>
+#include <openbsc/abis_rsl.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -135,10 +136,6 @@ void telnet_error_client(int fd) {
 	ret = write(fd, msg, strlen(msg));
 }
 
-void telnet_page(struct telnet_connection *connection, const char *imsi, int page) {
-	printf("going to page: '%s' %d\n", imsi, page);
-}
-
 static struct gsm_lchan* find_channel(struct gsm_bts *bts, const char *imsi,
 			    const char **error, int fd) {
 	int ret;
@@ -157,6 +154,27 @@ static struct gsm_lchan* find_channel(struct gsm_bts *bts, const char *imsi,
 
 	subscr_put(subscr);
 	return lchan;
+}
+
+void telnet_page(struct telnet_connection *connection, const char *imsi, int type) {
+	int ret;
+	static const char* error[] = {
+		"paging: IMSI not found\n",
+		"paging: No channel allocated for IMSI -> will allocate\n" };
+	struct gsm_bts *bts = &connection->network->bts[connection->bts];
+	struct gsm_lchan *lchan = find_channel(bts, imsi, error, connection->fd.fd);
+
+	if (lchan) {
+		static const char *msg = "paging: A Channel is already allocated.\n";
+		ret = write(connection->fd.fd, msg, strlen(msg));
+		return;
+	}
+
+	struct gsm_subscriber *subscr = subscr_get_by_imsi(imsi);
+	if (!subscr)
+		return;
+
+	rsl_paging_cmd_subscr(bts, type, subscr);
 }
 
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {
