@@ -40,6 +40,7 @@ struct subch_demux {
 	void *data;
 };
 
+int subch_demux_init(struct subch_demux *dmx);
 int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len);
 int subch_demux_activate(struct subch_demux *dmx, int subch);
 int subch_demux_deactivate(struct subch_demux *dmx, int subch);

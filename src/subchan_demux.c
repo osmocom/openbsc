@@ -92,6 +92,19 @@ static void resync_to_here(struct subch *sch)
 	sch->out_idx = SYNC_HDR_BITS;
 }
 
+int subch_demux_init(struct subch_demux *dmx)
+{
+	int i;
+
+	dmx->chan_activ = 0;
+	for (i = 0; i < NR_SUBCH; i++) {
+		struct subch *sch = &dmx->subch[i];
+		sch->out_idx = 0;
+		memset(sch->out_bitbuf, 0xff, sizeof(sch->out_bitbuf));
+	}
+	return 0;
+}
+
 /* input some arbitrary (modulo 4) number of bytes of a 64k E1 channel,
  * split it into the 16k subchannels */
 int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
