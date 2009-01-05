@@ -61,6 +61,7 @@ static void decode_fr(struct decoded_trau_frame *fr, u_int8_t *trau_bits)
 	memcpy(fr->d_bits + d_idx, trau_bits + 305, 5);
 }
 
+/* Decode according to 3.1.2 */
 static void decode_amr(struct decoded_trau_frame *fr, u_int8_t *trau_bits)
 {
 	int i;
@@ -90,6 +91,8 @@ int decode_trau_frame(struct decoded_trau_frame *fr, u_int8_t *trau_bits)
 	switch (cbits5) {
 	case TRAU_FT_FR_UP:
 	case TRAU_FT_FR_DOWN:
+	case TRAU_FT_IDLE_UP:
+	case TRAU_FT_IDLE_DOWN:
 	case TRAU_FT_EFR:
 		decode_fr(fr, trau_bits);
 		break;

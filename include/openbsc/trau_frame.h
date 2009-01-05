@@ -52,6 +52,8 @@ struct decoded_trau_frame {
 #define TRAU_FT_DATA_DOWN	0x16	/* 1 0 1 1 0 - 3.5.3 */
 #define TRAU_FT_D145_SYNC	0x14	/* 1 0 1 0 0 - 3.5.3 */
 #define TRAU_FT_EDATA		0x1f	/* 1 1 1 1 1 - 3.5.4 */
+#define TRAU_FT_IDLE_UP		0x10	/* 1 0 0 0 0 - 3.5.5 */
+#define TRAU_FT_IDLE_DOWN	0x0e	/* 0 1 1 1 0 - 3.5.5 */
 
 
 int decode_trau_frame(struct decoded_trau_frame *fr, u_int8_t *trau_bits);
