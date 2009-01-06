@@ -562,8 +562,13 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	case GSM48_MT_MM_STATUS:
 		DEBUGP(DMM, "MM STATUS: FIXME parse error cond.\n");
 		break;
-	case GSM48_MT_MM_CM_REEST_REQ:
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
+		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
+		       msg->lchan->subscr ?
+				msg->lchan->subscr->imsi :
+				"unknown subscriber");
+		break;
+	case GSM48_MT_MM_CM_REEST_REQ:
 	case GSM48_MT_MM_AUTH_RESP:
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		fprintf(stderr, "Unimplemented GSM 04.08 MM msg type 0x%02x\n",
