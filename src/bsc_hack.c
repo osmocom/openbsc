@@ -738,7 +738,7 @@ static void handle_options(int argc, char** argv)
 		case 'c':
 			MCC = atoi(optarg);
 			break;
-                case 'l':
+		case 'l':
 			database_name = strdup(optarg);
 			break;
 		case 'a':
