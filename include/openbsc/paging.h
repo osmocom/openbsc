@@ -27,6 +27,7 @@
 #include "linuxlist.h"
 #include "gsm_data.h"
 #include "gsm_subscriber.h"
+#include "timer.h"
 
 /**
  * A pending paging request 
@@ -35,6 +36,8 @@ struct paging_request {
 	struct llist_head entry;
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
+
+	int chan_type;
 };
 
 /*
@@ -49,13 +52,17 @@ struct paging_bts {
 
 	/* pending requests */
 	struct llist_head pending_requests;
+	struct paging_request *last_request;
 	struct gsm_bts *bts;
+
+	/* tick timer */
+	struct timer_list page_timer;
 };
 
 /* call once for every gsm_bts... */
 struct paging_bts* page_allocate(struct gsm_bts *bts);
 
 /* schedule paging request */
-void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr);
+void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type);
 
 #endif

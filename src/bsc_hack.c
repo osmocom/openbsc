@@ -44,6 +44,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/misdn.h>
 #include <openbsc/telnet_interface.h>
+#include <openbsc/paging.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -599,6 +600,12 @@ static int set_system_infos(struct gsm_bts *bts)
 }
 
 /*
+ * Inform anyone...
+ */
+static void bsc_hack_channel_allocated(struct gsm_lchan *lchan) {
+}
+
+/*
  * Patch the various SYSTEM INFORMATION tables to update
  * the LAI
  */
@@ -662,6 +669,7 @@ static void mi_cb(int event, struct gsm_bts *bts)
 static int bootstrap_network(void)
 {
 	struct gsm_bts *bts;
+	struct paging_bts *paging_bts;
 
 	/* initialize our data structures */
 	gsmnet = gsm_network_init(1, MCC, MNC);
@@ -674,6 +682,9 @@ static int bootstrap_network(void)
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = ARFCN;
 	patch_tables(bts);
+
+	paging_bts = page_allocate(bts);
+	paging_bts->channel_allocated = bsc_hack_channel_allocated;
 
 	telnet_init(gsmnet, 4242);
 	if (mi_setup(bts, 0, mi_cb) < 0)

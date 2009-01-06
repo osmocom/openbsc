@@ -31,6 +31,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/msgb.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/paging.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -174,7 +175,7 @@ void telnet_page(struct telnet_connection *connection, const char *imsi, int typ
 	if (!subscr)
 		return;
 
-	rsl_paging_cmd_subscr(bts, type, subscr);
+	page_request(bts, subscr, type);	
 }
 
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {
