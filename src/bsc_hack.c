@@ -51,6 +51,7 @@ static struct gsm_network *gsmnet;
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
 static int MNC = 1;
+static int ARFCN = HARDCODED_ARFCN;
 static const char *database_name = "hlr.sqlite3";
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -603,6 +604,8 @@ static int set_system_infos(struct gsm_bts *bts)
  */
 static void patch_tables(struct gsm_bts *bts)
 {
+	u_int8_t arfcn_low = ARFCN & 0xff;
+	u_int8_t arfcn_high = (ARFCN >> 8) & 0x0f;
 	/* covert the raw packet to the struct */
 	struct gsm48_system_information_type_3 *type_3 =
 		(struct gsm48_system_information_type_3*)&si3;
@@ -619,13 +622,25 @@ static void patch_tables(struct gsm_bts *bts)
 	type_3->lai = lai;
 	type_4->lai = lai;
 	type_6->lai = lai;
+
+	/* patch ARFCN */
+	msg_2[74] &= 0xf0;
+	msg_2[74] |= arfcn_high;
+	msg_2[75] = arfcn_low;
+
+	msg_6[7] &= 0xf0;
+	msg_6[7] |= arfcn_high;
+	msg_6[8] = arfcn_low;
+
+	type_4->data[2] &= 0xf0;
+	type_4->data[2] |= arfcn_high;
+	type_4->data[3] = arfcn_low;
 }
 
 
 static void bootstrap_rsl(struct gsm_bts *bts)
 {
 	fprintf(stdout, "bootstrapping RSL MCC=%u MNC=%u\n", MCC, MNC);
-	patch_tables(bts);
 	set_system_infos(bts);
 }
 
@@ -657,7 +672,8 @@ static int bootstrap_network(void)
 	gsmnet->name_long = "25C3 GSM";
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
-	bts->trx[0].arfcn = HARDCODED_ARFCN;
+	bts->trx[0].arfcn = ARFCN;
+	patch_tables(bts);
 
 	telnet_init(gsmnet, 4242);
 	if (mi_setup(bts, 0, mi_cb) < 0)
@@ -692,6 +708,7 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -n --network-code number(MNC) \n");
 	printf("  -c --country-code number (MCC) \n");
+	printf("  -f --arfcn number The frequency ARFCN\n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
@@ -713,10 +730,11 @@ static void handle_options(int argc, char** argv)
 			{"authorize-everyone", 0, 0, 'a'},
 			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
+			{"arfcn", 1, 0, 'f'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -737,6 +755,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			MCC = atoi(optarg);
+			break;
+		case 'f':
+			ARFCN = atoi(optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
