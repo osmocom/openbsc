@@ -35,8 +35,13 @@
  *	 - and call a callback
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
+#include <openbsc/abis_rsl.h>
+#include <openbsc/gsm_04_08.h>
 
 #define PAGING_TIMEOUT 0, 5000
 
@@ -57,6 +62,9 @@ static void page_remove_request(struct paging_bts *paging_bts) {
 
 
 static void page_handle_pending_requests(void *data) {
+	u_int8_t mi[128];
+	unsigned long int tmsi;
+	unsigned int mi_len;
 	struct paging_bts *paging_bts = (struct paging_bts *)data;
 
 	if (!paging_bts->last_request)
@@ -67,8 +75,19 @@ static void page_handle_pending_requests(void *data) {
 		return;
 	}
 
+	/* handle the paging request now */
 	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
 		paging_bts->last_request->subscr->imsi);
+	tmsi = strtoul(paging_bts->last_request->subscr->tmsi, NULL, 10);
+	mi_len = generate_mid_from_tmsi(mi, tmsi);
+	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi, RSL_CHANNEED_TCH_F);
+
+	/* move to the next item */
+	paging_bts->last_request =
+		(struct paging_request *)paging_bts->last_request->entry.next;
+	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
+		paging_bts->last_request = NULL;
+
 	schedule_timer(&paging_bts->page_timer, PAGING_TIMEOUT);
 }
 
