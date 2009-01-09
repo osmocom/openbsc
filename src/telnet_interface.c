@@ -277,8 +277,9 @@ static void show_ts(int fd, struct gsm_bts_trx_ts *ts) {
 static void show_lchan(int fd, struct gsm_lchan *lchan) {
 	struct gsm_subscriber *subscr = lchan->subscr;
 	WRITE_CONNECTION(fd,
-		"       LCHAN: #%u type: %7s  subscriber: %s/%s/%s use: %d loc: %p\n",
+		"       LCHAN: #%u type: %7s  count: %d subscriber: %s/%s/%s use: %d loc: %p\n",
 		lchan->nr, gsm_lchan_name(lchan->type),
+		lchan->use_count,
 		subscr ? subscr->imsi : "na",
 		subscr ? subscr->tmsi : "na",
 		subscr ? subscr->name : "na",
