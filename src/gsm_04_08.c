@@ -2,7 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
- * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -666,6 +666,7 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 
 	call->type = GSM_CT_MT;
 	msg->lchan = lchan;
+	use_lchan(lchan);
 
 	gh->proto_discr = GSM48_PDISC_CC;
 	gh->msg_type = GSM48_MT_CC_SETUP;
@@ -725,11 +726,15 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		/* Section 5.4.3.2 */
 		DEBUGP(DCC, "DISCONNECT (state->RELEASE_REQ)\n");
 		call->state = GSM_CSTATE_RELEASE_REQ;
+		if (call->state != GSM_CSTATE_NULL)
+			put_lchan(msg->lchan);
 		/* FIXME: clear the network connection */
 		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 				     GSM48_MT_CC_RELEASE);
 		break;
 	case GSM48_MT_CC_SETUP:
+		if (call->state == GSM_CSTATE_NULL || call->state == GSM_CSTATE_RELEASE_REQ)
+			use_lchan(msg->lchan);
 		call->type = GSM_CT_MO;
 		call->state = GSM_CSTATE_INITIATED;
 		call->transaction_id = gh->proto_discr & 0xf0;
