@@ -193,6 +193,11 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->subscr = 0;
 	}
 
+	/* We might kill an active channel... FIXME: call cancellations */
+	if (lchan->use_count != 0) {
+		lchan->use_count = 0;
+	}
+
 	/* stop the timer */
 	del_timer(&lchan->release_timer);
 
