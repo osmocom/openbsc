@@ -86,6 +86,17 @@ struct gsm48_rach_control {
 	u_int8_t t3;
 } __attribute__ ((packed));
 
+/* Section 9.2.9 CM service request */
+struct gsm48_service_request {
+	u_int8_t cm_service_type : 4,
+		 cipher_key_seq  : 4;
+	/* length + 3 bytes */
+	u_int32_t classmark;
+	u_int8_t mi_len;
+	u_int8_t mi[0];
+	/* optional priority level */
+} __attribute__ ((packed));
+
 /* Section 9.1.31 System information Type 1 */
 struct gsm48_system_information_type_1 {
 	struct gsm48_system_information_type_header header;

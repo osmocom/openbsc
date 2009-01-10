@@ -237,9 +237,9 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	ret = gsm48_sendmsg(msg);
 
-	/* return gsm48_cc_tx_setup(lchan); */
+	ret = gsm48_cc_tx_setup(lchan);
 	ret = gsm48_tx_mm_info(lchan);
-	ret = gsm0411_send_sms(lchan, NULL);
+	//ret = gsm0411_send_sms(lchan, NULL);
 
 	return ret;
 }
@@ -417,7 +417,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi((char *)lu->mi);
+		subscr = subscr_get_by_tmsi(mi_string);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			use_lchan(lchan);
@@ -532,13 +532,59 @@ static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
 	return gsm48_tx_simple(lchan, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
 }
+
+/* 9.2.6 CM service reject */
+static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
+				enum gsm48_reject_value value)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+
+	msg->lchan = lchan;
+	use_lchan(lchan);
+
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
+	gh->data[0] = value;
+	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
+
+	return gsm48_sendmsg(msg);
+}
+
 		
 static int gsm48_rx_mm_serv_req(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t serv_type = gh->data[0] & 0x0f;
+	u_int8_t mi_type;
 
-	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x\n", serv_type);
+	struct gsm_subscriber *subscr;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_service_request *req =
+			(struct gsm48_service_request *)gh->data;
+
+	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
+		DEBUGP(DMM, "<- CM SERVICE REQUEST wrong sized message\n");
+		return gsm48_tx_mm_serv_rej(msg->lchan,
+					    GSM48_REJECT_INCORRECT_MESSAGE);
+	}
+
+	if (msg->data_len < req->mi_len + 6) {
+		DEBUGP(DMM, "<- CM SERVICE REQUEST MI does not fit in package\n");
+		return gsm48_tx_mm_serv_rej(msg->lchan,
+					    GSM48_REJECT_INCORRECT_MESSAGE);
+	}
+
+	mi_type = req->mi[0] & GSM_MI_TYPE_MASK;
+	if (mi_type != GSM_MI_TYPE_TMSI) {
+		DEBUGP(DMM, "<- CM SERVICE REQUEST mi type is not TMSI: %d\n", mi_type);
+		return gsm48_tx_mm_serv_rej(msg->lchan,
+					    GSM48_REJECT_INCORRECT_MESSAGE);
+	}
+
+	subscr = subscr_get_by_tmsi((char *)req->mi);
+	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x mi_type=0x%02x Subscriber(%p)\n",
+		req->cm_service_type, mi_type, subscr);
 
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
