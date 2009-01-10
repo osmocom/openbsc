@@ -258,6 +258,7 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	int i;
 	u_int8_t mi_type;
 	char *str_cur = string;
+	u_int32_t tmsi;
 
 	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 
@@ -265,12 +266,11 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	case GSM_MI_TYPE_NONE:
 		break;
 	case GSM_MI_TYPE_TMSI:
-		/* skip padding nibble at the beginning, start at offset 1... */
-		for (i = 1; i < mi_len; i++) {
-			if (str_cur + 2 >= string + str_len)
-				return str_cur - string;
-			*str_cur++ = bcd2char(mi[i] >> 4);
-			*str_cur++ = bcd2char(mi[i] & 0xf);
+		/* Table 10.5.4.3, reverse generate_mid_from_tmsi */
+		if (mi_len == TMSI_LEN && mi[0] == (0xf0 | GSM_MI_TYPE_TMSI)) {
+			memcpy(&tmsi, &mi[1], 4);
+			tmsi = ntohl(tmsi);
+			return snprintf(string, str_len, "%u", tmsi);
 		}
 		break;
 	case GSM_MI_TYPE_IMSI:
@@ -553,10 +553,20 @@ static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
 	return gsm48_sendmsg(msg);
 }
 
-		
+
+/*
+ * Handle CM Service Requests
+ * a) Verify that the packet is long enough to contain the information
+ *    we require otherwsie reject with INCORRECT_MESSAGE
+ * b) Try to parse the TMSI. If we do not have one reject
+ * c) Check that we know the subscriber with the TMSI otherwise reject
+ *    with a HLR cause
+ * d) Set the subscriber on the gsm_lchan and accept
+ */
 static int gsm48_rx_mm_serv_req(struct msgb *msg)
 {
 	u_int8_t mi_type;
+	char mi_string[MI_SIZE];
 
 	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -582,10 +592,17 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
-	subscr = subscr_get_by_tmsi((char *)req->mi);
-	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x mi_type=0x%02x Subscriber(%p)\n",
-		req->cm_service_type, mi_type, subscr);
+	mi_to_string(mi_string, sizeof(mi_string), req->mi, req->mi_len);
+	subscr = subscr_get_by_tmsi(mi_string);
+	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x mi_type=0x%02x M(%s)\n",
+		req->cm_service_type, mi_type, mi_string);
 
+	if (!subscr)
+		return gsm48_tx_mm_serv_rej(msg->lchan,
+					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
+
+	if (!msg->lchan->subscr)
+		msg->lchan->subscr = subscr;
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
 
