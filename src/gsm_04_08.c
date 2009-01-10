@@ -603,6 +603,11 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 	if (!msg->lchan->subscr)
 		msg->lchan->subscr = subscr;
+	else if (msg->lchan->subscr != subscr) {
+		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
+		subscr_put(subscr);
+	}
+
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
 
