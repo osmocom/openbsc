@@ -136,7 +136,7 @@ void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) 
 		}
 	}
 
-	DEBUGP(DPAG, "Paging request for not mnaged BTS\n");
+	DEBUGP(DPAG, "Paging request for not managed BTS\n");
 	free(req);
 	return;
 }
