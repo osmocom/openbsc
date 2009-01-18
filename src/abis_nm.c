@@ -444,14 +444,18 @@ int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin)
 }
 
 int abis_nm_bs11_create_object(struct gsm_bts *bts,
-				enum abis_bs11_objtype type, u_int8_t idx)
+				enum abis_bs11_objtype type, u_int8_t idx,
+				u_int8_t attr_len, const u_int8_t *attr)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *cur;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11,
-			type, idx, 0);
+	fill_om_fom_hdr(oh, sizeof(*oh)+attr_len, NM_MT_BS11_CREATE_OBJ,
+			NM_OC_BS11, type, idx, 0);
+	cur = msgb_put(msg, attr_len);
+	memcpy(cur, attr, attr_len);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -460,10 +464,12 @@ int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t zero = 0x00;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_ENVABTSE,
-			0, idx, 0);
+	fill_om_fom_hdr(oh, sizeof(*oh)+3, NM_MT_BS11_CREATE_OBJ,
+			NM_OC_BS11_ENVABTSE, 0, idx, 0xff);
+	msgb_tlv_put(msg, 0x99, 1, &zero);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -532,7 +538,7 @@ static const u_int8_t bs11_logon_c7[] =
 static const u_int8_t bs11_logon_c8[] = { 0x01, 0x02 };
 static const u_int8_t bs11_logon_c9[] = "FACTORY";
 
-int abis_nm_bs11_factory_logon(struct gsm_bts *bts)
+int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -540,11 +546,38 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts)
 			+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, len, NM_MT_BS11_FACTORY_LOGON,
-			NM_OC_BS11_A3, 0xff, 0xff, 0xff);
-	msgb_tlv_put(msg, 0xc7, sizeof(bs11_logon_c7), bs11_logon_c7);
-	msgb_tlv_put(msg, 0xc8, sizeof(bs11_logon_c8), bs11_logon_c8);
-	msgb_tlv_put(msg, 0xc9, sizeof(bs11_logon_c9), bs11_logon_c9);
+	if (on) {
+		fill_om_fom_hdr(oh, len, NM_MT_BS11_FACTORY_LOGON,
+				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
+		msgb_tlv_put(msg, 0xc7, sizeof(bs11_logon_c7), bs11_logon_c7);
+		msgb_tlv_put(msg, 0xc8, sizeof(bs11_logon_c8), bs11_logon_c8);
+		msgb_tlv_put(msg, 0xc9, sizeof(bs11_logon_c9), bs11_logon_c9);
+	} else {
+		fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_BS11_LOGOFF,
+				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
+	}
 	
 	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg;
+
+	if (strlen(password) != 10)
+		return -EINVAL;
+
+ 	msg = nm_msgb_alloc();
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, sizeof(*oh)+2+strlen(password), NM_MT_BS11_SET_ATTR,
+			NM_OC_BS11, BS11_OBJ_TRX1, 0x00, 0x00);
+	msgb_tlv_put(msg, NM_ATT_BS11_PASSWORD, 10, (const u_int8_t *)password);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_get_state(struct gsm_bts *bts)
+{
+	return __simple_cmd(bts, NM_MT_BS11_GET_STATE);
 }

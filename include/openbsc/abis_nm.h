@@ -187,6 +187,8 @@ enum abis_nm_msgtype {
 	NM_MT_BS11_SET_ATTR		= 0xd0,
 	NM_MT_BS11_SET_ATTR_ACK,
 
+	NM_MT_BS11_GET_STATE		= 0xe3,
+	NM_MT_BS11_GET_STATE_ACK,
 	NM_MT_BS11_FACTORY_LOGON	= 0xe5,
 	NM_MT_BS11_FACTORY_LOGON_ACK,
 	NM_MT_BS11_RESTART		= 0xe7,
@@ -290,6 +292,8 @@ enum abis_nm_attr {
 	NM_ATT_FILE_DATA,
 	NM_ATT_MEAS_RES,
 	NM_ATT_MEAS_TYPE,
+
+	NM_ATT_BS11_PASSWORD	= 0xfd,
 };
 
 /* Section 9.4.4: Administrative State */
@@ -332,6 +336,20 @@ enum abis_bs11_objtype {
 	BS11_OBJ_PA		= 0x09,	/* obj_class: 0, 1*/
 };
 
+enum abis_bs11_trx_power {
+	BS11_TRX_POWER_30mW	= 0x09,
+};
+
+enum abis_bs11_state {
+	BS11_STATE_SOFTWARE_RQD		= 0x01,
+	BS11_STATE_NORMAL		= 0x03,
+	BS11_STATE_LOAD_SMU_SAFETY	= 0x21,
+	BS11_STATE_WARM_UP		= 0x51,
+	BS11_STATE_WAIT_MIN_CFG		= 0x62,
+	BS11_STATE_MAINTENANCE		= 0x72,
+	BS11_STATE_WAIT_MIN_CFG_2	= 0xA2,
+};
+
 /* PUBLIC */
 
 struct msgb;
@@ -365,13 +383,15 @@ int abis_nm_reset_resource(struct gsm_bts *bts);
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);
 int abis_nm_bs11_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
-			  u_int8_t idx);
+			  u_int8_t idx, u_int8_t attr_len, const u_int8_t *attr);
 int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei);
 int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port,
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot);
 int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
-int abis_nm_bs11_factory_logon(struct gsm_bts *bts);
+int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
+int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
+int abis_nm_bs11_get_state(struct gsm_bts *bts);
 
 #endif /* _NM_H */
