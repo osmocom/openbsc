@@ -184,11 +184,19 @@ enum abis_nm_msgtype {
 	NM_MT_BS11_DELETE_OBJ_ACK,
 	NM_MT_BS11_DELETE_OBJ_NACK,
 
-	NM_MT_BS11_DEACT_TRX1		= 0xd0, /* BS11: Set attr */
+	NM_MT_BS11_SET_ATTR		= 0xd0,
+	NM_MT_BS11_SET_ATTR_ACK,
 
+	NM_MT_BS11_FACTORY_LOGON	= 0xe5,
+	NM_MT_BS11_FACTORY_LOGON_ACK,
 	NM_MT_BS11_RESTART		= 0xe7,
+	NM_MT_BS11_RESTART_ACK,
 	NM_MT_BS11_DISCONNECT		= 0xe9,
+	NM_MT_BS11_DISCONNECT_ACK,
+	NM_MT_BS11_LOGOFF		= 0xec,
+	NM_MT_BS11_LOGOFF_ACK,
 	NM_MT_BS11_RECONNECT		= 0xf1,
+	NM_MT_BS11_RECONNECT_ACK,
 };
 
 /* Section 9.2: Object Class */
@@ -199,8 +207,11 @@ enum abis_nm_obj_class {
 	NM_OC_BASEB_TRANSC,
 	NM_OC_CHANNEL,
 	/* RFU: 05-FE */
-	NM_OC_BS11_unknown		= 0xa3,
+	NM_OC_BS11_A0			= 0xa0,
+	NM_OC_BS11_A3			= 0xa3,
+	NM_OC_BS11_A4			= 0xa4,
 	NM_OC_BS11			= 0xa5,
+	NM_OC_BS11_A6			= 0xa6,
 	NM_OC_BS11_ENVABTSE		= 0xa8,
 	NM_OC_BS11_BPORT		= 0xa9,
 
@@ -209,7 +220,7 @@ enum abis_nm_obj_class {
 
 /* Section 9.4: Attributes */
 enum abis_nm_attr {
-	NM_ATT_CHANNEL	= 0x01,
+	NM_ATT_ABIS_CHANNEL	= 0x01,
 	NM_ATT_ADD_INFO,
 	NM_ATT_ADD_TEXT,
 	NM_ATT_ADM_STATE,
@@ -266,6 +277,8 @@ enum abis_nm_attr {
 	NM_ATT_TEST_REPORT,
 	NM_ATT_VSWR_THRESH,
 	NM_ATT_WINDOW_SIZE,
+	/* Res  */
+	NM_ATT_BS11_TXPWR	= 0x3e,
 	/* Res  */
 	NM_ATT_TSC		= 0x40,
 	NM_ATT_SW_CONFIG,

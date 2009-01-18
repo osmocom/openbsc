@@ -287,7 +287,7 @@ int abis_nm_sw_activate(struct abis_nm_h *h)
 static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
 		       u_int8_t ts_nr, u_int8_t subslot_nr)
 {
-	ch->attrib = NM_ATT_CHANNEL;
+	ch->attrib = NM_ATT_ABIS_CHANNEL;
 	ch->bts_port = bts_port;
 	ch->timeslot = ts_nr;
 	ch->subslot = subslot_nr;	
