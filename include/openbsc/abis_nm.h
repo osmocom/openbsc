@@ -1,7 +1,7 @@
 /* GSM Network Management messages on the A-bis interface 
  * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -379,6 +379,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
+int abis_nm_software_load(struct gsm_bts *bts, const char *fname, u_int8_t win);
 
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);

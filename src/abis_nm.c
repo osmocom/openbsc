@@ -1,7 +1,7 @@
 /* GSM Network Management (OML) messages on the A-bis interface 
  * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -23,8 +23,12 @@
 
 
 #include <errno.h>
+#include <unistd.h>
 #include <stdio.h>
+#include <fcntl.h>
+
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 
 #include <openbsc/gsm_data.h>
@@ -50,6 +54,20 @@ static const enum abis_nm_msgtype no_ack_nack[] = {
 	NM_MT_MEAS_RES_REQ,
 	NM_MT_STOP_MEAS,
 	NM_MT_START_MEAS,
+};
+
+/* Messages related to software load */
+static const enum abis_nm_msgtype sw_load_msgs[] = {
+	NM_MT_LOAD_INIT_ACK,
+	NM_MT_LOAD_INIT_NACK,
+	NM_MT_LOAD_SEG_ACK,
+	NM_MT_LOAD_ABORT,
+	NM_MT_LOAD_END_ACK,
+	NM_MT_LOAD_END_NACK,
+	NM_MT_SW_ACT_REQ,
+	NM_MT_ACTIVATE_SW_ACK,
+	NM_MT_ACTIVATE_SW_NACK,
+	NM_MT_SW_ACTIVATED_REP,
 };
 
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
@@ -144,6 +162,8 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 	return _abis_nm_sendmsg(msg);
 }
 
+static int abis_nm_rcvmsg_sw(struct msgb *mb);
+
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
@@ -156,6 +176,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		//nmh->cfg->report_cb(mb, foh);
 		return 0;
 	}
+
+	if (is_in_arr(mt, sw_load_msgs, ARRAY_SIZE(sw_load_msgs)))
+		return abis_nm_rcvmsg_sw(mb);
 
 #if 0
 	/* check if last message is to be acked */
@@ -256,33 +279,296 @@ void abis_nm_fini(struct abis_nm_h *nmh)
  * based state machine.
  */
 
-/* 6.2 Software Load: FIXME */
+/* 6.2 Software Load: */
+enum sw_state {
+	SW_STATE_NONE,
+	SW_STATE_WAIT_INITACK,
+	SW_STATE_WAIT_SEGACK,
+	SW_STATE_WAIT_ENDACK,
+	SW_STATE_WAIT_ACTACK,
+	SW_STATE_ERROR,
+};
 
-
-#if 0
 struct abis_nm_sw {
+	struct gsm_bts *bts;
 	/* this will become part of the SW LOAD INITIATE */
 	u_int8_t obj_class;
 	u_int8_t obj_instance[3];
-	u_int8_t sw_description[255];
-	u_int16_t window_size;
-	/* the actual data that is to be sent subsequently */
-	unsigned char *sw;
-	unsigned int sw_len;
+
+	u_int8_t file_id[255];
+	u_int8_t file_id_len;
+
+	u_int8_t file_version[255];
+	u_int8_t file_version_len;
+
+	u_int8_t window_size;
+	u_int8_t seg_in_window;
+
+	int fd;
+	FILE *stream;
+	enum sw_state state;
 };
 
-/* Load the specified software into the BTS */
-int abis_nm_sw_load(struct abis_nm_h *h, struct abis_nm_sw *sw);
+static struct abis_nm_sw g_sw;
+
+/* 6.2.1 / 8.3.1: Load Data Initiate */
+static int sw_load_init(struct abis_nm_sw *sw)
 {
-	/* FIXME: Implementation */
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = 3*2 + sw->file_id_len + sw->file_version_len;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_LOAD_INIT, sw->obj_class,
+			sw->obj_instance[0], sw->obj_instance[1],
+			sw->obj_instance[2]);
+	
+	/* FIXME: this is BS11 specific format */
+	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+		     sw->file_version);
+	msgb_tv_put(msg, NM_ATT_WINDOW_SIZE, sw->window_size);
+	
+	return abis_nm_sendmsg(sw->bts, msg);
 }
 
+/* 6.2.2 / 8.3.2 Load Data Segment */
+static int sw_load_segment(struct abis_nm_sw *sw)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	char seg_buf[256];
+	char *line_buf = seg_buf+2;
+	u_int8_t len;
+	int rc;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* FIXME: this is BS11 specific format */
+	rc = fscanf(sw->stream, "%s\r\n", line_buf);
+	if (rc < 1) {
+		perror("fscanf reading segment");
+		return -EINVAL;
+	}
+	seg_buf[0] = 0x00;
+	seg_buf[1] = sw->seg_in_window++;
+
+	msgb_tlv_put(msg, NM_ATT_FILE_DATA, 2+strlen(line_buf), 
+		     (u_int8_t *)seg_buf);
+	/* BS11 wants CR + LF in excess of the TLV length !?! */
+	msgb_tv_put(msg, 0x0d, 0x0a);
+
+	/* we only now know the exact length for the OM hdr */
+	len = 2+strlen(line_buf)+2;
+	fill_om_fom_hdr(oh, len, NM_MT_LOAD_SEG, sw->obj_class,
+			sw->obj_instance[0], sw->obj_instance[1],
+			sw->obj_instance[2]);
+
+	return abis_nm_sendmsg(sw->bts, msg);
+}
+
+/* 6.2.4 / 8.3.4 Load Data End */
+static int sw_load_end(struct abis_nm_sw *sw)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_LOAD_END, sw->obj_class,
+			sw->obj_instance[0], sw->obj_instance[1],
+			sw->obj_instance[2]);
+
+	/* FIXME: this is BS11 specific format */
+	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+		     sw->file_version);
+
+	return abis_nm_sendmsg(sw->bts, msg);
+}
 /* Activate the specified software into the BTS */
-int abis_nm_sw_activate(struct abis_nm_h *h)
+static int sw_activate(struct abis_nm_sw *sw)
 {
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
 
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_ACTIVATE_SW, sw->obj_class,
+			sw->obj_instance[0], sw->obj_instance[1],
+			sw->obj_instance[2]);
+
+	/* FIXME: this is BS11 specific format */
+	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+		     sw->file_version);
+
+	return abis_nm_sendmsg(sw->bts, msg);
 }
-#endif
+
+static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
+{
+	char file_id[12+1];
+	char file_version[80+1];
+	int rc;
+
+	sw->fd = open(fname, O_RDONLY);
+	if (sw->fd < 0)
+		return sw->fd;
+
+	switch (sw->bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		sw->stream = fdopen(sw->fd, "r");
+		if (!sw->stream) {
+			perror("fdopen");
+			return -1;
+		}
+		/* read first line and parse file ID and VERSION */
+		rc = fscanf(sw->stream, "@(@)%12s:%80s\r\n", 
+			    file_id, file_version);
+		if (rc != 2) {
+			perror("parsing header line of software file");
+			return -1;
+		}
+		strcpy((char *)sw->file_id, file_id);
+		sw->file_id_len = strlen(file_id);
+		strcpy((char *)sw->file_version, file_version);
+		sw->file_version_len = strlen(file_version);
+		/* rewind to start of file */
+		fseek(sw->stream, 0, SEEK_SET);
+		break;	
+	default:
+		/* We don't know how to treat them yet */
+		close(sw->fd);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+	
+static void sw_close_file(struct abis_nm_sw *sw)
+{
+	switch (sw->bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		fclose(sw->stream);
+		break;
+	default:
+		close(sw->fd);
+		break;
+	}
+}
+
+/* Fill the window */
+static int sw_fill_window(struct abis_nm_sw *sw)
+{
+	int rc;
+
+	while (sw->seg_in_window < sw->window_size) {
+		rc = sw_load_segment(sw);
+		if (rc < 0)
+			return rc;
+		if (rc == 1) {
+			sw->state = SW_STATE_WAIT_ENDACK;
+			return sw_load_end(sw);
+		}
+	}
+	return 0;
+}
+
+/* callback function from abis_nm_rcvmsg() handler */
+static int abis_nm_rcvmsg_sw(struct msgb *mb)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	int rc = -1;
+	struct abis_nm_sw *sw = &g_sw;
+	enum sw_state old_state = sw->state;
+	
+	DEBUGP(DNM, "state %u, NM MT 0x%02x\n", sw->state, foh->msg_type);
+
+	switch (sw->state) {
+	case SW_STATE_WAIT_INITACK:
+		switch (foh->msg_type) {
+		case NM_MT_LOAD_INIT_ACK:
+			/* fill window with segments */
+			rc = sw_fill_window(sw);
+			sw->state = SW_STATE_WAIT_SEGACK;
+			break;
+		case NM_MT_LOAD_INIT_NACK:
+			sw->state = SW_STATE_ERROR;
+			break;
+		}
+		break;
+	case SW_STATE_WAIT_SEGACK:
+		switch (foh->msg_type) {
+		case NM_MT_LOAD_SEG_ACK:
+			sw->seg_in_window = 0;
+			/* fill window with more segments */
+			rc = sw_fill_window(sw);
+			sw->state = SW_STATE_WAIT_SEGACK;
+			break;
+		}
+		break;
+	case SW_STATE_WAIT_ENDACK:
+		switch (foh->msg_type) {
+		case NM_MT_LOAD_END_ACK:
+			sw_close_file(sw);
+			/* send activate request */
+			sw->state = SW_STATE_WAIT_ACTACK;
+			rc = sw_activate(sw);
+			break;
+		case NM_MT_LOAD_END_NACK:
+			sw->state = SW_STATE_ERROR;
+			break;
+		}
+	case SW_STATE_WAIT_ACTACK:
+		switch (foh->msg_type) {
+		case NM_MT_ACTIVATE_SW_ACK:
+			/* we're done */
+			sw->state = SW_STATE_NONE;
+			rc = 0;
+			DEBUGP(DMM, "DONE!\n");
+			break;
+		case NM_MT_ACTIVATE_SW_NACK:
+			sw->state = SW_STATE_ERROR;
+			break;
+		}
+	case SW_STATE_NONE:
+	case SW_STATE_ERROR:
+		break;
+	}
+
+	if (rc)
+		fprintf(stderr, "unexpected NM MT 0x%02x in state %u -> %u\n",
+			foh->msg_type, old_state, sw->state);
+
+	return rc;
+}
+
+/* Load the specified software into the BTS */
+int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+			  u_int8_t win_size)
+{
+	struct abis_nm_sw *sw = &g_sw;
+	int rc;
+
+	if (sw->state != SW_STATE_NONE)
+		return -EBUSY;
+
+	sw->bts = bts;
+	sw->obj_class = NM_OC_SITE_MANAGER;
+	sw->obj_instance[0] = 0xff;
+	sw->obj_instance[1] = 0xff;
+	sw->obj_instance[2] = 0xff;
+	sw->window_size = win_size;
+	sw->state = SW_STATE_WAIT_INITACK;
+
+	rc = sw_open_file(sw, fname);
+	if (rc < 0) {
+		sw->state = SW_STATE_NONE;
+		return rc;
+	}
+
+	return sw_load_init(sw);
+}
 
 static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
 		       u_int8_t ts_nr, u_int8_t subslot_nr)
