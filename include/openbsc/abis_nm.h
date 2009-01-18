@@ -55,6 +55,7 @@ struct abis_om_fom_hdr {
 	u_int8_t	msg_type;
 	u_int8_t	obj_class;
 	struct abis_om_obj_inst	obj_inst;
+	u_int8_t	data[0];
 } __attribute__ ((packed));
 
 #define ABIS_OM_FOM_HDR_SIZE	(sizeof(struct abis_om_hdr) + sizeof(struct abis_om_fom_hdr))
