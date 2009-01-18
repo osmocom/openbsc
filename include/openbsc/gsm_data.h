@@ -9,6 +9,7 @@
 
 #define GSM_MAX_BTS	8
 #define BTS_MAX_TRX	8
+#define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
 
 #define HARDCODED_ARFCN 123
@@ -123,6 +124,15 @@ struct gsm_lchan {
 	unsigned int use_count;
 };
 
+struct gsm_e1_subslot {
+	/* Number of E1 link */
+	u_int8_t	e1_nr;
+	/* Number of E1 TS inside E1 link */
+	u_int8_t	e1_ts;
+	/* Sub-slot within the E1 TS, 0xff if full TS */
+	u_int8_t	e1_ts_ss;
+};
+
 #define BTS_TRX_F_ACTIVATED	0x0001
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
@@ -134,6 +144,9 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 
+	/* To which E1 subslot are we connected */
+	struct gsm_e1_subslot e1_link;
+
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
 
@@ -144,7 +157,7 @@ struct gsm_bts_trx {
 	u_int8_t nr;
 
 	u_int16_t arfcn;
-	struct gsm_bts_trx_ts ts[8];
+	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
 /* One BTS */
