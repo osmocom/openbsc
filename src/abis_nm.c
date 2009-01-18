@@ -324,8 +324,7 @@ int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	/* FIXME: len correct? */
-	fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_CONN_TERR_SIGN,
+	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_SIGN,
 			NM_OC_RADIO_CARRIER, bts->bts_nr, trx->nr, 0xff);
 	
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
@@ -351,7 +350,6 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	/* FIXME: len correct? */
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_TRAF,
 			NM_OC_BASEB_TRANSC, bts->bts_nr, ts->trx->nr, ts->nr);
 
@@ -452,7 +450,7 @@ int abis_nm_bs11_create_object(struct gsm_bts *bts,
 	u_int8_t *cur;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*oh)+attr_len, NM_MT_BS11_CREATE_OBJ,
+	fill_om_fom_hdr(oh, attr_len, NM_MT_BS11_CREATE_OBJ,
 			NM_OC_BS11, type, idx, 0);
 	cur = msgb_put(msg, attr_len);
 	memcpy(cur, attr, attr_len);
@@ -467,7 +465,7 @@ int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 	u_int8_t zero = 0x00;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*oh)+3, NM_MT_BS11_CREATE_OBJ,
+	fill_om_fom_hdr(oh, 3, NM_MT_BS11_CREATE_OBJ,
 			NM_OC_BS11_ENVABTSE, 0, idx, 0xff);
 	msgb_tlv_put(msg, 0x99, 1, &zero);
 
@@ -490,10 +488,9 @@ int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = sizeof(*oh) + 2;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, len, NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
+	fill_om_fom_hdr(oh, 2, NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
 	msgb_tv_put(msg, NM_ATT_TEI, tei);
 
@@ -509,7 +506,6 @@ int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	/* FIXME: len correct? */
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_BS11_SET_ATTR,
 			NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
 
@@ -523,10 +519,9 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = sizeof(*oh) + 3;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, len, NM_MT_BS11_SET_ATTR,
+	fill_om_fom_hdr(oh, 3, NM_MT_BS11_SET_ATTR,
 			NM_OC_BS11, BS11_OBJ_PA, 0x00, trx->nr);
 	msgb_tlv_put(msg, NM_ATT_BS11_TXPWR, 1, &level);
 
@@ -542,18 +537,18 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = sizeof(*oh) + 3*2 + sizeof(bs11_logon_c7)
-			+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	if (on) {
+		u_int8_t len = 3*2 + sizeof(bs11_logon_c7)
+				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_FACTORY_LOGON,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, 0xc7, sizeof(bs11_logon_c7), bs11_logon_c7);
 		msgb_tlv_put(msg, 0xc8, sizeof(bs11_logon_c8), bs11_logon_c8);
 		msgb_tlv_put(msg, 0xc9, sizeof(bs11_logon_c9), bs11_logon_c9);
 	} else {
-		fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_BS11_LOGOFF,
+		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LOGOFF,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
 	}
 	
@@ -570,7 +565,7 @@ int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password)
 
  	msg = nm_msgb_alloc();
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*oh)+2+strlen(password), NM_MT_BS11_SET_ATTR,
+	fill_om_fom_hdr(oh, 2+strlen(password), NM_MT_BS11_SET_ATTR,
 			NM_OC_BS11, BS11_OBJ_TRX1, 0x00, 0x00);
 	msgb_tlv_put(msg, NM_ATT_BS11_PASSWORD, 10, (const u_int8_t *)password);
 
