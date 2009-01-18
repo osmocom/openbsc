@@ -160,6 +160,11 @@ struct gsm_bts_trx {
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
+enum gsm_bts_type {
+	GSM_BTS_TYPE_UNKNOWN,
+	GSM_BTS_TYPE_BS11,
+};
+
 /* One BTS */
 struct gsm_bts {
 	struct gsm_network *network;
@@ -167,9 +172,12 @@ struct gsm_bts {
 	u_int8_t nr;
 	/* location area code of this BTS */
 	u_int8_t location_area_code;
+	/* type of BTS */
+	enum gsm_bts_type type;
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
+
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
 

@@ -98,6 +98,7 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_cod
 		
 		bts->network = net;
 		bts->nr = i;
+		bts->type = GSM_BTS_TYPE_BS11;
 
 		for (j = 0; j < BTS_MAX_TRX; j++) {
 			struct gsm_bts_trx *trx = &bts->trx[j];
