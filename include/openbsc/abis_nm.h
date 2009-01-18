@@ -363,10 +363,15 @@ int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
 
 /* Siemens / BS-11 specific */
-int abis_nm_db_transmission(struct gsm_bts *bts, int begin);
-int abis_nm_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
+int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);
+int abis_nm_bs11_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
 			  u_int8_t idx);
-int abis_nm_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
-int abis_nm_create_bport(struct gsm_bts *bts, u_int8_t idx);
+int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
+int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx);
+int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei);
+int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port,
+			  u_int8_t e1_timeslot, u_int8_t e1_subslot);
+int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
+int abis_nm_bs11_factory_logon(struct gsm_bts *bts);
 
 #endif /* _NM_H */

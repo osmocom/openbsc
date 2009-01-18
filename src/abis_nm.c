@@ -324,6 +324,7 @@ int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* FIXME: len correct? */
 	fill_om_fom_hdr(oh, sizeof(*oh), NM_MT_CONN_TERR_SIGN,
 			NM_OC_RADIO_CARRIER, bts->bts_nr, trx->nr, 0xff);
 	
@@ -350,6 +351,7 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* FIXME: len correct? */
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_TRAF,
 			NM_OC_BASEB_TRANSC, bts->bts_nr, ts->trx->nr, ts->nr);
 
@@ -428,12 +430,12 @@ int abis_nm_event_reports(struct gsm_bts *bts, int on)
 
 /* Siemens (or BS-11) specific commands */
 
-int abis_nm_reset_resource(struct gsm_bts *bts)
+int abis_nm_bs11_reset_resource(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_RESET_RESOURCE);
 }
 
-int abis_nm_db_transmission(struct gsm_bts *bts, int begin)
+int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin)
 {
 	if (begin)
 		return __simple_cmd(bts, NM_MT_BS11_BEGIN_DB_TX);
@@ -441,8 +443,8 @@ int abis_nm_db_transmission(struct gsm_bts *bts, int begin)
 		return __simple_cmd(bts, NM_MT_BS11_END_DB_TX);
 }
 
-int abis_nm_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
-			  u_int8_t idx)
+int abis_nm_bs11_create_object(struct gsm_bts *bts,
+				enum abis_bs11_objtype type, u_int8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -454,7 +456,7 @@ int abis_nm_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
+int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -466,7 +468,7 @@ int abis_nm_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_create_bport(struct gsm_bts *bts, u_int8_t idx)
+int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -475,5 +477,74 @@ int abis_nm_create_bport(struct gsm_bts *bts, u_int8_t idx)
 	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_BPORT,
 			idx, 0, 0);
 
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = sizeof(*oh) + 2;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
+			0xff, 0xff, 0xff);
+	msgb_tv_put(msg, NM_ATT_TEI, tei);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* like abis_nm_conn_terr_traf */
+int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port, 
+			  u_int8_t e1_timeslot, u_int8_t e1_subslot)
+{
+	struct abis_om_hdr *oh;
+	struct abis_nm_channel *ch;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* FIXME: len correct? */
+	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_BS11_SET_ATTR,
+			NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
+
+	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
+	fill_nm_channel(ch, e1_port, e1_timeslot, e1_subslot);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = sizeof(*oh) + 3;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_BS11_SET_ATTR,
+			NM_OC_BS11, BS11_OBJ_PA, 0x00, trx->nr);
+	msgb_tlv_put(msg, NM_ATT_BS11_TXPWR, 1, &level);
+
+	return abis_nm_sendmsg(trx->bts, msg);
+}
+
+static const u_int8_t bs11_logon_c7[] = 
+	{ 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
+static const u_int8_t bs11_logon_c8[] = { 0x01, 0x02 };
+static const u_int8_t bs11_logon_c9[] = "FACTORY";
+
+int abis_nm_bs11_factory_logon(struct gsm_bts *bts)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = sizeof(*oh) + 3*2 + sizeof(bs11_logon_c7)
+			+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_BS11_FACTORY_LOGON,
+			NM_OC_BS11_A3, 0xff, 0xff, 0xff);
+	msgb_tlv_put(msg, 0xc7, sizeof(bs11_logon_c7), bs11_logon_c7);
+	msgb_tlv_put(msg, 0xc8, sizeof(bs11_logon_c8), bs11_logon_c8);
+	msgb_tlv_put(msg, 0xc9, sizeof(bs11_logon_c9), bs11_logon_c9);
+	
 	return abis_nm_sendmsg(bts, msg);
 }

@@ -270,16 +270,16 @@ static void bootstrap_om(struct gsm_bts *bts)
 	abis_nm_event_reports(bts, 0);
 
 	/* begin DB transmission */
-	abis_nm_db_transmission(bts, 1);
+	abis_nm_bs11_db_transmission(bts, 1);
 
 	/* end DB transmission */
-	abis_nm_db_transmission(bts, 0);
+	abis_nm_bs11_db_transmission(bts, 0);
 
 	/* Reset BTS Site manager resource */
 	abis_nm_reset_resource(bts);
 
 	/* begin DB transmission */
-	abis_nm_db_transmission(bts, 1);
+	abis_nm_bs11_db_transmission(bts, 1);
 
 	abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
 	abis_nm_raw_msg(bts, sizeof(msg_2), msg_2); /* set BTS attr */
@@ -336,7 +336,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
 
 	/* end DB transmission */
-	abis_nm_db_transmission(bts, 0);
+	abis_nm_bs11_db_transmission(bts, 0);
 
 	/* Reset BTS Site manager resource */
 	abis_nm_reset_resource(bts);
@@ -351,10 +351,10 @@ static int shutdown_om(struct gsm_bts *bts)
 	abis_nm_event_reports(bts, 0);
 
 	/* begin DB transmission */
-	abis_nm_db_transmission(bts, 1);
+	abis_nm_bs11_db_transmission(bts, 1);
 
 	/* end DB transmission */
-	abis_nm_db_transmission(bts, 0);
+	abis_nm_bs11_db_transmission(bts, 0);
 
 	/* Reset BTS Site manager resource */
 	abis_nm_reset_resource(bts);
