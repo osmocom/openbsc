@@ -57,7 +57,7 @@ static const char *trx1_password = "1111111111";
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
 {
-	abis_nm_bs11_factory_logon(bts, 1);
+	//abis_nm_bs11_factory_logon(bts, 1);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_GPSU, 0, 0, NULL);
@@ -95,7 +95,7 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 	if (trx1)
 		abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_30mW);
 
-	abis_nm_bs11_factory_logon(bts, 0);
+	//abis_nm_bs11_factory_logon(bts, 0);
 	
 	return 0;
 }
