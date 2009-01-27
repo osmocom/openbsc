@@ -13,7 +13,6 @@ dnl checks for libraries
 
 dnl checks for header files
 AC_HEADER_STDC
-AC_CHECK_HEADERS(mISDNif.h)
 
 dnl Checks for typedefs, structures and compiler characteristics
 
