@@ -383,6 +383,7 @@ int abis_nm_reset_resource(struct gsm_bts *bts);
 int abis_nm_software_load(struct gsm_bts *bts, const char *fname, u_int8_t win);
 
 /* Siemens / BS-11 specific */
+int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);
 int abis_nm_bs11_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
 			  u_int8_t idx, u_int8_t attr_len, const u_int8_t *attr);
