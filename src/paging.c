@@ -123,15 +123,21 @@ void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) 
 	struct paging_request *req;
 
 	req = (struct paging_request *)malloc(sizeof(*req));
+	memset(req, 0, sizeof(*req));
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
 	req->chan_type = type;
 
 	llist_for_each_entry(bts_entry, &managed_bts, bts_list) {
-		if (bts == bts_entry->bts && !page_pending_request(bts_entry, subscr)) {
-			llist_add_tail(&req->entry, &bts_entry->pending_requests);
-			if (!timer_pending(&bts_entry->page_timer))
-				schedule_timer(&bts_entry->page_timer, PAGING_TIMEOUT);
+		if (bts == bts_entry->bts) {
+			if (!page_pending_request(bts_entry, subscr)) {
+				llist_add_tail(&req->entry, &bts_entry->pending_requests);
+				if (!timer_pending(&bts_entry->page_timer))
+					schedule_timer(&bts_entry->page_timer, PAGING_TIMEOUT);
+			} else {
+				DEBUGP(DPAG, "Paging request already pending\n");
+			}
+
 			return;
 		}
 	}
