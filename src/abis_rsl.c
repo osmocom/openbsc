@@ -565,7 +565,7 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		/* interference on idle channels of TRX */
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		fprintf(stderr, "Unimplemented Abis RSL TRX message type 0x%02x\n",
+		fprintf(stderr, "Overload: Unimplemented Abis RSL TRX message type 0x%02x\n",
 			rslh->msg_type);
 		break;
 	default:
