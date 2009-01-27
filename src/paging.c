@@ -43,7 +43,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_04_08.h>
 
-#define PAGING_TIMEOUT 0, 5000
+#define PAGING_TIMEOUT 1, 0
 
 static LLIST_HEAD(managed_bts);
 
