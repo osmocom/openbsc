@@ -78,15 +78,20 @@ static void page_handle_pending_requests(void *data) {
 	/* handle the paging request now */
 	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
 		paging_bts->last_request->subscr->imsi);
+	++paging_bts->last_request->requests;
 	tmsi = strtoul(paging_bts->last_request->subscr->tmsi, NULL, 10);
 	mi_len = generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi, RSL_CHANNEED_TCH_F);
 
-	/* move to the next item */
-	paging_bts->last_request =
-		(struct paging_request *)paging_bts->last_request->entry.next;
-	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
-		paging_bts->last_request = NULL;
+	if (paging_bts->last_request->requests > 1500) {
+		page_remove_request(paging_bts);
+	} else {
+		/* move to the next item */
+		paging_bts->last_request =
+			(struct paging_request *)paging_bts->last_request->entry.next;
+		if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
+			paging_bts->last_request = NULL;
+	}
 
 	schedule_timer(&paging_bts->page_timer, PAGING_TIMEOUT);
 }
