@@ -74,6 +74,7 @@ void schedule_timer(void) {}
 void del_timer(void) {}
 void subscr_get_by_tmsi(void) {}
 void subscr_update(void) {}
+void subscr_put(void) {}
 void db_subscriber_assoc_imei(void) {}
 void db_subscriber_alloc_tmsi(void) {}
 void db_create_subscriber(void) {}
