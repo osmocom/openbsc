@@ -816,7 +816,7 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
 
 static const u_int8_t bs11_logon_c7[] = 
 	{ 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
-static const u_int8_t bs11_logon_c8[] = { 0x01, 0x02 };
+static const u_int8_t bs11_logon_c8[] = { 0x02 };
 static const u_int8_t bs11_logon_c9[] = "FACTORY";
 
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
