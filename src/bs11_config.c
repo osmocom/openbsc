@@ -29,6 +29,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <fcntl.h>
+#include <termios.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -179,8 +180,10 @@ static struct msgb *serial_read_msg(void)
 			   sizeof(struct abis_om_hdr))
 		fprintf(stderr, "Invalied header byte 1(len): %u\n",
 			msg->data[1]);
+	printf("length = %u\n", msg->data[1]);
 
 	while (msg->len < 2 + msg->data[1]) {
+		printf("msg->len(%u), waiting for %u\n", msg->len, 2 + msg->data[1] - msg->len);
 		rc = read(serial_fd, msg->tail, 2 + msg->data[1] - msg->len);
 		if (rc < 0) {
 			perror("reading from serial port");
@@ -319,6 +322,8 @@ static void handle_options(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
+	struct termios tio;
+	int rc;
 
 	handle_options(argc, argv);
 
@@ -328,7 +333,20 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* FIXME: set baudrate */
+	/* set baudrate */
+	rc = tcgetattr(serial_fd, &tio);
+	if (rc < 0) {
+		perror("tcgetattr()");
+		exit(1);
+	}
+	cfsetispeed(&tio, B19200);
+	cfsetospeed(&tio, B19200);
+	tio.c_cflag |= CREAD | CLOCAL;
+	rc = tcsetattr(serial_fd, TCSADRAIN, &tio);
+	if (rc < 0) {
+		perror("tcsetattr()");
+		exit(1);
+	}
 
 	gsmnet = gsm_network_init(1, 1, 1);
 	if (!gsmnet) {
@@ -343,7 +361,7 @@ int main(int argc, char **argv)
 		struct msgb *rx_msg;
 		struct abis_om_hdr *oh;
 		struct abis_om_fom_hdr *foh;
-		int rc = -1;
+		rc = -1;
 
 		rx_msg = serial_read_msg();
 
