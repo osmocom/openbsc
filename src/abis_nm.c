@@ -882,11 +882,14 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 	if (on) {
 		u_int8_t len = 3*2 + sizeof(bs11_logon_c7)
 				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
-		fill_om_fom_hdr(oh, len, NM_MT_BS11_FACTORY_LOGON,
+		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
-		msgb_tlv_put(msg, 0xc7, sizeof(bs11_logon_c7), bs11_logon_c7);
-		msgb_tlv_put(msg, 0xc8, sizeof(bs11_logon_c8), bs11_logon_c8);
-		msgb_tlv_put(msg, 0xc9, sizeof(bs11_logon_c9), bs11_logon_c9);
+		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
+			     sizeof(bs11_logon_c7), bs11_logon_c7);
+		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
+			     sizeof(bs11_logon_c8), bs11_logon_c8);
+		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
+			     sizeof(bs11_logon_c9), bs11_logon_c9);
 	} else {
 		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LOGOFF,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);

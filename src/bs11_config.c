@@ -373,8 +373,8 @@ static int handle_serial_msg(struct msgb *rx_msg)
 	oh = (struct abis_om_hdr *) msgb_l2(rx_msg);
 	foh = (struct abis_om_fom_hdr *) oh->data;
 	switch (foh->msg_type) {
-	case NM_MT_BS11_FACTORY_LOGON_ACK:
-		printf("FACTORY LOGON: ACK\n");
+	case NM_MT_BS11_LMT_LOGON_ACK:
+		printf("LMT LOGON: ACK\n");
 		if (bs11cfg_state == STATE_NONE)
 			bs11cfg_state = STATE_LOGON_ACK;
 		rc = 0;
