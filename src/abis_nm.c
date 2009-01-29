@@ -307,6 +307,7 @@ struct abis_nm_sw {
 	int fd;
 	FILE *stream;
 	enum sw_state state;
+	int last_seg;
 };
 
 static struct abis_nm_sw g_sw;
@@ -332,6 +333,22 @@ static int sw_load_init(struct abis_nm_sw *sw)
 	return abis_nm_sendmsg(sw->bts, msg);
 }
 
+static int is_last_line(FILE *stream)
+{
+	char next_seg_buf[256];
+	long pos;
+
+	/* check if we're sending the last line */
+	pos = ftell(stream);
+	if (!fgets(next_seg_buf, sizeof(next_seg_buf)-2, stream)) {
+		fseek(stream, pos, SEEK_SET);
+		return 1;
+	}
+
+	fseek(stream, pos, SEEK_SET);
+	return 0;
+}
+
 /* 6.2.2 / 8.3.2 Load Data Segment */
 static int sw_load_segment(struct abis_nm_sw *sw)
 {
@@ -351,7 +368,13 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 			return -EINVAL;
 		}
 		seg_buf[0] = 0x00;
-		seg_buf[1] = 1 + sw->seg_in_window++;
+
+		/* check if we're sending the last line */
+		sw->last_seg = is_last_line(sw->stream);
+		if (sw->last_seg)
+			seg_buf[1] = 0;
+		else
+			seg_buf[1] = 1 + sw->seg_in_window++;
 
 		len = strlen(line_buf) + 2;
 		tlv = msgb_put(msg, TLV_GROSS_LEN(len));
@@ -474,10 +497,8 @@ static int sw_fill_window(struct abis_nm_sw *sw)
 		rc = sw_load_segment(sw);
 		if (rc < 0)
 			return rc;
-		if (rc == 1) {
-			sw->state = SW_STATE_WAIT_ENDACK;
-			return sw_load_end(sw);
-		}
+		if (sw->last_seg)
+			break;
 	}
 	return 0;
 }
@@ -501,6 +522,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 			sw->state = SW_STATE_WAIT_SEGACK;
 			break;
 		case NM_MT_LOAD_INIT_NACK:
+			DEBUGP(DNM, "Software Load Init NACK\n");
 			sw->state = SW_STATE_ERROR;
 			break;
 		}
@@ -509,9 +531,15 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 		switch (foh->msg_type) {
 		case NM_MT_LOAD_SEG_ACK:
 			sw->seg_in_window = 0;
-			/* fill window with more segments */
-			rc = sw_fill_window(sw);
-			sw->state = SW_STATE_WAIT_SEGACK;
+			if (!sw->last_seg) {
+				/* fill window with more segments */
+				rc = sw_fill_window(sw);
+				sw->state = SW_STATE_WAIT_SEGACK;
+			} else {
+				/* end the transfer */
+				sw->state = SW_STATE_WAIT_ENDACK;
+				rc = sw_load_end(sw);
+			}
 			break;
 		}
 		break;
@@ -524,6 +552,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 			rc = sw_activate(sw);
 			break;
 		case NM_MT_LOAD_END_NACK:
+			DEBUGP(DNM, "Software Load End NACK\n");
 			sw->state = SW_STATE_ERROR;
 			break;
 		}
@@ -536,6 +565,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 			DEBUGP(DMM, "DONE!\n");
 			break;
 		case NM_MT_ACTIVATE_SW_NACK:
+			DEBUGP(DNM, "Activate Software NACK\n");
 			sw->state = SW_STATE_ERROR;
 			break;
 		}
@@ -576,6 +606,22 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 	}
 
 	return sw_load_init(sw);
+}
+
+int abis_nm_software_load_status(struct gsm_bts *bts)
+{
+	struct abis_nm_sw *sw = &g_sw;
+	struct stat st;
+	int rc, percent;
+
+	rc = fstat(sw->fd, &st);
+	if (rc < 0) {
+		perror("ERROR during stat");
+		return rc;
+	}
+
+	percent = (ftell(sw->stream) * 100) / st.st_size;
+	return percent;
 }
 
 static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
