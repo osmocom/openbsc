@@ -180,10 +180,8 @@ static struct msgb *serial_read_msg(void)
 			   sizeof(struct abis_om_hdr))
 		fprintf(stderr, "Invalied header byte 1(len): %u\n",
 			msg->data[1]);
-	printf("length = %u\n", msg->data[1]);
 
 	while (msg->len < 2 + msg->data[1]) {
-		printf("msg->len(%u), waiting for %u\n", msg->len, 2 + msg->data[1] - msg->len);
 		rc = read(serial_fd, msg->tail, 2 + msg->data[1] - msg->len);
 		if (rc < 0) {
 			perror("reading from serial port");
@@ -235,7 +233,8 @@ static int handle_state_resp(u_int8_t state)
 		if (file_is_readable(fname_safety))
 			abis_nm_software_load(g_bts, fname_safety, 8);
 		else
-			fprintf(stderr, "No valid Safety Load file\n");
+			fprintf(stderr, "No valid Safety Load file \"%s\"\n",
+				fname_safety);
 		break;
 	case BS11_STATE_WAIT_MIN_CFG:
 	case BS11_STATE_WAIT_MIN_CFG_2:
@@ -248,7 +247,8 @@ static int handle_state_resp(u_int8_t state)
 		if (file_is_readable(fname_software))
 			abis_nm_software_load(g_bts, fname_software, 8);
 		else
-			fprintf(stderr, "No valid Software file\n");
+			fprintf(stderr, "No valid Software file \"%s\"\n",
+				fname_software);
 		break;
 	case BS11_STATE_NORMAL:
 		printf("Normal...\n");
@@ -319,10 +319,18 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+enum bs11_state {
+	STATE_NONE,
+	STATE_LOGON_WAIT,
+	STATE_LOGON_ACK,
+	STATE_SWLOAD,
+};
+
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
 	struct termios tio;
+	enum bs11_state state = STATE_NONE;
 	int rc;
 
 	handle_options(argc, argv);
@@ -341,7 +349,11 @@ int main(int argc, char **argv)
 	}
 	cfsetispeed(&tio, B19200);
 	cfsetospeed(&tio, B19200);
-	tio.c_cflag |= CREAD | CLOCAL;
+	tio.c_cflag |=  (CREAD | CLOCAL | CS8);
+	tio.c_cflag &= ~(PARENB | CSTOPB | CSIZE | CRTSCTS);
+	tio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	tio.c_iflag |=  (INPCK | ISTRIP);
+	tio.c_iflag &= ~(ISTRIP | IXON | IXOFF | IGNBRK | INLCR | ICRNL | IGNCR);
 	rc = tcsetattr(serial_fd, TCSADRAIN, &tio);
 	if (rc < 0) {
 		perror("tcsetattr()");
@@ -368,6 +380,12 @@ int main(int argc, char **argv)
 		oh = (struct abis_om_hdr *) msgb_l2(rx_msg);
 		foh = (struct abis_om_fom_hdr *) oh->data;
 		switch (foh->msg_type) {
+		case NM_MT_BS11_FACTORY_LOGON_ACK:
+			printf("FACTORY LOGON: ACK\n");
+			if (state == STATE_NONE)
+				state = STATE_LOGON_ACK;
+			rc = 0;
+			break;
 		case NM_MT_BS11_GET_STATE_ACK:
 			rc = handle_state_resp(foh->data[2]);
 			break;
@@ -380,6 +398,17 @@ int main(int argc, char **argv)
 		}
 		if (rc == 1)
 			break;
+
+		switch (state) {
+		case STATE_NONE:
+			abis_nm_bs11_factory_logon(g_bts, 1);
+			break;
+		case STATE_LOGON_ACK:
+			abis_nm_bs11_get_state(g_bts);
+			break;
+		default:
+			break;
+		}
 	}
 
 	abis_nm_bs11_factory_logon(g_bts, 0);
