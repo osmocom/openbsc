@@ -296,6 +296,7 @@ enum abis_nm_attr {
 
 	NM_ATT_BS11_PASSWORD	= 0xfd,
 };
+#define NM_ATT_BS11_FILE_DATA	NM_ATT_EVENT_TYPE
 
 /* Section 9.4.4: Administrative State */
 enum abis_nm_adm_state {

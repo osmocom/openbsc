@@ -40,6 +40,15 @@
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 
+/* state of our bs11_config application */
+enum bs11cfg_state {
+	STATE_NONE,
+	STATE_LOGON_WAIT,
+	STATE_LOGON_ACK,
+	STATE_SWLOAD,
+};
+static enum bs11cfg_state bs11cfg_state = STATE_NONE;
+
 static const u_int8_t obj_li_attr[] = { 
 	0xa0, 0x09, 0x00,
 	0xab, 0x00, 
@@ -54,6 +63,8 @@ static const u_int8_t obj_pa0_attr[] = {
 };
 static const char *trx1_password = "1111111111";
 #define TEI_OML	25
+
+static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
@@ -104,6 +115,7 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 static char *serial_port = "/dev/ttyUSB0";
 static char *fname_safety = "BTSBMC76.SWI";
 static char *fname_software = "HS011106.SWL";
+static int delay_ms = 100;
 static int serial_fd = -1;
 static int have_trx1 = 0;
 static struct gsm_bts *g_bts;
@@ -146,6 +158,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	}
 
 	msgb_free(msg);
+	usleep(delay_ms*1000);
 
 	return 0;
 }
@@ -160,6 +173,8 @@ static struct msgb *serial_read_msg(void)
 
 	if (!msg)
 		return NULL;
+
+	msg->l2h = NULL;
 
 	/* first read two byes to obtain length */
 	while (msg->len < 2) {
@@ -176,9 +191,8 @@ static struct msgb *serial_read_msg(void)
 			msg->data[0]);
 
 	/* second byte is LAPD payload length */
-	if (msg->data[1] < LAPD_HDR_LEN + sizeof(struct abis_om_fom_hdr) +
-			   sizeof(struct abis_om_hdr))
-		fprintf(stderr, "Invalied header byte 1(len): %u\n",
+	if (msg->data[1] + 2 < LAPD_HDR_LEN)
+		fprintf(stderr, "Invalid header byte 1(len): %u\n",
 			msg->data[1]);
 
 	while (msg->len < 2 + msg->data[1]) {
@@ -191,10 +205,11 @@ static struct msgb *serial_read_msg(void)
 		msgb_put(msg, rc);
 	}
 
-	msg->l2h = msg->data + LAPD_HDR_LEN;
+	if (msg->len > LAPD_HDR_LEN)
+		msg->l2h = msg->data + LAPD_HDR_LEN;
 
 	fprintf(stdout, "RX: ");
-	hexdump(msg->l2h, msg->len - (msg->l2h - msg->data));
+	hexdump(msg->data, msg->len);
 
 	return msg;
 }
@@ -217,7 +232,10 @@ static int file_is_readable(const char *fname)
 
 static int handle_state_resp(u_int8_t state)
 {
+	int rc = 0;
+
 	printf("STATE: ");
+
 	switch (state) {
 	case BS11_STATE_WARM_UP:
 		printf("Warm Up...\n");
@@ -229,9 +247,10 @@ static int handle_state_resp(u_int8_t state)
 		break;
 	case BS11_STATE_SOFTWARE_RQD:
 		printf("Software required...\n");
+		bs11cfg_state = STATE_SWLOAD;
 		/* send safety load */
 		if (file_is_readable(fname_safety))
-			abis_nm_software_load(g_bts, fname_safety, 8);
+			rc = abis_nm_software_load(g_bts, fname_safety, 8);
 		else
 			fprintf(stderr, "No valid Safety Load file \"%s\"\n",
 				fname_safety);
@@ -239,13 +258,15 @@ static int handle_state_resp(u_int8_t state)
 	case BS11_STATE_WAIT_MIN_CFG:
 	case BS11_STATE_WAIT_MIN_CFG_2:
 		printf("Wait minimal config...\n");
-		create_objects(g_bts, have_trx1);
+		bs11cfg_state = STATE_SWLOAD;
+		rc = create_objects(g_bts, have_trx1);
 		break;
 	case BS11_STATE_MAINTENANCE:
 		printf("Maintenance...\n");
+		bs11cfg_state = STATE_SWLOAD;
 		/* send software (FIXME: over A-bis?) */
 		if (file_is_readable(fname_software))
-			abis_nm_software_load(g_bts, fname_software, 8);
+			rc = abis_nm_software_load(g_bts, fname_software, 8);
 		else
 			fprintf(stderr, "No valid Software file \"%s\"\n",
 				fname_software);
@@ -258,7 +279,7 @@ static int handle_state_resp(u_int8_t state)
 		sleep(5);
 		break;
 	}
-	return 0;
+	return rc;
 }
 
 static void print_banner(void)
@@ -274,7 +295,7 @@ static void print_help(void)
 	printf("\t--port /dev/ttyXXX\t-p\tSpecify serial port\n");
 	printf("\t--with-trx1\t\t-t\tAssume the BS-11 has 2 TRX\n");
 	printf("\t--software file\t\t-s\tSpecify Software file\n");
-	printf("\t--safety file\t\t-s\tSpecify Safety Load file\n");
+	printf("\t--safety file\t\t-S\tSpecify Safety Load file\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -289,6 +310,7 @@ static void handle_options(int argc, char **argv)
 			{ "with-trx1", 0, 0, 't' },
 			{ "software", 1, 0, 's' },
 			{ "safety", 1, 0, 'S' },
+			{ "delay", 1, 0, 'd' },
 		};
 
 		c = getopt_long(argc, argv, "hp:s:S:t",
@@ -313,24 +335,19 @@ static void handle_options(int argc, char **argv)
 		case 'S':
 			fname_safety = optarg;
 			break;
+		case 'd':
+			delay_ms = atoi(optarg);
+			break;
 		default:
 			break;
 		}
 	}
 }
 
-enum bs11_state {
-	STATE_NONE,
-	STATE_LOGON_WAIT,
-	STATE_LOGON_ACK,
-	STATE_SWLOAD,
-};
-
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
 	struct termios tio;
-	enum bs11_state state = STATE_NONE;
 	int rc;
 
 	handle_options(argc, argv);
@@ -377,13 +394,28 @@ int main(int argc, char **argv)
 
 		rx_msg = serial_read_msg();
 
+		if (rx_msg->len < LAPD_HDR_LEN
+				  + sizeof(struct abis_om_fom_hdr)
+				  + sizeof(struct abis_om_hdr)) {
+			if (!memcmp(rx_msg->data + 2, too_fast,
+				    sizeof(too_fast))) {
+				fprintf(stderr, "BS11 tells us we're too "
+					"fast, try --delay bigger than %u\n",
+					delay_ms);
+				break;
+			} else
+				fprintf(stderr, "unknown BS11 message\n");
+
+			continue;
+		}
+
 		oh = (struct abis_om_hdr *) msgb_l2(rx_msg);
 		foh = (struct abis_om_fom_hdr *) oh->data;
 		switch (foh->msg_type) {
 		case NM_MT_BS11_FACTORY_LOGON_ACK:
 			printf("FACTORY LOGON: ACK\n");
-			if (state == STATE_NONE)
-				state = STATE_LOGON_ACK;
+			if (bs11cfg_state == STATE_NONE)
+				bs11cfg_state = STATE_LOGON_ACK;
 			rc = 0;
 			break;
 		case NM_MT_BS11_GET_STATE_ACK:
@@ -394,12 +426,12 @@ int main(int argc, char **argv)
 		}
 		if (rc < 0) {
 			perror("in main loop");
-			break;
+			//break;
 		}
 		if (rc == 1)
 			break;
 
-		switch (state) {
+		switch (bs11cfg_state) {
 		case STATE_NONE:
 			abis_nm_bs11_factory_logon(g_bts, 1);
 			break;

@@ -339,26 +339,34 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 	struct msgb *msg = nm_msgb_alloc();
 	char seg_buf[256];
 	char *line_buf = seg_buf+2;
+	unsigned char *tlv;
 	u_int8_t len;
-	int rc;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	/* FIXME: this is BS11 specific format */
-	rc = fscanf(sw->stream, "%s\r\n", line_buf);
-	if (rc < 1) {
-		perror("fscanf reading segment");
-		return -EINVAL;
+
+	switch (sw->bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		if (fgets(line_buf, sizeof(seg_buf)-2, sw->stream) == NULL) {
+			perror("fgets reading segment");
+			return -EINVAL;
+		}
+		seg_buf[0] = 0x00;
+		seg_buf[1] = 1 + sw->seg_in_window++;
+
+		len = strlen(line_buf) + 2;
+		tlv = msgb_put(msg, TLV_GROSS_LEN(len));
+		tlv_put(tlv, NM_ATT_BS11_FILE_DATA, len, (u_int8_t *)seg_buf);
+		/* BS11 wants CR + LF in excess of the TLV length !?! */
+		tlv[1] -= 2;
+
+		/* we only now know the exact length for the OM hdr */
+		len = strlen(line_buf)+2;
+		break;
+	default:
+		/* FIXME: Other BTS types */
+		return -1;
 	}
-	seg_buf[0] = 0x00;
-	seg_buf[1] = sw->seg_in_window++;
 
-	msgb_tlv_put(msg, NM_ATT_FILE_DATA, 2+strlen(line_buf), 
-		     (u_int8_t *)seg_buf);
-	/* BS11 wants CR + LF in excess of the TLV length !?! */
-	msgb_tv_put(msg, 0x0d, 0x0a);
-
-	/* we only now know the exact length for the OM hdr */
-	len = 2+strlen(line_buf)+2;
 	fill_om_fom_hdr(oh, len, NM_MT_LOAD_SEG, sw->obj_class,
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
@@ -423,7 +431,7 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 			return -1;
 		}
 		/* read first line and parse file ID and VERSION */
-		rc = fscanf(sw->stream, "@(@)%12s:%80s\r\n", 
+		rc = fscanf(sw->stream, "@(#)%12s:%80s\r\n", 
 			    file_id, file_version);
 		if (rc != 2) {
 			perror("parsing header line of software file");
@@ -434,7 +442,7 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 		strcpy((char *)sw->file_version, file_version);
 		sw->file_version_len = strlen(file_version);
 		/* rewind to start of file */
-		fseek(sw->stream, 0, SEEK_SET);
+		rewind(sw->stream);
 		break;	
 	default:
 		/* We don't know how to treat them yet */
