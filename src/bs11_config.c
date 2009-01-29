@@ -84,11 +84,12 @@ static int handle_serial_msg(struct msgb *rx_msg);
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
 {
-	//abis_nm_bs11_factory_logon(bts, 1);
+	abis_nm_bs11_factory_logon(bts, 1);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_GPSU, 0, 0, NULL);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_ALCO, 0, 0, NULL);
+	abis_nm_bs11_create_object(bts, BS11_OBJ_CCLK, 0, 0, NULL);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 0,
 				   sizeof(obj_bbsig0_attr), obj_bbsig0_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 0,
@@ -122,7 +123,7 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 	if (trx1)
 		abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_30mW);
 
-	//abis_nm_bs11_factory_logon(bts, 0);
+	abis_nm_bs11_factory_logon(bts, 0);
 	
 	return 0;
 }
@@ -130,9 +131,10 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 static char *serial_port = "/dev/ttyUSB0";
 static char *fname_safety = "BTSBMC76.SWI";
 static char *fname_software = "HS011106.SWL";
-static int delay_ms = 100;
+static int delay_ms = 0;
 static int serial_fd = -1;
 static int have_trx1 = 0;
+static int win_size = 8;
 static struct gsm_bts *g_bts;
 
 /* adaption layer from GSM 08.59 + 12.21 to RS232 */
@@ -315,7 +317,8 @@ static int handle_state_resp(u_int8_t state)
 		bs11cfg_state = STATE_SWLOAD;
 		/* send safety load */
 		if (file_is_readable(fname_safety))
-			rc = abis_nm_software_load(g_bts, fname_safety, 8);
+			rc = abis_nm_software_load(g_bts, fname_safety,
+						   win_size);
 		else
 			fprintf(stderr, "No valid Safety Load file \"%s\"\n",
 				fname_safety);
@@ -331,7 +334,8 @@ static int handle_state_resp(u_int8_t state)
 		bs11cfg_state = STATE_SWLOAD;
 		/* send software (FIXME: over A-bis?) */
 		if (file_is_readable(fname_software))
-			rc = abis_nm_software_load(g_bts, fname_software, 8);
+			rc = abis_nm_software_load(g_bts, fname_software,
+						   win_size);
 		else
 			fprintf(stderr, "No valid Software file \"%s\"\n",
 				fname_software);
@@ -416,6 +420,8 @@ static void print_help(void)
 	printf("\t--with-trx1\t\t-t\tAssume the BS-11 has 2 TRX\n");
 	printf("\t--software file\t\t-s\tSpecify Software file\n");
 	printf("\t--safety file\t\t-S\tSpecify Safety Load file\n");
+	printf("\t--delay file\t\t-d\tSpecify delay\n");
+	printf("\t--win-size num\t\t-w\tSpecify Window Size\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -431,9 +437,10 @@ static void handle_options(int argc, char **argv)
 			{ "software", 1, 0, 's' },
 			{ "safety", 1, 0, 'S' },
 			{ "delay", 1, 0, 'd' },
+			{ "win-size", 1, 0, 'w' },
 		};
 
-		c = getopt_long(argc, argv, "hp:s:S:t",
+		c = getopt_long(argc, argv, "hp:s:S:td:w:",
 				long_options, &option_index);
 
 		if (c == -1)
@@ -457,6 +464,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'd':
 			delay_ms = atoi(optarg);
+			break;
+		case 'w':
+			win_size = atoi(optarg);
 			break;
 		default:
 			break;
@@ -502,6 +512,7 @@ int main(int argc, char **argv)
 	tio.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
 	tio.c_iflag |=  (INPCK | ISTRIP);
 	tio.c_iflag &= ~(ISTRIP | IXON | IXOFF | IGNBRK | INLCR | ICRNL | IGNCR);
+	tio.c_oflag &= ~(OPOST);
 	rc = tcsetattr(serial_fd, TCSADRAIN, &tio);
 	if (rc < 0) {
 		perror("tcsetattr()");
