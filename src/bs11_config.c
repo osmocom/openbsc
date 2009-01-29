@@ -30,6 +30,7 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <termios.h>
+#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -39,6 +40,7 @@
 #include <openbsc/msgb.h>
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
+#include <openbsc/select.h>
 
 /* state of our bs11_config application */
 enum bs11cfg_state {
@@ -65,6 +67,19 @@ static const char *trx1_password = "1111111111";
 #define TEI_OML	25
 
 static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
+
+struct serial_handle {
+	struct bsc_fd fd;
+	struct llist_head tx_queue;
+
+	struct msgb *rx_msg;
+	unsigned int rxmsg_bytes_missing;
+};
+
+/* FIXME: this needs to go */
+static struct serial_handle _ser_handle, *ser_handle = &_ser_handle;
+
+static int handle_serial_msg(struct msgb *rx_msg);
 
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
@@ -127,16 +142,19 @@ static struct gsm_bts *g_bts;
 /* callback from abis_nm */
 int _abis_nm_sendmsg(struct msgb *msg)
 {
-	int written;
+	struct serial_handle *sh = ser_handle;
 	u_int8_t *lapd;
+	unsigned int len;
 
 	msg->l2h = msg->data;
 
 	/* prepend LAPD header */
 	lapd = msgb_push(msg, LAPD_HDR_LEN);
 
-	lapd[0] = 0x00;
-	lapd[1] = msg->len - 2; /* length of bytes startign at lapd[2] */
+	len = msg->len - 2;
+
+	lapd[0] = (len >> 8) & 0xff;
+	lapd[1] = len & 0xff; /* length of bytes startign at lapd[2] */
 	lapd[2] = 0x00;
 	lapd[3] = 0x07;
 	lapd[4] = 0x01;
@@ -145,6 +163,24 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	lapd[7] = 0x00;
 	lapd[8] = msg->len - 10; /* length of bytes starting at lapd[10] */
 	lapd[9] = lapd[8] ^ 0x38;
+
+	msgb_enqueue(&sh->tx_queue, msg);
+	sh->fd.when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+static int handle_ser_write(struct bsc_fd *bfd)
+{
+	struct serial_handle *sh = bfd->data;
+	struct msgb *msg;
+	int written;
+
+	msg = msgb_dequeue(&sh->tx_queue);
+	if (!msg) {
+		bfd->when &= ~BSC_FD_WRITE;
+		return 0;
+	}
 
 	fprintf(stdout, "TX: ");
 	hexdump(msg->data, msg->len);
@@ -165,53 +201,82 @@ int _abis_nm_sendmsg(struct msgb *msg)
 
 #define SERIAL_ALLOC_SIZE	300
 
-/* receive an entire message from the serial port */
-static struct msgb *serial_read_msg(void)
+static int handle_ser_read(struct bsc_fd *bfd)
 {
-	struct msgb *msg = msgb_alloc(SERIAL_ALLOC_SIZE);
-	int rc;
+	struct serial_handle *sh = bfd->data;
+	struct msgb *msg;
+	int rc = 0;
 
-	if (!msg)
-		return NULL;
-
-	msg->l2h = NULL;
+	if (!sh->rx_msg) {
+		sh->rx_msg = msgb_alloc(SERIAL_ALLOC_SIZE);
+		sh->rx_msg->l2h = NULL;
+	}
+	msg = sh->rx_msg;
 
 	/* first read two byes to obtain length */
-	while (msg->len < 2) {
-		rc = read(serial_fd, msg->tail, 2 - msg->len);
+	if (msg->len < 2) {
+		rc = read(sh->fd.fd, msg->tail, 2 - msg->len);
 		if (rc < 0) {
-			perror("reading from serial port");
+			perror("ERROR reading from serial port");
 			msgb_free(msg);
-			return NULL;
+			return rc;
 		}
 		msgb_put(msg, rc);
-	}
-	if (msg->data[0] != 0)
-		fprintf(stderr, "Invalid header byte 0: 0x%02x\n",
-			msg->data[0]);
 
-	/* second byte is LAPD payload length */
-	if (msg->data[1] + 2 < LAPD_HDR_LEN)
-		fprintf(stderr, "Invalid header byte 1(len): %u\n",
-			msg->data[1]);
+		if (msg->len >= 2) {
+			/* parse LAPD payload length */
+			if (msg->data[0] != 0)
+				fprintf(stderr, "Suspicious header byte 0: 0x%02x\n",
+					msg->data[0]);
 
-	while (msg->len < 2 + msg->data[1]) {
-		rc = read(serial_fd, msg->tail, 2 + msg->data[1] - msg->len);
+			sh->rxmsg_bytes_missing = msg->data[0] << 8;
+			sh->rxmsg_bytes_missing += msg->data[1];
+
+			if (sh->rxmsg_bytes_missing < LAPD_HDR_LEN -2)
+				fprintf(stderr, "Invalid length in hdr: %u\n",
+					sh->rxmsg_bytes_missing);
+		}
+	} else { 
+		/* try to read as many of the missing bytes as are available */
+		rc = read(sh->fd.fd, msg->tail, sh->rxmsg_bytes_missing);
 		if (rc < 0) {
-			perror("reading from serial port");
+			perror("ERROR reading from serial port");
 			msgb_free(msg);
-			return NULL;
+			return rc;
 		}
 		msgb_put(msg, rc);
+		sh->rxmsg_bytes_missing -= rc;
+
+		if (sh->rxmsg_bytes_missing == 0) {
+			/* we have one complete message now */
+			sh->rx_msg = NULL;
+
+			if (msg->len > LAPD_HDR_LEN)
+				msg->l2h = msg->data + LAPD_HDR_LEN;
+
+			fprintf(stdout, "RX: ");
+			hexdump(msg->data, msg->len);
+			rc = handle_serial_msg(msg);
+		}
 	}
 
-	if (msg->len > LAPD_HDR_LEN)
-		msg->l2h = msg->data + LAPD_HDR_LEN;
+	return rc;
+}
 
-	fprintf(stdout, "RX: ");
-	hexdump(msg->data, msg->len);
+static int serial_fd_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	int rc = 0;
 
-	return msg;
+	if (what & BSC_FD_READ)
+		rc = handle_ser_read(bfd);
+
+	if (rc < 0)
+		return rc;
+
+	if (what & BSC_FD_WRITE)
+		rc = handle_ser_write(bfd);
+
+	return rc;
 }
 
 static int file_is_readable(const char *fname)
@@ -282,6 +347,61 @@ static int handle_state_resp(u_int8_t state)
 	return rc;
 }
 
+static int handle_serial_msg(struct msgb *rx_msg)
+{
+	struct abis_om_hdr *oh;
+	struct abis_om_fom_hdr *foh;
+	int rc = -1;
+
+	if (rx_msg->len < LAPD_HDR_LEN
+			  + sizeof(struct abis_om_fom_hdr)
+			  + sizeof(struct abis_om_hdr)) {
+		if (!memcmp(rx_msg->data + 2, too_fast,
+			    sizeof(too_fast))) {
+			fprintf(stderr, "BS11 tells us we're too "
+				"fast, try --delay bigger than %u\n",
+				delay_ms);
+			return -E2BIG;
+		} else
+			fprintf(stderr, "unknown BS11 message\n");
+	}
+
+	oh = (struct abis_om_hdr *) msgb_l2(rx_msg);
+	foh = (struct abis_om_fom_hdr *) oh->data;
+	switch (foh->msg_type) {
+	case NM_MT_BS11_FACTORY_LOGON_ACK:
+		printf("FACTORY LOGON: ACK\n");
+		if (bs11cfg_state == STATE_NONE)
+			bs11cfg_state = STATE_LOGON_ACK;
+		rc = 0;
+		break;
+	case NM_MT_BS11_GET_STATE_ACK:
+		rc = handle_state_resp(foh->data[2]);
+		break;
+	default:
+		rc = abis_nm_rcvmsg(rx_msg);
+	}
+	if (rc < 0) {
+		perror("ERROR in main loop");
+		//break;
+	}
+	if (rc == 1)
+		return rc;
+
+	switch (bs11cfg_state) {
+	case STATE_NONE:
+		abis_nm_bs11_factory_logon(g_bts, 1);
+		break;
+	case STATE_LOGON_ACK:
+		abis_nm_bs11_get_state(g_bts);
+		break;
+	default:
+		break;
+	}
+
+	return rc;
+}
+
 static void print_banner(void)
 {
 	printf("bs11_config (C) 2009 by Harald Welte and Dieter Spaar\n");
@@ -344,6 +464,17 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGABRT:
+		abis_nm_bs11_factory_logon(g_bts, 0);
+		break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
@@ -384,63 +515,24 @@ int main(int argc, char **argv)
 	}
 	g_bts = &gsmnet->bts[0];
 
+	INIT_LLIST_HEAD(&ser_handle->tx_queue);
+	ser_handle->fd.fd = serial_fd;
+	ser_handle->fd.when = BSC_FD_READ;
+	ser_handle->fd.cb = serial_fd_cb;
+	ser_handle->fd.data = ser_handle;
+	rc = bsc_register_fd(&ser_handle->fd);
+	if (rc < 0) {
+		fprintf(stderr, "could not register FD: %s\n",
+			strerror(rc));
+		exit(1);
+	}
+
+	signal(SIGABRT, &signal_handler);
+
 	abis_nm_bs11_factory_logon(g_bts, 1);
 
 	while (1) {
-		struct msgb *rx_msg;
-		struct abis_om_hdr *oh;
-		struct abis_om_fom_hdr *foh;
-		rc = -1;
-
-		rx_msg = serial_read_msg();
-
-		if (rx_msg->len < LAPD_HDR_LEN
-				  + sizeof(struct abis_om_fom_hdr)
-				  + sizeof(struct abis_om_hdr)) {
-			if (!memcmp(rx_msg->data + 2, too_fast,
-				    sizeof(too_fast))) {
-				fprintf(stderr, "BS11 tells us we're too "
-					"fast, try --delay bigger than %u\n",
-					delay_ms);
-				break;
-			} else
-				fprintf(stderr, "unknown BS11 message\n");
-
-			continue;
-		}
-
-		oh = (struct abis_om_hdr *) msgb_l2(rx_msg);
-		foh = (struct abis_om_fom_hdr *) oh->data;
-		switch (foh->msg_type) {
-		case NM_MT_BS11_FACTORY_LOGON_ACK:
-			printf("FACTORY LOGON: ACK\n");
-			if (bs11cfg_state == STATE_NONE)
-				bs11cfg_state = STATE_LOGON_ACK;
-			rc = 0;
-			break;
-		case NM_MT_BS11_GET_STATE_ACK:
-			rc = handle_state_resp(foh->data[2]);
-			break;
-		default:
-			rc = abis_nm_rcvmsg(rx_msg);
-		}
-		if (rc < 0) {
-			perror("in main loop");
-			//break;
-		}
-		if (rc == 1)
-			break;
-
-		switch (bs11cfg_state) {
-		case STATE_NONE:
-			abis_nm_bs11_factory_logon(g_bts, 1);
-			break;
-		case STATE_LOGON_ACK:
-			abis_nm_bs11_get_state(g_bts);
-			break;
-		default:
-			break;
-		}
+		bsc_select_main();
 	}
 
 	abis_nm_bs11_factory_logon(g_bts, 0);
