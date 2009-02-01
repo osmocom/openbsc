@@ -52,16 +52,16 @@ enum bs11cfg_state {
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 
 static const u_int8_t obj_li_attr[] = { 
-	0xa0, 0x09, 0x00,
-	0xab, 0x00, 
-	0xac, 0x00,
+	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
+	NM_ATT_BS11_L1_PROT_TYPE, 0x00, 
+	NM_ATT_BS11_LINE_CFG, 0x00,
 };
 static const u_int8_t obj_bbsig0_attr[] = {
-	0x3d, 0x02, 0x00, 0x00,
-	0x3f, 0x01, 0x00,
+	NM_ATT_BS11_RSSI_OFFS, 0x02, 0x00, 0x00,
+	NM_ATT_BS11_DIVERSITY, 0x01, 0x00,
 };
 static const u_int8_t obj_pa0_attr[] = {
-	NM_ATT_BS11_TXPWR, 0x01, BS11_TRX_POWER_30mW,
+	NM_ATT_BS11_TXPWR, 0x01, BS11_TRX_POWER_GSM_30mW,
 };
 static const char *trx1_password = "1111111111";
 #define TEI_OML	25
@@ -84,7 +84,7 @@ static int handle_serial_msg(struct msgb *rx_msg);
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
 {
-	abis_nm_bs11_factory_logon(bts, 1);
+	//abis_nm_bs11_factory_logon(bts, 1);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_GPSU, 0, 0, NULL);
@@ -118,12 +118,12 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 	abis_nm_bs11_conn_oml(bts, 0, 1, 0xff);
 	abis_nm_bs11_set_oml_tei(bts, TEI_OML);
 
-	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_30mW);
+	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
 
 	if (trx1)
-		abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_30mW);
+		abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
 
-	abis_nm_bs11_factory_logon(bts, 0);
+	//abis_nm_bs11_factory_logon(bts, 0);
 	
 	return 0;
 }
@@ -172,6 +172,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	return 0;
 }
 
+/* select.c callback in case we can write to the RS232 */
 static int handle_ser_write(struct bsc_fd *bfd)
 {
 	struct serial_handle *sh = bfd->data;
@@ -203,6 +204,7 @@ static int handle_ser_write(struct bsc_fd *bfd)
 
 #define SERIAL_ALLOC_SIZE	300
 
+/* select.c callback in case we can read from the RS232 */
 static int handle_ser_read(struct bsc_fd *bfd)
 {
 	struct serial_handle *sh = bfd->data;
@@ -265,6 +267,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 	return rc;
 }
 
+/* select.c callback */
 static int serial_fd_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	int rc = 0;
@@ -296,7 +299,44 @@ static int file_is_readable(const char *fname)
 	return 0;
 }
 
+/* callback function passed to the ABIS OML code */
+static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
+		       void *data, void *param)
+{
+	if (hook != GSM_HOOK_NM_SWLOAD)
+		return 0;
 
+	switch (event) {
+	case NM_MT_LOAD_INIT_ACK:
+		fprintf(stdout, "Software Load Initiate ACK\n");
+		break;
+	case NM_MT_LOAD_INIT_NACK:
+		fprintf(stderr, "ERROR: Software Load Initiate NACK\n");
+		exit(5);
+		break;
+	case NM_MT_LOAD_END_ACK:
+		/* FIXME: activate in case we want to */
+		if (data)
+			abis_nm_software_activate(g_bts, fname_safety,
+						  swload_cbfn, g_bts);
+		break;
+	case NM_MT_LOAD_END_NACK:
+		fprintf(stderr, "ERROR: Software Load End NACK\n");
+		exit(3);
+		break;
+	case NM_MT_ACTIVATE_SW_NACK:
+		fprintf(stderr, "ERROR: Activate Software NACK\n");
+		exit(4);
+		break;
+	case NM_MT_ACTIVATE_SW_ACK:
+		bs11cfg_state = STATE_NONE;
+		
+		break;
+	}
+	return 0;
+}
+
+/* handle a response from the BTS to a GET STATE command */
 static int handle_state_resp(u_int8_t state)
 {
 	int rc = 0;
@@ -315,10 +355,13 @@ static int handle_state_resp(u_int8_t state)
 	case BS11_STATE_SOFTWARE_RQD:
 		printf("Software required...\n");
 		bs11cfg_state = STATE_SWLOAD;
-		/* send safety load */
+		/* send safety load. Use g_bts as private 'param'
+		 * argument, so our swload_cbfn can distinguish
+		 * a safety load from a regular software */
 		if (file_is_readable(fname_safety))
 			rc = abis_nm_software_load(g_bts, fname_safety,
-						   win_size);
+						   win_size, swload_cbfn,
+						   g_bts);
 		else
 			fprintf(stderr, "No valid Safety Load file \"%s\"\n",
 				fname_safety);
@@ -334,8 +377,8 @@ static int handle_state_resp(u_int8_t state)
 		bs11cfg_state = STATE_SWLOAD;
 		/* send software (FIXME: over A-bis?) */
 		if (file_is_readable(fname_software))
-			rc = abis_nm_software_load(g_bts, fname_software,
-						   win_size);
+			rc = abis_nm_bs11_load_swl(g_bts, fname_software,
+						   win_size, swload_cbfn);
 		else
 			fprintf(stderr, "No valid Software file \"%s\"\n",
 				fname_software);
@@ -351,6 +394,7 @@ static int handle_state_resp(u_int8_t state)
 	return rc;
 }
 
+/* handle a fully-received message/packet from the RS232 port */
 static int handle_serial_msg(struct msgb *rx_msg)
 {
 	struct abis_om_hdr *oh;
@@ -378,6 +422,9 @@ static int handle_serial_msg(struct msgb *rx_msg)
 		if (bs11cfg_state == STATE_NONE)
 			bs11cfg_state = STATE_LOGON_ACK;
 		rc = 0;
+		break;
+	case NM_MT_BS11_LMT_LOGOFF_ACK:
+		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
 		rc = handle_state_resp(foh->data[2]);
@@ -409,19 +456,19 @@ static int handle_serial_msg(struct msgb *rx_msg)
 static void print_banner(void)
 {
 	printf("bs11_config (C) 2009 by Harald Welte and Dieter Spaar\n");
-	printf("THIS SOFTWARE IS FREE SOFTWARE WIH NO WARRANTY\n\n");
+	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
 }
 
 static void print_help(void)
 {
 	printf("Supported arguments:\n");
-	printf("\t--help\t\t\t-h\tPrint this help text\n");
-	printf("\t--port /dev/ttyXXX\t-p\tSpecify serial port\n");
-	printf("\t--with-trx1\t\t-t\tAssume the BS-11 has 2 TRX\n");
-	printf("\t--software file\t\t-s\tSpecify Software file\n");
-	printf("\t--safety file\t\t-S\tSpecify Safety Load file\n");
-	printf("\t--delay file\t\t-d\tSpecify delay\n");
-	printf("\t--win-size num\t\t-w\tSpecify Window Size\n");
+	printf("\t-h --help\t\t\tPrint this help text\n");
+	printf("\t-p --port </dev/ttyXXX>\t\tSpecify serial port\n");
+	printf("\t-t --with-trx1\t\t\tAssume the BS-11 has 2 TRX\n");
+	printf("\t-s --software <file>\t\tSpecify Software file\n");
+	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
+	printf("\t-d --delay <file>\t\tSpecify delay\n");
+	printf("\t-w --win-size <num>\t\tSpecify Window Size\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -479,7 +526,7 @@ static void signal_handler(int signal)
 	fprintf(stdout, "signal %u received\n", signal);
 
 	switch (signal) {
-	case SIGABRT:
+	case SIGINT:
 		abis_nm_bs11_factory_logon(g_bts, 0);
 		break;
 	}
@@ -538,9 +585,10 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	signal(SIGABRT, &signal_handler);
+	signal(SIGINT, &signal_handler);
 
 	abis_nm_bs11_factory_logon(g_bts, 1);
+	//abis_nm_bs11_get_serno(g_bts);
 
 	while (1) {
 		bsc_select_main();

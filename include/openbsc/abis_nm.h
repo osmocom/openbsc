@@ -196,8 +196,8 @@ enum abis_nm_msgtype {
 	NM_MT_BS11_RESTART_ACK,
 	NM_MT_BS11_DISCONNECT		= 0xe9,
 	NM_MT_BS11_DISCONNECT_ACK,
-	NM_MT_BS11_LOGOFF		= 0xec,
-	NM_MT_BS11_LOGOFF_ACK,
+	NM_MT_BS11_LMT_LOGOFF		= 0xec,
+	NM_MT_BS11_LMT_LOGOFF_ACK,
 	NM_MT_BS11_RECONNECT		= 0xf1,
 	NM_MT_BS11_RECONNECT_ACK,
 };
@@ -296,6 +296,11 @@ enum abis_nm_attr {
 	NM_ATT_MEAS_RES,
 	NM_ATT_MEAS_TYPE,
 
+	NM_ATT_BS11_ESN_FW_CODE_NO	= 0x4c,
+	NM_ATT_BS11_ESN_HW_CODE_NO	= 0x4f,
+
+	NM_ATT_BS11_ESN_PCB_SERIAL	= 0x55,
+
 	NM_ATT_BS11_ALL_TEST_CATG	= 0x60,
 	NM_ATT_BS11_BTSLS_HOPPING,
 	NM_ATT_BS11_CELL_ALLOC_NR,
@@ -330,7 +335,7 @@ enum abis_nm_attr {
 	NM_ATT_BS11_L1_REM_ALM_TYPE	= 0xb0,
 	NM_ATT_BS11_SW_LOAD_INTENDED	= 0xbb,
 	NM_ATT_BS11_SW_LOAD_SAFETY	= 0xbc,
-	NM_ATT_BS11_SW_LOAD_SSTORED	= 0xbd,
+	NM_ATT_BS11_SW_LOAD_STORED	= 0xbd,
 
 	NM_ATT_BS11_VENDOR_NAME		= 0xc1,
 	NM_ATT_BS11_LMT_LOGON_SESSION	= 0xc6,
@@ -388,17 +393,24 @@ enum abis_bs11_objtype {
 };
 
 enum abis_bs11_trx_power {
-	BS11_TRX_POWER_30mW	= 0x09,
+	BS11_TRX_POWER_GSM_2W	= 0x06,
+	BS11_TRX_POWER_GSM_250mW= 0x07,
+	BS11_TRX_POWER_GSM_80mW	= 0x08,
+	BS11_TRX_POWER_GSM_30mW	= 0x09,
+	BS11_TRX_POWER_DCS_3W	= 0x0a,
+	BS11_TRX_POWER_DCS_1W6	= 0x0b,
+	BS11_TRX_POWER_DCS_500mW= 0x0c,
+	BS11_TRX_POWER_DCS_160mW= 0x0d,
 };
 
 enum abis_bs11_state {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
-	BS11_STATE_NORMAL		= 0x03,
 	BS11_STATE_LOAD_SMU_SAFETY	= 0x21,
 	BS11_STATE_WARM_UP		= 0x51,
 	BS11_STATE_WAIT_MIN_CFG		= 0x62,
 	BS11_STATE_MAINTENANCE		= 0x72,
 	BS11_STATE_WAIT_MIN_CFG_2	= 0xA2,
+	BS11_STATE_NORMAL		= 0x03,
 };
 
 /* PUBLIC */
@@ -430,7 +442,10 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
-int abis_nm_software_load(struct gsm_bts *bts, const char *fname, u_int8_t win);
+int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+			  u_int8_t win_size, gsm_cbfn *cbfn, void *cb_data);
+int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
+			      gsm_cbfn *cbfn, void *cb_data);
 
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
@@ -446,5 +461,7 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
+int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
+			  u_int8_t win_size, gsm_cbfn *cbfn);
 
 #endif /* _NM_H */

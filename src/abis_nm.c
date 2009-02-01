@@ -26,6 +26,8 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <malloc.h>
+#include <libgen.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -291,6 +293,9 @@ enum sw_state {
 
 struct abis_nm_sw {
 	struct gsm_bts *bts;
+	gsm_cbfn *cbfn;
+	void *cb_data;
+
 	/* this will become part of the SW LOAD INITIATE */
 	u_int8_t obj_class;
 	u_int8_t obj_instance[3];
@@ -416,6 +421,7 @@ static int sw_load_end(struct abis_nm_sw *sw)
 
 	return abis_nm_sendmsg(sw->bts, msg);
 }
+
 /* Activate the specified software into the BTS */
 static int sw_activate(struct abis_nm_sw *sw)
 {
@@ -518,11 +524,19 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 		switch (foh->msg_type) {
 		case NM_MT_LOAD_INIT_ACK:
 			/* fill window with segments */
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_LOAD_INIT_ACK, mb,
+					 sw->cb_data, NULL);
 			rc = sw_fill_window(sw);
 			sw->state = SW_STATE_WAIT_SEGACK;
 			break;
 		case NM_MT_LOAD_INIT_NACK:
 			DEBUGP(DNM, "Software Load Init NACK\n");
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_LOAD_INIT_NACK, mb,
+					 sw->cb_data, NULL);
 			sw->state = SW_STATE_ERROR;
 			break;
 		}
@@ -547,26 +561,42 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 		switch (foh->msg_type) {
 		case NM_MT_LOAD_END_ACK:
 			sw_close_file(sw);
-			/* send activate request */
-			sw->state = SW_STATE_WAIT_ACTACK;
-			rc = sw_activate(sw);
+			DEBUGP(DNM, "Software Load End (BTS %u)\n",
+				sw->bts->nr);
+			sw->state = SW_STATE_NONE;
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_LOAD_END_ACK, mb,
+					 sw->cb_data, NULL);
 			break;
 		case NM_MT_LOAD_END_NACK:
 			DEBUGP(DNM, "Software Load End NACK\n");
 			sw->state = SW_STATE_ERROR;
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_LOAD_END_NACK, mb,
+					 sw->cb_data, NULL);
 			break;
 		}
 	case SW_STATE_WAIT_ACTACK:
 		switch (foh->msg_type) {
 		case NM_MT_ACTIVATE_SW_ACK:
 			/* we're done */
+			DEBUGP(DNM, "Activate Software DONE!\n");
 			sw->state = SW_STATE_NONE;
 			rc = 0;
-			DEBUGP(DMM, "DONE!\n");
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_ACTIVATE_SW_ACK, mb,
+					 sw->cb_data, NULL);
 			break;
 		case NM_MT_ACTIVATE_SW_NACK:
 			DEBUGP(DNM, "Activate Software NACK\n");
 			sw->state = SW_STATE_ERROR;
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_ACTIVATE_SW_NACK, mb,
+					 sw->cb_data, NULL);
 			break;
 		}
 	case SW_STATE_NONE:
@@ -583,10 +613,13 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 
 /* Load the specified software into the BTS */
 int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
-			  u_int8_t win_size)
+			  u_int8_t win_size, gsm_cbfn *cbfn, void *cb_data)
 {
 	struct abis_nm_sw *sw = &g_sw;
 	int rc;
+
+	DEBUGP(DNM, "Software Load (BTS %u, File \"%s\")\n",
+		bts->nr, fname);
 
 	if (sw->state != SW_STATE_NONE)
 		return -EBUSY;
@@ -598,6 +631,8 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 	sw->obj_instance[2] = 0xff;
 	sw->window_size = win_size;
 	sw->state = SW_STATE_WAIT_INITACK;
+	sw->cbfn = cbfn;
+	sw->cb_data = cb_data;
 
 	rc = sw_open_file(sw, fname);
 	if (rc < 0) {
@@ -622,6 +657,39 @@ int abis_nm_software_load_status(struct gsm_bts *bts)
 
 	percent = (ftell(sw->stream) * 100) / st.st_size;
 	return percent;
+}
+
+/* Activate the specified software into the BTS */
+int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
+			      gsm_cbfn *cbfn, void *cb_data)
+{
+	struct abis_nm_sw *sw = &g_sw;
+	int rc;
+
+	DEBUGP(DNM, "Activating Software (BTS %u, File \"%s\")\n",
+		bts->nr, fname);
+
+	if (sw->state != SW_STATE_NONE)
+		return -EBUSY;
+
+	sw->bts = bts;
+	sw->obj_class = NM_OC_SITE_MANAGER;
+	sw->obj_instance[0] = 0xff;
+	sw->obj_instance[1] = 0xff;
+	sw->obj_instance[2] = 0xff;
+	sw->state = SW_STATE_WAIT_ACTACK;
+	sw->cbfn = cbfn;
+	sw->cb_data = cb_data;
+
+	/* Open the file in order to fill some sw struct members */
+	rc = sw_open_file(sw, fname);
+	if (rc < 0) {
+		sw->state = SW_STATE_NONE;
+		return rc;
+	}
+	sw_close_file(sw);
+
+	return sw_activate(sw);
 }
 
 static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
@@ -891,7 +959,7 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
 			     sizeof(bs11_logon_c9), bs11_logon_c9);
 	} else {
-		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LOGOFF,
+		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LMT_LOGOFF,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
 	}
 	
@@ -918,4 +986,199 @@ int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password)
 int abis_nm_bs11_get_state(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_GET_STATE);
+}
+
+/* BS11 SWL */
+
+struct abis_nm_bs11_sw {
+	struct gsm_bts *bts;
+	char swl_fname[PATH_MAX];
+	u_int8_t win_size;
+	struct llist_head file_list;
+	gsm_cbfn *user_cb;	/* specified by the user */
+};
+static struct abis_nm_bs11_sw _g_bs11_sw, *g_bs11_sw = &_g_bs11_sw;
+
+struct file_list_entry {
+	struct llist_head list;
+	char fname[PATH_MAX];
+};
+
+struct file_list_entry *fl_dequeue(struct llist_head *queue)
+{
+	struct llist_head *lh;
+
+	if (llist_empty(queue))
+		return NULL;
+
+	lh = queue->next;
+	llist_del(lh);
+	
+	return llist_entry(lh, struct file_list_entry, list);
+}
+
+static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
+{
+	char linebuf[255];
+	struct llist_head *lh, *lh2;
+	FILE *swl;
+	int rc = 0;
+
+	swl = fopen(bs11_sw->swl_fname, "r");
+	if (!swl)
+		return -ENODEV;
+
+	/* zero the stale file list, if any */
+	llist_for_each_safe(lh, lh2, &bs11_sw->file_list) {
+		llist_del(lh);
+		free(lh);
+	}
+
+	while (fgets(linebuf, sizeof(linebuf), swl)) {
+		char file_id[12+1];
+		char file_version[80+1];
+		struct file_list_entry *fle;
+		static char dir[PATH_MAX];
+
+		if (strlen(linebuf) < 4)
+			continue;
+		printf("linebuf='%s'\n", linebuf);
+		rc = sscanf(linebuf+4, "%12s:%80s\r\n", file_id, file_version);
+		if (rc < 0) {
+			perror("ERR parsing SWL file");
+			rc = -EINVAL;
+			goto out;
+		}
+		if (rc < 2)
+			continue;
+
+		fle = malloc(sizeof(*fle));
+		if (!fle) {
+			rc = -ENOMEM;
+			goto out;
+		}
+		memset(fle, 0, sizeof(*fle));
+
+		/* construct new filename */
+		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));
+		strncat(fle->fname, dirname(dir), sizeof(fle->fname) - 1);
+		strcat(fle->fname, "/");
+		strncat(fle->fname, file_id, sizeof(fle->fname) - 1 -strlen(fle->fname));
+		printf("fname='%s'\n", fle->fname);
+		
+		llist_add_tail(&fle->list, &bs11_sw->file_list);
+	}
+
+out:
+	fclose(swl);
+	return rc;
+}
+
+/* bs11 swload specific callback, passed to abis_nm core swload */
+static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
+			    struct msgb *msg, void *data, void *param)
+{
+	struct abis_nm_bs11_sw *bs11_sw = data;
+	struct file_list_entry *fle;
+	int rc = 0;
+
+	printf("bs11_swload_cbfn(%u, %u, %p, %p, %p)\n", hook, event, msg, data, param);
+
+	switch (event) {
+	case NM_MT_LOAD_END_ACK:
+		fle = fl_dequeue(&bs11_sw->file_list);
+		if (fle) {
+			/* start download the next file of our file list */
+			rc = abis_nm_software_load(bs11_sw->bts, fle->fname,
+						   bs11_sw->win_size,
+						   &bs11_swload_cbfn, bs11_sw);
+			free(fle);
+		} else {
+			/* activate the SWL */
+			rc = abis_nm_software_activate(bs11_sw->bts,
+							bs11_sw->swl_fname,
+							bs11_swload_cbfn,
+							bs11_sw);
+		}
+		break;
+	case NM_MT_LOAD_END_NACK:
+	case NM_MT_LOAD_INIT_ACK:
+	case NM_MT_LOAD_INIT_NACK:
+	case NM_MT_ACTIVATE_SW_NACK:
+	case NM_MT_ACTIVATE_SW_ACK:
+	default:
+		/* fallthrough to the user callback */
+		rc = bs11_sw->user_cb(hook, event, msg, NULL, NULL);
+		break;
+	}
+
+	return rc;
+}
+
+/* Siemens provides a SWL file that is a mere listing of all the other
+ * files that are part of a software release.  We need to upload first
+ * the list file, and then each file that is listed in the list file */
+int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
+			  u_int8_t win_size, gsm_cbfn *cbfn)
+{
+	struct abis_nm_bs11_sw *bs11_sw = g_bs11_sw;
+	struct file_list_entry *fle;
+	int rc = 0;
+
+	INIT_LLIST_HEAD(&bs11_sw->file_list);
+	bs11_sw->bts = bts;
+	bs11_sw->win_size = win_size;
+	bs11_sw->user_cb = cbfn;
+
+	strncpy(bs11_sw->swl_fname, fname, sizeof(bs11_sw->swl_fname));
+	rc = bs11_read_swl_file(bs11_sw);
+	if (rc < 0)
+		return rc;
+
+	/* dequeue next item in file list */
+	fle = fl_dequeue(&bs11_sw->file_list);
+	if (!fle)
+		return -EINVAL;
+
+	/* start download the next file of our file list */
+	rc = abis_nm_software_load(bts, fle->fname, win_size,
+				   bs11_swload_cbfn, bs11_sw);
+	free(fle);
+	return rc;
+}
+
+static u_int8_t req_attr_btse[] = {
+	NM_ATT_ADM_STATE, NM_ATT_BS11_LMT_LOGON_SESSION,
+	NM_ATT_BS11_LMT_LOGIN_TIME, NM_ATT_BS11_LMT_USER_ACC_LEV,
+	NM_ATT_BS11_LMT_USER_NAME,
+
+	0xaf, NM_ATT_BS11_RX_OFFSET, NM_ATT_BS11_VENDOR_NAME,
+
+	NM_ATT_BS11_SW_LOAD_INTENDED, NM_ATT_BS11_SW_LOAD_SAFETY,
+
+	NM_ATT_BS11_SW_LOAD_STORED };
+
+static u_int8_t req_attr_btsm[] = {
+	NM_ATT_ABIS_CHANNEL, NM_ATT_TEI, NM_ATT_BS11_ABIS_EXT_TIME,
+	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xce, NM_ATT_FILE_ID,
+	NM_ATT_FILE_VERSION, NM_ATT_OPER_STATE, 0xe8, NM_ATT_BS11_ALL_TEST_CATG,
+	NM_ATT_SW_DESCR, NM_ATT_GET_ARI };
+	
+static u_int8_t req_attr[] = { 
+	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xa8, NM_ATT_OPER_STATE,
+	0xd5, 0xa1, NM_ATT_BS11_ESN_FW_CODE_NO, NM_ATT_BS11_ESN_HW_CODE_NO,
+	0x42, NM_ATT_BS11_ESN_PCB_SERIAL };
+
+int abis_nm_bs11_get_serno(struct gsm_bts *bts)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* SiemensHW CCTRL object */
+	fill_om_fom_hdr(oh, 2+sizeof(req_attr), NM_MT_GET_ATTR, NM_OC_BS11,
+			0x03, 0x00, 0x00);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(req_attr), req_attr);
+
+	return abis_nm_sendmsg(bts, msg);
 }
