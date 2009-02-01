@@ -407,7 +407,10 @@ enum abis_bs11_phase {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
 	BS11_STATE_LOAD_SMU_INTENDED	= 0x11,
 	BS11_STATE_LOAD_SMU_SAFETY	= 0x21,
+	BS11_STATE_LOAD_FAILED		= 0x31,
+	BS11_STATE_LOAD_DIAGNOSTIC	= 0x41,
 	BS11_STATE_WARM_UP		= 0x51,
+	BS11_STATE_WARM_UP_2		= 0x52,
 	BS11_STATE_WAIT_MIN_CFG		= 0x62,
 	BS11_STATE_MAINTENANCE		= 0x72,
 	BS11_STATE_LOAD_MBCCU		= 0x92,
@@ -415,14 +418,15 @@ enum abis_bs11_phase {
 	BS11_STATE_NORMAL		= 0x03,
 };
 
+/* FIXME: this is not correct, please parse this correctly */
 struct abis_nm_bs11_state {
-	u_int8_t	unknown;
-	u_int8_t	unknown2;
+	u_int8_t	tag_f0;
+	u_int8_t	len_f0;
 	u_int8_t	phase;
 	u_int8_t	mbccu;
-	u_int8_t	unknown3;
 	u_int8_t	ccu;
-	u_int8_t	t_link;
+	u_int8_t	tag_f1;
+	u_int8_t	len_f1;
 	u_int8_t	abis_link;
 } __attribute__((packed));
 

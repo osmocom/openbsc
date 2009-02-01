@@ -9,4 +9,4 @@ bsc_hack_SOURCES = bsc_hack.c misdn.c abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.
 		trau_frame.c paging.c
 bsc_hack_LDADD = -ldl -ldbi
 
-bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c
+bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c rs232.c
