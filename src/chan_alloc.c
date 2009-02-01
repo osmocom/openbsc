@@ -217,7 +217,7 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
 	}
 
-	DEBUGP(DRLL, "Recylcing the channel with: %d (%x)\n", lchan->nr, lchan->nr);
+	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
 	rsl_chan_release(lchan);
 	return 1;
 }
