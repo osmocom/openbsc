@@ -14,6 +14,16 @@
 
 #define HARDCODED_ARFCN 123
 
+enum gsm_hooks {
+	GSM_HOOK_NM_SWLOAD,
+};
+
+struct msgb;
+typedef int gsm_cbfn(unsigned int hooknum,
+		     unsigned int event,
+		     struct msgb *msg,
+		     void *data, void *param);
+
 /*
  * Use the channel. As side effect the lchannel recycle timer
  * will be started.
