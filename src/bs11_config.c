@@ -81,6 +81,27 @@ static struct serial_handle _ser_handle, *ser_handle = &_ser_handle;
 
 static int handle_serial_msg(struct msgb *rx_msg);
 
+static int create_trx1_objects(struct gsm_bts *bts)
+{
+	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
+	u_int8_t *cur = bbsig1_attr;
+	
+	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
+
+	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
+		      (u_int8_t *)trx1_password);
+	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
+	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
+				   sizeof(bbsig1_attr), bbsig1_attr);
+
+	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
+				   sizeof(obj_pa0_attr), obj_pa0_attr);
+
+	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
+
+	return 0;
+}
+
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts, int trx1)
 {
@@ -94,22 +115,6 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 				   sizeof(obj_bbsig0_attr), obj_bbsig0_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 0,
 				   sizeof(obj_pa0_attr), obj_pa0_attr);
-	if (trx1) {
-		u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
-		u_int8_t *cur = bbsig1_attr;
-		
-		abis_nm_bs11_set_trx1_pw(bts, trx1_password);
-
-		cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
-			      (u_int8_t *)trx1_password);
-		memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
-		abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
-					   sizeof(bbsig1_attr), bbsig1_attr);
-
-		abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
-					   sizeof(obj_pa0_attr), obj_pa0_attr);
-	}
-
 	abis_nm_bs11_create_envaBTSE(bts, 0);
 	abis_nm_bs11_create_envaBTSE(bts, 1);
 	abis_nm_bs11_create_envaBTSE(bts, 2);
@@ -119,10 +124,6 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 	abis_nm_bs11_set_oml_tei(bts, TEI_OML);
 
 	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
-
-	if (trx1)
-		abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
-
 	//abis_nm_bs11_factory_logon(bts, 0);
 	
 	return 0;
@@ -336,24 +337,99 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 	return 0;
 }
 
-/* handle a response from the BTS to a GET STATE command */
-static int handle_state_resp(u_int8_t state)
+static const char *bs11_link_state[] = {
+	[0x00]	= "Down",
+	[0x01]	= "Up",
+	[0x02]	= "Restoring",
+};
+
+static const char *linkstate_name(u_int8_t linkstate)
 {
-	int rc = 0;
+	if (linkstate > ARRAY_SIZE(bs11_link_state))
+		return "Unknown";
 
-	printf("STATE: ");
+	return bs11_link_state[linkstate];
+}
 
-	switch (state) {
+static const char *mbccu_load[] = {
+	[0]	= "No Load",
+	[1]	= "Load BTSCAC",
+	[2]	= "Load BTSDRX",
+	[3]	= "Load BTSBBX",
+	[4]	= "Load BTSARC",
+	[5]	= "Load",
+};
+
+static const char *mbccu_load_name(u_int8_t linkstate)
+{
+	if (linkstate > ARRAY_SIZE(mbccu_load))
+		return "Unknown";
+
+	return mbccu_load[linkstate];
+}
+
+
+static void print_state(struct abis_nm_bs11_state *st)
+{
+	enum abis_bs11_phase phase = st->phase;
+
+	printf("T-Link: %-9s Abis-link: %-9s MBCCU0: %-11s MBCCU1: %-11s PHASE: %u SUBPHASE: ",
+		linkstate_name(st->t_link), linkstate_name(st->abis_link),
+		mbccu_load_name(st->mbccu >> 4), mbccu_load_name(st->mbccu & 0xf),
+		phase & 0xf);
+
+	switch (phase) {
 	case BS11_STATE_WARM_UP:
 		printf("Warm Up...\n");
-		sleep(5);
 		break;
 	case BS11_STATE_LOAD_SMU_SAFETY:
 		printf("Load SMU Safety...\n");
-		sleep(5);
+		break;
+	case BS11_STATE_LOAD_SMU_INTENDED:
+		printf("Load SMU Intended...\n");
+		break;
+	case BS11_STATE_LOAD_MBCCU:
+		printf("Load MBCCU...\n");
 		break;
 	case BS11_STATE_SOFTWARE_RQD:
 		printf("Software required...\n");
+		break;
+	case BS11_STATE_WAIT_MIN_CFG:
+	case BS11_STATE_WAIT_MIN_CFG_2:
+		printf("Wait minimal config...\n");
+		break;
+	case BS11_STATE_MAINTENANCE:
+		printf("Maintenance...\n");
+		break;
+	case BS11_STATE_NORMAL:
+		printf("Normal...\n");
+		break;
+	default:
+		printf("Unknown phase 0x%02x\n", phase);
+		break;
+	}
+}
+
+/* handle a response from the BTS to a GET STATE command */
+static int handle_state_resp(enum abis_bs11_phase state)
+{
+	int rc = 0;
+
+	printf("PHASE: %u STATE: ", state & 0xf);
+
+	switch (state) {
+	case BS11_STATE_WARM_UP:
+		sleep(5);
+		break;
+	case BS11_STATE_LOAD_SMU_SAFETY:
+		sleep(5);
+		break;
+	case BS11_STATE_LOAD_SMU_INTENDED:
+		sleep(5);
+		break;
+	case BS11_STATE_LOAD_MBCCU:
+		break;
+	case BS11_STATE_SOFTWARE_RQD:
 		bs11cfg_state = STATE_SWLOAD;
 		/* send safety load. Use g_bts as private 'param'
 		 * argument, so our swload_cbfn can distinguish
@@ -368,12 +444,10 @@ static int handle_state_resp(u_int8_t state)
 		break;
 	case BS11_STATE_WAIT_MIN_CFG:
 	case BS11_STATE_WAIT_MIN_CFG_2:
-		printf("Wait minimal config...\n");
 		bs11cfg_state = STATE_SWLOAD;
 		rc = create_objects(g_bts, have_trx1);
 		break;
 	case BS11_STATE_MAINTENANCE:
-		printf("Maintenance...\n");
 		bs11cfg_state = STATE_SWLOAD;
 		/* send software (FIXME: over A-bis?) */
 		if (file_is_readable(fname_software))
@@ -384,10 +458,10 @@ static int handle_state_resp(u_int8_t state)
 				fname_software);
 		break;
 	case BS11_STATE_NORMAL:
-		printf("Normal...\n");
+		if (have_trx1)
+			create_trx1_objects(g_bts);
 		return 1;
 	default:
-		printf("Unknown state 0x%02u\n", state);
 		sleep(5);
 		break;
 	}
@@ -399,6 +473,7 @@ static int handle_serial_msg(struct msgb *rx_msg)
 {
 	struct abis_om_hdr *oh;
 	struct abis_om_fom_hdr *foh;
+	struct abis_nm_bs11_state *st;
 	int rc = -1;
 
 	if (rx_msg->len < LAPD_HDR_LEN
@@ -427,7 +502,9 @@ static int handle_serial_msg(struct msgb *rx_msg)
 		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
-		rc = handle_state_resp(foh->data[2]);
+		st = (struct abis_nm_bs11_state *) &foh->data[0];
+		print_state(st);
+		rc = handle_state_resp(st->phase);
 		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);

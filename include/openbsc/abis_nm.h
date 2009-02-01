@@ -403,15 +403,29 @@ enum abis_bs11_trx_power {
 	BS11_TRX_POWER_DCS_160mW= 0x0d,
 };
 
-enum abis_bs11_state {
+enum abis_bs11_phase {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
+	BS11_STATE_LOAD_SMU_INTENDED	= 0x11,
 	BS11_STATE_LOAD_SMU_SAFETY	= 0x21,
 	BS11_STATE_WARM_UP		= 0x51,
 	BS11_STATE_WAIT_MIN_CFG		= 0x62,
 	BS11_STATE_MAINTENANCE		= 0x72,
+	BS11_STATE_LOAD_MBCCU		= 0x92,
 	BS11_STATE_WAIT_MIN_CFG_2	= 0xA2,
 	BS11_STATE_NORMAL		= 0x03,
 };
+
+struct abis_nm_bs11_state {
+	u_int8_t	unknown;
+	u_int8_t	unknown2;
+	u_int8_t	phase;
+	u_int8_t	mbccu;
+	u_int8_t	unknown3;
+	u_int8_t	ccu;
+	u_int8_t	t_link;
+	u_int8_t	abis_link;
+} __attribute__((packed));
+
 
 /* PUBLIC */
 
@@ -463,5 +477,6 @@ int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, gsm_cbfn *cbfn);
+int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
 
 #endif /* _NM_H */

@@ -28,6 +28,7 @@
 #include <fcntl.h>
 #include <malloc.h>
 #include <libgen.h>
+#include <time.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -836,6 +837,31 @@ int abis_nm_event_reports(struct gsm_bts *bts, int on)
 
 /* Siemens (or BS-11) specific commands */
 
+struct bs11_date_time {
+	u_int16_t	year;
+	u_int8_t	month;
+	u_int8_t	day;
+	u_int8_t	hour;
+	u_int8_t	min;
+	u_int8_t	sec;
+} __attribute__((packed));
+
+
+void get_bs11_date_time(struct bs11_date_time *aet)
+{
+	time_t t;
+	struct tm *tm;
+
+	t = time(NULL);
+	tm = localtime(&t);
+	aet->sec = tm->tm_sec;
+	aet->min = tm->tm_min;
+	aet->hour = tm->tm_hour;
+	aet->day = tm->tm_mday;
+	aet->month = tm->tm_mon;
+	aet->year = htons(1900 + tm->tm_year);
+}
+
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_RESET_RESOURCE);
@@ -859,7 +885,7 @@ int abis_nm_bs11_create_object(struct gsm_bts *bts,
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, attr_len, NM_MT_BS11_CREATE_OBJ,
-			NM_OC_BS11, type, idx, 0);
+			NM_OC_BS11, type, 0, idx);
 	cur = msgb_put(msg, attr_len);
 	memcpy(cur, attr, attr_len);
 
@@ -936,8 +962,7 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
-static const u_int8_t bs11_logon_c7[] = 
-	{ 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
+//static const u_int8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
 static const u_int8_t bs11_logon_c8[] = { 0x02 };
 static const u_int8_t bs11_logon_c9[] = "FACTORY";
 
@@ -945,15 +970,18 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
+	struct bs11_date_time bdt;
+
+	get_bs11_date_time(&bdt);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	if (on) {
-		u_int8_t len = 3*2 + sizeof(bs11_logon_c7)
+		u_int8_t len = 3*2 + sizeof(bdt)
 				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
-			     sizeof(bs11_logon_c7), bs11_logon_c7);
+			     sizeof(bdt), &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
 			     sizeof(bs11_logon_c8), bs11_logon_c8);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
@@ -1179,6 +1207,22 @@ int abis_nm_bs11_get_serno(struct gsm_bts *bts)
 	fill_om_fom_hdr(oh, 2+sizeof(req_attr), NM_MT_GET_ATTR, NM_OC_BS11,
 			0x03, 0x00, 0x00);
 	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(req_attr), req_attr);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	struct bs11_date_time aet;
+
+	get_bs11_date_time(&aet);
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	/* SiemensHW CCTRL object */
+	fill_om_fom_hdr(oh, 2+sizeof(aet), NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
+			0xff, 0xff, 0xff);
+	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), &aet);
 
 	return abis_nm_sendmsg(bts, msg);
 }
