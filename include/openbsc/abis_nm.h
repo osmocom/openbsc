@@ -461,7 +461,9 @@ int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
 int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
-			  u_int8_t win_size, gsm_cbfn *cbfn, void *cb_data);
+			  u_int8_t win_size, int forced,
+			  gsm_cbfn *cbfn, void *cb_data);
+int abis_nm_software_load_status(struct gsm_bts *bts);
 int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
 			      gsm_cbfn *cbfn, void *cb_data);
 
@@ -480,7 +482,8 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
-			  u_int8_t win_size, gsm_cbfn *cbfn);
+			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
+int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 
 #endif /* _NM_H */

@@ -92,9 +92,8 @@ static int create_trx1_objects(struct gsm_bts *bts)
 }
 
 /* create all objects for an initial configuration */
-static int create_objects(struct gsm_bts *bts, int trx1)
+static int create_objects(struct gsm_bts *bts)
 {
-	//abis_nm_bs11_factory_logon(bts, 1);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_GPSU, 0, 0, NULL);
@@ -113,7 +112,6 @@ static int create_objects(struct gsm_bts *bts, int trx1)
 	abis_nm_bs11_set_oml_tei(bts, TEI_OML);
 
 	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
-	//abis_nm_bs11_factory_logon(bts, 0);
 	
 	return 0;
 }
@@ -124,6 +122,8 @@ static char *fname_software = "HS011106.SWL";
 static int delay_ms = 0;
 static int have_trx1 = 0;
 static int win_size = 8;
+static int param_disconnect = 0;
+static int param_forced = 0;
 static struct gsm_bts *g_bts;
 
 static int file_is_readable(const char *fname)
@@ -140,6 +140,9 @@ static int file_is_readable(const char *fname)
 
 	return 0;
 }
+
+static int percent;
+static int percent_old;
 
 /* callback function passed to the ABIS OML code */
 static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
@@ -173,6 +176,12 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 	case NM_MT_ACTIVATE_SW_ACK:
 		bs11cfg_state = STATE_NONE;
 		
+		break;
+	case NM_MT_LOAD_SEG_ACK:
+		percent = abis_nm_software_load_status(g_bts);
+		if (percent > percent_old)
+			printf("Software Download Progress: %d%%\n", percent);
+		percent_old = percent;
 		break;
 	}
 	return 0;
@@ -278,8 +287,8 @@ static int handle_state_resp(enum abis_bs11_phase state)
 		 * a safety load from a regular software */
 		if (file_is_readable(fname_safety))
 			rc = abis_nm_software_load(g_bts, fname_safety,
-						   win_size, swload_cbfn,
-						   g_bts);
+						   win_size, param_forced,
+						   swload_cbfn, g_bts);
 		else
 			fprintf(stderr, "No valid Safety Load file \"%s\"\n",
 				fname_safety);
@@ -287,17 +296,20 @@ static int handle_state_resp(enum abis_bs11_phase state)
 	case BS11_STATE_WAIT_MIN_CFG:
 	case BS11_STATE_WAIT_MIN_CFG_2:
 		bs11cfg_state = STATE_SWLOAD;
-		rc = create_objects(g_bts, have_trx1);
+		rc = create_objects(g_bts);
 		break;
 	case BS11_STATE_MAINTENANCE:
-		bs11cfg_state = STATE_SWLOAD;
-		/* send software (FIXME: over A-bis?) */
-		if (file_is_readable(fname_software))
-			rc = abis_nm_bs11_load_swl(g_bts, fname_software,
-						   win_size, swload_cbfn);
-		else
-			fprintf(stderr, "No valid Software file \"%s\"\n",
-				fname_software);
+		if (bs11cfg_state != STATE_SWLOAD) {
+			bs11cfg_state = STATE_SWLOAD;
+			/* send software (FIXME: over A-bis?) */
+			if (file_is_readable(fname_software))
+				rc = abis_nm_bs11_load_swl(g_bts, fname_software,
+							   win_size, param_forced,
+							   swload_cbfn);
+			else
+				fprintf(stderr, "No valid Software file \"%s\"\n",
+					fname_software);
+		}
 		break;
 	case BS11_STATE_NORMAL:
 		if (have_trx1)
@@ -389,7 +401,9 @@ static void print_help(void)
 	printf("\t-s --software <file>\t\tSpecify Software file\n");
 	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
 	printf("\t-d --delay <file>\t\tSpecify delay\n");
+	printf("\t-D --disconnect\t\t\tDisconnect BTS from BSC\n");
 	printf("\t-w --win-size <num>\t\tSpecify Window Size\n");
+	printf("\t-f --forced\t\t\tForce Software Load\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -405,10 +419,12 @@ static void handle_options(int argc, char **argv)
 			{ "software", 1, 0, 's' },
 			{ "safety", 1, 0, 'S' },
 			{ "delay", 1, 0, 'd' },
+			{ "disconnect", 0, 0, 'D' },
 			{ "win-size", 1, 0, 'w' },
+			{ "forced", 0, 0, 'f' },
 		};
 
-		c = getopt_long(argc, argv, "hp:s:S:td:w:",
+		c = getopt_long(argc, argv, "hp:s:S:td:Dw:f",
 				long_options, &option_index);
 
 		if (c == -1)
@@ -435,6 +451,12 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'w':
 			win_size = atoi(optarg);
+			break;
+		case 'D':
+			param_disconnect = 1;
+			break;
+		case 'f':
+			param_forced = 1;
 			break;
 		default:
 			break;
@@ -473,6 +495,9 @@ int main(int argc, char **argv)
 
 	abis_nm_bs11_factory_logon(g_bts, 1);
 	//abis_nm_bs11_get_serno(g_bts);
+
+	if (param_disconnect)
+		abis_nm_bs11_bsc_disconnect(g_bts, 0);
 
 	while (1) {
 		bsc_select_main();
