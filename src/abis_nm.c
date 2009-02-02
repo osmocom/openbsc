@@ -29,6 +29,7 @@
 #include <malloc.h>
 #include <libgen.h>
 #include <time.h>
+#include <limits.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
