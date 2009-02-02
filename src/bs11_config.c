@@ -266,19 +266,12 @@ static int handle_state_resp(enum abis_bs11_phase state)
 {
 	int rc = 0;
 
-	printf("PHASE: %u STATE: ", state & 0xf);
-
 	switch (state) {
 	case BS11_STATE_WARM_UP:
-		sleep(5);
-		break;
 	case BS11_STATE_LOAD_SMU_SAFETY:
-		sleep(5);
-		break;
 	case BS11_STATE_LOAD_SMU_INTENDED:
-		sleep(5);
-		break;
 	case BS11_STATE_LOAD_MBCCU:
+		sleep(5);
 		break;
 	case BS11_STATE_SOFTWARE_RQD:
 		bs11cfg_state = STATE_SWLOAD;
@@ -314,7 +307,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 	case BS11_STATE_NORMAL:
 		if (have_trx1)
 			create_trx1_objects(g_bts);
-		return 1;
+		//return 1;
 	default:
 		sleep(5);
 		break;
@@ -464,13 +457,18 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
+static int num_sigint;
+
 static void signal_handler(int signal)
 {
 	fprintf(stdout, "signal %u received\n", signal);
 
 	switch (signal) {
 	case SIGINT:
+		num_sigint++;
 		abis_nm_bs11_factory_logon(g_bts, 0);
+		if (num_sigint >= 3)
+			exit(0);
 		break;
 	}
 }
@@ -489,7 +487,11 @@ int main(int argc, char **argv)
 	}
 	g_bts = &gsmnet->bts[0];
 
-	rs232_setup(serial_port, delay_ms);
+	rc = rs232_setup(serial_port, delay_ms);
+	if (rc < 0) {
+		fprintf(stderr, "Problem setting up serial port\n");
+		exit(1);
+	}
 
 	signal(SIGINT, &signal_handler);
 
