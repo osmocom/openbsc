@@ -649,9 +649,31 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	return ret;
 }
 
+/* MS has requested a channel on the RACH */
+static int rsl_rx_ccch_load(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
+	u_int16_t pg_buf_space;
+
+	switch (rslh->data[0]) {
+	case RSL_IE_PAGING_LOAD:
+		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
+		DEBUGP(DRSL, "CCCH LOAD IND, free paging buffer space: %u\n",
+			pg_buf_space);
+		break;
+	case RSL_IE_RACH_LOAD:
+		DEBUGP(DRSL, "CCCH LOAD IND, RACH Load\n");
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static int abis_rsl_rx_cchan(struct msgb *msg)
 {
-	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg)	;
+	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	int rc = 0;
 
 	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
@@ -661,12 +683,14 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		/* MS has requested a channel on the RACH */
 		rc = rsl_rx_chan_rqd(msg);
 		break;
+	case RSL_MT_CCCH_LOAD_IND:
+		/* current load on the CCCH */
+		rc = rsl_rx_ccch_load(msg);
+		break;
 	case RSL_MT_DELETE_IND:
 		/* CCCH overloaded, IMM_ASSIGN was dropped */
 	case RSL_MT_CBCH_LOAD_IND:
 		/* current load on the CBCH */
-	case RSL_MT_CCCH_LOAD_IND:
-		/* current load on the CCCH */
 		fprintf(stderr, "Unimplemented Abis RSL TRX message type 0x%02x\n",
 			rslh->c.msg_type);
 		break;
