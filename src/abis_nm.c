@@ -1009,7 +1009,7 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
-			     sizeof(bdt), &bdt);
+			     sizeof(bdt), (u_int8_t *) &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
 			     sizeof(bs11_logon_c8), bs11_logon_c8);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
@@ -1204,6 +1204,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	return rc;
 }
 
+#if 0
 static u_int8_t req_attr_btse[] = {
 	NM_ATT_ADM_STATE, NM_ATT_BS11_LMT_LOGON_SESSION,
 	NM_ATT_BS11_LMT_LOGIN_TIME, NM_ATT_BS11_LMT_USER_ACC_LEV,
@@ -1220,6 +1221,7 @@ static u_int8_t req_attr_btsm[] = {
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xce, NM_ATT_FILE_ID,
 	NM_ATT_FILE_VERSION, NM_ATT_OPER_STATE, 0xe8, NM_ATT_BS11_ALL_TEST_CATG,
 	NM_ATT_SW_DESCR, NM_ATT_GET_ARI };
+#endif
 	
 static u_int8_t req_attr[] = { 
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xa8, NM_ATT_OPER_STATE,
@@ -1251,7 +1253,7 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	/* SiemensHW CCTRL object */
 	fill_om_fom_hdr(oh, 2+sizeof(aet), NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
-	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), &aet);
+	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), (u_int8_t *) &aet);
 
 	return abis_nm_sendmsg(bts, msg);
 }
