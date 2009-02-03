@@ -223,8 +223,8 @@ static void print_state(struct abis_nm_bs11_state *st)
 {
 	enum abis_bs11_phase phase = st->phase;
 
-	printf("T-Link: %-9s Abis-link: %-9s MBCCU0: %-11s MBCCU1: %-11s PHASE: %u SUBPHASE: ",
-		linkstate_name(st->abis_link >> 4), linkstate_name(st->abis_link & 0xf),
+	printf("Abis-link: %-9s MBCCU0: %-11s MBCCU1: %-11s PHASE: %u ",
+		linkstate_name(st->abis_link & 0xf),
 		mbccu_load_name(st->mbccu >> 4), mbccu_load_name(st->mbccu & 0xf),
 		phase & 0xf);
 
