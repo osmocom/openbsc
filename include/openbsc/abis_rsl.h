@@ -330,6 +330,24 @@ struct rsl_ie_chan_ident {
 #define RSL_CHANNEED_TCH_F	0x02
 #define RSL_CHANNEED_TCH_ForH	0x03
 
+/* Chapter 3.3.2.3 Brocast control channel */
+/* CCCH-CONF, NC is not combined */
+#define RSL_BCCH_CCCH_CONF_1_NC	0x00
+#define RSL_BCCH_CCCH_CONF_1_C	0x01
+#define RSL_BCCH_CCCH_CONF_2_NC	0x02
+#define RSL_BCCH_CCCH_CONF_3_NC	0x04
+#define RSL_BCCH_CCCH_CONF_4_NC	0x06
+
+/* BS-PA-MFRMS */
+#define RSL_BS_PA_MFRMS_2	0x00
+#define RSL_BS_PA_MFRMS_3	0x01
+#define RSL_BS_PA_MFRMS_4	0x02
+#define RSL_BS_PA_MFRMS_5	0x03
+#define RSL_BS_PA_MFRMS_6	0x04
+#define RSL_BS_PA_MFRMS_7	0x05
+#define RSL_BS_PA_MFRMS_8	0x06
+#define RSL_BS_PA_MFRMS_9	0x07
+
 
 #include "msgb.h"
 
@@ -358,6 +376,11 @@ int abis_rsl_rcvmsg(struct msgb *msg);
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_chan_release(struct gsm_lchan *lchan);
+
+/* BCCH related code */
+int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf);
+int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf);
+int rsl_number_of_paging_subchannels(struct gsm_bts *bts);
 
 #endif /* RSL_MT_H */
 
