@@ -55,7 +55,7 @@ static struct bsc_fd server_socket = {
 
 void telnet_init(struct gsm_network *network, int port) {
 	struct sockaddr_in sock_addr;
-	int fd;
+	int fd, on = 1;
 
 	fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
@@ -63,6 +63,8 @@ void telnet_init(struct gsm_network *network, int port) {
 		perror("Telnet interface socket creation failed");
 		return;
 	}
+
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	memset(&sock_addr, 0, sizeof(sock_addr));
 	sock_addr.sin_family = AF_INET;
