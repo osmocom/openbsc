@@ -43,7 +43,8 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_04_08.h>
 
-#define PAGING_TIMEOUT 1, 0
+#define PAGING_TIMEOUT 0, 75000
+#define MAX_PAGING_REQUEST 750
 
 static LLIST_HEAD(managed_bts);
 
@@ -83,7 +84,7 @@ static void page_handle_pending_requests(void *data) {
 	mi_len = generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi, RSL_CHANNEED_TCH_F);
 
-	if (paging_bts->last_request->requests > 1500) {
+	if (paging_bts->last_request->requests > MAX_PAGING_REQUEST) {
 		page_remove_request(paging_bts);
 	} else {
 		/* move to the next item */
