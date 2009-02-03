@@ -43,7 +43,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_04_08.h>
 
-#define PAGING_TIMEOUT 0, 75000
+#define PAGING_TIMEOUT 1, 75000
 #define MAX_PAGING_REQUEST 750
 
 static LLIST_HEAD(managed_bts);
@@ -67,6 +67,7 @@ static void page_handle_pending_requests(void *data) {
 	unsigned long int tmsi;
 	unsigned int mi_len;
 	struct paging_bts *paging_bts = (struct paging_bts *)data;
+	struct paging_request *request = NULL;
 
 	if (!paging_bts->last_request)
 		paging_bts->last_request =
@@ -77,14 +78,16 @@ static void page_handle_pending_requests(void *data) {
 	}
 
 	/* handle the paging request now */
+	request = paging_bts->last_request;
 	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
-		paging_bts->last_request->subscr->imsi);
-	++paging_bts->last_request->requests;
-	tmsi = strtoul(paging_bts->last_request->subscr->tmsi, NULL, 10);
+		request->subscr->imsi);
+	++request->requests;
+	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
 	mi_len = generate_mid_from_tmsi(mi, tmsi);
-	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi, RSL_CHANNEED_TCH_F);
+	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi,
+			request->chan_type);
 
-	if (paging_bts->last_request->requests > MAX_PAGING_REQUEST) {
+	if (request->requests > MAX_PAGING_REQUEST) {
 		page_remove_request(paging_bts);
 	} else {
 		/* move to the next item */
