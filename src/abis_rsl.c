@@ -658,6 +658,9 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	u_int16_t pg_buf_space;
+	u_int16_t rach_slot_count = -1;
+	u_int16_t rach_busy_count = -1;
+	u_int16_t rach_access_count = -1;
 
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
@@ -666,7 +669,13 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 			pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
-		DEBUGP(DRSL, "CCCH LOAD IND, RACH Load\n");
+		if (msg->data_len >= 7) {
+			rach_slot_count = rslh->data[2] << 8 | rslh->data[3];
+			rach_busy_count = rslh->data[4] << 8 | rslh->data[5];
+			rach_access_count = rslh->data[6] << 8 | rslh->data[7];
+		}
+		DEBUGP(DRSL, "CCCH LOAD IND, RACH Load Count: %u Busy: %u Access: %u\n",
+			rach_slot_count, rach_busy_count, rach_access_count);
 		break;
 	default:
 		break;
