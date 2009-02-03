@@ -2,7 +2,7 @@
  * userspace logging daemon for the iptables ULOG target
  * of the linux 2.4 netfilter subsystem.
  *
- * (C) 2000-2008 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2000-2009 by Harald Welte <laforge@gnumonks.org>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 
@@ -85,19 +85,19 @@ int bsc_select_main()
 
 	/* call registered callback functions */
 	llist_for_each_entry_safe(ufd, tmp, &bsc_fds, list) {
-	    int flags = 0;
+		int flags = 0;
 
-	    if (FD_ISSET(ufd->fd, &readset))
-		flags |= BSC_FD_READ;
+		if (FD_ISSET(ufd->fd, &readset))
+			flags |= BSC_FD_READ;
 
-	    if (FD_ISSET(ufd->fd, &writeset))
-		flags |= BSC_FD_WRITE;
+		if (FD_ISSET(ufd->fd, &writeset))
+			flags |= BSC_FD_WRITE;
 
-	    if (FD_ISSET(ufd->fd, &exceptset))
-		flags |= BSC_FD_EXCEPT;
+		if (FD_ISSET(ufd->fd, &exceptset))
+			flags |= BSC_FD_EXCEPT;
 
-	    if (flags)
-		ufd->cb(ufd, flags);
+		if (flags)
+			ufd->cb(ufd, flags);
 	}
 	return i;
 }
