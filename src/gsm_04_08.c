@@ -1,7 +1,7 @@
 /* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface 
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
@@ -205,8 +205,6 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 
 	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
 	
-	//gsm0411_send_sms(lchan, NULL);
-
 	return gsm48_sendmsg(msg);
 }
 
@@ -239,7 +237,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	ret = gsm48_cc_tx_setup(lchan);
 	ret = gsm48_tx_mm_info(lchan);
-	//ret = gsm0411_send_sms(lchan, NULL);
 
 	return ret;
 }
@@ -252,7 +249,7 @@ static char bcd2char(u_int8_t bcd)
 		return 'A' + (bcd - 0xa);
 }
 
-/* 10.5.1.4 */
+/* Convert Mobile Identity (10.5.1.4) to string */
 static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 {
 	int i;
@@ -295,7 +292,7 @@ static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
 	return str_cur - string;
 }
 
-/* Chapter 9.2.10 */
+/* Transmit Chapter 9.2.10 Identity Request */
 static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -313,7 +310,7 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 
 #define MI_SIZE 32
 
-/* Chapter 9.2.11 */
+/* Parse Chapter 9.2.11 Identity Response */
 static int mm_rx_id_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -377,7 +374,7 @@ static void schedule_reject(struct gsm_lchan *lchan)
 }
 
 #define MI_SIZE 32
-/* Chapter 9.2.15 */
+/* Chapter 9.2.15: Receive Location Updating Request */
 static int mm_rx_loc_upd_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -611,6 +608,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
 
+/* Receive a GSM 04.08 Mobility Management (MM) message */
 static int gsm0408_rcv_mm(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -650,6 +648,8 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 
 	return rc;
 }
+
+/* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
