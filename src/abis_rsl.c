@@ -1,7 +1,7 @@
 /* GSM Radio Signalling Link messages on the A-bis interface 
  * 3GPP TS 08.58 version 8.6.0 Release 1999 / ETSI TS 100 596 V8.6.0 */
 
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -289,7 +289,8 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 
 #define TSC	7
 
-int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t ta)
+int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
+			    u_int8_t ta)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
@@ -315,7 +316,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, u_int8_t
 		cm.chan_rate = 0x11; /* speech coding alg version 2*/
 		break;
 	case GSM_LCHAN_TCH_H:
-		DEBUGP(DRSL, "Unimplemented TCH_H activation in %s:%d\n", __FILE__, __LINE__);
+		DEBUGP(DRSL, "Unimplemented TCH_H activation\n");
 		return -1;
 	case GSM_LCHAN_UNKNOWN:
 	case GSM_LCHAN_NONE:
@@ -513,7 +514,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		DEBUGP(DRSL, "Measurement Result\n");
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
-		DEBUGP(DRSL, "RF CHANNEL RELEASE ACK chan_nr=0x%02x\n", rslh->chan_nr);
+		DEBUGP(DRSL, "RF CHANNEL RELEASE ACK chan_nr=0x%02x\n",
+			rslh->chan_nr);
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
@@ -563,10 +565,11 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_RF_RES_IND:
 		/* interference on idle channels of TRX */
+		fprintf(stderr, "RSL TRX: RF Interference Indication\n");
+		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		fprintf(stderr, "Overload: Unimplemented Abis RSL TRX message type 0x%02x\n",
-			rslh->msg_type);
+		fprintf(stderr, "RSL TRX: CCCH/ACCH/CPU Overload\n");
 		break;
 	default:
 		fprintf(stderr, "Unknown Abis RSL TRX message type 0x%02x\n",
@@ -638,7 +641,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.timing_advance = rqd_ta;
 	ia.mob_alloc_len = 0;
 
-	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s chan_nr=0x%02x r=%s\n",
+	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s "
+		"chan_nr=0x%02x r=%s\n",
 		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
 		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason));
 
@@ -691,8 +695,8 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		/* CCCH overloaded, IMM_ASSIGN was dropped */
 	case RSL_MT_CBCH_LOAD_IND:
 		/* current load on the CBCH */
-		fprintf(stderr, "Unimplemented Abis RSL TRX message type 0x%02x\n",
-			rslh->c.msg_type);
+		fprintf(stderr, "Unimplemented Abis RSL TRX message type "
+			"0x%02x\n", rslh->c.msg_type);
 		break;
 	default:
 		fprintf(stderr, "Unknown Abis RSL TRX message type 0x%02x\n",
@@ -734,16 +738,19 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rc = gsm0408_rcvmsg(msg);
 		break;
 	case RSL_MT_EST_IND:
-		DEBUGP(DRLL, "ESTABLISH INDICATION chan_nr=0x%02x\n", rllh->chan_nr);
+		DEBUGP(DRLL, "ESTABLISH INDICATION chan_nr=0x%02x\n",
+			rllh->chan_nr);
 		/* FIXME: Verify L3 info element */
 		msg->l3h = &rllh->data[3];
 		rc = gsm0408_rcvmsg(msg);
 		break;
 	case RSL_MT_REL_IND:
-		DEBUGP(DRLL, "RELEASE INDICATION chan_nr=0x%02x\n", rllh->chan_nr);
+		DEBUGP(DRLL, "RELEASE INDICATION chan_nr=0x%02x\n",
+			rllh->chan_nr);
 		break;
 	case RSL_MT_REL_CONF:
-		DEBUGP(DRLL, "RELEASE CONFIRMATION chan_nr=0x%02x\n", rllh->chan_nr);
+		DEBUGP(DRLL, "RELEASE CONFIRMATION chan_nr=0x%02x\n",
+			rllh->chan_nr);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
@@ -763,7 +770,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 int abis_rsl_rcvmsg(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg)	;
-	int rc;
+	int rc = 0;
 
 	switch (rslh->msg_discr & 0xfe) {
 	case ABIS_RSL_MDISC_RLL:
@@ -779,6 +786,9 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 		rc = abis_rsl_rx_trx(msg);
 		break;
 	case ABIS_RSL_MDISC_LOC:
+		fprintf(stderr, "unimplemented RSL msg disc 0x%02x\n",
+			rslh->msg_discr);
+		break;
 	default:
 		fprintf(stderr, "unknown RSL message discriminator 0x%02x\n",
 			rslh->msg_discr);
