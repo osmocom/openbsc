@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include <openbsc/timer.h>
+#include <openbsc/gsm_04_08.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -190,6 +191,8 @@ struct gsm_bts {
 
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
+
+	struct gsm48_control_channel_descr chan_desc;
 
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;

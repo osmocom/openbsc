@@ -2,6 +2,7 @@
 #define _GSM_04_08_H
 
 /* GSM TS 04.08  definitions */
+struct gsm_lchan;
 
 /* Chapter 10.5.2.5 */
 struct gsm48_chan_desc {
@@ -86,6 +87,17 @@ struct gsm48_rach_control {
 	u_int8_t t3;
 } __attribute__ ((packed));
 
+/* Section 10.5.2.11 Control Channel Description , Figure 10.5.33 */
+struct gsm48_control_channel_descr {
+	u_int8_t ccch_conf :3,
+		bs_ag_blks_res :3,
+		att :1,
+		spare1 :1;
+	u_int8_t bs_pa_mfrms : 3,
+		spare2 :5;
+	u_int8_t t3212;
+} __attribute__ ((packed));
+
 /* Section 9.2.9 CM service request */
 struct gsm48_service_request {
 	u_int8_t cm_service_type : 4,
@@ -118,7 +130,7 @@ struct gsm48_system_information_type_3 {
 	struct gsm48_system_information_type_header header;
 	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
-	u_int8_t control_channel_description[3];
+	struct gsm48_control_channel_descr control_channel_desc;
 	u_int8_t cell_options;
 	u_int8_t cell_selection[2];
 	struct gsm48_rach_control rach_control;

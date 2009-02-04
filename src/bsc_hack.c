@@ -642,6 +642,9 @@ static void patch_tables(struct gsm_bts *bts)
 	type_4->data[2] &= 0xf0;
 	type_4->data[2] |= arfcn_high;
 	type_4->data[3] = arfcn_low;
+
+	/* patch Control Channel Description 10.5.2.11 */
+	type_3->control_channel_desc = bts->chan_desc;
 }
 
 
@@ -681,6 +684,14 @@ static int bootstrap_network(void)
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = ARFCN;
+
+	/* Control Channel Description */
+	memset(&bts->chan_desc, 0, sizeof(struct gsm48_control_channel_descr));
+	bts->chan_desc.att = 0;
+	bts->chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
+	bts->chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
+	bts->chan_desc.t3212 = 0;
+
 	patch_tables(bts);
 
 	paging_bts = page_allocate(bts);
