@@ -36,6 +36,8 @@
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
 
+#define MAX(a, b) (a) >= (b) ? (a) : (b)
+
 static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 {
 	/* mask off the transparent bit ? */
@@ -805,4 +807,54 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 	}
 	msgb_free(msg);
 	return rc;
+}
+
+
+/* Section 3.3.2.3 . I think this looks like a table */
+int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf)
+{
+	switch (ccch_conf) {
+	case RSL_BCCH_CCCH_CONF_1_NC:
+		return 1;
+	case RSL_BCCH_CCCH_CONF_1_C:
+		return 1;
+	case RSL_BCCH_CCCH_CONF_2_NC:
+		return 2;
+	case RSL_BCCH_CCCH_CONF_3_NC:
+		return 3;
+	case RSL_BCCH_CCCH_CONF_4_NC:
+		return 4;
+	default:
+		return -1;
+	}
+}
+
+int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf)
+{
+	switch (ccch_conf) {
+	case RSL_BCCH_CCCH_CONF_1_NC:
+		return 0;
+	case RSL_BCCH_CCCH_CONF_1_C:
+		return 1;
+	case RSL_BCCH_CCCH_CONF_2_NC:
+		return 0;
+	case RSL_BCCH_CCCH_CONF_3_NC:
+		return 0;
+	case RSL_BCCH_CCCH_CONF_4_NC:
+		return 0;
+	default:
+		return -1;
+	}
+}
+
+/* From Table 10.5.33 of GSM 04.08 */
+int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
+{
+	if (bts->chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
+		return MAX(1, (3 - bts->chan_desc.bs_ag_blks_res))
+			* bts->chan_desc.bs_pa_mfrms;
+	} else {
+		return (9 - bts->chan_desc.bs_ag_blks_res)
+			* bts->chan_desc.bs_pa_mfrms;
+	}
 }
