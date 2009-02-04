@@ -852,9 +852,9 @@ int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
 {
 	if (bts->chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
 		return MAX(1, (3 - bts->chan_desc.bs_ag_blks_res))
-			* bts->chan_desc.bs_pa_mfrms;
+			* (bts->chan_desc.bs_pa_mfrms + 2);
 	} else {
 		return (9 - bts->chan_desc.bs_ag_blks_res)
-			* bts->chan_desc.bs_pa_mfrms;
+			* (bts->chan_desc.bs_pa_mfrms + 2);
 	}
 }

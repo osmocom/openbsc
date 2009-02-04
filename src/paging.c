@@ -48,6 +48,22 @@
 
 static LLIST_HEAD(managed_bts);
 
+static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+{
+	int ccch_conf;
+	int bs_cc_chans;
+	int blocks;
+	unsigned int group;
+	
+	ccch_conf = bts->chan_desc.ccch_conf;
+	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
+	/* code word + 2, as 2 channels equals 0x0 */
+	blocks = bts->chan_desc.bs_pa_mfrms + 2;
+	group = get_paging_group(str_to_imsi(subscr->imsi),
+					bs_cc_chans, blocks);
+	return group;
+}
+
 /*
  * Kill one paging request update the internal list...
  */
@@ -66,6 +82,7 @@ static void page_handle_pending_requests(void *data) {
 	u_int8_t mi[128];
 	unsigned long int tmsi;
 	unsigned int mi_len;
+	unsigned int pag_group;
 	struct paging_bts *paging_bts = (struct paging_bts *)data;
 	struct paging_request *request = NULL;
 
@@ -82,9 +99,11 @@ static void page_handle_pending_requests(void *data) {
 	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
 		request->subscr->imsi);
 	++request->requests;
+
+	pag_group = calculate_group(paging_bts->bts, request->subscr);
 	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
 	mi_len = generate_mid_from_tmsi(mi, tmsi);
-	rsl_paging_cmd(paging_bts->bts, 1, mi_len, mi,
+	rsl_paging_cmd(paging_bts->bts, pag_group, mi_len, mi,
 			request->chan_type);
 
 	if (request->requests > MAX_PAGING_REQUEST) {
