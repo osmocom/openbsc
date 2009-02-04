@@ -373,6 +373,10 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
+unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
+			      int n_pag_blocks);
+unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
+
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_chan_release(struct gsm_lchan *lchan);
