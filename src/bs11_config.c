@@ -70,30 +70,13 @@ static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
 int handle_serial_msg(struct msgb *rx_msg);
 
-static int create_trx1_objects(struct gsm_bts *bts)
+/* create all objects for an initial configuration */
+static int create_objects(struct gsm_bts *bts)
 {
 	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
 	u_int8_t *cur = bbsig1_attr;
 	
-	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
-
-	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
-		      (u_int8_t *)trx1_password);
-	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
-	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
-				   sizeof(bbsig1_attr), bbsig1_attr);
-
-	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
-				   sizeof(obj_pa0_attr), obj_pa0_attr);
-
-	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
-
-	return 0;
-}
-
-/* create all objects for an initial configuration */
-static int create_objects(struct gsm_bts *bts)
-{
+	fprintf(stdout, "Crating Objects for minimal config\n");
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_GPSU, 0, 0, NULL);
@@ -113,6 +96,26 @@ static int create_objects(struct gsm_bts *bts)
 
 	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
 	
+	sleep(1);
+
+	fprintf(stdout, "Crating Objects for TRX1\n");
+
+	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
+
+	sleep(1);
+
+	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
+		      (u_int8_t *)trx1_password);
+	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
+	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
+				   sizeof(bbsig1_attr), bbsig1_attr);
+
+	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
+				   sizeof(obj_pa0_attr), obj_pa0_attr);
+
+	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
+
+
 	return 0;
 }
 
@@ -120,9 +123,9 @@ static char *serial_port = "/dev/ttyUSB0";
 static char *fname_safety = "BTSBMC76.SWI";
 static char *fname_software = "HS011106.SWL";
 static int delay_ms = 0;
-static int have_trx1 = 0;
 static int win_size = 8;
 static int param_disconnect = 0;
+static int param_restart = 0;
 static int param_forced = 0;
 static struct gsm_bts *g_bts;
 
@@ -160,10 +163,14 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 		exit(5);
 		break;
 	case NM_MT_LOAD_END_ACK:
-		/* FIXME: activate in case we want to */
-		if (data)
+		if (data) {
+			/* we did a SWL load and must activate it */
 			abis_nm_software_activate(g_bts, fname_safety,
 						  swload_cbfn, g_bts);
+		} else {
+			/* we did a safety load and have to wait */
+			sleep(10);
+		}
 		break;
 	case NM_MT_LOAD_END_NACK:
 		fprintf(stderr, "ERROR: Software Load End NACK\n");
@@ -225,7 +232,7 @@ static void print_state(struct abis_nm_bs11_state *st)
 
 	printf("Abis-link: %-9s MBCCU0: %-11s MBCCU1: %-11s PHASE: %u ",
 		linkstate_name(st->abis_link & 0xf),
-		mbccu_load_name(st->mbccu >> 4), mbccu_load_name(st->mbccu & 0xf),
+		mbccu_load_name(st->mbccu & 0xf), mbccu_load_name(st->mbccu >> 4),
 		phase & 0xf);
 
 	switch (phase) {
@@ -305,9 +312,14 @@ static int handle_state_resp(enum abis_bs11_phase state)
 		}
 		break;
 	case BS11_STATE_NORMAL:
-		if (have_trx1)
-			create_trx1_objects(g_bts);
-		//return 1;
+		if (param_disconnect) {
+			param_disconnect = 0;
+			abis_nm_bs11_bsc_disconnect(g_bts, 0);
+			if (param_restart) {
+				param_restart = 0;
+				abis_nm_bs11_restart(g_bts);
+			}
+		}
 	default:
 		sleep(5);
 		break;
@@ -390,7 +402,6 @@ static void print_help(void)
 	printf("Supported arguments:\n");
 	printf("\t-h --help\t\t\tPrint this help text\n");
 	printf("\t-p --port </dev/ttyXXX>\t\tSpecify serial port\n");
-	printf("\t-t --with-trx1\t\t\tAssume the BS-11 has 2 TRX\n");
 	printf("\t-s --software <file>\t\tSpecify Software file\n");
 	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
 	printf("\t-d --delay <file>\t\tSpecify delay\n");
@@ -408,16 +419,16 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
 			{ "port", 1, 0, 'p' },
-			{ "with-trx1", 0, 0, 't' },
 			{ "software", 1, 0, 's' },
 			{ "safety", 1, 0, 'S' },
 			{ "delay", 1, 0, 'd' },
 			{ "disconnect", 0, 0, 'D' },
 			{ "win-size", 1, 0, 'w' },
 			{ "forced", 0, 0, 'f' },
+			{ "restart", 0, 0, 'r' },
 		};
 
-		c = getopt_long(argc, argv, "hp:s:S:td:Dw:f",
+		c = getopt_long(argc, argv, "hp:s:S:td:Dw:fr",
 				long_options, &option_index);
 
 		if (c == -1)
@@ -429,9 +440,6 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 		case 'p':
 			serial_port = optarg;
-			break;
-		case 't':
-			have_trx1 = 1;
 			break;
 		case 's':
 			fname_software = optarg;
@@ -450,6 +458,10 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'f':
 			param_forced = 1;
+			break;
+		case 'r':
+			param_disconnect = 1;
+			param_restart = 1;
 			break;
 		default:
 			break;
@@ -497,9 +509,6 @@ int main(int argc, char **argv)
 
 	abis_nm_bs11_factory_logon(g_bts, 1);
 	//abis_nm_bs11_get_serno(g_bts);
-
-	if (param_disconnect)
-		abis_nm_bs11_bsc_disconnect(g_bts, 0);
 
 	while (1) {
 		bsc_select_main();
