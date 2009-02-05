@@ -865,6 +865,12 @@ int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect)
 		return __simple_cmd(bts, NM_MT_BS11_RECONNECT);
 }
 
+int abis_nm_bs11_restart(struct gsm_bts *bts)
+{
+	return __simple_cmd(bts, NM_MT_BS11_RESTART);
+}
+
+
 struct bs11_date_time {
 	u_int16_t	year;
 	u_int8_t	month;
