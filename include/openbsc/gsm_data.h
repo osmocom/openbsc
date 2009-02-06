@@ -176,6 +176,36 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_BS11,
 };
 
+/**
+ * A pending paging request 
+ */
+struct gsm_paging_request {
+	struct llist_head entry;
+	struct gsm_subscriber *subscr;
+	struct gsm_bts *bts;
+	int requests;
+
+	int chan_type;
+};
+
+/*
+ * This keeps track of the paging status of one BTS. It
+ * includes a number of pending requests, a back pointer
+ * to the gsm_bts, a timer and some more state.
+ */
+struct gsm_bts_paging_state {
+	/* public callbacks */
+	void (*channel_allocated)(struct gsm_lchan *lchan);
+
+	/* pending requests */
+	struct llist_head pending_requests;
+	struct gsm_paging_request *last_request;
+	struct gsm_bts *bts;
+
+	/* tick timer */
+	struct timer_list page_timer;
+};
+
 /* One BTS */
 struct gsm_bts {
 	struct gsm_network *network;
@@ -193,6 +223,9 @@ struct gsm_bts {
 	u_int8_t bts_nr;
 
 	struct gsm48_control_channel_descr chan_desc;
+
+	/* paging state and control */
+	struct gsm_bts_paging_state paging;
 
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;

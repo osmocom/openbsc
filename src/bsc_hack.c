@@ -672,7 +672,6 @@ static void mi_cb(int event, struct gsm_bts *bts)
 static int bootstrap_network(void)
 {
 	struct gsm_bts *bts;
-	struct paging_bts *paging_bts;
 
 	/* initialize our data structures */
 	gsmnet = gsm_network_init(1, MCC, MNC);
@@ -694,8 +693,8 @@ static int bootstrap_network(void)
 
 	patch_tables(bts);
 
-	paging_bts = page_allocate(bts);
-	paging_bts->channel_allocated = bsc_hack_channel_allocated;
+	page_init(bts);
+	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
 	telnet_init(gsmnet, 4242);
 	if (mi_setup(bts, 0, mi_cb) < 0)

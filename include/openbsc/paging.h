@@ -29,39 +29,8 @@
 #include "gsm_subscriber.h"
 #include "timer.h"
 
-/**
- * A pending paging request 
- */
-struct paging_request {
-	struct llist_head entry;
-	struct gsm_subscriber *subscr;
-	struct gsm_bts *bts;
-	int requests;
-
-	int chan_type;
-};
-
-/*
- * struct for each bts we serve...
- */
-struct paging_bts {
-	/* public callbacks */
-	void (*channel_allocated)(struct gsm_lchan *lchan);
-
-	/* list for each bts */
-	struct llist_head bts_list;
-
-	/* pending requests */
-	struct llist_head pending_requests;
-	struct paging_request *last_request;
-	struct gsm_bts *bts;
-
-	/* tick timer */
-	struct timer_list page_timer;
-};
-
 /* call once for every gsm_bts... */
-struct paging_bts* page_allocate(struct gsm_bts *bts);
+void page_init(struct gsm_bts *bts);
 
 /* schedule paging request */
 void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type);
