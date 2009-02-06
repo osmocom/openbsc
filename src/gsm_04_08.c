@@ -649,10 +649,45 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	return rc;
 }
 
+/* Receive a PAGING RESPONSE message from the MS */
+static int gsm48_rr_rx_pag_resp(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_paging_response *pr =
+			(struct gsm48_paging_response *) gh->data;
+	u_int8_t mi_type = pr->mi[0] & GSM_MI_TYPE_MASK;
+	char mi_string[MI_SIZE];
+	struct gsm_subscriber *subscr;
+	int rc = 0;
+
+	mi_to_string(mi_string, sizeof(mi_string), &pr->mi[0], pr->mi_len);
+	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
+		mi_type, mi_string);
+	subscr = subscr_get_by_tmsi(mi_string);
+
+	if (!subscr) {
+		DEBUGP(DRR, "<- Can't find any subscriber for this ID\n");
+		/* FIXME: close channel? */
+		return -EINVAL;
+	}
+	DEBUGP(DRR, "<- Channel was requested by %s\n",
+		subscr->name ? subscr->name : subscr->imsi);
+
+	if (!msg->lchan->subscr)
+		msg->lchan->subscr = subscr;
+	else if (msg->lchan->subscr != subscr) {
+		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
+		subscr_put(subscr);
+	}
+
+	return rc;
+}
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	int rc = 0;
 
 	switch (gh->msg_type) {
 	case GSM48_MT_RR_CLSM_CHG:
@@ -663,13 +698,15 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
+		rc = gsm48_rr_rx_pag_resp(msg);
+		break;
 	default:
-		fprintf(stderr, "Unimplemented GSM 04.08 msg type 0x%02x\n",
+		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 	}
 
-	return 0;
+	return rc;
 }
 
 /* Call Control */
@@ -816,7 +853,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
 		break;
 	default:
-		fprintf(stderr, "Unimplemented GSM 04.08 msg type 0x%02x\n",
+		fprintf(stderr, "Unimplemented GSM 04.08 CC msg type 0x%02x\n",
 			msg_type);
 		break;
 	}

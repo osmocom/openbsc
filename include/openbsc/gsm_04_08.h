@@ -98,6 +98,16 @@ struct gsm48_control_channel_descr {
 	u_int8_t t3212;
 } __attribute__ ((packed));
 
+/* Section 9.1.25 PAGING RESPONSE */
+struct gsm48_paging_response {
+	u_int8_t spare:4,
+		 cipher_keyt_seq:4;
+	/* length + 3 bytes */
+	u_int32_t classmark2;
+	u_int8_t mi_len;
+	u_int8_t mi[0];
+} __attribute__ ((packed));
+
 /* Section 9.2.9 CM service request */
 struct gsm48_service_request {
 	u_int8_t cm_service_type : 4,
