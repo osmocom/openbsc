@@ -174,3 +174,23 @@ void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) 
 	free(req);
 	return;
 }
+
+/* we consciously ignore the type of the request here */
+void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+{
+	struct paging_bts *bts_entry;
+	struct paging_request *req, *req2;
+
+	llist_for_each_entry(bts_entry, &managed_bts, bts_list) {
+		if (bts == bts_entry->bts)
+			break;
+	}
+	if (!bts_entry)
+		return;
+
+	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
+				 entry) {
+		if (req->subscr == subscr)
+			llist_del(&req->entry);
+	}
+}

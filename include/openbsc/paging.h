@@ -66,4 +66,7 @@ struct paging_bts* page_allocate(struct gsm_bts *bts);
 /* schedule paging request */
 void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type);
 
+/* stop paging requests */
+void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr);
+
 #endif
