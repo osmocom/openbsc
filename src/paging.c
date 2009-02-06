@@ -67,12 +67,17 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 /*
  * Kill one paging request update the internal list...
  */
-static void page_remove_request(struct paging_bts *paging_bts) {
-	struct paging_request *to_be_deleted = paging_bts->last_request;
-	paging_bts->last_request =
-		(struct paging_request *)paging_bts->last_request->entry.next;
-	if (&to_be_deleted->entry == &paging_bts->pending_requests)
-		paging_bts->last_request = NULL;
+static void page_remove_request(struct paging_bts *paging_bts,
+				struct paging_request *to_be_deleted)
+{
+	/* Update the last_request if that is necessary */
+	if (to_be_deleted == paging_bts->last_request) {
+		paging_bts->last_request =
+			(struct paging_request *)paging_bts->last_request->entry.next;
+		if (&to_be_deleted->entry == &paging_bts->pending_requests)
+			paging_bts->last_request = NULL;
+	}
+
 	llist_del(&to_be_deleted->entry);
 	free(to_be_deleted);
 }
@@ -107,7 +112,7 @@ static void page_handle_pending_requests(void *data) {
 			request->chan_type);
 
 	if (request->requests > MAX_PAGING_REQUEST) {
-		page_remove_request(paging_bts);
+		page_remove_request(paging_bts, request);
 	} else {
 		/* move to the next item */
 		paging_bts->last_request =
@@ -190,7 +195,9 @@ void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
-		if (req->subscr == subscr)
-			llist_del(&req->entry);
+		if (req->subscr == subscr) {
+			page_remove_request(bts_entry, req);
+			break;
+		}
 	}
 }
