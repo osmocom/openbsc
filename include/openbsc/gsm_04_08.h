@@ -375,6 +375,27 @@ enum gsm48_cause_loc {
 	GSM48_CAUSE_LOC_NET_BEYOND	= 0x0a,
 };
 
+/* Section 10.5.2.31 RR Cause / Table 10.5.70 */
+enum gsm48_rr_cause {
+	GSM48_RR_CAUSE_NORMAL		= 0x00,
+	GSM48_RR_CAUSE_ABNORMAL_UNSPEC	= 0x01,
+	GSM48_RR_CAUSE_ABNORMAL_UNACCT	= 0x02,
+	GSM48_RR_CAUSE_ABNORMAL_TIMER	= 0x03,
+	GSM48_RR_CAUSE_ABNORMAL_NOACT	= 0x04,
+	GSM48_RR_CAUSE_PREMPTIVE_REL	= 0x05,
+	GSM48_RR_CAUSE_HNDOVER_IMP	= 0x06,
+	GSM48_RR_CAUSE_CHAN_MODE_UNACCT	= 0x07,
+	GSM48_RR_CAUSE_FREQ_NOT_IMPL	= 0x08,
+	GSM48_RR_CAUSE_CALL_ClEARED	= 0x41,
+	GSM48_RR_CAUSE_SEMANT_INCORR	= 0x5f,
+	GSM48_RR_CAUSE_INVALID_MAND_INF = 0x60,
+	GSM48_RR_CAUSE_MSG_TYPE_N	= 0x61,
+	GSM48_RR_CAUSE_MSG_TYPE_N_COMPAT= 0x62,
+	GSM48_RR_CAUSE_COND_IE_ERROR	= 0x64,
+	GSM48_RR_CAUSE_NO_CELL_ALLOC_A	= 0x65,
+	GSM48_RR_CAUSE_PROT_ERROR_UNSPC = 0x6f,
+};
+
 /* Annex G, GSM specific cause values for mobility management */
 enum gsm48_reject_value {
 	GSM48_REJECT_IMSI_UNKNOWN_IN_HLR	= 2,
@@ -429,5 +450,6 @@ struct msgb *gsm48_msgb_alloc(void);
 int gsm48_sendmsg(struct msgb *msg);
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
 
+int gsm48_send_rr_release(struct gsm_lchan *lchan);
 
 #endif

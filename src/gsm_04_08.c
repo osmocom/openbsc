@@ -710,6 +710,26 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	return rc;
 }
 
+/* 7.1.7 and 9.1.7 Channel release*/
+int gsm48_send_rr_release(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	u_int8_t *cause;
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CHAN_REL;
+
+	cause = msgb_put(msg, 1);
+	cause[0] = GSM48_RR_CAUSE_NORMAL;
+
+	DEBUGP(DRR, "Sending Channel Release: Chan: Number: %d Type: %d\n",
+		lchan->nr, lchan->type);
+
+	return gsm48_sendmsg(msg);
+}
+
 /* Call Control */
 
 static int gsm48_cc_tx_status(struct gsm_lchan *lchan)

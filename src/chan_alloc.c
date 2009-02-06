@@ -1,7 +1,7 @@
 /* GSM Channel allocation routines
  *
  * (C) 2008 by Harald Welte <laforge@gnumonks.org>
- * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -210,6 +210,11 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 {
 	if (lchan->use_count > 0) {
 		return 0;
+	}
+
+	/* Assume we have GSM04.08 running and send a release */
+	if (lchan->subscr) {
+		gsm48_send_rr_release(lchan);
 	}
 
 	/* spoofed? message */
