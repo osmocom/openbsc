@@ -7,6 +7,7 @@ sms_test_SOURCES = sms_test.c $(top_srcdir)/src/misdn.c \
 		$(top_srcdir)/src/gsm_subscriber.c $(top_srcdir)/src/msgb.c \
 		$(top_srcdir)/src/select.c $(top_srcdir)/src/chan_alloc.c \
 		$(top_srcdir)/src/timer.c $(top_srcdir)/src/debug.c \
-		$(top_srcdir)/src/db.c $(top_srcdir)/src/gsm_04_11.c
+		$(top_srcdir)/src/db.c $(top_srcdir)/src/gsm_04_11.c \
+		$(top_srcdir)/src/paging.c
 
 sms_test_LDADD = -ldl -ldbi
