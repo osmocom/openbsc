@@ -80,12 +80,25 @@ static void page_remove_request(struct gsm_bts_paging_state *paging_bts,
 	free(to_be_deleted);
 }
 
-
-static void page_handle_pending_requests(void *data) {
+static void page_ms(struct gsm_paging_request *request)
+{
 	u_int8_t mi[128];
 	unsigned long int tmsi;
 	unsigned int mi_len;
-	unsigned int pag_group;
+	unsigned int page_group;
+
+	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
+		request->subscr->imsi);
+	++request->requests;
+
+	page_group = calculate_group(request->bts, request->subscr);
+	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
+	mi_len = generate_mid_from_tmsi(mi, tmsi);
+	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
+			request->chan_type);
+}
+
+static void page_handle_pending_requests(void *data) {
 	struct gsm_bts_paging_state *paging_bts =
 				(struct gsm_bts_paging_state *)data;
 	struct gsm_paging_request *request = NULL;
@@ -100,15 +113,7 @@ static void page_handle_pending_requests(void *data) {
 
 	/* handle the paging request now */
 	request = paging_bts->last_request;
-	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
-		request->subscr->imsi);
-	++request->requests;
-
-	pag_group = calculate_group(paging_bts->bts, request->subscr);
-	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = generate_mid_from_tmsi(mi, tmsi);
-	rsl_paging_cmd(paging_bts->bts, pag_group, mi_len, mi,
-			request->chan_type);
+	page_ms(request);
 
 	if (request->requests > MAX_PAGING_REQUEST) {
 		page_remove_request(paging_bts, request);
