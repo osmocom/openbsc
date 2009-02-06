@@ -168,6 +168,44 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
+static int abis_nm_rx_statechg_rep(struct msgb *mb)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	u_int8_t mt = foh->msg_type;
+	u_int8_t *data = &foh->data[0];
+	
+	DEBUGP(DNM, "STATE CHG: OC=%02x INST=(%02x,%02x,%02x) ",
+		foh->obj_class, foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
+	if (*data++ == NM_ATT_OPER_STATE)
+		DEBUGPC(DNM, "OP_STATE=%02x ", *data++);
+	if (*data++ == NM_ATT_AVAIL_STATUS) {
+		u_int8_t att_len = *data++;
+		while (att_len--)
+			DEBUGPC(DNM, "AVAIL=%02x ", *data++);
+	}
+	DEBUGPC(DNM, "\n");
+	return 0;
+}
+
+static int abis_nm_rcvmsg_report(struct msgb *mb)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	u_int8_t mt = foh->msg_type;
+
+	//nmh->cfg->report_cb(mb, foh);
+
+	switch (mt) {
+	case NM_MT_STATECHG_EVENT_REP:
+		return abis_nm_rx_statechg_rep(mb);
+		break;
+	};
+
+	DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
+
+	return 0;
+}
+
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
@@ -175,11 +213,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	u_int8_t mt = foh->msg_type;
 
 	/* check for unsolicited message */
-	if (is_report(mt)) {
-		DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
-		//nmh->cfg->report_cb(mb, foh);
-		return 0;
-	}
+	if (is_report(mt))
+		return abis_nm_rcvmsg_report(mb);
 
 	if (is_in_arr(mt, sw_load_msgs, ARRAY_SIZE(sw_load_msgs)))
 		return abis_nm_rcvmsg_sw(mb);
@@ -202,6 +237,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		}
 	}
 #endif
+
+	switch (mt) {
+	case NM_MT_BS11_LMT_SESSION:
+		DEBUGP(DNM, "LMT Event: \n");
+		break;
+	}
 
 	return 0;
 }
@@ -1144,6 +1185,8 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 	struct file_list_entry *fle;
 	int rc = 0;
 
+	DEBUGP(DNM, "Event %u\n", event);
+
 	switch (event) {
 	case NM_MT_LOAD_END_ACK:
 		fle = fl_dequeue(&bs11_sw->file_list);
@@ -1170,7 +1213,8 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 	case NM_MT_ACTIVATE_SW_ACK:
 	default:
 		/* fallthrough to the user callback */
-		rc = bs11_sw->user_cb(hook, event, msg, NULL, NULL);
+		if (bs11_sw->user_cb)
+			rc = bs11_sw->user_cb(hook, event, msg, NULL, NULL);
 		break;
 	}
 
