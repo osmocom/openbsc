@@ -629,12 +629,22 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 					 sw->cb_data, NULL);
 			break;
 		case NM_MT_LOAD_END_NACK:
-			DEBUGP(DNM, "Software Load End NACK\n");
-			sw->state = SW_STATE_ERROR;
-			if (sw->cbfn)
-				sw->cbfn(GSM_HOOK_NM_SWLOAD,
-					 NM_MT_LOAD_END_NACK, mb,
-					 sw->cb_data, NULL);
+			if (sw->forced) {
+				DEBUGP(DNM, "FORCED: Ignoring Software Load"
+					"End NACK\n");
+				sw->state = SW_STATE_NONE;
+				if (sw->cbfn)
+					sw->cbfn(GSM_HOOK_NM_SWLOAD,
+						 NM_MT_LOAD_END_ACK, mb,
+						 sw->cb_data, NULL);
+			} else {
+				DEBUGP(DNM, "Software Load End NACK\n");
+				sw->state = SW_STATE_ERROR;
+				if (sw->cbfn)
+					sw->cbfn(GSM_HOOK_NM_SWLOAD,
+						 NM_MT_LOAD_END_NACK, mb,
+						 sw->cb_data, NULL);
+			}
 			break;
 		}
 	case SW_STATE_WAIT_ACTACK:
