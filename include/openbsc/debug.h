@@ -15,15 +15,17 @@
 #define DMIB		0x2000
 
 #ifdef DEBUG
-#define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, fmt, ## args)
+#define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
+#define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)
 #else
 #define DEBUGP(xss, fmt, args...) 
+#define DEBUGPC(ss, fmt, args...)
 #endif
 
 #define static_assert(exp, name) typedef int dummy##name [(exp) ? 1 : -1];
 
 void hexdump(unsigned char *buf, int len);
-void debugp(unsigned int subsys, char *file, int line, const char *format, ...);
+void debugp(unsigned int subsys, char *file, int line, int cont, const char *format, ...);
 void debug_parse_category_mask(const char* mask);
 void debug_use_color(int use_color);
 unsigned int debug_mask;

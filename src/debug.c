@@ -98,11 +98,9 @@ const char* color(int subsys)
 	return "";
 }
 
-void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
+void debugp(unsigned int subsys, char *file, int line, int cont, const char *format, ...)
 {
-	char *timestr;
 	va_list ap;
-	time_t tm;
 	FILE *outfd = stderr;
 
 	if (!(debug_mask & subsys))
@@ -110,10 +108,16 @@ void debugp(unsigned int subsys, char *file, int line, const char *format, ...)
 
 	va_start(ap, format);
 
-	tm = time(NULL);
-	timestr = ctime(&tm);
-	timestr[strlen(timestr)-1] = '\0';
-	fprintf(outfd, "%s%s <%4.4x> %s:%d ", color(subsys), timestr, subsys, file, line);
+	fprintf(outfd, "%s", color(subsys));
+
+	if (!cont) {
+		char *timestr;
+		time_t tm;
+		tm = time(NULL);
+		timestr = ctime(&tm);
+		timestr[strlen(timestr)-1] = '\0';
+		fprintf(outfd, "%s <%4.4x> %s:%d ", timestr, subsys, file, line);
+	}
 	vfprintf(outfd, format, ap);
 	fprintf(outfd, "\033[0;m");
 
