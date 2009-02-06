@@ -4,9 +4,13 @@
 #include <sys/types.h>
 #include <string.h>
 
+#include <openbsc/msgb.h>
+
 #define TLV_GROSS_LEN(x)	(x+2)
 #define TLV16_GROSS_LEN(x)	((2*x)+2)
 #define TL16V_GROSS_LEN(x)	(x+3)
+
+/* TLV generation */
 
 static inline u_int8_t *tlv_put(u_int8_t *buf, u_int8_t tag, u_int8_t len,
 				const u_int8_t *val)
@@ -102,5 +106,19 @@ static inline u_int8_t *msgb_tv16_push(struct msgb *msg, u_int8_t tag, u_int16_t
 	return tv16_put(buf, tag, val);
 }
 
+/* TLV parsing */
+
+struct tlv_p_entry {
+	u_int8_t len;
+	u_int8_t *val;
+};
+
+struct tlv_parser {
+	struct tlv_p_entry lv[0xff];
+};
+
+#define TLVP_PRESENT(x, y)	(x->lv[y].val)
+#define TLVP_LEN(x, y)		x->lv[y].len
+#define TLVP_VAL(x, y)		x->lv[y].val
 
 #endif /* _TLV_H */
