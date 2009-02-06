@@ -187,6 +187,7 @@ enum abis_nm_msgtype {
 
 	NM_MT_BS11_SET_ATTR		= 0xd0,
 	NM_MT_BS11_SET_ATTR_ACK,
+	NM_MT_BS11_LMT_SESSION		= 0xdc,
 
 	NM_MT_BS11_GET_STATE		= 0xe3,
 	NM_MT_BS11_GET_STATE_ACK,
