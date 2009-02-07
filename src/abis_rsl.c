@@ -220,7 +220,7 @@ static struct msgb *rsl_msgb_alloc(void)
 }
 
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
-int rsl_bcch_info(struct gsm_bts *bts, u_int8_t type,
+int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -233,12 +233,12 @@ int rsl_bcch_info(struct gsm_bts *bts, u_int8_t type,
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
 	msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
 
-	msg->trx = bts->c0;
+	msg->trx = trx;
 
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_sacch_filling(struct gsm_bts *bts, u_int8_t type, 
+int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type, 
 		      const u_int8_t *data, int len)
 {
 	struct abis_rsl_common_hdr *ch;
@@ -251,13 +251,13 @@ int rsl_sacch_filling(struct gsm_bts *bts, u_int8_t type,
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
 	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
 
-	msg->trx = bts->c0;
+	msg->trx = trx;
 
 	return abis_rsl_sendmsg(msg);
 }
 
 /* Chapter 8.4.1 */
-int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
+int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t act_type,
 		      struct rsl_ie_chan_mode *chan_mode,
 		      struct rsl_ie_chan_ident *chan_ident,
@@ -285,6 +285,8 @@ int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
 #endif
 	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	msg->trx = trx;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -348,6 +350,8 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 #endif
 	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }

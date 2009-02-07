@@ -351,11 +351,11 @@ struct rsl_ie_chan_ident {
 
 #include "msgb.h"
 
-int rsl_bcch_info(struct gsm_bts *bts, u_int8_t type,
+int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len);
-int rsl_sacch_filling(struct gsm_bts *bts, u_int8_t type, 
+int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type, 
 		      const u_int8_t *data, int len);
-int rsl_chan_activate(struct gsm_bts *bts, u_int8_t chan_nr,
+int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t act_type,
 		      struct rsl_ie_chan_mode *chan_mode,
 		      struct rsl_ie_chan_ident *chan_ident,
