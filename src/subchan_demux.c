@@ -202,13 +202,13 @@ static int get_subch_bits(struct subch_mux *mx, int subch,
 
 		/* make sure we have a valid entry at top of tx queue.
 		 * if not, add an idle frame */
-		if (llist_empty(&sch->tx_queue))	
+		if (llist_empty(&sch->tx_queue))
 			alloc_add_idle_frame(mx, subch);
 	
 		if (llist_empty(&sch->tx_queue))
 			return -EIO;
 
-		txe = llist_entry(&sch->tx_queue, struct subch_txq_entry, list);
+		txe = llist_entry(sch->tx_queue.next, struct subch_txq_entry, list);
 		num_bits_left = txe->bit_len - txe->next_bit;
 
 		if (num_bits_left < num_requested)
@@ -291,7 +291,7 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 	tqe->bit_len = len;
 	memcpy(tqe->bits, data, len);
 
-	llist_add(&tqe->list, &sch->tx_queue);
+	llist_add_tail(&tqe->list, &sch->tx_queue);
 
 	return 0;
 }
