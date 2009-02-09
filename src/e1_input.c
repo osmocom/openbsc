@@ -221,10 +221,10 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	msg->l2h = msg->data;
 
 	if (!msg->trx || !msg->trx->bts || !msg->trx->bts->oml_link) {
-		fprintf(stderr, "rsl_sendmsg: msg->trx == NULL\n");
+		fprintf(stderr, "nm_sendmsg: msg->trx == NULL\n");
 		return -EINVAL;
 	}
-		
+
 	sign_link = msg->trx->bts->oml_link;
 	msgb_enqueue(&sign_link->tx_list, msg);
 
@@ -332,7 +332,8 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	link->type = type;
 	INIT_LLIST_HEAD(&link->tx_list);
 	link->trx = trx;
-	link->tei = sapi;
+	link->tei = tei;
+	link->sapi = sapi;
 
 	llist_add_tail(&link->list, &ts->sign.sign_links);
 
