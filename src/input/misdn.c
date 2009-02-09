@@ -62,6 +62,9 @@ struct prim_name {
 };
 
 const struct prim_name prim_names[] = {
+	{ PH_CONTROL_IND, "PH_CONTROL_IND" },
+	{ PH_DATA_IND, "PH_DATA_IND" },
+	{ PH_DATA_CNF, "PH_DATA_CNF" },
 	{ DL_ESTABLISH_IND, "DL_ESTABLISH_IND" },
 	{ DL_ESTABLISH_CNF, "DL_ESTABLISH_CNF" },
 	{ DL_RELEASE_IND, "DL_RELEASE_IND" },
