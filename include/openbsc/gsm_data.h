@@ -205,7 +205,7 @@ struct gsm_bts_paging_state {
 	struct gsm_bts *bts;
 
 	/* tick timer */
-	struct timer_list page_timer;
+	struct timer_list paging_timer;
 };
 
 /* One BTS */

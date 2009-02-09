@@ -30,12 +30,12 @@
 #include "timer.h"
 
 /* call once for every gsm_bts... */
-void page_init(struct gsm_bts *bts);
+void paging_init(struct gsm_bts *bts);
 
 /* schedule paging request */
-void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type);
+void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type);
 
 /* stop paging requests */
-void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr);
+void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr);
 
 #endif

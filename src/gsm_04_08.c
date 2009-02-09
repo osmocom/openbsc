@@ -673,7 +673,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name ? subscr->name : subscr->imsi);
-	page_request_stop(msg->trx->bts, subscr);
+	paging_request_stop(msg->trx->bts, subscr);
 
 	if (!msg->lchan->subscr)
 		msg->lchan->subscr = subscr;

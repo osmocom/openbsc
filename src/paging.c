@@ -65,7 +65,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 /*
  * Kill one paging request update the internal list...
  */
-static void page_remove_request(struct gsm_bts_paging_state *paging_bts,
+static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 				struct gsm_paging_request *to_be_deleted)
 {
 	/* Update the last_request if that is necessary */
@@ -98,7 +98,7 @@ static void page_ms(struct gsm_paging_request *request)
 			request->chan_type);
 }
 
-static void page_handle_pending_requests(void *data) {
+static void paging_handle_pending_requests(void *data) {
 	struct gsm_bts_paging_state *paging_bts =
 				(struct gsm_bts_paging_state *)data;
 	struct gsm_paging_request *request = NULL;
@@ -116,7 +116,7 @@ static void page_handle_pending_requests(void *data) {
 	page_ms(request);
 
 	if (request->requests > MAX_PAGING_REQUEST) {
-		page_remove_request(paging_bts, request);
+		paging_remove_request(paging_bts, request);
 	} else {
 		/* move to the next item */
 		paging_bts->last_request =
@@ -125,18 +125,18 @@ static void page_handle_pending_requests(void *data) {
 			paging_bts->last_request = NULL;
 	}
 
-	schedule_timer(&paging_bts->page_timer, PAGING_TIMEOUT);
+	schedule_timer(&paging_bts->paging_timer, PAGING_TIMEOUT);
 }
 
-void page_init(struct gsm_bts *bts)
+void paging_init(struct gsm_bts *bts)
 {
 	bts->paging.bts = bts;
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
-	bts->paging.page_timer.cb = page_handle_pending_requests;
-	bts->paging.page_timer.data = &bts->paging;
+	bts->paging.paging_timer.cb = paging_handle_pending_requests;
+	bts->paging.paging_timer.data = &bts->paging;
 }
 
-static int page_pending_request(struct gsm_bts_paging_state *bts,
+static int paging_pending_request(struct gsm_bts_paging_state *bts,
 				struct gsm_subscriber *subscr) {
 	struct gsm_paging_request *req;
 
@@ -148,7 +148,7 @@ static int page_pending_request(struct gsm_bts_paging_state *bts,
 	return 0;	
 }
 
-void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) {
+void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
@@ -158,17 +158,17 @@ void page_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) 
 	req->bts = bts;
 	req->chan_type = type;
 
-	if (!page_pending_request(bts_entry, subscr)) {
+	if (!paging_pending_request(bts_entry, subscr)) {
 		llist_add_tail(&req->entry, &bts_entry->pending_requests);
-		if (!timer_pending(&bts_entry->page_timer))
-			schedule_timer(&bts_entry->page_timer, PAGING_TIMEOUT);
+		if (!timer_pending(&bts_entry->paging_timer))
+			schedule_timer(&bts_entry->paging_timer, PAGING_TIMEOUT);
 	} else {
 		DEBUGP(DPAG, "Paging request already pending\n");
 	}
 }
 
 /* we consciously ignore the type of the request here */
-void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
@@ -176,7 +176,7 @@ void page_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
-			page_remove_request(&bts->paging, req);
+			paging_remove_request(&bts->paging, req);
 			break;
 		}
 	}

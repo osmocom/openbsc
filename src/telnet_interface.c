@@ -177,7 +177,7 @@ void telnet_page(struct telnet_connection *connection, const char *imsi, int typ
 	if (!subscr)
 		return;
 
-	page_request(bts, subscr, type);	
+	paging_request(bts, subscr, type);	
 }
 
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {

@@ -703,7 +703,7 @@ static int bootstrap_network(void)
 
 	patch_tables(bts);
 
-	page_init(bts);
+	paging_init(bts);
 	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
 	telnet_init(gsmnet, 4242);
