@@ -28,12 +28,14 @@ struct gsm_subscriber {
 enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_IMSI,
 	GSM_SUBSCRIBER_TMSI,
+	GSM_SUBSCRIBER_EXTENSION,
 };
 
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
+struct gsm_subscriber *subscr_get_by_extension(const char *ext);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts);
 
 /* internal */

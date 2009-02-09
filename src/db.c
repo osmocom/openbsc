@@ -119,6 +119,7 @@ int db_prepare() {
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
+		"name TEXT, "
 		"imei NUMERIC UNIQUE NOT NULL"
 		")"
 	);
@@ -215,6 +216,15 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
+			quoted
+		);
+		free(quoted);
+		break;
+	case GSM_SUBSCRIBER_EXTENSION:
+		dbi_conn_quote_string_copy(conn, id, &quoted);
+		result = dbi_conn_queryf(conn,
+			"SELECT * FROM Subscriber "
+			"WHERE extension = %s ",
 			quoted
 		);
 		free(quoted);

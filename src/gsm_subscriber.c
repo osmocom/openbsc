@@ -78,6 +78,18 @@ struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
 	return db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
 }
 
+struct gsm_subscriber *subscr_get_by_extension(const char *ext)
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		if (strcmp(subscr->extension, ext) == 0)
+			return subscr_get(subscr);
+	}
+
+	return db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, ext);
+}
+
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts)
 {
 	return db_sync_subscriber(s);
