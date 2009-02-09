@@ -39,6 +39,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/paging.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
