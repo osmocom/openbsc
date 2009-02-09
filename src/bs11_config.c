@@ -103,7 +103,7 @@ static int create_objects(struct gsm_bts *bts)
 	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
 
 	sleep(1);
-
+#if 0
 	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
 		      (u_int8_t *)trx1_password);
 	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
@@ -114,7 +114,7 @@ static int create_objects(struct gsm_bts *bts)
 				   sizeof(obj_pa0_attr), obj_pa0_attr);
 
 	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
-
+#endif
 
 	return 0;
 }

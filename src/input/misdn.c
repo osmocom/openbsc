@@ -1,0 +1,483 @@
+/* OpenBSC Abis input driver for mISDNuser */
+
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include <sys/fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <mISDNif.h>
+
+//#define AF_COMPATIBILITY_FUNC
+//#include <compat_af_isdn.h>
+#define AF_ISDN 34
+#define PF_ISDN AF_ISDN
+
+#include <openbsc/select.h>
+#include <openbsc/msgb.h>
+#include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/abis_rsl.h>
+#include <openbsc/subchan_demux.h>
+#include <openbsc/e1_input.h>
+
+/* data structure for one E1 interface with A-bis */
+struct mi_e1_handle {
+	/* The mISDN card number of the card we use */
+	int cardnr;
+};
+
+#define TS1_ALLOC_SIZE	300
+
+struct prim_name {
+	unsigned int prim;
+	const char *name;
+};
+
+const struct prim_name prim_names[] = {
+	{ DL_ESTABLISH_IND, "DL_ESTABLISH_IND" },
+	{ DL_ESTABLISH_CNF, "DL_ESTABLISH_CNF" },
+	{ DL_RELEASE_IND, "DL_RELEASE_IND" },
+	{ DL_RELEASE_CNF, "DL_RELEASE_CNF" },
+	{ DL_DATA_IND, "DL_DATA_IND" },
+	{ DL_UNITDATA_IND, "DL_UNITDATA_IND" },
+	{ DL_INFORMATION_IND, "DL_INFORMATION_IND" },
+	{ MPH_ACTIVATE_IND, "MPH_ACTIVATE_IND" },
+	{ MPH_DEACTIVATE_IND, "MPH_DEACTIVATE_IND" },
+};
+
+const char *get_prim_name(unsigned int prim)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(prim_names); i++) {
+		if (prim_names[i].prim == prim)
+			return prim_names[i].name;
+	}
+
+	return "UNKNOWN";
+}
+
+static int handle_ts1_read(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_sign_link *link;
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct sockaddr_mISDN l2addr;
+	struct mISDNhead *hh;
+	socklen_t alen;
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	hh = (struct mISDNhead *) msg->data;
+
+	alen = sizeof(l2addr);
+	ret = recvfrom(bfd->fd, msg->data, 300, 0,
+		       (struct sockaddr *) &l2addr, &alen);
+	if (ret < 0) {
+		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		return ret;
+	}
+
+	if (alen != sizeof(l2addr))
+		return -EINVAL;
+
+	msgb_put(msg, ret);
+
+	DEBUGP(DMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
+		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
+
+	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x)\n",
+		ret, hh->prim, hh->id);
+
+	DEBUGP(DMI, "got %s:\n", get_prim_name(hh->prim));
+
+	switch (hh->prim) {
+	case DL_INFORMATION_IND:
+		/* mISDN tells us which channel number is allocated for this
+		 * tuple of (SAPI, TEI). */
+		DEBUGP(DMI, "use channel(%d) sapi(%d) tei(%d) for now\n",
+			l2addr.channel, l2addr.sapi, l2addr.tei);
+		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
+		if (!link) {
+			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
+			free(msg);
+			return -EINVAL;
+		}
+		/* save the channel number in the driver private struct */
+		link->driver.misdn.channel = l2addr.channel;
+		break;
+	case MPH_ACTIVATE_IND:
+		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, l2addr.tei, l2addr.sapi);
+		break;
+	case MPH_DEACTIVATE_IND:
+		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
+		break;
+	case DL_DATA_IND:
+		DEBUGP(DMI, "got DL_DATA_IND\n");
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		if (debug_mask & DMI) { 
+			fprintf(stdout, "RX: ");
+			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		}
+		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
+		break;
+	default:
+		break;
+	}
+	return ret;
+}
+
+static int handle_ts1_write(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_sign_link *sign_link;
+	struct sockaddr_mISDN sa;
+	struct msgb *msg;
+	struct mISDNhead *hh;
+	u_int8_t *l2_data;
+	int ret;
+
+	/* get the next msg for this timeslot */
+	msg = e1inp_tx_ts(e1i_ts, &sign_link);
+	if (!msg) {
+		bfd->when &= ~BSC_FD_WRITE;
+		return 0;
+	}
+
+	l2_data = msg->data;
+
+	/* prepend the mISDNhead */
+	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
+	hh->prim = DL_DATA_REQ;
+
+	if (debug_mask & DMI) {
+		fprintf(stdout, "TX: ");
+		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
+	}
+
+	/* construct the sockaddr */
+	sa.family = AF_ISDN;
+	sa.sapi = sign_link->sapi;
+	sa.dev = sign_link->tei;
+	sa.channel = sign_link->driver.misdn.channel;
+
+	ret = sendto(bfd->fd, msg->data, msg->len, 0,
+		     (struct sockaddr *)&sa, sizeof(sa));
+	msgb_free(msg);
+
+	/* FIXME: this has to go */
+	usleep(100000);
+
+	return ret;
+}
+
+#define TSX_ALLOC_SIZE 4096
+
+/* FIXME: read from a B channel TS */
+static int handle_tsX_read(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
+	struct mISDNhead *hh;
+	int ret;
+
+	if (!msg)
+		return -ENOMEM;
+
+	hh = (struct mISDNhead *) msg->data;
+
+	ret = recv(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
+	if (ret < 0) {
+		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
+		return ret;
+	}
+
+	msgb_put(msg, ret);
+
+	DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+		ret, hh->prim, hh->id, get_prim_name(hh->prim));
+
+	switch (hh->prim) {
+	case PH_DATA_IND:
+		msg->l2h = msg->data + MISDN_HEADER_LEN;
+		if (debug_mask & DMIB) {
+			fprintf(stdout, "BCHAN RX: ");
+			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
+		}
+		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+		break;
+	default:
+		break;
+	}
+	/* FIXME: why do we free signalling msgs in the caller, and trau not? */
+	msgb_free(msg);
+
+	return ret;
+}
+
+#define BCHAN_TX_GRAN	40
+/* write to a B channel TS */
+static int handle_tsX_write(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct mISDNhead *hh;
+	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	struct subch_mux *mx = &e1i_ts->trau.mux;
+	int ret;
+
+	hh = (struct mISDNhead *) tx_buf;
+	hh->prim = PH_DATA_REQ;
+
+	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+
+	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
+	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
+		DEBUGP(DMIB, "send returns %d instead of %u\n", ret,
+			sizeof(*hh) + BCHAN_TX_GRAN);
+
+	return ret;
+}
+
+/* callback from select.c in case one of the fd's can be read/written */
+static int misdn_fd_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	unsigned int idx = ts_nr-1;
+	struct e1inp_ts *e1i_ts = &line->ts[idx];
+	int rc = 0;
+
+	switch (e1i_ts->type) {
+	case E1INP_TS_TYPE_SIGN:
+		if (what & BSC_FD_READ)
+			rc = handle_ts1_read(bfd);
+		if (what & BSC_FD_WRITE)
+			rc = handle_ts1_write(bfd);
+		break;
+	case E1INP_TS_TYPE_TRAU:
+		if (what & BSC_FD_READ)
+			rc = handle_tsX_read(bfd);
+		if (what & BSC_FD_WRITE)
+			rc = handle_tsX_write(bfd);
+		break;
+	default:
+		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
+		break;
+	}
+
+	return rc;
+}
+
+static int activate_bchan(struct e1inp_line *line, int ts, int act)
+{
+	struct mISDNhead hh;
+	int ret;
+	unsigned int idx = ts-1;
+	struct e1inp_ts *e1i_ts = &line->ts[idx];
+	struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+
+	fprintf(stdout, "activate bchan\n");
+	if (act)
+		hh.prim = PH_ACTIVATE_REQ;
+	else
+		hh.prim = PH_DEACTIVATE_REQ;
+
+	hh.id = MISDN_ID_ANY;
+	ret = sendto(bfd->fd, &hh, sizeof(hh), 0, NULL, 0);
+	if (ret < 0) {
+		fprintf(stdout, "could not send ACTIVATE_RQ %s\n",
+			strerror(errno));
+	}
+
+	return ret;
+}
+
+static int ts_want_write(struct e1inp_ts *e1i_ts)
+{
+	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+struct e1inp_driver misdn_driver = {
+	.name = "mISDNuser",
+	.want_write = ts_want_write,
+};
+
+static int mi_e1_setup(struct e1inp_line *line)
+{
+	struct mi_e1_handle *e1h = line->driver_data;
+	int ts, ret;
+
+	/* TS0 is CRC4, don't need any fd for it */
+	for (ts = 1; ts < NUM_E1_TS; ts++) {
+		unsigned int idx = ts-1;
+		struct e1inp_ts *e1i_ts = &line->ts[idx];
+		struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+		struct sockaddr_mISDN addr;
+
+		bfd->data = line;
+		bfd->priv_nr = ts;
+		bfd->cb = misdn_fd_cb;
+
+		switch (e1i_ts->type) {
+		case E1INP_TS_TYPE_NONE:
+			continue;
+			break;
+		case E1INP_TS_TYPE_SIGN:
+			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_LAPD_NT);
+			bfd->when = BSC_FD_READ;
+			break;
+		case E1INP_TS_TYPE_TRAU:
+			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
+			bfd->when = BSC_FD_READ | BSC_FD_WRITE;
+			break;
+		}
+
+		if (bfd->fd < 0) {
+			fprintf(stderr, "could not open socket %s\n",
+				strerror(errno));
+			return bfd->fd;
+		}
+
+		memset(&addr, 0, sizeof(addr));
+		addr.family = AF_ISDN;
+		addr.dev = e1h->cardnr;
+		switch (e1i_ts->type) {
+		case E1INP_TS_TYPE_SIGN:
+			addr.channel = 0;
+			/* SAPI not supported yet in kernel */
+			//addr.sapi = e1inp_ts->sign.sapi;
+			addr.sapi = 0;
+			addr.tei = GROUP_TEI;
+			break;
+		case E1INP_TS_TYPE_TRAU:
+			addr.channel = ts;
+			break;
+		default:
+			DEBUGP(DMI, "unsupported E1 TS type: %u\n",
+				e1i_ts->type);
+			break;
+		}
+
+		ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
+		if (ret < 0) {
+			fprintf(stderr, "could not bind l2 socket %s\n",
+				strerror(errno));
+			return -EIO;
+		}
+
+		/* FIXME: only activate B-Channels once we start to
+		 * use them to conserve CPU power */
+		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+			activate_bchan(line, ts, 1);
+
+		ret = bsc_register_fd(bfd);
+		if (ret < 0) {
+			fprintf(stderr, "could not register FD: %s\n",
+				strerror(ret));
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+int mi_setup(int cardnr,  struct e1inp_line *line)
+{
+	struct mi_e1_handle *e1h;
+	int sk, ret, cnt;
+	struct mISDN_devinfo devinfo;
+
+	/* register the driver with the core */
+	/* FIXME: do this in the plugin initializer function */
+	ret = e1inp_driver_register(&misdn_driver);
+	if (ret)
+		return ret;
+
+	/* create the actual line instance */
+	/* FIXME: do this independent of driver registration */
+	e1h = malloc(sizeof(*e1h));
+	memset(e1h, 0, sizeof(*e1h));
+
+	e1h->cardnr = cardnr;
+
+	line->driver = &misdn_driver;
+	line->driver_data = e1h;
+
+	/* open the ISDN card device */
+	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
+	if (sk < 0) {
+		fprintf(stderr, "could not open socket %s\n", strerror(errno));
+		return sk;
+	}
+
+	ret = ioctl(sk, IMGETCOUNT, &cnt);
+	if (ret) {
+		fprintf(stderr, "error getting interf count: %s\n",
+			strerror(errno));
+		close(sk);
+		return -ENODEV;
+	}
+	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
+	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
+#if 1
+	devinfo.id = e1h->cardnr;
+	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
+	if (ret < 0) {
+		fprintf(stdout, "error getting info for device %d: %s\n",
+			e1h->cardnr, strerror(errno));
+		return -ENODEV;
+	}
+	fprintf(stdout, "        id:             %d\n", devinfo.id);
+	fprintf(stdout, "        Dprotocols:     %08x\n", devinfo.Dprotocols);
+	fprintf(stdout, "        Bprotocols:     %08x\n", devinfo.Bprotocols);
+	fprintf(stdout, "        protocol:       %d\n", devinfo.protocol);
+	fprintf(stdout, "        nrbchan:        %d\n", devinfo.nrbchan);
+	fprintf(stdout, "        name:           %s\n", devinfo.name);
+#endif
+
+	ret = mi_e1_setup(line);
+	if (ret)
+		return ret;
+
+	return e1inp_line_register(line);
+}

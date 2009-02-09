@@ -166,6 +166,8 @@ struct gsm_bts_trx {
 	struct gsm_bts *bts;
 	/* number of this TRX in the BTS */
 	u_int8_t nr;
+	/* how do we talk RSL with this TRX? */
+	struct e1inp_sign_link *rsl_link;
 
 	u_int16_t arfcn;
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
@@ -215,6 +217,8 @@ struct gsm_bts {
 	u_int8_t location_area_code;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	/* how do we talk OML with this TRX? */
+	struct e1inp_sign_link *oml_link;
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
@@ -255,10 +259,8 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,
-	EVT_E1_OML_UP,
-	EVT_E1_RSL_UP,
-	EVT_E1_OML_DN,
-	EVT_E1_RSL_DN,
+	EVT_E1_TEI_UP,
+	EVT_E1_TEI_DN,
 };
 
 #endif

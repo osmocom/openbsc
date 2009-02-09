@@ -45,6 +45,7 @@
 #include <openbsc/misdn.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/paging.h>
+#include <openbsc/e1_input.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -654,17 +655,26 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 	set_system_infos(trx);
 }
 
-static void mi_cb(int event, struct gsm_bts *bts)
+void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 {
 	switch (event) {
-	case EVT_E1_OML_UP:
-		bootstrap_om(bts);
+	case EVT_E1_TEI_UP:
+		switch (type) {
+		case E1INP_SIGN_OML:
+			bootstrap_om(trx->bts);
+			break;
+		case E1INP_SIGN_RSL:
+			bootstrap_rsl(trx);
+			break;
+		default:
+			break;
+		}
 		break;
-	case EVT_E1_RSL_UP:
-		bootstrap_rsl(bts->c0);
+	case EVT_E1_TEI_DN:
+		fprintf(stderr, "Lost some E1 TEI link\n");
+		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	default:
-		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	}
 }
@@ -697,15 +707,14 @@ static int bootstrap_network(void)
 	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
 	telnet_init(gsmnet, 4242);
-	if (mi_setup(bts, 0, mi_cb) < 0)
-		return -EIO;
 
-	return 0;
+	/* E1 mISDN input setup */
+	return e1_config(bts);
 }
-
 
 static void create_pcap_file(char *file)
 {
+#if 0
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	int fd = open(file, O_WRONLY|O_TRUNC|O_CREAT, mode);
 
@@ -715,6 +724,9 @@ static void create_pcap_file(char *file)
 	}
 
 	mi_set_pcap_fd(fd);
+#else
+	fprintf(stderr, "PCAP support currently disabled!!\n");
+#endif
 }
 
 static void print_usage()
@@ -815,6 +827,8 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
+	int rc;
+
 	/* parse options */
 	handle_options(argc, argv);
 
@@ -830,7 +844,9 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
-	bootstrap_network();
+	rc = bootstrap_network();
+	if (rc < 0)
+		exit(1);
 
 	signal(SIGHUP, &signal_handler);
 	signal(SIGABRT, &signal_handler);

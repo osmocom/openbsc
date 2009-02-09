@@ -486,5 +486,6 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
+int abis_nm_bs11_restart(struct gsm_bts *bts);
 
 #endif /* _NM_H */

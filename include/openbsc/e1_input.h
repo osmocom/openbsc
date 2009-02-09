@@ -1,0 +1,137 @@
+#ifndef _E1_INPUT_H
+#define _E1_INPUT_H
+
+#include <stdlib.h>
+
+#include <openbsc/linuxlist.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/msgb.h>
+#include <openbsc/select.h>
+#include <openbsc/subchan_demux.h>
+
+#define NUM_E1_TS   32
+
+enum e1inp_sign_type {
+	E1INP_SIGN_NONE,
+	E1INP_SIGN_OML,
+	E1INP_SIGN_RSL,
+};
+
+struct e1inp_ts;
+
+struct e1inp_sign_link {
+	/* list of signalling links */
+	struct llist_head list;
+
+	/* to which timeslot do we belong? */
+	struct e1inp_ts *ts;
+
+	enum e1inp_sign_type type;
+
+	/* trx for msg->trx of received msgs */	
+	struct gsm_bts_trx *trx;
+
+	/* msgb queue of to-be-transmitted msgs */
+	struct llist_head tx_list;
+
+	/* SAPI and TEI on the E1 TS */
+	u_int8_t sapi;
+	u_int8_t tei;
+
+	union {
+		struct {
+			u_int8_t channel;
+		} misdn;
+	} driver;
+};
+
+enum e1inp_ts_type {
+	E1INP_TS_TYPE_NONE,
+	E1INP_TS_TYPE_SIGN,
+	E1INP_TS_TYPE_TRAU,
+};
+
+/* A timeslot in the E1 interface */
+struct e1inp_ts {
+	enum e1inp_ts_type type;
+	int num;
+
+	/* to which line do we belong ? */
+	struct e1inp_line *line;
+
+	union {
+		struct {
+			struct llist_head sign_links;
+		} sign;
+		struct {
+			/* subchannel demuxer for frames from E1 */
+			struct subch_demux demux;
+			/* subchannel muxer for frames to E1 */
+			struct subch_mux mux;
+		} trau;
+	};
+	union {
+		struct {
+			/* mISDN driver has one fd for each ts */
+			struct bsc_fd fd;
+		} misdn;
+	} driver;
+};
+
+struct e1inp_driver {
+	struct llist_head list;
+	const char *name;
+	int (*want_write)(struct e1inp_ts *ts);
+};	
+
+struct e1inp_line {
+	struct llist_head list;
+	unsigned int num;
+	const char *name;
+
+	/* array of timestlots */
+	struct e1inp_ts ts[NUM_E1_TS];
+
+	struct e1inp_driver *driver;
+	void *driver_data;
+};
+
+/* register a driver with the E1 core */
+int e1inp_driver_register(struct e1inp_driver *drv);
+
+/* register a line with the E1 core */
+int e1inp_line_register(struct e1inp_line *line);
+
+/* find a sign_link for given TEI and SAPI in a TS */
+struct e1inp_sign_link *
+e1inp_lookup_sign_link(struct e1inp_ts *ts, u_int8_t tei,
+			u_int8_t sapi);
+
+/* create a new signalling link in a E1 timeslot */
+struct e1inp_sign_link *
+e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
+			struct gsm_bts_trx *trx, u_int8_t tei,
+			u_int8_t sapi);
+
+/* configure and initialize one e1inp_ts */
+int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
+		    enum e1inp_ts_type type);
+
+/* Call from the Stack: configuration of this TS has changed */
+int e1inp_update_ts(struct e1inp_ts *ts);
+
+/* Receive a packet from the E1 driver */
+int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
+		u_int8_t tei, u_int8_t sapi);
+
+/* called by driver if it wants to transmit on a given TS */
+struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
+			 struct e1inp_sign_link **sign_link);
+
+/* called by driver in case some kind of link state event */
+int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi);
+
+/* called by TRAU muxer to obtain the destination mux entity */
+struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
+
+#endif /* _E1_INPUT_H */

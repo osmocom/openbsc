@@ -26,6 +26,7 @@
 #include <errno.h>
 
 #include <openbsc/trau_frame.h>
+#include <openbsc/subchan_demux.h>
 
 static u_int32_t get_bits(const u_int8_t *bitbuf, int offset, int num)
 {
@@ -192,6 +193,9 @@ static void encode_fr(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
 	memcpy(trau_bits + 305, fr->d_bits + d_idx, 5);
 	/* C16 .. C21 */
 	memcpy(trau_bits+310, fr->c_bits+15, 6);
+
+	/* FIXME: handle timing adjustment */
+
 	/* T1 .. T4 */
 	memcpy(trau_bits+316, fr->t_bits+0, 4);
 }
@@ -229,4 +233,22 @@ int encode_trau_frame(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
 	}
 
 	return 0;
+}
+
+static struct decoded_trau_frame fr_idle_frame = {
+	.c_bits = { 0, 1, 1, 1, 0 },	/* IDLE DOWNLINK 3.5.5 */
+	.t_bits = { 1, 1, 1, 1 },
+};
+static u_int8_t encoded_idle_frame[TRAU_FRAME_BITS];
+static int dbits_initted;
+
+u_int8_t *trau_idle_frame(void)
+{
+	/* only initialize during the first call */
+	if (!dbits_initted) {
+		/* set all D-bits to 1 */
+		memset(&fr_idle_frame.d_bits, 0x01, 260);
+		encode_fr(encoded_idle_frame, &fr_idle_frame);
+	}
+	return encoded_idle_frame;
 }
