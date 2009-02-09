@@ -171,7 +171,6 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb);
 static int abis_nm_rx_statechg_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	u_int8_t mt = foh->msg_type;
 	u_int8_t *data = &foh->data[0];
 	
 	DEBUGP(DNM, "STATE CHG: OC=%02x INST=(%02x,%02x,%02x) ",
@@ -1194,8 +1193,6 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 	struct abis_nm_bs11_sw *bs11_sw = data;
 	struct file_list_entry *fle;
 	int rc = 0;
-
-	DEBUGP(DNM, "Event %u\n", event);
 
 	switch (event) {
 	case NM_MT_LOAD_END_ACK:
