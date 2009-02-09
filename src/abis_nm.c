@@ -163,6 +163,8 @@ static struct msgb *nm_msgb_alloc(void)
 /* Send a OML NM Message from BSC to BTS */
 int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
+	msg->trx = bts->c0;
+
 	return _abis_nm_sendmsg(msg);
 }
 
