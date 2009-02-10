@@ -121,10 +121,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	DEBUGP(DMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
 		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
 
-	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x)\n",
-		ret, hh->prim, hh->id);
-
-	DEBUGP(DMI, "got %s:\n", get_prim_name(hh->prim));
+	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
+		ret, hh->prim, hh->id, get_prim_name(hh->prim));
 
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
@@ -148,7 +146,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
-		DEBUGP(DMI, "got DL_DATA_IND\n");
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		if (debug_mask & DMI) { 
 			fprintf(stdout, "RX: ");
@@ -188,7 +185,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	hh->prim = DL_DATA_REQ;
 
 	if (debug_mask & DMI) {
-		fprintf(stdout, "TX: ");
+		fprintf(stdout, "TX TEI(%d): ", sign_link->tei);
 		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
 	}
 
@@ -270,6 +267,11 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	hh->prim = PH_DATA_REQ;
 
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+
+	if (debug_mask & DMIB) {
+		fprintf(stdout, "BCHAN TX: ");
+		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+	}
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
