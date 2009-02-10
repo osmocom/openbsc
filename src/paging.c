@@ -77,6 +77,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 	}
 
 	llist_del(&to_be_deleted->entry);
+	subscr_put(to_be_deleted->subscr);
 	free(to_be_deleted);
 }
 
@@ -151,6 +152,17 @@ static int paging_pending_request(struct gsm_bts_paging_state *bts,
 	return 0;	
 }
 
+static void paging_T3113_expired(void *data)
+{
+	struct gsm_paging_request *req;
+
+	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
+		req, req->subscr->imsi);
+	
+	/* FIXME: send a RR signal indicating that paging has failed */
+	paging_remove_request(&req->bts->paging, req);
+}
+
 void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
@@ -160,6 +172,9 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
 	req->chan_type = type;
+	req->T3113.cb = paging_T3113_expired;
+	req->T3113.data = req;
+	schedule_timer(&req->T3113, T3113_VALUE);
 
 	if (!paging_pending_request(bts_entry, subscr)) {
 		llist_add_tail(&req->entry, &bts_entry->pending_requests);
