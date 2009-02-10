@@ -205,8 +205,37 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	return ret;
 }
 
-#define TSX_ALLOC_SIZE 4096
+#define BCHAN_TX_GRAN	40
+/* write to a B channel TS */
+static int handle_tsX_write(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct mISDNhead *hh;
+	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	struct subch_mux *mx = &e1i_ts->trau.mux;
+	int ret;
 
+	hh = (struct mISDNhead *) tx_buf;
+	hh->prim = PH_DATA_REQ;
+
+	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+
+	if (debug_mask & DMIB) {
+		fprintf(stdout, "BCHAN TX: ");
+		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+	}
+
+	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
+	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
+		DEBUGP(DMIB, "send returns %d instead of %u\n", ret,
+			sizeof(*hh) + BCHAN_TX_GRAN);
+
+	return ret;
+}
+
+#define TSX_ALLOC_SIZE 4096
 /* FIXME: read from a B channel TS */
 static int handle_tsX_read(struct bsc_fd *bfd)
 {
@@ -242,41 +271,15 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 		}
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
+	case PH_DATA_CNF:
+		/* physical layer indicates that data has been sent,
+		 * we thus can send some more data */
+		ret = handle_tsX_write(bfd);
 	default:
 		break;
 	}
 	/* FIXME: why do we free signalling msgs in the caller, and trau not? */
 	msgb_free(msg);
-
-	return ret;
-}
-
-#define BCHAN_TX_GRAN	40
-/* write to a B channel TS */
-static int handle_tsX_write(struct bsc_fd *bfd)
-{
-	struct e1inp_line *line = bfd->data;
-	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct mISDNhead *hh;
-	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
-	struct subch_mux *mx = &e1i_ts->trau.mux;
-	int ret;
-
-	hh = (struct mISDNhead *) tx_buf;
-	hh->prim = PH_DATA_REQ;
-
-	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
-
-	if (debug_mask & DMIB) {
-		fprintf(stdout, "BCHAN TX: ");
-		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
-	}
-
-	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
-	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
-		DEBUGP(DMIB, "send returns %d instead of %u\n", ret,
-			sizeof(*hh) + BCHAN_TX_GRAN);
 
 	return ret;
 }
@@ -300,8 +303,9 @@ static int misdn_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	case E1INP_TS_TYPE_TRAU:
 		if (what & BSC_FD_READ)
 			rc = handle_tsX_read(bfd);
-		if (what & BSC_FD_WRITE)
-			rc = handle_tsX_write(bfd);
+		/* We never include the mISDN B-Channel FD into the
+		 * writeset, since it doesn't support poll() based
+		 * write flow control */		
 		break;
 	default:
 		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
@@ -337,6 +341,12 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
+	/* We never include the mISDN B-Channel FD into the
+	 * writeset, since it doesn't support poll() based
+	 * write flow control */		
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+		return 0;
+
 	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
 
 	return 0;
@@ -373,7 +383,10 @@ static int mi_e1_setup(struct e1inp_line *line)
 			break;
 		case E1INP_TS_TYPE_TRAU:
 			bfd->fd = socket(PF_ISDN, SOCK_DGRAM, ISDN_P_B_RAW);
-			bfd->when = BSC_FD_READ | BSC_FD_WRITE;
+			/* We never include the mISDN B-Channel FD into the
+	 		* writeset, since it doesn't support poll() based
+	 		* write flow control */		
+			bfd->when = BSC_FD_READ;
 			break;
 		}
 
