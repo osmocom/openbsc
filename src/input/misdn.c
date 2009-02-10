@@ -65,6 +65,7 @@ const struct prim_name prim_names[] = {
 	{ PH_CONTROL_IND, "PH_CONTROL_IND" },
 	{ PH_DATA_IND, "PH_DATA_IND" },
 	{ PH_DATA_CNF, "PH_DATA_CNF" },
+	{ PH_ACTIVATE_IND, "PH_ACTIVATE_IND" },
 	{ DL_ESTABLISH_IND, "DL_ESTABLISH_IND" },
 	{ DL_ESTABLISH_CNF, "DL_ESTABLISH_CNF" },
 	{ DL_RELEASE_IND, "DL_RELEASE_IND" },
@@ -271,6 +272,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 		}
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
+	case PH_ACTIVATE_IND:
 	case PH_DATA_CNF:
 		/* physical layer indicates that data has been sent,
 		 * we thus can send some more data */
