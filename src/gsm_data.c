@@ -24,6 +24,14 @@
 
 #include <openbsc/gsm_data.h>
 
+void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
+		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
+{
+	ts->e1_link.e1_nr = e1_nr;
+	ts->e1_link.e1_ts = e1_ts;
+	ts->e1_link.e1_ts_ss = e1_ts_ss;
+}
+
 static const char *pchan_names[] = {
 	[GSM_PCHAN_NONE]	= "NONE",
 	[GSM_PCHAN_CCCH]	= "CCCH",
@@ -127,6 +135,9 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_cod
 		}
 
 		bts->num_trx = 1;	/* FIXME */
+#ifdef HAVE_TRX1
+		bts->num_trx++;
+#endif
 		bts->c0 = &bts->trx[0];
 		bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 	}

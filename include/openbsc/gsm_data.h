@@ -186,9 +186,12 @@ struct gsm_paging_request {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
 	int requests;
-
 	int chan_type;
+
+	/* Timer 3113: how long do we try to page? */
+	struct timer_list T3113;
 };
+#define T3113_VALUE	60, 0
 
 /*
  * This keeps track of the paging status of one BTS. It
@@ -266,4 +269,6 @@ enum gsm_e1_event {
 	EVT_E1_TEI_DN,
 };
 
+void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
+		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
 #endif

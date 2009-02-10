@@ -289,12 +289,14 @@ static void bootstrap_om(struct gsm_bts *bts)
 
 	/* Connect signalling of bts0/trx0 to e1_0/ts1/64kbps */
 	abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+	set_ts_e1link(&trx->ts[0], 0, 1, 0xff);
 	abis_nm_raw_msg(bts, sizeof(msg_6), msg_6); /* SET TRX ATTRIBUTES */
 
 	/* Use TEI 1 for signalling */
 	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
 	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
-#if 0
+
+#ifdef HAVE_TRX1
 	/* TRX 1 */
 	abis_nm_conn_terr_sign(&bts->trx[1], 0, 1, 0xff);
 	/* FIXME: TRX ATTRIBUTE */
@@ -304,36 +306,43 @@ static void bootstrap_om(struct gsm_bts *bts)
 	/* SET CHANNEL ATTRIBUTE TS1 */
 	abis_nm_set_channel_attr(&trx->ts[1], 0x09);
 	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
+	set_ts_e1link(&trx->ts[1], 0, 2, 1);
 	abis_nm_conn_terr_traf(&trx->ts[1], 0, 2, 1);
 	
 	/* SET CHANNEL ATTRIBUTE TS2 */
 	abis_nm_set_channel_attr(&trx->ts[2], 0x09);
 	/* Connect traffic of bts0/trx0/ts2 to e1_0/ts2/c */
+	set_ts_e1link(&trx->ts[2], 0, 2, 2);
 	abis_nm_conn_terr_traf(&trx->ts[2], 0, 2, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS3 */
 	abis_nm_set_channel_attr(&trx->ts[3], 0x09);
 	/* Connect traffic of bts0/trx0/ts3 to e1_0/ts2/d */
+	set_ts_e1link(&trx->ts[3], 0, 2, 3);
 	abis_nm_conn_terr_traf(&trx->ts[3], 0, 2, 3);
 
 	/* SET CHANNEL ATTRIBUTE TS4 */
 	abis_nm_set_channel_attr(&trx->ts[4], 0x09);
 	/* Connect traffic of bts0/trx0/ts4 to e1_0/ts3/a */
+	set_ts_e1link(&trx->ts[4], 0, 3, 0);
 	abis_nm_conn_terr_traf(&trx->ts[4], 0, 3, 0);
 
 	/* SET CHANNEL ATTRIBUTE TS5 */
 	abis_nm_set_channel_attr(&trx->ts[5], 0x09);
 	/* Connect traffic of bts0/trx0/ts5 to e1_0/ts3/b */
+	set_ts_e1link(&trx->ts[5], 0, 3, 1);
 	abis_nm_conn_terr_traf(&trx->ts[5], 0, 3, 1);
 
 	/* SET CHANNEL ATTRIBUTE TS6 */
 	abis_nm_set_channel_attr(&trx->ts[6], 0x09);
 	/* Connect traffic of bts0/trx0/ts6 to e1_0/ts3/c */
+	set_ts_e1link(&trx->ts[6], 0, 3, 2);
 	abis_nm_conn_terr_traf(&trx->ts[6], 0, 3, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS7 */
 	abis_nm_set_channel_attr(&trx->ts[7], 0x09);
 	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
+	set_ts_e1link(&trx->ts[7], 0, 3, 3);
 	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
 
 	/* end DB transmission */
