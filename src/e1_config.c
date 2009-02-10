@@ -3,6 +3,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/trau_mux.h>
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
@@ -40,12 +41,22 @@ int e1_config(struct gsm_bts *bts)
 	bts->oml_link = oml_link;
 	bts->c0->rsl_link = rsl_link;
 
-#if 0
-	/* create E1 timeslots for signalling and TRAU frames */
+	/* configure a static mapping between on-air TS1 and TS2
+	 * since we don't yet have code to dynamically switch the
+	 * voice channels */
+	{
+		struct gsm_e1_subslot src_ss, dst_ss;
+		src_ss.e1_nr = dst_ss.e1_nr = 0;
+		src_ss.e1_ts = dst_ss.e1_ts = 2;
+		src_ss.e1_ts_ss = 1; dst_ss.e1_ts_ss = 2;
+		trau_mux_map(&src_ss, &dst_ss);
+	}
+#ifdef HAVE_TRX1
+	/* create E1 timeslots for TRAU frames of TRX1 */
 	e1inp_ts_config(&line->ts[4-1], line, E1INP_TS_TYPE_TRAU);
 	e1inp_ts_config(&line->ts[5-1], line, E1INP_TS_TYPE_TRAU);
 
-	/* create signalling links for TS1 */
+	/* create RSL signalling link for TRX1 */
 	sign_ts = &line->ts[1-1];
 	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
 					  &bts->trx[1], TEI_RSL+1, SAPI_RSL);
