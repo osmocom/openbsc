@@ -83,3 +83,4 @@ void msgb_alloc(void) {}
 void gsm0411_send_sms(void) {}
 void lchan_auto_release(void) {}
 void page_request_stop(void) {}
+void paging_request_stop(void) {}
