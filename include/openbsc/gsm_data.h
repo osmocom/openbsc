@@ -204,6 +204,9 @@ struct gsm_bts_paging_state {
 	struct gsm_paging_request *last_request;
 	struct gsm_bts *bts;
 
+	/* load */
+	u_int16_t available_slots;
+
 	/* tick timer */
 	struct timer_list paging_timer;
 };

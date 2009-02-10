@@ -134,6 +134,9 @@ void paging_init(struct gsm_bts *bts)
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
 	bts->paging.paging_timer.cb = paging_handle_pending_requests;
 	bts->paging.paging_timer.data = &bts->paging;
+
+	/* Large number, until we get a proper message */
+	bts->paging.available_slots = 0xffff;
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
@@ -180,4 +183,9 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 			break;
 		}
 	}
+}
+
+void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
+{
+	bts->paging.available_slots = free_slots;
 }

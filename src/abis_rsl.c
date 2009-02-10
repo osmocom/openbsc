@@ -32,6 +32,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/tlv.h>
+#include <openbsc/paging.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -673,6 +674,7 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
 		DEBUGP(DRSL, "CCCH LOAD IND, free paging buffer space: %u\n",
 			pg_buf_space);
+		paging_update_buffer_space(msg->trx->bts, pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
 		if (msg->data_len >= 7) {
