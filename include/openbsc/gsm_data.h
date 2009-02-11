@@ -208,9 +208,6 @@ struct gsm_bts_paging_state {
 
 	/* load */
 	u_int16_t available_slots;
-
-	/* tick timer */
-	struct timer_list paging_timer;
 };
 
 /* One BTS */

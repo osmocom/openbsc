@@ -99,9 +99,8 @@ static void page_ms(struct gsm_paging_request *request)
 			request->chan_type);
 }
 
-static void paging_handle_pending_requests(void *data) {
-	struct gsm_bts_paging_state *paging_bts =
-				(struct gsm_bts_paging_state *)data;
+static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts)
+{
 	struct gsm_paging_request *request = NULL;
 
 	if (!paging_bts->last_request)
@@ -121,19 +120,15 @@ static void paging_handle_pending_requests(void *data) {
 		(struct gsm_paging_request *)paging_bts->last_request->entry.next;
 	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
 		paging_bts->last_request = NULL;
-
-	schedule_timer(&paging_bts->paging_timer, PAGING_TIMEOUT);
 }
 
 void paging_init(struct gsm_bts *bts)
 {
 	bts->paging.bts = bts;
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
-	bts->paging.paging_timer.cb = paging_handle_pending_requests;
-	bts->paging.paging_timer.data = &bts->paging;
 
 	/* Large number, until we get a proper message */
-	bts->paging.available_slots = 0xffff;
+	bts->paging.available_slots = 0x0;
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
@@ -174,8 +169,6 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type
 
 	if (!paging_pending_request(bts_entry, subscr)) {
 		llist_add_tail(&req->entry, &bts_entry->pending_requests);
-		if (!timer_pending(&bts_entry->paging_timer))
-			schedule_timer(&bts_entry->paging_timer, PAGING_TIMEOUT);
 	} else {
 		DEBUGP(DPAG, "Paging request already pending\n");
 	}
@@ -199,4 +192,5 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
 	bts->paging.available_slots = free_slots;
+	paging_handle_pending_requests(&bts->paging);
 }
