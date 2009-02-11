@@ -88,3 +88,6 @@ int main(int argc, char** argv)
 
 	gsm0411_send_sms(0, 0);
 }
+
+/* stubs */
+void input_event(void) {}
