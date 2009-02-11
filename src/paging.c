@@ -90,7 +90,6 @@ static void page_ms(struct gsm_paging_request *request)
 
 	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
 		request->subscr->imsi);
-	++request->requests;
 
 	page_group = calculate_group(request->bts, request->subscr);
 	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
@@ -116,15 +115,11 @@ static void paging_handle_pending_requests(void *data) {
 	request = paging_bts->last_request;
 	page_ms(request);
 
-	if (request->requests > MAX_PAGING_REQUEST) {
-		paging_remove_request(paging_bts, request);
-	} else {
-		/* move to the next item */
-		paging_bts->last_request =
-			(struct gsm_paging_request *)paging_bts->last_request->entry.next;
-		if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
-			paging_bts->last_request = NULL;
-	}
+	/* move to the next item */
+	paging_bts->last_request =
+		(struct gsm_paging_request *)paging_bts->last_request->entry.next;
+	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
+		paging_bts->last_request = NULL;
 
 	schedule_timer(&paging_bts->paging_timer, PAGING_TIMEOUT);
 }

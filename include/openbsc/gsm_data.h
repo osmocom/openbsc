@@ -185,7 +185,6 @@ struct gsm_paging_request {
 	struct llist_head entry;
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
-	int requests;
 	int chan_type;
 
 	/* Timer 3113: how long do we try to page? */
