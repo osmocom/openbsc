@@ -34,6 +34,12 @@ struct gsm48_req_ref {
 		 t3_low:3;
 } __attribute__ ((packed));
 
+/* Chapter 9.1.5 */
+struct gsm48_chan_mode_modify {
+	struct gsm48_chan_desc chan_desc;
+	u_int8_t mode;
+} __attribute__ ((packed));
+
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
 	u_int8_t l2_plen;
@@ -360,8 +366,49 @@ struct gsm48_system_information_type_6 {
 #define GSM48_IE_NET_TIME_TZ	0x47	/* 10.5.3.9 */
 #define GSM48_IE_LSA_IDENT	0x48	/* 10.5.3.11 */
 
+#define GSM48_IE_BEARER_CAP	0x04	/* 10.5.4.5 */
+#define GSM48_IE_CAUSE		0x08	/* 10.5.4.11 */
+#define GSM48_IE_CC_CAP		0x15	/* 10.5.4.5a */
+#define GSM48_IE_ALERT		0x19	/* 10.5.4.26 */
+#define GSM48_IE_FACILITY	0x1c	/* 10.5.4.15 */
+#define GSM48_IE_PROGR_IND	0x1e	/* 10.5.4.21 */
+#define GSM48_IE_AUX_STATUS	0x24	/* 10.5.4.4 */
+#define GSM48_IE_KPD_FACILITY	0x2c	/* 10.5.4.17 */
+#define GSM48_IE_SIGNAL		0x34	/* 10.5.4.23 */
+#define GSM48_IE_CONN_NUM	0x4c	/* 10.5.4.13 */
+#define GSM48_IE_CONN_SUBADDR	0x4d	/* 10.5.4.14 */
+#define GSM48_IE_CALLING_BCD	0x5c	/* 10.5.4.9 */
+#define GSM48_IE_CALLING_SUB	0x5d	/* 10.5.4.10 */
+#define GSM48_IE_CALLED_BCD	0x5e	/* 10.5.4.7 */
+#define GSM48_IE_CALLED_SUB	0x6d	/* 10.5.4.8 */
+#define GSM48_IE_REDIR_BCD	0x74	/* 10.5.4.21a */
+#define GSM48_IE_REDIR_SUB	0x75	/* 10.5.4.21b */
+#define GSM48_IE_LOWL_COMPAT	0x7c	/* 10.5.4.18 */
+#define GSM48_IE_HIGHL_COMPAT	0x7d	/* 10.5.4.16 */
+#define GSM48_IE_USER_USER	0x7e	/* 10.5.4.25 */
+#define GSM48_IE_SS_VERS	0x7f	/* 10.5.4.24 */
+#define GSM48_IE_MORE_DATA	0xa0	/* 10.5.4.19 */
+#define GSM48_IE_CLIR_SUPP	0xa1	/* 10.5.4.11a */
+#define GSM48_IE_CLIR_INVOC	0xa2	/* 10.5.4.11b */
+#define GSM48_IE_REV_C_SETUP	0xa3	/* 10.5.4.22a */
+
 /* Section 10.5.4.11 / Table 10.5.122 */
 #define GSM48_CAUSE_CS_GSM	0x60
+
+/* Section 10.5.4.23 / Table 10.5.130 */
+enum gsm48_signal_val {
+	GSM48_SIGNAL_DIALTONE	= 0x00,
+	GSM48_SIGNAL_RINGBACK	= 0x01,
+	GSM48_SIGNAL_INTERCEPT	= 0x02,
+	GSM48_SIGNAL_NET_CONG	= 0x03,
+	GSM48_SIGNAL_BUSY	= 0x04,
+	GSM48_SIGNAL_CONFIRM	= 0x05,
+	GSM48_SIGNAL_ANSWER	= 0x06,
+	GSM48_SIGNAL_CALL_WAIT	= 0x07,
+	GSM48_SIGNAL_OFF_HOOK	= 0x08,
+	GSM48_SIGNAL_OFF	= 0x3f,
+	GSM48_SIGNAL_ALERT_OFF	= 0x4f,
+};
 
 enum gsm48_cause_loc {
 	GSM48_CAUSE_LOC_USER		= 0x00,

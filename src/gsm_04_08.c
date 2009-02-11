@@ -32,6 +32,7 @@
 
 #include <openbsc/db.h>
 #include <openbsc/msgb.h>
+#include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
@@ -453,6 +454,30 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	return gsm0408_loc_upd_acc(lchan, tmsi);
 }
 
+/* 9.1.5 Channel mode modify */
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_chan_mode_modify *cmm =
+		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
+	u_int16_t arfcn = lchan->ts->trx->arfcn;
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
+
+	/* fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd() */
+	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	cmm->chan_desc.h0.h = 0;
+	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
+	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	cmm->mode = mode;
+
+	return gsm48_sendmsg(msg);
+}
+
 /* Section 9.2.15a */
 int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 {
@@ -682,6 +707,9 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		subscr_put(subscr);
 	}
 
+	/* FIXME: somehow signal the completion of the PAGING to
+	 * the entity that requested the paging */
+
 	return rc;
 }
 
@@ -733,6 +761,11 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 /* Call Control */
 
+/* The entire call control code is written in accordance with Figure 7.10c
+ * for 'very early assignment', i.e. we allocate a TCH/F during IMMEDIATE
+ * ASSIGN, then first use that TCH/F for signalling and later MODE MODIFY
+ * it for voice */
+
 static int gsm48_cc_tx_status(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -775,13 +808,45 @@ static int gsm48_cc_rx_status_enq(struct msgb *msg)
 	return gsm48_cc_tx_status(msg->lchan);
 }
 
-#if 0
 static int gsm48_cc_rx_setup(struct msgb *msg)
 {
-	return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
-			       GSM48_MT_CC_CALL_CONF);
+	struct gsm_call *call = &msg->lchan->call;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm_subscriber *called_subscr;
+	int ret;
+
+	if (call->state == GSM_CSTATE_NULL ||
+	    call->state == GSM_CSTATE_RELEASE_REQ)
+		use_lchan(msg->lchan);
+
+	call->type = GSM_CT_MO;
+	call->state = GSM_CSTATE_INITIATED;
+	call->transaction_id = gh->proto_discr & 0xf0;
+
+	DEBUGP(DCC, "SETUP(tid=0x%02x)\n", call->transaction_id);
+
+	/* Parse the number that was dialed and lookup subscriber */
+	called_subscr = NULL;
+
+	if (!called_subscr) {
+		DEBUGP(DCC, "could not find subscriber, RELEASE\n");
+		put_lchan(msg->lchan);
+		return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+					GSM48_MT_CC_RELEASE_COMPL);
+	}
+
+	/* start paging of the receiving end of the call */
+	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F);
+
+	/* send a CALL PROCEEDING message to the MO */
+	ret = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+			       GSM48_MT_CC_CALL_PROC);
+
+	/* change TCH/F mode to voice */ 
+	return gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
 }
-#endif
+
+static const u_int8_t calling_bcd[] = { 0xb9, 0x83, 0x32, 0x24 };
 
 int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 {
@@ -789,7 +854,8 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 	struct gsm48_hdr *gh;
 	struct gsm_call *call = &lchan->call;
 
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 8);
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 4 +
+						sizeof(calling_bcd));
 
 	call->type = GSM_CT_MT;
 	msg->lchan = lchan;
@@ -797,14 +863,9 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 
 	gh->proto_discr = GSM48_PDISC_CC;
 	gh->msg_type = GSM48_MT_CC_SETUP;
-	gh->data[0] = 0x34;
-	gh->data[1] = 0x00;
-	gh->data[2] = 0x5c;
-	gh->data[3] = 0x04;
-	gh->data[4] = 0xb9;
-	gh->data[5] = 0x83;
-	gh->data[6] = 0x32;
-	gh->data[7] = 0x24;
+	msgb_tv_put(msg, GSM48_IE_SIGNAL, GSM48_SIGNAL_DIALTONE);
+	msgb_tlv_put(msg, GSM48_IE_CALLING_BCD,
+		     sizeof(calling_bcd), calling_bcd);
 
 	DEBUGP(DCC, "Sending SETUP\n");
 
@@ -860,15 +921,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 				     GSM48_MT_CC_RELEASE);
 		break;
 	case GSM48_MT_CC_SETUP:
-		if (call->state == GSM_CSTATE_NULL || call->state == GSM_CSTATE_RELEASE_REQ)
-			use_lchan(msg->lchan);
-		call->type = GSM_CT_MO;
-		call->state = GSM_CSTATE_INITIATED;
-		call->transaction_id = gh->proto_discr & 0xf0;
-		DEBUGP(DCC, "SETUP(tid=0x%02x)\n", call->transaction_id);
-		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
-				     GSM48_MT_CC_CONNECT);
-		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		rc = gsm48_cc_rx_setup(msg);
 		break;
 	case GSM48_MT_CC_EMERG_SETUP:
 		DEBUGP(DCC, "EMERGENCY SETUP\n");
