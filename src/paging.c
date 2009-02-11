@@ -76,6 +76,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 			paging_bts->last_request = NULL;
 	}
 
+	del_timer(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
 	free(to_be_deleted);
