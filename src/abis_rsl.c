@@ -672,8 +672,6 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
 		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
-		DEBUGP(DRSL, "CCCH LOAD IND, free paging buffer space: %u\n",
-			pg_buf_space);
 		paging_update_buffer_space(msg->trx->bts, pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
@@ -682,8 +680,6 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 			rach_busy_count = rslh->data[4] << 8 | rslh->data[5];
 			rach_access_count = rslh->data[6] << 8 | rslh->data[7];
 		}
-		DEBUGP(DRSL, "CCCH LOAD IND, RACH Load Count: %u Busy: %u Access: %u\n",
-			rach_slot_count, rach_busy_count, rach_access_count);
 		break;
 	default:
 		break;
