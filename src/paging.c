@@ -99,6 +99,14 @@ static void page_ms(struct gsm_paging_request *request)
 			request->chan_type);
 }
 
+static void paging_move_to_next(struct gsm_bts_paging_state *paging_bts)
+{
+	paging_bts->last_request =
+		(struct gsm_paging_request *)paging_bts->last_request->entry.next;
+	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
+		paging_bts->last_request = NULL;
+}
+
 static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts)
 {
 	struct gsm_paging_request *request = NULL;
@@ -116,10 +124,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	page_ms(request);
 
 	/* move to the next item */
-	paging_bts->last_request =
-		(struct gsm_paging_request *)paging_bts->last_request->entry.next;
-	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
-		paging_bts->last_request = NULL;
+	paging_move_to_next(paging_bts);
 }
 
 void paging_init(struct gsm_bts *bts)
