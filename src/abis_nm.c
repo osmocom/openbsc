@@ -68,7 +68,7 @@ static const enum abis_nm_msgtype sw_load_msgs[] = {
 	NM_MT_LOAD_ABORT,
 	NM_MT_LOAD_END_ACK,
 	NM_MT_LOAD_END_NACK,
-	NM_MT_SW_ACT_REQ,
+	//NM_MT_SW_ACT_REQ,
 	NM_MT_ACTIVATE_SW_ACK,
 	NM_MT_ACTIVATE_SW_NACK,
 	NM_MT_SW_ACTIVATED_REP,
@@ -170,16 +170,47 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
+const char *oc_names[] = {
+	[NM_OC_SITE_MANAGER]	= "SITE MANAGER",
+	[NM_OC_BTS]		= "BTS",
+	[NM_OC_RADIO_CARRIER]	= "RADIO CARRIER",
+	[NM_OC_BASEB_TRANSC]	= "BASEBAND TRANSCEIVER",
+	[NM_OC_CHANNEL]		= "CHANNEL",
+};
+
+static const char *obj_class_name(u_int8_t oc)
+{
+	if (oc >= ARRAY_SIZE(oc_names))
+		return "UNKNOWN";
+	return oc_names[oc];
+}
+
+static const char *opstate_name(u_int8_t os)
+{
+	switch (os) {
+	case 1:
+		return "Disabled";
+	case 2:
+		return "Enabled";
+	case 0xff:
+		return "NULL";
+	default:
+		return "RFU";
+	}
+}
+
+
 static int abis_nm_rx_statechg_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t *data = &foh->data[0];
 	
-	DEBUGP(DNM, "STATE CHG: OC=%02x INST=(%02x,%02x,%02x) ",
-		foh->obj_class, foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+	DEBUGP(DNM, "STATE CHG: OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class, 
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
 		foh->obj_inst.ts_nr);
 	if (*data++ == NM_ATT_OPER_STATE)
-		DEBUGPC(DNM, "OP_STATE=%02x ", *data++);
+		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(*data++));
 	if (*data++ == NM_ATT_AVAIL_STATUS) {
 		u_int8_t att_len = *data++;
 		while (att_len--)
@@ -200,11 +231,54 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	case NM_MT_STATECHG_EVENT_REP:
 		return abis_nm_rx_statechg_rep(mb);
 		break;
+	case NM_MT_SW_ACTIVATED_REP:
+		DEBUGP(DNM, "Software Activated Report\n");
+		break;
 	};
 
 	DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
 
 	return 0;
+}
+
+/* Activate the specified software into the BTS */
+static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1,
+			     u_int8_t i2, u_int8_t *sw_desc, u_int8_t swdesc_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t len = swdesc_len;
+	u_int8_t *trailer;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_ACTIVATE_SW, obj_class, i0, i1, i2);
+
+	trailer = msgb_put(msg, swdesc_len);
+	memcpy(trailer, sw_desc, swdesc_len);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+static int abis_nm_rx_sw_act_req(struct msgb *mb)
+{
+	struct abis_om_hdr *oh = msgb_l2(mb);
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	int ret;
+
+	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
+
+	ret =  abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
+				      foh->obj_inst.bts_nr,
+				      foh->obj_inst.trx_nr,
+				      foh->obj_inst.ts_nr,
+				      foh->data, oh->length-sizeof(*foh));
+
+	/* FIXME: properly parse attributes */
+	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
+				 foh->obj_inst.bts_nr,
+				 foh->obj_inst.trx_nr,
+				 foh->obj_inst.ts_nr,
+				 foh->data + oh->length-sizeof(*foh)-22, 22);
 }
 
 /* Receive a OML NM Message from BTS */
@@ -240,6 +314,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 #endif
 
 	switch (mt) {
+	case NM_MT_SW_ACT_REQ:
+		return abis_nm_rx_sw_act_req(mb);
+		break;
 	case NM_MT_BS11_LMT_SESSION:
 		DEBUGP(DNM, "LMT Event: \n");
 		break;
@@ -871,6 +948,23 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
+			u_int8_t i2, u_int8_t i3, u_int8_t *attr, int att_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, att_len, NM_MT_SW_ACT_REQ_ACK, obj_class, i1, i2, i3);
+	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
+	if (attr) {
+		u_int8_t *ptr = msgb_put(msg, att_len);
+		memcpy(ptr, attr, att_len);
+	}
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
 {
 	struct msgb *msg = nm_msgb_alloc();
@@ -897,6 +991,33 @@ static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
 
 	return abis_nm_sendmsg(bts, msg);
 }
+
+/* Chapter 8.9.2 */
+int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* Chapter 8.8.5 */
+int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
+			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2, NM_MT_CHG_ADM_STATE, obj_class, i0, i1, i2);
+	msgb_tv_put(msg, NM_ATT_ADM_STATE, adm_state);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 
 int abis_nm_event_reports(struct gsm_bts *bts, int on)
 {

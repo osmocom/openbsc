@@ -208,8 +208,8 @@ enum abis_nm_obj_class {
 	NM_OC_SITE_MANAGER		= 0x00,
 	NM_OC_BTS,
 	NM_OC_RADIO_CARRIER,
-	NM_OC_BASEB_TRANSC,
 	NM_OC_CHANNEL,
+	NM_OC_BASEB_TRANSC,
 	/* RFU: 05-FE */
 	NM_OC_BS11_A0			= 0xa0,
 	NM_OC_BS11_A3			= 0xa3,
@@ -417,19 +417,8 @@ enum abis_bs11_phase {
 	BS11_STATE_LOAD_MBCCU		= 0x92,
 	BS11_STATE_WAIT_MIN_CFG_2	= 0xA2,
 	BS11_STATE_NORMAL		= 0x03,
+	BS11_STATE_ABIS_LOAD		= 0x13,
 };
-
-/* FIXME: this is not correct, please parse this correctly */
-struct abis_nm_bs11_state {
-	u_int8_t	tag_f0;
-	u_int8_t	len_f0;
-	u_int8_t	phase;
-	u_int8_t	mbccu;
-	u_int8_t	ccu;
-	u_int8_t	tag_f1;
-	u_int8_t	len_f1;
-	u_int8_t	abis_link;
-} __attribute__((packed));
 
 
 /* PUBLIC */
@@ -449,6 +438,9 @@ extern int abis_nm_rcvmsg(struct msgb *msg);
 //extern void abis_nm_fini(struct abis_nm_h *nmh);
 
 int abis_nm_rx(struct msgb *msg);
+int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
+int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
+			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state);
 int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 			  u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot,
 			  u_int8_t tei);
@@ -458,6 +450,8 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 			   u_int8_t e1_port, u_int8_t e1_timeslot,
 			   u_int8_t e1_subslot);
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
+int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
+			u_int8_t i2, u_int8_t i3, u_int8_t *attr, int att_len);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
