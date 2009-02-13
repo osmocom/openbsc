@@ -75,6 +75,11 @@ struct e1inp_ts {
 			/* mISDN driver has one fd for each ts */
 			struct bsc_fd fd;
 		} misdn;
+		struct {
+			/* ip.access driver has one fd for each ts */
+			struct bsc_fd fd;
+		} ipaccess;
+
 	} driver;
 };
 
