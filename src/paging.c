@@ -131,7 +131,8 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	}
 
 	if (!paging_bts->last_request)
-		paging_move_to_next(paging_bts);
+		paging_bts->last_request =
+			(struct gsm_paging_request *)paging_bts->pending_requests.next;
 
 	assert(paging_bts->last_request);
 	initial_request = paging_bts->last_request;
@@ -150,7 +151,8 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		 */
 		paging_move_to_next(paging_bts);
 		if (!paging_bts->last_request)
-			paging_move_to_next(paging_bts);
+			paging_bts->last_request =
+				(struct gsm_paging_request *)paging_bts->pending_requests.next;
 		current_request = paging_bts->last_request;
 	} while (paging_bts->available_slots > 0
 		    &&  initial_request != current_request);
