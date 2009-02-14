@@ -94,6 +94,13 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_OTHER,
 };
 
+/* Network Management State */
+struct gsm_nm_state {
+	u_int8_t operational;
+	u_int8_t administrative;
+};
+
+
 /*
  * LOCATION UPDATING REQUEST state
  *
@@ -154,6 +161,7 @@ struct gsm_bts_trx_ts {
 	enum gsm_phys_chan_config pchan;
 
 	unsigned int flags;
+	struct gsm_nm_state nm_state;
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
@@ -168,6 +176,7 @@ struct gsm_bts_trx {
 	u_int8_t nr;
 	/* how do we talk RSL with this TRX? */
 	struct e1inp_sign_link *rsl_link;
+	struct gsm_nm_state nm_state;
 
 	u_int16_t arfcn;
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
@@ -176,6 +185,8 @@ struct gsm_bts_trx {
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
 	GSM_BTS_TYPE_BS11,
+	GSM_BTS_TYPE_NANOBTS_900,
+	GSM_BTS_TYPE_NANOBTS_1800,
 };
 
 /**
@@ -224,6 +235,7 @@ struct gsm_bts {
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
+	struct gsm_nm_state nm_state;
 
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
@@ -235,6 +247,11 @@ struct gsm_bts {
 
 	/* CCCH is on C0 */
 	struct gsm_bts_trx *c0;
+
+	struct {
+		struct gsm_nm_state nm_state;
+	} site_mgr;
+	
 	/* transceivers */
 	int num_trx;
 	struct gsm_bts_trx trx[BTS_MAX_TRX+1];
