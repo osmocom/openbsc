@@ -113,12 +113,14 @@ struct tlv_p_entry {
 	u_int8_t *val;
 };
 
-struct tlv_parser {
+struct tlv_parsed {
 	struct tlv_p_entry lv[0xff];
 };
 
-#define TLVP_PRESENT(x, y)	(x->lv[y].val)
-#define TLVP_LEN(x, y)		x->lv[y].len
-#define TLVP_VAL(x, y)		x->lv[y].val
+int tlv_parse(struct tlv_parsed *dec, u_int8_t *buf, int buf_len);
+
+#define TLVP_PRESENT(x, y)	((x)->lv[y].val)
+#define TLVP_LEN(x, y)		(x)->lv[y].len
+#define TLVP_VAL(x, y)		(x)->lv[y].val
 
 #endif /* _TLV_H */
