@@ -150,7 +150,7 @@ static int paging_pending_request(struct gsm_bts_paging_state *bts,
 
 static void paging_T3113_expired(void *data)
 {
-	struct gsm_paging_request *req;
+	struct gsm_paging_request *req = (struct gsm_paging_request *)data;
 
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
