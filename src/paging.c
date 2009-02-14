@@ -37,6 +37,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
@@ -107,24 +108,51 @@ static void paging_move_to_next(struct gsm_bts_paging_state *paging_bts)
 		paging_bts->last_request = NULL;
 }
 
+/*
+ * This is kicked by the periodic PAGING LOAD Indicator
+ * coming from abis_rsl.c
+ *
+ * We attempt to iterate once over the list of items but
+ * only upto available_slots.
+ */
 static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts)
 {
-	struct gsm_paging_request *request = NULL;
+	struct gsm_paging_request *initial_request = NULL;
+	struct gsm_paging_request *current_request = NULL;
 
-	if (!paging_bts->last_request)
-		paging_bts->last_request =
-			(struct gsm_paging_request *)paging_bts->pending_requests.next; 
-	if (&paging_bts->last_request->entry == &paging_bts->pending_requests) {
+	/*
+	 * Determine if the pending_requests list is empty and
+	 * return then.
+	 */
+	if (&paging_bts->pending_requests == paging_bts->pending_requests.next) {
 		paging_bts->last_request = NULL;
 		return;
 	}
 
-	/* handle the paging request now */
-	request = paging_bts->last_request;
-	page_ms(request);
+	if (!paging_bts->last_request)
+		paging_move_to_next(paging_bts);
 
-	/* move to the next item */
-	paging_move_to_next(paging_bts);
+	assert(paging_bts->last_request);
+	initial_request = paging_bts->last_request;
+	current_request = initial_request;
+
+	do {
+		/* handle the paging request now */
+		page_ms(current_request);
+		paging_bts->available_slots--;
+
+		/*
+		 * move to the next item. We might wrap around
+		 * this means last_request will be NULL and we just
+		 * call paging_page_to_next again. It it guranteed
+		 * that the list is not empty.
+		 */
+		paging_move_to_next(paging_bts);
+		if (!paging_bts->last_request)
+			paging_move_to_next(paging_bts);
+		current_request = paging_bts->last_request;
+	} while (paging_bts->available_slots > 0
+		    &&  initial_request != current_request);
 }
 
 void paging_init(struct gsm_bts *bts)
