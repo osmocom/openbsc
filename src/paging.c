@@ -185,12 +185,15 @@ static void paging_T3113_expired(void *data)
 		req, req->subscr->imsi);
 	
 	struct paging_signal_data sig_data = {
+		.data = {
+			.area = S_PAGING,
+		},
 		.subscr = req->subscr,
 		.bts	= req->bts,
 		.lchan	= NULL,
 	};
 
-	dispatch_signal(S_PAGING, &sig_data.data);
+	dispatch_signal(&sig_data.data);
 	paging_remove_request(&req->bts->paging, req);
 }
 

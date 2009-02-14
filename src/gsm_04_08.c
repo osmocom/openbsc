@@ -701,11 +701,14 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		subscr->name ? subscr->name : subscr->imsi);
 
 	struct paging_signal_data sig_data = {
+		.data = {
+			.area = S_PAGING,
+		},
 		.subscr = subscr,
 		.bts	= msg->lchan->ts->trx->bts,
 		.lchan	= msg->lchan,
 	};
-	dispatch_signal(S_PAGING, &sig_data.data);
+	dispatch_signal(&sig_data.data);
 	paging_request_stop(msg->trx->bts, subscr);
 
 	if (!msg->lchan->subscr)

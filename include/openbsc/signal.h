@@ -32,6 +32,7 @@
 
 
 struct signal_data {
+	int area;
 };
 
 
@@ -48,10 +49,10 @@ struct paging_signal_data {
 
 /* Management */
 void register_signal_handler(int areas, int (*sig)(struct signal_data *, void *data), void *data);
-void remove_signal_handler(int (*sig)(struct signal_data *, void *data), void *data);
+void remove_signal_handler(int areas, int (*sig)(struct signal_data *, void *data), void *data);
 
 /* Dispatch */
-void dispatch_signal(int area, struct signal_data *data);
+void dispatch_signal(struct signal_data *data);
 
 
 #endif

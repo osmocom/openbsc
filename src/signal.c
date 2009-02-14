@@ -48,12 +48,13 @@ void register_signal_handler(int areas,
 	llist_add_tail(&signal_handler_list, &sig_data->entry);
 }
 
-void remove_signal_handler(int (*sig_handler)(struct signal_data *, void *), void *data)
+void remove_signal_handler(int areas, int (*sig_handler)(struct signal_data *, void *), void *data)
 {
 	struct signal_handler *handler;
 
 	llist_for_each_entry(handler, &signal_handler_list, entry) {
-		if (handler->sig_handler == sig_handler && handler->data == data) {
+		if (handler->sig_handler == sig_handler
+		    && handler->data == data && areas == handler->areas) {
 			llist_del(&handler->entry);
 			free(handler);
 			break;
@@ -62,12 +63,12 @@ void remove_signal_handler(int (*sig_handler)(struct signal_data *, void *), voi
 }
 
 
-void dispatch_signal(int area, struct signal_data *data)
+void dispatch_signal(struct signal_data *data)
 {
 	struct signal_handler *handler;
 
 	llist_for_each_entry(handler, &signal_handler_list, entry) {
-		if (handler->areas & area) {
+		if (handler->areas & data->area) {
 		    (*handler->sig_handler)(data, handler->data);
 		}
 	}
