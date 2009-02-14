@@ -41,6 +41,7 @@
 
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
+#include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 
@@ -183,7 +184,13 @@ static void paging_T3113_expired(void *data)
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
-	/* FIXME: send a RR signal indicating that paging has failed */
+	struct paging_signal_data sig_data = {
+		.subscr = req->subscr,
+		.bts	= req->bts,
+		.lchan	= NULL,
+	};
+
+	dispatch_signal(S_PAGING, &sig_data.data);
 	paging_remove_request(&req->bts->paging, req);
 }
 
