@@ -449,6 +449,8 @@ int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
 int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 			   u_int8_t e1_port, u_int8_t e1_timeslot,
 			   u_int8_t e1_subslot);
+int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len);
+int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len);
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 			u_int8_t i2, u_int8_t i3, u_int8_t *attr, int att_len);

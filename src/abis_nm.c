@@ -199,24 +199,35 @@ static const char *opstate_name(u_int8_t os)
 	}
 }
 
-
 static int abis_nm_rx_statechg_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t *data = &foh->data[0];
+	struct gsm_bts *bts = mb->trx->bts;
+	u_int8_t op_state = 0;
 	
 	DEBUGP(DNM, "STATE CHG: OC=%s(%02x) INST=(%02x,%02x,%02x) ",
 		obj_class_name(foh->obj_class), foh->obj_class, 
 		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
 		foh->obj_inst.ts_nr);
-	if (*data++ == NM_ATT_OPER_STATE)
-		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(*data++));
+	if (*data++ == NM_ATT_OPER_STATE) {
+		u_int8_t op_state = *data++;
+		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(op_state));
+			
+	}
 	if (*data++ == NM_ATT_AVAIL_STATUS) {
 		u_int8_t att_len = *data++;
 		while (att_len--)
 			DEBUGPC(DNM, "AVAIL=%02x ", *data++);
 	}
 	DEBUGPC(DNM, "\n");
+	if (op_state == 1) {
+		/* try to enable objects that are disabled */
+		abis_nm_opstart(bts, foh->obj_class,
+				foh->obj_inst.bts_nr,
+				foh->obj_inst.trx_nr,
+				foh->obj_inst.ts_nr);
+	}
 	return 0;
 }
 
@@ -924,6 +935,42 @@ int abis_nm_disc_terr_traf(struct abis_nm_h *h, struct abis_om_obj_inst *inst,
 }
 #endif
 
+/* Chapter 8.6.1 */
+int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *cur;
+
+	DEBUGP(DNM, "Set BTS Attr (bts=%d)\n", bts->nr);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, attr_len, NM_MT_SET_BTS_ATTR, NM_OC_BTS, bts->nr, 0xff, 0xff);
+	cur = msgb_put(msg, attr_len);
+	memcpy(cur, attr, attr_len);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* Chapter 8.6.2 */
+int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *cur;
+
+	DEBUGP(DNM, "Set TRX Attr (bts=%d,trx=%d)\n", trx->bts->nr, trx->nr);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, attr_len, NM_MT_SET_RADIO_ATTR, NM_OC_RADIO_CARRIER,
+			trx->bts->nr, trx->nr, 0xff);
+	cur = msgb_put(msg, attr_len);
+	memcpy(cur, attr, attr_len);
+
+	return abis_nm_sendmsg(trx->bts, msg);
+}
+
+/* Chapter 8.6.3 */
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 {
 	struct gsm_bts *bts = ts->trx->bts;
@@ -932,6 +979,8 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	u_int8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
 	u_int8_t len = 4 + 2 + 2 + 2 + 2 +3;
+
+	DEBUGP(DNM, "Set Chan Attr (bts=%d,trx=%d,ts=%d)\n", bts->nr, ts->trx->nr, ts->nr);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
@@ -998,6 +1047,8 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
 
+	DEBUGP(DNM, "Sending OPSTART obj_class=0x%02x obj_inst=(0x%02x, 0x%02x, 0x%02x)\n",
+		obj_class, i0, i1, i2);
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
 
@@ -1026,7 +1077,6 @@ int abis_nm_event_reports(struct gsm_bts *bts, int on)
 	else
 		return __simple_cmd(bts, NM_MT_REST_EVENT_REP);
 }
-
 
 /* Siemens (or BS-11) specific commands */
 
