@@ -203,6 +203,11 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
+	if (paging_pending_request(bts_entry, subscr)) {
+		DEBUGP(DPAG, "Paging request already pending\n");
+		return;
+	}
+
 	req = (struct gsm_paging_request *)malloc(sizeof(*req));
 	memset(req, 0, sizeof(*req));
 	req->subscr = subscr_get(subscr);
@@ -211,12 +216,7 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
 	schedule_timer(&req->T3113, T3113_VALUE);
-
-	if (!paging_pending_request(bts_entry, subscr)) {
-		llist_add_tail(&req->entry, &bts_entry->pending_requests);
-	} else {
-		DEBUGP(DPAG, "Paging request already pending\n");
-	}
+	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 }
 
 /* we consciously ignore the type of the request here */
