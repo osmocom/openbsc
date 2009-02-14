@@ -41,6 +41,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
+#include <openbsc/signal.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -698,6 +699,13 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name ? subscr->name : subscr->imsi);
+
+	struct paging_signal_data sig_data = {
+		.subscr = subscr,
+		.bts	= msg->lchan->ts->trx->bts,
+		.lchan	= msg->lchan,
+	};
+	dispatch_signal(S_PAGING, &sig_data.data);
 	paging_request_stop(msg->trx->bts, subscr);
 
 	if (!msg->lchan->subscr)
