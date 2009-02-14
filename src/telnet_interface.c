@@ -32,6 +32,7 @@
 #include <openbsc/msgb.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/paging.h>
+#include <openbsc/signal.h>
 
 extern void telnet_parse(struct telnet_connection *connection, char *line);
 
@@ -47,6 +48,8 @@ LLIST_HEAD(active_connections);
 
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
+static int telnet_paging_callback(struct signal_data *signal, void *data);
+
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
 	.cb	    = telnet_new_connection,
@@ -84,6 +87,9 @@ void telnet_init(struct gsm_network *network, int port) {
 	server_socket.data = network;
 	server_socket.fd = fd;
 	bsc_register_fd(&server_socket);
+
+	/* register paging callbacks */
+	register_signal_handler(S_PAGING, telnet_paging_callback, network);
 }
 
 void telnet_write_help(int fd) {
@@ -351,6 +357,27 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	llist_add_tail(&connection->entry, &active_connections);
 
 	print_welcome(new_connection);
+
+	return 0;
+}
+
+static int telnet_paging_callback(struct signal_data *signal, void *data)
+{
+	struct paging_signal_data *paging =
+		(struct paging_signal_data *) signal;
+	struct telnet_connection *con;
+
+	llist_for_each_entry(con, &active_connections, entry) {
+		if (paging->lchan) {
+			WRITE_CONNECTION(con->fd.fd, "Paging succeeded\n");
+			show_lchan(con->fd.fd, paging->lchan);
+		} else {
+			WRITE_CONNECTION(con->fd.fd, "Paging failed for subscriber: %s/%s/%s\n",
+				paging->subscr->imsi,
+				paging->subscr->tmsi,
+				paging->subscr->name);
+		}
+	}
 
 	return 0;
 }
