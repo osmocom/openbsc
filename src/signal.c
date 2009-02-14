@@ -45,7 +45,7 @@ void register_signal_handler(int areas,
 	sig_data->areas = areas;
 	sig_data->data = data;
 	sig_data->sig_handler = handler;
-	llist_add_tail(&signal_handler_list, &sig_data->entry);
+	llist_add_tail(&sig_data->entry, &signal_handler_list);
 }
 
 void remove_signal_handler(int areas, int (*sig_handler)(struct signal_data *, void *), void *data)
