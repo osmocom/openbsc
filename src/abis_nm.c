@@ -984,7 +984,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
-			NM_OC_BASEB_TRANSC, bts->bts_nr,
+			NM_OC_CHANNEL, bts->bts_nr,
 			ts->trx->nr, ts->nr);
 	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
 	msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
