@@ -98,8 +98,12 @@ enum gsm_chreq_reason_t {
 struct gsm_nm_state {
 	u_int8_t operational;
 	u_int8_t administrative;
+	u_int8_t availability;
 };
-
+struct gsm_attr {
+	u_int8_t len;
+	u_int8_t data[0];
+};
 
 /*
  * LOCATION UPDATING REQUEST state
@@ -162,6 +166,7 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 	struct gsm_nm_state nm_state;
+	struct gsm_attr *nm_attr;
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
@@ -177,6 +182,10 @@ struct gsm_bts_trx {
 	/* how do we talk RSL with this TRX? */
 	struct e1inp_sign_link *rsl_link;
 	struct gsm_nm_state nm_state;
+	struct gsm_attr *nm_attr;
+	struct {
+		struct gsm_nm_state nm_state;
+	} bb_transc;
 
 	u_int16_t arfcn;
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
@@ -236,6 +245,7 @@ struct gsm_bts {
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
 	struct gsm_nm_state nm_state;
+	struct gsm_attr *nm_attr;
 
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
@@ -269,8 +279,8 @@ struct gsm_network {
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
 };
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, u_int16_t country_code,
-				     u_int16_t network_code);
+struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
+				     u_int16_t country_code, u_int16_t network_code);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 const char *gsm_lchan_name(enum gsm_chan_t c);

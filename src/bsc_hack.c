@@ -54,6 +54,7 @@ static struct gsm_network *gsmnet;
 static int MCC = 1;
 static int MNC = 1;
 static int ARFCN = HARDCODED_ARFCN;
+static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static const char *database_name = "hlr.sqlite3";
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -140,13 +141,32 @@ SET BTS ATTRIBUTES
 
 unsigned char msg_2[] = 
 {
-	0x41, 0x01, 0x00, 0xFF, 0xFF, 0x09, 0x3F, 0x0A, 0x04, 0x61, 0x00, 0x0B,
-	0x01, 0x0C, 0x00, 0x62, 0x00, 0x66, 0x00, 0x6E, 0x06, 0x18, 0x1F, 0x19,
-	0x0A, 0x0F, 0x14, 0x19, 0x1E, 0x7B, 0x0B, 0x23, 0x14, 0x28, 0x00, 0x04,
-	0x03, 0x2A, 0x7F, 0x2B, 0x00, 0xFA, 0x8F, 0x7D, 0x33, 0x2C, 0x1F, 0x29,
-	0x5A, 0x5A, 0x5A, 0x87, 0x94, 0x23, 0x28, 0x95, 0x23, 0x28, 0x35, 0x01,
-	0x00, 0x46, 0x01, 0x00, 0x58, 0x01, 0x40, 0xC5, 0x01, 0x00, 0xF2, 0x01,
-	0x00, 0x08, 0x00, HARDCODED_ARFCN/*0x01*/, 
+	0x41, 0x01, 0x00, 0xFF, 0xFF,
+		NM_ATT_BSIC, 0x3F,
+		NM_ATT_BTS_AIR_TIMER, 0x04,
+		0x61, 0x00,
+		NM_ATT_CCCH_L_I_P, 0x01,
+		NM_ATT_CCCH_L_T, 0x00,
+		0x62, 0x00,
+		0x66, 0x00,
+		0x6E, 0x06,
+		NM_ATT_INTAVE_PARAM, 0x1F, 
+		NM_ATT_INTERF_BOUND, 0x0A, 0x0F, 0x14, 0x19, 0x1E, 0x7B,
+		NM_ATT_CCCH_L_T, 0x23,
+		NM_ATT_GSM_TIME, 0x28, 0x00,
+		NM_ATT_ADM_STATE, 0x03,
+		NM_ATT_RACH_B_THRESH, 0x7F,
+		NM_ATT_LDAVG_SLOTS, 0x00, 0xFA,
+		0x8F, 0x7D,
+		NM_ATT_T200, 0x2C, 0x1F, 0x29, 0x5A, 0x5A, 0x5A, 0x87,
+		0x94, 0x23, 0x28,
+		0x95, 0x23, 0x28, 
+		0x35, 0x01, 0x00,
+		0x46, 0x01, 0x00,
+		0x58, 0x01, 0x40,
+		0xC5, 0x01, 0x00,
+		0xF2, 0x01, 0x00, 
+		NM_ATT_BCCH_ARFCN, 0x00, HARDCODED_ARFCN/*0x01*/, 
 };
 
 // Handover Recognition, SET ATTRIBUTES
@@ -260,12 +280,138 @@ unsigned char msg_6[] =
 	0x00, 0xDC, 0x01, 0xFE, 0xDD, 0x01, 0x01, 0x9B, 0x01, 0x01, 0x9F, 0x01, 0x00, 
 };
 
+static unsigned char nanobts_attr_bts[] = {
+	NM_ATT_INTERF_BOUND, 0x55, 0x5b, 0x61, 0x67, 0x6d, 0x73,
+	NM_ATT_INTAVE_PARAM, 0x06,
+	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10, 
+	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
+	NM_ATT_MAX_TA, 0x3f,
+	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 0x0a,
+	NM_ATT_CCCH_L_T, 0x1e,
+	NM_ATT_CCCH_L_I_P, 0x64,
+	NM_ATT_RACH_B_THRESH, 0x0a,
+	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8,
+	NM_ATT_BTS_AIR_TIMER, 0x80,
+	NM_ATT_NY1, 0x0a,
+	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
+	NM_ATT_BSIC, 0x20,
+};
 
-static void bootstrap_om(struct gsm_bts *bts)
+static unsigned char nanobts_attr_radio[] = {
+	NM_ATT_RF_MAXPOWR_R, 0x0c,
+	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
+};
+
+int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+{
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+
+	/* This is currently only required on nanoBTS */
+
+	switch (evt) {
+	case EVT_STATECHG_OPER:
+		switch (obj_class) {
+		case NM_OC_SITE_MANAGER:
+			bts = container_of(obj, struct gsm_bts, site_mgr);
+			if (old_state->operational != 2 && new_state->operational == 2) {
+				abis_nm_opstart(bts, NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
+			}
+			break;
+		case NM_OC_BTS:
+			bts = obj;
+			if (new_state->availability == 5) {
+				abis_nm_set_bts_attr(bts, nanobts_attr_bts,
+							sizeof(nanobts_attr_bts));
+				abis_nm_opstart(bts, NM_OC_BTS,
+						bts->nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(bts, NM_OC_BTS,
+						      bts->nr, 0xff, 0xff,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_RADIO_CARRIER:
+			trx = obj;
+			if (new_state->availability == 3) {
+				abis_nm_set_radio_attr(trx, nanobts_attr_radio,
+							sizeof(nanobts_attr_radio));
+				abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
+						trx->bts->nr, trx->nr, 0xff);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
+						      trx->bts->nr, trx->nr, 0xff,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_CHANNEL:
+			ts = obj;
+			trx = ts->trx;
+			if (new_state->availability == 5) {
+				if (ts->nr == 0 && trx == trx->bts->c0)
+					abis_nm_set_channel_attr(ts, NM_CHANC_SDCCH_CBCH);
+				else
+					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
+				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
+						trx->bts->nr, trx->nr, ts->nr);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_CHANNEL,
+						      trx->bts->nr, trx->nr, ts->nr,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_BASEB_TRANSC:
+			trx = container_of(obj, struct gsm_bts_trx, bb_transc);
+			if (new_state->availability == 5) {
+				abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC, 
+						trx->bts->nr, trx->nr, 0xff);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC, 
+							trx->bts->nr, trx->nr, 0xff,
+							NM_STATE_UNLOCKED);
+			}
+			break;
+		}
+		break;
+	}
+	return 0;
+}
+
+static void bootstrap_om_nanobts(struct gsm_bts *bts)
+{
+#if 0
+	struct gsm_bts_trx *trx = &bts->trx[0];
+	int i;
+
+	abis_nm_set_bts_attr(bts, nanobts_attr_bts, sizeof(nanobts_attr_bts));
+	abis_nm_opstart(bts, NM_OC_BTS, 0x00, 0xff, 0xff);
+	abis_nm_set_radio_attr(bts->c0, nanobts_attr_radio, sizeof(nanobts_attr_radio));
+
+	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
+	for (i = 1; i < TRX_NR_TS; i++)
+		abis_nm_set_channel_attr(&trx->ts[i], NM_CHANC_TCHFull);
+
+	abis_nm_opstart(bts, NM_OC_BASEB_TRANSC, 0x00, 0x00, 0xff);
+	abis_nm_opstart(bts, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xff);
+
+
+	for (i = 0; i < TRX_NR_TS; i++)
+		abis_nm_opstart(bts, NM_OC_CHANNEL, 0x00, 0x00, i);
+	
+	abis_nm_chg_adm_state(bts, NM_OC_BASEB_TRANSC, 0x00, 0x00, 0xff,
+			      NM_STATE_UNLOCKED);
+
+	abis_nm_chg_adm_state(bts, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xff,
+			      NM_STATE_UNLOCKED);
+
+	for (i = 0; i < TRX_NR_TS; i++)
+		abis_nm_chg_adm_state(bts, NM_OC_CHANNEL, 0x00, 0x00, i,
+				      NM_STATE_UNLOCKED);
+	
+#endif
+}
+
+static void bootstrap_om_bs11(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = &bts->trx[0];
-
-	fprintf(stdout, "bootstrapping OML\n");
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -353,6 +499,23 @@ static void bootstrap_om(struct gsm_bts *bts)
 
 	/* restart sending event reports */
 	abis_nm_event_reports(bts, 1);
+}
+
+static void bootstrap_om(struct gsm_bts *bts)
+{
+	fprintf(stdout, "bootstrapping OML\n");
+
+	switch (bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		bootstrap_om_bs11(bts);
+		break;
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		bootstrap_om_nanobts(bts);
+		break;
+	default:
+		fprintf(stderr, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
+	}
 }
 
 static int shutdown_om(struct gsm_bts *bts)
@@ -693,7 +856,7 @@ static int bootstrap_network(void)
 	struct gsm_bts *bts;
 
 	/* initialize our data structures */
-	gsmnet = gsm_network_init(1, MCC, MNC);
+	gsmnet = gsm_network_init(1, BTS_TYPE, MCC, MNC);
 	if (!gsmnet)
 		return -ENOMEM;
 
@@ -718,7 +881,10 @@ static int bootstrap_network(void)
 	telnet_init(gsmnet, 4242);
 
 	/* E1 mISDN input setup */
-	return e1_config(bts);
+	if (BTS_TYPE == GSM_BTS_TYPE_BS11)
+		return e1_config(bts);
+	else
+		return ia_config(bts);
 }
 
 static void create_pcap_file(char *file)
@@ -758,6 +924,23 @@ static void print_help()
 	printf("  -h --help this text\n");
 }
 
+static const char *bts_types[] = {
+	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
+	[GSM_BTS_TYPE_BS11] = "bs11",
+	[GSM_BTS_TYPE_NANOBTS_900] = "nanobts900",
+	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
+};
+
+enum gsm_bts_type parse_btstype(char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
+		if (!strcmp(arg, bts_types[i]))
+			return i;
+	}	
+	return 0; /* Default: BS11 */
+}
+
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
@@ -773,10 +956,11 @@ static void handle_options(int argc, char** argv)
 			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
 			{"arfcn", 1, 0, 'f'},
+			{"bts-type", 1, 0, 't'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -812,6 +996,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'p':
 			create_pcap_file(optarg);
+			break;
+		case 't':
+			BTS_TYPE = parse_btstype(optarg);
 			break;
 		default:
 			/* ignore */
