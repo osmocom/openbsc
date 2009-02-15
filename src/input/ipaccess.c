@@ -76,10 +76,8 @@ static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 {
 	u_int8_t msg_type = *(msg->l2h);
 
-	printf("msg_type=0x%02x\n", msg_type);
 	switch (msg_type) {
 	case MSGT_PING:
-		DEBUGP(DMI, "PING?\n");
 		write(fd, pong, sizeof(pong));
 		break;
 	case MSGT_PONG:
@@ -89,7 +87,7 @@ static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 		DEBUGP(DMI, "ID_RESP\n");
 		break;
 	case MSGT_IDENTITY_ACK:
-		DEBUGP(DMI, "ID_ACK\n");
+		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
 		write(fd, id_ack, sizeof(id_ack));
 		break;	
 	}
@@ -97,6 +95,9 @@ static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 	msgb_free(msg);
 	return 0;
 }
+
+/* FIXME: this is per BTS */
+static int oml_up = 0;
 
 static int handle_ts1_read(struct bsc_fd *bfd)
 {
@@ -120,6 +121,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 	if (ret == 0) {
 		fprintf(stderr, "BTS disappeared, dead socket\n");
+		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, PROTO_RSL);
+		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, PROTO_OML);
 		bsc_unregister_fd(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
@@ -135,7 +138,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		//return -EIO;
 	}
 	msgb_put(msg, ret);
-	DEBUGP(DMI, "<= ret=%d, len=%d, proto=0x%02x\n", ret, hh->len, hh->proto);
 
 	if (hh->proto == PROTO_IPACCESS)
 		return ipaccess_rcvmsg(msg, bfd->fd);
@@ -158,9 +160,14 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case PROTO_OML:
+		if (!oml_up) {
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, PROTO_OML);
+			oml_up = 1;
+		}
 		ret = abis_nm_rcvmsg(msg);
 		break;
 	default:
+		DEBUGP(DMI, "Unknown IP.access protocol proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
 		break;
 	}
@@ -205,12 +212,13 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	}
 
 	if (debug_mask & DMI) {
-		fprintf(stdout, "TX proto=0x%x: ", hh->proto);
+		fprintf(stdout, "TX: ");
 		hexdump(l2_data, hh->len);
 	}
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
+	usleep(100000);
 
 	return ret;
 }
