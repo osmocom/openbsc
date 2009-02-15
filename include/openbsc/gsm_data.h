@@ -125,6 +125,10 @@ struct gsm_lchan {
 	u_int8_t nr;
 	/* The lotical channel type */
 	enum gsm_chan_t type;
+	/* Power levels for MS and BTS */
+	u_int8_t bs_power;
+	u_int8_t ms_power;
+	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
 

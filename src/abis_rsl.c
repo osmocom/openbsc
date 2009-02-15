@@ -287,12 +287,11 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		     (u_int8_t *) chan_mode);
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) chan_ident);
-	/* FIXME: this shoould be optional */
 #if 0
 	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
 		     (u_int8_t *) &encr_info);
-	msgb_tv_put(msg, RSL_IE_BS_POWER, bs_power);
 #endif
+	msgb_tv_put(msg, RSL_IE_BS_POWER, bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
 
@@ -308,8 +307,6 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
-	/* FXIME: don't hardcode these!! */
-	u_int8_t ms_power = 0x0f;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
@@ -352,13 +349,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		     (u_int8_t *) &cm);
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) &ci);
-	/* FIXME: this should be optional */
 #if 0
 	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
 		     (u_int8_t *) &encr_info);
-	msgb_tv_put(msg, RSL_IE_BS_POWER, bs_power);
 #endif
-	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
+	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
+	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
 
 	msg->trx = lchan->ts->trx;
@@ -647,6 +643,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
+	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
