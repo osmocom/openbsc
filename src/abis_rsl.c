@@ -220,6 +220,15 @@ static struct msgb *rsl_msgb_alloc(void)
 	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM);
 }
 
+#define MACBLOCK_SIZE	23
+static void pad_macblock(u_int8_t *out, const u_int8_t *in, int len)
+{
+	memcpy(out, in, len);
+
+	if (len < MACBLOCK_SIZE)
+		memset(out+len, 0x2b, MACBLOCK_SIZE-len);
+}
+
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len)
@@ -428,14 +437,22 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t buf[MACBLOCK_SIZE];
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IMMEDIATE_ASSIGN_CMD);
 	dh->chan_nr = RSL_CHAN_PCH_AGCH;
 
-	/* If phase 2, FULL_IMM_ASS_INFO */
-
-	msgb_tlv_put(msg, RSL_IE_IMM_ASS_INFO, len, val);
+	switch (bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		msgb_tlv_put(msg, RSL_IE_IMM_ASS_INFO, len, val);
+		break;
+	default:
+		/* If phase 2, construct a FULL_IMM_ASS_INFO */
+		pad_macblock(buf, val, len);
+		msgb_tlv_put(msg, RSL_IE_FULL_IMM_ASS_INFO, MACBLOCK_SIZE, buf);
+		break;
+	}
 
 	msg->trx = bts->c0;
 
