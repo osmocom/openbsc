@@ -298,7 +298,7 @@ static unsigned char nanobts_attr_bts[] = {
 };
 
 static unsigned char nanobts_attr_radio[] = {
-	NM_ATT_RF_MAXPOWR_R, 0x0c,
+	NM_ATT_RF_MAXPOWR_R, 0x00,
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
@@ -354,7 +354,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			trx = ts->trx;
 			if (new_state->availability == 5) {
 				if (ts->nr == 0 && trx == trx->bts->c0)
-					abis_nm_set_channel_attr(ts, NM_CHANC_SDCCH_CBCH);
+					abis_nm_set_channel_attr(ts, NM_CHANC_BCCH_CBCH);
 				else
 					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
 				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
@@ -385,36 +385,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 
 static void bootstrap_om_nanobts(struct gsm_bts *bts)
 {
-#if 0
-	struct gsm_bts_trx *trx = &bts->trx[0];
-	int i;
-
-	abis_nm_set_bts_attr(bts, nanobts_attr_bts, sizeof(nanobts_attr_bts));
-	abis_nm_opstart(bts, NM_OC_BTS, 0x00, 0xff, 0xff);
-	abis_nm_set_radio_attr(bts->c0, nanobts_attr_radio, sizeof(nanobts_attr_radio));
-
-	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
-	for (i = 1; i < TRX_NR_TS; i++)
-		abis_nm_set_channel_attr(&trx->ts[i], NM_CHANC_TCHFull);
-
-	abis_nm_opstart(bts, NM_OC_BASEB_TRANSC, 0x00, 0x00, 0xff);
-	abis_nm_opstart(bts, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xff);
-
-
-	for (i = 0; i < TRX_NR_TS; i++)
-		abis_nm_opstart(bts, NM_OC_CHANNEL, 0x00, 0x00, i);
-	
-	abis_nm_chg_adm_state(bts, NM_OC_BASEB_TRANSC, 0x00, 0x00, 0xff,
-			      NM_STATE_UNLOCKED);
-
-	abis_nm_chg_adm_state(bts, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xff,
-			      NM_STATE_UNLOCKED);
-
-	for (i = 0; i < TRX_NR_TS; i++)
-		abis_nm_chg_adm_state(bts, NM_OC_CHANNEL, 0x00, 0x00, i,
-				      NM_STATE_UNLOCKED);
-	
-#endif
+	/* We don't do callback based bootstrapping, but event driven (see above) */
 }
 
 static void bootstrap_om_bs11(struct gsm_bts *bts)
@@ -929,6 +900,7 @@ static void print_help()
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
+	printf("  -t --bts-type type The BTS type (bs11, nanobts900, nanobts1800)\n");
 	printf("  -h --help this text\n");
 }
 
@@ -946,7 +918,7 @@ enum gsm_bts_type parse_btstype(char *arg)
 		if (!strcmp(arg, bts_types[i]))
 			return i;
 	}	
-	return 0; /* Default: BS11 */
+	return GSM_BTS_TYPE_BS11; /* Default: BS11 */
 }
 
 static void handle_options(int argc, char** argv)
