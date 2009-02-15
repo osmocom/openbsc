@@ -782,14 +782,21 @@ static void patch_tables(struct gsm_bts *bts)
 	type_4->lai = lai;
 	type_6->lai = lai;
 
-	/* patch ARFCN */
+	/* patch ARFCN into BTS Attributes */
 	msg_2[74] &= 0xf0;
 	msg_2[74] |= arfcn_high;
 	msg_2[75] = arfcn_low;
+	nanobts_attr_bts[42] &= 0xf0;
+	nanobts_attr_bts[42] |= arfcn_high;
+	nanobts_attr_bts[43] = arfcn_low;
 
+	/* patch ARFCN into TRX Attributes */
 	msg_6[7] &= 0xf0;
 	msg_6[7] |= arfcn_high;
 	msg_6[8] = arfcn_low;
+	nanobts_attr_radio[5] &= 0xf0;
+	nanobts_attr_radio[5] |= arfcn_high;
+	nanobts_attr_radio[6] = arfcn_low;
 
 	type_4->data[2] &= 0xf0;
 	type_4->data[2] |= arfcn_high;
