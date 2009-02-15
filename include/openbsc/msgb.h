@@ -56,6 +56,11 @@ extern struct msgb *msgb_dequeue(struct llist_head *queue);
 #define msgb_l3(m)	((void *)(m->l3h))
 #define msgb_sms(m)	((void *)(m->smsh))
 
+static inline unsigned int msgb_l3len(const struct msgb *msgb)
+{
+	return msgb->tail - (u_int8_t *)msgb_l3(msgb);
+}
+
 static inline unsigned int msgb_headlen(const struct msgb *msgb)
 {
 	return msgb->len - msgb->data_len;
