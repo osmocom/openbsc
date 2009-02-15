@@ -374,6 +374,44 @@ enum abis_nm_chan_comb {
 	NM_CHANC_SDCCH_CBCH	= 0x08,
 };
 
+/* Section 9.4.36: NACK Causes */
+enum abis_nm_nack_cause {
+	/* General Nack Causes */
+	NM_NACK_INCORR_STRUCT		= 0x01,
+	NM_NACK_MSGTYPE_INVAL		= 0x02,
+	NM_NACK_OBJCLASS_INVAL		= 0x05,
+	NM_NACK_OBJCLASS_NOTSUPP	= 0x06,
+	NM_NACK_BTSNR_UNKN		= 0x07,
+	NM_NACK_TRXNR_UNKN		= 0x08,
+	NM_NACK_OBJINST_UNKN		= 0x09,
+	NM_NACK_ATTRID_INVAL		= 0x0c,
+	NM_NACK_ATTRID_NOTSUPP		= 0x0d,
+	NM_NACK_PARAM_RANGE		= 0x0e,
+	NM_NACK_ATTRLIST_INCONSISTENT	= 0x0f,
+	NM_NACK_SPEC_IMPL_NOTSUPP	= 0x10,
+	NM_NACK_CANT_PERFORM		= 0x11,
+	/* Specific Nack Causes */
+	NM_NACK_RES_NOTIMPL		= 0x19,
+	NM_NACK_RES_NOTAVAIL		= 0x1a,
+	NM_NACK_FREQ_NOTAVAIL		= 0x1b,
+	NM_NACK_TEST_NOTSUPP		= 0x1c,
+	NM_NACK_CAPACITY_RESTR		= 0x1d,
+	NM_NACK_PHYSCFG_NOTPERFORM	= 0x1e,
+	NM_NACK_TEST_NOTINIT		= 0x1f,
+	NM_NACK_PHYSCFG_NOTRESTORE	= 0x20,
+	NM_NACK_TEST_NOSUCH		= 0x21,
+	NM_NACK_TEST_NOSTOP		= 0x22,
+	NM_NACK_MSGINCONSIST_PHYSCFG	= 0x23,
+	NM_NACK_FILE_INCOMPLETE		= 0x25,
+	NM_NACK_FILE_NOTAVAIL		= 0x26,
+	MN_NACK_FILE_NOTACTIVATE	= 0x27,
+	NM_NACK_REQ_NOT_GRANT		= 0x28,
+	NM_NACK_WAIT			= 0x29,
+	NM_NACK_NOTH_REPORT_EXIST	= 0x2a,
+	NM_NACK_MEAS_NOTSUPP		= 0x2b,
+	NM_NACK_MEAS_NOTSTART		= 0x2c,
+};
+
 /* Section 9.4.1 */
 struct abis_nm_channel {
 	u_int8_t	attrib;
@@ -483,5 +521,13 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 int abis_nm_bs11_restart(struct gsm_bts *bts);
+
+/* Functions calling into other code parts */
+enum nm_evt {
+	EVT_STATECHG_OPER,
+	EVT_STATECHG_ADM,
+};
+int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state); 
 
 #endif /* _NM_H */

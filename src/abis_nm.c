@@ -74,6 +74,41 @@ static const enum abis_nm_msgtype sw_load_msgs[] = {
 	NM_MT_SW_ACTIVATED_REP,
 };
 
+static const enum abis_nm_msgtype nacks[] = {
+	NM_MT_LOAD_INIT_NACK,
+	NM_MT_LOAD_END_NACK,
+	NM_MT_SW_ACT_REQ_NACK,
+	NM_MT_ACTIVATE_SW_NACK,
+	NM_MT_ESTABLISH_TEI_NACK,
+	NM_MT_CONN_TERR_SIGN_NACK,
+	NM_MT_DISC_TERR_SIGN_NACK,
+	NM_MT_CONN_TERR_TRAF_NACK,
+	NM_MT_DISC_TERR_TRAF_NACK,
+	NM_MT_CONN_MDROP_LINK_NACK,
+	NM_MT_DISC_MDROP_LINK_NACK,
+	NM_MT_SET_BTS_ATTR_NACK,
+	NM_MT_SET_RADIO_ATTR_NACK,
+	NM_MT_SET_CHAN_ATTR_NACK,
+	NM_MT_PERF_TEST_NACK,
+	NM_MT_SEND_TEST_REP_NACK,
+	NM_MT_STOP_TEST_NACK,
+	NM_MT_STOP_EVENT_REP_NACK,
+	NM_MT_REST_EVENT_REP_NACK,
+	NM_MT_CHG_ADM_STATE_NACK,
+	NM_MT_CHG_ADM_STATE_REQ_NACK,
+	NM_MT_REP_OUTST_ALARMS_NACK,
+	NM_MT_CHANGEOVER_NACK,
+	NM_MT_OPSTART_NACK,
+	NM_MT_REINIT_NACK,
+	NM_MT_SET_SITE_OUT_NACK,
+	NM_MT_CHG_HW_CONF_NACK,
+	NM_MT_GET_ATTR_NACK,
+	NM_MT_SET_ALARM_THRES_NACK,
+	NM_MT_BS11_BEGIN_DB_TX_NACK,
+	NM_MT_BS11_END_DB_TX_NACK,
+	NM_MT_BS11_CREATE_OBJ_NACK,
+	NM_MT_BS11_DELETE_OBJ_NACK,
+};
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
 static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_ADD_INFO,
@@ -102,6 +137,88 @@ static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_MEAS_RES,
 	NM_ATT_MEAS_TYPE,
 };
+
+static const struct tlv_definition nm_att_tlvdef = {
+	.def = {
+		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
+		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV },
+		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V },
+		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV },
+		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_BCCH_ARFCN] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_BSIC] =			{ TLV_TYPE_TV },
+		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV },
+		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV },
+		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV },
+		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV },
+		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V },
+		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV },
+		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_HSN] =			{ TLV_TYPE_TV },
+		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV },
+		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
+		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_MAIO] =			{ TLV_TYPE_TV },
+		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV },
+		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV },
+		[NM_ATT_MDROP_LINK] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_MDROP_NEXT] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV },
+		[NM_ATT_NY1] =			{ TLV_TYPE_TV },
+		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV },
+		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV },
+		[NM_ATT_POWER_THRESH] =		{ TLV_TYPE_FIXED, 3 },
+		[NM_ATT_PROB_CAUSE] =		{ TLV_TYPE_FIXED, 3 },
+		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV },
+		[NM_ATT_LDAVG_SLOTS] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV },
+		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV },
+		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV },
+		[NM_ATT_START_TIME] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_T200] =			{ TLV_TYPE_FIXED, 7 },
+		[NM_ATT_TEI] =			{ TLV_TYPE_TV },
+		[NM_ATT_TEST_DUR] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV },
+		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_VSWR_THRESH] =		{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV },
+		[NM_ATT_TSC] =			{ TLV_TYPE_TV },
+		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV },
+		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
+		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
+		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
+		/* BS11 specifics */
+		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV },
+		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV },
+		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
+		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
+	},
+};
+#define nm_tlv_parse(dec, buf, len)	tlv_parse(dec, &nm_att_tlvdef, buf, len)
 
 static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, int size)
 {
@@ -199,28 +316,168 @@ static const char *opstate_name(u_int8_t os)
 	}
 }
 
+/* Chapter 9.4.7 */
+const char *avail_names[] = {
+	"In test",
+	"Failed",
+	"Power off",
+	"Off line",
+	"<not used>",
+	"Dependency",
+	"Degraded",
+	"Not installed",
+};
+
+static const char *avail_name(u_int8_t avail)
+{
+	if (avail >= ARRAY_SIZE(avail_names))
+		return "UNKNOWN";
+	return avail_names[avail];
+}
+	
+
+/* obtain the gsm_nm_state data structure for a given object instance */
+static struct gsm_nm_state *
+objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
+		 struct abis_om_obj_inst *obj_inst)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_nm_state *nm_state = NULL;
+
+	switch (obj_class) {
+	case NM_OC_BTS:
+		nm_state = &bts->nm_state;
+		break;
+	case NM_OC_RADIO_CARRIER:
+		if (obj_inst->trx_nr >= bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		nm_state = &trx->nm_state;
+		break;
+	case NM_OC_BASEB_TRANSC:
+		if (obj_inst->trx_nr >= bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		nm_state = &trx->bb_transc.nm_state;
+		break;
+	case NM_OC_CHANNEL:
+		if (obj_inst->trx_nr > bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		if (obj_inst->ts_nr >= TRX_NR_TS)
+			return NULL;
+		nm_state = &trx->ts[obj_inst->ts_nr].nm_state;
+		break;
+	case NM_OC_SITE_MANAGER:
+		nm_state = &bts->site_mgr.nm_state;
+		break;
+	}
+	return nm_state;
+}
+
+/* obtain the in-memory data structure of a given object instance */
+static void *
+objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
+	     struct abis_om_obj_inst *obj_inst)
+{
+	struct gsm_bts_trx *trx;
+	void *obj = NULL;
+
+	switch (obj_class) {
+	case NM_OC_BTS:
+		obj = bts;
+		break;
+	case NM_OC_RADIO_CARRIER:
+		if (obj_inst->trx_nr >= bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		obj = trx;
+		break;
+	case NM_OC_BASEB_TRANSC:
+		if (obj_inst->trx_nr >= bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		obj = &trx->bb_transc;
+		break;
+	case NM_OC_CHANNEL:
+		if (obj_inst->trx_nr > bts->num_trx)
+			return NULL;
+		trx = &bts->trx[obj_inst->trx_nr];
+		if (obj_inst->ts_nr >= TRX_NR_TS)
+			return NULL;
+		obj = &trx->ts[obj_inst->ts_nr];
+		break;
+	case NM_OC_SITE_MANAGER:
+		obj = &bts->site_mgr;
+		break;
+	}
+	return obj;
+}
+
+/* Update the administrative state of a given object in our in-memory data
+ * structures and send an event to the higher layer */
+static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
+			   struct abis_om_obj_inst *obj_inst, u_int8_t adm_state)
+{
+	struct gsm_nm_state *nm_state;
+	void *obj;
+	int rc;
+
+	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
+	obj = objclass2obj(bts, obj_class, obj_inst);
+	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, adm_state);
+	if (nm_state)
+		nm_state->administrative = adm_state;
+
+	return rc;
+}
+
 static int abis_nm_rx_statechg_rep(struct msgb *mb)
 {
+	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	u_int8_t *data = &foh->data[0];
 	struct gsm_bts *bts = mb->trx->bts;
-	u_int8_t op_state = 0;
-	
+	struct tlv_parsed tp;
+	struct gsm_nm_state *nm_state, new_state;
+	int rc;
+
 	DEBUGP(DNM, "STATE CHG: OC=%s(%02x) INST=(%02x,%02x,%02x) ",
 		obj_class_name(foh->obj_class), foh->obj_class, 
 		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
 		foh->obj_inst.ts_nr);
-	if (*data++ == NM_ATT_OPER_STATE) {
-		u_int8_t op_state = *data++;
-		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(op_state));
-			
+
+	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
+	if (!nm_state) {
+		DEBUGPC(DNM, "\n");
+		return -EINVAL;
 	}
-	if (*data++ == NM_ATT_AVAIL_STATUS) {
-		u_int8_t att_len = *data++;
-		while (att_len--)
-			DEBUGPC(DNM, "AVAIL=%02x ", *data++);
+
+	new_state = *nm_state;
+	
+	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
+		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
+		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(new_state.operational));
+	}
+	if (TLVP_PRESENT(&tp, NM_ATT_AVAIL_STATUS)) {
+		new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
+		DEBUGPC(DNM, "AVAIL=%s(%02x) ", avail_name(new_state.availability),
+			new_state.availability);
+	}
+	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
+		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
+		DEBUGPC(DNM, "ADM=%02x ", new_state.administrative);
 	}
 	DEBUGPC(DNM, "\n");
+
+	if (memcmp(&new_state, nm_state, sizeof(new_state))) {
+		/* Update the operational state of a given object in our in-memory data
+ 		* structures and send an event to the higher layer */
+		void *obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
+		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state);
+		*nm_state = new_state;
+	}
+#if 0
 	if (op_state == 1) {
 		/* try to enable objects that are disabled */
 		abis_nm_opstart(bts, foh->obj_class,
@@ -228,6 +485,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 				foh->obj_inst.trx_nr,
 				foh->obj_inst.ts_nr);
 	}
+#endif
 	return 0;
 }
 
@@ -245,9 +503,14 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	case NM_MT_SW_ACTIVATED_REP:
 		DEBUGP(DNM, "Software Activated Report\n");
 		break;
+	case NM_MT_FAILURE_EVENT_REP:
+		DEBUGP(DNM, "Failure Event Report\n");
+		break;
+	default:
+		DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
+		break;
+		
 	};
-
-	DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
 
 	return 0;
 }
@@ -292,6 +555,23 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 				 foh->data + oh->length-sizeof(*foh)-22, 22);
 }
 
+/* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
+static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
+{
+	struct abis_om_hdr *oh = msgb_l2(mb);
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct tlv_parsed tp;
+	u_int8_t adm_state;
+
+	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
+		return -EINVAL;
+
+	adm_state = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
+
+	return update_admstate(mb->trx->bts, foh->obj_class, &foh->obj_inst, adm_state);
+}
+
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
@@ -305,6 +585,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	if (is_in_arr(mt, sw_load_msgs, ARRAY_SIZE(sw_load_msgs)))
 		return abis_nm_rcvmsg_sw(mb);
 
+	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks)))
+		DEBUGP(DNM, "NACK 0x%02x\n", mt);
 #if 0
 	/* check if last message is to be acked */
 	if (is_ack_nack(nmh->last_msgtype)) {
@@ -325,6 +607,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 #endif
 
 	switch (mt) {
+	case NM_MT_CHG_ADM_STATE_ACK:
+		return abis_nm_rx_chg_adm_state_ack(mb);
+		break;
 	case NM_MT_SW_ACT_REQ:
 		return abis_nm_rx_sw_act_req(mb);
 		break;
@@ -978,7 +1263,10 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	u_int16_t arfcn = htons(ts->trx->arfcn);
 	u_int8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = 4 + 2 + 2 + 2 + 2 +3;
+	u_int8_t len = 2 + 2;
+
+	if (bts->type == GSM_BTS_TYPE_BS11)
+		len += 4 + 2 + 2 + 3;
 
 	DEBUGP(DNM, "Set Chan Attr (bts=%d,trx=%d,ts=%d)\n", bts->nr, ts->trx->nr, ts->nr);
 
@@ -987,12 +1275,16 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 			NM_OC_CHANNEL, bts->bts_nr,
 			ts->trx->nr, ts->nr);
 	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
-	msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
+	if (bts->type == GSM_BTS_TYPE_BS11)
+		msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
 	msgb_tv_put(msg, NM_ATT_CHAN_COMB, chan_comb);
-	msgb_tv_put(msg, NM_ATT_HSN, 0x00);
-	msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
+	if (bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tv_put(msg, NM_ATT_HSN, 0x00);
+		msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
+	}
 	msgb_tv_put(msg, NM_ATT_TSC, 0x07);	/* training sequence */
-	msgb_tlv_put(msg, 0x59, 1, &zero);
+	if (bts->type == GSM_BTS_TYPE_BS11)
+		msgb_tlv_put(msg, 0x59, 1, &zero);
 
 	return abis_nm_sendmsg(bts, msg);
 }

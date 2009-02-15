@@ -109,15 +109,32 @@ static inline u_int8_t *msgb_tv16_push(struct msgb *msg, u_int8_t tag, u_int16_t
 /* TLV parsing */
 
 struct tlv_p_entry {
-	u_int8_t len;
+	u_int16_t len;
 	u_int8_t *val;
+};
+
+enum tlv_type {
+	TLV_TYPE_FIXED,
+	TLV_TYPE_T,
+	TLV_TYPE_TV,
+	TLV_TYPE_TLV,
+	TLV_TYPE_TL16V,
+};
+
+struct tlv_def {
+	enum tlv_type type;
+	u_int8_t fixed_len;
+};
+
+struct tlv_definition {
+	struct tlv_def def[0xff];
 };
 
 struct tlv_parsed {
 	struct tlv_p_entry lv[0xff];
 };
 
-int tlv_parse(struct tlv_parsed *dec, u_int8_t *buf, int buf_len);
+int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def, u_int8_t *buf, int buf_len);
 
 #define TLVP_PRESENT(x, y)	((x)->lv[y].val)
 #define TLVP_LEN(x, y)		(x)->lv[y].len
