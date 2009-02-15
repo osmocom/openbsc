@@ -71,7 +71,7 @@ int e1_config(struct gsm_bts *bts)
 int ia_config(struct gsm_bts *bts)
 {
 	struct e1inp_line *line;
-	struct e1inp_ts *sign_ts;
+	struct e1inp_ts *sign_ts, *rsl_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
 
 	line = malloc(sizeof(*line));
@@ -81,12 +81,14 @@ int ia_config(struct gsm_bts *bts)
 
 	/* create E1 timeslots for signalling and TRAU frames */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
+	e1inp_ts_config(&line->ts[2-1], line, E1INP_TS_TYPE_SIGN);
 
 	/* create signalling links for TS1 */
 	sign_ts = &line->ts[1-1];
+	rsl_ts = &line->ts[2-1];
 	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
 					  bts->c0, 0, 0xff);
-	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
+	rsl_link = e1inp_sign_link_create(rsl_ts, E1INP_SIGN_RSL,
 					  bts->c0, 0, 0);
 
 	/* create back-links from bts/trx */

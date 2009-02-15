@@ -44,6 +44,7 @@
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
 	struct bsc_fd listen_fd;
+	struct bsc_fd rsl_listen_fd;
 };
 
 #define TS1_ALLOC_SIZE	300
@@ -98,6 +99,7 @@ static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 
 /* FIXME: this is per BTS */
 static int oml_up = 0;
+static int rsl_up = 0;
 
 static int handle_ts1_read(struct bsc_fd *bfd)
 {
@@ -134,8 +136,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	ret = recv(bfd->fd, msg->l2h, hh->len, 0);
 	if (ret < hh->len) {
 		fprintf(stderr, "short read!\n");
-		//msgb_free(msg);
-		//return -EIO;
+		msgb_free(msg);
+		return -EIO;
 	}
 	msgb_put(msg, ret);
 
@@ -143,7 +145,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return ipaccess_rcvmsg(msg, bfd->fd);
 
 	if (debug_mask & DMI) { 
-		fprintf(stdout, "RX: ");
+		fprintf(stdout, "RX %u: ", ts_nr);
 		hexdump(msgb_l2(msg), ret);
 	}
 
@@ -157,6 +159,10 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	switch (hh->proto) {
 	case PROTO_RSL:
+		if (!rsl_up) {
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, PROTO_RSL);
+			rsl_up = 1;
+		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case PROTO_OML:
@@ -212,7 +218,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	}
 
 	if (debug_mask & DMI) {
-		fprintf(stdout, "TX: ");
+		fprintf(stdout, "TX %u: ", ts_nr);
 		hexdump(l2_data, hh->len);
 	}
 
@@ -294,7 +300,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		socklen_t sa_len = sizeof(sa);
 
 		if (bfd->fd) {
-			printf("dumping old fd\n");
+			printf("dumping old OML fd\n");
 			if (bfd->fd != -1) {
 				bsc_unregister_fd(bfd);
 				close(bfd->fd);
@@ -305,7 +311,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 			perror("accept");
 			return bfd->fd;
 		}
-		printf("accept()ed new RSL/OML fd\n");
+		printf("accept()ed new OML fd\n");
 		bfd->data = line;
 		bfd->priv_nr = 1;
 		bfd->cb = ipaccess_fd_cb;
@@ -319,11 +325,88 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-int ipaccess_setup(struct e1inp_line *line)
+static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+{
+	struct e1inp_line *line = listen_bfd->data;
+	int ret;
+
+	if (what & BSC_FD_READ) {
+		int idx = 1;
+		struct e1inp_ts *e1i_ts = &line->ts[idx];
+		struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+		struct sockaddr_in sa;
+		socklen_t sa_len = sizeof(sa);
+
+		if (bfd->fd) {
+			printf("dumping old RSL fd\n");
+			if (bfd->fd != -1) {
+				bsc_unregister_fd(bfd);
+				close(bfd->fd);
+			}
+		}
+		bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
+		if (bfd->fd < 0) {
+			perror("accept");
+			return bfd->fd;
+		}
+		printf("accept()ed new RSL fd\n");
+		bfd->data = line;
+		bfd->priv_nr = 2;
+		bfd->cb = ipaccess_fd_cb;
+		bfd->when = BSC_FD_READ;
+		ret = bsc_register_fd(bfd);
+		if (ret < 0) {
+			fprintf(stderr, "could not register FD\n");
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int make_sock(struct bsc_fd *bfd, u_int16_t port,
+		     struct e1inp_line *line,
+		     int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
+	int ret, on = 1;
+	
+	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	bfd->cb = cb;
+	bfd->when = BSC_FD_READ;
+	bfd->data = line;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = INADDR_ANY;
+
+	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret < 0) {
+		fprintf(stderr, "could not bind l2 socket %s\n",
+			strerror(errno));
+		return -EIO;
+	}
+
+	ret = listen(bfd->fd, 1);
+	if (ret < 0) {
+		perror("listen");
+		return ret;
+	}
+	
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		perror("register_listen_fd");
+		return ret;
+	}
+	return 0;
+}
+
+int ipaccess_setup(struct e1inp_line *line)
+{
 	struct ia_e1_handle *e1h;
-	int sk, ret, on = 1;
+	int ret;
 
 	/* register the driver with the core */
 	/* FIXME: do this in the plugin initializer function */
@@ -339,36 +422,11 @@ int ipaccess_setup(struct e1inp_line *line)
 	line->driver = &ipaccess_driver;
 	line->driver_data = e1h;
 
-	e1h->listen_fd.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	e1h->listen_fd.cb = listen_fd_cb;
-	e1h->listen_fd.when = BSC_FD_READ;
-	e1h->listen_fd.data = line;
+	/* Listen for OML connections */
+	ret = make_sock(&e1h->listen_fd, 3002, line, listen_fd_cb);
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(3002);
-	addr.sin_addr.s_addr = INADDR_ANY;
-
-	setsockopt(e1h->listen_fd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(e1h->listen_fd.fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		fprintf(stderr, "could not bind l2 socket %s\n",
-			strerror(errno));
-		return -EIO;
-	}
-
-	ret = listen(e1h->listen_fd.fd, 1);
-	if (ret < 0) {
-		perror("listen");
-		return ret;
-	}
-	
-	ret = bsc_register_fd(&e1h->listen_fd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
+	/* Listen for RSL connections */
+	ret = make_sock(&e1h->rsl_listen_fd, 3003, line, rsl_listen_fd_cb);
 
 	ret = ia_e1_setup(line);
 	if (ret)

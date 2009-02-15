@@ -302,6 +302,11 @@ static unsigned char nanobts_attr_radio[] = {
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
+static unsigned char nanobts_attr_e0[] = {
+	0x85, 0x00,
+	0x81, 0x0b, 0xbb,	/* TCP PORT for RSL */
+};
+
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
 {
@@ -362,6 +367,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		case NM_OC_BASEB_TRANSC:
 			trx = container_of(obj, struct gsm_bts_trx, bb_transc);
 			if (new_state->availability == 5) {
+				abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
+						     trx->bts->nr, trx->nr, 0xff,
+						     nanobts_attr_e0, sizeof(nanobts_attr_e0));
 				abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC, 
 						trx->bts->nr, trx->nr, 0xff);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC, 

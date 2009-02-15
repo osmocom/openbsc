@@ -537,15 +537,25 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	int nack = 0;
 	int ret;
 
-	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
+	DEBUGP(DNM, "Software Activate Request ");
 
-	ret =  abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
+	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
+		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
+		nack = 1;
+	} else
+		DEBUGPC(DNM, "ACKing and Activating\n");
+
+	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
-				      foh->obj_inst.ts_nr,
+				      foh->obj_inst.ts_nr, nack,
 				      foh->data, oh->length-sizeof(*foh));
+
+	if (nack)
+		return ret;
 
 	/* FIXME: properly parse attributes */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
@@ -1290,18 +1300,27 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 }
 
 int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
-			u_int8_t i2, u_int8_t i3, u_int8_t *attr, int att_len)
+			u_int8_t i2, u_int8_t i3, int nack, u_int8_t *attr, int att_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t msgtype = NM_MT_SW_ACT_REQ_ACK;
+	u_int8_t len = att_len;
+
+	if (nack) {
+		len += 2;
+		msgtype = NM_MT_SW_ACT_REQ_NACK;
+	}
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, att_len, NM_MT_SW_ACT_REQ_ACK, obj_class, i1, i2, i3);
-	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
+	fill_om_fom_hdr(oh, att_len, msgtype, obj_class, i1, i2, i3);
+
 	if (attr) {
 		u_int8_t *ptr = msgb_put(msg, att_len);
 		memcpy(ptr, attr, att_len);
 	}
+	if (nack)
+		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, NM_NACK_OBJCLASS_NOTSUPP);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -1776,6 +1795,46 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	fill_om_fom_hdr(oh, 2+sizeof(aet), NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
 	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), (u_int8_t *) &aet);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* ip.access nanoBTS specific commands */
+
+static const char ipaccess_magic[] = "com.ipaccess";
+
+int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
+			 u_int8_t obj_class, u_int8_t bts_nr,
+			 u_int8_t trx_nr, u_int8_t ts_nr,
+			 u_int8_t *attr, int attr_len)
+{
+	struct msgb *msg = nm_msgb_alloc();
+	struct abis_om_hdr *oh;
+	struct abis_om_fom_hdr *foh;
+	u_int8_t *data;
+
+	/* construct the 12.21 OM header, observe the erroneous length */
+	oh = (struct abis_om_hdr *) msgb_put(msg, sizeof(*oh));
+	fill_om_hdr(oh, sizeof(*foh) + attr_len);
+	oh->mdisc = ABIS_OM_MDISC_MANUF;
+
+	/* add the ip.access magic */
+	data = msgb_put(msg, sizeof(ipaccess_magic)+1);
+	*data++ = sizeof(ipaccess_magic);
+	memcpy(data, ipaccess_magic, sizeof(ipaccess_magic));
+
+	/* fill the 12.21 FOM header */
+	foh = (struct abis_om_fom_hdr *) msgb_put(msg, sizeof(*foh));
+	foh->msg_type = msg_type;
+	foh->obj_class = obj_class;
+	foh->obj_inst.bts_nr = bts_nr;
+	foh->obj_inst.trx_nr = trx_nr;
+	foh->obj_inst.ts_nr = ts_nr;
+
+	if (attr && attr_len) {
+		data = msgb_put(msg, attr_len);
+		memcpy(data, attr, attr_len);
+	}
 
 	return abis_nm_sendmsg(bts, msg);
 }

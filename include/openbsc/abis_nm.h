@@ -219,6 +219,11 @@ enum abis_nm_obj_class {
 	NM_OC_BS11_ENVABTSE		= 0xa8,
 	NM_OC_BS11_BPORT		= 0xa9,
 
+	NM_OC_GPRS_NSE			= 0xf0,
+	NM_OC_GPRS_CELL			= 0xf1,
+	NM_OC_GPRS_NSVC0		= 0xf2,
+	NM_OC_GPRS_NSVC1		= 0xf3,
+
 	NM_OC_NULL			= 0xff,
 };
 
@@ -491,7 +496,7 @@ int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len);
 int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len);
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb);
 int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
-			u_int8_t i2, u_int8_t i3, u_int8_t *attr, int att_len);
+			u_int8_t i2, u_int8_t i3, int nack, u_int8_t *attr, int att_len);
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
@@ -521,6 +526,12 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 int abis_nm_bs11_restart(struct gsm_bts *bts);
+
+/* ip.access nanoBTS specific commands */
+int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
+			 u_int8_t obj_class, u_int8_t bts_nr,
+			 u_int8_t trx_nr, u_int8_t ts_nr,
+			 u_int8_t *attr, int attr_len);
 
 /* Functions calling into other code parts */
 enum nm_evt {
