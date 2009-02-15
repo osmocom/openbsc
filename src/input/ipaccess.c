@@ -40,6 +40,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/ipaccess.h>
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
@@ -49,45 +50,24 @@ struct ia_e1_handle {
 
 #define TS1_ALLOC_SIZE	300
 
-struct ipaccess_head {
-	u_int8_t zero;
-	u_int8_t len;
-	u_int8_t proto;
-	u_int8_t data[0];
-} __attribute__ ((packed));
-
-enum ipaccess_proto {
-	PROTO_RSL = 0x00,
-	PROTO_IPACCESS = 0xfe,
-	PROTO_OML = 0xff,
-};
-
-enum ipaccess_msg_type {
-	MSGT_PING		= 0x00,
-	MSGT_PONG		= 0x01,
-	MSGT_IDENTITY_GET	= 0x04,
-	MSGT_IDENTITY_RESP	= 0x05,
-	MSGT_IDENTITY_ACK	= 0x06,
-};
-
-static const u_int8_t pong[] = { 0, 1, PROTO_IPACCESS, MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, PROTO_IPACCESS, MSGT_IDENTITY_ACK };
+static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
+static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
 
 static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 {
 	u_int8_t msg_type = *(msg->l2h);
 
 	switch (msg_type) {
-	case MSGT_PING:
+	case IPAC_MSGT_PING:
 		write(fd, pong, sizeof(pong));
 		break;
-	case MSGT_PONG:
+	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
 		break;
-	case MSGT_IDENTITY_RESP:
+	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP\n");
 		break;
-	case MSGT_IDENTITY_ACK:
+	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
 		write(fd, id_ack, sizeof(id_ack));
 		break;	
@@ -123,8 +103,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 	if (ret == 0) {
 		fprintf(stderr, "BTS disappeared, dead socket\n");
-		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, PROTO_RSL);
-		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, PROTO_OML);
+		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
+		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
 		bsc_unregister_fd(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
@@ -141,7 +121,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 	msgb_put(msg, ret);
 
-	if (hh->proto == PROTO_IPACCESS)
+	if (hh->proto == IPAC_PROTO_IPACCESS)
 		return ipaccess_rcvmsg(msg, bfd->fd);
 
 	if (debug_mask & DMI) { 
@@ -158,16 +138,16 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	msg->trx = link->trx;
 
 	switch (hh->proto) {
-	case PROTO_RSL:
+	case IPAC_PROTO_RSL:
 		if (!rsl_up) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, PROTO_RSL);
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, IPAC_PROTO_RSL);
 			rsl_up = 1;
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
-	case PROTO_OML:
+	case IPAC_PROTO_OML:
 		if (!oml_up) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, PROTO_OML);
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, IPAC_PROTO_OML);
 			oml_up = 1;
 		}
 		ret = abis_nm_rcvmsg(msg);
@@ -207,10 +187,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	switch (sign_link->type) {
 	case E1INP_SIGN_OML:
-		hh->proto = PROTO_OML;
+		hh->proto = IPAC_PROTO_OML;
 		break;
 	case E1INP_SIGN_RSL:
-		hh->proto = PROTO_RSL;
+		hh->proto = IPAC_PROTO_RSL;
 		break;
 	default:
 		msgb_free(msg);

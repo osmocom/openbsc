@@ -10,6 +10,7 @@
 
 #include <openbsc/select.h>
 #include <openbsc/timer.h>
+#include <openbsc/ipaccess.h>
 
 static int udp_sock(void)
 {
@@ -45,7 +46,18 @@ err:
 	return rc;
 }
 
-const unsigned char find_pkt[] = { 0x00, 0x0b, 0xfe, 0x00, 0x04, 0x01, 0x06, 0x01, 0x07, 0x01, 0x02, 0x01, 0x03, 0x01, 0x08 };
+const unsigned char find_pkt[] = { 0x00, 0x0b+8, IPAC_PROTO_IPACCESS, 0x00, 
+				IPAC_MSGT_ID_GET,
+					0x01, IPAC_IDTAG_MACADDR,
+					0x01, IPAC_IDTAG_IPADDR,
+					0x01, IPAC_IDTAG_UNIT,
+					0x01, IPAC_IDTAG_LOCATION1,
+					0x01, IPAC_IDTAG_LOCATION2,
+					0x01, IPAC_IDTAG_EQUIPVERS,
+					0x01, IPAC_IDTAG_SWVERSION,
+					0x01, IPAC_IDTAG_UNITNAME,
+					0x01, IPAC_IDTAG_SERNR,
+				};
 
 
 static int bcast_find(int fd)
@@ -71,7 +83,7 @@ static int parse_response(unsigned char *buf, int len)
 		t_len = *cur++;
 		t_tag = *cur++;
 		
-		printf("tag=0x%02x, val='%s'  ", t_tag, cur);
+		printf("tag(%02x)='%s'  ", t_tag, cur);
 
 		cur += t_len;
 	}
