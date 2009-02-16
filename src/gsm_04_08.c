@@ -46,6 +46,45 @@
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
 
+static const struct tlv_definition rsl_att_tlvdef = {
+	.def = {
+		[GSM48_IE_MOBILE_ID]	= { TLV_TYPE_TLV },
+		[GSM48_IE_NAME_LONG]	= { TLV_TYPE_TLV },
+		[GSM48_IE_NAME_SHORT]	= { TLV_TYPE_TLV },
+		[GSM48_IE_UTC]		= { TLV_TYPE_TV },
+		[GSM48_IE_NET_TIME_TZ]	= { TLV_TYPE_FIXED, 7 },
+		[GSM48_IE_LSA_IDENT]	= { TLV_TYPE_TLV },
+
+		[GSM48_IE_BEARER_CAP]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CAUSE]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CC_CAP]	= { TLV_TYPE_TLV },
+		[GSM48_IE_ALERT]	= { TLV_TYPE_TLV },
+		[GSM48_IE_FACILITY]	= { TLV_TYPE_TLV },
+		[GSM48_IE_PROGR_IND]	= { TLV_TYPE_TLV },
+		[GSM48_IE_AUX_STATUS]	= { TLV_TYPE_TLV },
+		[GSM48_IE_KPD_FACILITY]	= { TLV_TYPE_TV },
+		[GSM48_IE_SIGNAL]	= { TLV_TYPE_TV },
+		[GSM48_IE_CONN_NUM]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CONN_SUBADDR]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CALLING_BCD]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CALLING_SUB]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CALLED_BCD]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CALLED_SUB]	= { TLV_TYPE_TLV },
+		[GSM48_IE_REDIR_BCD]	= { TLV_TYPE_TLV },
+		[GSM48_IE_REDIR_SUB]	= { TLV_TYPE_TLV },
+		[GSM48_IE_LOWL_COMPAT]	= { TLV_TYPE_TLV },
+		[GSM48_IE_HIGHL_COMPAT]	= { TLV_TYPE_TLV },
+		[GSM48_IE_USER_USER]	= { TLV_TYPE_TLV },
+		[GSM48_IE_SS_VERS]	= { TLV_TYPE_TLV },
+		[GSM48_IE_MORE_DATA]	= { TLV_TYPE_T },
+		[GSM48_IE_CLIR_SUPP]	= { TLV_TYPE_T },
+		[GSM48_IE_CLIR_INVOC]	= { TLV_TYPE_T },
+		[GSM48_IE_REV_C_SETUP]	= { TLV_TYPE_T },
+		/* FIXME: more elements */
+	},
+};
+		
+
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);
@@ -157,6 +196,90 @@ int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 	return 7;
 }
 
+static const char bcd_num_digits[] = {
+	'0', '1', '2', '3', '4', '5', '6', '7', 
+	'8', '9', '*', '#', 'a', 'b', 'c', '\0'
+};
+
+/* decode a 'called party BCD number' as in 10.5.4.7 */
+u_int8_t decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv)
+{
+	u_int8_t in_len = bcd_lv[0];
+	int i;
+
+	if (in_len < 1)
+		return 0;
+
+	for (i = 2; i <= in_len; i++) {
+		/* lower nibble */
+		output_len--;
+		if (output_len <= 1)
+			break;
+		*output++ = bcd_num_digits[bcd_lv[i] & 0xf];
+
+		/* higher nibble */
+		output_len--;
+		if (output_len <= 1)
+			break;
+		*output++ = bcd_num_digits[bcd_lv[i] >> 4];
+	}
+	if (output_len >= 1)
+		*output++ = '\0';
+
+	/* return number type / calling plan */
+	return bcd_lv[1] & 0x3f;
+}
+
+/* convert a single ASCII character to call-control BCD */
+static int asc_to_bcd(const char asc)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(bcd_num_digits); i++) {
+		if (bcd_num_digits[i] == asc)
+			return i;
+	}
+	return -EINVAL;
+}
+
+/* convert a ASCII phone number to 'called party BCD number' */
+int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
+		      u_int8_t type, const char *input)
+{
+	int in_len = strlen(input);
+	int i;
+	u_int8_t *bcd_cur = bcd_lv + 2;
+
+	if (in_len/2 + 1 > max_len)
+		return -EIO;
+
+	/* two digits per byte, plus type byte */
+	bcd_lv[0] = in_len/2 + 1;
+	if (in_len % 2)
+		bcd_lv[0]++;
+
+	/* if the caller wants to create a valid 'calling party BCD
+	 * number', then the extension bit MUST NOT be set.  For the
+	 * 'called party BCD number' it MUST be set. *sigh */
+	bcd_lv[1] = type;
+
+	for (i = 0; i < in_len; i++) {
+		int rc = asc_to_bcd(input[i]);
+		if (rc < 0)
+			return rc;
+		if (i % 2 == 0)
+			*bcd_cur = rc;	
+		else
+			*bcd_cur++ |= (rc << 4);
+	}
+	/* append padding nibble in case of odd length */
+	if (i % 2)
+		*bcd_cur++ |= 0xf0;
+
+	/* return how many bytes we used */
+	return (bcd_cur - bcd_lv);
+}
+
 struct msgb *gsm48_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
@@ -238,7 +361,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	ret = gsm48_sendmsg(msg);
 
-	ret = gsm48_cc_tx_setup(lchan);
+	//ret = gsm48_cc_tx_setup(lchan);
 	ret = gsm48_tx_mm_info(lchan);
 
 	return ret;
@@ -695,7 +818,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 
 	if (!subscr) {
 		DEBUGP(DRR, "<- Can't find any subscriber for this ID\n");
-		/* FIXME: close channel? */
+		/* FIXME: request id? close channel? */
 		return -EINVAL;
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
@@ -811,6 +934,26 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 	return gsm48_sendmsg(msg);
 }
 
+/* call-back from paging the B-end of the connection */
+static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
+			      struct msgb *msg, void *data, void *param)
+{
+	struct gsm_call *call = param;
+
+	if (hooknum != GSM_HOOK_RR_PAGING)
+		return -EINVAL;
+
+	switch (event) {
+	case GSM_PAGING_SUCCEEDED:
+		/* send SETUP request to called party */
+		//gsm48_cc_tx_setup(lchan, call->subscr);
+		break;
+	case GSM_PAGING_EXPIRED:
+		/* notify caller that we cannot reach called party */
+		break;
+	}
+}
+
 static int gsm48_cc_rx_status_enq(struct msgb *msg)
 {
 	return gsm48_cc_tx_status(msg->lchan);
@@ -820,7 +963,11 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 {
 	struct gsm_call *call = &msg->lchan->call;
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct gsm_subscriber *called_subscr;
+	char called_number[(43-2)*2 + 1] = "\0";
+	struct tlv_parsed tp;
+	u_int8_t num_type;
 	int ret;
 
 	if (call->state == GSM_CSTATE_NULL ||
@@ -833,9 +980,14 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 
 	DEBUGP(DCC, "SETUP(tid=0x%02x)\n", call->transaction_id);
 
-	/* Parse the number that was dialed and lookup subscriber */
-	called_subscr = NULL;
+	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len);
+	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD))
+		goto err;
 
+	/* Parse the number that was dialed and lookup subscriber */
+	num_type = decode_bcd_number(called_number, sizeof(called_number),
+				     TLVP_VAL(&tp, GSM48_IE_CALLED_BCD)-1);
+	called_subscr = subscr_get_by_extension(called_number);
 	if (!called_subscr) {
 		DEBUGP(DCC, "could not find subscriber, RELEASE\n");
 		put_lchan(msg->lchan);
@@ -843,8 +995,13 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 					GSM48_MT_CC_RELEASE_COMPL);
 	}
 
+	subscr_get(msg->lchan->subscr);
+	call->subscr = msg->lchan->subscr;
+	call->called_subscr = called_subscr;
+
 	/* start paging of the receiving end of the call */
-	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F);
+	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F,
+			setup_trig_pag_evt, call);
 
 	/* send a CALL PROCEEDING message to the MO */
 	ret = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
@@ -852,11 +1009,16 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 
 	/* change TCH/F mode to voice */ 
 	return gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
+
+err:
+	/* FIXME: send some kind of RELEASE */
+	return 0;
 }
 
 static const u_int8_t calling_bcd[] = { 0xb9, 0x83, 0x32, 0x24 };
 
-int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan,
+		      struct gsm_subscriber *calling_subscriber)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -871,6 +1033,8 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan)
 
 	gh->proto_discr = GSM48_PDISC_CC;
 	gh->msg_type = GSM48_MT_CC_SETUP;
+
+	/* FIXME: use actual number of the caller */
 	msgb_tv_put(msg, GSM48_IE_SIGNAL, GSM48_SIGNAL_DIALTONE);
 	msgb_tlv_put(msg, GSM48_IE_CALLING_BCD,
 		     sizeof(calling_bcd), calling_bcd);
@@ -891,6 +1055,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	case GSM48_MT_CC_CALL_CONF:
 		/* Response to SETUP */
 		DEBUGP(DCC, "CALL CONFIRM\n");
+		/* FIXME: we now need to MODIFY the channel */
 		break;
 	case GSM48_MT_CC_RELEASE_COMPL:
 		/* Answer from MS to RELEASE */
@@ -899,6 +1064,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		break;
 	case GSM48_MT_CC_ALERTING:
 		DEBUGP(DCC, "ALERTING\n");
+		/* FIXME: forward ALERTING to other party */
 		break;
 	case GSM48_MT_CC_CONNECT:
 		DEBUGP(DCC, "CONNECT\n");

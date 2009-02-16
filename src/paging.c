@@ -192,10 +192,15 @@ static void paging_T3113_expired(void *data)
 	sig_data.lchan	= NULL,
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+	if (req->cbfn)
+		req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, req,
+			  req->cbfn_param);
 	paging_remove_request(&req->bts->paging, req);
 }
 
-void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type) {
+void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+		    int type, gsm_cbfn *cbfn, void *data)
+{
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
@@ -209,6 +214,8 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr, int type
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
 	req->chan_type = type;
+	req->cbfn = cbfn;
+	req->cbfn_param = data;
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
 	schedule_timer(&req->T3113, T3113_VALUE);
@@ -224,6 +231,9 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
+			if (req->cbfn)
+				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
+					  NULL, req, req->cbfn_param);
 			paging_remove_request(&bts->paging, req);
 			break;
 		}

@@ -740,6 +740,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
 		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason));
 
+	/* FIXME: Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
