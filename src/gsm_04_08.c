@@ -685,6 +685,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	u_int8_t mi_type = pr->mi[0] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
 	struct gsm_subscriber *subscr;
+	struct paging_signal_data sig_data;
 	int rc = 0;
 
 	mi_to_string(mi_string, sizeof(mi_string), &pr->mi[0], pr->mi_len);
@@ -707,15 +708,11 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		subscr_put(subscr);
 	}
 
-	struct paging_signal_data sig_data = {
-		.data = {
-			.area = S_PAGING,
-		},
-		.subscr = subscr,
-		.bts	= msg->lchan->ts->trx->bts,
-		.lchan	= msg->lchan,
-	};
-	dispatch_signal(&sig_data.data);
+	sig_data.subscr = subscr;
+	sig_data.bts	= msg->lchan->ts->trx->bts;
+	sig_data.lchan	= msg->lchan;
+
+	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	paging_request_stop(msg->trx->bts, subscr);
 
 	/* FIXME: somehow signal the completion of the PAGING to

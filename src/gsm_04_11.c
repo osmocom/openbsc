@@ -119,14 +119,7 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 			"UserData: \"%s\"\n", sms->mti, sms->vpf, sms->msg_ref,
 			sms->pid, sms->dcs, sms->ud_len, sms->user_data);
 
-	struct sms_signal_data sig = {
-		.data = {
-			.area   = S_SMS,
-		},
-
-		.sms = sms,
-	};
-	dispatch_signal(&sig.data);
+	dispatch_signal(SS_SMS, 0, sms);
 
 	free(sms);
 

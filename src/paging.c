@@ -164,7 +164,7 @@ void paging_init(struct gsm_bts *bts)
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
 
 	/* Large number, until we get a proper message */
-	bts->paging.available_slots = 0x0;
+	bts->paging.available_slots = 10;
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
@@ -182,20 +182,16 @@ static int paging_pending_request(struct gsm_bts_paging_state *bts,
 static void paging_T3113_expired(void *data)
 {
 	struct gsm_paging_request *req = (struct gsm_paging_request *)data;
+	struct paging_signal_data sig_data;
 
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
-	struct paging_signal_data sig_data = {
-		.data = {
-			.area = S_PAGING,
-		},
-		.subscr = req->subscr,
-		.bts	= req->bts,
-		.lchan	= NULL,
-	};
+	sig_data.subscr = req->subscr,
+	sig_data.bts	= req->bts,
+	sig_data.lchan	= NULL,
 
-	dispatch_signal(&sig_data.data);
+	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	paging_remove_request(&req->bts->paging, req);
 }
 

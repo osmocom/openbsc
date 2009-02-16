@@ -27,34 +27,39 @@ static LLIST_HEAD(signal_handler_list);
 
 struct signal_handler {
 	struct llist_head entry;
-	int areas;
-
-	int (*sig_handler)(struct signal_data *, void*);
+	unsigned int subsys;
+	signal_cbfn *cbfn;
 	void *data;
 };
 
 
-void register_signal_handler(int areas,
-	int (*handler)(struct signal_data *, void *), void *data)
+int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data)
 {
-	struct signal_handler *sig_data =
-		(struct signal_handler *)malloc(sizeof(*sig_data));
+	struct signal_handler *sig_data = malloc(sizeof(*sig_data));
+
+	if (!sig_data)
+		return -ENOMEM;
+
 	memset(sig_data, 0, sizeof(*sig_data));
 
-
-	sig_data->areas = areas;
+	sig_data->subsys = subsys;
 	sig_data->data = data;
-	sig_data->sig_handler = handler;
+	sig_data->cbfn = cbfn;
+
+	/* FIXME: check if we already have a handler for this subsys/cbfn/data */
+
 	llist_add_tail(&sig_data->entry, &signal_handler_list);
+
+	return 0;
 }
 
-void remove_signal_handler(int areas, int (*sig_handler)(struct signal_data *, void *), void *data)
+void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data)
 {
 	struct signal_handler *handler;
 
 	llist_for_each_entry(handler, &signal_handler_list, entry) {
-		if (handler->sig_handler == sig_handler
-		    && handler->data == data && areas == handler->areas) {
+		if (handler->cbfn == cbfn && handler->data == data 
+		    && subsys == handler->subsys) {
 			llist_del(&handler->entry);
 			free(handler);
 			break;
@@ -63,13 +68,13 @@ void remove_signal_handler(int areas, int (*sig_handler)(struct signal_data *, v
 }
 
 
-void dispatch_signal(struct signal_data *data)
+void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data)
 {
 	struct signal_handler *handler;
 
 	llist_for_each_entry(handler, &signal_handler_list, entry) {
-		if (handler->areas & data->area) {
-		    (*handler->sig_handler)(data, handler->data);
-		}
+		if (handler->subsys != subsys)
+			continue;
+		(*handler->cbfn)(subsys, signal, handler->data, signal_data);
 	}
 }

@@ -49,8 +49,10 @@ LLIST_HEAD(active_connections);
 
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
-static int telnet_paging_callback(struct signal_data *signal, void *data);
-static int telnet_sms_callback(struct signal_data *signal, void *data);
+static int telnet_paging_callback(unsigned int subsys, unsigned int signal,
+				  void *handler_data, void *signal_data);
+static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
+				void *handler_data, void *signal_data);
 
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
@@ -91,8 +93,8 @@ void telnet_init(struct gsm_network *network, int port) {
 	bsc_register_fd(&server_socket);
 
 	/* register callbacks */
-	register_signal_handler(S_PAGING, telnet_paging_callback, network);
-	register_signal_handler(S_SMS, telnet_sms_callback, network);
+	register_signal_handler(SS_PAGING, telnet_paging_callback, network);
+	register_signal_handler(SS_SMS, telnet_sms_callback, network);
 }
 
 void telnet_write_help(int fd) {
@@ -187,6 +189,7 @@ void telnet_page(struct telnet_connection *connection, const char *imsi, int typ
 		return;
 
 	paging_request(bts, subscr, type);	
+	paging_update_buffer_space(bts, 100);
 }
 
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {
@@ -364,10 +367,10 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	return 0;
 }
 
-static int telnet_paging_callback(struct signal_data *signal, void *data)
+static int telnet_paging_callback(unsigned int subsys, unsigned int singal,
+				  void *handler_data, void *signal_data)
 {
-	struct paging_signal_data *paging =
-		(struct paging_signal_data *) signal;
+	struct paging_signal_data *paging = signal_data;
 	struct telnet_connection *con;
 
 	llist_for_each_entry(con, &active_connections, entry) {
@@ -385,14 +388,14 @@ static int telnet_paging_callback(struct signal_data *signal, void *data)
 	return 0;
 }
 
-static int telnet_sms_callback(struct signal_data *signal, void *data)
+static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
+				void *handler_data, void *signal_data)
 {
-	struct sms_signal_data *sms =
-		(struct sms_signal_data *) signal;
+	struct sms_submit *sms = signal_data;
 	struct telnet_connection *con;
 
 	llist_for_each_entry(con, &active_connections, entry) {
-		WRITE_CONNECTION(con->fd.fd, "Incoming SMS: %s\n", sms->sms->user_data);
+		WRITE_CONNECTION(con->fd.fd, "Incoming SMS: %s\n", sms->user_data);
 	}
 
 	return 0;

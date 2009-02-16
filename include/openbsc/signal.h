@@ -1,5 +1,6 @@
 /* Generic signalling/notification infrastructure */
 /* (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,25 +22,28 @@
 #ifndef OPENBSC_SIGNAL_H
 #define OPENBSC_SIGNAL_H
 
+#include <stdlib.h>
+#include <errno.h>
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 
 
 /*
- * Signalling areas
+ * Signalling subsystems
  */
-#define S_PAGING	0x0001
-#define S_SMS		0x0002
+#define SS_PAGING	0x0001
+#define SS_SMS		0x0002
 
-
-struct signal_data {
-	int area;
+/* SS_PAGING signals */
+enum signal_paging {
+	S_PAGING_COMPLETED,
 };
 
+typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data);
 
 struct paging_signal_data {
-	struct signal_data data;
-
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
 
@@ -47,19 +51,12 @@ struct paging_signal_data {
 	struct gsm_lchan *lchan;
 };
 
-struct sms_signal_data {
-	struct signal_data data;
-
-	struct sms_submit *sms;
-};
-
-
 /* Management */
-void register_signal_handler(int areas, int (*sig)(struct signal_data *, void *data), void *data);
-void remove_signal_handler(int areas, int (*sig)(struct signal_data *, void *data), void *data);
+int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
+void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
 
 /* Dispatch */
-void dispatch_signal(struct signal_data *data);
+void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data);
 
 
 #endif
