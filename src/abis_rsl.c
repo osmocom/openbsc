@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <netinet/in.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
@@ -38,6 +39,78 @@
 #define RSL_ALLOC_HEADROOM	128
 
 #define MAX(a, b) (a) >= (b) ? (a) : (b)
+
+static const struct tlv_definition rsl_att_tlvdef = {
+	.def = {
+		[RSL_IE_CHAN_NR]		= { TLV_TYPE_TV },
+		[RSL_IE_LINK_IDENT]		= { TLV_TYPE_TV },
+		[RSL_IE_ACT_TYPE]		= { TLV_TYPE_TV },
+		[RSL_IE_BS_POWER]		= { TLV_TYPE_TV },
+		[RSL_IE_CHAN_IDENT]		= { TLV_TYPE_TLV },
+		[RSL_IE_CHAN_MODE]		= { TLV_TYPE_TLV },
+		[RSL_IE_ENCR_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_FRAME_NUMBER]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_HANDO_REF]		= { TLV_TYPE_TV },
+		[RSL_IE_L1_INFO]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_L3_INFO]		= { TLV_TYPE_TL16V },
+		[RSL_IE_MS_IDENTITY]		= { TLV_TYPE_TLV },
+		[RSL_IE_MS_POWER]		= { TLV_TYPE_TV },
+		[RSL_IE_PAGING_GROUP]		= { TLV_TYPE_TV },
+		[RSL_IE_PAGING_LOAD]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_PYHS_CONTEXT]		= { TLV_TYPE_TLV },
+		[RSL_IE_ACCESS_DELAY]		= { TLV_TYPE_TV },
+		[RSL_IE_RACH_LOAD]		= { TLV_TYPE_TLV },
+		[RSL_IE_REQ_REFERENCE]		= { TLV_TYPE_FIXED, 3 },
+		[RSL_IE_RELEASE_MODE]		= { TLV_TYPE_TV },
+		[RSL_IE_RESOURCE_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_RLM_CAUSE]		= { TLV_TYPE_TLV },
+		[RSL_IE_STARTNG_TIME]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_TIMING_ADVANCE]		= { TLV_TYPE_TV },
+		[RSL_IE_UPLINK_MEAS]		= { TLV_TYPE_TLV },
+		[RSL_IE_CAUSE]			= { TLV_TYPE_TLV },
+		[RSL_IE_MEAS_RES_NR]		= { TLV_TYPE_TV },
+		[RSL_IE_MSG_ID]			= { TLV_TYPE_TV },
+		[RSL_IE_SYSINFO_TYPE]		= { TLV_TYPE_TV },
+		[RSL_IE_MS_POWER_PARAM]		= { TLV_TYPE_TLV },
+		[RSL_IE_BS_POWER_PARAM]		= { TLV_TYPE_TLV },
+		[RSL_IE_PREPROC_PARAM]		= { TLV_TYPE_TLV },
+		[RSL_IE_PREPROC_MEAS]		= { TLV_TYPE_TLV },
+		[RSL_IE_IMM_ASS_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_SMSCB_INFO]		= { TLV_TYPE_FIXED, 23 },
+		[RSL_IE_MS_TIMING_OFFSET]	= { TLV_TYPE_TV },
+		[RSL_IE_ERR_MSG]		= { TLV_TYPE_TLV },
+		[RSL_IE_FULL_BCCH_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_CHAN_NEEDED]		= { TLV_TYPE_TV },
+		[RSL_IE_CB_CMD_TYPE]		= { TLV_TYPE_TV },
+		[RSL_IE_SMSCB_MSG]		= { TLV_TYPE_TLV },
+		[RSL_IE_FULL_IMM_ASS_INFO]	= { TLV_TYPE_TLV },
+		[RSL_IE_SACCH_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_CBCH_LOAD_INFO]		= { TLV_TYPE_TV },
+		[RSL_IE_SMSCB_CHAN_INDICATOR]	= { TLV_TYPE_TV },
+		[RSL_IE_GROUP_CALL_REF]		= { TLV_TYPE_TLV },
+		[RSL_IE_CHAN_DESC]		= { TLV_TYPE_TLV },
+		[RSL_IE_NCH_DRX_INFO]		= { TLV_TYPE_TLV },
+		[RSL_IE_CMD_INDICATOR]		= { TLV_TYPE_TLV },
+		[RSL_IE_EMLPP_PRIO]		= { TLV_TYPE_TV },
+		[RSL_IE_UIC]			= { TLV_TYPE_TLV },
+		[RSL_IE_MAIN_CHAN_REF]		= { TLV_TYPE_TV },
+		[RSL_IE_MR_CONFIG]		= { TLV_TYPE_TLV },
+		[RSL_IE_MR_CONTROL]		= { TLV_TYPE_TV },
+		[RSL_IE_SUP_CODEC_TYPES]	= { TLV_TYPE_TLV },
+		[RSL_IE_CODEC_CONFIG]		= { TLV_TYPE_TLV },
+		[RSL_IE_RTD]			= { TLV_TYPE_TV },
+		[RSL_IE_TFO_STATUS]		= { TLV_TYPE_TV },
+		[RSL_IE_LLP_APDU]		= { TLV_TYPE_TLV },
+		[RSL_IE_IPAC_REMOTE_IP]		= { TLV_TYPE_FIXED, 4 },
+		[RSL_IE_IPAC_REMOTE_PORT]	= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_IPAC_LOCAL_IP]		= { TLV_TYPE_FIXED, 4 },
+		[RSL_IE_IPAC_LOCAL_PORT]	= { TLV_TYPE_FIXED, 2 },
+		[0xf4]				= { TLV_TYPE_TV },
+		[0xf8]				= { TLV_TYPE_FIXED, 2 },
+		[0xfc]				= { TLV_TYPE_TV },
+	},
+};
+#define rsl_tlv_parse(dec, buf, len)     tlv_parse(dec, &rsl_att_tlvdef, buf, len)
 
 static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 {
@@ -793,6 +866,145 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	return rc;
 }
 
+/* ip.access specific RSL extensions */
+int rsl_ipacc_bind(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_dchan_hdr *dh;
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
+	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port, u_int16_t f8, u_int8_t fc)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t *att_f8, *att_ip, *att_port;
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_IPAC_CONNECT);
+	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	att_f8 = msgb_put(msg, sizeof(f8)+1);
+	att_f8[0] = 0xf8;
+	att_f8[1] = f8 >> 8;
+	att_f8[2] = f8 & 0xff;
+
+	att_ip = msgb_put(msg, sizeof(ip)+1);
+	att_ip[0] = RSL_IE_IPAC_REMOTE_IP;
+	att_ip[1] = ip >> 24;
+	att_ip[2] = ip >> 16;
+	att_ip[3] = ip >> 8;
+	att_ip[4] = ip & 0xff;
+
+	att_port = msgb_put(msg, sizeof(port)+1);
+	att_port[0] = RSL_IE_IPAC_REMOTE_PORT;
+	att_port[1] = port >> 8;
+	att_port[2] = port & 0xff;
+
+	msgb_tv_put(msg, 0xf4, 1);	/* F4 01 */
+	msgb_tv_put(msg, 0xfc, fc);	/* FC 7F */
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tv;
+	struct gsm_bts_trx_ts *ts = msg->lchan->ts;
+	u_int32_t ip;
+	u_int16_t port, attr_f8;
+
+	/* the BTS has acknowledged a local bind, it now tells us the IP
+	* address and port number to which it has bound the given logical
+	* channel */
+
+	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
+	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
+	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
+	    !TLVP_PRESENT(&tv, 0xfc) ||
+	    !TLVP_PRESENT(&tv, 0xf8)) {
+		DEBUGP(DRSL, "mandatory IE missing\n");
+		return -EINVAL;
+	}
+	ip = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
+	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
+	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
+
+	/* update our local information about this TS */
+	ts->abis_ip.bound_ip = ntohl(ip);
+	ts->abis_ip.bound_port = ntohl(port);
+	ts->abis_ip.attr_f8 = ntohs(attr_f8);
+	ts->abis_ip.attr_fc = *TLVP_VAL(&tv, 0xfc);
+
+	return 0;
+}
+
+static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tv;
+
+	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
+	if (!TLVP_PRESENT(&tv, RSL_IE_CAUSE)) {
+		DEBUGP(DRSL, "mandatory IE missing\n");
+		return -EINVAL;
+	}
+
+	DEBUGP(DNM, "cause=0x%02x\n", *TLVP_VAL(&tv, RSL_IE_CAUSE));
+
+	return 0;
+}
+
+static int abis_rsl_rx_ipacc(struct msgb *msg)
+{
+	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
+	int rc = 0;
+
+	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
+	
+	switch (rllh->c.msg_type) {
+	case RSL_MT_IPAC_BIND_ACK:
+		DEBUGP(DRSL, "IPAC_BIND_ACK\n");
+		rc = abis_rsl_rx_ipacc_bindack(msg);
+		break;
+	case RSL_MT_IPAC_BIND_NACK:
+		/* somehow the BTS was unable to bind the lchan to its local
+		 * port?!? */
+		DEBUGP(DRSL, "IPAC_BIND_NACK\n");
+		break;
+	case RSL_MT_IPAC_CONNECT_ACK:
+		/* the BTS tells us that a connect operation was successful */
+		DEBUGP(DRSL, "IPAC_CONNECT_ACK\n");
+		break;
+	case RSL_MT_IPAC_CONNECT_NACK:
+		/* somehow the BTS was unable to connect the lchan to a remote
+		 * port */
+		DEBUGP(DRSL, "IPAC_BIND_NACK\n");
+		break;
+	case RSL_MT_IPAC_DISCONNECT_IND:
+		DEBUGP(DRSL, "IPAC_DISCONNECT_IND\n");
+		rc = abis_rsl_rx_ipacc_disc_ind(msg);
+		break;
+	default:
+		DEBUGP(DRSL, "Unknown ip.access msg_type 0x%02x\n", rllh->c.msg_type);
+		break;
+	}
+
+	return rc;
+}
+
+
 /* Entry-point where L2 RSL from BTS enters */
 int abis_rsl_rcvmsg(struct msgb *msg)
 {
@@ -815,6 +1027,9 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 	case ABIS_RSL_MDISC_LOC:
 		fprintf(stderr, "unimplemented RSL msg disc 0x%02x\n",
 			rslh->msg_discr);
+		break;
+	case ABIS_RSL_MDISC_IPACCESS:
+		rc = abis_rsl_rx_ipacc(msg);
 		break;
 	default:
 		fprintf(stderr, "unknown RSL message discriminator 0x%02x\n",

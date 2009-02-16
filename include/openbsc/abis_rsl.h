@@ -54,6 +54,7 @@ struct abis_rsl_dchan_hdr {
 #define ABIS_RSL_MDISC_COM_CHAN		0x0c
 #define ABIS_RSL_MDISC_TRX		0x10
 #define ABIS_RSL_MDISC_LOC		0x20
+#define ABIS_RSL_MDISC_IPACCESS		0x7e
 
 #define ABIS_RSL_MDISC_IS_TRANSP(x)	(x & 0x01)
 
@@ -121,6 +122,16 @@ enum abis_rsl_msgtype {
 	RSL_MT_MR_CODEC_MOD_PER,
 	RSL_MT_TFO_REP,
 	RSL_MT_TFO_MOD_REQ,		/* 0x3f */
+
+	/* ip.access specific RSL message types */
+	RSL_MT_IPAC_BIND		= 0x70,		/* Bind to local BTS RTP port */
+	RSL_MT_IPAC_BIND_ACK,
+	RSL_MT_IPAC_BIND_NACK,
+	RSL_MT_IPAC_CONNECT		= 0x73,
+	RSL_MT_IPAC_CONNECT_ACK,
+	RSL_MT_IPAC_CONNECT_NACK,
+	RSL_MT_IPAC_DISCONNECT_IND	= 0x76,
+
 };
 
 /* Chapter 9.3 */
@@ -185,6 +196,11 @@ enum abis_rsl_ie {
 	RSL_IE_RTD,
 	RSL_IE_TFO_STATUS,
 	RSL_IE_LLP_APDU,
+
+	RSL_IE_IPAC_REMOTE_IP	= 0xf0,
+	RSL_IE_IPAC_REMOTE_PORT	= 0xf1,
+	RSL_IE_IPAC_LOCAL_PORT	= 0xf3,
+	RSL_IE_IPAC_LOCAL_IP	= 0xf5,
 };
 
 /* Chapter 9.3.1 */
@@ -370,6 +386,11 @@ int rsl_paging_cmd_subscr(struct gsm_bts *bts, u_int8_t chan_needed,
 int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
 
 int rsl_data_request(struct msgb *msg, u_int8_t link_id);
+
+/* ip.access specfic RSL extensions */
+int rsl_ipacc_bind(struct gsm_lchan *lchan);
+int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
+		      u_int16_t port, u_int16_t f8, u_int8_t fc);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 

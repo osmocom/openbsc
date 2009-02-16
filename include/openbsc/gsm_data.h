@@ -174,6 +174,12 @@ struct gsm_bts_trx_ts {
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
+	struct {
+		u_int32_t bound_ip;
+		u_int16_t bound_port;
+		u_int8_t attr_fc;
+		u_int16_t attr_f8;
+	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
