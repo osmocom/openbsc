@@ -28,7 +28,8 @@
 /*
  * Signalling areas
  */
-#define S_PAGING 0x0001
+#define S_PAGING	0x0001
+#define S_SMS		0x0002
 
 
 struct signal_data {
@@ -44,6 +45,12 @@ struct paging_signal_data {
 
 	/* NULL in case the paging didn't work */
 	struct gsm_lchan *lchan;
+};
+
+struct sms_signal_data {
+	struct signal_data data;
+
+	struct sms_submit *sms;
 };
 
 

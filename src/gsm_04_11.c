@@ -36,6 +36,7 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/signal.h>
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
@@ -117,6 +118,15 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 			"PID: 0x%02x, DCS: 0x%02x, UserDataLength: 0x%02x\n"
 			"UserData: \"%s\"\n", sms->mti, sms->vpf, sms->msg_ref,
 			sms->pid, sms->dcs, sms->ud_len, sms->user_data);
+
+	struct sms_signal_data sig = {
+		.data = {
+			.area   = S_SMS,
+		},
+
+		.sms = sms,
+	};
+	dispatch_signal(&sig.data);
 
 	free(sms);
 

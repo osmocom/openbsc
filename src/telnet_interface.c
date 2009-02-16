@@ -29,6 +29,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_04_11.h>
 #include <openbsc/msgb.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/paging.h>
@@ -49,6 +50,7 @@ LLIST_HEAD(active_connections);
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
 static int telnet_paging_callback(struct signal_data *signal, void *data);
+static int telnet_sms_callback(struct signal_data *signal, void *data);
 
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
@@ -88,8 +90,9 @@ void telnet_init(struct gsm_network *network, int port) {
 	server_socket.fd = fd;
 	bsc_register_fd(&server_socket);
 
-	/* register paging callbacks */
+	/* register callbacks */
 	register_signal_handler(S_PAGING, telnet_paging_callback, network);
+	register_signal_handler(S_SMS, telnet_sms_callback, network);
 }
 
 void telnet_write_help(int fd) {
@@ -377,6 +380,19 @@ static int telnet_paging_callback(struct signal_data *signal, void *data)
 				paging->subscr->tmsi,
 				paging->subscr->name);
 		}
+	}
+
+	return 0;
+}
+
+static int telnet_sms_callback(struct signal_data *signal, void *data)
+{
+	struct sms_signal_data *sms =
+		(struct sms_signal_data *) signal;
+	struct telnet_connection *con;
+
+	llist_for_each_entry(con, &active_connections, entry) {
+		WRITE_CONNECTION(con->fd.fd, "Incoming SMS: %s\n", sms->sms->user_data);
 	}
 
 	return 0;
