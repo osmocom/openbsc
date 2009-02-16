@@ -480,6 +480,7 @@ enum gsm48_reject_value {
 
 struct msgb;
 struct gsm_bts;
+struct gsm_subscriber;
 
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
@@ -488,7 +489,7 @@ void gsm0408_set_reject_cause(int cause);
 int gsm0408_rcvmsg(struct msgb *msg);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
-int gsm48_cc_tx_setup(struct gsm_lchan *lchan);
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *calling);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 
@@ -498,5 +499,10 @@ int gsm48_sendmsg(struct msgb *msg);
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+
+/* convert a ASCII phone number to call-control BCD */
+int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
+		      u_int8_t type, const char *input);
+u_int8_t decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv);
 
 #endif
