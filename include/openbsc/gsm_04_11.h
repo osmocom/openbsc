@@ -11,6 +11,11 @@
 #define GSM411_MT_CP_ACK	0x04
 #define GSM411_MT_CP_ERROR	0x10
 
+enum gsm411_cp_ie {
+	GSM411_CP_IE_USER_DATA		= 0x01,	/* 8.1.4.1 */
+	GSM411_CP_IE_CAUSE		= 0x02,	/* 8.1.4.2. */
+};
+
 /* Chapter 8.2.2 */
 #define GSM411_MT_RP_DATA_MO	0x00
 #define GSM411_MT_RP_DATA_MT	0x01
@@ -19,6 +24,11 @@
 #define GSM411_MT_RP_ERROR_MO	0x04
 #define GSM411_MT_RP_ERROR_MT	0x04
 #define GSM411_MT_RP_SMMA_MO	0x05
+
+enum gsm411_rp_ie {
+	GSM411_IE_RP_USER_DATA		= 0x41,	/* 8.2.5.3 */
+	GSM411_IE_RP_CAUSE		= 0x42,	/* 8.2.5.4 */
+};
 
 /* Chapter 8.2.1 */
 struct gsm411_rp_hdr {
