@@ -35,6 +35,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/signal.h>
 
@@ -56,23 +57,6 @@ int gsm0411_sendmsg(struct msgb *msg)
 	return rsl_data_request(msg, 0);
 }
 
-static char *gsm411_7bit_decode(u_int8_t *user_data, u_int8_t length)
-{
-	u_int8_t d_off = 0, b_off = 0;
-	u_int8_t i;
-	char *text = malloc(length+1);
-
-	for (i=0;i<length;i++) {
-		text[i] = ((user_data[d_off] + (user_data[d_off+1]<<8)) & (0x7f<<b_off))>>b_off;
-		b_off += 7;
-		if (b_off >= 8) {
-			d_off += 1;
-			b_off -= 8;
-		}
-	}
-	text[i] = 0;
-	return text;
-}
 
 #if 0
 static u_int8_t gsm0411_tpdu_from_sms(u_int8_t *tpdu, struct sms_deliver *sms)
@@ -112,7 +96,7 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 	}
 	sms->ud_len = *smsp++;
 
-	sms->user_data = (u_int8_t *)gsm411_7bit_decode(smsp, sms->ud_len);
+	sms->user_data = (u_int8_t *)gsm_7bit_decode(smsp, sms->ud_len);
 
 	DEBUGP(DSMS, "SMS:\nMTI: 0x%02x, VPF: 0x%02x, MR: 0x%02x\n"
 			"PID: 0x%02x, DCS: 0x%02x, UserDataLength: 0x%02x\n"
