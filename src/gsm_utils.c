@@ -22,7 +22,9 @@
 
 #include <openbsc/gsm_utils.h>
 #include <malloc.h>
+#include <string.h>
 
+/* GSM 03.38 6.2.1 Charachter packing */
 char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 {
 	u_int8_t d_off = 0, b_off = 0;
@@ -39,4 +41,31 @@ char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 	}
 	text[i] = '\0';
 	return text;
+}
+
+/* GSM 03.38 6.2.1 Charachter packing */
+u_int8_t *gsm_7bit_encode(char *data)
+{
+	int i;
+	u_int8_t d_off = 0, b_off = 0;
+	const int length = strlen(data);
+	char *result = malloc(length + 1);
+	memset(result, 0, length + 1);
+
+	for (i = 0; i < length; ++i) {
+		u_int8_t first  = (data[i] & 0x7f) << b_off;
+		u_int8_t second = (data[i] & 0x7f) >> (7 - b_off);
+
+		result[d_off] |= first;
+		result[d_off + 1] = second;
+
+		b_off += 7;
+
+		if (b_off >= 8) {
+			d_off += 1;
+			b_off -= 8;
+		}
+	}
+
+	return result;
 }
