@@ -328,7 +328,7 @@ struct gsm48_system_information_type_6 {
 
 #define GSM48_MT_CC_DISCONNECT		0x25
 #define GSM48_MT_CC_RELEASE		0x2d
-#define GSM48_MT_CC_RELEASE_COMPL	0xea
+#define GSM48_MT_CC_RELEASE_COMPL	0x2a
 
 #define GSM48_MT_CC_CONG_CTRL		0x39
 #define GSM48_MT_CC_NOTIFY		0x3e
@@ -489,7 +489,8 @@ void gsm0408_set_reject_cause(int cause);
 int gsm0408_rcvmsg(struct msgb *msg);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
-int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *calling);
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *called, 
+			struct gsm_subscriber *calling);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 

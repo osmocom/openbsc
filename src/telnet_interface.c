@@ -189,7 +189,6 @@ void telnet_page(struct telnet_connection *connection, const char *imsi, int typ
 		return;
 
 	paging_request(bts, subscr, type, NULL, NULL);	
-	paging_update_buffer_space(bts, 100);
 }
 
 void telnet_put_channel(struct telnet_connection *connection, const char *imsi) {
@@ -230,7 +229,7 @@ void telnet_call(struct telnet_connection *connection, const char* imsi,
 		return;
 
 	/* TODO: add the origin */
-	gsm48_cc_tx_setup(lchan, NULL);
+	gsm48_cc_tx_setup(lchan, NULL, NULL);
 }
 
 void telnet_send_gsm_48(struct telnet_connection *connection) {
