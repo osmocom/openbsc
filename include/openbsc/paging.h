@@ -37,7 +37,8 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 		    int type, gsm_cbfn *cbfn, void *data);
 
 /* stop paging requests */
-void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr);
+void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+			 struct gsm_lchan *lchan);
 
 /* update paging load */
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t);

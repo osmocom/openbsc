@@ -125,8 +125,9 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	 * Determine if the pending_requests list is empty and
 	 * return then.
 	 */
-	if (&paging_bts->pending_requests == paging_bts->pending_requests.next) {
+	if (llist_empty(&paging_bts->pending_requests)) {
 		paging_bts->last_request = NULL;
+		/* since the list is empty, no need to reschedule the timer */
 		return;
 	}
 
@@ -156,15 +157,26 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		current_request = paging_bts->last_request;
 	} while (paging_bts->available_slots > 0
 		    &&  initial_request != current_request);
+
+	schedule_timer(&paging_bts->work_timer, 1, 0);
+}
+
+static void paging_worker(void *data)
+{
+	struct gsm_bts_paging_state *paging_bts = data;
+
+	paging_handle_pending_requests(paging_bts);
 }
 
 void paging_init(struct gsm_bts *bts)
 {
 	bts->paging.bts = bts;
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
+	bts->paging.work_timer.cb = paging_worker;
+	bts->paging.work_timer.data = &bts->paging;
 
 	/* Large number, until we get a proper message */
-	bts->paging.available_slots = 10;
+	bts->paging.available_slots = 100;
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
@@ -193,7 +205,7 @@ static void paging_T3113_expired(void *data)
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (req->cbfn)
-		req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, req,
+		req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
 			  req->cbfn_param);
 	paging_remove_request(&req->bts->paging, req);
 }
@@ -220,10 +232,14 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->T3113.data = req;
 	schedule_timer(&req->T3113, T3113_VALUE);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
+
+	if (!timer_pending(&bts_entry->work_timer))
+		schedule_timer(&bts_entry->work_timer, 1, 0);
 }
 
 /* we consciously ignore the type of the request here */
-void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+			 struct gsm_lchan *lchan)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
@@ -233,7 +249,7 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 		if (req->subscr == subscr) {
 			if (req->cbfn)
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-					  NULL, req, req->cbfn_param);
+					  NULL, lchan, req->cbfn_param);
 			paging_remove_request(&bts->paging, req);
 			break;
 		}
@@ -243,5 +259,4 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
 	bts->paging.available_slots = free_slots;
-	paging_handle_pending_requests(&bts->paging);
 }
