@@ -998,7 +998,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	case RSL_MT_IPAC_CONNECT_NACK:
 		/* somehow the BTS was unable to connect the lchan to a remote
 		 * port */
-		DEBUGP(DRSL, "IPAC_BIND_NACK\n");
+		DEBUGP(DRSL, "IPAC_CONNECT_NACK\n");
 		break;
 	case RSL_MT_IPAC_DISCONNECT_IND:
 		DEBUGP(DRSL, "IPAC_DISCONNECT_IND\n");
