@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
@@ -34,6 +35,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
+#include <openbsc/signal.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -923,7 +925,7 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
 	struct gsm_bts_trx_ts *ts = msg->lchan->ts;
-	u_int32_t ip;
+	struct in_addr ip;
 	u_int16_t port, attr_f8;
 
 	/* the BTS has acknowledged a local bind, it now tells us the IP
@@ -938,15 +940,21 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 		DEBUGP(DRSL, "mandatory IE missing\n");
 		return -EINVAL;
 	}
-	ip = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
+	ip.s_addr = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
 	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
 	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
 
+	DEBUGP(DRSL, "IPAC_BIND_ACK chan_nr=0x%02x IP=%s PORT=%d FC=%d F8=%d\n",
+		dh->chan_nr, inet_ntoa(ip), ntohs(port), *TLVP_VAL(&tv, 0xfc),
+		ntohs(attr_f8));
+
 	/* update our local information about this TS */
-	ts->abis_ip.bound_ip = ntohl(ip);
-	ts->abis_ip.bound_port = ntohl(port);
+	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
+	ts->abis_ip.bound_port = ntohs(port);
 	ts->abis_ip.attr_f8 = ntohs(attr_f8);
 	ts->abis_ip.attr_fc = *TLVP_VAL(&tv, 0xfc);
+
+	dispatch_signal(SS_ABISIP, S_ABISIP_BIND_ACK, msg->lchan);
 
 	return 0;
 }
@@ -976,7 +984,6 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_IPAC_BIND_ACK:
-		DEBUGP(DRSL, "IPAC_BIND_ACK\n");
 		rc = abis_rsl_rx_ipacc_bindack(msg);
 		break;
 	case RSL_MT_IPAC_BIND_NACK:

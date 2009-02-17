@@ -32,12 +32,20 @@
 /*
  * Signalling subsystems
  */
-#define SS_PAGING	0x0001
-#define SS_SMS		0x0002
+enum signal_subsystems {
+	SS_PAGING,
+	SS_SMS,
+	SS_ABISIP,
+};
 
 /* SS_PAGING signals */
 enum signal_paging {
 	S_PAGING_COMPLETED,
+};
+
+/* SS_ABISIP signals */
+enum signal_abisip {
+	S_ABISIP_BIND_ACK,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
