@@ -1,0 +1,25 @@
+Call routing in OpenBSC
+
+Flow of events:
+
+ # MO call initiated by MS, CHANNEL RQD, IMMEDIATE ASSIGN
+ # MS sends CC SETUP message, we assume already on TCH/H FACCH
+ # OpenBSC does a subscriber lookup based on the target extension
+  * If a subscriber is found:
+   # send CALL PROCEEDING message to MO
+   # page the MT subscriber and ask itI to ask for TCH/H
+   # once paging completes, we have the TCH/H for the MT end
+   # send SETUP to MT
+   # receive CALL CONFIRMED from MT
+   # set-up the TRAU mux mapping between the E1 subslots for both TCH/H
+   # receive ALERTING from MT, route ALERTING to MO
+   # receive CONNECT from MT, confirm to MT with CONNECT_ACK
+   # send a CONNECT message to MO, receive CONNECT_ACK from MO
+ * If subscriber is not found:
+  # send RELEASE COMPLETE with apropriate cause to MO (1: unalloacated 3: no route)
+  
+
+
+Thoughts about RR/MM:
+
+* we allocate RR/MM entities on demand, when we need them

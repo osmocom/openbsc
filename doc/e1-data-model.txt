@@ -1,0 +1,172 @@
+E1 related data model
+
+This data model describes the physical relationship of the individual
+parts in the network, it is not the logical/protocol side of the GSM
+network.
+
+A BTS is connected to the BSC by some physical link.  It could be an actual
+E1 link, but it could also be abis-over-IP with a mixture of TCP and RTP/UDP.
+
+To further complicate the fact, multiple BTS can share one such pysical
+link.  On a single E1 line, we can easily accomodate up to three BTS with
+two TRX each.
+
+Thus, it is best for OpenBSC to have some kind of abstraction layer.  The BSC's
+view of a BTS connected to it.  We call this 'bts_link'.  A bts_link can be
+* all the TCP and UDP streams of a Abis-over-IP BTS
+* a set of E1 timeslots for OML, RSL and TRAU connections on a E1 link
+* a serial line exclusively used for OML messages (T-Link)
+
+A bts_link can be registered with the OpenBSC core at runtime.
+
+struct trx_link {
+	struct gsm_bts_trx *trx;
+};
+
+struct bts_link {
+	struct gsm_bts *bts;
+	struct trx_link trx_links[NUM_TRX];
+};
+
+Interface from stack to input core:
+======================================================================
+int abis_rsl_sendmsg(struct msgb *msg);
+	send a message through a RSL link to the TRX specified by the caller in
+	msg->trx.
+
+int abis_rsl_rcvmsg(struct msgb *msg);
+	receive a message from a RSL link from the TRX specified by the
+	caller in msg->trx.
+
+int abis_nm_sendmsg(struct msgb *msg);
+	send a message through a OML link to the BTS specified by the caller in
+	msg->trx->bts.  The caller can just use bts->c0 to get the first TRX
+	in a BTS. (OML messages are not really sent to a TRX but to the BTS)
+
+int abis_nm_rcvmsg(struct msgb *msg);
+	receive a message from a OML link from the BTS specified by the caller
+	in msg->trx->bts.  The caller can just use bts->c0 to get the first
+	TRX in a BTS.
+
+int abis_link_event(int event, void *data);
+	signal some event (such as layer 1 connect/disconnect) from the
+	input core to the stack.
+
+int subch_demux_in(mx, const u_int8_t *data, int len);
+	receive 'len' bytes from a given E1 timeslot (TRAU frames)
+
+int subchan_mux_out(mx, u_int8_t *data, int len);
+	obtain 'len' bytes of output data to be sent on E1 timeslot
+
+Intrface by Input Core for Input Plugins
+======================================================================
+
+int btslink_register_plugin();
+
+
+Configuration for the E1 input module
+======================================================================
+
+BTS
+	BTS number
+	number of TRX
+	OML link
+		E1 line number
+		timeslot number
+		[subslot number]
+		SAPI
+		TEI
+	for each TRX
+		RSL link
+			E1 line number
+			timeslot number
+			[subslot number]
+			SAPI
+			TEI
+		for each TS
+			E1 line number
+			timeslot number
+			subslot number
+
+
+E1 input module data model
+======================================================================
+
+
+enum e1inp_sign_type {
+	E1INP_SIGN_NONE,
+	E1INP_SIGN_OML,
+	E1INP_SIGN_RSL,
+};
+
+struct e1inp_sign_link {
+	/* list of signalling links */
+	struct llist_head list;
+
+	enum e1inp_sign_type type;
+
+	/* trx for msg->trx of received msgs */	
+	struct gsm_bts_trx *trx;
+
+	/* msgb queue of to-be-transmitted msgs */
+	struct llist_head tx_list;
+
+	/* SAPI and TEI on the E1 TS */
+	u_int8_t sapi;
+	u_int8_t tei;
+}
+
+enum e1inp_ts_type {
+	E1INP_TS_TYPE_NONE,
+	E1INP_TS_TYPE_SIGN,
+	E1INP_TS_TYPE_TRAU,
+};
+
+/* A timeslot in the E1 interface */
+struct e1inp_ts {
+	enum e1inp_ts_type type;
+	struct e1inp_line *line;
+	union {
+		struct {
+			struct llist_head sign_links;
+		} sign;
+		struct {
+			/* subchannel demuxer for frames from E1 */
+			struct subch_demux demux;
+			/* subchannel muxer for frames to E1 */
+			struct subch_mux mux;
+		} trau;
+	};
+	union {
+		struct {
+			/* mISDN driver has one fd for each ts */
+			struct bsc_fd;
+		} misdn;
+	} driver;
+};
+
+struct e1inp_line {
+	unsigned int num;
+	char *name;
+
+	struct e1inp_ts ts[NR_E1_TS];
+
+	char *e1inp_driver;
+	void *driver_data;
+};
+
+/* Call from the Stack: configuration of this TS has changed */
+int e1inp_update_ts(struct e1inp_ts *ts);
+
+/* Receive a packet from the E1 driver */
+int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
+		u_int8_t tei, u_int8_t sapi);
+
+/* Send a packet, callback function in the driver */
+int e1driver_tx_ts(struct e1inp_ts *ts, struct msgb *msg)
+
+
+struct e1inp_driver {
+	const char *name;
+	int (*want_write)(struct e1inp_ts *ts);
+};

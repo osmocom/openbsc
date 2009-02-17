@@ -1,0 +1,31 @@
+The Siemens BS-11 supports the following additional GSM 12.21 OML operations:
+
+
+CREATE OBJECT
+
+abis_om_fom_hdr.obj_class can be 
+A3:
+A5: ALCO, BBSIG, CCLK, GPSU, LI, PA
+A8: EnvaBTSE
+A9: BPORT
+
+the abis_om_obj_inst.trx_nr field indicates the index of object, whereas the
+abis_om_fom_hdr.bts_nr indicates the type of the object.
+
+enum abis_bs11_objtype {
+	BS11_OBJ_ALCO		= 0x01,
+	BS11_OBJ_BBSIG		= 0x02,	/* obj_class: 0,1 */
+	BS11_OBJ_TRX1		= 0x03,	/* only DEACTIVATE TRX1 */
+	BS11_OBJ_CCLK		= 0x04,
+	BS11_OBJ_GPSU		= 0x06,
+	BS11_OBJ_LI		= 0x07,
+	BS11_OBJ_PA		= 0x09,	/* obj_class: 0, 1*/
+};
+
+In case of CREATE ENVABTSE, the abis_om_obj_inst.trx_nr indicates the EnvaBTSEx
+number.
+
+In case of A9 (CREAETE BPORT), the abis_om_obj_inst.bts_nr indicates which BPORT
+shall be used.
+
+
