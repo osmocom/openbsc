@@ -998,7 +998,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	num_type = decode_bcd_number(called_number, sizeof(called_number),
 				     TLVP_VAL(&tp, GSM48_IE_CALLED_BCD)-1);
 
-	DEBUGP(DCC, "-> SETUP(tid=0x%02x,number='%s')\n", call->transaction_id,
+	DEBUGP(DCC, "A -> SETUP(tid=0x%02x,number='%s')\n", call->transaction_id,
 		called_number);
 
 	called_subscr = subscr_get_by_extension(called_number);
@@ -1006,7 +1006,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 		DEBUGP(DCC, "could not find subscriber, RELEASE\n");
 		put_lchan(msg->lchan);
 		return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
-					GSM48_MT_CC_RELEASE_COMPL);
+				GSM48_MT_CC_RELEASE_COMPL);
 	}
 
 	subscr_get(msg->lchan->subscr);
@@ -1034,14 +1034,14 @@ static int gsm48_cc_rx_alerting(struct msgb *msg)
 	struct gsm_call *call = &msg->lchan->call;
 	struct gsm_lchan *other_lchan;
 
-	DEBUGP(DCC, "-> ALERTING\n");
+	DEBUGP(DCC, "A -> ALERTING\n");
 
 	/* forward ALERTING to other party */
 	other_lchan = lchan_find(msg->trx->bts, call->called_subscr);
 	if (!other_lchan)
 		return -EIO;
 
-	DEBUGP(DCC, "<- ALERTING\n");
+	DEBUGP(DCC, "B <- ALERTING\n");
 	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_ALERTING);
 }
@@ -1052,20 +1052,20 @@ static int gsm48_cc_rx_connect(struct msgb *msg)
 	struct gsm_lchan *other_lchan;
 	int rc;
 
-	DEBUGP(DCC, "-> CONNECT\n");
-	DEBUGP(DCC, "<- CONNECT ACK\n");
+	DEBUGP(DCC, "A -> CONNECT\n");
+	DEBUGP(DCC, "A <- CONNECT ACK\n");
 	/* MT+MO: need to respond with CONNECT_ACK and pass on */
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
-			     GSM48_MT_CC_CONNECT);
+			     GSM48_MT_CC_CONNECT_ACK);
 
-	/* forward ALERTING to other party */
+	/* forward CONNECT to other party */
 	other_lchan = lchan_find(msg->trx->bts, call->called_subscr);
 	if (!other_lchan)
 		return -EIO;
 
-	DEBUGP(DCC, "<- CONNECT\n");
+	DEBUGP(DCC, "B <- CONNECT\n");
 	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
-			       GSM48_MT_CC_ALERTING);
+			       GSM48_MT_CC_CONNECT);
 }
 
 static int gsm48_cc_rx_disconnect(struct msgb *msg)
@@ -1076,11 +1076,12 @@ static int gsm48_cc_rx_disconnect(struct msgb *msg)
 
 
 	/* Section 5.4.3.2 */
-	DEBUGP(DCC, "-> DISCONNECT (state->RELEASE_REQ)\n");
+	DEBUGP(DCC, "A -> DISCONNECT (state->RELEASE_REQ)\n");
 	call->state = GSM_CSTATE_RELEASE_REQ;
 	if (call->state != GSM_CSTATE_NULL)
 		put_lchan(msg->lchan);
 	/* FIXME: clear the network connection */
+	DEBUGP(DCC, "A <- RELEASE\n");
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			     GSM48_MT_CC_RELEASE);
 
@@ -1089,7 +1090,7 @@ static int gsm48_cc_rx_disconnect(struct msgb *msg)
 	if (!other_lchan)
 		return -EIO;
 
-	DEBUGP(DCC, "<- DISCONNECT\n");
+	DEBUGP(DCC, "B <- DISCONNECT\n");
 	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_DISCONNECT);
 }
@@ -1129,7 +1130,7 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *called_sub
 			     bcd_lv[0], bcd_lv+1);
 	}
 
-	DEBUGP(DCC, "<- SETUP\n");
+	DEBUGP(DCC, "B <- SETUP\n");
 
 	return gsm48_sendmsg(msg);
 }
@@ -1145,7 +1146,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	case GSM48_MT_CC_CALL_CONF:
 		/* Response to SETUP */
 		DEBUGP(DCC, "-> CALL CONFIRM\n");
-		/* FIXME: we now need to MODIFY the channel */
+		/* we now need to MODIFY the channel */
+		rc = gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
 		break;
 	case GSM48_MT_CC_RELEASE_COMPL:
 		/* Answer from MS to RELEASE */
