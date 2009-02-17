@@ -37,6 +37,6 @@ char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 			b_off -= 8;
 		}
 	}
-	text[i] = 0;
+	text[i] = '\0';
 	return text;
 }
