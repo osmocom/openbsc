@@ -373,7 +373,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		}
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		ret = subch_demux_in(&ts->trau.demux, msg->data, msg->len);
+		ret = subch_demux_in(&ts->trau.demux, msg->l2h, msgb_l2len(msg));
 		break;
 	default:
 		ret = -EINVAL;
