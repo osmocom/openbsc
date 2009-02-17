@@ -169,7 +169,9 @@ enum abis_nm_msgtype {
 	NM_MT_SET_ALARM_THRES,
 	NM_MT_SET_ALARM_THRES_ACK,
 	NM_MT_SET_ALARM_THRES_NACK,
-	
+};
+
+enum abis_nm_msgtype_bs11 {
 	NM_MT_BS11_RESET_RESOURCE	= 0x74,
 
 	NM_MT_BS11_BEGIN_DB_TX		= 0xa3,
@@ -201,6 +203,12 @@ enum abis_nm_msgtype {
 	NM_MT_BS11_LMT_LOGOFF_ACK,
 	NM_MT_BS11_RECONNECT		= 0xf1,
 	NM_MT_BS11_RECONNECT_ACK,
+};
+
+enum abis_nm_msgtype_ipacc {
+	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
+	NM_MT_IPACC_RSL_CONNECT_ACK,
+	NM_MT_IPACC_RSL_CONNECT_NACK,
 };
 
 /* Section 9.2: Object Class */
@@ -321,6 +329,9 @@ enum abis_nm_attr {
 	NM_ATT_BS11_ENA_RXLEV_HO	= 0x6c,
 	NM_ATT_BS11_ENA_RXQUAL_HO	= 0x6d,
 	NM_ATT_BS11_FACCH_QUAL		= 0x6e,
+
+	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
+	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
 
 	NM_ATT_BS11_RF_RES_IND_PER	= 0x8f,
 	

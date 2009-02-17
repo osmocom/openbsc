@@ -34,6 +34,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
@@ -216,6 +217,11 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
+		/* ip.access specifics */
+		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
+		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
+		[0x85] =			{ TLV_TYPE_TV },
+
 	},
 };
 #define nm_tlv_parse(dec, buf, len)	tlv_parse(dec, &nm_att_tlvdef, buf, len)
@@ -631,12 +637,34 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	return 0;
 }
 
+static int abis_nm_rx_ipacc(struct msgb *mb);
+
+static int abis_nm_rcvmsg_manuf(struct msgb *mb)
+{
+	int rc;
+	int bts_type = mb->trx->bts->type;
+
+	switch (bts_type) {
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		rc = abis_nm_rx_ipacc(mb);
+		break;
+	default:
+		fprintf(stderr, "don't know how to parse OML for this "
+			 "BTS type (%u)\n", bts_type);
+		rc = 0;
+		break;
+	}
+
+	return rc;
+}
+
 /* High-Level API */
 /* Entry-point where L2 OML from BTS enters the NM code */
 int abis_nm_rcvmsg(struct msgb *msg)
 {
-	int rc;
 	struct abis_om_hdr *oh = msgb_l2(msg);
+	int rc = 0;
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
@@ -666,9 +694,14 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	case ABIS_OM_MDISC_FOM:
 		rc = abis_nm_rcvmsg_fom(msg);
 		break;
+	case ABIS_OM_MDISC_MANUF:
+		rc = abis_nm_rcvmsg_manuf(msg);
+		break;
 	case ABIS_OM_MDISC_MMI:
 	case ABIS_OM_MDISC_TRAU:
-	case ABIS_OM_MDISC_MANUF:
+		fprintf(stderr, "unimplemented ABIS OML message discriminator 0x%x\n",
+			oh->mdisc);
+		break;
 	default:
 		fprintf(stderr, "unknown ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
@@ -1800,8 +1833,46 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 }
 
 /* ip.access nanoBTS specific commands */
-
 static const char ipaccess_magic[] = "com.ipaccess";
+
+
+static int abis_nm_rx_ipacc(struct msgb *msg)
+{
+	struct abis_om_hdr *oh = msgb_l2(msg);
+	struct abis_om_fom_hdr *foh;
+	u_int8_t idstrlen = oh->data[0];
+	struct tlv_parsed tp;
+
+	if (strncmp((char *)&oh->data[1], ipaccess_magic, idstrlen)) {
+		DEBUGP(DNM, "id string is not com.ipaccess !?!\n");
+		return -EINVAL;
+	}
+
+	foh = (struct abis_om_fom_hdr *) oh->data + 1 + idstrlen;
+	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+
+	switch (foh->msg_type) {
+	case NM_MT_IPACC_RSL_CONNECT_ACK:
+		DEBUGP(DNM, "IPACC: RSL CONNECT ACK");
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_IP))
+			DEBUGPC(DNM, "IP=%s\n",
+				inet_ntoa(*((struct in_addr *) 
+					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_IP))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_PORT))
+			DEBUGPC(DNM, "IP=%s\n",
+				ntohs(*((u_int16_t *) 
+					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_PORT))));
+		break;
+	case NM_MT_IPACC_RSL_CONNECT_NACK:
+		DEBUGP(DNM, "IPACC: RSL CONNECT NACK");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=0x%02x\n", *TLVP_VAL(&tp, NM_ATT_NACK_CAUSES));
+		else
+			DEBUGPC(DNM, "\n");
+		break;
+	}
+	return 0;
+}
 
 int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 			 u_int8_t obj_class, u_int8_t bts_nr,
@@ -1838,3 +1909,4 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 
 	return abis_nm_sendmsg(bts, msg);
 }
+
