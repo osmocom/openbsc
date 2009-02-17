@@ -322,7 +322,7 @@ unsigned char msg_6[] =
 {
 	0x44, 0x02, 0x00, 0x00, 0xFF, 
 		NM_ATT_ARFCN_LIST, 0x01, 0x00, HARDCODED_ARFCN /*0x01*/,
-		NM_ATT_RF_MAXPOWR_R, 0x0f,
+		NM_ATT_RF_MAXPOWR_R, 0x00,
 		NM_ATT_BS11_RADIO_MEAS_GRAN, 0x01, 0xFE, 
 		NM_ATT_BS11_RADIO_MEAS_REP, 0x01, 0x01,
 		NM_ATT_BS11_EMRG_CFG_MEMBER, 0x01, 0x01,
@@ -335,9 +335,9 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10, 
 	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
 	NM_ATT_MAX_TA, 0x3f,
-	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 0x0a,
-	NM_ATT_CCCH_L_T, 0x1e,
-	NM_ATT_CCCH_L_I_P, 0x64,
+	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 10, /* seconds */
+	NM_ATT_CCCH_L_T, 10, /* percent */
+	NM_ATT_CCCH_L_I_P, 1, /* seconds */
 	NM_ATT_RACH_B_THRESH, 0x0a,
 	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8,
 	NM_ATT_BTS_AIR_TIMER, 0x80,
@@ -347,7 +347,7 @@ static unsigned char nanobts_attr_bts[] = {
 };
 
 static unsigned char nanobts_attr_radio[] = {
-	NM_ATT_RF_MAXPOWR_R, 0x0f,
+	NM_ATT_RF_MAXPOWR_R, 0x0c,
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
