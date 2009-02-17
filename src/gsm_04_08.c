@@ -84,6 +84,17 @@ static const struct tlv_definition rsl_att_tlvdef = {
 	},
 };
 		
+static inline int is_ipaccess_bts(struct gsm_bts *bts)
+{
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		return 1;
+	default:
+		break;
+	}
+	return 0;
+}
 
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
@@ -943,7 +954,8 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_lchan, void *param)
 {
 	struct gsm_lchan *lchan = _lchan;
-	struct gsm_call *call = param;
+	struct gsm_call *remote_call = param;
+	struct gsm_call *call = &lchan->call;
 	int rc = 0;
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
@@ -952,8 +964,12 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGP(DCC, "paging succeeded!\n");
+		remote_call->remote_lchan = lchan;
+		call->remote_lchan = remote_call->local_lchan;
 		/* send SETUP request to called party */
-		rc = gsm48_cc_tx_setup(lchan, call->called_subscr, call->subscr);
+		rc = gsm48_cc_tx_setup(lchan, call->remote_lchan->subscr);
+		if (is_ipaccess_bts(lchan->ts->trx->bts))
+			rsl_ipacc_bind(lchan);
 		break;
 	case GSM_PAGING_EXPIRED:
 		DEBUGP(DCC, "paging expired!\n");
@@ -988,6 +1004,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 
 	call->type = GSM_CT_MO;
 	call->state = GSM_CSTATE_INITIATED;
+	call->local_lchan = msg->lchan;
 	call->transaction_id = gh->proto_discr & 0xf0;
 
 	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len);
@@ -1010,7 +1027,6 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	}
 
 	subscr_get(msg->lchan->subscr);
-	call->subscr = msg->lchan->subscr;
 	call->called_subscr = called_subscr;
 
 	/* start paging of the receiving end of the call */
@@ -1020,6 +1036,9 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	/* send a CALL PROCEEDING message to the MO */
 	ret = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_CALL_PROC);
+
+	if (is_ipaccess_bts(msg->trx->bts))
+		rsl_ipacc_bind(msg->lchan);
 
 	/* change TCH/F mode to voice */ 
 	return gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
@@ -1032,24 +1051,37 @@ err:
 static int gsm48_cc_rx_alerting(struct msgb *msg)
 {
 	struct gsm_call *call = &msg->lchan->call;
-	struct gsm_lchan *other_lchan;
 
 	DEBUGP(DCC, "A -> ALERTING\n");
 
 	/* forward ALERTING to other party */
-	other_lchan = lchan_find(msg->trx->bts, call->called_subscr);
-	if (!other_lchan)
+	if (!call->remote_lchan)
 		return -EIO;
 
 	DEBUGP(DCC, "B <- ALERTING\n");
-	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
+	return gsm48_tx_simple(call->remote_lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_ALERTING);
+}
+
+/* map two ipaccess RTP streams onto each other */
+static int ipacc_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
+{
+	struct gsm_bts_trx_ts *ts;
+
+	ts = remote_lchan->ts;
+	rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
+			  lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+	
+	ts = lchan->ts;
+	rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
+			  remote_lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+
+	return 0;
 }
 
 static int gsm48_cc_rx_connect(struct msgb *msg)
 {
 	struct gsm_call *call = &msg->lchan->call;
-	struct gsm_lchan *other_lchan;
 	int rc;
 
 	DEBUGP(DCC, "A -> CONNECT\n");
@@ -1058,20 +1090,21 @@ static int gsm48_cc_rx_connect(struct msgb *msg)
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			     GSM48_MT_CC_CONNECT_ACK);
 
-	/* forward CONNECT to other party */
-	other_lchan = lchan_find(msg->trx->bts, call->called_subscr);
-	if (!other_lchan)
+	if (!call->remote_lchan)
 		return -EIO;
 
+	if (is_ipaccess_bts(msg->trx->bts))
+		ipacc_map(msg->lchan, call->remote_lchan);
+
+	/* forward CONNECT to other party */
 	DEBUGP(DCC, "B <- CONNECT\n");
-	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
+	return gsm48_tx_simple(call->remote_lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_CONNECT);
 }
 
 static int gsm48_cc_rx_disconnect(struct msgb *msg)
 {
 	struct gsm_call *call = &msg->lchan->call;
-	struct gsm_lchan *other_lchan;
 	int rc;
 
 
@@ -1086,19 +1119,18 @@ static int gsm48_cc_rx_disconnect(struct msgb *msg)
 			     GSM48_MT_CC_RELEASE);
 
 	/* forward DISCONNECT to other party */
-	other_lchan = lchan_find(msg->trx->bts, call->called_subscr);
-	if (!other_lchan)
+	if (!call->remote_lchan)
 		return -EIO;
 
 	DEBUGP(DCC, "B <- DISCONNECT\n");
-	return gsm48_tx_simple(other_lchan, GSM48_PDISC_CC,
+	return gsm48_tx_simple(call->remote_lchan, GSM48_PDISC_CC,
 			       GSM48_MT_CC_DISCONNECT);
 }
 
 static const u_int8_t calling_bcd[] = { 0xb9, 0x32, 0x24 };
 
-int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *called_subscr,
-		      struct gsm_subscriber *calling_subscriber)
+int gsm48_cc_tx_setup(struct gsm_lchan *lchan, 
+		      struct gsm_subscriber *calling_subscr)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -1108,24 +1140,23 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *called_sub
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
 	call->type = GSM_CT_MT;
-	call->subscr = called_subscr;
-	call->called_subscr = calling_subscriber;
-	msg->lchan = lchan;
+
+	call->local_lchan = msg->lchan = lchan;
 	use_lchan(lchan);
 
 	gh->proto_discr = GSM48_PDISC_CC;
 	gh->msg_type = GSM48_MT_CC_SETUP;
 
 	msgb_tv_put(msg, GSM48_IE_SIGNAL, GSM48_SIGNAL_DIALTONE);
-	if (calling_subscriber) {
+	if (calling_subscr) {
 		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 0xb9,
-				  calling_subscriber->extension);
+				  calling_subscr->extension);
 		msgb_tlv_put(msg, GSM48_IE_CALLING_BCD,
 			     bcd_lv[0], bcd_lv+1);
 	}
-	if (call->subscr) {
+	if (lchan->subscr) {
 		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 0xb9,
-				  call->subscr->extension);
+				  lchan->subscr->extension);
 		msgb_tlv_put(msg, GSM48_IE_CALLED_BCD,
 			     bcd_lv[0], bcd_lv+1);
 	}
@@ -1167,9 +1198,12 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		break;
 	case GSM48_MT_CC_RELEASE:
 		DEBUGP(DCC, "-> RELEASE\n");
+		DEBUGP(DCC, "<- RELEASE_COMPLETE\n");
 		/* need to respond with RELEASE_COMPLETE */
 		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 				     GSM48_MT_CC_RELEASE_COMPL);
+		put_lchan(msg->lchan);
+                call->state = GSM_CSTATE_NULL;
 		break;
 	case GSM48_MT_CC_STATUS_ENQ:
 		rc = gsm48_cc_rx_status_enq(msg);

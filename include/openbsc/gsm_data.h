@@ -61,14 +61,20 @@ enum gsm_call_state {
 	GSM_CSTATE_RELEASE_REQ,
 };
 
+struct gsm_lchan;
+struct gsm_subscriber;
+
 /* One end of a call */
 struct gsm_call {
 	enum gsm_call_type type;
 	enum gsm_call_state state;
 	u_int8_t transaction_id;	/* 10.3.2 */
 
-	/* the 'local' subscriber */
-	struct gsm_subscriber *subscr;
+	/* the 'local' channel */
+	struct gsm_lchan *local_lchan;
+	/* the 'remote' channel */
+	struct gsm_lchan *remote_lchan;
+
 	/* the 'remote' subscriber */
 	struct gsm_subscriber *called_subscr;
 };

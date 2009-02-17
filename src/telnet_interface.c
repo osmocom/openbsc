@@ -229,7 +229,7 @@ void telnet_call(struct telnet_connection *connection, const char* imsi,
 		return;
 
 	/* TODO: add the origin */
-	gsm48_cc_tx_setup(lchan, NULL, NULL);
+	gsm48_cc_tx_setup(lchan, NULL);
 }
 
 void telnet_send_gsm_48(struct telnet_connection *connection) {
