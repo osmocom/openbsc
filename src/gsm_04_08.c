@@ -975,7 +975,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 		DEBUGP(DCC, "paging expired!\n");
 		/* notify caller that we cannot reach called party */
 		/* FIXME: correct cause, etc */
-		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+		rc = gsm48_tx_simple(remote_call->local_lchan, GSM48_PDISC_CC,
 				     GSM48_MT_CC_RELEASE_COMPL);
 		break;
 	}
