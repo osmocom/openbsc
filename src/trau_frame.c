@@ -27,6 +27,7 @@
 
 #include <openbsc/trau_frame.h>
 #include <openbsc/subchan_demux.h>
+#include <openbsc/debug.h>
 
 static u_int32_t get_bits(const u_int8_t *bitbuf, int offset, int num)
 {
@@ -106,11 +107,11 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
 	case TRAU_FT_DATA_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		fprintf(stderr, "unimplemented TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "can't decode unimplemented TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		fprintf(stderr, "unknown TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "can't decode unknown TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	}
@@ -133,7 +134,7 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 		memset(fr->c_bits+5, 0, 6);
 		/* FIXME: SP / BFI in case of DTx */
 		/* C12 .. C21 are spare and coded as '1' */
-		memset(fr->c_bits+11, 0, 10);
+		memset(fr->c_bits+11, 0x01, 10);
 		break;
 	case TRAU_FT_EFR:
 		/* clear time alignment */
@@ -147,7 +148,7 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 		memset(fr->c_bits+5, 0, 6);
 		/* FIXME: SP / BFI in case of DTx */
 		/* C12 .. C21 are spare and coded as '1' */
-		memset(fr->c_bits+11, 0, 10);
+		memset(fr->c_bits+11, 0x01, 10);
 		break;
 	case TRAU_FT_FR_DOWN:
 	case TRAU_FT_IDLE_DOWN:
@@ -161,11 +162,11 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 	case TRAU_FT_DATA_UP:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		fprintf(stderr, "unimplemented TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "unimplemented TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		fprintf(stderr, "unknown TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "unknown TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	}
@@ -223,11 +224,11 @@ int encode_trau_frame(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
 	case TRAU_FT_DATA_DOWN:
 	case TRAU_FT_D145_SYNC:
 	case TRAU_FT_EDATA:
-		fprintf(stderr, "unimplemented TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "unimplemented TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	default:
-		fprintf(stderr, "unknown TRAU Frame Type 0x%02x\n", cbits5);
+		DEBUGP(DMUX, "unknown TRAU Frame Type 0x%02x\n", cbits5);
 		return -1;
 		break;
 	}
