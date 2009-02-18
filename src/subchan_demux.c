@@ -27,6 +27,7 @@
 
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
+#include <openbsc/debug.h>
 
 static inline void append_bit(struct demux_subch *sch, u_int8_t bit)
 {
@@ -38,55 +39,25 @@ static const u_int8_t nullbytes[SYNC_HDR_BITS];
 
 /* check if we have just completed the 16 bit zero sync header,
  * in accordance with GSM TS 08.60 Chapter 4.8.1 */
-static int sync_hdr_complete(struct demux_subch *sch)
+static int sync_hdr_complete(struct demux_subch *sch, u_int8_t bit)
 {
-	int rc;
-	int bits_at_end = 0;
-	int bits_at_front;
- 
-	if (sch->out_idx < SYNC_HDR_BITS)
-		bits_at_end = SYNC_HDR_BITS - sch->out_idx;
-	bits_at_front = sch->out_idx;
+	if (bit == 0)
+		sch->consecutive_zeros++;
+	else
+		sch->consecutive_zeros = 0;
 
-	if (bits_at_end) {
-		rc = memcmp(sch->out_bitbuf + sizeof(sch->out_bitbuf) - bits_at_end,
-			    nullbytes, bits_at_end);
-		if (rc)
-			return 0;
+	if (sch->consecutive_zeros >= SYNC_HDR_BITS) {
+		sch->consecutive_zeros = 0;
+		return 1;
 	}
-	rc = memcmp(sch->out_bitbuf + sch->out_idx, nullbytes,
-		    bits_at_front);
-	if (rc)
-		return 0;
-	
-	return 1;
+
+	return 0;
 }
 
 /* resynchronize to current location */
 static void resync_to_here(struct demux_subch *sch)
 {
-#if 0
-	u_int8_t tmp[TRAU_FRAME_BITS];
-	int sync_hdr_start = sch->out_idx - SYNC_HDR_BITS;
-	int bytes_at_end;
-
-	/* first make copy of old bitbuf */
-	memcpy(tmp, sch->out_bitbuf, sizeof(tmp));
-
-	if (sync_hdr_start < 0)
-		sync_hdr_start += TRAU_FRAME_BITS;
-
-	bytes_at_end = TRAU_FRAME_BITS - sync_hdr_start;
-
-	/* copy part after sync_hdr_start */
-	memcpy(sch->out_bitbuf, tmp + sync_hdr_start, bytes_at_end);
-
-	/* copy part before sync_hdr_start */
-	memcpy(sch->out_bitbuf + bytes_at_end, tmp, 
-		SYNC_HDR_BITS - bytes_at_end);
-#else
 	memset(sch->out_bitbuf, 0, SYNC_HDR_BITS);
-#endif
 
 	/* set index in a way that we can continue receiving bits after
 	 * the end of the SYNC header */
@@ -121,29 +92,32 @@ int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
 
 		for (c = 0; c < NR_SUBCH; c++) {
 			struct demux_subch *sch = &dmx->subch[c];
+			u_int8_t inbits;
 			u_int8_t bit;
 
 			/* ignore inactive subchannels */
 			if (!(dmx->chan_activ & (1 << c)))
 				continue;
 
+			inbits = inbyte >> ((3-c)*2);
+
 			/* two bits for each subchannel */
-			if ((inbyte >> (c * 2)) & 0x01)
+			if (inbits & 0x01)
 				bit = 1;
 			else
 				bit = 0;
 			append_bit(sch, bit);
 
-			if (sync_hdr_complete(sch))
+			if (sync_hdr_complete(sch, bit))
 				resync_to_here(sch);
 
-			if ((inbyte >> (c * 2)) & 0x02)
+			if (inbits & 0x02)
 				bit = 1;
 			else
 				bit = 0;
 			append_bit(sch, bit);
 
-			if (sync_hdr_complete(sch))
+			if (sync_hdr_complete(sch, bit))
 				resync_to_here(sch);
 
 			/* FIXME: verify the first bit in octet 2, 4, 6, ...
@@ -183,7 +157,7 @@ int subch_demux_deactivate(struct subch_demux *dmx, int subch)
 
 static int alloc_add_idle_frame(struct subch_mux *mx, int sch_nr)
 {
-	/* FIXME: allocate and initialize with idle pattern */
+	/* allocate and initialize with idle pattern */
 	return subchan_mux_enqueue(mx, sch_nr, trau_idle_frame(),
 				   TRAU_FRAME_BITS);
 }
@@ -217,7 +191,7 @@ static int get_subch_bits(struct subch_mux *mx, int subch,
 			num_bits_thistime = num_requested;
 
 		/* pull the bits from the txe */
-		memcpy(bits + num_bits, txe->bits + txe->next_bit, num_requested);
+		memcpy(bits + num_bits, txe->bits + txe->next_bit, num_bits_thistime);
 		txe->next_bit += num_bits_thistime;
 
 		/* free the tx_queue entry if it is fully consumed */
@@ -234,7 +208,7 @@ static int get_subch_bits(struct subch_mux *mx, int subch,
 }
 
 /* compact an array of 8 single-bit bytes into one byte of 8 bits */
-static u_int8_t compact_bits(u_int8_t *bits)
+static u_int8_t compact_bits(const u_int8_t *bits)
 {
 	u_int8_t ret = 0;
 	int i;
@@ -252,13 +226,12 @@ static int mux_output_byte(struct subch_mux *mx, u_int8_t *byte)
 	int rc;
 
 	/* combine two bits of every subchan */
-	rc = get_subch_bits(mx, 0, &bits[0], 2);
-	rc = get_subch_bits(mx, 1, &bits[2], 2);
-	rc = get_subch_bits(mx, 2, &bits[4], 2);
-	rc = get_subch_bits(mx, 3, &bits[6], 2);
+	rc = get_subch_bits(mx, 3, &bits[0], 2);
+	rc = get_subch_bits(mx, 2, &bits[2], 2);
+	rc = get_subch_bits(mx, 1, &bits[4], 2);
+	rc = get_subch_bits(mx, 0, &bits[6], 2);
 
-	if (!rc)
-		*byte = compact_bits(bits);
+	*byte = compact_bits(bits);
 
 	return rc;
 }

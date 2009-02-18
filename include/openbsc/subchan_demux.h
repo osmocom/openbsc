@@ -34,7 +34,8 @@
 
 struct demux_subch {
 	u_int8_t out_bitbuf[TRAU_FRAME_BITS];
-	u_int8_t out_idx; /* next bit to be written in out_bitbuf */
+	u_int16_t out_idx; /* next bit to be written in out_bitbuf */
+	unsigned int consecutive_zeros;
 };
 
 struct subch_demux {
