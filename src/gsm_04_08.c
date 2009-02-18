@@ -875,6 +875,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+		rc = rsl_chan_mode_modify_req(msg->lchan);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
@@ -1041,7 +1042,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 		rsl_ipacc_bind(msg->lchan);
 
 	/* change TCH/F mode to voice */ 
-	return gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
+	return gsm48_tx_chan_mode_modify(msg->lchan, GSM48_CMODE_SPEECH_EFR);
 
 err:
 	/* FIXME: send some kind of RELEASE */
@@ -1178,7 +1179,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		/* Response to SETUP */
 		DEBUGP(DCC, "-> CALL CONFIRM\n");
 		/* we now need to MODIFY the channel */
-		rc = gsm48_tx_chan_mode_modify(msg->lchan, 0x01);
+		rc = gsm48_tx_chan_mode_modify(msg->lchan, GSM48_CMODE_SPEECH_EFR);
 		break;
 	case GSM48_MT_CC_RELEASE_COMPL:
 		/* Answer from MS to RELEASE */
