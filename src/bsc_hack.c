@@ -478,43 +478,43 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 #endif
 
 	/* SET CHANNEL ATTRIBUTE TS1 */
-	abis_nm_set_channel_attr(&trx->ts[1], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
 	set_ts_e1link(&trx->ts[1], 0, 2, 1);
 	abis_nm_conn_terr_traf(&trx->ts[1], 0, 2, 1);
 	
 	/* SET CHANNEL ATTRIBUTE TS2 */
-	abis_nm_set_channel_attr(&trx->ts[2], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts2 to e1_0/ts2/c */
 	set_ts_e1link(&trx->ts[2], 0, 2, 2);
 	abis_nm_conn_terr_traf(&trx->ts[2], 0, 2, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS3 */
-	abis_nm_set_channel_attr(&trx->ts[3], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts3 to e1_0/ts2/d */
 	set_ts_e1link(&trx->ts[3], 0, 2, 3);
 	abis_nm_conn_terr_traf(&trx->ts[3], 0, 2, 3);
 
 	/* SET CHANNEL ATTRIBUTE TS4 */
-	abis_nm_set_channel_attr(&trx->ts[4], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts4 to e1_0/ts3/a */
 	set_ts_e1link(&trx->ts[4], 0, 3, 0);
 	abis_nm_conn_terr_traf(&trx->ts[4], 0, 3, 0);
 
 	/* SET CHANNEL ATTRIBUTE TS5 */
-	abis_nm_set_channel_attr(&trx->ts[5], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts5 to e1_0/ts3/b */
 	set_ts_e1link(&trx->ts[5], 0, 3, 1);
 	abis_nm_conn_terr_traf(&trx->ts[5], 0, 3, 1);
 
 	/* SET CHANNEL ATTRIBUTE TS6 */
-	abis_nm_set_channel_attr(&trx->ts[6], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts6 to e1_0/ts3/c */
 	set_ts_e1link(&trx->ts[6], 0, 3, 2);
 	abis_nm_conn_terr_traf(&trx->ts[6], 0, 3, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS7 */
-	abis_nm_set_channel_attr(&trx->ts[7], 0x09);
+	abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
 	set_ts_e1link(&trx->ts[7], 0, 3, 3);
 	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
