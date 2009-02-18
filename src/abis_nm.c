@@ -217,6 +217,8 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
 		/* ip.access specifics */
 		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
@@ -224,7 +226,11 @@ static const struct tlv_definition nm_att_tlvdef = {
 
 	},
 };
-#define nm_tlv_parse(dec, buf, len)	tlv_parse(dec, &nm_att_tlvdef, buf, len)
+
+int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
+{
+	return tlv_parse(tp, &nm_att_tlvdef, buf, len);
+}
 
 static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, int size)
 {
@@ -462,7 +468,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	new_state = *nm_state;
 	
-	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
 		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
 		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(new_state.operational));
@@ -584,7 +590,7 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 	struct tlv_parsed tp;
 	u_int8_t adm_state;
 
-	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
 		return -EINVAL;
 
@@ -1858,7 +1864,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	}
 
 	foh = (struct abis_om_fom_hdr *) oh->data + 1 + idstrlen;
-	nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:

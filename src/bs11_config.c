@@ -164,12 +164,10 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 		break;
 	case NM_MT_LOAD_END_ACK:
 		if (data) {
-			/* we did a SWL load and must activate it */
+			/* we did a safety load and must activate it */
 			abis_nm_software_activate(g_bts, fname_safety,
 						  swload_cbfn, g_bts);
-		} else {
-			/* we did a safety load and have to wait */
-			sleep(10);
+			sleep(5);
 		}
 		break;
 	case NM_MT_LOAD_END_NACK:
@@ -225,47 +223,65 @@ static const char *mbccu_load_name(u_int8_t linkstate)
 	return mbccu_load[linkstate];
 }
 
-
-static void print_state(struct abis_nm_bs11_state *st)
+static const char *bts_phase_name(u_int8_t phase)
 {
-	enum abis_bs11_phase phase = st->phase;
-
-	printf("Abis-link: %-9s MBCCU0: %-11s MBCCU1: %-11s PHASE: %u ",
-		linkstate_name(st->abis_link & 0xf),
-		mbccu_load_name(st->mbccu & 0xf), mbccu_load_name(st->mbccu >> 4),
-		phase & 0xf);
-
 	switch (phase) {
 	case BS11_STATE_WARM_UP:
 	case BS11_STATE_WARM_UP_2:
-		printf("Warm Up...\n");
+		return "Warm Up";
 		break;
 	case BS11_STATE_LOAD_SMU_SAFETY:
-		printf("Load SMU Safety...\n");
+		return "Load SMU Safety";
 		break;
 	case BS11_STATE_LOAD_SMU_INTENDED:
-		printf("Load SMU Intended...\n");
+		return "Load SMU Intended";
 		break;
 	case BS11_STATE_LOAD_MBCCU:
-		printf("Load MBCCU...\n");
+		return "Load MBCCU";
 		break;
 	case BS11_STATE_SOFTWARE_RQD:
-		printf("Software required...\n");
+		return "Software required";
 		break;
 	case BS11_STATE_WAIT_MIN_CFG:
 	case BS11_STATE_WAIT_MIN_CFG_2:
-		printf("Wait minimal config...\n");
+		return "Wait minimal config";
 		break;
 	case BS11_STATE_MAINTENANCE:
-		printf("Maintenance...\n");
+		return "Maintenance";
 		break;
 	case BS11_STATE_NORMAL:
-		printf("Normal...\n");
+		return "Normal";
+		break;
+	case BS11_STATE_ABIS_LOAD:
+		return "Abis load";
 		break;
 	default:
-		printf("Unknown phase 0x%02x\n", phase);
+		return "Unknown";
 		break;
 	}
+}
+
+static void print_state(struct tlv_parsed *tp)
+{
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_BTS_STATE)) {
+		u_int8_t phase, mbccu;
+		if (TLVP_LEN(tp, NM_ATT_BS11_BTS_STATE) >= 1) {
+			phase = *TLVP_VAL(tp, NM_ATT_BS11_BTS_STATE);
+			printf("PHASE: %u %-20s ", phase & 0xf,
+				bts_phase_name(phase));
+		}
+		if (TLVP_LEN(tp, NM_ATT_BS11_BTS_STATE) >= 2) {
+			mbccu = *(TLVP_VAL(tp, NM_ATT_BS11_BTS_STATE)+1);
+			printf("MBCCU0: %-11s MBCCU1: %-11s ",
+				mbccu_load_name(mbccu & 0xf), mbccu_load_name(mbccu >> 4));
+		}
+	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_E1_STATE) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_E1_STATE) >= 1) {
+		u_int8_t e1_state = *TLVP_VAL(tp, NM_ATT_BS11_E1_STATE);
+		printf("Abis-link: %-9s ", linkstate_name(e1_state & 0xf));
+	}
+	printf("\n");
 }
 
 /* handle a response from the BTS to a GET STATE command */
@@ -332,7 +348,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 {
 	struct abis_om_hdr *oh;
 	struct abis_om_fom_hdr *foh;
-	struct abis_nm_bs11_state *st;
+	struct tlv_parsed tp;
 	int rc = -1;
 
 #if 0
@@ -363,9 +379,11 @@ int handle_serial_msg(struct msgb *rx_msg)
 		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
-		st = (struct abis_nm_bs11_state *) &foh->data[0];
-		print_state(st);
-		rc = handle_state_resp(st->phase);
+		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		print_state(&tp);
+		if (TLVP_PRESENT(&tp, NM_ATT_BS11_BTS_STATE) &&
+		    TLVP_LEN(&tp, NM_ATT_BS11_BTS_STATE) >= 1)
+			rc = handle_state_resp(*TLVP_VAL(&tp, NM_ATT_BS11_BTS_STATE));
 		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);
@@ -389,6 +407,12 @@ int handle_serial_msg(struct msgb *rx_msg)
 	}
 
 	return rc;
+}
+
+int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+{
+	return 0;
 }
 
 static void print_banner(void)
@@ -428,7 +452,7 @@ static void handle_options(int argc, char **argv)
 			{ "restart", 0, 0, 'r' },
 		};
 
-		c = getopt_long(argc, argv, "hp:s:S:td:Dw:fr",
+		c = getopt_long(argc, argv, "hp:s:S:td:Dw:fra:",
 				long_options, &option_index);
 
 		if (c == -1)
@@ -492,7 +516,7 @@ int main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-	gsmnet = gsm_network_init(1, 1, 1);
+	gsmnet = gsm_network_init(1, 1, 1, GSM_BTS_TYPE_BS11);
 	if (!gsmnet) {
 		fprintf(stderr, "Unable to allocate gsm network\n");
 		exit(1);

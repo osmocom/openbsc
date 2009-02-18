@@ -25,6 +25,8 @@
 
 #include <sys/types.h>
 
+#include <openbsc/tlv.h>
+
 /* PRIVATE */
 
 /* generic header in front of every OML message according to TS 08.59 */
@@ -371,6 +373,8 @@ enum abis_nm_attr {
 	NM_ATT_BS11_RADIO_MEAS_GRAN	= 0xdc,	/* in SACCH multiframes */
 	NM_ATT_BS11_RADIO_MEAS_REP	= 0xdd,
 
+	NM_ATT_BS11_BTS_STATE		= 0xf0,
+	NM_ATT_BS11_E1_STATE		= 0xf1,
 	NM_ATT_BS11_PLL			= 0xf2,
 	NM_ATT_BS11_RX_OFFSET		= 0xf3,
 	NM_ATT_BS11_ANT_TYPE		= 0xf4,
@@ -497,9 +501,8 @@ struct abis_nm_cfg {
 };
 
 extern int abis_nm_rcvmsg(struct msgb *msg);
-//extern struct abis_nm_h *abis_nm_init(struct abis_nm_cfg *cfg);
-//extern void abis_nm_fini(struct abis_nm_h *nmh);
 
+int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len);
 int abis_nm_rx(struct msgb *msg);
 int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
