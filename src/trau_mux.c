@@ -29,6 +29,7 @@
 #include <openbsc/trau_mux.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/debug.h>
 
 struct map_entry {
 	struct llist_head list;
@@ -90,6 +91,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 	u_int8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = lookup_trau_mux_map(src_e1_ss);
 	struct subch_mux *mx;
+	int rc;
 
 	if (!dst_e1_ss)
 		return -EINVAL;
@@ -99,7 +101,10 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		return -EINVAL;
 
 	/* decode TRAU, change it to downlink, re-encode */
-	decode_trau_frame(&tf, trau_bits);
+	rc = decode_trau_frame(&tf, trau_bits);
+	if (rc)
+		return rc;
+
 	trau_frame_up2down(&tf);
 	encode_trau_frame(trau_bits_out, &tf);
 
