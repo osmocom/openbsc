@@ -397,9 +397,10 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		cm.chan_rate = 0x00;
 		break;
 	case GSM_LCHAN_TCH_F:
-		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
+		/* TCH/F are always activated in signalling mode first */
+		cm.spd_ind = RSL_CMOD_SPD_SIGN;
 		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		cm.chan_rate = 0x11; /* speech coding alg version 2*/
+		cm.chan_rate = 0x00;
 		break;
 	case GSM_LCHAN_TCH_H:
 		DEBUGP(DRSL, "Unimplemented TCH_H activation\n");
@@ -431,6 +432,44 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* Chapter 8.4.9 */
+int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	u_int8_t chan_nr = lchan2chan_nr(lchan);
+	struct rsl_ie_chan_mode cm;
+
+	/* FIXME: what to do with data calls ? */
+	cm.dtx_dtu = 0x00;
+	switch (lchan->type) {
+	case GSM_LCHAN_TCH_F:
+		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
+		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
+		cm.chan_rate = 0x11; /* speech coding alg version 2*/
+		break;
+	default:
+		DEBUGP(DRSL, "Unimplemented channel modification\n");
+		return -1;
+	}
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_MODE_MODIFY_REQ);
+	dh->chan_nr = chan_nr;
+
+	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
+		     (u_int8_t *) &cm);
+#if 0
+	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
+		     (u_int8_t *) &encr_info);
+#endif
 
 	msg->trx = lchan->ts->trx;
 
@@ -614,7 +653,13 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
+		DEBUGP(DRSL, "RSL CHANNEL MODE MODIFY ACK chan_nr=0x%02x\n",
+			rslh->chan_nr);
+		break;
 	case RSL_MT_MODE_MODIFY_NACK:
+		DEBUGP(DRSL, "RSL CHANNEL MODE MODIFY NACK chan_nr=0x%02x\n",
+			rslh->chan_nr);
+		break;
 	case RSL_MT_PHY_CONTEXT_CONF:
 	case RSL_MT_PREPROC_MEAS_RES:
 	case RSL_MT_TALKER_DET:
@@ -907,6 +952,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port, u_i
 	att_ip[2] = ip >> 16;
 	att_ip[3] = ip >> 8;
 	att_ip[4] = ip & 0xff;
+	//att_ip[4] = 11;
 
 	att_port = msgb_put(msg, sizeof(port)+1);
 	att_port[0] = RSL_IE_IPAC_REMOTE_PORT;
