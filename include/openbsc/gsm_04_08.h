@@ -40,6 +40,15 @@ struct gsm48_chan_mode_modify {
 	u_int8_t mode;
 } __attribute__ ((packed));
 
+#define GSM48_CMODE_SIGN	0x00
+#define GSM48_CMODE_SPEECH_V1	0x01
+#define GSM48_CMODE_SPEECH_EFR	0x21
+#define GSM48_CMODE_SPEECH_AMR	0x41
+#define GSM48_CMODE_DATA_14k5	0x0f
+#define GSM48_CMODE_DATA_12k0	0x03
+#define GSM48_CMODE_DATA_6k0	0x0b
+#define GSM48_CMODE_DATA_3k6	0x23
+
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
 	u_int8_t l2_plen;
