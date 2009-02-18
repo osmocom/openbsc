@@ -206,7 +206,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	return ret;
 }
 
-#define BCHAN_TX_GRAN	40
+#define BCHAN_TX_GRAN	160
 /* write to a B channel TS */
 static int handle_tsX_write(struct bsc_fd *bfd)
 {
