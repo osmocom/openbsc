@@ -336,6 +336,8 @@ const char *avail_names[] = {
 
 static const char *avail_name(u_int8_t avail)
 {
+	if (avail == 0xff)
+		return "OK";
 	if (avail >= ARRAY_SIZE(avail_names))
 		return "UNKNOWN";
 	return avail_names[avail];
@@ -466,7 +468,10 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(new_state.operational));
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_AVAIL_STATUS)) {
-		new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
+		if (TLVP_LEN(&tp, NM_ATT_AVAIL_STATUS) == 0)
+			new_state.availability = 0xff;
+		else
+			new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
 		DEBUGPC(DNM, "AVAIL=%s(%02x) ", avail_name(new_state.availability),
 			new_state.availability);
 	}
