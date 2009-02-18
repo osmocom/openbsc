@@ -1247,10 +1247,14 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_CONN_TERR_TRAF,
-			NM_OC_BASEB_TRANSC, bts->bts_nr, ts->trx->nr, ts->nr);
+			NM_OC_CHANNEL, bts->bts_nr, ts->trx->nr, ts->nr);
 
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
 	fill_nm_channel(ch, e1_port, e1_timeslot, e1_subslot);
+
+	DEBUGP(DNM, "CONNECT TERR TRAF Um=(%u,%u,%u) E1=(%u,%u,%u)\n",
+		bts->bts_nr, ts->trx->nr, ts->nr,
+		e1_port, e1_timeslot, e1_subslot);
 
 	return abis_nm_sendmsg(bts, msg);
 }
