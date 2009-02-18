@@ -28,7 +28,7 @@ int e1_config(struct gsm_bts *bts)
 	/* create E1 timeslots for signalling and TRAU frames */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
 	e1inp_ts_config(&line->ts[2-1], line, E1INP_TS_TYPE_TRAU);
-	e1inp_ts_config(&line->ts[3-1], line, E1INP_TS_TYPE_TRAU);
+	//e1inp_ts_config(&line->ts[3-1], line, E1INP_TS_TYPE_TRAU);
 
 	/* create signalling links for TS1 */
 	sign_ts = &line->ts[1-1];
@@ -50,6 +50,9 @@ int e1_config(struct gsm_bts *bts)
 		src_ss.e1_ts = dst_ss.e1_ts = 2;
 		src_ss.e1_ts_ss = 1; dst_ss.e1_ts_ss = 2;
 		trau_mux_map(&src_ss, &dst_ss);
+
+		subch_demux_activate(&line->ts[2-1].trau.demux, 1);
+		subch_demux_activate(&line->ts[2-1].trau.demux, 2);
 	}
 #ifdef HAVE_TRX1
 	/* create E1 timeslots for TRAU frames of TRX1 */
