@@ -42,6 +42,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/trau_mux.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -1065,17 +1066,39 @@ static int gsm48_cc_rx_alerting(struct msgb *msg)
 }
 
 /* map two ipaccess RTP streams onto each other */
-static int ipacc_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
+static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 {
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_bts *remote_bts = remote_lchan->ts->trx->bts;
 	struct gsm_bts_trx_ts *ts;
 
-	ts = remote_lchan->ts;
-	rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-			  lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u) and (bts=%u,trx=%u,ts=%u)\n",
+		bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr);
+
+	if (bts->type != remote_bts->type) {
+		DEBUGP(DCC, "Cannot switch calls between different BTS types yet\n");
+		return -EINVAL;
+	}
 	
-	ts = lchan->ts;
-	rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-			  remote_lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		ts = remote_lchan->ts;
+		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
+				  lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+	
+		ts = lchan->ts;
+		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
+				  remote_lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+		break;
+	case GSM_BTS_TYPE_BS11:
+		trau_mux_map_lchan(lchan, remote_lchan);
+		break;
+	default:
+		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		break;
+	}
 
 	return 0;
 }
@@ -1086,16 +1109,19 @@ static int gsm48_cc_rx_connect(struct msgb *msg)
 	int rc;
 
 	DEBUGP(DCC, "A -> CONNECT\n");
+	
+	rc = tch_map(msg->lchan, call->remote_lchan);
+	if (rc)
+		return -EIO;
+		
+	if (!call->remote_lchan)
+		return -EIO;
+
 	DEBUGP(DCC, "A <- CONNECT ACK\n");
 	/* MT+MO: need to respond with CONNECT_ACK and pass on */
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			     GSM48_MT_CC_CONNECT_ACK);
 
-	if (!call->remote_lchan)
-		return -EIO;
-
-	if (is_ipaccess_bts(msg->trx->bts))
-		ipacc_map(msg->lchan, call->remote_lchan);
 
 	/* forward CONNECT to other party */
 	DEBUGP(DCC, "B <- CONNECT\n");

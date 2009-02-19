@@ -41,19 +41,19 @@ int e1_config(struct gsm_bts *bts)
 	bts->oml_link = oml_link;
 	bts->c0->rsl_link = rsl_link;
 
-	/* configure a static mapping between on-air TS1 and TS2
-	 * since we don't yet have code to dynamically switch the
-	 * voice channels */
-	{
-		struct gsm_e1_subslot src_ss, dst_ss;
-		src_ss.e1_nr = dst_ss.e1_nr = 0;
-		src_ss.e1_ts = dst_ss.e1_ts = 2;
-		src_ss.e1_ts_ss = 1; dst_ss.e1_ts_ss = 2;
-		trau_mux_map(&src_ss, &dst_ss);
+	/* enable subchannel demuxer on TS2 */
+	subch_demux_activate(&line->ts[2-1].trau.demux, 1);
+	subch_demux_activate(&line->ts[2-1].trau.demux, 2);
+	subch_demux_activate(&line->ts[2-1].trau.demux, 3);
 
-		subch_demux_activate(&line->ts[2-1].trau.demux, 1);
-		subch_demux_activate(&line->ts[2-1].trau.demux, 2);
-	}
+#if 0
+	/* enable subchannel demuxer on TS3 */
+	subch_demux_activate(&line->ts[3-1].trau.demux, 0);
+	subch_demux_activate(&line->ts[3-1].trau.demux, 1);
+	subch_demux_activate(&line->ts[3-1].trau.demux, 2);
+	subch_demux_activate(&line->ts[3-1].trau.demux, 3);
+#endif
+
 #ifdef HAVE_TRX1
 	/* create E1 timeslots for TRAU frames of TRX1 */
 	e1inp_ts_config(&line->ts[4-1], line, E1INP_TS_TYPE_TRAU);
