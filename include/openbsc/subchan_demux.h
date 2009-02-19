@@ -35,7 +35,10 @@
 struct demux_subch {
 	u_int8_t out_bitbuf[TRAU_FRAME_BITS];
 	u_int16_t out_idx; /* next bit to be written in out_bitbuf */
+	/* number of consecutive zeros that we have received (for sync) */
 	unsigned int consecutive_zeros;
+	/* are we in TRAU frame sync or not? */
+	unsigned int in_sync;
 };
 
 struct subch_demux {

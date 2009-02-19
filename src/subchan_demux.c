@@ -62,6 +62,7 @@ static void resync_to_here(struct demux_subch *sch)
 	/* set index in a way that we can continue receiving bits after
 	 * the end of the SYNC header */
 	sch->out_idx = SYNC_HDR_BITS;
+	sch->in_sync = 1;
 }
 
 int subch_demux_init(struct subch_demux *dmx)
@@ -126,8 +127,11 @@ int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
 			/* once we have reached TRAU_FRAME_BITS, call
 			 * the TRAU frame handler callback function */
 			if (sch->out_idx >= TRAU_FRAME_BITS) {
-				dmx->out_cb(dmx, c, sch->out_bitbuf,
+				if (sch->in_sync) {
+					dmx->out_cb(dmx, c, sch->out_bitbuf,
 					    sch->out_idx, dmx->data);
+					sch->in_sync = 0;
+				}
 				sch->out_idx = 0;
 			}
 		}
