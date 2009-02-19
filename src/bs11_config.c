@@ -421,7 +421,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 	case BS11_STATE_MAINTENANCE:
 		if (command) {
 			if (!strcmp(command, "disconnect"))
-				exit(0);
+				abis_nm_bs11_factory_logon(g_bts, 0);
 			else if (!strcmp(command, "reconnect"))
 				rc = abis_nm_bs11_bsc_disconnect(g_bts, 1);
 			else if (!strcmp(command, "software")
@@ -438,9 +438,13 @@ static int handle_state_resp(enum abis_bs11_phase state)
 			} else if (!strcmp(command, "delete-trx1")) {
 				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_BBSIG, 1);
 				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_PA, 1);
+				sleep(5);
+				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
 			} else if (!strcmp(command, "create-trx1")) {
 				create_trx1(g_bts);
+				sleep(5);
+				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
 			} else if (!strcmp(command, "restart")) {
 				abis_nm_bs11_restart(g_bts);
@@ -451,7 +455,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 	case BS11_STATE_NORMAL:
 		if (command) {
 			if (!strcmp(command, "reconnect"))
-				exit(0);
+				abis_nm_bs11_factory_logon(g_bts, 0);
 			else if (!strcmp(command, "disconnect"))
 				abis_nm_bs11_bsc_disconnect(g_bts, 0);
 			else if (!strcmp(command, "query")) {
@@ -460,6 +464,8 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				abis_nm_bs11_get_oml_tei_ts(g_bts);
 				abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
 				abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
+				sleep(5);
+				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
 			}
 		} else if (param_disconnect) {

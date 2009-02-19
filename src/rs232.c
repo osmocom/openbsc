@@ -50,6 +50,8 @@ static struct serial_handle _ser_handle, *ser_handle = &_ser_handle;
 
 #define LAPD_HDR_LEN	10
 
+static int handle_ser_write(struct bsc_fd *bfd);
+
 /* callback from abis_nm */
 int _abis_nm_sendmsg(struct msgb *msg)
 {
@@ -77,6 +79,9 @@ int _abis_nm_sendmsg(struct msgb *msg)
 
 	msgb_enqueue(&sh->tx_queue, msg);
 	sh->fd.when |= BSC_FD_WRITE;
+
+	/* we try to immediately send */
+	handle_ser_write(&sh->fd);
 
 	return 0;
 }
