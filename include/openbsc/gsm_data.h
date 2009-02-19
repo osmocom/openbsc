@@ -320,6 +320,7 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 const char *gsm_lchan_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
+char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,

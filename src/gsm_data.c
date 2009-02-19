@@ -143,3 +143,13 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts
 	}
 	return net;
 }
+
+static char ts2str[255];
+
+char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
+{
+	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
+		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
+
+	return ts2str;
+}
