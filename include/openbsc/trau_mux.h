@@ -32,6 +32,8 @@
 /* map a TRAU mux map entry */
 int trau_mux_map(const struct gsm_e1_subslot *src,
 		 const struct gsm_e1_subslot *dst);
+int trau_mux_map_lchan(const struct gsm_lchan *src,	
+			const struct gsm_lchan *dst);
 
 /* unmap a TRAU mux map entry */
 int trau_mux_unmap(const struct gsm_e1_subslot *ss);

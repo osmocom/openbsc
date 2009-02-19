@@ -46,12 +46,28 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 	if (!me)
 		return -ENOMEM;
 
+	/* make sure to get rid of any stale old mappings */
+	trau_mux_unmap(src);
+	trau_mux_unmap(dst);
+
 	memcpy(&me->src, src, sizeof(me->src));
 	memcpy(&me->dst, dst, sizeof(me->dst));
 	llist_add(&me->list, &ss_map);
 
 	return 0;
 }
+
+int trau_mux_map_lchan(const struct gsm_lchan *src,	
+			const struct gsm_lchan *dst)
+{
+	struct gsm_e1_subslot *src_ss, *dst_ss;
+
+	src_ss = &src->ts->e1_link;
+	dst_ss = &dst->ts->e1_link;
+
+	return trau_mux_map(src_ss, dst_ss);
+}
+
 
 /* unmap one particular subslot from another subslot */
 int trau_mux_unmap(const struct gsm_e1_subslot *ss)
