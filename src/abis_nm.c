@@ -1310,8 +1310,8 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
 	fill_nm_channel(ch, e1_port, e1_timeslot, e1_subslot);
 
-	DEBUGP(DNM, "CONNECT TERR TRAF Um=(%u,%u,%u) E1=(%u,%u,%u)\n",
-		bts->bts_nr, ts->trx->nr, ts->nr,
+	DEBUGP(DNM, "CONNECT TERR TRAF Um=%s E1=(%u,%u,%u)\n",
+		gsm_ts_name(ts),
 		e1_port, e1_timeslot, e1_subslot);
 
 	return abis_nm_sendmsg(bts, msg);
@@ -1373,7 +1373,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		len += 4 + 2 + 2 + 3;
 
-	DEBUGP(DNM, "Set Chan Attr (bts=%d,trx=%d,ts=%d)\n", bts->nr, ts->trx->nr, ts->nr);
+	DEBUGP(DNM, "Set Chan Attr %s\n", gsm_ts_name(ts));
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
