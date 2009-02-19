@@ -47,8 +47,11 @@ enum bs11cfg_state {
 	STATE_LOGON_WAIT,
 	STATE_LOGON_ACK,
 	STATE_SWLOAD,
+	STATE_QUERY,
 };
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
+static char *command;
+struct timer_list status_timer;
 
 static const u_int8_t obj_li_attr[] = { 
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
@@ -98,24 +101,33 @@ static int create_objects(struct gsm_bts *bts)
 	
 	sleep(1);
 
+	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
+
+	sleep(1);
+
+	return 0;
+}
+
+static int create_trx1(struct gsm_bts *bts)
+{
+	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
+	u_int8_t *cur = bbsig1_attr;
+
 	fprintf(stdout, "Crating Objects for TRX1\n");
 
 	abis_nm_bs11_set_trx1_pw(bts, trx1_password);
 
 	sleep(1);
-#if 0
+
 	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
 		      (u_int8_t *)trx1_password);
 	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
 	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
 				   sizeof(bbsig1_attr), bbsig1_attr);
-
 	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
 				   sizeof(obj_pa0_attr), obj_pa0_attr);
-
 	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
-#endif
-
+	
 	return 0;
 }
 
@@ -261,6 +273,53 @@ static const char *bts_phase_name(u_int8_t phase)
 	}
 }
 
+static const char *trx_power_name(u_int8_t pwr)
+{
+	switch (pwr) {
+	case BS11_TRX_POWER_GSM_2W:	
+		return "2W (GSM)";
+	case BS11_TRX_POWER_GSM_250mW:
+		return "250mW (GSM)";
+	case BS11_TRX_POWER_GSM_80mW:
+		return "80mW (GSM)";
+	case BS11_TRX_POWER_GSM_30mW:
+		return "30mW (GSM)";
+	case BS11_TRX_POWER_DCS_3W:
+		return "3W (DCS)";
+	case BS11_TRX_POWER_DCS_1W6:
+		return "1.6W (DCS)";
+	case BS11_TRX_POWER_DCS_500mW:
+		return "500mW (DCS)";
+	case BS11_TRX_POWER_DCS_160mW:
+		return "160mW (DCS)";
+	default:
+		return "unknown value";
+	}
+}
+
+static const char *obj_name(struct abis_om_fom_hdr *foh)
+{
+	static char retbuf[256];
+
+	retbuf[0] = 0;
+
+	switch (foh->obj_class) {
+	case NM_OC_BS11:
+		strcat(retbuf, "BS11 ");
+		switch (foh->obj_inst.bts_nr) {
+		case BS11_OBJ_PA:
+			sprintf(retbuf+strlen(retbuf), "Power Amplifier %d ",
+				foh->obj_inst.ts_nr);
+			break;
+		}
+		break;
+	case NM_OC_SITE_MANAGER:
+		strcat(retbuf, "SITE MANAGER ");
+		break;
+	}
+	return retbuf;
+}
+
 static void print_state(struct tlv_parsed *tp)
 {
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_BTS_STATE)) {
@@ -284,6 +343,52 @@ static void print_state(struct tlv_parsed *tp)
 	printf("\n");
 }
 
+static char *print_bcd(u_int8_t *bcd, int len)
+{
+	return "FIXME";
+}
+
+static int print_attr(struct tlv_parsed *tp)
+{
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_ESN_PCB_SERIAL)) {
+		printf("\tBS-11 ESN PCB Serial Number: %s\n",
+			TLVP_VAL(tp, NM_ATT_BS11_ESN_PCB_SERIAL));
+	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_ESN_HW_CODE_NO)) {
+		printf("\tBS-11 ESN Hardware Code Number: %s\n",
+			TLVP_VAL(tp, NM_ATT_BS11_ESN_HW_CODE_NO)+6);
+	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_ESN_FW_CODE_NO)) {
+		printf("\tBS-11 ESN Firmware Code Number: %s\n",
+			TLVP_VAL(tp, NM_ATT_BS11_ESN_FW_CODE_NO)+6);
+	}
+#if 0
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_BOOT_SW_VERS)) {
+		printf("BS-11 Boot Software Version: %s\n",
+			TLVP_VAL(tp, NM_ATT_BS11_BOOT_SW_VERS)+6);
+	}
+#endif
+	if (TLVP_PRESENT(tp, NM_ATT_ABIS_CHANNEL) &&
+	    TLVP_LEN(tp, NM_ATT_ABIS_CHANNEL) >= 3) {
+		struct abis_nm_channel *chan = TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL)-1;
+		printf("\tE1 Channel: Port=%u Timeslot=%u ",
+			chan->bts_port, chan->timeslot);
+		if (chan->subslot == 0xff)
+			printf("(Full Slot)\n");
+		else
+			printf("Subslot=%u\n", chan->subslot);
+	}
+	if (TLVP_PRESENT(tp, NM_ATT_TEI))
+		printf("\tTEI: %d\n", *TLVP_VAL(tp, NM_ATT_TEI));
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_TXPWR) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_TXPWR) >= 1) {
+		printf("\tTRX Power: %s\n",
+			trx_power_name(*TLVP_VAL(tp, NM_ATT_BS11_TXPWR)));
+	}
+
+	return 0;
+}
+
 /* handle a response from the BTS to a GET STATE command */
 static int handle_state_resp(enum abis_bs11_phase state)
 {
@@ -294,7 +399,6 @@ static int handle_state_resp(enum abis_bs11_phase state)
 	case BS11_STATE_LOAD_SMU_SAFETY:
 	case BS11_STATE_LOAD_SMU_INTENDED:
 	case BS11_STATE_LOAD_MBCCU:
-		sleep(5);
 		break;
 	case BS11_STATE_SOFTWARE_RQD:
 		bs11cfg_state = STATE_SWLOAD;
@@ -315,20 +419,50 @@ static int handle_state_resp(enum abis_bs11_phase state)
 		rc = create_objects(g_bts);
 		break;
 	case BS11_STATE_MAINTENANCE:
-		if (bs11cfg_state != STATE_SWLOAD) {
-			bs11cfg_state = STATE_SWLOAD;
-			/* send software (FIXME: over A-bis?) */
-			if (file_is_readable(fname_software))
-				rc = abis_nm_bs11_load_swl(g_bts, fname_software,
-							   win_size, param_forced,
-							   swload_cbfn);
-			else
-				fprintf(stderr, "No valid Software file \"%s\"\n",
-					fname_software);
+		if (command) {
+			if (!strcmp(command, "disconnect"))
+				exit(0);
+			else if (!strcmp(command, "reconnect"))
+				rc = abis_nm_bs11_bsc_disconnect(g_bts, 1);
+			else if (!strcmp(command, "software")
+			    && bs11cfg_state != STATE_SWLOAD) {
+				bs11cfg_state = STATE_SWLOAD;
+				/* send software (FIXME: over A-bis?) */
+				if (file_is_readable(fname_software))
+					rc = abis_nm_bs11_load_swl(g_bts, fname_software,
+								   win_size, param_forced,
+								   swload_cbfn);
+				else
+					fprintf(stderr, "No valid Software file \"%s\"\n",
+						fname_software);
+			} else if (!strcmp(command, "delete-trx1")) {
+				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_BBSIG, 1);
+				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_PA, 1);
+				command = NULL;
+			} else if (!strcmp(command, "create-trx1")) {
+				create_trx1(g_bts);
+				command = NULL;
+			} else if (!strcmp(command, "restart")) {
+				abis_nm_bs11_restart(g_bts);
+				command = NULL;
+			}
 		}
 		break;
 	case BS11_STATE_NORMAL:
-		if (param_disconnect) {
+		if (command) {
+			if (!strcmp(command, "reconnect"))
+				exit(0);
+			else if (!strcmp(command, "disconnect"))
+				abis_nm_bs11_bsc_disconnect(g_bts, 0);
+			else if (!strcmp(command, "query")) {
+				bs11cfg_state = STATE_QUERY;
+				abis_nm_bs11_get_serno(g_bts);
+				abis_nm_bs11_get_oml_tei_ts(g_bts);
+				abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
+				abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
+				command = NULL;
+			}
+		} else if (param_disconnect) {
 			param_disconnect = 0;
 			abis_nm_bs11_bsc_disconnect(g_bts, 0);
 			if (param_restart) {
@@ -336,8 +470,8 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				abis_nm_bs11_restart(g_bts);
 			}
 		}
+		break;
 	default:
-		sleep(5);
 		break;
 	}
 	return rc;
@@ -370,20 +504,27 @@ int handle_serial_msg(struct msgb *rx_msg)
 	foh = (struct abis_om_fom_hdr *) oh->data;
 	switch (foh->msg_type) {
 	case NM_MT_BS11_LMT_LOGON_ACK:
-		printf("LMT LOGON: ACK\n");
+		printf("LMT LOGON: ACK\n\n");
 		if (bs11cfg_state == STATE_NONE)
 			bs11cfg_state = STATE_LOGON_ACK;
-		rc = 0;
+		rc = abis_nm_bs11_get_state(g_bts);
 		break;
 	case NM_MT_BS11_LMT_LOGOFF_ACK:
+		printf("LMT LOGOFF: ACK\n");
 		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
-		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		rc = abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 		print_state(&tp);
 		if (TLVP_PRESENT(&tp, NM_ATT_BS11_BTS_STATE) &&
 		    TLVP_LEN(&tp, NM_ATT_BS11_BTS_STATE) >= 1)
 			rc = handle_state_resp(*TLVP_VAL(&tp, NM_ATT_BS11_BTS_STATE));
+		break;
+	case NM_MT_GET_ATTR_RESP:
+		printf("\n%s ATTRIBUTES:\n", obj_name(foh));
+		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		rc = print_attr(&tp);
+		//hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);
@@ -400,7 +541,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		abis_nm_bs11_factory_logon(g_bts, 1);
 		break;
 	case STATE_LOGON_ACK:
-		abis_nm_bs11_get_state(g_bts);
+		schedule_timer(&status_timer, 5, 0);
 		break;
 	default:
 		break;
@@ -415,6 +556,11 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	return 0;
 }
 
+void status_timer_cb(void *data)
+{
+	abis_nm_bs11_get_state(g_bts);
+}
+
 static void print_banner(void)
 {
 	printf("bs11_config (C) 2009 by Harald Welte and Dieter Spaar\n");
@@ -423,23 +569,33 @@ static void print_banner(void)
 
 static void print_help(void)
 {
-	printf("Supported arguments:\n");
+	printf("bs11_config [options] [command]\n");
+	printf("\nSupported options:\n");
 	printf("\t-h --help\t\t\tPrint this help text\n");
 	printf("\t-p --port </dev/ttyXXX>\t\tSpecify serial port\n");
 	printf("\t-s --software <file>\t\tSpecify Software file\n");
 	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
-	printf("\t-d --delay <file>\t\tSpecify delay\n");
+	printf("\t-d --delay <ms>\t\tSpecify delay in milliseconds\n");
 	printf("\t-D --disconnect\t\t\tDisconnect BTS from BSC\n");
 	printf("\t-w --win-size <num>\t\tSpecify Window Size\n");
 	printf("\t-f --forced\t\t\tForce Software Load\n");
+	printf("\nSupported commands:\n");
+	printf("\tquery\t\tQuery the BS-11 about serial number and configuration\n");
+	printf("\tdisconnect\tDisconnect A-bis link (go into administrative state)\n");
+	printf("\tresconnect\tReconnect A-bis link (go into normal state)\n");
+	printf("\trestart\t\tRestart the BTS\n");
+	printf("\tsoftware\tDownload Software (only in administrative state)\n");
+	printf("\tcreate-trx1\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
+	printf("\tdelete-trx1\tDelete objects for TRX1\n");
 }
 
 static void handle_options(int argc, char **argv)
 {
+	int option_index = 0;
 	print_banner();
 
 	while (1) {
-		int option_index = 0, c;
+		int c;
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
 			{ "port", 1, 0, 'p' },
@@ -491,13 +647,15 @@ static void handle_options(int argc, char **argv)
 			break;
 		}
 	}
+	if (optind < argc)
+		command = argv[optind];
 }
 
 static int num_sigint;
 
 static void signal_handler(int signal)
 {
-	fprintf(stdout, "signal %u received\n", signal);
+	fprintf(stdout, "\nsignal %u received\n", signal);
 
 	switch (signal) {
 	case SIGINT:
@@ -533,6 +691,8 @@ int main(int argc, char **argv)
 
 	abis_nm_bs11_factory_logon(g_bts, 1);
 	//abis_nm_bs11_get_serno(g_bts);
+
+	status_timer.cb = status_timer_cb;
 
 	while (1) {
 		bsc_select_main();
