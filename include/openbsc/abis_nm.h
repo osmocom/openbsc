@@ -537,10 +537,15 @@ int abis_nm_bs11_create_object(struct gsm_bts *bts, enum abis_bs11_objtype type,
 			  u_int8_t idx, u_int8_t attr_len, const u_int8_t *attr);
 int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx);
+int abis_nm_bs11_delete_object(struct gsm_bts *bts,
+				enum abis_bs11_objtype type, u_int8_t idx);
 int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei);
 int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port,
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot);
+int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts);
+int abis_nm_bs11_get_serno(struct gsm_bts *bts);
 int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
+int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);

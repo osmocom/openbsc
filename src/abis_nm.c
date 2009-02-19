@@ -110,6 +110,43 @@ static const enum abis_nm_msgtype nacks[] = {
 	NM_MT_BS11_CREATE_OBJ_NACK,
 	NM_MT_BS11_DELETE_OBJ_NACK,
 };
+
+static const char *nack_names[0xff] = {
+	[NM_MT_LOAD_INIT_NACK]		= "SOFTWARE LOAD INIT",
+	[NM_MT_LOAD_END_NACK]		= "SOFTWARE LOAD END",
+	[NM_MT_SW_ACT_REQ_NACK]		= "SOFTWARE ACTIVATE REQUEST",
+	[NM_MT_ACTIVATE_SW_NACK]	= "ACTIVATE SOFTWARE",
+	[NM_MT_ESTABLISH_TEI_NACK]	= "ESTABLISH TEI",
+	[NM_MT_CONN_TERR_SIGN_NACK]	= "CONNECT TERRESTRIAL SIGNALLING",
+	[NM_MT_DISC_TERR_SIGN_NACK]	= "DISCONNECT TERRESTRIAL SIGNALLING",
+	[NM_MT_CONN_TERR_TRAF_NACK]	= "CONNECT TERRESTRIAL TRAFFIC",
+	[NM_MT_DISC_TERR_TRAF_NACK]	= "DISCONNECT TERRESTRIAL TRAFFIC",
+	[NM_MT_CONN_MDROP_LINK_NACK]	= "CONNECT MULTI-DROP LINK",
+	[NM_MT_DISC_MDROP_LINK_NACK]	= "DISCONNECT MULTI-DROP LINK",
+	[NM_MT_SET_BTS_ATTR_NACK]	= "SET BTS ATTRIBUTE",
+	[NM_MT_SET_RADIO_ATTR_NACK]	= "SET RADIO ATTRIBUTE",
+	[NM_MT_SET_CHAN_ATTR_NACK]	= "SET CHANNEL ATTRIBUTE",
+	[NM_MT_PERF_TEST_NACK]		= "PERFORM TEST",
+	[NM_MT_SEND_TEST_REP_NACK]	= "SEND TEST REPORT",
+	[NM_MT_STOP_TEST_NACK]		= "STOP TEST",
+	[NM_MT_STOP_EVENT_REP_NACK]	= "STOP EVENT REPORT",
+	[NM_MT_REST_EVENT_REP_NACK]	= "RESET EVENT REPORT",
+	[NM_MT_CHG_ADM_STATE_NACK]	= "CHANGE ADMINISTRATIVE STATE",
+	[NM_MT_CHG_ADM_STATE_REQ_NACK]	= "CHANGE ADMINISTRATIVE STATE REQUEST",
+	[NM_MT_REP_OUTST_ALARMS_NACK]	= "REPORT OUTSTANDING ALARMS",
+	[NM_MT_CHANGEOVER_NACK]		= "CHANGEOVER",
+	[NM_MT_OPSTART_NACK]		= "OPSTART",
+	[NM_MT_REINIT_NACK]		= "REINIT",
+	[NM_MT_SET_SITE_OUT_NACK]	= "SET SITE OUTPUT",
+	[NM_MT_CHG_HW_CONF_NACK]	= "CHANGE HARDWARE CONFIGURATION",
+	[NM_MT_GET_ATTR_NACK]		= "GET ATTRIBUTE",
+	[NM_MT_SET_ALARM_THRES_NACK]	= "SET ALARM THRESHOLD",
+	[NM_MT_BS11_BEGIN_DB_TX_NACK]	= "BS11 BEGIN DATABASE TRANSMISSION",
+	[NM_MT_BS11_END_DB_TX_NACK]	= "BS11 END DATABASE TRANSMISSION",
+	[NM_MT_BS11_CREATE_OBJ_NACK]	= "BS11 CREATE OBJECT",
+	[NM_MT_BS11_DELETE_OBJ_NACK]	= "BS11 DELETE OBJECT",
+};
+
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
 static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_ADD_INFO,
@@ -207,6 +244,12 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
 		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
 		/* BS11 specifics */
+		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV },
+		[0xd5] =			{ TLV_TYPE_TLV },
+		[0xa8] =			{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV },
@@ -612,8 +655,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	if (is_in_arr(mt, sw_load_msgs, ARRAY_SIZE(sw_load_msgs)))
 		return abis_nm_rcvmsg_sw(mb);
 
-	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks)))
-		DEBUGP(DNM, "NACK 0x%02x\n", mt);
+	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
+		if (nack_names[mt])
+			DEBUGP(DNM, "%s NACK\n", nack_names[mt]);
+		else
+			DEBUGP(DNM, "NACK 0x%02x\n", mt);
+	}
 #if 0
 	/* check if last message is to be acked */
 	if (is_ack_nack(nmh->last_msgtype)) {
@@ -1508,6 +1555,19 @@ int abis_nm_bs11_create_object(struct gsm_bts *bts,
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_bs11_delete_object(struct gsm_bts *bts,
+				enum abis_bs11_objtype type, u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_DELETE_OBJ,
+			NM_OC_BS11, type, 0, idx);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 {
 	struct abis_om_hdr *oh;
@@ -1547,6 +1607,20 @@ int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+static const u_int8_t sm_attr[] = { NM_ATT_TEI, NM_ATT_ABIS_CHANNEL };
+int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2+sizeof(sm_attr), NM_MT_GET_ATTR, NM_OC_SITE_MANAGER,
+			0xff, 0xff, 0xff);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(sm_attr), sm_attr);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 /* like abis_nm_conn_terr_traf */
 int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port, 
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot)
@@ -1574,6 +1648,20 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
 	fill_om_fom_hdr(oh, 3, NM_MT_BS11_SET_ATTR,
 			NM_OC_BS11, BS11_OBJ_PA, 0x00, trx->nr);
 	msgb_tlv_put(msg, NM_ATT_BS11_TXPWR, 1, &level);
+
+	return abis_nm_sendmsg(trx->bts, msg);
+}
+
+int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t attr = NM_ATT_BS11_TXPWR;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
+			NM_OC_BS11, BS11_OBJ_PA, 0x00, trx->nr);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(attr), &attr);
 
 	return abis_nm_sendmsg(trx->bts, msg);
 }
