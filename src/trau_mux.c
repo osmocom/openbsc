@@ -46,6 +46,11 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 	if (!me)
 		return -ENOMEM;
 
+	DEBUGP(DCC, "Setting up TRAU mux map between (e1=%u,ts=%u,ss=%u) "
+		"and (e1=%u,ts=%u,ss=%u)\n",
+		src->e1_nr, src->e1_ts, src->e1_ts_ss,
+		dst->e1_nr, dst->e1_ts, dst->e1_ts_ss);
+
 	/* make sure to get rid of any stale old mappings */
 	trau_mux_unmap(src);
 	trau_mux_unmap(dst);
