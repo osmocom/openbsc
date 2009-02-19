@@ -10,6 +10,6 @@ bsc_hack_SOURCES = bsc_hack.c abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c
 bsc_hack_LDADD = -ldl -ldbi
 
-bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c rs232.c
+bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c rs232.c tlv_parser.c
 
 ipaccess_find_SOURCES = ipaccess-find.c select.c timer.c
