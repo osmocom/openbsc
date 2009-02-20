@@ -68,19 +68,5 @@ int main(int argc, char** argv)
 /*
  * Stubs to compile and link
  */
-void rsl_data_request(void) {}
-void gsm0411_rcv_sms(void) {}
-void schedule_timer(void) {}
-void del_timer(void) {}
-void subscr_get_by_tmsi(void) {}
-void subscr_update(void) {}
-void subscr_put(void) {}
-void db_subscriber_assoc_imei(void) {}
-void db_subscriber_alloc_tmsi(void) {}
-void db_create_subscriber(void) {}
-void rsl_chan_release(void) {}
-void msgb_alloc(void) {}
-void gsm0411_send_sms(void) {}
-void lchan_auto_release(void) {}
-void page_request_stop(void) {}
-void paging_request_stop(void) {}
+void input_event(void) {}
+void nm_state_event(void) {}

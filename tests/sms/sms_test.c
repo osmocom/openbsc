@@ -91,3 +91,4 @@ int main(int argc, char** argv)
 
 /* stubs */
 void input_event(void) {}
+void nm_state_event(void) {}
