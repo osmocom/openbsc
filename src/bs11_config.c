@@ -362,14 +362,13 @@ static int print_attr(struct tlv_parsed *tp)
 #endif
 	if (TLVP_PRESENT(tp, NM_ATT_ABIS_CHANNEL) &&
 	    TLVP_LEN(tp, NM_ATT_ABIS_CHANNEL) >= 3) {
-		struct abis_nm_channel *chan = 
-			(struct abis_nm_channel*) TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL)-1;
+		const u_int8_t *chan = TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL);
 		printf("\tE1 Channel: Port=%u Timeslot=%u ",
-			chan->bts_port, chan->timeslot);
-		if (chan->subslot == 0xff)
+			chan[0], chan[1]);
+		if (chan[2] == 0xff)
 			printf("(Full Slot)\n");
 		else
-			printf("Subslot=%u\n", chan->subslot);
+			printf("Subslot=%u\n", chan[2]);
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_TEI))
 		printf("\tTEI: %d\n", *TLVP_VAL(tp, NM_ATT_TEI));
@@ -380,6 +379,18 @@ static int print_attr(struct tlv_parsed *tp)
 	}
 
 	return 0;
+}
+
+static void cmd_query(void)
+{
+	bs11cfg_state = STATE_QUERY;
+	abis_nm_bs11_get_serno(g_bts);
+	abis_nm_bs11_get_oml_tei_ts(g_bts);
+	abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
+	abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
+	sleep(5);
+	abis_nm_bs11_factory_logon(g_bts, 0);
+	command = NULL;
 }
 
 /* handle a response from the BTS to a GET STATE command */
@@ -445,6 +456,8 @@ static int handle_state_resp(enum abis_bs11_phase state)
 			} else if (!strcmp(command, "restart")) {
 				abis_nm_bs11_restart(g_bts);
 				command = NULL;
+			} else if (!strcmp(command, "query")) {
+				cmd_query();
 			}
 		}
 		break;
@@ -455,14 +468,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 			else if (!strcmp(command, "disconnect"))
 				abis_nm_bs11_bsc_disconnect(g_bts, 0);
 			else if (!strcmp(command, "query")) {
-				bs11cfg_state = STATE_QUERY;
-				abis_nm_bs11_get_serno(g_bts);
-				abis_nm_bs11_get_oml_tei_ts(g_bts);
-				abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
-				abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
-				sleep(5);
-				abis_nm_bs11_factory_logon(g_bts, 0);
-				command = NULL;
+				cmd_query();
 			}
 		} else if (param_disconnect) {
 			param_disconnect = 0;
@@ -528,6 +534,12 @@ int handle_serial_msg(struct msgb *rx_msg)
 		rc = print_attr(&tp);
 		//hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
+	case NM_MT_BS11_SET_ATTR_ACK:
+		printf("SET ATTRIBUTE ACK\n");
+		break;
+	case NM_MT_BS11_SET_ATTR_NACK:
+		printf("SET ATTRIBUTE NACK\n");
+		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);
 	}
@@ -589,6 +601,7 @@ static void print_help(void)
 	printf("\tsoftware\tDownload Software (only in administrative state)\n");
 	printf("\tcreate-trx1\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
 	printf("\tdelete-trx1\tDelete objects for TRX1\n");
+	printf("\toml-tei\tSet OML E1 TS and TEI\n");
 }
 
 static void handle_options(int argc, char **argv)
