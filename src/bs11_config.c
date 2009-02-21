@@ -40,6 +40,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/select.h>
+#include <openbsc/rs232.h>
 
 /* state of our bs11_config application */
 enum bs11cfg_state {
@@ -76,9 +77,6 @@ int handle_serial_msg(struct msgb *rx_msg);
 /* create all objects for an initial configuration */
 static int create_objects(struct gsm_bts *bts)
 {
-	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
-	u_int8_t *cur = bbsig1_attr;
-	
 	fprintf(stdout, "Crating Objects for minimal config\n");
 	abis_nm_bs11_create_object(bts, BS11_OBJ_LI, 0, sizeof(obj_li_attr),
 				   obj_li_attr);
@@ -343,11 +341,6 @@ static void print_state(struct tlv_parsed *tp)
 	printf("\n");
 }
 
-static char *print_bcd(u_int8_t *bcd, int len)
-{
-	return "FIXME";
-}
-
 static int print_attr(struct tlv_parsed *tp)
 {
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_ESN_PCB_SERIAL)) {
@@ -370,7 +363,8 @@ static int print_attr(struct tlv_parsed *tp)
 #endif
 	if (TLVP_PRESENT(tp, NM_ATT_ABIS_CHANNEL) &&
 	    TLVP_LEN(tp, NM_ATT_ABIS_CHANNEL) >= 3) {
-		struct abis_nm_channel *chan = TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL)-1;
+		struct abis_nm_channel *chan = 
+			(struct abis_nm_channel*) TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL)-1;
 		printf("\tE1 Channel: Port=%u Timeslot=%u ",
 			chan->bts_port, chan->timeslot);
 		if (chan->subslot == 0xff)

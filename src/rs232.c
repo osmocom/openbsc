@@ -32,6 +32,7 @@
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/rs232.h>
 
 /* adaption layer from GSM 08.59 + 12.21 to RS232 */
 
