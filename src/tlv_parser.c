@@ -13,10 +13,11 @@ int tlv_dump(struct tlv_parsed *dec)
 	return 0;
 }
 
-int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def, u_int8_t *buf, int buf_len)
+int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
+	      const u_int8_t *buf, int buf_len)
 {
 	u_int8_t tag, len = 1;
-	u_int8_t *pos;
+	const u_int8_t *pos;
 	int num_parsed = 0;
 
 	memset(dec, 0, sizeof(*dec));
