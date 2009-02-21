@@ -92,8 +92,7 @@ static int create_objects(struct gsm_bts *bts)
 	abis_nm_bs11_create_envaBTSE(bts, 2);
 	abis_nm_bs11_create_envaBTSE(bts, 3);
 
-	abis_nm_bs11_conn_oml(bts, 0, 1, 0xff);
-	abis_nm_bs11_set_oml_tei(bts, TEI_OML);
+	abis_nm_bs11_conn_oml_tei(bts, 0, 1, 0xff, TEI_OML);
 
 	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
 	
@@ -440,6 +439,8 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				sleep(5);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
+			} else if (!strcmp(command, "oml-tei")) {
+				abis_nm_bs11_conn_oml_tei(g_bts, 0, 1, 0xff, TEI_OML);
 			} else if (!strcmp(command, "restart")) {
 				abis_nm_bs11_restart(g_bts);
 				command = NULL;

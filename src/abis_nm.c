@@ -1594,19 +1594,6 @@ int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_set_oml_tei(struct gsm_bts *bts, u_int8_t tei)
-{
-	struct abis_om_hdr *oh;
-	struct msgb *msg = nm_msgb_alloc();
-
-	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, 2, NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
-			0xff, 0xff, 0xff);
-	msgb_tv_put(msg, NM_ATT_TEI, tei);
-
-	return abis_nm_sendmsg(bts, msg);
-}
-
 static const u_int8_t sm_attr[] = { NM_ATT_TEI, NM_ATT_ABIS_CHANNEL };
 int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
 {
@@ -1621,20 +1608,22 @@ int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-/* like abis_nm_conn_terr_traf */
-int abis_nm_bs11_conn_oml(struct gsm_bts *bts, u_int8_t e1_port, 
-			  u_int8_t e1_timeslot, u_int8_t e1_subslot)
+/* like abis_nm_conn_terr_traf + set_tei */
+int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port, 
+			  u_int8_t e1_timeslot, u_int8_t e1_subslot,
+			  u_int8_t tei)
 {
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, sizeof(*ch), NM_MT_BS11_SET_ATTR,
+	fill_om_fom_hdr(oh, sizeof(*ch)+2, NM_MT_BS11_SET_ATTR,
 			NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
 
 	ch = (struct abis_nm_channel *) msgb_put(msg, sizeof(*ch));
 	fill_nm_channel(ch, e1_port, e1_timeslot, e1_subslot);
+	msgb_tv_put(msg, NM_ATT_TEI, tei);
 
 	return abis_nm_sendmsg(bts, msg);
 }
