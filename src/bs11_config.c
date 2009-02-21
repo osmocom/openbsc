@@ -441,6 +441,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				command = NULL;
 			} else if (!strcmp(command, "oml-tei")) {
 				abis_nm_bs11_conn_oml_tei(g_bts, 0, 1, 0xff, TEI_OML);
+				command = NULL;
 			} else if (!strcmp(command, "restart")) {
 				abis_nm_bs11_restart(g_bts);
 				command = NULL;
