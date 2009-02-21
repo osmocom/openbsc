@@ -895,8 +895,8 @@ static int bootstrap_network(void)
 	if (!gsmnet)
 		return -ENOMEM;
 
-	gsmnet->name_short = "25C3";
-	gsmnet->name_long = "25C3 GSM";
+	gsmnet->name_long = "OpenBSC";
+	gsmnet->name_short = "OpenBSC";
 	bts = &gsmnet->bts[0];
 	bts->location_area_code = 1;
 	bts->trx[0].arfcn = ARFCN;
