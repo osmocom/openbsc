@@ -827,7 +827,14 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	mi_to_string(mi_string, sizeof(mi_string), &pr->mi[0], pr->mi_len);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
-	subscr = subscr_get_by_tmsi(mi_string);
+	switch (mi_type) {
+	case GSM_MI_TYPE_TMSI:
+		subscr = subscr_get_by_tmsi(mi_string);
+		break;
+	case GSM_MI_TYPE_IMSI:
+		subscr = subscr_get_by_imsi(mi_string);
+		break;
+	}
 
 	if (!subscr) {
 		DEBUGP(DRR, "<- Can't find any subscriber for this ID\n");
