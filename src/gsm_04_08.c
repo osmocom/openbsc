@@ -510,6 +510,20 @@ static void schedule_reject(struct gsm_lchan *lchan)
 	schedule_timer(&lchan->loc_operation->updating_timer, 5, 0);
 }
 
+static const char *lupd_name(u_int8_t type)
+{
+	switch (type) {
+	case GSM48_LUPD_NORMAL:
+		return "NORMAL";
+	case GSM48_LUPD_PERIODIC:
+		return "PEROIDOC";
+	case GSM48_LUPD_IMSI_ATT:
+		return "IMSI ATTACH";
+	default:
+		return "UNKNOWN";
+	}
+}
+
 #define MI_SIZE 32
 /* Chapter 9.2.15: Receive Location Updating Request */
 static int mm_rx_loc_upd_req(struct msgb *msg)
@@ -530,7 +544,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
-	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s)\n", mi_type, mi_string);
+	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
+		lupd_name(lu->type));
 
 	allocate_loc_updating_req(lchan);
 
@@ -562,10 +577,10 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* no sim card... FIXME: what to do ? */
-		fprintf(stderr, "Unimplemented mobile identity type\n");
+		DEBUGP(DMM, "unimplemented mobile identity type\n");
 		break;
 	default:	
-		fprintf(stderr, "Unknown mobile identity type\n");
+		DEBUGP(DMM, "unknown mobile identity type\n");
 		break;
 	}
 
@@ -757,6 +772,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
+	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
 		return gsm48_tx_mm_serv_rej(msg->lchan,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
@@ -769,6 +785,47 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	}
 
 	return gsm48_tx_mm_serv_ack(msg->lchan);
+}
+
+static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_imsi_detach_ind *idi =
+				(struct gsm48_imsi_detach_ind *) gh->data;
+	u_int8_t mi_type = idi->mi[0] & GSM_MI_TYPE_MASK;
+	char mi_string[MI_SIZE];
+	struct gsm_subscriber *subscr;
+
+	mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
+	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
+		mi_type, mi_string);
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_TMSI:
+		subscr = subscr_get_by_tmsi(mi_string);
+		break;
+	case GSM_MI_TYPE_IMSI:
+		subscr = subscr_get_by_imsi(mi_string);
+		break;
+	case GSM_MI_TYPE_IMEI:
+	case GSM_MI_TYPE_IMEISV:
+		/* no sim card... FIXME: what to do ? */
+		fprintf(stderr, "Unimplemented mobile identity type\n");
+		break;
+	default:	
+		fprintf(stderr, "Unknown mobile identity type\n");
+		break;
+	}
+
+	if (subscr)
+		DEBUGP(DMM, "Subscriber: %s\n",
+		       subscr->name ? subscr->name : subscr->imsi);
+	else
+		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
+
+	put_lchan(msg->lchan);
+
+	return 0;
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
@@ -789,7 +846,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		rc = gsm48_rx_mm_serv_req(msg);
 		break;
 	case GSM48_MT_MM_STATUS:
-		DEBUGP(DMM, "MM STATUS: FIXME parse error cond.\n");
+		DEBUGP(DMM, "STATUS: FIXME parse error cond.\n");
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
@@ -797,11 +854,14 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 				msg->lchan->subscr->imsi :
 				"unknown subscriber");
 		break;
-	case GSM48_MT_MM_CM_REEST_REQ:
-	case GSM48_MT_MM_AUTH_RESP:
 	case GSM48_MT_MM_IMSI_DETACH_IND:
-		fprintf(stderr, "Unimplemented GSM 04.08 MM msg type 0x%02x\n",
-			gh->msg_type);
+		rc = gsm48_rx_mm_imsi_detach_ind(msg);
+		break;
+	case GSM48_MT_MM_CM_REEST_REQ:
+		DEBUGP(DMM, "CM REESTABLISH REQUEST: Not implemented\n");
+		break;
+	case GSM48_MT_MM_AUTH_RESP:
+		DEBUGP(DMM, "AUTHENTICATION RESPONSE: Not implemented\n");
 		break;
 	default:
 		fprintf(stderr, "Unknown GSM 04.08 MM msg type 0x%02x\n",
