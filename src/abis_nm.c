@@ -257,6 +257,7 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV },
 		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
 		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV },	
 		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
 		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
@@ -642,6 +643,34 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 	return update_admstate(mb->trx->bts, foh->obj_class, &foh->obj_inst, adm_state);
 }
 
+static int abis_nm_rx_lmt_event(struct msgb *mb)
+{
+	struct abis_om_hdr *oh = msgb_l2(mb);
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct tlv_parsed tp;
+
+	DEBUGP(DNM, "LMT Event ");
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) &&
+	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) >= 1) {
+		u_int8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
+		DEBUGPC(DNM, "LOG%s ", onoff ? "ON" : "OFF");
+	}
+	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV) &&
+	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV) >= 1) {
+		u_int8_t level = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV);
+		DEBUGPC(DNM, "Level=%u ", level);
+	}
+	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_USER_NAME) &&
+	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_USER_NAME) >= 1) {
+		char *name = (char *) TLVP_VAL(&tp, NM_ATT_BS11_LMT_USER_NAME);
+		DEBUGPC(DNM, "Username=%s ", name);
+	}
+	DEBUGPC(DNM, "\n");
+	/* FIXME: parse LMT LOGON TIME */
+	return 0;
+}
+
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
@@ -688,7 +717,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		return abis_nm_rx_sw_act_req(mb);
 		break;
 	case NM_MT_BS11_LMT_SESSION:
-		DEBUGP(DNM, "LMT Event: \n");
+		return abis_nm_rx_lmt_event(mb);
 		break;
 	}
 
