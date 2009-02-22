@@ -876,15 +876,15 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm48_paging_response *pr =
-			(struct gsm48_paging_response *) gh->data;
-	u_int8_t mi_type = pr->mi[0] & GSM_MI_TYPE_MASK;
+	u_int8_t *classmark2_lv = gh->data + 1;
+	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
+	u_int8_t mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
 	struct gsm_subscriber *subscr;
 	struct paging_signal_data sig_data;
 	int rc = 0;
 
-	mi_to_string(mi_string, sizeof(mi_string), &pr->mi[0], pr->mi_len);
+	mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, *mi_lv);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 	switch (mi_type) {
