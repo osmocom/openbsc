@@ -254,12 +254,40 @@ int subchan_mux_out(struct subch_mux *mx, u_int8_t *data, int len)
 	return i;
 }
 
+static int llist_len(struct llist_head *head)
+{
+	struct llist_head *entry;
+	int i = 0;
+
+	llist_for_each(entry, head)
+		i++;
+
+	return i;
+}
+
+/* evict the 'num_evict' number of oldest entries in the queue */
+static void tx_queue_evict(struct mux_subch *sch, int num_evict)
+{
+	struct subch_txq_entry *tqe;
+	int i;
+
+	for (i = 0; i < num_evict; i++) {
+		if (llist_empty(&sch->tx_queue))
+			return;
+
+		tqe = llist_entry(sch->tx_queue.next, struct subch_txq_entry, list);
+		llist_del(&tqe->list);
+		free(tqe);
+	}
+}
+
 /* enqueue some data into the tx_queue of a given subchannel */
 int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 			int len)
 {
 	struct mux_subch *sch = &mx->subch[s_nr];
 	struct subch_txq_entry *tqe = malloc(sizeof(*tqe) + len);
+	int list_len = llist_len(&sch->tx_queue);
 
 	if (!tqe)
 		return -ENOMEM;
@@ -268,6 +296,11 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 	tqe->bit_len = len;
 	memcpy(tqe->bits, data, len);
 
+	if (list_len > 2)
+		tx_queue_evict(sch, list_len-2);
+
+	DEBUGP(DMUX, "enqueueing frame, mx=%p s_nr=%u, tx_queue_len=%u\n",
+		mx, s_nr, llist_len(&sch->tx_queue));
 	llist_add_tail(&tqe->list, &sch->tx_queue);
 
 	return 0;
