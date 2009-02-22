@@ -1027,6 +1027,13 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 		return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 				GSM48_MT_CC_RELEASE_COMPL);
 	}
+	if (called_subscr == msg->lchan->subscr) {
+		DEBUGP(DCC, "subscriber calling himself ?!?\n");
+		put_lchan(msg->lchan);
+		subscr_put(called_subscr);
+		return gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				GSM48_MT_CC_RELEASE_COMPL);
+	}
 
 	subscr_get(msg->lchan->subscr);
 	call->called_subscr = called_subscr;
