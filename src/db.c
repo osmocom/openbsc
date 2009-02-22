@@ -238,7 +238,8 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 		return NULL;
 	}
 	if (!dbi_result_next_row(result)) {
-		printf("DB: Failed to find the Subscriber.\n");
+		printf("DB: Failed to find the Subscriber. '%u' '%s'\n",
+			field, id);
 		dbi_result_free(result);
 		return NULL;
 	}
