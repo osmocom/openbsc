@@ -194,6 +194,13 @@ struct gsm48_system_information_type_6 {
 	u_int8_t si_6_reset[0];
 } __attribute__ ((packed));
 
+/* Section 9.2.12 IMSI Detach Indication */
+struct gsm48_imsi_detach_ind {
+	u_int8_t classmark1;
+	u_int8_t mi_len;
+	u_int8_t mi[0];
+} __attribute__ ((packed));
+
 /* Section 10.2 + GSM 04.07 12.2.3.1.1 */
 #define GSM48_PDISC_GROUP_CC	0x00
 #define GSM48_PDISC_BCAST_CC	0x01
@@ -358,6 +365,12 @@ struct gsm48_system_information_type_6 {
 #define GSM48_PM_EXTENDED	0x01
 #define GSM48_PM_REORG		0x02
 #define GSM48_PM_SAME		0x03
+
+/* Chapter 10.5.3.5 / Table 10.5.93 */
+#define GSM48_LUPD_NORMAL	0x0
+#define GSM48_LUPD_PERIODIC	0x1
+#define GSM48_LUPD_IMSI_ATT	0x2
+#define GSM48_LUPD_RESERVED	0x3
 
 /* Table 10.5.4 */
 #define GSM_MI_TYPE_MASK	0x07
