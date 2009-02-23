@@ -299,8 +299,6 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 	if (list_len > 2)
 		tx_queue_evict(sch, list_len-2);
 
-	DEBUGP(DMUX, "enqueueing frame, mx=%p s_nr=%u, tx_queue_len=%u\n",
-		mx, s_nr, llist_len(&sch->tx_queue));
 	llist_add_tail(&tqe->list, &sch->tx_queue);
 
 	return 0;

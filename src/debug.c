@@ -53,6 +53,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DPAG,  "DPAG", "\033[1;38m", "")
 	DEBUG_CATEGORY(DMI,  "DMI", "", "")
 	DEBUG_CATEGORY(DMIB,  "DMIB", "", "")
+	DEBUG_CATEGORY(DMUX,  "DMUX", "", "")
 };
 
 static int use_color = 1;
