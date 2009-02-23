@@ -143,6 +143,24 @@ int db_prepare() {
 		return 1;
 	}
 	dbi_result_free(result);
+
+	result = dbi_conn_query(conn,
+		"CREATE TABLE IF NOT EXISTS SMS ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"sent TIMESTAMP, "
+		"sender_id NUMERIC NOT NULL, "
+		"receiver_id NUMERIC NOT NULL, "
+		"header NUMERIC, "
+		"text TEXT NOT NULL "
+		")"
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create Equipment table.\n");
+		return 1;
+	}
+	dbi_result_free(result);
+
 	return 0;
 }
 
