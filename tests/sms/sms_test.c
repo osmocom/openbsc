@@ -65,7 +65,7 @@ static struct sms_datum sms_data[] = {
 	}
 };
 
-#define SMS_NUM 2
+#define SMS_NUM (sizeof(sms_data)/sizeof(sms_data[0]))
 
 int main(int argc, char** argv)
 {
