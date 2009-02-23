@@ -54,8 +54,8 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 
 	for (i = 0; i < length; ++i) {
 		u_int8_t first  = (data[i] & 0x7f) << b_off;
-		u_int8_t second = (data[i] & 0x7f) >> (7 - b_off);
-
+		u_int8_t second = (data[i] & 0x7f) >> (8 - b_off);
+    
 		result[d_off] |= first;
 		if (second != 0)
 			result[d_off + 1] = second;
@@ -68,7 +68,7 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 		}
 	}
 
-	*out_length = d_off;
+	*out_length = d_off + 1;
 
 	return result;
 }
