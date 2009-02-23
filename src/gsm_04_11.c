@@ -105,6 +105,7 @@ static int gsm411_sms_submit_from_msgb(struct msgb *msg)
 
 	dispatch_signal(SS_SMS, 0, sms);
 
+	free(sms->user_data);
 	free(sms);
 
 	return 0;
