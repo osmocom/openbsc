@@ -19,11 +19,14 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/types.h>
 #include <openbsc/debug.h>
 #include <openbsc/msgb.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_utils.h>
 
 /* SMS data from MS starting with layer 3 header */
 static u_int8_t sms1[] = {
@@ -73,6 +76,20 @@ int main(int argc, char** argv)
 	struct msgb *msg;
 	u_int8_t *sms;
 	u_int8_t i;
+
+        /* test 7-bit coding/decoding */
+	const char *input = "test text";
+	u_int8_t length;
+	u_int8_t *coded = gsm_7bit_encode(input, &length);
+	char *result = gsm_7bit_decode(coded, length);
+	if (strcmp(result, input) != 0) {
+		printf("7 Bit coding failed... life sucks\n");
+		printf("Wanted: '%s' got '%s'\n", input, result);
+	}
+
+	free(coded);
+	free(result);
+
 
 	for(i=0;i<SMS_NUM;i++) {
 		/* Setup SMS msgb */

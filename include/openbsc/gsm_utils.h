@@ -27,6 +27,6 @@
 #include <sys/types.h>
 
 char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length);
-u_int8_t *gsm_7bit_encode(char *data);
+u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *length);
 
 #endif

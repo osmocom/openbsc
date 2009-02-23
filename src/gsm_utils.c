@@ -44,7 +44,7 @@ char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 }
 
 /* GSM 03.38 6.2.1 Charachter packing */
-u_int8_t *gsm_7bit_encode(char *data)
+u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 {
 	int i;
 	u_int8_t d_off = 0, b_off = 0;
@@ -57,7 +57,8 @@ u_int8_t *gsm_7bit_encode(char *data)
 		u_int8_t second = (data[i] & 0x7f) >> (7 - b_off);
 
 		result[d_off] |= first;
-		result[d_off + 1] = second;
+		if (second != 0)
+			result[d_off + 1] = second;
 
 		b_off += 7;
 
@@ -66,6 +67,8 @@ u_int8_t *gsm_7bit_encode(char *data)
 			b_off -= 8;
 		}
 	}
+
+	*out_length = d_off;
 
 	return result;
 }
