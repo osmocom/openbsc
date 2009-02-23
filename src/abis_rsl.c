@@ -304,6 +304,20 @@ static void pad_macblock(u_int8_t *out, const u_int8_t *in, int len)
 		memset(out+len, 0x2b, MACBLOCK_SIZE-len);
 }
 
+static void print_rsl_cause(u_int8_t *cause_tlv)
+{
+	u_int8_t cause_len;
+	int i;
+
+	if (cause_tlv[0] != RSL_IE_CAUSE)
+		return;
+
+	cause_len = cause_tlv[1];
+	DEBUGPC(DRSL, "CAUSE: ");
+	for (i = 0; i < cause_len; i++) 
+		DEBUGPC(DRSL, "%02x ", cause_tlv[2+i]);
+}
+
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len)
@@ -622,6 +636,33 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	return 0;
 }
 
+/* Chapter 8.4.4: Connection Failure Indication */
+static int rsl_rx_conn_fail(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
+
+	DEBUGPC(DRSL, "CONNECTION FAIL: ");
+	print_rsl_cause(dh->data);
+
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (msg->trx->bts->type == GSM_BTS_TYPE_BS11) {
+		/* FIXME: we have no idea what cause 0x18 is !!! */
+		if (TLVP_PRESENT(&tp, RSL_IE_CAUSE) &&
+		    TLVP_LEN(&tp, RSL_IE_CAUSE) >= 1 &&
+		    *TLVP_VAL(&tp, RSL_IE_CAUSE) == 0x18) {
+			DEBUGPC(DRSL, "IGNORING\n");
+			return 0;
+		}
+	}
+
+	DEBUGPC(DRSL, "\n");
+
+	/* FIXME: only free it after channel release ACK */
+	return rsl_chan_release(msg->lchan);
+}
+
 static int abis_rsl_rx_dchan(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
@@ -643,9 +684,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
-		DEBUGPC(DRSL, "CONNECTION FAIL\n");
-		return rsl_chan_release(msg->lchan);
-		/* only free it after channel release ACK */
+		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
 		DEBUGPC(DRSL, "MEASUREMENT RESULT ");
@@ -684,14 +723,9 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 static int rsl_rx_error_rep(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
-	u_int8_t cause_len;
 
-	if (rslh->data[0] != RSL_IE_CAUSE)
-		return -EINVAL;
-
-	cause_len = rslh->data[1];
-	fprintf(stdout, "RSL ERROR REPORT, Cause ");
-	hexdump(&rslh->data[2], cause_len);
+	DEBUGP(DRSL, "ERROR REPORT ");
+	print_rsl_cause(rslh->data);
 
 	return 0;
 }
