@@ -49,8 +49,9 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 	int i;
 	u_int8_t d_off = 0, b_off = 0;
 	const int length = strlen(data);
-	char *result = malloc(length + 1);
-	memset(result, 0, length + 1);
+	*out_length = (length * 8)/7;
+	u_int8_t *result = malloc(*out_length);
+	memset(result, 0, *out_length);
 
 	for (i = 0; i < length; ++i) {
 		u_int8_t first  = (data[i] & 0x7f) << b_off;
@@ -67,8 +68,6 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 			b_off -= 8;
 		}
 	}
-
-	*out_length = d_off + 1;
 
 	return result;
 }
