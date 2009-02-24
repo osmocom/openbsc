@@ -1076,6 +1076,9 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
+	/* seed the PRNG */
+	srand(time(NULL));
+
 	rc = bootstrap_network();
 	if (rc < 0)
 		exit(1);
