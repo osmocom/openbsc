@@ -611,9 +611,9 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_chan_mode_modify *cmm =
 		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
-	u_int16_t arfcn = lchan->ts->trx->arfcn;
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
-	DEBUGP(DRR, "-> CHANNEL MODE MODIFY\n");
+	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
 
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_RR;
@@ -1054,6 +1054,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 static int gsm48_cc_rx_status_enq(struct msgb *msg)
 {
+	DEBUGP(DCC, "-> STATUS ENQ\n");
 	return gsm48_cc_tx_status(msg->lchan);
 }
 
@@ -1314,11 +1315,22 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		rc = gsm48_cc_rx_disconnect(msg);
 		break;
 	case GSM48_MT_CC_SETUP:
+		/* MO: wants to establish a call */
 		rc = gsm48_cc_rx_setup(msg);
 		break;
 	case GSM48_MT_CC_EMERG_SETUP:
 		DEBUGP(DCC, "-> EMERGENCY SETUP\n");
 		/* FIXME: continue with CALL_PROCEEDING, ALERTING, CONNECT, RELEASE_COMPLETE */
+		break;
+	case GSM48_MT_CC_HOLD:
+		DEBUGP(DCC, "-> HOLD (rejecting)\n");
+		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				     GSM48_MT_CC_HOLD_REJ);
+		break;
+	case GSM48_MT_CC_RETR:
+		DEBUGP(DCC, "-> RETR (rejecting)\n");
+		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
+				     GSM48_MT_CC_RETR_REJ);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 CC msg type 0x%02x\n",

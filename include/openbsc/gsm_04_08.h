@@ -407,6 +407,21 @@ struct gsm48_imsi_detach_ind {
 /* Section 10.5.4.11 / Table 10.5.122 */
 #define GSM48_CAUSE_CS_GSM	0x60
 
+/* Section 9.1.2 / Table 9.3 */
+#define GSM48_IE_FRQLIST_AFTER	0x05
+#define GSM48_IE_CELL_CH_DESC	0x62
+#define GSM48_IE_MSLOT_DESC	0x10
+#define GSM48_IE_CHANMODE_1	0x63
+#define GSM48_IE_CHANMODE_2	0x11
+#define GSM48_IE_CHANMODE_3	0x13
+#define GSM48_IE_CHANMODE_4	0x14
+#define GSM48_IE_CHANMODE_5	0x15
+#define GSM48_IE_CHANMODE_6	0x16
+#define GSM48_IE_CHANMODE_7	0x17
+#define GSM48_IE_CHANMODE_8	0x18
+#define GSM48_IE_CHANDESC_2	0x64
+/* FIXME */
+
 /* Section 10.5.4.23 / Table 10.5.130 */
 enum gsm48_signal_val {
 	GSM48_SIGNAL_DIALTONE	= 0x00,

@@ -55,6 +55,7 @@ struct abis_rsl_dchan_hdr {
 #define ABIS_RSL_MDISC_TRX		0x10
 #define ABIS_RSL_MDISC_LOC		0x20
 #define ABIS_RSL_MDISC_IPACCESS		0x7e
+#define ABIS_RSL_MDISC_TRANSP		0x01
 
 #define ABIS_RSL_MDISC_IS_TRANSP(x)	(x & 0x01)
 

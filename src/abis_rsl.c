@@ -402,6 +402,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	struct rsl_ie_chan_mode cm;
 	struct rsl_ie_chan_ident ci;
 
+	memset(&cm, 0, sizeof(cm));
 	/* FIXME: what to do with data calls ? */
 	cm.dtx_dtu = 0x00;
 	switch (lchan->type) {
@@ -462,13 +463,15 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
 
+	memset(&cm, 0, sizeof(cm));
+
 	/* FIXME: what to do with data calls ? */
 	cm.dtx_dtu = 0x00;
 	switch (lchan->type) {
 	case GSM_LCHAN_TCH_F:
 		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
 		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		cm.chan_rate = 0x11; /* speech coding alg version 2*/
+		cm.chan_rate = RSL_CMOD_SP_GSM2;
 		break;
 	default:
 		DEBUGP(DRSL, "Unimplemented channel modification\n");
@@ -603,6 +606,7 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 	/* Then push the RSL header */
 	rh = (struct abis_rsl_rll_hdr *) msgb_push(msg, sizeof(*rh));
 	init_llm_hdr(rh, RSL_MT_DATA_REQ);
+	rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
 	rh->chan_nr = lchan2chan_nr(msg->lchan);
 	rh->link_id = link_id;
 
@@ -820,9 +824,10 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.mob_alloc_len = 0;
 
 	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s "
-		"chan_nr=0x%02x r=%s\n",
+		"chan_nr=0x%02x r=%s\n ra=0x%02x",
 		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
-		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason));
+		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason),
+		rqd_ref->ra);
 
 	/* FIXME: Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 
@@ -921,15 +926,21 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	switch (rllh->c.msg_type) {
 	case RSL_MT_DATA_IND:
 		DEBUGPC(DRLL, "DATA INDICATION\n");
-		/* FIXME: Verify L3 info element */
-		msg->l3h = &rllh->data[3];
-		return gsm0408_rcvmsg(msg);
+		if (msgb_l2len(msg) > 
+		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
+		    rllh->data[0] == RSL_IE_L3_INFO) {
+			msg->l3h = &rllh->data[3];
+			return gsm0408_rcvmsg(msg);
+		}
 		break;
 	case RSL_MT_EST_IND:
 		DEBUGPC(DRLL, "ESTABLISH INDICATION\n");
-		/* FIXME: Verify L3 info element */
-		msg->l3h = &rllh->data[3];
-		return gsm0408_rcvmsg(msg);
+		if (msgb_l2len(msg) > 
+		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
+		    rllh->data[0] == RSL_IE_L3_INFO) {
+			msg->l3h = &rllh->data[3];
+			return gsm0408_rcvmsg(msg);
+		}
 		break;
 	case RSL_MT_REL_IND:
 		DEBUGPC(DRLL, "RELEASE INDICATION ");
@@ -1071,7 +1082,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_IPAC_BIND_ACK:
-		DEBUGP(DRSL, "IPAC_BIND_ACK ");
+		DEBUGPC(DRSL, "IPAC_BIND_ACK ");
 		rc = abis_rsl_rx_ipacc_bindack(msg);
 		break;
 	case RSL_MT_IPAC_BIND_NACK:
