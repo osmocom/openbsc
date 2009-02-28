@@ -424,9 +424,10 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		return -1;
 	}
 
+	memset(&ci, 0, sizeof(ci));
 	ci.chan_desc.iei = 0x64;
 	ci.chan_desc.chan_nr = chan_nr;
-	ci.chan_desc.oct3 = (TSC << 5) | ((arfcn & 0x3ff) >> 8);
+	ci.chan_desc.oct3 = (lchan->ts->trx->bts->tsc << 5) | ((arfcn & 0x3ff) >> 8);
 	ci.chan_desc.oct4 = arfcn & 0xff;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));

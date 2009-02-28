@@ -14,6 +14,7 @@
 #define TS_MAX_LCHAN	8
 
 #define HARDCODED_ARFCN 123
+#define HARDCODED_TSC	7
 
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
@@ -272,6 +273,8 @@ struct gsm_bts {
 	u_int8_t nr;
 	/* location area code of this BTS */
 	u_int8_t location_area_code;
+	/* Training Sequence Code */
+	u_int8_t tsc;
 	/* type of BTS */
 	enum gsm_bts_type type;
 	/* how do we talk OML with this TRX? */

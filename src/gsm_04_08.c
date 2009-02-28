@@ -622,6 +622,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	/* fill the channel information element, this code
 	 * should probably be shared with rsl_rx_chan_rqd() */
 	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
 	cmm->chan_desc.h0.h = 0;
 	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
 	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;

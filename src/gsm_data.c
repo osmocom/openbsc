@@ -108,6 +108,7 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts
 		bts->network = net;
 		bts->nr = i;
 		bts->type = bts_type;
+		bts->tsc = HARDCODED_TSC;
 
 		for (j = 0; j < BTS_MAX_TRX; j++) {
 			struct gsm_bts_trx *trx = &bts->trx[j];
