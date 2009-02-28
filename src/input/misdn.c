@@ -148,10 +148,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case DL_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		if (debug_mask & DMI) { 
-			fprintf(stdout, "RX: ");
-			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
-		}
+		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	default:
@@ -185,10 +182,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = DL_DATA_REQ;
 
-	if (debug_mask & DMI) {
-		fprintf(stdout, "TX TEI(%d): ", sign_link->tei);
-		hexdump(l2_data, msg->len - MISDN_HEADER_LEN);
-	}
+	DEBUGP(DMI, "TX TEI(%d): %s\n", sign_link->tei,
+		hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
 	/* construct the sockaddr */
 	sa.family = AF_ISDN;
@@ -223,10 +218,8 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
 
-	if (debug_mask & DMIB) {
-		fprintf(stdout, "BCHAN TX: ");
-		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
-	}
+	DEBUGP(DMIB, "BCHAN TX: %s\n",
+		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
@@ -266,10 +259,8 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	switch (hh->prim) {
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		if (debug_mask & DMIB) {
-			fprintf(stdout, "BCHAN RX: ");
-			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN);
-		}
+		DEBUGP(DMIB, "BCHAN RX: %s\n",
+			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
 	case PH_ACTIVATE_IND:

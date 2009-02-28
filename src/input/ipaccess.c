@@ -124,10 +124,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	if (hh->proto == IPAC_PROTO_IPACCESS)
 		return ipaccess_rcvmsg(msg, bfd->fd);
 
-	if (debug_mask & DMI) { 
-		fprintf(stdout, "RX %u: ", ts_nr);
-		hexdump(msgb_l2(msg), ret);
-	}
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), ret));
 
 	link = e1inp_lookup_sign_link(e1i_ts, 0, hh->proto);
 	if (!link) {
@@ -197,10 +194,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return -EINVAL;
 	}
 
-	if (debug_mask & DMI) {
-		fprintf(stdout, "TX %u: ", ts_nr);
-		hexdump(l2_data, hh->len);
-	}
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(l2_data, hh->len));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);

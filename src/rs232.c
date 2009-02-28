@@ -100,10 +100,7 @@ static int handle_ser_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	if (debug_mask & DMI) {
-		fprintf(stdout, "RS232 TX: ");
-		hexdump(msg->data, msg->len);
-	}
+	DEBUGP(DMI, "RS232 TX: %s", hexdump(msg->data, msg->len));
 
 	/* send over serial line */
 	written = write(bfd->fd, msg->data, msg->len);
@@ -175,10 +172,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 			if (msg->len > LAPD_HDR_LEN)
 				msg->l2h = msg->data + LAPD_HDR_LEN;
 
-			if (debug_mask & DMI) {
-				fprintf(stdout, "RS232 RX: ");
-				hexdump(msg->data, msg->len);
-			}
+			DEBUGP(DMI, "RS232 RX: %s\n", hexdump(msg->data, msg->len));
 			rc = handle_serial_msg(msg);
 		}
 	}
