@@ -553,7 +553,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	case GSM_MI_TYPE_IMSI:
 		/* we always want the IMEI, too */
 		use_lchan(lchan);
-		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI */
@@ -562,7 +562,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	case GSM_MI_TYPE_TMSI:
 		/* we always want the IMEI, too */
 		use_lchan(lchan);
-		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEISV);
+		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
