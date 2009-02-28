@@ -356,6 +356,7 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 }
 
 /* Chapter 8.4.1 */
+#if 0
 int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t act_type,
 		      struct rsl_ie_chan_mode *chan_mode,
@@ -388,11 +389,10 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 
 	return abis_rsl_sendmsg(msg);
 }
-
-#define TSC	7
+#endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta)
+			    u_int8_t ta, u_int8_t mode)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
@@ -412,10 +412,17 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		cm.chan_rate = 0x00;
 		break;
 	case GSM_LCHAN_TCH_F:
-		/* TCH/F are always activated in signalling mode first */
-		cm.spd_ind = RSL_CMOD_SPD_SIGN;
 		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		cm.chan_rate = 0x00;
+		switch (mode) {
+		case RSL_CMOD_SPD_SIGN:
+			cm.spd_ind = RSL_CMOD_SPD_SIGN;
+			cm.chan_rate = 0x00;
+			break;
+		case RSL_CMOD_SPD_SPEECH:
+			cm.spd_ind = RSL_CMOD_SPD_SPEECH;
+			cm.chan_rate = RSL_CMOD_SP_GSM2;
+			break;
+		}
 		break;
 	case GSM_LCHAN_TCH_H:
 		DEBUGP(DRSL, "Unimplemented TCH_H activation\n");
@@ -805,7 +812,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	subch = lchan->nr;
 	
 	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
+	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, RSL_CMOD_SPD_SIGN);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));
