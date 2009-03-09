@@ -4,6 +4,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/misdn.h>
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
@@ -67,7 +68,7 @@ int e1_config(struct gsm_bts *bts)
 	bts->trx[1].rsl_link = rsl_link;
 #endif
 
-	return mi_setup(0, line, NULL);
+	return mi_setup(0, line);
 }
 
 /* do some compiled-in configuration for our BTS/E1 setup */

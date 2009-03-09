@@ -139,4 +139,10 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi);
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
 
+/* e1_config.c */
+int e1_config(struct gsm_bts *bts);
+int ia_config(struct gsm_bts *bts);
+int ipaccess_setup(struct e1inp_line *line);
+
+
 #endif /* _E1_INPUT_H */

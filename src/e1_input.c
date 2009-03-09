@@ -57,6 +57,9 @@ static LLIST_HEAD(driver_list);
 /* list of all E1 lines */
 static LLIST_HEAD(line_list);
 
+/* to be implemented, e.g. by bsc_hack.c */
+void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
+
 #if 0
 /*
  * pcap writing of the misdn load
@@ -430,7 +433,8 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 		return -EINVAL;
 
 	/* FIXME: report further upwards */
-	return input_event(evt, link->type, link->trx);
+	input_event(evt, link->type, link->trx);
+	return 0;
 }
 
 /* register a driver with the E1 core */

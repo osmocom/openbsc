@@ -56,10 +56,11 @@ static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK }
 static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 {
 	u_int8_t msg_type = *(msg->l2h);
+	int ret = 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		write(fd, pong, sizeof(pong));
+		ret = write(fd, pong, sizeof(pong));
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -69,7 +70,7 @@ static int ipaccess_rcvmsg(struct msgb *msg, int fd)
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		write(fd, id_ack, sizeof(id_ack));
+		ret = write(fd, id_ack, sizeof(id_ack));
 		break;	
 	}
 
