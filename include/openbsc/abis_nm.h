@@ -569,4 +569,6 @@ enum nm_evt {
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state); 
 
+const char *nm_opstate_name(u_int8_t os);
+const char *nm_avail_name(u_int8_t avail);
 #endif /* _NM_H */

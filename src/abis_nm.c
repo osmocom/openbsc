@@ -358,7 +358,7 @@ static const char *obj_class_name(u_int8_t oc)
 	return oc_names[oc];
 }
 
-static const char *opstate_name(u_int8_t os)
+const char *nm_opstate_name(u_int8_t os)
 {
 	switch (os) {
 	case 1:
@@ -373,7 +373,7 @@ static const char *opstate_name(u_int8_t os)
 }
 
 /* Chapter 9.4.7 */
-const char *avail_names[] = {
+static const char *avail_names[] = {
 	"In test",
 	"Failed",
 	"Power off",
@@ -384,7 +384,7 @@ const char *avail_names[] = {
 	"Not installed",
 };
 
-static const char *avail_name(u_int8_t avail)
+const char *nm_avail_name(u_int8_t avail)
 {
 	if (avail == 0xff)
 		return "OK";
@@ -515,14 +515,14 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
 		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
-		DEBUGPC(DNM, "OP_STATE=%s ", opstate_name(new_state.operational));
+		DEBUGPC(DNM, "OP_STATE=%s ", nm_opstate_name(new_state.operational));
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_AVAIL_STATUS)) {
 		if (TLVP_LEN(&tp, NM_ATT_AVAIL_STATUS) == 0)
 			new_state.availability = 0xff;
 		else
 			new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
-		DEBUGPC(DNM, "AVAIL=%s(%02x) ", avail_name(new_state.availability),
+		DEBUGPC(DNM, "AVAIL=%s(%02x) ", nm_avail_name(new_state.availability),
 			new_state.availability);
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
