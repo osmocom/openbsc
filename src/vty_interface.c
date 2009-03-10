@@ -27,9 +27,11 @@
 
 #include <arpa/inet.h>
 
+#include <openbsc/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/abis_nm.h>
 
 static struct gsm_network *gsmnet;
 
@@ -58,9 +60,9 @@ static int dummy_config_write(struct vty *v)
 
 static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 {
-	vty_out(vty,"Operational %u, Administrative %u, Availability %u%s",
-		nms->operational, nms->administrative, nms->availability,
-		VTY_NEWLINE);
+	vty_out(vty,"Oper '%s', Admin %u, Avail '%s'%s",
+		nm_opstate_name(nms->operational), nms->administrative,
+		nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
@@ -68,9 +70,9 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
 		"and has %u BTS%s", net->country_code, net->network_code,
 		net->num_bts, VTY_NEWLINE);
-	vty_out(vty, "  Long network name: %s%s",
+	vty_out(vty, "  Long network name: '%s'%s",
 		net->name_long, VTY_NEWLINE);
-	vty_out(vty, "  Short network name: %s%s",
+	vty_out(vty, "  Short network name: '%s'%s",
 		net->name_short, VTY_NEWLINE);
 }
 
@@ -85,8 +87,9 @@ DEFUN(show_net, show_net_cmd, "show network",
 
 static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 {
-	vty_out(vty, "    E1 Line %u, Timeslot %u, Type %u%s",
-		e1l->ts->line->num, e1l->ts->num, e1l->type, VTY_NEWLINE);
+	vty_out(vty, "    E1 Line %u, Timeslot %u, Type %s%s",
+		e1l->ts->line->num, e1l->ts->num,
+		e1inp_signtype_name(e1l->type), VTY_NEWLINE);
 	vty_out(vty, "    E1 TEI %u, SAPI %u%s\n",
 		e1l->tei, e1l->sapi, VTY_NEWLINE);
 }
@@ -118,7 +121,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
 		if (bts_nr > net->num_bts) {
-			vty_out(vty, "%% can't find BTS %s%s", argv[0],
+			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -158,7 +161,7 @@ DEFUN(show_trx,
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
 		if (bts_nr >= net->num_bts) {
-			vty_out(vty, "%% can't find BTS %s%s", argv[0],
+			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -167,7 +170,7 @@ DEFUN(show_trx,
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
 		if (trx_nr >= bts->num_trx) {
-			vty_out(vty, "%% can't find TRX %s%s", argv[1],
+			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -219,7 +222,7 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 
 DEFUN(show_ts,
       show_ts_cmd,
-      "show ts [bts_nr] [trx_nr] [ts_nr]",
+      "show timeslot [bts_nr] [trx_nr] [ts_nr]",
 	SHOW_STR "Display information about a TS\n")
 {
 	struct gsm_network *net = gsmnet;
@@ -232,7 +235,7 @@ DEFUN(show_ts,
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
 		if (bts_nr >= net->num_bts) {
-			vty_out(vty, "%% can't find BTS %s%s", argv[0],
+			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -241,7 +244,7 @@ DEFUN(show_ts,
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
 		if (trx_nr >= bts->num_trx) {
-			vty_out(vty, "%% can't find TRX %s%s", argv[1],
+			vty_out(vty, "%% can't find TRX '%s'%s", argv[1],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -250,7 +253,7 @@ DEFUN(show_ts,
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
 		if (ts_nr >= TRX_NR_TS) {
-			vty_out(vty, "%% can't find TS %s%s", argv[2],
+			vty_out(vty, "%% can't find TS '%s'%s", argv[2],
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
@@ -275,7 +278,7 @@ DEFUN(show_ts,
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	if (subscr->name)
-		vty_out(vty, "    Name: %s%s", subscr->name, VTY_NEWLINE);
+		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
 	if (subscr->extension)
 		vty_out(vty, "    Extension: %s%s", subscr->extension,
 			VTY_NEWLINE);
@@ -396,6 +399,24 @@ DEFUN(show_lchan,
 	return CMD_SUCCESS;
 }
 
+static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
+{
+	vty_out(vty, "E1 Input Driver %s%s", drv->name, VTY_NEWLINE);
+}
+
+DEFUN(show_e1drv,
+      show_e1drv_cmd,
+      "show e1_driver",
+	SHOW_STR "Display information about available E1 drivers\n")
+{
+	struct e1inp_driver *drv;
+
+	llist_for_each_entry(drv, &e1inp_driver_list, list)
+		e1drv_dump_vty(vty, drv);
+
+	return CMD_SUCCESS;
+}
+
 static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line)
 {
 	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
@@ -408,13 +429,30 @@ DEFUN(show_e1line,
       "show e1_line [line_nr]",
 	SHOW_STR "Display information about a E1 line\n")
 {
-		
+	struct e1inp_line *line;
+
+	if (argc >= 1) {
+		int num = atoi(argv[0]);
+		llist_for_each_entry(line, &e1inp_line_list, list) {
+			if (line->num == num) {
+				e1line_dump_vty(vty, line);
+				return CMD_SUCCESS;
+			}
+		}
+		return CMD_WARNING;
+	}	
+	
+	llist_for_each_entry(line, &e1inp_line_list, list)
+		e1line_dump_vty(vty, line);
+
+	return CMD_SUCCESS;
 }
 
 static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
 {
-	vty_out(vty, "E1 Timeslot %u of Line %u is Type %u%s",
-		ts->num, ts->line->num, ts->type, VTY_NEWLINE);
+	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
+		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
+		VTY_NEWLINE);
 }
 
 DEFUN(show_e1ts,
@@ -422,7 +460,49 @@ DEFUN(show_e1ts,
       "show e1_timeslot [line_nr] [ts_nr]",
 	SHOW_STR "Display information about a E1 timeslot\n")
 {
+	struct e1inp_line *line;
+	struct e1inp_ts *ts;
+	int ts_nr;
 
+	if (argc == 0) {
+		llist_for_each_entry(line, &e1inp_line_list, list) {
+			for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+				ts = &line->ts[ts_nr];
+				e1ts_dump_vty(vty, ts);
+			}
+		}
+		return CMD_SUCCESS;
+	}
+	if (argc >= 1) {
+		int num = atoi(argv[0]);
+		llist_for_each_entry(line, &e1inp_line_list, list) {
+			if (line->num == num)
+				break;
+		}
+		if (!line || line->num != num) {
+			vty_out(vty, "E1 line %s is invalid%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}	
+	if (argc >= 2) {
+		ts_nr = atoi(argv[1]);
+		if (ts_nr > NUM_E1_TS) {
+			vty_out(vty, "E1 timeslot %s is invalid%s",
+				argv[1], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		ts = &line->ts[ts_nr];
+		e1ts_dump_vty(vty, ts);
+		return CMD_SUCCESS;
+	} else {
+		for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+			ts = &line->ts[ts_nr];
+			e1ts_dump_vty(vty, ts);
+		}
+		return CMD_SUCCESS;
+	}
+	return CMD_SUCCESS;
 }
 
 int bsc_vty_init(struct gsm_network *net)
@@ -437,6 +517,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_trx_cmd);
 	install_element(VIEW_NODE, &show_ts_cmd);
 	install_element(VIEW_NODE, &show_lchan_cmd);
+
+	install_element(VIEW_NODE, &show_e1drv_cmd);
 	install_element(VIEW_NODE, &show_e1line_cmd);
 	install_element(VIEW_NODE, &show_e1ts_cmd);
 
