@@ -180,6 +180,31 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 }
 #endif
 
+static const char *sign_types[] = {
+	[E1INP_SIGN_NONE]	= "None",
+	[E1INP_SIGN_OML]	= "OML",
+	[E1INP_SIGN_RSL]	= "RSL",
+};
+const char *e1inp_signtype_name(enum e1inp_sign_type tp)
+{
+	if (tp >= ARRAY_SIZE(sign_types))
+		return "undefined";
+	return sign_types[tp];
+}
+
+static const char *ts_types[] = {
+	[E1INP_TS_TYPE_NONE]	= "None",
+	[E1INP_TS_TYPE_SIGN]	= "Signalling",
+	[E1INP_TS_TYPE_TRAU]	= "TRAU",
+};
+
+const char *e1inp_tstype_name(enum e1inp_ts_type tp)
+{
+	if (tp >= ARRAY_SIZE(ts_types))
+		return "undefined";
+	return ts_types[tp];
+}
+
 /* callback when a TRAU frame was received */
 static int subch_cb(struct subch_demux *dmx, int ch, u_int8_t *data, int len,
 		    void *_priv)
@@ -449,8 +474,10 @@ int e1inp_line_register(struct e1inp_line *line)
 {
 	int i;
 
-	for (i = 0; i < NUM_E1_TS; i++)
+	for (i = 0; i < NUM_E1_TS; i++) {
 		line->ts[i].num = i+1;
+		line->ts[i].line = line;
+	}
 
 	llist_add_tail(&line->list, &e1inp_line_list);
 	

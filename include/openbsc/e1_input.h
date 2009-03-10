@@ -16,6 +16,7 @@ enum e1inp_sign_type {
 	E1INP_SIGN_OML,
 	E1INP_SIGN_RSL,
 };
+const char *e1inp_signtype_name(enum e1inp_sign_type tp);
 
 struct e1inp_ts;
 
@@ -50,6 +51,7 @@ enum e1inp_ts_type {
 	E1INP_TS_TYPE_SIGN,
 	E1INP_TS_TYPE_TRAU,
 };
+const char *e1inp_tstype_name(enum e1inp_ts_type tp);
 
 /* A timeslot in the E1 interface */
 struct e1inp_ts {
