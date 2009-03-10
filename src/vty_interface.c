@@ -65,9 +65,9 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
-	vty_out(vty, "BSC is on CC %u, NC %u and has %u BTS%s",
-		net->country_code, net->network_code, net->num_bts,
-		VTY_NEWLINE);
+	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
+		"and has %u BTS%s", net->country_code, net->network_code,
+		net->num_bts, VTY_NEWLINE);
 	vty_out(vty, "  Long network name: %s%s",
 		net->name_long, VTY_NEWLINE);
 	vty_out(vty, "  Short network name: %s%s",
@@ -204,15 +204,16 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 		gsm_pchan_name(ts->pchan), VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &ts->nm_state);
-	vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
-		ts->e1_link.e1_nr, ts->e1_link.e1_ts,
-		ts->e1_link.e1_ts_ss, VTY_NEWLINE);
 	if (is_ipaccess_bts(ts->trx->bts)) {
 		ia.s_addr = ts->abis_ip.bound_ip;
 		vty_out(vty, "  Bound IP: %s Port %u FC=%u F8=%u%s",
 			inet_ntoa(ia), ts->abis_ip.bound_port,
 			ts->abis_ip.attr_fc, ts->abis_ip.attr_f8,
 			VTY_NEWLINE);
+	} else {
+		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
+			ts->e1_link.e1_nr, ts->e1_link.e1_ts,
+			ts->e1_link.e1_ts_ss, VTY_NEWLINE);
 	}
 }
 
@@ -384,6 +385,8 @@ DEFUN(show_lchan,
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
 				     lchan_nr++) {
 					lchan = &ts->lchan[lchan_nr];
+					if (lchan->type == GSM_LCHAN_NONE)
+						continue;
 					lchan_dump_vty(vty, lchan);
 				}
 			}
