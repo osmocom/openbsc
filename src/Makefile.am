@@ -6,14 +6,14 @@ noinst_LIBRARIES = libbsc.a libvty.a
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.c \
 		gsm_subscriber.c msgb.c select.c chan_alloc.c timer.c debug.c db.c \
-		gsm_04_11.c telnet_interface.c telnet_parser.l subchan_demux.c \
+		gsm_04_11.c telnet_interface.c subchan_demux.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
 
-bsc_hack_SOURCES = bsc_hack.c
-bsc_hack_LDADD = libbsc.a -ldl -ldbi
+bsc_hack_SOURCES = bsc_hack.c vty_interface.c
+bsc_hack_LDADD = libbsc.a libvty.a -ldl -ldbi -lcrypt
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c rs232.c tlv_parser.c
 

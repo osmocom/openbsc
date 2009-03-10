@@ -25,6 +25,8 @@
 #include "linuxlist.h"
 #include "select.h"
 
+#include <vty/vty.h>
+
 #define TELNET_COMMAND_48	1
 #define TELNET_COMMAND_11	2
 
@@ -32,6 +34,8 @@ struct telnet_connection {
 	struct llist_head entry;
 	struct gsm_network *network;
 	struct bsc_fd fd;
+	struct vty *vty;
+
 	int bts;
 
 	int command;
