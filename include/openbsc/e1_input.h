@@ -144,5 +144,7 @@ int e1_config(struct gsm_bts *bts);
 int ia_config(struct gsm_bts *bts);
 int ipaccess_setup(struct e1inp_line *line);
 
+struct llist_head e1inp_driver_list;
+struct llist_head e1inp_line_list;
 
 #endif /* _E1_INPUT_H */

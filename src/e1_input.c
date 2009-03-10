@@ -52,10 +52,10 @@
 #define NUM_E1_TS	32
 
 /* list of all E1 drivers */
-static LLIST_HEAD(driver_list);
+LLIST_HEAD(e1inp_driver_list);
 
 /* list of all E1 lines */
-static LLIST_HEAD(line_list);
+LLIST_HEAD(e1inp_line_list);
 
 /* to be implemented, e.g. by bsc_hack.c */
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
@@ -270,7 +270,7 @@ static struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 	struct e1inp_line *e1i_line;
 
 	/* iterate over global list of e1 lines */
-	llist_for_each_entry(e1i_line, &line_list, list) {
+	llist_for_each_entry(e1i_line, &e1inp_line_list, list) {
 		if (e1i_line->num == e1_nr)
 			return e1i_line;
 	}
@@ -440,7 +440,7 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 /* register a driver with the E1 core */
 int e1inp_driver_register(struct e1inp_driver *drv)
 {
-	llist_add_tail(&drv->list, &driver_list);
+	llist_add_tail(&drv->list, &e1inp_driver_list);
 	return 0;
 }
 
@@ -452,7 +452,7 @@ int e1inp_line_register(struct e1inp_line *line)
 	for (i = 0; i < NUM_E1_TS; i++)
 		line->ts[i].num = i+1;
 
-	llist_add_tail(&line->list, &line_list);
+	llist_add_tail(&line->list, &e1inp_line_list);
 	
 	return 0;
 }
