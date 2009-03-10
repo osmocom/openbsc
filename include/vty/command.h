@@ -60,7 +60,9 @@ struct host {
 
 /* There are some command levels which called from command node. */
 enum node_type {
-	SEND_NODE,
+	BTS_NODE,
+	TRX_NODE,
+	TS_NODE,
 
 	AUTH_NODE,		/* Authentication mode of vty interface. */
 	VIEW_NODE,		/* View node. Default mode of vty interface. */
