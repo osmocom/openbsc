@@ -18,19 +18,6 @@
 #include <vty/command.h>
 #include <vty/buffer.h>
 
-/* Vty events */
-enum event {
-	VTY_SERV,
-	VTY_READ,
-	VTY_WRITE,
-	VTY_TIMEOUT_RESET,
-#ifdef VTYSH
-	VTYSH_SERV,
-	VTYSH_READ,
-	VTYSH_WRITE
-#endif				/* VTYSH */
-};
-
 extern struct host host;
 
 /* Vector which store each vty structure. */
@@ -235,6 +222,7 @@ int vty_out_newline(struct vty *vty)
 {
 	char *p = vty_newline(vty);
 	buffer_put(vty->obuf, p, strlen(p));
+	return 0;
 }
 
 int vty_config_lock(struct vty *vty)
@@ -253,12 +241,6 @@ int vty_config_unlock(struct vty *vty)
 		vty_config = 0;
 	}
 	return vty->config;
-}
-
-static void vty_event(enum event event, int sock, struct vty *vty)
-{
-	fprintf(stdout, "vty_event(%d, %d, %p)\n", event, sock, vty);
-	buffer_flush_all(vty->obuf, sock);
 }
 
 /* Say hello to vty interface. */
@@ -1375,7 +1357,7 @@ int vty_read(struct vty *vty)
 
 /* Create new vty structure. */
 struct vty *
-vty_create (int vty_sock)
+vty_create (int vty_sock, void *priv)
 {
   struct vty *vty;
 
@@ -1388,6 +1370,7 @@ vty_create (int vty_sock)
   /* Allocate new vty structure and set up default values. */
   vty = vty_new ();
   vty->fd = vty_sock;
+  vty->priv = priv;
   vty->type = VTY_TERM;
   if (no_password_check)
     {

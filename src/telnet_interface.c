@@ -35,6 +35,8 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 
+#include <vty/buffer.h>
+
 #define WRITE_CONNECTION(fd, msg...) \
 	int ret; \
 	char buf[4096]; \
@@ -129,7 +131,20 @@ int telnet_close_client(struct bsc_fd *fd) {
 static int client_data(struct bsc_fd *fd, unsigned int what)
 {
 	struct telnet_connection *conn = fd->data;
-	return vty_read(conn->vty);
+	int rc;
+
+	if (what & BSC_FD_READ) {
+		conn->fd.when &= ~BSC_FD_READ;
+		rc = vty_read(conn->vty);
+	}
+
+	if (what & BSC_FD_WRITE) {
+		rc = buffer_flush_all(conn->vty->obuf, fd->fd);
+		if (rc == BUFFER_EMPTY)
+			conn->fd.when &= ~BSC_FD_WRITE;
+	}
+
+	return rc;
 }
 
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
@@ -157,11 +172,29 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 
 	print_welcome(new_connection);
 
-	connection->vty = vty_create(new_connection);
+	connection->vty = vty_create(new_connection, connection);
 	if (!connection->vty)
 		return -1;
 
 	return 0;
+}
+
+/* callback from VTY code */
+void vty_event(enum event event, int sock, struct vty *vty)
+{
+	struct telnet_connection *connection = vty->priv;
+	struct bsc_fd *bfd = &connection->fd;
+
+	switch (event) {
+	case VTY_READ:
+		bfd->when |= BSC_FD_READ;
+		break;
+	case VTY_WRITE:
+		bfd->when |= BSC_FD_WRITE;
+		break;
+	default:
+		break;
+	}
 }
 
 #if 0

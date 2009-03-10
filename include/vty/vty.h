@@ -21,8 +21,24 @@
 #define VTY_BUFSIZ 512
 #define VTY_MAXHIST 20
 
+/* Vty events */
+enum event {
+	VTY_SERV,
+	VTY_READ,
+	VTY_WRITE,
+	VTY_TIMEOUT_RESET,
+#ifdef VTYSH
+	VTYSH_SERV,
+	VTYSH_READ,
+	VTYSH_WRITE
+#endif				/* VTYSH */
+};
+
 struct vty {
 	FILE *file;
+
+	/* private data, specified by creator */
+	void *priv;
 
 	/* File descripter of this vty. */
 	int fd;
@@ -115,7 +131,7 @@ void vty_init (void);
 void vty_init_vtysh (void);
 void vty_reset (void);
 struct vty *vty_new (void);
-struct vty *vty_create (int vty_sock);
+struct vty *vty_create (int vty_sock, void *priv);
 int vty_out (struct vty *, const char *, ...) PRINTF_ATTRIBUTE(2, 3);
 int vty_out_newline(struct vty *);
 int vty_read(struct vty *vty);
