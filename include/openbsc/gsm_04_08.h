@@ -205,6 +205,7 @@ struct gsm48_imsi_detach_ind {
 #define GSM48_PDISC_NC_SS	0x0b
 #define GSM48_PDISC_LOC		0x0c
 #define GSM48_PDISC_MASK	0x0f
+#define GSM48_PDISC_USSD	0x11
 
 /* Section 10.4 */
 #define GSM48_MT_RR_INIT_REQ		0x3c
