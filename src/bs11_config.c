@@ -535,10 +535,15 @@ int handle_serial_msg(struct msgb *rx_msg)
 		//hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
 	case NM_MT_BS11_SET_ATTR_ACK:
-		printf("SET ATTRIBUTE ACK\n");
+		printf("SET ATTRIBUTE ObjClass=0x%02x ObjInst=(%d,%d,%d) ACK\n",
+			foh->obj_class, foh->obj_inst.bts_nr,
+			foh->obj_inst.trx_nr, foh->obj_inst.ts_nr);
+		rc = 0;
 		break;
 	case NM_MT_BS11_SET_ATTR_NACK:
-		printf("SET ATTRIBUTE NACK\n");
+		printf("SET ATTRIBUTE ObjClass=0x%02x ObjInst=(%d,%d,%d) NACK\n",
+			foh->obj_class, foh->obj_inst.bts_nr,
+			foh->obj_inst.trx_nr, foh->obj_inst.ts_nr);
 		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);
