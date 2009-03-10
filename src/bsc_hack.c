@@ -1,6 +1,6 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
@@ -961,23 +961,6 @@ static void print_help()
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -t --bts-type type The BTS type (bs11, nanobts900, nanobts1800)\n");
 	printf("  -h --help this text\n");
-}
-
-static const char *bts_types[] = {
-	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
-	[GSM_BTS_TYPE_BS11] = "bs11",
-	[GSM_BTS_TYPE_NANOBTS_900] = "nanobts900",
-	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
-};
-
-enum gsm_bts_type parse_btstype(char *arg)
-{
-	int i;
-	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
-		if (!strcmp(arg, bts_types[i]))
-			return i;
-	}	
-	return GSM_BTS_TYPE_BS11; /* Default: BS11 */
 }
 
 static void handle_options(int argc, char** argv)

@@ -85,18 +85,6 @@ static const struct tlv_definition rsl_att_tlvdef = {
 	},
 };
 		
-static inline int is_ipaccess_bts(struct gsm_bts *bts)
-{
-	switch (bts->type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
-		return 1;
-	default:
-		break;
-	}
-	return 0;
-}
-
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);

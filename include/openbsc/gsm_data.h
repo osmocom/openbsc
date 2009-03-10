@@ -333,4 +333,19 @@ enum gsm_e1_event {
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
+enum gsm_bts_type parse_btstype(char *arg);
+char *btstype2str(enum gsm_bts_type type);
+
+static inline int is_ipaccess_bts(struct gsm_bts *bts)
+{
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		return 1;
+	default:
+		break;
+	}
+	return 0;
+}
+
 #endif

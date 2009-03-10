@@ -1,4 +1,4 @@
-/* (C) 2008 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -154,4 +154,28 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
 
 	return ts2str;
+}
+
+static const char *bts_types[] = {
+	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
+	[GSM_BTS_TYPE_BS11] = "bs11",
+	[GSM_BTS_TYPE_NANOBTS_900] = "nanobts900",
+	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
+};
+
+enum gsm_bts_type parse_btstype(char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
+		if (!strcmp(arg, bts_types[i]))
+			return i;
+	}	
+	return GSM_BTS_TYPE_BS11; /* Default: BS11 */
+}
+
+char *btstype2str(enum gsm_bts_type type)
+{
+	if (type > ARRAY_SIZE(bts_types))
+		return "undefined";
+	return bts_types[type];
 }
