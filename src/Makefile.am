@@ -3,6 +3,7 @@ AM_CFLAGS=-Wall
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find
 noinst_LIBRARIES = libbsc.a libvty.a
+noinst_HEADERS = vty/cardshell.h
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.c \
 		gsm_subscriber.c msgb.c select.c chan_alloc.c timer.c debug.c db.c \

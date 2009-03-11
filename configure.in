@@ -18,6 +18,7 @@ dnl Checks for typedefs, structures and compiler characteristics
 
 AC_OUTPUT(
     include/openbsc/Makefile
+    include/vty/Makefile
     include/Makefile
     src/Makefile
     tests/Makefile

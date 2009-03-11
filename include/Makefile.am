@@ -1,3 +1,3 @@
-SUBDIRS = openbsc
+SUBDIRS = openbsc vty
 
 noinst_HEADERS = mISDNif.h
