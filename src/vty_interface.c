@@ -505,6 +505,50 @@ DEFUN(show_e1ts,
 	return CMD_SUCCESS;
 }
 
+void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
+{
+	vty_out(vty, "Paging on BTS %u%s", pag->bts->nr, VTY_NEWLINE);
+	subscr_dump_vty(vty, pag->subscr);
+}
+
+void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
+{
+	struct gsm_paging_request *pag;
+
+	llist_for_each_entry(pag, &bts->paging.pending_requests, entry)
+		paging_dump_vty(vty, pag);
+}
+
+DEFUN(show_paging,
+      show_paging_cmd,
+      "show paging [bts_nr]",
+	SHOW_STR "Display information about pating reuqests of a BTS\n")
+{
+	struct gsm_network *net = gsmnet;
+	struct gsm_bts *bts;
+	int bts_nr;
+
+	if (argc >= 1) {
+		/* use the BTS number that the user has specified */
+		bts_nr = atoi(argv[0]);
+		if (bts_nr >= net->num_bts) {
+			vty_out(vty, "%% can't find BTS %s%s", argv[0],
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		bts = &net->bts[bts_nr];
+		bts_paging_dump_vty(vty, bts);
+		
+		return CMD_SUCCESS;
+	}
+	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+		bts = &net->bts[bts_nr];
+		bts_paging_dump_vty(vty, bts);
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -522,6 +566,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_e1line_cmd);
 	install_element(VIEW_NODE, &show_e1ts_cmd);
 
+	install_element(VIEW_NODE, &show_paging_cmd);
 #if 0
 	install_node(&bts_node, dummy_config_write);
 	install_element(BTS_NODE, &show_bts_cmd);
