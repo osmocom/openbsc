@@ -549,6 +549,148 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
+/* per-BTS configuration */
+DEFUN(cfg_bts,
+      cfg_bts_cmd,
+      "bts BTS_NR",
+      "Select a BTS to configure\n")
+{
+	int bts_nr = atoi(argv[0]);
+	struct gsm_bts *bts;
+
+	if (bts_nr >= GSM_MAX_BTS) {
+		vty_out(vty, "%% This Version of OpenBSC only supports %u BTS%s",
+			GSM_MAX_BTS, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts = &gsmnet->bts[bts_nr];
+	if (bts_nr >= gsmnet->num_bts)
+		gsmnet->num_bts = bts_nr + 1;
+
+	vty->index = bts;
+	vty->node = BTS_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_type,
+      cfg_bts_type_cmd,
+      "type TYPE",
+      "Set the BTS type\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	//bts->type =
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_lac,
+      cfg_bts_lac_cmd,
+      "location_area_code <0-255>",
+      "Set the Location Area Code (LAC) of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int lac = atoi(argv[0]);
+
+	if (lac < 0 || lac > 0xff) {
+		vty_out(vty, "%% LAC %d is not in the valid range (0-255)%s",
+			lac, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->location_area_code = lac;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_tsc,
+      cfg_bts_tsc_cmd,
+      "training_sequence_code <0-255>",
+      "Set the Training Sequence Code (TSC) of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int tsc = atoi(argv[0]);
+
+	if (tsc < 0 || tsc > 0xff) {
+		vty_out(vty, "%% TSC %d is not in the valid range (0-255)%s",
+			tsc, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->tsc = tsc;
+
+	return CMD_SUCCESS;
+}
+
+/* per TRX configuration */
+DEFUN(cfg_trx,
+      cfg_trx_cmd,
+      "trx TRX_NR",
+      "Select a TRX to configure")
+{
+	int trx_nr = atoi(argv[0]);
+	struct gsm_bts *bts = vty->index;
+	struct gsm_bts_trx *trx;
+
+	if (trx_nr > BTS_MAX_TRX) {
+		vty_out(vty, "%% This version of OpenBSC only supports %u TRX%s",
+			BTS_MAX_TRX+1, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (trx_nr >= bts->num_trx)
+		bts->num_trx = trx_nr+1;
+
+	trx = &bts->trx[trx_nr];
+
+	vty->index = trx;
+	vty->node = TRX_NODE;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_arfcn,
+      cfg_trx_arfcn_cmd,
+      "arfcn <1-1024>",
+      "Set the ARFCN for this TRX\n")
+{
+	int arfcn = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+
+	/* FIXME: check if this ARFCN is supported by this TRX */
+
+	trx->arfcn = arfcn;
+
+	/* FIXME: patch ARFCN into SYSTEM INFORMATION */
+	/* FIXME: use OML layer to update the ARFCN */
+	/* FIXME: use RSL layer to update SYSTEM INFORMATION */
+
+	return CMD_SUCCESS;
+}
+
+/* per TS configuration */
+DEFUN(cfg_ts,
+      cfg_ts_cmd,
+      "timeslot TS_NR",
+      "Select a Timeslot to configure")
+{
+	int ts_nr = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+	struct gsm_bts_trx_ts *ts;
+
+	if (ts_nr >= TRX_NR_TS) {
+		vty_out(vty, "%% A GSM TRX only has %u Timeslots per TRX%s",
+			TRX_NR_TS, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	ts = &trx->ts[ts_nr];
+
+	vty->index = ts;
+	vty->node = TS_NODE;
+
+	return CMD_SUCCESS;
+}
+
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -567,19 +709,22 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_e1ts_cmd);
 
 	install_element(VIEW_NODE, &show_paging_cmd);
-#if 0
+
+	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, dummy_config_write);
-	install_element(BTS_NODE, &show_bts_cmd);
 	install_default(BTS_NODE);
+	install_element(BTS_NODE, &cfg_bts_type_cmd);
+	install_element(BTS_NODE, &cfg_bts_lac_cmd);
+	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 
+	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
-	install_element(TRX_NODE, &show_trx_cmd);
 	install_default(TRX_NODE);
+	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
 
+	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
-	install_element(TS_NODE, &show_ts_cmd);
 	install_default(TS_NODE);
-#endif
 
 	return 0;
 }

@@ -44,6 +44,8 @@ Boston, MA 02111-1307, USA.  */
 #include <vty/command.h>
 //#include "workqueue.h"
 
+#include <openbsc/gsm_data.h>
+
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec;
@@ -2292,12 +2294,23 @@ DEFUN(config_exit,
 	switch (vty->node) {
 	case BTS_NODE:
 		vty->node = VIEW_NODE;
+		vty->index = NULL;
 		break;
 	case TRX_NODE:
 		vty->node = BTS_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
 		break;
 	case TS_NODE:
 		vty->node = TRX_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx_ts *ts = vty->index;
+			vty->index = ts->trx;
+		}
 		break;
 	case VIEW_NODE:
 	case ENABLE_NODE:
