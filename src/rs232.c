@@ -44,6 +44,7 @@ struct serial_handle {
 	unsigned int rxmsg_bytes_missing;
 
 	unsigned int delay_ms;
+	struct gsm_bts *bts;
 };
 
 /* FIXME: this needs to go */
@@ -128,6 +129,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 	if (!sh->rx_msg) {
 		sh->rx_msg = msgb_alloc(SERIAL_ALLOC_SIZE);
 		sh->rx_msg->l2h = NULL;
+		sh->rx_msg->trx = sh->bts->c0;
 	}
 	msg = sh->rx_msg;
 
@@ -197,7 +199,8 @@ static int serial_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return rc;
 }
 
-int rs232_setup(const char *serial_port, unsigned int delay_ms)
+int rs232_setup(const char *serial_port, unsigned int delay_ms,
+		struct gsm_bts *bts)
 {
 	int rc, serial_fd;
 	struct termios tio;
@@ -234,6 +237,7 @@ int rs232_setup(const char *serial_port, unsigned int delay_ms)
 	ser_handle->fd.cb = serial_fd_cb;
 	ser_handle->fd.data = ser_handle;
 	ser_handle->delay_ms = delay_ms;
+	ser_handle->bts = bts;
 	rc = bsc_register_fd(&ser_handle->fd);
 	if (rc < 0) {
 		fprintf(stderr, "could not register FD: %s\n",

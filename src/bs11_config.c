@@ -440,14 +440,23 @@ static int handle_state_resp(enum abis_bs11_phase state)
 					fprintf(stderr, "No valid Software file \"%s\"\n",
 						fname_software);
 			} else if (!strcmp(command, "delete-trx1")) {
+				printf("Locing BBSIG and PA objects of TRX1\n");
+				abis_nm_chg_adm_state(g_bts, NM_OC_BS11,
+						      BS11_OBJ_BBSIG, 0, 1,
+						      NM_STATE_LOCKED);
+				abis_nm_chg_adm_state(g_bts, NM_OC_BS11,
+						      BS11_OBJ_PA, 0, 1,
+						      NM_STATE_LOCKED);
+				sleep(1);
+				printf("Deleting BBSIG and PA objects of TRX1\n");
 				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_BBSIG, 1);
 				abis_nm_bs11_delete_object(g_bts, BS11_OBJ_PA, 1);
-				sleep(5);
+				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
 			} else if (!strcmp(command, "create-trx1")) {
 				create_trx1(g_bts);
-				sleep(5);
+				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
 			} else if (!strcmp(command, "oml-tei")) {
@@ -701,7 +710,7 @@ int main(int argc, char **argv)
 	}
 	g_bts = &gsmnet->bts[0];
 
-	rc = rs232_setup(serial_port, delay_ms);
+	rc = rs232_setup(serial_port, delay_ms, g_bts);
 	if (rc < 0) {
 		fprintf(stderr, "Problem setting up serial port\n");
 		exit(1);
