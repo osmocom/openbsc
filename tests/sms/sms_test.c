@@ -80,8 +80,11 @@ int main(int argc, char** argv)
         /* test 7-bit coding/decoding */
 	const char *input = "test text";
 	u_int8_t length;
-	u_int8_t *coded = gsm_7bit_encode(input, &length);
-	char *result = gsm_7bit_decode(coded, length);
+	u_int8_t coded[256];
+	char result[256];
+
+	length = gsm_7bit_encode(coded, input);
+	gsm_7bit_decode(result, coded, length);
 	if (strcmp(result, input) != 0) {
 		printf("7 Bit coding failed... life sucks\n");
 		printf("Wanted: '%s' got '%s'\n", input, result);

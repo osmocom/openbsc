@@ -19,17 +19,66 @@
  *
  */
 
+#include <openbsc/gsm_data.h>
 #include <openbsc/db.h>
 
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <dbi/dbi.h>
 
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
 dbi_conn conn;
+
+static char *create_stmts[] = {
+	"CREATE TABLE IF NOT EXISTS Meta ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"key TEXT UNIQUE NOT NULL, "
+		"value TEXT NOT NULL"
+		")",
+	"INSERT OR IGNORE INTO Meta "
+		"(key, value) "
+		"VALUES "
+		"('revision', '1')",
+	"CREATE TABLE IF NOT EXISTS Subscriber ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
+		"imsi NUMERIC UNIQUE NOT NULL, "
+		"name TEXT, "
+		"extension TEXT UNIQUE, "
+		"authorized INTEGER NOT NULL DEFAULT 0, "
+		"tmsi TEXT UNIQUE, "
+		"lac INTEGER NOT NULL DEFAULT 0"
+		")",
+	"CREATE TABLE IF NOT EXISTS Equipment ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
+		"name TEXT, "
+		"imei NUMERIC UNIQUE NOT NULL"
+		")",
+	"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
+		"subscriber_id NUMERIC NOT NULL, "
+		"equipment_id NUMERIC NOT NULL, "
+		"UNIQUE (subscriber_id, equipment_id) "
+		")",
+	"CREATE TABLE IF NOT EXISTS SMS ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"sent TIMESTAMP, "
+		"sender_id NUMERIC NOT NULL, "
+		"receiver_id NUMERIC NOT NULL, "
+		"header NUMERIC, "
+		"text TEXT NOT NULL "
+		")",
+};
 
 void db_error_func(dbi_conn conn, void* data) {
 	const char* msg;
@@ -73,93 +122,16 @@ int db_init(const char *name) {
 
 int db_prepare() {
 	dbi_result result;
-	result = dbi_conn_query(conn,
-		"CREATE TABLE IF NOT EXISTS Meta ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"key TEXT UNIQUE NOT NULL, "
-		"value TEXT NOT NULL"
-		")"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Meta table.\n");
-		return 1;
-	}
-	dbi_result_free(result);
-	result = dbi_conn_query(conn,
-		"INSERT OR IGNORE INTO Meta "
-		"(key, value) "
-		"VALUES "
-		"('revision', '1')"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Meta table.\n");
-		return 1;
-	}
-	dbi_result_free(result);
-	result = dbi_conn_query(conn,
-		"CREATE TABLE IF NOT EXISTS Subscriber ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"created TIMESTAMP NOT NULL, "
-		"updated TIMESTAMP NOT NULL, "
-		"imsi NUMERIC UNIQUE NOT NULL, "
-		"name TEXT, "
-		"extension TEXT UNIQUE, "
-		"authorized INTEGER NOT NULL DEFAULT 0, "
-		"tmsi TEXT UNIQUE, "
-		"lac INTEGER NOT NULL DEFAULT 0"
-		")"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Subscriber table.\n");
-		return 1;
-	}
-	dbi_result_free(result);
-	result = dbi_conn_query(conn,
-		"CREATE TABLE IF NOT EXISTS Equipment ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"created TIMESTAMP NOT NULL, "
-		"updated TIMESTAMP NOT NULL, "
-		"name TEXT, "
-		"imei NUMERIC UNIQUE NOT NULL"
-		")"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Equipment table.\n");
-		return 1;
-	}
-	dbi_result_free(result);
-	result = dbi_conn_query(conn,
-		"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"created TIMESTAMP NOT NULL, "
-		"updated TIMESTAMP NOT NULL, "
-		"subscriber_id NUMERIC NOT NULL, "
-		"equipment_id NUMERIC NOT NULL, "
-		"UNIQUE (subscriber_id, equipment_id) "
-		")"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Equipment table.\n");
-		return 1;
-	}
-	dbi_result_free(result);
+	int i;
 
-	result = dbi_conn_query(conn,
-		"CREATE TABLE IF NOT EXISTS SMS ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"created TIMESTAMP NOT NULL, "
-		"sent TIMESTAMP, "
-		"sender_id NUMERIC NOT NULL, "
-		"receiver_id NUMERIC NOT NULL, "
-		"header NUMERIC, "
-		"text TEXT NOT NULL "
-		")"
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Equipment table.\n");
-		return 1;
+	for (i = 0; i < ARRAY_SIZE(create_stmts); i++) {
+		result = dbi_conn_query(conn, create_stmts[i]);
+		if (result==NULL) {
+			printf("DB: Failed to create some table.\n");
+			return 1;
+		}
+		dbi_result_free(result);
 	}
-	dbi_result_free(result);
 
 	return 0;
 }
@@ -419,3 +391,68 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 	return 0;
 }
 
+/* store an [unsent] SMS to the database */
+int db_sms_store(struct gsm_sms *sms)
+{
+	dbi_result result;
+	char *q_text;
+
+	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO SMS "
+		"(created,sender_id,receiver_id,header,text) VALUES "
+		"(datetime('now'),%llu,%llu,%s,%s)",
+		sms->sender->id,
+		sms->receiver ? sms->receiver->id : 0,
+		NULL, q_text);
+	free(q_text);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+	return 0;
+}
+
+/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent(int min_id)
+{
+	dbi_result result;
+	struct gsm_sms *sms = malloc(sizeof(*sms));
+
+	if (!sms) {
+		free(sms);
+		return NULL;
+	}
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS "
+		"WHERE id >= %llu ORDER BY id", min_id);
+	if (!result) {
+		free(sms);
+		return NULL;
+	}
+
+	/* FIXME: fill gsm_sms from database */
+
+	dbi_result_free(result);
+	return sms;
+}
+
+/* mark a given SMS as read */
+int db_sms_mark_sent(struct gsm_sms *sms)
+{
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+		"UPDATE SMS "
+		"SET sent = datetime('now') "
+		"WHERE id = %llu", sms->id);
+	if (!result) {
+		printf("DB: Failed to mark SMS %llu as sent.\n", sms->id);
+		return 1;
+	}
+
+	dbi_result_free(result);
+	return 0;
+}

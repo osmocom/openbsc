@@ -2,6 +2,7 @@
 /*
  * (C) 2008 by Daniel Willmann <daniel@totalueberwachung.de>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -26,7 +27,7 @@
 
 #include <sys/types.h>
 
-char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length);
-u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *length);
+int gsm_7bit_decode(char *decoded, const u_int8_t *user_data, u_int8_t length);
+int gsm_7bit_encode(u_int8_t *result, const char *data);
 
 #endif

@@ -317,6 +317,17 @@ struct gsm_network {
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
 };
 
+#define SMS_HDR_SIZE	128
+#define SMS_TEXT_SIZE	256
+struct gsm_sms {
+	u_int64_t id;
+	struct gsm_subscriber *sender;
+	struct gsm_subscriber *receiver;
+
+	unsigned char header[SMS_HDR_SIZE];
+	char text[SMS_TEXT_SIZE];
+};
+
 struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
 				     u_int16_t country_code, u_int16_t network_code);
 

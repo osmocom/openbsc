@@ -1,6 +1,7 @@
 /*
  * (C) 2008 by Daniel Willmann <daniel@totalueberwachung.de>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -25,13 +26,10 @@
 #include <string.h>
 
 /* GSM 03.38 6.2.1 Charachter packing */
-char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
+int gsm_7bit_decode(char *text, const u_int8_t *user_data, u_int8_t length)
 {
 	u_int8_t d_off = 0, b_off = 0;
 	u_int8_t i;
-	char *text = malloc(length+1);
-	if (!text)
-		return NULL;
 
 	for (i=0;i<length;i++) {
 		text[i] = ((user_data[d_off] + (user_data[d_off+1]<<8)) & (0x7f<<b_off))>>b_off;
@@ -42,21 +40,18 @@ char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 		}
 	}
 	text[i] = '\0';
-	return text;
+	return 0;
 }
 
 /* GSM 03.38 6.2.1 Charachter packing */
-u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
+int gsm_7bit_encode(u_int8_t *result, const char *data)
 {
 	int i;
 	u_int8_t d_off = 0, b_off = 0;
 	const int length = strlen(data);
-	*out_length = (length * 8)/7;
-	u_int8_t *result = malloc(*out_length);
-	if (!result)
-		return NULL;
+	int out_length = (length * 8)/7;
 
-	memset(result, 0, *out_length);
+	memset(result, 0, out_length);
 
 	for (i = 0; i < length; ++i) {
 		u_int8_t first  = (data[i] & 0x7f) << b_off;
@@ -74,5 +69,5 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 		}
 	}
 
-	return result;
+	return out_length;
 }
