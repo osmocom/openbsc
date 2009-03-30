@@ -30,6 +30,8 @@ char *gsm_7bit_decode(u_int8_t *user_data, u_int8_t length)
 	u_int8_t d_off = 0, b_off = 0;
 	u_int8_t i;
 	char *text = malloc(length+1);
+	if (!text)
+		return NULL;
 
 	for (i=0;i<length;i++) {
 		text[i] = ((user_data[d_off] + (user_data[d_off+1]<<8)) & (0x7f<<b_off))>>b_off;
@@ -51,6 +53,9 @@ u_int8_t *gsm_7bit_encode(const char *data, u_int8_t *out_length)
 	const int length = strlen(data);
 	*out_length = (length * 8)/7;
 	u_int8_t *result = malloc(*out_length);
+	if (!result)
+		return NULL;
+
 	memset(result, 0, *out_length);
 
 	for (i = 0; i < length; ++i) {
