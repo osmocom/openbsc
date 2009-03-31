@@ -138,6 +138,9 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 /* called by driver in case some kind of link state event */
 int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi);
 
+/* Write LAPD frames to the fd. */
+void e1_set_pcap_fd(int fd);
+
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
 

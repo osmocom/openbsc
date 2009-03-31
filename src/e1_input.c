@@ -62,7 +62,6 @@ LLIST_HEAD(e1inp_line_list);
 /* to be implemented, e.g. by bsc_hack.c */
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
 
-#if 0
 /*
  * pcap writing of the misdn load
  * pcap format is from http://wiki.wireshark.org/Development/LibpcapFileFormat
@@ -114,7 +113,7 @@ static_assert(sizeof(struct fake_linux_lapd_header) == 16,			lapd_header_size);
 
 static int pcap_fd = -1;
 
-void mi_set_pcap_fd(int fd)
+void e1_set_pcap_fd(int fd)
 {
 	int ret;
 	struct pcap_hdr header = {
@@ -132,7 +131,7 @@ void mi_set_pcap_fd(int fd)
 }
 
 /* This currently only works for the D-Channel */
-static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
+static void write_pcap_packet(int direction, int sapi, int tei,
 			      struct msgb *msg) {
 	if (pcap_fd < 0)
 		return;
@@ -152,9 +151,9 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	struct lapd_header lapd_header = {
 		.ea1		= 0,
 		.cr		= direction == PCAP_OUTPUT ? 1 : 0,
-		.sapi		= addr->sapi & 0x3F,
+		.sapi		= sapi & 0x3F,
 		.ea2		= 1,
-		.tei		= addr->tei & 0x7F,
+		.tei		= tei & 0x7F,
 		.control_foo	= 0x03 /* UI */,
 	};	
 
@@ -180,7 +179,6 @@ static void write_pcap_packet(int direction, struct sockaddr_mISDN* addr,
 	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
 			msg->len - MISDN_HEADER_LEN);
 }
-#endif
 
 static const char *sign_types[] = {
 	[E1INP_SIGN_NONE]	= "None",
@@ -236,6 +234,9 @@ int abis_rsl_sendmsg(struct msgb *msg)
 	sign_link = msg->trx->rsl_link;
 	msgb_enqueue(&sign_link->tx_list, msg);
 
+	/* dump it */
+	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
+
 	/* notify the driver we have something to write */
 	e1inp_driver = sign_link->ts->line->driver;
 	e1inp_driver->want_write(sign_link->ts);
@@ -257,6 +258,9 @@ int _abis_nm_sendmsg(struct msgb *msg)
 
 	sign_link = msg->trx->bts->oml_link;
 	msgb_enqueue(&sign_link->tx_list, msg);
+
+	/* dump it */
+	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
 
 	/* notify the driver we have something to write */
 	e1inp_driver = sign_link->ts->line->driver;
@@ -379,8 +383,8 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 
 	switch (ts->type) {
 	case E1INP_TS_TYPE_SIGN:
-		/* FIXME: write pcap packet */
 		/* consult the list of signalling links */
+		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
 			fprintf(stderr, "didn't find singalling link for "

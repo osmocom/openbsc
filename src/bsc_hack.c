@@ -927,7 +927,6 @@ static int bootstrap_network(void)
 
 static void create_pcap_file(char *file)
 {
-#if 0
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	int fd = open(file, O_WRONLY|O_TRUNC|O_CREAT, mode);
 
@@ -936,10 +935,7 @@ static void create_pcap_file(char *file)
 		return;
 	}
 
-	mi_set_pcap_fd(fd);
-#else
-	fprintf(stderr, "PCAP support currently disabled!!\n");
-#endif
+	e1_set_pcap_fd(fd);
 }
 
 static void print_usage()
