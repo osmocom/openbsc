@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 
@@ -44,6 +45,8 @@ struct gsm_subscriber *subscr_alloc(void)
 	memset(s, 0, sizeof(*s));
 	llist_add_tail(&s->entry, &active_subscribers);
 	s->use_count = 1;
+
+	INIT_LLIST_HEAD(&s->requests);
 
 	return s;
 }
@@ -131,6 +134,13 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 	return NULL;
 }
 
+void subscr_get_channel(struct gsm_subscriber *subscr,
+			struct gsm_network *network, int type,
+			gsm_cbfn *cbfn, void *param)
+{
+	paging_request(network, subscr, type, cbfn, param);
+}
+
 void subscr_put_channel(struct gsm_lchan *lchan)
 {
 	/*
@@ -141,3 +151,4 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 	 */
 	put_lchan(lchan);
 }
+

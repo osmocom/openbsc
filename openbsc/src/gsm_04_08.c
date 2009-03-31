@@ -1333,7 +1333,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	call->called_subscr = called_subscr;
 
 	/* Start paging subscriber on all BTS in LAC of subscriber */
-	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F,
+	subscr_get_channel(called_subscr, msg->trx->bts->network, RSL_CHANNEED_TCH_F,
 		       setup_trig_pag_evt, call);
 
 	/* send a CALL PROCEEDING message to the MO */

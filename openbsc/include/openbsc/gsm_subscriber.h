@@ -31,6 +31,9 @@ struct gsm_subscriber {
 	u_int8_t classmark2[3];
 	u_int8_t classmark3_len;
 	u_int8_t classmark3[14];
+
+	/* pending requests */
+	struct llist_head requests;
 };
 
 enum gsm_subscriber_field {
@@ -51,6 +54,9 @@ struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(const char *ext);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_lchan *lchan);
+void subscr_get_channel(struct gsm_subscriber *subscr,
+                        struct gsm_network *network, int type,
+		        gsm_cbfn *cbfn, void *param);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

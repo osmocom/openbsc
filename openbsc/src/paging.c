@@ -237,13 +237,13 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
 }
 
-void paging_request(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
+void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		    int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts *bts = NULL;
 
 	do {
-		bts = gsm_bts_by_lac(_bts->network, subscr->lac, bts);
+		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
 			break;
 

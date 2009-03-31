@@ -33,7 +33,7 @@
 void paging_init(struct gsm_bts *bts);
 
 /* schedule paging request */
-void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		    int type, gsm_cbfn *cbfn, void *data);
 
 /* stop paging requests */
