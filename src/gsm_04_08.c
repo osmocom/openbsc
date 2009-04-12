@@ -1202,12 +1202,11 @@ static int gsm48_cc_rx_disconnect(struct msgb *msg)
 	/* Section 5.4.3.2 */
 	DEBUGP(DCC, "A -> DISCONNECT (state->RELEASE_REQ)\n");
 	call->state = GSM_CSTATE_RELEASE_REQ;
-	if (call->state != GSM_CSTATE_NULL)
-		put_lchan(msg->lchan);
 	/* FIXME: clear the network connection */
 	DEBUGP(DCC, "A <- RELEASE\n");
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			     GSM48_MT_CC_RELEASE);
+	put_lchan(msg->lchan);
 
 	/* forward DISCONNECT to other party */
 	if (!call->remote_lchan)
