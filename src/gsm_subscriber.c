@@ -122,3 +122,14 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 		subscr_free(subscr);
 	return NULL;
 }
+
+void subscr_put_channel(struct gsm_lchan *lchan)
+{
+	/*
+	 * FIXME: Continue with other requests now... by checking
+	 * the gsm_subscriber inside the gsm_lchan. Drop the ref count
+	 * of the lchan after having asked the next requestee to handle
+	 * the channel.
+	 */
+	put_lchan(lchan);
+}

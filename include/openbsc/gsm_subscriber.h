@@ -43,6 +43,7 @@ struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(const char *ext);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
+void subscr_put_channel(struct gsm_lchan *lchan);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

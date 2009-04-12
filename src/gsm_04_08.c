@@ -1208,7 +1208,13 @@ static int gsm48_cc_rx_disconnect(struct msgb *msg)
 	DEBUGP(DCC, "A <- RELEASE\n");
 	rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 			     GSM48_MT_CC_RELEASE);
-	put_lchan(msg->lchan);
+
+	/*
+	 * FIXME: This looks wrong! We should have a single
+	 * place to do MMCC-REL-CNF/-REQ/-IND and then switch
+	 * to the NULL state and relase the call
+	 */
+	subscr_put_channel(msg->lchan);
 
 	/* forward DISCONNECT to other party */
 	if (!call->remote_lchan)
@@ -1294,7 +1300,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		/* need to respond with RELEASE_COMPLETE */
 		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
 				     GSM48_MT_CC_RELEASE_COMPL);
-		put_lchan(msg->lchan);
+		subscr_put_channel(msg->lchan);
                 call->state = GSM_CSTATE_NULL;
 		break;
 	case GSM48_MT_CC_STATUS_ENQ:
