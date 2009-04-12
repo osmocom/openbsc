@@ -584,7 +584,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		return 0;
 
 	db_subscriber_alloc_tmsi(subscr);
-	subscr_update(subscr, bts);
+	subscr_update(subscr, bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 
 	tmsi = strtoul(subscr->tmsi, NULL, 10);
 
@@ -806,10 +806,12 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 		break;
 	}
 
-	if (subscr)
+	if (subscr) {
+		subscr_update(subscr, msg->trx->bts,
+				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n",
 		       subscr->name ? subscr->name : subscr->imsi);
-	else
+	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
 
 	put_lchan(msg->lchan);

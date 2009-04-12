@@ -23,6 +23,7 @@ struct gsm_subscriber {
 	/* for internal management */ 
 	int use_count;
 	struct llist_head entry;
+	struct gsm_bts *current_bts;
 };
 
 enum gsm_subscriber_field {
@@ -31,12 +32,17 @@ enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_EXTENSION,
 };
 
+enum gsm_subscriber_update_reason {
+	GSM_SUBSCRIBER_UPDATE_ATTACHED,
+	GSM_SUBSCRIBER_UPDATE_DETACHED,
+};
+
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(const char *ext);
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts);
+int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

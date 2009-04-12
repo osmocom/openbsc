@@ -90,8 +90,23 @@ struct gsm_subscriber *subscr_get_by_extension(const char *ext)
 	return db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
-int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts)
+int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 {
+	/* FIXME: Migrate pending requests from one BSC to another */
+	switch (reason) {
+	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
+		s->current_bts = bts;
+		break;
+	case GSM_SUBSCRIBER_UPDATE_DETACHED:
+		/* Only detach if we are currently attached to this bts */
+		if (bts == s->current_bts)
+			s->current_bts = NULL;
+		break;
+	default:
+		fprintf(stderr, "subscr_update with unknown reason: %d\n",
+			reason);
+		break;
+	};
 	return db_sync_subscriber(s);
 }
 
