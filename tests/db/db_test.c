@@ -100,3 +100,7 @@ int main() {
 
 	return 0;
 }
+
+/* stubs */
+void input_event(void) {}
+void nm_state_event(void) {}
