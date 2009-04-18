@@ -33,6 +33,7 @@ struct gsm_subscriber {
 	u_int8_t classmark3[14];
 
 	/* pending requests */
+	int in_callback;
 	struct llist_head requests;
 };
 

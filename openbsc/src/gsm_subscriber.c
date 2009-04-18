@@ -25,14 +25,76 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
+#include <openbsc/paging.h>
 #include <openbsc/db.h>
 
-
 LLIST_HEAD(active_subscribers);
+
+/*
+ * Struct for pending channel requests. This is managed in the
+ * llist_head requests of each subscriber. The reference counting
+ * should work in such a way that a subscriber with a pending request
+ * remains in memory.
+ */
+struct subscr_request {
+	struct llist_head entry;
+
+	/* back reference */
+	struct gsm_subscriber *subscr;
+
+	/* the requested channel type */
+	int channel_type;
+
+	/* the bts we have decided to use */
+	struct gsm_network *network;
+
+	/* the callback data */
+	gsm_cbfn *cbfn;
+	void *param;
+};
+
+/*
+ * We got the channel assigned and can now hand this channel
+ * over to one of our callbacks.
+ */
+static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
+			     struct msgb *msg, void *data, void *param)
+{
+	struct subscr_request *request;
+	struct gsm_subscriber *subscr = (struct gsm_subscriber *)param;
+
+	assert(!llist_empty(&subscr->requests));
+
+	/*
+	 * FIXME: What to do with paging requests coming during
+	 * this callback? We must be sure to not start paging when
+	 * we have an active connection to a subscriber and to make
+	 * the subscr_put_channel work as required...
+	 */
+	request = (struct subscr_request *)subscr->requests.next;
+	llist_del(&request->entry);
+	subscr->in_callback = 1;
+	request->cbfn(hooknum, event, msg, data, request->param);
+	subscr->in_callback = 0;
+
+	free(request);
+	return 0;
+}
+
+static void subscr_send_paging_request(struct gsm_subscriber *subscr)
+{
+	struct subscr_request *request;
+	assert(!llist_empty(&subscr->requests));
+
+	request = (struct subscr_request *)subscr->requests.next;
+	paging_request(request->network, subscr, request->channel_type,
+		       subscr_paging_cb, subscr);
+}
 
 struct gsm_subscriber *subscr_alloc(void)
 {
@@ -138,7 +200,36 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 			struct gsm_network *network, int type,
 			gsm_cbfn *cbfn, void *param)
 {
-	paging_request(network, subscr, type, cbfn, param);
+	struct subscr_request *request;
+
+	request = (struct subscr_request *)malloc(sizeof(*request));
+	if (!request) {
+		if (cbfn)
+			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_OOM,
+				NULL, NULL, param);
+		return;
+	}
+
+	memset(request, 0, sizeof(*request));
+	request->network = network;
+	request->subscr = subscr;
+	request->channel_type = type;
+	request->cbfn = cbfn;
+	request->param = param;
+
+	/*
+	 * FIXME: We might be able to assign more than one
+	 * channel, e.g. voice and SMS submit at the same
+	 * time.
+	 */
+	if (!subscr->in_callback && llist_empty(&subscr->requests)) {
+		/* add to the list, send a request */
+		llist_add_tail(&request->entry, &subscr->requests);
+		subscr_send_paging_request(subscr);
+	} else {
+		/* this will be picked up later, from subscr_put_channel */
+		llist_add_tail(&request->entry, &subscr->requests);
+	}
 }
 
 void subscr_put_channel(struct gsm_lchan *lchan)
@@ -149,6 +240,21 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 	 * of the lchan after having asked the next requestee to handle
 	 * the channel.
 	 */
+	/*
+	 * FIXME: is the lchan is of a different type we could still
+	 * issue an immediate assignment for another channel and then
+	 * close this one.
+	 */
+	/*
+	 * Currently we will drop the last ref of the lchan which
+	 * will result in a channel release on RSL and we will start
+	 * the paging. This should work most of the time as the MS
+	 * will listen to the paging requests before we timeout
+	 */
+
 	put_lchan(lchan);
+
+	if (lchan->subscr && !llist_empty(&lchan->subscr->requests))
+		subscr_send_paging_request(lchan->subscr);
 }
 
