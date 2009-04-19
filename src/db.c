@@ -252,7 +252,6 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 	if (string)
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
-	// FIXME handle extension
 	subscr->lac = dbi_result_get_uint(result, "lac");
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
 	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, LAC %hu, AUTH %u\n",
