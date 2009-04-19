@@ -79,6 +79,13 @@ static char *create_stmts[] = {
 		"header NUMERIC, "
 		"text TEXT NOT NULL "
 		")",
+	"CREATE TABLE IF NOT EXISTS VLR ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"updated TIMESTAMP NOT NULL, "
+		"subscriber_id NUMERIC UNIQUE NOT NULL, "
+		"last_bts NUMERIC NOT NULL "
+		")",
 };
 
 void db_error_func(dbi_conn conn, void* data) {
