@@ -32,6 +32,7 @@
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
 dbi_conn conn;
+static struct gsm_network *current_network = NULL;
 
 static char *create_stmts[] = {
 	"CREATE TABLE IF NOT EXISTS Meta ("
@@ -86,7 +87,7 @@ void db_error_func(dbi_conn conn, void* data) {
 	printf("DBI: %s\n", msg);
 }
 
-int db_init(const char *name) {
+int db_init(const char *name, struct gsm_network *network) {
 	dbi_initialize(NULL);
 	conn = dbi_conn_new("sqlite3");
 	if (conn==NULL) {
@@ -117,6 +118,7 @@ int db_init(const char *name) {
 		return 1;
 	}
 
+	current_network = network;
 	return 0;
 }
 

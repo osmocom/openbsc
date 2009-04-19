@@ -26,7 +26,7 @@
 #include <openbsc/gsm_subscriber.h>
 
 /* one time initialisation */
-int db_init(const char *name);
+int db_init(const char *name, struct gsm_network *network);
 int db_prepare();
 int db_fini();
 

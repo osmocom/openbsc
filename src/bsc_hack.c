@@ -916,7 +916,7 @@ static int bootstrap_network(void)
 	paging_init(bts);
 	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
-	if (db_init(database_name)) {
+	if (db_init(database_name, gsmnet)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
 		return -1;
 	}	 
