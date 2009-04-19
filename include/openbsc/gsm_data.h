@@ -252,9 +252,6 @@ struct gsm_paging_request {
  * to the gsm_bts, a timer and some more state.
  */
 struct gsm_bts_paging_state {
-	/* public callbacks */
-	void (*channel_allocated)(struct gsm_lchan *lchan);
-
 	/* pending requests */
 	struct llist_head pending_requests;
 	struct gsm_paging_request *last_request;

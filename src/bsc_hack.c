@@ -804,12 +804,6 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 }
 
 /*
- * Inform anyone...
- */
-static void bsc_hack_channel_allocated(struct gsm_lchan *lchan) {
-}
-
-/*
  * Patch the various SYSTEM INFORMATION tables to update
  * the LAI
  */
@@ -914,7 +908,6 @@ static int bootstrap_network(void)
 	patch_tables(bts);
 
 	paging_init(bts);
-	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
 	if (db_init(database_name, gsmnet)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
