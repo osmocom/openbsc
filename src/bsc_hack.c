@@ -916,6 +916,18 @@ static int bootstrap_network(void)
 	paging_init(bts);
 	bts->paging.channel_allocated = bsc_hack_channel_allocated;
 
+	if (db_init(database_name)) {
+		printf("DB: Failed to init database. Please check the option settings.\n");
+		return -1;
+	}	 
+	printf("DB: Database initialized.\n");
+
+	if (db_prepare()) {
+		printf("DB: Failed to prepare database.\n");
+		return -1;
+	}
+	printf("DB: Database prepared.\n");
+
 	telnet_init(gsmnet, 4242);
 
 	/* E1 mISDN input setup */
@@ -1045,18 +1057,6 @@ int main(int argc, char **argv)
 
 	/* parse options */
 	handle_options(argc, argv);
-
-	if (db_init(database_name)) {
-		printf("DB: Failed to init database. Please check the option settings.\n");
-		return 1;
-	}	 
-	printf("DB: Database initialized.\n");
-
-	if (db_prepare()) {
-		printf("DB: Failed to prepare database.\n");
-		return 1;
-	}
-	printf("DB: Database prepared.\n");
 
 	/* seed the PRNG */
 	srand(time(NULL));
