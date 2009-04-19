@@ -31,7 +31,7 @@
 
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
-dbi_conn conn;
+static dbi_conn conn;
 static struct gsm_network *current_network = NULL;
 
 static char *create_stmts[] = {
