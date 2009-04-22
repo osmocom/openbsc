@@ -53,6 +53,7 @@ static struct gsm_network *gsmnet;
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
 static int MNC = 1;
+static int LAC = 1;
 static int ARFCN = HARDCODED_ARFCN;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static const char *database_name = "hlr.sqlite3";
@@ -895,7 +896,7 @@ static int bootstrap_network(void)
 	gsmnet->name_long = "OpenBSC";
 	gsmnet->name_short = "OpenBSC";
 	bts = &gsmnet->bts[0];
-	bts->location_area_code = 1;
+	bts->location_area_code = LAC;
 	bts->trx[0].arfcn = ARFCN;
 
 	/* Control Channel Description */
@@ -955,6 +956,7 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -n --network-code number(MNC) \n");
 	printf("  -c --country-code number (MCC) \n");
+	printf("  -L --location-area-code number (LAC) \n");
 	printf("  -f --arfcn number The frequency ARFCN\n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
@@ -974,6 +976,7 @@ static void handle_options(int argc, char** argv)
 			{"disable-color", 0, 0, 's'},
 			{"network-code", 1, 0, 'n'},
 			{"country-code", 1, 0, 'c'},
+			{"location-area-code", 1, 0, 'L'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
 			{"reject-cause", 1, 0, 'r'},
@@ -983,7 +986,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:L:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1004,6 +1007,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			MCC = atoi(optarg);
+			break;
+		case 'L':
+			LAC = atoi(optarg);
 			break;
 		case 'f':
 			ARFCN = atoi(optarg);
