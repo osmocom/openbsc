@@ -22,7 +22,7 @@
 
 #include "e1_input.h"
 
-int mi_setup(int cardnr,  struct e1inp_line *line);
+int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2);
 int _abis_nm_sendmsg(struct msgb *msg);
 
 #endif

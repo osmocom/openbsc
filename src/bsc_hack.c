@@ -56,6 +56,7 @@ static int MNC = 1;
 static int LAC = 1;
 static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
+static int release_l2 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static const char *database_name = "hlr.sqlite3";
 
@@ -927,7 +928,7 @@ static int bootstrap_network(void)
 
 	/* E1 mISDN input setup */
 	if (BTS_TYPE == GSM_BTS_TYPE_BS11)
-		return e1_config(bts, cardnr);
+		return e1_config(bts, cardnr, release_l2);
 	else
 		return ia_config(bts);
 }
@@ -965,6 +966,7 @@ static void print_help()
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -t --bts-type type The BTS type (bs11, nanobts900, nanobts1800)\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
+	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
 	printf("  -h --help this text\n");
 }
 
@@ -986,10 +988,11 @@ static void handle_options(int argc, char** argv)
 			{"arfcn", 1, 0, 'f'},
 			{"bts-type", 1, 0, 't'},
 			{"cardnr", 1, 0, 'C'},
+			{"release-l2", 0, 0, 'R'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:L:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1034,6 +1037,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'C':
 			cardnr = atoi(optarg);
+			break;
+		case 'R':
+			release_l2 = 1;
 			break;
 		default:
 			/* ignore */

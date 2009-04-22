@@ -350,7 +350,7 @@ struct e1inp_driver misdn_driver = {
 	.want_write = ts_want_write,
 };
 
-static int mi_e1_setup(struct e1inp_line *line)
+static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 {
 	struct mi_e1_handle *e1h = line->driver_data;
 	int ts, ret;
@@ -416,6 +416,15 @@ static int mi_e1_setup(struct e1inp_line *line)
 			return -EIO;
 		}
 
+		if (e1i_ts->type == E1INP_TS_TYPE_SIGN && release_l2) {
+			int clean = 1;
+			ret = ioctl(bfd->fd, IMCLEAR_L2, &clean);
+			if (ret < 0) {
+				fprintf(stderr, "could not send IOCTL IMCLEAN_L2 %s\n", strerror(errno));
+				return -EIO;
+			}
+		}
+
 		/* FIXME: only activate B-Channels once we start to
 		 * use them to conserve CPU power */
 		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
@@ -432,7 +441,7 @@ static int mi_e1_setup(struct e1inp_line *line)
 	return 0;
 }
 
-int mi_setup(int cardnr,  struct e1inp_line *line)
+int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 {
 	struct mi_e1_handle *e1h;
 	int sk, ret, cnt;
@@ -486,7 +495,7 @@ int mi_setup(int cardnr,  struct e1inp_line *line)
 	fprintf(stdout, "        name:           %s\n", devinfo.name);
 #endif
 
-	ret = mi_e1_setup(line);
+	ret = mi_e1_setup(line, release_l2);
 	if (ret)
 		return ret;
 

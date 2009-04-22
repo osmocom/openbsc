@@ -145,7 +145,7 @@ void e1_set_pcap_fd(int fd);
 struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
 
 /* e1_config.c */
-int e1_config(struct gsm_bts *bts, int cardnr);
+int e1_config(struct gsm_bts *bts, int cardnr, int release_l2);
 int ia_config(struct gsm_bts *bts);
 int ipaccess_setup(struct e1inp_line *line);
 
