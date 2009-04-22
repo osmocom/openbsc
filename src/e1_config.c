@@ -15,7 +15,7 @@
 #define TEI_RSL		1
 
 /* do some compiled-in configuration for our BTS/E1 setup */
-int e1_config(struct gsm_bts *bts)
+int e1_config(struct gsm_bts *bts, int cardnr)
 {
 	struct e1inp_line *line;
 	struct e1inp_ts *sign_ts;
@@ -68,7 +68,7 @@ int e1_config(struct gsm_bts *bts)
 	bts->trx[1].rsl_link = rsl_link;
 #endif
 
-	return mi_setup(0, line);
+	return mi_setup(cardnr, line);
 }
 
 /* do some compiled-in configuration for our BTS/E1 setup */
