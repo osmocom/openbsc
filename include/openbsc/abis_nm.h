@@ -379,6 +379,7 @@ enum abis_nm_attr {
 	NM_ATT_BS11_PLL			= 0xf2,
 	NM_ATT_BS11_RX_OFFSET		= 0xf3,
 	NM_ATT_BS11_ANT_TYPE		= 0xf4,
+	NM_ATT_BS11_PLL_MODE		= 0xfc,
 	NM_ATT_BS11_PASSWORD		= 0xfd,
 };
 #define NM_ATT_BS11_FILE_DATA	NM_ATT_EVENT_TYPE
@@ -472,6 +473,11 @@ enum abis_bs11_trx_power {
 	BS11_TRX_POWER_DCS_160mW= 0x0d,
 };
 
+enum abis_bs11_li_pll_mode {
+	BS11_LI_PLL_LOCKED	= 2,
+	BS11_LI_PLL_STANDALONE	= 3,
+};
+
 enum abis_bs11_phase {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
 	BS11_STATE_LOAD_SMU_INTENDED	= 0x11,
@@ -548,6 +554,7 @@ int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
 int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
+int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);

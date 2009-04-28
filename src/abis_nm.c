@@ -1733,6 +1733,22 @@ int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+/* change the BS-11 PLL Mode to either locked (E1 derived) or standalone */
+int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg;
+	
+	msg = nm_msgb_alloc();
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 3, NM_MT_BS11_SET_ATTR, NM_OC_BS11,
+			BS11_OBJ_LI, 0x00, 0x00);
+	msgb_tlv_put(msg, NM_ATT_BS11_PLL_MODE, 1,
+		     locked ? BS11_LI_PLL_LOCKED : BS11_LI_PLL_STANDALONE);
+	
+	return abis_nm_sendmsg(bts, msg);
+}
+
 int abis_nm_bs11_get_state(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_GET_STATE);

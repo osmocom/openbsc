@@ -459,6 +459,16 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
+			} else if (!strcmp(command, "pll-e1-locked")) {
+				abis_nm_bs11_set_pll_locked(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "pll-standalone")) {
+				abis_nm_bs11_set_pll_locked(g_bts, 0);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
 			} else if (!strcmp(command, "oml-tei")) {
 				abis_nm_bs11_conn_oml_tei(g_bts, 0, 1, 0xff, TEI_OML);
 				command = NULL;
@@ -615,6 +625,8 @@ static void print_help(void)
 	printf("\tsoftware\tDownload Software (only in administrative state)\n");
 	printf("\tcreate-trx1\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
 	printf("\tdelete-trx1\tDelete objects for TRX1\n");
+	printf("\tpll-e1-locked\tSet the PLL to be locked to E1 clock\n");
+	printf("\tpll-standalone\tSet the PLL to be in standalone mode\n");
 	printf("\toml-tei\tSet OML E1 TS and TEI\n");
 }
 
