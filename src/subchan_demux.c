@@ -100,7 +100,7 @@ int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
 			if (!(dmx->chan_activ & (1 << c)))
 				continue;
 
-			inbits = inbyte >> ((3-c)*2);
+			inbits = inbyte >> (c << 1);
 
 			/* two bits for each subchannel */
 			if (inbits & 0x01)
@@ -230,10 +230,10 @@ static int mux_output_byte(struct subch_mux *mx, u_int8_t *byte)
 	int rc;
 
 	/* combine two bits of every subchan */
-	rc = get_subch_bits(mx, 3, &bits[0], 2);
-	rc = get_subch_bits(mx, 2, &bits[2], 2);
-	rc = get_subch_bits(mx, 1, &bits[4], 2);
-	rc = get_subch_bits(mx, 0, &bits[6], 2);
+	rc = get_subch_bits(mx, 0, &bits[0], 2);
+	rc = get_subch_bits(mx, 1, &bits[2], 2);
+	rc = get_subch_bits(mx, 2, &bits[4], 2);
+	rc = get_subch_bits(mx, 3, &bits[6], 2);
 
 	*byte = compact_bits(bits);
 
