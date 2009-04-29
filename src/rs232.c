@@ -101,7 +101,7 @@ static int handle_ser_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "RS232 TX: %s", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "RS232 TX: %s\n", hexdump(msg->data, msg->len));
 
 	/* send over serial line */
 	written = write(bfd->fd, msg->data, msg->len);
