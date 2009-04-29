@@ -264,6 +264,7 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV },
 		/* ip.access specifics */
 		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
@@ -1689,7 +1690,7 @@ int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t attr = NM_ATT_BS11_PLL_MODE;
+	u_int8_t attr[] = { NM_ATT_BS11_PLL_MODE };
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
@@ -1959,7 +1960,7 @@ static u_int8_t req_attr_btsm[] = {
 static u_int8_t req_attr[] = { 
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xa8, NM_ATT_OPER_STATE,
 	0xd5, 0xa1, NM_ATT_BS11_ESN_FW_CODE_NO, NM_ATT_BS11_ESN_HW_CODE_NO,
-	0x42, NM_ATT_BS11_ESN_PCB_SERIAL };
+	0x42, NM_ATT_BS11_ESN_PCB_SERIAL, NM_ATT_BS11_PLL };
 
 int abis_nm_bs11_get_serno(struct gsm_bts *bts)
 {

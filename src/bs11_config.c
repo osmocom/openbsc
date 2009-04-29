@@ -397,6 +397,12 @@ static int print_attr(struct tlv_parsed *tp)
 		printf("\tPLL Mode: %s\n",
 			pll_mode_name(*TLVP_VAL(tp, NM_ATT_BS11_PLL_MODE)));
 	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_PLL) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_PLL) >= 4) {
+		const u_int8_t *vp = TLVP_VAL(tp, NM_ATT_BS11_PLL);
+		printf("\tPLL Set Value=%d, Work Value=%d\n",
+			vp[0] << 8 | vp[1], vp[2] << 8 | vp[3]);
+	}
 			
 
 	return 0;
