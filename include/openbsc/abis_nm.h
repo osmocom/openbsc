@@ -212,6 +212,8 @@ enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
 	NM_MT_IPACC_RSL_CONNECT_ACK,
 	NM_MT_IPACC_RSL_CONNECT_NACK,
+	NM_MT_IPACC_RSL_SET_NVATTR	= 0xef,
+	NM_MT_IPACC_RSL_SET_NVATTR_ACK	= 0xff,
 };
 
 /* Section 9.2: Object Class */
@@ -335,6 +337,7 @@ enum abis_nm_attr {
 
 	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
 	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
+	NM_ATT_IPACC_PRIM_OML_IP	= 0x88,
 
 	NM_ATT_BS11_RF_RES_IND_PER	= 0x8f,
 	

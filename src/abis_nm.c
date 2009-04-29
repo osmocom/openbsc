@@ -268,6 +268,8 @@ static const struct tlv_definition nm_att_tlvdef = {
 		/* ip.access specifics */
 		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_FIXED, 6 },
+		[0x95] =			{ TLV_TYPE_FIXED, 2 },
 		[0x85] =			{ TLV_TYPE_TV },
 
 	},
