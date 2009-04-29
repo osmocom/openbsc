@@ -294,6 +294,18 @@ static const char *trx_power_name(u_int8_t pwr)
 	}
 }
 
+static const char *pll_mode_name(u_int8_t mode)
+{
+	switch (mode) {
+	case BS11_LI_PLL_LOCKED:
+		return "E1 Locked";
+	case BS11_LI_PLL_STANDALONE:
+		return "Standalone";
+	default:
+		return "unknown";
+	}
+}
+
 static const char *obj_name(struct abis_om_fom_hdr *foh)
 {
 	static char retbuf[256];
@@ -307,6 +319,9 @@ static const char *obj_name(struct abis_om_fom_hdr *foh)
 		case BS11_OBJ_PA:
 			sprintf(retbuf+strlen(retbuf), "Power Amplifier %d ",
 				foh->obj_inst.ts_nr);
+			break;
+		case BS11_OBJ_LI:
+			sprintf(retbuf+strlen(retbuf), "Line Interface ");
 			break;
 		}
 		break;
@@ -377,6 +392,12 @@ static int print_attr(struct tlv_parsed *tp)
 		printf("\tTRX Power: %s\n",
 			trx_power_name(*TLVP_VAL(tp, NM_ATT_BS11_TXPWR)));
 	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_PLL_MODE) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_PLL_MODE) >= 1) {
+		printf("\tPLL Mode: %s\n",
+			pll_mode_name(*TLVP_VAL(tp, NM_ATT_BS11_PLL_MODE)));
+	}
+			
 
 	return 0;
 }
@@ -386,6 +407,7 @@ static void cmd_query(void)
 	bs11cfg_state = STATE_QUERY;
 	abis_nm_bs11_get_serno(g_bts);
 	abis_nm_bs11_get_oml_tei_ts(g_bts);
+	abis_nm_bs11_get_pll_mode(g_bts);
 	abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
 	abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
 	sleep(5);

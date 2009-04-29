@@ -263,6 +263,7 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
 		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
+		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV },
 		/* ip.access specifics */
 		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
@@ -1683,6 +1684,21 @@ int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx)
 
 	return abis_nm_sendmsg(trx->bts, msg);
 }
+
+int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t attr = NM_ATT_BS11_PLL_MODE;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
+			NM_OC_BS11, BS11_OBJ_LI, 0x00, 0x00);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(attr), &attr);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 
 //static const u_int8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
 static const u_int8_t bs11_logon_c8[] = { 0x02 };
