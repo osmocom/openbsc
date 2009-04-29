@@ -570,7 +570,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 			rc = handle_state_resp(*TLVP_VAL(&tp, NM_ATT_BS11_BTS_STATE));
 		break;
 	case NM_MT_GET_ATTR_RESP:
-		printf("\n%s ATTRIBUTES:\n", obj_name(foh));
+		printf("\n%sATTRIBUTES:\n", obj_name(foh));
 		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 		rc = print_attr(&tp);
 		//hexdump(foh->data, oh->length-sizeof(*foh));
