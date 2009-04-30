@@ -831,7 +831,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.mob_alloc_len = 0;
 
 	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s "
-		"chan_nr=0x%02x r=%s\n ra=0x%02x",
+		"chan_nr=0x%02x r=%s\n ra=0x%02x\n",
 		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
 		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);

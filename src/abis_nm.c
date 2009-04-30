@@ -2019,13 +2019,14 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
 		DEBUGPC(DNM, "RSL CONNECT ACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_IP))
-			DEBUGPC(DNM, "IP=%s\n",
+			DEBUGPC(DNM, "IP=%s ",
 				inet_ntoa(*((struct in_addr *) 
 					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_IP))));
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_PORT))
-			DEBUGPC(DNM, "IP=%s\n",
+			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *) 
 					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_PORT))));
+		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 		DEBUGPC(DNM, "RSL CONNECT NACK ");
