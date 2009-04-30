@@ -1,7 +1,7 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall
 
-sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find
+sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config
 noinst_LIBRARIES = libbsc.a libvty.a
 noinst_HEADERS = vty/cardshell.h
 
@@ -19,3 +19,6 @@ bsc_hack_LDADD = libbsc.a libvty.a -ldl -ldbi -lcrypt
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c select.c timer.c rs232.c tlv_parser.c
 
 ipaccess_find_SOURCES = ipaccess-find.c select.c timer.c
+
+ipaccess_config_SOURCES = ipaccess-config.c
+ipaccess_config_LDADD = libbsc.a libvty.a -ldl -ldbi -lcrypt

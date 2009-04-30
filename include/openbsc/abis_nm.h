@@ -345,7 +345,7 @@ enum abis_nm_attr {
 	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
 	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
 	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
-	NM_ATT_IPACC_UNIT_ID		= 0x91,
+	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
 	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
 	NM_ATT_IPACC_PRIM_OML_IP	= 0x95,
 	NM_ATT_IPACC_SEC_OML_IP		= 0x96,

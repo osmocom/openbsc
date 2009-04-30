@@ -378,6 +378,39 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	return 0;
 }
 
+/* Actively connect to a BTS.  Currently used by ipaccess-config.c */
+int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
+{
+	struct e1inp_ts *e1i_ts = &line->ts[0];
+	struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	int ret, on = 1;
+
+	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	bfd->cb = ipaccess_fd_cb;
+	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
+	bfd->data = line;
+	bfd->priv_nr = 1;
+
+	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
+	if (ret < 0) {
+		fprintf(stderr, "could not connect socket\n");
+		close(bfd->fd);
+		return ret;
+	}
+
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		close(bfd->fd);
+		return ret;
+	}
+	
+	line->driver = &ipaccess_driver;
+
+	return e1inp_line_register(line);
+}
+
 int ipaccess_setup(struct e1inp_line *line)
 {
 	struct ia_e1_handle *e1h;
