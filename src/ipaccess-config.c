@@ -89,7 +89,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		cur += sizeof(ia);
 		*cur++ = 0;
 		*cur++ = 0;
-		printf("setting primary OML link IP to '%s'\n", unit_id);
+		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
 		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
 	}
 
