@@ -2010,12 +2010,14 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	foh = (struct abis_om_fom_hdr *) oh->data + 1 + idstrlen;
+	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+
+	DEBUGP(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
-		DEBUGP(DNM, "IPACC: RSL CONNECT ACK");
+		DEBUGPC(DNM, "RSL CONNECT ACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_IP))
 			DEBUGPC(DNM, "IP=%s\n",
 				inet_ntoa(*((struct in_addr *) 
@@ -2026,16 +2028,27 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_PORT))));
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
-		DEBUGP(DNM, "IPACC: RSL CONNECT NACK");
+		DEBUGPC(DNM, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, " CAUSE=0x%02x\n", *TLVP_VAL(&tp, NM_ATT_NACK_CAUSES));
 		else
 			DEBUGPC(DNM, "\n");
 		break;
+	case NM_MT_IPACC_SET_NVATTR_ACK:
+		DEBUGPC(DNM, "SET NVATTR ACK\n");
+		/* FIXME: decode and show the actual attributes */
+		break;
+	case NM_MT_IPACC_SET_NVATTR_NACK:
+		DEBUGPC(DNM, "SET NVATTR NACK\n");
+		break;
+	default:
+		DEBUGPC(DNM, "unknown\n");
+		break;
 	}
 	return 0;
 }
 
+/* send an ip-access manufacturer specific message */
 int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 			 u_int8_t obj_class, u_int8_t bts_nr,
 			 u_int8_t trx_nr, u_int8_t ts_nr,
@@ -2072,3 +2085,17 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 	return abis_nm_sendmsg(bts, msg);
 }
 
+/* set some attributes in NVRAM */
+int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
+				int attr_len)
+{
+	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_NVATTR,
+				    NM_OC_BASEB_TRANSC, 0, 0, 0xff, attr,
+				    attr_len);
+}
+
+/* restart / reboot an ip.access nanoBTS */
+int abis_nm_ipaccess_restart(struct gsm_bts *bts)
+{
+	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+}

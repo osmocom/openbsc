@@ -171,6 +171,9 @@ enum abis_nm_msgtype {
 	NM_MT_SET_ALARM_THRES,
 	NM_MT_SET_ALARM_THRES_ACK,
 	NM_MT_SET_ALARM_THRES_NACK,
+
+	NM_MT_IPACC_RESTART		= 0x87,
+	NM_MT_IPACC_RESTART_ACK,
 };
 
 enum abis_nm_msgtype_bs11 {
@@ -212,8 +215,12 @@ enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
 	NM_MT_IPACC_RSL_CONNECT_ACK,
 	NM_MT_IPACC_RSL_CONNECT_NACK,
-	NM_MT_IPACC_RSL_SET_NVATTR	= 0xef,
-	NM_MT_IPACC_RSL_SET_NVATTR_ACK	= 0xff,
+	NM_MT_IPACC_SET_NVATTR		= 0xef,
+	NM_MT_IPACC_SET_NVATTR_ACK,
+	NM_MT_IPACC_SET_NVATTR_NACK,
+	NM_MT_IPACC_GET_NVATTR		= 0xf2,
+	NM_MT_IPACC_GET_NVATTR_ACK,
+	NM_MT_IPACC_GET_NVATTR_NACK,
 };
 
 /* Section 9.2: Object Class */
@@ -337,7 +344,11 @@ enum abis_nm_attr {
 
 	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
 	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
-	NM_ATT_IPACC_PRIM_OML_IP	= 0x88,
+	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
+	NM_ATT_IPACC_UNIT_ID		= 0x91,
+	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
+	NM_ATT_IPACC_PRIM_OML_IP	= 0x95,
+	NM_ATT_IPACC_SEC_OML_IP		= 0x96,
 
 	NM_ATT_BS11_RF_RES_IND_PER	= 0x8f,
 	
@@ -570,6 +581,9 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 			 u_int8_t obj_class, u_int8_t bts_nr,
 			 u_int8_t trx_nr, u_int8_t ts_nr,
 			 u_int8_t *attr, int attr_len);
+int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
+				int attr_len);
+int abis_nm_ipaccess_restart(struct gsm_bts *bts);
 
 /* Functions calling into other code parts */
 enum nm_evt {
