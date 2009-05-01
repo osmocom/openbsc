@@ -529,15 +529,21 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 			   struct abis_om_obj_inst *obj_inst, u_int8_t adm_state)
 {
-	struct gsm_nm_state *nm_state;
+	struct gsm_nm_state *nm_state, new_state;
 	void *obj;
 	int rc;
 
-	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
 	obj = objclass2obj(bts, obj_class, obj_inst);
-	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, adm_state);
-	if (nm_state)
-		nm_state->administrative = adm_state;
+	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
+	if (!nm_state)
+		return -1;
+
+	new_state = *nm_state;
+	new_state.administrative = adm_state;
+
+	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state);
+
+	nm_state->administrative = adm_state;
 
 	return rc;
 }
@@ -1758,7 +1764,7 @@ int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts)
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
 			NM_OC_BS11, BS11_OBJ_LI, 0x00, 0x00);
-	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(attr), &attr);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(attr), attr);
 
 	return abis_nm_sendmsg(bts, msg);
 }
