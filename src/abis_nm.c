@@ -557,10 +557,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	struct gsm_nm_state *nm_state, new_state;
 	int rc;
 
-	DEBUGP(DNM, "STATE CHG: OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class, 
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	DEBUGPC(DNM, "STATE CHG: ");
 
 	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
 	if (!nm_state) {
@@ -613,6 +610,11 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
 
+	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class, 
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
+
 	//nmh->cfg->report_cb(mb, foh);
 
 	switch (mt) {
@@ -620,13 +622,13 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		return abis_nm_rx_statechg_rep(mb);
 		break;
 	case NM_MT_SW_ACTIVATED_REP:
-		DEBUGP(DNM, "Software Activated Report\n");
+		DEBUGPC(DNM, "Software Activated Report\n");
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
-		DEBUGP(DNM, "Failure Event Report\n");
+		DEBUGPC(DNM, "Failure Event Report\n");
 		break;
 	default:
-		DEBUGP(DNM, "reporting NM MT 0x%02x\n", mt);
+		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
 		break;
 		
 	};
