@@ -638,12 +638,16 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 /* Chapter 8.4.3: Channel Activate NACK */
 static int rsl_rx_chan_act_nack(struct msgb *msg)
 {
-	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
 
-	/* BTS has confirmed channel activation, we now need
-	 * to assign the activated channel to the MS */
-	if (rslh->ie_chan != RSL_IE_CHAN_NR)
+	/* BTS has rejected channel activation ?!? */
+	if (dh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
+
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
+		DEBUGPC(DRSL, "CAUSE=0x%02x ", *TLVP_VAL(&tp, RSL_IE_CAUSE));
 	
 	return 0;
 }
@@ -1114,7 +1118,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 		DEBUGPC(DRSL, "Unknown ip.access msg_type 0x%02x", rllh->c.msg_type);
 		break;
 	}
-	DEBUGP(DRSL, "\n");
+	DEBUGPC(DRSL, "\n");
 
 	return rc;
 }
