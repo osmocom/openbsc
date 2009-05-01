@@ -1249,12 +1249,18 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 			break;
 		}
 	case SW_STATE_NONE:
+		switch (foh->msg_type) {
+		case NM_MT_ACTIVATE_SW_ACK:
+			rc = 0;
+			break;
+		}
+		break;
 	case SW_STATE_ERROR:
 		break;
 	}
 
 	if (rc)
-		fprintf(stderr, "unexpected NM MT 0x%02x in state %u -> %u\n",
+		DEBUGP(DNM, "unexpected NM MT 0x%02x in state %u -> %u\n",
 			foh->msg_type, old_state, sw->state);
 
 	return rc;

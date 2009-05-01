@@ -391,8 +391,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
-		case NM_OC_RADIO_CARRIER:
-			break;
 		case NM_OC_CHANNEL:
 			ts = obj;
 			trx = ts->trx;
@@ -408,13 +406,12 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
-		case NM_OC_BASEB_TRANSC:
-			trx = container_of(obj, struct gsm_bts_trx, bb_transc);
+		default:
 			break;
 		}
 		break;
-	case EVT_STATECHG_ADM:
-		DEBUGP(DMM, "Unhandled state change in %s:%d\n", __func__, __LINE__);
+	default:
+		//DEBUGP(DMM, "Unhandled state change in %s:%d\n", __func__, __LINE__);
 		break;
 	}
 	return 0;
