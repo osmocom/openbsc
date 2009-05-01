@@ -768,29 +768,35 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
 			(struct gsm48_service_request *)gh->data;
+	/* unfortunately in Phase1 the classmar2 length is variable */
+	u_int8_t classmark2_len = gh->data[1];
+	u_int8_t *classmark2 = gh->data+2;
+	u_int8_t mi_len = *(classmark2 + classmark2_len);
+	u_int8_t *mi = (classmark2 + classmark2_len + 1);
 
+	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
-		DEBUGP(DMM, "<- CM SERVICE REQUEST wrong sized message\n");
+		DEBUGPC(DMM, "wrong sized message\n");
 		return gsm48_tx_mm_serv_rej(msg->lchan,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	if (msg->data_len < req->mi_len + 6) {
-		DEBUGP(DMM, "<- CM SERVICE REQUEST MI does not fit in package\n");
+		DEBUGPC(DMM, "does not fit in packet\n");
 		return gsm48_tx_mm_serv_rej(msg->lchan,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
-	mi_type = req->mi[0] & GSM_MI_TYPE_MASK;
+	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 	if (mi_type != GSM_MI_TYPE_TMSI) {
-		DEBUGP(DMM, "<- CM SERVICE REQUEST mi type is not TMSI: %d\n", mi_type);
+		DEBUGPC(DMM, "mi_type is not TMSI: %d\n", mi_type);
 		return gsm48_tx_mm_serv_rej(msg->lchan,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
-	mi_to_string(mi_string, sizeof(mi_string), req->mi, req->mi_len);
+	mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	subscr = subscr_get_by_tmsi(mi_string);
-	DEBUGP(DMM, "<- CM SERVICE REQUEST serv_type=0x%02x mi_type=0x%02x M(%s)\n",
+	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
