@@ -1435,7 +1435,7 @@ int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len)
 	DEBUGP(DNM, "Set BTS Attr (bts=%d)\n", bts->nr);
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
-	fill_om_fom_hdr(oh, attr_len, NM_MT_SET_BTS_ATTR, NM_OC_BTS, bts->nr, 0xff, 0xff);
+	fill_om_fom_hdr(oh, attr_len, NM_MT_SET_BTS_ATTR, NM_OC_BTS, bts->bts_nr, 0xff, 0xff);
 	cur = msgb_put(msg, attr_len);
 	memcpy(cur, attr, attr_len);
 
@@ -1453,7 +1453,7 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, attr_len, NM_MT_SET_RADIO_ATTR, NM_OC_RADIO_CARRIER,
-			trx->bts->nr, trx->nr, 0xff);
+			trx->bts->bts_nr, trx->nr, 0xff);
 	cur = msgb_put(msg, attr_len);
 	memcpy(cur, attr, attr_len);
 

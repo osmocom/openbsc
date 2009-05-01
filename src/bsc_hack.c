@@ -383,9 +383,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 				abis_nm_set_bts_attr(bts, nanobts_attr_bts,
 							sizeof(nanobts_attr_bts));
 				abis_nm_opstart(bts, NM_OC_BTS,
-						bts->nr, 0xff, 0xff);
+						bts->bts_nr, 0xff, 0xff);
 				abis_nm_chg_adm_state(bts, NM_OC_BTS,
-						      bts->nr, 0xff, 0xff,
+						      bts->bts_nr, 0xff, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
@@ -395,9 +395,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 				abis_nm_set_radio_attr(trx, nanobts_attr_radio,
 							sizeof(nanobts_attr_radio));
 				abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
-						trx->bts->nr, trx->nr, 0xff);
+						trx->bts->bts_nr, trx->nr, 0xff);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
-						      trx->bts->nr, trx->nr, 0xff,
+						      trx->bts->bts_nr, trx->nr, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
@@ -410,9 +410,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 				else
 					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
 				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
-						trx->bts->nr, trx->nr, ts->nr);
+						trx->bts->bts_nr, trx->nr, ts->nr);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_CHANNEL,
-						      trx->bts->nr, trx->nr, ts->nr,
+						      trx->bts->bts_nr, trx->nr, ts->nr,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
@@ -420,12 +420,12 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			trx = container_of(obj, struct gsm_bts_trx, bb_transc);
 			if (new_state->availability == 5) {
 				abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
-						     trx->bts->nr, trx->nr, 0xff,
+						     trx->bts->bts_nr, trx->nr, 0xff,
 						     nanobts_attr_e0, sizeof(nanobts_attr_e0));
 				abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC, 
-						trx->bts->nr, trx->nr, 0xff);
+						trx->bts->bts_nr, trx->nr, 0xff);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC, 
-							trx->bts->nr, trx->nr, 0xff,
+							trx->bts->bts_nr, trx->nr, 0xff,
 							NM_STATE_UNLOCKED);
 			}
 			break;
