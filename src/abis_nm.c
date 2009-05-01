@@ -147,6 +147,54 @@ static const char *nack_names[0xff] = {
 	[NM_MT_BS11_DELETE_OBJ_NACK]	= "BS11 DELETE OBJECT",
 };
 
+/* Chapter 9.4.36 */
+static const char *nack_cause_names[] = {
+	/* General Nack Causes */
+	[NM_NACK_INCORR_STRUCT]		= "Incorrect message structure",
+	[NM_NACK_MSGTYPE_INVAL]		= "Invalid message type value",
+	[NM_NACK_OBJCLASS_INVAL]	= "Invalid Object class value",
+	[NM_NACK_OBJCLASS_NOTSUPP]	= "Object class not supported",
+	[NM_NACK_BTSNR_UNKN]		= "BTS no. unknown",
+	[NM_NACK_TRXNR_UNKN]		= "Baseband Transceiver no. unknown",
+	[NM_NACK_OBJINST_UNKN]		= "Object Instance unknown",
+	[NM_NACK_ATTRID_INVAL]		= "Invalid attribute identifier value",
+	[NM_NACK_ATTRID_NOTSUPP]	= "Attribute identifier not supported",
+	[NM_NACK_PARAM_RANGE]		= "Parameter value outside permitted range",
+	[NM_NACK_ATTRLIST_INCONSISTENT]	= "Inconsistency in attribute list",
+	[NM_NACK_SPEC_IMPL_NOTSUPP]	= "Specified implementation not supported",
+	[NM_NACK_CANT_PERFORM]		= "Message cannot be performed",
+	/* Specific Nack Causes */
+	[NM_NACK_RES_NOTIMPL]		= "Resource not implemented",
+	[NM_NACK_RES_NOTAVAIL]		= "Resource not available",
+	[NM_NACK_FREQ_NOTAVAIL]		= "Frequency not available",
+	[NM_NACK_TEST_NOTSUPP]		= "Test not supported",
+	[NM_NACK_CAPACITY_RESTR]	= "Capacity restrictions",
+	[NM_NACK_PHYSCFG_NOTPERFORM]	= "Physical configuration cannot be performed",
+	[NM_NACK_TEST_NOTINIT]		= "Test not initiated",
+	[NM_NACK_PHYSCFG_NOTRESTORE]	= "Physical configuration cannot be restored",
+	[NM_NACK_TEST_NOSUCH]		= "No such test",
+	[NM_NACK_TEST_NOSTOP]		= "Test cannot be stopped",
+	[NM_NACK_MSGINCONSIST_PHYSCFG]	= "Message inconsistent with physical configuration",
+	[NM_NACK_FILE_INCOMPLETE]	= "Complete file notreceived",
+	[NM_NACK_FILE_NOTAVAIL]		= "File not available at destination",
+	[MN_NACK_FILE_NOTACTIVATE]	= "File cannot be activate",
+	[NM_NACK_REQ_NOT_GRANT]		= "Request not granted",
+	[NM_NACK_WAIT]			= "Wait",
+	[NM_NACK_NOTH_REPORT_EXIST]	= "Nothing reportable existing",
+	[NM_NACK_MEAS_NOTSUPP]		= "Measurement not supported",
+	[NM_NACK_MEAS_NOTSTART]		= "Measurement not started",
+};
+
+static char namebuf[255];
+static const char *nack_cause_name(u_int8_t cause)
+{
+	if (cause < ARRAY_SIZE(nack_cause_names) && nack_cause_names[cause])
+		return nack_cause_names[cause];
+
+	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
+	return namebuf;
+}
+
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
 static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_ADD_INFO,
@@ -678,6 +726,7 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
+	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
 
@@ -689,10 +738,19 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		return abis_nm_rcvmsg_sw(mb);
 
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
+		struct tlv_parsed tp;
 		if (nack_names[mt])
-			DEBUGP(DNM, "%s NACK\n", nack_names[mt]);
+			DEBUGP(DNM, "%s NACK ", nack_names[mt]);
+			/* FIXME: NACK cause */
 		else
-			DEBUGP(DNM, "NACK 0x%02x\n", mt);
+			DEBUGP(DNM, "NACK 0x%02x ", mt);
+
+		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, "CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
 	}
 #if 0
 	/* check if last message is to be acked */
@@ -1095,6 +1153,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->state = SW_STATE_WAIT_SEGACK;
 			} else {
 				DEBUGP(DNM, "Software Load Init NACK\n");
+				/* FIXME: cause */
 				if (sw->cbfn)
 					sw->cbfn(GSM_HOOK_NM_SWLOAD,
 						 NM_MT_LOAD_INIT_NACK, mb,
@@ -1147,6 +1206,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 						 sw->cb_data, NULL);
 			} else {
 				DEBUGP(DNM, "Software Load End NACK\n");
+				/* FIXME: cause */
 				sw->state = SW_STATE_ERROR;
 				if (sw->cbfn)
 					sw->cbfn(GSM_HOOK_NM_SWLOAD,
@@ -1169,6 +1229,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 			break;
 		case NM_MT_ACTIVATE_SW_NACK:
 			DEBUGP(DNM, "Activate Software NACK\n");
+			/* FIXME: cause */
 			sw->state = SW_STATE_ERROR;
 			if (sw->cbfn)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
@@ -2031,7 +2092,8 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 		DEBUGPC(DNM, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=0x%02x\n", *TLVP_VAL(&tp, NM_ATT_NACK_CAUSES));
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
 		break;
@@ -2040,7 +2102,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		/* FIXME: decode and show the actual attributes */
 		break;
 	case NM_MT_IPACC_SET_NVATTR_NACK:
-		DEBUGPC(DNM, "SET NVATTR NACK\n");
+		DEBUGPC(DNM, "SET NVATTR NACK ");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
 		break;
 	default:
 		DEBUGPC(DNM, "unknown\n");
