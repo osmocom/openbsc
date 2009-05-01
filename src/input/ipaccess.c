@@ -365,6 +365,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
+	usleep(100000);
 
 	return ret;
 }
