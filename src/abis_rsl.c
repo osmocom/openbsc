@@ -1073,7 +1073,7 @@ static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	DEBUGP(DRSL, "cause=0x%02x\n", *TLVP_VAL(&tv, RSL_IE_CAUSE));
+	DEBUGPC(DRSL, "cause=0x%02x\n", *TLVP_VAL(&tv, RSL_IE_CAUSE));
 
 	return 0;
 }
