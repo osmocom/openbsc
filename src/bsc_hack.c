@@ -48,7 +48,7 @@
 #include <openbsc/e1_input.h>
 
 /* global pointer to the gsm network data structure */
-struct gsm_network *gsmnet;
+static struct gsm_network *gsmnet;
 
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
