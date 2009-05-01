@@ -679,6 +679,39 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	return rsl_chan_release(msg->lchan);
 }
 
+static int rsl_rx_meas_res(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
+
+	DEBUGPC(DRSL, "MEASUREMENT RESULT ");
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR))
+		DEBUGPC(DRSL, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
+	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
+		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
+		u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
+		if (len >= 3) {
+			if (val[0] & 0x40)
+				DEBUGPC(DRSL, "DTXd ");
+			DEBUGPC(DRSL, "RXL-FULL-up=%d RXL-SUB-up=%d ",
+				val[0] & 0x3f, val[1] & 0x3f);
+			DEBUGPC(DRSL, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
+				val[2]>>3 & 0x7, val[2] & 0x7);
+		}
+	}
+	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+		DEBUGPC(DRSL, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
+	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO))
+		DEBUGPC(DRSL, "L1 ");
+	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO))
+		DEBUGPC(DRSL, "L3 ");
+	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
+		DEBUGPC(DRSL, "MS_TO=%d ", 
+			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+}
+
 static int abis_rsl_rx_dchan(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
@@ -703,7 +736,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
-		DEBUGPC(DRSL, "MEASUREMENT RESULT ");
+		rc = rsl_rx_meas_res(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK ");
