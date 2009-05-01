@@ -975,9 +975,8 @@ static int bootstrap_network(void)
 		bootstrap_bts(bts);
 		bts->ip_access.site_id = 1800;
 		bts->ip_access.bts_id = 0;
-		ipaccess_setup(gsmnet);
+		return ipaccess_setup(gsmnet);
 	}
-
 }
 
 static void create_pcap_file(char *file)
