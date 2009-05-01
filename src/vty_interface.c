@@ -108,6 +108,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "BTS %u is of %s type, has LAC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), bts->location_area_code,
 		bts->tsc, bts->num_trx, VTY_NEWLINE);
+	if (is_ipaccess_bts(bts))
+		vty_out(vty, "  Unit ID: %u/%u/0%s",
+			bts->ip_access.site_id, bts->ip_access.bts_id,
+			VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
@@ -116,10 +120,6 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->paging.available_slots, VTY_NEWLINE);
 	vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 	e1isl_dump_vty(vty, bts->oml_link);
-	if (is_ipaccess_bts(bts))
-		vty_out(vty, "  Unit ID: %u/%u/0%s",
-			bts->ip_access.site_id, bts->ip_access.bts_id,
-			VTY_NEWLINE);
 	/* FIXME: oml_link, chan_desc */
 }
 
@@ -633,6 +633,31 @@ DEFUN(cfg_bts_tsc,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_unit_id,
+      cfg_bts_unit_id_cmd,
+      "unit_id <0-65534> <0-255>",
+      "Set the BTS Unit ID of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int site_id = atoi(argv[0]);
+	int bts_id = atoi(argv[1]);
+
+	if (site_id < 0 || site_id > 65534) {
+		vty_out(vty, "%% Site ID %d is not in the valid range%s",
+			site_id, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (site_id < 0 || site_id > 255) {
+		vty_out(vty, "%% BTS ID %d is not in the valid range%s",
+			bts_id, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->ip_access.site_id = site_id;
+	bts->ip_access.bts_id = bts_id;
+
+	return CMD_SUCCESS;
+}
+
 /* per TRX configuration */
 DEFUN(cfg_trx,
       cfg_trx_cmd,
@@ -729,6 +754,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
+	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
