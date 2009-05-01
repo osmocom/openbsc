@@ -46,6 +46,7 @@
 #include <openbsc/telnet_interface.h>
 #include <openbsc/paging.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/signal.h>
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -359,6 +360,7 @@ static unsigned char nanobts_attr_e0[] = {
 	0x81, 0x0b, 0xbb,	/* TCP PORT for RSL */
 };
 
+/* Callback function to be called whenever we get a GSM 12.21 state change event */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
 {
@@ -390,16 +392,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			}
 			break;
 		case NM_OC_RADIO_CARRIER:
-			trx = obj;
-			if (new_state->availability == 3) {
-				abis_nm_set_radio_attr(trx, nanobts_attr_radio,
-							sizeof(nanobts_attr_radio));
-				abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
-						trx->bts->bts_nr, trx->nr, 0xff);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
-						      trx->bts->bts_nr, trx->nr, 0xff,
-						      NM_STATE_UNLOCKED);
-			}
 			break;
 		case NM_OC_CHANNEL:
 			ts = obj;
@@ -418,21 +410,55 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			break;
 		case NM_OC_BASEB_TRANSC:
 			trx = container_of(obj, struct gsm_bts_trx, bb_transc);
-			if (new_state->availability == 5) {
-				abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
-						     trx->bts->bts_nr, trx->nr, 0xff,
-						     nanobts_attr_e0, sizeof(nanobts_attr_e0));
-				abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC, 
-						trx->bts->bts_nr, trx->nr, 0xff);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC, 
-							trx->bts->bts_nr, trx->nr, 0xff,
-							NM_STATE_UNLOCKED);
-			}
 			break;
 		}
 		break;
 	case EVT_STATECHG_ADM:
 		DEBUGP(DMM, "Unhandled state change in %s:%d\n", __func__, __LINE__);
+		break;
+	}
+	return 0;
+}
+
+/* Callback function to be called every time we receive a 12.21 SW activated report */
+static int sw_activ_rep(struct msgb *mb)
+{
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct gsm_bts_trx *trx = mb->trx;
+
+	switch (foh->obj_class) {
+	case NM_OC_BASEB_TRANSC:
+		/* TRX software is active, tell it to initiate RSL Link */
+		abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
+				     trx->bts->bts_nr, trx->nr, 0xff,
+				     nanobts_attr_e0, sizeof(nanobts_attr_e0));
+		abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC, 
+				trx->bts->bts_nr, trx->nr, 0xff);
+		abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC, 
+					trx->bts->bts_nr, trx->nr, 0xff,
+					NM_STATE_UNLOCKED);
+		break;
+	case NM_OC_RADIO_CARRIER:
+		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
+					sizeof(nanobts_attr_radio));
+		abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
+				trx->bts->bts_nr, trx->nr, 0xff);
+		abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      NM_STATE_UNLOCKED);
+		break;
+	}
+	return 0;
+}
+
+/* Callback function to be called every time we receive a signal from NM */
+static int nm_sig_cb(unsigned int subsys, unsigned int signal,
+		     void *handler_data, void *signal_data)
+{
+	switch (signal) {
+	case S_NM_SW_ACTIV_REP:
+		return sw_activ_rep(signal_data);
+	default:
 		break;
 	}
 	return 0;
@@ -934,6 +960,8 @@ static int bootstrap_network(void)
 	printf("DB: Database prepared.\n");
 
 	telnet_init(gsmnet, 4242);
+
+	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 
 	/* E1 mISDN input setup */
 	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
