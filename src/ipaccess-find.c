@@ -98,8 +98,6 @@ static int parse_response(unsigned char *buf, int len)
 	u_int8_t t_tag;
 	u_int8_t *cur = buf;
 
-	cur += 6;
-	
 	while (cur < buf + len) {
 		t_len = *cur++;
 		t_tag = *cur++;
@@ -123,7 +121,7 @@ static int read_response(int fd)
 	if (len < 0)
 		return len;
 
-	return parse_response(buf, len);
+	return parse_response(buf+6, len-6);
 }
 
 static int bfd_cb(struct bsc_fd *bfd, unsigned int flags)
