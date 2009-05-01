@@ -51,6 +51,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DNM,   "DNM",  "\033[1;36m", "")
 	DEBUG_CATEGORY(DSMS,  "DSMS", "\033[1;37m", "")
 	DEBUG_CATEGORY(DPAG,  "DPAG", "\033[1;38m", "")
+	DEBUG_CATEGORY(DINP,  "DINP", "", "")
 	DEBUG_CATEGORY(DMI,  "DMI", "", "")
 	DEBUG_CATEGORY(DMIB,  "DMIB", "", "")
 	DEBUG_CATEGORY(DMUX,  "DMUX", "", "")

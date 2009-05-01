@@ -296,6 +296,12 @@ struct gsm_bts {
 	struct {
 		struct gsm_nm_state nm_state;
 	} site_mgr;
+
+	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
+	struct {
+		u_int16_t site_id;
+		u_int16_t bts_id;
+	} ip_access;
 	
 	/* transceivers */
 	int num_trx;

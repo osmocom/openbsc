@@ -16,6 +16,7 @@
 #define DMI		0x1000
 #define DMIB		0x2000
 #define DMUX		0x4000
+#define DINP		0x8000
 
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)

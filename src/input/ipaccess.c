@@ -33,6 +33,7 @@
 #include <arpa/inet.h>
 
 #include <openbsc/select.h>
+#include <openbsc/tlv.h>
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -46,35 +47,189 @@
 struct ia_e1_handle {
 	struct bsc_fd listen_fd;
 	struct bsc_fd rsl_listen_fd;
+	struct gsm_network *gsmnet;
 };
+
+static struct ia_e1_handle *e1h;
+
 
 #define TS1_ALLOC_SIZE	300
 
 static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
 static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
+static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
+					0x01, IPAC_IDTAG_UNIT, 
+					0x01, IPAC_IDTAG_MACADDR,
+					0x01, IPAC_IDTAG_LOCATION1,
+					0x01, IPAC_IDTAG_LOCATION2,
+					0x01, IPAC_IDTAG_EQUIPVERS,
+					0x01, IPAC_IDTAG_SWVERSION,
+					0x01, IPAC_IDTAG_UNITNAME,
+					0x01, IPAC_IDTAG_SERNR,
+				};
 
-static int ipaccess_rcvmsg(struct msgb *msg, int fd)
+static const char *idtag_names[] = {
+	[IPAC_IDTAG_SERNR]	= "Serial_Number",
+	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
+	[IPAC_IDTAG_LOCATION1]	= "Location_1",
+	[IPAC_IDTAG_LOCATION2]	= "Location_2",
+	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
+	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
+	[IPAC_IDTAG_IPADDR]	= "IP_Address",
+	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
+	[IPAC_IDTAG_UNIT]	= "Unit_ID",
+};
+
+static const char *ipac_idtag_name(int tag)
 {
+	if (tag >= ARRAY_SIZE(idtag_names))
+		return "unknown";
+
+	return idtag_names[tag];
+}
+
+static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
+{
+	u_int8_t t_len;
+	u_int8_t t_tag;
+	u_int8_t *cur = buf;
+
+	while (cur < buf + len) {
+		t_len = *cur++;
+		t_tag = *cur++;
+
+		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
+
+		dec->lv[t_tag].len = t_len;
+		dec->lv[t_tag].val = cur;
+
+		cur += t_len;
+	}
+	return 0;
+}
+
+struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
+				   u_int16_t site_id, u_int16_t bts_id)
+{
+	int i;
+
+	for (i = 0; i < net->num_bts; i++) {
+		struct gsm_bts *bts = &net->bts[i];
+
+		if (!is_ipaccess_bts(bts))
+			continue;
+
+		if (bts->ip_access.site_id == site_id &&
+		    bts->ip_access.bts_id == bts_id)
+			return bts;
+	}
+
+	return NULL;
+}
+
+static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
+			u_int16_t *trx_id)
+{
+	unsigned long ul;
+	char *endptr;
+	const char *nptr;
+
+	nptr = str;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (site_id)
+		*site_id = ul & 0xffff;
+
+	if (*endptr++ != '/')
+		return -EINVAL;
+
+	nptr = endptr;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (bts_id)
+		*bts_id = ul & 0xffff;
+
+	if (*endptr++ != '/')
+		return -EINVAL;
+	
+	nptr = endptr;
+	ul = strtoul(nptr, &endptr, 10);
+	if (endptr <= nptr)
+		return -EINVAL;
+	if (trx_id)
+		*trx_id = ul & 0xffff;
+
+	return 0;
+}
+
+static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
+			   struct bsc_fd *bfd)
+{
+	struct tlv_parsed tlvp;
 	u_int8_t msg_type = *(msg->l2h);
+	u_int16_t site_id, bts_id, trx_id;
+	struct gsm_bts *bts;
 	int ret = 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(fd, pong, sizeof(pong));
+		ret = write(bfd->fd, pong, sizeof(pong));
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
 		break;
 	case IPAC_MSGT_ID_RESP:
-		DEBUGP(DMI, "ID_RESP\n");
+		DEBUGP(DMI, "ID_RESP ");
+		/* parse tags, search for Unit ID */
+		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+				 msgb_l2len(msg)-2);
+		DEBUGP(DMI, "\n");
+
+		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
+			break;
+
+		/* lookup BTS, create sign_link, ... */
+		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
+			     &site_id, &bts_id, &trx_id);
+		bts = find_bts_by_unitid(e1h->gsmnet, site_id, bts_id);
+		if (!bts) {
+			DEBUGP(DINP, "Unable to find BTS configuration for "
+			       " %u/%u/%u, disconnecting\n", site_id, bts_id,
+				trx_id);
+			return -EIO;
+		}
+		DEBUGP(DINP, "Identified BTS %u/%u/%u\n", site_id, bts_id, trx_id);
+		if (bfd->priv_nr == 1) {
+			bts->oml_link = e1inp_sign_link_create(&line->ts[1-1],
+						  E1INP_SIGN_OML, bts->c0,
+						  0, 0xff);
+		} else if (bfd->priv_nr == 2) {
+			struct e1inp_ts *e1i_ts;
+			struct bsc_fd *newbfd;
+			
+			/* FIXME: implement this for non-0 TRX */
+			bfd->data = line = bts->oml_link->ts->line;
+			e1i_ts = &line->ts[2-1];
+			newbfd = &e1i_ts->driver.ipaccess.fd;
+
+			bts->c0->rsl_link = 
+				e1inp_sign_link_create(e1i_ts,
+							E1INP_SIGN_RSL, bts->c0,
+							0, 0);
+			/* get rid of our old temporary bfd */
+			memcpy(newbfd, bfd, sizeof(*newbfd));
+			bsc_unregister_fd(bfd);
+			bsc_register_fd(newbfd);
+			free(bfd);
+		}
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(fd, id_ack, sizeof(id_ack));
+		ret = write(bfd->fd, id_ack, sizeof(id_ack));
 		break;	
 	}
-
-	msgb_free(msg);
 	return 0;
 }
 
@@ -121,11 +276,22 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return -EIO;
 	}
 	msgb_put(msg, ret);
-
-	if (hh->proto == IPAC_PROTO_IPACCESS)
-		return ipaccess_rcvmsg(msg, bfd->fd);
-
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), ret));
+
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		ret = ipaccess_rcvmsg(line, msg, bfd);
+		if (ret < 0) {
+			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
+			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
+			bsc_unregister_fd(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
+		}
+		msgb_free(msg);
+		return ret;
+	}
+	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
+	 * might have free'd it !!! */
 
 	link = e1inp_lookup_sign_link(e1i_ts, 0, hh->proto);
 	if (!link) {
@@ -178,7 +344,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	l2_data = msg->data;
 
-	/* prepend the mISDNhead */
+	/* prepend the ip.access header */
 	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
 	hh->zero = 0;
 	hh->len = msg->len - sizeof(*hh);
@@ -204,36 +370,27 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	return ret;
 }
 
-
 /* callback from select.c in case one of the fd's can be read/written */
 static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	unsigned int idx = ts_nr-1;
-	struct e1inp_ts *e1i_ts = &line->ts[idx];
+	struct e1inp_ts *e1i_ts;
 	int rc = 0;
 
-	switch (e1i_ts->type) {
-	case E1INP_TS_TYPE_SIGN:
+	/* In case of early RSL we might not yet have a line */
+
+	if (line)
+ 		e1i_ts = &line->ts[idx];
+
+	if (!line || e1i_ts->type == E1INP_TS_TYPE_SIGN) {
 		if (what & BSC_FD_READ)
 			rc = handle_ts1_read(bfd);
 		if (what & BSC_FD_WRITE)
 			rc = handle_ts1_write(bfd);
-		break;
-#if 0
-	case E1INP_TS_TYPE_TRAU:
-		if (what & BSC_FD_READ)
-			rc = handle_tsX_read(bfd);
-		/* We never include the mISDN B-Channel FD into the
-		 * writeset, since it doesn't support poll() based
-		 * write flow control */		
-		break;
-#endif
-	default:
+	} else
 		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
-		break;
-	}
 
 	return rc;
 }
@@ -241,12 +398,6 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
-	/* We never include the mISDN B-Channel FD into the
-	 * writeset, since it doesn't support poll() based
-	 * write flow control */		
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
-		return 0;
-
 	e1i_ts->driver.ipaccess.fd.when |= BSC_FD_WRITE;
 
 	return 0;
@@ -257,89 +408,98 @@ struct e1inp_driver ipaccess_driver = {
 	.want_write = ts_want_write,
 };
 
-static int ia_e1_setup(struct e1inp_line *line)
-{
-	return 0;
-}
-
+/* callback of the OML listening filedescriptor */
 static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
-	struct e1inp_line *line = listen_bfd->data;
 	int ret;
+	int idx = 0;
+	struct e1inp_line *line;
+	struct e1inp_ts *e1i_ts;
+	struct bsc_fd *bfd;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
 
-	if (what & BSC_FD_READ) {
-		int idx = 0;
-		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
-		struct sockaddr_in sa;
-		socklen_t sa_len = sizeof(sa);
+	if (!(what & BSC_FD_READ))
+		return 0;
 
-		if (bfd->fd) {
-			printf("dumping old OML fd\n");
-			if (bfd->fd != -1) {
-				bsc_unregister_fd(bfd);
-				close(bfd->fd);
-			}
-		}
-		bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
-		if (bfd->fd < 0) {
-			perror("accept");
-			return bfd->fd;
-		}
-		printf("accept()ed new OML fd\n");
-		bfd->data = line;
-		bfd->priv_nr = 1;
-		bfd->cb = ipaccess_fd_cb;
-		bfd->when = BSC_FD_READ;
-		ret = bsc_register_fd(bfd);
-		if (ret < 0) {
-			fprintf(stderr, "could not register FD\n");
-			return ret;
-		}
+	ret = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
+	if (ret < 0) {
+		perror("accept");
+		return ret;
 	}
-	return 0;
+	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
+
+	line = malloc(sizeof(*line));
+	if (!line) {
+		close(ret);
+		return -ENOMEM;
+	}
+	memset(line, 0, sizeof(*line));
+	line->driver = &ipaccess_driver;
+	//line->driver_data = e1h;
+	/* create virrtual E1 timeslots for signalling */
+	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
+	e1inp_ts_config(&line->ts[2-1], line, E1INP_TS_TYPE_SIGN);
+
+	e1i_ts = &line->ts[idx];
+
+	bfd = &e1i_ts->driver.ipaccess.fd;
+	bfd->fd = ret;
+	bfd->data = line;
+	bfd->priv_nr = 1;
+	bfd->cb = ipaccess_fd_cb;
+	bfd->when = BSC_FD_READ;
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		fprintf(stderr, "could not register FD\n");
+		close(bfd->fd);
+		free(line);
+		return ret;
+	}
+
+	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
+	ret = write(bfd->fd, id_req, sizeof(id_req));
+
+	return e1inp_line_register(line);
 }
 
 static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
-	struct e1inp_line *line = listen_bfd->data;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
+	struct bsc_fd *bfd = malloc(sizeof(*bfd));
 	int ret;
 
-	if (what & BSC_FD_READ) {
-		int idx = 1;
-		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
-		struct sockaddr_in sa;
-		socklen_t sa_len = sizeof(sa);
+	if (!(what & BSC_FD_READ))
+		return 0;
 
-		if (bfd->fd) {
-			printf("dumping old RSL fd\n");
-			if (bfd->fd != -1) {
-				bsc_unregister_fd(bfd);
-				close(bfd->fd);
-			}
-		}
-		bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
-		if (bfd->fd < 0) {
-			perror("accept");
-			return bfd->fd;
-		}
-		printf("accept()ed new RSL fd\n");
-		bfd->data = line;
-		bfd->priv_nr = 2;
-		bfd->cb = ipaccess_fd_cb;
-		bfd->when = BSC_FD_READ;
-		ret = bsc_register_fd(bfd);
-		if (ret < 0) {
-			fprintf(stderr, "could not register FD\n");
-			return ret;
-		}
+	/* Some BTS has connected to us, but we don't know yet which line
+	 * (as created by the OML link) to associate it with.  Thus, we
+	 * aloocate a temporary bfd until we have received ID from BTS */
+
+	bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
+	if (bfd->fd < 0) {
+		perror("accept");
+		return bfd->fd;
 	}
+	DEBUGP(DINP, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
+	bfd->priv_nr = 2;
+	bfd->cb = ipaccess_fd_cb;
+	bfd->when = BSC_FD_READ;
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		fprintf(stderr, "could not register FD\n");
+		close(bfd->fd);
+		free(bfd);
+		return ret;
+	}
+	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
+	ret = write(bfd->fd, id_req, sizeof(id_req));
+
 	return 0;
 }
 
 static int make_sock(struct bsc_fd *bfd, u_int16_t port,
-		     struct e1inp_line *line,
 		     int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
@@ -348,7 +508,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	bfd->cb = cb;
 	bfd->when = BSC_FD_READ;
-	bfd->data = line;
+	//bfd->data = line;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -411,9 +571,8 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	return e1inp_line_register(line);
 }
 
-int ipaccess_setup(struct e1inp_line *line)
+int ipaccess_setup(struct gsm_network *gsmnet)
 {
-	struct ia_e1_handle *e1h;
 	int ret;
 
 	/* register the driver with the core */
@@ -422,23 +581,15 @@ int ipaccess_setup(struct e1inp_line *line)
 	if (ret)
 		return ret;
 
-	/* create the actual line instance */
-	/* FIXME: do this independent of driver registration */
 	e1h = malloc(sizeof(*e1h));
 	memset(e1h, 0, sizeof(*e1h));
-
-	line->driver = &ipaccess_driver;
-	line->driver_data = e1h;
+	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
-	ret = make_sock(&e1h->listen_fd, 3002, line, listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, 3002, listen_fd_cb);
 
 	/* Listen for RSL connections */
-	ret = make_sock(&e1h->rsl_listen_fd, 3003, line, rsl_listen_fd_cb);
+	ret = make_sock(&e1h->rsl_listen_fd, 3003, rsl_listen_fd_cb);
 
-	ret = ia_e1_setup(line);
-	if (ret)
-		return ret;
-
-	return e1inp_line_register(line);
+	return ret;
 }

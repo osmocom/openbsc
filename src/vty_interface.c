@@ -87,10 +87,19 @@ DEFUN(show_net, show_net_cmd, "show network",
 
 static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 {
-	vty_out(vty, "    E1 Line %u, Timeslot %u, Type %s%s",
-		e1l->ts->line->num, e1l->ts->num,
+	struct e1inp_line *line;
+
+	if (!e1l) {
+		vty_out(vty, "   None%s", VTY_NEWLINE);
+		return;
+	}
+
+	line = e1l->ts->line;
+
+	vty_out(vty, "    E1 Line %u, Type %s: Timeslot %u, Mode %s%s",
+		line->num, line->driver->name, e1l->ts->num,
 		e1inp_signtype_name(e1l->type), VTY_NEWLINE);
-	vty_out(vty, "    E1 TEI %u, SAPI %u%s\n",
+	vty_out(vty, "    E1 TEI %u, SAPI %u%s",
 		e1l->tei, e1l->sapi, VTY_NEWLINE);
 }
 
@@ -107,6 +116,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->paging.available_slots, VTY_NEWLINE);
 	vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 	e1isl_dump_vty(vty, bts->oml_link);
+	if (is_ipaccess_bts(bts))
+		vty_out(vty, "  Unit ID: %u/%u/0%s",
+			bts->ip_access.site_id, bts->ip_access.bts_id,
+			VTY_NEWLINE);
 	/* FIXME: oml_link, chan_desc */
 }
 

@@ -71,8 +71,8 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 	return mi_setup(cardnr, line, release_l2);
 }
 
-/* do some compiled-in configuration for our BTS/E1 setup */
-static struct e1inp_line *__ia_config(struct gsm_bts *bts)
+/* configure pseudo E1 line in ip.access style and connect to BTS */
+int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
 {
 	struct e1inp_line *line;
 	struct e1inp_ts *sign_ts, *rsl_ts;
@@ -98,30 +98,6 @@ static struct e1inp_line *__ia_config(struct gsm_bts *bts)
 	/* create back-links from bts/trx */
 	bts->oml_link = oml_link;
 	bts->c0->rsl_link = rsl_link;
-
-	return line;
-}
-
-/* configure pseudo E1 line in ip.access style and create listening socket */
-int ia_config(struct gsm_bts *bts)
-{
-	struct e1inp_line *line;
-
-	line = __ia_config(bts);
-	if (!line)
-		return -ENOMEM;
-
-	return ipaccess_setup(line);
-}
-
-/* configure pseudo E1 line in ip.access style and connect to BTS */
-int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
-{
-	struct e1inp_line *line;
-
-	line = __ia_config(bts);
-	if (!line)
-		return -ENOMEM;
 
 	/* default port at BTS for incoming connections is 3006 */
 	if (sin->sin_port == 0)

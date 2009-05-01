@@ -48,7 +48,7 @@
 #include <openbsc/e1_input.h>
 
 /* global pointer to the gsm network data structure */
-static struct gsm_network *gsmnet;
+struct gsm_network *gsmnet;
 
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
@@ -537,7 +537,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 
 static void bootstrap_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "bootstrapping OML\n");
+	fprintf(stdout, "bootstrapping OML for BTS %u\n", bts->nr);
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -858,7 +858,8 @@ static void patch_tables(struct gsm_bts *bts)
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
-	fprintf(stdout, "bootstrapping RSL MCC=%u MNC=%u\n", MCC, MNC);
+	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
+		"using MCC=%u MNC=%u\n", trx->nr, trx->bts->nr, MCC, MNC);
 	set_system_infos(trx);
 }
 
@@ -886,18 +887,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 	}
 }
 
-static int bootstrap_network(void)
+static int bootstrap_bts(struct gsm_bts *bts)
 {
-	struct gsm_bts *bts;
-
-	/* initialize our data structures */
-	gsmnet = gsm_network_init(1, BTS_TYPE, MCC, MNC);
-	if (!gsmnet)
-		return -ENOMEM;
-
-	gsmnet->name_long = "OpenBSC";
-	gsmnet->name_short = "OpenBSC";
-	bts = &gsmnet->bts[0];
 	bts->location_area_code = LAC;
 	bts->trx[0].arfcn = ARFCN;
 
@@ -911,6 +902,24 @@ static int bootstrap_network(void)
 	patch_tables(bts);
 
 	paging_init(bts);
+
+	return 0;
+}
+
+static int bootstrap_network(void)
+{
+	struct gsm_bts *bts;
+
+	/* initialize our data structures */
+	gsmnet = gsm_network_init(2, BTS_TYPE, MCC, MNC);
+	if (!gsmnet)
+		return -ENOMEM;
+
+	gsmnet->name_long = "OpenBSC";
+	gsmnet->name_short = "OpenBSC";
+
+	bts = &gsmnet->bts[0];
+	bootstrap_bts(bts);
 
 	if (db_init(database_name, gsmnet)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
@@ -927,10 +936,20 @@ static int bootstrap_network(void)
 	telnet_init(gsmnet, 4242);
 
 	/* E1 mISDN input setup */
-	if (BTS_TYPE == GSM_BTS_TYPE_BS11)
+	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
+		gsmnet->num_bts = 1;
 		return e1_config(bts, cardnr, release_l2);
-	else
-		return ia_config(bts);
+	} else {
+		/* FIXME: do this dynamic */
+		bts->ip_access.site_id = 1801;
+		bts->ip_access.bts_id = 0;
+		bts = &gsmnet->bts[1];
+		bootstrap_bts(bts);
+		bts->ip_access.site_id = 1800;
+		bts->ip_access.bts_id = 0;
+		ipaccess_setup(gsmnet);
+	}
+
 }
 
 static void create_pcap_file(char *file)
