@@ -757,7 +757,7 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_RF_RES_IND:
 		/* interference on idle channels of TRX */
-		DEBUGP(DRSL, "TRX: RF Interference Indication\n");
+		//DEBUGP(DRSL, "TRX: RF Interference Indication\n");
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
