@@ -114,8 +114,10 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return ret;
 	}
 
-	if (alen != sizeof(l2addr))
+	if (alen != sizeof(l2addr)) {
+		fprintf(stderr, "%s error len\n", __func__);
 		return -EINVAL;
+	}
 
 	msgb_put(msg, ret);
 
@@ -129,7 +131,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	case DL_INFORMATION_IND:
 		/* mISDN tells us which channel number is allocated for this
 		 * tuple of (SAPI, TEI). */
-		DEBUGP(DMI, "use channel(%d) sapi(%d) tei(%d) for now\n",
+		DEBUGP(DMI, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
 			l2addr.channel, l2addr.sapi, l2addr.tei);
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
@@ -182,8 +184,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = DL_DATA_REQ;
 
-	DEBUGP(DMI, "TX TEI(%d): %s\n", sign_link->tei,
-		hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
+	DEBUGP(DMI, "TX TEI(%d) SAPI(%d): %s\n", sign_link->tei,
+		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
 	/* construct the sockaddr */
 	sa.family = AF_ISDN;
@@ -193,6 +195,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	ret = sendto(bfd->fd, msg->data, msg->len, 0,
 		     (struct sockaddr *)&sa, sizeof(sa));
+	if (ret < 0)
+		fprintf(stderr, "%s sendto failed %d\n", __func__, ret);
 	msgb_free(msg);
 
 	/* FIXME: this has to go */
@@ -253,8 +257,9 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 
 	msgb_put(msg, ret);
 
-	DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
-		ret, hh->prim, hh->id, get_prim_name(hh->prim));
+	if (hh->prim != PH_CONTROL_IND)
+		DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
+			ret, hh->prim, hh->id, get_prim_name(hh->prim));
 
 	switch (hh->prim) {
 	case PH_DATA_IND:
@@ -384,8 +389,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		}
 
 		if (bfd->fd < 0) {
-			fprintf(stderr, "could not open socket %s\n",
-				strerror(errno));
+			fprintf(stderr, "%s could not open socket %s\n",
+				__func__, strerror(errno));
 			return bfd->fd;
 		}
 
@@ -466,14 +471,15 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 	/* open the ISDN card device */
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
 	if (sk < 0) {
-		fprintf(stderr, "could not open socket %s\n", strerror(errno));
+		fprintf(stderr, "%s could not open socket %s\n",
+			__func__, strerror(errno));
 		return sk;
 	}
 
 	ret = ioctl(sk, IMGETCOUNT, &cnt);
 	if (ret) {
-		fprintf(stderr, "error getting interf count: %s\n",
-			strerror(errno));
+		fprintf(stderr, "%s error getting interf count: %s\n",
+			__func__, strerror(errno));
 		close(sk);
 		return -ENODEV;
 	}
@@ -494,6 +500,16 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 	fprintf(stdout, "        nrbchan:        %d\n", devinfo.nrbchan);
 	fprintf(stdout, "        name:           %s\n", devinfo.name);
 #endif
+
+	if (!(devinfo.Dprotocols & (1 << ISDN_P_NT_E1))) {
+		fprintf(stderr, "error: card is not of type E1 (NT-mode)\n");
+		return -EINVAL;
+	}
+
+	if (devinfo.nrbchan != 30) {
+		fprintf(stderr, "error: E1 card has no 30 B-channels\n");
+		return -EINVAL;
+	}
 
 	ret = mi_e1_setup(line, release_l2);
 	if (ret)
