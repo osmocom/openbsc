@@ -36,6 +36,7 @@ enum signal_subsystems {
 	SS_PAGING,
 	SS_SMS,
 	SS_ABISIP,
+	SS_NM,
 };
 
 /* SS_PAGING signals */
@@ -46,6 +47,12 @@ enum signal_paging {
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_BIND_ACK,
+};
+
+/* SS_NM signals */
+enum signal_nm {
+	S_NM_SW_ACTIV_REP,	/* GSM 12.21 software activated report */
+	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,

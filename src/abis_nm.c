@@ -42,6 +42,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
+#include <openbsc/signal.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -623,9 +624,11 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		break;
 	case NM_MT_SW_ACTIVATED_REP:
 		DEBUGPC(DNM, "Software Activated Report\n");
+		dispatch_signal(SS_NM, S_NM_SW_ACTIV_REP, mb);
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
 		DEBUGPC(DNM, "Failure Event Report\n");
+		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
 		break;
 	default:
 		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
