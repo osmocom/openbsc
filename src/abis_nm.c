@@ -196,6 +196,43 @@ static const char *nack_cause_name(u_int8_t cause)
 	return namebuf;
 }
 
+/* Chapter 9.4.16: Event Type */
+static const char *event_type_names[] = {
+	[NM_EVT_COMM_FAIL]		= "communication failure",
+	[NM_EVT_QOS_FAIL]		= "quality of service failure",
+	[NM_EVT_PROC_FAIL]		= "processing failure",
+	[NM_EVT_EQUIP_FAIL]		= "equipment failure",
+	[NM_EVT_ENV_FAIL]		= "environment failure",
+};
+
+static const char *event_type_name(u_int8_t cause)
+{
+	if (cause < ARRAY_SIZE(event_type_names) && event_type_names[cause])
+		return event_type_names[cause];
+
+	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
+	return namebuf;
+}
+
+/* Chapter 9.4.63: Perceived Severity */
+static const char *severity_names[] = {
+	[NM_SEVER_CEASED]		= "failure ceased",
+	[NM_SEVER_CRITICAL]		= "critical failure",
+	[NM_SEVER_MAJOR]		= "major failure",
+	[NM_SEVER_MINOR]		= "minor failure",
+	[NM_SEVER_WARNING]		= "warning level failure",
+	[NM_SEVER_INDETERMINATE]	= "indeterminate failure",
+};
+
+static const char *severity_name(u_int8_t cause)
+{
+	if (cause < ARRAY_SIZE(severity_names) && severity_names[cause])
+		return severity_names[cause];
+
+	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
+	return namebuf;
+}
+
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
 static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_ADD_INFO,
@@ -606,6 +643,26 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	return 0;
 }
 
+static int rx_fail_evt_rep(struct msgb *mb)
+{
+	struct abis_om_hdr *oh = msgb_l2(mb);
+	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct tlv_parsed tp;
+
+	DEBUGPC(DNM, "Failure Event Report ");
+	
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+
+	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
+		DEBUGPC(DNM, "Type=%s ", event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
+	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
+		DEBUGPC(DNM, "Severity=%s ", severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
+
+	DEBUGPC(DNM, "\n");
+
+	return 0;
+}
+
 static int abis_nm_rcvmsg_report(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
@@ -627,7 +684,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		dispatch_signal(SS_NM, S_NM_SW_ACTIV_REP, mb);
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
-		DEBUGPC(DNM, "Failure Event Report\n");
+		rx_fail_evt_rep(mb);
 		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
 		break;
 	default:

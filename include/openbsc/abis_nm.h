@@ -419,6 +419,32 @@ enum abis_nm_chan_comb {
 	NM_CHANC_SDCCH_CBCH	= 0x08,
 };
 
+/* Section 9.4.16: Event Type */
+enum abis_nm_event_type {
+	NM_EVT_COMM_FAIL	= 0x00,
+	NM_EVT_QOS_FAIL		= 0x01,
+	NM_EVT_PROC_FAIL	= 0x02,
+	NM_EVT_EQUIP_FAIL	= 0x03,
+	NM_EVT_ENV_FAIL		= 0x04,
+};
+
+/* Section: 9.4.63: Perceived Severity */
+enum abis_nm_severity {
+	NM_SEVER_CEASED		= 0x00,
+	NM_SEVER_CRITICAL	= 0x01,
+	NM_SEVER_MAJOR		= 0x02,
+	NM_SEVER_MINOR		= 0x03,
+	NM_SEVER_WARNING	= 0x04,
+	NM_SEVER_INDETERMINATE	= 0x05,
+};
+
+/* Section 9.4.43: Probable Cause Type */
+enum abis_nm_pcause_type {
+	NM_PCAUSE_T_X721	= 0x01,
+	NM_PCAUSE_T_GSM		= 0x02,
+	NM_PCAUSE_T_MANUF	= 0x03,
+};
+
 /* Section 9.4.36: NACK Causes */
 enum abis_nm_nack_cause {
 	/* General Nack Causes */
