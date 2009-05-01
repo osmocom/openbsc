@@ -84,7 +84,39 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		/* FIXME: more elements */
 	},
 };
-		
+
+static const char *rr_cause_names[] = {
+	[GSM48_RR_CAUSE_NORMAL]			= "Normal event",
+	[GSM48_RR_CAUSE_ABNORMAL_UNSPEC]	= "Abnormal release, unspecified",
+	[GSM48_RR_CAUSE_ABNORMAL_UNACCT]	= "Abnormal release, channel unacceptable",
+	[GSM48_RR_CAUSE_ABNORMAL_TIMER]		= "Abnormal release, timer expired",
+	[GSM48_RR_CAUSE_ABNORMAL_NOACT]		= "Abnormal release, no activity on radio path",
+	[GSM48_RR_CAUSE_PREMPTIVE_REL]		= "Preemptive release",
+	[GSM48_RR_CAUSE_HNDOVER_IMP]		= "Handover impossible, timing advance out of range",
+	[GSM48_RR_CAUSE_CHAN_MODE_UNACCT]	= "Channel mode unacceptable",
+	[GSM48_RR_CAUSE_FREQ_NOT_IMPL]		= "Frequency not implemented",
+	[GSM48_RR_CAUSE_CALL_CLEARED]		= "Call already cleared",
+	[GSM48_RR_CAUSE_SEMANT_INCORR]		= "Semantically incorrect message",
+	[GSM48_RR_CAUSE_INVALID_MAND_INF]	= "Invalid mandatory information",
+	[GSM48_RR_CAUSE_MSG_TYPE_N]		= "Message type non-existant or not implemented",
+	[GSM48_RR_CAUSE_MSG_TYPE_N_COMPAT]	= "Message type not compatible with protocol state",
+	[GSM48_RR_CAUSE_COND_IE_ERROR]		= "Conditional IE error",
+	[GSM48_RR_CAUSE_NO_CELL_ALLOC_A]	= "No cell allocation available",
+	[GSM48_RR_CAUSE_PROT_ERROR_UNSPC]	= "Protocol error unspecified",
+};
+
+static char strbuf[64];
+
+static const char *rr_cause_name(u_int8_t cause)
+{
+	if (cause < ARRAY_SIZE(rr_cause_names) &&
+	    rr_cause_names[cause])
+		return rr_cause_names[cause];
+
+	snprintf(strbuf, sizeof(strbuf), "0x%02x", cause);
+	return strbuf;
+}
+
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);
@@ -915,6 +947,16 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	return rc;
 }
 
+static int gsm48_rx_rr_status(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DRR, "STATUS rr_cause = %s\n", 
+		rr_cause_name(gh->data[0]));
+
+	return 0;
+}
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
@@ -935,6 +977,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
 		rc = rsl_chan_mode_modify_req(msg->lchan);
+		break;
+	case GSM48_MT_RR_STATUS:
+		rc = gsm48_rx_rr_status(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
