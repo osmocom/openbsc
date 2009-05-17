@@ -306,6 +306,18 @@ static const char *pll_mode_name(u_int8_t mode)
 	}
 }
 
+static const char *cclk_acc_name(u_int8_t acc)
+{
+	switch (acc) {
+	case 0:
+		return "Medium";
+	case 1:
+		return "High";
+	default:
+		return "unknown";
+	}
+}
+
 static const char *obj_name(struct abis_om_fom_hdr *foh)
 {
 	static char retbuf[256];
@@ -322,6 +334,9 @@ static const char *obj_name(struct abis_om_fom_hdr *foh)
 			break;
 		case BS11_OBJ_LI:
 			sprintf(retbuf+strlen(retbuf), "Line Interface ");
+			break;
+		case BS11_OBJ_CCLK:
+			sprintf(retbuf+strlen(retbuf), "CCLK ");
 			break;
 		}
 		break;
@@ -403,7 +418,17 @@ static int print_attr(struct tlv_parsed *tp)
 		printf("\tPLL Set Value=%d, Work Value=%d\n",
 			vp[0] << 8 | vp[1], vp[2] << 8 | vp[3]);
 	}
-			
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_CCLK_ACCURACY) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_CCLK_ACCURACY) >= 1) {
+		const u_int8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_ACCURACY);
+		printf("\tCCLK Accuracy: %s (%d)\n", cclk_acc_name(*acc), *acc);
+	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_CCLK_TYPE) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_CCLK_TYPE) >= 1) {
+		const u_int8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_TYPE);
+		printf("\tCCLK Type=%d\n", *acc);
+	}
+
 
 	return 0;
 }
@@ -414,9 +439,10 @@ static void cmd_query(void)
 	abis_nm_bs11_get_serno(g_bts);
 	abis_nm_bs11_get_oml_tei_ts(g_bts);
 	abis_nm_bs11_get_pll_mode(g_bts);
+	abis_nm_bs11_get_cclk(g_bts);
 	abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
 	abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
-	sleep(5);
+	sleep(1);
 	abis_nm_bs11_factory_logon(g_bts, 0);
 	command = NULL;
 }

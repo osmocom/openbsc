@@ -595,6 +595,8 @@ int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked);
+int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts);
+int abis_nm_bs11_get_cclk(struct gsm_bts *bts);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
