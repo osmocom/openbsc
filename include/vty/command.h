@@ -24,6 +24,7 @@
 #define _ZEBRA_COMMAND_H
 
 #include <stdio.h>
+#include <sys/types.h>
 #include "vector.h"
 #include "vty.h"
 

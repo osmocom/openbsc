@@ -21,7 +21,7 @@
 #ifndef PAGING_H
 #define PAGING_H
 
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "linuxlist.h"

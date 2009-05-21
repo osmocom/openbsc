@@ -19,7 +19,7 @@
  */
 
 #include <openbsc/signal.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 

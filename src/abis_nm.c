@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <libgen.h>
 #include <time.h>
 #include <limits.h>

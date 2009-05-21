@@ -19,9 +19,15 @@
 #define mISDNIF_H
 
 #include <stdarg.h>
+#ifdef linux
 #include <linux/types.h>
 #include <linux/errno.h>
 #include <linux/socket.h>
+#else
+#include <sys/types.h>
+#include <sys/errno.h>
+#include <sys/socket.h>
+#endif
 
 /*
  * ABI Version 32 bit

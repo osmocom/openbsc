@@ -22,7 +22,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <malloc.h>
+#include <stdlib.h>
 
 #define COMPARE(original, copy) \
 	if (original->id != copy->id) \

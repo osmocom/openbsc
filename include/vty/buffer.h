@@ -23,6 +23,8 @@
 #ifndef _ZEBRA_BUFFER_H
 #define _ZEBRA_BUFFER_H
 
+#include <sys/types.h>
+
 /* Create a new buffer.  Memory will be allocated in chunks of the given
    size.  If the argument is 0, the library will supply a reasonable
    default size suitable for buffering socket I/O. */

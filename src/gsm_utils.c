@@ -22,7 +22,7 @@
  */
 
 #include <openbsc/gsm_utils.h>
-#include <malloc.h>
+#include <stdlib.h>
 #include <string.h>
 
 /* GSM 03.38 6.2.1 Charachter packing */
