@@ -2705,11 +2705,13 @@ DEFUN(config_password, password_cmd,
 		free(host.password);
 	host.password = NULL;
 
+#ifdef VTY_CRYPT_PW
 	if (host.encrypt) {
 		if (host.password_encrypt)
 			free(host.password_encrypt);
 		host.password_encrypt = strdup(zencrypt(argv[0]));
 	} else
+#endif
 		host.password = strdup(argv[0]);
 
 	return CMD_SUCCESS;
@@ -2764,11 +2766,13 @@ ALIAS(config_password, password_text_cmd,
 	host.enable = NULL;
 
 	/* Plain password input. */
+#ifdef VTY_CRYPT_PW
 	if (host.encrypt) {
 		if (host.enable_encrypt)
 			free(host.enable_encrypt);
 		host.enable_encrypt = strdup(zencrypt(argv[0]));
 	} else
+#endif
 		host.enable = strdup(argv[0]);
 
 	return CMD_SUCCESS;
@@ -2799,6 +2803,7 @@ ALIAS(config_enable_password,
 	return CMD_SUCCESS;
 }
 
+#ifdef VTY_CRYPT_PW
 DEFUN(service_password_encrypt,
       service_password_encrypt_cmd,
       "service password-encryption",
@@ -2843,6 +2848,7 @@ DEFUN(no_service_password_encrypt,
 
 	return CMD_SUCCESS;
 }
+#endif
 
 DEFUN(config_terminal_length, config_terminal_length_cmd,
       "terminal length <0-512>",
@@ -3390,8 +3396,10 @@ void cmd_init(int terminal)
 		install_element(CONFIG_NODE, &enable_password_text_cmd);
 		install_element(CONFIG_NODE, &no_enable_password_cmd);
 
+#ifdef VTY_CRYPT_PW
 		install_element(CONFIG_NODE, &service_password_encrypt_cmd);
 		install_element(CONFIG_NODE, &no_service_password_encrypt_cmd);
+#endif
 		install_element(CONFIG_NODE, &banner_motd_default_cmd);
 		install_element(CONFIG_NODE, &banner_motd_file_cmd);
 		install_element(CONFIG_NODE, &no_banner_motd_cmd);
