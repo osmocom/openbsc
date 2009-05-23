@@ -179,3 +179,30 @@ char *btstype2str(enum gsm_bts_type type)
 		return "undefined";
 	return bts_types[type];
 }
+
+/* Search for a BTS in the given Location Area; optionally start searching
+ * with start_bts (for continuing to search after the first result) */
+struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
+				struct gsm_bts *start_bts)
+{
+	int i;
+	struct gsm_bts *bts;
+	int skip = 0;
+
+	if (start_bts)
+		skip = 1;
+
+	for (i = 0; i < net->num_bts; i++) {
+		bts = &net->bts[i];
+
+		if (skip) {
+			if (start_bts == bts)
+				skip = 0;
+			continue;
+		}
+
+		if (bts->location_area_code == lac)
+			return bts;
+	}
+	return NULL;
+}
