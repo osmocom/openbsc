@@ -160,6 +160,7 @@ unsigned char msg_2[] =
 		NM_ATT_BS11_CELL_ALLOC_NR, 0x00,
 		NM_ATT_BS11_ENA_INTERF_CLASS, 0x00,
 		NM_ATT_BS11_FACCH_QUAL, 0x06,
+		/* interference avg. period in numbers of SACCH multifr */
 		NM_ATT_INTAVE_PARAM, 0x1F, 
 		NM_ATT_INTERF_BOUND, 0x0A, 0x0F, 0x14, 0x19, 0x1E, 0x7B,
 		NM_ATT_CCCH_L_T, 0x23,
@@ -338,6 +339,7 @@ unsigned char msg_6[] =
 
 static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_INTERF_BOUND, 0x55, 0x5b, 0x61, 0x67, 0x6d, 0x73,
+	/* interference avg. period in numbers of SACCH multifr */
 	NM_ATT_INTAVE_PARAM, 0x06,
 	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10, 
 	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
@@ -345,10 +347,10 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 10, /* seconds */
 	NM_ATT_CCCH_L_T, 10, /* percent */
 	NM_ATT_CCCH_L_I_P, 1, /* seconds */
-	NM_ATT_RACH_B_THRESH, 0x0a,
+	NM_ATT_RACH_B_THRESH, 10, /* busy threshold in - dBm */
 	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8,
-	NM_ATT_BTS_AIR_TIMER, 0x80,
-	NM_ATT_NY1, 0x0a,
+	NM_ATT_BTS_AIR_TIMER, 128, /* miliseconds */
+	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 	NM_ATT_BSIC, HARDCODED_BSIC,
 };
