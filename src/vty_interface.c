@@ -518,13 +518,13 @@ DEFUN(show_e1ts,
 	return CMD_SUCCESS;
 }
 
-void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
+static void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
 {
 	vty_out(vty, "Paging on BTS %u%s", pag->bts->nr, VTY_NEWLINE);
 	subscr_dump_vty(vty, pag->subscr);
 }
 
-void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
+static void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_paging_request *pag;
 
@@ -535,7 +535,7 @@ void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
 DEFUN(show_paging,
       show_paging_cmd,
       "show paging [bts_nr]",
-	SHOW_STR "Display information about pating reuqests of a BTS\n")
+	SHOW_STR "Display information about paging reuqests of a BTS\n")
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts;
