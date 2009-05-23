@@ -64,7 +64,10 @@ struct e1inp_ts {
 
 	union {
 		struct {
+			/* list of all signalling links on this TS */
 			struct llist_head sign_links;
+			/* timer when to dequeue next frame */
+			struct timer_list tx_timer;
 		} sign;
 		struct {
 			/* subchannel demuxer for frames from E1 */

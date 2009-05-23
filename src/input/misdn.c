@@ -171,6 +171,27 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	return ret;
 }
 
+static int ts_want_write(struct e1inp_ts *e1i_ts)
+{
+	/* We never include the mISDN B-Channel FD into the
+	 * writeset, since it doesn't support poll() based
+	 * write flow control */		
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+		return 0;
+
+	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+static void timeout_ts1_write(void *data)
+{
+	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
+
+	/* trigger write of ts1, due to tx delay timer */
+	ts_want_write(e1i_ts);
+}
+
 static int handle_ts1_write(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -183,10 +204,12 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	u_int8_t *l2_data;
 	int ret;
 
+	bfd->when &= ~BSC_FD_WRITE;
+
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
-		bfd->when &= ~BSC_FD_WRITE;
+		/* no message after tx delay timer */
 		return 0;
 	}
 
@@ -211,8 +234,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		fprintf(stderr, "%s sendto failed %d\n", __func__, ret);
 	msgb_free(msg);
 
-	/* FIXME: this has to go */
-	usleep(100000);
+	/* set tx delay timer for next event */
+	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
+	e1i_ts->sign.tx_timer.data = e1i_ts;
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 50000);
 
 	return ret;
 }
@@ -347,19 +372,6 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	}
 
 	return ret;
-}
-
-static int ts_want_write(struct e1inp_ts *e1i_ts)
-{
-	/* We never include the mISDN B-Channel FD into the
-	 * writeset, since it doesn't support poll() based
-	 * write flow control */		
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
-		return 0;
-
-	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
-
-	return 0;
 }
 
 struct e1inp_driver misdn_driver = {

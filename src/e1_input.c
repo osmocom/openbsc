@@ -223,6 +223,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link;
 	struct e1inp_driver *e1inp_driver;
+	struct e1inp_ts *e1i_ts;
 
 	msg->l2h = msg->data;
 
@@ -232,14 +233,16 @@ int abis_rsl_sendmsg(struct msgb *msg)
 	}
 
 	sign_link = msg->trx->rsl_link;
+	e1i_ts = sign_link->ts;
+	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+		/* notify the driver we have something to write */
+		e1inp_driver = sign_link->ts->line->driver;
+		e1inp_driver->want_write(e1i_ts);
+	}
 	msgb_enqueue(&sign_link->tx_list, msg);
 
 	/* dump it */
 	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
-
-	/* notify the driver we have something to write */
-	e1inp_driver = sign_link->ts->line->driver;
-	e1inp_driver->want_write(sign_link->ts);
 
 	return 0;
 }
@@ -248,6 +251,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link;
 	struct e1inp_driver *e1inp_driver;
+	struct e1inp_ts *e1i_ts;
 
 	msg->l2h = msg->data;
 
@@ -257,14 +261,16 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	}
 
 	sign_link = msg->trx->bts->oml_link;
+	e1i_ts = sign_link->ts;
+	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+		/* notify the driver we have something to write */
+		e1inp_driver = sign_link->ts->line->driver;
+		e1inp_driver->want_write(e1i_ts);
+	}
 	msgb_enqueue(&sign_link->tx_list, msg);
 
 	/* dump it */
 	write_pcap_packet(PCAP_OUTPUT, sign_link->sapi, sign_link->tei, msg);
-
-	/* notify the driver we have something to write */
-	e1inp_driver = sign_link->ts->line->driver;
-	e1inp_driver->want_write(sign_link->ts);
 
 	return 0;
 }
