@@ -2312,6 +2312,11 @@ DEFUN(config_exit,
 			vty->index = ts->trx;
 		}
 		break;
+	case SUBSCR_NODE:
+		vty->node = VIEW_NODE;
+		subscr_put(vty->index);
+		vty->index = NULL;
+		break;
 	case VIEW_NODE:
 	case ENABLE_NODE:
 		if (0)		//vty_shell (vty))

@@ -32,6 +32,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/db.h>
 
 static struct gsm_network *gsmnet;
 
@@ -50,6 +51,12 @@ struct cmd_node trx_node = {
 struct cmd_node ts_node = {
 	TS_NODE,
 	"%s(ts)#",
+	1,
+};
+
+struct cmd_node subscr_node = {
+	SUBSCR_NODE,
+	"%s(subscriber)#",
 	1,
 };
 
@@ -290,6 +297,8 @@ DEFUN(show_ts,
 
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
+	vty_out(vty, "    ID: %lu, Authorized: %d%s", subscr->id,
+		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
 		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
 	if (subscr->extension)
@@ -562,6 +571,29 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
+/* per-subscriber configuration */
+DEFUN(cfg_subscr,
+      cfg_subscr_cmd,
+      "subscriber IMSI",
+      "Select a Subscriber to configure\n")
+{
+	const char *imsi = argv[0];
+	struct gsm_subscriber *subscr;
+
+	subscr = subscr_get_by_imsi(imsi);
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber for IMSI %s%s",
+			imsi, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = subscr;
+	vty->node = SUBSCR_NODE;
+
+	return CMD_SUCCESS;
+}
+
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -748,6 +780,82 @@ DEFUN(cfg_ts,
 }
 
 
+/* Subscriber */
+DEFUN(show_subscr,
+      show_subscr_cmd,
+      "show subscriber [IMSI]",
+	SHOW_STR "Display information about a subscriber\n")
+{
+	const char *imsi;
+	struct gsm_subscriber *subscr;
+
+	if (argc >= 1) {
+		imsi = argv[0];
+		subscr = subscr_get_by_imsi(imsi);
+		if (!subscr) {
+			vty_out(vty, "%% unknown subscriber%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		subscr_dump_vty(vty, subscr);
+		
+		return CMD_SUCCESS;
+	}
+
+	/* FIXME: iterate over all subscribers ? */
+	return CMD_WARNING;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_subscr_name,
+      cfg_subscr_name_cmd,
+      "name NAME",
+      "Set the name of the subscriber")
+{
+	const char *name = argv[0];
+	struct gsm_subscriber *subscr = vty->index;
+
+	strncpy(subscr->name, name, sizeof(subscr->name));
+
+	db_sync_subscriber(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_subscr_extension,
+      cfg_subscr_extension_cmd,
+      "extension EXTENSION",
+      "Set the extension of the subscriber")
+{
+	const char *name = argv[0];
+	struct gsm_subscriber *subscr = vty->index;
+
+	strncpy(subscr->extension, name, sizeof(subscr->extension));
+
+	db_sync_subscriber(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_subscr_authorized,
+      cfg_subscr_authorized_cmd,
+      "auth <0-1>",
+      "Set the authorization status of the subscriber")
+{
+	int auth = atoi(argv[0]);
+	struct gsm_subscriber *subscr = vty->index;
+
+	if (auth)
+		subscr->authorized = 1;
+	else
+		subscr->authorized = 0;
+
+	db_sync_subscriber(subscr);
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -767,6 +875,8 @@ int bsc_vty_init(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &show_paging_cmd);
 
+	install_element(VIEW_NODE, &show_subscr_cmd);
+
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, dummy_config_write);
 	install_default(BTS_NODE);
@@ -783,6 +893,13 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
 	install_default(TS_NODE);
+
+	install_element(CONFIG_NODE, &cfg_subscr_cmd);
+	install_node(&subscr_node, dummy_config_write);
+	install_default(SUBSCR_NODE);
+	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
+	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
+	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);
 
 	return 0;
 }

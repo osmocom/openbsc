@@ -64,6 +64,7 @@ enum node_type {
 	BTS_NODE,
 	TRX_NODE,
 	TS_NODE,
+	SUBSCR_NODE,
 
 	AUTH_NODE,		/* Authentication mode of vty interface. */
 	VIEW_NODE,		/* View node. Default mode of vty interface. */
