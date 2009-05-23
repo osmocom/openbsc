@@ -53,11 +53,12 @@ void bsc_unregister_fd(struct bsc_fd *fd)
 	llist_del(&fd->list);
 }
 
-int bsc_select_main()
+int bsc_select_main(int polling)
 {
 	struct bsc_fd *ufd, *tmp;
 	fd_set readset, writeset, exceptset;
-	int i;
+	int work = 0, rc;
+	struct timeval no_time = {0, 0};
 
 	FD_ZERO(&readset);
 	FD_ZERO(&writeset);
@@ -75,10 +76,11 @@ int bsc_select_main()
 			FD_SET(ufd->fd, &exceptset);
 	}
 
-	bsc_prepare_timers();
-	i = select(maxfd+1, &readset, &writeset, &exceptset, bsc_nearest_timer());
-	if (i < 0)
-		return i;
+	if (!polling)
+		bsc_prepare_timers();
+	rc = select(maxfd+1, &readset, &writeset, &exceptset, polling ? &no_time : bsc_nearest_timer());
+	if (rc < 0)
+		return 0;
 
 	/* fire timers */
 	bsc_update_timers();
@@ -96,8 +98,10 @@ int bsc_select_main()
 		if (FD_ISSET(ufd->fd, &exceptset))
 			flags |= BSC_FD_EXCEPT;
 
-		if (flags)
+		if (flags) {
+			work = 1;
 			ufd->cb(ufd, flags);
+		}
 	}
-	return i;
+	return work;
 }

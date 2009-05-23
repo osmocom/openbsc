@@ -1123,6 +1123,6 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 
 	while (1) {
-		bsc_select_main();
+		bsc_select_main(0);
 	}
 }

@@ -188,7 +188,7 @@ int main(int argc, char **argv)
 	}
 	
 	while (1) {
-		rc = bsc_select_main();
+		rc = bsc_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

@@ -18,5 +18,5 @@ struct bsc_fd {
 
 int bsc_register_fd(struct bsc_fd *fd);
 void bsc_unregister_fd(struct bsc_fd *fd);
-int bsc_select_main(void);
+int bsc_select_main(int polling);
 #endif /* _BSC_SELECT_H */

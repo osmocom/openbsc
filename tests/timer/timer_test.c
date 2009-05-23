@@ -65,6 +65,6 @@ int main(int argc, char** argv)
     bsc_schedule_timer(&timer_three, 4, 0);
 
     while (1) {
-        bsc_select_main();
+        bsc_select_main(0);
     }
 }
