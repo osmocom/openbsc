@@ -47,4 +47,6 @@ struct telnet_connection {
 
 void telnet_init(struct gsm_network *network, int port);
 
+int bsc_vty_init(struct gsm_network *net);
+
 #endif

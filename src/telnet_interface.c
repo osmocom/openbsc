@@ -49,10 +49,12 @@ LLIST_HEAD(active_connections);
 
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
+#if 0
 static int telnet_paging_callback(unsigned int subsys, unsigned int signal,
 				  void *handler_data, void *signal_data);
 static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
 				void *handler_data, void *signal_data);
+#endif
 
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
@@ -131,7 +133,7 @@ int telnet_close_client(struct bsc_fd *fd) {
 static int client_data(struct bsc_fd *fd, unsigned int what)
 {
 	struct telnet_connection *conn = fd->data;
-	int rc;
+	int rc = 0;
 
 	if (what & BSC_FD_READ) {
 		conn->fd.when &= ~BSC_FD_READ;
