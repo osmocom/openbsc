@@ -633,7 +633,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		abis_nm_bs11_factory_logon(g_bts, 1);
 		break;
 	case STATE_LOGON_ACK:
-		schedule_timer(&status_timer, 5, 0);
+		bsc_schedule_timer(&status_timer, 5, 0);
 		break;
 	default:
 		break;

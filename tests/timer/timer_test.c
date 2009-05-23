@@ -45,8 +45,8 @@ static void timer_fired(unsigned long data)
     printf("Fired timer: %lu\n", data);
 
     if (data == 1) {
-        schedule_timer(&timer_one, 3, 0);
-        del_timer(&timer_two);
+        bsc_schedule_timer(&timer_one, 3, 0);
+        bsc_del_timer(&timer_two);
     } else if (data == 2) {
         printf("Should not be fired... bug in del_timer\n");
     } else if (data == 3) {
@@ -60,9 +60,9 @@ int main(int argc, char** argv)
 {
     printf("Starting... timer\n");
 
-    schedule_timer(&timer_one, 3, 0);
-    schedule_timer(&timer_two, 5, 0);
-    schedule_timer(&timer_three, 4, 0);
+    bsc_schedule_timer(&timer_one, 3, 0);
+    bsc_schedule_timer(&timer_two, 5, 0);
+    bsc_schedule_timer(&timer_three, 4, 0);
 
     while (1) {
         bsc_select_main();

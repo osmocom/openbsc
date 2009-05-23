@@ -39,7 +39,7 @@ typedef int gsm_cbfn(unsigned int hooknum,
 #define LCHAN_RELEASE_TIMEOUT 4, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
-		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
+		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
 
 #define put_lchan(lchan) \
 	do { lchan->use_count--; } while(0);

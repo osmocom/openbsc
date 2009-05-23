@@ -165,7 +165,7 @@ static void release_loc_updating_req(struct gsm_lchan *lchan)
 	if (!lchan->loc_operation)
 		return;
 
-	del_timer(&lchan->loc_operation->updating_timer);
+	bsc_del_timer(&lchan->loc_operation->updating_timer);
 	free(lchan->loc_operation);
 	lchan->loc_operation = 0;
 	put_lchan(lchan);
@@ -527,7 +527,7 @@ static void schedule_reject(struct gsm_lchan *lchan)
 {
 	lchan->loc_operation->updating_timer.cb = loc_upd_rej_cb;
 	lchan->loc_operation->updating_timer.data = lchan;
-	schedule_timer(&lchan->loc_operation->updating_timer, 5, 0);
+	bsc_schedule_timer(&lchan->loc_operation->updating_timer, 5, 0);
 }
 
 static const char *lupd_name(u_int8_t type)

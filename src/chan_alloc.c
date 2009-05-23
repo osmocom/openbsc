@@ -178,7 +178,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		/* Configure the time and start it so it will be closed */
 		lchan->release_timer.cb = auto_release_channel;
 		lchan->release_timer.data = lchan;
-		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 	}
 
 	return lchan;
@@ -199,7 +199,7 @@ void lchan_free(struct gsm_lchan *lchan)
 	}
 
 	/* stop the timer */
-	del_timer(&lchan->release_timer);
+	bsc_del_timer(&lchan->release_timer);
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -233,7 +233,7 @@ static void auto_release_channel(void *_lchan)
 	struct gsm_lchan *lchan = _lchan;
 
 	if (!lchan_auto_release(lchan))
-		schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {

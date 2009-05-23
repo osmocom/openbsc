@@ -78,7 +78,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 			paging_bts->last_request = NULL;
 	}
 
-	del_timer(&to_be_deleted->T3113);
+	bsc_del_timer(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
 	free(to_be_deleted);
@@ -158,7 +158,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	} while (paging_bts->available_slots > 0
 		    &&  initial_request != current_request);
 
-	schedule_timer(&paging_bts->work_timer, 1, 0);
+	bsc_schedule_timer(&paging_bts->work_timer, 1, 0);
 }
 
 static void paging_worker(void *data)
@@ -230,11 +230,11 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->cbfn_param = data;
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
-	schedule_timer(&req->T3113, T3113_VALUE);
+	bsc_schedule_timer(&req->T3113, T3113_VALUE);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 
-	if (!timer_pending(&bts_entry->work_timer))
-		schedule_timer(&bts_entry->work_timer, 1, 0);
+	if (!bsc_timer_pending(&bts_entry->work_timer))
+		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
 }
 
 /* we consciously ignore the type of the request here */

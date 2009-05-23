@@ -31,7 +31,7 @@ static struct timeval s_select_time;
 #define TIME_SMALLER(left, right) \
         (left.tv_sec*MICRO_SECONDS+left.tv_usec) <= (right.tv_sec*MICRO_SECONDS+right.tv_usec)
 
-void add_timer(struct timer_list *timer)
+void bsc_add_timer(struct timer_list *timer)
 {
 	struct timer_list *list_timer;
 
@@ -47,7 +47,7 @@ void add_timer(struct timer_list *timer)
 	llist_add(&timer->entry, &timer_list);
 }
 
-void schedule_timer(struct timer_list *timer, int seconds, int microseconds)
+void bsc_schedule_timer(struct timer_list *timer, int seconds, int microseconds)
 {
 	struct timeval current_time;
 
@@ -56,10 +56,10 @@ void schedule_timer(struct timer_list *timer, int seconds, int microseconds)
 	currentTime += seconds * MICRO_SECONDS + microseconds;
 	timer->timeout.tv_sec = currentTime / MICRO_SECONDS;
 	timer->timeout.tv_usec = currentTime % MICRO_SECONDS;
-	add_timer(timer);
+	bsc_add_timer(timer);
 }
 
-void del_timer(struct timer_list *timer)
+void bsc_del_timer(struct timer_list *timer)
 {
 	if (timer->in_list) {
 		timer->active = 0;
@@ -68,7 +68,7 @@ void del_timer(struct timer_list *timer)
 	}
 }
 
-int timer_pending(struct timer_list *timer)
+int bsc_timer_pending(struct timer_list *timer)
 {
 	return timer->active;
 }
@@ -79,7 +79,7 @@ int timer_pending(struct timer_list *timer)
  * If the nearest timer timed out return NULL and then we will
  * dispatch everything after the select
  */
-struct timeval *nearest_timer()
+struct timeval *bsc_nearest_timer()
 {
 	struct timeval current_time;
 
@@ -106,7 +106,7 @@ struct timeval *nearest_timer()
 /*
  * Find the nearest time and update s_nearest_time
  */
-void prepare_timers()
+void bsc_prepare_timers()
 {
 	struct timer_list *timer, *nearest_timer = NULL;
 	llist_for_each_entry(timer, &timer_list, entry) {
@@ -125,10 +125,11 @@ void prepare_timers()
 /*
  * fire all timers... and remove them
  */
-void update_timers()
+int bsc_update_timers()
 {
 	struct timeval current_time;
 	struct timer_list *timer, *tmp;
+	int work = 0;
 
 	gettimeofday(&current_time, NULL);
 
@@ -157,6 +158,7 @@ restart:
 			timer->handled = 1;
 			timer->active = 0;
 			(*timer->cb)(timer->data);
+			work = 1;
 			goto restart;
 		}
 	}
@@ -164,7 +166,9 @@ restart:
 	llist_for_each_entry_safe(timer, tmp, &timer_list, entry) {
 		timer->handled = 0;
 		if (!timer->active) {
-			del_timer(timer);
+			bsc_del_timer(timer);
 		}
 	}
+
+	return work;
 }

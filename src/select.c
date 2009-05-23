@@ -75,13 +75,13 @@ int bsc_select_main()
 			FD_SET(ufd->fd, &exceptset);
 	}
 
-	prepare_timers();
-	i = select(maxfd+1, &readset, &writeset, &exceptset, nearest_timer());
+	bsc_prepare_timers();
+	i = select(maxfd+1, &readset, &writeset, &exceptset, bsc_nearest_timer());
 	if (i < 0)
 		return i;
 
 	/* fire timers */
-	update_timers();
+	bsc_update_timers();
 
 	/* call registered callback functions */
 	llist_for_each_entry_safe(ufd, tmp, &bsc_fds, list) {

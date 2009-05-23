@@ -55,17 +55,17 @@ struct timer_list {
 /**
  * timer management
  */
-void add_timer(struct timer_list *timer);
-void schedule_timer(struct timer_list *timer, int seconds, int microseconds);
-void del_timer(struct timer_list *timer);
-int timer_pending(struct timer_list *timer);
+void bsc_add_timer(struct timer_list *timer);
+void bsc_schedule_timer(struct timer_list *timer, int seconds, int microseconds);
+void bsc_del_timer(struct timer_list *timer);
+int bsc_timer_pending(struct timer_list *timer);
 
 
 /**
  * internal timer list management
  */
-struct timeval *nearest_timer();
-void prepare_timers();
-void update_timers();
+struct timeval *bsc_nearest_timer();
+void bsc_prepare_timers();
+int bsc_update_timers();
 
 #endif
