@@ -1149,6 +1149,9 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	call->called_subscr = called_subscr;
 
 	/* start paging of the receiving end of the call */
+	/* FIXME: we're assuming that the receiver is at the same BTS
+	 * than we are, which is obviously a wrong assumption in multi-BTS
+	 * case */
 	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F,
 			setup_trig_pag_evt, call);
 
