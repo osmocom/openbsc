@@ -105,9 +105,9 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
-	vty_out(vty, "BTS %u is of %s type, has LAC %u, TSC %u and %u TRX%s",
+	vty_out(vty, "BTS %u is of %s type, has LAC %u, BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), bts->location_area_code,
-		bts->tsc, bts->num_trx, VTY_NEWLINE);
+		bts->bsic, bts->tsc, bts->num_trx, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -632,6 +632,25 @@ DEFUN(cfg_bts_tsc,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_bsic,
+      cfg_bts_bsic_cmd,
+      "base_station_id_code <0-63>",
+      "Set the Base Station Identity Code (BSIC) of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int bsic = atoi(argv[0]);
+
+	if (bsic < 0 || bsic > 0x3f) {
+		vty_out(vty, "%% TSC %d is not in the valid range (0-255)%s",
+			bsic, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->bsic = bsic;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,

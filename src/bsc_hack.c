@@ -880,6 +880,10 @@ static void patch_tables(struct gsm_bts *bts)
 
 	/* patch Control Channel Description 10.5.2.11 */
 	type_3->control_channel_desc = bts->chan_desc;
+
+	/* patch BSIC */
+	msg_2[6] = bts->bsic;
+	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
 }
 
 

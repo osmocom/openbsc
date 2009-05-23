@@ -15,6 +15,7 @@
 
 #define HARDCODED_ARFCN 123
 #define HARDCODED_TSC	7
+#define HARDCODED_BSIC	0x3f	/* NCC = 7 / BCC = 7 */
 
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
@@ -274,6 +275,8 @@ struct gsm_bts {
 	u_int8_t location_area_code;
 	/* Training Sequence Code */
 	u_int8_t tsc;
+	/* Base Station Identification Code (BSIC) */
+	u_int8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
 	/* how do we talk OML with this TRX? */
