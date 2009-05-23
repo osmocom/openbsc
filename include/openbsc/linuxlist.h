@@ -18,8 +18,8 @@ static inline void prefetch(const void *x) {;}
  *
  */
 #define container_of(ptr, type, member) ({			\
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
-        (type *)( (char *)__mptr - offsetof(type,member) );})
+        const typeof( ((type *)0)->member ) *__mptr = (typeof( ((type *)0)->member ) *)(ptr);	\
+        (type *)( (char *)__mptr - offsetof(type, member) );})
 
 
 /*
@@ -59,14 +59,14 @@ struct llist_head {
  * This is only for internal llist manipulation where we know
  * the prev/next entries already!
  */
-static inline void __llist_add(struct llist_head *new,
+static inline void __llist_add(struct llist_head *_new,
 			      struct llist_head *prev,
 			      struct llist_head *next)
 {
-	next->prev = new;
-	new->next = next;
-	new->prev = prev;
-	prev->next = new;
+	next->prev = _new;
+	_new->next = next;
+	_new->prev = prev;
+	prev->next = _new;
 }
 
 /**
@@ -77,9 +77,9 @@ static inline void __llist_add(struct llist_head *new,
  * Insert a new entry after the specified head.
  * This is good for implementing stacks.
  */
-static inline void llist_add(struct llist_head *new, struct llist_head *head)
+static inline void llist_add(struct llist_head *_new, struct llist_head *head)
 {
-	__llist_add(new, head, head->next);
+	__llist_add(_new, head, head->next);
 }
 
 /**
@@ -90,9 +90,9 @@ static inline void llist_add(struct llist_head *new, struct llist_head *head)
  * Insert a new entry before the specified head.
  * This is useful for implementing queues.
  */
-static inline void llist_add_tail(struct llist_head *new, struct llist_head *head)
+static inline void llist_add_tail(struct llist_head *_new, struct llist_head *head)
 {
-	__llist_add(new, head->prev, head);
+	__llist_add(_new, head->prev, head);
 }
 
 /*
@@ -117,8 +117,8 @@ static inline void __llist_del(struct llist_head * prev, struct llist_head * nex
 static inline void llist_del(struct llist_head *entry)
 {
 	__llist_del(entry->prev, entry->next);
-	entry->next = LLIST_POISON1;
-	entry->prev = LLIST_POISON2;
+	entry->next = (struct llist_head *)LLIST_POISON1;
+	entry->prev = (struct llist_head *)LLIST_POISON2;
 }
 
 /**
