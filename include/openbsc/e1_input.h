@@ -150,7 +150,7 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2);
 int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin);
 int ipaccess_setup(struct gsm_network *gsmnet);
 
-struct llist_head e1inp_driver_list;
-struct llist_head e1inp_line_list;
+extern struct llist_head e1inp_driver_list;
+extern struct llist_head e1inp_line_list;
 
 #endif /* _E1_INPUT_H */
