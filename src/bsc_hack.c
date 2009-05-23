@@ -82,9 +82,12 @@ SET ATTRIBUTES
 unsigned char msg_1[] = 
 {
 	0xD0, 0x00, 0xFF, 0xFF, 0xFF, 
-		NM_ATT_BS11_ABIS_EXT_TIME, 0x07, 0xD7, 0x09, 0x08, 0x0E, 0x24, 0x0B, 0xCE, 
-		0x02, 0x00, 0x1E, 
-		0xE8, 0x01, 0x05,
+		NM_ATT_BS11_ABIS_EXT_TIME, 0x07, 
+			0xD7, 0x09, 0x08, 0x0E, 0x24, 0x0B, 0xCE, 
+		0x02, 
+			0x00, 0x1E, 
+		NM_ATT_BS11_SH_LAPD_INT_TIMER, 
+			0x01, 0x05,
 		0x42, 0x02, 0x00, 0x0A, 
 		0x44, 0x02, 0x00, 0x00
 };
@@ -148,7 +151,7 @@ SET BTS ATTRIBUTES
 
 unsigned char msg_2[] = 
 {
-	0x41, 0x01, 0x00, 0xFF, 0xFF,
+	0x41, NM_OC_BTS, 0x00, 0xFF, 0xFF,
 		NM_ATT_BSIC, 0x3F,
 		NM_ATT_BTS_AIR_TIMER, 0x04,
 		NM_ATT_BS11_BTSLS_HOPPING, 0x00,
@@ -213,7 +216,7 @@ SET ATTRIBUTES
 
 unsigned char msg_3[] = 
 {
-	0xD0, 0xA1, 0x00, 0xFF, 0xFF, 
+	0xD0, NM_OC_BS11_HANDOVER, 0x00, 0xFF, 0xFF, 
 		0xD0, 0x00,
 		0x64, 0x00,
 		0x67, 0x00,
@@ -283,7 +286,7 @@ SET ATTRIBUTES
 
 unsigned char msg_4[] = 
 {
-	0xD0, 0xA2, 0x00, 0xFF, 0xFF, 
+	0xD0, NM_OC_BS11_PWR_CTRL, 0x00, 0xFF, 0xFF, 
 		NM_ATT_BS11_ENA_MS_PWR_CTRL, 0x00,
 		NM_ATT_BS11_ENA_PWR_CTRL_RLFW, 0x00,
 		0x7E, 0x04, 0x01,
@@ -324,7 +327,7 @@ SET TRX ATTRIBUTES
 
 unsigned char msg_6[] = 
 {
-	0x44, 0x02, 0x00, 0x00, 0xFF, 
+	0x44, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xFF, 
 		NM_ATT_ARFCN_LIST, 0x01, 0x00, HARDCODED_ARFCN /*0x01*/,
 		NM_ATT_RF_MAXPOWR_R, 0x00,
 		NM_ATT_BS11_RADIO_MEAS_GRAN, 0x01, 0xFE, 
@@ -835,8 +838,8 @@ static int set_system_infos(struct gsm_bts_trx *trx)
  */
 static void patch_tables(struct gsm_bts *bts)
 {
-	u_int8_t arfcn_low = ARFCN & 0xff;
-	u_int8_t arfcn_high = (ARFCN >> 8) & 0x0f;
+	u_int8_t arfcn_low = bts->trx[0].arfcn & 0xff;
+	u_int8_t arfcn_high = (bts->trx[0].arfcn >> 8) & 0x0f;
 	/* covert the raw packet to the struct */
 	struct gsm48_system_information_type_3 *type_3 =
 		(struct gsm48_system_information_type_3*)&si3;
@@ -847,7 +850,8 @@ static void patch_tables(struct gsm_bts *bts)
 	struct gsm48_loc_area_id lai;
 
 	gsm0408_generate_lai(&lai, bts->network->country_code,
-				bts->network->network_code, bts->location_area_code);
+			     bts->network->network_code,
+			     bts->location_area_code);
 
 	/* assign the MCC and MNC */
 	type_3->lai = lai;

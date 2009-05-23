@@ -232,6 +232,8 @@ enum abis_nm_obj_class {
 	NM_OC_BASEB_TRANSC,
 	/* RFU: 05-FE */
 	NM_OC_BS11_A0			= 0xa0,
+	NM_OC_BS11_HANDOVER		= 0xa1,
+	NM_OC_BS11_PWR_CTRL		= 0xa2,
 	NM_OC_BS11_A3			= 0xa3,
 	NM_OC_BS11_A4			= 0xa4,
 	NM_OC_BS11			= 0xa5,
@@ -387,6 +389,8 @@ enum abis_nm_attr {
 	NM_ATT_BS11_L1_CONTROL_TS	= 0xd8,
 	NM_ATT_BS11_RADIO_MEAS_GRAN	= 0xdc,	/* in SACCH multiframes */
 	NM_ATT_BS11_RADIO_MEAS_REP	= 0xdd,
+
+	NM_ATT_BS11_SH_LAPD_INT_TIMER	= 0xe8,
 
 	NM_ATT_BS11_BTS_STATE		= 0xf0,
 	NM_ATT_BS11_E1_STATE		= 0xf1,
