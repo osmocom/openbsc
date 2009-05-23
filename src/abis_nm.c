@@ -365,7 +365,7 @@ static const struct tlv_definition nm_att_tlvdef = {
 
 int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
 {
-	return tlv_parse(tp, &nm_att_tlvdef, buf, len);
+	return tlv_parse(tp, &nm_att_tlvdef, buf, len, 0, 0);
 }
 
 static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, int size)

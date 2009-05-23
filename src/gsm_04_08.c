@@ -1119,7 +1119,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	call->local_lchan = msg->lchan;
 	call->transaction_id = gh->proto_discr & 0xf0;
 
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len);
+	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD))
 		goto err;
 

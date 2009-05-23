@@ -112,7 +112,8 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		[0xfc]				= { TLV_TYPE_TV },
 	},
 };
-#define rsl_tlv_parse(dec, buf, len)     tlv_parse(dec, &rsl_att_tlvdef, buf, len)
+#define rsl_tlv_parse(dec, buf, len)     \
+			tlv_parse(dec, &rsl_att_tlvdef, buf, len, 0, 0)
 
 static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 {
