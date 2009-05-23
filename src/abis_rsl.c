@@ -691,7 +691,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		DEBUGPC(DRSL, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
 	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
 		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
-		u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
+		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
 		if (len >= 3) {
 			if (val[0] & 0x40)
 				DEBUGPC(DRSL, "DTXd ");
@@ -710,6 +710,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
 		DEBUGPC(DRSL, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+	return 0;
 }
 
 static int abis_rsl_rx_dchan(struct msgb *msg)
