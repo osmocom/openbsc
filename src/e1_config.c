@@ -5,6 +5,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/misdn.h>
 

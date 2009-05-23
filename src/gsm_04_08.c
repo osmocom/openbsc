@@ -42,6 +42,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 
 #define GSM48_ALLOC_SIZE	1024
@@ -635,6 +636,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 
 	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
 
+	lchan->tch_mode = mode;
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;

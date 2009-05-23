@@ -138,8 +138,10 @@ struct gsm_lchan {
 	struct gsm_bts_trx_ts *ts;
 	/* The logical subslot number in the TS */
 	u_int8_t nr;
-	/* The lotical channel type */
+	/* The logical channel type */
 	enum gsm_chan_t type;
+	/* If TCH, traffic channel mode */
+	enum gsm_chan_t tch_mode;
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;

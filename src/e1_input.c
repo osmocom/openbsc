@@ -49,6 +49,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/linuxlist.h>
 #include <openbsc/subchan_demux.h>
+#include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 
 #define NUM_E1_TS	32

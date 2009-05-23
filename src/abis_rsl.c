@@ -476,10 +476,21 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	/* FIXME: what to do with data calls ? */
 	cm.dtx_dtu = 0x00;
 	switch (lchan->type) {
+	/* todo more modes */
 	case GSM_LCHAN_TCH_F:
 		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
 		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		cm.chan_rate = RSL_CMOD_SP_GSM2;
+		switch(lchan->tch_mode) {
+		case GSM48_CMODE_SPEECH_V1:
+			cm.chan_rate = RSL_CMOD_SP_GSM1;
+			break;
+		case GSM48_CMODE_SPEECH_EFR:
+			cm.chan_rate = RSL_CMOD_SP_GSM2;
+			break;
+		default:
+			DEBUGP(DRSL, "Unimplemented channel modification\n");
+			return -1;
+		}
 		break;
 	default:
 		DEBUGP(DRSL, "Unimplemented channel modification\n");
