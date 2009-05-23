@@ -701,6 +701,7 @@ static void handle_options(int argc, char **argv)
 			{ "win-size", 1, 0, 'w' },
 			{ "forced", 0, 0, 'f' },
 			{ "restart", 0, 0, 'r' },
+			{ "debug", 1, 0, 'b'},
 		};
 
 		c = getopt_long(argc, argv, "hp:s:S:td:Dw:fra:",
@@ -715,6 +716,9 @@ static void handle_options(int argc, char **argv)
 			exit(0);
 		case 'p':
 			serial_port = optarg;
+			break;
+		case 'b':
+			debug_parse_category_mask(optarg);
 			break;
 		case 's':
 			fname_software = optarg;

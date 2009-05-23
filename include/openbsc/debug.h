@@ -10,6 +10,7 @@
 #define DRSL		0x0010
 #define DNM		0x0020
 
+#define DMNCC		0x0080
 #define DSMS		0x0100
 #define DPAG		0x0200
 
@@ -32,6 +33,6 @@ char *hexdump(unsigned char *buf, int len);
 void debugp(unsigned int subsys, char *file, int line, int cont, const char *format, ...);
 void debug_parse_category_mask(const char* mask);
 void debug_use_color(int use_color);
-unsigned int debug_mask;
+extern unsigned int debug_mask;
 
 #endif /* _DEBUG_H */
