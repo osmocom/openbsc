@@ -152,7 +152,7 @@ SET BTS ATTRIBUTES
 unsigned char msg_2[] = 
 {
 	0x41, NM_OC_BTS, 0x00, 0xFF, 0xFF,
-		NM_ATT_BSIC, 0x3F,
+		NM_ATT_BSIC, HARDCODED_BSIC,
 		NM_ATT_BTS_AIR_TIMER, 0x04,
 		NM_ATT_BS11_BTSLS_HOPPING, 0x00,
 		NM_ATT_CCCH_L_I_P, 0x01,
@@ -350,7 +350,7 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_BTS_AIR_TIMER, 0x80,
 	NM_ATT_NY1, 0x0a,
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
-	NM_ATT_BSIC, 0x20,
+	NM_ATT_BSIC, HARDCODED_BSIC,
 };
 
 static unsigned char nanobts_attr_radio[] = {
