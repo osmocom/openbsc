@@ -303,10 +303,21 @@ struct gsm_bts {
 	} site_mgr;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
-	struct {
-		u_int16_t site_id;
-		u_int16_t bts_id;
-	} ip_access;
+	union {
+		struct {
+			u_int16_t site_id;
+			u_int16_t bts_id;
+		} ip_access;
+		struct {
+			struct {
+				struct gsm_nm_state nm_state;
+			} cclk;
+			struct {
+				struct gsm_nm_state nm_state;
+			} rack;
+
+		} bs11;
+	};
 	
 	/* transceivers */
 	int num_trx;

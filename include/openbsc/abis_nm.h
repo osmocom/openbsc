@@ -223,6 +223,11 @@ enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_GET_NVATTR_NACK,
 };
 
+enum abis_nm_bs11_cell_alloc {
+	NM_BS11_CANR_GSM	= 0x00,
+	NM_BS11_CANR_DCS1800	= 0x01,
+};
+
 /* Section 9.2: Object Class */
 enum abis_nm_obj_class {
 	NM_OC_SITE_MANAGER		= 0x00,
@@ -231,13 +236,13 @@ enum abis_nm_obj_class {
 	NM_OC_CHANNEL,
 	NM_OC_BASEB_TRANSC,
 	/* RFU: 05-FE */
-	NM_OC_BS11_A0			= 0xa0,
+	NM_OC_BS11_ADJC			= 0xa0,
 	NM_OC_BS11_HANDOVER		= 0xa1,
 	NM_OC_BS11_PWR_CTRL		= 0xa2,
-	NM_OC_BS11_A3			= 0xa3,
-	NM_OC_BS11_A4			= 0xa4,
-	NM_OC_BS11			= 0xa5,
-	NM_OC_BS11_A6			= 0xa6,
+	NM_OC_BS11_BTSE			= 0xa3,		/* LMT? */
+	NM_OC_BS11_RACK			= 0xa4,
+	NM_OC_BS11			= 0xa5,		/* 01: ALCO */
+	NM_OC_BS11_TEST			= 0xa6,
 	NM_OC_BS11_ENVABTSE		= 0xa8,
 	NM_OC_BS11_BPORT		= 0xa9,
 
@@ -495,7 +500,7 @@ struct abis_nm_channel {
 	u_int8_t	subslot;
 } __attribute__ ((packed));
 
-/* Siemens BS-11 specific */
+/* Siemens BS-11 specific objects in the SienemsHW (0xA5) object class */
 enum abis_bs11_objtype {
 	BS11_OBJ_ALCO		= 0x01,
 	BS11_OBJ_BBSIG		= 0x02,	/* obj_class: 0,1 */

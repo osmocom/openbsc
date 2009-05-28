@@ -310,8 +310,10 @@ static const char *cclk_acc_name(u_int8_t acc)
 {
 	switch (acc) {
 	case 0:
+		/* Out of the demanded +/- 0.05ppm */
 		return "Medium";
 	case 1:
+		/* Synchronized with Abis, within demanded tolerance +/- 0.05ppm */
 		return "High";
 	default:
 		return "unknown";

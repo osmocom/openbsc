@@ -435,19 +435,46 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
-const char *oc_names[] = {
-	[NM_OC_SITE_MANAGER]	= "SITE MANAGER",
-	[NM_OC_BTS]		= "BTS",
-	[NM_OC_RADIO_CARRIER]	= "RADIO CARRIER",
-	[NM_OC_BASEB_TRANSC]	= "BASEBAND TRANSCEIVER",
-	[NM_OC_CHANNEL]		= "CHANNEL",
-};
-
 static const char *obj_class_name(u_int8_t oc)
 {
-	if (oc >= ARRAY_SIZE(oc_names))
-		return "UNKNOWN";
-	return oc_names[oc];
+	switch (oc) {
+	case NM_OC_SITE_MANAGER:
+		return "SITE MANAGER";
+	case NM_OC_BTS:
+		return "BTS";
+	case NM_OC_RADIO_CARRIER:
+		return "RADIO CARRIER";
+	case NM_OC_BASEB_TRANSC:
+		return "BASEBAND TRANSCEIVER";
+	case NM_OC_CHANNEL:
+		return "CHANNL";
+	case NM_OC_BS11_ADJC:
+		return "ADJC";
+	case NM_OC_BS11_HANDOVER:
+		return "HANDOVER";
+	case NM_OC_BS11_PWR_CTRL:
+		return "POWER CONTROL";
+	case NM_OC_BS11_BTSE:
+		return "BTSE";
+	case NM_OC_BS11_RACK:
+		return "RACK";
+	case NM_OC_BS11_TEST:
+		return "TEST";
+	case NM_OC_BS11_ENVABTSE:
+		return "ENVABTSE";
+	case NM_OC_BS11_BPORT:
+		return "BPORT";
+	case NM_OC_GPRS_NSE:
+		return "GPRS NSE";
+	case NM_OC_GPRS_CELL:
+		return "GPRS CELL";
+	case NM_OC_GPRS_NSVC0:
+		return "GPRS NSVC0";
+	case NM_OC_GPRS_NSVC1:
+		return "GPRS NSVC1";
+	}
+
+	return "UNKNOWN";
 }
 
 const char *nm_opstate_name(u_int8_t os)
@@ -484,7 +511,20 @@ const char *nm_avail_name(u_int8_t avail)
 		return "UNKNOWN";
 	return avail_names[avail];
 }
-	
+
+const char *nm_adm_name(u_int8_t adm)
+{
+	switch (adm) {
+	case 1:
+		return "Locked";
+	case 2:
+		return "Unlocked";
+	case 3:
+		return "Shutdown";
+	default:
+		return "<not used>";
+	}
+}
 
 /* obtain the gsm_nm_state data structure for a given object instance */
 static struct gsm_nm_state *
@@ -520,6 +560,17 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		break;
 	case NM_OC_SITE_MANAGER:
 		nm_state = &bts->site_mgr.nm_state;
+		break;
+	case NM_OC_BS11:
+		switch (obj_inst->bts_nr) {
+		case BS11_OBJ_CCLK:
+			nm_state = &bts->bs11.cclk.nm_state;
+			break;
+		default:
+			return NULL;
+		}
+	case NM_OC_BS11_RACK:
+		nm_state = &bts->bs11.rack.nm_state;
 		break;
 	}
 	return nm_state;
@@ -622,7 +673,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
-		DEBUGPC(DNM, "ADM=%02x ", new_state.administrative);
+		DEBUGPC(DNM, "ADM=%02x ", nm_adm_name(new_state.administrative));
 	}
 	DEBUGPC(DNM, "\n");
 
@@ -1872,7 +1923,7 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 		u_int8_t len = 3*2 + sizeof(bdt)
 				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
-				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
+				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
 			     sizeof(bdt), (u_int8_t *) &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
@@ -1881,7 +1932,7 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 			     sizeof(bs11_logon_c9), bs11_logon_c9);
 	} else {
 		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LMT_LOGOFF,
-				NM_OC_BS11_A3, 0xff, 0xff, 0xff);
+				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
 	}
 	
 	return abis_nm_sendmsg(bts, msg);
