@@ -445,9 +445,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			return -EIO;
 		}
 
-		if (e1i_ts->type == E1INP_TS_TYPE_SIGN && release_l2) {
-			int clean = 1;
-			ret = ioctl(bfd->fd, IMCLEAR_L2, &clean);
+		if (e1i_ts->type == E1INP_TS_TYPE_SIGN) {
+			ret = ioctl(bfd->fd, IMCLEAR_L2, &release_l2);
 			if (ret < 0) {
 				fprintf(stderr, "could not send IOCTL IMCLEAN_L2 %s\n", strerror(errno));
 				return -EIO;
