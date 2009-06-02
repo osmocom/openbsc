@@ -45,7 +45,7 @@ struct debug_info {
 static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DRLL,  "DRLL", "\033[1;31m", "")
 	DEBUG_CATEGORY(DCC,   "DCC",  "\033[1;32m", "")
-	DEBUG_CATEGORY(DNM,   "DMM",  "\033[1;33m", "")
+	DEBUG_CATEGORY(DMM,   "DMM",  "\033[1;33m", "")
 	DEBUG_CATEGORY(DRR,   "DRR",  "\033[1;34m", "")
 	DEBUG_CATEGORY(DRSL,  "DRSL", "\033[1;35m", "")
 	DEBUG_CATEGORY(DNM,   "DNM",  "\033[1;36m", "")
