@@ -14,7 +14,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.c \
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
 
 bsc_hack_SOURCES = bsc_hack.c vty_interface.c
-bsc_hack_LDADD = libbsc.a libvty.a -ldl -ldbi
+bsc_hack_LDADD = libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
 		      select.c timer.c rs232.c tlv_parser.c signal.c
@@ -22,4 +22,4 @@ bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
 ipaccess_find_SOURCES = ipaccess-find.c select.c timer.c
 
 ipaccess_config_SOURCES = ipaccess-config.c
-ipaccess_config_LDADD = libbsc.a libvty.a -ldl -ldbi
+ipaccess_config_LDADD = libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
