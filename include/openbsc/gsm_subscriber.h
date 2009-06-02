@@ -12,7 +12,7 @@
 #define GSM_EXTENSION_LENGTH 128
 
 struct gsm_subscriber {
-	long unsigned int id;
+	long long unsigned int id;
 	char imsi[GSM_IMSI_LENGTH];
 	char tmsi[GSM_TMSI_LENGTH];
 	u_int16_t lac;
