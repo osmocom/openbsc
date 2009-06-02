@@ -96,11 +96,17 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
 		s->current_bts = bts;
+		/* Indicate "attached to LAC" */
+		s->lac = bts->location_area_code;
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently attached to this bts */
-		if (bts == s->current_bts)
+		if (bts == s->current_bts) {
 			s->current_bts = NULL;
+			/* Indicate "detached" */
+			s->lac = 0;
+		}
+
 		break;
 	default:
 		fprintf(stderr, "subscr_update with unknown reason: %d\n",
