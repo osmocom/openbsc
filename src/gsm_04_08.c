@@ -851,6 +851,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n",
 		       subscr->name ? subscr->name : subscr->imsi);
+		subscr_put(subscr);
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
 
@@ -935,11 +936,16 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name ? subscr->name : subscr->imsi);
 
-	if (!msg->lchan->subscr)
+	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
-	else if (msg->lchan->subscr != subscr) {
+	} else if (msg->lchan->subscr != subscr) {
 		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
+		return -EINVAL;
+	} else {
+		DEBUGP(DRR, "<- Channel already owned by us\n");
+		subscr_put(subscr);
+		subscr = msg->lchan->subscr;
 	}
 
 	sig_data.subscr = subscr;
