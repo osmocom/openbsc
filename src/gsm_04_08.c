@@ -565,7 +565,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
-	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
+	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s) type=%s\n", mi_type, mi_string,
 		lupd_name(lu->type));
 
 	allocate_loc_updating_req(lchan);
@@ -839,10 +839,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* no sim card... FIXME: what to do ? */
-		fprintf(stderr, "Unimplemented mobile identity type\n");
+		DEBUGPC(DMM, "unimplemented mobile identity type\n");
 		break;
 	default:	
-		fprintf(stderr, "Unknown mobile identity type\n");
+		DEBUGPC(DMM, "unknown mobile identity type\n");
 		break;
 	}
 

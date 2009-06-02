@@ -740,28 +740,30 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV_ACK:
-		DEBUGPC(DRSL, "CHANNEL ACTIVATE ACK ");
+		DEBUGPC(DRSL, "CHANNEL ACTIVATE ACK\n");
 		rc = rsl_rx_chan_act_ack(msg);
 		break;
 	case RSL_MT_CHAN_ACTIV_NACK:
-		DEBUGPC(DRSL, "CHANNEL ACTIVATE NACK ");
+		DEBUGPC(DRSL, "CHANNEL ACTIVATE NACK\n");
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
+		DEBUGPC(DRSL, "CONN_FAIL\n");
 		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
+		DEBUGPC(DRSL, "MEAS_RES\n");
 		rc = rsl_rx_meas_res(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
-		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK ");
+		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK\n");
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
-		DEBUGPC(DRSL, "CHANNEL MODE MODIFY ACK ");
+		DEBUGPC(DRSL, "CHANNEL MODE MODIFY ACK\n");
 		break;
 	case RSL_MT_MODE_MODIFY_NACK:
-		DEBUGPC(DRSL, "CHANNEL MODE MODIFY NACK ");
+		DEBUGPC(DRSL, "CHANNEL MODE MODIFY NACK\n");
 		break;
 	case RSL_MT_PHY_CONTEXT_CONF:
 	case RSL_MT_PREPROC_MEAS_RES:
@@ -771,15 +773,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	case RSL_MT_MR_CODEC_MOD_ACK:
 	case RSL_MT_MR_CODEC_MOD_NACK:
 	case RSL_MT_MR_CODEC_MOD_PER:
-		DEBUGPC(DRSL, "Unimplemented Abis RSL DChan msg 0x%02x ",
+		DEBUGPC(DRSL, "Unimplemented Abis RSL DChan msg 0x%02x\n",
 			rslh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRSL, "unknown Abis RSL DChan msg 0x%02x ",
+		DEBUGPC(DRSL, "unknown Abis RSL DChan msg 0x%02x\n",
 			rslh->c.msg_type);
 		return -EINVAL;
 	}
-	DEBUGPC(DRSL, "\n");
 
 	return rc;
 }
@@ -790,6 +791,7 @@ static int rsl_rx_error_rep(struct msgb *msg)
 
 	DEBUGP(DRSL, "ERROR REPORT ");
 	print_rsl_cause(rslh->data);
+	DEBUGPC(DRSL, "\n");
 
 	return 0;
 }
@@ -883,7 +885,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.mob_alloc_len = 0;
 
 	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s "
-		"chan_nr=0x%02x r=%s\n ra=0x%02x\n",
+		"chan_nr=0x%02x r=%s ra=0x%02x\n",
 		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
 		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);
