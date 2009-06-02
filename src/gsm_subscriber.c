@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/debug.h>
 #include <openbsc/db.h>
 
 
@@ -119,12 +120,17 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr)
 {
 	subscr->use_count++;
+	DEBUGP(DCC, "subscr %s usage increases usage to: %d\n",
+			subscr->extension, subscr->use_count);
 	return subscr;
 }
 
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 {
-	if (--subscr->use_count <= 0)
+	subscr->use_count--;
+	DEBUGP(DCC, "subscr %s usage decreased usage to: %d\n",
+			subscr->extension, subscr->use_count);
+	if (subscr->use_count <= 0)
 		subscr_free(subscr);
 	return NULL;
 }
