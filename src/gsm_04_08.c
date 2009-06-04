@@ -797,9 +797,10 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	}
 
 	mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
-	subscr = subscr_get_by_tmsi(mi_string);
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
+
+	subscr = subscr_get_by_tmsi(mi_string);
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
