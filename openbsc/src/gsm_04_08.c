@@ -578,11 +578,6 @@ static int mm_rx_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
-	/*
-	 * Rogue messages could trick us but so is life
-	 */
-	put_lchan(lchan);
-
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
@@ -672,7 +667,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* we always want the IMEI, too */
-		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
 
@@ -681,7 +675,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		break;
 	case GSM_MI_TYPE_TMSI:
 		/* we always want the IMEI, too */
-		use_lchan(lchan);
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
 
@@ -689,7 +682,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		subscr = subscr_get_by_tmsi(mi_string);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
-			use_lchan(lchan);
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
 			lchan->loc_operation->waiting_for_imsi = 1;
 		}
