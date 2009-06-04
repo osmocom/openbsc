@@ -20,7 +20,7 @@ struct gsm_subscriber {
 	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
 
-	/* for internal management */ 
+	/* for internal management */
 	int use_count;
 	struct llist_head entry;
 	struct gsm_bts *current_bts;
