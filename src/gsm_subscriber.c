@@ -96,17 +96,13 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
-		s->current_bts = bts;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
-		/* Only detach if we are currently attached to this bts */
-		if (bts == s->current_bts) {
-			s->current_bts = NULL;
-			/* Indicate "detached" */
+		/* Only detach if we are currently in this area */
+		if (bts->location_area_code == s->lac)
 			s->lac = 0;
-		}
 
 		break;
 	default:

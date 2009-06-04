@@ -23,7 +23,6 @@ struct gsm_subscriber {
 	/* for internal management */
 	int use_count;
 	struct llist_head entry;
-	struct gsm_bts *current_bts;
 };
 
 enum gsm_subscriber_field {
