@@ -224,6 +224,17 @@ struct gsm_bts_trx {
 	} bb_transc;
 
 	u_int16_t arfcn;
+
+	union {
+		struct {
+			struct {
+				struct gsm_nm_state nm_state;
+			} bbsig;
+			struct {
+				struct gsm_nm_state nm_state;
+			} pa;
+		} bs11;
+	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
@@ -272,6 +283,10 @@ struct gsm_bts_paging_state {
 
 	/* load */
 	u_int16_t available_slots;
+};
+
+struct gsm_envabtse {
+	struct gsm_nm_state nm_state;
 };
 
 /* One BTS */
@@ -323,7 +338,7 @@ struct gsm_bts {
 			struct {
 				struct gsm_nm_state nm_state;
 			} rack;
-
+			struct gsm_envabtse envabtse[4];
 		} bs11;
 	};
 	

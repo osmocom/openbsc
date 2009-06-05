@@ -472,6 +472,8 @@ static const char *obj_class_name(u_int8_t oc)
 		return "GPRS NSVC0";
 	case NM_OC_GPRS_NSVC1:
 		return "GPRS NSVC1";
+	case NM_OC_BS11:
+		return "SIEMENSHW";
 	}
 
 	return "UNKNOWN";
@@ -566,11 +568,28 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		case BS11_OBJ_CCLK:
 			nm_state = &bts->bs11.cclk.nm_state;
 			break;
+		case BS11_OBJ_BBSIG:
+			if (obj_inst->ts_nr > bts->num_trx)
+				return NULL;
+			trx = &bts->trx[obj_inst->ts_nr];
+			nm_state = &trx->bs11.bbsig.nm_state;
+			break;
+		case BS11_OBJ_PA:
+			if (obj_inst->ts_nr > bts->num_trx)
+				return NULL;
+			trx = &bts->trx[obj_inst->ts_nr];
+			nm_state = &trx->bs11.pa.nm_state;
+			break;
 		default:
 			return NULL;
 		}
 	case NM_OC_BS11_RACK:
 		nm_state = &bts->bs11.rack.nm_state;
+		break;
+	case NM_OC_BS11_ENVABTSE:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->bs11.envabtse))
+			return NULL;
+		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
 	}
 	return nm_state;
@@ -649,6 +668,8 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	int rc;
 
 	DEBUGPC(DNM, "STATE CHG: ");
+
+	memset(&new_state, 0, sizeof(new_state));
 
 	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
 	if (!nm_state) {
