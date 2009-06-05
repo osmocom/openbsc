@@ -861,6 +861,15 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	return 0;
 }
 
+static int gsm48_rx_mm_status(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMM, "MM STATUS (reject cause 0x%02x)\n", gh->data[0]);
+
+	return 0;
+}
+
 /* Receive a GSM 04.08 Mobility Management (MM) message */
 static int gsm0408_rcv_mm(struct msgb *msg)
 {
@@ -879,7 +888,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		rc = gsm48_rx_mm_serv_req(msg);
 		break;
 	case GSM48_MT_MM_STATUS:
-		DEBUGP(DMM, "STATUS: FIXME parse error cond.\n");
+		rc = gsm48_rx_mm_status(msg);
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
