@@ -750,7 +750,6 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
-		DEBUGPC(DRSL, "CONN_FAIL\n");
 		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
@@ -1124,11 +1123,11 @@ static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	if (!TLVP_PRESENT(&tv, RSL_IE_CAUSE)) {
-		DEBUGP(DRSL, "mandatory IE missing\n");
+		DEBUGPC(DRSL, "mandatory IE missing! ");
 		return -EINVAL;
 	}
 
-	DEBUGPC(DRSL, "cause=0x%02x\n", *TLVP_VAL(&tv, RSL_IE_CAUSE));
+	DEBUGPC(DRSL, "cause=0x%02x ", *TLVP_VAL(&tv, RSL_IE_CAUSE));
 
 	return 0;
 }
