@@ -752,7 +752,6 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
-		DEBUGPC(DRSL, "MEAS_RES\n");
 		rc = rsl_rx_meas_res(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
