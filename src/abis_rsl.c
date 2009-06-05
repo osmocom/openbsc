@@ -724,6 +724,8 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
 		DEBUGPC(DRSL, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+	DEBUGPC(DRSL, "\n");
+
 	return 0;
 }
 
