@@ -970,7 +970,7 @@ static int bootstrap_network(void)
 	bts = &gsmnet->bts[0];
 	bootstrap_bts(bts);
 
-	if (db_init(database_name, gsmnet)) {
+	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
 		return -1;
 	}	 

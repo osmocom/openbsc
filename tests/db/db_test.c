@@ -50,7 +50,7 @@
 
 int main() {
 
-	if (db_init("hlr.sqlite3", NULL)) {
+	if (db_init("hlr.sqlite3")) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
 		return 1;
 	}	 
