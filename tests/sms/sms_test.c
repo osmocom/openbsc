@@ -90,10 +90,6 @@ int main(int argc, char** argv)
 		printf("Wanted: '%s' got '%s'\n", input, result);
 	}
 
-	free(coded);
-	free(result);
-
-
 	for(i=0;i<SMS_NUM;i++) {
 		/* Setup SMS msgb */
 		msg = msgb_alloc(sms_data[i].len);
