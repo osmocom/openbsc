@@ -182,6 +182,31 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
 }
 
+static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
+					void *handler_data, void *signal_data)
+{
+	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
+		return 0;
+
+	/*
+	 * Cancel any outstanding location updating request
+	 * operation taking place on the lchan.
+	 */
+	struct gsm_lchan *lchan = (struct gsm_lchan *)handler_data;
+	release_loc_updating_req(lchan);
+
+	return 0;
+}
+
+/*
+ * This will be ran by the linker when loading the DSO. We use it to
+ * do system initialization, e.g. registration of signal handlers.
+ */
+static __attribute__((constructor)) void on_dso_load_0408(void)
+{
+	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
+}
+
 static void to_bcd(u_int8_t *bcd, u_int16_t val)
 {
 	bcd[2] = val % 10;

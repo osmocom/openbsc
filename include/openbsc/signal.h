@@ -37,6 +37,7 @@ enum signal_subsystems {
 	SS_SMS,
 	SS_ABISIP,
 	SS_NM,
+	SS_LCHAN,
 };
 
 /* SS_PAGING signals */
@@ -53,6 +54,16 @@ enum signal_abisip {
 enum signal_nm {
 	S_NM_SW_ACTIV_REP,	/* GSM 12.21 software activated report */
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
+};
+
+/* SS_LCHAN signals */
+enum signal_lchan {
+	/*
+	 * The lchan got freed with an use_count != 0 and error
+	 * recovery needs to be carried out from within the
+	 * signal handler.
+	 */
+	S_LCHAN_UNEXPECTED_RELEASE,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,

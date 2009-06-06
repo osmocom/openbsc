@@ -31,6 +31,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
+#include <openbsc/signal.h>
 
 static void auto_release_channel(void *_lchan);
 
@@ -193,8 +194,9 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->subscr = 0;
 	}
 
-	/* We might kill an active channel... FIXME: call cancellations */
+	/* We might kill an active channel... */
 	if (lchan->use_count != 0) {
+		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
 		lchan->use_count = 0;
 	}
 
