@@ -593,6 +593,17 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s) type=%s\n", mi_type, mi_string,
 		lupd_name(lu->type));
 
+	/*
+	 * Pseudo Spoof detection: Just drop a second/concurrent
+	 * location updating request.
+	 */
+	if (lchan->loc_operation) {
+		DEBUGP(DMM, "LUPDREQ: ignoring request due an existing one: %p.\n",
+			lchan->loc_operation);
+		gsm0408_loc_upd_rej(lchan, GSM48_REJECT_PROTOCOL_ERROR);
+		return 0;
+	}
+
 	allocate_loc_updating_req(lchan);
 
 	switch (mi_type) {
