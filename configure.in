@@ -10,7 +10,8 @@ AC_PROG_INSTALL
 AC_PROG_RANLIB
 
 dnl checks for libraries
-AC_SEARCH_LIBS(crypt, crypt, [LIBCRYPT="-lcrypt";AC_DEFINE(VTY_CRYPT_PW)])
+AC_SEARCH_LIBS(crypt, crypt,
+    [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 
 dnl checks for header files
 AC_HEADER_STDC
