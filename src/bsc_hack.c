@@ -341,6 +341,7 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_INTERF_BOUND, 0x55, 0x5b, 0x61, 0x67, 0x6d, 0x73,
 	/* interference avg. period in numbers of SACCH multifr */
 	NM_ATT_INTAVE_PARAM, 0x06,
+	/* conn fail based on SACCH error rate */
 	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10, 
 	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
 	NM_ATT_MAX_TA, 0x3f,
@@ -348,7 +349,7 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_CCCH_L_T, 10, /* percent */
 	NM_ATT_CCCH_L_I_P, 1, /* seconds */
 	NM_ATT_RACH_B_THRESH, 10, /* busy threshold in - dBm */
-	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8,
+	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8, /* rach load averaging 1000 slots */
 	NM_ATT_BTS_AIR_TIMER, 128, /* miliseconds */
 	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
@@ -356,7 +357,7 @@ static unsigned char nanobts_attr_bts[] = {
 };
 
 static unsigned char nanobts_attr_radio[] = {
-	NM_ATT_RF_MAXPOWR_R, 0x0c,
+	NM_ATT_RF_MAXPOWR_R, 0x0c, /* number of -2dB reduction steps / Pn */
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
