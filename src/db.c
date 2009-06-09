@@ -261,8 +261,8 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 
 	subscr->lac = dbi_result_get_uint(result, "lac");
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, LAC %hu, AUTH %u\n",
-		subscr->id, subscr->imsi, subscr->name, subscr->tmsi,
+	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, EXTEN '%s', LAC %hu, AUTH %u\n",
+		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
 	return subscr;
@@ -273,7 +273,7 @@ int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
 		"SET updated = datetime('now'), "
-		"tmsi = %s, "
+		"tmsi = '%s', "
 		"lac = %i, "
 		"authorized = %i "
 		"WHERE imsi = %s ",
