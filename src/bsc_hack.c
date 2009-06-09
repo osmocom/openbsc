@@ -1059,10 +1059,11 @@ static void handle_options(int argc, char** argv)
 			{"bts-type", 1, 0, 't'},
 			{"cardnr", 1, 0, 'C'},
 			{"release-l2", 0, 0, 'R'},
+			{"timestamp", 0, 0, 'T'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:T",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1110,6 +1111,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'R':
 			release_l2 = 1;
+			break;
+		case 'T':
+			debug_timestamp(1);
 			break;
 		default:
 			/* ignore */

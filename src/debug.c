@@ -65,6 +65,14 @@ void debug_use_color(int color)
 	use_color = color;
 }
 
+static int print_timestamp = 0;
+
+void debug_timestamp(int enable)
+{
+	print_timestamp = enable;
+}
+
+
 /*
  * Parse the category mask.
  * category1:category2:category3
@@ -114,12 +122,15 @@ void debugp(unsigned int subsys, char *file, int line, int cont, const char *for
 	fprintf(outfd, "%s", color(subsys));
 
 	if (!cont) {
-		char *timestr;
-		time_t tm;
-		tm = time(NULL);
-		timestr = ctime(&tm);
-		timestr[strlen(timestr)-1] = '\0';
-		fprintf(outfd, "%s <%4.4x> %s:%d ", timestr, subsys, file, line);
+		if (print_timestamp) {
+			char *timestr;
+			time_t tm;
+			tm = time(NULL);
+			timestr = ctime(&tm);
+			timestr[strlen(timestr)-1] = '\0';
+			fprintf(outfd, "%s ", timestr);
+		}
+		fprintf(outfd, "<%4.4x> %s:%d ", subsys, file, line);
 	}
 	vfprintf(outfd, format, ap);
 	fprintf(outfd, "\033[0;m");
