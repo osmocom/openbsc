@@ -447,7 +447,7 @@ static const char *obj_class_name(u_int8_t oc)
 	case NM_OC_BASEB_TRANSC:
 		return "BASEBAND TRANSCEIVER";
 	case NM_OC_CHANNEL:
-		return "CHANNL";
+		return "CHANNEL";
 	case NM_OC_BS11_ADJC:
 		return "ADJC";
 	case NM_OC_BS11_HANDOVER:
