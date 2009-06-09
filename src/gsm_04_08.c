@@ -531,6 +531,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 	/* Check if we can let the mobile station enter */
 	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
 		db_subscriber_alloc_tmsi(lchan->subscr);
+		subscr_update(lchan->subscr, msg->trx->bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
 		release_loc_updating_req(lchan);
 		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
