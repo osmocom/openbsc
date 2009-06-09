@@ -1061,7 +1061,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
