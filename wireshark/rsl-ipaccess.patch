@@ -1,0 +1,481 @@
+Index: wireshark/epan/dissectors/packet-rsl.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-rsl.c	2009-02-22 15:39:34.000000000 +0100
++++ wireshark/epan/dissectors/packet-rsl.c	2009-02-22 17:27:51.000000000 +0100
+@@ -2,6 +2,7 @@
+  * Routines for Radio Signalling Link (RSL) dissection.
+  *
+  * Copyright 2007, Anders Broman <anders.broman@ericsson.com>
++ * Copyright 2009, Harald Welte <laforge@gnumonks.org>
+  *
+  * $Id: packet-rsl.c 27065 2008-12-20 00:09:02Z wmeier $
+  *
+@@ -116,6 +117,14 @@
+ static int hf_rsl_rtd				= -1;
+ static int hf_rsl_delay_ind			= -1;
+ static int hf_rsl_tfo				= -1;
++static int hf_rsl_f4				= -1;
++static int hf_rsl_f6				= -1;
++static int hf_rsl_f8				= -1;
++static int hf_rsl_fc				= -1;
++static int hf_rsl_local_port			= -1;
++static int hf_rsl_remote_port			= -1;
++static int hf_rsl_local_ip			= -1;
++static int hf_rsl_remote_ip			= -1;
+ 
+ /* Initialize the subtree pointers */
+ static int ett_rsl = -1;
+@@ -173,6 +182,15 @@
+ static int ett_ie_meas_res_no = -1;
+ static int ett_ie_message_id = -1;
+ static int ett_ie_sys_info_type = -1;
++static int ett_ie_f4 = -1;
++static int ett_ie_f6 = -1;
++static int ett_ie_f8 = -1;
++static int ett_ie_remote_ip = -1;
++static int ett_ie_remote_port = -1;
++static int ett_ie_local_port = -1;
++static int ett_ie_local_ip = -1;
++static int ett_ie_fc = -1;
++
+ 
+ proto_tree *top_tree;
+ dissector_handle_t gsm_a_ccch_handle;
+@@ -208,8 +226,11 @@
+ 	{  0x06,		"Common Channel Management messages" },
+ 	{  0x08,		"TRX Management messages" },
+ 	{  0x16,		"Location Services messages" },
++	{  0x3f,		"ip.access Vendor Specific messages" },
+ 	{ 0,			NULL }
+ };
++#define RSL_MSGDISC_IPACCESS	0x3f
++
+ /*
+  * 9.2 MESSAGE TYPE
+  */
+@@ -338,6 +359,14 @@
+ 	{  0x3f,	"TFO MODification REQuest" },					/* 8.4.31 */
+ 	/* 	0 1 - - - - - - Location Services messages: */
+ 	{  0x41,	"Location Information" },						/* 8.7.1 */
++	/* ip.access */
++	{  0x70,	"ip.access BIND" },
++	{  0x71,	"ip.access BIND ACK" },
++	{  0x72,	"ip.access BIND NACK" },
++	{  0x73,	"ip.access CONNECT" },
++	{  0x74,	"ip.access CONNECT ACK" },
++	{  0x75,	"ip.access CONNECT NACK" },
++	{  0x76,	"ip.access DISCONNECT INDication" },
+ 	{ 0,		NULL }
+ };
+ 
+@@ -477,6 +506,10 @@
+ 			Not used
+ 
+ 	*/
++	{ 0xf0,		"Remote IP Address" },
++	{ 0xf1,		"Remote RTP Port" },
++	{ 0xf3,		"Local RTP Port" },
++	{ 0xf5,		"Local IP Address" },
+ 	{ 0,			NULL }
+ };
+ 
+@@ -2043,7 +2076,6 @@
+ 	proto_item_set_len(ti, length+2);
+ 
+ 	proto_tree_add_item(ie_tree, hf_rsl_ie_length, tvb, offset, 1, FALSE);
+-	offset++;
+ 
+ 	/* Received Message */
+ 	offset = dissct_rsl_msg(tvb, pinfo, ie_tree, offset);
+@@ -2907,13 +2939,320 @@
+ 	return ie_offset + length;
+ }
+ 
++/* Vendor-Specific messages of ip.access nanoBTS. There is no public documentation
++ * about those extensions, all information in this dissector is based on lawful
++ * protocol reverse enginering by Harald Welte <laforge@gnumonks.org> */
++#define RSL_MSG_TYPE_IPAC_BIND		0x70
++#define RSL_MSG_TYPE_IPAC_BIND_ACK	0x71
++#define RSL_MSG_TYPE_IPAC_BIND_NACK	0x72
++#define RSL_MSG_TYPE_IPAC_CONNECT	0x73
++#define RSL_MSG_TYPE_IPAC_CONNECT_ACK	0x74
++#define RSL_MSG_TYPE_IPAC_CONNECT_NACK	0x75
++#define RSL_MSG_TYPE_IPAC_DISC_IND	0x76
++#define RSL_IE_IPAC_REMOTE_IP		0xf0
++#define RSL_IE_IPAC_REMOTE_PORT		0xf1
++#define RSL_IE_IPAC_LOCAL_PORT		0xf3
++#define RSL_IE_IPAC_LOCAL_IP		0xf5
++
++static int
++dissect_rsl_ipac_ie_f8(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != 0xf8)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Unknown 0xf8 IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_f8);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 3);
++
++	proto_tree_add_item(ie_tree, hf_rsl_f8, tvb, offset, 2, FALSE);
++	offset += 2;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_local_port(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != RSL_IE_IPAC_LOCAL_PORT)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Local RTP Port IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_local_port);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 3);
++
++	proto_tree_add_item(ie_tree, hf_rsl_local_port, tvb, offset, 2, FALSE);
++	offset += 2;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_remote_port(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != RSL_IE_IPAC_REMOTE_PORT)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Remote RTP Port IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_remote_port);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 3);
++
++	proto_tree_add_uint(ie_tree, hf_rsl_remote_port, tvb, offset, 2, FALSE);
++	offset += 2;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_local_ip(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++	guint32 ip;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != RSL_IE_IPAC_LOCAL_IP)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Local IP Address IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_local_ip);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 5);
++
++	ip = tvb_get_ipv4(tvb, offset);
++	proto_tree_add_ipv4(ie_tree, hf_rsl_local_ip, tvb, offset, 4, ip);
++	offset += 4;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_remote_ip(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++	guint32 ip;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != RSL_IE_IPAC_REMOTE_IP)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Remote IP Address IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_remote_ip);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 5);
++
++	ip = tvb_get_ipv4(tvb, offset);
++	proto_tree_add_ipv4(ie_tree, hf_rsl_remote_ip, tvb, offset, 4, ip);
++	offset += 4;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_f6(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 length;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != 0xf6)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Unknown 0xf6 IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_f6);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++
++	/* Length */
++	length = tvb_get_guint8(tvb, offset);
++	offset++;
++	proto_item_set_len(ti, length+2);
++
++	proto_tree_add_bytes(ie_tree, hf_rsl_f6, tvb, offset, length,
++				tvb_get_ptr(tvb, offset, length));
++	offset += length;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_f4(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != 0xf4)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Unknown 0xf4 IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_f4);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 2);
++	proto_tree_add_item(ie_tree, hf_rsl_f4, tvb, offset, 1, FALSE);
++	offset++;
++
++	return offset;
++}
++
++static int
++dissect_rsl_ipac_ie_fc(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
++{
++	proto_item *ti;
++	proto_tree *ie_tree;
++	guint8 ie_id;
++
++	if (is_mandatory == FALSE) {
++		ie_id = tvb_get_guint8(tvb, offset);
++		if (ie_id != 0xfc)
++			return offset;
++	}
++
++	ti = proto_tree_add_text(tree, tvb, offset, 0, "Unknown 0xfc IE");
++	ie_tree = proto_item_add_subtree(ti, ett_ie_fc);
++
++	/* Element identifier */
++	proto_tree_add_item(ie_tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++	offset++;
++	/* Fixed Length */
++	proto_item_set_len(ti, 2);
++	proto_tree_add_item(ie_tree, hf_rsl_fc, tvb, offset, 1, FALSE);
++	offset++;
++
++	return offset;
++}
++
++static int
++dissct_rsl_ipaccess_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
++{
++	guint8 msg_type;
++
++	msg_type = tvb_get_guint8(tvb, offset)&0x7f;
++	offset++;
++
++	switch (msg_type) {
++	case RSL_MSG_TYPE_IPAC_BIND:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_BIND_ACK:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_local_port(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_local_ip(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_fc(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_BIND_NACK:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_CONNECT:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_remote_ip(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_remote_port(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_f4(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_fc(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_CONNECT_ACK:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_CONNECT_NACK:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		break;
++	case RSL_MSG_TYPE_IPAC_DISC_IND:
++		/* Channel number			9.3.1	M TV 2		*/
++		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
++		offset = dissect_rsl_ipac_ie_f6(tvb, pinfo, tree, offset, TRUE);
++		/* Cause					9.3.26	M TLV >=3 */
++		offset = dissect_rsl_ie_cause(tvb, pinfo, tree, offset, TRUE);
++		break;
++	}
++
++	return offset;
++}
++
+ static int
+ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
+ {
+-	guint8	msg_type;
++	guint8	msg_disc, msg_type;
+ 
++	msg_disc = tvb_get_guint8(tvb, offset++) >> 1;
+ 	msg_type = tvb_get_guint8(tvb,offset)&0x7f;
+ 	proto_tree_add_item(tree, hf_rsl_msg_type, tvb, offset, 1, FALSE);
++
++	if (msg_disc == RSL_MSGDISC_IPACCESS) {
++		offset = dissct_rsl_ipaccess_msg(tvb, pinfo, tree, offset);
++		return offset;
++	}
+ 	offset++;
+ 
+ 	switch (msg_type){
+@@ -3517,7 +3856,6 @@
+ 		/* 9.1 Message discriminator */
+ 		proto_tree_add_item(rsl_tree, hf_rsl_msg_dsc, tvb, offset, 1, FALSE);
+ 		proto_tree_add_item(rsl_tree, hf_rsl_T_bit, tvb, offset, 1, FALSE);
+-		offset++;
+ 
+ 		offset = dissct_rsl_msg(tvb, pinfo, rsl_tree, offset);
+ 
+@@ -3883,6 +4221,46 @@
+ 			FT_UINT8, BASE_DEC, VALS(rsl_emlpp_prio_vals), 0x03,
+ 			"eMLPP Priority", HFILL }
+ 		},
++		{ &hf_rsl_f4,
++			{ "unknown F4 IE",	"rsl.ipacc.f4",
++			  FT_UINT8, BASE_DEC, NULL, 0x0,
++			  "unknown F4 IE", HFILL }
++		},
++		{ &hf_rsl_f6,
++			{ "unknown F6 IE",	"rsl.ipacc.f6",
++			  FT_BYTES, BASE_HEX, NULL, 0x0,
++			  "unknown F6 IE", HFILL }
++		},
++		{ &hf_rsl_f8,
++			{ "unknown F8 IE",	"rsl.ipacc.f8",
++			  FT_UINT16, BASE_DEC, NULL, 0x0,
++			  "unknown F8 IE", HFILL }
++		},
++		{ &hf_rsl_fc,
++			{ "unknown FC IE",	"rsl.ipacc.fc",
++			  FT_UINT8, BASE_DEC, NULL, 0x0,
++			  "unknown FC IE", HFILL }
++		},
++		{ &hf_rsl_local_port,
++			{ "ip.access Local RTP Port",	"rsl.ipacc.local_port",
++			  FT_UINT16, BASE_DEC, NULL, 0x0,
++			  "ip.access Local RTP Port", HFILL },
++		},
++		{ &hf_rsl_remote_port,
++			{ "ip.access Remote RTP Port",	"rsl.ipacc.remote_port",
++			  FT_UINT16, BASE_DEC, NULL, 0x0,
++			  "ip.access Remote RTP Port", HFILL },
++		},
++		{ &hf_rsl_local_ip,
++			{ "ip.access Local IP Address",	"rsl.ipacc.local_ip",
++			  FT_IPv4, BASE_NONE, NULL, 0x0,
++			  "ip.access Local IP Address", HFILL },
++		},
++		{ &hf_rsl_remote_ip,
++			{ "ip.access Remote IP Address", "rsl.ipacc.remote_ip",
++			  FT_IPv4, BASE_NONE, NULL, 0x0,
++			  "ip.access Remote IP Address", HFILL },
++		},
+ 	};
+ 	static gint *ett[] = {
+ 		&ett_rsl,
+@@ -3941,6 +4319,14 @@
+ 		&ett_ie_meas_res_no,
+ 		&ett_ie_message_id,
+ 		&ett_ie_sys_info_type,
++		&ett_ie_f4,
++		&ett_ie_f6,
++		&ett_ie_f8,
++		&ett_ie_remote_ip,
++		&ett_ie_remote_port,
++		&ett_ie_local_port,
++		&ett_ie_local_ip,
++		&ett_ie_fc,
+ 	};
+ 
+ 	/* Register the protocol name and description */
