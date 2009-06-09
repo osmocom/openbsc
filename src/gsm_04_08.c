@@ -118,6 +118,7 @@ static const char *rr_cause_name(u_int8_t cause)
 	return strbuf;
 }
 
+int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);
@@ -180,6 +181,21 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	lchan->loc_operation = (struct gsm_loc_updating_operation *)
 				malloc(sizeof(*lchan->loc_operation));
 	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
+}
+
+static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
+{
+	u_int32_t tmsi;
+
+	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
+		db_subscriber_alloc_tmsi(lchan->subscr);
+		subscr_update(lchan->subscr, msg->trx->bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
+		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
+		release_loc_updating_req(lchan);
+		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+	}
+
+	return 0;
 }
 
 static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
@@ -500,7 +516,6 @@ static int mm_rx_id_resp(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
-	u_int32_t tmsi;
 
 	mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
@@ -529,15 +544,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 	}
 
 	/* Check if we can let the mobile station enter */
-	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
-		db_subscriber_alloc_tmsi(lchan->subscr);
-		subscr_update(lchan->subscr, msg->trx->bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
-		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
-		release_loc_updating_req(lchan);
-		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
-	}
-
-	return 0;
+	return gsm0408_authorize(lchan, msg);
 }
 
 
@@ -576,12 +583,10 @@ static const char *lupd_name(u_int8_t type)
 static int mm_rx_loc_upd_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_bts *bts = msg->trx->bts;
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan = msg->lchan;
 	u_int8_t mi_type;
-	u_int32_t tmsi;
 	char mi_string[MI_SIZE];
 	int rc;
 
@@ -650,16 +655,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	 * for identity responses.
 	 */
 	schedule_reject(lchan);
-	if (!authorize_subscriber(lchan->loc_operation, subscr))
-		return 0;
-
-	db_subscriber_alloc_tmsi(subscr);
-	subscr_update(subscr, bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
-
-	tmsi = strtoul(subscr->tmsi, NULL, 10);
-
-	release_loc_updating_req(lchan);
-	return gsm0408_loc_upd_acc(lchan, tmsi);
+	return gsm0408_authorize(lchan, msg);
 }
 
 /* 9.1.5 Channel mode modify */
