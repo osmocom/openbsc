@@ -717,14 +717,17 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
 		DEBUGPC(DRSL, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
-	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO))
-		DEBUGPC(DRSL, "L1 ");
-	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO))
-		DEBUGPC(DRSL, "L3 ");
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
 		DEBUGPC(DRSL, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
-	DEBUGPC(DRSL, "\n");
+	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO))
+		DEBUGPC(DRSL, "L1 ");
+	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
+		DEBUGPC(DRSL, "L3\n");
+		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+		return gsm0408_rcvmsg(msg);
+	} else
+		DEBUGPC(DRSL, "\n");
 
 	return 0;
 }

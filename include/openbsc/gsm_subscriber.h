@@ -23,6 +23,14 @@ struct gsm_subscriber {
 	/* for internal management */
 	int use_count;
 	struct llist_head entry;
+
+	/* those are properties of the equipment, but they
+	 * are applicable to the subscriber at the moment */
+	struct gsm48_classmark1 classmark1;
+	u_int8_t classmark2_len;
+	u_int8_t classmark2[3];
+	u_int8_t classmark3_len;
+	u_int8_t classmark3[14];
 };
 
 enum gsm_subscriber_field {

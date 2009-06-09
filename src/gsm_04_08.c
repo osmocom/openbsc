@@ -118,6 +118,63 @@ static const char *rr_cause_name(u_int8_t cause)
 	return strbuf;
 }
 
+static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
+			   int len)
+{
+	memset(rep, 0, sizeof(*rep));
+
+	if (data[0] & 0x80)
+		rep->flags |= MEAS_REP_F_BA1;
+	if (data[0] & 0x40)
+		rep->flags |= MEAS_REP_F_DTX;
+	if (data[1] & 0x40)
+		rep->flags |= MEAS_REP_F_VALID;
+
+	rep->rxlev_full = data[0] & 0x3f;
+	rep->rxlev_sub = data[1] & 0x3f;
+	rep->rxqual_full = (data[3] >> 4) & 0x7;
+	rep->rxqual_sub = (data[3] >> 1) & 0x7;
+	rep->num_cell = data[4] >> 6 | ((data[3] & 0x01) << 2);
+	if (rep->num_cell < 1)
+		return;
+
+	/* an encoding nightmare in perfection */
+
+	rep->cell[0].rxlev = data[4] & 0x3f;
+	rep->cell[0].bcch_freq = data[5] >> 2;
+	rep->cell[0].bsic = ((data[5] & 0x03) << 3) | (data[6] >> 5);
+	if (rep->num_cell < 2)
+		return;
+
+	rep->cell[1].rxlev = ((data[6] & 0x1f) << 1) | (data[7] >> 7);
+	rep->cell[1].bcch_freq = (data[7] >> 2) & 0x1f;
+	rep->cell[1].bsic = ((data[7] & 0x03) << 4) | (data[8] >> 4);
+	if (rep->num_cell < 3)
+		return;
+
+	rep->cell[2].rxlev = ((data[8] & 0x0f) << 2) | (data[9] >> 6);
+	rep->cell[2].bcch_freq = (data[9] >> 1) & 0x1f;
+	rep->cell[2].bsic = ((data[9] & 0x01) << 6) | (data[10] >> 3);
+	if (rep->num_cell < 4)
+		return;
+
+	rep->cell[3].rxlev = ((data[10] & 0x07) << 3) | (data[11] >> 5);
+	rep->cell[3].bcch_freq = data[11] & 0x1f;
+	rep->cell[3].bsic = data[12] >> 2;
+	if (rep->num_cell < 5)
+		return;
+
+	rep->cell[4].rxlev = ((data[12] & 0x03) << 4) | (data[13] >> 4);
+	rep->cell[4].bcch_freq = ((data[13] & 0xf) << 1) | (data[14] >> 7);
+	rep->cell[4].bsic = (data[14] >> 1) & 0x3f;
+	if (rep->num_cell < 6)
+		return;
+
+	rep->cell[5].rxlev = ((data[14] & 0x01) << 5) | (data[15] >> 3);
+	rep->cell[5].bcch_freq = ((data[15] & 0x07) << 2) | (data[16] >> 6);
+	rep->cell[5].bsic = data[16] & 0x3f;
+}
+
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
@@ -847,6 +904,9 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 		subscr_put(subscr);
 	}
 
+	subscr->classmark2_len = classmark2_len;
+	memcpy(subscr->classmark2, classmark2, classmark2_len);
+
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
 
@@ -979,6 +1039,9 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name ? subscr->name : subscr->imsi);
 
+	subscr->classmark2_len = *classmark2_lv;
+	memcpy(subscr->classmark2, classmark2_lv+1, *classmark2_lv);
+
 	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
 	} else if (msg->lchan->subscr != subscr) {
@@ -1004,12 +1067,86 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	return rc;
 }
 
+static int gsm48_rx_rr_classmark(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm_subscriber *subscr = msg->lchan->subscr;
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	u_int8_t cm2_len, cm3_len = 0;
+	u_int8_t *cm2, *cm3 = NULL;
+
+	DEBUGP(DRR, "CLASSMARK CHANGE ");
+
+	/* classmark 2 */
+	cm2_len = gh->data[0];
+	cm2 = &gh->data[1];
+	DEBUGPC(DRR, "CM2(len=%u) ", cm2_len);
+
+	if (payload_len > cm2_len + 1) {
+		/* we must have a classmark3 */
+		if (gh->data[cm2_len+1] != 0x20) {
+			DEBUGPC(DRR, "ERR CM3 TAG\n");
+			return -EINVAL;
+		}
+		if (cm2_len > 3) {
+			DEBUGPC(DRR, "CM2 too long!\n");
+			return -EINVAL;
+		}
+		
+		cm3_len = gh->data[cm2_len+2];
+		cm3 = &gh->data[cm2_len+3];
+		if (cm3_len > 14) {
+			DEBUGPC(DRR, "CM3 len %u too long!\n", cm3_len);
+			return -EINVAL;
+		}
+		DEBUGPC(DRR, "CM3(len=%u)\n", cm3_len);
+	}
+	if (subscr) {
+		subscr->classmark2_len = cm2_len;
+		memcpy(subscr->classmark2, cm2, cm2_len);
+		if (cm3) {
+			subscr->classmark3_len = cm3_len;
+			memcpy(subscr->classmark3, cm3, cm3_len);
+		}
+	}
+
+	/* FIXME: store the classmark2/3 values with the equipment register */
+
+	return 0;
+}
+
 static int gsm48_rx_rr_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	DEBUGP(DRR, "STATUS rr_cause = %s\n", 
 		rr_cause_name(gh->data[0]));
+
+	return 0;
+}
+
+static int gsm48_rx_rr_meas_rep(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	static struct gsm_meas_rep meas_rep;
+
+	DEBUGP(DRR, "MEASUREMENT REPORT ");
+	parse_meas_rep(&meas_rep, gh->data, payload_len);
+	if (meas_rep.flags & MEAS_REP_F_DTX)
+		DEBUGPC(DRR, "DTX ");
+	if (meas_rep.flags & MEAS_REP_F_BA1)
+		DEBUGPC(DRR, "BA1 ");
+	if (!(meas_rep.flags & MEAS_REP_F_VALID))
+		DEBUGPC(DRR, "NOT VALID ");
+	else
+		DEBUGPC(DRR, "FULL(lev=%u, qual=%u) SUB(lev=%u, qual=%u) ",
+		meas_rep.rxlev_full, meas_rep.rxqual_full, meas_rep.rxlev_sub,
+		meas_rep.rxqual_sub);
+
+	DEBUGPC(DRR, "NUM_NEIGH=%u\n", meas_rep.num_cell);
+
+	/* FIXME: put the results somwhere */
 
 	return 0;
 }
@@ -1022,8 +1159,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 
 	switch (gh->msg_type) {
 	case GSM48_MT_RR_CLSM_CHG:
-		DEBUGP(DRR, "CLASSMARK CHANGE\n");
-		/* FIXME: what to do ?!? */
+		rc = gsm48_rx_rr_classmark(msg);
 		break;
 	case GSM48_MT_RR_GPRS_SUSP_REQ:
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
@@ -1037,6 +1173,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_STATUS:
 		rc = gsm48_rx_rr_status(msg);
+		break;
+	case GSM48_MT_RR_MEAS_REP:
+		rc = gsm48_rx_rr_meas_rep(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",

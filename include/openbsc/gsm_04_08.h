@@ -4,6 +4,14 @@
 /* GSM TS 04.08  definitions */
 struct gsm_lchan;
 
+struct gsm48_classmark1 {
+	u_int8_t spare:1,
+		 rev_level:2,
+		 es_ind:1,
+		 a5_1:1,
+		 pwr_lev:3;
+} __attribute__ ((packed));
+
 /* Chapter 10.5.2.5 */
 struct gsm48_chan_desc {
 	u_int8_t chan_nr;
@@ -73,7 +81,7 @@ struct gsm48_loc_upd_req {
 	u_int8_t type:4,
 		 key_seq:4;
 	struct gsm48_loc_area_id lai;
-	u_int8_t classmark1;
+	struct gsm48_classmark1 classmark1;
 	u_int8_t mi_len;
 	u_int8_t mi[0];
 } __attribute__ ((packed));
@@ -186,7 +194,7 @@ struct gsm48_system_information_type_6 {
 
 /* Section 9.2.12 IMSI Detach Indication */
 struct gsm48_imsi_detach_ind {
-	u_int8_t classmark1;
+	struct gsm48_classmark1 classmark1;
 	u_int8_t mi_len;
 	u_int8_t mi[0];
 } __attribute__ ((packed));
@@ -504,6 +512,30 @@ enum gsm48_reject_value {
 	GSM48_REJECT_GPRS_NOT_ALLOWED_IN_PLMN	= 14,
 	GSM48_REJECT_MSC_TMP_NOT_REACHABLE	= 16,
 };
+
+
+/* extracted from a L3 measurement report IE */
+struct gsm_meas_rep_cell {
+	u_int8_t rxlev;
+	u_int8_t bcch_freq;	/* fixme: translate to ARFCN */
+	u_int8_t bsic;
+};
+
+struct gsm_meas_rep {
+	unsigned int flags;
+	u_int8_t rxlev_full;
+	u_int8_t rxqual_full;
+	u_int8_t rxlev_sub;
+	u_int8_t rxqual_sub;
+	int num_cell;
+	struct gsm_meas_rep_cell cell[6];
+};
+#define MEAS_REP_F_DTX		0x01
+#define MEAS_REP_F_VALID	0x02
+#define MEAS_REP_F_BA1		0x04
+
+void gsm48_parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
+			  int len);
 
 
 struct msgb;
