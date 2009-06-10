@@ -326,6 +326,8 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 }
 
+#if 0
+TODO: callref and remote callref of call must be resolved to get gsm_trans object
 static void call_dump_vty(struct vty *vty, struct gsm_call *call)
 {
 	vty_out(vty, "Call Type %u, State %u, Transaction ID %u%s",
@@ -349,6 +351,7 @@ static void call_dump_vty(struct vty *vty, struct gsm_call *call)
 	} else
 		vty_out(vty, "Call has no Called Subscriber%s", VTY_NEWLINE);
 }
+#endif
 
 DEFUN(show_lchan,
       show_lchan_cmd,

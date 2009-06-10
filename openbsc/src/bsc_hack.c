@@ -995,7 +995,7 @@ static int bootstrap_network(void)
 	}
 
 	/* initialize our data structures */
-	gsmnet = gsm_network_init(2, BTS_TYPE, MCC, MNC);
+	gsmnet = gsm_network_init(2, BTS_TYPE, MCC, MNC, mncc_recv);
 	if (!gsmnet)
 		return -ENOMEM;
 
@@ -1188,6 +1188,7 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 
 	while (1) {
+		bsc_upqueue(gsmnet);
 		bsc_select_main(0);
 	}
 }

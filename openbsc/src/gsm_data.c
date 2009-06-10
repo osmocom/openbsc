@@ -84,7 +84,8 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 }
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
-				     u_int16_t country_code, u_int16_t network_code)
+				     u_int16_t country_code, u_int16_t network_code,
+				     int (*mncc_recv)(struct gsm_network *, int, void *))
 {
 	int i;
 	struct gsm_network *net;
@@ -100,6 +101,11 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts
 	net->country_code = country_code;
 	net->network_code = network_code;
 	net->num_bts = num_bts;
+
+	INIT_LLIST_HEAD(&net->trans_list);
+	INIT_LLIST_HEAD(&net->upqueue);
+
+	net->mncc_recv = mncc_recv;
 
 	for (i = 0; i < num_bts; i++) {
 		struct gsm_bts *bts = &net->bts[i];
@@ -118,7 +124,7 @@ struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts
 			trx->bts = bts;
 			trx->nr = j;
 
-			for (k = 0; k < 8; k++) {
+			for (k = 0; k < TRX_NR_TS; k++) {
 				struct gsm_bts_trx_ts *ts = &trx->ts[k];
 				int l;
 				

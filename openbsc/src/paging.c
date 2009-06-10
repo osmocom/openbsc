@@ -221,6 +221,7 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 		return;
 	}
 
+	DEBUGP(DPAG, "Start paging on bts %d.\n", bts->nr);
 	req = (struct gsm_paging_request *)malloc(sizeof(*req));
 	memset(req, 0, sizeof(*req));
 	req->subscr = subscr_get(subscr);
@@ -263,9 +264,12 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
-			if (lchan && req->cbfn)
+			if (lchan && req->cbfn) {
+				DEBUGP(DPAG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 					  NULL, lchan, req->cbfn_param);
+			} else
+				DEBUGP(DPAG, "Stop paging on bts %d silently.\n", bts->nr);
 			paging_remove_request(&bts->paging, req);
 			break;
 		}
