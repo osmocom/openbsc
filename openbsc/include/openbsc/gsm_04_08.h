@@ -394,10 +394,11 @@ struct gsm48_imsi_detach_ind {
 #define GSM48_IE_FACILITY	0x1c	/* 10.5.4.15 */
 #define GSM48_IE_PROGR_IND	0x1e	/* 10.5.4.21 */
 #define GSM48_IE_AUX_STATUS	0x24	/* 10.5.4.4 */
+#define GSM48_IE_NOTIFY		0x27	/* 10.5.4.20 */
 #define GSM48_IE_KPD_FACILITY	0x2c	/* 10.5.4.17 */
 #define GSM48_IE_SIGNAL		0x34	/* 10.5.4.23 */
-#define GSM48_IE_CONN_NUM	0x4c	/* 10.5.4.13 */
-#define GSM48_IE_CONN_SUBADDR	0x4d	/* 10.5.4.14 */
+#define GSM48_IE_CONN_BCD	0x4c	/* 10.5.4.13 */
+#define GSM48_IE_CONN_SUB	0x4d	/* 10.5.4.14 */
 #define GSM48_IE_CALLING_BCD	0x5c	/* 10.5.4.9 */
 #define GSM48_IE_CALLING_SUB	0x5d	/* 10.5.4.10 */
 #define GSM48_IE_CALLED_BCD	0x5e	/* 10.5.4.7 */
@@ -412,6 +413,8 @@ struct gsm48_imsi_detach_ind {
 #define GSM48_IE_CLIR_SUPP	0xa1	/* 10.5.4.11a */
 #define GSM48_IE_CLIR_INVOC	0xa2	/* 10.5.4.11b */
 #define GSM48_IE_REV_C_SETUP	0xa3	/* 10.5.4.22a */
+#define GSM48_IE_REPEAT_CIR	0xd1	/* 10.5.4.22 */
+#define GSM48_IE_REPEAT_SEQ	0xd3	/* 10.5.4.22 */
 
 /* Section 10.5.4.11 / Table 10.5.122 */
 #define GSM48_CAUSE_CS_GSM	0x60
@@ -562,7 +565,8 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 
 /* convert a ASCII phone number to call-control BCD */
 int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
-		      u_int8_t type, const char *input);
-u_int8_t decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv);
+		      int h_len, const char *input);
+int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
+		      int h_len);
 
 #endif

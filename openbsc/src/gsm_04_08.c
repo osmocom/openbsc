@@ -48,6 +48,10 @@
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
 
+#define GSM_MAX_FACILITY       128
+#define GSM_MAX_SSVERSION      128
+#define GSM_MAX_USERUSER       128
+
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
 		[GSM48_IE_MOBILE_ID]	= { TLV_TYPE_TLV },
@@ -64,10 +68,11 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		[GSM48_IE_FACILITY]	= { TLV_TYPE_TLV },
 		[GSM48_IE_PROGR_IND]	= { TLV_TYPE_TLV },
 		[GSM48_IE_AUX_STATUS]	= { TLV_TYPE_TLV },
+		[GSM48_IE_NOTIFY]	= { TLV_TYPE_TV },
 		[GSM48_IE_KPD_FACILITY]	= { TLV_TYPE_TV },
 		[GSM48_IE_SIGNAL]	= { TLV_TYPE_TV },
-		[GSM48_IE_CONN_NUM]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CONN_SUBADDR]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CONN_BCD]	= { TLV_TYPE_TLV },
+		[GSM48_IE_CONN_SUB]	= { TLV_TYPE_TLV },
 		[GSM48_IE_CALLING_BCD]	= { TLV_TYPE_TLV },
 		[GSM48_IE_CALLING_SUB]	= { TLV_TYPE_TLV },
 		[GSM48_IE_CALLED_BCD]	= { TLV_TYPE_TLV },
@@ -82,6 +87,8 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		[GSM48_IE_CLIR_SUPP]	= { TLV_TYPE_T },
 		[GSM48_IE_CLIR_INVOC]	= { TLV_TYPE_T },
 		[GSM48_IE_REV_C_SETUP]	= { TLV_TYPE_T },
+		[GSM48_IE_REPEAT_CIR]   = { TLV_TYPE_T },
+		[GSM48_IE_REPEAT_SEQ]   = { TLV_TYPE_T },
 		/* FIXME: more elements */
 	},
 };
@@ -332,16 +339,14 @@ static const char bcd_num_digits[] = {
 	'8', '9', '*', '#', 'a', 'b', 'c', '\0'
 };
 
-/* decode a 'called party BCD number' as in 10.5.4.7 */
-u_int8_t decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv)
+/* decode a 'called/calling/connect party BCD number' as in 10.5.4.7 */
+int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
+		      int h_len)
 {
 	u_int8_t in_len = bcd_lv[0];
 	int i;
 
-	if (in_len < 1)
-		return 0;
-
-	for (i = 2; i <= in_len; i++) {
+	for (i = 1 + h_len; i <= in_len; i++) {
 		/* lower nibble */
 		output_len--;
 		if (output_len <= 1)
@@ -357,8 +362,7 @@ u_int8_t decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv)
 	if (output_len >= 1)
 		*output++ = '\0';
 
-	/* return number type / calling plan */
-	return bcd_lv[1] & 0x3f;
+	return 0;
 }
 
 /* convert a single ASCII character to call-control BCD */
@@ -373,26 +377,21 @@ static int asc_to_bcd(const char asc)
 	return -EINVAL;
 }
 
-/* convert a ASCII phone number to 'called party BCD number' */
+/* convert a ASCII phone number to 'called/calling/connect party BCD number' */
 int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
-		      u_int8_t type, const char *input)
+		      int h_len, const char *input)
 {
 	int in_len = strlen(input);
 	int i;
-	u_int8_t *bcd_cur = bcd_lv + 2;
-
-	if (in_len/2 + 1 > max_len)
-		return -EIO;
+	u_int8_t *bcd_cur = bcd_lv + 1 + h_len;
 
 	/* two digits per byte, plus type byte */
-	bcd_lv[0] = in_len/2 + 1;
+	bcd_lv[0] = in_len/2 + h_len;
 	if (in_len % 2)
 		bcd_lv[0]++;
 
-	/* if the caller wants to create a valid 'calling party BCD
-	 * number', then the extension bit MUST NOT be set.  For the
-	 * 'called party BCD number' it MUST be set. *sigh */
-	bcd_lv[1] = type;
+	if (bcd_lv[0] > max_len)
+		return -EIO;
 
 	for (i = 0; i < in_len; i++) {
 		int rc = asc_to_bcd(input[i]);
@@ -409,6 +408,451 @@ int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
 
 	/* return how many bytes we used */
 	return (bcd_cur - bcd_lv);
+}
+
+/* decode 'bearer capability' */
+static int decode_bearer_cap(int *transfer, int *mode, int *coding,
+			     int *radio, int *speech_ctm, int *speech_ver,
+			     const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+	int i, s;
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	speech_ver[0] = -1; /* end of list, of maximum 7 values */
+
+	/* octet 3 */
+	*transfer = lv[1] & 0x07;
+	*mode = (lv[1] & 0x08) >> 3;
+	*coding = (lv[1] & 0x10) >> 4;
+	*radio = (lv[1] & 0x60) >> 5;
+
+	i = 1;
+	s = 0;
+	while(!(lv[i] & 0x80)) {
+		i++; /* octet 3a etc */
+		if (in_len < i)
+			return 0;
+		speech_ver[s++] = lv[i] & 0x0f;
+		speech_ver[s] = -1; /* end of list */
+		if (i == 2) /* octet 3a */
+			*speech_ctm = (lv[i] & 0x20) >> 5;
+		if (s == 7) /* maximum speech versions + end of list */
+			return 0;
+	}
+
+	return 0;
+}
+
+/* encode 'bearer capability' */
+static int encode_bearer_cap(int lv_only, struct msgb *msg, int transfer,
+			     int mode, int coding, int radio, int speech_ctm,
+			     int *speech_ver)
+{
+	u_int8_t lv[32 + 1];
+	int i, s;
+
+	lv[1] = transfer;
+	lv[1] |= mode << 3;
+	lv[1] |= coding << 4;
+	lv[1] |= radio << 5;
+
+	i = 1;
+	for (s = 0; speech_ver[s] >= 0; s++) {
+		i++; /* octet 3a etc */
+		lv[i] = speech_ver[s];
+		if (i == 2) /* octet 3a */
+			lv[i] |= speech_ctm << 5;
+	}
+	lv[i] |= 0x80; /* last IE of octet 3 etc */
+
+	lv[0] = i;
+	if (lv_only)
+		msgb_lv_put(msg, lv[0], lv+1);
+	else
+		msgb_tlv_put(msg, GSM48_IE_BEARER_CAP, lv[0], lv+1);
+
+	return 0;
+}
+
+/* decode 'call control cap' */
+static int decode_cccap(int *dtmf, int *pcp, const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	/* octet 3 */
+	*dtmf = lv[1] & 0x01;
+	*pcp = (lv[1] & 0x02) >> 1;
+	
+	return 0;
+}
+
+/* decode 'called party BCD number' */
+static int decode_called(int *type, int *plan, char *number,
+			 int number_len, const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	/* octet 3 */
+	*plan = lv[1] & 0x0f;
+	*type = (lv[1] & 0x70) >> 4;
+
+	/* octet 4..N */
+	decode_bcd_number(number, number_len, lv, 1);
+	
+	return 0;
+}
+
+/* encode 'called party BCD number' */
+static int encode_called(struct msgb *msg, int type, int plan, char *number)
+{
+	u_int8_t lv[18];
+	int ret;
+
+	/* octet 3 */
+	lv[1] = plan;
+	lv[1] |= type << 4;
+
+	/* octet 4..N, octet 2 */
+	ret = encode_bcd_number(lv, sizeof(lv), 1, number);
+	if (ret < 0)
+		return ret;
+
+	msgb_tlv_put(msg, GSM48_IE_CALLED_BCD, lv[0], lv+1);
+
+	return 0;
+}
+
+/* encode callerid of various IEs */
+static int encode_callerid(struct msgb *msg, int ie, int type, int plan,
+			   int present, int screen, char *number)
+{
+	u_int8_t lv[13];
+	int h_len = 1;
+	int ret;
+
+	/* octet 3 */
+	lv[1] = plan;
+	lv[1] |= type << 4;
+
+	if (present || screen) {
+		/* octet 3a */
+		lv[2] = screen;
+		lv[2] |= present << 5;
+		lv[2] |= 0x80;
+		h_len++;
+	} else
+		lv[1] |= 0x80;
+
+	/* octet 4..N, octet 2 */
+	ret = encode_bcd_number(lv, sizeof(lv), h_len, number);
+	if (ret < 0)
+		return ret;
+
+	msgb_tlv_put(msg, ie, lv[0], lv+1);
+
+	return 0;
+}
+
+/* decode 'cause' */
+static int decode_cause(int *location, int *coding, int *rec, int *rec_val,
+			int *value, u_char *diag, u_int *diag_len,
+			const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+	int i;
+
+	if (in_len < 2)
+		return -EINVAL;
+
+	*diag_len = 0;
+
+	/* octet 3 */
+	*location = lv[1] & 0x0f;
+	*coding = (lv[1] & 0x60) >> 5;
+	
+	i = 1;
+	if (!(lv[i] & 0x80)) {
+		i++; /* octet 3a */
+		if (in_len < i+1)
+			return 0;
+		*rec = 1;
+		*rec_val = lv[i] & 0x7f;
+		
+	}
+	i++;
+
+	/* octet 4 */
+	*value = lv[i] & 0x7f;
+	i++;
+
+	if (in_len < i) /* no diag */
+		return 0;
+
+	if (in_len - (i-1) > 32) /* maximum 32 octets */
+		return 0;
+
+	/* octet 5-N */
+	memcpy(diag, lv + i, in_len - (i-1));
+	*diag_len = in_len - (i-1);
+
+	return 0;
+}
+
+/* encode 'cause' */
+static int encode_cause(int lv_only, struct msgb *msg, int location,
+			int coding, int rec, int rec_val, int value,
+			u_char *diag, u_int diag_len)
+{
+	u_int8_t lv[32+4];
+	int i;
+
+	if (diag_len > 32)
+		return -EINVAL;
+
+	/* octet 3 */
+	lv[1] = location;
+	lv[1] |= coding << 5;
+
+	i = 1;
+	if (rec) {
+		i++; /* octet 3a */
+		lv[i] = rec_val;
+	}
+	lv[i] |= 0x80; /* end of octet 3 */
+
+	/* octet 4 */
+	i++;
+	lv[i] = 0x80 | value;
+
+	/* octet 5-N */
+	if (diag_len) {
+		memcpy(lv + i, diag, diag_len);
+		i += diag_len;
+	}
+
+	lv[0] = i;
+	if (lv_only)
+		msgb_lv_put(msg, lv[0], lv+1);
+	else
+		msgb_tlv_put(msg, GSM48_IE_CAUSE, lv[0], lv+1);
+
+	return 0;
+}
+
+/* encode 'calling number' */
+static int encode_calling(struct msgb *msg, int type, int plan, int present,
+			  int screen, char *number)
+{
+	return encode_callerid(msg, GSM48_IE_CALLING_BCD, type, plan,
+				present, screen, number);
+}
+
+/* encode 'connected number' */
+static int encode_connected(struct msgb *msg, int type, int plan, int present,
+			    int screen, char *number)
+{
+	return encode_callerid(msg, GSM48_IE_CONN_BCD, type, plan,
+				present, screen, number);
+}
+
+/* encode 'redirecting number' */
+static int encode_redirecting(struct msgb *msg, int type, int plan, int present,
+			      int screen, char *number)
+{
+	return encode_callerid(msg, GSM48_IE_REDIR_BCD, type, plan,
+				present, screen, number);
+}
+
+/* decode 'facility' */
+static int decode_facility(char *info, int info_len, int *len,
+			   const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	if (in_len > info_len)
+		return -EINVAL;
+
+	memcpy(info, lv+1, in_len);
+	*len = in_len;
+
+	return 0;
+}
+
+/* encode 'facility' */
+static int encode_facility(int lv_only, struct msgb *msg, char *info, int len)
+{
+	u_int8_t lv[GSM_MAX_FACILITY + 1];
+
+	if (len < 1 || len > GSM_MAX_FACILITY)
+		return -EINVAL;
+
+	memcpy(lv+1, info, len);
+	lv[0] = len;
+	if (lv_only)
+		msgb_lv_put(msg, lv[0], lv+1);
+	else
+		msgb_tlv_put(msg, GSM48_IE_FACILITY, lv[0], lv+1);
+
+	return 0;
+}
+
+/* decode 'notify' */
+static int decode_notify(int *notify, const u_int8_t *v)
+{
+	*notify = v[0] & 0x7f;
+	
+	return 0;
+}
+
+/* encode 'notify' */
+static int encode_notify(struct msgb *msg, int notify)
+{
+	msgb_v_put(msg, notify | 0x80);
+
+	return 0;
+}
+
+/* encode 'signal' */
+static int encode_signal(struct msgb *msg, int signal)
+{
+	msgb_tv_put(msg, GSM48_IE_SIGNAL, signal);
+
+	return 0;
+}
+
+/* decode 'keypad' */
+static int decode_keypad(int *keypad, const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	*keypad = lv[1] & 0x7f;
+	
+	return 0;
+}
+
+/* encode 'keypad' */
+static int encode_keypad(struct msgb *msg, int keypad)
+{
+	msgb_tv_put(msg, GSM48_IE_KPD_FACILITY, keypad);
+
+	return 0;
+}
+
+/* decode 'progress' */
+static int decode_progress(int *coding, int *location, int *descr,
+			   const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 2)
+		return -EINVAL;
+
+	*coding = (lv[1] & 0x60) >> 5;
+	*location = lv[1] & 0x0f;
+	*descr = lv[2] & 0x7f;
+	
+	return 0;
+}
+
+/* encode 'progress' */
+static int encode_progress(int lv_only, struct msgb *msg, int coding,
+			   int location, int descr)
+{
+	u_int8_t lv[3];
+
+	lv[0] = 2;
+	lv[1] = 0x80 | ((coding & 0x3) << 5) | (location & 0xf);
+	lv[2] = 0x80 | (descr & 0x7f);
+	if (lv_only)
+		msgb_lv_put(msg, lv[0], lv+1);
+	else
+		msgb_tlv_put(msg, GSM48_IE_PROGR_IND, lv[0], lv+1);
+
+	return 0;
+}
+
+/* decode 'user-user' */
+static int decode_useruser(int *proto, char *info, int info_len,
+			   const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+	int i;
+
+	if (in_len < 1)
+		return -EINVAL;
+
+	*proto = lv[1];
+
+	for (i = 2; i <= in_len; i++) {
+		info_len--;
+		if (info_len <= 1)
+			break;
+		*info++ = lv[i];
+	}
+	if (info_len >= 1)
+		*info++ = '\0';
+	
+	return 0;
+}
+
+/* encode 'useruser' */
+static int encode_useruser(int lv_only, struct msgb *msg, int proto, char *info)
+{
+	u_int8_t lv[GSM_MAX_USERUSER + 2];
+
+	if (strlen(info) > GSM_MAX_USERUSER)
+		return -EINVAL;
+
+	lv[0] = 1 + strlen(info);
+	lv[1] = proto;
+	memcpy(lv + 2, info, strlen(info));
+	if (lv_only)
+		msgb_lv_put(msg, lv[0], lv+1);
+	else
+		msgb_tlv_put(msg, GSM48_IE_USER_USER, lv[0], lv+1);
+
+	return 0;
+}
+
+/* decode 'ss version' */
+static int decode_ssversion(char *info, int info_len, int *len,
+			    const u_int8_t *lv)
+{
+	u_int8_t in_len = lv[0];
+
+	if (in_len < 1 || in_len < info_len)
+		return -EINVAL;
+
+	memcpy(info, lv + 1, in_len);
+	*len = in_len;
+
+	return 0;
+}
+
+/* encode 'more data' */
+static int encode_more(struct msgb *msg)
+{
+	u_int8_t *ie;
+
+	ie = msgb_put(msg, 1);
+	ie[0] = GSM48_IE_MORE_DATA;
+
+	return 0;
 }
 
 struct msgb *gsm48_msgb_alloc(void)
@@ -1313,7 +1757,6 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	struct gsm_bts *bts;
 	char called_number[(43-2)*2 + 1] = "\0";
 	struct tlv_parsed tp;
-	u_int8_t num_type;
 	int ret;
 
 	if (call->state == GSM_CSTATE_NULL ||
@@ -1330,8 +1773,8 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 		goto err;
 
 	/* Parse the number that was dialed and lookup subscriber */
-	num_type = decode_bcd_number(called_number, sizeof(called_number),
-				     TLVP_VAL(&tp, GSM48_IE_CALLED_BCD)-1);
+	decode_bcd_number(called_number, sizeof(called_number),
+				     TLVP_VAL(&tp, GSM48_IE_CALLED_BCD)-1, 1);
 
 	DEBUGP(DCC, "A -> SETUP(tid=0x%02x,number='%s')\n", call->transaction_id,
 		called_number);
@@ -1512,13 +1955,15 @@ int gsm48_cc_tx_setup(struct gsm_lchan *lchan,
 
 	msgb_tv_put(msg, GSM48_IE_SIGNAL, GSM48_SIGNAL_DIALTONE);
 	if (calling_subscr) {
-		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 0xb9,
+		bcd_lv[1] = 0xb9;
+		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 1,
 				  calling_subscr->extension);
 		msgb_tlv_put(msg, GSM48_IE_CALLING_BCD,
 			     bcd_lv[0], bcd_lv+1);
 	}
 	if (lchan->subscr) {
-		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 0xb9,
+		bcd_lv[1] = 0xb9;
+		encode_bcd_number(bcd_lv, sizeof(bcd_lv), 1,
 				  lchan->subscr->extension);
 		msgb_tlv_put(msg, GSM48_IE_CALLED_BCD,
 			     bcd_lv[0], bcd_lv+1);
