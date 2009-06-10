@@ -1357,8 +1357,7 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	/* Start paging subscriber on all BTS in LAC of subscriber */
 	bts = NULL;
 	do {
-		bts = gsm_bts_by_lac(msg->trx->bts->network,
-				     msg->lchan->subscr->lac, bts);
+		bts = gsm_bts_by_lac(msg->trx->bts->network, called_subscr->lac, bts);
 		if (!bts)
 			break;
 		/* Trigger paging */
