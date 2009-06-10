@@ -454,6 +454,18 @@ static int sw_activ_rep(struct msgb *mb)
 	return 0;
 }
 
+/* Callback function for NACK on the OML NM */
+static int oml_msg_nack(int mt)
+{
+	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
+		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
+				"Was the bts type and frequency properly specified?\n");
+		exit(-1);
+	}
+
+	return 0;
+}
+
 /* Callback function to be called every time we receive a signal from NM */
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
@@ -461,6 +473,8 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_NM_SW_ACTIV_REP:
 		return sw_activ_rep(signal_data);
+	case S_NM_NACK:
+		return oml_msg_nack((int)signal_data);
 	default:
 		break;
 	}
