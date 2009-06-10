@@ -247,7 +247,7 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
-			if (req->cbfn)
+			if (lchan && req->cbfn)
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 					  NULL, lchan, req->cbfn_param);
 			paging_remove_request(&bts->paging, req);
