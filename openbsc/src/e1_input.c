@@ -140,6 +140,7 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	int ret;
 	time_t cur_time;
 	struct tm *tm;
+	int mi_head = (direction==PCAP_INPUT) ? MISDN_HEADER_LEN : 0;
 
 	struct fake_linux_lapd_header header = {
 		.pkttype	= 4,
@@ -163,12 +164,14 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 		.ts_usec    = 0,
 		.incl_len   = msg->len + sizeof(struct fake_linux_lapd_header)
 				+ sizeof(struct lapd_header)
-				- MISDN_HEADER_LEN,
+				- mi_head,
 		.orig_len   = msg->len + sizeof(struct fake_linux_lapd_header)
 				+ sizeof(struct lapd_header)
-				- MISDN_HEADER_LEN,
+				- mi_head,
 	};
 
+
+        printf("Packet of: %d\n", direction);
 
 	cur_time = time(NULL);
 	tm = localtime(&cur_time);
@@ -177,8 +180,8 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	ret = write(pcap_fd, &payload_header, sizeof(payload_header));
 	ret = write(pcap_fd, &header, sizeof(header));
 	ret = write(pcap_fd, &lapd_header, sizeof(lapd_header));
-	ret = write(pcap_fd, msg->data + MISDN_HEADER_LEN,
-			msg->len - MISDN_HEADER_LEN);
+	ret = write(pcap_fd, msg->data + mi_head,
+			msg->len - mi_head);
 }
 
 static const char *sign_types[] = {

@@ -893,6 +893,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
+
+		dispatch_signal(SS_NM, S_NM_NACK, (void*) ((long)mt));
+		return 0;
 	}
 #if 0
 	/* check if last message is to be acked */

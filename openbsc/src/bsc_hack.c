@@ -454,6 +454,18 @@ static int sw_activ_rep(struct msgb *mb)
 	return 0;
 }
 
+/* Callback function for NACK on the OML NM */
+static int oml_msg_nack(int mt)
+{
+	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
+		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
+				"Was the bts type and frequency properly specified?\n");
+		exit(-1);
+	}
+
+	return 0;
+}
+
 /* Callback function to be called every time we receive a signal from NM */
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
@@ -461,6 +473,8 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_NM_SW_ACTIV_REP:
 		return sw_activ_rep(signal_data);
+	case S_NM_NACK:
+		return oml_msg_nack((int)signal_data);
 	default:
 		break;
 	}
@@ -959,6 +973,26 @@ static int bootstrap_bts(struct gsm_bts *bts)
 static int bootstrap_network(void)
 {
 	struct gsm_bts *bts;
+
+	switch(BTS_TYPE) {
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		if (ARFCN < 512 || ARFCN > 885) {
+			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
+			return -EINVAL;
+		}
+		break;
+	case GSM_BTS_TYPE_BS11:
+	case GSM_BTS_TYPE_NANOBTS_900:
+		/* Assume we have a P-GSM900 here */
+		if (ARFCN < 1 || ARFCN > 124) {
+			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
+			return -EINVAL;
+		}
+		break;
+	case GSM_BTS_TYPE_UNKNOWN:
+		fprintf(stderr, "Unknown BTS. Please use the --bts-type switch\n");
+		return -EINVAL;
+	}
 
 	/* initialize our data structures */
 	gsmnet = gsm_network_init(2, BTS_TYPE, MCC, MNC);

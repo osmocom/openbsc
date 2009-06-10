@@ -210,8 +210,8 @@ static void paging_T3113_expired(void *data)
 	paging_remove_request(&req->bts->paging, req);
 }
 
-void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-		    int type, gsm_cbfn *cbfn, void *data)
+static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+			    int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
@@ -237,9 +237,25 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
 }
 
+void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+		    int type, gsm_cbfn *cbfn, void *data)
+{
+	struct gsm_bts *bts = NULL;
+
+	do {
+		bts = gsm_bts_by_lac(network, subscr->lac, bts);
+		if (!bts)
+			break;
+
+		/* Trigger paging */
+		_paging_request(bts, subscr, RSL_CHANNEED_TCH_F, cbfn, data);
+	} while (1);
+}
+
+
 /* we consciously ignore the type of the request here */
-void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-			 struct gsm_lchan *lchan)
+static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+				 struct gsm_lchan *lchan)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
@@ -254,6 +270,31 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 			break;
 		}
 	}
+}
+
+/* Stop paging on all other bts' */
+void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
+			 struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = NULL;
+
+	_paging_request_stop(_bts, subscr, lchan);
+
+	do {
+		/*
+		 * FIXME: Don't use the lac of the subscriber...
+		 * as it might have magically changed the lac.. use the
+		 * location area of the _bts as reconfiguration of the
+		 * network is probably happening less often.
+		 */
+		bts = gsm_bts_by_lac(_bts->network, subscr->lac, bts);
+		if (!bts)
+			break;
+
+		/* Stop paging */
+                if (bts != _bts)
+			_paging_request_stop(bts, subscr, NULL);
+	} while (1);
 }
 
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
