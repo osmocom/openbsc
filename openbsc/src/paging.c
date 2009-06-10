@@ -278,6 +278,8 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 {
 	struct gsm_bts *bts = NULL;
 
+	_paging_request_stop(_bts, subscr, lchan);
+
 	do {
 		/*
 		 * FIXME: Don't use the lac of the subscriber...
@@ -290,7 +292,8 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 			break;
 
 		/* Stop paging */
-		_paging_request_stop(bts, subscr, NULL);
+                if (bts != _bts)
+			_paging_request_stop(bts, subscr, NULL);
 	} while (1);
 }
 
