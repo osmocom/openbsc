@@ -1016,7 +1016,6 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	u_int8_t mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
 	struct gsm_subscriber *subscr;
-	struct gsm_bts *bts;
 	struct paging_signal_data sig_data;
 	int rc = 0;
 
@@ -1063,18 +1062,6 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
-
-	/* Stop paging on all other bts' */
-	bts = NULL;
-	do {
-		bts = gsm_bts_by_lac(msg->trx->bts->network, subscr->lac, bts);
-		if (!bts)
-			break;
-		if (bts == msg->trx->bts)
-			continue;
-		/* Stop paging */
-		paging_request_stop(bts, subscr, NULL);
-	} while (1);
 
 	/* FIXME: somehow signal the completion of the PAGING to
 	 * the entity that requested the paging */
@@ -1310,7 +1297,6 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct gsm_subscriber *called_subscr;
-	struct gsm_bts *bts;
 	char called_number[(43-2)*2 + 1] = "\0";
 	struct tlv_parsed tp;
 	u_int8_t num_type;
@@ -1355,15 +1341,8 @@ static int gsm48_cc_rx_setup(struct msgb *msg)
 	call->called_subscr = called_subscr;
 
 	/* Start paging subscriber on all BTS in LAC of subscriber */
-	bts = NULL;
-	do {
-		bts = gsm_bts_by_lac(msg->trx->bts->network, called_subscr->lac, bts);
-		if (!bts)
-			break;
-		/* Trigger paging */
-		paging_request(bts, called_subscr, RSL_CHANNEED_TCH_F,
-				setup_trig_pag_evt, call);
-	} while (1);
+	paging_request(msg->trx->bts, called_subscr, RSL_CHANNEED_TCH_F,
+		       setup_trig_pag_evt, call);
 
 	/* send a CALL PROCEEDING message to the MO */
 	ret = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC,
