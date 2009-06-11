@@ -1865,7 +1865,7 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 {
 	struct gsm_mncc rel;
 
-	memset(&rel, 0, sizeof(&rel));
+	memset(&rel, 0, sizeof(rel));
 	rel.callref = callref;
 	mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
 		       GSM48_CC_CAUSE_UNASSIGNED_NR);
@@ -3457,7 +3457,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 					bts->nr, data->called.number,
 					get_mncc_name(msg_type));
 				/* Trigger paging */
-				paging_request(bts, subscr, RSL_CHANNEED_TCH_F,
+				paging_request(net, subscr, RSL_CHANNEED_TCH_F,
 						setup_trig_pag_evt, subscr);
 			} while (1);
 			return 0;
