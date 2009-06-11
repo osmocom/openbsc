@@ -67,7 +67,7 @@ typedef int gsm_cbfn(unsigned int hooknum,
  * Use the channel. As side effect the lchannel recycle timer
  * will be started.
  */
-#define LCHAN_RELEASE_TIMEOUT 4, 0
+#define LCHAN_RELEASE_TIMEOUT 10, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
 		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
