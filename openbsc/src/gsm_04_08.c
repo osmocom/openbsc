@@ -1867,7 +1867,8 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 
 	memset(&rel, 0, sizeof(&rel));
 	rel.callref = callref;
-	mncc_set_cause(&rel, 1, 1); /* Unknown subscriber */
+	mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
+		       GSM48_CC_CAUSE_UNASSIGNED_NR);
 	return mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 }
 
@@ -2086,8 +2087,10 @@ static void gsm48_cc_timeout(void *arg)
 {
 	struct gsm_trans *trans = arg;
 	int disconnect = 0, release = 0;
-	int mo_cause = 102, mo_location = 0;
-	int l4_cause = 31, l4_location = 1;
+	int mo_cause = GSM48_CC_CAUSE_RECOVERY_TIMER;
+	int mo_location = GSM48_CAUSE_LOC_USER;
+	int l4_cause = GSM48_CC_CAUSE_NORMAL_UNSPEC;
+	int l4_location = GSM48_CAUSE_LOC_PRN_S_LU;
 	struct gsm_mncc mo_rel, l4_rel;
 
 	memset(&mo_rel, 0, sizeof(struct gsm_mncc));
@@ -2098,11 +2101,11 @@ static void gsm48_cc_timeout(void *arg)
 	switch(trans->Tcurrent) {
 	case 0x303:
 		release = 1;
-		l4_cause = 18;
+		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
 		break;
 	case 0x310:
 		disconnect = 1;
-		l4_cause = 18;
+		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
 		break;
 	case 0x313:
 		disconnect = 1;
@@ -2110,7 +2113,7 @@ static void gsm48_cc_timeout(void *arg)
 		break;
 	case 0x301:
 		disconnect = 1;
-		l4_cause = 19;
+		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
 		break;
 	case 0x308:
 		if (!trans->T308_second) {
@@ -2628,7 +2631,15 @@ static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
 
 }
 
-static struct gsm_mncc_cause default_cause = { 1, 0, 0, 0, 31, 0, { 0 } };
+static struct gsm_mncc_cause default_cause = {
+	.location	= GSM48_CAUSE_LOC_PRN_S_LU,
+	.coding		= 0,
+	.rec		= 0,
+	.rec_val	= 0,
+	.value		= GSM48_CC_CAUSE_NORMAL_UNSPEC,
+	.diag_len	= 0,
+	.diag		= { 0 },
+};
 
 static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 {
@@ -3463,7 +3474,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			"Received '%s' from MNCC in paging state\n", 
 			(trans->subscr)?(trans->subscr->extension):"-",
 			get_mncc_name(msg_type));
-		mncc_set_cause(&rel, 1, 16); /* Normal call clearing */
+		mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_NORM_CALL_CLEAR);
 		if (msg_type == MNCC_REL_REQ)
 			rc = mncc_recvmsg(net, trans, MNCC_REL_CNF, &rel);
 		else

@@ -140,7 +140,8 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	if (!(remote = calloc(1, sizeof(struct gsm_call)))) {
 		memset(&mncc, 0, sizeof(struct gsm_mncc));
 		mncc.callref = call->callref;
-		mncc_set_cause(&mncc, 1, 47);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		mncc_send(call->net, MNCC_REJ_REQ, &mncc);
 		free_call(call);
 		return 0;
@@ -304,7 +305,8 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 			
 			memset(&rel, 0, sizeof(struct gsm_mncc));
 			rel.callref = callref;
-			mncc_set_cause(&rel, 1, 47);
+			mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
+				       GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			mncc_send(net, MNCC_REL_REQ, &rel);
 			return 0;
 		}
@@ -354,7 +356,8 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	case MNCC_STOP_DTMF_IND:
 		break;
 	case MNCC_MODIFY_IND:
-		mncc_set_cause(data, 1, 79);
+		mncc_set_cause(data, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_SERV_OPT_UNIMPL);
 		DEBUGP(DMNCC, "(call %x) Rejecting MODIFY with cause %d\n",
 			call->callref, data->cause.value);
 		rc = mncc_send(net, MNCC_MODIFY_REJ, data);
@@ -362,13 +365,15 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	case MNCC_MODIFY_CNF:
 		break;
 	case MNCC_HOLD_IND:
-		mncc_set_cause(data, 1, 79);
+		mncc_set_cause(data, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_SERV_OPT_UNIMPL);
 		DEBUGP(DMNCC, "(call %x) Rejecting HOLD with cause %d\n",
 			call->callref, data->cause.value);
 		rc = mncc_send(net, MNCC_HOLD_REJ, data);
 		break;
 	case MNCC_RETRIEVE_IND:
-		mncc_set_cause(data, 1, 79);
+		mncc_set_cause(data, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_SERV_OPT_UNIMPL);
 		DEBUGP(DMNCC, "(call %x) Rejecting RETRIEVE with cause %d\n",
 			call->callref, data->cause.value);
 		rc = mncc_send(net, MNCC_RETRIEVE_REJ, data);
