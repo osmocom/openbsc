@@ -7,7 +7,7 @@ noinst_HEADERS = vty/cardshell.h
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_04_08.c gsm_data.c mncc.c \
 		msgb.c select.c chan_alloc.c timer.c debug.c \
-		gsm_04_11.c subchan_demux.c \
+		gsm_subscriber_base.c gsm_04_11.c subchan_demux.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c talloc.c talloc_ctx.c \
 		transaction.c rtp_proxy.c bsc_rll.c token_auth.c rrlp.c

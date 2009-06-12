@@ -5,6 +5,7 @@ noinst_PROGRAMS = channel_test
 
 channel_test_SOURCES = channel_test.c \
 	$(top_srcdir)/src/db.c \
+	$(top_srcdir)/src/gsm_subscriber_base.c \
 	$(top_srcdir)/src/gsm_subscriber.c \
 	$(top_srcdir)/src/debug.c \
 	$(top_srcdir)/src/timer.c \
