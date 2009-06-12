@@ -2,4 +2,4 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 noinst_PROGRAMS = sms_test
 
 sms_test_SOURCES = sms_test.c
-sms_test_LDADD = $(top_builddir)/src/libbsc.a -ldl -ldbi
+sms_test_LDADD = $(top_builddir)/src/libbsc.a $(top_builddir)/src/libmsc.a -ldl -ldbi
