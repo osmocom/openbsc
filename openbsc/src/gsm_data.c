@@ -174,7 +174,7 @@ enum gsm_bts_type parse_btstype(char *arg)
 	return GSM_BTS_TYPE_BS11; /* Default: BS11 */
 }
 
-char *btstype2str(enum gsm_bts_type type)
+const char *btstype2str(enum gsm_bts_type type)
 {
 	if (type > ARRAY_SIZE(bts_types))
 		return "undefined";
