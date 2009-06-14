@@ -1865,8 +1865,7 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 
 	memset(&rel, 0, sizeof(rel));
 	rel.callref = callref;
-	mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
-		       GSM48_CC_CAUSE_UNASSIGNED_NR);
+	mncc_set_cause(&rel, location, value);
 	return mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 }
 
@@ -1879,7 +1878,9 @@ void free_trans(struct gsm_trans *trans)
 	/* send release to L4, if callref still exists */
 	if (trans->callref) {
 		/* Ressource unavailable */
-		mncc_release_ind(trans->network, trans, trans->callref, 1, 47);
+		mncc_release_ind(trans->network, trans, trans->callref,
+				 GSM48_CAUSE_LOC_PRN_S_LU,
+				 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		if (trans->state != GSM_CSTATE_NULL)
 			new_cc_state(trans, GSM_CSTATE_NULL);
 	}
@@ -1960,7 +1961,8 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 				subscr->extension);
 			/* Temporarily out of order */
 			mncc_release_ind(transt->network, transt, transt->callref,
-					 1, 27);
+					 GSM48_CAUSE_LOC_PRN_S_LU,
+					 GSM48_CC_CAUSE_DEST_OOO);
 			transt->callref = 0;
 			free_trans(transt);
 			break;
@@ -2268,7 +2270,8 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 			"This is not allowed!\n");
 		/* Temporarily out of order */
 		rc = mncc_release_ind(trans->network, trans, trans->callref,
-				      1, 47);
+				      GSM48_CAUSE_LOC_PRN_S_LU,
+				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
 		free_trans(trans);
 		return rc;
@@ -2285,7 +2288,8 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	if ((trans_id_mask & 0x007f) == 0x7f) {
 		/* no free transaction ID */
 		rc = mncc_release_ind(trans->network, trans, trans->callref,
-				      1, 47);
+				      GSM48_CAUSE_LOC_PRN_S_LU,
+				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
 		free_trans(trans);
 		return rc;
@@ -3369,7 +3373,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				"unknown callref %d\n", data->called.number,
 				get_mncc_name(msg_type), data->callref);
 			/* Invalid call reference */
-			return mncc_release_ind(net, NULL, data->callref, 1, 81);
+			return mncc_release_ind(net, NULL, data->callref,
+						GSM48_CAUSE_LOC_PRN_S_LU,
+						GSM48_CC_CAUSE_INVAL_TRANS_ID);
 		}
 		/* New transaction due to setup, find subscriber */
 		subscr = subscr_get_by_extension(data->called.number);
@@ -3380,7 +3386,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				"unknown subscriber %s\n", data->called.number,
 				get_mncc_name(msg_type), data->called.number);
 			/* Unknown subscriber */
-			return mncc_release_ind(net, NULL, data->callref, 1, 1);
+			return mncc_release_ind(net, NULL, data->callref,
+						GSM48_CAUSE_LOC_PRN_S_LU,
+						GSM48_CC_CAUSE_UNASSIGNED_NR);
 		}
 		/* If subscriber is not "attached" */
 		if (!subscr->lac) {
@@ -3390,14 +3398,18 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				get_mncc_name(msg_type), data->called.number);
 			subscr_put(subscr);
 			/* Temporarily out of order */
-			return mncc_release_ind(net, NULL, data->callref, 1, 27);
+			return mncc_release_ind(net, NULL, data->callref,
+						GSM48_CAUSE_LOC_PRN_S_LU,
+						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
 		if (!(trans = calloc(1, sizeof(struct gsm_trans)))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
-			mncc_release_ind(net, NULL, data->callref, 1, 47);
+			mncc_release_ind(net, NULL, data->callref,
+					 GSM48_CAUSE_LOC_PRN_S_LU,
+					 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			return -ENOMEM;
 		}
 		trans->callref = data->callref;
