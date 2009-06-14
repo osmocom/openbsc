@@ -62,7 +62,7 @@ static const enum abis_nm_chan_comb chcomb4pchan[] = {
 	/* FIXME: bounds check */
 };
 
-/* Allocate a logical channel (TS) */
+/* Allocate a physical channel (TS) */
 struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 				enum gsm_phys_chan_config pchan)
 {
@@ -114,7 +114,7 @@ static const u_int8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_CCCH_SDCCH4] = 4,
 	[GSM_PCHAN_TCH_F] = 1,
 	[GSM_PCHAN_TCH_H] = 2,
-	[GSM_PCHAN_SDCCH8_SACCH8C] = 8.
+	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
 };
 
 static struct gsm_lchan *

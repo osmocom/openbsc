@@ -3,8 +3,37 @@
 
 #include <sys/types.h>
 
+enum gsm_phys_chan_config {
+	GSM_PCHAN_NONE,
+	GSM_PCHAN_CCCH,
+	GSM_PCHAN_CCCH_SDCCH4,
+	GSM_PCHAN_TCH_F,
+	GSM_PCHAN_TCH_H,
+	GSM_PCHAN_SDCCH8_SACCH8C,
+	GSM_PCHAN_UNKNOWN,
+};
+
+enum gsm_chan_t {
+	GSM_LCHAN_NONE,
+	GSM_LCHAN_SDCCH,
+	GSM_LCHAN_TCH_F,
+	GSM_LCHAN_TCH_H,
+	GSM_LCHAN_UNKNOWN,
+};
+
+
+/* Channel Request reason */
+enum gsm_chreq_reason_t {
+	GSM_CHREQ_REASON_EMERG,
+	GSM_CHREQ_REASON_PAG,
+	GSM_CHREQ_REASON_CALL,
+	GSM_CHREQ_REASON_LOCATION_UPD,
+	GSM_CHREQ_REASON_OTHER,
+};
+
 #include <openbsc/timer.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/mncc.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -38,7 +67,7 @@ typedef int gsm_cbfn(unsigned int hooknum,
  * Use the channel. As side effect the lchannel recycle timer
  * will be started.
  */
-#define LCHAN_RELEASE_TIMEOUT 4, 0
+#define LCHAN_RELEASE_TIMEOUT 10, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
 		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
@@ -59,65 +88,40 @@ struct gsm_bts_link {
 	struct gsm_bts *bts;
 };
 
-enum gsm_call_type {
-	GSM_CT_NONE,
-	GSM_CT_MO,
-	GSM_CT_MT,
-};
-
-enum gsm_call_state {
-	GSM_CSTATE_NULL,
-	GSM_CSTATE_INITIATED,
-	GSM_CSTATE_ACTIVE,
-	GSM_CSTATE_RELEASE_REQ,
-};
-
 struct gsm_lchan;
 struct gsm_subscriber;
+struct gsm_mncc;
 
-/* One end of a call */
-struct gsm_call {
-	enum gsm_call_type type;
-	enum gsm_call_state state;
-	u_int8_t transaction_id;	/* 10.3.2 */
+/* One transaction */
+struct gsm_trans {
+	/* Entry in list of all transactions */
+	struct llist_head entry;
 
-	/* the 'local' channel */
-	struct gsm_lchan *local_lchan;
-	/* the 'remote' channel */
-	struct gsm_lchan *remote_lchan;
+	/* Network */
+	struct gsm_network *network;
 
-	/* the 'remote' subscriber */
-	struct gsm_subscriber *called_subscr;
+	/* The current transaction ID */
+	u_int8_t transaction_id;
+	
+	/* The LCHAN that we're part of */
+	struct gsm_lchan *lchan;
+
+	/* To whom we are allocated at the moment */
+	struct gsm_subscriber *subscr;
+
+	/* reference */
+	u_int32_t callref;
+
+	/* current call state */
+	int state;
+
+	/* current timer and message queue */
+	int Tcurrent;			/* current CC timer */
+	int T308_second;		/* used to send release again */
+        struct timer_list cc_timer;
+	struct gsm_mncc cc_msg;		/* stores setup/disconnect/release message */
 };
 
-
-enum gsm_phys_chan_config {
-	GSM_PCHAN_NONE,
-	GSM_PCHAN_CCCH,
-	GSM_PCHAN_CCCH_SDCCH4,
-	GSM_PCHAN_TCH_F,
-	GSM_PCHAN_TCH_H,
-	GSM_PCHAN_SDCCH8_SACCH8C,
-	GSM_PCHAN_UNKNOWN,
-};
-
-enum gsm_chan_t {
-	GSM_LCHAN_NONE,
-	GSM_LCHAN_SDCCH,
-	GSM_LCHAN_TCH_F,
-	GSM_LCHAN_TCH_H,
-	GSM_LCHAN_UNKNOWN,
-};
-
-
-/* Channel Request reason */
-enum gsm_chreq_reason_t {
-	GSM_CHREQ_REASON_EMERG,
-	GSM_CHREQ_REASON_PAG,
-	GSM_CHREQ_REASON_CALL,
-	GSM_CHREQ_REASON_LOCATION_UPD,
-	GSM_CHREQ_REASON_OTHER,
-};
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -161,12 +165,6 @@ struct gsm_lchan {
 
 	/* Timer started to release the channel */
 	struct timer_list release_timer;
-
-	/* local end of a call, if any */
-	struct gsm_call call;
-
-	/* temporary user data, to be removed... and merged into gsm_call */
-	void *user_data;
 
 	/*
 	 * Operations that have a state and might be pending
@@ -355,6 +353,11 @@ struct gsm_network {
 	char *name_long;
 	char *name_short;
 
+	/* layer 4 */
+	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
+	struct llist_head upqueue;
+	struct llist_head trans_list;
+
 	unsigned int num_bts;
 	/* private lists */
 	struct gsm_bts	bts[GSM_MAX_BTS+1];
@@ -372,7 +375,8 @@ struct gsm_sms {
 };
 
 struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
-				     u_int16_t country_code, u_int16_t network_code);
+				     u_int16_t country_code, u_int16_t network_code,
+				     int (*mncc_recv)(struct gsm_network *, int, void *));
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 const char *gsm_lchan_name(enum gsm_chan_t c);

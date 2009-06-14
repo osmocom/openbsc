@@ -482,6 +482,59 @@ enum gsm48_rr_cause {
 	GSM48_RR_CAUSE_PROT_ERROR_UNSPC = 0x6f,
 };
 
+/* Section 10.5.4.11 CC Cause / Table 10.5.123 */
+enum gsm48_cc_cause {
+	GSM48_CC_CAUSE_UNASSIGNED_NR	= 1,
+	GSM48_CC_CAUSE_NO_ROUTE		= 3,
+	GSM48_CC_CAUSE_CHAN_UNACCEPT	= 6,
+	GSM48_CC_CAUSE_OP_DET_BARRING	= 8,
+	GSM48_CC_CAUSE_NORM_CALL_CLEAR	= 16,
+	GSM48_CC_CAUSE_USER_BUSY	= 17,
+	GSM48_CC_CAUSE_USER_NOTRESPOND	= 18,
+	GSM48_CC_CAUSE_USER_ALERTING_NA	= 19,
+	GSM48_CC_CAUSE_CALL_REJECTED	= 21,
+	GSM48_CC_CAUSE_NUMBER_CHANGED	= 22,
+	GSM48_CC_CAUSE_PRE_EMPTION	= 25,
+	GSM48_CC_CAUSE_NONSE_USER_CLR	= 26,
+	GSM48_CC_CAUSE_DEST_OOO		= 27,
+	GSM48_CC_CAUSE_INV_NR_FORMAT	= 28,
+	GSM48_CC_CAUSE_FACILITY_REJ	= 29,
+	GSM48_CC_CAUSE_RESP_STATUS_INQ	= 30,
+	GSM48_CC_CAUSE_NORMAL_UNSPEC	= 31,
+	GSM48_CC_CAUSE_NO_CIRCUIT_CHAN	= 34,
+	GSM48_CC_CAUSE_NETWORK_OOO	= 38,
+	GSM48_CC_CAUSE_TEMP_FAILURE	= 41,
+	GSM48_CC_CAUSE_SWITCH_CONG	= 42,
+	GSM48_CC_CAUSE_ACC_INF_DISCARD	= 43,
+	GSM48_CC_CAUSE_REQ_CHAN_UNAVAIL	= 44,
+	GSM48_CC_CAUSE_RESOURCE_UNAVAIL	= 47,
+	GSM48_CC_CAUSE_QOS_UNAVAIL	= 49,
+	GSM48_CC_CAUSE_REQ_FAC_NOT_SUBSC= 50,
+	GSM48_CC_CAUSE_INC_BARRED_CUG	= 55,
+	GSM48_CC_CAUSE_BEARER_CAP_UNAUTH= 57,
+	GSM48_CC_CAUSE_BEARER_CA_UNAVAIL= 58,
+	GSM48_CC_CAUSE_SERV_OPT_UNAVAIL	= 63,
+	GSM48_CC_CAUSE_BEARERSERV_UNIMPL= 65,
+	GSM48_CC_CAUSE_ACM_GE_ACM_MAX	= 68,
+	GSM48_CC_CAUSE_REQ_FAC_NOTIMPL	= 69,
+	GSM48_CC_CAUSE_RESTR_BCAP_AVAIL	= 70,
+	GSM48_CC_CAUSE_SERV_OPT_UNIMPL	= 79,
+	GSM48_CC_CAUSE_INVAL_TRANS_ID	= 81,
+	GSM48_CC_CAUSE_USER_NOT_IN_CUG	= 87,
+	GSM48_CC_CAUSE_INCOMPAT_DEST	= 88,
+	GSM48_CC_CAUSE_INVAL_TRANS_NET	= 91,
+	GSM48_CC_CAUSE_SEMANTIC_INCORR	= 95,
+	GSM48_CC_CAUSE_INVAL_MAND_INF	= 96,
+	GSM48_CC_CAUSE_MSGTYPE_NOTEXIST	= 97,
+	GSM48_CC_CAUSE_MSGTYPE_INCOMPAT	= 98,
+	GSM48_CC_CAUSE_IE_NOTEXIST	= 99,
+	GSM48_CC_CAUSE_COND_IE_ERR	= 100,
+	GSM48_CC_CAUSE_MSG_INCOMP_STATE	= 101,
+	GSM48_CC_CAUSE_RECOVERY_TIMER	= 102,
+	GSM48_CC_CAUSE_PROTO_ERR	= 111,
+	GSM48_CC_CAUSE_INTERWORKING	= 127,
+};
+
 /* Annex G, GSM specific cause values for mobility management */
 enum gsm48_reject_value {
 	GSM48_REJECT_IMSI_UNKNOWN_IN_HLR	= 2,
@@ -540,10 +593,59 @@ struct gsm_meas_rep {
 void gsm48_parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
 			  int len);
 
+enum chreq_type {
+	CHREQ_T_EMERG_CALL,
+	CHREQ_T_CALL_REEST_TCH_F,
+	CHREQ_T_CALL_REEST_TCH_H,
+	CHREQ_T_CALL_REEST_TCH_H_DBL,
+	CHREQ_T_SDCCH,
+	CHREQ_T_TCH_F,
+	CHREQ_T_VOICE_CALL_TCH_H,
+	CHREQ_T_DATA_CALL_TCH_H,
+	CHREQ_T_LOCATION_UPD,
+	CHREQ_T_PAG_R_ANY,
+	CHREQ_T_PAG_R_TCH_F,
+	CHREQ_T_PAG_R_TCH_FH,
+};
+
+/* Chapter 11.3 */
+#define GSM48_T301	180, 0
+#define GSM48_T303	30, 0
+#define GSM48_T305	30, 0
+#define GSM48_T306	30, 0
+#define GSM48_T308	10, 0
+#define GSM48_T310	180, 0
+#define GSM48_T313	30, 0
+#define GSM48_T323	30, 0
+#define GSM48_T331	30, 0
+#define GSM48_T333	30, 0
+#define GSM48_T334	25, 0 /* min 15 */
+#define GSM48_T338	30, 0
+
+/* Chapter 5.1.2.2 */
+#define	GSM_CSTATE_NULL			0
+#define	GSM_CSTATE_INITIATED		1
+#define	GSM_CSTATE_MO_CALL_PROC		3
+#define	GSM_CSTATE_CALL_DELIVERED	4
+#define	GSM_CSTATE_CALL_PRESENT		6
+#define	GSM_CSTATE_CALL_RECEIVED	7
+#define	GSM_CSTATE_CONNECT_REQUEST	8
+#define	GSM_CSTATE_MO_TERM_CALL_CONF	9
+#define	GSM_CSTATE_ACTIVE		10
+#define	GSM_CSTATE_DISCONNECT_REQ	12
+#define	GSM_CSTATE_DISCONNECT_IND	12
+#define	GSM_CSTATE_RELEASE_REQ		19
+#define	GSM_CSTATE_MO_ORIG_MODIFY	26
+#define	GSM_CSTATE_MO_TERM_MODIFY	27
+#define	GSM_CSTATE_CONNECT_IND		28
+
+#define SBIT(a) (1 << a)
+#define ALL_STATES 0xffffffff
 
 struct msgb;
 struct gsm_bts;
 struct gsm_subscriber;
+struct gsm_network;
 
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
@@ -552,7 +654,6 @@ void gsm0408_set_reject_cause(int cause);
 int gsm0408_rcvmsg(struct msgb *msg);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
-int gsm48_cc_tx_setup(struct gsm_lchan *lchan, struct gsm_subscriber *calling);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 
@@ -562,6 +663,10 @@ int gsm48_sendmsg(struct msgb *msg);
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+
+int bsc_upqueue(struct gsm_network *net);
+
+int mncc_send(struct gsm_network *net, int msg_type, void *arg);
 
 /* convert a ASCII phone number to call-control BCD */
 int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,

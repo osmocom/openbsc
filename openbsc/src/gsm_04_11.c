@@ -186,9 +186,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 		rc = -EIO;
 		goto out;
 	}
+	memset(address_lv, 0, sizeof(address_lv));
 	memcpy(address_lv, smsp, da_len_bytes);
 	/* mangle first byte to reflect length in bytes, not digits */
-	address_lv[0] = da_len_bytes;
+	address_lv[0] = da_len_bytes - 1;
 	/* convert to real number */
 	decode_bcd_number(sms->dest_addr, sizeof(sms->dest_addr), address_lv, 1);
 

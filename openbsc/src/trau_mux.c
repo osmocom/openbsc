@@ -145,6 +145,9 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 	u_int8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = lookup_trau_mux_map(src_e1_ss);
 	struct subch_mux *mx;
+	struct upqueue_entry *ue;
+	struct msgb *msg;
+	struct gsm_trau_frame *frame;
 	int rc;
 
 	/* decode TRAU, change it to downlink, re-encode */
@@ -152,8 +155,23 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 	if (rc)
 		return rc;
 
-	if (!dst_e1_ss)
-		return -EINVAL;
+	if (!dst_e1_ss) {
+		/* frame shall be sent to upqueue */
+		if (!(ue = lookup_trau_upqueue(src_e1_ss)))
+			return -EINVAL;
+		if (!ue->callref)
+			return -EINVAL;
+		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf));
+		if (!msg)
+			return -ENOMEM;
+		frame = (struct gsm_trau_frame *)msg->data;
+		frame->msg_type = GSM_TRAU_FRAME;
+		frame->callref = ue->callref;
+		memcpy(frame->data, &tf, sizeof(tf));
+		msgb_enqueue(&ue->net->upqueue, msg);
+
+		return 0;
+	}
 
 	mx = e1inp_get_mux(dst_e1_ss->e1_nr, dst_e1_ss->e1_ts);
 	if (!mx)
