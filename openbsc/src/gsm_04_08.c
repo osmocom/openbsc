@@ -1505,8 +1505,6 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
 
-	put_lchan(msg->lchan);
-
 	return 0;
 }
 
