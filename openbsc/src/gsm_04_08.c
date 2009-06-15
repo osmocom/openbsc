@@ -2198,6 +2198,8 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 		setup.fields |= MNCC_F_CALLING;
 		strncpy(setup.calling.number, trans->subscr->extension,
 			sizeof(setup.calling.number)-1);
+		strncpy(setup.imsi, trans->subscr->imsi,
+			sizeof(setup.imsi)-1);
 	}
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
@@ -2536,6 +2538,8 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 		connect.fields |= MNCC_F_CONNECTED;
 		strncpy(connect.connected.number, trans->subscr->extension,
 			sizeof(connect.connected.number)-1);
+		strncpy(connect.imsi, trans->subscr->imsi,
+			sizeof(connect.imsi)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
@@ -3367,7 +3371,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
-		if (msg_type != MNCC_SETUP_REQ || !data->called.number[0]) {
+		if (msg_type != MNCC_SETUP_REQ ||
+		    (!data->called.number[0] && !data->imsi[0])) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
 				"unknown callref %d\n", data->called.number,
@@ -3377,8 +3382,20 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CAUSE_LOC_PRN_S_LU,
 						GSM48_CC_CAUSE_INVAL_TRANS_ID);
 		}
+		if (!data->called.number[0] && !data->imsi[0]) {
+			DEBUGP(DCC, "(bts - trx - ts - ti) "
+				"Received '%s' from MNCC with "
+				"no number or IMSI\n", get_mncc_name(msg_type));
+			/* Invalid number */
+			return mncc_release_ind(net, NULL, data->callref,
+						GSM48_CAUSE_LOC_PRN_S_LU,
+						GSM48_CC_CAUSE_INV_NR_FORMAT);
+		}
 		/* New transaction due to setup, find subscriber */
-		subscr = subscr_get_by_extension(data->called.number);
+		if (data->called.number[0])
+			subscr = subscr_get_by_extension(data->called.number);
+		else
+			subscr = subscr_get_by_imsi(data->imsi);
 		/* If subscriber is not found */
 		if (!subscr) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
