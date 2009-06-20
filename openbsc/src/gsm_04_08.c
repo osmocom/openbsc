@@ -44,6 +44,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/talloc.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -51,6 +52,9 @@
 #define GSM_MAX_FACILITY       128
 #define GSM_MAX_SSVERSION      128
 #define GSM_MAX_USERUSER       128
+
+static void *tall_locop_ctx;
+static void *tall_trans_ctx;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -337,7 +341,7 @@ static void release_loc_updating_req(struct gsm_lchan *lchan)
 		return;
 
 	bsc_del_timer(&lchan->loc_operation->updating_timer);
-	free(lchan->loc_operation);
+	talloc_free(lchan->loc_operation);
 	lchan->loc_operation = 0;
 	put_lchan(lchan);
 }
@@ -347,8 +351,11 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	use_lchan(lchan);
 	release_loc_updating_req(lchan);
 
-	lchan->loc_operation = (struct gsm_loc_updating_operation *)
-				malloc(sizeof(*lchan->loc_operation));
+	if (!tall_locop_ctx)
+		tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						    "loc_updating_oper");
+	lchan->loc_operation = talloc(tall_locop_ctx,
+				      struct gsm_loc_updating_operation);
 	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
 }
 
@@ -1911,7 +1918,7 @@ void free_trans(struct gsm_trans *trans)
 
 	llist_del(&trans->entry);
 
-	free(trans);
+	talloc_free(trans);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -3420,7 +3427,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		if (!(trans = calloc(1, sizeof(struct gsm_trans)))) {
+		if (!(trans = talloc(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
@@ -3626,7 +3633,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "Unknown transaction ID %02x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		if (!(trans = calloc(1, sizeof(struct gsm_trans)))) {
+		if (!(trans = talloc(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
 					     GSM48_PDISC_CC | transaction_id,

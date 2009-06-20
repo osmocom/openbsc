@@ -24,10 +24,19 @@
 #include <sys/types.h>
 
 #include <openbsc/msgb.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/talloc.h>
+
+static void *tall_msgb_ctx;
 
 struct msgb *msgb_alloc(u_int16_t size)
 {
-	struct msgb *msg = malloc(sizeof(*msg) + size);
+	struct msgb *msg;
+
+	if (!tall_msgb_ctx)
+		tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");
+
+	msg = talloc_size(tall_msgb_ctx, sizeof(*msg) + size);
 
 	if (!msg)
 		return NULL;
@@ -48,7 +57,7 @@ struct msgb *msgb_alloc(u_int16_t size)
 
 void msgb_free(struct msgb *m)
 {
-	free(m);
+	talloc_free(m);
 }
 
 void msgb_enqueue(struct llist_head *queue, struct msgb *msg)

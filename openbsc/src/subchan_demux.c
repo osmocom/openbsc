@@ -28,6 +28,10 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/debug.h>
+#include <openbsc/talloc.h>
+#include <openbsc/gsm_data.h>
+
+static void *tall_tqe_ctx;
 
 static inline void append_bit(struct demux_subch *sch, u_int8_t bit)
 {
@@ -201,7 +205,7 @@ static int get_subch_bits(struct subch_mux *mx, int subch,
 		/* free the tx_queue entry if it is fully consumed */
 		if (txe->next_bit >= txe->bit_len) {
 			llist_del(&txe->list);
-			free(txe);
+			talloc_free(txe);
 		}
 
 		/* increment global number of bits dequeued */
@@ -277,7 +281,7 @@ static void tx_queue_evict(struct mux_subch *sch, int num_evict)
 
 		tqe = llist_entry(sch->tx_queue.next, struct subch_txq_entry, list);
 		llist_del(&tqe->list);
-		free(tqe);
+		talloc_free(tqe);
 	}
 }
 
@@ -286,9 +290,9 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 			int len)
 {
 	struct mux_subch *sch = &mx->subch[s_nr];
-	struct subch_txq_entry *tqe = malloc(sizeof(*tqe) + len);
 	int list_len = llist_len(&sch->tx_queue);
-
+	struct subch_txq_entry *tqe = talloc_size(tall_tqe_ctx,
+						  sizeof(*tqe) + len);
 	if (!tqe)
 		return -ENOMEM;
 
@@ -309,6 +313,9 @@ int subchan_mux_init(struct subch_mux *mx)
 {
 	int i;
 
+	if (!tall_tqe_ctx)
+		tall_tqe_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						  "subch_txq_entry");
 	memset(mx, 0, sizeof(*mx));
 	for (i = 0; i < NR_SUBCH; i++) {
 		struct mux_subch *sch = &mx->subch[i];

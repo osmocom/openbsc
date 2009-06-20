@@ -47,6 +47,9 @@
 #include <openbsc/paging.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
+
+void *tall_bsc_ctx;
 
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
@@ -1078,7 +1081,7 @@ static void print_help()
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
-		int tmp, option_index = 0, c;
+		int option_index = 0, c;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
@@ -1170,6 +1173,9 @@ static void signal_handler(int signal)
 	case SIGABRT:
 		shutdown_net(gsmnet);
 		break;
+	case SIGUSR1:
+		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
 	default:
 		break;
 	}
@@ -1178,6 +1184,8 @@ static void signal_handler(int signal)
 int main(int argc, char **argv)
 {
 	int rc;
+
+	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -1191,6 +1199,7 @@ int main(int argc, char **argv)
 
 	signal(SIGHUP, &signal_handler);
 	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
 
 	while (1) {
 		bsc_upqueue(gsmnet);

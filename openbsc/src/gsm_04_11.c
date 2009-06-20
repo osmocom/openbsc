@@ -41,9 +41,13 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/signal.h>
 #include <openbsc/db.h>
+#include <openbsc/talloc.h>
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
+
+static void *tall_sms_ctx;
+static void *tall_gsms_ctx;
 
 struct msgb *gsm411_msgb_alloc(void)
 {
@@ -139,8 +143,8 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
 {
 	if (db_sms_store(gsms) != 0) {
 		DEBUGP(DSMS, "Failed to store SMS in Database\n");
-		free(sms);
-		free(gsms);
+		talloc_free(sms);
+		talloc_free(gsms);
 		return -EIO;
 	}
 	return 0;
@@ -156,14 +160,22 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	sms = malloc(sizeof(*sms));
+	if (!tall_sms_ctx)
+		tall_sms_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						  "sms_submit");
+
+	sms = talloc(tall_sms_ctx, struct sms_submit);
 	if (!sms)
 		return -ENOMEM;
 	memset(sms, 0, sizeof(*sms));
 
-	gsms = malloc(sizeof(*gsms));
+	if (!tall_gsms_ctx)
+		tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						   "sms");
+
+	gsms = talloc(tall_gsms_ctx, struct gsm_sms);
 	if (!gsms) {
-		free(sms);
+		talloc_free(sms);
 		return -ENOMEM;
 	}
 	memset(gsms, 0, sizeof(*gsms));
@@ -268,8 +280,8 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	}
 
 out:
-	free(gsms);
-	free(sms);
+	talloc_free(gsms);
+	talloc_free(sms);
 
 	return rc;
 }

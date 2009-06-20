@@ -51,6 +51,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/talloc.h>
 
 #define NUM_E1_TS	32
 
@@ -59,6 +60,8 @@ LLIST_HEAD(e1inp_driver_list);
 
 /* list of all E1 lines */
 LLIST_HEAD(e1inp_line_list);
+
+static void *tall_sigl_ctx;
 
 /* to be implemented, e.g. by bsc_hack.c */
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
@@ -366,7 +369,11 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	if (ts->type != E1INP_TS_TYPE_SIGN)
 		return NULL;
 
-	link = malloc(sizeof(*link));
+	if (!tall_sigl_ctx)
+		tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						   "e1inp_sign_link");
+
+	link = talloc(tall_sigl_ctx, struct e1inp_sign_link);
 	if (!link)
 		return NULL;
 

@@ -8,6 +8,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/misdn.h>
+#include <openbsc/talloc.h>
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
@@ -24,7 +25,7 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 	struct e1inp_ts *sign_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
 
-	line = malloc(sizeof(*line));
+	line = talloc(tall_bsc_ctx, struct e1inp_line);
 	if (!line)
 		return -ENOMEM;
 	memset(line, 0, sizeof(*line));
@@ -79,9 +80,9 @@ int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
 	struct e1inp_ts *sign_ts, *rsl_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
 
-	line = malloc(sizeof(*line));
+	line = talloc(tall_bsc_ctx, struct e1inp_line);
 	if (!line)
-		return NULL;
+		return -ENOMEM;
 	memset(line, 0, sizeof(*line));
 
 	/* create E1 timeslots for signalling and TRAU frames */

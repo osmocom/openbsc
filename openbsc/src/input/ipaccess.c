@@ -42,6 +42,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/talloc.h>
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
@@ -429,7 +430,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
 
-	line = malloc(sizeof(*line));
+	line = talloc(tall_bsc_ctx, struct e1inp_line);
 	if (!line) {
 		close(ret);
 		return -ENOMEM;
@@ -467,7 +468,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
-	struct bsc_fd *bfd = malloc(sizeof(*bfd));
+	struct bsc_fd *bfd = talloc(tall_bsc_ctx, struct bsc_fd);
 	int ret;
 
 	if (!(what & BSC_FD_READ))
@@ -581,7 +582,7 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	if (ret)
 		return ret;
 
-	e1h = malloc(sizeof(*e1h));
+	e1h = talloc(tall_bsc_ctx, struct ia_e1_handle);
 	memset(e1h, 0, sizeof(*e1h));
 	e1h->gsmnet = gsmnet;
 

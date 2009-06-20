@@ -40,6 +40,7 @@
 #include <assert.h>
 
 #include <openbsc/paging.h>
+#include <openbsc/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
@@ -47,6 +48,8 @@
 
 #define PAGING_TIMEOUT 1, 75000
 #define MAX_PAGING_REQUEST 750
+
+static void *tall_paging_ctx;
 
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 {
@@ -81,7 +84,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 	bsc_del_timer(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
-	free(to_be_deleted);
+	talloc_free(to_be_deleted);
 }
 
 static void page_ms(struct gsm_paging_request *request)
@@ -216,13 +219,16 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
+	if (!tall_paging_ctx)
+		tall_paging_ctx = talloc_named_const(NULL, 1, "paging_request");
+
 	if (paging_pending_request(bts_entry, subscr)) {
 		DEBUGP(DPAG, "Paging request already pending\n");
 		return;
 	}
 
 	DEBUGP(DPAG, "Start paging on bts %d.\n", bts->nr);
-	req = (struct gsm_paging_request *)malloc(sizeof(*req));
+	req = talloc(tall_paging_ctx, struct gsm_paging_request);
 	memset(req, 0, sizeof(*req));
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;

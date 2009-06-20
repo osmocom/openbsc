@@ -43,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -2008,6 +2009,8 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts)
 
 /* BS11 SWL */
 
+static void *tall_fle_ctx;
+
 struct abis_nm_bs11_sw {
 	struct gsm_bts *bts;
 	char swl_fname[PATH_MAX];
@@ -2043,6 +2046,10 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	FILE *swl;
 	int rc = 0;
 
+	if (!tall_fle_ctx)
+		tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
+						  "bs11_file_list_entry");
+
 	swl = fopen(bs11_sw->swl_fname, "r");
 	if (!swl)
 		return -ENODEV;
@@ -2050,7 +2057,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	/* zero the stale file list, if any */
 	llist_for_each_safe(lh, lh2, &bs11_sw->file_list) {
 		llist_del(lh);
-		free(lh);
+		talloc_free(lh);
 	}
 
 	while (fgets(linebuf, sizeof(linebuf), swl)) {
@@ -2071,7 +2078,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 		if (rc < 2)
 			continue;
 
-		fle = malloc(sizeof(*fle));
+		fle = talloc(tall_fle_ctx, struct file_list_entry);
 		if (!fle) {
 			rc = -ENOMEM;
 			goto out;
