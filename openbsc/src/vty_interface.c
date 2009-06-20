@@ -112,9 +112,11 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
-	vty_out(vty, "BTS %u is of %s type, has LAC %u, BSIC %u, TSC %u and %u TRX%s",
-		bts->nr, btstype2str(bts->type), bts->location_area_code,
-		bts->bsic, bts->tsc, bts->num_trx, VTY_NEWLINE);
+	vty_out(vty, "BTS %u is of %s type in band %s, has LAC %u, "
+		"BSIC %u, TSC %u and %u TRX%s",
+		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
+		bts->location_area_code, bts->bsic, bts->tsc, 
+		bts->num_trx, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -159,6 +161,10 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
 		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "  RF Nominal Power: %d dBm, reduced by %u dB, "
+		"resulting BS power: %d dBm\n",
+		trx->nominal_power, trx->max_power_red,
+		trx->nominal_power - trx->max_power_red);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &trx->nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
@@ -297,7 +303,7 @@ DEFUN(show_ts,
 
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
-	vty_out(vty, "    ID: %lu, Authorized: %d%s", subscr->id,
+	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
 		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
@@ -628,7 +634,27 @@ DEFUN(cfg_bts_type,
 {
 	struct gsm_bts *bts = vty->index;
 
+	/* FIXME: implementation */
 	//bts->type =
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_band,
+      cfg_bts_band_cmd,
+      "band BAND",
+      "Set the frequency band of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int band = gsm_band_parse(atoi(argv[0]));
+
+	if (band < 0) {
+		vty_out(vty, "%% BAND %d is not a valid GSM band%s",
+			band, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->band = band;
+
 	return CMD_SUCCESS;
 }
 
@@ -754,6 +780,34 @@ DEFUN(cfg_trx_arfcn,
 	/* FIXME: patch ARFCN into SYSTEM INFORMATION */
 	/* FIXME: use OML layer to update the ARFCN */
 	/* FIXME: use RSL layer to update SYSTEM INFORMATION */
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_max_power_red,
+      cfg_trx_max_power_red_cmd,
+      "max_power_red <0-100>",
+      "Reduction of maximum BS RF Power in dB\n")
+{
+	int maxpwr_r = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+	int upper_limit = 12;	/* default 12.21 max power red. */
+
+	/* FIXME: check if our BTS type supports more than 12 */
+	if (maxpwr_r < 0 || maxpwr_r > upper_limit) {
+		vty_out(vty, "%% Power %d dB is not in the valid range%s",
+			maxpwr_r, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (maxpwr_r & 1) {
+		vty_out(vty, "%% Power %d dB is not an even value%s",
+			maxpwr_r, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	trx->max_power_red = maxpwr_r;
+
+	/* FIXME: make sure we update this using OML */
 
 	return CMD_SUCCESS;
 }
@@ -884,6 +938,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&bts_node, dummy_config_write);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
+	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
@@ -892,6 +947,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
+	install_element(TRX_NODE, &cfg_trx_max_power_red);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);

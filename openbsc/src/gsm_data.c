@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include <openbsc/gsm_data.h>
 
@@ -213,3 +214,39 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 	}
 	return NULL;
 }
+
+char *gsm_band_name(enum gsm_band band)
+{
+	switch (band) {
+	case GSM_BAND_400:
+		return "GSM 400";
+	case GSM_BAND_850:
+		return "GSM 850";
+	case GSM_BAND_900:
+		return "GSM 900";
+	case GSM_BAND_1800:
+		return "DCS 1800";
+	case GSM_BAND_1900:
+		return "PCS 1900";
+	}
+	return "invalid";
+}
+
+enum gsm_band gsm_band_parse(int mhz)
+{
+	switch (mhz) {
+	case 400:
+		return GSM_BAND_400;
+	case 850:
+		return GSM_BAND_850;
+	case 900:
+		return GSM_BAND_900;
+	case 1800:
+		return GSM_BAND_1800;
+	case 1900:
+		return GSM_BAND_1900;
+	default:
+		return -EINVAL;
+	}
+}
+

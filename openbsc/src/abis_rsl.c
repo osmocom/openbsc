@@ -356,6 +356,95 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 	return abis_rsl_sendmsg(msg);
 }
 
+int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+	u_int8_t chan_nr = lchan2chan_nr(lchan);
+
+	db = abs(db);
+	if (db > 30)
+		return -EINVAL;
+
+	lchan->bs_power = db/2;
+	if (fpc)
+		lchan->bs_power |= 0x10;
+	
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_BS_POWER_CONTROL);
+	dh->chan_nr = chan_nr;
+
+	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* determine power control level for given dBm value, as indicated
+ * by the tables in chapter 4.1.1 of GSM TS 05.05 */
+static int ms_pwr_ctl_lvl(struct gsm_bts *bts, unsigned int dbm)
+{
+	switch (bts->band) {
+	case GSM_BAND_400:
+	case GSM_BAND_900:
+	case GSM_BAND_850:
+		if (dbm >= 39)
+			return 0;
+		else if (dbm < 5)
+			return 19;
+		else
+			return 2 + ((39 - dbm) / 2);
+		break;
+	case GSM_BAND_1800:
+		if (dbm >= 36)
+			return 29;
+		else if (dbm >= 34)	
+			return 30;
+		else if (dbm >= 32)
+			return 31;
+		else
+			return (30 - dbm) / 2;
+		break;
+	case GSM_BAND_1900:
+		if (dbm >= 33)
+			return 30;
+		else if (dbm >= 32)
+			return 31;
+		else
+			return (30 - dbm) / 2;
+		break;
+	}
+	return -EINVAL;
+}
+
+int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+	u_int8_t chan_nr = lchan2chan_nr(lchan);
+	int ctl_lvl;
+
+	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts, dbm);
+	if (ctl_lvl < 0)
+		return ctl_lvl;
+
+	lchan->ms_power = ctl_lvl;
+
+	if (fpc)
+		lchan->ms_power |= 0x20;
+	
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_MS_POWER_CONTROL);
+	dh->chan_nr = chan_nr;
+
+	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 8.4.1 */
 #if 0
 int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,

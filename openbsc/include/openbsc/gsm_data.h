@@ -3,6 +3,14 @@
 
 #include <sys/types.h>
 
+enum gsm_band {
+	GSM_BAND_400,
+	GSM_BAND_850,
+	GSM_BAND_900,
+	GSM_BAND_1800,
+	GSM_BAND_1900,
+};
+
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -223,6 +231,8 @@ struct gsm_bts_trx {
 	} bb_transc;
 
 	u_int16_t arfcn;
+	int nominal_power;		/* in dBm */
+	unsigned int max_power_red;	/* in actual dB */
 
 	union {
 		struct {
@@ -301,6 +311,7 @@ struct gsm_bts {
 	u_int8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	enum gsm_band band;
 	/* how do we talk OML with this TRX? */
 	struct e1inp_sign_link *oml_link;
 
@@ -395,6 +406,9 @@ enum gsm_bts_type parse_btstype(char *arg);
 const char *btstype2str(enum gsm_bts_type type);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
+
+char *gsm_band_name(enum gsm_band band);
+enum gsm_band gsm_band_parse(int mhz);
 
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {
