@@ -418,6 +418,41 @@ static int ms_pwr_ctl_lvl(struct gsm_bts *bts, unsigned int dbm)
 	return -EINVAL;
 }
 
+static int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
+{
+	lvl &= 0x1f;
+
+	switch (band) {
+	case GSM_BAND_400:
+	case GSM_BAND_900:
+	case GSM_BAND_850:
+		if (lvl < 2)
+			return 39;
+		else if (lvl < 20)
+			return 39 - ((lvl - 2) * 2) ;
+		else
+			return 5;
+		break;
+	case GSM_BAND_1800:
+		if (lvl < 16)
+			return 30 - (lvl * 2);
+		else if (lvl < 29)
+			return 0;
+		else
+			return 36 - ((lvl - 29) * 2);
+		break;
+	case GSM_BAND_1900:
+		if (lvl < 16)
+			return 30 - (lvl * 2);
+		else if (lvl < 30)
+			return -EINVAL;
+		else
+			return 33 - (lvl - 30);
+		break;
+	}
+	return -EINVAL;
+}
+
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -809,8 +844,14 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
 		DEBUGPC(DRSL, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
-	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO))
-		DEBUGPC(DRSL, "L1 ");
+	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
+		u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
+		u_int8_t pwr_lvl = val[0] >> 3;
+		DEBUGPC(DRSL, "L1_MS_PWR=%ddBm ",
+			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
+		DEBUGPC(DRSL, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
+		DEBUGPC(DRSL, "L1_TA=%u ", val[1]);
+	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		DEBUGPC(DRSL, "L3\n");
 		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
