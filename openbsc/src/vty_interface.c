@@ -947,7 +947,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
-	install_element(TRX_NODE, &cfg_trx_max_power_red);
+	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
