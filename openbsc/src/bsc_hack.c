@@ -59,6 +59,7 @@ static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
+static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -927,6 +928,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static int bootstrap_bts(struct gsm_bts *bts)
 {
+	bts->band = BAND;
 	bts->location_area_code = LAC;
 	bts->trx[0].arfcn = ARFCN;
 
@@ -1027,6 +1029,7 @@ static int bootstrap_network(void)
 		/* FIXME: do this dynamic */
 		bts->ip_access.site_id = 1801;
 		bts->ip_access.bts_id = 0;
+
 		bts = &gsmnet->bts[1];
 		bootstrap_bts(bts);
 		bts->ip_access.site_id = 1800;
@@ -1075,7 +1078,7 @@ static void print_help()
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
-		int option_index = 0, c;
+		int tmp, option_index = 0, c;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
@@ -1092,10 +1095,11 @@ static void handle_options(int argc, char** argv)
 			{"cardnr", 1, 0, 'C'},
 			{"release-l2", 0, 0, 'R'},
 			{"timestamp", 0, 0, 'T'},
+			{"band", 0, 0, 'b'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:T",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1146,6 +1150,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'T':
 			debug_timestamp(1);
+			break;
+		case 'b':
+			BAND = gsm_band_parse(atoi(optarg));
 			break;
 		default:
 			/* ignore */
