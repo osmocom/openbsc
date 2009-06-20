@@ -42,6 +42,7 @@ enum gsm_chreq_reason_t {
 #include <openbsc/timer.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mncc.h>
+#include <openbsc/tlv.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -137,10 +138,6 @@ struct gsm_nm_state {
 	u_int8_t administrative;
 	u_int8_t availability;
 };
-struct gsm_attr {
-	u_int8_t len;
-	u_int8_t data[0];
-};
 
 /*
  * LOCATION UPDATING REQUEST state
@@ -203,7 +200,7 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 	struct gsm_nm_state nm_state;
-	struct gsm_attr *nm_attr;
+	struct tlv_parsed nm_attr;
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
@@ -225,7 +222,7 @@ struct gsm_bts_trx {
 	/* how do we talk RSL with this TRX? */
 	struct e1inp_sign_link *rsl_link;
 	struct gsm_nm_state nm_state;
-	struct gsm_attr *nm_attr;
+	struct tlv_parsed nm_attr;
 	struct {
 		struct gsm_nm_state nm_state;
 	} bb_transc;
@@ -318,7 +315,7 @@ struct gsm_bts {
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
 	struct gsm_nm_state nm_state;
-	struct gsm_attr *nm_attr;
+	struct tlv_parsed nm_attr;
 
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
