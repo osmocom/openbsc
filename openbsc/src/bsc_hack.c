@@ -81,7 +81,7 @@ SET ATTRIBUTES
 
 unsigned char msg_1[] = 
 {
-	0xD0, 0x00, 0xFF, 0xFF, 0xFF, 
+	NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER, 0xFF, 0xFF, 0xFF, 
 		NM_ATT_BS11_ABIS_EXT_TIME, 0x07, 
 			0xD7, 0x09, 0x08, 0x0E, 0x24, 0x0B, 0xCE, 
 		0x02, 
@@ -149,9 +149,8 @@ SET BTS ATTRIBUTES
   BCCH ARFCN / bCCHFrequency: 1
 */
 
-unsigned char msg_2[] = 
+static unsigned char bs11_attr_bts[] = 
 {
-	0x41, NM_OC_BTS, 0x00, 0xFF, 0xFF,
 		NM_ATT_BSIC, HARDCODED_BSIC,
 		NM_ATT_BTS_AIR_TIMER, 0x04,
 		NM_ATT_BS11_BTSLS_HOPPING, 0x00,
@@ -217,7 +216,7 @@ SET ATTRIBUTES
 
 unsigned char msg_3[] = 
 {
-	0xD0, NM_OC_BS11_HANDOVER, 0x00, 0xFF, 0xFF, 
+	NM_MT_BS11_SET_ATTR, NM_OC_BS11_HANDOVER, 0x00, 0xFF, 0xFF, 
 		0xD0, 0x00,
 		0x64, 0x00,
 		0x67, 0x00,
@@ -287,7 +286,7 @@ SET ATTRIBUTES
 
 unsigned char msg_4[] = 
 {
-	0xD0, NM_OC_BS11_PWR_CTRL, 0x00, 0xFF, 0xFF, 
+	NM_MT_BS11_SET_ATTR, NM_OC_BS11_PWR_CTRL, 0x00, 0xFF, 0xFF, 
 		NM_ATT_BS11_ENA_MS_PWR_CTRL, 0x00,
 		NM_ATT_BS11_ENA_PWR_CTRL_RLFW, 0x00,
 		0x7E, 0x04, 0x01,
@@ -326,9 +325,8 @@ SET TRX ATTRIBUTES
   trxArea: 00h = TRX doesn't belong to a concentric cell
 */
 
-unsigned char msg_6[] = 
+static unsigned char bs11_attr_radio[] = 
 {
-	0x44, NM_OC_RADIO_CARRIER, 0x00, 0x00, 0xFF, 
 		NM_ATT_ARFCN_LIST, 0x01, 0x00, HARDCODED_ARFCN /*0x01*/,
 		NM_ATT_RF_MAXPOWR_R, 0x00,
 		NM_ATT_BS11_RADIO_MEAS_GRAN, 0x01, 0xFE, 
@@ -506,13 +504,13 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 	abis_nm_bs11_db_transmission(bts, 1);
 
 	abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
-	abis_nm_raw_msg(bts, sizeof(msg_2), msg_2); /* set BTS attr */
+	abis_nm_set_bts_attr(bts, bs11_attr_bts, sizeof(bs11_attr_bts));
 	abis_nm_raw_msg(bts, sizeof(msg_3), msg_3); /* set BTS handover attr */
 	abis_nm_raw_msg(bts, sizeof(msg_4), msg_4); /* set BTS power control attr */
 
 	/* Connect signalling of bts0/trx0 to e1_0/ts1/64kbps */
 	abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
-	abis_nm_raw_msg(bts, sizeof(msg_6), msg_6); /* SET TRX ATTRIBUTES */
+	abis_nm_set_radio_attr(trx, bs11_attr_radio, sizeof(bs11_attr_radio));
 
 	/* Use TEI 1 for signalling */
 	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
@@ -868,17 +866,17 @@ static void patch_tables(struct gsm_bts *bts)
 	type_6->lai = lai;
 
 	/* patch ARFCN into BTS Attributes */
-	msg_2[74] &= 0xf0;
-	msg_2[74] |= arfcn_high;
-	msg_2[75] = arfcn_low;
+	bs11_attr_bts[69] &= 0xf0;
+	bs11_attr_bts[69] |= arfcn_high;
+	bs11_attr_bts[70] = arfcn_low;
 	nanobts_attr_bts[42] &= 0xf0;
 	nanobts_attr_bts[42] |= arfcn_high;
 	nanobts_attr_bts[43] = arfcn_low;
 
 	/* patch ARFCN into TRX Attributes */
-	msg_6[7] &= 0xf0;
-	msg_6[7] |= arfcn_high;
-	msg_6[8] = arfcn_low;
+	bs11_attr_radio[2] &= 0xf0;
+	bs11_attr_radio[2] |= arfcn_high;
+	bs11_attr_radio[3] = arfcn_low;
 	nanobts_attr_radio[5] &= 0xf0;
 	nanobts_attr_radio[5] |= arfcn_high;
 	nanobts_attr_radio[6] = arfcn_low;
@@ -891,7 +889,7 @@ static void patch_tables(struct gsm_bts *bts)
 	type_3->control_channel_desc = bts->chan_desc;
 
 	/* patch BSIC */
-	msg_2[6] = bts->bsic;
+	bs11_attr_bts[1] = bts->bsic;
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
 }
 
