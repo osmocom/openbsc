@@ -170,11 +170,12 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	gsmnet = gsm_network_init(1, GSM_BTS_TYPE_NANOBTS_900, 1, 1, NULL);
+	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet)
 		exit(1);
 
-	bts = &gsmnet->bts[0];
+	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS_900, HARDCODED_TSC,
+				HARDCODED_BSIC);
 	
 	printf("Trying to connect to ip.access BTS ...\n");
 

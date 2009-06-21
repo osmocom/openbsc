@@ -3444,9 +3444,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		trans->subscr = subscr;
 		/* Find lchan */
 		for (i = 0; i < net->num_bts; i++) {
-			bts = &net->bts[i];
+			bts = gsm_bts_num(net, i);
 			for (j = 0; j < bts->num_trx; j++) {
-				trx = &bts->trx[j];
+				trx = gsm_bts_trx_num(bts, j);
 				for (k = 0; k < TRX_NR_TS; k++) {
 					ts = &trx->ts[k];
 					for (l = 0; l < TS_MAX_LCHAN; l++) {

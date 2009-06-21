@@ -544,19 +544,19 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->nm_state;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		nm_state = &trx->ts[obj_inst->ts_nr].nm_state;
@@ -572,13 +572,13 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		case BS11_OBJ_BBSIG:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.bbsig.nm_state;
 			break;
 		case BS11_OBJ_PA:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.pa.nm_state;
 			break;
 		default:
@@ -611,19 +611,19 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		obj = &trx->ts[obj_inst->ts_nr];

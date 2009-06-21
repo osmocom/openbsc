@@ -25,6 +25,7 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/talloc.h>
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
@@ -84,74 +85,122 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 	return chreq_names[c];
 }
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
-				     u_int16_t country_code, u_int16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, int, void *))
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
-	int i;
-	struct gsm_network *net;
+	struct gsm_bts_trx *trx = talloc(bts, struct gsm_bts_trx);
+	int k;
 
-	if (num_bts > GSM_MAX_BTS)
+	if (!trx)
 		return NULL;
 
-	net = malloc(sizeof(*net));
+	memset(trx, 0, sizeof(*trx));
+	trx->bts = bts;
+	trx->nr = bts->num_trx++;
+
+	for (k = 0; k < TRX_NR_TS; k++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[k];
+		int l;
+		
+		ts->trx = trx;
+		ts->nr = k;
+		ts->pchan = GSM_PCHAN_NONE;
+
+		for (l = 0; l < TS_MAX_LCHAN; l++) {
+			struct gsm_lchan *lchan;
+			lchan = &ts->lchan[l];
+
+			lchan->ts = ts;
+			lchan->nr = l;
+			lchan->type = GSM_LCHAN_NONE;
+		}
+	}
+
+	llist_add(&trx->list, &bts->trx_list);
+
+	return trx;
+}
+
+struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
+			      u_int8_t tsc, u_int8_t bsic)
+{
+	struct gsm_bts *bts = talloc(net, struct gsm_bts);
+
+	if (!bts)
+		return NULL;
+
+	memset(bts, 0, sizeof(*bts));
+	bts->network = net;
+	bts->nr = net->num_bts++;
+	bts->type = type;
+	bts->tsc = tsc;
+	bts->bsic = bsic;
+	bts->num_trx = 0;
+	INIT_LLIST_HEAD(&bts->trx_list);
+
+	/* create our primary TRX */
+	bts->c0 = gsm_bts_trx_alloc(bts);
+	if (!bts->c0) {
+		talloc_free(bts);
+		return NULL;
+	}
+	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
+
+	llist_add(&bts->list, &net->bts_list);
+
+	return bts;
+}
+
+struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
+				     int (*mncc_recv)(struct gsm_network *, int, void *))
+{
+	struct gsm_network *net;
+
+	net = talloc(tall_bsc_ctx, struct gsm_network);
 	if (!net)
 		return NULL;
 	memset(net, 0, sizeof(*net));	
 
 	net->country_code = country_code;
 	net->network_code = network_code;
-	net->num_bts = num_bts;
+	net->num_bts = 0;
 
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
+	INIT_LLIST_HEAD(&net->bts_list);
 
 	net->mncc_recv = mncc_recv;
 
-	for (i = 0; i < num_bts; i++) {
-		struct gsm_bts *bts = &net->bts[i];
-		int j;
-		
-		bts->network = net;
-		bts->nr = i;
-		bts->type = bts_type;
-		bts->tsc = HARDCODED_TSC;
-		bts->bsic = HARDCODED_BSIC;
-
-		for (j = 0; j < BTS_MAX_TRX; j++) {
-			struct gsm_bts_trx *trx = &bts->trx[j];
-			int k;
-
-			trx->bts = bts;
-			trx->nr = j;
-
-			for (k = 0; k < TRX_NR_TS; k++) {
-				struct gsm_bts_trx_ts *ts = &trx->ts[k];
-				int l;
-				
-				ts->trx = trx;
-				ts->nr = k;
-				ts->pchan = GSM_PCHAN_NONE;
-
-				for (l = 0; l < TS_MAX_LCHAN; l++) {
-					struct gsm_lchan *lchan;
-					lchan = &ts->lchan[l];
-
-					lchan->ts = ts;
-					lchan->nr = l;
-					lchan->type = GSM_LCHAN_NONE;
-				}
-			}
-		}
-
-		bts->num_trx = 1;	/* FIXME */
-#ifdef HAVE_TRX1
-		bts->num_trx++;
-#endif
-		bts->c0 = &bts->trx[0];
-		bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
-	}
 	return net;
+}
+
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
+{
+	struct gsm_bts *bts;
+
+	if (num >= net->num_bts)
+		return NULL;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->nr == num)
+			return bts;
+	}
+
+	return NULL;
+}
+
+struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
+{
+	struct gsm_bts_trx *trx;
+
+	if (num >= bts->num_trx)
+		return NULL;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->nr == num)
+			return trx;
+	}
+
+	return NULL;
 }
 
 static char ts2str[255];
@@ -201,7 +250,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 		skip = 1;
 
 	for (i = 0; i < net->num_bts; i++) {
-		bts = &net->bts[i];
+		bts = gsm_bts_num(net, i);
 
 		if (skip) {
 			if (start_bts == bts)

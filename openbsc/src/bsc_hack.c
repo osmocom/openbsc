@@ -490,7 +490,7 @@ static void bootstrap_om_nanobts(struct gsm_bts *bts)
 
 static void bootstrap_om_bs11(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx = &bts->trx[0];
+	struct gsm_bts_trx *trx = bts->c0;
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -608,10 +608,11 @@ static int shutdown_om(struct gsm_bts *bts)
 
 static int shutdown_net(struct gsm_network *net)
 {
-	int i;
-	for (i = 0; i < net->num_bts; i++) {
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
 		int rc;
-		rc = shutdown_om(&net->bts[i]);
+		rc = shutdown_om(bts);
 		if (rc < 0)
 			return rc;
 	}
@@ -849,8 +850,8 @@ static int set_system_infos(struct gsm_bts_trx *trx)
  */
 static void patch_tables(struct gsm_bts *bts)
 {
-	u_int8_t arfcn_low = bts->trx[0].arfcn & 0xff;
-	u_int8_t arfcn_high = (bts->trx[0].arfcn >> 8) & 0x0f;
+	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
+	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 	/* covert the raw packet to the struct */
 	struct gsm48_system_information_type_3 *type_3 =
 		(struct gsm48_system_information_type_3*)&si3;
@@ -933,7 +934,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 {
 	bts->band = BAND;
 	bts->location_area_code = LAC;
-	bts->trx[0].arfcn = ARFCN;
+	bts->c0->arfcn = ARFCN;
 
 	/* Control Channel Description */
 	memset(&bts->chan_desc, 0, sizeof(struct gsm48_control_channel_descr));
@@ -947,7 +948,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	paging_init(bts);
 
 	if (bts->type == GSM_BTS_TYPE_BS11) {
-		struct gsm_bts_trx *trx = &bts->trx[0];
+		struct gsm_bts_trx *trx = bts->c0;
 		set_ts_e1link(&trx->ts[0], 0, 1, 0xff);
 		set_ts_e1link(&trx->ts[1], 0, 2, 1);
 		set_ts_e1link(&trx->ts[2], 0, 2, 2);
@@ -998,14 +999,14 @@ static int bootstrap_network(void)
 	}
 
 	/* initialize our data structures */
-	gsmnet = gsm_network_init(2, BTS_TYPE, MCC, MNC, mncc_recv);
+	gsmnet = gsm_network_init(MCC, MNC, mncc_recv);
 	if (!gsmnet)
 		return -ENOMEM;
 
 	gsmnet->name_long = "OpenBSC";
 	gsmnet->name_short = "OpenBSC";
 
-	bts = &gsmnet->bts[0];
+	bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
 	bootstrap_bts(bts);
 
 	if (db_init(database_name)) {
@@ -1033,7 +1034,7 @@ static int bootstrap_network(void)
 		bts->ip_access.site_id = 1801;
 		bts->ip_access.bts_id = 0;
 
-		bts = &gsmnet->bts[1];
+		bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
 		bootstrap_bts(bts);
 		bts->ip_access.site_id = 1800;
 		bts->ip_access.bts_id = 0;

@@ -112,10 +112,10 @@ static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
 				   u_int16_t site_id, u_int16_t bts_id)
 {
+	struct gsm_bts *bts;
 	int i;
 
-	for (i = 0; i < net->num_bts; i++) {
-		struct gsm_bts *bts = &net->bts[i];
+	llist_for_each_entry(bts, &net->bts_list, list) {
 
 		if (!is_ipaccess_bts(bts))
 			continue;
