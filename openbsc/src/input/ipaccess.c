@@ -223,7 +223,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			bsc_unregister_fd(bfd);
 			bsc_register_fd(newbfd);
-			free(bfd);
+			talloc_free(bfd);
 		}
 		break;
 	case IPAC_MSGT_ID_ACK:
@@ -454,7 +454,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		fprintf(stderr, "could not register FD\n");
 		close(bfd->fd);
-		free(line);
+		talloc_free(line);
 		return ret;
 	}
 
@@ -468,11 +468,16 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
-	struct bsc_fd *bfd = talloc(tall_bsc_ctx, struct bsc_fd);
+	struct bsc_fd *bfd;
 	int ret;
 
 	if (!(what & BSC_FD_READ))
 		return 0;
+
+	bfd = talloc(tall_bsc_ctx, struct bsc_fd);
+	if (!bfd)
+		return -ENOMEM;
+	memset(bfd, 0, sizeof(*bfd));
 
 	/* Some BTS has connected to us, but we don't know yet which line
 	 * (as created by the OML link) to associate it with.  Thus, we
@@ -491,7 +496,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		fprintf(stderr, "could not register FD\n");
 		close(bfd->fd);
-		free(bfd);
+		talloc_free(bfd);
 		return ret;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
@@ -583,7 +588,10 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 		return ret;
 
 	e1h = talloc(tall_bsc_ctx, struct ia_e1_handle);
+	if (!e1h)
+		return -ENOMEM;
 	memset(e1h, 0, sizeof(*e1h));
+
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
