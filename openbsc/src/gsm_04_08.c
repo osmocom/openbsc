@@ -354,9 +354,8 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	if (!tall_locop_ctx)
 		tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
 						    "loc_updating_oper");
-	lchan->loc_operation = talloc(tall_locop_ctx,
-				      struct gsm_loc_updating_operation);
-	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
+	lchan->loc_operation = talloc_zero(tall_locop_ctx,
+					   struct gsm_loc_updating_operation);
 }
 
 static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)

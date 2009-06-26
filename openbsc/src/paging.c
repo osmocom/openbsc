@@ -228,8 +228,7 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	}
 
 	DEBUGP(DPAG, "Start paging on bts %d.\n", bts->nr);
-	req = talloc(tall_paging_ctx, struct gsm_paging_request);
-	memset(req, 0, sizeof(*req));
+	req = talloc_zero(tall_paging_ctx, struct gsm_paging_request);
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
 	req->chan_type = type;

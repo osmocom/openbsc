@@ -25,10 +25,9 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 	struct e1inp_ts *sign_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
 
-	line = talloc(tall_bsc_ctx, struct e1inp_line);
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line)
 		return -ENOMEM;
-	memset(line, 0, sizeof(*line));
 
 	/* create E1 timeslots for signalling and TRAU frames */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
@@ -80,10 +79,9 @@ int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
 	struct e1inp_ts *sign_ts, *rsl_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
 
-	line = talloc(tall_bsc_ctx, struct e1inp_line);
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line)
 		return -ENOMEM;
-	memset(line, 0, sizeof(*line));
 
 	/* create E1 timeslots for signalling and TRAU frames */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);

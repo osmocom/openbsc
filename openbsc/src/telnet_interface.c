@@ -167,8 +167,7 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	}
 
 
-	connection = talloc(tall_telnet_ctx, struct telnet_connection);
-	memset(connection, 0, sizeof(*connection));
+	connection = talloc_zero(tall_telnet_ctx, struct telnet_connection);
 	connection->network = (struct gsm_network*)fd->data;
 	connection->fd.data = connection;
 	connection->fd.fd = new_connection;

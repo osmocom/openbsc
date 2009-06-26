@@ -291,12 +291,11 @@ int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
 {
 	struct mux_subch *sch = &mx->subch[s_nr];
 	int list_len = llist_len(&sch->tx_queue);
-	struct subch_txq_entry *tqe = talloc_size(tall_tqe_ctx,
-						  sizeof(*tqe) + len);
+	struct subch_txq_entry *tqe = talloc_zero_size(tall_tqe_ctx,
+							sizeof(*tqe) + len);
 	if (!tqe)
 		return -ENOMEM;
 
-	memset(tqe, 0, sizeof(*tqe));
 	tqe->bit_len = len;
 	memcpy(tqe->bits, data, len);
 

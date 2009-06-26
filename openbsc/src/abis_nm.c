@@ -2079,12 +2079,11 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 		if (rc < 2)
 			continue;
 
-		fle = talloc(tall_fle_ctx, struct file_list_entry);
+		fle = talloc_zero(tall_fle_ctx, struct file_list_entry);
 		if (!fle) {
 			rc = -ENOMEM;
 			goto out;
 		}
-		memset(fle, 0, sizeof(*fle));
 
 		/* construct new filename */
 		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));

@@ -373,11 +373,9 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 		tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 						   "e1inp_sign_link");
 
-	link = talloc(tall_sigl_ctx, struct e1inp_sign_link);
+	link = talloc_zero(tall_sigl_ctx, struct e1inp_sign_link);
 	if (!link)
 		return NULL;
-
-	memset(link, 0, sizeof(*link));
 
 	link->ts = ts;
 	link->type = type;
