@@ -1,7 +1,7 @@
 Index: wireshark/epan/dissectors/packet-rsl.c
 ===================================================================
---- wireshark.orig/epan/dissectors/packet-rsl.c	2009-02-22 15:39:34.000000000 +0100
-+++ wireshark/epan/dissectors/packet-rsl.c	2009-02-22 17:27:51.000000000 +0100
+--- wireshark.orig/epan/dissectors/packet-rsl.c	2009-02-28 15:39:56.000000000 +0100
++++ wireshark/epan/dissectors/packet-rsl.c	2009-06-26 14:58:39.000000000 +0200
 @@ -2,6 +2,7 @@
   * Routines for Radio Signalling Link (RSL) dissection.
   *
@@ -10,7 +10,16 @@ Index: wireshark/epan/dissectors/packet-rsl.c
   *
   * $Id: packet-rsl.c 27065 2008-12-20 00:09:02Z wmeier $
   *
-@@ -116,6 +117,14 @@
+@@ -44,6 +45,8 @@
+ #include <epan/lapd_sapi.h>
+ 
+ #include "packet-gsm_a_common.h"
++#include "packet-rtp.h"
++#include "packet-rtcp.h"
+ 
+ /* Initialize the protocol and registered fields */
+ static int proto_rsl		= -1;
+@@ -116,6 +119,14 @@
  static int hf_rsl_rtd				= -1;
  static int hf_rsl_delay_ind			= -1;
  static int hf_rsl_tfo				= -1;
@@ -25,7 +34,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  /* Initialize the subtree pointers */
  static int ett_rsl = -1;
-@@ -173,6 +182,15 @@
+@@ -173,6 +184,15 @@
  static int ett_ie_meas_res_no = -1;
  static int ett_ie_message_id = -1;
  static int ett_ie_sys_info_type = -1;
@@ -41,7 +50,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  proto_tree *top_tree;
  dissector_handle_t gsm_a_ccch_handle;
-@@ -208,8 +226,11 @@
+@@ -208,8 +228,11 @@
  	{  0x06,		"Common Channel Management messages" },
  	{  0x08,		"TRX Management messages" },
  	{  0x16,		"Location Services messages" },
@@ -53,43 +62,9 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  /*
   * 9.2 MESSAGE TYPE
   */
-@@ -338,6 +359,14 @@
- 	{  0x3f,	"TFO MODification REQuest" },					/* 8.4.31 */
+@@ -276,6 +299,21 @@
  	/* 	0 1 - - - - - - Location Services messages: */
- 	{  0x41,	"Location Information" },						/* 8.7.1 */
-+	/* ip.access */
-+	{  0x70,	"ip.access BIND" },
-+	{  0x71,	"ip.access BIND ACK" },
-+	{  0x72,	"ip.access BIND NACK" },
-+	{  0x73,	"ip.access CONNECT" },
-+	{  0x74,	"ip.access CONNECT ACK" },
-+	{  0x75,	"ip.access CONNECT NACK" },
-+	{  0x76,	"ip.access DISCONNECT INDication" },
- 	{ 0,		NULL }
- };
- 
-@@ -477,6 +506,10 @@
- 			Not used
- 
- 	*/
-+	{ 0xf0,		"Remote IP Address" },
-+	{ 0xf1,		"Remote RTP Port" },
-+	{ 0xf3,		"Local RTP Port" },
-+	{ 0xf5,		"Local IP Address" },
- 	{ 0,			NULL }
- };
- 
-@@ -2043,7 +2076,6 @@
- 	proto_item_set_len(ti, length+2);
- 
- 	proto_tree_add_item(ie_tree, hf_rsl_ie_length, tvb, offset, 1, FALSE);
--	offset++;
- 
- 	/* Received Message */
- 	offset = dissct_rsl_msg(tvb, pinfo, ie_tree, offset);
-@@ -2907,13 +2939,320 @@
- 	return ie_offset + length;
- }
+ #define RSL_MSG_LOC_INF					65	/* 8.7.1 */
  
 +/* Vendor-Specific messages of ip.access nanoBTS. There is no public documentation
 + * about those extensions, all information in this dissector is based on lawful
@@ -106,6 +81,144 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +#define RSL_IE_IPAC_LOCAL_PORT		0xf3
 +#define RSL_IE_IPAC_LOCAL_IP		0xf5
 +
+ 
+ static const value_string rsl_msg_type_vals[] = {
+ 	  /* 	0 0 0 0 - - - - Radio Link Layer Management messages: */
+@@ -338,6 +376,14 @@
+ 	{  0x3f,	"TFO MODification REQuest" },					/* 8.4.31 */
+ 	/* 	0 1 - - - - - - Location Services messages: */
+ 	{  0x41,	"Location Information" },						/* 8.7.1 */
++	/* ip.access */
++	{  0x70,	"ip.access BIND" },
++	{  0x71,	"ip.access BIND ACK" },
++	{  0x72,	"ip.access BIND NACK" },
++	{  0x73,	"ip.access CONNECT" },
++	{  0x74,	"ip.access CONNECT ACK" },
++	{  0x75,	"ip.access CONNECT NACK" },
++	{  0x76,	"ip.access DISCONNECT INDication" },
+ 	{ 0,		NULL }
+ };
+ 
+@@ -477,6 +523,10 @@
+ 			Not used
+ 
+ 	*/
++	{ 0xf0,		"Remote IP Address" },
++	{ 0xf1,		"Remote RTP Port" },
++	{ 0xf3,		"Local RTP Port" },
++	{ 0xf5,		"Local IP Address" },
+ 	{ 0,			NULL }
+ };
+ 
+@@ -513,6 +563,95 @@
+ 	{ 0,			NULL }
+ };
+ 
++/* From openbsc/include/openbsc/tlv.h */
++enum tlv_type {
++	TLV_TYPE_FIXED,
++	TLV_TYPE_T,
++	TLV_TYPE_TV,
++	TLV_TYPE_TLV,
++	TLV_TYPE_TL16V,
++};
++
++struct tlv_def {
++	enum tlv_type type;
++	u_int8_t fixed_len;
++};
++
++struct tlv_definition {
++	struct tlv_def def[0xff];
++};
++
++static const struct tlv_definition rsl_att_tlvdef = {
++	.def = {
++		[RSL_IE_CH_NO]			= { TLV_TYPE_TV, 0 },
++		[RSL_IE_LINK_ID]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_ACT_TYPE]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_BS_POW]			= { TLV_TYPE_TV, 0 },
++		[RSL_IE_CH_ID]			= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CH_MODE]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_ENC_INF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_FRAME_NO]		= { TLV_TYPE_FIXED, 2 },
++		[RSL_IE_HO_REF]			= { TLV_TYPE_TV, 0 },
++		[RSL_IE_L1_INF]			= { TLV_TYPE_FIXED, 2 },
++		[RSL_IE_L3_INF]			= { TLV_TYPE_TL16V, 0 },
++		[RSL_IE_MS_ID]			= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_MS_POW]			= { TLV_TYPE_TV, 0 },
++		[RSL_IE_PAGING_GRP]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_PAGING_LOAD]		= { TLV_TYPE_FIXED, 2 },
++		[RSL_IE_PHY_CTX]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_ACCESS_DELAY]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_RACH_LOAD]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_REQ_REF]		= { TLV_TYPE_FIXED, 3 },
++		[RSL_IE_REL_MODE]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_RESOURCE_INF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_RLM_CAUSE]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_STARTING_TIME]		= { TLV_TYPE_FIXED, 2 },
++		[RSL_IE_TIMING_ADV]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_UPLINK_MEAS]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CAUSE]			= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_MEAS_RES_NO]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_MESSAGE_ID]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_SYS_INFO_TYPE]		= { TLV_TYPE_TV, 0 },
++		//[RSL_IE_MS_POWER_PARAM]		= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_BS_POWER_PARAM]		= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_PREPROC_CONFIG]		= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_PREPROC_MEAS_RES]		= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_IMM_ASS_INFO]		= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_SMSCB_INFO]		= { TLV_TYPE_FIXED, 23 },
++		//[RSL_IE_MS_TIMING_OFFSET]	= { TLV_TYPE_TV, 0 },
++		[RSL_IE_ERR_MSG]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_FULL_BCCH_INF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CH_NEEDED]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_CB_CMD_TYPE]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_SMSCB_MESS]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_FULL_IMM_ASS_INF]	= { TLV_TYPE_TLV, 0 },
++		//[RSL_IE_SACCH_INFO]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CBCH_LOAD_INF]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_SMSCB_CH_IND]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_GRP_CALL_REF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CH_DESC]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_NCH_DRX_INF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CMD_IND]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_EMLPP_PRIO]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_UIC]			= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_MAIN_CH_REF]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_MULTIRATE_CONF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_MULTIRATE_CNTRL]	= { TLV_TYPE_TV, 0 },
++		[RSL_IE_SUP_CODEC_TYPES]	= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_CODEC_CONF]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_RTD]			= { TLV_TYPE_TV, 0 },
++		[RSL_IE_TFO_STATUS]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_LLP_APDU]		= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_IPAC_REMOTE_IP]		= { TLV_TYPE_FIXED, 4 },
++		[RSL_IE_IPAC_REMOTE_PORT]	= { TLV_TYPE_FIXED, 2 },
++		[RSL_IE_IPAC_LOCAL_IP]		= { TLV_TYPE_FIXED, 4 },
++		[RSL_IE_IPAC_LOCAL_PORT]	= { TLV_TYPE_FIXED, 2 },
++		[0xf4]				= { TLV_TYPE_TV, 0 },
++		[0xf8]				= { TLV_TYPE_FIXED, 2 },
++		[0xfc]				= { TLV_TYPE_TV, 0 },
++	},
++};
++
+ /* 9.3.1 Channel number			9.3.1	M TV 2 */
+ static int
+ dissect_rsl_ie_ch_no(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
+@@ -2043,7 +2182,6 @@
+ 	proto_item_set_len(ti, length+2);
+ 
+ 	proto_tree_add_item(ie_tree, hf_rsl_ie_length, tvb, offset, 1, FALSE);
+-	offset++;
+ 
+ 	/* Received Message */
+ 	offset = dissct_rsl_msg(tvb, pinfo, ie_tree, offset);
+@@ -2907,13 +3045,385 @@
+ 	return ie_offset + length;
+ }
+ 
++#if 0
 +static int
 +dissect_rsl_ipac_ie_f8(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
 +{
@@ -336,21 +449,31 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +
 +	return offset;
 +}
++#endif
 +
 +static int
 +dissct_rsl_ipaccess_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
 +{
 +	guint8 msg_type;
++	guint32 local_addr = 0;
++	guint16 local_port = 0;
++	address src_addr;
 +
 +	msg_type = tvb_get_guint8(tvb, offset)&0x7f;
 +	offset++;
 +
 +	switch (msg_type) {
 +	case RSL_MSG_TYPE_IPAC_BIND:
++	case RSL_MSG_TYPE_IPAC_BIND_ACK:
++	case RSL_MSG_TYPE_IPAC_BIND_NACK:
++	case RSL_MSG_TYPE_IPAC_CONNECT:
++	case RSL_MSG_TYPE_IPAC_CONNECT_ACK:
++	case RSL_MSG_TYPE_IPAC_CONNECT_NACK:
++	case RSL_MSG_TYPE_IPAC_DISC_IND:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_BIND_ACK:
++#if 0
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
@@ -358,11 +481,9 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +		offset = dissect_rsl_ipac_ie_local_ip(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_fc(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_BIND_NACK:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_CONNECT:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_remote_ip(tvb, pinfo, tree, offset, TRUE);
@@ -370,16 +491,13 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +		offset = dissect_rsl_ipac_ie_f4(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_fc(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_CONNECT_ACK:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_CONNECT_NACK:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		break;
-+	case RSL_MSG_TYPE_IPAC_DISC_IND:
 +		/* Channel number			9.3.1	M TV 2		*/
 +		offset = dissect_rsl_ie_ch_no(tvb, pinfo, tree, offset, TRUE);
 +		offset = dissect_rsl_ipac_ie_f8(tvb, pinfo, tree, offset, TRUE);
@@ -387,8 +505,82 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +		/* Cause					9.3.26	M TLV >=3 */
 +		offset = dissect_rsl_ie_cause(tvb, pinfo, tree, offset, TRUE);
 +		break;
++#endif
++	}
++	/* parse remaining TLV attributes */
++	while (tvb_reported_length_remaining(tvb, offset) != 0) {
++		guint8 tag;
++		unsigned int len, hlen, len_len;
++		const struct tlv_def *tdef;
++		proto_item *ti;
++		proto_tree *ie_tree;
++
++		tag = tvb_get_guint8(tvb, offset);
++		tdef = &rsl_att_tlvdef.def[tag];
++
++		switch (tdef->type) {
++		case TLV_TYPE_FIXED:
++			hlen = 1;
++			len_len = 0;
++			len = tdef->fixed_len;
++			break;
++		case TLV_TYPE_T:
++			hlen = 1;
++			len_len = 0;
++			len = 0;
++			break;
++		case TLV_TYPE_TV:
++			hlen = 1;
++			len_len = 0;
++			len = 1;
++			break;
++		case TLV_TYPE_TLV:
++			hlen = 2;
++			len_len = 1;
++			len = tvb_get_guint8(tvb, offset+1);
++			break;
++		case TLV_TYPE_TL16V:
++			hlen = 3;
++			len_len = 2;
++			len = tvb_get_guint8(tvb, offset+1) << 8 |
++					tvb_get_guint8(tvb, offset+2);
++			break;
++		}
++
++		ti = proto_tree_add_item(tree, hf_rsl_ie_id, tvb, offset, 1, FALSE);
++		ie_tree = proto_item_add_subtree(ti, ett_ie_local_port);
++		offset += hlen;
++
++		switch (tag) {
++		case RSL_IE_CH_NO:
++			break;
++		case RSL_IE_IPAC_REMOTE_IP:
++			proto_tree_add_item(ie_tree, hf_rsl_remote_ip, tvb, offset, len, FALSE);
++			break;
++		case RSL_IE_IPAC_REMOTE_PORT:
++			proto_tree_add_item(ie_tree, hf_rsl_remote_port, tvb, offset, len, FALSE);
++			break;
++		case RSL_IE_IPAC_LOCAL_IP:
++			proto_tree_add_item(ie_tree, hf_rsl_local_ip, tvb, offset, len, FALSE);
++			local_addr = tvb_get_ipv4(tvb, offset);
++			break;
++		case RSL_IE_IPAC_LOCAL_PORT:
++			proto_tree_add_item(ie_tree, hf_rsl_local_port, tvb, offset, len, FALSE);
++			local_port = tvb_get_ntohs(tvb, offset);
++			break;
++		}
++		offset += len;
 +	}
 +
++	switch (msg_type) {
++	case RSL_MSG_TYPE_IPAC_BIND_ACK:
++		src_addr.type = AT_IPv4;
++		src_addr.len = 4;
++		src_addr.data = (guint8 *)&local_addr;
++		rtp_add_address(pinfo, &src_addr, local_port, 0, "GSM A-bis/IP", pinfo->fd->num, 0);
++		rtcp_add_address(pinfo, &src_addr, local_port+1, 0, "GSM A-bis/IP", pinfo->fd->num);
++		break;
++	}
 +	return offset;
 +}
 +
@@ -409,7 +601,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  	offset++;
  
  	switch (msg_type){
-@@ -3517,7 +3856,6 @@
+@@ -3517,7 +4027,6 @@
  		/* 9.1 Message discriminator */
  		proto_tree_add_item(rsl_tree, hf_rsl_msg_dsc, tvb, offset, 1, FALSE);
  		proto_tree_add_item(rsl_tree, hf_rsl_T_bit, tvb, offset, 1, FALSE);
@@ -417,7 +609,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  		offset = dissct_rsl_msg(tvb, pinfo, rsl_tree, offset);
  
-@@ -3883,6 +4221,46 @@
+@@ -3883,6 +4392,46 @@
  			FT_UINT8, BASE_DEC, VALS(rsl_emlpp_prio_vals), 0x03,
  			"eMLPP Priority", HFILL }
  		},
@@ -464,7 +656,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  	};
  	static gint *ett[] = {
  		&ett_rsl,
-@@ -3941,6 +4319,14 @@
+@@ -3941,6 +4490,14 @@
  		&ett_ie_meas_res_no,
  		&ett_ie_message_id,
  		&ett_ie_sys_info_type,
