@@ -161,6 +161,9 @@ void vty_close(struct vty *vty)
 
 	/* OK free vty. */
 	free(vty);
+
+	/* FIXME: memory leak. We need to call telnet_close_client() but don't
+	 * have bfd */
 }
 
 int vty_shell(struct vty *vty)
