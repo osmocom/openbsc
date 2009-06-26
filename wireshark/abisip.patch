@@ -1,7 +1,7 @@
 Index: epan/dissectors/Makefile.common
 ===================================================================
---- epan/dissectors/Makefile.common.orig
-+++ epan/dissectors/Makefile.common
+--- epan/dissectors/Makefile.common.orig	2009-02-28 15:39:56.000000000 +0100
++++ epan/dissectors/Makefile.common	2009-06-25 15:04:16.000000000 +0200
 @@ -873,6 +873,7 @@
  # Dissectors with warnings.
  #
@@ -12,8 +12,8 @@ Index: epan/dissectors/Makefile.common
  	packet-sccp.c		\
 Index: epan/dissectors/packet-rsl.c
 ===================================================================
---- epan/dissectors/packet-rsl.c.orig
-+++ epan/dissectors/packet-rsl.c
+--- epan/dissectors/packet-rsl.c.orig	2009-02-28 15:39:51.000000000 +0100
++++ epan/dissectors/packet-rsl.c	2009-02-28 15:39:56.000000000 +0100
 @@ -3950,6 +3950,7 @@
  	proto_register_field_array(proto_rsl, hf, array_length(hf));
  	proto_register_subtree_array(ett, array_length(ett));
@@ -24,9 +24,9 @@ Index: epan/dissectors/packet-rsl.c
  
 Index: epan/dissectors/packet-abis_ip.c
 ===================================================================
---- /dev/null
-+++ epan/dissectors/packet-abis_ip.c
-@@ -0,0 +1,275 @@
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ epan/dissectors/packet-abis_ip.c	2009-06-25 15:04:42.000000000 +0200
+@@ -0,0 +1,279 @@
 +/* packet-abis_ip.c
 + * Routines for packet dissection of ip.access A-bis over IP
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -209,8 +209,11 @@ Index: epan/dissectors/packet-abis_ip.c
 +						   "unknown 0x%02x"));
 +
 +		if (tree) {
-+			ti = proto_tree_add_item(tree, proto_abisip, tvb,
-+						 offset, len+3, FALSE);
++			ti = proto_tree_add_protocol_format(tree, proto_abisip,
++					tvb, offset, len+3,
++					"A-bis/IP protocol ip.access, type: %s",
++					val_to_str(msg_type, abisip_protocol_vals,
++						   "unknown 0x%02x"));
 +			abisip_tree = proto_item_add_subtree(ti, ett_abisip);
 +			proto_tree_add_item(abisip_tree, hf_abisip_data_len,
 +					    tvb, offset+1, 1, FALSE);
@@ -227,10 +230,9 @@ Index: epan/dissectors/packet-abis_ip.c
 +			break;
 +		case ABISIP_OML:
 +			/* hand this off to the standard A-bis OML dissector */
-+#if 0
-+			call_dissector(sub_handles[SUB_OML], next_tvb,
-+					 pinfo, tree);
-+#endif
++			if (sub_handles[SUB_OML])
++				call_dissector(sub_handles[SUB_OML], next_tvb,
++						 pinfo, tree);
 +			break;
 +		case ABISIP_IPACCESS:
 +			dissect_ipaccess(next_tvb, pinfo, tree);
@@ -287,6 +289,8 @@ Index: epan/dissectors/packet-abis_ip.c
 +	proto_register_field_array(proto_abisip, hf, array_length(hf));
 +	proto_register_field_array(proto_ipaccess, hf_ipa, array_length(hf_ipa));
 +	proto_register_subtree_array(ett, array_length(ett));
++
++	register_dissector("gsm_abis_ip", dissect_abisip, proto_abisip);
 +}
 +
 +void proto_reg_handoff_abisip(void)

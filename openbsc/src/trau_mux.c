@@ -30,6 +30,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/debug.h>
+#include <openbsc/talloc.h>
 
 struct map_entry {
 	struct llist_head list;
@@ -46,11 +47,19 @@ struct upqueue_entry {
 static LLIST_HEAD(ss_map);
 static LLIST_HEAD(ss_upqueue);
 
+static void *tall_map_ctx, *tall_upq_ctx;
+
 /* map one particular subslot to another subslot */
 int trau_mux_map(const struct gsm_e1_subslot *src,
 		 const struct gsm_e1_subslot *dst)
 {
-	struct map_entry *me = malloc(sizeof(*me));
+	struct map_entry *me;
+
+	if (!tall_map_ctx)
+		tall_map_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						  "trau_map_entry");
+
+	me = talloc(tall_map_ctx, struct map_entry);
 	if (!me)
 		return -ENOMEM;
 
@@ -161,7 +170,8 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			return -EINVAL;
 		if (!ue->callref)
 			return -EINVAL;
-		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf));
+		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf),
+				 "TRAU");
 		if (!msg)
 			return -ENOMEM;
 		frame = (struct gsm_trau_frame *)msg->data;
@@ -189,8 +199,13 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref)
 {
 	struct gsm_e1_subslot *src_ss;
-	struct upqueue_entry *ue = malloc(sizeof(*ue));
+	struct upqueue_entry *ue;
 
+	if (!tall_upq_ctx)
+		tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						  "trau_upq_entry");
+
+	ue = talloc(tall_upq_ctx, struct upqueue_entry);
 	if (!ue)
 		return -ENOMEM;
 

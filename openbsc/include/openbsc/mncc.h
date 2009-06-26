@@ -193,6 +193,7 @@ struct gsm_mncc {
 	int		more;
 	int		notify; /* 0..127 */
 	int		emergency;
+	char		imsi[16];
 
 	unsigned char	lchan_mode;
 };

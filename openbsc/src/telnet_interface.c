@@ -34,6 +34,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 
 #include <vty/buffer.h>
 
@@ -46,6 +47,8 @@
 
 /* per connection data */
 LLIST_HEAD(active_connections);
+
+static void *tall_telnet_ctx;
 
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
@@ -65,6 +68,9 @@ static struct bsc_fd server_socket = {
 void telnet_init(struct gsm_network *network, int port) {
 	struct sockaddr_in sock_addr;
 	int fd, on = 1;
+
+	tall_telnet_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					     "telnet_connection");
 
 	bsc_vty_init(network);
 
@@ -126,7 +132,7 @@ int telnet_close_client(struct bsc_fd *fd) {
 	close(fd->fd);
 	bsc_unregister_fd(fd);
 	llist_del(&conn->entry);
-	free(conn);
+	talloc_free(conn);
 	return 0;
 }
 
@@ -161,8 +167,7 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	}
 
 
-	connection = (struct telnet_connection*)malloc(sizeof(*connection));
-	memset(connection, 0, sizeof(*connection));
+	connection = talloc_zero(tall_telnet_ctx, struct telnet_connection);
 	connection->network = (struct gsm_network*)fd->data;
 	connection->fd.data = connection;
 	connection->fd.fd = new_connection;

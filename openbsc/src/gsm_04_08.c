@@ -44,6 +44,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/talloc.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -51,6 +52,9 @@
 #define GSM_MAX_FACILITY       128
 #define GSM_MAX_SSVERSION      128
 #define GSM_MAX_USERUSER       128
+
+static void *tall_locop_ctx;
+static void *tall_trans_ctx;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -337,7 +341,7 @@ static void release_loc_updating_req(struct gsm_lchan *lchan)
 		return;
 
 	bsc_del_timer(&lchan->loc_operation->updating_timer);
-	free(lchan->loc_operation);
+	talloc_free(lchan->loc_operation);
 	lchan->loc_operation = 0;
 	put_lchan(lchan);
 }
@@ -347,9 +351,11 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	use_lchan(lchan);
 	release_loc_updating_req(lchan);
 
-	lchan->loc_operation = (struct gsm_loc_updating_operation *)
-				malloc(sizeof(*lchan->loc_operation));
-	memset(lchan->loc_operation, 0, sizeof(*lchan->loc_operation));
+	if (!tall_locop_ctx)
+		tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						    "loc_updating_oper");
+	lchan->loc_operation = talloc_zero(tall_locop_ctx,
+					   struct gsm_loc_updating_operation);
 }
 
 static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
@@ -380,6 +386,9 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	 * operation taking place on the lchan.
 	 */
 	struct gsm_lchan *lchan = (struct gsm_lchan *)handler_data;
+	if (!lchan)
+		return 0;
+
 	release_loc_updating_req(lchan);
 
 	/* Free all transactions that are associated with the released lchan */
@@ -968,7 +977,8 @@ static int encode_more(struct msgb *msg)
 
 struct msgb *gsm48_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
+	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM,
+				   "GSM 04.08");
 }
 
 int gsm48_sendmsg(struct msgb *msg)
@@ -1849,7 +1859,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 
 	mncc->msg_type = msg_type;
 	
-	msg = msgb_alloc(sizeof(struct gsm_mncc));
+	msg = msgb_alloc(sizeof(struct gsm_mncc), "MNCC");
 	if (!msg)
 		return -ENOMEM;
 	memcpy(msg->data, mncc, sizeof(struct gsm_mncc));
@@ -1911,7 +1921,7 @@ void free_trans(struct gsm_trans *trans)
 
 	llist_del(&trans->entry);
 
-	free(trans);
+	talloc_free(trans);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1924,7 +1934,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct gsm_trans *transt, *tmp;
 	struct gsm_network *net;
-  
+
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
   
@@ -2198,6 +2208,8 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 		setup.fields |= MNCC_F_CALLING;
 		strncpy(setup.calling.number, trans->subscr->extension,
 			sizeof(setup.calling.number)-1);
+		strncpy(setup.imsi, trans->subscr->imsi,
+			sizeof(setup.imsi)-1);
 	}
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
@@ -2536,6 +2548,8 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 		connect.fields |= MNCC_F_CONNECTED;
 		strncpy(connect.connected.number, trans->subscr->extension,
 			sizeof(connect.connected.number)-1);
+		strncpy(connect.imsi, trans->subscr->imsi,
+			sizeof(connect.imsi)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
@@ -3367,7 +3381,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
-		if (msg_type != MNCC_SETUP_REQ || !data->called.number[0]) {
+		if (msg_type != MNCC_SETUP_REQ ||
+		    (!data->called.number[0] && !data->imsi[0])) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
 				"unknown callref %d\n", data->called.number,
@@ -3377,8 +3392,20 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CAUSE_LOC_PRN_S_LU,
 						GSM48_CC_CAUSE_INVAL_TRANS_ID);
 		}
+		if (!data->called.number[0] && !data->imsi[0]) {
+			DEBUGP(DCC, "(bts - trx - ts - ti) "
+				"Received '%s' from MNCC with "
+				"no number or IMSI\n", get_mncc_name(msg_type));
+			/* Invalid number */
+			return mncc_release_ind(net, NULL, data->callref,
+						GSM48_CAUSE_LOC_PRN_S_LU,
+						GSM48_CC_CAUSE_INV_NR_FORMAT);
+		}
 		/* New transaction due to setup, find subscriber */
-		subscr = subscr_get_by_extension(data->called.number);
+		if (data->called.number[0])
+			subscr = subscr_get_by_extension(data->called.number);
+		else
+			subscr = subscr_get_by_imsi(data->imsi);
 		/* If subscriber is not found */
 		if (!subscr) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
@@ -3403,7 +3430,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		if (!(trans = calloc(1, sizeof(struct gsm_trans)))) {
+		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
@@ -3420,9 +3447,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		trans->subscr = subscr;
 		/* Find lchan */
 		for (i = 0; i < net->num_bts; i++) {
-			bts = &net->bts[i];
+			bts = gsm_bts_num(net, i);
 			for (j = 0; j < bts->num_trx; j++) {
-				trx = &bts->trx[j];
+				trx = gsm_bts_trx_num(bts, j);
 				for (k = 0; k < TRX_NR_TS; k++) {
 					ts = &trx->ts[k];
 					for (l = 0; l < TS_MAX_LCHAN; l++) {
@@ -3609,7 +3636,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "Unknown transaction ID %02x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		if (!(trans = calloc(1, sizeof(struct gsm_trans)))) {
+		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
 					     GSM48_PDISC_CC | transaction_id,
@@ -3784,6 +3811,7 @@ int bsc_upqueue(struct gsm_network *net)
 			if (net->mncc_recv)
 				net->mncc_recv(net, mncc->msg_type, mncc);
 			work = 1; /* work done */
+			talloc_free(msg);
 		}
 
 	return work;
