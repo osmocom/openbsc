@@ -3809,6 +3809,7 @@ int bsc_upqueue(struct gsm_network *net)
 			if (net->mncc_recv)
 				net->mncc_recv(net, mncc->msg_type, mncc);
 			work = 1; /* work done */
+			talloc_free(msg);
 		}
 
 	return work;
