@@ -387,6 +387,9 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	 * operation taking place on the lchan.
 	 */
 	struct gsm_lchan *lchan = (struct gsm_lchan *)handler_data;
+	if (!lchan)
+		return 0;
+
 	release_loc_updating_req(lchan);
 
 	/* Free all transactions that are associated with the released lchan */
@@ -1932,7 +1935,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct gsm_trans *transt, *tmp;
 	struct gsm_network *net;
-  
+
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
   
@@ -3428,7 +3431,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		if (!(trans = talloc(tall_trans_ctx, struct gsm_trans))) {
+		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
