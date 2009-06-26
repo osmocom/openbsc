@@ -3634,7 +3634,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "Unknown transaction ID %02x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		if (!(trans = talloc(tall_trans_ctx, struct gsm_trans))) {
+		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
 					     GSM48_PDISC_CC | transaction_id,

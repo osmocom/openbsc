@@ -310,7 +310,7 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 			tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1,
 							   "gsm_call");
 		/* create call */
-		if (!(call = talloc(tall_call_ctx, struct gsm_call))) {
+		if (!(call = talloc_zero(tall_call_ctx, struct gsm_call))) {
 			struct gsm_mncc rel;
 			
 			memset(&rel, 0, sizeof(struct gsm_mncc));
