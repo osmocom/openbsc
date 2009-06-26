@@ -55,7 +55,7 @@ struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 
 static const enum abis_nm_chan_comb chcomb4pchan[] = {
 	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
-	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCCHComb,
+	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCHComb,
 	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
 	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
