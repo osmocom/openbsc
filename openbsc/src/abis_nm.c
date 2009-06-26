@@ -423,7 +423,8 @@ static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
 
 static struct msgb *nm_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE);
+	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE,
+				   "OML");
 }
 
 /* Send a OML NM Message from BSC to BTS */

@@ -170,7 +170,8 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			return -EINVAL;
 		if (!ue->callref)
 			return -EINVAL;
-		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf));
+		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf),
+				 "TRAU");
 		if (!msg)
 			return -ENOMEM;
 		frame = (struct gsm_trau_frame *)msg->data;

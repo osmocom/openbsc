@@ -29,18 +29,17 @@
 
 static void *tall_msgb_ctx;
 
-struct msgb *msgb_alloc(u_int16_t size)
+struct msgb *msgb_alloc(u_int16_t size, const char *name)
 {
 	struct msgb *msg;
 
 	if (!tall_msgb_ctx)
 		tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");
 
-	msg = talloc_size(tall_msgb_ctx, sizeof(*msg) + size);
+	msg = _talloc_zero(tall_msgb_ctx, sizeof(*msg) + size, name);
 
 	if (!msg)
 		return NULL;
-	memset(msg, 0, sizeof(*msg)+size);
 
 	msg->data_len = size;
 	msg->len = 0;

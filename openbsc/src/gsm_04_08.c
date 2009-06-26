@@ -975,7 +975,8 @@ static int encode_more(struct msgb *msg)
 
 struct msgb *gsm48_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM);
+	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM,
+				   "GSM 04.08");
 }
 
 int gsm48_sendmsg(struct msgb *msg)
@@ -1856,7 +1857,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 
 	mncc->msg_type = msg_type;
 	
-	msg = msgb_alloc(sizeof(struct gsm_mncc));
+	msg = msgb_alloc(sizeof(struct gsm_mncc), "MNCC");
 	if (!msg)
 		return -ENOMEM;
 	memcpy(msg->data, mncc, sizeof(struct gsm_mncc));

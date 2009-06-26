@@ -51,7 +51,8 @@ static void *tall_gsms_ctx;
 
 struct msgb *gsm411_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM);
+	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM,
+				   "GSM 04.11");
 }
 
 int gsm0411_sendmsg(struct msgb *msg)

@@ -458,7 +458,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		}
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		msg = msgb_alloc(TSX_ALLOC_SIZE);
+		msg = msgb_alloc(TSX_ALLOC_SIZE, "TRAU_TX");
 		if (!msg)
 			return NULL;
 		len = subchan_mux_out(&e1i_ts->trau.mux, msg->data, 40);

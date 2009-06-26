@@ -96,7 +96,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "mISDN TS1");
 	struct sockaddr_mISDN l2addr;
 	struct mISDNhead *hh;
 	socklen_t alen;
@@ -278,7 +278,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TSx");
 	struct mISDNhead *hh;
 	int ret;
 

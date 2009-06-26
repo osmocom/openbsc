@@ -244,7 +244,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
 	int ret;
 

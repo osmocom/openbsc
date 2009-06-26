@@ -293,7 +293,8 @@ unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
 
 static struct msgb *rsl_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM);
+	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM,
+				   "RSL");
 }
 
 #define MACBLOCK_SIZE	23
