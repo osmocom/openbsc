@@ -360,12 +360,14 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 
 	db = abs(db);
 	if (db > 30)
 		return -EINVAL;
+
+	msg = rsl_msgb_alloc();
 
 	lchan->bs_power = db/2;
 	if (fpc)
@@ -457,13 +459,15 @@ static int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	int ctl_lvl;
 
 	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts, dbm);
 	if (ctl_lvl < 0)
 		return ctl_lvl;
+
+	msg = rsl_msgb_alloc();
 
 	lchan->ms_power = ctl_lvl;
 
@@ -521,7 +525,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 			    u_int8_t ta, u_int8_t mode)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
@@ -564,6 +568,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	ci.chan_desc.oct3 = (lchan->ts->trx->bts->tsc << 5) | ((arfcn & 0x3ff) >> 8);
 	ci.chan_desc.oct4 = arfcn & 0xff;
 
+	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
 	dh->chan_nr = chan_nr;
@@ -591,7 +596,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
@@ -622,6 +627,7 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 		return -1;
 	}
 
+	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_MODE_MODIFY_REQ);
 	dh->chan_nr = chan_nr;
