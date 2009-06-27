@@ -1697,20 +1697,20 @@ static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	static struct gsm_meas_rep meas_rep;
 
-	DEBUGP(DRR, "MEASUREMENT REPORT ");
+	DEBUGP(DMEAS, "MEASUREMENT REPORT ");
 	parse_meas_rep(&meas_rep, gh->data, payload_len);
 	if (meas_rep.flags & MEAS_REP_F_DTX)
-		DEBUGPC(DRR, "DTX ");
+		DEBUGPC(DMEAS, "DTX ");
 	if (meas_rep.flags & MEAS_REP_F_BA1)
-		DEBUGPC(DRR, "BA1 ");
+		DEBUGPC(DMEAS, "BA1 ");
 	if (!(meas_rep.flags & MEAS_REP_F_VALID))
-		DEBUGPC(DRR, "NOT VALID ");
+		DEBUGPC(DMEAS, "NOT VALID ");
 	else
-		DEBUGPC(DRR, "FULL(lev=%u, qual=%u) SUB(lev=%u, qual=%u) ",
+		DEBUGPC(DMEAS, "FULL(lev=%u, qual=%u) SUB(lev=%u, qual=%u) ",
 		meas_rep.rxlev_full, meas_rep.rxqual_full, meas_rep.rxlev_sub,
 		meas_rep.rxqual_sub);
 
-	DEBUGPC(DRR, "NUM_NEIGH=%u\n", meas_rep.num_cell);
+	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", meas_rep.num_cell);
 
 	/* FIXME: put the results somwhere */
 
