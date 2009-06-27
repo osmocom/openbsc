@@ -28,7 +28,7 @@
 
 #include <openbsc/debug.h>
 
-unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB);
+unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB|DMEAS);
 
 struct debug_info {
 	const char *name;
@@ -56,6 +56,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DMI,  "DMI", "", "")
 	DEBUG_CATEGORY(DMIB,  "DMIB", "", "")
 	DEBUG_CATEGORY(DMUX,  "DMUX", "", "")
+	DEBUG_CATEGORY(DMEAS,  "DMEAS", "", "")
 };
 
 static int use_color = 1;
