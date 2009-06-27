@@ -1206,7 +1206,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
-	DEBUGP(DMM, "LUPDREQ: mi_type=0x%02x MI(%s) type=%s\n", mi_type, mi_string,
+	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
 
 	/*
@@ -1214,7 +1214,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	 * location updating request.
 	 */
 	if (lchan->loc_operation) {
-		DEBUGP(DMM, "LUPDREQ: ignoring request due an existing one: %p.\n",
+		DEBUGPC(DMM, "ignoring request due an existing one: %p.\n",
 			lchan->loc_operation);
 		gsm0408_loc_upd_rej(lchan, GSM48_REJECT_PROTOCOL_ERROR);
 		return 0;
@@ -1224,7 +1224,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
-		DEBUGP(DMM, "\n");
+		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
@@ -1233,7 +1233,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		subscr = db_create_subscriber(mi_string);
 		break;
 	case GSM_MI_TYPE_TMSI:
-		DEBUGP(DMM, "\n");
+		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
@@ -1249,15 +1249,15 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* no sim card... FIXME: what to do ? */
-		DEBUGP(DMM, "unimplemented mobile identity type\n");
+		DEBUGPC(DMM, "unimplemented mobile identity type\n");
 		break;
 	default:	
-		DEBUGP(DMM, "unknown mobile identity type\n");
+		DEBUGPC(DMM, "unknown mobile identity type\n");
 		break;
 	}
 
 	if (!subscr) {
-		DEBUGP(DRR, "<- Can't find any subscriber for this ID\n");
+		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
 		/* FIXME: request id? close channel? */
 		return -EINVAL;
 	}
@@ -1535,7 +1535,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 
 	switch (gh->msg_type & 0xbf) {
 	case GSM48_MT_MM_LOC_UPD_REQUEST:
-		DEBUGP(DMM, "LOCATION UPDATING REQUEST\n");
+		DEBUGP(DMM, "LOCATION UPDATING REQUEST: ");
 		rc = mm_rx_loc_upd_req(msg);
 		break;
 	case GSM48_MT_MM_ID_RESP:
