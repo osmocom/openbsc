@@ -236,6 +236,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	if (!msg->trx || !msg->trx->rsl_link) {
 		fprintf(stderr, "rsl_sendmsg: msg->trx == NULL\n");
+		talloc_free(msg);
 		return -EINVAL;
 	}
 
