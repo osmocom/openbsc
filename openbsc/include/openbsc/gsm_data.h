@@ -415,7 +415,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 char *gsm_band_name(enum gsm_band band);
 enum gsm_band gsm_band_parse(int mhz);
 
-void *tall_bsc_ctx;
+extern void *tall_bsc_ctx;
 
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {

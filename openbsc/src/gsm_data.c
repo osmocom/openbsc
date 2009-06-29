@@ -27,6 +27,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
 
+void *tall_bsc_ctx;
+
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
 {
