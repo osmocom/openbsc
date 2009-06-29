@@ -42,6 +42,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/talloc.h>
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
@@ -111,10 +112,10 @@ static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
 				   u_int16_t site_id, u_int16_t bts_id)
 {
+	struct gsm_bts *bts;
 	int i;
 
-	for (i = 0; i < net->num_bts; i++) {
-		struct gsm_bts *bts = &net->bts[i];
+	llist_for_each_entry(bts, &net->bts_list, list) {
 
 		if (!is_ipaccess_bts(bts))
 			continue;
@@ -222,7 +223,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			bsc_unregister_fd(bfd);
 			bsc_register_fd(newbfd);
-			free(bfd);
+			talloc_free(bfd);
 		}
 		break;
 	case IPAC_MSGT_ID_ACK:
@@ -243,7 +244,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
 	int ret;
 
@@ -429,7 +430,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
 
-	line = malloc(sizeof(*line));
+	line = talloc(tall_bsc_ctx, struct e1inp_line);
 	if (!line) {
 		close(ret);
 		return -ENOMEM;
@@ -453,7 +454,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		fprintf(stderr, "could not register FD\n");
 		close(bfd->fd);
-		free(line);
+		talloc_free(line);
 		return ret;
 	}
 
@@ -467,11 +468,16 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
-	struct bsc_fd *bfd = malloc(sizeof(*bfd));
+	struct bsc_fd *bfd;
 	int ret;
 
 	if (!(what & BSC_FD_READ))
 		return 0;
+
+	bfd = talloc(tall_bsc_ctx, struct bsc_fd);
+	if (!bfd)
+		return -ENOMEM;
+	memset(bfd, 0, sizeof(*bfd));
 
 	/* Some BTS has connected to us, but we don't know yet which line
 	 * (as created by the OML link) to associate it with.  Thus, we
@@ -490,7 +496,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (ret < 0) {
 		fprintf(stderr, "could not register FD\n");
 		close(bfd->fd);
-		free(bfd);
+		talloc_free(bfd);
 		return ret;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
@@ -581,8 +587,11 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	if (ret)
 		return ret;
 
-	e1h = malloc(sizeof(*e1h));
+	e1h = talloc(tall_bsc_ctx, struct ia_e1_handle);
+	if (!e1h)
+		return -ENOMEM;
 	memset(e1h, 0, sizeof(*e1h));
+
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */

@@ -47,7 +47,7 @@ struct msgb {
 	unsigned char _data[0];
 };
 
-extern struct msgb *msgb_alloc(u_int16_t size);
+extern struct msgb *msgb_alloc(u_int16_t size, const char *name);
 extern void msgb_free(struct msgb *m);
 extern void msgb_enqueue(struct llist_head *queue, struct msgb *msg);
 extern struct msgb *msgb_dequeue(struct llist_head *queue);
@@ -100,9 +100,10 @@ static inline void msgb_reserve(struct msgb *msg, int len)
 	msg->tail += len;
 }
 
-static inline struct msgb *msgb_alloc_headroom(int size, int headroom)
+static inline struct msgb *msgb_alloc_headroom(int size, int headroom,
+						const char *name)
 {
-	struct msgb *msg = msgb_alloc(size);
+	struct msgb *msg = msgb_alloc(size, name);
 	if (msg)
 		msgb_reserve(msg, headroom);
 	return msg;

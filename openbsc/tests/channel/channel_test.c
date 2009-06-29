@@ -19,6 +19,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include <assert.h>
 
@@ -47,20 +48,24 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int 
 
 int main(int argc, char** argv)
 {
-	struct gsm_network network;
+	struct gsm_network *network;
+	struct gsm_bts *bts;
 
 	printf("Testing the gsm_subscriber chan logic\n");
 
 	/* Create a dummy network */
-	network.bts[0].location_area_code = 23;
-	network.bts[0].network = &network;
+	network = gsm_network_init(1, 1, NULL);
+	if (!network)
+		exit(1);
+	bts = gsm_bts_alloc(network, GSM_BTS_TYPE_BS11, 0, 0);
+	bts->location_area_code = 23;
 
 	/* Create a dummy subscriber */
 	struct gsm_subscriber *subscr = subscr_alloc();
 	subscr->lac = 23;
 
 	/* Ask for a channel... */
-	subscr_get_channel(subscr, &network, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	subscr_get_channel(subscr, network, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 
 	while (1) {
 		bsc_select_main(0);

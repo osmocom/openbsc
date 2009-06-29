@@ -19,10 +19,12 @@
  */
 
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 #include <stdlib.h>
 #include <string.h>
 
 
+static void *tall_sigh_ctx;
 static LLIST_HEAD(signal_handler_list);
 
 struct signal_handler {
@@ -35,8 +37,12 @@ struct signal_handler {
 
 int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data)
 {
-	struct signal_handler *sig_data = malloc(sizeof(*sig_data));
+	struct signal_handler *sig_data;
 
+	if (!tall_sigh_ctx)
+		tall_sigh_ctx = talloc_named_const(NULL, 1, "signal_handler");
+
+	sig_data = talloc(tall_sigh_ctx, struct signal_handler);
 	if (!sig_data)
 		return -ENOMEM;
 
@@ -61,7 +67,7 @@ void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *dat
 		if (handler->cbfn == cbfn && handler->data == data 
 		    && subsys == handler->subsys) {
 			llist_del(&handler->entry);
-			free(handler);
+			talloc_free(handler);
 			break;
 		}
 	}

@@ -27,6 +27,10 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
+#include <openbsc/talloc.h>
+#include <openbsc/gsm_data.h>
+
+static void *tall_call_ctx;
 
 static struct mncc_names {
 	char *name;
@@ -103,7 +107,7 @@ static void free_call(struct gsm_call *call)
 {
 	llist_del(&call->entry);
 	DEBUGP(DMNCC, "(call %x) Call removed.\n", call->callref);
-	free(call);
+	talloc_free(call);
 }
 
 
@@ -136,8 +140,11 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	if (call->remote_ref)
 		return 0;
 	
+	if (!tall_call_ctx)
+		tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1,
+							   "gsm_call");
 	/* create remote call */
-	if (!(remote = calloc(1, sizeof(struct gsm_call)))) {
+	if (!(remote = talloc(tall_call_ctx, struct gsm_call))) {
 		memset(&mncc, 0, sizeof(struct gsm_mncc));
 		mncc.callref = call->callref;
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
@@ -299,8 +306,11 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	if (!call) {
 		if (msg_type != MNCC_SETUP_IND)
 			return 0; /* drop */
+		if (!tall_call_ctx)
+			tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1,
+							   "gsm_call");
 		/* create call */
-		if (!(call = calloc(1, sizeof(struct gsm_call)))) {
+		if (!(call = talloc_zero(tall_call_ctx, struct gsm_call))) {
 			struct gsm_mncc rel;
 			
 			memset(&rel, 0, sizeof(struct gsm_mncc));

@@ -43,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -422,7 +423,8 @@ static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
 
 static struct msgb *nm_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE);
+	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE,
+				   "OML");
 }
 
 /* Send a OML NM Message from BSC to BTS */
@@ -543,19 +545,19 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->nm_state;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		nm_state = &trx->ts[obj_inst->ts_nr].nm_state;
@@ -571,13 +573,13 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		case BS11_OBJ_BBSIG:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.bbsig.nm_state;
 			break;
 		case BS11_OBJ_PA:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.pa.nm_state;
 			break;
 		default:
@@ -610,19 +612,19 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		obj = &trx->ts[obj_inst->ts_nr];
@@ -2008,6 +2010,8 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts)
 
 /* BS11 SWL */
 
+static void *tall_fle_ctx;
+
 struct abis_nm_bs11_sw {
 	struct gsm_bts *bts;
 	char swl_fname[PATH_MAX];
@@ -2043,6 +2047,10 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	FILE *swl;
 	int rc = 0;
 
+	if (!tall_fle_ctx)
+		tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
+						  "bs11_file_list_entry");
+
 	swl = fopen(bs11_sw->swl_fname, "r");
 	if (!swl)
 		return -ENODEV;
@@ -2050,7 +2058,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	/* zero the stale file list, if any */
 	llist_for_each_safe(lh, lh2, &bs11_sw->file_list) {
 		llist_del(lh);
-		free(lh);
+		talloc_free(lh);
 	}
 
 	while (fgets(linebuf, sizeof(linebuf), swl)) {
@@ -2071,12 +2079,11 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 		if (rc < 2)
 			continue;
 
-		fle = malloc(sizeof(*fle));
+		fle = talloc_zero(tall_fle_ctx, struct file_list_entry);
 		if (!fle) {
 			rc = -ENOMEM;
 			goto out;
 		}
-		memset(fle, 0, sizeof(*fle));
 
 		/* construct new filename */
 		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));

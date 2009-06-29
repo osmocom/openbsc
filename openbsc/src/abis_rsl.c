@@ -293,7 +293,8 @@ unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
 
 static struct msgb *rsl_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM);
+	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM,
+				   "RSL");
 }
 
 #define MACBLOCK_SIZE	23
@@ -359,12 +360,14 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 
 	db = abs(db);
 	if (db > 30)
 		return -EINVAL;
+
+	msg = rsl_msgb_alloc();
 
 	lchan->bs_power = db/2;
 	if (fpc)
@@ -456,13 +459,15 @@ static int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	int ctl_lvl;
 
 	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts, dbm);
 	if (ctl_lvl < 0)
 		return ctl_lvl;
+
+	msg = rsl_msgb_alloc();
 
 	lchan->ms_power = ctl_lvl;
 
@@ -520,7 +525,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 			    u_int8_t ta, u_int8_t mode)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
@@ -563,6 +568,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	ci.chan_desc.oct3 = (lchan->ts->trx->bts->tsc << 5) | ((arfcn & 0x3ff) >> 8);
 	ci.chan_desc.oct4 = arfcn & 0xff;
 
+	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_CHAN_ACTIV);
 	dh->chan_nr = chan_nr;
@@ -590,7 +596,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
@@ -621,6 +627,7 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 		return -1;
 	}
 
+	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_MODE_MODIFY_REQ);
 	dh->chan_nr = chan_nr;
@@ -822,42 +829,42 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGPC(DRSL, "MEASUREMENT RESULT ");
+	DEBUGPC(DMEAS, "MEASUREMENT RESULT ");
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR))
-		DEBUGPC(DRSL, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
+		DEBUGPC(DMEAS, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
 	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
 		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
 		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
 		if (len >= 3) {
 			if (val[0] & 0x40)
-				DEBUGPC(DRSL, "DTXd ");
-			DEBUGPC(DRSL, "RXL-FULL-up=%d RXL-SUB-up=%d ",
+				DEBUGPC(DMEAS, "DTXd ");
+			DEBUGPC(DMEAS, "RXL-FULL-up=%d RXL-SUB-up=%d ",
 				val[0] & 0x3f, val[1] & 0x3f);
-			DEBUGPC(DRSL, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
+			DEBUGPC(DMEAS, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
 				val[2]>>3 & 0x7, val[2] & 0x7);
 		}
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
-		DEBUGPC(DRSL, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
+		DEBUGPC(DMEAS, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		DEBUGPC(DRSL, "MS_TO=%d ", 
+		DEBUGPC(DMEAS, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
 		u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
 		u_int8_t pwr_lvl = val[0] >> 3;
-		DEBUGPC(DRSL, "L1_MS_PWR=%ddBm ",
+		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ",
 			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
-		DEBUGPC(DRSL, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
-		DEBUGPC(DRSL, "L1_TA=%u ", val[1]);
+		DEBUGPC(DMEAS, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
+		DEBUGPC(DMEAS, "L1_TA=%u ", val[1]);
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		DEBUGPC(DRSL, "L3\n");
+		DEBUGPC(DMEAS, "L3\n");
 		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
 		return gsm0408_rcvmsg(msg);
 	} else
-		DEBUGPC(DRSL, "\n");
+		DEBUGPC(DMEAS, "\n");
 
 	return 0;
 }
@@ -871,7 +878,8 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
 	ts_name = gsm_ts_name(msg->lchan->ts);
 
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x ", ts_name, rslh->chan_nr);
+	if (rslh->c.msg_type != RSL_MT_MEAS_RES)
+		DEBUGP(DRSL, "channel=%s chan_nr=0x%02x ", ts_name, rslh->chan_nr);
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV_ACK:

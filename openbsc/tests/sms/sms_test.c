@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 
 	for(i=0;i<SMS_NUM;i++) {
 		/* Setup SMS msgb */
-		msg = msgb_alloc(sms_data[i].len);
+		msg = msgb_alloc(sms_data[i].len, "SMS");
 		sms = msgb_put(msg, sms_data[i].len);
 
 		memcpy(sms, sms_data[i].data, sms_data[i].len);

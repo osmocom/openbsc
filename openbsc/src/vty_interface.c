@@ -147,12 +147,12 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts_dump_vty(vty, &net->bts[bts_nr]);
+		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
 		return CMD_SUCCESS;
 	}
 	/* print all BTS's */
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
-		bts_dump_vty(vty, &net->bts[bts_nr]);
+		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
 
 	return CMD_SUCCESS;
 }
@@ -191,7 +191,7 @@ DEFUN(show_trx,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -200,23 +200,23 @@ DEFUN(show_trx,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 		trx_dump_vty(vty, trx);
 		return CMD_SUCCESS;
 	}
 	if (bts) {
 		/* print all TRX in this BTS */
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			trx_dump_vty(vty, trx);
 		}
 		return CMD_SUCCESS;
 	}
 
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			trx_dump_vty(vty, trx);
 		}
 	}
@@ -265,7 +265,7 @@ DEFUN(show_ts,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -274,7 +274,7 @@ DEFUN(show_ts,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -288,9 +288,9 @@ DEFUN(show_ts,
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				ts_dump_vty(vty, ts);
@@ -379,7 +379,7 @@ DEFUN(show_lchan,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -388,7 +388,7 @@ DEFUN(show_lchan,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -411,9 +411,9 @@ DEFUN(show_lchan,
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
@@ -567,13 +567,13 @@ DEFUN(show_paging,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		bts_paging_dump_vty(vty, bts);
 		
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		bts_paging_dump_vty(vty, bts);
 	}
 
@@ -612,14 +612,19 @@ DEFUN(cfg_bts,
 	int bts_nr = atoi(argv[0]);
 	struct gsm_bts *bts;
 
-	if (bts_nr >= GSM_MAX_BTS) {
-		vty_out(vty, "%% This Version of OpenBSC only supports %u BTS%s",
-			GSM_MAX_BTS, VTY_NEWLINE);
+	if (bts_nr > gsmnet->num_bts) {
+		vty_out(vty, "%% The next unused BTS number is %u%s",
+			gsmnet->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
-	}
-	bts = &gsmnet->bts[bts_nr];
-	if (bts_nr >= gsmnet->num_bts)
-		gsmnet->num_bts = bts_nr + 1;
+	} else if (bts_nr == gsmnet->num_bts) {
+		/* allocate a new one */
+		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
+				    HARDCODED_TSC, HARDCODED_BSIC);
+	} else 
+		bts = gsm_bts_num(gsmnet, bts_nr);
+
+	if (!bts)
+		return CMD_WARNING;
 
 	vty->index = bts;
 	vty->node = BTS_NODE;
@@ -748,16 +753,18 @@ DEFUN(cfg_trx,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_trx *trx;
 
-	if (trx_nr > BTS_MAX_TRX) {
-		vty_out(vty, "%% This version of OpenBSC only supports %u TRX%s",
-			BTS_MAX_TRX+1, VTY_NEWLINE);
+	if (trx_nr > bts->num_trx) {
+		vty_out(vty, "%% The next unused TRX number in this BTS is %u%s",
+			bts->num_trx, VTY_NEWLINE);
 		return CMD_WARNING;
-	}
-
-	if (trx_nr >= bts->num_trx)
-		bts->num_trx = trx_nr+1;
-
-	trx = &bts->trx[trx_nr];
+	} else if (trx_nr == bts->num_trx) {
+		/* we need to allocate a new one */
+		trx = gsm_bts_trx_alloc(bts);
+	} else 
+		trx = gsm_bts_trx_num(bts, trx_nr);
+	
+	if (!trx)
+		return CMD_WARNING;
 
 	vty->index = trx;
 	vty->node = TRX_NODE;

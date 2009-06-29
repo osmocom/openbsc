@@ -47,6 +47,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/talloc.h>
 
 /* data structure for one E1 interface with A-bis */
 struct mi_e1_handle {
@@ -95,7 +96,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "mISDN TS1");
 	struct sockaddr_mISDN l2addr;
 	struct mISDNhead *hh;
 	socklen_t alen;
@@ -136,7 +137,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
 			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
-			free(msg);
+			msgb_free(msg);
 			return -EINVAL;
 		}
 		/* save the channel number in the driver private struct */
@@ -277,7 +278,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TSx");
 	struct mISDNhead *hh;
 	int ret;
 
@@ -483,7 +484,7 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 
 	/* create the actual line instance */
 	/* FIXME: do this independent of driver registration */
-	e1h = malloc(sizeof(*e1h));
+	e1h = talloc(tall_bsc_ctx, struct mi_e1_handle);
 	memset(e1h, 0, sizeof(*e1h));
 
 	e1h->cardnr = cardnr;

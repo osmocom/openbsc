@@ -46,8 +46,6 @@ enum gsm_chreq_reason_t {
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
-#define GSM_MAX_BTS	8
-#define BTS_MAX_TRX	8
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
 
@@ -216,6 +214,9 @@ struct gsm_bts_trx_ts {
 
 /* One TRX in a BTS */
 struct gsm_bts_trx {
+	/* list header in bts->trx_list */
+	struct llist_head list;
+
 	struct gsm_bts *bts;
 	/* number of this TRX in the BTS */
 	u_int8_t nr;
@@ -297,6 +298,9 @@ struct gsm_envabtse {
 
 /* One BTS */
 struct gsm_bts {
+	/* list header in net->bts_list */
+	struct llist_head list;
+
 	struct gsm_network *network;
 	/* number of ths BTS in network */
 	u_int8_t nr;
@@ -351,7 +355,7 @@ struct gsm_bts {
 	
 	/* transceivers */
 	int num_trx;
-	struct gsm_bts_trx trx[BTS_MAX_TRX+1];
+	struct llist_head trx_list;
 };
 
 struct gsm_network {
@@ -367,8 +371,7 @@ struct gsm_network {
 	struct llist_head trans_list;
 
 	unsigned int num_bts;
-	/* private lists */
-	struct gsm_bts	bts[GSM_MAX_BTS+1];
+	struct llist_head bts_list;
 };
 
 #define SMS_HDR_SIZE	128
@@ -382,9 +385,14 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
-				     u_int16_t country_code, u_int16_t network_code,
+struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, int, void *));
+struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
+			      u_int8_t tsc, u_int8_t bsic);
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
+
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
+struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 const char *gsm_lchan_name(enum gsm_chan_t c);
@@ -406,6 +414,8 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 
 char *gsm_band_name(enum gsm_band band);
 enum gsm_band gsm_band_parse(int mhz);
+
+void *tall_bsc_ctx;
 
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {

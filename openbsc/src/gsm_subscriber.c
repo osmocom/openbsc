@@ -27,6 +27,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include <openbsc/talloc.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
@@ -34,6 +35,8 @@
 #include <openbsc/db.h>
 
 LLIST_HEAD(active_subscribers);
+static void *tall_subscr_ctx;
+static void *tall_sub_req_ctx;
 
 /*
  * Struct for pending channel requests. This is managed in the
@@ -82,7 +85,7 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	request->cbfn(hooknum, event, msg, data, request->param);
 	subscr->in_callback = 0;
 
-	free(request);
+	talloc_free(request);
 	return 0;
 }
 
@@ -100,7 +103,11 @@ struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;
 
-	s = malloc(sizeof(struct gsm_subscriber));
+	if (!tall_subscr_ctx)
+		tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						     "subscriber");
+
+	s = talloc(tall_subscr_ctx, struct gsm_subscriber);
 	if (!s)
 		return NULL;
 
@@ -116,7 +123,7 @@ struct gsm_subscriber *subscr_alloc(void)
 static void subscr_free(struct gsm_subscriber *subscr)
 {
 	llist_del(&subscr->entry);
-	free(subscr);
+	talloc_free(subscr);
 }
 
 struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
@@ -202,7 +209,11 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 {
 	struct subscr_request *request;
 
-	request = (struct subscr_request *)malloc(sizeof(*request));
+	if (!tall_sub_req_ctx)
+		tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						      "subscr_request");
+
+	request = talloc(tall_sub_req_ctx, struct subscr_request);
 	if (!request) {
 		if (cbfn)
 			cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_OOM,
