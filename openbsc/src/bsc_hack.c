@@ -49,8 +49,6 @@
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
 
-void *tall_bsc_ctx;
-
 /* global pointer to the gsm network data structure */
 static struct gsm_network *gsmnet;
 
