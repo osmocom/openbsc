@@ -566,6 +566,14 @@ enum abis_bs11_phase {
 	BS11_STATE_ABIS_LOAD		= 0x13,
 };
 
+enum abis_nm_ipacc_test_no {
+	NM_IPACC_TESTNO_CHAN_USAGE	= 0x40,
+	NM_IPACC_TESTNO_BCCH_CHAN_USAGE	= 0x41,
+	NM_IPACC_TESTNO_FREQ_SYNC	= 0x42,
+	NM_IPACC_TESTNO_BCCH_INFO	= 0x43,
+	NM_IPACC_TESTNO_TX_BEACON	= 0x44,
+};
+
 /* first byte after length inside NM_ATT_TEST_REPORT */
 enum abis_nm_ipacc_test_res {
 	NM_IPACC_TESTRES_SUCCESS	= 0,
