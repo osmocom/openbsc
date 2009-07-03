@@ -362,6 +362,7 @@ enum abis_nm_attr {
 	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
 	NM_ATT_IPACC_NV_FLAGS		= 0x86,
 	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
+	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
 	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
 	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
 	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
