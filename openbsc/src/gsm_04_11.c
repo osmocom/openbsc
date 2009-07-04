@@ -55,7 +55,7 @@ struct msgb *gsm411_msgb_alloc(void)
 				   "GSM 04.11");
 }
 
-int gsm0411_sendmsg(struct msgb *msg)
+static int gsm411_sendmsg(struct msgb *msg)
 {
 	if (msg->lchan)
 		msg->trx = msg->lchan->ts->trx;
@@ -63,6 +63,35 @@ int gsm0411_sendmsg(struct msgb *msg)
 	msg->l3h = msg->data;
 
 	return rsl_data_request(msg, 0);
+}
+
+/* Prefix msg with a 04.08/04.11 CP header */
+static int gsm411_cp_sendmsg(struct msgb *msg, u_int8_t msg_type,
+			     u_int8_t trans_id)
+{
+	struct gsm48_hdr *gh;
+
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	/* Outgoing needs the highest bit set */
+	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
+	gh->msg_type = msg_type;
+
+	return gsm411_sendmsg(msg);
+}
+
+/* Prefix msg with a RP-DATA header and send as CP-DATA */
+static int gsm411_rp_sendmsg(struct msgb *msg, u_int8_t rp_msg_type,
+			     u_int8_t rp_msg_ref, u_int8_t cp_trans_id)
+{
+	struct gsm411_rp_hdr *rp;
+
+	/* GSM 04.11 RP-DATA header */
+	rp = (struct gsm411_rp_hdr *)msgb_push(msg, sizeof(*rp));
+	rp->len = msg->len;
+	rp->msg_type = rp_msg_type;
+	rp->msg_ref = rp_msg_ref; /* FIXME: Choose randomly */
+
+	return gsm411_cp_sendmsg(msg, GSM411_MT_CP_DATA, cp_trans_id);
 }
 
 
@@ -291,48 +320,26 @@ static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t trans_id,
 		u_int8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-	struct gsm48_hdr *gh;
-	struct gsm411_rp_hdr *rp;
 
 	msg->lchan = lchan;
 
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	// Outgoing needs the highest bit set
-	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
-	gh->msg_type = GSM411_MT_CP_DATA;
-
-	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
-	rp->len = 2;
-	rp->msg_type = GSM411_MT_RP_ACK_MT;
-	rp->msg_ref = msg_ref;
-
 	DEBUGP(DSMS, "TX: SMS RP ACK\n");
 
-	return gsm0411_sendmsg(msg);
+	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_ACK_MT, msg_ref, trans_id);
 }
 
 static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
 		u_int8_t msg_ref, u_int8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-	struct gsm48_hdr *gh;
-	struct gsm411_rp_hdr *rp;
 
 	msg->lchan = lchan;
 
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	// Outgoing needs the highest bit set
-	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
-	gh->msg_type = GSM411_MT_CP_DATA;
-
-	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
-	rp->msg_type = GSM411_MT_RP_ERROR_MT;
-	rp->msg_ref = msg_ref;
 	msgb_tv_put(msg, 1, cause);
 
 	DEBUGP(DSMS, "TX: SMS RP ERROR (cause %02d)\n", cause);
 
-	return gsm0411_sendmsg(msg);
+	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_ERROR_MT, msg_ref, trans_id);
 }
 
 /* Receive a 04.11 TPDU inside RP-DATA / user data */
@@ -469,32 +476,26 @@ static u_int8_t tpdu_test[] = {
 int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-	struct gsm48_hdr *gh;
-	struct gsm411_rp_hdr *rp;
 	u_int8_t *data;
+	u_int8_t msg_ref = 42;
+	u_int8_t trans_id = 23;
 
 	msg->lchan = lchan;
 
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SMS;
-	gh->msg_type = GSM411_MT_CP_DATA;
-
-	rp = (struct gsm411_rp_hdr *)msgb_put(msg, sizeof(*rp));
-	rp->len = sizeof(tpdu_test) + 10;
-	rp->msg_type = GSM411_MT_RP_DATA_MT;
-	rp->msg_ref = 42; /* FIXME: Choose randomly */
-	/* Hardcode OA for now */
+	/* Hardcode Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);
-	data[0] = 0x07;
-	data[1] = 0x91;
+	data[0] = 0x07;	/* originator length == 7 */
+	data[1] = 0x91; /* type of number */
 	data[2] = 0x44;
 	data[3] = 0x77;
 	data[4] = 0x58;
 	data[5] = 0x10;
 	data[6] = 0x06;
 	data[7] = 0x50;
+
+	/* Hardcoded Destination Address */
 	data = (u_int8_t *)msgb_put(msg, 1);
-	data[0] = 0;
+	data[0] = 0;	/* destination length == 0 */
 
 	/* FIXME: Hardcoded for now */
 	//smslen = gsm0411_tpdu_from_sms(tpdu, sms);
@@ -510,5 +511,5 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 
 	DEBUGP(DSMS, "TX: SMS SUBMIT\n");
 
-	return gsm0411_sendmsg(msg);
+	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_DATA_MT, msg_ref, trans_id);
 }

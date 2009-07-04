@@ -209,7 +209,4 @@ int gsm0411_rcv_sms(struct msgb *msg);
 
 int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms);
 
-struct msgb *gsm411_msgb_alloc(void);
-int gsm0411_sendmsg(struct msgb *msg);
-
 #endif
