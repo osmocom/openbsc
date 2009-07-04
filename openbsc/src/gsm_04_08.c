@@ -385,7 +385,7 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the lchan.
 	 */
-	struct gsm_lchan *lchan = (struct gsm_lchan *)handler_data;
+	struct gsm_lchan *lchan = (struct gsm_lchan *)signal_data;
 	if (!lchan)
 		return 0;
 
