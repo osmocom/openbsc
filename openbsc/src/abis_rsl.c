@@ -1106,6 +1106,9 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 	DEBUGPC(DRLL, "cause=0x%02x", rlm_cause[1]);
 		
+	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
+		return rsl_chan_release(msg->lchan);
+
 	return 0;
 }
 
