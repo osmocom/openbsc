@@ -1,19 +1,19 @@
 Index: epan/dissectors/Makefile.common
 ===================================================================
---- epan/dissectors/Makefile.common.orig	2009-02-28 15:39:56.000000000 +0100
-+++ epan/dissectors/Makefile.common	2009-06-25 15:04:16.000000000 +0200
-@@ -873,6 +873,7 @@
- # Dissectors with warnings.
- #
- DIRTY_DISSECTOR_SRC =	\
-+	packet-abis_ip.c	\
- 	packet-k12.c 		\
- 	packet-nbd.c		\
- 	packet-sccp.c		\
+--- epan/dissectors/Makefile.common.orig	2009-07-03 22:19:54.000000000 +0200
++++ epan/dissectors/Makefile.common	2009-07-03 22:20:16.000000000 +0200
+@@ -471,6 +471,7 @@
+ 	packet-gsm_a_gm.c		\
+ 	packet-gsm_a_rp.c		\
+ 	packet-gsm_a_rr.c	\
++	packet-gsm_abis_ip.c	\
+ 	packet-gsm_bsslap.c		\
+ 	packet-gsm_bssmap_le.c	\
+ 	packet-gsm_sms.c	\
 Index: epan/dissectors/packet-rsl.c
 ===================================================================
---- epan/dissectors/packet-rsl.c.orig	2009-02-28 15:39:51.000000000 +0100
-+++ epan/dissectors/packet-rsl.c	2009-02-28 15:39:56.000000000 +0100
+--- epan/dissectors/packet-rsl.c.orig	2009-07-03 22:19:54.000000000 +0200
++++ epan/dissectors/packet-rsl.c	2009-07-03 22:20:16.000000000 +0200
 @@ -3950,6 +3950,7 @@
  	proto_register_field_array(proto_rsl, hf, array_length(hf));
  	proto_register_subtree_array(ett, array_length(ett));
@@ -22,12 +22,12 @@ Index: epan/dissectors/packet-rsl.c
  
  }
  
-Index: epan/dissectors/packet-abis_ip.c
+Index: epan/dissectors/packet-gsm_abis_ip.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ epan/dissectors/packet-abis_ip.c	2009-06-25 15:04:42.000000000 +0200
++++ epan/dissectors/packet-gsm_abis_ip.c	2009-07-03 22:20:16.000000000 +0200
 @@ -0,0 +1,279 @@
-+/* packet-abis_ip.c
++/* packet-gsm_abis_ip.c
 + * Routines for packet dissection of ip.access A-bis over IP
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
 + *
@@ -122,7 +122,7 @@ Index: epan/dissectors/packet-abis_ip.c
 +};
 +
 +static gint
-+dissect_ipa_attr(tvbuff_t *tvb, int base_offs, packet_info *pinfo, proto_tree *tree)
++dissect_ipa_attr(tvbuff_t *tvb, int base_offs, proto_tree *tree)
 +{
 +	guint8 len, tag, attr_type;
 +
@@ -173,7 +173,7 @@ Index: epan/dissectors/packet-abis_ip.c
 +		switch (msg_type) {
 +		case 4:
 +		case 5:
-+			dissect_ipa_attr(tvb, 1, pinfo, ipaccess_tree);
++			dissect_ipa_attr(tvb, 1, ipaccess_tree);
 +			break;
 +		}
 +	}
@@ -242,7 +242,7 @@ Index: epan/dissectors/packet-abis_ip.c
 +	}
 +}
 +
-+void proto_register_abisip(void)
++void proto_register_abis_ip(void)
 +{
 +	static hf_register_info hf[] = {
 +		{&hf_abisip_data_len,
@@ -260,7 +260,7 @@ Index: epan/dissectors/packet-abis_ip.c
 +		{&hf_ipaccess_msgtype,
 +		 {"MessageType", "ipaccess.msg_type",
 +		  FT_UINT8, BASE_HEX, VALS(ipaccess_msgtype_vals), 0x0,
-+		  "type of ip.access messsage", HFILL}
++		  "Type of ip.access messsage", HFILL}
 +		 },
 +		{&hf_ipaccess_attr_tag,
 +		 {"Tag", "ipaccess.attr_tag",
@@ -280,10 +280,10 @@ Index: epan/dissectors/packet-abis_ip.c
 +	};
 +
 +	proto_abisip =
-+	    proto_register_protocol("A-bis/IP protocol as used by ip.access",
-+				    "A-bis/IP", "abis_ip");
++	    proto_register_protocol("GSM A-bis/IP protocol as used by ip.access",
++				    "GSM A-bis/IP", "gsm_abis_ip");
 +	proto_ipaccess =
-+	    proto_register_protocol("A-bis/IP ip.access sub-protocol",
++	    proto_register_protocol("GSM A-bis/IP ip.access CCM sub-protocol",
 +				    "IPA", "ipaccess");
 +
 +	proto_register_field_array(proto_abisip, hf, array_length(hf));
@@ -293,7 +293,7 @@ Index: epan/dissectors/packet-abis_ip.c
 +	register_dissector("gsm_abis_ip", dissect_abisip, proto_abisip);
 +}
 +
-+void proto_reg_handoff_abisip(void)
++void proto_reg_handoff_gsm_abis_ip(void)
 +{
 +	dissector_handle_t abisip_handle;
 +

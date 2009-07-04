@@ -1,19 +1,19 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-06-25 15:04:16.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-06-29 13:30:06.000000000 +0200
-@@ -874,6 +874,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common	2009-07-03 22:20:16.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2009-07-04 03:46:47.000000000 +0200
+@@ -926,6 +926,7 @@
+ # Dissectors with warnings.
  #
  DIRTY_DISSECTOR_SRC =	\
- 	packet-abis_ip.c	\
-+	packet-abis_oml.c	\
++	packet-gsm_abis_oml.c	\
+ 	packet-isakmp.c		\
  	packet-k12.c 		\
  	packet-nbd.c		\
- 	packet-sccp.c		\
-Index: wireshark/epan/dissectors/packet-abis_oml.c
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-abis_oml.c	2009-07-03 12:38:55.000000000 +0200
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-04 03:47:46.000000000 +0200
 @@ -0,0 +1,1241 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
@@ -50,7 +50,7 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +#include <epan/packet.h>
 +#include <epan/emem.h>
 +
-+#include "packet-abis_oml.h"
++#include "packet-gsm_abis_oml.h"
 +#include "packet-gsm_a_common.h"
 +
 +/* initialize the protocol and registered fields */
@@ -1256,10 +1256,10 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +
 +	abis_oml_handle = find_dissector("abis_oml");
 +}
-Index: wireshark/epan/dissectors/packet-abis_oml.h
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-abis_oml.h	2009-07-02 21:23:14.000000000 +0200
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-04 03:46:47.000000000 +0200
 @@ -0,0 +1,726 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
