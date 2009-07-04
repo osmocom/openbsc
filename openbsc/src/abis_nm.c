@@ -357,8 +357,19 @@ static const struct tlv_definition nm_att_tlvdef = {
 		/* ip.access specifics */
 		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_FIXED, 6 },
-		[0x95] =			{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_SEC_OML_IP] =	{ TLV_TYPE_TL16V }, // wrong name
+		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
+		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
+		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
+		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
+		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
 		[0x85] =			{ TLV_TYPE_TV },
 
 	},
@@ -2276,6 +2287,18 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		break;
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 		DEBUGPC(DNM, "SET NVATTR NACK ");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
+		break;
+	case NM_MT_IPACC_GET_NVATTR_ACK:
+		DEBUGPC(DNM, "GET NVATTR ACK\n");
+		/* FIXME: decode and show the actual attributes */
+		break;
+	case NM_MT_IPACC_GET_NVATTR_NACK:
+		DEBUGPC(DNM, "GET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));

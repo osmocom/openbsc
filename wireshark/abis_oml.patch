@@ -1,20 +1,20 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-06-25 15:04:16.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-06-29 13:30:06.000000000 +0200
-@@ -874,6 +874,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common	2009-07-03 22:20:16.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2009-07-04 03:46:47.000000000 +0200
+@@ -926,6 +926,7 @@
+ # Dissectors with warnings.
  #
  DIRTY_DISSECTOR_SRC =	\
- 	packet-abis_ip.c	\
-+	packet-abis_oml.c	\
++	packet-gsm_abis_oml.c	\
+ 	packet-isakmp.c		\
  	packet-k12.c 		\
  	packet-nbd.c		\
- 	packet-sccp.c		\
-Index: wireshark/epan/dissectors/packet-abis_oml.c
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-abis_oml.c	2009-07-01 17:39:35.000000000 +0200
-@@ -0,0 +1,1115 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-04 03:47:46.000000000 +0200
+@@ -0,0 +1,1241 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -50,7 +50,7 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +#include <epan/packet.h>
 +#include <epan/emem.h>
 +
-+#include "packet-abis_oml.h"
++#include "packet-gsm_abis_oml.h"
 +#include "packet-gsm_a_common.h"
 +
 +/* initialize the protocol and registered fields */
@@ -91,6 +91,7 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +static int hf_oml_ipa_tres_attr_len = -1;
 +static int hf_attr_ipa_test_res = -1;
 +static int hf_attr_ipa_tr_rxlev = -1;
++static int hf_attr_ipa_tr_b_rxlev = -1;
 +static int hf_attr_ipa_tr_arfcn = -1;
 +static int hf_attr_ipa_tr_f_qual = -1;
 +static int hf_attr_ipa_tr_f_err = -1;
@@ -99,8 +100,19 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +static int hf_attr_ipa_tr_framenr_offs = -1;
 +static int hf_attr_ipa_tr_bsic = -1;
 +static int hf_attr_ipa_tr_cell_id = -1;
++static int hf_attr_ipa_tr_si2 = -1;
++static int hf_attr_ipa_tr_si2bis = -1;
++static int hf_attr_ipa_tr_si2ter = -1;
++static int hf_attr_ipa_tr_chan_desc = -1;
 +static int hf_attr_ipa_rsl_ip = -1;
 +static int hf_attr_ipa_rsl_port = -1;
++static int hf_attr_ipa_prim_oml_ip = -1;
++static int hf_attr_ipa_prim_oml_port = -1;
++static int hf_attr_ipa_location_name = -1;
++static int hf_attr_ipa_unit_id = -1;
++static int hf_attr_ipa_unit_name = -1;
++static int hf_attr_ipa_nv_flags = -1;
++static int hf_attr_ipa_nv_mask = -1;
 +
 +/* initialize the subtree pointers */
 +static int ett_oml = -1;
@@ -528,36 +540,75 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +static gint
 +ipacc_tr_ie_bcch(tvbuff_t *tvb, proto_tree *att_tree, int offset)
 +{
-+	guint16 binfo_type = tvb_get_ntohs(tvb, offset);
-+	guint16 tmp = tvb_get_ntohs(tvb, offset+2);
++	guint16 binfo_type, tmp;
++
++	binfo_type = tvb_get_ntohs(tvb, offset);
++	offset += 2;
++
++	tmp = tvb_get_ntohs(tvb, offset);
 +
 +	/* FIXME: there are still some bugs remaining here */
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_arfcn,
 +			    tvb, offset, 2, TRUE);
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_f_qual,
 +			    tvb, offset, 2, TRUE);
 +	offset += 2;
-+	proto_tree_add_item(att_tree, hf_attr_ipa_tr_rxlev,
++
++	proto_tree_add_item(att_tree, hf_attr_ipa_tr_b_rxlev,
 +			    tvb, offset++, 1, TRUE);
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_rxqual,
 +			    tvb, offset++, 1, TRUE);
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_f_err,
 +			    tvb, offset, 2, TRUE);
 +	offset += 2;
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_frame_offs,
 +			    tvb, offset, 2, TRUE);
 +	offset += 2;
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_framenr_offs,
 +			    tvb, offset, 4, TRUE);
 +	offset += 4;
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_bsic,
 +			    tvb, offset++, 1, TRUE);
++
 +	de_lai(tvb, att_tree, offset, 5, NULL, 0);
 +	offset += 5;
++
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_cell_id,
 +			    tvb, offset, 2, TRUE);
 +	offset += 2;
-+	/* FIXME: parse GSM 04.18 IE's */
++
++	if (binfo_type & 0x8000) {
++		/* System Information 2 */
++		/* FIXME: Parse 04.18 Neighbour Cell Description */
++		proto_tree_add_item(att_tree, hf_attr_ipa_tr_si2,
++				    tvb, offset, 16, TRUE);
++		offset += 16;
++	}
++	if (binfo_type & 0x0001) {
++		/* System Information 2bis */
++		/* FIXME: Parse 04.18 Neighbour Cell Description */
++		proto_tree_add_item(att_tree, hf_attr_ipa_tr_si2bis,
++				    tvb, offset, 16, TRUE);
++		offset += 16;
++	}
++	if (binfo_type & 0x0002) {
++		/* System Information 2ter */
++		/* FIXME: Parse 04.18 Neighbour Cell Description */
++		proto_tree_add_item(att_tree, hf_attr_ipa_tr_si2ter,
++				    tvb, offset, 16, TRUE);
++		offset += 16;
++	}
++	if (binfo_type & 0x0004) {
++		/* FIXME: Parse 04.18 Cell Channel Description */
++		proto_tree_add_item(att_tree, hf_attr_ipa_tr_chan_desc,
++				    tvb, offset, 16, TRUE);
++		offset += 16;
++	}
 +
 +	return offset;
 +}
@@ -779,14 +830,38 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +					    offset, len, TRUE);
 +			break;
 +		case NM_ATT_IPACC_LOCATION:
++			proto_tree_add_item(att_tree, hf_attr_ipa_location_name,
++					    tvb, offset, len, TRUE);
 +			break;
 +		case NM_ATT_IPACC_UNIT_ID:
++			proto_tree_add_item(att_tree, hf_attr_ipa_unit_id,
++					    tvb, offset, len, TRUE);
 +			break;
 +		case NM_ATT_IPACC_UNIT_NAME:
++			proto_tree_add_item(att_tree, hf_attr_ipa_unit_name,
++					    tvb, offset, len, TRUE);
 +			break;
 +		case NM_ATT_IPACC_PRIM_OML_IP:
++			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_ip,
++					    tvb, offset+1, 4, TRUE);
++			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_port,
++					    tvb, offset+1+4, 2, TRUE);
 +			break;
 +		case NM_ATT_IPACC_SEC_OML_IP:
++			/* FIXME */
++			break;
++		case NM_ATT_IPACC_NV_FLAGS:
++			{
++				guint flags, mask;
++				flags = tvb_get_guint8(tvb, offset);
++				mask = tvb_get_guint8(tvb, offset+1);
++				flags |= tvb_get_guint8(tvb, offset+2) << 8;
++				mask |= tvb_get_guint8(tvb, offset+3) << 8;
++				proto_tree_add_uint(att_tree, hf_attr_ipa_nv_flags,
++						    tvb, offset, 3, flags);
++				proto_tree_add_uint(att_tree, hf_attr_ipa_nv_mask,
++						    tvb, offset+1, 3, mask);
++			}
 +			break;
 +		default:
 +			proto_tree_add_item(att_tree, hf_oml_fom_attr_val, tvb,
@@ -897,62 +972,62 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		{ &hf_oml_msg_disc,
 +			{ "Message Discriminator", "oml.msg_dsc",
 +			  FT_UINT8, BASE_HEX, VALS(oml_msg_disc_vals), 0,
-+			  "Message Discriminator", HFILL }
++			  "GSM 12.21 Message Discriminator", HFILL }
 +		},
 +		{ &hf_oml_placement,
 +			{ "Placement Indicator", "oml.placement",
 +			  FT_UINT8, BASE_HEX, VALS(oml_placement_vals), 0,
-+			  "Placement Indicator", HFILL }
++			  "GSM 12.21 Placement Indicator", HFILL }
 +		},
 +		{ &hf_oml_sequence,
 +			{ "Sequence Number", "oml.sequence",
 +			  FT_UINT8, BASE_HEX, NULL, 0,
-+			  "Sequence Number", HFILL }
++			  "Sequence Number (if multi-part msg)", HFILL }
 +		},
 +		{ &hf_oml_length,
 +			{ "Length Indicator", "oml.length",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "Length Indicator", HFILL }
++			  "Total length of payload", HFILL }
 +		},
 +		{ &hf_oml_fom_msgtype,
 +			{ "FOM Message Type", "oml.fom.msg_type",
 +			  FT_UINT8, BASE_HEX, VALS(oml_fom_msgtype_vals), 0,
-+			  "FOM Message Type", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_objclass,
 +			{ "FOM Object Class", "oml.fom.obj_class",
 +			  FT_UINT8, BASE_HEX, VALS(oml_fom_objclass_vals), 0,
-+			  "FOM Object Class", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_inst_bts,
 +			{ "FOM Object Instance BTS", "oml.fom.obj_inst.bts",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "FOM Object Instance TRX", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_inst_trx,
 +			{ "FOM Object Instance TRX", "oml.fom.obj_inst.trx",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "FOM Object Instance TRX", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_inst_ts,
 +			{ "FOM Object Instance TS", "oml.fom.obj_inst.ts",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "FOM Object Instance TS", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_attr_tag,
 +			{ "FOM Attribute ID", "oml.fom.attr_id",
 +			  FT_UINT8, BASE_HEX, VALS(oml_fom_attr_vals), 0,
-+			  "FOM Attribute ID", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_attr_len,
 +			{ "FOM Attribute Length", "oml.fom.attr_len",
 +			  FT_UINT16, BASE_DEC, NULL, 0,
-+			  "FOM Attribute Length", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_attr_val,
 +			{ "FOM Attribute Value", "oml.fom.attr_val",
 +			  FT_BYTES, BASE_HEX, NULL, 0,
-+			  "FOM Attribute Value", HFILL }
++			  NULL, HFILL }
 +		},
 +
 +
@@ -961,27 +1036,27 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		{ &hf_attr_adm_state,
 +			{ "Administrative State", "oml.fom.attr.adm_state",
 +			  FT_UINT8, BASE_HEX, VALS(oml_adm_state_vals), 0,
-+			  "Administrative State", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_oper_state,
 +			{ "Operational State", "oml.fom.attr.oper_state",
 +			  FT_UINT8, BASE_HEX, VALS(oml_oper_state_vals), 0,
-+			  "Operational State", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_avail_state,
 +			{ "Availability Status", "oml.fom.attr.avail_state",
 +			  FT_UINT8, BASE_HEX, VALS(oml_avail_state_vals), 0,
-+			  "Availability Status", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_event_type,
 +			{ "Event Type", "oml.fom.attr.event_type",
 +			  FT_UINT8, BASE_HEX, VALS(oml_event_type_vals), 0,
-+			  "Event Type", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_severity,
 +			{ "Severity", "oml.fom.attr.severity",
 +			  FT_UINT8, BASE_HEX, VALS(oml_severity_vals), 0,
-+			  "Severity", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_bcch_arfcn,
 +			{ "BCCH ARFCN", "oml.fom.attr.bcch_arfcn",
@@ -996,7 +1071,7 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		{ &hf_attr_test_no,
 +			{ "Test Number", "oml.fom.attr.test_no",
 +			  FT_UINT8, BASE_HEX, VALS(oml_test_no_vals), 0,
-+			  "Test Number", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_tsc,
 +			{ "TSC", "oml.fom.attr.tsc",
@@ -1006,22 +1081,22 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		{ &hf_attr_tei,
 +			{ "TEI", "oml.fom.attr.tei",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "TEI", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_ach_btsp,
-+			{ "BTS Port", "oml.fom.attr.abis_ch.bts_port",
++			{ "BTS E1 Port", "oml.fom.attr.abis_ch.bts_port",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "BTS Port", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_ach_tslot,
-+			{ "Timeslot", "oml.fom.attr.abis_ch.timeslot",
++			{ "E1 Timeslot", "oml.fom.attr.abis_ch.timeslot",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "Time Slot", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_ach_sslot,
-+			{ "Subslot", "oml.fom.attr.abis_ch.subslot",
++			{ "E1 Subslot", "oml.fom.attr.abis_ch.subslot",
 +			  FT_UINT8, BASE_DEC, NULL, 0,
-+			  "Subslot", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_gsm_time,
 +			{ "GSM Time", "oml.fom.attr.gsm_time",
@@ -1031,60 +1106,59 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		{ &hf_attr_chan_comb,
 +			{ "Channel Combination", "oml.fom.attr.chan_comb",
 +			  FT_UINT8, BASE_HEX, VALS(oml_chan_comb_vals), 0,
-+			  "Channel Combination", HFILL }
++			  NULL, HFILL }
 +		},
 +		/* IP Access */
 +		{ &hf_oml_ipa_tres_attr_tag,
 +			{ "IPA Test Result Embedded IE",
 +						"oml.fom.testrep.ipa_tag",
 +			  FT_UINT8, BASE_HEX, VALS(ipacc_testres_ie_vals), 0,
-+			  "IPA Test Result Embedded IE", HFILL },
++			  "Information Element embedded into the Test Result "
++			  "of ip.access BTS", HFILL },
 +		},
 +		{ &hf_oml_ipa_tres_attr_len,
 +			{ "IPA Test Result Embedded IE Length",
 +						"oml.fom.testrep.ipa_len",
 +			  FT_UINT16, BASE_DEC, NULL, 0,
-+			  "IPA Test Result Embedded IE Length", HFILL }
++			  "Length of ip.access Test Result Embedded IE", HFILL }
 +		},
 +		{ &hf_attr_ipa_test_res,
 +			{ "IPA Test Result", "oml.fom.testrep.result",
 +			  FT_UINT8, BASE_DEC, VALS(ipacc_test_res_vals), 0,
-+			  "IPA Test Result", HFILL }
++			  NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_rxlev,
 +			{ "Rx Level", "oml.fom.testrep.ipa_rxlev",
-+			  FT_UINT16, BASE_DEC, NULL, 0xfc00,
-+			  "Rx Level", HFILL }
++			  FT_UINT16, BASE_DEC, NULL, 0xfc00, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_tr_b_rxlev,
++			{ "Rx Level", "oml.fom.testrep.ipa_rxlev_b",
++			  FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_arfcn,
 +			{ "ARFCN", "oml.fom.testrep.ipa_arfcn",
-+			  FT_UINT16, BASE_DEC, NULL, 0x03ff,
-+			  "ARFCN", HFILL }
++			  FT_UINT16, BASE_DEC, NULL, 0x03ff, "ARFCN", HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_f_qual,
 +			{ "Frequency Quality", "oml.fom.testrep.ipa.freq_qual",
-+			  FT_UINT8, BASE_DEC, NULL, 0xfc,
-+			  "Frequency Quality", HFILL }
++			  FT_UINT8, BASE_DEC, NULL, 0xfc, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_f_err,
 +			{ "Frequency Error", "oml.fom.testrep.ipa.freq_err",
-+			  FT_UINT16, BASE_DEC, NULL, 0,
-+			  "Frequency Error", HFILL }
++			  FT_INT16, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_rxqual,
 +			{ "Rx Quality", "oml.fom.testrep.ipa.rx_qual",
-+			  FT_UINT8, BASE_DEC, NULL, 0x7,
-+			  "Rx Quality", HFILL }
++			  FT_UINT8, BASE_DEC, NULL, 0x7, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_frame_offs,
 +			{ "Frame Offset", "oml.fom.testrep.ipa.frame_offset",
-+			  FT_UINT16, BASE_DEC, NULL, 0,
-+			  "Frame Offset", HFILL }
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_framenr_offs,
-+			{ "Frame Number Offset", "oml.fom.testrep.ipa.framenr_offset",
-+			  FT_UINT32, BASE_DEC, NULL, 0,
-+			  "Frame Number Offset", HFILL }
++			{ "Frame Number Offset",
++					"oml.fom.testrep.ipa.framenr_offset",
++			  FT_UINT32, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_bsic,
 +			{ "BSIC", "oml.fom.testrep.ipa.bsic",
@@ -1093,18 +1167,70 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +		},
 +		{ &hf_attr_ipa_tr_cell_id,
 +			{ "Cell ID", "oml.fom.testrep.ipa.cell_id",
-+			  FT_UINT16, BASE_HEX, NULL, 0,
-+			  "Cell ID", HFILL }
++			  FT_UINT16, BASE_HEX, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_rsl_ip,
 +			{ "BSC RSL IP Address", "oml.fom.attr.ipa.rsl_ip",
 +			  FT_IPv4, BASE_NONE, NULL, 0,
-+			  "BSC RSL IP Address", HFILL }
++			  "IP Address to which the BTS establishes "
++			  "the RSL link", HFILL }
 +		},
 +		{ &hf_attr_ipa_rsl_port,
 +			{ "BSC RSL TCP Port", "oml.fom.attr.ipa.rsl_port",
 +			  FT_UINT16, BASE_DEC, NULL, 0,
-+			  "BSC RSL TCP Port", HFILL }
++			  "Port number to which the BST establishes "
++			  "the RSL link", HFILL }
++		},
++		{ &hf_attr_ipa_prim_oml_ip,
++			{ "Primary OML IP Address",
++					"oml.fom.attr.ipa.prim_oml_ip",
++			  FT_IPv4, BASE_NONE, NULL, 0,
++			  "IP Address of the BSC for the primary OML link",
++			  HFILL }
++		},
++		{ &hf_attr_ipa_prim_oml_port,
++			{ "Primary OML TCP Port",
++					"oml.fom.attr.ipa.prim_oml_port",
++			  FT_UINT16, BASE_DEC, NULL, 0,
++			  "TCP Port of the BSC for the primarly OML link",
++			  HFILL }
++		},
++		{ &hf_attr_ipa_location_name,
++			{ "Location Name", "oml.fom.attr.ipa.loc_name",
++			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_unit_name,
++			{ "Unit Name", "oml.fom.attr.ipa.unit_name",
++			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_unit_id,
++			{ "Unit ID", "oml.fom.attr.ipa.unit_id",
++			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nv_flags,
++			{ "NVRAM Config Flags", "oml.fom.attr.ipa.nv_flags",
++			  FT_UINT16, BASE_HEX, NULL, 0xffff, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nv_mask,
++			{ "NVRAM Config Mask", "oml.fom.attr.ipa.nv_mask",
++			  FT_UINT16, BASE_HEX, NULL, 0xffff, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_tr_si2,
++			{ "System Information 2", "oml.fom.attr.ipa.si2",
++			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_tr_si2bis,
++			{ "System Information 2bis", "oml.fom.attr.ipa.si2bis",
++			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_tr_si2ter,
++			{ "System Information 2ter", "oml.fom.attr.ipa.si2ter",
++			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_tr_chan_desc,
++			{ "Cell Channel Description",
++						"oml.fom.attr.ipa.chan_desc",
++			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
 +		},
 +	};
 +	static gint *ett[] = {
@@ -1130,11 +1256,11 @@ Index: wireshark/epan/dissectors/packet-abis_oml.c
 +
 +	abis_oml_handle = find_dissector("abis_oml");
 +}
-Index: wireshark/epan/dissectors/packet-abis_oml.h
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-abis_oml.h	2009-07-01 11:27:15.000000000 +0200
-@@ -0,0 +1,714 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-04 03:46:47.000000000 +0200
+@@ -0,0 +1,726 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -1497,6 +1623,7 @@ Index: wireshark/epan/dissectors/packet-abis_oml.h
 +	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
 +	NM_ATT_IPACC_NV_FLAGS		= 0x86,
 +	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
++	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
 +	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
 +	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
 +	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
@@ -1840,8 +1967,19 @@ Index: wireshark/epan/dissectors/packet-abis_oml.h
 +		/* ip.access specifics */
 +		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
 +		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_FIXED, 6 },
-+		[0x95] =			{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_IPACC_SEC_OML_IP] =	{ TLV_TYPE_TL16V }, // wrong name
++		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
++		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
++		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
++		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_ALM_THRESH_LIST]= { TLV_TYPE_TL16V },
++		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
 +		[0x9b] =			{ TLV_TYPE_TL16V },
 +		[0x85] =			{ TLV_TYPE_TV },
 +

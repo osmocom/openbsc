@@ -43,6 +43,8 @@ static struct gsm_network *gsmnet;
 static int restart;
 static char *prim_oml_ip;
 static char *unit_id;
+static u_int16_t nv_flags;
+static u_int16_t nv_mask;
 
 /*
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
@@ -53,6 +55,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 {
 	int len;
 	static u_int8_t buf[1024];
+	u_int8_t *cur = buf;
 
 	printf("OML link established\n");
 
@@ -70,7 +73,6 @@ static void bootstrap_om(struct gsm_bts *bts)
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
-		u_int8_t *cur = buf;
 
 		if (!inet_aton(prim_oml_ip, &ia)) {
 			fprintf(stderr, "invalid IP address: %s\n",
@@ -90,6 +92,20 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
+		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+	}
+	if (nv_mask) {
+		len = 4;
+
+		*cur++ = NM_ATT_IPACC_NV_FLAGS;
+		*cur++ = (len) >> 8;
+		*cur++ = (len) & 0xff;
+		*cur++ = nv_flags & 0xff;
+		*cur++ = nv_mask & 0xff;
+		*cur++ = nv_flags >> 8;
+		*cur++ = nv_mask >> 8;
+		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
+			nv_flags, nv_mask);
 		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
 	}
 
@@ -140,13 +156,15 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int c;
+		unsigned long ul;
+		char *slash;
 		static struct option long_options[] = {
 			{ "unit-id", 1, 0, 'u' },
 			{ "oml-ip", 1, 0, 'o' },
 			{ "restart", 0, 0, 'r' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:r", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -161,6 +179,15 @@ int main(int argc, char **argv)
 			break;
 		case 'r':
 			restart = 1;
+			break;
+		case 'n':
+			slash = strchr(optarg, '/');
+			if (!slash)
+				exit(2);
+			ul = strtoul(optarg, NULL, 16);
+			nv_flags = ul & 0xffff;
+			ul = strtoul(slash+1, NULL, 16);
+			nv_mask = ul & 0xffff;
 			break;
 		}
 	};
