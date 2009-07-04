@@ -1256,6 +1256,9 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		break;
 	}
 
+	/* schedule the reject timer */
+	schedule_reject(lchan);
+
 	if (!subscr) {
 		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
 		/* FIXME: request id? close channel? */
@@ -1264,12 +1267,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	lchan->subscr = subscr;
 
-	/*
-	 * Schedule the reject timer and check if we can let the
-	 * subscriber into our network immediately or if we need to wait
-	 * for identity responses.
-	 */
-	schedule_reject(lchan);
+	/* check if we can let the subscriber into our network immediately
+	 * or if we need to wait for identity responses. */
 	return gsm0408_authorize(lchan, msg);
 }
 
