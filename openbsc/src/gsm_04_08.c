@@ -3381,8 +3381,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
-		if (msg_type != MNCC_SETUP_REQ ||
-		    (!data->called.number[0] && !data->imsi[0])) {
+		if (msg_type != MNCC_SETUP_REQ) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
 				"unknown callref %d\n", data->called.number,
