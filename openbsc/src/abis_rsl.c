@@ -811,10 +811,8 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 		if (TLVP_PRESENT(&tp, RSL_IE_CAUSE) &&
 		    TLVP_LEN(&tp, RSL_IE_CAUSE) >= 1 &&
 		    *TLVP_VAL(&tp, RSL_IE_CAUSE) == 0x18) {
-			if (msg->lchan->use_count > 0) {
-				DEBUGPC(DRSL, "Cause 0x18 IGNORING, lchan in use! (%d times)\n", msg->lchan->use_count);
-				return 0;
-			}
+			DEBUGPC(DRSL, "Cause 0x18 IGNORING\n");
+			return 0;
 		}
 	}
 
