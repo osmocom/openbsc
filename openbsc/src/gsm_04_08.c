@@ -385,7 +385,7 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the lchan.
 	 */
-	struct gsm_lchan *lchan = (struct gsm_lchan *)handler_data;
+	struct gsm_lchan *lchan = (struct gsm_lchan *)signal_data;
 	if (!lchan)
 		return 0;
 
@@ -1256,6 +1256,9 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		break;
 	}
 
+	/* schedule the reject timer */
+	schedule_reject(lchan);
+
 	if (!subscr) {
 		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
 		/* FIXME: request id? close channel? */
@@ -1264,12 +1267,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	lchan->subscr = subscr;
 
-	/*
-	 * Schedule the reject timer and check if we can let the
-	 * subscriber into our network immediately or if we need to wait
-	 * for identity responses.
-	 */
-	schedule_reject(lchan);
+	/* check if we can let the subscriber into our network immediately
+	 * or if we need to wait for identity responses. */
 	return gsm0408_authorize(lchan, msg);
 }
 
@@ -3381,8 +3380,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
-		if (msg_type != MNCC_SETUP_REQ ||
-		    (!data->called.number[0] && !data->imsi[0])) {
+		if (msg_type != MNCC_SETUP_REQ) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
 				"unknown callref %d\n", data->called.number,

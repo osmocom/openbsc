@@ -154,6 +154,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
+	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
