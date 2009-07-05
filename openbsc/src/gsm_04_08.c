@@ -240,7 +240,7 @@ static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
 		rep->flags |= MEAS_REP_F_BA1;
 	if (data[0] & 0x40)
 		rep->flags |= MEAS_REP_F_DTX;
-	if (data[1] & 0x40)
+	if ((data[1] & 0x40) == 0x00)
 		rep->flags |= MEAS_REP_F_VALID;
 
 	rep->rxlev_full = data[0] & 0x3f;
