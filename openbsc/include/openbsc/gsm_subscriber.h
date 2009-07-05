@@ -42,6 +42,7 @@ enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_IMSI,
 	GSM_SUBSCRIBER_TMSI,
 	GSM_SUBSCRIBER_EXTENSION,
+	GSM_SUBSCRIBER_ID,
 };
 
 enum gsm_subscriber_update_reason {

@@ -226,6 +226,13 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 		);
 		free(quoted);
 		break;
+	case GSM_SUBSCRIBER_ID:
+		dbi_conn_quote_string_copy(conn, id, &quoted);
+		result = dbi_conn_queryf(conn,
+			"SELECT * FROM Subscriber "
+			"WHERE id = %s ", quoted);
+		free(quoted);
+		break;
 	default:
 		printf("DB: Unknown query selector for Subscriber.\n");
 		return NULL;
@@ -428,7 +435,10 @@ int db_sms_store(struct gsm_sms *sms)
 struct gsm_sms *db_sms_get_unsent(int min_id)
 {
 	dbi_result result;
+	long long unsigned int sender_id, receiver_id;
 	struct gsm_sms *sms = malloc(sizeof(*sms));
+	char *text;
+	char buf[32];
 
 	if (!sms) {
 		free(sms);
@@ -442,8 +452,21 @@ struct gsm_sms *db_sms_get_unsent(int min_id)
 		free(sms);
 		return NULL;
 	}
+	sms->id = dbi_result_get_ulonglong(result, "id");
 
-	/* FIXME: fill gsm_sms from database */
+	sender_id = dbi_result_get_ulonglong(result, "sender_id");
+	sprintf(buf, "%llu", sender_id);
+	sms->sender = db_get_subscriber(GSM_SUBSCRIBER_ID, buf); 
+
+	receiver_id = dbi_result_get_ulonglong(result, "receiver_id");
+	sprintf(buf, "%llu", receiver_id);
+	sms->receiver = db_get_subscriber(GSM_SUBSCRIBER_ID, buf); 
+
+	/* FIXME: fill header */
+
+	text = dbi_result_get_string(result, "text");
+	if (text)
+		strncpy(sms->text, text, sizeof(sms->text));
 
 	dbi_result_free(result);
 	return sms;
