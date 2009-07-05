@@ -175,7 +175,6 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
 			s->lac = 0;
-
 		break;
 	default:
 		fprintf(stderr, "subscr_update with unknown reason: %d\n",

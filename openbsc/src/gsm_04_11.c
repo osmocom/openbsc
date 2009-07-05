@@ -173,14 +173,13 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
 {
 	if (db_sms_store(gsms) != 0) {
 		DEBUGP(DSMS, "Failed to store SMS in Database\n");
-		talloc_free(sms);
-		talloc_free(gsms);
-		return -EIO;
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 	return 0;
 }
 
-/* process an incoming TPDU (called from RP-DATA) */
+/* process an incoming TPDU (called from RP-DATA) 
+ * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
 static int gsm340_rx_tpdu(struct msgb *msg)
 {
 	u_int8_t *smsp = msgb_sms(msg);
@@ -196,7 +195,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 
 	sms = talloc(tall_sms_ctx, struct sms_submit);
 	if (!sms)
-		return -ENOMEM;
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	memset(sms, 0, sizeof(*sms));
 
 	if (!tall_gsms_ctx)
@@ -206,7 +205,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	gsms = talloc(tall_gsms_ctx, struct gsm_sms);
 	if (!gsms) {
 		talloc_free(sms);
-		return -ENOMEM;
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 	memset(gsms, 0, sizeof(*gsms));
 
@@ -214,7 +213,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	sms->mti = *smsp & 0x03;
 	sms->mms = !!(*smsp & 0x04);
 	sms->vpf = (*smsp & 0x18) >> 3;
-	sms->sri = !!(*smsp & 0x20);
+	sms->srr = !!(*smsp & 0x20);
 	sms->udhi= !!(*smsp & 0x40);
 	sms->rp  = !!(*smsp & 0x80);
 
@@ -225,7 +224,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	da_len_bytes = 2 + *smsp/2 + *smsp%2;
 	if (da_len_bytes > 12) {
 		DEBUGP(DSMS, "Destination Address > 12 bytes ?!?\n");
-		rc = -EIO;
+		rc = GSM411_RP_CAUSE_SEMANT_INC_MSG;
 		goto out;
 	}
 	memset(address_lv, 0, sizeof(address_lv));
@@ -278,21 +277,25 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 			"PID: 0x%02x, DCS: 0x%02x, DA: %s, UserDataLength: 0x%02x "
 			"UserData: \"%s\"\n", sms->mti, sms->vpf, sms->msg_ref,
 			sms->pid, sms->dcs, sms->dest_addr, sms->ud_len,
-			sms->alphabet == DCS_7BIT_DEFAULT ? sms->decoded : hexdump(sms->user_data, sms->ud_len));
+			sms->alphabet == DCS_7BIT_DEFAULT ? sms->decoded : 
+					hexdump(sms->user_data, sms->ud_len));
 
 	dispatch_signal(SS_SMS, 0, sms);
+
+	/* now we've filled the 'sms' structure.  Go on filling
+	 * the gsms structure based on information from the sms */
 
 	gsms->sender = msg->lchan->subscr;
 	/* FIXME: sender refcount */
 
+	gsms->validity_minutes = gsm340_validity_period(sms);
+
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(sms->dest_addr);
-	if (!gsms->receiver) {
-		rc = 1; /* cause 1: unknown subscriber */
-		goto out;
-	}
-
 	if (sms->user_data)
+		memcpy(gsms->header, sms->user_data, sms->ud_len);
+
+	if (sms->decoded)
 		strncpy(gsms->text, sms->decoded, sizeof(gsms->text));
 
 	switch (sms->mti) {
@@ -303,11 +306,16 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	case GSM340_SMS_COMMAND_MS2SC:
 	case GSM340_SMS_DELIVER_REP_MS2SC:
 		DEBUGP(DSMS, "Unimplemented MTI 0x%02x\n", sms->mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
 		break;
 	default:
 		DEBUGP(DSMS, "Undefined MTI 0x%02x\n", sms->mti);
+		rc = GSM411_RP_CAUSE_IE_NOTEXIST;
 		break;
 	}
+
+	if (!rc && !gsms->receiver)
+		rc = GSM411_RP_CAUSE_MO_NUM_UNASSIGNED;
 
 out:
 	talloc_free(gsms);
@@ -357,12 +365,13 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm411_rp_hdr *rph,
 
 	if (!dst_len || !dst || !tpdu_len || !tpdu) {
 		DEBUGP(DSMS, "RP-DATA (MO) without DST or TPDU ?!?\n");
+		gsm411_send_rp_error(msg->lchan, trans_id, rph->msg_ref,
+				     GSM411_RP_CAUSE_INV_MAND_INF);
 		return -EIO;
 	}
 	msg->smsh = tpdu;
 
 	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
-	//return gsm411_send_rp_error(msg->lchan, trans_id, rph->msg_ref, rc);
 
 	rc = gsm340_rx_tpdu(msg);
 	if (rc == 0)
@@ -392,9 +401,34 @@ static int gsm411_rx_rp_data(struct msgb *msg, struct gsm411_rp_hdr *rph)
 	if (rpud_len)
 		rp_ud = &rph->data[1+src_len+1+dst_len+1];
 
-	DEBUGP(DSMS, "RX_RP-DATA: src_len=%u, dst_len=%u ud_len=%u\n", src_len, dst_len, rpud_len);
+	DEBUGP(DSMS, "RX_RP-DATA: src_len=%u, dst_len=%u ud_len=%u\n",
+		src_len, dst_len, rpud_len);
 	return gsm411_rx_rp_ud(msg, rph, src_len, src, dst_len, dst,
 				rpud_len, rp_ud);
+}
+
+
+static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm411_rp_hdr *rph)
+{
+	/* Acnkowledgement to MT RP_DATA, i.e. the MS confirms it
+	 * successfully received a SMS.  We can now safely mark it as
+	 * transmitted */
+
+}
+
+static int gsm411_rx_rp_error(struct msgb *msg, struct gsm411_rp_hdr *rph)
+{
+	/* Error in response to MT RP_DATA, i.e. the MS did not
+	 * successfully receive the SMS.  We need to investigate
+	 * the cause and take action depending on it */
+
+}
+
+static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm411_rp_hdr *rph)
+{
+	/* MS tells us that it has memory for more SMS, we need
+	 * to check if we have any pending messages for it and then
+	 * transfer those */
 }
 
 static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh)
@@ -409,16 +443,17 @@ static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh)
 		rc = gsm411_rx_rp_data(msg, rp_data);
 		break;
 	case GSM411_MT_RP_ACK_MO:
-		/* Acnkowledgement to MT RP_DATA */
+		rc = gsm411_rx_rp_ack(msg, rp_data);
+		break;
 	case GSM411_MT_RP_ERROR_MO:
-		/* Error in response to MT RP_DATA */
+		rc = gsm411_rx_rp_error(msg, rp_data);
+		break;
 	case GSM411_MT_RP_SMMA_MO:
-		/* MS tells us that it has memory for more SMS, we need
-		 * to check if we have any pending messages for it and then
-		 * transfer those */
+		rc = gsm411_rx_rp_smma(msg, rp_data);
 		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);
 		break;
 	default:
+		/* FIXME: send GSM411_CP_CAUSE_MSGTYPE_NOTEXIST */
 		DEBUGP(DSMS, "Invalid RP type 0x%02x\n", msg_type);
 		break;
 	}
@@ -485,8 +520,8 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	/* Hardcode Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);
 	data[0] = 0x07;	/* originator length == 7 */
-	data[1] = 0x91; /* type of number */
-	data[2] = 0x44;
+	data[1] = 0x91; /* type of number: international, ISDN */
+	data[2] = 0x44; /* 447785016005 */
 	data[3] = 0x77;
 	data[4] = 0x58;
 	data[5] = 0x10;

@@ -75,7 +75,7 @@ static char *create_stmts[] = {
 		"sent TIMESTAMP, "
 		"sender_id NUMERIC NOT NULL, "
 		"receiver_id NUMERIC NOT NULL, "
-		"header NUMERIC, "
+		"header BLOB, "
 		"text TEXT NOT NULL "
 		")",
 	"CREATE TABLE IF NOT EXISTS VLR ("
@@ -402,16 +402,20 @@ int db_sms_store(struct gsm_sms *sms)
 {
 	dbi_result result;
 	char *q_text;
+	unsigned char *q_header;
 
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
+	dbi_conn_quote_binary_copy(conn, sms->header, sms->header_len,
+				   &q_header);
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
 		"(created,sender_id,receiver_id,header,text) VALUES "
 		"(datetime('now'),%llu,%llu,%s,%s)",
 		sms->sender->id,
 		sms->receiver ? sms->receiver->id : 0,
-		NULL, q_text);
+		q_header, q_text);
 	free(q_text);
+	free(q_header);
 
 	if (!result)
 		return -EIO;
