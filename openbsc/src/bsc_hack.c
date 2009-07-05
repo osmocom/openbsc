@@ -1080,7 +1080,7 @@ static void print_help()
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
-		int tmp, option_index = 0, c;
+		int option_index = 0, c;
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
