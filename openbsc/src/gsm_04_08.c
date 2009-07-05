@@ -1469,8 +1469,9 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 		subscr_put(subscr);
 	}
 
-	subscr->classmark2_len = classmark2_len;
-	memcpy(subscr->classmark2, classmark2, classmark2_len);
+	subscr->equipment.classmark2_len = classmark2_len;
+	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
+	db_sync_equipment(&subscr->equipment);
 
 	return gsm48_tx_mm_serv_ack(msg->lchan);
 }
@@ -1602,8 +1603,9 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
 		subscr->name ? subscr->name : subscr->imsi);
 
-	subscr->classmark2_len = *classmark2_lv;
-	memcpy(subscr->classmark2, classmark2_lv+1, *classmark2_lv);
+	subscr->equipment.classmark2_len = *classmark2_lv;
+	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
+	db_sync_equipment(&subscr->equipment);
 
 	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
@@ -1667,15 +1669,14 @@ static int gsm48_rx_rr_classmark(struct msgb *msg)
 		DEBUGPC(DRR, "CM3(len=%u)\n", cm3_len);
 	}
 	if (subscr) {
-		subscr->classmark2_len = cm2_len;
-		memcpy(subscr->classmark2, cm2, cm2_len);
+		subscr->equipment.classmark2_len = cm2_len;
+		memcpy(subscr->equipment.classmark2, cm2, cm2_len);
 		if (cm3) {
-			subscr->classmark3_len = cm3_len;
-			memcpy(subscr->classmark3, cm3, cm3_len);
+			subscr->equipment.classmark3_len = cm3_len;
+			memcpy(subscr->equipment.classmark3, cm3, cm3_len);
 		}
+		db_sync_equipment(&subscr->equipment);
 	}
-
-	/* FIXME: store the classmark2/3 values with the equipment register */
 
 	return 0;
 }

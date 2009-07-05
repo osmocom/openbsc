@@ -11,6 +11,18 @@
 #define GSM_NAME_LENGTH 128
 #define GSM_EXTENSION_LENGTH 128
 
+struct gsm_equipment {
+	long long unsigned int id;
+	char imei[GSM_IMEI_LENGTH];
+	char name[GSM_NAME_LENGTH];
+
+	struct gsm48_classmark1 classmark1;
+	u_int8_t classmark2_len;
+	u_int8_t classmark2[3];
+	u_int8_t classmark3_len;
+	u_int8_t classmark3[14];
+};
+
 struct gsm_subscriber {
 	struct gsm_network *net;
 	long long unsigned int id;
@@ -21,17 +33,13 @@ struct gsm_subscriber {
 	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
 
+	/* Every user can only have one equipment in use at any given
+	 * point in time */
+	struct gsm_equipment equipment;
+
 	/* for internal management */
 	int use_count;
 	struct llist_head entry;
-
-	/* those are properties of the equipment, but they
-	 * are applicable to the subscriber at the moment */
-	struct gsm48_classmark1 classmark1;
-	u_int8_t classmark2_len;
-	u_int8_t classmark2[3];
-	u_int8_t classmark3_len;
-	u_int8_t classmark3[14];
 
 	/* pending requests */
 	int in_callback;
@@ -47,6 +55,7 @@ enum gsm_subscriber_field {
 enum gsm_subscriber_update_reason {
 	GSM_SUBSCRIBER_UPDATE_ATTACHED,
 	GSM_SUBSCRIBER_UPDATE_DETACHED,
+	GSM_SUBSCRIBER_UPDATE_EQUIPMENT,
 };
 
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
