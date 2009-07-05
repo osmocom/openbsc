@@ -145,6 +145,20 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	return 0;
 }
 
+static void print_usage(void)
+{
+	printf("Usage: ipaccess-config\n");
+}
+
+static void print_help(void)
+{
+	printf("  -u --unit-id UNIT_ID\n");
+	printf("  -o --oml-ip ip\n");
+	printf("  -r --restart\n");
+	printf("  -n flags/mask Set NVRAM attributes.\n");
+	printf("  -h --help this text\n");
+}
+
 int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
@@ -162,9 +176,10 @@ int main(int argc, char **argv)
 			{ "unit-id", 1, 0, 'u' },
 			{ "oml-ip", 1, 0, 'o' },
 			{ "restart", 0, 0, 'r' },
+			{ "help", 0, 0, 'h' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:h", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -189,11 +204,15 @@ int main(int argc, char **argv)
 			ul = strtoul(slash+1, NULL, 16);
 			nv_mask = ul & 0xffff;
 			break;
+		case 'h':
+			print_usage();
+			print_help();
+			exit(0);
 		}
 	};
 
 	if (optind >= argc) {
-		fprintf(stderr, "you have to specify the IP address of the BTS\n");
+		fprintf(stderr, "you have to specify the IP address of the BTS. Use --help for more information\n");
 		exit(2);
 	}
 
