@@ -696,14 +696,7 @@ SYSTEM INFORMATION TYPE 3
     cell not barred for access
     call reestablishment not allowed
     Access Control Class = 0000
-  SI 3 Rest Octets
-    Cell Bar Qualify (CBQ): 0
-    Cell Reselect Offset = 0 dB
-    Temporary Offset = 0 dB
-    Penalty Time = 20 s
-    System Information 2ter Indicator (2TI): 0 = not available
-    Early Classmark Sending Control (ECSC):  0 = forbidden
-    Scheduling Information is not sent in SYSTEM INFORMATION TYPE 9 on the BCCH
+  SI 3 Rest Octets (not present)
 */
 static u_int8_t si3[] = {
 	/* header */0x49, 0x06, 0x1B,
@@ -713,7 +706,7 @@ static u_int8_t si3[] = {
 	/* option*/0x28,
 	/* selection*/0x62, 0x00,
 	/* rach */0xD5, 0x00, 0x00,
-	/* reset*/0x80, 0x00, 0x00, 0x2B
+	/* rest */ 0x2B, 0x2B, 0x2B, 0x2B
 };
 
 /*
@@ -734,24 +727,20 @@ SYSTEM INFORMATION TYPE 4
     cell not barred for access
     call reestablishment not allowed
     Access Control Class = 0000
-  Channel Description
+  CBCH Channel Description
     Type = SDCCH/4[2]
     Timeslot Number: 0
     Training Sequence Code: 7h
     ARFCN: 1
-  SI Rest Octets
-    Cell Bar Qualify (CBQ): 0
-    Cell Reselect Offset = 0 dB
-    Temporary Offset = 0 dB
-    Penalty Time = 20 s
+  SI Rest Octets (not present) 
 */
 static u_int8_t si4[] = {
 	/* header */0x41, 0x06, 0x1C,
 	/* lai */0x00, 0xF1, 0x10, 0x00, 0x01,
 	/* sel */0x62, 0x00,
 	/* rach*/0xD5, 0x00, 0x00,
-	/* var */0x64, 0x30, 0xE0, HARDCODED_ARFCN/*0x01*/, 0x80, 0x00, 0x00,
-	0x2B, 0x2B, 0x2B
+	/* cbch chan desc */ 0x64, 0x30, 0xE0, HARDCODED_ARFCN/*0x01*/,
+	/* rest octets */ 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B
 };
 
 /*

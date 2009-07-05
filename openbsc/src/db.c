@@ -1,6 +1,7 @@
 /* Simple HLR/VLR database backend using dbi */
 /* (C) 2008 by Jan Luebbe <jluebbe@debian.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -59,6 +60,9 @@ static char *create_stmts[] = {
 		"created TIMESTAMP NOT NULL, "
 		"updated TIMESTAMP NOT NULL, "
 		"name TEXT, "
+		"classmark1 NUMERIC, "
+		"classmark2 BLOB, "
+		"classmark3 BLOB, "
 		"imei NUMERIC UNIQUE NOT NULL"
 		")",
 	"CREATE TABLE IF NOT EXISTS EquipmentWatch ("
@@ -295,6 +299,37 @@ int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 	return 0;
 }
 
+int db_sync_equipment(struct gsm_equipment *equip)
+{
+	dbi_result result;
+	unsigned char *cm2, *cm3;
+
+	dbi_conn_quote_binary_copy(conn, equip->classmark2,
+				   equip->classmark2_len, &cm2);
+	dbi_conn_quote_binary_copy(conn, equip->classmark3,
+				   equip->classmark3_len, &cm3);
+
+	result = dbi_conn_queryf(conn,
+		"UPDATE Equipment SET "
+			"updated = datetime('now'), "
+			"classmark1 = %u, "
+			"classmark2 = %s, "
+			"classmark3 = %s "
+		"WHERE imei = '%s' ",
+		equip->classmark1, cm2, cm3, equip->imei);
+
+	free(cm2);
+	free(cm3);
+
+	if (!result) {
+		printf("DB: Failed to update Equipment\n");
+		return -EIO;
+	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 	dbi_result result=NULL;
 	char* tmsi_quoted;
@@ -328,6 +363,9 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]) {
 	u_int64_t equipment_id, watch_id;
 	dbi_result result;
+
+	strncpy(subscriber->equipment.imei, imei,
+		sizeof(subscriber->equipment.imei)-1),
 
 	result = dbi_conn_queryf(conn,
 		"INSERT OR IGNORE INTO Equipment "
