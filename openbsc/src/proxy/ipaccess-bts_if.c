@@ -255,7 +255,11 @@ static int handle_udp_read(struct bsc_fd *bfd)
 		/* injection towards BTS */
 		switch (hh->proto) {
 		case IPAC_PROTO_RSL:
-			msgb_enqueue(&ipbc->rsl_conn->tx_queue, msg);
+			if (!ipbc->rsl_conn) {
+				DEBUGP(DINP, "Cannot send RSL packets before we have BTS RSL connection\n");
+				msgb_free(msg);
+			} else
+				msgb_enqueue(&ipbc->rsl_conn->tx_queue, msg);
 			break;
 		default:
 			DEBUGP(DINP, "Unknown protocol 0x%02x, sending to OML FD\n",
@@ -347,7 +351,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			ipbc->oml_conn = ipc;
 
 			/* Create UDP socket for BTS packet injection */
-			udp_port = 10000 + (site_id % 1000) + (bts_id % 100);
+			udp_port = 10000 + (site_id % 1000)*100 + (bts_id % 100);
 			ipbc->udp_bts_fd.priv_nr = 1;
 			ret = make_udp_sock(&ipbc->udp_bts_fd, udp_port,
 					    udp_fd_cb, ipbc);
@@ -356,7 +360,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			DEBUGP(DINP, "Created UDP socket for injection towards BTS at port %u\n", udp_port);
 
 			/* Create UDP socket for BSC packet injection */
-			udp_port = 20000 + (site_id % 1000) + (bts_id % 100);
+			udp_port = 20000 + (site_id % 1000)*100 + (bts_id % 100);
 			ipbc->udp_bts_fd.priv_nr = 2;
 			ret = make_udp_sock(&ipbc->udp_bsc_fd, udp_port, udp_fd_cb, ipbc);
 			if (ret < 0)
@@ -372,7 +376,6 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			ipc->bts_conn = ipbc;
 			/* FIXME: implement this for non-0 TRX */
 			ipbc->rsl_conn = ipc;
-
 		}
 		break;
 	case IPAC_MSGT_ID_ACK:
