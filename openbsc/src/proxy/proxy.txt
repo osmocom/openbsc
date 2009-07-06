@@ -1,0 +1,32 @@
+OpenBSC ip.access Abis/IP proxy design
+======================================================================
+
+== the big picture ==
+
+* behave as BSC 
+ * listen for BTS OML connections (TCP port 3002, primary OML)
+ * listen for BTS RSL connections (TCP port 3003)
+ * actively connect to BTS (TCP port 3006, 2ndary OML)
+
+* behave as BTS
+ * actively connect OML to BSC (TCP port 3002)
+ * actively connect RSL to BSC (TCP port 3003)
+
+* provide UDP interface for packet injection
+ * packet format inside UDP is exactly the same as ip.access
+ * provide one port for each direction:
+  * UDP port 5001: message to BTS
+  * IDP port 5002: message to BSC
+
+== use cases ==
+
+* transparent proxy
+ * simply pass all messages from BTS to BSC and vice-versa
+
+* injection proxy
+ * provide UDP (packet-based) interface for tools like scapy
+
+== misc ==
+
+* keep-alive is handled independently, i.e. connections to BTS / BSC are always
+  kept open

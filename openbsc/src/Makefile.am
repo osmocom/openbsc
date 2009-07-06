@@ -1,6 +1,8 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall
 
+SUBDIRS = proxy
+
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config isdnsync
 noinst_LIBRARIES = libbsc.a libvty.a
 noinst_HEADERS = vty/cardshell.h

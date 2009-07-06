@@ -39,6 +39,7 @@ AC_OUTPUT(
     include/vty/Makefile
     include/Makefile
     src/Makefile
+    src/proxy/Makefile
     tests/Makefile
     tests/debug/Makefile
     tests/timer/Makefile
