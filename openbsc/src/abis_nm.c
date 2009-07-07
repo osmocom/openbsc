@@ -2309,6 +2309,18 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		DEBUGPC(DNM, "unknown\n");
 		break;
 	}
+
+	/* signal handling */
+	switch  (foh->msg_type) {
+	case NM_MT_IPACC_RSL_CONNECT_NACK:
+	case NM_MT_IPACC_SET_NVATTR_NACK:
+	case NM_MT_IPACC_GET_NVATTR_NACK:
+		dispatch_signal(SS_NM, S_NM_IPACC_NACK, (void*) ((long)foh->msg_type));
+		break;
+	default:
+		break;
+	}
+
 	return 0;
 }
 
