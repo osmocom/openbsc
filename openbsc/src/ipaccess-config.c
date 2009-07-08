@@ -37,6 +37,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/signal.h>
 
 static struct gsm_network *gsmnet;
 
@@ -50,6 +51,33 @@ static u_int16_t nv_mask;
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
 static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
 */
+
+/*
+ * Callback function for NACK on the OML NM
+ *
+ * Currently we send the config requests but don't check the
+ * result. The nanoBTS will send us a NACK when we did something the
+ * BTS didn't like.
+ */
+static int ipacc_msg_nack(int mt)
+{
+	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
+	exit(-1);
+	return 0;
+}
+
+static int nm_sig_cb(unsigned int subsys, unsigned int signal,
+		     void *handler_data, void *signal_data)
+{
+	switch (signal) {
+	case S_NM_IPACC_NACK:
+		return ipacc_msg_nack((int)signal_data);
+	default:
+		break;
+	}
+
+	return 0;
+}
 
 static void bootstrap_om(struct gsm_bts *bts)
 {
@@ -223,6 +251,7 @@ int main(int argc, char **argv)
 	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS_900, HARDCODED_TSC,
 				HARDCODED_BSIC);
 	
+	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 	printf("Trying to connect to ip.access BTS ...\n");
 
 	memset(&sin, 0, sizeof(sin));
