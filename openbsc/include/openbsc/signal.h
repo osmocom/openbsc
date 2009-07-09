@@ -55,6 +55,7 @@ enum signal_nm {
 	S_NM_SW_ACTIV_REP,	/* GSM 12.21 software activated report */
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 	S_NM_NACK,		/* GSM 12.21 various NM_MT_*_NACK happened */
+	S_NM_IPACC_NACK,	/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_NACK happened */
 };
 
 /* SS_LCHAN signals */
