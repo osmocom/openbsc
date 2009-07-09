@@ -40,22 +40,30 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/talloc.h>
 
+/* one instance of an ip.access protocol proxy */
 struct ipa_proxy {
+	/* socket where we listen for incoming OML from BTS */
 	struct bsc_fd oml_listen_fd;
+	/* socket where we listen for incoming RSL from BTS */
 	struct bsc_fd rsl_listen_fd;
+	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 };
 
+/* global pointer to the proxy structure */
 static struct ipa_proxy *ipp;
 
 struct ipa_proxy_conn {
 	struct bsc_fd fd;
-	struct ipa_bts_conn *bts_conn;
 	struct llist_head tx_queue;
+	struct ipa_bts_conn *bts_conn;
 };
 
+/* represents a particular BTS in our proxy */
 struct ipa_bts_conn {
+	/* list of BTS's (ipa_proxy->bts_list) */
 	struct llist_head list;
+	/* the unit ID as determined by CCM */
 	struct {
 		u_int16_t site_id;
 		u_int16_t bts_id;
@@ -66,14 +74,19 @@ struct ipa_bts_conn {
 	struct ipa_proxy_conn *oml_conn;
 	struct ipa_proxy_conn *rsl_conn;
 
+	/* outgoing connections to BSC */
+	struct ipa_proxy_conn *bsc_oml_conn;
+	struct ipa_proxy_conn *bsc_rsl_conn;
+
 	/* UDP sockets for BTS and BSC injection */
 	struct bsc_fd udp_bts_fd;
 	struct bsc_fd udp_bsc_fd;
 };
 
+/* some of the code against we link from OpenBSC needs this */
 void *tall_bsc_ctx;
 
-#define TS1_ALLOC_SIZE	300
+#define PROXY_ALLOC_SIZE	300
 
 static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
 static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
@@ -219,7 +232,7 @@ static int make_udp_sock(struct bsc_fd *bfd, u_int16_t port,
 static int handle_udp_read(struct bsc_fd *bfd)
 {
 	struct ipa_bts_conn *ipbc = bfd->data;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP UDP");
+	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP UDP");
 	struct ipaccess_head *hh;
 	int ret;
 
@@ -256,14 +269,15 @@ static int handle_udp_read(struct bsc_fd *bfd)
 		switch (hh->proto) {
 		case IPAC_PROTO_RSL:
 			if (!ipbc->rsl_conn) {
-				DEBUGP(DINP, "Cannot send RSL packets before we have BTS RSL connection\n");
+				DEBUGP(DINP, "Cannot send RSL packets before "
+					"we have a BTS RSL connection\n");
 				msgb_free(msg);
 			} else
 				msgb_enqueue(&ipbc->rsl_conn->tx_queue, msg);
 			break;
 		default:
-			DEBUGP(DINP, "Unknown protocol 0x%02x, sending to OML FD\n",
-				hh->proto);
+			DEBUGP(DINP, "Unknown protocol 0x%02x, sending to "
+				"OML FD\n", hh->proto);
 			/* fall through */
 		case IPAC_PROTO_IPACCESS:
 		case IPAC_PROTO_OML:
@@ -350,6 +364,10 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			ipc->bts_conn = ipbc;
 			ipbc->oml_conn = ipc;
 
+			/* Create OML TCP connection towards BSC */
+			ret = make_tcp_sock(&ipbc->bsc_oml_fd, 3002,
+					    tcp_fd_cb, ipbc);
+
 			/* Create UDP socket for BTS packet injection */
 			udp_port = 10000 + (site_id % 1000)*100 + (bts_id % 100);
 			ipbc->udp_bts_fd.priv_nr = 1;
@@ -357,25 +375,34 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 					    udp_fd_cb, ipbc);
 			if (ret < 0)
 				return ret;
-			DEBUGP(DINP, "Created UDP socket for injection towards BTS at port %u\n", udp_port);
+			DEBUGP(DINP, "Created UDP socket for injection "
+				"towards BTS at port %u\n", udp_port);
 
 			/* Create UDP socket for BSC packet injection */
 			udp_port = 20000 + (site_id % 1000)*100 + (bts_id % 100);
 			ipbc->udp_bts_fd.priv_nr = 2;
-			ret = make_udp_sock(&ipbc->udp_bsc_fd, udp_port, udp_fd_cb, ipbc);
+			ret = make_udp_sock(&ipbc->udp_bsc_fd, udp_port,
+					    udp_fd_cb, ipbc);
 			if (ret < 0)
 				return ret;
-			DEBUGP(DINP, "Created UDP socket for injection towards BSC at port %u\n", udp_port);
+			DEBUGP(DINP, "Created UDP socket for injection "
+				"towards BSC at port %u\n", udp_port);
 		} else {
-			DEBUGP(DINP, "Identified BTS %u/%u/%u\n", site_id, bts_id, trx_id);
+			DEBUGP(DINP, "Identified BTS %u/%u/%u\n",
+				site_id, bts_id, trx_id);
 
 			if (bfd->priv_nr != 2) {
-				DEBUGP(DINP, "Second OML connection from same BTS ?!?\n");
+				DEBUGP(DINP, "Second OML connection from "
+					"same BTS ?!?\n");
 				return -EIO;
 			}
 			ipc->bts_conn = ipbc;
 			/* FIXME: implement this for non-0 TRX */
 			ipbc->rsl_conn = ipc;
+
+			/* Create RSL TCP connection towards BSC */
+			ret = make_tcp_sock(&ipbc->bsc_oml_fd, 3002,
+					    tcp_fd_cb, ipbc);
 		}
 		break;
 	case IPAC_MSGT_ID_ACK:
@@ -386,10 +413,12 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	return 0;
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_tcp_read(struct bsc_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
+	struct ipa_bts_conn *ipbc = ipc->bts_conn;
+	struct ipa_proxy_conn *bsc_conn;
+	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
 	int ret;
 
@@ -412,7 +441,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 	msgb_put(msg, ret);
 
-	/* then read te length as specified in header */
+	/* then read the length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
 	ret = recv(bfd->fd, msg->l2h, hh->len, 0);
 	if (ret < hh->len) {
@@ -430,39 +459,48 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 			close(bfd->fd);
 			bfd->fd = -1;
 		}
+		/* we do not forward the CCM protocol through the
+		 * proxy but rather terminate it ourselves */
 		msgb_free(msg);
 		return ret;
 	}
-	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
-	 * might have free'd it !!! */
-#if 0
-	link = e1inp_lookup_sign_link(e1i_ts, 0, hh->proto);
-	if (!link) {
-		printf("no matching signalling link for hh->proto=0x%02x\n", hh->proto);
+
+	if (!ipbc) {
+		DEBUGP(DINP, "received packet but no ipc->bts_conn?!?\n");
 		msgb_free(msg);
 		return -EIO;
 	}
-	msg->trx = link->trx;
 
-	switch (hh->proto) {
-	case IPAC_PROTO_RSL:
-		ret = abis_rsl_rcvmsg(msg);
+	switch (bfd->priv_nr) {
+	case 1: /* incoming OML data from BTS */
+		bsc_conn = ipbc->bsc_oml_conn;
 		break;
-	case IPAC_PROTO_OML:
-		ret = abis_nm_rcvmsg(msg);
+	case 2: /* incoming RSL data from BTS */
+		bsc_conn = ipbc->bsc_rsl_conn;
+		break;
+	case 3: /* incoming OML data from BSC */
+		bsc_conn = ipbc->oml_conn;
+	case 4: /* incoming RSL data from BSC */
+		bsc_conn = ipbc->rsl_conn;
 		break;
 	default:
-		DEBUGP(DMI, "Unknown IP.access protocol proto=0x%02x\n", hh->proto);
-		msgb_free(msg);
+		bsc_conn = NULL;
 		break;
 	}
-#endif
-	msgb_free(msg);
+
+	if (bsc_conn) {
+		/* enqueue packet towards BSC */
+		msgb_enqueue(&bsc_conn->tx_queue, msg);
+		/* mark respective filedescriptor as 'we want to write' */
+		bsc_conn->bfd.when |= BSC_FD_WRITE;
+	} else
+		msgb_free(msg);
 
 	return ret;
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+/* a TCP socket is ready to be written to */
+static int handle_tcp_write(struct bsc_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct llist_head *lh;
@@ -478,27 +516,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	llist_del(lh);
 	msg = llist_entry(lh, struct msgb, list);
 
-#if 0
-	l2_data = msg->data;
-
-	/* prepend the ip.access header */
-	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
-	hh->zero = 0;
-	hh->len = msg->len - sizeof(*hh);
-
-	switch (sign_link->type) {
-	case E1INP_SIGN_OML:
-		hh->proto = IPAC_PROTO_OML;
-		break;
-	case E1INP_SIGN_RSL:
-		hh->proto = IPAC_PROTO_RSL;
-		break;
-	default:
-		msgb_free(msg);
-		return -EINVAL;
-	}
-#endif
-	DEBUGP(DMI, "TX->BTS: %s\n", hexdump(msg->data, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", bfd->priv_nr,
+		hexdump(msg->data, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", bfd->priv_nr,
+		hexdump(msg->data, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -512,12 +533,12 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	int rc = 0;
 
 	if (what & BSC_FD_READ) {
-		rc = handle_ts1_read(bfd);
+		rc = handle_tcp_read(bfd);
 		if (rc < 0)
 			return rc;
 	}
 	if (what & BSC_FD_WRITE)
-		rc = handle_ts1_write(bfd);
+		rc = handle_tcp_write(bfd);
 
 	return rc;
 }
@@ -547,6 +568,7 @@ static int oml_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		return -ENOMEM;
 	}
 
+	INIT_LLIST_HEAD(&ipc->tx_queue);
 	bfd = &ipc->fd;
 	bfd->fd = ret;
 	bfd->data = ipc;
@@ -608,7 +630,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int make_sock(struct bsc_fd *bfd, u_int16_t port,
+static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port,
 		     int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
@@ -647,19 +669,19 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	return 0;
 }
 
-#if 0
-/* Actively connect to a BTS.  Currently used by ipaccess-config.c */
-int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
+/* Actively connect to a BSC.  */
+static int ipaccess_connect_bsc(struct e1inp_line *line, struct sockaddr_in *sa)
 {
-	struct e1inp_ts *e1i_ts = &line->ts[0];
-	struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	struct ipa_proxy_conn *ipc;
+	struct bsc_fd *bfd = &ipc->fd;
 	int ret, on = 1;
 
 	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = ipaccess_fd_cb;
-	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
-	bfd->data = line;
-	bfd->priv_nr = 1;
+	bfd->cb = ipaccess_bsc_fd_cb;
+	bfd->when = BSC_FD_READ;// | BSC_FD_WRITE;
+	//bfd->data = line;
+	/* caller should set this depending on OML or RSL connection */
+	//bfd->priv_nr = 1;
 
 	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
@@ -676,11 +698,8 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 		return ret;
 	}
 	
-	line->driver = &ipaccess_driver;
-
-	return e1inp_line_register(line);
+	return 0;
 }
-#endif
 
 int ipaccess_setup(void)
 {
@@ -692,12 +711,12 @@ int ipaccess_setup(void)
 	INIT_LLIST_HEAD(&ipp->bts_list);
 
 	/* Listen for OML connections */
-	ret = make_sock(&ipp->oml_listen_fd, 3002, oml_listen_fd_cb);
+	ret = make_listen_sock(&ipp->oml_listen_fd, 3002, oml_listen_fd_cb);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_sock(&ipp->rsl_listen_fd, 3003, rsl_listen_fd_cb);
+	ret = make_listen_sock(&ipp->rsl_listen_fd, 3003, rsl_listen_fd_cb);
 
 	return ret;
 }

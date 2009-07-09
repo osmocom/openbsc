@@ -30,3 +30,28 @@ OpenBSC ip.access Abis/IP proxy design
 
 * keep-alive is handled independently, i.e. connections to BTS / BSC are always
   kept open
+
+
+== code architecture ==
+
+=== incoming TCP connection ===
+* connect TCP to BSC
+* create 2 UDP sockets for packet injection
+
+=== incoming TCP data from BTS ===
+* determine if OML or RSL fd
+* copy data to tx_queue of corresponding BSC fd
+
+=== incoming TCP data from BSC ===
+* determine if OML or RSL fd
+* copy data to tx_queue of corresponding BTS fd
+
+=== incoming UDP data ===
+* determine OML or RSL and direction based on port number
+* copy data to apropriate tx_queue
+
+=== termination of TCP connection ===
+* no matter if BSC or BTS disconnect, keep other TCP session open
+* make sure upon re-connection, the correct pairs of connections
+  are matched up
+
