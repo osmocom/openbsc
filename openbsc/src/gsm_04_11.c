@@ -414,6 +414,9 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm411_rp_hdr *rph)
 	 * successfully received a SMS.  We can now safely mark it as
 	 * transmitted */
 
+	/* we need to look-up the transaction based on rph->msg_ref to
+	 * identify which particular RP_DATA/SMS-submit was ACKed */
+
 }
 
 static int gsm411_rx_rp_error(struct msgb *msg, struct gsm411_rp_hdr *rph)
@@ -421,6 +424,9 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm411_rp_hdr *rph)
 	/* Error in response to MT RP_DATA, i.e. the MS did not
 	 * successfully receive the SMS.  We need to investigate
 	 * the cause and take action depending on it */
+
+	/* we need to look-up the transaction based on rph->msg_ref to
+	 * identify which particular RP_DATA/SMS-submit failed */
 
 }
 
