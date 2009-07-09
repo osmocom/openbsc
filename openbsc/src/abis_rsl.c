@@ -1352,7 +1352,7 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 }
 
 
-/* Section 3.3.2.3 . I think this looks like a table */
+/* Section 3.3.2.3 TS 05.02. I think this looks like a table */
 int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf)
 {
 	switch (ccch_conf) {
@@ -1371,6 +1371,7 @@ int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf)
 	}
 }
 
+/* Section 3.3.2.3 TS 05.02 */
 int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf)
 {
 	switch (ccch_conf) {
