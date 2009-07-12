@@ -355,12 +355,12 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV },
 		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV },
 		/* ip.access specifics */
-		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
+		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_SEC_OML_IP] =	{ TLV_TYPE_TL16V }, // wrong name
+		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
 		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
 		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
@@ -2263,14 +2263,14 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
 		DEBUGPC(DNM, "RSL CONNECT ACK ");
-		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_IP))
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP))
 			DEBUGPC(DNM, "IP=%s ",
 				inet_ntoa(*((struct in_addr *) 
-					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_IP))));
-		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_PORT))
+					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP_PORT))
 			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *) 
-					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_PORT))));
+					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
 		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
