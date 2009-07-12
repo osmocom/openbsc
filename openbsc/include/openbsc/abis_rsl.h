@@ -406,7 +406,8 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id);
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);
 int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
-		      u_int16_t port, u_int16_t f8, u_int8_t fc);
+		      u_int16_t port, u_int16_t conn_id,
+		      u_int8_t rtp_payload2);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
