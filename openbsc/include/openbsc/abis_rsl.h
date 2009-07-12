@@ -379,6 +379,45 @@ struct rsl_ie_chan_ident {
 #define RSL_BS_PA_MFRMS_8	0x06
 #define RSL_BS_PA_MFRMS_9	0x07
 
+/* RSL_IE_IPAC_RTP_PAYLOAD[2] */
+enum rsl_ipac_rtp_payload {
+	RSL_IPAC_RTP_GSM	= 1,
+	RSL_IPAC_RTP_EFR,
+	RSL_IPAC_RTP_AMR,
+	RSL_IPAC_RTP_CSD,
+	RSL_IPAC_RTP_MUX,
+};
+
+/* RSL_IE_IPAC_SPEECH_MODE, lower four bits */
+enum rsl_ipac_speech_mode_s {
+	RSL_IPAC_SPEECH_GSM_FR = 0,	/* GSM FR (Type 1, FS) */
+	RSL_IPAC_SPEECH_GSM_EFR = 1,	/* GSM EFR (Type 2, FS) */
+	RSL_IPAC_SPEECH_GSM_AMR_FR = 2,	/* GSM AMR/FR (Type 3, FS) */
+	RSL_IPAC_SPEECH_GSM_HR = 3,	/* GSM HR (Type 1, HS) */
+	RSL_IPAC_SPEECH_GSM_AMR_HR = 5,	/* GSM AMR/hr (Type 3, HS) */
+	RSL_IPAC_SPEECH_AS_RTP = 0xf,	/* As specified by RTP Payload IE */
+};
+/* RSL_IE_IPAC_SPEECH_MODE, upper four bits */
+enum rsl_ipac_speech_mode_m {
+	RSL_IPAC_SPEECH_M_RXTX = 0,	/* Send and Receive */
+	RSL_IPAC_SPEECH_M_RX = 1,	/* Receive only */
+	RSL_IPAC_SPEECH_M_TX = 2,	/* Send only */
+};
+
+/* RSL_IE_IPAC_RTP_CSD_FMT, lower four bits */
+enum rsl_ipac_rtp_csd_format_d {
+	RSL_IPAC_RTP_CSD_EXT_TRAU = 0,
+	RSL_IPAC_RTP_CSD_NON_TRAU = 1,
+	RSL_IPAC_RTP_CSD_TRAU_BTS = 2,
+	RSL_IPAC_RTP_CSD_IWF_FREE = 3,
+};
+/* RSL_IE_IPAC_RTP_CSD_FMT, upper four bits */
+enum rsl_ipac_rtp_csd_format_ir {
+	RSL_IPAC_RTP_CSD_IR_8k = 0,
+	RSL_IPAC_RTP_CSD_IR_16k = 1,
+	RSL_IPAC_RTP_CSD_IR_32k = 2,
+	RSL_IPAC_RTP_CSD_IR_64k = 3,
+};
 
 #include "msgb.h"
 
