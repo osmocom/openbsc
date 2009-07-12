@@ -244,6 +244,12 @@ enum abis_nm_obj_class {
 	NM_OC_CHANNEL,
 	NM_OC_BASEB_TRANSC,
 	/* RFU: 05-FE */
+
+	NM_OC_IPAC_E1_TRUNK		= 0x0e,
+	NM_OC_IPAC_E1_PORT		= 0x0f,
+	NM_OC_IPAC_E1_CHAN		= 0x10,
+	NM_OC_IPAC_CLK_MODULE		= 0x22,
+
 	NM_OC_BS11_ADJC			= 0xa0,
 	NM_OC_BS11_HANDOVER		= 0xa1,
 	NM_OC_BS11_PWR_CTRL		= 0xa2,
@@ -256,8 +262,7 @@ enum abis_nm_obj_class {
 
 	NM_OC_GPRS_NSE			= 0xf0,
 	NM_OC_GPRS_CELL			= 0xf1,
-	NM_OC_GPRS_NSVC0		= 0xf2,
-	NM_OC_GPRS_NSVC1		= 0xf3,
+	NM_OC_GPRS_NSVC			= 0xf2,
 
 	NM_OC_NULL			= 0xff,
 };

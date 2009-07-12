@@ -481,10 +481,8 @@ static const char *obj_class_name(u_int8_t oc)
 		return "GPRS NSE";
 	case NM_OC_GPRS_CELL:
 		return "GPRS CELL";
-	case NM_OC_GPRS_NSVC0:
-		return "GPRS NSVC0";
-	case NM_OC_GPRS_NSVC1:
-		return "GPRS NSVC1";
+	case NM_OC_GPRS_NSVC:
+		return "GPRS NSVC";
 	case NM_OC_BS11:
 		return "SIEMENSHW";
 	}
