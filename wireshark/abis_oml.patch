@@ -1,7 +1,7 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-07-10 23:17:56.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-07-11 17:50:23.000000000 +0200
+--- wireshark.orig/epan/dissectors/Makefile.common	2009-07-12 14:07:53.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2009-07-12 14:52:09.000000000 +0200
 @@ -472,6 +472,7 @@
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -13,8 +13,8 @@ Index: wireshark/epan/dissectors/Makefile.common
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-11 17:49:29.000000000 +0200
-@@ -0,0 +1,1248 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-12 20:41:18.000000000 +0200
+@@ -0,0 +1,1363 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -114,6 +114,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +static int hf_attr_ipa_unit_name = -1;
 +static int hf_attr_ipa_nv_flags = -1;
 +static int hf_attr_ipa_nv_mask = -1;
++static int hf_attr_ipa_nsl_sport = -1;
++static int hf_attr_ipa_nsl_daddr = -1;
++static int hf_attr_ipa_nsl_dport = -1;
++static int hf_attr_ipa_nsei = -1;
++static int hf_attr_ipa_nsvci = -1;
++static int hf_attr_ipa_bvci = -1;
++static int hf_attr_ipa_rac = -1;
 +
 +/* initialize the subtree pointers */
 +static int ett_oml = -1;
@@ -249,6 +256,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_MT_IPACC_CONN_TRAF,	"IPA Connect Traffic" },
 +	{ NM_MT_IPACC_CONN_TRAF_ACK,	"IPA Connect Traffic ACK" },
 +	{ NM_MT_IPACC_CONN_TRAF_NACK,	"IPA Connect Traffic NACK" },
++	{ NM_MT_IPACC_DISC_TRAF,	"IPA Disconnect Traffic" },
++	{ NM_MT_IPACC_DISC_TRAF_ACK,	"IPA Disconnect Traffic ACK" },
++	{ NM_MT_IPACC_DISC_TRAF_NACK,	"IPA Disconnect Traffic NACK" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW,	"IPA Default Boot Software" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW_ACK,	"IPA Default Boot Software ACK" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW_NACK,	"IPA Default Boot Software NACK" },
@@ -258,6 +268,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_MT_IPACC_GET_NVATTR,	"IPA Get NVRAM Attributes" },
 +	{ NM_MT_IPACC_GET_NVATTR_ACK,	"IPA Get NVRAM Attributes ACK" },
 +	{ NM_MT_IPACC_GET_NVATTR_NACK,	"IPA Get NVRAM Attributes NACK" },
++	{ NM_MT_IPACC_SET_ATTR,		"IPA Set Attributes" },
++	{ NM_MT_IPACC_SET_ATTR_ACK,	"IPA Set Attributes ACK" },
++	{ NM_MT_IPACC_SET_ATTR_NACK,	"IPA Set Attributes NACK" },
++	{ NM_MT_IPACC_ATTR_CHG_EVT,	"IPA Attribute Change Event" },
++	{ NM_MT_IPACC_SW_DEACT,		"IPA Software Deactivate" },
++	{ NM_MT_IPACC_SW_DEACT_ACK,	"IPA Software Deactivate ACK" },
++	{ NM_MT_IPACC_SW_DEACT_NACK,	"IPA Software Deactivate NACK" },
++	{ NM_MT_IPACC_MEAS_RES_REQ_NACK,"IPA Measurement Result Request NACK" },
++	{ NM_MT_IPACC_START_MEAS_NACK,	"IPA Start Measurement NACK" },
++	{ NM_MT_IPACC_STOP_MEAS_NACK,	"IPA Stop Measurement NACK" },
 +	{ NM_MT_BS11_RESET_RESOURCE,	"SIE Reset Resource" },
 +	{ NM_MT_BS11_BEGIN_DB_TX,	"SIE Begin Database Transmission" },
 +	{ NM_MT_BS11_BEGIN_DB_TX_ACK,	"SIE Begin Database Transmission ACK" },
@@ -395,24 +415,54 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_ATT_BS11_ENA_RXLEV_HO,	"SIE Enable RxLevel HO" },
 +	{ NM_ATT_BS11_ENA_RXQUAL_HO,	"SIE Enable RxQual HO" },
 +	{ NM_ATT_BS11_FACCH_QUAL,	"SIE FACCH Quality" },
-+	{ NM_ATT_IPACC_RSL_BSC_IP,	"IPA BSC RSL IP Address" },
-+	{ NM_ATT_IPACC_RSL_BSC_PORT,	"IPA BSC RSL TCP Port" },
++	{ NM_ATT_IPACC_DST_IP,		"IPA Destination IP Address" },
++	{ NM_ATT_IPACC_DST_IP_PORT,	"IPA Destionation IP Port" },
++	{ NM_ATT_IPACC_SSRC,		"IPA RTP SSRC" },
++	{ NM_ATT_IPACC_RTP_PAYLD_TYPE,	"IPA RTP Payload Type" },
++	{ NM_ATT_IPACC_BASEB_ID,	"IPA Baseband Identifier" },
++	{ NM_ATT_IPACC_STREAM_ID,	"IPA Stream Identifier" },
 +	{ NM_ATT_IPACC_NV_FLAGS,	"IPA NVRAM Flags" },
 +	{ NM_ATT_IPACC_FREQ_CTRL,	"IPA Frequency Control" },
++	{ NM_ATT_IPACC_PRIM_OML_CFG,	"IPA Primary OML Config" },
++	{ NM_ATT_IPACC_SEC_OML_CFG,	"IPA Secondary OML Config" },
 +	{ NM_ATT_IPACC_IP_IF_CFG,	"IPA IP Interface Config" },
 +	{ NM_ATT_IPACC_IP_GW_CFG,	"IPA IP Gateway Config" },
 +	{ NM_ATT_IPACC_IN_SERV_TIME,	"IPA In Service Time" },
-+	{ NM_ATT_IPACC_LOCATION,	"IPA Location Name" },
++	{ NM_ATT_IPACC_TRX_BTS_ASS,	"IPA TRX BTS Assignment" },
++	{ NM_ATT_IPACC_LOCATION,	"IPA BTS Location Name" },
++	{ NM_ATT_IPACC_PAGING_CFG,	"IPA Paging Configuration" },
++	{ NM_ATT_IPACC_FILE_DATA,	"IPA File Data" },
 +	{ NM_ATT_IPACC_UNIT_ID,		"IPA Unit ID" },
++	{ NM_ATT_IPACC_PARENT_UNIT_ID,	"IPA Parent Unit ID" },
 +	{ NM_ATT_IPACC_UNIT_NAME,	"IPA Unit Name" },
 +	{ NM_ATT_IPACC_SNMP_CFG,	"IPA SNMP Config" },
-+	{ NM_ATT_IPACC_PRIM_OML_IP,	"IPA Primary OML IP Address" },
-+	{ NM_ATT_IPACC_SEC_OML_IP,	"IPA Secondary OML IP Address" },
++	{ NM_ATT_IPACC_PRIM_OML_CFG_LIST, "IPA Primary OML Config List" },
++	{ NM_ATT_IPACC_PRIM_OML_FB_TOUT,"IPA Primary OML Fallback Timeout" },
 +	{ NM_ATT_IPACC_CUR_SW_CFG,	"IPA Current Software Config" },
++	{ NM_ATT_IPACC_TIMING_BUS,	"IPA Timing Bus" },
++	{ NM_ATT_IPACC_CGI,		"IPA CGI" },
++	{ NM_ATT_IPACC_RAC,		"IPA RAC" },
++	{ NM_ATT_IPACC_OBJ_VERSION,	"IPA Object Version" },
++	{ NM_ATT_IPACC_GPRS_PAGING_CFG,	"IPA GPRS Paging Configuration" },
++	{ NM_ATT_IPACC_NSEI,		"IPA NSEI" },
++	{ NM_ATT_IPACC_BVCI,		"IPA BVCI" },
++	{ NM_ATT_IPACC_NSVCI,		"IPA NSVCI" },
++	{ NM_ATT_IPACC_NS_CFG,		"IPA NS Configuration" },
++	{ NM_ATT_IPACC_BSSGP_CFG,	"IPA BSSGP Configuration" },
++	{ NM_ATT_IPACC_NS_LINK_CFG,	"IPA NS Link Configuration" },
++	{ NM_ATT_IPACC_RLC_CFG,		"IPA RLC Configuration" },
 +	{ NM_ATT_IPACC_ALM_THRESH_LIST,	"IPA Alarm Threshold List" },
++	{ NM_ATT_IPACC_MONIT_VAL_LIST,	"IPA Monitored Value List" },
++	{ NM_ATT_IPACC_TIB_CONTROL,	"IPA Timing Interface Bus Control" },
++	{ NM_ATT_IPACC_SUPP_FEATURES,	"IPA Supported Features" },
++	{ NM_ATT_IPACC_CODING_SCHEMES,	"IPA Coding Schemes" },
++	{ NM_ATT_IPACC_RLC_CFG_2,	"IPA RLC Configuration 2" },
++	{ NM_ATT_IPACC_HEARTB_TOUT,	"IPA Heartbeat Timeout" },
 +	{ NM_ATT_IPACC_UPTIME,		"IPA Uptime" },
++	{ NM_ATT_IPACC_RLC_CFG_3,	"IPA RLC Configuration 3" },
 +	{ NM_ATT_IPACC_SSL_CFG,		"IPA SSL Configuration" },
-+	{ NM_ATT_IPACC_SEC_POSSIBLE,	"IPA Security Possoble" },
++	{ NM_ATT_IPACC_SEC_POSSIBLE,	"IPA Security Possible" },
++	{ NM_ATT_IPACC_IML_SSL_STATE,	"IPA IML SSL State" },
 +	{ NM_ATT_IPACC_REVOC_DATE,	"IPA Revocation Date" },
 +	/* FIXME: More SIE */
 +};
@@ -513,11 +563,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +};
 +
 +static const value_string oml_test_no_vals[] = {
++	{ NM_IPACC_TESTNO_RLOOP_ANT,	"Radio Loop test via antenna" },
++	{ NM_IPACC_TESTNO_RLOOP_XCVR,	"Radio Loop test via transceiver" },
++	{ NM_IPACC_TESTNO_FUNC_OBJ,	"BTS Functional object self test" },
 +	{ NM_IPACC_TESTNO_CHAN_USAGE,	"Channel Usage" },
 +	{ NM_IPACC_TESTNO_BCCH_CHAN_USAGE, "BCCH Channel Usage" },
 +	{ NM_IPACC_TESTNO_FREQ_SYNC,	"Frequency Synchronization" },
 +	{ NM_IPACC_TESTNO_BCCH_INFO,	"BCCH Information" },
-+	{ NM_IPACC_TESTNO_TX_BEACON,	"Tx Beacon" },
++	{ NM_IPACC_TESTNO_TX_BEACON,	"Transmit Beacon" },
++	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "SysInfo Monitor" },
++	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH & CCCH Monitor" },
 +};
 +
 +static const value_string ipacc_test_res_vals[] = {
@@ -822,12 +877,12 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			break;
 +
 +		/* proprietary ip.access extensions */
-+		case NM_ATT_IPACC_RSL_BSC_IP:
++		case NM_ATT_IPACC_DST_IP:
 +			val32 = tvb_get_ntohl(tvb, offset);
 +			proto_tree_add_ipv4(att_tree, hf_attr_ipa_rsl_ip, tvb,
 +					    offset, len, val32);
 +			break;
-+		case NM_ATT_IPACC_RSL_BSC_PORT:
++		case NM_ATT_IPACC_DST_IP_PORT:
 +			val16 = tvb_get_ntohs(tvb, offset);
 +			proto_tree_add_uint(att_tree, hf_attr_ipa_rsl_port, tvb,
 +					    offset, len, val16);
@@ -844,7 +899,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			proto_tree_add_item(att_tree, hf_attr_ipa_unit_name,
 +					    tvb, offset, len, TRUE);
 +			break;
-+		case NM_ATT_IPACC_PRIM_OML_IP:
++		case NM_ATT_IPACC_PRIM_OML_CFG_LIST:
 +			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_ip,
 +					    tvb, offset+1, 4, TRUE);
 +			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_port,
@@ -863,8 +918,36 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +						    tvb, offset+1, 3, mask);
 +			}
 +			break;
-+		case NM_ATT_IPACC_SEC_OML_IP:
-+			/* FIXME */
++		case NM_ATT_IPACC_RAC:
++			proto_tree_add_item(att_tree, hf_attr_ipa_rac,
++					    tvb, offset, 1, TRUE);
++			break;
++		case NM_ATT_IPACC_NSEI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsei,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_NSVCI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsvci,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_BVCI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_bvci,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_NS_LINK_CFG:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsl_sport,
++					   tvb, offset, 2, val16);
++			val32 = tvb_get_ipv4(tvb, offset+2);
++			proto_tree_add_ipv4(att_tree, hf_attr_ipa_nsl_daddr,
++					   tvb, offset+2, 4, val32);
++			val16 = tvb_get_ntohs(tvb, offset+6);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsl_dport,
++					   tvb, offset+6, 2, val16);
++			break;
 +		default:
 +			proto_tree_add_item(att_tree, hf_oml_fom_attr_val, tvb,
 +					    offset, len, FALSE);
@@ -1239,6 +1322,38 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +						"oml.fom.attr.ipa.chan_desc",
 +			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
 +		},
++		{ &hf_attr_ipa_nsl_sport,
++			{ "NS Link IP Source Port",
++						"oml.fom.attr.ipa.nsl_sport",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsl_daddr,
++			{ "NS Link IP Destination Addr",
++						"oml.fom.attr.ipa.nsl_daddr",
++			  FT_IPv4, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsl_dport,
++			{ "NS Link IP Destination Port",
++						"oml.fom.attr.ipa.nsl_dport",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsei,
++			{ "NSEI", "oml.fom.attr.ipa.nsei",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsvci,
++			{ "NSVCI", "oml.fom.attr.ipa.nsvci",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_bvci,
++			{ "BVCI", "oml.fom.attr.ipa.bvci",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_rac,
++			{ "RAC", "oml.fom.attr.ipa.rac",
++			  FT_UINT8, BASE_HEX, NULL, 0,
++			  "Routing Area Code", HFILL }
++		},
 +	};
 +	static gint *ett[] = {
 +		&ett_oml,
@@ -1266,8 +1381,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-11 17:46:16.000000000 +0200
-@@ -0,0 +1,741 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-12 17:18:20.000000000 +0200
+@@ -0,0 +1,786 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -1489,6 +1604,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_MT_IPACC_CONN_TRAF		= 0xe6,
 +	NM_MT_IPACC_CONN_TRAF_ACK,
 +	NM_MT_IPACC_CONN_TRAF_NACK,
++	NM_MT_IPACC_DISC_TRAF		= 0xe9,
++	NM_MT_IPACC_DISC_TRAF_ACK,
++	NM_MT_IPACC_DISC_TRAF_NACK,
 +	NM_MT_IPACC_DEF_BOOT_SW		= 0xec,
 +	NM_MT_IPACC_DEF_BOOT_SW_ACK,
 +	NM_MT_IPACC_DEF_BOOT_SW_NACK,
@@ -1498,6 +1616,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_MT_IPACC_GET_NVATTR		= 0xf2,
 +	NM_MT_IPACC_GET_NVATTR_ACK,
 +	NM_MT_IPACC_GET_NVATTR_NACK,
++	NM_MT_IPACC_SET_ATTR		= 0xf5,
++	NM_MT_IPACC_SET_ATTR_ACK,
++	NM_MT_IPACC_SET_ATTR_NACK,
++	NM_MT_IPACC_ATTR_CHG_EVT	= 0xf8,
++	NM_MT_IPACC_SW_DEACT		= 0xf9,
++	NM_MT_IPACC_SW_DEACT_ACK,
++	NM_MT_IPACC_SW_DEACT_NACK,
++	NM_MT_IPACC_MEAS_RES_REQ_NACK	= 0xfc,
++	NM_MT_IPACC_START_MEAS_NACK,
++	NM_MT_IPACC_STOP_MEAS_NACK,
 +};
 +
 +enum abis_nm_bs11_cell_alloc {
@@ -1626,26 +1754,54 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_ATT_BS11_ENA_RXQUAL_HO	= 0x6d,
 +	NM_ATT_BS11_FACCH_QUAL		= 0x6e,
 +
-+	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
-+	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
++	NM_ATT_IPACC_DST_IP		= 0x80,
++	NM_ATT_IPACC_DST_IP_PORT	= 0x81,
++	NM_ATT_IPACC_SSRC		= 0x82,		/* RTP Sync Source */
++	NM_ATT_IPACC_RTP_PAYLD_TYPE	= 0x83,
++	NM_ATT_IPACC_BASEB_ID		= 0x84,
++	NM_ATT_IPACC_STREAM_ID		= 0x85,
 +	NM_ATT_IPACC_NV_FLAGS		= 0x86,
 +	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
++	NM_ATT_IPACC_PRIM_OML_CFG	= 0x88,
 +	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
 +	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
 +	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
 +	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
++	NM_ATT_IPACC_TRX_BTS_ASS	= 0x8d,
 +	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
++	NM_ATT_IPACC_PAGING_CFG		= 0x8f,
++	NM_ATT_IPACC_FILE_DATA		= 0x90,
 +	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
++	NM_ATT_IPACC_PARENT_UNIT_ID	= 0x92,
 +	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
 +	NM_ATT_IPACC_SNMP_CFG		= 0x94,
-+	NM_ATT_IPACC_PRIM_OML_IP	= 0x95,
-+	NM_ATT_IPACC_SEC_OML_IP		= 0x96,
++	NM_ATT_IPACC_PRIM_OML_CFG_LIST	= 0x95,
++	NM_ATT_IPACC_PRIM_OML_FB_TOUT	= 0x96,		/* fallback timeout */
 +	NM_ATT_IPACC_CUR_SW_CFG		= 0x97,
-+
++	NM_ATT_IPACC_TIMING_BUS		= 0x98,
++	NM_ATT_IPACC_CGI		= 0x99,		/* Cell Global ID */
++	NM_ATT_IPACC_RAC		= 0x9a,
++	NM_ATT_IPACC_OBJ_VERSION	= 0x9b,
++	NM_ATT_IPACC_GPRS_PAGING_CFG	= 0x9c,
++	NM_ATT_IPACC_NSEI		= 0x9d,
++	NM_ATT_IPACC_BVCI		= 0x9e,
++	NM_ATT_IPACC_NSVCI		= 0x9f,
++	NM_ATT_IPACC_NS_CFG		= 0xa0,
++	NM_ATT_IPACC_BSSGP_CFG		= 0xa1,
++	NM_ATT_IPACC_NS_LINK_CFG	= 0xa2,
++	NM_ATT_IPACC_RLC_CFG		= 0xa3,
 +	NM_ATT_IPACC_ALM_THRESH_LIST	= 0xa4,
++	NM_ATT_IPACC_MONIT_VAL_LIST	= 0xa5,
++	NM_ATT_IPACC_TIB_CONTROL	= 0xa6,
++	NM_ATT_IPACC_SUPP_FEATURES	= 0xa7,
++	NM_ATT_IPACC_CODING_SCHEMES	= 0xa8,
++	NM_ATT_IPACC_RLC_CFG_2		= 0xa9,
++	NM_ATT_IPACC_HEARTB_TOUT	= 0xaa,
 +	NM_ATT_IPACC_UPTIME		= 0xab,
++	NM_ATT_IPACC_RLC_CFG_3		= 0xac,
 +	NM_ATT_IPACC_SSL_CFG		= 0xad,
 +	NM_ATT_IPACC_SEC_POSSIBLE	= 0xae,
++	NM_ATT_IPACC_IML_SSL_STATE	= 0xaf,
 +	NM_ATT_IPACC_REVOC_DATE		= 0xb0,
 +
 +
@@ -1854,11 +2010,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +};
 +
 +enum abis_nm_ipacc_test_no {
++	NM_IPACC_TESTNO_RLOOP_ANT	= 0x01,
++	NM_IPACC_TESTNO_RLOOP_XCVR	= 0x02,
++	NM_IPACC_TESTNO_FUNC_OBJ	= 0x03,
 +	NM_IPACC_TESTNO_CHAN_USAGE	= 0x40,
 +	NM_IPACC_TESTNO_BCCH_CHAN_USAGE	= 0x41,
 +	NM_IPACC_TESTNO_FREQ_SYNC	= 0x42,
 +	NM_IPACC_TESTNO_BCCH_INFO	= 0x43,
 +	NM_IPACC_TESTNO_TX_BEACON	= 0x44,
++	NM_IPACC_TESTNO_SYSINFO_MONITOR	= 0x45,
++	NM_IPACC_TESTNO_BCCCH_MONITOR	= 0x46,
 +};
 +
 +/* first byte after length inside NM_ATT_TEST_REPORT */
@@ -1975,12 +2136,11 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +		[0x95] =			{ TLV_TYPE_FIXED, 2 },
 +#endif
 +		/* ip.access specifics */
-+		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
-+		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
++		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_IPACC_PRIM_OML_CFG] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_SEC_OML_IP] =	{ TLV_TYPE_TL16V, 0 }, // wrong name
 +		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
 +		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
 +		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
@@ -1990,21 +2150,21 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_ALM_THRESH_LIST]= { TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[0x85] =			{ TLV_TYPE_TV, 0 },
-+		[0x9a] =			{ TLV_TYPE_TL16V, 0 },
-+		[0x9b] =			{ TLV_TYPE_TL16V, 0 },
-+		[0x9c] =			{ TLV_TYPE_TL16V, 0 },
-+		[0x9d] =			{ TLV_TYPE_TL16V, 0 },
-+		[0x9e] =			{ TLV_TYPE_TL16V, 0 },
-+		[0x9f] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa0] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa1] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa2] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa3] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa7] =			{ TLV_TYPE_TL16V, 0 },
-+		[0xa8] = 			{ TLV_TYPE_TL16V, 0 },
-+		[0xa9] = 			{ TLV_TYPE_TL16V, 0 },
-+		[0xac] =			{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, 0 },
++		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_GPRS_PAGING_CFG] ={ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V, 0 },
 +	},
 +};
 +
