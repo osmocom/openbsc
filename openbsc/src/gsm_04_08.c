@@ -2001,12 +2001,16 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	case GSM_BTS_TYPE_NANOBTS_900:
 	case GSM_BTS_TYPE_NANOBTS_1800:
 		ts = remote_lchan->ts;
-		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-				  lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
+				  ts->abis_ip.bound_port,
+				  lchan->ts->abis_ip.conn_id,
+				  ts->abis_ip.rtp_payload2);
 	
 		ts = lchan->ts;
-		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-				  remote_lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
+				  ts->abis_ip.bound_port,
+				  remote_lchan->ts->abis_ip.conn_id,
+				  ts->abis_ip.rtp_payload2);
 		break;
 	case GSM_BTS_TYPE_BS11:
 		trau_mux_map_lchan(lchan, remote_lchan);

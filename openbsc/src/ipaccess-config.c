@@ -111,7 +111,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		/* 0x88 + IP + port */
 		len = 1 + sizeof(ia) + 2;
 
-		*cur++ = NM_ATT_IPACC_PRIM_OML_IP;
+		*cur++ = NM_ATT_IPACC_PRIM_OML_CFG_LIST;
 		*cur++ = (len) >> 8;
 		*cur++ = (len) & 0xff;
 		*cur++ = 0x88;
