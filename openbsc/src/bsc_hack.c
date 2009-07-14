@@ -362,8 +362,8 @@ static unsigned char nanobts_attr_radio[] = {
 };
 
 static unsigned char nanobts_attr_e0[] = {
-	0x85, 0x00,
-	0x81, 0x0b, 0xbb,	/* TCP PORT for RSL */
+	NM_ATT_IPACC_STREAM_ID, 0x00,
+	NM_ATT_IPACC_DST_IP_PORT, 0x0b, 0xbb,	/* TCP PORT for RSL */
 };
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */

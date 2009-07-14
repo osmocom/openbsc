@@ -1,20 +1,20 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-07-03 22:20:16.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-07-04 03:46:47.000000000 +0200
-@@ -926,6 +926,7 @@
- # Dissectors with warnings.
- #
- DIRTY_DISSECTOR_SRC =	\
+--- wireshark.orig/epan/dissectors/Makefile.common	2009-07-12 14:07:53.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2009-07-12 14:52:09.000000000 +0200
+@@ -472,6 +472,7 @@
+ 	packet-gsm_a_rp.c		\
+ 	packet-gsm_a_rr.c	\
+ 	packet-gsm_abis_ip.c	\
 +	packet-gsm_abis_oml.c	\
- 	packet-isakmp.c		\
- 	packet-k12.c 		\
- 	packet-nbd.c		\
+ 	packet-gsm_bsslap.c		\
+ 	packet-gsm_bssmap_le.c	\
+ 	packet-gsm_sms.c	\
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-04 03:47:46.000000000 +0200
-@@ -0,0 +1,1241 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-07-12 20:41:18.000000000 +0200
+@@ -0,0 +1,1363 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -72,6 +72,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +static int hf_oml_fom_attr_val = -1;
 +/* FOM attributes */
 +static int hf_attr_adm_state = -1;
++static int hf_attr_arfcn = -1;
 +static int hf_attr_oper_state = -1;
 +static int hf_attr_avail_state = -1;
 +static int hf_attr_event_type = -1;
@@ -113,6 +114,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +static int hf_attr_ipa_unit_name = -1;
 +static int hf_attr_ipa_nv_flags = -1;
 +static int hf_attr_ipa_nv_mask = -1;
++static int hf_attr_ipa_nsl_sport = -1;
++static int hf_attr_ipa_nsl_daddr = -1;
++static int hf_attr_ipa_nsl_dport = -1;
++static int hf_attr_ipa_nsei = -1;
++static int hf_attr_ipa_nsvci = -1;
++static int hf_attr_ipa_bvci = -1;
++static int hf_attr_ipa_rac = -1;
 +
 +/* initialize the subtree pointers */
 +static int ett_oml = -1;
@@ -248,6 +256,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_MT_IPACC_CONN_TRAF,	"IPA Connect Traffic" },
 +	{ NM_MT_IPACC_CONN_TRAF_ACK,	"IPA Connect Traffic ACK" },
 +	{ NM_MT_IPACC_CONN_TRAF_NACK,	"IPA Connect Traffic NACK" },
++	{ NM_MT_IPACC_DISC_TRAF,	"IPA Disconnect Traffic" },
++	{ NM_MT_IPACC_DISC_TRAF_ACK,	"IPA Disconnect Traffic ACK" },
++	{ NM_MT_IPACC_DISC_TRAF_NACK,	"IPA Disconnect Traffic NACK" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW,	"IPA Default Boot Software" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW_ACK,	"IPA Default Boot Software ACK" },
 +	{ NM_MT_IPACC_DEF_BOOT_SW_NACK,	"IPA Default Boot Software NACK" },
@@ -257,6 +268,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_MT_IPACC_GET_NVATTR,	"IPA Get NVRAM Attributes" },
 +	{ NM_MT_IPACC_GET_NVATTR_ACK,	"IPA Get NVRAM Attributes ACK" },
 +	{ NM_MT_IPACC_GET_NVATTR_NACK,	"IPA Get NVRAM Attributes NACK" },
++	{ NM_MT_IPACC_SET_ATTR,		"IPA Set Attributes" },
++	{ NM_MT_IPACC_SET_ATTR_ACK,	"IPA Set Attributes ACK" },
++	{ NM_MT_IPACC_SET_ATTR_NACK,	"IPA Set Attributes NACK" },
++	{ NM_MT_IPACC_ATTR_CHG_EVT,	"IPA Attribute Change Event" },
++	{ NM_MT_IPACC_SW_DEACT,		"IPA Software Deactivate" },
++	{ NM_MT_IPACC_SW_DEACT_ACK,	"IPA Software Deactivate ACK" },
++	{ NM_MT_IPACC_SW_DEACT_NACK,	"IPA Software Deactivate NACK" },
++	{ NM_MT_IPACC_MEAS_RES_REQ_NACK,"IPA Measurement Result Request NACK" },
++	{ NM_MT_IPACC_START_MEAS_NACK,	"IPA Start Measurement NACK" },
++	{ NM_MT_IPACC_STOP_MEAS_NACK,	"IPA Stop Measurement NACK" },
 +	{ NM_MT_BS11_RESET_RESOURCE,	"SIE Reset Resource" },
 +	{ NM_MT_BS11_BEGIN_DB_TX,	"SIE Begin Database Transmission" },
 +	{ NM_MT_BS11_BEGIN_DB_TX_ACK,	"SIE Begin Database Transmission ACK" },
@@ -394,24 +415,54 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_ATT_BS11_ENA_RXLEV_HO,	"SIE Enable RxLevel HO" },
 +	{ NM_ATT_BS11_ENA_RXQUAL_HO,	"SIE Enable RxQual HO" },
 +	{ NM_ATT_BS11_FACCH_QUAL,	"SIE FACCH Quality" },
-+	{ NM_ATT_IPACC_RSL_BSC_IP,	"IPA BSC RSL IP Address" },
-+	{ NM_ATT_IPACC_RSL_BSC_PORT,	"IPA BSC RSL TCP Port" },
++	{ NM_ATT_IPACC_DST_IP,		"IPA Destination IP Address" },
++	{ NM_ATT_IPACC_DST_IP_PORT,	"IPA Destionation IP Port" },
++	{ NM_ATT_IPACC_SSRC,		"IPA RTP SSRC" },
++	{ NM_ATT_IPACC_RTP_PAYLD_TYPE,	"IPA RTP Payload Type" },
++	{ NM_ATT_IPACC_BASEB_ID,	"IPA Baseband Identifier" },
++	{ NM_ATT_IPACC_STREAM_ID,	"IPA Stream Identifier" },
 +	{ NM_ATT_IPACC_NV_FLAGS,	"IPA NVRAM Flags" },
 +	{ NM_ATT_IPACC_FREQ_CTRL,	"IPA Frequency Control" },
++	{ NM_ATT_IPACC_PRIM_OML_CFG,	"IPA Primary OML Config" },
++	{ NM_ATT_IPACC_SEC_OML_CFG,	"IPA Secondary OML Config" },
 +	{ NM_ATT_IPACC_IP_IF_CFG,	"IPA IP Interface Config" },
 +	{ NM_ATT_IPACC_IP_GW_CFG,	"IPA IP Gateway Config" },
 +	{ NM_ATT_IPACC_IN_SERV_TIME,	"IPA In Service Time" },
-+	{ NM_ATT_IPACC_LOCATION,	"IPA Location Name" },
++	{ NM_ATT_IPACC_TRX_BTS_ASS,	"IPA TRX BTS Assignment" },
++	{ NM_ATT_IPACC_LOCATION,	"IPA BTS Location Name" },
++	{ NM_ATT_IPACC_PAGING_CFG,	"IPA Paging Configuration" },
++	{ NM_ATT_IPACC_FILE_DATA,	"IPA File Data" },
 +	{ NM_ATT_IPACC_UNIT_ID,		"IPA Unit ID" },
++	{ NM_ATT_IPACC_PARENT_UNIT_ID,	"IPA Parent Unit ID" },
 +	{ NM_ATT_IPACC_UNIT_NAME,	"IPA Unit Name" },
 +	{ NM_ATT_IPACC_SNMP_CFG,	"IPA SNMP Config" },
-+	{ NM_ATT_IPACC_PRIM_OML_IP,	"IPA Primary OML IP Address" },
-+	{ NM_ATT_IPACC_SEC_OML_IP,	"IPA Secondary OML IP Address" },
++	{ NM_ATT_IPACC_PRIM_OML_CFG_LIST, "IPA Primary OML Config List" },
++	{ NM_ATT_IPACC_PRIM_OML_FB_TOUT,"IPA Primary OML Fallback Timeout" },
 +	{ NM_ATT_IPACC_CUR_SW_CFG,	"IPA Current Software Config" },
++	{ NM_ATT_IPACC_TIMING_BUS,	"IPA Timing Bus" },
++	{ NM_ATT_IPACC_CGI,		"IPA CGI" },
++	{ NM_ATT_IPACC_RAC,		"IPA RAC" },
++	{ NM_ATT_IPACC_OBJ_VERSION,	"IPA Object Version" },
++	{ NM_ATT_IPACC_GPRS_PAGING_CFG,	"IPA GPRS Paging Configuration" },
++	{ NM_ATT_IPACC_NSEI,		"IPA NSEI" },
++	{ NM_ATT_IPACC_BVCI,		"IPA BVCI" },
++	{ NM_ATT_IPACC_NSVCI,		"IPA NSVCI" },
++	{ NM_ATT_IPACC_NS_CFG,		"IPA NS Configuration" },
++	{ NM_ATT_IPACC_BSSGP_CFG,	"IPA BSSGP Configuration" },
++	{ NM_ATT_IPACC_NS_LINK_CFG,	"IPA NS Link Configuration" },
++	{ NM_ATT_IPACC_RLC_CFG,		"IPA RLC Configuration" },
 +	{ NM_ATT_IPACC_ALM_THRESH_LIST,	"IPA Alarm Threshold List" },
++	{ NM_ATT_IPACC_MONIT_VAL_LIST,	"IPA Monitored Value List" },
++	{ NM_ATT_IPACC_TIB_CONTROL,	"IPA Timing Interface Bus Control" },
++	{ NM_ATT_IPACC_SUPP_FEATURES,	"IPA Supported Features" },
++	{ NM_ATT_IPACC_CODING_SCHEMES,	"IPA Coding Schemes" },
++	{ NM_ATT_IPACC_RLC_CFG_2,	"IPA RLC Configuration 2" },
++	{ NM_ATT_IPACC_HEARTB_TOUT,	"IPA Heartbeat Timeout" },
 +	{ NM_ATT_IPACC_UPTIME,		"IPA Uptime" },
++	{ NM_ATT_IPACC_RLC_CFG_3,	"IPA RLC Configuration 3" },
 +	{ NM_ATT_IPACC_SSL_CFG,		"IPA SSL Configuration" },
-+	{ NM_ATT_IPACC_SEC_POSSIBLE,	"IPA Security Possoble" },
++	{ NM_ATT_IPACC_SEC_POSSIBLE,	"IPA Security Possible" },
++	{ NM_ATT_IPACC_IML_SSL_STATE,	"IPA IML SSL State" },
 +	{ NM_ATT_IPACC_REVOC_DATE,	"IPA Revocation Date" },
 +	/* FIXME: More SIE */
 +};
@@ -512,11 +563,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +};
 +
 +static const value_string oml_test_no_vals[] = {
++	{ NM_IPACC_TESTNO_RLOOP_ANT,	"Radio Loop test via antenna" },
++	{ NM_IPACC_TESTNO_RLOOP_XCVR,	"Radio Loop test via transceiver" },
++	{ NM_IPACC_TESTNO_FUNC_OBJ,	"BTS Functional object self test" },
 +	{ NM_IPACC_TESTNO_CHAN_USAGE,	"Channel Usage" },
 +	{ NM_IPACC_TESTNO_BCCH_CHAN_USAGE, "BCCH Channel Usage" },
 +	{ NM_IPACC_TESTNO_FREQ_SYNC,	"Frequency Synchronization" },
 +	{ NM_IPACC_TESTNO_BCCH_INFO,	"BCCH Information" },
-+	{ NM_IPACC_TESTNO_TX_BEACON,	"Tx Beacon" },
++	{ NM_IPACC_TESTNO_TX_BEACON,	"Transmit Beacon" },
++	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "SysInfo Monitor" },
++	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH & CCCH Monitor" },
 +};
 +
 +static const value_string ipacc_test_res_vals[] = {
@@ -634,7 +690,6 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +dissect_ipacc_test_rep(proto_tree *tree, tvbuff_t *tvb)
 +{
 +	gint offset = 0;
-+	guint8 test_res = tvb_get_guint8(tvb, offset);
 +
 +	proto_tree_add_item(tree, hf_attr_ipa_test_res, tvb, offset++,
 +			    1, FALSE);
@@ -665,6 +720,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			break;
 +		}
 +	}
++	return offset;
 +}
 +
 +/* Dissect OML FOM Attributes after OML + FOM header */
@@ -675,7 +731,10 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	int offset = base_offs;
 +
 +	while (tvb_reported_length_remaining(tvb, offset) != 0) {
++		guint i;
 +		guint8 tag, val8;
++		guint16 val16;
++		guint32 val32;
 +		unsigned int len, len_len, hlen;
 +		const struct tlv_def *tdef;
 +		proto_item *ti;
@@ -712,6 +771,10 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			len = tvb_get_guint8(tvb, offset+1) << 8 |
 +						tvb_get_guint8(tvb, offset+2);
 +			break;
++		default:
++			hlen = len_len = len = 0;
++			DISSECTOR_ASSERT_NOT_REACHED();
++			break;
 +		}
 +
 +		ti = proto_tree_add_item(tree, hf_oml_fom_attr_tag, tvb,
@@ -736,31 +799,30 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		case NM_ATT_ADM_STATE:
 +			proto_tree_add_item(att_tree, hf_attr_adm_state, tvb,
 +					    offset, len, FALSE);
-+			if (check_col(pinfo->cinfo, COL_INFO)) {
-+				val8 = tvb_get_guint8(tvb, offset);
-+				col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
-+						val_to_str(val8,
-+							   oml_adm_state_vals,
-+							   "%02x"));
-+			}
++			val8 = tvb_get_guint8(tvb, offset);
++			col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
++					val_to_str(val8, oml_adm_state_vals,
++						   "%02x"));
 +			break;
 +		case NM_ATT_ARFCN_LIST:
++			for (i = 0; i < len; i += 2) {
++				val16 = tvb_get_ntohs(tvb, offset + i);
++				proto_tree_add_uint(att_tree, hf_attr_arfcn,
++						    tvb, offset + i, 2, val16);
++			}
 +			break;
 +		case NM_ATT_AVAIL_STATUS:
-+			proto_tree_add_item(att_tree, hf_attr_avail_state, tvb,
-+					    offset, len, FALSE);
-+			if (check_col(pinfo->cinfo, COL_INFO)) {
-+				/* Availability status can have length 0 */
-+				if (len)
-+					val8 = tvb_get_guint8(tvb, offset);
-+				else
-+					val8 = 0xff;
-+				col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
-+						val_to_str(val8,
-+							   oml_avail_state_vals,
-+							   "%02x"));
-+			}
-+
++			/* Availability status can have length 0 */
++			if (len) {
++				val8 = tvb_get_guint8(tvb, offset);
++				proto_tree_add_item(att_tree,
++						    hf_attr_avail_state, tvb,
++					    	    offset, len, FALSE);
++			} else
++				val8 = 0xff;
++			col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
++					val_to_str(val8, oml_avail_state_vals,
++						   "%02x"));
 +			break;
 +		case NM_ATT_BCCH_ARFCN:
 +			proto_tree_add_item(att_tree, hf_attr_bcch_arfcn, tvb,
@@ -785,13 +847,10 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		case NM_ATT_OPER_STATE:
 +			proto_tree_add_item(att_tree, hf_attr_oper_state, tvb,
 +					    offset, len, FALSE);
-+			if (check_col(pinfo->cinfo, COL_INFO)) {
-+				val8 = tvb_get_guint8(tvb, offset);
-+				col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
-+						val_to_str(val8,
-+							   oml_oper_state_vals,
-+							   "%02x"));
-+			}
++			val8 = tvb_get_guint8(tvb, offset);
++			col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
++					val_to_str(val8, oml_oper_state_vals,
++						   "%02x"));
 +			break;
 +		case NM_ATT_TEI:
 +			proto_tree_add_item(att_tree, hf_attr_tei, tvb,
@@ -811,23 +870,22 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		case NM_ATT_TEST_NO:
 +			proto_tree_add_item(att_tree, hf_attr_test_no, tvb,
 +					    offset, len, TRUE);
-+			if (check_col(pinfo->cinfo, COL_INFO)) {
-+				val8 = tvb_get_guint8(tvb, offset);
-+				col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
-+						val_to_str(val8,
-+							   oml_test_no_vals,
-+							   "%02x"));
-+			}
++			val8 = tvb_get_guint8(tvb, offset);
++			col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",
++					val_to_str(val8, oml_test_no_vals,
++						   "%02x"));
 +			break;
 +
 +		/* proprietary ip.access extensions */
-+		case NM_ATT_IPACC_RSL_BSC_IP:
-+			proto_tree_add_item(att_tree, hf_attr_ipa_rsl_ip, tvb,
-+					    offset, len, TRUE);
++		case NM_ATT_IPACC_DST_IP:
++			val32 = tvb_get_ntohl(tvb, offset);
++			proto_tree_add_ipv4(att_tree, hf_attr_ipa_rsl_ip, tvb,
++					    offset, len, val32);
 +			break;
-+		case NM_ATT_IPACC_RSL_BSC_PORT:
-+			proto_tree_add_item(att_tree, hf_attr_ipa_rsl_port, tvb,
-+					    offset, len, TRUE);
++		case NM_ATT_IPACC_DST_IP_PORT:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_rsl_port, tvb,
++					    offset, len, val16);
 +			break;
 +		case NM_ATT_IPACC_LOCATION:
 +			proto_tree_add_item(att_tree, hf_attr_ipa_location_name,
@@ -841,14 +899,11 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			proto_tree_add_item(att_tree, hf_attr_ipa_unit_name,
 +					    tvb, offset, len, TRUE);
 +			break;
-+		case NM_ATT_IPACC_PRIM_OML_IP:
++		case NM_ATT_IPACC_PRIM_OML_CFG_LIST:
 +			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_ip,
 +					    tvb, offset+1, 4, TRUE);
 +			proto_tree_add_item(att_tree, hf_attr_ipa_prim_oml_port,
 +					    tvb, offset+1+4, 2, TRUE);
-+			break;
-+		case NM_ATT_IPACC_SEC_OML_IP:
-+			/* FIXME */
 +			break;
 +		case NM_ATT_IPACC_NV_FLAGS:
 +			{
@@ -863,6 +918,36 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +						    tvb, offset+1, 3, mask);
 +			}
 +			break;
++		case NM_ATT_IPACC_RAC:
++			proto_tree_add_item(att_tree, hf_attr_ipa_rac,
++					    tvb, offset, 1, TRUE);
++			break;
++		case NM_ATT_IPACC_NSEI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsei,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_NSVCI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsvci,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_BVCI:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_bvci,
++					   tvb, offset, 2, val16);
++			break;
++		case NM_ATT_IPACC_NS_LINK_CFG:
++			val16 = tvb_get_ntohs(tvb, offset);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsl_sport,
++					   tvb, offset, 2, val16);
++			val32 = tvb_get_ipv4(tvb, offset+2);
++			proto_tree_add_ipv4(att_tree, hf_attr_ipa_nsl_daddr,
++					   tvb, offset+2, 4, val32);
++			val16 = tvb_get_ntohs(tvb, offset+6);
++			proto_tree_add_uint(att_tree, hf_attr_ipa_nsl_dport,
++					   tvb, offset+6, 2, val16);
++			break;
 +		default:
 +			proto_tree_add_item(att_tree, hf_oml_fom_attr_val, tvb,
 +					    offset, len, FALSE);
@@ -873,7 +958,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +}
 +
 +static int
-+dissect_oml_fom(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
++dissect_oml_fom(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
++		int offset, proto_item *top_ti)
 +{
 +	guint8 msg_type, obj_class, bts_nr, trx_nr, ts_nr;
 +	proto_item *ti;
@@ -884,13 +970,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	bts_nr = tvb_get_guint8(tvb, offset+2);
 +	trx_nr = tvb_get_guint8(tvb, offset+3);
 +	ts_nr = tvb_get_guint8(tvb, offset+4);
-+	if (check_col(pinfo->cinfo, COL_INFO)) {
-+		col_append_fstr(pinfo->cinfo, COL_INFO, "%s(%02x,%02x,%02x) %s ",
-+				val_to_str(obj_class, oml_fom_objclass_vals, "%02x"),
-+				bts_nr, trx_nr, ts_nr,
-+				val_to_str(msg_type, oml_fom_msgtype_vals,
-+					   "unknown 0x%x"));
-+	}
++	proto_item_append_text(top_ti, ", %s(%02x,%02x,%02x) %s ",
++			val_to_str(obj_class, oml_fom_objclass_vals, "%02x"),
++			bts_nr, trx_nr, ts_nr,
++			val_to_str(msg_type, oml_fom_msgtype_vals,
++				   "unknown 0x%x"));
++	col_append_fstr(pinfo->cinfo, COL_INFO, "%s(%02x,%02x,%02x) %s ",
++			val_to_str(obj_class, oml_fom_objclass_vals, "%02x"),
++			bts_nr, trx_nr, ts_nr,
++			val_to_str(msg_type, oml_fom_msgtype_vals,
++				   "unknown 0x%x"));
 +	ti = proto_tree_add_item(tree, hf_oml_fom_msgtype, tvb, offset++, 1, FALSE);
 +	fom_tree = proto_item_add_subtree(ti, ett_oml_fom);
 +	proto_tree_add_item(fom_tree, hf_oml_fom_objclass, tvb, offset++, 1, FALSE);
@@ -908,7 +997,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +static const guint8 ipaccess_magic[] = "com.ipaccess";
 +
 +static int
-+dissect_oml_manuf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
++dissect_oml_manuf(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
++		  int offset, proto_item *top_ti)
 +{
 +	if (tvb_get_guint8(tvb, offset) != 0x0d ||
 +	    tvb_memeql(tvb, offset+1, ipaccess_magic, sizeof(ipaccess_magic)))
@@ -916,7 +1006,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +
 +	offset += sizeof(ipaccess_magic) + 1;
 +
-+	return dissect_oml_fom(tvb, pinfo, tree, offset);
++	return dissect_oml_fom(tvb, pinfo, tree, offset, top_ti);
 +}
 +
 +static void
@@ -927,12 +1017,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +
 +	int offset = 0;
 +
-+	if (check_col(pinfo->cinfo, COL_PROTOCOL))
-+		col_set_str(pinfo->cinfo, COL_PROTOCOL, "OML");
-+#if 0
-+	if (check_col(pinfo->cinfo, COL_INFO))
-+		col_clear(pinfo->cinfo, COL_INFO);
-+#endif
++	col_set_str(pinfo->cinfo, COL_PROTOCOL, "OML");
 +
 +	top_tree = tree;
 +	if (tree) {
@@ -952,10 +1037,11 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +
 +		switch (msg_disc) {
 +		case ABIS_OM_MDISC_FOM:
-+			offset = dissect_oml_fom(tvb, pinfo, oml_tree, offset);
++			offset = dissect_oml_fom(tvb, pinfo, oml_tree,
++						 offset, ti);
 +			break;
 +		case ABIS_OM_MDISC_MANUF:
-+			offset = dissect_oml_manuf(tvb, pinfo, oml_tree, offset);
++			offset = dissect_oml_manuf(tvb, pinfo, oml_tree,							       offset, ti);
 +			break;
 +		case ABIS_OM_MDISC_MMI:
 +		case ABIS_OM_MDISC_TRAU:
@@ -1037,6 +1123,10 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +			{ "Administrative State", "oml.fom.attr.adm_state",
 +			  FT_UINT8, BASE_HEX, VALS(oml_adm_state_vals), 0,
 +			  NULL, HFILL }
++		},
++		{ &hf_attr_arfcn,
++			{ "ARFCN", "oml.fom.attr.arfcn",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_oper_state,
 +			{ "Operational State", "oml.fom.attr.oper_state",
@@ -1232,6 +1322,38 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +						"oml.fom.attr.ipa.chan_desc",
 +			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
 +		},
++		{ &hf_attr_ipa_nsl_sport,
++			{ "NS Link IP Source Port",
++						"oml.fom.attr.ipa.nsl_sport",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsl_daddr,
++			{ "NS Link IP Destination Addr",
++						"oml.fom.attr.ipa.nsl_daddr",
++			  FT_IPv4, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsl_dport,
++			{ "NS Link IP Destination Port",
++						"oml.fom.attr.ipa.nsl_dport",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsei,
++			{ "NSEI", "oml.fom.attr.ipa.nsei",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_nsvci,
++			{ "NSVCI", "oml.fom.attr.ipa.nsvci",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_bvci,
++			{ "BVCI", "oml.fom.attr.ipa.bvci",
++			  FT_UINT16, BASE_DEC, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_attr_ipa_rac,
++			{ "RAC", "oml.fom.attr.ipa.rac",
++			  FT_UINT8, BASE_HEX, NULL, 0,
++			  "Routing Area Code", HFILL }
++		},
 +	};
 +	static gint *ett[] = {
 +		&ett_oml,
@@ -1259,8 +1381,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-04 03:46:47.000000000 +0200
-@@ -0,0 +1,726 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-07-12 17:18:20.000000000 +0200
+@@ -0,0 +1,786 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -1482,6 +1604,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_MT_IPACC_CONN_TRAF		= 0xe6,
 +	NM_MT_IPACC_CONN_TRAF_ACK,
 +	NM_MT_IPACC_CONN_TRAF_NACK,
++	NM_MT_IPACC_DISC_TRAF		= 0xe9,
++	NM_MT_IPACC_DISC_TRAF_ACK,
++	NM_MT_IPACC_DISC_TRAF_NACK,
 +	NM_MT_IPACC_DEF_BOOT_SW		= 0xec,
 +	NM_MT_IPACC_DEF_BOOT_SW_ACK,
 +	NM_MT_IPACC_DEF_BOOT_SW_NACK,
@@ -1491,6 +1616,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_MT_IPACC_GET_NVATTR		= 0xf2,
 +	NM_MT_IPACC_GET_NVATTR_ACK,
 +	NM_MT_IPACC_GET_NVATTR_NACK,
++	NM_MT_IPACC_SET_ATTR		= 0xf5,
++	NM_MT_IPACC_SET_ATTR_ACK,
++	NM_MT_IPACC_SET_ATTR_NACK,
++	NM_MT_IPACC_ATTR_CHG_EVT	= 0xf8,
++	NM_MT_IPACC_SW_DEACT		= 0xf9,
++	NM_MT_IPACC_SW_DEACT_ACK,
++	NM_MT_IPACC_SW_DEACT_NACK,
++	NM_MT_IPACC_MEAS_RES_REQ_NACK	= 0xfc,
++	NM_MT_IPACC_START_MEAS_NACK,
++	NM_MT_IPACC_STOP_MEAS_NACK,
 +};
 +
 +enum abis_nm_bs11_cell_alloc {
@@ -1619,26 +1754,54 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	NM_ATT_BS11_ENA_RXQUAL_HO	= 0x6d,
 +	NM_ATT_BS11_FACCH_QUAL		= 0x6e,
 +
-+	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
-+	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
++	NM_ATT_IPACC_DST_IP		= 0x80,
++	NM_ATT_IPACC_DST_IP_PORT	= 0x81,
++	NM_ATT_IPACC_SSRC		= 0x82,		/* RTP Sync Source */
++	NM_ATT_IPACC_RTP_PAYLD_TYPE	= 0x83,
++	NM_ATT_IPACC_BASEB_ID		= 0x84,
++	NM_ATT_IPACC_STREAM_ID		= 0x85,
 +	NM_ATT_IPACC_NV_FLAGS		= 0x86,
 +	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
++	NM_ATT_IPACC_PRIM_OML_CFG	= 0x88,
 +	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
 +	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
 +	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
 +	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
++	NM_ATT_IPACC_TRX_BTS_ASS	= 0x8d,
 +	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
++	NM_ATT_IPACC_PAGING_CFG		= 0x8f,
++	NM_ATT_IPACC_FILE_DATA		= 0x90,
 +	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
++	NM_ATT_IPACC_PARENT_UNIT_ID	= 0x92,
 +	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
 +	NM_ATT_IPACC_SNMP_CFG		= 0x94,
-+	NM_ATT_IPACC_PRIM_OML_IP	= 0x95,
-+	NM_ATT_IPACC_SEC_OML_IP		= 0x96,
++	NM_ATT_IPACC_PRIM_OML_CFG_LIST	= 0x95,
++	NM_ATT_IPACC_PRIM_OML_FB_TOUT	= 0x96,		/* fallback timeout */
 +	NM_ATT_IPACC_CUR_SW_CFG		= 0x97,
-+
++	NM_ATT_IPACC_TIMING_BUS		= 0x98,
++	NM_ATT_IPACC_CGI		= 0x99,		/* Cell Global ID */
++	NM_ATT_IPACC_RAC		= 0x9a,
++	NM_ATT_IPACC_OBJ_VERSION	= 0x9b,
++	NM_ATT_IPACC_GPRS_PAGING_CFG	= 0x9c,
++	NM_ATT_IPACC_NSEI		= 0x9d,
++	NM_ATT_IPACC_BVCI		= 0x9e,
++	NM_ATT_IPACC_NSVCI		= 0x9f,
++	NM_ATT_IPACC_NS_CFG		= 0xa0,
++	NM_ATT_IPACC_BSSGP_CFG		= 0xa1,
++	NM_ATT_IPACC_NS_LINK_CFG	= 0xa2,
++	NM_ATT_IPACC_RLC_CFG		= 0xa3,
 +	NM_ATT_IPACC_ALM_THRESH_LIST	= 0xa4,
++	NM_ATT_IPACC_MONIT_VAL_LIST	= 0xa5,
++	NM_ATT_IPACC_TIB_CONTROL	= 0xa6,
++	NM_ATT_IPACC_SUPP_FEATURES	= 0xa7,
++	NM_ATT_IPACC_CODING_SCHEMES	= 0xa8,
++	NM_ATT_IPACC_RLC_CFG_2		= 0xa9,
++	NM_ATT_IPACC_HEARTB_TOUT	= 0xaa,
 +	NM_ATT_IPACC_UPTIME		= 0xab,
++	NM_ATT_IPACC_RLC_CFG_3		= 0xac,
 +	NM_ATT_IPACC_SSL_CFG		= 0xad,
 +	NM_ATT_IPACC_SEC_POSSIBLE	= 0xae,
++	NM_ATT_IPACC_IML_SSL_STATE	= 0xaf,
 +	NM_ATT_IPACC_REVOC_DATE		= 0xb0,
 +
 +
@@ -1847,11 +2010,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +};
 +
 +enum abis_nm_ipacc_test_no {
++	NM_IPACC_TESTNO_RLOOP_ANT	= 0x01,
++	NM_IPACC_TESTNO_RLOOP_XCVR	= 0x02,
++	NM_IPACC_TESTNO_FUNC_OBJ	= 0x03,
 +	NM_IPACC_TESTNO_CHAN_USAGE	= 0x40,
 +	NM_IPACC_TESTNO_BCCH_CHAN_USAGE	= 0x41,
 +	NM_IPACC_TESTNO_FREQ_SYNC	= 0x42,
 +	NM_IPACC_TESTNO_BCCH_INFO	= 0x43,
 +	NM_IPACC_TESTNO_TX_BEACON	= 0x44,
++	NM_IPACC_TESTNO_SYSINFO_MONITOR	= 0x45,
++	NM_IPACC_TESTNO_BCCCH_MONITOR	= 0x46,
 +};
 +
 +/* first byte after length inside NM_ATT_TEST_REPORT */
@@ -1877,112 +2045,126 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +	.def = {
 +		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
 +		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV },
-+		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V },
-+		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV },
-+		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V },
++		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_BCCH_ARFCN] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BSIC] =			{ TLV_TYPE_TV },
-+		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV },
-+		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV },
-+		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV },
-+		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV },
-+		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V },
-+		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV },
-+		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V },
++		[NM_ATT_BSIC] =			{ TLV_TYPE_TV, 0 },
++		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV, 0 },
++		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_HSN] =			{ TLV_TYPE_TV },
-+		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV },
++		[NM_ATT_HSN] =			{ TLV_TYPE_TV, 0 },
++		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V, 0 },
++		//BS11 [NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
-+		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_MAIO] =			{ TLV_TYPE_TV },
-+		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV },
-+		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV },
++		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_MAIO] =			{ TLV_TYPE_TV, 0 },
++		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_MDROP_LINK] =		{ TLV_TYPE_FIXED, 2 },
 +		[NM_ATT_MDROP_NEXT] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV },
-+		[NM_ATT_NY1] =			{ TLV_TYPE_TV },
-+		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV },
-+		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV },
++		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_NY1] =			{ TLV_TYPE_TV, 0 },
++		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_POWER_THRESH] =		{ TLV_TYPE_FIXED, 3 },
 +		[NM_ATT_PROB_CAUSE] =		{ TLV_TYPE_FIXED, 3 },
-+		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV },
++		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_LDAVG_SLOTS] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV },
-+		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV },
-+		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV },
++		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_START_TIME] =		{ TLV_TYPE_FIXED, 2 },
 +		[NM_ATT_T200] =			{ TLV_TYPE_FIXED, 7 },
-+		[NM_ATT_TEI] =			{ TLV_TYPE_TV },
++		[NM_ATT_TEI] =			{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_TEST_DUR] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV },
-+		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V, },
++		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_VSWR_THRESH] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV },
-+		[NM_ATT_TSC] =			{ TLV_TYPE_TV },
-+		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV },
-+		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
-+		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
-+		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
-+		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
++		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_TSC] =			{ TLV_TYPE_TV, 0 },
++		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV, 0 },
++		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V, 0 },
++#if 0
 +		/* BS11 specifics */
-+		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV },
-+		[0xd5] =			{ TLV_TYPE_TLV },
-+		[0xa8] =			{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV },
-+		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV },
++		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV, 0 },
++		[0xd5] =			{ TLV_TYPE_TLV, 0 },
++		[0xa8] =			{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV, 0 },
++		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV },
-+		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV },
-+		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV },
++		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV, 0 },
++		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV, 0 },
++		[0x95] =			{ TLV_TYPE_FIXED, 2 },
++#endif
 +		/* ip.access specifics */
-+		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
-+		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
++		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
++		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_IPACC_PRIM_OML_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_SEC_OML_IP] =	{ TLV_TYPE_TL16V }, // wrong name
 +		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
 +		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
 +		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-+		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
-+		[NM_ATT_IPACC_ALM_THRESH_LIST]= { TLV_TYPE_TL16V },
-+		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
-+		[0x9b] =			{ TLV_TYPE_TL16V },
-+		[0x85] =			{ TLV_TYPE_TV },
-+
++		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_ALM_THRESH_LIST]= { TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, 0 },
++		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_GPRS_PAGING_CFG] ={ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V, 0 },
 +	},
 +};
 +
