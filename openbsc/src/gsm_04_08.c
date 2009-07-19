@@ -1349,7 +1349,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
 		ptr8 = (u_int8_t *) msgb_put(msg, 3);
-		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[0] = GSM48_IE_NAME_SHORT;
 		ptr8[1] = name_len*2 + 1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
