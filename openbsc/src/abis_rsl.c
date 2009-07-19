@@ -103,13 +103,21 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		[RSL_IE_RTD]			= { TLV_TYPE_TV },
 		[RSL_IE_TFO_STATUS]		= { TLV_TYPE_TV },
 		[RSL_IE_LLP_APDU]		= { TLV_TYPE_TLV },
+		[RSL_IE_IPAC_PROXY_UDP]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_IPAC_BSCMPL_TOUT]	= { TLV_TYPE_TV },
 		[RSL_IE_IPAC_REMOTE_IP]		= { TLV_TYPE_FIXED, 4 },
 		[RSL_IE_IPAC_REMOTE_PORT]	= { TLV_TYPE_FIXED, 2 },
-		[RSL_IE_IPAC_LOCAL_IP]		= { TLV_TYPE_FIXED, 4 },
+		[RSL_IE_IPAC_RTP_PAYLOAD]	= { TLV_TYPE_TV },
 		[RSL_IE_IPAC_LOCAL_PORT]	= { TLV_TYPE_FIXED, 2 },
-		[0xf4]				= { TLV_TYPE_TV },
-		[0xf8]				= { TLV_TYPE_FIXED, 2 },
-		[0xfc]				= { TLV_TYPE_TV },
+		[RSL_IE_IPAC_SPEECH_MODE]	= { TLV_TYPE_TV },
+		[RSL_IE_IPAC_LOCAL_IP]		= { TLV_TYPE_FIXED, 4 },
+		[RSL_IE_IPAC_CONN_ID]		= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_IPAC_RTP_CSD_FMT]	= { TLV_TYPE_TV },
+		[RSL_IE_IPAC_RTP_JIT_BUF]	= { TLV_TYPE_FIXED, 2 },
+		[RSL_IE_IPAC_RTP_COMPR]		= { TLV_TYPE_TV },
+		[RSL_IE_IPAC_RTP_PAYLOAD2]	= { TLV_TYPE_TV },
+		[RSL_IE_IPAC_RTP_MPLEX]		= { TLV_TYPE_FIXED, 8 },
+		[RSL_IE_IPAC_RTP_MPLEX_ID]	= { TLV_TYPE_TV },
 	},
 };
 #define rsl_tlv_parse(dec, buf, len)     \
@@ -644,6 +652,25 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Chapter 8.4.5 */
+int rsl_deact_sacch(struct gsm_lchan *lchan)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_DEACTIVATE_SACCH);
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
+
+	DEBUGP(DRSL, "DEACTivate SACCH CMD channel=%s chan_nr=0x%02x\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 9.1.7 of 04.08 */
 int rsl_chan_release(struct gsm_lchan *lchan)
 {
@@ -850,7 +877,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		DEBUGPC(DMEAS, "MS_TO=%d ", 
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
-		u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
+		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
 		u_int8_t pwr_lvl = val[0] >> 3;
 		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ",
 			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
@@ -1183,7 +1210,8 @@ int rsl_ipacc_bind(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port, u_int16_t f8, u_int8_t fc)
+int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
+		      u_int16_t conn_id, u_int8_t rtp_payload2)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
@@ -1194,10 +1222,10 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port, u_i
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	att_f8 = msgb_put(msg, sizeof(f8)+1);
-	att_f8[0] = 0xf8;
-	att_f8[1] = f8 >> 8;
-	att_f8[2] = f8 & 0xff;
+	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
+	att_f8[0] = RSL_IE_IPAC_CONN_ID;
+	att_f8[1] = conn_id >> 8;
+	att_f8[2] = conn_id & 0xff;
 
 	att_ip = msgb_put(msg, sizeof(ip)+1);
 	att_ip[0] = RSL_IE_IPAC_REMOTE_IP;
@@ -1212,8 +1240,8 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port, u_i
 	att_port[1] = port >> 8;
 	att_port[2] = port & 0xff;
 
-	msgb_tv_put(msg, 0xf4, 1);	/* F4 01 */
-	msgb_tv_put(msg, 0xfc, fc);	/* FC 7F */
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 1);	/* F4 01 */
+	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2); /* FC 7F */
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -1234,8 +1262,8 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
-	    !TLVP_PRESENT(&tv, 0xfc) ||
-	    !TLVP_PRESENT(&tv, 0xf8)) {
+	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2) ||
+	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_CONN_ID)) {
 		DEBUGPC(DRSL, "mandatory IE missing");
 		return -EINVAL;
 	}
@@ -1243,15 +1271,15 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
 	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
 
-	DEBUGPC(DRSL, "IP=%s PORT=%d FC=%d F8=%d",
+	DEBUGPC(DRSL, "IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d",
 		inet_ntoa(ip), ntohs(port), *TLVP_VAL(&tv, 0xfc),
 		ntohs(attr_f8));
 
 	/* update our local information about this TS */
 	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
 	ts->abis_ip.bound_port = ntohs(port);
-	ts->abis_ip.attr_f8 = ntohs(attr_f8);
-	ts->abis_ip.attr_fc = *TLVP_VAL(&tv, 0xfc);
+	ts->abis_ip.conn_id = ntohs(attr_f8);
+	ts->abis_ip.rtp_payload2 = *TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_BIND_ACK, msg->lchan);
 

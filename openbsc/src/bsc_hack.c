@@ -63,6 +63,15 @@ static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
 
+struct nano_bts_id {
+	struct llist_head entry;
+	int site_id;
+	int bts_id;
+};
+
+static LLIST_HEAD(nanobts_ids);
+
+
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
 
@@ -219,26 +228,27 @@ SET ATTRIBUTES
 unsigned char msg_3[] = 
 {
 	NM_MT_BS11_SET_ATTR, NM_OC_BS11_HANDOVER, 0x00, 0xFF, 0xFF, 
-		0xD0, 0x00,
-		0x64, 0x00,
-		0x67, 0x00,
-		0x68, 0x00,
-		0x6A, 0x00,
-		0x6C, 0x00,
-		0x6D, 0x00,
-		0x6F, 0x08,
-		0x70, 0x08, 0x01,
+		0xD0, 0x00,		/* enableDelayPowerBudgetHO */
+		0x64, 0x00,		/* enableDistanceHO */
+		0x67, 0x00,		/* enableInternalInterCellHandover */
+		0x68, 0x00,		/* enableInternalInterCellHandover */
+		0x6A, 0x00,		/* enablePowerBudgetHO */
+		0x6C, 0x00,		/* enableRXLEVHO */
+		0x6D, 0x00,		/* enableRXQUALHO */
+		0x6F, 0x08,		/* hoAveragingDistance */
+		0x70, 0x08, 0x01,	/* hoAveragingLev */
 		0x71, 0x10, 0x10, 0x10,
-		0x72, 0x08, 0x02,
-		0x73, 0x0A,
-		0x74, 0x05,
-		0x75, 0x06,
-		0x76, 0x06,
-		0x78, 0x14,
-		0x79, 0x14,
-		0x7A, 0x14,
-		0x7D, 0x06,
-		0x92, 0x03, 0x20, 0x01, 0x00,
+		0x72, 0x08, 0x02,	/* hoAveragingQual */
+		0x73, 0x0A,		/* hoLowerThresholdLevDL */
+		0x74, 0x05,		/* hoLowerThresholdLevUL */
+		0x75, 0x06,		/* hoLowerThresholdQualDL */
+		0x76, 0x06,		/* hoLowerThresholdQualUL */
+		0x78, 0x14,		/* hoThresholdLevDLintra */
+		0x79, 0x14,		/* hoThresholdLevULintra */
+		0x7A, 0x14,		/* hoThresholdMsRangeMax */
+		0x7D, 0x06,		/* nCell */
+		NM_ATT_BS11_TIMER_HO_REQUEST, 0x03,
+		0x20, 0x01, 0x00,
 		0x45, 0x01, 0x00,
 		0x48, 0x01, 0x00,
 		0x5A, 0x01, 0x00,
@@ -291,22 +301,22 @@ unsigned char msg_4[] =
 	NM_MT_BS11_SET_ATTR, NM_OC_BS11_PWR_CTRL, 0x00, 0xFF, 0xFF, 
 		NM_ATT_BS11_ENA_MS_PWR_CTRL, 0x00,
 		NM_ATT_BS11_ENA_PWR_CTRL_RLFW, 0x00,
-		0x7E, 0x04, 0x01,
-		0x7F, 0x04, 0x02,
-		0x80, 0x0F,
-		0x81, 0x0A,
-		0x82, 0x05,
-		0x83, 0x05,
-		0x84, 0x0C, 
-		0x85, 0x14, 
-		0x86, 0x0F, 
-		0x87, 0x04,
-		0x88, 0x04,
-		0x89, 0x02,
-		0x8A, 0x02,
-		0x8B, 0x02,
-		0x8C, 0x01,
-		0x8D, 0x40,
+		0x7E, 0x04, 0x01,	/* pcAveragingLev */
+		0x7F, 0x04, 0x02,	/* pcAveragingQual */
+		0x80, 0x0F,		/* pcLowerThresholdLevDL */
+		0x81, 0x0A,		/* pcLowerThresholdLevUL */
+		0x82, 0x05,		/* pcLowerThresholdQualDL */
+		0x83, 0x05,		/* pcLowerThresholdQualUL */
+		0x84, 0x0C, 		/* pcRLFThreshold */
+		0x85, 0x14, 		/* pcUpperThresholdLevDL */
+		0x86, 0x0F, 		/* pcUpperThresholdLevUL */
+		0x87, 0x04,		/* pcUpperThresholdQualDL */
+		0x88, 0x04,		/* pcUpperThresholdQualUL */
+		0x89, 0x02,		/* powerConfirm */
+		0x8A, 0x02,		/* powerConfirmInterval */
+		0x8B, 0x02,		/* powerIncrStepSize */
+		0x8C, 0x01,		/* powerRedStepSize */
+		0x8D, 0x40,		/* radioLinkTimeoutBs */
 		0x65, 0x01, 0x00 // set to 0x01 to enable BSPowerControl
 };
 
@@ -362,8 +372,8 @@ static unsigned char nanobts_attr_radio[] = {
 };
 
 static unsigned char nanobts_attr_e0[] = {
-	0x85, 0x00,
-	0x81, 0x0b, 0xbb,	/* TCP PORT for RSL */
+	NM_ATT_IPACC_STREAM_ID, 0x00,
+	NM_ATT_IPACC_DST_IP_PORT, 0x0b, 0xbb,	/* TCP PORT for RSL */
 };
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
@@ -963,8 +973,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 static int bootstrap_network(void)
 {
-	struct gsm_bts *bts;
-
 	switch(BTS_TYPE) {
 	case GSM_BTS_TYPE_NANOBTS_1800:
 		if (ARFCN < 512 || ARFCN > 885) {
@@ -993,9 +1001,6 @@ static int bootstrap_network(void)
 	gsmnet->name_long = "OpenBSC";
 	gsmnet->name_short = "OpenBSC";
 
-	bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
-	bootstrap_bts(bts);
-
 	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
 		return -1;
@@ -1014,17 +1019,27 @@ static int bootstrap_network(void)
 
 	/* E1 mISDN input setup */
 	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
+		struct gsm_bts *bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
+		bootstrap_bts(bts);
+
 		gsmnet->num_bts = 1;
 		return e1_config(bts, cardnr, release_l2);
 	} else {
-		/* FIXME: do this dynamic */
-		bts->ip_access.site_id = 1801;
-		bts->ip_access.bts_id = 0;
+		struct nano_bts_id *bts_id;
+		struct gsm_bts *bts;
 
-		bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
-		bootstrap_bts(bts);
-		bts->ip_access.site_id = 1800;
-		bts->ip_access.bts_id = 0;
+		if (llist_empty(&nanobts_ids)) {
+			fprintf(stderr, "You need to specify -i DEVICE_1 -i DEVICE_2 for nanoBTS.\n");
+			return -EINVAL;
+		}
+
+		llist_for_each_entry(bts_id, &nanobts_ids, entry) {
+			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
+			bootstrap_bts(bts);
+			bts->ip_access.site_id = bts_id->site_id;
+			bts->ip_access.bts_id = 0;
+		}
+
 		return ipaccess_setup(gsmnet);
 	}
 }
@@ -1061,6 +1076,7 @@ static void print_help()
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -t --bts-type type The BTS type (bs11, nanobts900, nanobts1800)\n");
+	printf("  -i --bts-id=NUMBER The known nanoBTS device numbers. Can be specified multiple times.\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
 	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
 	printf("  -h --help this text\n");
@@ -1087,10 +1103,11 @@ static void handle_options(int argc, char** argv)
 			{"release-l2", 0, 0, 'R'},
 			{"timestamp", 0, 0, 'T'},
 			{"band", 0, 0, 'b'},
+			{"bts-id", 1, 0, 'i'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1145,6 +1162,17 @@ static void handle_options(int argc, char** argv)
 		case 'b':
 			BAND = gsm_band_parse(atoi(optarg));
 			break;
+		case 'i': {
+			struct nano_bts_id *bts_id = talloc_zero(tall_bsc_ctx, struct nano_bts_id);
+			if (!bts_id) {
+				fprintf(stderr, "Failed to allocate bts id\n");
+				exit(-1);
+			}
+
+			bts_id->site_id = atoi(optarg);
+			llist_add(&bts_id->entry, &nanobts_ids);
+			break;
+		}
 		default:
 			/* ignore */
 			break;

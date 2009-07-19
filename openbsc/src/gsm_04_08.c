@@ -1349,7 +1349,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
 		ptr8 = (u_int8_t *) msgb_put(msg, 3);
-		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[0] = GSM48_IE_NAME_SHORT;
 		ptr8[1] = name_len*2 + 1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
@@ -1769,7 +1769,11 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 	DEBUGP(DRR, "Sending Channel Release: Chan: Number: %d Type: %d\n",
 		lchan->nr, lchan->type);
 
-	return gsm48_sendmsg(msg);
+	/* Send actual release request to MS */
+	gsm48_sendmsg(msg);
+
+	/* Deactivate the SACCH on the BTS side */
+	return rsl_deact_sacch(lchan);
 }
 
 /* Call Control */
@@ -2001,12 +2005,16 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	case GSM_BTS_TYPE_NANOBTS_900:
 	case GSM_BTS_TYPE_NANOBTS_1800:
 		ts = remote_lchan->ts;
-		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-				  lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
+				  ts->abis_ip.bound_port,
+				  lchan->ts->abis_ip.conn_id,
+				  ts->abis_ip.rtp_payload2);
 	
 		ts = lchan->ts;
-		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip, ts->abis_ip.bound_port,
-				  remote_lchan->ts->abis_ip.attr_f8, ts->abis_ip.attr_fc);
+		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
+				  ts->abis_ip.bound_port,
+				  remote_lchan->ts->abis_ip.conn_id,
+				  ts->abis_ip.rtp_payload2);
 		break;
 	case GSM_BTS_TYPE_BS11:
 		trau_mux_map_lchan(lchan, remote_lchan);

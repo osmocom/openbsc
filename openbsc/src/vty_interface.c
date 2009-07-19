@@ -235,9 +235,9 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 	net_dump_nmstate(vty, &ts->nm_state);
 	if (is_ipaccess_bts(ts->trx->bts)) {
 		ia.s_addr = ts->abis_ip.bound_ip;
-		vty_out(vty, "  Bound IP: %s Port %u FC=%u F8=%u%s",
+		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
 			inet_ntoa(ia), ts->abis_ip.bound_port,
-			ts->abis_ip.attr_fc, ts->abis_ip.attr_f8,
+			ts->abis_ip.rtp_payload2, ts->abis_ip.conn_id,
 			VTY_NEWLINE);
 	} else {
 		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",

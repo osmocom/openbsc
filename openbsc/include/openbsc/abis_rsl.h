@@ -123,8 +123,25 @@ enum abis_rsl_msgtype {
 	RSL_MT_MR_CODEC_MOD_PER,
 	RSL_MT_TFO_REP,
 	RSL_MT_TFO_MOD_REQ,		/* 0x3f */
+	RSL_MT_LOCATION_INFO		= 0x41,
 
 	/* ip.access specific RSL message types */
+	RSL_MT_IPAC_DIR_RETR_ENQ	= 0x40,
+	RSL_MT_IPAC_PDCH_ACT		= 0x48,
+	RSL_MT_IPAC_PDCH_ACT_ACK,
+	RSL_MT_IPAC_PDCH_ACT_NACK,
+	RSL_MT_IPAC_PDCH_DEACT		= 0x4b,
+	RSL_MT_IPAC_PDCH_DEACT_ACK,
+	RSL_MT_IPAC_PDCH_DEACT_NACK,
+	RSL_MT_IPAC_CONNECT_MUX		= 0x50,
+	RSL_MT_IPAC_CONNECT_MUX_ACK,
+	RSL_MT_IPAC_CONNECT_MUX_NACK,
+	RSL_MT_IPAC_BIND_MUX		= 0x53,
+	RSL_MT_IPAC_BIND_MUX_ACK,
+	RSL_MT_IPAC_BIND_MUX_NACK,
+	RSL_MT_IPAC_DISC_MUX		= 0x56,
+	RSL_MT_IPAC_DISC_MUX_ACK,
+	RSL_MT_IPAC_DISC_MUX_NACK,
 	RSL_MT_IPAC_BIND		= 0x70,		/* Bind to local BTS RTP port */
 	RSL_MT_IPAC_BIND_ACK,
 	RSL_MT_IPAC_BIND_NACK,
@@ -132,7 +149,9 @@ enum abis_rsl_msgtype {
 	RSL_MT_IPAC_CONNECT_ACK,
 	RSL_MT_IPAC_CONNECT_NACK,
 	RSL_MT_IPAC_DISCONNECT_IND	= 0x76,
-
+	RSL_MT_IPAC_DISCONNECT		= 0x77,
+	RSL_MT_IPAC_DISCONNECT_ACK,
+	RSL_MT_IPAC_DISCONNECT_NACK,
 };
 
 /* Chapter 9.3 */
@@ -198,10 +217,24 @@ enum abis_rsl_ie {
 	RSL_IE_TFO_STATUS,
 	RSL_IE_LLP_APDU,
 
+	RSL_IE_IPAC_SRTP_CONFIG	= 0xe0,
+	RSL_IE_IPAC_PROXY_UDP	= 0xe1,
+	RSL_IE_IPAC_BSCMPL_TOUT	= 0xe2,
 	RSL_IE_IPAC_REMOTE_IP	= 0xf0,
 	RSL_IE_IPAC_REMOTE_PORT	= 0xf1,
+	RSL_IE_IPAC_RTP_PAYLOAD	= 0xf2,
 	RSL_IE_IPAC_LOCAL_PORT	= 0xf3,
+	RSL_IE_IPAC_SPEECH_MODE	= 0xf4,
 	RSL_IE_IPAC_LOCAL_IP	= 0xf5,
+	RSL_IE_IPAC_CONN_STAT	= 0xf6,
+	RSL_IE_IPAC_HO_C_PARMS	= 0xf7,
+	RSL_IE_IPAC_CONN_ID	= 0xf8,
+	RSL_IE_IPAC_RTP_CSD_FMT	= 0xf9,
+	RSL_IE_IPAC_RTP_JIT_BUF	= 0xfa,
+	RSL_IE_IPAC_RTP_COMPR	= 0xfb,
+	RSL_IE_IPAC_RTP_PAYLOAD2= 0xfc,
+	RSL_IE_IPAC_RTP_MPLEX	= 0xfd,
+	RSL_IE_IPAC_RTP_MPLEX_ID= 0xfe,
 };
 
 /* Chapter 9.3.1 */
@@ -365,6 +398,45 @@ struct rsl_ie_chan_ident {
 #define RSL_BS_PA_MFRMS_8	0x06
 #define RSL_BS_PA_MFRMS_9	0x07
 
+/* RSL_IE_IPAC_RTP_PAYLOAD[2] */
+enum rsl_ipac_rtp_payload {
+	RSL_IPAC_RTP_GSM	= 1,
+	RSL_IPAC_RTP_EFR,
+	RSL_IPAC_RTP_AMR,
+	RSL_IPAC_RTP_CSD,
+	RSL_IPAC_RTP_MUX,
+};
+
+/* RSL_IE_IPAC_SPEECH_MODE, lower four bits */
+enum rsl_ipac_speech_mode_s {
+	RSL_IPAC_SPEECH_GSM_FR = 0,	/* GSM FR (Type 1, FS) */
+	RSL_IPAC_SPEECH_GSM_EFR = 1,	/* GSM EFR (Type 2, FS) */
+	RSL_IPAC_SPEECH_GSM_AMR_FR = 2,	/* GSM AMR/FR (Type 3, FS) */
+	RSL_IPAC_SPEECH_GSM_HR = 3,	/* GSM HR (Type 1, HS) */
+	RSL_IPAC_SPEECH_GSM_AMR_HR = 5,	/* GSM AMR/hr (Type 3, HS) */
+	RSL_IPAC_SPEECH_AS_RTP = 0xf,	/* As specified by RTP Payload IE */
+};
+/* RSL_IE_IPAC_SPEECH_MODE, upper four bits */
+enum rsl_ipac_speech_mode_m {
+	RSL_IPAC_SPEECH_M_RXTX = 0,	/* Send and Receive */
+	RSL_IPAC_SPEECH_M_RX = 1,	/* Receive only */
+	RSL_IPAC_SPEECH_M_TX = 2,	/* Send only */
+};
+
+/* RSL_IE_IPAC_RTP_CSD_FMT, lower four bits */
+enum rsl_ipac_rtp_csd_format_d {
+	RSL_IPAC_RTP_CSD_EXT_TRAU = 0,
+	RSL_IPAC_RTP_CSD_NON_TRAU = 1,
+	RSL_IPAC_RTP_CSD_TRAU_BTS = 2,
+	RSL_IPAC_RTP_CSD_IWF_FREE = 3,
+};
+/* RSL_IE_IPAC_RTP_CSD_FMT, upper four bits */
+enum rsl_ipac_rtp_csd_format_ir {
+	RSL_IPAC_RTP_CSD_IR_8k = 0,
+	RSL_IPAC_RTP_CSD_IR_16k = 1,
+	RSL_IPAC_RTP_CSD_IR_32k = 2,
+	RSL_IPAC_RTP_CSD_IR_64k = 3,
+};
 
 #include "msgb.h"
 
@@ -392,7 +464,8 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id);
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);
 int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
-		      u_int16_t port, u_int16_t f8, u_int8_t fc);
+		      u_int16_t port, u_int16_t conn_id,
+		      u_int8_t rtp_payload2);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
@@ -404,6 +477,7 @@ u_int8_t lchan2chan_nr(struct gsm_lchan *lchan);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
+int rsl_deact_sacch(struct gsm_lchan *lchan);
 int rsl_chan_release(struct gsm_lchan *lchan);
 
 /* BCCH related code */

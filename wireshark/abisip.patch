@@ -1,7 +1,7 @@
 Index: epan/dissectors/Makefile.common
 ===================================================================
---- epan/dissectors/Makefile.common.orig	2009-07-03 22:19:54.000000000 +0200
-+++ epan/dissectors/Makefile.common	2009-07-03 22:20:16.000000000 +0200
+--- epan/dissectors/Makefile.common.orig
++++ epan/dissectors/Makefile.common
 @@ -471,6 +471,7 @@
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
@@ -12,8 +12,8 @@ Index: epan/dissectors/Makefile.common
  	packet-gsm_sms.c	\
 Index: epan/dissectors/packet-rsl.c
 ===================================================================
---- epan/dissectors/packet-rsl.c.orig	2009-07-03 22:19:54.000000000 +0200
-+++ epan/dissectors/packet-rsl.c	2009-07-03 22:20:16.000000000 +0200
+--- epan/dissectors/packet-rsl.c.orig
++++ epan/dissectors/packet-rsl.c
 @@ -3950,6 +3950,7 @@
  	proto_register_field_array(proto_rsl, hf, array_length(hf));
  	proto_register_subtree_array(ett, array_length(ett));
@@ -24,9 +24,9 @@ Index: epan/dissectors/packet-rsl.c
  
 Index: epan/dissectors/packet-gsm_abis_ip.c
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ epan/dissectors/packet-gsm_abis_ip.c	2009-07-03 22:20:16.000000000 +0200
-@@ -0,0 +1,279 @@
+--- /dev/null
++++ epan/dissectors/packet-gsm_abis_ip.c
+@@ -0,0 +1,284 @@
 +/* packet-gsm_abis_ip.c
 + * Routines for packet dissection of ip.access A-bis over IP
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -124,7 +124,7 @@ Index: epan/dissectors/packet-gsm_abis_ip.c
 +static gint
 +dissect_ipa_attr(tvbuff_t *tvb, int base_offs, proto_tree *tree)
 +{
-+	guint8 len, tag, attr_type;
++	guint8 len, attr_type;
 +
 +	int offset = base_offs;
 +
@@ -134,7 +134,6 @@ Index: epan/dissectors/packet-gsm_abis_ip.c
 +		switch (attr_type) {
 +		case 0x00:	/* a string prefixed by its length */
 +			len = tvb_get_guint8(tvb, offset+1);
-+			tag = tvb_get_guint8(tvb, offset+2);
 +			proto_tree_add_item(tree, hf_ipaccess_attr_tag,
 +					    tvb, offset+2, 1, FALSE);
 +			proto_tree_add_item(tree, hf_ipaccess_attr_string,
@@ -144,6 +143,12 @@ Index: epan/dissectors/packet-gsm_abis_ip.c
 +			len = 0;
 +			proto_tree_add_item(tree, hf_ipaccess_attr_tag,
 +					    tvb, offset+1, 1, FALSE);
++			break;
++		default:
++			len = 0;
++			proto_tree_add_text(tree, tvb, offset+1, 1,
++					    "unknonw attribute type 0x%02x",
++					    attr_type);
 +			break;
 +		};
 +		offset += len + 2;
