@@ -477,6 +477,7 @@ u_int8_t lchan2chan_nr(struct gsm_lchan *lchan);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
+int rsl_deact_sacch(struct gsm_lchan *lchan);
 int rsl_chan_release(struct gsm_lchan *lchan);
 
 /* BCCH related code */

@@ -652,6 +652,25 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Chapter 8.4.5 */
+int rsl_deact_sacch(struct gsm_lchan *lchan)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_DEACTIVATE_SACCH);
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
+
+	DEBUGP(DRSL, "DEACTivate SACCH CMD channel=%s chan_nr=0x%02x\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 9.1.7 of 04.08 */
 int rsl_chan_release(struct gsm_lchan *lchan)
 {

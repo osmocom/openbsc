@@ -1769,7 +1769,11 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 	DEBUGP(DRR, "Sending Channel Release: Chan: Number: %d Type: %d\n",
 		lchan->nr, lchan->type);
 
-	return gsm48_sendmsg(msg);
+	/* Send actual release request to MS */
+	gsm48_sendmsg(msg);
+
+	/* Deactivate the SACCH on the BTS side */
+	return rsl_deact_sacch(lchan);
 }
 
 /* Call Control */
