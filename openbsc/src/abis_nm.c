@@ -1643,7 +1643,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		msgb_tv_put(msg, NM_ATT_HSN, 0x00);
 		msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
 	}
-	msgb_tv_put(msg, NM_ATT_TSC, 0x07);	/* training sequence */
+	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		msgb_tlv_put(msg, 0x59, 1, &zero);
 
