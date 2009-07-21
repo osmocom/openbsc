@@ -1044,7 +1044,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.chan_desc.h0.h = 0;
 	ia.chan_desc.h0.arfcn_high = arfcn >> 8;
 	ia.chan_desc.h0.arfcn_low = arfcn & 0xff;
-	ia.chan_desc.h0.tsc = 7;
+	ia.chan_desc.h0.tsc = bts->tsc;
 	/* use request reference extracted from CHAN_RQD */
 	memcpy(&ia.req_ref, rqd_ref, sizeof(ia.req_ref));
 	ia.timing_advance = rqd_ta;
