@@ -56,6 +56,8 @@ static struct gsm_network *gsmnet;
 static int MCC = 1;
 static int MNC = 1;
 static int LAC = 1;
+static int TSC = HARDCODED_TSC;
+static int BSIC = HARDCODED_BSIC;
 static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
@@ -893,13 +895,18 @@ static void patch_tables(struct gsm_bts *bts)
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
+
+	/* patch TSC */
+	si4[15] &= ~0xe0;
+	si4[15] |= (bts->tsc & 7) << 5;
 }
 
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
-		"using MCC=%u MNC=%u\n", trx->nr, trx->bts->nr, MCC, MNC);
+		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
+		trx->nr, trx->bts->nr, MCC, MNC, BSIC, TSC);
 	set_system_infos(trx);
 }
 
@@ -1019,7 +1026,7 @@ static int bootstrap_network(void)
 
 	/* E1 mISDN input setup */
 	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
-		struct gsm_bts *bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
+		struct gsm_bts *bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
 		bootstrap_bts(bts);
 
 		gsmnet->num_bts = 1;
@@ -1034,7 +1041,7 @@ static int bootstrap_network(void)
 		}
 
 		llist_for_each_entry(bts_id, &nanobts_ids, entry) {
-			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, HARDCODED_TSC, HARDCODED_BSIC);
+			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
 			bootstrap_bts(bts);
 			bts->ip_access.site_id = bts_id->site_id;
 			bts->ip_access.bts_id = 0;
@@ -1104,10 +1111,12 @@ static void handle_options(int argc, char** argv)
 			{"timestamp", 0, 0, 'T'},
 			{"band", 0, 0, 'b'},
 			{"bts-id", 1, 0, 'i'},
+			{"tsc", 1, 0, 'S'},
+			{"bsic", 1, 0, 'B'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1171,6 +1180,12 @@ static void handle_options(int argc, char** argv)
 
 			bts_id->site_id = atoi(optarg);
 			llist_add(&bts_id->entry, &nanobts_ids);
+			break;
+		case 'S':
+			TSC = atoi(optarg);
+			break;
+		case 'B':
+			BSIC = atoi(optarg);
 			break;
 		}
 		default:
