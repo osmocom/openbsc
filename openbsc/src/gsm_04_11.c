@@ -154,6 +154,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
 /* process an incoming TPDU (called from RP-DATA) */
 static int gsm340_rx_tpdu(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	u_int8_t *smsp = msgb_sms(msg);
 	struct sms_submit *sms;
 	struct gsm_sms *gsms;
@@ -257,7 +258,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	/* FIXME: sender refcount */
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(sms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(bts->network, sms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
 		goto out;

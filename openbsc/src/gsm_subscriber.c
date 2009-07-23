@@ -126,7 +126,8 @@ static void subscr_free(struct gsm_subscriber *subscr)
 	talloc_free(subscr);
 }
 
-struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
+struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
+					  const char *tmsi)
 {
 	struct gsm_subscriber *subscr;
 
@@ -136,10 +137,11 @@ struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_TMSI, tmsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi);
 }
 
-struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
+struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
+					  const char *imsi)
 {
 	struct gsm_subscriber *subscr;
 
@@ -148,10 +150,11 @@ struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
 }
 
-struct gsm_subscriber *subscr_get_by_extension(const char *ext)
+struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
+					       const char *ext)
 {
 	struct gsm_subscriber *subscr;
 
@@ -160,7 +163,7 @@ struct gsm_subscriber *subscr_get_by_extension(const char *ext)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, ext);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
