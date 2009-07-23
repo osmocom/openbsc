@@ -13,4 +13,6 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 			      u_int32_t callref);
 void trans_free(struct gsm_trans *trans);
 
+int trans_assign_trans_id(struct gsm_subscriber *subscr,
+			  u_int8_t protocol, u_int8_t ti_flag);
 #endif

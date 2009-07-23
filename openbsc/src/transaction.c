@@ -113,13 +113,18 @@ void trans_free(struct gsm_trans *trans)
 	talloc_free(trans);
 }
 
-#if 0
+/* allocate an unused transaction ID for the given subscriber
+ * in the given protocol using the ti_flag specified */
 int trans_assign_trans_id(struct gsm_subscriber *subscr,
 			  u_int8_t protocol, u_int8_t ti_flag)
 {
 	struct gsm_network *net = subscr->net;
 	struct gsm_trans *trans;
 	unsigned int used_tid_bitmask = 0;
+	int i;
+
+	if (ti_flag)
+		ti_flag = 0x8;
 
 	/* generate bitmask of already-used TIDs for this (subscr,proto) */
 	llist_for_each_entry(trans, &net->trans_list, entry) {
@@ -130,5 +135,10 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 		used_tid_bitmask |= (1 << trans->transaction_id);
 	}
 
+	for (i = 0; i <= 7; i++) {
+		if ((used_tid_bitmask & (1 << (i | ti_flag))) == 0)
+			return i | ti_flag;
+	}
+
+	return -1;
 }
-#endif

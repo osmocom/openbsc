@@ -2257,9 +2257,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_mncc *setup = arg;
-	struct gsm_trans *transt;
-	u_int16_t trans_id_mask = 0;
-	int rc, i;
+	int rc, trans_id;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
@@ -2277,14 +2275,8 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	}
 	
 	/* Get free transaction_id */
-	llist_for_each_entry(transt, &trans->subscr->net->trans_list, entry) {
-		/* Transaction of our lchan? */
-		if (transt->lchan == trans->lchan &&
-		    transt->transaction_id != 0xff)
-			trans_id_mask |= (1 << transt->transaction_id);
-	}
-	/* Assign free transaction ID */
-	if ((trans_id_mask & 0x007f) == 0x7f) {
+	trans_id = trans_assign_trans_id(trans->subscr, GSM48_PDISC_CC, 0);
+	if (trans_id < 0) {
 		/* no free transaction ID */
 		rc = mncc_release_ind(trans->subscr->net, trans, trans->callref,
 				      GSM48_CAUSE_LOC_PRN_S_LU,
@@ -2293,12 +2285,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 		trans_free(trans);
 		return rc;
 	}
-	for (i = 0; i < 7; i++) {
-		if ((trans_id_mask & (1 << i)) == 0) {
-			trans->transaction_id = i; /* flag = 0 */
-			break;
-		}
-	}
+	trans->transaction_id = trans_id;
 
 	gh->msg_type = GSM48_MT_CC_SETUP;
 
