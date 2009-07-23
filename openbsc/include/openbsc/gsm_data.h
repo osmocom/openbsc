@@ -104,9 +104,6 @@ struct gsm_trans {
 	/* Entry in list of all transactions */
 	struct llist_head entry;
 
-	/* Network */
-	struct gsm_network *network;
-
 	/* The protocol within which we live */
 	u_int8_t protocol;
 
