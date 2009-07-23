@@ -1129,6 +1129,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_network *net = bts->network;
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
 
@@ -1139,7 +1141,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
-			lchan->subscr = db_create_subscriber(mi_string);
+			lchan->subscr = db_create_subscriber(net, mi_string);
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imsi = 0;
 		break;
@@ -1196,6 +1198,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	u_int8_t mi_type;
 	char mi_string[MI_SIZE];
 	int rc;
@@ -1230,7 +1233,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI */
-		subscr = db_create_subscriber(mi_string);
+		subscr = db_create_subscriber(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
@@ -1239,7 +1242,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
@@ -1421,6 +1424,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	u_int8_t mi_type;
 	char mi_string[MI_SIZE];
 
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
@@ -1455,7 +1459,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
-	subscr = subscr_get_by_tmsi(mi_string);
+	subscr = subscr_get_by_tmsi(bts->network, mi_string);
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
@@ -1478,6 +1482,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
@@ -1491,10 +1496,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(mi_string);
+		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
@@ -1574,6 +1579,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t *classmark2_lv = gh->data + 1;
 	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
@@ -1588,10 +1594,10 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		mi_type, mi_string);
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(mi_string);
+		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		break;
 	}
 
@@ -3410,9 +3416,10 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		}
 		/* New transaction due to setup, find subscriber */
 		if (data->called.number[0])
-			subscr = subscr_get_by_extension(data->called.number);
+			subscr = subscr_get_by_extension(net,
+							data->called.number);
 		else
-			subscr = subscr_get_by_imsi(data->imsi);
+			subscr = subscr_get_by_imsi(net, data->imsi);
 		/* If subscriber is not found */
 		if (!subscr) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "

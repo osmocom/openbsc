@@ -182,6 +182,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
 static int gsm340_rx_tpdu(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	u_int8_t *smsp = msgb_sms(msg);
 	struct sms_submit *sms;
 	struct gsm_sms *gsms;
@@ -291,7 +292,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	gsms->validity_minutes = gsm340_validity_period(sms);
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(sms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(bts->network, sms->dest_addr);
 	if (sms->user_data)
 		memcpy(gsms->header, sms->user_data, sms->ud_len);
 

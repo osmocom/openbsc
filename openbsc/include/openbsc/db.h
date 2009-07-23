@@ -31,14 +31,17 @@ int db_prepare();
 int db_fini();
 
 /* subscriber management */
-struct gsm_subscriber* db_create_subscriber(char *imsi);
-struct gsm_subscriber* db_get_subscriber(enum gsm_subscriber_field field, const char *subscr);
+struct gsm_subscriber* db_create_subscriber(struct gsm_network *net,
+					    char *imsi);
+struct gsm_subscriber* db_get_subscriber(struct gsm_network *net,
+					 enum gsm_subscriber_field field,
+					 const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber* subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
 
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
-struct gsm_sms *db_sms_get_unsent(int min_id);
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id);
 int db_sms_mark_sent(struct gsm_sms *sms);
 #endif /* _DB_H */

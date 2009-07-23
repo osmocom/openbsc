@@ -61,9 +61,12 @@ enum gsm_subscriber_update_reason {
 
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
-struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi);
-struct gsm_subscriber *subscr_get_by_imsi(const char *imsi);
-struct gsm_subscriber *subscr_get_by_extension(const char *ext);
+struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
+					  const char *tmsi);
+struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
+					  const char *imsi);
+struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
+					       const char *ext);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_lchan *lchan);
 void subscr_get_channel(struct gsm_subscriber *subscr,
