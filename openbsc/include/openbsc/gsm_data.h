@@ -107,26 +107,36 @@ struct gsm_trans {
 	/* Network */
 	struct gsm_network *network;
 
+	/* The protocol within which we live */
+	u_int8_t protocol;
+
 	/* The current transaction ID */
 	u_int8_t transaction_id;
 	
-	/* The LCHAN that we're part of */
-	struct gsm_lchan *lchan;
-
-	/* To whom we are allocated at the moment */
+	/* To whom we belong, unique identifier of remote MM entity */
 	struct gsm_subscriber *subscr;
 
-	/* reference */
+	/* The LCHAN that we're currently using to transmit messages */
+	struct gsm_lchan *lchan;
+
+	/* reference from MNCC or other application */
 	u_int32_t callref;
 
-	/* current call state */
-	int state;
+	union {
+		struct {
 
-	/* current timer and message queue */
-	int Tcurrent;			/* current CC timer */
-	int T308_second;		/* used to send release again */
-        struct timer_list cc_timer;
-	struct gsm_mncc cc_msg;		/* stores setup/disconnect/release message */
+			/* current call state */
+			int state;
+
+			/* current timer and message queue */
+			int Tcurrent;		/* current CC timer */
+			int T308_second;	/* used to send release again */
+			struct timer_list timer;
+			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
+		} cc;
+		struct {
+		} sms;
+	};
 };
 
 

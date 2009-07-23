@@ -45,6 +45,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/talloc.h>
+#include <openbsc/transaction.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -54,7 +55,6 @@
 #define GSM_MAX_USERUSER       128
 
 static void *tall_locop_ctx;
-static void *tall_trans_ctx;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -292,7 +292,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);
-void free_trans(struct gsm_trans *trans);
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -392,9 +391,12 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	release_loc_updating_req(lchan);
 
 	/* Free all transactions that are associated with the released lchan */
+	/* FIXME: this is not neccessarily the right thing to do, we should
+	 * only set trans->lchan to NULL and wait for another lchan to be
+	 * established to the same MM entity (phone/subscriber) */
 	llist_for_each_entry_safe(trans, temp, &lchan->ts->trx->bts->network->trans_list, entry) {
 		if (trans->lchan == lchan)
-			free_trans(trans);
+			trans_free(trans);
 	}
 
 	return 0;
@@ -1789,9 +1791,9 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 		return;
 
 	DEBUGP(DCC, "new state %s -> %s\n",
-		cc_state_names[trans->state], cc_state_names[state]);
+		cc_state_names[trans->cc.state], cc_state_names[state]);
 
-	trans->state = state;
+	trans->cc.state = state;
 }
 
 static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
@@ -1831,10 +1833,10 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 {
-	if (bsc_timer_pending(&trans->cc_timer)) {
-		DEBUGP(DCC, "stopping pending timer T%x\n", trans->Tcurrent);
-		bsc_del_timer(&trans->cc_timer);
-		trans->Tcurrent = 0;
+	if (bsc_timer_pending(&trans->cc.timer)) {
+		DEBUGP(DCC, "stopping pending timer T%x\n", trans->cc.Tcurrent);
+		bsc_del_timer(&trans->cc.timer);
+		trans->cc.Tcurrent = 0;
 	}
 }
  
@@ -1883,10 +1885,10 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 	return mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 }
 
-void free_trans(struct gsm_trans *trans)
+/* Call Control Specific transaction release.
+ * gets called by trans_free, DO NOT CALL YOURSELF! */
+void _gsm48_cc_trans_free(struct gsm_trans *trans)
 {
-	struct gsm_bts *bts;
-
 	gsm48_stop_cc_timer(trans);
 
 	/* send release to L4, if callref still exists */
@@ -1895,37 +1897,11 @@ void free_trans(struct gsm_trans *trans)
 		mncc_release_ind(trans->network, trans, trans->callref,
 				 GSM48_CAUSE_LOC_PRN_S_LU,
 				 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
-		if (trans->state != GSM_CSTATE_NULL)
-			new_cc_state(trans, GSM_CSTATE_NULL);
 	}
-
-	if (!trans->lchan && trans->subscr && trans->subscr->net) {
-		/* Stop paging on all bts' */
-		bts = NULL;
-		do {
-			bts = gsm_bts_by_lac(trans->subscr->net,
-					     trans->subscr->lac, bts);
-			if (!bts)
-				break;
-			/* Stop paging */
-			paging_request_stop(bts, trans->subscr, NULL);
-		} while (1);
-	}
-
-	if (trans->lchan) {
-		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
-		put_lchan(trans->lchan);
-	}
-
-	if (trans->subscr)
-		subscr_put(trans->subscr);
-
-	if (trans->state != GSM_CSTATE_NULL)
+	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
-
-	llist_del(&trans->entry);
-
-	talloc_free(trans);
+	if (trans->lchan)
+		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1966,7 +1942,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 				use_lchan(lchan);
 			}
 			/* send SETUP request to called party */
-			gsm48_cc_tx_setup(transt, &transt->cc_msg);
+			gsm48_cc_tx_setup(transt, &transt->cc.msg);
 			if (is_ipaccess_bts(lchan->ts->trx->bts))
 				rsl_ipacc_bind(lchan);
 			break;
@@ -1978,7 +1954,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 					 GSM48_CAUSE_LOC_PRN_S_LU,
 					 GSM48_CC_CAUSE_DEST_OOO);
 			transt->callref = 0;
-			free_trans(transt);
+			trans_free(transt);
 			break;
 		}
 	}
@@ -2027,21 +2003,11 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	return 0;
 }
 
-static struct gsm_trans *get_trans_ref(struct gsm_network *net, u_int32_t callref)
-{
-	struct gsm_trans *trans;
-	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->callref == callref)
-			return trans;
-	}
-	return NULL;
-}
-
 /* bridge channels of two transactions */
 static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 {
-	struct gsm_trans *trans1 = get_trans_ref(net, refs[0]);
-	struct gsm_trans *trans2 = get_trans_ref(net, refs[1]);
+	struct gsm_trans *trans1 = trans_find_by_callref(net, refs[0]);
+	struct gsm_trans *trans2 = trans_find_by_callref(net, refs[1]);
 
 	if (!trans1 || !trans2)
 		return -EIO;
@@ -2059,7 +2025,7 @@ static int tch_recv(struct gsm_network *net, struct gsm_mncc *data, int enable)
 	struct gsm_trans *trans;
 
 	/* Find callref */
-	trans = get_trans_ref(net, data->callref);
+	trans = trans_find_by_callref(net, data->callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
@@ -2077,7 +2043,7 @@ static int tch_frame(struct gsm_network *net, struct gsm_trau_frame *frame)
 	struct gsm_trans *trans;
 
 	/* Find callref */
-	trans = get_trans_ref(net, frame->callref);
+	trans = trans_find_by_callref(net, frame->callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
@@ -2116,7 +2082,7 @@ static void gsm48_cc_timeout(void *arg)
 	memset(&l4_rel, 0, sizeof(struct gsm_mncc));
 	l4_rel.callref = trans->callref;
 
-	switch(trans->Tcurrent) {
+	switch(trans->cc.Tcurrent) {
 	case 0x303:
 		release = 1;
 		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
@@ -2134,21 +2100,21 @@ static void gsm48_cc_timeout(void *arg)
 		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
 		break;
 	case 0x308:
-		if (!trans->T308_second) {
+		if (!trans->cc.T308_second) {
 			/* restart T308 a second time */
-			gsm48_cc_tx_release(trans, &trans->cc_msg);
-			trans->T308_second = 1;
+			gsm48_cc_tx_release(trans, &trans->cc.msg);
+			trans->cc.T308_second = 1;
 			break; /* stay in release state */
 		}
-		free_trans(trans);
+		trans_free(trans);
 		return;
 //		release = 1;
 //		l4_cause = 14;
 //		break;
 	case 0x306:
 		release = 1;
-		mo_cause = trans->cc_msg.cause.value;
-		mo_location = trans->cc_msg.cause.location;
+		mo_cause = trans->cc.msg.cause.value;
+		mo_location = trans->cc.msg.cause.location;
 		break;
 	case 0x323:
 		disconnect = 1;
@@ -2173,9 +2139,9 @@ static void gsm48_cc_timeout(void *arg)
 	/* process disconnect towards mobile station */
 	if (disconnect || release) {
 		mncc_set_cause(&mo_rel, mo_location, mo_cause);
-		mo_rel.cause.diag[0] = ((trans->Tcurrent & 0xf00) >> 8) + '0';
-		mo_rel.cause.diag[1] = ((trans->Tcurrent & 0x0f0) >> 4) + '0';
-		mo_rel.cause.diag[2] = (trans->Tcurrent & 0x00f) + '0';
+		mo_rel.cause.diag[0] = ((trans->cc.Tcurrent & 0xf00) >> 8) + '0';
+		mo_rel.cause.diag[1] = ((trans->cc.Tcurrent & 0x0f0) >> 4) + '0';
+		mo_rel.cause.diag[2] = (trans->cc.Tcurrent & 0x00f) + '0';
 		mo_rel.cause.diag_len = 3;
 
 		if (disconnect)
@@ -2190,10 +2156,10 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 				 int sec, int micro)
 {
 	DEBUGP(DCC, "starting timer T%x with %d seconds\n", current, sec);
-	trans->cc_timer.cb = gsm48_cc_timeout;
-	trans->cc_timer.data = trans;
-	bsc_schedule_timer(&trans->cc_timer, sec, micro);
-	trans->Tcurrent = current;
+	trans->cc.timer.cb = gsm48_cc_timeout;
+	trans->cc.timer.data = trans;
+	bsc_schedule_timer(&trans->cc.timer, sec, micro);
+	trans->cc.Tcurrent = current;
 }
 
 static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
@@ -2293,7 +2259,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 				      GSM48_CAUSE_LOC_PRN_S_LU,
 				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
 	
@@ -2311,7 +2277,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 				      GSM48_CAUSE_LOC_PRN_S_LU,
 				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
 	for (i = 0; i < 7; i++) {
@@ -2695,7 +2661,7 @@ static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 		encode_useruser(msg, 0, &disc->useruser);
 
 	/* store disconnect cause for T306 expiry */
-	memcpy(&trans->cc_msg, disc, sizeof(struct gsm_mncc));
+	memcpy(&trans->cc.msg, disc, sizeof(struct gsm_mncc));
 
 	new_cc_state(trans, GSM_CSTATE_DISCONNECT_IND);
 
@@ -2740,7 +2706,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
-	if (trans->state == GSM_CSTATE_RELEASE_REQ) {
+	if (trans->cc.state == GSM_CSTATE_RELEASE_REQ) {
 		/* release collision 5.4.5 */
 		rc = mncc_recvmsg(trans->network, trans, MNCC_REL_CNF, &rel);
 	} else {
@@ -2752,7 +2718,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 	new_cc_state(trans, GSM_CSTATE_NULL);
 
 	trans->callref = 0;
-	free_trans(trans);
+	trans_free(trans);
 
 	return rc;
 }
@@ -2782,10 +2748,10 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 	if (rel->fields & MNCC_F_USERUSER)
 		encode_useruser(msg, 0, &rel->useruser);
 
-	trans->T308_second = 0;
-	memcpy(&trans->cc_msg, rel, sizeof(struct gsm_mncc));
+	trans->cc.T308_second = 0;
+	memcpy(&trans->cc.msg, rel, sizeof(struct gsm_mncc));
 
-	if (trans->state != GSM_CSTATE_RELEASE_REQ)
+	if (trans->cc.state != GSM_CSTATE_RELEASE_REQ)
 		new_cc_state(trans, GSM_CSTATE_RELEASE_REQ);
 
 	return gsm48_sendmsg(msg);
@@ -2830,7 +2796,7 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	if (trans->callref) {
-		switch (trans->state) {
+		switch (trans->cc.state) {
 		case GSM_CSTATE_CALL_PRESENT:
 			rc = mncc_recvmsg(trans->network, trans,
 					  MNCC_REJ_IND, &rel);
@@ -2846,7 +2812,7 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	trans->callref = 0;
-	free_trans(trans);
+	trans_free(trans);
 
 	return rc;
 }
@@ -2875,7 +2841,7 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	if (rel->fields & MNCC_F_USERUSER)
 		encode_useruser(msg, 0, &rel->useruser);
 
-	free_trans(trans);
+	trans_free(trans);
 
 	return gsm48_sendmsg(msg);
 }
@@ -3385,7 +3351,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	rel.callref = data->callref;
 
 	/* Find callref */
-	trans = get_trans_ref(net, data->callref);
+	trans = trans_find_by_callref(net, data->callref);
 
 	/* Callref unknown */
 	if (!trans) {
@@ -3437,7 +3403,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
+		trans = trans_alloc(subscr, GSM48_PDISC_CC, 0xff, data->callref);
+		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
@@ -3446,12 +3413,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 					 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			return -ENOMEM;
 		}
-		trans->callref = data->callref;
-		trans->network = net;
-		trans->transaction_id = 0xff; /* unassigned */
-		llist_add_tail(&trans->entry, &net->trans_list);
-		/* Assign subscriber to transaction */
-		trans->subscr = subscr;
 		/* Find lchan */
 		for (i = 0; i < net->num_bts; i++) {
 			bts = gsm_bts_num(net, i);
@@ -3487,7 +3448,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				return 0;
 			}
 			/* store setup informations until paging was successfull */
-			memcpy(&trans->cc_msg, data, sizeof(struct gsm_mncc));
+			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 			/* start paging subscriber on all BTS with her location */
 			subscr->net = net;
 			bts = NULL;
@@ -3525,7 +3486,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		else
 			rc = mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
 
@@ -3534,13 +3495,13 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		trans->transaction_id,
 		(lchan->subscr)?(lchan->subscr->extension):"-",
-		get_mncc_name(msg_type), trans->state,
-		cc_state_names[trans->state]);
+		get_mncc_name(msg_type), trans->cc.state,
+		cc_state_names[trans->cc.state]);
 
 	/* Find function for current state and message */
 	for (i = 0; i < DOWNSLLEN; i++)
 		if ((msg_type == downstatelist[i].type)
-		 && ((1 << trans->state) & downstatelist[i].states))
+		 && ((1 << trans->cc.state) & downstatelist[i].states))
 			break;
 	if (i == DOWNSLLEN) {
 		DEBUGP(DCC, "Message unhandled at this state.\n");
@@ -3613,8 +3574,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	u_int8_t msg_type = gh->msg_type & 0xbf;
 	u_int8_t transaction_id = (gh->proto_discr & 0xf0) ^ 0x80; /* flip */
 	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_trans *trans = NULL, *transt;
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
 
 	if (msg_type & 0x80) {
@@ -3623,50 +3583,38 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	}
 	
 	/* Find transaction */
-	llist_for_each_entry(transt, &net->trans_list, entry) {
-		/* Transaction of our lchan? */
-		if (transt->lchan == lchan
-			&& transt->transaction_id == transaction_id) {
-			trans = transt;
-		}
-	}
-	
+	trans = trans_find_by_id(lchan, transaction_id);
+
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
-		cc_msg_names[msg_type], trans?(trans->state):0,
-		cc_state_names[trans?(trans->state):0]);
+		cc_msg_names[msg_type], trans?(trans->cc.state):0,
+		cc_state_names[trans?(trans->cc.state):0]);
 
 	/* Create transaction */
 	if (!trans) {
 		DEBUGP(DCC, "Unknown transaction ID %02x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
+		trans = trans_alloc(lchan->subscr, GSM48_PDISC_CC,
+				    transaction_id, new_callref++);
+		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
 					     GSM48_PDISC_CC | transaction_id,
 					     GSM48_MT_CC_RELEASE_COMPL);
 			return -ENOMEM;
 		}
-		llist_add_tail(&trans->entry, &net->trans_list);
 		/* Assign transaction */
-		trans->callref = new_callref++;
-		trans->network = net;
-		trans->transaction_id = transaction_id;
 		trans->lchan = lchan;
 		use_lchan(lchan);
-		if (lchan->subscr) {
-			trans->subscr = lchan->subscr;
-			subscr_get(trans->subscr);
-		}
 	}
 
 	/* find function for current state and message */
 	for (i = 0; i < DATASLLEN; i++)
 		if ((msg_type == datastatelist[i].type)
-		 && ((1 << trans->state) & datastatelist[i].states))
+		 && ((1 << trans->cc.state) & datastatelist[i].states))
 			break;
 	if (i == DATASLLEN) {
 		DEBUGP(DCC, "Message unhandled at this state.\n");
@@ -3823,3 +3771,4 @@ int bsc_upqueue(struct gsm_network *net)
 
 	return work;
 }
+
