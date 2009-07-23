@@ -990,7 +990,7 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 	/* if we get passed a transaction reference, do some common
 	 * work that the caller no longer has to do */
 	if (trans) {
-		gh->proto_discr = trans->protocol | trans->transaction_id;
+		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
 		msg->lchan = trans->lchan;
 	}
 
@@ -1859,7 +1859,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 
 	if (trans)
 		if (trans->lchan)
-			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 				"Sending '%s' to MNCC.\n",
 				trans->lchan->ts->trx->bts->nr,
 				trans->lchan->ts->trx->nr,
@@ -2281,7 +2281,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 		/* Transaction of our lchan? */
 		if (transt->lchan == trans->lchan &&
 		    transt->transaction_id != 0xff)
-			trans_id_mask |= (1 << (transt->transaction_id >> 4));
+			trans_id_mask |= (1 << transt->transaction_id);
 	}
 	/* Assign free transaction ID */
 	if ((trans_id_mask & 0x007f) == 0x7f) {
@@ -2295,7 +2295,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	}
 	for (i = 0; i < 7; i++) {
 		if ((trans_id_mask & (1 << i)) == 0) {
-			trans->transaction_id = i << 4; /* flag = 0 */
+			trans->transaction_id = i; /* flag = 0 */
 			break;
 		}
 	}
@@ -2712,7 +2712,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_CNF, &rel);
 	} else {
 		rc = gsm48_tx_simple(msg->lchan,
-				     GSM48_PDISC_CC | trans->transaction_id,
+				     GSM48_PDISC_CC | (trans->transaction_id << 4),
 				     GSM48_MT_CC_RELEASE_COMPL);
 		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_IND, &rel);
 	}
@@ -3546,7 +3546,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
-	u_int8_t transaction_id = (gh->proto_discr & 0xf0) ^ 0x80; /* flip */
+	u_int8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
@@ -3559,7 +3559,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	/* Find transaction */
 	trans = trans_find_by_id(lchan, transaction_id);
 
-	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
@@ -3568,7 +3568,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 
 	/* Create transaction */
 	if (!trans) {
-		DEBUGP(DCC, "Unknown transaction ID %02x, "
+		DEBUGP(DCC, "Unknown transaction ID %x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
 		trans = trans_alloc(lchan->subscr, GSM48_PDISC_CC,
@@ -3576,7 +3576,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
-					     GSM48_PDISC_CC | transaction_id,
+					     GSM48_PDISC_CC | (transaction_id << 4),
 					     GSM48_MT_CC_RELEASE_COMPL);
 			return -ENOMEM;
 		}
