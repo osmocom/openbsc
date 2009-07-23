@@ -293,6 +293,11 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(bts->network, sms->dest_addr);
+	if (!gsms->receiver) {
+		rc = 1; /* cause 1: unknown subscriber */
+		goto out;
+	}
+
 	if (sms->user_data)
 		memcpy(gsms->header, sms->user_data, sms->ud_len);
 
