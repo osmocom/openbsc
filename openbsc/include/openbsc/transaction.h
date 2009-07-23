@@ -4,7 +4,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 
-struct gsm_trans *trans_find_by_id(struct gsm_lchan *lchan, u_int8_t trans_id);
+struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
+				   u_int8_t proto, u_int8_t trans_id);
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
 					u_int32_t callref);
 

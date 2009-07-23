@@ -31,13 +31,16 @@
 
 static void *tall_trans_ctx;
 
-struct gsm_trans *trans_find_by_id(struct gsm_lchan *lchan, u_int8_t trans_id)
+struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
+				   u_int8_t proto, u_int8_t trans_id)
 {
 	struct gsm_trans *trans;
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_network *net = subscr->net;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->lchan == lchan && trans->transaction_id == trans_id)
+		if (trans->subscr == subscr &&
+		    trans->protocol == proto &&
+		    trans->transaction_id == trans_id)
 			return trans;
 	}
 	return NULL;
