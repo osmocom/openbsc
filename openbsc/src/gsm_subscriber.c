@@ -171,6 +171,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
+		s->net = bts->network;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
 		break;
