@@ -3,6 +3,51 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/linuxlist.h>
+#include <openbsc/gsm_04_11.h>
+
+/* One transaction */
+struct gsm_trans {
+	/* Entry in list of all transactions */
+	struct llist_head entry;
+
+	/* The protocol within which we live */
+	u_int8_t protocol;
+
+	/* The current transaction ID */
+	u_int8_t transaction_id;
+	
+	/* To whom we belong, unique identifier of remote MM entity */
+	struct gsm_subscriber *subscr;
+
+	/* The LCHAN that we're currently using to transmit messages */
+	struct gsm_lchan *lchan;
+
+	/* reference from MNCC or other application */
+	u_int32_t callref;
+
+	union {
+		struct {
+
+			/* current call state */
+			int state;
+
+			/* current timer and message queue */
+			int Tcurrent;		/* current CC timer */
+			int T308_second;	/* used to send release again */
+			struct timer_list timer;
+			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
+		} cc;
+		struct {
+			enum gsm411_cp_state cp_state;
+			enum gsm411_rp_state rp_state;
+
+			struct timer_list timer;
+		} sms;
+	};
+};
+
+
 
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
 				   u_int8_t proto, u_int8_t trans_id);
