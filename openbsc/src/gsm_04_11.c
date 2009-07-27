@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 #include <netinet/in.h>
 
 #include <openbsc/msgb.h>
@@ -42,12 +43,15 @@
 #include <openbsc/signal.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
+#include <openbsc/transaction.h>
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
 
 static void *tall_sms_ctx;
 static void *tall_gsms_ctx;
+
+static u_int32_t new_callref = 0x40000001;
 
 struct msgb *gsm411_msgb_alloc(void)
 {
@@ -66,22 +70,33 @@ static int gsm411_sendmsg(struct msgb *msg)
 }
 
 /* Prefix msg with a 04.08/04.11 CP header */
-static int gsm411_cp_sendmsg(struct msgb *msg, u_int8_t msg_type,
-			     u_int8_t trans_id)
+static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
+			     u_int8_t msg_type)
 {
 	struct gsm48_hdr *gh;
 
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
 	/* Outgoing needs the highest bit set */
-	gh->proto_discr = GSM48_PDISC_SMS | trans_id<<4 | 0x80;
+	gh->proto_discr = trans->protocol | (trans->transaction_id<<4);
 	gh->msg_type = msg_type;
+
+	/* assign the outgoing lchan */
+	msg->lchan = trans->lchan;
+
+	/* mobile originating */
+	switch (gh->msg_type) {
+	case GSM411_MT_CP_DATA:
+		/* 5.2.3.1.2: enter MO-wait for CP-ack */
+		trans->sms.cp_state = GSM411_CPS_WAIT_CP_ACK;
+		break;
+	}
 
 	return gsm411_sendmsg(msg);
 }
 
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
-static int gsm411_rp_sendmsg(struct msgb *msg, u_int8_t rp_msg_type,
-			     u_int8_t rp_msg_ref, u_int8_t cp_trans_id)
+static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
+			     u_int8_t rp_msg_type, u_int8_t rp_msg_ref)
 {
 	struct gsm411_rp_hdr *rp;
 
@@ -91,9 +106,8 @@ static int gsm411_rp_sendmsg(struct msgb *msg, u_int8_t rp_msg_type,
 	rp->msg_type = rp_msg_type;
 	rp->msg_ref = rp_msg_ref; /* FIXME: Choose randomly */
 
-	return gsm411_cp_sendmsg(msg, GSM411_MT_CP_DATA, cp_trans_id);
+	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_DATA);
 }
-
 
 #if 0
 static u_int8_t gsm0411_tpdu_from_sms(u_int8_t *tpdu, struct sms_deliver *sms)
@@ -178,6 +192,88 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
 	return 0;
 }
 
+static int gsm340_gen_oa(u_int8_t *oa, struct gsm_subscriber *subscr)
+{
+	int len = 0;
+
+}
+
+static u_int8_t bcdify(u_int8_t value)
+{
+	u_int8_t ret;
+
+	ret = value % 10;
+	ret |= (value / 10) << 4;
+
+	return ret;
+}
+
+/* Generate 03.40 TP-SCTS */
+static void gsm340_gen_scts(u_int8_t *scts, time_t time)
+{
+	struct tm *tm = localtime(&time);
+	u_int8_t digit;
+
+	*scts++ = bcdify(tm->tm_year % 100);
+	*scts++ = bcdify(tm->tm_mon);
+	*scts++ = bcdify(tm->tm_mday);
+	*scts++ = bcdify(tm->tm_hour);
+	*scts++ = bcdify(tm->tm_min);
+	*scts++ = bcdify(tm->tm_sec);
+	*scts++ = 0;	/* FIXME: timezone */
+}
+
+static struct msgb *gsm340_gen_tpdu(struct gsm_sms *sms)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+	u_int8_t *smsp;
+	u_int8_t oa[12];	/* max len per 03.40 */
+	u_int8_t oa_len = 0;
+
+	/* generate first octet with masked bits */
+	smsp = msgb_put(msg, 1);
+	*smsp = GSM340_SMS_DELIVER_SC2MS;
+	if (0 /* FIXME: MMS */)
+		*smsp |= 0x04;
+	/* two bits empty */
+	if (sms->status_rep_req)
+		*smsp |= 0x20;
+#if 0
+	if (sms->header_len)
+		*smsp |= 0x40;
+	if (sms->
+		*smsp |= 0x80;
+#endif
+	
+	/* generate originator address */
+	smsp = msgb_put(msg, oa_len);
+	oa_len = gsm340_gen_oa(&oa, sms->sender);
+	memcpy(smsp, oa, oa_len);
+
+	/* generate TP-PID */
+	smsp = msgb_put(msg, 1);
+	*smsp = sms->protocol_id;
+
+	/* generate TP-DCS */
+	smsp = msgb_put(msg, 1);
+	*smsp = sms->data_coding_scheme;
+
+	/* generate TP-SCTS */
+	smsp = msgb_put(msg, 7);
+	gsm340_gen_scts(smsp, time(NULL));
+#if 0
+	/* generate TP-UDL */
+	smsp = msgb_put(msg, 1);
+	*smsp = ud_len;
+
+	/* generate TP-UD */
+	smsp = msgb_put(msg, ud_len);
+	memcpy(smsp, FIXME, ud_len);
+#endif
+
+	return msg;
+}
+
 /* process an incoming TPDU (called from RP-DATA) 
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
 static int gsm340_rx_tpdu(struct msgb *msg)
@@ -214,9 +310,9 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	sms->mti = *smsp & 0x03;
 	sms->mms = !!(*smsp & 0x04);
 	sms->vpf = (*smsp & 0x18) >> 3;
-	sms->srr = !!(*smsp & 0x20);
-	sms->udhi= !!(*smsp & 0x40);
-	sms->rp  = !!(*smsp & 0x80);
+	sms->srr = (*smsp & 0x20);
+	sms->udhi= (*smsp & 0x40);
+	sms->rp  = (*smsp & 0x80);
 
 	smsp++;
 	sms->msg_ref = *smsp++;
@@ -298,8 +394,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 		goto out;
 	}
 
-	if (sms->user_data)
+	if (sms->user_data) {
+		gsms->header_len = sms->ud_len;
 		memcpy(gsms->header, sms->user_data, sms->ud_len);
+	}
 
 	if (sms->decoded)
 		strncpy(gsms->text, sms->decoded, sizeof(gsms->text));
@@ -330,40 +428,35 @@ out:
 	return rc;
 }
 
-static int gsm411_send_rp_ack(struct gsm_lchan *lchan, u_int8_t trans_id,
-		u_int8_t msg_ref)
+static int gsm411_send_rp_ack(struct gsm_trans *trans, u_int8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-
-	msg->lchan = lchan;
 
 	DEBUGP(DSMS, "TX: SMS RP ACK\n");
 
-	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_ACK_MT, msg_ref, trans_id);
+	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_ACK_MT, msg_ref);
 }
 
-static int gsm411_send_rp_error(struct gsm_lchan *lchan, u_int8_t trans_id,
-		u_int8_t msg_ref, u_int8_t cause)
+static int gsm411_send_rp_error(struct gsm_trans *trans,
+				u_int8_t msg_ref, u_int8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-
-	msg->lchan = lchan;
 
 	msgb_tv_put(msg, 1, cause);
 
 	DEBUGP(DSMS, "TX: SMS RP ERROR (cause %02d)\n", cause);
 
-	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_ERROR_MT, msg_ref, trans_id);
+	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_ERROR_MT, msg_ref);
 }
 
 /* Receive a 04.11 TPDU inside RP-DATA / user data */
-static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm411_rp_hdr *rph,
+static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
+			  struct gsm411_rp_hdr *rph,
 			  u_int8_t src_len, u_int8_t *src,
 			  u_int8_t dst_len, u_int8_t *dst,
 			  u_int8_t tpdu_len, u_int8_t *tpdu)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t trans_id = gh->proto_discr >> 4;
 	int rc = 0;
 
 	if (src_len && src)
@@ -371,7 +464,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm411_rp_hdr *rph,
 
 	if (!dst_len || !dst || !tpdu_len || !tpdu) {
 		DEBUGP(DSMS, "RP-DATA (MO) without DST or TPDU ?!?\n");
-		gsm411_send_rp_error(msg->lchan, trans_id, rph->msg_ref,
+		gsm411_send_rp_error(trans, rph->msg_ref,
 				     GSM411_RP_CAUSE_INV_MAND_INF);
 		return -EIO;
 	}
@@ -381,15 +474,16 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm411_rp_hdr *rph,
 
 	rc = gsm340_rx_tpdu(msg);
 	if (rc == 0)
-		return gsm411_send_rp_ack(msg->lchan, trans_id, rph->msg_ref);
+		return gsm411_send_rp_ack(trans, rph->msg_ref);
 	else if (rc > 0)
-		return gsm411_send_rp_error(msg->lchan, trans_id, rph->msg_ref, rc);
+		return gsm411_send_rp_error(trans, rph->msg_ref, rc);
 	else
 		return rc;
 }
 
 /* Receive a 04.11 RP-DATA message in accordance with Section 7.3.1.2 */
-static int gsm411_rx_rp_data(struct msgb *msg, struct gsm411_rp_hdr *rph)
+static int gsm411_rx_rp_data(struct msgb *msg, struct gsm_trans *trans,
+			     struct gsm411_rp_hdr *rph)
 {
 	u_int8_t src_len, dst_len, rpud_len;
 	u_int8_t *src = NULL, *dst = NULL , *rp_ud = NULL;
@@ -409,12 +503,13 @@ static int gsm411_rx_rp_data(struct msgb *msg, struct gsm411_rp_hdr *rph)
 
 	DEBUGP(DSMS, "RX_RP-DATA: src_len=%u, dst_len=%u ud_len=%u\n",
 		src_len, dst_len, rpud_len);
-	return gsm411_rx_rp_ud(msg, rph, src_len, src, dst_len, dst,
+	return gsm411_rx_rp_ud(msg, trans, rph, src_len, src, dst_len, dst,
 				rpud_len, rp_ud);
 }
 
 
-static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm411_rp_hdr *rph)
+static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
+			    struct gsm411_rp_hdr *rph)
 {
 	/* Acnkowledgement to MT RP_DATA, i.e. the MS confirms it
 	 * successfully received a SMS.  We can now safely mark it as
@@ -425,25 +520,41 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm411_rp_hdr *rph)
 
 }
 
-static int gsm411_rx_rp_error(struct msgb *msg, struct gsm411_rp_hdr *rph)
+static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
+			      struct gsm411_rp_hdr *rph)
 {
+	u_int8_t cause_len = rph->data[0];
+	u_int8_t cause = rph->data[1];
+
 	/* Error in response to MT RP_DATA, i.e. the MS did not
 	 * successfully receive the SMS.  We need to investigate
 	 * the cause and take action depending on it */
 
+	DEBUGP(DSMS, "RX SMS RP-ERROR Cause=0x%02x\n", cause);
+
 	/* we need to look-up the transaction based on rph->msg_ref to
 	 * identify which particular RP_DATA/SMS-submit failed */
 
+	return 0;
 }
 
-static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm411_rp_hdr *rph)
+static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
+			     struct gsm411_rp_hdr *rph)
 {
+	int rc;
+
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
+
+	rc = gsm411_send_rp_ack(trans, rph->msg_ref);
+	trans->sms.rp_state = GSM411_RPS_IDLE;
+
+	return rc;
 }
 
-static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh)
+static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh,
+			     struct gsm_trans *trans)
 {
 	struct gsm411_rp_hdr *rp_data = (struct gsm411_rp_hdr*)&gh->data;
 	u_int8_t msg_type =  rp_data->msg_type & 0x07;
@@ -451,50 +562,128 @@ static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh)
 
 	switch (msg_type) {
 	case GSM411_MT_RP_DATA_MO:
-		DEBUGP(DSMS, "SMS RP-DATA (MO)\n");
-		rc = gsm411_rx_rp_data(msg, rp_data);
+		DEBUGP(DSMS, "RX SMS RP-DATA (MO)\n");
+		/* start TR2N and enter 'wait to send RP-ACK state' */
+		trans->sms.rp_state = GSM411_RPS_WAIT_TO_TX_RP_ACK;
+		rc = gsm411_rx_rp_data(msg, trans, rp_data);
 		break;
 	case GSM411_MT_RP_ACK_MO:
-		rc = gsm411_rx_rp_ack(msg, rp_data);
-		break;
-	case GSM411_MT_RP_ERROR_MO:
-		rc = gsm411_rx_rp_error(msg, rp_data);
+		DEBUGP(DSMS,"RX SMS RP-ACK (MO)\n");
+		rc = gsm411_rx_rp_ack(msg, trans, rp_data);
 		break;
 	case GSM411_MT_RP_SMMA_MO:
-		rc = gsm411_rx_rp_smma(msg, rp_data);
-		DEBUGP(DSMS, "Unimplemented RP type 0x%02x\n", msg_type);
+		DEBUGP(DSMS, "RX SMS RP-SMMA\n");
+		/* start TR2N and enter 'wait to send RP-ACK state' */
+		trans->sms.rp_state = GSM411_RPS_WAIT_TO_TX_RP_ACK;
+		rc = gsm411_rx_rp_smma(msg, trans, rp_data);
+		break;
+	case GSM411_MT_RP_ERROR_MO:
+		rc = gsm411_rx_rp_error(msg, trans, rp_data);
 		break;
 	default:
-		/* FIXME: send GSM411_CP_CAUSE_MSGTYPE_NOTEXIST */
 		DEBUGP(DSMS, "Invalid RP type 0x%02x\n", msg_type);
+		rc = gsm411_send_rp_error(trans, rp_data->msg_ref,
+					  GSM411_RP_CAUSE_MSGTYPE_NOTEXIST);
 		break;
 	}
 
 	return rc;
 }
 
+/* send CP-ACK to given transaction */
+static int gsm411_tx_cp_ack(struct gsm_trans *trans)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+
+	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ACK);
+}
+
+static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
+{
+	struct msgb *msg = gsm411_msgb_alloc();
+	u_int8_t *causep;
+
+	cause = msgb_put(msg, 1);
+	*causep = cause;
+
+	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ERROR);
+}
+
+/* Entry point for incoming GSM48_PDISC_SMS from abis_rsl.c */
 int gsm0411_rcv_sms(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type;
+	u_int8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
+	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_trans *trans;
 	int rc = 0;
+
+	if (!lchan->subscr)
+		return -EIO;
+		/* FIXME: send some error message */
+
+	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
+				 transaction_id);
+	if (!trans) {
+		DEBUGP(DSMS, "Unknown transaction ID %x, "
+			"creating new trans\n", transaction_id);
+		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
+				    transaction_id, new_callref++);
+		if (!trans) {
+			DEBUGP(DSMS, "No memory for trans\n");
+			/* FIXME: send some error message */
+			return -ENOMEM;
+		}
+		trans->sms.cp_state = GSM411_CPS_IDLE;
+		trans->sms.rp_state = GSM411_RPS_IDLE;
+		trans->sms.is_mt = 0;
+
+		trans->lchan = lchan;
+		use_lchan(lchan);
+	}
 
 	switch(msg_type) {
 	case GSM411_MT_CP_DATA:
-		DEBUGP(DSMS, "SMS CP-DATA\n");
-		rc = gsm411_rx_cp_data(msg, gh);
+		DEBUGP(DSMS, "RX SMS CP-DATA\n");
+		if (!trans->sms.is_mt) {
+			/* 5.2.3.1.3: MO state exists when SMC has received
+ 			 * CP-DATA, including sending of the assoc. CP-ACK */
+			trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
+		}
+
+		rc = gsm411_rx_cp_data(msg, gh, trans);
+		/* Send CP-ACK or CP-ERORR in response */
+		if (rc < 0) {
+			rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_NET_FAIL);
+		} else
+			rc = gsm411_tx_cp_ack(trans);
 		break;
 	case GSM411_MT_CP_ACK:
-		DEBUGP(DSMS, "SMS CP-ACK\n");
+		/* previous CP-DATA in this transaction was confirmed */
+		DEBUGP(DSMS, "RX SMS CP-ACK\n");
+		if (!trans->sms.is_mt) {
+			/* 5.2.3.1.3: MO state exists when SMC has received
+ 			 * CP-ACK */
+			trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
+			/* FIXME: we have sont one CP-DATA, which was now
+			 * acknowledged.  Check if we want to transfer more,
+			 * i.e. multi-part message */
+			trans->sms.cp_state = GSM411_CPS_IDLE;
+			trans_free(trans);
+		}
 		break;
 	case GSM411_MT_CP_ERROR:
-		DEBUGP(DSMS, "SMS CP-ERROR, cause 0x%02x\n", gh->data[0]);
+		DEBUGP(DSMS, "RX SMS CP-ERROR, cause 0x%02x\n", gh->data[0]);
+		trans->sms.cp_state = GSM411_CPS_IDLE;
+		trans_free(trans);
 		break;
 	default:
-		DEBUGP(DSMS, "Unimplemented CP msg_type: 0x%02x\n", msg_type);
+		DEBUGP(DSMS, "RX Unimplemented CP msg_type: 0x%02x\n", msg_type);
+		rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_MSGTYPE_NOTEXIST);
+		trans_free(trans);
 		break;
 	}
-
 
 	return rc;
 }
@@ -523,11 +712,14 @@ static u_int8_t tpdu_test[] = {
 int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
+	struct gsm_trans *trans;
 	u_int8_t *data;
 	u_int8_t msg_ref = 42;
 	u_int8_t trans_id = 23;
 
 	msg->lchan = lchan;
+
+	/* FIXME: allocate trans */
 
 	/* Hardcode Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);
@@ -558,5 +750,25 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 
 	DEBUGP(DSMS, "TX: SMS SUBMIT\n");
 
-	return gsm411_rp_sendmsg(msg, GSM411_MT_RP_DATA_MT, msg_ref, trans_id);
+	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
+	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
 }
+
+
+#if 0
+{
+	struct sms_deliver *smsd;
+
+	smsd->mti = GSM340_SMS_DELIVER_SC2MS;
+	smsd->mms = 0;	/* FIXME: determine if there are more */
+	smsd->rp = FIXME;
+	smsd->udhi = FIXME;
+	smsd->sri = 1;
+	smsd->oa = FIXME;
+	smsd->pid = FIXME;
+	smsd->dcs = FIXME;
+	smsd->scts = FIXME;
+	smsd->ud_len = FIXME;
+	smsd->ud = FIXME;
+}	
+#endif

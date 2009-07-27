@@ -77,6 +77,11 @@ static char *create_stmts[] = {
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"sent TIMESTAMP, "
+		"valid_until TIMESTAMP, "
+		"reply_path_req NUMERIC NOT NULL, "
+		"status_rep_req NUMERIC NOT NULL, "
+		"protocol_id NUMERIC NOT NULL, "
+		"data_coding_scheme NUMERIC NOT NULL, "
 		"sender_id NUMERIC NOT NULL, "
 		"receiver_id NUMERIC NOT NULL, "
 		"header BLOB, "
@@ -458,13 +463,18 @@ int db_sms_store(struct gsm_sms *sms)
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
 	dbi_conn_quote_binary_copy(conn, sms->header, sms->header_len,
 				   &q_header);
+	/* FIXME: correct validity period */
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
-		"(created,sender_id,receiver_id,header,text) VALUES "
-		"(datetime('now'),%llu,%llu,%s,%s)",
+		"(created,sender_id,receiver_id,header,text,"
+		 "valid_until,reply_path_req,status_rep_req,"
+		 "protocol_id,data_coding_scheme) VALUES "
+		"(datetime('now'),%llu,%llu,%s,%s,%s,%u,%u,%u,%u)",
 		sms->sender->id,
 		sms->receiver ? sms->receiver->id : 0,
-		q_header, q_text);
+		q_header, q_text, '2222-2-2', sms->reply_path_req,
+		sms->status_rep_req, sms->protocol_id,
+		sms->data_coding_scheme);
 	free(q_text);
 	free(q_header);
 
@@ -481,7 +491,8 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	dbi_result result;
 	long long unsigned int sender_id, receiver_id;
 	struct gsm_sms *sms = malloc(sizeof(*sms));
-	char *text;
+	const char *text;
+	const unsigned char *header;
 	char buf[32];
 
 	if (!sms) {
@@ -506,7 +517,16 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	sprintf(buf, "%llu", receiver_id);
 	sms->receiver = db_get_subscriber(net, GSM_SUBSCRIBER_ID, buf); 
 
-	/* FIXME: fill header */
+	/* FIXME: validity */
+	sms->reply_path_req = dbi_result_get_uchar(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_uchar(result, "status_rep_req");
+	sms->protocol_id = dbi_result_get_uchar(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_uchar(result,
+						  "data_coding_scheme");
+
+	sms->header_len = dbi_result_get_field_length(result, "header");
+	header = dbi_result_get_binary(result, "header");
+	memcpy(sms->header, header, sms->header_len);
 
 	text = dbi_result_get_string(result, "text");
 	if (text)

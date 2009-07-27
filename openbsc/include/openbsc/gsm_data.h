@@ -351,6 +351,11 @@ struct gsm_sms {
 	struct gsm_subscriber *receiver;
 
 	unsigned long validity_minutes;
+	unsigned char reply_path_req;
+	unsigned char status_rep_req;
+	unsigned char protocol_id;
+	unsigned char data_coding_scheme;
+
 	unsigned int header_len;
 	unsigned char header[SMS_HDR_SIZE];
 	char text[SMS_TEXT_SIZE];

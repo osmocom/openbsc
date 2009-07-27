@@ -3,6 +3,21 @@
 
 /* GSM TS 04.11  definitions */
 
+/* Chapter 5.2.3: SMC-CS states at the network side */
+enum gsm411_cp_state {
+	GSM411_CPS_IDLE 		= 0,
+	GSM411_CPS_MM_CONN_PENDING	= 1,	/* only MT ! */
+	GSM411_CPS_WAIT_CP_ACK		= 2,
+	GSM411_CPS_MM_ESTABLISHED	= 3,
+};
+
+/* Chapter 6.2.2: SMR states at the network side */
+enum gsm411_rp_state {
+	GSM411_RPS_IDLE			= 0,
+	GSM411_RPS_WAIT_FOR_RP_ACK	= 1,
+	GSM411_RPS_WAIT_TO_TX_RP_ACK	= 3,
+};
+
 /* Chapter 8.1.2 (refers to GSM 04.07 Chapter 11.2.3.1.1 */
 #define GSM411_PDISC_SMS	0x09
 
@@ -72,6 +87,11 @@ enum gsm411_rp_cause {
 	GSM411_RP_CAUSE_IE_NOTEXIST		= 99,
 	GSM411_RP_CAUSE_PROTOCOL_ERR		= 111,
 };
+
+/* Chapter 10: Timers */
+#define GSM411_TMR_TR1M		40	/* 35 < x < 45 seconds */
+#define GSM411_TMR_TRAM		30	/* 25 < x < 35 seconds */
+#define GSM411_TMR_TR2M		15	/* 12 < x < 20 seconds */
 
 /* Chapter 8.2.1 */
 struct gsm411_rp_hdr {
@@ -183,7 +203,6 @@ struct sms_submit {
 #define GSM338_DCS_1111_CLASS1_ME	1
 #define GSM338_DCS_1111_CLASS2_SIM	2
 #define GSM338_DCS_1111_CLASS3_TE	3	/* See TS 07.05 */
-
 
 /* SMS deliver PDU */
 struct sms_deliver {

@@ -39,6 +39,7 @@ struct gsm_trans {
 			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
 		} cc;
 		struct {
+			int is_mt;	/* is this a MO (0) or MT (1) transfer */
 			enum gsm411_cp_state cp_state;
 			enum gsm411_rp_state rp_state;
 
