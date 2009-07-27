@@ -39,9 +39,6 @@ int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data)
 {
 	struct signal_handler *sig_data;
 
-	if (!tall_sigh_ctx)
-		tall_sigh_ctx = talloc_named_const(NULL, 1, "signal_handler");
-
 	sig_data = talloc(tall_sigh_ctx, struct signal_handler);
 	if (!sig_data)
 		return -ENOMEM;
@@ -83,4 +80,9 @@ void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data
 			continue;
 		(*handler->cbfn)(subsys, signal, handler->data, signal_data);
 	}
+}
+
+static __attribute__((constructor)) void on_dso_load_signal(void)
+{
+	tall_sigh_ctx = talloc_named_const(NULL, 1, "signal_handler");
 }
