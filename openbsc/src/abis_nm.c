@@ -2056,10 +2056,6 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	FILE *swl;
 	int rc = 0;
 
-	if (!tall_fle_ctx)
-		tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
-						  "bs11_file_list_entry");
-
 	swl = fopen(bs11_sw->swl_fname, "r");
 	if (!swl)
 		return -ENODEV;
@@ -2372,4 +2368,11 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 int abis_nm_ipaccess_restart(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+}
+
+
+static __attribute__((constructor)) void on_dso_load_abis_nm(void)
+{
+	tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
+					  "bs11_file_list_entry");
 }

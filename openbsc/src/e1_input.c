@@ -370,10 +370,6 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	if (ts->type != E1INP_TS_TYPE_SIGN)
 		return NULL;
 
-	if (!tall_sigl_ctx)
-		tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						   "e1inp_sign_link");
-
 	link = talloc_zero(tall_sigl_ctx, struct e1inp_sign_link);
 	if (!link)
 		return NULL;
@@ -504,4 +500,10 @@ int e1inp_line_register(struct e1inp_line *line)
 	llist_add_tail(&line->list, &e1inp_line_list);
 	
 	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_e1_inp(void)
+{
+	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					   "e1inp_sign_link");
 }

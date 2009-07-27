@@ -286,18 +286,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	if (!tall_sms_ctx)
-		tall_sms_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						  "sms_submit");
-
 	sms = talloc(tall_sms_ctx, struct sms_submit);
 	if (!sms)
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	memset(sms, 0, sizeof(*sms));
-
-	if (!tall_gsms_ctx)
-		tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						   "sms");
 
 	gsms = talloc(tall_gsms_ctx, struct gsm_sms);
 	if (!gsms) {
@@ -772,3 +764,9 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	smsd->ud = FIXME;
 }	
 #endif
+
+static __attribute__((constructor)) void on_dso_load_sms(void)
+{
+	tall_sms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms_submit");
+	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms");
+}

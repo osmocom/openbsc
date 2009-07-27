@@ -33,9 +33,6 @@ struct msgb *msgb_alloc(u_int16_t size, const char *name)
 {
 	struct msgb *msg;
 
-	if (!tall_msgb_ctx)
-		tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");
-
 	msg = _talloc_zero(tall_msgb_ctx, sizeof(*msg) + size, name);
 
 	if (!msg)
@@ -75,4 +72,9 @@ struct msgb *msgb_dequeue(struct llist_head *queue)
 	llist_del(lh);
 	
 	return llist_entry(lh, struct msgb, list);
+}
+
+static __attribute__((constructor)) void on_dso_load_trau_msgb(void)
+{
+	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");
 }

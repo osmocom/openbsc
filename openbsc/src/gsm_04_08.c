@@ -350,9 +350,6 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	use_lchan(lchan);
 	release_loc_updating_req(lchan);
 
-	if (!tall_locop_ctx)
-		tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						    "loc_updating_oper");
 	lchan->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
 }
@@ -408,6 +405,8 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
+	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					    "loc_updating_oper");
 	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
 }
 

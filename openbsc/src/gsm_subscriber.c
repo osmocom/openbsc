@@ -103,10 +103,6 @@ struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;
 
-	if (!tall_subscr_ctx)
-		tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						     "subscriber");
-
 	s = talloc(tall_subscr_ctx, struct gsm_subscriber);
 	if (!s)
 		return NULL;
@@ -212,10 +208,6 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 {
 	struct subscr_request *request;
 
-	if (!tall_sub_req_ctx)
-		tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						      "subscr_request");
-
 	request = talloc(tall_sub_req_ctx, struct subscr_request);
 	if (!request) {
 		if (cbfn)
@@ -272,3 +264,11 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 		subscr_send_paging_request(lchan->subscr);
 }
 
+
+static __attribute__((constructor)) void on_dso_load_subscr(void)
+{
+	tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1, "subscriber");
+
+	tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						      "subscr_request");
+}
