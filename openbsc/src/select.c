@@ -25,6 +25,7 @@
 
 static int maxfd = 0;
 static LLIST_HEAD(bsc_fds);
+static int unregistered_count;
 
 int bsc_register_fd(struct bsc_fd *fd)
 {
@@ -50,6 +51,7 @@ int bsc_register_fd(struct bsc_fd *fd)
 
 void bsc_unregister_fd(struct bsc_fd *fd)
 {
+	unregistered_count++;
 	llist_del(&fd->list);
 }
 
@@ -86,6 +88,8 @@ int bsc_select_main(int polling)
 	bsc_update_timers();
 
 	/* call registered callback functions */
+restart:
+	unregistered_count = 0;
 	llist_for_each_entry_safe(ufd, tmp, &bsc_fds, list) {
 		int flags = 0;
 
@@ -102,6 +106,11 @@ int bsc_select_main(int polling)
 			work = 1;
 			ufd->cb(ufd, flags);
 		}
+		/* ugly, ugly hack. If more than one filedescriptors were
+		 * unregistered, they might have been consecutive and
+		 * llist_for_each_entry_safe() is no longer safe */
+		if (unregistered_count > 1)
+			goto restart;
 	}
 	return work;
 }

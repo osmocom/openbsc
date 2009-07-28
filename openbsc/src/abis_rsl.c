@@ -314,18 +314,55 @@ static void pad_macblock(u_int8_t *out, const u_int8_t *in, int len)
 		memset(out+len, 0x2b, MACBLOCK_SIZE-len);
 }
 
-static void print_rsl_cause(u_int8_t *cause_tlv)
+static const char *rsl_err_vals[0xff] = {
+	[RSL_ERR_RADIO_IF_FAIL] =	"Radio Interface Failure",
+	[RSL_ERR_RADIO_LINK_FAIL] =	"Radio Link Failure",
+	[RSL_ERR_HANDOVER_ACC_FAIL] =	"Handover Access Failure",
+	[RSL_ERR_TALKER_ACC_FAIL] =	"Talker Access Failure",
+	[RSL_ERR_OM_INTERVENTION] =	"O&M Intervention",
+	[RSL_ERR_NORMAL_UNSPEC] =	"Normal event, unspecified",
+	[RSL_ERR_EQUIPMENT_FAIL] =	"Equipment Failure",
+	[RSL_ERR_RR_UNAVAIL] =		"Radio Resource not available",
+	[RSL_ERR_TERR_CH_FAIL] =	"Terrestrial Channel Failure",
+	[RSL_ERR_CCCH_OVERLOAD] =	"CCCH Overload",
+	[RSL_ERR_ACCH_OVERLOAD] =	"ACCH Overload",
+	[RSL_ERR_PROCESSOR_OVERLOAD] =	"Processor Overload",
+	[RSL_ERR_RES_UNAVAIL] =		"Resource not available, unspecified",
+	[RSL_ERR_TRANSC_UNAVAIL] =	"Transcoding not available",
+	[RSL_ERR_SERV_OPT_UNAVAIL] =	"Service or Option not available",
+	[RSL_ERR_ENCR_UNIMPL] =		"Encryption algorithm not implemented",
+	[RSL_ERR_SERV_OPT_UNIMPL] =	"Service or Option not implemented",
+	[RSL_ERR_RCH_ALR_ACTV_ALLOC] =	"Radio channel already activated",
+	[RSL_ERR_INVALID_MESSAGE] =	"Invalid Message, unspecified",
+	[RSL_ERR_MSG_DISCR] =		"Message Discriminator Error",
+	[RSL_ERR_MSG_TYPE] =		"Message Type Error",
+	[RSL_ERR_MSG_SEQ] =		"Message Sequence Error",
+	[RSL_ERR_IE_ERROR] =		"General IE error",
+	[RSL_ERR_MAND_IE_ERROR] =	"Mandatory IE error",
+	[RSL_ERR_OPT_IE_ERROR] =	"Optional IE error",
+	[RSL_ERR_IE_NONEXIST] =		"IE non-existent",
+	[RSL_ERR_IE_LENGTH] =		"IE length error",
+	[RSL_ERR_IE_CONTENT] =		"IE content error",
+	[RSL_ERR_PROTO] =		"Protocol error, unspecified",
+	[RSL_ERR_INTERWORKING] =	"Interworking error, unspecified",
+};
+
+static const char *rsl_err_name(u_int8_t err)
 {
-	u_int8_t cause_len;
+	if (rsl_err_vals[err])
+		return rsl_err_vals[err];
+	else
+		return "unknown";
+}
+
+static void print_rsl_cause(const u_int8_t *cause_v, u_int8_t cause_len)
+{
 	int i;
 
-	if (cause_tlv[0] != RSL_IE_CAUSE)
-		return;
-
-	cause_len = cause_tlv[1];
-	DEBUGPC(DRSL, "CAUSE: ");
-	for (i = 0; i < cause_len; i++) 
-		DEBUGPC(DRSL, "%02x ", cause_tlv[2+i]);
+	DEBUGPC(DRSL, "CAUSE=0x%02x(%s) ",
+		cause_v[0], rsl_err_name(cause_v[0]));
+	for (i = 1; i < cause_len-1; i++) 
+		DEBUGPC(DRSL, "%02x ", cause_v[i]);
 }
 
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
@@ -652,6 +689,25 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Chapter 8.4.5 */
+int rsl_deact_sacch(struct gsm_lchan *lchan)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_DEACTIVATE_SACCH);
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	msg->lchan = lchan;
+	msg->trx = lchan->ts->trx;
+
+	DEBUGP(DRSL, "DEACTivate SACCH CMD channel=%s chan_nr=0x%02x\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 9.1.7 of 04.08 */
 int rsl_chan_release(struct gsm_lchan *lchan)
 {
@@ -798,8 +854,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
-		DEBUGPC(DRSL, "CAUSE=0x%02x ", *TLVP_VAL(&tp, RSL_IE_CAUSE));
-	
+		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+				TLVP_LEN(&tp, RSL_IE_CAUSE));
+
 	return 0;
 }
 
@@ -810,9 +867,12 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	DEBUGPC(DRSL, "CONNECTION FAIL: ");
-	print_rsl_cause(dh->data);
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
+		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
 	if (msg->trx->bts->type == GSM_BTS_TYPE_BS11) {
 		/* FIXME: we have no idea what cause 0x18 is !!! */
@@ -935,9 +995,16 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 static int rsl_rx_error_rep(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
+	struct tlv_parsed tp;
 
 	DEBUGP(DRSL, "ERROR REPORT ");
-	print_rsl_cause(rslh->data);
+
+	rsl_tlv_parse(&tp, rslh->data, msgb_l2len(msg)-sizeof(*rslh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
+		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+				TLVP_LEN(&tp, RSL_IE_CAUSE));
+
 	DEBUGPC(DRSL, "\n");
 
 	return 0;
@@ -1025,7 +1092,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.chan_desc.h0.h = 0;
 	ia.chan_desc.h0.arfcn_high = arfcn >> 8;
 	ia.chan_desc.h0.arfcn_low = arfcn & 0xff;
-	ia.chan_desc.h0.tsc = 7;
+	ia.chan_desc.h0.tsc = bts->tsc;
 	/* use request reference extracted from CHAN_RQD */
 	memcpy(&ia.req_ref, rqd_ref, sizeof(ia.req_ref));
 	ia.timing_advance = rqd_ta;
@@ -1175,16 +1242,44 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	return rc;
 }
 
+static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
+{
+#if 0
+	switch (tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		return 0x00;
+	case GSM48_CMODE_SPEECH_EFR:
+		return 0x01;
+	case GSM48_CMODE_SPEECH_AMR:
+		return 0x02;
+	/* FIXME: Type1 half-rate and type3 half-rate */
+	}
+	return 0;
+#else
+	/* hard-code EFR for now, since tch_mode is not correct at this
+	 * point in time */
+	return 0x01;
+#endif
+}
+
 /* ip.access specific RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t speech_mode_s;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
+
+	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	/* 0x1- == receive-only, 0x-1 == EFR codec */
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x10 | speech_mode_s);
+
+	DEBUGPC(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1197,11 +1292,19 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
 	u_int8_t *att_f8, *att_ip, *att_port;
+	u_int8_t speech_mode_s;
+	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_CONNECT);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
+
+	ia.s_addr = htonl(ip);
+	DEBUGP(DRSL, "IPAC_CONNECT channel=%s chan_nr=0x%02x "
+		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr,
+		inet_ntoa(ia), port, rtp_payload2, conn_id);
 
 	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
 	att_f8[0] = RSL_IE_IPAC_CONN_ID;
@@ -1221,8 +1324,12 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	att_port[1] = port >> 8;
 	att_port[2] = port & 0xff;
 
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 1);	/* F4 01 */
-	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2); /* FC 7F */
+	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	/* 0x0- == both directions, 0x-1 == EFR codec */
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x00 | speech_mode_s);
+	if (rtp_payload2)
+		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
+	
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -1243,7 +1350,6 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
-	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_CONN_ID)) {
 		DEBUGPC(DRSL, "mandatory IE missing");
 		return -EINVAL;
@@ -1252,15 +1358,20 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
 	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
 
-	DEBUGPC(DRSL, "IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d",
-		inet_ntoa(ip), ntohs(port), *TLVP_VAL(&tv, 0xfc),
-		ntohs(attr_f8));
+	DEBUGPC(DRSL, "IP=%s PORT=%d CONN_ID=%d ",
+		inet_ntoa(ip), ntohs(port), ntohs(attr_f8));
+
+	if (TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
+		ts->abis_ip.rtp_payload2 = 
+				*TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
+		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
+			ts->abis_ip.rtp_payload2);
+	}
 
 	/* update our local information about this TS */
 	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
 	ts->abis_ip.bound_port = ntohs(port);
 	ts->abis_ip.conn_id = ntohs(attr_f8);
-	ts->abis_ip.rtp_payload2 = *TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_BIND_ACK, msg->lchan);
 
@@ -1273,12 +1384,12 @@ static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
 	struct tlv_parsed tv;
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
-	if (!TLVP_PRESENT(&tv, RSL_IE_CAUSE)) {
-		DEBUGPC(DRSL, "mandatory IE missing! ");
-		return -EINVAL;
-	}
 
-	DEBUGPC(DRSL, "cause=0x%02x ", *TLVP_VAL(&tv, RSL_IE_CAUSE));
+	if (TLVP_PRESENT(&tv, RSL_IE_CAUSE))
+		print_rsl_cause(TLVP_VAL(&tv, RSL_IE_CAUSE),
+				TLVP_LEN(&tv, RSL_IE_CAUSE));
+
+	dispatch_signal(SS_ABISIP, S_ABISIP_DISC_IND, msg->lchan);
 
 	return 0;
 }

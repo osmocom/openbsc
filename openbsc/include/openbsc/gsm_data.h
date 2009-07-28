@@ -98,35 +98,43 @@ struct gsm_bts_link {
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
+struct rtp_socket;
 
 /* One transaction */
 struct gsm_trans {
 	/* Entry in list of all transactions */
 	struct llist_head entry;
 
-	/* Network */
-	struct gsm_network *network;
+	/* The protocol within which we live */
+	u_int8_t protocol;
 
 	/* The current transaction ID */
 	u_int8_t transaction_id;
 	
-	/* The LCHAN that we're part of */
-	struct gsm_lchan *lchan;
-
-	/* To whom we are allocated at the moment */
+	/* To whom we belong, unique identifier of remote MM entity */
 	struct gsm_subscriber *subscr;
 
-	/* reference */
+	/* The LCHAN that we're currently using to transmit messages */
+	struct gsm_lchan *lchan;
+
+	/* reference from MNCC or other application */
 	u_int32_t callref;
 
-	/* current call state */
-	int state;
+	union {
+		struct {
 
-	/* current timer and message queue */
-	int Tcurrent;			/* current CC timer */
-	int T308_second;		/* used to send release again */
-        struct timer_list cc_timer;
-	struct gsm_mncc cc_msg;		/* stores setup/disconnect/release message */
+			/* current call state */
+			int state;
+
+			/* current timer and message queue */
+			int Tcurrent;		/* current CC timer */
+			int T308_second;	/* used to send release again */
+			struct timer_list timer;
+			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
+		} cc;
+		struct {
+		} sms;
+	};
 };
 
 
@@ -207,6 +215,7 @@ struct gsm_bts_trx_ts {
 		u_int16_t bound_port;
 		u_int8_t rtp_payload2;
 		u_int16_t conn_id;
+		struct rtp_socket *rtp_socket;
 	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];

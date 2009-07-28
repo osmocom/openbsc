@@ -589,7 +589,7 @@ DEFUN(cfg_subscr,
 	const char *imsi = argv[0];
 	struct gsm_subscriber *subscr;
 
-	subscr = subscr_get_by_imsi(imsi);
+	subscr = subscr_get_by_imsi(gsmnet, imsi);
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber for IMSI %s%s",
 			imsi, VTY_NEWLINE);
@@ -855,7 +855,7 @@ DEFUN(show_subscr,
 
 	if (argc >= 1) {
 		imsi = argv[0];
-		subscr = subscr_get_by_imsi(imsi);
+		subscr = subscr_get_by_imsi(gsmnet, imsi);
 		if (!subscr) {
 			vty_out(vty, "%% unknown subscriber%s",
 				VTY_NEWLINE);

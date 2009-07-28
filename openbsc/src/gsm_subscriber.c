@@ -103,10 +103,6 @@ struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;
 
-	if (!tall_subscr_ctx)
-		tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						     "subscriber");
-
 	s = talloc(tall_subscr_ctx, struct gsm_subscriber);
 	if (!s)
 		return NULL;
@@ -126,7 +122,8 @@ static void subscr_free(struct gsm_subscriber *subscr)
 	talloc_free(subscr);
 }
 
-struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
+struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
+					  const char *tmsi)
 {
 	struct gsm_subscriber *subscr;
 
@@ -136,10 +133,11 @@ struct gsm_subscriber *subscr_get_by_tmsi(const char *tmsi)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_TMSI, tmsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi);
 }
 
-struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
+struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
+					  const char *imsi)
 {
 	struct gsm_subscriber *subscr;
 
@@ -148,10 +146,11 @@ struct gsm_subscriber *subscr_get_by_imsi(const char *imsi)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
 }
 
-struct gsm_subscriber *subscr_get_by_extension(const char *ext)
+struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
+					       const char *ext)
 {
 	struct gsm_subscriber *subscr;
 
@@ -160,7 +159,7 @@ struct gsm_subscriber *subscr_get_by_extension(const char *ext)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(GSM_SUBSCRIBER_EXTENSION, ext);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
@@ -168,6 +167,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
+		s->net = bts->network;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
 		break;
@@ -208,10 +208,6 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 			gsm_cbfn *cbfn, void *param)
 {
 	struct subscr_request *request;
-
-	if (!tall_sub_req_ctx)
-		tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						      "subscr_request");
 
 	request = talloc(tall_sub_req_ctx, struct subscr_request);
 	if (!request) {
@@ -269,3 +265,11 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 		subscr_send_paging_request(lchan->subscr);
 }
 
+
+static __attribute__((constructor)) void on_dso_load_subscr(void)
+{
+	tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1, "subscriber");
+
+	tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
+						      "subscr_request");
+}

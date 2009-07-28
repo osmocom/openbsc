@@ -154,6 +154,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct sms_submit *sms,
 /* process an incoming TPDU (called from RP-DATA) */
 static int gsm340_rx_tpdu(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	u_int8_t *smsp = msgb_sms(msg);
 	struct sms_submit *sms;
 	struct gsm_sms *gsms;
@@ -161,18 +162,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	if (!tall_sms_ctx)
-		tall_sms_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						  "sms_submit");
-
 	sms = talloc(tall_sms_ctx, struct sms_submit);
 	if (!sms)
 		return -ENOMEM;
 	memset(sms, 0, sizeof(*sms));
-
-	if (!tall_gsms_ctx)
-		tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						   "sms");
 
 	gsms = talloc(tall_gsms_ctx, struct gsm_sms);
 	if (!gsms) {
@@ -257,7 +250,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	/* FIXME: sender refcount */
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(sms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(bts->network, sms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
 		goto out;
@@ -511,4 +504,10 @@ int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms)
 	DEBUGP(DSMS, "TX: SMS SUBMIT\n");
 
 	return gsm0411_sendmsg(msg);
+}
+
+static __attribute__((constructor)) void on_dso_load_sms(void)
+{
+	tall_sms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms_submit");
+	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms");
 }

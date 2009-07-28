@@ -158,12 +158,13 @@ int db_fini() {
 	return 0;
 }
 
-struct gsm_subscriber* db_create_subscriber(char *imsi) {
+struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
+{
 	dbi_result result;
 	struct gsm_subscriber* subscr;
 
 	/* Is this subscriber known in the db? */
-	subscr = db_get_subscriber(GSM_SUBSCRIBER_IMSI, imsi); 
+	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi); 
 	if (subscr) {
 		result = dbi_conn_queryf(conn,
                          "UPDATE Subscriber set updated = datetime('now') "
@@ -189,6 +190,7 @@ struct gsm_subscriber* db_create_subscriber(char *imsi) {
 	if (result==NULL) {
 		printf("DB: Failed to create Subscriber by IMSI.\n");
 	}
+	subscr->net = net;
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
@@ -196,7 +198,10 @@ struct gsm_subscriber* db_create_subscriber(char *imsi) {
 	return subscr;
 }
 
-struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const char *id) {
+struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
+					 enum gsm_subscriber_field field,
+					 const char *id)
+{
 	dbi_result result;
 	const char *string;
 	char *quoted;
@@ -246,6 +251,7 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field, const 
 	}
 
 	subscr = subscr_alloc();
+	subscr->net = net;
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 	string = dbi_result_get_string(result, "imsi");
 	if (string)
@@ -459,7 +465,7 @@ int db_sms_store(struct gsm_sms *sms)
 }
 
 /* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(int min_id)
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 {
 	dbi_result result;
 	struct gsm_sms *sms = malloc(sizeof(*sms));
