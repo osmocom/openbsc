@@ -1242,16 +1242,44 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	return rc;
 }
 
+static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
+{
+#if 0
+	switch (tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		return 0x00;
+	case GSM48_CMODE_SPEECH_EFR:
+		return 0x01;
+	case GSM48_CMODE_SPEECH_AMR:
+		return 0x02;
+	/* FIXME: Type1 half-rate and type3 half-rate */
+	}
+	return 0;
+#else
+	/* hard-code EFR for now, since tch_mode is not correct at this
+	 * point in time */
+	return 0x01;
+#endif
+}
+
 /* ip.access specific RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t speech_mode_s;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
+
+	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	/* 0x1- == receive-only, 0x-1 == EFR codec */
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x10 | speech_mode_s);
+
+	DEBUGPC(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1264,11 +1292,19 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
 	u_int8_t *att_f8, *att_ip, *att_port;
+	u_int8_t speech_mode_s;
+	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_CONNECT);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
+
+	ia.s_addr = htonl(ip);
+	DEBUGP(DRSL, "IPAC_CONNECT channel=%s chan_nr=0x%02x "
+		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr,
+		inet_ntoa(ia), port, rtp_payload2, conn_id);
 
 	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
 	att_f8[0] = RSL_IE_IPAC_CONN_ID;
@@ -1288,8 +1324,12 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	att_port[1] = port >> 8;
 	att_port[2] = port & 0xff;
 
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 1);	/* F4 01 */
-	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2); /* FC 7F */
+	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	/* 0x0- == both directions, 0x-1 == EFR codec */
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x00 | speech_mode_s);
+	if (rtp_payload2)
+		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
+	
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -1310,7 +1350,6 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
-	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_CONN_ID)) {
 		DEBUGPC(DRSL, "mandatory IE missing");
 		return -EINVAL;
@@ -1319,15 +1358,20 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
 	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
 
-	DEBUGPC(DRSL, "IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d",
-		inet_ntoa(ip), ntohs(port), *TLVP_VAL(&tv, 0xfc),
-		ntohs(attr_f8));
+	DEBUGPC(DRSL, "IP=%s PORT=%d CONN_ID=%d ",
+		inet_ntoa(ip), ntohs(port), ntohs(attr_f8));
+
+	if (TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
+		ts->abis_ip.rtp_payload2 = 
+				*TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
+		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
+			ts->abis_ip.rtp_payload2);
+	}
 
 	/* update our local information about this TS */
 	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
 	ts->abis_ip.bound_port = ntohs(port);
 	ts->abis_ip.conn_id = ntohs(attr_f8);
-	ts->abis_ip.rtp_payload2 = *TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_BIND_ACK, msg->lchan);
 
