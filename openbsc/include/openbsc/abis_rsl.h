@@ -319,11 +319,14 @@ struct rsl_ie_chan_ident {
 #define RSL_ERRCLS_PROTO_ERROR		0x60
 #define RSL_ERRCLS_INTERWORKING		0x70
 
+/* normal event */
 #define RSL_ERR_RADIO_IF_FAIL		0x00
 #define RSL_ERR_RADIO_LINK_FAIL		0x01
 #define RSL_ERR_HANDOVER_ACC_FAIL	0x02
 #define RSL_ERR_TALKER_ACC_FAIL		0x03
 #define RSL_ERR_OM_INTERVENTION		0x07
+#define RSL_ERR_NORMAL_UNSPEC		0x0f
+/* resource unavailable */
 #define RSL_ERR_EQUIPMENT_FAIL		0x20
 #define RSL_ERR_RR_UNAVAIL		0x21
 #define RSL_ERR_TERR_CH_FAIL		0x22
@@ -331,15 +334,19 @@ struct rsl_ie_chan_ident {
 #define RSL_ERR_ACCH_OVERLOAD		0x24
 #define RSL_ERR_PROCESSOR_OVERLOAD	0x25
 #define RSL_ERR_RES_UNAVAIL		0x2f
+/* service or option not available */
 #define RSL_ERR_TRANSC_UNAVAIL		0x30
 #define RSL_ERR_SERV_OPT_UNAVAIL	0x3f
+/* service or option not implemented */
 #define RSL_ERR_ENCR_UNIMPL		0x40
-#define RSL_ERR_SEV_OPT_UNIMPL		0x4f
+#define RSL_ERR_SERV_OPT_UNIMPL		0x4f
+/* invalid message */
 #define RSL_ERR_RCH_ALR_ACTV_ALLOC	0x50
 #define RSL_ERR_INVALID_MESSAGE		0x5f
+/* protocol error */
 #define RSL_ERR_MSG_DISCR		0x60
 #define RSL_ERR_MSG_TYPE		0x61
-#define RSL_ERR_MSG_SEQA		0x62
+#define RSL_ERR_MSG_SEQ			0x62
 #define RSL_ERR_IE_ERROR		0x63
 #define RSL_ERR_MAND_IE_ERROR		0x64
 #define RSL_ERR_OPT_IE_ERROR		0x65
@@ -347,6 +354,7 @@ struct rsl_ie_chan_ident {
 #define RSL_ERR_IE_LENGTH		0x67
 #define RSL_ERR_IE_CONTENT		0x68
 #define RSL_ERR_PROTO			0x6f
+/* interworking */
 #define RSL_ERR_INTERWORKING		0x7f
 
 /* Chapter 9.3.30 */
@@ -477,6 +485,7 @@ u_int8_t lchan2chan_nr(struct gsm_lchan *lchan);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
+int rsl_deact_sacch(struct gsm_lchan *lchan);
 int rsl_chan_release(struct gsm_lchan *lchan);
 
 /* BCCH related code */

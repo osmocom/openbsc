@@ -312,9 +312,6 @@ int subchan_mux_init(struct subch_mux *mx)
 {
 	int i;
 
-	if (!tall_tqe_ctx)
-		tall_tqe_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						  "subch_txq_entry");
 	memset(mx, 0, sizeof(*mx));
 	for (i = 0; i < NR_SUBCH; i++) {
 		struct mux_subch *sch = &mx->subch[i];
@@ -322,4 +319,10 @@ int subchan_mux_init(struct subch_mux *mx)
 	}
 
 	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_ss_demux(void)
+{
+	tall_tqe_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					  "subch_txq_entry");
 }

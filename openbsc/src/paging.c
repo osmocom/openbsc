@@ -219,9 +219,6 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req;
 
-	if (!tall_paging_ctx)
-		tall_paging_ctx = talloc_named_const(NULL, 1, "paging_request");
-
 	if (paging_pending_request(bts_entry, subscr)) {
 		DEBUGP(DPAG, "Paging request already pending\n");
 		return;
@@ -309,4 +306,9 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
 	bts->paging.available_slots = free_slots;
+}
+
+static __attribute__((constructor)) void on_dso_load_paging(void)
+{
+	tall_paging_ctx = talloc_named_const(NULL, 1, "paging_request");
 }

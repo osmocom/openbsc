@@ -1643,7 +1643,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		msgb_tv_put(msg, NM_ATT_HSN, 0x00);
 		msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
 	}
-	msgb_tv_put(msg, NM_ATT_TSC, 0x07);	/* training sequence */
+	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		msgb_tlv_put(msg, 0x59, 1, &zero);
 
@@ -2056,10 +2056,6 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	FILE *swl;
 	int rc = 0;
 
-	if (!tall_fle_ctx)
-		tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
-						  "bs11_file_list_entry");
-
 	swl = fopen(bs11_sw->swl_fname, "r");
 	if (!swl)
 		return -ENODEV;
@@ -2372,4 +2368,11 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 int abis_nm_ipaccess_restart(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+}
+
+
+static __attribute__((constructor)) void on_dso_load_abis_nm(void)
+{
+	tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 1, 
+					  "bs11_file_list_entry");
 }

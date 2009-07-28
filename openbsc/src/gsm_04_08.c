@@ -45,6 +45,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/talloc.h>
+#include <openbsc/transaction.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -54,7 +55,6 @@
 #define GSM_MAX_USERUSER       128
 
 static void *tall_locop_ctx;
-static void *tall_trans_ctx;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -292,7 +292,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_lchan *lchan);
-void free_trans(struct gsm_trans *trans);
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -351,9 +350,6 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 	use_lchan(lchan);
 	release_loc_updating_req(lchan);
 
-	if (!tall_locop_ctx)
-		tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						    "loc_updating_oper");
 	lchan->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
 }
@@ -392,9 +388,12 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	release_loc_updating_req(lchan);
 
 	/* Free all transactions that are associated with the released lchan */
+	/* FIXME: this is not neccessarily the right thing to do, we should
+	 * only set trans->lchan to NULL and wait for another lchan to be
+	 * established to the same MM entity (phone/subscriber) */
 	llist_for_each_entry_safe(trans, temp, &lchan->ts->trx->bts->network->trans_list, entry) {
 		if (trans->lchan == lchan)
-			free_trans(trans);
+			trans_free(trans);
 	}
 
 	return 0;
@@ -406,6 +405,8 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
+	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					    "loc_updating_oper");
 	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
 }
 
@@ -981,10 +982,18 @@ struct msgb *gsm48_msgb_alloc(void)
 				   "GSM 04.08");
 }
 
-int gsm48_sendmsg(struct msgb *msg)
+int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 {
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
+
+	/* if we get passed a transaction reference, do some common
+	 * work that the caller no longer has to do */
+	if (trans) {
+		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
+		msg->lchan = trans->lchan;
+	}
+
 	if (msg->lchan) {
-		struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
 		msg->trx = msg->lchan->ts->trx;
 
 		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
@@ -1020,7 +1029,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 
 	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
 	
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
@@ -1048,7 +1057,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	ret = gsm48_sendmsg(msg);
+	ret = gsm48_sendmsg(msg, NULL);
 
 	ret = gsm48_tx_mm_info(lchan);
 
@@ -1119,7 +1128,7 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 	gh->msg_type = GSM48_MT_MM_ID_REQ;
 	gh->data[0] = id_type;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 #define MI_SIZE 32
@@ -1129,6 +1138,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_network *net = bts->network;
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[MI_SIZE];
 
@@ -1139,7 +1150,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		if (!lchan->subscr)
-			lchan->subscr = db_create_subscriber(mi_string);
+			lchan->subscr = db_create_subscriber(net, mi_string);
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imsi = 0;
 		break;
@@ -1196,6 +1207,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
 	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	u_int8_t mi_type;
 	char mi_string[MI_SIZE];
 	int rc;
@@ -1230,7 +1242,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI */
-		subscr = db_create_subscriber(mi_string);
+		subscr = db_create_subscriber(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
@@ -1239,7 +1251,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
@@ -1297,7 +1309,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
 	cmm->mode = mode;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 #if 0
@@ -1349,7 +1361,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
 		ptr8 = (u_int8_t *) msgb_put(msg, 3);
-		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[0] = GSM48_IE_NAME_SHORT;
 		ptr8[1] = name_len*2 + 1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
@@ -1377,7 +1389,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		ptr8[7] |= 0x80;
 #endif
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
@@ -1403,7 +1415,7 @@ static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
 	gh->data[0] = value;
 	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 
@@ -1421,6 +1433,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	u_int8_t mi_type;
 	char mi_string[MI_SIZE];
 
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
@@ -1455,7 +1468,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
-	subscr = subscr_get_by_tmsi(mi_string);
+	subscr = subscr_get_by_tmsi(bts->network, mi_string);
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
@@ -1478,6 +1491,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
@@ -1491,10 +1505,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(mi_string);
+		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
@@ -1574,6 +1588,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 /* Receive a PAGING RESPONSE message from the MS */
 static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 {
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t *classmark2_lv = gh->data + 1;
 	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
@@ -1588,10 +1603,10 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		mi_type, mi_string);
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(mi_string);
+		subscr = subscr_get_by_tmsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMSI:
-		subscr = subscr_get_by_imsi(mi_string);
+		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		break;
 	}
 
@@ -1769,7 +1784,11 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 	DEBUGP(DRR, "Sending Channel Release: Chan: Number: %d Type: %d\n",
 		lchan->nr, lchan->type);
 
-	return gsm48_sendmsg(msg);
+	/* Send actual release request to MS */
+	gsm48_sendmsg(msg, NULL);
+
+	/* Deactivate the SACCH on the BTS side */
+	return rsl_deact_sacch(lchan);
 }
 
 /* Call Control */
@@ -1785,9 +1804,9 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 		return;
 
 	DEBUGP(DCC, "new state %s -> %s\n",
-		cc_state_names[trans->state], cc_state_names[state]);
+		cc_state_names[trans->cc.state], cc_state_names[state]);
 
-	trans->state = state;
+	trans->cc.state = state;
 }
 
 static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
@@ -1796,8 +1815,6 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	u_int8_t *cause, *call_state;
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_STATUS;
 
 	cause = msgb_put(msg, 3);
@@ -1808,7 +1825,7 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 	call_state = msgb_put(msg, 1);
 	call_state[0] = 0xc0 | 0x00;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
@@ -1822,15 +1839,15 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, NULL);
 }
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 {
-	if (bsc_timer_pending(&trans->cc_timer)) {
-		DEBUGP(DCC, "stopping pending timer T%x\n", trans->Tcurrent);
-		bsc_del_timer(&trans->cc_timer);
-		trans->Tcurrent = 0;
+	if (bsc_timer_pending(&trans->cc.timer)) {
+		DEBUGP(DCC, "stopping pending timer T%x\n", trans->cc.Tcurrent);
+		bsc_del_timer(&trans->cc.timer);
+		trans->cc.Tcurrent = 0;
 	}
 }
  
@@ -1841,7 +1858,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 
 	if (trans)
 		if (trans->lchan)
-			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 				"Sending '%s' to MNCC.\n",
 				trans->lchan->ts->trx->bts->nr,
 				trans->lchan->ts->trx->nr,
@@ -1879,49 +1896,23 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 	return mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 }
 
-void free_trans(struct gsm_trans *trans)
+/* Call Control Specific transaction release.
+ * gets called by trans_free, DO NOT CALL YOURSELF! */
+void _gsm48_cc_trans_free(struct gsm_trans *trans)
 {
-	struct gsm_bts *bts;
-
 	gsm48_stop_cc_timer(trans);
 
 	/* send release to L4, if callref still exists */
 	if (trans->callref) {
 		/* Ressource unavailable */
-		mncc_release_ind(trans->network, trans, trans->callref,
+		mncc_release_ind(trans->subscr->net, trans, trans->callref,
 				 GSM48_CAUSE_LOC_PRN_S_LU,
 				 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
-		if (trans->state != GSM_CSTATE_NULL)
-			new_cc_state(trans, GSM_CSTATE_NULL);
 	}
-
-	if (!trans->lchan && trans->subscr && trans->subscr->net) {
-		/* Stop paging on all bts' */
-		bts = NULL;
-		do {
-			bts = gsm_bts_by_lac(trans->subscr->net,
-					     trans->subscr->lac, bts);
-			if (!bts)
-				break;
-			/* Stop paging */
-			paging_request_stop(bts, trans->subscr, NULL);
-		} while (1);
-	}
-
-	if (trans->lchan) {
-		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
-		put_lchan(trans->lchan);
-	}
-
-	if (trans->subscr)
-		subscr_put(trans->subscr);
-
-	if (trans->state != GSM_CSTATE_NULL)
+	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
-
-	llist_del(&trans->entry);
-
-	talloc_free(trans);
+	if (trans->lchan)
+		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1962,7 +1953,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 				use_lchan(lchan);
 			}
 			/* send SETUP request to called party */
-			gsm48_cc_tx_setup(transt, &transt->cc_msg);
+			gsm48_cc_tx_setup(transt, &transt->cc.msg);
 			if (is_ipaccess_bts(lchan->ts->trx->bts))
 				rsl_ipacc_bind(lchan);
 			break;
@@ -1970,11 +1961,12 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			DEBUGP(DCC, "Paging subscr %s expired!\n",
 				subscr->extension);
 			/* Temporarily out of order */
-			mncc_release_ind(transt->network, transt, transt->callref,
+			mncc_release_ind(transt->subscr->net, transt,
+					 transt->callref,
 					 GSM48_CAUSE_LOC_PRN_S_LU,
 					 GSM48_CC_CAUSE_DEST_OOO);
 			transt->callref = 0;
-			free_trans(transt);
+			trans_free(transt);
 			break;
 		}
 	}
@@ -2023,21 +2015,11 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	return 0;
 }
 
-static struct gsm_trans *get_trans_ref(struct gsm_network *net, u_int32_t callref)
-{
-	struct gsm_trans *trans;
-	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->callref == callref)
-			return trans;
-	}
-	return NULL;
-}
-
 /* bridge channels of two transactions */
 static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 {
-	struct gsm_trans *trans1 = get_trans_ref(net, refs[0]);
-	struct gsm_trans *trans2 = get_trans_ref(net, refs[1]);
+	struct gsm_trans *trans1 = trans_find_by_callref(net, refs[0]);
+	struct gsm_trans *trans2 = trans_find_by_callref(net, refs[1]);
 
 	if (!trans1 || !trans2)
 		return -EIO;
@@ -2055,7 +2037,7 @@ static int tch_recv(struct gsm_network *net, struct gsm_mncc *data, int enable)
 	struct gsm_trans *trans;
 
 	/* Find callref */
-	trans = get_trans_ref(net, data->callref);
+	trans = trans_find_by_callref(net, data->callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
@@ -2073,7 +2055,7 @@ static int tch_frame(struct gsm_network *net, struct gsm_trau_frame *frame)
 	struct gsm_trans *trans;
 
 	/* Find callref */
-	trans = get_trans_ref(net, frame->callref);
+	trans = trans_find_by_callref(net, frame->callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
@@ -2112,7 +2094,7 @@ static void gsm48_cc_timeout(void *arg)
 	memset(&l4_rel, 0, sizeof(struct gsm_mncc));
 	l4_rel.callref = trans->callref;
 
-	switch(trans->Tcurrent) {
+	switch(trans->cc.Tcurrent) {
 	case 0x303:
 		release = 1;
 		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
@@ -2130,21 +2112,21 @@ static void gsm48_cc_timeout(void *arg)
 		l4_cause = GSM48_CC_CAUSE_USER_NOTRESPOND;
 		break;
 	case 0x308:
-		if (!trans->T308_second) {
+		if (!trans->cc.T308_second) {
 			/* restart T308 a second time */
-			gsm48_cc_tx_release(trans, &trans->cc_msg);
-			trans->T308_second = 1;
+			gsm48_cc_tx_release(trans, &trans->cc.msg);
+			trans->cc.T308_second = 1;
 			break; /* stay in release state */
 		}
-		free_trans(trans);
+		trans_free(trans);
 		return;
 //		release = 1;
 //		l4_cause = 14;
 //		break;
 	case 0x306:
 		release = 1;
-		mo_cause = trans->cc_msg.cause.value;
-		mo_location = trans->cc_msg.cause.location;
+		mo_cause = trans->cc.msg.cause.value;
+		mo_location = trans->cc.msg.cause.location;
 		break;
 	case 0x323:
 		disconnect = 1;
@@ -2155,7 +2137,7 @@ static void gsm48_cc_timeout(void *arg)
 
 	if (release && trans->callref) {
 		/* process release towards layer 4 */
-		mncc_release_ind(trans->network, trans, trans->callref,
+		mncc_release_ind(trans->subscr->net, trans, trans->callref,
 				 l4_location, l4_cause);
 		trans->callref = 0;
 	}
@@ -2163,15 +2145,15 @@ static void gsm48_cc_timeout(void *arg)
 	if (disconnect && trans->callref) {
 		/* process disconnect towards layer 4 */
 		mncc_set_cause(&l4_rel, l4_location, l4_cause);
-		mncc_recvmsg(trans->network, trans, MNCC_DISC_IND, &l4_rel);
+		mncc_recvmsg(trans->subscr->net, trans, MNCC_DISC_IND, &l4_rel);
 	}
 
 	/* process disconnect towards mobile station */
 	if (disconnect || release) {
 		mncc_set_cause(&mo_rel, mo_location, mo_cause);
-		mo_rel.cause.diag[0] = ((trans->Tcurrent & 0xf00) >> 8) + '0';
-		mo_rel.cause.diag[1] = ((trans->Tcurrent & 0x0f0) >> 4) + '0';
-		mo_rel.cause.diag[2] = (trans->Tcurrent & 0x00f) + '0';
+		mo_rel.cause.diag[0] = ((trans->cc.Tcurrent & 0xf00) >> 8) + '0';
+		mo_rel.cause.diag[1] = ((trans->cc.Tcurrent & 0x0f0) >> 4) + '0';
+		mo_rel.cause.diag[2] = (trans->cc.Tcurrent & 0x00f) + '0';
 		mo_rel.cause.diag_len = 3;
 
 		if (disconnect)
@@ -2186,10 +2168,10 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 				 int sec, int micro)
 {
 	DEBUGP(DCC, "starting timer T%x with %d seconds\n", current, sec);
-	trans->cc_timer.cb = gsm48_cc_timeout;
-	trans->cc_timer.data = trans;
-	bsc_schedule_timer(&trans->cc_timer, sec, micro);
-	trans->Tcurrent = current;
+	trans->cc.timer.cb = gsm48_cc_timeout;
+	trans->cc.timer.data = trans;
+	bsc_schedule_timer(&trans->cc.timer, sec, micro);
+	trans->cc.Tcurrent = current;
 }
 
 static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
@@ -2264,7 +2246,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	new_cc_state(trans, GSM_CSTATE_INITIATED);
 
 	/* indicate setup to MNCC */
-	mncc_recvmsg(trans->network, trans, MNCC_SETUP_IND, &setup);
+	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
 
 	return 0;
 }
@@ -2274,9 +2256,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_mncc *setup = arg;
-	struct gsm_trans *transt;
-	u_int16_t trans_id_mask = 0;
-	int rc, i;
+	int rc, trans_id;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
@@ -2285,40 +2265,27 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 		DEBUGP(DCC, "TX Setup with assigned transaction. "
 			"This is not allowed!\n");
 		/* Temporarily out of order */
-		rc = mncc_release_ind(trans->network, trans, trans->callref,
+		rc = mncc_release_ind(trans->subscr->net, trans, trans->callref,
 				      GSM48_CAUSE_LOC_PRN_S_LU,
 				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
 	
 	/* Get free transaction_id */
-	llist_for_each_entry(transt, &trans->network->trans_list, entry) {
-		/* Transaction of our lchan? */
-		if (transt->lchan == trans->lchan &&
-		    transt->transaction_id != 0xff)
-			trans_id_mask |= (1 << (transt->transaction_id >> 4));
-	}
-	/* Assign free transaction ID */
-	if ((trans_id_mask & 0x007f) == 0x7f) {
+	trans_id = trans_assign_trans_id(trans->subscr, GSM48_PDISC_CC, 0);
+	if (trans_id < 0) {
 		/* no free transaction ID */
-		rc = mncc_release_ind(trans->network, trans, trans->callref,
+		rc = mncc_release_ind(trans->subscr->net, trans, trans->callref,
 				      GSM48_CAUSE_LOC_PRN_S_LU,
 				      GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
-	for (i = 0; i < 7; i++) {
-		if ((trans_id_mask & (1 << i)) == 0) {
-			trans->transaction_id = i << 4; /* flag = 0 */
-			break;
-		}
-	}
+	trans->transaction_id = trans_id;
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_SETUP;
 
 	gsm48_start_cc_timer(trans, 0x303, GSM48_T303);
@@ -2350,7 +2317,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
@@ -2394,7 +2361,8 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_CALL_CONF);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_CALL_CONF_IND, &call_conf);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_CALL_CONF_IND,
+			    &call_conf);
 }
 
 static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
@@ -2403,8 +2371,6 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_CALL_PROC;
 
 	new_cc_state(trans, GSM_CSTATE_MO_CALL_PROC);
@@ -2419,7 +2385,7 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 	if (proceeding->fields & MNCC_F_PROGRESS)
 		encode_progress(msg, 0, &proceeding->progress);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
@@ -2457,7 +2423,8 @@ static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_CALL_RECEIVED);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_ALERT_IND, &alerting);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_ALERT_IND,
+			    &alerting);
 }
 
 static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
@@ -2466,8 +2433,6 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_ALERTING;
 
 	/* facility */
@@ -2482,7 +2447,7 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_CALL_DELIVERED);
 	
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
@@ -2491,8 +2456,6 @@ static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_PROGRESS;
 
 	/* progress */
@@ -2501,7 +2464,7 @@ static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 	if (progress->fields & MNCC_F_USERUSER)
 		encode_useruser(msg, 0, &progress->useruser);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
@@ -2510,8 +2473,6 @@ static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_CONNECT;
 
 	gsm48_stop_cc_timer(trans);
@@ -2532,7 +2493,7 @@ static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_IND);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
@@ -2576,7 +2537,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_REQUEST);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_SETUP_CNF, &connect);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_CNF, &connect);
 }
 
 
@@ -2590,7 +2551,7 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 	
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
 	connect_ack.callref = trans->callref;
-	return mncc_recvmsg(trans->network, trans, MNCC_SETUP_COMPL_IND,
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_COMPL_IND,
 			    &connect_ack);
 }
 
@@ -2599,13 +2560,11 @@ static int gsm48_cc_tx_connect_ack(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_CONNECT_ACK;
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
@@ -2647,7 +2606,7 @@ static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
-	return mncc_recvmsg(trans->network, trans, MNCC_DISC_IND, &disc);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_DISC_IND, &disc);
 
 }
 
@@ -2667,8 +2626,6 @@ static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_DISCONNECT;
 
 	gsm48_stop_cc_timer(trans);
@@ -2691,11 +2648,11 @@ static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 		encode_useruser(msg, 0, &disc->useruser);
 
 	/* store disconnect cause for T306 expiry */
-	memcpy(&trans->cc_msg, disc, sizeof(struct gsm_mncc));
+	memcpy(&trans->cc.msg, disc, sizeof(struct gsm_mncc));
 
 	new_cc_state(trans, GSM_CSTATE_DISCONNECT_IND);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
@@ -2736,19 +2693,20 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
-	if (trans->state == GSM_CSTATE_RELEASE_REQ) {
+	if (trans->cc.state == GSM_CSTATE_RELEASE_REQ) {
 		/* release collision 5.4.5 */
-		rc = mncc_recvmsg(trans->network, trans, MNCC_REL_CNF, &rel);
+		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_CNF, &rel);
 	} else {
-		rc = gsm48_tx_simple(msg->lchan, GSM48_PDISC_CC | trans->transaction_id,
-			     GSM48_MT_CC_RELEASE_COMPL);
-		rc = mncc_recvmsg(trans->network, trans, MNCC_REL_IND, &rel);
+		rc = gsm48_tx_simple(msg->lchan,
+				     GSM48_PDISC_CC | (trans->transaction_id << 4),
+				     GSM48_MT_CC_RELEASE_COMPL);
+		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_IND, &rel);
 	}
 
 	new_cc_state(trans, GSM_CSTATE_NULL);
 
 	trans->callref = 0;
-	free_trans(trans);
+	trans_free(trans);
 
 	return rc;
 }
@@ -2759,8 +2717,6 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_RELEASE;
 
 	trans->callref = 0;
@@ -2778,13 +2734,13 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 	if (rel->fields & MNCC_F_USERUSER)
 		encode_useruser(msg, 0, &rel->useruser);
 
-	trans->T308_second = 0;
-	memcpy(&trans->cc_msg, rel, sizeof(struct gsm_mncc));
+	trans->cc.T308_second = 0;
+	memcpy(&trans->cc.msg, rel, sizeof(struct gsm_mncc));
 
-	if (trans->state != GSM_CSTATE_RELEASE_REQ)
+	if (trans->cc.state != GSM_CSTATE_RELEASE_REQ)
 		new_cc_state(trans, GSM_CSTATE_RELEASE_REQ);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
@@ -2826,23 +2782,23 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	if (trans->callref) {
-		switch (trans->state) {
+		switch (trans->cc.state) {
 		case GSM_CSTATE_CALL_PRESENT:
-			rc = mncc_recvmsg(trans->network, trans,
+			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REJ_IND, &rel);
 			break;
 		case GSM_CSTATE_RELEASE_REQ:
-			rc = mncc_recvmsg(trans->network, trans,
+			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REL_CNF, &rel);
 			break;
 		default:
-			rc = mncc_recvmsg(trans->network, trans,
+			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REL_IND, &rel);
 		}
 	}
 
 	trans->callref = 0;
-	free_trans(trans);
+	trans_free(trans);
 
 	return rc;
 }
@@ -2853,8 +2809,6 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_RELEASE_COMPL;
 
 	trans->callref = 0;
@@ -2871,9 +2825,9 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	if (rel->fields & MNCC_F_USERUSER)
 		encode_useruser(msg, 0, &rel->useruser);
 
-	free_trans(trans);
+	trans_free(trans);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
@@ -2899,7 +2853,7 @@ static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
-	return mncc_recvmsg(trans->network, trans, MNCC_FACILITY_IND, &fac);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_FACILITY_IND, &fac);
 }
 
 static int gsm48_cc_tx_facility(struct gsm_trans *trans, void *arg)
@@ -2908,14 +2862,12 @@ static int gsm48_cc_tx_facility(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_FACILITY;
 
 	/* facility */
 	encode_facility(msg, 1, &fac->facility);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_hold(struct gsm_trans *trans, struct msgb *msg)
@@ -2924,7 +2876,7 @@ static int gsm48_cc_rx_hold(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&hold, 0, sizeof(struct gsm_mncc));
 	hold.callref = trans->callref;
-	return mncc_recvmsg(trans->network, trans, MNCC_HOLD_IND, &hold);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_HOLD_IND, &hold);
 }
 
 static int gsm48_cc_tx_hold_ack(struct gsm_trans *trans, void *arg)
@@ -2932,11 +2884,9 @@ static int gsm48_cc_tx_hold_ack(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_HOLD_ACK;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
@@ -2945,8 +2895,6 @@ static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_HOLD_REJ;
 
 	/* cause */
@@ -2955,7 +2903,7 @@ static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
 	else
 		encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_retrieve(struct gsm_trans *trans, struct msgb *msg)
@@ -2964,7 +2912,8 @@ static int gsm48_cc_rx_retrieve(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&retrieve, 0, sizeof(struct gsm_mncc));
 	retrieve.callref = trans->callref;
-	return mncc_recvmsg(trans->network, trans, MNCC_RETRIEVE_IND, &retrieve);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_RETRIEVE_IND,
+			    &retrieve);
 }
 
 static int gsm48_cc_tx_retrieve_ack(struct gsm_trans *trans, void *arg)
@@ -2972,11 +2921,9 @@ static int gsm48_cc_tx_retrieve_ack(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_RETR_ACK;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
@@ -2985,8 +2932,6 @@ static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_RETR_REJ;
 
 	/* cause */
@@ -2995,7 +2940,7 @@ static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
 	else
 		encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
@@ -3015,7 +2960,7 @@ static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
 			      TLVP_VAL(&tp, GSM48_IE_KPD_FACILITY)-1);
 	}
 
-	return mncc_recvmsg(trans->network, trans, MNCC_START_DTMF_IND, &dtmf);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_START_DTMF_IND, &dtmf);
 }
 
 static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
@@ -3024,15 +2969,13 @@ static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_START_DTMF_ACK;
 
 	/* keypad */
 	if (dtmf->fields & MNCC_F_KEYPAD)
 		encode_keypad(msg, dtmf->keypad);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
@@ -3041,8 +2984,6 @@ static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_START_DTMF_REJ;
 
 	/* cause */
@@ -3051,7 +2992,7 @@ static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 	else
 		encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_stop_dtmf_ack(struct gsm_trans *trans, void *arg)
@@ -3059,11 +3000,9 @@ static int gsm48_cc_tx_stop_dtmf_ack(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_STOP_DTMF_ACK;
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_stop_dtmf(struct gsm_trans *trans, struct msgb *msg)
@@ -3073,7 +3012,7 @@ static int gsm48_cc_rx_stop_dtmf(struct gsm_trans *trans, struct msgb *msg)
 	memset(&dtmf, 0, sizeof(struct gsm_mncc));
 	dtmf.callref = trans->callref;
 
-	return mncc_recvmsg(trans->network, trans, MNCC_STOP_DTMF_IND, &dtmf);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_STOP_DTMF_IND, &dtmf);
 }
 
 static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
@@ -3095,7 +3034,7 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_ORIG_MODIFY);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_MODIFY_IND, &modify);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_MODIFY_IND, &modify);
 }
 
 static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
@@ -3104,8 +3043,6 @@ static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_MODIFY;
 
 	gsm48_start_cc_timer(trans, 0x323, GSM48_T323);
@@ -3115,7 +3052,7 @@ static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_MODIFY);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg)
@@ -3139,7 +3076,7 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_MODIFY_CNF, &modify);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_MODIFY_CNF, &modify);
 }
 
 static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
@@ -3148,8 +3085,6 @@ static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_MODIFY_COMPL;
 
 	/* bearer capability */
@@ -3157,7 +3092,7 @@ static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
@@ -3187,7 +3122,7 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_MODIFY_REJ, &modify);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_MODIFY_REJ, &modify);
 }
 
 static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
@@ -3196,8 +3131,6 @@ static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_MODIFY_REJECT;
 
 	/* bearer capability */
@@ -3207,7 +3140,7 @@ static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
@@ -3216,14 +3149,12 @@ static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_NOTIFY;
 
 	/* notify */
 	encode_notify(msg, notify->notify);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
@@ -3239,7 +3170,7 @@ static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
 	if (payload_len >= 1)
 		decode_notify(&notify.notify, gh->data);
 
-	return mncc_recvmsg(trans->network, trans, MNCC_NOTIFY_IND, &notify);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_NOTIFY_IND, &notify);
 }
 
 static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
@@ -3248,8 +3179,6 @@ static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	gh->proto_discr = GSM48_PDISC_CC | trans->transaction_id;
-	msg->lchan = trans->lchan;
 	gh->msg_type = GSM48_MT_CC_USER_INFO;
 
 	/* user-user */
@@ -3259,7 +3188,7 @@ static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
 	if (user->more)
 		encode_more(msg);
 
-	return gsm48_sendmsg(msg);
+	return gsm48_sendmsg(msg, trans);
 }
 
 static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
@@ -3282,7 +3211,7 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 	if (TLVP_PRESENT(&tp, GSM48_IE_MORE_DATA))
 		user.more = 1;
 
-	return mncc_recvmsg(trans->network, trans, MNCC_USERINFO_IND, &user);
+	return mncc_recvmsg(trans->subscr->net, trans, MNCC_USERINFO_IND, &user);
 }
 
 static int gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
@@ -3381,7 +3310,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	rel.callref = data->callref;
 
 	/* Find callref */
-	trans = get_trans_ref(net, data->callref);
+	trans = trans_find_by_callref(net, data->callref);
 
 	/* Callref unknown */
 	if (!trans) {
@@ -3406,9 +3335,10 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		}
 		/* New transaction due to setup, find subscriber */
 		if (data->called.number[0])
-			subscr = subscr_get_by_extension(data->called.number);
+			subscr = subscr_get_by_extension(net,
+							data->called.number);
 		else
-			subscr = subscr_get_by_imsi(data->imsi);
+			subscr = subscr_get_by_imsi(net, data->imsi);
 		/* If subscriber is not found */
 		if (!subscr) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
@@ -3433,7 +3363,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 						GSM48_CC_CAUSE_DEST_OOO);
 		}
 		/* Create transaction */
-		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
+		trans = trans_alloc(subscr, GSM48_PDISC_CC, 0xff, data->callref);
+		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			subscr_put(subscr);
 			/* Ressource unavailable */
@@ -3442,12 +3373,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 					 GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			return -ENOMEM;
 		}
-		trans->callref = data->callref;
-		trans->network = net;
-		trans->transaction_id = 0xff; /* unassigned */
-		llist_add_tail(&trans->entry, &net->trans_list);
-		/* Assign subscriber to transaction */
-		trans->subscr = subscr;
 		/* Find lchan */
 		for (i = 0; i < net->num_bts; i++) {
 			bts = gsm_bts_num(net, i);
@@ -3483,7 +3408,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				return 0;
 			}
 			/* store setup informations until paging was successfull */
-			memcpy(&trans->cc_msg, data, sizeof(struct gsm_mncc));
+			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 			/* start paging subscriber on all BTS with her location */
 			subscr->net = net;
 			bts = NULL;
@@ -3521,7 +3446,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		else
 			rc = mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 		trans->callref = 0;
-		free_trans(trans);
+		trans_free(trans);
 		return rc;
 	}
 
@@ -3530,13 +3455,13 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		trans->transaction_id,
 		(lchan->subscr)?(lchan->subscr->extension):"-",
-		get_mncc_name(msg_type), trans->state,
-		cc_state_names[trans->state]);
+		get_mncc_name(msg_type), trans->cc.state,
+		cc_state_names[trans->cc.state]);
 
 	/* Find function for current state and message */
 	for (i = 0; i < DOWNSLLEN; i++)
 		if ((msg_type == downstatelist[i].type)
-		 && ((1 << trans->state) & downstatelist[i].states))
+		 && ((1 << trans->cc.state) & downstatelist[i].states))
 			break;
 	if (i == DOWNSLLEN) {
 		DEBUGP(DCC, "Message unhandled at this state.\n");
@@ -3607,10 +3532,9 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
-	u_int8_t transaction_id = (gh->proto_discr & 0xf0) ^ 0x80; /* flip */
+	u_int8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
 	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_trans *trans = NULL, *transt;
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
 
 	if (msg_type & 0x80) {
@@ -3619,50 +3543,38 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	}
 	
 	/* Find transaction */
-	llist_for_each_entry(transt, &net->trans_list, entry) {
-		/* Transaction of our lchan? */
-		if (transt->lchan == lchan
-			&& transt->transaction_id == transaction_id) {
-			trans = transt;
-		}
-	}
-	
-	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
+	trans = trans_find_by_id(lchan, transaction_id);
+
+	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
-		cc_msg_names[msg_type], trans?(trans->state):0,
-		cc_state_names[trans?(trans->state):0]);
+		cc_msg_names[msg_type], trans?(trans->cc.state):0,
+		cc_state_names[trans?(trans->cc.state):0]);
 
 	/* Create transaction */
 	if (!trans) {
-		DEBUGP(DCC, "Unknown transaction ID %02x, "
+		DEBUGP(DCC, "Unknown transaction ID %x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		if (!(trans = talloc_zero(tall_trans_ctx, struct gsm_trans))) {
+		trans = trans_alloc(lchan->subscr, GSM48_PDISC_CC,
+				    transaction_id, new_callref++);
+		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
 			rc = gsm48_tx_simple(msg->lchan,
-					     GSM48_PDISC_CC | transaction_id,
+					     GSM48_PDISC_CC | (transaction_id << 4),
 					     GSM48_MT_CC_RELEASE_COMPL);
 			return -ENOMEM;
 		}
-		llist_add_tail(&trans->entry, &net->trans_list);
 		/* Assign transaction */
-		trans->callref = new_callref++;
-		trans->network = net;
-		trans->transaction_id = transaction_id;
 		trans->lchan = lchan;
 		use_lchan(lchan);
-		if (lchan->subscr) {
-			trans->subscr = lchan->subscr;
-			subscr_get(trans->subscr);
-		}
 	}
 
 	/* find function for current state and message */
 	for (i = 0; i < DATASLLEN; i++)
 		if ((msg_type == datastatelist[i].type)
-		 && ((1 << trans->state) & datastatelist[i].states))
+		 && ((1 << trans->cc.state) & datastatelist[i].states))
 			break;
 	if (i == DATASLLEN) {
 		DEBUGP(DCC, "Message unhandled at this state.\n");
@@ -3819,3 +3731,4 @@ int bsc_upqueue(struct gsm_network *net)
 
 	return work;
 }
+

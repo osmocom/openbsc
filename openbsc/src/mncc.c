@@ -140,9 +140,6 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	if (call->remote_ref)
 		return 0;
 	
-	if (!tall_call_ctx)
-		tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1,
-							   "gsm_call");
 	/* create remote call */
 	if (!(remote = talloc(tall_call_ctx, struct gsm_call))) {
 		memset(&mncc, 0, sizeof(struct gsm_mncc));
@@ -306,9 +303,6 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	if (!call) {
 		if (msg_type != MNCC_SETUP_IND)
 			return 0; /* drop */
-		if (!tall_call_ctx)
-			tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1,
-							   "gsm_call");
 		/* create call */
 		if (!(call = talloc_zero(tall_call_ctx, struct gsm_call))) {
 			struct gsm_mncc rel;
@@ -394,4 +388,9 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	}
 
 	return rc;
+}
+
+static __attribute__((constructor)) void on_dso_load_trau_mncc(void)
+{
+	tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1, "gsm_call");
 }
