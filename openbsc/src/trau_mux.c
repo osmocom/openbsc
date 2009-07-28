@@ -55,10 +55,6 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 {
 	struct map_entry *me;
 
-	if (!tall_map_ctx)
-		tall_map_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						  "trau_map_entry");
-
 	me = talloc(tall_map_ctx, struct map_entry);
 	if (!me)
 		return -ENOMEM;
@@ -201,10 +197,6 @@ int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref)
 	struct gsm_e1_subslot *src_ss;
 	struct upqueue_entry *ue;
 
-	if (!tall_upq_ctx)
-		tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						  "trau_upq_entry");
-
 	ue = talloc(tall_upq_ctx, struct upqueue_entry);
 	if (!ue)
 		return -ENOMEM;
@@ -242,4 +234,13 @@ int trau_send_lchan(struct gsm_lchan *lchan, struct decoded_trau_frame *tf)
 	/* and send it to the muxer */
 	return subchan_mux_enqueue(mx, dst_e1_ss->e1_ts_ss, trau_bits_out,
 				   TRAU_FRAME_BITS);
+}
+
+static __attribute__((constructor)) void on_dso_load_trau_mux(void)
+{
+	tall_map_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					  "trau_map_entry");
+
+	tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					  "trau_upq_entry");
 }
