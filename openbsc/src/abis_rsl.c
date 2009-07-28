@@ -1345,6 +1345,8 @@ static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
 		print_rsl_cause(TLVP_VAL(&tv, RSL_IE_CAUSE),
 				TLVP_LEN(&tv, RSL_IE_CAUSE));
 
+	dispatch_signal(SS_ABISIP, S_ABISIP_DISC_IND, msg->lchan);
+
 	return 0;
 }
 
