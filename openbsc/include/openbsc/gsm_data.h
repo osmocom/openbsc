@@ -98,6 +98,7 @@ struct gsm_bts_link {
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
+struct rtp_socket;
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -176,6 +177,7 @@ struct gsm_bts_trx_ts {
 		u_int16_t bound_port;
 		u_int8_t rtp_payload2;
 		u_int16_t conn_id;
+		struct rtp_socket *rtp_socket;
 	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];

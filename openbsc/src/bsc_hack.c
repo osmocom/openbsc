@@ -64,6 +64,7 @@ static int release_l2 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
+extern int ipacc_rtp_direct;
 
 struct nano_bts_id {
 	struct llist_head entry;
@@ -1113,10 +1114,11 @@ static void handle_options(int argc, char** argv)
 			{"bts-id", 1, 0, 'i'},
 			{"tsc", 1, 0, 'S'},
 			{"bsic", 1, 0, 'B'},
+			{"rtp-proxy", 0, 0, 'P'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1186,6 +1188,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'B':
 			BSIC = atoi(optarg);
+			break;
+		case 'P':
+			ipacc_rtp_direct = 0;
 			break;
 		}
 		default:
