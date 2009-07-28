@@ -48,6 +48,7 @@ enum signal_paging {
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_BIND_ACK,
+	S_ABISIP_DISC_IND,
 };
 
 /* SS_NM signals */
