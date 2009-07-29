@@ -266,16 +266,23 @@ struct rsl_ie_chan_mode {
 } __attribute__ ((packed));
 #define RSL_CMOD_DTXu		0x01	/* uplink */
 #define RSL_CMOD_DTXd		0x02	/* downlink */
-#define RSL_CMOD_SPD_SPEECH	0x01
-#define RSL_CMOD_SPD_DATA	0x02
-#define RSL_CMOD_SPD_SIGN	0x03
+enum rsl_cmod_spd {
+	RSL_CMOD_SPD_SPEECH	= 0x01,
+	RSL_CMOD_SPD_DATA	= 0x02,
+	RSL_CMOD_SPD_SIGN	= 0x03,
+};
 #define RSL_CMOD_CRT_SDCCH	0x01
 #define RSL_CMOD_CRT_TCH_Bm	0x08	/* full-rate */
 #define RSL_CMOD_CRT_TCH_Lm	0x09	/* half-rate */
 /* FIXME: More CRT types */
+/* Speech */
 #define RSL_CMOD_SP_GSM1	0x01
 #define RSL_CMOD_SP_GSM2	0x11
 #define RSL_CMOD_SP_GSM3	0x21
+/* Data */
+#define RSL_CMOD_SP_NT_14k5	0x58
+#define RSL_CMOD_SP_NT_12k0	0x50
+#define RSL_CMOD_SP_NT_6k0	0x51
 
 /* Chapter 9.3.5 */
 struct rsl_ie_chan_ident {
@@ -459,7 +466,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t bs_power, u_int8_t ms_power,
 		      u_int8_t ta);
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta, u_int8_t mode);
+			    u_int8_t ta);
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 		   u_int8_t *ms_ident, u_int8_t chan_needed);

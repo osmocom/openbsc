@@ -108,13 +108,14 @@ struct gsm_call {
 #define MNCC_F_KEYPAD		0x1000
 #define MNCC_F_SIGNAL		0x2000
 
+/* Expanded fields from GSM TS 04.08, Table 10.5.102 */
 struct gsm_mncc_bearer_cap {
-	int		transfer;
-	int 		mode;
-	int		coding;
-	int		radio;
-	int		speech_ctm;
-	int		speech_ver[8];
+	int		transfer;	/* Information Transfer Capability */
+	int 		mode;		/* Transfer Mode */
+	int		coding;		/* Coding Standard */
+	int		radio;		/* Radio Channel Requirement */
+	int		speech_ctm;	/* CTM text telephony indication */
+	int		speech_ver[8];	/* Speech version indication */
 };
 
 struct gsm_mncc_number {

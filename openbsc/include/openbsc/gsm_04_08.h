@@ -48,14 +48,16 @@ struct gsm48_chan_mode_modify {
 	u_int8_t mode;
 } __attribute__ ((packed));
 
-#define GSM48_CMODE_SIGN	0x00
-#define GSM48_CMODE_SPEECH_V1	0x01
-#define GSM48_CMODE_SPEECH_EFR	0x21
-#define GSM48_CMODE_SPEECH_AMR	0x41
-#define GSM48_CMODE_DATA_14k5	0x0f
-#define GSM48_CMODE_DATA_12k0	0x03
-#define GSM48_CMODE_DATA_6k0	0x0b
-#define GSM48_CMODE_DATA_3k6	0x23
+enum gsm48_chan_mode {
+	GSM48_CMODE_SIGN	= 0x00,
+	GSM48_CMODE_SPEECH_V1	= 0x01,
+	GSM48_CMODE_SPEECH_EFR	= 0x21,
+	GSM48_CMODE_SPEECH_AMR	= 0x41,
+	GSM48_CMODE_DATA_14k5	= 0x0f,
+	GSM48_CMODE_DATA_12k0	= 0x03,
+	GSM48_CMODE_DATA_6k0	= 0x0b,
+	GSM48_CMODE_DATA_3k6	= 0x23,
+};
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
@@ -641,6 +643,34 @@ enum chreq_type {
 
 #define SBIT(a) (1 << a)
 #define ALL_STATES 0xffffffff
+
+/* GSM 04.08 Bearer Capability: Information Transfer Capability */
+enum gsm48_bcap_itcap {
+	GSM48_BCAP_ITCAP_SPEECH		= 0,
+	GSM48_BCAP_ITCAP_UNR_DIG_INF	= 1,
+	GSM48_BCAP_ITCAP_3k1_AUDIO	= 2,
+	GSM48_BCAP_ITCAP_FAX_G3		= 3,
+	GSM48_BCAP_ITCAP_OTHER		= 5,
+	GSM48_BCAP_ITCAP_RESERVED	= 7,
+};
+
+/* GSM 04.08 Bearer Capability: Transfer Mode */
+enum gsm48_bcap_tmod {
+	GSM48_BCAP_TMOD_CIRCUIT		= 0,
+	GSM48_BCAP_TMOD_PACKET		= 1,
+};
+
+/* GSM 04.08 Bearer Capability: Coding Standard */
+enum gsm48_bcap_coding {
+	GSM48_BCAP_CODING_GSM_STD	= 0,
+};
+
+/* GSM 04.08 Bearer Capability: Radio Channel Requirements */
+enum gsm48_bcap_rrq {
+	GSM48_BCAP_RRQ_FR_ONLY	= 1,
+	GSM48_BCAP_RRQ_DUAL_HR	= 2,
+	GSM48_BCAP_RRQ_DUAL_FR	= 3,
+};
 
 struct msgb;
 struct gsm_bts;
