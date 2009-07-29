@@ -1263,7 +1263,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 
 static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
 {
-#if 0
 	switch (tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
 		return 0x00;
@@ -1273,12 +1272,9 @@ static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
 		return 0x02;
 	/* FIXME: Type1 half-rate and type3 half-rate */
 	}
+	DEBUGPC(DRSL, "Cannot determine ip.access speech mode for "
+		"tch_mode == 0x%02x\n", tch_mode);
 	return 0;
-#else
-	/* hard-code EFR for now, since tch_mode is not correct at this
-	 * point in time */
-	return 0x01;
-#endif
 }
 
 /* ip.access specific RSL extensions */
@@ -1286,19 +1282,20 @@ int rsl_ipacc_bind(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t speech_mode_s;
+	u_int8_t speech_mode;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x10 | speech_mode_s);
+	speech_mode = 0x10 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
 
-	DEBUGPC(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr);
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND "
+		"speech_mode=0x%02x\n", gsm_ts_name(lchan->ts),
+		dh->chan_nr, speech_mode);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1311,7 +1308,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
 	u_int8_t *att_f8, *att_ip, *att_port;
-	u_int8_t speech_mode_s;
+	u_int8_t speech_mode;
 	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1319,11 +1316,14 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
+	/* 0x0- == both directions, 0x-1 == EFR codec */
+	speech_mode = 0x00 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "IPAC_CONNECT channel=%s chan_nr=0x%02x "
-		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d\n",
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_CONNECT "
+		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d speech_mode=0x%02x\n",
 		gsm_ts_name(lchan->ts), dh->chan_nr,
-		inet_ntoa(ia), port, rtp_payload2, conn_id);
+		inet_ntoa(ia), port, rtp_payload2, conn_id, speech_mode);
 
 	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
 	att_f8[0] = RSL_IE_IPAC_CONN_ID;
@@ -1343,9 +1343,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	att_port[1] = port >> 8;
 	att_port[2] = port & 0xff;
 
-	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
-	/* 0x0- == both directions, 0x-1 == EFR codec */
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x00 | speech_mode_s);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	
