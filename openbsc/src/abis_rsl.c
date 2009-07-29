@@ -530,6 +530,62 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 	return abis_rsl_sendmsg(msg);
 }
 
+static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
+				   struct gsm_lchan *lchan)
+{
+	memset(cm, 0, sizeof(cm));
+
+	/* FIXME: what to do with data calls ? */
+	cm->dtx_dtu = 0x00;
+
+	/* set TCH Speech/Data */
+	cm->spd_ind = lchan->rsl_cmode;
+
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+		cm->chan_rt = RSL_CMOD_CRT_SDCCH;
+		break;
+	case GSM_LCHAN_TCH_F:
+		cm->chan_rt = RSL_CMOD_CRT_TCH_Bm;
+		break;
+	case GSM_LCHAN_TCH_H:
+		cm->chan_rt = RSL_CMOD_CRT_TCH_Lm;
+		break;
+	case GSM_LCHAN_NONE:
+	case GSM_LCHAN_UNKNOWN:
+	default:
+		return -EINVAL;
+	}
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SIGN:
+		cm->chan_rate = 0;
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+		cm->chan_rate = RSL_CMOD_SP_GSM1;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		cm->chan_rate = RSL_CMOD_SP_GSM2;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		cm->chan_rate = RSL_CMOD_SP_GSM3;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+		cm->chan_rate = RSL_CMOD_SP_NT_14k5;
+		break;
+	case GSM48_CMODE_DATA_12k0:
+		cm->chan_rate = RSL_CMOD_SP_NT_12k0;
+		break;
+	case GSM48_CMODE_DATA_6k0:
+		cm->chan_rate = RSL_CMOD_SP_NT_6k0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Chapter 8.4.1 */
 #if 0
 int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
@@ -567,45 +623,20 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 #endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta, u_int8_t mode)
+			    u_int8_t ta)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+	int rc;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
 	struct rsl_ie_chan_mode cm;
 	struct rsl_ie_chan_ident ci;
 
-	memset(&cm, 0, sizeof(cm));
-	/* FIXME: what to do with data calls ? */
-	cm.dtx_dtu = 0x00;
-	switch (lchan->type) {
-	case GSM_LCHAN_SDCCH:
-		cm.spd_ind = RSL_CMOD_SPD_SIGN;
-		cm.chan_rt = RSL_CMOD_CRT_SDCCH;
-		cm.chan_rate = 0x00;
-		break;
-	case GSM_LCHAN_TCH_F:
-		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		switch (mode) {
-		case RSL_CMOD_SPD_SIGN:
-			cm.spd_ind = RSL_CMOD_SPD_SIGN;
-			cm.chan_rate = 0x00;
-			break;
-		case RSL_CMOD_SPD_SPEECH:
-			cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-			cm.chan_rate = RSL_CMOD_SP_GSM2;
-			break;
-		}
-		break;
-	case GSM_LCHAN_TCH_H:
-		DEBUGP(DRSL, "Unimplemented TCH_H activation\n");
-		return -1;
-	case GSM_LCHAN_UNKNOWN:
-	case GSM_LCHAN_NONE:
-		return -1;
-	}
+	rc = channel_mode_from_lchan(&cm, lchan);
+	if (rc < 0)
+		return rc;
 
 	memset(&ci, 0, sizeof(ci));
 	ci.chan_desc.iei = 0x64;
@@ -642,54 +673,14 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+	int rc;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
 
-	memset(&cm, 0, sizeof(cm));
-
-	/* FIXME: what to do with data calls ? */
-	cm.dtx_dtu = 0x00;
-	switch (lchan->type) {
-	/* todo more modes */
-	case GSM_LCHAN_TCH_F:
-		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		switch(lchan->tch_mode) {
-		case GSM48_CMODE_SPEECH_V1:
-			cm.chan_rate = RSL_CMOD_SP_GSM1;
-			break;
-		case GSM48_CMODE_SPEECH_EFR:
-			cm.chan_rate = RSL_CMOD_SP_GSM2;
-			break;
-		case GSM48_CMODE_SPEECH_AMR:
-			cm.chan_rate = RSL_CMOD_SP_GSM3;
-			break;
-		default:
-			DEBUGP(DRSL, "Unimplemented channel modification\n");
-			return -1;
-		}
-		break;
-	case GSM_LCHAN_TCH_H:
-		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-		cm.chan_rt = RSL_CMOD_CRT_TCH_Lm;
-		switch (lchan->tch_mode) {
-		case GSM48_CMODE_SPEECH_V1:
-			cm.chan_rate = RSL_CMOD_SP_GSM1;
-			break;
-		/* Half-rate has no V2 */
-		case GSM48_CMODE_SPEECH_AMR:
-			cm.chan_rate = RSL_CMOD_SP_GSM3;
-			break;
-		default:
-			DEBUGP(DRSL, "Unimplemented channel modification\n");
-			return -1;
-		}
-		break;
-	default:
-		DEBUGP(DRSL, "Unimplemented channel modification\n");
-		return -1;
-	}
+	rc = channel_mode_from_lchan(&cm, lchan);
+	if (rc < 0)
+		return rc;
 
 	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1099,7 +1090,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	subch = lchan->nr;
 	
 	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, RSL_CMOD_SPD_SIGN);
+	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
+	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));

@@ -41,6 +41,7 @@ enum gsm_chreq_reason_t {
 
 #include <openbsc/timer.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
 #include <openbsc/tlv.h>
 
@@ -165,8 +166,10 @@ struct gsm_lchan {
 	u_int8_t nr;
 	/* The logical channel type */
 	enum gsm_chan_t type;
+	/* RSL channel mode */
+	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
-	enum gsm_chan_t tch_mode;
+	enum gsm48_chan_mode tch_mode;
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;

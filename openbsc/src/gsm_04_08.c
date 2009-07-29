@@ -1746,6 +1746,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
 		/* We've successfully modified the MS side of the channel,
 		 * now go on to modify the BTS side of the channel */
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
 		rc = rsl_chan_mode_modify_req(msg->lchan);
 		break;
 	case GSM48_MT_RR_STATUS:
