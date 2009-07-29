@@ -637,7 +637,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	return abis_rsl_sendmsg(msg);
 }
 
-/* Chapter 8.4.9 */
+/* Chapter 8.4.9: Modify channel mode on BTS side */
 int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -661,6 +661,25 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 			break;
 		case GSM48_CMODE_SPEECH_EFR:
 			cm.chan_rate = RSL_CMOD_SP_GSM2;
+			break;
+		case GSM48_CMODE_SPEECH_AMR:
+			cm.chan_rate = RSL_CMOD_SP_GSM3;
+			break;
+		default:
+			DEBUGP(DRSL, "Unimplemented channel modification\n");
+			return -1;
+		}
+		break;
+	case GSM_LCHAN_TCH_H:
+		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
+		cm.chan_rt = RSL_CMOD_CRT_TCH_Lm;
+		switch (lchan->tch_mode) {
+		case GSM48_CMODE_SPEECH_V1:
+			cm.chan_rate = RSL_CMOD_SP_GSM1;
+			break;
+		/* Half-rate has no V2 */
+		case GSM48_CMODE_SPEECH_AMR:
+			cm.chan_rate = RSL_CMOD_SP_GSM3;
 			break;
 		default:
 			DEBUGP(DRSL, "Unimplemented channel modification\n");
