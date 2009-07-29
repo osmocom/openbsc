@@ -57,7 +57,7 @@ struct rtcp_hdr {
 	
 #define RTCP_IE_CNAME	1
 
-/* iterate over all chunks in one RTCP message, kook for CNAME IEs and
+/* iterate over all chunks in one RTCP message, look for CNAME IEs and
  * replace all of those with 'new_cname' */
 static int rtcp_sdes_cname_mangle(struct msgb *msg, struct rtcp_hdr *rh,
 				  u_int16_t *rtcp_len, const char *new_cname)
