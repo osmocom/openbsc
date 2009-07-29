@@ -61,6 +61,7 @@ static int BSIC = HARDCODED_BSIC;
 static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
+static int bs11_has_trx1 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
@@ -531,13 +532,6 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
 	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
 
-#ifdef HAVE_TRX1
-	/* TRX 1 */
-	abis_nm_conn_terr_sign(&bts->trx[1], 0, 1, 0xff);
-	/* FIXME: TRX ATTRIBUTE */
-	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x02);
-#endif
-
 	/* SET CHANNEL ATTRIBUTE TS1 */
 	abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
@@ -572,6 +566,69 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 	abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
 	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
+
+	trx = gsm_bts_trx_num(bts, 1);
+	if (trx) {	
+		u_int8_t trx1_attr_radio[sizeof(bs11_attr_radio)];
+		u_int8_t arfcn_low = trx->arfcn & 0xff;
+		u_int8_t arfcn_high = (trx->arfcn >> 8) & 0x0f;
+		memcpy(trx1_attr_radio, bs11_attr_radio,
+			sizeof(trx1_attr_radio));
+
+		/* patch ARFCN into TRX Attributes */
+		trx1_attr_radio[2] &= 0xf0;
+		trx1_attr_radio[2] |= arfcn_high;
+		trx1_attr_radio[3] = arfcn_low;
+	
+		/* Connect signalling of TRX1 to e1_0/ts1/64kbps */
+		abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+		/* FIXME: TRX ATTRIBUTE */
+		abis_nm_set_radio_attr(trx, trx1_attr_radio,
+					sizeof(trx1_attr_radio));
+
+		/* Use TEI 2 for signalling */
+		abis_nm_establish_tei(bts, 1, 0, 1, 0xff, 0x02);
+
+		/* SET CHANNEL ATTRIBUTE TS1 */
+		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/a */
+		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 0);
+	
+		/* SET CHANNEL ATTRIBUTE TS1 */
+		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/b */
+		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 1);
+	
+		/* SET CHANNEL ATTRIBUTE TS2 */
+		abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts2 to e1_0/ts4/c */
+		abis_nm_conn_terr_traf(&trx->ts[2], 0, 4, 2);
+
+		/* SET CHANNEL ATTRIBUTE TS3 */
+		abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts3 to e1_0/ts4/d */
+		abis_nm_conn_terr_traf(&trx->ts[3], 0, 4, 3);
+
+		/* SET CHANNEL ATTRIBUTE TS4 */
+		abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts4 to e1_0/ts5/a */
+		abis_nm_conn_terr_traf(&trx->ts[4], 0, 5, 0);
+
+		/* SET CHANNEL ATTRIBUTE TS5 */
+		abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts5 to e1_0/ts5/b */
+		abis_nm_conn_terr_traf(&trx->ts[5], 0, 5, 1);
+
+		/* SET CHANNEL ATTRIBUTE TS6 */
+		abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts6 to e1_0/ts5/c */
+		abis_nm_conn_terr_traf(&trx->ts[6], 0, 5, 2);
+
+		/* SET CHANNEL ATTRIBUTE TS7 */
+		abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts7 to e1_0/ts5/d */
+		abis_nm_conn_terr_traf(&trx->ts[7], 0, 5, 3);
+	}
 
 	/* end DB transmission */
 	abis_nm_bs11_db_transmission(bts, 0);
@@ -962,18 +1019,20 @@ static int bootstrap_bts(struct gsm_bts *bts)
 		set_ts_e1link(&trx->ts[5], 0, 3, 1);
 		set_ts_e1link(&trx->ts[6], 0, 3, 2);
 		set_ts_e1link(&trx->ts[7], 0, 3, 3);
-#ifdef HAVE_TRX1
+
 		/* TRX 1 */
-		trx = &bts->trx[1];
-		set_ts_e1link(&trx->ts[0], 0, 1, 0xff);
-		set_ts_e1link(&trx->ts[1], 0, 2, 1);
-		set_ts_e1link(&trx->ts[2], 0, 2, 2);
-		set_ts_e1link(&trx->ts[3], 0, 2, 3);
-		set_ts_e1link(&trx->ts[4], 0, 3, 0);
-		set_ts_e1link(&trx->ts[5], 0, 3, 1);
-		set_ts_e1link(&trx->ts[6], 0, 3, 2);
-		set_ts_e1link(&trx->ts[7], 0, 3, 3);
-#endif
+		trx = gsm_bts_trx_num(bts, 1);
+		if (trx) {
+			trx = gsm_bts_trx_num(bts, 1);
+			set_ts_e1link(&trx->ts[0], 0, 4, 0);
+			set_ts_e1link(&trx->ts[1], 0, 4, 1);
+			set_ts_e1link(&trx->ts[2], 0, 4, 2);
+			set_ts_e1link(&trx->ts[3], 0, 4, 3);
+			set_ts_e1link(&trx->ts[4], 0, 5, 0);
+			set_ts_e1link(&trx->ts[5], 0, 5, 1);
+			set_ts_e1link(&trx->ts[6], 0, 5, 2);
+			set_ts_e1link(&trx->ts[7], 0, 5, 3);
+		}
 	}
 
 	return 0;
@@ -1028,6 +1087,13 @@ static int bootstrap_network(void)
 	/* E1 mISDN input setup */
 	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
 		struct gsm_bts *bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
+
+		if (bs11_has_trx1) {
+			struct gsm_bts_trx *trx1;
+			trx1 = gsm_bts_trx_alloc(bts);
+			trx1->arfcn = ARFCN + 2;
+		}
+
 		bootstrap_bts(bts);
 
 		gsmnet->num_bts = 1;
@@ -1115,10 +1181,11 @@ static void handle_options(int argc, char** argv)
 			{"tsc", 1, 0, 'S'},
 			{"bsic", 1, 0, 'B'},
 			{"rtp-proxy", 0, 0, 'P'},
+			{"trx1", 0, 0, '1'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P1",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1191,6 +1258,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
+			break;
+		case '1':
+			bs11_has_trx1 = 1;
 			break;
 		}
 		default:
