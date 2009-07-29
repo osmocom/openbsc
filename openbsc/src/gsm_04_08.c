@@ -1278,7 +1278,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	return gsm0408_authorize(lchan, msg);
 }
 
-/* 9.1.5 Channel mode modify */
+/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
 int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -1744,6 +1744,8 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+		/* We've successfully modified the MS side of the channel,
+		 * now go on to modify the BTS side of the channel */
 		rc = rsl_chan_mode_modify_req(msg->lchan);
 		break;
 	case GSM48_MT_RR_STATUS:
@@ -1948,8 +1950,6 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
-			if (is_ipaccess_bts(lchan->ts->trx->bts))
-				rsl_ipacc_bind(lchan);
 			break;
 		case GSM_PAGING_EXPIRED:
 			DEBUGP(DCC, "Paging subscr %s expired!\n",
@@ -2317,14 +2317,14 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 			     TLVP_VAL(&tp, GSM48_IE_CC_CAP)-1);
 	}
 
-	if (is_ipaccess_bts(msg->trx->bts))
-		rsl_ipacc_bind(msg->lchan);
-
 	new_cc_state(trans, GSM_CSTATE_INITIATED);
 
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
 
+	/* MNCC code will modify the channel asynchronously, we should
+	 * ipaccess-bind only after the modification has been made to the
+	 * lchan->tch_mode */
 	return 0;
 }
 
@@ -3294,8 +3294,19 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
+	int rc;
 
-	return gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
+	rc = gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
+	if (rc < 0)
+		return rc;
+
+	/* FIXME: we not only need to do this after mode modify, but
+	 * also after channel activation */
+	if (is_ipaccess_bts(trans->lchan->ts->trx->bts) &&
+	    mode->lchan_mode != GSM48_CMODE_SIGN)
+		rc = rsl_ipacc_bind(trans->lchan);
+
+	return rc;
 }
 
 static struct downstate {
