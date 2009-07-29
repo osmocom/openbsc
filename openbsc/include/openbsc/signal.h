@@ -38,6 +38,7 @@ enum signal_subsystems {
 	SS_ABISIP,
 	SS_NM,
 	SS_LCHAN,
+	SS_SUBSCR,
 };
 
 /* SS_PAGING signals */
@@ -67,6 +68,12 @@ enum signal_lchan {
 	 * signal handler.
 	 */
 	S_LCHAN_UNEXPECTED_RELEASE,
+};
+
+/* SS_SUBSCR signals */
+enum signal_subscr {
+	S_SUBSCR_ATTACHED,
+	S_SUBSCR_DETACHED,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
