@@ -73,20 +73,34 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 
 		/* the following constraints are pure policy,
 		 * no requirement to put this restriction in place */
-		switch (pchan) {
-		case GSM_PCHAN_CCCH:
-		case GSM_PCHAN_CCCH_SDCCH4:
-			from = 0; to = 0;
-			break;
-		case GSM_PCHAN_SDCCH8_SACCH8C:
-			from = 1; to = 1;
-			break;
-		case GSM_PCHAN_TCH_F:
-		case GSM_PCHAN_TCH_H:
-			from = 2; to = 7;
-			break;
-		default:
-			return NULL;
+		if (trx == bts->c0) {
+			/* On the first TRX we run one CCCH and one SDCCH8 */
+			switch (pchan) {
+			case GSM_PCHAN_CCCH:
+			case GSM_PCHAN_CCCH_SDCCH4:
+				from = 0; to = 0;
+				break;
+			case GSM_PCHAN_SDCCH8_SACCH8C:
+				from = 1; to = 1;
+				break;
+			case GSM_PCHAN_TCH_F:
+			case GSM_PCHAN_TCH_H:
+				from = 2; to = 7;
+				break;
+			default:
+				return NULL;
+			}
+		} else {
+			/* Every secondary TRX is configured for TCH/F
+			 * and TCH/H only */
+			switch (pchan) {
+			case GSM_PCHAN_TCH_F:
+			case GSM_PCHAN_TCH_H:
+				from = 0; to = 7;
+				break;
+			default:
+				return NULL;
+			}
 		}
 
 		for (j = from; j <= to; j++) {
