@@ -68,7 +68,7 @@ static int rtcp_sdes_cname_mangle(struct msgb *msg, struct rtcp_hdr *rh,
 
 	rtcp_end = cur + *rtcp_len;
 	/* move cur to end of RTP header */
-	cur += sizeof(rh);
+	cur += sizeof(*rh);
 
 	/* iterate over Chunks */
 	while (cur+4 < rtcp_end) {
