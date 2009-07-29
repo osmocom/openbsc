@@ -45,6 +45,7 @@ Boston, MA 02111-1307, USA.  */
 //#include "workqueue.h"
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
 
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
