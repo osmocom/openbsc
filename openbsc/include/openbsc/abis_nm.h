@@ -482,6 +482,12 @@ enum abis_nm_chan_comb {
 	NM_CHANC_BCCH		= 0x06,
 	NM_CHANC_BCCH_CBCH	= 0x07,
 	NM_CHANC_SDCCH_CBCH	= 0x08,
+	/* ip.access */
+	NM_CHANC_IPAC_bPDCH	= 0x0b,	/* PBCCH + PCCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_cPDCH	= 0x0c, /* PBCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_PDCH	= 0x0d,	/* PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_TCHFull_PDCH = 0x80,
+	NM_CHANC_IPAC_TCHFull_TCHHalf = 0x81,
 };
 
 /* Section 9.4.16: Event Type */
