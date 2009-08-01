@@ -1,0 +1,501 @@
+/* GSM 08.08 BSSMAP handling						*/
+/* (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009 by on-waves.com
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc.,
+ * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ */
+
+#include <openbsc/bssap.h>
+#include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/debug.h>
+#include <openbsc/signal.h>
+#include <openbsc/tlv.h>
+#include <openbsc/paging.h>
+
+#include <sccp/sccp.h>
+
+#include <arpa/inet.h>
+
+
+#define BSSMAP_MSG_SIZE 512
+#define BSSMAP_MSG_HEADROOM 128
+
+
+static const struct tlv_definition bss_att_tlvdef = {
+	.def = {
+		[GSM0808_IE_IMSI]		    = { TLV_TYPE_TLV },
+		[GSM0808_IE_TMSI]		    = { TLV_TYPE_TLV },
+		[GSM0808_IE_CELL_IDENTIFIER_LIST]   = { TLV_TYPE_TLV },
+		[GSM0808_IE_CHANNEL_NEEDED]	    = { TLV_TYPE_TV },
+		[GSM0808_IE_EMLPP_PRIORITY]	    = { TLV_TYPE_TV },
+	},
+};
+
+
+static int bssmap_paging_cb(unsigned int hooknum, unsigned int event, struct msgb *msg, void *data, void *param)
+{
+	DEBUGP(DMSC, "Paging is complete.\n");
+	return 0;
+}
+
+static int bssmap_handle_reset_ack(struct gsm_network *net, struct msgb *msg, unsigned int length)
+{
+	DEBUGP(DMSC, "Reset ACK from MSC\n");
+
+	return 0;
+}
+
+/* GSM 08.08 § 3.2.1.19 */
+static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsigned int payload_length)
+{
+	struct tlv_parsed tp;
+	char mi_string[GSM48_MI_SIZE];
+	u_int32_t tmsi = GSM_RESERVED_TMSI;
+	unsigned int lac = GSM_LAC_RESERVED_ALL_BTS;
+	u_int8_t data_length;
+	const u_int8_t *data;
+	struct gsm_subscriber *subscr;
+	u_int8_t chan_needed = RSL_CHANNEED_ANY;
+	int paged;
+
+	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_IMSI)) {
+		DEBUGP(DMSC, "Mandantory IMSI not present.\n");
+		return -1;
+	} else if ((TLVP_VAL(&tp, GSM0808_IE_IMSI)[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI) {
+		DEBUGP(DMSC, "Wrong content in the IMSI\n");
+		return -1;
+	}
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
+		DEBUGP(DMSC, "Mandantory CELL IDENTIFIER LIST not present.\n");
+		return -1;
+	}
+
+	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI)) {
+		gsm48_mi_to_string(mi_string, sizeof(mi_string),
+			   TLVP_VAL(&tp, GSM0808_IE_TMSI), TLVP_LEN(&tp, GSM0808_IE_TMSI));
+		tmsi = strtoul(mi_string, NULL, 10);
+	}
+
+
+	/*
+	 * parse the IMSI
+	 */
+	gsm48_mi_to_string(mi_string, sizeof(mi_string),
+			   TLVP_VAL(&tp, GSM0808_IE_IMSI), TLVP_LEN(&tp, GSM0808_IE_IMSI));
+
+	/*
+	 * parse the cell identifier list
+	 */
+	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
+	data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
+
+	/*
+	 * Support paging to all network or one BTS at one LAC
+	 */
+	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
+		unsigned int *_lac = (unsigned int *)&data[1];
+		lac = ntohs(*_lac);
+	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
+		DEBUGPC(DMSC, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
+		return -1;
+	}
+
+	if (TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_NEEDED) && TLVP_LEN(&tp, GSM0808_IE_CHANNEL_NEEDED) == 1)
+		chan_needed = TLVP_VAL(&tp, GSM0808_IE_CHANNEL_NEEDED)[0] & 0x03;
+
+	if (TLVP_PRESENT(&tp, GSM0808_IE_EMLPP_PRIORITY)) {
+		DEBUGP(DMSC, "eMLPP is not handled\n");
+	}
+
+	DEBUGP(DMSC, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
+	subscr = subscr_get_or_create(net, mi_string);
+	if (!subscr)
+		return -1;
+
+	/* reassign the tmsi, trust the net over our internal state */
+	subscr->tmsi = tmsi;
+	subscr->lac = lac;
+	paged = paging_request(net, subscr, chan_needed, bssmap_paging_cb, subscr);
+	DEBUGP(DMSC, "Paged IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x on #bts: %d\n", mi_string, tmsi, tmsi, lac, paged);
+
+	subscr_put(subscr);
+	return -1;
+}
+
+/* GSM 08.08 § 3.1.9.1 and 3.2.1.21... release our gsm_lchan and send message */
+static int bssmap_handle_clear_command(struct sccp_connection *conn,
+				       struct msgb *msg, unsigned int payload_length)
+{
+	struct msgb *resp;
+
+	/* TODO: handle the cause of this package */
+
+	if (msg->lchan) {
+		DEBUGP(DMSC, "Releasing all transactions on %p\n", conn);
+		msg->lchan->msc_data->lchan = NULL;
+		msg->lchan->msc_data = NULL;
+		put_lchan(msg->lchan);
+	}
+
+	/* send the clear complete message */
+	resp = bssmap_create_clear_complete();
+	if (!resp) {
+		DEBUGP(DMSC, "Sending clear complete failed.\n");
+		return -1;
+	}
+
+	sccp_connection_write(conn, resp);
+	msgb_free(resp);
+	return 0;
+}
+
+/*
+ * GSM 08.08 § 3.4.7 cipher mode handling. We will have to pick
+ * the cipher to be used for this. In case we are already using
+ * a cipher we will have to send cipher mode reject to the MSC,
+ * otherwise we will have to pick something that we and the MS
+ * is supporting. Currently we are doing it in a rather static
+ * way by picking one ecnryption or no encrytpion.
+ */
+static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
+				     struct msgb *msg, unsigned int payload_length)
+{
+	struct msgb *resp;
+	int reject_cause = -1;
+
+	/* HACK: Sending A5/0 to the MS */
+	if (!msg->lchan || !msg->lchan->msc_data) {
+		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
+		goto reject;
+	}
+
+	if (msg->lchan->msc_data->ciphering_handled) {
+		DEBUGP(DMSC, "Already seen ciphering command. Protocol Error.\n");
+		goto reject;
+	}
+
+	msg->lchan->msc_data->ciphering_handled = 1;
+
+	/* FIXME: parse the message. TLVP */
+
+	return gsm48_send_rr_ciph_mode(msg->lchan, 1);
+
+reject:
+	resp = bssmap_create_cipher_reject(reject_cause);
+	if (!resp) {
+		DEBUGP(DMSC, "Sending the cipher reject failed.\n");
+		return -1;
+	}
+
+	sccp_connection_write(conn, resp);
+	msgb_free(resp);
+	return -1;
+}
+
+int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int length)
+{
+	int ret = 0;
+
+	if (length < 1) {
+		DEBUGP(DMSC, "Not enough room: %d\n", length);
+		return -1;
+	}
+
+	switch (msg->l4h[0]) {
+	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
+		ret = bssmap_handle_reset_ack(net, msg, length);
+		break;
+	case BSS_MAP_MSG_PAGING:
+		ret = bssmap_handle_paging(net, msg, length);
+		break;
+	}
+
+	return ret;
+}
+
+int bssmap_rcvmsg_dt1(struct sccp_connection *conn, struct msgb *msg, unsigned int length)
+{
+	int ret = 0;
+
+	if (length < 1) {
+		DEBUGP(DMSC, "Not enough room: %d\n", length);
+		return -1;
+	}
+
+	switch (msg->l4h[0]) {
+	case BSS_MAP_MSG_CLEAR_CMD:
+		ret = bssmap_handle_clear_command(conn, msg, length);
+		break;
+	case BSS_MAP_MSG_CIPHER_MODE_CMD:
+		ret = bssmap_handle_cipher_mode(conn, msg, length);
+		break;
+	default:
+		DEBUGP(DMSC, "Unimplemented msg type: %d\n", msg->l4h[0]);
+		break;
+	}
+
+	return ret;
+}
+
+int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
+{
+	struct dtap_header *header;
+	struct msgb *gsm48;
+	u_int8_t *data;
+	int ret = 0;
+
+	if (!lchan) {
+		DEBUGP(DMSC, "No lchan available\n");
+		return -1;
+	}
+
+	header = (struct dtap_header *) msg->l3h;
+	if (sizeof(*header) >= length) {
+		DEBUGP(DMSC, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
+                DEBUGP(DMSC, "hex: %s\n", hexdump(msg->l3h, length));
+                return -1;
+	}
+
+	if (header->length > length - sizeof(*header)) {
+		DEBUGP(DMSC, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
+                DEBUGP(DMSC, "hex: %s\n", hexdump(msg->l3h, length));
+		return -1;
+	}
+
+	DEBUGP(DMSC, "DTAP message: SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
+
+	/* forward the data */
+	gsm48 = gsm48_msgb_alloc();
+	if (!gsm48) {
+		DEBUGP(DMSC, "Allocation of the message failed.\n");
+		return -1;
+	}
+
+	gsm48->lchan = lchan;
+	gsm48->trx = gsm48->lchan->ts->trx;
+	gsm48->l3h = gsm48->data;
+	data = msgb_put(gsm48, length - sizeof(*header));
+	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
+	ret = rsl_data_request(gsm48, header->link_id);
+
+	return ret;
+}
+
+/* Create messages */
+struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
+{
+	u_int8_t *data;
+	u_int16_t *ci;
+	struct msgb* msg;
+	struct gsm48_loc_area_id *lai;
+	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
+
+	msg  = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
+				   "bssmap cmpl l3");
+	if (!msg)
+		return NULL;
+
+
+	/* create the bssmap header */
+	msg->l3h = msgb_put(msg, 2);
+	msg->l3h[0] = 0x0;
+
+	/* create layer 3 header */
+	data = msgb_put(msg, 1);
+	data[0] = BSS_MAP_MSG_COMPLETE_LAYER_3;
+
+	/* create the cell header */
+	data = msgb_put(msg, 3);
+	data[0] = GSM0808_IE_CELL_IDENTIFIER;
+	data[1] = 1 + sizeof(*lai) + 2;
+	data[2] = CELL_IDENT_WHOLE_GLOBAL;
+
+	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
+	gsm0408_generate_lai(lai, bts->network->country_code,
+			     bts->network->network_code, bts->location_area_code);
+
+	ci = (u_int16_t *) msgb_put(msg, 2);
+	*ci = htons(bts->cell_identity);
+
+	/* copy the layer3 data */
+	data = msgb_put(msg, msgb_l3len(msg_l3) + 2);
+	data[0] = GSM0808_IE_LAYER_3_INFORMATION;
+	data[1] = msgb_l3len(msg_l3);
+	memcpy(&data[2], msg_l3->l3h, data[1]);
+
+	/* update the size */
+	msg->l3h[1] = msgb_l3len(msg) - 2;
+
+	return msg;
+}
+
+struct msgb *bssmap_create_reset(void)
+{
+	struct msgb *msg = msgb_alloc(30, "bssmap: reset");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 6);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 0x04;
+	msg->l3h[2] = 0x30;
+	msg->l3h[3] = 0x04;
+	msg->l3h[4] = 0x01;
+	msg->l3h[5] = 0x20;
+	return msg;
+}
+
+struct msgb *bssmap_create_clear_complete(void)
+{
+	struct msgb *msg = msgb_alloc(30, "bssmap: clear complete");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 3);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 1;
+	msg->l3h[2] = BSS_MAP_MSG_CLEAR_COMPLETE;
+
+	return msg;
+}
+
+struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo)
+{
+	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
+					       "cipher-complete");
+	if (!msg)
+		return NULL;
+
+        /* send response with BSS override for A5/1... cheating */
+	msg->l3h = msgb_put(msg, 3);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 1;
+	msg->l3h[2] = BSS_MAP_MSG_CIPHER_MODE_COMPLETE;
+
+	/* include layer3 in case we have at least two octets */
+	if (layer3 && msgb_l3len(layer3) > 2) {
+		msg->l3h[1] += msgb_l3len(layer3) + 2;
+
+		msg->l4h = msgb_put(msg, msgb_l3len(layer3) + 2);
+		msg->l4h[0] = GSM0808_IE_LAYER_3_MESSAGE_CONTENTS;
+		msg->l4h[1] = msgb_l3len(layer3);
+		memcpy(&msg->l4h[2], layer3->l3h, msgb_l3len(layer3));
+	}
+
+	/* and the optional BSS message */
+	if (bsc_enc_algo != -1) {
+		msg->l3h[1] += 2;
+
+		msg->l4h = msgb_put(msg, 2);
+		msg->l4h[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
+		msg->l4h[1] = bsc_enc_algo;
+	}
+
+	return msg;
+}
+
+struct msgb *bssmap_create_cipher_reject(u_int8_t cause)
+{
+	struct msgb *msg = msgb_alloc(30, "bssmap: clear complete");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 3);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 2;
+	msg->l3h[2] = BSS_MAP_MSG_CIPHER_MODE_REJECT;
+	msg->l3h[3] = cause;
+
+	return msg;
+}
+
+struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id)
+{
+	struct dtap_header *header;
+	u_int8_t *data;
+	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
+					       "dtap");
+	if (!msg)
+		return NULL;
+
+	/* DTAP header */
+	msg->l3h = msgb_put(msg, sizeof(*header));
+	header = (struct dtap_header *) &msg->l3h[0];
+	header->type = BSSAP_MSG_DTAP;
+	header->link_id = link_id;
+	header->length = msgb_l3len(msg_l3);
+
+	/* Payload */
+	data = msgb_put(msg, header->length);
+	memcpy(data, msg_l3->l3h, header->length);
+
+	return msg;
+}
+
+static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
+				     void *handler_data, void *signal_data)
+{
+	struct msgb *msg;
+	struct gsm_lchan *lchan;
+	struct sccp_connection *conn;
+
+	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
+		return 0;
+
+	/*
+	 * If we have a SCCP Connection we need to inform the MSC about
+         * the resource error and then drop the lchan<->sccp association.
+	 */
+	lchan = (struct gsm_lchan *)signal_data;
+
+	if (!lchan || !lchan->msc_data)
+		return 0;
+
+	conn = lchan->msc_data->sccp;
+	lchan->msc_data->lchan = NULL;
+	lchan->msc_data = NULL;
+
+	msg = msgb_alloc(30, "sccp: clear request");
+	if (!msg) {
+		DEBUGP(DMSC, "Failed to allocate clear request.\n");
+		return 0;
+	}
+
+	msg->l3h = msgb_put(msg, 2 + 4);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 4;
+
+	msg->l3h[2] = BSS_MAP_MSG_CLEAR_RQST;
+	msg->l3h[3] = GSM0808_IE_CAUSE;
+	msg->l3h[4] = 1;
+	msg->l3h[5] = GSM0808_CAUSE_RADIO_INTERFACE_FAILURE;
+
+	DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
+	sccp_connection_write(conn, msg);
+	msgb_free(msg);
+
+	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_bssap(void)
+{
+	register_signal_handler(SS_LCHAN, bssap_handle_lchan_signal, NULL);
+}
