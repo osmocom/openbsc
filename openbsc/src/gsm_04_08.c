@@ -3498,22 +3498,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			}
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
-			/* start paging subscriber on all BTS with her location */
-			subscr->net = net;
-			bts = NULL;
-			do {
-				bts = gsm_bts_by_lac(net, subscr->lac, bts);
-				if (!bts)
-					break;
-				DEBUGP(DCC, "(bts %d trx - ts - ti -- sub %s) "
-					"Received '%s' from MNCC with "
-					"unallocated channel, paging.\n",
-					bts->nr, data->called.number,
-					get_mncc_name(msg_type));
-				/* Trigger paging */
-				paging_request(net, subscr, RSL_CHANNEED_TCH_F,
-						setup_trig_pag_evt, subscr);
-			} while (1);
+			/* Trigger paging */
+			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
+					setup_trig_pag_evt, subscr);
 			return 0;
 		}
 		/* Assign lchan */

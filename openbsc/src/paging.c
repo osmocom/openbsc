@@ -245,6 +245,7 @@ void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 {
 	struct gsm_bts *bts = NULL;
 
+	/* start paging subscriber on all BTS within Location Area */
 	do {
 		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
