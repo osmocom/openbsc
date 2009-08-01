@@ -681,6 +681,11 @@ enum gsm48_bcap_rrq {
 	GSM48_BCAP_RRQ_DUAL_FR	= 3,
 };
 
+
+#define GSM48_TMSI_LEN	5
+#define GSM48_MID_TMSI_LEN	(GSM48_TMSI_LEN + 2)
+
+
 struct msgb;
 struct gsm_bts;
 struct gsm_subscriber;
@@ -717,5 +722,7 @@ int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
 		      int h_len, const char *input);
 int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 		      int h_len);
+
+extern const char *gsm0408_cc_msg_names[];
 
 #endif
