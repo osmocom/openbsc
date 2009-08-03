@@ -589,10 +589,10 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 		/* Use TEI 2 for signalling */
 		abis_nm_establish_tei(bts, 1, 0, 1, 0xff, 0x02);
 
-		/* SET CHANNEL ATTRIBUTE TS1 */
-		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
-		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/a */
-		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 0);
+		/* SET CHANNEL ATTRIBUTE TS0 */
+		abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts0 to e1_0/ts4/a */
+		abis_nm_conn_terr_traf(&trx->ts[0], 0, 4, 0);
 	
 		/* SET CHANNEL ATTRIBUTE TS1 */
 		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
@@ -964,7 +964,7 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->nr, trx->bts->nr, MCC, MNC, BSIC, TSC);
+		trx->bts->nr, trx->nr, MCC, MNC, BSIC, TSC);
 	set_system_infos(trx);
 }
 
