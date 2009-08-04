@@ -1090,7 +1090,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
-	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
+	lchan->ms_power = ms_pwr_ctl_lvl(bts, 20 /* dBm == 100mW */);
+	lchan->bs_power = 0x0f; /* 30dB reduction */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
