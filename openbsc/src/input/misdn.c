@@ -477,14 +477,7 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 	int sk, ret, cnt;
 	struct mISDN_devinfo devinfo;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&misdn_driver);
-	if (ret)
-		return ret;
-
 	/* create the actual line instance */
-	/* FIXME: do this independent of driver registration */
 	e1h = talloc(tall_bsc_ctx, struct mi_e1_handle);
 	memset(e1h, 0, sizeof(*e1h));
 
@@ -531,14 +524,15 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 		return -EINVAL;
 	}
 
-	if (devinfo.nrbchan != 30) {
-		fprintf(stderr, "error: E1 card has no 30 B-channels\n");
-		return -EINVAL;
-	}
-
 	ret = mi_e1_setup(line, release_l2);
 	if (ret)
 		return ret;
 
 	return e1inp_line_register(line);
+}
+
+static __attribute__((constructor)) void on_dso_load_sms(void)
+{
+	/* register the driver with the core */
+	e1inp_driver_register(&misdn_driver);
 }
