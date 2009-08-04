@@ -1190,7 +1190,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	DEBUGPC(DRLL, "cause=0x%02x", rlm_cause[1]);
+	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
 		
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_chan_release(msg->lchan);
@@ -1234,24 +1234,22 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		}
 		break;
 	case RSL_MT_REL_IND:
-		DEBUGPC(DRLL, "RELEASE INDICATION ");
+		DEBUGPC(DRLL, "RELEASE INDICATION\n");
 		break;
 	case RSL_MT_REL_CONF:
-		DEBUGPC(DRLL, "RELEASE CONFIRMATION ");
+		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		break;
 	case RSL_MT_ERROR_IND:
-		DEBUGPC(DRLL, "ERROR INDICATION ");
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
-		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 	}
-	DEBUGPC(DRLL, "\n");
 	return rc;
 }
 
