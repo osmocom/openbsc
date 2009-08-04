@@ -333,6 +333,7 @@ struct rsl_ie_chan_ident {
 #define RSL_ERR_TALKER_ACC_FAIL		0x03
 #define RSL_ERR_OM_INTERVENTION		0x07
 #define RSL_ERR_NORMAL_UNSPEC		0x0f
+#define RSL_ERR_T_MSRFPCI_EXP		0x18
 /* resource unavailable */
 #define RSL_ERR_EQUIPMENT_FAIL		0x20
 #define RSL_ERR_RR_UNAVAIL		0x21

@@ -321,6 +321,7 @@ static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_TALKER_ACC_FAIL] =	"Talker Access Failure",
 	[RSL_ERR_OM_INTERVENTION] =	"O&M Intervention",
 	[RSL_ERR_NORMAL_UNSPEC] =	"Normal event, unspecified",
+	[RSL_ERR_T_MSRFPCI_EXP] =	"Siemens: T_MSRFPCI Expired",
 	[RSL_ERR_EQUIPMENT_FAIL] =	"Equipment Failure",
 	[RSL_ERR_RR_UNAVAIL] =		"Radio Resource not available",
 	[RSL_ERR_TERR_CH_FAIL] =	"Terrestrial Channel Failure",
