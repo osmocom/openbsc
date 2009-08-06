@@ -17,6 +17,7 @@
 #include <vty/vty.h>
 #include <vty/command.h>
 #include <vty/buffer.h>
+#include <openbsc/talloc.h>
 
 extern struct host host;
 
@@ -32,6 +33,8 @@ static int vty_config;
 
 static int no_password_check = 1;
 
+static void *tall_vty_ctx;
+
 static void vty_clear_buf(struct vty *vty)
 {
 	memset(vty->buf, 0, vty->max);
@@ -40,7 +43,7 @@ static void vty_clear_buf(struct vty *vty)
 /* Allocate new vty struct. */
 struct vty *vty_new()
 {
-	struct vty *new = malloc(sizeof(struct vty));
+	struct vty *new = talloc_zero(tall_vty_ctx, struct vty);
 
 	if (!new)
 		goto out;
@@ -48,7 +51,7 @@ struct vty *vty_new()
 	new->obuf = buffer_new(0);	/* Use default buffer size. */
 	if (!new->obuf)
 		goto out_new;
-	new->buf = calloc(1, VTY_BUFSIZ);
+	new->buf = _talloc_zero(tall_vty_ctx, VTY_BUFSIZ, "vty_new->buf");
 	if (!new->buf)
 		goto out_obuf;
 
@@ -57,9 +60,9 @@ struct vty *vty_new()
 	return new;
 
 out_obuf:
-	free(new->obuf);
+	buffer_free(new->obuf);
 out_new:
-	free(new);
+	talloc_free(new);
 	new = NULL;
 out:
 	return new;
@@ -135,16 +138,19 @@ void vty_close(struct vty *vty)
 {
 	int i;
 
-	/* Flush buffer. */
-	buffer_flush_all(vty->obuf, vty->fd);
+	if (vty->obuf)  {
+		/* Flush buffer. */
+		buffer_flush_all(vty->obuf, vty->fd);
 
-	/* Free input buffer. */
-	buffer_free(vty->obuf);
+		/* Free input buffer. */
+		buffer_free(vty->obuf);
+		vty->obuf = NULL;
+	}
 
 	/* Free command history. */
 	for (i = 0; i < VTY_MAXHIST; i++)
 		if (vty->hist[i])
-			free(vty->hist[i]);
+			talloc_free(vty->hist[i]);
 
 	/* Unset vector. */
 	vector_unset(vtyvec, vty->fd);
@@ -153,17 +159,20 @@ void vty_close(struct vty *vty)
 	if (vty->fd > 0)
 		close(vty->fd);
 
-	if (vty->buf)
-		free(vty->buf);
+	if (vty->buf) {
+		talloc_free(vty->buf);
+		vty->buf = NULL;
+	}
 
 	/* Check configure. */
 	vty_config_unlock(vty);
 
-	/* OK free vty. */
-	free(vty);
-
 	/* FIXME: memory leak. We need to call telnet_close_client() but don't
 	 * have bfd */
+	vty_event(VTY_CLOSED, vty->fd, vty);
+
+	/* OK free vty. */
+	talloc_free(vty);
 }
 
 int vty_shell(struct vty *vty)
@@ -199,7 +208,7 @@ int vty_out(struct vty *vty, const char *format, ...)
 				else
 					size = size * 2;
 
-				p = realloc(p, size);
+				p = talloc_realloc_size(tall_vty_ctx, p, size);
 				if (!p)
 					return -1;
 
@@ -221,7 +230,7 @@ int vty_out(struct vty *vty, const char *format, ...)
 
 		/* If p is not different with buf, it is allocated buffer.  */
 		if (p != buf)
-			free(p);
+			talloc_free(p);
 	}
 
 	return len;
@@ -344,7 +353,7 @@ static void vty_ensure(struct vty *vty, int length)
 {
 	if (vty->max <= length) {
 		vty->max *= 2;
-		vty->buf = realloc(vty->buf, vty->max);
+		vty->buf = talloc_realloc_size(tall_vty_ctx, vty->buf, vty->max);
 		// FIXME: check return
 	}
 }
@@ -444,8 +453,8 @@ static void vty_hist_add(struct vty *vty)
 
 	/* Insert history entry. */
 	if (vty->hist[vty->hindex])
-		free(vty->hist[vty->hindex]);
-	vty->hist[vty->hindex] = strdup(vty->buf);
+		talloc_free(vty->hist[vty->hindex]);
+	vty->hist[vty->hindex] = talloc_strdup(tall_vty_ctx, vty->buf);
 
 	/* History index rotation. */
 	vty->hindex++;
@@ -918,14 +927,14 @@ static void vty_complete_command(struct vty *vty)
 		vty_backward_pure_word(vty);
 		vty_insert_word_overwrite(vty, matched[0]);
 		vty_self_insert(vty, ' ');
-		free(matched[0]);
+		//talloc_free(matched[0]);
 		break;
 	case CMD_COMPLETE_MATCH:
 		vty_prompt(vty);
 		vty_redraw_line(vty);
 		vty_backward_pure_word(vty);
 		vty_insert_word_overwrite(vty, matched[0]);
-		free(matched[0]);
+		talloc_free(matched[0]);
 		vector_only_index_free(matched);
 		return;
 		break;
@@ -934,7 +943,7 @@ static void vty_complete_command(struct vty *vty)
 			if (i != 0 && ((i % 6) == 0))
 				vty_out(vty, "%s", VTY_NEWLINE);
 			vty_out(vty, "%-10s ", matched[i]);
-			free(matched[i]);
+			talloc_free(matched[i]);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 
@@ -968,7 +977,7 @@ vty_describe_fold(struct vty *vty, int cmd_width,
 		return;
 	}
 
-	buf = calloc(1, strlen(desc->str) + 1);
+	buf = _talloc_zero(tall_vty_ctx, strlen(desc->str) + 1, "describe_fold");
 	if (!buf)
 		return;
 
@@ -989,7 +998,7 @@ vty_describe_fold(struct vty *vty, int cmd_width,
 
 	vty_out(vty, "  %-*s  %s%s", cmd_width, cmd, p, VTY_NEWLINE);
 
-	free(buf);
+	talloc_free(buf);
 }
 
 /* Describe matched command function. */
@@ -1588,7 +1597,7 @@ static void vty_save_cwd(void)
 		getcwd(cwd, MAXPATHLEN);
 	}
 
-	vty_cwd = malloc(strlen(cwd) + 1);
+	vty_cwd = _talloc_zero(tall_vty_ctx, strlen(cwd) + 1, "save_cwd");
 	strcpy(vty_cwd, cwd);
 }
 
@@ -1613,6 +1622,8 @@ void vty_init()
 	/* For further configuration read, preserve current directory. */
 	vty_save_cwd();
 
+	host.config = "openbsc.cfg";
+
 	vtyvec = vector_init(VECTOR_MIN_SIZE);
 
 	/* Install bgp top node. */
@@ -1634,4 +1645,9 @@ void vty_init()
 	install_element(VTY_NODE, &vty_login_cmd);
 	install_element(VTY_NODE, &no_vty_login_cmd);
 #endif
+}
+
+static __attribute__((constructor)) void on_dso_load_vty(void)
+{
+	tall_vty_ctx = talloc_named_const(NULL, 1, "vty");
 }

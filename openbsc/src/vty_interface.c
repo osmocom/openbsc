@@ -189,8 +189,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "\ttraining_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "\tbase_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	vty_out(vty, "\tunit_id %u %u%s",
-		bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
+	if (is_ipaccess_bts(bts))
+		vty_out(vty, "\tunit_id %u %u%s",
+			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -690,8 +691,8 @@ DEFUN(cfg_bts_type,
 {
 	struct gsm_bts *bts = vty->index;
 
-	/* FIXME: implementation */
-	//bts->type =
+	bts->type = parse_btstype(argv[0]);
+
 	return CMD_SUCCESS;
 }
 
@@ -894,6 +895,36 @@ DEFUN(cfg_ts,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_ts_pchan,
+      cfg_ts_pchan_cmd,
+      "phys_chan_config PCHAN",
+      "Physical Channel configuration (TCH/SDCCH/...)")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+	int pchanc;
+
+	pchanc = gsm_pchan_parse(argv[0]);
+	if (pchanc < 0)
+		return CMD_WARNING;
+
+	ts->pchan = pchanc;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ts_e1_subslot,
+      cfg_ts_e1_subslot_cmd,
+      "e1_subslot E1_IF <1-31> <0-4>",
+      "E1 sub-slot connected to this on-air timeslot")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->e1_link.e1_nr = atoi(argv[0]);
+	ts->e1_link.e1_ts = atoi(argv[1]);
+	ts->e1_link.e1_ts_ss = atoi(argv[2]);
+
+	return CMD_SUCCESS;
+}
 
 /* Subscriber */
 DEFUN(show_subscr,
@@ -1010,6 +1041,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
 	install_default(TS_NODE);
+	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);

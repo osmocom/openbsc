@@ -381,6 +381,7 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
+enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchan_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts);

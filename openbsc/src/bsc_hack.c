@@ -1320,11 +1320,13 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-	case SIGABRT:
 		shutdown_net(gsmnet);
 		sleep(3);
 		exit(0);
 		break;
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report
+		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;

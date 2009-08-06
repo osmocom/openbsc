@@ -23,12 +23,15 @@
 #include <unistd.h>
 
 #include <vty/vector.h>
+#include <openbsc/talloc.h>
 #include <memory.h>
+
+static void *tall_vvec_ctx;
 
 /* Initialize vector : allocate memory and return vector. */
 vector vector_init(unsigned int size)
 {
-	vector v = calloc(1, sizeof(struct _vector));
+	vector v = talloc_zero(tall_vvec_ctx, struct _vector);
 	if (!v)
 		return NULL;
 
@@ -38,9 +41,10 @@ vector vector_init(unsigned int size)
 
 	v->alloced = size;
 	v->active = 0;
-	v->index = calloc(1, sizeof(void *) * size);
+	v->index = _talloc_zero(tall_vvec_ctx, sizeof(void *) * size,
+				"vector_init:index");
 	if (!v->index) {
-		free(v);
+		talloc_free(v);
 		return NULL;
 	}
 	return v;
@@ -48,24 +52,24 @@ vector vector_init(unsigned int size)
 
 void vector_only_wrapper_free(vector v)
 {
-	free(v);
+	talloc_free(v);
 }
 
 void vector_only_index_free(void *index)
 {
-	free(index);
+	talloc_free(index);
 }
 
 void vector_free(vector v)
 {
-	free(v->index);
-	free(v);
+	talloc_free(v->index);
+	talloc_free(v);
 }
 
 vector vector_copy(vector v)
 {
 	unsigned int size;
-	vector new = calloc(1, sizeof(struct _vector));
+	vector new = talloc_zero(tall_vvec_ctx, struct _vector);
 	if (!new)
 		return NULL;
 
@@ -73,9 +77,9 @@ vector vector_copy(vector v)
 	new->alloced = v->alloced;
 
 	size = sizeof(void *) * (v->alloced);
-	new->index = calloc(1, size);
+	new->index = _talloc_zero(tall_vvec_ctx, size, "vector_copy:index");
 	if (!new->index) {
-		free(new);
+		talloc_free(new);
 		return NULL;
 	}
 	memcpy(new->index, v->index, size);
@@ -89,7 +93,8 @@ void vector_ensure(vector v, unsigned int num)
 	if (v->alloced > num)
 		return;
 
-	v->index = realloc(v->index, sizeof(void *) * (v->alloced * 2));
+	v->index = talloc_realloc_size(tall_vvec_ctx, v->index,
+				       sizeof(void *) * (v->alloced * 2));
 	memset(&v->index[v->alloced], 0, sizeof(void *) * v->alloced);
 	v->alloced *= 2;
 
@@ -183,4 +188,9 @@ unsigned int vector_count(vector v)
 			count++;
 
 	return count;
+}
+
+static __attribute__((constructor)) void on_dso_load_vty_vec(void)
+{
+	tall_vvec_ctx = talloc_named_const(NULL, 1, "vty_vector");
 }
