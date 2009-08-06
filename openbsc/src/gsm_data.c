@@ -55,6 +55,18 @@ const char *gsm_pchan_name(enum gsm_phys_chan_config c)
 	return pchan_names[c];
 }
 
+enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(pchan_names); i++) {
+		if (!strcasecmp(name, pchan_names[i]))
+			return i;
+	}
+
+	return -1;
+}
+
 static const char *lchan_names[] = {
 	[GSM_LCHAN_NONE]	= "NONE",
 	[GSM_LCHAN_SDCCH]	= "SDCCH",
