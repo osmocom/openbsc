@@ -503,6 +503,23 @@ static void bootstrap_om_nanobts(struct gsm_bts *bts)
 static void bootstrap_om_bs11(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = bts->c0;
+	int base_ts;
+
+	switch (bts->nr) {
+	case 0:
+		/* First BTS uses E1 TS 01,02,03,04,05 */
+		base_ts = HARDCODED_BTS0_TS - 1;
+		break;
+	case 1:
+		/* Second BTS uses E1 TS 06,07,08,09,10 */
+		base_ts = HARDCODED_BTS1_TS - 1;
+		break;
+	case 2:
+		/* Third BTS uses E1 TS 11,12,13,14,15 */
+		base_ts = HARDCODED_BTS2_TS - 1;
+	default:
+		return;
+	}
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -525,47 +542,47 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 	abis_nm_raw_msg(bts, sizeof(msg_4), msg_4); /* set BTS power control attr */
 
 	/* Connect signalling of bts0/trx0 to e1_0/ts1/64kbps */
-	abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+	abis_nm_conn_terr_sign(trx, 0, base_ts+1, 0xff);
 	abis_nm_set_radio_attr(trx, bs11_attr_radio, sizeof(bs11_attr_radio));
 
 	/* Use TEI 1 for signalling */
-	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
+	abis_nm_establish_tei(bts, 0, 0, base_ts+1, 0xff, 0x01);
 	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
 
 	/* SET CHANNEL ATTRIBUTE TS1 */
 	abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
-	abis_nm_conn_terr_traf(&trx->ts[1], 0, 2, 1);
+	abis_nm_conn_terr_traf(&trx->ts[1], 0, base_ts+2, 1);
 	
 	/* SET CHANNEL ATTRIBUTE TS2 */
 	abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts2 to e1_0/ts2/c */
-	abis_nm_conn_terr_traf(&trx->ts[2], 0, 2, 2);
+	abis_nm_conn_terr_traf(&trx->ts[2], 0, base_ts+2, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS3 */
 	abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts3 to e1_0/ts2/d */
-	abis_nm_conn_terr_traf(&trx->ts[3], 0, 2, 3);
+	abis_nm_conn_terr_traf(&trx->ts[3], 0, base_ts+2, 3);
 
 	/* SET CHANNEL ATTRIBUTE TS4 */
 	abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts4 to e1_0/ts3/a */
-	abis_nm_conn_terr_traf(&trx->ts[4], 0, 3, 0);
+	abis_nm_conn_terr_traf(&trx->ts[4], 0, base_ts+3, 0);
 
 	/* SET CHANNEL ATTRIBUTE TS5 */
 	abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts5 to e1_0/ts3/b */
-	abis_nm_conn_terr_traf(&trx->ts[5], 0, 3, 1);
+	abis_nm_conn_terr_traf(&trx->ts[5], 0, base_ts+3, 1);
 
 	/* SET CHANNEL ATTRIBUTE TS6 */
 	abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts6 to e1_0/ts3/c */
-	abis_nm_conn_terr_traf(&trx->ts[6], 0, 3, 2);
+	abis_nm_conn_terr_traf(&trx->ts[6], 0, base_ts+3, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS7 */
 	abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
-	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
+	abis_nm_conn_terr_traf(&trx->ts[7], 0, base_ts+3, 3);
 
 	trx = gsm_bts_trx_num(bts, 1);
 	if (trx) {	
@@ -581,53 +598,53 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 		trx1_attr_radio[3] = arfcn_low;
 	
 		/* Connect signalling of TRX1 to e1_0/ts1/64kbps */
-		abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+		abis_nm_conn_terr_sign(trx, 0, base_ts+1, 0xff);
 		/* FIXME: TRX ATTRIBUTE */
 		abis_nm_set_radio_attr(trx, trx1_attr_radio,
 					sizeof(trx1_attr_radio));
 
 		/* Use TEI 2 for signalling */
-		abis_nm_establish_tei(bts, 1, 0, 1, 0xff, 0x02);
+		abis_nm_establish_tei(bts, 1, 0, base_ts+1, 0xff, 0x02);
 
 		/* SET CHANNEL ATTRIBUTE TS0 */
 		abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts0 to e1_0/ts4/a */
-		abis_nm_conn_terr_traf(&trx->ts[0], 0, 4, 0);
+		abis_nm_conn_terr_traf(&trx->ts[0], 0, base_ts+4, 0);
 	
 		/* SET CHANNEL ATTRIBUTE TS1 */
 		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/b */
-		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 1);
+		abis_nm_conn_terr_traf(&trx->ts[1], 0, base_ts+4, 1);
 	
 		/* SET CHANNEL ATTRIBUTE TS2 */
 		abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts2 to e1_0/ts4/c */
-		abis_nm_conn_terr_traf(&trx->ts[2], 0, 4, 2);
+		abis_nm_conn_terr_traf(&trx->ts[2], 0, base_ts+4, 2);
 
 		/* SET CHANNEL ATTRIBUTE TS3 */
 		abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts3 to e1_0/ts4/d */
-		abis_nm_conn_terr_traf(&trx->ts[3], 0, 4, 3);
+		abis_nm_conn_terr_traf(&trx->ts[3], 0, base_ts+4, 3);
 
 		/* SET CHANNEL ATTRIBUTE TS4 */
 		abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts4 to e1_0/ts5/a */
-		abis_nm_conn_terr_traf(&trx->ts[4], 0, 5, 0);
+		abis_nm_conn_terr_traf(&trx->ts[4], 0, base_ts+5, 0);
 
 		/* SET CHANNEL ATTRIBUTE TS5 */
 		abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts5 to e1_0/ts5/b */
-		abis_nm_conn_terr_traf(&trx->ts[5], 0, 5, 1);
+		abis_nm_conn_terr_traf(&trx->ts[5], 0, base_ts+5, 1);
 
 		/* SET CHANNEL ATTRIBUTE TS6 */
 		abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts6 to e1_0/ts5/c */
-		abis_nm_conn_terr_traf(&trx->ts[6], 0, 5, 2);
+		abis_nm_conn_terr_traf(&trx->ts[6], 0, base_ts+5, 2);
 
 		/* SET CHANNEL ATTRIBUTE TS7 */
 		abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts7 to e1_0/ts5/d */
-		abis_nm_conn_terr_traf(&trx->ts[7], 0, 5, 3);
+		abis_nm_conn_terr_traf(&trx->ts[7], 0, base_ts+5, 3);
 	}
 
 	/* end DB transmission */
