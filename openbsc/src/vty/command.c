@@ -34,6 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 //#include "memory.h"
 //#include "log.h"
@@ -2216,7 +2217,6 @@ cmd_execute_command_strict(vector vline, struct vty *vty,
 	return (*matched_element->func) (matched_element, vty, argc, argv);
 }
 
-#if 0
 /* Configration make from file. */
 int config_from_file(struct vty *vty, FILE * fp)
 {
@@ -2248,7 +2248,6 @@ int config_from_file(struct vty *vty, FILE * fp)
 	}
 	return CMD_SUCCESS;
 }
-#endif
 
 /* Configration from terminal */
 DEFUN(config_terminal,
@@ -2445,7 +2444,6 @@ DEFUN(config_list, config_list_cmd, "list", "Print command list\n")
 	return CMD_SUCCESS;
 }
 
-#if 0
 /* Write current configuration into file. */
 DEFUN(config_write_file,
       config_write_file_cmd,
@@ -2549,7 +2547,7 @@ DEFUN(config_write_file,
 
 	if (chmod(config_file, CONFIGFILE_MASK) != 0) {
 		vty_out(vty, "Can't chmod configuration file %s: %s (%d).%s",
-			config_file, safe_strerror(errno), errno, VTY_NEWLINE);
+			config_file, strerror(errno), errno, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -2640,7 +2638,6 @@ ALIAS(config_write_terminal,
 
 	return CMD_SUCCESS;
 }
-#endif
 
 /* Hostname configuration */
 DEFUN(config_hostname,
@@ -3329,13 +3326,11 @@ void install_default(enum node_type node)
 	install_element(node, &config_help_cmd);
 	install_element(node, &config_list_cmd);
 
-#if 0
 	install_element(node, &config_write_terminal_cmd);
 	install_element(node, &config_write_file_cmd);
 	install_element(node, &config_write_memory_cmd);
 	install_element(node, &config_write_cmd);
 	install_element(node, &show_running_config_cmd);
-#endif
 }
 
 /* Initialize command interface. Install basic nodes and commands. */
@@ -3379,9 +3374,9 @@ void cmd_init(int terminal)
 		install_default(ENABLE_NODE);
 		install_element(ENABLE_NODE, &config_disable_cmd);
 		install_element(ENABLE_NODE, &config_terminal_cmd);
-		//install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
+		install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
 	}
-	//install_element (ENABLE_NODE, &show_startup_config_cmd);
+	install_element (ENABLE_NODE, &show_startup_config_cmd);
 	install_element(ENABLE_NODE, &show_version_cmd);
 
 	if (terminal) {
