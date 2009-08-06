@@ -482,6 +482,12 @@ enum abis_nm_chan_comb {
 	NM_CHANC_BCCH		= 0x06,
 	NM_CHANC_BCCH_CBCH	= 0x07,
 	NM_CHANC_SDCCH_CBCH	= 0x08,
+	/* ip.access */
+	NM_CHANC_IPAC_bPDCH	= 0x0b,	/* PBCCH + PCCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_cPDCH	= 0x0c, /* PBCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_PDCH	= 0x0d,	/* PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_TCHFull_PDCH = 0x80,
+	NM_CHANC_IPAC_TCHFull_TCHHalf = 0x81,
 };
 
 /* Section 9.4.16: Event Type */
@@ -671,6 +677,9 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 int abis_nm_software_load_status(struct gsm_bts *bts);
 int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
 			      gsm_cbfn *cbfn, void *cb_data);
+
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1);
 
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);

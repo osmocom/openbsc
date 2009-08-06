@@ -24,50 +24,81 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 	struct e1inp_line *line;
 	struct e1inp_ts *sign_ts;
 	struct e1inp_sign_link *oml_link, *rsl_link;
+	struct gsm_bts_trx *trx = bts->c0;
+	int base_ts;
+
+	switch (bts->nr) {
+	case 0:
+		/* First BTS uses E1 TS 01,02,03,04,05 */
+		base_ts = HARDCODED_BTS0_TS - 1;
+		break;
+	case 1:
+		/* Second BTS uses E1 TS 06,07,08,09,10 */
+		base_ts = HARDCODED_BTS1_TS - 1;
+		break;
+	case 2:
+		/* Third BTS uses E1 TS 11,12,13,14,15 */
+		base_ts = HARDCODED_BTS2_TS - 1;
+	default:
+		return -EINVAL;
+	}
 
 	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line)
 		return -ENOMEM;
 
 	/* create E1 timeslots for signalling and TRAU frames */
-	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
-	e1inp_ts_config(&line->ts[2-1], line, E1INP_TS_TYPE_TRAU);
-	e1inp_ts_config(&line->ts[3-1], line, E1INP_TS_TYPE_TRAU);
+	e1inp_ts_config(&line->ts[base_ts+1-1], line, E1INP_TS_TYPE_SIGN);
+	e1inp_ts_config(&line->ts[base_ts+2-1], line, E1INP_TS_TYPE_TRAU);
+	e1inp_ts_config(&line->ts[base_ts+3-1], line, E1INP_TS_TYPE_TRAU);
 
 	/* create signalling links for TS1 */
-	sign_ts = &line->ts[1-1];
+	sign_ts = &line->ts[base_ts+1-1];
 	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
-					  bts->c0, TEI_OML, SAPI_OML);
+					  trx, TEI_OML, SAPI_OML);
 	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
-					  bts->c0, TEI_RSL, SAPI_RSL);
+					  trx, TEI_RSL, SAPI_RSL);
 
 	/* create back-links from bts/trx */
 	bts->oml_link = oml_link;
-	bts->c0->rsl_link = rsl_link;
+	trx->rsl_link = rsl_link;
 
 	/* enable subchannel demuxer on TS2 */
-	subch_demux_activate(&line->ts[2-1].trau.demux, 1);
-	subch_demux_activate(&line->ts[2-1].trau.demux, 2);
-	subch_demux_activate(&line->ts[2-1].trau.demux, 3);
+	subch_demux_activate(&line->ts[base_ts+2-1].trau.demux, 1);
+	subch_demux_activate(&line->ts[base_ts+2-1].trau.demux, 2);
+	subch_demux_activate(&line->ts[base_ts+2-1].trau.demux, 3);
 
 	/* enable subchannel demuxer on TS3 */
-	subch_demux_activate(&line->ts[3-1].trau.demux, 0);
-	subch_demux_activate(&line->ts[3-1].trau.demux, 1);
-	subch_demux_activate(&line->ts[3-1].trau.demux, 2);
-	subch_demux_activate(&line->ts[3-1].trau.demux, 3);
+	subch_demux_activate(&line->ts[base_ts+3-1].trau.demux, 0);
+	subch_demux_activate(&line->ts[base_ts+3-1].trau.demux, 1);
+	subch_demux_activate(&line->ts[base_ts+3-1].trau.demux, 2);
+	subch_demux_activate(&line->ts[base_ts+3-1].trau.demux, 3);
 
-#ifdef HAVE_TRX1
-	/* create E1 timeslots for TRAU frames of TRX1 */
-	e1inp_ts_config(&line->ts[4-1], line, E1INP_TS_TYPE_TRAU);
-	e1inp_ts_config(&line->ts[5-1], line, E1INP_TS_TYPE_TRAU);
+	trx = gsm_bts_trx_num(bts, 1);
+	if (trx) {
+		/* create E1 timeslots for TRAU frames of TRX1 */
+		e1inp_ts_config(&line->ts[base_ts+4-1], line, E1INP_TS_TYPE_TRAU);
+		e1inp_ts_config(&line->ts[base_ts+5-1], line, E1INP_TS_TYPE_TRAU);
 
-	/* create RSL signalling link for TRX1 */
-	sign_ts = &line->ts[1-1];
-	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
-					  &bts->trx[1], TEI_RSL+1, SAPI_RSL);
-	/* create back-links from trx */
-	bts->trx[1].rsl_link = rsl_link;
-#endif
+		/* create RSL signalling link for TRX1 */
+		sign_ts = &line->ts[base_ts+1-1];
+		rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
+					  trx, TEI_RSL+1, SAPI_RSL);
+		/* create back-links from trx */
+		trx->rsl_link = rsl_link;
+
+		/* enable subchannel demuxer on TS2 */
+		subch_demux_activate(&line->ts[base_ts+4-1].trau.demux, 0);
+		subch_demux_activate(&line->ts[base_ts+4-1].trau.demux, 1);
+		subch_demux_activate(&line->ts[base_ts+4-1].trau.demux, 2);
+		subch_demux_activate(&line->ts[base_ts+4-1].trau.demux, 3);
+
+		/* enable subchannel demuxer on TS3 */
+		subch_demux_activate(&line->ts[base_ts+5-1].trau.demux, 0);
+		subch_demux_activate(&line->ts[base_ts+5-1].trau.demux, 1);
+		subch_demux_activate(&line->ts[base_ts+5-1].trau.demux, 2);
+		subch_demux_activate(&line->ts[base_ts+5-1].trau.demux, 3);
+	}
 
 	return mi_setup(cardnr, line, release_l2);
 }

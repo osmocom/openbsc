@@ -44,6 +44,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/rtp_proxy.h>
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
 
@@ -55,6 +56,10 @@
 #define GSM_MAX_USERUSER       128
 
 static void *tall_locop_ctx;
+
+/* should ip.access BTS use direct RTP streams between each other (1),
+ * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
+int ipacc_rtp_direct = 1;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -397,17 +402,6 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	}
 
 	return 0;
-}
-
-/*
- * This will be ran by the linker when loading the DSO. We use it to
- * do system initialization, e.g. registration of signal handlers.
- */
-static __attribute__((constructor)) void on_dso_load_0408(void)
-{
-	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
-					    "loc_updating_oper");
-	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
 }
 
 static void to_bcd(u_int8_t *bcd, u_int16_t val)
@@ -1284,7 +1278,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	return gsm0408_authorize(lchan, msg);
 }
 
-/* 9.1.5 Channel mode modify */
+/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
 int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -1750,6 +1744,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+		/* We've successfully modified the MS side of the channel,
+		 * now go on to modify the BTS side of the channel */
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
 		rc = rsl_chan_mode_modify_req(msg->lchan);
 		break;
 	case GSM48_MT_RR_STATUS:
@@ -1954,8 +1951,6 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
-			if (is_ipaccess_bts(lchan->ts->trx->bts))
-				rsl_ipacc_bind(lchan);
 			break;
 		case GSM_PAGING_EXPIRED:
 			DEBUGP(DCC, "Paging subscr %s expired!\n",
@@ -1973,12 +1968,80 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
+/* some other part of the code sends us a signal */
+static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
+				 void *handler_data, void *signal_data)
+{
+	struct gsm_lchan *lchan = signal_data;
+	struct gsm_bts_trx_ts *ts;
+	int rc;
+
+	if (subsys != SS_ABISIP)
+		return 0;
+
+	/* in case we use direct BTS-to-BTS RTP */
+	if (ipacc_rtp_direct)
+		return 0;
+
+	ts = lchan->ts;
+
+	switch (signal) {
+	case S_ABISIP_BIND_ACK:
+		/* the BTS has successfully bound a TCH to a local ip/port,
+		 * which means we can connect our UDP socket to it */
+		if (ts->abis_ip.rtp_socket) {
+			rtp_socket_free(ts->abis_ip.rtp_socket);
+			ts->abis_ip.rtp_socket = NULL;
+		}
+
+		ts->abis_ip.rtp_socket = rtp_socket_create();
+		if (!ts->abis_ip.rtp_socket)
+			goto out_err;
+
+		rc = rtp_socket_connect(ts->abis_ip.rtp_socket,
+				   ts->abis_ip.bound_ip,
+				   ts->abis_ip.bound_port);
+		if (rc < 0)
+			goto out_err;
+		break;
+	case S_ABISIP_DISC_IND:
+		/* the BTS tells us a RTP stream has been disconnected */
+		if (ts->abis_ip.rtp_socket) {
+			rtp_socket_free(ts->abis_ip.rtp_socket);
+			ts->abis_ip.rtp_socket = NULL;
+		}
+		break;
+	}
+
+	return 0;
+out_err:
+	/* FIXME: do something */
+	return 0;
+}
+
+/* bind rtp proxy to local IP/port and tell BTS to connect to it */
+static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+	struct rtp_socket *rs = ts->abis_ip.rtp_socket;
+	int rc;
+
+	rc = rsl_ipacc_connect(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
+				ntohs(rs->rtp.sin_local.sin_port),
+				ts->abis_ip.conn_id, 
+			/* FIXME: use RTP payload of bound socket, not BTS*/
+				ts->abis_ip.rtp_payload2);
+
+	return rc;
+}
+
 /* map two ipaccess RTP streams onto each other */
 static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 {
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_bts *remote_bts = remote_lchan->ts->trx->bts;
 	struct gsm_bts_trx_ts *ts;
+	int rc;
 
 	DEBUGP(DCC, "Setting up TCH map between (bts=%u,trx=%u,ts=%u) and (bts=%u,trx=%u,ts=%u)\n",
 		bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
@@ -1992,23 +2055,38 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS_900:
 	case GSM_BTS_TYPE_NANOBTS_1800:
-		ts = remote_lchan->ts;
-		rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
-				  ts->abis_ip.bound_port,
-				  lchan->ts->abis_ip.conn_id,
-				  ts->abis_ip.rtp_payload2);
-	
-		ts = lchan->ts;
-		rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
-				  ts->abis_ip.bound_port,
-				  remote_lchan->ts->abis_ip.conn_id,
-				  ts->abis_ip.rtp_payload2);
+		if (!ipacc_rtp_direct) {
+			/* connect the TCH's to our RTP proxy */
+			rc = ipacc_connect_proxy_bind(lchan);
+			if (rc < 0)
+				return rc;
+			rc = ipacc_connect_proxy_bind(remote_lchan);
+
+			/* connect them with each other */
+			rtp_socket_proxy(lchan->ts->abis_ip.rtp_socket,
+					 remote_lchan->ts->abis_ip.rtp_socket);
+		} else {
+			/* directly connect TCH RTP streams to each other */
+			ts = remote_lchan->ts;
+			rc = rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
+						ts->abis_ip.bound_port,
+						lchan->ts->abis_ip.conn_id,
+						ts->abis_ip.rtp_payload2);
+			if (rc < 0)
+				return rc;
+			ts = lchan->ts;
+			rc = rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
+						ts->abis_ip.bound_port,
+						remote_lchan->ts->abis_ip.conn_id,
+						ts->abis_ip.rtp_payload2);
+		}
 		break;
 	case GSM_BTS_TYPE_BS11:
 		trau_mux_map_lchan(lchan, remote_lchan);
 		break;
 	default:
 		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		rc = -EINVAL;
 		break;
 	}
 
@@ -2240,14 +2318,14 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 			     TLVP_VAL(&tp, GSM48_IE_CC_CAP)-1);
 	}
 
-	if (is_ipaccess_bts(msg->trx->bts))
-		rsl_ipacc_bind(msg->lchan);
-
 	new_cc_state(trans, GSM_CSTATE_INITIATED);
 
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
 
+	/* MNCC code will modify the channel asynchronously, we should
+	 * ipaccess-bind only after the modification has been made to the
+	 * lchan->tch_mode */
 	return 0;
 }
 
@@ -3217,8 +3295,19 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 static int gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
+	int rc;
 
-	return gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
+	rc = gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
+	if (rc < 0)
+		return rc;
+
+	/* FIXME: we not only need to do this after mode modify, but
+	 * also after channel activation */
+	if (is_ipaccess_bts(trans->lchan->ts->trx->bts) &&
+	    mode->lchan_mode != GSM48_CMODE_SIGN)
+		rc = rsl_ipacc_bind(trans->lchan);
+
+	return rc;
 }
 
 static struct downstate {
@@ -3732,3 +3821,14 @@ int bsc_upqueue(struct gsm_network *net)
 	return work;
 }
 
+/*
+ * This will be ran by the linker when loading the DSO. We use it to
+ * do system initialization, e.g. registration of signal handlers.
+ */
+static __attribute__((constructor)) void on_dso_load_0408(void)
+{
+	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					    "loc_updating_oper");
+	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
+	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
+}

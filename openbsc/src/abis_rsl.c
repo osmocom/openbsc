@@ -321,6 +321,7 @@ static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_TALKER_ACC_FAIL] =	"Talker Access Failure",
 	[RSL_ERR_OM_INTERVENTION] =	"O&M Intervention",
 	[RSL_ERR_NORMAL_UNSPEC] =	"Normal event, unspecified",
+	[RSL_ERR_T_MSRFPCI_EXP] =	"Siemens: T_MSRFPCI Expired",
 	[RSL_ERR_EQUIPMENT_FAIL] =	"Equipment Failure",
 	[RSL_ERR_RR_UNAVAIL] =		"Radio Resource not available",
 	[RSL_ERR_TERR_CH_FAIL] =	"Terrestrial Channel Failure",
@@ -530,6 +531,62 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 	return abis_rsl_sendmsg(msg);
 }
 
+static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
+				   struct gsm_lchan *lchan)
+{
+	memset(cm, 0, sizeof(cm));
+
+	/* FIXME: what to do with data calls ? */
+	cm->dtx_dtu = 0x00;
+
+	/* set TCH Speech/Data */
+	cm->spd_ind = lchan->rsl_cmode;
+
+	switch (lchan->type) {
+	case GSM_LCHAN_SDCCH:
+		cm->chan_rt = RSL_CMOD_CRT_SDCCH;
+		break;
+	case GSM_LCHAN_TCH_F:
+		cm->chan_rt = RSL_CMOD_CRT_TCH_Bm;
+		break;
+	case GSM_LCHAN_TCH_H:
+		cm->chan_rt = RSL_CMOD_CRT_TCH_Lm;
+		break;
+	case GSM_LCHAN_NONE:
+	case GSM_LCHAN_UNKNOWN:
+	default:
+		return -EINVAL;
+	}
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SIGN:
+		cm->chan_rate = 0;
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+		cm->chan_rate = RSL_CMOD_SP_GSM1;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		cm->chan_rate = RSL_CMOD_SP_GSM2;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		cm->chan_rate = RSL_CMOD_SP_GSM3;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+		cm->chan_rate = RSL_CMOD_SP_NT_14k5;
+		break;
+	case GSM48_CMODE_DATA_12k0:
+		cm->chan_rate = RSL_CMOD_SP_NT_12k0;
+		break;
+	case GSM48_CMODE_DATA_6k0:
+		cm->chan_rate = RSL_CMOD_SP_NT_6k0;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 /* Chapter 8.4.1 */
 #if 0
 int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
@@ -567,45 +624,20 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 #endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta, u_int8_t mode)
+			    u_int8_t ta)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+	int rc;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int16_t arfcn = lchan->ts->trx->arfcn;
 	struct rsl_ie_chan_mode cm;
 	struct rsl_ie_chan_ident ci;
 
-	memset(&cm, 0, sizeof(cm));
-	/* FIXME: what to do with data calls ? */
-	cm.dtx_dtu = 0x00;
-	switch (lchan->type) {
-	case GSM_LCHAN_SDCCH:
-		cm.spd_ind = RSL_CMOD_SPD_SIGN;
-		cm.chan_rt = RSL_CMOD_CRT_SDCCH;
-		cm.chan_rate = 0x00;
-		break;
-	case GSM_LCHAN_TCH_F:
-		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		switch (mode) {
-		case RSL_CMOD_SPD_SIGN:
-			cm.spd_ind = RSL_CMOD_SPD_SIGN;
-			cm.chan_rate = 0x00;
-			break;
-		case RSL_CMOD_SPD_SPEECH:
-			cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-			cm.chan_rate = RSL_CMOD_SP_GSM2;
-			break;
-		}
-		break;
-	case GSM_LCHAN_TCH_H:
-		DEBUGP(DRSL, "Unimplemented TCH_H activation\n");
-		return -1;
-	case GSM_LCHAN_UNKNOWN:
-	case GSM_LCHAN_NONE:
-		return -1;
-	}
+	rc = channel_mode_from_lchan(&cm, lchan);
+	if (rc < 0)
+		return rc;
 
 	memset(&ci, 0, sizeof(ci));
 	ci.chan_desc.iei = 0x64;
@@ -637,40 +669,19 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	return abis_rsl_sendmsg(msg);
 }
 
-/* Chapter 8.4.9 */
+/* Chapter 8.4.9: Modify channel mode on BTS side */
 int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+	int rc;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
 
-	memset(&cm, 0, sizeof(cm));
-
-	/* FIXME: what to do with data calls ? */
-	cm.dtx_dtu = 0x00;
-	switch (lchan->type) {
-	/* todo more modes */
-	case GSM_LCHAN_TCH_F:
-		cm.spd_ind = RSL_CMOD_SPD_SPEECH;
-		cm.chan_rt = RSL_CMOD_CRT_TCH_Bm;
-		switch(lchan->tch_mode) {
-		case GSM48_CMODE_SPEECH_V1:
-			cm.chan_rate = RSL_CMOD_SP_GSM1;
-			break;
-		case GSM48_CMODE_SPEECH_EFR:
-			cm.chan_rate = RSL_CMOD_SP_GSM2;
-			break;
-		default:
-			DEBUGP(DRSL, "Unimplemented channel modification\n");
-			return -1;
-		}
-		break;
-	default:
-		DEBUGP(DRSL, "Unimplemented channel modification\n");
-		return -1;
-	}
+	rc = channel_mode_from_lchan(&cm, lchan);
+	if (rc < 0)
+		return rc;
 
 	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1079,8 +1090,10 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
-	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, RSL_CMOD_SPD_SIGN);
+	lchan->ms_power = ms_pwr_ctl_lvl(bts, 20 /* dBm == 100mW */);
+	lchan->bs_power = 0x0f; /* 30dB reduction */
+	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
+	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));
@@ -1177,7 +1190,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	DEBUGPC(DRLL, "cause=0x%02x", rlm_cause[1]);
+	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
 		
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_chan_release(msg->lchan);
@@ -1221,30 +1234,27 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		}
 		break;
 	case RSL_MT_REL_IND:
-		DEBUGPC(DRLL, "RELEASE INDICATION ");
+		DEBUGPC(DRLL, "RELEASE INDICATION\n");
 		break;
 	case RSL_MT_REL_CONF:
-		DEBUGPC(DRLL, "RELEASE CONFIRMATION ");
+		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		break;
 	case RSL_MT_ERROR_IND:
-		DEBUGPC(DRLL, "ERROR INDICATION ");
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
-		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 	}
-	DEBUGPC(DRLL, "\n");
 	return rc;
 }
 
 static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
 {
-#if 0
 	switch (tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
 		return 0x00;
@@ -1254,12 +1264,9 @@ static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
 		return 0x02;
 	/* FIXME: Type1 half-rate and type3 half-rate */
 	}
+	DEBUGPC(DRSL, "Cannot determine ip.access speech mode for "
+		"tch_mode == 0x%02x\n", tch_mode);
 	return 0;
-#else
-	/* hard-code EFR for now, since tch_mode is not correct at this
-	 * point in time */
-	return 0x01;
-#endif
 }
 
 /* ip.access specific RSL extensions */
@@ -1267,19 +1274,20 @@ int rsl_ipacc_bind(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t speech_mode_s;
+	u_int8_t speech_mode;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x10 | speech_mode_s);
+	speech_mode = 0x10 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
 
-	DEBUGPC(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr);
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND "
+		"speech_mode=0x%02x\n", gsm_ts_name(lchan->ts),
+		dh->chan_nr, speech_mode);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1292,7 +1300,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
 	u_int8_t *att_f8, *att_ip, *att_port;
-	u_int8_t speech_mode_s;
+	u_int8_t speech_mode;
 	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1300,11 +1308,14 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
+	/* 0x0- == both directions, 0x-1 == EFR codec */
+	speech_mode = 0x00 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "IPAC_CONNECT channel=%s chan_nr=0x%02x "
-		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d\n",
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_CONNECT "
+		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d speech_mode=0x%02x\n",
 		gsm_ts_name(lchan->ts), dh->chan_nr,
-		inet_ntoa(ia), port, rtp_payload2, conn_id);
+		inet_ntoa(ia), port, rtp_payload2, conn_id, speech_mode);
 
 	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
 	att_f8[0] = RSL_IE_IPAC_CONN_ID;
@@ -1324,9 +1335,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	att_port[1] = port >> 8;
 	att_port[2] = port & 0xff;
 
-	speech_mode_s = ipa_smod_s_for_tch_mode(lchan->tch_mode);
-	/* 0x0- == both directions, 0x-1 == EFR codec */
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, 0x00 | speech_mode_s);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	

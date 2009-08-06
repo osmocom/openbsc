@@ -41,6 +41,7 @@ enum gsm_chreq_reason_t {
 
 #include <openbsc/timer.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
 #include <openbsc/tlv.h>
 
@@ -52,6 +53,11 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_ARFCN 123
 #define HARDCODED_TSC	7
 #define HARDCODED_BSIC	0x3f	/* NCC = 7 / BCC = 7 */
+
+/* for multi-drop config */
+#define HARDCODED_BTS0_TS	1
+#define HARDCODED_BTS1_TS	6
+#define HARDCODED_BTS2_TS	11
 
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
@@ -98,6 +104,7 @@ struct gsm_bts_link {
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
+struct rtp_socket;
 
 /* One transaction */
 struct gsm_trans {
@@ -164,8 +171,10 @@ struct gsm_lchan {
 	u_int8_t nr;
 	/* The logical channel type */
 	enum gsm_chan_t type;
+	/* RSL channel mode */
+	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
-	enum gsm_chan_t tch_mode;
+	enum gsm48_chan_mode tch_mode;
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;
@@ -214,6 +223,7 @@ struct gsm_bts_trx_ts {
 		u_int16_t bound_port;
 		u_int8_t rtp_payload2;
 		u_int16_t conn_id;
+		struct rtp_socket *rtp_socket;
 	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
