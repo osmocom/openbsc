@@ -966,6 +966,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NM_MT_BS11_LMT_SESSION:
 		return abis_nm_rx_lmt_event(mb);
 		break;
+	case NM_MT_CONN_MDROP_LINK_ACK:
+		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
+		break;
 	}
 
 	return 0;
@@ -1760,6 +1763,32 @@ int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *attr;
+
+	DEBUGP(DNM, "CONNECT MDROP LINK E1=(%u,%u) -> E1=(%u, %u)\n",
+		e1_port0, ts0, e1_port1, ts1);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 6, NM_MT_CONN_MDROP_LINK,
+			NM_OC_SITE_MANAGER, 0x00, 0x00, 0x00);
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_LINK;
+	attr[1] = e1_port0;
+	attr[2] = ts0;
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_NEXT;
+	attr[1] = e1_port1;
+	attr[2] = ts1;
+
+	return abis_nm_sendmsg(bts, msg);
+}
 
 int abis_nm_event_reports(struct gsm_bts *bts, int on)
 {

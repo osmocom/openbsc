@@ -678,6 +678,9 @@ int abis_nm_software_load_status(struct gsm_bts *bts);
 int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
 			      gsm_cbfn *cbfn, void *cb_data);
 
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1);
+
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);
