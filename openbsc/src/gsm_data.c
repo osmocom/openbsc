@@ -117,7 +117,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		}
 	}
 
-	llist_add(&trx->list, &bts->trx_list);
+	llist_add_tail(&trx->list, &bts->trx_list);
 
 	return trx;
 }
@@ -147,7 +147,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	}
 	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 
-	llist_add(&bts->list, &net->bts_list);
+	llist_add_tail(&bts->list, &net->bts_list);
 
 	return bts;
 }
@@ -270,15 +270,15 @@ char *gsm_band_name(enum gsm_band band)
 {
 	switch (band) {
 	case GSM_BAND_400:
-		return "GSM 400";
+		return "GSM400";
 	case GSM_BAND_850:
-		return "GSM 850";
+		return "GSM850";
 	case GSM_BAND_900:
-		return "GSM 900";
+		return "GSM900";
 	case GSM_BAND_1800:
-		return "DCS 1800";
+		return "DCS1800";
 	case GSM_BAND_1900:
-		return "PCS 1900";
+		return "PCS1900";
 	}
 	return "invalid";
 }
