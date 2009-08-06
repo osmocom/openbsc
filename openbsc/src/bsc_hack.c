@@ -907,10 +907,12 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
-		rsl_bcch_info(trx, bcch_infos[i].type,
-			      bcch_infos[i].data,
-			      bcch_infos[i].len);
+	if (trx == trx->bts->c0) {
+		for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
+			rsl_bcch_info(trx, bcch_infos[i].type,
+				      bcch_infos[i].data,
+				      bcch_infos[i].len);
+		}
 	}
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
