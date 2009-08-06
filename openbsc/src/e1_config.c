@@ -30,15 +30,15 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 	switch (bts->nr) {
 	case 0:
 		/* First BTS uses E1 TS 01,02,03,04,05 */
-		base_ts = 1 - 1;
+		base_ts = HARDCODED_BTS0_TS - 1;
 		break;
 	case 1:
-		/* Second BTS uses E1 TS 11,12,13,14,15 */
-		base_ts = 11 - 1;
+		/* Second BTS uses E1 TS 06,07,08,09,10 */
+		base_ts = HARDCODED_BTS1_TS - 1;
 		break;
 	case 2:
-		/* Third BTS uses E1 TS 21,22,23,24,25 */
-		base_ts = 21 - 1;
+		/* Third BTS uses E1 TS 11,12,13,14,15 */
+		base_ts = HARDCODED_BTS2_TS - 1;
 	default:
 		return -EINVAL;
 	}

@@ -54,6 +54,11 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_TSC	7
 #define HARDCODED_BSIC	0x3f	/* NCC = 7 / BCC = 7 */
 
+/* for multi-drop config */
+#define HARDCODED_BTS0_TS	1
+#define HARDCODED_BTS1_TS	6
+#define HARDCODED_BTS2_TS	11
+
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
