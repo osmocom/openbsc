@@ -2121,7 +2121,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 						   bs11_sw->win_size,
 						   bs11_sw->forced,
 						   &bs11_swload_cbfn, bs11_sw);
-			free(fle);
+			talloc_free(fle);
 		} else {
 			/* activate the SWL */
 			rc = abis_nm_software_activate(bs11_sw->bts,
@@ -2175,7 +2175,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	/* start download the next file of our file list */
 	rc = abis_nm_software_load(bts, fle->fname, win_size, forced,
 				   bs11_swload_cbfn, bs11_sw);
-	free(fle);
+	talloc_free(fle);
 	return rc;
 }
 
