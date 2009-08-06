@@ -357,18 +357,47 @@ static const struct tlv_definition nm_att_tlvdef = {
 		/* ip.access specifics */
 		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
 		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
+		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_TV, },
+		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
+		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
+		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
+		[NM_ATT_IPACC_IN_SERV_TIME] =	{ TLV_TYPE_FIXED, 4 },
+		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
 		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
-		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_TIMING_BUS] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CGI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_GPRS_PAGING_CFG]= { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V },
 		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_MONIT_VAL_LIST] = { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_TIB_CONTROL] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_HEARTB_TOUT] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UPTIME] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SSL_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
 		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
 		[0x85] =			{ TLV_TYPE_TV },
 
@@ -936,6 +965,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	case NM_MT_BS11_LMT_SESSION:
 		return abis_nm_rx_lmt_event(mb);
+		break;
+	case NM_MT_CONN_MDROP_LINK_ACK:
+		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
 		break;
 	}
 
@@ -1731,6 +1763,32 @@ int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *attr;
+
+	DEBUGP(DNM, "CONNECT MDROP LINK E1=(%u,%u) -> E1=(%u, %u)\n",
+		e1_port0, ts0, e1_port1, ts1);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 6, NM_MT_CONN_MDROP_LINK,
+			NM_OC_SITE_MANAGER, 0x00, 0x00, 0x00);
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_LINK;
+	attr[1] = e1_port0;
+	attr[2] = ts0;
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_NEXT;
+	attr[1] = e1_port1;
+	attr[2] = ts1;
+
+	return abis_nm_sendmsg(bts, msg);
+}
 
 int abis_nm_event_reports(struct gsm_bts *bts, int on)
 {
@@ -2121,7 +2179,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 						   bs11_sw->win_size,
 						   bs11_sw->forced,
 						   &bs11_swload_cbfn, bs11_sw);
-			free(fle);
+			talloc_free(fle);
 		} else {
 			/* activate the SWL */
 			rc = abis_nm_software_activate(bs11_sw->bts,
@@ -2175,7 +2233,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	/* start download the next file of our file list */
 	rc = abis_nm_software_load(bts, fle->fname, win_size, forced,
 				   bs11_swload_cbfn, bs11_sw);
-	free(fle);
+	talloc_free(fle);
 	return rc;
 }
 

@@ -62,6 +62,7 @@ static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
 static int bs11_has_trx1 = 0;
+static int bs11_has_bts1 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
@@ -503,6 +504,23 @@ static void bootstrap_om_nanobts(struct gsm_bts *bts)
 static void bootstrap_om_bs11(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = bts->c0;
+	int base_ts;
+
+	switch (bts->nr) {
+	case 0:
+		/* First BTS uses E1 TS 01,02,03,04,05 */
+		base_ts = HARDCODED_BTS0_TS - 1;
+		break;
+	case 1:
+		/* Second BTS uses E1 TS 06,07,08,09,10 */
+		base_ts = HARDCODED_BTS1_TS - 1;
+		break;
+	case 2:
+		/* Third BTS uses E1 TS 11,12,13,14,15 */
+		base_ts = HARDCODED_BTS2_TS - 1;
+	default:
+		return;
+	}
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -525,47 +543,47 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 	abis_nm_raw_msg(bts, sizeof(msg_4), msg_4); /* set BTS power control attr */
 
 	/* Connect signalling of bts0/trx0 to e1_0/ts1/64kbps */
-	abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+	abis_nm_conn_terr_sign(trx, 0, base_ts+1, 0xff);
 	abis_nm_set_radio_attr(trx, bs11_attr_radio, sizeof(bs11_attr_radio));
 
 	/* Use TEI 1 for signalling */
-	abis_nm_establish_tei(bts, 0, 0, 1, 0xff, 0x01);
+	abis_nm_establish_tei(bts, 0, 0, base_ts+1, 0xff, 0x01);
 	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
 
 	/* SET CHANNEL ATTRIBUTE TS1 */
 	abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts1 to e1_0/ts2/b */
-	abis_nm_conn_terr_traf(&trx->ts[1], 0, 2, 1);
+	abis_nm_conn_terr_traf(&trx->ts[1], 0, base_ts+2, 1);
 	
 	/* SET CHANNEL ATTRIBUTE TS2 */
 	abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts2 to e1_0/ts2/c */
-	abis_nm_conn_terr_traf(&trx->ts[2], 0, 2, 2);
+	abis_nm_conn_terr_traf(&trx->ts[2], 0, base_ts+2, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS3 */
 	abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts3 to e1_0/ts2/d */
-	abis_nm_conn_terr_traf(&trx->ts[3], 0, 2, 3);
+	abis_nm_conn_terr_traf(&trx->ts[3], 0, base_ts+2, 3);
 
 	/* SET CHANNEL ATTRIBUTE TS4 */
 	abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts4 to e1_0/ts3/a */
-	abis_nm_conn_terr_traf(&trx->ts[4], 0, 3, 0);
+	abis_nm_conn_terr_traf(&trx->ts[4], 0, base_ts+3, 0);
 
 	/* SET CHANNEL ATTRIBUTE TS5 */
 	abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts5 to e1_0/ts3/b */
-	abis_nm_conn_terr_traf(&trx->ts[5], 0, 3, 1);
+	abis_nm_conn_terr_traf(&trx->ts[5], 0, base_ts+3, 1);
 
 	/* SET CHANNEL ATTRIBUTE TS6 */
 	abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts6 to e1_0/ts3/c */
-	abis_nm_conn_terr_traf(&trx->ts[6], 0, 3, 2);
+	abis_nm_conn_terr_traf(&trx->ts[6], 0, base_ts+3, 2);
 
 	/* SET CHANNEL ATTRIBUTE TS7 */
 	abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 	/* Connect traffic of bts0/trx0/ts7 to e1_0/ts3/d */
-	abis_nm_conn_terr_traf(&trx->ts[7], 0, 3, 3);
+	abis_nm_conn_terr_traf(&trx->ts[7], 0, base_ts+3, 3);
 
 	trx = gsm_bts_trx_num(bts, 1);
 	if (trx) {	
@@ -581,53 +599,53 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 		trx1_attr_radio[3] = arfcn_low;
 	
 		/* Connect signalling of TRX1 to e1_0/ts1/64kbps */
-		abis_nm_conn_terr_sign(trx, 0, 1, 0xff);
+		abis_nm_conn_terr_sign(trx, 0, base_ts+1, 0xff);
 		/* FIXME: TRX ATTRIBUTE */
 		abis_nm_set_radio_attr(trx, trx1_attr_radio,
 					sizeof(trx1_attr_radio));
 
 		/* Use TEI 2 for signalling */
-		abis_nm_establish_tei(bts, 1, 0, 1, 0xff, 0x02);
+		abis_nm_establish_tei(bts, 1, 0, base_ts+1, 0xff, 0x02);
 
-		/* SET CHANNEL ATTRIBUTE TS1 */
-		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
-		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/a */
-		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 0);
+		/* SET CHANNEL ATTRIBUTE TS0 */
+		abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_TCHFull);
+		/* Connect traffic of bts0/trx0/ts0 to e1_0/ts4/a */
+		abis_nm_conn_terr_traf(&trx->ts[0], 0, base_ts+4, 0);
 	
 		/* SET CHANNEL ATTRIBUTE TS1 */
 		abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts1 to e1_0/ts4/b */
-		abis_nm_conn_terr_traf(&trx->ts[1], 0, 4, 1);
+		abis_nm_conn_terr_traf(&trx->ts[1], 0, base_ts+4, 1);
 	
 		/* SET CHANNEL ATTRIBUTE TS2 */
 		abis_nm_set_channel_attr(&trx->ts[2], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts2 to e1_0/ts4/c */
-		abis_nm_conn_terr_traf(&trx->ts[2], 0, 4, 2);
+		abis_nm_conn_terr_traf(&trx->ts[2], 0, base_ts+4, 2);
 
 		/* SET CHANNEL ATTRIBUTE TS3 */
 		abis_nm_set_channel_attr(&trx->ts[3], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts3 to e1_0/ts4/d */
-		abis_nm_conn_terr_traf(&trx->ts[3], 0, 4, 3);
+		abis_nm_conn_terr_traf(&trx->ts[3], 0, base_ts+4, 3);
 
 		/* SET CHANNEL ATTRIBUTE TS4 */
 		abis_nm_set_channel_attr(&trx->ts[4], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts4 to e1_0/ts5/a */
-		abis_nm_conn_terr_traf(&trx->ts[4], 0, 5, 0);
+		abis_nm_conn_terr_traf(&trx->ts[4], 0, base_ts+5, 0);
 
 		/* SET CHANNEL ATTRIBUTE TS5 */
 		abis_nm_set_channel_attr(&trx->ts[5], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts5 to e1_0/ts5/b */
-		abis_nm_conn_terr_traf(&trx->ts[5], 0, 5, 1);
+		abis_nm_conn_terr_traf(&trx->ts[5], 0, base_ts+5, 1);
 
 		/* SET CHANNEL ATTRIBUTE TS6 */
 		abis_nm_set_channel_attr(&trx->ts[6], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts6 to e1_0/ts5/c */
-		abis_nm_conn_terr_traf(&trx->ts[6], 0, 5, 2);
+		abis_nm_conn_terr_traf(&trx->ts[6], 0, base_ts+5, 2);
 
 		/* SET CHANNEL ATTRIBUTE TS7 */
 		abis_nm_set_channel_attr(&trx->ts[7], NM_CHANC_TCHFull);
 		/* Connect traffic of bts0/trx0/ts7 to e1_0/ts5/d */
-		abis_nm_conn_terr_traf(&trx->ts[7], 0, 5, 3);
+		abis_nm_conn_terr_traf(&trx->ts[7], 0, base_ts+5, 3);
 	}
 
 	/* end DB transmission */
@@ -659,6 +677,8 @@ static void bootstrap_om(struct gsm_bts *bts)
 
 static int shutdown_om(struct gsm_bts *bts)
 {
+	fprintf(stdout, "shutting down OML for BTS %u\n", bts->nr);
+
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
 
@@ -890,10 +910,12 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
-		rsl_bcch_info(trx, bcch_infos[i].type,
-			      bcch_infos[i].data,
-			      bcch_infos[i].len);
+	if (trx == trx->bts->c0) {
+		for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
+			rsl_bcch_info(trx, bcch_infos[i].type,
+				      bcch_infos[i].data,
+				      bcch_infos[i].len);
+		}
 	}
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
@@ -964,7 +986,7 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->nr, trx->bts->nr, MCC, MNC, BSIC, TSC);
+		trx->bts->nr, trx->nr, MCC, MNC, BSIC, TSC);
 	set_system_infos(trx);
 }
 
@@ -1040,6 +1062,8 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 static int bootstrap_network(void)
 {
+	int rc;
+
 	switch(BTS_TYPE) {
 	case GSM_BTS_TYPE_NANOBTS_1800:
 		if (ARFCN < 512 || ARFCN > 885) {
@@ -1093,11 +1117,26 @@ static int bootstrap_network(void)
 			trx1 = gsm_bts_trx_alloc(bts);
 			trx1->arfcn = ARFCN + 2;
 		}
-
 		bootstrap_bts(bts);
+		rc = e1_config(bts, cardnr, release_l2);
+		if (rc < 0) {
+			fprintf(stderr, "Error during E1 config of BTS 0\n");
+			return rc;
+		}
 
-		gsmnet->num_bts = 1;
-		return e1_config(bts, cardnr, release_l2);
+		if (bs11_has_bts1) {
+			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
+			if (bs11_has_trx1) {
+				struct gsm_bts_trx *trx1;
+				trx1 = gsm_bts_trx_alloc(bts);
+				trx1->arfcn = ARFCN + 2;
+			}
+			bootstrap_bts(bts);
+			rc = e1_config(bts, cardnr+1, release_l2);
+			if (rc < 0)
+				fprintf(stderr, "Error during E1 config of BTS 1\n");
+		}
+		return rc;
 	} else {
 		struct nano_bts_id *bts_id;
 		struct gsm_bts *bts;
@@ -1153,6 +1192,7 @@ static void print_help()
 	printf("  -i --bts-id=NUMBER The known nanoBTS device numbers. Can be specified multiple times.\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
 	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
+	printf("  -2 --second-bs11 Configure + Use a second BS-11\n");
 	printf("  -h --help this text\n");
 }
 
@@ -1182,10 +1222,11 @@ static void handle_options(int argc, char** argv)
 			{"bsic", 1, 0, 'B'},
 			{"rtp-proxy", 0, 0, 'P'},
 			{"trx1", 0, 0, '1'},
+			{"second-bs11", 0, 0, '2'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P1",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P12",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1262,6 +1303,9 @@ static void handle_options(int argc, char** argv)
 		case '1':
 			bs11_has_trx1 = 1;
 			break;
+		case '2':
+			bs11_has_bts1 = 1;
+			break;
 		}
 		default:
 			/* ignore */
@@ -1275,9 +1319,11 @@ static void signal_handler(int signal)
 	fprintf(stdout, "signal %u received\n", signal);
 
 	switch (signal) {
-	case SIGHUP:
+	case SIGINT:
 	case SIGABRT:
 		shutdown_net(gsmnet);
+		sleep(3);
+		exit(0);
 		break;
 	case SIGUSR1:
 		talloc_report_full(tall_bsc_ctx, stderr);
@@ -1303,7 +1349,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	signal(SIGHUP, &signal_handler);
+	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 

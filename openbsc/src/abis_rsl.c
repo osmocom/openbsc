@@ -321,6 +321,7 @@ static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_TALKER_ACC_FAIL] =	"Talker Access Failure",
 	[RSL_ERR_OM_INTERVENTION] =	"O&M Intervention",
 	[RSL_ERR_NORMAL_UNSPEC] =	"Normal event, unspecified",
+	[RSL_ERR_T_MSRFPCI_EXP] =	"Siemens: T_MSRFPCI Expired",
 	[RSL_ERR_EQUIPMENT_FAIL] =	"Equipment Failure",
 	[RSL_ERR_RR_UNAVAIL] =		"Radio Resource not available",
 	[RSL_ERR_TERR_CH_FAIL] =	"Terrestrial Channel Failure",
@@ -1089,7 +1090,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
-	lchan->ms_power = lchan->bs_power = 0x0f; /* 30dB reduction */
+	lchan->ms_power = ms_pwr_ctl_lvl(bts, 20 /* dBm == 100mW */);
+	lchan->bs_power = 0x0f; /* 30dB reduction */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
 
@@ -1188,7 +1190,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	DEBUGPC(DRLL, "cause=0x%02x", rlm_cause[1]);
+	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
 		
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_chan_release(msg->lchan);
@@ -1232,24 +1234,22 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		}
 		break;
 	case RSL_MT_REL_IND:
-		DEBUGPC(DRLL, "RELEASE INDICATION ");
+		DEBUGPC(DRLL, "RELEASE INDICATION\n");
 		break;
 	case RSL_MT_REL_CONF:
-		DEBUGPC(DRLL, "RELEASE CONFIRMATION ");
+		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		break;
 	case RSL_MT_ERROR_IND:
-		DEBUGPC(DRLL, "ERROR INDICATION ");
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
-		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x ",
+		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x\n",
 			rllh->c.msg_type);
 	}
-	DEBUGPC(DRLL, "\n");
 	return rc;
 }
 
