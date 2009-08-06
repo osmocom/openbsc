@@ -62,6 +62,7 @@ static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
 static int bs11_has_trx1 = 0;
+static int bs11_has_bts1 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
@@ -1061,6 +1062,8 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 static int bootstrap_network(void)
 {
+	int rc;
+
 	switch(BTS_TYPE) {
 	case GSM_BTS_TYPE_NANOBTS_1800:
 		if (ARFCN < 512 || ARFCN > 885) {
@@ -1114,11 +1117,26 @@ static int bootstrap_network(void)
 			trx1 = gsm_bts_trx_alloc(bts);
 			trx1->arfcn = ARFCN + 2;
 		}
-
 		bootstrap_bts(bts);
+		rc = e1_config(bts, cardnr, release_l2);
+		if (rc < 0) {
+			fprintf(stderr, "Error during E1 config of BTS 0\n");
+			return rc;
+		}
 
-		gsmnet->num_bts = 1;
-		return e1_config(bts, cardnr, release_l2);
+		if (bs11_has_bts1) {
+			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
+			if (bs11_has_trx1) {
+				struct gsm_bts_trx *trx1;
+				trx1 = gsm_bts_trx_alloc(bts);
+				trx1->arfcn = ARFCN + 2;
+			}
+			bootstrap_bts(bts);
+			rc = e1_config(bts, cardnr+1, release_l2);
+			if (rc < 0)
+				fprintf(stderr, "Error during E1 config of BTS 1\n");
+		}
+		return rc;
 	} else {
 		struct nano_bts_id *bts_id;
 		struct gsm_bts *bts;
@@ -1174,6 +1192,7 @@ static void print_help()
 	printf("  -i --bts-id=NUMBER The known nanoBTS device numbers. Can be specified multiple times.\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
 	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
+	printf("  -2 --second-bs11 Configure + Use a second BS-11\n");
 	printf("  -h --help this text\n");
 }
 
@@ -1203,10 +1222,11 @@ static void handle_options(int argc, char** argv)
 			{"bsic", 1, 0, 'B'},
 			{"rtp-proxy", 0, 0, 'P'},
 			{"trx1", 0, 0, '1'},
+			{"second-bs11", 0, 0, '2'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P1",
+		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P12",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1282,6 +1302,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case '1':
 			bs11_has_trx1 = 1;
+			break;
+		case '2':
+			bs11_has_bts1 = 1;
 			break;
 		}
 		default:
