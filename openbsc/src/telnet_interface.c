@@ -146,6 +146,10 @@ static int client_data(struct bsc_fd *fd, unsigned int what)
 		rc = vty_read(conn->vty);
 	}
 
+	/* vty might have been closed from vithin vty_read() */
+	if (!conn->vty)
+		return rc;
+
 	if (what & BSC_FD_WRITE) {
 		rc = buffer_flush_all(conn->vty->obuf, fd->fd);
 		if (rc == BUFFER_EMPTY)
@@ -192,12 +196,20 @@ void vty_event(enum event event, int sock, struct vty *vty)
 	struct telnet_connection *connection = vty->priv;
 	struct bsc_fd *bfd = &connection->fd;
 
+	if (vty->type != VTY_TERM)
+		return;
+
 	switch (event) {
 	case VTY_READ:
 		bfd->when |= BSC_FD_READ;
 		break;
 	case VTY_WRITE:
 		bfd->when |= BSC_FD_WRITE;
+		break;
+	case VTY_CLOSED:
+		/* vty layer is about to free() vty */
+		connection->vty = NULL;
+		telnet_close_client(bfd);
 		break;
 	default:
 		break;
