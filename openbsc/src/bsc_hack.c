@@ -676,6 +676,8 @@ static void bootstrap_om(struct gsm_bts *bts)
 
 static int shutdown_om(struct gsm_bts *bts)
 {
+	fprintf(stdout, "shutting down OML for BTS %u\n", bts->nr);
+
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
 
@@ -1294,9 +1296,11 @@ static void signal_handler(int signal)
 	fprintf(stdout, "signal %u received\n", signal);
 
 	switch (signal) {
-	case SIGHUP:
+	case SIGINT:
 	case SIGABRT:
 		shutdown_net(gsmnet);
+		sleep(3);
+		exit(0);
 		break;
 	case SIGUSR1:
 		talloc_report_full(tall_bsc_ctx, stderr);
@@ -1322,7 +1326,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	signal(SIGHUP, &signal_handler);
+	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 
