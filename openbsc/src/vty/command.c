@@ -475,6 +475,7 @@ void install_element(enum node_type ntype, struct cmd_element *cmd)
 	cmd->cmdsize = cmd_cmdsize(cmd->strvec);
 }
 
+#ifdef VTY_CRYPT_PW
 static unsigned char itoa64[] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -500,6 +501,7 @@ static char *zencrypt(const char *passwd)
 
 	return crypt(passwd, salt);
 }
+#endif
 
 /* This function write configuration of this host. */
 static int config_write_host(struct vty *vty)
