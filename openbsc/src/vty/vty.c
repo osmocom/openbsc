@@ -1373,6 +1373,39 @@ int vty_read(struct vty *vty)
 	return 0;
 }
 
+/* Read up configuration file */
+static int
+vty_read_file(FILE *confp)
+{
+	int ret;
+	struct vty *vty;
+
+	vty = vty_new();
+	vty->fd = 0;
+	vty->type = VTY_FILE;
+	vty->node = CONFIG_NODE;
+
+	ret = config_from_file(vty, confp);
+
+	if (ret != CMD_SUCCESS) {
+		switch (ret) {
+		case CMD_ERR_AMBIGUOUS:
+			fprintf(stderr, "Ambiguous command.\n");
+			break;
+		case CMD_ERR_NO_MATCH:
+			fprintf(stderr, "Ther is no such command.\n");
+			break;
+		}
+		fprintf(stderr, "Error occurred during reading below "
+			"line:\n%s\n", vty->buf);
+		vty_close(vty);
+		return -EINVAL;
+	}
+
+	vty_close(vty);
+	return 0;
+}
+
 /* Create new vty structure. */
 struct vty *
 vty_create (int vty_sock, void *priv)
@@ -1648,7 +1681,19 @@ void vty_init()
 #endif
 }
 
-static __attribute__((constructor)) void on_dso_load_vty(void)
+int vty_read_config_file(const char *file_name)
 {
-	tall_vty_ctx = talloc_named_const(NULL, 1, "vty");
+	FILE *cfile;
+	int rc;
+
+	cfile = fopen(file_name, "r");
+	if (!cfile)
+		return -ENOENT;
+
+	rc = vty_read_file(cfile);
+	fclose(cfile);
+
+	host_config_set(file_name);
+
+	return rc;
 }

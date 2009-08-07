@@ -507,7 +507,6 @@ static char *zencrypt(const char *passwd)
 /* This function write configuration of this host. */
 static int config_write_host(struct vty *vty)
 {
-#if 0
 	if (host.name)
 		vty_out(vty, "hostname %s%s", host.name, VTY_NEWLINE);
 
@@ -527,6 +526,7 @@ static int config_write_host(struct vty *vty)
 				VTY_NEWLINE);
 	}
 
+#if 0
 	if (zlog_default->default_lvl != LOG_DEBUG) {
 		vty_out(vty, "! N.B. The 'log trap' command is deprecated.%s",
 			VTY_NEWLINE);
@@ -579,7 +579,7 @@ static int config_write_host(struct vty *vty)
 
 	if (zlog_default->record_priority == 1)
 		vty_out(vty, "log record-priority%s", VTY_NEWLINE);
-
+#endif
 	if (host.advanced)
 		vty_out(vty, "service advanced-vty%s", VTY_NEWLINE);
 
@@ -596,7 +596,6 @@ static int config_write_host(struct vty *vty)
 	else if (!host.motd)
 		vty_out(vty, "no banner motd%s", VTY_NEWLINE);
 
-#endif
 	return 1;
 }
 

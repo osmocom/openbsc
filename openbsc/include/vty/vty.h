@@ -129,6 +129,7 @@ static inline char *vty_newline(struct vty *vty)
 
 /* Prototypes. */
 void vty_init (void);
+int vty_read_config_file(const char *file_name);
 void vty_init_vtysh (void);
 void vty_reset (void);
 struct vty *vty_new (void);
@@ -136,8 +137,7 @@ struct vty *vty_create (int vty_sock, void *priv);
 int vty_out (struct vty *, const char *, ...) PRINTF_ATTRIBUTE(2, 3);
 int vty_out_newline(struct vty *);
 int vty_read(struct vty *vty);
-void vty_read_config (char *, char *);
-void vty_time_print (struct vty *, int);
+//void vty_time_print (struct vty *, int);
 void vty_close (struct vty *);
 char *vty_get_cwd (void);
 void vty_log (const char *level, const char *proto, const char *fmt, va_list);
