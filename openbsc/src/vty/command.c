@@ -1803,16 +1803,9 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 				descvec = vector_slot(strvec, index);
 				for (j = 0; j < vector_active(descvec); j++)
 					if ((desc = vector_slot(descvec, j))) {
-						if ((string =
-						     cmd_entry_function
-						     (vector_slot(vline, index),
-						      desc->cmd)))
-							if (cmd_unique_string
-							    (matchvec, string))
-								vector_set
-								    (matchvec,
-								     strdup
-								     (string));
+						if ((string = cmd_entry_function(vector_slot(vline, index), desc->cmd)))
+							if (cmd_unique_string (matchvec, string))
+								vector_set (matchvec, talloc_strdup(tall_vty_ctx, string));
 					}
 			}
 		}
@@ -2661,7 +2654,7 @@ DEFUN(config_hostname,
 	if (host.name)
 		talloc_free(host.name);
 
-	host.name = strdup(argv[0]);
+	host.name = talloc_strdup(tall_vty_ctx, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2696,7 +2689,7 @@ DEFUN(config_password, password_cmd,
 			host.password = NULL;
 			if (host.password_encrypt)
 				talloc_free(host.password_encrypt);
-			host.password_encrypt = strdup(strdup(argv[1]));
+			host.password_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
 			return CMD_SUCCESS;
 		} else {
 			vty_out(vty, "Unknown encryption type.%s", VTY_NEWLINE);
@@ -2719,10 +2712,10 @@ DEFUN(config_password, password_cmd,
 	if (host.encrypt) {
 		if (host.password_encrypt)
 			talloc_free(host.password_encrypt);
-		host.password_encrypt = strdup(zencrypt(argv[0]));
+		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.password = strdup(argv[0]);
+		host.password = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2755,7 +2748,7 @@ ALIAS(config_password, password_text_cmd,
 
 			if (host.enable_encrypt)
 				talloc_free(host.enable_encrypt);
-			host.enable_encrypt = strdup(argv[1]);
+			host.enable_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
 
 			return CMD_SUCCESS;
 		} else {
@@ -2780,10 +2773,10 @@ ALIAS(config_password, password_text_cmd,
 	if (host.encrypt) {
 		if (host.enable_encrypt)
 			talloc_free(host.enable_encrypt);
-		host.enable_encrypt = strdup(zencrypt(argv[0]));
+		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.enable = strdup(argv[0]);
+		host.enable = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2827,12 +2820,12 @@ DEFUN(service_password_encrypt,
 	if (host.password) {
 		if (host.password_encrypt)
 			talloc_free(host.password_encrypt);
-		host.password_encrypt = strdup(zencrypt(host.password));
+		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.password));
 	}
 	if (host.enable) {
 		if (host.enable_encrypt)
 			talloc_free(host.enable_encrypt);
-		host.enable_encrypt = strdup(zencrypt(host.enable));
+		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.enable));
 	}
 
 	return CMD_SUCCESS;
@@ -3106,7 +3099,7 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 	if (host.logfile)
 		talloc_free(host.logfile);
 
-	host.logfile = strdup(fname);
+	host.logfile = talloc_strdup(tall_vty_ctx, fname);
 
 	return CMD_SUCCESS;
 }
@@ -3296,7 +3289,7 @@ DEFUN(banner_motd_file,
 {
 	if (host.motdfile)
 		talloc_free(host.motdfile);
-	host.motdfile = strdup(argv[0]);
+	host.motdfile = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -3324,7 +3317,7 @@ DEFUN(no_banner_motd,
 /* Set config filename.  Called from vty.c */
 void host_config_set(char *filename)
 {
-	host.config = strdup(filename);
+	host.config = talloc_strdup(tall_vty_ctx, filename);
 }
 
 void install_default(enum node_type node)
