@@ -772,8 +772,8 @@ DEFUN(cfg_bts_bsic,
 
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
-      "unit_id <0-65534> <0-255>",
-      "Set the BTS Unit ID of this BTS\n")
+      "ip.access unit_id <0-65534> <0-255>",
+      "Set the ip.access BTS Unit ID of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int site_id = atoi(argv[0]);
@@ -789,6 +789,12 @@ DEFUN(cfg_bts_unit_id,
 			bts_id, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	bts->ip_access.site_id = site_id;
 	bts->ip_access.bts_id = bts_id;
 
