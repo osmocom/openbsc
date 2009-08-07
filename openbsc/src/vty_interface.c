@@ -33,8 +33,15 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/db.h>
+#include <openbsc/talloc.h>
 
 static struct gsm_network *gsmnet;
+
+struct cmd_node net_node = {
+	GSMNET_NODE,
+	"%s(network)#",
+	1,
+};
 
 struct cmd_node bts_node = {
 	BTS_NODE,
@@ -159,10 +166,10 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "\t\tts %u%s", ts->nr, VTY_NEWLINE);
-	vty_out(vty, "\t\t\tphys_chan_config %s%s", gsm_pchan_name(ts->pchan),
+	vty_out(vty, "    ts %u%s", ts->nr, VTY_NEWLINE);
+	vty_out(vty, "     phys_chan_config %s%s", gsm_pchan_name(ts->pchan),
 		VTY_NEWLINE);
-	vty_out(vty, "\t\t\te1_subslot %u %u %u%s", ts->e1_link.e1_nr,
+	vty_out(vty, "     e1_subslot %u %u %u%s", ts->e1_link.e1_nr,
 		ts->e1_link.e1_ts, ts->e1_link.e1_ts_ss, VTY_NEWLINE);
 }
 
@@ -170,9 +177,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	int i;
 
-	vty_out(vty, "\ttrx %u%s", trx->nr, VTY_NEWLINE);
-	vty_out(vty, "\t\tarfcn %u%s", trx->arfcn, VTY_NEWLINE);
-	vty_out(vty, "\t\tmax_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
+	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
+	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
 
 	for (i = 0; i < TRX_NR_TS; i++)
 		config_write_ts_single(vty, &trx->ts[i]);
@@ -182,15 +189,15 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 
-	vty_out(vty, "bts %u%s", bts->nr, VTY_NEWLINE);
-	vty_out(vty, "\ttype %s%s", btstype2str(bts->type), VTY_NEWLINE);
-	vty_out(vty, "\tband %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
-	vty_out(vty, "\tlocation_area_code %u%s", bts->location_area_code,
+	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
+	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
+	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
+	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
-	vty_out(vty, "\ttraining_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
-	vty_out(vty, "\tbase_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
+	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
-		vty_out(vty, "\tunit_id %u %u%s",
+		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
@@ -207,6 +214,16 @@ static int config_write_bts(struct vty *v)
 	return CMD_SUCCESS;
 }
 
+static int config_write_net(struct vty *vty)
+{
+	vty_out(vty, "network%s", VTY_NEWLINE);
+	vty_out(vty, " country code %u%s", gsmnet->country_code, VTY_NEWLINE);
+	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
+	vty_out(vty, " short name '%s'%s", gsmnet->name_short, VTY_NEWLINE);
+	vty_out(vty, " long name '%s'%s", gsmnet->name_long, VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
 
 static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 {
@@ -654,6 +671,63 @@ DEFUN(cfg_subscr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net,
+      cfg_net_cmd,
+      "network",
+      "Configure the GSM network")
+{
+	vty->index = gsmnet;
+	vty->node = GSMNET_NODE;
+
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(cfg_net_ncc,
+      cfg_net_ncc_cmd,
+      "network country code <1-999>",
+      "Set the GSM network country code")
+{
+	gsmnet->country_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_mnc,
+      cfg_net_mnc_cmd,
+      "mobile network code <1-999>",
+      "Set the GSM mobile network code")
+{
+	gsmnet->network_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_name_short,
+      cfg_net_name_short_cmd,
+      "short name NAME",
+      "Set the short GSM network name")
+{
+	if (gsmnet->name_short)
+		talloc_free(gsmnet->name_short);
+
+	gsmnet->name_short = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_name_long,
+      cfg_net_name_long_cmd,
+      "long name NAME",
+      "Set the long GSM network name")
+{
+	if (gsmnet->name_long)
+		talloc_free(gsmnet->name_long);
+
+	gsmnet->name_long = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
 
 /* per-BTS configuration */
 DEFUN(cfg_bts,
@@ -1029,7 +1103,14 @@ int bsc_vty_init(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &show_subscr_cmd);
 
-	install_element(CONFIG_NODE, &cfg_bts_cmd);
+	install_element(CONFIG_NODE, &cfg_net_cmd);
+	install_node(&net_node, config_write_net);
+	install_default(GSMNET_NODE);
+	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
+	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
+	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
+
+	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);

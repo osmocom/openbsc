@@ -2288,9 +2288,17 @@ DEFUN(config_exit,
       config_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
 {
 	switch (vty->node) {
-	case BTS_NODE:
-		vty->node = VIEW_NODE;
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
 		vty->index = NULL;
+		break;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+		}
 		break;
 	case TRX_NODE:
 		vty->node = BTS_NODE;

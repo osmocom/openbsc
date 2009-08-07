@@ -61,6 +61,7 @@ struct host {
 
 /* There are some command levels which called from command node. */
 enum node_type {
+	GSMNET_NODE,
 	BTS_NODE,
 	TRX_NODE,
 	TS_NODE,
