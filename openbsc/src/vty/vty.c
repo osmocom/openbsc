@@ -33,7 +33,7 @@ static int vty_config;
 
 static int no_password_check = 1;
 
-static void *tall_vty_ctx;
+void *tall_vty_ctx;
 
 static void vty_clear_buf(struct vty *vty)
 {
@@ -1616,13 +1616,14 @@ void vty_init_vtysh()
 	vtyvec = vector_init(VECTOR_MIN_SIZE);
 }
 
+extern void *tall_bsc_ctx;
 /* Install vty's own commands like `who' command. */
 void vty_init()
 {
+	tall_vty_ctx = talloc_named_const(tall_bsc_ctx, 1, "vty");
+
 	/* For further configuration read, preserve current directory. */
 	vty_save_cwd();
-
-	host.config = "openbsc.cfg";
 
 	vtyvec = vector_init(VECTOR_MIN_SIZE);
 
