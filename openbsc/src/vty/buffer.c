@@ -32,8 +32,6 @@
 #include <vty/buffer.h>
 #include <vty/vty.h>
 
-static void *tall_vbuf_ctx;
-
 /* Buffer master. */
 struct buffer {
 	/* Data list. */
@@ -71,7 +69,7 @@ struct buffer *buffer_new(size_t size)
 {
 	struct buffer *b;
 
-	b = talloc_zero(tall_vbuf_ctx, struct buffer);
+	b = talloc_zero(tall_vty_ctx, struct buffer);
 
 	if (size)
 		b->size = size;
@@ -105,7 +103,7 @@ char *buffer_getstr(struct buffer *b)
 
 	for (data = b->head; data; data = data->next)
 		totlen += data->cp - data->sp;
-	if (!(s = _talloc_zero(tall_vbuf_ctx, (totlen + 1), "buffer_getstr")))
+	if (!(s = _talloc_zero(tall_vty_ctx, (totlen + 1), "buffer_getstr")))
 		return NULL;
 	p = s;
 	for (data = b->head; data; data = data->next) {
@@ -140,7 +138,7 @@ static struct buffer_data *buffer_add(struct buffer *b)
 {
 	struct buffer_data *d;
 
-	d = _talloc_zero(tall_vbuf_ctx,
+	d = _talloc_zero(tall_vty_ctx,
 			 offsetof(struct buffer_data, data[b->size]),
 			 "buffer_add");
 	if (!d)
@@ -462,9 +460,4 @@ buffer_write(struct buffer * b, int fd, const void *p, size_t size)
 				   size - written);
 	}
 	return b->head ? BUFFER_PENDING : BUFFER_EMPTY;
-}
-
-static __attribute__((constructor)) void on_dso_load_vty_buf(void)
-{
-	tall_vbuf_ctx = talloc_named_const(NULL, 1, "vty_buffer");
 }

@@ -49,8 +49,6 @@ Boston, MA 02111-1307, USA.  */
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/talloc.h>
 
-static void *tall_vcmd_ctx;
-
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec;
@@ -175,7 +173,7 @@ char *argv_concat(const char **argv, int argc, int shift)
 		len += strlen(argv[i]) + 1;
 	if (!len)
 		return NULL;
-	p = str = _talloc_zero(tall_vcmd_ctx, len, "arvg_concat");
+	p = str = _talloc_zero(tall_vty_ctx, len, "arvg_concat");
 	for (i = shift; i < argc; i++) {
 		size_t arglen;
 		memcpy(p, argv[i], (arglen = strlen(argv[i])));
@@ -277,7 +275,7 @@ vector cmd_make_strvec(const char *string)
 		       *cp != '\0')
 			cp++;
 		strlen = cp - start;
-		token = _talloc_zero(tall_vcmd_ctx, strlen + 1, "make_strvec");
+		token = _talloc_zero(tall_vty_ctx, strlen + 1, "make_strvec");
 		memcpy(token, start, strlen);
 		*(token + strlen) = '\0';
 		vector_set(strvec, token);
@@ -333,7 +331,7 @@ static char *cmd_desc_str(const char **string)
 		cp++;
 
 	strlen = cp - start;
-	token = _talloc_zero(tall_vcmd_ctx, strlen + 1, "cmd_desc_str");
+	token = _talloc_zero(tall_vty_ctx, strlen + 1, "cmd_desc_str");
 	memcpy(token, start, strlen);
 	*(token + strlen) = '\0';
 
@@ -404,11 +402,11 @@ static vector cmd_make_descvec(const char *string, const char *descstr)
 
 		len = cp - sp;
 
-		token = _talloc_zero(tall_vcmd_ctx, len + 1, "cmd_make_descvec");
+		token = _talloc_zero(tall_vty_ctx, len + 1, "cmd_make_descvec");
 		memcpy(token, sp, len);
 		*(token + len) = '\0';
 
-		desc = talloc_zero(tall_vcmd_ctx, struct desc);
+		desc = talloc_zero(tall_vty_ctx, struct desc);
 		desc->cmd = token;
 		desc->str = cmd_desc_str(&dp);
 
@@ -1855,7 +1853,7 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 			if (len < lcd) {
 				char *lcdstr;
 
-				lcdstr = _talloc_zero(tall_vcmd_ctx, lcd + 1,
+				lcdstr = _talloc_zero(tall_vty_ctx, lcd + 1,
 						      "complete-lcdstr");
 				memcpy(lcdstr, matchvec->index[0], lcd);
 				lcdstr[lcd] = '\0';
@@ -2476,13 +2474,13 @@ DEFUN(config_write_file,
 	config_file = host.config;
 
 	config_file_sav =
-	    _talloc_zero(tall_vcmd_ctx,
+	    _talloc_zero(tall_vty_ctx,
 			 strlen(config_file) + strlen(CONF_BACKUP_EXT) + 1,
 			 "config_file_sav");
 	strcpy(config_file_sav, config_file);
 	strcat(config_file_sav, CONF_BACKUP_EXT);
 
-	config_file_tmp = _talloc_zero(tall_vcmd_ctx, strlen(config_file) + 8,
+	config_file_tmp = _talloc_zero(tall_vty_ctx, strlen(config_file) + 8,
 					"config_file_tmp");
 	sprintf(config_file_tmp, "%s.XXXXXX", config_file);
 
@@ -3420,9 +3418,4 @@ void cmd_init(int terminal)
 
 	}
 	srand(time(NULL));
-}
-
-static __attribute__((constructor)) void on_dso_load_vty_command(void)
-{
-	tall_vcmd_ctx = talloc_named_const(NULL, 1, "vty_command");
 }
