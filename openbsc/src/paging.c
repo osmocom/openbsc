@@ -224,7 +224,8 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 		return;
 	}
 
-	DEBUGP(DPAG, "Start paging on bts %d.\n", bts->nr);
+	DEBUGP(DPAG, "Start paging of subscriber %llu on bts %d.\n",
+		subscr->id, bts->nr);
 	req = talloc_zero(tall_paging_ctx, struct gsm_paging_request);
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
@@ -252,7 +253,7 @@ void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 			break;
 
 		/* Trigger paging */
-		_paging_request(bts, subscr, RSL_CHANNEED_TCH_F, cbfn, data);
+		_paging_request(bts, subscr, type, cbfn, data);
 	} while (1);
 }
 
