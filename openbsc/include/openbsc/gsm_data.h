@@ -394,7 +394,7 @@ enum gsm_e1_event {
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
-enum gsm_bts_type parse_btstype(char *arg);
+enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
