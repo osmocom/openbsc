@@ -44,6 +44,7 @@ struct gsm_trans {
 			enum gsm411_rp_state rp_state;
 
 			struct timer_list timer;
+			struct gsm_sms *sms;
 		} sms;
 	};
 };

@@ -361,13 +361,17 @@ struct gsm_sms {
 	struct gsm_subscriber *receiver;
 
 	unsigned long validity_minutes;
-	unsigned char reply_path_req;
-	unsigned char status_rep_req;
-	unsigned char protocol_id;
-	unsigned char data_coding_scheme;
+	u_int8_t reply_path_req;
+	u_int8_t status_rep_req;
+	u_int8_t ud_hdr_ind;
+	u_int8_t protocol_id;
+	u_int8_t data_coding_scheme;
+	u_int8_t msg_ref;
+	char dest_addr[20+1];	/* DA LV is 12 bytes max, i.e. 10 bytes
+				 * BCD == 20 bytes string */
+	u_int8_t user_data_len;
+	u_int8_t user_data[SMS_TEXT_SIZE];
 
-	unsigned int header_len;
-	unsigned char header[SMS_HDR_SIZE];
 	char text[SMS_TEXT_SIZE];
 };
 

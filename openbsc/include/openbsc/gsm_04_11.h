@@ -109,29 +109,6 @@ enum sms_alphabet {
 	DCS_8BIT_DATA,
 };
 
-/* SMS submit PDU */
-struct sms_submit {
-	u_int8_t *smsc;
-	u_int8_t mti:2;		/* message type indicator */
-	u_int8_t vpf:2;		/* validity period format */
-	u_int8_t msg_ref;	/* message reference */
-	u_int8_t pid;		/* protocol identifier */
-	u_int8_t dcs;		/* data coding scheme */
-	u_int8_t *vp;		/* validity period */
-	u_int8_t ud_len;	/* user data length */
-	u_int8_t *user_data;	/* user data */
-
-	/* interpreted */
-	u_int8_t mms:1;		/* more messages to send */
-	u_int8_t srr:1;		/* status report request */
-	u_int8_t udhi:1;	/* user data headre indication */
-	u_int8_t rp:1;		/* request for reply path */
-	enum sms_alphabet alphabet;
-	char dest_addr[20+1];	/* DA LV is 12 bytes max, i.e. 10 bytes BCD == 20 bytes string */
-	unsigned long validity_mins;
-	char decoded[256];
-};
-
 /* GSM 03.40 / Chapter 9.2.3.1: TP-Message-Type-Indicator */
 #define GSM340_SMS_DELIVER_SC2MS	0x00
 #define GSM340_SMS_DELIVER_REP_MS2SC	0x00

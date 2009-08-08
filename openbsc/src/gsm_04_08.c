@@ -1610,7 +1610,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		return -EINVAL;
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
-		subscr->name ? subscr->name : subscr->imsi);
+		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 
 	subscr->equipment.classmark2_len = *classmark2_lv;
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
@@ -1783,6 +1783,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Send actual release request to MS */
 	gsm48_sendmsg(msg, NULL);
+	/* FIXME: Start Timer T3109 */
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);

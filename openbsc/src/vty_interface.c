@@ -954,6 +954,52 @@ DEFUN(show_subscr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(sms_send_pend,
+      sms_send_pend_cmd,
+      "sms send pending MIN_ID",
+      "Send all pending SMS starting from MIN_ID")
+{
+	struct gsm_sms *sms;
+
+	sms = db_sms_get_unsent(gsmnet, atoi(argv[0])); 
+	if (!sms)
+		return CMD_WARNING;
+
+	if (!sms->receiver) {
+		sms_free(sms);
+		return CMD_WARNING;
+	}
+
+	gsm411_send_sms_subscr(sms->receiver, sms);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(sms_send_ext,
+      sms_send_ext_cmd,
+      "sms send extension EXTEN .LINE",
+      "Send a message to a subscriber identified by EXTEN")
+{
+	struct gsm_sms *sms;
+
+	//gsm411_send_sms_subscr(sms->receiver, sms);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(sms_send_imsi,
+      sms_send_imsi_cmd,
+      "sms send imsi IMSI .LINE",
+      "Send a message to a subscriber identified by IMSI")
+{
+	struct gsm_sms *sms;
+
+	//gsm411_send_sms_subscr(sms->receiver, sms);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(cfg_subscr_name,
       cfg_subscr_name_cmd,
       "name NAME",
@@ -1022,6 +1068,12 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_paging_cmd);
 
 	install_element(VIEW_NODE, &show_subscr_cmd);
+
+	install_element(VIEW_NODE, &sms_send_pend_cmd);
+#if 0
+	install_element(VIEW_NODE, &sms_send_ext_cmd);
+	install_element(VIEW_NODE, &sms_send_imsi_cmd);
+#endif
 
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

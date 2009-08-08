@@ -163,6 +163,22 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 	return db_get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
+struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
+					unsigned long long id)
+{
+	struct gsm_subscriber *subscr;
+	char buf[32];
+	sprintf(buf, "%llu", id);
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		if (subscr->id == id)
+			return subscr_get(subscr);
+	}
+
+	return db_get_subscriber(net, GSM_SUBSCRIBER_ID, buf);
+}
+
+
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 {
 	/* FIXME: Migrate pending requests from one BSC to another */
