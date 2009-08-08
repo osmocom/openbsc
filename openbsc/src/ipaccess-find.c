@@ -62,6 +62,12 @@ static int udp_sock(const char *ifname)
 		goto err;
 
 #if 0
+	/* we cannot bind, since the response packets don't come from
+	 * the broadcast address */
+	sa.sin_family = AF_INET;
+	sa.sin_port = htons(3006);
+	inet_aton("255.255.255.255", &sa.sin_addr);
+
 	rc = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
 	if (rc < 0)
 		goto err;
@@ -126,6 +132,13 @@ static int read_response(int fd)
 	len = recvfrom(fd, buf, sizeof(buf), 0, (struct sockaddr *)&sa, &sa_len);
 	if (len < 0)
 		return len;
+
+	/* 2 bytes length, 1 byte protocol (0xfe) */
+	if (buf[2] != 0xfe)
+		return 0;
+
+	if (buf[4] != IPAC_MSGT_ID_RESP)
+		return 0;
 
 	return parse_response(buf+6, len-6);
 }
