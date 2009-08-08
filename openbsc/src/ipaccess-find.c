@@ -33,7 +33,7 @@ static const char *ipac_idtag_name(int tag)
 	return idtag_names[tag];
 }
 
-static int udp_sock(char *local_ip)
+static int udp_sock(const char *ifname)
 {
 	int fd, rc, bc = 1;
 	struct sockaddr_in sa;
@@ -42,10 +42,16 @@ static int udp_sock(char *local_ip)
 	if (fd < 0)
 		return fd;
 
+	if (ifname) {
+		rc = setsockopt(fd, SOL_SOCKET, SO_BINDTODEVICE, ifname,
+				strlen(ifname));
+		if (rc < 0)
+			goto err;
+	}
+
 	sa.sin_family = AF_INET;
 	sa.sin_port = htons(3006);
 	sa.sin_addr.s_addr = INADDR_ANY;
-	inet_aton(local_ip, &sa.sin_addr);
 
 	rc = bind(fd, (struct sockaddr *)&sa, sizeof(sa));
 	if (rc < 0)
@@ -149,21 +155,21 @@ static void timer_cb(void *_data)
 int main(int argc, char **argv)
 {
 	struct bsc_fd bfd;
-	char *local_ip;
+	char *ifname;
 	int rc;
 
 	printf("ipaccess-find (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
 
 	if (argc < 2) {
-		fprintf(stderr, "please specify the _local_ IP address as argument\n");
-		exit(2);
+		fprintf(stdout, "you might need to specify the outgoing\n"
+			" network interface, e.g. ``%s eth0''\n", argv[0]);
 	}
 
-	local_ip = argv[1];
+	ifname = argv[1];
 	bfd.cb = bfd_cb;
 	bfd.when = BSC_FD_READ | BSC_FD_WRITE;
-	bfd.fd = udp_sock(local_ip);
+	bfd.fd = udp_sock(ifname);
 	if (bfd.fd < 0) {
 		perror("Cannot create local socket for broadcast udp");
 		exit(1);
