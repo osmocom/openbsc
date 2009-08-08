@@ -476,6 +476,7 @@ int rsl_paging_cmd_subscr(struct gsm_bts *bts, u_int8_t chan_needed,
 int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
 
 int rsl_data_request(struct msgb *msg, u_int8_t link_id);
+int rsl_relase_request(struct gsm_lchan *lchan, u_int8_t link_id);
 
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);

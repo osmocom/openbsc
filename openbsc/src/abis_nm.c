@@ -801,6 +801,10 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		rx_fail_evt_rep(mb);
 		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
 		break;
+	case NM_MT_TEST_REP:
+		DEBUGPC(DNM, "Test Report\n");
+		dispatch_signal(SS_NM, S_NM_TEST_REP, mb);
+		break;
 	default:
 		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
 		break;
@@ -1786,6 +1790,33 @@ int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0
 	attr[0] = NM_ATT_MDROP_NEXT;
 	attr[1] = e1_port1;
 	attr[2] = ts1;
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* Chapter 8.7.1 */
+int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
+			 u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+			 u_int8_t test_nr, u_int8_t auton_report,
+			 u_int8_t *phys_config, u_int16_t phys_config_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	int len = 4; /* 2 TV attributes */
+
+	DEBUGP(DNM, "PEFORM TEST\n");
+	
+	if (phys_config_len)
+		len += 3 + phys_config_len;
+	
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_PERF_TEST,
+			obj_class, bts_nr, trx_nr, ts_nr);
+	msgb_tv_put(msg, NM_ATT_TEST_NO, test_nr);
+	msgb_tv_put(msg, NM_ATT_AUTON_REPORT, auton_report);
+	if (phys_config_len)
+		msgb_tl16v_put(msg, NM_ATT_PHYS_CONF, phys_config_len,
+				phys_config);
 
 	return abis_nm_sendmsg(bts, msg);
 }

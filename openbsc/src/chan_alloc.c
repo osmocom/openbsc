@@ -239,7 +239,7 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 	}
 
 	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
-	rsl_chan_release(lchan);
+	rsl_release_request(lchan, 0);
 	return 1;
 }
 

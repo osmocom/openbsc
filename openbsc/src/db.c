@@ -22,6 +22,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/db.h>
+#include <openbsc/talloc.h>
 
 #include <libgen.h>
 #include <stdio.h>
@@ -74,13 +75,23 @@ static char *create_stmts[] = {
 		"UNIQUE (subscriber_id, equipment_id) "
 		")",
 	"CREATE TABLE IF NOT EXISTS SMS ("
+		/* metadata, not part of sms */
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
 		"sent TIMESTAMP, "
-		"sender_id NUMERIC NOT NULL, "
-		"receiver_id NUMERIC NOT NULL, "
-		"header NUMERIC, "
-		"text TEXT NOT NULL "
+		"sender_id INTEGER NOT NULL, "
+		"receiver_id INTEGER NOT NULL, "
+		/* data directly copied/derived from SMS */
+		"valid_until TIMESTAMP, "
+		"reply_path_req INTEGER NOT NULL, "
+		"status_rep_req INTEGER NOT NULL, "
+		"protocol_id INTEGER NOT NULL, "
+		"data_coding_scheme INTEGER NOT NULL, "
+		"dest_addr TEXT, "
+		"user_data BLOB, "	/* TP-UD */
+		/* additional data, interpreted from SMS */
+		"header BLOB, "		/* UD Header */
+		"text TEXT "		/* decoded UD after UDH */
 		")",
 	"CREATE TABLE IF NOT EXISTS VLR ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -233,6 +244,13 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 			"WHERE extension = %s ",
 			quoted
 		);
+		free(quoted);
+		break;
+	case GSM_SUBSCRIBER_ID:
+		dbi_conn_quote_string_copy(conn, id, &quoted);
+		result = dbi_conn_queryf(conn,
+			"SELECT * FROM Subscriber "
+			"WHERE id = %s ", quoted);
 		free(quoted);
 		break;
 	default:
@@ -445,17 +463,31 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 int db_sms_store(struct gsm_sms *sms)
 {
 	dbi_result result;
-	char *q_text;
+	char *q_text, *q_daddr;
+	unsigned char *q_udata;
+	char *validity_timestamp = "2222-2-2";
+
+	/* FIXME: generate validity timestamp based on validity_minutes */
 
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
+	dbi_conn_quote_string_copy(conn, (char *)sms->dest_addr, &q_daddr);
+	dbi_conn_quote_binary_copy(conn, sms->user_data, sms->user_data_len,
+				   &q_udata);
+	/* FIXME: correct validity period */
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO SMS "
-		"(created,sender_id,receiver_id,header,text) VALUES "
-		"(datetime('now'),%llu,%llu,%s,%s)",
+		"(created, sender_id, receiver_id, valid_until, "
+		 "reply_path_req, status_rep_req, protocol_id, "
+		 "data_coding_scheme, dest_addr, user_data, text) VALUES "
+		"(datetime('now'), %llu, %llu, %u, "
+		 "%u, %u, %u, %u, %s, %s, %s)",
 		sms->sender->id,
-		sms->receiver ? sms->receiver->id : 0,
-		NULL, q_text);
+		sms->receiver ? sms->receiver->id : 0, validity_timestamp,
+		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
+		sms->data_coding_scheme, q_daddr, q_udata, q_text);
 	free(q_text);
+	free(q_daddr);
+	free(q_udata);
 
 	if (!result)
 		return -EIO;
@@ -468,22 +500,63 @@ int db_sms_store(struct gsm_sms *sms)
 struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 {
 	dbi_result result;
-	struct gsm_sms *sms = malloc(sizeof(*sms));
+	long long unsigned int sender_id, receiver_id;
+	struct gsm_sms *sms = sms_alloc();
+	const char *text, *daddr;
+	const unsigned char *user_data;
 
-	if (!sms) {
-		free(sms);
+	if (!sms)
 		return NULL;
-	}
 
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS "
-		"WHERE id >= %llu ORDER BY id", min_id);
+		"WHERE id >= %llu AND sent is NULL ORDER BY id",
+		min_id);
 	if (!result) {
-		free(sms);
+		sms_free(sms);
 		return NULL;
 	}
+	if (!dbi_result_next_row(result)) {
+		printf("DB: Failed to find any SMS.\n");
+		dbi_result_free(result);
+		sms_free(sms);
+		return NULL;
+	}
+	sms->id = dbi_result_get_ulonglong(result, "id");
 
-	/* FIXME: fill gsm_sms from database */
+	sender_id = dbi_result_get_ulonglong(result, "sender_id");
+	sms->sender = subscr_get_by_id(net, sender_id);
+
+	receiver_id = dbi_result_get_ulonglong(result, "receiver_id");
+	sms->receiver = subscr_get_by_id(net, receiver_id);
+
+	/* FIXME: validity */
+	/* FIXME: those should all be get_uchar, but sqlite3 is braindead */
+	sms->reply_path_req = dbi_result_get_uint(result, "reply_path_req");
+	sms->status_rep_req = dbi_result_get_uint(result, "status_rep_req");
+	sms->ud_hdr_ind = dbi_result_get_uint(result, "ud_hdr_ind");
+	sms->protocol_id = dbi_result_get_uint(result, "protocol_id");
+	sms->data_coding_scheme = dbi_result_get_uint(result,
+						  "data_coding_scheme");
+	/* sms->msg_ref is temporary and not stored in DB */
+
+	daddr = dbi_result_get_string(result, "dest_addr");
+	if (daddr) {
+		strncpy(sms->dest_addr, daddr, sizeof(sms->dest_addr));
+		sms->dest_addr[sizeof(sms->dest_addr)-1] = '\0';
+	}
+
+	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
+	user_data = dbi_result_get_binary(result, "user_data");
+	if (sms->user_data_len > sizeof(sms->user_data))
+		sms->user_data_len = sizeof(sms->user_data);
+	memcpy(sms->user_data, user_data, sms->user_data_len);
+
+	text = dbi_result_get_string(result, "text");
+	if (text) {
+		strncpy(sms->text, text, sizeof(sms->text));
+		sms->text[sizeof(sms->text)-1] = '\0';
+	}
 
 	dbi_result_free(result);
 	return sms;

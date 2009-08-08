@@ -245,7 +245,7 @@ static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
 		rep->flags |= MEAS_REP_F_BA1;
 	if (data[0] & 0x40)
 		rep->flags |= MEAS_REP_F_DTX;
-	if (data[1] & 0x40)
+	if ((data[1] & 0x40) == 0x00)
 		rep->flags |= MEAS_REP_F_VALID;
 
 	rep->rxlev_full = data[0] & 0x3f;
@@ -1610,7 +1610,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		return -EINVAL;
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
-		subscr->name ? subscr->name : subscr->imsi);
+		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 
 	subscr->equipment.classmark2_len = *classmark2_lv;
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
@@ -1783,6 +1783,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Send actual release request to MS */
 	gsm48_sendmsg(msg, NULL);
+	/* FIXME: Start Timer T3109 */
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);
@@ -3498,22 +3499,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			}
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
-			/* start paging subscriber on all BTS with her location */
-			subscr->net = net;
-			bts = NULL;
-			do {
-				bts = gsm_bts_by_lac(net, subscr->lac, bts);
-				if (!bts)
-					break;
-				DEBUGP(DCC, "(bts %d trx - ts - ti -- sub %s) "
-					"Received '%s' from MNCC with "
-					"unallocated channel, paging.\n",
-					bts->nr, data->called.number,
-					get_mncc_name(msg_type));
-				/* Trigger paging */
-				paging_request(net, subscr, RSL_CHANNEED_TCH_F,
-						setup_trig_pag_evt, subscr);
-			} while (1);
+			/* Trigger paging */
+			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
+					setup_trig_pag_evt, subscr);
 			return 0;
 		}
 		/* Assign lchan */
@@ -3632,7 +3620,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	}
 	
 	/* Find transaction */
-	trans = trans_find_by_id(lchan, transaction_id);
+	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_CC, transaction_id);
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",

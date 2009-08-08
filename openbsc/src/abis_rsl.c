@@ -840,6 +840,27 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Chapter 8.3.7 Request the release of multiframe mode of RLL connection.
+   This is what higher layers should call.  The BTS then responds with
+   RELEASE CONFIRM, which we in turn use to trigger RSL CHANNEL RELEASE,
+   which in turn is acknowledged by RSL CHANNEL RELEASE ACK, which calls
+   lchan_free() */
+int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_rll_hdr *rh;
+
+	rh = (struct abis_rsl_rll_hdr *) msgb_put(msg, sizeof(*rh));
+	init_llm_hdr(rh, RSL_MT_REL_REQ);
+	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
+	rh->chan_nr = lchan2chan_nr(lchan);
+	rh->link_id = link_id;
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 8.4.2: Channel Activate Acknowledge */
 static int rsl_rx_chan_act_ack(struct msgb *msg)
 {
@@ -1234,10 +1255,17 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		}
 		break;
 	case RSL_MT_REL_IND:
+		/* BTS informs us of having received  DISC from MS */
 		DEBUGPC(DRLL, "RELEASE INDICATION\n");
+		/* we can now releae the channel on the BTS/Abis side */
+		rsl_chan_release(msg->lchan);
 		break;
 	case RSL_MT_REL_CONF:
+		/* BTS informs us of having received UA from MS,
+		 * in response to DISC that we've sent earlier */
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
+		/* we can now releae the channel on the BTS/Abis side */
+		rsl_chan_release(msg->lchan);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
