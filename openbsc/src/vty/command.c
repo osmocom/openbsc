@@ -1909,27 +1909,49 @@ char **cmd_complete_command(vector vline, struct vty *vty, int *status)
 
 /* return parent node */
 /* MUST eventually converge on CONFIG_NODE */
-enum node_type node_parent(enum node_type node)
+enum node_type vty_go_parent(struct vty *vty)
 {
-	enum node_type ret;
+	assert(vty->node > CONFIG_NODE);
 
-	assert(node > CONFIG_NODE);
-
-	switch (node) {
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-		ret = BGP_NODE;
+	switch (vty->node) {
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
 		break;
-	case KEYCHAIN_KEY_NODE:
-		ret = KEYCHAIN_NODE;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+		}
+		break;
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
+		break;
+	case TS_NODE:
+		vty->node = TRX_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx_ts *ts = vty->index;
+			vty->index = ts->trx;
+		}
+		break;
+	case SUBSCR_NODE:
+		vty->node = VIEW_NODE;
+		subscr_put(vty->index);
+		vty->index = NULL;
 		break;
 	default:
-		ret = CONFIG_NODE;
+		vty->node = CONFIG_NODE;
 	}
 
-	return ret;
+	return vty->node;
 }
 
 /* Execute command by argument vline vector. */
@@ -2052,9 +2074,11 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 		    int vtysh)
 {
 	int ret, saved_ret, tried = 0;
-	enum node_type onode, try_node;
+	enum node_type onode;
+	void *oindex;
 
-	onode = try_node = vty->node;
+	onode = vty->node;
+	oindex = vty->index;
 
 	if (cmd_try_do_shortcut(vty->node, vector_slot(vline, 0))) {
 		vector shifted_vline;
@@ -2085,8 +2109,7 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 	/* This assumes all nodes above CONFIG_NODE are childs of CONFIG_NODE */
 	while (ret != CMD_SUCCESS && ret != CMD_WARNING
 	       && vty->node > CONFIG_NODE) {
-		try_node = node_parent(try_node);
-		vty->node = try_node;
+		vty_go_parent(vty);
 		ret = cmd_execute_command_real(vline, vty, cmd);
 		tried = 1;
 		if (ret == CMD_SUCCESS || ret == CMD_WARNING) {
@@ -2096,8 +2119,10 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 	}
 	/* no command succeeded, reset the vty to the original node and
 	   return the error for this node */
-	if (tried)
+	if (tried) {
 		vty->node = onode;
+		vty->index = oindex;
+	}
 	return saved_ret;
 }
 
@@ -2232,7 +2257,7 @@ int config_from_file(struct vty *vty, FILE * fp)
 		while (ret != CMD_SUCCESS && ret != CMD_WARNING
 		       && ret != CMD_ERR_NOTHING_TODO
 		       && vty->node != CONFIG_NODE) {
-			vty->node = node_parent(vty->node);
+			vty_go_parent(vty);
 			ret = cmd_execute_command_strict(vline, vty, NULL);
 		}
 
@@ -2332,28 +2357,8 @@ DEFUN(config_exit,
 		vty->node = ENABLE_NODE;
 		vty_config_unlock(vty);
 		break;
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case BGP_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case MASC_NODE:
-	case RMAP_NODE:
 	case VTY_NODE:
 		vty->node = CONFIG_NODE;
-		break;
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-		vty->node = BGP_NODE;
-		break;
-	case KEYCHAIN_KEY_NODE:
-		vty->node = KEYCHAIN_NODE;
 		break;
 	default:
 		break;
@@ -2375,22 +2380,6 @@ ALIAS(config_exit,
 		/* Nothing to do. */
 		break;
 	case CONFIG_NODE:
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case BGP_NODE:
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-	case RMAP_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case KEYCHAIN_KEY_NODE:
-	case MASC_NODE:
 	case VTY_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
@@ -3350,8 +3339,7 @@ void cmd_init(int terminal)
 
 	/* Default host value settings. */
 	host.name = NULL;
-	//host.password = NULL;
-	host.password = "foo";
+	host.password = NULL;
 	host.enable = NULL;
 	host.logfile = NULL;
 	host.config = NULL;

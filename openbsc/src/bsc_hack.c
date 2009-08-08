@@ -55,26 +55,11 @@ static struct gsm_network *gsmnet;
 /* MCC and MNC for the Location Area Identifier */
 static int MCC = 1;
 static int MNC = 1;
-static int LAC = 1;
-static int TSC = HARDCODED_TSC;
-static int BSIC = HARDCODED_BSIC;
-static int ARFCN = HARDCODED_ARFCN;
 static int cardnr = 0;
 static int release_l2 = 0;
-static int bs11_has_trx1 = 0;
-static int bs11_has_bts1 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
-static enum gsm_band BAND = GSM_BAND_900;
 static const char *database_name = "hlr.sqlite3";
 extern int ipacc_rtp_direct;
-
-struct nano_bts_id {
-	struct llist_head entry;
-	int site_id;
-	int bts_id;
-};
-
-static LLIST_HEAD(nanobts_ids);
 
 
 /* The following definitions are for OM and NM packets that we cannot yet
@@ -986,7 +971,8 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->bts->nr, trx->nr, MCC, MNC, BSIC, TSC);
+		trx->bts->nr, trx->nr, gsmnet->country_code, 
+		gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
 	set_system_infos(trx);
 }
 
@@ -1016,9 +1002,25 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static int bootstrap_bts(struct gsm_bts *bts)
 {
-	bts->band = BAND;
-	bts->location_area_code = LAC;
-	bts->c0->arfcn = ARFCN;
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
+			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
+			return -EINVAL;
+		}
+		break;
+	case GSM_BTS_TYPE_BS11:
+	case GSM_BTS_TYPE_NANOBTS_900:
+		/* Assume we have a P-GSM900 here */
+		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
+			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
+			return -EINVAL;
+		}
+		break;
+	case GSM_BTS_TYPE_UNKNOWN:
+		fprintf(stderr, "Unknown BTS. Please specify\n");
+		return -EINVAL;
+	}
 
 	/* Control Channel Description */
 	memset(&bts->chan_desc, 0, sizeof(struct gsm48_control_channel_descr));
@@ -1031,66 +1033,21 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	paging_init(bts);
 
-	if (bts->type == GSM_BTS_TYPE_BS11) {
-		struct gsm_bts_trx *trx = bts->c0;
-		set_ts_e1link(&trx->ts[0], 0, 1, 0xff);
-		set_ts_e1link(&trx->ts[1], 0, 2, 1);
-		set_ts_e1link(&trx->ts[2], 0, 2, 2);
-		set_ts_e1link(&trx->ts[3], 0, 2, 3);
-		set_ts_e1link(&trx->ts[4], 0, 3, 0);
-		set_ts_e1link(&trx->ts[5], 0, 3, 1);
-		set_ts_e1link(&trx->ts[6], 0, 3, 2);
-		set_ts_e1link(&trx->ts[7], 0, 3, 3);
-
-		/* TRX 1 */
-		trx = gsm_bts_trx_num(bts, 1);
-		if (trx) {
-			trx = gsm_bts_trx_num(bts, 1);
-			set_ts_e1link(&trx->ts[0], 0, 4, 0);
-			set_ts_e1link(&trx->ts[1], 0, 4, 1);
-			set_ts_e1link(&trx->ts[2], 0, 4, 2);
-			set_ts_e1link(&trx->ts[3], 0, 4, 3);
-			set_ts_e1link(&trx->ts[4], 0, 5, 0);
-			set_ts_e1link(&trx->ts[5], 0, 5, 1);
-			set_ts_e1link(&trx->ts[6], 0, 5, 2);
-			set_ts_e1link(&trx->ts[7], 0, 5, 3);
-		}
-	}
-
 	return 0;
 }
 
 static int bootstrap_network(void)
 {
+	struct gsm_bts *bts;
 	int rc;
-
-	switch(BTS_TYPE) {
-	case GSM_BTS_TYPE_NANOBTS_1800:
-		if (ARFCN < 512 || ARFCN > 885) {
-			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
-			return -EINVAL;
-		}
-		break;
-	case GSM_BTS_TYPE_BS11:
-	case GSM_BTS_TYPE_NANOBTS_900:
-		/* Assume we have a P-GSM900 here */
-		if (ARFCN < 1 || ARFCN > 124) {
-			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
-			return -EINVAL;
-		}
-		break;
-	case GSM_BTS_TYPE_UNKNOWN:
-		fprintf(stderr, "Unknown BTS. Please use the --bts-type switch\n");
-		return -EINVAL;
-	}
 
 	/* initialize our data structures */
 	gsmnet = gsm_network_init(MCC, MNC, mncc_recv);
 	if (!gsmnet)
 		return -ENOMEM;
 
-	gsmnet->name_long = "OpenBSC";
-	gsmnet->name_short = "OpenBSC";
+	gsmnet->name_long = talloc_strdup(gsmnet, "OpenBSC");
+	gsmnet->name_short = talloc_strdup(gsmnet, "OpenBSC");
 
 	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
@@ -1105,56 +1062,24 @@ static int bootstrap_network(void)
 	printf("DB: Database prepared.\n");
 
 	telnet_init(gsmnet, 4242);
+	rc = vty_read_config_file("openbsc.cfg");
+	if (rc < 0)
+		return rc;
 
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 
-	/* E1 mISDN input setup */
-	if (BTS_TYPE == GSM_BTS_TYPE_BS11) {
-		struct gsm_bts *bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
-
-		if (bs11_has_trx1) {
-			struct gsm_bts_trx *trx1;
-			trx1 = gsm_bts_trx_alloc(bts);
-			trx1->arfcn = ARFCN + 2;
-		}
+	llist_for_each_entry(bts, &gsmnet->bts_list, list) { 
 		bootstrap_bts(bts);
-		rc = e1_config(bts, cardnr, release_l2);
-		if (rc < 0) {
-			fprintf(stderr, "Error during E1 config of BTS 0\n");
-			return rc;
-		}
+		if (is_ipaccess_bts(bts))
+			rc = ipaccess_setup(bts);
+		else
+			rc = e1_reconfig_bts(bts);
 
-		if (bs11_has_bts1) {
-			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
-			if (bs11_has_trx1) {
-				struct gsm_bts_trx *trx1;
-				trx1 = gsm_bts_trx_alloc(bts);
-				trx1->arfcn = ARFCN + 2;
-			}
-			bootstrap_bts(bts);
-			rc = e1_config(bts, cardnr+1, release_l2);
-			if (rc < 0)
-				fprintf(stderr, "Error during E1 config of BTS 1\n");
-		}
-		return rc;
-	} else {
-		struct nano_bts_id *bts_id;
-		struct gsm_bts *bts;
-
-		if (llist_empty(&nanobts_ids)) {
-			fprintf(stderr, "You need to specify -i DEVICE_1 -i DEVICE_2 for nanoBTS.\n");
-			return -EINVAL;
-		}
-
-		llist_for_each_entry(bts_id, &nanobts_ids, entry) {
-			bts = gsm_bts_alloc(gsmnet, BTS_TYPE, TSC, BSIC);
-			bootstrap_bts(bts);
-			bts->ip_access.site_id = bts_id->site_id;
-			bts->ip_access.bts_id = 0;
-		}
-
-		return ipaccess_setup(gsmnet);
+		if (rc < 0)
+			exit (1);
 	}
+
+	return 0;
 }
 
 static void create_pcap_file(char *file)
@@ -1178,22 +1103,15 @@ static void print_usage()
 static void print_help()
 {
 	printf("  Some useful help...\n");
+	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
 	printf("  -s --disable-color\n");
-	printf("  -n --network-code number(MNC) \n");
-	printf("  -c --country-code number (MCC) \n");
-	printf("  -L --location-area-code number (LAC) \n");
-	printf("  -f --arfcn number The frequency ARFCN\n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
-	printf("  -t --bts-type type The BTS type (bs11, nanobts900, nanobts1800)\n");
-	printf("  -i --bts-id=NUMBER The known nanoBTS device numbers. Can be specified multiple times.\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
 	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
-	printf("  -2 --second-bs11 Configure + Use a second BS-11\n");
-	printf("  -h --help this text\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -1204,29 +1122,18 @@ static void handle_options(int argc, char** argv)
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
 			{"disable-color", 0, 0, 's'},
-			{"network-code", 1, 0, 'n'},
-			{"country-code", 1, 0, 'c'},
-			{"location-area-code", 1, 0, 'L'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
 			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
-			{"arfcn", 1, 0, 'f'},
-			{"bts-type", 1, 0, 't'},
 			{"cardnr", 1, 0, 'C'},
 			{"release-l2", 0, 0, 'R'},
 			{"timestamp", 0, 0, 'T'},
-			{"band", 0, 0, 'b'},
-			{"bts-id", 1, 0, 'i'},
-			{"tsc", 1, 0, 'S'},
-			{"bsic", 1, 0, 'B'},
 			{"rtp-proxy", 0, 0, 'P'},
-			{"trx1", 0, 0, '1'},
-			{"second-bs11", 0, 0, '2'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:n:d:sar:p:f:t:C:RL:l:Tb:i:S:B:P12",
+		c = getopt_long(argc, argv, "hd:sl:ar:p:C:RTP",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1241,18 +1148,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'd':
 			debug_parse_category_mask(optarg);
-			break;
-		case 'n':
-			MNC = atoi(optarg);
-			break;
-		case 'c':
-			MCC = atoi(optarg);
-			break;
-		case 'L':
-			LAC = atoi(optarg);
-			break;
-		case 'f':
-			ARFCN = atoi(optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -1278,35 +1173,9 @@ static void handle_options(int argc, char** argv)
 		case 'T':
 			debug_timestamp(1);
 			break;
-		case 'b':
-			BAND = gsm_band_parse(atoi(optarg));
-			break;
-		case 'i': {
-			struct nano_bts_id *bts_id = talloc_zero(tall_bsc_ctx, struct nano_bts_id);
-			if (!bts_id) {
-				fprintf(stderr, "Failed to allocate bts id\n");
-				exit(-1);
-			}
-
-			bts_id->site_id = atoi(optarg);
-			llist_add(&bts_id->entry, &nanobts_ids);
-			break;
-		case 'S':
-			TSC = atoi(optarg);
-			break;
-		case 'B':
-			BSIC = atoi(optarg);
-			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
 			break;
-		case '1':
-			bs11_has_trx1 = 1;
-			break;
-		case '2':
-			bs11_has_bts1 = 1;
-			break;
-		}
 		default:
 			/* ignore */
 			break;

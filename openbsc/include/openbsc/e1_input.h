@@ -113,6 +113,9 @@ int e1inp_driver_register(struct e1inp_driver *drv);
 /* register a line with the E1 core */
 int e1inp_line_register(struct e1inp_line *line);
 
+/* ensure a certain line exists, return pointer to it */
+struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr);
+
 /* find a sign_link for given TEI and SAPI in a TS */
 struct e1inp_sign_link *
 e1inp_lookup_sign_link(struct e1inp_ts *ts, u_int8_t tei,
@@ -148,8 +151,12 @@ void e1_set_pcap_fd(int fd);
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
 
+
 /* e1_config.c */
-int e1_config(struct gsm_bts *bts, int cardnr, int release_l2);
+int e1_reconfig_ts(struct gsm_bts_trx_ts *ts);
+int e1_reconfig_trx(struct gsm_bts_trx *trx);
+int e1_reconfig_bts(struct gsm_bts *bts);
+
 int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin);
 int ipaccess_setup(struct gsm_network *gsmnet);
 

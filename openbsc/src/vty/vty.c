@@ -743,22 +743,6 @@ static void vty_end_config(struct vty *vty)
 		/* Nothing to do. */
 		break;
 	case CONFIG_NODE:
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case BGP_NODE:
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-	case RMAP_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case KEYCHAIN_KEY_NODE:
-	case MASC_NODE:
 	case VTY_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
@@ -1125,18 +1109,6 @@ static void vty_stop_input(struct vty *vty)
 		/* Nothing to do. */
 		break;
 	case CONFIG_NODE:
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case BGP_NODE:
-	case RMAP_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case KEYCHAIN_KEY_NODE:
-	case MASC_NODE:
 	case VTY_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
@@ -1393,7 +1365,7 @@ vty_read_file(FILE *confp)
 			fprintf(stderr, "Ambiguous command.\n");
 			break;
 		case CMD_ERR_NO_MATCH:
-			fprintf(stderr, "Ther is no such command.\n");
+			fprintf(stderr, "There is no such command.\n");
 			break;
 		}
 		fprintf(stderr, "Error occurred during reading below "
@@ -1675,10 +1647,8 @@ void vty_init()
 	install_element(ENABLE_NODE, &show_history_cmd);
 
 	install_default(VTY_NODE);
-#if 0
 	install_element(VTY_NODE, &vty_login_cmd);
 	install_element(VTY_NODE, &no_vty_login_cmd);
-#endif
 }
 
 int vty_read_config_file(const char *file_name)

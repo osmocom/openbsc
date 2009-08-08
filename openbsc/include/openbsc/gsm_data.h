@@ -200,7 +200,10 @@ struct gsm_bts_trx {
 	/* number of this TRX in the BTS */
 	u_int8_t nr;
 	/* how do we talk RSL with this TRX? */
+	struct gsm_e1_subslot rsl_e1_link;
+	u_int8_t rsl_tei;
 	struct e1inp_sign_link *rsl_link;
+
 	struct gsm_nm_state nm_state;
 	struct tlv_parsed nm_attr;
 	struct {
@@ -293,6 +296,8 @@ struct gsm_bts {
 	enum gsm_bts_type type;
 	enum gsm_band band;
 	/* how do we talk OML with this TRX? */
+	struct gsm_e1_subslot oml_e1_link;
+	u_int8_t oml_tei;
 	struct e1inp_sign_link *oml_link;
 
 	/* Abis network management O&M handle */
@@ -404,7 +409,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
 
 char *gsm_band_name(enum gsm_band band);
-enum gsm_band gsm_band_parse(int mhz);
+enum gsm_band gsm_band_parse(const char *mhz);
 
 extern void *tall_bsc_ctx;
 

@@ -14,10 +14,106 @@
 #define SAPI_OML	62
 #define SAPI_RSL	0	/* 63 ? */
 
-#define TEI_L2ML	127
-#define TEI_OML		25
-#define TEI_RSL		1
+/* The e1_reconfig_*() functions below tale the configuration present in the
+ * bts/trx/ts data structures and ensure the E1 configuration reflects the
+ * timeslot/subslot/TEI configuration */
 
+int e1_reconfig_ts(struct gsm_bts_trx_ts *ts)
+{
+	struct gsm_e1_subslot *e1_link = &ts->e1_link;
+	struct e1inp_line *line;
+	struct e1inp_ts *e1_ts;
+
+	printf("e1_reconfig_ts(%u,%u,%u)\n", ts->trx->bts->nr, ts->trx->nr, ts->nr);
+
+	if (!e1_link->e1_ts)
+		return 0;
+
+	line = e1inp_line_get_create(e1_link->e1_nr);
+	if (!line)
+		return -ENOMEM;
+
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+		e1_ts = &line->ts[e1_link->e1_ts-1];
+		e1inp_ts_config(e1_ts, line, E1INP_TS_TYPE_TRAU);
+		subch_demux_activate(&e1_ts->trau.demux, e1_link->e1_ts_ss);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+int e1_reconfig_trx(struct gsm_bts_trx *trx)
+{
+	struct gsm_e1_subslot *e1_link = &trx->rsl_e1_link;
+	struct e1inp_ts *sign_ts;
+	struct e1inp_line *line;
+	struct e1inp_sign_link *rsl_link;
+	int i;
+
+	if (!e1_link->e1_ts)
+		return -EINVAL;
+
+	/* RSL Link */
+	line = e1inp_line_get_create(e1_link->e1_nr);
+	if (!line)
+		return -ENOMEM;
+	sign_ts = &line->ts[e1_link->e1_ts-1];
+	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
+	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
+					  trx, trx->rsl_tei, SAPI_RSL);
+	if (!rsl_link)
+		return -ENOMEM;
+	if (trx->rsl_link)
+		e1inp_sign_link_destroy(trx->rsl_link);
+	trx->rsl_link = rsl_link;
+
+	for (i = 0; i < TRX_NR_TS; i++)
+		e1_reconfig_ts(&trx->ts[i]);
+
+	return 0;
+}
+
+int e1_reconfig_bts(struct gsm_bts *bts)
+{
+	struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;
+	struct e1inp_ts *sign_ts;
+	struct e1inp_line *line;
+	struct e1inp_sign_link *oml_link;
+	struct gsm_bts_trx *trx;
+	int rc;
+
+	printf("e1_reconfig_bts(%u)\n", bts->nr);
+
+	if (!e1_link->e1_ts)
+		return -EINVAL;
+
+	/* OML link */
+	line = e1inp_line_get_create(e1_link->e1_nr);
+	if (!line)
+		return -ENOMEM;
+	sign_ts = &line->ts[e1_link->e1_ts-1];
+	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
+	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
+					  bts->c0, bts->oml_tei, SAPI_OML);
+	if (!oml_link)
+		return -ENOMEM;
+	if (bts->oml_link)
+		e1inp_sign_link_destroy(bts->oml_link);
+	bts->oml_link = oml_link;
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		e1_reconfig_trx(trx);
+
+	/* notify E1 input something has changed */
+	return e1inp_line_update(line);
+}
+
+#if 0
 /* do some compiled-in configuration for our BTS/E1 setup */
 int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 {
@@ -102,6 +198,7 @@ int e1_config(struct gsm_bts *bts, int cardnr, int release_l2)
 
 	return mi_setup(cardnr, line, release_l2);
 }
+#endif
 
 /* configure pseudo E1 line in ip.access style and connect to BTS */
 int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)

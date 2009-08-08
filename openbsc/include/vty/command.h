@@ -61,12 +61,6 @@ struct host {
 
 /* There are some command levels which called from command node. */
 enum node_type {
-	GSMNET_NODE,
-	BTS_NODE,
-	TRX_NODE,
-	TS_NODE,
-	SUBSCR_NODE,
-
 	AUTH_NODE,		/* Authentication mode of vty interface. */
 	VIEW_NODE,		/* View node. Default mode of vty interface. */
 	AUTH_ENABLE_NODE,	/* Authentication mode for change enable. */
@@ -74,6 +68,7 @@ enum node_type {
 	CONFIG_NODE,		/* Config node. Default mode of config file. */
 	SERVICE_NODE,		/* Service node. */
 	DEBUG_NODE,		/* Debug node. */
+#if 0
 	AAA_NODE,		/* AAA node. */
 	KEYCHAIN_NODE,		/* Key-chain node. */
 	KEYCHAIN_KEY_NODE,	/* Key-chain key node. */
@@ -103,7 +98,14 @@ enum node_type {
 	SMUX_NODE,		/* SNMP configuration node. */
 	DUMP_NODE,		/* Packet dump node. */
 	FORWARDING_NODE,	/* IP forwarding node. */
-	VTY_NODE		/* Vty node. */
+#endif
+	VTY_NODE,		/* Vty node. */
+
+	GSMNET_NODE,
+	BTS_NODE,
+	TRX_NODE,
+	TS_NODE,
+	SUBSCR_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration

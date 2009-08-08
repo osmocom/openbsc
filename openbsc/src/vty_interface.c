@@ -164,13 +164,41 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 	return CMD_SUCCESS;
 }
 
+/* utility functions */
+static void parse_e1_link(struct gsm_e1_subslot *e1_link, const char *line,
+			  const char *ts, const char *ss)
+{
+	e1_link->e1_nr = atoi(line);
+	e1_link->e1_ts = atoi(ts);
+	if (!strcmp(ss, "full"))
+		e1_link->e1_ts_ss = 255;
+	else
+		e1_link->e1_ts_ss = atoi(ss);
+}
+
+static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link,
+				 const char *prefix)
+{
+	if (!e1_link->e1_ts)
+		return;
+
+	if (e1_link->e1_ts_ss == 255)
+		vty_out(vty, "%se1 line %u timeslot %u sub-slot full%s",
+			prefix, e1_link->e1_nr, e1_link->e1_ts, VTY_NEWLINE);
+	else
+		vty_out(vty, "%se1 line %u timeslot %u sub-slot %u%s",
+			prefix, e1_link->e1_nr, e1_link->e1_ts,
+			e1_link->e1_ts_ss, VTY_NEWLINE);
+}
+
+
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "    ts %u%s", ts->nr, VTY_NEWLINE);
-	vty_out(vty, "     phys_chan_config %s%s", gsm_pchan_name(ts->pchan),
-		VTY_NEWLINE);
-	vty_out(vty, "     e1_subslot %u %u %u%s", ts->e1_link.e1_nr,
-		ts->e1_link.e1_ts, ts->e1_link.e1_ts_ss, VTY_NEWLINE);
+	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
+	if (ts->pchan != GSM_PCHAN_NONE)
+		vty_out(vty, "     phys_chan_config %s%s",
+			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+	config_write_e1_link(vty, &ts->e1_link, "     ");
 }
 
 static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
@@ -180,6 +208,8 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
+	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
+	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
 
 	for (i = 0; i < TRX_NR_TS; i++)
 		config_write_ts_single(vty, &trx->ts[i]);
@@ -199,6 +229,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
+	else {
+		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
+		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
+	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -217,10 +251,10 @@ static int config_write_bts(struct vty *v)
 static int config_write_net(struct vty *vty)
 {
 	vty_out(vty, "network%s", VTY_NEWLINE);
-	vty_out(vty, " country code %u%s", gsmnet->country_code, VTY_NEWLINE);
+	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
 	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
-	vty_out(vty, " short name '%s'%s", gsmnet->name_short, VTY_NEWLINE);
-	vty_out(vty, " long name '%s'%s", gsmnet->name_long, VTY_NEWLINE);
+	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
+	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -230,9 +264,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
 		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "  RF Nominal Power: %d dBm, reduced by %u dB, "
-		"resulting BS power: %d dBm\n",
+		"resulting BS power: %d dBm%s",
 		trx->nominal_power, trx->max_power_red,
-		trx->nominal_power - trx->max_power_red);
+		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &trx->nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
@@ -550,6 +584,8 @@ DEFUN(show_e1line,
 
 static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
 {
+	if (ts->type == E1INP_TS_TYPE_NONE)
+		return;
 	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
 		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
 		VTY_NEWLINE);
@@ -776,7 +812,7 @@ DEFUN(cfg_bts_band,
       "Set the frequency band of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int band = gsm_band_parse(atoi(argv[0]));
+	int band = gsm_band_parse(argv[0]);
 
 	if (band < 0) {
 		vty_out(vty, "%% BAND %d is not a valid GSM band%s",
@@ -834,7 +870,7 @@ DEFUN(cfg_bts_bsic,
 	int bsic = atoi(argv[0]);
 
 	if (bsic < 0 || bsic > 0x3f) {
-		vty_out(vty, "%% TSC %d is not in the valid range (0-255)%s",
+		vty_out(vty, "%% BSIC %d is not in the valid range (0-255)%s",
 			bsic, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -871,6 +907,31 @@ DEFUN(cfg_bts_unit_id,
 
 	bts->ip_access.site_id = site_id;
 	bts->ip_access.bts_id = bts_id;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_oml_e1,
+      cfg_bts_oml_e1_cmd,
+      "oml e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+      "E1 interface to be used for OML\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	parse_e1_link(&bts->oml_e1_link, argv[0], argv[1], argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(cfg_bts_oml_e1_tei,
+      cfg_bts_oml_e1_tei_cmd,
+      "oml e1 tei <0-63>",
+      "Set the TEI to be used for OML")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->oml_tei = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -951,10 +1012,35 @@ DEFUN(cfg_trx_max_power_red,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_rsl_e1,
+      cfg_trx_rsl_e1_cmd,
+      "rsl e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+      "E1 interface to be used for RSL\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	parse_e1_link(&trx->rsl_e1_link, argv[0], argv[1], argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_rsl_e1_tei,
+      cfg_trx_rsl_e1_tei_cmd,
+      "rsl e1 tei <0-63>",
+      "Set the TEI to be used for RSL")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->rsl_tei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 /* per TS configuration */
 DEFUN(cfg_ts,
       cfg_ts_cmd,
-      "timeslot TS_NR",
+      "timeslot <0-7>",
       "Select a Timeslot to configure")
 {
 	int ts_nr = atoi(argv[0]);
@@ -994,14 +1080,12 @@ DEFUN(cfg_ts_pchan,
 
 DEFUN(cfg_ts_e1_subslot,
       cfg_ts_e1_subslot_cmd,
-      "e1_subslot E1_IF <1-31> <0-4>",
+      "e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
       "E1 sub-slot connected to this on-air timeslot")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
 
-	ts->e1_link.e1_nr = atoi(argv[0]);
-	ts->e1_link.e1_ts = atoi(argv[1]);
-	ts->e1_link.e1_ts_ss = atoi(argv[2]);
+	parse_e1_link(&ts->e1_link, argv[0], argv[1], argv[2]);
 
 	return CMD_SUCCESS;
 }
@@ -1158,6 +1242,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
 	install_default(GSMNET_NODE);
+	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
@@ -1169,13 +1254,18 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
+	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
+	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
+	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
+	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);

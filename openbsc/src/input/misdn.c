@@ -49,12 +49,6 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/talloc.h>
 
-/* data structure for one E1 interface with A-bis */
-struct mi_e1_handle {
-	/* The mISDN card number of the card we use */
-	int cardnr;
-};
-
 #define TS1_ALLOC_SIZE	300
 
 struct prim_name {
@@ -383,7 +377,6 @@ struct e1inp_driver misdn_driver = {
 
 static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 {
-	struct mi_e1_handle *e1h = line->driver_data;
 	int ts, ret;
 
 	/* TS0 is CRC4, don't need any fd for it */
@@ -422,7 +415,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		memset(&addr, 0, sizeof(addr));
 		addr.family = AF_ISDN;
-		addr.dev = e1h->cardnr;
+		addr.dev = line->num;
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_SIGN:
 			addr.channel = 0;
@@ -471,20 +464,23 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	return 0;
 }
 
-int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
+int mi_e1_line_update(struct e1inp_line *line)
 {
-	struct mi_e1_handle *e1h;
-	int sk, ret, cnt;
 	struct mISDN_devinfo devinfo;
+	int sk, ret, cnt;
 
-	/* create the actual line instance */
-	e1h = talloc(tall_bsc_ctx, struct mi_e1_handle);
-	memset(e1h, 0, sizeof(*e1h));
+	if (!line->driver) {
+		/* this must be the first update */
+		line->driver = &misdn_driver;
+	} else {
+		/* this is a subsequent update */
+		/* FIXME: first close all sockets */
+		fprintf(stderr, "incremental line updates not supported yet\n");
+		return 0;
+	}
 
-	e1h->cardnr = cardnr;
-
-	line->driver = &misdn_driver;
-	line->driver_data = e1h;
+	if (line->driver != &misdn_driver)
+		return -EINVAL;
 
 	/* open the ISDN card device */
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
@@ -504,11 +500,11 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
-	devinfo.id = e1h->cardnr;
+	devinfo.id = line->num;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
 		fprintf(stdout, "error getting info for device %d: %s\n",
-			e1h->cardnr, strerror(errno));
+			line->num, strerror(errno));
 		return -ENODEV;
 	}
 	fprintf(stdout, "        id:             %d\n", devinfo.id);
@@ -524,11 +520,11 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 		return -EINVAL;
 	}
 
-	ret = mi_e1_setup(line, release_l2);
+	ret = mi_e1_setup(line, 1);
 	if (ret)
 		return ret;
 
-	return e1inp_line_register(line);
+	return 0;
 }
 
 static __attribute__((constructor)) void on_dso_load_sms(void)

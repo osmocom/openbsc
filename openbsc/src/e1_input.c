@@ -289,6 +289,9 @@ int _abis_nm_sendmsg(struct msgb *msg)
 int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 		    enum e1inp_ts_type type)
 {
+	if (ts->type == type && ts->line && line)
+		return 0;
+
 	ts->type = type;
 	ts->line = line;
 
@@ -320,6 +323,29 @@ static struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 			return e1i_line;
 	}
 	return NULL;
+}
+
+struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
+{
+	struct e1inp_line *line;
+	int i;
+
+	line = e1inp_line_get(e1_nr);
+	if (line)
+		return line;
+
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
+	if (!line)
+		return NULL;
+
+	line->num = e1_nr;
+	for (i = 0; i < NUM_E1_TS; i++) {
+		line->ts[i].num = i+1;
+		line->ts[i].line = line;
+	}
+	llist_add_tail(&line->list, &e1inp_line_list);
+
+	return line;
 }
 
 static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
@@ -386,6 +412,12 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	return link;
 }
 
+void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
+{
+	llist_del(&link->list);
+	talloc_free(link);
+}
+
 /* the E1 driver tells us he has received something on a TS */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		u_int8_t tei, u_int8_t sapi)
@@ -399,7 +431,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
-			fprintf(stderr, "didn't find singalling link for "
+			fprintf(stderr, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
@@ -487,19 +519,9 @@ int e1inp_driver_register(struct e1inp_driver *drv)
 	return 0;
 }
 
-/* register a line with the E1 core */
-int e1inp_line_register(struct e1inp_line *line)
+int e1inp_line_update(struct e1inp_line *line)
 {
-	int i;
-
-	for (i = 0; i < NUM_E1_TS; i++) {
-		line->ts[i].num = i+1;
-		line->ts[i].line = line;
-	}
-
-	llist_add_tail(&line->list, &e1inp_line_list);
-	
-	return 0;
+	return mi_e1_line_update(line);
 }
 
 static __attribute__((constructor)) void on_dso_load_e1_inp(void)

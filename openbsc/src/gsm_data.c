@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
@@ -295,9 +296,15 @@ char *gsm_band_name(enum gsm_band band)
 	return "invalid";
 }
 
-enum gsm_band gsm_band_parse(int mhz)
+enum gsm_band gsm_band_parse(const char* mhz)
 {
-	switch (mhz) {
+	while (*mhz && !isdigit(*mhz))
+		mhz++;
+
+	if (*mhz == '\0')
+		return -EINVAL;
+
+	switch (atoi(mhz)) {
 	case 400:
 		return GSM_BAND_400;
 	case 850:

@@ -29,6 +29,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#define HAVE_VA_COPY
+
 /* this is only needed for compatibility with the old talloc */
 typedef void TALLOC_CTX;
 
