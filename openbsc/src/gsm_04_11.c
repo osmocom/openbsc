@@ -536,7 +536,14 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	trans_free(trans);
+	/* do not free the transaction here, this is done by sending CP-ACK */
+
+	/* check for more messages for this subscriber */
+	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	if (sms)
+		gsm411_send_sms_lchan(msg->lchan, sms);
+	else
+		rsl_release_request(msg->lchan, UM_SAPI_SMS);
 
 	return 0;
 }
@@ -584,15 +591,23 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 			     struct gsm411_rp_hdr *rph)
 {
+	struct gsm_sms *sms;
 	int rc;
+
+	rc = gsm411_send_rp_ack(trans, rph->msg_ref);
+	trans->sms.rp_state = GSM411_RPS_IDLE;
 
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
 	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
 
-	rc = gsm411_send_rp_ack(trans, rph->msg_ref);
-	trans->sms.rp_state = GSM411_RPS_IDLE;
+	/* check for more messages for this subscriber */
+	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	if (sms)
+		gsm411_send_sms_lchan(msg->lchan, sms);
+	else
+		rsl_release_request(msg->lchan, UM_SAPI_SMS);
 
 	return rc;
 }
@@ -638,8 +653,15 @@ static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh,
 static int gsm411_tx_cp_ack(struct gsm_trans *trans)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
+	int rc;
 
-	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ACK);
+	rc = gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ACK);
+
+	if (trans->sms.is_mt) {
+		/* If this is a MT SMS DELIVER, we can clear transaction here */
+		trans->sms.cp_state = GSM411_CPS_IDLE;
+		trans_free(trans);
+	}
 }
 
 static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
@@ -744,15 +766,19 @@ static u_int8_t tpdu_test[] = {
 };
 #endif
 
-/* Take a SMS in gsm_sms structure and send it through lchan */
+/* Take a SMS in gsm_sms structure and send it through an already
+ * existing lchan. We also assume that the caller ensured this lchan already
+ * has a SAPI3 RLL connection! */
 int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
 	u_int8_t *data, *rp_ud_len;
 	u_int8_t msg_ref = 42;
-	u_int8_t transaction_id = 1;	/* FIXME: random */
+	u_int8_t transaction_id;
 	int rc;
+
+	transaction_id = 4; /* FIXME: we always use 4 for now */
 
 	msg->lchan = lchan;
 
@@ -813,7 +839,8 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
 }
 
-/* RLL SAPI3 establish callback */
+/* RLL SAPI3 establish callback. Now we have a RLL connection and
+ * can deliver the actual message */
 static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 			void *_sms, enum bsc_rllr_ind type)
 {
@@ -834,7 +861,8 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 	}
 }
 
-/* paging callback */
+/* paging callback. Here we get called if paging a subscriber has
+ * succeeded or failed. */
 static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_lchan, void *_sms)
 {
@@ -856,6 +884,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 			rc = -EIO;
 			break;
 		}
+		/* Establish a SAPI3 RLL connection for SMS */
 		rc = rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
@@ -870,13 +899,20 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
+/* high-level function to send a SMS to a given subscriber. The function
+ * will take care of paging the subscriber, establishing the RLL SAPI3
+ * connection, etc. */
 int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms)
 {
+	struct gsm_lchan *lchan;
+
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
-	//if (subscr->lchan)
-		//return gsm411_send_sms_lchan(subscr->lchan, sms);
+	lchan = lchan_for_subscr(subscr);
+	if (lchan)
+		return rll_establish(lchan, UM_SAPI_SMS,
+				     rll_ind_cb, sms);
 
 	/* if not, we have to start paging */
 	paging_request(subscr->net, subscr, RSL_CHANNEED_SDCCH,
@@ -885,7 +921,36 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	return 0;
 }
 
+static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
+			 void *handler_data, void *signal_data)
+{
+	struct gsm_subscriber *subscr;
+	struct gsm_lchan *lchan;
+	struct gsm_sms *sms;
+
+	switch (signal) {
+	case S_SUBSCR_ATTACHED:
+		/* A subscriber has attached. Check if there are
+		 * any pending SMS for him to be delivered */
+		subscr = signal_data;
+		lchan = lchan_for_subscr(subscr);
+		if (!lchan)
+			break;
+		sms = db_sms_get_unsent_for_subscr(subscr);
+		if (!sms)
+			break;
+		/* Establish a SAPI3 RLL connection for SMS */
+		rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
+		break;
+	default:
+		break;
+	}
+	return 0;
+}
+
 static __attribute__((constructor)) void on_dso_load_sms(void)
 {
 	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms");
+
+	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
 }
