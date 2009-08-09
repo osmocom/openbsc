@@ -23,6 +23,7 @@
 #include <sys/types.h>
 
 #include <vty/command.h>
+#include <vty/buffer.h>
 #include <vty/vty.h>
 
 #include <arpa/inet.h>
@@ -32,6 +33,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/db.h>
 
 static struct gsm_network *gsmnet;
@@ -975,16 +977,74 @@ DEFUN(sms_send_pend,
 	return CMD_SUCCESS;
 }
 
+static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
+{
+	struct buffer *b = buffer_new(1024);
+	int i;
+
+	if (!b)
+		return NULL;
+
+	for (i = base; i < argc; i++) {
+		buffer_putstr(b, argv[i]);
+		buffer_putc(b, ' ');
+	}
+	buffer_putc(b, '\0');
+
+	return b;
+}
+
+static int _send_sms_buffer(struct gsm_subscriber *receiver,
+			     struct buffer *b)
+{
+	struct gsm_sms *sms = sms_alloc();
+
+	if (!sms)
+		return CMD_WARNING;
+
+	if (!receiver->lac) {
+		/* subscriber currently not attached, store in database? */
+		subscr_put(sms->receiver);
+		return CMD_WARNING;
+	}
+
+	sms->receiver = receiver;
+	strncpy(sms->text, buffer_getstr(b), sizeof(sms->text)-1);
+
+	/* FIXME: don't use ID 1 static */
+	sms->sender = subscr_get_by_id(gsmnet, 1);
+	sms->reply_path_req = 0;
+	sms->status_rep_req = 0;
+	sms->ud_hdr_ind = 0;
+	sms->protocol_id = 0; /* implicit */
+	sms->data_coding_scheme = 0; /* default 7bit */
+	strncpy(sms->dest_addr, receiver->extension, sizeof(sms->dest_addr)-1);
+	/* Generate user_data */
+	sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
+
+	gsm411_send_sms_subscr(sms->receiver, sms);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(sms_send_ext,
       sms_send_ext_cmd,
       "sms send extension EXTEN .LINE",
       "Send a message to a subscriber identified by EXTEN")
 {
-	struct gsm_sms *sms;
+	struct gsm_subscriber *receiver;
+	struct buffer *b;
+	int rc;
 
-	//gsm411_send_sms_subscr(sms->receiver, sms);
+	receiver = subscr_get_by_extension(gsmnet, argv[0]);
+	if (!receiver)
+		return CMD_WARNING;
 
-	return CMD_SUCCESS;
+	b = argv_to_buffer(argc, argv, 1);
+	rc = _send_sms_buffer(receiver, b);
+	buffer_free(b);
+
+	return rc;
 }
 
 DEFUN(sms_send_imsi,
@@ -992,11 +1052,19 @@ DEFUN(sms_send_imsi,
       "sms send imsi IMSI .LINE",
       "Send a message to a subscriber identified by IMSI")
 {
-	struct gsm_sms *sms;
+	struct gsm_subscriber *receiver;
+	struct buffer *b;
+	int rc;
 
-	//gsm411_send_sms_subscr(sms->receiver, sms);
+	receiver = subscr_get_by_imsi(gsmnet, argv[0]);
+	if (!receiver)
+		return CMD_WARNING;
 
-	return CMD_SUCCESS;
+	b = argv_to_buffer(argc, argv, 1);
+	rc = _send_sms_buffer(receiver, b);
+	buffer_free(b);
+
+	return rc;
 }
 
 
@@ -1070,10 +1138,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_subscr_cmd);
 
 	install_element(VIEW_NODE, &sms_send_pend_cmd);
-#if 0
 	install_element(VIEW_NODE, &sms_send_ext_cmd);
 	install_element(VIEW_NODE, &sms_send_imsi_cmd);
-#endif
 
 	install_element(CONFIG_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
