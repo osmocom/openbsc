@@ -44,7 +44,7 @@ static char *create_stmts[] = {
 	"INSERT OR IGNORE INTO Meta "
 		"(key, value) "
 		"VALUES "
-		"('revision', '1')",
+		"('revision', '2')",
 	"CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
@@ -87,6 +87,7 @@ static char *create_stmts[] = {
 		"status_rep_req INTEGER NOT NULL, "
 		"protocol_id INTEGER NOT NULL, "
 		"data_coding_scheme INTEGER NOT NULL, "
+		"ud_hdr_ind INTEGER NOT NULL, "
 		"dest_addr TEXT, "
 		"user_data BLOB, "	/* TP-UD */
 		/* additional data, interpreted from SMS */
@@ -106,6 +107,30 @@ void db_error_func(dbi_conn conn, void* data) {
 	const char* msg;
 	dbi_conn_error(conn, &msg);
 	printf("DBI: %s\n", msg);
+}
+
+static int check_db_revision(void)
+{
+	dbi_result result;
+	const char *rev;
+
+	result = dbi_conn_query(conn,
+				"SELECT value FROM Meta WHERE key='revision'");
+	if (!result)
+		return -EINVAL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -EINVAL;
+	}
+	rev = dbi_result_get_string(result, "value");
+	if (!rev || atoi(rev) != 2) {
+		dbi_result_free(result);
+		return -EINVAL;
+	}
+
+	dbi_result_free(result);
+	return 0;
 }
 
 int db_init(const char *name) {
@@ -132,15 +157,24 @@ int db_init(const char *name) {
 	dbi_conn_set_option(conn, "sqlite3_dbdir", dirname(db_dirname));
 	dbi_conn_set_option(conn, "dbname", basename(db_basename));
 
-	if (dbi_conn_connect(conn) < 0) {
-		free(db_dirname);
-		free(db_basename);
-		db_dirname = db_basename = NULL;
-		return 1;
+	if (dbi_conn_connect(conn) < 0)
+		goto out_err;
+
+	if (check_db_revision() < 0) {
+		fprintf(stderr, "Database schema revision invalid, "
+			"please update your database schema\n");
+		goto out_err;
 	}
 
 	return 0;
+
+out_err:
+	free(db_dirname);
+	free(db_basename);
+	db_dirname = db_basename = NULL;
+	return -1;
 }
+
 
 int db_prepare() {
 	dbi_result result;
@@ -478,13 +512,15 @@ int db_sms_store(struct gsm_sms *sms)
 		"INSERT INTO SMS "
 		"(created, sender_id, receiver_id, valid_until, "
 		 "reply_path_req, status_rep_req, protocol_id, "
-		 "data_coding_scheme, dest_addr, user_data, text) VALUES "
+		 "data_coding_scheme, ud_hdr_ind, dest_addr, "
+		 "user_data, text) VALUES "
 		"(datetime('now'), %llu, %llu, %u, "
-		 "%u, %u, %u, %u, %s, %s, %s)",
+		 "%u, %u, %u, %u, %u, %s, %s, %s)",
 		sms->sender->id,
 		sms->receiver ? sms->receiver->id : 0, validity_timestamp,
 		sms->reply_path_req, sms->status_rep_req, sms->protocol_id,
-		sms->data_coding_scheme, q_daddr, q_udata, q_text);
+		sms->data_coding_scheme, sms->ud_hdr_ind,
+		q_daddr, q_udata, q_text);
 	free(q_text);
 	free(q_daddr);
 	free(q_udata);
@@ -496,32 +532,16 @@ int db_sms_store(struct gsm_sms *sms)
 	return 0;
 }
 
-/* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result result)
 {
-	dbi_result result;
-	long long unsigned int sender_id, receiver_id;
 	struct gsm_sms *sms = sms_alloc();
+	long long unsigned int sender_id, receiver_id;
 	const char *text, *daddr;
 	const unsigned char *user_data;
 
 	if (!sms)
 		return NULL;
 
-	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE id >= %llu AND sent is NULL ORDER BY id",
-		min_id);
-	if (!result) {
-		sms_free(sms);
-		return NULL;
-	}
-	if (!dbi_result_next_row(result)) {
-		printf("DB: Failed to find any SMS.\n");
-		dbi_result_free(result);
-		sms_free(sms);
-		return NULL;
-	}
 	sms->id = dbi_result_get_ulonglong(result, "id");
 
 	sender_id = dbi_result_get_ulonglong(result, "sender_id");
@@ -557,8 +577,56 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 		strncpy(sms->text, text, sizeof(sms->text));
 		sms->text[sizeof(sms->text)-1] = '\0';
 	}
+	return sms;
+}
+
+/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS "
+		"WHERE id >= %llu AND sent is NULL ORDER BY id",
+		min_id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(net, result);
 
 	dbi_result_free(result);
+
+	return sms;
+}
+
+/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS "
+		"WHERE receiver_id = %llu AND sent is NULL ORDER BY id",
+		subscr->id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(subscr->net, result);
+
+	dbi_result_free(result);
+
 	return sms;
 }
 
