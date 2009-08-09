@@ -532,32 +532,16 @@ int db_sms_store(struct gsm_sms *sms)
 	return 0;
 }
 
-/* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result result)
 {
-	dbi_result result;
-	long long unsigned int sender_id, receiver_id;
 	struct gsm_sms *sms = sms_alloc();
+	long long unsigned int sender_id, receiver_id;
 	const char *text, *daddr;
 	const unsigned char *user_data;
 
 	if (!sms)
 		return NULL;
 
-	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE id >= %llu AND sent is NULL ORDER BY id",
-		min_id);
-	if (!result) {
-		sms_free(sms);
-		return NULL;
-	}
-	if (!dbi_result_next_row(result)) {
-		printf("DB: Failed to find any SMS.\n");
-		dbi_result_free(result);
-		sms_free(sms);
-		return NULL;
-	}
 	sms->id = dbi_result_get_ulonglong(result, "id");
 
 	sender_id = dbi_result_get_ulonglong(result, "sender_id");
@@ -593,8 +577,56 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 		strncpy(sms->text, text, sizeof(sms->text));
 		sms->text[sizeof(sms->text)-1] = '\0';
 	}
+	return sms;
+}
+
+/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS "
+		"WHERE id >= %llu AND sent is NULL ORDER BY id",
+		min_id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(net, result);
 
 	dbi_result_free(result);
+
+	return sms;
+}
+
+/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS "
+		"WHERE receiver_id = %llu AND sent is NULL ORDER BY id",
+		subscr->id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(subscr->net, result);
+
+	dbi_result_free(result);
+
 	return sms;
 }
 
