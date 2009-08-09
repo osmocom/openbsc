@@ -32,6 +32,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/bsc_rll.h>
 #include <openbsc/debug.h>
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
@@ -840,6 +841,24 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 	return abis_rsl_sendmsg(msg);
 }
 
+/* Send "ESTABLISH REQUEST" message with given L3 Info payload */
+/* Chapter 8.3.1 */
+int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_rll_hdr *rh;
+
+	rh = (struct abis_rsl_rll_hdr *) msgb_put(msg, sizeof(*rh));
+	init_llm_hdr(rh, RSL_MT_REL_REQ);
+	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
+	rh->chan_nr = lchan2chan_nr(lchan);
+	rh->link_id = link_id;
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 /* Chapter 8.3.7 Request the release of multiframe mode of RLL connection.
    This is what higher layers should call.  The BTS then responds with
    RELEASE CONFIRM, which we in turn use to trigger RSL CHANNEL RELEASE,
@@ -1212,6 +1231,8 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	u_int8_t *rlm_cause = rllh->data;
 
 	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
+
+	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 		
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_chan_release(msg->lchan);
@@ -1254,9 +1275,16 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 			return gsm0408_rcvmsg(msg);
 		}
 		break;
+	case RSL_MT_EST_CONF:
+		DEBUGPC(DRLL, "ESTABLISH CONFIRMATION\n");
+		rll_indication(msg->lchan, rllh->link_id,
+				  BSC_RLLR_IND_EST_CONF);
+		break;
 	case RSL_MT_REL_IND:
 		/* BTS informs us of having received  DISC from MS */
 		DEBUGPC(DRLL, "RELEASE INDICATION\n");
+		rll_indication(msg->lchan, rllh->link_id,
+				  BSC_RLLR_IND_REL_IND);
 		/* we can now releae the channel on the BTS/Abis side */
 		rsl_chan_release(msg->lchan);
 		break;
