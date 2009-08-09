@@ -849,7 +849,7 @@ int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id)
 	struct abis_rsl_rll_hdr *rh;
 
 	rh = (struct abis_rsl_rll_hdr *) msgb_put(msg, sizeof(*rh));
-	init_llm_hdr(rh, RSL_MT_REL_REQ);
+	init_llm_hdr(rh, RSL_MT_EST_REQ);
 	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
 	rh->chan_nr = lchan2chan_nr(lchan);
 	rh->link_id = link_id;
@@ -1276,7 +1276,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		}
 		break;
 	case RSL_MT_EST_CONF:
-		DEBUGPC(DRLL, "ESTABLISH CONFIRMATION\n");
+		DEBUGPC(DRLL, "ESTABLISH CONFIRM\n");
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_EST_CONF);
 		break;

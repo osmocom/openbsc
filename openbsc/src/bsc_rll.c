@@ -80,8 +80,11 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t link_id,
 	rllr->cb = cb;
 	rllr->data = data;
 
+	llist_add(&rllr->list, &bsc_rll_reqs);
+
 	rllr->timer.cb = &timer_cb;
-	/* start some timer? */
+	rllr->timer.data = rllr;
+
 	bsc_schedule_timer(&rllr->timer, 10, 0);
 
 	/* send the RSL RLL ESTablish REQuest */
@@ -97,6 +100,7 @@ void rll_indication(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t type)
 	llist_for_each_entry_safe(rllr, rllr2, &bsc_rll_reqs, list) {
 		if (rllr->lchan == lchan &&
 		    (rllr->link_id & LINKID_MASK) == (link_id & LINKID_MASK)) {
+			bsc_del_timer(&rllr->timer);
 			complete_rllr(rllr, type);
 			return;
 		}
