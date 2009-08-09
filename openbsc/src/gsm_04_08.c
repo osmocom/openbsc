@@ -364,11 +364,18 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 	u_int32_t tmsi;
 
 	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
+		int rc;
+
 		db_subscriber_alloc_tmsi(lchan->subscr);
-		subscr_update(lchan->subscr, msg->trx->bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
 		release_loc_updating_req(lchan);
-		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		rc = gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		/* call subscr_update after putting the loc_upd_acc
+		 * in the transmit queue, since S_SUBSCR_ATTACHED might
+		 * trigger further action like SMS delivery */
+		subscr_update(lchan->subscr, msg->trx->bts,
+			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+		return rc;
 	}
 
 	return 0;
@@ -1053,6 +1060,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	ret = gsm48_sendmsg(msg, NULL);
 
+	/* send MM INFO with network name */
 	ret = gsm48_tx_mm_info(lchan);
 
 	return ret;
