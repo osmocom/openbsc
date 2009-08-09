@@ -1652,6 +1652,62 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
+static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
+{
+	int i;
+
+	/* As it turns out, the BS-11 has some very peculiar restrictions
+	 * on the channel combinations it allows */
+	if (ts->trx->bts->type == GSM_BTS_TYPE_BS11) {
+		switch (chan_comb) {
+		case NM_CHANC_TCHHalf:
+		case NM_CHANC_TCHHalf2:
+			/* not supported */
+			return -EINVAL;
+		case NM_CHANC_SDCCH:
+			/* only one SDCCH/8 per TRX */
+			for (i = 0; i < TRX_NR_TS; i++) {
+				if (i == ts->nr)
+					continue;
+				if (ts->trx->ts[i].nm_chan_comb ==
+				    NM_CHANC_SDCCH)
+					return -EINVAL;
+			}
+			/* not allowed for TS0 of BCCH-TRX */
+			if (ts->trx == ts->trx->bts->c0 &&
+			    ts->nr == 0)
+					return -EINVAL;
+			/* not on the same TRX that has a BCCH+SDCCH4
+			 * combination */
+			if (ts->trx == ts->trx->bts->c0 &&
+			    (ts->trx->ts[0].nm_chan_comb == 5 ||
+			     ts->trx->ts[0].nm_chan_comb == 8))
+					return -EINVAL;
+			break;
+		case NM_CHANC_mainBCCH:
+		case NM_CHANC_BCCHComb:
+			/* allowed only for TS0 of C0 */
+			if (ts->trx != ts->trx->bts->c0 ||
+			    ts->nr != 0)
+				return -EINVAL;
+			break;
+		case NM_CHANC_BCCH:
+			/* allowed only for TS 2/4/6 of C0 */
+			if (ts->trx != ts->trx->bts->c0)
+				return -EINVAL;
+			if (ts->nr != 2 && ts->nr != 4 &&
+			    ts->nr != 6)
+				return -EINVAL;
+			break;
+		case 8: /* this is not like 08.58, but in fact
+			 * FCCH+SCH+BCCH+CCCH+SDCCH/4+SACCH/C4+CBCH */
+			/* FIXME: only one CBCH allowed per cell */
+			break;
+		}
+	}
+	return 0;
+}
+
 /* Chapter 8.6.3 */
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 {
@@ -1666,6 +1722,12 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		len += 4 + 2 + 2 + 3;
 
 	DEBUGP(DNM, "Set Chan Attr %s\n", gsm_ts_name(ts));
+	if (verify_chan_comb(ts, chan_comb) < 0) {
+		msgb_free(msg);
+		DEBUGP(DNM, "Invalid Channel Combination!!!\n");
+		return -EINVAL;
+	}
+	ts->nm_chan_comb = chan_comb;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,

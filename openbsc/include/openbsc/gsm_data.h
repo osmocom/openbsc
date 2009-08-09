@@ -177,6 +177,7 @@ struct gsm_bts_trx_ts {
 	unsigned int flags;
 	struct gsm_nm_state nm_state;
 	struct tlv_parsed nm_attr;
+	u_int8_t nm_chan_comb;
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
