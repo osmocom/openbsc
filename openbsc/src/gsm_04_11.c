@@ -121,10 +121,11 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 			     u_int8_t rp_msg_type, u_int8_t rp_msg_ref)
 {
 	struct gsm411_rp_hdr *rp;
+	u_int8_t len = msg->len;
 
 	/* GSM 04.11 RP-DATA header */
 	rp = (struct gsm411_rp_hdr *)msgb_push(msg, sizeof(*rp));
-	rp->len = msg->len;
+	rp->len = len + 2;
 	rp->msg_type = rp_msg_type;
 	rp->msg_ref = rp_msg_ref; /* FIXME: Choose randomly */
 
