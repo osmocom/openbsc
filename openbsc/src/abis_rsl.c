@@ -803,6 +803,7 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
 	rh->chan_nr = lchan2chan_nr(lchan);
 	rh->link_id = link_id;
+	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
 	msg->trx = lchan->ts->trx;
 
