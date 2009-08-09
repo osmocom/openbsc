@@ -32,6 +32,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
+#include <openbsc/signal.h>
 #include <openbsc/db.h>
 
 LLIST_HEAD(active_subscribers);
@@ -162,6 +163,22 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 	return db_get_subscriber(net, GSM_SUBSCRIBER_EXTENSION, ext);
 }
 
+struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
+					unsigned long long id)
+{
+	struct gsm_subscriber *subscr;
+	char buf[32];
+	sprintf(buf, "%llu", id);
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		if (subscr->id == id)
+			return subscr_get(subscr);
+	}
+
+	return db_get_subscriber(net, GSM_SUBSCRIBER_ID, buf);
+}
+
+
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 {
 	/* FIXME: Migrate pending requests from one BSC to another */
@@ -170,12 +187,13 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		s->net = bts->network;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
+		dispatch_signal(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
 			s->lac = 0;
-
+		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:
 		fprintf(stderr, "subscr_update with unknown reason: %d\n",

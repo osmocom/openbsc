@@ -43,5 +43,6 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
 struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id);
+struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr);
 int db_sms_mark_sent(struct gsm_sms *sms);
 #endif /* _DB_H */

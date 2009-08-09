@@ -50,6 +50,7 @@ enum gsm_subscriber_field {
 	GSM_SUBSCRIBER_IMSI,
 	GSM_SUBSCRIBER_TMSI,
 	GSM_SUBSCRIBER_EXTENSION,
+	GSM_SUBSCRIBER_ID,
 };
 
 enum gsm_subscriber_update_reason {
@@ -66,6 +67,8 @@ struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 					  const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 					       const char *ext);
+struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
+					unsigned long long id);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_lchan *lchan);
 void subscr_get_channel(struct gsm_subscriber *subscr,

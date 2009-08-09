@@ -80,7 +80,7 @@ typedef int gsm_cbfn(unsigned int hooknum,
  * Use the channel. As side effect the lchannel recycle timer
  * will be started.
  */
-#define LCHAN_RELEASE_TIMEOUT 10, 0
+#define LCHAN_RELEASE_TIMEOUT 20, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
 		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
@@ -105,44 +105,6 @@ struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
 struct rtp_socket;
-
-/* One transaction */
-struct gsm_trans {
-	/* Entry in list of all transactions */
-	struct llist_head entry;
-
-	/* The protocol within which we live */
-	u_int8_t protocol;
-
-	/* The current transaction ID */
-	u_int8_t transaction_id;
-	
-	/* To whom we belong, unique identifier of remote MM entity */
-	struct gsm_subscriber *subscr;
-
-	/* The LCHAN that we're currently using to transmit messages */
-	struct gsm_lchan *lchan;
-
-	/* reference from MNCC or other application */
-	u_int32_t callref;
-
-	union {
-		struct {
-
-			/* current call state */
-			int state;
-
-			/* current timer and message queue */
-			int Tcurrent;		/* current CC timer */
-			int T308_second;	/* used to send release again */
-			struct timer_list timer;
-			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
-		} cc;
-		struct {
-		} sms;
-	};
-};
-
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -398,7 +360,18 @@ struct gsm_sms {
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
 
-	unsigned char header[SMS_HDR_SIZE];
+	unsigned long validity_minutes;
+	u_int8_t reply_path_req;
+	u_int8_t status_rep_req;
+	u_int8_t ud_hdr_ind;
+	u_int8_t protocol_id;
+	u_int8_t data_coding_scheme;
+	u_int8_t msg_ref;
+	char dest_addr[20+1];	/* DA LV is 12 bytes max, i.e. 10 bytes
+				 * BCD == 20 bytes string */
+	u_int8_t user_data_len;
+	u_int8_t user_data[SMS_TEXT_SIZE];
+
 	char text[SMS_TEXT_SIZE];
 };
 
@@ -425,7 +398,7 @@ enum gsm_e1_event {
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
-enum gsm_bts_type parse_btstype(char *arg);
+enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);

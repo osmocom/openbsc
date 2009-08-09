@@ -112,6 +112,15 @@ struct gsm48_rach_control {
 	u_int8_t t3;
 } __attribute__ ((packed));
 
+/* Section 10.5.2.4 Cell Selection Parameters */
+struct gsm48_cell_sel_par {
+	u_int8_t ms_txpwr_max_ccch:5,	/* GSM 05.08 MS-TXPWR-MAX-CCCH */
+		 cell_resel_hyst:3;	/* GSM 05.08 CELL-RESELECT-HYSTERESIS */
+	u_int8_t rxlev_acc_min:6,	/* GSM 05.08 RXLEV-ACCESS-MIN */
+		 neci:1,
+		 acs:1;
+} __attribute__ ((packed));
+
 /* Section 10.5.2.11 Control Channel Description , Figure 10.5.33 */
 struct gsm48_control_channel_descr {
 	u_int8_t ccch_conf :3,
@@ -157,7 +166,7 @@ struct gsm48_system_information_type_3 {
 	struct gsm48_loc_area_id lai;
 	struct gsm48_control_channel_descr control_channel_desc;
 	u_int8_t cell_options;
-	u_int8_t cell_selection[2];
+	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
 	u_int8_t s3_reset_octets[4];
 } __attribute__ ((packed));
@@ -166,7 +175,7 @@ struct gsm48_system_information_type_3 {
 struct gsm48_system_information_type_4 {
 	struct gsm48_system_information_type_header header;
 	struct gsm48_loc_area_id lai;
-	u_int8_t cell_selection[2];
+	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
 	/*	optional CBCH conditional CBCH... followed by
 		mandantory SI 4 Reset Octets

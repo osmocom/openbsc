@@ -245,7 +245,7 @@ static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
 		rep->flags |= MEAS_REP_F_BA1;
 	if (data[0] & 0x40)
 		rep->flags |= MEAS_REP_F_DTX;
-	if (data[1] & 0x40)
+	if ((data[1] & 0x40) == 0x00)
 		rep->flags |= MEAS_REP_F_VALID;
 
 	rep->rxlev_full = data[0] & 0x3f;
@@ -364,11 +364,18 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 	u_int32_t tmsi;
 
 	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
+		int rc;
+
 		db_subscriber_alloc_tmsi(lchan->subscr);
-		subscr_update(lchan->subscr, msg->trx->bts, GSM_SUBSCRIBER_UPDATE_ATTACHED);
 		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
 		release_loc_updating_req(lchan);
-		return gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		rc = gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		/* call subscr_update after putting the loc_upd_acc
+		 * in the transmit queue, since S_SUBSCR_ATTACHED might
+		 * trigger further action like SMS delivery */
+		subscr_update(lchan->subscr, msg->trx->bts,
+			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+		return rc;
 	}
 
 	return 0;
@@ -1053,6 +1060,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	ret = gsm48_sendmsg(msg, NULL);
 
+	/* send MM INFO with network name */
 	ret = gsm48_tx_mm_info(lchan);
 
 	return ret;
@@ -1610,7 +1618,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 		return -EINVAL;
 	}
 	DEBUGP(DRR, "<- Channel was requested by %s\n",
-		subscr->name ? subscr->name : subscr->imsi);
+		subscr->name && strlen(subscr->name) ? subscr->name : subscr->imsi);
 
 	subscr->equipment.classmark2_len = *classmark2_lv;
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
@@ -1783,6 +1791,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Send actual release request to MS */
 	gsm48_sendmsg(msg, NULL);
+	/* FIXME: Start Timer T3109 */
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);
@@ -3374,13 +3383,11 @@ static struct downstate {
 
 int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 {
-	int i, j, k, l, rc = 0;
+	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
 	struct gsm_subscriber *subscr;
-	struct gsm_lchan *lchan = NULL, *lchant;
+	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts *bts = NULL;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
 	struct gsm_mncc *data = arg, rel;
 
 	/* handle special messages */
@@ -3463,23 +3470,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return -ENOMEM;
 		}
 		/* Find lchan */
-		for (i = 0; i < net->num_bts; i++) {
-			bts = gsm_bts_num(net, i);
-			for (j = 0; j < bts->num_trx; j++) {
-				trx = gsm_bts_trx_num(bts, j);
-				for (k = 0; k < TRX_NR_TS; k++) {
-					ts = &trx->ts[k];
-					for (l = 0; l < TS_MAX_LCHAN; l++) {
-						lchant = &ts->lchan[l];
-						if (lchant->subscr == subscr) {
-							lchan = lchant;
-							break;
-						}
-					}
-				}
-			}
-		}
-
+		lchan = lchan_for_subscr(subscr);
 		/* If subscriber has no lchan */
 		if (!lchan) {
 			/* find transaction with this subscriber already paging */
@@ -3498,22 +3489,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			}
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
-			/* start paging subscriber on all BTS with her location */
-			subscr->net = net;
-			bts = NULL;
-			do {
-				bts = gsm_bts_by_lac(net, subscr->lac, bts);
-				if (!bts)
-					break;
-				DEBUGP(DCC, "(bts %d trx - ts - ti -- sub %s) "
-					"Received '%s' from MNCC with "
-					"unallocated channel, paging.\n",
-					bts->nr, data->called.number,
-					get_mncc_name(msg_type));
-				/* Trigger paging */
-				paging_request(net, subscr, RSL_CHANNEED_TCH_F,
-						setup_trig_pag_evt, subscr);
-			} while (1);
+			/* Trigger paging */
+			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
+					setup_trig_pag_evt, subscr);
 			return 0;
 		}
 		/* Assign lchan */
@@ -3632,7 +3610,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	}
 	
 	/* Find transaction */
-	trans = trans_find_by_id(lchan, transaction_id);
+	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_CC, transaction_id);
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",

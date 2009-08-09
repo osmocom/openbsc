@@ -234,7 +234,7 @@ static const char *bts_types[] = {
 	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
 };
 
-enum gsm_bts_type parse_btstype(char *arg)
+enum gsm_bts_type parse_btstype(const char *arg)
 {
 	int i;
 	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
