@@ -837,6 +837,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
+	lchan_free(msg->lchan);
 	return 0;
 }
 
