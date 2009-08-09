@@ -50,8 +50,8 @@ enum gsm411_cp_cause {
 #define GSM411_MT_RP_ACK_MO	0x02
 #define GSM411_MT_RP_ACK_MT	0x03
 #define GSM411_MT_RP_ERROR_MO	0x04
-#define GSM411_MT_RP_ERROR_MT	0x04
-#define GSM411_MT_RP_SMMA_MO	0x05
+#define GSM411_MT_RP_ERROR_MT	0x05
+#define GSM411_MT_RP_SMMA_MO	0x06
 
 enum gsm411_rp_ie {
 	GSM411_IE_RP_USER_DATA		= 0x41,	/* 8.2.5.3 */
