@@ -3755,10 +3755,10 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 {
 	int i;
-	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+	/* FIXME: determine if we set NECI = 1 in the BTS SI4 */
 
-	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
-		const struct chreq *chr = &chreq_type_neci0[i];
+	for (i = 0; i < ARRAY_SIZE(chreq_type_neci1); i++) {
+		const struct chreq *chr = &chreq_type_neci1[i];
 		if ((ra & chr->mask) == chr->val)
 			return ctype_by_chreq[chr->type];
 	}
@@ -3769,10 +3769,10 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 {
 	int i;
-	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+	/* FIXME: determine if we set NECI = 1 in the BTS SI4 */
 
-	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
-		const struct chreq *chr = &chreq_type_neci0[i];
+	for (i = 0; i < ARRAY_SIZE(chreq_type_neci1); i++) {
+		const struct chreq *chr = &chreq_type_neci1[i];
 		if ((ra & chr->mask) == chr->val)
 			return reason_by_chreq[chr->type];
 	}
