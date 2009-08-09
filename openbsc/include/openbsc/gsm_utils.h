@@ -30,4 +30,6 @@
 int gsm_7bit_decode(char *decoded, const u_int8_t *user_data, u_int8_t length);
 int gsm_7bit_encode(u_int8_t *result, const char *data);
 
+int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm);
+int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl);
 #endif

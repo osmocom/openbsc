@@ -30,6 +30,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_rll.h>
@@ -431,78 +432,6 @@ int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 	return abis_rsl_sendmsg(msg);
 }
 
-/* determine power control level for given dBm value, as indicated
- * by the tables in chapter 4.1.1 of GSM TS 05.05 */
-static int ms_pwr_ctl_lvl(struct gsm_bts *bts, unsigned int dbm)
-{
-	switch (bts->band) {
-	case GSM_BAND_400:
-	case GSM_BAND_900:
-	case GSM_BAND_850:
-		if (dbm >= 39)
-			return 0;
-		else if (dbm < 5)
-			return 19;
-		else
-			return 2 + ((39 - dbm) / 2);
-		break;
-	case GSM_BAND_1800:
-		if (dbm >= 36)
-			return 29;
-		else if (dbm >= 34)	
-			return 30;
-		else if (dbm >= 32)
-			return 31;
-		else
-			return (30 - dbm) / 2;
-		break;
-	case GSM_BAND_1900:
-		if (dbm >= 33)
-			return 30;
-		else if (dbm >= 32)
-			return 31;
-		else
-			return (30 - dbm) / 2;
-		break;
-	}
-	return -EINVAL;
-}
-
-static int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
-{
-	lvl &= 0x1f;
-
-	switch (band) {
-	case GSM_BAND_400:
-	case GSM_BAND_900:
-	case GSM_BAND_850:
-		if (lvl < 2)
-			return 39;
-		else if (lvl < 20)
-			return 39 - ((lvl - 2) * 2) ;
-		else
-			return 5;
-		break;
-	case GSM_BAND_1800:
-		if (lvl < 16)
-			return 30 - (lvl * 2);
-		else if (lvl < 29)
-			return 0;
-		else
-			return 36 - ((lvl - 29) * 2);
-		break;
-	case GSM_BAND_1900:
-		if (lvl < 16)
-			return 30 - (lvl * 2);
-		else if (lvl < 30)
-			return -EINVAL;
-		else
-			return 33 - (lvl - 30);
-		break;
-	}
-	return -EINVAL;
-}
-
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -510,7 +439,7 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	int ctl_lvl;
 
-	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts, dbm);
+	ctl_lvl = ms_pwr_ctl_lvl(lchan->ts->trx->bts->band, dbm);
 	if (ctl_lvl < 0)
 		return ctl_lvl;
 
@@ -1130,7 +1059,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
-	lchan->ms_power = ms_pwr_ctl_lvl(bts, 20 /* dBm == 100mW */);
+	lchan->ms_power = ms_pwr_ctl_lvl(bts->band, 20 /* dBm == 100mW */);
 	lchan->bs_power = 0x0f; /* 30dB reduction */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);

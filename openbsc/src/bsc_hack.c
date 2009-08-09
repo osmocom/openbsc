@@ -37,6 +37,7 @@
 #include <openbsc/db.h>
 #include <openbsc/timer.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/select.h>
 #include <openbsc/abis_rsl.h>
@@ -982,7 +983,7 @@ static void patch_tables(struct gsm_bts *bts)
 
 	/* patch MS max power for CCH */
 	type_4->cell_sel_par.ms_txpwr_max_ccch =
-				ms_pwr_ctl_lvl(bts, 20 /* dBm == 100mW */);
+			ms_pwr_ctl_lvl(bts->band, 20 /* dBm == 100mW */);
 }
 
 
