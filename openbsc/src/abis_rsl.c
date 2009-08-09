@@ -1017,6 +1017,14 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 	return rc;
 }
 
+/* If T3101 expires, we never received a response to IMMEDIATE ASSIGN */
+static void t3101_expired(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	rsl_chan_release(lchan);
+}
+
 /* MS has requested a channel on the RACH */
 static int rsl_rx_chan_rqd(struct msgb *msg)
 {
@@ -1088,7 +1096,10 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);
 
-	/* FIXME: Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
+	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
+	lchan->T3101.cb = t3101_expired;
+	lchan->T3101.data = lchan;
+	bsc_schedule_timer(&lchan->T3101, 10, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
@@ -1199,6 +1210,8 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		break;
 	case RSL_MT_EST_IND:
 		DEBUGPC(DRLL, "ESTABLISH INDICATION\n");
+		/* lchan is established, stop T3101 */
+		bsc_del_timer(&msg->lchan->T3101);
 		if (msgb_l2len(msg) > 
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {

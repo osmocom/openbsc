@@ -147,6 +147,8 @@ struct gsm_lchan {
 	/* Timer started to release the channel */
 	struct timer_list release_timer;
 
+	struct timer_list T3101;
+
 	/*
 	 * Operations that have a state and might be pending
 	 */
