@@ -80,13 +80,11 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			case GSM_PCHAN_CCCH_SDCCH4:
 				from = 0; to = 0;
 				break;
-			case GSM_PCHAN_SDCCH8_SACCH8C:
-				from = 1; to = 1;
-				break;
 			case GSM_PCHAN_TCH_F:
 			case GSM_PCHAN_TCH_H:
-				from = 2; to = 7;
+				from = 1; to = 7;
 				break;
+			case GSM_PCHAN_SDCCH8_SACCH8C:
 			default:
 				return NULL;
 			}
@@ -94,9 +92,11 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			/* Every secondary TRX is configured for TCH/F
 			 * and TCH/H only */
 			switch (pchan) {
+			case GSM_PCHAN_SDCCH8_SACCH8C:
+				from = 1; to = 1;
 			case GSM_PCHAN_TCH_F:
 			case GSM_PCHAN_TCH_H:
-				from = 0; to = 7;
+				from = 1; to = 7;
 				break;
 			default:
 				return NULL;

@@ -403,7 +403,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			trx = ts->trx;
 			if (new_state->availability == 5) {
 				if (ts->nr == 0 && trx == trx->bts->c0)
-					abis_nm_set_channel_attr(ts, NM_CHANC_BCCH_CBCH);
+					abis_nm_set_channel_attr(ts, NM_CHANC_BCCHComb);
 				else
 					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
 				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
@@ -534,7 +534,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 
 	/* Use TEI 1 for signalling */
 	abis_nm_establish_tei(bts, 0, 0, base_ts+1, 0xff, 0x01);
-	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH_CBCH);
+	abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_BCCHComb);
 
 	/* SET CHANNEL ATTRIBUTE TS1 */
 	abis_nm_set_channel_attr(&trx->ts[1], NM_CHANC_TCHFull);
@@ -594,7 +594,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 		abis_nm_establish_tei(bts, 1, 0, base_ts+1, 0xff, 0x02);
 
 		/* SET CHANNEL ATTRIBUTE TS0 */
-		abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_TCHFull);
+		abis_nm_set_channel_attr(&trx->ts[0], NM_CHANC_SDCCH);
 		/* Connect traffic of bts0/trx0/ts0 to e1_0/ts4/a */
 		abis_nm_conn_terr_traf(&trx->ts[0], 0, base_ts+4, 0);
 	
