@@ -41,9 +41,10 @@ struct gsm_trans {
 		struct {
 			int is_mt;	/* is this a MO (0) or MT (1) transfer */
 			enum gsm411_cp_state cp_state;
+			struct timer_list cp_timer;
+
 			enum gsm411_rp_state rp_state;
 
-			struct timer_list timer;
 			struct gsm_sms *sms;
 		} sms;
 	};

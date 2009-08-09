@@ -90,6 +90,16 @@ static int gsm411_sendmsg(struct msgb *msg)
 	return rsl_data_request(msg, UM_SAPI_SMS);
 }
 
+/* SMC TC1* is expired */
+static void cp_timer_expired(void *data)
+{
+	struct gsm_trans *trans = data;
+
+	DEBUGP(DSMS, "SMC Timer TC1* is expired, calling trans_free()\n");
+	/* FIXME: we need to re-transmit the last CP-DATA 1..3 times */
+	trans_free(trans);
+}
+
 /* Prefix msg with a 04.08/04.11 CP header */
 static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 			     u_int8_t msg_type)
@@ -110,6 +120,10 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		/* 5.2.3.1.2: enter MO-wait for CP-ack */
 		/* 5.2.3.2.3: enter MT-wait for CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_WAIT_CP_ACK;
+		trans->sms.cp_timer.data = trans;
+		trans->sms.cp_timer.cb = cp_timer_expired;
+		/* 5.3.2.1: Set Timer TC1A */
+		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
 		break;
 	}
 
@@ -732,6 +746,8 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		/* 5.2.3.1.3: MO state exists when SMC has received CP-ACK */
 		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
+		/* Stop TC1* after CP-ACK has been received */
+		bsc_del_timer(&trans->sms.cp_timer);
 
 		if (!trans->sms.is_mt) {
 			/* FIXME: we have sont one CP-DATA, which was now
@@ -743,6 +759,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		break;
 	case GSM411_MT_CP_ERROR:
 		DEBUGP(DSMS, "RX SMS CP-ERROR, cause 0x%02x\n", gh->data[0]);
+		bsc_del_timer(&trans->sms.cp_timer);
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 		break;
