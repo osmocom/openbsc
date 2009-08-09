@@ -3375,13 +3375,11 @@ static struct downstate {
 
 int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 {
-	int i, j, k, l, rc = 0;
+	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
 	struct gsm_subscriber *subscr;
-	struct gsm_lchan *lchan = NULL, *lchant;
+	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts *bts = NULL;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
 	struct gsm_mncc *data = arg, rel;
 
 	/* handle special messages */
@@ -3464,23 +3462,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return -ENOMEM;
 		}
 		/* Find lchan */
-		for (i = 0; i < net->num_bts; i++) {
-			bts = gsm_bts_num(net, i);
-			for (j = 0; j < bts->num_trx; j++) {
-				trx = gsm_bts_trx_num(bts, j);
-				for (k = 0; k < TRX_NR_TS; k++) {
-					ts = &trx->ts[k];
-					for (l = 0; l < TS_MAX_LCHAN; l++) {
-						lchant = &ts->lchan[l];
-						if (lchant->subscr == subscr) {
-							lchan = lchant;
-							break;
-						}
-					}
-				}
-			}
-		}
-
+		lchan = lchan_for_subscr(subscr);
 		/* If subscriber has no lchan */
 		if (!lchan) {
 			/* find transaction with this subscriber already paging */

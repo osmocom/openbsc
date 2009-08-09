@@ -37,6 +37,9 @@ void ts_free(struct gsm_bts_trx_ts *ts);
 /* Find an allocated channel */
 struct gsm_lchan *lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr);
 
+/* Find an allocated channel for a specified subscriber */
+struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr);
+
 /* Allocate a logical channel (SDCCH, TCH, ...) */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);
 
