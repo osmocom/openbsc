@@ -473,17 +473,21 @@ enum abis_nm_adm_state {
 
 /* Section 9.4.13: Channel Combination */
 enum abis_nm_chan_comb {
-	NM_CHANC_TCHFull	= 0x00,
-	NM_CHANC_TCHHalf	= 0x01,
-	NM_CHANC_TCHHalf2	= 0x02,
-	NM_CHANC_SDCCH		= 0x03,
-	NM_CHANC_mainBCCH	= 0x04,
-	NM_CHANC_BCCHComb	= 0x05,
-	NM_CHANC_BCCH		= 0x06,
-	NM_CHANC_BCCH_CBCH	= 0x07,
-	NM_CHANC_SDCCH_CBCH	= 0x08,
+	NM_CHANC_TCHFull	= 0x00,	/* TCH/F + TCH/H + SACCH/TF */
+	NM_CHANC_TCHHalf	= 0x01, /* TCH/H(0,1) + FACCH/H(0,1) +
+					   SACCH/TH(0,1) */
+	NM_CHANC_TCHHalf2	= 0x02, /* TCH/H(0) + FACCH/H(0) + SACCH/TH(0) +
+					   TCH/H(1) */
+	NM_CHANC_SDCCH		= 0x03,	/* SDCCH/8 + SACCH/8 */
+	NM_CHANC_mainBCCH	= 0x04,	/* FCCH + SCH + BCCH + CCCH */
+	NM_CHANC_BCCHComb	= 0x05,	/* FCCH + SCH + BCCH + CCCH + SDCCH/4 +
+					   SACCH/C4 */
+	NM_CHANC_BCCH		= 0x06,	/* BCCH + CCCH */
+	NM_CHANC_BCCH_CBCH	= 0x07,	/* CHANC_BCCHComb + CBCH */
+	NM_CHANC_SDCCH_CBCH	= 0x08,	/* CHANC_SDCCH8 + CBCH */
 	/* ip.access */
-	NM_CHANC_IPAC_bPDCH	= 0x0b,	/* PBCCH + PCCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_bPDCH	= 0x0b,	/* PBCCH + PCCCH + PDTCH/F + PACCH/F +
+					   PTCCH/F */
 	NM_CHANC_IPAC_cPDCH	= 0x0c, /* PBCCH + PDTCH/F + PACCH/F + PTCCH/F */
 	NM_CHANC_IPAC_PDCH	= 0x0d,	/* PDTCH/F + PACCH/F + PTCCH/F */
 	NM_CHANC_IPAC_TCHFull_PDCH = 0x80,
