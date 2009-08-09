@@ -51,6 +51,7 @@ enum signal_sms {
 	S_SMS_SUBMITTED,	/* A SMS has been successfully submitted to us */
 	S_SMS_DELIVERED,	/* A SMS has been successfully delivered to a MS */
 	S_SMS_SMMA,		/* A MS tells us it has more space available */
+	S_SMS_MEM_EXCEEDED,	/* A MS tells us it has no more space available */
 };
 
 /* SS_ABISIP signals */

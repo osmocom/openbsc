@@ -45,9 +45,12 @@
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/paging.h>
+#include <openbsc/bsc_rll.h>
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
+
+#define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
 static void *tall_gsms_ctx;
 
@@ -84,7 +87,7 @@ static int gsm411_sendmsg(struct msgb *msg)
 
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
 
-	return rsl_data_request(msg, 0);
+	return rsl_data_request(msg, UM_SAPI_SMS);
 }
 
 /* Prefix msg with a 04.08/04.11 CP header */
@@ -105,6 +108,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	switch (gh->msg_type) {
 	case GSM411_MT_CP_DATA:
 		/* 5.2.3.1.2: enter MO-wait for CP-ack */
+		/* 5.2.3.2.3: enter MT-wait for CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_WAIT_CP_ACK;
 		break;
 	}
@@ -502,6 +506,7 @@ static int gsm411_rx_rp_data(struct msgb *msg, struct gsm_trans *trans,
 				rpud_len, rp_ud);
 }
 
+/* Receive a 04.11 RP-ACK message (response to RP-DATA from us) */
 static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 			    struct gsm411_rp_hdr *rph)
 {
@@ -511,13 +516,16 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	 * successfully received a SMS.  We can now safely mark it as
 	 * transmitted */
 
-	/* we need to look-up the transaction based on rph->msg_ref to
-	 * identify which particular RP_DATA/SMS-submit was ACKed */
+	if (!trans->sms.is_mt) {
+		DEBUGP(DSMS, "RX RP-ACK on a MO transfer ?\n");
+		return gsm411_send_rp_error(trans, rph->msg_ref,
+					    GSM411_RP_CAUSE_MSG_INCOMP_STATE);
+	}
 
 	if (!sms) {
-		DEBUGP(DSMS, "RX RP-ACK (MT) but no sms in transaction?!?\n");
-		put_lchan(trans->lchan);
-		return -EIO;
+		DEBUGP(DSMS, "RX RP-ACK but no sms in transaction?!?\n");
+		return gsm411_send_rp_error(trans, rph->msg_ref,
+					    GSM411_RP_CAUSE_PROTOCOL_ERR);
 	}
 
 	/* mark this SMS as sent in database */
@@ -528,7 +536,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	put_lchan(trans->lchan);
+	trans_free(trans);
 
 	return 0;
 }
@@ -546,19 +554,29 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DSMS, "RX SMS RP-ERROR Cause=0x%02x\n", cause);
 
-	/* we need to look-up the transaction based on rph->msg_ref to
-	 * identify which particular RP_DATA/SMS-submit failed */
+	if (!trans->sms.is_mt) {
+		DEBUGP(DSMS, "RX RP-ERR on a MO transfer ?\n");
+		return gsm411_send_rp_error(trans, rph->msg_ref,
+					    GSM411_RP_CAUSE_MSG_INCOMP_STATE);
+	}
 
 	if (!sms) {
-		DEBUGP(DSMS, "RX RP-ERR (MT) but no sms in transaction?!?\n");
-		put_lchan(trans->lchan);
-		return -EIO;
+		DEBUGP(DSMS, "RX RP-ERR, but no sms in transaction?!?\n");
+		return gsm411_send_rp_error(trans, rph->msg_ref,
+					    GSM411_RP_CAUSE_PROTOCOL_ERR);
+	}
+
+	if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
+		/* MS has not enough memory to store the message.  We need
+		 * to store this in our database and wati for a SMMA message */
+		/* FIXME */
+		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
 	}
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	put_lchan(trans->lchan);
+	trans_free(trans);
 
 	return 0;
 }
@@ -672,11 +690,11 @@ int gsm0411_rcv_sms(struct msgb *msg)
 	switch(msg_type) {
 	case GSM411_MT_CP_DATA:
 		DEBUGP(DSMS, "RX SMS CP-DATA\n");
-		if (!trans->sms.is_mt) {
-			/* 5.2.3.1.3: MO state exists when SMC has received
- 			 * CP-DATA, including sending of the assoc. CP-ACK */
-			trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
-		}
+		/* 5.2.3.1.3: MO state exists when SMC has received
+		 * CP-DATA, including sending of the assoc. CP-ACK */
+		/* 5.2.3.2.4: MT state exists when SMC has received
+		 * CP-DATA, including sending of the assoc. CP-ACK */
+		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
 
 		rc = gsm411_rx_cp_data(msg, gh, trans);
 		/* Send CP-ACK or CP-ERORR in response */
@@ -688,10 +706,11 @@ int gsm0411_rcv_sms(struct msgb *msg)
 	case GSM411_MT_CP_ACK:
 		/* previous CP-DATA in this transaction was confirmed */
 		DEBUGP(DSMS, "RX SMS CP-ACK\n");
+		/* 5.2.3.1.3: MO state exists when SMC has received CP-ACK */
+		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
+		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
+
 		if (!trans->sms.is_mt) {
-			/* 5.2.3.1.3: MO state exists when SMC has received
- 			 * CP-ACK */
-			trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
 			/* FIXME: we have sont one CP-DATA, which was now
 			 * acknowledged.  Check if we want to transfer more,
 			 * i.e. multi-part message */
@@ -707,6 +726,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 	default:
 		DEBUGP(DSMS, "RX Unimplemented CP msg_type: 0x%02x\n", msg_type);
 		rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_MSGTYPE_NOTEXIST);
+		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 		break;
 	}
@@ -793,6 +813,27 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
 }
 
+/* RLL SAPI3 establish callback */
+static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
+			void *_sms, enum bsc_rllr_ind type)
+{
+	struct gsm_sms *sms = _sms;
+
+	DEBUGP(DSMS, "rll_ind_cb(lchan=%p, link_id=%u, sms=%p, type=%u\n",
+		lchan, link_id, sms, type);
+
+	switch (type) {
+	case BSC_RLLR_IND_EST_CONF:
+		gsm411_send_sms_lchan(lchan, sms);
+		break;
+	case BSC_RLLR_IND_REL_IND:
+	case BSC_RLLR_IND_ERR_IND:
+	case BSC_RLLR_IND_TIMEOUT:
+		sms_free(sms);
+		break;
+	}
+}
+
 /* paging callback */
 static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_lchan, void *_sms)
@@ -815,7 +856,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 			rc = -EIO;
 			break;
 		}
-		rc = gsm411_send_sms_lchan(lchan, sms);
+		rc = rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
 		sms_free(sms);
