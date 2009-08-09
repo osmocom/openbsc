@@ -65,14 +65,24 @@ static void timer_cb(void *_rllr)
 }
 
 /* establish a RLL connection with given SAPI / priority */
-int rll_establish(struct gsm_lchan *lchan, u_int8_t link_id,
+int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 		  void (*cb)(struct gsm_lchan *, u_int8_t, void *,
 			     enum bsc_rllr_ind),
 		  void *data)
 {
 	struct bsc_rll_req *rllr = talloc_zero(tall_bsc_ctx, struct bsc_rll_req);
+	u_int8_t link_id;
 	if (!rllr)
 		return -ENOMEM;
+
+	link_id = sapi;
+
+	/* If we are a TCH and not in signalling mode, we need to
+	 * indicate that the new RLL connection is to be made on the SACCH */
+	if ((lchan->type == GSM_LCHAN_TCH_F ||
+	     lchan->type == GSM_LCHAN_TCH_H) &&
+	    lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
+		link_id |= 0x40;
 
 	use_lchan(lchan);
 	rllr->lchan = lchan;
