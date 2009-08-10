@@ -42,7 +42,7 @@
 
 static struct gsm_network *gsmnet;
 
-static int net_listen;
+static int net_listen_testnr;
 static int restart;
 static char *prim_oml_ip;
 static char *unit_id;
@@ -74,6 +74,28 @@ struct ipacc_ferr_elem {
 	u_int8_t arfcn;
 } __attribute__((packed));
 
+struct ipacc_cusage_elem {
+	u_int16_t arfcn:10,
+		  rxlev:6;
+} __attribute__ ((packed));
+
+static const char *ipacc_testres_names[] = {
+	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
+	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
+	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
+	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
+	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
+};
+
+const char *ipacc_testres_name(u_int8_t res)
+{
+	if (res < ARRAY_SIZE(ipacc_testres_names) &&
+	    ipacc_testres_names[res])
+		return ipacc_testres_names[res];
+
+	return "unknown";
+}
+
 static int test_rep(void *_msg)
 {
 	struct msgb *msg = _msg;
@@ -93,7 +115,7 @@ static int test_rep(void *_msg)
 	/* data[3..4]: test_rep_len */
 	test_rep_len = ntohs(*(u_int16_t *) &foh->data[3]);
 	/* data[5]: ip.access test result */
-	DEBUGPC(DNM, "test_res=%u\n", foh->data[5]);
+	DEBUGPC(DNM, "test_res=%s\n", ipacc_testres_name(foh->data[5]));
 
 	/* data[6]: ip.access nested IE. 3 == freq_err_list */
 	switch (foh->data[6]) {
@@ -106,6 +128,18 @@ static int test_rep(void *_msg)
 			ife = (struct ipacc_ferr_elem *) (foh->data + 9 + i);
 			DEBUGP(DNM, "==> ARFCN %4u, Frequency Error %6hd\n",
 			ife->arfcn, ntohs(ife->freq_err));
+		}
+		break;
+	case 4:
+		/* data[7..8]: length of ferr_list */
+		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
+
+		/* data[9...]: channel usage list elements */
+		for (i = 0; i < ferr_list_len; i+= 2) {
+			u_int16_t *cu_ptr = (u_int16_t *)(foh->data + 9 + i);
+			u_int16_t cu = ntohs(*cu_ptr);
+			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n",
+				cu & 0x3ff, cu >> 10);
 		}
 		break;
 	default:
@@ -192,9 +226,6 @@ static void bootstrap_om(struct gsm_bts *bts)
 		printf("restarting BTS\n");
 		abis_nm_ipaccess_restart(bts);
 	}
-
-	if (net_listen) {
-	}
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
@@ -227,11 +258,11 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
 	    new_state->availability == 3 &&
-	    net_listen) {
+	    net_listen_testnr) {
 		struct gsm_bts_trx *trx = obj;
 		u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
 		abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
-				     NM_IPACC_TESTNO_FREQ_SYNC, 1,
+				     net_listen_testnr, 1,
 				     phys_config, sizeof(phys_config));
 	}
 	return 0;
@@ -248,7 +279,7 @@ static void print_help(void)
 	printf("  -o --oml-ip ip\n");
 	printf("  -r --restart\n");
 	printf("  -n flags/mask\tSet NVRAM attributes.\n");
-	printf("  -l --listen\tPerform Frequency Error test\n");
+	printf("  -l --listen testnr \tPerform speciified test number\n");
 	printf("  -h --help this text\n");
 }
 
@@ -270,10 +301,10 @@ int main(int argc, char **argv)
 			{ "oml-ip", 1, 0, 'o' },
 			{ "restart", 0, 0, 'r' },
 			{ "help", 0, 0, 'h' },
-			{ "listen", 0, 0, 'l' },
+			{ "listen", 1, 0, 'l' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:lh", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:h", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -299,7 +330,7 @@ int main(int argc, char **argv)
 			nv_mask = ul & 0xffff;
 			break;
 		case 'l':
-			net_listen = 1;
+			net_listen_testnr = atoi(optarg);
 			break;
 		case 'h':
 			print_usage();
