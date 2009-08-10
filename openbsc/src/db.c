@@ -161,12 +161,6 @@ int db_init(const char *name) {
 	if (dbi_conn_connect(conn) < 0)
 		goto out_err;
 
-	if (check_db_revision() < 0) {
-		fprintf(stderr, "Database schema revision invalid, "
-			"please update your database schema\n");
-		goto out_err;
-	}
-
 	return 0;
 
 out_err:
@@ -188,6 +182,12 @@ int db_prepare() {
 			return 1;
 		}
 		dbi_result_free(result);
+	}
+
+	if (check_db_revision() < 0) {
+		fprintf(stderr, "Database schema revision invalid, "
+			"please update your database schema\n");
+                return -1;
 	}
 
 	return 0;
