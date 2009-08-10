@@ -19,6 +19,9 @@
 #include <vty/buffer.h>
 #include <openbsc/talloc.h>
 
+/* our callback, located in telnet_interface.c */
+void vty_event(enum event event, int sock, struct vty *vty);
+
 extern struct host host;
 
 /* Vector which store each vty structure. */
@@ -1593,13 +1596,15 @@ void vty_reset()
 static void vty_save_cwd(void)
 {
 	char cwd[MAXPATHLEN];
-	char *c;
+	char *c ;
 
 	c = getcwd(cwd, MAXPATHLEN);
 
 	if (!c) {
-		chdir(SYSCONFDIR);
-		getcwd(cwd, MAXPATHLEN);
+		if (chdir(SYSCONFDIR) != 0)
+		    perror("chdir failed");
+		if (getcwd(cwd, MAXPATHLEN) == NULL)
+		    perror("getcwd failed");
 	}
 
 	vty_cwd = _talloc_zero(tall_vty_ctx, strlen(cwd) + 1, "save_cwd");
