@@ -879,16 +879,6 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
-	if (msg->trx->bts->type == GSM_BTS_TYPE_BS11) {
-		/* FIXME: we have no idea what cause 0x18 is !!! */
-		if (TLVP_PRESENT(&tp, RSL_IE_CAUSE) &&
-		    TLVP_LEN(&tp, RSL_IE_CAUSE) >= 1 &&
-		    *TLVP_VAL(&tp, RSL_IE_CAUSE) == 0x18) {
-			DEBUGPC(DRSL, "Cause 0x18 IGNORING\n");
-			return 0;
-		}
-	}
-
 	DEBUGPC(DRSL, "RELEASING.\n");
 
 	/* FIXME: only free it after channel release ACK */
