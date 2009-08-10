@@ -298,6 +298,10 @@ struct gsm_bts {
 	/* type of BTS */
 	enum gsm_bts_type type;
 	enum gsm_band band;
+	/* should the channel allocator allocate channels from high TRX to TRX0,
+	 * rather than starting from TRX0 and go upwards? */
+	int chan_alloc_reverse;
+
 	/* how do we talk OML with this TRX? */
 	struct gsm_e1_subslot oml_e1_link;
 	u_int8_t oml_tei;

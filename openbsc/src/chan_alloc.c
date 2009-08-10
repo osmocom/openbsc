@@ -124,25 +124,46 @@ static const u_int8_t subslots_per_pchan[] = {
 };
 
 static struct gsm_lchan *
-_lc_find(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
+_lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 {
-	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	int j, ss;
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		for (j = 0; j < 8; j++) {
-			ts = &trx->ts[j];
-			if (ts->pchan != pchan)
-				continue;
-			/* check if all sub-slots are allocated yet */
-			for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
-				struct gsm_lchan *lc = &ts->lchan[ss];
-				if (lc->type == GSM_LCHAN_NONE)
-					return lc;
-			}
+	for (j = 0; j < 8; j++) {
+		ts = &trx->ts[j];
+		if (ts->pchan != pchan)
+			continue;
+		/* check if all sub-slots are allocated yet */
+		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
+			struct gsm_lchan *lc = &ts->lchan[ss];
+			if (lc->type == GSM_LCHAN_NONE)
+				return lc;
 		}
 	}
+	return NULL;
+}
+
+static struct gsm_lchan *
+_lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+	struct gsm_lchan *lc;
+
+	if (bts->chan_alloc_reverse) {
+		llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
+			lc = _lc_find_trx(trx, pchan);
+			if (lc)
+				return lc;
+		}
+	} else {
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			lc = _lc_find_trx(trx, pchan);
+			if (lc)
+				return lc;
+		}
+	}
+
 	/* we cannot allocate more of these */
 	if (pchan == GSM_PCHAN_CCCH_SDCCH4)
 		return NULL;
@@ -164,15 +185,15 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 
 	switch (type) {
 	case GSM_LCHAN_SDCCH:
-		lchan = _lc_find(bts, GSM_PCHAN_CCCH_SDCCH4);
+		lchan = _lc_find_bts(bts, GSM_PCHAN_CCCH_SDCCH4);
 		if (lchan == NULL)
-			lchan = _lc_find(bts, GSM_PCHAN_SDCCH8_SACCH8C);
+			lchan = _lc_find_bts(bts, GSM_PCHAN_SDCCH8_SACCH8C);
 		break;
 	case GSM_LCHAN_TCH_F:
-		lchan = _lc_find(bts, GSM_PCHAN_TCH_F);
+		lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
 		break;
 	case GSM_LCHAN_TCH_H:
-		lchan =_lc_find(bts, GSM_PCHAN_TCH_H);
+		lchan =_lc_find_bts(bts, GSM_PCHAN_TCH_H);
 		break;
 	default:
 		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
