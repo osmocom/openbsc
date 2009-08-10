@@ -52,6 +52,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/talloc.h>
+#include <openbsc/misdn.h>
 
 #define NUM_E1_TS	32
 

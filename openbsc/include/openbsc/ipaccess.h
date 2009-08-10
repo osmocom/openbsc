@@ -34,4 +34,6 @@ enum ipaccess_id_tags {
 	IPAC_IDTAG_UNIT			= 0x08,
 };
 
+int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
+
 #endif /* _IPACCESS_H */

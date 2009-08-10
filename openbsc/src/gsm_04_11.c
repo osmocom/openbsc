@@ -46,6 +46,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/paging.h>
 #include <openbsc/bsc_rll.h>
+#include <openbsc/chan_alloc.h>
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128

@@ -205,6 +205,9 @@ struct msgb;
 
 int gsm0411_rcv_sms(struct msgb *msg);
 
-int gsm0411_send_sms(struct gsm_lchan *lchan, struct sms_deliver *sms);
+int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms);
+
+struct gsm_sms *sms_alloc(void);
+void sms_free(struct gsm_sms *sms);
 
 #endif

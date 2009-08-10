@@ -31,6 +31,8 @@
 
 static void *tall_trans_ctx;
 
+void _gsm48_cc_trans_free(struct gsm_trans *trans);
+
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
 				   u_int8_t proto, u_int8_t trans_id)
 {

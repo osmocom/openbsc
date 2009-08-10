@@ -8,6 +8,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/misdn.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/talloc.h>
 
 #define SAPI_L2ML	0

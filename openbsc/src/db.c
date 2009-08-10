@@ -21,6 +21,7 @@
  */
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_11.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 

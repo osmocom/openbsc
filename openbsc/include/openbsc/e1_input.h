@@ -151,6 +151,8 @@ void e1_set_pcap_fd(int fd);
 /* called by TRAU muxer to obtain the destination mux entity */
 struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
 
+void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
+int e1inp_line_update(struct e1inp_line *line);
 
 /* e1_config.c */
 int e1_reconfig_ts(struct gsm_bts_trx_ts *ts);

@@ -39,6 +39,7 @@ struct gsm_subscriber* db_get_subscriber(struct gsm_network *net,
 int db_sync_subscriber(struct gsm_subscriber* subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
+int db_sync_equipment(struct gsm_equipment *equip);
 
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
