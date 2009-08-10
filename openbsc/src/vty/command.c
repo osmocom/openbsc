@@ -3311,7 +3311,7 @@ DEFUN(no_banner_motd,
 }
 
 /* Set config filename.  Called from vty.c */
-void host_config_set(char *filename)
+void host_config_set(const char *filename)
 {
 	host.config = talloc_strdup(tall_vty_ctx, filename);
 }

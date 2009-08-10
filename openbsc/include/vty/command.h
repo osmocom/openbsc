@@ -351,7 +351,7 @@ extern struct cmd_element config_quit_cmd;
 extern struct cmd_element config_help_cmd;
 extern struct cmd_element config_list_cmd;
 char *host_config_file();
-void host_config_set(char *);
+void host_config_set(const char *);
 
 void print_version(const char *);
 
