@@ -169,7 +169,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 {
 	struct tlv_parsed tlvp;
 	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id, bts_id, trx_id;
+	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
 	struct gsm_bts *bts;
 	int ret = 0;
 
