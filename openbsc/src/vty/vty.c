@@ -282,7 +282,7 @@ void vty_hello(struct vty *vty)
 		} else
 			vty_out(vty, "MOTD file not found%s", VTY_NEWLINE);
 	} else if (host.motd)
-		vty_out(vty, host.motd);
+		vty_out(vty, "%s", host.motd);
 }
 
 /* Put out prompt and wait input from user. */
