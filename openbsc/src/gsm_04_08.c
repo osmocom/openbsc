@@ -1420,6 +1420,21 @@ static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
 	return gsm48_sendmsg(msg, NULL);
 }
 
+static int send_siemens_mrpci(struct gsm_lchan *lchan,
+			      u_int8_t *classmark2_lv)
+{
+	struct rsl_mrpci mrpci;
+
+	if (classmark2_lv[0] < 2)
+		return -EINVAL;
+
+	mrpci.power_class = classmark2_lv[1] & 0x7;
+	mrpci.vgcs_capable = classmark2_lv[2] & (1 << 1);
+	mrpci.vbs_capable = classmark2_lv[2] & (1 <<2);
+	mrpci.gsm_phase = (classmark2_lv[1]) >> 5 & 0x3;
+
+	return rsl_siemens_mrpci(lchan, &mrpci);
+}
 
 /*
  * Handle CM Service Requests
@@ -1469,6 +1484,9 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
+
+	if (is_siemens_bts(bts))
+		send_siemens_mrpci(msg->lchan, classmark2-1);
 
 	subscr = subscr_get_by_tmsi(bts->network, mi_string);
 
@@ -1603,6 +1621,10 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, *mi_lv);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
+
+	if (is_siemens_bts(bts))
+		send_siemens_mrpci(msg->lchan, classmark2_lv);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
 		subscr = subscr_get_by_tmsi(bts->network, mi_string);
