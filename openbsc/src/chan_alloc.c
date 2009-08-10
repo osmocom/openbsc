@@ -182,12 +182,21 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 {
 	struct gsm_lchan *lchan = NULL;
+	enum gsm_phys_chan_config first, second;
 
 	switch (type) {
 	case GSM_LCHAN_SDCCH:
-		lchan = _lc_find_bts(bts, GSM_PCHAN_CCCH_SDCCH4);
+		if (bts->chan_alloc_reverse) {
+			first = GSM_PCHAN_SDCCH8_SACCH8C;
+			second = GSM_PCHAN_CCCH_SDCCH4;
+		} else {
+			first = GSM_PCHAN_CCCH_SDCCH4;
+			second = GSM_PCHAN_SDCCH8_SACCH8C;
+		}
+
+		lchan = _lc_find_bts(bts, first);
 		if (lchan == NULL)
-			lchan = _lc_find_bts(bts, GSM_PCHAN_SDCCH8_SACCH8C);
+			lchan = _lc_find_bts(bts, second);
 		break;
 	case GSM_LCHAN_TCH_F:
 		lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
