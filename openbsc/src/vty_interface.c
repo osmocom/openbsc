@@ -229,6 +229,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	vty_out(vty, "  channel allocator %s%s",
+		bts->chan_alloc_reverse ? "descending" : "ascending",
+		VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
@@ -939,6 +942,21 @@ DEFUN(cfg_bts_oml_e1_tei,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
+      "channel allocator (ascending|descending)",
+      "Should the channel allocator allocate in reverse TRX order?")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!strcmp(argv[0], "ascending"))
+		bts->chan_alloc_reverse = 0;
+	else
+		bts->chan_alloc_reverse = 1;
+
+	return CMD_SUCCESS;
+}
+
+
 /* per TRX configuration */
 DEFUN(cfg_trx,
       cfg_trx_cmd,
@@ -1325,6 +1343,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
+	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
+
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
