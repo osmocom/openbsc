@@ -461,6 +461,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = write(bfd->fd, id_req, sizeof(id_req));
 
+        return ret;
 	//return e1inp_line_register(line);
 }
 
@@ -574,6 +575,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	
 	line->driver = &ipaccess_driver;
 
+        return ret;
 	//return e1inp_line_register(line);
 }
 

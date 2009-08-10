@@ -678,6 +678,8 @@ static int gsm411_tx_cp_ack(struct gsm_trans *trans)
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 	}
+
+	return rc;
 }
 
 static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
