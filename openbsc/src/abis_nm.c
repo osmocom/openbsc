@@ -1817,7 +1817,7 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 
 /* Chapter 8.8.5 */
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
-			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state)
+			  u_int8_t i1, u_int8_t i2, enum abis_nm_adm_state adm_state)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -1996,7 +1996,19 @@ int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_BPORT,
-			idx, 0, 0);
+			idx, 0xff, 0xff);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_DELETE_OBJ, NM_OC_BS11_BPORT,
+			idx, 0xff, 0xff);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2380,6 +2392,21 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	fill_om_fom_hdr(oh, 2+sizeof(aet), NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
 	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), (u_int8_t *) &aet);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	struct bs11_date_time aet;
+
+	get_bs11_date_time(&aet);
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2, NM_MT_BS11_SET_ATTR, NM_OC_BS11_BPORT,
+			bport, 0xff, 0x02);
+	msgb_tv_put(msg, NM_ATT_BS11_LINE_CFG, line_cfg);
 
 	return abis_nm_sendmsg(bts, msg);
 }

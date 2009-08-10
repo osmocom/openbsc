@@ -593,6 +593,12 @@ enum abis_bs11_li_pll_mode {
 	BS11_LI_PLL_STANDALONE	= 3,
 };
 
+enum abis_bs11_line_cfg {
+	BS11_LINE_CFG_STAR	= 0x00,
+	BS11_LINE_CFG_MULTIDROP	= 0x01,
+	BS11_LINE_CFG_LOOP	= 0x02,
+};
+
 enum abis_bs11_phase {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
 	BS11_STATE_LOAD_SMU_INTENDED	= 0x11,
@@ -658,7 +664,7 @@ int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len);
 int abis_nm_rx(struct msgb *msg);
 int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
-			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state);
+			  u_int8_t i1, u_int8_t i2, enum abis_nm_adm_state adm_state);
 int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 			  u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot,
 			  u_int8_t tei);
@@ -699,6 +705,7 @@ int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_delete_object(struct gsm_bts *bts,
 				enum abis_bs11_objtype type, u_int8_t idx);
+int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port,
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot, u_int8_t tei);
 int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts);
@@ -714,6 +721,7 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
+int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 int abis_nm_bs11_restart(struct gsm_bts *bts);
 

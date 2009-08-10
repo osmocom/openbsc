@@ -541,6 +541,28 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				command = NULL;
 			} else if (!strcmp(command, "query")) {
 				cmd_query();
+			} else if (!strcmp(command, "create-bport1")) {
+				abis_nm_bs11_create_bport(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "delete-bport1")) {
+				abis_nm_chg_adm_state(g_bts, NM_OC_BS11_BPORT, 1, 0xff, 0xff, NM_STATE_LOCKED);
+				sleep(1);
+				abis_nm_bs11_delete_bport(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "bport0-star")) {
+				abis_nm_bs11_set_bport_line_cfg(g_bts, 0, BS11_LINE_CFG_STAR);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "bport0-multidrop")) {
+				abis_nm_bs11_set_bport_line_cfg(g_bts, 0, BS11_LINE_CFG_MULTIDROP);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
 			}
 		}
 		break;
@@ -692,6 +714,10 @@ static void print_help(void)
 	printf("\tpll-e1-locked\tSet the PLL to be locked to E1 clock\n");
 	printf("\tpll-standalone\tSet the PLL to be in standalone mode\n");
 	printf("\toml-tei\tSet OML E1 TS and TEI\n");
+	printf("\tbport0-star\tSet BPORT0 line config to star\n");
+	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
+	printf("\tcreate-bport1\tCreate BPORT1 object\n");
+	printf("\tdelete-bport1\tDelete BPORT1 object\n");
 }
 
 static void handle_options(int argc, char **argv)
