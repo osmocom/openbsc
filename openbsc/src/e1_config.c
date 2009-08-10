@@ -86,7 +86,6 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 	struct e1inp_line *line;
 	struct e1inp_sign_link *oml_link;
 	struct gsm_bts_trx *trx;
-	int rc;
 
 	printf("e1_reconfig_bts(%u)\n", bts->nr);
 
