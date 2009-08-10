@@ -1069,8 +1069,10 @@ static int bootstrap_network(void)
 
 	telnet_init(gsmnet, 4242);
 	rc = vty_read_config_file(config_file);
-	if (rc < 0)
+	if (rc < 0) {
+		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
+	}
 
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 
