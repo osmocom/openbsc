@@ -745,7 +745,7 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val)
 }
 
 /* Send Siemens specific MS RF Power Capability Indication */
-int rsl_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t mrpci)
+int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
@@ -753,7 +753,7 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t mrpci)
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_SIEMENS_MRPCI);
 	dh->chan_nr = lchan2chan_nr(lchan);
-	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, mrpci);
+	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, *(u_int8_t *)mrpci);
 
 	return abis_rsl_sendmsg(msg);
 }

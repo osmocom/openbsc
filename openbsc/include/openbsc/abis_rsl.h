@@ -509,7 +509,7 @@ enum rsl_mrpci_phase {
 	RSL_MRPCI_PHASE_2PLUS	= 3,
 };
 
-int rsl_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t mrpci);
+int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);
