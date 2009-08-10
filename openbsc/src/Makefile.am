@@ -18,7 +18,7 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
 
-bsc_hack_SOURCES = bsc_hack.c vty_interface.c
+bsc_hack_SOURCES = bsc_hack.c vty_interface.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
