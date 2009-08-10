@@ -696,6 +696,8 @@ int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
 			 u_int8_t test_nr, u_int8_t auton_report,
 			 u_int8_t *phys_config, u_int16_t phys_config_len);
 
+int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan);
+
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);

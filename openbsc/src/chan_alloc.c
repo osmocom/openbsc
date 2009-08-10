@@ -53,15 +53,6 @@ struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 	return ts;
 }
 
-static const enum abis_nm_chan_comb chcomb4pchan[] = {
-	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
-	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCHComb,
-	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
-	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
-	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
-	/* FIXME: bounds check */
-};
-
 /* Allocate a physical channel (TS) */
 struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 				enum gsm_phys_chan_config pchan)
@@ -108,7 +99,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			if (ts->pchan == GSM_PCHAN_NONE) {
 				ts->pchan = pchan;
 				/* set channel attribute on OML */
-				abis_nm_set_channel_attr(ts, chcomb4pchan[pchan]);
+				abis_nm_set_channel_attr(ts, abis_nm_chcomb4pchan(pchan));
 				return ts;
 			}
 		}

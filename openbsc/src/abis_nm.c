@@ -404,6 +404,23 @@ static const struct tlv_definition nm_att_tlvdef = {
 	},
 };
 
+static const enum abis_nm_chan_comb chcomb4pchan[] = {
+	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
+	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCHComb,
+	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
+	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
+	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
+	/* FIXME: bounds check */
+};
+
+int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan)
+{
+	if (pchan < ARRAY_SIZE(chcomb4pchan))
+		return chcomb4pchan[pchan];
+
+	return -EINVAL;
+}
+
 int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
 {
 	return tlv_parse(tp, &nm_att_tlvdef, buf, len, 0, 0);
