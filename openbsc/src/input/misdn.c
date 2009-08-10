@@ -36,8 +36,10 @@
 
 //#define AF_COMPATIBILITY_FUNC
 //#include <compat_af_isdn.h>
+#ifndef AF_ISDN
 #define AF_ISDN 34
 #define PF_ISDN AF_ISDN
+#endif
 
 #include <openbsc/select.h>
 #include <openbsc/msgb.h>
