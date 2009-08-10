@@ -753,8 +753,14 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_SIEMENS_MRPCI);
+	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = lchan2chan_nr(lchan);
 	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, *(u_int8_t *)mrpci);
+
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x TX Siemens MRPCI 0x%02x\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr, *(u_int8_t *)mrpci);
+
+	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }
