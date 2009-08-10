@@ -60,6 +60,7 @@ static int cardnr = 0;
 static int release_l2 = 0;
 static enum gsm_bts_type BTS_TYPE = GSM_BTS_TYPE_BS11;
 static const char *database_name = "hlr.sqlite3";
+static const char *config_file = "openbsc.cfg";
 extern int ipacc_rtp_direct;
 
 
@@ -1067,7 +1068,7 @@ static int bootstrap_network(void)
 	printf("DB: Database prepared.\n");
 
 	telnet_init(gsmnet, 4242);
-	rc = vty_read_config_file("openbsc.cfg");
+	rc = vty_read_config_file(config_file);
 	if (rc < 0)
 		return rc;
 
@@ -1111,6 +1112,7 @@ static void print_help()
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
 	printf("  -s --disable-color\n");
+	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
 	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
@@ -1126,6 +1128,7 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
+			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
@@ -1138,7 +1141,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sl:ar:p:C:RTP",
+		c = getopt_long(argc, argv, "hd:sl:ar:p:C:RTPc:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1156,6 +1159,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'l':
 			database_name = strdup(optarg);
+			break;
+		case 'c':
+			config_file = strdup(optarg);
 			break;
 		case 'a':
 			gsm0408_allow_everyone(1);
