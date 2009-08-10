@@ -57,9 +57,10 @@ struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 				enum gsm_phys_chan_config pchan)
 {
-	int i, j;
-	for (i = 0; i < bts->num_trx; i++) {
-		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, i);
+	int j;
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
 		int from, to;
 
 		/* the following constraints are pure policy,
@@ -127,9 +128,9 @@ _lc_find(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
-	int i, j, ss;
-	for (i = 0; i < bts->num_trx; i++) {
-		trx = gsm_bts_trx_num(bts, i);
+	int j, ss;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
 		for (j = 0; j < 8; j++) {
 			ts = &trx->ts[j];
 			if (ts->pchan != pchan)
