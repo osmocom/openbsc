@@ -1794,7 +1794,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	return rc;
 }
 
-/* 7.1.7 and 9.1.7 Channel release*/
+/* 7.1.7 and 9.1.7: RR CHANnel RELease */
 int gsm48_send_rr_release(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = gsm48_msgb_alloc();

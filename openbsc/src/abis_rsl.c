@@ -631,7 +631,7 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
-/* Chapter 8.4.5 */
+/* Chapter 8.4.5 / 4.6: Deactivate the SACCH after 04.08 RR CHAN RELEASE */
 int rsl_deact_sacch(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -650,8 +650,8 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
-/* Chapter 9.1.7 of 04.08 */
-int rsl_chan_release(struct gsm_lchan *lchan)
+/* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
+int rsl_rf_chan_release(struct gsm_lchan *lchan)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg = rsl_msgb_alloc();
@@ -663,9 +663,10 @@ int rsl_chan_release(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "Channel Release CMD channel=%s chan_nr=0x%02x\n",
+	DEBUGP(DRSL, "RF Channel Release CMD channel=%s chan_nr=0x%02x\n",
 		gsm_ts_name(lchan->ts), dh->chan_nr);
 
+	/* BTS will respond by RF CHAN REL ACK */
 	return abis_rsl_sendmsg(msg);
 }
 
@@ -885,7 +886,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	DEBUGPC(DRSL, "RELEASING.\n");
 
 	/* FIXME: only free it after channel release ACK */
-	return rsl_chan_release(msg->lchan);
+	return rsl_rf_chan_release(msg->lchan);
 }
 
 static int rsl_rx_meas_res(struct msgb *msg)
@@ -1038,7 +1039,7 @@ static void t3101_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	rsl_chan_release(lchan);
+	rsl_rf_chan_release(lchan);
 }
 
 /* MS has requested a channel on the RACH */
@@ -1193,7 +1194,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 		
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
-		return rsl_chan_release(msg->lchan);
+		return rsl_rf_chan_release(msg->lchan);
 
 	return 0;
 }
@@ -1246,14 +1247,18 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
 		/* we can now releae the channel on the BTS/Abis side */
-		rsl_chan_release(msg->lchan);
+		/* FIXME: officially we need to start T3111 and wait for
+		 * some grace period */
+		rsl_rf_chan_release(msg->lchan);
 		break;
 	case RSL_MT_REL_CONF:
 		/* BTS informs us of having received UA from MS,
 		 * in response to DISC that we've sent earlier */
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		/* we can now releae the channel on the BTS/Abis side */
-		rsl_chan_release(msg->lchan);
+		/* FIXME: officially we need to start T3111 and wait for
+		 * some grace period */
+		rsl_rf_chan_release(msg->lchan);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
