@@ -154,6 +154,11 @@ enum abis_rsl_msgtype {
 	RSL_MT_IPAC_DISCONNECT_NACK,
 };
 
+/* Siemens vendor-specific */
+enum abis_rsl_msgtype_siemens {
+	RSL_MT_SIEMENS_MRPCI		= 0x41,
+};
+
 /* Chapter 9.3 */
 enum abis_rsl_ie {
 	RSL_IE_CHAN_NR			= 0x01,
@@ -203,7 +208,7 @@ enum abis_rsl_ie {
 	RSL_IE_CBCH_LOAD_INFO,
 	RSL_IE_SMSCB_CHAN_INDICATOR,
 	RSL_IE_GROUP_CALL_REF,
-	RSL_IE_CHAN_DESC,
+	RSL_IE_CHAN_DESC		= 0x30,
 	RSL_IE_NCH_DRX_INFO,
 	RSL_IE_CMD_INDICATOR,
 	RSL_IE_EMLPP_PRIO,
@@ -216,7 +221,10 @@ enum abis_rsl_ie {
 	RSL_IE_RTD,
 	RSL_IE_TFO_STATUS,
 	RSL_IE_LLP_APDU,
+	/* Siemens vendor-specific */
+	RSL_IE_SIEMENS_MRPCI		= 0x40,
 
+	/* ip.access */
 	RSL_IE_IPAC_SRTP_CONFIG	= 0xe0,
 	RSL_IE_IPAC_PROXY_UDP	= 0xe1,
 	RSL_IE_IPAC_BSCMPL_TOUT	= 0xe2,
@@ -478,6 +486,30 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
 int rsl_data_request(struct msgb *msg, u_int8_t link_id);
 int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id);
 int rsl_relase_request(struct gsm_lchan *lchan, u_int8_t link_id);
+
+/* Siemens vendor-specific RSL extensions */
+struct rsl_mrpci {
+	u_int8_t power_class:3,
+		 vgcs_capable:1,
+		 vbs_capable:1,
+		 gsm_phase:2;
+} __attribute__ ((packed));
+
+enum rsl_mrpci_pwrclass {
+	RSL_MRPCI_PWRC_1	= 0,
+	RSL_MRPCI_PWRC_2	= 1,
+	RSL_MRPCI_PWRC_3	= 2,
+	RSL_MRPCI_PWRC_4	= 3,
+	RSL_MRPCI_PWRC_5	= 4,
+};
+enum rsl_mrpci_phase {
+	RSL_MRPCI_PHASE_1	= 0,
+	/* reserved */
+	RSL_MRPCI_PHASE_2	= 2,
+	RSL_MRPCI_PHASE_2PLUS	= 3,
+};
+
+int rsl_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t mrpci);
 
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);

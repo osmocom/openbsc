@@ -105,6 +105,7 @@ static const struct tlv_definition rsl_att_tlvdef = {
 		[RSL_IE_RTD]			= { TLV_TYPE_TV },
 		[RSL_IE_TFO_STATUS]		= { TLV_TYPE_TV },
 		[RSL_IE_LLP_APDU]		= { TLV_TYPE_TLV },
+		[RSL_IE_SIEMENS_MRPCI]		= { TLV_TYPE_TV },
 		[RSL_IE_IPAC_PROXY_UDP]		= { TLV_TYPE_FIXED, 2 },
 		[RSL_IE_IPAC_BSCMPL_TOUT]	= { TLV_TYPE_TV },
 		[RSL_IE_IPAC_REMOTE_IP]		= { TLV_TYPE_FIXED, 4 },
@@ -742,6 +743,21 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val)
 
 	return abis_rsl_sendmsg(msg);
 }
+
+/* Send Siemens specific MS RF Power Capability Indication */
+int rsl_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t mrpci)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_dchan_hdr *dh;
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_SIEMENS_MRPCI);
+	dh->chan_nr = lchan2chan_nr(lchan);
+	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, mrpci);
+
+	return abis_rsl_sendmsg(msg);
+}
+
 
 /* Send "DATA REQUEST" message with given L3 Info payload */
 /* Chapter 8.3.1 */
