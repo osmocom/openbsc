@@ -6,9 +6,9 @@
 
 /* GCC have printf type attribute check.  */
 #ifdef __GNUC__
-#define PRINTF_ATTRIBUTE(a,b) __attribute__ ((__format__ (__printf__, a, b)))
+#define VTY_PRINTF_ATTRIBUTE(a,b) __attribute__ ((__format__ (__printf__, a, b)))
 #else
-#define PRINTF_ATTRIBUTE(a,b)
+#define VTY_PRINTF_ATTRIBUTE(a,b)
 #endif				/* __GNUC__ */
 
 /* Does the I/O error indicate that the operation should be retried later? */
@@ -134,7 +134,7 @@ void vty_init_vtysh (void);
 void vty_reset (void);
 struct vty *vty_new (void);
 struct vty *vty_create (int vty_sock, void *priv);
-int vty_out (struct vty *, const char *, ...) PRINTF_ATTRIBUTE(2, 3);
+int vty_out (struct vty *, const char *, ...) VTY_PRINTF_ATTRIBUTE(2, 3);
 int vty_out_newline(struct vty *);
 int vty_read(struct vty *vty);
 //void vty_time_print (struct vty *, int);
