@@ -74,4 +74,5 @@ int main(int argc, char** argv)
 
 void nm_state_event() {}
 void input_event() {}
+void sms_alloc() {}
 

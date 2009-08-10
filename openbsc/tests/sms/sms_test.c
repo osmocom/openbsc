@@ -102,7 +102,7 @@ int main(int argc, char** argv)
 		msgb_free(msg);
 	}
 
-	gsm0411_send_sms(0, 0);
+	gsm411_send_sms_lchan(0, 0);
 }
 
 /* stubs */

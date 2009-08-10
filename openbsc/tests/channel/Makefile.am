@@ -10,6 +10,7 @@ channel_test_SOURCES = channel_test.c \
 	$(top_srcdir)/src/timer.c \
 	$(top_srcdir)/src/select.c \
 	$(top_srcdir)/src/talloc.c \
-	$(top_srcdir)/src/gsm_data.c
+	$(top_srcdir)/src/gsm_data.c \
+	$(top_srcdir)/src/signal.c
 channel_test_LDADD = -ldl -ldbi
 
