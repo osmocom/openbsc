@@ -1031,14 +1031,15 @@ static int bootstrap_network(void)
 
 	llist_for_each_entry(bts, &gsmnet->bts_list, list) { 
 		bootstrap_bts(bts);
-		if (is_ipaccess_bts(bts))
-			rc = ipaccess_setup(bts);
-		else
+		if (!is_ipaccess_bts(bts))
 			rc = e1_reconfig_bts(bts);
 
 		if (rc < 0)
 			exit (1);
 	}
+
+	/* initialize nanoBTS support omce */
+	rc = ipaccess_setup(gsmnet);
 
 	return 0;
 }
