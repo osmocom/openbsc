@@ -182,7 +182,12 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		msgb_enqueue(&other_rss->tx_queue, msg);
 		other_rss->bfd.when |= BSC_FD_WRITE;
 		break;
-	/* FIXME: other cases */
+
+	case RTP_RECV_UPSTREAM:
+	case RTP_NONE:
+		/* FIXME: other cases */
+		DEBUGP(DMUX, "unhandled action: %d\n", rs->rx_action);
+		break;
 	}
 
 	return rc;
