@@ -516,6 +516,12 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 
 	switch (trx->bts->type) {
 	case GSM_BTS_TYPE_BS11:
+		/* FIXME: discover this by fetching an attribute */
+#if 0
+		trx->nominal_power = 15; /* 15dBm == 30mW PA configuration */
+#else
+		trx->nominal_power = 24; /* 24dBm == 250mW PA configuration */
+#endif
 		abis_nm_conn_terr_sign(trx, e1l->e1_nr, e1l->e1_ts,
 					e1l->e1_ts_ss);
 		abis_nm_establish_tei(trx->bts, trx->nr, e1l->e1_nr,
@@ -541,6 +547,9 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 					       sizeof(trx1_attr_radio));
 		}
 		break;
+	case GSM_BTS_TYPE_NANOBTS_900:
+	case GSM_BTS_TYPE_NANOBTS_1800:
+		trx->nominal_power = 20;
 	default:
 		break;
 	}
