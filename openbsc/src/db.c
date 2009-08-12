@@ -341,16 +341,30 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
+	char *q_tmsi;
+	if (subscriber->tmsi[0])
+		dbi_conn_quote_string_copy(conn,
+				   subscriber->tmsi,
+				   &q_tmsi);
+	else 
+		q_tmsi = strdup("NULL");
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
 		"SET updated = datetime('now'), "
-		"tmsi = '%s', "
-		"lac = %i, "
-		"authorized = %i "
+		"name = '%s', "
+		"extension = '%s', "
+		"authorized = %i, "
+		"tmsi = %s, "
+		"lac = %i "
 		"WHERE imsi = %s ",
-		subscriber->tmsi, subscriber->lac, subscriber->authorized, subscriber->imsi
+		subscriber->name,
+		subscriber->extension,
+		subscriber->authorized,
+		q_tmsi,
+		subscriber->lac,
+		subscriber->imsi
 	);
-
+	free(q_tmsi);
 	if (result==NULL) {
 		printf("DB: Failed to update Subscriber (by IMSI).\n");
 		return 1;
