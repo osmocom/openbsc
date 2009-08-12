@@ -129,6 +129,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
+	if (bts->cell_barred)
+		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -234,6 +236,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
+	if (bts->cell_barred)
+		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
@@ -960,6 +964,17 @@ DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
+      "cell barred (0|1)",
+      "Should this cell be barred from access?")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->cell_barred = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1349,6 +1364,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);

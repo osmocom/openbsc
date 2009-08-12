@@ -872,6 +872,10 @@ static void patch_tables(struct gsm_bts *bts)
 	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
 	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 	/* covert the raw packet to the struct */
+	struct gsm48_system_information_type_1 *type_1 =
+		(struct gsm48_system_information_type_1*)&si1;
+	struct gsm48_system_information_type_2 *type_2 =
+		(struct gsm48_system_information_type_2*)&si2;
 	struct gsm48_system_information_type_3 *type_3 =
 		(struct gsm48_system_information_type_3*)&si3;
 	struct gsm48_system_information_type_4 *type_4 =
@@ -923,6 +927,18 @@ static void patch_tables(struct gsm_bts *bts)
 	/* patch MS max power for CCH */
 	type_4->cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, 20 /* dBm == 100mW */);
+
+	if (bts->cell_barred) {
+		type_1->rach_control.cell_bar = 1;
+		type_2->rach_control.cell_bar = 1;
+		type_3->rach_control.cell_bar = 1;
+		type_4->rach_control.cell_bar = 1;
+	} else {
+		type_1->rach_control.cell_bar = 0;
+		type_2->rach_control.cell_bar = 0;
+		type_3->rach_control.cell_bar = 0;
+		type_4->rach_control.cell_bar = 0;
+	}
 }
 
 
