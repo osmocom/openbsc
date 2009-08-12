@@ -57,6 +57,12 @@ static char *create_stmts[] = {
 		"tmsi TEXT UNIQUE, "
 		"lac INTEGER NOT NULL DEFAULT 0"
 		")",
+	"CREATE TABLE IF NOT EXISTS AuthToken ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id INTEGER UNIQUE NOT NULL, "
+		"created TIMESTAMP NOT NULL, "
+		"token TEXT UNIQUE NOT NULL"
+		")",
 	"CREATE TABLE IF NOT EXISTS Equipment ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
@@ -410,6 +416,54 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 		}
 		dbi_result_free(result);
 	}
+	return 0;
+}
+
+/*
+ * try to allocate a new unique token for this subscriber and return it
+ * via a parameter. if the subscriber already has a token, return
+ * an error.
+ */
+
+int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* token) {
+	dbi_result result=NULL;
+	u_int32_t try;
+	for (;;) {
+		try = rand();
+		if (!try) /* 0 is an invalid token */
+			continue;
+		result = dbi_conn_queryf(conn,
+			"SELECT * FROM AuthToken "
+			"WHERE subscriber_id = %llu OR token = %08x ",
+			subscriber->id, try
+		);
+		if (result==NULL) {
+			printf("DB: Failed to query AuthToken while allocating new token.\n");
+			return 1;
+		}
+		if (dbi_result_get_numrows(result)){
+			dbi_result_free(result);
+			continue;
+		}
+		if (!dbi_result_next_row(result)) {
+			dbi_result_free(result);
+			break;
+		}
+		dbi_result_free(result);
+	}
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO AuthToken "
+		"(subscriber_id, created, token) "
+		"VALUES "
+		"(%llu, datetime('now'), %08x)) ",
+		subscriber->id, try
+	);
+	if (result==NULL) {
+		printf("DB: Failed to create token %08x for IMSI %s.\n", try, subscriber->imsi);
+		return 1;
+	}
+	*token = try;
+	printf("DB: Allocated token %08x for IMSI %s.\n", try, subscriber->imsi);
 	return 0;
 }
 
