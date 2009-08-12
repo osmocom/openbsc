@@ -1408,6 +1408,34 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	return gsm48_sendmsg(msg, NULL);
 }
 
+/* Section 9.2.2 */
+int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	u_int8_t *r;
+
+	DEBUGP(DMM, "-> AUTH REQ\n");
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_AUTH_REQ;
+
+	/* 16 bytes RAND parameters */
+	r = msgb_put(msg, 16);
+	if (rand)
+		memcpy(r, rand, 16);
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
+/* Section 9.2.1 */
+int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan)
+{
+	DEBUGP(DMM, "-> AUTH REJECT\n");
+	return gsm48_tx_simple(lchan, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
+}
+
 static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 {
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
