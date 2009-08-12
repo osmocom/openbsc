@@ -175,8 +175,6 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	};
 
 
-        printf("Packet of: %d\n", direction);
-
 	cur_time = time(NULL);
 	tm = localtime(&cur_time);
 	payload_header.ts_sec = mktime(tm);
