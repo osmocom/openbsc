@@ -2541,7 +2541,7 @@ DEFUN(config_write_file,
 	talloc_free(config_file_sav);
 	talloc_free(config_file_tmp);
 
-	if (chmod(config_file, CONFIGFILE_MASK) != 0) {
+	if (chmod(config_file, 0666 & ~CONFIGFILE_MASK) != 0) {
 		vty_out(vty, "Can't chmod configuration file %s: %s (%d).%s",
 			config_file, strerror(errno), errno, VTY_NEWLINE);
 		return CMD_WARNING;
