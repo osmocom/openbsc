@@ -1196,8 +1196,7 @@ static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 	return b;
 }
 
-static int _send_sms_buffer(struct gsm_subscriber *receiver,
-			     struct buffer *b)
+int sms_from_text(struct gsm_subscriber *receiver, const char *text)
 {
 	struct gsm_sms *sms = sms_alloc();
 
@@ -1211,7 +1210,7 @@ static int _send_sms_buffer(struct gsm_subscriber *receiver,
 	}
 
 	sms->receiver = receiver;
-	strncpy(sms->text, buffer_getstr(b), sizeof(sms->text)-1);
+	strncpy(sms->text, text, sizeof(sms->text)-1);
 
 	/* FIXME: don't use ID 1 static */
 	sms->sender = subscr_get_by_id(gsmnet, 1);
@@ -1223,6 +1222,16 @@ static int _send_sms_buffer(struct gsm_subscriber *receiver,
 	strncpy(sms->dest_addr, receiver->extension, sizeof(sms->dest_addr)-1);
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
+
+	return sms;
+}
+
+static int _send_sms_buffer(struct gsm_subscriber *receiver,
+			     struct buffer *b)
+{
+	struct gsm_sms *sms;
+
+	sms = sms_from_text(receiver, buffer_getstr(b));
 
 	gsm411_send_sms_subscr(sms->receiver, sms);
 
