@@ -248,6 +248,7 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
 	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
+	db_subscriber_alloc_exten(subscr);
 	return subscr;
 }
 
@@ -419,6 +420,34 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 	return 0;
 }
 
+int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
+	dbi_result result=NULL;
+	u_int32_t try;
+	for (;;) {
+		try = (rand()%(GSM_MAX_EXTEN+1)+GSM_MIN_EXTEN)%(GSM_MAX_EXTEN+1);
+		result = dbi_conn_queryf(conn,
+			"SELECT * FROM Subscriber "
+			"WHERE extension = %llu",
+			try
+		);
+		if (result==NULL) {
+			printf("DB: Failed to query Subscriber while allocating new extension.\n");
+			return 1;
+		}
+		if (dbi_result_get_numrows(result)){
+			dbi_result_free(result);
+			continue;
+		}
+		if (!dbi_result_next_row(result)) {
+			dbi_result_free(result);
+			break;
+		}
+		dbi_result_free(result);
+	}
+	sprintf(subscriber->extension, "%i", try);
+	printf("DB: Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
+	return db_sync_subscriber(subscriber);
+}
 /*
  * try to allocate a new unique token for this subscriber and return it
  * via a parameter. if the subscriber already has a token, return

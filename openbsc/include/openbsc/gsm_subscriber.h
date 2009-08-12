@@ -11,6 +11,9 @@
 #define GSM_NAME_LENGTH 128
 #define GSM_EXTENSION_LENGTH 128
 
+#define GSM_MIN_EXTEN 20000
+#define GSM_MAX_EXTEN 49999
+
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 
 struct gsm_equipment {
