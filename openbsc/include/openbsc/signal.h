@@ -83,6 +83,7 @@ enum signal_lchan {
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
 	S_SUBSCR_DETACHED,
+	S_SUBSCR_FIRST_CONTACT,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,

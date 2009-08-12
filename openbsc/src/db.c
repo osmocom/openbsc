@@ -224,6 +224,7 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 	}
 
 	subscr = subscr_alloc();
+	subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
 	if (!subscr)
 		return NULL;
 	result = dbi_conn_queryf(conn,

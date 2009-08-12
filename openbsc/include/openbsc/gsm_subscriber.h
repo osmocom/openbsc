@@ -11,6 +11,8 @@
 #define GSM_NAME_LENGTH 128
 #define GSM_EXTENSION_LENGTH 128
 
+#define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
+
 struct gsm_equipment {
 	long long unsigned int id;
 	char imei[GSM_IMEI_LENGTH];
@@ -32,6 +34,9 @@ struct gsm_subscriber {
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
+
+	/* Temporary field which is not stored in the DB/HLR */
+	u_int32_t flags;
 
 	/* Every user can only have one equipment in use at any given
 	 * point in time */
