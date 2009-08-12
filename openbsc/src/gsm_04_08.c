@@ -1151,6 +1151,10 @@ static int mm_rx_id_resp(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
+		/* look up subscriber based on IMSI, create if not found */
+		if (!lchan->subscr) {
+			lchan->subscr = subscr_get_by_imsi(net, mi_string);
+		}
 		if (!lchan->subscr) {
 			lchan->subscr = db_create_subscriber(net, mi_string);
 			if (lchan->subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
@@ -1247,8 +1251,11 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
 		lchan->loc_operation->waiting_for_imei = 1;
 
-		/* look up subscriber based on IMSI */
-		subscr = db_create_subscriber(bts->network, mi_string);
+		/* look up subscriber based on IMSI, create if not found */
+		subscr = subscr_get_by_imsi(bts->network, mi_string);
+		if (!subscr) {
+			subscr = db_create_subscriber(bts->network, mi_string);
+		}
 		if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
 			dispatch_signal(SS_SUBSCR, S_SUBSCR_FIRST_CONTACT, &subscr);
 		}
