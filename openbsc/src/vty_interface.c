@@ -895,17 +895,6 @@ DEFUN(cfg_bts_unit_id,
 	int site_id = atoi(argv[0]);
 	int bts_id = atoi(argv[1]);
 
-	if (site_id < 0 || site_id > 65534) {
-		vty_out(vty, "%% Site ID %d is not in the valid range%s",
-			site_id, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-	if (site_id < 0 || site_id > 255) {
-		vty_out(vty, "%% BTS ID %d is not in the valid range%s",
-			bts_id, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	if (!is_ipaccess_bts(bts)) {
 		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
 		return CMD_WARNING;
