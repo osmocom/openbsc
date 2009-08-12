@@ -1120,6 +1120,7 @@ static void print_help()
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
 	printf("  -R --release-l2 Releases mISDN layer 2 after exit, to unload driver.\n");
+	printf("  -T --timestamp Prefix every log line with a timestamp\n");
 }
 
 static void handle_options(int argc, char** argv)
