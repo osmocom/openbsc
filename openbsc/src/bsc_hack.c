@@ -63,6 +63,8 @@ static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
 extern int ipacc_rtp_direct;
 
+static void patch_nm_tables(struct gsm_bts *bts);
+static void patch_si_tables(struct gsm_bts *bts);
 
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
@@ -390,6 +392,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		case NM_OC_BTS:
 			bts = obj;
 			if (new_state->availability == 5) {
+				patch_nm_tables(bts);
 				abis_nm_set_bts_attr(bts, nanobts_attr_bts,
 							sizeof(nanobts_attr_bts));
 				abis_nm_opstart(bts, NM_OC_BTS,
@@ -444,6 +447,7 @@ static int sw_activ_rep(struct msgb *mb)
 					NM_STATE_UNLOCKED);
 		break;
 	case NM_OC_RADIO_CARRIER:
+		patch_nm_tables(trx->bts);
 		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
 					sizeof(nanobts_attr_radio));
 		abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
@@ -513,6 +517,8 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 {
 	struct gsm_e1_subslot *e1l = &trx->rsl_e1_link;
 	int i;
+
+	patch_nm_tables(trx->bts);
 
 	switch (trx->bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -876,10 +882,41 @@ static int set_system_infos(struct gsm_bts_trx *trx)
  * Patch the various SYSTEM INFORMATION tables to update
  * the LAI
  */
-static void patch_tables(struct gsm_bts *bts)
+static void patch_nm_tables(struct gsm_bts *bts)
 {
 	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
 	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
+
+	/* patch ARFCN into BTS Attributes */
+	bs11_attr_bts[69] &= 0xf0;
+	bs11_attr_bts[69] |= arfcn_high;
+	bs11_attr_bts[70] = arfcn_low;
+	nanobts_attr_bts[42] &= 0xf0;
+	nanobts_attr_bts[42] |= arfcn_high;
+	nanobts_attr_bts[43] = arfcn_low;
+
+	/* patch ARFCN into TRX Attributes */
+	bs11_attr_radio[2] &= 0xf0;
+	bs11_attr_radio[2] |= arfcn_high;
+	bs11_attr_radio[3] = arfcn_low;
+	nanobts_attr_radio[5] &= 0xf0;
+	nanobts_attr_radio[5] |= arfcn_high;
+	nanobts_attr_radio[6] = arfcn_low;
+
+	/* patch BSIC */
+	bs11_attr_bts[1] = bts->bsic;
+	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
+}
+
+/*
+ * Patch the various SYSTEM INFORMATION tables to update
+ * the LAI
+ */
+static void patch_si_tables(struct gsm_bts *bts)
+{
+	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
+	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
+
 	/* covert the raw packet to the struct */
 	struct gsm48_system_information_type_1 *type_1 =
 		(struct gsm48_system_information_type_1*)&si1;
@@ -902,32 +939,12 @@ static void patch_tables(struct gsm_bts *bts)
 	type_4->lai = lai;
 	type_6->lai = lai;
 
-	/* patch ARFCN into BTS Attributes */
-	bs11_attr_bts[69] &= 0xf0;
-	bs11_attr_bts[69] |= arfcn_high;
-	bs11_attr_bts[70] = arfcn_low;
-	nanobts_attr_bts[42] &= 0xf0;
-	nanobts_attr_bts[42] |= arfcn_high;
-	nanobts_attr_bts[43] = arfcn_low;
-
-	/* patch ARFCN into TRX Attributes */
-	bs11_attr_radio[2] &= 0xf0;
-	bs11_attr_radio[2] |= arfcn_high;
-	bs11_attr_radio[3] = arfcn_low;
-	nanobts_attr_radio[5] &= 0xf0;
-	nanobts_attr_radio[5] |= arfcn_high;
-	nanobts_attr_radio[6] = arfcn_low;
-
 	type_4->data[2] &= 0xf0;
 	type_4->data[2] |= arfcn_high;
 	type_4->data[3] = arfcn_low;
 
 	/* patch Control Channel Description 10.5.2.11 */
 	type_3->control_channel_desc = bts->chan_desc;
-
-	/* patch BSIC */
-	bs11_attr_bts[1] = bts->bsic;
-	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
 
 	/* patch TSC */
 	si4[15] &= ~0xe0;
@@ -957,6 +974,7 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
 		trx->bts->nr, trx->nr, gsmnet->country_code, 
 		gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
+	patch_si_tables(trx->bts);
 	set_system_infos(trx);
 }
 
@@ -1012,8 +1030,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	bts->chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
 	bts->chan_desc.t3212 = 0;
-
-	patch_tables(bts);
 
 	paging_init(bts);
 
