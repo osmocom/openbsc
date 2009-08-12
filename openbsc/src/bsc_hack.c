@@ -1115,7 +1115,6 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
-	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
@@ -1164,9 +1163,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			config_file = strdup(optarg);
-			break;
-		case 'a':
-			gsm0408_allow_everyone(1);
 			break;
 		case 'r':
 			gsm0408_set_reject_cause(atoi(optarg));

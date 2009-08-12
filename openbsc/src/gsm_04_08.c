@@ -304,13 +304,6 @@ struct gsm_lai {
 	u_int16_t lac;
 };
 
-static int authorize_everonye = 0;
-void gsm0408_allow_everyone(int everyone)
-{
-	printf("Allowing everyone?\n");
-	authorize_everonye = everyone;
-}
-
 static int reject_cause = 0;
 void gsm0408_set_reject_cause(int cause)
 {
@@ -333,10 +326,15 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
 		return 0;
 
-	if (authorize_everonye)
+	switch (subscriber->net->auth_policy) {
+	case GSM_AUTH_POLICY_CLOSED:
+		return subscriber->authorized;
+	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
-
-	return subscriber->authorized;
+	case GSM_AUTH_POLICY_TOKEN:
+	default:
+		return 0;
+	}
 }
 
 static void release_loc_updating_req(struct gsm_lchan *lchan)
