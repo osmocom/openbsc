@@ -91,6 +91,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_long, VTY_NEWLINE);
 	vty_out(vty, "  Short network name: '%s'%s",
 		net->name_short, VTY_NEWLINE);
+	vty_out(vty, "  Authentication policy: %s%s",
+		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -261,6 +263,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
+	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -767,6 +770,18 @@ DEFUN(cfg_net_name_long,
 		talloc_free(gsmnet->name_long);
 
 	gsmnet->name_long = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_auth_policy,
+      cfg_net_auth_policy_cmd,
+      "auth policy (closed|accept-all|token)",
+      "Set the GSM network authentication policy\n")
+{
+	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
+
+	gsmnet->auth_policy = policy;
 
 	return CMD_SUCCESS;
 }
@@ -1320,6 +1335,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
+	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

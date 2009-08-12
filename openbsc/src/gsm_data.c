@@ -320,3 +320,26 @@ enum gsm_band gsm_band_parse(const char* mhz)
 	}
 }
 
+static const char *gsm_auth_policy_names[] = {
+	[GSM_AUTH_POLICY_CLOSED] = "closed",
+	[GSM_AUTH_POLICY_ACCEPT_ALL] = "accept-all",
+	[GSM_AUTH_POLICY_TOKEN] = "token",
+};
+
+enum gsm_auth_policy gsm_auth_policy_parse(const char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gsm_auth_policy_names); i++) {
+		if (!strcmp(arg, gsm_auth_policy_names[i]))
+			return i;
+	}
+	return GSM_AUTH_POLICY_CLOSED;
+}
+
+const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
+{
+	if (policy > ARRAY_SIZE(gsm_auth_policy_names))
+		return "undefined";
+	return gsm_auth_policy_names[policy];
+}
+

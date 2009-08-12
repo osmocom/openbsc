@@ -349,12 +349,19 @@ struct gsm_bts {
 	struct llist_head trx_list;
 };
 
+enum gsm_auth_policy {
+	GSM_AUTH_POLICY_CLOSED, /* only subscribers authorized in DB */
+	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
+	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
+};
+
 struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
 	u_int16_t network_code;
 	char *name_long;
 	char *name_short;
+	enum gsm_auth_policy auth_policy;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
@@ -443,5 +450,9 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 
 	return 0;
 }
+
+
+enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
+const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 
 #endif
