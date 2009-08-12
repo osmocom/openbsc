@@ -438,7 +438,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
 	dbi_result result=NULL;
 	u_int32_t try;
 	for (;;) {
-		try = (rand()%(GSM_MAX_EXTEN+1)+GSM_MIN_EXTEN)%(GSM_MAX_EXTEN+1);
+		try = (rand()%(GSM_MAX_EXTEN-GSM_MIN_EXTEN+1)+GSM_MIN_EXTEN);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE extension = %i",
