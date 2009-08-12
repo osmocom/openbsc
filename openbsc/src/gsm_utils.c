@@ -30,48 +30,50 @@
 /* GSM 03.38 6.2.1 Charachter packing */
 int gsm_7bit_decode(char *text, const u_int8_t *user_data, u_int8_t length)
 {
-	u_int8_t d_off = 0, b_off = 0;
-	u_int8_t i;
+	int i = 0;
+	int l = 0;
 
-	for (i=0;i<length;i++) {
-		text[i] = ((user_data[d_off] + (user_data[d_off+1]<<8)) & (0x7f<<b_off))>>b_off;
-		b_off += 7;
-		if (b_off >= 8) {
-			d_off += 1;
-			b_off -= 8;
-		}
-	}
-	text[i] = '\0';
-	return 0;
+        /* FIXME: We need to account for user data headers here */
+	i += l;
+	for (; i < length; i ++)
+		*(text ++) =
+			((user_data[(i * 7 + 7) >> 3] <<
+			  (7 - ((i * 7 + 7) & 7))) |
+			 (user_data[(i * 7) >> 3] >>
+			  ((i * 7) & 7))) & 0x7f;
+	*text = '\0';
+
+	return i - l;
 }
+
 
 /* GSM 03.38 6.2.1 Charachter packing */
 int gsm_7bit_encode(u_int8_t *result, const char *data)
 {
-	int i;
-	u_int8_t d_off = 0, b_off = 0;
-	const int length = strlen(data);
-	int out_length = (length * 8)/7;
+	int i,j = 0;
+	unsigned char ch1, ch2;
+	int shift = 0;
 
-	memset(result, 0, out_length);
+	for ( i=0; i<strlen(data); i++ ) {
 
-	for (i = 0; i < length; ++i) {
-		u_int8_t first  = (data[i] & 0x7f) << b_off;
-		u_int8_t second = (data[i] & 0x7f) >> (8 - b_off);
-    
-		result[d_off] |= first;
-		if (second != 0)
-			result[d_off + 1] = second;
+		ch1 = data[i] & 0x7F;
+		ch1 = ch1 >> shift;
+		ch2 = data[(i+1)] & 0x7F;
+		ch2 = ch2 << (7-shift);
 
-		b_off += 7;
+		ch1 = ch1 | ch2;
 
-		if (b_off >= 8) {
-			d_off += 1;
-			b_off -= 8;
+		result[j++] = ch1;
+
+		shift++;
+
+		if ((shift == 7) && (i+1<strlen(data))) {
+			shift = 0;
+			i++;
 		}
 	}
 
-	return out_length;
+	return i;
 }
 
 /* determine power control level for given dBm value, as indicated

@@ -315,8 +315,13 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	*smsp = sms->user_data_len;
 
 	/* generate TP-UD */
-	smsp = msgb_put(msg, sms->user_data_len);
-	memcpy(smsp, sms->user_data, sms->user_data_len);
+	/* FIXME: Handle DSC of UCS2 or 8/bit default */
+	if (gsm338_get_sms_alphabet(sms->data_coding_scheme) == DCS_7BIT_DEFAULT) {
+		/* Warning, user_data_len indicates the amount of septets
+		 * (characters), we need amount of octets occupied */
+		smsp = msgb_put(msg, ceil(sms->user_data_len*7/8.0));
+		memcpy(smsp, sms->user_data, ceil(sms->user_data_len*7/8.0));
+	}
 
 	return msg->len - old_msg_len;
 }
