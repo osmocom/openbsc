@@ -906,6 +906,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
+
+	/* patch the power reduction */
+	bs11_attr_radio[5] = bts->c0->max_power_red / 2;
+	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
 }
 
 /*
