@@ -970,18 +970,6 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		/* Establish a SAPI3 RLL connection for SMS */
 		rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
 		break;
-	case S_SUBSCR_FIRST_CONTACT:
-		/* A new subscriber has just been created in the DB */
-		subscr = signal_data;
-		if (subscr->net->auth_policy == GSM_AUTH_POLICY_TOKEN) {
-			if (db_subscriber_alloc_token(subscr, &token)) {
-				/* error: probably use already has a token */
-				break;
-			} else {
-				/* FIXME: send sms with token here */
-			}
-		}
-		break;
 	default:
 		break;
 	}

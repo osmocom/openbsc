@@ -329,9 +329,10 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	switch (subscriber->net->auth_policy) {
 	case GSM_AUTH_POLICY_CLOSED:
 		return subscriber->authorized;
+	case GSM_AUTH_POLICY_TOKEN:
+		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
-	case GSM_AUTH_POLICY_TOKEN:
 	default:
 		return 0;
 	}
@@ -1152,12 +1153,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 		/* look up subscriber based on IMSI, create if not found */
 		if (!lchan->subscr) {
 			lchan->subscr = subscr_get_by_imsi(net, mi_string);
-		}
-		if (!lchan->subscr) {
-			lchan->subscr = db_create_subscriber(net, mi_string);
-			if (lchan->subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
-				dispatch_signal(SS_SUBSCR, S_SUBSCR_FIRST_CONTACT, &lchan->subscr);
-			}
+			if (!lchan->subscr)
+				lchan->subscr = db_create_subscriber(net, mi_string);
 		}
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imsi = 0;
@@ -1253,9 +1250,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		if (!subscr) {
 			subscr = db_create_subscriber(bts->network, mi_string);
-		}
-		if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
-			dispatch_signal(SS_SUBSCR, S_SUBSCR_FIRST_CONTACT, &subscr);
 		}
 		break;
 	case GSM_MI_TYPE_TMSI:
