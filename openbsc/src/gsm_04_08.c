@@ -331,6 +331,8 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	case GSM_AUTH_POLICY_CLOSED:
 		return subscriber->authorized;
 	case GSM_AUTH_POLICY_TOKEN:
+		if (subscriber->authorized)
+			return subscriber->authorized;
 		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
 	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
