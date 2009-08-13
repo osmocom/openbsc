@@ -956,7 +956,7 @@ static void patch_si_tables(struct gsm_bts *bts)
 
 	/* patch MS max power for CCH */
 	type_4->cell_sel_par.ms_txpwr_max_ccch =
-			ms_pwr_ctl_lvl(bts->band, 20 /* dBm == 100mW */);
+			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 
 	if (bts->cell_barred) {
 		type_1->rach_control.cell_bar = 1;
@@ -1115,7 +1115,6 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
-	printf("  -a --authorize-everyone Allow everyone into the network.\n");
 	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -C --cardnr number  For bs11 select E1 card number other than 0\n");
@@ -1164,9 +1163,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			config_file = strdup(optarg);
-			break;
-		case 'a':
-			gsm0408_allow_everyone(1);
 			break;
 		case 'r':
 			gsm0408_set_reject_cause(atoi(optarg));
@@ -1222,6 +1218,7 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
+	on_dso_load_token();
 
 	/* parse options */
 	handle_options(argc, argv);

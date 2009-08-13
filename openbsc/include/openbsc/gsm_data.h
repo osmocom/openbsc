@@ -302,6 +302,8 @@ struct gsm_bts {
 	 * rather than starting from TRX0 and go upwards? */
 	int chan_alloc_reverse;
 	int cell_barred;
+	/* maximum Tx power that the MS is permitted to use in this cell */
+	int ms_max_power;
 
 	/* how do we talk OML with this TRX? */
 	struct gsm_e1_subslot oml_e1_link;

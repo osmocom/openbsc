@@ -151,6 +151,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->bsic = bsic;
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
+	bts->ms_max_power = 15;	/* dBm */
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);

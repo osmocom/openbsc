@@ -175,6 +175,10 @@ static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 		/* FIXME: implementation */
 		DEBUGP(DSMS, "VPI enhanced not implemented yet\n");
 		break;
+	case GSM340_TP_VPF_NONE:
+		/* Default validity: two days */
+		minutes = 24 * 60 * 2;
+		break;
 	}
 	return minutes;
 }
@@ -272,6 +276,7 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	u_int8_t *smsp;
 	u_int8_t oa[12];	/* max len per 03.40 */
 	u_int8_t oa_len = 0;
+	u_int8_t octet_len;
 	unsigned int old_msg_len = msg->len;
 
 	/* generate first octet with masked bits */
@@ -317,10 +322,13 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	/* generate TP-UD */
 	/* FIXME: Handle DSC of UCS2 or 8/bit default */
 	if (gsm338_get_sms_alphabet(sms->data_coding_scheme) == DCS_7BIT_DEFAULT) {
+		octet_len = sms->user_data_len*7/8;
+		if (sms->user_data_len*7%8 != 0)
+			octet_len++;
 		/* Warning, user_data_len indicates the amount of septets
 		 * (characters), we need amount of octets occupied */
-		smsp = msgb_put(msg, ceil(sms->user_data_len*7/8.0));
-		memcpy(smsp, sms->user_data, ceil(sms->user_data_len*7/8.0));
+		smsp = msgb_put(msg, octet_len);
+		memcpy(smsp, sms->user_data, octet_len);
 	}
 
 	return msg->len - old_msg_len;
@@ -382,6 +390,9 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	case GSM340_TP_VPF_ENHANCED:
 		sms_vp = smsp;
 		smsp += 7;
+		break;
+	case GSM340_TP_VPF_NONE:
+		sms_vp = 0;
 		break;
 	default:
 		DEBUGP(DSMS, "SMS Validity period not implemented: 0x%02x\n",
@@ -953,6 +964,8 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan;
 	struct gsm_sms *sms;
+
+	u_int32_t token;
 
 	switch (signal) {
 	case S_SUBSCR_ATTACHED:
