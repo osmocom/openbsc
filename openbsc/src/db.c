@@ -468,23 +468,24 @@ int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
  * an error.
  */
 
-int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* token) {
-	dbi_result result=NULL;
+int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* token)
+{
+	dbi_result result;
 	u_int32_t try;
+
 	for (;;) {
 		try = rand();
 		if (!try) /* 0 is an invalid token */
 			continue;
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM AuthToken "
-			"WHERE subscriber_id = %llu OR token = %08x ",
-			subscriber->id, try
-		);
-		if (result==NULL) {
+			"WHERE subscriber_id = %llu OR token = \"%08X\" ",
+			subscriber->id, try);
+		if (!result) {
 			printf("DB: Failed to query AuthToken while allocating new token.\n");
 			return 1;
 		}
-		if (dbi_result_get_numrows(result)){
+		if (dbi_result_get_numrows(result)) {
 			dbi_result_free(result);
 			continue;
 		}
@@ -498,15 +499,16 @@ int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* toke
 		"INSERT INTO AuthToken "
 		"(subscriber_id, created, token) "
 		"VALUES "
-		"(%llu, datetime('now'), %08x)) ",
-		subscriber->id, try
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create token %08x for IMSI %s.\n", try, subscriber->imsi);
+		"(%llu, datetime('now'), \"%08X\") ",
+		subscriber->id, try);
+	if (!result) {
+		printf("DB: Failed to create token %08X for IMSI %s.\n", try, subscriber->imsi);
 		return 1;
 	}
+	dbi_result_free(result);
 	*token = try;
-	printf("DB: Allocated token %08x for IMSI %s.\n", try, subscriber->imsi);
+	printf("DB: Allocated token %08X for IMSI %s.\n", try, subscriber->imsi);
+
 	return 0;
 }
 
