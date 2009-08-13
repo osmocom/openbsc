@@ -257,7 +257,7 @@ static void gsm340_gen_scts(u_int8_t *scts, time_t time)
 	struct tm *tm = localtime(&time);
 
 	*scts++ = bcdify(tm->tm_year % 100);
-	*scts++ = bcdify(tm->tm_mon);
+	*scts++ = bcdify(tm->tm_mon + 1);
 	*scts++ = bcdify(tm->tm_mday);
 	*scts++ = bcdify(tm->tm_hour);
 	*scts++ = bcdify(tm->tm_min);
