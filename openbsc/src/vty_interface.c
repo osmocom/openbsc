@@ -1217,11 +1217,10 @@ int sms_from_text(struct gsm_subscriber *receiver, const char *text)
 
 	if (!receiver->lac) {
 		/* subscriber currently not attached, store in database? */
-		subscr_put(sms->receiver);
 		return CMD_WARNING;
 	}
 
-	sms->receiver = receiver;
+	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
 	/* FIXME: don't use ID 1 static */
@@ -1245,7 +1244,7 @@ static int _send_sms_buffer(struct gsm_subscriber *receiver,
 
 	sms = sms_from_text(receiver, buffer_getstr(b));
 
-	gsm411_send_sms_subscr(sms->receiver, sms);
+	gsm411_send_sms_subscr(receiver, sms);
 
 	return CMD_SUCCESS;
 }
