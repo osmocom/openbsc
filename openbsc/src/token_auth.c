@@ -30,8 +30,8 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/db.h>
 
-#define TOKEN_SMS_TEXT "HAR 2009 GSM.  Please visit http://har2009.gnumonks.org/ to" \
-			"register. Your IMSI is %s, your auth token is %08X."
+#define TOKEN_SMS_TEXT "HAR 2009 GSM.  Register at http://har2009.gnumonks.org/ " \
+			"Your IMSI is %s, auth token is %08X, phone no is %s."
 
 static char *build_sms_string(struct gsm_subscriber *subscr, u_int32_t token)
 {
@@ -43,7 +43,8 @@ static char *build_sms_string(struct gsm_subscriber *subscr, u_int32_t token)
 	if (!sms_str)
 		return NULL;
 
-	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->imsi, token);
+	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->imsi, token,
+		 subscr->extension);
 	sms_str[len-1] = '\0';
 
 	return sms_str;
