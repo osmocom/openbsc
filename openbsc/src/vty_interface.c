@@ -233,6 +233,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -975,6 +976,17 @@ DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
+      "ms max power <0-40>",
+      "Maximum transmit power of the MS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ms_max_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1374,6 +1386,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
+	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
