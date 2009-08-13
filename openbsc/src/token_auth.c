@@ -20,34 +20,94 @@
  *
  */
 
+#include <stdio.h>
+#include <openbsc/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/chan_alloc.h>
+#include <openbsc/db.h>
 
-#define TOKEN_SMS_TEXT "HAR 2009 GSM.  Please visit http://127.0.0.1/ to register"
+#define TOKEN_SMS_TEXT "HAR 2009 GSM.  Please visit http://har2009.gnumonks.org/ to" \
+			"register. Your IMSI is %s, your auth token is %08X."
+
+static char *build_sms_string(struct gsm_subscriber *subscr, u_int32_t token)
+{
+	char *sms_str;
+	unsigned int len;
+
+	len = strlen(subscr->imsi) + 8 + strlen(TOKEN_SMS_TEXT);
+	sms_str = talloc_size(tall_bsc_ctx, len);
+	if (!sms_str)
+		return NULL;
+
+	snprintf(sms_str, len, TOKEN_SMS_TEXT, subscr->imsi, token);
+	sms_str[len-1] = '\0';
+
+	return sms_str;
+}
 
 static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
 	struct gsm_subscriber *subscr = signal_data;
 	struct gsm_sms *sms;
+	int rc = 0;
 
 	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
 
-	switch (signal) {
-	case S_SUBSCR_FIRST_CONTACT:
+	if (signal != S_SUBSCR_ATTACHED)
+		return 0;
+
+	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
+		u_int32_t token;
+		char *sms_str;
+
 		/* we've seen this subscriber for the first time. */
-		sms = sms_from_text(subscr, TOKEN_SMS_TEXT);
-		if (!sms)
-			return -ENOMEM;
-		gsm411_send_sms_subscr(subscr, sms);
-		break;
+		rc = db_subscriber_alloc_token(subscr, &token);
+		if (rc != 0) {
+			rc = -EIO;
+			goto unauth;
+		}
+
+		sms_str = build_sms_string(subscr, token);
+		if (!sms_str) {
+			rc = -ENOMEM;
+			goto unauth;
+		}
+
+		sms = sms_from_text(subscr, sms_str);
+		talloc_free(sms_str);
+		if (!sms) {
+			rc = -ENOMEM;
+			goto unauth;
+		}
+
+		rc = gsm411_send_sms_subscr(subscr, sms);
+
+		/* FIXME: else, delete the subscirber from database */
+unauth:
+
+		/* make sure we don't allow him in again unless he clicks the web UI */
+		subscr->authorized = 0;
+		db_sync_subscriber(subscr);
+		if (rc) {
+			struct gsm_lchan *lchan = lchan_for_subscr(subscr);
+			if (lchan) {
+				u_int8_t auth_rand[16];
+				/* kick the subscriber off the network */
+				gsm48_tx_mm_auth_req(lchan, auth_rand);
+				gsm48_tx_mm_auth_rej(lchan);
+				/* FIXME: close the channel early ?*/
+				//gsm48_send_rr_Release(lchan);
+			}
+		}
 	}
 
-	return 0;
+	return rc;
 }
 
 static int token_sms_cb(unsigned int subsys, unsigned int signal,
@@ -55,37 +115,37 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 {
 	struct gsm_sms *sms = signal_data;
 	struct gsm_lchan *lchan;
-	u_int16_t rand[16];
+	u_int8_t auth_rand[16];
+
 
 	if (signal != S_SMS_DELIVERED)
 		return 0;
+
 
 	/* these are not the droids we've been looking for */
 	if (!sms->receiver ||
 	    !(sms->receiver->flags & GSM_SUBSCRIBER_FIRST_CONTACT))
 		return 0;
 
+
 	if (sms->receiver->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
+
 
 	lchan = lchan_for_subscr(sms->receiver);
 	if (lchan) {
 		/* kick the subscriber off the network */
-		gsm48_tx_mm_auth_req(lchan, rand);
+		gsm48_tx_mm_auth_req(lchan, auth_rand);
 		gsm48_tx_mm_auth_rej(lchan);
-		/* close the channel */
+		/* FIXME: close the channel early ?*/
 		//gsm48_send_rr_Release(lchan);
-		lchan_free(lchan);
 	}
-
-	/* make sure we don't allow him in again unless he clicks the web UI */
-	sms->receiver->authorized = 0;
-	db_sync_subscriber(sms->receiver);
 
 	return 0;
 }
 
-static __attribute__((constructor)) void on_dso_load_token(void)
+//static __attribute__((constructor)) void on_dso_load_token(void)
+void on_dso_load_token(void)
 {
 	register_signal_handler(SS_SUBSCR, token_subscr_cb, NULL);
 	register_signal_handler(SS_SMS, token_sms_cb, NULL);

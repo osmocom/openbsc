@@ -233,6 +233,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -975,6 +976,17 @@ DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
+      "ms max power <0-40>",
+      "Maximum transmit power of the MS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ms_max_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1205,11 +1217,10 @@ int sms_from_text(struct gsm_subscriber *receiver, const char *text)
 
 	if (!receiver->lac) {
 		/* subscriber currently not attached, store in database? */
-		subscr_put(sms->receiver);
 		return CMD_WARNING;
 	}
 
-	sms->receiver = receiver;
+	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
 	/* FIXME: don't use ID 1 static */
@@ -1233,7 +1244,7 @@ static int _send_sms_buffer(struct gsm_subscriber *receiver,
 
 	sms = sms_from_text(receiver, buffer_getstr(b));
 
-	gsm411_send_sms_subscr(sms->receiver, sms);
+	gsm411_send_sms_subscr(receiver, sms);
 
 	return CMD_SUCCESS;
 }
@@ -1374,6 +1385,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
+	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);

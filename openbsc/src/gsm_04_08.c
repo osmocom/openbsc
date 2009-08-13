@@ -35,6 +35,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
@@ -304,13 +305,6 @@ struct gsm_lai {
 	u_int16_t lac;
 };
 
-static int authorize_everonye = 0;
-void gsm0408_allow_everyone(int everyone)
-{
-	printf("Allowing everyone?\n");
-	authorize_everonye = everyone;
-}
-
 static int reject_cause = 0;
 void gsm0408_set_reject_cause(int cause)
 {
@@ -333,10 +327,16 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	if (loc && (loc->waiting_for_imsi || loc->waiting_for_imei))
 		return 0;
 
-	if (authorize_everonye)
+	switch (subscriber->net->auth_policy) {
+	case GSM_AUTH_POLICY_CLOSED:
+		return subscriber->authorized;
+	case GSM_AUTH_POLICY_TOKEN:
+		return (subscriber->flags & GSM_SUBSCRIBER_FIRST_CONTACT);
+	case GSM_AUTH_POLICY_ACCEPT_ALL:
 		return 1;
-
-	return subscriber->authorized;
+	default:
+		return 0;
+	}
 }
 
 static void release_loc_updating_req(struct gsm_lchan *lchan)
@@ -1154,12 +1154,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 		/* look up subscriber based on IMSI, create if not found */
 		if (!lchan->subscr) {
 			lchan->subscr = subscr_get_by_imsi(net, mi_string);
-		}
-		if (!lchan->subscr) {
-			lchan->subscr = db_create_subscriber(net, mi_string);
-			if (lchan->subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
-				dispatch_signal(SS_SUBSCR, S_SUBSCR_FIRST_CONTACT, &lchan->subscr);
-			}
+			if (!lchan->subscr)
+				lchan->subscr = db_create_subscriber(net, mi_string);
 		}
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imsi = 0;
@@ -1256,9 +1252,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		if (!subscr) {
 			subscr = db_create_subscriber(bts->network, mi_string);
 		}
-		if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
-			dispatch_signal(SS_SUBSCR, S_SUBSCR_FIRST_CONTACT, &subscr);
-		}
 		break;
 	case GSM_MI_TYPE_TMSI:
 		DEBUGPC(DMM, "\n");
@@ -1343,7 +1336,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	struct gsm_network *net = lchan->ts->trx->bts->network;
 	u_int8_t *ptr8;
 	u_int16_t *ptr16;
-	int name_len;
+	int name_len, name_pad;
 	int i;
 #if 0
 	time_t cur_t;
@@ -1358,6 +1351,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	gh->msg_type = GSM48_MT_MM_INFO;
 
 	if (net->name_long) {
+#if 0
 		name_len = strlen(net->name_long);
 		/* 10.5.3.5a */
 		ptr8 = msgb_put(msg, 3);
@@ -1371,9 +1365,24 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 
 		/* FIXME: Use Cell Broadcast, not UCS-2, since
 		 * UCS-2 is only supported by later revisions of the spec */
+#endif
+		name_len = (strlen(net->name_long)*7)/8;
+		name_pad = (8 - strlen(net->name_long)*7)%8;
+		if (name_pad > 0)
+			name_len++;
+		/* 10.5.3.5a */
+		ptr8 = msgb_put(msg, 3);
+		ptr8[0] = GSM48_IE_NAME_LONG;
+		ptr8[1] = name_len +1;
+		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
+
+		ptr8 = msgb_put(msg, name_len);
+		gsm_7bit_encode(ptr8, net->name_long);
+
 	}
 
 	if (net->name_short) {
+#if 0
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
 		ptr8 = (u_int8_t *) msgb_put(msg, 3);
@@ -1384,6 +1393,20 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_short[i]);
+#endif
+		name_len = (strlen(net->name_short)*7)/8;
+		name_pad = (8 - strlen(net->name_short)*7)%8;
+		if (name_pad > 0)
+			name_len++;
+		/* 10.5.3.5a */
+		ptr8 = (u_int8_t *) msgb_put(msg, 3);
+		ptr8[0] = GSM48_IE_NAME_SHORT;
+		ptr8[1] = name_len +1;
+		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
+
+		ptr8 = msgb_put(msg, name_len);
+		gsm_7bit_encode(ptr8, net->name_short);
+
 	}
 
 #if 0
@@ -1404,6 +1427,8 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	if (tz15min < 0)
 		ptr8[7] |= 0x80;
 #endif
+
+	DEBUGP(DMM, "-> MM INFO\n");
 
 	return gsm48_sendmsg(msg, NULL);
 }
