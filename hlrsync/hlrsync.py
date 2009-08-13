@@ -61,11 +61,8 @@ with web:
 				      UPDATE reg_tokens
 				      SET imsi = ?, extension = ?, tmsi = ?, lac = ?
 				      WHERE subscriber_id = ?
-				   """, (str(subscr['imsi']), subscr['extension'], x['subscriber_id']))
-			x['imsi'] = str(subscr['imsi'])
-			x['extension'] = subscr['extension']
-			x['tmsi'] = subscr['tmsi']
-			x['lac'] = subscr['lac']
+				   """, (str(subscr['imsi']), subscr['extension'],
+				   subscr['tmsi'], subscr['lac'], x['subscriber_id']))
 
 # add missing web_tokens
 with web:
