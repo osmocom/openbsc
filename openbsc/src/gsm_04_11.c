@@ -175,6 +175,10 @@ static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 		/* FIXME: implementation */
 		DEBUGP(DSMS, "VPI enhanced not implemented yet\n");
 		break;
+	case GSM340_TP_VPF_NONE:
+		/* Default validity: two days */
+		minutes = 24 * 60 * 2;
+		break;
 	}
 	return minutes;
 }
@@ -382,6 +386,9 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	case GSM340_TP_VPF_ENHANCED:
 		sms_vp = smsp;
 		smsp += 7;
+		break;
+	case GSM340_TP_VPF_NONE:
+		sms_vp = 0;
 		break;
 	default:
 		DEBUGP(DSMS, "SMS Validity period not implemented: 0x%02x\n",
