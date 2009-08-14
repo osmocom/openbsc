@@ -27,12 +27,17 @@ with web:
 	web_tokens = web.execute("""
 		SELECT * FROM reg_tokens
 	""").fetchall()
+	web_sms = web.execute("""
+		SELECT * FROM sms_queue
+	""").fetchall()
 
 # index by subscr id
 hlr_subscrs_by_id = {}
+hlr_subscrs_by_ext = {}
 hlr_tokens_by_subscr_id = {}
 for x in hlr_subscrs:
 	hlr_subscrs_by_id[x['id']] = x
+	hlr_subscrs_by_ext[x['extension']] = x
 del hlr_subscrs
 for x in hlr_tokens:
 	hlr_tokens_by_subscr_id[x['subscriber_id']] = x
@@ -94,6 +99,26 @@ with hlr:
 				      SET authorized = 1
 				      WHERE id = ?
 				   """, (x['subscriber_id'],))
+
+# Sync SMS from web to hlr
+with hlr:
+	for sms in web_sms:
+		subscr = hlr_subscrs_by_ext.get(sms['receiver_ext'])
+		if subscr is None:
+			print '%s not found' % sms['receiver_ext']
+			continue
+		hlr.execute("""
+				      INSERT INTO SMS
+				      (created, sender_id, receiver_id, reply_path_req, status_rep_req, protocol_id, data_coding_scheme, ud_hdr_ind, text)
+				      VALUES
+				      (?, 1, ?, 0, 0, 0, 0, 0, ?)
+				   """, (sms['created'], subscr['id'], sms['text']))
+with web:
+	for sms in web_sms:
+		web.execute("""
+				      DELETE FROM sms_queue WHERE id = ?
+				   """, (sms['id'],))
+
 
 hlr.close()
 web.close()
