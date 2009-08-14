@@ -686,7 +686,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	trans_free(trans);
+	//trans_free(trans);
 
 	return 0;
 }
@@ -763,7 +763,7 @@ static int gsm411_tx_cp_ack(struct gsm_trans *trans)
 	if (trans->sms.is_mt) {
 		/* If this is a MT SMS DELIVER, we can clear transaction here */
 		trans->sms.cp_state = GSM411_CPS_IDLE;
-		trans_free(trans);
+		//trans_free(trans);
 	}
 
 	return rc;
@@ -1067,6 +1067,11 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		break;
 	}
 	return 0;
+}
+
+void _gsm411_sms_trans_free(struct gsm_trans *trans)
+{
+	bsc_del_timer(&trans->sms.cp_timer);
 }
 
 static __attribute__((constructor)) void on_dso_load_sms(void)

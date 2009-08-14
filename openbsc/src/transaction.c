@@ -92,6 +92,9 @@ void trans_free(struct gsm_trans *trans)
 	case GSM48_PDISC_CC:
 		_gsm48_cc_trans_free(trans);
 		break;
+	case GSM48_PDISC_SMS:
+		_gsm411_sms_trans_free(trans);
+		break;
 	}
 
 	if (trans->lchan)
