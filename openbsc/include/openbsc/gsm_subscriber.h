@@ -85,5 +85,6 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
+extern struct llist_head active_subscribers;
 
 #endif /* _GSM_SUBSCR_H */

@@ -431,6 +431,7 @@ static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
 	if (subscr->tmsi)
 		vty_out(vty, "    TMSI: %s%s", subscr->tmsi, VTY_NEWLINE);
+	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
 static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
@@ -1170,6 +1171,21 @@ DEFUN(show_subscr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_subscr_cache,
+      show_subscr_cache_cmd,
+      "show subscriber cache",
+	SHOW_STR "Display contents of subscriber cache\n")
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, &active_subscribers, entry) {
+		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
+		subscr_dump_vty(vty, subscr);
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(sms_send_pend,
       sms_send_pend_cmd,
       "sms send pending MIN_ID",
@@ -1361,6 +1377,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_paging_cmd);
 
 	install_element(VIEW_NODE, &show_subscr_cmd);
+	install_element(VIEW_NODE, &show_subscr_cache_cmd);
 
 	install_element(VIEW_NODE, &sms_send_pend_cmd);
 	install_element(VIEW_NODE, &sms_send_ext_cmd);
