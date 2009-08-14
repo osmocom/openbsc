@@ -78,6 +78,8 @@ int bsc_select_main(int polling)
 			FD_SET(ufd->fd, &exceptset);
 	}
 
+	bsc_timer_check();
+
 	if (!polling)
 		bsc_prepare_timers();
 	rc = select(maxfd+1, &readset, &writeset, &exceptset, polling ? &no_time : bsc_nearest_timer());
