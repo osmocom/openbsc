@@ -54,8 +54,68 @@
 #define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
 static void *tall_gsms_ctx;
-
 static u_int32_t new_callref = 0x40000001;
+
+struct value_string {
+	u_int32_t value;
+	const char *str;
+};
+
+static const struct value_string cp_cause_strs[] = {
+	{ GSM411_CP_CAUSE_NET_FAIL,	"Network Failure" },
+	{ GSM411_CP_CAUSE_CONGESTION,	"Congestion" },
+	{ GSM411_CP_CAUSE_INV_TRANS_ID,	"Invalid Transaction ID" },
+	{ GSM411_CP_CAUSE_SEMANT_INC_MSG, "Semantically Incorrect Message" },
+	{ GSM411_CP_CAUSE_INV_MAND_INF,	"Invalid Mandatory Information" },
+	{ GSM411_CP_CAUSE_MSGTYPE_NOTEXIST, "Message Type doesn't exist" },
+	{ GSM411_CP_CAUSE_MSG_INCOMP_STATE, 
+				"Message incompatible with protocol state" },
+	{ GSM411_CP_CAUSE_IE_NOTEXIST,	"IE does not exist" },
+	{ GSM411_CP_CAUSE_PROTOCOL_ERR,	"Protocol Error" },
+	{ 0, 0 }
+};
+
+static const struct value_string rp_cause_strs[] = {
+	{ GSM411_RP_CAUSE_MO_NUM_UNASSIGNED, "(MO) Number not assigned" },
+	{ GSM411_RP_CAUSE_MO_OP_DET_BARR, "(MO) Operator determined barring" },
+	{ GSM411_RP_CAUSE_MO_CALL_BARRED, "(MO) Call barred" },
+	{ GSM411_RP_CAUSE_MO_SMS_REJECTED, "(MO) SMS rejected" },
+	{ GSM411_RP_CAUSE_MO_DEST_OUT_OF_ORDER, "(MO) Destination out of order" },
+	{ GSM411_RP_CAUSE_MO_UNIDENTIFIED_SUBSCR, "(MO) Unidentified subscriber" },
+	{ GSM411_RP_CAUSE_MO_FACILITY_REJ, "(MO) Facility reject" },
+	{ GSM411_RP_CAUSE_MO_UNKNOWN_SUBSCR, "(MO) Unknown subscriber" },
+	{ GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER, "(MO) Network out of order" },
+	{ GSM411_RP_CAUSE_MO_TEMP_FAIL, "(MO) Temporary failure" },
+	{ GSM411_RP_CAUSE_MO_CONGESTION, "(MO) Congestion" },
+	{ GSM411_RP_CAUSE_MO_RES_UNAVAIL, "(MO) Resource unavailable" },
+	{ GSM411_RP_CAUSE_MO_REQ_FAC_NOTSUBSCR, "(MO) Requested facility not subscribed" },
+	{ GSM411_RP_CAUSE_MO_REQ_FAC_NOTIMPL, "(MO) Requested facility not implemented" },
+	{ GSM411_RP_CAUSE_MO_INTERWORKING, "(MO) Interworking" },
+	/* valid only for MT */
+	{ GSM411_RP_CAUSE_MT_MEM_EXCEEDED, "(MT) Memory Exceeded" },
+	/* valid for both directions */
+	{ GSM411_RP_CAUSE_INV_TRANS_REF, "Invalid Transaction Reference" },
+	{ GSM411_RP_CAUSE_SEMANT_INC_MSG, "Semantically Incorrect Message" },
+	{ GSM411_RP_CAUSE_INV_MAND_INF, "Invalid Mandatory Information" },
+	{ GSM411_RP_CAUSE_MSGTYPE_NOTEXIST, "Message Type non-existant" },
+	{ GSM411_RP_CAUSE_MSG_INCOMP_STATE, "Message incompatible with protocol state" },
+	{ GSM411_RP_CAUSE_IE_NOTEXIST, "Information Element not existing" },
+	{ GSM411_RP_CAUSE_PROTOCOL_ERR, "Protocol Error" },
+	{ 0, NULL }
+};
+
+const char *get_value_string(const struct value_string *vs, u_int32_t val)
+{
+	int i;
+
+	for (i = 0;; i++) {
+		if (vs[i].value == 0 && vs[i].str == NULL)
+			break;
+		if (vs[i].value == val)
+			return vs[i].str;
+	}
+	return "unknown";
+}
 
 struct gsm_sms *sms_alloc(void)
 {
@@ -125,8 +185,17 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		trans->sms.cp_timer.cb = cp_timer_expired;
 		/* 5.3.2.1: Set Timer TC1A */
 		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
+		DEBUGP(DSMS, "TX: CP-DATA ");
+		break;
+	case GSM411_MT_CP_ACK:
+		DEBUGP(DSMS, "TX: CP-ACK ");
+		break;
+	case GSM411_MT_CP_ERROR:
+		DEBUGP(DSMS, "TX: CP-ACK ");
 		break;
 	}
+
+	DEBUGPC(DSMS, "trans=%x\n", trans->transaction_id);
 
 	return gsm411_sendmsg(msg);
 }
@@ -476,7 +545,8 @@ static int gsm411_send_rp_error(struct gsm_trans *trans,
 
 	msgb_tv_put(msg, 1, cause);
 
-	DEBUGP(DSMS, "TX: SMS RP ERROR (cause %02d)\n", cause);
+	DEBUGP(DSMS, "TX: SMS RP ERROR, cause %d (%s)\n", cause,
+		get_value_string(rp_cause_strs, cause));
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_ERROR_MT, msg_ref);
 }
@@ -591,7 +661,8 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * successfully receive the SMS.  We need to investigate
 	 * the cause and take action depending on it */
 
-	DEBUGP(DSMS, "RX SMS RP-ERROR Cause=0x%02x\n", cause);
+	DEBUGP(DSMS, "RX SMS RP-ERROR, cause %d (%s)\n", cause,
+		get_value_string(rp_cause_strs, cause));
 
 	if (!trans->sms.is_mt) {
 		DEBUGP(DSMS, "RX RP-ERR on a MO transfer ?\n");
@@ -703,6 +774,9 @@ static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
 	struct msgb *msg = gsm411_msgb_alloc();
 	u_int8_t *causep;
 
+	DEBUGP(DSMS, "TX CP-ERROR, cause %d (%s)\n", cause,
+		get_value_string(cp_cause_strs, cause));
+
 	causep = msgb_put(msg, 1);
 	*causep = cause;
 
@@ -723,15 +797,15 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		return -EIO;
 		/* FIXME: send some error message */
 
+	DEBUGP(DSMS, "trans_id=%x ", gh->proto_discr >> 4);
 	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
-		DEBUGP(DSMS, "Unknown transaction ID %x, "
-			"creating new trans\n", transaction_id);
+		DEBUGPC(DSMS, "(unknown) ");
 		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
-			DEBUGP(DSMS, "No memory for trans\n");
+			DEBUGPC(DSMS, "No memory for trans\n");
 			/* FIXME: send some error message */
 			return -ENOMEM;
 		}
@@ -745,7 +819,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 
 	switch(msg_type) {
 	case GSM411_MT_CP_DATA:
-		DEBUGP(DSMS, "RX SMS CP-DATA\n");
+		DEBUGPC(DSMS, "RX SMS CP-DATA\n");
 		/* 5.2.3.1.3: MO state exists when SMC has received
 		 * CP-DATA, including sending of the assoc. CP-ACK */
 		/* 5.2.3.2.4: MT state exists when SMC has received
@@ -761,7 +835,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		break;
 	case GSM411_MT_CP_ACK:
 		/* previous CP-DATA in this transaction was confirmed */
-		DEBUGP(DSMS, "RX SMS CP-ACK\n");
+		DEBUGPC(DSMS, "RX SMS CP-ACK\n");
 		/* 5.2.3.1.3: MO state exists when SMC has received CP-ACK */
 		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
@@ -777,13 +851,14 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		}
 		break;
 	case GSM411_MT_CP_ERROR:
-		DEBUGP(DSMS, "RX SMS CP-ERROR, cause 0x%02x\n", gh->data[0]);
+		DEBUGPC(DSMS, "RX SMS CP-ERROR, cause %d (%s)\n", gh->data[0],
+			get_value_string(cp_cause_strs, gh->data[0]));
 		bsc_del_timer(&trans->sms.cp_timer);
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 		break;
 	default:
-		DEBUGP(DSMS, "RX Unimplemented CP msg_type: 0x%02x\n", msg_type);
+		DEBUGPC(DSMS, "RX Unimplemented CP msg_type: 0x%02x\n", msg_type);
 		rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_MSGTYPE_NOTEXIST);
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
