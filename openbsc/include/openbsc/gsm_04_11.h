@@ -203,7 +203,7 @@ struct sms_deliver {
 
 struct msgb;
 
-int gsm0411_rcv_sms(struct msgb *msg);
+int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id);
 
 int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms);
 

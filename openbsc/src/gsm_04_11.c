@@ -139,7 +139,7 @@ struct msgb *gsm411_msgb_alloc(void)
 				   "GSM 04.11");
 }
 
-static int gsm411_sendmsg(struct msgb *msg)
+static int gsm411_sendmsg(struct msgb *msg, u_int8_t link_id)
 {
 	if (msg->lchan)
 		msg->trx = msg->lchan->ts->trx;
@@ -148,7 +148,7 @@ static int gsm411_sendmsg(struct msgb *msg)
 
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
 
-	return rsl_data_request(msg, UM_SAPI_SMS);
+	return rsl_data_request(msg, link_id);
 }
 
 /* SMC TC1* is expired */
@@ -197,7 +197,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGPC(DSMS, "trans=%x\n", trans->transaction_id);
 
-	return gsm411_sendmsg(msg);
+	return gsm411_sendmsg(msg, trans->sms.link_id);
 }
 
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
@@ -645,7 +645,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
 	else
-		rsl_release_request(msg->lchan, UM_SAPI_SMS);
+		rsl_release_request(msg->lchan, trans->sms.link_id);
 
 	return 0;
 }
@@ -710,7 +710,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
 	else
-		rsl_release_request(msg->lchan, UM_SAPI_SMS);
+		rsl_release_request(msg->lchan, trans->sms.link_id);
 
 	return rc;
 }
@@ -784,7 +784,7 @@ static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
 }
 
 /* Entry point for incoming GSM48_PDISC_SMS from abis_rsl.c */
-int gsm0411_rcv_sms(struct msgb *msg)
+int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type;
@@ -812,6 +812,7 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans->sms.rp_state = GSM411_RPS_IDLE;
 		trans->sms.is_mt = 0;
+		trans->sms.link_id = link_id;
 
 		trans->lchan = lchan;
 		use_lchan(lchan);
@@ -826,12 +827,17 @@ int gsm0411_rcv_sms(struct msgb *msg)
 		 * CP-DATA, including sending of the assoc. CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
 
+		/* SMC instance acknowledges the CP-DATA frame */
+		gsm411_tx_cp_ack(trans);
+		
 		rc = gsm411_rx_cp_data(msg, gh, trans);
+#if 0
 		/* Send CP-ACK or CP-ERORR in response */
 		if (rc < 0) {
 			rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_NET_FAIL);
 		} else
 			rc = gsm411_tx_cp_ack(trans);
+#endif
 		break;
 	case GSM411_MT_CP_ACK:
 		/* previous CP-DATA in this transaction was confirmed */
@@ -908,6 +914,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	trans->sms.rp_state = GSM411_RPS_IDLE;
 	trans->sms.is_mt = 1;
 	trans->sms.sms = sms;
+	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
 	trans->lchan = lchan;
 	use_lchan(lchan);

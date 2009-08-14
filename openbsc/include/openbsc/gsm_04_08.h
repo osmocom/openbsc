@@ -691,7 +691,7 @@ struct gsm_trans;
 void gsm0408_allow_everyone(int allow);
 void gsm0408_set_reject_cause(int cause);
 
-int gsm0408_rcvmsg(struct msgb *msg);
+int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);

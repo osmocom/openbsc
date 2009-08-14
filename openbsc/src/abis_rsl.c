@@ -923,7 +923,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		DEBUGPC(DMEAS, "L3\n");
 		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
-		return gsm0408_rcvmsg(msg);
+		return gsm0408_rcvmsg(msg, 0);
 	} else
 		DEBUGPC(DMEAS, "\n");
 
@@ -1206,10 +1206,12 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	int rc = 0;
 	char *ts_name;
+	u_int8_t sapi = rllh->link_id & 7;
 
 	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
 	ts_name = gsm_ts_name(msg->lchan->ts);
-	DEBUGP(DRLL, "channel=%s chan_nr=0x%02x ", ts_name, rllh->chan_nr);
+	DEBUGP(DRLL, "channel=%s chan_nr=0x%02x sapi=%u ", ts_name,
+		rllh->chan_nr, sapi);
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_DATA_IND:
@@ -1218,7 +1220,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {
 			msg->l3h = &rllh->data[3];
-			return gsm0408_rcvmsg(msg);
+			return gsm0408_rcvmsg(msg, rllh->link_id);
 		}
 		break;
 	case RSL_MT_EST_IND:
@@ -1229,7 +1231,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {
 			msg->l3h = &rllh->data[3];
-			return gsm0408_rcvmsg(msg);
+			return gsm0408_rcvmsg(msg, rllh->link_id);
 		}
 		break;
 	case RSL_MT_EST_CONF:

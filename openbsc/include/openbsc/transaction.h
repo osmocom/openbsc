@@ -39,6 +39,7 @@ struct gsm_trans {
 			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
 		} cc;
 		struct {
+			u_int8_t link_id;	/* RSL Link ID to be used for this trans */
 			int is_mt;	/* is this a MO (0) or MT (1) transfer */
 			enum gsm411_cp_state cp_state;
 			struct timer_list cp_timer;
