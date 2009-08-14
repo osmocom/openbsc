@@ -1176,17 +1176,20 @@ DEFUN(sms_send_pend,
       "Send all pending SMS starting from MIN_ID")
 {
 	struct gsm_sms *sms;
+	int id = atoi(argv[0]);
 
-	sms = db_sms_get_unsent(gsmnet, atoi(argv[0])); 
-	if (!sms)
-		return CMD_WARNING;
+	while (1) {
+		sms = db_sms_get_unsent(gsmnet, id++);
+		if (!sms)
+			return CMD_WARNING;
 
-	if (!sms->receiver) {
-		sms_free(sms);
-		return CMD_WARNING;
+		if (!sms->receiver) {
+			sms_free(sms);
+			continue;
+		}
+
+		gsm411_send_sms_subscr(sms->receiver, sms);
 	}
-
-	gsm411_send_sms_subscr(sms->receiver, sms);
 
 	return CMD_SUCCESS;
 }
