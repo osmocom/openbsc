@@ -234,6 +234,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
+	if (bts->chan_desc.t3212)
+		vty_out(vty, "  periodic location update %u%s",
+			bts->chan_desc.t3212 * 10, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -988,6 +991,17 @@ DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
+      "periodic location update <0-1530>",
+      "Periodic Location Updating Interval in Minutes")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->chan_desc.t3212 = atoi(argv[0]) / 10;
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1406,6 +1420,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
+	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
