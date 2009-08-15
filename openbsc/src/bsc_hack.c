@@ -1029,11 +1029,10 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	}
 
 	/* Control Channel Description */
-	memset(&bts->chan_desc, 0, sizeof(struct gsm48_control_channel_descr));
 	bts->chan_desc.att = 1;
 	bts->chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-	bts->chan_desc.t3212 = 0;
+	/* T3212 is set from vty/config */
 
 	paging_init(bts);
 
@@ -1218,6 +1217,7 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
+	talloc_ctx_init();
 	on_dso_load_token();
 
 	/* parse options */

@@ -30,7 +30,7 @@
 #include <openbsc/talloc.h>
 #include <openbsc/gsm_data.h>
 
-static void *tall_call_ctx;
+void *tall_call_ctx;
 
 static struct mncc_names {
 	char *name;
@@ -388,9 +388,4 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	}
 
 	return rc;
-}
-
-static __attribute__((constructor)) void on_dso_load_trau_mncc(void)
-{
-	tall_call_ctx = talloc_named_const(tall_bsc_ctx, 1, "gsm_call");
 }

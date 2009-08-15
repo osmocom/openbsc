@@ -24,7 +24,7 @@
 #include <string.h>
 
 
-static void *tall_sigh_ctx;
+void *tall_sigh_ctx;
 static LLIST_HEAD(signal_handler_list);
 
 struct signal_handler {
@@ -80,9 +80,4 @@ void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data
 			continue;
 		(*handler->cbfn)(subsys, signal, handler->data, signal_data);
 	}
-}
-
-static __attribute__((constructor)) void on_dso_load_signal(void)
-{
-	tall_sigh_ctx = talloc_named_const(NULL, 1, "signal_handler");
 }

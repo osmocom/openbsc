@@ -53,7 +53,7 @@
 
 #define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
-static void *tall_gsms_ctx;
+void *tall_gsms_ctx;
 static u_int32_t new_callref = 0x40000001;
 
 struct value_string {
@@ -262,7 +262,7 @@ enum sms_alphabet gsm338_get_sms_alphabet(u_int8_t dcs)
 		if (cgbits & 2)
 			DEBUGP(DSMS, "Compressed SMS not supported yet\n");
 
-		switch (dcs & 3) {
+		switch ((dcs >> 2)&0x03) {
 		case 0:
 			alpha = DCS_7BIT_DEFAULT;
 			break;
@@ -389,8 +389,8 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	*smsp = sms->user_data_len;
 
 	/* generate TP-UD */
-	/* FIXME: Handle DSC of UCS2 or 8/bit default */
-	if (gsm338_get_sms_alphabet(sms->data_coding_scheme) == DCS_7BIT_DEFAULT) {
+	switch (gsm338_get_sms_alphabet(sms->data_coding_scheme)) {
+	case DCS_7BIT_DEFAULT:
 		octet_len = sms->user_data_len*7/8;
 		if (sms->user_data_len*7%8 != 0)
 			octet_len++;
@@ -398,6 +398,15 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 		 * (characters), we need amount of octets occupied */
 		smsp = msgb_put(msg, octet_len);
 		memcpy(smsp, sms->user_data, octet_len);
+		break;
+	case DCS_UCS2:
+	case DCS_8BIT_DATA:
+		smsp = msgb_put(msg, sms->user_data_len);
+		memcpy(smsp, sms->user_data, sms->user_data_len);
+		break;
+	default:
+		DEBUGP(DSMS, "Unhandled Data Coding Scheme: 0x%02X\n", sms->data_coding_scheme);
+		break;
 	}
 
 	return msg->len - old_msg_len;
@@ -1079,7 +1088,5 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 
 static __attribute__((constructor)) void on_dso_load_sms(void)
 {
-	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms");
-
 	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
 }

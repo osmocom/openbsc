@@ -1630,7 +1630,7 @@ extern void *tall_bsc_ctx;
 /* Install vty's own commands like `who' command. */
 void vty_init()
 {
-	tall_vty_ctx = talloc_named_const(tall_bsc_ctx, 1, "vty");
+	tall_vty_ctx = talloc_named_const(NULL, 0, "vty");
 
 	/* For further configuration read, preserve current directory. */
 	vty_save_cwd();

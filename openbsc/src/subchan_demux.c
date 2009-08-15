@@ -31,7 +31,7 @@
 #include <openbsc/talloc.h>
 #include <openbsc/gsm_data.h>
 
-static void *tall_tqe_ctx;
+void *tall_tqe_ctx;
 
 static inline void append_bit(struct demux_subch *sch, u_int8_t bit)
 {
@@ -319,10 +319,4 @@ int subchan_mux_init(struct subch_mux *mx)
 	}
 
 	return 0;
-}
-
-static __attribute__((constructor)) void on_dso_load_ss_demux(void)
-{
-	tall_tqe_ctx = talloc_named_const(tall_bsc_ctx, 1,
-					  "subch_txq_entry");
 }

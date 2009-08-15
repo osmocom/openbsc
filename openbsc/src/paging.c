@@ -49,7 +49,7 @@
 #define PAGING_TIMEOUT 1, 75000
 #define MAX_PAGING_REQUEST 750
 
-static void *tall_paging_ctx;
+void *tall_paging_ctx;
 
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 {
@@ -315,9 +315,4 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
 	bts->paging.available_slots = free_slots;
-}
-
-static __attribute__((constructor)) void on_dso_load_paging(void)
-{
-	tall_paging_ctx = talloc_named_const(NULL, 1, "paging_request");
 }

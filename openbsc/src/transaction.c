@@ -29,7 +29,7 @@
 #include <openbsc/mncc.h>
 #include <openbsc/paging.h>
 
-static void *tall_trans_ctx;
+void *tall_trans_ctx;
 
 void _gsm48_cc_trans_free(struct gsm_trans *trans);
 
