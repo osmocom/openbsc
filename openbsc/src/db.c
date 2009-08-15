@@ -88,6 +88,7 @@ static char *create_stmts[] = {
 		"sent TIMESTAMP, "
 		"sender_id INTEGER NOT NULL, "
 		"receiver_id INTEGER NOT NULL, "
+		"deliver_attempts INTEGER NOT NULL DEFAULT 0, "
 		/* data directly copied/derived from SMS */
 		"valid_until TIMESTAMP, "
 		"reply_path_req INTEGER NOT NULL, "
@@ -688,8 +689,10 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE id >= %llu AND sent is NULL ORDER BY id",
+		"SELECT * FROM SMS,Subscriber "
+		"WHERE sms.id >= %llu AND sms.sent is NULL "
+			"AND subscriber.lac > 0 "
+		"ORDER BY id",
 		min_id);
 	if (!result)
 		return NULL;
@@ -713,8 +716,10 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE receiver_id = %llu AND sent is NULL ORDER BY id",
+		"SELECT * FROM SMS,Subscriber "
+		"WHERE sms.receiver_id = %llu AND sms.sent is NULL "
+			"AND subscriber.lac > 0 "
+		"ORDER BY id",
 		subscr->id);
 	if (!result)
 		return NULL;
@@ -742,6 +747,24 @@ int db_sms_mark_sent(struct gsm_sms *sms)
 		"WHERE id = %llu", sms->id);
 	if (!result) {
 		printf("DB: Failed to mark SMS %llu as sent.\n", sms->id);
+		return 1;
+	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+/* increase the number of attempted deliveries */
+int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
+{
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+		"UPDATE SMS "
+		"SET deliver_attempts = deliver_attempts + 1 "
+		"WHERE id = %llu", sms->id);
+	if (!result) {
+		printf("DB: Failed to inc deliver attempts for SMS %llu.\n", sms->id);
 		return 1;
 	}
 
