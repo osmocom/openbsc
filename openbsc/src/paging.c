@@ -247,13 +247,16 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		   int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts *bts = NULL;
-	int rc;
+	int num_pages = 0;
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
+		int rc;
+
 		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
 			break;
+		num_pages++;
 
 		/* Trigger paging, pass any error to caller */
 		rc = _paging_request(bts, subscr, type, cbfn, data);
@@ -261,7 +264,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 			return rc;
 	} while (1);
 
-	return 0;
+	return num_pages;
 }
 
 

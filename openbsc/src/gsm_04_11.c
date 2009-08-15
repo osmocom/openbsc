@@ -1046,7 +1046,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	/* if not, we have to start paging */
 	rc = paging_request(subscr->net, subscr, RSL_CHANNEED_SDCCH,
 			    paging_cb_send_sms, sms);
-	if (rc < 0)
+	if (rc <= 0)
 		sms_free(sms);
 
 	return 0;
