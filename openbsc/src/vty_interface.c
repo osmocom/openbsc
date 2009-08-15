@@ -433,7 +433,8 @@ static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
 	if (subscr->tmsi)
-		vty_out(vty, "    TMSI: %08X", subscr->tmsi, VTY_NEWLINE);
+		vty_out(vty, "    TMSI: %08X%s", atoi(subscr->tmsi),
+			VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
