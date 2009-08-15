@@ -262,7 +262,7 @@ enum sms_alphabet gsm338_get_sms_alphabet(u_int8_t dcs)
 		if (cgbits & 2)
 			DEBUGP(DSMS, "Compressed SMS not supported yet\n");
 
-		switch (dcs & 3) {
+		switch ((dcs >> 2)&0x03) {
 		case 0:
 			alpha = DCS_7BIT_DEFAULT;
 			break;
