@@ -1242,16 +1242,16 @@ static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 	return b;
 }
 
-int sms_from_text(struct gsm_subscriber *receiver, const char *text)
+struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 {
 	struct gsm_sms *sms = sms_alloc();
 
 	if (!sms)
-		return CMD_WARNING;
+		return NULL;
 
 	if (!receiver->lac) {
 		/* subscriber currently not attached, store in database? */
-		return CMD_WARNING;
+		return NULL;
 	}
 
 	sms->receiver = subscr_get(receiver);
