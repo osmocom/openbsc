@@ -213,7 +213,7 @@ static void paging_T3113_expired(void *data)
 	paging_remove_request(&req->bts->paging, req);
 }
 
-static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 			    int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
@@ -221,7 +221,7 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 
 	if (paging_pending_request(bts_entry, subscr)) {
 		DEBUGP(DPAG, "Paging request already pending\n");
-		return;
+		return -EEXIST;
 	}
 
 	DEBUGP(DPAG, "Start paging of subscriber %llu on bts %d.\n",
@@ -239,12 +239,15 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 
 	if (!bsc_timer_pending(&bts_entry->work_timer))
 		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
+
+	return 0;
 }
 
-void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
-		    int type, gsm_cbfn *cbfn, void *data)
+int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+		   int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts *bts = NULL;
+	int rc;
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -252,9 +255,13 @@ void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		if (!bts)
 			break;
 
-		/* Trigger paging */
-		_paging_request(bts, subscr, type, cbfn, data);
+		/* Trigger paging, pass any error to caller */
+		rc = _paging_request(bts, subscr, type, cbfn, data);
+		if (rc < 0)
+			return rc;
 	} while (1);
+
+	return 0;
 }
 
 

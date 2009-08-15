@@ -1025,6 +1025,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms)
 {
 	struct gsm_lchan *lchan;
+	int rc;
 
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
@@ -1034,8 +1035,10 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 				     rll_ind_cb, sms);
 
 	/* if not, we have to start paging */
-	paging_request(subscr->net, subscr, RSL_CHANNEED_SDCCH,
-			paging_cb_send_sms, sms);
+	rc = paging_request(subscr->net, subscr, RSL_CHANNEED_SDCCH,
+			    paging_cb_send_sms, sms);
+	if (rc < 0)
+		sms_free(sms);
 
 	return 0;
 }
