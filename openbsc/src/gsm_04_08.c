@@ -1825,6 +1825,24 @@ static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 	return 0;
 }
 
+static int gsm48_rx_rr_app_info(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t apdu_id_flags;
+	u_int8_t apdu_len;
+	u_int8_t *apdu_data;
+
+	apdu_id_flags = gh->data[0];
+	apdu_len = gh->data[1];
+	apdu_data = gh->data+2;
+	
+	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
+		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
+
+	return 0;
+}
+
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
@@ -1853,6 +1871,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_MEAS_REP:
 		rc = gsm48_rx_rr_meas_rep(msg);
+		break;
+	case GSM48_MT_RR_APP_INFO:
+		rc = gsm48_rx_rr_app_info(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
@@ -1886,6 +1907,27 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);
+}
+
+int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+			   u_int8_t apdu_len, u_int8_t *apdu)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	msg->lchan = lchan;
+	
+	DEBUGP(DRR, "TX APPLICATION INFO id=0x%02x, len=%u\n",
+		apdu_id, apdu_len);
+	
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2 + apdu_len);
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_APP_INFO;
+	gh->data[0] = apdu_id;
+	gh->data[1] = apdu_len;
+	memcpy(gh->data+2, apdu, apdu_len);
+
+	return gsm48_sendmsg(msg, NULL);
 }
 
 /* Call Control */

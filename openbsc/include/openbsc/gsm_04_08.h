@@ -705,6 +705,8 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+			   u_int8_t apdu_len, u_int8_t *apdu);
 
 int bsc_upqueue(struct gsm_network *net);
 
