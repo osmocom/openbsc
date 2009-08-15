@@ -389,8 +389,8 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	*smsp = sms->user_data_len;
 
 	/* generate TP-UD */
-	/* FIXME: Handle DSC of UCS2 or 8/bit default */
-	if (gsm338_get_sms_alphabet(sms->data_coding_scheme) == DCS_7BIT_DEFAULT) {
+	switch (gsm338_get_sms_alphabet(sms->data_coding_scheme)) {
+	case DCS_7BIT_DEFAULT:
 		octet_len = sms->user_data_len*7/8;
 		if (sms->user_data_len*7%8 != 0)
 			octet_len++;
@@ -398,6 +398,15 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 		 * (characters), we need amount of octets occupied */
 		smsp = msgb_put(msg, octet_len);
 		memcpy(smsp, sms->user_data, octet_len);
+		break;
+	case DCS_UCS2:
+	case DCS_8BIT_DATA:
+		smsp = msgb_put(msg, sms->user_data_len);
+		memcpy(smsp, sms->user_data, sms->user_data_len);
+		break;
+	default:
+		DEBUGP(DSMS, "Unhandled Data Coding Scheme: 0x%02X\n", sms->data_coding_scheme);
+		break;
 	}
 
 	return msg->len - old_msg_len;
