@@ -53,7 +53,7 @@
 
 #define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
-static void *tall_gsms_ctx;
+void *tall_gsms_ctx;
 static u_int32_t new_callref = 0x40000001;
 
 struct value_string {
@@ -1076,7 +1076,5 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 
 static __attribute__((constructor)) void on_dso_load_sms(void)
 {
-	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 1, "sms");
-
 	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
 }

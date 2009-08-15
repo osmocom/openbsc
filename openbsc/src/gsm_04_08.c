@@ -56,7 +56,7 @@
 #define GSM_MAX_SSVERSION      128
 #define GSM_MAX_USERUSER       128
 
-static void *tall_locop_ctx;
+void *tall_locop_ctx;
 
 /* should ip.access BTS use direct RTP streams between each other (1),
  * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
@@ -3896,8 +3896,6 @@ int bsc_upqueue(struct gsm_network *net)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
-	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 1,
-					    "loc_updating_oper");
 	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }

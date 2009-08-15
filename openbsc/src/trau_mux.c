@@ -47,7 +47,7 @@ struct upqueue_entry {
 static LLIST_HEAD(ss_map);
 static LLIST_HEAD(ss_upqueue);
 
-static void *tall_map_ctx, *tall_upq_ctx;
+void *tall_map_ctx, *tall_upq_ctx;
 
 /* map one particular subslot to another subslot */
 int trau_mux_map(const struct gsm_e1_subslot *src,
@@ -234,13 +234,4 @@ int trau_send_lchan(struct gsm_lchan *lchan, struct decoded_trau_frame *tf)
 	/* and send it to the muxer */
 	return subchan_mux_enqueue(mx, dst_e1_ss->e1_ts_ss, trau_bits_out,
 				   TRAU_FRAME_BITS);
-}
-
-static __attribute__((constructor)) void on_dso_load_trau_mux(void)
-{
-	tall_map_ctx = talloc_named_const(tall_bsc_ctx, 1,
-					  "trau_map_entry");
-
-	tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 1,
-					  "trau_upq_entry");
 }

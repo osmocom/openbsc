@@ -36,8 +36,8 @@
 #include <openbsc/db.h>
 
 LLIST_HEAD(active_subscribers);
-static void *tall_subscr_ctx;
-static void *tall_sub_req_ctx;
+void *tall_subscr_ctx;
+void *tall_sub_req_ctx;
 
 /*
  * Struct for pending channel requests. This is managed in the
@@ -281,13 +281,4 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 
 	if (lchan->subscr && !llist_empty(&lchan->subscr->requests))
 		subscr_send_paging_request(lchan->subscr);
-}
-
-
-static __attribute__((constructor)) void on_dso_load_subscr(void)
-{
-	tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 1, "subscriber");
-
-	tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 1,
-						      "subscr_request");
 }
