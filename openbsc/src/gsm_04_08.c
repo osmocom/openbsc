@@ -1839,7 +1839,7 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
 
-	return 0;
+	return db_apdu_blob_store(msg->lchan->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
 

@@ -109,6 +109,13 @@ static char *create_stmts[] = {
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
 		"last_bts NUMERIC NOT NULL "
 		")",
+	"CREATE TABLE IF NOT EXISTS ApduBlobs ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"apdu_id_flags INTEGER NOT NULL, "
+		"subscriber_id INTEGER NOT NULL, "
+		"apdu BLOB "
+		")",
 };
 
 void db_error_func(dbi_conn conn, void* data) {
@@ -767,6 +774,30 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
 		printf("DB: Failed to inc deliver attempts for SMS %llu.\n", sms->id);
 		return 1;
 	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_apdu_blob_store(struct gsm_subscriber *subscr, 
+			u_int8_t apdu_id_flags, u_int8_t len,
+			u_int8_t *apdu)
+{
+	dbi_result result;
+	char *q_apdu;
+
+	dbi_conn_quote_binary_copy(conn, apdu, len, &q_apdu);
+
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO ApduBlobs "
+		"(created,subscriber_id,apdu_id_flags,apdu) VALUES "
+		"(datetime('now'),%llu,%u,%s)",
+		subscr->id, apdu_id_flags, q_apdu);
+
+	free(q_apdu);
+
+	if (!result)
+		return -EIO;
 
 	dbi_result_free(result);
 	return 0;
