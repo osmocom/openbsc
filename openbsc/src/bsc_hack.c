@@ -1219,6 +1219,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
+	on_dso_load_rrlp();
 
 	/* parse options */
 	handle_options(argc, argv);
