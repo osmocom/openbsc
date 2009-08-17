@@ -1165,8 +1165,10 @@ static int mm_rx_id_resp(struct msgb *msg)
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* update subscribe <-> IMEI mapping */
-		if (lchan->subscr)
+		if (lchan->subscr) {
 			db_subscriber_assoc_imei(lchan->subscr, mi_string);
+			db_sync_equipment(&lchan->subscr->equipment);
+		}
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imei = 0;
 		break;
@@ -1289,6 +1291,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	}
 
 	lchan->subscr = subscr;
+	lchan->subscr->equipment.classmark1 = lu->classmark1;
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
@@ -1614,6 +1617,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n",
 		       subscr->name ? subscr->name : subscr->imsi);
+
+		subscr->equipment.classmark1 = idi->classmark1;
+		db_sync_equipment(&subscr->equipment);
+
 		subscr_put(subscr);
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
