@@ -1165,8 +1165,10 @@ static int mm_rx_id_resp(struct msgb *msg)
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* update subscribe <-> IMEI mapping */
-		if (lchan->subscr)
+		if (lchan->subscr) {
 			db_subscriber_assoc_imei(lchan->subscr, mi_string);
+			db_sync_equipment(&lchan->subscr->equipment);
+		}
 		if (lchan->loc_operation)
 			lchan->loc_operation->waiting_for_imei = 0;
 		break;
@@ -1289,6 +1291,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	}
 
 	lchan->subscr = subscr;
+	lchan->subscr->equipment.classmark1 = lu->classmark1;
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
@@ -1614,6 +1617,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n",
 		       subscr->name ? subscr->name : subscr->imsi);
+
+		subscr->equipment.classmark1 = idi->classmark1;
+		db_sync_equipment(&subscr->equipment);
+
 		subscr_put(subscr);
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
@@ -1825,6 +1832,24 @@ static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 	return 0;
 }
 
+static int gsm48_rx_rr_app_info(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t apdu_id_flags;
+	u_int8_t apdu_len;
+	u_int8_t *apdu_data;
+
+	apdu_id_flags = gh->data[0];
+	apdu_len = gh->data[1];
+	apdu_data = gh->data+2;
+	
+	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
+		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
+
+	return db_apdu_blob_store(msg->lchan->subscr, apdu_id_flags, apdu_len, apdu_data);
+}
+
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
@@ -1853,6 +1878,9 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_MEAS_REP:
 		rc = gsm48_rx_rr_meas_rep(msg);
+		break;
+	case GSM48_MT_RR_APP_INFO:
+		rc = gsm48_rx_rr_app_info(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
@@ -1886,6 +1914,27 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);
+}
+
+int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+			   u_int8_t apdu_len, u_int8_t *apdu)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	msg->lchan = lchan;
+	
+	DEBUGP(DRR, "TX APPLICATION INFO id=0x%02x, len=%u\n",
+		apdu_id, apdu_len);
+	
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2 + apdu_len);
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_APP_INFO;
+	gh->data[0] = apdu_id;
+	gh->data[1] = apdu_len;
+	memcpy(gh->data+2, apdu, apdu_len);
+
+	return gsm48_sendmsg(msg, NULL);
 }
 
 /* Call Control */

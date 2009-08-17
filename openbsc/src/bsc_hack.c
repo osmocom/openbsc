@@ -930,6 +930,8 @@ static void patch_si_tables(struct gsm_bts *bts)
 		(struct gsm48_system_information_type_3*)&si3;
 	struct gsm48_system_information_type_4 *type_4 =
 		(struct gsm48_system_information_type_4*)&si4;
+	struct gsm48_system_information_type_5 *type_5 =
+		(struct gsm48_system_information_type_5*)&si5;
 	struct gsm48_system_information_type_6 *type_6 =
 		(struct gsm48_system_information_type_6*)&si6;
 	struct gsm48_loc_area_id lai;
@@ -968,6 +970,17 @@ static void patch_si_tables(struct gsm_bts *bts)
 		type_2->rach_control.cell_bar = 0;
 		type_3->rach_control.cell_bar = 0;
 		type_4->rach_control.cell_bar = 0;
+	}
+
+	/* FIXME: This is just for HAR */
+	if (bts->c0->arfcn == 121) {
+		/* this is setting pin 124 */
+		type_2->bcch_frequency_list[0] = 0x08;
+		type_5->bcch_frequency_list[0] = 0x08;
+	} else if (bts->c0->arfcn == 124) {
+		/* this is setting pin 121 */
+		type_2->bcch_frequency_list[0] = 0x01;
+		type_5->bcch_frequency_list[0] = 0x01;
 	}
 }
 
@@ -1219,6 +1232,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
+	on_dso_load_rrlp();
 
 	/* parse options */
 	handle_options(argc, argv);

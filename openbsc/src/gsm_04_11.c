@@ -295,6 +295,9 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 	}
 	/* dispatch a signal to tell higher level about it */
 	dispatch_signal(SS_SMS, S_SMS_SUBMITTED, gsms);
+	/* try delivering the SMS right now */
+	//gsm411_send_sms_subscr(gsms->receiver, gsms);
+
 	return 0;
 }
 
@@ -675,14 +678,19 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 
 	if (!trans->sms.is_mt) {
 		DEBUGP(DSMS, "RX RP-ERR on a MO transfer ?\n");
+#if 0
 		return gsm411_send_rp_error(trans, rph->msg_ref,
 					    GSM411_RP_CAUSE_MSG_INCOMP_STATE);
+#endif
 	}
 
 	if (!sms) {
 		DEBUGP(DSMS, "RX RP-ERR, but no sms in transaction?!?\n");
+		return -EINVAL;
+#if 0
 		return gsm411_send_rp_error(trans, rph->msg_ref,
 					    GSM411_RP_CAUSE_PROTOCOL_ERR);
+#endif
 	}
 
 	if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {

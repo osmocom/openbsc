@@ -24,6 +24,7 @@
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
+#include <openbsc/debug.h>
 
 #include <libgen.h>
 #include <stdio.h>
@@ -88,6 +89,7 @@ static char *create_stmts[] = {
 		"sent TIMESTAMP, "
 		"sender_id INTEGER NOT NULL, "
 		"receiver_id INTEGER NOT NULL, "
+		"deliver_attempts INTEGER NOT NULL DEFAULT 0, "
 		/* data directly copied/derived from SMS */
 		"valid_until TIMESTAMP, "
 		"reply_path_req INTEGER NOT NULL, "
@@ -107,6 +109,13 @@ static char *create_stmts[] = {
 		"updated TIMESTAMP NOT NULL, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
 		"last_bts NUMERIC NOT NULL "
+		")",
+	"CREATE TABLE IF NOT EXISTS ApduBlobs ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"created TIMESTAMP NOT NULL, "
+		"apdu_id_flags INTEGER NOT NULL, "
+		"subscriber_id INTEGER NOT NULL, "
+		"apdu BLOB "
 		")",
 };
 
@@ -252,6 +261,53 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 	return subscr;
 }
 
+static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	char *string;
+	unsigned int cm1;
+	const unsigned char *cm2, *cm3;
+	struct gsm_equipment *equip = &subscr->equipment;
+
+	result = dbi_conn_queryf(conn,
+				"SELECT equipment.* FROM equipment,equipmentwatch "
+				"WHERE equipmentwatch.equipment_id=equipment.id "
+				"AND equipmentwatch.subscriber_id = %llu "
+				"ORDER BY updated DESC", subscr->id);
+	if (!result)
+		return -EIO;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	equip->id = dbi_result_get_ulonglong(result, "id");
+
+	string = dbi_result_get_string(result, "imei");
+	if (string)
+		strncpy(equip->imei, string, sizeof(equip->imei));
+
+	cm1 = dbi_result_get_uint(result, "classmark1") & 0xff;
+	equip->classmark1 = *((struct gsm48_classmark1 *) &cm1);
+
+	equip->classmark2_len = dbi_result_get_field_length(result, "classmark2");
+	cm2 = dbi_result_get_binary(result, "classmark2");
+	if (equip->classmark2_len > sizeof(equip->classmark2))
+		equip->classmark2_len = sizeof(equip->classmark2);
+	memcpy(equip->classmark2, cm2, equip->classmark2_len);
+
+	equip->classmark3_len = dbi_result_get_field_length(result, "classmark3");
+	cm3 = dbi_result_get_binary(result, "classmark3");
+	if (equip->classmark3_len > sizeof(equip->classmark3))
+		equip->classmark3_len = sizeof(equip->classmark3);
+	memcpy(equip->classmark3, cm3, equip->classmark3_len);
+
+	dbi_result_free(result);
+
+	return 0;
+}
+#define BASE_QUERY "SELECT * FROM Subscriber "
 struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
 					 const char *id)
@@ -265,7 +321,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	case GSM_SUBSCRIBER_IMSI:
 		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
-			"SELECT * FROM Subscriber "
+			BASE_QUERY
 			"WHERE imsi = %s ",
 			quoted
 		);
@@ -274,7 +330,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	case GSM_SUBSCRIBER_TMSI:
 		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
-			"SELECT * FROM Subscriber "
+			BASE_QUERY
 			"WHERE tmsi = %s ",
 			quoted
 		);
@@ -283,7 +339,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	case GSM_SUBSCRIBER_EXTENSION:
 		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
-			"SELECT * FROM Subscriber "
+			BASE_QUERY
 			"WHERE extension = %s ",
 			quoted
 		);
@@ -292,7 +348,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	case GSM_SUBSCRIBER_ID:
 		dbi_conn_quote_string_copy(conn, id, &quoted);
 		result = dbi_conn_queryf(conn,
-			"SELECT * FROM Subscriber "
+			BASE_QUERY
 			"WHERE id = %s ", quoted);
 		free(quoted);
 		break;
@@ -336,6 +392,9 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
+
+	get_equipment_by_subscr(subscr);
+
 	return subscr;
 }
 
@@ -377,6 +436,16 @@ int db_sync_equipment(struct gsm_equipment *equip)
 {
 	dbi_result result;
 	unsigned char *cm2, *cm3;
+
+	printf("DB: Sync Equipment IMEI=%s, classmark1=%02x",
+		equip->imei, equip->classmark1);
+	if (equip->classmark2_len)
+ 		printf(", classmark2=%s",
+			hexdump(equip->classmark2, equip->classmark2_len));
+	if (equip->classmark3_len)
+		printf(", classmark3=%s",
+			hexdump(equip->classmark3, equip->classmark3_len));
+	printf("\n");
 
 	dbi_conn_quote_binary_copy(conn, equip->classmark2,
 				   equip->classmark2_len, &cm2);
@@ -688,8 +757,10 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE id >= %llu AND sent is NULL ORDER BY id",
+		"SELECT * FROM SMS,Subscriber "
+		"WHERE sms.id >= %llu AND sms.sent is NULL "
+			"AND subscriber.lac > 0 "
+		"ORDER BY id",
 		min_id);
 	if (!result)
 		return NULL;
@@ -713,8 +784,10 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS "
-		"WHERE receiver_id = %llu AND sent is NULL ORDER BY id",
+		"SELECT * FROM SMS,Subscriber "
+		"WHERE sms.receiver_id = %llu AND sms.sent is NULL "
+			"AND subscriber.lac > 0 "
+		"ORDER BY id",
 		subscr->id);
 	if (!result)
 		return NULL;
@@ -744,6 +817,48 @@ int db_sms_mark_sent(struct gsm_sms *sms)
 		printf("DB: Failed to mark SMS %llu as sent.\n", sms->id);
 		return 1;
 	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+/* increase the number of attempted deliveries */
+int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
+{
+	dbi_result result;
+
+	result = dbi_conn_queryf(conn,
+		"UPDATE SMS "
+		"SET deliver_attempts = deliver_attempts + 1 "
+		"WHERE id = %llu", sms->id);
+	if (!result) {
+		printf("DB: Failed to inc deliver attempts for SMS %llu.\n", sms->id);
+		return 1;
+	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_apdu_blob_store(struct gsm_subscriber *subscr, 
+			u_int8_t apdu_id_flags, u_int8_t len,
+			u_int8_t *apdu)
+{
+	dbi_result result;
+	char *q_apdu;
+
+	dbi_conn_quote_binary_copy(conn, apdu, len, &q_apdu);
+
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO ApduBlobs "
+		"(created,subscriber_id,apdu_id_flags,apdu) VALUES "
+		"(datetime('now'),%llu,%u,%s)",
+		subscr->id, apdu_id_flags, q_apdu);
+
+	free(q_apdu);
+
+	if (!result)
+		return -EIO;
 
 	dbi_result_free(result);
 	return 0;
