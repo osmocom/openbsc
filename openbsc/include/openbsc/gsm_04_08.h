@@ -681,6 +681,11 @@ enum gsm48_bcap_rrq {
 	GSM48_BCAP_RRQ_DUAL_FR	= 3,
 };
 
+
+#define GSM48_TMSI_LEN	5
+#define GSM48_MID_TMSI_LEN	(GSM48_TMSI_LEN + 2)
+
+
 struct msgb;
 struct gsm_bts;
 struct gsm_subscriber;
@@ -705,6 +710,8 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
 int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+			   u_int8_t apdu_len, u_int8_t *apdu);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -715,5 +722,7 @@ int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
 		      int h_len, const char *input);
 int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 		      int h_len);
+
+extern const char *gsm0408_cc_msg_names[];
 
 #endif
