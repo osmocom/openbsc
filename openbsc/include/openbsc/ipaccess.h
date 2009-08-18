@@ -36,4 +36,11 @@ enum ipaccess_id_tags {
 
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
 
+/*
+ * methods for parsing and sending a message
+ */
+int ipaccess_rcvmsg_base(struct msgb *msg, struct bsc_fd *bfd);
+struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error);
+void ipaccess_prepend_header(struct msgb *msg, int proto);
+
 #endif /* _IPACCESS_H */

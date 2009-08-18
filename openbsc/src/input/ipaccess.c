@@ -164,13 +164,11 @@ static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 	return 0;
 }
 
-static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
-			   struct bsc_fd *bfd)
+/* base handling of the ip.access protocol */
+int ipaccess_rcvmsg_base(struct msgb *msg,
+			 struct bsc_fd *bfd)
 {
-	struct tlv_parsed tlvp;
 	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
-	struct gsm_bts *bts;
 	int ret = 0;
 
 	switch (msg_type) {
@@ -180,6 +178,26 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
 		break;
+	case IPAC_MSGT_ID_ACK:
+		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
+		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		break;
+	}
+	return 0;
+}
+
+static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
+			   struct bsc_fd *bfd)
+{
+	struct tlv_parsed tlvp;
+	u_int8_t msg_type = *(msg->l2h);
+	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
+	struct gsm_bts *bts;
+
+	/* handle base messages */
+	ipaccess_rcvmsg_base(msg, bfd);
+
+	switch (msg_type) {
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
@@ -225,10 +243,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			talloc_free(bfd);
 		}
 		break;
-	case IPAC_MSGT_ID_ACK:
-		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
-		break;	
 	}
 	return 0;
 }
@@ -237,34 +251,35 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 static int oml_up = 0;
 static int rsl_up = 0;
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+/*
+ * read one ipa message from the socket
+ * return NULL in case of error
+ */
+struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 {
-	struct e1inp_line *line = bfd->data;
-	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct e1inp_sign_link *link;
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
-	int ret;
+	int ret = 0;
 
-	if (!msg)
-		return -ENOMEM;
+	if (!msg) {
+		*error = -ENOMEM;
+		return NULL;
+	}
 
 	/* first read our 3-byte header */
 	hh = (struct ipaccess_head *) msg->data;
 	ret = recv(bfd->fd, msg->data, 3, 0);
 	if (ret < 0) {
 		fprintf(stderr, "recv error  %s\n", strerror(errno));
-		return ret;
+		msgb_free(msg);
+		*error = ret;
+		return NULL;
+	} else if (ret == 0) {
+		msgb_free(msg);
+		*error = ret;
+		return NULL;
 	}
-	if (ret == 0) {
-		fprintf(stderr, "BTS disappeared, dead socket\n");
-		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
-		e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
-		bsc_unregister_fd(bfd);
-		close(bfd->fd);
-		bfd->fd = -1;
-	}
+
 	msgb_put(msg, ret);
 
 	/* then read te length as specified in header */
@@ -273,11 +288,40 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	if (ret < hh->len) {
 		fprintf(stderr, "short read!\n");
 		msgb_free(msg);
-		return -EIO;
+		*error = -EIO;
+		return NULL;
 	}
 	msgb_put(msg, ret);
+
+	return msg;
+}
+
+static int handle_ts1_read(struct bsc_fd *bfd)
+{
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_sign_link *link;
+	struct msgb *msg;
+	struct ipaccess_head *hh;
+	int ret, error;
+
+	msg = ipaccess_read_msg(bfd, &error);
+	if (!msg) {
+		if (error == 0) {
+			fprintf(stderr, "BTS disappeared, dead socket\n");
+			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
+			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
+			bsc_unregister_fd(bfd);
+			close(bfd->fd);
+			bfd->fd = -1;
+		}
+		return error;
+	}
+
 	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), ret));
 
+	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		ret = ipaccess_rcvmsg(line, msg, bfd);
 		if (ret < 0) {
@@ -324,6 +368,17 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	return ret;
 }
 
+void ipaccess_prepend_header(struct msgb *msg, int proto)
+{
+	struct ipaccess_head *hh;
+
+	/* prepend the ip.access header */
+	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
+	hh->zero = 0;
+	hh->len = msg->len - sizeof(*hh);
+	hh->proto = proto;
+}
+
 static int handle_ts1_write(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -331,8 +386,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	struct ipaccess_head *hh;
-	u_int8_t *l2_data;
+	u_int8_t proto;
 	int ret;
 
 	/* get the next msg for this timeslot */
@@ -342,26 +396,23 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	l2_data = msg->data;
-
-	/* prepend the ip.access header */
-	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
-	hh->zero = 0;
-	hh->len = msg->len - sizeof(*hh);
-
 	switch (sign_link->type) {
 	case E1INP_SIGN_OML:
-		hh->proto = IPAC_PROTO_OML;
+		proto = IPAC_PROTO_OML;
 		break;
 	case E1INP_SIGN_RSL:
-		hh->proto = IPAC_PROTO_RSL;
+		proto = IPAC_PROTO_RSL;
 		break;
 	default:
 		msgb_free(msg);
 		return -EINVAL;
 	}
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(l2_data, hh->len));
+
+	msg->l2h = msg->data;
+	ipaccess_prepend_header(msg, proto);
+
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
