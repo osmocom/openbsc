@@ -21,6 +21,7 @@
 #define DINP		0x8000
 
 #define DSCCP		0x10000
+#define DMSC		0x20000
 
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
