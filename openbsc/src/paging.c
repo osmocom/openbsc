@@ -90,7 +90,6 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 static void page_ms(struct gsm_paging_request *request)
 {
 	u_int8_t mi[128];
-	unsigned long int tmsi;
 	unsigned int mi_len;
 	unsigned int page_group;
 
@@ -98,8 +97,7 @@ static void page_ms(struct gsm_paging_request *request)
 		request->subscr->imsi);
 
 	page_group = calculate_group(request->bts, request->subscr);
-	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
+	mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }

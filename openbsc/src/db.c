@@ -376,7 +376,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 	string = dbi_result_get_string(result, "tmsi");
 	if (string)
-		strncpy(subscr->tmsi, string, GSM_TMSI_LENGTH);
+		subscr->tmsi = tmsi_from_string(string);
 
 	string = dbi_result_get_string(result, "name");
 	if (string)
@@ -388,7 +388,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 	subscr->lac = dbi_result_get_uint(result, "lac");
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %s, EXTEN '%s', LAC %hu, AUTH %u\n",
+	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
@@ -400,12 +400,15 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 	dbi_result result;
+	char tmsi[14];
 	char *q_tmsi;
-	if (subscriber->tmsi[0])
+
+	if (subscriber->tmsi != GSM_RESERVED_TMSI) {
+		sprintf(tmsi, "%u", subscriber->tmsi);
 		dbi_conn_quote_string_copy(conn,
-				   subscriber->tmsi,
+				   tmsi,
 				   &q_tmsi);
-	else 
+	} else
 		q_tmsi = strdup("NULL");
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
@@ -475,10 +478,15 @@ int db_sync_equipment(struct gsm_equipment *equip)
 
 int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 	dbi_result result=NULL;
+	char tmsi[14];
 	char* tmsi_quoted;
 	for (;;) {
-		sprintf(subscriber->tmsi, "%i", rand());
-		dbi_conn_quote_string_copy(conn, subscriber->tmsi, &tmsi_quoted);
+		subscriber->tmsi = rand();
+		if (subscriber->tmsi == GSM_RESERVED_TMSI)
+			continue;
+
+		sprintf(tmsi, "%u", subscriber->tmsi);
+		dbi_conn_quote_string_copy(conn, tmsi, &tmsi_quoted);
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
@@ -495,7 +503,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 		}
 		if (!dbi_result_next_row(result)) {
 			dbi_result_free(result);
-			printf("DB: Allocated TMSI %s for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
+			printf("DB: Allocated TMSI %u for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
 			return db_sync_subscriber(subscriber);
 		}
 		dbi_result_free(result);

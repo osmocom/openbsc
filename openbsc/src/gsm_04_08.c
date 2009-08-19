@@ -291,15 +291,12 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 
 static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 {
-	u_int32_t tmsi;
-
 	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
 		int rc;
 
 		db_subscriber_alloc_tmsi(lchan->subscr);
-		tmsi = strtoul(lchan->subscr->tmsi, NULL, 10);
 		release_loc_updating_req(lchan);
-		rc = gsm0408_loc_upd_acc(msg->lchan, tmsi);
+		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might
 		 * trigger further action like SMS delivery */
@@ -1054,7 +1051,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lchan->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
-		subscr = subscr_get_by_tmsi(bts->network, mi_string);
+		subscr = subscr_get_by_tmsi(bts->network,
+					    tmsi_from_string(mi_string));
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
@@ -1352,7 +1350,8 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
-	subscr = subscr_get_by_tmsi(bts->network, mi_string);
+	subscr = subscr_get_by_tmsi(bts->network,
+				    tmsi_from_string(mi_string));
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
@@ -1389,7 +1388,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(bts->network, mi_string);
+		subscr = subscr_get_by_tmsi(bts->network,
+					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
 		subscr = subscr_get_by_imsi(bts->network, mi_string);
@@ -1495,7 +1495,8 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
-		subscr = subscr_get_by_tmsi(bts->network, mi_string);
+		subscr = subscr_get_by_tmsi(bts->network,
+					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
 		subscr = subscr_get_by_imsi(bts->network, mi_string);

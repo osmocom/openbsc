@@ -427,8 +427,8 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			VTY_NEWLINE);
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi)
-		vty_out(vty, "    TMSI: %08X%s", atoi(subscr->tmsi),
+	if (subscr->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }

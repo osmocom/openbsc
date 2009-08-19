@@ -112,6 +112,7 @@ struct gsm_subscriber *subscr_alloc(void)
 	memset(s, 0, sizeof(*s));
 	llist_add_tail(&s->entry, &active_subscribers);
 	s->use_count = 1;
+	s->tmsi = GSM_RESERVED_TMSI;
 
 	INIT_LLIST_HEAD(&s->requests);
 

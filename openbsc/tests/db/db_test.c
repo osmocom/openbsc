@@ -38,8 +38,8 @@
 	if (strcmp(original->imsi, copy->imsi) != 0) \
 		fprintf(stderr, "IMSIs do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->imsi, copy->imsi); \
-	if (strcmp(original->tmsi, copy->tmsi) != 0) \
-		fprintf(stderr, "TMSIs do not match in %s:%d '%s' '%s'\n", \
+	if (original->tmsi != copy->tmsi) \
+		fprintf(stderr, "TMSIs do not match in %s:%d '%u' '%u'\n", \
 			__FUNCTION__, __LINE__, original->tmsi, copy->tmsi); \
 	if (strcmp(original->name, copy->name) != 0) \
 		fprintf(stderr, "names do not match in %s:%d '%s' '%s'\n", \
