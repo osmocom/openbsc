@@ -911,57 +911,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	return ret;
 }
 
-static char bcd2char(u_int8_t bcd)
-{
-	if (bcd < 0xa)
-		return '0' + bcd;
-	else
-		return 'A' + (bcd - 0xa);
-}
-
-/* Convert Mobile Identity (10.5.1.4) to string */
-static int mi_to_string(char *string, int str_len, u_int8_t *mi, int mi_len)
-{
-	int i;
-	u_int8_t mi_type;
-	char *str_cur = string;
-	u_int32_t tmsi;
-
-	mi_type = mi[0] & GSM_MI_TYPE_MASK;
-
-	switch (mi_type) {
-	case GSM_MI_TYPE_NONE:
-		break;
-	case GSM_MI_TYPE_TMSI:
-		/* Table 10.5.4.3, reverse generate_mid_from_tmsi */
-		if (mi_len == GSM48_TMSI_LEN && mi[0] == (0xf0 | GSM_MI_TYPE_TMSI)) {
-			memcpy(&tmsi, &mi[1], 4);
-			tmsi = ntohl(tmsi);
-			return snprintf(string, str_len, "%u", tmsi);
-		}
-		break;
-	case GSM_MI_TYPE_IMSI:
-	case GSM_MI_TYPE_IMEI:
-	case GSM_MI_TYPE_IMEISV:
-		*str_cur++ = bcd2char(mi[0] >> 4);
-		
-                for (i = 1; i < mi_len; i++) {
-			if (str_cur + 2 >= string + str_len)
-				return str_cur - string;
-			*str_cur++ = bcd2char(mi[i] & 0xf);
-			/* skip last nibble in last input byte when GSM_EVEN */
-			if( (i != mi_len-1) || (mi[0] & GSM_MI_ODD))
-				*str_cur++ = bcd2char(mi[i] >> 4);
-		}
-		break;
-	default:
-		break;
-	}
-	*str_cur++ = '\0';
-
-	return str_cur - string;
-}
-
 /* Transmit Chapter 9.2.10 Identity Request */
 static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 {
@@ -978,7 +927,6 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 	return gsm48_sendmsg(msg, NULL);
 }
 
-#define MI_SIZE 32
 
 /* Parse Chapter 9.2.11 Identity Response */
 static int mm_rx_id_resp(struct msgb *msg)
@@ -988,9 +936,9 @@ static int mm_rx_id_resp(struct msgb *msg)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_network *net = bts->network;
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
-	char mi_string[MI_SIZE];
+	char mi_string[GSM48_MI_SIZE];
 
-	mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
@@ -1052,7 +1000,6 @@ static const char *lupd_name(u_int8_t type)
 	}
 }
 
-#define MI_SIZE 32
 /* Chapter 9.2.15: Receive Location Updating Request */
 static int mm_rx_loc_upd_req(struct msgb *msg)
 {
@@ -1062,14 +1009,14 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	u_int8_t mi_type;
-	char mi_string[MI_SIZE];
+	char mi_string[GSM48_MI_SIZE];
 	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
 
 	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
-	mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 
 	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
@@ -1363,7 +1310,7 @@ static int send_siemens_mrpci(struct gsm_lchan *lchan,
 static int gsm48_rx_mm_serv_req(struct msgb *msg)
 {
 	u_int8_t mi_type;
-	char mi_string[MI_SIZE];
+	char mi_string[GSM48_MI_SIZE];
 
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm_subscriber *subscr;
@@ -1396,7 +1343,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
-	mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
@@ -1431,10 +1378,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
 	u_int8_t mi_type = idi->mi[0] & GSM_MI_TYPE_MASK;
-	char mi_string[MI_SIZE];
+	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
 
-	mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
 
@@ -1532,12 +1479,12 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	u_int8_t *classmark2_lv = gh->data + 1;
 	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
 	u_int8_t mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
-	char mi_string[MI_SIZE];
+	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
 	struct paging_signal_data sig_data;
 	int rc = 0;
 
-	mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, *mi_lv);
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, *mi_lv);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
