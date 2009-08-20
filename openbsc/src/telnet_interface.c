@@ -52,12 +52,6 @@ static void *tall_telnet_ctx;
 
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
-#if 0
-static int telnet_paging_callback(unsigned int subsys, unsigned int signal,
-				  void *handler_data, void *signal_data);
-static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
-				void *handler_data, void *signal_data);
-#endif
 
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
@@ -101,12 +95,6 @@ void telnet_init(struct gsm_network *network, int port) {
 	server_socket.data = network;
 	server_socket.fd = fd;
 	bsc_register_fd(&server_socket);
-
-	/* register callbacks */
-#if 0
-	register_signal_handler(SS_PAGING, telnet_paging_callback, network);
-	register_signal_handler(SS_SMS, telnet_sms_callback, network);
-#endif
 }
 
 static void print_welcome(int fd) {
@@ -216,38 +204,3 @@ void vty_event(enum event event, int sock, struct vty *vty)
 	}
 }
 
-#if 0
-static int telnet_paging_callback(unsigned int subsys, unsigned int singal,
-				  void *handler_data, void *signal_data)
-{
-	struct paging_signal_data *paging = signal_data;
-	struct telnet_connection *con;
-
-	llist_for_each_entry(con, &active_connections, entry) {
-		if (paging->lchan) {
-			WRITE_CONNECTION(con->fd.fd, "Paging succeeded\n");
-			show_lchan(con->fd.fd, paging->lchan);
-		} else {
-			WRITE_CONNECTION(con->fd.fd, "Paging failed for subscriber: %s/%s/%s\n",
-				paging->subscr->imsi,
-				paging->subscr->tmsi,
-				paging->subscr->name);
-		}
-	}
-
-	return 0;
-}
-
-static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
-				void *handler_data, void *signal_data)
-{
-	struct sms_submit *sms = signal_data;
-	struct telnet_connection *con;
-
-	llist_for_each_entry(con, &active_connections, entry) {
-		WRITE_CONNECTION(con->fd.fd, "Incoming SMS: %s\n", sms->user_data);
-	}
-
-	return 0;
-}
-#endif

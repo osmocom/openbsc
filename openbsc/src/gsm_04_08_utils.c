@@ -156,6 +156,21 @@ static void to_bcd(u_int8_t *bcd, u_int16_t val)
 	val = val / 10;
 }
 
+static char bcd2char(u_int8_t bcd)
+{
+	if (bcd < 0xa)
+		return '0' + bcd;
+	else
+		return 'A' + (bcd - 0xa);
+}
+
+/* only works for numbers in ascci */
+static u_int8_t char2bcd(char c)
+{
+	return c - 0x30;
+}
+
+
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 			 u_int16_t mnc, u_int16_t lac)
 {
@@ -178,7 +193,7 @@ void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 	lai48->lac = htons(lac);
 }
 
-int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
+int gsm48_generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 {
 	u_int32_t *tptr = (u_int32_t *) &buf[3];
 
@@ -188,6 +203,35 @@ int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 	*tptr = htonl(tmsi);
 
 	return 7;
+}
+
+int gsm48_generate_mid_from_imsi(u_int8_t *buf, const char *imsi)
+{
+	unsigned int length = strlen(imsi), i, off = 0;
+	u_int8_t odd = (length & 0x1) == 1;
+
+	buf[0] = GSM48_IE_MOBILE_ID;
+	buf[2] = char2bcd(imsi[0]) << 4 | GSM_MI_TYPE_IMSI | (odd << 3);
+
+	/* if the length is even we will fill half of the last octet */
+	if (odd)
+		buf[1] = (length + 1) >> 1;
+	else
+		buf[1] = (length + 2) >> 1;
+
+	for (i = 1; i < buf[1]; ++i) {
+		u_int8_t lower, upper;
+
+		lower = char2bcd(imsi[++off]);
+		if (!odd && off + 1 == length)
+			upper = 0x0f;
+		else
+			upper = char2bcd(imsi[++off]) & 0x0f;
+
+		buf[2 + i] = (upper << 4) | lower;
+	}
+
+	return 2 + buf[1];
 }
 
 /* Section 9.1.8 / Table 9.9 */
@@ -306,5 +350,48 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 
 	/* Deactivate the SACCH on the BTS side */
 	return rsl_deact_sacch(lchan);
+}
+
+/* Convert Mobile Identity (10.5.1.4) to string */
+int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, const int mi_len)
+{
+	int i;
+	u_int8_t mi_type;
+	char *str_cur = string;
+	u_int32_t tmsi;
+
+	mi_type = mi[0] & GSM_MI_TYPE_MASK;
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_NONE:
+		break;
+	case GSM_MI_TYPE_TMSI:
+		/* Table 10.5.4.3, reverse generate_mid_from_tmsi */
+		if (mi_len == GSM48_TMSI_LEN && mi[0] == (0xf0 | GSM_MI_TYPE_TMSI)) {
+			memcpy(&tmsi, &mi[1], 4);
+			tmsi = ntohl(tmsi);
+			return snprintf(string, str_len, "%u", tmsi);
+		}
+		break;
+	case GSM_MI_TYPE_IMSI:
+	case GSM_MI_TYPE_IMEI:
+	case GSM_MI_TYPE_IMEISV:
+		*str_cur++ = bcd2char(mi[0] >> 4);
+
+                for (i = 1; i < mi_len; i++) {
+			if (str_cur + 2 >= string + str_len)
+				return str_cur - string;
+			*str_cur++ = bcd2char(mi[i] & 0xf);
+			/* skip last nibble in last input byte when GSM_EVEN */
+			if( (i != mi_len-1) || (mi[0] & GSM_MI_ODD))
+				*str_cur++ = bcd2char(mi[i] >> 4);
+		}
+		break;
+	default:
+		break;
+	}
+	*str_cur++ = '\0';
+
+	return str_cur - string;
 }
 

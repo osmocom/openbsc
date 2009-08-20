@@ -99,7 +99,7 @@ static void page_ms(struct gsm_paging_request *request)
 
 	page_group = calculate_group(request->bts, request->subscr);
 	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = generate_mid_from_tmsi(mi, tmsi);
+	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }
@@ -202,9 +202,9 @@ static void paging_T3113_expired(void *data)
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
-	sig_data.subscr = req->subscr,
-	sig_data.bts	= req->bts,
-	sig_data.lchan	= NULL,
+	sig_data.subscr = req->subscr;
+	sig_data.bts	= req->bts;
+	sig_data.lchan	= NULL;
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (req->cbfn)

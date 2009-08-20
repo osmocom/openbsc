@@ -63,9 +63,10 @@ int main(int argc, char** argv)
 	/* Create a dummy subscriber */
 	struct gsm_subscriber *subscr = subscr_alloc();
 	subscr->lac = 23;
+	subscr->net = network;
 
 	/* Ask for a channel... */
-	subscr_get_channel(subscr, network, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
+	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 
 	while (1) {
 		bsc_select_main(0);

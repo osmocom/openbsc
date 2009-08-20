@@ -58,9 +58,6 @@ struct subscr_request {
 	/* the requested channel type */
 	int channel_type;
 
-	/* the bts we have decided to use */
-	struct gsm_network *network;
-
 	/* the callback data */
 	gsm_cbfn *cbfn;
 	void *param;
@@ -100,7 +97,7 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 	assert(!llist_empty(&subscr->requests));
 
 	request = (struct subscr_request *)subscr->requests.next;
-	paging_request(request->network, subscr, request->channel_type,
+	paging_request(subscr->net, subscr, request->channel_type,
 		       subscr_paging_cb, subscr);
 }
 
@@ -146,8 +143,7 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 }
 
 void subscr_get_channel(struct gsm_subscriber *subscr,
-			struct gsm_network *network, int type,
-			gsm_cbfn *cbfn, void *param)
+			int type, gsm_cbfn *cbfn, void *param)
 {
 	struct subscr_request *request;
 
@@ -160,7 +156,6 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	}
 
 	memset(request, 0, sizeof(*request));
-	request->network = network;
 	request->subscr = subscr;
 	request->channel_type = type;
 	request->cbfn = cbfn;
