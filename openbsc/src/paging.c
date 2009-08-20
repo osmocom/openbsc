@@ -202,9 +202,9 @@ static void paging_T3113_expired(void *data)
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
-	sig_data.subscr = req->subscr,
-	sig_data.bts	= req->bts,
-	sig_data.lchan	= NULL,
+	sig_data.subscr = req->subscr;
+	sig_data.bts	= req->bts;
+	sig_data.lchan	= NULL;
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (req->cbfn)
