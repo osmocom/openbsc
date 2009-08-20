@@ -143,7 +143,7 @@ void debugp(unsigned int subsys, char *file, int line, int cont, const char *for
 
 static char hexd_buff[4096];
 
-char *hexdump(unsigned char *buf, int len)
+char *hexdump(const unsigned char *buf, int len)
 {
 	int i;
 	char *cur = hexd_buff;
