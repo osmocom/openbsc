@@ -899,7 +899,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 		     bts->network->network_code, bts->location_area_code);
 
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
-	generate_mid_from_tmsi(mid, tmsi);
+	gsm48_generate_mid_from_tmsi(mid, tmsi);
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 

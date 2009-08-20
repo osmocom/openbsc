@@ -164,6 +164,12 @@ static char bcd2char(u_int8_t bcd)
 		return 'A' + (bcd - 0xa);
 }
 
+/* only works for numbers in ascci */
+static u_int8_t char2bcd(char c)
+{
+	return c - 0x30;
+}
+
 
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 			 u_int16_t mnc, u_int16_t lac)
@@ -187,7 +193,7 @@ void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
 	lai48->lac = htons(lac);
 }
 
-int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
+int gsm48_generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 {
 	u_int32_t *tptr = (u_int32_t *) &buf[3];
 
@@ -197,6 +203,35 @@ int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
 	*tptr = htonl(tmsi);
 
 	return 7;
+}
+
+int gsm48_generate_mid_from_imsi(u_int8_t *buf, const char *imsi)
+{
+	unsigned int length = strlen(imsi), i, off = 0;
+	u_int8_t odd = (length & 0x1) == 1;
+
+	buf[0] = GSM48_IE_MOBILE_ID;
+	buf[2] = char2bcd(imsi[0]) << 4 | GSM_MI_TYPE_IMSI | (odd << 3);
+
+	/* if the length is even we will fill half of the last octet */
+	if (odd)
+		buf[1] = (length + 1) >> 1;
+	else
+		buf[1] = (length + 2) >> 1;
+
+	for (i = 1; i < buf[1]; ++i) {
+		u_int8_t lower, upper;
+
+		lower = char2bcd(imsi[++off]);
+		if (!odd && off + 1 == length)
+			upper = 0x0f;
+		else
+			upper = char2bcd(imsi[++off]) & 0x0f;
+
+		buf[2 + i] = (upper << 4) | lower;
+	}
+
+	return 2 + buf[1];
 }
 
 /* Section 9.1.8 / Table 9.9 */

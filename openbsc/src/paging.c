@@ -99,7 +99,7 @@ static void page_ms(struct gsm_paging_request *request)
 
 	page_group = calculate_group(request->bts, request->subscr);
 	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = generate_mid_from_tmsi(mi, tmsi);
+	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }
