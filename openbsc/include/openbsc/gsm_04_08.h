@@ -736,4 +736,6 @@ int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 
 extern const char *gsm0408_cc_msg_names[];
 
+int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
+
 #endif

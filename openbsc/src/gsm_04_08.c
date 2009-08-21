@@ -1282,22 +1282,6 @@ static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
 	return gsm48_sendmsg(msg, NULL);
 }
 
-static int send_siemens_mrpci(struct gsm_lchan *lchan,
-			      u_int8_t *classmark2_lv)
-{
-	struct rsl_mrpci mrpci;
-
-	if (classmark2_lv[0] < 2)
-		return -EINVAL;
-
-	mrpci.power_class = classmark2_lv[1] & 0x7;
-	mrpci.vgcs_capable = classmark2_lv[2] & (1 << 1);
-	mrpci.vbs_capable = classmark2_lv[2] & (1 <<2);
-	mrpci.gsm_phase = (classmark2_lv[1]) >> 5 & 0x3;
-
-	return rsl_siemens_mrpci(lchan, &mrpci);
-}
-
 /*
  * Handle CM Service Requests
  * a) Verify that the packet is long enough to contain the information
