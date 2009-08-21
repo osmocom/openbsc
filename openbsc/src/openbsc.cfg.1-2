@@ -14,6 +14,7 @@ network
  bts 0
   type bs11
   band GSM900
+  cell_identity 1
   location_area_code 1
   training_sequence_code 7
   base_station_id_code 63

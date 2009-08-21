@@ -298,6 +298,8 @@ struct gsm_bts {
 	struct gsm_network *network;
 	/* number of ths BTS in network */
 	u_int8_t nr;
+	/* Cell Identity */
+	u_int16_t cell_identity;
 	/* location area code of this BTS */
 	u_int8_t location_area_code;
 	/* Training Sequence Code */

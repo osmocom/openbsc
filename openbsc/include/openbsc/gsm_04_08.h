@@ -203,7 +203,7 @@ struct gsm48_system_information_type_6 {
 	u_int8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
 	u_int8_t system_information;
-	u_int8_t cell_identity[2];
+	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	u_int8_t cell_options;
 	u_int8_t ncc_permitted;
