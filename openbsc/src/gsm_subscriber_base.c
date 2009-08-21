@@ -94,11 +94,19 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 {
 	struct subscr_request *request;
+	int rc;
+
 	assert(!llist_empty(&subscr->requests));
 
 	request = (struct subscr_request *)subscr->requests.next;
-	paging_request(subscr->net, subscr, request->channel_type,
-		       subscr_paging_cb, subscr);
+	rc = paging_request(subscr->net, subscr, request->channel_type,
+			    subscr_paging_cb, subscr);
+
+	/* paging failed, quit now */
+	if (rc <= 0) {
+		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+				 NULL, NULL, request->param);
+	}
 }
 
 struct gsm_subscriber *subscr_alloc(void)
