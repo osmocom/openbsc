@@ -93,11 +93,15 @@ static void page_ms(struct gsm_paging_request *request)
 	unsigned int mi_len;
 	unsigned int page_group;
 
-	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
-		request->subscr->imsi);
+	DEBUGP(DPAG, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
+		request->subscr->imsi, request->subscr->tmsi);
+
+	if (request->subscr->tmsi == GSM_RESERVED_TMSI)
+		mi_len = gsm48_generate_mid_from_imsi(mi, request->subscr->imsi);
+	else
+		mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
 
 	page_group = calculate_group(request->bts, request->subscr);
-	mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }
