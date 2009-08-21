@@ -1463,19 +1463,14 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t *classmark2_lv = gh->data + 1;
-	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
-	u_int8_t mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
+	u_int8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
-	struct paging_signal_data sig_data;
 	int rc = 0;
 
-	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi_lv+1, *mi_lv);
+	gsm48_paging_extract_mi(msg, mi_string, &mi_type);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
-
-	if (is_siemens_bts(bts))
-		send_siemens_mrpci(msg->lchan, classmark2_lv);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
@@ -1499,30 +1494,7 @@ static int gsm48_rr_rx_pag_resp(struct msgb *msg)
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
 	db_sync_equipment(&subscr->equipment);
 
-	if (!msg->lchan->subscr) {
-		msg->lchan->subscr = subscr;
-	} else if (msg->lchan->subscr != subscr) {
-		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
-		subscr_put(subscr);
-		return -EINVAL;
-	} else {
-		DEBUGP(DRR, "<- Channel already owned by us\n");
-		subscr_put(subscr);
-		subscr = msg->lchan->subscr;
-	}
-
-	sig_data.subscr = subscr;
-	sig_data.bts	= msg->lchan->ts->trx->bts;
-	sig_data.lchan	= msg->lchan;
-
-	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
-
-	/* Stop paging on the bts we received the paging response */
-	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
-
-	/* FIXME: somehow signal the completion of the PAGING to
-	 * the entity that requested the paging */
-
+	rc = gsm48_handle_paging_resp(msg, subscr);
 	return rc;
 }
 
