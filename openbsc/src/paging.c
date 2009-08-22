@@ -46,9 +46,6 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 
-#define PAGING_TIMEOUT 1, 75000
-#define MAX_PAGING_REQUEST 750
-
 void *tall_paging_ctx;
 
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
