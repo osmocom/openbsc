@@ -73,7 +73,9 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	struct subscr_request *request;
 	struct gsm_subscriber *subscr = (struct gsm_subscriber *)param;
 
-	assert(!llist_empty(&subscr->requests));
+	/* There is no request anymore... */
+	if (llist_empty(&subscr->requests))
+		return -1;
 
 	/*
 	 * FIXME: What to do with paging requests coming during
