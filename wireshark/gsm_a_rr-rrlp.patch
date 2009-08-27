@@ -2,14 +2,6 @@ Index: wireshark/epan/dissectors/packet-gsm_a_rr.c
 ===================================================================
 --- wireshark.orig/epan/dissectors/packet-gsm_a_rr.c
 +++ wireshark/epan/dissectors/packet-gsm_a_rr.c
-@@ -69,6 +69,7 @@
- 
- static dissector_handle_t rrc_irat_ho_info_handle;
- static dissector_handle_t rrc_irat_ho_to_utran_cmd_handle;
-+static packet_info *rr_apdu_pinfo;
- 
- #define PADDING_BYTE 0x2B
- 
 @@ -301,9 +302,9 @@
      { 0x00, "Extended Measurement Results" },					/* [3] 10.5.2.45 Extended Measurement Results */
      { 0x00, "Extended Measurement Frequency List" },				/* [3] 10.5.2.46 Extended Measurement Frequency List */
@@ -140,14 +132,6 @@ Index: wireshark/epan/dissectors/packet-gsm_a_rr.c
  
      NULL,			/* NONE */
  };
-@@ -8499,6 +8562,7 @@
-      */
-     switch (pd){
-     case 6:
-+	rr_apdu_pinfo = pinfo;
-         get_rr_msg_params(oct, &msg_str, &ett_tree, &hf_idx, &msg_fcn);
-         break;
- 
 @@ -9155,6 +9219,21 @@
  		FT_UINT8,BASE_DEC,  VALS(gsm_a_rr_suspension_cause_vals), 0x0,
  		NULL, HFILL }
