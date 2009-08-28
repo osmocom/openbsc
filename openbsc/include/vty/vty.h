@@ -6,9 +6,9 @@
 
 /* GCC have printf type attribute check.  */
 #ifdef __GNUC__
-#define PRINTF_ATTRIBUTE(a,b) __attribute__ ((__format__ (__printf__, a, b)))
+#define VTY_PRINTF_ATTRIBUTE(a,b) __attribute__ ((__format__ (__printf__, a, b)))
 #else
-#define PRINTF_ATTRIBUTE(a,b)
+#define VTY_PRINTF_ATTRIBUTE(a,b)
 #endif				/* __GNUC__ */
 
 /* Does the I/O error indicate that the operation should be retried later? */
@@ -26,6 +26,7 @@ enum event {
 	VTY_SERV,
 	VTY_READ,
 	VTY_WRITE,
+	VTY_CLOSED,
 	VTY_TIMEOUT_RESET,
 #ifdef VTYSH
 	VTYSH_SERV,
@@ -128,15 +129,15 @@ static inline char *vty_newline(struct vty *vty)
 
 /* Prototypes. */
 void vty_init (void);
+int vty_read_config_file(const char *file_name);
 void vty_init_vtysh (void);
 void vty_reset (void);
 struct vty *vty_new (void);
 struct vty *vty_create (int vty_sock, void *priv);
-int vty_out (struct vty *, const char *, ...) PRINTF_ATTRIBUTE(2, 3);
+int vty_out (struct vty *, const char *, ...) VTY_PRINTF_ATTRIBUTE(2, 3);
 int vty_out_newline(struct vty *);
 int vty_read(struct vty *vty);
-void vty_read_config (char *, char *);
-void vty_time_print (struct vty *, int);
+//void vty_time_print (struct vty *, int);
 void vty_close (struct vty *);
 char *vty_get_cwd (void);
 void vty_log (const char *level, const char *proto, const char *fmt, va_list);
@@ -146,5 +147,5 @@ int vty_shell (struct vty *);
 int vty_shell_serv (struct vty *);
 void vty_hello (struct vty *);
 
-
+void *tall_vty_ctx;
 #endif

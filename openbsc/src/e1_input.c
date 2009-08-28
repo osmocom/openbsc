@@ -51,6 +51,8 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
+#include <openbsc/talloc.h>
+#include <openbsc/misdn.h>
 
 #define NUM_E1_TS	32
 
@@ -59,6 +61,8 @@ LLIST_HEAD(e1inp_driver_list);
 
 /* list of all E1 lines */
 LLIST_HEAD(e1inp_line_list);
+
+static void *tall_sigl_ctx;
 
 /* to be implemented, e.g. by bsc_hack.c */
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
@@ -171,8 +175,6 @@ static void write_pcap_packet(int direction, int sapi, int tei,
 	};
 
 
-        printf("Packet of: %d\n", direction);
-
 	cur_time = time(NULL);
 	tm = localtime(&cur_time);
 	payload_header.ts_sec = mktime(tm);
@@ -233,6 +235,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	if (!msg->trx || !msg->trx->rsl_link) {
 		fprintf(stderr, "rsl_sendmsg: msg->trx == NULL\n");
+		talloc_free(msg);
 		return -EINVAL;
 	}
 
@@ -285,6 +288,9 @@ int _abis_nm_sendmsg(struct msgb *msg)
 int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 		    enum e1inp_ts_type type)
 {
+	if (ts->type == type && ts->line && line)
+		return 0;
+
 	ts->type = type;
 	ts->line = line;
 
@@ -316,6 +322,29 @@ static struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 			return e1i_line;
 	}
 	return NULL;
+}
+
+struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
+{
+	struct e1inp_line *line;
+	int i;
+
+	line = e1inp_line_get(e1_nr);
+	if (line)
+		return line;
+
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
+	if (!line)
+		return NULL;
+
+	line->num = e1_nr;
+	for (i = 0; i < NUM_E1_TS; i++) {
+		line->ts[i].num = i+1;
+		line->ts[i].line = line;
+	}
+	llist_add_tail(&line->list, &e1inp_line_list);
+
+	return line;
 }
 
 static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
@@ -366,11 +395,9 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	if (ts->type != E1INP_TS_TYPE_SIGN)
 		return NULL;
 
-	link = malloc(sizeof(*link));
+	link = talloc_zero(tall_sigl_ctx, struct e1inp_sign_link);
 	if (!link)
 		return NULL;
-
-	memset(link, 0, sizeof(*link));
 
 	link->ts = ts;
 	link->type = type;
@@ -382,6 +409,12 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 	llist_add_tail(&link->list, &ts->sign.sign_links);
 
 	return link;
+}
+
+void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
+{
+	llist_del(&link->list);
+	talloc_free(link);
 }
 
 /* the E1 driver tells us he has received something on a TS */
@@ -397,7 +430,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
-			fprintf(stderr, "didn't find singalling link for "
+			fprintf(stderr, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
@@ -451,7 +484,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		}
 		break;
 	case E1INP_TS_TYPE_TRAU:
-		msg = msgb_alloc(TSX_ALLOC_SIZE);
+		msg = msgb_alloc(TSX_ALLOC_SIZE, "TRAU_TX");
 		if (!msg)
 			return NULL;
 		len = subchan_mux_out(&e1i_ts->trau.mux, msg->data, 40);
@@ -485,17 +518,13 @@ int e1inp_driver_register(struct e1inp_driver *drv)
 	return 0;
 }
 
-/* register a line with the E1 core */
-int e1inp_line_register(struct e1inp_line *line)
+int e1inp_line_update(struct e1inp_line *line)
 {
-	int i;
+	return mi_e1_line_update(line);
+}
 
-	for (i = 0; i < NUM_E1_TS; i++) {
-		line->ts[i].num = i+1;
-		line->ts[i].line = line;
-	}
-
-	llist_add_tail(&line->list, &e1inp_line_list);
-	
-	return 0;
+static __attribute__((constructor)) void on_dso_load_e1_inp(void)
+{
+	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					   "e1inp_sign_link");
 }

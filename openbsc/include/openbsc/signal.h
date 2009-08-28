@@ -38,6 +38,7 @@ enum signal_subsystems {
 	SS_ABISIP,
 	SS_NM,
 	SS_LCHAN,
+	SS_SUBSCR,
 };
 
 /* SS_PAGING signals */
@@ -45,9 +46,18 @@ enum signal_paging {
 	S_PAGING_COMPLETED,
 };
 
+/* SS_SMS signals */
+enum signal_sms {
+	S_SMS_SUBMITTED,	/* A SMS has been successfully submitted to us */
+	S_SMS_DELIVERED,	/* A SMS has been successfully delivered to a MS */
+	S_SMS_SMMA,		/* A MS tells us it has more space available */
+	S_SMS_MEM_EXCEEDED,	/* A MS tells us it has no more space available */
+};
+
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_BIND_ACK,
+	S_ABISIP_DISC_IND,
 };
 
 /* SS_NM signals */
@@ -55,6 +65,8 @@ enum signal_nm {
 	S_NM_SW_ACTIV_REP,	/* GSM 12.21 software activated report */
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 	S_NM_NACK,		/* GSM 12.21 various NM_MT_*_NACK happened */
+	S_NM_IPACC_NACK,	/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_NACK happened */
+	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
 };
 
 /* SS_LCHAN signals */
@@ -65,6 +77,12 @@ enum signal_lchan {
 	 * signal handler.
 	 */
 	S_LCHAN_UNEXPECTED_RELEASE,
+};
+
+/* SS_SUBSCR signals */
+enum signal_subscr {
+	S_SUBSCR_ATTACHED,
+	S_SUBSCR_DETACHED,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,

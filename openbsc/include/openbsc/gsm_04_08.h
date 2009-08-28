@@ -48,14 +48,16 @@ struct gsm48_chan_mode_modify {
 	u_int8_t mode;
 } __attribute__ ((packed));
 
-#define GSM48_CMODE_SIGN	0x00
-#define GSM48_CMODE_SPEECH_V1	0x01
-#define GSM48_CMODE_SPEECH_EFR	0x21
-#define GSM48_CMODE_SPEECH_AMR	0x41
-#define GSM48_CMODE_DATA_14k5	0x0f
-#define GSM48_CMODE_DATA_12k0	0x03
-#define GSM48_CMODE_DATA_6k0	0x0b
-#define GSM48_CMODE_DATA_3k6	0x23
+enum gsm48_chan_mode {
+	GSM48_CMODE_SIGN	= 0x00,
+	GSM48_CMODE_SPEECH_V1	= 0x01,
+	GSM48_CMODE_SPEECH_EFR	= 0x21,
+	GSM48_CMODE_SPEECH_AMR	= 0x41,
+	GSM48_CMODE_DATA_14k5	= 0x0f,
+	GSM48_CMODE_DATA_12k0	= 0x03,
+	GSM48_CMODE_DATA_6k0	= 0x0b,
+	GSM48_CMODE_DATA_3k6	= 0x23,
+};
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
@@ -110,6 +112,15 @@ struct gsm48_rach_control {
 	u_int8_t t3;
 } __attribute__ ((packed));
 
+/* Section 10.5.2.4 Cell Selection Parameters */
+struct gsm48_cell_sel_par {
+	u_int8_t ms_txpwr_max_ccch:5,	/* GSM 05.08 MS-TXPWR-MAX-CCCH */
+		 cell_resel_hyst:3;	/* GSM 05.08 CELL-RESELECT-HYSTERESIS */
+	u_int8_t rxlev_acc_min:6,	/* GSM 05.08 RXLEV-ACCESS-MIN */
+		 neci:1,
+		 acs:1;
+} __attribute__ ((packed));
+
 /* Section 10.5.2.11 Control Channel Description , Figure 10.5.33 */
 struct gsm48_control_channel_descr {
 	u_int8_t ccch_conf :3,
@@ -155,7 +166,7 @@ struct gsm48_system_information_type_3 {
 	struct gsm48_loc_area_id lai;
 	struct gsm48_control_channel_descr control_channel_desc;
 	u_int8_t cell_options;
-	u_int8_t cell_selection[2];
+	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
 	u_int8_t s3_reset_octets[4];
 } __attribute__ ((packed));
@@ -164,7 +175,7 @@ struct gsm48_system_information_type_3 {
 struct gsm48_system_information_type_4 {
 	struct gsm48_system_information_type_header header;
 	struct gsm48_loc_area_id lai;
-	u_int8_t cell_selection[2];
+	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
 	/*	optional CBCH conditional CBCH... followed by
 		mandantory SI 4 Reset Octets
@@ -642,27 +653,68 @@ enum chreq_type {
 #define SBIT(a) (1 << a)
 #define ALL_STATES 0xffffffff
 
+/* GSM 04.08 Bearer Capability: Information Transfer Capability */
+enum gsm48_bcap_itcap {
+	GSM48_BCAP_ITCAP_SPEECH		= 0,
+	GSM48_BCAP_ITCAP_UNR_DIG_INF	= 1,
+	GSM48_BCAP_ITCAP_3k1_AUDIO	= 2,
+	GSM48_BCAP_ITCAP_FAX_G3		= 3,
+	GSM48_BCAP_ITCAP_OTHER		= 5,
+	GSM48_BCAP_ITCAP_RESERVED	= 7,
+};
+
+/* GSM 04.08 Bearer Capability: Transfer Mode */
+enum gsm48_bcap_tmod {
+	GSM48_BCAP_TMOD_CIRCUIT		= 0,
+	GSM48_BCAP_TMOD_PACKET		= 1,
+};
+
+/* GSM 04.08 Bearer Capability: Coding Standard */
+enum gsm48_bcap_coding {
+	GSM48_BCAP_CODING_GSM_STD	= 0,
+};
+
+/* GSM 04.08 Bearer Capability: Radio Channel Requirements */
+enum gsm48_bcap_rrq {
+	GSM48_BCAP_RRQ_FR_ONLY	= 1,
+	GSM48_BCAP_RRQ_DUAL_HR	= 2,
+	GSM48_BCAP_RRQ_DUAL_FR	= 3,
+};
+
+
+#define GSM48_TMSI_LEN	5
+#define GSM48_MID_TMSI_LEN	(GSM48_TMSI_LEN + 2)
+#define GSM48_MI_SIZE 32
+
+
 struct msgb;
 struct gsm_bts;
 struct gsm_subscriber;
 struct gsm_network;
+struct gsm_trans;
 
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
 void gsm0408_set_reject_cause(int cause);
 
-int gsm0408_rcvmsg(struct msgb *msg);
+int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
 
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
+int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand);
+int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
 struct msgb *gsm48_msgb_alloc(void);
-int gsm48_sendmsg(struct msgb *msg);
-int generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
+int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
+int gsm48_generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi);
+int gsm48_generate_mid_from_imsi(u_int8_t *buf, const char* imsi);
+int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, const int mi_len);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+			   u_int8_t apdu_len, u_int8_t *apdu);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -673,5 +725,7 @@ int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
 		      int h_len, const char *input);
 int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 		      int h_len);
+
+extern const char *gsm0408_cc_msg_names[];
 
 #endif

@@ -43,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -178,7 +179,7 @@ static const char *nack_cause_names[] = {
 	[NM_NACK_MSGINCONSIST_PHYSCFG]	= "Message inconsistent with physical configuration",
 	[NM_NACK_FILE_INCOMPLETE]	= "Complete file notreceived",
 	[NM_NACK_FILE_NOTAVAIL]		= "File not available at destination",
-	[MN_NACK_FILE_NOTACTIVATE]	= "File cannot be activate",
+	[NM_NACK_FILE_NOTACTIVATE]	= "File cannot be activate",
 	[NM_NACK_REQ_NOT_GRANT]		= "Request not granted",
 	[NM_NACK_WAIT]			= "Wait",
 	[NM_NACK_NOTH_REPORT_EXIST]	= "Nothing reportable existing",
@@ -354,14 +355,71 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV },
 		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV },
 		/* ip.access specifics */
-		[NM_ATT_IPACC_RSL_BSC_IP] =	{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_RSL_BSC_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_IP] =	{ TLV_TYPE_FIXED, 6 },
-		[0x95] =			{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
+		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
+		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_TV, },
+		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
+		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
+		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
+		[NM_ATT_IPACC_IN_SERV_TIME] =	{ TLV_TYPE_FIXED, 4 },
+		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
+		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_TIMING_BUS] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CGI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_GPRS_PAGING_CFG]= { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_MONIT_VAL_LIST] = { TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_TIB_CONTROL] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_HEARTB_TOUT] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_UPTIME] =		{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SSL_CFG] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
+		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
+		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
 		[0x85] =			{ TLV_TYPE_TV },
 
 	},
 };
+
+static const enum abis_nm_chan_comb chcomb4pchan[] = {
+	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
+	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCHComb,
+	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
+	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
+	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
+	/* FIXME: bounds check */
+};
+
+int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan)
+{
+	if (pchan < ARRAY_SIZE(chcomb4pchan))
+		return chcomb4pchan[pchan];
+
+	return -EINVAL;
+}
 
 int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
 {
@@ -422,7 +480,8 @@ static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
 
 static struct msgb *nm_msgb_alloc(void)
 {
-	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE);
+	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE,
+				   "OML");
 }
 
 /* Send a OML NM Message from BSC to BTS */
@@ -468,10 +527,8 @@ static const char *obj_class_name(u_int8_t oc)
 		return "GPRS NSE";
 	case NM_OC_GPRS_CELL:
 		return "GPRS CELL";
-	case NM_OC_GPRS_NSVC0:
-		return "GPRS NSVC0";
-	case NM_OC_GPRS_NSVC1:
-		return "GPRS NSVC1";
+	case NM_OC_GPRS_NSVC:
+		return "GPRS NSVC";
 	case NM_OC_BS11:
 		return "SIEMENSHW";
 	}
@@ -543,19 +600,19 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->nm_state;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		nm_state = &trx->ts[obj_inst->ts_nr].nm_state;
@@ -571,13 +628,13 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		case BS11_OBJ_BBSIG:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.bbsig.nm_state;
 			break;
 		case BS11_OBJ_PA:
 			if (obj_inst->ts_nr > bts->num_trx)
 				return NULL;
-			trx = &bts->trx[obj_inst->ts_nr];
+			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 			nm_state = &trx->bs11.pa.nm_state;
 			break;
 		default:
@@ -610,19 +667,19 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_RADIO_CARRIER:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
 		if (obj_inst->trx_nr >= bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
 		if (obj_inst->trx_nr > bts->num_trx)
 			return NULL;
-		trx = &bts->trx[obj_inst->trx_nr];
+		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
 		obj = &trx->ts[obj_inst->ts_nr];
@@ -760,6 +817,10 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	case NM_MT_FAILURE_EVENT_REP:
 		rx_fail_evt_rep(mb);
 		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
+		break;
+	case NM_MT_TEST_REP:
+		DEBUGPC(DNM, "Test Report\n");
+		dispatch_signal(SS_NM, S_NM_TEST_REP, mb);
 		break;
 	default:
 		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
@@ -925,6 +986,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	case NM_MT_BS11_LMT_SESSION:
 		return abis_nm_rx_lmt_event(mb);
+		break;
+	case NM_MT_CONN_MDROP_LINK_ACK:
+		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
 		break;
 	}
 
@@ -1605,6 +1669,62 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
+static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
+{
+	int i;
+
+	/* As it turns out, the BS-11 has some very peculiar restrictions
+	 * on the channel combinations it allows */
+	if (ts->trx->bts->type == GSM_BTS_TYPE_BS11) {
+		switch (chan_comb) {
+		case NM_CHANC_TCHHalf:
+		case NM_CHANC_TCHHalf2:
+			/* not supported */
+			return -EINVAL;
+		case NM_CHANC_SDCCH:
+			/* only one SDCCH/8 per TRX */
+			for (i = 0; i < TRX_NR_TS; i++) {
+				if (i == ts->nr)
+					continue;
+				if (ts->trx->ts[i].nm_chan_comb ==
+				    NM_CHANC_SDCCH)
+					return -EINVAL;
+			}
+			/* not allowed for TS0 of BCCH-TRX */
+			if (ts->trx == ts->trx->bts->c0 &&
+			    ts->nr == 0)
+					return -EINVAL;
+			/* not on the same TRX that has a BCCH+SDCCH4
+			 * combination */
+			if (ts->trx == ts->trx->bts->c0 &&
+			    (ts->trx->ts[0].nm_chan_comb == 5 ||
+			     ts->trx->ts[0].nm_chan_comb == 8))
+					return -EINVAL;
+			break;
+		case NM_CHANC_mainBCCH:
+		case NM_CHANC_BCCHComb:
+			/* allowed only for TS0 of C0 */
+			if (ts->trx != ts->trx->bts->c0 ||
+			    ts->nr != 0)
+				return -EINVAL;
+			break;
+		case NM_CHANC_BCCH:
+			/* allowed only for TS 2/4/6 of C0 */
+			if (ts->trx != ts->trx->bts->c0)
+				return -EINVAL;
+			if (ts->nr != 2 && ts->nr != 4 &&
+			    ts->nr != 6)
+				return -EINVAL;
+			break;
+		case 8: /* this is not like 08.58, but in fact
+			 * FCCH+SCH+BCCH+CCCH+SDCCH/4+SACCH/C4+CBCH */
+			/* FIXME: only one CBCH allowed per cell */
+			break;
+		}
+	}
+	return 0;
+}
+
 /* Chapter 8.6.3 */
 int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 {
@@ -1619,6 +1739,12 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		len += 4 + 2 + 2 + 3;
 
 	DEBUGP(DNM, "Set Chan Attr %s\n", gsm_ts_name(ts));
+	if (verify_chan_comb(ts, chan_comb) < 0) {
+		msgb_free(msg);
+		DEBUGP(DNM, "Invalid Channel Combination!!!\n");
+		return -EINVAL;
+	}
+	ts->nm_chan_comb = chan_comb;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
@@ -1632,7 +1758,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		msgb_tv_put(msg, NM_ATT_HSN, 0x00);
 		msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
 	}
-	msgb_tv_put(msg, NM_ATT_TSC, 0x07);	/* training sequence */
+	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		msgb_tlv_put(msg, 0x59, 1, &zero);
 
@@ -1708,7 +1834,7 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 
 /* Chapter 8.8.5 */
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
-			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state)
+			  u_int8_t i1, u_int8_t i2, enum abis_nm_adm_state adm_state)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -1720,6 +1846,59 @@ int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t *attr;
+
+	DEBUGP(DNM, "CONNECT MDROP LINK E1=(%u,%u) -> E1=(%u, %u)\n",
+		e1_port0, ts0, e1_port1, ts1);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 6, NM_MT_CONN_MDROP_LINK,
+			NM_OC_SITE_MANAGER, 0x00, 0x00, 0x00);
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_LINK;
+	attr[1] = e1_port0;
+	attr[2] = ts0;
+
+	attr = msgb_put(msg, 3);
+	attr[0] = NM_ATT_MDROP_NEXT;
+	attr[1] = e1_port1;
+	attr[2] = ts1;
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* Chapter 8.7.1 */
+int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
+			 u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+			 u_int8_t test_nr, u_int8_t auton_report,
+			 u_int8_t *phys_config, u_int16_t phys_config_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	int len = 4; /* 2 TV attributes */
+
+	DEBUGP(DNM, "PEFORM TEST\n");
+	
+	if (phys_config_len)
+		len += 3 + phys_config_len;
+	
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, len, NM_MT_PERF_TEST,
+			obj_class, bts_nr, trx_nr, ts_nr);
+	msgb_tv_put(msg, NM_ATT_TEST_NO, test_nr);
+	msgb_tv_put(msg, NM_ATT_AUTON_REPORT, auton_report);
+	if (phys_config_len)
+		msgb_tl16v_put(msg, NM_ATT_PHYS_CONF, phys_config_len,
+				phys_config);
+
+	return abis_nm_sendmsg(bts, msg);
+}
 
 int abis_nm_event_reports(struct gsm_bts *bts, int on)
 {
@@ -1834,7 +2013,19 @@ int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_BS11_CREATE_OBJ, NM_OC_BS11_BPORT,
-			idx, 0, 0);
+			idx, 0xff, 0xff);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
+int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_BS11_DELETE_OBJ, NM_OC_BS11_BPORT,
+			idx, 0xff, 0xff);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2008,6 +2199,8 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts)
 
 /* BS11 SWL */
 
+void *tall_fle_ctx;
+
 struct abis_nm_bs11_sw {
 	struct gsm_bts *bts;
 	char swl_fname[PATH_MAX];
@@ -2050,7 +2243,7 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 	/* zero the stale file list, if any */
 	llist_for_each_safe(lh, lh2, &bs11_sw->file_list) {
 		llist_del(lh);
-		free(lh);
+		talloc_free(lh);
 	}
 
 	while (fgets(linebuf, sizeof(linebuf), swl)) {
@@ -2071,12 +2264,11 @@ static int bs11_read_swl_file(struct abis_nm_bs11_sw *bs11_sw)
 		if (rc < 2)
 			continue;
 
-		fle = malloc(sizeof(*fle));
+		fle = talloc_zero(tall_fle_ctx, struct file_list_entry);
 		if (!fle) {
 			rc = -ENOMEM;
 			goto out;
 		}
-		memset(fle, 0, sizeof(*fle));
 
 		/* construct new filename */
 		strncpy(dir, bs11_sw->swl_fname, sizeof(dir));
@@ -2109,7 +2301,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 						   bs11_sw->win_size,
 						   bs11_sw->forced,
 						   &bs11_swload_cbfn, bs11_sw);
-			free(fle);
+			talloc_free(fle);
 		} else {
 			/* activate the SWL */
 			rc = abis_nm_software_activate(bs11_sw->bts,
@@ -2163,7 +2355,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 	/* start download the next file of our file list */
 	rc = abis_nm_software_load(bts, fle->fname, win_size, forced,
 				   bs11_swload_cbfn, bs11_sw);
-	free(fle);
+	talloc_free(fle);
 	return rc;
 }
 
@@ -2221,6 +2413,21 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	struct bs11_date_time aet;
+
+	get_bs11_date_time(&aet);
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2, NM_MT_BS11_SET_ATTR, NM_OC_BS11_BPORT,
+			bport, 0xff, 0x02);
+	msgb_tv_put(msg, NM_ATT_BS11_LINE_CFG, line_cfg);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 /* ip.access nanoBTS specific commands */
 static const char ipaccess_magic[] = "com.ipaccess";
 
@@ -2245,14 +2452,14 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
 		DEBUGPC(DNM, "RSL CONNECT ACK ");
-		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_IP))
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP))
 			DEBUGPC(DNM, "IP=%s ",
 				inet_ntoa(*((struct in_addr *) 
-					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_IP))));
-		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_RSL_BSC_PORT))
+					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP_PORT))
 			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *) 
-					TLVP_VAL(&tp, NM_ATT_IPACC_RSL_BSC_PORT))));
+					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
 		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
@@ -2275,10 +2482,34 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		else
 			DEBUGPC(DNM, "\n");
 		break;
+	case NM_MT_IPACC_GET_NVATTR_ACK:
+		DEBUGPC(DNM, "GET NVATTR ACK\n");
+		/* FIXME: decode and show the actual attributes */
+		break;
+	case NM_MT_IPACC_GET_NVATTR_NACK:
+		DEBUGPC(DNM, "GET NVATTR NACK ");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
+		break;
 	default:
 		DEBUGPC(DNM, "unknown\n");
 		break;
 	}
+
+	/* signal handling */
+	switch  (foh->msg_type) {
+	case NM_MT_IPACC_RSL_CONNECT_NACK:
+	case NM_MT_IPACC_SET_NVATTR_NACK:
+	case NM_MT_IPACC_GET_NVATTR_NACK:
+		dispatch_signal(SS_NM, S_NM_IPACC_NACK, (void*) ((long)foh->msg_type));
+		break;
+	default:
+		break;
+	}
+
 	return 0;
 }
 

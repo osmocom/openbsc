@@ -24,13 +24,20 @@
 #include <stdlib.h>
 
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/debug.h>
 
 #define COMPARE(result, op, value) \
     if (!((result) op (value))) {\
 	fprintf(stderr, "Compare failed. Was %x should be %x in %s:%d\n",result, value, __FILE__, __LINE__); \
 	exit(-1); \
     }
-	
+
+#define COMPARE_STR(result, value) \
+	if (strcmp(result, value) != 0) { \
+		fprintf(stderr, "Compare failed. Was %s should be %s in %s:%d\n",result, value, __FILE__, __LINE__); \
+		exit(-1); \
+	}
 
 /*
  * Test Location Area Identifier formatting. Table 10.5.3 of 04.08
@@ -58,9 +65,38 @@ static void test_location_area_identifier(void)
     COMPARE(lai48.lac, ==, htons(0x000f));
 }
 
+static void test_mi_functionality(void)
+{
+	const char *imsi_odd  = "987654321098763";
+	const char *imsi_even = "9876543210987654";
+	const u_int32_t tmsi = 0xfabeacd0;
+	u_int8_t mi[128];
+	unsigned int mi_len;
+	char mi_parsed[GSM48_MI_SIZE];
+
+	printf("Testing parsing and generating TMSI/IMSI\n");
+
+	/* tmsi code */
+	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
+	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len - 2);
+	COMPARE((u_int32_t)strtoul(mi_parsed, NULL, 10), ==, tmsi);
+
+	/* imsi code */
+	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_odd);
+	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
+	printf("hex: %s\n", hexdump(mi, mi_len));
+	COMPARE_STR(mi_parsed, imsi_odd);
+
+	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_even);
+	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
+	printf("hex: %s\n", hexdump(mi, mi_len));
+	COMPARE_STR(mi_parsed, imsi_even);
+}
+
 int main(int argc, char** argv)
 {
-    test_location_area_identifier();
+	test_location_area_identifier();
+	test_mi_functionality();
 }
 
 

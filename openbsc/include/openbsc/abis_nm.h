@@ -171,9 +171,6 @@ enum abis_nm_msgtype {
 	NM_MT_SET_ALARM_THRES,
 	NM_MT_SET_ALARM_THRES_ACK,
 	NM_MT_SET_ALARM_THRES_NACK,
-
-	NM_MT_IPACC_RESTART		= 0x87,
-	NM_MT_IPACC_RESTART_ACK,
 };
 
 enum abis_nm_msgtype_bs11 {
@@ -212,9 +209,20 @@ enum abis_nm_msgtype_bs11 {
 };
 
 enum abis_nm_msgtype_ipacc {
+	NM_MT_IPACC_RESTART		= 0x87,
+	NM_MT_IPACC_RESTART_ACK,
 	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
 	NM_MT_IPACC_RSL_CONNECT_ACK,
 	NM_MT_IPACC_RSL_CONNECT_NACK,
+	NM_MT_IPACC_RSL_DISCONNECT	= 0xe3,
+	NM_MT_IPACC_RSL_DISCONNECT_ACK,
+	NM_MT_IPACC_RSL_DISCONNECT_NACK,
+	NM_MT_IPACC_CONN_TRAF		= 0xe6,
+	NM_MT_IPACC_CONN_TRAF_ACK,
+	NM_MT_IPACC_CONN_TRAF_NACK,
+	NM_MT_IPACC_DEF_BOOT_SW		= 0xec,
+	NM_MT_IPACC_DEF_BOOT_SW_ACK,
+	MN_MT_IPACC_DEF_BOOT_SW_NACK,
 	NM_MT_IPACC_SET_NVATTR		= 0xef,
 	NM_MT_IPACC_SET_NVATTR_ACK,
 	NM_MT_IPACC_SET_NVATTR_NACK,
@@ -236,6 +244,12 @@ enum abis_nm_obj_class {
 	NM_OC_CHANNEL,
 	NM_OC_BASEB_TRANSC,
 	/* RFU: 05-FE */
+
+	NM_OC_IPAC_E1_TRUNK		= 0x0e,
+	NM_OC_IPAC_E1_PORT		= 0x0f,
+	NM_OC_IPAC_E1_CHAN		= 0x10,
+	NM_OC_IPAC_CLK_MODULE		= 0x22,
+
 	NM_OC_BS11_ADJC			= 0xa0,
 	NM_OC_BS11_HANDOVER		= 0xa1,
 	NM_OC_BS11_PWR_CTRL		= 0xa2,
@@ -248,8 +262,7 @@ enum abis_nm_obj_class {
 
 	NM_OC_GPRS_NSE			= 0xf0,
 	NM_OC_GPRS_CELL			= 0xf1,
-	NM_OC_GPRS_NSVC0		= 0xf2,
-	NM_OC_GPRS_NSVC1		= 0xf3,
+	NM_OC_GPRS_NSVC			= 0xf2,
 
 	NM_OC_NULL			= 0xff,
 };
@@ -349,13 +362,56 @@ enum abis_nm_attr {
 	NM_ATT_BS11_ENA_RXQUAL_HO	= 0x6d,
 	NM_ATT_BS11_FACCH_QUAL		= 0x6e,
 
-	NM_ATT_IPACC_RSL_BSC_IP		= 0x80,
-	NM_ATT_IPACC_RSL_BSC_PORT	= 0x81,
+	NM_ATT_IPACC_DST_IP		= 0x80,
+	NM_ATT_IPACC_DST_IP_PORT	= 0x81,
+	NM_ATT_IPACC_SSRC		= 0x82,
+	NM_ATT_IPACC_RTP_PAYLD_TYPE	= 0x83,
+	NM_ATT_IPACC_BASEB_ID		= 0x84,
+	NM_ATT_IPACC_STREAM_ID		= 0x85,
+	NM_ATT_IPACC_NV_FLAGS		= 0x86,
+	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
+	NM_ATT_IPACC_PRIM_OML_CFG	= 0x88,
+	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
+	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
+	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
+	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
+	NM_ATT_IPACC_TRX_BTS_ASS	= 0x8d,
 	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
+	NM_ATT_IPACC_PAGING_CFG		= 0x8f,
+	NM_ATT_IPACC_FILE_DATA		= 0x90,
 	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
+	NM_ATT_IPACC_PARENT_UNIT_ID	= 0x92,
 	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
-	NM_ATT_IPACC_PRIM_OML_IP	= 0x95,
-	NM_ATT_IPACC_SEC_OML_IP		= 0x96,
+	NM_ATT_IPACC_SNMP_CFG		= 0x94,
+	NM_ATT_IPACC_PRIM_OML_CFG_LIST	= 0x95,
+	NM_ATT_IPACC_PRIM_OML_FB_TOUT	= 0x96,
+	NM_ATT_IPACC_CUR_SW_CFG		= 0x97,
+	NM_ATT_IPACC_TIMING_BUS		= 0x98,
+	NM_ATT_IPACC_CGI		= 0x99,
+	NM_ATT_IPACC_RAC		= 0x9a,
+	NM_ATT_IPACC_OBJ_VERSION	= 0x9b,
+	NM_ATT_IPACC_GPRS_PAGING_CFG	= 0x9c,
+	NM_ATT_IPACC_NSEI		= 0x9d,
+	NM_ATT_IPACC_BVCI		= 0x9e,
+	NM_ATT_IPACC_NSVCI		= 0x9f,
+	NM_ATT_IPACC_NS_CFG		= 0xa0,
+	NM_ATT_IPACC_BSSGP_CFG		= 0xa1,
+	NM_ATT_IPACC_NS_LINK_CFG	= 0xa2,
+	NM_ATT_IPACC_RLC_CFG		= 0xa3,	
+	NM_ATT_IPACC_ALM_THRESH_LIST	= 0xa4,
+	NM_ATT_IPACC_MONIT_VAL_LIST	= 0xa5,
+	NM_ATT_IPACC_TIB_CONTROL	= 0xa6,
+	NM_ATT_IPACC_SUPP_FEATURES	= 0xa7,
+	NM_ATT_IPACC_CODING_SCHEMES	= 0xa8,
+	NM_ATT_IPACC_RLC_CFG_2		= 0xa9,
+	NM_ATT_IPACC_HEARTB_TOUT	= 0xaa,
+	NM_ATT_IPACC_UPTIME		= 0xab,
+	NM_ATT_IPACC_RLC_CFG_3		= 0xac,
+	NM_ATT_IPACC_SSL_CFG		= 0xad,
+	NM_ATT_IPACC_SEC_POSSIBLE	= 0xae,
+	NM_ATT_IPACC_IML_SSL_STATE	= 0xaf,
+	NM_ATT_IPACC_REVOC_DATE		= 0xb0,
+
 
 	NM_ATT_BS11_RF_RES_IND_PER	= 0x8f,
 	
@@ -417,15 +473,25 @@ enum abis_nm_adm_state {
 
 /* Section 9.4.13: Channel Combination */
 enum abis_nm_chan_comb {
-	NM_CHANC_TCHFull	= 0x00,
-	NM_CHANC_TCHHalf	= 0x01,
-	NM_CHANC_TCHHalf2	= 0x02,
-	NM_CHANC_SDCCH		= 0x03,
-	NM_CHANC_mainBCCH	= 0x04,
-	NM_CHANC_BCCHComb	= 0x05,
-	NM_CHANC_BCCH		= 0x06,
-	NM_CHANC_BCCH_CBCH	= 0x07,
-	NM_CHANC_SDCCH_CBCH	= 0x08,
+	NM_CHANC_TCHFull	= 0x00,	/* TCH/F + TCH/H + SACCH/TF */
+	NM_CHANC_TCHHalf	= 0x01, /* TCH/H(0,1) + FACCH/H(0,1) +
+					   SACCH/TH(0,1) */
+	NM_CHANC_TCHHalf2	= 0x02, /* TCH/H(0) + FACCH/H(0) + SACCH/TH(0) +
+					   TCH/H(1) */
+	NM_CHANC_SDCCH		= 0x03,	/* SDCCH/8 + SACCH/8 */
+	NM_CHANC_mainBCCH	= 0x04,	/* FCCH + SCH + BCCH + CCCH */
+	NM_CHANC_BCCHComb	= 0x05,	/* FCCH + SCH + BCCH + CCCH + SDCCH/4 +
+					   SACCH/C4 */
+	NM_CHANC_BCCH		= 0x06,	/* BCCH + CCCH */
+	NM_CHANC_BCCH_CBCH	= 0x07,	/* CHANC_BCCHComb + CBCH */
+	NM_CHANC_SDCCH_CBCH	= 0x08,	/* CHANC_SDCCH8 + CBCH */
+	/* ip.access */
+	NM_CHANC_IPAC_bPDCH	= 0x0b,	/* PBCCH + PCCCH + PDTCH/F + PACCH/F +
+					   PTCCH/F */
+	NM_CHANC_IPAC_cPDCH	= 0x0c, /* PBCCH + PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_PDCH	= 0x0d,	/* PDTCH/F + PACCH/F + PTCCH/F */
+	NM_CHANC_IPAC_TCHFull_PDCH = 0x80,
+	NM_CHANC_IPAC_TCHFull_TCHHalf = 0x81,
 };
 
 /* Section 9.4.16: Event Type */
@@ -527,6 +593,12 @@ enum abis_bs11_li_pll_mode {
 	BS11_LI_PLL_STANDALONE	= 3,
 };
 
+enum abis_bs11_line_cfg {
+	BS11_LINE_CFG_STAR	= 0x00,
+	BS11_LINE_CFG_MULTIDROP	= 0x01,
+	BS11_LINE_CFG_LOOP	= 0x02,
+};
+
 enum abis_bs11_phase {
 	BS11_STATE_SOFTWARE_RQD		= 0x01,
 	BS11_STATE_LOAD_SMU_INTENDED	= 0x11,
@@ -543,6 +615,36 @@ enum abis_bs11_phase {
 	BS11_STATE_ABIS_LOAD		= 0x13,
 };
 
+enum abis_nm_ipacc_test_no {
+	NM_IPACC_TESTNO_RLOOP_ANT	= 0x01,
+	NM_IPACC_TESTNO_RLOOP_XCVR	= 0x02,
+	NM_IPACC_TESTNO_FUNC_OBJ	= 0x03,
+	NM_IPACC_TESTNO_CHAN_USAGE	= 0x40,
+	NM_IPACC_TESTNO_BCCH_CHAN_USAGE	= 0x41,
+	NM_IPACC_TESTNO_FREQ_SYNC	= 0x42,
+	NM_IPACC_TESTNO_BCCH_INFO	= 0x43,
+	NM_IPACC_TESTNO_TX_BEACON	= 0x44,
+	NM_IPACC_TESTNO_SYSINFO_MONITOR	= 0x45,
+	NM_IPACC_TESTNO_BCCCH_MONITOR	= 0x46,
+};
+
+/* first byte after length inside NM_ATT_TEST_REPORT */
+enum abis_nm_ipacc_test_res {
+	NM_IPACC_TESTRES_SUCCESS	= 0,
+	NM_IPACC_TESTRES_TIMEOUT	= 1,
+	NM_IPACC_TESTRES_NO_CHANS	= 2,
+	NM_IPACC_TESTRES_PARTIAL	= 3,
+	NM_IPACC_TESTRES_STOPPED	= 4,
+};
+
+/* internal IE inside NM_ATT_TEST_REPORT */
+enum abis_nm_ipacc_testres_ie {
+	NM_IPACC_TR_IE_FREQ_ERR_LIST	= 3,
+	NM_IPACC_TR_IE_CHAN_USAGE	= 4,
+	NM_IPACC_TR_IE_BCCH_INFO	= 6,
+	NM_IPACC_TR_IE_RESULT_DETAILS	= 8,
+	NM_IPACC_TR_IE_FREQ_ERR		= 18,
+};
 
 /* PUBLIC */
 
@@ -562,7 +664,7 @@ int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len);
 int abis_nm_rx(struct msgb *msg);
 int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
-			  u_int8_t i1, u_int8_t i2, u_int8_t adm_state);
+			  u_int8_t i1, u_int8_t i2, enum abis_nm_adm_state adm_state);
 int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 			  u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot,
 			  u_int8_t tei);
@@ -586,6 +688,16 @@ int abis_nm_software_load_status(struct gsm_bts *bts);
 int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
 			      gsm_cbfn *cbfn, void *cb_data);
 
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
+			    u_int8_t e1_port1, u_int8_t ts1);
+
+int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
+			 u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+			 u_int8_t test_nr, u_int8_t auton_report,
+			 u_int8_t *phys_config, u_int16_t phys_config_len);
+
+int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan);
+
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
 int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin);
@@ -595,6 +707,7 @@ int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_delete_object(struct gsm_bts *bts,
 				enum abis_bs11_objtype type, u_int8_t idx);
+int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx);
 int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port,
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot, u_int8_t tei);
 int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts);
@@ -610,6 +723,7 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
+int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 int abis_nm_bs11_restart(struct gsm_bts *bts);
 

@@ -37,22 +37,138 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/signal.h>
+#include <openbsc/debug.h>
 
 static struct gsm_network *gsmnet;
 
+static int net_listen_testnr;
 static int restart;
 static char *prim_oml_ip;
 static char *unit_id;
+static u_int16_t nv_flags;
+static u_int16_t nv_mask;
 
 /*
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
 static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
 */
 
+/*
+ * Callback function for NACK on the OML NM
+ *
+ * Currently we send the config requests but don't check the
+ * result. The nanoBTS will send us a NACK when we did something the
+ * BTS didn't like.
+ */
+static int ipacc_msg_nack(int mt)
+{
+	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
+	exit(-1);
+	return 0;
+}
+
+struct ipacc_ferr_elem {
+	int16_t freq_err;
+	u_int8_t freq_qual;
+	u_int8_t arfcn;
+} __attribute__((packed));
+
+struct ipacc_cusage_elem {
+	u_int16_t arfcn:10,
+		  rxlev:6;
+} __attribute__ ((packed));
+
+static const char *ipacc_testres_names[] = {
+	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
+	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
+	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
+	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
+	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
+};
+
+const char *ipacc_testres_name(u_int8_t res)
+{
+	if (res < ARRAY_SIZE(ipacc_testres_names) &&
+	    ipacc_testres_names[res])
+		return ipacc_testres_names[res];
+
+	return "unknown";
+}
+
+static int test_rep(void *_msg)
+{
+	struct msgb *msg = _msg;
+	struct abis_om_fom_hdr *foh = msgb_l3(msg);
+	u_int16_t test_rep_len, ferr_list_len;
+	struct ipacc_ferr_elem *ife;
+	int i;
+
+	DEBUGP(DNM, "TEST REPORT: ");
+
+	if (foh->data[0] != NM_ATT_TEST_NO ||
+	    foh->data[2] != NM_ATT_TEST_REPORT)
+		return -EINVAL;
+
+	DEBUGPC(DNM, "test_no=0x%02x ", foh->data[1]);
+	/* data[2] == NM_ATT_TEST_REPORT */
+	/* data[3..4]: test_rep_len */
+	test_rep_len = ntohs(*(u_int16_t *) &foh->data[3]);
+	/* data[5]: ip.access test result */
+	DEBUGPC(DNM, "test_res=%s\n", ipacc_testres_name(foh->data[5]));
+
+	/* data[6]: ip.access nested IE. 3 == freq_err_list */
+	switch (foh->data[6]) {
+	case 3:
+		/* data[7..8]: length of ferr_list */
+		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
+
+		/* data[9...]: frequency error list elements */
+		for (i = 0; i < ferr_list_len; i+= sizeof(*ife)) {
+			ife = (struct ipacc_ferr_elem *) (foh->data + 9 + i);
+			DEBUGP(DNM, "==> ARFCN %4u, Frequency Error %6hd\n",
+			ife->arfcn, ntohs(ife->freq_err));
+		}
+		break;
+	case 4:
+		/* data[7..8]: length of ferr_list */
+		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
+
+		/* data[9...]: channel usage list elements */
+		for (i = 0; i < ferr_list_len; i+= 2) {
+			u_int16_t *cu_ptr = (u_int16_t *)(foh->data + 9 + i);
+			u_int16_t cu = ntohs(*cu_ptr);
+			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n",
+				cu & 0x3ff, cu >> 10);
+		}
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int nm_sig_cb(unsigned int subsys, unsigned int signal,
+		     void *handler_data, void *signal_data)
+{
+	switch (signal) {
+	case S_NM_IPACC_NACK:
+		return ipacc_msg_nack((int)signal_data);
+	case S_NM_TEST_REP:
+		return test_rep(signal_data);
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 static void bootstrap_om(struct gsm_bts *bts)
 {
 	int len;
 	static u_int8_t buf[1024];
+	u_int8_t *cur = buf;
 
 	printf("OML link established\n");
 
@@ -70,7 +186,6 @@ static void bootstrap_om(struct gsm_bts *bts)
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
-		u_int8_t *cur = buf;
 
 		if (!inet_aton(prim_oml_ip, &ia)) {
 			fprintf(stderr, "invalid IP address: %s\n",
@@ -81,7 +196,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		/* 0x88 + IP + port */
 		len = 1 + sizeof(ia) + 2;
 
-		*cur++ = NM_ATT_IPACC_PRIM_OML_IP;
+		*cur++ = NM_ATT_IPACC_PRIM_OML_CFG_LIST;
 		*cur++ = (len) >> 8;
 		*cur++ = (len) & 0xff;
 		*cur++ = 0x88;
@@ -90,6 +205,20 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
+		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+	}
+	if (nv_mask) {
+		len = 4;
+
+		*cur++ = NM_ATT_IPACC_NV_FLAGS;
+		*cur++ = (len) >> 8;
+		*cur++ = (len) & 0xff;
+		*cur++ = nv_flags & 0xff;
+		*cur++ = nv_mask & 0xff;
+		*cur++ = nv_flags >> 8;
+		*cur++ = nv_mask >> 8;
+		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
+			nv_flags, nv_mask);
 		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
 	}
 
@@ -126,7 +255,32 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
 {
+	if (evt == EVT_STATECHG_OPER &&
+	    obj_class == NM_OC_RADIO_CARRIER &&
+	    new_state->availability == 3 &&
+	    net_listen_testnr) {
+		struct gsm_bts_trx *trx = obj;
+		u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+		abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+				     net_listen_testnr, 1,
+				     phys_config, sizeof(phys_config));
+	}
 	return 0;
+}
+
+static void print_usage(void)
+{
+	printf("Usage: ipaccess-config\n");
+}
+
+static void print_help(void)
+{
+	printf("  -u --unit-id UNIT_ID\n");
+	printf("  -o --oml-ip ip\n");
+	printf("  -r --restart\n");
+	printf("  -n flags/mask\tSet NVRAM attributes.\n");
+	printf("  -l --listen testnr \tPerform speciified test number\n");
+	printf("  -h --help this text\n");
 }
 
 int main(int argc, char **argv)
@@ -140,13 +294,17 @@ int main(int argc, char **argv)
 
 	while (1) {
 		int c;
+		unsigned long ul;
+		char *slash;
 		static struct option long_options[] = {
 			{ "unit-id", 1, 0, 'u' },
 			{ "oml-ip", 1, 0, 'o' },
 			{ "restart", 0, 0, 'r' },
+			{ "help", 0, 0, 'h' },
+			{ "listen", 1, 0, 'l' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:r", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:h", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -162,20 +320,38 @@ int main(int argc, char **argv)
 		case 'r':
 			restart = 1;
 			break;
+		case 'n':
+			slash = strchr(optarg, '/');
+			if (!slash)
+				exit(2);
+			ul = strtoul(optarg, NULL, 16);
+			nv_flags = ul & 0xffff;
+			ul = strtoul(slash+1, NULL, 16);
+			nv_mask = ul & 0xffff;
+			break;
+		case 'l':
+			net_listen_testnr = atoi(optarg);
+			break;
+		case 'h':
+			print_usage();
+			print_help();
+			exit(0);
 		}
 	};
 
 	if (optind >= argc) {
-		fprintf(stderr, "you have to specify the IP address of the BTS\n");
+		fprintf(stderr, "you have to specify the IP address of the BTS. Use --help for more information\n");
 		exit(2);
 	}
 
-	gsmnet = gsm_network_init(1, GSM_BTS_TYPE_NANOBTS_900, 1, 1, NULL);
+	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet)
 		exit(1);
 
-	bts = &gsmnet->bts[0];
+	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS_900, HARDCODED_TSC,
+				HARDCODED_BSIC);
 	
+	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 	printf("Trying to connect to ip.access BTS ...\n");
 
 	memset(&sin, 0, sizeof(sin));

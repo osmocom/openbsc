@@ -23,8 +23,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/talloc.h>
+
+void *tall_bsc_ctx;
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
@@ -50,6 +54,18 @@ const char *gsm_pchan_name(enum gsm_phys_chan_config c)
 		return "INVALID";
 
 	return pchan_names[c];
+}
+
+enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(pchan_names); i++) {
+		if (!strcasecmp(name, pchan_names[i]))
+			return i;
+	}
+
+	return -1;
 }
 
 static const char *lchan_names[] = {
@@ -84,74 +100,123 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 	return chreq_names[c];
 }
 
-struct gsm_network *gsm_network_init(unsigned int num_bts, enum gsm_bts_type bts_type,
-				     u_int16_t country_code, u_int16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, int, void *))
+struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
-	int i;
-	struct gsm_network *net;
+	struct gsm_bts_trx *trx = talloc(bts, struct gsm_bts_trx);
+	int k;
 
-	if (num_bts > GSM_MAX_BTS)
+	if (!trx)
 		return NULL;
 
-	net = malloc(sizeof(*net));
+	memset(trx, 0, sizeof(*trx));
+	trx->bts = bts;
+	trx->nr = bts->num_trx++;
+
+	for (k = 0; k < TRX_NR_TS; k++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[k];
+		int l;
+		
+		ts->trx = trx;
+		ts->nr = k;
+		ts->pchan = GSM_PCHAN_NONE;
+
+		for (l = 0; l < TS_MAX_LCHAN; l++) {
+			struct gsm_lchan *lchan;
+			lchan = &ts->lchan[l];
+
+			lchan->ts = ts;
+			lchan->nr = l;
+			lchan->type = GSM_LCHAN_NONE;
+		}
+	}
+
+	llist_add_tail(&trx->list, &bts->trx_list);
+
+	return trx;
+}
+
+struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
+			      u_int8_t tsc, u_int8_t bsic)
+{
+	struct gsm_bts *bts = talloc(net, struct gsm_bts);
+
+	if (!bts)
+		return NULL;
+
+	memset(bts, 0, sizeof(*bts));
+	bts->network = net;
+	bts->nr = net->num_bts++;
+	bts->type = type;
+	bts->tsc = tsc;
+	bts->bsic = bsic;
+	bts->num_trx = 0;
+	INIT_LLIST_HEAD(&bts->trx_list);
+	bts->ms_max_power = 15;	/* dBm */
+
+	/* create our primary TRX */
+	bts->c0 = gsm_bts_trx_alloc(bts);
+	if (!bts->c0) {
+		talloc_free(bts);
+		return NULL;
+	}
+	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
+
+	llist_add_tail(&bts->list, &net->bts_list);
+
+	return bts;
+}
+
+struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
+				     int (*mncc_recv)(struct gsm_network *, int, void *))
+{
+	struct gsm_network *net;
+
+	net = talloc(tall_bsc_ctx, struct gsm_network);
 	if (!net)
 		return NULL;
 	memset(net, 0, sizeof(*net));	
 
 	net->country_code = country_code;
 	net->network_code = network_code;
-	net->num_bts = num_bts;
+	net->num_bts = 0;
 
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
+	INIT_LLIST_HEAD(&net->bts_list);
 
 	net->mncc_recv = mncc_recv;
 
-	for (i = 0; i < num_bts; i++) {
-		struct gsm_bts *bts = &net->bts[i];
-		int j;
-		
-		bts->network = net;
-		bts->nr = i;
-		bts->type = bts_type;
-		bts->tsc = HARDCODED_TSC;
-		bts->bsic = HARDCODED_BSIC;
-
-		for (j = 0; j < BTS_MAX_TRX; j++) {
-			struct gsm_bts_trx *trx = &bts->trx[j];
-			int k;
-
-			trx->bts = bts;
-			trx->nr = j;
-
-			for (k = 0; k < TRX_NR_TS; k++) {
-				struct gsm_bts_trx_ts *ts = &trx->ts[k];
-				int l;
-				
-				ts->trx = trx;
-				ts->nr = k;
-				ts->pchan = GSM_PCHAN_NONE;
-
-				for (l = 0; l < TS_MAX_LCHAN; l++) {
-					struct gsm_lchan *lchan;
-					lchan = &ts->lchan[l];
-
-					lchan->ts = ts;
-					lchan->nr = l;
-					lchan->type = GSM_LCHAN_NONE;
-				}
-			}
-		}
-
-		bts->num_trx = 1;	/* FIXME */
-#ifdef HAVE_TRX1
-		bts->num_trx++;
-#endif
-		bts->c0 = &bts->trx[0];
-		bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
-	}
 	return net;
+}
+
+struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
+{
+	struct gsm_bts *bts;
+
+	if (num >= net->num_bts)
+		return NULL;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->nr == num)
+			return bts;
+	}
+
+	return NULL;
+}
+
+struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
+{
+	struct gsm_bts_trx *trx;
+
+	if (num >= bts->num_trx)
+		return NULL;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->nr == num)
+			return trx;
+	}
+
+	return NULL;
 }
 
 static char ts2str[255];
@@ -171,7 +236,7 @@ static const char *bts_types[] = {
 	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
 };
 
-enum gsm_bts_type parse_btstype(char *arg)
+enum gsm_bts_type parse_btstype(const char *arg)
 {
 	int i;
 	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
@@ -201,7 +266,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 		skip = 1;
 
 	for (i = 0; i < net->num_bts; i++) {
-		bts = &net->bts[i];
+		bts = gsm_bts_num(net, i);
 
 		if (skip) {
 			if (start_bts == bts)
@@ -219,22 +284,28 @@ char *gsm_band_name(enum gsm_band band)
 {
 	switch (band) {
 	case GSM_BAND_400:
-		return "GSM 400";
+		return "GSM400";
 	case GSM_BAND_850:
-		return "GSM 850";
+		return "GSM850";
 	case GSM_BAND_900:
-		return "GSM 900";
+		return "GSM900";
 	case GSM_BAND_1800:
-		return "DCS 1800";
+		return "DCS1800";
 	case GSM_BAND_1900:
-		return "PCS 1900";
+		return "PCS1900";
 	}
 	return "invalid";
 }
 
-enum gsm_band gsm_band_parse(int mhz)
+enum gsm_band gsm_band_parse(const char* mhz)
 {
-	switch (mhz) {
+	while (*mhz && !isdigit(*mhz))
+		mhz++;
+
+	if (*mhz == '\0')
+		return -EINVAL;
+
+	switch (atoi(mhz)) {
 	case 400:
 		return GSM_BAND_400;
 	case 850:
@@ -248,5 +319,28 @@ enum gsm_band gsm_band_parse(int mhz)
 	default:
 		return -EINVAL;
 	}
+}
+
+static const char *gsm_auth_policy_names[] = {
+	[GSM_AUTH_POLICY_CLOSED] = "closed",
+	[GSM_AUTH_POLICY_ACCEPT_ALL] = "accept-all",
+	[GSM_AUTH_POLICY_TOKEN] = "token",
+};
+
+enum gsm_auth_policy gsm_auth_policy_parse(const char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(gsm_auth_policy_names); i++) {
+		if (!strcmp(arg, gsm_auth_policy_names[i]))
+			return i;
+	}
+	return GSM_AUTH_POLICY_CLOSED;
+}
+
+const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
+{
+	if (policy > ARRAY_SIZE(gsm_auth_policy_names))
+		return "undefined";
+	return gsm_auth_policy_names[policy];
 }
 

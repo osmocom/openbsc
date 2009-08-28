@@ -34,6 +34,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/talloc.h>
 
 #include <vty/buffer.h>
 
@@ -47,14 +48,10 @@
 /* per connection data */
 LLIST_HEAD(active_connections);
 
+static void *tall_telnet_ctx;
+
 /* per network data */
 static int telnet_new_connection(struct bsc_fd *fd, unsigned int what);
-#if 0
-static int telnet_paging_callback(unsigned int subsys, unsigned int signal,
-				  void *handler_data, void *signal_data);
-static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
-				void *handler_data, void *signal_data);
-#endif
 
 static struct bsc_fd server_socket = {
 	.when	    = BSC_FD_READ,
@@ -65,6 +62,9 @@ static struct bsc_fd server_socket = {
 void telnet_init(struct gsm_network *network, int port) {
 	struct sockaddr_in sock_addr;
 	int fd, on = 1;
+
+	tall_telnet_ctx = talloc_named_const(tall_bsc_ctx, 1,
+					     "telnet_connection");
 
 	bsc_vty_init(network);
 
@@ -95,12 +95,6 @@ void telnet_init(struct gsm_network *network, int port) {
 	server_socket.data = network;
 	server_socket.fd = fd;
 	bsc_register_fd(&server_socket);
-
-	/* register callbacks */
-#if 0
-	register_signal_handler(SS_PAGING, telnet_paging_callback, network);
-	register_signal_handler(SS_SMS, telnet_sms_callback, network);
-#endif
 }
 
 static void print_welcome(int fd) {
@@ -126,7 +120,7 @@ int telnet_close_client(struct bsc_fd *fd) {
 	close(fd->fd);
 	bsc_unregister_fd(fd);
 	llist_del(&conn->entry);
-	free(conn);
+	talloc_free(conn);
 	return 0;
 }
 
@@ -139,6 +133,10 @@ static int client_data(struct bsc_fd *fd, unsigned int what)
 		conn->fd.when &= ~BSC_FD_READ;
 		rc = vty_read(conn->vty);
 	}
+
+	/* vty might have been closed from vithin vty_read() */
+	if (!conn->vty)
+		return rc;
 
 	if (what & BSC_FD_WRITE) {
 		rc = buffer_flush_all(conn->vty->obuf, fd->fd);
@@ -161,8 +159,7 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	}
 
 
-	connection = (struct telnet_connection*)malloc(sizeof(*connection));
-	memset(connection, 0, sizeof(*connection));
+	connection = talloc_zero(tall_telnet_ctx, struct telnet_connection);
 	connection->network = (struct gsm_network*)fd->data;
 	connection->fd.data = connection;
 	connection->fd.fd = new_connection;
@@ -187,6 +184,9 @@ void vty_event(enum event event, int sock, struct vty *vty)
 	struct telnet_connection *connection = vty->priv;
 	struct bsc_fd *bfd = &connection->fd;
 
+	if (vty->type != VTY_TERM)
+		return;
+
 	switch (event) {
 	case VTY_READ:
 		bfd->when |= BSC_FD_READ;
@@ -194,43 +194,13 @@ void vty_event(enum event event, int sock, struct vty *vty)
 	case VTY_WRITE:
 		bfd->when |= BSC_FD_WRITE;
 		break;
+	case VTY_CLOSED:
+		/* vty layer is about to free() vty */
+		connection->vty = NULL;
+		telnet_close_client(bfd);
+		break;
 	default:
 		break;
 	}
 }
 
-#if 0
-static int telnet_paging_callback(unsigned int subsys, unsigned int singal,
-				  void *handler_data, void *signal_data)
-{
-	struct paging_signal_data *paging = signal_data;
-	struct telnet_connection *con;
-
-	llist_for_each_entry(con, &active_connections, entry) {
-		if (paging->lchan) {
-			WRITE_CONNECTION(con->fd.fd, "Paging succeeded\n");
-			show_lchan(con->fd.fd, paging->lchan);
-		} else {
-			WRITE_CONNECTION(con->fd.fd, "Paging failed for subscriber: %s/%s/%s\n",
-				paging->subscr->imsi,
-				paging->subscr->tmsi,
-				paging->subscr->name);
-		}
-	}
-
-	return 0;
-}
-
-static int telnet_sms_callback(unsigned int subsys, unsigned int signal,
-				void *handler_data, void *signal_data)
-{
-	struct sms_submit *sms = signal_data;
-	struct telnet_connection *con;
-
-	llist_for_each_entry(con, &active_connections, entry) {
-		WRITE_CONNECTION(con->fd.fd, "Incoming SMS: %s\n", sms->user_data);
-	}
-
-	return 0;
-}
-#endif

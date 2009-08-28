@@ -23,18 +23,26 @@
 #include <sys/types.h>
 
 #include <vty/command.h>
+#include <vty/buffer.h>
 #include <vty/vty.h>
 
 #include <arpa/inet.h>
 
 #include <openbsc/linuxlist.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_subscriber.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/gsm_utils.h>
 #include <openbsc/db.h>
+#include <openbsc/talloc.h>
 
 static struct gsm_network *gsmnet;
+
+struct cmd_node net_node = {
+	GSMNET_NODE,
+	"%s(network)#",
+	1,
+};
 
 struct cmd_node bts_node = {
 	BTS_NODE,
@@ -51,12 +59,6 @@ struct cmd_node trx_node = {
 struct cmd_node ts_node = {
 	TS_NODE,
 	"%s(ts)#",
-	1,
-};
-
-struct cmd_node subscr_node = {
-	SUBSCR_NODE,
-	"%s(subscriber)#",
 	1,
 };
 
@@ -81,6 +83,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_long, VTY_NEWLINE);
 	vty_out(vty, "  Short network name: '%s'%s",
 		net->name_short, VTY_NEWLINE);
+	vty_out(vty, "  Authentication policy: %s%s",
+		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -117,6 +121,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
+	if (bts->cell_barred)
+		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -147,12 +153,117 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts_dump_vty(vty, &net->bts[bts_nr]);
+		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
 		return CMD_SUCCESS;
 	}
 	/* print all BTS's */
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++)
-		bts_dump_vty(vty, &net->bts[bts_nr]);
+		bts_dump_vty(vty, gsm_bts_num(net, bts_nr));
+
+	return CMD_SUCCESS;
+}
+
+/* utility functions */
+static void parse_e1_link(struct gsm_e1_subslot *e1_link, const char *line,
+			  const char *ts, const char *ss)
+{
+	e1_link->e1_nr = atoi(line);
+	e1_link->e1_ts = atoi(ts);
+	if (!strcmp(ss, "full"))
+		e1_link->e1_ts_ss = 255;
+	else
+		e1_link->e1_ts_ss = atoi(ss);
+}
+
+static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link,
+				 const char *prefix)
+{
+	if (!e1_link->e1_ts)
+		return;
+
+	if (e1_link->e1_ts_ss == 255)
+		vty_out(vty, "%se1 line %u timeslot %u sub-slot full%s",
+			prefix, e1_link->e1_nr, e1_link->e1_ts, VTY_NEWLINE);
+	else
+		vty_out(vty, "%se1 line %u timeslot %u sub-slot %u%s",
+			prefix, e1_link->e1_nr, e1_link->e1_ts,
+			e1_link->e1_ts_ss, VTY_NEWLINE);
+}
+
+
+static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
+{
+	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
+	if (ts->pchan != GSM_PCHAN_NONE)
+		vty_out(vty, "     phys_chan_config %s%s",
+			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+	config_write_e1_link(vty, &ts->e1_link, "     ");
+}
+
+static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
+{
+	int i;
+
+	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
+	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
+	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
+	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
+
+	for (i = 0; i < TRX_NR_TS; i++)
+		config_write_ts_single(vty, &trx->ts[i]);
+}
+
+static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
+	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
+	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
+	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
+		VTY_NEWLINE);
+	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
+	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
+	if (bts->chan_desc.t3212)
+		vty_out(vty, "  periodic location update %u%s",
+			bts->chan_desc.t3212 * 10, VTY_NEWLINE);
+	vty_out(vty, "  channel allocator %s%s",
+		bts->chan_alloc_reverse ? "descending" : "ascending",
+		VTY_NEWLINE);
+	if (bts->cell_barred)
+		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
+	if (is_ipaccess_bts(bts))
+		vty_out(vty, "  ip.access unit_id %u %u%s",
+			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
+	else {
+		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
+		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
+	}
+
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		config_write_trx_single(vty, trx);
+}
+
+static int config_write_bts(struct vty *v)
+{
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &gsmnet->bts_list, list)
+		config_write_bts_single(v, bts);
+
+	return CMD_SUCCESS;
+}
+
+static int config_write_net(struct vty *vty)
+{
+	vty_out(vty, "network%s", VTY_NEWLINE);
+	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
+	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
+	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
+	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
+	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -162,9 +273,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
 		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "  RF Nominal Power: %d dBm, reduced by %u dB, "
-		"resulting BS power: %d dBm\n",
+		"resulting BS power: %d dBm%s",
 		trx->nominal_power, trx->max_power_red,
-		trx->nominal_power - trx->max_power_red);
+		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &trx->nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
@@ -191,7 +302,7 @@ DEFUN(show_trx,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -200,29 +311,30 @@ DEFUN(show_trx,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 		trx_dump_vty(vty, trx);
 		return CMD_SUCCESS;
 	}
 	if (bts) {
 		/* print all TRX in this BTS */
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			trx_dump_vty(vty, trx);
 		}
 		return CMD_SUCCESS;
 	}
 
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			trx_dump_vty(vty, trx);
 		}
 	}
 
 	return CMD_SUCCESS;
 }
+
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
@@ -235,9 +347,9 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 	net_dump_nmstate(vty, &ts->nm_state);
 	if (is_ipaccess_bts(ts->trx->bts)) {
 		ia.s_addr = ts->abis_ip.bound_ip;
-		vty_out(vty, "  Bound IP: %s Port %u FC=%u F8=%u%s",
+		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
 			inet_ntoa(ia), ts->abis_ip.bound_port,
-			ts->abis_ip.attr_fc, ts->abis_ip.attr_f8,
+			ts->abis_ip.rtp_payload2, ts->abis_ip.conn_id,
 			VTY_NEWLINE);
 	} else {
 		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
@@ -265,7 +377,7 @@ DEFUN(show_ts,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -274,7 +386,7 @@ DEFUN(show_ts,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -288,9 +400,9 @@ DEFUN(show_ts,
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				ts_dump_vty(vty, ts);
@@ -301,7 +413,7 @@ DEFUN(show_ts,
 	return CMD_SUCCESS;
 }
 
-static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
+void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
@@ -313,7 +425,9 @@ static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
 	if (subscr->tmsi)
-		vty_out(vty, "    TMSI: %s%s", subscr->tmsi, VTY_NEWLINE);
+		vty_out(vty, "    TMSI: %08X%s", atoi(subscr->tmsi),
+			VTY_NEWLINE);
+	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
 static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
@@ -379,7 +493,7 @@ DEFUN(show_lchan,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -388,7 +502,7 @@ DEFUN(show_lchan,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		trx = &bts->trx[trx_nr];
+		trx = gsm_bts_trx_num(bts, trx_nr);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -411,9 +525,9 @@ DEFUN(show_lchan,
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = &bts->trx[trx_nr];
+			trx = gsm_bts_trx_num(bts, trx_nr);
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
@@ -481,6 +595,8 @@ DEFUN(show_e1line,
 
 static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
 {
+	if (ts->type == E1INP_TS_TYPE_NONE)
+		return;
 	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
 		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
 		VTY_NEWLINE);
@@ -567,41 +683,88 @@ DEFUN(show_paging,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		bts_paging_dump_vty(vty, bts);
 		
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = &net->bts[bts_nr];
+		bts = gsm_bts_num(net, bts_nr);
 		bts_paging_dump_vty(vty, bts);
 	}
 
 	return CMD_SUCCESS;
 }
 
-/* per-subscriber configuration */
-DEFUN(cfg_subscr,
-      cfg_subscr_cmd,
-      "subscriber IMSI",
-      "Select a Subscriber to configure\n")
+DEFUN(cfg_net,
+      cfg_net_cmd,
+      "network",
+      "Configure the GSM network")
 {
-	const char *imsi = argv[0];
-	struct gsm_subscriber *subscr;
-
-	subscr = subscr_get_by_imsi(imsi);
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber for IMSI %s%s",
-			imsi, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	vty->index = subscr;
-	vty->node = SUBSCR_NODE;
+	vty->index = gsmnet;
+	vty->node = GSMNET_NODE;
 
 	return CMD_SUCCESS;
 }
 
+
+DEFUN(cfg_net_ncc,
+      cfg_net_ncc_cmd,
+      "network country code <1-999>",
+      "Set the GSM network country code")
+{
+	gsmnet->country_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_mnc,
+      cfg_net_mnc_cmd,
+      "mobile network code <1-999>",
+      "Set the GSM mobile network code")
+{
+	gsmnet->network_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_name_short,
+      cfg_net_name_short_cmd,
+      "short name NAME",
+      "Set the short GSM network name")
+{
+	if (gsmnet->name_short)
+		talloc_free(gsmnet->name_short);
+
+	gsmnet->name_short = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_name_long,
+      cfg_net_name_long_cmd,
+      "long name NAME",
+      "Set the long GSM network name")
+{
+	if (gsmnet->name_long)
+		talloc_free(gsmnet->name_long);
+
+	gsmnet->name_long = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_auth_policy,
+      cfg_net_auth_policy_cmd,
+      "auth policy (closed|accept-all|token)",
+      "Set the GSM network authentication policy\n")
+{
+	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
+
+	gsmnet->auth_policy = policy;
+
+	return CMD_SUCCESS;
+}
 
 /* per-BTS configuration */
 DEFUN(cfg_bts,
@@ -612,14 +775,19 @@ DEFUN(cfg_bts,
 	int bts_nr = atoi(argv[0]);
 	struct gsm_bts *bts;
 
-	if (bts_nr >= GSM_MAX_BTS) {
-		vty_out(vty, "%% This Version of OpenBSC only supports %u BTS%s",
-			GSM_MAX_BTS, VTY_NEWLINE);
+	if (bts_nr > gsmnet->num_bts) {
+		vty_out(vty, "%% The next unused BTS number is %u%s",
+			gsmnet->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
-	}
-	bts = &gsmnet->bts[bts_nr];
-	if (bts_nr >= gsmnet->num_bts)
-		gsmnet->num_bts = bts_nr + 1;
+	} else if (bts_nr == gsmnet->num_bts) {
+		/* allocate a new one */
+		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
+				    HARDCODED_TSC, HARDCODED_BSIC);
+	} else 
+		bts = gsm_bts_num(gsmnet, bts_nr);
+
+	if (!bts)
+		return CMD_WARNING;
 
 	vty->index = bts;
 	vty->node = BTS_NODE;
@@ -634,8 +802,8 @@ DEFUN(cfg_bts_type,
 {
 	struct gsm_bts *bts = vty->index;
 
-	/* FIXME: implementation */
-	//bts->type =
+	bts->type = parse_btstype(argv[0]);
+
 	return CMD_SUCCESS;
 }
 
@@ -645,7 +813,7 @@ DEFUN(cfg_bts_band,
       "Set the frequency band of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int band = gsm_band_parse(atoi(argv[0]));
+	int band = gsm_band_parse(argv[0]);
 
 	if (band < 0) {
 		vty_out(vty, "%% BAND %d is not a valid GSM band%s",
@@ -703,7 +871,7 @@ DEFUN(cfg_bts_bsic,
 	int bsic = atoi(argv[0]);
 
 	if (bsic < 0 || bsic > 0x3f) {
-		vty_out(vty, "%% TSC %d is not in the valid range (0-255)%s",
+		vty_out(vty, "%% BSIC %d is not in the valid range (0-255)%s",
 			bsic, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -715,28 +883,96 @@ DEFUN(cfg_bts_bsic,
 
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
-      "unit_id <0-65534> <0-255>",
-      "Set the BTS Unit ID of this BTS\n")
+      "ip.access unit_id <0-65534> <0-255>",
+      "Set the ip.access BTS Unit ID of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int site_id = atoi(argv[0]);
 	int bts_id = atoi(argv[1]);
 
-	if (site_id < 0 || site_id > 65534) {
-		vty_out(vty, "%% Site ID %d is not in the valid range%s",
-			site_id, VTY_NEWLINE);
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	if (site_id < 0 || site_id > 255) {
-		vty_out(vty, "%% BTS ID %d is not in the valid range%s",
-			bts_id, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
+
 	bts->ip_access.site_id = site_id;
 	bts->ip_access.bts_id = bts_id;
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_oml_e1,
+      cfg_bts_oml_e1_cmd,
+      "oml e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+      "E1 interface to be used for OML\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	parse_e1_link(&bts->oml_e1_link, argv[0], argv[1], argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(cfg_bts_oml_e1_tei,
+      cfg_bts_oml_e1_tei_cmd,
+      "oml e1 tei <0-63>",
+      "Set the TEI to be used for OML")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->oml_tei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
+      "channel allocator (ascending|descending)",
+      "Should the channel allocator allocate in reverse TRX order?")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!strcmp(argv[0], "ascending"))
+		bts->chan_alloc_reverse = 0;
+	else
+		bts->chan_alloc_reverse = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
+      "cell barred (0|1)",
+      "Should this cell be barred from access?")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->cell_barred = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
+      "ms max power <0-40>",
+      "Maximum transmit power of the MS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->ms_max_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
+      "periodic location update <0-1530>",
+      "Periodic Location Updating Interval in Minutes")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->chan_desc.t3212 = atoi(argv[0]) / 10;
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -748,16 +984,18 @@ DEFUN(cfg_trx,
 	struct gsm_bts *bts = vty->index;
 	struct gsm_bts_trx *trx;
 
-	if (trx_nr > BTS_MAX_TRX) {
-		vty_out(vty, "%% This version of OpenBSC only supports %u TRX%s",
-			BTS_MAX_TRX+1, VTY_NEWLINE);
+	if (trx_nr > bts->num_trx) {
+		vty_out(vty, "%% The next unused TRX number in this BTS is %u%s",
+			bts->num_trx, VTY_NEWLINE);
 		return CMD_WARNING;
-	}
-
-	if (trx_nr >= bts->num_trx)
-		bts->num_trx = trx_nr+1;
-
-	trx = &bts->trx[trx_nr];
+	} else if (trx_nr == bts->num_trx) {
+		/* we need to allocate a new one */
+		trx = gsm_bts_trx_alloc(bts);
+	} else 
+		trx = gsm_bts_trx_num(bts, trx_nr);
+	
+	if (!trx)
+		return CMD_WARNING;
 
 	vty->index = trx;
 	vty->node = TRX_NODE;
@@ -812,10 +1050,35 @@ DEFUN(cfg_trx_max_power_red,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_rsl_e1,
+      cfg_trx_rsl_e1_cmd,
+      "rsl e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+      "E1 interface to be used for RSL\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	parse_e1_link(&trx->rsl_e1_link, argv[0], argv[1], argv[2]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_rsl_e1_tei,
+      cfg_trx_rsl_e1_tei_cmd,
+      "rsl e1 tei <0-63>",
+      "Set the TEI to be used for RSL")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->rsl_tei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 /* per TS configuration */
 DEFUN(cfg_ts,
       cfg_ts_cmd,
-      "timeslot TS_NR",
+      "timeslot <0-7>",
       "Select a Timeslot to configure")
 {
 	int ts_nr = atoi(argv[0]);
@@ -836,79 +1099,31 @@ DEFUN(cfg_ts,
 	return CMD_SUCCESS;
 }
 
-
-/* Subscriber */
-DEFUN(show_subscr,
-      show_subscr_cmd,
-      "show subscriber [IMSI]",
-	SHOW_STR "Display information about a subscriber\n")
+DEFUN(cfg_ts_pchan,
+      cfg_ts_pchan_cmd,
+      "phys_chan_config PCHAN",
+      "Physical Channel configuration (TCH/SDCCH/...)")
 {
-	const char *imsi;
-	struct gsm_subscriber *subscr;
+	struct gsm_bts_trx_ts *ts = vty->index;
+	int pchanc;
 
-	if (argc >= 1) {
-		imsi = argv[0];
-		subscr = subscr_get_by_imsi(imsi);
-		if (!subscr) {
-			vty_out(vty, "%% unknown subscriber%s",
-				VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-		subscr_dump_vty(vty, subscr);
-		
-		return CMD_SUCCESS;
-	}
+	pchanc = gsm_pchan_parse(argv[0]);
+	if (pchanc < 0)
+		return CMD_WARNING;
 
-	/* FIXME: iterate over all subscribers ? */
-	return CMD_WARNING;
+	ts->pchan = pchanc;
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_subscr_name,
-      cfg_subscr_name_cmd,
-      "name NAME",
-      "Set the name of the subscriber")
+DEFUN(cfg_ts_e1_subslot,
+      cfg_ts_e1_subslot_cmd,
+      "e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+      "E1 sub-slot connected to this on-air timeslot")
 {
-	const char *name = argv[0];
-	struct gsm_subscriber *subscr = vty->index;
+	struct gsm_bts_trx_ts *ts = vty->index;
 
-	strncpy(subscr->name, name, sizeof(subscr->name));
-
-	db_sync_subscriber(subscr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_subscr_extension,
-      cfg_subscr_extension_cmd,
-      "extension EXTENSION",
-      "Set the extension of the subscriber")
-{
-	const char *name = argv[0];
-	struct gsm_subscriber *subscr = vty->index;
-
-	strncpy(subscr->extension, name, sizeof(subscr->extension));
-
-	db_sync_subscriber(subscr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_subscr_authorized,
-      cfg_subscr_authorized_cmd,
-      "auth <0-1>",
-      "Set the authorization status of the subscriber")
-{
-	int auth = atoi(argv[0]);
-	struct gsm_subscriber *subscr = vty->index;
-
-	if (auth)
-		subscr->authorized = 1;
-	else
-		subscr->authorized = 0;
-
-	db_sync_subscriber(subscr);
+	parse_e1_link(&ts->e1_link, argv[0], argv[1], argv[2]);
 
 	return CMD_SUCCESS;
 }
@@ -932,33 +1147,47 @@ int bsc_vty_init(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &show_paging_cmd);
 
-	install_element(VIEW_NODE, &show_subscr_cmd);
+	install_element(CONFIG_NODE, &cfg_net_cmd);
+	install_node(&net_node, config_write_net);
+	install_default(GSMNET_NODE);
+	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
+	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
+	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
+	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
+	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 
-	install_element(CONFIG_NODE, &cfg_bts_cmd);
-	install_node(&bts_node, dummy_config_write);
+	install_element(GSMNET_NODE, &cfg_bts_cmd);
+	install_node(&bts_node, config_write_bts);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
+	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
+	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
+	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
+	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
+	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
+
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
+	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
+	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
 	install_default(TS_NODE);
+	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
-	install_element(CONFIG_NODE, &cfg_subscr_cmd);
-	install_node(&subscr_node, dummy_config_write);
-	install_default(SUBSCR_NODE);
-	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);
+	bsc_vty_init_extra(net);
 
 	return 0;
 }

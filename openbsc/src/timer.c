@@ -172,3 +172,14 @@ restart:
 
 	return work;
 }
+
+int bsc_timer_check(void)
+{
+	struct timer_list *timer;
+	int i;
+
+	llist_for_each_entry(timer, &timer_list, entry) {
+		i++;
+	}
+	return i;
+}

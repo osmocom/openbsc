@@ -1,0 +1,74 @@
+
+GSM 04.08 7.1.7 / 9.1.7		RR CHANNEL RELESE
+
+RSL 08.58 3.4 / ?		RLL Link Release Request
+
+RSL 08.58 4.6 / 8.4.5		DEACTivate SACCH
+	* Deactivate SACCH according to Channel Release Proc 04.08
+	* to be sent after RR CHANNEL RELEASE is sent to MS
+
+RSL 08.58 4.7 / 8.4.14		RF CHANnel RELease
+	* tells the BTS to release a radio channel
+	* "when an activated radio channel is no longer needed"
+	* BTS responds with RF CHANnel RELease ACKnowledge
+
+
+GSM 04.08 3.4.13: RR connection release procedure
+
+* network sends RR CHANNEL RELEASE to MS on the DCCH
+  * start T3109
+  * deactivate SACCH
+* MS disconnects main signalling link (by sending DISC)
+  * all other data links are disconnected by local end link release
+* network receives DISC (BTS sends RLL REL IND to BSC)
+  * stop T3109
+  * start T3111 
+* when T3111 times out, the network can reuse the channls
+* if T3109 times out, the network deactivates the channels 
+  and can reuse them
+  * this probably means simply RF CHANnel RELease
+
+
+== Implementation in OpenBSC ==
+
+chan_alloc.c:lchan_auto_release()
+	* checks if use count still > 0 (abort)
+	* calls gsm48_send_rr_release()
+		* which calls rsl_deact_sacch()
+	* calls rsl_release_request()
+		* which sends RLL Link Release request
+	
+RX of RELease INDication:
+	* call rsl_rf_chan_release() (send RF_CHAN_REL)
+
+RX of RELease CONFimem:
+	* call rsl_rf_chan_release() (send RF_CHAN_REL)
+
+* RX of RF_CHAN_REL_ACK
+	* call lchan_free()
+		* subscr_put()
+		* delete release_timer
+
+
+=== Integration with SMS ===
+
+* RX of CP_ERROR or unimplemented MT
+	* trigger trans_free() which will lchan_auto_release()
+
+* CP TC1* expired while waiting for CP-ACK
+	* trigger trans_free() which will lchan_auto_release()
+
+* RX of RP_ERROR
+	* trigger trans_free() which will lchan_auto_release()
+	
+* TX of CP-ACK in MT DELIVER
+	* trigger trans_free() which will lchan_auto_release()
+
+* RX of CP-ACK in MO SUBMIT
+	* trigger trans_free() which will lchan_auto_release()
+	
+* RX of RP-ACK in MT DELIVER (and no more messages)
+	* trigger rsl_release_request() for SAPI3
+
+* RX of RP-SMMA in MT DELIVER (and no more messages)
+	* trigger rsl_release_request() for SAPI3

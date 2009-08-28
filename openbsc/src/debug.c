@@ -28,7 +28,7 @@
 
 #include <openbsc/debug.h>
 
-unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB);
+unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB|DMEAS);
 
 struct debug_info {
 	const char *name;
@@ -56,6 +56,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DMI,  "DMI", "", "")
 	DEBUG_CATEGORY(DMIB,  "DMIB", "", "")
 	DEBUG_CATEGORY(DMUX,  "DMUX", "", "")
+	DEBUG_CATEGORY(DMEAS,  "DMEAS", "", "")
 };
 
 static int use_color = 1;
@@ -142,7 +143,7 @@ void debugp(unsigned int subsys, char *file, int line, int cont, const char *for
 
 static char hexd_buff[4096];
 
-char *hexdump(unsigned char *buf, int len)
+char *hexdump(const unsigned char *buf, int len)
 {
 	int i;
 	char *cur = hexd_buff;

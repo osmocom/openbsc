@@ -127,7 +127,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 	int rc = 0;
 
 	if (!sh->rx_msg) {
-		sh->rx_msg = msgb_alloc(SERIAL_ALLOC_SIZE);
+		sh->rx_msg = msgb_alloc(SERIAL_ALLOC_SIZE, "RS232 Rx");
 		sh->rx_msg->l2h = NULL;
 		sh->rx_msg->trx = sh->bts->c0;
 	}

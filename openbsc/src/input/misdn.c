@@ -36,8 +36,10 @@
 
 //#define AF_COMPATIBILITY_FUNC
 //#include <compat_af_isdn.h>
+#ifndef AF_ISDN
 #define AF_ISDN 34
 #define PF_ISDN AF_ISDN
+#endif
 
 #include <openbsc/select.h>
 #include <openbsc/msgb.h>
@@ -47,12 +49,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
-
-/* data structure for one E1 interface with A-bis */
-struct mi_e1_handle {
-	/* The mISDN card number of the card we use */
-	int cardnr;
-};
+#include <openbsc/talloc.h>
 
 #define TS1_ALLOC_SIZE	300
 
@@ -95,7 +92,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "mISDN TS1");
 	struct sockaddr_mISDN l2addr;
 	struct mISDNhead *hh;
 	socklen_t alen;
@@ -136,7 +133,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
 		if (!link) {
 			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
-			free(msg);
+			msgb_free(msg);
 			return -EINVAL;
 		}
 		/* save the channel number in the driver private struct */
@@ -153,6 +150,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
+	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
@@ -277,7 +275,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "mISDN TSx");
 	struct mISDNhead *hh;
 	int ret;
 
@@ -381,7 +379,6 @@ struct e1inp_driver misdn_driver = {
 
 static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 {
-	struct mi_e1_handle *e1h = line->driver_data;
 	int ts, ret;
 
 	/* TS0 is CRC4, don't need any fd for it */
@@ -420,7 +417,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 		memset(&addr, 0, sizeof(addr));
 		addr.family = AF_ISDN;
-		addr.dev = e1h->cardnr;
+		addr.dev = line->num;
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_SIGN:
 			addr.channel = 0;
@@ -469,27 +466,23 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	return 0;
 }
 
-int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
+int mi_e1_line_update(struct e1inp_line *line)
 {
-	struct mi_e1_handle *e1h;
-	int sk, ret, cnt;
 	struct mISDN_devinfo devinfo;
+	int sk, ret, cnt;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&misdn_driver);
-	if (ret)
-		return ret;
+	if (!line->driver) {
+		/* this must be the first update */
+		line->driver = &misdn_driver;
+	} else {
+		/* this is a subsequent update */
+		/* FIXME: first close all sockets */
+		fprintf(stderr, "incremental line updates not supported yet\n");
+		return 0;
+	}
 
-	/* create the actual line instance */
-	/* FIXME: do this independent of driver registration */
-	e1h = malloc(sizeof(*e1h));
-	memset(e1h, 0, sizeof(*e1h));
-
-	e1h->cardnr = cardnr;
-
-	line->driver = &misdn_driver;
-	line->driver_data = e1h;
+	if (line->driver != &misdn_driver)
+		return -EINVAL;
 
 	/* open the ISDN card device */
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
@@ -509,11 +502,11 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
 	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
 #if 1
-	devinfo.id = e1h->cardnr;
+	devinfo.id = line->num;
 	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
 	if (ret < 0) {
 		fprintf(stdout, "error getting info for device %d: %s\n",
-			e1h->cardnr, strerror(errno));
+			line->num, strerror(errno));
 		return -ENODEV;
 	}
 	fprintf(stdout, "        id:             %d\n", devinfo.id);
@@ -529,14 +522,15 @@ int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2)
 		return -EINVAL;
 	}
 
-	if (devinfo.nrbchan != 30) {
-		fprintf(stderr, "error: E1 card has no 30 B-channels\n");
-		return -EINVAL;
-	}
-
-	ret = mi_e1_setup(line, release_l2);
+	ret = mi_e1_setup(line, 1);
 	if (ret)
 		return ret;
 
-	return e1inp_line_register(line);
+	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_sms(void)
+{
+	/* register the driver with the core */
+	e1inp_driver_register(&misdn_driver);
 }

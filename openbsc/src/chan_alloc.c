@@ -38,7 +38,7 @@ static void auto_release_channel(void *_lchan);
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
 {
-	struct gsm_bts_trx *trx = &bts->trx[0];	
+	struct gsm_bts_trx *trx = bts->c0;
 	struct gsm_bts_trx_ts *ts = &trx->ts[0];
 
 	if (pchan != GSM_PCHAN_CCCH &&
@@ -53,40 +53,46 @@ struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 	return ts;
 }
 
-static const enum abis_nm_chan_comb chcomb4pchan[] = {
-	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
-	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCCHComb,
-	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
-	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
-	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
-	/* FIXME: bounds check */
-};
-
 /* Allocate a physical channel (TS) */
 struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 				enum gsm_phys_chan_config pchan)
 {
-	int i, j;
-	for (i = 0; i < bts->num_trx; i++) {
-		struct gsm_bts_trx *trx = &bts->trx[i];
+	int j;
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
 		int from, to;
 
 		/* the following constraints are pure policy,
 		 * no requirement to put this restriction in place */
-		switch (pchan) {
-		case GSM_PCHAN_CCCH:
-		case GSM_PCHAN_CCCH_SDCCH4:
-			from = 0; to = 0;
-			break;
-		case GSM_PCHAN_SDCCH8_SACCH8C:
-			from = 1; to = 1;
-			break;
-		case GSM_PCHAN_TCH_F:
-		case GSM_PCHAN_TCH_H:
-			from = 2; to = 7;
-			break;
-		default:
-			return NULL;
+		if (trx == bts->c0) {
+			/* On the first TRX we run one CCCH and one SDCCH8 */
+			switch (pchan) {
+			case GSM_PCHAN_CCCH:
+			case GSM_PCHAN_CCCH_SDCCH4:
+				from = 0; to = 0;
+				break;
+			case GSM_PCHAN_TCH_F:
+			case GSM_PCHAN_TCH_H:
+				from = 1; to = 7;
+				break;
+			case GSM_PCHAN_SDCCH8_SACCH8C:
+			default:
+				return NULL;
+			}
+		} else {
+			/* Every secondary TRX is configured for TCH/F
+			 * and TCH/H only */
+			switch (pchan) {
+			case GSM_PCHAN_SDCCH8_SACCH8C:
+				from = 1; to = 1;
+			case GSM_PCHAN_TCH_F:
+			case GSM_PCHAN_TCH_H:
+				from = 1; to = 7;
+				break;
+			default:
+				return NULL;
+			}
 		}
 
 		for (j = from; j <= to; j++) {
@@ -94,7 +100,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 			if (ts->pchan == GSM_PCHAN_NONE) {
 				ts->pchan = pchan;
 				/* set channel attribute on OML */
-				abis_nm_set_channel_attr(ts, chcomb4pchan[pchan]);
+				abis_nm_set_channel_attr(ts, abis_nm_chcomb4pchan(pchan));
 				return ts;
 			}
 		}
@@ -118,25 +124,46 @@ static const u_int8_t subslots_per_pchan[] = {
 };
 
 static struct gsm_lchan *
-_lc_find(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
+_lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
+{
+	struct gsm_bts_trx_ts *ts;
+	int j, ss;
+
+	for (j = 0; j < 8; j++) {
+		ts = &trx->ts[j];
+		if (ts->pchan != pchan)
+			continue;
+		/* check if all sub-slots are allocated yet */
+		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
+			struct gsm_lchan *lc = &ts->lchan[ss];
+			if (lc->type == GSM_LCHAN_NONE)
+				return lc;
+		}
+	}
+	return NULL;
+}
+
+static struct gsm_lchan *
+_lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
-	int i, j, ss;
-	for (i = 0; i < bts->num_trx; i++) {
-		trx = &bts->trx[i];
-		for (j = 0; j < 8; j++) {
-			ts = &trx->ts[j];
-			if (ts->pchan != pchan)
-				continue;
-			/* check if all sub-slots are allocated yet */
-			for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
-				struct gsm_lchan *lc = &ts->lchan[ss];
-				if (lc->type == GSM_LCHAN_NONE)
-					return lc;
-			}
+	struct gsm_lchan *lc;
+
+	if (bts->chan_alloc_reverse) {
+		llist_for_each_entry_reverse(trx, &bts->trx_list, list) {
+			lc = _lc_find_trx(trx, pchan);
+			if (lc)
+				return lc;
+		}
+	} else {
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			lc = _lc_find_trx(trx, pchan);
+			if (lc)
+				return lc;
 		}
 	}
+
 	/* we cannot allocate more of these */
 	if (pchan == GSM_PCHAN_CCCH_SDCCH4)
 		return NULL;
@@ -155,18 +182,27 @@ _lc_find(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 {
 	struct gsm_lchan *lchan = NULL;
+	enum gsm_phys_chan_config first, second;
 
 	switch (type) {
 	case GSM_LCHAN_SDCCH:
-		lchan = _lc_find(bts, GSM_PCHAN_CCCH_SDCCH4);
+		if (bts->chan_alloc_reverse) {
+			first = GSM_PCHAN_SDCCH8_SACCH8C;
+			second = GSM_PCHAN_CCCH_SDCCH4;
+		} else {
+			first = GSM_PCHAN_CCCH_SDCCH4;
+			second = GSM_PCHAN_SDCCH8_SACCH8C;
+		}
+
+		lchan = _lc_find_bts(bts, first);
 		if (lchan == NULL)
-			lchan = _lc_find(bts, GSM_PCHAN_SDCCH8_SACCH8C);
+			lchan = _lc_find_bts(bts, second);
 		break;
 	case GSM_LCHAN_TCH_F:
-		lchan = _lc_find(bts, GSM_PCHAN_TCH_F);
+		lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
 		break;
 	case GSM_LCHAN_TCH_H:
-		lchan =_lc_find(bts, GSM_PCHAN_TCH_H);
+		lchan =_lc_find_bts(bts, GSM_PCHAN_TCH_H);
 		break;
 	default:
 		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
@@ -225,7 +261,7 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 	}
 
 	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
-	rsl_chan_release(lchan);
+	rsl_release_request(lchan, 0);
 	return 1;
 }
 
@@ -239,13 +275,14 @@ static void auto_release_channel(void *_lchan)
 }
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
-	int trx, ts_no, lchan_no; 
+	struct gsm_bts_trx *trx;
+	int ts_no, lchan_no; 
 
-	for (trx = 0; trx < bts->num_trx; ++trx) {
+	llist_for_each_entry(trx, &bts->trx_list, list) {
 		for (ts_no = 0; ts_no < 8; ++ts_no) {
 			for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
 				struct gsm_lchan *lchan =
-					&bts->trx[trx].ts[ts_no].lchan[lchan_no];
+					&trx->ts[ts_no].lchan[lchan_no];
 				if (subscr == lchan->subscr)
 					return lchan;
 			}
@@ -253,4 +290,19 @@ struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 	}
 
 	return NULL;
+}
+
+struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr)
+{
+	struct gsm_bts *bts;
+	struct gsm_network *net = subscr->net;
+	struct gsm_lchan *lchan;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		lchan = lchan_find(bts, subscr);
+		if (lchan)
+			return lchan;
+	}
+
+	return 0;
 }

@@ -94,7 +94,7 @@ static int create_objects(struct gsm_bts *bts)
 
 	abis_nm_bs11_conn_oml_tei(bts, 0, 1, 0xff, TEI_OML);
 
-	abis_nm_bs11_set_trx_power(&bts->trx[0], BS11_TRX_POWER_GSM_30mW);
+	abis_nm_bs11_set_trx_power(bts->c0, BS11_TRX_POWER_GSM_30mW);
 	
 	sleep(1);
 
@@ -109,6 +109,10 @@ static int create_trx1(struct gsm_bts *bts)
 {
 	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
 	u_int8_t *cur = bbsig1_attr;
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, 1);
+
+	if (!trx)
+		trx = gsm_bts_trx_alloc(bts);
 
 	fprintf(stdout, "Crating Objects for TRX1\n");
 
@@ -123,7 +127,7 @@ static int create_trx1(struct gsm_bts *bts)
 				   sizeof(bbsig1_attr), bbsig1_attr);
 	abis_nm_bs11_create_object(bts, BS11_OBJ_PA, 1,
 				   sizeof(obj_pa0_attr), obj_pa0_attr);
-	abis_nm_bs11_set_trx_power(&bts->trx[1], BS11_TRX_POWER_GSM_30mW);
+	abis_nm_bs11_set_trx_power(trx, BS11_TRX_POWER_GSM_30mW);
 	
 	return 0;
 }
@@ -437,13 +441,17 @@ static int print_attr(struct tlv_parsed *tp)
 
 static void cmd_query(void)
 {
+	struct gsm_bts_trx *trx = g_bts->c0;
+
 	bs11cfg_state = STATE_QUERY;
 	abis_nm_bs11_get_serno(g_bts);
 	abis_nm_bs11_get_oml_tei_ts(g_bts);
 	abis_nm_bs11_get_pll_mode(g_bts);
 	abis_nm_bs11_get_cclk(g_bts);
-	abis_nm_bs11_get_trx_power(&g_bts->trx[0]);
-	abis_nm_bs11_get_trx_power(&g_bts->trx[1]);
+	abis_nm_bs11_get_trx_power(trx);
+	trx = gsm_bts_trx_num(g_bts, 1);
+	if (trx)
+		abis_nm_bs11_get_trx_power(trx);
 	sleep(1);
 	abis_nm_bs11_factory_logon(g_bts, 0);
 	command = NULL;
@@ -533,6 +541,28 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				command = NULL;
 			} else if (!strcmp(command, "query")) {
 				cmd_query();
+			} else if (!strcmp(command, "create-bport1")) {
+				abis_nm_bs11_create_bport(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "delete-bport1")) {
+				abis_nm_chg_adm_state(g_bts, NM_OC_BS11_BPORT, 1, 0xff, 0xff, NM_STATE_LOCKED);
+				sleep(1);
+				abis_nm_bs11_delete_bport(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "bport0-star")) {
+				abis_nm_bs11_set_bport_line_cfg(g_bts, 0, BS11_LINE_CFG_STAR);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "bport0-multidrop")) {
+				abis_nm_bs11_set_bport_line_cfg(g_bts, 0, BS11_LINE_CFG_MULTIDROP);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
 			}
 		}
 		break;
@@ -684,6 +714,10 @@ static void print_help(void)
 	printf("\tpll-e1-locked\tSet the PLL to be locked to E1 clock\n");
 	printf("\tpll-standalone\tSet the PLL to be in standalone mode\n");
 	printf("\toml-tei\tSet OML E1 TS and TEI\n");
+	printf("\tbport0-star\tSet BPORT0 line config to star\n");
+	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
+	printf("\tcreate-bport1\tCreate BPORT1 object\n");
+	printf("\tdelete-bport1\tDelete BPORT1 object\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -775,12 +809,13 @@ int main(int argc, char **argv)
 
 	handle_options(argc, argv);
 
-	gsmnet = gsm_network_init(1, 1, 1, GSM_BTS_TYPE_BS11, NULL);
+	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet) {
 		fprintf(stderr, "Unable to allocate gsm network\n");
 		exit(1);
 	}
-	g_bts = &gsmnet->bts[0];
+	g_bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_BS11, HARDCODED_TSC,
+				HARDCODED_BSIC);
 
 	rc = rs232_setup(serial_port, delay_ms, g_bts);
 	if (rc < 0) {

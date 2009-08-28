@@ -34,6 +34,7 @@ Boston, MA 02111-1307, USA.  */
 #include <ctype.h>
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 
 //#include "memory.h"
 //#include "log.h"
@@ -45,6 +46,8 @@ Boston, MA 02111-1307, USA.  */
 //#include "workqueue.h"
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/talloc.h>
 
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
@@ -170,7 +173,7 @@ char *argv_concat(const char **argv, int argc, int shift)
 		len += strlen(argv[i]) + 1;
 	if (!len)
 		return NULL;
-	p = str = malloc(len);
+	p = str = _talloc_zero(tall_vty_ctx, len, "arvg_concat");
 	for (i = shift; i < argc; i++) {
 		size_t arglen;
 		memcpy(p, argv[i], (arglen = strlen(argv[i])));
@@ -272,7 +275,7 @@ vector cmd_make_strvec(const char *string)
 		       *cp != '\0')
 			cp++;
 		strlen = cp - start;
-		token = malloc(strlen + 1);
+		token = _talloc_zero(tall_vty_ctx, strlen + 1, "make_strvec");
 		memcpy(token, start, strlen);
 		*(token + strlen) = '\0';
 		vector_set(strvec, token);
@@ -297,7 +300,7 @@ void cmd_free_strvec(vector v)
 
 	for (i = 0; i < vector_active(v); i++)
 		if ((cp = vector_slot(v, i)) != NULL)
-			free(cp);
+			talloc_free(cp);
 
 	vector_free(v);
 }
@@ -328,7 +331,7 @@ static char *cmd_desc_str(const char **string)
 		cp++;
 
 	strlen = cp - start;
-	token = malloc(strlen + 1);
+	token = _talloc_zero(tall_vty_ctx, strlen + 1, "cmd_desc_str");
 	memcpy(token, start, strlen);
 	*(token + strlen) = '\0';
 
@@ -399,11 +402,11 @@ static vector cmd_make_descvec(const char *string, const char *descstr)
 
 		len = cp - sp;
 
-		token = malloc(len + 1);
+		token = _talloc_zero(tall_vty_ctx, len + 1, "cmd_make_descvec");
 		memcpy(token, sp, len);
 		*(token + len) = '\0';
 
-		desc = calloc(1, sizeof(struct desc));
+		desc = talloc_zero(tall_vty_ctx, struct desc);
 		desc->cmd = token;
 		desc->str = cmd_desc_str(&dp);
 
@@ -473,6 +476,7 @@ void install_element(enum node_type ntype, struct cmd_element *cmd)
 	cmd->cmdsize = cmd_cmdsize(cmd->strvec);
 }
 
+#ifdef VTY_CRYPT_PW
 static unsigned char itoa64[] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
@@ -498,11 +502,11 @@ static char *zencrypt(const char *passwd)
 
 	return crypt(passwd, salt);
 }
+#endif
 
 /* This function write configuration of this host. */
 static int config_write_host(struct vty *vty)
 {
-#if 0
 	if (host.name)
 		vty_out(vty, "hostname %s%s", host.name, VTY_NEWLINE);
 
@@ -522,6 +526,7 @@ static int config_write_host(struct vty *vty)
 				VTY_NEWLINE);
 	}
 
+#if 0
 	if (zlog_default->default_lvl != LOG_DEBUG) {
 		vty_out(vty, "! N.B. The 'log trap' command is deprecated.%s",
 			VTY_NEWLINE);
@@ -574,7 +579,7 @@ static int config_write_host(struct vty *vty)
 
 	if (zlog_default->record_priority == 1)
 		vty_out(vty, "log record-priority%s", VTY_NEWLINE);
-
+#endif
 	if (host.advanced)
 		vty_out(vty, "service advanced-vty%s", VTY_NEWLINE);
 
@@ -591,7 +596,6 @@ static int config_write_host(struct vty *vty)
 	else if (!host.motd)
 		vty_out(vty, "no banner motd%s", VTY_NEWLINE);
 
-#endif
 	return 1;
 }
 
@@ -1798,16 +1802,9 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 				descvec = vector_slot(strvec, index);
 				for (j = 0; j < vector_active(descvec); j++)
 					if ((desc = vector_slot(descvec, j))) {
-						if ((string =
-						     cmd_entry_function
-						     (vector_slot(vline, index),
-						      desc->cmd)))
-							if (cmd_unique_string
-							    (matchvec, string))
-								vector_set
-								    (matchvec,
-								     strdup
-								     (string));
+						if ((string = cmd_entry_function(vector_slot(vline, index), desc->cmd)))
+							if (cmd_unique_string (matchvec, string))
+								vector_set (matchvec, talloc_strdup(tall_vty_ctx, string));
 					}
 			}
 		}
@@ -1848,7 +1845,8 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 			if (len < lcd) {
 				char *lcdstr;
 
-				lcdstr = malloc(lcd + 1);
+				lcdstr = _talloc_zero(tall_vty_ctx, lcd + 1,
+						      "complete-lcdstr");
 				memcpy(lcdstr, matchvec->index[0], lcd);
 				lcdstr[lcd] = '\0';
 
@@ -1857,7 +1855,7 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 				/* Free matchvec. */
 				for (i = 0; i < vector_active(matchvec); i++) {
 					if (vector_slot(matchvec, i))
-						free(vector_slot(matchvec, i));
+						talloc_free(vector_slot(matchvec, i));
 				}
 				vector_free(matchvec);
 
@@ -1911,27 +1909,49 @@ char **cmd_complete_command(vector vline, struct vty *vty, int *status)
 
 /* return parent node */
 /* MUST eventually converge on CONFIG_NODE */
-enum node_type node_parent(enum node_type node)
+enum node_type vty_go_parent(struct vty *vty)
 {
-	enum node_type ret;
+	assert(vty->node > CONFIG_NODE);
 
-	assert(node > CONFIG_NODE);
-
-	switch (node) {
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-		ret = BGP_NODE;
+	switch (vty->node) {
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
 		break;
-	case KEYCHAIN_KEY_NODE:
-		ret = KEYCHAIN_NODE;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+		}
+		break;
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
+		break;
+	case TS_NODE:
+		vty->node = TRX_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx_ts *ts = vty->index;
+			vty->index = ts->trx;
+		}
+		break;
+	case SUBSCR_NODE:
+		vty->node = VIEW_NODE;
+		subscr_put(vty->index);
+		vty->index = NULL;
 		break;
 	default:
-		ret = CONFIG_NODE;
+		vty->node = CONFIG_NODE;
 	}
 
-	return ret;
+	return vty->node;
 }
 
 /* Execute command by argument vline vector. */
@@ -2054,9 +2074,11 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 		    int vtysh)
 {
 	int ret, saved_ret, tried = 0;
-	enum node_type onode, try_node;
+	enum node_type onode;
+	void *oindex;
 
-	onode = try_node = vty->node;
+	onode = vty->node;
+	oindex = vty->index;
 
 	if (cmd_try_do_shortcut(vty->node, vector_slot(vline, 0))) {
 		vector shifted_vline;
@@ -2087,8 +2109,7 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 	/* This assumes all nodes above CONFIG_NODE are childs of CONFIG_NODE */
 	while (ret != CMD_SUCCESS && ret != CMD_WARNING
 	       && vty->node > CONFIG_NODE) {
-		try_node = node_parent(try_node);
-		vty->node = try_node;
+		vty_go_parent(vty);
 		ret = cmd_execute_command_real(vline, vty, cmd);
 		tried = 1;
 		if (ret == CMD_SUCCESS || ret == CMD_WARNING) {
@@ -2098,8 +2119,10 @@ cmd_execute_command(vector vline, struct vty *vty, struct cmd_element **cmd,
 	}
 	/* no command succeeded, reset the vty to the original node and
 	   return the error for this node */
-	if (tried)
+	if (tried) {
 		vty->node = onode;
+		vty->index = oindex;
+	}
 	return saved_ret;
 }
 
@@ -2215,7 +2238,6 @@ cmd_execute_command_strict(vector vline, struct vty *vty,
 	return (*matched_element->func) (matched_element, vty, argc, argv);
 }
 
-#if 0
 /* Configration make from file. */
 int config_from_file(struct vty *vty, FILE * fp)
 {
@@ -2235,7 +2257,7 @@ int config_from_file(struct vty *vty, FILE * fp)
 		while (ret != CMD_SUCCESS && ret != CMD_WARNING
 		       && ret != CMD_ERR_NOTHING_TODO
 		       && vty->node != CONFIG_NODE) {
-			vty->node = node_parent(vty->node);
+			vty_go_parent(vty);
 			ret = cmd_execute_command_strict(vline, vty, NULL);
 		}
 
@@ -2247,7 +2269,6 @@ int config_from_file(struct vty *vty, FILE * fp)
 	}
 	return CMD_SUCCESS;
 }
-#endif
 
 /* Configration from terminal */
 DEFUN(config_terminal,
@@ -2292,9 +2313,17 @@ DEFUN(config_exit,
       config_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
 {
 	switch (vty->node) {
-	case BTS_NODE:
-		vty->node = VIEW_NODE;
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
 		vty->index = NULL;
+		break;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+		}
 		break;
 	case TRX_NODE:
 		vty->node = BTS_NODE;
@@ -2328,28 +2357,8 @@ DEFUN(config_exit,
 		vty->node = ENABLE_NODE;
 		vty_config_unlock(vty);
 		break;
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case BGP_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case MASC_NODE:
-	case RMAP_NODE:
 	case VTY_NODE:
 		vty->node = CONFIG_NODE;
-		break;
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-		vty->node = BGP_NODE;
-		break;
-	case KEYCHAIN_KEY_NODE:
-		vty->node = KEYCHAIN_NODE;
 		break;
 	default:
 		break;
@@ -2371,22 +2380,6 @@ ALIAS(config_exit,
 		/* Nothing to do. */
 		break;
 	case CONFIG_NODE:
-	case INTERFACE_NODE:
-	case ZEBRA_NODE:
-	case RIP_NODE:
-	case RIPNG_NODE:
-	case BGP_NODE:
-	case BGP_VPNV4_NODE:
-	case BGP_IPV4_NODE:
-	case BGP_IPV4M_NODE:
-	case BGP_IPV6_NODE:
-	case RMAP_NODE:
-	case OSPF_NODE:
-	case OSPF6_NODE:
-	case ISIS_NODE:
-	case KEYCHAIN_NODE:
-	case KEYCHAIN_KEY_NODE:
-	case MASC_NODE:
 	case VTY_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
@@ -2444,7 +2437,6 @@ DEFUN(config_list, config_list_cmd, "list", "Print command list\n")
 	return CMD_SUCCESS;
 }
 
-#if 0
 /* Write current configuration into file. */
 DEFUN(config_write_file,
       config_write_file_cmd,
@@ -2471,11 +2463,14 @@ DEFUN(config_write_file,
 	config_file = host.config;
 
 	config_file_sav =
-	    malloc(strlen(config_file) + strlen(CONF_BACKUP_EXT) + 1);
+	    _talloc_zero(tall_vty_ctx,
+			 strlen(config_file) + strlen(CONF_BACKUP_EXT) + 1,
+			 "config_file_sav");
 	strcpy(config_file_sav, config_file);
 	strcat(config_file_sav, CONF_BACKUP_EXT);
 
-	config_file_tmp = malloc(strlen(config_file) + 8);
+	config_file_tmp = _talloc_zero(tall_vty_ctx, strlen(config_file) + 8,
+					"config_file_tmp");
 	sprintf(config_file_tmp, "%s.XXXXXX", config_file);
 
 	/* Open file to configuration write. */
@@ -2483,8 +2478,8 @@ DEFUN(config_write_file,
 	if (fd < 0) {
 		vty_out(vty, "Can't open configuration file %s.%s",
 			config_file_tmp, VTY_NEWLINE);
-		free(config_file_tmp);
-		free(config_file_sav);
+		talloc_free(config_file_tmp);
+		talloc_free(config_file_sav);
 		return CMD_WARNING;
 	}
 
@@ -2494,7 +2489,7 @@ DEFUN(config_write_file,
 	file_vty->type = VTY_FILE;
 
 	/* Config file header print. */
-	vty_out(file_vty, "!\n! Zebra configuration saved from vty\n!   ");
+	vty_out(file_vty, "!\n! OpenBSC configuration saved from vty\n!   ");
 	//vty_time_print (file_vty, 1);
 	vty_out(file_vty, "!\n");
 
@@ -2510,16 +2505,16 @@ DEFUN(config_write_file,
 			vty_out(vty,
 				"Can't unlink backup configuration file %s.%s",
 				config_file_sav, VTY_NEWLINE);
-			free(config_file_sav);
-			free(config_file_tmp);
+			talloc_free(config_file_sav);
+			talloc_free(config_file_tmp);
 			unlink(config_file_tmp);
 			return CMD_WARNING;
 		}
 	if (link(config_file, config_file_sav) != 0) {
 		vty_out(vty, "Can't backup old configuration file %s.%s",
 			config_file_sav, VTY_NEWLINE);
-		free(config_file_sav);
-		free(config_file_tmp);
+		talloc_free(config_file_sav);
+		talloc_free(config_file_tmp);
 		unlink(config_file_tmp);
 		return CMD_WARNING;
 	}
@@ -2527,28 +2522,28 @@ DEFUN(config_write_file,
 	if (unlink(config_file) != 0) {
 		vty_out(vty, "Can't unlink configuration file %s.%s",
 			config_file, VTY_NEWLINE);
-		free(config_file_sav);
-		free(config_file_tmp);
+		talloc_free(config_file_sav);
+		talloc_free(config_file_tmp);
 		unlink(config_file_tmp);
 		return CMD_WARNING;
 	}
 	if (link(config_file_tmp, config_file) != 0) {
 		vty_out(vty, "Can't save configuration file %s.%s", config_file,
 			VTY_NEWLINE);
-		free(config_file_sav);
-		free(config_file_tmp);
+		talloc_free(config_file_sav);
+		talloc_free(config_file_tmp);
 		unlink(config_file_tmp);
 		return CMD_WARNING;
 	}
 	unlink(config_file_tmp);
 	sync();
 
-	free(config_file_sav);
-	free(config_file_tmp);
+	talloc_free(config_file_sav);
+	talloc_free(config_file_tmp);
 
-	if (chmod(config_file, CONFIGFILE_MASK) != 0) {
+	if (chmod(config_file, 0666 & ~CONFIGFILE_MASK) != 0) {
 		vty_out(vty, "Can't chmod configuration file %s: %s (%d).%s",
-			config_file, safe_strerror(errno), errno, VTY_NEWLINE);
+			config_file, strerror(errno), errno, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -2639,7 +2634,6 @@ ALIAS(config_write_terminal,
 
 	return CMD_SUCCESS;
 }
-#endif
 
 /* Hostname configuration */
 DEFUN(config_hostname,
@@ -2654,9 +2648,9 @@ DEFUN(config_hostname,
 	}
 
 	if (host.name)
-		free(host.name);
+		talloc_free(host.name);
 
-	host.name = strdup(argv[0]);
+	host.name = talloc_strdup(tall_vty_ctx, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2666,7 +2660,7 @@ DEFUN(config_no_hostname,
       NO_STR "Reset system's network name\n" "Host name of this router\n")
 {
 	if (host.name)
-		free(host.name);
+		talloc_free(host.name);
 	host.name = NULL;
 	return CMD_SUCCESS;
 }
@@ -2687,11 +2681,11 @@ DEFUN(config_password, password_cmd,
 	if (argc == 2) {
 		if (*argv[0] == '8') {
 			if (host.password)
-				free(host.password);
+				talloc_free(host.password);
 			host.password = NULL;
 			if (host.password_encrypt)
-				free(host.password_encrypt);
-			host.password_encrypt = strdup(strdup(argv[1]));
+				talloc_free(host.password_encrypt);
+			host.password_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
 			return CMD_SUCCESS;
 		} else {
 			vty_out(vty, "Unknown encryption type.%s", VTY_NEWLINE);
@@ -2707,17 +2701,17 @@ DEFUN(config_password, password_cmd,
 	}
 
 	if (host.password)
-		free(host.password);
+		talloc_free(host.password);
 	host.password = NULL;
 
 #ifdef VTY_CRYPT_PW
 	if (host.encrypt) {
 		if (host.password_encrypt)
-			free(host.password_encrypt);
-		host.password_encrypt = strdup(zencrypt(argv[0]));
+			talloc_free(host.password_encrypt);
+		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.password = strdup(argv[0]);
+		host.password = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2745,12 +2739,12 @@ ALIAS(config_password, password_text_cmd,
 	if (argc == 2) {
 		if (*argv[0] == '8') {
 			if (host.enable)
-				free(host.enable);
+				talloc_free(host.enable);
 			host.enable = NULL;
 
 			if (host.enable_encrypt)
-				free(host.enable_encrypt);
-			host.enable_encrypt = strdup(argv[1]);
+				talloc_free(host.enable_encrypt);
+			host.enable_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
 
 			return CMD_SUCCESS;
 		} else {
@@ -2767,18 +2761,18 @@ ALIAS(config_password, password_text_cmd,
 	}
 
 	if (host.enable)
-		free(host.enable);
+		talloc_free(host.enable);
 	host.enable = NULL;
 
 	/* Plain password input. */
 #ifdef VTY_CRYPT_PW
 	if (host.encrypt) {
 		if (host.enable_encrypt)
-			free(host.enable_encrypt);
-		host.enable_encrypt = strdup(zencrypt(argv[0]));
+			talloc_free(host.enable_encrypt);
+		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.enable = strdup(argv[0]);
+		host.enable = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2798,11 +2792,11 @@ ALIAS(config_enable_password,
       "Assign the privileged level password\n")
 {
 	if (host.enable)
-		free(host.enable);
+		talloc_free(host.enable);
 	host.enable = NULL;
 
 	if (host.enable_encrypt)
-		free(host.enable_encrypt);
+		talloc_free(host.enable_encrypt);
 	host.enable_encrypt = NULL;
 
 	return CMD_SUCCESS;
@@ -2821,13 +2815,13 @@ DEFUN(service_password_encrypt,
 
 	if (host.password) {
 		if (host.password_encrypt)
-			free(host.password_encrypt);
-		host.password_encrypt = strdup(zencrypt(host.password));
+			talloc_free(host.password_encrypt);
+		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.password));
 	}
 	if (host.enable) {
 		if (host.enable_encrypt)
-			free(host.enable_encrypt);
-		host.enable_encrypt = strdup(zencrypt(host.enable));
+			talloc_free(host.enable_encrypt);
+		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.enable));
 	}
 
 	return CMD_SUCCESS;
@@ -2844,11 +2838,11 @@ DEFUN(no_service_password_encrypt,
 	host.encrypt = 0;
 
 	if (host.password_encrypt)
-		free(host.password_encrypt);
+		talloc_free(host.password_encrypt);
 	host.password_encrypt = NULL;
 
 	if (host.enable_encrypt)
-		free(host.enable_encrypt);
+		talloc_free(host.enable_encrypt);
 	host.enable_encrypt = NULL;
 
 	return CMD_SUCCESS;
@@ -2924,7 +2918,7 @@ DEFUN_HIDDEN(do_echo,
 		((message =
 		  argv_concat(argv, argc, 0)) ? message : ""), VTY_NEWLINE);
 	if (message)
-		free(message);
+		talloc_free(message);
 	return CMD_SUCCESS;
 }
 
@@ -2944,7 +2938,7 @@ DEFUN(config_logmsg,
 	zlog(NULL, level,
 	     ((message = argv_concat(argv, argc, 1)) ? message : ""));
 	if (message)
-		free(message);
+		talloc_free(message);
 	return CMD_SUCCESS;
 }
 
@@ -3076,7 +3070,9 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 			return CMD_WARNING;
 		}
 
-		if ((p = malloc(strlen(cwd) + strlen(fname) + 2))
+		if ((p = _talloc_zero(tall_vcmd_ctx,
+				      strlen(cwd) + strlen(fname) + 2),
+				      "set_log_file")
 		    == NULL) {
 			zlog_err("config_log_file: Unable to alloc mem!");
 			return CMD_WARNING;
@@ -3089,7 +3085,7 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 	ret = zlog_set_file(NULL, fullpath, loglevel);
 
 	if (p)
-		free(p);
+		talloc_free(p);
 
 	if (!ret) {
 		vty_out(vty, "can't open logfile %s\n", fname);
@@ -3097,9 +3093,9 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 	}
 
 	if (host.logfile)
-		free(host.logfile);
+		talloc_free(host.logfile);
 
-	host.logfile = strdup(fname);
+	host.logfile = talloc_strdup(tall_vty_ctx, fname);
 
 	return CMD_SUCCESS;
 }
@@ -3134,7 +3130,7 @@ DEFUN(no_config_log_file,
 	zlog_reset_file(NULL);
 
 	if (host.logfile)
-		free(host.logfile);
+		talloc_free(host.logfile);
 
 	host.logfile = NULL;
 
@@ -3288,8 +3284,8 @@ DEFUN(banner_motd_file,
       "Set banner\n" "Banner for motd\n" "Banner from a file\n" "Filename\n")
 {
 	if (host.motdfile)
-		free(host.motdfile);
-	host.motdfile = strdup(argv[0]);
+		talloc_free(host.motdfile);
+	host.motdfile = talloc_strdup(tall_vty_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -3309,15 +3305,15 @@ DEFUN(no_banner_motd,
 {
 	host.motd = NULL;
 	if (host.motdfile)
-		free(host.motdfile);
+		talloc_free(host.motdfile);
 	host.motdfile = NULL;
 	return CMD_SUCCESS;
 }
 
 /* Set config filename.  Called from vty.c */
-void host_config_set(char *filename)
+void host_config_set(const char *filename)
 {
-	host.config = strdup(filename);
+	host.config = talloc_strdup(tall_vty_ctx, filename);
 }
 
 void install_default(enum node_type node)
@@ -3328,13 +3324,11 @@ void install_default(enum node_type node)
 	install_element(node, &config_help_cmd);
 	install_element(node, &config_list_cmd);
 
-#if 0
 	install_element(node, &config_write_terminal_cmd);
 	install_element(node, &config_write_file_cmd);
 	install_element(node, &config_write_memory_cmd);
 	install_element(node, &config_write_cmd);
 	install_element(node, &show_running_config_cmd);
-#endif
 }
 
 /* Initialize command interface. Install basic nodes and commands. */
@@ -3345,8 +3339,7 @@ void cmd_init(int terminal)
 
 	/* Default host value settings. */
 	host.name = NULL;
-	//host.password = NULL;
-	host.password = "foo";
+	host.password = NULL;
 	host.enable = NULL;
 	host.logfile = NULL;
 	host.config = NULL;
@@ -3378,9 +3371,9 @@ void cmd_init(int terminal)
 		install_default(ENABLE_NODE);
 		install_element(ENABLE_NODE, &config_disable_cmd);
 		install_element(ENABLE_NODE, &config_terminal_cmd);
-		//install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
+		install_element (ENABLE_NODE, &copy_runningconfig_startupconfig_cmd);
 	}
-	//install_element (ENABLE_NODE, &show_startup_config_cmd);
+	install_element (ENABLE_NODE, &show_startup_config_cmd);
 	install_element(ENABLE_NODE, &show_version_cmd);
 
 	if (terminal) {

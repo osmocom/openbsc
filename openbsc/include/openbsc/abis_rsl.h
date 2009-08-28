@@ -123,8 +123,25 @@ enum abis_rsl_msgtype {
 	RSL_MT_MR_CODEC_MOD_PER,
 	RSL_MT_TFO_REP,
 	RSL_MT_TFO_MOD_REQ,		/* 0x3f */
+	RSL_MT_LOCATION_INFO		= 0x41,
 
 	/* ip.access specific RSL message types */
+	RSL_MT_IPAC_DIR_RETR_ENQ	= 0x40,
+	RSL_MT_IPAC_PDCH_ACT		= 0x48,
+	RSL_MT_IPAC_PDCH_ACT_ACK,
+	RSL_MT_IPAC_PDCH_ACT_NACK,
+	RSL_MT_IPAC_PDCH_DEACT		= 0x4b,
+	RSL_MT_IPAC_PDCH_DEACT_ACK,
+	RSL_MT_IPAC_PDCH_DEACT_NACK,
+	RSL_MT_IPAC_CONNECT_MUX		= 0x50,
+	RSL_MT_IPAC_CONNECT_MUX_ACK,
+	RSL_MT_IPAC_CONNECT_MUX_NACK,
+	RSL_MT_IPAC_BIND_MUX		= 0x53,
+	RSL_MT_IPAC_BIND_MUX_ACK,
+	RSL_MT_IPAC_BIND_MUX_NACK,
+	RSL_MT_IPAC_DISC_MUX		= 0x56,
+	RSL_MT_IPAC_DISC_MUX_ACK,
+	RSL_MT_IPAC_DISC_MUX_NACK,
 	RSL_MT_IPAC_BIND		= 0x70,		/* Bind to local BTS RTP port */
 	RSL_MT_IPAC_BIND_ACK,
 	RSL_MT_IPAC_BIND_NACK,
@@ -132,7 +149,29 @@ enum abis_rsl_msgtype {
 	RSL_MT_IPAC_CONNECT_ACK,
 	RSL_MT_IPAC_CONNECT_NACK,
 	RSL_MT_IPAC_DISCONNECT_IND	= 0x76,
+	RSL_MT_IPAC_DISCONNECT		= 0x77,
+	RSL_MT_IPAC_DISCONNECT_ACK,
+	RSL_MT_IPAC_DISCONNECT_NACK,
+};
 
+/* Siemens vendor-specific */
+enum abis_rsl_msgtype_siemens {
+	RSL_MT_SIEMENS_MRPCI		= 0x41,
+	RSL_MT_SIEMENS_INTRAC_HO_COND_IND = 0x42,
+	RSL_MT_SIEMENS_INTERC_HO_COND_IND = 0x43,
+	RSL_MT_SIEMENS_FORCED_HO_REQ	= 0x44,
+	RSL_MT_SIEMENS_PREF_AREA_REQ	= 0x45,
+	RSL_MT_SIEMENS_PREF_AREA	= 0x46,
+	RSL_MT_SIEMENS_START_TRACE	= 0x47,
+	RSL_MT_SIEMENS_START_TRACE_ACK	= 0x48,
+	RSL_MT_SIEMENS_STOP_TRACE	= 0x49,
+	RSL_MT_SIEMENS_TRMR		= 0x4a,
+	RSL_MT_SIEMENS_HO_FAIL_IND	= 0x4b,
+	RSL_MT_SIEMENS_STOP_TRACE_ACK	= 0x4c,
+	RSL_MT_SIEMENS_UPLF		= 0x4d,
+	RSL_MT_SIEMENS_UPLB		= 0x4e,
+	RSL_MT_SIEMENS_SET_SYS_INFO_10	= 0x4f,
+	RSL_MT_SIEMENS_MODIF_COND_IND	= 0x50,
 };
 
 /* Chapter 9.3 */
@@ -184,7 +223,7 @@ enum abis_rsl_ie {
 	RSL_IE_CBCH_LOAD_INFO,
 	RSL_IE_SMSCB_CHAN_INDICATOR,
 	RSL_IE_GROUP_CALL_REF,
-	RSL_IE_CHAN_DESC,
+	RSL_IE_CHAN_DESC		= 0x30,
 	RSL_IE_NCH_DRX_INFO,
 	RSL_IE_CMD_INDICATOR,
 	RSL_IE_EMLPP_PRIO,
@@ -197,11 +236,35 @@ enum abis_rsl_ie {
 	RSL_IE_RTD,
 	RSL_IE_TFO_STATUS,
 	RSL_IE_LLP_APDU,
+	/* Siemens vendor-specific */
+	RSL_IE_SIEMENS_MRPCI		= 0x40,
+	RSL_IE_SIEMENS_PREF_AREA_TYPE	= 0x43,
+	RSL_IE_SIEMENS_ININ_CELL_HO_PAR	= 0x45,
+	RSL_IE_SIEMENS_TRACE_REF_NR	= 0x46,
+	RSL_IE_SIEMENS_INT_TRACE_IDX	= 0x47,
+	RSL_IE_SIEMENS_L2_HDR_INFO	= 0x48,
+	RSL_IE_SIEMENS_HIGHEST_RATE	= 0x4e,
+	RSL_IE_SIEMENS_SUGGESTED_RATE	= 0x4f,
 
+	/* ip.access */
+	RSL_IE_IPAC_SRTP_CONFIG	= 0xe0,
+	RSL_IE_IPAC_PROXY_UDP	= 0xe1,
+	RSL_IE_IPAC_BSCMPL_TOUT	= 0xe2,
 	RSL_IE_IPAC_REMOTE_IP	= 0xf0,
 	RSL_IE_IPAC_REMOTE_PORT	= 0xf1,
+	RSL_IE_IPAC_RTP_PAYLOAD	= 0xf2,
 	RSL_IE_IPAC_LOCAL_PORT	= 0xf3,
+	RSL_IE_IPAC_SPEECH_MODE	= 0xf4,
 	RSL_IE_IPAC_LOCAL_IP	= 0xf5,
+	RSL_IE_IPAC_CONN_STAT	= 0xf6,
+	RSL_IE_IPAC_HO_C_PARMS	= 0xf7,
+	RSL_IE_IPAC_CONN_ID	= 0xf8,
+	RSL_IE_IPAC_RTP_CSD_FMT	= 0xf9,
+	RSL_IE_IPAC_RTP_JIT_BUF	= 0xfa,
+	RSL_IE_IPAC_RTP_COMPR	= 0xfb,
+	RSL_IE_IPAC_RTP_PAYLOAD2= 0xfc,
+	RSL_IE_IPAC_RTP_MPLEX	= 0xfd,
+	RSL_IE_IPAC_RTP_MPLEX_ID= 0xfe,
 };
 
 /* Chapter 9.3.1 */
@@ -233,16 +296,23 @@ struct rsl_ie_chan_mode {
 } __attribute__ ((packed));
 #define RSL_CMOD_DTXu		0x01	/* uplink */
 #define RSL_CMOD_DTXd		0x02	/* downlink */
-#define RSL_CMOD_SPD_SPEECH	0x01
-#define RSL_CMOD_SPD_DATA	0x02
-#define RSL_CMOD_SPD_SIGN	0x03
+enum rsl_cmod_spd {
+	RSL_CMOD_SPD_SPEECH	= 0x01,
+	RSL_CMOD_SPD_DATA	= 0x02,
+	RSL_CMOD_SPD_SIGN	= 0x03,
+};
 #define RSL_CMOD_CRT_SDCCH	0x01
 #define RSL_CMOD_CRT_TCH_Bm	0x08	/* full-rate */
 #define RSL_CMOD_CRT_TCH_Lm	0x09	/* half-rate */
 /* FIXME: More CRT types */
+/* Speech */
 #define RSL_CMOD_SP_GSM1	0x01
 #define RSL_CMOD_SP_GSM2	0x11
 #define RSL_CMOD_SP_GSM3	0x21
+/* Data */
+#define RSL_CMOD_SP_NT_14k5	0x58
+#define RSL_CMOD_SP_NT_12k0	0x50
+#define RSL_CMOD_SP_NT_6k0	0x51
 
 /* Chapter 9.3.5 */
 struct rsl_ie_chan_ident {
@@ -286,11 +356,15 @@ struct rsl_ie_chan_ident {
 #define RSL_ERRCLS_PROTO_ERROR		0x60
 #define RSL_ERRCLS_INTERWORKING		0x70
 
+/* normal event */
 #define RSL_ERR_RADIO_IF_FAIL		0x00
 #define RSL_ERR_RADIO_LINK_FAIL		0x01
 #define RSL_ERR_HANDOVER_ACC_FAIL	0x02
 #define RSL_ERR_TALKER_ACC_FAIL		0x03
 #define RSL_ERR_OM_INTERVENTION		0x07
+#define RSL_ERR_NORMAL_UNSPEC		0x0f
+#define RSL_ERR_T_MSRFPCI_EXP		0x18
+/* resource unavailable */
 #define RSL_ERR_EQUIPMENT_FAIL		0x20
 #define RSL_ERR_RR_UNAVAIL		0x21
 #define RSL_ERR_TERR_CH_FAIL		0x22
@@ -298,15 +372,19 @@ struct rsl_ie_chan_ident {
 #define RSL_ERR_ACCH_OVERLOAD		0x24
 #define RSL_ERR_PROCESSOR_OVERLOAD	0x25
 #define RSL_ERR_RES_UNAVAIL		0x2f
+/* service or option not available */
 #define RSL_ERR_TRANSC_UNAVAIL		0x30
 #define RSL_ERR_SERV_OPT_UNAVAIL	0x3f
+/* service or option not implemented */
 #define RSL_ERR_ENCR_UNIMPL		0x40
-#define RSL_ERR_SEV_OPT_UNIMPL		0x4f
+#define RSL_ERR_SERV_OPT_UNIMPL		0x4f
+/* invalid message */
 #define RSL_ERR_RCH_ALR_ACTV_ALLOC	0x50
 #define RSL_ERR_INVALID_MESSAGE		0x5f
+/* protocol error */
 #define RSL_ERR_MSG_DISCR		0x60
 #define RSL_ERR_MSG_TYPE		0x61
-#define RSL_ERR_MSG_SEQA		0x62
+#define RSL_ERR_MSG_SEQ			0x62
 #define RSL_ERR_IE_ERROR		0x63
 #define RSL_ERR_MAND_IE_ERROR		0x64
 #define RSL_ERR_OPT_IE_ERROR		0x65
@@ -314,6 +392,7 @@ struct rsl_ie_chan_ident {
 #define RSL_ERR_IE_LENGTH		0x67
 #define RSL_ERR_IE_CONTENT		0x68
 #define RSL_ERR_PROTO			0x6f
+/* interworking */
 #define RSL_ERR_INTERWORKING		0x7f
 
 /* Chapter 9.3.30 */
@@ -365,6 +444,45 @@ struct rsl_ie_chan_ident {
 #define RSL_BS_PA_MFRMS_8	0x06
 #define RSL_BS_PA_MFRMS_9	0x07
 
+/* RSL_IE_IPAC_RTP_PAYLOAD[2] */
+enum rsl_ipac_rtp_payload {
+	RSL_IPAC_RTP_GSM	= 1,
+	RSL_IPAC_RTP_EFR,
+	RSL_IPAC_RTP_AMR,
+	RSL_IPAC_RTP_CSD,
+	RSL_IPAC_RTP_MUX,
+};
+
+/* RSL_IE_IPAC_SPEECH_MODE, lower four bits */
+enum rsl_ipac_speech_mode_s {
+	RSL_IPAC_SPEECH_GSM_FR = 0,	/* GSM FR (Type 1, FS) */
+	RSL_IPAC_SPEECH_GSM_EFR = 1,	/* GSM EFR (Type 2, FS) */
+	RSL_IPAC_SPEECH_GSM_AMR_FR = 2,	/* GSM AMR/FR (Type 3, FS) */
+	RSL_IPAC_SPEECH_GSM_HR = 3,	/* GSM HR (Type 1, HS) */
+	RSL_IPAC_SPEECH_GSM_AMR_HR = 5,	/* GSM AMR/hr (Type 3, HS) */
+	RSL_IPAC_SPEECH_AS_RTP = 0xf,	/* As specified by RTP Payload IE */
+};
+/* RSL_IE_IPAC_SPEECH_MODE, upper four bits */
+enum rsl_ipac_speech_mode_m {
+	RSL_IPAC_SPEECH_M_RXTX = 0,	/* Send and Receive */
+	RSL_IPAC_SPEECH_M_RX = 1,	/* Receive only */
+	RSL_IPAC_SPEECH_M_TX = 2,	/* Send only */
+};
+
+/* RSL_IE_IPAC_RTP_CSD_FMT, lower four bits */
+enum rsl_ipac_rtp_csd_format_d {
+	RSL_IPAC_RTP_CSD_EXT_TRAU = 0,
+	RSL_IPAC_RTP_CSD_NON_TRAU = 1,
+	RSL_IPAC_RTP_CSD_TRAU_BTS = 2,
+	RSL_IPAC_RTP_CSD_IWF_FREE = 3,
+};
+/* RSL_IE_IPAC_RTP_CSD_FMT, upper four bits */
+enum rsl_ipac_rtp_csd_format_ir {
+	RSL_IPAC_RTP_CSD_IR_8k = 0,
+	RSL_IPAC_RTP_CSD_IR_16k = 1,
+	RSL_IPAC_RTP_CSD_IR_32k = 2,
+	RSL_IPAC_RTP_CSD_IR_64k = 3,
+};
 
 #include "msgb.h"
 
@@ -379,7 +497,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t bs_power, u_int8_t ms_power,
 		      u_int8_t ta);
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta, u_int8_t mode);
+			    u_int8_t ta);
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 		   u_int8_t *ms_ident, u_int8_t chan_needed);
@@ -388,11 +506,38 @@ int rsl_paging_cmd_subscr(struct gsm_bts *bts, u_int8_t chan_needed,
 int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
 
 int rsl_data_request(struct msgb *msg, u_int8_t link_id);
+int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id);
+int rsl_relase_request(struct gsm_lchan *lchan, u_int8_t link_id);
+
+/* Siemens vendor-specific RSL extensions */
+struct rsl_mrpci {
+	u_int8_t power_class:3,
+		 vgcs_capable:1,
+		 vbs_capable:1,
+		 gsm_phase:2;
+} __attribute__ ((packed));
+
+enum rsl_mrpci_pwrclass {
+	RSL_MRPCI_PWRC_1	= 0,
+	RSL_MRPCI_PWRC_2	= 1,
+	RSL_MRPCI_PWRC_3	= 2,
+	RSL_MRPCI_PWRC_4	= 3,
+	RSL_MRPCI_PWRC_5	= 4,
+};
+enum rsl_mrpci_phase {
+	RSL_MRPCI_PHASE_1	= 0,
+	/* reserved */
+	RSL_MRPCI_PHASE_2	= 2,
+	RSL_MRPCI_PHASE_2PLUS	= 3,
+};
+
+int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_bind(struct gsm_lchan *lchan);
 int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
-		      u_int16_t port, u_int16_t f8, u_int8_t fc);
+		      u_int16_t port, u_int16_t conn_id,
+		      u_int8_t rtp_payload2);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
@@ -401,9 +546,11 @@ unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
 unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
 u_int64_t str_to_imsi(const char *imsi_str);
 u_int8_t lchan2chan_nr(struct gsm_lchan *lchan);
+int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
+int rsl_deact_sacch(struct gsm_lchan *lchan);
 int rsl_chan_release(struct gsm_lchan *lchan);
 
 /* BCCH related code */

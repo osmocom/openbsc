@@ -40,6 +40,7 @@
 #include <assert.h>
 
 #include <openbsc/paging.h>
+#include <openbsc/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
@@ -47,6 +48,8 @@
 
 #define PAGING_TIMEOUT 1, 75000
 #define MAX_PAGING_REQUEST 750
+
+void *tall_paging_ctx;
 
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 {
@@ -81,7 +84,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 	bsc_del_timer(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
-	free(to_be_deleted);
+	talloc_free(to_be_deleted);
 }
 
 static void page_ms(struct gsm_paging_request *request)
@@ -96,7 +99,7 @@ static void page_ms(struct gsm_paging_request *request)
 
 	page_group = calculate_group(request->bts, request->subscr);
 	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = generate_mid_from_tmsi(mi, tmsi);
+	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }
@@ -199,9 +202,9 @@ static void paging_T3113_expired(void *data)
 	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
-	sig_data.subscr = req->subscr,
-	sig_data.bts	= req->bts,
-	sig_data.lchan	= NULL,
+	sig_data.subscr = req->subscr;
+	sig_data.bts	= req->bts;
+	sig_data.lchan	= NULL;
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (req->cbfn)
@@ -210,7 +213,7 @@ static void paging_T3113_expired(void *data)
 	paging_remove_request(&req->bts->paging, req);
 }
 
-static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 			    int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
@@ -218,12 +221,12 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 
 	if (paging_pending_request(bts_entry, subscr)) {
 		DEBUGP(DPAG, "Paging request already pending\n");
-		return;
+		return -EEXIST;
 	}
 
-	DEBUGP(DPAG, "Start paging on bts %d.\n", bts->nr);
-	req = (struct gsm_paging_request *)malloc(sizeof(*req));
-	memset(req, 0, sizeof(*req));
+	DEBUGP(DPAG, "Start paging of subscriber %llu on bts %d.\n",
+		subscr->id, bts->nr);
+	req = talloc_zero(tall_paging_ctx, struct gsm_paging_request);
 	req->subscr = subscr_get(subscr);
 	req->bts = bts;
 	req->chan_type = type;
@@ -236,21 +239,32 @@ static void _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 
 	if (!bsc_timer_pending(&bts_entry->work_timer))
 		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
+
+	return 0;
 }
 
-void paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
-		    int type, gsm_cbfn *cbfn, void *data)
+int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
+		   int type, gsm_cbfn *cbfn, void *data)
 {
 	struct gsm_bts *bts = NULL;
+	int num_pages = 0;
 
+	/* start paging subscriber on all BTS within Location Area */
 	do {
+		int rc;
+
 		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
 			break;
+		num_pages++;
 
-		/* Trigger paging */
-		_paging_request(bts, subscr, RSL_CHANNEED_TCH_F, cbfn, data);
+		/* Trigger paging, pass any error to caller */
+		rc = _paging_request(bts, subscr, type, cbfn, data);
+		if (rc < 0)
+			return rc;
 	} while (1);
+
+	return num_pages;
 }
 
 

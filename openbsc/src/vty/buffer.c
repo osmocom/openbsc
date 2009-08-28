@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include <sys/uio.h>
 
+#include <openbsc/talloc.h>
 #include <vty/buffer.h>
 #include <vty/vty.h>
 
@@ -61,14 +62,14 @@ struct buffer_data {
    next page boundery. */
 #define BUFFER_SIZE_DEFAULT		4096
 
-#define BUFFER_DATA_FREE(D) free((D))
+#define BUFFER_DATA_FREE(D) talloc_free((D))
 
 /* Make new buffer. */
 struct buffer *buffer_new(size_t size)
 {
 	struct buffer *b;
 
-	b = calloc(1, sizeof(struct buffer));
+	b = talloc_zero(tall_vty_ctx, struct buffer);
 
 	if (size)
 		b->size = size;
@@ -89,7 +90,7 @@ struct buffer *buffer_new(size_t size)
 void buffer_free(struct buffer *b)
 {
 	buffer_reset(b);
-	free(b);
+	talloc_free(b);
 }
 
 /* Make string clone. */
@@ -102,7 +103,7 @@ char *buffer_getstr(struct buffer *b)
 
 	for (data = b->head; data; data = data->next)
 		totlen += data->cp - data->sp;
-	if (!(s = malloc(totlen + 1)))
+	if (!(s = _talloc_zero(tall_vty_ctx, (totlen + 1), "buffer_getstr")))
 		return NULL;
 	p = s;
 	for (data = b->head; data; data = data->next) {
@@ -137,7 +138,9 @@ static struct buffer_data *buffer_add(struct buffer *b)
 {
 	struct buffer_data *d;
 
-	d = malloc(offsetof(struct buffer_data, data[b->size]));
+	d = _talloc_zero(tall_vty_ctx,
+			 offsetof(struct buffer_data, data[b->size]),
+			 "buffer_add");
 	if (!d)
 		return NULL;
 	d->cp = d->sp = 0;
