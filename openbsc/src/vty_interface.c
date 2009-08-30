@@ -85,6 +85,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_short, VTY_NEWLINE);
 	vty_out(vty, "  Authentication policy: %s%s",
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
+	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -264,6 +266,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
+	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -766,6 +769,16 @@ DEFUN(cfg_net_auth_policy,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_encryption,
+      cfg_net_encryption_cmd,
+      "encryption a5 (0|1|2)",
+      "Enable or disable encryption (A5) for this network\n")
+{
+	gsmnet->auth_policy = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1155,6 +1168,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
+	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
