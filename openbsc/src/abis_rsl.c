@@ -317,6 +317,16 @@ static void pad_macblock(u_int8_t *out, const u_int8_t *in, int len)
 		memset(out+len, 0x2b, MACBLOCK_SIZE-len);
 }
 
+/* Chapter 9.3.7: Encryption Information */
+static int build_encr_info(u_int8_t *out, struct gsm_lchan *lchan)
+{
+	*out++ = lchan->encr.alg_id & 0xff;
+	if (lchan->encr.key_len)
+		memcpy(out, lchan->encr.key, lchan->encr.key_len);
+	return lchan->encr.key_len + 1;
+}
+
+
 static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_RADIO_IF_FAIL] =	"Radio Interface Failure",
 	[RSL_ERR_RADIO_LINK_FAIL] =	"Radio Link Failure",
@@ -587,10 +597,14 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		     (u_int8_t *) &cm);
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) &ci);
-#if 0
-	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
-		     (u_int8_t *) &encr_info);
-#endif
+
+	if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
+		u_int8_t encr_info[MAX_A5_KEY_LEN+2];
+		rc = build_encr_info(encr_info, lchan);
+		if (rc > 0)
+			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
+	}
+
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
@@ -621,10 +635,45 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 
 	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
 		     (u_int8_t *) &cm);
-#if 0
-	msgb_tlv_put(msg, RSL_IE_ENCR_INFO, 1,
-		     (u_int8_t *) &encr_info);
-#endif
+
+	if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
+		u_int8_t encr_info[MAX_A5_KEY_LEN+2];
+		rc = build_encr_info(encr_info, lchan);
+		if (rc > 0)
+			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
+	}
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+/* Chapter 8.4.6: Send the encryption command with given L3 info */
+int rsl_encryption_cmd(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct gsm_lchan *lchan = msg->lchan;
+	u_int8_t chan_nr = lchan2chan_nr(lchan);
+	u_int8_t encr_info[MAX_A5_KEY_LEN+2];
+	u_int8_t l3_len = msg->tail - (u_int8_t *)msgb_l3(msg);
+	int rc;
+
+	/* First push the L3 IE tag and length */
+	msgb_tv16_push(msg, RSL_IE_L3_INFO, l3_len);
+
+	/* then the link identifier (SAPI0, main sign link) */
+	msgb_tv_push(msg, RSL_IE_LINK_IDENT, 0);
+
+	/* then encryption information */
+	rc = build_encr_info(encr_info, lchan);
+	if (rc <= 0)
+		return rc;
+	msgb_tlv_push(msg, RSL_IE_ENCR_INFO, rc, encr_info);
+
+	/* and finally the DCHAN header */
+	dh = (struct abis_rsl_dchan_hdr *) msgb_push(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_ENCR_CMD);
+	dh->chan_nr = chan_nr;
 
 	msg->trx = lchan->ts->trx;
 
@@ -1082,6 +1131,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
+	lchan->encr.alg_id = RSL_ENC_ALG_A5(0);	/* no encryption */
 	lchan->ms_power = ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	lchan->bs_power = 0; /* 0dB reduction, output power = Pn */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;

@@ -1672,6 +1672,10 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	case GSM48_MT_RR_APP_INFO:
 		rc = gsm48_rx_rr_app_info(msg);
 		break;
+	case GSM48_MT_RR_CIPH_M_COMPL:
+		DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
+		/* FIXME: check for MI (if any) */
+		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
 			gh->msg_type);
@@ -1681,6 +1685,29 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	return rc;
 }
 
+/* Chapter 9.1.9: Ciphering Mode Command */
+int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	u_int8_t ciph_mod_set;
+
+	msg->lchan = lchan;
+
+	DEBUGP(DRR, "TX CIPHERING MODE CMD\n");
+
+	if (lchan->encr.alg_id <= RSL_ENC_ALG_A5(0))
+		ciph_mod_set = 0;
+	else
+		ciph_mod_set = (lchan->encr.alg_id-1)<<1 | 1;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CIPH_M_CMD;
+	gh->data[0] = 0x10 | (ciph_mod_set & 0xf);
+
+	return rsl_encryption_cmd(msg);
+}
 
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, u_int8_t *apdu)

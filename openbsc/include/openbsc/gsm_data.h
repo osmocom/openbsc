@@ -126,6 +126,9 @@ struct gsm_loc_updating_operation {
 	int waiting_for_imei : 1;
 };
 
+#define MAX_A5_KEY_LEN	(128/8)
+#define RSL_ENC_ALG_A5(x)	(x+1)
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -140,6 +143,12 @@ struct gsm_lchan {
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;
+	/* Encryption information */
+	struct {
+		u_int8_t alg_id;
+		u_int8_t key_len;
+		u_int8_t key[MAX_A5_KEY_LEN];
+	} encr;
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
