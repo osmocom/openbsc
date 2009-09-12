@@ -1975,13 +1975,12 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 	fill_om_fom_hdr(oh, len, NM_MT_SET_CHAN_ATTR,
 			NM_OC_CHANNEL, bts->bts_nr,
 			ts->trx->nr, ts->nr);
-	/* FIXME: don't send ARFCN list, hopping sequence, mAIO, ...*/
-	if (bts->type == GSM_BTS_TYPE_BS11)
-		msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
 	msgb_tv_put(msg, NM_ATT_CHAN_COMB, chan_comb);
-	if (bts->type == GSM_BTS_TYPE_BS11) {
-		msgb_tv_put(msg, NM_ATT_HSN, 0x00);
-		msgb_tv_put(msg, NM_ATT_MAIO, 0x00);
+	if (ts->hopping.hsn) {
+		msgb_tv_put(msg, NM_ATT_HSN, ts->hopping.hsn);
+		msgb_tv_put(msg, NM_ATT_MAIO, ts->hopping.maio);
+		/* FIXME: compute ARFCN list */
+		msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
 	}
 	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)

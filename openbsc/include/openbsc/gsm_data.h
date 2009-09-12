@@ -337,6 +337,11 @@ struct gsm_bts_trx_ts {
 	struct tlv_parsed nm_attr;
 	u_int8_t nm_chan_comb;
 
+	struct {
+		u_int8_t maio;
+		u_int8_t hsn;
+	} hopping;
+
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
 

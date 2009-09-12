@@ -305,6 +305,13 @@ static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 	if (ts->pchan != GSM_PCHAN_NONE)
 		vty_out(vty, "     phys_chan_config %s%s",
 			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+	if (ts->hopping.hsn) {
+		vty_out(vty, "      hopping sequence number %u%s",
+			ts->hopping.hsn, VTY_NEWLINE);
+		vty_out(vty, "      hopping maio %u%s",
+			ts->hopping.maio, VTY_NEWLINE);
+		/* FIXME: ARFCN list */
+	}
 	config_write_e1_link(vty, &ts->e1_link, "     ");
 }
 
@@ -1977,6 +1984,54 @@ DEFUN(cfg_ts_pchan,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_ts_hsn,
+      cfg_ts_hsn_cmd,
+      "hopping sequence number <0-63>",
+      "Which hopping sequence to use for this channel")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->hopping.hsn = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ts_maio,
+      cfg_ts_maio_cmd,
+      "hopping maio <0-63>",
+      "Which hopping MAIO to use for this channel")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->hopping.maio = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ts_arfcn_add,
+      cfg_ts_arfcn_add_cmd,
+      "hopping arfcn add <0-1023>",
+      "Add an entry to the hopping ARFCN list")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+	int arfcn = atoi(argv[0]);
+
+	/* FIXME */
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_ts_arfcn_del,
+      cfg_ts_arfcn_del_cmd,
+      "hopping arfcn del <0-1023>",
+      "Delete an entry to the hopping ARFCN list")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+	int arfcn = atoi(argv[0]);
+
+	/* FIXME */
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_ts_e1_subslot,
       cfg_ts_e1_subslot_cmd,
       "e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
@@ -2138,6 +2193,10 @@ int bsc_vty_init(void)
 	install_element(TS_NODE, &ournode_exit_cmd);
 	install_element(TS_NODE, &ournode_end_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_hsn_cmd);
+	install_element(TS_NODE, &cfg_ts_maio_cmd);
+	install_element(TS_NODE, &cfg_ts_arfcn_add_cmd);
+	install_element(TS_NODE, &cfg_ts_arfcn_del_cmd);
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
 	abis_nm_vty_init();
