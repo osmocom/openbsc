@@ -1,0 +1,17 @@
+01.61 GPRS cipher algorithm requirements
+03.60 Overall GRPS logical architecture (above RL and MAC)
+03.64 GPRS radio interface
+04.60 RLC/MAC on PDCH
+04.64 MS-SGSN LLC spec (on top of RLC/MAC)
+04.65 SGSN SNDCP
+08.14 BSS SGSN Gb Layer 1
+08.16 BSS SGSN Gb Layer 2
+08.18 BSS SGSN BSS GPRS protocol
+09.95 Interworking between modified PLMN supporting legacy GPRS and GPRS mobiles
+22.060 GPRS Service Spec
+23.060 GPRS Radio Service Spec
+29.016 SGSN - VLR Interface Gs network interface spec
+29.018 SGSN - VLR Interface Gs layer3 interface spec
+29.060 GPRS Tunneling (GTP) over Gn and Gp
+
+

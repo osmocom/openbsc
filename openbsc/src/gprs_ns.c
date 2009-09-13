@@ -41,7 +41,7 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 	struct msgb *msg = msgb_alloc(NS_ALLOC_SIZE);
 	struct gprs_ns_hdr *nsh;
 
-	if (!msgb)
+	if (!msg)
 		return -ENOMEM;
 
 	nsh = msgb_put(msg, sizeof(*nsh));
@@ -51,16 +51,35 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 	/* FIXME: actually transmit */
 }
 
+
+int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
+		    struct msgb *msg)
+{
+	struct gprs_ns_hdr *nsh;
+	
+	nsh = msgb_push(msg, sizeof(*nsh) + 3);
+	if (!nsh)
+		return -EIO;
+
+	nsh->pdu_type = NS_PDUT_UNITDATA;
+	/* spare octet in data[0] */
+	nsh->data[1] = bvci >> 8;
+	nsh->data[2] = bvci & 0xff;
+
+	/* FIXME: actually transmit */
+}
+
 static int gprs_ns_rx_unitdata(struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh = msgb->l2h;
 	u_int16_t bvci;
 
+	/* spare octet in data[0] */
 	bvci = nsh->data[1] << 8 | nsh->data[2];
 	msgb->l3h = &nsh->data[3];
 
 	/* call upper layer (BSSGP) */
-	return bssgp_rcvmsg(msg, bvc);
+	return bssgp_rcvmsg(msg, bvci);
 }
 
 /* main entry point, here incoming NS frames enter */
@@ -79,8 +98,8 @@ int gprs_ns_rcvmsg(struct msgb *msg)
 		/* simply ignore it for now */
 		break;
 	case NS_PDUT_UNITDATA:
-		rc = gprs_ns_rx_unitdata(msg);
 		/* actual user data */
+		rc = gprs_ns_rx_unitdata(msg);
 		break;
 	case NS_PDUT_RESET:
 	case NS_PDUT_RESET_ACK:

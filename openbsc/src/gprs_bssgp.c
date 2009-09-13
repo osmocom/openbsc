@@ -48,6 +48,13 @@ static int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *data, int len)
 	return 0;
 }
 
+/* Downlink user-data */
+static int bssgp_rx_dl_ud(struct msgb *msg, u_int16_t bvci)
+{
+
+}
+
+/* Uplink user-data */
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
 	struct bssgp_ud_hdr *budh = msgb->l3h;
@@ -66,7 +73,7 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 }
 
 /* We expect msg->l3h to point to the BSSGP header */
-int gprs_bssgp_rcvmsg(msg, u_int16_t bvci)
+int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci)
 {
 	struct gprs_bssgp_hdr *bgph = msgb->l3h;
 	u_int8_t pdu_type = bgph->pdu_data;
@@ -80,4 +87,9 @@ int gprs_bssgp_rcvmsg(msg, u_int16_t bvci)
 		rc = bssgp_rx_ul_ud(msg, bvci);
 		break;
 	}
+}
+
+static int gprs_bssgp_sendmsg()
+{
+	
 }
