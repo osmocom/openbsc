@@ -1,4 +1,4 @@
-/* GPRS Networks Service (NS) messages on the Gb interface 
+/* GPRS Networks Service (NS) messages on the Gb interface
  * 3GPP TS 08.16 version 8.0.1 Release 1999 / ETSI TS 101 299 V8.0.1 (2002-05) */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
@@ -47,7 +47,7 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 	nsh = msgb_put(msg, sizeof(*nsh));
 
 	nsh->pdu_type = pdu_type;
-	
+
 	/* FIXME: actually transmit */
 }
 
@@ -92,7 +92,7 @@ int gprs_ns_rcvmsg(struct msgb *msg)
 		rc = 0;
 		break;
 	default:
-		break;	
+		break;
 	}
 	return rc;
 }

@@ -62,7 +62,7 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 	    !TLVP_PRESENT(&tp, BSSGP_IE_LLC_PDU))
 		return -EIO;
 
-	
+
 }
 
 /* We expect msg->l3h to point to the BSSGP header */
