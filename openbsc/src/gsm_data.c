@@ -45,6 +45,8 @@ static const char *pchan_names[] = {
 	[GSM_PCHAN_TCH_F]	= "TCH/F",
 	[GSM_PCHAN_TCH_H]	= "TCH/H",
 	[GSM_PCHAN_SDCCH8_SACCH8C] = "SDCCH8",
+	[GSM_PCHAN_PDCH]	= "PDCH",
+	[GSM_PCHAN_TCH_F_PDCH]	= "TCH/F_PDCH",
 	[GSM_PCHAN_UNKNOWN]	= "UNKNOWN",
 };
 

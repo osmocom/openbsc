@@ -18,6 +18,8 @@ enum gsm_phys_chan_config {
 	GSM_PCHAN_TCH_F,
 	GSM_PCHAN_TCH_H,
 	GSM_PCHAN_SDCCH8_SACCH8C,
+	GSM_PCHAN_PDCH,		/* GPRS PDCH */
+	GSM_PCHAN_TCH_F_PDCH,	/* TCH/F if used, PDCH otherwise */
 	GSM_PCHAN_UNKNOWN,
 };
 
