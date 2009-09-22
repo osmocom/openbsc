@@ -343,6 +343,45 @@ static unsigned char nanobts_attr_e0[] = {
 	NM_ATT_IPACC_DST_IP_PORT, 0x0b, 0xbb,	/* TCP PORT for RSL */
 };
 
+static unsigned char nanobts_attr_nse[] = {
+	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
+	NM_ATT_IPACC_NS_CFG, 0, 7,  3, 3, 3, 3, 3, 3, 10, /* NS timers */
+	NM_ATT_IPACC_BSSGP_CFG, 0, 11,  3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3,
+};
+
+static unsigned char nanobts_attr_cell[] = {
+	NM_ATT_IPACC_RAC, 0, 1,  1, /* routing area code */
+	NM_ATT_IPACC_GPRS_PAGING_CFG, 0, 2,
+		5,	/* repeat time (50ms) */
+		3,	/* repeat count */
+	NM_ATT_IPACC_BVCI, 0, 2,  0x03, 0x9d, /* BVCI 925 */
+	NM_ATT_IPACC_RLC_CFG, 0, 9,
+		20, 	/* T3142 */
+		5, 	/* T3169 */
+		5,	/* T3191 */
+		200,	/* T3193 */
+		5,	/* T3195 */
+		10,	/* N3101 */
+		4,	/* N3103 */
+		8,	/* N3105 */
+		15,	/* RLC CV countdown */
+	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,
+	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
+		0x00, 250,
+		0x00, 250,
+		2,	/* MCS2 */
+	NM_ATT_IPACC_RLC_CFG_3, 0, 1,
+		2,	/* MCS2 */
+};
+
+static unsigned char nanobts_attr_nsvc0[] = {
+	NM_ATT_IPACC_NSVCI, 0, 2,  0x03, 0x9d, /* 925 */
+	NM_ATT_IPACC_NS_LINK_CFG, 0, 8,
+		0x59, 0xd8, /* remote udp port (23000) */
+		192, 168, 100, 11, /* remote ip address */
+		0x59, 0xd8, /* local udp port (23000) */
+};
+
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
@@ -387,6 +426,48 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 						trx->bts->bts_nr, trx->nr, ts->nr);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_CHANNEL,
 						      trx->bts->bts_nr, trx->nr, ts->nr,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_GPRS_NSE:
+			if (new_state->availability == 5) {
+				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_NSE,
+							  trx->bts->bts_nr,
+							  0xff, 0xff,
+							  nanobts_attr_nse,
+							  sizeof(nanobts_attr_nse));
+				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSE,
+						trx->bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSE,
+						      trx->bts->bts_nr, 0xff, 0xff,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_GPRS_CELL:
+			if (new_state->availability == 5) {
+				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_CELL,
+							  trx->bts->bts_nr,
+							  trx->nr, 0xff,
+							  nanobts_attr_cell,
+							  sizeof(nanobts_attr_cell));
+				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSE,
+						trx->bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSE,
+						      trx->bts->bts_nr, 0xff, 0xff,
+						      NM_STATE_UNLOCKED);
+			}
+			break;
+		case NM_OC_GPRS_NSVC:
+			if (new_state->availability == 5) {
+				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_NSVC,
+							  trx->bts->bts_nr,
+							  trx->nr, 0xff,
+							  nanobts_attr_nsvc0,
+							  sizeof(nanobts_attr_nsvc0));
+				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSVC,
+						trx->bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSVC,
+						      trx->bts->bts_nr, 0xff, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
