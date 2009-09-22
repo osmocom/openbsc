@@ -229,6 +229,9 @@ enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_GET_NVATTR		= 0xf2,
 	NM_MT_IPACC_GET_NVATTR_ACK,
 	NM_MT_IPACC_GET_NVATTR_NACK,
+	NM_MT_IPACC_SET_ATTR		= 0xf5,
+	NM_MT_IPACC_SET_ATTR_ACK,
+	NM_MT_IPACC_SET_ATTR_NACK,
 };
 
 enum abis_nm_bs11_cell_alloc {
