@@ -471,6 +471,16 @@ enum abis_nm_adm_state {
 	NM_STATE_NULL		= 0xff,
 };
 
+/* Section 9.4.7: Administrative State */
+enum abis_nm_avail_state {
+	NM_AVSTATE_IN_TEST	= 1,
+	NM_AVSTATE_POWER_OFF	= 2,
+	NM_AVSTATE_OFF_LINE	= 3,
+	NM_AVSTATE_DEPENDENCY	= 5,
+	NM_AVSTATE_DEGRADED	= 6,
+	NM_AVSTATE_NOT_INSTALLED= 7,
+};
+
 /* Section 9.4.13: Channel Combination */
 enum abis_nm_chan_comb {
 	NM_CHANC_TCHFull	= 0x00,	/* TCH/F + TCH/H + SACCH/TF */
