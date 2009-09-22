@@ -229,6 +229,9 @@ enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_GET_NVATTR		= 0xf2,
 	NM_MT_IPACC_GET_NVATTR_ACK,
 	NM_MT_IPACC_GET_NVATTR_NACK,
+	NM_MT_IPACC_SET_ATTR		= 0xf5,
+	NM_MT_IPACC_SET_ATTR_ACK,
+	NM_MT_IPACC_SET_ATTR_NACK,
 };
 
 enum abis_nm_bs11_cell_alloc {
@@ -735,6 +738,9 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 				int attr_len);
 int abis_nm_ipaccess_restart(struct gsm_bts *bts);
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
+				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+				u_int8_t *attr, u_int8_t attr_len);
 
 /* Functions calling into other code parts */
 enum nm_evt {
