@@ -855,25 +855,15 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	int nack = 0;
 	int ret;
 
-	DEBUGP(DNM, "Software Activate Request ");
-
-	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
-		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
-		nack = 1;
-	} else
-		DEBUGPC(DNM, "ACKing and Activating\n");
+	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
 
 	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
-				      foh->obj_inst.ts_nr, nack,
+				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
-
-	if (nack)
-		return ret;
 
 	/* FIXME: properly parse attributes */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
