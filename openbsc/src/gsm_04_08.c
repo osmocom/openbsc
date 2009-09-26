@@ -3581,11 +3581,12 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:
-		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02d\n",
+	case GSM48_PDISC_NC_SS:  /* mobile-originated USSD */
+		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 discriminator 0x%02d\n",
+		fprintf(stderr, "Unknown GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
 		break;
 	}
