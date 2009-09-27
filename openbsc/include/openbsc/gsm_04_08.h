@@ -78,6 +78,13 @@ struct gsm48_loc_area_id {
 	u_int16_t lac;
 } __attribute__ ((packed));
 
+/* Section 9.2.2 */
+struct gsm48_auth_req {
+	u_int8_t key_seq:4,
+	         spare:4;
+	u_int8_t rand[16];
+} __attribute__ ((packed));
+
 /* Section 9.2.15 */
 struct gsm48_loc_upd_req {
 	u_int8_t type:4,

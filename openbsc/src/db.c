@@ -264,15 +264,15 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
-	char *string;
+	const char *string;
 	unsigned int cm1;
 	const unsigned char *cm2, *cm3;
 	struct gsm_equipment *equip = &subscr->equipment;
 
 	result = dbi_conn_queryf(conn,
-				"SELECT equipment.* FROM equipment,equipmentwatch "
-				"WHERE equipmentwatch.equipment_id=equipment.id "
-				"AND equipmentwatch.subscriber_id = %llu "
+				"SELECT equipment.* FROM Equipment,EquipmentWatch "
+				"WHERE EquipmentWatch.equipment_id=Equipment.id "
+				"AND EquipmentWatch.subscriber_id = %llu "
 				"ORDER BY updated DESC", subscr->id);
 	if (!result)
 		return -EIO;
