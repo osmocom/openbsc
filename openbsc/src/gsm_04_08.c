@@ -1233,7 +1233,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	u_int8_t *r;
+	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
 	DEBUGP(DMM, "-> AUTH REQ\n");
 
@@ -1241,10 +1241,12 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand)
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_AUTH_REQ;
 
+	/* Key Sequence: FIXME fixed to 0 */
+	ar->key_seq = 0;
+
 	/* 16 bytes RAND parameters */
-	r = msgb_put(msg, 16);
 	if (rand)
-		memcpy(r, rand, 16);
+		memcpy(ar->rand, rand, 16);
 
 	return gsm48_sendmsg(msg, NULL);
 }
