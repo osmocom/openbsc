@@ -655,7 +655,7 @@ int rsl_encryption_cmd(struct msgb *msg)
 	struct gsm_lchan *lchan = msg->lchan;
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	u_int8_t encr_info[MAX_A5_KEY_LEN+2];
-	u_int8_t l3_len = msg->tail - (u_int8_t *)msgb_l3(msg);
+	u_int8_t l3_len = msg->len;
 	int rc;
 
 	/* First push the L3 IE tag and length */
