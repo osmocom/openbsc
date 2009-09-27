@@ -1699,7 +1699,7 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan)
 	if (lchan->encr.alg_id <= RSL_ENC_ALG_A5(0))
 		ciph_mod_set = 0;
 	else
-		ciph_mod_set = (lchan->encr.alg_id-1)<<1 | 1;
+		ciph_mod_set = (lchan->encr.alg_id-2)<<1 | 1;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_RR;
