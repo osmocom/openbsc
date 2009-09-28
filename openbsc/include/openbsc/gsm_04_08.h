@@ -203,7 +203,7 @@ struct gsm48_system_information_type_6 {
 	u_int8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
 	u_int8_t system_information;
-	u_int8_t cell_identity[2];
+	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	u_int8_t cell_options;
 	u_int8_t ncc_permitted;
@@ -735,5 +735,9 @@ int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 		      int h_len);
 
 extern const char *gsm0408_cc_msg_names[];
+
+int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
+int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
+int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
 #endif

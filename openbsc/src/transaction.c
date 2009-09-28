@@ -102,15 +102,7 @@ void trans_free(struct gsm_trans *trans)
 
 	if (!trans->lchan && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
-		bts = NULL;
-		do {
-			bts = gsm_bts_by_lac(trans->subscr->net,
-					     trans->subscr->lac, bts);
-			if (!bts)
-				break;
-			/* Stop paging */
-			paging_request_stop(bts, trans->subscr, NULL);
-		} while (1);
+		paging_request_stop(NULL, trans->subscr, NULL);
 	}
 
 	if (trans->subscr)

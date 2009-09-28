@@ -25,12 +25,15 @@
  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <errno.h>
 #include <netinet/in.h>
 
 #include <openbsc/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/transaction.h>
+#include <openbsc/paging.h>
+#include <openbsc/signal.h>
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -395,3 +398,62 @@ int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, cons
 	return str_cur - string;
 }
 
+
+int send_siemens_mrpci(struct gsm_lchan *lchan,
+		       u_int8_t *classmark2_lv)
+{
+	struct rsl_mrpci mrpci;
+
+	if (classmark2_lv[0] < 2)
+		return -EINVAL;
+
+	mrpci.power_class = classmark2_lv[1] & 0x7;
+	mrpci.vgcs_capable = classmark2_lv[2] & (1 << 1);
+	mrpci.vbs_capable = classmark2_lv[2] & (1 <<2);
+	mrpci.gsm_phase = (classmark2_lv[1]) >> 5 & 0x3;
+
+	return rsl_siemens_mrpci(lchan, &mrpci);
+}
+
+int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t *classmark2_lv = gh->data + 1;
+	u_int8_t *mi_lv = gh->data + 2 + *classmark2_lv;
+	*mi_type = mi_lv[1] & GSM_MI_TYPE_MASK;
+
+	return gsm48_mi_to_string(mi_string, GSM48_MI_SIZE, mi_lv+1, *mi_lv);
+}
+
+int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
+{
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t *classmark2_lv = gh->data + 1;
+	struct paging_signal_data sig_data;
+
+	if (is_siemens_bts(bts))
+		send_siemens_mrpci(msg->lchan, classmark2_lv);
+
+	if (!msg->lchan->subscr) {
+		msg->lchan->subscr = subscr;
+	} else if (msg->lchan->subscr != subscr) {
+		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
+		subscr_put(subscr);
+		return -EINVAL;
+	} else {
+		DEBUGP(DRR, "<- Channel already owned by us\n");
+		subscr_put(subscr);
+		subscr = msg->lchan->subscr;
+	}
+
+	sig_data.subscr = subscr;
+	sig_data.bts	= msg->lchan->ts->trx->bts;
+	sig_data.lchan	= msg->lchan;
+
+	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+
+	/* Stop paging on the bts we received the paging response */
+	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
+	return 0;
+}

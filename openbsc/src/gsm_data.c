@@ -274,7 +274,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 			continue;
 		}
 
-		if (bts->location_area_code == lac)
+		if (lac == 0 || bts->location_area_code == lac)
 			return bts;
 	}
 	return NULL;

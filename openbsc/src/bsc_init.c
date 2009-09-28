@@ -916,6 +916,10 @@ static void patch_si_tables(struct gsm_bts *bts)
 	type_4->lai = lai;
 	type_6->lai = lai;
 
+	/* set the CI */
+	type_3->cell_identity = htons(bts->cell_identity);
+	type_6->cell_identity = htons(bts->cell_identity);
+
 	type_4->data[2] &= 0xf0;
 	type_4->data[2] |= arfcn_high;
 	type_4->data[3] = arfcn_low;

@@ -118,9 +118,10 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
-	vty_out(vty, "BTS %u is of %s type in band %s, has LAC %u, "
+	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
+		bts->cell_identity,
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
 	if (bts->cell_barred)
@@ -223,6 +224,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
 	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
+	vty_out(vty, "	cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
@@ -427,8 +429,8 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			VTY_NEWLINE);
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi)
-		vty_out(vty, "    TMSI: %08X%s", atoi(subscr->tmsi),
+	if (subscr->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
@@ -839,6 +841,24 @@ DEFUN(cfg_bts_band,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_ci,
+      cfg_bts_ci_cmd,
+      "cell_identity <0-65535>",
+      "Set the Cell identity of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int ci = atoi(argv[0]);
+
+	if (ci < 0 || ci > 0xffff) {
+		vty_out(vty, "%% CI %d is not in the valid range (0-65535)%s",
+			ci, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->cell_identity = ci;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_lac,
       cfg_bts_lac_cmd,
       "location_area_code <0-255>",
@@ -1175,6 +1195,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_ci_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
