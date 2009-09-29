@@ -861,14 +861,14 @@ DEFUN(cfg_bts_ci,
 
 DEFUN(cfg_bts_lac,
       cfg_bts_lac_cmd,
-      "location_area_code <0-255>",
+      "location_area_code <0-65535>",
       "Set the Location Area Code (LAC) of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int lac = atoi(argv[0]);
 
-	if (lac < 0 || lac > 0xff) {
-		vty_out(vty, "%% LAC %d is not in the valid range (0-255)%s",
+	if (lac < 0 || lac > 0xffff) {
+		vty_out(vty, "%% LAC %d is not in the valid range (0-65535)%s",
 			lac, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
