@@ -11,6 +11,7 @@ struct ipaccess_head {
 enum ipaccess_proto {
 	IPAC_PROTO_RSL		= 0x00,
 	IPAC_PROTO_IPACCESS	= 0xfe,
+	IPAC_PROTO_SCCP		= 0xfd,
 	IPAC_PROTO_OML		= 0xff,
 };
 
@@ -35,5 +36,12 @@ enum ipaccess_id_tags {
 };
 
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
+
+/*
+ * methods for parsing and sending a message
+ */
+int ipaccess_rcvmsg_base(struct msgb *msg, struct bsc_fd *bfd);
+struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error);
+void ipaccess_prepend_header(struct msgb *msg, int proto);
 
 #endif /* _IPACCESS_H */
