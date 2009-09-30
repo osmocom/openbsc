@@ -11,6 +11,7 @@ struct ipaccess_head {
 enum ipaccess_proto {
 	IPAC_PROTO_RSL		= 0x00,
 	IPAC_PROTO_IPACCESS	= 0xfe,
+	IPAC_PROTO_SCCP		= 0xfd,
 	IPAC_PROTO_OML		= 0xff,
 };
 
