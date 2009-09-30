@@ -319,7 +319,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return error;
 	}
 
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), ret));
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
