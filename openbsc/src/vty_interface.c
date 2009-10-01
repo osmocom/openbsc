@@ -872,6 +872,13 @@ DEFUN(cfg_bts_lac,
 			lac, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	if (lac == GSM_LAC_RESERVED_DETACHED || lac == GSM_LAC_RESERVED_ALL_BTS) {
+		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
+			lac, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	bts->location_area_code = lac;
 
 	return CMD_SUCCESS;

@@ -660,6 +660,10 @@ enum chreq_type {
 #define SBIT(a) (1 << a)
 #define ALL_STATES 0xffffffff
 
+/* Table 10.5.3/3GPP TS 04.08: Location Area Identification information element */
+#define GSM_LAC_RESERVED_DETACHED       0x0
+#define GSM_LAC_RESERVED_ALL_BTS        0xfffe
+
 /* GSM 04.08 Bearer Capability: Information Transfer Capability */
 enum gsm48_bcap_itcap {
 	GSM48_BCAP_ITCAP_SPEECH		= 0,

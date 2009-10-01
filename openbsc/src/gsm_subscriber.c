@@ -105,7 +105,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
-			s->lac = 0;
+			s->lac = GSM_LAC_RESERVED_DETACHED;
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:
