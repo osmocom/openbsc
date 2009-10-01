@@ -833,7 +833,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 
 /* Activate the specified software into the BTS */
 static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1,
-			     u_int8_t i2, u_int8_t *sw_desc, u_int8_t swdesc_len)
+			     u_int8_t i2, const u_int8_t *sw_desc, u_int8_t swdesc_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -853,6 +853,10 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct tlv_parsed tp;
+	const u_int8_t *sw_config;
+	int sw_config_len;
+	int file_id_len;
 	int nack = 0;
 	int ret;
 
@@ -873,12 +877,30 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	if (nack)
 		return ret;
 
-	/* FIXME: properly parse attributes */
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
+	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
+	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
+		DEBUGP(DNM, "SW config not found! Can't continue.\n");
+		return -EINVAL;
+	} else {
+		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
+	}
+
+	if (sw_config[0] != NM_ATT_SW_DESCR)
+		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
+	if (sw_config[1] != NM_ATT_FILE_ID)
+		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
+	file_id_len = sw_config[2] * 256 + sw_config[3];
+
+	/* Assumes first SW file in list is the one to be activated */
+	/* sw_config + 4 to skip over 2 attribute ID bytes and 16-bit length field */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 foh->data + oh->length-sizeof(*foh)-22, 22);
+				 sw_config + 4,
+				 file_id_len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
