@@ -348,7 +348,7 @@ int main(int argc, char **argv)
 	if (!gsmnet)
 		exit(1);
 
-	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS_900, HARDCODED_TSC,
+	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);

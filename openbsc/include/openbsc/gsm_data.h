@@ -242,8 +242,7 @@ struct gsm_bts_trx {
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
 	GSM_BTS_TYPE_BS11,
-	GSM_BTS_TYPE_NANOBTS_900,
-	GSM_BTS_TYPE_NANOBTS_1800,
+	GSM_BTS_TYPE_NANOBTS,
 };
 
 /**
@@ -445,8 +444,7 @@ extern void *tall_bsc_ctx;
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {
 	switch (bts->type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		return 1;
 	default:
 		break;

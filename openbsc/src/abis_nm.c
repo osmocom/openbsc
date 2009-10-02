@@ -1025,8 +1025,7 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 	int bts_type = mb->trx->bts->type;
 
 	switch (bts_type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		rc = abis_nm_rx_ipacc(mb);
 		break;
 	default:

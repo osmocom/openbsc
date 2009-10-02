@@ -1954,8 +1954,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	}
 	
 	switch (bts->type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		if (!ipacc_rtp_direct) {
 			/* connect the TCH's to our RTP proxy */
 			rc = ipacc_connect_proxy_bind(lchan);
