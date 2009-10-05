@@ -459,7 +459,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 }
 
 /* Chapter 9.1.9: Ciphering Mode Command */
-int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan)
+int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -477,7 +477,7 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan)
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_CIPH_M_CMD;
-	gh->data[0] = 0x10 | (ciph_mod_set & 0xf);
+	gh->data[0] = (want_imeisv & 0x1) << 4 | (ciph_mod_set & 0xf);
 
 	return rsl_encryption_cmd(msg);
 }
