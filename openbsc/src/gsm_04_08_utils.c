@@ -457,3 +457,28 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
 	return 0;
 }
+
+/* Chapter 9.1.9: Ciphering Mode Command */
+int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	u_int8_t ciph_mod_set;
+
+	msg->lchan = lchan;
+
+	DEBUGP(DRR, "TX CIPHERING MODE CMD\n");
+
+	if (lchan->encr.alg_id <= RSL_ENC_ALG_A5(0))
+		ciph_mod_set = 0;
+	else
+		ciph_mod_set = (lchan->encr.alg_id-2)<<1 | 1;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CIPH_M_CMD;
+	gh->data[0] = (want_imeisv & 0x1) << 4 | (ciph_mod_set & 0xf);
+
+	return rsl_encryption_cmd(msg);
+}
+
