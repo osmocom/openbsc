@@ -72,7 +72,7 @@ enum BSS_MAP_MSG_TYPE {
 	BSS_MAP_MSG_CLEAR_RQST		= 34,
 	BSS_MAP_MSG_RESERVED_1			= 35,
 	BSS_MAP_MSG_RESERVED_2			= 36,
-	BSS_MAP_MSG_SAPI_			= 37,
+	BSS_MAP_MSG_SAPI_N_REJECT		= 37,
 	BSS_MAP_MSG_CONFUSION			= 38,
 
 	/* OTHER CONNECTION RELATED MESSAGES */
@@ -273,6 +273,7 @@ struct msgb *bssmap_create_reset(void);
 struct msgb *bssmap_create_clear_complete(void);
 struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo);
 struct msgb *bssmap_create_cipher_reject(u_int8_t cause);
+struct msgb *bssmap_create_sapi_reject(u_int8_t link_id);
 
 int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length);
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id);

@@ -427,6 +427,22 @@ struct msgb *bssmap_create_cipher_reject(u_int8_t cause)
 	return msg;
 }
 
+struct msgb *bssmap_create_sapi_reject(u_int8_t link_id)
+{
+	struct msgb *msg = msgb_alloc(30, "bssmap: sapi 'n' reject");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 5);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 3;
+	msg->l3h[2] = BSS_MAP_MSG_SAPI_N_REJECT;
+	msg->l3h[3] = link_id;
+	msg->l3h[4] = GSM0808_CAUSE_BSS_NOT_EQUIPPED;
+
+	return msg;
+}
+
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id)
 {
 	struct dtap_header *header;
