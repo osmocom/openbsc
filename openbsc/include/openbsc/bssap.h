@@ -278,4 +278,12 @@ struct msgb *bssmap_create_sapi_reject(u_int8_t link_id);
 int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length);
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id);
 
+void bsc_queue_connection_write(struct sccp_connection *conn, struct msgb *msg);
+void bsc_free_queued(struct sccp_connection *conn);
+void bsc_send_queued(struct sccp_connection *conn);
+
+void bts_queue_send(struct msgb *msg, int link_id);
+void bts_send_queued(struct bss_sccp_connection_data*);
+void bts_free_queued(struct bss_sccp_connection_data*);
+
 #endif

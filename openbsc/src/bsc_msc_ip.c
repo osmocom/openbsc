@@ -59,13 +59,23 @@ extern int bsc_shutdown_net(struct gsm_network *net);
 
 struct bss_sccp_connection_data *bss_sccp_create_data()
 {
-	return _talloc_zero(tall_bsc_ctx,
+	struct bss_sccp_connection_data *data;
+
+	data = _talloc_zero(tall_bsc_ctx,
 			    sizeof(struct bss_sccp_connection_data),
 			    "bsc<->msc");
+	if (!data)
+		return NULL;
+
+	INIT_LLIST_HEAD(&data->sccp_queue);
+	INIT_LLIST_HEAD(&data->gsm_queue);
+	return data;
 }
 
 void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
+	bsc_free_queued(data->sccp);
+	bts_free_queued(data);
 	talloc_free(data);
 }
 
@@ -138,6 +148,8 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		bss_sccp_free_data((struct bss_sccp_connection_data *)conn->data_ctx);
 		sccp_connection_free(conn);
 		return;
+	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
+		bsc_send_queued(conn);
 	}
 }
 
@@ -204,7 +216,7 @@ static int send_dtap_or_open_connection(struct msgb *msg)
 			return -1;
 		}
 
-		sccp_connection_write(lchan_get_sccp(msg->lchan), dtap);
+		bsc_queue_connection_write(lchan_get_sccp(msg->lchan), dtap);
 		return 1;
 	} else {
 		return open_sccp_connection(msg);
@@ -251,8 +263,7 @@ static int handle_cipher_m_complete(struct msgb *msg)
 
 
 	/* handled this message */
-	sccp_connection_write(lchan_get_sccp(msg->lchan), resp);
-	msgb_free(resp);
+	bsc_queue_connection_write(lchan_get_sccp(msg->lchan), resp);
 	return 1;
 }
 
@@ -328,7 +339,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 			return -1;
 		}
 
-		sccp_connection_write(lchan_get_sccp(msg->lchan), dtap);
+		bsc_queue_connection_write(lchan_get_sccp(msg->lchan), dtap);
 	}
 
 	return rc;

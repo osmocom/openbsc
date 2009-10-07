@@ -121,6 +121,13 @@ struct bss_sccp_connection_data {
 	struct gsm_lchan *lchan;
 	struct sccp_connection *sccp;
 	int ciphering_handled : 1;
+
+	/* Queue SCCP and GSM0408 messages */
+	struct llist_head gsm_queue;
+	unsigned int gsm_queue_size;
+
+	struct llist_head sccp_queue;
+	unsigned int sccp_queue_size;
 };
 
 #define sccp_get_lchan(data_ctx) ((struct bss_sccp_connection_data *)data_ctx)->lchan

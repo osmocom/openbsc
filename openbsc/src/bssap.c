@@ -20,6 +20,7 @@
  */
 
 #include <openbsc/bssap.h>
+#include <openbsc/bsc_rll.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
@@ -162,8 +163,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 		return -1;
 	}
 
-	sccp_connection_write(conn, resp);
-	msgb_free(resp);
+	bsc_queue_connection_write(conn, resp);
 	return 0;
 }
 
@@ -205,8 +205,7 @@ reject:
 		return -1;
 	}
 
-	sccp_connection_write(conn, resp);
-	msgb_free(resp);
+	bsc_queue_connection_write(conn, resp);
 	return -1;
 }
 
@@ -260,7 +259,6 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	struct dtap_header *header;
 	struct msgb *gsm48;
 	u_int8_t *data;
-	int ret = 0;
 
 	if (!lchan) {
 		DEBUGP(DMSC, "No lchan available\n");
@@ -294,9 +292,9 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	gsm48->l3h = gsm48->data;
 	data = msgb_put(gsm48, length - sizeof(*header));
 	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
-	ret = rsl_data_request(gsm48, header->link_id);
 
-	return ret;
+	bts_queue_send(gsm48, header->link_id);
+	return 0;
 }
 
 /* Create messages */
@@ -505,10 +503,167 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	msg->l3h[5] = GSM0808_CAUSE_RADIO_INTERFACE_FAILURE;
 
 	DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
-	sccp_connection_write(conn, msg);
-	msgb_free(msg);
+	bsc_queue_connection_write(conn, msg);
 
 	return 0;
+}
+
+/*
+ * queue handling for BSS AP
+ */
+void bsc_queue_connection_write(struct sccp_connection *conn, struct msgb *msg)
+{
+	struct bss_sccp_connection_data *data;
+
+	data = (struct bss_sccp_connection_data *)conn->data_ctx;
+
+	if (conn->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
+		DEBUGP(DMSC, "Connection closing, dropping packet on: %p\n", conn);
+		msgb_free(msg);
+	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED
+		   && data->sccp_queue_size == 0) {
+		sccp_connection_write(conn, msg);
+		msgb_free(msg);
+	} else if (data->sccp_queue_size > 10) {
+		DEBUGP(DMSC, "Dropping packet on %p due queue overflow\n", conn);
+		msgb_free(msg);
+	} else {
+		DEBUGP(DMSC, "Queuing packet on %p. Queue size: %d\n", conn, data->sccp_queue_size);
+		++data->sccp_queue_size;
+		msgb_enqueue(&data->sccp_queue, msg);
+	}
+}
+
+void bsc_free_queued(struct sccp_connection *conn)
+{
+	struct bss_sccp_connection_data *data;
+	struct msgb *msg;
+
+	data = (struct bss_sccp_connection_data *)conn->data_ctx;
+	while (!llist_empty(&data->sccp_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&data->sccp_queue);
+		msgb_free(msg);
+	}
+
+	data->sccp_queue_size = 0;
+}
+
+void bsc_send_queued(struct sccp_connection *conn)
+{
+	struct bss_sccp_connection_data *data;
+	struct msgb *msg;
+
+	data = (struct bss_sccp_connection_data *)conn->data_ctx;
+
+	DEBUGP(DMSC, "Sending queued items\n");
+	while (!llist_empty(&data->sccp_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&data->sccp_queue);
+		sccp_connection_write(conn, msg);
+		msgb_free(msg);
+		--data->sccp_queue_size;
+	}
+}
+
+/* RLL callback */
+static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
+		       void *_data, enum bsc_rllr_ind rllr_ind)
+{
+	struct sccp_source_reference ref = sccp_src_ref_from_int((u_int32_t) _data);
+	struct bss_sccp_connection_data *data = lchan->msc_data;
+
+	if (!data || !data->sccp) {
+		DEBUGP(DMSC, "Time-out/Establish after sccp release? Ind: %d lchan: %p\n",
+		       rllr_ind, lchan);
+		return;
+	}
+
+	if (memcmp(&data->sccp->source_local_reference, &ref, sizeof(ref)) != 0) {
+		DEBUGP(DMSC, "Wrong SCCP connection. Not handling RLL callback: %u %u\n",
+			sccp_src_ref_to_int(&ref),
+			sccp_src_ref_to_int(&data->sccp->source_local_reference));
+		return;
+	}
+
+	switch (rllr_ind) {
+	case BSC_RLLR_IND_EST_CONF:
+		/* nothing to do */
+		bts_send_queued(data);
+		break;
+	case BSC_RLLR_IND_REL_IND:
+	case BSC_RLLR_IND_ERR_IND:
+	case BSC_RLLR_IND_TIMEOUT: {
+		/* reject  queued messages */
+		struct msgb *sapi_reject;
+
+		bts_free_queued(data);
+		sapi_reject = bssmap_create_sapi_reject(link_id);
+		if (!sapi_reject){
+			DEBUGP(DMSC, "Failed to create SAPI reject\n");
+			return;
+		}
+
+		bsc_queue_connection_write(data->sccp, sapi_reject);
+		break;
+	}
+	}
+}
+
+/* decide if we need to queue because of SAPI != 0 */
+void bts_queue_send(struct msgb *msg, int link_id)
+{
+	struct bss_sccp_connection_data *data = msg->lchan->msc_data;
+
+	if (data->gsm_queue_size == 0) {
+		if (link_id == 0) {
+			rsl_data_request(msg, link_id);
+		} else {
+			msg->smsh = (unsigned char*) link_id;
+			msgb_enqueue(&data->gsm_queue, msg);
+			++data->gsm_queue_size;
+
+			/* establish link */
+			rll_establish(msg->lchan, link_id & 0x7,
+				      rll_ind_cb,
+				      (void *)sccp_src_ref_to_int(&data->sccp->source_local_reference));
+		}
+	} else if (data->gsm_queue_size == 10) {
+		DEBUGP(DMSC, "Queue full on %p. Dropping GSM0408.\n", data->sccp);
+	} else {
+		DEBUGP(DMSC, "Queueing GSM0408 message on %p. Queue size: %d\n",
+		       data->sccp, data->gsm_queue_size);
+
+		msg->smsh = (unsigned char*) link_id;
+		msgb_enqueue(&data->gsm_queue, msg);
+		++data->gsm_queue_size;
+	}
+}
+
+void bts_free_queued(struct bss_sccp_connection_data *data)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&data->gsm_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&data->gsm_queue);
+		msgb_free(msg);
+	}
+
+	data->gsm_queue_size = 0;
+}
+
+void bts_send_queued(struct bss_sccp_connection_data *data)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&data->gsm_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&data->gsm_queue);
+		rsl_data_request(msg, (int) msg->smsh);
+	}
+
+	data->gsm_queue_size = 0;
 }
 
 static __attribute__((constructor)) void on_dso_load_bssap(void)
