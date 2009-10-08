@@ -650,6 +650,17 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 			return NULL;
 		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
+	case NM_OC_GPRS_NSE:
+		nm_state = &bts->gprs.nse.nm_state;
+		break;
+	case NM_OC_GPRS_CELL:
+		nm_state = &bts->gprs.cell.nm_state;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
+		break;
 	}
 	return nm_state;
 }
@@ -688,6 +699,21 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		break;
 	case NM_OC_SITE_MANAGER:
 		obj = &bts->site_mgr;
+		break;
+	case NM_OC_GPRS_NSE:
+		obj = &bts->gprs.nse;
+		break;
+	case NM_OC_GPRS_CELL:
+		obj = &bts->gprs.cell;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+#if 0		/* we pass the BTS pointer as the callee really needs the BTS */
+		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
+#else
+		obj = bts;
+#endif
 		break;
 	}
 	return obj;

@@ -430,44 +430,46 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			}
 			break;
 		case NM_OC_GPRS_NSE:
-			if (new_state->availability == 5) {
-				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_NSE,
-							  trx->bts->bts_nr,
+			bts = container_of(obj, struct gsm_bts, gprs.nse);
+			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_NSE,
+							  bts->bts_nr,
 							  0xff, 0xff,
 							  nanobts_attr_nse,
 							  sizeof(nanobts_attr_nse));
-				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSE,
-						trx->bts->bts_nr, 0xff, 0xff);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSE,
-						      trx->bts->bts_nr, 0xff, 0xff,
+				abis_nm_opstart(bts, NM_OC_GPRS_NSE,
+						bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSE,
+						      bts->bts_nr, 0xff, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
 		case NM_OC_GPRS_CELL:
-			if (new_state->availability == 5) {
-				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_CELL,
-							  trx->bts->bts_nr,
-							  trx->nr, 0xff,
+			bts = container_of(obj, struct gsm_bts, gprs.cell);
+			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_CELL,
+							  bts->bts_nr, 0, 0xff,
 							  nanobts_attr_cell,
 							  sizeof(nanobts_attr_cell));
-				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSE,
-						trx->bts->bts_nr, 0xff, 0xff);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSE,
-						      trx->bts->bts_nr, 0xff, 0xff,
+				abis_nm_opstart(bts, NM_OC_GPRS_NSE,
+						bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSE,
+						      bts->bts_nr, 0xff, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
 		case NM_OC_GPRS_NSVC:
-			if (new_state->availability == 5) {
-				abis_nm_ipaccess_set_attr(trx->bts, NM_OC_GPRS_NSVC,
-							  trx->bts->bts_nr,
-							  trx->nr, 0xff,
+			bts = obj;
+			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_NSVC,
+							  bts->bts_nr,
+							  0, 0xff,
 							  nanobts_attr_nsvc0,
 							  sizeof(nanobts_attr_nsvc0));
-				abis_nm_opstart(trx->bts, NM_OC_GPRS_NSVC,
-						trx->bts->bts_nr, 0xff, 0xff);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_GPRS_NSVC,
-						      trx->bts->bts_nr, 0xff, 0xff,
+				abis_nm_opstart(bts, NM_OC_GPRS_NSVC,
+						bts->bts_nr, 0xff, 0xff);
+				abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSVC,
+						      bts->bts_nr, 0xff, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;
