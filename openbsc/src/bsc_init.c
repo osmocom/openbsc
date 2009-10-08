@@ -432,7 +432,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			break;
 		case NM_OC_GPRS_NSE:
 			bts = container_of(obj, struct gsm_bts, gprs.nse);
-			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+			if (new_state->availability == 5) {
 				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_NSE,
 							  bts->bts_nr,
 							  0xff, 0xff,
@@ -447,7 +447,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			break;
 		case NM_OC_GPRS_CELL:
 			bts = container_of(obj, struct gsm_bts, gprs.cell);
-			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+			if (new_state->availability == 5) {
 				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_CELL,
 							  bts->bts_nr, 0, 0xff,
 							  nanobts_attr_cell,
