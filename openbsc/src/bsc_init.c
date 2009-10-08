@@ -389,6 +389,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
+	struct gsm_bts_gprs_nsvc *nsvc;
 
 	/* This is currently only required on nanoBTS */
 
@@ -459,17 +460,18 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			}
 			break;
 		case NM_OC_GPRS_NSVC:
-			bts = obj;
+			nsvc = obj;
+			bts = nsvc->bts;
 			if (new_state->availability == NM_AVSTATE_OFF_LINE) {
 				abis_nm_ipaccess_set_attr(bts, NM_OC_GPRS_NSVC,
 							  bts->bts_nr,
-							  0, 0xff,
+							  nsvc->id, 0xff,
 							  nanobts_attr_nsvc0,
 							  sizeof(nanobts_attr_nsvc0));
 				abis_nm_opstart(bts, NM_OC_GPRS_NSVC,
-						bts->bts_nr, 0xff, 0xff);
+						bts->bts_nr, nsvc->id, 0xff);
 				abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSVC,
-						      bts->bts_nr, 0xff, 0xff,
+						      bts->bts_nr, 0, 0xff,
 						      NM_STATE_UNLOCKED);
 			}
 			break;

@@ -292,6 +292,8 @@ struct gsm_envabtse {
 };
 
 struct gsm_bts_gprs_nsvc {
+	struct gsm_bts *bts;
+	int id;
 	struct gsm_nm_state nm_state;
 };
 

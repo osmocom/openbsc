@@ -709,11 +709,7 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 	case NM_OC_GPRS_NSVC:
 		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
 			return NULL;
-#if 0		/* we pass the BTS pointer as the callee really needs the BTS */
 		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
-#else
-		obj = bts;
-#endif
 		break;
 	}
 	return obj;
