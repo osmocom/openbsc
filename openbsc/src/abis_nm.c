@@ -964,11 +964,17 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
 		struct tlv_parsed tp;
+
+		DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+			obj_class_name(foh->obj_class), foh->obj_class,
+			foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+			foh->obj_inst.ts_nr);
+
 		if (nack_names[mt])
-			DEBUGP(DNM, "%s NACK ", nack_names[mt]);
+			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
 			/* FIXME: NACK cause */
 		else
-			DEBUGP(DNM, "NACK 0x%02x ", mt);
+			DEBUGPC(DNM, "NACK 0x%02x ", mt);
 
 		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
