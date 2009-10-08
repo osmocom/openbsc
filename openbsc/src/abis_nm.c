@@ -2515,6 +2515,17 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		else
 			DEBUGPC(DNM, "\n");
 		break;
+	case NM_MT_IPACC_SET_ATTR_ACK:
+		DEBUGPC(DNM, "SET ATTR ACK\n");
+		break;
+	case NM_MT_IPACC_SET_ATTR_NACK:
+		DEBUGPC(DNM, "SET ATTR NACK ");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
+		break;
 	default:
 		DEBUGPC(DNM, "unknown\n");
 		break;
