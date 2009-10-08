@@ -379,6 +379,21 @@ void ipaccess_prepend_header(struct msgb *msg, int proto)
 	hh->proto = proto;
 }
 
+static int ts_want_write(struct e1inp_ts *e1i_ts)
+{
+	e1i_ts->driver.ipaccess.fd.when |= BSC_FD_WRITE;
+
+	return 0;
+}
+
+static void timeout_ts1_write(void *data)
+{
+	struct e1inp_ts *e1i_ts = (struct e1inp_ts *)data;
+
+	/* trigger write of ts1, due to tx delay timer */
+	ts_want_write(e1i_ts);
+}
+
 static int handle_ts1_write(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -389,10 +404,12 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	u_int8_t proto;
 	int ret;
 
+	bfd->when &= ~BSC_FD_WRITE;
+
 	/* get the next msg for this timeslot */
 	msg = e1inp_tx_ts(e1i_ts, &sign_link);
 	if (!msg) {
-		bfd->when &= ~BSC_FD_WRITE;
+		/* no message after tx delay timer */
 		return 0;
 	}
 
@@ -405,6 +422,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		break;
 	default:
 		msgb_free(msg);
+		bfd->when |= BSC_FD_WRITE; /* come back for more msg */
 		return -EINVAL;
 	}
 
@@ -416,7 +434,11 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
-	usleep(100000);
+
+	/* set tx delay timer for next event */
+	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
+	e1i_ts->sign.tx_timer.data = e1i_ts;
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100000);
 
 	return ret;
 }
@@ -446,13 +468,6 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return rc;
 }
 
-
-static int ts_want_write(struct e1inp_ts *e1i_ts)
-{
-	e1i_ts->driver.ipaccess.fd.when |= BSC_FD_WRITE;
-
-	return 0;
-}
 
 struct e1inp_driver ipaccess_driver = {
 	.name = "ip.access",
