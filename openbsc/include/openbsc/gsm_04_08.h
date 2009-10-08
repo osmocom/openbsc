@@ -78,6 +78,13 @@ struct gsm48_loc_area_id {
 	u_int16_t lac;
 } __attribute__ ((packed));
 
+/* Section 9.2.2 */
+struct gsm48_auth_req {
+	u_int8_t key_seq:4,
+	         spare:4;
+	u_int8_t rand[16];
+} __attribute__ ((packed));
+
 /* Section 9.2.15 */
 struct gsm48_loc_upd_req {
 	u_int8_t type:4,
@@ -196,7 +203,7 @@ struct gsm48_system_information_type_6 {
 	u_int8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
 	u_int8_t system_information;
-	u_int8_t cell_identity[2];
+	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	u_int8_t cell_options;
 	u_int8_t ncc_permitted;
@@ -653,6 +660,10 @@ enum chreq_type {
 #define SBIT(a) (1 << a)
 #define ALL_STATES 0xffffffff
 
+/* Table 10.5.3/3GPP TS 04.08: Location Area Identification information element */
+#define GSM_LAC_RESERVED_DETACHED       0x0
+#define GSM_LAC_RESERVED_ALL_BTS        0xfffe
+
 /* GSM 04.08 Bearer Capability: Information Transfer Capability */
 enum gsm48_bcap_itcap {
 	GSM48_BCAP_ITCAP_SPEECH		= 0,
@@ -713,6 +724,7 @@ int gsm48_generate_mid_from_imsi(u_int8_t *buf, const char* imsi);
 int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, const int mi_len);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
+int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, u_int8_t *apdu);
 
@@ -727,5 +739,9 @@ int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
 		      int h_len);
 
 extern const char *gsm0408_cc_msg_names[];
+
+int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
+int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
+int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
 #endif

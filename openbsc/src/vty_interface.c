@@ -85,6 +85,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_short, VTY_NEWLINE);
 	vty_out(vty, "  Authentication policy: %s%s",
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
+	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -116,9 +118,10 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
-	vty_out(vty, "BTS %u is of %s type in band %s, has LAC %u, "
+	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
+		bts->cell_identity,
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
 	if (bts->cell_barred)
@@ -221,6 +224,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
 	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
+	vty_out(vty, "	cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
@@ -264,6 +268,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
+	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -424,8 +429,8 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			VTY_NEWLINE);
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
-	if (subscr->tmsi)
-		vty_out(vty, "    TMSI: %08X%s", atoi(subscr->tmsi),
+	if (subscr->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
@@ -766,6 +771,16 @@ DEFUN(cfg_net_auth_policy,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_encryption,
+      cfg_net_encryption_cmd,
+      "encryption a5 (0|1|2)",
+      "Enable or disable encryption (A5) for this network\n")
+{
+	gsmnet->auth_policy = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -826,19 +841,44 @@ DEFUN(cfg_bts_band,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_ci,
+      cfg_bts_ci_cmd,
+      "cell_identity <0-65535>",
+      "Set the Cell identity of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int ci = atoi(argv[0]);
+
+	if (ci < 0 || ci > 0xffff) {
+		vty_out(vty, "%% CI %d is not in the valid range (0-65535)%s",
+			ci, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	bts->cell_identity = ci;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_lac,
       cfg_bts_lac_cmd,
-      "location_area_code <0-255>",
+      "location_area_code <0-65535>",
       "Set the Location Area Code (LAC) of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int lac = atoi(argv[0]);
 
-	if (lac < 0 || lac > 0xff) {
-		vty_out(vty, "%% LAC %d is not in the valid range (0-255)%s",
+	if (lac < 0 || lac > 0xffff) {
+		vty_out(vty, "%% LAC %d is not in the valid range (0-65535)%s",
 			lac, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	if (lac == GSM_LAC_RESERVED_DETACHED || lac == GSM_LAC_RESERVED_ALL_BTS) {
+		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
+			lac, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	bts->location_area_code = lac;
 
 	return CMD_SUCCESS;
@@ -1155,12 +1195,14 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
+	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
+	install_element(BTS_NODE, &cfg_bts_ci_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);

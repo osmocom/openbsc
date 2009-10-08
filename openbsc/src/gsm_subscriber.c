@@ -35,17 +35,19 @@
 extern struct llist_head *subscr_bsc_active_subscriber(void);
 
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
-					  const char *tmsi)
+					  u_int32_t tmsi)
 {
+	char tmsi_string[14];
 	struct gsm_subscriber *subscr;
 
 	/* we might have a record in memory already */
 	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
-		if (strcmp(subscr->tmsi, tmsi) == 0)
+		if (tmsi == subscr->tmsi)
 			return subscr_get(subscr);
 	}
 
-	return db_get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi);
+	sprintf(tmsi_string, "%u", tmsi);
+	return db_get_subscriber(net, GSM_SUBSCRIBER_TMSI, tmsi_string);
 }
 
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
@@ -103,7 +105,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
-			s->lac = 0;
+			s->lac = GSM_LAC_RESERVED_DETACHED;
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:

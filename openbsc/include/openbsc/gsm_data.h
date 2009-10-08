@@ -128,6 +128,9 @@ struct gsm_loc_updating_operation {
 	int waiting_for_imei : 1;
 };
 
+#define MAX_A5_KEY_LEN	(128/8)
+#define RSL_ENC_ALG_A5(x)	(x+1)
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -142,6 +145,12 @@ struct gsm_lchan {
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;
+	/* Encryption information */
+	struct {
+		u_int8_t alg_id;
+		u_int8_t key_len;
+		u_int8_t key[MAX_A5_KEY_LEN];
+	} encr;
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
@@ -235,8 +244,7 @@ struct gsm_bts_trx {
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
 	GSM_BTS_TYPE_BS11,
-	GSM_BTS_TYPE_NANOBTS_900,
-	GSM_BTS_TYPE_NANOBTS_1800,
+	GSM_BTS_TYPE_NANOBTS,
 };
 
 /**
@@ -291,8 +299,10 @@ struct gsm_bts {
 	struct gsm_network *network;
 	/* number of ths BTS in network */
 	u_int8_t nr;
+	/* Cell Identity */
+	u_int16_t cell_identity;
 	/* location area code of this BTS */
-	u_int8_t location_area_code;
+	u_int16_t location_area_code;
 	/* Training Sequence Code */
 	u_int8_t tsc;
 	/* Base Station Identification Code (BSIC) */
@@ -367,6 +377,7 @@ struct gsm_network {
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
+	int a5_encryption;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
@@ -435,8 +446,7 @@ extern void *tall_bsc_ctx;
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {
 	switch (bts->type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		return 1;
 	default:
 		break;

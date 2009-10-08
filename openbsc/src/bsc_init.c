@@ -607,8 +607,7 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 					       sizeof(trx1_attr_radio));
 		}
 		break;
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		trx->nominal_power = 20;
 	default:
 		break;
@@ -675,8 +674,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 	case GSM_BTS_TYPE_BS11:
 		bootstrap_om_bs11(bts);
 		break;
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		bootstrap_om_nanobts(bts);
 		break;
 	default:
@@ -997,6 +995,10 @@ static void patch_si_tables(struct gsm_bts *bts)
 	type_4->lai = lai;
 	type_6->lai = lai;
 
+	/* set the CI */
+	type_3->cell_identity = htons(bts->cell_identity);
+	type_6->cell_identity = htons(bts->cell_identity);
+
 	type_4->data[2] &= 0xf0;
 	type_4->data[2] |= arfcn_high;
 	type_4->data[3] = arfcn_low;
@@ -1062,23 +1064,27 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static int bootstrap_bts(struct gsm_bts *bts)
 {
-	switch (bts->type) {
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	switch (bts->band) {
+	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
 			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
 			return -EINVAL;
 		}
 		break;
-	case GSM_BTS_TYPE_BS11:
-	case GSM_BTS_TYPE_NANOBTS_900:
-		/* Assume we have a P-GSM900 here */
+	case GSM_BAND_1900:
+		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 810) {
+			fprintf(stderr, "GSM1900 channel must be between 512-810.\n");
+			return -EINVAL;
+		}
+		break;
+	case GSM_BAND_900:
 		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
 			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
 			return -EINVAL;
 		}
 		break;
-	case GSM_BTS_TYPE_UNKNOWN:
-		fprintf(stderr, "Unknown BTS. Please specify\n");
+	default:
+		fprintf(stderr, "Unsupported frequency band.\n");
 		return -EINVAL;
 	}
 

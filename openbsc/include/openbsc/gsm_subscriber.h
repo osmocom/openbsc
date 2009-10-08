@@ -7,14 +7,17 @@
 
 #define GSM_IMEI_LENGTH 17
 #define GSM_IMSI_LENGTH 17
-#define GSM_TMSI_LENGTH 17
 #define GSM_NAME_LENGTH 128
 #define GSM_EXTENSION_LENGTH 128
+
+/* reserved according to GSM 03.03 § 2.4 */
+#define GSM_RESERVED_TMSI   0xFFFFFFFF
 
 #define GSM_MIN_EXTEN 20000
 #define GSM_MAX_EXTEN 49999
 
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
+#define tmsi_from_string(str) strtoul(str, NULL, 10)
 
 struct gsm_equipment {
 	long long unsigned int id;
@@ -32,7 +35,7 @@ struct gsm_subscriber {
 	struct gsm_network *net;
 	long long unsigned int id;
 	char imsi[GSM_IMSI_LENGTH];
-	char tmsi[GSM_TMSI_LENGTH];
+	u_int32_t tmsi;
 	u_int16_t lac;
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];
@@ -70,7 +73,7 @@ enum gsm_subscriber_update_reason {
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
-					  const char *tmsi);
+					  u_int32_t tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 					  const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,

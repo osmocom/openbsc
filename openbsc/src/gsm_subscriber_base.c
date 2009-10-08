@@ -73,7 +73,9 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	struct subscr_request *request;
 	struct gsm_subscriber *subscr = (struct gsm_subscriber *)param;
 
-	assert(!llist_empty(&subscr->requests));
+	/* There is no request anymore... */
+	if (llist_empty(&subscr->requests))
+		return -1;
 
 	/*
 	 * FIXME: What to do with paging requests coming during
@@ -94,11 +96,19 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 {
 	struct subscr_request *request;
+	int rc;
+
 	assert(!llist_empty(&subscr->requests));
 
 	request = (struct subscr_request *)subscr->requests.next;
-	paging_request(subscr->net, subscr, request->channel_type,
-		       subscr_paging_cb, subscr);
+	rc = paging_request(subscr->net, subscr, request->channel_type,
+			    subscr_paging_cb, subscr);
+
+	/* paging failed, quit now */
+	if (rc <= 0) {
+		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+				 NULL, NULL, request->param);
+	}
 }
 
 struct gsm_subscriber *subscr_alloc(void)
@@ -112,6 +122,7 @@ struct gsm_subscriber *subscr_alloc(void)
 	memset(s, 0, sizeof(*s));
 	llist_add_tail(&s->entry, &active_subscribers);
 	s->use_count = 1;
+	s->tmsi = GSM_RESERVED_TMSI;
 
 	INIT_LLIST_HEAD(&s->requests);
 
