@@ -20,6 +20,9 @@
  *
  */
 
+#include <errno.h>
+#include <sys/types.h>
+
 #include <openbsc/msgb.h>
 #include <openbsc/tlv.h>
 #include <openbsc/gprs_bssgp.h>
@@ -42,8 +45,8 @@ static int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *data, int len)
 			len = ((*cur++ & 0x7f) << 8) | *cur++;
 		val = *cur++;
 
-		tp[tag].len = len;
-		tp[tag].val = val;
+		tp->lv[tag].len = len;
+		tp->lv[tag].val = val;
 	}
 	return 0;
 }
@@ -57,9 +60,9 @@ static int bssgp_rx_dl_ud(struct msgb *msg, u_int16_t bvci)
 /* Uplink user-data */
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
-	struct bssgp_ud_hdr *budh = msgb->l3h;
+	struct bssgp_ud_hdr *budh = msg->l3h;
 	struct tlv_parsed tp;
-	int data_len = l3_len(msg) - sizeof(*budh);
+	int data_len = msgb_l3len(msg) - sizeof(*budh);
 	int rc;
 
 	rc = bssgp_tlv_parse(&tp, budh->data, data_len);
@@ -75,8 +78,8 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 /* We expect msg->l3h to point to the BSSGP header */
 int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci)
 {
-	struct gprs_bssgp_hdr *bgph = msgb->l3h;
-	u_int8_t pdu_type = bgph->pdu_data;
+	struct bssgp_normal_hdr *bgph = msg->l3h;
+	u_int8_t pdu_type = bgph->pdu_type;
 	int rc;
 
 	switch (pdu_type) {
