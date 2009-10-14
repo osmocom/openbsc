@@ -835,7 +835,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 
 /* Activate the specified software into the BTS */
 static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1,
-			     u_int8_t i2, u_int8_t *sw_desc, u_int8_t swdesc_len)
+			     u_int8_t i2, const u_int8_t *sw_desc, u_int8_t swdesc_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -855,6 +855,11 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct tlv_parsed tp;
+	const u_int8_t *sw_config;
+	int sw_config_len;
+	int file_id_len;
+	int nack = 0;
 	int ret;
 
 	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
@@ -865,12 +870,33 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
 
-	/* FIXME: properly parse attributes */
+	if (nack)
+		return ret;
+
+	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
+	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
+	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
+		DEBUGP(DNM, "SW config not found! Can't continue.\n");
+		return -EINVAL;
+	} else {
+		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
+	}
+
+	if (sw_config[0] != NM_ATT_SW_DESCR)
+		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
+	if (sw_config[1] != NM_ATT_FILE_ID)
+		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
+	file_id_len = sw_config[2] * 256 + sw_config[3];
+
+	/* Assumes first SW file in list is the one to be activated */
+	/* sw_config + 4 to skip over 2 attribute ID bytes and 16-bit length field */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 foh->data + oh->length-sizeof(*foh)-22, 22);
+				 sw_config + 4,
+				 file_id_len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
@@ -934,11 +960,17 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
 		struct tlv_parsed tp;
+
+		DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+			obj_class_name(foh->obj_class), foh->obj_class,
+			foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+			foh->obj_inst.ts_nr);
+
 		if (nack_names[mt])
-			DEBUGP(DNM, "%s NACK ", nack_names[mt]);
+			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
 			/* FIXME: NACK cause */
 		else
-			DEBUGP(DNM, "NACK 0x%02x ", mt);
+			DEBUGPC(DNM, "NACK 0x%02x ", mt);
 
 		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
@@ -995,8 +1027,7 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 	int bts_type = mb->trx->bts->type;
 
 	switch (bts_type) {
-	case GSM_BTS_TYPE_NANOBTS_900:
-	case GSM_BTS_TYPE_NANOBTS_1800:
+	case GSM_BTS_TYPE_NANOBTS:
 		rc = abis_nm_rx_ipacc(mb);
 		break;
 	default:
@@ -2480,6 +2511,17 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		break;
 	case NM_MT_IPACC_GET_NVATTR_NACK:
 		DEBUGPC(DNM, "GET NVATTR NACK ");
+		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
+			DEBUGPC(DNM, " CAUSE=%s\n", 
+				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+		else
+			DEBUGPC(DNM, "\n");
+		break;
+	case NM_MT_IPACC_SET_ATTR_ACK:
+		DEBUGPC(DNM, "SET ATTR ACK\n");
+		break;
+	case NM_MT_IPACC_SET_ATTR_NACK:
+		DEBUGPC(DNM, "SET ATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));

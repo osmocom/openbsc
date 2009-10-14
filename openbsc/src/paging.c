@@ -46,9 +46,6 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 
-#define PAGING_TIMEOUT 1, 75000
-#define MAX_PAGING_REQUEST 750
-
 void *tall_paging_ctx;
 
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
@@ -90,16 +87,18 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 static void page_ms(struct gsm_paging_request *request)
 {
 	u_int8_t mi[128];
-	unsigned long int tmsi;
 	unsigned int mi_len;
 	unsigned int page_group;
 
-	DEBUGP(DPAG, "Going to send paging commands: '%s'\n",
-		request->subscr->imsi);
+	DEBUGP(DPAG, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
+		request->subscr->imsi, request->subscr->tmsi);
+
+	if (request->subscr->tmsi == GSM_RESERVED_TMSI)
+		mi_len = gsm48_generate_mid_from_imsi(mi, request->subscr->imsi);
+	else
+		mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
 
 	page_group = calculate_group(request->bts, request->subscr);
-	tmsi = strtoul(request->subscr->tmsi, NULL, 10);
-	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	rsl_paging_cmd(request->bts, page_group, mi_len, mi,
 			request->chan_type);
 }
@@ -296,7 +295,8 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 {
 	struct gsm_bts *bts = NULL;
 
-	_paging_request_stop(_bts, subscr, lchan);
+	if (_bts)
+		_paging_request_stop(_bts, subscr, lchan);
 
 	do {
 		/*
@@ -305,7 +305,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 		 * location area of the _bts as reconfiguration of the
 		 * network is probably happening less often.
 		 */
-		bts = gsm_bts_by_lac(_bts->network, subscr->lac, bts);
+		bts = gsm_bts_by_lac(subscr->net, subscr->lac, bts);
 		if (!bts)
 			break;
 

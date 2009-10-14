@@ -650,7 +650,8 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	/* do not free the transaction here, this is done by sending CP-ACK */
+	/* free the transaction here */
+	trans_free(trans);
 
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);

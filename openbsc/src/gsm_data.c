@@ -234,8 +234,7 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 static const char *bts_types[] = {
 	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
 	[GSM_BTS_TYPE_BS11] = "bs11",
-	[GSM_BTS_TYPE_NANOBTS_900] = "nanobts900",
-	[GSM_BTS_TYPE_NANOBTS_1800] = "nanobts1800",
+	[GSM_BTS_TYPE_NANOBTS] = "nanobts",
 };
 
 enum gsm_bts_type parse_btstype(const char *arg)
@@ -276,7 +275,7 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 			continue;
 		}
 
-		if (bts->location_area_code == lac)
+		if (lac == GSM_LAC_RESERVED_ALL_BTS || bts->location_area_code == lac)
 			return bts;
 	}
 	return NULL;
