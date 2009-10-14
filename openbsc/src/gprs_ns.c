@@ -21,6 +21,11 @@
  *
  */
 
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+
 #include <openbsc/msgb.h>
 #include <openbsc/talloc.h>
 #include <openbsc/gprs_ns.h>
@@ -38,7 +43,7 @@ struct gprs_ns_link {
 
 static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 {
-	struct msgb *msg = msgb_alloc(NS_ALLOC_SIZE);
+	struct msgb *msg = msgb_alloc(NS_ALLOC_SIZE, "GPRS/NS");
 	struct gprs_ns_hdr *nsh;
 
 	if (!msg)
@@ -71,28 +76,28 @@ int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
 
 static int gprs_ns_rx_unitdata(struct msgb *msg)
 {
-	struct gprs_ns_hdr *nsh = msgb->l2h;
+	struct gprs_ns_hdr *nsh = msg->l2h;
 	u_int16_t bvci;
 
 	/* spare octet in data[0] */
 	bvci = nsh->data[1] << 8 | nsh->data[2];
-	msgb->l3h = &nsh->data[3];
+	msg->l3h = &nsh->data[3];
 
 	/* call upper layer (BSSGP) */
-	return bssgp_rcvmsg(msg, bvci);
+	return gprs_bssgp_rcvmsg(msg, bvci);
 }
 
 /* main entry point, here incoming NS frames enter */
 int gprs_ns_rcvmsg(struct msgb *msg)
 {
-	struct gprs_ns_hdr *nsh = msgb->l2h;
+	struct gprs_ns_hdr *nsh = msg->l2h;
 	int rc = -EINVAL;
 
 	switch (nsh->pdu_type) {
 	case NS_PDUT_ALIVE:
 		/* remote end inquires whether we're still alive,
 		 * we need to respond with ALIVE_ACK */
-		rc = gprs_ns_tx_simple(link, NS_PDUT_ALIVE_ACK);
+		rc = gprs_ns_tx_simple(NULL, NS_PDUT_ALIVE_ACK);
 		break;
 	case NS_PDUT_ALIVE_ACK:
 		/* simply ignore it for now */
