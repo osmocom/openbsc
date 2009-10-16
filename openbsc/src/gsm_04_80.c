@@ -57,7 +57,8 @@ static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 	return msgb->data;
 }
 
-static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag, u_int8_t value)
+static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag,
+					    u_int8_t value)
 {
 	msgb->data -= 3;
 	msgb->len += 3;
@@ -69,16 +70,16 @@ static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag, u_i
 
 
 /* Receive a mobile-originated USSD message and return the decoded text */
-char* gsm0480_rcv_ussd(struct msgb *msg)
+char *gsm0480_rcv_ussd(struct msgb *msg)
 {
 	int rc = 0;
-	u_int8_t* parse_ptr = msgb_l3(msg);
+	u_int8_t *parse_ptr = msgb_l3(msg);
 
 	memset(ussd_string_buff, 0, sizeof(ussd_string_buff));
 
 	if ((*parse_ptr & 0x0F) == GSM48_PDISC_NC_SS) {
-	    last_transaction_id = *parse_ptr & 0x70;
-	    rc = parse_ussd(parse_ptr + 1);
+		last_transaction_id = *parse_ptr & 0x70;
+		rc = parse_ussd(parse_ptr + 1);
 	}
 
 	if (!rc)
@@ -92,9 +93,10 @@ static int parse_ussd(u_int8_t *ussd)
 	int rc = 1;
 	u_int8_t msg_type = ussd[0] & 0xBF;  /* message-type - section 3.4 */
 
-	switch(msg_type) {  
+	switch (msg_type) {
 	case GSM0480_MTYPE_RELEASE_COMPLETE:
-		DEBUGP(DMM, "USS Release Complete\n");  /* could also parse out the optional Cause/Facility data */
+		DEBUGP(DMM, "USS Release Complete\n");
+		/* could also parse out the optional Cause/Facility data */
 		ussd_string_buff[0] = 0xFF;
 		break;
 	case GSM0480_MTYPE_REGISTER:
@@ -114,10 +116,11 @@ static int parse_ussd(u_int8_t *ussd)
 static int parse_ussd_information_elements(u_int8_t *ussd_ie)
 {
 	int rc;
-
-	u_int8_t iei = ussd_ie[0];  /* Information Element Identifier - table 3.2 & GSM 04.08 section 10.5 */		
+	/* Information Element Identifier - table 3.2 & GSM 04.08 section 10.5 */
+	u_int8_t iei = ussd_ie[0];
 	u_int8_t iei_length = ussd_ie[1];  
-	switch(iei) {
+
+	switch (iei) {
 	case GSM48_IE_CAUSE:
 		break;
 	case GSM0480_IE_FACILITY:
@@ -126,7 +129,7 @@ static int parse_ussd_information_elements(u_int8_t *ussd_ie)
 	case GSM0480_IE_SS_VERSION:
 		break;
 	default:
-		fprintf(stderr, "Unhandled GSM 04.08 or 04.80 Information Element Identifier 0x%02x\n",
+		fprintf(stderr, "Unhandled GSM 04.08 or 04.80 IEI 0x%02x\n",
 			iei);
 		rc = 0;
 		break;
@@ -141,9 +144,11 @@ static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length)
 	u_int8_t offset = 0;
 
 	do {
-		u_int8_t component_type = facility_ie[offset]; /* Component Type tag - table 3.7 */ 
+		/* Component Type tag - table 3.7 */
+		u_int8_t component_type = facility_ie[offset];
 		u_int8_t component_length = facility_ie[offset+1];
-		switch(component_type) {
+
+		switch (component_type) {
 		case GSM0480_CTYPE_INVOKE:
 			rc &= parse_ss_invoke(facility_ie+2, component_length);
 			break;
@@ -154,13 +159,13 @@ static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length)
 		case GSM0480_CTYPE_REJECT:
 			break;
 		default:
-			fprintf(stderr, "Unknown GSM 04.80 Facility Component Type 0x%02x\n",
-				component_type);
+			fprintf(stderr, "Unknown GSM 04.80 Facility "
+				"Component Type 0x%02x\n", component_type);
 			rc = 0;
 			break;
 		}
 		offset += (component_length+2);
-	} while(offset < length);
+	} while (offset < length);
 
 	return rc;
 }
@@ -169,31 +174,38 @@ static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length)
 static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length)
 {
 	int rc = 1;
-	
-	if (invoke_data[0] != GSM0480_COMPIDTAG_INVOKE_ID) {  /* mandatory part */
-		fprintf(stderr, "Unexpected GSM 04.80 Component-ID tag 0x%02x (expecting Invoke ID tag)\n",
-				invoke_data[0]);
+	u_int8_t offset;
+
+	/* mandatory part */
+	if (invoke_data[0] != GSM0480_COMPIDTAG_INVOKE_ID) {
+		fprintf(stderr, "Unexpected GSM 04.80 Component-ID tag "
+			"0x%02x (expecting Invoke ID tag)\n", invoke_data[0]);
 	}
-	u_int8_t offset = invoke_data[1] + 2;
+
+	offset = invoke_data[1] + 2;
 	last_invoke_id = invoke_data[2];
 
-	if (invoke_data[offset] == GSM0480_COMPIDTAG_LINKED_ID)  /* optional part */
+	/* optional part */
+	if (invoke_data[offset] == GSM0480_COMPIDTAG_LINKED_ID)
 		offset += invoke_data[offset+1] + 2;  /* skip over it */
-		
-	if (invoke_data[offset] == GSM0480_OPERATION_CODE) {  /* mandatory part */
+
+	/* mandatory part */
+	if (invoke_data[offset] == GSM0480_OPERATION_CODE) {
 		u_int8_t operation_code = invoke_data[offset+2];
-		switch(operation_code) {
+		switch (operation_code) {
 		case GSM0480_OP_CODE_PROCESS_USS_REQ:
-			rc = parse_process_uss_req(invoke_data + offset + 3, length - offset - 3);
+			rc = parse_process_uss_req(invoke_data + offset + 3,
+						   length - offset - 3);
 			break;
 		default:
-			fprintf(stderr, "GSM 04.80 operation code 0x%02x is not yet handled\n",
-				operation_code);
+			fprintf(stderr, "GSM 04.80 operation code 0x%02x "
+				"is not yet handled\n", operation_code);
 			rc = 0;
 			break;
 		}
 	} else {
-		fprintf(stderr, "Unexpected GSM 04.80 Component-ID tag 0x%02x (expecting Operation Code tag)\n",
+		fprintf(stderr, "Unexpected GSM 04.80 Component-ID tag 0x%02x "
+			"(expecting Operation Code tag)\n",
 			invoke_data[0]);
 		rc = 0;
 	}
@@ -208,14 +220,18 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length)
 	int num_chars;
 	u_int8_t dcs;
 
-	/* FIXME: most phones send USSD text as a 7-bit encoded octet string; the following code
-	also handles the case of plain ASCII text (IA5String), but other encodings might be used */
+	/* FIXME: most phones send USSD text as a 7-bit encoded octet string;
+	 * the following code also handles the case of plain ASCII text
+	 * (IA5String), but other encodings might be used */
+
 	if (uss_req_data[0] == GSM_0480_SEQUENCE_TAG) {
 		if (uss_req_data[2] == ASN1_OCTET_STRING_TAG) {
 			dcs = uss_req_data[4];
-			if ((dcs == 0x0F) && (uss_req_data[5] == ASN1_OCTET_STRING_TAG)) {
+			if ((dcs == 0x0F) &&
+			    (uss_req_data[5] == ASN1_OCTET_STRING_TAG)) {
 				num_chars = (uss_req_data[6] * 8) / 7;
-				gsm_7bit_decode(ussd_string_buff, &(uss_req_data[7]), num_chars);
+				gsm_7bit_decode(ussd_string_buff,
+						&(uss_req_data[7]), num_chars);
 			}
 		}
 	} else if (uss_req_data[0] == ASN1_IA5_STRING_TAG) {
@@ -255,7 +271,8 @@ int gsm0480_send_ussd_response(struct msgb *in_msg, const char* response_text)
 	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
 
 	/* Pre-pend the operation code */
-	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, GSM0480_OP_CODE_PROCESS_USS_REQ);
+	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE,
+			GSM0480_OP_CODE_PROCESS_USS_REQ);
 
 	/* Wrap the operation code and IA5 string as a sequence */
 	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
@@ -286,7 +303,8 @@ int gsm0480_send_ussd_reject(struct msgb *in_msg)
 	msg->lchan = in_msg->lchan;
 
 	/* First insert the problem code */
-	msgb_push_TLV1(msg, GSM_0480_PROBLEM_CODE_TAG_GENERAL, GSM_0480_GEN_PROB_CODE_UNRECOGNISED);
+	msgb_push_TLV1(msg, GSM_0480_PROBLEM_CODE_TAG_GENERAL,
+			GSM_0480_GEN_PROB_CODE_UNRECOGNISED);
 
 	/* Before it insert the invoke ID */
 	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, last_invoke_id);
@@ -299,7 +317,8 @@ int gsm0480_send_ussd_reject(struct msgb *in_msg)
 
 	/* And finally pre-pend the L3 header */
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_NC_SS | last_transaction_id | (1<<7);  /* TI direction = 1 */
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->proto_discr |= last_transaction_id | (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
 	return gsm48_sendmsg(msg, NULL);

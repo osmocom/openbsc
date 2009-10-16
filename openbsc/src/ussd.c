@@ -22,7 +22,8 @@
  *
  */
 
-/* This module defines the network-specific handling of mobile-originated USSD messages. */
+/* This module defines the network-specific handling of mobile-originated
+   USSD messages. */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,12 +44,12 @@ static int send_own_number(struct msgb *msg);
 /* Entrypoint - handler function common to all mobile-originated USSDs */
 int handle_rcv_ussd(struct msgb *msg)
 {
-	char* ussd_text_rcvd = gsm0480_rcv_ussd(msg);
+	char *ussd_text_rcvd = gsm0480_rcv_ussd(msg);
 
-	if(ussd_text_rcvd[0] == 0xFF)  /* Release-Complete */
-	    return 0;
+	if (ussd_text_rcvd[0] == 0xFF)  /* Release-Complete */
+		return 0;
 
-	if(strstr(USSD_TEXT_OWN_NUMBER, ussd_text_rcvd) != NULL) {
+	if (strstr(USSD_TEXT_OWN_NUMBER, ussd_text_rcvd) != NULL) {
 		DEBUGP(DMM, "USSD: Own number requested\n");
 		return send_own_number(msg);
 	} else {
@@ -60,9 +61,10 @@ int handle_rcv_ussd(struct msgb *msg)
 /* A network-specific handler function */
 static int send_own_number(struct msgb *msg)
 {
-	char response_string[] = "Your extension is xxxxx\r"; /* Need trailing CR as EOT character */
+	char *own_number = msg->lchan->subscr->extension;
+	/* Need trailing CR as EOT character */
+	char response_string[] = "Your extension is xxxxx\r";
 
-	char* own_number = msg->lchan->subscr->extension;
 	memcpy(response_string + 18, own_number, 5);
 	return gsm0480_send_ussd_response(msg, response_string);
 }
