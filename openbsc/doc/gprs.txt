@@ -15,3 +15,16 @@
 29.060 GPRS Tunneling (GTP) over Gn and Gp
 
 
+
+Stack in case of nanoBTS, when HTTP request is transferred from MS:
+
+HTTP
+TCP
+PPP
+SNDCP
+LLC
+BSSGP
+NS
+UDP
+IP
+Ethernet

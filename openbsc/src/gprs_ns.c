@@ -21,16 +21,81 @@
  *
  */
 
+/* Some introduction into NS:  NS is used typically on top of frame relay,
+ * but in the ip.access world it is encapsulated in UDP packets.  It serves
+ * as an intermediate shim betwen BSSGP and the underlying medium.  It doesn't
+ * do much, apart from providing congestion notification and status indication.
+ * 
+ * Terms:
+ * 	NS		Network Service
+ *	NSVC		NS Virtual Connection
+ *	NSEI		NS Entity Identifier
+ *	NSVL		NS Virtual Link
+ *	NSVLI		NS Virtual Link Identifier
+ *	BVC		BSSGP Virtual Connection
+ *	BVCI		BSSGP Virtual Connection Identifier
+ *	NSVCG		NS Virtual Connection Goup
+ *	Blocked		NS-VC cannot be used for user traffic
+ *	Alive		Ability of a NS-VC to provide communication
+ * 
+ *  There can be multiple BSSGP virtual connections over one (group of) NSVC's.  BSSGP will
+ * therefore identify the BSSGP virtual connection by a BVCI passed down to NS.
+ * NS then has to firgure out which NSVC's are responsible for this BVCI.
+ * Those mappings are administratively configured.
+ */
+
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
 
+#include <arpa/inet.h>
+
+#include <openbsc/gsm_data.h>
 #include <openbsc/msgb.h>
+#include <openbsc/tlv.h>
 #include <openbsc/talloc.h>
+#include <openbsc/debug.h>
 #include <openbsc/gprs_ns.h>
+#include <openbsc/gprs_bssgp.h>
 
 #define NS_ALLOC_SIZE	1024
+
+static const struct tlv_definition ns_att_tlvdef = {
+	.def = {
+		[NS_IE_CAUSE]	= { TLV_TYPE_TLV, 0 },
+		[NS_IE_VCI]	= { TLV_TYPE_TLV, 0 },
+		[NS_IE_PDU]	= { TLV_TYPE_TLV, 0 },
+		[NS_IE_BVCI]	= { TLV_TYPE_TLV, 0 },
+		[NS_IE_NSEI]	= { TLV_TYPE_TLV, 0 },
+	},
+};
+
+/* Section 10.3.2, Table 13 */
+static const char *ns_cause_str[] = {
+	[NS_CAUSE_TRANSIT_FAIL]		= "Transit network failure",
+	[NS_CAUSE_OM_INTERVENTION] 	= "O&M intervention",
+	[NS_CAUSE_EQUIP_FAIL]		= "Equipment failure",
+	[NS_CAUSE_NSVC_BLOCKED]		= "NS-VC blocked",
+	[NS_CAUSE_NSVC_UNKNOWN]		= "NS-VC unknown",
+	[NS_CAUSE_BVCI_UNKNOWN]		= "BVCI unknown",
+	[NS_CAUSE_SEM_INCORR_PDU]	= "Semantically incorrect PDU",
+	[NS_CAUSE_PDU_INCOMP_PSTATE]	= "PDU not compatible with protocol state",
+	[NS_CAUSE_PROTO_ERR_UNSPEC]	= "Protocol error, unspecified",
+	[NS_CAUSE_INVAL_ESSENT_IE]	= "Invalid essential IE",
+	[NS_CAUSE_MISSING_ESSENT_IE]	= "Missing essential IE",
+};
+
+static const char *gprs_ns_cause_str(enum ns_cause cause)
+{
+	if (cause >= ARRAY_SIZE(ns_cause_str))
+		return "undefined";
+
+	if (ns_cause_str[cause])
+		return ns_cause_str[cause];
+
+	return "undefined";
+}
 
 /* a layer 1 entity transporting NS frames */
 struct gprs_ns_link {
@@ -49,20 +114,42 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 	if (!msg)
 		return -ENOMEM;
 
-	nsh = msgb_put(msg, sizeof(*nsh));
+	nsh = (struct gprs_ns_hdr *) msgb_put(msg, sizeof(*nsh));
 
 	nsh->pdu_type = pdu_type;
 
 	/* FIXME: actually transmit */
 }
 
+/* Section 9.2.6 */
+static int gprs_ns_tx_reset_ack(u_int16_t nsvci, u_int16_t nsei)
+{
+	struct msgb *msg = msgb_alloc(NS_ALLOC_SIZE, "GPRS/NS");
+	struct gprs_ns_hdr *nsh;
 
+	if (!msg)
+		return -ENOMEM;
+
+	nsvci = htons(nsvci);
+	nsei = htons(nsei);
+
+	nsh = (struct gprs_ns_hdr *) msgb_put(msg, sizeof(*nsh));
+
+	nsh->pdu_type = NS_PDUT_RESET_ACK;
+
+	msgb_tlv_put(msg, NS_IE_VCI, 2, (u_int8_t *)&nsvci);
+	msgb_tlv_put(msg, NS_IE_NSEI, 2, (u_int8_t *)&nsei);
+
+	/* FIXME: actually transmit */
+}
+
+/* Section 9.2.10: transmit side */
 int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
 		    struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh;
 	
-	nsh = msgb_push(msg, sizeof(*nsh) + 3);
+	nsh = (struct gprs_ns_hdr *) msgb_push(msg, sizeof(*nsh) + 3);
 	if (!nsh)
 		return -EIO;
 
@@ -71,12 +158,14 @@ int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
 	nsh->data[1] = bvci >> 8;
 	nsh->data[2] = bvci & 0xff;
 
-	/* FIXME: actually transmit */
+	/* FIXME: actually enqueue in our transmit queue for the UDP socket to
+	 * this particular BTS */
 }
 
+/* Section 9.2.10: receive side */
 static int gprs_ns_rx_unitdata(struct msgb *msg)
 {
-	struct gprs_ns_hdr *nsh = msg->l2h;
+	struct gprs_ns_hdr *nsh = (struct gprs_ns_hdr *)msg->l2h;
 	u_int16_t bvci;
 
 	/* spare octet in data[0] */
@@ -87,11 +176,68 @@ static int gprs_ns_rx_unitdata(struct msgb *msg)
 	return gprs_bssgp_rcvmsg(msg, bvci);
 }
 
+/* Section 9.2.7 */
+static int gprs_ns_rx_status(struct msgb *msg)
+{
+	struct gprs_ns_hdr *nsh = msg->l2h;
+	struct tlv_parsed tp;
+	u_int8_t cause;
+	int rc;
+
+	DEBUGP(DGPRS, "NS STATUS ");
+
+	rc = tlv_parse(&tp, &ns_att_tlvdef, nsh->data, msgb_l2len(msg), 0, 0);
+
+	if (!TLVP_PRESENT(&tp, NS_IE_CAUSE)) {
+		DEBUGPC(DGPRS, "missing cause IE\n");
+		return -EINVAL;
+	}
+
+	cause = *TLVP_VAL(&tp, NS_IE_CAUSE);
+	DEBUGPC(DGPRS, "cause=%s\n", gprs_ns_cause_str(cause));
+
+	return 0;
+}
+
+/* Section 7.3 */
+static int gprs_ns_rx_reset(struct msgb *msg)
+{
+	struct gprs_ns_hdr *nsh = (struct gprs_ns_hdr *) msg->l2h;
+	struct tlv_parsed tp;
+	u_int8_t *cause;
+	u_int16_t *nsvci, *nsei;
+	int rc;
+
+	DEBUGP(DGPRS, "NS RESET ");
+
+	rc = tlv_parse(&tp, &ns_att_tlvdef, nsh->data, msgb_l2len(msg), 0, 0);
+
+	if (!TLVP_PRESENT(&tp, NS_IE_CAUSE) ||
+	    !TLVP_PRESENT(&tp, NS_IE_VCI) ||
+	    !TLVP_PRESENT(&tp, NS_IE_NSEI)) {
+		/* FIXME: respond with NS_CAUSE_MISSING_ESSENT_IE */
+	}
+
+	cause = (u_int8_t *) TLVP_VAL(&tp, NS_IE_CAUSE);
+	nsvci = (u_int16_t *) TLVP_VAL(&tp, NS_IE_VCI);
+	nsei = (u_int16_t *) TLVP_VAL(&tp, NS_IE_NSEI);
+
+	*nsvci = ntohs(*nsvci);
+	*nsei = ntohs(*nsei);
+
+	DEBUGPC(DGPRS, "cause=%s, NSVCI=%u, NSEI=%u\n",
+		gprs_ns_cause_str(*cause), *nsvci, *nsei);
+
+	/* FIXME: mark the NS-VC as blocked */
+
+	return gprs_ns_tx_reset_ack(*nsvci, *nsei);
+}
+
 /* main entry point, here incoming NS frames enter */
 int gprs_ns_rcvmsg(struct msgb *msg)
 {
-	struct gprs_ns_hdr *nsh = msg->l2h;
-	int rc = -EINVAL;
+	struct gprs_ns_hdr *nsh = (struct gprs_ns_hdr *) msg->l2h;
+	int rc = 0;
 
 	switch (nsh->pdu_type) {
 	case NS_PDUT_ALIVE:
@@ -106,16 +252,32 @@ int gprs_ns_rcvmsg(struct msgb *msg)
 		/* actual user data */
 		rc = gprs_ns_rx_unitdata(msg);
 		break;
+	case NS_PDUT_STATUS:
+		rc = gprs_ns_rx_status(msg);
+		break;
 	case NS_PDUT_RESET:
+		rc = gprs_ns_rx_reset(msg);
+		break;
 	case NS_PDUT_RESET_ACK:
+		/* FIXME: mark remote NS-VC as blocked + active */
+		break;
+	case NS_PDUT_UNBLOCK:
+		/* Section 7.2: unblocking procedure */
+		DEBUGP(DGPRS, "NS UNBLOCK ");
+		rc = gprs_ns_tx_simple(NULL, NS_PDUT_UNBLOCK_ACK);
+		break;
+	case NS_PDUT_UNBLOCK_ACK:
+		/* FIXME: mark remote NS-VC as unblocked + active */
+		break;
 	case NS_PDUT_BLOCK:
 	case NS_PDUT_BLOCK_ACK:
-	case NS_PDUT_UNBLOCK:
-	case NS_PDUT_UNBLOCK_ACK:
-	case NS_PDUT_STATUS:
+		DEBUGP(DGPRS, "Unimplemented NS PDU type 0x%02x\n",
+			nsh->pdu_type);
 		rc = 0;
 		break;
 	default:
+		DEBUGP(DGPRS, "Unknown NS PDU type 0x%02x\n", nsh->pdu_type);
+		rc = -EINVAL;
 		break;
 	}
 	return rc;

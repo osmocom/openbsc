@@ -14,6 +14,7 @@
 #define DSMS		0x0100
 #define DPAG		0x0200
 #define DMEAS		0x0400
+#define DGPRS		0x0800
 
 #define DMI		0x1000
 #define DMIB		0x2000

@@ -34,9 +34,15 @@ struct msgb {
 	struct gsm_bts_trx *trx;
 	struct gsm_lchan *lchan;
 
+	/* the A-bis layer 2 header: OML, RSL(RLL), NS */
 	unsigned char *l2h;
+	/* the layer 3 header. For OML: FOM; RSL: 04.08; GPRS: BSSGP */
 	unsigned char *l3h;
-	unsigned char *smsh;
+
+	union {
+		unsigned char *smsh;
+		unsigned char *llch;
+	};
 
 	u_int16_t data_len;
 	u_int16_t len;

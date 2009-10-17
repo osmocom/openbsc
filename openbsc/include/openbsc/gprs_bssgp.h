@@ -36,6 +36,7 @@ enum bssgp_pdu_type {
 	BSSGP_PDUT_LLC_DISCARD		= 0x2c,
 	BSSGP_PDUT_SGSN_INVOKE_TRACE	= 0x40,
 	BSSGP_PDUT_STATUS		= 0x41,
+	/* PDUs between PFM SAP's */
 	BSSGP_PDUT_DOWNLOAD_BSS_PFC	= 0x50,
 	BSSGP_PDUT_CREATE_BSS_PFC	= 0x51,
 	BSSGP_PDUT_CREATE_BSS_PFC_ACK	= 0x52,
@@ -107,5 +108,7 @@ enum bssgp_iei_type {
 	BSSGP_IE_BUCKET_FULL_RATIO	= 0x3c,
 	BSSGP_IE_SERVICE_UTRAN_CCO	= 0x3d,
 };
+
+extern int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci);
 
 #endif /* _GPRS_BSSGP_H */
