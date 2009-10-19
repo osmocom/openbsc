@@ -236,6 +236,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, trx->rsl_tei, 0);
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			bsc_unregister_fd(bfd);
@@ -249,7 +250,6 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 
 /* FIXME: this is per BTS */
 static int oml_up = 0;
-static int rsl_up = 0;
 
 /*
  * read one ipa message from the socket
@@ -347,10 +347,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	switch (link->type) {
 	case E1INP_SIGN_RSL:
-		if (!rsl_up) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
-			rsl_up = 1;
-		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case E1INP_SIGN_OML:
