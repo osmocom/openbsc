@@ -405,7 +405,11 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 static int sw_activ_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	struct gsm_bts_trx *trx = mb->trx;
+	struct gsm_bts *bts = mb->trx->bts;
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+
+	if (!trx)
+		return -ENODEV;
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
