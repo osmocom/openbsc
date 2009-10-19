@@ -527,7 +527,21 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 		}
 		break;
 	case GSM_BTS_TYPE_NANOBTS:
-		trx->nominal_power = 20;
+		switch (trx->bts->band) {
+		case GSM_BAND_850:
+		case GSM_BAND_900:
+			trx->nominal_power = 20;
+			break;
+		case GSM_BAND_1800:
+		case GSM_BAND_1900:
+			trx->nominal_power = 23;
+			break;
+		dedfault:
+			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+				gsm_band_name(trx->bts->band));
+			break;
+		}
+		break;
 	default:
 		break;
 	}
