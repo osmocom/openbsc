@@ -2474,6 +2474,11 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 
+	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class,
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
+
 	DEBUGP(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
