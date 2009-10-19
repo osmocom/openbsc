@@ -2492,6 +2492,9 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *) 
 					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_STREAM_ID))
+			DEBUGPC(DNM, "STREAM=0x%02x ",
+					*TLVP_VAL(&tp, NM_ATT_IPACC_STREAM_ID));
 		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
