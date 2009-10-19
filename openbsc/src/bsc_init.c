@@ -409,7 +409,7 @@ static int sw_activ_rep(struct msgb *mb)
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
 		/* TRX software is active, tell it to initiate RSL Link */
-		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, 0);
+		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC,
 				trx->bts->bts_nr, trx->nr, 0xff);
 		abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC,
