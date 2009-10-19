@@ -2626,7 +2626,7 @@ int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 		attr_len -= 5;
 
 	DEBUGP(DNM, "ip.access RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
-		inet_ntoa(ia), htons(port), stream);
+		inet_ntoa(ia), port, stream);
 
 	return abis_nm_ipaccess_msg(trx->bts, NM_MT_IPACC_RSL_CONNECT,
 				    NM_OC_BASEB_TRANSC, trx->bts->bts_nr,
