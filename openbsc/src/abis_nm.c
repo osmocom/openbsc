@@ -2479,7 +2479,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
 		foh->obj_inst.ts_nr);
 
-	DEBUGP(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
+	DEBUGPC(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
@@ -2600,6 +2600,34 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_NVATTR,
 				    NM_OC_BASEB_TRANSC, 0, 0, 0xff, attr,
 				    attr_len);
+}
+
+int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
+				 u_int32_t ip, u_int16_t port, u_int8_t stream)
+{
+	struct in_addr ia;
+	u_int8_t attr[] = { NM_ATT_IPACC_STREAM_ID, 0,
+			    NM_ATT_IPACC_DST_IP_PORT, 0, 0,
+			    NM_ATT_IPACC_DST_IP, 0, 0, 0, 0 };
+
+	int attr_len = sizeof(attr);
+
+	ia.s_addr = htonl(ip);
+	attr[1] = stream;
+	attr[3] = port >> 8;
+	attr[4] = port & 0xff;
+	*(u_int32_t *)(attr+6) = ia.s_addr;
+
+	/* if ip == 0, we use the default IP */
+	if (ip == 0)
+		attr_len -= 5;
+
+	DEBUGP(DNM, "ip.access RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
+		inet_ntoa(ia), htons(port), stream);
+
+	return abis_nm_ipaccess_msg(trx->bts, NM_MT_IPACC_RSL_CONNECT,
+				    NM_OC_BASEB_TRANSC, trx->bts->bts_nr,
+				    trx->nr, 0xff, attr, attr_len);
 }
 
 /* restart / reboot an ip.access nanoBTS */

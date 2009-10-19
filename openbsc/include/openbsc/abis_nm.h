@@ -748,6 +748,8 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 				int attr_len);
 int abis_nm_ipaccess_restart(struct gsm_bts *bts);
+int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
+				 u_int32_t ip, u_int16_t port, u_int8_t stream);
 
 /* Functions calling into other code parts */
 enum nm_evt {
