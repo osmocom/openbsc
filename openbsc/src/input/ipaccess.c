@@ -222,20 +222,20 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (bfd->priv_nr == 1) {
 			bts->oml_link = e1inp_sign_link_create(&line->ts[1-1],
 						  E1INP_SIGN_OML, bts->c0,
-						  0, 0xff);
+						  bts->oml_tei, 0);
 		} else if (bfd->priv_nr == 2) {
 			struct e1inp_ts *e1i_ts;
 			struct bsc_fd *newbfd;
+			struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_id);
 			
-			/* FIXME: implement this for non-0 TRX */
 			bfd->data = line = bts->oml_link->ts->line;
-			e1i_ts = &line->ts[2-1];
+			e1i_ts = &line->ts[2+trx_id - 1];
 			newbfd = &e1i_ts->driver.ipaccess.fd;
+			e1inp_ts_config(e1i_ts, line, E1INP_TS_TYPE_SIGN);
 
-			bts->c0->rsl_link = 
-				e1inp_sign_link_create(e1i_ts,
-							E1INP_SIGN_RSL, bts->c0,
-							0, 0);
+			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
+							E1INP_SIGN_RSL, trx,
+							trx->rsl_tei, 0);
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			bsc_unregister_fd(bfd);
@@ -337,7 +337,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
 	 * might have free'd it !!! */
 
-	link = e1inp_lookup_sign_link(e1i_ts, 0, hh->proto);
+	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
 		printf("no matching signalling link for hh->proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
@@ -345,17 +345,17 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 	msg->trx = link->trx;
 
-	switch (hh->proto) {
-	case IPAC_PROTO_RSL:
+	switch (link->type) {
+	case E1INP_SIGN_RSL:
 		if (!rsl_up) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, IPAC_PROTO_RSL);
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
 			rsl_up = 1;
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
-	case IPAC_PROTO_OML:
+	case E1INP_SIGN_OML:
 		if (!oml_up) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, 0, IPAC_PROTO_OML);
+			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
 			oml_up = 1;
 		}
 		ret = abis_nm_rcvmsg(msg);
@@ -426,9 +426,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return -EINVAL;
 	}
 
-
 	msg->l2h = msg->data;
-	ipaccess_prepend_header(msg, proto);
+	ipaccess_prepend_header(msg, sign_link->tei);
 
 	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
 
@@ -505,7 +504,6 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	//line->driver_data = e1h;
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
-	e1inp_ts_config(&line->ts[2-1], line, E1INP_TS_TYPE_SIGN);
 
 	e1i_ts = &line->ts[idx];
 
