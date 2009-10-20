@@ -482,6 +482,7 @@ enum abis_nm_avail_state {
 	NM_AVSTATE_DEPENDENCY	= 5,
 	NM_AVSTATE_DEGRADED	= 6,
 	NM_AVSTATE_NOT_INSTALLED= 7,
+	NM_AVSTATE_OK		= 0xff,
 };
 
 /* Section 9.4.13: Channel Combination */
