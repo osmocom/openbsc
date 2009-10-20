@@ -53,6 +53,20 @@ static int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *data, int len)
 	return 0;
 }
 
+/* Transmit a simple response such as BLOCK/UNBLOCK/RESET ACK/NACK */
+static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci)
+{
+	struct msgb *msg = msgb_alloc(1024, "BSSGP");
+	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
+	u_int16_t _bvci;
+
+	bgph->pdu_type = pdu_type;
+	_bvci = htons(bvci);
+	msgb_tvlv_put(msg, BSSGP_IE_BVCI, 2, (u_int8_t *) &bvci);
+
+	return gprs_ns_sendmsg(NULL, bvci, msg);
+}
+
 /* Uplink user-data */
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
@@ -160,13 +174,16 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci)
 		break;
 	case BSSGP_PDUT_BVC_BLOCK:
 		/* BSS tells us that BVC shall be blocked */
-		/* Send BVC_BLOCK_ACK */
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK_ACK, bvci);
+		break;
 	case BSSGP_PDUT_BVC_UNBLOCK:
 		/* BSS tells us that BVC shall be unblocked */
-		/* Send BVC_UNBLOCK_ACK */
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_UNBLOCK_ACK, bvci);
+		break;
 	case BSSGP_PDUT_BVC_RESET:
 		/* BSS tells us that BVC init is required */
-		/* Send BVC_RESET_ACK */
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK, bvci);
+		break;
 	case BSSGP_PDUT_STATUS:
 		/* Some exception has occurred */
 	case BSSGP_PDUT_DOWNLOAD_BSS_PFC:
