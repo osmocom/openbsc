@@ -16,8 +16,8 @@ enum ns_pdu_type {
 	NS_PDUT_UNBLOCK		= 0x06,
 	NS_PDUT_UNBLOCK_ACK	= 0x07,
 	NS_PDUT_STATUS		= 0x08,
-	NS_PDUT_ALIVE		= 0x12,
-	NS_PDUT_ALIVE_ACK	= 0x13,
+	NS_PDUT_ALIVE		= 0x0a,
+	NS_PDUT_ALIVE_ACK	= 0x0b,
 };
 
 /* TS 08.16, Section 10.3, Table 12 */
