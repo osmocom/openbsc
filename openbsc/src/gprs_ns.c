@@ -63,11 +63,11 @@
 
 static const struct tlv_definition ns_att_tlvdef = {
 	.def = {
-		[NS_IE_CAUSE]	= { TLV_TYPE_TLV, 0 },
-		[NS_IE_VCI]	= { TLV_TYPE_TLV, 0 },
-		[NS_IE_PDU]	= { TLV_TYPE_TLV, 0 },
-		[NS_IE_BVCI]	= { TLV_TYPE_TLV, 0 },
-		[NS_IE_NSEI]	= { TLV_TYPE_TLV, 0 },
+		[NS_IE_CAUSE]	= { TLV_TYPE_TvLV, 0 },
+		[NS_IE_VCI]	= { TLV_TYPE_TvLV, 0 },
+		[NS_IE_PDU]	= { TLV_TYPE_TvLV, 0 },
+		[NS_IE_BVCI]	= { TLV_TYPE_TvLV, 0 },
+		[NS_IE_NSEI]	= { TLV_TYPE_TvLV, 0 },
 	},
 };
 
@@ -106,6 +106,11 @@ struct gprs_ns_link {
 	};
 };
 
+static int gprs_ns_tx(struct msgb *msg)
+{
+	return ipac_gprs_send(msg);
+}
+
 static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 {
 	struct msgb *msg = msgb_alloc(NS_ALLOC_SIZE, "GPRS/NS");
@@ -118,7 +123,7 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 
 	nsh->pdu_type = pdu_type;
 
-	/* FIXME: actually transmit */
+	return gprs_ns_tx(msg);
 }
 
 /* Section 9.2.6 */
@@ -137,14 +142,14 @@ static int gprs_ns_tx_reset_ack(u_int16_t nsvci, u_int16_t nsei)
 
 	nsh->pdu_type = NS_PDUT_RESET_ACK;
 
-	msgb_tlv_put(msg, NS_IE_VCI, 2, (u_int8_t *)&nsvci);
-	msgb_tlv_put(msg, NS_IE_NSEI, 2, (u_int8_t *)&nsei);
+	msgb_tvlv_put(msg, NS_IE_VCI, 2, (u_int8_t *)&nsvci);
+	msgb_tvlv_put(msg, NS_IE_NSEI, 2, (u_int8_t *)&nsei);
 
-	/* FIXME: actually transmit */
+	return gprs_ns_tx(msg);
 }
 
 /* Section 9.2.10: transmit side */
-int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
+int gprs_ns_sendmsg(struct gprs_ns_link *link, u_int16_t bvci,
 		    struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh;
@@ -158,8 +163,7 @@ int gprs_ns_sendsmg(struct gprs_ns_link *link, u_int16_t bvci,
 	nsh->data[1] = bvci >> 8;
 	nsh->data[2] = bvci & 0xff;
 
-	/* FIXME: actually enqueue in our transmit queue for the UDP socket to
-	 * this particular BTS */
+	return gprs_ns_tx(msg);
 }
 
 /* Section 9.2.10: receive side */
@@ -216,6 +220,8 @@ static int gprs_ns_rx_reset(struct msgb *msg)
 	    !TLVP_PRESENT(&tp, NS_IE_VCI) ||
 	    !TLVP_PRESENT(&tp, NS_IE_NSEI)) {
 		/* FIXME: respond with NS_CAUSE_MISSING_ESSENT_IE */
+		DEBUGPC(DGPRS, "Missing mandatory IE\n");
+		return -EINVAL;
 	}
 
 	cause = (u_int8_t *) TLVP_VAL(&tp, NS_IE_CAUSE);

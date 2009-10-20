@@ -507,6 +507,23 @@ static int handle_gprs_write(struct bsc_fd *bfd)
 {
 }
 
+int ipac_gprs_send(struct msgb *msg)
+{
+	struct sockaddr_in sin;
+	int rc;
+
+	sin.sin_family = AF_INET;
+	inet_aton("192.168.100.122", &sin.sin_addr);
+	sin.sin_port = htons(23000);
+
+	rc = sendto(e1h->gprs_fd.fd, msg->data, msg->len, 0,
+		  (struct sockaddr *)&sin, sizeof(sin));
+
+	talloc_free(msg);
+
+	return rc;
+}
+
 /* UDP Port 23000 carries the LLC-in-BSSGP-in-NS protocol stack */
 static int gprs_fd_cb(struct bsc_fd *bfd, unsigned int what)
 {
