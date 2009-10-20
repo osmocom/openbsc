@@ -585,6 +585,14 @@ const char *nm_adm_name(u_int8_t adm)
 	}
 }
 
+static void debugp_foh(struct abis_om_fom_hdr *foh)
+{
+	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class, 
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
+}
+
 /* obtain the gsm_nm_state data structure for a given object instance */
 static struct gsm_nm_state *
 objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
@@ -799,10 +807,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
 
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class, 
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	debugp_foh(foh);
 
 	//nmh->cfg->report_cb(mb, foh);
 
@@ -860,7 +865,9 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	int nack = 0;
 	int ret;
 
-	DEBUGP(DNM, "Software Activate Request ");
+	debugp_foh(foh);
+
+	DEBUGPC(DNM, "SW Activate Request: ");
 
 	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
 		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
@@ -965,10 +972,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
 		struct tlv_parsed tp;
 
-		DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-			obj_class_name(foh->obj_class), foh->obj_class,
-			foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-			foh->obj_inst.ts_nr);
+		debugp_foh(foh);
 
 		if (nack_names[mt])
 			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
@@ -1851,10 +1855,11 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
 
-	DEBUGP(DNM, "Sending OPSTART obj_class=0x%02x obj_inst=(0x%02x, 0x%02x, 0x%02x)\n",
-		obj_class, i0, i1, i2);
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
+
+	debugp_foh((struct abis_om_fom_hdr *) oh->data);
+	DEBUGPC(DNM, "Sending OPSTART\n");
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2474,10 +2479,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class,
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	debugp_foh(foh);
 
 	DEBUGPC(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
