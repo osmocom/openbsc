@@ -87,6 +87,20 @@ int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 				return -2;
 			num_parsed++;
 			break;
+		case TLV_TYPE_TvLV:
+			if (*(pos+1) & 0x80) {
+				/* like TLV, but without highest bit of len */
+				if (pos + 1 > buf + buf_len)
+					return -1;
+				dec->lv[tag].val = pos+2;
+				dec->lv[tag].len = *(pos+1) & 0x7f;
+				len = dec->lv[tag].len + 2;
+				if (pos + len > buf + buf_len)
+					return -2;
+				num_parsed++;
+				break;
+			}
+			/* like TL16V, fallthrough */
 		case TLV_TYPE_TL16V:
 			if (pos + 2 > buf + buf_len)
 				return -1;
