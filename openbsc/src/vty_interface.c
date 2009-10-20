@@ -127,17 +127,19 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	if (bts->cell_barred)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
-		vty_out(vty, "  Unit ID: %u/%u/0%s",
+		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
-			VTY_NEWLINE);
+			bts->oml_tei, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.nm_state);
 	vty_out(vty, "  Paging: FIXME pending requests, %u free slots%s",
 		bts->paging.available_slots, VTY_NEWLINE);
-	vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
-	e1isl_dump_vty(vty, bts->oml_link);
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
+		e1isl_dump_vty(vty, bts->oml_link);
+	}
 	/* FIXME: oml_link, chan_desc */
 }
 
@@ -238,10 +240,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (bts->cell_barred)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
-	if (is_ipaccess_bts(bts))
+	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
-	else {
+		vty_out(vty, "  oml ip.access stream_id %u%s", bts->oml_tei, VTY_NEWLINE);
+	} else {
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
@@ -285,8 +288,13 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 	net_dump_nmstate(vty, &trx->nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
 	net_dump_nmstate(vty, &trx->bb_transc.nm_state);
-	vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
-	e1isl_dump_vty(vty, trx->rsl_link);
+	if (is_ipaccess_bts(trx->bts)) {
+		vty_out(vty, "  ip.access stream ID: 0x%02x%s",
+			trx->rsl_tei, VTY_NEWLINE);
+	} else {
+		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
+		e1isl_dump_vty(vty, trx->rsl_link);
+	}
 }
 
 DEFUN(show_trx,
@@ -819,6 +827,11 @@ DEFUN(cfg_bts_type,
 
 	bts->type = parse_btstype(argv[0]);
 
+	if (is_ipaccess_bts(bts)) {
+		/* Set the default OML Stream ID to 0xff */
+		bts->oml_tei = 0xff;
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -940,6 +953,25 @@ DEFUN(cfg_bts_unit_id,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_stream_id,
+      cfg_bts_stream_id_cmd,
+      "oml ip.access stream_id <0-255>",
+      "Set the ip.access Stream ID of the OML link of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int stream_id = atoi(argv[0]);
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->oml_tei = stream_id;
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_bts_oml_e1,
       cfg_bts_oml_e1_cmd,
@@ -1207,6 +1239,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);

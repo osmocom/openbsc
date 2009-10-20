@@ -338,11 +338,6 @@ static unsigned char nanobts_attr_radio[] = {
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
-static unsigned char nanobts_attr_e0[] = {
-	NM_ATT_IPACC_STREAM_ID, 0x00,
-	NM_ATT_IPACC_DST_IP_PORT, 0x0b, 0xbb,	/* TCP PORT for RSL */
-};
-
 static unsigned char nanobts_attr_nse[] = {
 	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
 	NM_ATT_IPACC_NS_CFG, 0, 7,  3, 3, 3, 3, 3, 3, 10, /* NS timers */
@@ -490,14 +485,16 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 static int sw_activ_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	struct gsm_bts_trx *trx = mb->trx;
+	struct gsm_bts *bts = mb->trx->bts;
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+
+	if (!trx)
+		return -ENODEV;
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
 		/* TRX software is active, tell it to initiate RSL Link */
-		abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
-				     trx->bts->bts_nr, trx->nr, 0xff,
-				     nanobts_attr_e0, sizeof(nanobts_attr_e0));
+		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC,
 				trx->bts->bts_nr, trx->nr, 0xff);
 		abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC,
@@ -612,7 +609,21 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 		}
 		break;
 	case GSM_BTS_TYPE_NANOBTS:
-		trx->nominal_power = 20;
+		switch (trx->bts->band) {
+		case GSM_BAND_850:
+		case GSM_BAND_900:
+			trx->nominal_power = 20;
+			break;
+		case GSM_BAND_1800:
+		case GSM_BAND_1900:
+			trx->nominal_power = 23;
+			break;
+		dedfault:
+			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+				gsm_band_name(trx->bts->band));
+			break;
+		}
+		break;
 	default:
 		break;
 	}
