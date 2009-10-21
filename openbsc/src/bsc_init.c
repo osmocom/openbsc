@@ -340,8 +340,25 @@ static unsigned char nanobts_attr_radio[] = {
 
 static unsigned char nanobts_attr_nse[] = {
 	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
-	NM_ATT_IPACC_NS_CFG, 0, 7,  3, 3, 3, 3, 3, 3, 10, /* NS timers */
-	NM_ATT_IPACC_BSSGP_CFG, 0, 11,  3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3,
+	NM_ATT_IPACC_NS_CFG, 0, 7,  3,  /* (un)blocking timer (Tns-block) */
+				    3,  /* (un)blocking retries */
+				    3,  /* reset timer (Tns-reset) */
+				    3,  /* reset retries */
+				    3,  /* test timer (Tns-test) */
+				    3,  /* alive timer */
+				    10, /* alive retrires */
+	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
+				    3,  /* blockimg timer (T1) */
+				    3,  /* blocking retries */
+				    3,  /* unblocking retries */
+				    3,  /* reset timer */
+				    3,  /* reset retries */
+				    10, /* suspend timer (T3) in 100ms */
+				    3,  /* suspend retries */
+				    10, /* resume timer (T4) in 100ms */
+				    3,  /* resume retries */
+				    10, /* capability update timer (T5) */
+				    3,  /* capability update retries */
 };
 
 static unsigned char nanobts_attr_cell[] = {
