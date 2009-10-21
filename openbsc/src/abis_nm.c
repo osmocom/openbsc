@@ -884,12 +884,18 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	int nack = 0;
 	int ret;
 
+	/* We NACK NSVC1 since we only use NSVC0 */
+	if (is_ipaccess_bts(mb->trx->bts) &&
+	    foh->obj_class == NM_OC_GPRS_NSVC &&
+	    foh->obj_inst.trx_nr == 1)
+		nack = 1;
+
 	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
 
 	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
-				      foh->obj_inst.ts_nr, 0,
+				      foh->obj_inst.ts_nr, nack,
 				      foh->data, oh->length-sizeof(*foh));
 
 	if (nack)
