@@ -431,10 +431,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			ts = obj;
 			trx = ts->trx;
 			if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-				if (ts->nr == 0 && trx == trx->bts->c0)
-					abis_nm_set_channel_attr(ts, NM_CHANC_BCCHComb);
-				else
-					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
+				enum abis_nm_chan_comb ccomb =
+						abis_nm_chcomb4pchan(ts->pchan);
+				abis_nm_set_channel_attr(ts, ccomb);
 				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
 						trx->bts->bts_nr, trx->nr, ts->nr);
 				abis_nm_chg_adm_state(trx->bts, NM_OC_CHANNEL,
