@@ -51,6 +51,7 @@ extern struct msgb *msgb_alloc(u_int16_t size, const char *name);
 extern void msgb_free(struct msgb *m);
 extern void msgb_enqueue(struct llist_head *queue, struct msgb *msg);
 extern struct msgb *msgb_dequeue(struct llist_head *queue);
+extern void msgb_reset(struct msgb *m);
 
 #define msgb_l2(m)	((void *)(m->l2h))
 #define msgb_l3(m)	((void *)(m->l3h))
