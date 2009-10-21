@@ -146,8 +146,8 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 }
 
 #define NS_TIMER_ALIVE	3, 0 	/* after 3 seconds without response, we retry */
-#define NS_TIMER_TEST	10, 0	/* every 10 seconds we check if the BTS is still alive */
-#define NS_ALIVE_RETRIES 3	/* after 3 failed retransmit we declare BTS as dead */
+#define NS_TIMER_TEST	30, 0	/* every 10 seconds we check if the BTS is still alive */
+#define NS_ALIVE_RETRIES  10	/* after 3 failed retransmit we declare BTS as dead */
 
 static void gprs_ns_alive_cb(void *data)
 {

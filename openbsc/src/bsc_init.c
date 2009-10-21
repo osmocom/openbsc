@@ -344,8 +344,8 @@ static unsigned char nanobts_attr_nse[] = {
 				    3,  /* (un)blocking retries */
 				    3,  /* reset timer (Tns-reset) */
 				    3,  /* reset retries */
-				    3,  /* test timer (Tns-test) */
-				    3,  /* alive timer */
+				    30,  /* test timer (Tns-test) */
+				    3,  /* alive timer (Tns-alive) */
 				    10, /* alive retrires */
 	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
 				    3,  /* blockimg timer (T1) */
