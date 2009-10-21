@@ -513,7 +513,7 @@ int ipac_gprs_send(struct msgb *msg)
 	int rc;
 
 	sin.sin_family = AF_INET;
-	inet_aton("192.168.100.122", &sin.sin_addr);
+	inet_aton("192.168.100.111", &sin.sin_addr);
 	sin.sin_port = htons(23000);
 
 	rc = sendto(e1h->gprs_fd.fd, msg->data, msg->len, 0,
