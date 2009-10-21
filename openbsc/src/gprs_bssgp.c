@@ -29,28 +29,9 @@
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 
-/* BSSGP has its own weird TLV encoding scheme, where the length
- * can be one or two octet... if the first octet bit 7 is zero,
- * then there is a second octet */
-static int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *data, int len)
+static inline int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *buf, int len)
 {
-	u_int8_t *cur = data;
-
-	while (cur < data) {
-		u_int8_t tag, *val;
-		u_int16_t len;
-
-		tag = *cur++;
-		if (*cur & 0x80)
-			len = *cur++ & 0x7f;
-		else
-			len = ((*cur++ & 0x7f) << 8) | *cur++;
-		val = *cur++;
-
-		tp->lv[tag].len = len;
-		tp->lv[tag].val = val;
-	}
-	return 0;
+	return tlv_parse(tp, &tvlv_att_def, buf, len, 0, 0);
 }
 
 /* Transmit a simple response such as BLOCK/UNBLOCK/RESET ACK/NACK */
@@ -67,6 +48,25 @@ static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci)
 	return gprs_ns_sendmsg(NULL, bvci, msg);
 }
 
+/* Chapter 10.4.14: Status */
+static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_msg)
+{
+	struct msgb *msg = msgb_alloc(1024, "BSSGP");
+	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
+
+	bgph->pdu_type = BSSGP_PDUT_STATUS;
+	msgb_tvlv_put(msg, BSSGP_IE_CAUSE, 1, &cause);
+	if (bvci) {
+		u_int16_t _bvci = htons(*bvci);
+		msgb_tvlv_put(msg, BSSGP_IE_BVCI, 2, (u_int8_t *) &_bvci);
+	}
+	if (orig_msg)
+		msgb_tvlv_put(msg, BSSGP_IE_PDU_IN_ERROR,
+			      msgb_l3len(orig_msg), orig_msg->l3h);
+
+	return gprs_ns_sendmsg(NULL, 0, msg);
+}
+
 /* Uplink user-data */
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
@@ -74,6 +74,8 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 	int data_len = msgb_l3len(msg) - sizeof(*budh);
 	struct tlv_parsed tp;
 	int rc;
+
+	DEBUGP(DGPRS, "BSSGP UL-UD\n");
 
 	rc = bssgp_tlv_parse(&tp, budh->data, data_len);
 
@@ -94,6 +96,8 @@ static int bssgp_rx_suspend(struct msgb *msg, u_int16_t bvci)
 	struct tlv_parsed tp;
 	int rc;
 
+	DEBUGP(DGPRS, "BSSGP SUSPEND\n");
+
 	rc = bssgp_tlv_parse(&tp, bgph->data, data_len);
 	if (rc < 0)
 		return rc;
@@ -113,6 +117,8 @@ static int bssgp_rx_resume(struct msgb *msg, u_int16_t bvci)
 	struct tlv_parsed tp;
 	int rc;
 
+	DEBUGP(DGPRS, "BSSGP RESUME\n");
+
 	rc = bssgp_tlv_parse(&tp, bgph->data, data_len);
 	if (rc < 0)
 		return rc;
@@ -127,61 +133,83 @@ static int bssgp_rx_resume(struct msgb *msg, u_int16_t bvci)
 }
 
 /* We expect msg->l3h to point to the BSSGP header */
-int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci)
+int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 {
 	struct bssgp_normal_hdr *bgph = (struct bssgp_normal_hdr *) msg->l3h;
+	struct tlv_parsed tp;
 	u_int8_t pdu_type = bgph->pdu_type;
+	int data_len = msgb_l3len(msg) - sizeof(*bgph);
+	u_int16_t bvci;
 	int rc;
+
+	if (pdu_type != BSSGP_PDUT_UL_UNITDATA &&
+	    pdu_type != BSSGP_PDUT_DL_UNITDATA)
+		rc = bssgp_tlv_parse(&tp, bgph->data, data_len);
 
 	switch (pdu_type) {
 	case BSSGP_PDUT_UL_UNITDATA:
 		/* some LLC data from the MS */
-		rc = bssgp_rx_ul_ud(msg, bvci);
+		rc = bssgp_rx_ul_ud(msg, ns_bvci);
 		break;
 	case BSSGP_PDUT_RA_CAPABILITY:
 		/* BSS requests RA capability or IMSI */
-		DEBUGP(DGPRS, "RA CAPABILITY UPDATE\n");
+		DEBUGP(DGPRS, "BSSGP RA CAPABILITY UPDATE\n");
 		/* FIXME: send RA_CAPA_UPDATE_ACK */
 		break;
 	case BSSGP_PDUT_RADIO_STATUS:
-		DEBUGP(DGPRS, "RADIO STATUS\n");
+		DEBUGP(DGPRS, "BSSGP RADIO STATUS\n");
 		/* BSS informs us of some exception */
 		break;
 	case BSSGP_PDUT_SUSPEND:
 		/* MS wants to suspend */
-		rc = bssgp_rx_suspend(msg, bvci);
+		rc = bssgp_rx_suspend(msg, ns_bvci);
 		break;
 	case BSSGP_PDUT_RESUME:
 		/* MS wants to resume */
-		rc = bssgp_rx_resume(msg, bvci);
+		rc = bssgp_rx_resume(msg, ns_bvci);
 		break;
 	case BSSGP_PDUT_FLUSH_LL:
 		/* BSS informs MS has moved to one cell to other cell */
-		DEBUGP(DGPRS, "FLUSH LL\n");
+		DEBUGP(DGPRS, "BSSGP FLUSH LL\n");
 		/* Send FLUSH_LL_ACK */
 		break;
 	case BSSGP_PDUT_LLC_DISCARD:
 		/* BSS informs that some LLC PDU's have been discarded */
-		DEBUGP(DGPRS, "LLC DISCARDED\n");
+		DEBUGP(DGPRS, "BSSGP LLC DISCARDED\n");
 		break;
 	case BSSGP_PDUT_FLOW_CONTROL_BVC:
 		/* BSS informs us of available bandwidth in Gb interface */
+		DEBUGP(DGPRS, "BSSGP FC BVC\n");
 		/* Send FLOW_CONTROL_BVC_ACK */
 		break;
 	case BSSGP_PDUT_FLOW_CONTROL_MS:
 		/* BSS informs us of available bandwidth to one MS */
+		DEBUGP(DGPRS, "BSSGP FC MS\n");
 		/* Send FLOW_CONTROL_MS_ACK */
 		break;
 	case BSSGP_PDUT_BVC_BLOCK:
 		/* BSS tells us that BVC shall be blocked */
+		DEBUGP(DGPRS, "BSSGP BVC BLOCK\n");
+		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
+			goto err_mand_ie;
+		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK_ACK, bvci);
 		break;
 	case BSSGP_PDUT_BVC_UNBLOCK:
 		/* BSS tells us that BVC shall be unblocked */
+		DEBUGP(DGPRS, "BSSGP BVC UNBLOCK\n");
+		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
+			goto err_mand_ie;
+		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_UNBLOCK_ACK, bvci);
 		break;
 	case BSSGP_PDUT_BVC_RESET:
 		/* BSS tells us that BVC init is required */
+		DEBUGP(DGPRS, "BSSGP BVC RESET\n");
+		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI) ||
+		    !TLVP_PRESENT(&tp, BSSGP_IE_CAUSE))
+			goto err_mand_ie;
+		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK, bvci);
 		break;
 	case BSSGP_PDUT_STATUS:
@@ -219,6 +247,9 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t bvci)
 	}
 
 	return rc;
+err_mand_ie:
+	DEBUGP(DGPRS, "BSSGP: Missing mandatory IE\n");
+	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 }
 
 static int gprs_bssgp_sendmsg()
