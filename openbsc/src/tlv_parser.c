@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <openbsc/tlv.h>
+#include <openbsc/gsm_data.h>
+
+struct tlv_definition tvlv_att_def;
 
 int tlv_dump(struct tlv_parsed *dec)
 {
@@ -117,3 +120,9 @@ int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 	return num_parsed;
 }
 
+static __attribute__((constructor)) void on_dso_load_tlv(void)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(tvlv_att_def.def); i++)
+		tvlv_att_def.def[i].type = TLV_TYPE_TvLV;
+}

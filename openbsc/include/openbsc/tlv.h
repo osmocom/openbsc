@@ -206,6 +206,8 @@ struct tlv_parsed {
 	struct tlv_p_entry lv[0xff];
 };
 
+extern struct tlv_definition tvlv_att_def;
+
 int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 	      const u_int8_t *buf, int buf_len, u_int8_t lv_tag, u_int8_t lv_tag2);
 
