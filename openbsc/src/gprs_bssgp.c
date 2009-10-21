@@ -23,6 +23,8 @@
 #include <errno.h>
 #include <sys/types.h>
 
+#include <netinet/in.h>
+
 #include <openbsc/msgb.h>
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
@@ -40,24 +42,26 @@ static inline struct msgb *bssgp_msgb_alloc(void)
 }
 
 /* Transmit a simple response such as BLOCK/UNBLOCK/RESET ACK/NACK */
-static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci)
+static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci, u_int16_t ns_bvci)
 {
 	struct msgb *msg = bssgp_msgb_alloc();
-	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
+	struct bssgp_normal_hdr *bgph =
+			(struct bssgp_normal_hdr *) msgb_put(msg, sizeof(*bgph));
 	u_int16_t _bvci;
 
 	bgph->pdu_type = pdu_type;
 	_bvci = htons(bvci);
-	msgb_tvlv_put(msg, BSSGP_IE_BVCI, 2, (u_int8_t *) &bvci);
+	msgb_tvlv_put(msg, BSSGP_IE_BVCI, 2, (u_int8_t *) &_bvci);
 
-	return gprs_ns_sendmsg(NULL, bvci, msg);
+	return gprs_ns_sendmsg(NULL, ns_bvci, msg);
 }
 
 /* Chapter 10.4.14: Status */
 static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_msg)
 {
 	struct msgb *msg = bssgp_msgb_alloc();
-	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
+	struct bssgp_normal_hdr *bgph =
+			(struct bssgp_normal_hdr *) msgb_put(msg, sizeof(*bgph));
 
 	bgph->pdu_type = BSSGP_PDUT_STATUS;
 	msgb_tvlv_put(msg, BSSGP_IE_CAUSE, 1, &cause);
@@ -198,7 +202,8 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
-		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK_ACK, bvci);
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK_ACK,
+					  bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_BVC_UNBLOCK:
 		/* BSS tells us that BVC shall be unblocked */
@@ -206,7 +211,8 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
-		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_UNBLOCK_ACK, bvci);
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_UNBLOCK_ACK,
+					  bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_BVC_RESET:
 		/* BSS tells us that BVC init is required */
@@ -215,7 +221,8 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 		    !TLVP_PRESENT(&tp, BSSGP_IE_CAUSE))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
-		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK, bvci);
+		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
+					  bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_STATUS:
 		/* Some exception has occurred */
