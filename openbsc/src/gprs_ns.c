@@ -71,6 +71,25 @@ static const struct tlv_definition ns_att_tlvdef = {
 	},
 };
 
+#define NSE_S_BLOCKED	0x0001
+#define NSE_S_ALIVE	0x0002
+
+struct gprs_nsvc {
+	struct llist_head list;
+
+	u_int16_t nsei;		/* end-to-end significance */
+	u_int16_t nsvci;	/* uniquely identifies NS-VC at SGSN */
+	
+	u_int32_t state;
+
+	struct timer_list alive_timer;
+	int timer_is_tns_alive;
+	int alive_retries;
+};
+
+/* FIXME: dynamically search for the matching NSVC */
+static struct gprs_nsvc dummy_nsvc = { .state = NSE_S_BLOCKED | NSE_S_ALIVE };
+
 /* Section 10.3.2, Table 13 */
 static const char *ns_cause_str[] = {
 	[NS_CAUSE_TRANSIT_FAIL]		= "Transit network failure",
@@ -124,6 +143,34 @@ static int gprs_ns_tx_simple(struct gprs_ns_link *link, u_int8_t pdu_type)
 	nsh->pdu_type = pdu_type;
 
 	return gprs_ns_tx(msg);
+}
+
+#define NS_TIMER_ALIVE	3, 0 	/* after 3 seconds without response, we retry */
+#define NS_TIMER_TEST	10, 0	/* every 10 seconds we check if the BTS is still alive */
+#define NS_ALIVE_RETRIES 3	/* after 3 failed retransmit we declare BTS as dead */
+
+static void gprs_ns_alive_cb(void *data)
+{
+	struct gprs_nsvc *nsvc = data;
+
+	if (nsvc->timer_is_tns_alive) {
+		/* Tns-alive case: we expired without response ! */
+		nsvc->alive_retries++;
+		if (nsvc->alive_retries > NS_ALIVE_RETRIES) {
+			/* mark as dead and blocked */
+			nsvc->state = NSE_S_BLOCKED;
+			DEBUGP(DGPRS, "Tns-alive more then %u retries, "
+				" blocking NS-VC\n", NS_ALIVE_RETRIES);
+			/* FIXME: inform higher layers */
+			return;
+		}
+	} else {
+		/* Tns-test case: send NS-ALIVE PDU */
+		gprs_ns_tx_simple(NULL, NS_PDUT_ALIVE);
+		/* start Tns-alive timer */
+		nsvc->timer_is_tns_alive = 1;
+	}
+	bsc_schedule_timer(&nsvc->alive_timer, NS_TIMER_ALIVE);
 }
 
 /* Section 9.2.6 */
@@ -207,6 +254,7 @@ static int gprs_ns_rx_status(struct msgb *msg)
 static int gprs_ns_rx_reset(struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh = (struct gprs_ns_hdr *) msg->l2h;
+	struct gprs_nsvc *nsvc = &dummy_nsvc;
 	struct tlv_parsed tp;
 	u_int8_t *cause;
 	u_int16_t *nsvci, *nsei;
@@ -234,7 +282,15 @@ static int gprs_ns_rx_reset(struct msgb *msg)
 	DEBUGPC(DGPRS, "cause=%s, NSVCI=%u, NSEI=%u\n",
 		gprs_ns_cause_str(*cause), *nsvci, *nsei);
 
-	/* FIXME: mark the NS-VC as blocked */
+	/* mark the NS-VC as blocked and alive */
+	nsvc->state = NSE_S_BLOCKED | NSE_S_ALIVE;
+	nsvc->nsei = *nsei;
+	nsvc->nsvci = *nsvci;
+
+	/* start the test procedure */
+	nsvc->alive_timer.cb = gprs_ns_alive_cb;
+	nsvc->alive_timer.data = nsvc;
+	bsc_schedule_timer(&nsvc->alive_timer, NS_TIMER_ALIVE);
 
 	return gprs_ns_tx_reset_ack(*nsvci, *nsei);
 }
@@ -243,6 +299,7 @@ static int gprs_ns_rx_reset(struct msgb *msg)
 int gprs_ns_rcvmsg(struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh = (struct gprs_ns_hdr *) msg->l2h;
+	struct gprs_nsvc *nsvc = &dummy_nsvc;
 	int rc = 0;
 
 	switch (nsh->pdu_type) {
@@ -252,7 +309,11 @@ int gprs_ns_rcvmsg(struct msgb *msg)
 		rc = gprs_ns_tx_simple(NULL, NS_PDUT_ALIVE_ACK);
 		break;
 	case NS_PDUT_ALIVE_ACK:
-		/* simply ignore it for now */
+		/* stop Tns-alive */
+		bsc_del_timer(&nsvc->alive_timer);
+		/* start Tns-test */
+		nsvc->timer_is_tns_alive = 0;
+		bsc_schedule_timer(&nsvc->alive_timer, NS_TIMER_TEST);
 		break;
 	case NS_PDUT_UNITDATA:
 		/* actual user data */
@@ -269,17 +330,20 @@ int gprs_ns_rcvmsg(struct msgb *msg)
 		break;
 	case NS_PDUT_UNBLOCK:
 		/* Section 7.2: unblocking procedure */
-		DEBUGP(DGPRS, "NS UNBLOCK ");
+		DEBUGP(DGPRS, "NS UNBLOCK\n");
+		nsvc->state &= ~NSE_S_BLOCKED;
 		rc = gprs_ns_tx_simple(NULL, NS_PDUT_UNBLOCK_ACK);
 		break;
 	case NS_PDUT_UNBLOCK_ACK:
 		/* FIXME: mark remote NS-VC as unblocked + active */
 		break;
 	case NS_PDUT_BLOCK:
+		DEBUGP(DGPRS, "NS BLOCK\n");
+		nsvc->state |= NSE_S_BLOCKED;
+		rc = gprs_ns_tx_simple(NULL, NS_PDUT_UNBLOCK_ACK);
+		break;
 	case NS_PDUT_BLOCK_ACK:
-		DEBUGP(DGPRS, "Unimplemented NS PDU type 0x%02x\n",
-			nsh->pdu_type);
-		rc = 0;
+		/* FIXME: mark remote NS-VC as blocked + active */
 		break;
 	default:
 		DEBUGP(DGPRS, "Unknown NS PDU type 0x%02x\n", nsh->pdu_type);
