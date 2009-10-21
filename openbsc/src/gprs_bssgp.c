@@ -34,10 +34,15 @@ static inline int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *buf, int len)
 	return tlv_parse(tp, &tvlv_att_def, buf, len, 0, 0);
 }
 
+static inline struct msgb *bssgp_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(4096, 128, "BSSGP");
+}
+
 /* Transmit a simple response such as BLOCK/UNBLOCK/RESET ACK/NACK */
 static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci)
 {
-	struct msgb *msg = msgb_alloc(1024, "BSSGP");
+	struct msgb *msg = bssgp_msgb_alloc();
 	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
 	u_int16_t _bvci;
 
@@ -51,7 +56,7 @@ static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci)
 /* Chapter 10.4.14: Status */
 static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_msg)
 {
-	struct msgb *msg = msgb_alloc(1024, "BSSGP");
+	struct msgb *msg = bssgp_msgb_alloc();
 	struct bssgp_normal_hdr *bgph = msgb_put(msg, sizeof(*bgph));
 
 	bgph->pdu_type = BSSGP_PDUT_STATUS;
