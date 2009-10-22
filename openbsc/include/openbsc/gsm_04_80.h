@@ -125,8 +125,17 @@
 
 #include <openbsc/msgb.h>
 
-char* gsm0480_rcv_ussd(struct msgb *msg);
-int gsm0480_send_ussd_response(struct msgb *msg, const char* response_text);
-int gsm0480_send_ussd_reject(struct msgb *msg);
+struct ussd_request {
+			char text[32];
+			u_int8_t transaction_id;
+			u_int8_t invoke_id;
+};
+
+int gsm0480_decode_ussd_request(struct msgb *msg, 
+				struct ussd_request *request); 
+int gsm0480_send_ussd_response(struct msgb *in_msg, const char* response_text, 
+						const struct ussd_request *req);
+int gsm0480_send_ussd_reject(struct msgb *msg, 
+				const struct ussd_request *request);
 
 #endif
