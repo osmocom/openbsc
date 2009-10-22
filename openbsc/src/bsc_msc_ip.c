@@ -52,6 +52,7 @@ struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
 static struct bsc_fd msc_connection;
+static struct in_addr local_addr;
 extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
@@ -74,6 +75,7 @@ struct bss_sccp_connection_data *bss_sccp_create_data()
 
 void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
+	bsc_del_timer(&data->T10);
 	bsc_free_queued(data->sccp);
 	bts_free_queued(data);
 	talloc_free(data);
@@ -267,6 +269,67 @@ static int handle_cipher_m_complete(struct msgb *msg)
 	return 1;
 }
 
+/* Receive a ASSIGNMENT COMPLETE */
+static int handle_ass_compl(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMSC, "ASSIGNMENT COMPLETE from MS, forwarding to MSC\n");
+
+	if (!msg->lchan->msc_data) {
+		DEBUGP(DMSC, "No MSC data\n");
+		return -1;
+	}
+
+	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
+		DEBUGP(DMSC, "assignment failure invalid: %d\n",
+			msgb_l3len(msg) - sizeof(*gh));
+		return -1;
+	}
+	gsm0808_send_assignment_compl(msg->lchan, gh->data[0]);
+	return 1;
+}
+
+/*
+ * Receive a ASSIGNMENT FAILURE. If the message is failed
+ * to be parsed the T10 timer will send the failure.
+ */
+static int handle_ass_fail(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
+	if (!msg->lchan->msc_data) {
+		DEBUGP(DMSC, "No MSC data\n");
+		return -1;
+	}
+
+	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
+		DEBUGP(DMSC, "assignment failure invalid: %d\n",
+			msgb_l3len(msg) - sizeof(*gh));
+		return -1;
+	}
+
+	gsm0808_send_assignment_failure(msg->lchan,
+		GSM0808_CAUSE_RADIO_INTERFACE_MESSAGE_FAILURE, &gh->data[0]);
+	return 1;
+}
+
+/*
+ * Receive a GSM04.08 MODIFY ACK. Actually we have to check
+ * the content to see if this was a success or not.
+ */
+static int handle_modify_ack(struct msgb *msg)
+{
+	int rc;
+
+	/* modify RSL */
+	rc = gsm48_rx_rr_modif_ack(msg);
+
+	gsm0808_send_assignment_compl(msg->lchan, 0);
+	return 1;
+}
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
@@ -283,6 +346,15 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		break;
 	case GSM48_MT_RR_CIPH_M_COMPL:
 		rc = handle_cipher_m_complete(msg);
+		break;
+	case GSM48_MT_RR_ASS_COMPL:
+		rc = handle_ass_compl(msg);
+		break;
+	case GSM48_MT_RR_ASS_FAIL:
+		rc = handle_ass_fail(msg);
+		break;
+	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
+		rc = handle_modify_ack(msg);
 		break;
 	default:
 		break;
@@ -343,6 +415,43 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	}
 
 	return rc;
+}
+
+/* handle ipaccess signals */
+static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
+				 void *handler_data, void *signal_data)
+{
+	struct gsm_lchan *lchan = signal_data;
+	struct gsm_bts_trx_ts *ts;
+	int rc;
+
+	if (subsys != SS_ABISIP)
+		return 0;
+
+	ts = lchan->ts;
+
+	switch (signal) {
+	case S_ABISIP_CRCX_ACK:
+		/* we can ask it to connect now */
+		if (lchan->msc_data) {
+			DEBUGP(DMSC, "Connecting BTS to port: %d conn: %d\n",
+				lchan->msc_data->rtp_port, ts->abis_ip.conn_id);
+
+			rc = rsl_ipacc_mdcx(lchan, ntohl(local_addr.s_addr),
+					    lchan->msc_data->rtp_port,
+					    ts->abis_ip.conn_id,
+					    lchan->msc_data->rtp_payload2);
+			if (rc < 0) {
+				DEBUGP(DMSC, "Failed to send connect: %d\n", rc);
+				return rc;
+			}
+		}
+		break;
+	case S_ABISIP_DLCX_IND:
+		break;
+	}
+
+	return 0;
 }
 
 static void print_usage()
@@ -522,6 +631,7 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
+	printf("  -l --local=IP. The local address of the MGCP.\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -536,10 +646,11 @@ static void handle_options(int argc, char** argv)
 			{"timestamp", 0, 0, 'T'},
 			{"rtp-proxy", 0, 0, 'P'},
 			{"msc", 1, 0, 'm'},
+			{"local", 1, 0, 'l'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTPc:m:",
+		c = getopt_long(argc, argv, "hd:sTPc:m:l:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -566,6 +677,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'm':
 			msc_address = strdup(optarg);
+			break;
+		case 'l':
+			inet_aton(optarg, &local_addr);
 			break;
 		default:
 			/* ignore */
@@ -611,6 +725,9 @@ int main(int argc, char **argv)
 	sccp_system_init(msc_sccp_write_ipa, NULL);
 	sccp_connection_set_incoming(&sccp_ssn_bssap, msc_sccp_accept, NULL);
 	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, NULL);
+
+	/* initialize ipaccess handling */
+	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
 	rc = connect_to_msc(msc_address, 5000);
 	if (rc < 0) {

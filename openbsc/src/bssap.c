@@ -44,6 +44,17 @@ static const struct tlv_definition bss_att_tlvdef = {
 		[GSM0808_IE_CELL_IDENTIFIER_LIST]   = { TLV_TYPE_TLV },
 		[GSM0808_IE_CHANNEL_NEEDED]	    = { TLV_TYPE_TV },
 		[GSM0808_IE_EMLPP_PRIORITY]	    = { TLV_TYPE_TV },
+		[GSM0808_IE_CHANNEL_TYPE]	    = { TLV_TYPE_TLV },
+		[GSM0808_IE_PRIORITY]		    = { TLV_TYPE_TLV },
+		[GSM0808_IE_CIRCUIT_IDENTITY_CODE]  = { TLV_TYPE_TV },
+		[GSM0808_IE_DOWNLINK_DTX_FLAG]	    = { TLV_TYPE_TV },
+		[GSM0808_IE_INTERFERENCE_BAND_TO_USE] = { TLV_TYPE_TV },
+		[GSM0808_IE_CLASSMARK_INFORMATION_T2] = { TLV_TYPE_TLV },
+		[GSM0808_IE_GROUP_CALL_REFERENCE]   = { TLV_TYPE_TLV },
+		[GSM0808_IE_TALKER_FLAG]	    = { TLV_TYPE_T },
+		[GSM0808_IE_CONFIG_EVO_INDI]	    = { TLV_TYPE_TV },
+		[GSM0808_IE_LSA_ACCESS_CTRL_SUPPR]  = { TLV_TYPE_TV },
+		[GSM0808_IE_SERVICE_HANDOVER]	    = { TLV_TYPE_TV},
 	},
 };
 
@@ -151,6 +162,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 
 	if (msg->lchan) {
 		DEBUGP(DMSC, "Releasing all transactions on %p\n", conn);
+		bsc_del_timer(&msg->lchan->msc_data->T10);
 		msg->lchan->msc_data->lchan = NULL;
 		msg->lchan->msc_data = NULL;
 		put_lchan(msg->lchan);
@@ -210,6 +222,75 @@ reject:
 	return -1;
 }
 
+/*
+ * Handle the network configurable T10 parameter
+ */
+static void bssmap_t10_fired(void *_conn)
+{
+	struct sccp_connection *conn = (struct sccp_connection *) _conn;
+	struct msgb *resp;
+
+	DEBUGP(DMSC, "T10 fired, assignment failed: %p\n", conn);
+	resp = bssmap_create_assignment_failure(
+		GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+	if (!resp) {
+		DEBUGP(DMSC, "Allocation failure: %p\n", conn);
+		return;
+	}
+
+	bsc_queue_connection_write(conn, resp);
+}
+
+/*
+ * Handle the assignment request message.
+ *
+ * See §3.2.1.1 for the message type
+ */
+static int bssmap_handle_assignm_req(struct sccp_connection *conn,
+				     struct msgb *msg, unsigned int length)
+{
+	struct tlv_parsed tp;
+	struct bss_sccp_connection_data *msc_data;
+	int ret = 0;
+
+	if (!msg->lchan || !msg->lchan->msc_data) {
+		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
+		goto reject;
+	}
+
+	msc_data = msg->lchan->msc_data;
+	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, length - 1, 0, 0);
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
+		DEBUGP(DMSC, "Mandantory channel type not present.\n");
+		goto reject;
+	}
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)) {
+		DEBUGP(DMSC, "Identity code missing. Audio routing will not work.\n");
+		goto reject;
+	}
+
+	/*
+	 * currently only activation of speach on the
+	 * existing channel is supported. This means we
+	 * will send a Channel Modify message and take it
+	 * from there.
+	 * Setup channel type, timer
+	 */
+	//gsm48_lchan_modify();
+
+	msc_data->T10.cb = bssmap_t10_fired;
+	msc_data->T10.data = conn;
+	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
+	return ret;
+
+reject:
+	gsm0808_send_assignment_failure(msg->lchan,
+					GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+	return -1;
+}
+
 int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int length)
 {
 	int ret = 0;
@@ -246,6 +327,9 @@ int bssmap_rcvmsg_dt1(struct sccp_connection *conn, struct msgb *msg, unsigned i
 		break;
 	case BSS_MAP_MSG_CIPHER_MODE_CMD:
 		ret = bssmap_handle_cipher_mode(conn, msg, length);
+		break;
+	case BSS_MAP_MSG_ASSIGMENT_RQST:
+		ret = bssmap_handle_assignm_req(conn, msg, length);
 		break;
 	default:
 		DEBUGP(DMSC, "Unimplemented msg type: %d\n", msg->l4h[0]);
@@ -442,6 +526,156 @@ struct msgb *bssmap_create_sapi_reject(u_int8_t link_id)
 	return msg;
 }
 
+static u_int8_t chan_mode_to_speech(enum gsm48_chan_mode mode)
+{
+	switch (mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		return 1;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		return 0x11;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		return 0x21;
+		break;
+	case GSM48_CMODE_SIGN:
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+	default:
+		DEBUGP(DMSC, "Using non speech mode: %d\n", mode);
+		return 0;
+		break;
+	}
+}
+
+/* 3.2.2.33 */
+static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
+{
+	u_int8_t channel_mode = 0, channel = 0;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		channel_mode = 0x9;
+		break;
+	case GSM48_CMODE_SIGN:
+		channel_mode = 0x8;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+		channel_mode = 0xe;
+		break;
+	case GSM48_CMODE_DATA_12k0:
+		channel_mode = 0xb;
+		break;
+	case GSM48_CMODE_DATA_6k0:
+		channel_mode = 0xc;
+		break;
+	case GSM48_CMODE_DATA_3k6:
+		channel_mode = 0xd;
+		break;
+	}
+
+	switch (lchan->type) {
+	case GSM_LCHAN_NONE:
+		channel = 0x0;
+		break;
+	case GSM_LCHAN_SDCCH:
+		channel = 0x1;
+		break;
+	case GSM_LCHAN_TCH_F:
+		channel = 0x8;
+		break;
+	case GSM_LCHAN_TCH_H:
+		channel = 0x9;
+		break;
+	case GSM_LCHAN_UNKNOWN:
+		DEBUGP(DMSC, "Unknown lchan type: %p\n", lchan);
+		break;
+	}
+
+	return channel_mode << 4 | channel;
+}
+
+struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_t rr_cause)
+{
+	u_int8_t *data;
+	u_int8_t speech_mode;
+
+	struct msgb *msg = msgb_alloc(35, "bssmap: ass compl");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 3);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 0xff;
+	msg->l3h[2] = BSS_MAP_MSG_ASSIGMENT_COMPLETE;
+
+	/* write 3.2.2.22 */
+	data = msgb_put(msg, 2);
+	data[0] = GSM0808_IE_RR_CAUSE;
+	data[1] = rr_cause;
+
+	/* write cirtcuit identity  code 3.2.2.2 */
+	/* write cell identifier 3.2.2.17 */
+	/* write chosen channel 3.2.2.33 when BTS picked it */
+	data = msgb_put(msg, 2);
+	data[0] = GSM0808_IE_CHOSEN_CHANNEL;
+	data[1] = lchan_to_chosen_channel(lchan);
+
+	/* write chosen encryption algorithm 3.2.2.44 */
+	data = msgb_put(msg, 2);
+	data[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
+	data[1] = RSL_ENC_ALG_A5(lchan->encr.alg_id);
+
+	/* write circuit pool 3.2.2.45 */
+	/* write speech version chosen: 3.2.2.51 when BTS picked it */
+	speech_mode = chan_mode_to_speech(lchan->tch_mode);
+	if (speech_mode != 0) {
+		data = msgb_put(msg, 2);
+		data[0] = GSM0808_IE_SPEECH_VERSION;
+		data[1] = speech_mode;
+	}
+
+	/* write LSA identifier 3.2.2.15 */
+
+
+	/* update the size */
+	msg->l3h[1] = msgb_l3len(msg) - 2;
+	return msg;
+}
+
+struct msgb *bssmap_create_assignment_failure(u_int8_t cause, u_int8_t *rr_cause)
+{
+	u_int8_t *data;
+	struct msgb *msg = msgb_alloc(35, "bssmap: ass fail");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 5);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 0xff;
+	msg->l3h[2] = BSS_MAP_MSG_ASSIGMENT_FAILURE;
+	msg->l3h[3] = GSM0808_IE_CAUSE;
+	msg->l3h[4] = cause;
+
+	/* RR cause 3.2.2.22 */
+	if (rr_cause) {
+		data = msgb_put(msg, 2);
+		data[0] = GSM0808_IE_RR_CAUSE;
+		data[1] = *rr_cause;
+	}
+
+	/* Circuit pool 3.22.45 */
+	/* Circuit pool list 3.2.2.46 */
+
+	/* update the size */
+	msg->l3h[1] = msgb_l3len(msg) - 2;
+	return msg;
+}
+
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id)
 {
 	struct dtap_header *header;
@@ -484,6 +718,7 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!lchan || !lchan->msc_data)
 		return 0;
 
+	bsc_del_timer(&lchan->msc_data->T10);
 	conn = lchan->msc_data->sccp;
 	lchan->msc_data->lchan = NULL;
 	lchan->msc_data = NULL;
@@ -665,6 +900,34 @@ void bts_send_queued(struct bss_sccp_connection_data *data)
 	}
 
 	data->gsm_queue_size = 0;
+}
+
+void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_int8_t *rr_value)
+{
+	struct msgb *resp;
+
+	bsc_del_timer(&lchan->msc_data->T10);
+	resp = bssmap_create_assignment_failure(cause, rr_value);
+	if (!resp) {
+		DEBUGP(DMSC, "Allocation failure: %p\n", lchan_get_sccp(lchan));
+		return;
+	}
+
+	bsc_queue_connection_write(lchan_get_sccp(lchan), resp);
+}
+
+void gsm0808_send_assignment_compl(struct gsm_lchan *lchan, u_int8_t rr_cause)
+{
+	struct msgb *resp;
+
+	bsc_del_timer(&lchan->msc_data->T10);
+	resp = bssmap_create_assignment_completed(lchan, rr_cause);
+	if (!resp) {
+		DEBUGP(DMSC, "Creating MSC response failed: %p\n", lchan_get_sccp(lchan));
+		return;
+	}
+
+	bsc_queue_connection_write(lchan_get_sccp(lchan), resp);
 }
 
 static __attribute__((constructor)) void on_dso_load_bssap(void)

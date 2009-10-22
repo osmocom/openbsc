@@ -157,9 +157,9 @@ enum GSM0808_IE_CODING {
 	GSM0808_IE_RESERVED_1			= 15,
 	GSM0808_IE_RESERVED_2			= 16,
 	GSM0808_IE_RESERVED_3			= 17,
-	GSM0808_IE_CLASSMARK_INFORMATION_TYPE_2	= 18,
-	GSM0808_IE_CLASSMARK_INFORMATION_TYPE_3	= 19,
-	GSM0808_IE_INTERFERENCE_BAND_TO_BE_USED	= 20,
+	GSM0808_IE_CLASSMARK_INFORMATION_T2	= 18,
+	GSM0808_IE_CLASSMARK_INFORMATION_T3	= 19,
+	GSM0808_IE_INTERFERENCE_BAND_TO_USE	= 20,
 	GSM0808_IE_RR_CAUSE			= 21,
 	GSM0808_IE_RESERVED_4			= 22,
 	GSM0808_IE_LAYER_3_INFORMATION		= 23,
@@ -196,13 +196,13 @@ enum GSM0808_IE_CODING {
 	GSM0808_IE_CONNECTION_RELEASE_RQSTED	= 54,
 	GSM0808_IE_GROUP_CALL_REFERENCE		= 55,
 	GSM0808_IE_EMLPP_PRIORITY		= 56,
-	GSM0808_IE_CONFIGURATION_EVOLUTION_INDICATION	= 57,
+	GSM0808_IE_CONFIG_EVO_INDI		= 57,
 	GSM0808_IE_OLD_BSS_TO_NEW_BSS_INFORMATION	= 58,
 	GSM0808_IE_LSA_IDENTIFIER		= 59,
 	GSM0808_IE_LSA_IDENTIFIER_LIST		= 60,
 	GSM0808_IE_LSA_INFORMATION		= 61,
 	GSM0808_IE_LCS_QOS			= 62,
-	GSM0808_IE_LSA_ACCESS_CONTROL_SUPPRESSION = 63,
+	GSM0808_IE_LSA_ACCESS_CTRL_SUPPR	= 63,
 	GSM0808_IE_LCS_PRIORITY			= 67,
 	GSM0808_IE_LOCATION_TYPE		= 68,
 	GSM0808_IE_LOCATION_ESTIMATE		= 69,
@@ -274,6 +274,11 @@ struct msgb *bssmap_create_clear_complete(void);
 struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo);
 struct msgb *bssmap_create_cipher_reject(u_int8_t cause);
 struct msgb *bssmap_create_sapi_reject(u_int8_t link_id);
+struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_t rr_cause);
+struct msgb *bssmap_create_assignment_failure(u_int8_t cause, u_int8_t *rr_cause);
+
+void gsm0808_send_assignment_failure(struct gsm_lchan *l, u_int8_t cause, u_int8_t *rr_value);
+void gsm0808_send_assignment_compl(struct gsm_lchan *l, u_int8_t rr_value);
 
 int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length);
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id);

@@ -122,6 +122,15 @@ struct bss_sccp_connection_data {
 	struct sccp_connection *sccp;
 	int ciphering_handled : 1;
 
+        /* Timers... */
+
+        /* for assginment command */
+        struct timer_list T10;
+
+	/* audio handling */
+	int rtp_port;
+	int rtp_payload2;
+
 	/* Queue SCCP and GSM0408 messages */
 	struct llist_head gsm_queue;
 	unsigned int gsm_queue_size;
@@ -130,6 +139,7 @@ struct bss_sccp_connection_data {
 	unsigned int sccp_queue_size;
 };
 
+#define GSM0808_T10_VALUE	6, 0
 #define sccp_get_lchan(data_ctx) ((struct bss_sccp_connection_data *)data_ctx)->lchan
 #define lchan_get_sccp(lchan) lchan->msc_data->sccp
 struct bss_sccp_connection_data *bss_sccp_create_data();
