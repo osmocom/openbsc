@@ -971,7 +971,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		DEBUGPC(DMEAS, "L3\n");
-		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
 		return gsm0408_rcvmsg(msg, 0);
 	} else
 		DEBUGPC(DMEAS, "\n");
