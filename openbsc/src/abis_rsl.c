@@ -239,6 +239,7 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 	return lchan;
 }
 
+/* See Table 10.5.25 of GSM04.08 */
 u_int8_t lchan2chan_nr(struct gsm_lchan *lchan)
 {
 	struct gsm_bts_trx_ts *ts = lchan->ts;

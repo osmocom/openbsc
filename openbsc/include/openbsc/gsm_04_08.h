@@ -59,6 +59,15 @@ enum gsm48_chan_mode {
 	GSM48_CMODE_DATA_3k6	= 0x23,
 };
 
+/* Chapter 9.1.2 */
+struct gsm48_ass_cmd {
+	/* Semantic is from 10.5.2.5a */
+	struct gsm48_chan_desc chan_desc;
+	u_int8_t power_command;
+	u_int8_t data[0];
+} __attribute__((packed));
+
+
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
 	u_int8_t l2_plen;
@@ -727,6 +736,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu);
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class);
 
 int bsc_upqueue(struct gsm_network *net);
 

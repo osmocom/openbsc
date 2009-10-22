@@ -482,3 +482,35 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 	return rsl_encryption_cmd(msg);
 }
 
+/* Chapter 9.1.2: Assignment Command */
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_ass_cmd *ass =
+		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	DEBUGP(DRR, "-> ASSIGNMENT COMMAND tch_mode=0x%02x\n", lchan->tch_mode);
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_ASS_CMD;
+
+	/*
+	 * fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd(),
+	 * gsm48_tx_chan_mode_modify. But beware that 10.5.2.5
+	 * 10.5.2.5.a have slightly different semantic for
+	 * the chan_desc. But as long as multi-slot configurations
+	 * are not used we seem to be fine.
+	 */
+	ass->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	ass->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
+	ass->chan_desc.h0.h = 0;
+	ass->chan_desc.h0.arfcn_high = arfcn >> 8;
+	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	ass->power_command = power_command;
+
+	return gsm48_sendmsg(msg, NULL);
+}
