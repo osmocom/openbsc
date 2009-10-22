@@ -1643,7 +1643,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 }
 
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
-			   u_int8_t apdu_len, u_int8_t *apdu)
+			   u_int8_t apdu_len, const u_int8_t *apdu)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
