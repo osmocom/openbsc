@@ -1128,9 +1128,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
 	u_int8_t *ptr8;
-	u_int16_t *ptr16;
 	int name_len, name_pad;
-	int i;
 #if 0
 	time_t cur_t;
 	struct tm* cur_time;
