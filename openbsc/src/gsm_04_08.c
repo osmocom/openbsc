@@ -1087,34 +1087,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	return gsm0408_authorize(lchan, msg);
 }
 
-/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
-{
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	struct gsm48_chan_mode_modify *cmm =
-		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
-
-	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
-
-	lchan->tch_mode = mode;
-	msg->lchan = lchan;
-	gh->proto_discr = GSM48_PDISC_RR;
-	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
-
-	/* fill the channel information element, this code
-	 * should probably be shared with rsl_rx_chan_rqd() */
-	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
-	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
-	cmm->chan_desc.h0.h = 0;
-	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
-	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
-	cmm->mode = mode;
-
-	return gsm48_sendmsg(msg, NULL);
-}
-
 #if 0
 static u_int8_t to_bcd8(u_int8_t val)
 {
@@ -3167,22 +3139,11 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_USERINFO_IND, &user);
 }
 
-static int gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
+static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
-	int rc;
 
-	rc = gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
-	if (rc < 0)
-		return rc;
-
-	/* FIXME: we not only need to do this after mode modify, but
-	 * also after channel activation */
-	if (is_ipaccess_bts(trans->lchan->ts->trx->bts) &&
-	    mode->lchan_mode != GSM48_CMODE_SIGN)
-		rc = rsl_ipacc_bind(trans->lchan);
-
-	return rc;
+	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode);
 }
 
 static struct downstate {
@@ -3240,7 +3201,7 @@ static struct downstate {
 	 MNCC_REL_REQ, gsm48_cc_tx_release},
 	/* special */
 	{ALL_STATES,
-	 MNCC_LCHAN_MODIFY, gsm48_lchan_modify},
+	 MNCC_LCHAN_MODIFY, _gsm48_lchan_modify},
 };
 
 #define DOWNSLLEN \

@@ -754,4 +754,6 @@ int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
 int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
 int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
+
 #endif
