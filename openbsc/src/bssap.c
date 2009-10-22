@@ -195,6 +195,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	msg->lchan->msc_data->ciphering_handled = 1;
 
 	/* FIXME: parse the message. TLVP */
+#warning "Need to handle cipher mode properly"
 
 	return gsm48_send_rr_ciph_mode(msg->lchan, 1);
 
