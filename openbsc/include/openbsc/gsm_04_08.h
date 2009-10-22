@@ -42,7 +42,11 @@ struct gsm48_req_ref {
 		 t3_low:3;
 } __attribute__ ((packed));
 
-/* Chapter 9.1.5 */
+/*
+ * Chapter 9.1.5/9.1.6
+ *
+ * For 9.1.6 the chan_desc has the meaning of 10.5.2.5a
+ */
 struct gsm48_chan_mode_modify {
 	struct gsm48_chan_desc chan_desc;
 	u_int8_t mode;
@@ -755,5 +759,6 @@ int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type
 int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
 int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
+int gsm48_rx_rr_modif_ack(struct msgb *msg);
 
 #endif

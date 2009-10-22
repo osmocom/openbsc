@@ -559,3 +559,39 @@ int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)
 	return rc;
 }
 
+int gsm48_rx_rr_modif_ack(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_chan_mode_modify *mod =
+				(struct gsm48_chan_mode_modify *) gh->data;
+
+	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+
+	if (mod->mode != msg->lchan->tch_mode) {
+		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+			msg->lchan->tch_mode, mod->mode);
+		return -1;
+	}
+
+	/* update the channel type */
+	switch (mod->mode) {
+	case GSM48_CMODE_SIGN:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_DATA;
+		break;
+	}
+
+	/* We've successfully modified the MS side of the channel,
+	 * now go on to modify the BTS side of the channel */
+	return rsl_chan_mode_modify_req(msg->lchan);
+}
