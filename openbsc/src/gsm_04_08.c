@@ -1456,7 +1456,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 }
 
 /* Receive a PAGING RESPONSE message from the MS */
-static int gsm48_rr_rx_pag_resp(struct msgb *msg)
+static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1611,7 +1611,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
-		rc = gsm48_rr_rx_pag_resp(msg);
+		rc = gsm48_rx_rr_pag_resp(msg);
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
