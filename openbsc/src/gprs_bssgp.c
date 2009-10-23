@@ -28,8 +28,45 @@
 #include <openbsc/msgb.h>
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
+#include <openbsc/gprs_ns.h>
+
+/* Chapter 11.3.9 / Table 11.10: Cause coding */
+static const char *bssgp_cause_strings[] = {
+	[BSSGP_CAUSE_PROC_OVERLOAD]	= "Processor overload",
+	[BSSGP_CAUSE_EQUIP_FAIL]	= "Equipment Failure",
+	[BSSGP_CAUSE_TRASIT_NET_FAIL]	= "Transit netowkr service failure",
+	[BSSGP_CAUSE_CAPA_GREATER_0KPBS]= "Transmission capacity modified",
+	[BSSGP_CAUSE_UNKNOWN_MS]	= "Unknown MS",
+	[BSSGP_CAUSE_UNKNOWN_BVCI]	= "Unknown BVCI",
+	[BSSGP_CAUSE_CELL_TRAF_CONG]	= "Cell traffic congestion",
+	[BSSGP_CAUSE_SGSN_CONG]		= "SGSN congestion",
+	[BSSGP_CAUSE_OML_INTERV]	= "O&M intervention",
+	[BSSGP_CAUSE_BVCI_BLOCKED]	= "BVCI blocked",
+	[BSSGP_CAUSE_PFC_CREATE_FAIL]	= "PFC create failure",
+	[BSSGP_CAUSE_SEM_INCORR_PDU]	= "Semantically incorrect PDU",
+	[BSSGP_CAUSE_INV_MAND_INF]	= "Invalid mandatory information",
+	[BSSGP_CAUSE_MISSING_MAND_IE]	= "Missing mandatory IE",
+	[BSSGP_CAUSE_MISSING_COND_IE]	= "Missing conditional IE",
+	[BSSGP_CAUSE_UNEXP_COND_IE]	= "Unexpected conditional IE",
+	[BSSGP_CAUSE_COND_IE_ERR]	= "Conditional IE error",
+	[BSSGP_CAUSE_PDU_INCOMP_STATE]	= "PDU incompatible with protocol state",
+	[BSSGP_CAUSE_PROTO_ERR_UNSPEC]	= "Protocol error - unspecified",
+	[BSSGP_CAUSE_PDU_INCOMP_FEAT]	= "PDU not compatible with feature set",
+};
+
+static const char *bssgp_cause_str(enum gprs_bssgp_cause cause)
+{
+	if (cause >= ARRAY_SIZE(bssgp_cause_strings))
+		return "undefined";
+
+	if (bssgp_cause_strings[cause])
+		return bssgp_cause_strings[cause];
+
+	return "undefined";
+}
 
 static inline int bssgp_tlv_parse(struct tlv_parsed *tp, u_int8_t *buf, int len)
 {
@@ -198,29 +235,35 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 		break;
 	case BSSGP_PDUT_BVC_BLOCK:
 		/* BSS tells us that BVC shall be blocked */
-		DEBUGP(DGPRS, "BSSGP BVC BLOCK\n");
-		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
+		DEBUGP(DGPRS, "BSSGP BVC BLOCK ");
+		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI) ||
+		    !TLVP_PRESENT(&tp, BSSGP_IE_CAUSE))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+		DEBUGPC(DGPRS, "BVCI=%u, cause=%s\n", bvci,
+			bssgp_cause_str(*TLVP_VAL(&tp, BSSGP_IE_CAUSE)));
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK_ACK,
 					  bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_BVC_UNBLOCK:
 		/* BSS tells us that BVC shall be unblocked */
-		DEBUGP(DGPRS, "BSSGP BVC UNBLOCK\n");
+		DEBUGP(DGPRS, "BSSGP BVC UNBLOCK ");
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+		DEBUGPC(DGPRS, "BVCI=%u\n", bvci);
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_UNBLOCK_ACK,
 					  bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_BVC_RESET:
 		/* BSS tells us that BVC init is required */
-		DEBUGP(DGPRS, "BSSGP BVC RESET\n");
+		DEBUGP(DGPRS, "BSSGP BVC RESET ");
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI) ||
 		    !TLVP_PRESENT(&tp, BSSGP_IE_CAUSE))
 			goto err_mand_ie;
 		bvci = ntohs(*(u_int16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+		DEBUGPC(DGPRS, "BVCI=%u, cause=%s\n", bvci,
+			bssgp_cause_str(*TLVP_VAL(&tp, BSSGP_IE_CAUSE)));
 		rc = bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
 					  bvci, ns_bvci);
 		break;
@@ -260,7 +303,7 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 
 	return rc;
 err_mand_ie:
-	DEBUGP(DGPRS, "BSSGP: Missing mandatory IE\n");
+	DEBUGPC(DGPRS, "BSSGP: Missing mandatory IE\n");
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 }
 
