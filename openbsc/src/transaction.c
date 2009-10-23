@@ -86,8 +86,6 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 
 void trans_free(struct gsm_trans *trans)
 {
-	struct gsm_bts *bts;
-
 	switch (trans->protocol) {
 	case GSM48_PDISC_CC:
 		_gsm48_cc_trans_free(trans);

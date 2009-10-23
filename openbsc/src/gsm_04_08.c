@@ -1128,9 +1128,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
 	u_int8_t *ptr8;
-	u_int16_t *ptr16;
 	int name_len, name_pad;
-	int i;
 #if 0
 	time_t cur_t;
 	struct tm* cur_time;
@@ -1458,7 +1456,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 }
 
 /* Receive a PAGING RESPONSE message from the MS */
-static int gsm48_rr_rx_pag_resp(struct msgb *msg)
+static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1613,7 +1611,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
-		rc = gsm48_rr_rx_pag_resp(msg);
+		rc = gsm48_rx_rr_pag_resp(msg);
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
@@ -1645,7 +1643,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 }
 
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
-			   u_int8_t apdu_len, u_int8_t *apdu)
+			   u_int8_t apdu_len, const u_int8_t *apdu)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
