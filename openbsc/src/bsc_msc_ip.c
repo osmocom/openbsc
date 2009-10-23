@@ -325,8 +325,12 @@ static int handle_modify_ack(struct msgb *msg)
 
 	/* modify RSL */
 	rc = gsm48_rx_rr_modif_ack(msg);
+	if (rc < 0)
+		gsm0808_send_assignment_failure(msg->lchan,
+			GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+	else
+		gsm0808_send_assignment_compl(msg->lchan, 0);
 
-	gsm0808_send_assignment_compl(msg->lchan, 0);
 	return 1;
 }
 
@@ -440,7 +444,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 			rc = rsl_ipacc_mdcx(lchan, ntohl(local_addr.s_addr),
 					    lchan->msc_data->rtp_port,
 					    ts->abis_ip.conn_id,
-					    lchan->msc_data->rtp_payload2);
+					    ts->abis_ip.rtp_payload2);
 			if (rc < 0) {
 				DEBUGP(DMSC, "Failed to send connect: %d\n", rc);
 				return rc;

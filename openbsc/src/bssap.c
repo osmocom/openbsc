@@ -24,6 +24,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
+#include <openbsc/mgcp.h>
 #include <openbsc/signal.h>
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
@@ -251,7 +252,8 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 {
 	struct tlv_parsed tp;
 	struct bss_sccp_connection_data *msc_data;
-	int ret = 0;
+	u_int8_t *data;
+	u_int8_t multiplex;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
@@ -271,19 +273,42 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		goto reject;
 	}
 
-	/*
-	 * currently only activation of speach on the
-	 * existing channel is supported. This means we
-	 * will send a Channel Modify message and take it
-	 * from there.
-	 * Setup channel type, timer
-	 */
-	//gsm48_lchan_modify();
+	multiplex = TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)[1] & 0x1f;
 
+	/*
+	 * Currently we only support a limited subset of all
+	 * possible channel types. The limitation ends by not using
+	 * multi-slot, limiting the channel coding, speech...
+	 */
+	if (TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE) != 3) {
+		DEBUGP(DMSC, "ChannelType len !=3 not supported: %d\n",
+			TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE));
+		goto reject;
+	}
+
+	data = (u_int8_t *) TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
+	if ((data[0] & 0xf) != 0x1) {
+		DEBUGP(DMSC, "ChannelType != speech: %d\n", data[0]);
+		goto reject;
+	}
+
+	if (data[1] != GSM0808_SPEECH_FULL_PREF) {
+		DEBUGP(DMSC, "ChannelType full not preferred: %d\n", data[1]);
+		goto reject;
+	}
+
+	if (data[2] != GSM0808_PERM_FR2) {
+		DEBUGP(DMSC, "ChannelType FR2 not supported\n");
+		goto reject;
+	}
+
+	/* modify the channel now */
 	msc_data->T10.cb = bssmap_t10_fired;
 	msc_data->T10.data = conn;
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
-	return ret;
+
+	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
+	return gsm48_lchan_modify(msg->lchan, GSM48_CMODE_SPEECH_EFR);
 
 reject:
 	gsm0808_send_assignment_failure(msg->lchan,

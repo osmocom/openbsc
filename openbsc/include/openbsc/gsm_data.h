@@ -129,7 +129,6 @@ struct bss_sccp_connection_data {
 
 	/* audio handling */
 	int rtp_port;
-	int rtp_payload2;
 
 	/* Queue SCCP and GSM0408 messages */
 	struct llist_head gsm_queue;

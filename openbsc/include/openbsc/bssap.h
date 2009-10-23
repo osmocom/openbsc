@@ -265,6 +265,44 @@ enum gsm0808_cause {
 	GSM0808_CAUSE_PROTOCOL_ERROR_BETWEEN_BSS_AND_MSC		= 96,
 };
 
+/* GSM 08.08 3.2.2.11 Channel Type */
+enum gsm0808_chan_indicator {
+	GSM0808_CHAN_SPEECH = 1,
+	GSM0808_CHAN_DATA   = 2,
+	GSM0808_CHAN_SIGN   = 3,
+};
+
+enum gsm0808_chan_rate_type_data {
+	GSM0808_DATA_FULL_BM	= 0x8,
+	GSM0808_DATA_HALF_LM	= 0x9,
+	GSM0808_DATA_FULL_RPREF	= 0xa,
+	GSM0808_DATA_HALF_PREF	= 0xb,
+	GSM0808_DATA_FULL_PREF_NO_CHANGE	= 0x1a,
+	GSM0808_DATA_HALF_PREF_NO_CHANGE	= 0x1b,
+	GSM0808_DATA_MULTI_MASK	= 0x20,
+	GSM0808_DATA_MULTI_MASK_NO_CHANGE	= 0x30,
+};
+
+enum gsm0808_chan_rate_type_speech {
+	GSM0808_SPEECH_FULL_BM	= 0x8,
+	GSM0808_SPEECH_HALF_LM	= 0x9,
+	GSM0808_SPEECH_FULL_PREF= 0xa,
+	GSM0808_SPEECH_HALF_PREF= 0xb,
+	GSM0808_SPEECH_FULL_PREF_NO_CHANGE	= 0x1a,
+	GSM0808_SPEECH_HALF_PREF_NO_CHANGE	= 0x1b,
+	GSM0808_SPEECH_PERM	= 0xf,
+	GSM0808_SPEECH_PERM_NO_CHANGE = 0x1f,
+};
+
+enum gsm0808_permitted_speech {
+	GSM0808_PERM_FR1	= 0x01,
+	GSM0808_PERM_FR2	= 0x11,
+	GSM0808_PERM_FR3	= 0x21,
+	GSM0808_PERM_HR1	= GSM0808_PERM_FR1 | 0x4,
+	GSM0808_PERM_HR2	= GSM0808_PERM_FR2 | 0x4,
+	GSM0808_PERM_HR3	= GSM0808_PERM_FR3 | 0x4,
+};
+
 int bssmap_rcvmsg_dt1(struct sccp_connection *conn, struct msgb *msg, unsigned int length);
 int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int length);
 
