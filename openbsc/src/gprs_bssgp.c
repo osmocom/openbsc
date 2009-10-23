@@ -93,12 +93,27 @@ static int bssgp_tx_simple_bvci(u_int8_t pdu_type, u_int16_t bvci, u_int16_t ns_
 	return gprs_ns_sendmsg(NULL, ns_bvci, msg);
 }
 
+/* Chapter 10.4.5: Flow Control BVC ACK */
+static int bssgp_tx_fc_bvc_ack(u_int8_t tag, u_int16_t ns_bvci)
+{
+	struct msgb *msg = bssgp_msgb_alloc();
+	struct bssgp_normal_hdr *bgph =
+			(struct bssgp_normal_hdr *) msgb_put(msg, sizeof(*bgph));
+
+	bgph->pdu_type = BSSGP_PDUT_FLOW_CONTROL_BVC_ACK;
+	msgb_tvlv_put(msg, BSSGP_IE_TAG, 1, &tag);
+
+	return gprs_ns_sendmsg(NULL, ns_bvci, msg);
+}
+
 /* Chapter 10.4.14: Status */
 static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_msg)
 {
 	struct msgb *msg = bssgp_msgb_alloc();
 	struct bssgp_normal_hdr *bgph =
 			(struct bssgp_normal_hdr *) msgb_put(msg, sizeof(*bgph));
+
+	DEBUGPC(DGPRS, "BSSGP: TX STATUS, cause=%s\n", bssgp_cause_str(cause));
 
 	bgph->pdu_type = BSSGP_PDUT_STATUS;
 	msgb_tvlv_put(msg, BSSGP_IE_CAUSE, 1, &cause);
@@ -178,6 +193,22 @@ static int bssgp_rx_resume(struct msgb *msg, u_int16_t bvci)
 	/* FIXME */
 }
 
+static int bssgp_rx_fc_bvc(struct msgb *msg, struct tlv_parsed *tp,
+			   u_int16_t ns_bvci)
+{
+
+	DEBUGP(DGPRS, "BSSGP FC BVC\n");
+
+	if (!TLVP_PRESENT(tp, BSSGP_IE_TAG) ||
+	    !TLVP_PRESENT(tp, BSSGP_IE_BVC_BUCKET_SIZE) ||
+	    !TLVP_PRESENT(tp, BSSGP_IE_BUCKET_LEAK_RATE) ||
+	    !TLVP_PRESENT(tp, BSSGP_IE_BMAX_DEFAULT_MS) ||
+	    !TLVP_PRESENT(tp, BSSGP_IE_R_DEFAULT_MS))
+		return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
+
+	/* Send FLOW_CONTROL_BVC_ACK */
+	return bssgp_tx_fc_bvc_ack(*TLVP_VAL(tp, BSSGP_IE_TAG), ns_bvci);
+}
 /* We expect msg->l3h to point to the BSSGP header */
 int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 {
@@ -225,8 +256,7 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 		break;
 	case BSSGP_PDUT_FLOW_CONTROL_BVC:
 		/* BSS informs us of available bandwidth in Gb interface */
-		DEBUGP(DGPRS, "BSSGP FC BVC\n");
-		/* Send FLOW_CONTROL_BVC_ACK */
+		rc = bssgp_rx_fc_bvc(msg, &tp, ns_bvci);
 		break;
 	case BSSGP_PDUT_FLOW_CONTROL_MS:
 		/* BSS informs us of available bandwidth to one MS */
@@ -303,7 +333,6 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 
 	return rc;
 err_mand_ie:
-	DEBUGPC(DGPRS, "BSSGP: Missing mandatory IE\n");
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 }
 
