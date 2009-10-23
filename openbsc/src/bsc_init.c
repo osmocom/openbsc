@@ -482,6 +482,44 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		}
 		break;
+	case NM_OC_GPRS_NSE:
+		bts = container_of(obj, struct gsm_bts, gprs.nse);
+		if (new_state->availability == 5) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  0xff, 0xff, nanobts_attr_nse,
+						  sizeof(nanobts_attr_nse));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					0xff, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      0xff, 0xff, NM_STATE_UNLOCKED);
+		}
+		break;
+	case NM_OC_GPRS_CELL:
+		bts = container_of(obj, struct gsm_bts, gprs.cell);
+		if (new_state->availability == 5) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  0, 0xff, nanobts_attr_cell,
+						  sizeof(nanobts_attr_cell));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					0, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      0, 0xff, NM_STATE_UNLOCKED);
+		}
+		break;
+	case NM_OC_GPRS_NSVC:
+		nsvc = obj;
+		bts = nsvc->bts;
+		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  nsvc->id, 0xff,
+						  nanobts_attr_nsvc0,
+						  sizeof(nanobts_attr_nsvc0));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					nsvc->id, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      nsvc->id, 0xff,
+					      NM_STATE_UNLOCKED);
+		}
 	default:
 		break;
 	}
