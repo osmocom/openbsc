@@ -2662,3 +2662,12 @@ int abis_nm_ipaccess_restart(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
 }
+
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
+				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+				u_int8_t *attr, u_int8_t attr_len)
+{
+	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_ATTR,
+				    obj_class, bts_nr, trx_nr, ts_nr,
+				     attr, attr_len);
+}
