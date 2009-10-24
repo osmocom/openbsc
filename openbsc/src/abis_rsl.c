@@ -202,7 +202,9 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 
 	if (cbits == 0x01) {
 		lch_idx = 0;	/* TCH/F */	
-		if (ts->pchan != GSM_PCHAN_TCH_F)
+		if (ts->pchan != GSM_PCHAN_TCH_F &&
+		    ts->pchan != GSM_PCHAN_PDCH &&
+		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
 			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1e) == 0x02) {
@@ -244,6 +246,8 @@ u_int8_t lchan2chan_nr(struct gsm_lchan *lchan)
 
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
 		cbits = 0x01;
 		break;
 	case GSM_PCHAN_TCH_H:
