@@ -966,6 +966,8 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
 
+	rsl_ipacc_pdch_activate(&trx->ts[7].lchan[0]);
+
 	return 0;
 }
 
