@@ -886,29 +886,19 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	const u_int8_t *sw_config;
 	int sw_config_len;
 	int file_id_len;
-	int nack = 0;
 	int ret;
 
 	debugp_foh(foh);
 
 	DEBUGPC(DNM, "SW Activate Request: ");
 
-	/* We NACK NSVC1 since we only use NSVC0 */
-	if (is_ipaccess_bts(mb->trx->bts) &&
-	    foh->obj_class == NM_OC_GPRS_NSVC &&
-	    foh->obj_inst.trx_nr == 1)
-		nack = 1;
-
 	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
 
 	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
-				      foh->obj_inst.ts_nr, nack,
+				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
-
-	if (nack)
-		return ret;
 
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);

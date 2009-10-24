@@ -509,6 +509,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_GPRS_NSVC:
 		nsvc = obj;
 		bts = nsvc->bts;
+	        /* We skip NSVC1 since we only use NSVC0 */
+		if (nsvc->id == 1)
+			break;
 		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  nsvc->id, 0xff,
