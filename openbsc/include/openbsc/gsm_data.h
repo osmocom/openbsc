@@ -289,6 +289,12 @@ struct gsm_envabtse {
 	struct gsm_nm_state nm_state;
 };
 
+struct gsm_bts_gprs_nsvc {
+	struct gsm_bts *bts;
+	int id;
+	struct gsm_nm_state nm_state;
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -356,6 +362,17 @@ struct gsm_bts {
 			struct gsm_envabtse envabtse[4];
 		} bs11;
 	};
+
+	/* Not entirely sure how ip.access specific this is */
+	struct {
+		struct {
+			struct gsm_nm_state nm_state;
+		} nse;
+		struct {
+			struct gsm_nm_state nm_state;
+		} cell;
+		struct gsm_bts_gprs_nsvc nsvc[2];
+	} gprs;
 	
 	/* transceivers */
 	int num_trx;
