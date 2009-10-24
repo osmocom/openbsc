@@ -539,6 +539,7 @@ int rsl_ipacc_bind(struct gsm_lchan *lchan);
 int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
 		      u_int16_t port, u_int16_t conn_id,
 		      u_int8_t rtp_payload2);
+int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
