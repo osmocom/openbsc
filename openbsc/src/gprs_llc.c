@@ -106,7 +106,7 @@ static int gprs_llc_tx_u()
 	if (!msg)
 		return -ENOMEM;
 
-	
+
 
 	/* transmit the frame via BSSGP->NS->... */
 }
@@ -118,7 +118,7 @@ static void t200_expired(void *data)
 	/* 8.5.1.3: Expiry of T200 */
 
 	if (lle->retrans_ctr >= lle->n200) {
-		/* FIXME: LLGM-STATUS-IND, LL-RELEASE-IND/CNF */ 
+		/* FIXME: LLGM-STATUS-IND, LL-RELEASE-IND/CNF */
 		lle->state = GPRS_LLS_ASSIGNED_ADM;
 	}
 
@@ -134,7 +134,7 @@ static void t200_expired(void *data)
 		lle->retrans_ctr++;
 		break;
 	}
-	
+
 }
 
 static void t201_expired(void *data)
@@ -183,7 +183,7 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 }
 
 /* parse a GPRS LLC header, also check for invalid frames */
-static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp, 
+static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 			      const u_int8_t *llc_hdr)
 {
 	u_int8_t *ctrl = llc_hdr+1;
@@ -194,7 +194,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	/* Section 6.2.1: invalid PD field */
 	if (llc_hdr[0] & 0x80)
 		return -EIO;
-	
+
 	ghp->is_cmd = llc_hdr[0] & 0x40;
 	ghp->sapi = llc_hdr[0] & 0xf;
 
@@ -209,7 +209,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	case 0xf:
 		return -EINVAL;
 	}
-	
+
 	if ((ctrl[0] & 0x80) == 0) {
 		/* I format */
 		if (ctrl[0] & 0x40)

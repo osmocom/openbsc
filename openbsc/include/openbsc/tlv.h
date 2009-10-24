@@ -8,7 +8,7 @@
 
 /* Terminology / wording
 		tag	length		value	(in bits)
-	
+
 	    V	-	-		8
 	   LV	-	8		N * 8
 	  TLV	8	8		N * 8
@@ -17,7 +17,6 @@
 	 TvLV	8	8/16		N * 8
 
 */
-	
 
 #define LV_GROSS_LEN(x)		(x+1)
 #define TLV_GROSS_LEN(x)	(x+2)

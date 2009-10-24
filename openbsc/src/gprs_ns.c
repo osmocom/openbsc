@@ -25,7 +25,7 @@
  * but in the ip.access world it is encapsulated in UDP packets.  It serves
  * as an intermediate shim betwen BSSGP and the underlying medium.  It doesn't
  * do much, apart from providing congestion notification and status indication.
- * 
+ *
  * Terms:
  * 	NS		Network Service
  *	NSVC		NS Virtual Connection
@@ -37,7 +37,7 @@
  *	NSVCG		NS Virtual Connection Goup
  *	Blocked		NS-VC cannot be used for user traffic
  *	Alive		Ability of a NS-VC to provide communication
- * 
+ *
  *  There can be multiple BSSGP virtual connections over one (group of) NSVC's.  BSSGP will
  * therefore identify the BSSGP virtual connection by a BVCI passed down to NS.
  * NS then has to firgure out which NSVC's are responsible for this BVCI.
@@ -79,7 +79,7 @@ struct gprs_nsvc {
 
 	u_int16_t nsei;		/* end-to-end significance */
 	u_int16_t nsvci;	/* uniquely identifies NS-VC at SGSN */
-	
+
 	u_int32_t state;
 
 	struct timer_list alive_timer;
@@ -200,7 +200,7 @@ int gprs_ns_sendmsg(struct gprs_ns_link *link, u_int16_t bvci,
 		    struct msgb *msg)
 {
 	struct gprs_ns_hdr *nsh;
-	
+
 	nsh = (struct gprs_ns_hdr *) msgb_push(msg, sizeof(*nsh) + 3);
 	if (!nsh)
 		return -EIO;

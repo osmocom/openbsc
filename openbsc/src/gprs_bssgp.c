@@ -338,5 +338,5 @@ err_mand_ie:
 
 static int gprs_bssgp_sendmsg()
 {
-	
+	/* FIXME */
 }
