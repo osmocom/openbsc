@@ -128,7 +128,7 @@ static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_ms
 	return gprs_ns_sendmsg(NULL, 0, msg);
 }
 
-/* Uplink user-data */
+/* Uplink unit-data */
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
 	struct bssgp_ud_hdr *budh = (struct bssgp_ud_hdr *) msg->l3h;
@@ -140,8 +140,8 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 
 	rc = bssgp_tlv_parse(&tp, budh->data, data_len);
 
-	/* PDU_LIFETIME and LLC_PDU are the only mandatory IE */
-	if (!TLVP_PRESENT(&tp, BSSGP_IE_PDU_LIFETIME) ||
+	/* Cell ID and LLC_PDU are the only mandatory IE */
+	if (!TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID) ||
 	    !TLVP_PRESENT(&tp, BSSGP_IE_LLC_PDU))
 		return -EIO;
 
