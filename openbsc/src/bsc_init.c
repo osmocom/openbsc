@@ -20,6 +20,8 @@
  *
  */
 
+#define GPRS
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
@@ -482,6 +484,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		}
 		break;
+#ifdef GPRS
 	case NM_OC_GPRS_NSE:
 		bts = container_of(obj, struct gsm_bts, gprs.nse);
 		if (new_state->availability == 5) {
@@ -523,6 +526,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 					      nsvc->id, 0xff,
 					      NM_STATE_UNLOCKED);
 		}
+#endif
 	default:
 		break;
 	}
@@ -845,7 +849,11 @@ static u_int8_t si3[] = {
 	/* option*/0x28,
 	/* selection*/0x62, 0x00,
 	/* rach */0xD5, 0x04, 0x00,
+#ifdef GPRS
+	/* rest */ 0x3c, 0x2B, 0x2B, 0x2B
+#else
 	/* rest */ 0x2B, 0x2B, 0x2B, 0x2B
+#endif
 };
 
 /*
@@ -879,7 +887,11 @@ static u_int8_t si4[] = {
 	/* sel */0x62, 0x00,
 	/* rach*/0xD5, 0x04, 0x00,
 	/* cbch chan desc */ 0x64, 0x30, 0xE0, HARDCODED_ARFCN/*0x01*/,
+#ifdef GPRS
+	/* rest octets */ 0x80, 0x00, 0x80, 0x2B, 0x2B, 0x2B
+#else
 	/* rest octets */ 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B
+#endif
 };
 
 /*
@@ -925,7 +937,17 @@ static u_int8_t si6[] = {
 	/* ncc */ 0xFF,
 };
 
-
+static u_int8_t si13[] = {
+	0x09, 0x06, 0x00,
+#if 0
+	/* This is what our system_information branch geneates */
+	0x2a, 0x01, 0x00, 0x04, 0x00, 0xd8, 0xa5, 0xef, 0xff, 0xf7,
+#else
+	/* This is what Dieter has sent me as hand-coded example */
+	0x90, 0x00, 0x58, 0x18, 0xff, 0xc9, 0x70, 0x4a, 0x84, 0x10,
+#endif
+	0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
+};
 
 static const struct bcch_info bcch_infos[] = {
 	{
@@ -944,7 +966,13 @@ static const struct bcch_info bcch_infos[] = {
 		.type = RSL_SYSTEM_INFO_4,
 		.len = sizeof(si4),
 		.data = si4,
-	},
+#ifdef GPRS
+	}, {
+		.type = RSL_SYSTEM_INFO_13,
+		.len = sizeof(si13),
+		.data = si13,
+#endif
+	}
 };
 
 static_assert(sizeof(si1) == sizeof(struct gsm48_system_information_type_1), type1)
@@ -969,7 +997,9 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
 
+#ifdef GPRS
 	rsl_ipacc_pdch_activate(&trx->ts[7].lchan[0]);
+#endif
 
 	return 0;
 }
