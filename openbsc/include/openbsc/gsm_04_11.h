@@ -210,4 +210,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms);
 struct gsm_sms *sms_alloc(void);
 void sms_free(struct gsm_sms *sms);
 
+void _gsm411_sms_trans_free(struct gsm_trans *trans);
+int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
+			   struct gsm_sms *sms);
 #endif

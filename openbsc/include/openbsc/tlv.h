@@ -6,10 +6,32 @@
 
 #include <openbsc/msgb.h>
 
+/* Terminology / wording
+		tag	length		value	(in bits)
+
+	    V	-	-		8
+	   LV	-	8		N * 8
+	  TLV	8	8		N * 8
+	TL16V	8	16		N * 8
+	TLV16	8	8		N * 16
+	 TvLV	8	8/16		N * 8
+
+*/
+
 #define LV_GROSS_LEN(x)		(x+1)
 #define TLV_GROSS_LEN(x)	(x+2)
 #define TLV16_GROSS_LEN(x)	((2*x)+2)
 #define TL16V_GROSS_LEN(x)	(x+3)
+
+#define TVLV_MAX_ONEBYTE	0x7f
+
+static inline u_int16_t TVLV_GROSS_LEN(u_int16_t len)
+{
+	if (len <= TVLV_MAX_ONEBYTE)
+		return TLV_GROSS_LEN(len);
+	else
+		return TL16V_GROSS_LEN(len);
+}
 
 /* TLV generation */
 
@@ -49,6 +71,20 @@ static inline u_int8_t *tl16v_put(u_int8_t *buf, u_int8_t tag, u_int16_t len,
 	return buf + len*2;
 }
 
+static inline u_int8_t *tvlv_put(u_int8_t *buf, u_int8_t tag, u_int16_t len,
+				 const u_int8_t *val)
+{
+	u_int8_t *ret;
+
+	if (len <= TVLV_MAX_ONEBYTE) {
+		ret = tlv_put(buf, tag, len, val);
+		buf[1] |= 0x80;
+	} else
+		ret = tl16v_put(buf, tag, len, val);
+
+	return ret;
+}
+
 static inline u_int8_t *msgb_tlv16_put(struct msgb *msg, u_int8_t tag, u_int8_t len, const u_int16_t *val)
 {
 	u_int8_t *buf = msgb_put(msg, TLV16_GROSS_LEN(len));
@@ -60,6 +96,13 @@ static inline u_int8_t *msgb_tl16v_put(struct msgb *msg, u_int8_t tag, u_int16_t
 {
 	u_int8_t *buf = msgb_put(msg, TL16V_GROSS_LEN(len));
 	return tl16v_put(buf, tag, len, val);
+}
+
+static inline u_int8_t *msgb_tvlv_put(struct msgb *msg, u_int8_t tag, u_int16_t len,
+				      const u_int8_t *val)
+{
+	u_int8_t *buf = msgb_put(msg, TVLV_GROSS_LEN(len));
+	return tvlv_put(buf, tag, len, val);
 }
 
 static inline u_int8_t *v_put(u_int8_t *buf, u_int8_t val)
@@ -146,6 +189,7 @@ enum tlv_type {
 	TLV_TYPE_TV,
 	TLV_TYPE_TLV,
 	TLV_TYPE_TL16V,
+	TLV_TYPE_TvLV,
 };
 
 struct tlv_def {
@@ -160,6 +204,8 @@ struct tlv_definition {
 struct tlv_parsed {
 	struct tlv_p_entry lv[0xff];
 };
+
+extern struct tlv_definition tvlv_att_def;
 
 int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 	      const u_int8_t *buf, int buf_len, u_int8_t lv_tag, u_int8_t lv_tag2);

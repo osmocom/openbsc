@@ -482,6 +482,7 @@ enum abis_nm_avail_state {
 	NM_AVSTATE_DEPENDENCY	= 5,
 	NM_AVSTATE_DEGRADED	= 6,
 	NM_AVSTATE_NOT_INSTALLED= 7,
+	NM_AVSTATE_OK		= 0xff,
 };
 
 /* Section 9.4.13: Channel Combination */
@@ -748,6 +749,9 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 				int attr_len);
 int abis_nm_ipaccess_restart(struct gsm_bts *bts);
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
+				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+				u_int8_t *attr, u_int8_t attr_len);
 int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
 				 u_int32_t ip, u_int16_t port, u_int8_t stream);
 

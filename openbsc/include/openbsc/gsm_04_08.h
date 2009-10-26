@@ -726,7 +726,7 @@ int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, cons
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
-			   u_int8_t apdu_len, u_int8_t *apdu);
+			   u_int8_t apdu_len, const u_int8_t *apdu);
 
 int bsc_upqueue(struct gsm_network *net);
 

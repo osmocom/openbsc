@@ -26,6 +26,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/signal.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/chan_alloc.h>
 
 /* RRLP MS based position request */
 static const u_int8_t ms_based_pos_req[] = { 0x40, 0x01, 0x78, 0xa8 };

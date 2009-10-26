@@ -674,7 +674,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * successfully receive the SMS.  We need to investigate
 	 * the cause and take action depending on it */
 
-	DEBUGP(DSMS, "RX SMS RP-ERROR, cause %d (%s)\n", cause,
+	DEBUGP(DSMS, "RX SMS RP-ERROR, cause %d:%d (%s)\n", cause_len, cause,
 		get_value_string(rp_cause_strs, cause));
 
 	if (!trans->sms.is_mt) {
@@ -1067,8 +1067,6 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan;
 	struct gsm_sms *sms;
-
-	u_int32_t token;
 
 	switch (signal) {
 	case S_SUBSCR_ATTACHED:

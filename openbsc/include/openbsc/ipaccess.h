@@ -1,6 +1,8 @@
 #ifndef _IPACCESS_H
 #define _IPACCESS_H
 
+#include "e1_input.h"
+
 struct ipaccess_head {
 	u_int8_t zero;
 	u_int8_t len;

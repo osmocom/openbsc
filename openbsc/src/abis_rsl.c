@@ -202,7 +202,9 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 
 	if (cbits == 0x01) {
 		lch_idx = 0;	/* TCH/F */	
-		if (ts->pchan != GSM_PCHAN_TCH_F)
+		if (ts->pchan != GSM_PCHAN_TCH_F &&
+		    ts->pchan != GSM_PCHAN_PDCH &&
+		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
 			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1e) == 0x02) {
@@ -244,6 +246,8 @@ u_int8_t lchan2chan_nr(struct gsm_lchan *lchan)
 
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
 		cbits = 0x01;
 		break;
 	case GSM_PCHAN_TCH_H:
@@ -971,7 +975,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		DEBUGPC(DMEAS, "L3\n");
-		msg->l3h = TLVP_VAL(&tp, RSL_IE_L3_INFO);
+		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
 		return gsm0408_rcvmsg(msg, 0);
 	} else
 		DEBUGPC(DMEAS, "\n");
@@ -1015,6 +1019,18 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_MODE_MODIFY_NACK:
 		DEBUGPC(DRSL, "CHANNEL MODE MODIFY NACK\n");
+		break;
+	case RSL_MT_IPAC_PDCH_ACT_ACK:
+		DEBUGPC(DRSL, "IPAC PDCH ACT ACK\n");
+		break;
+	case RSL_MT_IPAC_PDCH_ACT_NACK:
+		DEBUGPC(DRSL, "IPAC PDCH ACT NACK\n");
+		break;
+	case RSL_MT_IPAC_PDCH_DEACT_ACK:
+		DEBUGPC(DRSL, "IPAC PDCH DEACT ACK\n");
+		break;
+	case RSL_MT_IPAC_PDCH_DEACT_NACK:
+		DEBUGPC(DRSL, "IPAC PDCH DEACT NACK\n");
 		break;
 	case RSL_MT_PHY_CONTEXT_CONF:
 	case RSL_MT_PREPROC_MEAS_RES:
@@ -1409,6 +1425,24 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
+{
+	struct msgb *msg = rsl_msgb_alloc();
+	struct abis_rsl_dchan_hdr *dh;
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_IPAC_PDCH_ACT);
+	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
+	dh->chan_nr = lchan2chan_nr(lchan);
+
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_PDCH_ACT\n",
+		gsm_ts_name(lchan->ts), dh->chan_nr);
+
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);

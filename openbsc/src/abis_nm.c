@@ -410,6 +410,8 @@ static const enum abis_nm_chan_comb chcomb4pchan[] = {
 	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
 	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
+	[GSM_PCHAN_PDCH]	= NM_CHANC_IPAC_PDCH,
+	[GSM_PCHAN_TCH_F_PDCH]	= NM_CHANC_IPAC_TCHFull_PDCH,
 	/* FIXME: bounds check */
 };
 
@@ -585,6 +587,14 @@ const char *nm_adm_name(u_int8_t adm)
 	}
 }
 
+static void debugp_foh(struct abis_om_fom_hdr *foh)
+{
+	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class, 
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
+}
+
 /* obtain the gsm_nm_state data structure for a given object instance */
 static struct gsm_nm_state *
 objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
@@ -648,6 +658,17 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 			return NULL;
 		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
+	case NM_OC_GPRS_NSE:
+		nm_state = &bts->gprs.nse.nm_state;
+		break;
+	case NM_OC_GPRS_CELL:
+		nm_state = &bts->gprs.cell.nm_state;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
+		break;
 	}
 	return nm_state;
 }
@@ -686,6 +707,17 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		break;
 	case NM_OC_SITE_MANAGER:
 		obj = &bts->site_mgr;
+		break;
+	case NM_OC_GPRS_NSE:
+		obj = &bts->gprs.nse;
+		break;
+	case NM_OC_GPRS_CELL:
+		obj = &bts->gprs.cell;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
 		break;
 	}
 	return obj;
@@ -751,7 +783,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
-		DEBUGPC(DNM, "ADM=%02s ", nm_adm_name(new_state.administrative));
+		DEBUGPC(DNM, "ADM=%2s ", nm_adm_name(new_state.administrative));
 	}
 	DEBUGPC(DNM, "\n");
 
@@ -799,10 +831,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
 
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class, 
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	debugp_foh(foh);
 
 	//nmh->cfg->report_cb(mb, foh);
 
@@ -860,7 +889,9 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	int nack = 0;
 	int ret;
 
-	DEBUGP(DNM, "Software Activate Request ");
+	debugp_foh(foh);
+
+	DEBUGPC(DNM, "SW Activate Request: ");
 
 	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
 		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
@@ -965,10 +996,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
 		struct tlv_parsed tp;
 
-		DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-			obj_class_name(foh->obj_class), foh->obj_class,
-			foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-			foh->obj_inst.ts_nr);
+		debugp_foh(foh);
 
 		if (nack_names[mt])
 			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
@@ -1851,10 +1879,11 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
 
-	DEBUGP(DNM, "Sending OPSTART obj_class=0x%02x obj_inst=(0x%02x, 0x%02x, 0x%02x)\n",
-		obj_class, i0, i1, i2);
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
+
+	debugp_foh((struct abis_om_fom_hdr *) oh->data);
+	DEBUGPC(DNM, "Sending OPSTART\n");
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2474,10 +2503,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class,
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	debugp_foh(foh);
 
 	DEBUGPC(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
@@ -2637,4 +2663,13 @@ int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 int abis_nm_ipaccess_restart(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+}
+
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
+				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+				u_int8_t *attr, u_int8_t attr_len)
+{
+	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_ATTR,
+				    obj_class, bts_nr, trx_nr, ts_nr,
+				     attr, attr_len);
 }

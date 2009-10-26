@@ -439,9 +439,11 @@ int db_sync_equipment(struct gsm_equipment *equip)
 {
 	dbi_result result;
 	unsigned char *cm2, *cm3;
+	u_int8_t classmark1;
 
+	memcpy(&classmark1, &equip->classmark1, sizeof(classmark1));
 	printf("DB: Sync Equipment IMEI=%s, classmark1=%02x",
-		equip->imei, equip->classmark1);
+		equip->imei, classmark1);
 	if (equip->classmark2_len)
  		printf(", classmark2=%s",
 			hexdump(equip->classmark2, equip->classmark2_len));
@@ -462,7 +464,7 @@ int db_sync_equipment(struct gsm_equipment *equip)
 			"classmark2 = %s, "
 			"classmark3 = %s "
 		"WHERE imei = '%s' ",
-		equip->classmark1, cm2, cm3, equip->imei);
+		classmark1, cm2, cm3, equip->imei);
 
 	free(cm2);
 	free(cm3);
@@ -853,7 +855,7 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 			u_int8_t *apdu)
 {
 	dbi_result result;
-	char *q_apdu;
+	unsigned char *q_apdu;
 
 	dbi_conn_quote_binary_copy(conn, apdu, len, &q_apdu);
 

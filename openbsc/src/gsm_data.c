@@ -45,6 +45,8 @@ static const char *pchan_names[] = {
 	[GSM_PCHAN_TCH_F]	= "TCH/F",
 	[GSM_PCHAN_TCH_H]	= "TCH/H",
 	[GSM_PCHAN_SDCCH8_SACCH8C] = "SDCCH8",
+	[GSM_PCHAN_PDCH]	= "PDCH",
+	[GSM_PCHAN_TCH_F_PDCH]	= "TCH/F_PDCH",
 	[GSM_PCHAN_UNKNOWN]	= "UNKNOWN",
 };
 
@@ -139,6 +141,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
 	struct gsm_bts *bts = talloc(net, struct gsm_bts);
+	int i;
 
 	if (!bts)
 		return NULL;
@@ -152,6 +155,11 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
+
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+		bts->gprs.nsvc[i].bts = bts;
+		bts->gprs.nsvc[i].id = i;
+	}
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);

@@ -1,8 +1,8 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common
-+++ wireshark/epan/dissectors/Makefile.common
-@@ -473,6 +473,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common	2009-10-21 23:03:44.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2009-10-21 23:03:57.000000000 +0200
+@@ -472,6 +472,7 @@
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -12,8 +12,8 @@ Index: wireshark/epan/dissectors/Makefile.common
  	packet-gsm_bssmap_le.c	\
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
---- /dev/null
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-10-22 10:06:18.000000000 +0200
 @@ -0,0 +1,1365 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
@@ -1113,7 +1113,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		},
 +		{ &hf_oml_fom_attr_val,
 +			{ "FOM Attribute Value", "oml.fom.attr_val",
-+			  FT_BYTES, BASE_HEX, NULL, 0,
++			  FT_BYTES, BASE_NONE, NULL, 0,
 +			  NULL, HFILL }
 +		},
 +
@@ -1308,20 +1308,20 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		},
 +		{ &hf_attr_ipa_tr_si2,
 +			{ "System Information 2", "oml.fom.attr.ipa.si2",
-+			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++			  FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_si2bis,
 +			{ "System Information 2bis", "oml.fom.attr.ipa.si2bis",
-+			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++			  FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_si2ter,
 +			{ "System Information 2ter", "oml.fom.attr.ipa.si2ter",
-+			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++			  FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_tr_chan_desc,
 +			{ "Cell Channel Description",
 +						"oml.fom.attr.ipa.chan_desc",
-+			  FT_BYTES, BASE_HEX, NULL, 0, NULL, HFILL }
++			  FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_attr_ipa_nsl_sport,
 +			{ "NS Link IP Source Port",
@@ -1382,8 +1382,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +}
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
---- /dev/null
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-10-21 23:03:57.000000000 +0200
 @@ -0,0 +1,786 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */

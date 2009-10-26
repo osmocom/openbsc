@@ -33,6 +33,9 @@
 #define TOKEN_SMS_TEXT "HAR 2009 GSM.  Register at http://har2009.gnumonks.org/ " \
 			"Your IMSI is %s, auth token is %08X, phone no is %s."
 
+extern struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
+				     const char *text);
+
 static char *build_sms_string(struct gsm_subscriber *subscr, u_int32_t token)
 {
 	char *sms_str;
