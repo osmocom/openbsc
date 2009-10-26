@@ -39,13 +39,13 @@
 
 /* Forward declarations */
 static int parse_ussd(u_int8_t *ussd, struct ussd_request *req);
-static int parse_ussd_info_elements(u_int8_t *ussd_ie, 
+static int parse_ussd_info_elements(u_int8_t *ussd_ie,
 					struct ussd_request *req);
-static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length, 
+static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length,
 					struct ussd_request *req);
-static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length, 
+static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length,
 					struct ussd_request *req);
-static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length, 
+static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 					struct ussd_request *req);
 
 static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
@@ -81,7 +81,7 @@ int gsm0480_decode_ussd_request(const struct msgb *msg, struct ussd_request *req
 	}
 
 	if (!rc)
-		DEBUGP(DMM, "Error occurred while parsing received USSD!\n"); 
+		DEBUGP(DMM, "Error occurred while parsing received USSD!\n");
 
 	return rc;
 }
@@ -116,7 +116,7 @@ static int parse_ussd_info_elements(u_int8_t *ussd_ie, struct ussd_request *req)
 	int rc;
 	/* Information Element Identifier - table 3.2 & GSM 04.08 section 10.5 */
 	u_int8_t iei = ussd_ie[0];
-	u_int8_t iei_length = ussd_ie[1];  
+	u_int8_t iei_length = ussd_ie[1];
 
 	switch (iei) {
 	case GSM48_IE_CAUSE:
@@ -136,7 +136,7 @@ static int parse_ussd_info_elements(u_int8_t *ussd_ie, struct ussd_request *req)
 	return rc;
 }
 
-static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length, 
+static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length,
 						struct ussd_request *req)
 {
 	int rc = 1;
@@ -149,8 +149,8 @@ static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length,
 
 		switch (component_type) {
 		case GSM0480_CTYPE_INVOKE:
-			rc &= parse_ss_invoke(facility_ie+2, 
-						component_length, 
+			rc &= parse_ss_invoke(facility_ie+2,
+						component_length,
 						req);
 			break;
 		case GSM0480_CTYPE_RETURN_RESULT:
@@ -172,7 +172,7 @@ static int parse_facility_ie(u_int8_t *facility_ie, u_int8_t length,
 }
 
 /* Parse an Invoke component - see table 3.3 */
-static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length, 
+static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length,
 						struct ussd_request *req)
 {
 	int rc = 1;
@@ -217,7 +217,7 @@ static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length,
 }
 
 /* Parse the parameters of a Process UnstructuredSS Request */
-static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length, 
+static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 					struct ussd_request *req)
 {
 	int rc = 0;
@@ -245,7 +245,7 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 }
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
-int gsm0480_send_ussd_response(const struct msgb *in_msg, const char* response_text, 
+int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_text,
 						const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
