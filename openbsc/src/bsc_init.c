@@ -378,7 +378,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		trx = ts->trx;
 		if (new_state->operational == 1 &&
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			patch_nm_tables(bts);
+			patch_nm_tables(trx->bts);
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
 			abis_nm_set_channel_attr(ts, ccomb);
