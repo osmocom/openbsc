@@ -1,4 +1,4 @@
-/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface 
+/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
@@ -291,14 +291,14 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 
 	/* And finally pre-pend the L3 header */
 	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_NC_SS | req->transaction_id 
+	gh->proto_discr = GSM48_PDISC_NC_SS | req->transaction_id
 					| (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
 	return gsm48_sendmsg(msg, NULL);
 }
 
-int gsm0480_send_ussd_reject(const struct msgb *in_msg, 
+int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 				const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
