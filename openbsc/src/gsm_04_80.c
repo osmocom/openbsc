@@ -70,7 +70,7 @@ static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag,
 
 
 /* Decode a mobile-originated USSD-request message */
-int gsm0480_decode_ussd_request(struct msgb *msg, struct ussd_request *req)
+int gsm0480_decode_ussd_request(const struct msgb *msg, struct ussd_request *req)
 {
 	int rc = 0;
 	u_int8_t *parse_ptr = msgb_l3(msg);
@@ -230,6 +230,9 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 			if ((dcs == 0x0F) &&
 			    (uss_req_data[5] == ASN1_OCTET_STRING_TAG)) {
 				num_chars = (uss_req_data[6] * 8) / 7;
+				/* Prevent a mobile-originated buffer-overrun! */
+				if (num_chars > MAX_LEN_USSD_STRING)
+					num_chars = MAX_LEN_USSD_STRING;
 				gsm_7bit_decode(req->text,
 						&(uss_req_data[7]), num_chars);
 				/* append null-terminator */
@@ -242,7 +245,7 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 }
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
-int gsm0480_send_ussd_response(struct msgb *in_msg, const char* response_text, 
+int gsm0480_send_ussd_response(const struct msgb *in_msg, const char* response_text, 
 						const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -295,7 +298,7 @@ int gsm0480_send_ussd_response(struct msgb *in_msg, const char* response_text,
 	return gsm48_sendmsg(msg, NULL);
 }
 
-int gsm0480_send_ussd_reject(struct msgb *in_msg, 
+int gsm0480_send_ussd_reject(const struct msgb *in_msg, 
 				const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();

@@ -125,17 +125,19 @@
 
 #include <openbsc/msgb.h>
 
+#define MAX_LEN_USSD_STRING	31
+
 struct ussd_request {
-			char text[32];
+			char text[MAX_LEN_USSD_STRING + 1];
 			u_int8_t transaction_id;
 			u_int8_t invoke_id;
 };
 
-int gsm0480_decode_ussd_request(struct msgb *msg, 
+int gsm0480_decode_ussd_request(const struct msgb *msg, 
 				struct ussd_request *request); 
-int gsm0480_send_ussd_response(struct msgb *in_msg, const char* response_text, 
+int gsm0480_send_ussd_response(const struct msgb *in_msg, const char* response_text, 
 						const struct ussd_request *req);
-int gsm0480_send_ussd_reject(struct msgb *msg, 
+int gsm0480_send_ussd_reject(const struct msgb *msg, 
 				const struct ussd_request *request);
 
 #endif

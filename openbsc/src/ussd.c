@@ -63,9 +63,9 @@ int handle_rcv_ussd(struct msgb *msg)
 static int send_own_number(const struct msgb *msg, const struct ussd_request *req)
 {
 	char *own_number = msg->lchan->subscr->extension;
-	/* Need trailing CR as EOT character */
-	char response_string[] = "Your extension is xxxxx\r";
+	char response_string[GSM_EXTENSION_LENGTH + 20];
 
-	memcpy(response_string + 18, own_number, 5);
+	/* Need trailing CR as EOT character */
+	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
 	return gsm0480_send_ussd_response(msg, response_string, req);
 }
