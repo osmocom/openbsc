@@ -304,7 +304,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	struct e1inp_sign_link *link;
 	struct msgb *msg;
 	struct ipaccess_head *hh;
-	int ret, error;
+	int ret = 0, error;
 
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
