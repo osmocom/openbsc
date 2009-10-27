@@ -124,8 +124,8 @@ struct gsm_nm_state {
  */
 struct gsm_loc_updating_operation {
         struct timer_list updating_timer;
-	int waiting_for_imsi : 1;
-	int waiting_for_imei : 1;
+	unsigned int waiting_for_imsi : 1;
+	unsigned int waiting_for_imei : 1;
 };
 
 #define MAX_A5_KEY_LEN	(128/8)
