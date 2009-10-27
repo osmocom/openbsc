@@ -1,5 +1,6 @@
 /* OpenBSC interface to quagga VTY */
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -88,6 +89,7 @@ DEFUN(cfg_subscr,
 		return CMD_WARNING;
 	}
 
+	/* vty_go_parent should put this subscriber */
 	vty->index = subscr;
 	vty->node = SUBSCR_NODE;
 
@@ -112,6 +114,7 @@ DEFUN(show_subscr,
 			return CMD_WARNING;
 		}
 		subscr_dump_vty(vty, subscr);
+		subscr_put(subscr);
 
 		return CMD_SUCCESS;
 	}
@@ -218,6 +221,7 @@ DEFUN(sms_send_ext,
 	b = argv_to_buffer(argc, argv, 1);
 	rc = _send_sms_buffer(receiver, b);
 	buffer_free(b);
+	subscr_put(receiver);
 
 	return rc;
 }
@@ -238,6 +242,7 @@ DEFUN(sms_send_imsi,
 	b = argv_to_buffer(argc, argv, 1);
 	rc = _send_sms_buffer(receiver, b);
 	buffer_free(b);
+	subscr_put(receiver);
 
 	return rc;
 }
