@@ -227,7 +227,7 @@ void lchan_free(struct gsm_lchan *lchan)
 	lchan->type = GSM_LCHAN_NONE;
 	if (lchan->subscr) {
 		subscr_put(lchan->subscr);
-		lchan->subscr = 0;
+		lchan->subscr = NULL;
 	}
 
 	/* We might kill an active channel... */
@@ -304,5 +304,5 @@ struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr)
 			return lchan;
 	}
 
-	return 0;
+	return NULL;
 }
