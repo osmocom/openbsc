@@ -151,6 +151,7 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		sccp_connection_free(conn);
 		return;
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
+		DEBUGP(DMSC, "Connection established: %p\n", conn);
 		bsc_send_queued(conn);
 	}
 }

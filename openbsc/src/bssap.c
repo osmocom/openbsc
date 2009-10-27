@@ -817,7 +817,6 @@ void bsc_send_queued(struct sccp_connection *conn)
 
 	data = (struct bss_sccp_connection_data *)conn->data_ctx;
 
-	DEBUGP(DMSC, "Sending queued items\n");
 	while (!llist_empty(&data->sccp_queue)) {
 		/* this is not allowed to fail */
 		msg = msgb_dequeue(&data->sccp_queue);
@@ -893,7 +892,7 @@ void bts_queue_send(struct msgb *msg, int link_id)
 		DEBUGP(DMSC, "Queue full on %p. Dropping GSM0408.\n", data->sccp);
 	} else {
 		DEBUGP(DMSC, "Queueing GSM0408 message on %p. Queue size: %d\n",
-		       data->sccp, data->gsm_queue_size);
+		       data->sccp, data->gsm_queue_size + 1);
 
 		msg->smsh = (unsigned char*) link_id;
 		msgb_enqueue(&data->gsm_queue, msg);
