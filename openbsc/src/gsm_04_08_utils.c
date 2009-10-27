@@ -482,3 +482,116 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 	return rsl_encryption_cmd(msg);
 }
 
+/* Chapter 9.1.2: Assignment Command */
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_ass_cmd *ass =
+		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	DEBUGP(DRR, "-> ASSIGNMENT COMMAND tch_mode=0x%02x\n", lchan->tch_mode);
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_ASS_CMD;
+
+	/*
+	 * fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd(),
+	 * gsm48_tx_chan_mode_modify. But beware that 10.5.2.5
+	 * 10.5.2.5.a have slightly different semantic for
+	 * the chan_desc. But as long as multi-slot configurations
+	 * are not used we seem to be fine.
+	 */
+	ass->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	ass->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
+	ass->chan_desc.h0.h = 0;
+	ass->chan_desc.h0.arfcn_high = arfcn >> 8;
+	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	ass->power_command = power_command;
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
+/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_chan_mode_modify *cmm =
+		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
+
+	lchan->tch_mode = mode;
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
+
+	/* fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd() */
+	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
+	cmm->chan_desc.h0.h = 0;
+	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
+	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	cmm->mode = mode;
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)
+{
+	int rc;
+
+	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode);
+	if (rc < 0)
+		return rc;
+
+	/* FIXME: we not only need to do this after mode modify, but
+	 * also after channel activation */
+	if (is_ipaccess_bts(lchan->ts->trx->bts) && lchan_mode != GSM48_CMODE_SIGN)
+		rc = rsl_ipacc_bind(lchan);
+
+	return rc;
+}
+
+int gsm48_rx_rr_modif_ack(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_chan_mode_modify *mod =
+				(struct gsm48_chan_mode_modify *) gh->data;
+
+	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+
+	if (mod->mode != msg->lchan->tch_mode) {
+		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+			msg->lchan->tch_mode, mod->mode);
+		return -1;
+	}
+
+	/* update the channel type */
+	switch (mod->mode) {
+	case GSM48_CMODE_SIGN:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_DATA;
+		break;
+	}
+
+	/* We've successfully modified the MS side of the channel,
+	 * now go on to modify the BTS side of the channel */
+	return rsl_chan_mode_modify_req(msg->lchan);
+}

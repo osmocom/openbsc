@@ -42,7 +42,11 @@ struct gsm48_req_ref {
 		 t3_low:3;
 } __attribute__ ((packed));
 
-/* Chapter 9.1.5 */
+/*
+ * Chapter 9.1.5/9.1.6
+ *
+ * For 9.1.6 the chan_desc has the meaning of 10.5.2.5a
+ */
 struct gsm48_chan_mode_modify {
 	struct gsm48_chan_desc chan_desc;
 	u_int8_t mode;
@@ -58,6 +62,15 @@ enum gsm48_chan_mode {
 	GSM48_CMODE_DATA_6k0	= 0x0b,
 	GSM48_CMODE_DATA_3k6	= 0x23,
 };
+
+/* Chapter 9.1.2 */
+struct gsm48_ass_cmd {
+	/* Semantic is from 10.5.2.5a */
+	struct gsm48_chan_desc chan_desc;
+	u_int8_t power_command;
+	u_int8_t data[0];
+} __attribute__((packed));
+
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
@@ -727,6 +740,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu);
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -743,5 +757,8 @@ extern const char *gsm0408_cc_msg_names[];
 int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
 int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
 int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
+
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
+int gsm48_rx_rr_modif_ack(struct msgb *msg);
 
 #endif
