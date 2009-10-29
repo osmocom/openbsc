@@ -259,7 +259,7 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
-	int ret = 0;
+	int len, ret = 0;
 
 	if (!msg) {
 		*error = -ENOMEM;
@@ -284,8 +284,9 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 
 	/* then read te length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
-	ret = recv(bfd->fd, msg->l2h, hh->len, 0);
-	if (ret < hh->len) {
+	len = ntohs(hh->len);
+	ret = recv(bfd->fd, msg->l2h, len, 0);
+	if (ret < len) {
 		fprintf(stderr, "short read!\n");
 		msgb_free(msg);
 		*error = -EIO;
@@ -374,8 +375,7 @@ void ipaccess_prepend_header(struct msgb *msg, int proto)
 
 	/* prepend the ip.access header */
 	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
-	hh->zero = 0;
-	hh->len = msg->len - sizeof(*hh);
+	hh->len = htons(msg->len - sizeof(*hh));
 	hh->proto = proto;
 }
 

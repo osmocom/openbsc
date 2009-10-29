@@ -4,8 +4,7 @@
 #include "e1_input.h"
 
 struct ipaccess_head {
-	u_int8_t zero;
-	u_int8_t len;
+	u_int16_t len;	/* network byte order */
 	u_int8_t proto;
 	u_int8_t data[0];
 } __attribute__ ((packed));
