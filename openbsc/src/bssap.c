@@ -876,7 +876,7 @@ void bts_queue_send(struct msgb *msg, int link_id)
 	struct bss_sccp_connection_data *data = msg->lchan->msc_data;
 
 	if (data->gsm_queue_size == 0) {
-		if (link_id == 0) {
+		if (msg->lchan->sapis[link_id & 0x7] != LCHAN_SAPI_UNUSED) {
 			rsl_data_request(msg, link_id);
 		} else {
 			msg->smsh = (unsigned char*) link_id;
