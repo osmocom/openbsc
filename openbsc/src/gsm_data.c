@@ -104,13 +104,12 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx = talloc(bts, struct gsm_bts_trx);
+	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
 	int k;
 
 	if (!trx)
 		return NULL;
 
-	memset(trx, 0, sizeof(*trx));
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
 
@@ -140,13 +139,12 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
-	struct gsm_bts *bts = talloc(net, struct gsm_bts);
+	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
 	int i;
 
 	if (!bts)
 		return NULL;
 
-	memset(bts, 0, sizeof(*bts));
 	bts->network = net;
 	bts->nr = net->num_bts++;
 	bts->type = type;
@@ -179,10 +177,9 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 {
 	struct gsm_network *net;
 
-	net = talloc(tall_bsc_ctx, struct gsm_network);
+	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
 	if (!net)
 		return NULL;
-	memset(net, 0, sizeof(*net));	
 
 	net->country_code = country_code;
 	net->network_code = network_code;

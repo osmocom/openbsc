@@ -494,12 +494,11 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
 
-	line = talloc(tall_bsc_ctx, struct e1inp_line);
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line) {
 		close(ret);
 		return -ENOMEM;
 	}
-	memset(line, 0, sizeof(*line));
 	line->driver = &ipaccess_driver;
 	//line->driver_data = e1h;
 	/* create virrtual E1 timeslots for signalling */
@@ -538,10 +537,9 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	bfd = talloc(tall_bsc_ctx, struct bsc_fd);
+	bfd = talloc_zero(tall_bsc_ctx, struct bsc_fd);
 	if (!bfd)
 		return -ENOMEM;
-	memset(bfd, 0, sizeof(*bfd));
 
 	/* Some BTS has connected to us, but we don't know yet which line
 	 * (as created by the OML link) to associate it with.  Thus, we
@@ -652,10 +650,9 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	if (ret)
 		return ret;
 
-	e1h = talloc(tall_bsc_ctx, struct ia_e1_handle);
+	e1h = talloc_zero(tall_bsc_ctx, struct ia_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
-	memset(e1h, 0, sizeof(*e1h));
 
 	e1h->gsmnet = gsmnet;
 
