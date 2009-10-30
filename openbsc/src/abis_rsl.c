@@ -1294,6 +1294,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	case RSL_MT_EST_IND:
 		DEBUGPC(DRLL, "ESTABLISH INDICATION\n");
 		/* lchan is established, stop T3101 */
+		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_MS;
 		bsc_del_timer(&msg->lchan->T3101);
 		if (msgb_l2len(msg) > 
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
@@ -1304,12 +1305,14 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		break;
 	case RSL_MT_EST_CONF:
 		DEBUGPC(DRLL, "ESTABLISH CONFIRM\n");
+		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_NET;
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_EST_CONF);
 		break;
 	case RSL_MT_REL_IND:
 		/* BTS informs us of having received  DISC from MS */
 		DEBUGPC(DRLL, "RELEASE INDICATION\n");
+		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
 		/* we can now releae the channel on the BTS/Abis side */
@@ -1321,6 +1324,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		/* BTS informs us of having received UA from MS,
 		 * in response to DISC that we've sent earlier */
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
+		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		/* we can now releae the channel on the BTS/Abis side */
 		/* FIXME: officially we need to start T3111 and wait for
 		 * some grace period */

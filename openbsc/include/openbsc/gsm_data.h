@@ -131,6 +131,11 @@ struct gsm_loc_updating_operation {
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
 
+/* is the data link established? who established it? */
+#define LCHAN_SAPI_UNUSED	0
+#define LCHAN_SAPI_MS		1
+#define LCHAN_SAPI_NET		2
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -159,6 +164,9 @@ struct gsm_lchan {
 	struct timer_list release_timer;
 
 	struct timer_list T3101;
+
+	/* Established data link layer services */
+	u_int8_t sapis[8];
 
 	/*
 	 * Operations that have a state and might be pending
