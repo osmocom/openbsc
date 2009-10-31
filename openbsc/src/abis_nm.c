@@ -328,7 +328,6 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
 		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
 		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
-		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
 		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
 		/* BS11 specifics */
 		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },

@@ -219,7 +219,7 @@ int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
 	sign_ts = &line->ts[1-1];
 	rsl_ts = &line->ts[2-1];
 	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
-					  bts->c0, 0, 0xff);
+					  bts->c0, 0xff, 0);
 	rsl_link = e1inp_sign_link_create(rsl_ts, E1INP_SIGN_RSL,
 					  bts->c0, 0, 0);
 

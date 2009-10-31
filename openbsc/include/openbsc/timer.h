@@ -44,9 +44,9 @@
 struct timer_list {
 	struct llist_head entry;
 	struct timeval timeout;
-	int active  : 1;
-	int handled : 1;
-	int in_list : 1;
+	unsigned int active  : 1;
+	unsigned int handled : 1;
+	unsigned int in_list : 1;
 
 	void (*cb)(void*);
 	void *data;

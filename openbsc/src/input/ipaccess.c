@@ -260,7 +260,7 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
-	int ret = 0;
+	int len, ret = 0;
 
 	if (!msg) {
 		*error = -ENOMEM;
@@ -285,8 +285,9 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 
 	/* then read te length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
-	ret = recv(bfd->fd, msg->l2h, hh->len, 0);
-	if (ret < hh->len) {
+	len = ntohs(hh->len);
+	ret = recv(bfd->fd, msg->l2h, len, 0);
+	if (ret < len) {
 		fprintf(stderr, "short read!\n");
 		msgb_free(msg);
 		*error = -EIO;
@@ -305,7 +306,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	struct e1inp_sign_link *link;
 	struct msgb *msg;
 	struct ipaccess_head *hh;
-	int ret, error;
+	int ret = 0, error;
 
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
@@ -375,8 +376,7 @@ void ipaccess_prepend_header(struct msgb *msg, int proto)
 
 	/* prepend the ip.access header */
 	hh = (struct ipaccess_head *) msgb_push(msg, sizeof(*hh));
-	hh->zero = 0;
-	hh->len = msg->len - sizeof(*hh);
+	hh->len = htons(msg->len - sizeof(*hh));
 	hh->proto = proto;
 }
 
@@ -567,12 +567,11 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
 
-	line = talloc(tall_bsc_ctx, struct e1inp_line);
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line) {
 		close(ret);
 		return -ENOMEM;
 	}
-	memset(line, 0, sizeof(*line));
 	line->driver = &ipaccess_driver;
 	//line->driver_data = e1h;
 	/* create virrtual E1 timeslots for signalling */
@@ -611,10 +610,9 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	bfd = talloc(tall_bsc_ctx, struct bsc_fd);
+	bfd = talloc_zero(tall_bsc_ctx, struct bsc_fd);
 	if (!bfd)
 		return -ENOMEM;
-	memset(bfd, 0, sizeof(*bfd));
 
 	/* Some BTS has connected to us, but we don't know yet which line
 	 * (as created by the OML link) to associate it with.  Thus, we
@@ -731,10 +729,9 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	if (ret)
 		return ret;
 
-	e1h = talloc(tall_bsc_ctx, struct ia_e1_handle);
+	e1h = talloc_zero(tall_bsc_ctx, struct ia_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
-	memset(e1h, 0, sizeof(*e1h));
 
 	e1h->gsmnet = gsmnet;
 

@@ -281,13 +281,14 @@ static void print_help(void)
 	printf("  -n flags/mask\tSet NVRAM attributes.\n");
 	printf("  -l --listen testnr \tPerform speciified test number\n");
 	printf("  -h --help this text\n");
+	printf("  -s --stream-id ID\n");
 }
 
 int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
-	int rc, option_index = 0;
+	int rc, option_index = 0, stream_id = 0xff;
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
@@ -302,9 +303,10 @@ int main(int argc, char **argv)
 			{ "restart", 0, 0, 'r' },
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
+			{ "stream-id", 1, 0, 's' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:h", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -332,6 +334,10 @@ int main(int argc, char **argv)
 		case 'l':
 			net_listen_testnr = atoi(optarg);
 			break;
+		case 's':
+			stream_id = atoi(optarg);
+			printf("foo: %d\n", stream_id);
+			break;
 		case 'h':
 			print_usage();
 			print_help();
@@ -350,6 +356,7 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
+	bts->oml_tei = stream_id;
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 	printf("Trying to connect to ip.access BTS ...\n");
