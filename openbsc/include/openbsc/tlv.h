@@ -176,6 +176,14 @@ static inline u_int8_t *msgb_tv16_push(struct msgb *msg, u_int8_t tag, u_int16_t
 	return tv16_put(buf, tag, val);
 }
 
+static inline u_int8_t *msgb_tvlv_push(struct msgb *msg, u_int8_t tag, u_int16_t len,
+				       const u_int8_t *val)
+{
+	u_int8_t *buf = msgb_push(msg, TVLV_GROSS_LEN(len));
+	return tvlv_put(buf, tag, len, val);
+}
+
+
 /* TLV parsing */
 
 struct tlv_p_entry {
