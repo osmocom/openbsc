@@ -679,12 +679,13 @@ struct msgb *bssmap_create_assignment_failure(u_int8_t cause, u_int8_t *rr_cause
 	if (!msg)
 		return NULL;
 
-	msg->l3h = msgb_put(msg, 5);
+	msg->l3h = msgb_put(msg, 6);
 	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
 	msg->l3h[1] = 0xff;
 	msg->l3h[2] = BSS_MAP_MSG_ASSIGMENT_FAILURE;
 	msg->l3h[3] = GSM0808_IE_CAUSE;
-	msg->l3h[4] = cause;
+	msg->l3h[4] = 1;
+	msg->l3h[5] = cause;
 
 	/* RR cause 3.2.2.22 */
 	if (rr_cause) {
