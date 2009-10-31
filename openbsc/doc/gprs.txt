@@ -28,3 +28,19 @@ NS
 UDP
 IP
 Ethernet
+
+
+Identities:
+IMSI		SIM identity
+P-TMSI		allocated to each GPRS-attached MS
+TLLI		unambiguously identifies the logical link
+NSAPI		identifies PDP context associated with PDP address
+		MS selects unused NSAPI while PDP ctx activation
+NSAPI+TLLI	NSAPI+TLLI pair is unique within RA
+
+
+TLLI address ranges
+local		derived from the P-TMSI allocated by the SGSN, valid only in one RA
+foreign		derived from the P-TMSI allocated in another RA
+random		used when MS has no P-TMSI availaible
+auxiliary	selected by SGSN used for anonymous access MM+PDP ctx

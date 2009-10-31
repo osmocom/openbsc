@@ -374,8 +374,6 @@ struct gsm48_imsi_detach_ind {
 #define GSM48_MT_CC_START_DTMF_REJ	0x37
 #define GSM48_MT_CC_FACILITY		0x3a
 
-/* FIXME: Table 10.4 / 10.4a (GPRS) */
-
 /* Section 10.5.2.26, Table 10.5.64 */
 #define GSM48_PM_MASK		0x03
 #define GSM48_PM_NORMAL		0x00

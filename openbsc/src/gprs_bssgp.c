@@ -132,18 +132,26 @@ static int bssgp_tx_status(u_int8_t cause, u_int16_t *bvci, struct msgb *orig_ms
 static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 {
 	struct bssgp_ud_hdr *budh = (struct bssgp_ud_hdr *) msg->l3h;
+	struct gsm_bts *bts;
 	int data_len = msgb_l3len(msg) - sizeof(*budh);
 	struct tlv_parsed tp;
 	int rc;
 
 	DEBUGP(DGPRS, "BSSGP UL-UD\n");
 
+	msg->tlli = ntohl(budh->tlli);
 	rc = bssgp_tlv_parse(&tp, budh->data, data_len);
 
 	/* Cell ID and LLC_PDU are the only mandatory IE */
 	if (!TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID) ||
 	    !TLVP_PRESENT(&tp, BSSGP_IE_LLC_PDU))
 		return -EIO;
+
+	/* Determine the BTS based on the Cell ID */
+	bts = gsm48_bts_by_ra_id(TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
+				 TLVP_LEN(&tp, BSSGP_IE_CELL_ID));
+	if (bts)
+		msg->trx = bts->c0;
 
 	msg->llch = TLVP_VAL(&tp, BSSGP_IE_LLC_PDU);
 
@@ -336,7 +344,39 @@ err_mand_ie:
 	return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
 }
 
-static int gprs_bssgp_sendmsg()
+int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 {
-	/* FIXME */
+	struct bssgp_ud_hdr *budh;
+	u_int8_t llc_pdu_tlv_hdr_len = 2;
+	u_int8_t *llc_pdu_tlv, *qos_profile;
+	u_int16_t pdu_lifetime = 1000; /* centi-seconds */
+	u_int8_t qos_profile_default[3] = { 0x00, 0x00, 0x21 };
+
+	if (msg->len > TVLV_MAX_ONEBYTE)
+		llc_pdu_tlv_hdr_len += 1;
+
+	/* prepend the tag and length of the LLC-PDU TLV */
+	llc_pdu_tlv = msgb_push(msg, llc_pdu_tlv_hdr_len);
+	llc_pdu_tlv[0] = BSSGP_IE_LLC_PDU;
+	if (llc_pdu_tlv_hdr_len > 2) {
+		llc_pdu_tlv[1] = msg->len >> 8;
+		llc_pdu_tlv[2] = msg->len & 0xff;
+	} else {
+		llc_pdu_tlv[1] = msg->len & 0x3f;
+		llc_pdu_tlv[1] |= 0x80;
+	}
+
+	/* FIXME: optional elements */
+
+	/* prepend the pdu lifetime */
+	pdu_lifetime = htons(pdu_lifetime);
+	msgb_tvlv_push(msg, BSSGP_IE_PDU_LIFETIME, 2, &pdu_lifetime);
+
+	/* prepend the QoS profile, TLLI and pdu type */
+	budh = msgb_push(msg, sizeof(*budh));
+	memcpy(budh->qos_profile, qos_profile_default, sizeof(qos_profile_default));
+	budh->tlli = htonl(msg->tlli);
+	budh->pdu_type = BSSGP_PDUT_DL_UNITDATA;
+
+	return gprs_ns_sendmsg(NULL, 0, msg);
 }
