@@ -39,10 +39,15 @@ struct msgb {
 	/* the layer 3 header. For OML: FOM; RSL: 04.08; GPRS: BSSGP */
 	unsigned char *l3h;
 
+	/* the layer 4 header */
 	union {
 		unsigned char *smsh;
 		unsigned char *llch;
 	};
+
+	/* the layer 5 header, GPRS: GMM header */
+	unsigned char *gmmh;
+	u_int32_t tlli;
 
 	u_int16_t data_len;
 	u_int16_t len;
