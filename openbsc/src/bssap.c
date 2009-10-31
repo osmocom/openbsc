@@ -668,7 +668,7 @@ struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_
 	/* write chosen encryption algorithm 3.2.2.44 */
 	data = msgb_put(msg, 2);
 	data[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
-	data[1] = RSL_ENC_ALG_A5(lchan->encr.alg_id);
+	data[1] = lchan->encr.alg_id;
 
 	/* write circuit pool 3.2.2.45 */
 	/* write speech version chosen: 3.2.2.51 when BTS picked it */
