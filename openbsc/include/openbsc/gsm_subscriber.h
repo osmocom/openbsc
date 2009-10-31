@@ -8,7 +8,7 @@
 #define GSM_IMEI_LENGTH 17
 #define GSM_IMSI_LENGTH 17
 #define GSM_NAME_LENGTH 128
-#define GSM_EXTENSION_LENGTH 128
+#define GSM_EXTENSION_LENGTH 15
 
 /* reserved according to GSM 03.03 § 2.4 */
 #define GSM_RESERVED_TMSI   0xFFFFFFFF
