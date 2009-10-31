@@ -258,7 +258,7 @@ static int handle_cipher_m_complete(struct msgb *msg)
 	struct msgb *resp;
 
 	DEBUGP(DMSC, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
-	resp = bssmap_create_cipher_complete(msg, -1);
+	resp = bssmap_create_cipher_complete(msg);
 	if (!resp) {
 		DEBUGP(DMSC, "Creating MSC response failed.\n");
 		return -1;

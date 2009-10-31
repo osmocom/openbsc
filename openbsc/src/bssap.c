@@ -504,7 +504,7 @@ struct msgb *bssmap_create_clear_complete(void)
 	return msg;
 }
 
-struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo)
+struct msgb *bssmap_create_cipher_complete(struct msgb *layer3)
 {
 	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
 					       "cipher-complete");
@@ -514,13 +514,11 @@ struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo
         /* send response with BSS override for A5/1... cheating */
 	msg->l3h = msgb_put(msg, 3);
 	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 1;
+	msg->l3h[1] = 0xff;
 	msg->l3h[2] = BSS_MAP_MSG_CIPHER_MODE_COMPLETE;
 
 	/* include layer3 in case we have at least two octets */
 	if (layer3 && msgb_l3len(layer3) > 2) {
-		msg->l3h[1] += msgb_l3len(layer3) + 2;
-
 		msg->l4h = msgb_put(msg, msgb_l3len(layer3) + 2);
 		msg->l4h[0] = GSM0808_IE_LAYER_3_MESSAGE_CONTENTS;
 		msg->l4h[1] = msgb_l3len(layer3);
@@ -528,14 +526,12 @@ struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo
 	}
 
 	/* and the optional BSS message */
-	if (bsc_enc_algo != -1) {
-		msg->l3h[1] += 2;
+	msg->l4h = msgb_put(msg, 2);
+	msg->l4h[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
+	msg->l4h[1] = layer3->lchan->encr.alg_id;
 
-		msg->l4h = msgb_put(msg, 2);
-		msg->l4h[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
-		msg->l4h[1] = bsc_enc_algo;
-	}
-
+	/* update the size */
+	msg->l3h[1] = msgb_l3len(msg) - 2;
 	return msg;
 }
 

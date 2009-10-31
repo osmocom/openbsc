@@ -309,7 +309,7 @@ int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int le
 struct msgb *bssmap_create_layer3(struct msgb *msg);
 struct msgb *bssmap_create_reset(void);
 struct msgb *bssmap_create_clear_complete(void);
-struct msgb *bssmap_create_cipher_complete(struct msgb *layer3, int bsc_enc_algo);
+struct msgb *bssmap_create_cipher_complete(struct msgb *layer3);
 struct msgb *bssmap_create_cipher_reject(u_int8_t cause);
 struct msgb *bssmap_create_sapi_reject(u_int8_t link_id);
 struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_t rr_cause);
