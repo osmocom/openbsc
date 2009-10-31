@@ -254,6 +254,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	struct bss_sccp_connection_data *msc_data;
 	u_int8_t *data;
 	u_int8_t multiplex;
+	int i, found = 0;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
@@ -280,11 +281,16 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	 * possible channel types. The limitation ends by not using
 	 * multi-slot, limiting the channel coding, speech...
 	 */
-	if (TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE) != 3) {
+	if (TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE) < 3) {
 		DEBUGP(DMSC, "ChannelType len !=3 not supported: %d\n",
 			TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE));
 		goto reject;
 	}
+
+	/*
+	 * Try to figure out if we support the proposed speech codecs. For
+	 * now we will always pick the full rate codecs.
+	 */
 
 	data = (u_int8_t *) TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
 	if ((data[0] & 0xf) != 0x1) {
@@ -292,12 +298,24 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		goto reject;
 	}
 
-	if (data[1] != GSM0808_SPEECH_FULL_PREF) {
-		DEBUGP(DMSC, "ChannelType full not preferred: %d\n", data[1]);
+	if (data[1] != GSM0808_SPEECH_FULL_PREF && data[1] != GSM0808_SPEECH_HALF_PREF) {
+		DEBUGP(DMSC, "ChannelType full not allowed: %d\n", data[1]);
 		goto reject;
 	}
 
-	if (data[2] != GSM0808_PERM_FR2) {
+	/* go through the list of permitted codecs */
+	for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
+		if ((data[i] & 0x7f) == GSM0808_PERM_FR2) {
+			found = 1;
+			break;
+		}
+
+		/* last octet, stop */
+		if ((data[i] & 0x80) == 0x00)
+			break;
+	}
+
+	if (!found) {
 		DEBUGP(DMSC, "ChannelType FR2 not supported\n");
 		goto reject;
 	}
@@ -308,6 +326,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
 
 	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
+	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p\n", conn);
 	return gsm48_lchan_modify(msg->lchan, GSM48_CMODE_SPEECH_EFR);
 
 reject:
