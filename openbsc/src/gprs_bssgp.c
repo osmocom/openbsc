@@ -356,6 +356,7 @@ int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 	u_int8_t *llc_pdu_tlv, *qos_profile;
 	u_int16_t pdu_lifetime = 1000; /* centi-seconds */
 	u_int8_t qos_profile_default[3] = { 0x00, 0x00, 0x21 };
+	u_int16_t msg_len = msg->len;
 
 	if (msg->len > TVLV_MAX_ONEBYTE)
 		llc_pdu_tlv_hdr_len += 1;
@@ -364,10 +365,10 @@ int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 	llc_pdu_tlv = msgb_push(msg, llc_pdu_tlv_hdr_len);
 	llc_pdu_tlv[0] = BSSGP_IE_LLC_PDU;
 	if (llc_pdu_tlv_hdr_len > 2) {
-		llc_pdu_tlv[1] = msg->len >> 8;
-		llc_pdu_tlv[2] = msg->len & 0xff;
+		llc_pdu_tlv[1] = msg_len >> 8;
+		llc_pdu_tlv[2] = msg_len & 0xff;
 	} else {
-		llc_pdu_tlv[1] = msg->len & 0x3f;
+		llc_pdu_tlv[1] = msg_len & 0x3f;
 		llc_pdu_tlv[1] |= 0x80;
 	}
 
