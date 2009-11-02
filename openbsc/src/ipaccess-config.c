@@ -40,7 +40,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 
-static struct gsm_network *gsmnet;
+struct gsm_network *bsc_gsmnet;
 
 static int net_listen_testnr;
 static int restart;
@@ -350,11 +350,11 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	gsmnet = gsm_network_init(1, 1, NULL);
-	if (!gsmnet)
+	bsc_gsmnet = gsm_network_init(1, 1, NULL);
+	if (!bsc_gsmnet)
 		exit(1);
 
-	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
+	bts = gsm_bts_alloc(bsc_gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
 	bts->oml_tei = stream_id;
 	
