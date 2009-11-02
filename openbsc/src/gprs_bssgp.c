@@ -33,6 +33,10 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_ns.h>
 
+/* global pointer to the gsm network data structure */
+/* FIXME: this must go! */
+extern struct gsm_network *bsc_gsmnet;
+
 /* Chapter 11.3.9 / Table 11.10: Cause coding */
 static const char *bssgp_cause_strings[] = {
 	[BSSGP_CAUSE_PROC_OVERLOAD]	= "Processor overload",
@@ -148,7 +152,8 @@ static int bssgp_rx_ul_ud(struct msgb *msg, u_int16_t bvci)
 		return -EIO;
 
 	/* Determine the BTS based on the Cell ID */
-	bts = gsm48_bts_by_ra_id(TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
+	bts = gsm48_bts_by_ra_id(bsc_gsmnet,
+				 TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
 				 TLVP_LEN(&tp, BSSGP_IE_CELL_ID));
 	if (bts)
 		msg->trx = bts->c0;
