@@ -16,14 +16,6 @@ enum gprs_ciph_algo {
 	GPRS_ALGO_GEA2,
 };
 
-/* A parsed GPRS routing area */
-struct gprs_ra_id {
-	u_int16_t	mnc;
-	u_int16_t	mcc;
-	u_int16_t	lac;
-	u_int8_t	rac;
-};
-
 #define MS_RADIO_ACCESS_CAPA
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */

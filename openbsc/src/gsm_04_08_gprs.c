@@ -93,30 +93,6 @@ void gsm48_parse_ra(struct gprs_ra_id *raid, u_int8_t *buf)
 	raid->rac = buf[5];
 }
 
-static int gsm48_construct_ra(u_int8_t *buf, const struct gprs_ra_id *raid)
-{
-	u_int16_t mcc = raid->mcc;
-	u_int16_t mnc = raid->mnc;
-
-	buf[0] = ((mcc / 100) % 10) | (((mcc / 10) % 10) << 4);
-	buf[1] = (mcc % 10);
-
-	/* I wonder who came up with the stupidity of encoding the MNC
-	 * differently depending on how many digits its decimal number has! */
-	if (mnc < 100) {
-		buf[1] |= 0xf0;
-		buf[2] = ((mnc / 10) % 10) | ((mnc % 10) << 4);
-	} else {
-		buf[1] |= (mnc % 10) << 4;
-		buf[2] = ((mnc / 100) % 10) | (((mcc / 10) % 10) << 4);
-	}
-
-	*(u_int16_t *)(buf+3) = htons(raid->lac);
-
-	buf[5] = raid->rac;
-
-	return 6;
-}
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command)
 {
@@ -556,14 +532,3 @@ struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
 	return NULL;
 }
 
-int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts)
-{
-	struct gprs_ra_id raid;
-
-	raid.mcc = bts->network->country_code;
-	raid.mnc = bts->network->network_code;
-	raid.lac = bts->location_area_code;
-	raid.rac = 0;	/* FIXME */
-
-	return gsm48_construct_ra(buf, &raid);
-}

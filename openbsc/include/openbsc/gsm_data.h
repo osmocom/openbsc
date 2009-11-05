@@ -498,4 +498,16 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 
+/* A parsed GPRS routing area */
+struct gprs_ra_id {
+	u_int16_t	mnc;
+	u_int16_t	mcc;
+	u_int16_t	lac;
+	u_int8_t	rac;
+};
+
+int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
+void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
+
+
 #endif
