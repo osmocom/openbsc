@@ -129,12 +129,12 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
 	gh->msg_type = GSM48_MT_GMM_ATTACH_ACK;
 
-	aa = (struct gsm48_att_ack *) msgb_put(msg, sizeof(*aa));
+	aa = (struct gsm48_attach_ack *) msgb_put(msg, sizeof(*aa));
 	aa->force_stby = 0;	/* not indicated */
 	aa->att_result = 1;	/* GPRS only */
 	aa->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 	aa->radio_prio = 4;	/* lowest */
-	gsm48_ra_id_by_bts(&aa->ra_id, old_msg->trx->bts);
+	gsm48_ra_id_by_bts(aa->ra_id.digits, old_msg->trx->bts);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0);
@@ -201,7 +201,7 @@ static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
 		mi_type, mi_string);
 
-	gsm48_ra_id_by_bts(&ra_id, msg->trx->bts);
+	gprs_ra_id_by_bts(&ra_id, msg->trx->bts);
 	ctx = sgsn_mm_ctx_by_tlli(msg->tlli, &ra_id);
 	if (!ctx) {
 		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msg->tlli);
@@ -262,7 +262,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
-	gsm48_ra_id_by_bts(&ra_id, msg->trx->bts);
+	gprs_ra_id_by_bts(&ra_id, msg->trx->bts);
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
@@ -364,12 +364,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	rua->force_stby = 0;	/* not indicated */
 	rua->upd_result = 0;	/* RA updated */
 	rua->ra_upd_timer = GPRS_TMR_MINUTE | 10;
-	/* FIXME: use values from the BTS */
-	rua->ra_id.digits[0] = 0x00;
-	rua->ra_id.digits[1] = 0xf1;
-	rua->ra_id.digits[2] = 0x10;
-	rua->ra_id.lac = htons(1);
-	rua->ra_id.rac = 1;
+	gsm48_ra_id_by_bts(rua->ra_id.digits, old_msg->trx->bts);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0);
