@@ -194,12 +194,12 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 }
 
 static int _send_sms_buffer(struct gsm_subscriber *receiver,
-			     struct buffer *b)
+			     struct buffer *b, u_int8_t tp_pid)
 {
 	struct gsm_sms *sms;
 
 	sms = sms_from_text(receiver, buffer_getstr(b));
-
+	sms->protocol_id = tp_pid;
 	gsm411_send_sms_subscr(receiver, sms);
 
 	return CMD_SUCCESS;
@@ -219,7 +219,27 @@ DEFUN(sms_send_ext,
 		return CMD_WARNING;
 
 	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b);
+	rc = _send_sms_buffer(receiver, b, 0);
+	buffer_free(b);
+
+	return rc;
+}
+
+DEFUN(sms_send_silent_ext,
+      sms_send_silent_ext_cmd,
+      "sms send silent extension EXTEN .LINE",
+      "Send a silent message to a subscriber identified by EXTEN")
+{
+	struct gsm_subscriber *receiver;
+	struct buffer *b;
+	int rc;
+
+	receiver = subscr_get_by_extension(gsmnet, argv[0]);
+	if (!receiver)
+		return CMD_WARNING;
+
+	b = argv_to_buffer(argc, argv, 1);
+	rc = _send_sms_buffer(receiver, b, 64);
 	buffer_free(b);
 	subscr_put(receiver);
 
@@ -240,7 +260,27 @@ DEFUN(sms_send_imsi,
 		return CMD_WARNING;
 
 	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b);
+	rc = _send_sms_buffer(receiver, b, 0);
+	buffer_free(b);
+
+	return rc;
+}
+
+DEFUN(sms_send_silent_imsi,
+      sms_send_silent_imsi_cmd,
+      "sms send silent imsi IMSI .LINE",
+      "Send a silent message to a subscriber identified by IMSI")
+{
+	struct gsm_subscriber *receiver;
+	struct buffer *b;
+	int rc;
+
+	receiver = subscr_get_by_imsi(gsmnet, argv[0]);
+	if (!receiver)
+		return CMD_WARNING;
+
+	b = argv_to_buffer(argc, argv, 1);
+	rc = _send_sms_buffer(receiver, b, 64);
 	buffer_free(b);
 	subscr_put(receiver);
 
@@ -307,6 +347,8 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_element(VIEW_NODE, &sms_send_pend_cmd);
 	install_element(VIEW_NODE, &sms_send_ext_cmd);
 	install_element(VIEW_NODE, &sms_send_imsi_cmd);
+	install_element(VIEW_NODE, &sms_send_silent_ext_cmd);
+	install_element(VIEW_NODE, &sms_send_silent_imsi_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);
