@@ -351,12 +351,18 @@ err_mand_ie:
 
 int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 {
+	struct gsm_bts *bts;
 	struct bssgp_ud_hdr *budh;
 	u_int8_t llc_pdu_tlv_hdr_len = 2;
 	u_int8_t *llc_pdu_tlv, *qos_profile;
 	u_int16_t pdu_lifetime = 1000; /* centi-seconds */
 	u_int8_t qos_profile_default[3] = { 0x00, 0x00, 0x21 };
 	u_int16_t msg_len = msg->len;
+
+	if (!msg->trx)
+		return -EINVAL;
+
+	bts = msg->trx->bts;
 
 	if (msg->len > TVLV_MAX_ONEBYTE)
 		llc_pdu_tlv_hdr_len += 1;
@@ -384,5 +390,5 @@ int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 	budh->tlli = htonl(msg->tlli);
 	budh->pdu_type = BSSGP_PDUT_DL_UNITDATA;
 
-	return gprs_ns_sendmsg(NULL, 0, msg);
+	return gprs_ns_sendmsg(NULL, bts->gprs.cell.bvci, msg);
 }
