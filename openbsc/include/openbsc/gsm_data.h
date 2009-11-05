@@ -302,6 +302,7 @@ struct gsm_envabtse {
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
 	int id;
+	u_int16_t nsvci;
 	struct gsm_nm_state nm_state;
 };
 
@@ -380,8 +381,10 @@ struct gsm_bts {
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
+			u_int16_t bvci;
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
+		u_int8_t rac;
 	} gprs;
 	
 	/* transceivers */
