@@ -44,6 +44,7 @@
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
+#include <openbsc/gsm_04_08.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -2663,4 +2664,12 @@ int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_ATTR,
 				    obj_class, bts_nr, trx_nr, ts_nr,
 				     attr, attr_len);
+}
+
+void abis_nm_ipaccess_cgi(u_int8_t *buf, struct gsm_bts *bts)
+{
+	/* we simply reuse the GSM48 function and overwrite the RAC
+	 * with the Cell ID */
+	gsm48_ra_id_by_bts(buf, bts);
+	*((u_int16_t *)(buf + 5)) = htons(bts->cell_identity);
 }
