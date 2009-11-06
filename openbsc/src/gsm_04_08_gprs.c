@@ -508,7 +508,7 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 
 /* Determine the 'struct gsm_bts' from a RA ID */
 struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
-				   u_int8_t *buf, unsigned int len)
+				   const u_int8_t *buf, unsigned int len)
 {
 	struct gprs_ra_id raid;
 	struct gsm_bts *bts;
