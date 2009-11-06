@@ -592,7 +592,7 @@ int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* toke
 }
 
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]) {
-	u_int64_t equipment_id, watch_id;
+	unsigned long long equipment_id, watch_id;
 	dbi_result result;
 
 	strncpy(subscriber->equipment.imei, imei,
