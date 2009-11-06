@@ -124,6 +124,7 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
 
 	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -149,6 +150,7 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, u_int8_t gmm_cause)
 	DEBUGP(DMM, "<- GPRS ATTACH REJECT\n");
 
 	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -167,6 +169,7 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, u_int8_t id_type)
 	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST\n");
 
 	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -355,6 +358,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
 
 	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -379,6 +383,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, u_int8_t cause)
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE REJECT\n");
 
 	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
