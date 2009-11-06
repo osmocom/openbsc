@@ -29,7 +29,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_ns.h>
