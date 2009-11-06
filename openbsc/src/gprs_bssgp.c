@@ -29,6 +29,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_08.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_ns.h>
@@ -230,7 +231,7 @@ int gprs_bssgp_rcvmsg(struct msgb *msg, u_int16_t ns_bvci)
 	u_int8_t pdu_type = bgph->pdu_type;
 	int data_len = msgb_l3len(msg) - sizeof(*bgph);
 	u_int16_t bvci;
-	int rc;
+	int rc = 0;
 
 	if (pdu_type != BSSGP_PDUT_UL_UNITDATA &&
 	    pdu_type != BSSGP_PDUT_DL_UNITDATA)
@@ -384,10 +385,10 @@ int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 
 	/* prepend the pdu lifetime */
 	pdu_lifetime = htons(pdu_lifetime);
-	msgb_tvlv_push(msg, BSSGP_IE_PDU_LIFETIME, 2, &pdu_lifetime);
+	msgb_tvlv_push(msg, BSSGP_IE_PDU_LIFETIME, 2, (u_int8_t *)&pdu_lifetime);
 
 	/* prepend the QoS profile, TLLI and pdu type */
-	budh = msgb_push(msg, sizeof(*budh));
+	budh = (struct bssgp_ud_hdr *) msgb_push(msg, sizeof(*budh));
 	memcpy(budh->qos_profile, qos_profile_default, sizeof(qos_profile_default));
 	budh->tlli = htonl(msg->tlli);
 	budh->pdu_type = BSSGP_PDUT_DL_UNITDATA;
