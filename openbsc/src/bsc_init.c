@@ -1028,11 +1028,25 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
-	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
+	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
+
+	/* patch CGI */
+	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
 
 	/* patch the power reduction */
 	bs11_attr_radio[5] = bts->c0->max_power_red / 2;
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
+
+	/* patch NSVCI */
+	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
+	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;
+
+	/* FIXME: patch our own IP address as SGSN IP */
+	//nanobts_attr_nsvc0[10] = 
+
+	/* patch BVCI */
+	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
+	nanobts_attr_cell[13] = bts->gprs.cell.bvci & 0xff;
 }
 
 /*
