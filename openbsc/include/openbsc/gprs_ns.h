@@ -44,4 +44,18 @@ enum ns_cause {
 	NS_CAUSE_MISSING_ESSENT_IE	= 0x0d,
 };
 
+/* a layer 1 entity transporting NS frames */
+struct gprs_ns_link {
+	union {
+		struct {
+			int fd;
+		} ip;
+	};
+};
+
+
+int gprs_ns_rcvmsg(struct msgb *msg);
+
+int gprs_ns_sendmsg(struct gprs_ns_link *link, u_int16_t bvci,
+		    struct msgb *msg);
 #endif

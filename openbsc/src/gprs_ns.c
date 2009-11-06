@@ -116,15 +116,6 @@ static const char *gprs_ns_cause_str(enum ns_cause cause)
 	return "undefined";
 }
 
-/* a layer 1 entity transporting NS frames */
-struct gprs_ns_link {
-	union {
-		struct {
-			int fd;
-		} ip;
-	};
-};
-
 static int gprs_ns_tx(struct msgb *msg)
 {
 	return ipac_gprs_send(msg);
