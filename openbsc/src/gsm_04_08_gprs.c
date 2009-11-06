@@ -70,9 +70,10 @@ static const char *upd_name(u_int8_t type)
 	case GPRS_UPD_T_PERIODIC:
 		return "periodic updating";
 	}
+	return "unknown";
 }
 
-void gsm48_parse_ra(struct gprs_ra_id *raid, u_int8_t *buf)
+void gsm48_parse_ra(struct gprs_ra_id *raid, const u_int8_t *buf)
 {
 	raid->mcc = (buf[0] & 0xf) * 100;
 	raid->mcc += (buf[0] >> 4) * 10;
@@ -234,7 +235,8 @@ static void attach_rej_cb(void *data)
 {
 	struct sgsn_mm_ctx *ctx = data;
 
-	gsm48_tx_gmm_att_rej(ctx->tlli, GMM_CAUSE_MS_ID_NOT_DERIVED);
+	/* FIXME: determine through which BTS/TRX to send this */
+	//gsm48_tx_gmm_att_rej(ctx->tlli, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	ctx->mm_state = GMM_DEREGISTERED;
 	/* FIXME: release the context */
 }
