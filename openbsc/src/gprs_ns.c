@@ -202,8 +202,10 @@ int gprs_ns_sendmsg(struct gprs_ns_link *link, u_int16_t bvci,
 	struct gprs_ns_hdr *nsh;
 
 	nsh = (struct gprs_ns_hdr *) msgb_push(msg, sizeof(*nsh) + 3);
-	if (!nsh)
+	if (!nsh) {
+		DEBUGP(DGPRS, "Not enough headroom for NS header\n");
 		return -EIO;
+	}
 
 	nsh->pdu_type = NS_PDUT_UNITDATA;
 	/* spare octet in data[0] */

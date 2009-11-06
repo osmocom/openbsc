@@ -359,8 +359,10 @@ int gprs_bssgp_tx_dl_ud(struct msgb *msg)
 	u_int8_t qos_profile_default[3] = { 0x00, 0x00, 0x21 };
 	u_int16_t msg_len = msg->len;
 
-	if (!msg->trx)
+	if (!msg->trx) {
+		DEBUGP(DGPRS, "Cannot transmit DL-UD without TRX assigned\n");
 		return -EINVAL;
+	}
 
 	bts = msg->trx->bts;
 
