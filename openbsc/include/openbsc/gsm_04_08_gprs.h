@@ -122,5 +122,7 @@ enum gprs_tlli_tyoe {
 
 int gprs_tlli_type(u_int32_t tlli);
 
+struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
+				   const u_int8_t *buf, unsigned int len);
 
 #endif /* _GSM48_GPRS_H */
