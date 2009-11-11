@@ -216,10 +216,14 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_DATA);
 }
 
+static time_t gsm340_scts(u_int8_t *scts);
+
 static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 {
 	u_int8_t vp;
 	unsigned long minutes;
+	time_t expires;
+	time_t now;
 
 	switch (sms_vpf) {
 	case GSM340_TP_VPF_RELATIVE:
@@ -236,8 +240,12 @@ static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 		break;
 	case GSM340_TP_VPF_ABSOLUTE:
 		/* Chapter 9.2.3.12.2 */
-		/* FIXME: like service center time stamp */
-		DEBUGP(DSMS, "VPI absolute not implemented yet\n");
+		expires = gsm340_scts(sms_vp);
+		now = mktime(gmtime(NULL));
+		if (expires <= now)
+			minutes = 0;
+		else
+			minutes = (expires-now)/60;
 		break;
 	case GSM340_TP_VPF_ENHANCED:
 		/* Chapter 9.2.3.12.3 */
@@ -317,12 +325,28 @@ static int gsm340_gen_oa(u_int8_t *oa, unsigned int oa_len,
 	return len_in_bytes;
 }
 
+/* Turn int into semi-octet representation: 98 => 0x89 */
 static u_int8_t bcdify(u_int8_t value)
 {
 	u_int8_t ret;
 
 	ret = value / 10;
 	ret |= (value % 10) << 4;
+
+	return ret;
+}
+
+/* Turn semi-octet representation into int: 0x89 => 98 */
+static u_int8_t unbcdify(u_int8_t value)
+{
+	u_int8_t ret;
+
+	if ((value & 0x0F) > 9 || (value >> 4) > 9)
+		DEBUGP(DSMS, "unbcdify got too big nibble: 0x%02X\n", value);
+
+	ret = (value&0x0F)*10;
+	if (ret > 90)
+		ret += value>>4;
 
 	return ret;
 }
@@ -338,7 +362,30 @@ static void gsm340_gen_scts(u_int8_t *scts, time_t time)
 	*scts++ = bcdify(tm->tm_hour);
 	*scts++ = bcdify(tm->tm_min);
 	*scts++ = bcdify(tm->tm_sec);
-	*scts++ = 0;	/* FIXME: timezone */
+	*scts++ = bcdify(tm->tm_gmtoff/(60*15));
+}
+
+/* Decode 03.40 TP-SCTS (into utc/gmt timestamp) */
+static time_t gsm340_scts(u_int8_t *scts)
+{
+	struct tm tm;
+
+	u_int8_t yr = unbcdify(*scts++);
+
+	if (yr <= 80)
+		tm.tm_year = 100 + yr;
+	else
+		tm.tm_year = yr;
+	tm.tm_mon  = unbcdify(*scts++) - 1;
+	tm.tm_mday = unbcdify(*scts++);
+	tm.tm_hour = unbcdify(*scts++);
+	tm.tm_min  = unbcdify(*scts++);
+	tm.tm_sec  = unbcdify(*scts++);
+	/* according to gsm 03.40 time zone is
+	   "expressed in quarters of an hour" */
+	tm.tm_gmtoff = unbcdify(*scts++) * 15*60;
+
+	return mktime(&tm);
 }
 
 /* generate a msgb containing a TPDU derived from struct gsm_sms,
