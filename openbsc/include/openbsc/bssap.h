@@ -314,6 +314,7 @@ struct msgb *bssmap_create_cipher_reject(u_int8_t cause);
 struct msgb *bssmap_create_sapi_reject(u_int8_t link_id);
 struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_t rr_cause);
 struct msgb *bssmap_create_assignment_failure(u_int8_t cause, u_int8_t *rr_cause);
+struct msgb *bssmap_create_classmark_update(const u_int8_t *classmark, u_int8_t length);
 
 void gsm0808_send_assignment_failure(struct gsm_lchan *l, u_int8_t cause, u_int8_t *rr_value);
 void gsm0808_send_assignment_compl(struct gsm_lchan *l, u_int8_t rr_value);

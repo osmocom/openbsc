@@ -550,6 +550,26 @@ struct msgb *bssmap_create_cipher_reject(u_int8_t cause)
 	return msg;
 }
 
+struct msgb *bssmap_create_classmark_update(const u_int8_t *classmark_data, u_int8_t length)
+{
+	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
+					       "classmark-update");
+	if (!msg)
+		return NULL;
+
+	msg->l3h = msgb_put(msg, 3);
+	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+	msg->l3h[1] = 0xff;
+	msg->l3h[2] = BSS_MAP_MSG_CLASSMARK_UPDATE;
+
+	msg->l4h = msgb_put(msg, length);
+	memcpy(msg->l4h, classmark_data, length);
+
+	/* update the size */
+	msg->l3h[1] = msgb_l3len(msg) - 2;
+	return msg;
+}
+
 struct msgb *bssmap_create_sapi_reject(u_int8_t link_id)
 {
 	struct msgb *msg = msgb_alloc(30, "bssmap: sapi 'n' reject");
