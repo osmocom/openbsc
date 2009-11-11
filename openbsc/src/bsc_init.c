@@ -420,7 +420,18 @@ static int sw_activ_rep(struct msgb *mb)
 		/* TRX software is active, tell it to initiate RSL Link */
 		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		break;
-	case NM_OC_RADIO_CARRIER:
+	case NM_OC_RADIO_CARRIER: {
+		/*
+		 * Locking the radio carrier will make it go
+		 * offline again and we would come here. The
+		 * framework should determine that there was
+		 * no change and avoid recursion.
+		 *
+		 * This code is here to make sure that on start
+		 * a TRX remains locked.
+		 */
+		int rc_state = trx->rf_locked ?
+					NM_STATE_LOCKED : NM_STATE_UNLOCKED;
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
@@ -429,10 +440,11 @@ static int sw_activ_rep(struct msgb *mb)
 				       sizeof(nanobts_attr_radio));
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
-				      NM_STATE_UNLOCKED);
+				      rc_state);
 		abis_nm_opstart(trx->bts, foh->obj_class, trx->bts->bts_nr,
 				trx->nr, 0xff);
 		break;
+		}
 	}
 	return 0;
 }

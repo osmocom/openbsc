@@ -257,6 +257,9 @@ struct gsm_bts_trx {
 		} bs11;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
+
+	/* NM state */
+	int rf_locked;
 };
 
 enum gsm_bts_type {
@@ -517,5 +520,7 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
+
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
 #endif

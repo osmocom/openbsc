@@ -1200,6 +1200,17 @@ DEFUN(cfg_trx_rsl_e1_tei,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_rf_locked,
+      cfg_trx_rf_locked_cmd,
+      "rf_locked (0|1)",
+      "Turn off RF of the TRX.\n")
+{
+	int locked = atoi(argv[0]);
+	struct gsm_bts_trx *trx = vty->index;
+
+	gsm_trx_lock_rf(trx, locked);
+	return CMD_SUCCESS;
+}
 
 /* per TS configuration */
 DEFUN(cfg_ts,
@@ -1321,6 +1332,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);
+	install_element(TRX_NODE, &cfg_trx_rf_locked_cmd);
 
 	install_element(TRX_NODE, &cfg_ts_cmd);
 	install_node(&ts_node, dummy_config_write);
