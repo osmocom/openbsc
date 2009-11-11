@@ -24,7 +24,7 @@ libsccp_a_SOURCES = sccp/sccp.c
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
-bsc_msc_ip_SOURCES = bssap.c bsc_msc_ip.c bsc_init.c vty_interface.c
+bsc_msc_ip_SOURCES = bssap.c bsc_msc_ip.c bsc_init.c vty_interface.c vty_interface_bsc.c
 bsc_msc_ip_LDADD = libbsc.a libvty.a libsccp.a
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \

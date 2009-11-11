@@ -110,11 +110,6 @@ struct gsm_subscriber *find_subscriber(u_int8_t type, const char *mi_string)
 
 
 
-/* BSC -> MSC hooks */
-void bsc_vty_init_extra(void)
-{
-}
-
 /* SCCP handling */
 void msc_outgoing_sccp_data(struct sccp_connection *conn, struct msgb *msg, unsigned int len)
 {
