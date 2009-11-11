@@ -441,6 +441,14 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 };
 
+/*
+ * internal data for audio management
+ */
+struct gsm_audio_support {
+	u_int8_t hr  : 1,
+		 ver : 7;
+};
+
 struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
@@ -450,6 +458,9 @@ struct gsm_network {
 	enum gsm_auth_policy auth_policy;
 	int a5_encryption;
 	int neci;
+
+	struct gsm_audio_support **audio_support;
+	int audio_length;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);

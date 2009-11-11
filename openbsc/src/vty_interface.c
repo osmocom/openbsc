@@ -76,6 +76,8 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
+	int i;
+
 	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
 		"and has %u BTS%s", net->country_code, net->network_code,
 		net->num_bts, VTY_NEWLINE);
@@ -89,6 +91,11 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
 		VTY_NEWLINE);
+	vty_out(vty, "  Allowed Audio Codecs: ");
+	for (i = 0; i < net->audio_length; ++i)
+		vty_out(vty, "hr: %d ver: %d, ",
+			net->audio_support[i]->hr, net->audio_support[i]->ver);
+	vty_out(vty, "%s", VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -801,6 +808,65 @@ DEFUN(cfg_net_neci,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_supported_codecs,
+      cfg_net_supported_codecs_cmd,
+      "codec_list .LIST",
+      "Set the three preferred audio codecs.\n"
+      "Codec List")
+{
+	int saw_fr, saw_hr;
+	int i;
+
+	saw_fr = saw_hr = 0;
+
+	/* free the old list... if it exists */
+	if (gsmnet->audio_support) {
+		talloc_free(gsmnet->audio_support);
+		gsmnet->audio_support = NULL;
+		gsmnet->audio_length = 0;
+	}
+
+	/* create a new array */
+	gsmnet->audio_support =
+			talloc_zero_array(gsmnet, struct gsm_audio_support *, argc);
+	gsmnet->audio_length = argc;
+
+	for (i = 0; i < argc; ++i) {
+		/* check for hrX or frX */
+		if (strlen(argv[i]) != 3
+		    || argv[i][1] != 'r'
+		    || (argv[i][0] != 'h' && argv[i][0] != 'f')
+		    || argv[i][2] < 0x30
+		    || argv[i][2] > 0x39)
+			goto error;
+
+		gsmnet->audio_support[i] = talloc_zero(gsmnet->audio_support,
+						       struct gsm_audio_support);
+		gsmnet->audio_support[i]->ver = atoi(argv[i] + 2);
+
+		if (strncmp("hr", argv[i], 2) == 0) {
+			gsmnet->audio_support[i]->hr = 1;
+			saw_hr = 1;
+		} else if (strncmp("fr", argv[i], 2) == 0) {
+			gsmnet->audio_support[i]->hr = 0;
+			saw_fr = 1;
+		}
+
+		if (saw_hr && saw_fr) {
+			vty_out(vty, "Can not have full-rate and half-rate codec.%s",
+				VTY_NEWLINE);
+			return CMD_ERR_INCOMPLETE;
+		}
+	}
+
+	return CMD_SUCCESS;
+
+error:
+	vty_out(vty, "Codec name must be hrX or frX. Was '%s'%s",
+		argv[i], VTY_NEWLINE);
+	return CMD_ERR_INCOMPLETE;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1241,6 +1307,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
