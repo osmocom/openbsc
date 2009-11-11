@@ -27,6 +27,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
+#include <openbsc/abis_nm.h>
 
 void *tall_bsc_ctx;
 

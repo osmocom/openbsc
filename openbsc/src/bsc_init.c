@@ -357,12 +357,15 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_SITE_MANAGER:
 		bts = container_of(obj, struct gsm_bts, site_mgr);
 		if (new_state->operational == 2 &&
-		    new_state->availability == NM_AVSTATE_OK)
+		    new_state->availability == NM_AVSTATE_OK) {
+			printf("STARTING SITE MANAGER\n");
 			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
+		}
 		break;
 	case NM_OC_BTS:
 		bts = obj;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			printf("STARTING BTS...\n");
 			patch_nm_tables(bts);
 			abis_nm_set_bts_attr(bts, nanobts_attr_bts,
 					     sizeof(nanobts_attr_bts));
@@ -378,6 +381,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		trx = ts->trx;
 		if (new_state->operational == 1 &&
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			printf("STARTING OC Channel...\n");
 			patch_nm_tables(trx->bts);
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
@@ -392,9 +396,11 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;
 		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_OK)
+		    new_state->availability == NM_AVSTATE_OK) {
+			printf("STARTING NM Radio Carrier...\n");
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
+		}
 		break;
 	default:
 		break;
@@ -412,6 +418,7 @@ static int sw_activ_rep(struct msgb *mb)
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
+		printf("Starting baseband\n");
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
 				      NM_STATE_UNLOCKED);
@@ -420,7 +427,19 @@ static int sw_activ_rep(struct msgb *mb)
 		/* TRX software is active, tell it to initiate RSL Link */
 		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		break;
-	case NM_OC_RADIO_CARRIER:
+	case NM_OC_RADIO_CARRIER: {
+		/*
+		 * Locking the radio carrier will make it go
+		 * offline again and we would come here. The
+		 * framework should determine that there was
+		 * no change and avoid recursion.
+		 *
+		 * This code is here to make sure that on start
+		 * a TRX remains locked.
+		 */
+		int rc_state = trx->rf_locked ?
+					NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+		printf("Starting radio: %d %d\n", rc_state, trx->rf_locked);
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
@@ -429,10 +448,11 @@ static int sw_activ_rep(struct msgb *mb)
 				       sizeof(nanobts_attr_radio));
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
-				      NM_STATE_UNLOCKED);
+				      rc_state);
 		abis_nm_opstart(trx->bts, foh->obj_class, trx->bts->bts_nr,
 				trx->nr, 0xff);
 		break;
+		}
 	}
 	return 0;
 }
