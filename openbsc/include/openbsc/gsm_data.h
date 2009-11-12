@@ -3,6 +3,13 @@
 
 #include <sys/types.h>
 
+struct value_string {
+	unsigned int value;
+	const char *str;
+};
+
+const char *get_value_string(const struct value_string *vs, u_int32_t val);
+
 enum gsm_band {
 	GSM_BAND_400,
 	GSM_BAND_850,

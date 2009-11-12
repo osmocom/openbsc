@@ -56,11 +56,6 @@
 void *tall_gsms_ctx;
 static u_int32_t new_callref = 0x40000001;
 
-struct value_string {
-	u_int32_t value;
-	const char *str;
-};
-
 static const struct value_string cp_cause_strs[] = {
 	{ GSM411_CP_CAUSE_NET_FAIL,	"Network Failure" },
 	{ GSM411_CP_CAUSE_CONGESTION,	"Congestion" },
@@ -103,19 +98,6 @@ static const struct value_string rp_cause_strs[] = {
 	{ GSM411_RP_CAUSE_PROTOCOL_ERR, "Protocol Error" },
 	{ 0, NULL }
 };
-
-const char *get_value_string(const struct value_string *vs, u_int32_t val)
-{
-	int i;
-
-	for (i = 0;; i++) {
-		if (vs[i].value == 0 && vs[i].str == NULL)
-			break;
-		if (vs[i].value == val)
-			return vs[i].str;
-	}
-	return "unknown";
-}
 
 struct gsm_sms *sms_alloc(void)
 {

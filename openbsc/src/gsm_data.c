@@ -30,6 +30,19 @@
 
 void *tall_bsc_ctx;
 
+const char *get_value_string(const struct value_string *vs, u_int32_t val)
+{
+	int i;
+
+	for (i = 0;; i++) {
+		if (vs[i].value == 0 && vs[i].str == NULL)
+			break;
+		if (vs[i].value == val)
+			return vs[i].str;
+	}
+	return "unknown";
+}
+
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
 {
