@@ -572,6 +572,18 @@ const char *nm_avail_name(u_int8_t avail)
 	return avail_names[avail];
 }
 
+static struct value_string test_names[] = {
+	/* FIXME: standard test names */
+	{ NM_IPACC_TESTNO_CHAN_USAGE, "Channel Usage" },
+	{ NM_IPACC_TESTNO_BCCH_CHAN_USAGE, "BCCH Channel Usage" },
+	{ NM_IPACC_TESTNO_FREQ_SYNC, "Frequency Synchronization" },
+	{ NM_IPACC_TESTNO_BCCH_INFO, "BCCH Info" },
+	{ NM_IPACC_TESTNO_TX_BEACON, "Transmit Beacon" },
+	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "System Info Monitor" },
+	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH Monitor" },
+	{ 0, NULL }
+};
+
 const char *nm_adm_name(u_int8_t adm)
 {
 	switch (adm) {
@@ -2672,3 +2684,93 @@ int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 				    obj_class, bts_nr, trx_nr, ts_nr,
 				     attr, attr_len);
 }
+
+static const char *ipacc_testres_names[] = {
+	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
+	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
+	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
+	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
+	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
+};
+
+const char *ipacc_testres_name(u_int8_t res)
+{
+	if (res < ARRAY_SIZE(ipacc_testres_names) &&
+	    ipacc_testres_names[res])
+		return ipacc_testres_names[res];
+
+	return "unknown";
+}
+
+/* parse BCCH information IEI from wire format to struct ipac_bcch_info */
+int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
+{
+	u_int8_t *cur = buf;
+	u_int16_t len;
+
+	memset(binf, 0, sizeof(binf));
+
+	if (cur[0] != NM_IPAC_EIE_BCCH_INFO)
+		return -EINVAL;
+	cur++;
+
+	len = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	binf->info_type = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
+		binf->freq_qual = *cur >> 2;
+
+	binf->arfcn = *cur++ & 3 << 8;
+	binf->arfcn |= *cur++;
+
+	if (binf->info_type & IPAC_BINF_RXLEV)
+		binf->rx_lev = *cur & 0x3f;
+	cur++;
+
+	if (binf->info_type & IPAC_BINF_RXQUAL)
+		binf->rx_qual = *cur & 0x7;
+	cur++;
+
+	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
+		binf->freq_err = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FRAME_OFFSET)
+		binf->frame_offset = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FRAME_NR_OFFSET)
+		binf->frame_nr_offset = ntohl(*(u_int32_t *)cur);
+	cur += 4;
+
+	if (binf->info_type & IPAC_BINF_BSIC)
+		binf->bsic = *cur++ & 0x3f;
+	cur++;
+
+	memcpy(binf->cgi, cur, sizeof(binf->cgi));
+	cur += sizeof(binf->cgi);
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2) {
+		memcpy(binf->ba_list_si2, cur, sizeof(binf->ba_list_si2));
+		cur += sizeof(binf->ba_list_si2);
+	}
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2bis) {
+		memcpy(binf->ba_list_si2bis, cur,
+			sizeof(binf->ba_list_si2bis));
+		cur += sizeof(binf->ba_list_si2bis);
+	}
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2ter) {
+		memcpy(binf->ba_list_si2ter, cur,
+			sizeof(binf->ba_list_si2ter));
+		cur += sizeof(binf->ba_list_si2ter);
+	}
+
+	return 0;
+}
+
+
