@@ -2750,8 +2750,6 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	len = ntohs(*(u_int16_t *)cur);
 	cur += 2;
 
-	DEBUGP(DNM, "bcch info: %s\n", hexdump(cur, len));
-
 	binf->info_type = ntohs(*(u_int16_t *)cur);
 	cur += 2;
 
