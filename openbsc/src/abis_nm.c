@@ -619,20 +619,26 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->nm_state;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->nm_state;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx)
+		if (obj_inst->trx_nr > bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
@@ -697,20 +703,26 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = bts;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx)
+		if (obj_inst->trx_nr > bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
@@ -744,6 +756,8 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	int rc;
 
 	obj = objclass2obj(bts, obj_class, obj_inst);
+	if (!obj)
+		return -EINVAL;
 	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
 	if (!nm_state)
 		return -1;
@@ -773,7 +787,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
 	if (!nm_state) {
-		DEBUGPC(DNM, "\n");
+		DEBUGPC(DNM, "unknown object class\n");
 		return -EINVAL;
 	}
 
