@@ -2731,8 +2731,8 @@ void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
 		cid->mnc += (buf[1] >> 4) *   1;
 	}
 
-	cid->lac = ntohs(buf+3);
-	cid->ci = ntohs(buf+5);
+	cid->lac = ntohs(*((u_int16_t *)&buf[3]));
+	cid->ci = ntohs(*((u_int16_t *)&buf[5]));
 }
 
 /* parse BCCH information IEI from wire format to struct ipac_bcch_info */
@@ -2749,6 +2749,8 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 
 	len = ntohs(*(u_int16_t *)cur);
 	cur += 2;
+
+	DEBUGP(DNM, "bcch info: %s\n", hexdump(cur, len));
 
 	binf->info_type = ntohs(*(u_int16_t *)cur);
 	cur += 2;
@@ -2780,7 +2782,7 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	cur += 4;
 
 	if (binf->info_type & IPAC_BINF_BSIC)
-		binf->bsic = *cur++ & 0x3f;
+		binf->bsic = *cur & 0x3f;
 	cur++;
 
 	ipac_parse_cgi(&binf->cgi, cur);

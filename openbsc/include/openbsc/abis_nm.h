@@ -701,7 +701,7 @@ struct ipac_bcch_info {
 	u_int16_t arfcn;
 	u_int8_t rx_lev;
 	u_int8_t rx_qual;
-	u_int16_t freq_err;
+	int16_t freq_err;
 	u_int16_t frame_offset;
 	u_int32_t frame_nr_offset;
 	u_int8_t bsic;
