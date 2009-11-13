@@ -79,23 +79,6 @@ struct ipacc_cusage_elem {
 		  rxlev:6;
 } __attribute__ ((packed));
 
-static const char *ipacc_testres_names[] = {
-	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
-	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
-	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
-	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
-	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
-};
-
-const char *ipacc_testres_name(u_int8_t res)
-{
-	if (res < ARRAY_SIZE(ipacc_testres_names) &&
-	    ipacc_testres_names[res])
-		return ipacc_testres_names[res];
-
-	return "unknown";
-}
-
 static int test_rep(void *_msg)
 {
 	struct msgb *msg = _msg;
