@@ -684,9 +684,18 @@ enum ipac_bcch_info_type {
 	IPAC_BINF_CELL_ALLOC		= (1 << 2),
 };
 
+struct cell_global_id {
+	u_int16_t mcc;
+	u_int16_t mnc;
+	u_int16_t lac;
+	u_int16_t ci;
+};
+
 /* The BCCH info from an ip.access test, in host byte order
  * and already parsed... */
 struct ipac_bcch_info {
+	struct llist_head list;
+
 	u_int16_t info_type;
 	u_int8_t freq_qual;
 	u_int16_t arfcn;
@@ -696,7 +705,7 @@ struct ipac_bcch_info {
 	u_int16_t frame_offset;
 	u_int32_t frame_nr_offset;
 	u_int8_t bsic;
-	u_int8_t cgi[7];
+	struct cell_global_id cgi;
 	u_int8_t ba_list_si2[16];
 	u_int8_t ba_list_si2bis[16];
 	u_int8_t ba_list_si2ter[16];

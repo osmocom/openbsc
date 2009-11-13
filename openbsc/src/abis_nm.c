@@ -2702,6 +2702,25 @@ const char *ipacc_testres_name(u_int8_t res)
 	return "unknown";
 }
 
+void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
+{
+	cid->mcc = (buf[0] & 0xf) * 100;
+	cid->mcc += (buf[0] >> 4) *  10;
+	cid->mcc += (buf[1] & 0xf) *  1;
+
+	if (buf[1] >> 4 == 0xf) {
+		cid->mnc = (buf[2] & 0xf) * 10;
+		cid->mnc += (buf[2] >> 4) *  1;
+	} else {
+		cid->mnc = (buf[2] & 0xf) * 100;
+		cid->mnc += (buf[2] >> 4) *  10;
+		cid->mnc += (buf[1] >> 4) *   1;
+	}
+
+	cid->lac = ntohs(buf+3);
+	cid->ci = ntohs(buf+5);
+}
+
 /* parse BCCH information IEI from wire format to struct ipac_bcch_info */
 int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 {
@@ -2750,8 +2769,8 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 		binf->bsic = *cur++ & 0x3f;
 	cur++;
 
-	memcpy(binf->cgi, cur, sizeof(binf->cgi));
-	cur += sizeof(binf->cgi);
+	ipac_parse_cgi(&binf->cgi, cur);
+	cur += 7;
 
 	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2) {
 		memcpy(binf->ba_list_si2, cur, sizeof(binf->ba_list_si2));
