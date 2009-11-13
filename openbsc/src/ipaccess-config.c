@@ -85,7 +85,8 @@ static int test_rep(void *_msg)
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	u_int16_t test_rep_len, ferr_list_len;
 	struct ipacc_ferr_elem *ife;
-	int i;
+	struct ipac_bcch_info binfo;
+	int i, rc;
 
 	DEBUGP(DNM, "TEST REPORT: ");
 
@@ -102,7 +103,7 @@ static int test_rep(void *_msg)
 
 	/* data[6]: ip.access nested IE. 3 == freq_err_list */
 	switch (foh->data[6]) {
-	case 3:
+	case NM_IPAC_EIE_FREQ_ERR_LIST:
 		/* data[7..8]: length of ferr_list */
 		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
 
@@ -113,7 +114,7 @@ static int test_rep(void *_msg)
 			ife->arfcn, ntohs(ife->freq_err));
 		}
 		break;
-	case 4:
+	case NM_IPAC_EIE_CHAN_USE_LIST:
 		/* data[7..8]: length of ferr_list */
 		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
 
@@ -124,6 +125,19 @@ static int test_rep(void *_msg)
 			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n",
 				cu & 0x3ff, cu >> 10);
 		}
+		break;
+	case NM_IPAC_EIE_BCCH_INFO_TYPE:
+		break;
+	case NM_IPAC_EIE_BCCH_INFO:
+		rc = ipac_parse_bcch_info(&binfo, foh->data+6);
+		if (rc < 0) {
+			DEBUGP(DNM, "BCCH Info parsing failed\n");
+			break;
+		}
+		DEBUGP(DNM, "==> ARFCN %u, RxLev %2u, RxQual %2u: %3d-%d, LAC %d CI %d\n",
+			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
+			binfo.cgi.mcc, binfo.cgi.mnc,
+			binfo.cgi.lac, binfo.cgi.ci);
 		break;
 	default:
 		break;
