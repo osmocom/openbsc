@@ -56,6 +56,8 @@ static const struct tlv_definition bss_att_tlvdef = {
 		[GSM0808_IE_CONFIG_EVO_INDI]	    = { TLV_TYPE_TV },
 		[GSM0808_IE_LSA_ACCESS_CTRL_SUPPR]  = { TLV_TYPE_TV },
 		[GSM0808_IE_SERVICE_HANDOVER]	    = { TLV_TYPE_TV},
+		[GSM0808_IE_ENCRYPTION_INFORMATION] = { TLV_TYPE_TLV },
+		[GSM0808_IE_CIPHER_RESPONSE_MODE]   = { TLV_TYPE_TV },
 	},
 };
 
@@ -191,8 +193,13 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 				     struct msgb *msg, unsigned int payload_length)
 {
+	u_int16_t len;
+	struct gsm_network *network = NULL;
+	const u_int8_t *data;
+	struct tlv_parsed tp;
 	struct msgb *resp;
 	int reject_cause = -1;
+	int include_imeisv = 1;
 
 	/* HACK: Sending A5/0 to the MS */
 	if (!msg->lchan || !msg->lchan->msc_data) {
@@ -207,10 +214,43 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 
 	msg->lchan->msc_data->ciphering_handled = 1;
 
-	/* FIXME: parse the message. TLVP */
-#warning "Need to handle cipher mode properly"
+	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_ENCRYPTION_INFORMATION)) {
+		DEBUGP(DMSC, "IE Encryption Information missing.\n");
+		goto reject;
+	}
 
-	return gsm48_send_rr_ciph_mode(msg->lchan, 1);
+	/*
+	 * check if our global setting is allowed
+	 *  - Currently we check for A5/0 and A5/1
+	 *  - Copy the key if that is necessary
+	 *  - Otherwise reject
+	 */
+	len = TLVP_LEN(&tp, GSM0808_IE_ENCRYPTION_INFORMATION);
+	if (len < 1) {
+		DEBUGP(DMSC, "IE Encryption Information is too short.\n");
+		goto reject;
+	}
+
+	network = msg->lchan->ts->trx->bts->network;
+	data = TLVP_VAL(&tp, GSM0808_IE_ENCRYPTION_INFORMATION);
+
+	if (network->a5_encryption == 0 && (data[0] & 0x1) == 0x1) {
+		msg->lchan->encr.alg_id = RSL_ENC_ALG_A5(0);
+	} else if (network->a5_encryption != 0 && (data[0] & 0x2) == 0x2) {
+		msg->lchan->encr.alg_id = RSL_ENC_ALG_A5(1);
+		msg->lchan->encr.key_len = len - 1;
+		memcpy(msg->lchan->encr.key, &data[1], len - 1);
+	} else {
+		DEBUGP(DMSC, "Can not select encryption...\n");
+		goto reject;
+	}
+
+	if (TLVP_PRESENT(&tp, GSM0808_IE_CIPHER_RESPONSE_MODE)) {
+		include_imeisv = TLVP_VAL(&tp, GSM0808_IE_CIPHER_RESPONSE_MODE)[0] & 0x1;
+	}
+
+	return gsm48_send_rr_ciph_mode(msg->lchan, include_imeisv);
 
 reject:
 	resp = bssmap_create_cipher_reject(reject_cause);
