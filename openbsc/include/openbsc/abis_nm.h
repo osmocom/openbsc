@@ -660,6 +660,58 @@ enum abis_nm_ipacc_testres_ie {
 	NM_IPACC_TR_IE_FREQ_ERR		= 18,
 };
 
+enum ipac_eie {
+	NM_IPAC_EIE_ARFCN_WHITE		= 0x01,
+	NM_IPAC_EIE_ARFCH_BLACK		= 0x02,
+	NM_IPAC_EIE_FREQ_ERR_LIST	= 0x03,
+	NM_IPAC_EIE_CHAN_USE_LIST	= 0x04,
+	NM_IPAC_EIE_BCCH_INFO_TYPE	= 0x05,
+	NM_IPAC_EIE_BCCH_INFO		= 0x06,
+	/* FIXME */
+};
+
+enum ipac_bcch_info_type {
+	IPAC_BINF_RXLEV			= (1 << 8),
+	IPAC_BINF_RXQUAL		= (1 << 9),
+	IPAC_BINF_FREQ_ERR_QUAL		= (1 << 10),
+	IPAC_BINF_FRAME_OFFSET		= (1 << 11),
+	IPAC_BINF_FRAME_NR_OFFSET	= (1 << 12),
+	IPAC_BINF_BSIC			= (1 << 13),
+	IPAC_BINF_CGI			= (1 << 14),
+	IPAC_BINF_NEIGH_BA_SI2		= (1 << 15),
+	IPAC_BINF_NEIGH_BA_SI2bis	= (1 << 0),
+	IPAC_BINF_NEIGH_BA_SI2ter	= (1 << 1),
+	IPAC_BINF_CELL_ALLOC		= (1 << 2),
+};
+
+struct cell_global_id {
+	u_int16_t mcc;
+	u_int16_t mnc;
+	u_int16_t lac;
+	u_int16_t ci;
+};
+
+/* The BCCH info from an ip.access test, in host byte order
+ * and already parsed... */
+struct ipac_bcch_info {
+	struct llist_head list;
+
+	u_int16_t info_type;
+	u_int8_t freq_qual;
+	u_int16_t arfcn;
+	u_int8_t rx_lev;
+	u_int8_t rx_qual;
+	int16_t freq_err;
+	u_int16_t frame_offset;
+	u_int32_t frame_nr_offset;
+	u_int8_t bsic;
+	struct cell_global_id cgi;
+	u_int8_t ba_list_si2[16];
+	u_int8_t ba_list_si2bis[16];
+	u_int8_t ba_list_si2ter[16];
+	u_int8_t ca_list_si1[16];
+};
+
 /* PUBLIC */
 
 struct msgb;
@@ -755,6 +807,8 @@ int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
 				 u_int32_t ip, u_int16_t port, u_int8_t stream);
 void abis_nm_ipaccess_cgi(u_int8_t *buf, struct gsm_bts *bts);
+int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf);
+const char *ipacc_testres_name(u_int8_t res);
 
 /* Functions calling into other code parts */
 enum nm_evt {

@@ -3208,7 +3208,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 {
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
-	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
@@ -3233,6 +3232,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
+		struct gsm_subscriber *subscr;
+
 		if (msg_type != MNCC_SETUP_REQ) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
@@ -3308,6 +3309,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 					"started.\n", bts->nr,
 					data->called.number,
 					get_mncc_name(msg_type));
+				subscr_put(subscr);
+				trans_free(trans);
 				return 0;
 			}
 			/* store setup informations until paging was successfull */
@@ -3315,11 +3318,13 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			/* Trigger paging */
 			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
 					setup_trig_pag_evt, subscr);
+			subscr_put(subscr);
 			return 0;
 		}
 		/* Assign lchan */
 		trans->lchan = lchan;
 		use_lchan(lchan);
+		subscr_put(subscr);
 	}
 	lchan = trans->lchan;
 

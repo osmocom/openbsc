@@ -1,5 +1,6 @@
 /* OpenBSC interface to quagga VTY */
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,6 +38,7 @@
 #include <openbsc/gsm_utils.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 
 /* forward declarations */
 void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr);
@@ -53,7 +55,6 @@ static int dummy_config_write(struct vty *v)
 {
 	return CMD_SUCCESS;
 }
-
 
 static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 {
@@ -88,6 +89,7 @@ DEFUN(cfg_subscr,
 		return CMD_WARNING;
 	}
 
+	/* vty_go_parent should put this subscriber */
 	vty->index = subscr;
 	vty->node = SUBSCR_NODE;
 
@@ -112,6 +114,7 @@ DEFUN(show_subscr,
 			return CMD_WARNING;
 		}
 		subscr_dump_vty(vty, subscr);
+		subscr_put(subscr);
 
 		return CMD_SUCCESS;
 	}
@@ -191,57 +194,111 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 }
 
 static int _send_sms_buffer(struct gsm_subscriber *receiver,
-			     struct buffer *b)
+			     struct buffer *b, u_int8_t tp_pid)
 {
 	struct gsm_sms *sms;
 
 	sms = sms_from_text(receiver, buffer_getstr(b));
-
+	sms->protocol_id = tp_pid;
 	gsm411_send_sms_subscr(receiver, sms);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(sms_send_ext,
-      sms_send_ext_cmd,
-      "sms send extension EXTEN .LINE",
-      "Send a message to a subscriber identified by EXTEN")
+static struct gsm_subscriber *get_subscr_by_argv(const char *type,
+						 const char *id)
 {
-	struct gsm_subscriber *receiver;
+	if (!strcmp(type, "extension"))
+		return subscr_get_by_extension(gsmnet, id);
+	else if (!strcmp(type, "imsi"))
+		return subscr_get_by_imsi(gsmnet, id);
+	else if (!strcmp(type, "tmsi"))
+		return subscr_get_by_tmsi(gsmnet, atoi(id));
+	else if (!strcmp(type, "id"))
+		return subscr_get_by_id(gsmnet, atoi(id));
+
+	return NULL;
+}
+#define SUBSCR_TYPES "(extension|imsi|tmsi|id)"
+
+DEFUN(subscriber_send_sms,
+      subscriber_send_sms_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN sms send .LINE",
+      "Select subscriber based on extension")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
 	int rc;
 
-	receiver = subscr_get_by_extension(gsmnet, argv[0]);
-	if (!receiver)
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
-
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b);
+	}
+	b = argv_to_buffer(argc, argv, 2);
+	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
+
+	subscr_put(subscr);
 
 	return rc;
 }
 
-DEFUN(sms_send_imsi,
-      sms_send_imsi_cmd,
-      "sms send imsi IMSI .LINE",
-      "Send a message to a subscriber identified by IMSI")
+DEFUN(subscriber_silent_sms,
+      subscriber_silent_sms_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent sms send .LINE",
+      "Select subscriber based on extension")
 {
-	struct gsm_subscriber *receiver;
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
 	int rc;
 
-	receiver = subscr_get_by_imsi(gsmnet, argv[0]);
-	if (!receiver)
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
+	}
 
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b);
+	b = argv_to_buffer(argc, argv, 2);
+	rc = _send_sms_buffer(subscr, b, 64);
 	buffer_free(b);
+
+	subscr_put(subscr);
 
 	return rc;
 }
 
+DEFUN(subscriber_silent_call,
+      subscriber_silent_call_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call (start|stop)",
+      "Send a silent call to a subscriber")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	int rc;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[2], "start")) {
+		rc = gsm_silent_call_start(subscr, vty);
+		if (rc <= 0) {
+			vty_out(vty, "%% Subscriber not attached%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	} else {
+		rc = gsm_silent_call_stop(subscr);
+		if (rc < 0)
+			return CMD_WARNING;
+	}
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_subscr_name,
       cfg_subscr_name_cmd,
@@ -291,17 +348,39 @@ DEFUN(cfg_subscr_authorized,
 	return CMD_SUCCESS;
 }
 
+static int scall_cbfn(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct scall_signal_data *sigdata = signal_data;
+	struct vty *vty = sigdata->data;
+
+	switch (signal) {
+	case S_SCALL_SUCCESS:
+		vty_out(vty, "%% silent call on ARFCN %u timeslot %u%s",
+			sigdata->lchan->ts->trx->arfcn, sigdata->lchan->ts->nr,
+			VTY_NEWLINE);
+		break;
+	case S_SCALL_EXPIRED:
+		vty_out(vty, "%% silent call expired paging%s", VTY_NEWLINE);
+		break;
+	}
+	return 0;
+}
 
 int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
 
+	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
+
 	install_element(VIEW_NODE, &show_subscr_cmd);
 	install_element(VIEW_NODE, &show_subscr_cache_cmd);
 
 	install_element(VIEW_NODE, &sms_send_pend_cmd);
-	install_element(VIEW_NODE, &sms_send_ext_cmd);
-	install_element(VIEW_NODE, &sms_send_imsi_cmd);
+
+	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);

@@ -3,6 +3,13 @@
 
 #include <sys/types.h>
 
+struct value_string {
+	unsigned int value;
+	const char *str;
+};
+
+const char *get_value_string(const struct value_string *vs, u_int32_t val);
+
 enum gsm_band {
 	GSM_BAND_400,
 	GSM_BAND_850,
@@ -419,7 +426,7 @@ struct gsm_network {
 #define SMS_HDR_SIZE	128
 #define SMS_TEXT_SIZE	256
 struct gsm_sms {
-	u_int64_t id;
+	unsigned long long id;
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
 
