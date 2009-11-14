@@ -237,6 +237,8 @@ DEFUN(subscriber_send_sms,
 	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
 
+	subscr_put(subscr);
+
 	return rc;
 }
 
@@ -253,8 +255,10 @@ DEFUN(subscriber_silent_sms,
 		return CMD_WARNING;
 
 	b = argv_to_buffer(argc, argv, 2);
-	rc = _send_sms_buffer(subscr, b, 0);
+	rc = _send_sms_buffer(subscr, b, 64);
 	buffer_free(b);
+
+	subscr_put(subscr);
 
 	return rc;
 }
