@@ -38,6 +38,7 @@
 #include <openbsc/gsm_utils.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 
 /* forward declarations */
 void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr);
@@ -54,7 +55,6 @@ static int dummy_config_write(struct vty *v)
 {
 	return CMD_SUCCESS;
 }
-
 
 static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 {
@@ -259,6 +259,38 @@ DEFUN(subscriber_silent_sms,
 	return rc;
 }
 
+DEFUN(subscriber_silent_call,
+      subscriber_silent_call_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call (start|stop)",
+      "Send a silent call to a subscriber")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	int rc;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1]);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[2], "start")) {
+		rc = gsm_silent_call_start(subscr, vty);
+		if (rc <= 0) {
+			vty_out(vty, "%% Subscriber not attached%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	} else {
+		rc = gsm_silent_call_stop(subscr);
+		if (rc < 0)
+			return CMD_WARNING;
+	}
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_subscr_name,
       cfg_subscr_name_cmd,
       "name NAME",
@@ -307,9 +339,30 @@ DEFUN(cfg_subscr_authorized,
 	return CMD_SUCCESS;
 }
 
+static int scall_cbfn(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct scall_signal_data *sigdata = signal_data;
+	struct vty *vty = sigdata->data;
+
+	switch (signal) {
+	case S_SCALL_SUCCESS:
+		vty_out(vty, "%% silent call on ARFCN %u timeslot %u%s",
+			sigdata->lchan->ts->trx->arfcn, sigdata->lchan->ts->nr,
+			VTY_NEWLINE);
+		break;
+	case S_SCALL_EXPIRED:
+		vty_out(vty, "%% silent call expired paging%s", VTY_NEWLINE);
+		break;
+	}
+	return 0;
+}
+
 int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
+
+	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
 
 	install_element(VIEW_NODE, &show_subscr_cmd);
 	install_element(VIEW_NODE, &show_subscr_cache_cmd);
@@ -318,6 +371,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
 	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);
