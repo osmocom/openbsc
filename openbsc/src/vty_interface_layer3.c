@@ -205,88 +205,59 @@ static int _send_sms_buffer(struct gsm_subscriber *receiver,
 	return CMD_SUCCESS;
 }
 
-DEFUN(sms_send_ext,
-      sms_send_ext_cmd,
-      "sms send extension EXTEN .LINE",
-      "Send a message to a subscriber identified by EXTEN")
+static struct gsm_subscriber *get_subscr_by_argv(const char *type,
+						 const char *id)
 {
-	struct gsm_subscriber *receiver;
+	if (!strcmp(type, "extension"))
+		return subscr_get_by_extension(gsmnet, id);
+	else if (!strcmp(type, "imsi"))
+		return subscr_get_by_imsi(gsmnet, id);
+	else if (!strcmp(type, "tmsi"))
+		return subscr_get_by_tmsi(gsmnet, atoi(id));
+	else if (!strcmp(type, "id"))
+		return subscr_get_by_id(gsmnet, atoi(id));
+
+	return NULL;
+}
+#define SUBSCR_TYPES "(extension|imsi|tmsi|id)"
+
+DEFUN(subscriber_send_sms,
+      subscriber_send_sms_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN sms send .LINE",
+      "Select subscriber based on extension")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
 	int rc;
 
-	receiver = subscr_get_by_extension(gsmnet, argv[0]);
-	if (!receiver)
+	if (!subscr)
 		return CMD_WARNING;
 
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b, 0);
+	b = argv_to_buffer(argc, argv, 2);
+	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
 
 	return rc;
 }
 
-DEFUN(sms_send_silent_ext,
-      sms_send_silent_ext_cmd,
-      "sms send silent extension EXTEN .LINE",
-      "Send a silent message to a subscriber identified by EXTEN")
+DEFUN(subscriber_silent_sms,
+      subscriber_silent_sms_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent sms send .LINE",
+      "Select subscriber based on extension")
 {
-	struct gsm_subscriber *receiver;
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
 	int rc;
 
-	receiver = subscr_get_by_extension(gsmnet, argv[0]);
-	if (!receiver)
+	if (!subscr)
 		return CMD_WARNING;
 
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b, 64);
-	buffer_free(b);
-	subscr_put(receiver);
-
-	return rc;
-}
-
-DEFUN(sms_send_imsi,
-      sms_send_imsi_cmd,
-      "sms send imsi IMSI .LINE",
-      "Send a message to a subscriber identified by IMSI")
-{
-	struct gsm_subscriber *receiver;
-	struct buffer *b;
-	int rc;
-
-	receiver = subscr_get_by_imsi(gsmnet, argv[0]);
-	if (!receiver)
-		return CMD_WARNING;
-
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b, 0);
+	b = argv_to_buffer(argc, argv, 2);
+	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
 
 	return rc;
 }
-
-DEFUN(sms_send_silent_imsi,
-      sms_send_silent_imsi_cmd,
-      "sms send silent imsi IMSI .LINE",
-      "Send a silent message to a subscriber identified by IMSI")
-{
-	struct gsm_subscriber *receiver;
-	struct buffer *b;
-	int rc;
-
-	receiver = subscr_get_by_imsi(gsmnet, argv[0]);
-	if (!receiver)
-		return CMD_WARNING;
-
-	b = argv_to_buffer(argc, argv, 1);
-	rc = _send_sms_buffer(receiver, b, 64);
-	buffer_free(b);
-	subscr_put(receiver);
-
-	return rc;
-}
-
 
 DEFUN(cfg_subscr_name,
       cfg_subscr_name_cmd,
@@ -336,7 +307,6 @@ DEFUN(cfg_subscr_authorized,
 	return CMD_SUCCESS;
 }
 
-
 int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -345,10 +315,9 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_subscr_cache_cmd);
 
 	install_element(VIEW_NODE, &sms_send_pend_cmd);
-	install_element(VIEW_NODE, &sms_send_ext_cmd);
-	install_element(VIEW_NODE, &sms_send_imsi_cmd);
-	install_element(VIEW_NODE, &sms_send_silent_ext_cmd);
-	install_element(VIEW_NODE, &sms_send_silent_imsi_cmd);
+
+	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);
