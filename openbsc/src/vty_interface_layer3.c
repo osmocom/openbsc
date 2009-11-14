@@ -230,9 +230,11 @@ DEFUN(subscriber_send_sms,
 	struct buffer *b;
 	int rc;
 
-	if (!subscr)
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
-
+	}
 	b = argv_to_buffer(argc, argv, 2);
 	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
@@ -251,8 +253,11 @@ DEFUN(subscriber_silent_sms,
 	struct buffer *b;
 	int rc;
 
-	if (!subscr)
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
+	}
 
 	b = argv_to_buffer(argc, argv, 2);
 	rc = _send_sms_buffer(subscr, b, 64);
@@ -273,7 +278,7 @@ DEFUN(subscriber_silent_call,
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
-			argv[0], argv[1]);
+			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
