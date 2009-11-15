@@ -450,6 +450,15 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 	return gsm48_tx_gmm_ra_upd_ack(msg);
 }
 
+static int gsm48_rx_gmm_status(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMM, "GMM STATUS (reject cause 0x%02x)\n", gh->data[0]);
+
+	return 0;
+}
+
 /* GPRS Mobility Management */
 static int gsm0408_rcv_gmm(struct msgb *msg)
 {
@@ -466,6 +475,9 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	case GSM48_MT_GMM_ID_RESP:
 		rc = gsm48_rx_gmm_id_resp(msg);
 		break;
+	case GSM48_MT_GMM_STATUS:
+		rc = gsm48_rx_gmm_status(msg);
+		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 	case GSM48_MT_GMM_ATTACH_COMPL:
@@ -473,7 +485,6 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	case GSM48_MT_GMM_DETACH_REQ:
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
-	case GSM48_MT_GMM_STATUS:
 		fprintf(stderr, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
