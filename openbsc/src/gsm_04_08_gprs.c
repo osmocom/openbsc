@@ -465,7 +465,7 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
 	int rc;
 
-	switch (gh->msg_type & 0xbf) {
+	switch (gh->msg_type) {
 	case GSM48_MT_GMM_RA_UPD_REQ:
 		rc = gsm48_rx_gmm_ra_upd_req(msg);
 		break;
@@ -539,7 +539,7 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
 	int rc;
 
-	switch (gh->msg_type & 0xbf) {
+	switch (gh->msg_type) {
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		rc = gsm48_rx_gsm_act_pdp_req(msg);
 		break;
