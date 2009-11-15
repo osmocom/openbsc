@@ -77,8 +77,8 @@ enum gsm48_gprs_tmr_unit {
 
 /* Chapter 9.4.2 / Table 9.4.2 */
 struct gsm48_attach_ack {
-	u_int8_t force_stby:4,	/* 10.5.5.7 */
-		 att_result:4;	/* 10.5.5.1 */
+	u_int8_t att_result:4,	/* 10.5.5.7 */
+		 force_stby:4;	/* 10.5.5.1 */
 	u_int8_t ra_upd_timer;	/* 10.5.7.3 */
 	u_int8_t radio_prio;	/* 10.5.7.2 */
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
