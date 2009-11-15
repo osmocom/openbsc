@@ -32,6 +32,7 @@
 #include <sccp/sccp.h>
 
 #include <arpa/inet.h>
+#include <assert.h>
 
 
 #define BSSMAP_MSG_SIZE 512
@@ -283,6 +284,64 @@ static void bssmap_t10_fired(void *_conn)
 }
 
 /*
+ * helpers for the assignment command
+ */
+enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *audio)
+{
+	if (audio->hr) {
+		switch (audio->ver) {
+		case 1:
+			return GSM0808_PERM_HR1;
+			break;
+		case 2:
+			return GSM0808_PERM_HR2;
+			break;
+		case 3:
+			return GSM0808_PERM_HR3;
+			break;
+		default:
+			    DEBUGP(DMSC, "Wrong speech mode: %d\n", audio->ver);
+			    return GSM0808_PERM_FR1;
+		}
+	} else {
+		switch (audio->ver) {
+		case 1:
+			return GSM0808_PERM_FR1;
+			break;
+		case 2:
+			return GSM0808_PERM_FR2;
+			break;
+		case 3:
+			return GSM0808_PERM_FR3;
+			break;
+		default:
+			    DEBUGP(DMSC, "Wrong speech mode: %d\n", audio->ver);
+			    return GSM0808_PERM_HR1;
+		}
+	}
+}
+
+enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
+{
+	switch (speech) {
+	case GSM0808_PERM_HR1:
+	case GSM0808_PERM_FR1:
+		return GSM48_CMODE_SPEECH_V1;
+		break;
+	case GSM0808_PERM_HR2:
+	case GSM0808_PERM_FR2:
+		return GSM48_CMODE_SPEECH_EFR;
+		break;
+	case GSM0808_PERM_HR3:
+	case GSM0808_PERM_FR3:
+		return GSM48_CMODE_SPEECH_AMR;
+		break;
+	}
+
+	assert(0);
+}
+
+/*
  * Handle the assignment request message.
  *
  * See §3.2.1.1 for the message type
@@ -290,11 +349,13 @@ static void bssmap_t10_fired(void *_conn)
 static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 				     struct msgb *msg, unsigned int length)
 {
+	struct gsm_network *network;
 	struct tlv_parsed tp;
 	struct bss_sccp_connection_data *msc_data;
 	u_int8_t *data;
 	u_int8_t multiplex;
-	int i, found = 0;
+	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
+	int i, supported;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
@@ -302,6 +363,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	}
 
 	msc_data = msg->lchan->msc_data;
+	network = msg->lchan->ts->trx->bts->network;
 	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
@@ -343,20 +405,30 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		goto reject;
 	}
 
-	/* go through the list of permitted codecs */
-	for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
-		if ((data[i] & 0x7f) == GSM0808_PERM_FR2) {
-			found = 1;
-			break;
-		}
+	/*
+	 * go through the list of preferred codecs of our gsm network
+	 * and try to find it among the permitted codecs. If we found
+	 * it we will send chan_mode to the right mode and break the
+	 * inner loop. The outer loop will exit due chan_mode having
+	 * the correct value.
+	 */
+	for (supported = 0;
+		chan_mode == GSM48_CMODE_SIGN && supported < network->audio_length;
+		++supported) {
 
-		/* last octet, stop */
-		if ((data[i] & 0x80) == 0x00)
-			break;
+		int perm_val = audio_support_to_gsm88(network->audio_support[supported]);
+		for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
+			if ((data[i] & 0x7f) == perm_val) {
+				chan_mode = gsm88_to_chan_mode(perm_val);
+				break;
+			} else if ((data[i] & 0x80) == 0x00) {
+				break;
+			}
+		}
 	}
 
-	if (!found) {
-		DEBUGP(DMSC, "ChannelType FR2 not supported\n");
+	if (chan_mode == GSM48_CMODE_SIGN) {
+		DEBUGP(DMSC, "No supported audio type found.\n");
 		goto reject;
 	}
 
@@ -366,8 +438,8 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
 
 	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
-	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p\n", conn);
-	return gsm48_lchan_modify(msg->lchan, GSM48_CMODE_SPEECH_EFR);
+	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x\n", conn, chan_mode);
+	return gsm48_lchan_modify(msg->lchan, chan_mode);
 
 reject:
 	gsm0808_send_assignment_failure(msg->lchan,
