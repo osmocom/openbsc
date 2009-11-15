@@ -44,6 +44,59 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 
+/* 10.5.5.14 GPRS MM Cause / Table 10.5.147 */
+struct value_string gmm_cause_names[] = {
+	/* FIXME */
+	{ GMM_CAUSE_SEM_INCORR_MSG, "Semantically incorrect message" },
+	{ GMM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
+	{ GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL,
+			"Message type non-existant or not implemented" },
+	{ GMM_CAUSE_MSGT_INCOMP_P_STATE,
+			"Message type not compatible with protocol state" },
+	{ GMM_CAUSE_IE_NOTEXIST_NOTIMPL,
+			"Information element non-existent or not implemented" },
+	{ GMM_CAUSE_COND_IE_ERR, "Conditional IE error" },
+	{ GMM_CAUSE_MSG_INCOMP_P_STATE,
+				"Message not compatible with protocol state " },
+	{ GMM_CAUSE_PROTO_ERR_UNSPEC, "Protocol error, unspecified" },
+	{ 0, NULL }
+};
+
+/* 10.5.6.6 SM Cause / Table 10.5.157 */
+struct value_string gsm_cause_names[] = {
+	{ GSM_CAUSE_INSUFF_RSRC, "Insufficient resources" },
+	{ GSM_CAUSE_MISSING_APN, "Missing or unknown APN" },
+	{ GSM_CAUSE_UNKNOWN_PDP, "Unknown PDP address or PDP type" },
+	{ GSM_CAUSE_AUTH_FAILED, "User Authentication failed" },
+	{ GSM_CAUSE_ACT_REJ_GGSN, "Activation rejected by GGSN" },
+	{ GSM_CAUSE_ACT_REJ_UNSPEC, "Activation rejected, unspecified" },
+	{ GSM_CAUSE_SERV_OPT_NOTSUPP, "Service option not supported" },
+	{ GSM_CAUSE_REQ_SERV_OPT_NOTSUB,
+				"Requested service option not subscribed" },
+	{ GSM_CAUSE_SERV_OPT_TEMP_OOO,
+				"Service option temporarily out of order" },
+	{ GSM_CAUSE_NSAPI_IN_USE, "NSAPI already used" },
+	{ GSM_CAUSE_DEACT_REGULAR, "Regular deactivation" },
+	{ GSM_CAUSE_QOS_NOT_ACCEPTED, "QoS not accepted" },
+	{ GSM_CAUSE_NET_FAIL, "Network Failure" },
+	{ GSM_CAUSE_REACT_RQD, "Reactivation required" },
+	{ GSM_CAUSE_FEATURE_NOTSUPP, "Feature not supported " },
+	{ GSM_CAUSE_INVALID_TRANS_ID, "Invalid transaction identifier" },
+	{ GSM_CAUSE_SEM_INCORR_MSG, "Semantically incorrect message" },
+	{ GSM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
+	{ GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL,
+			"Message type non-existant or not implemented" },
+	{ GSM_CAUSE_MSGT_INCOMP_P_STATE,
+			"Message type not compatible with protocol state" },
+	{ GSM_CAUSE_IE_NOTEXIST_NOTIMPL,
+			"Information element non-existent or not implemented" },
+	{ GSM_CAUSE_COND_IE_ERR, "Conditional IE error" },
+	{ GSM_CAUSE_MSG_INCOMP_P_STATE,
+				"Message not compatible with protocol state " },
+	{ GSM_CAUSE_PROTO_ERR_UNSPEC, "Protocol error, unspecified" },
+	{ 0, NULL }
+};
+
 static const char *att_name(u_int8_t type)
 {
 	switch (type) {
@@ -454,7 +507,8 @@ static int gsm48_rx_gmm_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMM, "GMM STATUS (reject cause 0x%02x)\n", gh->data[0]);
+	DEBUGP(DMM, "GPRS MM STATUS (cause: %s)\n",
+		get_value_string(gmm_cause_names, gh->data[0]));
 
 	return 0;
 }
@@ -535,6 +589,16 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
 }
 
+static int gsm48_rx_gsm_status(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DMM, "GPRS SM STATUS (cause: %s)\n",
+		get_value_string(gsm_cause_names, gh->data[0]));
+
+	return 0;
+}
+
 /* GPRS Session Management */
 static int gsm0408_rcv_gsm(struct msgb *msg)
 {
@@ -545,11 +609,13 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		rc = gsm48_rx_gsm_act_pdp_req(msg);
 		break;
+	case GSM48_MT_GSM_STATUS:
+		rc = gsm48_rx_gsm_status(msg);
+		break;
 	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
 	case GSM48_MT_GSM_DEACT_PDP_REQ:
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
-	case GSM48_MT_GSM_STATUS:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
