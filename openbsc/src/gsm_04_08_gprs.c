@@ -554,9 +554,11 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 /* Section 9.5.2: Ativate PDP Context Accept */
 static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_ctx_req *req)
 {
+	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) old_msg->gmmh;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
+	u_int8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
 
 	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
 
@@ -564,13 +566,33 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	gh->proto_discr = GSM48_PDISC_SM_GPRS;
+	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_ACT_PDP_ACK;
 	act_ack = (struct gsm48_act_pdp_ctx_ack *)
 					msgb_put(msg, sizeof(*act_ack));
 	act_ack->llc_sapi = req->req_llc_sapi;
 	memcpy(act_ack->qos_lv, req->req_qos_lv, sizeof(act_ack->qos_lv));
 	//act_ack->radio_prio = 4;
+
+	return gsm48_gmm_sendmsg(msg, 0);
+}
+
+/* Section 9.5.9: Deactivate PDP Context Accept */
+static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
+{
+	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) old_msg->gmmh;
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	u_int8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
+
+	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
+
+	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
+	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_ACK;
 
 	return gsm48_gmm_sendmsg(msg, 0);
 }
@@ -587,6 +609,17 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	/* FIXME: parse access point name + IPCP config options */
 
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
+}
+
+/* Section 9.5.8: Deactivate PDP Context Request */
+static int gsm48_rx_gsm_deact_pdp_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+
+	DEBUGP(DMM, "DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
+		get_value_string(gsm_cause_names, gh->data[0]));
+
+	return gsm48_tx_gsm_deact_pdp_acc(msg);
 }
 
 static int gsm48_rx_gsm_status(struct msgb *msg)
@@ -609,11 +642,12 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 	case GSM48_MT_GSM_ACT_PDP_REQ:
 		rc = gsm48_rx_gsm_act_pdp_req(msg);
 		break;
+	case GSM48_MT_GSM_DEACT_PDP_REQ:
+		rc = gsm48_rx_gsm_deact_pdp_req(msg);
 	case GSM48_MT_GSM_STATUS:
 		rc = gsm48_rx_gsm_status(msg);
 		break;
 	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
-	case GSM48_MT_GSM_DEACT_PDP_REQ:
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
