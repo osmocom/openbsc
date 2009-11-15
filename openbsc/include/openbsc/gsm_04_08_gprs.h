@@ -85,6 +85,23 @@ struct gsm48_attach_ack {
 	u_int8_t data[0];
 } __attribute__((packed));
 
+/* Chapter 9.5.1 / Table 9.5.1 */
+struct gsm48_act_pdp_ctx_req {
+	u_int8_t req_nsapi;
+	u_int8_t req_llc_sapi;
+	u_int8_t req_qos_lv[4];
+	u_int8_t data[0];
+} __attribute__((packed));
+
+/* Chapter 9.5.2 / Table 9.5.2 */
+struct gsm48_act_pdp_ctx_ack {
+	u_int8_t llc_sapi;
+	u_int8_t qos_lv[4];
+	u_int8_t radio_prio:4,
+		 spare:4;
+	u_int8_t data[0];
+} __attribute__((packed));
+
 /* Chapter 10.5.5.14 / Table 10.5.147 */
 enum gsm48_gmm_cause {
 	GMM_CAUSE_IMSI_UNKNOWN		= 0x02,
@@ -118,6 +135,15 @@ enum gprs_tlli_tyoe {
 	TLLI_RANDOM,
 	TLLI_AUXILIARY,
 	TLLI_RESERVED,
+};
+
+/* Section 6.1.2.2: Session management states on the network side */
+enum gsm48_pdp_state {
+	PDP_S_INACTIVE,
+	PDP_S_ACTIVE_PENDING,
+	PDP_S_ACTIVE,
+	PDP_S_INACTIVE_PENDING,
+	PDP_S_MODIFY_PENDING,
 };
 
 int gprs_tlli_type(u_int32_t tlli);

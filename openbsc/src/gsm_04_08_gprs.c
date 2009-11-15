@@ -497,6 +497,70 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	return rc;
 }
 
+/* Section 9.5.2: Ativate PDP Context Accept */
+static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_ctx_req *req)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_act_pdp_ctx_ack *act_ack;
+	struct gsm48_hdr *gh;
+
+	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
+
+	msg->tlli = old_msg->tlli;
+	msg->trx = old_msg->trx;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SM_GPRS;
+	gh->msg_type = GSM48_MT_GSM_ACT_PDP_ACK;
+	act_ack = (struct gsm48_act_pdp_ctx_ack *)
+					msgb_put(msg, sizeof(*act_ack));
+	act_ack->llc_sapi = req->req_llc_sapi;
+	memcpy(act_ack->qos_lv, req->req_qos_lv, sizeof(act_ack->qos_lv));
+	//act_ack->radio_prio = 4;
+
+	return gsm48_gmm_sendmsg(msg, 0);
+}
+
+/* Section 9.5.1: Activate PDP Context Request */
+static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
+	u_int8_t *pdp_addr_lv = act_req->data;
+
+	/* FIXME: parse access point name + IPCP config options */
+
+	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
+}
+
+/* GPRS Session Management */
+static int gsm0408_rcv_gsm(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	int rc;
+
+	switch (gh->msg_type & 0xbf) {
+	case GSM48_MT_GSM_ACT_PDP_REQ:
+		rc = gsm48_rx_gsm_act_pdp_req(msg);
+		break;
+	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
+	case GSM48_MT_GSM_DEACT_PDP_REQ:
+	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
+	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
+	case GSM48_MT_GSM_STATUS:
+		fprintf(stderr, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
+			gh->msg_type);
+		break;
+	default:
+		fprintf(stderr, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
+			gh->msg_type);
+		break;
+
+	}
+
+	return rc;
+}
+
 /* Main entry point for incoming 04.08 GPRS messages */
 int gsm0408_gprs_rcvmsg(struct msgb *msg)
 {
@@ -509,6 +573,7 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 		rc = gsm0408_rcv_gmm(msg);
 		break;
 	case GSM48_PDISC_SM_GPRS:
+		rc = gsm0408_rcv_gsm(msg);
 		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
 		break;
