@@ -319,7 +319,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 #endif
 		}
 		/* we always want the IMEI, too */
-		gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMSI);
+		gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMEI);
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		break;
