@@ -322,6 +322,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 		gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMEI);
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
+		ctx->tlli = msg->tlli;
 		break;
 	case GSM_MI_TYPE_TMSI:
 		tmsi = strtoul(mi_string, NULL, 10);
@@ -333,6 +334,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 			gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMSI);
 			/* FIXME: Start some timer */
 			ctx->mm_state = GMM_COMMON_PROC_INIT;
+			ctx->tlli = msg->tlli;
 		}
 		break;
 	default:
