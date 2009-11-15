@@ -485,11 +485,11 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	case GSM48_MT_GMM_DETACH_REQ:
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
-		fprintf(stderr, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
+		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
+		DEBUGP(DMM, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 	}
@@ -528,6 +528,8 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
 	u_int8_t *pdp_addr_lv = act_req->data;
 
+	DEBUGP(DMM, "ACTIVATE PDP CONTEXT REQ\n");
+
 	/* FIXME: parse access point name + IPCP config options */
 
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
@@ -548,11 +550,11 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
 	case GSM48_MT_GSM_STATUS:
-		fprintf(stderr, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
+		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
+		DEBUGP(DMM, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 
@@ -574,11 +576,9 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 		break;
 	case GSM48_PDISC_SM_GPRS:
 		rc = gsm0408_rcv_gsm(msg);
-		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02x\n",
-			pdisc);
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 discriminator 0x%02x\n",
+		DEBUGP(DMM, "Unknown GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
 		break;
 	}
