@@ -439,6 +439,12 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 
 	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
 	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x\n", conn, chan_mode);
+	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+		msg->lchan->mr_conf.ver = 1;
+		msg->lchan->mr_conf.icmi = 1;
+		msg->lchan->mr_conf.m5_90 = 1;
+	}
+
 	return gsm48_lchan_modify(msg->lchan, chan_mode);
 
 reject:
