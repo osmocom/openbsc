@@ -504,7 +504,8 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 }
 
 /* Chapter 9.1.2: Assignment Command */
-int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command,
+			  struct gsm48_multi_rate_conf *conf)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -533,11 +534,24 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
 	ass->power_command = power_command;
 
+	/* in case of multi rate we need to attach a config */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+		if (!conf) {
+			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+		} else {
+			u_int8_t *data = msgb_put(msg, 4);
+			data[0] = GSM48_IE_MUL_RATE_CFG;
+			data[1] = 0x2;
+			memcpy(&data[2], conf, 2);
+		}
+	}
+
 	return gsm48_sendmsg(msg, NULL);
 }
 
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode,
+			      struct gsm48_multi_rate_conf *conf)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -561,14 +575,27 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
 	cmm->mode = mode;
 
+	/* in case of multi rate we need to attach a config */
+	if (mode == GSM48_CMODE_SPEECH_AMR) {
+		if (!conf) {
+			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+		} else {
+			u_int8_t *data = msgb_put(msg, 4);
+			data[0] = GSM48_IE_MUL_RATE_CFG;
+			data[1] = 0x2;
+			memcpy(&data[2], conf, 2);
+		}
+	}
+
 	return gsm48_sendmsg(msg, NULL);
 }
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode,
+		       struct gsm48_multi_rate_conf *conf)
 {
 	int rc;
 
-	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode);
+	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode, conf);
 	if (rc < 0)
 		return rc;
 

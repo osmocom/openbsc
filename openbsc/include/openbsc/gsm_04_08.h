@@ -33,6 +33,23 @@ struct gsm48_chan_desc {
 	};
 } __attribute__ ((packed));
 
+/* Chapter 10.5.2.21aa */
+struct gsm48_multi_rate_conf {
+	u_int8_t smod : 2,
+		 spare: 1,
+		 icmi : 1,
+		 nscb : 1,
+		 ver : 3;
+	u_int8_t m4_75 : 1,
+		 m5_15 : 1,
+		 m5_90 : 1,
+		 m6_70 : 1,
+		 m7_40 : 1,
+		 m7_95 : 1,
+		 m10_2 : 1,
+		 m12_2 : 1;
+} __attribute__((packed));
+
 /* Chapter 10.5.2.30 */
 struct gsm48_req_ref {
 	u_int8_t ra;
@@ -411,6 +428,7 @@ struct gsm48_imsi_detach_ind {
 #define GSM_MI_TYPE_TMSI	0x04
 #define GSM_MI_ODD		0x08
 
+#define GSM48_IE_MUL_RATE_CFG	0x03	/* 10.5.2.21aa */
 #define GSM48_IE_MOBILE_ID	0x17
 #define GSM48_IE_NAME_LONG	0x43	/* 10.5.3.5a */
 #define GSM48_IE_NAME_SHORT	0x45	/* 10.5.3.5a */
@@ -741,7 +759,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu);
-int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class);
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class, struct gsm48_multi_rate_conf *conf);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -759,7 +777,7 @@ int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
 int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
 int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode, struct gsm48_multi_rate_conf *conf);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
 
 #endif
