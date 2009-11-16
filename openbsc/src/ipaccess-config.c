@@ -279,7 +279,7 @@ static void print_help(void)
 	printf("  -o --oml-ip ip\n");
 	printf("  -r --restart\n");
 	printf("  -n flags/mask\tSet NVRAM attributes.\n");
-	printf("  -l --listen testnr \tPerform speciified test number\n");
+	printf("  -l --listen testnr \tPerform specified test number\n");
 	printf("  -h --help this text\n");
 	printf("  -s --stream-id ID\n");
 }
