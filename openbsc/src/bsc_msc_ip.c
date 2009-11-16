@@ -709,6 +709,46 @@ static void signal_handler(int signal)
 	}
 }
 
+static void test_mode()
+{
+	static const u_int8_t assignment_req[] = { 0x01, 0x0b, 0x03, 0x01, 0x0b, 0x25, 0x01, 0x00, 0x01 };
+	struct gsm_lchan lchan;
+	struct sccp_connection conn;
+	struct bss_sccp_connection_data data;
+
+	struct gsm_bts_trx_ts trx_ts;
+	struct gsm_bts_trx trx;
+	struct gsm_bts bts;
+	int rc;
+
+	/* initialize */
+	fprintf(stderr, "Bootstraping the network. Sending GSM08.08 reset.\n");
+	rc = bsc_bootstrap_network(NULL, config_file);
+	if (rc < 0) {
+		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
+		exit(1);
+	}
+
+	bts.network = bsc_gsmnet;
+	trx.bts = &bts;
+	trx_ts.trx = &trx;
+	lchan.ts = &trx_ts;
+
+	/* create fake data connection */
+	data.lchan = &lchan;
+	data.sccp = &conn;
+	lchan.msc_data = &data;
+	conn.data_ctx = &data;
+
+
+	struct msgb *msg = msgb_alloc(400, "test-msg");
+	msg->lchan = &lchan;
+
+	msg->l4h = msgb_put(msg, ARRAY_SIZE(assignment_req));
+	memcpy(msg->l4h, assignment_req, ARRAY_SIZE(assignment_req));
+	bssmap_rcvmsg_dt1(&conn, msg, ARRAY_SIZE(assignment_req));
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
