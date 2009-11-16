@@ -1133,8 +1133,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* determine channel type (SDCCH/TCH_F/TCH_H) based on
 	 * request reference RA */
-	lctype = get_ctype_by_chreq(bts, rqd_ref->ra);
-	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra);
+	lctype = get_ctype_by_chreq(bts, rqd_ref->ra, bts->network->neci);
+	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra, bts->network->neci);
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);

@@ -87,6 +87,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
 	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
 		VTY_NEWLINE);
+	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -789,6 +791,15 @@ DEFUN(cfg_net_encryption,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_neci,
+      cfg_net_neci_cmd,
+      "neci (0|1)",
+      "Set if NECI of cell selection is to be set")
+{
+	gsmnet->neci = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1228,6 +1239,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
+	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
