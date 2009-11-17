@@ -28,6 +28,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mncc.h>
 #include <openbsc/paging.h>
+#include <openbsc/chan_alloc.h>
 
 void *tall_trans_ctx;
 
@@ -95,13 +96,13 @@ void trans_free(struct gsm_trans *trans)
 		break;
 	}
 
-	if (trans->lchan)
-		put_lchan(trans->lchan);
-
 	if (!trans->lchan && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
 		paging_request_stop(NULL, trans->subscr, NULL);
 	}
+
+	if (trans->lchan)
+		put_lchan(trans->lchan);
 
 	if (trans->subscr)
 		subscr_put(trans->subscr);

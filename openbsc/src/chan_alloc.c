@@ -33,8 +33,6 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 
-static void auto_release_channel(void *_lchan);
-
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
 {
@@ -221,10 +219,6 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		/* clear any msc reference */
 		lchan->msc_data = NULL;
 
-		/* Configure the time and start it so it will be closed */
-		lchan->release_timer.cb = auto_release_channel;
-		lchan->release_timer.data = lchan;
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 	}
 
 	return lchan;
@@ -245,42 +239,33 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->use_count = 0;
 	}
 
-	/* stop the timer */
-	bsc_del_timer(&lchan->release_timer);
-
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }
 
 /* Consider releasing the channel now */
-int lchan_auto_release(struct gsm_lchan *lchan)
+int _lchan_release(struct gsm_lchan *lchan)
 {
 	if (lchan->use_count > 0) {
+		DEBUGP(DRLL, "BUG: _lchan_release called without zero use_count.\n");
 		return 0;
 	}
 
 	/* Assume we have GSM04.08 running and send a release */
 	if (lchan->subscr) {
+		++lchan->use_count;
 		gsm48_send_rr_release(lchan);
+		--lchan->use_count;
 	}
 
 	/* spoofed? message */
 	if (lchan->use_count < 0) {
-		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
+		DEBUGP(DRLL, "BUG: channel count is negative: %d\n", lchan->use_count);
 	}
 
-	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
+	DEBUGP(DRLL, "Releasing the channel with: %d (%x)\n", lchan->nr, lchan->nr);
 	rsl_release_request(lchan, 0);
 	return 1;
-}
-
-/* Auto release the channel when the use count is zero */
-static void auto_release_channel(void *_lchan)
-{
-	struct gsm_lchan *lchan = _lchan;
-
-	if (!lchan_auto_release(lchan))
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {

@@ -296,13 +296,13 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 		int rc;
 
 		db_subscriber_alloc_tmsi(lchan->subscr);
-		release_loc_updating_req(lchan);
 		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might
 		 * trigger further action like SMS delivery */
 		subscr_update(lchan->subscr, msg->trx->bts,
 			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+		release_loc_updating_req(lchan);
 		return rc;
 	}
 
@@ -972,9 +972,8 @@ static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	release_loc_updating_req(lchan);
 	gsm0408_loc_upd_rej(lchan, reject_cause);
-	lchan_auto_release(lchan);
+	release_loc_updating_req(lchan);
 }
 
 static void schedule_reject(struct gsm_lchan *lchan)

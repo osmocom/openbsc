@@ -837,6 +837,10 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 		return -EINVAL;
 	}
 
+	if (msg->lchan->use_count <= 0) {
+		DEBUGP(DRSL, "BUG: Trying to send data on unused lchan\n");
+	}
+
 	/* First push the L3 IE tag and length */
 	msgb_tv16_push(msg, RSL_IE_L3_INFO, l3_len);
 

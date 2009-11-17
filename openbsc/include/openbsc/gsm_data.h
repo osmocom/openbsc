@@ -85,26 +85,6 @@ typedef int gsm_cbfn(unsigned int hooknum,
 		     struct msgb *msg,
 		     void *data, void *param);
 
-/*
- * Use the channel. As side effect the lchannel recycle timer
- * will be started.
- */
-#define LCHAN_RELEASE_TIMEOUT 20, 0
-#define use_lchan(lchan) \
-	do {	lchan->use_count++; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
-
-#define put_lchan(lchan) \
-	do { lchan->use_count--; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
-	} while(0);
-
-
 /* communications link with a BTS */
 struct gsm_bts_link {
 	struct gsm_bts *bts;
@@ -202,9 +182,6 @@ struct gsm_lchan {
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
-
-	/* Timer started to release the channel */
-	struct timer_list release_timer;
 
 	struct timer_list T3101;
 

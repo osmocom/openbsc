@@ -44,6 +44,7 @@
 #include <openbsc/bssap.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/chan_alloc.h>
 
 #include <sccp/sccp.h>
 

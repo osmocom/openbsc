@@ -32,6 +32,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
+#include <openbsc/chan_alloc.h>
 
 LLIST_HEAD(active_subscribers);
 void *tall_subscr_ctx;
