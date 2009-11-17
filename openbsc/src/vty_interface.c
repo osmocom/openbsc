@@ -786,7 +786,7 @@ DEFUN(cfg_net_encryption,
       "encryption a5 (0|1|2)",
       "Enable or disable encryption (A5) for this network\n")
 {
-	gsmnet->auth_policy = atoi(argv[0]);
+	gsmnet->a5_encryption= atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
