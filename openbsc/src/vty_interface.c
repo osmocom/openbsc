@@ -620,7 +620,7 @@ DEFUN(show_e1ts,
       "show e1_timeslot [line_nr] [ts_nr]",
 	SHOW_STR "Display information about a E1 timeslot\n")
 {
-	struct e1inp_line *line;
+	struct e1inp_line *line = NULL;
 	struct e1inp_ts *ts;
 	int ts_nr;
 
