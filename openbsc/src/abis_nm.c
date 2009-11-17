@@ -1036,7 +1036,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			DEBUGPC(DNM, "\n");
 
-		dispatch_signal(SS_NM, S_NM_NACK, (void*) ((long)mt));
+		dispatch_signal(SS_NM, S_NM_NACK, (void*) &mt);
 		return 0;
 	}
 #if 0
@@ -2601,7 +2601,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_NACK, (void*) ((long)foh->msg_type));
+		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &foh->msg_type);
 		break;
 	default:
 		break;

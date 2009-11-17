@@ -61,7 +61,7 @@ static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0',
  * result. The nanoBTS will send us a NACK when we did something the
  * BTS didn't like.
  */
-static int ipacc_msg_nack(int mt)
+static int ipacc_msg_nack(u_int8_t mt)
 {
 	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
 	exit(-1);
@@ -149,9 +149,12 @@ static int test_rep(void *_msg)
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
+	u_int8_t *msg_type;
+
 	switch (signal) {
 	case S_NM_IPACC_NACK:
-		return ipacc_msg_nack((int)signal_data);
+		msg_type = signal_data;
+		return ipacc_msg_nack(*msg_type);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	default:
