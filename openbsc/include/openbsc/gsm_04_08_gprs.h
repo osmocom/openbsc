@@ -50,6 +50,27 @@
 #define GPRS_UPD_T_RA_LA_IMSI_ATT	2
 #define GPRS_UPD_T_PERIODIC		3
 
+enum gsm48_gprs_ie_mm {
+	GSM48_IE_GMM_TIMER_READY	= 0x17, /* 10.5.7.3 */
+	GSM48_IE_GMM_PTMSI_SIG		= 0x19,	/* 10.5.5.8 */
+	GSM48_IE_GMM_AUTH_RAND		= 0x21, /* 10.5.3.1 */
+	GSM48_IE_GMM_AUTH_SRES		= 0x22, /* 10.5.3.2 */
+	GSM48_IE_GMM_IMEISV		= 0x23, /* 10.5.1.4 */
+	GSM48_IE_GMM_DRX_PARAM		= 0x27,	/* 10.5.5.6 */
+	GSM48_IE_GMM_MS_NET_CAPA	= 0x31,	/* 10.5.5.12 */
+};
+
+enum gsm48_gprs_ie_sm {
+	GSM48_IE_GSM_APN		= 0x28,	/* 10.5.6.1 */
+	GSM48_IE_GSM_PROTO_CONF_OPT	= 0x27,	/* 10.5.6.3 */
+	GSM48_IE_GSM_PDP_ADDR		= 0x2b, /* 10.5.6.4 */
+	GSM48_IE_GSM_AA_TMR		= 0x29,	/* 10.5.7.3 */
+	GSM48_IE_GSM_NAME_FULL		= 0x43, /* 10.5.3.5a */
+	GSM48_IE_GSM_NAME_SHORT		= 0x45, /* 10.5.3.5a */
+	GSM48_IE_GSM_TIMEZONE		= 0x46, /* 10.5.3.8 */
+	GSM48_IE_GSM_UTC_AND_TZ		= 0x47, /* 10.5.3.9 */
+	GSM48_IE_GSM_LSA_ID		= 0x48, /* 10.5.3.11 */
+};
 
 /* Chapter 10.4.4.15 */
 struct gsm48_ra_id {
