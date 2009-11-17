@@ -551,6 +551,15 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	data = msgb_put(gsm48, length - sizeof(*header));
 	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
 
+	/*
+	 * patch LAI entries...
+	 */
+	struct gsm48_hdr *gh = (struct gsm48_hdr *)gsm48->l3h;
+	if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
+		if (gh->data[2] == 0x80)
+			gh->data[2] = 0x08;
+	}
+
 	bts_queue_send(gsm48, header->link_id);
 	return 0;
 }
@@ -586,7 +595,7 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
 	gsm0408_generate_lai(lai, bts->network->country_code,
-			     bts->network->network_code, bts->location_area_code);
+			     /*bts->network->network_code - 1*/ 8, bts->location_area_code);
 
 	ci = (u_int16_t *) msgb_put(msg, 2);
 	*ci = htons(bts->cell_identity);
