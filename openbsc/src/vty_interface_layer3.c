@@ -32,6 +32,7 @@
 #include <openbsc/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/silent_call.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
