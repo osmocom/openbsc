@@ -127,6 +127,9 @@ struct bss_sccp_connection_data {
         /* for assginment command */
         struct timer_list T10;
 
+	/* for SCCP ... */
+	struct timer_list sccp_it;
+
 	/* audio handling */
 	int rtp_port;
 

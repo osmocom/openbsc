@@ -47,6 +47,9 @@
 
 #include <sccp/sccp.h>
 
+/* SCCP helper */
+#define SCCP_IT_TIMER 60
+
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
@@ -76,9 +79,19 @@ struct bss_sccp_connection_data *bss_sccp_create_data()
 void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
 	bsc_del_timer(&data->T10);
+	bsc_del_timer(&data->sccp_it);
 	bsc_free_queued(data->sccp);
 	bts_free_queued(data);
 	talloc_free(data);
+}
+
+static void sccp_it_fired(void *_data)
+{
+	struct bss_sccp_connection_data *data =
+		(struct bss_sccp_connection_data *) _data;
+
+	sccp_connection_send_it(data->sccp);
+	bsc_schedule_timer(&data->sccp_it, SCCP_IT_TIMER, 0);
 }
 
 
@@ -200,6 +213,11 @@ int open_sccp_connection(struct msgb *layer3)
 	sccp_connection->data_cb = msc_outgoing_sccp_data;
 	sccp_connection->data_ctx = con_data;
 	layer3->lchan->msc_data = con_data;
+
+	/* start the inactivity test timer */
+	con_data->sccp_it.cb = sccp_it_fired;
+	con_data->sccp_it.data = con_data;
+	bsc_schedule_timer(&con_data->sccp_it, SCCP_IT_TIMER, 0);
 
 	/* FIXME: Use transaction for this */
 	use_lchan(layer3->lchan);
