@@ -61,6 +61,7 @@ static struct in_addr bts_in;
 static int first_request = 1;
 static const char *audio_name = "GSM-EFR/8000";
 static int audio_payload = 97;
+static int audio_loop = 0;
 static int early_bind = 0;
 
 static char *config_file = "mgcp.cfg";
@@ -73,6 +74,16 @@ enum mgcp_connection_mode {
 	MGCP_CONN_RECV_ONLY = 1,
 	MGCP_CONN_SEND_ONLY = 2,
 	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
+};
+
+enum {
+	DEST_NETWORK = 0,
+	DEST_BTS = 1,
+};
+
+enum {
+	PROTO_RTP,
+	PROTO_RTCP,
 };
 
 #define CI_UNUSED 0
@@ -211,7 +222,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
 	struct mgcp_endpoint *endp;
-	int rc, is_remote;
+	int rc, dest, proto;
 
 	endp = (struct mgcp_endpoint *) fd->data;
 
@@ -231,22 +242,12 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	 * able to tell if this is legitimate.
 	 */
 	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
-	is_remote = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0;
-	if (is_remote) {
-		if (endp->rtp == addr.sin_port) {
-			return _send(fd->fd, &bts_in, endp->bts_rtp, buf, rc);
-		} else if (endp->rtcp == addr.sin_port) {
-			return _send(fd->fd, &bts_in, endp->bts_rtcp, buf, rc);
-		} else {
-			DEBUGP(DMGCP, "Unknown remote port. Not able to forward on 0x%x port: %d\n",
-				ENDPOINT_NUMBER(endp), ntohs(addr.sin_port));
-		}
-
-		return -1;
-	}
+	dest = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0
+			? DEST_BTS : DEST_NETWORK;
+	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
-	if (endp->bts_rtp == 0) {
+	if (dest == DEST_NETWORK && endp->bts_rtp == 0) {
 		/* it was the BTS... */
 		if (memcmp(&addr.sin_addr, &bts_in, sizeof(bts_in)) == 0) {
 			if (fd == &endp->local_rtp) {
@@ -262,16 +263,18 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		}
 	}
 
-	if (endp->bts_rtp == 0 || endp->conn_mode == MGCP_CONN_RECV_ONLY) {
-		DEBUGP(DMGCP, "Not forwarding data from possible BTS conn: %d on 0x%x\n",
-			endp->conn_mode, ENDPOINT_NUMBER(endp));
-		return -1;
-	}
+	/* dispatch */
+	if (audio_loop)
+		dest = !dest;
 
-	if (fd == &endp->local_rtp) {
-		return _send(fd->fd, &endp->remote, endp->rtp, buf, rc);
+	if (dest == DEST_NETWORK) {
+		return _send(fd->fd, &endp->remote,
+			     proto == PROTO_RTP ? endp->rtp : endp->rtcp,
+			     buf, rc);
 	} else {
-		return _send(fd->fd, &endp->remote, endp->rtcp, buf, rc);
+		return _send(fd->fd, &bts_in,
+			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
+			     buf, rc);
 	}
 }
 
@@ -1007,6 +1010,15 @@ DEFUN(cfg_mgcp_sdp_payload_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_loop,
+      cfg_mgcp_loop_cmd,
+      "loop (0|1)",
+      "Loop the audio")
+{
+	audio_loop = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 static void mgcp_vty_init()
 {
 	cmd_init(1);
@@ -1023,6 +1035,7 @@ static void mgcp_vty_init()
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 }
 
 int main(int argc, char** argv)
