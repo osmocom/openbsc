@@ -956,6 +956,10 @@ static void patch_si_tables(struct gsm_bts *bts)
 	type_4->cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 
+	/* Set NECI to influence channel request */
+	type_3->cell_sel_par.neci = bts->network->neci;
+	type_4->cell_sel_par.neci = bts->network->neci;
+
 	if (bts->cell_barred) {
 		type_1->rach_control.cell_bar = 1;
 		type_2->rach_control.cell_bar = 1;

@@ -3139,7 +3139,7 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
 
-	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode);
+	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode, NULL);
 }
 
 static struct downstate {

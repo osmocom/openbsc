@@ -410,6 +410,7 @@ struct gsm_network {
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
 	int a5_encryption;
+	int neci;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);

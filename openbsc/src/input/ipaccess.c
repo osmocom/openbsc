@@ -543,7 +543,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 
 	/* Some BTS has connected to us, but we don't know yet which line
 	 * (as created by the OML link) to associate it with.  Thus, we
-	 * aloocate a temporary bfd until we have received ID from BTS */
+	 * allocate a temporary bfd until we have received ID from BTS */
 
 	bfd->fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
 	if (bfd->fd < 0) {
