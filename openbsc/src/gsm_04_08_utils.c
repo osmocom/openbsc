@@ -602,7 +602,7 @@ int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode,
 	/* FIXME: we not only need to do this after mode modify, but
 	 * also after channel activation */
 	if (is_ipaccess_bts(lchan->ts->trx->bts) && lchan_mode != GSM48_CMODE_SIGN)
-		rc = rsl_ipacc_bind(lchan);
+		rc = rsl_ipacc_crcx(lchan);
 
 	return rc;
 }

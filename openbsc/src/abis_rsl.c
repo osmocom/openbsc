@@ -1362,14 +1362,14 @@ static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
 }
 
 /* ip.access specific RSL extensions */
-int rsl_ipacc_bind(struct gsm_lchan *lchan)
+int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
 	u_int8_t speech_mode;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
-	init_dchan_hdr(dh, RSL_MT_IPAC_BIND);
+	init_dchan_hdr(dh, RSL_MT_IPAC_CRCX);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
@@ -1386,7 +1386,7 @@ int rsl_ipacc_bind(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
+int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 		      u_int16_t conn_id, u_int8_t rtp_payload2)
 {
 	struct msgb *msg = rsl_msgb_alloc();
@@ -1396,7 +1396,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
-	init_dchan_hdr(dh, RSL_MT_IPAC_CONNECT);
+	init_dchan_hdr(dh, RSL_MT_IPAC_MDCX);
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
@@ -1404,7 +1404,7 @@ int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	speech_mode = 0x00 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_CONNECT "
+	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_MDCX "
 		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d speech_mode=0x%02x\n",
 		gsm_ts_name(lchan->ts), dh->chan_nr,
 		inet_ntoa(ia), port, rtp_payload2, conn_id, speech_mode);
@@ -1454,7 +1454,7 @@ int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
-static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
+static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
@@ -1492,12 +1492,12 @@ static int abis_rsl_rx_ipacc_bindack(struct msgb *msg)
 	ts->abis_ip.bound_port = ntohs(port);
 	ts->abis_ip.conn_id = ntohs(attr_f8);
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_BIND_ACK, msg->lchan);
+	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
 
 	return 0;
 }
 
-static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
+static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
@@ -1508,7 +1508,7 @@ static int abis_rsl_rx_ipacc_disc_ind(struct msgb *msg)
 		print_rsl_cause(TLVP_VAL(&tv, RSL_IE_CAUSE),
 				TLVP_LEN(&tv, RSL_IE_CAUSE));
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_DISC_IND, msg->lchan);
+	dispatch_signal(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
 
 	return 0;
 }
@@ -1523,27 +1523,27 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 		gsm_ts_name(msg->lchan->ts), rllh->chan_nr);
 	
 	switch (rllh->c.msg_type) {
-	case RSL_MT_IPAC_BIND_ACK:
-		DEBUGPC(DRSL, "IPAC_BIND_ACK ");
-		rc = abis_rsl_rx_ipacc_bindack(msg);
+	case RSL_MT_IPAC_CRCX_ACK:
+		DEBUGPC(DRSL, "IPAC_CRCX_ACK ");
+		rc = abis_rsl_rx_ipacc_crcx_ack(msg);
 		break;
-	case RSL_MT_IPAC_BIND_NACK:
+	case RSL_MT_IPAC_CRCX_NACK:
 		/* somehow the BTS was unable to bind the lchan to its local
 		 * port?!? */
-		DEBUGPC(DRSL, "IPAC_BIND_NACK ");
+		DEBUGPC(DRSL, "IPAC_CRCX_NACK ");
 		break;
-	case RSL_MT_IPAC_CONNECT_ACK:
+	case RSL_MT_IPAC_MDCX_ACK:
 		/* the BTS tells us that a connect operation was successful */
-		DEBUGPC(DRSL, "IPAC_CONNECT_ACK ");
+		DEBUGPC(DRSL, "IPAC_MDCX_ACK ");
 		break;
-	case RSL_MT_IPAC_CONNECT_NACK:
+	case RSL_MT_IPAC_MDCX_NACK:
 		/* somehow the BTS was unable to connect the lchan to a remote
 		 * port */
-		DEBUGPC(DRSL, "IPAC_CONNECT_NACK ");
+		DEBUGPC(DRSL, "IPAC_MDCX_NACK ");
 		break;
-	case RSL_MT_IPAC_DISCONNECT_IND:
-		DEBUGPC(DRSL, "IPAC_DISCONNECT_IND ");
-		rc = abis_rsl_rx_ipacc_disc_ind(msg);
+	case RSL_MT_IPAC_DLCX_IND:
+		DEBUGPC(DRSL, "IPAC_DLCX_IND ");
+		rc = abis_rsl_rx_ipacc_dlcx_ind(msg);
 		break;
 	default:
 		DEBUGPC(DRSL, "Unknown ip.access msg_type 0x%02x", rllh->c.msg_type);

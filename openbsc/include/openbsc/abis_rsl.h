@@ -142,16 +142,16 @@ enum abis_rsl_msgtype {
 	RSL_MT_IPAC_DISC_MUX		= 0x56,
 	RSL_MT_IPAC_DISC_MUX_ACK,
 	RSL_MT_IPAC_DISC_MUX_NACK,
-	RSL_MT_IPAC_BIND		= 0x70,		/* Bind to local BTS RTP port */
-	RSL_MT_IPAC_BIND_ACK,
-	RSL_MT_IPAC_BIND_NACK,
-	RSL_MT_IPAC_CONNECT		= 0x73,
-	RSL_MT_IPAC_CONNECT_ACK,
-	RSL_MT_IPAC_CONNECT_NACK,
-	RSL_MT_IPAC_DISCONNECT_IND	= 0x76,
-	RSL_MT_IPAC_DISCONNECT		= 0x77,
-	RSL_MT_IPAC_DISCONNECT_ACK,
-	RSL_MT_IPAC_DISCONNECT_NACK,
+	RSL_MT_IPAC_CRCX		= 0x70,		/* Bind to local BTS RTP port */
+	RSL_MT_IPAC_CRCX_ACK,
+	RSL_MT_IPAC_CRCX_NACK,
+	RSL_MT_IPAC_MDCX		= 0x73,
+	RSL_MT_IPAC_MDCX_ACK,
+	RSL_MT_IPAC_MDCX_NACK,
+	RSL_MT_IPAC_DLCX_IND		= 0x76,
+	RSL_MT_IPAC_DLCX		= 0x77,
+	RSL_MT_IPAC_DLCX_ACK,
+	RSL_MT_IPAC_DLCX_NACK,
 };
 
 /* Siemens vendor-specific */
@@ -535,10 +535,10 @@ enum rsl_mrpci_phase {
 int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 
 /* ip.access specfic RSL extensions */
-int rsl_ipacc_bind(struct gsm_lchan *lchan);
-int rsl_ipacc_connect(struct gsm_lchan *lchan, u_int32_t ip,
-		      u_int16_t port, u_int16_t conn_id,
-		      u_int8_t rtp_payload2);
+int rsl_ipacc_crcx(struct gsm_lchan *lchan);
+int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip,
+		   u_int16_t port, u_int16_t conn_id,
+		   u_int8_t rtp_payload2);
 int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
