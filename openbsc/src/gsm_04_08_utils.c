@@ -599,16 +599,12 @@ int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode,
 	if (rc < 0)
 		return rc;
 
-	/* FIXME: we not only need to do this after mode modify, but
-	 * also after channel activation */
-	if (is_ipaccess_bts(lchan->ts->trx->bts) && lchan_mode != GSM48_CMODE_SIGN)
-		rc = rsl_ipacc_crcx(lchan);
-
 	return rc;
 }
 
 int gsm48_rx_rr_modif_ack(struct msgb *msg)
 {
+	int rc;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_chan_mode_modify *mod =
 				(struct gsm48_chan_mode_modify *) gh->data;
@@ -641,5 +637,11 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 
 	/* We've successfully modified the MS side of the channel,
 	 * now go on to modify the BTS side of the channel */
-	return rsl_chan_mode_modify_req(msg->lchan);
+	rc = rsl_chan_mode_modify_req(msg->lchan);
+
+	/* FIXME: we not only need to do this after mode modify, but
+	 * also after channel activation */
+	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && mod->mode != GSM48_CMODE_SIGN)
+		rsl_ipacc_crcx(msg->lchan);
+	return rc;
 }
