@@ -1101,7 +1101,7 @@ DEFUN(cfg_trx_max_power_red,
 {
 	int maxpwr_r = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
-	int upper_limit = 12;	/* default 12.21 max power red. */
+	int upper_limit = 24;	/* default 12.21 max power red. */
 
 	/* FIXME: check if our BTS type supports more than 12 */
 	if (maxpwr_r < 0 || maxpwr_r > upper_limit) {
