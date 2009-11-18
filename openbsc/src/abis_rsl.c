@@ -648,6 +648,11 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
 	}
 
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
+			     (u_int8_t *) &lchan->mr_conf);
+	}
+
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);

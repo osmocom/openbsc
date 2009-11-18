@@ -163,6 +163,9 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
+
+	/* AMR bits */
+	struct gsm48_multi_rate_conf mr_conf;
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;

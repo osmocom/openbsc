@@ -759,7 +759,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu);
-int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class, struct gsm48_multi_rate_conf *conf);
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -777,7 +777,7 @@ int send_siemens_mrpci(struct gsm_lchan *lchan, u_int8_t *classmark2_lv);
 int gsm48_paging_extract_mi(struct msgb *msg, char *mi_string, u_int8_t *mi_type);
 int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode, struct gsm48_multi_rate_conf *conf);
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
 
 #endif
