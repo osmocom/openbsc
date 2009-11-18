@@ -139,7 +139,12 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 	if (conn->connection_state >= SCCP_CONNECTION_STATE_RELEASE_COMPLETE) {
 		DEBUGP(DMSC, "Freeing sccp conn: %p state: %d\n", conn, conn->connection_state);
 		if (sccp_get_lchan(conn->data_ctx) != NULL) {
+			struct gsm_lchan *lchan = sccp_get_lchan(conn->data_ctx);
+
 			DEBUGP(DMSC, "ERROR: The lchan is still associated\n.");
+
+			lchan->msc_data = NULL;
+			put_lchan(lchan);
 		}
 
 		bss_sccp_free_data((struct bss_sccp_connection_data *)conn->data_ctx);
