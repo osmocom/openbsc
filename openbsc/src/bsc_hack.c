@@ -73,7 +73,6 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
-	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
 }
@@ -89,7 +88,6 @@ static void handle_options(int argc, char** argv)
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
-			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
 			{"rtp-proxy", 0, 0, 'P'},
@@ -117,9 +115,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			config_file = strdup(optarg);
-			break;
-		case 'r':
-			gsm0408_set_reject_cause(atoi(optarg));
 			break;
 		case 'p':
 			create_pcap_file(optarg);

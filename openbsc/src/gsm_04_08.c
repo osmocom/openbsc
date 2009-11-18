@@ -241,12 +241,6 @@ struct gsm_lai {
 	u_int16_t lac;
 };
 
-static int reject_cause = 0;
-void gsm0408_set_reject_cause(int cause)
-{
-	reject_cause = cause;
-}
-
 static u_int32_t new_callref = 0x80000001;
 
 static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
@@ -978,9 +972,10 @@ static int mm_rx_id_resp(struct msgb *msg)
 static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	release_loc_updating_req(lchan);
-	gsm0408_loc_upd_rej(lchan, reject_cause);
+	gsm0408_loc_upd_rej(lchan, bts->network->reject_cause);
 	lchan_auto_release(lchan);
 }
 

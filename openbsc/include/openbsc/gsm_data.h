@@ -425,6 +425,7 @@ struct gsm_network {
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
+	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
 	int neci;
 
