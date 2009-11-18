@@ -535,6 +535,31 @@ static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb 
 	return ret;
 }
 
+static int _sccp_send_connection_it(struct sccp_connection *conn)
+{
+	struct msgb *msgb;
+	struct sccp_data_it *it;
+	int ret;
+
+	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
+				   SCCP_MSG_HEADROOM, "sccp it");
+	msgb->l2h = &msgb->data[0];
+	it = (struct sccp_data_it *) msgb_put(msgb, sizeof(*it));
+	it->type = SCCP_MSG_TYPE_IT;
+	memcpy(&it->destination_local_reference, &conn->destination_local_reference,
+		sizeof(struct sccp_source_reference));
+	memcpy(&it->source_local_reference, &conn->source_local_reference,
+		sizeof(struct sccp_source_reference));
+
+	it->proto_class = 0x2;
+	it->sequencing[0] = it->sequencing[1] = 0;
+	it->credit = 0;
+
+	ret = _send_msg(msgb);
+	msgb_free(msgb);
+	return ret;
+}
+
 static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
 {
 	struct msgb *msg;
@@ -1023,6 +1048,23 @@ int sccp_connection_write(struct sccp_connection *connection, struct msgb *data)
 	}
 
 	return _sccp_send_connection_data(connection, data);
+}
+
+/*
+ * Send a Inactivity Test message. The owner of the connection
+ * should start a timer and call this method regularily. Calling
+ * this every 60 seconds should be good enough.
+ */
+int sccp_connection_send_it(struct sccp_connection *connection)
+{
+	if (connection->connection_state < SCCP_CONNECTION_STATE_CONFIRM
+	    || connection->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
+		DEBUGP(DSCCP, "sccp_connection_write: Wrong connection state: %p %d\n",
+		       connection, connection->connection_state);
+		return -1;
+	}
+
+	return _sccp_send_connection_it(connection);
 }
 
 /* send a connection release and wait for the connection released */

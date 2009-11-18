@@ -622,6 +622,7 @@ static void do_test_sccp_connection(const struct connection_test *test)
 
 		printf("\tWriting test data2\n");
 		sccp_connection_write(outgoing_con, test_data2);
+		sccp_connection_send_it(outgoing_con);
 
 		/* closing connection */
 		if (test->close_side == 0)

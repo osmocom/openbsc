@@ -380,4 +380,15 @@ struct sccp_data_unitdata {
 	u_int8_t			data[0];
 } __attribute__((packed));
 
+struct sccp_data_it {
+	/* mandantory */
+	u_int8_t			type;
+	struct sccp_source_reference	destination_local_reference;
+	struct sccp_source_reference	source_local_reference;
+	u_int8_t			proto_class;
+
+	u_int8_t			sequencing[2];
+	u_int8_t			credit;
+} __attribute__((packed));
+
 #endif

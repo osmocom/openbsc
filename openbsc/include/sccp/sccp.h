@@ -101,6 +101,7 @@ int sccp_system_incoming(struct msgb *data);
  * Send data on an existing connection
  */
 int sccp_connection_write(struct sccp_connection *connection, struct msgb *data);
+int sccp_connection_send_it(struct sccp_connection *connection);
 int sccp_connection_close(struct sccp_connection *connection, int cause);
 int sccp_connection_free(struct sccp_connection *connection);
 
