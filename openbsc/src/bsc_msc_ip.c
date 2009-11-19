@@ -460,10 +460,14 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 			DEBUGP(DMSC, "Connecting BTS to port: %d conn: %d\n",
 				lchan->msc_data->rtp_port, ts->abis_ip.conn_id);
 
+			int rtp_payload = ts->trx->bts->network->rtp_payload;
+			if (rtp_payload == 0)
+				rtp_payload = ts->abis_ip.rtp_payload2;
+
 			rc = rsl_ipacc_mdcx(lchan, ntohl(local_addr.s_addr),
 					    lchan->msc_data->rtp_port,
 					    ts->abis_ip.conn_id,
-					    ts->abis_ip.rtp_payload2);
+					    rtp_payload);
 			if (rc < 0) {
 				DEBUGP(DMSC, "Failed to send connect: %d\n", rc);
 				return rc;

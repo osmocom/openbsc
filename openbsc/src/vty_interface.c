@@ -867,6 +867,16 @@ error:
 	return CMD_ERR_INCOMPLETE;
 }
 
+DEFUN(cfg_net_ipacc_rtp_payload,
+      cfg_net_ipacc_rtp_payload_cmd,
+      "ipacc rtp_payload <0-256>",
+      "Override the RTP payload to use")
+{
+	gsmnet->rtp_payload = atoi(argv[0]) & 0xff;
+
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1308,6 +1318,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ipacc_rtp_payload_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
