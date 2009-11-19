@@ -908,6 +908,23 @@ static int config_write_mgcp(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
+      SHOW_STR "Display information about the MGCP Media Gateway")
+{
+	int i;
+
+	vty_out(vty, "MGCP is up and running with %u endpoints:%s", number_endpoints - 1, VTY_NEWLINE);
+	for (i = 1; i < number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &endpoints[i];
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u%s",
+			i, endp->ci,
+			ntohs(endp->rtp), ntohs(endp->rtcp),
+			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp), VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp,
       cfg_mgcp_cmd,
       "mgcp",
@@ -1027,6 +1044,9 @@ int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
 	vty_init();
+
+	install_element(VIEW_NODE, &show_mgcp_cmd);
+
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
