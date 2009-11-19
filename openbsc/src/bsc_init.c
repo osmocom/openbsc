@@ -392,36 +392,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;
 		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_OFF_LINE) {
-			/* Patch ARFCN into radio attribute */
-			nanobts_attr_radio[5] &= 0xf0;
-			nanobts_attr_radio[5] |= trx->arfcn >> 8;
-			nanobts_attr_radio[6] = trx->arfcn & 0xff;
-			abis_nm_set_radio_attr(trx, nanobts_attr_radio,
-						sizeof(nanobts_attr_radio));
-			abis_nm_chg_adm_state(trx->bts, obj_class,
-					      trx->bts->bts_nr, trx->nr, 0xff,
-					      NM_STATE_UNLOCKED);
-			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
-					trx->nr, 0xff);
-		}
-		if (new_state->operational == 1 &&
 		    new_state->availability == NM_AVSTATE_OK)
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
-		break;
-	case NM_OC_BASEB_TRANSC:
-		trx = container_of(obj, struct gsm_bts_trx, bb_transc);
-		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			abis_nm_chg_adm_state(trx->bts, obj_class,
-					trx->bts->bts_nr, trx->nr, 0xff,
-					NM_STATE_UNLOCKED);
-			abis_nm_opstart(trx->bts, obj_class,
-					trx->bts->bts_nr, trx->nr, 0xff);
-			/* TRX software is active, tell it to initiate RSL Link */
-			abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
-		}
 		break;
 	default:
 		break;
@@ -438,6 +411,28 @@ static int sw_activ_rep(struct msgb *mb)
 
 
 	switch (foh->obj_class) {
+	case NM_OC_BASEB_TRANSC:
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      NM_STATE_UNLOCKED);
+		abis_nm_opstart(trx->bts, foh->obj_class,
+				trx->bts->bts_nr, trx->nr, 0xff);
+		/* TRX software is active, tell it to initiate RSL Link */
+		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
+		break;
+	case NM_OC_RADIO_CARRIER:
+		/* Patch ARFCN into radio attribute */
+		nanobts_attr_radio[5] &= 0xf0;
+		nanobts_attr_radio[5] |= trx->arfcn >> 8;
+		nanobts_attr_radio[6] = trx->arfcn & 0xff;
+		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
+				       sizeof(nanobts_attr_radio));
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      NM_STATE_UNLOCKED);
+		abis_nm_opstart(trx->bts, foh->obj_class, trx->bts->bts_nr,
+				trx->nr, 0xff);
+		break;
 	}
 	return 0;
 }
