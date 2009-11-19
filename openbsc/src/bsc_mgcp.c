@@ -899,7 +899,11 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  bts ip %s%s", bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", source_port, VTY_NEWLINE);
+	vty_out(vty, "  bind early %u%s", !!early_bind, VTY_NEWLINE);
 	vty_out(vty, "  rtp base %u%s", rtp_base_port, VTY_NEWLINE);
+	vty_out(vty, "  sdp audio payload number %u%s", audio_payload, VTY_NEWLINE);
+	vty_out(vty, "  sdp audio payload name %s%s", audio_name, VTY_NEWLINE);
+	vty_out(vty, "  loop %u%s", !!audio_loop, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
