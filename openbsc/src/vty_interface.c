@@ -282,6 +282,24 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " ipacc rtp_payload %u%s", gsmnet->rtp_payload, VTY_NEWLINE);
+
+	if (gsmnet->audio_length != 0) {
+		int i;
+
+		vty_out(vty, " codec_list ");
+		for (i = 0; i < gsmnet->audio_length; ++i) {
+			printf("I... %d %d\n", i, gsmnet->audio_length);
+			if (i != 0)
+				vty_out(vty, ", ");
+
+			if (gsmnet->audio_support[i]->hr)
+				vty_out(vty, "hr%.1u", gsmnet->audio_support[i]->ver);
+			else
+				vty_out(vty, "fr%.1u", gsmnet->audio_support[i]->ver);
+		}
+		vty_out(vty, "%s", VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
