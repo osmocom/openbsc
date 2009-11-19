@@ -307,8 +307,6 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 {
 	/* set to zero until we get the info */
 	memset(&endp->remote, 0, sizeof(endp->remote));
-	endp->bts_rtp = endp->bts_rtcp = 0;
-	endp->rtp = endp->rtcp = 0;
 
 	if (create_bind(&endp->local_rtp, endp->rtp_port) != 0) {
 		DEBUGP(DMGCP, "Failed to create RTP port: %d on 0x%x\n",
