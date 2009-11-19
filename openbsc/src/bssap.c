@@ -437,8 +437,12 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	msc_data->T10.data = conn;
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
 
+	/* the mgcp call agent starts counting at one. a bit of a weird mapping */
+	if (multiplex == 0)
+		multiplex = 1;
 	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
-	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x\n", conn, chan_mode);
+	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on 0x%x port: %u\n",
+		conn, chan_mode, multiplex, msc_data->rtp_port);
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
 		msg->lchan->mr_conf.ver = 1;
 		msg->lchan->mr_conf.icmi = 1;
