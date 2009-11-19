@@ -234,6 +234,10 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		return -1;
 	}
 
+	/* do not forward aynthing... maybe there is a packet from the bts */
+	if (endp->ci == CI_UNUSED)
+		return -1;
+
 	/*
 	 * Figure out where to forward it to. This code assumes that we
 	 * have received the Connection Modify and know who is a legitimate
@@ -635,6 +639,8 @@ static void handle_create_con(struct msgb *msg, struct sockaddr_in *source)
 	}
 	MSG_TOKENIZE_END
 
+	/* initialize */
+	endp->rtp = endp->rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 
 	/* bind to the port now */
 	endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
@@ -799,6 +805,8 @@ static void handle_delete_con(struct msgb *msg, struct sockaddr_in *source)
 		bsc_unregister_fd(&endp->local_rtp);
 		bsc_unregister_fd(&endp->local_rtcp);
 	}
+
+	endp->rtp = endp->rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 
 	return send_response(250, "DLCX", trans_id, source);
 
