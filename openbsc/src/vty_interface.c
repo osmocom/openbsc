@@ -895,6 +895,21 @@ DEFUN(cfg_net_ipacc_rtp_payload,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rtp_base_port,
+      cfg_net_rtp_base_port_cmd,
+      "rtp base <0-65534>",
+      "Base port to use for MGCP RTP")
+{
+	unsigned int port = atoi(argv[0]);
+	if (port > 65534) {
+		vty_out(vty, "%% wrong base port '%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	gsmnet->rtp_base_port = port;
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1337,6 +1352,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ipacc_rtp_payload_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rtp_base_port_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

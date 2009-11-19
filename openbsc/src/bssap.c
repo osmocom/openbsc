@@ -440,7 +440,8 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	/* the mgcp call agent starts counting at one. a bit of a weird mapping */
 	if (multiplex == 0)
 		multiplex = 1;
-	msc_data->rtp_port = rtp_calculate_port(multiplex, rtp_base_port);
+	msc_data->rtp_port = rtp_calculate_port(multiplex,
+						network->rtp_base_port);
 	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on 0x%x port: %u\n",
 		conn, chan_mode, multiplex, msc_data->rtp_port);
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {

@@ -465,6 +465,7 @@ struct gsm_network {
 	struct gsm_audio_support **audio_support;
 	int audio_length;
 	int rtp_payload;
+	int rtp_base_port;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);

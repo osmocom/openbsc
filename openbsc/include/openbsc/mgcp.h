@@ -21,8 +21,6 @@
  *
  */
 
-unsigned int rtp_base_port = 4000;
-
 /**
  * Calculate the RTP audio port for the given multiplex
  * and the direction. This allows a semi static endpoint
