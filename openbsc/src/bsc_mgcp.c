@@ -38,13 +38,13 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/select.h>
 #include <openbsc/mgcp.h>
+#include <openbsc/telnet_interface.h>
 
 #include <vty/command.h>
 #include <vty/vty.h>
 
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
-void vty_event() { }
 
 #define _GNU_SOURCE
 #include <getopt.h>
@@ -1019,7 +1019,7 @@ DEFUN(cfg_mgcp_loop,
 	return CMD_SUCCESS;
 }
 
-static void mgcp_vty_init()
+int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
 	vty_init();
@@ -1036,17 +1036,19 @@ static void mgcp_vty_init()
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
+	return 0;
 }
 
 int main(int argc, char** argv)
 {
+	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, i, rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 	handle_options(argc, argv);
 
-	mgcp_vty_init();
+	telnet_init(&dummy_network, 4243);
 	rc = vty_read_config_file(config_file);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
