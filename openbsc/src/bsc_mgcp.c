@@ -256,14 +256,12 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		if (memcmp(&addr.sin_addr, &bts_in, sizeof(bts_in)) == 0) {
 			if (fd == &endp->local_rtp) {
 				endp->bts_rtp = addr.sin_port;
-				endp->bts_rtcp = htons(ntohs(addr.sin_port) + 1);
 			} else {
-				endp->bts_rtp = htons(ntohs(addr.sin_port) - 1);
 				endp->bts_rtcp = addr.sin_port;
 			}
 
-			DEBUGP(DMGCP, "Found BTS for endpoint: 0x%x on port: %d\n",
-				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp));
+			DEBUGP(DMGCP, "Found BTS for endpoint: 0x%x on port: %d/%d\n",
+				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp));
 		}
 	}
 
