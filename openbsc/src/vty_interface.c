@@ -274,6 +274,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
+	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
