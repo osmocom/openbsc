@@ -220,7 +220,7 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, u_int8_t id_type)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST\n");
+	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
 	msg->tlli = old_msg->tlli;
 	msg->trx = old_msg->trx;
