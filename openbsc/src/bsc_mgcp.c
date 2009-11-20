@@ -55,7 +55,7 @@ static int source_port = 2427;
 static const char *local_ip = NULL;
 static const char *source_addr = "0.0.0.0";
 static struct bsc_fd bfd;
-static const unsigned int number_endpoints = 32 + 1;
+static unsigned int number_endpoints = 0;
 static const char *bts_ip = NULL;
 static struct in_addr bts_in;
 static int first_request = 1;
@@ -908,6 +908,7 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  sdp audio payload number %u%s", audio_payload, VTY_NEWLINE);
 	vty_out(vty, "  sdp audio payload name %s%s", audio_name, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!audio_loop, VTY_NEWLINE);
+	vty_out(vty, "  endpoints %u%s", number_endpoints, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1044,6 +1045,16 @@ DEFUN(cfg_mgcp_loop,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_number_endp,
+      cfg_mgcp_number_endp_cmd,
+      "number endpoints <0-65534>",
+      "The number of endpoints to allocate. This is not dynamic.")
+{
+	/* + 1 as we start counting at one */
+	number_endpoints = atoi(argv[0]) + 1;
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
@@ -1064,6 +1075,7 @@ int bsc_vty_init(struct gsm_network *dummy)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	return 0;
 }
 
