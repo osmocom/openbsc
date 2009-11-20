@@ -353,9 +353,11 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	struct tlv_parsed tp;
 	struct bss_sccp_connection_data *msc_data;
 	u_int8_t *data;
+	u_int16_t cic;
+	u_int8_t timeslot;
 	u_int8_t multiplex;
 	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
-	int i, supported;
+	int i, supported, port;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
@@ -376,7 +378,9 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		goto reject;
 	}
 
-	multiplex = TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)[1] & 0x1f;
+	cic = ntohs(*(u_int16_t *)TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+	timeslot = cic & 0x1f;
+	multiplex = (cic & ~0x1f) >> 5;
 
 	/*
 	 * Currently we only support a limited subset of all
@@ -438,12 +442,13 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
 
 	/* the mgcp call agent starts counting at one. a bit of a weird mapping */
-	if (multiplex == 0)
-		multiplex = 1;
-	msc_data->rtp_port = rtp_calculate_port(multiplex,
+	if (timeslot == 0)
+		timeslot = 1;
+	port = timeslot + (31 * multiplex);
+	msc_data->rtp_port = rtp_calculate_port(port,
 						network->rtp_base_port);
-	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on 0x%x port: %u\n",
-		conn, chan_mode, multiplex, msc_data->rtp_port);
+	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on port %d %d/0x%x port: %u\n",
+		conn, chan_mode, port, multiplex, timeslot, msc_data->rtp_port);
 	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
 		msg->lchan->mr_conf.ver = 1;
 		msg->lchan->mr_conf.icmi = 1;
