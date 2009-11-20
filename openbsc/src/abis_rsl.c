@@ -1652,8 +1652,20 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 /* Entry-point where L2 RSL from BTS enters */
 int abis_rsl_rcvmsg(struct msgb *msg)
 {
-	struct abis_rsl_common_hdr *rslh = msgb_l2(msg)	;
+	struct abis_rsl_common_hdr *rslh;
 	int rc = 0;
+
+	if (!msg) {
+		DEBUGP(DRSL, "Empty RSL msg?..\n");
+		return -1;
+	}
+
+	if (msgb_l2len(msg) < sizeof(*rslh)) {
+		DEBUGP(DRSL, "Truncated RSL message with l2len: %u\n", msgb_l2len(msg));
+		return -1;
+	}
+
+	rslh = msgb_l2(msg);
 
 	switch (rslh->msg_discr & 0xfe) {
 	case ABIS_RSL_MDISC_RLL:
