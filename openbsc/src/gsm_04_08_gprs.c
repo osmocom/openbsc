@@ -240,7 +240,12 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	if (strlen(ctx->imei) && strlen(ctx->imsi)) {
 		ctx->mm_state = GMM_REGISTERED_NORMAL;
 		return gsm48_tx_gmm_att_ack(msg);
-	}
+	} 
+	if (!strlen(ctx->imei))
+		return gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMEI);
+
+	if (!strlen(ctx->imsi))
+		return gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMSI);
 
 	return 0;
 }
@@ -371,8 +376,6 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
-		/* we always want the IMEI, too */
-		gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMEI);
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->tlli = msg->tlli;
@@ -383,8 +386,6 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 		ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
 			ctx = sgsn_mm_ctx_alloc(msg->tlli, &ra_id);
-			/* Send MM INFO request for IMSI */
-			gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMSI);
 			/* FIXME: Start some timer */
 			ctx->mm_state = GMM_COMMON_PROC_INIT;
 			ctx->tlli = msg->tlli;
@@ -397,8 +398,9 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	/* FIXME: allocate a new P-TMSI (+ P-TMSI signature) */
 	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
 
-	//return gsm48_tx_gmm_att_ack(msg);
-	return 0;
+	DEBUGPC(DMM, "\n");
+
+	return ctx ? gsm48_gmm_authorize(ctx, msg) : 0;
 
 err_inval:
 	DEBUGPC(DMM, "\n");
