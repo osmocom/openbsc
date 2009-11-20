@@ -37,6 +37,7 @@ struct msgb {
 	unsigned char *l2h;
 	unsigned char *l3h;
 	unsigned char *smsh;
+	unsigned char *l4h;
 
 	u_int16_t data_len;
 	u_int16_t len;
@@ -55,6 +56,7 @@ extern void msgb_reset(struct msgb *m);
 
 #define msgb_l2(m)	((void *)(m->l2h))
 #define msgb_l3(m)	((void *)(m->l3h))
+#define msgb_l4(m)	((void *)(m->l4h))
 #define msgb_sms(m)	((void *)(m->smsh))
 
 static inline unsigned int msgb_l2len(const struct msgb *msgb)

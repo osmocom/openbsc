@@ -110,10 +110,43 @@ struct gsm_bts_link {
 	struct gsm_bts *bts;
 };
 
+struct sccp_connection;
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
 struct rtp_socket;
+
+/* BSC/MSC data holding them together */
+struct bss_sccp_connection_data {
+	struct gsm_lchan *lchan;
+	struct sccp_connection *sccp;
+	int ciphering_handled : 1;
+
+        /* Timers... */
+
+        /* for assginment command */
+        struct timer_list T10;
+
+	/* for SCCP ... */
+	struct timer_list sccp_it;
+
+	/* audio handling */
+	int rtp_port;
+
+	/* Queue SCCP and GSM0408 messages */
+	struct llist_head gsm_queue;
+	unsigned int gsm_queue_size;
+
+	struct llist_head sccp_queue;
+	unsigned int sccp_queue_size;
+};
+
+#define GSM0808_T10_VALUE	6, 0
+#define sccp_get_lchan(data_ctx) ((struct bss_sccp_connection_data *)data_ctx)->lchan
+#define lchan_get_sccp(lchan) lchan->msc_data->sccp
+struct bss_sccp_connection_data *bss_sccp_create_data();
+void bss_sccp_free_data(struct bss_sccp_connection_data *);
+
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -182,6 +215,12 @@ struct gsm_lchan {
 	 * Operations that have a state and might be pending
 	 */
 	struct gsm_loc_updating_operation *loc_operation;
+
+	/*
+	 * MSC handling...
+	 */
+	struct bss_sccp_connection_data *msc_data;
+
 
 	/* use count. how many users use this channel */
 	unsigned int use_count;
@@ -405,6 +444,14 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 };
 
+/*
+ * internal data for audio management
+ */
+struct gsm_audio_support {
+	u_int8_t hr  : 1,
+		 ver : 7;
+};
+
 struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
@@ -414,6 +461,11 @@ struct gsm_network {
 	enum gsm_auth_policy auth_policy;
 	int a5_encryption;
 	int neci;
+
+	struct gsm_audio_support **audio_support;
+	int audio_length;
+	int rtp_payload;
+	int rtp_base_port;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);

@@ -76,6 +76,8 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
+	int i;
+
 	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
 		"and has %u BTS%s", net->country_code, net->network_code,
 		net->num_bts, VTY_NEWLINE);
@@ -89,6 +91,11 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
 		VTY_NEWLINE);
+	vty_out(vty, "  Allowed Audio Codecs: ");
+	for (i = 0; i < net->audio_length; ++i)
+		vty_out(vty, "hr: %d ver: %d, ",
+			net->audio_support[i]->hr, net->audio_support[i]->ver);
+	vty_out(vty, "%s", VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -275,6 +282,24 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " ipacc rtp_payload %u%s", gsmnet->rtp_payload, VTY_NEWLINE);
+
+	if (gsmnet->audio_length != 0) {
+		int i;
+
+		vty_out(vty, " codec_list ");
+		for (i = 0; i < gsmnet->audio_length; ++i) {
+			printf("I... %d %d\n", i, gsmnet->audio_length);
+			if (i != 0)
+				vty_out(vty, ", ");
+
+			if (gsmnet->audio_support[i]->hr)
+				vty_out(vty, "hr%.1u", gsmnet->audio_support[i]->ver);
+			else
+				vty_out(vty, "fr%.1u", gsmnet->audio_support[i]->ver);
+		}
+		vty_out(vty, "%s", VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
@@ -801,6 +826,90 @@ DEFUN(cfg_net_neci,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_supported_codecs,
+      cfg_net_supported_codecs_cmd,
+      "codec_list .LIST",
+      "Set the three preferred audio codecs.\n"
+      "Codec List")
+{
+	int saw_fr, saw_hr;
+	int i;
+
+	saw_fr = saw_hr = 0;
+
+	/* free the old list... if it exists */
+	if (gsmnet->audio_support) {
+		talloc_free(gsmnet->audio_support);
+		gsmnet->audio_support = NULL;
+		gsmnet->audio_length = 0;
+	}
+
+	/* create a new array */
+	gsmnet->audio_support =
+			talloc_zero_array(gsmnet, struct gsm_audio_support *, argc);
+	gsmnet->audio_length = argc;
+
+	for (i = 0; i < argc; ++i) {
+		/* check for hrX or frX */
+		if (strlen(argv[i]) != 3
+		    || argv[i][1] != 'r'
+		    || (argv[i][0] != 'h' && argv[i][0] != 'f')
+		    || argv[i][2] < 0x30
+		    || argv[i][2] > 0x39)
+			goto error;
+
+		gsmnet->audio_support[i] = talloc_zero(gsmnet->audio_support,
+						       struct gsm_audio_support);
+		gsmnet->audio_support[i]->ver = atoi(argv[i] + 2);
+
+		if (strncmp("hr", argv[i], 2) == 0) {
+			gsmnet->audio_support[i]->hr = 1;
+			saw_hr = 1;
+		} else if (strncmp("fr", argv[i], 2) == 0) {
+			gsmnet->audio_support[i]->hr = 0;
+			saw_fr = 1;
+		}
+
+		if (saw_hr && saw_fr) {
+			vty_out(vty, "Can not have full-rate and half-rate codec.%s",
+				VTY_NEWLINE);
+			return CMD_ERR_INCOMPLETE;
+		}
+	}
+
+	return CMD_SUCCESS;
+
+error:
+	vty_out(vty, "Codec name must be hrX or frX. Was '%s'%s",
+		argv[i], VTY_NEWLINE);
+	return CMD_ERR_INCOMPLETE;
+}
+
+DEFUN(cfg_net_ipacc_rtp_payload,
+      cfg_net_ipacc_rtp_payload_cmd,
+      "ipacc rtp_payload <0-256>",
+      "Override the RTP payload to use")
+{
+	gsmnet->rtp_payload = atoi(argv[0]) & 0xff;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_rtp_base_port,
+      cfg_net_rtp_base_port_cmd,
+      "rtp base <0-65534>",
+      "Base port to use for MGCP RTP")
+{
+	unsigned int port = atoi(argv[0]);
+	if (port > 65534) {
+		vty_out(vty, "%% wrong base port '%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	gsmnet->rtp_base_port = port;
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1241,6 +1350,9 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ipacc_rtp_payload_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rtp_base_port_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

@@ -63,6 +63,7 @@ static const char *audio_name = "GSM-EFR/8000";
 static int audio_payload = 97;
 static int audio_loop = 0;
 static int early_bind = 0;
+static int rtp_base_port = 0;
 
 static char *config_file = "mgcp.cfg";
 

@@ -92,6 +92,7 @@ void msgb_reset(struct msgb *msg)
 	msg->l2h = NULL;
 	msg->l3h = NULL;
 	msg->smsh = NULL;
+	msg->l4h = NULL;
 }
 
 static __attribute__((constructor)) void on_dso_load_trau_msgb(void)
