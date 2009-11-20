@@ -386,8 +386,12 @@ static unsigned char nanobts_attr_cell[] = {
 		0x00, 250,
 		0x00, 250,
 		2,	/* MCS2 */
+#if 0
+	/* EDGE model only, breaks older models.
+	 * Should inquire the BTS capabilities */
 	NM_ATT_IPACC_RLC_CFG_3, 0, 1,
 		2,	/* MCS2 */
+#endif
 };
 
 static unsigned char nanobts_attr_nsvc0[] = {
