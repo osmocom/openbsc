@@ -23,6 +23,8 @@
 #define DSCCP		0x10000
 #define DMSC		0x20000
 
+#define DMGCP		0x40000
+
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
 #define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)
