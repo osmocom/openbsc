@@ -40,6 +40,7 @@ AC_OUTPUT(
     openbsc.pc
     include/openbsc/Makefile
     include/vty/Makefile
+    include/sccp/Makefile
     include/Makefile
     src/Makefile
     tests/Makefile
@@ -49,4 +50,5 @@ AC_OUTPUT(
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
+    tests/sccp/Makefile
     Makefile)
