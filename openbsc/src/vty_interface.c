@@ -275,6 +275,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -801,6 +802,27 @@ DEFUN(cfg_net_neci,
 	return CMD_SUCCESS;
 }
 
+#define DECLARE_TIMER(number) \
+    DEFUN(cfg_net_T##number,					\
+      cfg_net_T##number##_cmd,					\
+      "timer t" #number  " <0-65535>",				\
+      "Set the T" #number " value.")				\
+{								\
+	int value = atoi(argv[0]);				\
+								\
+	if (value < 0 || value > 65535) {			\
+		vty_out(vty, "Timer value %s out of range.%s",	\
+		        argv[0], VTY_NEWLINE);			\
+		return CMD_WARNING;				\
+	}							\
+								\
+	gsmnet->T##number = value;				\
+	return CMD_SUCCESS;					\
+}
+
+DECLARE_TIMER(3101)
+
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1241,6 +1263,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

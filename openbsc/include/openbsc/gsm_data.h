@@ -422,6 +422,9 @@ struct gsm_network {
 
 	unsigned int num_bts;
 	struct llist_head bts_list;
+
+	/* timer values */
+	int T3101;
 };
 
 #define SMS_HDR_SIZE	128
