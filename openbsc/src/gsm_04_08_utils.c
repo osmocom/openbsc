@@ -258,6 +258,11 @@ static const struct chreq chreq_type_neci1[] = {
 	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY_NECI1 },
 	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
 	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+	{ 0x67, 0xff, CHREQ_T_LMU },
+	{ 0x60, 0xf9, CHREQ_T_RESERVED_SDCCH },
+	{ 0x61, 0xfb, CHREQ_T_RESERVED_SDCCH },
+	{ 0x63,	0xff, CHREQ_T_RESERVED_SDCCH },
+	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 
 /* If SYSTEM INFORMATION TYPE 4 NECI bit == 0 */
@@ -270,6 +275,11 @@ static const struct chreq chreq_type_neci0[] = {
 	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY_NECI0 },
 	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
 	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+	{ 0x67, 0xff, CHREQ_T_LMU },
+	{ 0x60, 0xf9, CHREQ_T_RESERVED_SDCCH },
+	{ 0x61, 0xfb, CHREQ_T_RESERVED_SDCCH },
+	{ 0x63,	0xff, CHREQ_T_RESERVED_SDCCH },
+	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 
 static const enum gsm_chan_t ctype_by_chreq[] = {
@@ -286,6 +296,9 @@ static const enum gsm_chan_t ctype_by_chreq[] = {
 	[CHREQ_T_PAG_R_ANY_NECI0]	= GSM_LCHAN_SDCCH,
 	[CHREQ_T_PAG_R_TCH_F]		= GSM_LCHAN_TCH_F,
 	[CHREQ_T_PAG_R_TCH_FH]		= GSM_LCHAN_TCH_F,
+	[CHREQ_T_LMU]			= GSM_LCHAN_SDCCH,
+	[CHREQ_T_RESERVED_SDCCH]	= GSM_LCHAN_SDCCH,
+	[CHREQ_T_RESERVED_IGNORE]	= GSM_LCHAN_UNKNOWN,
 };
 
 static const enum gsm_chreq_reason_t reason_by_chreq[] = {
@@ -302,6 +315,9 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 	[CHREQ_T_PAG_R_ANY_NECI0]	= GSM_CHREQ_REASON_PAG,
 	[CHREQ_T_PAG_R_TCH_F]		= GSM_CHREQ_REASON_PAG,
 	[CHREQ_T_PAG_R_TCH_FH]		= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_LMU]			= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_RESERVED_SDCCH]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_RESERVED_IGNORE]	= GSM_CHREQ_REASON_OTHER,
 };
 
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
