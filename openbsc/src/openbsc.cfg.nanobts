@@ -12,6 +12,7 @@ network
  short name OpenBSC
  long name OpenBSC
  timer t3101 10
+ timer t3113 60
  bts 0
   type nanobts
   ip.access unit_id 1801 0

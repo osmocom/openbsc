@@ -286,7 +286,6 @@ struct gsm_paging_request {
 	gsm_cbfn *cbfn;
 	void *cbfn_param;
 };
-#define T3113_VALUE	60, 0
 
 /*
  * This keeps track of the paging status of one BTS. It
