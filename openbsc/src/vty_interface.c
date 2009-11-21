@@ -276,6 +276,16 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
+	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
+	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
+	vty_out(vty, " timer t3107 %u%s", gsmnet->T3107, VTY_NEWLINE);
+	vty_out(vty, " timer t3109 %u%s", gsmnet->T3109, VTY_NEWLINE);
+	vty_out(vty, " timer t3111 %u%s", gsmnet->T3111, VTY_NEWLINE);
+	vty_out(vty, " timer t3113 %u%s", gsmnet->T3113, VTY_NEWLINE);
+	vty_out(vty, " timer t3115 %u%s", gsmnet->T3115, VTY_NEWLINE);
+	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
+	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
+	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -821,6 +831,16 @@ DEFUN(cfg_net_neci,
 }
 
 DECLARE_TIMER(3101)
+DECLARE_TIMER(3103)
+DECLARE_TIMER(3105)
+DECLARE_TIMER(3107)
+DECLARE_TIMER(3109)
+DECLARE_TIMER(3111)
+DECLARE_TIMER(3113)
+DECLARE_TIMER(3115)
+DECLARE_TIMER(3117)
+DECLARE_TIMER(3119)
+DECLARE_TIMER(3141)
 
 
 /* per-BTS configuration */
@@ -1264,6 +1284,16 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3107_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3109_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3111_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3113_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3115_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
