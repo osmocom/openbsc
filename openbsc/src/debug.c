@@ -58,6 +58,9 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DMUX,  "DMUX", "", "")
 	DEBUG_CATEGORY(DMEAS,  "DMEAS", "", "")
 	DEBUG_CATEGORY(DGPRS,  "DGPRS", "", "")
+	DEBUG_CATEGORY(DSCCP, "DSCCP", "", "")
+	DEBUG_CATEGORY(DMSC, "DMSC", "", "")
+	DEBUG_CATEGORY(DMGCP, "DMGCP", "", "")
 };
 
 static int use_color = 1;

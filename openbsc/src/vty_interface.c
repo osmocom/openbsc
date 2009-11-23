@@ -87,6 +87,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
 	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
 		VTY_NEWLINE);
+	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -227,7 +229,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
 	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
-	vty_out(vty, "	cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
+	vty_out(vty, "  cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
@@ -279,6 +281,18 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
+	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
+	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
+	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
+	vty_out(vty, " timer t3107 %u%s", gsmnet->T3107, VTY_NEWLINE);
+	vty_out(vty, " timer t3109 %u%s", gsmnet->T3109, VTY_NEWLINE);
+	vty_out(vty, " timer t3111 %u%s", gsmnet->T3111, VTY_NEWLINE);
+	vty_out(vty, " timer t3113 %u%s", gsmnet->T3113, VTY_NEWLINE);
+	vty_out(vty, " timer t3115 %u%s", gsmnet->T3115, VTY_NEWLINE);
+	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
+	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
+	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -627,7 +641,7 @@ DEFUN(show_e1ts,
       "show e1_timeslot [line_nr] [ts_nr]",
 	SHOW_STR "Display information about a E1 timeslot\n")
 {
-	struct e1inp_line *line;
+	struct e1inp_line *line = NULL;
 	struct e1inp_ts *ts;
 	int ts_nr;
 
@@ -791,10 +805,50 @@ DEFUN(cfg_net_encryption,
       "encryption a5 (0|1|2)",
       "Enable or disable encryption (A5) for this network\n")
 {
-	gsmnet->auth_policy = atoi(argv[0]);
+	gsmnet->a5_encryption= atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_net_neci,
+      cfg_net_neci_cmd,
+      "neci (0|1)",
+      "Set if NECI of cell selection is to be set")
+{
+	gsmnet->neci = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+#define DECLARE_TIMER(number) \
+    DEFUN(cfg_net_T##number,					\
+      cfg_net_T##number##_cmd,					\
+      "timer t" #number  " <0-65535>",				\
+      "Set the T" #number " value.")				\
+{								\
+	int value = atoi(argv[0]);				\
+								\
+	if (value < 0 || value > 65535) {			\
+		vty_out(vty, "Timer value %s out of range.%s",	\
+		        argv[0], VTY_NEWLINE);			\
+		return CMD_WARNING;				\
+	}							\
+								\
+	gsmnet->T##number = value;				\
+	return CMD_SUCCESS;					\
+}
+
+DECLARE_TIMER(3101)
+DECLARE_TIMER(3103)
+DECLARE_TIMER(3105)
+DECLARE_TIMER(3107)
+DECLARE_TIMER(3109)
+DECLARE_TIMER(3111)
+DECLARE_TIMER(3113)
+DECLARE_TIMER(3115)
+DECLARE_TIMER(3117)
+DECLARE_TIMER(3119)
+DECLARE_TIMER(3141)
+
 
 /* per-BTS configuration */
 DEFUN(cfg_bts,
@@ -1142,7 +1196,7 @@ DEFUN(cfg_trx_max_power_red,
 {
 	int maxpwr_r = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
-	int upper_limit = 12;	/* default 12.21 max power red. */
+	int upper_limit = 24;	/* default 12.21 max power red. */
 
 	/* FIXME: check if our BTS type supports more than 12 */
 	if (maxpwr_r < 0 || maxpwr_r > upper_limit) {
@@ -1269,6 +1323,18 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
+	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3107_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3109_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3111_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3113_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3115_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

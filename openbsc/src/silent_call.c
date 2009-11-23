@@ -32,6 +32,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/chan_alloc.h>
 
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			    struct msgb *msg, void *_lchan, void *_data)

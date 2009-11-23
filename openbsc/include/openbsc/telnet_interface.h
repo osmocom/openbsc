@@ -35,13 +35,6 @@ struct telnet_connection {
 	struct gsm_network *network;
 	struct bsc_fd fd;
 	struct vty *vty;
-
-	int bts;
-
-	int command;
-	char *imsi;
-	char commands[1024];
-	int read;
 };
 
 

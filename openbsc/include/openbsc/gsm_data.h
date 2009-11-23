@@ -163,6 +163,9 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
+
+	/* AMR bits */
+	struct gsm48_multi_rate_conf mr_conf;
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
@@ -283,7 +286,6 @@ struct gsm_paging_request {
 	gsm_cbfn *cbfn;
 	void *cbfn_param;
 };
-#define T3113_VALUE	60, 0
 
 /*
  * This keeps track of the paging status of one BTS. It
@@ -413,6 +415,7 @@ struct gsm_network {
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
 	int a5_encryption;
+	int neci;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
@@ -421,6 +424,19 @@ struct gsm_network {
 
 	unsigned int num_bts;
 	struct llist_head bts_list;
+
+	/* timer values */
+	int T3101;
+	int T3103;
+	int T3105;
+	int T3107;
+	int T3109;
+	int T3111;
+	int T3113;
+	int T3115;
+	int T3117;
+	int T3119;
+	int T3141;
 };
 
 #define SMS_HDR_SIZE	128

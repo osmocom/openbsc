@@ -33,6 +33,23 @@ struct gsm48_chan_desc {
 	};
 } __attribute__ ((packed));
 
+/* Chapter 10.5.2.21aa */
+struct gsm48_multi_rate_conf {
+	u_int8_t smod : 2,
+		 spare: 1,
+		 icmi : 1,
+		 nscb : 1,
+		 ver : 3;
+	u_int8_t m4_75 : 1,
+		 m5_15 : 1,
+		 m5_90 : 1,
+		 m6_70 : 1,
+		 m7_40 : 1,
+		 m7_95 : 1,
+		 m10_2 : 1,
+		 m12_2 : 1;
+} __attribute__((packed));
+
 /* Chapter 10.5.2.30 */
 struct gsm48_req_ref {
 	u_int8_t ra;
@@ -409,6 +426,7 @@ struct gsm48_imsi_detach_ind {
 #define GSM_MI_TYPE_TMSI	0x04
 #define GSM_MI_ODD		0x08
 
+#define GSM48_IE_MUL_RATE_CFG	0x03	/* 10.5.2.21aa */
 #define GSM48_IE_MOBILE_ID	0x17
 #define GSM48_IE_NAME_LONG	0x43	/* 10.5.3.5a */
 #define GSM48_IE_NAME_SHORT	0x45	/* 10.5.3.5a */
@@ -632,9 +650,13 @@ enum chreq_type {
 	CHREQ_T_VOICE_CALL_TCH_H,
 	CHREQ_T_DATA_CALL_TCH_H,
 	CHREQ_T_LOCATION_UPD,
-	CHREQ_T_PAG_R_ANY,
+	CHREQ_T_PAG_R_ANY_NECI0,
+	CHREQ_T_PAG_R_ANY_NECI1,
 	CHREQ_T_PAG_R_TCH_F,
 	CHREQ_T_PAG_R_TCH_FH,
+	CHREQ_T_LMU,
+	CHREQ_T_RESERVED_SDCCH,
+	CHREQ_T_RESERVED_IGNORE,
 };
 
 /* Chapter 11.3 */
@@ -722,8 +744,8 @@ void gsm0408_set_reject_cause(int cause);
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
 		u_int16_t mnc, u_int16_t lac);
-enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra);
-enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra);
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
+enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
 int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand);

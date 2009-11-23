@@ -1830,7 +1830,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	ts = lchan->ts;
 
 	switch (signal) {
-	case S_ABISIP_BIND_ACK:
+	case S_ABISIP_CRCX_ACK:
 		/* the BTS has successfully bound a TCH to a local ip/port,
 		 * which means we can connect our UDP socket to it */
 		if (ts->abis_ip.rtp_socket) {
@@ -1848,7 +1848,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		if (rc < 0)
 			goto out_err;
 		break;
-	case S_ABISIP_DISC_IND:
+	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
 		if (ts->abis_ip.rtp_socket) {
 			rtp_socket_free(ts->abis_ip.rtp_socket);
@@ -1870,7 +1870,7 @@ static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
 	struct rtp_socket *rs = ts->abis_ip.rtp_socket;
 	int rc;
 
-	rc = rsl_ipacc_connect(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
+	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
 				ntohs(rs->rtp.sin_local.sin_port),
 				ts->abis_ip.conn_id, 
 			/* FIXME: use RTP payload of bound socket, not BTS*/
@@ -1911,14 +1911,14 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		} else {
 			/* directly connect TCH RTP streams to each other */
 			ts = remote_lchan->ts;
-			rc = rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
+			rc = rsl_ipacc_mdcx(lchan, ts->abis_ip.bound_ip,
 						ts->abis_ip.bound_port,
 						lchan->ts->abis_ip.conn_id,
 						ts->abis_ip.rtp_payload2);
 			if (rc < 0)
 				return rc;
 			ts = lchan->ts;
-			rc = rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
+			rc = rsl_ipacc_mdcx(remote_lchan, ts->abis_ip.bound_ip,
 						ts->abis_ip.bound_port,
 						remote_lchan->ts->abis_ip.conn_id,
 						ts->abis_ip.rtp_payload2);

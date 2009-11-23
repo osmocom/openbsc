@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <openbsc/debug.h>
 #include <openbsc/msgb.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/gsm_utils.h>
 
 int main(int argc, char** argv)

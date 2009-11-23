@@ -213,7 +213,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		lchan->use_count = 0;
 
 		/* clear sapis */
-		memset(lchan->sapis, 0, sizeof(lchan->sapis));
+		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
+
+		/* clear multi rate config */
+		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
 
 		/* Configure the time and start it so it will be closed */
 		lchan->release_timer.cb = auto_release_channel;
