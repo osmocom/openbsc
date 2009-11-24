@@ -396,11 +396,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;
 		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_OK) {
-			printf("STARTING NM Radio Carrier...\n");
+		    new_state->availability == NM_AVSTATE_OK)
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
-		}
 		break;
 	default:
 		break;
@@ -418,7 +416,6 @@ static int sw_activ_rep(struct msgb *mb)
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
-		printf("Starting baseband\n");
 		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
 				      NM_STATE_UNLOCKED);
@@ -439,7 +436,6 @@ static int sw_activ_rep(struct msgb *mb)
 		 */
 		int rc_state = trx->rf_locked ?
 					NM_STATE_LOCKED : NM_STATE_UNLOCKED;
-		printf("Starting radio: %d %d\n", rc_state, trx->rf_locked);
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;

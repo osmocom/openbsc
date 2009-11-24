@@ -239,7 +239,7 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->cbfn_param = data;
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
-	bsc_schedule_timer(&req->T3113, T3113_VALUE);
+	bsc_schedule_timer(&req->T3113, bts->network->T3113, 0);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 
 	if (!bsc_timer_pending(&bts_entry->work_timer))

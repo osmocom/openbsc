@@ -282,6 +282,17 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
+	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
+	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
+	vty_out(vty, " timer t3107 %u%s", gsmnet->T3107, VTY_NEWLINE);
+	vty_out(vty, " timer t3109 %u%s", gsmnet->T3109, VTY_NEWLINE);
+	vty_out(vty, " timer t3111 %u%s", gsmnet->T3111, VTY_NEWLINE);
+	vty_out(vty, " timer t3113 %u%s", gsmnet->T3113, VTY_NEWLINE);
+	vty_out(vty, " timer t3115 %u%s", gsmnet->T3115, VTY_NEWLINE);
+	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
+	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
+	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 	vty_out(vty, " ipacc rtp_payload %u%s", gsmnet->rtp_payload, VTY_NEWLINE);
 
 	if (gsmnet->audio_length != 0) {
@@ -910,6 +921,36 @@ DEFUN(cfg_net_rtp_base_port,
 	return CMD_SUCCESS;
 }
 
+#define DECLARE_TIMER(number) \
+    DEFUN(cfg_net_T##number,					\
+      cfg_net_T##number##_cmd,					\
+      "timer t" #number  " <0-65535>",				\
+      "Set the T" #number " value.")				\
+{								\
+	int value = atoi(argv[0]);				\
+								\
+	if (value < 0 || value > 65535) {			\
+		vty_out(vty, "Timer value %s out of range.%s",	\
+			argv[0], VTY_NEWLINE);			\
+		return CMD_WARNING;				\
+	}							\
+								\
+	gsmnet->T##number = value;				\
+	return CMD_SUCCESS;					\
+}
+
+DECLARE_TIMER(3101)
+DECLARE_TIMER(3103)
+DECLARE_TIMER(3105)
+DECLARE_TIMER(3107)
+DECLARE_TIMER(3109)
+DECLARE_TIMER(3111)
+DECLARE_TIMER(3113)
+DECLARE_TIMER(3115)
+DECLARE_TIMER(3117)
+DECLARE_TIMER(3119)
+DECLARE_TIMER(3141)
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -1364,6 +1405,17 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ipacc_rtp_payload_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rtp_base_port_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3107_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3109_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3111_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3113_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3115_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

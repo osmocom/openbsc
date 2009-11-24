@@ -2704,6 +2704,9 @@ void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
 	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
 
 	trx->rf_locked = locked;
+	if (!trx->bts || !trx->bts->oml_link)
+		return;
+
 	abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
 			      trx->bts->bts_nr, trx->nr, 0xff,
 			      new_state);
