@@ -218,8 +218,7 @@ static u_int8_t unbcdify(u_int8_t value)
 		DEBUGP(DSMS, "unbcdify got too big nibble: 0x%02X\n", value);
 
 	ret = (value&0x0F)*10;
-	if (ret > 90)
-		ret += value>>4;
+	ret += value>>4;
 
 	return ret;
 }
