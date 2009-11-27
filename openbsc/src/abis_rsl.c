@@ -488,6 +488,11 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 	/* set TCH Speech/Data */
 	cm->spd_ind = lchan->rsl_cmode;
 
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN &&
+	    lchan->tch_mode != GSM48_CMODE_SIGN)
+		DEBUGP(DRSL, "unsupported: rsl_mode == signalling, "
+			"but tch_mode != signalling\n");
+
 	switch (lchan->type) {
 	case GSM_LCHAN_SDCCH:
 		cm->chan_rt = RSL_CMOD_CRT_SDCCH;
