@@ -176,7 +176,7 @@ restart:
 int bsc_timer_check(void)
 {
 	struct timer_list *timer;
-	int i;
+	int i = 0;
 
 	llist_for_each_entry(timer, &timer_list, entry) {
 		i++;

@@ -48,6 +48,7 @@
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
+#include <openbsc/ussd.h>
 
 #define GSM_MAX_FACILITY       128
 #define GSM_MAX_SSVERSION      128
@@ -1086,34 +1087,6 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	return gsm0408_authorize(lchan, msg);
 }
 
-/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
-{
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	struct gsm48_chan_mode_modify *cmm =
-		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
-
-	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
-
-	lchan->tch_mode = mode;
-	msg->lchan = lchan;
-	gh->proto_discr = GSM48_PDISC_RR;
-	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
-
-	/* fill the channel information element, this code
-	 * should probably be shared with rsl_rx_chan_rqd() */
-	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
-	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
-	cmm->chan_desc.h0.h = 0;
-	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
-	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
-	cmm->mode = mode;
-
-	return gsm48_sendmsg(msg, NULL);
-}
-
 #if 0
 static u_int8_t to_bcd8(u_int8_t val)
 {
@@ -1128,9 +1101,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
 	u_int8_t *ptr8;
-	u_int16_t *ptr16;
 	int name_len, name_pad;
-	int i;
 #if 0
 	time_t cur_t;
 	struct tm* cur_time;
@@ -1458,7 +1429,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 }
 
 /* Receive a PAGING RESPONSE message from the MS */
-static int gsm48_rr_rx_pag_resp(struct msgb *msg)
+static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1613,14 +1584,10 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
-		rc = gsm48_rr_rx_pag_resp(msg);
+		rc = gsm48_rx_rr_pag_resp(msg);
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
-		DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
-		/* We've successfully modified the MS side of the channel,
-		 * now go on to modify the BTS side of the channel */
-		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
-		rc = rsl_chan_mode_modify_req(msg->lchan);
+		rc = gsm48_rx_rr_modif_ack(msg);
 		break;
 	case GSM48_MT_RR_STATUS:
 		rc = gsm48_rx_rr_status(msg);
@@ -1645,7 +1612,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 }
 
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
-			   u_int8_t apdu_len, u_int8_t *apdu)
+			   u_int8_t apdu_len, const u_int8_t *apdu)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -1867,7 +1834,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	ts = lchan->ts;
 
 	switch (signal) {
-	case S_ABISIP_BIND_ACK:
+	case S_ABISIP_CRCX_ACK:
 		/* the BTS has successfully bound a TCH to a local ip/port,
 		 * which means we can connect our UDP socket to it */
 		if (ts->abis_ip.rtp_socket) {
@@ -1893,7 +1860,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 			}
 		}
 		break;
-	case S_ABISIP_DISC_IND:
+	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
 		if (ts->abis_ip.rtp_socket) {
 			rtp_socket_free(ts->abis_ip.rtp_socket);
@@ -1915,7 +1882,7 @@ static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
 	struct rtp_socket *rs = ts->abis_ip.rtp_socket;
 	int rc;
 
-	rc = rsl_ipacc_connect(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
+	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
 				ntohs(rs->rtp.sin_local.sin_port),
 				ts->abis_ip.conn_id, 
 			/* FIXME: use RTP payload of bound socket, not BTS*/
@@ -1958,14 +1925,14 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		} else {
 			/* directly connect TCH RTP streams to each other */
 			ts = remote_lchan->ts;
-			rc = rsl_ipacc_connect(lchan, ts->abis_ip.bound_ip,
+			rc = rsl_ipacc_mdcx(lchan, ts->abis_ip.bound_ip,
 						ts->abis_ip.bound_port,
 						lchan->ts->abis_ip.conn_id,
 						ts->abis_ip.rtp_payload2);
 			if (rc < 0)
 				return rc;
 			ts = lchan->ts;
-			rc = rsl_ipacc_connect(remote_lchan, ts->abis_ip.bound_ip,
+			rc = rsl_ipacc_mdcx(remote_lchan, ts->abis_ip.bound_ip,
 						ts->abis_ip.bound_port,
 						remote_lchan->ts->abis_ip.conn_id,
 						ts->abis_ip.rtp_payload2);
@@ -3196,22 +3163,11 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_USERINFO_IND, &user);
 }
 
-static int gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
+static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
-	int rc;
 
-	rc = gsm48_tx_chan_mode_modify(trans->lchan, mode->lchan_mode);
-	if (rc < 0)
-		return rc;
-
-	/* FIXME: we not only need to do this after mode modify, but
-	 * also after channel activation */
-	if (is_ipaccess_bts(trans->lchan->ts->trx->bts) &&
-	    mode->lchan_mode != GSM48_CMODE_SIGN)
-		rc = rsl_ipacc_bind(trans->lchan);
-
-	return rc;
+	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode);
 }
 
 static struct downstate {
@@ -3269,7 +3225,7 @@ static struct downstate {
 	 MNCC_REL_REQ, gsm48_cc_tx_release},
 	/* special */
 	{ALL_STATES,
-	 MNCC_LCHAN_MODIFY, gsm48_lchan_modify},
+	 MNCC_LCHAN_MODIFY, _gsm48_lchan_modify},
 };
 
 #define DOWNSLLEN \
@@ -3280,7 +3236,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 {
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
-	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
@@ -3324,6 +3279,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	/* Callref unknown */
 	if (!trans) {
+		struct gsm_subscriber *subscr;
+
 		if (msg_type != MNCC_SETUP_REQ) {
 			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 				"Received '%s' from MNCC with "
@@ -3399,6 +3356,8 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 					"started.\n", bts->nr,
 					data->called.number,
 					get_mncc_name(msg_type));
+				subscr_put(subscr);
+				trans_free(trans);
 				return 0;
 			}
 			/* store setup informations until paging was successfull */
@@ -3406,11 +3365,13 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			/* Trigger paging */
 			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
 					setup_trig_pag_evt, subscr);
+			subscr_put(subscr);
 			return 0;
 		}
 		/* Assign lchan */
 		trans->lchan = lchan;
 		use_lchan(lchan);
+		subscr_put(subscr);
 	}
 	lchan = trans->lchan;
 
@@ -3589,9 +3550,11 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:
-	case GSM48_PDISC_NC_SS:  /* mobile-originated USSD */
 		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
+		break;
+	case GSM48_PDISC_NC_SS:
+		rc = handle_rcv_ussd(msg);
 		break;
 	default:
 		fprintf(stderr, "Unknown GSM 04.08 discriminator 0x%02x\n",

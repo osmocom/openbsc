@@ -27,8 +27,22 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
+#include <openbsc/abis_nm.h>
 
 void *tall_bsc_ctx;
+
+const char *get_value_string(const struct value_string *vs, u_int32_t val)
+{
+	int i;
+
+	for (i = 0;; i++) {
+		if (vs[i].value == 0 && vs[i].str == NULL)
+			break;
+		if (vs[i].value == val)
+			return vs[i].str;
+	}
+	return "unknown";
+}
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
@@ -45,6 +59,8 @@ static const char *pchan_names[] = {
 	[GSM_PCHAN_TCH_F]	= "TCH/F",
 	[GSM_PCHAN_TCH_H]	= "TCH/H",
 	[GSM_PCHAN_SDCCH8_SACCH8C] = "SDCCH8",
+	[GSM_PCHAN_PDCH]	= "PDCH",
+	[GSM_PCHAN_TCH_F_PDCH]	= "TCH/F_PDCH",
 	[GSM_PCHAN_UNKNOWN]	= "UNKNOWN",
 };
 
@@ -102,13 +118,12 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx = talloc(bts, struct gsm_bts_trx);
+	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
 	int k;
 
 	if (!trx)
 		return NULL;
 
-	memset(trx, 0, sizeof(*trx));
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
 
@@ -138,12 +153,12 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
-	struct gsm_bts *bts = talloc(net, struct gsm_bts);
+	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
+	int i;
 
 	if (!bts)
 		return NULL;
 
-	memset(bts, 0, sizeof(*bts));
 	bts->network = net;
 	bts->nr = net->num_bts++;
 	bts->type = type;
@@ -152,6 +167,11 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
+
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+		bts->gprs.nsvc[i].bts = bts;
+		bts->gprs.nsvc[i].id = i;
+	}
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
@@ -171,10 +191,9 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 {
 	struct gsm_network *net;
 
-	net = talloc(tall_bsc_ctx, struct gsm_network);
+	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
 	if (!net)
 		return NULL;
-	memset(net, 0, sizeof(*net));	
 
 	net->country_code = country_code;
 	net->network_code = network_code;
@@ -224,7 +243,7 @@ static char ts2str[255];
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 {
 	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
-		 ts->trx->bts->bts_nr, ts->trx->nr, ts->nr);
+		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
 
 	return ts2str;
 }

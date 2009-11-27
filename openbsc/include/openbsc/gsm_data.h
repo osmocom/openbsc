@@ -3,6 +3,13 @@
 
 #include <sys/types.h>
 
+struct value_string {
+	unsigned int value;
+	const char *str;
+};
+
+const char *get_value_string(const struct value_string *vs, u_int32_t val);
+
 enum gsm_band {
 	GSM_BAND_400,
 	GSM_BAND_850,
@@ -18,6 +25,8 @@ enum gsm_phys_chan_config {
 	GSM_PCHAN_TCH_F,
 	GSM_PCHAN_TCH_H,
 	GSM_PCHAN_SDCCH8_SACCH8C,
+	GSM_PCHAN_PDCH,		/* GPRS PDCH */
+	GSM_PCHAN_TCH_F_PDCH,	/* TCH/F if used, PDCH otherwise */
 	GSM_PCHAN_UNKNOWN,
 };
 
@@ -122,12 +131,17 @@ struct gsm_nm_state {
  */
 struct gsm_loc_updating_operation {
         struct timer_list updating_timer;
-	int waiting_for_imsi : 1;
-	int waiting_for_imei : 1;
+	unsigned int waiting_for_imsi : 1;
+	unsigned int waiting_for_imei : 1;
 };
 
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
+
+/* is the data link established? who established it? */
+#define LCHAN_SAPI_UNUSED	0
+#define LCHAN_SAPI_MS		1
+#define LCHAN_SAPI_NET		2
 
 struct gsm_lchan {
 	/* The TS that we're part of */
@@ -149,6 +163,9 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
+
+	/* AMR bits */
+	struct gsm48_multi_rate_conf mr_conf;
 	
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
@@ -157,6 +174,9 @@ struct gsm_lchan {
 	struct timer_list release_timer;
 
 	struct timer_list T3101;
+
+	/* Established data link layer services */
+	u_int8_t sapis[8];
 
 	/*
 	 * Operations that have a state and might be pending
@@ -237,6 +257,9 @@ struct gsm_bts_trx {
 		} bs11;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
+
+	/* NM state */
+	int rf_locked;
 };
 
 enum gsm_bts_type {
@@ -266,7 +289,6 @@ struct gsm_paging_request {
 	gsm_cbfn *cbfn;
 	void *cbfn_param;
 };
-#define T3113_VALUE	60, 0
 
 /*
  * This keeps track of the paging status of one BTS. It
@@ -286,6 +308,12 @@ struct gsm_bts_paging_state {
 };
 
 struct gsm_envabtse {
+	struct gsm_nm_state nm_state;
+};
+
+struct gsm_bts_gprs_nsvc {
+	struct gsm_bts *bts;
+	int id;
 	struct gsm_nm_state nm_state;
 };
 
@@ -356,6 +384,17 @@ struct gsm_bts {
 			struct gsm_envabtse envabtse[4];
 		} bs11;
 	};
+
+	/* Not entirely sure how ip.access specific this is */
+	struct {
+		struct {
+			struct gsm_nm_state nm_state;
+		} nse;
+		struct {
+			struct gsm_nm_state nm_state;
+		} cell;
+		struct gsm_bts_gprs_nsvc nsvc[2];
+	} gprs;
 	
 	/* transceivers */
 	int num_trx;
@@ -376,6 +415,7 @@ struct gsm_network {
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
 	int a5_encryption;
+	int neci;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
@@ -384,12 +424,25 @@ struct gsm_network {
 
 	unsigned int num_bts;
 	struct llist_head bts_list;
+
+	/* timer values */
+	int T3101;
+	int T3103;
+	int T3105;
+	int T3107;
+	int T3109;
+	int T3111;
+	int T3113;
+	int T3115;
+	int T3117;
+	int T3119;
+	int T3141;
 };
 
 #define SMS_HDR_SIZE	128
 #define SMS_TEXT_SIZE	256
 struct gsm_sms {
-	u_int64_t id;
+	unsigned long long id;
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
 
@@ -467,5 +520,7 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
+
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
 #endif

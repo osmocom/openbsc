@@ -115,11 +115,10 @@ struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;
 
-	s = talloc(tall_subscr_ctx, struct gsm_subscriber);
+	s = talloc_zero(tall_subscr_ctx, struct gsm_subscriber);
 	if (!s)
 		return NULL;
 
-	memset(s, 0, sizeof(*s));
 	llist_add_tail(&s->entry, &active_subscribers);
 	s->use_count = 1;
 	s->tmsi = GSM_RESERVED_TMSI;

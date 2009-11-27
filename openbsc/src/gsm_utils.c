@@ -23,8 +23,10 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_utils.h>
+#include <execinfo.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include <errno.h>
 
 /* GSM 03.38 6.2.1 Charachter packing */
@@ -148,4 +150,21 @@ int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 	return -EINVAL;
 }
 
+void generate_backtrace()
+{
+	int i, nptrs;
+	void *buffer[100];
+	char **strings;
 
+	nptrs = backtrace(buffer, ARRAY_SIZE(buffer));
+	printf("backtrace() returned %d addresses\n", nptrs);
+
+	strings = backtrace_symbols(buffer, nptrs);
+	if (!strings)
+		return;
+
+	for (i = 1; i < nptrs; i++)
+		printf("%s\n", strings[i]);
+
+	free(strings);
+}

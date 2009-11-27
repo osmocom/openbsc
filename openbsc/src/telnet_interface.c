@@ -165,7 +165,6 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	connection->fd.fd = new_connection;
 	connection->fd.when = BSC_FD_READ;
 	connection->fd.cb = client_data;
-	connection->bts = 0;
 	bsc_register_fd(&connection->fd);
 	llist_add_tail(&connection->entry, &active_connections);
 

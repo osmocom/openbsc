@@ -1,8 +1,9 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall
 
-sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config isdnsync
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a
+sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
+                isdnsync bsc_mgcp
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
 noinst_HEADERS = vty/cardshell.h
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
@@ -14,9 +15,11 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
 		mncc.c rtp_proxy.c md5c.c gsm_04_08.c gsm_04_11.c transaction.c \
-		token_auth.c rrlp.c
+		token_auth.c rrlp.c gsm_04_80.c ussd.c silent_call.c
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
+
+libsccp_a_SOURCES = sccp/sccp.c
 
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
@@ -30,3 +33,6 @@ ipaccess_config_SOURCES = ipaccess-config.c
 ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 isdnsync_SOURCES = isdnsync.c
+
+bsc_mgcp_SOURCES = bsc_mgcp.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
+bsc_mgcp_LDADD = libvty.a

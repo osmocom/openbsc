@@ -74,6 +74,26 @@ struct msgb *msgb_dequeue(struct llist_head *queue)
 	return llist_entry(lh, struct msgb, list);
 }
 
+void msgb_reset(struct msgb *msg)
+{
+	msg->len = 0;
+	msg->len = 0;
+	msg->data = msg->_data;
+
+	msg->head = msg->data;
+	msg->data = msg->data;
+	/* reset tail pointer */
+	msg->tail = msg->data;
+
+	/* reset pointers */
+	msg->bts_link = NULL;
+	msg->trx = NULL;
+	msg->lchan = NULL;
+	msg->l2h = NULL;
+	msg->l3h = NULL;
+	msg->smsh = NULL;
+}
+
 static __attribute__((constructor)) void on_dso_load_trau_msgb(void)
 {
 	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");

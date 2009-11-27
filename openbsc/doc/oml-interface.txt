@@ -1,0 +1,21 @@
+oml interface design notes
+
+problems:
+
+* there is no way how to tag a command sent to the BTS, with the response
+  having the same tag to identify the originator of the command
+* therefore, we can have e.g. both the BSC and the OML interface send a
+  SET ATTRIBUTE message, where the responses would end up at the wrong
+  query.
+
+the only possible solutions i can imagine:
+* have some kind of exclusive locking, where the OML interface gets blocked
+  from the BSC and is exclusively assigned to the OML console until all commands
+  of the OML console have terminated.  This can either be done explicitly
+  dynamically or on demand
+
+* use the OML interface synchronously, i.e. always wait for the response from
+  the BTS before
+
+* unilateral / unsolicited messages need to be broadcasted to both the BSC and
+  the OML console

@@ -39,6 +39,7 @@ enum signal_subsystems {
 	SS_NM,
 	SS_LCHAN,
 	SS_SUBSCR,
+	SS_SCALL,
 };
 
 /* SS_PAGING signals */
@@ -56,8 +57,8 @@ enum signal_sms {
 
 /* SS_ABISIP signals */
 enum signal_abisip {
-	S_ABISIP_BIND_ACK,
-	S_ABISIP_DISC_IND,
+	S_ABISIP_CRCX_ACK,
+	S_ABISIP_DLCX_IND,
 };
 
 /* SS_NM signals */
@@ -85,6 +86,13 @@ enum signal_subscr {
 	S_SUBSCR_DETACHED,
 };
 
+/* SS_SCALL signals */
+enum signal_scall {
+	S_SCALL_SUCCESS,
+	S_SCALL_EXPIRED,
+	S_SCALL_DETACHED,
+};
+
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data);
 
@@ -94,6 +102,12 @@ struct paging_signal_data {
 
 	/* NULL in case the paging didn't work */
 	struct gsm_lchan *lchan;
+};
+
+struct scall_signal_data {
+	struct gsm_subscriber *subscr;
+	struct gsm_lchan *lchan;
+	void *data;
 };
 
 /* Management */

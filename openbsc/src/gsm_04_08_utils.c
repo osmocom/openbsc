@@ -255,9 +255,14 @@ static const struct chreq chreq_type_neci1[] = {
 	{ 0x50, 0xf0, CHREQ_T_DATA_CALL_TCH_H },
 	{ 0x00, 0xf0, CHREQ_T_LOCATION_UPD },
 	{ 0x10, 0xf0, CHREQ_T_SDCCH },
-	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY },
+	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY_NECI1 },
 	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
 	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+	{ 0x67, 0xff, CHREQ_T_LMU },
+	{ 0x60, 0xf9, CHREQ_T_RESERVED_SDCCH },
+	{ 0x61, 0xfb, CHREQ_T_RESERVED_SDCCH },
+	{ 0x63,	0xff, CHREQ_T_RESERVED_SDCCH },
+	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 
 /* If SYSTEM INFORMATION TYPE 4 NECI bit == 0 */
@@ -267,9 +272,14 @@ static const struct chreq chreq_type_neci0[] = {
 	{ 0xe0, 0xe0, CHREQ_T_TCH_F },
 	{ 0x50, 0xf0, CHREQ_T_DATA_CALL_TCH_H },
 	{ 0x00, 0xe0, CHREQ_T_LOCATION_UPD },
-	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY },
+	{ 0x80, 0xe0, CHREQ_T_PAG_R_ANY_NECI0 },
 	{ 0x20, 0xf0, CHREQ_T_PAG_R_TCH_F },
 	{ 0x30, 0xf0, CHREQ_T_PAG_R_TCH_FH },
+	{ 0x67, 0xff, CHREQ_T_LMU },
+	{ 0x60, 0xf9, CHREQ_T_RESERVED_SDCCH },
+	{ 0x61, 0xfb, CHREQ_T_RESERVED_SDCCH },
+	{ 0x63,	0xff, CHREQ_T_RESERVED_SDCCH },
+	{ 0x7f, 0xff, CHREQ_T_RESERVED_IGNORE },
 };
 
 static const enum gsm_chan_t ctype_by_chreq[] = {
@@ -282,9 +292,13 @@ static const enum gsm_chan_t ctype_by_chreq[] = {
 	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_LCHAN_TCH_H,
 	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_LCHAN_TCH_H,
 	[CHREQ_T_LOCATION_UPD]		= GSM_LCHAN_SDCCH,
-	[CHREQ_T_PAG_R_ANY]		= GSM_LCHAN_SDCCH,
+	[CHREQ_T_PAG_R_ANY_NECI1]	= GSM_LCHAN_SDCCH,
+	[CHREQ_T_PAG_R_ANY_NECI0]	= GSM_LCHAN_SDCCH,
 	[CHREQ_T_PAG_R_TCH_F]		= GSM_LCHAN_TCH_F,
 	[CHREQ_T_PAG_R_TCH_FH]		= GSM_LCHAN_TCH_F,
+	[CHREQ_T_LMU]			= GSM_LCHAN_SDCCH,
+	[CHREQ_T_RESERVED_SDCCH]	= GSM_LCHAN_SDCCH,
+	[CHREQ_T_RESERVED_IGNORE]	= GSM_LCHAN_UNKNOWN,
 };
 
 static const enum gsm_chreq_reason_t reason_by_chreq[] = {
@@ -297,18 +311,32 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_LOCATION_UPD]		= GSM_CHREQ_REASON_LOCATION_UPD,
-	[CHREQ_T_PAG_R_ANY]		= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_PAG_R_ANY_NECI1]	= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_PAG_R_ANY_NECI0]	= GSM_CHREQ_REASON_PAG,
 	[CHREQ_T_PAG_R_TCH_F]		= GSM_CHREQ_REASON_PAG,
 	[CHREQ_T_PAG_R_TCH_FH]		= GSM_CHREQ_REASON_PAG,
+	[CHREQ_T_LMU]			= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_RESERVED_SDCCH]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_RESERVED_IGNORE]	= GSM_CHREQ_REASON_OTHER,
 };
 
-enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 {
 	int i;
-	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+	int length;
+	const struct chreq *chreq;
 
-	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
-		const struct chreq *chr = &chreq_type_neci0[i];
+	if (neci) {
+		chreq = chreq_type_neci1;
+		length = ARRAY_SIZE(chreq_type_neci1);
+	} else {
+		chreq = chreq_type_neci0;
+		length = ARRAY_SIZE(chreq_type_neci0);
+	}
+
+
+	for (i = 0; i < length; i++) {
+		const struct chreq *chr = &chreq[i];
 		if ((ra & chr->mask) == chr->val)
 			return ctype_by_chreq[chr->type];
 	}
@@ -316,13 +344,22 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra)
 	return GSM_LCHAN_SDCCH;
 }
 
-enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra)
+enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 {
 	int i;
-	/* FIXME: determine if we set NECI = 0 in the BTS SI4 */
+	int length;
+	const struct chreq *chreq;
 
-	for (i = 0; i < ARRAY_SIZE(chreq_type_neci0); i++) {
-		const struct chreq *chr = &chreq_type_neci0[i];
+	if (neci) {
+		chreq = chreq_type_neci1;
+		length = ARRAY_SIZE(chreq_type_neci1);
+	} else {
+		chreq = chreq_type_neci0;
+		length = ARRAY_SIZE(chreq_type_neci0);
+	}
+
+	for (i = 0; i < length; i++) {
+		const struct chreq *chr = &chreq[i];
 		if ((ra & chr->mask) == chr->val)
 			return reason_by_chreq[chr->type];
 	}
@@ -482,3 +519,142 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 	return rsl_encryption_cmd(msg);
 }
 
+/* Chapter 9.1.2: Assignment Command */
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_ass_cmd *ass =
+		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	DEBUGP(DRR, "-> ASSIGNMENT COMMAND tch_mode=0x%02x\n", lchan->tch_mode);
+
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_ASS_CMD;
+
+	/*
+	 * fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd(),
+	 * gsm48_tx_chan_mode_modify. But beware that 10.5.2.5
+	 * 10.5.2.5.a have slightly different semantic for
+	 * the chan_desc. But as long as multi-slot configurations
+	 * are not used we seem to be fine.
+	 */
+	ass->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	ass->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
+	ass->chan_desc.h0.h = 0;
+	ass->chan_desc.h0.arfcn_high = arfcn >> 8;
+	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	ass->power_command = power_command;
+
+	/* in case of multi rate we need to attach a config */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+		if (lchan->mr_conf.ver == 0) {
+			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+		} else {
+			u_int8_t *data = msgb_put(msg, 4);
+			data[0] = GSM48_IE_MUL_RATE_CFG;
+			data[1] = 0x2;
+			memcpy(&data[2], &lchan->mr_conf, 2);
+		}
+	}
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
+/* 9.1.5 Channel mode modify: Modify the mode on the MS side */
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_chan_mode_modify *cmm =
+		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
+
+	lchan->tch_mode = mode;
+	msg->lchan = lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
+
+	/* fill the channel information element, this code
+	 * should probably be shared with rsl_rx_chan_rqd() */
+	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
+	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
+	cmm->chan_desc.h0.h = 0;
+	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
+	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	cmm->mode = mode;
+
+	/* in case of multi rate we need to attach a config */
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
+		if (lchan->mr_conf.ver == 0) {
+			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+		} else {
+			u_int8_t *data = msgb_put(msg, 4);
+			data[0] = GSM48_IE_MUL_RATE_CFG;
+			data[1] = 0x2;
+			memcpy(&data[2], &lchan->mr_conf, 2);
+		}
+	}
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
+int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)
+{
+	int rc;
+
+	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode);
+	if (rc < 0)
+		return rc;
+
+	return rc;
+}
+
+int gsm48_rx_rr_modif_ack(struct msgb *msg)
+{
+	int rc;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_chan_mode_modify *mod =
+				(struct gsm48_chan_mode_modify *) gh->data;
+
+	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
+
+	if (mod->mode != msg->lchan->tch_mode) {
+		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+			msg->lchan->tch_mode, mod->mode);
+		return -1;
+	}
+
+	/* update the channel type */
+	switch (mod->mode) {
+	case GSM48_CMODE_SIGN:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
+		break;
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+		msg->lchan->rsl_cmode = RSL_CMOD_SPD_DATA;
+		break;
+	}
+
+	/* We've successfully modified the MS side of the channel,
+	 * now go on to modify the BTS side of the channel */
+	rc = rsl_chan_mode_modify_req(msg->lchan);
+
+	/* FIXME: we not only need to do this after mode modify, but
+	 * also after channel activation */
+	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && mod->mode != GSM48_CMODE_SIGN)
+		rsl_ipacc_crcx(msg->lchan);
+	return rc;
+}

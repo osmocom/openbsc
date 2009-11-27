@@ -105,6 +105,15 @@
 #endif
 #endif
 
+#ifdef __APPLE__
+/* taken from http://insanecoding.blogspot.com/2007/03/methods-for-safe-string-handling.html */
+size_t strnlen(const char *s, size_t n)
+{
+  const char *p = (const char *)memchr(s, 0, n);
+  return(p ? p-s : n);
+}
+#endif
+
 /* this null_context is only used if talloc_enable_leak_report() or
    talloc_enable_leak_report_full() is called, otherwise it remains
    NULL

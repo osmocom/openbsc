@@ -61,7 +61,7 @@ static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0',
  * result. The nanoBTS will send us a NACK when we did something the
  * BTS didn't like.
  */
-static int ipacc_msg_nack(int mt)
+static int ipacc_msg_nack(u_int8_t mt)
 {
 	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
 	exit(-1);
@@ -79,30 +79,14 @@ struct ipacc_cusage_elem {
 		  rxlev:6;
 } __attribute__ ((packed));
 
-static const char *ipacc_testres_names[] = {
-	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
-	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
-	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
-	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
-	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
-};
-
-const char *ipacc_testres_name(u_int8_t res)
-{
-	if (res < ARRAY_SIZE(ipacc_testres_names) &&
-	    ipacc_testres_names[res])
-		return ipacc_testres_names[res];
-
-	return "unknown";
-}
-
 static int test_rep(void *_msg)
 {
 	struct msgb *msg = _msg;
 	struct abis_om_fom_hdr *foh = msgb_l3(msg);
 	u_int16_t test_rep_len, ferr_list_len;
 	struct ipacc_ferr_elem *ife;
-	int i;
+	struct ipac_bcch_info binfo;
+	int i, rc;
 
 	DEBUGP(DNM, "TEST REPORT: ");
 
@@ -119,7 +103,7 @@ static int test_rep(void *_msg)
 
 	/* data[6]: ip.access nested IE. 3 == freq_err_list */
 	switch (foh->data[6]) {
-	case 3:
+	case NM_IPAC_EIE_FREQ_ERR_LIST:
 		/* data[7..8]: length of ferr_list */
 		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
 
@@ -130,7 +114,7 @@ static int test_rep(void *_msg)
 			ife->arfcn, ntohs(ife->freq_err));
 		}
 		break;
-	case 4:
+	case NM_IPAC_EIE_CHAN_USE_LIST:
 		/* data[7..8]: length of ferr_list */
 		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
 
@@ -142,6 +126,19 @@ static int test_rep(void *_msg)
 				cu & 0x3ff, cu >> 10);
 		}
 		break;
+	case NM_IPAC_EIE_BCCH_INFO_TYPE:
+		break;
+	case NM_IPAC_EIE_BCCH_INFO:
+		rc = ipac_parse_bcch_info(&binfo, foh->data+6);
+		if (rc < 0) {
+			DEBUGP(DNM, "BCCH Info parsing failed\n");
+			break;
+		}
+		DEBUGP(DNM, "==> ARFCN %u, RxLev %2u, RxQual %2u: %3d-%d, LAC %d CI %d\n",
+			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
+			binfo.cgi.mcc, binfo.cgi.mnc,
+			binfo.cgi.lac, binfo.cgi.ci);
+		break;
 	default:
 		break;
 	}
@@ -152,9 +149,12 @@ static int test_rep(void *_msg)
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
+	u_int8_t *msg_type;
+
 	switch (signal) {
 	case S_NM_IPACC_NACK:
-		return ipacc_msg_nack((int)signal_data);
+		msg_type = signal_data;
+		return ipacc_msg_nack(*msg_type);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	default:
@@ -279,15 +279,16 @@ static void print_help(void)
 	printf("  -o --oml-ip ip\n");
 	printf("  -r --restart\n");
 	printf("  -n flags/mask\tSet NVRAM attributes.\n");
-	printf("  -l --listen testnr \tPerform speciified test number\n");
+	printf("  -l --listen testnr \tPerform specified test number\n");
 	printf("  -h --help this text\n");
+	printf("  -s --stream-id ID\n");
 }
 
 int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
-	int rc, option_index = 0;
+	int rc, option_index = 0, stream_id = 0xff;
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
@@ -302,9 +303,10 @@ int main(int argc, char **argv)
 			{ "restart", 0, 0, 'r' },
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
+			{ "stream-id", 1, 0, 's' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:h", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -332,6 +334,10 @@ int main(int argc, char **argv)
 		case 'l':
 			net_listen_testnr = atoi(optarg);
 			break;
+		case 's':
+			stream_id = atoi(optarg);
+			printf("foo: %d\n", stream_id);
+			break;
 		case 'h':
 			print_usage();
 			print_help();
@@ -350,6 +356,7 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
+	bts->oml_tei = stream_id;
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 	printf("Trying to connect to ip.access BTS ...\n");

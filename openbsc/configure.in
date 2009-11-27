@@ -3,6 +3,9 @@ AC_INIT
 
 AM_INIT_AUTOMAKE(openbsc, 0.0alpha1)
 
+dnl kernel style compile messages
+m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
+
 dnl checks for programs
 AC_PROG_MAKE_SET
 AC_PROG_CC
@@ -37,6 +40,7 @@ AC_OUTPUT(
     openbsc.pc
     include/openbsc/Makefile
     include/vty/Makefile
+    include/sccp/Makefile
     include/Makefile
     src/Makefile
     tests/Makefile
@@ -46,4 +50,5 @@ AC_OUTPUT(
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
+    tests/sccp/Makefile
     Makefile)

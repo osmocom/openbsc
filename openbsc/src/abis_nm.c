@@ -328,7 +328,6 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
 		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
 		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
-		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
 		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
 		/* BS11 specifics */
 		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },
@@ -410,6 +409,8 @@ static const enum abis_nm_chan_comb chcomb4pchan[] = {
 	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
 	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
+	[GSM_PCHAN_PDCH]	= NM_CHANC_IPAC_PDCH,
+	[GSM_PCHAN_TCH_F_PDCH]	= NM_CHANC_IPAC_TCHFull_PDCH,
 	/* FIXME: bounds check */
 };
 
@@ -571,6 +572,18 @@ const char *nm_avail_name(u_int8_t avail)
 	return avail_names[avail];
 }
 
+static struct value_string test_names[] = {
+	/* FIXME: standard test names */
+	{ NM_IPACC_TESTNO_CHAN_USAGE, "Channel Usage" },
+	{ NM_IPACC_TESTNO_BCCH_CHAN_USAGE, "BCCH Channel Usage" },
+	{ NM_IPACC_TESTNO_FREQ_SYNC, "Frequency Synchronization" },
+	{ NM_IPACC_TESTNO_BCCH_INFO, "BCCH Info" },
+	{ NM_IPACC_TESTNO_TX_BEACON, "Transmit Beacon" },
+	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "System Info Monitor" },
+	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH Monitor" },
+	{ 0, NULL }
+};
+
 const char *nm_adm_name(u_int8_t adm)
 {
 	switch (adm) {
@@ -583,6 +596,14 @@ const char *nm_adm_name(u_int8_t adm)
 	default:
 		return "<not used>";
 	}
+}
+
+static void debugp_foh(struct abis_om_fom_hdr *foh)
+{
+	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
+		obj_class_name(foh->obj_class), foh->obj_class, 
+		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
+		foh->obj_inst.ts_nr);
 }
 
 /* obtain the gsm_nm_state data structure for a given object instance */
@@ -598,20 +619,26 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->nm_state;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->nm_state;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx)
+		if (obj_inst->trx_nr > bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
@@ -648,6 +675,17 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 			return NULL;
 		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
+	case NM_OC_GPRS_NSE:
+		nm_state = &bts->gprs.nse.nm_state;
+		break;
+	case NM_OC_GPRS_CELL:
+		nm_state = &bts->gprs.cell.nm_state;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
+		break;
 	}
 	return nm_state;
 }
@@ -665,20 +703,26 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = bts;
 		break;
 	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = trx;
 		break;
 	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx)
+		if (obj_inst->trx_nr >= bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx)
+		if (obj_inst->trx_nr > bts->num_trx) {
+			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
+		}
 		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
 		if (obj_inst->ts_nr >= TRX_NR_TS)
 			return NULL;
@@ -686,6 +730,17 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		break;
 	case NM_OC_SITE_MANAGER:
 		obj = &bts->site_mgr;
+		break;
+	case NM_OC_GPRS_NSE:
+		obj = &bts->gprs.nse;
+		break;
+	case NM_OC_GPRS_CELL:
+		obj = &bts->gprs.cell;
+		break;
+	case NM_OC_GPRS_NSVC:
+		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+			return NULL;
+		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
 		break;
 	}
 	return obj;
@@ -701,6 +756,8 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	int rc;
 
 	obj = objclass2obj(bts, obj_class, obj_inst);
+	if (!obj)
+		return -EINVAL;
 	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
 	if (!nm_state)
 		return -1;
@@ -730,7 +787,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
 	if (!nm_state) {
-		DEBUGPC(DNM, "\n");
+		DEBUGPC(DNM, "unknown object class\n");
 		return -EINVAL;
 	}
 
@@ -751,7 +808,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
-		DEBUGPC(DNM, "ADM=%02s ", nm_adm_name(new_state.administrative));
+		DEBUGPC(DNM, "ADM=%2s ", nm_adm_name(new_state.administrative));
 	}
 	DEBUGPC(DNM, "\n");
 
@@ -799,10 +856,7 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
 
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class, 
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
+	debugp_foh(foh);
 
 	//nmh->cfg->report_cb(mb, foh);
 
@@ -860,7 +914,9 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	int nack = 0;
 	int ret;
 
-	DEBUGP(DNM, "Software Activate Request ");
+	debugp_foh(foh);
+
+	DEBUGPC(DNM, "SW Activate Request: ");
 
 	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
 		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
@@ -965,10 +1021,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
 		struct tlv_parsed tp;
 
-		DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-			obj_class_name(foh->obj_class), foh->obj_class,
-			foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-			foh->obj_inst.ts_nr);
+		debugp_foh(foh);
 
 		if (nack_names[mt])
 			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
@@ -983,7 +1036,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			DEBUGPC(DNM, "\n");
 
-		dispatch_signal(SS_NM, S_NM_NACK, (void*) ((long)mt));
+		dispatch_signal(SS_NM, S_NM_NACK, (void*) &mt);
 		return 0;
 	}
 #if 0
@@ -1851,10 +1904,11 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
 
-	DEBUGP(DNM, "Sending OPSTART obj_class=0x%02x obj_inst=(0x%02x, 0x%02x, 0x%02x)\n",
-		obj_class, i0, i1, i2);
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
+
+	debugp_foh((struct abis_om_fom_hdr *) oh->data);
+	DEBUGPC(DNM, "Sending OPSTART\n");
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2474,7 +2528,9 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
 
-	DEBUGP(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
+	debugp_foh(foh);
+
+	DEBUGPC(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
@@ -2487,6 +2543,9 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *) 
 					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_STREAM_ID))
+			DEBUGPC(DNM, "STREAM=0x%02x ",
+					*TLVP_VAL(&tp, NM_ATT_IPACC_STREAM_ID));
 		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
@@ -2542,7 +2601,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_NACK, (void*) ((long)foh->msg_type));
+		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &foh->msg_type);
 		break;
 	default:
 		break;
@@ -2597,8 +2656,167 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
 				    attr_len);
 }
 
+int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
+				 u_int32_t ip, u_int16_t port, u_int8_t stream)
+{
+	struct in_addr ia;
+	u_int8_t attr[] = { NM_ATT_IPACC_STREAM_ID, 0,
+			    NM_ATT_IPACC_DST_IP_PORT, 0, 0,
+			    NM_ATT_IPACC_DST_IP, 0, 0, 0, 0 };
+
+	int attr_len = sizeof(attr);
+
+	ia.s_addr = htonl(ip);
+	attr[1] = stream;
+	attr[3] = port >> 8;
+	attr[4] = port & 0xff;
+	*(u_int32_t *)(attr+6) = ia.s_addr;
+
+	/* if ip == 0, we use the default IP */
+	if (ip == 0)
+		attr_len -= 5;
+
+	DEBUGP(DNM, "ip.access RSL CONNECT IP=%s PORT=%u STREAM=0x%02x\n",
+		inet_ntoa(ia), port, stream);
+
+	return abis_nm_ipaccess_msg(trx->bts, NM_MT_IPACC_RSL_CONNECT,
+				    NM_OC_BASEB_TRANSC, trx->bts->bts_nr,
+				    trx->nr, 0xff, attr, attr_len);
+}
+
 /* restart / reboot an ip.access nanoBTS */
 int abis_nm_ipaccess_restart(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
 }
+
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
+				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
+				u_int8_t *attr, u_int8_t attr_len)
+{
+	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_ATTR,
+				    obj_class, bts_nr, trx_nr, ts_nr,
+				     attr, attr_len);
+}
+
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
+{
+	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+
+	trx->rf_locked = locked;
+	if (!trx->bts || !trx->bts->oml_link)
+		return;
+
+	abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
+			      trx->bts->bts_nr, trx->nr, 0xff,
+			      new_state);
+}
+
+static const char *ipacc_testres_names[] = {
+	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
+	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
+	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
+	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
+	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
+};
+
+const char *ipacc_testres_name(u_int8_t res)
+{
+	if (res < ARRAY_SIZE(ipacc_testres_names) &&
+	    ipacc_testres_names[res])
+		return ipacc_testres_names[res];
+
+	return "unknown";
+}
+
+void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
+{
+	cid->mcc = (buf[0] & 0xf) * 100;
+	cid->mcc += (buf[0] >> 4) *  10;
+	cid->mcc += (buf[1] & 0xf) *  1;
+
+	if (buf[1] >> 4 == 0xf) {
+		cid->mnc = (buf[2] & 0xf) * 10;
+		cid->mnc += (buf[2] >> 4) *  1;
+	} else {
+		cid->mnc = (buf[2] & 0xf) * 100;
+		cid->mnc += (buf[2] >> 4) *  10;
+		cid->mnc += (buf[1] >> 4) *   1;
+	}
+
+	cid->lac = ntohs(*((u_int16_t *)&buf[3]));
+	cid->ci = ntohs(*((u_int16_t *)&buf[5]));
+}
+
+/* parse BCCH information IEI from wire format to struct ipac_bcch_info */
+int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
+{
+	u_int8_t *cur = buf;
+	u_int16_t len;
+
+	memset(binf, 0, sizeof(binf));
+
+	if (cur[0] != NM_IPAC_EIE_BCCH_INFO)
+		return -EINVAL;
+	cur++;
+
+	len = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	binf->info_type = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
+		binf->freq_qual = *cur >> 2;
+
+	binf->arfcn = *cur++ & 3 << 8;
+	binf->arfcn |= *cur++;
+
+	if (binf->info_type & IPAC_BINF_RXLEV)
+		binf->rx_lev = *cur & 0x3f;
+	cur++;
+
+	if (binf->info_type & IPAC_BINF_RXQUAL)
+		binf->rx_qual = *cur & 0x7;
+	cur++;
+
+	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
+		binf->freq_err = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FRAME_OFFSET)
+		binf->frame_offset = ntohs(*(u_int16_t *)cur);
+	cur += 2;
+
+	if (binf->info_type & IPAC_BINF_FRAME_NR_OFFSET)
+		binf->frame_nr_offset = ntohl(*(u_int32_t *)cur);
+	cur += 4;
+
+	if (binf->info_type & IPAC_BINF_BSIC)
+		binf->bsic = *cur & 0x3f;
+	cur++;
+
+	ipac_parse_cgi(&binf->cgi, cur);
+	cur += 7;
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2) {
+		memcpy(binf->ba_list_si2, cur, sizeof(binf->ba_list_si2));
+		cur += sizeof(binf->ba_list_si2);
+	}
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2bis) {
+		memcpy(binf->ba_list_si2bis, cur,
+			sizeof(binf->ba_list_si2bis));
+		cur += sizeof(binf->ba_list_si2bis);
+	}
+
+	if (binf->info_type & IPAC_BINF_NEIGH_BA_SI2ter) {
+		memcpy(binf->ba_list_si2ter, cur,
+			sizeof(binf->ba_list_si2ter));
+		cur += sizeof(binf->ba_list_si2ter);
+	}
+
+	return 0;
+}
+
+

@@ -338,11 +338,6 @@ static unsigned char nanobts_attr_radio[] = {
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 };
 
-static unsigned char nanobts_attr_e0[] = {
-	NM_ATT_IPACC_STREAM_ID, 0x00,
-	NM_ATT_IPACC_DST_IP_PORT, 0x0b, 0xbb,	/* TCP PORT for RSL */
-};
-
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
@@ -351,51 +346,57 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 
-	/* This is currently only required on nanoBTS */
+	/* This event-driven BTS setup is currently only required on nanoBTS */
 
-	switch (evt) {
-	case EVT_STATECHG_OPER:
-		switch (obj_class) {
-		case NM_OC_SITE_MANAGER:
-			bts = container_of(obj, struct gsm_bts, site_mgr);
-			if (old_state->operational != 2 && new_state->operational == 2) {
-				abis_nm_opstart(bts, NM_OC_SITE_MANAGER, 0xff, 0xff, 0xff);
-			}
-			break;
-		case NM_OC_BTS:
-			bts = obj;
-			if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-				patch_nm_tables(bts);
-				abis_nm_set_bts_attr(bts, nanobts_attr_bts,
-							sizeof(nanobts_attr_bts));
-				abis_nm_opstart(bts, NM_OC_BTS,
-						bts->bts_nr, 0xff, 0xff);
-				abis_nm_chg_adm_state(bts, NM_OC_BTS,
-						      bts->bts_nr, 0xff, 0xff,
-						      NM_STATE_UNLOCKED);
-			}
-			break;
-		case NM_OC_CHANNEL:
-			ts = obj;
-			trx = ts->trx;
-			if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-				if (ts->nr == 0 && trx == trx->bts->c0)
-					abis_nm_set_channel_attr(ts, NM_CHANC_BCCHComb);
-				else
-					abis_nm_set_channel_attr(ts, NM_CHANC_TCHFull);
-				abis_nm_opstart(trx->bts, NM_OC_CHANNEL,
-						trx->bts->bts_nr, trx->nr, ts->nr);
-				abis_nm_chg_adm_state(trx->bts, NM_OC_CHANNEL,
-						      trx->bts->bts_nr, trx->nr, ts->nr,
-						      NM_STATE_UNLOCKED);
-			}
-			break;
-		default:
-			break;
+	/* EVT_STATECHG_ADM is called after we call chg_adm_state() and would create
+	 * endless loop */
+	if (evt != EVT_STATECHG_OPER)
+		return 0;
+
+	switch (obj_class) {
+	case NM_OC_SITE_MANAGER:
+		bts = container_of(obj, struct gsm_bts, site_mgr);
+		if (new_state->operational == 2 &&
+		    new_state->availability == NM_AVSTATE_OK)
+			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
+		break;
+	case NM_OC_BTS:
+		bts = obj;
+		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			patch_nm_tables(bts);
+			abis_nm_set_bts_attr(bts, nanobts_attr_bts,
+					     sizeof(nanobts_attr_bts));
+			abis_nm_chg_adm_state(bts, obj_class,
+					      bts->bts_nr, 0xff, 0xff,
+					      NM_STATE_UNLOCKED);
+			abis_nm_opstart(bts, obj_class,
+					bts->bts_nr, 0xff, 0xff);
 		}
 		break;
+	case NM_OC_CHANNEL:
+		ts = obj;
+		trx = ts->trx;
+		if (new_state->operational == 1 &&
+		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
+			patch_nm_tables(trx->bts);
+			enum abis_nm_chan_comb ccomb =
+						abis_nm_chcomb4pchan(ts->pchan);
+			abis_nm_set_channel_attr(ts, ccomb);
+			abis_nm_chg_adm_state(trx->bts, obj_class,
+					      trx->bts->bts_nr, trx->nr, ts->nr,
+					      NM_STATE_UNLOCKED);
+			abis_nm_opstart(trx->bts, obj_class,
+					trx->bts->bts_nr, trx->nr, ts->nr);
+		}
+		break;
+	case NM_OC_RADIO_CARRIER:
+		trx = obj;
+		if (new_state->operational == 1 &&
+		    new_state->availability == NM_AVSTATE_OK)
+			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
+					trx->nr, 0xff);
+		break;
 	default:
-		//DEBUGP(DMM, "Unhandled state change in %s:%d\n", __func__, __LINE__);
 		break;
 	}
 	return 0;
@@ -405,36 +406,51 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 static int sw_activ_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	struct gsm_bts_trx *trx = mb->trx;
+	struct gsm_bts *bts = mb->trx->bts;
+	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
+
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
-		/* TRX software is active, tell it to initiate RSL Link */
-		abis_nm_ipaccess_msg(trx->bts, 0xe0, NM_OC_BASEB_TRANSC,
-				     trx->bts->bts_nr, trx->nr, 0xff,
-				     nanobts_attr_e0, sizeof(nanobts_attr_e0));
-		abis_nm_opstart(trx->bts, NM_OC_BASEB_TRANSC,
-				trx->bts->bts_nr, trx->nr, 0xff);
-		abis_nm_chg_adm_state(trx->bts, NM_OC_BASEB_TRANSC,
-					trx->bts->bts_nr, trx->nr, 0xff,
-					NM_STATE_UNLOCKED);
-		break;
-	case NM_OC_RADIO_CARRIER:
-		patch_nm_tables(trx->bts);
-		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
-					sizeof(nanobts_attr_radio));
-		abis_nm_opstart(trx->bts, NM_OC_RADIO_CARRIER,
-				trx->bts->bts_nr, trx->nr, 0xff);
-		abis_nm_chg_adm_state(trx->bts, NM_OC_RADIO_CARRIER,
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
 				      trx->bts->bts_nr, trx->nr, 0xff,
 				      NM_STATE_UNLOCKED);
+		abis_nm_opstart(trx->bts, foh->obj_class,
+				trx->bts->bts_nr, trx->nr, 0xff);
+		/* TRX software is active, tell it to initiate RSL Link */
+		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
 		break;
+	case NM_OC_RADIO_CARRIER: {
+		/*
+		 * Locking the radio carrier will make it go
+		 * offline again and we would come here. The
+		 * framework should determine that there was
+		 * no change and avoid recursion.
+		 *
+		 * This code is here to make sure that on start
+		 * a TRX remains locked.
+		 */
+		int rc_state = trx->rf_locked ?
+					NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+		/* Patch ARFCN into radio attribute */
+		nanobts_attr_radio[5] &= 0xf0;
+		nanobts_attr_radio[5] |= trx->arfcn >> 8;
+		nanobts_attr_radio[6] = trx->arfcn & 0xff;
+		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
+				       sizeof(nanobts_attr_radio));
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      rc_state);
+		abis_nm_opstart(trx->bts, foh->obj_class, trx->bts->bts_nr,
+				trx->nr, 0xff);
+		break;
+		}
 	}
 	return 0;
 }
 
 /* Callback function for NACK on the OML NM */
-static int oml_msg_nack(int mt)
+static int oml_msg_nack(u_int8_t mt)
 {
 	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
 		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
@@ -449,11 +465,14 @@ static int oml_msg_nack(int mt)
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
+	u_int8_t *msg_type;
+
 	switch (signal) {
 	case S_NM_SW_ACTIV_REP:
 		return sw_activ_rep(signal_data);
 	case S_NM_NACK:
-		return oml_msg_nack((int)signal_data);
+		msg_type = signal_data;
+		return oml_msg_nack(*msg_type);
 	default:
 		break;
 	}
@@ -527,7 +546,21 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 		}
 		break;
 	case GSM_BTS_TYPE_NANOBTS:
-		trx->nominal_power = 20;
+		switch (trx->bts->band) {
+		case GSM_BAND_850:
+		case GSM_BAND_900:
+			trx->nominal_power = 20;
+			break;
+		case GSM_BAND_1800:
+		case GSM_BAND_1900:
+			trx->nominal_power = 23;
+			break;
+		default:
+			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+				gsm_band_name(trx->bts->band));
+			break;
+		}
+		break;
 	default:
 		break;
 	}
@@ -870,9 +903,6 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	bs11_attr_radio[2] &= 0xf0;
 	bs11_attr_radio[2] |= arfcn_high;
 	bs11_attr_radio[3] = arfcn_low;
-	nanobts_attr_radio[5] &= 0xf0;
-	nanobts_attr_radio[5] |= arfcn_high;
-	nanobts_attr_radio[6] = arfcn_low;
 
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
@@ -932,6 +962,10 @@ static void patch_si_tables(struct gsm_bts *bts)
 	/* patch MS max power for CCH */
 	type_4->cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
+
+	/* Set NECI to influence channel request */
+	type_3->cell_sel_par.neci = bts->network->neci;
+	type_4->cell_sel_par.neci = bts->network->neci;
 
 	if (bts->cell_barred) {
 		type_1->rach_control.cell_bar = 1;

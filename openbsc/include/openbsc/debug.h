@@ -20,6 +20,11 @@
 #define DMUX		0x4000
 #define DINP		0x8000
 
+#define DSCCP		0x10000
+#define DMSC		0x20000
+
+#define DMGCP		0x40000
+
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
 #define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)
@@ -31,7 +36,7 @@
 #define static_assert(exp, name) typedef int dummy##name [(exp) ? 1 : -1];
 
 char *hexdump(const unsigned char *buf, int len);
-void debugp(unsigned int subsys, char *file, int line, int cont, const char *format, ...);
+void debugp(unsigned int subsys, char *file, int line, int cont, const char *format, ...) __attribute__ ((format (printf, 5, 6)));
 void debug_parse_category_mask(const char* mask);
 void debug_use_color(int use_color);
 void debug_timestamp(int enable);

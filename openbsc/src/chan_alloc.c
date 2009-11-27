@@ -212,6 +212,12 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		lchan->type = type;
 		lchan->use_count = 0;
 
+		/* clear sapis */
+		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
+
+		/* clear multi rate config */
+		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
+
 		/* Configure the time and start it so it will be closed */
 		lchan->release_timer.cb = auto_release_channel;
 		lchan->release_timer.data = lchan;
@@ -227,7 +233,7 @@ void lchan_free(struct gsm_lchan *lchan)
 	lchan->type = GSM_LCHAN_NONE;
 	if (lchan->subscr) {
 		subscr_put(lchan->subscr);
-		lchan->subscr = 0;
+		lchan->subscr = NULL;
 	}
 
 	/* We might kill an active channel... */
@@ -304,5 +310,5 @@ struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr)
 			return lchan;
 	}
 
-	return 0;
+	return NULL;
 }
