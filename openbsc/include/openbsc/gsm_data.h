@@ -257,6 +257,9 @@ struct gsm_bts_trx {
 		} bs11;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
+
+	/* NM state */
+	int rf_locked;
 };
 
 enum gsm_bts_type {
@@ -521,6 +524,8 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+
 /* A parsed GPRS routing area */
 struct gprs_ra_id {
 	u_int16_t	mnc;
@@ -531,6 +536,5 @@ struct gprs_ra_id {
 
 int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
-
 
 #endif

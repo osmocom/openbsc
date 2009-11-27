@@ -198,48 +198,172 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_DATA);
 }
 
-static time_t gsm340_scts(u_int8_t *scts);
+/* Turn int into semi-octet representation: 98 => 0x89 */
+static u_int8_t bcdify(u_int8_t value)
+{
+	u_int8_t ret;
 
-static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
+	ret = value / 10;
+	ret |= (value % 10) << 4;
+
+	return ret;
+}
+
+/* Turn semi-octet representation into int: 0x89 => 98 */
+static u_int8_t unbcdify(u_int8_t value)
+{
+	u_int8_t ret;
+
+	if ((value & 0x0F) > 9 || (value >> 4) > 9)
+		DEBUGP(DSMS, "unbcdify got too big nibble: 0x%02X\n", value);
+
+	ret = (value&0x0F)*10;
+	if (ret > 90)
+		ret += value>>4;
+
+	return ret;
+}
+
+/* Generate 03.40 TP-SCTS */
+static void gsm340_gen_scts(u_int8_t *scts, time_t time)
+{
+	struct tm *tm = localtime(&time);
+
+	*scts++ = bcdify(tm->tm_year % 100);
+	*scts++ = bcdify(tm->tm_mon + 1);
+	*scts++ = bcdify(tm->tm_mday);
+	*scts++ = bcdify(tm->tm_hour);
+	*scts++ = bcdify(tm->tm_min);
+	*scts++ = bcdify(tm->tm_sec);
+	*scts++ = bcdify(tm->tm_gmtoff/(60*15));
+}
+
+/* Decode 03.40 TP-SCTS (into utc/gmt timestamp) */
+static time_t gsm340_scts(u_int8_t *scts)
+{
+	struct tm tm;
+
+	u_int8_t yr = unbcdify(*scts++);
+
+	if (yr <= 80)
+		tm.tm_year = 100 + yr;
+	else
+		tm.tm_year = yr;
+	tm.tm_mon  = unbcdify(*scts++) - 1;
+	tm.tm_mday = unbcdify(*scts++);
+	tm.tm_hour = unbcdify(*scts++);
+	tm.tm_min  = unbcdify(*scts++);
+	tm.tm_sec  = unbcdify(*scts++);
+	/* according to gsm 03.40 time zone is
+	   "expressed in quarters of an hour" */
+	tm.tm_gmtoff = unbcdify(*scts++) * 15*60;
+
+	return mktime(&tm);
+}
+
+/* Return the default validity period in minutes */
+static unsigned long gsm340_vp_default(void)
+{
+	unsigned long minutes;
+	/* Default validity: two days */
+	minutes = 24 * 60 * 2;
+	return minutes;
+}
+
+/* Decode validity period format 'relative' */
+static unsigned long gsm340_vp_relative(u_int8_t *sms_vp)
+{
+	/* Chapter 9.2.3.12.1 */
+	u_int8_t vp;
+	unsigned long minutes;
+
+	vp = *(sms_vp);
+	if (vp <= 143)
+		minutes = vp + 1 * 5;
+	else if (vp <= 167)
+		minutes = 12*60 + (vp-143) * 30;
+	else if (vp <= 196)
+		minutes = vp-166 * 60 * 24;
+	else
+		minutes = vp-192 * 60 * 24 * 7;
+	return minutes;
+}
+
+/* Decode validity period format 'absolute' */
+static unsigned long gsm340_vp_absolute(u_int8_t *sms_vp)
+{
+	/* Chapter 9.2.3.12.2 */
+	time_t expires, now;
+	unsigned long minutes;
+
+	expires = gsm340_scts(sms_vp);
+	now = mktime(gmtime(NULL));
+	if (expires <= now)
+		minutes = 0;
+	else
+		minutes = (expires-now)/60;
+	return minutes;
+}
+
+/* Decode validity period format 'relative in integer representation' */
+static unsigned long gsm340_vp_relative_integer(u_int8_t *sms_vp)
 {
 	u_int8_t vp;
 	unsigned long minutes;
-	time_t expires;
-	time_t now;
+	vp = *(sms_vp);
+	if (vp == 0) {
+		DEBUGP(DSMS, "reserved relative_integer validity period\n");
+		return gsm340_vp_default();
+	}
+	minutes = vp/60;
+	return minutes;
+}
+
+/* Decode validity period format 'relative in semi-octet representation' */
+static unsigned long gsm340_vp_relative_semioctet(u_int8_t *sms_vp)
+{
+	unsigned long minutes;
+	minutes = unbcdify(*sms_vp++)*60;  /* hours */
+	minutes += unbcdify(*sms_vp++);    /* minutes */
+	minutes += unbcdify(*sms_vp++)/60; /* seconds */
+	return minutes;
+}
+
+/* decode validity period. return minutes */
+static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
+{
+	u_int8_t fi; /* functionality indicator */
 
 	switch (sms_vpf) {
 	case GSM340_TP_VPF_RELATIVE:
-		/* Chapter 9.2.3.12.1 */
-		vp = *(sms_vp);
-		if (vp <= 143)
-			minutes = vp + 1 * 5;
-		else if (vp <= 167)
-			minutes = 12*60 + (vp-143) * 30;
-		else if (vp <= 196)
-			minutes = vp-166 * 60 * 24;
-		else
-			minutes = vp-192 * 60 * 24 * 7;
-		break;
+		return gsm340_vp_relative(sms_vp);
 	case GSM340_TP_VPF_ABSOLUTE:
-		/* Chapter 9.2.3.12.2 */
-		expires = gsm340_scts(sms_vp);
-		now = mktime(gmtime(NULL));
-		if (expires <= now)
-			minutes = 0;
-		else
-			minutes = (expires-now)/60;
-		break;
+		return gsm340_vp_absolute(sms_vp);
 	case GSM340_TP_VPF_ENHANCED:
 		/* Chapter 9.2.3.12.3 */
-		/* FIXME: implementation */
-		DEBUGP(DSMS, "VPI enhanced not implemented yet\n");
-		break;
+		fi = *sms_vp++;
+		/* ignore additional fi */
+		if (fi & (1<<7)) sms_vp++;
+		/* read validity period format */
+		switch (fi & 0b111) {
+		case 0b000:
+			return gsm340_vp_default(); /* no vpf specified */
+		case 0b001:
+			return gsm340_vp_relative(sms_vp);
+		case 0b010:
+			return gsm340_vp_relative_integer(sms_vp);
+		case 0b011:
+			return gsm340_vp_relative_semioctet(sms_vp);
+		default:
+			/* The GSM spec says that the SC should reject any
+			   unsupported and/or undefined values. FIXME */
+			DEBUGP(DSMS, "Reserved enhanced validity period format\n");
+			return gsm340_vp_default();
+		}
 	case GSM340_TP_VPF_NONE:
-		/* Default validity: two days */
-		minutes = 24 * 60 * 2;
-		break;
+	default:
+		return gsm340_vp_default();
 	}
-	return minutes;
 }
 
 /* determine coding alphabet dependent on GSM 03.38 Section 4 DCS */
@@ -305,69 +429,6 @@ static int gsm340_gen_oa(u_int8_t *oa, unsigned int oa_len,
 	oa[0] = strlen(subscr->extension) & 0xff;
 
 	return len_in_bytes;
-}
-
-/* Turn int into semi-octet representation: 98 => 0x89 */
-static u_int8_t bcdify(u_int8_t value)
-{
-	u_int8_t ret;
-
-	ret = value / 10;
-	ret |= (value % 10) << 4;
-
-	return ret;
-}
-
-/* Turn semi-octet representation into int: 0x89 => 98 */
-static u_int8_t unbcdify(u_int8_t value)
-{
-	u_int8_t ret;
-
-	if ((value & 0x0F) > 9 || (value >> 4) > 9)
-		DEBUGP(DSMS, "unbcdify got too big nibble: 0x%02X\n", value);
-
-	ret = (value&0x0F)*10;
-	if (ret > 90)
-		ret += value>>4;
-
-	return ret;
-}
-
-/* Generate 03.40 TP-SCTS */
-static void gsm340_gen_scts(u_int8_t *scts, time_t time)
-{
-	struct tm *tm = localtime(&time);
-
-	*scts++ = bcdify(tm->tm_year % 100);
-	*scts++ = bcdify(tm->tm_mon + 1);
-	*scts++ = bcdify(tm->tm_mday);
-	*scts++ = bcdify(tm->tm_hour);
-	*scts++ = bcdify(tm->tm_min);
-	*scts++ = bcdify(tm->tm_sec);
-	*scts++ = bcdify(tm->tm_gmtoff/(60*15));
-}
-
-/* Decode 03.40 TP-SCTS (into utc/gmt timestamp) */
-static time_t gsm340_scts(u_int8_t *scts)
-{
-	struct tm tm;
-
-	u_int8_t yr = unbcdify(*scts++);
-
-	if (yr <= 80)
-		tm.tm_year = 100 + yr;
-	else
-		tm.tm_year = yr;
-	tm.tm_mon  = unbcdify(*scts++) - 1;
-	tm.tm_mday = unbcdify(*scts++);
-	tm.tm_hour = unbcdify(*scts++);
-	tm.tm_min  = unbcdify(*scts++);
-	tm.tm_sec  = unbcdify(*scts++);
-	/* according to gsm 03.40 time zone is
-	   "expressed in quarters of an hour" */
-	tm.tm_gmtoff = unbcdify(*scts++) * 15*60;
-
-	return mktime(&tm);
 }
 
 /* generate a msgb containing a TPDU derived from struct gsm_sms,
@@ -499,6 +560,8 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	case GSM340_TP_VPF_ABSOLUTE:
 	case GSM340_TP_VPF_ENHANCED:
 		sms_vp = smsp;
+		/* the additional functionality indicator... */
+		if (*smsp & (1<<7)) smsp++;
 		smsp += 7;
 		break;
 	case GSM340_TP_VPF_NONE:
