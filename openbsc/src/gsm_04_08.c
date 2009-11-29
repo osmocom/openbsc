@@ -1596,6 +1596,14 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
 		/* FIXME: check for MI (if any) */
 		break;
+	case GSM48_MT_RR_HANDO_COMPL:
+		DEBUGP(DRR, "HANDOVER COMPLETE\n");
+		/* FIXME: release old channel */
+		break;
+	case GSM48_MT_RR_HANDO_FAIL:
+		DEBUGP(DRR, "HANDOVER FAILED\n");
+		/* FIXME: release allocated new channel */
+		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
 			gh->msg_type);
