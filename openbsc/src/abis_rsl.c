@@ -907,7 +907,9 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	 * to assign the activated channel to the MS */
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
-	
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
+
 	return 0;
 }
 
@@ -925,6 +927,8 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
 	lchan_free(msg->lchan);
 	return 0;
@@ -1050,6 +1054,27 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	return 0;
 }
 
+/* Chapter 8.4.7 */
+static int rsl_rx_hando_det(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
+
+	DEBUGP(DRSL, "HANDOVER DETECT ");
+
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_ACCESS_DELAY))
+		DEBUGPC(DRSL, "access delay = %u\n",
+			*TLVP_VAL(&tp, RSL_IE_ACCESS_DELAY));
+	else
+		DEBUGPC(DRSL, "\n");
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
+
+	return 0;
+}
+
 static int abis_rsl_rx_dchan(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
@@ -1076,6 +1101,9 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_MEAS_RES:
 		rc = rsl_rx_meas_res(msg);
+		break;
+	case RSL_MT_HANDO_DET:
+		rc = rsl_rx_hando_det(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK\n");

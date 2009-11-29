@@ -78,6 +78,11 @@ enum signal_lchan {
 	 * signal handler.
 	 */
 	S_LCHAN_UNEXPECTED_RELEASE,
+	S_LCHAN_ACTIVATE_ACK,		/* 08.58 Channel Activate ACK */
+	S_LCHAN_ACTIVATE_NACK,		/* 08.58 Channel Activate NACK */
+	S_LCHAN_HANDOVER_COMPL,		/* 04.08 Handover Completed */
+	S_LCHAN_HANDOVER_FAIL,		/* 04.08 Handover Failed */
+	S_LCHAN_HANDOVER_DETECT,	/* 08.58 Handover Detect */
 };
 
 /* SS_SUBSCR signals */

@@ -1563,6 +1563,33 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	return db_apdu_blob_store(msg->lchan->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
+/* Chapter 9.1.16 Handover complete */
+static gsm48_rx_rr_ho_compl(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DRR, "HANDOVER COMPLETE cause = %s\n",
+		rr_cause_name(gh->data[0]));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, msg->lchan);
+	/* FIXME: release old channel */
+
+	return 0;
+}
+
+/* Chapter 9.1.17 Handover Failure */
+static gsm48_rx_rr_ho_fail(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DRR, "HANDOVER FAILED cause = %s\n",
+		rr_cause_name(gh->data[0]));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, msg->lchan);
+	/* FIXME: release allocated new channel */
+
+	return 0;
+}
 
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
@@ -1597,12 +1624,10 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		/* FIXME: check for MI (if any) */
 		break;
 	case GSM48_MT_RR_HANDO_COMPL:
-		DEBUGP(DRR, "HANDOVER COMPLETE\n");
-		/* FIXME: release old channel */
+		rc = gsm48_rx_rr_ho_compl(msg);
 		break;
 	case GSM48_MT_RR_HANDO_FAIL:
-		DEBUGP(DRR, "HANDOVER FAILED\n");
-		/* FIXME: release allocated new channel */
+		rc = gsm48_rx_rr_ho_fail(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
