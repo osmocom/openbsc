@@ -519,6 +519,50 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 	return rsl_encryption_cmd(msg);
 }
 
+static void gsm48_cell_desc(struct gsm48_cell_desc *cd,
+			    const struct gsm_bts *bts)
+{
+	cd->ncc = (bts->bsic >> 3 & 0x7);
+	cd->bcc = (bts->bsic & 0x7);
+	cd->arfcn_hi = bts->c0->arfcn >> 8;
+	cd->arfcn_lo = bts->c0->arfcn & 0xff;
+}
+
+static void gsm48_chan_desc(struct gsm48_chan_desc *cd,
+			    const struct gsm_lchan *lchan)
+{
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	cd->chan_nr = lchan2chan_nr(lchan);
+	cd->h0.tsc = lchan->ts->trx->bts->tsc;
+	cd->h0.h = 0;
+	cd->h0.arfcn_high = arfcn >> 8;
+	cd->h0.arfcn_low = arfcn & 0xff;
+}
+
+/* Chapter 9.1.15: Handover Command */
+int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan,
+		      struct gsm_lchan *new_lchan, u_int8_t power_command)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_ho_cmd *ho =
+		(struct gsm48_ho_cmd *) msgb_put(msg, sizeof(*ho));
+	static u_int8_t ho_ref;
+
+	msg->lchan = old_lchan;
+
+	/* mandatory bits */
+	gsm48_cell_desc(&ho->cell_desc, new_lchan->ts->trx->bts);
+	gsm48_chan_desc(&ho->chan_desc, new_lchan);
+	ho->ho_ref = ho_ref++;
+	ho->power_command = power_command;
+
+	/* FIXME: optional bits for type of synchronization? */
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
 /* Chapter 9.1.2: Assignment Command */
 int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 {
@@ -526,7 +570,6 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_ass_cmd *ass =
 		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
 	DEBUGP(DRR, "-> ASSIGNMENT COMMAND tch_mode=0x%02x\n", lchan->tch_mode);
 
@@ -542,11 +585,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	 * the chan_desc. But as long as multi-slot configurations
 	 * are not used we seem to be fine.
 	 */
-	ass->chan_desc.chan_nr = lchan2chan_nr(lchan);
-	ass->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
-	ass->chan_desc.h0.h = 0;
-	ass->chan_desc.h0.arfcn_high = arfcn >> 8;
-	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	gsm48_chan_desc(&ass->chan_desc, lchan);
 	ass->power_command = power_command;
 
 	/* in case of multi rate we need to attach a config */

@@ -90,6 +90,22 @@ struct gsm48_ass_cmd {
 	u_int8_t data[0];
 } __attribute__((packed));
 
+/* Chapter 10.5.2.2 */
+struct gsm48_cell_desc {
+	u_int8_t bcc:3,
+		 ncc:3,
+		 arfcn_hi:2;
+	u_int8_t arfcn_lo;
+} __attribute__((packed));
+
+/* Chapter 9.1.15 */
+struct gsm48_ho_cmd {
+	struct gsm48_cell_desc cell_desc;
+	struct gsm48_chan_desc chan_desc;
+	u_int8_t ho_ref;
+	u_int8_t power_command;
+	u_int8_t data[0];
+} __attribute__((packed));
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {

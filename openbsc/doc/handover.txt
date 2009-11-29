@@ -75,3 +75,15 @@ were achieved with the following settings:
 * RXQUAL >= 6: 1 dB
 
 
+
+== Actual Handover on a protocol level ==
+
+After the BSC has decided a handover shall be done, it has to
+
+# allocate a channel at the new BTS
+# allocate a handover reference
+# activate the channel on the BTS side using RSL CHANNEL ACTIVATION,
+  indicating the HO reference
+# BTS responds with CHAN ACT ACK, including GSM frame number
+# BSC sends 04.08 HO CMD to MS using old BTS
+
