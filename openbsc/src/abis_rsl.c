@@ -38,6 +38,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/meas_rep.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -949,47 +950,102 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	return rsl_rf_chan_release(msg->lchan);
 }
 
+static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
+				const char *prefix)
+{
+	DEBUGPC(DMEAS, "RXL-FULL-%s=%d RXL-SUB-%s=%d ",
+		prefix, mru->full.rx_lev, prefix, mru->sub.rx_lev);
+	DEBUGPC(DMEAS, "RXQ-FULL-%s=%d RXQ-SUB-%s=%d ",
+		prefix, mru->full.rx_qual, prefix, mru->sub.rx_qual);
+}
+
+static void print_meas_rep(struct gsm_meas_rep *mr)
+{
+	DEBUGP(DMEAS, "MEASUREMENT RESULT NR=%d ", mr->nr);
+
+	if (mr->flags & MEAS_REP_F_DL_DTX)
+		DEBUGPC(DMEAS, "DTXd ");
+
+	print_meas_rep_uni(&mr->ul, "ul");
+	DEBUGPC(DMEAS, "BS_POWER=%d ", mr->bs_power);
+	if (mr->flags & MEAS_REP_F_MS_TO)
+		DEBUGPC(DMEAS, "MS_TO=%d ", mr->ms_timing_offset);
+
+	if (mr->flags & MEAS_REP_F_MS_L1) {
+		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ", mr->ms_l1.pwr);
+		DEBUGPC(DMEAS, "L1_FPC=%u ",
+			mr->flags & MEAS_REP_F_FPC ? 1 : 0);
+		DEBUGPC(DMEAS, "L1_TA=%u ", mr->ms_l1.ta);
+	}
+
+	if (mr->flags & MEAS_REP_F_UL_DTX)
+		DEBUGPC(DMEAS, "DTXu ");
+	if (mr->flags & MEAS_REP_F_BA1)
+		DEBUGPC(DMEAS, "BA1 ");
+	if (!(mr->flags & MEAS_REP_F_DL_VALID))
+		DEBUGPC(DMEAS, "NOT VALID ");
+	else
+		print_meas_rep_uni(&mr->dl, "dl");
+
+	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", mr->num_cell);
+}
+
 static int rsl_rx_meas_res(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
+	struct gsm_meas_rep mr;
+	u_int8_t len;
+	const u_int8_t *val;
+	int rc;
 
-	DEBUGPC(DMEAS, "MEASUREMENT RESULT ");
+	memset(&mr, 0, sizeof(mr));
+
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
-	if (TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR))
-		DEBUGPC(DMEAS, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
-	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
-		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
-		if (len >= 3) {
-			if (val[0] & 0x40)
-				DEBUGPC(DMEAS, "DTXd ");
-			DEBUGPC(DMEAS, "RXL-FULL-up=%d RXL-SUB-up=%d ",
-				val[0] & 0x3f, val[1] & 0x3f);
-			DEBUGPC(DMEAS, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
-				val[2]>>3 & 0x7, val[2] & 0x7);
-		}
+	if (!TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+		return -EIO;
+
+	/* Mandatory Parts */
+	mr.nr = *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR);
+
+	len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
+	val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
+	if (len >= 3) {
+		if (val[0] & 0x40)
+			mr.flags |= MEAS_REP_F_DL_DTX;
+		mr.ul.full.rx_lev = val[0] & 0x3f;
+		mr.ul.sub.rx_lev = val[1] & 0x3f;
+		mr.ul.full.rx_qual = val[2]>>3 & 0x7;
+		mr.ul.sub.rx_qual = val[2] & 0x7;
 	}
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
-		DEBUGPC(DMEAS, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
+
+	mr.bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+
+	/* Optional Parts */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		DEBUGPC(DMEAS, "MS_TO=%d ", 
-			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+		mr.ms_timing_offset =
+			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
+
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
-		u_int8_t pwr_lvl = val[0] >> 3;
-		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ",
-			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
-		DEBUGPC(DMEAS, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
-		DEBUGPC(DMEAS, "L1_TA=%u ", val[1]);
+		val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
+		mr.flags |= MEAS_REP_F_MS_L1;
+		mr.ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
+		if (val[0] & 0x04)
+			mr.flags |= MEAS_REP_F_FPC;
+		mr.ms_l1.ta = val[1];
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		DEBUGPC(DMEAS, "L3\n");
 		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
-		return gsm0408_rcvmsg(msg, 0);
-	} else
-		DEBUGPC(DMEAS, "\n");
+		rc = gsm48_parse_meas_rep(&mr, msg);
+		if (rc < 0)
+			return rc;
+	}
+
+	/* FIXME: do something with the actual result*/
+	print_meas_rep(&mr);
 
 	return 0;
 }

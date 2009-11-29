@@ -166,25 +166,30 @@ static const char *rr_cause_name(u_int8_t cause)
 	return strbuf;
 }
 
-static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
-			   int len)
+int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 {
-	memset(rep, 0, sizeof(*rep));
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	u_int8_t *data = gh->data;
+
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		return -EINVAL;
 
 	if (data[0] & 0x80)
 		rep->flags |= MEAS_REP_F_BA1;
 	if (data[0] & 0x40)
-		rep->flags |= MEAS_REP_F_DTX;
+		rep->flags |= MEAS_REP_F_UL_DTX;
 	if ((data[1] & 0x40) == 0x00)
-		rep->flags |= MEAS_REP_F_VALID;
+		rep->flags |= MEAS_REP_F_DL_VALID;
 
-	rep->rxlev_full = data[0] & 0x3f;
-	rep->rxlev_sub = data[1] & 0x3f;
-	rep->rxqual_full = (data[3] >> 4) & 0x7;
-	rep->rxqual_sub = (data[3] >> 1) & 0x7;
+	rep->dl.full.rx_lev = data[0] & 0x3f;
+	rep->dl.sub.rx_lev = data[1] & 0x3f;
+	rep->dl.full.rx_qual = (data[3] >> 4) & 0x7;
+	rep->dl.sub.rx_qual = (data[3] >> 1) & 0x7;
+
 	rep->num_cell = data[4] >> 6 | ((data[3] & 0x01) << 2);
 	if (rep->num_cell < 1)
-		return;
+		return 0;
 
 	/* an encoding nightmare in perfection */
 
@@ -192,35 +197,37 @@ static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
 	rep->cell[0].bcch_freq = data[5] >> 2;
 	rep->cell[0].bsic = ((data[5] & 0x03) << 3) | (data[6] >> 5);
 	if (rep->num_cell < 2)
-		return;
+		return 0;
 
 	rep->cell[1].rxlev = ((data[6] & 0x1f) << 1) | (data[7] >> 7);
 	rep->cell[1].bcch_freq = (data[7] >> 2) & 0x1f;
 	rep->cell[1].bsic = ((data[7] & 0x03) << 4) | (data[8] >> 4);
 	if (rep->num_cell < 3)
-		return;
+		return 0;
 
 	rep->cell[2].rxlev = ((data[8] & 0x0f) << 2) | (data[9] >> 6);
 	rep->cell[2].bcch_freq = (data[9] >> 1) & 0x1f;
 	rep->cell[2].bsic = ((data[9] & 0x01) << 6) | (data[10] >> 3);
 	if (rep->num_cell < 4)
-		return;
+		return 0;
 
 	rep->cell[3].rxlev = ((data[10] & 0x07) << 3) | (data[11] >> 5);
 	rep->cell[3].bcch_freq = data[11] & 0x1f;
 	rep->cell[3].bsic = data[12] >> 2;
 	if (rep->num_cell < 5)
-		return;
+		return 0;
 
 	rep->cell[4].rxlev = ((data[12] & 0x03) << 4) | (data[13] >> 4);
 	rep->cell[4].bcch_freq = ((data[13] & 0xf) << 1) | (data[14] >> 7);
 	rep->cell[4].bsic = (data[14] >> 1) & 0x3f;
 	if (rep->num_cell < 6)
-		return;
+		return 0;
 
 	rep->cell[5].rxlev = ((data[14] & 0x01) << 5) | (data[15] >> 3);
 	rep->cell[5].bcch_freq = ((data[15] & 0x07) << 2) | (data[16] >> 6);
 	rep->cell[5].bsic = data[16] & 0x3f;
+
+	return 0;
 }
 
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
@@ -1528,26 +1535,13 @@ static int gsm48_rx_rr_status(struct msgb *msg)
 
 static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	static struct gsm_meas_rep meas_rep;
 
-	DEBUGP(DMEAS, "MEASUREMENT REPORT ");
-	parse_meas_rep(&meas_rep, gh->data, payload_len);
-	if (meas_rep.flags & MEAS_REP_F_DTX)
-		DEBUGPC(DMEAS, "DTX ");
-	if (meas_rep.flags & MEAS_REP_F_BA1)
-		DEBUGPC(DMEAS, "BA1 ");
-	if (!(meas_rep.flags & MEAS_REP_F_VALID))
-		DEBUGPC(DMEAS, "NOT VALID ");
-	else
-		DEBUGPC(DMEAS, "FULL(lev=%u, qual=%u) SUB(lev=%u, qual=%u) ",
-		meas_rep.rxlev_full, meas_rep.rxqual_full, meas_rep.rxlev_sub,
-		meas_rep.rxqual_sub);
-
-	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", meas_rep.num_cell);
-
-	/* FIXME: put the results somwhere */
+	/* This shouldn't actually end up here, as RSL treats
+	 * L3 Info of 08.58 MEASUREMENT REPORT different by calling
+	 * directly into gsm48_parse_meas_rep */
+	DEBUGP(DMEAS, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
+	gsm48_parse_meas_rep(&meas_rep, msg);
 
 	return 0;
 }

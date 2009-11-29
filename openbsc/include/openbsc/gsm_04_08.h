@@ -1,6 +1,8 @@
 #ifndef _GSM_04_08_H
 #define _GSM_04_08_H
 
+#include <openbsc/meas_rep.h>
+
 /* GSM TS 04.08  definitions */
 struct gsm_lchan;
 
@@ -618,30 +620,6 @@ enum gsm48_reject_value {
 	GSM48_REJECT_MSC_TMP_NOT_REACHABLE	= 16,
 };
 
-
-/* extracted from a L3 measurement report IE */
-struct gsm_meas_rep_cell {
-	u_int8_t rxlev;
-	u_int8_t bcch_freq;	/* fixme: translate to ARFCN */
-	u_int8_t bsic;
-};
-
-struct gsm_meas_rep {
-	unsigned int flags;
-	u_int8_t rxlev_full;
-	u_int8_t rxqual_full;
-	u_int8_t rxlev_sub;
-	u_int8_t rxqual_sub;
-	int num_cell;
-	struct gsm_meas_rep_cell cell[6];
-};
-#define MEAS_REP_F_DTX		0x01
-#define MEAS_REP_F_VALID	0x02
-#define MEAS_REP_F_BA1		0x04
-
-void gsm48_parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
-			  int len);
-
 enum chreq_type {
 	CHREQ_T_EMERG_CALL,
 	CHREQ_T_CALL_REEST_TCH_F,
@@ -782,5 +760,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
 int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
+int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg);
+
 
 #endif
