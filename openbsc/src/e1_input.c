@@ -52,6 +52,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
 #define NUM_E1_TS	32
@@ -523,8 +524,24 @@ int e1inp_line_update(struct e1inp_line *line)
 	return mi_e1_line_update(line);
 }
 
+static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
+		      void *handler_data, void *signal_data)
+{
+	if (subsys != SS_GLOBAL ||
+	    signal != S_GLOBAL_SHUTDOWN)
+		return 0;
+
+	if (pcap_fd) {
+		close(pcap_fd);
+		pcap_fd = -1;
+	}
+
+	return 0;
+}
+
 static __attribute__((constructor)) void on_dso_load_e1_inp(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
+	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 }
