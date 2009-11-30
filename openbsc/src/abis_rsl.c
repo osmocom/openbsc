@@ -1005,6 +1005,8 @@ static int rsl_rx_meas_res(struct msgb *msg)
 
 	memset(&mr, 0, sizeof(mr));
 
+	mr.lchan = msg->lchan;
+
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (!TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR) ||
@@ -1048,8 +1050,9 @@ static int rsl_rx_meas_res(struct msgb *msg)
 			return rc;
 	}
 
-	/* FIXME: do something with the actual result*/
 	print_meas_rep(&mr);
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, &mr);
 
 	return 0;
 }

@@ -30,6 +30,8 @@ struct gsm_meas_rep_unidir {
 
 /* parsed uplink and downlink measurement result */
 struct gsm_meas_rep {
+	struct gsm_lchan *lchan;
+
 	u_int8_t nr;
 	unsigned int flags;
 
