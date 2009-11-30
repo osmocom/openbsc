@@ -35,6 +35,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
@@ -143,6 +144,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
+		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;

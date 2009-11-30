@@ -40,6 +40,7 @@ enum signal_subsystems {
 	SS_LCHAN,
 	SS_SUBSCR,
 	SS_SCALL,
+	SS_GLOBAL,
 };
 
 /* SS_PAGING signals */
@@ -97,6 +98,10 @@ enum signal_scall {
 	S_SCALL_SUCCESS,
 	S_SCALL_EXPIRED,
 	S_SCALL_DETACHED,
+};
+
+enum signal_global {
+	S_GLOBAL_SHUTDOWN,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
