@@ -407,6 +407,9 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 };
 
+#define GSM_T3101_DEFAULT 10
+#define GSM_T3113_DEFAULT 60
+
 struct gsm_network {
 	/* global parameters */
 	u_int16_t country_code;
