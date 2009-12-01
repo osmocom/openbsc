@@ -187,6 +187,13 @@ struct gsm48_control_channel_descr {
 	u_int8_t t3212;
 } __attribute__ ((packed));
 
+struct gsm48_cell_options {
+	u_int8_t radio_link_timeout:4,
+		 dtx:2,
+		 pwrc:1,
+		 spare:1;
+} __attribute__ ((packed));
+
 /* Section 9.2.9 CM service request */
 struct gsm48_service_request {
 	u_int8_t cm_service_type : 4,
@@ -203,7 +210,7 @@ struct gsm48_system_information_type_1 {
 	struct gsm48_system_information_type_header header;
 	u_int8_t cell_channel_description[16];
 	struct gsm48_rach_control rach_control;
-	u_int8_t s1_reset;
+	u_int8_t rest_octets[0]; /* NCH position on the CCCH */
 } __attribute__ ((packed));
 
 /* Section 9.1.32 System information Type 2 */
@@ -220,10 +227,10 @@ struct gsm48_system_information_type_3 {
 	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_control_channel_descr control_channel_desc;
-	u_int8_t cell_options;
+	struct gsm48_cell_options cell_options;
 	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
-	u_int8_t s3_reset_octets[4];
+	u_int8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.36 System information Type 4 */
@@ -253,9 +260,15 @@ struct gsm48_system_information_type_6 {
 	u_int8_t system_information;
 	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
-	u_int8_t cell_options;
+	struct gsm48_cell_options cell_options;
 	u_int8_t ncc_permitted;
-	u_int8_t si_6_reset[0];
+	u_int8_t rest_octets[0];
+} __attribute__ ((packed));
+
+/* Section 9.1.43a System Information type 13 */
+struct gsm48_system_information_type_13 {
+	struct gsm48_system_information_type_header header;
+	u_int8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.2.12 IMSI Detach Indication */

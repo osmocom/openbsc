@@ -1729,11 +1729,11 @@ int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf)
 /* From Table 10.5.33 of GSM 04.08 */
 int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
 {
-	if (bts->chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
-		return MAX(1, (3 - bts->chan_desc.bs_ag_blks_res))
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+	if (bts->si_common.chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
+		return MAX(1, (3 - bts->si_common.chan_desc.bs_ag_blks_res))
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	} else {
-		return (9 - bts->chan_desc.bs_ag_blks_res)
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+		return (9 - bts->si_common.chan_desc.bs_ag_blks_res)
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	}
 }

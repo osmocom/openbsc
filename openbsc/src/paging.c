@@ -55,7 +55,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 	int blocks;
 	unsigned int group;
 	
-	ccch_conf = bts->chan_desc.ccch_conf;
+	ccch_conf = bts->si_common.chan_desc.ccch_conf;
 	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
 	/* code word + 2, as 2 channels equals 0x0 */
 	blocks = rsl_number_of_paging_subchannels(bts);

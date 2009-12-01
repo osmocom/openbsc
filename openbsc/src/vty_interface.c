@@ -234,9 +234,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
-	if (bts->chan_desc.t3212)
+	if (bts->si_common.chan_desc.t3212)
 		vty_out(vty, "  periodic location update %u%s",
-			bts->chan_desc.t3212 * 10, VTY_NEWLINE);
+			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -951,6 +951,7 @@ DEFUN(cfg_bts_lac,
 	return CMD_SUCCESS;
 }
 
+
 DEFUN(cfg_bts_tsc,
       cfg_bts_tsc_cmd,
       "training_sequence_code <0-255>",
@@ -1094,7 +1095,7 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->chan_desc.t3212 = atoi(argv[0]) / 10;
+	bts->si_common.chan_desc.t3212 = atoi(argv[0]) / 10;
 
 	return CMD_SUCCESS;
 }
