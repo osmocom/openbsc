@@ -1442,19 +1442,40 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	return rc;
 }
 
-static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
+static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 {
-	switch (tch_mode) {
+	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
-		return 0x00;
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x00;
+		case GSM_LCHAN_TCH_H:
+			return 0x03;
+		default:
+			break;
+		}
 	case GSM48_CMODE_SPEECH_EFR:
-		return 0x01;
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x01;
+		/* there's no half-rate EFR */
+		default:
+			break;
+		}
 	case GSM48_CMODE_SPEECH_AMR:
-		return 0x02;
-	/* FIXME: Type1 half-rate and type3 half-rate */
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x02;
+		case GSM_LCHAN_TCH_H:
+			return 0x05;
+		default:
+			break;
+		}
+	default:
+		break;
 	}
 	DEBUGPC(DRSL, "Cannot determine ip.access speech mode for "
-		"tch_mode == 0x%02x\n", tch_mode);
+		"tch_mode == 0x%02x\n", lchan->tch_mode);
 	return 0;
 }
 
@@ -1471,7 +1492,7 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 	dh->chan_nr = lchan2chan_nr(lchan);
 
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
-	speech_mode = 0x10 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
 
 	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND "
@@ -1498,7 +1519,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	dh->chan_nr = lchan2chan_nr(lchan);
 
 	/* 0x0- == both directions, 0x-1 == EFR codec */
-	speech_mode = 0x00 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
 
 	ia.s_addr = htonl(ip);
 	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_MDCX "
