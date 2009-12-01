@@ -1755,7 +1755,8 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 
 	/* As it turns out, the BS-11 has some very peculiar restrictions
 	 * on the channel combinations it allows */
-	if (ts->trx->bts->type == GSM_BTS_TYPE_BS11) {
+	switch (ts->trx->bts->type) {
+	case GSM_BTS_TYPE_BS11:
 		switch (chan_comb) {
 		case NM_CHANC_TCHHalf:
 		case NM_CHANC_TCHHalf2:
@@ -1801,6 +1802,83 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 			/* FIXME: only one CBCH allowed per cell */
 			break;
 		}
+		break;
+	case GSM_BTS_TYPE_NANOBTS:
+		switch (ts->nr) {
+		case 0:
+			if (ts->trx->nr == 0) {
+				/* only on TRX0 */
+				switch (chan_comb) {
+				case NM_CHANC_BCCH:
+				case NM_CHANC_mainBCCH:
+				case NM_CHANC_BCCHComb:
+					return 0;
+					break;
+				default:
+					return -EINVAL;
+				}
+			} else {
+				switch (chan_comb) {
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+					return 0;
+				default:
+					return -EINVAL;
+				}
+			}
+			break;
+		case 1:
+			if (ts->trx->nr == 0) {
+				switch (chan_comb) {
+				case NM_CHANC_SDCCH_CBCH:
+					if (ts->trx->ts[0].nm_chan_comb ==
+					    NM_CHANC_mainBCCH)
+						return 0;
+					return -EINVAL;
+				case NM_CHANC_SDCCH:
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_PDCH:
+					return 0;
+				}
+			} else {
+				switch (chan_comb) {
+				case NM_CHANC_SDCCH:
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+					return 0;
+				default:
+					return -EINVAL;
+				}
+			}
+			break;
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			switch (chan_comb) {
+			case NM_CHANC_TCHFull:
+			case NM_CHANC_TCHHalf:
+			case NM_CHANC_IPAC_TCHFull_TCHHalf:
+				return 0;
+			case NM_CHANC_IPAC_PDCH:
+			case NM_CHANC_IPAC_TCHFull_PDCH:
+				if (ts->trx->nr == 0)
+					return 0;
+				else
+					return -EINVAL;
+			}
+			break;
+		}
+		return -EINVAL;
+	default:
+		/* unknown BTS type */
+		return 0;
 	}
 	return 0;
 }
