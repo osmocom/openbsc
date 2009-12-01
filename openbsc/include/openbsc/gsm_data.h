@@ -185,6 +185,14 @@ struct gsm_lchan {
 
 	/* use count. how many users use this channel */
 	unsigned int use_count;
+
+	struct {
+		u_int32_t bound_ip;
+		u_int16_t bound_port;
+		u_int8_t rtp_payload2;
+		u_int16_t conn_id;
+		struct rtp_socket *rtp_socket;
+	} abis_ip;
 };
 
 struct gsm_e1_subslot {
@@ -212,13 +220,6 @@ struct gsm_bts_trx_ts {
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
-	struct {
-		u_int32_t bound_ip;
-		u_int16_t bound_port;
-		u_int8_t rtp_payload2;
-		u_int16_t conn_id;
-		struct rtp_socket *rtp_socket;
-	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };

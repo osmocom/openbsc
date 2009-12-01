@@ -1555,7 +1555,7 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
-	struct gsm_bts_trx_ts *ts = msg->lchan->ts;
+	struct gsm_lchan *lchan = msg->lchan;
 	struct in_addr ip;
 	u_int16_t port, attr_f8;
 
@@ -1578,16 +1578,16 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 		inet_ntoa(ip), ntohs(port), ntohs(attr_f8));
 
 	if (TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
-		ts->abis_ip.rtp_payload2 = 
+		lchan->abis_ip.rtp_payload2 =
 				*TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
 		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
-			ts->abis_ip.rtp_payload2);
+			lchan->abis_ip.rtp_payload2);
 	}
 
 	/* update our local information about this TS */
-	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
-	ts->abis_ip.bound_port = ntohs(port);
-	ts->abis_ip.conn_id = ntohs(attr_f8);
+	lchan->abis_ip.bound_ip = ntohl(ip.s_addr);
+	lchan->abis_ip.bound_port = ntohs(port);
+	lchan->abis_ip.conn_id = ntohs(attr_f8);
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
 

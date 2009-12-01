@@ -365,24 +365,15 @@ DEFUN(show_trx,
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	struct in_addr ia;
-
 	vty_out(vty, "Timeslot %u of TRX %u in BTS %u, phys cfg %s%s",
 		ts->nr, ts->trx->nr, ts->trx->bts->nr,
 		gsm_pchan_name(ts->pchan), VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &ts->nm_state);
-	if (is_ipaccess_bts(ts->trx->bts)) {
-		ia.s_addr = ts->abis_ip.bound_ip;
-		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
-			inet_ntoa(ia), ts->abis_ip.bound_port,
-			ts->abis_ip.rtp_payload2, ts->abis_ip.conn_id,
-			VTY_NEWLINE);
-	} else {
+	if (!is_ipaccess_bts(ts->trx->bts))
 		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
 			ts->e1_link.e1_nr, ts->e1_link.e1_ts,
 			ts->e1_link.e1_ts_ss, VTY_NEWLINE);
-	}
 }
 
 DEFUN(show_ts,
@@ -471,6 +462,14 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		subscr_dump_vty(vty, lchan->subscr);
 	} else
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
+	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
+		struct in_addr ia;
+		ia.s_addr = lchan->abis_ip.bound_ip;
+		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
+			inet_ntoa(ia), lchan->abis_ip.bound_port,
+			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
+			VTY_NEWLINE);
+	}
 }
 
 #if 0
