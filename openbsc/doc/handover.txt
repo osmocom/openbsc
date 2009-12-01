@@ -1,0 +1,89 @@
+Ideas about a handover algorithm
+======================================================================
+
+This is mostly based on the results presented in Chapter 8 of "Performance
+Enhancements in a Frequency Hopping GSM Network" by Thomas Toftegaard Nielsen
+and Joeroen Wigard. 
+
+
+=== Reasons for performing handover ===
+
+Section 2.1.1: Handover used in their CAPACITY simulation:
+
+1) Interference Handover
+
+Average RXLEV is satisfactory high, but average RXQUAL too low indicates
+interference to the channel.  Handover should be made.
+
+2) Bad Quality
+
+Averaged RXQUAL is lower than a threshold
+
+3) Low Level / Signal Strength
+
+Average RXLEV is lower than a threshold
+
+4) Distance Handover
+
+MS is too far away from a cell (measured by TA)
+
+5) Power budget / Better Cell
+
+RX Level of neighbor cell is at least "HO Margin dB" dB better than the
+current serving cell.
+
+=== Ideal parameters for HO algorithm ===
+
+Chapter 8, Section 2.2, Table 24:
+
+Window RXLEV averaging:		10 SACCH frames (no weighting)
+Window RXQUAL averaging:	1 SACCH frame (no averaging)
+Level Threashold:		1 of the last 1 AV-RXLEV values < -110dBm
+Quality Threshold:		3 of the last 4 AV-RXQUAL values >= 5
+Interference Threshold:		1 of the last AV-RXLEV > -85 dBm &
+				3 of the last 4 AV-RXQUAL values >= 5
+Power Budget:			Level of neighbor cell > 3 dB better
+Power Budget Interval:		Every 6 SACCH frames (6 seconds ?!?)
+Distance Handover:		Disabled
+Evaluation rule 1:		RXLEV of the candidate cell a tleast -104 dBm
+Evaluation rule 2:		Level of candidate cell > 3dB better own cell
+Timer Successful HO:		5 SACCH frames
+Timer Unsuccessful HO:		1 SACCH frame
+
+In a non-frequency hopping case, RXQUAL threshold can be decreased to
+RXLEV >= 4
+
+When frequency hopping is enabled, the following additional parameters
+should be introduced:
+
+* No intra-cell handover
+* Use a HO Margin of 2dB
+
+=== Handover Channel Reservation ===
+
+In loaded network, each cell should reserve some channels for handovers,
+rather than using all of them for new call establishment.  This reduces the
+need to drop calls due to failing handovers, at the expense of failing new call
+attempts.
+
+=== Dynamic HO Margin ===
+
+The handover margin (hysteresis) should depend on the RXQUAL. Optimal results
+were achieved with the following settings:
+* RXQUAL <= 4: 9 dB
+* RXQUAL == 5: 6 dB
+* RXQUAL >= 6: 1 dB
+
+
+
+== Actual Handover on a protocol level ==
+
+After the BSC has decided a handover shall be done, it has to
+
+# allocate a channel at the new BTS
+# allocate a handover reference
+# activate the channel on the BTS side using RSL CHANNEL ACTIVATION,
+  indicating the HO reference
+# BTS responds with CHAN ACT ACK, including GSM frame number
+# BSC sends 04.08 HO CMD to MS using old BTS
+

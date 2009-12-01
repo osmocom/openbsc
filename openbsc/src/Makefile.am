@@ -7,11 +7,12 @@ noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
 noinst_HEADERS = vty/cardshell.h
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
-		msgb.c select.c chan_alloc.c timer.c debug.c \
+		msgb.c select.c chan_alloc.c timer.c debug.c handover_logic.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c talloc.c \
-		talloc_ctx.c gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
+		talloc_ctx.c system_information.c bitvec.c rest_octets.c \
+		gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
 		crc24.c gprs_sgsn.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \

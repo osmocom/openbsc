@@ -38,6 +38,7 @@
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/meas_rep.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -906,7 +907,9 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	 * to assign the activated channel to the MS */
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
-	
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
+
 	return 0;
 }
 
@@ -924,6 +927,8 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
 	lchan_free(msg->lchan);
 	return 0;
@@ -949,47 +954,126 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	return rsl_rf_chan_release(msg->lchan);
 }
 
+static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
+				const char *prefix)
+{
+	DEBUGPC(DMEAS, "RXL-FULL-%s=%d RXL-SUB-%s=%d ",
+		prefix, mru->full.rx_lev, prefix, mru->sub.rx_lev);
+	DEBUGPC(DMEAS, "RXQ-FULL-%s=%d RXQ-SUB-%s=%d ",
+		prefix, mru->full.rx_qual, prefix, mru->sub.rx_qual);
+}
+
+static void print_meas_rep(struct gsm_meas_rep *mr)
+{
+	DEBUGP(DMEAS, "MEASUREMENT RESULT NR=%d ", mr->nr);
+
+	if (mr->flags & MEAS_REP_F_DL_DTX)
+		DEBUGPC(DMEAS, "DTXd ");
+
+	print_meas_rep_uni(&mr->ul, "ul");
+	DEBUGPC(DMEAS, "BS_POWER=%d ", mr->bs_power);
+	if (mr->flags & MEAS_REP_F_MS_TO)
+		DEBUGPC(DMEAS, "MS_TO=%d ", mr->ms_timing_offset);
+
+	if (mr->flags & MEAS_REP_F_MS_L1) {
+		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ", mr->ms_l1.pwr);
+		DEBUGPC(DMEAS, "L1_FPC=%u ",
+			mr->flags & MEAS_REP_F_FPC ? 1 : 0);
+		DEBUGPC(DMEAS, "L1_TA=%u ", mr->ms_l1.ta);
+	}
+
+	if (mr->flags & MEAS_REP_F_UL_DTX)
+		DEBUGPC(DMEAS, "DTXu ");
+	if (mr->flags & MEAS_REP_F_BA1)
+		DEBUGPC(DMEAS, "BA1 ");
+	if (!(mr->flags & MEAS_REP_F_DL_VALID))
+		DEBUGPC(DMEAS, "NOT VALID ");
+	else
+		print_meas_rep_uni(&mr->dl, "dl");
+
+	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", mr->num_cell);
+}
+
 static int rsl_rx_meas_res(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
+	struct gsm_meas_rep mr;
+	u_int8_t len;
+	const u_int8_t *val;
+	int rc;
 
-	DEBUGPC(DMEAS, "MEASUREMENT RESULT ");
+	memset(&mr, 0, sizeof(mr));
+
+	mr.lchan = msg->lchan;
+
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
-	if (TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR))
-		DEBUGPC(DMEAS, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
-	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
-		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
-		if (len >= 3) {
-			if (val[0] & 0x40)
-				DEBUGPC(DMEAS, "DTXd ");
-			DEBUGPC(DMEAS, "RXL-FULL-up=%d RXL-SUB-up=%d ",
-				val[0] & 0x3f, val[1] & 0x3f);
-			DEBUGPC(DMEAS, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
-				val[2]>>3 & 0x7, val[2] & 0x7);
-		}
+	if (!TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+		return -EIO;
+
+	/* Mandatory Parts */
+	mr.nr = *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR);
+
+	len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
+	val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
+	if (len >= 3) {
+		if (val[0] & 0x40)
+			mr.flags |= MEAS_REP_F_DL_DTX;
+		mr.ul.full.rx_lev = val[0] & 0x3f;
+		mr.ul.sub.rx_lev = val[1] & 0x3f;
+		mr.ul.full.rx_qual = val[2]>>3 & 0x7;
+		mr.ul.sub.rx_qual = val[2] & 0x7;
 	}
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
-		DEBUGPC(DMEAS, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
+
+	mr.bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+
+	/* Optional Parts */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		DEBUGPC(DMEAS, "MS_TO=%d ", 
-			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+		mr.ms_timing_offset =
+			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
+
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
-		u_int8_t pwr_lvl = val[0] >> 3;
-		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ",
-			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
-		DEBUGPC(DMEAS, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
-		DEBUGPC(DMEAS, "L1_TA=%u ", val[1]);
+		val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
+		mr.flags |= MEAS_REP_F_MS_L1;
+		mr.ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
+		if (val[0] & 0x04)
+			mr.flags |= MEAS_REP_F_FPC;
+		mr.ms_l1.ta = val[1];
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		DEBUGPC(DMEAS, "L3\n");
 		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
-		return gsm0408_rcvmsg(msg, 0);
-	} else
-		DEBUGPC(DMEAS, "\n");
+		rc = gsm48_parse_meas_rep(&mr, msg);
+		if (rc < 0)
+			return rc;
+	}
+
+	print_meas_rep(&mr);
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, &mr);
+
+	return 0;
+}
+
+/* Chapter 8.4.7 */
+static int rsl_rx_hando_det(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
+
+	DEBUGP(DRSL, "HANDOVER DETECT ");
+
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_ACCESS_DELAY))
+		DEBUGPC(DRSL, "access delay = %u\n",
+			*TLVP_VAL(&tp, RSL_IE_ACCESS_DELAY));
+	else
+		DEBUGPC(DRSL, "\n");
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
 
 	return 0;
 }
@@ -1020,6 +1104,9 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_MEAS_RES:
 		rc = rsl_rx_meas_res(msg);
+		break;
+	case RSL_MT_HANDO_DET:
+		rc = rsl_rx_hando_det(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK\n");
@@ -1642,11 +1729,11 @@ int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf)
 /* From Table 10.5.33 of GSM 04.08 */
 int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
 {
-	if (bts->chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
-		return MAX(1, (3 - bts->chan_desc.bs_ag_blks_res))
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+	if (bts->si_common.chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
+		return MAX(1, (3 - bts->si_common.chan_desc.bs_ag_blks_res))
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	} else {
-		return (9 - bts->chan_desc.bs_ag_blks_res)
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+		return (9 - bts->si_common.chan_desc.bs_ag_blks_res)
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	}
 }

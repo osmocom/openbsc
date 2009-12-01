@@ -357,8 +357,6 @@ struct gsm_bts {
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
 
-	struct gsm48_control_channel_descr chan_desc;
-
 	/* paging state and control */
 	struct gsm_bts_paging_state paging;
 
@@ -368,6 +366,15 @@ struct gsm_bts {
 	struct {
 		struct gsm_nm_state nm_state;
 	} site_mgr;
+
+	/* parameters from which we build SYSTEM INFORMATION */
+	struct {
+		struct gsm48_rach_control rach_control;
+		u_int8_t ncc_permitted;
+		struct gsm48_cell_sel_par cell_sel_par;
+		struct gsm48_cell_options cell_options;
+		struct gsm48_control_channel_descr chan_desc;
+	} si_common;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
@@ -409,6 +416,9 @@ enum gsm_auth_policy {
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 };
+
+#define GSM_T3101_DEFAULT 10
+#define GSM_T3113_DEFAULT 60
 
 struct gsm_network {
 	/* global parameters */
