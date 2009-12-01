@@ -860,6 +860,9 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch BVCI */
 	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
 	nanobts_attr_cell[13] = bts->gprs.cell.bvci & 0xff;
+	/* patch RAC */
+	nanobts_attr_cell[3] = bts->gprs.rac;
+
 }
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
