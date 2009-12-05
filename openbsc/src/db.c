@@ -123,6 +123,18 @@ static char *create_stmts[] = {
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL "
+	"CREATE TABLE IF NOT EXISTS AuthKeys ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id NUMERIC UNIQUE NOT NULL, "
+		"algorithm_id NUMERIC NOT NULL, "
+		"a3a8_ki BLOB "
+		")",
+	"CREATE TABLE IF NOT EXISTS AuthTuples ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id NUMERIC UNIQUE NOT NULL, "
+		"rand BLOB"
+		"sres BLOB"
+		"kc BLOB"
 		")",
 };
 
@@ -314,6 +326,86 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 
 	return 0;
 }
+
+int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
+			   struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	const unsigned char *a3a8_ki;
+
+	result = dbi_conn_queryf(conn,
+			"SELECT * FROM AuthKeys WHERE subscriber_id=%u",
+			 subscr->id);
+	if (!result)
+		return -EIO;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	ainfo->auth_algo = dbi_result_get_ulonglong(result, "algorithm_id");
+	ainfo->a3a8_ki_len = dbi_result_get_field_length(result, "a3a8_ki");
+	a3a8_ki = dbi_result_get_binary(result, "a3a8_ki");
+	if (ainfo->a3a8_ki_len > sizeof(ainfo->a3a8_ki_len))
+		ainfo->a3a8_ki_len = sizeof(ainfo->a3a8_ki_len);
+	memcpy(ainfo->a3a8_ki, a3a8_ki, ainfo->a3a8_ki_len);
+
+	dbi_result_free(result);
+
+	return 0;
+}
+
+int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
+			    struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	int len;
+	const unsigned char *blob;
+
+	result = dbi_conn_queryf(conn,
+			"SELECT * FROM AuthTuples WHERE subscriber_id=%u",
+			subscr->id);
+	if (!result)
+		return -EIO;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	memset(atuple, 0, sizeof(atuple));
+
+	len = dbi_result_get_field_length(result, "rand");
+	if (len != sizeof(atuple->rand))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "rand");
+	memcpy(atuple->rand, blob, len);
+
+	len = dbi_result_get_field_length(result, "sres");
+	if (len != sizeof(atuple->sres))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "sres");
+	memcpy(atuple->sres, blob, len);
+
+	len = dbi_result_get_field_length(result, "kc");
+	if (len != sizeof(atuple->kc))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "kc");
+	memcpy(atuple->kc, blob, len);
+
+	dbi_result_free(result);
+
+	return 0;
+
+err_size:
+	dbi_result_free(result);
+	return -EIO;
+}
+
 #define BASE_QUERY "SELECT * FROM Subscriber "
 struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
