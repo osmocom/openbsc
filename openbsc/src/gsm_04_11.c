@@ -560,7 +560,8 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	case GSM340_TP_VPF_ENHANCED:
 		sms_vp = smsp;
 		/* the additional functionality indicator... */
-		if (*smsp & (1<<7)) smsp++;
+		if (sms_vpf == GSM340_TP_VPF_ENHANCED && *smsp & (1<<7))
+			smsp++;
 		smsp += 7;
 		break;
 	case GSM340_TP_VPF_NONE:
