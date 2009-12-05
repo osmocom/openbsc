@@ -136,6 +136,8 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, const struct gsm_bts *bt
 	if (bts->band == GSM_BAND_900) {
 		chan_list[0] = 0;
 		llist_for_each_entry(cur_bts, &bts->list, list) {
+			if (&cur_bts->list == &bts->network->bts_list)
+				continue;
 			trx = cur_bts->c0;
 			rc = cchan_list_bm0_set_arfcn(chan_list, trx->arfcn);
 			if (rc < 0)
