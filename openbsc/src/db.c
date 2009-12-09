@@ -265,7 +265,7 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	const char *string;
-	unsigned int cm1;
+	unsigned char cm1;
 	const unsigned char *cm2, *cm3;
 	struct gsm_equipment *equip = &subscr->equipment;
 
