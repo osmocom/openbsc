@@ -823,8 +823,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
-	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
-	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
 	bts->si_common.cell_sel_par.acs = 0;
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
 

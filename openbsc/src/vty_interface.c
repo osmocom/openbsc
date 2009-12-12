@@ -129,11 +129,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
-	vty_out(vty, "Minimum Rx Level for Access: %u dBm%s",
+	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
 		rxlev2dbm(bts->si_common.cell_sel_par.rxlev_acc_min),
 		VTY_NEWLINE);
 	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
-		bts->si_common.cell_sel_par.cell_resel_hyst, VTY_NEWLINE);
+		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
 	if (bts->cell_barred)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
@@ -242,6 +242,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
+	vty_out(vty, "  cell reselection hysteresis %u%s",
+		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	vty_out(vty, "  rxlev access min %u%s",
+		bts->si_common.cell_sel_par.rxlev_acc_min, VTY_NEWLINE);
 	if (bts->si_common.chan_desc.t3212)
 		vty_out(vty, "  periodic location update %u%s",
 			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
@@ -465,8 +469,11 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->ts->trx->bts->nr, gsm_lchan_name(lchan->type),
 		VTY_NEWLINE);
 	vty_out(vty, "  Use Count: %u%s", lchan->use_count, VTY_NEWLINE);
-	vty_out(vty, "  BS Power %u, MS Power %u%s", lchan->bs_power,
-		lchan->ms_power, VTY_NEWLINE);
+	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
+		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
+		- lchan->bs_power*2,
+		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		VTY_NEWLINE);
 	if (lchan->subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
 		subscr_dump_vty(vty, lchan->subscr);
@@ -1108,6 +1115,28 @@ DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_cell_resel_hyst, cfg_bts_cell_resel_hyst_cmd,
+      "cell reselection hysteresis <0-14>",
+      "Cell Re-Selection Hysteresis in dB")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_sel_par.cell_resel_hyst = atoi(argv[0])/2;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rxlev_acc_min, cfg_bts_rxlev_acc_min_cmd,
+      "rxlev access min <0-63>",
+      "Minimum RxLev needed for cell access (better than -110dBm)")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_sel_par.rxlev_acc_min = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
       "periodic location update <0-1530>",
       "Periodic Location Updating Interval in Minutes")
@@ -1344,6 +1373,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
+	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
