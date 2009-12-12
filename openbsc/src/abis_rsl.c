@@ -1236,8 +1236,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
-		DEBUGP(DRSL, "CHAN RQD: no resources for %u 0x%x\n",
-			lctype, rqd_ref->ra);
+		DEBUGP(DRSL, "CHAN RQD: no resources for %s 0x%x\n",
+			gsm_lchan_name(lctype), rqd_ref->ra);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
 	}
