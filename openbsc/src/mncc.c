@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/types.h>
 
 #include <openbsc/gsm_04_08.h>
@@ -136,19 +137,36 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	struct gsm_mncc mncc;
 	struct gsm_call *remote;
 
+	memset(&mncc, 0, sizeof(struct gsm_mncc));
+	mncc.callref = call->callref;
+
 	/* already have remote call */
 	if (call->remote_ref)
 		return 0;
 	
+	/* transfer mode 1 would be packet mode, which was never specified */
+	if (setup->bearer_cap.mode != 0) {
+		DEBUGP(DMNCC, "(call %x) We don't support packet mode\n",
+			call->callref);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+		goto out_reject;
+	}
+
+	/* we currently only do speech */
+	if (setup->bearer_cap.transfer != GSM_MNCC_BCAP_SPEECH) {
+		DEBUGP(DMNCC, "(call %x) We only support voice calls\n",
+			call->callref);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+		goto out_reject;
+	}
+
 	/* create remote call */
 	if (!(remote = talloc(tall_call_ctx, struct gsm_call))) {
-		memset(&mncc, 0, sizeof(struct gsm_mncc));
-		mncc.callref = call->callref;
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
-		mncc_send(call->net, MNCC_REJ_REQ, &mncc);
-		free_call(call);
-		return 0;
+		goto out_reject;
 	}
 	llist_add_tail(&remote->entry, &call_list);
 	remote->net = call->net;
@@ -179,6 +197,11 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	setup->callref = remote->callref;
 	DEBUGP(DMNCC, "(call %x) Forwarding SETUP to remote.\n", call->callref);
 	return mncc_send(remote->net, MNCC_SETUP_REQ, setup);
+
+out_reject:
+	mncc_send(call->net, MNCC_REJ_REQ, &mncc);
+	free_call(call);
+	return 0;
 }
 
 static int mncc_alert_ind(struct gsm_call *call, int msg_type,

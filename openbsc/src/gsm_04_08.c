@@ -439,18 +439,29 @@ static int decode_bearer_cap(struct gsm_mncc_bearer_cap *bcap,
 	bcap->coding = (lv[1] & 0x10) >> 4;
 	bcap->radio = (lv[1] & 0x60) >> 5;
 
-	i = 1;
-	s = 0;
-	while(!(lv[i] & 0x80)) {
-		i++; /* octet 3a etc */
-		if (in_len < i)
-			return 0;
-		bcap->speech_ver[s++] = lv[i] & 0x0f;
-		bcap->speech_ver[s] = -1; /* end of list */
-		if (i == 2) /* octet 3a */
-			bcap->speech_ctm = (lv[i] & 0x20) >> 5;
-		if (s == 7) /* maximum speech versions + end of list */
-			return 0;
+	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
+		i = 1;
+		s = 0;
+		while(!(lv[i] & 0x80)) {
+			i++; /* octet 3a etc */
+			if (in_len < i)
+				return 0;
+			bcap->speech_ver[s++] = lv[i] & 0x0f;
+			bcap->speech_ver[s] = -1; /* end of list */
+			if (i == 2) /* octet 3a */
+				bcap->speech_ctm = (lv[i] & 0x20) >> 5;
+			if (s == 7) /* maximum speech versions + end of list */
+				return 0;
+		}
+	} else {
+		i = 1;
+		while (!(lv[i] & 0x80)) {
+			i++; /* octet 3a etc */
+			if (in_len < i)
+				return 0;
+			/* ignore them */
+		}
+		/* FIXME: implement OCTET 4+ parsing */
 	}
 
 	return 0;
@@ -461,21 +472,24 @@ static int encode_bearer_cap(struct msgb *msg, int lv_only,
 			     const struct gsm_mncc_bearer_cap *bcap)
 {
 	u_int8_t lv[32 + 1];
-	int i, s;
+	int i = 1, s;
 
 	lv[1] = bcap->transfer;
 	lv[1] |= bcap->mode << 3;
 	lv[1] |= bcap->coding << 4;
 	lv[1] |= bcap->radio << 5;
 
-	i = 1;
-	for (s = 0; bcap->speech_ver[s] >= 0; s++) {
-		i++; /* octet 3a etc */
-		lv[i] = bcap->speech_ver[s];
-		if (i == 2) /* octet 3a */
-			lv[i] |= bcap->speech_ctm << 5;
+	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
+		for (s = 0; bcap->speech_ver[s] >= 0; s++) {
+			i++; /* octet 3a etc */
+			lv[i] = bcap->speech_ver[s];
+			if (i == 2) /* octet 3a */
+				lv[i] |= bcap->speech_ctm << 5;
+		}
+		lv[i] |= 0x80; /* last IE of octet 3 etc */
+	} else {
+		/* FIXME: implement OCTET 4+ encoding */
 	}
-	lv[i] |= 0x80; /* last IE of octet 3 etc */
 
 	lv[0] = i;
 	if (lv_only)

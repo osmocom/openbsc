@@ -162,6 +162,14 @@ struct gsm_mncc_cccap {
 	int		pcp;
 };
 
+enum {
+	GSM_MNCC_BCAP_SPEECH	= 0,
+	GSM_MNCC_BCAP_UNR_DIG	= 1,
+	GSM_MNCC_BCAP_AUDIO	= 2,
+	GSM_MNCC_BCAP_FAX_G3	= 3,
+	GSM_MNCC_BCAP_OTHER_ITC = 5,
+	GSM_MNCC_BCAP_RESERVED	= 7,
+};
 
 struct gsm_mncc {
 	/* context based information */
