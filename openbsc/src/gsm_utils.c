@@ -160,6 +160,28 @@ int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 	return -EINVAL;
 }
 
+/* According to TS 08.05 Chapter 8.1.4 */
+int rxlev2dbm(u_int8_t rxlev)
+{
+	if (rxlev > 63)
+		rxlev = 63;
+
+	return -110 + rxlev;
+}
+
+/* According to TS 08.05 Chapter 8.1.4 */
+u_int8_t dbm2rxlev(int dbm)
+{
+	int rxlev = dbm + 110;
+
+	if (rxlev > 63)
+		rxlev = 63;
+	else if (rxlev < 0)
+		rxlev = 0;
+
+	return rxlev;
+}
+
 void generate_backtrace()
 {
 	int i, nptrs;

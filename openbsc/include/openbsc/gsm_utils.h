@@ -33,5 +33,9 @@ int gsm_7bit_encode(u_int8_t *result, const char *data);
 int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm);
 int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl);
 
+/* According to TS 08.05 Chapter 8.1.4 */
+int rxlev2dbm(u_int8_t rxlev);
+u_int8_t dbm2rxlev(int dbm);
+
 void generate_backtrace();
 #endif
