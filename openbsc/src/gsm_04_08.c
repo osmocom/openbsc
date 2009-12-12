@@ -299,11 +299,16 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 		db_subscriber_alloc_tmsi(lchan->subscr);
 		release_loc_updating_req(lchan);
 		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
+		/* send MM INFO with network name */
+		rc = gsm48_tx_mm_info(msg->lchan);
+
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might
 		 * trigger further action like SMS delivery */
 		subscr_update(lchan->subscr, msg->trx->bts,
 			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+		/* try to close channel ASAP */
+		lchan_auto_release(lchan);
 		return rc;
 	}
 
@@ -885,7 +890,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	u_int8_t *mid;
-	int ret;
 	
 	msg->lchan = lchan;
 
@@ -902,12 +906,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	ret = gsm48_sendmsg(msg, NULL);
-
-	/* send MM INFO with network name */
-	ret = gsm48_tx_mm_info(lchan);
-
-	return ret;
+	return gsm48_sendmsg(msg, NULL);
 }
 
 /* Transmit Chapter 9.2.10 Identity Request */
@@ -1373,6 +1372,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 		subscr_put(subscr);
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
+
+	/* subscriber is detached: should we release lchan? */
 
 	return 0;
 }
@@ -2726,6 +2727,9 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 		case GSM_CSTATE_RELEASE_REQ:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REL_CNF, &rel);
+			/* FIXME: in case of multiple calls, we can't simply
+			 * hang up here ! */
+			lchan_auto_release(msg->lchan);
 			break;
 		default:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
