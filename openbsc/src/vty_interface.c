@@ -128,6 +128,12 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->cell_identity,
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
+	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
+	vty_out(vty, "Minimum Rx Level for Access: %u dBm%s",
+		rxlev2dbm(bts->si_common.cell_sel_par.rxlev_acc_min),
+		VTY_NEWLINE);
+	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
+		bts->si_common.cell_sel_par.cell_resel_hyst, VTY_NEWLINE);
 	if (bts->cell_barred)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
