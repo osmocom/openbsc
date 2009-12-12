@@ -795,6 +795,14 @@ static int bootstrap_bts(struct gsm_bts *bts)
 		return -EINVAL;
 	}
 
+	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
+	    !bts->cell_barred)
+		fprintf(stderr, "\nWARNING: You are running an 'accept-all' "
+			"network on a BTS that is not barred.  This "
+			"configuration is likely to interfere with production "
+			"GSM networks and should only be used in a RF "
+			"shielded environment such as a faraday cage!\n\n");
+
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
 	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
