@@ -60,10 +60,10 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_sms *sms;
 	int rc = 0;
 
-	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
+	if (signal != S_SUBSCR_ATTACHED)
 		return 0;
 
-	if (signal != S_SUBSCR_ATTACHED)
+	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
 
 	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
