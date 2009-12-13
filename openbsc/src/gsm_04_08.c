@@ -954,6 +954,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI, create if not found */
@@ -1033,6 +1035,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
+
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
 
 	/*
 	 * Pseudo Spoof detection: Just drop a second/concurrent
@@ -1316,6 +1320,8 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
+
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);

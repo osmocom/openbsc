@@ -91,6 +91,7 @@ enum signal_lchan {
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
 	S_SUBSCR_DETACHED,
+	S_SUBSCR_IDENTITY,		/* we've received some identity information */
 };
 
 /* SS_SCALL signals */
