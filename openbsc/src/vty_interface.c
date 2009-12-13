@@ -91,6 +91,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
 		VTY_NEWLINE);
+	vty_out(vty, "  RRLP Mode: %s%s", rrlp_mode_name(net->rrlp.mode),
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -289,6 +291,8 @@ static int config_write_net(struct vty *vty)
 		gsmnet->reject_cause, VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
+		VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
 	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
@@ -838,6 +842,15 @@ DEFUN(cfg_net_neci,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
+      "rrlp mode (none|ms-based|ms-preferred|ass-preferred)",
+	"Set the Radio Resource Location Protocol Mode")
+{
+	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 #define DECLARE_TIMER(number) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -1344,6 +1357,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_reject_cause_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);

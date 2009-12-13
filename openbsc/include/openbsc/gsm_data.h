@@ -38,6 +38,13 @@ enum gsm_chan_t {
 	GSM_LCHAN_UNKNOWN,
 };
 
+/* RRLP mode of operation */
+enum rrlp_mode {
+	RRLP_MODE_NONE,
+	RRLP_MODE_MS_BASED,
+	RRLP_MODE_MS_PREF,
+	RRLP_MODE_ASS_PREF,
+};
 
 /* Channel Request reason */
 enum gsm_chreq_reason_t {
@@ -449,6 +456,11 @@ struct gsm_network {
 	int T3117;
 	int T3119;
 	int T3141;
+
+	/* Radio Resource Location Protocol (TS 04.31) */
+	struct {
+		enum rrlp_mode mode;
+	} rrlp;
 };
 
 #define SMS_HDR_SIZE	128
@@ -532,6 +544,9 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
+
+enum rrlp_mode rrlp_mode_parse(const char *arg);
+const char *rrlp_mode_name(enum rrlp_mode mode);
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 

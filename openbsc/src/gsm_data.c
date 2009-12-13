@@ -367,3 +367,26 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 	return gsm_auth_policy_names[policy];
 }
 
+static const char *rrlp_mode_names[] = {
+	[RRLP_MODE_NONE] = "none",
+	[RRLP_MODE_MS_BASED] = "ms-based",
+	[RRLP_MODE_MS_PREF] = "ms-preferred",
+	[RRLP_MODE_ASS_PREF] = "ass-preferred",
+};
+
+enum rrlp_mode rrlp_mode_parse(const char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(rrlp_mode_names); i++) {
+		if (!strcmp(arg, rrlp_mode_names[i]))
+			return i;
+	}
+	return RRLP_MODE_NONE;
+}
+
+const char *rrlp_mode_name(enum rrlp_mode mode)
+{
+	if (mode > ARRAY_SIZE(rrlp_mode_names))
+		return "none";
+	return rrlp_mode_names[mode];
+}
