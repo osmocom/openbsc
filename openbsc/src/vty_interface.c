@@ -1370,6 +1370,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
+	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
