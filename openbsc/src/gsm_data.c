@@ -169,6 +169,12 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->ms_max_power = 15;	/* dBm */
 	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
 	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
+	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
+	bts->si_common.neigh_list.data_len =
+				sizeof(bts->si_common.data.neigh_list);
+	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
+	bts->si_common.cell_alloc.data_len =
+				sizeof(bts->si_common.data.cell_alloc);
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;

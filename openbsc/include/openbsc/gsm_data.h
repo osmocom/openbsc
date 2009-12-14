@@ -60,6 +60,7 @@ enum gsm_chreq_reason_t {
 #include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
 #include <openbsc/tlv.h>
+#include <openbsc/bitvec.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -381,6 +382,13 @@ struct gsm_bts {
 		struct gsm48_cell_sel_par cell_sel_par;
 		struct gsm48_cell_options cell_options;
 		struct gsm48_control_channel_descr chan_desc;
+		struct bitvec neigh_list;
+		struct bitvec cell_alloc;
+		struct {
+			/* bitmask large enough for all possible ARFCN's */
+			u_int8_t neigh_list[1024/8];
+			u_int8_t cell_alloc[1024/8];
+		} data;
 	} si_common;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
