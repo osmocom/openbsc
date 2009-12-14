@@ -299,8 +299,10 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 		db_subscriber_alloc_tmsi(lchan->subscr);
 		release_loc_updating_req(lchan);
 		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
-		/* send MM INFO with network name */
-		rc = gsm48_tx_mm_info(msg->lchan);
+		if (lchan->ts->trx->bts->network->send_mm_info) {
+			/* send MM INFO with network name */
+			rc = gsm48_tx_mm_info(msg->lchan);
+		}
 
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might

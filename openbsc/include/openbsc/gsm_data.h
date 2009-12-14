@@ -435,6 +435,7 @@ struct gsm_network {
 	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
 	int neci;
+	int send_mm_info;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
