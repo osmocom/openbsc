@@ -575,6 +575,7 @@ static void nm_reconfig_bts(struct gsm_bts *bts)
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
+		patch_nm_tables(bts);
 		abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
 		abis_nm_set_bts_attr(bts, bs11_attr_bts, sizeof(bs11_attr_bts));
 		abis_nm_raw_msg(bts, sizeof(msg_3), msg_3); /* set BTS handover attr */
