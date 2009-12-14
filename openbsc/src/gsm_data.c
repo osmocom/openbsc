@@ -234,6 +234,23 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 	return NULL;
 }
 
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts, u_int16_t arfcn)
+{
+	struct gsm_bts *neigh;
+	/* FIXME: use some better heuristics here to determine which cell
+	 * using this ARFCN really is closest to the target cell.  For
+	 * now we simply assume that each ARFCN will only be used by one
+	 * cell */
+
+	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
+		if (neigh->c0->arfcn == arfcn)
+			return neigh;
+	}
+
+	return NULL;
+}
+
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
 {
 	struct gsm_bts_trx *trx;

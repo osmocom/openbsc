@@ -501,6 +501,10 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
+
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts, u_int16_t arfcn);
+
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
