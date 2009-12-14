@@ -35,21 +35,28 @@
 #define GSM_MACBLOCK_LEN 		23
 #define GSM_MACBLOCK_PADDING		0x2b
 
+/* Frequency Lists as per TS 04.08 10.5.2.13 */
+
+/* 10.5.2.13.2: Bit map 0 format */
 static int cchan_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 
-	if (arfcn > 124)
+	if (arfcn > 124 || arfcn < 1)
 		return -EINVAL;
+
+	/* the bitmask is from 1..124, not from 0..123 */
+	arfcn--;
 
 	byte = arfcn / 8;
 	bit = arfcn % 8;
 
-	chan_list[GSM48_CELL_CHAN_DESC_SIZE-byte] |= (1 << bit);
+	chan_list[GSM48_CELL_CHAN_DESC_SIZE-1-byte] |= (1 << bit);
 
 	return 0;
 }
 
+/* 10.5.2.13.7: Variable bit map format */
 static int cchan_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
