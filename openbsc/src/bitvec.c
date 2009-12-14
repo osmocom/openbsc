@@ -77,6 +77,22 @@ enum bit_value bitvec_get_bit_pos(struct bitvec *bv, unsigned int bitnr)
 	return ZERO;
 }
 
+/* get the Nth set bit inside the bit vector */
+unsigned int bitvec_get_nth_set_bit(struct bitvec *bv, unsigned int n)
+{
+	unsigned int i, k = 0;
+
+	for (i = 0; i < bv->data_len*8; i++) {
+		if (bitvec_get_bit_pos(bv, i) == ONE) {
+			k++;
+			if (k == n)
+				return i;
+		}
+	}
+
+	return 0;
+}
+
 /* set the bit at a given position inside a bitvec */
 int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
 			enum bit_value bit)
