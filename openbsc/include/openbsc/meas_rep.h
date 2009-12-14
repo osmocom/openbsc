@@ -4,8 +4,8 @@
 /* extracted from a L3 measurement report IE */
 struct gsm_meas_rep_cell {
 	u_int8_t rxlev;
-	u_int8_t bcch_freq;	/* FIXME: translate to ARFCN */
 	u_int8_t bsic;
+	u_int16_t arfcn;
 };
 
 /* RX Level and RX Quality */
