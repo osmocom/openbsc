@@ -1582,7 +1582,7 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 }
 
 /* Chapter 9.1.16 Handover complete */
-static gsm48_rx_rr_ho_compl(struct msgb *msg)
+static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
@@ -1596,7 +1596,7 @@ static gsm48_rx_rr_ho_compl(struct msgb *msg)
 }
 
 /* Chapter 9.1.17 Handover Failure */
-static gsm48_rx_rr_ho_fail(struct msgb *msg)
+static int gsm48_rx_rr_ho_fail(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
