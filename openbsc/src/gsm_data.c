@@ -235,7 +235,8 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 }
 
 /* Get reference to a neighbor cell on a given BCCH ARFCN */
-struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts, u_int16_t arfcn)
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
+				 u_int16_t arfcn, u_int8_t bsic)
 {
 	struct gsm_bts *neigh;
 	/* FIXME: use some better heuristics here to determine which cell
@@ -244,7 +245,8 @@ struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts, u_int16_t arfcn)
 	 * cell */
 
 	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
-		if (neigh->c0->arfcn == arfcn)
+		if (neigh->c0->arfcn == arfcn &&
+		    neigh->bsic == bsic)
 			return neigh;
 	}
 
