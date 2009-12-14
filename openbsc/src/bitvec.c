@@ -35,15 +35,10 @@ static inline unsigned int bytenum_from_bitnum(unsigned int bitnum)
 	return bytenum;
 }
 
-int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
-			enum bit_value bit)
+/* convert ZERO/ONE/L/H to a bitmask at given pos in a byte */
+static u_int8_t bitval2mask(enum bit_value bit, u_int8_t bitnum)
 {
-	unsigned int bytenum = bytenum_from_bitnum(bitnr);
-	unsigned int bitnum = 7 - (bitnr % 8);
-	u_int8_t bitval;
-
-	if (bytenum >= bv->data_len)
-		return -EINVAL;
+	int bitval;
 
 	switch (bit) {
 	case ZERO:
@@ -59,8 +54,41 @@ int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
 		bitval = ((0x2b ^ (1 << bitnum)) & (1 << bitnum));
 		break;
 	default:
-		return -EINVAL;
+		return 0;
 	}
+	return bitval;
+}
+
+/* check if the bit is 0 or 1 for a given position inside a bitvec */
+enum bit_value bitvec_get_bit_pos(struct bitvec *bv, unsigned int bitnr)
+{
+	unsigned int bytenum = bytenum_from_bitnum(bitnr);
+	unsigned int bitnum = 7 - (bitnr % 8);
+	u_int8_t bitval;
+
+	if (bytenum >= bv->data_len)
+		return -EINVAL;
+
+	bitval = bitval2mask(ONE, bitnum);
+
+	if (bv->data[bytenum] & bitval)
+		return ONE;
+
+	return ZERO;
+}
+
+/* set the bit at a given position inside a bitvec */
+int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
+			enum bit_value bit)
+{
+	unsigned int bytenum = bytenum_from_bitnum(bitnr);
+	unsigned int bitnum = 7 - (bitnr % 8);
+	u_int8_t bitval;
+
+	if (bytenum >= bv->data_len)
+		return -EINVAL;
+
+	bitval = bitval2mask(ONE, bitnum);
 
 	/* first clear the bit */
 	bv->data[bytenum] &= ~(1 << bitnum);
@@ -71,6 +99,7 @@ int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
 	return 0;
 }
 
+/* set the next bit inside a bitvec */
 int bitvec_set_bit(struct bitvec *bv, enum bit_value bit)
 {
 	int rc;
@@ -82,6 +111,7 @@ int bitvec_set_bit(struct bitvec *bv, enum bit_value bit)
 	return rc;
 }
 
+/* set multiple bits (based on array of bitvals) at current pos */
 int bitvec_set_bits(struct bitvec *bv, enum bit_value *bits, int count)
 {
 	int i, rc;
@@ -95,6 +125,7 @@ int bitvec_set_bits(struct bitvec *bv, enum bit_value *bits, int count)
 	return 0;
 }
 
+/* set multiple bits (based on numeric value) at current pos */
 int bitvec_set_uint(struct bitvec *bv, unsigned int ui, int num_bits)
 {
 	int i, rc;

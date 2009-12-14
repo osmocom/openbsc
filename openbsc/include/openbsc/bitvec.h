@@ -39,6 +39,9 @@ struct bitvec {
 	u_int8_t *data;		/* pointer to data array */
 };
 
+/* check if the bit is 0 or 1 for a given position inside a bitvec */
+enum bit_value bitvec_get_bit_pos(struct bitvec *bv, unsigned int bitnr);
+
 /* Set a bit at given position */
 int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnum,
 			enum bit_value bit);
