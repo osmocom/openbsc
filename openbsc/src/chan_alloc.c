@@ -235,6 +235,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 /* Free a logical channel */
 void lchan_free(struct gsm_lchan *lchan)
 {
+	int i;
+
 	lchan->type = GSM_LCHAN_NONE;
 	if (lchan->subscr) {
 		subscr_put(lchan->subscr);
@@ -249,6 +251,13 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	/* stop the timer */
 	bsc_del_timer(&lchan->release_timer);
+
+	/* clear cached measuement reports */
+	lchan->meas_rep_idx = 0;
+	for (i = 0; i < ARRAY_SIZE(lchan->meas_rep); i++) {
+		lchan->meas_rep[i].flags = 0;
+		lchan->meas_rep[i].nr = 0;
+	}
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */

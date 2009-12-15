@@ -415,3 +415,16 @@ const char *rrlp_mode_name(enum rrlp_mode mode)
 		return "none";
 	return rrlp_mode_names[mode];
 }
+
+struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
+{
+	struct gsm_meas_rep *meas_rep;
+
+	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
+	memset(meas_rep, 0, sizeof(*meas_rep));
+	meas_rep->lchan = lchan;
+	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
+					% ARRAY_SIZE(lchan->meas_rep);
+
+	return meas_rep;
+}

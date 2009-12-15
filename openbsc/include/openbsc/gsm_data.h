@@ -194,6 +194,10 @@ struct gsm_lchan {
 	/* use count. how many users use this channel */
 	unsigned int use_count;
 
+	/* cache of last measurement reports on this lchan */
+	struct gsm_meas_rep meas_rep[6];
+	int meas_rep_idx;
+
 	struct {
 		u_int32_t bound_ip;
 		u_int16_t bound_port;
@@ -563,5 +567,7 @@ enum rrlp_mode rrlp_mode_parse(const char *arg);
 const char *rrlp_mode_name(enum rrlp_mode mode);
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+
+struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 #endif

@@ -1558,13 +1558,13 @@ static int gsm48_rx_rr_status(struct msgb *msg)
 
 static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 {
-	static struct gsm_meas_rep meas_rep;
+	struct gsm_meas_rep *meas_rep = lchan_next_meas_rep(msg->lchan);
 
 	/* This shouldn't actually end up here, as RSL treats
 	 * L3 Info of 08.58 MEASUREMENT REPORT different by calling
 	 * directly into gsm48_parse_meas_rep */
 	DEBUGP(DMEAS, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
-	gsm48_parse_meas_rep(&meas_rep, msg);
+	gsm48_parse_meas_rep(meas_rep, msg);
 
 	return 0;
 }

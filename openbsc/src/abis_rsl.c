@@ -998,14 +998,12 @@ static int rsl_rx_meas_res(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
-	struct gsm_meas_rep mr;
+	struct gsm_meas_rep *mr = lchan_next_meas_rep(msg->lchan);
 	u_int8_t len;
 	const u_int8_t *val;
 	int rc;
 
-	memset(&mr, 0, sizeof(mr));
-
-	mr.lchan = msg->lchan;
+	memset(mr, 0, sizeof(*mr));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1015,44 +1013,44 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		return -EIO;
 
 	/* Mandatory Parts */
-	mr.nr = *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR);
+	mr->nr = *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR);
 
 	len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
 	val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
 	if (len >= 3) {
 		if (val[0] & 0x40)
-			mr.flags |= MEAS_REP_F_DL_DTX;
-		mr.ul.full.rx_lev = val[0] & 0x3f;
-		mr.ul.sub.rx_lev = val[1] & 0x3f;
-		mr.ul.full.rx_qual = val[2]>>3 & 0x7;
-		mr.ul.sub.rx_qual = val[2] & 0x7;
+			mr->flags |= MEAS_REP_F_DL_DTX;
+		mr->ul.full.rx_lev = val[0] & 0x3f;
+		mr->ul.sub.rx_lev = val[1] & 0x3f;
+		mr->ul.full.rx_qual = val[2]>>3 & 0x7;
+		mr->ul.sub.rx_qual = val[2] & 0x7;
 	}
 
-	mr.bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+	mr->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
 
 	/* Optional Parts */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		mr.ms_timing_offset =
+		mr->ms_timing_offset =
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
 
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
 		val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
-		mr.flags |= MEAS_REP_F_MS_L1;
-		mr.ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
+		mr->flags |= MEAS_REP_F_MS_L1;
+		mr->ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
 		if (val[0] & 0x04)
-			mr.flags |= MEAS_REP_F_FPC;
-		mr.ms_l1.ta = val[1];
+			mr->flags |= MEAS_REP_F_FPC;
+		mr->ms_l1.ta = val[1];
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
-		rc = gsm48_parse_meas_rep(&mr, msg);
+		rc = gsm48_parse_meas_rep(mr, msg);
 		if (rc < 0)
 			return rc;
 	}
 
-	print_meas_rep(&mr);
+	print_meas_rep(mr);
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, &mr);
+	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, mr);
 
 	return 0;
 }
