@@ -30,11 +30,15 @@ struct gsm_meas_rep_unidir {
 
 /* parsed uplink and downlink measurement result */
 struct gsm_meas_rep {
+	/* back-pointer to the logical channel */
 	struct gsm_lchan *lchan;
 
+	/* number of the measurement report */
 	u_int8_t nr;
+	/* flags, see MEAS_REP_F_* */
 	unsigned int flags;
 
+	/* uplink and downlink rxlev, rxqual; full and sub */
 	struct gsm_meas_rep_unidir ul;
 	struct gsm_meas_rep_unidir dl;
 
@@ -45,6 +49,7 @@ struct gsm_meas_rep {
 		u_int8_t ta;	/* MS timing advance */
 	} ms_l1;
 
+	/* neighbor measurement reports for up to 6 cells */
 	int num_cell;
 	struct gsm_meas_rep_cell cell[6];
 };
