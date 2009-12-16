@@ -576,7 +576,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 #endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta)
+			    u_int8_t ta, u_int8_t ho_ref)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
@@ -603,9 +603,9 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	dh->chan_nr = chan_nr;
 
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, act_type);
-	/* For compatibility with Phase 1 */
 	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
 		     (u_int8_t *) &cm);
+	/* For compatibility with Phase 1 */
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) &ci);
 
@@ -614,6 +614,15 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 		rc = build_encr_info(encr_info, lchan);
 		if (rc > 0)
 			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
+	}
+
+	switch (act_type) {
+	case RSL_ACT_INTER_ASYNC:
+	case RSL_ACT_INTER_SYNC:
+		msgb_tv_put(msg, RSL_IE_HANDO_REF, ho_ref);
+		break;
+	default:
+		break;
 	}
 
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
@@ -1258,7 +1267,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->bs_power = 0; /* 0dB reduction, output power = Pn */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	lchan->tch_mode = GSM48_CMODE_SIGN;
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
+	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));

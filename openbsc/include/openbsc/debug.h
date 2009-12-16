@@ -25,6 +25,8 @@
 
 #define DMGCP		0x40000
 
+#define DHO		0x80000
+
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
 #define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)

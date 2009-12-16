@@ -679,6 +679,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rc = gsm_generate_si(si_tmp, trx->bts, i);
 			if (rc < 0)
 				goto err_out;
+			DEBUGP(DRR, "SI%u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 	}

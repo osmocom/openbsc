@@ -162,6 +162,7 @@ int main(int argc, char **argv)
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
+	on_dso_load_ho_dec();
 
 	/* parse options */
 	handle_options(argc, argv);

@@ -85,23 +85,40 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 {
 	struct gsm_lchan *new_lchan;
 	struct bsc_handover *ho;
+	static u_int8_t ho_ref;
 	int rc;
 
+	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u): ",
+		old_lchan->ts->trx->bts->nr, bts->nr);
+
 	new_lchan = lchan_alloc(bts, old_lchan->type);
-	if (!new_lchan)
+	if (!new_lchan) {
+		DEBUGPC(DHO, "No free channel\n");
 		return -ENOSPC;
+	}
 
 	ho = talloc_zero(NULL, struct bsc_handover);
 	if (!ho) {
+		DEBUGPC(DHO, "Out of Memory\n");
 		lchan_free(new_lchan);
 		return -ENOMEM;
 	}
 	ho->old_lchan = old_lchan;
 	ho->new_lchan = new_lchan;
+	ho->ho_ref = ho_ref++;
+
+	/* copy some parameters from old lchan */
+	memcpy(&new_lchan->encr, &old_lchan->encr, sizeof(new_lchan->encr));
+	new_lchan->ms_power = old_lchan->ms_power;
+	new_lchan->bs_power = old_lchan->bs_power;
+	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
+	new_lchan->tch_mode = old_lchan->tch_mode;
 
 	/* FIXME: do we have a better idea of the timing advance? */
-	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0);
+	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
+				     ho->ho_ref);
 	if (rc < 0) {
+		DEBUGPC(DHO, "could not activate channel\n");
 		talloc_free(ho);
 		lchan_free(new_lchan);
 		return rc;
@@ -118,6 +135,8 @@ static void ho_T3103_cb(void *_ho)
 {
 	struct bsc_handover *ho = _ho;
 
+	DEBUGP(DHO, "HO T3103 expired\n");
+
 	lchan_free(ho->new_lchan);
 	llist_del(&ho->list);
 	talloc_free(ho);
@@ -129,6 +148,8 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 	int rc;
 
+	DEBUGP(DHO, "handover activate ack, send HO Command\n");
+
 	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho)
 		return -ENODEV;
@@ -136,7 +157,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	/* we can now send the 04.08 HANDOVER COMMAND to the MS
 	 * using the old lchan */
 
-	rc = gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0);
+	rc = gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
 
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
