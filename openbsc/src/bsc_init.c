@@ -684,25 +684,31 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 	}
 #ifdef GPRS
 	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
-	if (rc < 0)
+	if (rc < 0) {
+		i = 13;
 		goto err_out;
+	}
 	rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
 #endif
 	rc = gsm_generate_si(si_tmp, trx->bts, 5);
-	if (rc < 0)
+	if (rc < 0) {
+		i = 5;
 		goto err_out;
+	}
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
 
 	rc = gsm_generate_si(si_tmp, trx->bts, 6);
-	if (rc < 0)
+	if (rc < 0) {
+		i = 6;
 		goto err_out;
+	}
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 	return 0;
 err_out:
-	fprintf(stderr, "Cannot generate SI for BTS %u, most likely "
+	fprintf(stderr, "Cannot generate SI %u for BTS %u, most likely "
 		"a problem with neighbor cell list generation\n",
-		trx->bts->nr);
+		i, trx->bts->nr);
 	return rc;
 }
 

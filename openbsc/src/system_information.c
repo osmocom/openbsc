@@ -32,6 +32,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/bitvec.h>
+#include <openbsc/debug.h>
 
 #define GSM48_CELL_CHAN_DESC_SIZE	16
 #define GSM_MACBLOCK_LEN 		23
@@ -73,10 +74,14 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 	if (arfcn == min_arfcn)
 		return 0;
 
-	if (arfcn < min_arfcn)
+	if (arfcn < min_arfcn) {
+		DEBUGP(DRR, "arfcn(%u) < min(%u)\n", arfcn, min_arfcn);
 		return -EINVAL;
-	if (arfcn > min_arfcn + 111)
+	}
+	if (arfcn > min_arfcn + 111) {
+		DEBUGP(DRR, "arfcn(%u) > min(%u) + 111\n", arfcn, min_arfcn);
 		return -EINVAL;
+	}
 
 	bitno = (arfcn - min_arfcn);
 	byte = bitno / 8;
@@ -121,17 +126,21 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 		}
 	}
 
-	if ((max - min) > 111)
+	if ((max - min) > 111) {
+		DEBUGP(DRR, "min_arfcn=%u, max_arfcn=%u, distance > 111\n", min, max);
 		return -EINVAL;
+	}
 
 	chan_list[0] |= (min >> 9) & 1;
 	chan_list[1] = (min >> 1);
 	chan_list[2] = (min & 1) << 7;
 
 	for (i = 0; i < bv->data_len*8; i++) {
-		rc = freq_list_bmrel_set_arfcn(chan_list, i);
-		if (rc < 0)
-			return rc;
+		if (bitvec_get_bit_pos(bv, i)) {
+			rc = freq_list_bmrel_set_arfcn(chan_list, i);
+			if (rc < 0)
+				return rc;
+		}
 	}
 
 	return 0;
