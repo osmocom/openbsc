@@ -247,9 +247,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	return 0;
 }
 
-/* FIXME: this is per BTS */
-static int oml_up = 0;
-static int rsl_up = 0;
+#define OML_UP		0x0001
+#define RSL_UP		0x0002
 
 /*
  * read one ipa message from the socket
@@ -348,16 +347,16 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	switch (link->type) {
 	case E1INP_SIGN_RSL:
-		if (!rsl_up) {
+		if (!(msg->trx->bts->ip_access.flags & RSL_UP)) {
 			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
-			rsl_up = 1;
+			msg->trx->bts->ip_access.flags |= RSL_UP;
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case E1INP_SIGN_OML:
-		if (!oml_up) {
+		if (!(msg->trx->bts->ip_access.flags & OML_UP)) {
 			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
-			oml_up = 1;
+			msg->trx->bts->ip_access.flags |= OML_UP;
 		}
 		ret = abis_nm_rcvmsg(msg);
 		break;

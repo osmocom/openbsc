@@ -400,6 +400,7 @@ struct gsm_bts {
 		struct {
 			u_int16_t site_id;
 			u_int16_t bts_id;
+			u_int32_t flags;
 		} ip_access;
 		struct {
 			struct {
