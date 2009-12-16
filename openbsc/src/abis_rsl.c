@@ -957,14 +957,17 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
 				const char *prefix)
 {
-	DEBUGPC(DMEAS, "RXL-FULL-%s=%d RXL-SUB-%s=%d ",
-		prefix, mru->full.rx_lev, prefix, mru->sub.rx_lev);
+	DEBUGPC(DMEAS, "RXL-FULL-%s=%3ddBm RXL-SUB-%s=%3ddBm ",
+		prefix, rxlev2dbm(mru->full.rx_lev),
+		prefix, rxlev2dbm(mru->sub.rx_lev));
 	DEBUGPC(DMEAS, "RXQ-FULL-%s=%d RXQ-SUB-%s=%d ",
 		prefix, mru->full.rx_qual, prefix, mru->sub.rx_qual);
 }
 
 static void print_meas_rep(struct gsm_meas_rep *mr)
 {
+	int i;
+
 	DEBUGP(DMEAS, "MEASUREMENT RESULT NR=%d ", mr->nr);
 
 	if (mr->flags & MEAS_REP_F_DL_DTX)
@@ -976,7 +979,7 @@ static void print_meas_rep(struct gsm_meas_rep *mr)
 		DEBUGPC(DMEAS, "MS_TO=%d ", mr->ms_timing_offset);
 
 	if (mr->flags & MEAS_REP_F_MS_L1) {
-		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ", mr->ms_l1.pwr);
+		DEBUGPC(DMEAS, "L1_MS_PWR=%3ddBm ", mr->ms_l1.pwr);
 		DEBUGPC(DMEAS, "L1_FPC=%u ",
 			mr->flags & MEAS_REP_F_FPC ? 1 : 0);
 		DEBUGPC(DMEAS, "L1_TA=%u ", mr->ms_l1.ta);
@@ -992,6 +995,11 @@ static void print_meas_rep(struct gsm_meas_rep *mr)
 		print_meas_rep_uni(&mr->dl, "dl");
 
 	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", mr->num_cell);
+	for (i = 0; i < mr->num_cell; i++) {
+		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
+		DEBUGP(DMEAS, "ARFCN=%u BSIC=%u => %d dBm\n", mrc->arfcn, mrc->bsic,
+			rxlev2dbm(mrc->rxlev));
+	}
 }
 
 static int rsl_rx_meas_res(struct msgb *msg)
