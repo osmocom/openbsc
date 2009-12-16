@@ -104,12 +104,12 @@ int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
 	if (bytenum >= bv->data_len)
 		return -EINVAL;
 
-	bitval = bitval2mask(ONE, bitnum);
-
 	/* first clear the bit */
-	bv->data[bytenum] &= ~(1 << bitnum);
+	bitval = bitval2mask(ONE, bitnum);
+	bv->data[bytenum] &= ~bitval;
 
 	/* then set it to desired value */
+	bitval = bitval2mask(bit, bitnum);
 	bv->data[bytenum] |= bitval;
 
 	return 0;
