@@ -41,7 +41,8 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 	/* resolve the gsm_bts structure for the best neighbor */
 	new_bts = gsm_bts_neighbor(lchan->ts->trx->bts, arfcn, bsic);
 	if (!new_bts) {
-		DEBUGP(DHO, "unable to determine neighbor BTS for ARFCN %u BSIC %u ?!?\n", arfcn, bsic);
+		LOGP(DHO, LOGL_NOTICE, "unable to determine neighbor BTS "
+		     "for ARFCN %u BSIC %u ?!?\n", arfcn, bsic);
 		return -EINVAL;
 	}
 
@@ -57,8 +58,6 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	struct gsm_meas_rep_cell *mr_cell = NULL;
 	unsigned int best_better_db;
 	int i;
-
-	DEBUGP(DHO, "process meas res: ");
 
 	/* FIXME: implement actual averaging over multiple measurement
 	 * reports */
@@ -78,7 +77,8 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	}
 
 	if (mr_cell) {
-		DEBUGPC(DHO, "Cell on ARFCN %u is better, starting handover\n", mr_cell->arfcn);
+		LOGP(DHO, LOGL_INFO, "Cell on ARFCN %u is better, starting "
+		     "handover\n", mr_cell->arfcn);
 		return handover_to_arfcn_bsic(mr->lchan, mr_cell->arfcn,
 						mr_cell->bsic);
 	}

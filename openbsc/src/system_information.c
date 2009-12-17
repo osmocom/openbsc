@@ -45,8 +45,10 @@ static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 
-	if (arfcn > 124 || arfcn < 1)
+	if (arfcn > 124 || arfcn < 1) {
+		LOGP(DRR, LOGL_ERROR, "Bitmap 0 only supports ARFCN 1...124\n");
 		return -EINVAL;
+	}
 
 	/* the bitmask is from 1..124, not from 0..123 */
 	arfcn--;
@@ -75,11 +77,11 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 		return 0;
 
 	if (arfcn < min_arfcn) {
-		DEBUGP(DRR, "arfcn(%u) < min(%u)\n", arfcn, min_arfcn);
+		LOGP(DRR, LOGL_ERROR, "arfcn(%u) < min(%u)\n", arfcn, min_arfcn);
 		return -EINVAL;
 	}
 	if (arfcn > min_arfcn + 111) {
-		DEBUGP(DRR, "arfcn(%u) > min(%u) + 111\n", arfcn, min_arfcn);
+		LOGP(DRR, LOGL_ERROR, "arfcn(%u) > min(%u) + 111\n", arfcn, min_arfcn);
 		return -EINVAL;
 	}
 
@@ -127,7 +129,8 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 	}
 
 	if ((max - min) > 111) {
-		DEBUGP(DRR, "min_arfcn=%u, max_arfcn=%u, distance > 111\n", min, max);
+		LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, "
+			"distance > 111\n", min, max);
 		return -EINVAL;
 	}
 

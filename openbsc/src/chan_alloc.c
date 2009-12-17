@@ -210,7 +210,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		}
 		break;
 	default:
-		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
+		LOGP(DRLL, LOGL_ERROR, "Unknown gsm_chan_t %u\n", type);
 	}
 
 	if (lchan) {
@@ -276,9 +276,9 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 	}
 
 	/* spoofed? message */
-	if (lchan->use_count < 0) {
-		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
-	}
+	if (lchan->use_count < 0)
+		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
+			lchan->use_count);
 
 	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
 	rsl_release_request(lchan, 0);

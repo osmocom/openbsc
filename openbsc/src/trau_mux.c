@@ -56,8 +56,10 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 	struct map_entry *me;
 
 	me = talloc(tall_map_ctx, struct map_entry);
-	if (!me)
+	if (!me) {
+		LOGP(DMIB, LOGL_FATAL, "Out of memory\n");
 		return -ENOMEM;
+	}
 
 	DEBUGP(DCC, "Setting up TRAU mux map between (e1=%u,ts=%u,ss=%u) "
 		"and (e1=%u,ts=%u,ss=%u)\n",

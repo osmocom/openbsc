@@ -1088,8 +1088,8 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 		rc = abis_nm_rx_ipacc(mb);
 		break;
 	default:
-		fprintf(stderr, "don't know how to parse OML for this "
-			 "BTS type (%u)\n", bts_type);
+		LOGP(DNM, LOGL_ERROR, "don't know how to parse OML for this "
+		     "BTS type (%u)\n", bts_type);
 		rc = 0;
 		break;
 	}
@@ -1106,12 +1106,12 @@ int abis_nm_rcvmsg(struct msgb *msg)
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
-		fprintf(stderr, "ABIS OML placement 0x%x not supported\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML placement 0x%x not supported\n",
 			oh->placement);
 		return -EINVAL;
 	}
 	if (oh->sequence != 0) {
-		fprintf(stderr, "ABIS OML sequence 0x%x != 0x00\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML sequence 0x%x != 0x00\n",
 			oh->sequence);
 		return -EINVAL;
 	}
@@ -1119,12 +1119,12 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
 	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 	if (oh->length + hlen > l2_len) {
-		fprintf(stderr, "ABIS OML truncated message (%u > %u)\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML truncated message (%u > %u)\n",
 			oh->length + sizeof(*oh), l2_len);
 		return -EINVAL;
 	}
 	if (oh->length + hlen < l2_len)
-		fprintf(stderr, "ABIS OML message with extra trailer?!? (oh->len=%d, sizeof_oh=%d l2_len=%d\n", oh->length, sizeof(*oh), l2_len);
+		LOGP(DNM, LOGL_ERROR, "ABIS OML message with extra trailer?!? (oh->len=%d, sizeof_oh=%d l2_len=%d\n", oh->length, sizeof(*oh), l2_len);
 #endif
 	msg->l3h = (unsigned char *)oh + sizeof(*oh);
 
@@ -1137,11 +1137,11 @@ int abis_nm_rcvmsg(struct msgb *msg)
 		break;
 	case ABIS_OM_MDISC_MMI:
 	case ABIS_OM_MDISC_TRAU:
-		fprintf(stderr, "unimplemented ABIS OML message discriminator 0x%x\n",
+		LOGP(DNM, LOGL_ERROR, "unimplemented ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
 		break;
 	default:
-		fprintf(stderr, "unknown ABIS OML message discriminator 0x%x\n",
+		LOGP(DNM, LOGL_ERROR, "unknown ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
 		return -EINVAL;
 	}

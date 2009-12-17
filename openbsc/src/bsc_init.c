@@ -453,7 +453,7 @@ static int sw_activ_rep(struct msgb *mb)
 static int oml_msg_nack(u_int8_t mt)
 {
 	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
-		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
+		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
 		exit(-1);
 	}
@@ -556,7 +556,7 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 			trx->nominal_power = 23;
 			break;
 		default:
-			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+			LOGP(DNM, LOGL_ERROR, "Unsupported nanoBTS GSM band %s\n",
 				gsm_band_name(trx->bts->band));
 			break;
 		}
@@ -621,7 +621,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 
 static void bootstrap_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "bootstrapping OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -631,13 +631,13 @@ static void bootstrap_om(struct gsm_bts *bts)
 		bootstrap_om_nanobts(bts);
 		break;
 	default:
-		fprintf(stderr, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
+		LOGP(DNM, LOGL_ERROR, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
 	}
 }
 
 static int shutdown_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "shutting down OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -707,7 +707,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	return 0;
 err_out:
-	fprintf(stderr, "Cannot generate SI %u for BTS %u, most likely "
+	LOGP(DRR, LOGL_ERROR, "Cannot generate SI %u for BTS %u, most likely "
 		"a problem with neighbor cell list generation\n",
 		i, trx->bts->nr);
 	return rc;
@@ -746,7 +746,7 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
-	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
+	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
 		trx->bts->nr, trx->nr, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
@@ -769,7 +769,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		}
 		break;
 	case EVT_E1_TEI_DN:
-		fprintf(stderr, "Lost some E1 TEI link\n");
+		LOGP(DMI, LOGL_NOTICE, "Lost some E1 TEI link\n");
 		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	default:
@@ -782,30 +782,30 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	switch (bts->band) {
 	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
-			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1800 channel must be between 512-885.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_1900:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 810) {
-			fprintf(stderr, "GSM1900 channel must be between 512-810.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1900 channel must be between 512-810.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_900:
 		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
-			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 1-124.\n");
 			return -EINVAL;
 		}
 		break;
 	default:
-		fprintf(stderr, "Unsupported frequency band.\n");
+		LOGP(DNM, LOGL_ERROR, "Unsupported frequency band.\n");
 		return -EINVAL;
 	}
 
 	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
 	    !bts->cell_barred)
-		fprintf(stderr, "\nWARNING: You are running an 'accept-all' "
+		LOGP(DNM, LOG_ERROR, "\nWARNING: You are running an 'accept-all' "
 			"network on a BTS that is not barred.  This "
 			"configuration is likely to interfere with production "
 			"GSM networks and should only be used in a RF "
@@ -858,7 +858,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 	telnet_init(bsc_gsmnet, 4242);
 	rc = vty_read_config_file(config_file);
 	if (rc < 0) {
-		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
+		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
 	}
 

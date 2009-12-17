@@ -206,32 +206,32 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
 		    ts->pchan != GSM_PCHAN_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1e) == 0x02) {
 		lch_idx = cbits & 0x1;	/* TCH/H */
 		if (ts->pchan != GSM_PCHAN_TCH_H)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1c) == 0x04) {
 		lch_idx = cbits & 0x3;	/* SDCCH/4 */
 		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x18) == 0x08) {
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
 		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
 		lch_idx = 0;
 		if (ts->pchan != GSM_PCHAN_CCCH &&
 		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 		/* FIXME: we should not return first sdcch4 !!! */
 	} else {
-		fprintf(stderr, "unknown chan_nr=0x%02x\n", chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
 		return NULL;
 	}
 
@@ -491,7 +491,7 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 
 	if (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN &&
 	    lchan->tch_mode != GSM48_CMODE_SIGN)
-		DEBUGP(DRSL, "unsupported: rsl_mode == signalling, "
+		LOGP(DRSL, LOGL_ERROR, "unsupported: rsl_mode == signalling, "
 			"but tch_mode != signalling\n");
 
 	switch (lchan->type) {
@@ -848,7 +848,7 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 	struct abis_rsl_rll_hdr *rh;
 
 	if (msg->lchan == NULL) {
-		fprintf(stderr, "cannot send DATA REQUEST to unknown lchan\n");
+		LOGP(DRSL, LOGL_ERROR, "cannot send DATA REQUEST to unknown lchan\n");
 		return -EINVAL;
 	}
 
@@ -949,15 +949,14 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGPC(DRSL, "CONNECTION FAIL: ");
+	/* FIXME: print which channel */
+	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING\n");
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
-
-	DEBUGPC(DRSL, "RELEASING.\n");
 
 	/* FIXME: only free it after channel release ACK */
 	return rsl_rf_chan_release(msg->lchan);
@@ -1171,7 +1170,7 @@ static int rsl_rx_error_rep(struct msgb *msg)
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGP(DRSL, "ERROR REPORT ");
+	LOGP(DRSL, LOGL_ERROR, "ERROR REPORT ");
 
 	rsl_tlv_parse(&tp, rslh->data, msgb_l2len(msg)-sizeof(*rslh));
 
@@ -1179,7 +1178,7 @@ static int rsl_rx_error_rep(struct msgb *msg)
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
-	DEBUGPC(DRSL, "\n");
+	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	return 0;
 }
@@ -1199,7 +1198,7 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		DEBUGP(DRSL, "TRX: CCCH/ACCH/CPU Overload\n");
+		LOGP(DRSL, LOGL_ERROR, "TRX: CCCH/ACCH/CPU Overload\n");
 		break;
 	default:
 		DEBUGP(DRSL, "Unknown Abis RSL TRX message type 0x%02x\n",
@@ -1350,12 +1349,12 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		/* CCCH overloaded, IMM_ASSIGN was dropped */
 	case RSL_MT_CBCH_LOAD_IND:
 		/* current load on the CBCH */
-		fprintf(stderr, "Unimplemented Abis RSL TRX message type "
-			"0x%02x\n", rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unimplemented Abis RSL TRX message "
+			"type 0x%02x\n", rslh->c.msg_type);
 		break;
 	default:
-		fprintf(stderr, "Unknown Abis RSL TRX message type 0x%02x\n",
-			rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unknown Abis RSL TRX message type "
+			"0x%02x\n", rslh->c.msg_type);
 		return -EINVAL;
 	}
 
@@ -1367,7 +1366,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
+	LOGP(DRLL, LOGL_ERROR, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 		
@@ -1448,12 +1447,12 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
-		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x\n",
-			rllh->c.msg_type);
+		LOGP(DRLL, LOGL_NOTICE, "unimplemented Abis RLL message "
+			"type 0x%02x\n", rllh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x\n",
-			rllh->c.msg_type);
+		LOGP(DRLL, LOGL_NOTICE, "unknown Abis RLL message "
+			"type 0x%02x\n", rllh->c.msg_type);
 	}
 	return rc;
 }
@@ -1490,7 +1489,7 @@ static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 	default:
 		break;
 	}
-	DEBUGPC(DRSL, "Cannot determine ip.access speech mode for "
+	LOGP(DRSL, LOGL_ERROR, "Cannot determine ip.access speech mode for "
 		"tch_mode == 0x%02x\n", lchan->tch_mode);
 	return 0;
 }
@@ -1604,7 +1603,7 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_CONN_ID)) {
-		DEBUGPC(DRSL, "mandatory IE missing");
+		LOGP(DRSL, LOGL_NOTICE, "mandatory IE missing");
 		return -EINVAL;
 	}
 	ip.s_addr = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
@@ -1680,7 +1679,8 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 		rc = abis_rsl_rx_ipacc_dlcx_ind(msg);
 		break;
 	default:
-		DEBUGPC(DRSL, "Unknown ip.access msg_type 0x%02x", rllh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unknown ip.access msg_type 0x%02x",
+			rllh->c.msg_type);
 		break;
 	}
 	DEBUGPC(DRSL, "\n");
@@ -1709,15 +1709,15 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 		rc = abis_rsl_rx_trx(msg);
 		break;
 	case ABIS_RSL_MDISC_LOC:
-		fprintf(stderr, "unimplemented RSL msg disc 0x%02x\n",
+		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL msg disc 0x%02x\n",
 			rslh->msg_discr);
 		break;
 	case ABIS_RSL_MDISC_IPACCESS:
 		rc = abis_rsl_rx_ipacc(msg);
 		break;
 	default:
-		fprintf(stderr, "unknown RSL message discriminator 0x%02x\n",
-			rslh->msg_discr);
+		LOGP(DRSL, LOGL_NOTICE, "unknown RSL message discriminator "
+			"0x%02x\n", rslh->msg_discr);
 		return -EINVAL;
 	}
 	msgb_free(msg);

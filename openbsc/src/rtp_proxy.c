@@ -211,7 +211,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 	written = write(rss->bfd.fd, msg->data, msg->len);
 	if (written < msg->len) {
-		perror("short write");
+		LOGP(DMIB, LOGL_ERROR, "short write");
 		msgb_free(msg);
 		return -EIO;
 	}

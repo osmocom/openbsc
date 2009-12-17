@@ -85,8 +85,7 @@ static struct mncc_names {
 
 	{"GSM_TRAU_FRAME",	0x0300},
 
-	{NULL, 0}
-};
+	{NULL, 0} };
 
 static LLIST_HEAD(call_list);
 
@@ -146,8 +145,8 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	
 	/* transfer mode 1 would be packet mode, which was never specified */
 	if (setup->bearer_cap.mode != 0) {
-		DEBUGP(DMNCC, "(call %x) We don't support packet mode\n",
-			call->callref);
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We don't support "
+			"packet mode\n", call->callref);
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
 		goto out_reject;
@@ -155,8 +154,8 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 
 	/* we currently only do speech */
 	if (setup->bearer_cap.transfer != GSM_MNCC_BCAP_SPEECH) {
-		DEBUGP(DMNCC, "(call %x) We only support voice calls\n",
-			call->callref);
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We only support "
+			"voice calls\n", call->callref);
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
 		goto out_reject;
@@ -406,7 +405,7 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 		rc = mncc_send(net, MNCC_RETRIEVE_REJ, data);
 		break;
 	default:
-		DEBUGP(DMNCC, "(call %x) Message unhandled\n", callref);
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) Message unhandled\n", callref);
 		break;
 	}
 

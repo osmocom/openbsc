@@ -93,18 +93,18 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	if (bsc_ho_by_old_lchan(old_lchan))
 		return -EBUSY;
 
-	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u): ",
+	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
 	new_lchan = lchan_alloc(bts, old_lchan->type);
 	if (!new_lchan) {
-		DEBUGPC(DHO, "No free channel\n");
+		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
 		return -ENOSPC;
 	}
 
 	ho = talloc_zero(NULL, struct bsc_handover);
 	if (!ho) {
-		DEBUGPC(DHO, "Out of Memory\n");
+		LOGP(DHO, LOGL_FATAL, "Out of Memory\n");
 		lchan_free(new_lchan);
 		return -ENOMEM;
 	}
@@ -123,7 +123,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
 				     ho->ho_ref);
 	if (rc < 0) {
-		DEBUGPC(DHO, "could not activate channel\n");
+		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
 		talloc_free(ho);
 		lchan_free(new_lchan);
 		return rc;
@@ -156,8 +156,10 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	DEBUGP(DHO, "handover activate ack, send HO Command\n");
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	/* we can now send the 04.08 HANDOVER COMMAND to the MS
 	 * using the old lchan */
@@ -178,8 +180,10 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	llist_del(&ho->list);
 	talloc_free(ho);
@@ -195,8 +199,10 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
@@ -221,8 +227,10 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_old_lchan(old_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
@@ -238,8 +246,10 @@ static int ho_rsl_detect(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_old_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	/* FIXME: do we actually want to do something here ? */
 
