@@ -140,3 +140,22 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 
 	return -1;
 }
+
+/* update all transactions to use a different LCHAN, e.g.
+ * after handover has succeeded */
+int trans_lchan_change(struct gsm_lchan *lchan_old,
+		       struct gsm_lchan *lchan_new)
+{
+	struct gsm_network *net = lchan_old->ts->trx->bts->network;
+	struct gsm_trans *trans;
+	int num = 0;
+
+	llist_for_each_entry(trans, &net->trans_list, entry) {
+		if (trans->lchan == lchan_old) {
+			trans->lchan = lchan_new;
+			num++;
+		}
+	}
+
+	return num;
+}
