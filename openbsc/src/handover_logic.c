@@ -88,6 +88,11 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	static u_int8_t ho_ref;
 	int rc;
 
+	/* don't attempt multiple handovers for the same lchan at
+	 * the same time */
+	if (bsc_ho_by_old_lchan(old_lchan))
+		return -EBUSY;
+
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u): ",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
