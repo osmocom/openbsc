@@ -246,7 +246,7 @@ static int ho_rsl_detect(struct gsm_lchan *new_lchan)
 {
 	struct bsc_handover *ho;
 
-	ho = bsc_ho_by_old_lchan(new_lchan);
+	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho) {
 		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
