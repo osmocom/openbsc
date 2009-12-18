@@ -173,7 +173,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		DEBUGP(DSMS, "TX: CP-ACK ");
 		break;
 	case GSM411_MT_CP_ERROR:
-		DEBUGP(DSMS, "TX: CP-ACK ");
+		DEBUGP(DSMS, "TX: CP-ERROR ");
 		break;
 	}
 
