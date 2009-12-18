@@ -133,7 +133,7 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 		used_tid_bitmask |= (1 << trans->transaction_id);
 	}
 
-	for (i = 0; i <= 7; i++) {
+	for (i = 0; i < 7; i++) {
 		if ((used_tid_bitmask & (1 << (i | ti_flag))) == 0)
 			return i | ti_flag;
 	}
