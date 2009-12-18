@@ -906,7 +906,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		return -EIO;
 		/* FIXME: send some error message */
 
-	DEBUGP(DSMS, "trans_id=%x ", gh->proto_discr >> 4);
+	DEBUGP(DSMS, "trans_id=%x ", transaction_id);
 	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
