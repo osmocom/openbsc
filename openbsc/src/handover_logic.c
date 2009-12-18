@@ -169,6 +169,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
+	ho->T3103.data = ho;
 	bsc_schedule_timer(&ho->T3103, 10, 0);
 
 	return 0;
