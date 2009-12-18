@@ -75,6 +75,7 @@ static void print_help()
 	printf("  -l --database db-name The database to use\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
+	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 }
 
 static void handle_options(int argc, char** argv)
