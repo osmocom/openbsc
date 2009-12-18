@@ -152,7 +152,12 @@ int trans_lchan_change(struct gsm_lchan *lchan_old,
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
 		if (trans->lchan == lchan_old) {
+			/* drop old channel use cound */
+			put_lchan(trans->lchan);
+			/* assign new channel */
 			trans->lchan = lchan_new;
+			/* bump new channel use count */
+			use_lchan(trans->lchan);
 			num++;
 		}
 	}
