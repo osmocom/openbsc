@@ -910,7 +910,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
-		DEBUGPC(DSMS, "(unknown) ");
+		DEBUGPC(DSMS, "(new) ");
 		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
