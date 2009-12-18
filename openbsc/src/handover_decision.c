@@ -59,6 +59,15 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	unsigned int best_better_db;
 	int i;
 
+	/* we currently only do handover for TCH channels */
+	switch (mr->lchan->type) {
+	case GSM_LCHAN_TCH_F:
+	case GSM_LCHAN_TCH_H:
+		break;
+	default:
+		return 0;
+	}
+
 	/* FIXME: implement actual averaging over multiple measurement
 	 * reports */
 
