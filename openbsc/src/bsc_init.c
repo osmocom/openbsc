@@ -355,8 +355,10 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	switch (obj_class) {
 	case NM_OC_SITE_MANAGER:
 		bts = container_of(obj, struct gsm_bts, site_mgr);
-		if (new_state->operational == 2 &&
-		    new_state->availability == NM_AVSTATE_OK)
+		if ((new_state->operational == 2 &&
+		     new_state->availability == NM_AVSTATE_OK) ||
+		    (new_state->operational == 1 &&
+		     new_state->availability == NM_AVSTATE_OFF_LINE))
 			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
 		break;
 	case NM_OC_BTS:
