@@ -1343,7 +1343,9 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 	if (!msg->lchan->subscr)
 		msg->lchan->subscr = subscr;
-	else if (msg->lchan->subscr != subscr) {
+	else if (msg->lchan->subscr == subscr)
+		subscr_put(subscr); /* lchan already has a ref, don't need another one */
+	else {
 		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
 		subscr_put(subscr);
 	}
