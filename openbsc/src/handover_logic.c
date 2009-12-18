@@ -118,6 +118,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan->bs_power = old_lchan->bs_power;
 	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
 	new_lchan->tch_mode = old_lchan->tch_mode;
+	new_lchan->subscr = subscr_get(old_lchan->subscr);
 
 	/* FIXME: do we have a better idea of the timing advance? */
 	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
@@ -153,13 +154,13 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 	int rc;
 
-	DEBUGP(DHO, "handover activate ack, send HO Command\n");
-
+	/* we need to check if this channel activation is related to
+	 * a handover at all (and if, which particular handover) */
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+	if (!ho)
 		return -ENODEV;
-	}
+
+	DEBUGP(DHO, "handover activate ack, send HO Command\n");
 
 	/* we can now send the 04.08 HANDOVER COMMAND to the MS
 	 * using the old lchan */
