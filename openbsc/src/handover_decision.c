@@ -88,10 +88,8 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		}
 	}
 
-	if (!mr_cell) {
-		DEBUGPC(DHO, "No better cell\n");
+	if (!mr_cell)
 		return 0;
-	}
 
 	LOGP(DHO, LOGL_INFO, "Cell on ARFCN %u is better: ", mr_cell->arfcn);
 	if (!mr->lchan->ts->trx->bts->network->handover.active) {
