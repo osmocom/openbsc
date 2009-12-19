@@ -28,7 +28,7 @@
 
 #include <openbsc/debug.h>
 
-unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB);
+unsigned int debug_mask = 0xffffffff & ~(DMI|DMIB|DMEAS);
 
 struct debug_info {
 	const char *name;
