@@ -1864,12 +1864,16 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
+static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable);
+
 /* some other part of the code sends us a signal */
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
 {
 	struct gsm_lchan *lchan = signal_data;
 	int rc;
+	struct gsm_network *net;
+	struct gsm_trans *trans;
 
 	if (subsys != SS_ABISIP)
 		return 0;
@@ -1896,6 +1900,15 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				   lchan->abis_ip.bound_port);
 		if (rc < 0)
 			goto out_err;
+		/* check if any transactions on this lchan still have
+		 * a tch_recv_mncc request pending */
+		net = lchan->ts->trx->bts->network;
+		llist_for_each_entry(trans, &net->trans_list, entry) {
+			if (trans->lchan == lchan && trans->tch_recv) {
+				DEBUGP(DCC, "pending tch_recv_mncc request\n");
+				tch_recv_mncc(net, trans->callref, 1);
+			}
+		}
 		break;
 	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
@@ -1941,7 +1954,8 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		DEBUGP(DCC, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
 	}
-	
+
+	// todo: map between different bts types
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		if (!ipacc_rtp_direct) {
@@ -1950,6 +1964,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 			if (rc < 0)
 				return rc;
 			rc = ipacc_connect_proxy_bind(remote_lchan);
+#warning do we need a check of rc here?
 
 			/* connect them with each other */
 			rtp_socket_proxy(lchan->abis_ip.rtp_socket,
@@ -1971,8 +1986,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		break;
 	default:
 		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
-		rc = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -1994,44 +2008,60 @@ static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 	return tch_map(trans1->lchan, trans2->lchan);
 }
 
-/* enable receive of channels to upqueue */
-static int tch_recv(struct gsm_network *net, struct gsm_mncc *data, int enable)
+/* enable receive of channels to MNCC upqueue */
+static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 {
 	struct gsm_trans *trans;
+	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
+	int rc;
 
 	/* Find callref */
-	trans = trans_find_by_callref(net, data->callref);
+	trans = trans_find_by_callref(net, callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
 		return 0;
+	lchan = trans->lchan;
+	bts = lchan->ts->trx->bts;
 
-	// todo IPACCESS
-	if (enable)
-		return trau_recv_lchan(trans->lchan, data->callref);
-	return trau_mux_unmap(NULL, data->callref);
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+		if (ipacc_rtp_direct) {
+			DEBUGP(DCC, "Error: RTP proxy is disabled\n");
+			return -EINVAL;
+		}
+		/* in case, we don't have a RTP socket yet, we note this
+		 * in the transaction and try later */
+		if (!lchan->abis_ip.rtp_socket) {
+			trans->tch_recv = enable;
+			DEBUGP(DCC, "queue tch_recv_mncc request (%d)\n", enable);
+			return 0;
+		}
+		if (enable) {
+			/* connect the TCH's to our RTP proxy */
+			rc = ipacc_connect_proxy_bind(lchan);
+			if (rc < 0)
+				return rc;
+			/* assign socket to application interface */
+			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
+				net, callref);
+		} else
+			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
+				net, 0);
+		break;
+	case GSM_BTS_TYPE_BS11:
+		if (enable)
+			return trau_recv_lchan(lchan, callref);
+		return trau_mux_unmap(NULL, callref);
+		break;
+	default:
+		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		return -EINVAL;
+	}
+
+	return 0;
 }
-
-/* send a frame to channel */
-static int tch_frame(struct gsm_network *net, struct gsm_trau_frame *frame)
-{
-	struct gsm_trans *trans;
-
-	/* Find callref */
-	trans = trans_find_by_callref(net, frame->callref);
-	if (!trans)
-		return -EIO;
-	if (!trans->lchan)
-		return 0;
-	if (trans->lchan->type != GSM_LCHAN_TCH_F &&
-	    trans->lchan->type != GSM_LCHAN_TCH_H)
-		return 0;
-
-	// todo IPACCESS
-	return trau_send_lchan(trans->lchan, 
-				(struct decoded_trau_frame *)frame->data);
-}
-
 
 static int gsm48_cc_rx_status_enq(struct gsm_trans *trans, struct msgb *msg)
 {
@@ -3262,11 +3292,30 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	case MNCC_BRIDGE:
 		return tch_bridge(net, arg);
 	case MNCC_FRAME_DROP:
-		return tch_recv(net, arg, 0);
+		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:
-		return tch_recv(net, arg, 1);
-	case GSM_TRAU_FRAME:
-		return tch_frame(net, arg);
+		return tch_recv_mncc(net, data->callref, 1);
+	case GSM_TCHF_FRAME:
+		/* Find callref */
+		trans = trans_find_by_callref(net, data->callref);
+		if (!trans)
+			return -EIO;
+		if (!trans->lchan)
+			return 0;
+		if (trans->lchan->type != GSM_LCHAN_TCH_F)
+			return 0;
+		bts = trans->lchan->ts->trx->bts;
+		switch (bts->type) {
+		case GSM_BTS_TYPE_NANOBTS:
+			if (!trans->lchan->abis_ip.rtp_socket)
+				return 0;
+			return rtp_send_frame(trans->lchan->abis_ip.rtp_socket, arg);
+		case GSM_BTS_TYPE_BS11:
+			return trau_send_frame(trans->lchan, arg);
+		default:
+			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		}
+		return -EINVAL;
 	}
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));

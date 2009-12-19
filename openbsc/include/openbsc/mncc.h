@@ -87,7 +87,7 @@ struct gsm_call {
 #define MNCC_FRAME_DROP		0x0202
 #define MNCC_LCHAN_MODIFY	0x0203
 
-#define GSM_TRAU_FRAME		0x0300
+#define GSM_TCHF_FRAME		0x0300
 
 #define GSM_MAX_FACILITY	128
 #define GSM_MAX_SSVERSION	128
@@ -207,7 +207,7 @@ struct gsm_mncc {
 	unsigned char	lchan_mode;
 };
 
-struct gsm_trau_frame {
+struct gsm_data_frame {
 	u_int32_t	msg_type;
 	u_int32_t	callref;
 	unsigned char	data[0];

@@ -26,6 +26,9 @@ struct gsm_trans {
 	/* reference from MNCC or other application */
 	u_int32_t callref;
 
+	/* if traffic channel receive was requested */
+	int tch_recv;
+
 	union {
 		struct {
 
