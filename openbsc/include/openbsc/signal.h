@@ -45,7 +45,8 @@ enum signal_subsystems {
 
 /* SS_PAGING signals */
 enum signal_paging {
-	S_PAGING_COMPLETED,
+	S_PAGING_SUCCEEDED,
+	S_PAGING_EXPIRED,
 };
 
 /* SS_SMS signals */

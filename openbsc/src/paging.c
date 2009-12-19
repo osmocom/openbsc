@@ -214,7 +214,7 @@ static void paging_T3113_expired(void *data)
 
 	counter_inc(req->bts->network->stats.paging.expired);
 
-	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+	dispatch_signal(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
 			  cbfn_param);
