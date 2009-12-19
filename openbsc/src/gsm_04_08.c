@@ -191,7 +191,7 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	rep->dl.sub.rx_qual = (data[3] >> 1) & 0x7;
 
 	rep->num_cell = ((data[3] >> 6) & 0x3) | ((data[2] & 0x01) << 2);
-	if (rep->num_cell < 1)
+	if (rep->num_cell < 1 || rep->num_cell > 6)
 		return 0;
 
 	/* an encoding nightmare in perfection */
