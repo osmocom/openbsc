@@ -1003,6 +1003,8 @@ static void print_meas_rep(struct gsm_meas_rep *mr)
 		print_meas_rep_uni(&mr->dl, "dl");
 
 	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", mr->num_cell);
+	if (mr->num_cell == 7)
+		return;
 	for (i = 0; i < mr->num_cell; i++) {
 		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
 		DEBUGP(DMEAS, "ARFCN=%u BSIC=%u => %d dBm\n", mrc->arfcn, mrc->bsic,
