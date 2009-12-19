@@ -71,6 +71,9 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 	/* FIXME: implement actual averaging over multiple measurement
 	 * reports */
 
+	if (mr->num_cell > 6)
+		return 0;
+
 	/* find the best cell in this report that is at least RXLEV_HYST
 	 * better than the current serving cell */
 	for (i = 0; i < mr->num_cell; i++) {
