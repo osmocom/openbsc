@@ -88,15 +88,19 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		}
 	}
 
-	if (mr_cell) {
-		LOGP(DHO, LOGL_INFO, "Cell on ARFCN %u is better, starting "
-		     "handover\n", mr_cell->arfcn);
-		return handover_to_arfcn_bsic(mr->lchan, mr_cell->arfcn,
-						mr_cell->bsic);
+	if (!mr_cell) {
+		DEBUGPC(DHO, "No better cell\n");
+		return 0;
 	}
 
-	DEBUGPC(DHO, "No better cell\n");
-	return 0;
+	LOGP(DHO, LOGL_INFO, "Cell on ARFCN %u is better: ", mr_cell->arfcn);
+	if (!mr->lchan->ts->trx->bts->network->handover.active) {
+		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
+		return 0;
+	}
+
+	LOGPC(DHO, LOGL_INFO, "Starting handover\n");
+	return handover_to_arfcn_bsic(mr->lchan, mr_cell->arfcn, mr_cell->bsic);
 }
 
 static int ho_dec_sig_cb(unsigned int subsys, unsigned int signal,

@@ -95,6 +95,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  MM Info: %s%s", net->send_mm_info ? "On" : "Off",
 		VTY_NEWLINE);
+	vty_out(vty, "  Handover: %s%s", net->handover.active ? "On" : "Off",
+		VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -296,6 +298,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
 		VTY_NEWLINE);
 	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
+	vty_out(vty, " handover %u%s", gsmnet->handover.active, VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
 	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
@@ -863,6 +866,16 @@ DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_handover, cfg_net_handover_cmd,
+      "handover (0|1)",
+	"Whether or not to use in-call handover")
+{
+	gsmnet->handover.active = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 #define DECLARE_TIMER(number) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -1371,6 +1384,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
+	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
