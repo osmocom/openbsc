@@ -82,6 +82,7 @@ struct rtp_x_hdr {
 #define RTP_VERSION	2
 
 #define RTP_PT_GSM_FULL	3
+#define RTP_PT_GSM_EFR	97
 
 /* decode an rtp frame and create a new buffer with payload */
 static int rtp_decode(struct msgb *msg, u_int32_t callref, struct msgb **data)
@@ -152,6 +153,9 @@ static int rtp_decode(struct msgb *msg, u_int32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
+	case RTP_PT_GSM_EFR:
+		msg_type = GSM_TCHF_FRAME_EFR;
+		break;
 	default:
 		DEBUGPC(DMUX, "received RTP frame with unknown payload "
 			"type %d\n", rtph->payload_type);
@@ -194,6 +198,11 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	case GSM_TCHF_FRAME:
 		payload_type = RTP_PT_GSM_FULL;
 		payload_len = 33;
+		duration = 160;
+		break;
+	case GSM_TCHF_FRAME_EFR:
+		payload_type = RTP_PT_GSM_EFR;
+		payload_len = 31;
 		duration = 160;
 		break;
 	default:

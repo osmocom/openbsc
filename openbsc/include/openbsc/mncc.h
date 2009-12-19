@@ -88,6 +88,7 @@ struct gsm_call {
 #define MNCC_LCHAN_MODIFY	0x0203
 
 #define GSM_TCHF_FRAME		0x0300
+#define GSM_TCHF_FRAME_EFR	0x0301
 
 #define GSM_MAX_FACILITY	128
 #define GSM_MAX_SSVERSION	128

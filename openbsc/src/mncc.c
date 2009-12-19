@@ -83,7 +83,7 @@ static struct mncc_names {
 	{"MNCC_FRAME_DROP",	0x0202},
 	{"MNCC_LCHAN_MODIFY",	0x0203},
 
-	{"GSM_TRAU_FRAME",	0x0300},
+	{"GSM_TCH_FRAME",	0x0300},
 
 	{NULL, 0} };
 
