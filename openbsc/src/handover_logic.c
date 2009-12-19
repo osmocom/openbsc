@@ -215,9 +215,6 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	/* do something to re-route the actual speech frames ! */
 	//tch_remap(ho->old_lchan, ho->new_lchan);
 
-	/* release old lchan */
-	put_lchan(ho->old_lchan);
-
 	talloc_free(ho);
 
 	return 0;
