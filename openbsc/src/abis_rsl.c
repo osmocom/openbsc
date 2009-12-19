@@ -1495,11 +1495,63 @@ static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 }
 
 /* ip.access specific RSL extensions */
+static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
+{
+	struct in_addr ip;
+	u_int16_t port, conn_id;
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_IP)) {
+		ip.s_addr = *((u_int32_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_IP));
+		DEBUGPC(DRSL, "LOCAL_IP=%s ", inet_ntoa(ip));
+		lchan->abis_ip.bound_ip = ntohl(ip.s_addr);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_PORT)) {
+		port = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_PORT));
+		port = ntohs(port);
+		DEBUGPC(DRSL, "LOCAL_PORT=%u ", port);
+		lchan->abis_ip.bound_port = port;
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_CONN_ID)) {
+		conn_id = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_CONN_ID));
+		conn_id = ntohs(conn_id);
+		DEBUGPC(DRSL, "CON_ID=%u ", conn_id);
+		lchan->abis_ip.conn_id = conn_id;
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
+		lchan->abis_ip.rtp_payload2 =
+				*TLVP_VAL(tv, RSL_IE_IPAC_RTP_PAYLOAD2);
+		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
+			lchan->abis_ip.rtp_payload2);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_SPEECH_MODE)) {
+		lchan->abis_ip.speech_mode =
+				*TLVP_VAL(tv, RSL_IE_IPAC_SPEECH_MODE);
+		DEBUGPC(DRSL, "speech_mode=0x%02x ",
+			lchan->abis_ip.speech_mode);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_IP)) {
+		ip.s_addr = *((u_int32_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_IP));
+		DEBUGPC(DRSL, "REMOTE_IP=%s ", inet_ntoa(ip));
+		lchan->abis_ip.connect_ip = ntohl(ip.s_addr);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_PORT)) {
+		port = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_PORT));
+		port = ntohs(port);
+		DEBUGPC(DRSL, "REMOTE_PORT=%u ", port);
+		lchan->abis_ip.connect_port = port;
+	}
+}
+
 int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t speech_mode;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_CRCX);
@@ -1507,12 +1559,12 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 	dh->chan_nr = lchan2chan_nr(lchan);
 
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
-	speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
+	lchan->abis_ip.speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
 
 	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND "
 		"speech_mode=0x%02x\n", gsm_ts_name(lchan->ts),
-		dh->chan_nr, speech_mode);
+		dh->chan_nr, lchan->abis_ip.speech_mode);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1520,12 +1572,11 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 }
 
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
-		      u_int16_t conn_id, u_int8_t rtp_payload2)
+		   u_int8_t rtp_payload2)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t *att_f8, *att_ip, *att_port;
-	u_int8_t speech_mode;
+	u_int32_t *att_ip;
 	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1533,34 +1584,26 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
+	/* we need to store these now as MDCX_ACK does not return them :( */
+	lchan->abis_ip.rtp_payload2 = rtp_payload2;
+	lchan->abis_ip.connect_port = port;
+	lchan->abis_ip.connect_ip = ip;
+
 	/* 0x0- == both directions, 0x-1 == EFR codec */
-	speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
+	lchan->abis_ip.speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
 
 	ia.s_addr = htonl(ip);
 	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_MDCX "
 		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d speech_mode=0x%02x\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr,
-		inet_ntoa(ia), port, rtp_payload2, conn_id, speech_mode);
+		gsm_ts_name(lchan->ts), dh->chan_nr, inet_ntoa(ia), port,
+		rtp_payload2, lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
 
-	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
-	att_f8[0] = RSL_IE_IPAC_CONN_ID;
-	att_f8[1] = conn_id >> 8;
-	att_f8[2] = conn_id & 0xff;
-
-	att_ip = msgb_put(msg, sizeof(ip)+1);
-	att_ip[0] = RSL_IE_IPAC_REMOTE_IP;
-	att_ip[1] = ip >> 24;
-	att_ip[2] = ip >> 16;
-	att_ip[3] = ip >> 8;
-	att_ip[4] = ip & 0xff;
-	//att_ip[4] = 11;
-
-	att_port = msgb_put(msg, sizeof(port)+1);
-	att_port[0] = RSL_IE_IPAC_REMOTE_PORT;
-	att_port[1] = port >> 8;
-	att_port[2] = port & 0xff;
-
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
+	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
+	msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
+	att_ip = (u_int32_t *) msgb_put(msg, sizeof(ip));
+	*att_ip = ia.s_addr;
+	msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT, port);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	
@@ -1592,8 +1635,6 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
 	struct gsm_lchan *lchan = msg->lchan;
-	struct in_addr ip;
-	u_int16_t port, attr_f8;
 
 	/* the BTS has acknowledged a local bind, it now tells us the IP
 	* address and port number to which it has bound the given logical
@@ -1606,26 +1647,25 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "mandatory IE missing");
 		return -EINVAL;
 	}
-	ip.s_addr = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
-	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
-	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
-
-	DEBUGPC(DRSL, "IP=%s PORT=%d CONN_ID=%d ",
-		inet_ntoa(ip), ntohs(port), ntohs(attr_f8));
-
-	if (TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
-		lchan->abis_ip.rtp_payload2 =
-				*TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
-		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
-			lchan->abis_ip.rtp_payload2);
-	}
-
-	/* update our local information about this TS */
-	lchan->abis_ip.bound_ip = ntohl(ip.s_addr);
-	lchan->abis_ip.bound_port = ntohs(port);
-	lchan->abis_ip.conn_id = ntohs(attr_f8);
-
+	ipac_parse_rtp(lchan, &tv);
 	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
+
+	return 0;
+}
+
+static int abis_rsl_rx_ipacc_mdcx_ack(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tv;
+	struct gsm_lchan *lchan = msg->lchan;
+
+	/* the BTS has acknowledged a remote connect request and
+	 * it now tells us the IP address and port number to which it has
+	 * connected the given logical channel */
+
+	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
+	ipac_parse_rtp(lchan, &tv);
+	dispatch_signal(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
 
 	return 0;
 }
@@ -1668,6 +1708,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	case RSL_MT_IPAC_MDCX_ACK:
 		/* the BTS tells us that a connect operation was successful */
 		DEBUGPC(DRSL, "IPAC_MDCX_ACK ");
+		rc = abis_rsl_rx_ipacc_mdcx_ack(msg);
 		break;
 	case RSL_MT_IPAC_MDCX_NACK:
 		/* somehow the BTS was unable to connect the lchan to a remote

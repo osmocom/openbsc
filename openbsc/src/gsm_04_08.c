@@ -1920,7 +1920,6 @@ static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
 
 	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
 				ntohs(rs->rtp.sin_local.sin_port),
-				lchan->abis_ip.conn_id, 
 			/* FIXME: use RTP payload of bound socket, not BTS*/
 				lchan->abis_ip.rtp_payload2);
 
@@ -1959,13 +1958,11 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 			/* directly connect TCH RTP streams to each other */
 			rc = rsl_ipacc_mdcx(lchan, remote_lchan->abis_ip.bound_ip,
 						remote_lchan->abis_ip.bound_port,
-						lchan->abis_ip.conn_id,
 						remote_lchan->abis_ip.rtp_payload2);
 			if (rc < 0)
 				return rc;
 			rc = rsl_ipacc_mdcx(remote_lchan, lchan->abis_ip.bound_ip,
 						lchan->abis_ip.bound_port,
-						remote_lchan->abis_ip.conn_id,
 						lchan->abis_ip.rtp_payload2);
 		}
 		break;
