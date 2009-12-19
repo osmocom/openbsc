@@ -679,30 +679,30 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rc = gsm_generate_si(si_tmp, trx->bts, i);
 			if (rc < 0)
 				goto err_out;
-			DEBUGP(DRR, "SI%u: %s\n", i, hexdump(si_tmp, rc));
+			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 	}
 #ifdef GPRS
+	i = 13
 	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
-	if (rc < 0) {
-		i = 13;
+	if (rc < 0)
 		goto err_out;
-	}
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 	rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
 #endif
-	rc = gsm_generate_si(si_tmp, trx->bts, 5);
-	if (rc < 0) {
-		i = 5;
+	i = 5;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_5);
+	if (rc < 0)
 		goto err_out;
-	}
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
 
-	rc = gsm_generate_si(si_tmp, trx->bts, 6);
-	if (rc < 0) {
-		i = 6;
+	i = 6;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_6);
+	if (rc < 0)
 		goto err_out;
-	}
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 	return 0;
