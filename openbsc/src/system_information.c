@@ -316,10 +316,16 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 
 static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 {
-	struct gsm48_system_information_type_5 *si5 =
-		(struct gsm48_system_information_type_5 *) output;
-	int rc;
+	struct gsm48_system_information_type_5 *si5;
+	int rc, l2_plen = 18;
 
+	/* ip.access nanoBTS needs l2_plen!! */
+	if (is_ipaccess_bts(bts)) {
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+	}
+
+	si5 = (struct gsm48_system_information_type_5 *) output;
 	memset(si5, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* l2 pseudo length, not part of msg: 18 */
@@ -331,14 +337,21 @@ static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 		return rc;
 
 	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
-	return 18;
+	return l2_plen;
 }
 
 static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 {
-	struct gsm48_system_information_type_6 *si6 =
-		(struct gsm48_system_information_type_6 *) output;
+	struct gsm48_system_information_type_6 *si6;
+	int l2_plen = 11;
 
+	/* ip.access nanoBTS needs l2_plen!! */
+	if (is_ipaccess_bts(bts)) {
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+	}
+
+	si6 = (struct gsm48_system_information_type_6 *) output;
 	memset(si6, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* l2 pseudo length, not part of msg: 11 */
@@ -354,7 +367,7 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 
 	/* SI6 Rest Octets: 10.5.2.35a: PCH / NCH info, VBS/VGCS options */
 
-	return 18;
+	return l2_plen;
 }
 
 static struct gsm48_si13_info si13_default = {
