@@ -666,9 +666,10 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 }
 
 /* bind RTP/RTCP socket to application */
-int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, u_int32_t callref)
+int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
+			u_int32_t callref)
 {
-	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, callref=%lu)\n",
+	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
 		this, callref);
 
 	if (callref) {
