@@ -40,6 +40,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
+#include <openbsc/rtp_proxy.h>
 
 struct bsc_handover {
 	struct llist_head list;
@@ -173,6 +174,10 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	ho->T3103.data = ho;
 	bsc_schedule_timer(&ho->T3103, 10, 0);
 
+	/* create a RTP connection */
+	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
+		rsl_ipacc_crcx(new_lchan);
+
 	return 0;
 }
 
@@ -213,7 +218,6 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	trans_lchan_change(ho->old_lchan, new_lchan);
 
 	/* do something to re-route the actual speech frames ! */
-	//tch_remap(ho->old_lchan, ho->new_lchan);
 
 	talloc_free(ho);
 
@@ -255,6 +259,61 @@ static int ho_rsl_detect(struct gsm_lchan *new_lchan)
 	return 0;
 }
 
+static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
+{
+	struct bsc_handover *ho;
+	struct rtp_socket *old_rs, *new_rs, *other_rs;
+
+	ho = bsc_ho_by_new_lchan(new_lchan);
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+		return -ENODEV;
+	}
+
+	if (ipacc_rtp_direct) {
+		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
+		return 0;
+	}
+
+	/* RTP Proxy mode */
+	new_rs = new_lchan->abis_ip.rtp_socket;
+	old_rs = ho->old_lchan->abis_ip.rtp_socket;
+
+	if (!new_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
+		return -EIO;
+	}
+
+	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
+
+	if (!old_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socekt for old_lchan\n");
+		return -EIO;
+	}
+
+	/* copy rx_action and reference to other sock */
+	new_rs->rx_action = old_rs->rx_action;
+	new_rs->tx_action = old_rs->tx_action;
+	new_rs->transmit = old_rs->transmit;
+
+	switch (ho->old_lchan->abis_ip.rtp_socket->rx_action) {
+	case RTP_PROXY:
+		other_rs = old_rs->proxy.other_sock;
+		rtp_socket_proxy(new_rs, other_rs);
+		/* delete reference to other end socket to prevent
+		 * rtp_socket_free() from removing the inverse reference */
+		old_rs->proxy.other_sock = NULL;
+		break;
+	case RTP_RECV_UPSTREAM:
+		new_rs->receive = old_rs->receive;
+		break;
+	case RTP_NONE:
+		break;
+	}
+
+	return 0;
+}
+
 static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			   void *handler_data, void *signal_data)
 {
@@ -276,6 +335,14 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			return ho_gsm48_ho_fail(lchan);
 		}
 		break;
+	case SS_ABISIP:
+		lchan = signal_data;
+		switch (signal) {
+		case S_ABISIP_CRCX_ACK:
+			return ho_ipac_crcx_ack(lchan);
+			break;
+		}
+		break;
 	default:
 		break;
 	}
@@ -286,4 +353,5 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
 	register_signal_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
+	register_signal_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }
