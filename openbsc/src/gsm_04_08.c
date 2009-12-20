@@ -1402,6 +1402,9 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
 
+	/* FIXME: iterate over all transactions and release them,
+	 * imagine an IMSI DETACH happening during an active call! */
+
 	/* subscriber is detached: should we release lchan? */
 
 	return 0;
