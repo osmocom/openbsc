@@ -1368,6 +1368,44 @@ static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 	return 0;
 }
 
+static u_int8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
+{
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_GSM_FULL;
+		case GSM_LCHAN_TCH_H:
+			return RTP_PT_GSM_HALF;
+		default:
+			break;
+		}
+	case GSM48_CMODE_SPEECH_EFR:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_GSM_EFR;
+		/* there's no half-rate EFR */
+		default:
+			break;
+		}
+	case GSM48_CMODE_SPEECH_AMR:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_AMR_FULL;
+		case GSM_LCHAN_TCH_H:
+			return RTP_PT_AMR_HALF;
+		default:
+			break;
+		}
+	default:
+		break;
+	}
+	LOGP(DRSL, LOGL_ERROR, "Cannot determine ip.access rtp payload type for "
+		"tch_mode == 0x%02x\n & lchan_type == %d",
+		lchan->tch_mode, lchan->type);
+	return 0;
+}
+
 /* ip.access specific RSL extensions */
 static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
 {
@@ -1434,10 +1472,13 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
 	lchan->abis_ip.speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
+	lchan->abis_ip.rtp_payload = ipa_rtp_pt_for_lchan(lchan);
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD, lchan->abis_ip.rtp_payload);
 
-	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x\n",
-		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode);
+	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x RTP_PAYLOAD=%d\n",
+		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode,
+		lchan->abis_ip.rtp_payload);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1464,11 +1505,13 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 
 	/* 0x0- == both directions, 0x-1 == EFR codec */
 	lchan->abis_ip.speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
+	lchan->abis_ip.rtp_payload = ipa_rtp_pt_for_lchan(lchan);
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d "
-		"speech_mode=0x%02x\n", gsm_lchan_name(lchan), inet_ntoa(ia), port,
-		rtp_payload2, lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
+	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD=%d RTP_PAYLOAD2=%d "
+		"CONN_ID=%d speech_mode=0x%02x\n", gsm_lchan_name(lchan),
+		inet_ntoa(ia), port, lchan->abis_ip.rtp_payload, rtp_payload2,
+		lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
 
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
 	msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
@@ -1476,6 +1519,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	*att_ip = ia.s_addr;
 	msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT, port);
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD, lchan->abis_ip.rtp_payload);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	

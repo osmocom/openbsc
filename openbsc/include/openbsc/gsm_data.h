@@ -250,6 +250,7 @@ struct gsm_lchan {
 		u_int16_t bound_port;
 		u_int16_t connect_port;
 		u_int16_t conn_id;
+		u_int8_t rtp_payload;
 		u_int8_t rtp_payload2;
 		u_int8_t speech_mode;
 		struct rtp_socket *rtp_socket;
