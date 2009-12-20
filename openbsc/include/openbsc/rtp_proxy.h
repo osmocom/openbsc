@@ -70,6 +70,7 @@ struct rtp_socket {
 		u_int16_t sequence;
 		u_int32_t timestamp;
 		u_int32_t ssrc;
+		struct timeval last_tv;
 	} transmit;
 };
 
