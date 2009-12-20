@@ -870,6 +870,12 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
       "handover (0|1)",
 	"Whether or not to use in-call handover")
 {
+	if (ipacc_rtp_direct) {
+		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
+			"is enabled by using the -P command line option%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 	gsmnet->handover.active = atoi(argv[0]);
 
 	return CMD_SUCCESS;
