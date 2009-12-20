@@ -1615,6 +1615,20 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	return abis_rsl_sendmsg(msg);
 }
 
+/* tell BTS to connect RTP stream to our local RTP socket */
+int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
+{
+	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
+	int rc;
+
+	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
+				ntohs(rs->rtp.sin_local.sin_port),
+			/* FIXME: use RTP payload of bound socket, not BTS*/
+				lchan->abis_ip.rtp_payload2);
+
+	return rc;
+}
+
 int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();

@@ -1900,20 +1900,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-/* bind rtp proxy to local IP/port and tell BTS to connect to it */
-static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
-{
-	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
-	int rc;
-
-	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
-				ntohs(rs->rtp.sin_local.sin_port),
-			/* FIXME: use RTP payload of bound socket, not BTS*/
-				lchan->abis_ip.rtp_payload2);
-
-	return rc;
-}
-
 /* map two ipaccess RTP streams onto each other */
 static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 {
@@ -1935,10 +1921,10 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	case GSM_BTS_TYPE_NANOBTS:
 		if (!ipacc_rtp_direct) {
 			/* connect the TCH's to our RTP proxy */
-			rc = ipacc_connect_proxy_bind(lchan);
+			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
 			if (rc < 0)
 				return rc;
-			rc = ipacc_connect_proxy_bind(remote_lchan);
+			rc = rsl_ipacc_mdcx_to_rtpsock(remote_lchan);
 #warning do we need a check of rc here?
 
 			/* connect them with each other */
@@ -2015,7 +2001,7 @@ static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 		}
 		if (enable) {
 			/* connect the TCH's to our RTP proxy */
-			rc = ipacc_connect_proxy_bind(lchan);
+			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
 			if (rc < 0)
 				return rc;
 			/* assign socket to application interface */
