@@ -542,6 +542,7 @@ char *gsm_band_name(enum gsm_band band);
 enum gsm_band gsm_band_parse(const char *mhz);
 
 extern void *tall_bsc_ctx;
+extern int ipacc_rtp_direct;
 
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {

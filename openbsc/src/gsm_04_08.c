@@ -57,8 +57,6 @@
 
 void *tall_locop_ctx;
 
-extern int ipacc_rtp_direct;
-
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
 		[GSM48_IE_MOBILE_ID]	= { TLV_TYPE_TLV },

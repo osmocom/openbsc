@@ -35,7 +35,6 @@
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-extern int ipacc_rtp_direct;
 
 static void patch_nm_tables(struct gsm_bts *bts);
 

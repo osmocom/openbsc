@@ -41,7 +41,6 @@
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
