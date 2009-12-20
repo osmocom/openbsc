@@ -90,6 +90,10 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_PAGING_COMPLETED:
+		/* paging might have "completed' unsucessfully,
+		 * in this case we don't have a lchan */
+		if (!psig_data->lchan)
+			break;
 		/* A subscriber has attached. */
 		send_rrlp_req(psig_data->lchan);
 		break;
