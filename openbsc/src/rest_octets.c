@@ -291,7 +291,8 @@ static int encode_drx_timer(unsigned int drx)
 		<BSS_PAGING_COORDINATION: bit >
 		<spare bit > ** ;
  */
-static int append_gprs_cell_opt(struct bitvec *bv, struct gprs_cell_options *gco)
+static int append_gprs_cell_opt(struct bitvec *bv,
+				const struct gprs_cell_options *gco)
 {
 	int t3192, drx_timer_max;
 
@@ -323,7 +324,7 @@ static int append_gprs_cell_opt(struct bitvec *bv, struct gprs_cell_options *gco
 }
 
 static void append_gprs_pwr_ctrl_pars(struct bitvec *bv,
-				      struct gprs_power_ctrl_pars *pcp)
+				      const struct gprs_power_ctrl_pars *pcp)
 {
 	bitvec_set_uint(bv, pcp->alpha, 4);
 	bitvec_set_uint(bv, pcp->t_avg_w, 5);
