@@ -1885,22 +1885,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_ABISIP_CRCX_ACK:
-		/* the BTS has successfully bound a TCH to a local ip/port,
-		 * which means we can connect our UDP socket to it */
-		if (lchan->abis_ip.rtp_socket) {
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
-		}
-
-		lchan->abis_ip.rtp_socket = rtp_socket_create();
-		if (!lchan->abis_ip.rtp_socket)
-			goto out_err;
-
-		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
-				   lchan->abis_ip.bound_ip,
-				   lchan->abis_ip.bound_port);
-		if (rc < 0)
-			goto out_err;
 		/* check if any transactions on this lchan still have
 		 * a tch_recv_mncc request pending */
 		net = lchan->ts->trx->bts->network;
@@ -1911,18 +1895,8 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 			}
 		}
 		break;
-	case S_ABISIP_DLCX_IND:
-		/* the BTS tells us a RTP stream has been disconnected */
-		if (lchan->abis_ip.rtp_socket) {
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
-		}
-		break;
 	}
 
-	return 0;
-out_err:
-	/* FIXME: do something */
 	return 0;
 }
 

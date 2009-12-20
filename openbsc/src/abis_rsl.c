@@ -39,6 +39,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
+#include <openbsc/rtp_proxy.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -1649,10 +1650,35 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "mandatory IE missing");
 		return -EINVAL;
 	}
+
 	ipac_parse_rtp(lchan, &tv);
+
+	/* in case we don't use direct BTS-to-BTS RTP */
+	if (!ipacc_rtp_direct) {
+		int rc;
+		/* the BTS has successfully bound a TCH to a local ip/port,
+		 * which means we can connect our UDP socket to it */
+		if (lchan->abis_ip.rtp_socket) {
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+		}
+
+		lchan->abis_ip.rtp_socket = rtp_socket_create();
+		if (!lchan->abis_ip.rtp_socket)
+			goto out_err;
+
+		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
+				   lchan->abis_ip.bound_ip,
+				   lchan->abis_ip.bound_port);
+		if (rc < 0)
+			goto out_err;
+	}
+
 	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
 
 	return 0;
+out_err:
+	return -EIO;
 }
 
 static int abis_rsl_rx_ipacc_mdcx_ack(struct msgb *msg)
@@ -1676,12 +1702,19 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
+	struct gsm_lchan *lchan = msg->lchan;
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tv, RSL_IE_CAUSE))
 		print_rsl_cause(TLVP_VAL(&tv, RSL_IE_CAUSE),
 				TLVP_LEN(&tv, RSL_IE_CAUSE));
+
+	/* the BTS tells us a RTP stream has been disconnected */
+	if (lchan->abis_ip.rtp_socket) {
+		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+	}
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
 
