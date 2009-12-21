@@ -1,11 +1,14 @@
 #ifndef _MEAS_REP_H
 #define _MEAS_REP_H
 
+#define MRC_F_PROCESSED	0x0001
+
 /* extracted from a L3 measurement report IE */
 struct gsm_meas_rep_cell {
 	u_int8_t rxlev;
-	u_int8_t bcch_freq;	/* FIXME: translate to ARFCN */
 	u_int8_t bsic;
+	u_int16_t arfcn;
+	unsigned int flags;
 };
 
 /* RX Level and RX Quality */
@@ -30,11 +33,15 @@ struct gsm_meas_rep_unidir {
 
 /* parsed uplink and downlink measurement result */
 struct gsm_meas_rep {
+	/* back-pointer to the logical channel */
 	struct gsm_lchan *lchan;
 
+	/* number of the measurement report */
 	u_int8_t nr;
+	/* flags, see MEAS_REP_F_* */
 	unsigned int flags;
 
+	/* uplink and downlink rxlev, rxqual; full and sub */
 	struct gsm_meas_rep_unidir ul;
 	struct gsm_meas_rep_unidir dl;
 
@@ -45,8 +52,33 @@ struct gsm_meas_rep {
 		u_int8_t ta;	/* MS timing advance */
 	} ms_l1;
 
+	/* neighbor measurement reports for up to 6 cells */
 	int num_cell;
 	struct gsm_meas_rep_cell cell[6];
 };
+
+enum meas_rep_field {
+	MEAS_REP_DL_RXLEV_FULL,
+	MEAS_REP_DL_RXLEV_SUB,
+	MEAS_REP_DL_RXQUAL_FULL,
+	MEAS_REP_DL_RXQUAL_SUB,
+	MEAS_REP_UL_RXLEV_FULL,
+	MEAS_REP_UL_RXLEV_SUB,
+	MEAS_REP_UL_RXQUAL_FULL,
+	MEAS_REP_UL_RXQUAL_SUB,
+};
+
+/* obtain an average over the last 'num' fields in the meas reps */
+int get_meas_rep_avg(const struct gsm_lchan *lchan,
+		     enum meas_rep_field field, unsigned int num);
+
+/* Check if N out of M last values for FIELD are >= bd */
+int meas_rep_n_out_of_m_be(const struct gsm_lchan *lchan,
+			enum meas_rep_field field,
+			unsigned int n, unsigned int m, int be);
+
+unsigned int calc_initial_idx(unsigned int array_size,
+			      unsigned int meas_rep_idx,
+			      unsigned int num_values);
 
 #endif /* _MEAS_REP_H */

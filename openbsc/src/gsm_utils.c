@@ -90,8 +90,10 @@ int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm)
 			return 0;
 		else if (dbm < 5)
 			return 19;
-		else
+		else {
+			/* we are guaranteed to have (5 <= dbm < 39) */
 			return 2 + ((39 - dbm) / 2);
+		}
 		break;
 	case GSM_BAND_1800:
 		if (dbm >= 36)
@@ -100,16 +102,24 @@ int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm)
 			return 30;
 		else if (dbm >= 32)
 			return 31;
-		else
+		else if (dbm == 31)
+			return 0;
+		else {
+			/* we are guaranteed to have (0 <= dbm < 31) */
 			return (30 - dbm) / 2;
+		}
 		break;
 	case GSM_BAND_1900:
 		if (dbm >= 33)
 			return 30;
 		else if (dbm >= 32)
 			return 31;
-		else
+		else if (dbm == 31)
+			return 0;
+		else {
+			/* we are guaranteed to have (0 <= dbm < 31) */
 			return (30 - dbm) / 2;
+		}
 		break;
 	}
 	return -EINVAL;
@@ -148,6 +158,28 @@ int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 		break;
 	}
 	return -EINVAL;
+}
+
+/* According to TS 08.05 Chapter 8.1.4 */
+int rxlev2dbm(u_int8_t rxlev)
+{
+	if (rxlev > 63)
+		rxlev = 63;
+
+	return -110 + rxlev;
+}
+
+/* According to TS 08.05 Chapter 8.1.4 */
+u_int8_t dbm2rxlev(int dbm)
+{
+	int rxlev = dbm + 110;
+
+	if (rxlev > 63)
+		rxlev = 63;
+	else if (rxlev < 0)
+		rxlev = 0;
+
+	return rxlev;
 }
 
 void generate_backtrace()

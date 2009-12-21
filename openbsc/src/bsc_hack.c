@@ -41,7 +41,6 @@
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
@@ -73,9 +72,9 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
-	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
+	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -89,7 +88,6 @@ static void handle_options(int argc, char** argv)
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
-			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
 			{"rtp-proxy", 0, 0, 'P'},
@@ -117,9 +115,6 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			config_file = strdup(optarg);
-			break;
-		case 'r':
-			gsm0408_set_reject_cause(atoi(optarg));
 			break;
 		case 'p':
 			create_pcap_file(optarg);
@@ -167,6 +162,7 @@ int main(int argc, char **argv)
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
+	on_dso_load_ho_dec();
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -193,6 +189,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);

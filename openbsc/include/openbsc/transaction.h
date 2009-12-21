@@ -26,6 +26,9 @@ struct gsm_trans {
 	/* reference from MNCC or other application */
 	u_int32_t callref;
 
+	/* if traffic channel receive was requested */
+	int tch_recv;
+
 	union {
 		struct {
 
@@ -65,4 +68,9 @@ void trans_free(struct gsm_trans *trans);
 
 int trans_assign_trans_id(struct gsm_subscriber *subscr,
 			  u_int8_t protocol, u_int8_t ti_flag);
+
+/* update all transactions to use a different LCHAN, e.g.
+ * after handover has succeeded */
+int trans_lchan_change(struct gsm_lchan *lchan_old,
+		       struct gsm_lchan *lchan_new);
 #endif

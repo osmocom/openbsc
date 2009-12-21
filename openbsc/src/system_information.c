@@ -23,6 +23,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 
@@ -30,27 +31,38 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
+#include <openbsc/bitvec.h>
+#include <openbsc/debug.h>
 
 #define GSM48_CELL_CHAN_DESC_SIZE	16
 #define GSM_MACBLOCK_LEN 		23
 #define GSM_MACBLOCK_PADDING		0x2b
 
-static int cchan_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+/* Frequency Lists as per TS 04.08 10.5.2.13 */
+
+/* 10.5.2.13.2: Bit map 0 format */
+static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 
-	if (arfcn > 124)
+	if (arfcn > 124 || arfcn < 1) {
+		LOGP(DRR, LOGL_ERROR, "Bitmap 0 only supports ARFCN 1...124\n");
 		return -EINVAL;
+	}
+
+	/* the bitmask is from 1..124, not from 0..123 */
+	arfcn--;
 
 	byte = arfcn / 8;
 	bit = arfcn % 8;
 
-	chan_list[GSM48_CELL_CHAN_DESC_SIZE-byte] |= (1 << bit);
+	chan_list[GSM48_CELL_CHAN_DESC_SIZE-1-byte] |= (1 << bit);
 
 	return 0;
 }
 
-static int cchan_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+/* 10.5.2.13.7: Variable bit map format */
+static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 	unsigned int min_arfcn;
@@ -64,10 +76,14 @@ static int cchan_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 	if (arfcn == min_arfcn)
 		return 0;
 
-	if (arfcn < min_arfcn)
+	if (arfcn < min_arfcn) {
+		LOGP(DRR, LOGL_ERROR, "arfcn(%u) < min(%u)\n", arfcn, min_arfcn);
 		return -EINVAL;
-	if (arfcn > min_arfcn + 111)
+	}
+	if (arfcn > min_arfcn + 111) {
+		LOGP(DRR, LOGL_ERROR, "arfcn(%u) > min(%u) + 111\n", arfcn, min_arfcn);
 		return -EINVAL;
+	}
 
 	bitno = (arfcn - min_arfcn);
 	byte = bitno / 8;
@@ -79,20 +95,23 @@ static int cchan_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_cell_chan_list(u_int8_t *chan_list, const struct gsm_bts *bts)
+static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
+			    const struct gsm_bts *bts)
 {
-	struct gsm_bts_trx *trx;
-	int rc, min = 1024, max = 0;
+	int i, rc, min = 1024, max = 0;
 
 	memset(chan_list, 0, 16);
 
 	/* GSM900-only handsets only support 'bit map 0 format' */
 	if (bts->band == GSM_BAND_900) {
 		chan_list[0] = 0;
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			rc = cchan_list_bm0_set_arfcn(chan_list, trx->arfcn);
-			if (rc < 0)
-				return rc;
+
+		for (i = 0; i < bv->data_len*8; i++) {
+			if (bitvec_get_bit_pos(bv, i)) {
+				rc = freq_list_bm0_set_arfcn(chan_list, i);
+				if (rc < 0)
+					return rc;
+			}
 		}
 		return 0;
 	}
@@ -100,83 +119,68 @@ static int generate_cell_chan_list(u_int8_t *chan_list, const struct gsm_bts *bt
 	/* We currently only support the 'Variable bitmap format' */
 	chan_list[0] = 0x8e;
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->arfcn < min)
-			min = trx->arfcn;
-		if (trx->arfcn > max)
-			max = trx->arfcn;
+	for (i = 0; i < bv->data_len*8; i++) {
+		if (bitvec_get_bit_pos(bv, i)) {
+			if (i < min)
+				min = i;
+			if (i > max)
+				max = i;
+		}
 	}
 
-	if ((max - min) > 111)
+	if ((max - min) > 111) {
+		LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, "
+			"distance > 111\n", min, max);
 		return -EINVAL;
+	}
 
 	chan_list[0] |= (min >> 9) & 1;
 	chan_list[1] = (min >> 1);
 	chan_list[2] = (min & 1) << 7;
 
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		rc = cchan_list_bmrel_set_arfcn(chan_list, trx->arfcn);
-		if (rc < 0)
-			return rc;
+	for (i = 0; i < bv->data_len*8; i++) {
+		if (bitvec_get_bit_pos(bv, i)) {
+			rc = freq_list_bmrel_set_arfcn(chan_list, i);
+			if (rc < 0)
+				return rc;
+		}
 	}
 
 	return 0;
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_bcch_chan_list(u_int8_t *chan_list, const struct gsm_bts *bts)
+static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 {
-	struct gsm_bts *cur_bts;
 	struct gsm_bts_trx *trx;
-	int rc, min = 1024, max = 0;
+	struct bitvec *bv = &bts->si_common.cell_alloc;
 
-	memset(chan_list, 0, 16);
+	/* first we generate a bitvec of all TRX ARFCN's in our BTS */
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		bitvec_set_bit_pos(bv, trx->arfcn, 1);
 
-	/* GSM900-only handsets only support 'bit map 0 format' */
-	if (bts->band == GSM_BAND_900) {
-		chan_list[0] = 0;
-		llist_for_each_entry(cur_bts, &bts->list, list) {
-			trx = cur_bts->c0;
-			rc = cchan_list_bm0_set_arfcn(chan_list, trx->arfcn);
-			if (rc < 0)
-				return rc;
-		}
-		return 0;
-	}
-
-	/* We currently only support the 'Variable bitmap format' */
-	chan_list[0] = 0x8e;
-
-	llist_for_each_entry(cur_bts, &bts->list, list) {
-		if (&cur_bts->list == &bts->network->bts_list)
-			continue;
-		trx = cur_bts->c0;
-		if (trx->arfcn < min)
-			min = trx->arfcn;
-		if (trx->arfcn > max)
-			max = trx->arfcn;
-	}
-
-	if ((max - min) > 111)
-		return -EINVAL;
-
-	chan_list[0] |= (min >> 9) & 1;
-	chan_list[1] = (min >> 1);
-	chan_list[2] = (min & 1) << 7;
-
-	llist_for_each_entry(cur_bts, &bts->list, list) {
-		if (&cur_bts->list == &bts->network->bts_list)
-			continue;
-		trx = cur_bts->c0;
-		rc = cchan_list_bmrel_set_arfcn(chan_list, trx->arfcn);
-		if (rc < 0)
-			return rc;
-	}
-
-	return 0;
+	/* then we generate a GSM 04.08 frequency list from the bitvec */
+	return bitvec2freq_list(chan_list, bv, bts);
 }
 
-static int generate_si1(u_int8_t *output, const struct gsm_bts *bts)
+/* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
+static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
+{
+	struct gsm_bts *cur_bts;
+	struct bitvec *bv = &bts->si_common.neigh_list;
+
+	/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
+	llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
+		if (cur_bts == bts)
+			continue;
+		bitvec_set_bit_pos(bv, cur_bts->c0->arfcn, 1);
+	}
+
+	/* then we generate a GSM 04.08 frequency list from the bitvec */
+	return bitvec2freq_list(chan_list, bv, bts);
+}
+
+static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_1 *si1 =
@@ -201,7 +205,7 @@ static int generate_si1(u_int8_t *output, const struct gsm_bts *bts)
 	return GSM_MACBLOCK_LEN;
 }
 
-static int generate_si2(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_2 *si2 =
@@ -248,7 +252,7 @@ struct gsm48_si_ro_info si_info = {
 	.break_ind = 0,
 };
 
-static int generate_si3(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_3 *si3 =
 		(struct gsm48_system_information_type_3 *) output;
@@ -278,7 +282,7 @@ static int generate_si3(u_int8_t *output, const struct gsm_bts *bts)
 	return GSM_MACBLOCK_LEN;
 }
 
-static int generate_si4(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_4 *si4 =
 		(struct gsm48_system_information_type_4 *) output;
@@ -310,12 +314,18 @@ static int generate_si4(u_int8_t *output, const struct gsm_bts *bts)
 	return GSM_MACBLOCK_LEN;
 }
 
-static int generate_si5(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 {
-	struct gsm48_system_information_type_5 *si5 =
-		(struct gsm48_system_information_type_5 *) output;
-	int rc;
+	struct gsm48_system_information_type_5 *si5;
+	int rc, l2_plen = 18;
 
+	/* ip.access nanoBTS needs l2_plen!! */
+	if (is_ipaccess_bts(bts)) {
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+	}
+
+	si5 = (struct gsm48_system_information_type_5 *) output;
 	memset(si5, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* l2 pseudo length, not part of msg: 18 */
@@ -327,14 +337,21 @@ static int generate_si5(u_int8_t *output, const struct gsm_bts *bts)
 		return rc;
 
 	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
-	return 18;
+	return l2_plen;
 }
 
-static int generate_si6(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 {
-	struct gsm48_system_information_type_6 *si6 =
-		(struct gsm48_system_information_type_6 *) output;
+	struct gsm48_system_information_type_6 *si6;
+	int l2_plen = 11;
 
+	/* ip.access nanoBTS needs l2_plen!! */
+	if (is_ipaccess_bts(bts)) {
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+	}
+
+	si6 = (struct gsm48_system_information_type_6 *) output;
 	memset(si6, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* l2 pseudo length, not part of msg: 11 */
@@ -350,7 +367,7 @@ static int generate_si6(u_int8_t *output, const struct gsm_bts *bts)
 
 	/* SI6 Rest Octets: 10.5.2.35a: PCH / NCH info, VBS/VGCS options */
 
-	return 18;
+	return l2_plen;
 }
 
 static struct gsm48_si13_info si13_default = {
@@ -393,7 +410,7 @@ static u_int8_t si13_template[] = {
        0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
 };
 
-static int generate_si13(u_int8_t *output, const struct gsm_bts *bts)
+static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_13 *si13 =
 		(struct gsm48_system_information_type_13 *) output;

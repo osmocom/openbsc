@@ -46,4 +46,4 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref);
 
 /* send trau from application */
-int trau_send_lchan(struct gsm_lchan *lchan, struct decoded_trau_frame *tf);
+int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame);

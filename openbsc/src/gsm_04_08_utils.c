@@ -308,7 +308,7 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 	[CHREQ_T_CALL_REEST_TCH_H_DBL]	= GSM_CHREQ_REASON_CALL,
 	[CHREQ_T_SDCCH]			= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_TCH_F]			= GSM_CHREQ_REASON_OTHER,
-	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_CALL,
 	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_LOCATION_UPD]		= GSM_CHREQ_REASON_LOCATION_UPD,
 	[CHREQ_T_PAG_R_ANY_NECI1]	= GSM_CHREQ_REASON_PAG,
@@ -541,21 +541,22 @@ static void gsm48_chan_desc(struct gsm48_chan_desc *cd,
 }
 
 /* Chapter 9.1.15: Handover Command */
-int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan,
-		      struct gsm_lchan *new_lchan, u_int8_t power_command)
+int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
+		      u_int8_t power_command, u_int8_t ho_ref)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_ho_cmd *ho =
 		(struct gsm48_ho_cmd *) msgb_put(msg, sizeof(*ho));
-	static u_int8_t ho_ref;
 
 	msg->lchan = old_lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_HANDO_CMD;
 
 	/* mandatory bits */
 	gsm48_cell_desc(&ho->cell_desc, new_lchan->ts->trx->bts);
 	gsm48_chan_desc(&ho->chan_desc, new_lchan);
-	ho->ho_ref = ho_ref++;
+	ho->ho_ref = ho_ref;
 	ho->power_command = power_command;
 
 	/* FIXME: optional bits for type of synchronization? */

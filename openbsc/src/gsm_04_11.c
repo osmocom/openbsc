@@ -173,7 +173,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		DEBUGP(DSMS, "TX: CP-ACK ");
 		break;
 	case GSM411_MT_CP_ERROR:
-		DEBUGP(DSMS, "TX: CP-ACK ");
+		DEBUGP(DSMS, "TX: CP-ERROR ");
 		break;
 	}
 
@@ -218,8 +218,7 @@ static u_int8_t unbcdify(u_int8_t value)
 		DEBUGP(DSMS, "unbcdify got too big nibble: 0x%02X\n", value);
 
 	ret = (value&0x0F)*10;
-	if (ret > 90)
-		ret += value>>4;
+	ret += value>>4;
 
 	return ret;
 }
@@ -907,11 +906,11 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		return -EIO;
 		/* FIXME: send some error message */
 
-	DEBUGP(DSMS, "trans_id=%x ", gh->proto_discr >> 4);
+	DEBUGP(DSMS, "trans_id=%x ", transaction_id);
 	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
-		DEBUGPC(DSMS, "(unknown) ");
+		DEBUGPC(DSMS, "(new) ");
 		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {

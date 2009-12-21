@@ -37,7 +37,6 @@
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-extern int ipacc_rtp_direct;
 
 static void patch_nm_tables(struct gsm_bts *bts);
 
@@ -561,7 +560,7 @@ static int sw_activ_rep(struct msgb *mb)
 static int oml_msg_nack(u_int8_t mt)
 {
 	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
-		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
+		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
 		exit(-1);
 	}
@@ -664,7 +663,7 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 			trx->nominal_power = 23;
 			break;
 		default:
-			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+			LOGP(DNM, LOGL_ERROR, "Unsupported nanoBTS GSM band %s\n",
 				gsm_band_name(trx->bts->band));
 			break;
 		}
@@ -683,6 +682,7 @@ static void nm_reconfig_bts(struct gsm_bts *bts)
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
+		patch_nm_tables(bts);
 		abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
 		abis_nm_set_bts_attr(bts, bs11_attr_bts, sizeof(bs11_attr_bts));
 		abis_nm_raw_msg(bts, sizeof(msg_3), msg_3); /* set BTS handover attr */
@@ -728,7 +728,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 
 static void bootstrap_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "bootstrapping OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -738,13 +738,13 @@ static void bootstrap_om(struct gsm_bts *bts)
 		bootstrap_om_nanobts(bts);
 		break;
 	default:
-		fprintf(stderr, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
+		LOGP(DNM, LOGL_ERROR, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
 	}
 }
 
 static int shutdown_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "shutting down OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -780,29 +780,42 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
 	u_int8_t si_tmp[23];
+	struct gsm_bts *bts = trx->bts;
+
+	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
+			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
+	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
 	if (trx == trx->bts->c0) {
 		for (i = 1; i <= 4; i++) {
 			rc = gsm_generate_si(si_tmp, trx->bts, i);
 			if (rc < 0)
 				goto err_out;
+			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
-	}
 #ifdef GPRS
-	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
-	if (rc < 0)
-		goto err_out;
-	rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
+		i = 13;
+		rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
+		if (rc < 0)
+			goto err_out;
+		DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+		rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
 #endif
-	rc = gsm_generate_si(si_tmp, trx->bts, 5);
+	}
+
+	i = 5;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_5);
 	if (rc < 0)
 		goto err_out;
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
 
-	rc = gsm_generate_si(si_tmp, trx->bts, 6);
+	i = 6;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_6);
 	if (rc < 0)
 		goto err_out;
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 #ifdef GPRS
@@ -811,9 +824,9 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	return 0;
 err_out:
-	fprintf(stderr, "Cannot generate SI for BTS %u, most likely "
+	LOGP(DRR, LOGL_ERROR, "Cannot generate SI %u for BTS %u, most likely "
 		"a problem with neighbor cell list generation\n",
-		trx->bts->nr);
+		i, trx->bts->nr);
 	return rc;
 }
 
@@ -867,7 +880,7 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
-	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
+	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
 		trx->bts->nr, trx->nr, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
@@ -890,7 +903,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		}
 		break;
 	case EVT_E1_TEI_DN:
-		fprintf(stderr, "Lost some E1 TEI link\n");
+		LOGP(DMI, LOGL_NOTICE, "Lost some E1 TEI link\n");
 		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	default:
@@ -903,33 +916,39 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	switch (bts->band) {
 	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
-			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1800 channel must be between 512-885.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_1900:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 810) {
-			fprintf(stderr, "GSM1900 channel must be between 512-810.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1900 channel must be between 512-810.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_900:
 		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
-			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 1-124.\n");
 			return -EINVAL;
 		}
 		break;
 	default:
-		fprintf(stderr, "Unsupported frequency band.\n");
+		LOGP(DNM, LOGL_ERROR, "Unsupported frequency band.\n");
 		return -EINVAL;
 	}
+
+	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
+	    !bts->si_common.rach_control.cell_bar)
+		LOGP(DNM, LOG_ERROR, "\nWARNING: You are running an 'accept-all' "
+			"network on a BTS that is not barred.  This "
+			"configuration is likely to interfere with production "
+			"GSM networks and should only be used in a RF "
+			"shielded environment such as a faraday cage!\n\n");
 
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
 	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-	if (bts->cell_barred)
-		bts->si_common.rach_control.cell_bar = 1;
 	/* T3212 is set from vty/config */
 
 	/* some defaults for our system information */
@@ -942,12 +961,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
 
-	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
-			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
-	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
-	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
 	bts->si_common.cell_sel_par.acs = 0;
-	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
 	bts->si_common.ncc_permitted = 0xff;
 
@@ -973,7 +987,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 	telnet_init(bsc_gsmnet, 4242);
 	rc = vty_read_config_file(config_file);
 	if (rc < 0) {
-		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
+		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
 	}
 

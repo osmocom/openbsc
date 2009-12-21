@@ -169,6 +169,14 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
+	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
+	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
+	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
+	bts->si_common.neigh_list.data_len =
+				sizeof(bts->si_common.data.neigh_list);
+	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
+	bts->si_common.cell_alloc.data_len =
+				sizeof(bts->si_common.data.cell_alloc);
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
@@ -204,6 +212,14 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->T3113 = GSM_T3113_DEFAULT;
 	/* FIXME: initialize all other timers! */
 
+	/* default set of handover parameters */
+	net->handover.win_rxlev_avg = 10;
+	net->handover.win_rxqual_avg = 1;
+	net->handover.win_rxlev_avg_neigh = 10;
+	net->handover.pwr_interval = 6;
+	net->handover.pwr_hysteresis = 3;
+	net->handover.max_distance = 9999;
+
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);
@@ -223,6 +239,25 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		if (bts->nr == num)
 			return bts;
+	}
+
+	return NULL;
+}
+
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
+				 u_int16_t arfcn, u_int8_t bsic)
+{
+	struct gsm_bts *neigh;
+	/* FIXME: use some better heuristics here to determine which cell
+	 * using this ARFCN really is closest to the target cell.  For
+	 * now we simply assume that each ARFCN will only be used by one
+	 * cell */
+
+	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
+		if (neigh->c0->arfcn == arfcn &&
+		    neigh->bsic == bsic)
+			return neigh;
 	}
 
 	return NULL;
@@ -409,4 +444,41 @@ int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts)
 	gprs_ra_id_by_bts(&raid, bts);
 
 	return gsm48_construct_ra(buf, &raid);
+}
+
+static const char *rrlp_mode_names[] = {
+	[RRLP_MODE_NONE] = "none",
+	[RRLP_MODE_MS_BASED] = "ms-based",
+	[RRLP_MODE_MS_PREF] = "ms-preferred",
+	[RRLP_MODE_ASS_PREF] = "ass-preferred",
+};
+
+enum rrlp_mode rrlp_mode_parse(const char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(rrlp_mode_names); i++) {
+		if (!strcmp(arg, rrlp_mode_names[i]))
+			return i;
+	}
+	return RRLP_MODE_NONE;
+}
+
+const char *rrlp_mode_name(enum rrlp_mode mode)
+{
+	if (mode > ARRAY_SIZE(rrlp_mode_names))
+		return "none";
+	return rrlp_mode_names[mode];
+}
+
+struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
+{
+	struct gsm_meas_rep *meas_rep;
+
+	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
+	memset(meas_rep, 0, sizeof(*meas_rep));
+	meas_rep->lchan = lchan;
+	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
+					% ARRAY_SIZE(lchan->meas_rep);
+
+	return meas_rep;
 }

@@ -203,9 +203,14 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		break;
 	case GSM_LCHAN_TCH_H:
 		lchan =_lc_find_bts(bts, GSM_PCHAN_TCH_H);
+		/* If we don't have TCH/H available, fall-back to TCH/F */
+		if (!lchan) {
+			lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
+			type = GSM_LCHAN_TCH_F;
+		}
 		break;
 	default:
-		fprintf(stderr, "Unknown gsm_chan_t %u\n", type);
+		LOGP(DRLL, LOGL_ERROR, "Unknown gsm_chan_t %u\n", type);
 	}
 
 	if (lchan) {
@@ -230,6 +235,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 /* Free a logical channel */
 void lchan_free(struct gsm_lchan *lchan)
 {
+	int i;
+
 	lchan->type = GSM_LCHAN_NONE;
 	if (lchan->subscr) {
 		subscr_put(lchan->subscr);
@@ -244,6 +251,16 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	/* stop the timer */
 	bsc_del_timer(&lchan->release_timer);
+	bsc_del_timer(&lchan->T3101);
+
+	/* clear cached measuement reports */
+	lchan->meas_rep_idx = 0;
+	for (i = 0; i < ARRAY_SIZE(lchan->meas_rep); i++) {
+		lchan->meas_rep[i].flags = 0;
+		lchan->meas_rep[i].nr = 0;
+	}
+	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
+		lchan->neigh_meas[i].arfcn = 0;
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -262,9 +279,9 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 	}
 
 	/* spoofed? message */
-	if (lchan->use_count < 0) {
-		DEBUGP(DRLL, "Channel count is negative: %d\n", lchan->use_count);
-	}
+	if (lchan->use_count < 0)
+		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
+			lchan->use_count);
 
 	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
 	rsl_release_request(lchan, 0);

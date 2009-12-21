@@ -26,6 +26,8 @@
 
 #define DMGCP		0x40000
 
+#define DHO		0x80000
+
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
 #define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)
@@ -42,5 +44,16 @@ void debug_parse_category_mask(const char* mask);
 void debug_use_color(int use_color);
 void debug_timestamp(int enable);
 extern unsigned int debug_mask;
+
+/* new logging interface */
+#define LOGP(ss, level, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ##args)
+#define LOGPC(ss, level, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ##args)
+
+/* different levels */
+#define LOGL_DEBUG	1	/* debugging information */
+#define LOGL_INFO	3
+#define LOGL_NOTICE	5	/* abnormal/unexpected condition */
+#define LOGL_ERROR	7	/* error condition, requires user action */
+#define LOGL_FATAL	8	/* fatal, program aborted */
 
 #endif /* _DEBUG_H */

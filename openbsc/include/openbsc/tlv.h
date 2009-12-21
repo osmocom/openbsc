@@ -119,6 +119,7 @@ static inline u_int8_t *tv_put(u_int8_t *buf, u_int8_t tag,
 	return buf;
 }
 
+/* 'val' is still in host byte order! */
 static inline u_int8_t *tv16_put(u_int8_t *buf, u_int8_t tag, 
 				 u_int16_t val)
 {

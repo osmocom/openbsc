@@ -59,6 +59,7 @@ enum signal_sms {
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_CRCX_ACK,
+	S_ABISIP_MDCX_ACK,
 	S_ABISIP_DLCX_IND,
 };
 
@@ -91,6 +92,7 @@ enum signal_lchan {
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
 	S_SUBSCR_DETACHED,
+	S_SUBSCR_IDENTITY,		/* we've received some identity information */
 };
 
 /* SS_SCALL signals */

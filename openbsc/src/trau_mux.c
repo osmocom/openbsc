@@ -32,6 +32,19 @@
 #include <openbsc/debug.h>
 #include <openbsc/talloc.h>
 
+u_int8_t gsm_fr_map[] = {
+	6, 6, 5, 5, 4, 4, 3, 3,
+	7, 2, 2, 6, 3, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3,
+	3, 7, 2, 2, 6, 3, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 7, 2, 2, 6, 3, 3,
+	3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 7, 2, 2, 6, 3,
+	3, 3, 3, 3, 3, 3, 3, 3,
+	3, 3, 3, 3
+};
+
 struct map_entry {
 	struct llist_head list;
 	struct gsm_e1_subslot src, dst;
@@ -56,8 +69,10 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 	struct map_entry *me;
 
 	me = talloc(tall_map_ctx, struct map_entry);
-	if (!me)
+	if (!me) {
+		LOGP(DMIB, LOGL_FATAL, "Out of memory\n");
 		return -ENOMEM;
+	}
 
 	DEBUGP(DCC, "Setting up TRAU mux map between (e1=%u,ts=%u,ss=%u) "
 		"and (e1=%u,ts=%u,ss=%u)\n",
@@ -142,6 +157,8 @@ lookup_trau_upqueue(const struct gsm_e1_subslot *src)
 	return NULL;
 }
 
+static const u_int8_t c_bits_check[] = { 0, 0, 0, 1, 0 };
+
 /* we get called by subchan_demux */
 int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		   const u_int8_t *trau_bits, int num_bits)
@@ -151,8 +168,6 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 	struct gsm_e1_subslot *dst_e1_ss = lookup_trau_mux_map(src_e1_ss);
 	struct subch_mux *mx;
 	struct upqueue_entry *ue;
-	struct msgb *msg;
-	struct gsm_trau_frame *frame;
 	int rc;
 
 	/* decode TRAU, change it to downlink, re-encode */
@@ -161,19 +176,44 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		return rc;
 
 	if (!dst_e1_ss) {
+		struct msgb *msg;
+		struct gsm_data_frame *frame;
+		unsigned char *data;
+		int i, j, k, l, o;
 		/* frame shall be sent to upqueue */
 		if (!(ue = lookup_trau_upqueue(src_e1_ss)))
 			return -EINVAL;
 		if (!ue->callref)
 			return -EINVAL;
-		msg = msgb_alloc(sizeof(struct gsm_trau_frame) + sizeof(tf),
-				 "TRAU");
+		if (memcmp(tf.c_bits, c_bits_check, sizeof(c_bits_check)))
+			DEBUGPC(DMUX, "illegal trau (C1-C5) %s\n",
+				hexdump(tf.c_bits, sizeof(c_bits_check)));
+		msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
+				 "GSM-DATA");
 		if (!msg)
 			return -ENOMEM;
-		frame = (struct gsm_trau_frame *)msg->data;
-		frame->msg_type = GSM_TRAU_FRAME;
+
+		frame = (struct gsm_data_frame *)msg->data;
+		memset(frame, 0, sizeof(struct gsm_data_frame));
+		data = frame->data;
+		data[0] = 0xd << 4;
+		/* reassemble d-bits */
+		i = 0; /* counts bits */
+		j = 4; /* counts output bits */
+		k = gsm_fr_map[0]-1; /* current number bit in element */
+		l = 0; /* counts element bits */
+		o = 0; /* offset input bits */
+		while (i < 260) {
+			data[j/8] |= (tf.d_bits[k+o] << (7-(j%8)));
+			if (--k < 0) {
+				o += gsm_fr_map[l];
+				k = gsm_fr_map[++l]-1;
+			}
+			i++;
+			j++;
+		}
+		frame->msg_type = GSM_TCHF_FRAME;
 		frame->callref = ue->callref;
-		memcpy(frame->data, &tf, sizeof(tf));
 		msgb_enqueue(&ue->net->upqueue, msg);
 
 		return 0;
@@ -219,17 +259,53 @@ int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref)
 	return 0;
 }
 
-int trau_send_lchan(struct gsm_lchan *lchan, struct decoded_trau_frame *tf)
+int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 {
 	u_int8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = &lchan->ts->e1_link;
 	struct subch_mux *mx;
+	int i, j, k, l, o;
+	unsigned char *data = frame->data;
+	struct decoded_trau_frame tf;
 
 	mx = e1inp_get_mux(dst_e1_ss->e1_nr, dst_e1_ss->e1_ts);
 	if (!mx)
 		return -EINVAL;
 
-	encode_trau_frame(trau_bits_out, tf);
+	switch (frame->msg_type) {
+	case GSM_TCHF_FRAME:
+		/* set c-bits and t-bits */
+		tf.c_bits[0] = 1;
+		tf.c_bits[1] = 1;
+		tf.c_bits[2] = 1;
+		tf.c_bits[3] = 0;
+		tf.c_bits[4] = 0;
+		memset(&tf.c_bits[5], 0, 6);
+		memset(&tf.c_bits[11], 1, 10);
+		memset(&tf.t_bits[0], 1, 4);
+		/* reassemble d-bits */
+		i = 0; /* counts bits */
+		j = 4; /* counts input bits */
+		k = gsm_fr_map[0]-1; /* current number bit in element */
+		l = 0; /* counts element bits */
+		o = 0; /* offset output bits */
+		while (i < 260) {
+			tf.d_bits[k+o] = (data[j/8] >> (7-(j%8))) & 1;
+			if (--k < 0) {
+				o += gsm_fr_map[l];
+				k = gsm_fr_map[++l]-1;
+			}
+			i++;
+			j++;
+		}
+		break;
+	default:
+		DEBUGPC(DMUX, "unsupported message type %d\n",
+			frame->msg_type);
+		return -EINVAL;
+	}
+
+	encode_trau_frame(trau_bits_out, &tf);
 
 	/* and send it to the muxer */
 	return subchan_mux_enqueue(mx, dst_e1_ss->e1_ts_ss, trau_bits_out,

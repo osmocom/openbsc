@@ -40,6 +40,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
+#include <openbsc/rtp_proxy.h>
 
 struct bsc_handover {
 	struct llist_head list;
@@ -85,23 +86,46 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 {
 	struct gsm_lchan *new_lchan;
 	struct bsc_handover *ho;
+	static u_int8_t ho_ref;
 	int rc;
 
+	/* don't attempt multiple handovers for the same lchan at
+	 * the same time */
+	if (bsc_ho_by_old_lchan(old_lchan))
+		return -EBUSY;
+
+	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
+		old_lchan->ts->trx->bts->nr, bts->nr);
+
 	new_lchan = lchan_alloc(bts, old_lchan->type);
-	if (!new_lchan)
+	if (!new_lchan) {
+		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
 		return -ENOSPC;
+	}
 
 	ho = talloc_zero(NULL, struct bsc_handover);
 	if (!ho) {
+		LOGP(DHO, LOGL_FATAL, "Out of Memory\n");
 		lchan_free(new_lchan);
 		return -ENOMEM;
 	}
 	ho->old_lchan = old_lchan;
 	ho->new_lchan = new_lchan;
+	ho->ho_ref = ho_ref++;
+
+	/* copy some parameters from old lchan */
+	memcpy(&new_lchan->encr, &old_lchan->encr, sizeof(new_lchan->encr));
+	new_lchan->ms_power = old_lchan->ms_power;
+	new_lchan->bs_power = old_lchan->bs_power;
+	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
+	new_lchan->tch_mode = old_lchan->tch_mode;
+	new_lchan->subscr = subscr_get(old_lchan->subscr);
 
 	/* FIXME: do we have a better idea of the timing advance? */
-	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0);
+	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
+				     ho->ho_ref);
 	if (rc < 0) {
+		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
 		talloc_free(ho);
 		lchan_free(new_lchan);
 		return rc;
@@ -118,6 +142,8 @@ static void ho_T3103_cb(void *_ho)
 {
 	struct bsc_handover *ho = _ho;
 
+	DEBUGP(DHO, "HO T3103 expired\n");
+
 	lchan_free(ho->new_lchan);
 	llist_del(&ho->list);
 	talloc_free(ho);
@@ -129,19 +155,28 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 	int rc;
 
+	/* we need to check if this channel activation is related to
+	 * a handover at all (and if, which particular handover) */
 	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho)
 		return -ENODEV;
 
+	DEBUGP(DHO, "handover activate ack, send HO Command\n");
+
 	/* we can now send the 04.08 HANDOVER COMMAND to the MS
 	 * using the old lchan */
 
-	rc = gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0);
+	rc = gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
 
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
+	ho->T3103.data = ho;
 	bsc_schedule_timer(&ho->T3103, 10, 0);
+
+	/* create a RTP connection */
+	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
+		rsl_ipacc_crcx(new_lchan);
 
 	return 0;
 }
@@ -152,8 +187,10 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	llist_del(&ho->list);
 	talloc_free(ho);
@@ -169,18 +206,22 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	bsc_del_timer(&ho->T3103);
-	llist_del(&ho->list);
+
+	/* update lchan pointer of transaction */
+	trans_lchan_change(ho->old_lchan, new_lchan);
+
+	ho->old_lchan->state = LCHAN_S_INACTIVE;
+	lchan_auto_release(ho->old_lchan);
 
 	/* do something to re-route the actual speech frames ! */
-	//tch_remap(ho->old_lchan, ho->new_lchan);
 
-	/* release old lchan */
-	put_lchan(ho->old_lchan);
-
+	llist_del(&ho->list);
 	talloc_free(ho);
 
 	return 0;
@@ -192,8 +233,10 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_old_lchan(old_lchan);
-	if (!ho)
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
@@ -208,11 +251,68 @@ static int ho_rsl_detect(struct gsm_lchan *new_lchan)
 {
 	struct bsc_handover *ho;
 
-	ho = bsc_ho_by_old_lchan(new_lchan);
-	if (!ho)
+	ho = bsc_ho_by_new_lchan(new_lchan);
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
+	}
 
 	/* FIXME: do we actually want to do something here ? */
+
+	return 0;
+}
+
+static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
+{
+	struct bsc_handover *ho;
+	struct rtp_socket *old_rs, *new_rs, *other_rs;
+
+	ho = bsc_ho_by_new_lchan(new_lchan);
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+		return -ENODEV;
+	}
+
+	if (ipacc_rtp_direct) {
+		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
+		return 0;
+	}
+
+	/* RTP Proxy mode */
+	new_rs = new_lchan->abis_ip.rtp_socket;
+	old_rs = ho->old_lchan->abis_ip.rtp_socket;
+
+	if (!new_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
+		return -EIO;
+	}
+
+	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
+
+	if (!old_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socekt for old_lchan\n");
+		return -EIO;
+	}
+
+	/* copy rx_action and reference to other sock */
+	new_rs->rx_action = old_rs->rx_action;
+	new_rs->tx_action = old_rs->tx_action;
+	new_rs->transmit = old_rs->transmit;
+
+	switch (ho->old_lchan->abis_ip.rtp_socket->rx_action) {
+	case RTP_PROXY:
+		other_rs = old_rs->proxy.other_sock;
+		rtp_socket_proxy(new_rs, other_rs);
+		/* delete reference to other end socket to prevent
+		 * rtp_socket_free() from removing the inverse reference */
+		old_rs->proxy.other_sock = NULL;
+		break;
+	case RTP_RECV_UPSTREAM:
+		new_rs->receive = old_rs->receive;
+		break;
+	case RTP_NONE:
+		break;
+	}
 
 	return 0;
 }
@@ -238,6 +338,14 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			return ho_gsm48_ho_fail(lchan);
 		}
 		break;
+	case SS_ABISIP:
+		lchan = signal_data;
+		switch (signal) {
+		case S_ABISIP_CRCX_ACK:
+			return ho_ipac_crcx_ack(lchan);
+			break;
+		}
+		break;
 	default:
 		break;
 	}
@@ -248,4 +356,5 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
 	register_signal_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
+	register_signal_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }

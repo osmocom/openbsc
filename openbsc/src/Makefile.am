@@ -12,6 +12,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c talloc.c \
 		talloc_ctx.c system_information.c bitvec.c rest_octets.c \
+		handover_decision.c meas_rep.c \
 		gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
 		crc24.c gprs_sgsn.c
 
