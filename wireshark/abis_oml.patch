@@ -1,8 +1,8 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-10-21 23:03:44.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-10-21 23:03:57.000000000 +0200
-@@ -472,6 +472,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common
++++ wireshark/epan/dissectors/Makefile.common
+@@ -474,6 +474,7 @@
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -12,8 +12,8 @@ Index: wireshark/epan/dissectors/Makefile.common
  	packet-gsm_bssmap_le.c	\
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-10-22 10:06:18.000000000 +0200
+--- /dev/null
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c
 @@ -0,0 +1,1365 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
@@ -1377,13 +1377,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +{
 +	dissector_handle_t abis_oml_handle;
 +
-+	abis_oml_handle = find_dissector("abis_oml");
++	abis_oml_handle = create_dissector_handle(dissect_abis_oml, proto_abis_oml);
 +	dissector_add("lapd.gsm.sapi", LAPD_GSM_SAPI_OM_PROC, abis_oml_handle);
 +}
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-10-21 23:03:57.000000000 +0200
+--- /dev/null
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h
 @@ -0,0 +1,786 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
