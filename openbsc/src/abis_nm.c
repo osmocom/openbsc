@@ -671,7 +671,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->bs11.rack.nm_state;
 		break;
 	case NM_OC_BS11_ENVABTSE:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->bs11.envabtse))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->bs11.envabtse))
 			return NULL;
 		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
@@ -682,7 +682,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->gprs.cell.nm_state;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
 			return NULL;
 		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
 		break;
@@ -738,7 +738,7 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = &bts->gprs.cell;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
 			return NULL;
 		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
 		break;
