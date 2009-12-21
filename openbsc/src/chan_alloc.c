@@ -251,6 +251,7 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	/* stop the timer */
 	bsc_del_timer(&lchan->release_timer);
+	bsc_del_timer(&lchan->T3101);
 
 	/* clear cached measuement reports */
 	lchan->meas_rep_idx = 0;
