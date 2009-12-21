@@ -635,7 +635,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx) {
+		if (obj_inst->trx_nr >= bts->num_trx) {
 			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
 		}
@@ -719,7 +719,7 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx) {
+		if (obj_inst->trx_nr >= bts->num_trx) {
 			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
 		}
