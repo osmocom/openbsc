@@ -299,6 +299,18 @@ static int config_write_net(struct vty *vty)
 		VTY_NEWLINE);
 	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
 	vty_out(vty, " handover %u%s", gsmnet->handover.active, VTY_NEWLINE);
+	vty_out(vty, " handover window rxlev averaging %u%s",
+		gsmnet->handover.win_rxlev_avg, VTY_NEWLINE);
+	vty_out(vty, " handover window rxqual averaging %u%s",
+		gsmnet->handover.win_rxqual_avg, VTY_NEWLINE);
+	vty_out(vty, " handover window rxlev neighbor averaging %u%s",
+		gsmnet->handover.win_rxlev_avg_neigh, VTY_NEWLINE);
+	vty_out(vty, " handover power budget interval %u%s",
+		gsmnet->handover.pwr_interval, VTY_NEWLINE);
+	vty_out(vty, " handover power budget hysteresis %u%s",
+		gsmnet->handover.pwr_hysteresis, VTY_NEWLINE);
+	vty_out(vty, " handover maximum distance %u%s",
+		gsmnet->handover.max_distance, VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
 	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
@@ -881,6 +893,53 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
+      "handover window rxlev averaging <1-10>",
+	"How many RxLev measurements are used for averaging")
+{
+	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
+      "handover window rxqual averaging <1-10>",
+	"How many RxQual measurements are used for averaging")
+{
+	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
+      "handover window rxlev neighbor averaging <1-10>",
+	"How many RxQual measurements are used for averaging")
+{
+	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
+      "handover power budget interval <1-99>",
+	"How often to check if we have a better cell (SACCH frames)")
+{
+	gsmnet->handover.pwr_interval = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
+      "handover power budget hysteresis <0-999>",
+	"How many dB does a neighbor to be stronger to become a HO candidate")
+{
+	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
+      "handover maximum distance <0-9999>",
+	"How big is the maximum timing advance before HO is forced")
+{
+	gsmnet->handover.max_distance = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 #define DECLARE_TIMER(number) \
     DEFUN(cfg_net_T##number,					\
@@ -1391,6 +1450,12 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
 	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxqual_avg_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_neigh_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_pwr_interval_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_pwr_hysteresis_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_max_distance_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3101_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3103_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3105_cmd);
