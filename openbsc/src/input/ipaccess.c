@@ -238,6 +238,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 							trx->rsl_tei, 0);
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
+			newbfd->priv_nr = 2+trx_id;
 			bsc_unregister_fd(bfd);
 			bsc_register_fd(newbfd);
 			talloc_free(bfd);
@@ -347,9 +348,9 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	switch (link->type) {
 	case E1INP_SIGN_RSL:
-		if (!(msg->trx->bts->ip_access.flags & RSL_UP)) {
+		if (!(msg->trx->bts->ip_access.flags & (RSL_UP << msg->trx->nr))) {
 			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
-			msg->trx->bts->ip_access.flags |= RSL_UP;
+			msg->trx->bts->ip_access.flags |= (RSL_UP << msg->trx->nr);
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
