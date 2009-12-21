@@ -84,12 +84,12 @@ void telnet_init(struct gsm_network *network, int port) {
 	sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
 	if (bind(fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) < 0) {
-		LOGP(DNM, LOG_ERROR, "Telnet interface failed to bind\n");
+		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to bind\n");
 		return;
 	}
 
 	if (listen(fd, 0) < 0) {
-		LOGP(DNM, LOG_ERROR, "Telnet interface failed to listen\n");
+		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to listen\n");
 		return;
 	}
 

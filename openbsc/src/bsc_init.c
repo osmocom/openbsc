@@ -810,7 +810,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
 	    !bts->si_common.rach_control.cell_bar)
-		LOGP(DNM, LOG_ERROR, "\nWARNING: You are running an 'accept-all' "
+		LOGP(DNM, LOGL_ERROR, "\nWARNING: You are running an 'accept-all' "
 			"network on a BTS that is not barred.  This "
 			"configuration is likely to interfere with production "
 			"GSM networks and should only be used in a RF "
