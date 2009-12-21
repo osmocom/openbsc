@@ -212,13 +212,16 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	}
 
 	bsc_del_timer(&ho->T3103);
-	llist_del(&ho->list);
 
 	/* update lchan pointer of transaction */
 	trans_lchan_change(ho->old_lchan, new_lchan);
 
+	ho->old_lchan->state = LCHAN_S_INACTIVE;
+	lchan_auto_release(ho->old_lchan);
+
 	/* do something to re-route the actual speech frames ! */
 
+	llist_del(&ho->list);
 	talloc_free(ho);
 
 	return 0;
