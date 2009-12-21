@@ -769,8 +769,9 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS,Subscriber "
 		"WHERE sms.id >= %llu AND sms.sent is NULL "
+			"AND sms.receiver_id = subscriber.id "
 			"AND subscriber.lac > 0 "
-		"ORDER BY id",
+		"ORDER BY sms.id LIMIT 1",
 		min_id);
 	if (!result)
 		return NULL;
@@ -787,7 +788,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	return sms;
 }
 
-/* retrieve the next unsent SMS with ID >= min_id */
+/* retrieve the next unsent SMS for a given subscriber */
 struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
@@ -796,8 +797,9 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS,Subscriber "
 		"WHERE sms.receiver_id = %llu AND sms.sent is NULL "
+			"AND sms.receiver_id = subscriber.id "
 			"AND subscriber.lac > 0 "
-		"ORDER BY id",
+		"ORDER BY sms.id LIMIT 1",
 		subscr->id);
 	if (!result)
 		return NULL;
