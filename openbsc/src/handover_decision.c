@@ -32,7 +32,9 @@
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
 #include <openbsc/handover.h>
+#include <openbsc/gsm_utils.h>
 
+/* issue handover to a cell identified by ARFCN and BSIC */
 static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 				  u_int16_t arfcn, u_int8_t bsic)
 {
@@ -50,14 +52,184 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 	return bsc_handover_start(lchan, new_bts);
 }
 
-#define RXLEV_HYST 3
+/* did we get a RXLEV for a given cell in the given report? */
+static int rxlev_for_cell_in_rep(struct gsm_meas_rep *mr,
+				 u_int16_t arfcn, u_int8_t bsic)
+{
+	int i;
 
-/* process an already parsed measurement report */
+	for (i = 0; i < mr->num_cell; i++) {
+		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
+
+		/* search for matching report */
+		if (!(mrc->arfcn == arfcn && mrc->bsic == bsic))
+			continue;
+
+		mrc->flags |= MRC_F_PROCESSED;
+		return mrc->rxlev;
+	}
+	return -ENODEV;
+}
+
+/* obtain averaged rxlev for given neighbor */
+static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
+{
+	unsigned int i, idx;
+	int avg = 0;
+
+	idx = calc_initial_idx(ARRAY_SIZE(nmp->rxlev),
+				nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev),
+				window);
+
+	for (i = 0; i < window; i++) {
+		int j = (idx+i) % ARRAY_SIZE(nmp->rxlev);
+
+		avg += nmp->rxlev[j];
+	}
+
+	return avg / window;
+}
+
+/* find empty or evict bad neighbor */
+static struct neigh_meas_proc *find_evict_neigh(struct gsm_lchan *lchan)
+{
+	int j, worst = 999999;
+	struct neigh_meas_proc *nmp_worst;
+
+	/* first try to find an empty/unused slot */
+	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
+		struct neigh_meas_proc *nmp = &lchan->neigh_meas[j];
+		if (!nmp->arfcn)
+			return nmp;
+	}
+
+	/* no empty slot found. evict worst neighbor from list */
+	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
+		struct neigh_meas_proc *nmp = &lchan->neigh_meas[j];
+		int avg = neigh_meas_avg(nmp, MAX_WIN_NEIGH_AVG);
+		if (avg < worst) {
+			worst = avg;
+			nmp_worst = nmp;
+		}
+	}
+
+	return nmp_worst;
+}
+
+/* process neighbor cell measurement reports */
+static void process_meas_neigh(struct gsm_meas_rep *mr)
+{
+	int i, j, idx;
+
+	/* for each reported cell, try to update global state */
+	for (j = 0; j < ARRAY_SIZE(mr->lchan->neigh_meas); j++) {
+		struct neigh_meas_proc *nmp = &mr->lchan->neigh_meas[j];
+		unsigned int idx;
+		int rxlev;
+
+		/* skip unused entries */
+		if (!nmp->arfcn)
+			continue;
+
+		rxlev = rxlev_for_cell_in_rep(mr, nmp->arfcn, nmp->bsic);
+		idx = nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev);
+		if (rxlev >= 0) {
+			nmp->rxlev[idx] = rxlev;
+			nmp->last_seen_nr = mr->nr;
+		} else
+			nmp->rxlev[idx] = 0;
+		nmp->rxlev_cnt++;
+	}
+
+	/* iterate over list of reported cells, check if we did not
+	 * process all of them */
+	for (i = 0; i < mr->num_cell; i++) {
+		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
+		struct neigh_meas_proc *nmp;
+
+		if (mrc->flags & MRC_F_PROCESSED)
+			continue;
+
+		nmp = find_evict_neigh(mr->lchan);
+
+		nmp->arfcn = mrc->arfcn;
+		nmp->bsic = mrc->bsic;
+
+		idx = nmp->rxlev_cnt % ARRAY_SIZE(nmp->rxlev);
+		nmp->rxlev[idx] = mrc->rxlev;
+		nmp->rxlev_cnt++;
+		nmp->last_seen_nr = mr->nr;
+
+		mrc->flags |= MRC_F_PROCESSED;
+	}
+}
+
+/* attempt to do a handover */
+static int attempt_handover(struct gsm_meas_rep *mr)
+{
+	struct gsm_network *net = mr->lchan->ts->trx->bts->network;
+	struct neigh_meas_proc *best_cell = NULL;
+	unsigned int best_better_db = 0;
+	int i, rc;
+
+	/* find the best cell in this report that is at least RXLEV_HYST
+	 * better than the current serving cell */
+
+	for (i = 0; i < ARRAY_SIZE(mr->lchan->neigh_meas); i++) {
+		struct neigh_meas_proc *nmp = &mr->lchan->neigh_meas[i];
+		int avg, better;
+
+		/* skip empty slots */
+		if (nmp->arfcn == 0)
+			continue;
+
+		/* caculate average rxlev for this cell over the window */
+		avg = neigh_meas_avg(nmp, net->handover.win_rxlev_avg_neigh);
+
+		/* check if hysteresis is fulfilled */
+		if (avg < mr->dl.full.rx_lev + net->handover.pwr_hysteresis)
+			continue;
+
+		better = avg - mr->dl.full.rx_lev;
+		if (better > best_better_db) {
+			best_cell = nmp;
+			best_better_db = better;
+		}
+	}
+
+	if (!best_cell)
+		return 0;
+
+	LOGP(DHO, LOGL_INFO, "%s: Cell on ARFCN %u is better: ",
+		gsm_ts_name(mr->lchan->ts), best_cell->arfcn);
+	if (!net->handover.active) {
+		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
+		return 0;
+	}
+
+	rc = handover_to_arfcn_bsic(mr->lchan, best_cell->arfcn, best_cell->bsic);
+	switch (rc) {
+	case 0:
+		LOGPC(DHO, LOGL_INFO, "Starting handover\n");
+		break;
+	case -ENOSPC:
+		LOGPC(DHO, LOGL_INFO, "No channel available\n");
+		break;
+	case -EBUSY:
+		LOGPC(DHO, LOGL_INFO, "Handover already active\n");
+		break;
+	default:
+		LOGPC(DHO, LOGL_ERROR, "Unknown error\n");
+	}
+	return rc;
+}
+
+/* process an already parsed measurement report and decide if we want to
+ * attempt a handover */
 static int process_meas_rep(struct gsm_meas_rep *mr)
 {
-	struct gsm_meas_rep_cell *mr_cell = NULL;
-	unsigned int best_better_db;
-	int i;
+	struct gsm_network *net = mr->lchan->ts->trx->bts->network;
+	int av_rxlev;
 
 	/* we currently only do handover for TCH channels */
 	switch (mr->lchan->type) {
@@ -68,37 +240,38 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 		return 0;
 	}
 
-	/* FIXME: implement actual averaging over multiple measurement
-	 * reports */
+	/* parse actual neighbor cell info */
+	if (mr->num_cell > 0 && mr->num_cell < 7)
+		process_meas_neigh(mr);
 
-	if (mr->num_cell > 6)
-		return 0;
+	av_rxlev = get_meas_rep_avg(mr->lchan, MEAS_REP_DL_RXLEV_FULL,
+				    net->handover.win_rxlev_avg);
 
-	/* find the best cell in this report that is at least RXLEV_HYST
-	 * better than the current serving cell */
-	for (i = 0; i < mr->num_cell; i++) {
-		unsigned int better;
-		if (mr->cell[i].rxlev < mr->dl.full.rx_lev + RXLEV_HYST)
-			continue;
+	/* Interference HO */
+	if (rxlev2dbm(av_rxlev) > -85 &&
+	    meas_rep_n_out_of_m_be(mr->lchan, MEAS_REP_DL_RXQUAL_FULL,
+				   3, 4, 5))
+		return attempt_handover(mr);
 
-		better = mr->cell[i].rxlev - mr->dl.full.rx_lev;
-		if (better > best_better_db) {
-			mr_cell = &mr->cell[i];
-			best_better_db = better;
-		}
-	}
+	/* Bad Quality */
+	if (meas_rep_n_out_of_m_be(mr->lchan, MEAS_REP_DL_RXQUAL_FULL,
+				   3, 4, 5))
+		return attempt_handover(mr);
 
-	if (!mr_cell)
-		return 0;
+	/* Low Level */
+	if (rxlev2dbm(av_rxlev) <= -110)
+		return attempt_handover(mr);
 
-	LOGP(DHO, LOGL_INFO, "Cell on ARFCN %u is better: ", mr_cell->arfcn);
-	if (!mr->lchan->ts->trx->bts->network->handover.active) {
-		LOGPC(DHO, LOGL_INFO, "Skipping, Handover disabled\n");
-		return 0;
-	}
+	/* Distance */
+	if (mr->ms_l1.ta > net->handover.max_distance)
+		return attempt_handover(mr);
 
-	LOGPC(DHO, LOGL_INFO, "Starting handover\n");
-	return handover_to_arfcn_bsic(mr->lchan, mr_cell->arfcn, mr_cell->bsic);
+	/* Power Budget AKA Better Cell */
+	if ((mr->nr % net->handover.pwr_interval) == 0)
+		return attempt_handover(mr);
+
+	return 0;
+
 }
 
 static int ho_dec_sig_cb(unsigned int subsys, unsigned int signal,

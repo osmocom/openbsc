@@ -143,6 +143,20 @@ struct gsm_loc_updating_operation {
 	unsigned int waiting_for_imei : 1;
 };
 
+/* Maximum number of neighbor cells whose average we track */
+#define MAX_NEIGH_MEAS		10
+/* Maximum size of the averaging window for neighbor cells */
+#define MAX_WIN_NEIGH_AVG	10
+
+/* processed neighbor measurements for one cell */
+struct neigh_meas_proc {
+	u_int16_t arfcn;
+	u_int8_t bsic;
+	u_int8_t rxlev[MAX_WIN_NEIGH_AVG];
+	unsigned int rxlev_cnt;
+	u_int8_t last_seen_nr;
+};
+
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
 
@@ -206,6 +220,9 @@ struct gsm_lchan {
 	/* cache of last measurement reports on this lchan */
 	struct gsm_meas_rep meas_rep[6];
 	int meas_rep_idx;
+
+	/* table of neighbor cell measurements */
+	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
 
 	struct {
 		u_int32_t bound_ip;
@@ -463,6 +480,19 @@ struct gsm_network {
 	int send_mm_info;
 	struct {
 		int active;
+		/* Window RXLEV averaging */
+		unsigned int win_rxlev_avg;	/* number of SACCH frames */
+		/* Window RXQUAL averaging */
+		unsigned int win_rxqual_avg;	/* number of SACCH frames */
+		/* Window RXLEV neighbouring cells averaging */
+		unsigned int win_rxlev_avg_neigh; /* number of SACCH frames */
+
+		/* how often should we check for power budget HO */
+		unsigned int pwr_interval;	/* SACCH frames */
+		/* how much better does a neighbor cell have to be ? */
+		unsigned int pwr_hysteresis;	/* dBm */
+		/* maximum distacne before we try a handover */
+		unsigned int max_distance;	/* TA values */
 	} handover;
 
 	/* layer 4 */

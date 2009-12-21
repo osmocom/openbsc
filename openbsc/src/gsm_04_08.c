@@ -1404,6 +1404,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	 * imagine an IMSI DETACH happening during an active call! */
 
 	/* subscriber is detached: should we release lchan? */
+	lchan_auto_release(msg->lchan);
 
 	return 0;
 }
