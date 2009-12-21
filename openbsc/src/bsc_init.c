@@ -672,6 +672,11 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
 	u_int8_t si_tmp[23];
+	struct gsm_bts *bts = trx->bts;
+
+	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
+			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
+	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
 	if (trx == trx->bts->c0) {
 		for (i = 1; i <= 4; i++) {
@@ -827,10 +832,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
 
-	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
-			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.acs = 0;
-	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
 	bts->si_common.ncc_permitted = 0xff;
 
