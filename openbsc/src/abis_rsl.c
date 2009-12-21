@@ -918,6 +918,8 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
 
+	msg->lchan->state = LCHAN_S_ACTIVE;
+
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
 	return 0;
@@ -937,6 +939,8 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
 		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+
+	msg->lchan->state = LCHAN_S_NONE;
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
@@ -1021,6 +1025,11 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	u_int8_t len;
 	const u_int8_t *val;
 	int rc;
+
+	/* check if this channel is actually active */
+	/* FIXME: maybe this check should be way more generic/centralized */
+	if (msg->lchan->state != LCHAN_S_ACTIVE)
+		return 0;
 
 	memset(mr, 0, sizeof(*mr));
 	mr->lchan = msg->lchan;
@@ -1128,6 +1137,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK\n");
+		msg->lchan->state = LCHAN_S_NONE;
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:

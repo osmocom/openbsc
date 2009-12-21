@@ -151,6 +151,13 @@ struct gsm_loc_updating_operation {
 #define LCHAN_SAPI_MS		1
 #define LCHAN_SAPI_NET		2
 
+/* state of a logical channel */
+enum gsm_lchan_state {
+	LCHAN_S_NONE,		/* channel is not active */
+	LCHAN_S_ACTIVE,		/* channel is active and operational */
+	LCHAN_S_INACTIVE,	/* channel is set inactive */
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -162,6 +169,8 @@ struct gsm_lchan {
 	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
 	enum gsm48_chan_mode tch_mode;
+	/* State */
+	enum gsm_lchan_state state;
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;
