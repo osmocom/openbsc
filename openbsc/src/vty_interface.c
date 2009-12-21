@@ -140,7 +140,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
-	if (bts->cell_barred)
+	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
@@ -258,7 +258,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
-	if (bts->cell_barred)
+	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  ip.access unit_id %u %u%s",
@@ -1202,7 +1202,7 @@ DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->cell_barred = atoi(argv[0]);
+	bts->si_common.rach_control.cell_bar = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }

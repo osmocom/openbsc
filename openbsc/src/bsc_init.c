@@ -804,7 +804,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	}
 
 	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
-	    !bts->cell_barred)
+	    !bts->si_common.rach_control.cell_bar)
 		LOGP(DNM, LOG_ERROR, "\nWARNING: You are running an 'accept-all' "
 			"network on a BTS that is not barred.  This "
 			"configuration is likely to interfere with production "
@@ -815,8 +815,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	bts->si_common.chan_desc.att = 1;
 	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-	if (bts->cell_barred)
-		bts->si_common.rach_control.cell_bar = 1;
 	/* T3212 is set from vty/config */
 
 	/* some defaults for our system information */
