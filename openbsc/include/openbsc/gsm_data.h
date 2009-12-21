@@ -457,6 +457,49 @@ struct gsm_bts {
 	struct llist_head trx_list;
 };
 
+/* Some statistics of our network */
+struct gsmnet_stats {
+	struct {
+		unsigned long total;
+		unsigned long no_channel;
+	} chreq;
+	struct {
+		unsigned long attempted;
+		unsigned long no_channel;	/* no channel available */
+		unsigned long timeout;		/* T3103 timeout */
+		unsigned long completed;	/* HO COMPL received */
+		unsigned long failed;		/* HO FAIL received */
+	} handover;
+	struct {
+		unsigned long attach;
+		unsigned long normal;
+		unsigned long periodic;
+		unsigned long detach;
+	} loc_upd_type;
+	struct {
+		unsigned long reject;
+		unsigned long accept;
+	} loc_upd_resp;
+	struct {
+		unsigned long attempted;
+		unsigned long detached;
+		unsigned long completed;
+		unsigned long expired;
+	} paging;
+	struct {
+		unsigned long submitted; /* MO SMS submissions */
+		unsigned long no_receiver;
+		unsigned long delivered; /* MT SMS deliveries */
+		unsigned long rp_err_mem;
+		unsigned long rp_err_other;
+	} sms;
+	struct {
+		unsigned long dialled;	/* total number of dialled calls */
+		unsigned long alerted;	/* we alerted the other end */
+		unsigned long connected;/* how many calls were accepted */
+	} call;
+};
+
 enum gsm_auth_policy {
 	GSM_AUTH_POLICY_CLOSED, /* only subscribers authorized in DB */
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
@@ -493,6 +536,8 @@ struct gsm_network {
 		/* maximum distacne before we try a handover */
 		unsigned int max_distance;	/* TA values */
 	} handover;
+
+	struct gsmnet_stats stats;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);

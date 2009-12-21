@@ -488,6 +488,8 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	sig_data.bts	= msg->lchan->ts->trx->bts;
 	sig_data.lchan	= msg->lchan;
 
+	bts->network->stats.paging.completed++;
+
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */

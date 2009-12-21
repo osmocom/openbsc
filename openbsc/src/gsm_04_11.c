@@ -517,6 +517,8 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
+	bts->network->stats.sms.submitted++;
+
 	gsms = sms_alloc();
 	if (!gsms)
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
@@ -605,6 +607,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	gsms->receiver = subscr_get_by_extension(bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
+		bts->network->stats.sms.no_receiver++;
 		goto out;
 	}
 
@@ -791,7 +794,9 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		 * to store this in our database and wati for a SMMA message */
 		/* FIXME */
 		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
-	}
+		trans->lchan->ts->trx->bts->network->stats.sms.rp_err_mem++;
+	} else
+		trans->lchan->ts->trx->bts->network->stats.sms.rp_err_other++;
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -1063,6 +1068,8 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 #endif
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
+
+	lchan->ts->trx->bts->network->stats.sms.delivered++;
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */

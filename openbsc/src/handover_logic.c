@@ -97,9 +97,12 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
+	bts->network->stats.handover.attempted++;
+
 	new_lchan = lchan_alloc(bts, old_lchan->type);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
+		bts->network->stats.handover.no_channel++;
 		return -ENOSPC;
 	}
 
@@ -143,6 +146,7 @@ static void ho_T3103_cb(void *_ho)
 	struct bsc_handover *ho = _ho;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
+	ho->new_lchan->ts->trx->bts->network->stats.handover.timeout++;
 
 	lchan_free(ho->new_lchan);
 	llist_del(&ho->list);
@@ -211,6 +215,8 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 		return -ENODEV;
 	}
 
+	new_lchan->ts->trx->bts->network->stats.handover.completed++;
+
 	bsc_del_timer(&ho->T3103);
 
 	/* update lchan pointer of transaction */
@@ -237,6 +243,8 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
 		return -ENODEV;
 	}
+
+	old_lchan->ts->trx->bts->network->stats.handover.failed++;
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);

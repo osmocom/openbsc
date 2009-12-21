@@ -886,6 +886,7 @@ static int encode_more(struct msgb *msg)
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	
@@ -897,6 +898,8 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->data[0] = cause;
 
 	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
+
+	bts->network->stats.loc_upd_resp.reject++;
 	
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -924,6 +927,8 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	gsm48_generate_mid_from_tmsi(mid, tmsi);
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
+
+	bts->network->stats.loc_upd_resp.accept++;
 
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -1042,6 +1047,18 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		lupd_name(lu->type));
 
 	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
+
+	switch (lu->type) {
+	case GSM48_LUPD_NORMAL:
+		bts->network->stats.loc_upd_type.normal++;
+		break;
+	case GSM48_LUPD_IMSI_ATT:
+		bts->network->stats.loc_upd_type.attach++;
+		break;
+	case GSM48_LUPD_PERIODIC:
+		bts->network->stats.loc_upd_type.periodic++;
+		break;
+	}
 
 	/*
 	 * Pseudo Spoof detection: Just drop a second/concurrent
@@ -1368,6 +1385,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
+
+	bts->network->stats.loc_upd_type.detach++;
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
