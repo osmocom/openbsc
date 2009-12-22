@@ -33,6 +33,7 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/gsm_utils.h>
+#include <openbsc/chan_alloc.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 
@@ -74,8 +75,30 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 		nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
+static void dump_pchan_load_vty(struct vty *vty, char *prefix,
+				const struct pchan_load *pl)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(pl->pchan); i++) {
+		const struct load_counter *lc = &pl->pchan[i];
+		unsigned int percent;
+
+		if (lc->total == 0)
+			continue;
+
+		percent = (lc->used * 100) / lc->total;
+
+		vty_out(vty, "%s%20s: %3u%% (%u/%u)%s", prefix,
+			gsm_pchan_name(i), percent, lc->used, lc->total,
+			VTY_NEWLINE);
+	}
+}
+
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
+	struct pchan_load pl;
+
 	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
 		"and has %u BTS%s", net->country_code, net->network_code,
 		net->num_bts, VTY_NEWLINE);
@@ -97,6 +120,9 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  Handover: %s%s", net->handover.active ? "On" : "Off",
 		VTY_NEWLINE);
+	network_chan_load(&pl, net);
+	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
+	dump_pchan_load_vty(vty, "    ", &pl);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
@@ -128,6 +154,8 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
+	struct pchan_load pl;
+
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
@@ -157,6 +185,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		e1isl_dump_vty(vty, bts->oml_link);
 	}
 	/* FIXME: oml_link, chan_desc */
+	memset(&pl, 0, sizeof(pl));
+	bts_chan_load(&pl, bts);
+	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
+	dump_pchan_load_vty(vty, "    ", &pl);
 }
 
 DEFUN(show_bts, show_bts_cmd, "show bts [number]",

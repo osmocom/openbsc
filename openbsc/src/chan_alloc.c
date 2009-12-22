@@ -121,6 +121,7 @@ static const u_int8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_TCH_F] = 1,
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
+	/* FIXME: what about dynamic TCH_F_TCH_H ? */
 };
 
 static struct gsm_lchan *
@@ -328,4 +329,52 @@ struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr)
 	}
 
 	return NULL;
+}
+
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		int i;
+
+		/* skip administratively deactivated tranxsceivers */
+		if (trx->nm_state.availability != NM_AVSTATE_OK ||
+		    trx->bb_transc.nm_state.availability != NM_AVSTATE_OK)
+			continue;
+
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			struct load_counter *pl = &cl->pchan[ts->pchan];
+			int j;
+
+			/* skip administratively deactivated timeslots */
+			if (ts->nm_state.availability != NM_AVSTATE_OK)
+				continue;
+
+			for (j = 0; j < subslots_per_pchan[ts->pchan]; j++) {
+				struct gsm_lchan *lchan = &ts->lchan[j];
+
+				pl->total++;
+
+				switch (lchan->state) {
+				case LCHAN_S_NONE:
+					break;
+				default:
+					pl->used++;
+					break;
+				}
+			}
+		}
+	}
+}
+
+void network_chan_load(struct pchan_load *pl, struct gsm_network *net)
+{
+	struct gsm_bts *bts;
+
+	memset(pl, 0, sizeof(*pl));
+
+	llist_for_each_entry(bts, &net->bts_list, list)
+		bts_chan_load(pl, bts);
 }

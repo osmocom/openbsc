@@ -49,4 +49,16 @@ void lchan_free(struct gsm_lchan *lchan);
 /* Consider releasing the channel */
 int lchan_auto_release(struct gsm_lchan *lchan);
 
+struct load_counter {
+	unsigned int total;
+	unsigned int used;
+};
+
+struct pchan_load {
+	struct load_counter pchan[GSM_PCHAN_UNKNOWN];
+};
+
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts);
+void network_chan_load(struct pchan_load *pl, struct gsm_network *net);
+
 #endif /* _CHAN_ALLOC_H */
