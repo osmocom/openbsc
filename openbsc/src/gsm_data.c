@@ -175,6 +175,10 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
 	bts->si_common.cell_alloc.data_len =
 				sizeof(bts->si_common.data.cell_alloc);
+	bts->si_common.rach_control.re = 1; /* no re-establishment */
+	bts->si_common.rach_control.tx_integer = 9;  /* 12 slots spread - 217/115 slots delay */
+	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
+	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;

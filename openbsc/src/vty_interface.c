@@ -168,6 +168,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	vty_out(vty, "RACH TX-Integer: %u%s", bts->si_common.rach_control.tx_integer,
+		VTY_NEWLINE);
+	vty_out(vty, "RACH Max transmissions: %u%s",
+		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
+		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
@@ -289,6 +294,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
+		VTY_NEWLINE);
+	vty_out(vty, "  rach tx integer %u%s",
+		bts->si_common.rach_control.tx_integer, VTY_NEWLINE);
+	vty_out(vty, "  rach max transmission %u%s",
+		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
 		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
@@ -1263,6 +1273,26 @@ DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_rach_tx_integer,
+      cfg_bts_rach_tx_integer_cmd,
+      "rach tx integer <0-15>",
+      "Set the raw tx integer value in RACH Control parameters IE")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->si_common.rach_control.tx_integer = atoi(argv[0]) & 0xf;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rach_max_trans,
+      cfg_bts_rach_max_trans_cmd,
+      "rach max transmission (1|2|4|7)",
+      "Set the maximum number of RACH burst transmissions")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->si_common.rach_control.max_trans = rach_max_trans_val2raw(atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
       "cell barred (0|1)",
       "Should this cell be barred from access?")
@@ -1550,6 +1580,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_tx_integer_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_max_trans_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);

@@ -823,11 +823,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	/* T3212 is set from vty/config */
 
 	/* some defaults for our system information */
-	bts->si_common.rach_control.re = 1; /* no re-establishment */
-	bts->si_common.rach_control.tx_integer = 5; /* 8 slots spread */
-	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
-	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
-
 	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */
 	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
