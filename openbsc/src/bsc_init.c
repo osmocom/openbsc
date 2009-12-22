@@ -687,7 +687,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 #ifdef GPRS
-		i = 13
+		i = 13;
 		rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 		if (rc < 0)
 			goto err_out;
