@@ -34,6 +34,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 
@@ -526,8 +527,44 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
+static void meas_rep_dump_uni_vty(struct vty *vty,
+				  struct gsm_meas_rep_unidir *mru,
+				  const char *prefix,
+				  const char *dir)
+{
+	vty_out(vty, "%s  RXL-FULL-%s: %4d dBm, RXL-SUB-%s: %4d dBm ",
+		prefix, dir, rxlev2dbm(mru->full.rx_lev),
+			dir, rxlev2dbm(mru->sub.rx_lev));
+	vty_out(vty, "RXQ-FULL-%s: %d, RXQ-SUB-%s: %d%s",
+		dir, mru->full.rx_qual, dir, mru->sub.rx_qual,
+		VTY_NEWLINE);
+}
+
+static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
+			      const char *prefix)
+{
+	vty_out(vty, "%sMeasurement Report:%s", prefix, VTY_NEWLINE);
+	vty_out(vty, "%s  Flags: %s%s%s%s%s", prefix,
+			mr->flags & MEAS_REP_F_UL_DTX ? "DTXu " : "",
+			mr->flags & MEAS_REP_F_DL_DTX ? "DTXd " : "",
+			mr->flags & MEAS_REP_F_FPC ? "FPC " : "",
+			mr->flags & MEAS_REP_F_DL_VALID ? " " : "DLinval ",
+			VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_MS_TO)
+		vty_out(vty, "%s  MS Timing Offset: %u%s", prefix,
+			mr->ms_timing_offset, VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_MS_L1)
+		vty_out(vty, "%s  L1 MS Power: %u dBm, Timing Advance: %u%s",
+			prefix, mr->ms_l1.pwr, mr->ms_l1.ta, VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_DL_VALID)
+		meas_rep_dump_uni_vty(vty, &mr->dl, prefix, "dl");
+	meas_rep_dump_uni_vty(vty, &mr->ul, prefix, "ul");
+}
+
 static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
+	int idx;
+
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
 		lchan->ts->trx->bts->nr, gsm_lchan_name(lchan->type),
@@ -551,6 +588,11 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
 			VTY_NEWLINE);
 	}
+
+	/* we want to report the last measurement report */
+	idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+			       lchan->meas_rep_idx, 1);
+	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
 #if 0
