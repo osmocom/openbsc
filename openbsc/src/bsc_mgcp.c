@@ -1084,8 +1084,15 @@ int main(int argc, char** argv)
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, i, rc;
+	struct debug_target *stderr_target;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
+
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
+
 	handle_options(argc, argv);
 
 	telnet_init(&dummy_network, 4243);

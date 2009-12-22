@@ -120,6 +120,12 @@ int telnet_close_client(struct bsc_fd *fd) {
 
 	close(fd->fd);
 	bsc_unregister_fd(fd);
+
+	if (conn->dbg) {
+		debug_del_target(conn->dbg);
+		talloc_free(conn->dbg);
+	}
+
 	llist_del(&conn->entry);
 	talloc_free(conn);
 	return 0;

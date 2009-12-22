@@ -435,6 +435,8 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
+
+		debug_set_context(BSC_CTX_BTS, link->trx->bts);
 		switch (link->type) {
 		case E1INP_SIGN_OML:
 			msg->trx = link->trx;

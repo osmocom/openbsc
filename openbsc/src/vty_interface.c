@@ -37,6 +37,7 @@
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
+#include <openbsc/telnet_interface.h>
 
 static struct gsm_network *gsmnet;
 
@@ -845,6 +846,170 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
+static void _vty_output(struct debug_target *tgt, const char *line)
+{
+	struct vty *vty = tgt->tgt_vty.vty;
+	vty_out(vty, "%s", line);
+	/* This is an ugly hack, but there is no easy way... */
+	if (strchr(line, '\n'))
+		vty_out(vty, "\r");
+}
+
+struct debug_target *debug_target_create_vty(struct vty *vty)
+{
+	struct debug_target *target;
+
+	target = debug_target_create();
+	if (!target)
+		return NULL;
+
+	target->tgt_vty.vty = vty;
+	target->output = _vty_output;
+	return target;
+}
+
+DEFUN(enable_logging,
+      enable_logging_cmd,
+      "logging enable",
+      "Enables logging to this vty\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (conn->dbg) {
+		vty_out(vty, "Logging already enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn->dbg = debug_target_create_vty(vty);
+	if (!conn->dbg)
+		return CMD_WARNING;
+
+	debug_add_target(conn->dbg);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_fltr_imsi,
+      logging_fltr_imsi_cmd,
+      "logging filter imsi IMSI",
+      "Print all messages related to a IMSI\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_imsi_filter(conn->dbg, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_fltr_all,
+      logging_fltr_all_cmd,
+      "logging filter all <0-1>",
+      "Print all messages to the console\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_all_filter(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_use_clr,
+      logging_use_clr_cmd,
+      "logging use color <0-1>",
+      "Use color for printing messages\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_use_color(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_prnt_timestamp,
+      logging_prnt_timestamp_cmd,
+      "logging print timestamp <0-1>",
+      "Print the timestamp of each message\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_print_timestamp(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_set_category_mask,
+      logging_set_category_mask_cmd,
+      "logging set debug mask MASK",
+      "Decide which categories to output.\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_parse_category_mask(conn->dbg, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_set_log_level,
+      logging_set_log_level_cmd,
+      "logging set log level <0-8>",
+      "Set the global log level. The value 0 implies no filtering.\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_log_level(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(diable_logging,
+      disable_logging_cmd,
+      "logging disable",
+      "Disables logging to this vty\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_del_target(conn->dbg);
+	talloc_free(conn->dbg);
+	conn->dbg = NULL;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_stats,
       show_stats_cmd,
       "show statistics",
@@ -1580,6 +1745,14 @@ int bsc_vty_init(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &show_paging_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
+
+	install_element(VIEW_NODE, &enable_logging_cmd);
+	install_element(VIEW_NODE, &disable_logging_cmd);
+	install_element(VIEW_NODE, &logging_fltr_imsi_cmd);
+	install_element(VIEW_NODE, &logging_fltr_all_cmd);
+	install_element(VIEW_NODE, &logging_use_clr_cmd);
+	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
+	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);

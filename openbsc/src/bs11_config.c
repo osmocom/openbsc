@@ -71,6 +71,8 @@ static const char *trx1_password = "1111111111";
 
 static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
+static struct debug_target *stderr_target;
+
 /* dummy function to keep gsm_data.c happy */
 struct counter *counter_alloc(const char *name)
 {
@@ -759,7 +761,7 @@ static void handle_options(int argc, char **argv)
 			serial_port = optarg;
 			break;
 		case 'b':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 's':
 			fname_software = optarg;
@@ -812,6 +814,10 @@ int main(int argc, char **argv)
 	struct gsm_network *gsmnet;
 	int rc;
 
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
 	handle_options(argc, argv);
 
 	gsmnet = gsm_network_init(1, 1, NULL);

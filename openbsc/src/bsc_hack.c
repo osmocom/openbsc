@@ -38,6 +38,7 @@
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
+static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
@@ -105,10 +106,10 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_use_color(0);
+			debug_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -120,7 +121,7 @@ static void handle_options(int argc, char** argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			debug_timestamp(1);
+			debug_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
@@ -158,11 +159,17 @@ int main(int argc, char **argv)
 {
 	int rc;
 
+	debug_init();
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+
+	/* enable filters */
+	debug_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -193,6 +200,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
+		debug_reset_context();
 		bsc_select_main(0);
 	}
 }
