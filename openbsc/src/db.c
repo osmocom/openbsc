@@ -121,8 +121,8 @@ static char *create_stmts[] = {
 	"CREATE TABLE IF NOT EXISTS Counters ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"timestamp TIMESTAMP NOT NULL, "
-		"value INTEGER NOT NULL "
-		"name TEXT NOT NULL, "
+		"value INTEGER NOT NULL, "
+		"name TEXT NOT NULL "
 		")",
 };
 
