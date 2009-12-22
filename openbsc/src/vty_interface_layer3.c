@@ -143,23 +143,20 @@ DEFUN(show_subscr_cache,
 
 DEFUN(sms_send_pend,
       sms_send_pend_cmd,
-      "sms send pending MIN_ID",
-      "Send all pending SMS starting from MIN_ID")
+      "sms send pending",
+      "Send all pending SMS")
 {
 	struct gsm_sms *sms;
-	int id = atoi(argv[0]);
+	int id = 0;
 
 	while (1) {
-		sms = db_sms_get_unsent(gsmnet, id++);
+		sms = db_sms_get_unsent_by_subscr(gsmnet, id);
 		if (!sms)
-			return CMD_WARNING;
-
-		if (!sms->receiver) {
-			sms_free(sms);
-			continue;
-		}
+			break;
 
 		gsm411_send_sms_subscr(sms->receiver, sms);
+
+		id = sms->receiver->id + 1;
 	}
 
 	return CMD_SUCCESS;
