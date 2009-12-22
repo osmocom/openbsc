@@ -467,7 +467,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 			rc = rsl_ipacc_mdcx(lchan, ntohl(local_addr.s_addr),
 					    lchan->msc_data->rtp_port,
-					    lchan->abis_ip.conn_id,
 					    rtp_payload);
 			if (rc < 0) {
 				DEBUGP(DMSC, "Failed to send connect: %d\n", rc);

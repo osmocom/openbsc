@@ -32,6 +32,7 @@
 
 #include <openbsc/db.h>
 #include <openbsc/msgb.h>
+#include <openbsc/bitvec.h>
 #include <openbsc/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -55,8 +56,6 @@
 #define GSM_MAX_USERUSER       128
 
 void *tall_locop_ctx;
-
-extern int ipacc_rtp_direct;
 
 static const struct tlv_definition rsl_att_tlvdef = {
 	.def = {
@@ -166,63 +165,6 @@ static const char *rr_cause_name(u_int8_t cause)
 	return strbuf;
 }
 
-static void parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
-			   int len)
-{
-	memset(rep, 0, sizeof(*rep));
-
-	if (data[0] & 0x80)
-		rep->flags |= MEAS_REP_F_BA1;
-	if (data[0] & 0x40)
-		rep->flags |= MEAS_REP_F_DTX;
-	if ((data[1] & 0x40) == 0x00)
-		rep->flags |= MEAS_REP_F_VALID;
-
-	rep->rxlev_full = data[0] & 0x3f;
-	rep->rxlev_sub = data[1] & 0x3f;
-	rep->rxqual_full = (data[3] >> 4) & 0x7;
-	rep->rxqual_sub = (data[3] >> 1) & 0x7;
-	rep->num_cell = data[4] >> 6 | ((data[3] & 0x01) << 2);
-	if (rep->num_cell < 1)
-		return;
-
-	/* an encoding nightmare in perfection */
-
-	rep->cell[0].rxlev = data[4] & 0x3f;
-	rep->cell[0].bcch_freq = data[5] >> 2;
-	rep->cell[0].bsic = ((data[5] & 0x03) << 3) | (data[6] >> 5);
-	if (rep->num_cell < 2)
-		return;
-
-	rep->cell[1].rxlev = ((data[6] & 0x1f) << 1) | (data[7] >> 7);
-	rep->cell[1].bcch_freq = (data[7] >> 2) & 0x1f;
-	rep->cell[1].bsic = ((data[7] & 0x03) << 4) | (data[8] >> 4);
-	if (rep->num_cell < 3)
-		return;
-
-	rep->cell[2].rxlev = ((data[8] & 0x0f) << 2) | (data[9] >> 6);
-	rep->cell[2].bcch_freq = (data[9] >> 1) & 0x1f;
-	rep->cell[2].bsic = ((data[9] & 0x01) << 6) | (data[10] >> 3);
-	if (rep->num_cell < 4)
-		return;
-
-	rep->cell[3].rxlev = ((data[10] & 0x07) << 3) | (data[11] >> 5);
-	rep->cell[3].bcch_freq = data[11] & 0x1f;
-	rep->cell[3].bsic = data[12] >> 2;
-	if (rep->num_cell < 5)
-		return;
-
-	rep->cell[4].rxlev = ((data[12] & 0x03) << 4) | (data[13] >> 4);
-	rep->cell[4].bcch_freq = ((data[13] & 0xf) << 1) | (data[14] >> 7);
-	rep->cell[4].bsic = (data[14] >> 1) & 0x3f;
-	if (rep->num_cell < 6)
-		return;
-
-	rep->cell[5].rxlev = ((data[14] & 0x01) << 5) | (data[15] >> 3);
-	rep->cell[5].bcch_freq = ((data[15] & 0x07) << 2) | (data[16] >> 6);
-	rep->cell[5].bsic = data[16] & 0x3f;
-}
-
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
@@ -233,12 +175,6 @@ struct gsm_lai {
 	u_int16_t mnc;
 	u_int16_t lac;
 };
-
-static int reject_cause = 0;
-void gsm0408_set_reject_cause(int cause)
-{
-	reject_cause = cause;
-}
 
 static u_int32_t new_callref = 0x80000001;
 
@@ -297,6 +233,11 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 
 		db_subscriber_alloc_tmsi(lchan->subscr);
 		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
+		if (lchan->ts->trx->bts->network->send_mm_info) {
+			/* send MM INFO with network name */
+			rc = gsm48_tx_mm_info(msg->lchan);
+		}
+
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might
 		 * trigger further action like SMS delivery */
@@ -433,18 +374,29 @@ static int decode_bearer_cap(struct gsm_mncc_bearer_cap *bcap,
 	bcap->coding = (lv[1] & 0x10) >> 4;
 	bcap->radio = (lv[1] & 0x60) >> 5;
 
-	i = 1;
-	s = 0;
-	while(!(lv[i] & 0x80)) {
-		i++; /* octet 3a etc */
-		if (in_len < i)
-			return 0;
-		bcap->speech_ver[s++] = lv[i] & 0x0f;
-		bcap->speech_ver[s] = -1; /* end of list */
-		if (i == 2) /* octet 3a */
-			bcap->speech_ctm = (lv[i] & 0x20) >> 5;
-		if (s == 7) /* maximum speech versions + end of list */
-			return 0;
+	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
+		i = 1;
+		s = 0;
+		while(!(lv[i] & 0x80)) {
+			i++; /* octet 3a etc */
+			if (in_len < i)
+				return 0;
+			bcap->speech_ver[s++] = lv[i] & 0x0f;
+			bcap->speech_ver[s] = -1; /* end of list */
+			if (i == 2) /* octet 3a */
+				bcap->speech_ctm = (lv[i] & 0x20) >> 5;
+			if (s == 7) /* maximum speech versions + end of list */
+				return 0;
+		}
+	} else {
+		i = 1;
+		while (!(lv[i] & 0x80)) {
+			i++; /* octet 3a etc */
+			if (in_len < i)
+				return 0;
+			/* ignore them */
+		}
+		/* FIXME: implement OCTET 4+ parsing */
 	}
 
 	return 0;
@@ -455,21 +407,24 @@ static int encode_bearer_cap(struct msgb *msg, int lv_only,
 			     const struct gsm_mncc_bearer_cap *bcap)
 {
 	u_int8_t lv[32 + 1];
-	int i, s;
+	int i = 1, s;
 
 	lv[1] = bcap->transfer;
 	lv[1] |= bcap->mode << 3;
 	lv[1] |= bcap->coding << 4;
 	lv[1] |= bcap->radio << 5;
 
-	i = 1;
-	for (s = 0; bcap->speech_ver[s] >= 0; s++) {
-		i++; /* octet 3a etc */
-		lv[i] = bcap->speech_ver[s];
-		if (i == 2) /* octet 3a */
-			lv[i] |= bcap->speech_ctm << 5;
+	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
+		for (s = 0; bcap->speech_ver[s] >= 0; s++) {
+			i++; /* octet 3a etc */
+			lv[i] = bcap->speech_ver[s];
+			if (i == 2) /* octet 3a */
+				lv[i] |= bcap->speech_ctm << 5;
+		}
+		lv[i] |= 0x80; /* last IE of octet 3 etc */
+	} else {
+		/* FIXME: implement OCTET 4+ encoding */
 	}
-	lv[i] |= 0x80; /* last IE of octet 3 etc */
 
 	lv[0] = i;
 	if (lv_only)
@@ -861,6 +816,7 @@ static int encode_more(struct msgb *msg)
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	
@@ -872,6 +828,8 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->data[0] = cause;
 
 	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
+
+	bts->network->stats.loc_upd_resp.reject++;
 	
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -884,7 +842,6 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	u_int8_t *mid;
-	int ret;
 	
 	msg->lchan = lchan;
 
@@ -901,12 +858,9 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	ret = gsm48_sendmsg(msg, NULL);
+	bts->network->stats.loc_upd_resp.accept++;
 
-	/* send MM INFO with network name */
-	ret = gsm48_tx_mm_info(lchan);
-
-	return ret;
+	return gsm48_sendmsg(msg, NULL);
 }
 
 /* Transmit Chapter 9.2.10 Identity Request */
@@ -940,6 +894,8 @@ static int mm_rx_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI, create if not found */
@@ -971,8 +927,9 @@ static int mm_rx_id_resp(struct msgb *msg)
 static void loc_upd_rej_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
+	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	gsm0408_loc_upd_rej(lchan, reject_cause);
+	gsm0408_loc_upd_rej(lchan, bts->network->reject_cause);
 	release_loc_updating_req(lchan);
 }
 
@@ -1017,6 +974,20 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
+
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
+
+	switch (lu->type) {
+	case GSM48_LUPD_NORMAL:
+		bts->network->stats.loc_upd_type.normal++;
+		break;
+	case GSM48_LUPD_IMSI_ATT:
+		bts->network->stats.loc_upd_type.attach++;
+		break;
+	case GSM48_LUPD_PERIODIC:
+		bts->network->stats.loc_upd_type.periodic++;
+		break;
+	}
 
 	/*
 	 * Pseudo Spoof detection: Just drop a second/concurrent
@@ -1301,6 +1272,8 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
+	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
+
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
 
@@ -1314,7 +1287,9 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 	if (!msg->lchan->subscr)
 		msg->lchan->subscr = subscr;
-	else if (msg->lchan->subscr != subscr) {
+	else if (msg->lchan->subscr == subscr)
+		subscr_put(subscr); /* lchan already has a ref, don't need another one */
+	else {
 		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
 		subscr_put(subscr);
 	}
@@ -1339,6 +1314,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
+
+	bts->network->stats.loc_upd_type.detach++;
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
@@ -1371,6 +1348,10 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	} else
 		DEBUGP(DMM, "Unknown Subscriber ?!?\n");
 
+	/* FIXME: iterate over all transactions and release them,
+	 * imagine an IMSI DETACH happening during an active call! */
+
+	/* subscriber is detached: should we release lchan? */
 	return 0;
 }
 
@@ -1527,26 +1508,13 @@ static int gsm48_rx_rr_status(struct msgb *msg)
 
 static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
-	static struct gsm_meas_rep meas_rep;
+	struct gsm_meas_rep *meas_rep = lchan_next_meas_rep(msg->lchan);
 
-	DEBUGP(DMEAS, "MEASUREMENT REPORT ");
-	parse_meas_rep(&meas_rep, gh->data, payload_len);
-	if (meas_rep.flags & MEAS_REP_F_DTX)
-		DEBUGPC(DMEAS, "DTX ");
-	if (meas_rep.flags & MEAS_REP_F_BA1)
-		DEBUGPC(DMEAS, "BA1 ");
-	if (!(meas_rep.flags & MEAS_REP_F_VALID))
-		DEBUGPC(DMEAS, "NOT VALID ");
-	else
-		DEBUGPC(DMEAS, "FULL(lev=%u, qual=%u) SUB(lev=%u, qual=%u) ",
-		meas_rep.rxlev_full, meas_rep.rxqual_full, meas_rep.rxlev_sub,
-		meas_rep.rxqual_sub);
-
-	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", meas_rep.num_cell);
-
-	/* FIXME: put the results somwhere */
+	/* This shouldn't actually end up here, as RSL treats
+	 * L3 Info of 08.58 MEASUREMENT REPORT different by calling
+	 * directly into gsm48_parse_meas_rep */
+	DEBUGP(DMEAS, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
+	gsm48_parse_meas_rep(meas_rep, msg);
 
 	return 0;
 }
@@ -1568,6 +1536,33 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	return db_apdu_blob_store(msg->lchan->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
+/* Chapter 9.1.16 Handover complete */
+static int gsm48_rx_rr_ho_compl(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DRR, "HANDOVER COMPLETE cause = %s\n",
+		rr_cause_name(gh->data[0]));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, msg->lchan);
+	/* FIXME: release old channel */
+
+	return 0;
+}
+
+/* Chapter 9.1.17 Handover Failure */
+static int gsm48_rx_rr_ho_fail(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	DEBUGP(DRR, "HANDOVER FAILED cause = %s\n",
+		rr_cause_name(gh->data[0]));
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, msg->lchan);
+	/* FIXME: release allocated new channel */
+
+	return 0;
+}
 
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
@@ -1600,6 +1595,12 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	case GSM48_MT_RR_CIPH_M_COMPL:
 		DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
 		/* FIXME: check for MI (if any) */
+		break;
+	case GSM48_MT_RR_HANDO_COMPL:
+		rc = gsm48_rx_rr_ho_compl(msg);
+		break;
+	case GSM48_MT_RR_HANDO_FAIL:
+		rc = gsm48_rx_rr_ho_fail(msg);
 		break;
 	default:
 		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
@@ -1811,12 +1812,16 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
+static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable);
+
 /* some other part of the code sends us a signal */
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
 {
 	struct gsm_lchan *lchan = signal_data;
 	int rc;
+	struct gsm_network *net;
+	struct gsm_trans *trans;
 
 	if (subsys != SS_ABISIP)
 		return 0;
@@ -1827,51 +1832,19 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_ABISIP_CRCX_ACK:
-		/* the BTS has successfully bound a TCH to a local ip/port,
-		 * which means we can connect our UDP socket to it */
-		if (lchan->abis_ip.rtp_socket) {
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
-		}
-
-		lchan->abis_ip.rtp_socket = rtp_socket_create();
-		if (!lchan->abis_ip.rtp_socket)
-			goto out_err;
-
-		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
-				   lchan->abis_ip.bound_ip,
-				   lchan->abis_ip.bound_port);
-		if (rc < 0)
-			goto out_err;
-		break;
-	case S_ABISIP_DLCX_IND:
-		/* the BTS tells us a RTP stream has been disconnected */
-		if (lchan->abis_ip.rtp_socket) {
-			rtp_socket_free(lchan->abis_ip.rtp_socket);
-			lchan->abis_ip.rtp_socket = NULL;
+		/* check if any transactions on this lchan still have
+		 * a tch_recv_mncc request pending */
+		net = lchan->ts->trx->bts->network;
+		llist_for_each_entry(trans, &net->trans_list, entry) {
+			if (trans->lchan == lchan && trans->tch_recv) {
+				DEBUGP(DCC, "pending tch_recv_mncc request\n");
+				tch_recv_mncc(net, trans->callref, 1);
+			}
 		}
 		break;
 	}
 
 	return 0;
-out_err:
-	/* FIXME: do something */
-	return 0;
-}
-
-/* bind rtp proxy to local IP/port and tell BTS to connect to it */
-static int ipacc_connect_proxy_bind(struct gsm_lchan *lchan)
-{
-	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
-	int rc;
-
-	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
-				ntohs(rs->rtp.sin_local.sin_port),
-				lchan->abis_ip.conn_id, 
-			/* FIXME: use RTP payload of bound socket, not BTS*/
-				lchan->abis_ip.rtp_payload2);
-
-	return rc;
 }
 
 /* map two ipaccess RTP streams onto each other */
@@ -1889,15 +1862,17 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		DEBUGP(DCC, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
 	}
-	
+
+	// todo: map between different bts types
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		if (!ipacc_rtp_direct) {
 			/* connect the TCH's to our RTP proxy */
-			rc = ipacc_connect_proxy_bind(lchan);
+			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
 			if (rc < 0)
 				return rc;
-			rc = ipacc_connect_proxy_bind(remote_lchan);
+			rc = rsl_ipacc_mdcx_to_rtpsock(remote_lchan);
+#warning do we need a check of rc here?
 
 			/* connect them with each other */
 			rtp_socket_proxy(lchan->abis_ip.rtp_socket,
@@ -1906,13 +1881,11 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 			/* directly connect TCH RTP streams to each other */
 			rc = rsl_ipacc_mdcx(lchan, remote_lchan->abis_ip.bound_ip,
 						remote_lchan->abis_ip.bound_port,
-						lchan->abis_ip.conn_id,
 						remote_lchan->abis_ip.rtp_payload2);
 			if (rc < 0)
 				return rc;
 			rc = rsl_ipacc_mdcx(remote_lchan, lchan->abis_ip.bound_ip,
 						lchan->abis_ip.bound_port,
-						remote_lchan->abis_ip.conn_id,
 						lchan->abis_ip.rtp_payload2);
 		}
 		break;
@@ -1921,8 +1894,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		break;
 	default:
 		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
-		rc = -EINVAL;
-		break;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -1944,44 +1916,60 @@ static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 	return tch_map(trans1->lchan, trans2->lchan);
 }
 
-/* enable receive of channels to upqueue */
-static int tch_recv(struct gsm_network *net, struct gsm_mncc *data, int enable)
+/* enable receive of channels to MNCC upqueue */
+static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 {
 	struct gsm_trans *trans;
+	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
+	int rc;
 
 	/* Find callref */
-	trans = trans_find_by_callref(net, data->callref);
+	trans = trans_find_by_callref(net, callref);
 	if (!trans)
 		return -EIO;
 	if (!trans->lchan)
 		return 0;
+	lchan = trans->lchan;
+	bts = lchan->ts->trx->bts;
 
-	// todo IPACCESS
-	if (enable)
-		return trau_recv_lchan(trans->lchan, data->callref);
-	return trau_mux_unmap(NULL, data->callref);
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+		if (ipacc_rtp_direct) {
+			DEBUGP(DCC, "Error: RTP proxy is disabled\n");
+			return -EINVAL;
+		}
+		/* in case, we don't have a RTP socket yet, we note this
+		 * in the transaction and try later */
+		if (!lchan->abis_ip.rtp_socket) {
+			trans->tch_recv = enable;
+			DEBUGP(DCC, "queue tch_recv_mncc request (%d)\n", enable);
+			return 0;
+		}
+		if (enable) {
+			/* connect the TCH's to our RTP proxy */
+			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
+			if (rc < 0)
+				return rc;
+			/* assign socket to application interface */
+			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
+				net, callref);
+		} else
+			rtp_socket_upstream(lchan->abis_ip.rtp_socket,
+				net, 0);
+		break;
+	case GSM_BTS_TYPE_BS11:
+		if (enable)
+			return trau_recv_lchan(lchan, callref);
+		return trau_mux_unmap(NULL, callref);
+		break;
+	default:
+		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		return -EINVAL;
+	}
+
+	return 0;
 }
-
-/* send a frame to channel */
-static int tch_frame(struct gsm_network *net, struct gsm_trau_frame *frame)
-{
-	struct gsm_trans *trans;
-
-	/* Find callref */
-	trans = trans_find_by_callref(net, frame->callref);
-	if (!trans)
-		return -EIO;
-	if (!trans->lchan)
-		return 0;
-	if (trans->lchan->type != GSM_LCHAN_TCH_F &&
-	    trans->lchan->type != GSM_LCHAN_TCH_H)
-		return 0;
-
-	// todo IPACCESS
-	return trau_send_lchan(trans->lchan, 
-				(struct decoded_trau_frame *)frame->data);
-}
-
 
 static int gsm48_cc_rx_status_enq(struct gsm_trans *trans, struct msgb *msg)
 {
@@ -2703,6 +2691,8 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 		case GSM_CSTATE_RELEASE_REQ:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REL_CNF, &rel);
+			/* FIXME: in case of multiple calls, we can't simply
+			 * hang up here ! */
 			break;
 		default:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
@@ -3209,11 +3199,30 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	case MNCC_BRIDGE:
 		return tch_bridge(net, arg);
 	case MNCC_FRAME_DROP:
-		return tch_recv(net, arg, 0);
+		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:
-		return tch_recv(net, arg, 1);
-	case GSM_TRAU_FRAME:
-		return tch_frame(net, arg);
+		return tch_recv_mncc(net, data->callref, 1);
+	case GSM_TCHF_FRAME:
+		/* Find callref */
+		trans = trans_find_by_callref(net, data->callref);
+		if (!trans)
+			return -EIO;
+		if (!trans->lchan)
+			return 0;
+		if (trans->lchan->type != GSM_LCHAN_TCH_F)
+			return 0;
+		bts = trans->lchan->ts->trx->bts;
+		switch (bts->type) {
+		case GSM_BTS_TYPE_NANOBTS:
+			if (!trans->lchan->abis_ip.rtp_socket)
+				return 0;
+			return rtp_send_frame(trans->lchan->abis_ip.rtp_socket, arg);
+		case GSM_BTS_TYPE_BS11:
+			return trau_send_frame(trans->lchan, arg);
+		default:
+			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		}
+		return -EINVAL;
 	}
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));

@@ -236,6 +236,8 @@ int vty_out(struct vty *vty, const char *format, ...)
 			talloc_free(p);
 	}
 
+	vty_event(VTY_WRITE, vty->fd, vty);
+
 	return len;
 }
 

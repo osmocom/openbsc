@@ -34,6 +34,11 @@ enum rtp_rx_action {
 	RTP_RECV_UPSTREAM,
 };
 
+enum rtp_tx_action {
+	RTP_SEND_NONE,
+	RTP_SEND_DOWNSTREAM,
+};
+
 struct rtp_sub_socket {
 	struct sockaddr_in sin_local;
 	struct sockaddr_in sin_remote;
@@ -56,15 +61,25 @@ struct rtp_socket {
 			struct rtp_socket *other_sock;
 		} proxy;
 		struct {
-			void (*recv_cb)(struct msgb *msg);
+			struct gsm_network *net;
+			u_int32_t callref;
 		} receive;
 	};
+	enum rtp_tx_action tx_action;
+	struct {
+		u_int16_t sequence;
+		u_int32_t timestamp;
+		u_int32_t ssrc;
+		struct timeval last_tv;
+	} transmit;
 };
 
 struct rtp_socket *rtp_socket_create(void);
 int rtp_socket_bind(struct rtp_socket *rs, u_int32_t ip);
 int rtp_socket_connect(struct rtp_socket *rs, u_int32_t ip, u_int16_t port);
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other);
+int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, u_int32_t callref);
 int rtp_socket_free(struct rtp_socket *rs);
+int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame);
 
 #endif /* _RTP_PROXY_H */

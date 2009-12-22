@@ -497,7 +497,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 		      u_int8_t bs_power, u_int8_t ms_power,
 		      u_int8_t ta);
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta);
+			    u_int8_t ta, u_int8_t ho_ref);
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_encryption_cmd(struct msgb *msg);
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
@@ -537,8 +537,8 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_crcx(struct gsm_lchan *lchan);
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip,
-		   u_int16_t port, u_int16_t conn_id,
-		   u_int8_t rtp_payload2);
+		   u_int16_t port, u_int8_t rtp_payload2);
+int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan);
 int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
@@ -547,7 +547,7 @@ unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
 			      int n_pag_blocks);
 unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
 u_int64_t str_to_imsi(const char *imsi_str);
-u_int8_t lchan2chan_nr(struct gsm_lchan *lchan);
+u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan);
 int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id);
 
 /* to be provided by external code */

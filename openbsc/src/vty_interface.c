@@ -87,9 +87,17 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		net->name_short, VTY_NEWLINE);
 	vty_out(vty, "  Authentication policy: %s%s",
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
+	vty_out(vty, "  Location updating reject cause: %u%s",
+		net->reject_cause, VTY_NEWLINE);
 	vty_out(vty, "  Encryption: A5/%u%s", net->a5_encryption,
 		VTY_NEWLINE);
 	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
+		VTY_NEWLINE);
+	vty_out(vty, "  RRLP Mode: %s%s", rrlp_mode_name(net->rrlp.mode),
+		VTY_NEWLINE);
+	vty_out(vty, "  MM Info: %s%s", net->send_mm_info ? "On" : "Off",
+		VTY_NEWLINE);
+	vty_out(vty, "  Handover: %s%s", net->handover.active ? "On" : "Off",
 		VTY_NEWLINE);
 	vty_out(vty, "  Allowed Audio Codecs: ");
 	for (i = 0; i < net->audio_length; ++i)
@@ -133,7 +141,13 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->cell_identity,
 		bts->location_area_code, bts->bsic, bts->tsc, 
 		bts->num_trx, VTY_NEWLINE);
-	if (bts->cell_barred)
+	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
+	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
+		rxlev2dbm(bts->si_common.cell_sel_par.rxlev_acc_min),
+		VTY_NEWLINE);
+	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
+		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
@@ -241,13 +255,17 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
-	if (bts->chan_desc.t3212)
+	vty_out(vty, "  cell reselection hysteresis %u%s",
+		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	vty_out(vty, "  rxlev access min %u%s",
+		bts->si_common.cell_sel_par.rxlev_acc_min, VTY_NEWLINE);
+	if (bts->si_common.chan_desc.t3212)
 		vty_out(vty, "  periodic location update %u%s",
-			bts->chan_desc.t3212 * 10, VTY_NEWLINE);
+			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
-	if (bts->cell_barred)
+	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  ip.access unit_id %u %u%s",
@@ -280,8 +298,26 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
+	vty_out(vty, " location updating reject cause %u%s",
+		gsmnet->reject_cause, VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
+		VTY_NEWLINE);
+	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
+	vty_out(vty, " handover %u%s", gsmnet->handover.active, VTY_NEWLINE);
+	vty_out(vty, " handover window rxlev averaging %u%s",
+		gsmnet->handover.win_rxlev_avg, VTY_NEWLINE);
+	vty_out(vty, " handover window rxqual averaging %u%s",
+		gsmnet->handover.win_rxqual_avg, VTY_NEWLINE);
+	vty_out(vty, " handover window rxlev neighbor averaging %u%s",
+		gsmnet->handover.win_rxlev_avg_neigh, VTY_NEWLINE);
+	vty_out(vty, " handover power budget interval %u%s",
+		gsmnet->handover.pwr_interval, VTY_NEWLINE);
+	vty_out(vty, " handover power budget hysteresis %u%s",
+		gsmnet->handover.pwr_hysteresis, VTY_NEWLINE);
+	vty_out(vty, " handover maximum distance %u%s",
+		gsmnet->handover.max_distance, VTY_NEWLINE);
 	vty_out(vty, " timer t3101 %u%s", gsmnet->T3101, VTY_NEWLINE);
 	vty_out(vty, " timer t3103 %u%s", gsmnet->T3103, VTY_NEWLINE);
 	vty_out(vty, " timer t3105 %u%s", gsmnet->T3105, VTY_NEWLINE);
@@ -480,8 +516,11 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->ts->trx->bts->nr, gsm_lchan_name(lchan->type),
 		VTY_NEWLINE);
 	vty_out(vty, "  Use Count: %u%s", lchan->use_count, VTY_NEWLINE);
-	vty_out(vty, "  BS Power %u, MS Power %u%s", lchan->bs_power,
-		lchan->ms_power, VTY_NEWLINE);
+	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
+		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
+		- lchan->bs_power*2,
+		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
+		VTY_NEWLINE);
 	if (lchan->subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
 		subscr_dump_vty(vty, lchan->subscr);
@@ -747,6 +786,41 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_stats,
+      show_stats_cmd,
+      "show statistics",
+	SHOW_STR "Display network statistics\n")
+{
+	struct gsm_network *net = gsmnet;
+
+	vty_out(vty, "Channel Requests: %lu total, %lu no channel%s",
+		net->stats.chreq.total, net->stats.chreq.no_channel,
+		VTY_NEWLINE);
+	vty_out(vty, "Location Update: %lu attach, %lu normal, %lu periodic%s",
+		net->stats.loc_upd_type.attach, net->stats.loc_upd_type.normal,
+		net->stats.loc_upd_type.periodic, VTY_NEWLINE);
+	vty_out(vty, "IMSI Detach Indications: %lu%s\n",
+		net->stats.loc_upd_type.detach, VTY_NEWLINE);
+	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
+		net->stats.loc_upd_resp.accept,
+		net->stats.loc_upd_resp.reject, VTY_NEWLINE);
+	vty_out(vty, "Paging: %lu attempted, %lu complete, %lu expired%s",
+		net->stats.paging.attempted, net->stats.paging.completed,
+		net->stats.paging.expired, VTY_NEWLINE);
+	vty_out(vty, "Handover: %lu attempted, %lu no_channel, %lu timeout, "
+		"%lu completed, %lu failed%s", net->stats.handover.attempted,
+		net->stats.handover.no_channel, net->stats.handover.timeout,
+		net->stats.handover.completed, net->stats.handover.failed,
+		VTY_NEWLINE);
+	vty_out(vty, "SMS MO: %lu submitted, %lu no receiver%s",
+		net->stats.sms.submitted, net->stats.sms.no_receiver,
+		VTY_NEWLINE);
+	vty_out(vty, "SMS MT: %lu delivered, %lu no memory, %lu other error%s",
+		net->stats.sms.delivered, net->stats.sms.rp_err_mem,
+		net->stats.sms.rp_err_other, VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net,
       cfg_net_cmd,
       "network",
@@ -817,6 +891,16 @@ DEFUN(cfg_net_auth_policy,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_reject_cause,
+      cfg_net_reject_cause_cmd,
+      "location updating reject cause <2-111>",
+      "Set the reject cause of location updating reject\n")
+{
+	gsmnet->reject_cause = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_encryption,
       cfg_net_encryption_cmd,
       "encryption a5 (0|1|2)",
@@ -833,6 +917,87 @@ DEFUN(cfg_net_neci,
       "Set if NECI of cell selection is to be set")
 {
 	gsmnet->neci = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
+      "rrlp mode (none|ms-based|ms-preferred|ass-preferred)",
+	"Set the Radio Resource Location Protocol Mode")
+{
+	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
+      "mm info (0|1)",
+	"Whether to send MM INFO after LOC UPD ACCEPT")
+{
+	gsmnet->send_mm_info = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_handover, cfg_net_handover_cmd,
+      "handover (0|1)",
+	"Whether or not to use in-call handover")
+{
+	if (ipacc_rtp_direct) {
+		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
+			"is enabled by using the -P command line option%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	gsmnet->handover.active = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
+      "handover window rxlev averaging <1-10>",
+	"How many RxLev measurements are used for averaging")
+{
+	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
+      "handover window rxqual averaging <1-10>",
+	"How many RxQual measurements are used for averaging")
+{
+	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
+      "handover window rxlev neighbor averaging <1-10>",
+	"How many RxQual measurements are used for averaging")
+{
+	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
+      "handover power budget interval <1-99>",
+	"How often to check if we have a better cell (SACCH frames)")
+{
+	gsmnet->handover.pwr_interval = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
+      "handover power budget hysteresis <0-999>",
+	"How many dB does a neighbor to be stronger to become a HO candidate")
+{
+	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
+      "handover maximum distance <0-9999>",
+	"How big is the maximum timing advance before HO is forced")
+{
+	gsmnet->handover.max_distance = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1058,6 +1223,7 @@ DEFUN(cfg_bts_lac,
 	return CMD_SUCCESS;
 }
 
+
 DEFUN(cfg_bts_tsc,
       cfg_bts_tsc_cmd,
       "training_sequence_code <0-255>",
@@ -1179,7 +1345,7 @@ DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->cell_barred = atoi(argv[0]);
+	bts->si_common.rach_control.cell_bar = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1195,13 +1361,35 @@ DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_cell_resel_hyst, cfg_bts_cell_resel_hyst_cmd,
+      "cell reselection hysteresis <0-14>",
+      "Cell Re-Selection Hysteresis in dB")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_sel_par.cell_resel_hyst = atoi(argv[0])/2;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rxlev_acc_min, cfg_bts_rxlev_acc_min_cmd,
+      "rxlev access min <0-63>",
+      "Minimum RxLev needed for cell access (better than -110dBm)")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_sel_par.rxlev_acc_min = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
       "periodic location update <0-1530>",
       "Periodic Location Updating Interval in Minutes")
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->chan_desc.t3212 = atoi(argv[0]) / 10;
+	bts->si_common.chan_desc.t3212 = atoi(argv[0]) / 10;
 
 	return CMD_SUCCESS;
 }
@@ -1390,6 +1578,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_e1ts_cmd);
 
 	install_element(VIEW_NODE, &show_paging_cmd);
+	install_element(VIEW_NODE, &show_stats_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
@@ -1399,8 +1588,18 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
+	install_element(GSMNET_NODE, &cfg_net_reject_cause_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
+	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
+	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxqual_avg_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_neigh_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_pwr_interval_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_pwr_hysteresis_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ho_max_distance_cmd);
 	install_element(GSMNET_NODE, &cfg_net_supported_codecs_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ipacc_rtp_payload_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rtp_base_port_cmd);
@@ -1433,6 +1632,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
+	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
 
 
 	install_element(BTS_NODE, &cfg_trx_cmd);

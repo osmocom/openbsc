@@ -55,7 +55,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 	int blocks;
 	unsigned int group;
 	
-	ccch_conf = bts->chan_desc.ccch_conf;
+	ccch_conf = bts->si_common.chan_desc.ccch_conf;
 	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
 	/* code word + 2, as 2 channels equals 0x0 */
 	blocks = rsl_number_of_paging_subchannels(bts);
@@ -212,6 +212,8 @@ static void paging_T3113_expired(void *data)
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
+	req->bts->network->stats.paging.expired++;
+
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
@@ -254,6 +256,8 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
+	network->stats.paging.attempted++;
+
 	/* start paging subscriber on all BTS within Location Area */
 	do {
 		int rc;
@@ -268,6 +272,9 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		if (rc < 0)
 			return rc;
 	} while (1);
+
+	if (num_pages == 0)
+		network->stats.paging.detached++;
 
 	return num_pages;
 }

@@ -635,7 +635,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &trx->bb_transc.nm_state;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx) {
+		if (obj_inst->trx_nr >= bts->num_trx) {
 			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
 		}
@@ -671,7 +671,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->bs11.rack.nm_state;
 		break;
 	case NM_OC_BS11_ENVABTSE:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->bs11.envabtse))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->bs11.envabtse))
 			return NULL;
 		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
 		break;
@@ -682,7 +682,7 @@ objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
 		nm_state = &bts->gprs.cell.nm_state;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
 			return NULL;
 		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
 		break;
@@ -719,7 +719,7 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = &trx->bb_transc;
 		break;
 	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr > bts->num_trx) {
+		if (obj_inst->trx_nr >= bts->num_trx) {
 			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
 			return NULL;
 		}
@@ -738,7 +738,7 @@ objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
 		obj = &bts->gprs.cell;
 		break;
 	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr > ARRAY_SIZE(bts->gprs.nsvc))
+		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
 			return NULL;
 		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
 		break;
@@ -1088,8 +1088,8 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 		rc = abis_nm_rx_ipacc(mb);
 		break;
 	default:
-		fprintf(stderr, "don't know how to parse OML for this "
-			 "BTS type (%u)\n", bts_type);
+		LOGP(DNM, LOGL_ERROR, "don't know how to parse OML for this "
+		     "BTS type (%u)\n", bts_type);
 		rc = 0;
 		break;
 	}
@@ -1106,12 +1106,12 @@ int abis_nm_rcvmsg(struct msgb *msg)
 
 	/* Various consistency checks */
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
-		fprintf(stderr, "ABIS OML placement 0x%x not supported\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML placement 0x%x not supported\n",
 			oh->placement);
 		return -EINVAL;
 	}
 	if (oh->sequence != 0) {
-		fprintf(stderr, "ABIS OML sequence 0x%x != 0x00\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML sequence 0x%x != 0x00\n",
 			oh->sequence);
 		return -EINVAL;
 	}
@@ -1119,12 +1119,12 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
 	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 	if (oh->length + hlen > l2_len) {
-		fprintf(stderr, "ABIS OML truncated message (%u > %u)\n",
+		LOGP(DNM, LOGL_ERROR, "ABIS OML truncated message (%u > %u)\n",
 			oh->length + sizeof(*oh), l2_len);
 		return -EINVAL;
 	}
 	if (oh->length + hlen < l2_len)
-		fprintf(stderr, "ABIS OML message with extra trailer?!? (oh->len=%d, sizeof_oh=%d l2_len=%d\n", oh->length, sizeof(*oh), l2_len);
+		LOGP(DNM, LOGL_ERROR, "ABIS OML message with extra trailer?!? (oh->len=%d, sizeof_oh=%d l2_len=%d\n", oh->length, sizeof(*oh), l2_len);
 #endif
 	msg->l3h = (unsigned char *)oh + sizeof(*oh);
 
@@ -1137,11 +1137,11 @@ int abis_nm_rcvmsg(struct msgb *msg)
 		break;
 	case ABIS_OM_MDISC_MMI:
 	case ABIS_OM_MDISC_TRAU:
-		fprintf(stderr, "unimplemented ABIS OML message discriminator 0x%x\n",
+		LOGP(DNM, LOGL_ERROR, "unimplemented ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
 		break;
 	default:
-		fprintf(stderr, "unknown ABIS OML message discriminator 0x%x\n",
+		LOGP(DNM, LOGL_ERROR, "unknown ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
 		return -EINVAL;
 	}
@@ -1755,7 +1755,8 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 
 	/* As it turns out, the BS-11 has some very peculiar restrictions
 	 * on the channel combinations it allows */
-	if (ts->trx->bts->type == GSM_BTS_TYPE_BS11) {
+	switch (ts->trx->bts->type) {
+	case GSM_BTS_TYPE_BS11:
 		switch (chan_comb) {
 		case NM_CHANC_TCHHalf:
 		case NM_CHANC_TCHHalf2:
@@ -1801,6 +1802,83 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 			/* FIXME: only one CBCH allowed per cell */
 			break;
 		}
+		break;
+	case GSM_BTS_TYPE_NANOBTS:
+		switch (ts->nr) {
+		case 0:
+			if (ts->trx->nr == 0) {
+				/* only on TRX0 */
+				switch (chan_comb) {
+				case NM_CHANC_BCCH:
+				case NM_CHANC_mainBCCH:
+				case NM_CHANC_BCCHComb:
+					return 0;
+					break;
+				default:
+					return -EINVAL;
+				}
+			} else {
+				switch (chan_comb) {
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+					return 0;
+				default:
+					return -EINVAL;
+				}
+			}
+			break;
+		case 1:
+			if (ts->trx->nr == 0) {
+				switch (chan_comb) {
+				case NM_CHANC_SDCCH_CBCH:
+					if (ts->trx->ts[0].nm_chan_comb ==
+					    NM_CHANC_mainBCCH)
+						return 0;
+					return -EINVAL;
+				case NM_CHANC_SDCCH:
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_PDCH:
+					return 0;
+				}
+			} else {
+				switch (chan_comb) {
+				case NM_CHANC_SDCCH:
+				case NM_CHANC_TCHFull:
+				case NM_CHANC_TCHHalf:
+				case NM_CHANC_IPAC_TCHFull_TCHHalf:
+					return 0;
+				default:
+					return -EINVAL;
+				}
+			}
+			break;
+		case 2:
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			switch (chan_comb) {
+			case NM_CHANC_TCHFull:
+			case NM_CHANC_TCHHalf:
+			case NM_CHANC_IPAC_TCHFull_TCHHalf:
+				return 0;
+			case NM_CHANC_IPAC_PDCH:
+			case NM_CHANC_IPAC_TCHFull_PDCH:
+				if (ts->trx->nr == 0)
+					return 0;
+				else
+					return -EINVAL;
+			}
+			break;
+		}
+		return -EINVAL;
+	default:
+		/* unknown BTS type */
+		return 0;
 	}
 	return 0;
 }

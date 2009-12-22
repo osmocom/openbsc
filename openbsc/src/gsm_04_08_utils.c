@@ -308,7 +308,7 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 	[CHREQ_T_CALL_REEST_TCH_H_DBL]	= GSM_CHREQ_REASON_CALL,
 	[CHREQ_T_SDCCH]			= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_TCH_F]			= GSM_CHREQ_REASON_OTHER,
-	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
+	[CHREQ_T_VOICE_CALL_TCH_H]	= GSM_CHREQ_REASON_CALL,
 	[CHREQ_T_DATA_CALL_TCH_H]	= GSM_CHREQ_REASON_OTHER,
 	[CHREQ_T_LOCATION_UPD]		= GSM_CHREQ_REASON_LOCATION_UPD,
 	[CHREQ_T_PAG_R_ANY_NECI1]	= GSM_CHREQ_REASON_PAG,
@@ -488,6 +488,8 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	sig_data.bts	= msg->lchan->ts->trx->bts;
 	sig_data.lchan	= msg->lchan;
 
+	bts->network->stats.paging.completed++;
+
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
@@ -519,6 +521,51 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 	return rsl_encryption_cmd(msg);
 }
 
+static void gsm48_cell_desc(struct gsm48_cell_desc *cd,
+			    const struct gsm_bts *bts)
+{
+	cd->ncc = (bts->bsic >> 3 & 0x7);
+	cd->bcc = (bts->bsic & 0x7);
+	cd->arfcn_hi = bts->c0->arfcn >> 8;
+	cd->arfcn_lo = bts->c0->arfcn & 0xff;
+}
+
+static void gsm48_chan_desc(struct gsm48_chan_desc *cd,
+			    const struct gsm_lchan *lchan)
+{
+	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+
+	cd->chan_nr = lchan2chan_nr(lchan);
+	cd->h0.tsc = lchan->ts->trx->bts->tsc;
+	cd->h0.h = 0;
+	cd->h0.arfcn_high = arfcn >> 8;
+	cd->h0.arfcn_low = arfcn & 0xff;
+}
+
+/* Chapter 9.1.15: Handover Command */
+int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
+		      u_int8_t power_command, u_int8_t ho_ref)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	struct gsm48_ho_cmd *ho =
+		(struct gsm48_ho_cmd *) msgb_put(msg, sizeof(*ho));
+
+	msg->lchan = old_lchan;
+	gh->proto_discr = GSM48_PDISC_RR;
+	gh->msg_type = GSM48_MT_RR_HANDO_CMD;
+
+	/* mandatory bits */
+	gsm48_cell_desc(&ho->cell_desc, new_lchan->ts->trx->bts);
+	gsm48_chan_desc(&ho->chan_desc, new_lchan);
+	ho->ho_ref = ho_ref;
+	ho->power_command = power_command;
+
+	/* FIXME: optional bits for type of synchronization? */
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
 /* Chapter 9.1.2: Assignment Command */
 int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 {
@@ -526,7 +573,6 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_ass_cmd *ass =
 		(struct gsm48_ass_cmd *) msgb_put(msg, sizeof(*ass));
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
 	DEBUGP(DRR, "-> ASSIGNMENT COMMAND tch_mode=0x%02x\n", lchan->tch_mode);
 
@@ -542,11 +588,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	 * the chan_desc. But as long as multi-slot configurations
 	 * are not used we seem to be fine.
 	 */
-	ass->chan_desc.chan_nr = lchan2chan_nr(lchan);
-	ass->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
-	ass->chan_desc.h0.h = 0;
-	ass->chan_desc.h0.arfcn_high = arfcn >> 8;
-	ass->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	gsm48_chan_desc(&ass->chan_desc, lchan);
 	ass->power_command = power_command;
 
 	/* in case of multi rate we need to attach a config */
@@ -658,3 +700,72 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 		rsl_ipacc_crcx(msg->lchan);
 	return rc;
 }
+
+int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	u_int8_t *data = gh->data;
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct bitvec *nbv = &bts->si_common.neigh_list;
+
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		return -EINVAL;
+
+	if (data[0] & 0x80)
+		rep->flags |= MEAS_REP_F_BA1;
+	if (data[0] & 0x40)
+		rep->flags |= MEAS_REP_F_UL_DTX;
+	if ((data[1] & 0x40) == 0x00)
+		rep->flags |= MEAS_REP_F_DL_VALID;
+
+	rep->dl.full.rx_lev = data[0] & 0x3f;
+	rep->dl.sub.rx_lev = data[1] & 0x3f;
+	rep->dl.full.rx_qual = (data[3] >> 4) & 0x7;
+	rep->dl.sub.rx_qual = (data[3] >> 1) & 0x7;
+
+	rep->num_cell = ((data[3] >> 6) & 0x3) | ((data[2] & 0x01) << 2);
+	if (rep->num_cell < 1 || rep->num_cell > 6)
+		return 0;
+
+	/* an encoding nightmare in perfection */
+
+	rep->cell[0].rxlev = data[3] & 0x3f;
+	rep->cell[0].arfcn = bitvec_get_nth_set_bit(nbv, data[4] >> 2);
+	rep->cell[0].bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
+	if (rep->num_cell < 2)
+		return 0;
+
+	rep->cell[1].rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
+	rep->cell[1].arfcn = bitvec_get_nth_set_bit(nbv, (data[6] >> 2) & 0x1f);
+	rep->cell[1].bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
+	if (rep->num_cell < 3)
+		return 0;
+
+	rep->cell[2].rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
+	rep->cell[2].arfcn = bitvec_get_nth_set_bit(nbv, (data[8] >> 1) & 0x1f);
+	rep->cell[2].bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
+	if (rep->num_cell < 4)
+		return 0;
+
+	rep->cell[3].rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
+	rep->cell[3].arfcn = bitvec_get_nth_set_bit(nbv, data[10] & 0x1f);
+	rep->cell[3].bsic = data[11] >> 2;
+	if (rep->num_cell < 5)
+		return 0;
+
+	rep->cell[4].rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
+	rep->cell[4].arfcn = bitvec_get_nth_set_bit(nbv,
+				((data[12] & 0xf) << 1) | (data[13] >> 7));
+	rep->cell[4].bsic = (data[13] >> 1) & 0x3f;
+	if (rep->num_cell < 6)
+		return 0;
+
+	rep->cell[5].rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
+	rep->cell[5].arfcn = bitvec_get_nth_set_bit(nbv,
+				((data[14] & 0x07) << 2) | (data[15] >> 6));
+	rep->cell[5].bsic = data[15] & 0x3f;
+
+	return 0;
+}
+

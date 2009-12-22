@@ -40,6 +40,7 @@ enum signal_subsystems {
 	SS_LCHAN,
 	SS_SUBSCR,
 	SS_SCALL,
+	SS_GLOBAL,
 };
 
 /* SS_PAGING signals */
@@ -58,6 +59,7 @@ enum signal_sms {
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_CRCX_ACK,
+	S_ABISIP_MDCX_ACK,
 	S_ABISIP_DLCX_IND,
 };
 
@@ -78,12 +80,19 @@ enum signal_lchan {
 	 * signal handler.
 	 */
 	S_LCHAN_UNEXPECTED_RELEASE,
+	S_LCHAN_ACTIVATE_ACK,		/* 08.58 Channel Activate ACK */
+	S_LCHAN_ACTIVATE_NACK,		/* 08.58 Channel Activate NACK */
+	S_LCHAN_HANDOVER_COMPL,		/* 04.08 Handover Completed */
+	S_LCHAN_HANDOVER_FAIL,		/* 04.08 Handover Failed */
+	S_LCHAN_HANDOVER_DETECT,	/* 08.58 Handover Detect */
+	S_LCHAN_MEAS_REP,		/* 08.58 Measurement Report */
 };
 
 /* SS_SUBSCR signals */
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
 	S_SUBSCR_DETACHED,
+	S_SUBSCR_IDENTITY,		/* we've received some identity information */
 };
 
 /* SS_SCALL signals */
@@ -91,6 +100,10 @@ enum signal_scall {
 	S_SCALL_SUCCESS,
 	S_SCALL_EXPIRED,
 	S_SCALL_DETACHED,
+};
+
+enum signal_global {
+	S_GLOBAL_SHUTDOWN,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,

@@ -60,6 +60,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DSCCP, "DSCCP", "", "")
 	DEBUG_CATEGORY(DMSC, "DMSC", "", "")
 	DEBUG_CATEGORY(DMGCP, "DMGCP", "", "")
+	DEBUG_CATEGORY(DHO, "DHO", "", "")
 };
 
 static int use_color = 1;
