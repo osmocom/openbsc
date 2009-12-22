@@ -1011,7 +1011,11 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	u_int8_t transaction_id;
 	int rc;
 
-	transaction_id = 4; /* FIXME: we always use 4 for now */
+	transaction_id = trans_assign_trans_id(lchan->subscr, GSM48_PDISC_SMS, 0);
+	if (transaction_id == -1) {
+		DEBUGP(DSMS, "No available transaction ids\n");
+		return -EBUSY;
+	}
 
 	msg->lchan = lchan;
 
