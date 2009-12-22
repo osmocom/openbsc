@@ -28,6 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/statistics.h>
 
 void *tall_bsc_ctx;
 
@@ -225,6 +226,32 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);
+
+	net->stats.chreq.total = counter_alloc("net.chreq.total");
+	net->stats.chreq.no_channel = counter_alloc("net.chreq.no_channel");
+	net->stats.handover.attempted = counter_alloc("net.handover.attempted");
+	net->stats.handover.no_channel = counter_alloc("net.handover.no_channel");
+	net->stats.handover.timeout = counter_alloc("net.handover.timeout");
+	net->stats.handover.completed = counter_alloc("net.handover.completed");
+	net->stats.handover.failed = counter_alloc("net.handover.failed");
+	net->stats.loc_upd_type.attach = counter_alloc("net.loc_upd_type.attach");
+	net->stats.loc_upd_type.normal = counter_alloc("net.loc_upd_type.normal");
+	net->stats.loc_upd_type.periodic = counter_alloc("net.loc_upd_type.periodic");
+	net->stats.loc_upd_type.detach = counter_alloc("net.imsi_detach.count");
+	net->stats.loc_upd_resp.reject = counter_alloc("net.loc_upd_resp.reject");
+	net->stats.loc_upd_resp.accept = counter_alloc("net.loc_upd_resp.accept");
+	net->stats.paging.attempted = counter_alloc("net.paging.attempted");
+	net->stats.paging.detached = counter_alloc("net.paging.detached");
+	net->stats.paging.completed = counter_alloc("net.paging.completed");
+	net->stats.paging.expired = counter_alloc("net.paging.expired");
+	net->stats.sms.submitted = counter_alloc("net.sms.submitted");
+	net->stats.sms.no_receiver = counter_alloc("net.sms.no_receiver");
+	net->stats.sms.delivered = counter_alloc("net.sms.delivered");
+	net->stats.sms.rp_err_mem = counter_alloc("net.sms.rp_err_mem");
+	net->stats.sms.rp_err_other = counter_alloc("net.sms.rp_err_other");
+	net->stats.call.dialled = counter_alloc("net.call.dialled");
+	net->stats.call.alerted = counter_alloc("net.call.alerted");
+	net->stats.call.connected = counter_alloc("net.call.connected");
 
 	net->mncc_recv = mncc_recv;
 

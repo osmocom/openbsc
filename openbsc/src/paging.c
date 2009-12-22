@@ -212,7 +212,7 @@ static void paging_T3113_expired(void *data)
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
-	req->bts->network->stats.paging.expired++;
+	counter_inc(req->bts->network->stats.paging.expired);
 
 	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
 	if (cbfn)
@@ -256,7 +256,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
-	network->stats.paging.attempted++;
+	counter_inc(network->stats.paging.attempted);
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -274,7 +274,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	} while (1);
 
 	if (num_pages == 0)
-		network->stats.paging.detached++;
+		counter_inc(network->stats.paging.detached);
 
 	return num_pages;
 }

@@ -53,4 +53,8 @@ int db_sms_mark_sent(struct gsm_sms *sms);
 int db_apdu_blob_store(struct gsm_subscriber *subscr, 
 			u_int8_t apdu_id_flags, u_int8_t len,
 			u_int8_t *apdu);
+
+/* Statistics counter storage */
+int db_store_counter(struct counter *ctr);
+
 #endif /* _DB_H */

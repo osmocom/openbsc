@@ -811,30 +811,35 @@ DEFUN(show_stats,
 	struct gsm_network *net = gsmnet;
 
 	vty_out(vty, "Channel Requests: %lu total, %lu no channel%s",
-		net->stats.chreq.total, net->stats.chreq.no_channel,
-		VTY_NEWLINE);
+		counter_get(net->stats.chreq.total),
+		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
 	vty_out(vty, "Location Update: %lu attach, %lu normal, %lu periodic%s",
-		net->stats.loc_upd_type.attach, net->stats.loc_upd_type.normal,
-		net->stats.loc_upd_type.periodic, VTY_NEWLINE);
-	vty_out(vty, "IMSI Detach Indications: %lu%s\n",
-		net->stats.loc_upd_type.detach, VTY_NEWLINE);
+		counter_get(net->stats.loc_upd_type.attach),
+		counter_get(net->stats.loc_upd_type.normal),
+		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+	vty_out(vty, "IMSI Detach Indications: %lu%s",
+		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		net->stats.loc_upd_resp.accept,
-		net->stats.loc_upd_resp.reject, VTY_NEWLINE);
+		counter_get(net->stats.loc_upd_resp.accept),
+		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
 	vty_out(vty, "Paging: %lu attempted, %lu complete, %lu expired%s",
-		net->stats.paging.attempted, net->stats.paging.completed,
-		net->stats.paging.expired, VTY_NEWLINE);
+		counter_get(net->stats.paging.attempted),
+		counter_get(net->stats.paging.completed),
+		counter_get(net->stats.paging.expired), VTY_NEWLINE);
 	vty_out(vty, "Handover: %lu attempted, %lu no_channel, %lu timeout, "
-		"%lu completed, %lu failed%s", net->stats.handover.attempted,
-		net->stats.handover.no_channel, net->stats.handover.timeout,
-		net->stats.handover.completed, net->stats.handover.failed,
-		VTY_NEWLINE);
+		"%lu completed, %lu failed%s",
+		counter_get(net->stats.handover.attempted),
+		counter_get(net->stats.handover.no_channel),
+		counter_get(net->stats.handover.timeout),
+		counter_get(net->stats.handover.completed),
+		counter_get(net->stats.handover.failed), VTY_NEWLINE);
 	vty_out(vty, "SMS MO: %lu submitted, %lu no receiver%s",
-		net->stats.sms.submitted, net->stats.sms.no_receiver,
-		VTY_NEWLINE);
+		counter_get(net->stats.sms.submitted),
+		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
 	vty_out(vty, "SMS MT: %lu delivered, %lu no memory, %lu other error%s",
-		net->stats.sms.delivered, net->stats.sms.rp_err_mem,
-		net->stats.sms.rp_err_other, VTY_NEWLINE);
+		counter_get(net->stats.sms.delivered),
+		counter_get(net->stats.sms.rp_err_mem),
+		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 

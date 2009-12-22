@@ -831,7 +831,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 
 	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
 
-	bts->network->stats.loc_upd_resp.reject++;
+	counter_inc(bts->network->stats.loc_upd_resp.reject);
 	
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -860,7 +860,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	bts->network->stats.loc_upd_resp.accept++;
+	counter_inc(bts->network->stats.loc_upd_resp.accept);
 
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -982,13 +982,13 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
-		bts->network->stats.loc_upd_type.normal++;
+		counter_inc(bts->network->stats.loc_upd_type.normal);
 		break;
 	case GSM48_LUPD_IMSI_ATT:
-		bts->network->stats.loc_upd_type.attach++;
+		counter_inc(bts->network->stats.loc_upd_type.attach);
 		break;
 	case GSM48_LUPD_PERIODIC:
-		bts->network->stats.loc_upd_type.periodic++;
+		counter_inc(bts->network->stats.loc_upd_type.periodic);
 		break;
 	}
 
@@ -1318,7 +1318,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
 
-	bts->network->stats.loc_upd_type.detach++;
+	counter_inc(bts->network->stats.loc_upd_type.detach);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:

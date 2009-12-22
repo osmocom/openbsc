@@ -1261,14 +1261,14 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lctype = get_ctype_by_chreq(bts, rqd_ref->ra, bts->network->neci);
 	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra, bts->network->neci);
 
-	bts->network->stats.chreq.total++;
+	counter_inc(bts->network->stats.chreq.total);
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
 		DEBUGP(DRSL, "CHAN RQD: no resources for %s 0x%x\n",
 			gsm_lchan_name(lctype), rqd_ref->ra);
-		bts->network->stats.chreq.no_channel++;
+		counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
 	}

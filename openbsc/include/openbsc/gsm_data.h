@@ -61,6 +61,7 @@ enum gsm_chreq_reason_t {
 #include <openbsc/mncc.h>
 #include <openbsc/tlv.h>
 #include <openbsc/bitvec.h>
+#include <openbsc/statistics.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -460,43 +461,43 @@ struct gsm_bts {
 /* Some statistics of our network */
 struct gsmnet_stats {
 	struct {
-		unsigned long total;
-		unsigned long no_channel;
+		struct counter *total;
+		struct counter *no_channel;
 	} chreq;
 	struct {
-		unsigned long attempted;
-		unsigned long no_channel;	/* no channel available */
-		unsigned long timeout;		/* T3103 timeout */
-		unsigned long completed;	/* HO COMPL received */
-		unsigned long failed;		/* HO FAIL received */
+		struct counter *attempted;
+		struct counter *no_channel;	/* no channel available */
+		struct counter *timeout;		/* T3103 timeout */
+		struct counter *completed;	/* HO COMPL received */
+		struct counter *failed;		/* HO FAIL received */
 	} handover;
 	struct {
-		unsigned long attach;
-		unsigned long normal;
-		unsigned long periodic;
-		unsigned long detach;
+		struct counter *attach;
+		struct counter *normal;
+		struct counter *periodic;
+		struct counter *detach;
 	} loc_upd_type;
 	struct {
-		unsigned long reject;
-		unsigned long accept;
+		struct counter *reject;
+		struct counter *accept;
 	} loc_upd_resp;
 	struct {
-		unsigned long attempted;
-		unsigned long detached;
-		unsigned long completed;
-		unsigned long expired;
+		struct counter *attempted;
+		struct counter *detached;
+		struct counter *completed;
+		struct counter *expired;
 	} paging;
 	struct {
-		unsigned long submitted; /* MO SMS submissions */
-		unsigned long no_receiver;
-		unsigned long delivered; /* MT SMS deliveries */
-		unsigned long rp_err_mem;
-		unsigned long rp_err_other;
+		struct counter *submitted; /* MO SMS submissions */
+		struct counter *no_receiver;
+		struct counter *delivered; /* MT SMS deliveries */
+		struct counter *rp_err_mem;
+		struct counter *rp_err_other;
 	} sms;
 	struct {
-		unsigned long dialled;	/* total number of dialled calls */
-		unsigned long alerted;	/* we alerted the other end */
-		unsigned long connected;/* how many calls were accepted */
+		struct counter *dialled;	/* total number of dialled calls */
+		struct counter *alerted;	/* we alerted the other end */
+		struct counter *connected;/* how many calls were accepted */
 	} call;
 };
 

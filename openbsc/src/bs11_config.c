@@ -71,6 +71,11 @@ static const char *trx1_password = "1111111111";
 
 static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
+/* dummy function to keep gsm_data.c happy */
+struct counter *counter_alloc(const char *name)
+{
+	return NULL;
+}
 
 int handle_serial_msg(struct msgb *rx_msg);
 

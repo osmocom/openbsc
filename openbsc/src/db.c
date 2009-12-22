@@ -25,6 +25,7 @@
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 #include <openbsc/debug.h>
+#include <openbsc/statistics.h>
 
 #include <libgen.h>
 #include <stdio.h>
@@ -116,6 +117,12 @@ static char *create_stmts[] = {
 		"apdu_id_flags INTEGER NOT NULL, "
 		"subscriber_id INTEGER NOT NULL, "
 		"apdu BLOB "
+		")",
+	"CREATE TABLE IF NOT EXISTS Counters ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"timestamp TIMESTAMP NOT NULL, "
+		"value INTEGER NOT NULL "
+		"name TEXT NOT NULL, "
 		")",
 };
 
@@ -895,6 +902,27 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 		subscr->id, apdu_id_flags, q_apdu);
 
 	free(q_apdu);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_store_counter(struct counter *ctr)
+{
+	dbi_result result;
+	char *q_name;
+
+	dbi_conn_quote_string_copy(conn, ctr->name, &q_name);
+
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO Counters "
+		"(timestamp,name,value) VALUES "
+		"(datetime('now'),%s,%lu)", q_name, ctr->value);
+
+	free(q_name);
 
 	if (!result)
 		return -EIO;
