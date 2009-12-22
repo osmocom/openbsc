@@ -976,11 +976,11 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
 	return CMD_SUCCESS;
 }
 
-#define DECLARE_TIMER(number) \
+#define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
-      "Set the T" #number " value.")				\
+      doc)							\
 {								\
 	int value = atoi(argv[0]);				\
 								\
@@ -994,17 +994,17 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
 	return CMD_SUCCESS;					\
 }
 
-DECLARE_TIMER(3101)
-DECLARE_TIMER(3103)
-DECLARE_TIMER(3105)
-DECLARE_TIMER(3107)
-DECLARE_TIMER(3109)
-DECLARE_TIMER(3111)
-DECLARE_TIMER(3113)
-DECLARE_TIMER(3115)
-DECLARE_TIMER(3117)
-DECLARE_TIMER(3119)
-DECLARE_TIMER(3141)
+DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.")
+DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.")
+DECLARE_TIMER(3105, "Currently not used.")
+DECLARE_TIMER(3107, "Currently not used.")
+DECLARE_TIMER(3109, "Currently not used.")
+DECLARE_TIMER(3111, "Currently not used.")
+DECLARE_TIMER(3113, "Set the time to try paging a subscriber.")
+DECLARE_TIMER(3115, "Currently not used.")
+DECLARE_TIMER(3117, "Currently not used.")
+DECLARE_TIMER(3119, "Currently not used.")
+DECLARE_TIMER(3141, "Currently not used.")
 
 
 /* per-BTS configuration */
