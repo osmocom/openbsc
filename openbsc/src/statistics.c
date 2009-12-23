@@ -33,10 +33,6 @@
 
 static LLIST_HEAD(counters);
 
-static struct timer_list db_sync_timer;
-
-#define DB_SYNC_INTERVAL	60, 0
-
 struct counter *counter_alloc(const char *name)
 {
 	struct counter *ctr = talloc_zero(tall_bsc_ctx, struct counter);
@@ -56,13 +52,13 @@ void counter_free(struct counter *ctr)
 	talloc_free(ctr);
 }
 
-static int counters_store_db(void)
+int counters_for_each(int (*handle_counter)(struct counter *, void *), void *data)
 {
 	struct counter *ctr;
 	int rc = 0;
 
 	llist_for_each_entry(ctr, &counters, list) {
-		rc = db_store_counter(ctr);
+		rc = handle_counter(ctr, data);
 		if (rc < 0)
 			return rc;
 	}
@@ -70,16 +66,3 @@ static int counters_store_db(void)
 	return rc;
 }
 
-static void db_sync_timer_cb(void *data)
-{
-	/* store counters to database and re-schedule */
-	counters_store_db();
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
-}
-
-static __attribute__((constructor)) void on_dso_load_stat(void)
-{
-	db_sync_timer.cb = db_sync_timer_cb;
-	db_sync_timer.data = NULL;
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
-}

@@ -43,6 +43,11 @@ struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
 
+
+/* timer to store statistics */
+#define DB_SYNC_INTERVAL	60, 0
+static struct timer_list db_sync_timer;
+
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
@@ -155,6 +160,19 @@ static void signal_handler(int signal)
 	}
 }
 
+/* timer handling */
+static int _db_store_counter(struct counter *counter, void *data)
+{
+	return db_store_counter(counter);
+}
+
+static void db_sync_timer_cb(void *data)
+{
+	/* store counters to database and re-schedule */
+	counters_for_each(_db_store_counter, NULL);
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -188,6 +206,11 @@ int main(int argc, char **argv)
 		return -1;
 	}
 	printf("DB: Database prepared.\n");
+
+	/* setup the timer */
+	db_sync_timer.cb = db_sync_timer_cb;
+	db_sync_timer.data = NULL;
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)

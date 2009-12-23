@@ -26,4 +26,6 @@ static inline void counter_reset(struct counter *ctr)
 struct counter *counter_alloc(const char *name);
 void counter_free(struct counter *ctr);
 
+int counters_for_each(int (*handle_counter)(struct counter *, void *), void *data);
+
 #endif /* _STATISTICS_H */
