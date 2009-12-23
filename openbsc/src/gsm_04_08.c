@@ -1175,7 +1175,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 }
 
 /* Section 9.2.2 */
-int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand)
+int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -1187,8 +1187,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand)
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_AUTH_REQ;
 
-	/* Key Sequence: FIXME fixed to 0 */
-	ar->key_seq = 0;
+	ar->key_seq = key_seq;
 
 	/* 16 bytes RAND parameters */
 	if (rand)

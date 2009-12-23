@@ -756,7 +756,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
-int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand);
+int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
 struct msgb *gsm48_msgb_alloc(void);
 int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
