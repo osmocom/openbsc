@@ -19,6 +19,7 @@
  *
  */
 
+#include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -36,6 +37,7 @@ static void analyze_file(int fd)
 {
 	char buf[4096];
 	int rc;
+	unsigned int absolute_size;
 
 	rc = read(fd, buf, 4);
 	if (rc <= 0) {
@@ -59,7 +61,17 @@ static void analyze_file(int fd)
 		return;
 	}
 
+	rc = read(fd, buf, 4);
+	if (rc <= 0) {
+		fprintf(stderr, "Trying to read the header length failed.\n");
+		return;
+	}
+
+	memcpy(&absolute_size, &buf[0], 4);
+	absolute_size = ntohl(absolute_size);
+
 	printf("Printing header information:\n");
+	printf("The header is %u bytes long\n", absolute_size);
 }
 
 int main(int argc, char** argv)
