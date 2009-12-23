@@ -408,6 +408,8 @@ static int sw_activ_rep(struct msgb *mb)
 	struct gsm_bts *bts = mb->trx->bts;
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 
+	if (!trx)
+		return -EINVAL;
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
