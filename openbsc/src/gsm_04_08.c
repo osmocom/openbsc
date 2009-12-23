@@ -1181,7 +1181,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
-	DEBUGP(DMM, "-> AUTH REQ\n");
+	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", hexdump(rand, 16));
 
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
