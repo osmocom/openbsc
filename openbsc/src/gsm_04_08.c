@@ -318,29 +318,50 @@ static void allocate_loc_updating_req(struct gsm_lchan *lchan)
 					   struct gsm_loc_updating_operation);
 }
 
+static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
+                                     struct msgb *msg, void *data, void *param)
+{
+	struct gsm_lchan *lchan = data;
+	int rc = 0;
+
+	switch (event) {
+		case GSM_SECURITY_AUTH_FAILED:
+			release_loc_updating_req(lchan);
+			break;
+
+		case GSM_SECURITY_NOAVAIL:
+		case GSM_SECURITY_SUCCEEDED:
+			/* We're all good */
+			db_subscriber_alloc_tmsi(lchan->subscr);
+			release_loc_updating_req(lchan);
+			rc = gsm0408_loc_upd_acc(lchan, lchan->subscr->tmsi);
+			if (lchan->ts->trx->bts->network->send_mm_info) {
+				/* send MM INFO with network name */
+				rc = gsm48_tx_mm_info(lchan);
+			}
+
+			/* call subscr_update after putting the loc_upd_acc
+			 * in the transmit queue, since S_SUBSCR_ATTACHED might
+			 * trigger further action like SMS delivery */
+			subscr_update(lchan->subscr, lchan->ts->trx->bts,
+				      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+
+			/* try to close channel ASAP */
+			lchan_auto_release(lchan);
+
+			break;
+
+		default:
+			rc = -EINVAL;
+	};
+
+	return rc;
+}
+
 static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 {
-	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
-		int rc;
-
-		db_subscriber_alloc_tmsi(lchan->subscr);
-		release_loc_updating_req(lchan);
-		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
-		if (lchan->ts->trx->bts->network->send_mm_info) {
-			/* send MM INFO with network name */
-			rc = gsm48_tx_mm_info(msg->lchan);
-		}
-
-		/* call subscr_update after putting the loc_upd_acc
-		 * in the transmit queue, since S_SUBSCR_ATTACHED might
-		 * trigger further action like SMS delivery */
-		subscr_update(lchan->subscr, msg->trx->bts,
-			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
-		/* try to close channel ASAP */
-		lchan_auto_release(lchan);
-		return rc;
-	}
-
+	if (authorize_subscriber(lchan->loc_operation, lchan->subscr))
+		return gsm48_secure_channel(lchan, 0, _gsm0408_authorize_sec_cb, NULL);
 	return 0;
 }
 
