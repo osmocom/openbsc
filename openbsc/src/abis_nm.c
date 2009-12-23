@@ -1341,6 +1341,11 @@ static int sw_activate(struct abis_nm_sw *sw)
 	return abis_nm_sendmsg(sw->bts, msg);
 }
 
+static int parse_sdp_header(struct abis_nm_sw *sw)
+{
+	return -1;
+}
+
 static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 {
 	char file_id[12+1];
@@ -1380,8 +1385,11 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 		}
 
 		/* TODO: extract that from the filename or content */
-		sw->file_id_len = 0;
-		sw->file_version_len = 0;
+		rc = parse_sdp_header(sw);
+		if (rc < 0) {
+			fprintf(stderr, "Could not parse the ipaccess SDP header\n");
+			return -1;
+		}
 		break;
 	default:
 		/* We don't know how to treat them yet */
