@@ -342,7 +342,6 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			stream_id = atoi(optarg);
-			printf("foo: %d\n", stream_id);
 			break;
 		case 'h':
 			print_usage();
