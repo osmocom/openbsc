@@ -722,3 +722,5 @@ int main(int argc, char **argv)
 	test_sccp_system_crash();
 	return 0;
 }
+
+void db_store_counter() {}
