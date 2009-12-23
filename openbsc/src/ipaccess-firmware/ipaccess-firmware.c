@@ -28,6 +28,9 @@
 #include <string.h>
 
 
+/* more magic, the second "int" in the header */
+static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
+
 
 static void analyze_file(int fd)
 {
@@ -42,6 +45,17 @@ static void analyze_file(int fd)
 
 	if (strcmp(buf, " SDP") != 0) {
 		fprintf(stderr, "Wrong magic number at the beginning of the file.\n");
+		return;
+	}
+
+	rc = read(fd, buf, 4);
+	if (rc <= 0) {
+		fprintf(stderr, "Not enough space for the more_magic.\n");
+		return;
+	}
+
+	if (strncmp(buf, more_magic, 4) != 0) {
+		fprintf(stderr, "The more magic is not right.\n");
 		return;
 	}
 
