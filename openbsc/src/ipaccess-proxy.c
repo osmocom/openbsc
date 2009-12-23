@@ -245,7 +245,7 @@ static int store_idtags(struct ipa_bts_conn *ipbc, struct tlv_parsed *tlvp)
 			ipbc->id_tags[i] = talloc_size(tall_bsc_ctx, len);
 		else
 #endif
-			ipbc->id_tags[i] = talloc_realloc_size(tall_bsc_ctx,
+			ipbc->id_tags[i] = talloc_realloc_size(ipbc,
 							  ipbc->id_tags[i], len);
 		if (!ipbc->id_tags[i])
 			return -ENOMEM;
@@ -807,13 +807,10 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct ipa_bts_conn *ipbc = ipc->bts_conn;
 	struct ipa_proxy_conn *bsc_conn;
-	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
+	struct msgb *msg;
 	struct ipaccess_head *hh;
 	int ret = 0;
 	char *btsbsc;
-
-	if (!msg)
-		return -ENOMEM;
 
 	if ((bfd->priv_nr & 0xff) <= 2)
 		btsbsc = "BTS";
