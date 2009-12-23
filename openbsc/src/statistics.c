@@ -56,7 +56,7 @@ void counter_free(struct counter *ctr)
 	talloc_free(ctr);
 }
 
-int counters_store_db(void)
+static int counters_store_db(void)
 {
 	struct counter *ctr;
 	int rc = 0;

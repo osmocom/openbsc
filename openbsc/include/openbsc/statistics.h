@@ -25,6 +25,5 @@ static inline void counter_reset(struct counter *ctr)
 
 struct counter *counter_alloc(const char *name);
 void counter_free(struct counter *ctr);
-int counters_store_db(void);
 
 #endif /* _STATISTICS_H */
