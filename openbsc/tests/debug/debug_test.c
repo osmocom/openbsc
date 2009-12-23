@@ -1,6 +1,6 @@
 /* simple test for the debug interface */
 /*
- * (C) 2008 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,11 +24,18 @@
 
 int main(int argc, char** argv)
 {
-    debug_parse_category_mask("DRLL");
-    DEBUGP(DCC, "You should not see this\n");
+	struct debug_target *stderr_target;
 
-    debug_parse_category_mask("DRLL:DCC");
-    DEBUGP(DRLL, "You should see this\n");
-    DEBUGP(DCC, "You should see this\n");
-    DEBUGP(DMM, "You should not see this\n");
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
+
+	debug_parse_category_mask(stderr_target, "DRLL");
+	DEBUGP(DCC, "You should not see this\n");
+
+	debug_parse_category_mask(stderr_target, "DRLL:DCC");
+	DEBUGP(DRLL, "You should see this\n");
+	DEBUGP(DCC, "You should see this\n");
+	DEBUGP(DMM, "You should not see this\n");
 }
