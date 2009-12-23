@@ -4,6 +4,7 @@
 extern void *tall_msgb_ctx;
 extern void *tall_fle_ctx;
 extern void *tall_locop_ctx;
+extern void *tall_authciphop_ctx;
 extern void *tall_gsms_ctx;
 extern void *tall_subscr_ctx;
 extern void *tall_sub_req_ctx;
@@ -22,6 +23,7 @@ void talloc_ctx_init(void)
 	tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 0,
 					  "bs11_file_list_entry");
 	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 0, "loc_updating_oper");
+	tall_authciphop_ctx = talloc_named_const(tall_bsc_ctx, 0, "auth_ciph_oper");
 	tall_gsms_ctx = talloc_named_const(tall_bsc_ctx, 0, "sms");
 	tall_subscr_ctx = talloc_named_const(tall_bsc_ctx, 0, "subscriber");
 	tall_sub_req_ctx = talloc_named_const(tall_bsc_ctx, 0, "subscr_request");

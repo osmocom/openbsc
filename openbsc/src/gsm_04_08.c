@@ -30,6 +30,7 @@
 #include <time.h>
 #include <netinet/in.h>
 
+#include <openbsc/auth.h>
 #include <openbsc/db.h>
 #include <osmocore/msgb.h>
 #include <osmocore/bitvec.h>
@@ -54,6 +55,7 @@
 #include <openbsc/silent_call.h>
 
 void *tall_locop_ctx;
+void *tall_authciphop_ctx;
 
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
@@ -67,6 +69,91 @@ struct gsm_lai {
 };
 
 static u_int32_t new_callref = 0x80000001;
+
+
+static void release_security_operation(struct gsm_subscriber_connection *conn)
+{
+	if (!conn->sec_operation)
+		return;
+
+	talloc_free(conn->sec_operation);
+	conn->sec_operation = NULL;
+	put_subscr_con(conn);
+}
+
+static void allocate_security_operation(struct gsm_subscriber_connection *conn)
+{
+	use_subscr_con(conn)
+
+	conn->sec_operation = talloc_zero(tall_authciphop_ctx,
+	                                  struct gsm_security_operation);
+}
+
+int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
+                         gsm_cbfn *cb, void *cb_data)
+{
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_subscriber *subscr = lchan->conn.subscr;
+	struct gsm_security_operation *op;
+	struct gsm_auth_tuple atuple;
+	int status = -1, rc;
+
+	/* Check if we _can_ enable encryption. Cases where we can't:
+	 *  - Encryption disabled in config
+	 *  - Channel already secured (nothing to do)
+	 *  - Subscriber equipment doesn't support configured encryption
+	 */
+	if (!net->a5_encryption) {
+		status = GSM_SECURITY_NOAVAIL;
+	} else if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
+		DEBUGP(DMM, "Requesting to secure an already secure channel");
+		status = GSM_SECURITY_SUCCEEDED;
+	} else if (!ms_cm2_a5n_support(subscr->equipment.classmark2,
+	                               net->a5_encryption)) {
+		DEBUGP(DMM, "Subscriber equipment doesn't support requested encryption");
+		status = GSM_SECURITY_NOAVAIL;
+	}
+
+	/* If not done yet, try to get info for this user */
+	if (status < 0) {
+		rc = auth_get_tuple_for_subscr(&atuple, subscr, key_seq);
+		if (rc <= 0)
+			status = GSM_SECURITY_NOAVAIL;
+	}
+
+	/* Are we done yet ? */
+	if (status >= 0)
+		return cb ?
+			cb(GSM_HOOK_RR_SECURITY, status, NULL, lchan, cb_data) :
+			0;
+
+	/* Start an operation (can't have more than one pending !!!) */
+	if (lchan->conn.sec_operation)
+		return -EBUSY;
+
+	allocate_security_operation(&lchan->conn);
+	op = lchan->conn.sec_operation;
+	op->cb = cb;
+	op->cb_data = cb_data;
+	memcpy(&op->atuple, &atuple, sizeof(struct gsm_auth_tuple));
+
+		/* FIXME: Should start a timer for completion ... */
+
+	/* Then do whatever is needed ... */
+	if (rc == 1) {
+		/* Start authentication */
+		return gsm48_tx_mm_auth_req(lchan, op->atuple.rand, op->atuple.key_seq);
+	} else if (rc == 2) {
+		/* Start ciphering directly */
+		lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
+		lchan->encr.key_len = 8;
+		memcpy(lchan->encr.key, op->atuple.kc, 8);
+
+		return gsm48_send_rr_ciph_mode(lchan, 0);
+	}
+
+	return -EINVAL; /* not reached */
+}
 
 static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 				struct gsm_subscriber *subscriber)
@@ -160,6 +247,7 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	release_loc_updating_req(&lchan->conn);
+	release_security_operation(&lchan->conn);
 
 	/* Free all transactions that are associated with the released lchan */
 	/* FIXME: this is not neccessarily the right thing to do, we should
@@ -735,6 +823,43 @@ static int gsm48_rx_mm_status(struct msgb *msg)
 	return 0;
 }
 
+/* Chapter 9.2.3: Authentication Response */
+static int gsm48_rx_mm_auth_resp(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
+	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+
+	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s)\n",
+		hexdump(ar->sres, 4));
+
+	/* Safety check */
+	if (!conn->sec_operation) {
+		DEBUGP(DMM, "No authentication/cipher operation in progress !!!\n");
+		return -EIO;
+	}
+
+	/* Validate SRES */
+	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
+		gsm_cbfn *cb = conn->sec_operation->cb;
+		if (cb)
+			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
+			   NULL, lchan, conn->sec_operation->cb_data);
+
+		release_security_operation(conn);
+		return gsm48_tx_mm_auth_rej(lchan);
+	}
+
+	/* Start ciphering */
+	lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
+	lchan->encr.key_len = 8;
+	memcpy(msg->lchan->encr.key, conn->sec_operation->atuple.kc, 8);
+
+	return gsm48_send_rr_ciph_mode(msg->lchan, 0);
+}
+
 /* Receive a GSM 04.08 Mobility Management (MM) message */
 static int gsm0408_rcv_mm(struct msgb *msg)
 {
@@ -768,7 +893,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		DEBUGP(DMM, "CM REESTABLISH REQUEST: Not implemented\n");
 		break;
 	case GSM48_MT_MM_AUTH_RESP:
-		DEBUGP(DMM, "AUTHENTICATION RESPONSE: Not implemented\n");
+		rc = gsm48_rx_mm_auth_resp(msg);
 		break;
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 MM msg type 0x%02x\n",
@@ -910,6 +1035,37 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	return db_apdu_blob_store(msg->lchan->conn.subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
+/* Chapter 9.1.10 Ciphering Mode Complete */
+static int gsm48_rx_rr_ciph_m_compl(struct msgb *msg)
+{
+	struct gsm_lchan *lchan = msg->lchan;
+	struct gsm_subscriber_connection *conn = &lchan->conn;
+	gsm_cbfn *cb;
+	int rc = 0;
+
+	DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
+
+	/* Safety check */
+	if (!conn->sec_operation) {
+		DEBUGP(DRR, "No authentication/cipher operation in progress !!!\n");
+		return -EIO;
+	}
+
+	/* FIXME: check for MI (if any) */
+
+	/* Call back whatever was in progress (if anything) ... */
+	cb = conn->sec_operation->cb;
+	if (cb) {
+		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+			NULL, lchan, conn->sec_operation->cb_data);
+	}
+
+	/* Complete the operation */
+	release_security_operation(conn);
+
+	return rc;
+}
+
 /* Chapter 9.1.16 Handover complete */
 static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 {
@@ -967,8 +1123,7 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		rc = gsm48_rx_rr_app_info(msg);
 		break;
 	case GSM48_MT_RR_CIPH_M_COMPL:
-		DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
-		/* FIXME: check for MI (if any) */
+		rc = gsm48_rx_rr_ciph_m_compl(msg);
 		break;
 	case GSM48_MT_RR_HANDO_COMPL:
 		rc = gsm48_rx_rr_ho_compl(msg);

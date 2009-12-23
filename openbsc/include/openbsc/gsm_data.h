@@ -65,6 +65,7 @@ enum gsm_chreq_reason_t {
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
+	GSM_HOOK_RR_SECURITY,
 };
 
 enum gsm_paging_event {
@@ -103,6 +104,12 @@ struct openbsc_msgb_cb {
 #define msgb_bssgp_len(__x)	((__x)->tail - (uint8_t *)msgb_bssgph(__x))
 #define msgb_bcid(__x)		OBSC_MSGB_CB(__x)->bssgp_cell_id
 #define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
+
+enum gsm_security_event {
+	GSM_SECURITY_NOAVAIL,
+	GSM_SECURITY_AUTH_FAILED,
+	GSM_SECURITY_SUCCEEDED,
+};
 
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,
@@ -179,6 +186,15 @@ struct gsm_loc_updating_operation {
 	unsigned int waiting_for_imei : 1;
 };
 
+/*
+ * AUTHENTICATION/CIPHERING state
+ */
+struct gsm_security_operation {
+	struct gsm_auth_tuple atuple;
+	gsm_cbfn *cb;
+	void *cb_data;
+};
+
 /* Maximum number of neighbor cells whose average we track */
 #define MAX_NEIGH_MEAS		10
 /* Maximum size of the averaging window for neighbor cells */
@@ -194,6 +210,7 @@ struct neigh_meas_proc {
 };
 
 #define MAX_A5_KEY_LEN	(128/8)
+#define A38_COMP128_KEY_LEN	16
 #define RSL_ENC_ALG_A5(x)	(x+1)
 
 /* is the data link established? who established it? */
@@ -223,6 +240,7 @@ struct gsm_subscriber_connection {
 	 * Operations that have a state and might be pending
 	 */
 	struct gsm_loc_updating_operation *loc_operation;
+	struct gsm_security_operation *sec_operation;
 
 	/* use count. how many users use this channel */
 	unsigned int use_count;
