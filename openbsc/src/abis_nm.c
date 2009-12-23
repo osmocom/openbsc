@@ -1372,6 +1372,17 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 		/* rewind to start of file */
 		rewind(sw->stream);
 		break;	
+	case GSM_BTS_TYPE_NANOBTS:
+		sw->stream = fdopen(sw->fd, "r");
+		if (!sw->stream) {
+			perror("fdopen");
+			return -1;
+		}
+
+		/* TODO: extract that from the filename or content */
+		sw->file_id_len = 0;
+		sw->file_version_len = 0;
+		break;
 	default:
 		/* We don't know how to treat them yet */
 		close(sw->fd);
