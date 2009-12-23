@@ -35,7 +35,7 @@
 static struct debug_category default_categories[Debug_LastEntry] = {
     [DRLL]	= { .enabled = 1, .loglevel = 0},
     [DCC]	= { .enabled = 1, .loglevel = 0},
-    [DMM]	= { .enabled = 1, .loglevel = 0},
+    [DNM]	= { .enabled = 1, .loglevel = 0},
     [DRR]	= { .enabled = 1, .loglevel = 0},
     [DRSL]	= { .enabled = 1, .loglevel = 0},
     [DMM]	= { .enabled = 1, .loglevel = 0},
