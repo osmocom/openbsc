@@ -706,6 +706,34 @@ static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 	return gsm48_sendmsg(msg, NULL);
 }
 
+static int _gsm48_rx_mm_serv_req_sec_cb(
+	unsigned int hooknum, unsigned int event,
+	struct msgb *msg, void *data, void *param)
+{
+	struct gsm_lchan *lchan = data;
+	int rc = 0;
+
+	switch (event) {
+		case GSM_SECURITY_AUTH_FAILED:
+			/* Nothing to do */
+			break;
+
+		case GSM_SECURITY_NOAVAIL:
+			rc = gsm48_tx_mm_serv_ack(lchan);
+			break;
+
+		case GSM_SECURITY_SUCCEEDED:
+			/* nothing to do. CIPHER MODE COMMAND is
+			 * implicit CM SERV ACK */
+			break;
+
+		default:
+			rc = -EINVAL;
+	};
+
+	return rc;
+}
+
 /*
  * Handle CM Service Requests
  * a) Verify that the packet is long enough to contain the information
@@ -781,7 +809,8 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
 	db_sync_equipment(&subscr->equipment);
 
-	return gsm48_tx_mm_serv_ack(msg->lchan);
+	return gsm48_secure_channel(msg->lchan, req->cipher_key_seq,
+			_gsm48_rx_mm_serv_req_sec_cb, NULL);
 }
 
 static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
