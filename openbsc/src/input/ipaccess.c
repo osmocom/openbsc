@@ -657,12 +657,12 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
-	ret = make_sock(&e1h->listen_fd, 3002, listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, IPA_TCP_PORT_OML, listen_fd_cb);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_sock(&e1h->rsl_listen_fd, 3003, rsl_listen_fd_cb);
+	ret = make_sock(&e1h->rsl_listen_fd, IPA_TCP_PORT_RSL, rsl_listen_fd_cb);
 
 	return ret;
 }

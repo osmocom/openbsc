@@ -464,7 +464,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 	memcpy(ipbc->id_resp, msg->data, ipbc->id_resp_len);
 
 	/* Create OML TCP connection towards BSC */
-	sin.sin_port = htons(3002);
+	sin.sin_port = htons(IPA_TCP_PORT_OML);
 	ipbc->bsc_oml_conn = connect_bsc(&sin, OML_TO_BSC, ipbc);
 	if (!ipbc->bsc_oml_conn) {
 		ret = -EIO;
@@ -588,7 +588,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			ipbc->rsl_conn[trx_id] = ipc;
 
 			/* Create RSL TCP connection towards BSC */
-			sin.sin_port = htons(3003);
+			sin.sin_port = htons(IPA_TCP_PORT_RSL);
 			ipbc->bsc_rsl_conn[trx_id] =
 				connect_bsc(&sin, RSL_TO_BSC | (trx_id << 8), ipbc);
 			if (!ipbc->bsc_oml_conn)
@@ -703,7 +703,7 @@ static void reconn_tmr_cb(void *data)
 	llist_for_each_entry(ipbc, &ipp->bts_list, list) {
 		/* if OML to BSC is dead, try to restore it */
 		if (ipbc->oml_conn && !ipbc->bsc_oml_conn) {
-			sin.sin_port = htons(3002);
+			sin.sin_port = htons(IPA_TCP_PORT_OML);
 			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, 0);
 			LOGPC(DINP, LOGL_NOTICE, "OML Trying to reconnect\n");
 			ipbc->bsc_oml_conn = connect_bsc(&sin, OML_TO_BSC, ipbc);
@@ -726,7 +726,7 @@ static void reconn_tmr_cb(void *data)
 			priv_nr = ipbc->rsl_conn[i]->fd.priv_nr;
 			priv_nr &= ~0xff;
 			priv_nr |= RSL_TO_BSC;
-			sin.sin_port = htons(3003);
+			sin.sin_port = htons(IPA_TCP_PORT_RSL);
 			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
 			LOGPC(DINP, LOGL_NOTICE, "RSL Trying to reconnect\n");
 			ipbc->bsc_rsl_conn[i] = connect_bsc(&sin, priv_nr, ipbc);
@@ -1072,12 +1072,14 @@ static int ipaccess_proxy_setup(void)
 	ipp->reconn_timer.data = ipp;
 
 	/* Listen for OML connections */
-	ret = make_listen_sock(&ipp->oml_listen_fd, 3002, OML_FROM_BTS, listen_fd_cb);
+	ret = make_listen_sock(&ipp->oml_listen_fd, IPA_TCP_PORT_OML,
+				OML_FROM_BTS, listen_fd_cb);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_listen_sock(&ipp->rsl_listen_fd, 3003, RSL_FROM_BTS, listen_fd_cb);
+	ret = make_listen_sock(&ipp->rsl_listen_fd, IPA_TCP_PORT_RSL,
+				RSL_FROM_BTS, listen_fd_cb);
 
 	return ret;
 }
