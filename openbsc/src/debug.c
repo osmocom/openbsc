@@ -231,6 +231,7 @@ static void _debugp(unsigned int subsys, int level, char *file, int line,
 			va_list bp;
 			va_copy(bp, ap);
 			_output(tar, subsys, file, line, cont, format, bp);
+			va_end(bp);
 		}
 	}
 }
