@@ -955,7 +955,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	/* FIXME: print which channel */
-	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING\n");
+	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING");
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -963,6 +963,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 		print_rsl_cause(LOGL_NOTICE, TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
+	LOGP(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
 	return rsl_rf_chan_release(msg->lchan);
 }
