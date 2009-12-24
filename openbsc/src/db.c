@@ -143,7 +143,7 @@ void db_error_func(dbi_conn conn, void *data)
 {
 	const char *msg;
 	dbi_conn_error(conn, &msg);
-	printf("DBI: %s\n", msg);
+	LOGP(DDB, LOGL_ERROR, "DBI: %s\n", msg);
 }
 
 static int check_db_revision(void)
@@ -176,7 +176,7 @@ int db_init(const char *name)
 
 	conn = dbi_conn_new("sqlite3");
 	if (conn == NULL) {
-		printf("DB: Failed to create connection.\n");
+		LOGP(DDB, LOGL_FATAL, "Failed to create connection.\n");
 		return 1;
 	}
 
@@ -217,14 +217,15 @@ int db_prepare()
 	for (i = 0; i < ARRAY_SIZE(create_stmts); i++) {
 		result = dbi_conn_query(conn, create_stmts[i]);
 		if (!result) {
-			printf("DB: Failed to create some table.\n");
+			LOGP(DDB, LOGL_ERROR,
+			     "Failed to create some table.\n");
 			return 1;
 		}
 		dbi_result_free(result);
 	}
 
 	if (check_db_revision() < 0) {
-		fprintf(stderr, "Database schema revision invalid, "
+		LOGP(DDB, LOGL_FATAL, "Database schema revision invalid, "
 			"please update your database schema\n");
                 return -1;
 	}
@@ -256,7 +257,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
                          "UPDATE Subscriber set updated = datetime('now') "
                          "WHERE imsi = %s " , imsi);
 		if (!result)
-			printf("DB: failed to update timestamp\n");
+			LOGP(DDB, LOGL_ERROR, "failed to update timestamp\n");
 		else
 			dbi_result_free(result);
 		return subscr;
@@ -274,12 +275,12 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 		imsi
 	);
 	if (!result)
-		printf("DB: Failed to create Subscriber by IMSI.\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
 	subscr->net = net;
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
-	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
+	LOGP(DDB, LOGL_NOTICE, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	db_subscriber_alloc_exten(subscr);
 	return subscr;
 }
@@ -456,15 +457,15 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 		free(quoted);
 		break;
 	default:
-		printf("DB: Unknown query selector for Subscriber.\n");
+		LOGP(DDB, LOGL_NOTICE, "Unknown query selector for Subscriber.\n");
 		return NULL;
 	}
 	if (!result) {
-		printf("DB: Failed to query Subscriber.\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber.\n");
 		return NULL;
 	}
 	if (!dbi_result_next_row(result)) {
-		printf("DB: Failed to find the Subscriber. '%u' '%s'\n",
+		DEBUGP(DDB, "Failed to find the Subscriber. '%u' '%s'\n",
 			field, id);
 		dbi_result_free(result);
 		return NULL;
@@ -491,7 +492,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 	subscr->lac = dbi_result_get_uint(result, "lac");
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
@@ -534,7 +535,7 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 	free(q_tmsi);
 
 	if (!result) {
-		printf("DB: Failed to update Subscriber (by IMSI).\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to update Subscriber (by IMSI).\n");
 		return 1;
 	}
 
@@ -550,15 +551,15 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	u_int8_t classmark1;
 
 	memcpy(&classmark1, &equip->classmark1, sizeof(classmark1));
-	printf("DB: Sync Equipment IMEI=%s, classmark1=%02x",
+	DEBUGP(DDB, "Sync Equipment IMEI=%s, classmark1=%02x",
 		equip->imei, classmark1);
 	if (equip->classmark2_len)
- 		printf(", classmark2=%s",
+		DEBUGPC(DDB, ", classmark2=%s",
 			hexdump(equip->classmark2, equip->classmark2_len));
 	if (equip->classmark3_len)
-		printf(", classmark3=%s",
+		DEBUGPC(DDB, ", classmark3=%s",
 			hexdump(equip->classmark3, equip->classmark3_len));
-	printf("\n");
+	DEBUGPC(DDB, "\n");
 
 	dbi_conn_quote_binary_copy(conn, equip->classmark2,
 				   equip->classmark2_len, &cm2);
@@ -578,7 +579,7 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	free(cm3);
 
 	if (!result) {
-		printf("DB: Failed to update Equipment\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to update Equipment\n");
 		return -EIO;
 	}
 
@@ -607,7 +608,8 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 		free(tmsi_quoted);
 
 		if (!result) {
-			printf("DB: Failed to query Subscriber while allocating new TMSI.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber "
+				"while allocating new TMSI.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)) {
@@ -616,7 +618,8 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 		}
 		if (!dbi_result_next_row(result)) {
 			dbi_result_free(result);
-			printf("DB: Allocated TMSI %u for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
+			DEBUGP(DDB, "Allocated TMSI %u for IMSI %s.\n",
+				subscriber->tmsi, subscriber->imsi);
 			return db_sync_subscriber(subscriber);
 		}
 		dbi_result_free(result);
@@ -637,7 +640,8 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
 			try
 		);
 		if (!result) {
-			printf("DB: Failed to query Subscriber while allocating new extension.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber "
+				"while allocating new extension.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)){
@@ -651,7 +655,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
 		dbi_result_free(result);
 	}
 	sprintf(subscriber->extension, "%i", try);
-	printf("DB: Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
+	DEBUGP(DDB, "Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
 	return db_sync_subscriber(subscriber);
 }
 /*
@@ -674,7 +678,8 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t *toke
 			"WHERE subscriber_id = %llu OR token = \"%08X\" ",
 			subscriber->id, try);
 		if (!result) {
-			printf("DB: Failed to query AuthToken while allocating new token.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to query AuthToken "
+				"while allocating new token.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)) {
@@ -694,12 +699,13 @@ int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t *toke
 		"(%llu, datetime('now'), \"%08X\") ",
 		subscriber->id, try);
 	if (!result) {
-		printf("DB: Failed to create token %08X for IMSI %s.\n", try, subscriber->imsi);
+		LOGP(DDB, LOGL_ERROR, "Failed to create token %08X for "
+			"IMSI %s.\n", try, subscriber->imsi);
 		return 1;
 	}
 	dbi_result_free(result);
 	*token = try;
-	printf("DB: Allocated token %08X for IMSI %s.\n", try, subscriber->imsi);
+	DEBUGP(DDB, "Allocated token %08X for IMSI %s.\n", try, subscriber->imsi);
 
 	return 0;
 }
@@ -719,7 +725,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 		"(%s, datetime('now'), datetime('now')) ",
 		imei);
 	if (!result) {
-		printf("DB: Failed to create Equipment by IMEI.\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to create Equipment by IMEI.\n");
 		return 1;
 	}
 
@@ -730,7 +736,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 	dbi_result_free(result);
 
 	if (equipment_id)
-		printf("DB: New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
+		DEBUGP(DDB, "New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
 	else {
 		result = dbi_conn_queryf(conn,
 			"SELECT id FROM Equipment "
@@ -738,11 +744,11 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 			imei
 		);
 		if (!result) {
-			printf("DB: Failed to query Equipment by IMEI.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to query Equipment by IMEI.\n");
 			return 1;
 		}
 		if (!dbi_result_next_row(result)) {
-			printf("DB: Failed to find the Equipment.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to find the Equipment.\n");
 			dbi_result_free(result);
 			return 1;
 		}
@@ -757,7 +763,7 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 		"(%llu, %llu, datetime('now'), datetime('now')) ",
 		subscriber->id, equipment_id);
 	if (!result) {
-		printf("DB: Failed to create EquipmentWatch.\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to create EquipmentWatch.\n");
 		return 1;
 	}
 
@@ -767,7 +773,8 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 
 	dbi_result_free(result);
 	if (watch_id)
-		printf("DB: New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
+		DEBUGP(DDB, "New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n",
+			equipment_id, subscriber->imsi, imei);
 	else {
 		result = dbi_conn_queryf(conn,
 			"UPDATE EquipmentWatch "
@@ -775,11 +782,12 @@ int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IM
 			"WHERE subscriber_id = %llu AND equipment_id = %llu ",
 			subscriber->id, equipment_id);
 		if (!result) {
-			printf("DB: Failed to update EquipmentWatch.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to update EquipmentWatch.\n");
 			return 1;
 		}
 		dbi_result_free(result);
-		printf("DB: Updated EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
+		DEBUGP(DDB, "Updated EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n",
+			equipment_id, subscriber->imsi, imei);
 	}
 
 	return 0;
@@ -965,7 +973,7 @@ int db_sms_mark_sent(struct gsm_sms *sms)
 		"SET sent = datetime('now') "
 		"WHERE id = %llu", sms->id);
 	if (!result) {
-		printf("DB: Failed to mark SMS %llu as sent.\n", sms->id);
+		LOGP(DDB, LOGL_ERROR, "Failed to mark SMS %llu as sent.\n", sms->id);
 		return 1;
 	}
 
@@ -983,7 +991,8 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
 		"SET deliver_attempts = deliver_attempts + 1 "
 		"WHERE id = %llu", sms->id);
 	if (!result) {
-		printf("DB: Failed to inc deliver attempts for SMS %llu.\n", sms->id);
+		LOGP(DDB, LOGL_ERROR, "Failed to inc deliver attempts for "
+			"SMS %llu.\n", sms->id);
 		return 1;
 	}
 

@@ -51,6 +51,7 @@ static struct debug_category default_categories[Debug_LastEntry] = {
     [DMSC]	= { .enabled = 1, .loglevel = 0},
     [DMGCP]	= { .enabled = 1, .loglevel = 0},
     [DHO]	= { .enabled = 1, .loglevel = 0},
+    [DDB]	= { .enabled = 1, .loglevel = 0},
 };
 
 struct debug_info {
@@ -93,6 +94,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DMSC, "DMSC", "", "")
 	DEBUG_CATEGORY(DMGCP, "DMGCP", "", "")
 	DEBUG_CATEGORY(DHO, "DHO", "", "")
+	DEBUG_CATEGORY(DDB, "DDB", "", "")
 };
 
 /*
