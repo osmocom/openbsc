@@ -49,6 +49,8 @@ Boston, MA 02111-1307, USA.  */
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/talloc.h>
 
+void *tall_vty_cmd_ctx;
+
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
 vector cmdvec;
@@ -173,7 +175,7 @@ char *argv_concat(const char **argv, int argc, int shift)
 		len += strlen(argv[i]) + 1;
 	if (!len)
 		return NULL;
-	p = str = _talloc_zero(tall_vty_ctx, len, "arvg_concat");
+	p = str = _talloc_zero(tall_vty_cmd_ctx, len, "arvg_concat");
 	for (i = shift; i < argc; i++) {
 		size_t arglen;
 		memcpy(p, argv[i], (arglen = strlen(argv[i])));
@@ -275,7 +277,7 @@ vector cmd_make_strvec(const char *string)
 		       *cp != '\0')
 			cp++;
 		strlen = cp - start;
-		token = _talloc_zero(tall_vty_ctx, strlen + 1, "make_strvec");
+		token = _talloc_zero(tall_vty_cmd_ctx, strlen + 1, "make_strvec");
 		memcpy(token, start, strlen);
 		*(token + strlen) = '\0';
 		vector_set(strvec, token);
@@ -331,7 +333,7 @@ static char *cmd_desc_str(const char **string)
 		cp++;
 
 	strlen = cp - start;
-	token = _talloc_zero(tall_vty_ctx, strlen + 1, "cmd_desc_str");
+	token = _talloc_zero(tall_vty_cmd_ctx, strlen + 1, "cmd_desc_str");
 	memcpy(token, start, strlen);
 	*(token + strlen) = '\0';
 
@@ -402,11 +404,11 @@ static vector cmd_make_descvec(const char *string, const char *descstr)
 
 		len = cp - sp;
 
-		token = _talloc_zero(tall_vty_ctx, len + 1, "cmd_make_descvec");
+		token = _talloc_zero(tall_vty_cmd_ctx, len + 1, "cmd_make_descvec");
 		memcpy(token, sp, len);
 		*(token + len) = '\0';
 
-		desc = talloc_zero(tall_vty_ctx, struct desc);
+		desc = talloc_zero(tall_vty_cmd_ctx, struct desc);
 		desc->cmd = token;
 		desc->str = cmd_desc_str(&dp);
 
@@ -1804,7 +1806,7 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 					if ((desc = vector_slot(descvec, j))) {
 						if ((string = cmd_entry_function(vector_slot(vline, index), desc->cmd)))
 							if (cmd_unique_string (matchvec, string))
-								vector_set (matchvec, talloc_strdup(tall_vty_ctx, string));
+								vector_set (matchvec, talloc_strdup(tall_vty_cmd_ctx, string));
 					}
 			}
 		}
@@ -1845,7 +1847,7 @@ static char **cmd_complete_command_real(vector vline, struct vty *vty,
 			if (len < lcd) {
 				char *lcdstr;
 
-				lcdstr = _talloc_zero(tall_vty_ctx, lcd + 1,
+				lcdstr = _talloc_zero(tall_vty_cmd_ctx, lcd + 1,
 						      "complete-lcdstr");
 				memcpy(lcdstr, matchvec->index[0], lcd);
 				lcdstr[lcd] = '\0';
@@ -2463,13 +2465,13 @@ DEFUN(config_write_file,
 	config_file = host.config;
 
 	config_file_sav =
-	    _talloc_zero(tall_vty_ctx,
+	    _talloc_zero(tall_vty_cmd_ctx,
 			 strlen(config_file) + strlen(CONF_BACKUP_EXT) + 1,
 			 "config_file_sav");
 	strcpy(config_file_sav, config_file);
 	strcat(config_file_sav, CONF_BACKUP_EXT);
 
-	config_file_tmp = _talloc_zero(tall_vty_ctx, strlen(config_file) + 8,
+	config_file_tmp = _talloc_zero(tall_vty_cmd_ctx, strlen(config_file) + 8,
 					"config_file_tmp");
 	sprintf(config_file_tmp, "%s.XXXXXX", config_file);
 
@@ -2650,7 +2652,7 @@ DEFUN(config_hostname,
 	if (host.name)
 		talloc_free(host.name);
 
-	host.name = talloc_strdup(tall_vty_ctx, argv[0]);
+	host.name = talloc_strdup(tall_vty_cmd_ctx, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2685,7 +2687,7 @@ DEFUN(config_password, password_cmd,
 			host.password = NULL;
 			if (host.password_encrypt)
 				talloc_free(host.password_encrypt);
-			host.password_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
+			host.password_encrypt = talloc_strdup(tall_vty_cmd_ctx, argv[1]);
 			return CMD_SUCCESS;
 		} else {
 			vty_out(vty, "Unknown encryption type.%s", VTY_NEWLINE);
@@ -2708,10 +2710,10 @@ DEFUN(config_password, password_cmd,
 	if (host.encrypt) {
 		if (host.password_encrypt)
 			talloc_free(host.password_encrypt);
-		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
+		host.password_encrypt = talloc_strdup(tall_vty_cmd_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.password = talloc_strdup(tall_vty_ctx, argv[0]);
+		host.password = talloc_strdup(tall_vty_cmd_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2744,7 +2746,7 @@ ALIAS(config_password, password_text_cmd,
 
 			if (host.enable_encrypt)
 				talloc_free(host.enable_encrypt);
-			host.enable_encrypt = talloc_strdup(tall_vty_ctx, argv[1]);
+			host.enable_encrypt = talloc_strdup(tall_vty_cmd_ctx, argv[1]);
 
 			return CMD_SUCCESS;
 		} else {
@@ -2769,10 +2771,10 @@ ALIAS(config_password, password_text_cmd,
 	if (host.encrypt) {
 		if (host.enable_encrypt)
 			talloc_free(host.enable_encrypt);
-		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(argv[0]));
+		host.enable_encrypt = talloc_strdup(tall_vty_cmd_ctx, zencrypt(argv[0]));
 	} else
 #endif
-		host.enable = talloc_strdup(tall_vty_ctx, argv[0]);
+		host.enable = talloc_strdup(tall_vty_cmd_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2816,12 +2818,12 @@ DEFUN(service_password_encrypt,
 	if (host.password) {
 		if (host.password_encrypt)
 			talloc_free(host.password_encrypt);
-		host.password_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.password));
+		host.password_encrypt = talloc_strdup(tall_vty_cmd_ctx, zencrypt(host.password));
 	}
 	if (host.enable) {
 		if (host.enable_encrypt)
 			talloc_free(host.enable_encrypt);
-		host.enable_encrypt = talloc_strdup(tall_vty_ctx, zencrypt(host.enable));
+		host.enable_encrypt = talloc_strdup(tall_vty_cmd_ctx, zencrypt(host.enable));
 	}
 
 	return CMD_SUCCESS;
@@ -3095,7 +3097,7 @@ static int set_log_file(struct vty *vty, const char *fname, int loglevel)
 	if (host.logfile)
 		talloc_free(host.logfile);
 
-	host.logfile = talloc_strdup(tall_vty_ctx, fname);
+	host.logfile = talloc_strdup(tall_vty_cmd_ctx, fname);
 
 	return CMD_SUCCESS;
 }
@@ -3285,7 +3287,7 @@ DEFUN(banner_motd_file,
 {
 	if (host.motdfile)
 		talloc_free(host.motdfile);
-	host.motdfile = talloc_strdup(tall_vty_ctx, argv[0]);
+	host.motdfile = talloc_strdup(tall_vty_cmd_ctx, argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -3313,7 +3315,7 @@ DEFUN(no_banner_motd,
 /* Set config filename.  Called from vty.c */
 void host_config_set(const char *filename)
 {
-	host.config = talloc_strdup(tall_vty_ctx, filename);
+	host.config = talloc_strdup(tall_vty_cmd_ctx, filename);
 }
 
 void install_default(enum node_type node)

@@ -356,4 +356,6 @@ void host_config_set(const char *);
 
 void print_version(const char *);
 
+extern void *tall_vty_cmd_ctx;
+
 #endif				/* _ZEBRA_COMMAND_H */

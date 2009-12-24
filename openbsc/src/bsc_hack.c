@@ -138,6 +138,7 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+extern void *tall_vty_ctx;
 static void signal_handler(int signal)
 {
 	fprintf(stdout, "signal %u received\n", signal);
@@ -153,7 +154,11 @@ static void signal_handler(int signal)
 		/* in case of abort, we want to obtain a talloc report
 		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
 		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		talloc_report_full(tall_vty_ctx, stderr);
 		break;
 	default:
 		break;
@@ -219,6 +224,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {

@@ -1633,6 +1633,8 @@ extern void *tall_bsc_ctx;
 void vty_init()
 {
 	tall_vty_ctx = talloc_named_const(NULL, 0, "vty");
+	tall_vty_vec_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_vector");
+	tall_vty_cmd_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_command");
 
 	/* For further configuration read, preserve current directory. */
 	vty_save_cwd();
