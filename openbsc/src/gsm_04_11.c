@@ -1018,7 +1018,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	struct gsm_trans *trans;
 	u_int8_t *data, *rp_ud_len;
 	u_int8_t msg_ref = 42;
-	u_int8_t transaction_id;
+	int transaction_id;
 	int rc;
 
 	transaction_id = trans_assign_trans_id(lchan->subscr, GSM48_PDISC_SMS, 0);
