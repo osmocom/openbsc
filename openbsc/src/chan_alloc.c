@@ -35,6 +35,32 @@
 
 static void auto_release_channel(void *_lchan);
 
+static int ts_is_usable(struct gsm_bts_trx_ts *ts)
+{
+	/* FIXME: How does this behave for BS-11 ? */
+	if (is_ipaccess_bts(ts->trx->bts)) {
+		if (ts->nm_state.operational != NM_OPSTATE_ENABLED ||
+		    ts->nm_state.availability != NM_AVSTATE_OK)
+			return 0;
+	}
+
+	return 1;
+}
+
+static int trx_is_usable(struct gsm_bts_trx *trx)
+{
+	/* FIXME: How does this behave for BS-11 ? */
+	if (is_ipaccess_bts(trx->bts)) {
+		if (trx->nm_state.operational != NM_OPSTATE_ENABLED ||
+		    trx->nm_state.availability != NM_AVSTATE_OK ||
+		    trx->bb_transc.nm_state.operational != NM_OPSTATE_ENABLED ||
+		    trx->bb_transc.nm_state.availability != NM_AVSTATE_OK)
+			return 0;
+	}
+
+	return 1;
+}
+
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
 {
@@ -62,6 +88,9 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		int from, to;
+
+		if (!trx_is_usable(trx))
+			continue;
 
 		/* the following constraints are pure policy,
 		 * no requirement to put this restriction in place */
@@ -97,6 +126,10 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 
 		for (j = from; j <= to; j++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[j];
+
+			if (!ts_is_usable(ts))
+				continue;
+
 			if (ts->pchan == GSM_PCHAN_NONE) {
 				ts->pchan = pchan;
 				/* set channel attribute on OML */
@@ -130,8 +163,13 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 	struct gsm_bts_trx_ts *ts;
 	int j, ss;
 
+	if (!trx_is_usable(trx))
+		return NULL;
+
 	for (j = 0; j < 8; j++) {
 		ts = &trx->ts[j];
+		if (!ts_is_usable(ts))
+			continue;
 		if (ts->pchan != pchan)
 			continue;
 		/* check if all sub-slots are allocated yet */
