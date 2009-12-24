@@ -27,6 +27,7 @@ enum {
 	DMGCP,
 	DHO,
 	DDB,
+	DREF,
 	Debug_LastEntry,
 };
 

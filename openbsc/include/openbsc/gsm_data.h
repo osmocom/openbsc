@@ -101,14 +101,14 @@ typedef int gsm_cbfn(unsigned int hooknum,
 #define LCHAN_RELEASE_TIMEOUT 20, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
 			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
 			lchan->nr, lchan->use_count); \
 		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
 
 #define put_lchan(lchan) \
 	do { lchan->use_count--; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
 			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
 			lchan->nr, lchan->use_count); \
 	} while(0);
