@@ -340,7 +340,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 		if ((ra & chr->mask) == chr->val)
 			return ctype_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
 	return GSM_LCHAN_SDCCH;
 }
 
@@ -363,7 +363,7 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, in
 		if ((ra & chr->mask) == chr->val)
 			return reason_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
 	return GSM_CHREQ_REASON_OTHER;
 }
 
@@ -475,7 +475,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
 	} else if (msg->lchan->subscr != subscr) {
-		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
+		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
@@ -594,7 +594,8 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -634,7 +635,8 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -667,7 +669,7 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
 
 	if (mod->mode != msg->lchan->tch_mode) {
-		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+		LOGP(DRR, LOGL_ERROR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
 			msg->lchan->tch_mode, mod->mode);
 		return -1;
 	}
