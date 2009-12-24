@@ -100,12 +100,15 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		s->net = bts->network;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
+		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
+			s->imsi, s->lac);
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
 			s->lac = GSM_LAC_RESERVED_DETACHED;
+		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", s->imsi);
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:
