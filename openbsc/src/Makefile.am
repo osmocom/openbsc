@@ -29,9 +29,9 @@ bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
 		      select.c timer.c rs232.c tlv_parser.c signal.c talloc.c
 
-ipaccess_find_SOURCES = ipaccess-find.c select.c timer.c
+ipaccess_find_SOURCES = ipaccess/ipaccess-find.c select.c timer.c
 
-ipaccess_config_SOURCES = ipaccess-config.c
+ipaccess_config_SOURCES = ipaccess/ipaccess-config.c
 ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 isdnsync_SOURCES = isdnsync.c
@@ -39,6 +39,6 @@ isdnsync_SOURCES = isdnsync.c
 bsc_mgcp_SOURCES = bsc_mgcp.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
 bsc_mgcp_LDADD = libvty.a
 
-ipaccess_firmware_SOURCES = ipaccess-firmware/ipaccess-firmware.c
+ipaccess_firmware_SOURCES = ipaccess/ipaccess-firmware.c
 
-ipaccess_proxy_SOURCES = ipaccess-proxy.c msgb.c select.c talloc.c debug.c timer.c
+ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c msgb.c select.c talloc.c debug.c timer.c
