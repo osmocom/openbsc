@@ -270,7 +270,8 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	hh = (struct ipaccess_head *) msg->data;
 	ret = recv(bfd->fd, msg->data, 3, 0);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "recv error  %s\n", strerror(errno));
+		if (ret != -EAGAIN)
+			LOGP(DINP, LOGL_ERROR, "recv error  %s\n", strerror(errno));
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
