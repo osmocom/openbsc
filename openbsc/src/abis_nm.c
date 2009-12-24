@@ -1043,13 +1043,11 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	/* check if last message is to be acked */
 	if (is_ack_nack(nmh->last_msgtype)) {
 		if (mt == MT_ACK(nmh->last_msgtype)) {
-			fprintf(stderr, "received ACK (0x%x)\n",
-				foh->msg_type);
+			DEBUGP(DNM, "received ACK (0x%x)\n", foh->msg_type);
 			/* we got our ACK, continue sending the next msg */
 		} else if (mt == MT_NACK(nmh->last_msgtype)) {
 			/* we got a NACK, signal this to the caller */
-			fprintf(stderr, "received NACK (0x%x)\n",
-				foh->msg_type);
+			DEBUGP(DNM, "received NACK (0x%x)\n", foh->msg_type);
 			/* FIXME: somehow signal this to the caller */
 		} else {
 			/* really strange things happen */
@@ -2618,7 +2616,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	if (strncmp((char *)&oh->data[1], ipaccess_magic, idstrlen)) {
-		DEBUGP(DNM, "id string is not com.ipaccess !?!\n");
+		LOGP(DNM, LOGL_ERROR, "id string is not com.ipaccess !?!\n");
 		return -EINVAL;
 	}
 
@@ -2646,7 +2644,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		DEBUGPC(DNM, "\n");
 		break;
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
-		DEBUGPC(DNM, "RSL CONNECT NACK ");
+		LOGP(DNM, LOGL_ERROR, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
@@ -2658,35 +2656,35 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		/* FIXME: decode and show the actual attributes */
 		break;
 	case NM_MT_IPACC_SET_NVATTR_NACK:
-		DEBUGPC(DNM, "SET NVATTR NACK ");
+		LOGP(DNM, LOGL_ERROR, "SET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
-			DEBUGPC(DNM, "\n");
+			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
 	case NM_MT_IPACC_GET_NVATTR_ACK:
 		DEBUGPC(DNM, "GET NVATTR ACK\n");
 		/* FIXME: decode and show the actual attributes */
 		break;
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		DEBUGPC(DNM, "GET NVATTR NACK ");
+		LOGPC(DNM, LOGL_ERROR, "GET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
-			DEBUGPC(DNM, "\n");
+			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
 	case NM_MT_IPACC_SET_ATTR_ACK:
 		DEBUGPC(DNM, "SET ATTR ACK\n");
 		break;
 	case NM_MT_IPACC_SET_ATTR_NACK:
-		DEBUGPC(DNM, "SET ATTR NACK ");
+		LOGPC(DNM, LOGL_ERROR, "SET ATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
-			DEBUGPC(DNM, "\n");
+			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
 	default:
 		DEBUGPC(DNM, "unknown\n");
