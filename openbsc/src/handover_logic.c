@@ -280,8 +280,8 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
-		return -ENODEV;
+		/* it is perfectly normal, we have CRCX even in non-HO cases */
+		return 0;
 	}
 
 	if (ipacc_rtp_direct) {
