@@ -540,11 +540,11 @@ static const char *obj_class_name(u_int8_t oc)
 const char *nm_opstate_name(u_int8_t os)
 {
 	switch (os) {
-	case 1:
+	case NM_OPSTATE_DISABLED:
 		return "Disabled";
-	case 2:
+	case NM_OPSTATE_ENABLED:
 		return "Enabled";
-	case 0xff:
+	case NM_OPSTATE_NULL:
 		return "NULL";
 	default:
 		return "RFU";

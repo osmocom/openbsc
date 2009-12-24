@@ -485,6 +485,12 @@ enum abis_nm_avail_state {
 	NM_AVSTATE_OK		= 0xff,
 };
 
+enum abis_nm_op_state {
+	NM_OPSTATE_DISABLED	= 1,
+	NM_OPSTATE_ENABLED	= 2,
+	NM_OPSTATE_NULL		= 0xff,
+};
+
 /* Section 9.4.13: Channel Combination */
 enum abis_nm_chan_comb {
 	NM_CHANC_TCHFull	= 0x00,	/* TCH/F + TCH/H + SACCH/TF */
