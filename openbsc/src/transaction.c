@@ -119,7 +119,7 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 	struct gsm_network *net = subscr->net;
 	struct gsm_trans *trans;
 	unsigned int used_tid_bitmask = 0;
-	int i;
+	int i, j, h;
 
 	if (ti_flag)
 		ti_flag = 0x8;
@@ -133,9 +133,14 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 		used_tid_bitmask |= (1 << trans->transaction_id);
 	}
 
+	/* find a new one, trying to go in a 'circular' pattern */
+	for (h = 6; h > 0; h--)
+		if (used_tid_bitmask & (1 << (h | ti_flag)))
+			break;
 	for (i = 0; i < 7; i++) {
-		if ((used_tid_bitmask & (1 << (i | ti_flag))) == 0)
-			return i | ti_flag;
+		j = ((h + i) % 7) | ti_flag;
+		if ((used_tid_bitmask & (1 << j)) == 0)
+			return j;
 	}
 
 	return -1;
