@@ -213,7 +213,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			     &site_id, &bts_id, &trx_id);
 		bts = find_bts_by_unitid(e1h->gsmnet, site_id, bts_id);
 		if (!bts) {
-			DEBUGP(DINP, "Unable to find BTS configuration for "
+			LOGP(DINP, LOGL_ERROR, "Unable to find BTS configuration for "
 			       " %u/%u/%u, disconnecting\n", site_id, bts_id,
 				trx_id);
 			return -EIO;
@@ -270,7 +270,7 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	hh = (struct ipaccess_head *) msg->data;
 	ret = recv(bfd->fd, msg->data, 3, 0);
 	if (ret < 0) {
-		fprintf(stderr, "recv error  %s\n", strerror(errno));
+		LOGP(DINP, LOGL_ERROR, "recv error  %s\n", strerror(errno));
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
@@ -287,7 +287,7 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	len = ntohs(hh->len);
 	ret = recv(bfd->fd, msg->l2h, len, 0);
 	if (ret < len) {
-		fprintf(stderr, "short read!\n");
+		LOGP(DINP, LOGL_ERROR, "short read!\n");
 		msgb_free(msg);
 		*error = -EIO;
 		return NULL;
@@ -310,9 +310,12 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
 		if (error == 0) {
-			fprintf(stderr, "BTS disappeared, dead socket\n");
+			LOGP(DINP, LOGL_NOTICE, "BTS disappeared, dead socket\n");
 			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
 			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
+			link = e1inp_lookup_sign_link(e1i_ts, IPAC_PROTO_OML, 0);
+			if (link)
+				link->trx->bts->ip_access.flags = 0;
 			bsc_unregister_fd(bfd);
 			close(bfd->fd);
 			bfd->fd = -1;
@@ -340,7 +343,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
-		printf("no matching signalling link for hh->proto=0x%02x\n", hh->proto);
+		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
+			"hh->proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -362,7 +366,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		ret = abis_nm_rcvmsg(msg);
 		break;
 	default:
-		DEBUGP(DMI, "Unknown IP.access protocol proto=0x%02x\n", hh->proto);
+		LOGP(DINP, LOGL_NOTICE, "Unknown IP.access protocol proto=0x%02x\n", hh->proto);
 		msgb_free(msg);
 		break;
 	}
@@ -462,7 +466,7 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 		if (what & BSC_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 	} else
-		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
+		LOGP(DINP, LOGL_ERROR, "unknown E1 TS type %u\n", e1i_ts->type);
 
 	return rc;
 }
@@ -492,7 +496,8 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		perror("accept");
 		return ret;
 	}
-	DEBUGP(DINP, "accept()ed new OML link from %s\n", inet_ntoa(sa.sin_addr));
+	LOGP(DINP, LOGL_NOTICE, "accept()ed new OML link from %s\n",
+		inet_ntoa(sa.sin_addr));
 
 	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line) {
@@ -514,7 +519,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->when = BSC_FD_READ;
 	ret = bsc_register_fd(bfd);
 	if (ret < 0) {
-		fprintf(stderr, "could not register FD\n");
+		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
 		talloc_free(line);
 		return ret;
@@ -550,13 +555,13 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		perror("accept");
 		return bfd->fd;
 	}
-	DEBUGP(DINP, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
+	LOGP(DINP, LOGL_NOTICE, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
 	bfd->priv_nr = 2;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = bsc_register_fd(bfd);
 	if (ret < 0) {
-		fprintf(stderr, "could not register FD\n");
+		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
 		talloc_free(bfd);
 		return ret;
@@ -587,7 +592,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 
 	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		fprintf(stderr, "could not bind l2 socket %s\n",
+		LOGP(DINP, LOGL_ERROR, "could not bind l2 socket %s\n",
 			strerror(errno));
 		return -EIO;
 	}
@@ -623,7 +628,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
 	if (ret < 0) {
-		fprintf(stderr, "could not connect socket\n");
+		LOGP(DINP, LOGL_ERROR, "could not connect socket\n");
 		close(bfd->fd);
 		return ret;
 	}
