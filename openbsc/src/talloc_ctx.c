@@ -32,5 +32,5 @@ void talloc_ctx_init(void)
 	tall_trans_ctx = talloc_named_const(tall_bsc_ctx, 0, "transaction");
 	tall_map_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_map_entry");
 	tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_upq_entry");
-	tall_ctr_ctx = talloc_named_const(tall_ctr_ctx, 0, "counter");
+	tall_ctr_ctx = talloc_named_const(tall_bsc_ctx, 0, "counter");
 }
