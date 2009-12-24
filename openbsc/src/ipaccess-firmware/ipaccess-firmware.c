@@ -29,49 +29,57 @@
 #include <string.h>
 
 
+struct sdp_firmware {
+	char magic[4];
+	char more_magic[4];
+	unsigned int header_length;
+	unsigned int file_length;
+	char sw_part[20];
+	char text1[122];
+	u_int8_t no_idea_1[4];
+	char text2[64];
+	char time[8];
+	u_int8_t no_idea_2[4];
+	char date[8];
+	u_int8_t no_idea_3[6];
+	/* stuff i don't know */
+} __attribute__((packed));
+
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
 
 
 static void analyze_file(int fd)
 {
+	struct sdp_firmware *firmware_header;
 	char buf[4096];
 	int rc;
-	unsigned int absolute_size;
 
-	rc = read(fd, buf, 4);
-	if (rc <= 0) {
-		fprintf(stderr, "Not enough space for the header.\n");
+	rc = read(fd, buf, sizeof(*firmware_header));
+	if (rc < 0) {
+		perror("can not read header");
 		return;
 	}
 
-	if (strcmp(buf, " SDP") != 0) {
-		fprintf(stderr, "Wrong magic number at the beginning of the file.\n");
+	firmware_header = (struct sdp_firmware *) &buf[0];
+	if (strncmp(firmware_header->magic, " SDP", 4) != 0) {
+		fprintf(stderr, "Wrong magic.\n");
 		return;
 	}
 
-	rc = read(fd, buf, 4);
-	if (rc <= 0) {
-		fprintf(stderr, "Not enough space for the more_magic.\n");
+	if (memcmp(firmware_header->more_magic, more_magic, 4) != 0) {
+		fprintf(stderr, "Wrong more magic.\n");
 		return;
 	}
-
-	if (strncmp(buf, more_magic, 4) != 0) {
-		fprintf(stderr, "The more magic is not right.\n");
-		return;
-	}
-
-	rc = read(fd, buf, 4);
-	if (rc <= 0) {
-		fprintf(stderr, "Trying to read the header length failed.\n");
-		return;
-	}
-
-	memcpy(&absolute_size, &buf[0], 4);
-	absolute_size = ntohl(absolute_size);
 
 	printf("Printing header information:\n");
-	printf("The header is %u bytes long\n", absolute_size);
+	printf("header_length: %u\n", ntohl(firmware_header->header_length));
+	printf("file_length: %u\n", ntohl(firmware_header->file_length));
+	printf("sw_part: %.20s\n", firmware_header->sw_part);
+	printf("text1: %.122s\n", firmware_header->text1);
+	printf("text2: %.64s\n", firmware_header->text2);
+	printf("time: %.8s\n", firmware_header->time);
+	printf("date: %.8s\n", firmware_header->date);
 }
 
 int main(int argc, char** argv)
