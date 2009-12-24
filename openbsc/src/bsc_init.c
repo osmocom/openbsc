@@ -754,9 +754,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
-		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->bts->nr, trx->nr, bsc_gsmnet->country_code,
-		bsc_gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
+		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
+		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
+		bsc_gsmnet->network_code, trx->bts->location_area_code,
+		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
 	set_system_infos(trx);
 }
 
