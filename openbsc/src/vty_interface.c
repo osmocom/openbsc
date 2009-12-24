@@ -1797,6 +1797,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
 	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
 	install_element(VIEW_NODE, &logging_level_cmd);
+	install_element(VIEW_NODE, &logging_set_log_level_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
