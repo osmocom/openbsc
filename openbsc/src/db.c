@@ -123,6 +123,7 @@ static char *create_stmts[] = {
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL "
+		")",
 	"CREATE TABLE IF NOT EXISTS AuthKeys ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
