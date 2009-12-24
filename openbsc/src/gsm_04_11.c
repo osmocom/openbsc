@@ -752,14 +752,16 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	/* free the transaction here */
-	trans_free(trans);
-
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
-	else
+
+	/* free the transaction here */
+	trans_free(trans);
+
+	/* release channel if done */
+	if (!sms)
 		rsl_release_request(msg->lchan, trans->sms.link_id);
 
 	return 0;
