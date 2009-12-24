@@ -163,9 +163,12 @@ static void _output(struct debug_target *target, unsigned int subsys, char *file
 	buf[0] = '\0';
 
 	/* are we using color */
-	if (target->use_color)
+	if (target->use_color) {
 		snprintf(col, sizeof(col), "%s", color(subsys));
+		col[sizeof(col)-1] = '\0';
+	}
 	vsnprintf(buf, sizeof(buf), format, ap);
+	buf[sizeof(buf)-1] = '\0';
 
 	if (!cont) {
 		if (target->print_timestamp) {
@@ -175,11 +178,14 @@ static void _output(struct debug_target *target, unsigned int subsys, char *file
 			timestr = ctime(&tm);
 			timestr[strlen(timestr)-1] = '\0';
 			snprintf(tim, sizeof(tim), "%s ", timestr);
+			tim[sizeof(tim)-1] = '\0';
 		}
 		snprintf(sub, sizeof(sub), "<%4.4x> %s:%d ", subsys, file, line);
+		sub[sizeof(sub)-1] = '\0';
 	}
 
 	snprintf(final, sizeof(final), "%s%s%s%s\033[0;m", col, tim, sub, buf);
+	final[sizeof(final)-1] = '\0';
 	target->output(target, final);
 }
 
