@@ -98,7 +98,7 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 			    const struct gsm_bts *bts)
 {
-	int i, rc, min = 1024, max = 0;
+	int i, rc, min = 1024, max = -1;
 
 	memset(chan_list, 0, 16);
 
@@ -126,6 +126,12 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 			if (i > max)
 				max = i;
 		}
+	}
+
+	if (max == -1) {
+		/* Empty set, use 'bit map 0 format' */
+		chan_list[0] = 0;
+		return 0;
 	}
 
 	if ((max - min) > 111) {
