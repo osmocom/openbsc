@@ -1405,7 +1405,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		DEBUGP(DMM, "AUTHENTICATION RESPONSE: Not implemented\n");
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 MM msg type 0x%02x\n",
+		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 MM msg type 0x%02x\n",
 			gh->msg_type);
 		break;
 	}
@@ -1608,8 +1608,8 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		rc = gsm48_rx_rr_ho_fail(msg);
 		break;
 	default:
-		fprintf(stderr, "Unimplemented GSM 04.08 RR msg type 0x%02x\n",
-			gh->msg_type);
+		LOGP(DRR, LOGL_NOTICE, "Unimplemented "
+			"GSM 04.08 RR msg type 0x%02x\n", gh->msg_type);
 		break;
 	}
 
@@ -3510,15 +3510,15 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:
-		fprintf(stderr, "Unimplemented GSM 04.08 discriminator 0x%02x\n",
-			pdisc);
+		LOGP(DRLL, LOGL_NOTICE, "Unimplemented "
+			"GSM 04.08 discriminator 0x%02x\n", pdisc);
 		break;
 	case GSM48_PDISC_NC_SS:
 		rc = handle_rcv_ussd(msg);
 		break;
 	default:
-		fprintf(stderr, "Unknown GSM 04.08 discriminator 0x%02x\n",
-			pdisc);
+		LOGP(DRLL, LOGL_NOTICE, "Unknown "
+			"GSM 04.08 discriminator 0x%02x\n", pdisc);
 		break;
 	}
 
