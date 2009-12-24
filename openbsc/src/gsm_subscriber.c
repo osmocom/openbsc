@@ -34,6 +34,14 @@
 
 extern struct llist_head *subscr_bsc_active_subscriber(void);
 
+char *subscr_name(struct gsm_subscriber *subscr)
+{
+	if (strlen(subscr->name))
+		return subscr->name;
+
+	return subscr->imsi;
+}
+
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 					  u_int32_t tmsi)
 {
@@ -101,14 +109,14 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
-			s->imsi, s->lac);
+			subscr_name(s), s->lac);
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
 		if (bts->location_area_code == s->lac)
 			s->lac = GSM_LAC_RESERVED_DETACHED;
-		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", s->imsi);
+		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", subscr_name(s));
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:

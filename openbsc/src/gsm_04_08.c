@@ -1341,8 +1341,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	if (subscr) {
 		subscr_update(subscr, msg->trx->bts,
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
-		DEBUGP(DMM, "Subscriber: %s\n",
-		       subscr->name ? subscr->name : subscr->imsi);
+		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
 		subscr->equipment.classmark1 = idi->classmark1;
 		db_sync_equipment(&subscr->equipment);
@@ -1392,7 +1391,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
 		       msg->lchan->subscr ?
-				msg->lchan->subscr->imsi :
+				subscr_name(msg->lchan->subscr) :
 				"unknown subscriber");
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
