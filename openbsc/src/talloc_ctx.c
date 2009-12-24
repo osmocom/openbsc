@@ -1,6 +1,7 @@
 #include <openbsc/talloc.h>
 #include <openbsc/gsm_data.h>
 
+extern void *tall_msgb_ctx;
 extern void *tall_fle_ctx;
 extern void *tall_locop_ctx;
 extern void *tall_gsms_ctx;
@@ -16,6 +17,7 @@ extern void *tall_upq_ctx;
 
 void talloc_ctx_init(void)
 {
+	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
 	tall_fle_ctx = talloc_named_const(tall_bsc_ctx, 0, 
 					  "bs11_file_list_entry");
 	tall_locop_ctx = talloc_named_const(tall_bsc_ctx, 0, "loc_updating_oper");
