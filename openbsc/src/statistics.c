@@ -33,9 +33,11 @@
 
 static LLIST_HEAD(counters);
 
+void *tall_ctr_ctx;
+
 struct counter *counter_alloc(const char *name)
 {
-	struct counter *ctr = talloc_zero(tall_bsc_ctx, struct counter);
+	struct counter *ctr = talloc_zero(tall_ctr_ctx, struct counter);
 
 	if (!ctr)
 		return NULL;

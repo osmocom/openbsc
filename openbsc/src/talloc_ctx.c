@@ -14,6 +14,7 @@ extern void *tall_tqe_ctx;
 extern void *tall_trans_ctx;
 extern void *tall_map_ctx;
 extern void *tall_upq_ctx;
+extern void *tall_ctr_ctx;
 
 void talloc_ctx_init(void)
 {
@@ -31,4 +32,5 @@ void talloc_ctx_init(void)
 	tall_trans_ctx = talloc_named_const(tall_bsc_ctx, 0, "transaction");
 	tall_map_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_map_entry");
 	tall_upq_ctx = talloc_named_const(tall_bsc_ctx, 0, "trau_upq_entry");
+	tall_ctr_ctx = talloc_named_const(tall_ctr_ctx, 0, "counter");
 }
