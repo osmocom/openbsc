@@ -710,6 +710,7 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	u_int8_t *data = gh->data;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct bitvec *nbv = &bts->si_common.neigh_list;
+	struct gsm_meas_rep_cell *mrc;
 
 	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
 		return -EINVAL;
@@ -731,42 +732,47 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 		return 0;
 
 	/* an encoding nightmare in perfection */
-
-	rep->cell[0].rxlev = data[3] & 0x3f;
-	rep->cell[0].arfcn = bitvec_get_nth_set_bit(nbv, data[4] >> 3);
-	rep->cell[0].bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
+	mrc = &rep->cell[0];
+	mrc->rxlev = data[3] & 0x3f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, data[4] >> 3);
+	mrc->bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
 	if (rep->num_cell < 2)
 		return 0;
 
-	rep->cell[1].rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
-	rep->cell[1].arfcn = bitvec_get_nth_set_bit(nbv, (data[6] >> 2) & 0x1f);
-	rep->cell[1].bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
+	mrc = &rep->cell[1];
+	mrc->rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, (data[6] >> 2) & 0x1f);
+	mrc->bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
 	if (rep->num_cell < 3)
 		return 0;
 
-	rep->cell[2].rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
-	rep->cell[2].arfcn = bitvec_get_nth_set_bit(nbv, (data[8] >> 1) & 0x1f);
-	rep->cell[2].bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
+	mrc = &rep->cell[2];
+	mrc->rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, (data[8] >> 1) & 0x1f);
+	mrc->bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
 	if (rep->num_cell < 4)
 		return 0;
 
-	rep->cell[3].rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
-	rep->cell[3].arfcn = bitvec_get_nth_set_bit(nbv, data[10] & 0x1f);
-	rep->cell[3].bsic = data[11] >> 2;
+	mrc = &rep->cell[3];
+	mrc->rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, data[10] & 0x1f);
+	mrc->bsic = data[11] >> 2;
 	if (rep->num_cell < 5)
 		return 0;
 
-	rep->cell[4].rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
-	rep->cell[4].arfcn = bitvec_get_nth_set_bit(nbv,
+	mrc = &rep->cell[4];
+	mrc->rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv,
 				((data[12] & 0xf) << 1) | (data[13] >> 7));
-	rep->cell[4].bsic = (data[13] >> 1) & 0x3f;
+	mrc->bsic = (data[13] >> 1) & 0x3f;
 	if (rep->num_cell < 6)
 		return 0;
 
-	rep->cell[5].rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
-	rep->cell[5].arfcn = bitvec_get_nth_set_bit(nbv,
+	mrc = &rep->cell[5];
+	mrc-> rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv,
 				((data[14] & 0x07) << 2) | (data[15] >> 6));
-	rep->cell[5].bsic = data[15] & 0x3f;
+	mrc->bsic = data[15] & 0x3f;
 
 	return 0;
 }
