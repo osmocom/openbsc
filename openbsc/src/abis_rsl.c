@@ -1263,6 +1263,9 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	counter_inc(bts->network->stats.chreq.total);
 
+	if (lctype == GSM_LCHAN_TCH_H)
+		lctype = GSM_LCHAN_TCH_F;
+
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
