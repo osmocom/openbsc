@@ -217,6 +217,11 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 		return -ENODEV;
 	}
 
+	LOGP(DHO, LOGL_INFO, "Subscriber %s HO from BTS %u->%u on ARFCN "
+	     "%u->%u\n", subscr_name(ho->old_lchan->subscr),
+	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
+	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
+
 	counter_inc(net->stats.handover.completed);
 
 	bsc_del_timer(&ho->T3103);
