@@ -1013,8 +1013,8 @@ static void print_meas_rep(struct gsm_meas_rep *mr)
 		return;
 	for (i = 0; i < mr->num_cell; i++) {
 		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
-		DEBUGP(DMEAS, "ARFCN=%u BSIC=%u => %d dBm\n", mrc->arfcn, mrc->bsic,
-			rxlev2dbm(mrc->rxlev));
+		DEBUGP(DMEAS, "IDX=%u ARFCN=%u BSIC=%u => %d dBm\n",
+			mrc->neigh_idx, mrc->arfcn, mrc->bsic, rxlev2dbm(mrc->rxlev));
 	}
 }
 
