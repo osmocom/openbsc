@@ -7,6 +7,7 @@
 struct gsm_meas_rep_cell {
 	u_int8_t rxlev;
 	u_int8_t bsic;
+	u_int8_t neigh_idx;
 	u_int16_t arfcn;
 	unsigned int flags;
 };
