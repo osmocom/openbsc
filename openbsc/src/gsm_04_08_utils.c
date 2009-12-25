@@ -734,44 +734,48 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	/* an encoding nightmare in perfection */
 	mrc = &rep->cell[0];
 	mrc->rxlev = data[3] & 0x3f;
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv, data[4] >> 3);
+	mrc->neigh_idx = data[4] >> 3;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
 	if (rep->num_cell < 2)
 		return 0;
 
 	mrc = &rep->cell[1];
 	mrc->rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv, (data[6] >> 2) & 0x1f);
+	mrc->neigh_idx = (data[6] >> 2) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
 	if (rep->num_cell < 3)
 		return 0;
 
 	mrc = &rep->cell[2];
 	mrc->rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv, (data[8] >> 1) & 0x1f);
+	mrc->neigh_idx = (data[8] >> 1) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
 	if (rep->num_cell < 4)
 		return 0;
 
 	mrc = &rep->cell[3];
 	mrc->rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv, data[10] & 0x1f);
+	mrc->neigh_idx = data[10] & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = data[11] >> 2;
 	if (rep->num_cell < 5)
 		return 0;
 
 	mrc = &rep->cell[4];
 	mrc->rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv,
-				((data[12] & 0xf) << 1) | (data[13] >> 7));
+	mrc->neigh_idx = ((data[12] & 0xf) << 1) | (data[13] >> 7);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = (data[13] >> 1) & 0x3f;
 	if (rep->num_cell < 6)
 		return 0;
 
 	mrc = &rep->cell[5];
-	mrc-> rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
-	mrc->arfcn = bitvec_get_nth_set_bit(nbv,
-				((data[14] & 0x07) << 2) | (data[15] >> 6));
+	mrc->rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
+	mrc->neigh_idx = ((data[14] & 0x07) << 2) | (data[15] >> 6);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx);
 	mrc->bsic = data[15] & 0x3f;
 
 	return 0;
