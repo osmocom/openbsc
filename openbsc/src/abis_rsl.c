@@ -955,7 +955,8 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	/* FIXME: print which channel */
-	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING ");
+	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING ",
+	     gsm_ts_name(msg->lchan->ts));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -963,7 +964,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 		print_rsl_cause(LOGL_NOTICE, TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
-	LOGP(DRSL, LOGL_NOTICE, "\n");
+	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
 	return rsl_rf_chan_release(msg->lchan);
 }
@@ -1091,7 +1092,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGP(DRSL, "HANDOVER DETECT ");
+	DEBUGP(DRSL, "%s HANDOVER DETECT ", gsm_ts_name(msg->lchan->ts));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1125,14 +1126,12 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
-		DEBUGP(DRSL, "%s ", ts_name);
 		rc = rsl_rx_conn_fail(msg);
 		break;
 	case RSL_MT_MEAS_RES:
 		rc = rsl_rx_meas_res(msg);
 		break;
 	case RSL_MT_HANDO_DET:
-		DEBUGP(DRSL, "%s ", ts_name);
 		rc = rsl_rx_hando_det(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
