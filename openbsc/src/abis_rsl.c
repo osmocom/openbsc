@@ -1380,7 +1380,8 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	LOGP(DRLL, LOGL_ERROR, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
+	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=0x%02x\n",
+		gsm_ts_name(msg->lchan->ts), rlm_cause[1]);
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 		
