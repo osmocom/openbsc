@@ -925,7 +925,7 @@ DEFUN(logging_fltr_all,
 
 DEFUN(logging_use_clr,
       logging_use_clr_cmd,
-      "logging use color <0-1>",
+      "logging color <0-1>",
       "Use color for printing messages\n")
 {
 	struct telnet_connection *conn;
@@ -942,7 +942,7 @@ DEFUN(logging_use_clr,
 
 DEFUN(logging_prnt_timestamp,
       logging_prnt_timestamp_cmd,
-      "logging print timestamp <0-1>",
+      "logging timestamp <0-1>",
       "Print the timestamp of each message\n")
 {
 	struct telnet_connection *conn;
@@ -954,6 +954,32 @@ DEFUN(logging_prnt_timestamp,
 	}
 
 	debug_set_print_timestamp(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref)"
+DEFUN(logging_level,
+      logging_level_cmd,
+      "logging level " VTY_DEBUG_CATEGORIES " <0-8>",
+      "Set the log level for a specified category\n")
+{
+	struct telnet_connection *conn;
+	int category = debug_parse_category(argv[0]);
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (category < 0) {
+		vty_out(vty, "Invalid category `%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn->dbg->categories[category].enabled = 1;
+	conn->dbg->categories[category].loglevel = atoi(argv[1]);
+
 	return CMD_SUCCESS;
 }
 
@@ -1753,6 +1779,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &logging_use_clr_cmd);
 	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
 	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
+	install_element(VIEW_NODE, &logging_level_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
