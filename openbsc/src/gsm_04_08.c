@@ -829,8 +829,10 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 
-	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT\n",
-	     lchan->subscr ? subscr_name(lchan->subscr) : "unknown");
+	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
+	     "LAC=%u BTS=%u\n", lchan->subscr ?
+	     			subscr_name(lchan->subscr) : "unknown",
+	     lchan->ts->trx->bts->location_area_code, lchan->ts->trx->bts->nr);
 
 	counter_inc(bts->network->stats.loc_upd_resp.reject);
 	
