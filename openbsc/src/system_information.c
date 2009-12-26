@@ -169,6 +169,9 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	return bitvec2freq_list(chan_list, bv, bts);
 }
 
+/* hand-computed frequency list consisting of 868, 540, 871, 536, 870 */
+static const u_int8_t range1024[] = { 0x83, 0x64, 0x5c, 0x00, 0xff, 0x3f, 0xc0 };
+
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 {
@@ -176,14 +179,23 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	struct bitvec *bv = &bts->si_common.neigh_list;
 
 	/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
+#if 0
 	llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
 		if (cur_bts == bts)
 			continue;
 		bitvec_set_bit_pos(bv, cur_bts->c0->arfcn, 1);
 	}
-
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
 	return bitvec2freq_list(chan_list, bv, bts);
+#else
+	bitvec_set_bit_pos(bv, 868, 1);
+	bitvec_set_bit_pos(bv, 540, 1);
+	bitvec_set_bit_pos(bv, 871, 1);
+	bitvec_set_bit_pos(bv, 536, 1);
+	bitvec_set_bit_pos(bv, 870, 1);
+	memcpy(chan_list, range1024, sizeof(range1024));
+	return 0;
+#endif
 }
 
 static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
