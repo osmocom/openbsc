@@ -955,7 +955,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	/* FIXME: print which channel */
-	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING");
+	LOGP(DRSL, LOGL_NOTICE, "CONNECTION FAIL: RELEASING ");
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
