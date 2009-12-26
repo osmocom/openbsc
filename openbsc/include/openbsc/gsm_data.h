@@ -9,6 +9,7 @@ struct value_string {
 };
 
 const char *get_value_string(const struct value_string *vs, u_int32_t val);
+int get_string_value(const struct value_string *vs, const char *str);
 
 enum gsm_band {
 	GSM_BAND_400,
