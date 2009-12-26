@@ -370,6 +370,24 @@ static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_INTERWORKING] =	"Interworking error, unspecified",
 };
 
+static const struct value_string rlm_cause_strs[] = {
+	{ RLL_CAUSE_T200_EXPIRED,	"Timer T200 expired (N200+1) times" },
+	{ RLL_CAUSE_REEST_REQ,		"Re-establishment request" },
+	{ RLL_CAUSE_UNSOL_UA_RESP,	"Unsolicited UA response" },
+	{ RLL_CAUSE_UNSOL_DM_RESP,	"Unsolicited DM response" },
+	{ RLL_CAUSE_UNSOL_DM_RESP_MF,	"Unsolicited DM response, multiple frame" },
+	{ RLL_CAUSE_UNSOL_SPRV_RESP,	"Unsolicited supervisory response" },
+	{ RLL_CAUSE_SEQ_ERR,		"Sequence Error" },
+	{ RLL_CAUSE_UFRM_INC_PARAM,	"U-Frame with incorrect parameters" },
+	{ RLL_CAUSE_SFRM_INC_PARAM,	"S-Frame with incorrect parameters" },
+	{ RLL_CAUSE_IFRM_INC_MBITS,	"I-Frame with incorrect use of M bit" },
+	{ RLL_CAUSE_IFRM_INC_LEN,	"I-Frame with incorrect length" },
+	{ RLL_CAUSE_FRM_UNIMPL,		"Fraeme not implemented" },
+	{ RLL_CAUSE_SABM_MF,		"SABM command, multiple frame established state" },
+	{ RLL_CAUSE_SABM_INFO_NOTALL,	"SABM frame with information not allowed in this state" },
+	{ 0,				NULL },
+};
+
 static const char *rsl_err_name(u_int8_t err)
 {
 	if (rsl_err_vals[err])
@@ -1390,11 +1408,12 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=0x%02x\n",
-		gsm_ts_name(msg->lchan->ts), rlm_cause[1]);
+	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
+		gsm_ts_name(msg->lchan->ts),
+		get_value_string(rlm_cause_strs, rlm_cause[1]));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
-		
+
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_rf_chan_release(msg->lchan);
 
