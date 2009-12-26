@@ -752,7 +752,7 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	mrc->rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
 	mrc->neigh_idx = (data[8] >> 1) & 0x1f;
 	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
-	mrc->bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
+	mrc->bsic = ((data[8] & 0x01) << 5) | (data[9] >> 3);
 	if (rep->num_cell < 4)
 		return 0;
 
