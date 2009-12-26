@@ -829,7 +829,8 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
 	gh->data[0] = cause;
 
-	DEBUGP(DMM, "-> LOCATION UPDATING REJECT on channel: %d\n", lchan->nr);
+	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT\n",
+	     lchan->subscr ? subscr_name(lchan->subscr) : "unknown");
 
 	counter_inc(bts->network->stats.loc_upd_resp.reject);
 	
@@ -2146,6 +2147,10 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	new_cc_state(trans, GSM_CSTATE_INITIATED);
+
+	LOGP(DCC, LOGL_INFO, "Subscriber %s (%s) sends SETUP to %s\n",
+	     subscr_name(trans->subscr), trans->subscr->extension,
+	     setup.called.number);
 
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
