@@ -280,7 +280,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
-	LOGP(DDB, LOGL_NOTICE, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
+	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	db_subscriber_alloc_exten(subscr);
 	return subscr;
 }
