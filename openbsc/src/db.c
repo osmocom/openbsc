@@ -312,7 +312,9 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	if (string)
 		strncpy(equip->imei, string, sizeof(equip->imei));
 
-	cm1 = dbi_result_get_uint(result, "classmark1") & 0xff;
+	string = dbi_result_get_string(result, "classmark1");
+	if (string)
+		 cm1 = atoi(string) & 0xff;
 	equip->classmark1 = *((struct gsm48_classmark1 *) &cm1);
 
 	equip->classmark2_len = dbi_result_get_field_length(result, "classmark2");
