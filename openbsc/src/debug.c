@@ -25,6 +25,7 @@
 #include <string.h>
 #include <strings.h>
 #include <time.h>
+#include <errno.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/talloc.h>
@@ -98,6 +99,33 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DDB, "DDB", "", "")
 	DEBUG_CATEGORY(DDB, "DREF", "", "")
 };
+
+static const struct value_string loglevel_strs[] = {
+	{ 0,	"EVERYTHING" },
+	{ 1,	"DEBUG" },
+	{ 3,	"INFO" },
+	{ 5,	"NOTICE" },
+	{ 7,	"ERROR" },
+	{ 8,	"FATAL" },
+	{ 0, NULL },
+};
+
+int debug_parse_level(const char *lvl)
+{
+	return get_string_value(loglevel_strs, lvl);
+}
+
+int debug_parse_category(const char *category)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(debug_info); ++i) {
+		if (!strcasecmp(debug_info[i].name+1, category))
+			return debug_info[i].number;
+	}
+
+	return -EINVAL;
+}
 
 /*
  * Parse the category mask.
