@@ -170,6 +170,7 @@ struct neigh_meas_proc {
 /* state of a logical channel */
 enum gsm_lchan_state {
 	LCHAN_S_NONE,		/* channel is not active */
+	LCHAN_S_ACT_REQ,	/* channel activatin requested */
 	LCHAN_S_ACTIVE,		/* channel is active and operational */
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };

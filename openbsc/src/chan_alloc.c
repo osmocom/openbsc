@@ -175,7 +175,8 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 		/* check if all sub-slots are allocated yet */
 		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
 			struct gsm_lchan *lc = &ts->lchan[ss];
-			if (lc->type == GSM_LCHAN_NONE)
+			if (lc->type == GSM_LCHAN_NONE &&
+			    lc->state == LCHAN_S_NONE)
 				return lc;
 		}
 	}
