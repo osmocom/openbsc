@@ -43,6 +43,12 @@ int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* toke
 int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
 int db_sync_equipment(struct gsm_equipment *equip);
 
+/* auth info */
+int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
+                           struct gsm_subscriber *subscr);
+int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
+                            struct gsm_subscriber *subscr);
+
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
 struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id);
