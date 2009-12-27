@@ -582,7 +582,7 @@ rrlp_gps_assist_pdus(
 		o_len[i] = rv;
 	}
 
-	return lst_cnt;
+	rv = lst_cnt;
 
 	/* Release ASN.1 objects */
 error:
