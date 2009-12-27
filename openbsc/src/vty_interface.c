@@ -514,6 +514,10 @@ DEFUN(show_ts,
 
 void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
+	int rc;
+	struct gsm_auth_info ainfo;
+	struct gsm_auth_tuple atuple;
+
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
@@ -526,6 +530,33 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	if (subscr->tmsi != GSM_RESERVED_TMSI)
 		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
+
+	rc = get_authinfo_by_subscr(&ainfo, subscr);
+	if (!rc) {
+		vty_out(vty, "    A3A8 algorithm id: %d%s",
+			ainfo.auth_algo, VTY_NEWLINE);
+		vty_out(vty, "    A3A8 Ki: %s%s",
+			hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			VTY_NEWLINE);
+	}
+
+	rc = get_authtuple_by_subscr(&atuple, subscr);
+	if (!rc) {
+		vty_out(vty, "    A3A8 last tuple (used %d times):%s",
+			atuple.use_count, VTY_NEWLINE);
+		vty_out(vty, "     seq # : %d%s",
+			atuple.key_seq, VTY_NEWLINE);
+		vty_out(vty, "     RAND  : %s%s",
+			hexdump(atuple.rand, sizeof(atuple.rand)),
+			VTY_NEWLINE);
+		vty_out(vty, "     SRES  : %s%s",
+			hexdump(atuple.sres, sizeof(atuple.sres)),
+			VTY_NEWLINE);
+		vty_out(vty, "     Kc    : %s%s",
+			hexdump(atuple.kc, sizeof(atuple.kc)),
+			VTY_NEWLINE);
+	}
+
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
 
