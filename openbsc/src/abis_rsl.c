@@ -1266,8 +1266,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
-		LOGP(DRSL, LOGL_NOTICE, "CHAN RQD: no resources for %s 0x%x\n",
-			gsm_lchan_name(lctype), rqd_ref->ra);
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN RQD: no resources for %s 0x%x\n",
+			gsm_ts_name(lchan->ts), gsm_lchan_name(lctype), rqd_ref->ra);
 		counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
