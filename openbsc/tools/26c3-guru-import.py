@@ -56,15 +56,15 @@ for x in web_tuple:
 	# Not an IMSI
 	if len(subscr) == 0:
 		equip = hlr.execute("""
-			SELECT id,imei FROM Equipment WHERE imei="%015u"
-		""" % (imxi) ).fetchall();
+			SELECT id,imei FROM Equipment WHERE imei LIKE "%014u%%"
+		""" % (imxi/10) ).fetchall();
 		#print equip
 
 		if len(equip) == 0:
 			continue
 
 		subscrid = hlr.execute("""
-			SELECT * FROM EquipmentWatch WHERE equipment_id=%015u ORDER BY created LIMIT 1
+			SELECT * FROM EquipmentWatch WHERE equipment_id=%u ORDER BY created LIMIT 1
 		""" % (int(equip[0]['id'])) ).fetchall();
 
 		#print subscrid
