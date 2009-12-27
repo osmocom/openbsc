@@ -629,6 +629,7 @@ enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
+char *gsm_lchan_name(struct gsm_lchan *lchan);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,

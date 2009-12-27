@@ -739,7 +739,7 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "%s DEACTivate SACCH CMD\n", gsm_ts_name(lchan->ts));
+	DEBUGP(DRSL, "%s DEACTivate SACCH CMD\n", gsm_lchan_name(lchan));
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -757,7 +757,7 @@ int rsl_rf_chan_release(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "%s RF Channel Release CMD\n", gsm_ts_name(lchan->ts));
+	DEBUGP(DRSL, "%s RF Channel Release CMD\n", gsm_lchan_name(lchan));
 
 	/* BTS will respond by RF CHAN REL ACK */
 	return abis_rsl_sendmsg(msg);
@@ -851,7 +851,7 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, *(u_int8_t *)mrpci);
 
 	DEBUGP(DRSL, "%s TX Siemens MRPCI 0x%02x\n",
-		gsm_ts_name(lchan->ts), *(u_int8_t *)mrpci);
+		gsm_lchan_name(lchan), *(u_int8_t *)mrpci);
 
 	msg->trx = lchan->ts->trx;
 
@@ -950,7 +950,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	struct tlv_parsed tp;
 
 	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK",
-		gsm_ts_name(msg->lchan->ts));
+		gsm_lchan_name(msg->lchan));
 
 	/* BTS has rejected channel activation ?!? */
 	if (dh->ie_chan != RSL_IE_CHAN_NR)
@@ -982,7 +982,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	/* FIXME: print which channel */
 	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING ",
-	     gsm_ts_name(msg->lchan->ts));
+	     gsm_lchan_name(msg->lchan));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1118,7 +1118,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGP(DRSL, "%s HANDOVER DETECT ", gsm_ts_name(msg->lchan->ts));
+	DEBUGP(DRSL, "%s HANDOVER DETECT ", gsm_lchan_name(msg->lchan));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
@@ -1140,7 +1140,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	char *ts_name;
 
 	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
-	ts_name = gsm_ts_name(msg->lchan->ts);
+	ts_name = gsm_lchan_name(msg->lchan);
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV_ACK:
@@ -1328,7 +1328,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.mob_alloc_len = 0;
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
-		"r=%s ra=0x%02x\n", gsm_ts_name(lchan->ts), arfcn, subch,
+		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
 		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);
 
@@ -1409,7 +1409,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	u_int8_t *rlm_cause = rllh->data;
 
 	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
-		gsm_ts_name(msg->lchan->ts),
+		gsm_lchan_name(msg->lchan),
 		get_value_string(rlm_cause_strs, rlm_cause[1]));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
@@ -1434,7 +1434,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	u_int8_t sapi = rllh->link_id & 7;
 
 	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
-	ts_name = gsm_ts_name(msg->lchan->ts);
+	ts_name = gsm_lchan_name(msg->lchan);
 	DEBUGP(DRLL, "%s SAPI=%u ", ts_name, sapi);
 	
 	switch (rllh->c.msg_type) {
@@ -1606,7 +1606,7 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
 
 	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x\n",
-		gsm_ts_name(lchan->ts), lchan->abis_ip.speech_mode);
+		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1636,7 +1636,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 
 	ia.s_addr = htonl(ip);
 	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d "
-		"speech_mode=0x%02x\n", gsm_ts_name(lchan->ts), inet_ntoa(ia), port,
+		"speech_mode=0x%02x\n", gsm_lchan_name(lchan), inet_ntoa(ia), port,
 		rtp_payload2, lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
 
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
@@ -1677,7 +1677,7 @@ int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	DEBUGP(DRSL, "%s IPAC_PDCH_ACT\n", gsm_ts_name(lchan->ts));
+	DEBUGP(DRSL, "%s IPAC_PDCH_ACT\n", gsm_lchan_name(lchan));
 
 	msg->trx = lchan->ts->trx;
 
@@ -1779,7 +1779,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 	int rc = 0;
 
 	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
-	ts_name = gsm_ts_name(msg->lchan->ts);
+	ts_name = gsm_lchan_name(msg->lchan);
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_IPAC_CRCX_ACK:

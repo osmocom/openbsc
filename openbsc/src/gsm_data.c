@@ -304,6 +304,16 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 	return ts2str;
 }
 
+char *gsm_lchan_name(struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,ss=%d)",
+		 ts->trx->bts->nr, ts->trx->nr, ts->nr, lchan->nr);
+
+	return ts2str;
+}
+
 static const char *bts_types[] = {
 	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
 	[GSM_BTS_TYPE_BS11] = "bs11",
