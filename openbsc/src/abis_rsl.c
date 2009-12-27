@@ -931,6 +931,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
+	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK",
+		gsm_ts_name(msg->lchan->ts));
+
 	/* BTS has rejected channel activation ?!? */
 	if (dh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
@@ -941,6 +944,8 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
 	msg->lchan->state = LCHAN_S_NONE;
+
+	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
@@ -1122,7 +1127,6 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_chan_act_ack(msg);
 		break;
 	case RSL_MT_CHAN_ACTIV_NACK:
-		DEBUGP(DRSL, "%s CHANNEL ACTIVATE NACK\n", ts_name);
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
