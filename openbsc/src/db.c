@@ -125,14 +125,12 @@ static char *create_stmts[] = {
 		"name TEXT NOT NULL "
 		")",
 	"CREATE TABLE IF NOT EXISTS AuthKeys ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"subscriber_id INTEGER UNIQUE NOT NULL, "
+		"subscriber_id INTEGER PRIMARY KEY, "
 		"algorithm_id INTEGER NOT NULL, "
 		"a3a8_ki BLOB "
 		")",
 	"CREATE TABLE IF NOT EXISTS AuthTuples ("
-		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
-		"subscriber_id NUMERIC UNIQUE NOT NULL, "
+		"subscriber_id INTEGER PRIMARY KEY, "
 		"issued TIMESTAMP NOT NULL, "
 		"use_count INTEGER NOT NULL DEFAULT 0, "
 		"key_seq INTEGER NOT NULL, "
