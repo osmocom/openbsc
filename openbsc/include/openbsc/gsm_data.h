@@ -120,6 +120,28 @@ struct gsm_bts_link {
 	struct gsm_bts *bts;
 };
 
+/* Real authentication information containing Ki */
+enum gsm_auth_algo {
+	AUTH_ALGO_NONE,
+	AUTH_ALGO_XOR,
+	AUTH_ALGO_COMP128v1,
+};
+
+struct gsm_auth_info {
+	enum gsm_auth_algo auth_algo;
+	unsigned int a3a8_ki_len;
+	u_int8_t a3a8_ki[16];
+};
+
+struct gsm_auth_tuple {
+	int use_count;
+	int key_seq;
+	u_int8_t rand[16];
+	u_int8_t sres[4];
+	u_int8_t kc[8];
+};
+
+
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
@@ -591,26 +613,6 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
-enum gsm_auth_algo {
-	AUTH_ALGO_NONE,
-	AUTH_ALGO_XOR,
-	AUTH_ALGO_COMP128v1,
-};
-
-/* Real authentication information containing Ki */
-struct gsm_auth_info {
-	enum gsm_auth_algo auth_algo;
-	unsigned int a3a8_ki_len;
-	u_int8_t a3a8_ki[16];
-};
-
-struct gsm_auth_tuple {
-	int use_count;
-	int key_seq;
-	u_int8_t rand[16];
-	u_int8_t sres[4];
-	u_int8_t kc[8];
-};
 
 struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, int, void *));
