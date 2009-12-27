@@ -958,14 +958,17 @@ DEFUN(logging_prnt_timestamp,
 	return CMD_SUCCESS;
 }
 
+/* FIXME: those have to be kept in sync with the log levels and categories */
 #define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref)"
+#define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
 DEFUN(logging_level,
       logging_level_cmd,
-      "logging level " VTY_DEBUG_CATEGORIES " <0-8>",
+      "logging level " VTY_DEBUG_CATEGORIES " " VTY_DEBUG_LEVELS,
       "Set the log level for a specified category\n")
 {
 	struct telnet_connection *conn;
 	int category = debug_parse_category(argv[0]);
+	int level = debug_parse_level(argv[1]);
 
 	conn = (struct telnet_connection *) vty->priv;
 	if (!conn->dbg) {
@@ -978,8 +981,13 @@ DEFUN(logging_level,
 		return CMD_WARNING;
 	}
 
+	if (level < 0) {
+		vty_out(vty, "Invalid level `%s'%s", argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	conn->dbg->categories[category].enabled = 1;
-	conn->dbg->categories[category].loglevel = atoi(argv[1]);
+	conn->dbg->categories[category].loglevel = level;
 
 	return CMD_SUCCESS;
 }
