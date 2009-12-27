@@ -133,9 +133,9 @@ static char *create_stmts[] = {
 	"CREATE TABLE IF NOT EXISTS AuthTuples ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
-		"rand BLOB"
-		"sres BLOB"
-		"kc BLOB"
+		"rand BLOB, "
+		"sres BLOB, "
+		"kc BLOB "
 		")",
 };
 
