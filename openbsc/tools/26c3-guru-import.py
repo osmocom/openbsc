@@ -56,7 +56,7 @@ for x in web_tuple:
 	# Not an IMSI
 	if len(subscr) == 0:
 		equip = hlr.execute("""
-			SELECT id,imei FROM Equipment WHERE imei LIKE "%014u%%"
+			SELECT id,imei FROM Equipment WHERE imei LIKE "%u%%"
 		""" % (imxi/10) ).fetchall();
 		#print equip
 
