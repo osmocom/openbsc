@@ -118,6 +118,8 @@ void debug_set_use_color(struct debug_target *target, int);
 void debug_set_print_timestamp(struct debug_target *target, int);
 void debug_set_log_level(struct debug_target *target, int log_level);
 void debug_parse_category_mask(struct debug_target *target, const char* mask);
+int debug_parse_level(const char *lvl);
+int debug_parse_category(const char *category);
 void debug_set_category_filter(struct debug_target *target, int category, int enable, int level);
 
 
