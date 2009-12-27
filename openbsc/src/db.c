@@ -366,6 +366,62 @@ int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
 	return 0;
 }
 
+int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
+			    struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	struct gsm_auth_info ainfo_old;
+	int rc, upd;
+	unsigned char *ki_str;
+
+	/* Deletion ? */
+	if (ainfo == NULL) {
+		result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthKeys WHERE subscriber_id=%u",
+			subscr->id);
+
+		if (!result)
+			return -EIO;
+
+		dbi_result_free(result);
+
+		return 0;
+	}
+
+	/* Check if already existing */
+	rc = get_authinfo_by_subscr(&ainfo_old, subscr);
+	if (rc && rc != -ENOENT)
+		return rc;
+	upd = rc ? 0 : 1;
+
+	/* Update / Insert */
+	dbi_conn_quote_binary_copy(conn,
+		ainfo->a3a8_ki, ainfo->a3a8_ki_len, &ki_str);
+
+	if (!upd) {
+		result = dbi_conn_queryf(conn,
+				"INSERT INTO AuthKeys "
+				"(subscriber_id, algorithm_id, a3a8_ki) "
+				"VALUES (%u, %u, %s)",
+				subscr->id, ainfo->auth_algo, ki_str);
+	} else {
+		result = dbi_conn_queryf(conn,
+				"UPDATE AuthKeys "
+				"SET algorithm_id=%u, a3a8_ki=%s "
+				"WHERE subscriber_id=%u",
+				ainfo->auth_algo, ki_str, subscr->id);
+	}
+
+	free(ki_str);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+
+	return 0;
+}
+
 int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
 			    struct gsm_subscriber *subscr)
 {
@@ -417,6 +473,75 @@ int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
 err_size:
 	dbi_result_free(result);
 	return -EIO;
+}
+
+int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
+			     struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	int rc, upd;
+	struct gsm_auth_tuple atuple_old;
+	unsigned char *rand_str, *sres_str, *kc_str;
+
+	/* Deletion ? */
+	if (atuple == NULL) {
+		result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthTuples WHERE subscriber_id=%u",
+			subscr->id);
+
+		if (!result)
+			return -EIO;
+
+		dbi_result_free(result);
+
+		return 0;
+	}
+
+	/* Check if already existing */
+	rc = get_authtuple_by_subscr(&atuple_old, subscr);
+	if (rc && rc != -ENOENT)
+		return rc;
+	upd = rc ? 0 : 1;
+
+	/* Update / Insert */
+	dbi_conn_quote_binary_copy(conn,
+		atuple->rand, sizeof(atuple->rand), &rand_str);
+	dbi_conn_quote_binary_copy(conn,
+		atuple->sres, sizeof(atuple->sres), &sres_str);
+	dbi_conn_quote_binary_copy(conn,
+		atuple->kc, sizeof(atuple->kc), &kc_str);
+
+	if (!upd) {
+		result = dbi_conn_queryf(conn,
+				"INSERT INTO AuthTuples "
+				"(subscriber_id, issued, use_count, "
+				 "key_seq, rand, sres, kc) "
+				"VALUES (%u, datetime('now'), %u, "
+				 "%u, %s, %s, %s ) ",
+				subscr->id, atuple->use_count, atuple->key_seq,
+				rand_str, sres_str, kc_str);
+	} else {
+		char *issued = atuple->key_seq == atuple_old.key_seq ?
+					"issued" : "datetime('now')";
+		result = dbi_conn_queryf(conn,
+				"UPDATE AuthKeys "
+				"SET issued=%s, use_count=%u, "
+				 "key_seq=%u, rand=%s, sres=%s, kc=%s "
+				"WHERE subscriber_id = %u",
+				issued, atuple->use_count, atuple->key_seq,
+				rand_str, sres_str, kc_str, subscr->id);
+	}
+
+	free(rand_str);
+	free(sres_str);
+	free(kc_str);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+
+	return 0;
 }
 
 #define BASE_QUERY "SELECT * FROM Subscriber "
