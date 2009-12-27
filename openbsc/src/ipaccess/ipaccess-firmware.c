@@ -52,6 +52,7 @@ static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
 static void analyze_file(int fd)
 {
 	struct sdp_firmware *firmware_header;
+	struct stat stat;
 	char buf[4096];
 	int rc;
 
@@ -80,6 +81,17 @@ static void analyze_file(int fd)
 	printf("text2: %.64s\n", firmware_header->text2);
 	printf("time: %.8s\n", firmware_header->time);
 	printf("date: %.8s\n", firmware_header->date);
+
+	/* verify the file */
+	if (fstat(fd, &stat) == -1) {
+		perror("Can not stat the file");
+		return;
+	}
+
+	if (ntohl(firmware_header->file_length) != stat.st_size) {
+		fprintf(stderr, "The filesize and the header do not match.\n");
+		return;
+	}
 }
 
 int main(int argc, char** argv)
