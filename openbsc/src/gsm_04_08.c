@@ -3316,12 +3316,15 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 				if (transt == trans ||
 				    transt->subscr != subscr)
 					continue;
+#if 0
+				bts = entry->lchan->ts->trx->bts;
 				DEBUGP(DCC, "(bts %d trx - ts - ti -- sub %s) "
 					"Received '%s' from MNCC with "
 					"unallocated channel, paging already "
 					"started.\n", bts->nr,
 					data->called.number,
 					get_mncc_name(msg_type));
+#endif
 				subscr_put(subscr);
 				trans_free(trans);
 				return 0;
