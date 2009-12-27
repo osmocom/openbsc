@@ -240,7 +240,8 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		if (abs(frame_diff) > 1) {
 			long int frame_diff_excess = frame_diff - 1;
 
-			DEBUGP(DMUX, "Correcting frame difference of %ld frames\n", frame_diff_excess);
+			LOGP(DMUX, LOGL_NOTICE,
+				"Correcting frame difference of %ld frames\n", frame_diff_excess);
 			rs->transmit.sequence += frame_diff_excess;
 			rs->transmit.timestamp += frame_diff_excess * duration;
 		}
