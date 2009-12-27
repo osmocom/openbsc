@@ -266,6 +266,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
 	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
 	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
@@ -1323,12 +1324,7 @@ DEFUN(cfg_bts_type,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->type = parse_btstype(argv[0]);
-
-	if (is_ipaccess_bts(bts)) {
-		/* Set the default OML Stream ID to 0xff */
-		bts->oml_tei = 0xff;
-	}
+	gsm_set_bts_type(bts, parse_btstype(argv[0]));
 
 	return CMD_SUCCESS;
 }
@@ -1635,6 +1631,18 @@ DEFUN(cfg_trx_arfcn,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_trx_nominal_power,
+      cfg_trx_nominal_power_cmd,
+      "nominal power <0-100>",
+      "Nominal TRX RF Power in dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->nominal_power = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_trx_max_power_red,
       cfg_trx_max_power_red_cmd,
       "max_power_red <0-100>",
@@ -1840,6 +1848,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);

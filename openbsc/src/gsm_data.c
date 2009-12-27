@@ -133,6 +133,9 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		}
 	}
 
+	if (trx->nr != 0)
+		trx->nominal_power = bts->c0->nominal_power;
+
 	llist_add_tail(&trx->list, &bts->trx_list);
 
 	return trx;
@@ -463,4 +466,19 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 					% ARRAY_SIZE(lchan->meas_rep);
 
 	return meas_rep;
+}
+
+void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
+{
+	bts->type = type;
+
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+		/* Set the default OML Stream ID to 0xff */
+		bts->oml_tei = 0xff;
+		bts->c0->nominal_power = 23;
+		break;
+	case GSM_BTS_TYPE_BS11:
+		break;
+	}
 }
