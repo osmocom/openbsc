@@ -568,7 +568,7 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
-		lchan->ts->trx->bts->nr, gsm_lchan_name(lchan->type),
+		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
 	vty_out(vty, "  Use Count: %u%s", lchan->use_count, VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",

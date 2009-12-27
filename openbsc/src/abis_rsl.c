@@ -1271,7 +1271,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
-		     msg->lchan->ts->trx->bts->nr, gsm_lchan_name(lctype), rqd_ref->ra);
+		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
 		counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
@@ -1306,7 +1306,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
 		"r=%s ra=0x%02x\n", gsm_ts_name(lchan->ts), arfcn, subch,
-		gsm_lchan_name(lchan->type), gsm_chreq_name(chreq_reason),
+		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);
 
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
