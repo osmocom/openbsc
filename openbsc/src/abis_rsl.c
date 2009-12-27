@@ -939,12 +939,15 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		return -EINVAL;
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
-	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
-		print_rsl_cause(LOGL_ERROR, TLVP_VAL(&tp, RSL_IE_CAUSE),
+	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE)) {
+		const u_int8_t *cause = TLVP_VAL(&tp, RSL_IE_CAUSE);
+		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
-
-	msg->lchan->state = LCHAN_S_NONE;
-
+		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
+			msg->lchan->state = LCHAN_S_NONE;
+	} else
+		msg->lchan->state = LCHAN_S_NONE;
+ 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
@@ -1276,6 +1279,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
 	}
+
+	lchan->state = LCHAN_S_ACT_REQ;
 
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
