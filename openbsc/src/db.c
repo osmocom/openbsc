@@ -357,7 +357,7 @@ int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
 	ainfo->auth_algo = dbi_result_get_ulonglong(result, "algorithm_id");
 	ainfo->a3a8_ki_len = dbi_result_get_field_length(result, "a3a8_ki");
 	a3a8_ki = dbi_result_get_binary(result, "a3a8_ki");
-	if (ainfo->a3a8_ki_len > sizeof(ainfo->a3a8_ki_len))
+	if (ainfo->a3a8_ki_len > sizeof(ainfo->a3a8_ki))
 		ainfo->a3a8_ki_len = sizeof(ainfo->a3a8_ki_len);
 	memcpy(ainfo->a3a8_ki, a3a8_ki, ainfo->a3a8_ki_len);
 
