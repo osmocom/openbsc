@@ -80,7 +80,7 @@ static const char *lchan_names[] = {
 	[GSM_LCHAN_UNKNOWN]	= "UNKNOWN",
 };
 
-const char *gsm_lchan_name(enum gsm_chan_t c)
+const char *gsm_lchant_name(enum gsm_chan_t c)
 {
 	if (c >= ARRAY_SIZE(lchan_names))
 		return "INVALID";
