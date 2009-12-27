@@ -133,9 +133,12 @@ static char *create_stmts[] = {
 	"CREATE TABLE IF NOT EXISTS AuthTuples ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
-		"rand BLOB, "
-		"sres BLOB, "
-		"kc BLOB "
+		"issued TIMESTAMP NOT NULL, "
+		"use_count INTEGER NOT NULL DEFAULT 0, "
+		"key_seq INTEGER NOT NULL, "
+		"rand BLOB NOT NULL, "
+		"sres BLOB NOT NULL, "
+		"kc BLOB NOT NULL "
 		")",
 };
 
@@ -382,6 +385,9 @@ int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
 	}
 
 	memset(atuple, 0, sizeof(atuple));
+
+	atuple->use_count = dbi_result_get_ulonglong(result, "use_count");
+	atuple->key_seq = dbi_result_get_ulonglong(result, "key_seq");
 
 	len = dbi_result_get_field_length(result, "rand");
 	if (len != sizeof(atuple->rand))

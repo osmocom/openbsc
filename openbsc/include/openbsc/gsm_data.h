@@ -605,6 +605,8 @@ struct gsm_auth_info {
 };
 
 struct gsm_auth_tuple {
+	int use_count;
+	int key_seq;
 	u_int8_t rand[16];
 	u_int8_t sres[8];
 	u_int8_t kc[8];
