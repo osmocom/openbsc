@@ -615,6 +615,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
+void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
