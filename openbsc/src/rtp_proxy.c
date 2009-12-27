@@ -226,6 +226,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		return -EINVAL;
 	}
 
+#if 0
 	{
 		struct timeval tv, tv_diff;
 		long int usec_diff, frame_diff;
@@ -246,6 +247,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 			rs->transmit.timestamp += frame_diff_excess * duration;
 		}
 	}
+#endif
 
 	msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len, "RTP-GSM-FULL");
 	if (!msg)
