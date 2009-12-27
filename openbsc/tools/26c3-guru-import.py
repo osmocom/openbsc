@@ -85,6 +85,9 @@ for x in web_tuple:
 	print exten, imxi
 	print subscr
 
+	hlr.execute("""UPDATE Subscriber SET authorized = 0, extension=NULL \
+	    WHERE extension = "%s"
+	""" % (str(exten)));
 	hlr.execute("""UPDATE Subscriber SET authorized = 1,extension="%s" \
 	    WHERE id = %u
 	""" % (str(exten), subscr['id']) );
