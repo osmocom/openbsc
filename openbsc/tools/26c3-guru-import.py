@@ -1,6 +1,6 @@
-#!/usr/bin/python2.6
+#!/usr/bin/python2.5
 
-# Based loosely on hlrsync.py from Jan Lübbe
+# Based loosely on hlrsync.py from Jan Luebbe
 # (C) 2009 Daniel Willmann
 # All Rights Reserved
 #
@@ -48,13 +48,15 @@ for x in web_tuple:
 
 	# Test if it is an IMSI and hasn't yet been authorized
 	subscr = hlr.execute("""
-		SELECT * FROM Subscriber WHERE imsi=="%015u" and authorized==0
+		SELECT * FROM Subscriber WHERE imsi=="%015u"
 	""" % (imxi) ).fetchall()
+
+	#and authorized==0
 
 	# Not an IMSI
 	if len(subscr) == 0:
 		equip = hlr.execute("""
-			SELECT * FROM Equipment WHERE imei="%015u"
+			SELECT id,imei FROM Equipment WHERE imei="%015u"
 		""" % (imxi) ).fetchall();
 		#print equip
 
@@ -71,8 +73,9 @@ for x in web_tuple:
 			continue
 
 		subscr = hlr.execute("""
-			SELECT * FROM Subscriber WHERE id==%u and authorized==0
+			SELECT * FROM Subscriber WHERE id==%u
 		""" % subscrid[0]['subscriber_id']).fetchall();
+		# and authorized==0
 
 	if len(subscr) == 0:
 		continue
@@ -82,9 +85,8 @@ for x in web_tuple:
 	print exten, imxi
 	print subscr
 
-	# Strip leading 9 from extension and authorize subscriber
 	hlr.execute("""UPDATE Subscriber SET authorized = 1,extension="%s" \
 	    WHERE id = %u
-	""" % (str(exten)[1:], subscr['id']) );
+	""" % (str(exten), subscr['id']) );
 
 hlr.close()

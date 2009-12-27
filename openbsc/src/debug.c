@@ -35,13 +35,13 @@
 /* default categories */
 static struct debug_category default_categories[Debug_LastEntry] = {
     [DRLL]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
-    [DCC]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
+    [DCC]	= { .enabled = 1, .loglevel = LOGL_INFO },
     [DNM]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DRR]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DRSL]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DMM]	= { .enabled = 1, .loglevel = LOGL_INFO },
     [DMNCC]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
-    [DSMS]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
+    [DSMS]	= { .enabled = 1, .loglevel = LOGL_INFO },
     [DPAG]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DMEAS]	= { .enabled = 0, .loglevel = LOGL_NOTICE },
     [DMI]	= { .enabled = 0, .loglevel = LOGL_NOTICE },
@@ -51,7 +51,7 @@ static struct debug_category default_categories[Debug_LastEntry] = {
     [DSCCP]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DMSC]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DMGCP]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
-    [DHO]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
+    [DHO]	= { .enabled = 1, .loglevel = LOGL_INFO },
     [DDB]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DREF]	= { .enabled = 0, .loglevel = LOGL_NOTICE },
 };
