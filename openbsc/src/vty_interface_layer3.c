@@ -74,6 +74,33 @@ static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 	return b;
 }
 
+static int hexparse(const char *str, u_int8_t *b, int max_len)
+
+{
+	int i, l, v;
+
+	l = strlen(str);
+	if ((l&1) || ((l>>1) > max_len))
+		return -1;
+
+	memset(b, 0x00, max_len);
+
+	for (i=0; i<l; i++) {
+		char c = str[i];
+		if (c >= '0' && c <= '9')
+			v = c - '0';
+		else if (c >= 'a' && c <= 'f')
+			v = 10 + (c - 'a');
+		else if (c >= 'A' && c <= 'F')
+			v = 10 + (c - 'a');
+		else
+			return -1;
+		b[i>>1] |= v << (i&1 ? 0 : 4);
+	}
+
+	return i>>1;
+}
+
 /* per-subscriber configuration */
 DEFUN(cfg_subscr,
       cfg_subscr_cmd,
@@ -375,6 +402,40 @@ DEFUN(cfg_subscr_authorized,
 	return CMD_SUCCESS;
 }
 
+#define A3A8_ALG_TYPES "(none|comp128v1)"
+
+DEFUN(cfg_subscr_a3a8,
+      cfg_subscr_a3a8_cmd,
+      "a3a8 " A3A8_ALG_TYPES " [KI]",
+      "Set a3a8 parameters for the subscriber")
+{
+	struct gsm_subscriber *subscr = vty->index;
+	const char *alg_str = argv[0];
+	const char *ki_str = argv[1];
+	struct gsm_auth_info ainfo;
+	int rc;
+
+	if (!strcasecmp(alg_str, "none")) {
+		/* Just erase */
+		rc = set_authinfo_for_subscr(NULL, subscr);
+	} else if (!strcasecmp(alg_str, "comp128v1")) {
+		/* Parse hex string Ki */
+		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		if (rc != 16)
+			return CMD_WARNING;
+
+		/* Set the infos */
+		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
+		ainfo.a3a8_ki_len = rc;
+		rc = set_authinfo_for_subscr(&ainfo, subscr);
+	} else {
+		/* Unknown method */
+		return CMD_WARNING;
+	}
+
+	return rc ? CMD_WARNING : CMD_SUCCESS;
+}
+
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -417,6 +478,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);
+	install_element(SUBSCR_NODE, &cfg_subscr_a3a8_cmd);
 
 	return 0;
 }
