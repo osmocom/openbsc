@@ -1210,7 +1210,8 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		LOGP(DRSL, LOGL_ERROR, "TRX: CCCH/ACCH/CPU Overload\n");
+		LOGP(DRSL, LOGL_ERROR, "(bts=%u, trx=%u) CCCH/ACCH/CPU Overload\n",
+		     msg->trx->bts->nr, msg->trx->nr);
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "Unknown Abis RSL TRX message "
