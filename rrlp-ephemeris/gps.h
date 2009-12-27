@@ -113,7 +113,7 @@ struct gps_ephemeris_sv {
 
 	int c_rs;	/* s 16      2^-5                  meters           */
 	int delta_n;	/* s 16      2^-43                 semi-circles / s */
-	int m_0;		/* s 32      2^-31                 semi-circles     */
+	int m_0;	/* s 32      2^-31                 semi-circles     */
 	int c_uc;	/* s 16      2^-29                 radians          */
 	unsigned int e;	/* u 32      2^-33      0.03       /                */
 	int c_us;	/* s 16      2^-29                 radians          */
