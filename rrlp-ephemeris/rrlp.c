@@ -575,6 +575,14 @@ rrlp_gps_assist_pdus(
 
 	/* Serialize & Release all PDUs */
 	for (i=0; i<lst_cnt && i<o_max_pdus; i++) {
+		/* Pseudo segmentation flags */
+		MoreAssDataToBeSent_t *mad = calloc(1, sizeof(*mad));
+		*mad = (i == (lst_cnt-1)) ?
+				MoreAssDataToBeSent_noMoreMessages :
+				MoreAssDataToBeSent_moreMessagesOnTheWay;
+		lst_pdu[i]->component.choice.assistanceData.moreAssDataToBeSent = mad;
+
+		/* Serialization */
 		// asn_fprint(stdout, &asn_DEF_PDU, lst_pdu[i]);
 		rv = uper_encode_to_new_buffer(&asn_DEF_PDU, NULL, lst_pdu[i], &o_pdu[i]);
 		if (rv < 0)
