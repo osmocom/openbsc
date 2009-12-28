@@ -282,15 +282,6 @@ static void bootstrap_om(struct gsm_bts *bts)
 		abis_nm_ipaccess_restart(bts);
 	}
 
-	if (software) {
-		int rc;
-		printf("Attempting software upload with '%s'\n", software);
-		rc = abis_nm_software_load(bts, software, 19, 0, swload_cbfn, bts);
-		if (rc < 0) {
-			fprintf(stderr, "Failed to start software load\n");
-			exit(-3);
-		}
-	}
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
@@ -322,13 +313,23 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 {
 	if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
-	    new_state->availability == 3 &&
-	    net_listen_testnr) {
+	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
-		u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-		abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
-				     net_listen_testnr, 1,
-				     phys_config, sizeof(phys_config));
+
+		if (net_listen_testnr) {
+			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+			abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+					     net_listen_testnr, 1,
+					     phys_config, sizeof(phys_config));
+		} else if (software) {
+			int rc;
+			printf("Attempting software upload with '%s'\n", software);
+			rc = abis_nm_software_load(trx->bts, software, 19, 0, swload_cbfn, trx->bts);
+			if (rc < 0) {
+				fprintf(stderr, "Failed to start software load\n");
+				exit(-3);
+			}
+		}
 	}
 	return 0;
 }
