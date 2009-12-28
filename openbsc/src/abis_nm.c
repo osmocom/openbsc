@@ -47,6 +47,7 @@
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
+#define IPACC_SEGMENT_SIZE	245
 
 /* unidirectional messages from BTS to BSC */
 static const enum abis_nm_msgtype reports[] = {
@@ -1295,6 +1296,21 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		/* we only now know the exact length for the OM hdr */
 		len = strlen(line_buf)+2;
 		break;
+	case GSM_BTS_TYPE_NANOBTS: {
+		static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
+		len = read(sw->fd, &seg_buf, IPACC_SEGMENT_SIZE);
+		if (len < 0) {
+			perror("read failed");
+			return -EINVAL;
+		}
+
+		if (len != IPACC_SEGMENT_SIZE)
+			sw->last_seg = 1;
+
+		msgb_tl16v_put(msg, NM_ATT_IPACC_FILE_DATA, len, (const u_int8_t *) seg_buf);
+		len += 3;
+		break;
+	}
 	default:
 		LOGP(DNM, LOGL_ERROR, "sw_load_segment needs implementation for the BTS.\n");
 		/* FIXME: Other BTS types */
