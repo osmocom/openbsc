@@ -215,6 +215,10 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 			printf("Software Download Progress: %d%%\n", percent);
 		percent_old = percent;
 		break;
+	case NM_MT_LOAD_ABORT:
+		fprintf(stderr, "ERROR: Load aborted by the BTS.\n");
+		exit(6);
+		break;
 	}
 	return 0;
 }

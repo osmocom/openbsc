@@ -1568,6 +1568,12 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				rc = sw_load_end(sw);
 			}
 			break;
+		case NM_MT_LOAD_ABORT:
+			if (sw->cbfn)
+				sw->cbfn(GSM_HOOK_NM_SWLOAD,
+					 NM_MT_LOAD_ABORT, mb,
+					 sw->cb_data, NULL);
+			break;
 		}
 		break;
 	case SW_STATE_WAIT_ENDACK:
