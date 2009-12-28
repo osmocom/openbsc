@@ -143,11 +143,20 @@ struct gps_ephemeris {
 };
 
 
+/* Reference position */
+struct gps_ref_pos {	/* WSG84 ellipsoid */
+	double latitude;	/* deg */
+	double longitude;	/* deg */
+	double altitude;	/* m above ellipsoid */
+};
+
+
 /* All assist data */
 #define GPS_FIELD_IONOSPHERE	(1<<0)
 #define GPS_FIELD_UTC		(1<<1)
 #define GPS_FIELD_ALMANAC	(1<<2)
 #define GPS_FIELD_EPHEMERIS	(1<<3)
+#define GPS_FIELD_REFPOS	(1<<4)
 
 struct gps_assist_data {
 	int fields;
@@ -155,6 +164,7 @@ struct gps_assist_data {
 	struct gps_utc_model		utc;
 	struct gps_almanac		almanac;
 	struct gps_ephemeris		ephemeris;
+	struct gps_ref_pos		ref_pos;
 };
 
 

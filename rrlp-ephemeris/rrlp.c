@@ -22,6 +22,7 @@
 
 
 #include <errno.h>
+#include <math.h>
 
 #include "gps.h"
 #include "rrlp.h"
@@ -180,6 +181,47 @@ rrlp_decode_assistance_request(
 /* ------------------------------------------------------------------------ */
 /* RRLP elements fill                                                       */
 /* ---------------------------------------------------------------------{{{ */
+
+	/* Helpers */
+
+static void
+_ts_23_032_store_latitude(double lat, uint8_t *b)
+{
+	uint32_t x;
+	x = (uint32_t) floor(fabs(lat/90.0) * ((double)(1<<23)));
+	if (x >= (1<<23))
+		x = (1<<23) - 1;
+	if (lat < 0.0)
+		x |= (1<<23);
+	b[0] = (x >> 16) & 0xff;
+	b[1] = (x >>  8) & 0xff;
+	b[2] =  x        & 0xff;
+}
+
+static void
+_ts_23_032_store_longitude(double lon, uint8_t *b)
+{
+	int32_t x;
+	x = floor((lon/360.0) * ((double)(1<<24)));
+	if (x >= (1<<23))
+		x = 0x007fffff;
+	else if (x < -(1<<23))
+		x = 0x00800000;
+	b[0] = (x >> 16) & 0xff;
+	b[1] = (x >>  8) & 0xff;
+	b[2] =  x        & 0xff;
+}
+
+static void
+_ts_23_032_store_altitude(double alt, uint8_t *b)
+{
+	int alt_i = (int)fabs(alt);
+	b[0] = ((alt_i >> 8) & 0x7f) | (alt<0.0 ? 0x80 : 0x00);
+	b[1] = alt_i & 0xff;
+}
+
+
+	/* Fill methods */
 
 static void
 _rrlp_fill_navigation_model_element(
@@ -358,27 +400,25 @@ _rrlp_add_reference_location(
 	struct gps_assist_data *gps_ad)
 {
 	struct RefLocation *rrlp_refloc;
+	uint8_t *b;
 
-	/* FIXME: Check if info is in gps_ad */
+	if (!(gps_ad->fields & GPS_FIELD_REFPOS))
+		return -EINVAL;
 
 	rrlp_refloc = calloc(1, sizeof(*rrlp_refloc));
 	if (!rrlp_refloc)
 		return -ENOMEM;
 	rrlp_gps_ad->controlHeader.refLocation = rrlp_refloc;
 
-	/* FIXME */
-	{
-		uint8_t gps_loc[] = {
-			0x80,			/* Ellipsoid Point with altitude */
-			0x48, 0x0f, 0x93,	/* 50.667778 N */
-			0x03, 0x47, 0x87,	/* 4.611667 E */
-			0x00, 0x72,		/* 114m */
-		};
-		uint8_t *b = malloc(sizeof(gps_loc));
-		memcpy(b, gps_loc, sizeof(gps_loc));
-		rrlp_refloc->threeDLocation.buf = b;
-		rrlp_refloc->threeDLocation.size = sizeof(gps_loc);
-	}
+	b = malloc(9);
+
+	b[0] = 0x80; /* Ellipsoid Point with altitude */
+	_ts_23_032_store_latitude(gps_ad->ref_pos.latitude, &b[1]);
+	_ts_23_032_store_longitude(gps_ad->ref_pos.longitude, &b[4]);
+	_ts_23_032_store_altitude(gps_ad->ref_pos.altitude, &b[7]);
+
+	rrlp_refloc->threeDLocation.buf = b;
+	rrlp_refloc->threeDLocation.size = 9;
 
 	return 0;
 }

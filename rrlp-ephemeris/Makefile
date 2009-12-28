@@ -11,7 +11,7 @@ all: rrlp-test
 
 
 rrlp-test: libgsm-asn1.a gps.o ubx.o ubx-parse.o rrlp.o main.o
-	$(CC) -o $@ gps.o ubx.o ubx-parse.o rrlp.o main.o -L. -lgsm-asn1
+	$(CC) -o $@ gps.o ubx.o ubx-parse.o rrlp.o main.o -L. -lgsm-asn1 -lm
 
 
 #
