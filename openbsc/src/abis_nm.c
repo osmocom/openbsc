@@ -1449,12 +1449,6 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 		rewind(sw->stream);
 		break;	
 	case GSM_BTS_TYPE_NANOBTS:
-		sw->stream = fdopen(sw->fd, "r");
-		if (!sw->stream) {
-			perror("fdopen");
-			return -1;
-		}
-
 		/* TODO: extract that from the filename or content */
 		rc = parse_sdp_header(sw);
 		if (rc < 0) {
@@ -1701,7 +1695,10 @@ int abis_nm_software_load_status(struct gsm_bts *bts)
 		return rc;
 	}
 
-	percent = (ftell(sw->stream) * 100) / st.st_size;
+	if (sw->stream)
+		percent = (ftell(sw->stream) * 100) / st.st_size;
+	else
+		percent = (lseek(sw->fd, 0, SEEK_CUR) * 100) / st.st_size;
 	return percent;
 }
 
