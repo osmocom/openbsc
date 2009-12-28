@@ -69,7 +69,11 @@ _ubx_msg_parse_nav_posllh(struct ubx_hdr *hdr, void *pl, int pl_len, void *ud)
 
 	//printf("[.] NAV_POSLLH\n");
 
-	// FIXME: Extract info for "Reference Position"
+	gps->fields |= GPS_FIELD_REFPOS;
+
+	gps->ref_pos.latitude  = (double)(nav_posllh->lat) * 1e-7;
+	gps->ref_pos.longitude = (double)(nav_posllh->lon) * 1e-7;
+	gps->ref_pos.altitude  = (double)(nav_posllh->height) * 1e-3;
 }
 
 static void
