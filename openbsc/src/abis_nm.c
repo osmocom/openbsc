@@ -47,6 +47,7 @@
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
+#define IPACC_SEGMENT_SIZE	245
 
 /* unidirectional messages from BTS to BSC */
 static const enum abis_nm_msgtype reports[] = {
@@ -1225,11 +1226,19 @@ static int sw_load_init(struct abis_nm_sw *sw)
 	fill_om_fom_hdr(oh, len, NM_MT_LOAD_INIT, sw->obj_class,
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
-	
-	/* FIXME: this is BS11 specific format */
-	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-		     sw->file_version);
+
+	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
+		msgb_v_put(msg, NM_ATT_SW_DESCR);
+		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			       sw->file_version);
+	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			     sw->file_version);
+	} else {
+		return -1;
+	}
 	msgb_tv_put(msg, NM_ATT_WINDOW_SIZE, sw->window_size);
 	
 	return abis_nm_sendmsg(sw->bts, msg);
@@ -1287,7 +1296,24 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		/* we only now know the exact length for the OM hdr */
 		len = strlen(line_buf)+2;
 		break;
+	case GSM_BTS_TYPE_NANOBTS: {
+		static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
+		len = read(sw->fd, &seg_buf, IPACC_SEGMENT_SIZE);
+		if (len < 0) {
+			perror("read failed");
+			return -EINVAL;
+		}
+
+		if (len != IPACC_SEGMENT_SIZE)
+			sw->last_seg = 1;
+
+		++sw->seg_in_window;
+		msgb_tl16v_put(msg, NM_ATT_IPACC_FILE_DATA, len, (const u_int8_t *) seg_buf);
+		len += 3;
+		break;
+	}
 	default:
+		LOGP(DNM, LOGL_ERROR, "sw_load_segment needs implementation for the BTS.\n");
 		/* FIXME: Other BTS types */
 		return -1;
 	}
@@ -1311,10 +1337,18 @@ static int sw_load_end(struct abis_nm_sw *sw)
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
 
-	/* FIXME: this is BS11 specific format */
-	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-		     sw->file_version);
+	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
+		msgb_v_put(msg, NM_ATT_SW_DESCR);
+		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			       sw->file_version);
+	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			     sw->file_version);
+	} else {
+		return -1;
+	}
 
 	return abis_nm_sendmsg(sw->bts, msg);
 }
@@ -1339,9 +1373,57 @@ static int sw_activate(struct abis_nm_sw *sw)
 	return abis_nm_sendmsg(sw->bts, msg);
 }
 
+struct sdp_firmware {
+	char magic[4];
+	char more_magic[4];
+	unsigned int header_length;
+	unsigned int file_length;
+} __attribute__ ((packed));
+
 static int parse_sdp_header(struct abis_nm_sw *sw)
 {
-	return -1;
+	struct sdp_firmware firmware_header;
+	int rc;
+	struct stat stat;
+
+	rc = read(sw->fd, &firmware_header, sizeof(firmware_header));
+	if (rc != sizeof(firmware_header)) {
+		LOGP(DNM, LOGL_ERROR, "Could not read SDP file header.\n");
+		return -1;
+	}
+
+	if (strncmp(firmware_header.magic, " SDP", 4) != 0) {
+		LOGP(DNM, LOGL_ERROR, "The magic number1 is wrong.\n");
+		return -1;
+	}
+
+	if (firmware_header.more_magic[0] != 0x10 ||
+	    firmware_header.more_magic[1] != 0x02 ||
+	    firmware_header.more_magic[2] != 0x00 ||
+	    firmware_header.more_magic[3] != 0x00) {
+		LOGP(DNM, LOGL_ERROR, "The more magic number is wrong.\n");
+		return -1;
+	}
+
+
+	if (fstat(sw->fd, &stat) == -1) {
+		LOGP(DNM, LOGL_ERROR, "Could not stat the file.\n");
+		return -1;
+	}
+
+	if (ntohl(firmware_header.file_length) != stat.st_size) {
+		LOGP(DNM, LOGL_ERROR, "The filesizes do not match.\n");
+		return -1;
+	}
+
+	/* go back to the start as we checked the whole filesize.. */
+	lseek(sw->fd, 0l, SEEK_SET);
+	LOGP(DNM, LOGL_NOTICE, "The ipaccess SDP header is not fully understood.\n"
+			       "There might be checksums in the file that are not\n"
+			       "verified and incomplete firmware might be flashed.\n"
+			       "There is absolutely no WARRANTY that flashing will\n"
+			       "work.\n");
+	return 0;
 }
 
 static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
@@ -1376,18 +1458,17 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 		rewind(sw->stream);
 		break;	
 	case GSM_BTS_TYPE_NANOBTS:
-		sw->stream = fdopen(sw->fd, "r");
-		if (!sw->stream) {
-			perror("fdopen");
-			return -1;
-		}
-
 		/* TODO: extract that from the filename or content */
 		rc = parse_sdp_header(sw);
 		if (rc < 0) {
 			fprintf(stderr, "Could not parse the ipaccess SDP header\n");
 			return -1;
 		}
+
+		strcpy((char *)sw->file_id, "id");
+		sw->file_id_len = 3;
+		strcpy((char *)sw->file_version, "version");
+		sw->file_version_len = 8;
 		break;
 	default:
 		/* We don't know how to treat them yet */
@@ -1500,6 +1581,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_LOAD_END_ACK, mb,
 					 sw->cb_data, NULL);
+			rc = 0;
 			break;
 		case NM_MT_LOAD_END_NACK:
 			if (sw->forced) {
@@ -1576,10 +1658,26 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		return -EBUSY;
 
 	sw->bts = bts;
-	sw->obj_class = NM_OC_SITE_MANAGER;
-	sw->obj_instance[0] = 0xff;
-	sw->obj_instance[1] = 0xff;
-	sw->obj_instance[2] = 0xff;
+
+	switch (bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		sw->obj_class = NM_OC_SITE_MANAGER;
+		sw->obj_instance[0] = 0xff;
+		sw->obj_instance[1] = 0xff;
+		sw->obj_instance[2] = 0xff;
+		break;
+	case GSM_BTS_TYPE_NANOBTS:
+		sw->obj_class = NM_OC_BASEB_TRANSC;
+		sw->obj_instance[0] = 0x00;
+		sw->obj_instance[1] = 0x00;
+		sw->obj_instance[2] = 0xff;
+		break;
+	case GSM_BTS_TYPE_UNKNOWN:
+	default:
+		LOGPC(DNM, LOGL_ERROR, "Software Load not properly implemented.\n");
+		return -1;
+		break;
+	}
 	sw->window_size = win_size;
 	sw->state = SW_STATE_WAIT_INITACK;
 	sw->cbfn = cbfn;
@@ -1607,7 +1705,10 @@ int abis_nm_software_load_status(struct gsm_bts *bts)
 		return rc;
 	}
 
-	percent = (ftell(sw->stream) * 100) / st.st_size;
+	if (sw->stream)
+		percent = (ftell(sw->stream) * 100) / st.st_size;
+	else
+		percent = (lseek(sw->fd, 0, SEEK_CUR) * 100) / st.st_size;
 	return percent;
 }
 

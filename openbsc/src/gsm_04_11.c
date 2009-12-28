@@ -948,6 +948,33 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	switch(msg_type) {
 	case GSM411_MT_CP_DATA:
 		DEBUGPC(DSMS, "RX SMS CP-DATA\n");
+
+		/* 5.4: For MO, if a CP-DATA is received for a new
+		 * transaction, equals reception of an implicit
+		 * last CP-ACK for previous transaction */
+		if (trans->sms.cp_state == GSM411_CPS_IDLE) {
+			int i;
+			struct gsm_trans *ptrans;
+
+			/* Scan through all remote initiated transactions */
+			for (i=8; i<15; i++) {
+				if (i == transaction_id)
+					continue;
+
+				ptrans = trans_find_by_id(lchan->subscr,
+				                          GSM48_PDISC_SMS, i);
+				if (!ptrans)
+					continue;
+
+				DEBUGP(DSMS, "Implicit CP-ACK for trans_id=%x\n", i);
+
+				/* Finish it for good */
+				bsc_del_timer(&ptrans->sms.cp_timer);
+				ptrans->sms.cp_state = GSM411_CPS_IDLE;
+				trans_free(ptrans);
+			}
+		}
+
 		/* 5.2.3.1.3: MO state exists when SMC has received
 		 * CP-DATA, including sending of the assoc. CP-ACK */
 		/* 5.2.3.2.4: MT state exists when SMC has received

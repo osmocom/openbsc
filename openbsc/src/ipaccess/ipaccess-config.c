@@ -1,6 +1,8 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther
+ * (C) 2009 by On Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -48,6 +50,7 @@ static char *prim_oml_ip;
 static char *unit_id;
 static u_int16_t nv_flags;
 static u_int16_t nv_mask;
+static char *software = NULL;
 
 /*
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
@@ -164,6 +167,58 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+/* callback function passed to the ABIS OML code */
+static int percent;
+static int percent_old;
+static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
+		       void *data, void *param)
+{
+	struct gsm_bts *bts;
+
+	if (hook != GSM_HOOK_NM_SWLOAD)
+		return 0;
+
+	bts = (struct gsm_bts *) data;
+
+	switch (event) {
+	case NM_MT_LOAD_INIT_ACK:
+		fprintf(stdout, "Software Load Initiate ACK\n");
+		break;
+	case NM_MT_LOAD_INIT_NACK:
+		fprintf(stderr, "ERROR: Software Load Initiate NACK\n");
+		exit(5);
+		break;
+	case NM_MT_LOAD_END_ACK:
+		fprintf(stderr, "LOAD END ACK...");
+#if 0
+		if (data) {
+			/* we did a safety load and must activate it */
+			abis_nm_software_activate(g_bts, fname_safety,
+						  swload_cbfn, bts);
+			sleep(5);
+		}
+#endif
+		break;
+	case NM_MT_LOAD_END_NACK:
+		fprintf(stderr, "ERROR: Software Load End NACK\n");
+		exit(3);
+		break;
+	case NM_MT_ACTIVATE_SW_NACK:
+		fprintf(stderr, "ERROR: Activate Software NACK\n");
+		exit(4);
+		break;
+	case NM_MT_ACTIVATE_SW_ACK:
+		break;
+	case NM_MT_LOAD_SEG_ACK:
+		percent = abis_nm_software_load_status(bts);
+		if (percent > percent_old)
+			printf("Software Download Progress: %d%%\n", percent);
+		percent_old = percent;
+		break;
+	}
+	return 0;
+}
+
 static void bootstrap_om(struct gsm_bts *bts)
 {
 	int len;
@@ -226,6 +281,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		printf("restarting BTS\n");
 		abis_nm_ipaccess_restart(bts);
 	}
+
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
@@ -257,13 +313,23 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 {
 	if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
-	    new_state->availability == 3 &&
-	    net_listen_testnr) {
+	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
-		u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-		abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
-				     net_listen_testnr, 1,
-				     phys_config, sizeof(phys_config));
+
+		if (net_listen_testnr) {
+			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+			abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+					     net_listen_testnr, 1,
+					     phys_config, sizeof(phys_config));
+		} else if (software) {
+			int rc;
+			printf("Attempting software upload with '%s'\n", software);
+			rc = abis_nm_software_load(trx->bts, software, 19, 0, swload_cbfn, trx->bts);
+			if (rc < 0) {
+				fprintf(stderr, "Failed to start software load\n");
+				exit(-3);
+			}
+		}
 	}
 	return 0;
 }
@@ -310,9 +376,10 @@ int main(int argc, char **argv)
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
+			{ "software", 1, 0, 'd' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -342,6 +409,9 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			stream_id = atoi(optarg);
+			break;
+		case 'd':
+			software = strdup(optarg);
 			break;
 		case 'h':
 			print_usage();
