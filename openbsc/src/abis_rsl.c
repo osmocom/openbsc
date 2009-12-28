@@ -1221,7 +1221,7 @@ static int rsl_rx_error_rep(struct msgb *msg)
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	LOGP(DRSL, LOGL_ERROR, "ERROR REPORT ");
+	LOGP(DRSL, LOGL_ERROR, "%s ERROR REPORT ", gsm_trx_name(msg->trx));
 
 	rsl_tlv_parse(&tp, rslh->data, msgb_l2len(msg)-sizeof(*rslh));
 
@@ -1245,16 +1245,16 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_RF_RES_IND:
 		/* interference on idle channels of TRX */
-		//DEBUGP(DRSL, "TRX: RF Interference Indication\n");
+		//DEBUGP(DRSL, "%s RF Resource Indication\n", gsm_trx_name(msg->trx));
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		LOGP(DRSL, LOGL_ERROR, "(bts=%u, trx=%u) CCCH/ACCH/CPU Overload\n",
-		     msg->trx->bts->nr, msg->trx->nr);
+		LOGP(DRSL, LOGL_ERROR, "%s CCCH/ACCH/CPU Overload\n",
+		     gsm_trx_name(msg->trx));
 		break;
 	default:
-		LOGP(DRSL, LOGL_NOTICE, "Unknown Abis RSL TRX message "
-			"type 0x%02x\n", rslh->msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "%s Unknown Abis RSL TRX message "
+			"type 0x%02x\n", gsm_trx_name(msg->trx), rslh->msg_type);
 		return -EINVAL;
 	}
 	return rc;

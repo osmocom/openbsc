@@ -313,6 +313,15 @@ struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
 
 static char ts2str[255];
 
+char *gsm_trx_name(struct gsm_bts_trx *trx)
+{
+	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d)",
+		 trx->bts->nr, trx->nr);
+
+	return ts2str;
+}
+
+
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 {
 	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
