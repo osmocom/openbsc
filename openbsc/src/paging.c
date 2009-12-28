@@ -265,6 +265,11 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
 			break;
+
+		/* skip all currently inactive TRX */
+		if (!trx_is_usable(bts->c0))
+			continue;
+
 		num_pages++;
 
 		/* Trigger paging, pass any error to caller */

@@ -47,7 +47,7 @@ static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 	return 1;
 }
 
-static int trx_is_usable(struct gsm_bts_trx *trx)
+int trx_is_usable(struct gsm_bts_trx *trx)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(trx->bts)) {
