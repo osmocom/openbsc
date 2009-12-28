@@ -1307,6 +1307,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		if (len != IPACC_SEGMENT_SIZE)
 			sw->last_seg = 1;
 
+		++sw->seg_in_window;
 		msgb_tl16v_put(msg, NM_ATT_IPACC_FILE_DATA, len, (const u_int8_t *) seg_buf);
 		len += 3;
 		break;
