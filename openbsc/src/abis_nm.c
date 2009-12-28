@@ -1337,10 +1337,18 @@ static int sw_load_end(struct abis_nm_sw *sw)
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
 
-	/* FIXME: this is BS11 specific format */
-	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-		     sw->file_version);
+	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
+		msgb_v_put(msg, NM_ATT_SW_DESCR);
+		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			       sw->file_version);
+	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			     sw->file_version);
+	} else {
+		return -1;
+	}
 
 	return abis_nm_sendmsg(sw->bts, msg);
 }
