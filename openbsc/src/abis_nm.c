@@ -1339,9 +1339,57 @@ static int sw_activate(struct abis_nm_sw *sw)
 	return abis_nm_sendmsg(sw->bts, msg);
 }
 
+struct sdp_firmware {
+	char magic[4];
+	char more_magic[4];
+	unsigned int header_length;
+	unsigned int file_length;
+} __attribute__ ((packed));
+
 static int parse_sdp_header(struct abis_nm_sw *sw)
 {
-	return -1;
+	struct sdp_firmware firmware_header;
+	int rc;
+	struct stat stat;
+
+	rc = read(sw->fd, &firmware_header, sizeof(firmware_header));
+	if (rc != sizeof(firmware_header)) {
+		LOGP(DNM, LOGL_ERROR, "Could not read SDP file header.\n");
+		return -1;
+	}
+
+	if (strncmp(firmware_header.magic, " SDP", 4) != 0) {
+		LOGP(DNM, LOGL_ERROR, "The magic number1 is wrong.\n");
+		return -1;
+	}
+
+	if (firmware_header.more_magic[0] != 0x10 ||
+	    firmware_header.more_magic[1] != 0x02 ||
+	    firmware_header.more_magic[2] != 0x00 ||
+	    firmware_header.more_magic[3] != 0x00) {
+		LOGP(DNM, LOGL_ERROR, "The more magic number is wrong.\n");
+		return -1;
+	}
+
+
+	if (fstat(sw->fd, &stat) == -1) {
+		LOGP(DNM, LOGL_ERROR, "Could not stat the file.\n");
+		return -1;
+	}
+
+	if (ntohl(firmware_header.file_length) != stat.st_size) {
+		LOGP(DNM, LOGL_ERROR, "The filesizes do not match.\n");
+		return -1;
+	}
+
+	/* go back to the start as we checked the whole filesize.. */
+	lseek(sw->fd, 0l, SEEK_SET);
+	LOGP(DNM, LOGL_NOTICE, "The ipaccess SDP header is not fully understood.\n"
+			       "There might be checksums in the file that are not\n"
+			       "verified and incomplete firmware might be flashed.\n"
+			       "There is absolutely no WARRANTY that flashing will\n"
+			       "work.\n");
+	return 0;
 }
 
 static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
