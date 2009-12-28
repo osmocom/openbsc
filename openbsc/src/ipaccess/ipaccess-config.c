@@ -399,6 +399,8 @@ int main(int argc, char **argv)
 	stderr_target = debug_target_create_stderr();
 	debug_add_target(stderr_target);
 	debug_set_all_filter(stderr_target, 1);
+	debug_set_log_level(stderr_target, 0);
+	debug_parse_category_mask(stderr_target, "DNM,0");
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
@@ -469,6 +471,10 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
+	/* ip.access supports up to 4 chained TRX */
+	gsm_bts_trx_alloc(bts);
+	gsm_bts_trx_alloc(bts);
+	gsm_bts_trx_alloc(bts);
 	bts->oml_tei = stream_id;
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
