@@ -234,10 +234,16 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	msg->l2h = msg->data;
 
-	if (!msg->trx || !msg->trx->rsl_link) {
-		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL\n");
+	if (!msg->trx) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
+			hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
+	} else if (!msg->trx->rsl_link) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
+			hexdump(msg->data, msg->len));
+		talloc_free(msg);
+		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
