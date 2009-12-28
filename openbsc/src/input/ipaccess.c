@@ -311,12 +311,15 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
 		if (error == 0) {
-			LOGP(DINP, LOGL_NOTICE, "BTS disappeared, dead socket\n");
+			link = e1inp_lookup_sign_link(e1i_ts, IPAC_PROTO_OML, 0);
+			if (link) {
+				link->trx->bts->ip_access.flags = 0;
+				LOGP(DINP, LOGL_NOTICE, "BTS %u disappeared, dead socket\n",
+					link->trx->bts->nr);
+			} else
+				LOGP(DINP, LOGL_NOTICE, "unknown BTS disappeared, dead socket\n");
 			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
 			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
-			link = e1inp_lookup_sign_link(e1i_ts, IPAC_PROTO_OML, 0);
-			if (link)
-				link->trx->bts->ip_access.flags = 0;
 			bsc_unregister_fd(bfd);
 			close(bfd->fd);
 			bfd->fd = -1;
