@@ -84,8 +84,12 @@ _ubx_msg_parse_aid_ini(struct ubx_hdr *hdr, void *pl, int pl_len, void *ud)
 
 	//printf("[.] AID_INI\n");
 
-	// FIXME: Extract info for "Reference Time"
-	
+	/* Extract info for "Reference Time" */
+	gps->fields |= GPS_FIELD_REFTIME;
+
+	gps->ref_time.wn = aid_ini->wn;
+	gps->ref_time.tow = (double)aid_ini->tow * 1e-3;
+
 	// FIXME: We could extract ref position as well but we need it in
 	//        WGS84 geodetic coordinates and it's provided as ecef, so
 	//        we need a lot of math ...
