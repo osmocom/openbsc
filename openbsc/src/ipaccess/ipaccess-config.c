@@ -51,6 +51,18 @@ static char *unit_id;
 static u_int16_t nv_flags;
 static u_int16_t nv_mask;
 static char *software = NULL;
+static int sw_load_state = 0;
+
+struct sw_load {
+	u_int8_t file_id[255];
+	u_int8_t file_id_len;
+
+	u_int8_t file_version[255];
+	u_int8_t file_version_len;
+};
+
+static struct sw_load *sw_load1 = NULL;
+static struct sw_load *sw_load2 = NULL;
 
 /*
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
@@ -170,9 +182,10 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 /* callback function passed to the ABIS OML code */
 static int percent;
 static int percent_old;
-static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
+static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		       void *data, void *param)
 {
+	struct msgb *msg;
 	struct gsm_bts *bts;
 
 	if (hook != GSM_HOOK_NM_SWLOAD)
@@ -190,14 +203,35 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 		break;
 	case NM_MT_LOAD_END_ACK:
 		fprintf(stderr, "LOAD END ACK...");
-#if 0
-		if (data) {
-			/* we did a safety load and must activate it */
-			abis_nm_software_activate(g_bts, fname_safety,
-						  swload_cbfn, bts);
-			sleep(5);
+		/* now make it the default */
+		sw_load_state = 1;
+
+		msg = msgb_alloc(1024, "sw: nvattr");
+		msg->l2h = msgb_put(msg, 3);
+		msg->l3h = &msg->l2h[3];
+
+		/* activate software */
+		if (sw_load1) {
+			msgb_v_put(msg, NM_ATT_SW_DESCR);
+			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load1->file_id_len, sw_load1->file_id);
+			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load1->file_version_len,
+					sw_load1->file_version);
 		}
-#endif
+
+		if (sw_load2) {
+			msgb_v_put(msg, NM_ATT_SW_DESCR);
+			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load2->file_id_len, sw_load1->file_id);
+			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load2->file_version_len,
+					sw_load2->file_version);
+		}
+
+		/* fill in the data */
+		msg->l2h[0] = NM_ATT_IPACC_CUR_SW_CFG;
+		msg->l2h[1] = msgb_l3len(msg) >> 8;
+		msg->l2h[2] = msgb_l3len(msg) & 0xff;
+		printf("Foo l2h: %p l3h: %p... length l2: %u  l3: %u\n", msg->l2h, msg->l3h, msgb_l2len(msg), msgb_l3len(msg));
+		abis_nm_ipaccess_set_nvattr(bts, msg->l2h, msgb_l2len(msg));
+		msgb_free(msg);
 		break;
 	case NM_MT_LOAD_END_NACK:
 		fprintf(stderr, "ERROR: Software Load End NACK\n");
