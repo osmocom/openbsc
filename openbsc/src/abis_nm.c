@@ -1225,11 +1225,19 @@ static int sw_load_init(struct abis_nm_sw *sw)
 	fill_om_fom_hdr(oh, len, NM_MT_LOAD_INIT, sw->obj_class,
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
-	
-	/* FIXME: this is BS11 specific format */
-	msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-	msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-		     sw->file_version);
+
+	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
+		msgb_v_put(msg, NM_ATT_SW_DESCR);
+		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			       sw->file_version);
+	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			     sw->file_version);
+	} else {
+		return -1;
+	}
 	msgb_tv_put(msg, NM_ATT_WINDOW_SIZE, sw->window_size);
 	
 	return abis_nm_sendmsg(sw->bts, msg);
@@ -1436,6 +1444,11 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 			fprintf(stderr, "Could not parse the ipaccess SDP header\n");
 			return -1;
 		}
+
+		strcpy((char *)sw->file_id, "id");
+		sw->file_id_len = 3;
+		strcpy((char *)sw->file_version, "version");
+		sw->file_version_len = 8;
 		break;
 	default:
 		/* We don't know how to treat them yet */
@@ -1624,10 +1637,26 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		return -EBUSY;
 
 	sw->bts = bts;
-	sw->obj_class = NM_OC_SITE_MANAGER;
-	sw->obj_instance[0] = 0xff;
-	sw->obj_instance[1] = 0xff;
-	sw->obj_instance[2] = 0xff;
+
+	switch (bts->type) {
+	case GSM_BTS_TYPE_BS11:
+		sw->obj_class = NM_OC_SITE_MANAGER;
+		sw->obj_instance[0] = 0xff;
+		sw->obj_instance[1] = 0xff;
+		sw->obj_instance[2] = 0xff;
+		break;
+	case GSM_BTS_TYPE_NANOBTS:
+		sw->obj_class = NM_OC_BASEB_TRANSC;
+		sw->obj_instance[0] = 0x00;
+		sw->obj_instance[1] = 0x00;
+		sw->obj_instance[2] = 0xff;
+		break;
+	case GSM_BTS_TYPE_UNKNOWN:
+	default:
+		LOGPC(DNM, LOGL_ERROR, "Software Load not properly implemented.\n");
+		return -1;
+		break;
+	}
 	sw->window_size = win_size;
 	sw->state = SW_STATE_WAIT_INITACK;
 	sw->cbfn = cbfn;
