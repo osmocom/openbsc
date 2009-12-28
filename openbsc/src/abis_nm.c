@@ -1296,6 +1296,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		len = strlen(line_buf)+2;
 		break;
 	default:
+		LOGP(DNM, LOGL_ERROR, "sw_load_segment needs implementation for the BTS.\n");
 		/* FIXME: Other BTS types */
 		return -1;
 	}
