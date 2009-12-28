@@ -1581,6 +1581,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_LOAD_END_ACK, mb,
 					 sw->cb_data, NULL);
+			rc = 0;
 			break;
 		case NM_MT_LOAD_END_NACK:
 			if (sw->forced) {
