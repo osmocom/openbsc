@@ -430,16 +430,17 @@ _rrlp_add_reference_time(
 {
 	struct ReferenceTime *rrlp_reftime;
 
-	/* FIXME: Check if info is in gps_ad */
+	if (!(gps_ad->fields & GPS_FIELD_REFTIME))
+		return -EINVAL;
 
 	rrlp_reftime = calloc(1, sizeof(*rrlp_reftime));
 	if (!rrlp_reftime)
 		return -ENOMEM;
 	rrlp_gps_ad->controlHeader.referenceTime = rrlp_reftime;
 
-	/* FIXME */
-//	rrlp_reftime.gpsTime.gpsTOW23b = g_gps_tow / 80;	/* 23 bits */
-//	rrlp_reftime.gpsTime.gpsWeek   = g_gps_week & 0x3ff;	/* 10 bits */
+	rrlp_reftime->gpsTime.gpsWeek   = gps_ad->ref_time.wn & 0x3ff; /* 10b */
+	rrlp_reftime->gpsTime.gpsTOW23b =
+		((int)floor(gps_ad->ref_time.tow / 0.08)) & 0x7fffff;  /* 23b */
 
 	return 0;
 }
