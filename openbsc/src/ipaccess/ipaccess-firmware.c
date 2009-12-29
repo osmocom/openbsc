@@ -50,10 +50,10 @@ struct sdp_header_entry {
 	char date[14];
 	char text2[10];
 	char text3[20];
-	u_int32_t something2;
+	u_int32_t length;
 	u_int32_t addr1;
 	u_int32_t addr2;
-	u_int32_t something3;
+	u_int32_t start;
 } __attribute__((packed));
 
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
@@ -62,10 +62,9 @@ static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
 static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
 
 
-static void analyze_file(int fd)
+static void analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
 {
 	struct sdp_firmware *firmware_header;
-	struct stat stat;
 	char buf[4096];
 	int rc, i;
 
@@ -94,13 +93,7 @@ static void analyze_file(int fd)
 	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
 		ntohs(firmware_header->part_length) % PART_LENGTH);
 
-	/* verify the file */
-	if (fstat(fd, &stat) == -1) {
-		perror("Can not stat the file");
-		return;
-	}
-
-	if (ntohl(firmware_header->file_length) != stat.st_size) {
+	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
 		return;
 	}
@@ -113,7 +106,7 @@ static void analyze_file(int fd)
 	/* look into each firmware now */
 	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
-		unsigned int offset = sizeof(struct sdp_firmware);
+		unsigned int offset = sizeof(struct sdp_firmware) + base_offset;
 		offset += i * 138;
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -134,16 +127,32 @@ static void analyze_file(int fd)
 		printf("\tdate: %.14s\n", entry.date);
 		printf("\ttext2: %.10s\n", entry.text2);
 		printf("\ttext3: %.20s\n", entry.text3);
-		printf("\tsomething2: 0x%x\n", ntohl(entry.something2));
 		printf("\taddr1: 0x%x\n", entry.addr1);
 		printf("\taddr2: 0x%x\n", entry.addr2);
-		printf("\tsomething3: 0x%x\n", ntohl(entry.something3));
+		printf("\tstart: 0x%x\n", ntohl(entry.start));
+		printf("\tlength: 0x%x\n", ntohl(entry.length));
+
+		/* now we need to find the SDP file... */
+		offset = ntohl(entry.start) + 4 + base_offset;
+		if (lseek(fd, offset, SEEK_SET) != offset) {
+			perror("can't seek to sdp");
+			return;
+		}
+
+		rc = read(fd, &buf, 4);
+		if (rc != 4) {
+			perror("peek failed");
+			return;
+		}
+
+		printf("FOO %.4s\n", buf);
 	}
 }
 
 int main(int argc, char** argv)
 {
 	int i, fd;
+	struct stat stat;
 
 	for (i = 1; i < argc; ++i) {
 		printf("Opening possible firmware '%s'\n", argv[i]);
@@ -153,7 +162,13 @@ int main(int argc, char** argv)
 			continue;
 		}
 
-		analyze_file(fd);
+		/* verify the file */
+		if (fstat(fd, &stat) == -1) {
+			perror("Can not stat the file");
+			return EXIT_FAILURE;
+		}
+
+		analyze_file(fd, stat.st_size, 0);
 	}
 
 	return EXIT_SUCCESS;
