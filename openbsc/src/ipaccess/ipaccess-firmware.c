@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define PART_LENGTH 138
 
 struct sdp_firmware {
 	char magic[4];
@@ -36,12 +37,7 @@ struct sdp_firmware {
 	unsigned int file_length;
 	char sw_part[20];
 	char text1[122];
-	u_int8_t no_idea_1[4];
-	char text2[64];
-	char time[8];
-	u_int8_t no_idea_2[4];
-	char date[8];
-	u_int8_t no_idea_3[6];
+	unsigned int short part_length;
 	/* stuff i don't know */
 } __attribute__((packed));
 
@@ -77,10 +73,9 @@ static void analyze_file(int fd)
 	printf("header_length: %u\n", ntohl(firmware_header->header_length));
 	printf("file_length: %u\n", ntohl(firmware_header->file_length));
 	printf("sw_part: %.20s\n", firmware_header->sw_part);
-	printf("text1: %.122s\n", firmware_header->text1);
-	printf("text2: %.64s\n", firmware_header->text2);
-	printf("time: %.8s\n", firmware_header->time);
-	printf("date: %.8s\n", firmware_header->date);
+	printf("text1: %.120s\n", firmware_header->text1);
+	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
+		ntohs(firmware_header->part_length) % PART_LENGTH);
 
 	/* verify the file */
 	if (fstat(fd, &stat) == -1) {
