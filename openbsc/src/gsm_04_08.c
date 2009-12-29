@@ -50,6 +50,7 @@
 #include <openbsc/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
+#include <openbsc/silent_call.h>
 
 #define GSM_MAX_FACILITY       128
 #define GSM_MAX_SSVERSION      128
@@ -3500,6 +3501,9 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
 	int rc = 0;
+
+	if (silent_call_reroute(msg))
+		return silent_call_rx(msg);
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
