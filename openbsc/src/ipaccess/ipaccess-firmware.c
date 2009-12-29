@@ -32,9 +32,12 @@
 
 #define PART_LENGTH 138
 
-struct sdp_firmware {
+struct sdp_firmware_start {
 	char magic[4];
 	char more_magic[4];
+} __attribute__((packed));
+
+struct sdp_firmware {
 	u_int32_t header_length;
 	u_int32_t file_length;
 	char sw_part[20];
@@ -57,6 +60,7 @@ struct sdp_header_entry {
 } __attribute__((packed));
 
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
+static_assert(sizeof(struct sdp_firmware_start) + sizeof(struct sdp_firmware) == 160, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
@@ -64,26 +68,38 @@ static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
 
 static void analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
 {
+	struct sdp_firmware_start *firmware_start;
 	struct sdp_firmware *firmware_header;
 	char buf[4096];
 	int rc, i;
+	unsigned int start_offset = 0;
 
-	rc = read(fd, buf, sizeof(*firmware_header));
+	rc = read(fd, buf, sizeof(*firmware_start));
 	if (rc < 0) {
-		perror("can not read header");
+		perror("Can not read header start.");
 		return;
 	}
 
-	firmware_header = (struct sdp_firmware *) &buf[0];
-	if (strncmp(firmware_header->magic, " SDP", 4) != 0) {
+	firmware_start = (struct sdp_firmware_start *) &buf[0];
+	if (strncmp(firmware_start->magic, " SDP", 4) != 0) {
 		fprintf(stderr, "Wrong magic.\n");
 		return;
 	}
 
-	if (memcmp(firmware_header->more_magic, more_magic, 4) != 0) {
+	if (memcmp(firmware_start->more_magic, more_magic, 4) != 0) {
 		fprintf(stderr, "Wrong more magic.\n");
 		return;
 	}
+
+
+	start_offset = sizeof(*firmware_start);
+	rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
+	if (rc < 0) {
+		perror("Can not read header.");
+		return;
+	}
+	firmware_header = (struct sdp_firmware *) &buf[start_offset];
+	start_offset += sizeof(*firmware_header);
 
 	printf("Printing header information:\n");
 	printf("header_length: %u\n", ntohl(firmware_header->header_length));
@@ -106,7 +122,7 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	/* look into each firmware now */
 	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
-		unsigned int offset = sizeof(struct sdp_firmware) + base_offset;
+		unsigned int offset = start_offset + base_offset;
 		offset += i * 138;
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
