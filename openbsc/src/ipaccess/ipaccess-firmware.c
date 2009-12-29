@@ -34,27 +34,22 @@
 
 struct sdp_firmware_start {
 	char magic[4];
-	char more_magic[4];
+	char more_magic[2];
+	u_int16_t more_more_magic;
 } __attribute__((packed));
 
 struct sdp_firmware {
 	u_int32_t header_length;
 	u_int32_t file_length;
 	char sw_part[20];
-	char text1[122];
-	u_int16_t part_length;
-	/* stuff i don't know */
-} __attribute__((packed));
-
-struct sdp_firmware_2 {
-	u_int8_t no_idea[8];
-	char text1[20];
-	char text2[64];
+	char text1[64];
 	char time[12];
 	char date[14];
-	char text3[10];
-	char text4[20];
-	u_int16_t some_length;
+	char text2[10];
+	char text3[20];
+	u_int8_t dummy[2];
+	u_int16_t part_length;
+	/* stuff i don't know */
 } __attribute__((packed));
 
 struct sdp_header_entry {
@@ -74,15 +69,12 @@ static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
 static_assert(sizeof(struct sdp_firmware_start) + sizeof(struct sdp_firmware) == 160, _right_header_length);
 
 /* more magic, the second "int" in the header */
-static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
-static char more_magic_internal[] = { 0x10, 0x02, 0x20, 0x0 };
-
+static char more_magic[] = { 0x10, 0x02 };
 
 static void analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
 {
 	struct sdp_firmware_start *firmware_start;
 	struct sdp_firmware *firmware_header = 0;
-	struct sdp_firmware_2 *firmware_2 = 0;
 	char buf[4096];
 	int rc, i;
 	unsigned int start_offset = 0;
@@ -100,7 +92,7 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	}
 
 	start_offset = sizeof(*firmware_start);
-	if (memcmp(firmware_start->more_magic, more_magic, 4) == 0) {
+	if (memcmp(firmware_start->more_magic, more_magic, 2) == 0) {
 		rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
 		if (rc != sizeof(*firmware_header)) {
 			perror("Can not read header.");
@@ -108,20 +100,6 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		}
 		firmware_header = (struct sdp_firmware *) &buf[start_offset];
 		start_offset += sizeof(*firmware_header);
-	} else if (memcmp(firmware_start->more_magic, more_magic_internal, 4) == 0) {
-		rc = read(fd, &buf[start_offset], sizeof(*firmware_2));
-		if (rc != sizeof(*firmware_2)) {
-			perror("Can not read header version type 2.");
-			return;
-		}
-		firmware_2 = (struct sdp_firmware_2 *) &buf[start_offset];
-		start_offset += sizeof(*firmware_2);
-		printf("Firmware header 2\n");
-		printf("text1: %.64s\n", firmware_2->text1);
-		printf("time: %.12s\n", firmware_2->time);
-		printf("date: %.14s\n", firmware_2->date);
-		printf("text2: %.10s\n", firmware_2->text2);
-		printf("text3: %.20s\n", firmware_2->text3);
 	} else {
 		fprintf(stderr, "Wrong more magic. Got: 0x%x %x %x %x\n",
 			firmware_start->more_magic[0] & 0xff, firmware_start->more_magic[1] & 0xff,
@@ -134,17 +112,26 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		return;
 
 	printf("Printing header information:\n");
+	printf("more_more_magic: 0x%x\n", ntohs(firmware_start->more_more_magic));
 	printf("header_length: %u\n", ntohl(firmware_header->header_length));
 	printf("file_length: %u\n", ntohl(firmware_header->file_length));
 	printf("sw_part: %.20s\n", firmware_header->sw_part);
-	printf("text1: %.120s\n", firmware_header->text1);
-	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
-		ntohs(firmware_header->part_length) % PART_LENGTH);
-
+	printf("text1: %.64s\n", firmware_header->text1);
+	printf("time: %.12s\n", firmware_header->time);
+	printf("date: %.14s\n", firmware_header->date);
+	printf("text2: %.10s\n", firmware_header->text2);
+	printf("text3: %.20s\n", firmware_header->text3);
 	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
 		return;
 	}
+
+	/* this semantic appears to be only the case for 0x0000 */
+	if (firmware_start->more_more_magic != 0)
+		return;
+
+	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
+		ntohs(firmware_header->part_length) % PART_LENGTH);
 
 	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
 		fprintf(stderr, "The part length seems to be wrong.\n");
