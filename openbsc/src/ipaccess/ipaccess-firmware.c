@@ -35,11 +35,11 @@
 struct sdp_firmware {
 	char magic[4];
 	char more_magic[4];
-	unsigned int header_length;
-	unsigned int file_length;
+	u_int32_t header_length;
+	u_int32_t file_length;
 	char sw_part[20];
 	char text1[122];
-	unsigned int short part_length;
+	u_int16_t part_length;
 	/* stuff i don't know */
 } __attribute__((packed));
 
