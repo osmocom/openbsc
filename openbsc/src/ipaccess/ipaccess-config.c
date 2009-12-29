@@ -83,6 +83,16 @@ static int ipacc_msg_nack(u_int8_t mt)
 	return 0;
 }
 
+static int ipacc_msg_ack(u_int8_t mt)
+{
+	if (sw_load_state == 1) {
+		fprintf(stderr, "The new software is activaed.\n");
+		exit(0);
+	}
+
+	return 0;
+}
+
 struct ipacc_ferr_elem {
 	int16_t freq_err;
 	u_int8_t freq_qual;
@@ -170,6 +180,9 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_NM_IPACC_NACK:
 		msg_type = signal_data;
 		return ipacc_msg_nack(*msg_type);
+	case S_NM_IPACC_ACK:
+		msg_type = signal_data;
+		return ipacc_msg_ack(*msg_type);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	default:

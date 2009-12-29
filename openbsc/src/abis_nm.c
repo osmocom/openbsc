@@ -2805,6 +2805,9 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_GET_NVATTR_NACK:
 		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &foh->msg_type);
 		break;
+	case NM_MT_IPACC_SET_NVATTR_ACK:
+		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &foh->msg_type);
+		break;
 	default:
 		break;
 	}
