@@ -220,7 +220,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 
 		if (sw_load2) {
 			msgb_v_put(msg, NM_ATT_SW_DESCR);
-			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load2->file_id_len, sw_load1->file_id);
+			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load2->file_id_len, sw_load2->file_id);
 			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load2->file_version_len,
 					sw_load2->file_version);
 		}
