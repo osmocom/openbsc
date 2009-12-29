@@ -19,6 +19,8 @@
  *
  */
 
+#include <openbsc/debug.h>
+
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -40,6 +42,12 @@ struct sdp_firmware {
 	unsigned int short part_length;
 	/* stuff i don't know */
 } __attribute__((packed));
+
+struct sdp_header_entry {
+	u_int8_t entry[138];
+} __attribute__((packed));
+
+static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
@@ -85,6 +93,11 @@ static void analyze_file(int fd)
 
 	if (ntohl(firmware_header->file_length) != stat.st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
+		return;
+	}
+
+	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
+		fprintf(stderr, "The part length seems to be wrong.\n");
 		return;
 	}
 }
