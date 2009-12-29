@@ -53,6 +53,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
 			lchan->ts->nr, lchan->ts->trx->arfcn);
+		lchan->silent_call = 1;
 		/* increment lchan reference count */
 		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		use_lchan(lchan);
@@ -86,7 +87,10 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 	if (!lchan)
 		return -EINVAL;
 
-	/* FIXME: did we actually establish a silent call for this guy? */
+	/* did we actually establish a silent call for this guy? */
+	if (!lchan->silent_call)
+		return -EINVAL;
+
 	put_lchan(lchan);
 
 	return 0;

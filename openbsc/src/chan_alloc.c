@@ -302,6 +302,8 @@ void lchan_free(struct gsm_lchan *lchan)
 	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
 		lchan->neigh_meas[i].arfcn = 0;
 
+	lchan->silent_call = 0;
+
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }

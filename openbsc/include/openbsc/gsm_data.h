@@ -198,6 +198,8 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
+	/* Are we part of a special "silent" call */
+	int silent_call;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
