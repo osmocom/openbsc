@@ -155,13 +155,9 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 			return;
 		}
 
-		rc = read(fd, &buf, 4);
-		if (rc != 4) {
-			perror("peek failed");
-			return;
-		}
-
-		printf("FOO %.4s\n", buf);
+		printf("------> parsing\n");
+		analyze_file(fd, ntohl(entry.length), offset);
+		printf("<------ parsing\n");
 	}
 }
 
