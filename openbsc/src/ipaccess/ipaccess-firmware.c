@@ -44,7 +44,16 @@ struct sdp_firmware {
 } __attribute__((packed));
 
 struct sdp_header_entry {
-	u_int8_t entry[138];
+	u_int16_t something1;
+	char text1[64];
+	char time[12];
+	char date[14];
+	char text2[10];
+	char text3[20];
+	u_int32_t something2;
+	u_int32_t addr1;
+	u_int32_t addr2;
+	u_int32_t something3;
 } __attribute__((packed));
 
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
@@ -58,7 +67,7 @@ static void analyze_file(int fd)
 	struct sdp_firmware *firmware_header;
 	struct stat stat;
 	char buf[4096];
-	int rc;
+	int rc, i;
 
 	rc = read(fd, buf, sizeof(*firmware_header));
 	if (rc < 0) {
@@ -99,6 +108,12 @@ static void analyze_file(int fd)
 	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
 		fprintf(stderr, "The part length seems to be wrong.\n");
 		return;
+	}
+
+	/* look into each firmware now */
+	for (i = 0; i < ntohs(firmware_header->part_length) % PART_LENGTH; ++i) {
+		unsigned int offset = sizeof(struct sdp_firmware);
+		offset += i * 138;
 	}
 }
 
