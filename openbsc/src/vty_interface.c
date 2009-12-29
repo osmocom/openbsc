@@ -571,7 +571,8 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u%s", lchan->use_count, VTY_NEWLINE);
+	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->use_count,
+		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,

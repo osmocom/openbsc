@@ -632,6 +632,7 @@ const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
 char *gsm_lchan_name(struct gsm_lchan *lchan);
+const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,

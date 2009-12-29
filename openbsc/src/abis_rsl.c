@@ -940,8 +940,9 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		return -EINVAL;
 
 	if (msg->lchan->state != LCHAN_S_ACT_REQ)
-		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %u\n",
-			gsm_lchan_name(msg->lchan), msg->lchan->state);
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
+			gsm_lchan_name(msg->lchan),
+			gsm_lchans_name(msg->lchan->state));
 	msg->lchan->state = LCHAN_S_ACTIVE;
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
@@ -1171,8 +1172,9 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", ts_name);
 		if (msg->lchan->state != LCHAN_S_REL_REQ)
-			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state=%u\n",
-				gsm_lchan_name(msg->lchan), msg->lchan->state);
+			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
+				gsm_lchan_name(msg->lchan),
+				gsm_lchans_name(msg->lchan->state));
 		msg->lchan->state = LCHAN_S_NONE;
 		lchan_free(msg->lchan);
 		break;
@@ -1312,7 +1314,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	if (lchan->state != LCHAN_S_NONE)
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
-		     "in state %u\n", gsm_lchan_name(lchan), lchan->state);
+		     "in state %s\n", gsm_lchan_name(lchan),
+		     gsm_lchans_name(lchan->state));
 	lchan->state = LCHAN_S_ACT_REQ;
 
 	ts_number = lchan->ts->nr;

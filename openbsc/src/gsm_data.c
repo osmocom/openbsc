@@ -88,6 +88,20 @@ const char *gsm_lchant_name(enum gsm_chan_t c)
 	return lchan_names[c];
 }
 
+static const struct value_string lchan_s_names[] = {
+	{ LCHAN_S_NONE,		"NONE" },
+	{ LCHAN_S_ACT_REQ,	"ACTIVATION REQUESTED" },
+	{ LCHAN_S_ACTIVE,	"ACTIVE" },
+	{ LCHAN_S_INACTIVE,	"INACTIVE" },
+	{ LCHAN_S_REL_REQ,	"RELEASE REQUESTED" },
+	{ 0,			NULL },
+};
+
+const char *gsm_lchans_name(enum gsm_lchan_state s)
+{
+	return get_value_string(lchan_s_names, s);
+}
+
 static const char *chreq_names[] = {
 	[GSM_CHREQ_REASON_EMERG]	= "EMERGENCY",
 	[GSM_CHREQ_REASON_PAG]		= "PAGING",
