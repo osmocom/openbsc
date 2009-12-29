@@ -111,9 +111,33 @@ static void analyze_file(int fd)
 	}
 
 	/* look into each firmware now */
-	for (i = 0; i < ntohs(firmware_header->part_length) % PART_LENGTH; ++i) {
+	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
+		struct sdp_header_entry entry;
 		unsigned int offset = sizeof(struct sdp_firmware);
 		offset += i * 138;
+
+		if (lseek(fd, offset, SEEK_SET) != offset) {
+			fprintf(stderr, "Can not seek to the offset: %u.\n", offset);
+			return;
+		}
+
+		rc = read(fd, &entry, sizeof(entry));
+		if (rc != sizeof(entry)) {
+			fprintf(stderr, "Can not read the header entry.\n");
+			return;
+		}
+
+		printf("Header Entry: %d\n", i);
+		printf("\tsomething1: %u\n", ntohs(entry.something1));
+		printf("\ttext1: %.64s\n", entry.text1);
+		printf("\ttime: %.12s\n", entry.time);
+		printf("\tdate: %.14s\n", entry.date);
+		printf("\ttext2: %.10s\n", entry.text2);
+		printf("\ttext3: %.20s\n", entry.text3);
+		printf("\tsomething2: 0x%x\n", ntohl(entry.something2));
+		printf("\taddr1: 0x%x\n", entry.addr1);
+		printf("\taddr2: 0x%x\n", entry.addr2);
+		printf("\tsomething3: 0x%x\n", ntohl(entry.something3));
 	}
 }
 
