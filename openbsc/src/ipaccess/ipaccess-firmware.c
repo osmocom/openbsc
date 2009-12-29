@@ -46,6 +46,17 @@ struct sdp_firmware {
 	/* stuff i don't know */
 } __attribute__((packed));
 
+struct sdp_firmware_2 {
+	u_int8_t no_idea[8];
+	char text1[20];
+	char text2[64];
+	char time[12];
+	char date[14];
+	char text3[10];
+	char text4[20];
+	u_int16_t some_length;
+} __attribute__((packed));
+
 struct sdp_header_entry {
 	u_int16_t something1;
 	char text1[64];
@@ -64,12 +75,14 @@ static_assert(sizeof(struct sdp_firmware_start) + sizeof(struct sdp_firmware) ==
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02, 0x00, 0x0 };
+static char more_magic_internal[] = { 0x10, 0x02, 0x20, 0x0 };
 
 
 static void analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
 {
 	struct sdp_firmware_start *firmware_start;
-	struct sdp_firmware *firmware_header;
+	struct sdp_firmware *firmware_header = 0;
+	struct sdp_firmware_2 *firmware_2 = 0;
 	char buf[4096];
 	int rc, i;
 	unsigned int start_offset = 0;
@@ -86,20 +99,39 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		return;
 	}
 
-	if (memcmp(firmware_start->more_magic, more_magic, 4) != 0) {
-		fprintf(stderr, "Wrong more magic.\n");
-		return;
-	}
-
-
 	start_offset = sizeof(*firmware_start);
-	rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
-	if (rc < 0) {
-		perror("Can not read header.");
+	if (memcmp(firmware_start->more_magic, more_magic, 4) == 0) {
+		rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
+		if (rc != sizeof(*firmware_header)) {
+			perror("Can not read header.");
+			return;
+		}
+		firmware_header = (struct sdp_firmware *) &buf[start_offset];
+		start_offset += sizeof(*firmware_header);
+	} else if (memcmp(firmware_start->more_magic, more_magic_internal, 4) == 0) {
+		rc = read(fd, &buf[start_offset], sizeof(*firmware_2));
+		if (rc != sizeof(*firmware_2)) {
+			perror("Can not read header version type 2.");
+			return;
+		}
+		firmware_2 = (struct sdp_firmware_2 *) &buf[start_offset];
+		start_offset += sizeof(*firmware_2);
+		printf("Firmware header 2\n");
+		printf("text1: %.64s\n", firmware_2->text1);
+		printf("time: %.12s\n", firmware_2->time);
+		printf("date: %.14s\n", firmware_2->date);
+		printf("text2: %.10s\n", firmware_2->text2);
+		printf("text3: %.20s\n", firmware_2->text3);
+	} else {
+		fprintf(stderr, "Wrong more magic. Got: 0x%x %x %x %x\n",
+			firmware_start->more_magic[0] & 0xff, firmware_start->more_magic[1] & 0xff,
+			firmware_start->more_magic[2] & 0xff, firmware_start->more_magic[3] & 0xff);
 		return;
 	}
-	firmware_header = (struct sdp_firmware *) &buf[start_offset];
-	start_offset += sizeof(*firmware_header);
+
+
+	if (!firmware_header)
+		return;
 
 	printf("Printing header information:\n");
 	printf("header_length: %u\n", ntohl(firmware_header->header_length));
