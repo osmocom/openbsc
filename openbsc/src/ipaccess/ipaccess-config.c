@@ -399,6 +399,7 @@ static void print_help(void)
 	printf("  -l --listen testnr \tPerform specified test number\n");
 	printf("  -h --help this text\n");
 	printf("  -s --stream-id ID\n");
+	printf("  -d --software firmware\n");
 }
 
 int main(int argc, char **argv)
