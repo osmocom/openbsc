@@ -71,7 +71,7 @@ static_assert(sizeof(struct sdp_firmware_start) + sizeof(struct sdp_firmware) ==
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
 
-static void analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
+static int analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
 {
 	struct sdp_firmware_start *firmware_start;
 	struct sdp_firmware *firmware_header = 0;
@@ -82,13 +82,13 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	rc = read(fd, buf, sizeof(*firmware_start));
 	if (rc < 0) {
 		perror("Can not read header start.");
-		return;
+		return -1;
 	}
 
 	firmware_start = (struct sdp_firmware_start *) &buf[0];
 	if (strncmp(firmware_start->magic, " SDP", 4) != 0) {
 		fprintf(stderr, "Wrong magic.\n");
-		return;
+		return -1;
 	}
 
 	start_offset = sizeof(*firmware_start);
@@ -96,7 +96,7 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
 		if (rc != sizeof(*firmware_header)) {
 			perror("Can not read header.");
-			return;
+			return -1;
 		}
 		firmware_header = (struct sdp_firmware *) &buf[start_offset];
 		start_offset += sizeof(*firmware_header);
@@ -104,12 +104,12 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		fprintf(stderr, "Wrong more magic. Got: 0x%x %x %x %x\n",
 			firmware_start->more_magic[0] & 0xff, firmware_start->more_magic[1] & 0xff,
 			firmware_start->more_magic[2] & 0xff, firmware_start->more_magic[3] & 0xff);
-		return;
+		return -1;
 	}
 
 
 	if (!firmware_header)
-		return;
+		return -1;
 
 	printf("Printing header information:\n");
 	printf("more_more_magic: 0x%x\n", ntohs(firmware_start->more_more_magic));
@@ -123,19 +123,19 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	printf("text3: %.20s\n", firmware_header->text3);
 	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
-		return;
+		return -1;
 	}
 
 	/* this semantic appears to be only the case for 0x0000 */
 	if (firmware_start->more_more_magic != 0)
-		return;
+		return -1;
 
 	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
 		ntohs(firmware_header->part_length) % PART_LENGTH);
 
 	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
 		fprintf(stderr, "The part length seems to be wrong.\n");
-		return;
+		return -1;
 	}
 
 	/* look into each firmware now */
@@ -146,13 +146,13 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
 			fprintf(stderr, "Can not seek to the offset: %u.\n", offset);
-			return;
+			return -1;
 		}
 
 		rc = read(fd, &entry, sizeof(entry));
 		if (rc != sizeof(entry)) {
 			fprintf(stderr, "Can not read the header entry.\n");
-			return;
+			return -1;
 		}
 
 		printf("Header Entry: %d\n", i);
@@ -171,13 +171,15 @@ static void analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		offset = ntohl(entry.start) + 4 + base_offset;
 		if (lseek(fd, offset, SEEK_SET) != offset) {
 			perror("can't seek to sdp");
-			return;
+			return -1;
 		}
 
 		printf("------> parsing\n");
 		analyze_file(fd, ntohl(entry.length), offset);
 		printf("<------ parsing\n");
 	}
+
+	return 0;
 }
 
 int main(int argc, char** argv)
