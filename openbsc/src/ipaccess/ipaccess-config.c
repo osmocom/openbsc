@@ -64,6 +64,7 @@ struct sw_load {
 	u_int8_t file_version_len;
 };
 
+static void *tall_ctx_config = NULL;
 static struct sw_load *sw_load1 = NULL;
 static struct sw_load *sw_load2 = NULL;
 
@@ -388,6 +389,59 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	return 0;
 }
 
+static void find_sw_load_params(const char *filename)
+{
+	struct stat stat;
+	struct sdp_header *header;
+	struct llist_head *entry;
+	int fd;
+	void *tall_firm_ctx = 0;
+
+	entry = talloc_zero(tall_firm_ctx, struct llist_head);
+	INIT_LLIST_HEAD(entry);
+
+	fd = open(filename, O_RDONLY);
+	if (!fd) {
+		perror("nada");
+		return;
+	}
+
+	/* verify the file */
+	if (fstat(fd, &stat) == -1) {
+		perror("Can not stat the file");
+		return;
+	}
+
+	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
+	if (close(fd) != 0) {
+		perror("Close failed.\n");
+		return;
+	}
+
+	/* try to find what we are looking for */
+	llist_for_each_entry(header, entry, entry) {
+		if (ntohs(header->firmware_info.more_more_magic) == 0x1000) {
+			sw_load1 = talloc_zero(tall_ctx_config, struct sw_load);
+
+			strncpy((char *)sw_load1->file_id, header->firmware_info.sw_part, 20);
+			sw_load1->file_id_len = strlen(header->firmware_info.sw_part) + 1;
+
+			strncpy((char *)sw_load1->file_version, header->firmware_info.version, 20);
+			sw_load1->file_version_len = strlen(header->firmware_info.version) + 1;
+		} else if (ntohs(header->firmware_info.more_more_magic) == 0x2001) {
+			sw_load2 = talloc_zero(tall_ctx_config, struct sw_load);
+
+			strncpy((char *)sw_load2->file_id, header->firmware_info.sw_part, 20);
+			sw_load2->file_id_len = strlen(header->firmware_info.sw_part) + 1;
+
+			strncpy((char *)sw_load2->file_version, header->firmware_info.version, 20);
+			sw_load2->file_version_len = strlen(header->firmware_info.version) + 1;
+		}
+	}
+
+	talloc_free(tall_firm_ctx);
+}
+
 static void analyze_firmware(const char *filename)
 {
 	struct stat stat;
@@ -534,6 +588,7 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			software = strdup(optarg);
+			find_sw_load_params(optarg);
 			break;
 		case 'f':
 			analyze_firmware(optarg);
