@@ -1221,6 +1221,22 @@ struct abis_nm_sw {
 
 static struct abis_nm_sw g_sw;
 
+static void sw_add_file_id_and_ver(struct abis_nm_sw *sw, struct msgb *msg)
+{
+	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
+		msgb_v_put(msg, NM_ATT_SW_DESCR);
+		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			       sw->file_version);
+	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
+		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
+		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
+			     sw->file_version);
+	} else {
+		LOGP(DNM, LOGL_ERROR, "Please implement this for the BTS.\n");
+	}
+}
+
 /* 6.2.1 / 8.3.1: Load Data Initiate */
 static int sw_load_init(struct abis_nm_sw *sw)
 {
@@ -1233,18 +1249,7 @@ static int sw_load_init(struct abis_nm_sw *sw)
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
 
-	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
-		msgb_v_put(msg, NM_ATT_SW_DESCR);
-		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-			       sw->file_version);
-	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
-		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-			     sw->file_version);
-	} else {
-		return -1;
-	}
+	sw_add_file_id_and_ver(sw, msg);
 	msgb_tv_put(msg, NM_ATT_WINDOW_SIZE, sw->window_size);
 	
 	return abis_nm_sendmsg(sw->bts, msg);
@@ -1343,19 +1348,7 @@ static int sw_load_end(struct abis_nm_sw *sw)
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
 
-	if (sw->bts->type == GSM_BTS_TYPE_NANOBTS) {
-		msgb_v_put(msg, NM_ATT_SW_DESCR);
-		msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-		msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-			       sw->file_version);
-	} else if (sw->bts->type == GSM_BTS_TYPE_BS11) {
-		msgb_tlv_put(msg, NM_ATT_FILE_ID, sw->file_id_len, sw->file_id);
-		msgb_tlv_put(msg, NM_ATT_FILE_VERSION, sw->file_version_len,
-			     sw->file_version);
-	} else {
-		return -1;
-	}
-
+	sw_add_file_id_and_ver(sw, msg);
 	return abis_nm_sendmsg(sw->bts, msg);
 }
 
