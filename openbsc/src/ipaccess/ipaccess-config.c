@@ -414,6 +414,10 @@ static void analyze_firmware(const char *filename)
 	}
 
 	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
+	if (close(fd) != 0) {
+		perror("Close failed.\n");
+		return;
+	}
 
 	llist_for_each_entry(header, entry, entry) {
 		printf("Printing header information:\n");
