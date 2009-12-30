@@ -20,6 +20,7 @@
  */
 
 #include <openbsc/debug.h>
+#include <openbsc/ipaccess.h>
 
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -32,33 +33,13 @@
 
 #define PART_LENGTH 138
 
-struct sdp_firmware_start {
-	char magic[4];
-	char more_magic[2];
-	u_int16_t more_more_magic;
-} __attribute__((packed));
-
-struct sdp_firmware {
-	u_int32_t header_length;
-	u_int32_t file_length;
-	char sw_part[20];
-	char text1[64];
-	char time[12];
-	char date[14];
-	char text2[10];
-	char text3[20];
-	u_int8_t dummy[2];
-	u_int16_t part_length;
-	/* stuff i don't know */
-} __attribute__((packed));
-
 struct sdp_header_entry {
 	u_int16_t something1;
 	char text1[64];
 	char time[12];
 	char date[14];
 	char text2[10];
-	char text3[20];
+	char version[20];
 	u_int32_t length;
 	u_int32_t addr1;
 	u_int32_t addr2;
@@ -66,44 +47,34 @@ struct sdp_header_entry {
 } __attribute__((packed));
 
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
-static_assert(sizeof(struct sdp_firmware_start) + sizeof(struct sdp_firmware) == 160, _right_header_length);
+static_assert(sizeof(struct sdp_firmware) == 160, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
 
-static int analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset)
+int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset, struct llist_head *list)
 {
-	struct sdp_firmware_start *firmware_start;
 	struct sdp_firmware *firmware_header = 0;
+	struct sdp_header *header;
 	char buf[4096];
 	int rc, i;
-	unsigned int start_offset = 0;
 
-	rc = read(fd, buf, sizeof(*firmware_start));
+	rc = read(fd, buf, sizeof(*firmware_header));
 	if (rc < 0) {
 		perror("Can not read header start.");
 		return -1;
 	}
 
-	firmware_start = (struct sdp_firmware_start *) &buf[0];
-	if (strncmp(firmware_start->magic, " SDP", 4) != 0) {
+	firmware_header = (struct sdp_firmware *) &buf[0];
+	if (strncmp(firmware_header->magic, " SDP", 4) != 0) {
 		fprintf(stderr, "Wrong magic.\n");
 		return -1;
 	}
 
-	start_offset = sizeof(*firmware_start);
-	if (memcmp(firmware_start->more_magic, more_magic, 2) == 0) {
-		rc = read(fd, &buf[start_offset], sizeof(*firmware_header));
-		if (rc != sizeof(*firmware_header)) {
-			perror("Can not read header.");
-			return -1;
-		}
-		firmware_header = (struct sdp_firmware *) &buf[start_offset];
-		start_offset += sizeof(*firmware_header);
-	} else {
+	if (memcmp(firmware_header->more_magic, more_magic, 2) != 0) {
 		fprintf(stderr, "Wrong more magic. Got: 0x%x %x %x %x\n",
-			firmware_start->more_magic[0] & 0xff, firmware_start->more_magic[1] & 0xff,
-			firmware_start->more_magic[2] & 0xff, firmware_start->more_magic[3] & 0xff);
+			firmware_header->more_magic[0] & 0xff, firmware_header->more_magic[1] & 0xff,
+			firmware_header->more_magic[2] & 0xff, firmware_header->more_magic[3] & 0xff);
 		return -1;
 	}
 
@@ -111,27 +82,19 @@ static int analyze_file(int fd, const unsigned int st_size, const unsigned int b
 	if (!firmware_header)
 		return -1;
 
-	printf("Printing header information:\n");
-	printf("more_more_magic: 0x%x\n", ntohs(firmware_start->more_more_magic));
-	printf("header_length: %u\n", ntohl(firmware_header->header_length));
-	printf("file_length: %u\n", ntohl(firmware_header->file_length));
-	printf("sw_part: %.20s\n", firmware_header->sw_part);
-	printf("text1: %.64s\n", firmware_header->text1);
-	printf("time: %.12s\n", firmware_header->time);
-	printf("date: %.14s\n", firmware_header->date);
-	printf("text2: %.10s\n", firmware_header->text2);
-	printf("text3: %.20s\n", firmware_header->text3);
 	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
 		return -1;
 	}
 
-	/* this semantic appears to be only the case for 0x0000 */
-	if (firmware_start->more_more_magic != 0)
-		return -1;
+	/* add the firmware */
+	header = malloc(sizeof(*header));
+	header->firmware_info = *firmware_header;
+	llist_add(&header->list, list);
 
-	printf("items: %u (rest %u)\n", ntohs(firmware_header->part_length) / PART_LENGTH,
-		ntohs(firmware_header->part_length) % PART_LENGTH);
+	/* this semantic appears to be only the case for 0x0000 */
+	if (firmware_header->more_more_magic != 0)
+		return -1;
 
 	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
 		fprintf(stderr, "The part length seems to be wrong.\n");
@@ -141,7 +104,7 @@ static int analyze_file(int fd, const unsigned int st_size, const unsigned int b
 	/* look into each firmware now */
 	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
-		unsigned int offset = start_offset + base_offset;
+		unsigned int offset = base_offset + sizeof(struct sdp_firmware);
 		offset += i * 138;
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -155,18 +118,6 @@ static int analyze_file(int fd, const unsigned int st_size, const unsigned int b
 			return -1;
 		}
 
-		printf("Header Entry: %d\n", i);
-		printf("\tsomething1: %u\n", ntohs(entry.something1));
-		printf("\ttext1: %.64s\n", entry.text1);
-		printf("\ttime: %.12s\n", entry.time);
-		printf("\tdate: %.14s\n", entry.date);
-		printf("\ttext2: %.10s\n", entry.text2);
-		printf("\ttext3: %.20s\n", entry.text3);
-		printf("\taddr1: 0x%x\n", entry.addr1);
-		printf("\taddr2: 0x%x\n", entry.addr2);
-		printf("\tstart: 0x%x\n", ntohl(entry.start));
-		printf("\tlength: 0x%x\n", ntohl(entry.length));
-
 		/* now we need to find the SDP file... */
 		offset = ntohl(entry.start) + 4 + base_offset;
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -174,9 +125,7 @@ static int analyze_file(int fd, const unsigned int st_size, const unsigned int b
 			return -1;
 		}
 
-		printf("------> parsing\n");
-		analyze_file(fd, ntohl(entry.length), offset);
-		printf("<------ parsing\n");
+		ipacces_analyze_file(fd, ntohl(entry.length), offset, list);
 	}
 
 	return 0;
@@ -188,6 +137,10 @@ int main(int argc, char** argv)
 	struct stat stat;
 
 	for (i = 1; i < argc; ++i) {
+		struct sdp_header *header;
+		struct llist_head entry;
+		INIT_LLIST_HEAD(&entry);
+
 		printf("Opening possible firmware '%s'\n", argv[i]);
 		fd = open(argv[i], O_RDONLY);
 		if (!fd) {
@@ -201,8 +154,23 @@ int main(int argc, char** argv)
 			return EXIT_FAILURE;
 		}
 
-		analyze_file(fd, stat.st_size, 0);
+		ipacces_analyze_file(fd, stat.st_size, 0, &entry);
+
+		llist_for_each_entry(header, &entry, list) {
+			printf("Printing header information:\n");
+			printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
+			printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
+			printf("file_length: %u\n", ntohl(header->firmware_info.file_length));
+			printf("sw_part: %.20s\n", header->firmware_info.sw_part);
+			printf("text1: %.64s\n", header->firmware_info.text1);
+			printf("time: %.12s\n", header->firmware_info.time);
+			printf("date: %.14s\n", header->firmware_info.date);
+			printf("text2: %.10s\n", header->firmware_info.text2);
+			printf("version: %.20s\n", header->firmware_info.version);
+			printf("\n\n");
+		}
 	}
+
 
 	return EXIT_SUCCESS;
 }
