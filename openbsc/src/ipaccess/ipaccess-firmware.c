@@ -21,6 +21,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/talloc.h>
 
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -38,6 +39,9 @@ static_assert(sizeof(struct sdp_firmware) == 160, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
+
+/* talloc context */
+void *tall_firm_ctx;
 
 int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset, struct llist_head *list)
 {
@@ -75,7 +79,7 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	}
 
 	/* add the firmware */
-	header = malloc(sizeof(*header));
+	header = talloc_zero(list, struct sdp_header);
 	header->firmware_info = *firmware_header;
 	INIT_LLIST_HEAD(&header->header_list);
 	llist_add(&header->entry, list);
@@ -114,7 +118,7 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 			return -1;
 		}
 
-		header_entry = malloc(sizeof(*header_entry));
+		header_entry = talloc_zero(header,  struct sdp_header_item);
 		header_entry->header_entry = entry;
 		llist_add(&header_entry->entry, &header->header_list);
 
@@ -132,8 +136,10 @@ int main(int argc, char** argv)
 	for (i = 1; i < argc; ++i) {
 		struct sdp_header *header;
 		struct sdp_header_item *sub_entry;
-		struct llist_head entry;
-		INIT_LLIST_HEAD(&entry);
+		struct llist_head *entry;
+
+		entry = talloc_zero(tall_firm_ctx, struct llist_head);
+		INIT_LLIST_HEAD(entry);
 
 		printf("Opening possible firmware '%s'\n", argv[i]);
 		fd = open(argv[i], O_RDONLY);
@@ -148,9 +154,9 @@ int main(int argc, char** argv)
 			return EXIT_FAILURE;
 		}
 
-		ipacces_analyze_file(fd, stat.st_size, 0, &entry);
+		ipacces_analyze_file(fd, stat.st_size, 0, entry);
 
-		llist_for_each_entry(header, &entry, entry) {
+		llist_for_each_entry(header, entry, entry) {
 			printf("Printing header information:\n");
 			printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
 			printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
@@ -177,8 +183,9 @@ int main(int argc, char** argv)
 				printf("\n\n");
 			}
 			printf("\n\n");
-
 		}
+
+		talloc_free(entry);
 	}
 
 

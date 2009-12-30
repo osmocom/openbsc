@@ -39,6 +39,6 @@ isdnsync_SOURCES = isdnsync.c
 bsc_mgcp_SOURCES = bsc_mgcp.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
 bsc_mgcp_LDADD = libvty.a
 
-ipaccess_firmware_SOURCES = ipaccess/ipaccess-firmware.c
+ipaccess_firmware_SOURCES = ipaccess/ipaccess-firmware.c talloc.c
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c msgb.c select.c talloc.c debug.c timer.c
