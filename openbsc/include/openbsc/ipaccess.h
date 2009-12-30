@@ -69,9 +69,32 @@ struct sdp_firmware {
 	/* stuff i don't know */
 } __attribute__((packed));
 
+struct sdp_header_entry {
+	u_int16_t something1;
+	char text1[64];
+	char time[12];
+	char date[14];
+	char text2[10];
+	char version[20];
+	u_int32_t length;
+	u_int32_t addr1;
+	u_int32_t addr2;
+	u_int32_t start;
+} __attribute__((packed));
+
+struct sdp_header_entry_list {
+	struct sdp_header_entry header_entry;
+	struct llist_head entry;
+};
+
 struct sdp_header {
 	struct sdp_firmware firmware_info;
-	struct llist_head list;
+
+	/* for more_magic a list of sdp_header_entry_list */
+	struct llist_head header_list;
+
+	/* the entry of the sdp_header */
+	struct llist_head entry;
 };
 
 int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned base_offset, struct llist_head *list);

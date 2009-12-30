@@ -33,19 +33,6 @@
 
 #define PART_LENGTH 138
 
-struct sdp_header_entry {
-	u_int16_t something1;
-	char text1[64];
-	char time[12];
-	char date[14];
-	char text2[10];
-	char version[20];
-	u_int32_t length;
-	u_int32_t addr1;
-	u_int32_t addr2;
-	u_int32_t start;
-} __attribute__((packed));
-
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
 static_assert(sizeof(struct sdp_firmware) == 160, _right_header_length);
 
@@ -90,7 +77,8 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	/* add the firmware */
 	header = malloc(sizeof(*header));
 	header->firmware_info = *firmware_header;
-	llist_add(&header->list, list);
+	INIT_LLIST_HEAD(&header->header_list);
+	llist_add(&header->entry, list);
 
 	/* this semantic appears to be only the case for 0x0000 */
 	if (firmware_header->more_more_magic != 0)
@@ -104,6 +92,7 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	/* look into each firmware now */
 	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
+		struct sdp_header_entry_list *header_entry;
 		unsigned int offset = base_offset + sizeof(struct sdp_firmware);
 		offset += i * 138;
 
@@ -125,6 +114,10 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 			return -1;
 		}
 
+		header_entry = malloc(sizeof(*header_entry));
+		header_entry->header_entry = entry;
+		llist_add(&header_entry->entry, &header->header_list);
+
 		ipacces_analyze_file(fd, ntohl(entry.length), offset, list);
 	}
 
@@ -138,6 +131,7 @@ int main(int argc, char** argv)
 
 	for (i = 1; i < argc; ++i) {
 		struct sdp_header *header;
+		struct sdp_header_entry_list *sub_entry;
 		struct llist_head entry;
 		INIT_LLIST_HEAD(&entry);
 
@@ -156,7 +150,7 @@ int main(int argc, char** argv)
 
 		ipacces_analyze_file(fd, stat.st_size, 0, &entry);
 
-		llist_for_each_entry(header, &entry, list) {
+		llist_for_each_entry(header, &entry, entry) {
 			printf("Printing header information:\n");
 			printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
 			printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
@@ -167,7 +161,23 @@ int main(int argc, char** argv)
 			printf("date: %.14s\n", header->firmware_info.date);
 			printf("text2: %.10s\n", header->firmware_info.text2);
 			printf("version: %.20s\n", header->firmware_info.version);
+			printf("subitems...\n");
+
+			llist_for_each_entry(sub_entry, &header->header_list, entry) {
+				printf("\tsomething1: %u\n", sub_entry->header_entry.something1);
+				printf("\ttext1: %.64s\n", sub_entry->header_entry.text1);
+				printf("\ttime: %.12s\n", sub_entry->header_entry.time);
+				printf("\tdate: %.14s\n", sub_entry->header_entry.date);
+				printf("\ttext2: %.10s\n", sub_entry->header_entry.text2);
+				printf("\tversion: %.20s\n", sub_entry->header_entry.version);
+				printf("\tlength: %u\n", ntohl(sub_entry->header_entry.length));
+				printf("\taddr1: 0x%x\n", ntohl(sub_entry->header_entry.addr1));
+				printf("\taddr2: 0x%x\n", ntohl(sub_entry->header_entry.addr2));
+				printf("\tstart: 0x%x\n", ntohl(sub_entry->header_entry.start));
+				printf("\n\n");
+			}
 			printf("\n\n");
+
 		}
 	}
 
