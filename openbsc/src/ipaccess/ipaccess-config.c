@@ -26,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <sys/socket.h>
@@ -41,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <openbsc/talloc.h>
 
 static struct gsm_network *gsmnet;
 
@@ -385,6 +388,65 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	return 0;
 }
 
+static void analyze_firmware(const char *filename)
+{
+	struct stat stat;
+	struct sdp_header *header;
+	struct sdp_header_item *sub_entry;
+	struct llist_head *entry;
+	int fd;
+	void *tall_firm_ctx = 0;
+
+	entry = talloc_zero(tall_firm_ctx, struct llist_head);
+	INIT_LLIST_HEAD(entry);
+
+	printf("Opening possible firmware '%s'\n", filename);
+	fd = open(filename, O_RDONLY);
+	if (!fd) {
+		perror("nada");
+		return;
+	}
+
+	/* verify the file */
+	if (fstat(fd, &stat) == -1) {
+		perror("Can not stat the file");
+		return;
+	}
+
+	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
+
+	llist_for_each_entry(header, entry, entry) {
+		printf("Printing header information:\n");
+		printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
+		printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
+		printf("file_length: %u\n", ntohl(header->firmware_info.file_length));
+		printf("sw_part: %.20s\n", header->firmware_info.sw_part);
+		printf("text1: %.64s\n", header->firmware_info.text1);
+		printf("time: %.12s\n", header->firmware_info.time);
+		printf("date: %.14s\n", header->firmware_info.date);
+		printf("text2: %.10s\n", header->firmware_info.text2);
+		printf("version: %.20s\n", header->firmware_info.version);
+		printf("subitems...\n");
+
+		llist_for_each_entry(sub_entry, &header->header_list, entry) {
+			printf("\tsomething1: %u\n", sub_entry->header_entry.something1);
+			printf("\ttext1: %.64s\n", sub_entry->header_entry.text1);
+			printf("\ttime: %.12s\n", sub_entry->header_entry.time);
+			printf("\tdate: %.14s\n", sub_entry->header_entry.date);
+			printf("\ttext2: %.10s\n", sub_entry->header_entry.text2);
+			printf("\tversion: %.20s\n", sub_entry->header_entry.version);
+			printf("\tlength: %u\n", ntohl(sub_entry->header_entry.length));
+			printf("\taddr1: 0x%x\n", ntohl(sub_entry->header_entry.addr1));
+			printf("\taddr2: 0x%x\n", ntohl(sub_entry->header_entry.addr2));
+			printf("\tstart: 0x%x\n", ntohl(sub_entry->header_entry.start));
+			printf("\n\n");
+		}
+		printf("\n\n");
+	}
+
+	talloc_free(tall_firm_ctx);
+}
+
 static void print_usage(void)
 {
 	printf("Usage: ipaccess-config\n");
@@ -400,6 +462,7 @@ static void print_help(void)
 	printf("  -h --help this text\n");
 	printf("  -s --stream-id ID\n");
 	printf("  -d --software firmware\n");
+	printf("  -f --firmware firmware Provide firmware information\n");
 }
 
 int main(int argc, char **argv)
@@ -431,9 +494,10 @@ int main(int argc, char **argv)
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
 			{ "software", 1, 0, 'd' },
+			{ "firmware", 1, 0, 'f' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -467,6 +531,9 @@ int main(int argc, char **argv)
 		case 'd':
 			software = strdup(optarg);
 			break;
+		case 'f':
+			analyze_firmware(optarg);
+			exit(0);
 		case 'h':
 			print_usage();
 			print_help();

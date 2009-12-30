@@ -2,7 +2,7 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
-                isdnsync bsc_mgcp ipaccess-firmware ipaccess-proxy
+                isdnsync bsc_mgcp ipaccess-proxy
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
 noinst_HEADERS = vty/cardshell.h
 
@@ -31,14 +31,12 @@ bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
 
 ipaccess_find_SOURCES = ipaccess/ipaccess-find.c select.c timer.c
 
-ipaccess_config_SOURCES = ipaccess/ipaccess-config.c
+ipaccess_config_SOURCES = ipaccess/ipaccess-config.c ipaccess/ipaccess-firmware.c
 ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = bsc_mgcp.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
 bsc_mgcp_LDADD = libvty.a
-
-ipaccess_firmware_SOURCES = ipaccess/ipaccess-firmware.c talloc.c
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c msgb.c select.c talloc.c debug.c timer.c

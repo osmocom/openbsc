@@ -23,14 +23,10 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/talloc.h>
 
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define PART_LENGTH 138
 
@@ -40,10 +36,7 @@ static_assert(sizeof(struct sdp_firmware) == 160, _right_header_length);
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
 
-/* talloc context */
-void *tall_firm_ctx;
-
-int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset, struct llist_head *list)
+int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int base_offset, struct llist_head *list)
 {
 	struct sdp_firmware *firmware_header = 0;
 	struct sdp_header *header;
@@ -122,72 +115,9 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 		header_entry->header_entry = entry;
 		llist_add(&header_entry->entry, &header->header_list);
 
-		ipacces_analyze_file(fd, ntohl(entry.length), offset, list);
+		ipaccess_analyze_file(fd, ntohl(entry.length), offset, list);
 	}
 
 	return 0;
 }
 
-int main(int argc, char** argv)
-{
-	int i, fd;
-	struct stat stat;
-
-	for (i = 1; i < argc; ++i) {
-		struct sdp_header *header;
-		struct sdp_header_item *sub_entry;
-		struct llist_head *entry;
-
-		entry = talloc_zero(tall_firm_ctx, struct llist_head);
-		INIT_LLIST_HEAD(entry);
-
-		printf("Opening possible firmware '%s'\n", argv[i]);
-		fd = open(argv[i], O_RDONLY);
-		if (!fd) {
-			perror("nada");
-			continue;
-		}
-
-		/* verify the file */
-		if (fstat(fd, &stat) == -1) {
-			perror("Can not stat the file");
-			return EXIT_FAILURE;
-		}
-
-		ipacces_analyze_file(fd, stat.st_size, 0, entry);
-
-		llist_for_each_entry(header, entry, entry) {
-			printf("Printing header information:\n");
-			printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
-			printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
-			printf("file_length: %u\n", ntohl(header->firmware_info.file_length));
-			printf("sw_part: %.20s\n", header->firmware_info.sw_part);
-			printf("text1: %.64s\n", header->firmware_info.text1);
-			printf("time: %.12s\n", header->firmware_info.time);
-			printf("date: %.14s\n", header->firmware_info.date);
-			printf("text2: %.10s\n", header->firmware_info.text2);
-			printf("version: %.20s\n", header->firmware_info.version);
-			printf("subitems...\n");
-
-			llist_for_each_entry(sub_entry, &header->header_list, entry) {
-				printf("\tsomething1: %u\n", sub_entry->header_entry.something1);
-				printf("\ttext1: %.64s\n", sub_entry->header_entry.text1);
-				printf("\ttime: %.12s\n", sub_entry->header_entry.time);
-				printf("\tdate: %.14s\n", sub_entry->header_entry.date);
-				printf("\ttext2: %.10s\n", sub_entry->header_entry.text2);
-				printf("\tversion: %.20s\n", sub_entry->header_entry.version);
-				printf("\tlength: %u\n", ntohl(sub_entry->header_entry.length));
-				printf("\taddr1: 0x%x\n", ntohl(sub_entry->header_entry.addr1));
-				printf("\taddr2: 0x%x\n", ntohl(sub_entry->header_entry.addr2));
-				printf("\tstart: 0x%x\n", ntohl(sub_entry->header_entry.start));
-				printf("\n\n");
-			}
-			printf("\n\n");
-		}
-
-		talloc_free(entry);
-	}
-
-
-	return EXIT_SUCCESS;
-}
