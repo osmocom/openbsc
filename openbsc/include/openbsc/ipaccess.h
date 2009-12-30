@@ -82,7 +82,7 @@ struct sdp_header_entry {
 	u_int32_t start;
 } __attribute__((packed));
 
-struct sdp_header_entry_list {
+struct sdp_header_item {
 	struct sdp_header_entry header_entry;
 	struct llist_head entry;
 };

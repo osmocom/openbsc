@@ -92,7 +92,7 @@ int ipacces_analyze_file(int fd, const unsigned int st_size, const unsigned int 
 	/* look into each firmware now */
 	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
-		struct sdp_header_entry_list *header_entry;
+		struct sdp_header_item *header_entry;
 		unsigned int offset = base_offset + sizeof(struct sdp_firmware);
 		offset += i * 138;
 
@@ -131,7 +131,7 @@ int main(int argc, char** argv)
 
 	for (i = 1; i < argc; ++i) {
 		struct sdp_header *header;
-		struct sdp_header_entry_list *sub_entry;
+		struct sdp_header_item *sub_entry;
 		struct llist_head entry;
 		INIT_LLIST_HEAD(&entry);
 
