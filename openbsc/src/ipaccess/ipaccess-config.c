@@ -202,6 +202,14 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->bts);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
+	case S_NM_IPACC_RESTART_ACK:
+		printf("The BTS has acked the restart. Exiting.\n");
+		exit(0);
+		break;
+	case S_NM_IPACC_RESTART_NACK:
+		printf("The BTS has nacked the restart. Exiting.\n");
+		exit(0);
+		break;
 	default:
 		break;
 	}

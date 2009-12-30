@@ -1070,6 +1070,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NM_MT_CONN_MDROP_LINK_ACK:
 		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
 		break;
+	case NM_MT_IPACC_RESTART_ACK:
+		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
+		break;
+	case NM_MT_IPACC_RESTART_NACK:
+		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
+		break;
 	}
 
 	return 0;
