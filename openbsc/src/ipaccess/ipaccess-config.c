@@ -55,6 +55,7 @@ static u_int16_t nv_flags;
 static u_int16_t nv_mask;
 static char *software = NULL;
 static int sw_load_state = 0;
+static int oml_state = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -87,11 +88,23 @@ static int ipacc_msg_nack(u_int8_t mt)
 	return 0;
 }
 
-static int ipacc_msg_ack(u_int8_t mt)
+static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts *bts)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
-		exit(0);
+
+		if (restart) {
+			abis_nm_ipaccess_restart(bts);
+		} else {
+			exit(0);
+		}
+	} else if (oml_state == 1) {
+		fprintf(stderr, "Set the primary OML IP.\n");
+		if (restart) {
+			abis_nm_ipaccess_restart(bts);
+		} else {
+			exit(0);
+		}
 	}
 
 	return 0;
@@ -178,15 +191,15 @@ static int test_rep(void *_msg)
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
-	u_int8_t *msg_type;
+	struct ipacc_ack_signal_data *ipacc_data;
 
 	switch (signal) {
 	case S_NM_IPACC_NACK:
-		msg_type = signal_data;
-		return ipacc_msg_nack(*msg_type);
+		ipacc_data = signal_data;
+		return ipacc_msg_nack(ipacc_data->msg_type);
 	case S_NM_IPACC_ACK:
-		msg_type = signal_data;
-		return ipacc_msg_ack(*msg_type);
+		ipacc_data = signal_data;
+		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->bts);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	default:
@@ -315,6 +328,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
+		oml_state = 1;
 		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
 	}
 	if (nv_mask) {
@@ -332,7 +346,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
 	}
 
-	if (restart) {
+	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
 		abis_nm_ipaccess_restart(bts);
 	}

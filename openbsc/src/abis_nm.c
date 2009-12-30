@@ -2721,6 +2721,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	struct abis_om_fom_hdr *foh;
 	u_int8_t idstrlen = oh->data[0];
 	struct tlv_parsed tp;
+	struct ipacc_ack_signal_data signal;
 
 	if (strncmp((char *)&oh->data[1], ipaccess_magic, idstrlen)) {
 		LOGP(DNM, LOGL_ERROR, "id string is not com.ipaccess !?!\n");
@@ -2803,10 +2804,14 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &foh->msg_type);
+		signal.bts = msg->trx->bts;
+		signal.msg_type = foh->msg_type;
+		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &foh->msg_type);
+		signal.bts = msg->trx->bts;
+		signal.msg_type = foh->msg_type;
+		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;
 	default:
 		break;

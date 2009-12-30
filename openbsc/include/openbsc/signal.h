@@ -124,6 +124,11 @@ struct scall_signal_data {
 	void *data;
 };
 
+struct ipacc_ack_signal_data {
+	struct gsm_bts *bts;
+	u_int8_t msg_type;	
+};
+
 /* Management */
 int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
 void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
