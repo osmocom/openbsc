@@ -411,6 +411,21 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	return 0;
 }
 
+static struct sw_load *create_swload(struct sdp_header *header)
+{
+	struct sw_load *load;
+
+	load = talloc_zero(tall_ctx_config, struct sw_load);
+
+	strncpy((char *)load->file_id, header->firmware_info.sw_part, 20);
+	load->file_id_len = strlen(header->firmware_info.sw_part) + 1;
+
+	strncpy((char *)load->file_version, header->firmware_info.version, 20);
+	load->file_version_len = strlen(header->firmware_info.version) + 1;
+
+	return load;
+}
+
 static void find_sw_load_params(const char *filename)
 {
 	struct stat stat;
@@ -443,21 +458,9 @@ static void find_sw_load_params(const char *filename)
 	/* try to find what we are looking for */
 	llist_for_each_entry(header, entry, entry) {
 		if (ntohs(header->firmware_info.more_more_magic) == 0x1000) {
-			sw_load1 = talloc_zero(tall_ctx_config, struct sw_load);
-
-			strncpy((char *)sw_load1->file_id, header->firmware_info.sw_part, 20);
-			sw_load1->file_id_len = strlen(header->firmware_info.sw_part) + 1;
-
-			strncpy((char *)sw_load1->file_version, header->firmware_info.version, 20);
-			sw_load1->file_version_len = strlen(header->firmware_info.version) + 1;
+			sw_load1 = create_swload(header);
 		} else if (ntohs(header->firmware_info.more_more_magic) == 0x2001) {
-			sw_load2 = talloc_zero(tall_ctx_config, struct sw_load);
-
-			strncpy((char *)sw_load2->file_id, header->firmware_info.sw_part, 20);
-			sw_load2->file_id_len = strlen(header->firmware_info.sw_part) + 1;
-
-			strncpy((char *)sw_load2->file_version, header->firmware_info.version, 20);
-			sw_load2->file_version_len = strlen(header->firmware_info.version) + 1;
+			sw_load2 = create_swload(header);
 		}
 	}
 
