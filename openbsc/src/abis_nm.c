@@ -813,12 +813,17 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	}
 	DEBUGPC(DNM, "\n");
 
-	if (memcmp(&new_state, nm_state, sizeof(new_state))) {
+	if ((new_state.administrative != 0 && nm_state->administrative == 0) ||
+	    new_state.operational != nm_state->operational ||
+	    new_state.availability != nm_state->availability) {
 		/* Update the operational state of a given object in our in-memory data
  		* structures and send an event to the higher layer */
 		void *obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
 		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state);
-		*nm_state = new_state;
+		nm_state->operational = new_state.operational;
+		nm_state->availability = new_state.availability;
+		if (nm_state->administrative == 0)
+			nm_state->administrative = new_state.administrative;
 	}
 #if 0
 	if (op_state == 1) {
@@ -2912,7 +2917,7 @@ void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
 {
 	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
 
-	trx->rf_locked = locked;
+	trx->nm_state.administrative = new_state;
 	if (!trx->bts || !trx->bts->oml_link)
 		return;
 

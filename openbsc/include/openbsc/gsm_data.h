@@ -303,9 +303,6 @@ struct gsm_bts_trx {
 		} bs11;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
-
-	/* NM state */
-	int rf_locked;
 };
 
 enum gsm_bts_type {

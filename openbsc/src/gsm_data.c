@@ -128,6 +128,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
+	trx->nm_state.administrative = NM_STATE_UNLOCKED;
 
 	for (k = 0; k < TRX_NR_TS; k++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[k];
