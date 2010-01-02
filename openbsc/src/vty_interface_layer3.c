@@ -266,10 +266,46 @@ DEFUN(subscriber_silent_sms,
 	return rc;
 }
 
-DEFUN(subscriber_silent_call,
-      subscriber_silent_call_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent call (start|stop)",
-      "Send a silent call to a subscriber")
+DEFUN(subscriber_silent_call_start,
+      subscriber_silent_call_start_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call start (any|tch/f|tch/any|sdcch)",
+      "Start a silent call to a subscriber")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	int rc, type;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[2], "tch/f"))
+		type = RSL_CHANNEED_TCH_F;
+	else if (!strcmp(argv[2], "tch/any"))
+		type = RSL_CHANNEED_TCH_ForH;
+	else if (!strcmp(argv[2], "sdcch"))
+		type = RSL_CHANNEED_SDCCH;
+	else
+		type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
+
+	rc = gsm_silent_call_start(subscr, vty, type);
+	if (rc <= 0) {
+		vty_out(vty, "%% Subscriber not attached%s",
+			VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(subscriber_silent_call_stop,
+      subscriber_silent_call_stop_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call stop",
+      "Stop a silent call to a subscriber")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	int rc;
@@ -280,17 +316,10 @@ DEFUN(subscriber_silent_call,
 		return CMD_WARNING;
 	}
 
-	if (!strcmp(argv[2], "start")) {
-		rc = gsm_silent_call_start(subscr, vty);
-		if (rc <= 0) {
-			vty_out(vty, "%% Subscriber not attached%s",
-				VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	} else {
-		rc = gsm_silent_call_stop(subscr);
-		if (rc < 0)
-			return CMD_WARNING;
+	rc = gsm_silent_call_stop(subscr);
+	if (rc < 0) {
+		subscr_put(subscr);
+		return CMD_WARNING;
 	}
 
 	subscr_put(subscr);
@@ -378,7 +407,8 @@ int bsc_vty_init_extra(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
 	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
-	install_element(VIEW_NODE, &subscriber_silent_call_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_start_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_stop_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);

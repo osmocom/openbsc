@@ -113,11 +113,11 @@ int silent_call_reroute(struct msgb *msg)
 
 
 /* initiate a silent call with a given subscriber */
-int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data)
+int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
 	int rc;
 
-	rc = paging_request(subscr->net, subscr, RSL_CHANNEED_TCH_F,
+	rc = paging_request(subscr->net, subscr, type,
 			    paging_cb_silent, data);
 	return rc;
 }
