@@ -599,6 +599,13 @@ const char *nm_adm_name(u_int8_t adm)
 	}
 }
 
+int nm_is_running(struct gsm_nm_state *s) {
+	return (s->operational == NM_OPSTATE_ENABLED) && (
+		(s->availability == NM_AVSTATE_OK) ||
+		(s->availability == 0xff)
+	);
+}
+
 static void debugp_foh(struct abis_om_fom_hdr *foh)
 {
 	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",

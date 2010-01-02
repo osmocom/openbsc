@@ -39,8 +39,7 @@ static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(ts->trx->bts)) {
-		if (ts->nm_state.operational != NM_OPSTATE_ENABLED ||
-		    ts->nm_state.availability != NM_AVSTATE_OK)
+		if (!nm_is_running(&ts->nm_state))
 			return 0;
 	}
 
@@ -51,10 +50,8 @@ int trx_is_usable(struct gsm_bts_trx *trx)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(trx->bts)) {
-		if (trx->nm_state.operational != NM_OPSTATE_ENABLED ||
-		    trx->nm_state.availability != NM_AVSTATE_OK ||
-		    trx->bb_transc.nm_state.operational != NM_OPSTATE_ENABLED ||
-		    trx->bb_transc.nm_state.availability != NM_AVSTATE_OK)
+		if (!nm_is_running(&trx->nm_state) ||
+		    !nm_is_running(&trx->bb_transc.nm_state))
 			return 0;
 	}
 
@@ -380,8 +377,8 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 		int i;
 
 		/* skip administratively deactivated tranxsceivers */
-		if (trx->nm_state.availability != NM_AVSTATE_OK ||
-		    trx->bb_transc.nm_state.availability != NM_AVSTATE_OK)
+		if (!nm_is_running(&trx->nm_state) ||
+		    !nm_is_running(&trx->bb_transc.nm_state))
 			continue;
 
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
@@ -390,7 +387,7 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 			int j;
 
 			/* skip administratively deactivated timeslots */
-			if (ts->nm_state.availability != NM_AVSTATE_OK)
+			if (!nm_is_running(&ts->nm_state))
 				continue;
 
 			for (j = 0; j < subslots_per_pchan[ts->pchan]; j++) {
