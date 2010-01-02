@@ -813,7 +813,8 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 			new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
 		DEBUGPC(DNM, "AVAIL=%s(%02x) ", nm_avail_name(new_state.availability),
 			new_state.availability);
-	}
+	} else
+		new_state.availability = 0xff;
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
 		DEBUGPC(DNM, "ADM=%2s ", nm_adm_name(new_state.administrative));
