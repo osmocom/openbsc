@@ -467,7 +467,6 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t *classmark2_lv = gh->data + 1;
-	struct paging_signal_data sig_data;
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
@@ -484,17 +483,26 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 		subscr = msg->lchan->subscr;
 	}
 
-	sig_data.subscr = subscr;
-	sig_data.bts	= msg->lchan->ts->trx->bts;
-	sig_data.lchan	= msg->lchan;
-
 	bts->network->stats.paging.completed++;
+
+	/* Disable paging */
+	paging_request_pause(msg->trx->bts, subscr);
+	return 0;
+}
+
+int gsm48_finish_paging_resp(struct gsm_lchan *lchan, struct gsm_subscriber *subscr)
+{
+	struct paging_signal_data sig_data;
+
+	/* Dispatch signal */
+	sig_data.subscr = subscr;
+	sig_data.bts	= lchan->ts->trx->bts;
+	sig_data.lchan	= lchan;
 
 	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
-	/* Stop paging on the bts we received the paging response */
-	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
-	return 0;
+	/* Discard paging on the bts we received the paging response */
+	paging_request_stop(lchan->ts->trx->bts, subscr, lchan);
 }
 
 /* Chapter 9.1.9: Ciphering Mode Command */
