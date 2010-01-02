@@ -366,6 +366,8 @@ struct gsm_paging_request {
 	struct gsm_bts *bts;
 	/* what kind of channel type do we ask the MS to establish */
 	int chan_type;
+	/* is it paused ? */
+	int paused;
 
 	/* Timer 3113: how long do we try to page? */
 	struct timer_list T3113;

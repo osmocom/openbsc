@@ -143,8 +143,10 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 
 	do {
 		/* handle the paging request now */
-		page_ms(current_request);
-		paging_bts->available_slots--;
+		if (!current_request->paused) {
+			page_ms(current_request);
+			paging_bts->available_slots--;
+		}
 
 		/*
 		 * move to the next item. We might wrap around
@@ -282,6 +284,37 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		counter_inc(network->stats.paging.detached);
 
 	return num_pages;
+}
+
+
+static void _paging_request_pause(struct gsm_bts *bts,
+                                  struct gsm_subscriber *subscr)
+{
+	struct gsm_bts_paging_state *bts_entry = &bts->paging;
+	struct gsm_paging_request *req, *req2;
+
+	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
+				 entry) {
+		if (req->subscr == subscr) {
+			DEBUGP(DPAG, "Paused paging on bts %d.\n", bts->nr);
+			req->paused = 1;
+			break;
+		}
+	}
+}
+
+void paging_request_pause(struct gsm_bts *_bts, struct gsm_subscriber *subscr)
+{
+	struct gsm_bts *bts = NULL;
+	u_int16_t lac = _bts ? _bts->location_area_code : subscr->lac;
+
+	do {
+		bts = gsm_bts_by_lac(subscr->net, lac, bts);
+		if (!bts)
+			break;
+		_paging_request_pause(bts, subscr);
+	} while (1);
+
 }
 
 
