@@ -724,17 +724,19 @@ struct msgb *bssmap_create_sapi_reject(u_int8_t link_id)
 	return msg;
 }
 
-static u_int8_t chan_mode_to_speech(enum gsm48_chan_mode mode)
+static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 {
-	switch (mode) {
+	int mode = 0;
+
+	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
-		return 1;
+		mode = 1;
 		break;
 	case GSM48_CMODE_SPEECH_EFR:
-		return 0x11;
+		mode = 0x11;
 		break;
 	case GSM48_CMODE_SPEECH_AMR:
-		return 0x21;
+		mode = 0x21;
 		break;
 	case GSM48_CMODE_SIGN:
 	case GSM48_CMODE_DATA_14k5:
@@ -746,6 +748,11 @@ static u_int8_t chan_mode_to_speech(enum gsm48_chan_mode mode)
 		return 0;
 		break;
 	}
+
+	if (lchan->type == GSM_LCHAN_TCH_H)
+		mode |= 0x4;        
+
+        return mode;
 }
 
 /* 3.2.2.33 */
@@ -830,7 +837,7 @@ struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_
 
 	/* write circuit pool 3.2.2.45 */
 	/* write speech version chosen: 3.2.2.51 when BTS picked it */
-	speech_mode = chan_mode_to_speech(lchan->tch_mode);
+	speech_mode = chan_mode_to_speech(lchan);
 	if (speech_mode != 0) {
 		data = msgb_put(msg, 2);
 		data[0] = GSM0808_IE_SPEECH_VERSION;
