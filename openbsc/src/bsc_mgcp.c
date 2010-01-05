@@ -1158,6 +1158,8 @@ int main(int argc, char** argv)
 			inet_aton(forward_ip, &endp->remote);
 			endp->ci = CI_UNUSED + 23;
 		}
+
+		DEBUGP(DMGCP, "Configured for Audio Forwarding.\n");
 	} else {
 		bfd.when = BSC_FD_READ;
 		bfd.cb = read_call_agent;
@@ -1190,6 +1192,8 @@ int main(int argc, char** argv)
 			DEBUGP(DMGCP, "Failed to register the fd\n");
 			return -1;
 		}
+
+		DEBUGP(DMGCP, "Configured for MGCP.\n");
 	}
 
 	/* initialisation */
