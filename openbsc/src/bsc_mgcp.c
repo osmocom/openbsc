@@ -64,6 +64,7 @@ static int audio_payload = 97;
 static int audio_loop = 0;
 static int early_bind = 0;
 
+static char *forward_ip = NULL;
 static char *config_file = "mgcp.cfg";
 
 /* used by msgb and mgcp */
@@ -1055,6 +1056,17 @@ DEFUN(cfg_mgcp_number_endp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_forward,
+      cfg_mgcp_forward_cmd,
+      "forward audio IP",
+      "Forward packets from and to the IP. This disables most of the MGCP feature.")
+{
+	if (forward_ip)
+		talloc_free(forward_ip);
+	forward_ip = talloc_strdup(tall_bsc_ctx, argv[0]);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
@@ -1076,6 +1088,7 @@ int bsc_vty_init(struct gsm_network *dummy)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_forward_cmd);
 	return 0;
 }
 
@@ -1123,37 +1136,60 @@ int main(int argc, char** argv)
 		endpoints[i].ci = CI_UNUSED;
 	}
 
-	/* initialize the socket */
-	bfd.when = BSC_FD_READ;
-	bfd.cb = read_call_agent;
-	bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (bfd.fd < 0) {
-		perror("Gateway failed to listen");
-		return -1;
-	}
+	/*
+	 * This application supports two modes.
+         *    1.) a true MGCP gateway with support for AUEP, CRCX, MDCX, DLCX
+         *    2.) plain forwarding of RTP packets on the endpoints.
+	 * both modes are mutual exclusive
+	 */
+	if (forward_ip) {
 
-	setsockopt(bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+		if (!early_bind) {
+			DEBUGP(DMGCP, "Forwarding requires early bind.\n");
+			return -1;
+		}
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(source_port);
-	inet_aton(source_addr, &addr.sin_addr);
+		/*
+		 * Store the forward IP and assign a ci. For early bind
+		 * the sockets will be created after this.
+		 */
+		for (i = 1; i < number_endpoints; ++i) {
+			struct mgcp_endpoint *endp = &endpoints[i];
+			inet_aton(forward_ip, &endp->remote);
+			endp->ci = CI_UNUSED + 23;
+		}
+	} else {
+		bfd.when = BSC_FD_READ;
+		bfd.cb = read_call_agent;
+		bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (bfd.fd < 0) {
+			perror("Gateway failed to listen");
+			return -1;
+		}
 
-	if (bind(bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		perror("Gateway failed to bind");
-		return -1;
-	}
+		setsockopt(bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-	bfd.data = msgb_alloc(4096, "mgcp-msg");
-	if (!bfd.data) {
-		fprintf(stderr, "Gateway memory error.\n");
-		return -1;
-	}
+		memset(&addr, 0, sizeof(addr));
+		addr.sin_family = AF_INET;
+		addr.sin_port = htons(source_port);
+		inet_aton(source_addr, &addr.sin_addr);
+
+		if (bind(bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+			perror("Gateway failed to bind");
+			return -1;
+		}
+
+		bfd.data = msgb_alloc(4096, "mgcp-msg");
+		if (!bfd.data) {
+			fprintf(stderr, "Gateway memory error.\n");
+			return -1;
+		}
 
 
-	if (bsc_register_fd(&bfd) != 0) {
-		DEBUGP(DMGCP, "Failed to register the fd\n");
-		return -1;
+		if (bsc_register_fd(&bfd) != 0) {
+			DEBUGP(DMGCP, "Failed to register the fd\n");
+			return -1;
+		}
 	}
 
 	/* initialisation */
