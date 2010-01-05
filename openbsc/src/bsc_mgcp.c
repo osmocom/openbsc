@@ -910,6 +910,8 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  sdp audio payload name %s%s", audio_name, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  endpoints %u%s", number_endpoints, VTY_NEWLINE);
+	if (forward_ip)
+		vty_out(vty, " forward audio %s%s", forward_ip, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
