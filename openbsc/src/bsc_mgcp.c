@@ -1159,6 +1159,8 @@ int main(int argc, char** argv)
 			struct mgcp_endpoint *endp = &endpoints[i];
 			inet_aton(forward_ip, &endp->remote);
 			endp->ci = CI_UNUSED + 23;
+			endp->rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port));
+			endp->rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port) + 1);
 		}
 
 		DEBUGP(DMGCP, "Configured for Audio Forwarding.\n");
