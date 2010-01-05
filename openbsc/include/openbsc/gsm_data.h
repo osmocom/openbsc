@@ -593,6 +593,9 @@ struct gsm_network {
 	struct {
 		enum rrlp_mode mode;
 	} rrlp;
+
+	/* a hack for On Waves. It must be signed */
+	u_int32_t core_network_code;
 };
 
 #define SMS_HDR_SIZE	128

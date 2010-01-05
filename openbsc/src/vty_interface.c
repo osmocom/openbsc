@@ -295,6 +295,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, "network%s", VTY_NEWLINE);
 	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
 	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
+	if (gsmnet->core_network_code > 0)
+		vty_out(vty, " core mobile network code %u%s", gsmnet->core_network_code, VTY_NEWLINE);
 	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
 	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
@@ -849,6 +851,16 @@ DEFUN(cfg_net_mnc,
       "Set the GSM mobile network code")
 {
 	gsmnet->network_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_core_net_mnc,
+      cfg_core_net_mnc_cmd,
+      "core mobile network code <1-999>",
+      "Set the GSM mobile network code to be used in the MSC connection")
+{
+	gsmnet->core_network_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1585,6 +1597,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_default(GSMNET_NODE);
 	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
+	install_element(GSMNET_NODE, &cfg_core_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);

@@ -552,12 +552,20 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
 
 	/*
-	 * patch LAI entries...
+	 * This is coming from the network. We need to regenerate the
+	 * LAI for the Location Update Accept packet and maybe more
+	 * as well.
 	 */
-	struct gsm48_hdr *gh = (struct gsm48_hdr *)gsm48->l3h;
-	if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
-		if (gh->data[2] == 0x80)
-			gh->data[2] = 0x08;
+	if (gsm48->trx->bts->network->core_network_code > 0 &&
+	    msgb_l3len(gsm48) >= sizeof(struct gsm48_loc_area_id) + 1) {
+		struct gsm48_hdr *gh = (struct gsm48_hdr *)gsm48->l3h;
+		if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
+			struct gsm_network *net = gsm48->trx->bts->network;
+			struct gsm48_loc_area_id *lai = (struct gsm48_loc_area_id *) &gh->data[0];
+			gsm0408_generate_lai(lai, net->country_code,
+					     net->network_code,
+					     gsm48->trx->bts->location_area_code);
+		}
 	}
 
 	bts_queue_send(gsm48, header->link_id);
@@ -572,11 +580,16 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	struct msgb* msg;
 	struct gsm48_loc_area_id *lai;
 	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
+	int network_code = bts->network->network_code;
 
 	msg  = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
 				   "bssmap cmpl l3");
 	if (!msg)
 		return NULL;
+
+	/* check if we need to overwrite the network code */
+	if (bts->network->core_network_code > 0)
+		network_code = bts->network->core_network_code;
 
 
 	/* create the bssmap header */
@@ -595,7 +608,7 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
 	gsm0408_generate_lai(lai, bts->network->country_code,
-			     /*bts->network->network_code - 1*/ 8, bts->location_area_code);
+			     network_code, bts->location_area_code);
 
 	ci = (u_int16_t *) msgb_put(msg, 2);
 	*ci = htons(bts->cell_identity);
