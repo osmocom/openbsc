@@ -512,7 +512,7 @@ DEFUN(show_ts,
 	return CMD_SUCCESS;
 }
 
-void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
+static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
 	int rc;
 	struct gsm_auth_info ainfo;
