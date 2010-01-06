@@ -2423,6 +2423,11 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 	return abis_nm_bs11_logon(bts, 0x02, "FACTORY", on);
 }
 
+int abis_nm_bs11_infield_logon(struct gsm_bts *bts, int on)
+{
+	return abis_nm_bs11_logon(bts, 0x03, "FIELD  ", on);
+}
+
 int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on)
 {
 	struct abis_om_hdr *oh;
