@@ -222,9 +222,8 @@ static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 	si1->rach_control = bts->si_common.rach_control;
 
 	/* SI1 Rest Octets (10.5.2.32), contains NCH position */
-	rest_octets_si1(si1->rest_octets, NULL);
-
-	return GSM_MACBLOCK_LEN;
+	rc = rest_octets_si1(si1->rest_octets, NULL);
+	return sizeof(*si1) + rc;
 }
 
 static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
@@ -247,7 +246,7 @@ static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 	si2->ncc_permitted = bts->si_common.ncc_permitted;
 	si2->rach_control = bts->si_common.rach_control;
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si2);
 }
 
 struct gsm48_si_ro_info si_info = {
@@ -276,6 +275,7 @@ struct gsm48_si_ro_info si_info = {
 
 static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 {
+	int rc;
 	struct gsm48_system_information_type_3 *si3 =
 		(struct gsm48_system_information_type_3 *) output;
 
@@ -299,13 +299,14 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
 		Power Offset, 2ter Indicator, Early Classmark Sending,
 		Scheduling if and WHERE, GPRS Indicator, SI13 position */
-	rest_octets_si3(si3->rest_octets, &si_info);
+	rc = rest_octets_si3(si3->rest_octets, &si_info);
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si3) + rc;
 }
 
 static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 {
+	int rc;
 	struct gsm48_system_information_type_4 *si4 =
 		(struct gsm48_system_information_type_4 *) output;
 
@@ -331,9 +332,9 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
 		Cell Identity, LSA ID, Selection Parameter */
-	rest_octets_si4(si4->data, &si_info);
+	rc = rest_octets_si4(si4->data, &si_info);
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si4) + rc;
 }
 
 static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
@@ -438,7 +439,7 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 
 	si13->header.l2_plen = ret & 0xff;
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof (*si13) + ret;
 }
 
 int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
