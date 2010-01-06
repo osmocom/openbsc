@@ -2417,10 +2417,13 @@ int abis_nm_bs11_get_cclk(struct gsm_bts *bts)
 }
 
 //static const u_int8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
-static const u_int8_t bs11_logon_c8[] = { 0x02 };
-static const u_int8_t bs11_logon_c9[] = "FACTORY";
 
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
+{
+	return abis_nm_bs11_logon(bts, 0x02, "FACTORY", on);
+}
+
+int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2431,15 +2434,15 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	if (on) {
 		u_int8_t len = 3*2 + sizeof(bdt)
-				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
+				+ 1 + strlen(name);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
 			     sizeof(bdt), (u_int8_t *) &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
-			     sizeof(bs11_logon_c8), bs11_logon_c8);
+			     1, &level);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
-			     sizeof(bs11_logon_c9), bs11_logon_c9);
+			     strlen(name), (u_int8_t *)name);
 	} else {
 		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LMT_LOGOFF,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);

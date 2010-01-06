@@ -787,6 +787,7 @@ int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts);
 int abis_nm_bs11_get_serno(struct gsm_bts *bts);
 int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
 int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx);
+int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked);
