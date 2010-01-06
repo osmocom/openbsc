@@ -46,7 +46,7 @@ int rest_octets_si1(u_int8_t *data, u_int8_t *nch_pos)
 		bitvec_set_bit(&bv, L);
 
 	bitvec_spare_padding(&bv, 7);
-	return 0;
+	return bv.data_len;
 }
 
 /* Append selection parameters to bitvec */
@@ -125,7 +125,8 @@ int rest_octets_si3(u_int8_t *data, const struct gsm48_si_ro_info *si3)
 	/* GPRS Indicator */
 	append_gprs_ind(&bv, &si3->gprs_ind);
 
-	return bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	return bv.data_len;
 }
 
 static int append_lsa_params(struct bitvec *bv,
@@ -178,7 +179,7 @@ int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4)
 		bitvec_set_bit(&bv, si4->break_ind ? H : L);
 	}
 
-	return 0;
+	return bv.data_len;
 }
 
 /* GPRS Mobile Allocation as per TS 04.60 Chapter 12.10a:
@@ -390,5 +391,6 @@ int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 			}
 		}
 	}
-	return bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	return bv.data_len;
 }
