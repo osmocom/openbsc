@@ -2495,6 +2495,27 @@ int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+/* Set the calibration value of the PLL (work value/set value)
+ * It depends on the login which one is changed */
+int abis_nm_bs11_set_pll(struct gsm_bts *bts, int value)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg;
+	u_int8_t tlv_value[2];
+
+	msg = nm_msgb_alloc();
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 3, NM_MT_BS11_SET_ATTR, NM_OC_BS11,
+			BS11_OBJ_TRX1, 0x00, 0x00);
+
+	tlv_value[0] = value>>8;
+	tlv_value[1] = value&0xff;
+
+	msgb_tlv_put(msg, NM_ATT_BS11_PLL, 2, tlv_value);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 int abis_nm_bs11_get_state(struct gsm_bts *bts)
 {
 	return __simple_cmd(bts, NM_MT_BS11_GET_STATE);
