@@ -1481,31 +1481,11 @@ static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 {
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
-		switch (lchan->type) {
-		case GSM_LCHAN_TCH_F:
-			return 0x00;
-		case GSM_LCHAN_TCH_H:
-			return 0x03;
-		default:
-			break;
-		}
+		return 0x00;
 	case GSM48_CMODE_SPEECH_EFR:
-		switch (lchan->type) {
-		case GSM_LCHAN_TCH_F:
-			return 0x01;
-		/* there's no half-rate EFR */
-		default:
-			break;
-		}
+		return 0x01;
 	case GSM48_CMODE_SPEECH_AMR:
-		switch (lchan->type) {
-		case GSM_LCHAN_TCH_F:
-			return 0x02;
-		case GSM_LCHAN_TCH_H:
-			return 0x05;
-		default:
-			break;
-		}
+		return 0x02;
 	default:
 		break;
 	}
