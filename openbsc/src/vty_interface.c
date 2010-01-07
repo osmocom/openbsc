@@ -294,6 +294,8 @@ static int config_write_net(struct vty *vty)
 {
 	vty_out(vty, "network%s", VTY_NEWLINE);
 	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
+	if (gsmnet->core_country_code > 0)
+		vty_out(vty, " core network country code %u%s", gsmnet->core_country_code, VTY_NEWLINE);
 	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
 	if (gsmnet->core_network_code > 0)
 		vty_out(vty, " core mobile network code %u%s", gsmnet->core_network_code, VTY_NEWLINE);
@@ -841,6 +843,16 @@ DEFUN(cfg_net_ncc,
       "Set the GSM network country code")
 {
 	gsmnet->country_code = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_core_net_ncc,
+      cfg_core_net_ncc_cmd,
+      "core network country code <1-999>",
+      "Set the GSM country code to be used in the MSC connection")
+{
+	gsmnet->core_country_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1596,6 +1608,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&net_node, config_write_net);
 	install_default(GSMNET_NODE);
 	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
+	install_element(GSMNET_NODE, &cfg_core_net_ncc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_core_net_mnc_cmd);
 	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);

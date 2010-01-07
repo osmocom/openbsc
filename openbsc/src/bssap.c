@@ -63,6 +63,19 @@ static const struct tlv_definition bss_att_tlvdef = {
 	},
 };
 
+static int get_network_code_for_msc(struct gsm_network *net)
+{
+	if (net->core_network_code > 0)
+		return net->core_network_code;
+	return net->network_code;
+}
+
+static int get_country_code_for_msc(struct gsm_network *net)
+{
+	if (net->core_country_code > 0)
+		return net->core_country_code;
+	return net->country_code;
+}
 
 static int bssmap_paging_cb(unsigned int hooknum, unsigned int event, struct msgb *msg, void *data, void *param)
 {
@@ -556,15 +569,17 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	 * LAI for the Location Update Accept packet and maybe more
 	 * as well.
 	 */
-	if (gsm48->trx->bts->network->core_network_code > 0 &&
-	    msgb_l3len(gsm48) >= sizeof(struct gsm48_loc_area_id) + 1) {
-		struct gsm48_hdr *gh = (struct gsm48_hdr *)gsm48->l3h;
-		if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
-			struct gsm_network *net = gsm48->trx->bts->network;
-			struct gsm48_loc_area_id *lai = (struct gsm48_loc_area_id *) &gh->data[0];
-			gsm0408_generate_lai(lai, net->country_code,
-					     net->network_code,
-					     gsm48->trx->bts->location_area_code);
+	if (gsm48->trx->bts->network->core_network_code > 0 ||
+	    gsm48->trx->bts->network->core_country_code > 0) {
+		if (msgb_l3len(gsm48) >= sizeof(struct gsm48_loc_area_id) + 1) {
+			struct gsm48_hdr *gh = (struct gsm48_hdr *)gsm48->l3h;
+			if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
+				struct gsm_network *net = gsm48->trx->bts->network;
+				struct gsm48_loc_area_id *lai = (struct gsm48_loc_area_id *) &gh->data[0];
+				gsm0408_generate_lai(lai, get_country_code_for_msc(net),
+						     get_network_code_for_msc(net),
+						     gsm48->trx->bts->location_area_code);
+			}
 		}
 	}
 
@@ -580,17 +595,13 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	struct msgb* msg;
 	struct gsm48_loc_area_id *lai;
 	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
-	int network_code = bts->network->network_code;
+	int network_code = get_network_code_for_msc(bts->network);
+	int country_code = get_country_code_for_msc(bts->network);
 
 	msg  = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
 				   "bssmap cmpl l3");
 	if (!msg)
 		return NULL;
-
-	/* check if we need to overwrite the network code */
-	if (bts->network->core_network_code > 0)
-		network_code = bts->network->core_network_code;
-
 
 	/* create the bssmap header */
 	msg->l3h = msgb_put(msg, 2);
@@ -607,7 +618,7 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	data[2] = CELL_IDENT_WHOLE_GLOBAL;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm0408_generate_lai(lai, bts->network->country_code,
+	gsm0408_generate_lai(lai, country_code,
 			     network_code, bts->location_area_code);
 
 	ci = (u_int16_t *) msgb_put(msg, 2);
