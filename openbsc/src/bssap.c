@@ -576,8 +576,8 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 			if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
 				struct gsm_network *net = gsm48->trx->bts->network;
 				struct gsm48_loc_area_id *lai = (struct gsm48_loc_area_id *) &gh->data[0];
-				gsm0408_generate_lai(lai, get_country_code_for_msc(net),
-						     get_network_code_for_msc(net),
+				gsm0408_generate_lai(lai, net->country_code,
+						     net->network_code,
 						     gsm48->trx->bts->location_area_code);
 			}
 		}
