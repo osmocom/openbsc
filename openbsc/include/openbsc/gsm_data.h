@@ -595,8 +595,8 @@ struct gsm_network {
 	} rrlp;
 
 	/* a hack for On Waves. It must be signed */
-	u_int32_t core_country_code;
-	u_int32_t core_network_code;
+	int32_t core_country_code;
+	int32_t core_network_code;
 };
 
 #define SMS_HDR_SIZE	128
