@@ -706,25 +706,25 @@ static void print_help(void)
 	printf("\t-p --port </dev/ttyXXX>\t\tSpecify serial port\n");
 	printf("\t-s --software <file>\t\tSpecify Software file\n");
 	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
-	printf("\t-d --delay <ms>\t\tSpecify delay in milliseconds\n");
+	printf("\t-d --delay <ms>\t\t\tSpecify delay in milliseconds\n");
 	printf("\t-D --disconnect\t\t\tDisconnect BTS from BSC\n");
 	printf("\t-w --win-size <num>\t\tSpecify Window Size\n");
 	printf("\t-f --forced\t\t\tForce Software Load\n");
 	printf("\nSupported commands:\n");
-	printf("\tquery\t\tQuery the BS-11 about serial number and configuration\n");
-	printf("\tdisconnect\tDisconnect A-bis link (go into administrative state)\n");
-	printf("\tresconnect\tReconnect A-bis link (go into normal state)\n");
-	printf("\trestart\t\tRestart the BTS\n");
-	printf("\tsoftware\tDownload Software (only in administrative state)\n");
-	printf("\tcreate-trx1\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
-	printf("\tdelete-trx1\tDelete objects for TRX1\n");
-	printf("\tpll-e1-locked\tSet the PLL to be locked to E1 clock\n");
-	printf("\tpll-standalone\tSet the PLL to be in standalone mode\n");
-	printf("\toml-tei\tSet OML E1 TS and TEI\n");
-	printf("\tbport0-star\tSet BPORT0 line config to star\n");
+	printf("\tquery\t\t\tQuery the BS-11 about serial number and configuration\n");
+	printf("\tdisconnect\t\tDisconnect A-bis link (go into administrative state)\n");
+	printf("\tresconnect\t\tReconnect A-bis link (go into normal state)\n");
+	printf("\trestart\t\t\tRestart the BTS\n");
+	printf("\tsoftware\t\tDownload Software (only in administrative state)\n");
+	printf("\tcreate-trx1\t\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
+	printf("\tdelete-trx1\t\tDelete objects for TRX1\n");
+	printf("\tpll-e1-locked\t\tSet the PLL to be locked to E1 clock\n");
+	printf("\tpll-standalone\t\tSet the PLL to be in standalone mode\n");
+	printf("\toml-tei\t\t\tSet OML E1 TS and TEI\n");
+	printf("\tbport0-star\t\tSet BPORT0 line config to star\n");
 	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
-	printf("\tcreate-bport1\tCreate BPORT1 object\n");
-	printf("\tdelete-bport1\tDelete BPORT1 object\n");
+	printf("\tcreate-bport1\t\tCreate BPORT1 object\n");
+	printf("\tdelete-bport1\t\tDelete BPORT1 object\n");
 }
 
 static void handle_options(int argc, char **argv)
