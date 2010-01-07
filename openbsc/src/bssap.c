@@ -63,14 +63,14 @@ static const struct tlv_definition bss_att_tlvdef = {
 	},
 };
 
-static int get_network_code_for_msc(struct gsm_network *net)
+static u_int16_t get_network_code_for_msc(struct gsm_network *net)
 {
 	if (net->core_network_code > 0)
 		return net->core_network_code;
 	return net->network_code;
 }
 
-static int get_country_code_for_msc(struct gsm_network *net)
+static u_int16_t get_country_code_for_msc(struct gsm_network *net)
 {
 	if (net->core_country_code > 0)
 		return net->core_country_code;
@@ -595,8 +595,8 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	struct msgb* msg;
 	struct gsm48_loc_area_id *lai;
 	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
-	int network_code = get_network_code_for_msc(bts->network);
-	int country_code = get_country_code_for_msc(bts->network);
+	u_int16_t network_code = get_network_code_for_msc(bts->network);
+	u_int16_t country_code = get_country_code_for_msc(bts->network);
 
 	msg  = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
 				   "bssmap cmpl l3");
