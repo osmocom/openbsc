@@ -216,6 +216,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->country_code = country_code;
 	net->network_code = network_code;
 	net->num_bts = 0;
+	net->reject_cause = GSM48_REJECT_ROAMING_NOT_ALLOWED;
 	net->T3101 = GSM_T3101_DEFAULT;
 	net->T3113 = GSM_T3113_DEFAULT;
 	/* FIXME: initialize all other timers! */
