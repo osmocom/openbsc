@@ -45,7 +45,8 @@ enum signal_subsystems {
 
 /* SS_PAGING signals */
 enum signal_paging {
-	S_PAGING_COMPLETED,
+	S_PAGING_SUCCEEDED,
+	S_PAGING_EXPIRED,
 };
 
 /* SS_SMS signals */
@@ -69,6 +70,9 @@ enum signal_nm {
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 	S_NM_NACK,		/* GSM 12.21 various NM_MT_*_NACK happened */
 	S_NM_IPACC_NACK,	/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_NACK happened */
+	S_NM_IPACC_ACK,		/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_ACK happened */
+	S_NM_IPACC_RESTART_ACK, /* nanoBTS has send a restart ack */
+	S_NM_IPACC_RESTART_NACK,/* nanoBTS has send a restart ack */
 	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
 };
 
@@ -121,6 +125,11 @@ struct scall_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan;
 	void *data;
+};
+
+struct ipacc_ack_signal_data {
+	struct gsm_bts *bts;
+	u_int8_t msg_type;	
 };
 
 /* Management */

@@ -40,9 +40,7 @@
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 #include <openbsc/signal.h>
-
-/* forward declarations */
-void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr);
+#include <openbsc/debug.h>
 
 static struct gsm_network *gsmnet;
 
@@ -74,6 +72,33 @@ static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 	return b;
 }
 
+static int hexparse(const char *str, u_int8_t *b, int max_len)
+
+{
+	int i, l, v;
+
+	l = strlen(str);
+	if ((l&1) || ((l>>1) > max_len))
+		return -1;
+
+	memset(b, 0x00, max_len);
+
+	for (i=0; i<l; i++) {
+		char c = str[i];
+		if (c >= '0' && c <= '9')
+			v = c - '0';
+		else if (c >= 'a' && c <= 'f')
+			v = 10 + (c - 'a');
+		else if (c >= 'A' && c <= 'F')
+			v = 10 + (c - 'a');
+		else
+			return -1;
+		b[i>>1] |= v << (i&1 ? 0 : 4);
+	}
+
+	return i>>1;
+}
+
 /* per-subscriber configuration */
 DEFUN(cfg_subscr,
       cfg_subscr_cmd,
@@ -97,6 +122,55 @@ DEFUN(cfg_subscr,
 	return CMD_SUCCESS;
 }
 
+static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
+{
+	int rc;
+	struct gsm_auth_info ainfo;
+	struct gsm_auth_tuple atuple;
+
+	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
+		subscr->authorized, VTY_NEWLINE);
+	if (subscr->name)
+		vty_out(vty, "    Name: '%s'%s", subscr->name, VTY_NEWLINE);
+	if (subscr->extension)
+		vty_out(vty, "    Extension: %s%s", subscr->extension,
+			VTY_NEWLINE);
+	if (subscr->imsi)
+		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
+	if (subscr->tmsi != GSM_RESERVED_TMSI)
+		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
+			VTY_NEWLINE);
+
+	rc = get_authinfo_by_subscr(&ainfo, subscr);
+	if (!rc) {
+		vty_out(vty, "    A3A8 algorithm id: %d%s",
+			ainfo.auth_algo, VTY_NEWLINE);
+		vty_out(vty, "    A3A8 Ki: %s%s",
+			hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			VTY_NEWLINE);
+	}
+
+	rc = get_authtuple_by_subscr(&atuple, subscr);
+	if (!rc) {
+		vty_out(vty, "    A3A8 last tuple (used %d times):%s",
+			atuple.use_count, VTY_NEWLINE);
+		vty_out(vty, "     seq # : %d%s",
+			atuple.key_seq, VTY_NEWLINE);
+		vty_out(vty, "     RAND  : %s%s",
+			hexdump(atuple.rand, sizeof(atuple.rand)),
+			VTY_NEWLINE);
+		vty_out(vty, "     SRES  : %s%s",
+			hexdump(atuple.sres, sizeof(atuple.sres)),
+			VTY_NEWLINE);
+		vty_out(vty, "     Kc    : %s%s",
+			hexdump(atuple.kc, sizeof(atuple.kc)),
+			VTY_NEWLINE);
+	}
+
+	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+}
+
+
 /* Subscriber */
 DEFUN(show_subscr,
       show_subscr_cmd,
@@ -114,7 +188,7 @@ DEFUN(show_subscr,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
-		subscr_dump_vty(vty, subscr);
+		subscr_dump_full_vty(vty, subscr);
 		subscr_put(subscr);
 
 		return CMD_SUCCESS;
@@ -135,7 +209,7 @@ DEFUN(show_subscr_cache,
 
 	llist_for_each_entry(subscr, &active_subscribers, entry) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, subscr);
+		subscr_dump_full_vty(vty, subscr);
 	}
 
 	return CMD_SUCCESS;
@@ -143,23 +217,20 @@ DEFUN(show_subscr_cache,
 
 DEFUN(sms_send_pend,
       sms_send_pend_cmd,
-      "sms send pending MIN_ID",
-      "Send all pending SMS starting from MIN_ID")
+      "sms send pending",
+      "Send all pending SMS")
 {
 	struct gsm_sms *sms;
-	int id = atoi(argv[0]);
+	int id = 0;
 
 	while (1) {
-		sms = db_sms_get_unsent(gsmnet, id++);
+		sms = db_sms_get_unsent_by_subscr(gsmnet, id);
 		if (!sms)
-			return CMD_WARNING;
-
-		if (!sms->receiver) {
-			sms_free(sms);
-			continue;
-		}
+			break;
 
 		gsm411_send_sms_subscr(sms->receiver, sms);
+
+		id = sms->receiver->id + 1;
 	}
 
 	return CMD_SUCCESS;
@@ -269,10 +340,46 @@ DEFUN(subscriber_silent_sms,
 	return rc;
 }
 
-DEFUN(subscriber_silent_call,
-      subscriber_silent_call_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent call (start|stop)",
-      "Send a silent call to a subscriber")
+DEFUN(subscriber_silent_call_start,
+      subscriber_silent_call_start_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call start (any|tch/f|tch/any|sdcch)",
+      "Start a silent call to a subscriber")
+{
+	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	int rc, type;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[2], "tch/f"))
+		type = RSL_CHANNEED_TCH_F;
+	else if (!strcmp(argv[2], "tch/any"))
+		type = RSL_CHANNEED_TCH_ForH;
+	else if (!strcmp(argv[2], "sdcch"))
+		type = RSL_CHANNEED_SDCCH;
+	else
+		type = RSL_CHANNEED_ANY;	/* Defaults to ANY */
+
+	rc = gsm_silent_call_start(subscr, vty, type);
+	if (rc <= 0) {
+		vty_out(vty, "%% Subscriber not attached%s",
+			VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(subscriber_silent_call_stop,
+      subscriber_silent_call_stop_cmd,
+      "subscriber " SUBSCR_TYPES " EXTEN silent call stop",
+      "Stop a silent call to a subscriber")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	int rc;
@@ -283,17 +390,10 @@ DEFUN(subscriber_silent_call,
 		return CMD_WARNING;
 	}
 
-	if (!strcmp(argv[2], "start")) {
-		rc = gsm_silent_call_start(subscr, vty);
-		if (rc <= 0) {
-			vty_out(vty, "%% Subscriber not attached%s",
-				VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	} else {
-		rc = gsm_silent_call_stop(subscr);
-		if (rc < 0)
-			return CMD_WARNING;
+	rc = gsm_silent_call_stop(subscr);
+	if (rc < 0) {
+		subscr_put(subscr);
+		return CMD_WARNING;
 	}
 
 	subscr_put(subscr);
@@ -349,6 +449,40 @@ DEFUN(cfg_subscr_authorized,
 	return CMD_SUCCESS;
 }
 
+#define A3A8_ALG_TYPES "(none|comp128v1)"
+
+DEFUN(cfg_subscr_a3a8,
+      cfg_subscr_a3a8_cmd,
+      "a3a8 " A3A8_ALG_TYPES " [KI]",
+      "Set a3a8 parameters for the subscriber")
+{
+	struct gsm_subscriber *subscr = vty->index;
+	const char *alg_str = argv[0];
+	const char *ki_str = argv[1];
+	struct gsm_auth_info ainfo;
+	int rc;
+
+	if (!strcasecmp(alg_str, "none")) {
+		/* Just erase */
+		rc = set_authinfo_for_subscr(NULL, subscr);
+	} else if (!strcasecmp(alg_str, "comp128v1")) {
+		/* Parse hex string Ki */
+		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		if (rc != 16)
+			return CMD_WARNING;
+
+		/* Set the infos */
+		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
+		ainfo.a3a8_ki_len = rc;
+		rc = set_authinfo_for_subscr(&ainfo, subscr);
+	} else {
+		/* Unknown method */
+		return CMD_WARNING;
+	}
+
+	return rc ? CMD_WARNING : CMD_SUCCESS;
+}
+
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -381,7 +515,8 @@ int bsc_vty_init_extra(struct gsm_network *net)
 
 	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
 	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
-	install_element(VIEW_NODE, &subscriber_silent_call_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_start_cmd);
+	install_element(VIEW_NODE, &subscriber_silent_call_stop_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);
@@ -390,6 +525,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);
+	install_element(SUBSCR_NODE, &cfg_subscr_a3a8_cmd);
 
 	return 0;
 }

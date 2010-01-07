@@ -3,8 +3,12 @@
 .deps
 Makefile
 Makefile.in
+bscconfig.h
+bscconfig.h.in
+openbsc.pc
 bsc_hack
 bsc_msc_ip
+bsc_mgcp
 *.*~
 *.sw?
 
@@ -26,6 +30,8 @@ hlr.sqlite3
 bs11_config
 ipaccess-config
 ipaccess-find
+ipaccess-firmware
+ipaccess-proxy
 isdnsync
 
 #tests

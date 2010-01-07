@@ -211,6 +211,7 @@ enum abis_nm_msgtype_bs11 {
 enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_RESTART		= 0x87,
 	NM_MT_IPACC_RESTART_ACK,
+	NM_MT_IPACC_RESTART_NACK,
 	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
 	NM_MT_IPACC_RSL_CONNECT_ACK,
 	NM_MT_IPACC_RSL_CONNECT_NACK,
@@ -483,6 +484,12 @@ enum abis_nm_avail_state {
 	NM_AVSTATE_DEGRADED	= 6,
 	NM_AVSTATE_NOT_INSTALLED= 7,
 	NM_AVSTATE_OK		= 0xff,
+};
+
+enum abis_nm_op_state {
+	NM_OPSTATE_DISABLED	= 1,
+	NM_OPSTATE_ENABLED	= 2,
+	NM_OPSTATE_NULL		= 0xff,
 };
 
 /* Section 9.4.13: Channel Combination */
@@ -820,4 +827,5 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 
 const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);
+int nm_is_running(struct gsm_nm_state *s);
 #endif /* _NM_H */

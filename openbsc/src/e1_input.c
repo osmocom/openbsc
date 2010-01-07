@@ -234,10 +234,16 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	msg->l2h = msg->data;
 
-	if (!msg->trx || !msg->trx->rsl_link) {
-		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL\n");
+	if (!msg->trx) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
+			hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
+	} else if (!msg->trx->rsl_link) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
+			hexdump(msg->data, msg->len));
+		talloc_free(msg);
+		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
@@ -435,6 +441,8 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
+
+		debug_set_context(BSC_CTX_BTS, link->trx->bts);
 		switch (link->type) {
 		case E1INP_SIGN_OML:
 			msg->trx = link->trx;

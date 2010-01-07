@@ -28,7 +28,7 @@
 #include <openbsc/talloc.h>
 #include <openbsc/debug.h>
 
-static void *tall_msgb_ctx;
+void *tall_msgb_ctx;
 
 struct msgb *msgb_alloc(u_int16_t size, const char *name)
 {
@@ -95,9 +95,4 @@ void msgb_reset(struct msgb *msg)
 	msg->l2h = NULL;
 	msg->l3h = NULL;
 	msg->smsh = NULL;
-}
-
-static __attribute__((constructor)) void on_dso_load_trau_msgb(void)
-{
-	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 1, "msgb");
 }

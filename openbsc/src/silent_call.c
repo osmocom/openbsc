@@ -34,6 +34,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 
+/* paging of the requested subscriber has completed */
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			    struct msgb *msg, void *_lchan, void *_data)
 {
@@ -53,6 +54,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
 			lchan->ts->nr, lchan->ts->trx->arfcn);
+		lchan->silent_call = 1;
 		/* increment lchan reference count */
 		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		use_lchan(lchan);
@@ -69,15 +71,58 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	return rc;
 }
 
-int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data)
+/* receive a layer 3 message from a silent call */
+int silent_call_rx(struct msgb *msg)
+{
+	/* FIXME: do something like sending it through a UDP port */
+	return 0;
+}
+
+struct msg_match {
+	u_int8_t pdisc;
+	u_int8_t msg_type;
+};
+
+/* list of messages that are handled inside OpenBSC, even in a silent call */
+static const struct msg_match silent_call_accept[] = {
+	{ GSM48_PDISC_MM, GSM48_MT_MM_LOC_UPD_REQUEST },
+	{ GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_REQ },
+};
+
+/* decide if we need to reroute a message as part of a silent call */
+int silent_call_reroute(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	u_int8_t pdisc = gh->proto_discr & 0x0f;
+	int i;
+
+	/* if we're not part of a silent call, never reroute */
+	if (!msg->lchan->silent_call)
+		return 0;
+
+	/* check if we are a special message that is handled in openbsc */
+	for (i = 0; i < ARRAY_SIZE(silent_call_accept); i++) {
+		if (silent_call_accept[i].pdisc == pdisc &&
+		    silent_call_accept[i].msg_type == gh->msg_type)
+			return 0;
+	}
+
+	/* otherwise, reroute */
+	return 1;
+}
+
+
+/* initiate a silent call with a given subscriber */
+int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 {
 	int rc;
 
-	rc = paging_request(subscr->net, subscr, RSL_CHANNEED_TCH_F,
+	rc = paging_request(subscr->net, subscr, type,
 			    paging_cb_silent, data);
 	return rc;
 }
 
+/* end a silent call with a given subscriber */
 int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 {
 	struct gsm_lchan *lchan;
@@ -86,7 +131,10 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 	if (!lchan)
 		return -EINVAL;
 
-	/* FIXME: did we actually establish a silent call for this guy? */
+	/* did we actually establish a silent call for this guy? */
+	if (!lchan->silent_call)
+		return -EINVAL;
+
 	put_lchan(lchan);
 
 	return 0;

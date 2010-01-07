@@ -27,10 +27,12 @@
 #include <openbsc/talloc.h>
 #include <memory.h>
 
+void *tall_vty_vec_ctx;
+
 /* Initialize vector : allocate memory and return vector. */
 vector vector_init(unsigned int size)
 {
-	vector v = talloc_zero(tall_vty_ctx, struct _vector);
+	vector v = talloc_zero(tall_vty_vec_ctx, struct _vector);
 	if (!v)
 		return NULL;
 
@@ -40,7 +42,7 @@ vector vector_init(unsigned int size)
 
 	v->alloced = size;
 	v->active = 0;
-	v->index = _talloc_zero(tall_vty_ctx, sizeof(void *) * size,
+	v->index = _talloc_zero(tall_vty_vec_ctx, sizeof(void *) * size,
 				"vector_init:index");
 	if (!v->index) {
 		talloc_free(v);
@@ -68,7 +70,7 @@ void vector_free(vector v)
 vector vector_copy(vector v)
 {
 	unsigned int size;
-	vector new = talloc_zero(tall_vty_ctx, struct _vector);
+	vector new = talloc_zero(tall_vty_vec_ctx, struct _vector);
 	if (!new)
 		return NULL;
 
@@ -76,7 +78,7 @@ vector vector_copy(vector v)
 	new->alloced = v->alloced;
 
 	size = sizeof(void *) * (v->alloced);
-	new->index = _talloc_zero(tall_vty_ctx, size, "vector_copy:index");
+	new->index = _talloc_zero(tall_vty_vec_ctx, size, "vector_copy:index");
 	if (!new->index) {
 		talloc_free(new);
 		return NULL;
@@ -92,7 +94,7 @@ void vector_ensure(vector v, unsigned int num)
 	if (v->alloced > num)
 		return;
 
-	v->index = talloc_realloc_size(tall_vty_ctx, v->index,
+	v->index = talloc_realloc_size(tall_vty_vec_ctx, v->index,
 				       sizeof(void *) * (v->alloced * 2));
 	memset(&v->index[v->alloced], 0, sizeof(void *) * v->alloced);
 	v->alloced *= 2;

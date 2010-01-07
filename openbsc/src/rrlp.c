@@ -89,13 +89,11 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 	struct paging_signal_data *psig_data = signal_data;
 
 	switch (signal) {
-	case S_PAGING_COMPLETED:
-		/* paging might have "completed' unsucessfully,
-		 * in this case we don't have a lchan */
-		if (!psig_data->lchan)
-			break;
+	case S_PAGING_SUCCEEDED:
 		/* A subscriber has attached. */
 		send_rrlp_req(psig_data->lchan);
+		break;
+	case S_PAGING_EXPIRED:
 		break;
 	}
 	return 0;

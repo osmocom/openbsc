@@ -38,9 +38,15 @@
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
+static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
+
+
+/* timer to store statistics */
+#define DB_SYNC_INTERVAL	60, 0
+static struct timer_list db_sync_timer;
 
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
@@ -105,10 +111,10 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_use_color(0);
+			debug_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -120,7 +126,7 @@ static void handle_options(int argc, char** argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			debug_timestamp(1);
+			debug_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
@@ -132,6 +138,7 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+extern void *tall_vty_ctx;
 static void signal_handler(int signal)
 {
 	fprintf(stdout, "signal %u received\n", signal);
@@ -147,22 +154,45 @@ static void signal_handler(int signal)
 		/* in case of abort, we want to obtain a talloc report
 		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
 		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		talloc_report_full(tall_vty_ctx, stderr);
 		break;
 	default:
 		break;
 	}
 }
 
+/* timer handling */
+static int _db_store_counter(struct counter *counter, void *data)
+{
+	return db_store_counter(counter);
+}
+
+static void db_sync_timer_cb(void *data)
+{
+	/* store counters to database and re-schedule */
+	counters_for_each(_db_store_counter, NULL);
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
 
+	debug_init();
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+
+	/* enable filters */
+	debug_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -182,6 +212,11 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
+	/* setup the timer */
+	db_sync_timer.cb = db_sync_timer_cb;
+	db_sync_timer.data = NULL;
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
@@ -189,10 +224,12 @@ int main(int argc, char **argv)
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
+		debug_reset_context();
 		bsc_select_main(0);
 	}
 }

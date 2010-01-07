@@ -340,7 +340,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 		if ((ra & chr->mask) == chr->val)
 			return ctype_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
 	return GSM_LCHAN_SDCCH;
 }
 
@@ -363,7 +363,7 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, in
 		if ((ra & chr->mask) == chr->val)
 			return reason_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
 	return GSM_CHREQ_REASON_OTHER;
 }
 
@@ -475,7 +475,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
 	} else if (msg->lchan->subscr != subscr) {
-		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
+		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
@@ -488,7 +488,9 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	sig_data.bts	= msg->lchan->ts->trx->bts;
 	sig_data.lchan	= msg->lchan;
 
-	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+	bts->network->stats.paging.completed++;
+
+	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
@@ -592,7 +594,8 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_command)
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -632,7 +635,8 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -665,7 +669,7 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
 
 	if (mod->mode != msg->lchan->tch_mode) {
-		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+		LOGP(DRR, LOGL_ERROR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
 			msg->lchan->tch_mode, mod->mode);
 		return -1;
 	}
@@ -698,3 +702,82 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 		rsl_ipacc_crcx(msg->lchan);
 	return rc;
 }
+
+int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	u_int8_t *data = gh->data;
+	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct bitvec *nbv = &bts->si_common.neigh_list;
+	struct gsm_meas_rep_cell *mrc;
+
+	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
+		return -EINVAL;
+
+	if (data[0] & 0x80)
+		rep->flags |= MEAS_REP_F_BA1;
+	if (data[0] & 0x40)
+		rep->flags |= MEAS_REP_F_UL_DTX;
+	if ((data[1] & 0x40) == 0x00)
+		rep->flags |= MEAS_REP_F_DL_VALID;
+
+	rep->dl.full.rx_lev = data[0] & 0x3f;
+	rep->dl.sub.rx_lev = data[1] & 0x3f;
+	rep->dl.full.rx_qual = (data[3] >> 4) & 0x7;
+	rep->dl.sub.rx_qual = (data[3] >> 1) & 0x7;
+
+	rep->num_cell = ((data[3] >> 6) & 0x3) | ((data[2] & 0x01) << 2);
+	if (rep->num_cell < 1 || rep->num_cell > 6)
+		return 0;
+
+	/* an encoding nightmare in perfection */
+	mrc = &rep->cell[0];
+	mrc->rxlev = data[3] & 0x3f;
+	mrc->neigh_idx = data[4] >> 3;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
+	if (rep->num_cell < 2)
+		return 0;
+
+	mrc = &rep->cell[1];
+	mrc->rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
+	mrc->neigh_idx = (data[6] >> 2) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
+	if (rep->num_cell < 3)
+		return 0;
+
+	mrc = &rep->cell[2];
+	mrc->rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
+	mrc->neigh_idx = (data[8] >> 1) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[8] & 0x01) << 5) | (data[9] >> 3);
+	if (rep->num_cell < 4)
+		return 0;
+
+	mrc = &rep->cell[3];
+	mrc->rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
+	mrc->neigh_idx = data[10] & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = data[11] >> 2;
+	if (rep->num_cell < 5)
+		return 0;
+
+	mrc = &rep->cell[4];
+	mrc->rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
+	mrc->neigh_idx = ((data[12] & 0xf) << 1) | (data[13] >> 7);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = (data[13] >> 1) & 0x3f;
+	if (rep->num_cell < 6)
+		return 0;
+
+	mrc = &rep->cell[5];
+	mrc->rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
+	mrc->neigh_idx = ((data[14] & 0x07) << 2) | (data[15] >> 6);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = data[15] & 0x3f;
+
+	return 0;
+}
+
