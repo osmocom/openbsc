@@ -51,7 +51,7 @@ enum bs11cfg_state {
 	STATE_QUERY,
 };
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
-static char *command;
+static char *command, *value;
 struct timer_list status_timer;
 
 static const u_int8_t obj_li_attr[] = { 
@@ -540,6 +540,21 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
+			} else if (!strcmp(command, "pll-setvalue")) {
+				abis_nm_bs11_set_pll(g_bts, atoi(value));
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "pll-workvalue")) {
+				/* To set the work value we need to login as FIELD */
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				sleep(1);
+				abis_nm_bs11_infield_logon(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_set_pll(g_bts, atoi(value));
+				sleep(1);
+				abis_nm_bs11_infield_logon(g_bts, 0);
+				command = NULL;
 			} else if (!strcmp(command, "oml-tei")) {
 				abis_nm_bs11_conn_oml_tei(g_bts, 0, 1, 0xff, TEI_OML);
 				command = NULL;
@@ -720,6 +735,8 @@ static void print_help(void)
 	printf("\tdelete-trx1\t\tDelete objects for TRX1\n");
 	printf("\tpll-e1-locked\t\tSet the PLL to be locked to E1 clock\n");
 	printf("\tpll-standalone\t\tSet the PLL to be in standalone mode\n");
+	printf("\tpll-setvalue <value>\tSet the PLL set value\n");
+	printf("\tpll-workvalue <value>\tSet the PLL work value\n");
 	printf("\toml-tei\t\t\tSet OML E1 TS and TEI\n");
 	printf("\tbport0-star\t\tSet BPORT0 line config to star\n");
 	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
@@ -791,6 +808,9 @@ static void handle_options(int argc, char **argv)
 	}
 	if (optind < argc)
 		command = argv[optind];
+	        if (optind+1 < argc)
+			value = argv[optind+1];
+
 }
 
 static int num_sigint;
