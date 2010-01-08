@@ -54,6 +54,7 @@ static struct debug_category default_categories[Debug_LastEntry] = {
     [DHO]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DDB]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DREF]	= { .enabled = 0, .loglevel = LOGL_NOTICE },
+    [DGPRS]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
 };
 
 const char *get_value_string(const struct value_string *vs, u_int32_t val)
@@ -125,6 +126,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DHO, "DHO", "", "")
 	DEBUG_CATEGORY(DDB, "DDB", "", "")
 	DEBUG_CATEGORY(DDB, "DREF", "", "")
+	DEBUG_CATEGORY(DDB, "DGPRS", "", "")
 };
 
 static const struct value_string loglevel_strs[] = {
