@@ -226,6 +226,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 
 	net->core_country_code = -1;
 	net->core_network_code = -1;
+	net->rtp_base_port = 4000;
 
 	return net;
 }
