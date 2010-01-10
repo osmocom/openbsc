@@ -264,7 +264,7 @@ static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_MEAS_TYPE,
 };
 
-static const struct tlv_definition nm_att_tlvdef = {
+const struct tlv_definition nm_att_tlvdef = {
 	.def = {
 		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
 		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V },
@@ -330,77 +330,6 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
 		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
 		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
-		/* BS11 specifics */
-		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV },
-		[0xd5] =			{ TLV_TYPE_TLV },
-		[0xa8] =			{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV },	
-		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV },
-		/* ip.access specifics */
-		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
-		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_TV, },
-		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
-		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-		[NM_ATT_IPACC_IN_SERV_TIME] =	{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIMING_BUS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CGI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_GPRS_PAGING_CFG]= { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_MONIT_VAL_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIB_CONTROL] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_HEARTB_TOUT] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UPTIME] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SSL_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
-		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
-		[0x85] =			{ TLV_TYPE_TV },
-
 	},
 };
 
@@ -423,9 +352,11 @@ int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan)
 	return -EINVAL;
 }
 
-int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
+int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const u_int8_t *buf, int len)
 {
-	return tlv_parse(tp, &nm_att_tlvdef, buf, len, 0, 0);
+	if (!bts->model)
+		return -EIO;
+	return tlv_parse(tp, &bts->model->nm_att_tlvdef, buf, len, 0, 0);
 }
 
 static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, int size)
@@ -801,7 +732,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	new_state = *nm_state;
 	
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
 		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
 		DEBUGPC(DNM, "OP_STATE=%s ", nm_opstate_name(new_state.operational));
@@ -853,7 +784,7 @@ static int rx_fail_evt_rep(struct msgb *mb)
 
 	DEBUGPC(DNM, "Failure Event Report ");
 	
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
 		DEBUGPC(DNM, "Type=%s ", event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
@@ -947,7 +878,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	if (nack)
 		return ret;
 
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
 	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
 	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
@@ -981,7 +912,7 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 	struct tlv_parsed tp;
 	u_int8_t adm_state;
 
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
 		return -EINVAL;
 
@@ -997,7 +928,7 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	struct tlv_parsed tp;
 
 	DEBUGP(DNM, "LMT Event ");
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) &&
 	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) >= 1) {
 		u_int8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
@@ -1043,7 +974,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			DEBUGPC(DNM, "NACK 0x%02x ", mt);
 
-		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, "CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
@@ -2770,7 +2701,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	}
 
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, msg->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	debugp_foh(foh);
 

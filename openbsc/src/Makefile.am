@@ -12,7 +12,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c talloc.c \
 		talloc_ctx.c system_information.c bitvec.c rest_octets.c \
-		rtp_proxy.c statistics.c
+		rtp_proxy.c statistics.c bts_siemens_bs11.c bts_ipaccess_nanobts.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
@@ -27,7 +27,8 @@ bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c msgb.c debug.c \
-		      select.c timer.c rs232.c tlv_parser.c signal.c talloc.c
+		      select.c timer.c rs232.c tlv_parser.c signal.c talloc.c \
+		      bts_siemens_bs11.c
 
 ipaccess_find_SOURCES = ipaccess/ipaccess-find.c select.c timer.c
 

@@ -719,6 +719,8 @@ struct ipac_bcch_info {
 	u_int8_t ca_list_si1[16];
 };
 
+extern const struct tlv_definition nm_att_tlvdef;
+
 /* PUBLIC */
 
 struct msgb;
@@ -733,7 +735,7 @@ struct abis_nm_cfg {
 
 extern int abis_nm_rcvmsg(struct msgb *msg);
 
-int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len);
+int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const u_int8_t *buf, int len);
 int abis_nm_rx(struct msgb *msg);
 int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,

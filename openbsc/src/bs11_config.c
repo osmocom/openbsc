@@ -649,7 +649,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
-		rc = abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		rc = abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		print_state(&tp);
 		if (TLVP_PRESENT(&tp, NM_ATT_BS11_BTS_STATE) &&
 		    TLVP_LEN(&tp, NM_ATT_BS11_BTS_STATE) >= 1)
@@ -657,7 +657,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		break;
 	case NM_MT_GET_ATTR_RESP:
 		printf("\n%sATTRIBUTES:\n", obj_name(foh));
-		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		rc = print_attr(&tp);
 		//hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
@@ -839,6 +839,7 @@ int main(int argc, char **argv)
 	debug_add_target(stderr_target);
 	debug_set_all_filter(stderr_target, 1);
 	handle_options(argc, argv);
+	bts_model_bs11_init();
 
 	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet) {

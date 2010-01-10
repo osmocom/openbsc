@@ -1339,8 +1339,11 @@ DEFUN(cfg_bts_type,
       "Set the BTS type\n")
 {
 	struct gsm_bts *bts = vty->index;
+	int rc;
 
-	gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	rc = gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	if (rc < 0)
+		return CMD_WARNING;
 
 	return CMD_SUCCESS;
 }

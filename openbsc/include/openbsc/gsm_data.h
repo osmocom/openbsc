@@ -335,6 +335,15 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 };
 
+struct gsm_bts_model {
+	struct llist_head list;
+
+	enum gsm_bts_type type;
+	const char *name;
+
+	struct tlv_definition nm_att_tlvdef;
+};
+
 /**
  * A pending paging request 
  */
@@ -402,6 +411,7 @@ struct gsm_bts {
 	u_int8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	struct gsm_bts_model *model;
 	enum gsm_band band;
 	/* should the channel allocator allocate channels from high TRX to TRX0,
 	 * rather than starting from TRX0 and go upwards? */
@@ -619,7 +629,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
-void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
+int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
