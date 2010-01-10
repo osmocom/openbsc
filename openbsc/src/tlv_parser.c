@@ -149,6 +149,19 @@ int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 	return num_parsed;
 }
 
+/* take a master (src) tlvdev and fill up all empty slots in 'dst' */
+void tlv_def_patch(struct tlv_definition *dst, const struct tlv_definition *src)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(dst->def); i++) {
+		if (src->def[i].type == TLV_TYPE_NONE)
+			continue;
+		if (dst->def[i].type == TLV_TYPE_NONE)
+			dst->def[i] = src->def[i];
+	}
+}
+
 static __attribute__((constructor)) void on_dso_load_tlv(void)
 {
 	int i;
