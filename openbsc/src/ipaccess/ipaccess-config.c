@@ -561,6 +561,7 @@ int main(int argc, char **argv)
 	debug_set_all_filter(stderr_target, 1);
 	debug_set_log_level(stderr_target, 0);
 	debug_parse_category_mask(stderr_target, "DNM,0");
+	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
