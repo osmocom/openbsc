@@ -1324,8 +1324,11 @@ DEFUN(cfg_bts,
 	} else 
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
-	if (!bts)
+	if (!bts) {
+		vty_out(vty, "%% Unable to allocate BTS %u%s",
+			gsmnet->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
+	}
 
 	vty->index = bts;
 	vty->node = BTS_NODE;
