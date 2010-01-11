@@ -178,6 +178,7 @@ static void db_sync_timer_cb(void *data)
 	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
+extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
 
@@ -194,6 +195,7 @@ int main(int argc, char **argv)
 	stderr_target = debug_target_create_stderr();
 	debug_add_target(stderr_target);
 
+	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
