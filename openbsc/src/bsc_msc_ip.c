@@ -45,6 +45,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/bsc_msc.h>
 
 #include <sccp/sccp.h>
 
@@ -605,51 +606,6 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
-/*
- * Connect to the MSC
- */
-static int connect_to_msc(const char *ip, int port)
-{
-	struct sockaddr_in sin;
-	int on = 1, ret;
-
-	printf("Attempting to connect MSC at %s:%d\n", ip, port);
-
-	msc_connection.fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	msc_connection.cb = ipaccess_a_fd_cb;
-	msc_connection.when = BSC_FD_READ;
-	msc_connection.data = NULL;
-	msc_connection.priv_nr = 1;
-
-	if (msc_connection.fd < 0) {
-		perror("Creating TCP socket failed");
-		return msc_connection.fd;
-	}
-
-
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-        inet_aton(ip, &sin.sin_addr);
-
-	setsockopt(msc_connection.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-	ret = connect(msc_connection.fd, (struct sockaddr *) &sin, sizeof(sin));
-
-	if (ret < 0) {
-		perror("Connection failed");
-		return ret;
-	}
-
-	ret = bsc_register_fd(&msc_connection);
-	if (ret < 0) {
-		perror("Registering the fd failed");
-		close(msc_connection.fd);
-		return ret;
-	}
-
-	return ret;
-}
-
 static void print_help()
 {
 	printf("  Some useful help...\n");
@@ -796,7 +752,8 @@ int main(int argc, char **argv)
 	/* initialize ipaccess handling */
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
-	rc = connect_to_msc(msc_address, 5000);
+	msc_connection.cb = ipaccess_a_fd_cb;
+	rc = connect_to_msc(&msc_connection, msc_address, 5000);
 	if (rc < 0) {
 		fprintf(stderr, "Opening the MSC connection failed.\n");
 		exit(1);
