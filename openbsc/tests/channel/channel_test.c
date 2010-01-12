@@ -77,3 +77,5 @@ void nm_state_event() {}
 void input_event() {}
 void sms_alloc() {}
 
+struct tlv_definition nm_att_tlvdef;
+

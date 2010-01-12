@@ -191,7 +191,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	if (!bts)
 		return NULL;
 
-	if (!model) {
+	if (!model && type != GSM_BTS_TYPE_UNKNOWN) {
 		talloc_free(bts);
 		return NULL;
 	}
