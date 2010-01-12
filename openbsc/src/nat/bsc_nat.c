@@ -24,6 +24,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -32,10 +33,82 @@
 #include <getopt.h>
 
 #include <openbsc/debug.h>
+#include <openbsc/msgb.h>
+#include <openbsc/bsc_msc.h>
+#include <openbsc/ipaccess.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/talloc.h>
 
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
+static struct bsc_fd msc_connection;
+
+/*
+ * below are stubs we need to link
+ */
+int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+{
+	return -1;
+}
+
+void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
+{}
+
+int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
+{
+	return -1;
+}
+
+/*
+ * Below is the handling of messages coming
+ * from the MSC and need to be forwarded to
+ * a real BSC.
+ */
+static void initialize_msc_if_needed()
+{
+	static int init = 0;
+	init = 1;
+
+	/* do we need to send a GSM 08.08 message here? */
+}
+
+static void forward_sccp_to_bts(struct msgb *msg)
+{
+	/* filter, drop, patch the message? */
+}
+
+static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	int error;
+	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct ipaccess_head *hh;
+
+	if (!msg) {
+		if (error == 0) {
+			fprintf(stderr, "The connection to the MSC was lost, exiting\n");
+			exit(-2);
+		}
+
+		fprintf(stderr, "Failed to parse ip access message: %d\n", error);
+		return -1;
+	}
+
+	DEBUGP(DMSC, "MSG from MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+
+	/* handle base message handling */
+	hh = (struct ipaccess_head *) msg->data;
+	ipaccess_rcvmsg_base(msg, bfd);
+
+	/* initialize the networking. This includes sending a GSM08.08 message */
+	if (hh->proto == IPAC_PROTO_IPACCESS && msg->l2h[0] == IPAC_MSGT_ID_ACK)
+		initialize_msc_if_needed();
+	else if (hh->proto == IPAC_PROTO_SCCP)
+		forward_sccp_to_bts(msg);
+
+	return 0;
+}
 
 static void print_usage()
 {
@@ -103,13 +176,47 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report
+		 * and then return to the caller, who will abort the process */
+	case SIGUSR1:
+		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	default:
+		break;
+	}
+}
+
 int main(int argc, char** argv)
 {
+	int rc;
+
 	/* parse options */
 	handle_options(argc, argv);
 
 	/* seed the PRNG */
 	srand(time(NULL));
+
+	msc_connection.cb = ipaccess_msc_cb;
+	rc = connect_to_msc(&msc_connection, msc_address, 5000);
+	if (rc < 0) {
+		fprintf(stderr, "Opening the MSC connection failed.\n");
+		exit(1);
+	}
+
+	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
+
+	while (1) {
+		bsc_select_main(0);
+	}
 
 	return 0;
 }
