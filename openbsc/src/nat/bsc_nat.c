@@ -134,6 +134,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	/* todo... do something with the connection */
+	/* todo... use GNUtls to see if we want to trust this as a BTS */
 
 	return 0;
 }
