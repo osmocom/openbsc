@@ -102,9 +102,9 @@ static void print_welcome(int fd) {
 	int ret;
 	static char *msg =
 		"Welcome to the OpenBSC Control interface\n"
-		"Copyright (C) 2008, 2009 Harald Welte\n"
+		"Copyright (C) 2008-2010 Harald Welte\n"
 		"Contributions by Daniel Willmann, Jan Lübbe, "
-		"Stefan Schmidt, Holger Freyther\n\n"
+		"Stefan Schmidt, Holger Freyther, Andreas Eversberg\n\n"
 		"License GPLv2+: GNU GPL version 2 or later "
 		"<http://gnu.org/licenses/gpl.html>\n"
 		"This is free software: you are free to change "

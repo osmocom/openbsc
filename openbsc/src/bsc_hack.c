@@ -1,6 +1,6 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
