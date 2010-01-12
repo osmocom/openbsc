@@ -3,6 +3,7 @@
 /*
  * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by on-waves.com
+ * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,6 +25,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <errno.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,6 +45,7 @@ static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
 static struct bsc_fd msc_connection;
+static struct bsc_fd bsc_connection;
 
 /*
  * below are stubs we need to link
@@ -110,6 +113,68 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
+/*
+ * Below is the handling of messages coming
+ * from the BSC and need to be forwarded to
+ * a real BSC.
+ */
+static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	int ret;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
+
+	if (!(what & BSC_FD_READ))
+		return 0;
+
+	ret = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
+	if (ret < 0) {
+		perror("accept");
+		return ret;
+	}
+
+	/* todo... do something with the connection */
+
+	return 0;
+}
+
+static int listen_for_bsc(struct bsc_fd *bfd, struct in_addr *in_addr, int port)
+{
+	struct sockaddr_in addr;
+	int ret, on = 1;
+
+	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	bfd->cb = ipaccess_listen_bsc_cb;
+	bfd->when = BSC_FD_READ;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(port);
+	addr.sin_addr.s_addr = in_addr->s_addr;
+
+	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret < 0) {
+		fprintf(stderr, "Could not bind the BSC socket %s\n",
+			strerror(errno));
+		return -EIO;
+	}
+
+	ret = listen(bfd->fd, 1);
+	if (ret < 0) {
+		perror("listen");
+		return ret;
+	}
+
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		perror("register_listen_fd");
+		return ret;
+	}
+	return 0;
+}
+
 static void print_usage()
 {
 	printf("Usage: bsc_nat\n");
@@ -123,7 +188,7 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
-	printf("  -l --local=IP. The local address of the MGCP.\n");
+	printf("  -l --local=IP. The local address of this BSC.\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -197,15 +262,23 @@ int main(int argc, char** argv)
 	int rc;
 
 	/* parse options */
+	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
 
 	/* seed the PRNG */
 	srand(time(NULL));
 
+	/* connect to the MSC */
 	msc_connection.cb = ipaccess_msc_cb;
 	rc = connect_to_msc(&msc_connection, msc_address, 5000);
 	if (rc < 0) {
 		fprintf(stderr, "Opening the MSC connection failed.\n");
+		exit(1);
+	}
+
+	/* wait for the BSC */
+	if (listen_for_bsc(&bsc_connection, &local_addr, 5000) < 0) {
+		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
 	}
 
