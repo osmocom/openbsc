@@ -103,7 +103,7 @@ static void forward_sccp_to_bts(struct msgb *msg)
 
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
-		write(bsc->bsc_fd.fd, msg->data, msg->data_len);
+		write(bsc->bsc_fd.fd, msg->data, msg->len);
 	}
 }
 
@@ -161,7 +161,7 @@ static int forward_sccp_to_msc(struct msgb *msg)
 	/* FIXME: We need to filter out certain messages */
 
 	/* send the non-filtered but maybe modified msg */
-	return write(msc_connection.fd, msg->data, msg->data_len);
+	return write(msc_connection.fd, msg->data, msg->len);
 }
 
 static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
