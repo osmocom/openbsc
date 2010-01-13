@@ -108,6 +108,7 @@ struct mgcp_endpoint {
 	struct bsc_fd local_rtcp;
 
 	struct in_addr remote;
+	struct in_addr bts;
 
 	/* in network byte order */
 	int rtp, rtcp;
@@ -254,13 +255,14 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	/* We have no idea who called us, maybe it is the BTS. */
 	if (dest == DEST_NETWORK && endp->bts_rtp == 0) {
 		/* it was the BTS... */
-		if (memcmp(&addr.sin_addr, &bts_in, sizeof(bts_in)) == 0) {
+		if (!bts_ip || memcmp(&addr.sin_addr, &bts_in, sizeof(bts_in)) == 0) {
 			if (fd == &endp->local_rtp) {
 				endp->bts_rtp = addr.sin_port;
 			} else {
 				endp->bts_rtcp = addr.sin_port;
 			}
 
+			endp->bts = addr.sin_addr;
 			DEBUGP(DMGCP, "Found BTS for endpoint: 0x%x on port: %d/%d\n",
 				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp));
 		}
@@ -275,7 +277,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 			     proto == PROTO_RTP ? endp->rtp : endp->rtcp,
 			     buf, rc);
 	} else {
-		return _send(fd->fd, &bts_in,
+		return _send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
 			     buf, rc);
 	}
@@ -901,7 +903,8 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "mgcp%s", VTY_NEWLINE);
 	if (local_ip)
 		vty_out(vty, " local ip %s%s", local_ip, VTY_NEWLINE);
-	vty_out(vty, "  bts ip %s%s", bts_ip, VTY_NEWLINE);
+	if (bts_ip)
+		vty_out(vty, "  bts ip %s%s", bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", source_port, VTY_NEWLINE);
 	vty_out(vty, "  bind early %u%s", !!early_bind, VTY_NEWLINE);
@@ -1118,10 +1121,8 @@ int main(int argc, char** argv)
 	}
 
 
-	if (!bts_ip) {
-		fprintf(stderr, "Need to specify the BTS ip address for RTP handling.\n");
-		return -1;
-	}
+	if (!bts_ip)
+		fprintf(stderr, "No BTS ip address specified. This will allow everyone to connect.\n");
 
 	endpoints = _talloc_zero_array(tall_bsc_ctx,
 				       sizeof(struct mgcp_endpoint),
