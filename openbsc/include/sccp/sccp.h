@@ -143,4 +143,10 @@ extern const struct sockaddr_sccp sccp_ssn_bssap;
 u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
 struct sccp_source_reference sccp_src_ref_from_int(u_int32_t);
 
+
+/*
+ * helper functions for the nat code
+ */
+int sccp_determine_msg_type(struct msgb *msg);
+
 #endif
