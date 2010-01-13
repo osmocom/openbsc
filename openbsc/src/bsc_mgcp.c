@@ -65,6 +65,7 @@ static int audio_loop = 0;
 static int early_bind = 0;
 
 static char *forward_ip = NULL;
+static int forward_port = 0;
 static char *config_file = "mgcp.cfg";
 
 /* used by msgb and mgcp */
@@ -914,7 +915,9 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  loop %u%s", !!audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  endpoints %u%s", number_endpoints, VTY_NEWLINE);
 	if (forward_ip)
-		vty_out(vty, " forward audio %s%s", forward_ip, VTY_NEWLINE);
+		vty_out(vty, " forward audio ip %s%s", forward_ip, VTY_NEWLINE);
+	if (forward_port != 0)
+		vty_out(vty, " forward audio port %d%s", forward_port, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1061,14 +1064,23 @@ DEFUN(cfg_mgcp_number_endp,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_forward,
-      cfg_mgcp_forward_cmd,
-      "forward audio IP",
+DEFUN(cfg_mgcp_forward_ip,
+      cfg_mgcp_forward_ip_cmd,
+      "forward audio ip IP",
       "Forward packets from and to the IP. This disables most of the MGCP feature.")
 {
 	if (forward_ip)
 		talloc_free(forward_ip);
 	forward_ip = talloc_strdup(tall_bsc_ctx, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_forward_port,
+      cfg_mgcp_forward_port_cmd,
+      "forward audio port <1-15000>",
+      "Forward packets from and to the port. This disables most of the MGCP feature.")
+{
+	forward_port = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1093,7 +1105,8 @@ int bsc_vty_init(struct gsm_network *dummy)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_forward_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_forward_ip_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_forward_port_cmd);
 	return 0;
 }
 
@@ -1146,6 +1159,9 @@ int main(int argc, char** argv)
 	 * both modes are mutual exclusive
 	 */
 	if (forward_ip) {
+		int port = rtp_base_port;
+		if (forward_port != 0)
+			port = forward_port;
 
 		if (!early_bind) {
 			DEBUGP(DMGCP, "Forwarding requires early bind.\n");
@@ -1160,8 +1176,8 @@ int main(int argc, char** argv)
 			struct mgcp_endpoint *endp = &endpoints[i];
 			inet_aton(forward_ip, &endp->remote);
 			endp->ci = CI_UNUSED + 23;
-			endp->net_rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port));
-			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port) + 1);
+			endp->net_rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port));
+			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port) + 1);
 		}
 
 		DEBUGP(DMGCP, "Configured for Audio Forwarding.\n");
