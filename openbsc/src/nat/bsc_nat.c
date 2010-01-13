@@ -41,12 +41,29 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/talloc.h>
+#include <openbsc/linuxlist.h>
 
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
 static struct bsc_fd msc_connection;
 static struct bsc_fd bsc_connection;
+
+
+/*
+ * Per BSC data structure
+ */
+struct bsc_connection {
+	struct llist_head list_entry;
+
+	/* do we know anything about this BSC? */
+	int authenticated;
+
+	/* the fd we use to communicate */
+	struct bsc_fd bsc_fd;
+};
+
+static LLIST_HEAD(bsc_connections);
 
 /*
  * below are stubs we need to link
@@ -80,7 +97,13 @@ static void initialize_msc_if_needed()
 
 static void forward_sccp_to_bts(struct msgb *msg)
 {
+	struct bsc_connection *bsc;
+
 	/* filter, drop, patch the message? */
+
+	/* currently send this to every BSC connected */
+	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
+	}
 }
 
 static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
@@ -119,8 +142,59 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
  * from the BSC and need to be forwarded to
  * a real BSC.
  */
+
+/*
+ * Remove the connection from the connections list,
+ * remove it from the patching of SCCP header lists
+ * as well. Maybe in the future even close connection..
+ */
+static void remove_bsc_connection(struct bsc_connection *connection)
+{
+	llist_del(&connection->list_entry);
+	talloc_free(connection);
+}
+
+static int forward_sccp_to_msc(struct msgb *msg)
+{
+	/* FIXME: We need to filter out certain messages */
+
+	/* send the non-filtered but maybe modified msg */
+	return write(msc_connection.fd, msg->data, msg->data_len);
+}
+
+static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	int error;
+	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct ipaccess_head *hh;
+
+	if (!msg) {
+		if (error == 0) {
+			fprintf(stderr, "The connection to the BSC was lost. Cleaning it\n");
+			remove_bsc_connection((struct bsc_connection *) bfd->data);
+		}
+
+		fprintf(stderr, "Failed to parse ip access message: %d\n", error);
+		return -1;
+	}
+
+	DEBUGP(DMSC, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+
+	/* handle base message handling */
+	hh = (struct ipaccess_head *) msg->data;
+
+	/* Handle messages from the BSC */
+	/* FIXME: Currently no PONG is sent to the BSC */
+	/* FIXME: Currently no ID ACK is sent to the BSC */
+	if (hh->proto == IPAC_PROTO_SCCP)
+		forward_sccp_to_msc(msg);
+
+	return 0;
+}
+
 static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
+	struct bsc_connection *bsc;
 	int ret;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
@@ -137,6 +211,29 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/* todo... do something with the connection */
 	/* todo... use GNUtls to see if we want to trust this as a BTS */
 
+	/*
+	 *
+	 */
+	bsc = talloc_zero(tall_bsc_ctx, struct bsc_connection);
+	if (!bsc) {
+		DEBUGP(DMSC, "Failed to allocate BSC struct.\n");
+		close(ret);
+		return -1;
+	}
+
+	bsc->bsc_fd.data = bsc;
+	bsc->bsc_fd.fd = ret;
+	bsc->bsc_fd.cb = ipaccess_bsc_cb;
+	if (bsc_register_fd(&bsc->bsc_fd) < 0) {
+		DEBUGP(DMSC, "Failed to register BSC fd.\n");
+		close(ret);
+		talloc_free(bsc);
+		return -2;
+	}
+
+	DEBUGP(DMSC, "Registered new BSC\n");
+	llist_add(&bsc->list_entry, &bsc_connections);
+	ipaccess_send_id_ack(ret);
 	return 0;
 }
 
