@@ -251,7 +251,8 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	 * able to tell if this is legitimate.
 	 */
 	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
-	dest = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0
+	dest = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0 &&
+                    (endp->net_rtp == addr.sin_port || endp->net_rtcp == addr.sin_port)
 			? DEST_BTS : DEST_NETWORK;
 	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
 
@@ -309,9 +310,6 @@ static int create_bind(struct bsc_fd *fd, int port)
 
 static int bind_rtp(struct mgcp_endpoint *endp)
 {
-	/* set to zero until we get the info */
-	memset(&endp->remote, 0, sizeof(endp->remote));
-
 	if (create_bind(&endp->local_rtp, endp->rtp_port) != 0) {
 		DEBUGP(DMGCP, "Failed to create RTP port: %d on 0x%x\n",
 		       endp->rtp_port, ENDPOINT_NUMBER(endp));
@@ -643,6 +641,9 @@ static void handle_create_con(struct msgb *msg, struct sockaddr_in *source)
 
 	/* initialize */
 	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+
+	/* set to zero until we get the info */
+	memset(&endp->remote, 0, sizeof(endp->remote));
 
 	/* bind to the port now */
 	endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
