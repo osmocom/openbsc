@@ -225,6 +225,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->bsc_fd.data = bsc;
 	bsc->bsc_fd.fd = ret;
 	bsc->bsc_fd.cb = ipaccess_bsc_cb;
+	bsc->bsc_fd.when = BSC_FD_READ;
 	if (bsc_register_fd(&bsc->bsc_fd) < 0) {
 		DEBUGP(DMSC, "Failed to register BSC fd.\n");
 		close(ret);
