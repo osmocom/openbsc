@@ -164,6 +164,12 @@ static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 	return 0;
 }
 
+/* send the id ack */
+int ipaccess_send_id_ack(int fd)
+{
+	return write(fd, id_ack, sizeof(id_ack));
+}
+
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
 			 struct bsc_fd *bfd)
@@ -180,7 +186,7 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	}
 	return 0;
