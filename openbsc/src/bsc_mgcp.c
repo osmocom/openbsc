@@ -96,7 +96,7 @@ struct mgcp_endpoint {
 	char *local_options;
 	int conn_mode;
 
-	/* the local rtp port */
+	/* the local rtp port we are binding to */
 	int rtp_port;
 
 	/*
@@ -111,7 +111,7 @@ struct mgcp_endpoint {
 	struct in_addr bts;
 
 	/* in network byte order */
-	int rtp, rtcp;
+	int net_rtp, net_rtcp;
 	int bts_rtp, bts_rtcp;
 };
 
@@ -274,7 +274,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 
 	if (dest == DEST_NETWORK) {
 		return _send(fd->fd, &endp->remote,
-			     proto == PROTO_RTP ? endp->rtp : endp->rtcp,
+			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
 			     buf, rc);
 	} else {
 		return _send(fd->fd, &endp->bts,
@@ -639,7 +639,7 @@ static void handle_create_con(struct msgb *msg, struct sockaddr_in *source)
 	MSG_TOKENIZE_END
 
 	/* initialize */
-	endp->rtp = endp->rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 
 	/* bind to the port now */
 	endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
@@ -719,8 +719,8 @@ static void handle_modify_con(struct msgb *msg, struct sockaddr_in *source)
 		const char *param = (const char *)&msg->l3h[line_start];
 
 		if (sscanf(param, "m=audio %d RTP/AVP %*d", &port) == 1) {
-			endp->rtp = htons(port);
-			endp->rtcp = htons(port + 1);
+			endp->net_rtp = htons(port);
+			endp->net_rtcp = htons(port + 1);
 		}
 		break;
 	}
@@ -743,7 +743,7 @@ static void handle_modify_con(struct msgb *msg, struct sockaddr_in *source)
 
 	/* modify */
 	DEBUGP(DMGCP, "Modified endpoint on: 0x%x Server: %s:%u\n",
-		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->rtp);
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
 	return send_with_sdp(endp, "MDCX", trans_id, source);
 
 error:
@@ -805,7 +805,7 @@ static void handle_delete_con(struct msgb *msg, struct sockaddr_in *source)
 		bsc_unregister_fd(&endp->local_rtcp);
 	}
 
-	endp->rtp = endp->rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 
 	return send_response(250, "DLCX", trans_id, source);
 
@@ -929,7 +929,7 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 		struct mgcp_endpoint *endp = &endpoints[i];
 		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u%s",
 			i, endp->ci,
-			ntohs(endp->rtp), ntohs(endp->rtcp),
+			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
 			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp), VTY_NEWLINE);
 	}
 
@@ -1160,8 +1160,8 @@ int main(int argc, char** argv)
 			struct mgcp_endpoint *endp = &endpoints[i];
 			inet_aton(forward_ip, &endp->remote);
 			endp->ci = CI_UNUSED + 23;
-			endp->rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port));
-			endp->rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port) + 1);
+			endp->net_rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port));
+			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port) + 1);
 		}
 
 		DEBUGP(DMGCP, "Configured for Audio Forwarding.\n");
