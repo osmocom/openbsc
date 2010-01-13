@@ -103,6 +103,7 @@ static void forward_sccp_to_bts(struct msgb *msg)
 
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
+		write(bsc->bsc_fd.fd, msg->data, msg->data_len);
 	}
 }
 
