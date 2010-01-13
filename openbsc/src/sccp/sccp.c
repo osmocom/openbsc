@@ -1160,6 +1160,14 @@ struct sccp_source_reference sccp_src_ref_from_int(u_int32_t int_ref)
 	return ref;
 }
 
+int sccp_determine_msg_type(struct msgb *msg)
+{
+	if (msgb_l2len(msg) < 1)
+		return -1;
+
+	return msg->l2h[0];
+}
+
 static __attribute__((constructor)) void on_dso_load(void)
 {
 	tall_sccp_ctx = talloc_named_const(NULL, 1, "sccp");
