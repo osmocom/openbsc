@@ -150,6 +150,7 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
  */
 static void remove_bsc_connection(struct bsc_connection *connection)
 {
+	bsc_unregister_fd(&connection->bsc_fd);
 	llist_del(&connection->list_entry);
 	talloc_free(connection);
 }
