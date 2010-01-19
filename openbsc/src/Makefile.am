@@ -43,5 +43,5 @@ isdnsync_SOURCES = isdnsync.c
 bsc_mgcp_SOURCES = bsc_mgcp.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
 bsc_mgcp_LDADD = libvty.a
 
-bsc_nat_SOURCES = nat/bsc_nat.c bsc_msc.c
+bsc_nat_SOURCES = nat/bsc_nat.c nat/bsc_filter.c bsc_msc.c
 bsc_nat_LDADD = libbsc.a libsccp.a
