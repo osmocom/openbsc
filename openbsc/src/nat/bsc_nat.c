@@ -102,6 +102,7 @@ static void initialize_msc_if_needed()
 static void forward_sccp_to_bts(struct msgb *msg)
 {
 	struct bsc_connection *bsc;
+	int rc;
 
 	/* filter, drop, patch the message? */
 
@@ -111,7 +112,11 @@ static void forward_sccp_to_bts(struct msgb *msg)
 
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
-		write(bsc->bsc_fd.fd, msg->data, msg->len);
+		rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
+
+		/* try the next one */
+		if (rc < msg->len)
+			fprintf(stderr, "Failed to write message to BTS.\n");
 	}
 }
 
