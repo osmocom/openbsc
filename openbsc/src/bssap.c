@@ -228,6 +228,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	}
 
 	msg->lchan->msc_data->ciphering_handled = 1;
+	msg->lchan->msc_data->block_gsm = 1;
 
 	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_ENCRYPTION_INFORMATION)) {
@@ -268,6 +269,9 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	return gsm48_send_rr_ciph_mode(msg->lchan, include_imeisv);
 
 reject:
+	if (msg->lchan->msc_data)
+		msg->lchan->msc_data->block_gsm = 0;
+
 	resp = bssmap_create_cipher_reject(reject_cause);
 	if (!resp) {
 		DEBUGP(DMSC, "Sending the cipher reject failed.\n");
@@ -1080,7 +1084,7 @@ void bts_queue_send(struct msgb *msg, int link_id)
 {
 	struct bss_sccp_connection_data *data = msg->lchan->msc_data;
 
-	if (data->gsm_queue_size == 0) {
+	if (!data->block_gsm && data->gsm_queue_size == 0) {
 		if (msg->lchan->sapis[link_id & 0x7] != LCHAN_SAPI_UNUSED) {
 			rsl_data_request(msg, link_id);
 		} else {
@@ -1129,6 +1133,26 @@ void bts_send_queued(struct bss_sccp_connection_data *data)
 	}
 
 	data->gsm_queue_size = 0;
+}
+
+void bts_unblock_queue(struct bss_sccp_connection_data *data)
+{
+	struct msgb *msg;
+	LLIST_HEAD(head);
+
+	/* move the messages to a new list */
+	data->block_gsm = 0;
+	data->gsm_queue_size = 0;
+	while (!llist_empty(&data->gsm_queue)) {
+		msg = msgb_dequeue(&data->gsm_queue);
+		msgb_enqueue(&head, msg);
+	}
+
+	/* now queue them again to send RSL establish and such */
+	while (!llist_empty(&head)) {
+		msg = msgb_dequeue(&data->gsm_queue);
+		bts_queue_send(msg, (int) msg->smsh);
+	}
 }
 
 void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_int8_t *rr_value)

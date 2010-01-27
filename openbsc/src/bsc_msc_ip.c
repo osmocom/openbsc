@@ -286,6 +286,7 @@ static int handle_cipher_m_complete(struct msgb *msg)
 
 
 	/* handled this message */
+	bts_unblock_queue(msg->lchan->msc_data);
 	bsc_queue_connection_write(lchan_get_sccp(msg->lchan), resp);
 	return 1;
 }
