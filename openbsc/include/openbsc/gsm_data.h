@@ -122,6 +122,7 @@ struct bss_sccp_connection_data {
 	int rtp_port;
 
 	/* Queue SCCP and GSM0408 messages */
+	int block_gsm;
 	struct llist_head gsm_queue;
 	unsigned int gsm_queue_size;
 
