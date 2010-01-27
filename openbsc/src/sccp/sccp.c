@@ -1,8 +1,8 @@
 /*
  * SCCP management code
  *
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by on-waves.com
+ * (C) 2009, 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009, 2010 by on-waves.com
  *
  * All Rights Reserved
  *
@@ -199,6 +199,89 @@ static int _sccp_parse_optional_data(const int offset,
 	return -1;
 }
 
+int _sccp_parse_connection_request(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_connection_released(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_connection_refused(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_connection_confirm(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_connection_release_complete(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_connection_dt1(struct msgb *msg, struct sccp_parse_result *result)
+{
+	return -1;
+}
+
+int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
+{
+	static const u_int32_t header_size = sizeof(struct sccp_data_unitdata);
+	static const u_int32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
+	static const u_int32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
+	static const u_int32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
+
+	struct sccp_data_unitdata *udt = (struct sccp_data_unitdata *)msgb->l2h;
+
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	/* copy out the calling and called address. Add the off */
+	if (copy_address(&result->called, called_offset + udt->variable_called, msgb) != 0)
+		return -1;
+
+	if (check_address(&result->called) != 0) {
+		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+			*(u_int8_t *)&result->called.address, result->called.ssn);
+		return -1;
+	}
+
+	if (copy_address(&result->calling, calling_offset + udt->variable_calling, msgb) != 0)
+		return -1;
+
+	if (check_address(&result->calling) != 0) {
+		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+			*(u_int8_t *)&result->called.address, result->called.ssn);
+	}
+
+	/* we don't have enough size for the data */
+	if (msgb_l2len(msgb) < data_offset + udt->variable_data + 1) {
+		DEBUGP(DSCCP, "msgb < header + offset %u %u %u\n",
+			msgb_l2len(msgb), header_size, udt->variable_data);
+		return -1;
+	}
+
+
+	msgb->l3h = &udt->data[udt->variable_data];
+
+	if (msgb_l3len(msgb) !=  msgb->l3h[-1]) {
+		DEBUGP(DSCCP, "msgb is truncated %u %u\n",
+			msgb_l3len(msgb), msgb->l3h[-1]);
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /*
  * Send UDT. Currently we have a fixed address...
  */
@@ -249,59 +332,15 @@ static int _sccp_send_data(int class, const struct sockaddr_sccp *in,
 
 static int _sccp_handle_read(struct msgb *msgb)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_data_unitdata);
-	static const u_int32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
-	static const u_int32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
-	static const u_int32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
-
 	struct sccp_data_callback *cb;
-	struct sccp_data_unitdata *udt = (struct sccp_data_unitdata *)msgb->l2h;
-	struct sccp_address called, calling;
+	struct sccp_parse_result result;
 
-	/* we don't have enough size for the struct */
-	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
-		        msgb_l2len(msgb), header_size);
-		return -1;
-	}
-
-	/* copy out the calling and called address. Add the off */
-	if (copy_address(&called, called_offset + udt->variable_called, msgb) != 0)
+	if (_sccp_parse_udt(msgb, &result) != 0)
 		return -1;
 
-	if (check_address(&called) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&called.address, called.ssn);
-		return -1;
-	}
-
-	cb = _find_ssn(called.ssn);
+	cb = _find_ssn(result.called.ssn);
 	if (!cb || !cb->read_cb) {
-		DEBUGP(DSCCP, "No routing for UDT for called SSN: %u\n", called.ssn);
-		return -1;
-	}
-
-	if (copy_address(&calling, calling_offset + udt->variable_calling, msgb) != 0)
-		return -1;
-
-	if (check_address(&calling) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&called.address, called.ssn);
-	}
-
-	/* we don't have enough size for the data */
-	if (msgb_l2len(msgb) < data_offset + udt->variable_data + 1) {
-		DEBUGP(DSCCP, "msgb < header + offset %u %u %u\n",
-			msgb_l2len(msgb), header_size, udt->variable_data);
-		return -1;
-	}
-
-
-	msgb->l3h = &udt->data[udt->variable_data];
-
-	if (msgb_l3len(msgb) !=  msgb->l3h[-1]) {
-		DEBUGP(DSCCP, "msgb is truncated %u %u\n",
-			msgb_l3len(msgb), msgb->l3h[-1]);
+		DEBUGP(DSCCP, "No routing for UDT for called SSN: %u\n", result.called.ssn);
 		return -1;
 	}
 
