@@ -199,9 +199,54 @@ static int _sccp_parse_optional_data(const int offset,
 	return -1;
 }
 
-int _sccp_parse_connection_request(struct msgb *msg, struct sccp_parse_result *result)
+int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	return -1;
+	static const u_int32_t header_size =
+			sizeof(struct sccp_connection_request);
+	static const u_int32_t optional_offset =
+			offsetof(struct sccp_connection_request, optional_start);
+	static const u_int32_t called_offset =
+			offsetof(struct sccp_connection_request, variable_called);
+
+	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->data;
+	struct sccp_optional_data optional_data;
+
+	/* header check */
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	/* copy out the calling and called address. Add the offset */
+	if (copy_address(&result->called, called_offset + req->variable_called, msgb) != 0)
+		return -1;
+
+	if (check_address(&result->called) != 0) {
+		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+			*(u_int8_t *)&result->called.address, result->called.ssn);
+		return -1;
+	}
+
+	result->source_local_reference = &req->source_local_reference;
+
+	/*
+	 * parse optional data.
+	 */
+	memset(&optional_data, 0, sizeof(optional_data));
+	if (_sccp_parse_optional_data(optional_offset + req->optional_start, msgb, &optional_data) != 0) {
+		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		return -1;
+	}
+
+	if (optional_data.data_len != 0) {
+		msgb->l3h = &msgb->l2h[optional_data.data_start];
+		result->data_len = optional_data.data_len;
+	} else {
+		result->data_len = 0;
+	}
+
+	return 0;
 }
 
 int _sccp_parse_connection_released(struct msgb *msg, struct sccp_parse_result *result)
@@ -413,7 +458,7 @@ static void _sccp_set_connection_state(struct sccp_connection *connection, int n
 		connection->state_cb(connection, old_state);
 }
 
-static int _sccp_send_refuse(struct sccp_connection_request *req, int cause)
+static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 {
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
@@ -426,7 +471,7 @@ static int _sccp_send_refuse(struct sccp_connection_request *req, int cause)
 
 	ref = (struct sccp_connection_refused *) msgb_put(msgb, sizeof(*ref));
 	ref->type = SCCP_MSG_TYPE_CREF;
-	memcpy(&ref->destination_local_reference, &req->source_local_reference,
+	memcpy(&ref->destination_local_reference, src_ref,
 	       sizeof(struct sccp_source_reference));
 	ref->cause = cause;
 	ref->optional_start = 1;
@@ -640,39 +685,17 @@ static int _sccp_send_connection_released(struct sccp_connection *conn, int caus
  */
 static int _sccp_handle_connection_request(struct msgb *msgb)
 {
-	static const u_int32_t header_size =
-			sizeof(struct sccp_connection_request);
-	static const u_int32_t optional_offset =
-			offsetof(struct sccp_connection_request, optional_start);
-	static const u_int32_t called_offset =
-			offsetof(struct sccp_connection_request, variable_called);
+	struct sccp_parse_result result;
 
 	struct sccp_data_callback *cb;
-	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->data;
-	struct sccp_address called;
 	struct sccp_connection *connection;
-	struct sccp_optional_data optional_data;
 
-	/* header check */
-	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
-		        msgb_l2len(msgb), header_size);
-		return -1;
-	}
-
-	/* copy out the calling and called address. Add the offset */
-	if (copy_address(&called, called_offset + req->variable_called, msgb) != 0)
+	if (_sccp_parse_connection_request(msgb, &result) != 0)
 		return -1;
 
-	if (check_address(&called) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&called.address, called.ssn);
-		return -1;
-	}
-
-	cb = _find_ssn(called.ssn);
+	cb = _find_ssn(result.called.ssn);
 	if (!cb || !cb->accept_cb) {
-		DEBUGP(DSCCP, "No routing for CR for called SSN: %u\n", called.ssn);
+		DEBUGP(DSCCP, "No routing for CR for called SSN: %u\n", result.called.ssn);
 		return -1;
 	}
 
@@ -690,28 +713,18 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 	 * and send a connection confirm, otherwise we will send a refuseed
 	 * one....
 	 */
-	if (destination_local_reference_is_free(&req->source_local_reference) != 0) {
+	if (destination_local_reference_is_free(result.source_local_reference) != 0) {
 		DEBUGP(DSCCP, "Need to reject connection with existing reference\n");
-		_sccp_send_refuse(req, SCCP_REFUSAL_SCCP_FAILURE);
+		_sccp_send_refuse(result.source_local_reference, SCCP_REFUSAL_SCCP_FAILURE);
 		talloc_free(connection);
 		return -1;
 	}
 
 	connection->incoming = 1;
-	connection->destination_local_reference = req->source_local_reference;
-
-	/*
-	 * parse optional data.
-	 */
-	memset(&optional_data, 0, sizeof(optional_data));
-	if (_sccp_parse_optional_data(optional_offset + req->optional_start, msgb, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
-		talloc_free(connection);
-		return -1;
-	}
+	connection->destination_local_reference = *result.source_local_reference;
 
 	if (cb->accept_cb(connection, cb->accept_context) != 0) {
-		_sccp_send_refuse(req, SCCP_REFUSAL_END_USER_ORIGINATED);
+		_sccp_send_refuse(result.source_local_reference, SCCP_REFUSAL_END_USER_ORIGINATED);
 		_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_REFUSED);
 		talloc_free(connection);
 		return 0;
@@ -723,7 +736,7 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 	if (_sccp_send_connection_confirm(connection) != 0) {
 		DEBUGP(DSCCP, "Sending confirm failed... no available source reference?\n");
 
-		_sccp_send_refuse(req, SCCP_REFUSAL_SCCP_FAILURE);
+		_sccp_send_refuse(result.source_local_reference, SCCP_REFUSAL_SCCP_FAILURE);
 		_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_REFUSED);
 		llist_del(&connection->list);
 		talloc_free(connection);
@@ -734,9 +747,8 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 	/*
 	 * If we have data let us forward things.
 	 */
-	if (optional_data.data_len != 0 && connection->data_cb) {
-		msgb->l3h = &msgb->l2h[optional_data.data_start];
-		connection->data_cb(connection, msgb, optional_data.data_len);
+	if (result.data_len != 0 && connection->data_cb) {
+		connection->data_cb(connection, msgb, result.data_len);
 	}
 
 	return 0;
