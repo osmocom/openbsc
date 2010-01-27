@@ -166,7 +166,16 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		sccp_connection_free(conn);
 		return;
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
+		struct bss_sccp_connection_data *con_data;
+
 		DEBUGP(DMSC, "Connection established: %p\n", conn);
+
+		/* start the inactivity test timer */
+		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
+		con_data->sccp_it.cb = sccp_it_fired;
+		con_data->sccp_it.data = con_data;
+		bsc_schedule_timer(&con_data->sccp_it, SCCP_IT_TIMER, 0);
+
 		bsc_send_queued(conn);
 	}
 }
@@ -215,11 +224,6 @@ int open_sccp_connection(struct msgb *layer3)
 	sccp_connection->data_cb = msc_outgoing_sccp_data;
 	sccp_connection->data_ctx = con_data;
 	layer3->lchan->msc_data = con_data;
-
-	/* start the inactivity test timer */
-	con_data->sccp_it.cb = sccp_it_fired;
-	con_data->sccp_it.data = con_data;
-	bsc_schedule_timer(&con_data->sccp_it, SCCP_IT_TIMER, 0);
 
 	/* FIXME: Use transaction for this */
 	use_lchan(layer3->lchan);
