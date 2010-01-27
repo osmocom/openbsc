@@ -1,7 +1,7 @@
 /*
  * SCCP management code
  *
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009, 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -143,10 +143,25 @@ extern const struct sockaddr_sccp sccp_ssn_bssap;
 u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
 struct sccp_source_reference sccp_src_ref_from_int(u_int32_t);
 
+/**
+ * Below this are helper functions and structs for parsing SCCP messages
+ */
+struct sccp_parse_result {
+	struct sccp_address called;
+	struct sccp_address calling;
+
+	/* point to the msg packet */
+	struct sccp_source_reference *source_local_reference;
+	struct sccp_source_reference *destination_local_reference;
+
+	/* data pointer */
+	int data_len;
+};
 
 /*
  * helper functions for the nat code
  */
 int sccp_determine_msg_type(struct msgb *msg);
+int sccp_parse_header(struct msgb *msg, struct sccp_parse_result *result);
 
 #endif
