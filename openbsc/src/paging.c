@@ -160,7 +160,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	} while (paging_bts->available_slots > 0
 		    &&  initial_request != current_request);
 
-	bsc_schedule_timer(&paging_bts->work_timer, 1, 0);
+	bsc_schedule_timer(&paging_bts->work_timer, 2, 0);
 }
 
 static void paging_worker(void *data)
@@ -245,7 +245,7 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 
 	if (!bsc_timer_pending(&bts_entry->work_timer))
-		bsc_schedule_timer(&bts_entry->work_timer, 1, 0);
+		bsc_schedule_timer(&bts_entry->work_timer, 2, 0);
 
 	return 0;
 }
