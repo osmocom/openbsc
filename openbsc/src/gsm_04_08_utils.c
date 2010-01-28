@@ -591,6 +591,8 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	gsm48_chan_desc(&ass->chan_desc, lchan);
 	ass->power_command = power_command;
 
+	msgb_tv_put(msg, GSM48_IE_CHANMODE_1, lchan->tch_mode);
+
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
