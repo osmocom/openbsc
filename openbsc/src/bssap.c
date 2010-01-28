@@ -940,40 +940,44 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	struct gsm_lchan *lchan;
 	struct sccp_connection *conn;
 
-	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
-		return 0;
-
 	/*
 	 * If we have a SCCP Connection we need to inform the MSC about
          * the resource error and then drop the lchan<->sccp association.
 	 */
-	lchan = (struct gsm_lchan *)signal_data;
+	switch (subsys) {
+	case SS_LCHAN:
+		lchan = (struct gsm_lchan *)signal_data;
 
-	if (!lchan || !lchan->msc_data)
-		return 0;
+		if (!lchan || !lchan->msc_data)
+			return 0;
+		switch (signal) {
+		case S_LCHAN_UNEXPECTED_RELEASE:
+			bsc_del_timer(&lchan->msc_data->T10);
+			conn = lchan->msc_data->sccp;
+			lchan->msc_data->lchan = NULL;
+			lchan->msc_data = NULL;
 
-	bsc_del_timer(&lchan->msc_data->T10);
-	conn = lchan->msc_data->sccp;
-	lchan->msc_data->lchan = NULL;
-	lchan->msc_data = NULL;
+			msg = msgb_alloc(30, "sccp: clear request");
+			if (!msg) {
+				DEBUGP(DMSC, "Failed to allocate clear request.\n");
+				return 0;
+			}
 
-	msg = msgb_alloc(30, "sccp: clear request");
-	if (!msg) {
-		DEBUGP(DMSC, "Failed to allocate clear request.\n");
-		return 0;
+			msg->l3h = msgb_put(msg, 2 + 4);
+			msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
+			msg->l3h[1] = 4;
+
+			msg->l3h[2] = BSS_MAP_MSG_CLEAR_RQST;
+			msg->l3h[3] = GSM0808_IE_CAUSE;
+			msg->l3h[4] = 1;
+			msg->l3h[5] = GSM0808_CAUSE_RADIO_INTERFACE_FAILURE;
+
+			DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
+			bsc_queue_connection_write(conn, msg);
+			break;
+		}
+		break;
 	}
-
-	msg->l3h = msgb_put(msg, 2 + 4);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 4;
-
-	msg->l3h[2] = BSS_MAP_MSG_CLEAR_RQST;
-	msg->l3h[3] = GSM0808_IE_CAUSE;
-	msg->l3h[4] = 1;
-	msg->l3h[5] = GSM0808_CAUSE_RADIO_INTERFACE_FAILURE;
-
-	DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
-	bsc_queue_connection_write(conn, msg);
 
 	return 0;
 }
