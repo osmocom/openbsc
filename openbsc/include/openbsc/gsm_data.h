@@ -107,6 +107,7 @@ struct rtp_socket;
 /* BSC/MSC data holding them together */
 struct bss_sccp_connection_data {
 	struct gsm_lchan *lchan;
+	struct gsm_lchan *secondary_lchan;
 	struct sccp_connection *sccp;
 	int ciphering_handled : 1;
 

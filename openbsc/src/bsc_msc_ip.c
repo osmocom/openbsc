@@ -298,20 +298,45 @@ static int handle_cipher_m_complete(struct msgb *msg)
 /* Receive a ASSIGNMENT COMPLETE */
 static int handle_ass_compl(struct msgb *msg)
 {
+	struct gsm_lchan *old_chan;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	DEBUGP(DMSC, "ASSIGNMENT COMPLETE from MS, forwarding to MSC\n");
 
 	if (!msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No MSC data\n");
+		put_lchan(msg->lchan);
+		return -1;
+	}
+
+	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
+		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
+		put_lchan(msg->lchan);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
+		put_lchan(msg->lchan);
 		return -1;
 	}
+
+	/* swap the channels and release the old */
+	old_chan = msg->lchan->msc_data->lchan;
+	msg->lchan->msc_data->lchan = msg->lchan;
+	msg->lchan->msc_data->secondary_lchan = NULL;
+	old_chan->msc_data = NULL;
+
+	/* give up the old channel to not do a SACCH deactivate */
+	subscr_put(old_chan->subscr);
+	old_chan->subscr = NULL;
+	put_lchan(old_chan);
+
+	/* activate audio on it... */
+	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && msg->lchan->tch_mode != GSM48_CMODE_SIGN)
+		rsl_ipacc_crcx(msg->lchan);
+
 	gsm0808_send_assignment_compl(msg->lchan, gh->data[0]);
 	return 1;
 }
@@ -327,12 +352,20 @@ static int handle_ass_fail(struct msgb *msg)
 	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No MSC data\n");
+		put_lchan(msg->lchan);
+		return -1;
+	}
+
+	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
+		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
+		put_lchan(msg->lchan);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
+		put_lchan(msg->lchan);
 		return -1;
 	}
 

@@ -182,6 +182,11 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 		DEBUGP(DMSC, "Releasing all transactions on %p\n", conn);
 		bsc_del_timer(&msg->lchan->msc_data->T10);
 		msg->lchan->msc_data->lchan = NULL;
+
+		/* we might got killed during an assignment */
+		if (msg->lchan->msc_data->secondary_lchan)
+			put_lchan(msg->lchan->msc_data->secondary_lchan);
+
 		msg->lchan->msc_data = NULL;
 		put_lchan(msg->lchan);
 	}
@@ -360,6 +365,88 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 }
 
 /*
+ * The assignment request has started T10. We need to be faster than this
+ * or an assignment failure will be sent...
+ *
+ *  1.) allocate a new lchan
+ *  2.) copy the encryption key and other data from the
+ *      old to the new channel.
+ *  3.) RSL Channel Activate this channel and wait
+ *
+ * -> Signal handler for the LCHAN
+ *  4.) Send GSM 04.08 assignment command to the MS
+ *
+ * -> Assignment Complete
+ *  5.) Release the SDCCH, continue signalling on the new link
+ */
+static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
+{
+	struct bss_sccp_connection_data *msc_data;
+	struct gsm_bts *bts;
+	struct gsm_lchan *new_lchan;
+	int chan_type;
+
+	msc_data = msg->lchan->msc_data;
+	bts = msg->lchan->ts->trx->bts;
+	chan_type = full_rate ? GSM_LCHAN_TCH_F : GSM_LCHAN_TCH_H;
+
+	new_lchan = lchan_alloc(bts, chan_type);
+
+	if (!new_lchan) {
+		LOGP(DMSC, LOGL_NOTICE, "No free channel.\n");
+		return -1;
+	}
+
+	/* copy old data to the new channel */
+	memcpy(&new_lchan->encr, &msg->lchan->encr, sizeof(new_lchan->encr));
+	new_lchan->ms_power = msg->lchan->ms_power;
+	new_lchan->bs_power = msg->lchan->bs_power;
+	new_lchan->subscr = subscr_get(msg->lchan->subscr);
+
+	/* copy new data to it */
+	use_lchan(new_lchan);
+	new_lchan->tch_mode = chan_mode;
+	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+
+	/* handle AMR correctly */
+	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+		new_lchan->mr_conf.ver = 1;
+		new_lchan->mr_conf.icmi = 1;
+		new_lchan->mr_conf.m5_90 = 1;
+	}
+
+	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
+		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
+		lchan_free(new_lchan);
+	}
+
+	msc_data->secondary_lchan = new_lchan;
+	new_lchan->msc_data = msc_data;
+	return 0;
+}
+
+/*
+ * Any failure will be caught with the T10 timer ticking...
+ */
+static void continue_new_assignment(struct gsm_lchan *new_lchan)
+{
+	if (!new_lchan->msc_data) {
+		LOGP(DMSC, LOGL_ERROR, "No BSS data found.\n");
+		put_lchan(new_lchan);
+		return;
+	}
+
+	if (new_lchan->msc_data->secondary_lchan != new_lchan) {
+		LOGP(DMSC, LOGL_ERROR, "This is not the secondary channel?\n");
+		put_lchan(new_lchan);
+		return;
+	}
+
+	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: 0x%p\n", new_lchan);
+	gsm48_send_rr_ass_cmd(new_lchan->msc_data->lchan, new_lchan, 0x3);
+}
+
+/*
  * Handle the assignment request message.
  *
  * See §3.2.1.1 for the message type
@@ -375,7 +462,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	u_int8_t timeslot;
 	u_int8_t multiplex;
 	enum gsm48_chan_mode chan_mode = GSM48_CMODE_SIGN;
-	int i, supported, port;
+	int i, supported, port, full_rate = -1;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
@@ -434,6 +521,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	 * inner loop. The outer loop will exit due chan_mode having
 	 * the correct value.
 	 */
+	full_rate = 0;
 	for (supported = 0;
 		chan_mode == GSM48_CMODE_SIGN && supported < network->audio_length;
 		++supported) {
@@ -442,6 +530,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
 			if ((data[i] & 0x7f) == perm_val) {
 				chan_mode = gsm88_to_chan_mode(perm_val);
+				full_rate = (data[i] & 0x4) == 0;
 				break;
 			} else if ((data[i] & 0x80) == 0x00) {
 				break;
@@ -465,15 +554,25 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	port = timeslot + (31 * multiplex);
 	msc_data->rtp_port = rtp_calculate_port(port,
 						network->rtp_base_port);
-	DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on port %d %d/0x%x port: %u\n",
-		conn, chan_mode, port, multiplex, timeslot, msc_data->rtp_port);
-	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
-		msg->lchan->mr_conf.ver = 1;
-		msg->lchan->mr_conf.icmi = 1;
-		msg->lchan->mr_conf.m5_90 = 1;
-	}
 
-	return gsm48_lchan_modify(msg->lchan, chan_mode);
+	if (msg->lchan->type == GSM_LCHAN_SDCCH) {
+		/* start to assign a new channel, if it works */
+		if (handle_new_assignment(msg, full_rate, chan_mode) == 0)
+			return 0;
+		else
+			goto reject;
+	} else {
+		DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on port %d %d/0x%x port: %u\n",
+			conn, chan_mode, port, multiplex, timeslot, msc_data->rtp_port);
+
+		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+			msg->lchan->mr_conf.ver = 1;
+			msg->lchan->mr_conf.icmi = 1;
+			msg->lchan->mr_conf.m5_90 = 1;
+		}
+
+		return gsm48_lchan_modify(msg->lchan, chan_mode);
+	}
 
 reject:
 	gsm0808_send_assignment_failure(msg->lchan,
@@ -952,6 +1051,10 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 			return 0;
 		switch (signal) {
 		case S_LCHAN_UNEXPECTED_RELEASE:
+			/* handle this through the T10 timeout */
+			if (lchan->msc_data->lchan != lchan)
+				return 0;
+
 			bsc_del_timer(&lchan->msc_data->T10);
 			conn = lchan->msc_data->sccp;
 			lchan->msc_data->lchan = NULL;
@@ -974,6 +1077,9 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 
 			DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
 			bsc_queue_connection_write(conn, msg);
+			break;
+		case S_LCHAN_ACTIVATE_ACK:
+			continue_new_assignment(lchan);
 			break;
 		}
 		break;
