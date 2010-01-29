@@ -377,9 +377,44 @@ int _sccp_parse_connection_release_complete(struct msgb *msgb, struct sccp_parse
 	return 0;
 }
 
-int _sccp_parse_connection_dt1(struct msgb *msg, struct sccp_parse_result *result)
+int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	return -1;
+	static int header_size = sizeof(struct sccp_data_form1);
+	static int variable_offset = offsetof(struct sccp_data_form1, variable_start);
+
+	struct sccp_data_form1 *dt1 = (struct sccp_data_form1 *)msgb->l2h;
+
+	/* we don't have enough size for the struct */
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	if (dt1->segmenting != 0) {
+		DEBUGP(DSCCP, "This packet has segmenting, not supported: %d\n", dt1->segmenting);
+		return -1;
+	}
+
+	result->destination_local_reference = &dt1->destination_local_reference;
+
+	/* some more  size checks in here */
+	if (msgb_l2len(msgb) < variable_offset + dt1->variable_start + 1) {
+		DEBUGP(DSCCP, "Not enough space for variable start: %u %u\n",
+			msgb_l2len(msgb), dt1->variable_start);
+		return -1;
+	}
+
+	result->data_len = msgb->l2h[variable_offset + dt1->variable_start];
+	msgb->l3h = &msgb->l2h[dt1->variable_start + variable_offset + 1];
+
+	if (msgb_l3len(msgb) < result->data_len) {
+		DEBUGP(DSCCP, "Not enough room for the payload: %u %u\n",
+			msgb_l3len(msgb), result->data_len);
+		return -1;
+	}
+
+	return 0;
 }
 
 int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
@@ -895,57 +930,30 @@ found:
 }
 
 /* Handle the Data Form 1 message */
-static int _sccp_handle_connection_dt1(struct msgb *data)
+static int _sccp_handle_connection_dt1(struct msgb *msgb)
 {
-	static int variable_offset = offsetof(struct sccp_data_form1, variable_start);
-	static int header_size = sizeof(struct sccp_data_form1);
-
-	struct sccp_data_form1 *dt1 = (struct sccp_data_form1 *)data->l2h;
+	struct sccp_parse_result result;
 	struct sccp_connection *conn;
-	int size;
 
-	/* we don't have enough size for the struct */
-	if (msgb_l2len(data) < header_size) {
-		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
-		        msgb_l2len(data), header_size);
+	if (_sccp_parse_connection_dt1(msgb, &result) != 0)
 		return -1;
-	}
-
-	if (dt1->segmenting != 0) {
-		DEBUGP(DSCCP, "This packet has segmenting, not supported: %d\n", dt1->segmenting);
-		return -1;
-	}
 
 	/* lookup if we have a connection with the given reference */
 	llist_for_each_entry(conn, &sccp_connections, list) {
 		if (conn->data_cb
 		    && memcmp(&conn->source_local_reference,
-			      &dt1->destination_local_reference,
+			      result.destination_local_reference,
 			      sizeof(conn->source_local_reference)) == 0) {
-
-			/* some more  size checks in here */
-			if (msgb_l2len(data) < variable_offset + dt1->variable_start + 1) {
-				DEBUGP(DSCCP, "Not enough space for variable start: %u %u\n",
-					msgb_l2len(data), dt1->variable_start);
-				return -1;
-			}
-
-			size = data->l2h[variable_offset + dt1->variable_start];
-			data->l3h = &data->l2h[dt1->variable_start + variable_offset + 1];
-
-			if (msgb_l3len(data) < size) {
-				DEBUGP(DSCCP, "Not enough room for the payload: %u %u\n",
-					msgb_l3len(data), size);
-				return -1;
-			}
-
-			conn->data_cb(conn, data, size);
-			return 0;
+			goto found;
 		}
 	}
 
 	DEBUGP(DSCCP, "No connection found for dt1 data\n");
 	return -1;
+
+found:
+	conn->data_cb(conn, msgb, result.data_len);
+	return 0;
 }
 
 /* confirm a connection release */
