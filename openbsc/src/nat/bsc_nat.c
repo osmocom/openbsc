@@ -116,7 +116,7 @@ static void forward_sccp_to_bts(struct msgb *msg)
 
 		/* try the next one */
 		if (rc < msg->len)
-			fprintf(stderr, "Failed to write message to BTS.\n");
+			LOGP(DNAT, LOGL_ERROR, "Failed to write message to BTS: %d\n", rc);
 	}
 }
 
@@ -128,15 +128,15 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	if (!msg) {
 		if (error == 0) {
-			fprintf(stderr, "The connection to the MSC was lost, exiting\n");
+			LOGP(DNAT, LOGL_FATAL, "The connection the MSC was lost, exiting\n");
 			exit(-2);
 		}
 
-		fprintf(stderr, "Failed to parse ip access message: %d\n", error);
+		LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 		return -1;
 	}
 
-	DEBUGP(DMSC, "MSG from MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -188,16 +188,16 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	if (!msg) {
 		if (error == 0) {
-			fprintf(stderr, "The connection to the BSC was lost. Cleaning it\n");
+			LOGP(DNAT, LOGL_ERROR,	"The connection to the BSC was lost. Cleaning it\n");
 			remove_bsc_connection((struct bsc_connection *) bfd->data);
+		} else {
+			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 		}
-
-		fprintf(stderr, "Failed to parse ip access message: %d\n", error);
 		return -1;
 	}
 
 
-	DEBUGP(DMSC, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
 	/* FIXME: Currently no PONG is sent to the BSC */
@@ -231,7 +231,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	bsc = talloc_zero(tall_bsc_ctx, struct bsc_connection);
 	if (!bsc) {
-		DEBUGP(DMSC, "Failed to allocate BSC struct.\n");
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate BSC struct.\n");
 		close(ret);
 		return -1;
 	}
@@ -241,13 +241,13 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->bsc_fd.cb = ipaccess_bsc_cb;
 	bsc->bsc_fd.when = BSC_FD_READ;
 	if (bsc_register_fd(&bsc->bsc_fd) < 0) {
-		DEBUGP(DMSC, "Failed to register BSC fd.\n");
+		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
 		close(ret);
 		talloc_free(bsc);
 		return -2;
 	}
 
-	DEBUGP(DMSC, "Registered new BSC\n");
+	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &bsc_connections);
 	ipaccess_send_id_ack(ret);
 	return 0;
@@ -358,8 +358,6 @@ static void handle_options(int argc, char** argv)
 
 static void signal_handler(int signal)
 {
-	fprintf(stdout, "signal %u received\n", signal);
-
 	switch (signal) {
 	case SIGABRT:
 		/* in case of abort, we want to obtain a talloc report
