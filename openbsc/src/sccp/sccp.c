@@ -249,9 +249,38 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 	return 0;
 }
 
-int _sccp_parse_connection_released(struct msgb *msg, struct sccp_parse_result *result)
+int _sccp_parse_connection_released(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	return -1;
+	static int header_size = sizeof(struct sccp_connection_released);
+	static int optional_offset = offsetof(struct sccp_connection_released, optional_start);
+
+	struct sccp_optional_data optional_data;
+	struct sccp_connection_released *rls = (struct sccp_connection_released *) msgb->l2h;
+
+	/* we don't have enough size for the struct */
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	memset(&optional_data, 0, sizeof(optional_data));
+	if (_sccp_parse_optional_data(optional_offset + rls->optional_start, msgb, &optional_data) != 0) {
+		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		return -1;
+	}
+
+	result->source_local_reference = &rls->source_local_reference;
+	result->destination_local_reference = &rls->destination_local_reference;
+
+	if (optional_data.data_len != 0) {
+		msgb->l3h = &msgb->l2h[optional_data.data_start];
+		result->data_len = optional_data.data_len;
+	} else {
+		result->data_len = 0;
+	}
+
+	return 0;
 }
 
 int _sccp_parse_connection_refused(struct msgb *msg, struct sccp_parse_result *result)
@@ -880,30 +909,22 @@ static int _sccp_send_connection_release_complete(struct sccp_connection *connec
 }
 
 /* connection released, send a released confirm */
-static int _sccp_handle_connection_released(struct msgb *data)
+static int _sccp_handle_connection_released(struct msgb *msgb)
 {
-	static int header_size = sizeof(struct sccp_connection_released);
-	static int optional_offset = offsetof(struct sccp_connection_released, optional_start);
-
-	struct sccp_optional_data optional_data;
-	struct sccp_connection_released *rls = (struct sccp_connection_released *)data->l2h;
+	struct sccp_parse_result result;
 	struct sccp_connection *conn;
 
-	/* we don't have enough size for the struct */
-	if (msgb_l2len(data) < header_size) {
-		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
-		        msgb_l2len(data), header_size);
+	if (_sccp_parse_connection_released(msgb, &result) == -1)
 		return -1;
-	}
 
 	/* lookup if we have a connection with the given reference */
 	llist_for_each_entry(conn, &sccp_connections, list) {
 		if (conn->data_cb
 		    && memcmp(&conn->source_local_reference,
-			      &rls->destination_local_reference,
+			      result.destination_local_reference,
 			      sizeof(conn->source_local_reference)) == 0
 		    && memcmp(&conn->destination_local_reference,
-			      &rls->source_local_reference,
+			      result.source_local_reference,
 			      sizeof(conn->destination_local_reference)) == 0) {
 		    goto found;
 		}
@@ -915,16 +936,9 @@ static int _sccp_handle_connection_released(struct msgb *data)
 
 	/* we have found a connection */
 found:
-	memset(&optional_data, 0, sizeof(optional_data));
-	if (_sccp_parse_optional_data(optional_offset + rls->optional_start, data, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
-		return -1;
-	}
-
 	/* optional data */
-	if (optional_data.data_len != 0 && conn->data_cb) {
-		data->l3h = &data->l2h[optional_data.data_start];
-		conn->data_cb(conn, data, optional_data.data_len);
+	if (result.data_len != 0 && conn->data_cb) {
+		conn->data_cb(conn, msgb, result.data_len);
 	}
 
 	/* generate a response */
