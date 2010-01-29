@@ -1275,6 +1275,41 @@ int sccp_determine_msg_type(struct msgb *msg)
 	return msg->l2h[0];
 }
 
+int sccp_parse_header(struct msgb *msg, struct sccp_parse_result *result)
+{
+	int type;
+
+	if (msgb_l2len(msg) < 1)
+		return -1;
+
+	type = msg->l2h[0];
+	switch(type) {
+	case SCCP_MSG_TYPE_CR:
+		return _sccp_parse_connection_request(msg, result);
+		break;
+	case SCCP_MSG_TYPE_RLSD:
+		return _sccp_parse_connection_released(msg, result);
+		break;
+	case SCCP_MSG_TYPE_CREF:
+		return _sccp_parse_connection_refused(msg, result);
+		break;
+	case SCCP_MSG_TYPE_CC:
+		return _sccp_parse_connection_confirm(msg, result);
+		break;
+	case SCCP_MSG_TYPE_RLC:
+		return _sccp_parse_connection_release_complete(msg, result);
+		break;
+	case SCCP_MSG_TYPE_DT1:
+		return _sccp_parse_connection_dt1(msg, result);
+		break;
+	case SCCP_MSG_TYPE_UDT:
+		return _sccp_parse_udt(msg, result);
+		break;
+	};
+
+	return -1;
+}
+
 static __attribute__((constructor)) void on_dso_load(void)
 {
 	tall_sccp_ctx = talloc_named_const(NULL, 1, "sccp");
