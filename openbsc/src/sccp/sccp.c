@@ -357,9 +357,24 @@ int _sccp_parse_connection_confirm(struct msgb *msgb, struct sccp_parse_result *
 	return 0;
 }
 
-int _sccp_parse_connection_release_complete(struct msgb *msg, struct sccp_parse_result *result)
+int _sccp_parse_connection_release_complete(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	return -1;
+	static int header_size = sizeof(struct sccp_connection_release_complete);
+
+	struct sccp_connection_release_complete *cmpl;
+
+	/* header check */
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	cmpl = (struct sccp_connection_release_complete *) msgb->l2h;
+	result->source_local_reference = &cmpl->source_local_reference;
+	result->destination_local_reference = &cmpl->destination_local_reference;
+
+	return 0;
 }
 
 int _sccp_parse_connection_dt1(struct msgb *msg, struct sccp_parse_result *result)
@@ -848,30 +863,22 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 }
 
 /* Handle the release confirmed */
-static int _sccp_handle_connection_release_complete(struct msgb *data)
+static int _sccp_handle_connection_release_complete(struct msgb *msgb)
 {
-	static int header_size = sizeof(struct sccp_connection_release_complete);
-
-	struct sccp_connection_release_complete *cmpl;
+	struct sccp_parse_result result;
 	struct sccp_connection *conn;
 
-	/* header check */
-	if (msgb_l2len(data) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
-		        msgb_l2len(data), header_size);
+	if (_sccp_parse_connection_release_complete(msgb, &result) != 0)
 		return -1;
-	}
-
-	cmpl = (struct sccp_connection_release_complete *) data->l2h;
 
 	/* find the connection */
 	llist_for_each_entry(conn, &sccp_connections, list) {
 		if (conn->data_cb
 		    && memcmp(&conn->source_local_reference,
-			      &cmpl->destination_local_reference,
+			      result.destination_local_reference,
 			      sizeof(conn->source_local_reference)) == 0
 		    && memcmp(&conn->destination_local_reference,
-			      &cmpl->source_local_reference,
+			      result.source_local_reference,
 			      sizeof(conn->destination_local_reference)) == 0) {
 		    goto found;
 		}
