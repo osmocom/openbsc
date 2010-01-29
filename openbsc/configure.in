@@ -51,4 +51,5 @@ AC_OUTPUT(
     tests/db/Makefile
     tests/channel/Makefile
     tests/sccp/Makefile
+    tests/bsc-nat/Makefile
     Makefile)
