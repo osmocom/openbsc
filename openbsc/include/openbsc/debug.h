@@ -27,6 +27,8 @@
 
 #define DHO		0x80000
 
+#define DNAT		0x100000
+
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
 #define DEBUGPC(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 1, fmt, ## args)
