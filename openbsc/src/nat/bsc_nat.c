@@ -112,7 +112,7 @@ static void forward_sccp_to_bts(struct msgb *msg)
 		return;
 	}
 
-	if (bsc_nat_filter_ipa(msg, parsed))
+	if (bsc_nat_filter_ipa(DIR_BSC, msg, parsed))
 		goto exit;
 
 	/* currently send this to every BSC connected */
@@ -189,7 +189,7 @@ static int forward_sccp_to_msc(struct msgb *msg)
 		return -1;
 	}
 
-	if (bsc_nat_filter_ipa(msg, parsed))
+	if (bsc_nat_filter_ipa(DIR_MSC, msg, parsed))
 		goto exit;
 
 	/* send the non-filtered but maybe modified msg */

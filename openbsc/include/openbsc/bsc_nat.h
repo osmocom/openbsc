@@ -26,10 +26,8 @@
 #include <sccp/sccp_types.h>
 #include "msgb.h"
 
-#define FILTER_NONE	0
-#define FILTER_TO_BSC	1
-#define FILTER_TO_MSC	2
-#define FILTER_TO_BOTH	3
+#define DIR_BSC 1
+#define DIR_MSC 2
 
 /*
  * For the NAT we will need to analyze and later patch
@@ -72,6 +70,6 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
 /**
  * filter based on IP Access header in both directions
  */
-int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed);
+int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
 
 #endif
