@@ -90,6 +90,7 @@ static const u_int8_t bssmap_release_complete[] = {
 struct filter_result {
 	const u_int8_t *data;
 	const u_int16_t length;
+	const int dir;
 	const int result;
 };
 
@@ -97,42 +98,50 @@ static const struct filter_result results[] = {
 	{
 		.data = ipa_id,
 		.length = ARRAY_SIZE(ipa_id),
-		.result = FILTER_TO_MSC,
+		.dir = DIR_MSC,
+		.result = 1,
 	},
 	{
 		.data = gsm_reset,
 		.length = ARRAY_SIZE(gsm_reset),
-		.result = FILTER_TO_MSC,
+		.dir = DIR_MSC,
+		.result = 1,
 	},
 	{
 		.data = gsm_reset_ack,
 		.length = ARRAY_SIZE(gsm_reset_ack),
-		.result = FILTER_TO_BSC,
+		.dir = DIR_BSC,
+		.result = 1,
 	},
 	{
 		.data = gsm_paging,
 		.length = ARRAY_SIZE(gsm_paging),
-		.result = FILTER_NONE,
+		.dir = DIR_BSC,
+		.result = 0,
 	},
 	{
 		.data = bssmap_cr,
 		.length = ARRAY_SIZE(bssmap_cr),
-		.result = FILTER_NONE,
+		.dir = DIR_MSC,
+		.result = 0,
 	},
 	{
 		.data = bssmap_cc,
 		.length = ARRAY_SIZE(bssmap_cc),
-		.result = FILTER_NONE,
+		.dir = DIR_BSC,
+		.result = 0,
 	},
 	{
 		.data = bssmap_released,
 		.length = ARRAY_SIZE(bssmap_released),
-		.result = FILTER_NONE,
+		.dir = DIR_MSC,
+		.result = 0,
 	},
 	{
 		.data = bssmap_release_complete,
 		.length = ARRAY_SIZE(bssmap_release_complete),
-		.result = FILTER_NONE,
+		.dir = DIR_BSC,
+		.result = 0,
 	},
 };
 
@@ -157,7 +166,7 @@ int main(int argc, char **argv)
 			continue;
 		}
 
-		result = bsc_nat_filter_ipa(msg, parsed);
+		result = bsc_nat_filter_ipa(results[i].dir, msg, parsed);
 		if (result != results[i].result) {
 			fprintf(stderr, "FAIL: Not the expected result got: %d wanted: %d\n",
 				result, results[i].result);

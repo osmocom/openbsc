@@ -39,6 +39,11 @@
 
 #define ALLOW_ANY -1
 
+#define FILTER_TO_BSC	1
+#define FILTER_TO_MSC	2
+#define FILTER_TO_BOTH	3
+
+
 struct bsc_pkt_filter {
 	int ipa_proto;
 	int dest_ssn;
@@ -60,7 +65,7 @@ static struct bsc_pkt_filter black_list[] = {
 
 static struct bsc_pkt_filter white_list[] = {
 	/* allow IPAC_PROTO_SCCP messages to both sides */
-	{ IPAC_PROTO_SCCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_NONE },
+	{ IPAC_PROTO_SCCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_BOTH },
 };
 
 struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
@@ -117,12 +122,17 @@ struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
 	return parsed;
 }
 
-int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed)
+int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	int i;
 
 	/* go through the blacklist now */
 	for (i = 0; i < ARRAY_SIZE(black_list); ++i) {
+		/* ignore the rule? */
+		if (black_list[i].filter_dir != FILTER_TO_BOTH
+		    && black_list[i].filter_dir != dir)
+			continue;
+
 		/* the proto is not blacklisted */
 		if (black_list[i].ipa_proto != ALLOW_ANY
 		    && black_list[i].ipa_proto != parsed->ipa_proto)
@@ -146,16 +156,21 @@ int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed)
 
 			/* blacklisted */
 			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
-			return black_list[i].filter_dir;
+			return 1;
 		} else {
 			/* blacklisted, we have no content sniffing yet */
 			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
-			return black_list[i].filter_dir;
+			return 1;
 		}
 	}
 
 	/* go through the whitelust now */
 	for (i = 0; i < ARRAY_SIZE(white_list); ++i) {
+		/* ignore the rule? */
+		if (white_list[i].filter_dir != FILTER_TO_BOTH
+		    && white_list[i].filter_dir != dir)
+			continue;
+
 		/* the proto is not whitelisted */
 		if (white_list[i].ipa_proto != ALLOW_ANY
 		    && white_list[i].ipa_proto != parsed->ipa_proto)
@@ -179,12 +194,12 @@ int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed)
 
 			/* whitelisted */
 			LOGP(DNAT, LOGL_NOTICE, "Whitelisted with rule %d\n", i);
-			return FILTER_NONE;
+			return 0;
 		} else {
 			/* whitelisted */
-			return FILTER_NONE;
+			return 0;
 		}
 	}
 
-	return FILTER_TO_BOTH;
+	return 1;
 }
