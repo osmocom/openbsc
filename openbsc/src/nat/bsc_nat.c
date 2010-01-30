@@ -39,6 +39,7 @@
 #include <openbsc/msgb.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/talloc.h>
@@ -84,6 +85,18 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 {
 	return -1;
+}
+
+static int send_reset_ack(struct bsc_fd *bfd)
+{
+	static const u_int8_t gsm_reset_ack[] = {
+		0x00, 0x13, 0xfd,
+		0x09, 0x00, 0x03, 0x07, 0x0b, 0x04, 0x43, 0x01,
+		0x00, 0xfe, 0x04, 0x43, 0x5c, 0x00, 0xfe, 0x03,
+		0x00, 0x01, 0x31,
+	};
+
+	return write(bfd->fd, gsm_reset_ack, sizeof(gsm_reset_ack));
 }
 
 /*
@@ -177,7 +190,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 	talloc_free(connection);
 }
 
-static int forward_sccp_to_msc(struct msgb *msg)
+static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 {
 	struct bsc_nat_parsed *parsed;
 	int rc = -1;
@@ -194,8 +207,16 @@ static int forward_sccp_to_msc(struct msgb *msg)
 
 	/* send the non-filtered but maybe modified msg */
 	rc = write(msc_connection.fd, msg->data, msg->len);
+	talloc_free(parsed);
+	return rc;
 
 exit:
+	/* if we filter out the reset send an ack to the BSC */
+	if (parsed->bssap == 0 && parsed->gsm_type == BSS_MAP_MSG_RESET) {
+		send_reset_ack(bfd);
+		send_reset_ack(bfd);
+	}
+
 	talloc_free(parsed);
 	return rc;
 }
@@ -221,7 +242,7 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/* Handle messages from the BSC */
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
-	forward_sccp_to_msc(msg);
+	forward_sccp_to_msc(bfd, msg);
 
 	return 0;
 }
