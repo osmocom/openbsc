@@ -67,7 +67,22 @@ struct bsc_connection {
 	struct bsc_fd bsc_fd;
 };
 
+/*
+ * Per SCCP source local reference patch table. It needs to
+ * be updated on new SCCP connections, connection confirm and reject,
+ * and on the loss of the BSC connection.
+ */
+struct sccp_connections {
+	struct llist_head list_entry;
+
+	struct bsc_connection *bsc;
+
+	struct sccp_source_reference real_ref;
+	struct sccp_source_reference patched_ref;
+};
+
 static LLIST_HEAD(bsc_connections);
+static LLIST_HEAD(sccp_connections);
 
 
 /*
@@ -100,6 +115,124 @@ static int send_reset_ack(struct bsc_fd *bfd)
 }
 
 /*
+ * SCCP patching below
+ */
+
+/* check if we are using this ref for patched already */
+static int sccp_ref_is_free(struct sccp_source_reference *ref)
+{
+	struct sccp_connections *conn;
+
+	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+		if (memcmp(ref, &conn->patched_ref, sizeof(*ref)) == 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+/* copied from sccp.c */
+static int assign_src_local_reference(struct sccp_source_reference *ref)
+{
+	static u_int32_t last_ref = 0x50000;
+	int wrapped = 0;
+
+	do {
+		struct sccp_source_reference reference;
+		reference.octet1 = (last_ref >>  0) & 0xff;
+		reference.octet2 = (last_ref >>  8) & 0xff;
+		reference.octet3 = (last_ref >> 16) & 0xff;
+
+		++last_ref;
+		/* do not use the reversed word and wrap around */
+		if ((last_ref & 0x00FFFFFF) == 0x00FFFFFF) {
+			LOGP(DNAT, LOGL_NOTICE, "Wrapped searching for a free code\n");
+			last_ref = 0;
+			++wrapped;
+		}
+
+		if (sccp_ref_is_free(&reference) == 0) {
+			*ref = reference;
+			return 0;
+		}
+	} while (wrapped != 2);
+
+	LOGP(DNAT, LOGL_ERROR, "Finding a free reference failed\n");
+	return -1;
+}
+int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	struct sccp_connections *conn;
+
+	conn = talloc_zero(tall_bsc_ctx, struct sccp_connections);
+	if (!conn) {
+		LOGP(DNAT, LOGL_ERROR, "Memory allocation failure.\n");
+		return -1;
+	}
+
+	conn->real_ref = *parsed->src_local_ref;
+	if (assign_src_local_reference(&conn->patched_ref) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");
+		talloc_free(conn);
+		return -1;
+	}
+
+	return 0;
+}
+
+void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	struct sccp_connections *conn;
+
+	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+		if (memcmp(parsed->src_local_ref,
+			   &conn->real_ref, sizeof(conn->real_ref)) == 0) {
+			if (bsc != conn->bsc) {
+				LOGP(DNAT, LOGL_ERROR, "Someone else...\n");
+				continue;
+			}
+
+
+			llist_del(&conn->list_entry);
+			talloc_free(conn);
+			return;
+		}
+	}
+
+	LOGP(DNAT, LOGL_ERROR, "Unknown connection.\n");
+}
+
+struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	struct sccp_connections *conn;
+	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+		if (memcmp(parsed->dest_local_ref,
+			   &conn->real_ref, sizeof(*parsed->dest_local_ref)) == 0) {
+			memcpy(parsed->dest_local_ref,
+			       &conn->patched_ref, sizeof(*parsed->dest_local_ref));
+			return conn->bsc;
+		}
+	}
+
+	return NULL;
+}
+
+struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	struct sccp_connections *conn;
+	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+		if (memcmp(parsed->src_local_ref,
+			   &conn->real_ref, sizeof(*parsed->src_local_ref)) == 0) {
+			memcpy(parsed->src_local_ref,
+			       &conn->patched_ref, sizeof(*parsed->src_local_ref));
+			return conn->bsc;
+		}
+	}
+
+	return NULL;
+}
+
+/*
  * Below is the handling of messages coming
  * from the MSC and need to be forwarded to
  * a real BSC.
@@ -112,7 +245,7 @@ static void initialize_msc_if_needed()
 	/* do we need to send a GSM 08.08 message here? */
 }
 
-static void forward_sccp_to_bts(struct msgb *msg)
+static int forward_sccp_to_bts(struct msgb *msg)
 {
 	struct bsc_connection *bsc;
 	struct bsc_nat_parsed *parsed;
@@ -122,12 +255,39 @@ static void forward_sccp_to_bts(struct msgb *msg)
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
 		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
-		return;
+		return -1;
 	}
 
 	if (bsc_nat_filter_ipa(DIR_BSC, msg, parsed))
 		goto exit;
 
+	/* Route and modify the SCCP packet */
+	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+		switch (parsed->sccp_type) {
+		case SCCP_MSG_TYPE_UDT:
+			/* forward UDT messages to every BSC */
+			goto send_to_all;
+			break;
+		case SCCP_MSG_TYPE_RLSD:
+		case SCCP_MSG_TYPE_CREF:
+		case SCCP_MSG_TYPE_DT1:
+		case SCCP_MSG_TYPE_CC:
+			bsc = patch_sccp_src_ref_to_bsc(msg, parsed);
+			break;
+		case SCCP_MSG_TYPE_CR:
+		case SCCP_MSG_TYPE_RLC:
+			/* MSC never opens a SCCP connection, fall through */
+		default:
+			goto exit;
+		}
+	}
+
+	talloc_free(parsed);
+	if (!bsc)
+		return -1;
+	return write(bsc->bsc_fd.fd, msg->data, msg->len);
+
+send_to_all:
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
 		rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
@@ -139,6 +299,7 @@ static void forward_sccp_to_bts(struct msgb *msg)
 
 exit:
 	talloc_free(parsed);
+	return 0;
 }
 
 static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
@@ -185,15 +346,30 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
  */
 static void remove_bsc_connection(struct bsc_connection *connection)
 {
+	struct sccp_connections *sccp_patch, *tmp;
 	bsc_unregister_fd(&connection->bsc_fd);
 	llist_del(&connection->list_entry);
+
+	/* remove all SCCP connections */
+	llist_for_each_entry_safe(sccp_patch, tmp, &sccp_connections, list_entry) {
+		if (sccp_patch->bsc != connection)
+			continue;
+
+		llist_del(&sccp_patch->list_entry);
+		talloc_free(sccp_patch);
+	}
+
 	talloc_free(connection);
 }
 
 static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 {
+	struct bsc_connection *bsc;
+	struct bsc_connection *found_bsc;
 	struct bsc_nat_parsed *parsed;
 	int rc = -1;
+
+	bsc = bfd->data;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
@@ -204,6 +380,38 @@ static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 
 	if (bsc_nat_filter_ipa(DIR_MSC, msg, parsed))
 		goto exit;
+
+	/* modify the SCCP entries */
+	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+		switch (parsed->sccp_type) {
+		case SCCP_MSG_TYPE_CR:
+			if (create_sccp_src_ref(bsc, msg, parsed) != 0)
+				goto exit2;
+			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed);
+			break;
+		case SCCP_MSG_TYPE_RLSD:
+		case SCCP_MSG_TYPE_CREF:
+		case SCCP_MSG_TYPE_DT1:
+		case SCCP_MSG_TYPE_CC:
+			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed);
+			break;
+		case SCCP_MSG_TYPE_RLC:
+			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed);
+			remove_sccp_src_ref(bsc, msg, parsed);
+			break;
+		case SCCP_MSG_TYPE_UDT:
+			/* simply forward everything */
+			break;
+		default:
+			goto exit2;
+			break;
+		}
+	}
+
+	if (found_bsc != bsc) {
+		LOGP(DNAT, LOGL_ERROR, "Found the wrong entry.\n");
+		goto exit2;
+	}
 
 	/* send the non-filtered but maybe modified msg */
 	rc = write(msc_connection.fd, msg->data, msg->len);
@@ -217,6 +425,7 @@ exit:
 		send_reset_ack(bfd);
 	}
 
+exit2:
 	talloc_free(parsed);
 	return rc;
 }
