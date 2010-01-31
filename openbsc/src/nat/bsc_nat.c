@@ -160,7 +160,8 @@ static int assign_src_local_reference(struct sccp_source_reference *ref)
 	LOGP(DNAT, LOGL_ERROR, "Finding a free reference failed\n");
 	return -1;
 }
-int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+
+static int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 
@@ -180,7 +181,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 	return 0;
 }
 
-void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+static void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 
@@ -202,7 +203,7 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 	LOGP(DNAT, LOGL_ERROR, "Unknown connection.\n");
 }
 
-struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct bsc_nat_parsed *parsed)
+static struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 	llist_for_each_entry(conn, &sccp_connections, list_entry) {
@@ -217,7 +218,7 @@ struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct bsc_na
 	return NULL;
 }
 
-struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg, struct bsc_nat_parsed *parsed)
+static struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 	llist_for_each_entry(conn, &sccp_connections, list_entry) {
