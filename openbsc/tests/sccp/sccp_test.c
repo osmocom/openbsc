@@ -2,7 +2,7 @@
  * SCCP testing code
  *
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by on-waves.com
+ * (C) 2009 by On-Waves
  *
  * All Rights Reserved
  *
