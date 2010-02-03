@@ -21,7 +21,8 @@
  *
  */
 
-unsigned int rtp_base_port = 4000;
+#define RTP_PORT_DEFAULT 4000
+extern unsigned int rtp_base_port;
 
 /**
  * Calculate the RTP audio port for the given multiplex
@@ -42,7 +43,12 @@ unsigned int rtp_base_port = 4000;
  * network and BTS.
  *
  */
-int rtp_calculate_port(int multiplex, int base)
+static inline int rtp_calculate_port(int multiplex, int base)
 {
 	return base + (multiplex * 2);
 }
+
+int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network);
+int mgcp_handle_message(int fd, struct msgb *msg, struct sockaddr_in *source);
+int mgcp_send_rsip(int fd, struct sockaddr_in *source);
+int mgcp_vty_init(void);

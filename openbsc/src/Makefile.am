@@ -38,7 +38,7 @@ ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYP
 
 isdnsync_SOURCES = isdnsync.c
 
-bsc_mgcp_SOURCES = mgcp/mgcp_main.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
+bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c msgb.c talloc.c debug.c select.c timer.c telnet_interface.c
 bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c msgb.c select.c talloc.c debug.c timer.c
