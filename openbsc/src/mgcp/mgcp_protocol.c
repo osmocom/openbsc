@@ -221,14 +221,14 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	rc = recvfrom(fd->fd, &buf, sizeof(buf), 0,
 			    (struct sockaddr *) &addr, &slen);
 	if (rc < 0) {
-		DEBUGP(DMGCP, "Failed to receive message on: 0x%x\n",
+		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x\n",
 			ENDPOINT_NUMBER(endp));
 		return -1;
 	}
 
 	/* do not forward aynthing... maybe there is a packet from the bts */
 	if (endp->ci == CI_UNUSED) {
-		DEBUGP(DMGCP, "Unknown message on endpoint: 0x%x\n", ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Unknown message on endpoint: 0x%x\n", ENDPOINT_NUMBER(endp));
 		return -1;
 	}
 
@@ -256,7 +256,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 			}
 
 			endp->bts = addr.sin_addr;
-			DEBUGP(DMGCP, "Found BTS for endpoint: 0x%x on port: %d/%d\n",
+			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d\n",
 				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp));
 		}
 	}
@@ -282,8 +282,10 @@ static int create_bind(struct bsc_fd *fd, int port)
 	int on = 1;
 
 	fd->fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (fd->fd < 0)
+	if (fd->fd < 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to create UDP port.\n");
 		return -1;
+	}
 
 	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	memset(&addr, 0, sizeof(addr));
@@ -291,8 +293,9 @@ static int create_bind(struct bsc_fd *fd, int port)
 	addr.sin_port = htons(port);
 	inet_aton(source_addr, &addr.sin_addr);
 
-	if (bind(fd->fd, (struct sockaddr *) &addr, sizeof(addr)) < 0)
+	if (bind(fd->fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		return -1;
+	}
 
 	return 0;
 }
@@ -300,14 +303,14 @@ static int create_bind(struct bsc_fd *fd, int port)
 static int bind_rtp(struct mgcp_endpoint *endp)
 {
 	if (create_bind(&endp->local_rtp, endp->rtp_port) != 0) {
-		DEBUGP(DMGCP, "Failed to create RTP port: %d on 0x%x\n",
-		       endp->rtp_port, ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
+		       source_addr, endp->rtp_port, ENDPOINT_NUMBER(endp));
 		goto cleanup0;
 	}
 
 	if (create_bind(&endp->local_rtcp, endp->rtp_port + 1) != 0) {
-		DEBUGP(DMGCP, "Failed to create RTCP port: %d on 0x%x\n",
-		       endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
+		       source_addr, endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup1;
 	}
 
@@ -315,7 +318,7 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 	endp->local_rtp.data = endp;
 	endp->local_rtp.when = BSC_FD_READ;
 	if (bsc_register_fd(&endp->local_rtp) != 0) {
-		DEBUGP(DMGCP, "Failed to register RTP port %d on 0x%x\n",
+		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTP port %d on 0x%x\n",
 			endp->rtp_port, ENDPOINT_NUMBER(endp));
 		goto cleanup2;
 	}
@@ -324,7 +327,7 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 	endp->local_rtcp.data = endp;
 	endp->local_rtcp.when = BSC_FD_READ;
 	if (bsc_register_fd(&endp->local_rtcp) != 0) {
-		DEBUGP(DMGCP, "Failed to register RTCP port %d on 0x%x\n",
+		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTCP port %d on 0x%x\n",
 			endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup3;
 	}
@@ -366,7 +369,7 @@ static int send_response_with_data(int fd, int code, const char *msg, const char
 	} else {
 		len = snprintf(buf, sizeof(buf), "%d %s\n", code, trans);
 	}
-	DEBUGP(DMGCP, "Sending response: code: %d for '%s'\n", code, msg);
+	LOGP(DMGCP, LOGL_NOTICE, "Sending response: code: %d for '%s'\n", code, msg);
 
 	if (source)
 		return sendto(fd, buf, len, 0, (struct sockaddr *)source, sizeof(*source));
@@ -414,7 +417,7 @@ int mgcp_send_rsip(int fd, struct sockaddr_in *source)
 		rc = write(fd, reset, len);
 
 	if (rc < 0) {
-		DEBUGP(DMGCP, "Failed to send RSIP: %d\n", rc);
+		LOGP(DMGCP, LOGL_ERROR, "Failed to send RSIP: %d\n", rc);
 	}
 
 	return rc;
@@ -430,13 +433,13 @@ int mgcp_handle_message(int fd, struct msgb *msg, struct sockaddr_in *source)
         int code;
 
 	if (msg->len < 4) {
-		DEBUGP(DMGCP, "mgs too short: %d\n", msg->len);
+		LOGP(DMGCP, LOGL_ERROR, "mgs too short: %d\n", msg->len);
 		return -1;
 	}
 
         /* attempt to treat it as a response */
         if (sscanf((const char *)&msg->data[0], "%3d %*s", &code) == 1) {
-		DEBUGP(DMGCP, "Response: Code: %d\n", code);
+		LOGP(DMGCP, LOGL_NOTICE, "Response: Code: %d\n", code);
 	} else {
 		int i, handled = 0;
 		msg->l3h = &msg->l2h[4];
@@ -446,7 +449,7 @@ int mgcp_handle_message(int fd, struct msgb *msg, struct sockaddr_in *source)
 				mgcp_requests[i].handle_request(fd, msg, source);
 			}
 		if (!handled) {
-			DEBUGP(DMGCP, "MSG with type: '%.4s' not handled\n", &msg->data[0]);
+			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->data[0]);
 		}
 	}
 
@@ -496,7 +499,7 @@ static struct mgcp_endpoint *find_endpoint(const char *mgcp)
 
 	gw = strtoul(mgcp, &endptr, 16);
 	if (gw == 0 || gw >= number_endpoints || strcmp(endptr, "@mgw") != 0) {
-		DEBUGP(DMGCP, "Not able to find endpoint: '%s'\n", mgcp);
+		LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
 		return NULL;
 	}
 
@@ -509,14 +512,14 @@ static int analyze_header(struct msgb *msg, struct mgcp_msg_ptr *ptr, int size,
 	int found;
 
 	if (size < 3) {
-		DEBUGP(DMGCP, "Not enough space in ptr\n");
+		LOGP(DMGCP, LOGL_ERROR, "Not enough space in ptr\n");
 		return -1;
 	}
 
 	found = find_msg_pointers(msg, ptr, size);
 
 	if (found < 3) {
-		DEBUGP(DMGCP, "Gateway: Not enough params. Found: %d\n", found);
+		LOGP(DMGCP, LOGL_ERROR, "Gateway: Not enough params. Found: %d\n", found);
 		return -1;
 	}
 
@@ -531,7 +534,7 @@ static int analyze_header(struct msgb *msg, struct mgcp_msg_ptr *ptr, int size,
 
 	if (strncmp("1.0", (const char *)&msg->l3h[ptr[3].start], 3) != 0
 	    || strncmp("MGCP", (const char *)&msg->l3h[ptr[2].start], 4) != 0) {
-		DEBUGP(DMGCP, "Wrong MGCP version. Not handling: '%s' '%s'\n",
+		LOGP(DMGCP, LOGL_ERROR, "Wrong MGCP version. Not handling: '%s' '%s'\n",
 			(const char *)&msg->l3h[ptr[3].start],
 			(const char *)&msg->l3h[ptr[2].start]);
 		return -1;
@@ -546,7 +549,7 @@ static int verify_call_id(const struct mgcp_endpoint *endp,
 			  const char *callid)
 {
 	if (strcmp(endp->callid, callid) != 0) {
-		DEBUGP(DMGCP, "CallIDs does not match on 0x%x. '%s' != '%s'\n",
+		LOGP(DMGCP, LOGL_ERROR, "CallIDs does not match on 0x%x. '%s' != '%s'\n",
 			ENDPOINT_NUMBER(endp), endp->callid, callid);
 		return -1;
 	}
@@ -558,7 +561,7 @@ static int verify_ci(const struct mgcp_endpoint *endp,
 		     const char *ci)
 {
 	if (atoi(ci) != endp->ci) {
-		DEBUGP(DMGCP, "ConnectionIdentifiers do not match on 0x%x. %d != %s\n",
+		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %d != %s\n",
 			ENDPOINT_NUMBER(endp), endp->ci, ci);
 		return -1;
 	}
@@ -590,7 +593,7 @@ static int parse_conn_mode(const char* msg, int *conn_mode)
 	else if (strcmp(msg, "sendrecv") == 0)
 		*conn_mode = MGCP_CONN_RECV_SEND;
 	else {
-		DEBUGP(DMGCP, "Unknown connection mode: '%s'\n", msg);
+		LOGP(DMGCP, LOGL_ERROR, "Unknown connection mode: '%s'\n", msg);
 		ret = -1;
 	}
 
@@ -610,7 +613,7 @@ static int handle_create_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		return send_response(fd, 500, "CRCX", trans_id, source);
 
 	if (endp->ci != CI_UNUSED) {
-		DEBUGP(DMGCP, "Endpoint is already used. 0x%x\n", ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n", ENDPOINT_NUMBER(endp));
 		return send_response(fd, 500, "CRCX", trans_id, source);
 	}
 
@@ -633,7 +636,7 @@ static int handle_create_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		}
 		break;
 	default:
-		DEBUGP(DMGCP, "Unhandled option: '%c'/%d on 0x%x\n",
+		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
 			msg->l3h[line_start], msg->l3h[line_start],
 			ENDPOINT_NUMBER(endp));
 		break;
@@ -656,17 +659,17 @@ static int handle_create_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
-	DEBUGP(DMGCP, "Creating endpoint on: 0x%x CI: %u port: %u\n",
+	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u\n",
 		ENDPOINT_NUMBER(endp), endp->ci, endp->rtp_port);
 	return send_with_sdp(fd, endp, "CRCX", trans_id, source);
 error:
-	DEBUGP(DMGCP, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
+	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
 	return send_response(fd, error_code, "CRCX", trans_id, source);
 
 error2:
-	DEBUGP(DMGCP, "Resource error on 0x%x\n", ENDPOINT_NUMBER(endp));
+	LOGP(DMGCP, LOGL_NOTICE, "Resource error on 0x%x\n", ENDPOINT_NUMBER(endp));
 	return send_response(fd, error_code, "CRCX", trans_id, source);
 }
 
@@ -683,7 +686,7 @@ static int handle_modify_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		return send_response(fd, error_code, "MDCX", trans_id, source);
 
 	if (endp->ci == CI_UNUSED) {
-		DEBUGP(DMGCP, "Endpoint is not holding a connection. 0x%x\n", ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not holding a connection. 0x%x\n", ENDPOINT_NUMBER(endp));
 		return send_response(fd, error_code, "MDCX", trans_id, source);
 	}
 
@@ -739,7 +742,7 @@ static int handle_modify_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		break;
 	}
 	default:
-		DEBUGP(DMGCP, "Unhandled option: '%c'/%d on 0x%x\n",
+		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
 			msg->l3h[line_start], msg->l3h[line_start],
 			ENDPOINT_NUMBER(endp));
 		break;
@@ -747,12 +750,12 @@ static int handle_modify_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 	MSG_TOKENIZE_END
 
 	/* modify */
-	DEBUGP(DMGCP, "Modified endpoint on: 0x%x Server: %s:%u\n",
+	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
 	return send_with_sdp(fd, endp, "MDCX", trans_id, source);
 
 error:
-	DEBUGP(DMGCP, "Malformed line: %s on 0x%x with: line_start: %d %d %d\n",
+	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i, msg->l3h[line_start]);
 	return send_response(fd, error_code, "MDCX", trans_id, source);
@@ -774,7 +777,7 @@ static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		return send_response(fd, error_code, "DLCX", trans_id, source);
 
 	if (endp->ci == CI_UNUSED) {
-		DEBUGP(DMGCP, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
 		return send_response(fd, error_code, "DLCX", trans_id, source);
 	}
 
@@ -791,7 +794,7 @@ static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 		break;
 	}
 	default:
-		DEBUGP(DMGCP, "Unhandled option: '%c'/%d on 0x%x\n",
+		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
 			msg->l3h[line_start], msg->l3h[line_start],
 			ENDPOINT_NUMBER(endp));
 		break;
@@ -800,7 +803,7 @@ static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 
 
 	/* free the connection */
-	DEBUGP(DMGCP, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
+	LOGP(DMGCP, LOGL_NOTICE, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
 	endp->ci= CI_UNUSED;
 	talloc_free(endp->callid);
 	talloc_free(endp->local_options);
@@ -815,7 +818,7 @@ static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 	return send_response(fd, 250, "DLCX", trans_id, source);
 
 error:
-	DEBUGP(DMGCP, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
+	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
 	return send_response(fd, error_code, "DLCX", trans_id, source);
@@ -1081,7 +1084,7 @@ int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network
 			port = forward_port;
 
 		if (!early_bind) {
-			DEBUGP(DMGCP, "Forwarding requires early bind.\n");
+			LOGP(DMGCP, LOGL_NOTICE, "Forwarding requires early bind.\n");
 			return -1;
 		}
 
@@ -1097,7 +1100,7 @@ int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network
 			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port) + 1);
 		}
 
-		DEBUGP(DMGCP, "Configured for Audio Forwarding.\n");
+		LOGP(DMGCP, LOGL_NOTICE, "Configured for Audio Forwarding.\n");
 	}
 
 	/* early bind */
@@ -1105,8 +1108,10 @@ int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network
 		for (i = 1; i < number_endpoints; ++i) {
 			struct mgcp_endpoint *endp = &endpoints[i];
 			endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
-			if (bind_rtp(endp) != 0)
+			if (bind_rtp(endp) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", endp->rtp_port);
 				return -1;
+			}
 		}
 	}
 
