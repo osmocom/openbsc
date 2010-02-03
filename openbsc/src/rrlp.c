@@ -1,4 +1,4 @@
-
+/* Radio Resource LCS (Location) Protocol, GMS TS 04.31 */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
@@ -28,8 +28,41 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
 
-/* RRLP MS based position request */
+/* RRLP msPositionReq, nsBased,
+ *	Accuracy=60, Method=gps, ResponseTime=2, oneSet */
 static const u_int8_t ms_based_pos_req[] = { 0x40, 0x01, 0x78, 0xa8 };
+
+/* RRLP msPositionReq, msBasedPref,
+	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
+static const u_int8_t ms_pref_pos_req[]  = { 0x40, 0x02, 0x79, 0x50 };
+
+/* RRLP msPositionReq, msAssistedPref,
+	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
+static const u_int8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
+
+static int send_rrlp_req(struct gsm_lchan *lchan)
+{
+	struct gsm_network *net = lchan->ts->trx->bts->network;
+	const u_int8_t *req;
+
+	switch (net->rrlp.mode) {
+	case RRLP_MODE_MS_BASED:
+		req = ms_based_pos_req;
+		break;
+	case RRLP_MODE_MS_PREF:
+		req = ms_pref_pos_req;
+		break;
+	case RRLP_MODE_ASS_PREF:
+		req = ass_pref_pos_req;
+		break;
+	case RRLP_MODE_NONE:
+	default:
+		return 0;
+	}
+
+	return gsm48_send_rr_app_info(lchan, 0x00,
+				      sizeof(ms_based_pos_req), req);
+}
 
 static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 			 void *handler_data, void *signal_data)
@@ -44,8 +77,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		lchan = lchan_for_subscr(subscr);
 		if (!lchan)
 			break;
-		gsm48_send_rr_app_info(lchan, 0x00, sizeof(ms_based_pos_req),
-					ms_based_pos_req);
+		send_rrlp_req(lchan);
 		break;
 	}
 	return 0;
@@ -57,11 +89,11 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 	struct paging_signal_data *psig_data = signal_data;
 
 	switch (signal) {
-	case S_PAGING_COMPLETED:
+	case S_PAGING_SUCCEEDED:
 		/* A subscriber has attached. */
-		gsm48_send_rr_app_info(psig_data->lchan, 0x00, 
-					sizeof(ms_based_pos_req),
-					ms_based_pos_req);
+		send_rrlp_req(psig_data->lchan);
+		break;
+	case S_PAGING_EXPIRED:
 		break;
 	}
 	return 0;

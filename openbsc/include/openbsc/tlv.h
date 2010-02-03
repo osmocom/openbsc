@@ -119,6 +119,7 @@ static inline u_int8_t *tv_put(u_int8_t *buf, u_int8_t tag,
 	return buf;
 }
 
+/* 'val' is still in host byte order! */
 static inline u_int8_t *tv16_put(u_int8_t *buf, u_int8_t tag, 
 				 u_int16_t val)
 {
@@ -184,6 +185,7 @@ struct tlv_p_entry {
 };
 
 enum tlv_type {
+	TLV_TYPE_NONE,
 	TLV_TYPE_FIXED,
 	TLV_TYPE_T,
 	TLV_TYPE_TV,
@@ -212,6 +214,8 @@ int tlv_parse_one(u_int8_t *o_tag, u_int16_t *o_len, const u_int8_t **o_val,
                   const u_int8_t *buf, int buf_len);
 int tlv_parse(struct tlv_parsed *dec, const struct tlv_definition *def,
 	      const u_int8_t *buf, int buf_len, u_int8_t lv_tag, u_int8_t lv_tag2);
+/* take a master (src) tlvdev and fill up all empty slots in 'dst' */
+void tlv_def_patch(struct tlv_definition *dst, const struct tlv_definition *src);
 
 #define TLVP_PRESENT(x, y)	((x)->lv[y].val)
 #define TLVP_LEN(x, y)		(x)->lv[y].len

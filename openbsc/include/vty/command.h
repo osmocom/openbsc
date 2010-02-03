@@ -106,6 +106,7 @@ enum node_type {
 	TRX_NODE,
 	TS_NODE,
 	SUBSCR_NODE,
+	MGCP_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -354,5 +355,7 @@ char *host_config_file();
 void host_config_set(const char *);
 
 void print_version(const char *);
+
+extern void *tall_vty_cmd_ctx;
 
 #endif				/* _ZEBRA_COMMAND_H */

@@ -1,8 +1,8 @@
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2009-10-21 23:03:44.000000000 +0200
-+++ wireshark/epan/dissectors/Makefile.common	2009-10-21 23:03:57.000000000 +0200
-@@ -472,6 +472,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common
++++ wireshark/epan/dissectors/Makefile.common
+@@ -474,6 +474,7 @@
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -10,14 +10,16 @@ Index: wireshark/epan/dissectors/Makefile.common
  	packet-gsm_ipa.c	\
  	packet-gsm_bsslap.c		\
  	packet-gsm_bssmap_le.c	\
-Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
-===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2009-10-22 10:06:18.000000000 +0200
-@@ -0,0 +1,1365 @@
+diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
+new file mode 100644
+index 0000000..2de9dca
+--- /dev/null
++++ b/epan/dissectors/packet-gsm_abis_oml.c
+@@ -0,0 +1,1382 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
++ * Copyright 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
 + * based on A-bis OML code in OpenBSC
 + *
 + * $Id$
@@ -50,6 +52,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +#include <epan/packet.h>
 +#include <epan/emem.h>
 +#include <epan/lapd_sapi.h>
++#include <epan/prefs.h>
 +
 +#include "packet-gsm_abis_oml.h"
 +#include "packet-gsm_a_common.h"
@@ -127,6 +130,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +static int ett_oml = -1;
 +static int ett_oml_fom = -1;
 +static int ett_oml_fom_att = -1;
++
++/* Decode things as nanoBTS traces */
++static gboolean global_oml_use_nano_bts = FALSE;
 +
 +static proto_tree *top_tree;
 +
@@ -1053,6 +1059,9 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +}
 +
 +void
++proto_reg_handoff_abis_oml(void);
++
++void
 +proto_register_abis_oml(void)
 +{
 +	static hf_register_info hf[] = {
@@ -1362,6 +1371,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		&ett_oml_fom_att,
 +	};
 +
++	module_t *oml_module;
++
 +	proto_abis_oml = proto_register_protocol("GSM A-bis OML", "OML",
 +						 "gsm_abis_oml");
 +
@@ -1370,6 +1381,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	proto_register_subtree_array(ett, array_length(ett));
 +
 +	register_dissector("gsm_abis_oml", dissect_abis_oml, proto_abis_oml);
++
++
++	oml_module = prefs_register_protocol(proto_abis_oml, proto_reg_handoff_abis_oml);
++	prefs_register_bool_preference(oml_module, "use_ipaccess_oml",
++		    "Use nanoBTS definitions",
++		    "Use ipaccess nanoBTS specific definitions for OML",
++		    &global_oml_use_nano_bts);
 +}
 +
 +void
@@ -1377,13 +1395,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +{
 +	dissector_handle_t abis_oml_handle;
 +
-+	abis_oml_handle = find_dissector("abis_oml");
++	abis_oml_handle = create_dissector_handle(dissect_abis_oml, proto_abis_oml);
 +	dissector_add("lapd.gsm.sapi", LAPD_GSM_SAPI_OM_PROC, abis_oml_handle);
 +}
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
---- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2009-10-21 23:03:57.000000000 +0200
+--- /dev/null
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h
 @@ -0,0 +1,786 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
@@ -2167,6 +2185,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_FILE_DATA] =	{ TLV_TYPE_TL16V, 0 },
 +	},
 +};
 +

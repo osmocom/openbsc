@@ -52,6 +52,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
 #define NUM_E1_TS	32
@@ -233,10 +234,16 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	msg->l2h = msg->data;
 
-	if (!msg->trx || !msg->trx->rsl_link) {
-		fprintf(stderr, "rsl_sendmsg: msg->trx == NULL\n");
+	if (!msg->trx) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
+			hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
+	} else if (!msg->trx->rsl_link) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
+			hexdump(msg->data, msg->len));
+		talloc_free(msg);
+		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
@@ -263,7 +270,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	msg->l2h = msg->data;
 
 	if (!msg->trx || !msg->trx->bts || !msg->trx->bts->oml_link) {
-		fprintf(stderr, "nm_sendmsg: msg->trx == NULL\n");
+		LOGP(DRSL, LOGL_ERROR, "nm_sendmsg: msg->trx == NULL\n");
 		return -EINVAL;
 	}
 
@@ -305,7 +312,7 @@ int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 		subch_demux_init(&ts->trau.demux);
 		break;
 	default:
-		fprintf(stderr, "unsupported E1 timeslot type %u\n",
+		LOGP(DMI, LOGL_ERROR, "unsupported E1 timeslot type %u\n",
 			ts->type);
 		return -EINVAL;
 	}
@@ -430,10 +437,12 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		write_pcap_packet(PCAP_INPUT, sapi, tei, msg);
 		link = e1inp_lookup_sign_link(ts, tei, sapi);
 		if (!link) {
-			fprintf(stderr, "didn't find signalling link for "
+			LOGP(DMI, LOGL_ERROR, "didn't find signalling link for "
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
+
+		debug_set_context(BSC_CTX_BTS, link->trx->bts);
 		switch (link->type) {
 		case E1INP_SIGN_OML:
 			msg->trx = link->trx;
@@ -445,7 +454,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 			break;
 		default:
 			ret = -EINVAL;
-			fprintf(stderr, "unknown link type %u\n", link->type);
+			LOGP(DMI, LOGL_ERROR, "unknown link type %u\n", link->type);
 			break;
 		}
 		break;
@@ -454,7 +463,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		break;
 	default:
 		ret = -EINVAL;
-		fprintf(stderr, "unknown TS type %u\n", ts->type);
+		LOGP(DMI, LOGL_ERROR, "unknown TS type %u\n", ts->type);
 		break;
 	}
 
@@ -491,7 +500,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 		msgb_put(msg, 40);
 		break;
 	default:
-		fprintf(stderr, "unsupported E1 TS type %u\n", e1i_ts->type);
+		LOGP(DMI, LOGL_ERROR, "unsupported E1 TS type %u\n", e1i_ts->type);
 		return NULL;
 	}
 	return msg;
@@ -523,8 +532,24 @@ int e1inp_line_update(struct e1inp_line *line)
 	return mi_e1_line_update(line);
 }
 
+static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
+		      void *handler_data, void *signal_data)
+{
+	if (subsys != SS_GLOBAL ||
+	    signal != S_GLOBAL_SHUTDOWN)
+		return 0;
+
+	if (pcap_fd) {
+		close(pcap_fd);
+		pcap_fd = -1;
+	}
+
+	return 0;
+}
+
 static __attribute__((constructor)) void on_dso_load_e1_inp(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
+	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 }

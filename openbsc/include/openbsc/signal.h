@@ -40,11 +40,13 @@ enum signal_subsystems {
 	SS_LCHAN,
 	SS_SUBSCR,
 	SS_SCALL,
+	SS_GLOBAL,
 };
 
 /* SS_PAGING signals */
 enum signal_paging {
-	S_PAGING_COMPLETED,
+	S_PAGING_SUCCEEDED,
+	S_PAGING_EXPIRED,
 };
 
 /* SS_SMS signals */
@@ -58,6 +60,7 @@ enum signal_sms {
 /* SS_ABISIP signals */
 enum signal_abisip {
 	S_ABISIP_CRCX_ACK,
+	S_ABISIP_MDCX_ACK,
 	S_ABISIP_DLCX_IND,
 };
 
@@ -67,6 +70,9 @@ enum signal_nm {
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 	S_NM_NACK,		/* GSM 12.21 various NM_MT_*_NACK happened */
 	S_NM_IPACC_NACK,	/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_NACK happened */
+	S_NM_IPACC_ACK,		/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_ACK happened */
+	S_NM_IPACC_RESTART_ACK, /* nanoBTS has send a restart ack */
+	S_NM_IPACC_RESTART_NACK,/* nanoBTS has send a restart ack */
 	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
 };
 
@@ -78,12 +84,19 @@ enum signal_lchan {
 	 * signal handler.
 	 */
 	S_LCHAN_UNEXPECTED_RELEASE,
+	S_LCHAN_ACTIVATE_ACK,		/* 08.58 Channel Activate ACK */
+	S_LCHAN_ACTIVATE_NACK,		/* 08.58 Channel Activate NACK */
+	S_LCHAN_HANDOVER_COMPL,		/* 04.08 Handover Completed */
+	S_LCHAN_HANDOVER_FAIL,		/* 04.08 Handover Failed */
+	S_LCHAN_HANDOVER_DETECT,	/* 08.58 Handover Detect */
+	S_LCHAN_MEAS_REP,		/* 08.58 Measurement Report */
 };
 
 /* SS_SUBSCR signals */
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
 	S_SUBSCR_DETACHED,
+	S_SUBSCR_IDENTITY,		/* we've received some identity information */
 };
 
 /* SS_SCALL signals */
@@ -91,6 +104,10 @@ enum signal_scall {
 	S_SCALL_SUCCESS,
 	S_SCALL_EXPIRED,
 	S_SCALL_DETACHED,
+};
+
+enum signal_global {
+	S_GLOBAL_SHUTDOWN,
 };
 
 typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
@@ -108,6 +125,11 @@ struct scall_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_lchan *lchan;
 	void *data;
+};
+
+struct ipacc_ack_signal_data {
+	struct gsm_bts *bts;
+	u_int8_t msg_type;	
 };
 
 /* Management */

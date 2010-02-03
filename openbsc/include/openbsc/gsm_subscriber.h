@@ -86,6 +86,8 @@ void subscr_put_channel(struct gsm_lchan *lchan);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
 
+char *subscr_name(struct gsm_subscriber *subscr);
+
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
 extern struct llist_head active_subscribers;

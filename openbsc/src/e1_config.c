@@ -10,6 +10,7 @@
 #include <openbsc/misdn.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/talloc.h>
+#include <openbsc/debug.h>
 
 #define SAPI_L2ML	0
 #define SAPI_OML	62
@@ -25,7 +26,7 @@ int e1_reconfig_ts(struct gsm_bts_trx_ts *ts)
 	struct e1inp_line *line;
 	struct e1inp_ts *e1_ts;
 
-	printf("e1_reconfig_ts(%u,%u,%u)\n", ts->trx->bts->nr, ts->trx->nr, ts->nr);
+	DEBUGP(DMI, "e1_reconfig_ts(%u,%u,%u)\n", ts->trx->bts->nr, ts->trx->nr, ts->nr);
 
 	if (!e1_link->e1_ts)
 		return 0;
@@ -87,7 +88,7 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 	struct e1inp_sign_link *oml_link;
 	struct gsm_bts_trx *trx;
 
-	printf("e1_reconfig_bts(%u)\n", bts->nr);
+	DEBUGP(DMI, "e1_reconfig_bts(%u)\n", bts->nr);
 
 	if (!e1_link->e1_ts)
 		return -EINVAL;

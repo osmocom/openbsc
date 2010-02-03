@@ -211,6 +211,7 @@ enum abis_nm_msgtype_bs11 {
 enum abis_nm_msgtype_ipacc {
 	NM_MT_IPACC_RESTART		= 0x87,
 	NM_MT_IPACC_RESTART_ACK,
+	NM_MT_IPACC_RESTART_NACK,
 	NM_MT_IPACC_RSL_CONNECT		= 0xe0,
 	NM_MT_IPACC_RSL_CONNECT_ACK,
 	NM_MT_IPACC_RSL_CONNECT_NACK,
@@ -485,6 +486,12 @@ enum abis_nm_avail_state {
 	NM_AVSTATE_OK		= 0xff,
 };
 
+enum abis_nm_op_state {
+	NM_OPSTATE_DISABLED	= 1,
+	NM_OPSTATE_ENABLED	= 2,
+	NM_OPSTATE_NULL		= 0xff,
+};
+
 /* Section 9.4.13: Channel Combination */
 enum abis_nm_chan_comb {
 	NM_CHANC_TCHFull	= 0x00,	/* TCH/F + TCH/H + SACCH/TF */
@@ -712,6 +719,8 @@ struct ipac_bcch_info {
 	u_int8_t ca_list_si1[16];
 };
 
+extern const struct tlv_definition nm_att_tlvdef;
+
 /* PUBLIC */
 
 struct msgb;
@@ -726,7 +735,7 @@ struct abis_nm_cfg {
 
 extern int abis_nm_rcvmsg(struct msgb *msg);
 
-int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len);
+int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const u_int8_t *buf, int len);
 int abis_nm_rx(struct msgb *msg);
 int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2);
 int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
@@ -780,10 +789,13 @@ int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts);
 int abis_nm_bs11_get_serno(struct gsm_bts *bts);
 int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level);
 int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx);
+int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on);
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on);
+int abis_nm_bs11_infield_logon(struct gsm_bts *bts, int on);
 int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password);
 int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked);
 int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts);
+int abis_nm_bs11_set_pll(struct gsm_bts *bts, int value);
 int abis_nm_bs11_get_cclk(struct gsm_bts *bts);
 int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
@@ -798,7 +810,7 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 			 u_int8_t obj_class, u_int8_t bts_nr,
 			 u_int8_t trx_nr, u_int8_t ts_nr,
 			 u_int8_t *attr, int attr_len);
-int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
+int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
 				int attr_len);
 int abis_nm_ipaccess_restart(struct gsm_bts *bts);
 int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
@@ -819,4 +831,5 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 
 const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);
+int nm_is_running(struct gsm_nm_state *s);
 #endif /* _NM_H */

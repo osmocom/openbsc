@@ -95,14 +95,20 @@ restart:
 	llist_for_each_entry_safe(ufd, tmp, &bsc_fds, list) {
 		int flags = 0;
 
-		if (FD_ISSET(ufd->fd, &readset))
+		if (FD_ISSET(ufd->fd, &readset)) {
 			flags |= BSC_FD_READ;
+			FD_CLR(ufd->fd, &readset);
+		}
 
-		if (FD_ISSET(ufd->fd, &writeset))
+		if (FD_ISSET(ufd->fd, &writeset)) {
 			flags |= BSC_FD_WRITE;
+			FD_CLR(ufd->fd, &writeset);
+		}
 
-		if (FD_ISSET(ufd->fd, &exceptset))
+		if (FD_ISSET(ufd->fd, &exceptset)) {
 			flags |= BSC_FD_EXCEPT;
+			FD_CLR(ufd->fd, &exceptset);
+		}
 
 		if (flags) {
 			work = 1;

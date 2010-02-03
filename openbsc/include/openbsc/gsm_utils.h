@@ -33,5 +33,16 @@ int gsm_7bit_encode(u_int8_t *result, const char *data);
 int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm);
 int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl);
 
+/* According to TS 08.05 Chapter 8.1.4 */
+int rxlev2dbm(u_int8_t rxlev);
+u_int8_t dbm2rxlev(int dbm);
+
+/* According to GSM 04.08 Chapter 10.5.2.29 */
+static inline int rach_max_trans_val2raw(int val) { return (val >> 1) & 3; }
+static inline int rach_max_trans_raw2val(int raw) {
+	const int tbl[4] = { 1, 2, 4, 7 };
+	return tbl[raw & 3];
+}
+
 void generate_backtrace();
 #endif

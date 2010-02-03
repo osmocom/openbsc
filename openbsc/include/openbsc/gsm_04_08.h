@@ -1,6 +1,8 @@
 #ifndef _GSM_04_08_H
 #define _GSM_04_08_H
 
+#include <openbsc/meas_rep.h>
+
 /* GSM TS 04.08  definitions */
 struct gsm_lchan;
 
@@ -88,6 +90,22 @@ struct gsm48_ass_cmd {
 	u_int8_t data[0];
 } __attribute__((packed));
 
+/* Chapter 10.5.2.2 */
+struct gsm48_cell_desc {
+	u_int8_t bcc:3,
+		 ncc:3,
+		 arfcn_hi:2;
+	u_int8_t arfcn_lo;
+} __attribute__((packed));
+
+/* Chapter 9.1.15 */
+struct gsm48_ho_cmd {
+	struct gsm48_cell_desc cell_desc;
+	struct gsm48_chan_desc chan_desc;
+	u_int8_t ho_ref;
+	u_int8_t power_command;
+	u_int8_t data[0];
+} __attribute__((packed));
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
@@ -169,6 +187,13 @@ struct gsm48_control_channel_descr {
 	u_int8_t t3212;
 } __attribute__ ((packed));
 
+struct gsm48_cell_options {
+	u_int8_t radio_link_timeout:4,
+		 dtx:2,
+		 pwrc:1,
+		 spare:1;
+} __attribute__ ((packed));
+
 /* Section 9.2.9 CM service request */
 struct gsm48_service_request {
 	u_int8_t cm_service_type : 4,
@@ -185,7 +210,7 @@ struct gsm48_system_information_type_1 {
 	struct gsm48_system_information_type_header header;
 	u_int8_t cell_channel_description[16];
 	struct gsm48_rach_control rach_control;
-	u_int8_t s1_reset;
+	u_int8_t rest_octets[0]; /* NCH position on the CCCH */
 } __attribute__ ((packed));
 
 /* Section 9.1.32 System information Type 2 */
@@ -202,10 +227,10 @@ struct gsm48_system_information_type_3 {
 	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_control_channel_descr control_channel_desc;
-	u_int8_t cell_options;
+	struct gsm48_cell_options cell_options;
 	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
-	u_int8_t s3_reset_octets[4];
+	u_int8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.36 System information Type 4 */
@@ -235,9 +260,15 @@ struct gsm48_system_information_type_6 {
 	u_int8_t system_information;
 	u_int16_t cell_identity;
 	struct gsm48_loc_area_id lai;
-	u_int8_t cell_options;
+	struct gsm48_cell_options cell_options;
 	u_int8_t ncc_permitted;
-	u_int8_t si_6_reset[0];
+	u_int8_t rest_octets[0];
+} __attribute__ ((packed));
+
+/* Section 9.1.43a System Information type 13 */
+struct gsm48_system_information_type_13 {
+	struct gsm48_system_information_type_header header;
+	u_int8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.2.12 IMSI Detach Indication */
@@ -618,30 +649,6 @@ enum gsm48_reject_value {
 	GSM48_REJECT_MSC_TMP_NOT_REACHABLE	= 16,
 };
 
-
-/* extracted from a L3 measurement report IE */
-struct gsm_meas_rep_cell {
-	u_int8_t rxlev;
-	u_int8_t bcch_freq;	/* fixme: translate to ARFCN */
-	u_int8_t bsic;
-};
-
-struct gsm_meas_rep {
-	unsigned int flags;
-	u_int8_t rxlev_full;
-	u_int8_t rxqual_full;
-	u_int8_t rxlev_sub;
-	u_int8_t rxqual_sub;
-	int num_cell;
-	struct gsm_meas_rep_cell cell[6];
-};
-#define MEAS_REP_F_DTX		0x01
-#define MEAS_REP_F_VALID	0x02
-#define MEAS_REP_F_BA1		0x04
-
-void gsm48_parse_meas_rep(struct gsm_meas_rep *rep, const u_int8_t *data,
-			  int len);
-
 enum chreq_type {
 	CHREQ_T_EMERG_CALL,
 	CHREQ_T_CALL_REEST_TCH_F,
@@ -656,6 +663,9 @@ enum chreq_type {
 	CHREQ_T_PAG_R_ANY_NECI1,
 	CHREQ_T_PAG_R_TCH_F,
 	CHREQ_T_PAG_R_TCH_FH,
+	CHREQ_T_LMU,
+	CHREQ_T_RESERVED_SDCCH,
+	CHREQ_T_RESERVED_IGNORE,
 };
 
 /* Chapter 11.3 */
@@ -738,7 +748,6 @@ struct gsm_trans;
 
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
-void gsm0408_set_reject_cause(int cause);
 
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
 void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc, 
@@ -747,7 +756,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
-int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand);
+int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
 struct msgb *gsm48_msgb_alloc(void);
 int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
@@ -759,7 +768,9 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu);
-int gsm48_send_rr_ass_cmd(struct gsm_lchan *lchan, u_int8_t power_class);
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan, u_int8_t power_class);
+int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
+		      u_int8_t power_command, u_int8_t ho_ref);
 
 int bsc_upqueue(struct gsm_network *net);
 
@@ -779,5 +790,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr);
 
 int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
+int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg);
+
 
 #endif

@@ -60,10 +60,10 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_sms *sms;
 	int rc = 0;
 
-	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
+	if (signal != S_SUBSCR_ATTACHED)
 		return 0;
 
-	if (signal != S_SUBSCR_ATTACHED)
+	if (subscr->net->auth_policy != GSM_AUTH_POLICY_TOKEN)
 		return 0;
 
 	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
@@ -103,7 +103,7 @@ unauth:
 			if (lchan) {
 				u_int8_t auth_rand[16];
 				/* kick the subscriber off the network */
-				gsm48_tx_mm_auth_req(lchan, auth_rand);
+				gsm48_tx_mm_auth_req(lchan, auth_rand, 0);
 				gsm48_tx_mm_auth_rej(lchan);
 				/* FIXME: close the channel early ?*/
 				//gsm48_send_rr_Release(lchan);
@@ -139,7 +139,7 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 	lchan = lchan_for_subscr(sms->receiver);
 	if (lchan) {
 		/* kick the subscriber off the network */
-		gsm48_tx_mm_auth_req(lchan, auth_rand);
+		gsm48_tx_mm_auth_req(lchan, auth_rand, 0);
 		gsm48_tx_mm_auth_rej(lchan);
 		/* FIXME: close the channel early ?*/
 		//gsm48_send_rr_Release(lchan);

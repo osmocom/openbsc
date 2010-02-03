@@ -24,6 +24,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <sys/time.h>    /* gettimeofday() */
+#include <unistd.h>      /* get..() */
+#include <time.h>        /* clock() */
+#include <sys/utsname.h> /* uname() */
 
 #include <openbsc/talloc.h>
 #include <openbsc/gsm_data.h>
@@ -56,6 +60,214 @@ struct rtcp_hdr {
 #define RTCP_TYPE_SDES	202
 	
 #define RTCP_IE_CNAME	1
+
+/* according to RFC 3550 */
+struct rtp_hdr {
+	u_int8_t  csrc_count:4,
+		  extension:1,
+		  padding:1,
+		  version:2;
+	u_int8_t  payload_type:7,
+		  marker:1;
+	u_int16_t sequence;
+	u_int32_t timestamp;
+	u_int32_t ssrc;
+} __attribute__((packed));
+
+struct rtp_x_hdr {
+	u_int16_t by_profile;
+	u_int16_t length;
+} __attribute__((packed));
+
+#define RTP_VERSION	2
+
+#define RTP_PT_GSM_FULL	3
+#define RTP_PT_GSM_EFR	97
+
+/* decode an rtp frame and create a new buffer with payload */
+static int rtp_decode(struct msgb *msg, u_int32_t callref, struct msgb **data)
+{
+	struct msgb *new_msg;
+	struct gsm_data_frame *frame;
+	struct rtp_hdr *rtph = (struct rtp_hdr *)msg->data;
+	struct rtp_x_hdr *rtpxh;
+	u_int8_t *payload;
+	int payload_len;
+	int msg_type;
+	int x_len;
+
+	if (msg->len < 12) {
+		DEBUGPC(DMUX, "received RTP frame too short (len = %d)\n",
+			msg->len);
+		return -EINVAL;
+	}
+	if (rtph->version != RTP_VERSION) {
+		DEBUGPC(DMUX, "received RTP version %d not supported.\n",
+			rtph->version);
+		return -EINVAL;
+	}
+	payload = msg->data + sizeof(struct rtp_hdr) + (rtph->csrc_count << 2);
+	payload_len = msg->len - sizeof(struct rtp_hdr) - (rtph->csrc_count << 2);
+	if (payload_len < 0) {
+		DEBUGPC(DMUX, "received RTP frame too short (len = %d, "
+			"csrc count = %d)\n", msg->len, rtph->csrc_count);
+		return -EINVAL;
+	}
+	if (rtph->extension) {
+		if (payload_len < sizeof(struct rtp_x_hdr)) {
+			DEBUGPC(DMUX, "received RTP frame too short for "
+				"extension header\n");
+			return -EINVAL;
+		}
+		rtpxh = (struct rtp_x_hdr *)payload;
+		x_len = ntohs(rtpxh->length) * 4 + sizeof(struct rtp_x_hdr);
+		payload += x_len;
+		payload_len -= x_len;
+		if (payload_len < 0) {
+			DEBUGPC(DMUX, "received RTP frame too short, "
+				"extension header exceeds frame length\n");
+			return -EINVAL;
+		}
+	}
+	if (rtph->padding) {
+		if (payload_len < 0) {
+			DEBUGPC(DMUX, "received RTP frame too short for "
+				"padding length\n");
+			return -EINVAL;
+		}
+		payload_len -= payload[payload_len - 1];
+		if (payload_len < 0) {
+			DEBUGPC(DMUX, "received RTP frame with padding "
+				"greater than payload\n");
+			return -EINVAL;
+		}
+	}
+
+	switch (rtph->payload_type) {
+	case RTP_PT_GSM_FULL:
+		msg_type = GSM_TCHF_FRAME;
+		if (payload_len != 33) {
+			DEBUGPC(DMUX, "received RTP full rate frame with "
+				"payload length != 32 (len = %d)\n",
+				payload_len);
+			return -EINVAL;
+		}
+		break;
+	case RTP_PT_GSM_EFR:
+		msg_type = GSM_TCHF_FRAME_EFR;
+		break;
+	default:
+		DEBUGPC(DMUX, "received RTP frame with unknown payload "
+			"type %d\n", rtph->payload_type);
+		return -EINVAL;
+	}
+
+	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + payload_len,
+				"GSM-DATA");
+	if (!new_msg)
+		return -ENOMEM;
+	frame = (struct gsm_data_frame *)(new_msg->data);
+	frame->msg_type = msg_type;
+	frame->callref = callref;
+	memcpy(frame->data, payload, payload_len);
+	msgb_put(new_msg, sizeof(struct gsm_data_frame) + payload_len);
+
+	*data = new_msg;
+	return 0;
+}
+
+/* "to - from" */
+static void tv_difference(struct timeval *diff, const struct timeval *from,
+			  const struct timeval *__to)
+{
+	struct timeval _to = *__to, *to = &_to;
+
+	if (to->tv_usec < from->tv_usec) {
+		to->tv_sec -= 1;
+		to->tv_usec += 1000000;
+	}
+
+	diff->tv_usec = to->tv_usec - from->tv_usec;
+	diff->tv_sec = to->tv_sec - from->tv_sec;
+}
+
+/* encode and send a rtp frame */
+int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
+{
+	struct rtp_sub_socket *rss = &rs->rtp;
+	struct msgb *msg;
+	struct rtp_hdr *rtph;
+	int payload_type;
+	int payload_len;
+	int duration; /* in samples */
+
+	if (rs->tx_action != RTP_SEND_DOWNSTREAM) {
+		/* initialize sequences */
+		rs->tx_action = RTP_SEND_DOWNSTREAM;
+		rs->transmit.ssrc = rand();
+		rs->transmit.sequence = random();
+		rs->transmit.timestamp = random();
+	}
+
+	switch (frame->msg_type) {
+	case GSM_TCHF_FRAME:
+		payload_type = RTP_PT_GSM_FULL;
+		payload_len = 33;
+		duration = 160;
+		break;
+	case GSM_TCHF_FRAME_EFR:
+		payload_type = RTP_PT_GSM_EFR;
+		payload_len = 31;
+		duration = 160;
+		break;
+	default:
+		DEBUGPC(DMUX, "unsupported message type %d\n",
+			frame->msg_type);
+		return -EINVAL;
+	}
+
+	{
+		struct timeval tv, tv_diff;
+		long int usec_diff, frame_diff;
+
+		gettimeofday(&tv, NULL);
+		tv_difference(&tv_diff, &rs->transmit.last_tv, &tv);
+		rs->transmit.last_tv = tv;
+
+		usec_diff = tv_diff.tv_sec * 1000000 + tv_diff.tv_usec;
+		frame_diff = (usec_diff / 20000);
+
+		if (abs(frame_diff) > 1) {
+			long int frame_diff_excess = frame_diff - 1;
+
+			LOGP(DMUX, LOGL_NOTICE,
+				"Correcting frame difference of %ld frames\n", frame_diff_excess);
+			rs->transmit.sequence += frame_diff_excess;
+			rs->transmit.timestamp += frame_diff_excess * duration;
+		}
+	}
+
+	msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len, "RTP-GSM-FULL");
+	if (!msg)
+		return -ENOMEM;
+	rtph = (struct rtp_hdr *)msg->data;
+	rtph->version = RTP_VERSION;
+	rtph->padding = 0;
+	rtph->extension = 0;
+	rtph->csrc_count = 0;
+	rtph->marker = 0;
+	rtph->payload_type = payload_type;
+	rtph->sequence = htons(rs->transmit.sequence++);
+	rtph->timestamp = htonl(rs->transmit.timestamp);
+	rs->transmit.timestamp += duration;
+	rtph->ssrc = htonl(rs->transmit.ssrc);
+	memcpy(msg->data + sizeof(struct rtp_hdr), frame->data, payload_len);
+	msgb_put(msg, sizeof(struct rtp_hdr) + payload_len);
+	msgb_enqueue(&rss->tx_queue, msg);
+	rss->bfd.when |= BSC_FD_WRITE;
+
+	return 0;
+}
 
 /* iterate over all chunks in one RTCP message, look for CNAME IEs and
  * replace all of those with 'new_cname' */
@@ -123,10 +335,16 @@ static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
 	if (!mangle_rtcp_cname)
 		return 0;
 
+	printf("RTCP\n");
 	/* iterate over list of RTCP messages */
 	rtph = (struct rtcp_hdr *)msg->data;
-	while ((void *)rtph + sizeof(*rtph) < (void *)msg->data + msg->len) {
+	while ((void *)rtph + sizeof(*rtph) <= (void *)msg->data + msg->len) {
 		old_len = (ntohs(rtph->length) + 1) * 4;
+		if ((void *)rtph + old_len > (void *)msg->data + msg->len) {
+			DEBUGPC(DMUX, "received RTCP packet too short for "
+				"length element\n");
+			return -EINVAL;
+		}
 		if (rtph->type == RTCP_TYPE_SDES) {
 			char new_cname[255];
 			strncpy(new_cname, inet_ntoa(rss->sin_local.sin_addr),
@@ -148,6 +366,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 {
 	int rc;
 	struct msgb *msg = msgb_alloc(RTP_ALLOC_SIZE, "RTP/RTCP");
+	struct msgb *new_msg;
 	struct rtp_sub_socket *other_rss;
 
 	if (!msg)
@@ -184,13 +403,40 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		break;
 
 	case RTP_RECV_UPSTREAM:
-	case RTP_NONE:
-		/* FIXME: other cases */
-		DEBUGP(DMUX, "unhandled action: %d\n", rs->rx_action);
+		if (!rs->receive.callref || !rs->receive.net) {
+			rc = -EIO;
+			goto out_free;
+		}
+		if (rss->bfd.priv_nr == RTP_PRIV_RTCP) {
+			if (!mangle_rtcp_cname) {
+				msgb_free(msg);
+				break;
+			}
+			/* modify RTCP SDES CNAME */
+			rc = rtcp_mangle(msg, rs);
+			if (rc < 0)
+				goto out_free;
+			msgb_enqueue(&rss->tx_queue, msg);
+			rss->bfd.when |= BSC_FD_WRITE;
+			break;
+		}
+		if (rss->bfd.priv_nr != RTP_PRIV_RTP) {
+			rc = -EINVAL;
+			goto out_free;
+		}
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg);
+		if (rc < 0)
+			goto out_free;
+		msgb_free(msg);
+		msgb_enqueue(&rs->receive.net->upqueue, new_msg);
+		break;
+
+	case RTP_NONE: /* if socket exists, but disabled by app */
+		msgb_free(msg);
 		break;
 	}
 
-	return rc;
+	return 0;
 
 out_free:
 	msgb_free(msg);
@@ -211,7 +457,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 	written = write(rss->bfd.fd, msg->data, msg->len);
 	if (written < msg->len) {
-		perror("short write");
+		LOGP(DMIB, LOGL_ERROR, "short write");
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -416,6 +662,23 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 
 	other->rx_action = RTP_PROXY;
 	other->proxy.other_sock = this;
+
+	return 0;
+}
+
+/* bind RTP/RTCP socket to application */
+int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
+			u_int32_t callref)
+{
+	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
+		this, callref);
+
+	if (callref) {
+		this->rx_action = RTP_RECV_UPSTREAM;
+		this->receive.net = net;
+		this->receive.callref = callref;
+	} else
+		this->rx_action = RTP_NONE;
 
 	return 0;
 }

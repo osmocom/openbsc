@@ -27,21 +27,12 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/talloc.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/statistics.h>
 
 void *tall_bsc_ctx;
 
-const char *get_value_string(const struct value_string *vs, u_int32_t val)
-{
-	int i;
-
-	for (i = 0;; i++) {
-		if (vs[i].value == 0 && vs[i].str == NULL)
-			break;
-		if (vs[i].value == val)
-			return vs[i].str;
-	}
-	return "unknown";
-}
+static LLIST_HEAD(bts_models);
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
@@ -91,12 +82,26 @@ static const char *lchan_names[] = {
 	[GSM_LCHAN_UNKNOWN]	= "UNKNOWN",
 };
 
-const char *gsm_lchan_name(enum gsm_chan_t c)
+const char *gsm_lchant_name(enum gsm_chan_t c)
 {
 	if (c >= ARRAY_SIZE(lchan_names))
 		return "INVALID";
 
 	return lchan_names[c];
+}
+
+static const struct value_string lchan_s_names[] = {
+	{ LCHAN_S_NONE,		"NONE" },
+	{ LCHAN_S_ACT_REQ,	"ACTIVATION REQUESTED" },
+	{ LCHAN_S_ACTIVE,	"ACTIVE" },
+	{ LCHAN_S_INACTIVE,	"INACTIVE" },
+	{ LCHAN_S_REL_REQ,	"RELEASE REQUESTED" },
+	{ 0,			NULL },
+};
+
+const char *gsm_lchans_name(enum gsm_lchan_state s)
+{
+	return get_value_string(lchan_s_names, s);
 }
 
 static const char *chreq_names[] = {
@@ -115,6 +120,29 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 	return chreq_names[c];
 }
 
+static struct gsm_bts_model *bts_model_find(enum gsm_bts_type type)
+{
+	struct gsm_bts_model *model;
+
+	llist_for_each_entry(model, &bts_models, list) {
+		if (model->type == type)
+			return model;
+	}
+
+	return NULL;
+}
+
+int gsm_bts_model_register(struct gsm_bts_model *model)
+{
+	if (bts_model_find(model->type))
+		return -EEXIST;
+
+	tlv_def_patch(&model->nm_att_tlvdef, &nm_att_tlvdef);
+	llist_add_tail(&model->list, &bts_models);
+	return 0;
+}
+
+
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
@@ -125,6 +153,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 	trx->bts = bts;
 	trx->nr = bts->num_trx++;
+	trx->nm_state.administrative = NM_STATE_UNLOCKED;
 
 	for (k = 0; k < TRX_NR_TS; k++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[k];
@@ -144,6 +173,9 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		}
 	}
 
+	if (trx->nr != 0)
+		trx->nominal_power = bts->c0->nominal_power;
+
 	llist_add_tail(&trx->list, &bts->trx_list);
 
 	return trx;
@@ -153,19 +185,38 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
 	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
+	struct gsm_bts_model *model = bts_model_find(type);
 	int i;
 
 	if (!bts)
 		return NULL;
 
+	if (!model && type != GSM_BTS_TYPE_UNKNOWN) {
+		talloc_free(bts);
+		return NULL;
+	}
+
 	bts->network = net;
 	bts->nr = net->num_bts++;
 	bts->type = type;
+	bts->model = model;
 	bts->tsc = tsc;
 	bts->bsic = bsic;
 	bts->num_trx = 0;
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
+	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
+	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
+	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
+	bts->si_common.neigh_list.data_len =
+				sizeof(bts->si_common.data.neigh_list);
+	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
+	bts->si_common.cell_alloc.data_len =
+				sizeof(bts->si_common.data.cell_alloc);
+	bts->si_common.rach_control.re = 1; /* no re-establishment */
+	bts->si_common.rach_control.tx_integer = 9;  /* 12 slots spread - 217/115 slots delay */
+	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
+	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
@@ -197,10 +248,48 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->country_code = country_code;
 	net->network_code = network_code;
 	net->num_bts = 0;
+	net->reject_cause = GSM48_REJECT_ROAMING_NOT_ALLOWED;
+	net->T3101 = GSM_T3101_DEFAULT;
+	net->T3113 = GSM_T3113_DEFAULT;
+	/* FIXME: initialize all other timers! */
+
+	/* default set of handover parameters */
+	net->handover.win_rxlev_avg = 10;
+	net->handover.win_rxqual_avg = 1;
+	net->handover.win_rxlev_avg_neigh = 10;
+	net->handover.pwr_interval = 6;
+	net->handover.pwr_hysteresis = 3;
+	net->handover.max_distance = 9999;
 
 	INIT_LLIST_HEAD(&net->trans_list);
 	INIT_LLIST_HEAD(&net->upqueue);
 	INIT_LLIST_HEAD(&net->bts_list);
+
+	net->stats.chreq.total = counter_alloc("net.chreq.total");
+	net->stats.chreq.no_channel = counter_alloc("net.chreq.no_channel");
+	net->stats.handover.attempted = counter_alloc("net.handover.attempted");
+	net->stats.handover.no_channel = counter_alloc("net.handover.no_channel");
+	net->stats.handover.timeout = counter_alloc("net.handover.timeout");
+	net->stats.handover.completed = counter_alloc("net.handover.completed");
+	net->stats.handover.failed = counter_alloc("net.handover.failed");
+	net->stats.loc_upd_type.attach = counter_alloc("net.loc_upd_type.attach");
+	net->stats.loc_upd_type.normal = counter_alloc("net.loc_upd_type.normal");
+	net->stats.loc_upd_type.periodic = counter_alloc("net.loc_upd_type.periodic");
+	net->stats.loc_upd_type.detach = counter_alloc("net.imsi_detach.count");
+	net->stats.loc_upd_resp.reject = counter_alloc("net.loc_upd_resp.reject");
+	net->stats.loc_upd_resp.accept = counter_alloc("net.loc_upd_resp.accept");
+	net->stats.paging.attempted = counter_alloc("net.paging.attempted");
+	net->stats.paging.detached = counter_alloc("net.paging.detached");
+	net->stats.paging.completed = counter_alloc("net.paging.completed");
+	net->stats.paging.expired = counter_alloc("net.paging.expired");
+	net->stats.sms.submitted = counter_alloc("net.sms.submitted");
+	net->stats.sms.no_receiver = counter_alloc("net.sms.no_receiver");
+	net->stats.sms.delivered = counter_alloc("net.sms.delivered");
+	net->stats.sms.rp_err_mem = counter_alloc("net.sms.rp_err_mem");
+	net->stats.sms.rp_err_other = counter_alloc("net.sms.rp_err_other");
+	net->stats.call.dialled = counter_alloc("net.call.dialled");
+	net->stats.call.alerted = counter_alloc("net.call.alerted");
+	net->stats.call.connected = counter_alloc("net.call.connected");
 
 	net->mncc_recv = mncc_recv;
 
@@ -217,6 +306,25 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		if (bts->nr == num)
 			return bts;
+	}
+
+	return NULL;
+}
+
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
+				 u_int16_t arfcn, u_int8_t bsic)
+{
+	struct gsm_bts *neigh;
+	/* FIXME: use some better heuristics here to determine which cell
+	 * using this ARFCN really is closest to the target cell.  For
+	 * now we simply assume that each ARFCN will only be used by one
+	 * cell */
+
+	llist_for_each_entry(neigh, &bts->network->bts_list, list) {
+		if (neigh->c0->arfcn == arfcn &&
+		    neigh->bsic == bsic)
+			return neigh;
 	}
 
 	return NULL;
@@ -239,10 +347,29 @@ struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
 
 static char ts2str[255];
 
+char *gsm_trx_name(struct gsm_bts_trx *trx)
+{
+	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d)",
+		 trx->bts->nr, trx->nr);
+
+	return ts2str;
+}
+
+
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 {
 	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
 		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
+
+	return ts2str;
+}
+
+char *gsm_lchan_name(struct gsm_lchan *lchan)
+{
+	struct gsm_bts_trx_ts *ts = lchan->ts;
+
+	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,ss=%d)",
+		 ts->trx->bts->nr, ts->trx->nr, ts->nr, lchan->nr);
 
 	return ts2str;
 }
@@ -268,6 +395,17 @@ const char *btstype2str(enum gsm_bts_type type)
 	if (type > ARRAY_SIZE(bts_types))
 		return "undefined";
 	return bts_types[type];
+}
+
+struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->nr == nr)
+			return trx;
+	}
+	return NULL;
 }
 
 /* Search for a BTS in the given Location Area; optionally start searching
@@ -361,3 +499,63 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 	return gsm_auth_policy_names[policy];
 }
 
+static const char *rrlp_mode_names[] = {
+	[RRLP_MODE_NONE] = "none",
+	[RRLP_MODE_MS_BASED] = "ms-based",
+	[RRLP_MODE_MS_PREF] = "ms-preferred",
+	[RRLP_MODE_ASS_PREF] = "ass-preferred",
+};
+
+enum rrlp_mode rrlp_mode_parse(const char *arg)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(rrlp_mode_names); i++) {
+		if (!strcmp(arg, rrlp_mode_names[i]))
+			return i;
+	}
+	return RRLP_MODE_NONE;
+}
+
+const char *rrlp_mode_name(enum rrlp_mode mode)
+{
+	if (mode > ARRAY_SIZE(rrlp_mode_names))
+		return "none";
+	return rrlp_mode_names[mode];
+}
+
+struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
+{
+	struct gsm_meas_rep *meas_rep;
+
+	meas_rep = &lchan->meas_rep[lchan->meas_rep_idx];
+	memset(meas_rep, 0, sizeof(*meas_rep));
+	meas_rep->lchan = lchan;
+	lchan->meas_rep_idx = (lchan->meas_rep_idx + 1)
+					% ARRAY_SIZE(lchan->meas_rep);
+
+	return meas_rep;
+}
+
+int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
+{
+	struct gsm_bts_model *model;
+
+	model = bts_model_find(type);
+	if (!model)
+		return -EINVAL;
+
+	bts->type = type;
+	bts->model = model;
+
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+		/* Set the default OML Stream ID to 0xff */
+		bts->oml_tei = 0xff;
+		bts->c0->nominal_power = 23;
+		break;
+	case GSM_BTS_TYPE_BS11:
+		break;
+	}
+
+	return 0;
+}

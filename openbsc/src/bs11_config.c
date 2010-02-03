@@ -51,7 +51,7 @@ enum bs11cfg_state {
 	STATE_QUERY,
 };
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
-static char *command;
+static char *command, *value;
 struct timer_list status_timer;
 
 static const u_int8_t obj_li_attr[] = { 
@@ -71,6 +71,13 @@ static const char *trx1_password = "1111111111";
 
 static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
+static struct debug_target *stderr_target;
+
+/* dummy function to keep gsm_data.c happy */
+struct counter *counter_alloc(const char *name)
+{
+	return NULL;
+}
 
 int handle_serial_msg(struct msgb *rx_msg);
 
@@ -533,6 +540,21 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
+			} else if (!strcmp(command, "pll-setvalue")) {
+				abis_nm_bs11_set_pll(g_bts, atoi(value));
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
+			} else if (!strcmp(command, "pll-workvalue")) {
+				/* To set the work value we need to login as FIELD */
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				sleep(1);
+				abis_nm_bs11_infield_logon(g_bts, 1);
+				sleep(1);
+				abis_nm_bs11_set_pll(g_bts, atoi(value));
+				sleep(1);
+				abis_nm_bs11_infield_logon(g_bts, 0);
+				command = NULL;
 			} else if (!strcmp(command, "oml-tei")) {
 				abis_nm_bs11_conn_oml_tei(g_bts, 0, 1, 0xff, TEI_OML);
 				command = NULL;
@@ -627,7 +649,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		exit(0);
 		break;
 	case NM_MT_BS11_GET_STATE_ACK:
-		rc = abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		rc = abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		print_state(&tp);
 		if (TLVP_PRESENT(&tp, NM_ATT_BS11_BTS_STATE) &&
 		    TLVP_LEN(&tp, NM_ATT_BS11_BTS_STATE) >= 1)
@@ -635,7 +657,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		break;
 	case NM_MT_GET_ATTR_RESP:
 		printf("\n%sATTRIBUTES:\n", obj_name(foh));
-		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		rc = print_attr(&tp);
 		//hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
@@ -699,25 +721,27 @@ static void print_help(void)
 	printf("\t-p --port </dev/ttyXXX>\t\tSpecify serial port\n");
 	printf("\t-s --software <file>\t\tSpecify Software file\n");
 	printf("\t-S --safety <file>\t\tSpecify Safety Load file\n");
-	printf("\t-d --delay <ms>\t\tSpecify delay in milliseconds\n");
+	printf("\t-d --delay <ms>\t\t\tSpecify delay in milliseconds\n");
 	printf("\t-D --disconnect\t\t\tDisconnect BTS from BSC\n");
 	printf("\t-w --win-size <num>\t\tSpecify Window Size\n");
 	printf("\t-f --forced\t\t\tForce Software Load\n");
 	printf("\nSupported commands:\n");
-	printf("\tquery\t\tQuery the BS-11 about serial number and configuration\n");
-	printf("\tdisconnect\tDisconnect A-bis link (go into administrative state)\n");
-	printf("\tresconnect\tReconnect A-bis link (go into normal state)\n");
-	printf("\trestart\t\tRestart the BTS\n");
-	printf("\tsoftware\tDownload Software (only in administrative state)\n");
-	printf("\tcreate-trx1\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
-	printf("\tdelete-trx1\tDelete objects for TRX1\n");
-	printf("\tpll-e1-locked\tSet the PLL to be locked to E1 clock\n");
-	printf("\tpll-standalone\tSet the PLL to be in standalone mode\n");
-	printf("\toml-tei\tSet OML E1 TS and TEI\n");
-	printf("\tbport0-star\tSet BPORT0 line config to star\n");
+	printf("\tquery\t\t\tQuery the BS-11 about serial number and configuration\n");
+	printf("\tdisconnect\t\tDisconnect A-bis link (go into administrative state)\n");
+	printf("\tresconnect\t\tReconnect A-bis link (go into normal state)\n");
+	printf("\trestart\t\t\tRestart the BTS\n");
+	printf("\tsoftware\t\tDownload Software (only in administrative state)\n");
+	printf("\tcreate-trx1\t\tCreate objects for TRX1 (Danger: Your BS-11 might overheat)\n");
+	printf("\tdelete-trx1\t\tDelete objects for TRX1\n");
+	printf("\tpll-e1-locked\t\tSet the PLL to be locked to E1 clock\n");
+	printf("\tpll-standalone\t\tSet the PLL to be in standalone mode\n");
+	printf("\tpll-setvalue <value>\tSet the PLL set value\n");
+	printf("\tpll-workvalue <value>\tSet the PLL work value\n");
+	printf("\toml-tei\t\t\tSet OML E1 TS and TEI\n");
+	printf("\tbport0-star\t\tSet BPORT0 line config to star\n");
 	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
-	printf("\tcreate-bport1\tCreate BPORT1 object\n");
-	printf("\tdelete-bport1\tDelete BPORT1 object\n");
+	printf("\tcreate-bport1\t\tCreate BPORT1 object\n");
+	printf("\tdelete-bport1\t\tDelete BPORT1 object\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -754,7 +778,7 @@ static void handle_options(int argc, char **argv)
 			serial_port = optarg;
 			break;
 		case 'b':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 's':
 			fname_software = optarg;
@@ -784,6 +808,9 @@ static void handle_options(int argc, char **argv)
 	}
 	if (optind < argc)
 		command = argv[optind];
+	        if (optind+1 < argc)
+			value = argv[optind+1];
+
 }
 
 static int num_sigint;
@@ -807,7 +834,12 @@ int main(int argc, char **argv)
 	struct gsm_network *gsmnet;
 	int rc;
 
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
 	handle_options(argc, argv);
+	bts_model_bs11_init();
 
 	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet) {

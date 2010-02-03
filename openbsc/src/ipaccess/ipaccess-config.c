@@ -1,6 +1,8 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009 by Holger Hans Peter Freyther
+ * (C) 2009 by On Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -24,6 +26,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <sys/fcntl.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 
 #include <sys/socket.h>
@@ -39,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <openbsc/talloc.h>
 
 static struct gsm_network *gsmnet;
 
@@ -48,6 +53,21 @@ static char *prim_oml_ip;
 static char *unit_id;
 static u_int16_t nv_flags;
 static u_int16_t nv_mask;
+static char *software = NULL;
+static int sw_load_state = 0;
+static int oml_state = 0;
+
+struct sw_load {
+	u_int8_t file_id[255];
+	u_int8_t file_id_len;
+
+	u_int8_t file_version[255];
+	u_int8_t file_version_len;
+};
+
+static void *tall_ctx_config = NULL;
+static struct sw_load *sw_load1 = NULL;
+static struct sw_load *sw_load2 = NULL;
 
 /*
 static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
@@ -65,6 +85,28 @@ static int ipacc_msg_nack(u_int8_t mt)
 {
 	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
 	exit(-1);
+	return 0;
+}
+
+static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts *bts)
+{
+	if (sw_load_state == 1) {
+		fprintf(stderr, "The new software is activaed.\n");
+
+		if (restart) {
+			abis_nm_ipaccess_restart(bts);
+		} else {
+			exit(0);
+		}
+	} else if (oml_state == 1) {
+		fprintf(stderr, "Set the primary OML IP.\n");
+		if (restart) {
+			abis_nm_ipaccess_restart(bts);
+		} else {
+			exit(0);
+		}
+	}
+
 	return 0;
 }
 
@@ -149,18 +191,107 @@ static int test_rep(void *_msg)
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
-	u_int8_t *msg_type;
+	struct ipacc_ack_signal_data *ipacc_data;
 
 	switch (signal) {
 	case S_NM_IPACC_NACK:
-		msg_type = signal_data;
-		return ipacc_msg_nack(*msg_type);
+		ipacc_data = signal_data;
+		return ipacc_msg_nack(ipacc_data->msg_type);
+	case S_NM_IPACC_ACK:
+		ipacc_data = signal_data;
+		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->bts);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
+	case S_NM_IPACC_RESTART_ACK:
+		printf("The BTS has acked the restart. Exiting.\n");
+		exit(0);
+		break;
+	case S_NM_IPACC_RESTART_NACK:
+		printf("The BTS has nacked the restart. Exiting.\n");
+		exit(0);
+		break;
 	default:
 		break;
 	}
 
+	return 0;
+}
+
+/* callback function passed to the ABIS OML code */
+static int percent;
+static int percent_old;
+static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
+		       void *data, void *param)
+{
+	struct msgb *msg;
+	struct gsm_bts *bts;
+
+	if (hook != GSM_HOOK_NM_SWLOAD)
+		return 0;
+
+	bts = (struct gsm_bts *) data;
+
+	switch (event) {
+	case NM_MT_LOAD_INIT_ACK:
+		fprintf(stdout, "Software Load Initiate ACK\n");
+		break;
+	case NM_MT_LOAD_INIT_NACK:
+		fprintf(stderr, "ERROR: Software Load Initiate NACK\n");
+		exit(5);
+		break;
+	case NM_MT_LOAD_END_ACK:
+		fprintf(stderr, "LOAD END ACK...");
+		/* now make it the default */
+		sw_load_state = 1;
+
+		msg = msgb_alloc(1024, "sw: nvattr");
+		msg->l2h = msgb_put(msg, 3);
+		msg->l3h = &msg->l2h[3];
+
+		/* activate software */
+		if (sw_load1) {
+			msgb_v_put(msg, NM_ATT_SW_DESCR);
+			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load1->file_id_len, sw_load1->file_id);
+			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load1->file_version_len,
+					sw_load1->file_version);
+		}
+
+		if (sw_load2) {
+			msgb_v_put(msg, NM_ATT_SW_DESCR);
+			msgb_tl16v_put(msg, NM_ATT_FILE_ID, sw_load2->file_id_len, sw_load2->file_id);
+			msgb_tl16v_put(msg, NM_ATT_FILE_VERSION, sw_load2->file_version_len,
+					sw_load2->file_version);
+		}
+
+		/* fill in the data */
+		msg->l2h[0] = NM_ATT_IPACC_CUR_SW_CFG;
+		msg->l2h[1] = msgb_l3len(msg) >> 8;
+		msg->l2h[2] = msgb_l3len(msg) & 0xff;
+		printf("Foo l2h: %p l3h: %p... length l2: %u  l3: %u\n", msg->l2h, msg->l3h, msgb_l2len(msg), msgb_l3len(msg));
+		abis_nm_ipaccess_set_nvattr(bts->c0, msg->l2h, msgb_l2len(msg));
+		msgb_free(msg);
+		break;
+	case NM_MT_LOAD_END_NACK:
+		fprintf(stderr, "ERROR: Software Load End NACK\n");
+		exit(3);
+		break;
+	case NM_MT_ACTIVATE_SW_NACK:
+		fprintf(stderr, "ERROR: Activate Software NACK\n");
+		exit(4);
+		break;
+	case NM_MT_ACTIVATE_SW_ACK:
+		break;
+	case NM_MT_LOAD_SEG_ACK:
+		percent = abis_nm_software_load_status(bts);
+		if (percent > percent_old)
+			printf("Software Download Progress: %d%%\n", percent);
+		percent_old = percent;
+		break;
+	case NM_MT_LOAD_ABORT:
+		fprintf(stderr, "ERROR: Load aborted by the BTS.\n");
+		exit(6);
+		break;
+	}
 	return 0;
 }
 
@@ -182,7 +313,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		memcpy(buf+3, unit_id, len);
 		buf[3+len] = 0;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len+1);
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len+1);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
@@ -205,7 +336,8 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+		oml_state = 1;
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
 	}
 	if (nv_mask) {
 		len = 4;
@@ -219,13 +351,14 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = nv_mask >> 8;
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
 	}
 
-	if (restart) {
+	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
 		abis_nm_ipaccess_restart(bts);
 	}
+
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
@@ -257,15 +390,144 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 {
 	if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
-	    new_state->availability == 3 &&
-	    net_listen_testnr) {
+	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
-		u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-		abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
-				     net_listen_testnr, 1,
-				     phys_config, sizeof(phys_config));
+
+		if (net_listen_testnr) {
+			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+			abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+					     net_listen_testnr, 1,
+					     phys_config, sizeof(phys_config));
+		} else if (software) {
+			int rc;
+			printf("Attempting software upload with '%s'\n", software);
+			rc = abis_nm_software_load(trx->bts, software, 19, 0, swload_cbfn, trx->bts);
+			if (rc < 0) {
+				fprintf(stderr, "Failed to start software load\n");
+				exit(-3);
+			}
+		}
 	}
 	return 0;
+}
+
+static struct sw_load *create_swload(struct sdp_header *header)
+{
+	struct sw_load *load;
+
+	load = talloc_zero(tall_ctx_config, struct sw_load);
+
+	strncpy((char *)load->file_id, header->firmware_info.sw_part, 20);
+	load->file_id_len = strlen(header->firmware_info.sw_part) + 1;
+
+	strncpy((char *)load->file_version, header->firmware_info.version, 20);
+	load->file_version_len = strlen(header->firmware_info.version) + 1;
+
+	return load;
+}
+
+static void find_sw_load_params(const char *filename)
+{
+	struct stat stat;
+	struct sdp_header *header;
+	struct llist_head *entry;
+	int fd;
+	void *tall_firm_ctx = 0;
+
+	entry = talloc_zero(tall_firm_ctx, struct llist_head);
+	INIT_LLIST_HEAD(entry);
+
+	fd = open(filename, O_RDONLY);
+	if (!fd) {
+		perror("nada");
+		return;
+	}
+
+	/* verify the file */
+	if (fstat(fd, &stat) == -1) {
+		perror("Can not stat the file");
+		return;
+	}
+
+	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
+	if (close(fd) != 0) {
+		perror("Close failed.\n");
+		return;
+	}
+
+	/* try to find what we are looking for */
+	llist_for_each_entry(header, entry, entry) {
+		if (ntohs(header->firmware_info.more_more_magic) == 0x1000) {
+			sw_load1 = create_swload(header);
+		} else if (ntohs(header->firmware_info.more_more_magic) == 0x2001) {
+			sw_load2 = create_swload(header);
+		}
+	}
+
+	talloc_free(tall_firm_ctx);
+}
+
+static void analyze_firmware(const char *filename)
+{
+	struct stat stat;
+	struct sdp_header *header;
+	struct sdp_header_item *sub_entry;
+	struct llist_head *entry;
+	int fd;
+	void *tall_firm_ctx = 0;
+
+	entry = talloc_zero(tall_firm_ctx, struct llist_head);
+	INIT_LLIST_HEAD(entry);
+
+	printf("Opening possible firmware '%s'\n", filename);
+	fd = open(filename, O_RDONLY);
+	if (!fd) {
+		perror("nada");
+		return;
+	}
+
+	/* verify the file */
+	if (fstat(fd, &stat) == -1) {
+		perror("Can not stat the file");
+		return;
+	}
+
+	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
+	if (close(fd) != 0) {
+		perror("Close failed.\n");
+		return;
+	}
+
+	llist_for_each_entry(header, entry, entry) {
+		printf("Printing header information:\n");
+		printf("more_more_magic: 0x%x\n", ntohs(header->firmware_info.more_more_magic));
+		printf("header_length: %u\n", ntohl(header->firmware_info.header_length));
+		printf("file_length: %u\n", ntohl(header->firmware_info.file_length));
+		printf("sw_part: %.20s\n", header->firmware_info.sw_part);
+		printf("text1: %.64s\n", header->firmware_info.text1);
+		printf("time: %.12s\n", header->firmware_info.time);
+		printf("date: %.14s\n", header->firmware_info.date);
+		printf("text2: %.10s\n", header->firmware_info.text2);
+		printf("version: %.20s\n", header->firmware_info.version);
+		printf("subitems...\n");
+
+		llist_for_each_entry(sub_entry, &header->header_list, entry) {
+			printf("\tsomething1: %u\n", sub_entry->header_entry.something1);
+			printf("\ttext1: %.64s\n", sub_entry->header_entry.text1);
+			printf("\ttime: %.12s\n", sub_entry->header_entry.time);
+			printf("\tdate: %.14s\n", sub_entry->header_entry.date);
+			printf("\ttext2: %.10s\n", sub_entry->header_entry.text2);
+			printf("\tversion: %.20s\n", sub_entry->header_entry.version);
+			printf("\tlength: %u\n", ntohl(sub_entry->header_entry.length));
+			printf("\taddr1: 0x%x\n", ntohl(sub_entry->header_entry.addr1));
+			printf("\taddr2: 0x%x\n", ntohl(sub_entry->header_entry.addr2));
+			printf("\tstart: 0x%x\n", ntohl(sub_entry->header_entry.start));
+			printf("\n\n");
+		}
+		printf("\n\n");
+	}
+
+	talloc_free(tall_firm_ctx);
 }
 
 static void print_usage(void)
@@ -282,6 +544,8 @@ static void print_help(void)
 	printf("  -l --listen testnr \tPerform specified test number\n");
 	printf("  -h --help this text\n");
 	printf("  -s --stream-id ID\n");
+	printf("  -d --software firmware\n");
+	printf("  -f --firmware firmware Provide firmware information\n");
 }
 
 int main(int argc, char **argv)
@@ -289,6 +553,15 @@ int main(int argc, char **argv)
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
 	int rc, option_index = 0, stream_id = 0xff;
+	struct debug_target *stderr_target;
+
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
+	debug_set_log_level(stderr_target, 0);
+	debug_parse_category_mask(stderr_target, "DNM,0");
+	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
@@ -304,9 +577,11 @@ int main(int argc, char **argv)
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
+			{ "software", 1, 0, 'd' },
+			{ "firmware", 1, 0, 'f' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -336,8 +611,14 @@ int main(int argc, char **argv)
 			break;
 		case 's':
 			stream_id = atoi(optarg);
-			printf("foo: %d\n", stream_id);
 			break;
+		case 'd':
+			software = strdup(optarg);
+			find_sw_load_params(optarg);
+			break;
+		case 'f':
+			analyze_firmware(optarg);
+			exit(0);
 		case 'h':
 			print_usage();
 			print_help();
@@ -356,6 +637,10 @@ int main(int argc, char **argv)
 
 	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
 				HARDCODED_BSIC);
+	/* ip.access supports up to 4 chained TRX */
+	gsm_bts_trx_alloc(bts);
+	gsm_bts_trx_alloc(bts);
+	gsm_bts_trx_alloc(bts);
 	bts->oml_tei = stream_id;
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);

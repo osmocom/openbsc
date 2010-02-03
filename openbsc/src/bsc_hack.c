@@ -1,6 +1,6 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
@@ -35,12 +35,18 @@
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/talloc.h>
+#include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
+static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-extern int ipacc_rtp_direct;
+
+
+/* timer to store statistics */
+#define DB_SYNC_INTERVAL	60, 0
+static struct timer_list db_sync_timer;
 
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
@@ -72,9 +78,9 @@ static void print_help()
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -l --database db-name The database to use\n");
-	printf("  -r --reject-cause number The reject cause for LOCATION UPDATING REJECT.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
+	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -88,7 +94,6 @@ static void handle_options(int argc, char** argv)
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
 			{"authorize-everyone", 0, 0, 'a'},
-			{"reject-cause", 1, 0, 'r'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
 			{"rtp-proxy", 0, 0, 'P'},
@@ -106,10 +111,10 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_use_color(0);
+			debug_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -117,14 +122,11 @@ static void handle_options(int argc, char** argv)
 		case 'c':
 			config_file = strdup(optarg);
 			break;
-		case 'r':
-			gsm0408_set_reject_cause(atoi(optarg));
-			break;
 		case 'p':
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			debug_timestamp(1);
+			debug_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
@@ -136,6 +138,7 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+extern void *tall_vty_ctx;
 static void signal_handler(int signal)
 {
 	fprintf(stdout, "signal %u received\n", signal);
@@ -143,6 +146,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
+		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -150,21 +154,53 @@ static void signal_handler(int signal)
 		/* in case of abort, we want to obtain a talloc report
 		 * and then return to the caller, who will abort the process */
 	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
 		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		talloc_report_full(tall_vty_ctx, stderr);
 		break;
 	default:
 		break;
 	}
 }
 
+/* timer handling */
+static int _db_store_counter(struct counter *counter, void *data)
+{
+	return db_store_counter(counter);
+}
+
+static void db_sync_timer_cb(void *data)
+{
+	/* store counters to database and re-schedule */
+	counters_for_each(_db_store_counter, NULL);
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+}
+
+extern int bts_model_unknown_init(void);
+extern int bts_model_bs11_init(void);
+extern int bts_model_nanobts_init(void);
+
 int main(int argc, char **argv)
 {
 	int rc;
 
+	debug_init();
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
+	on_dso_load_ho_dec();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+
+	bts_model_unknown_init();
+	bts_model_bs11_init();
+	bts_model_nanobts_init();
+
+	/* enable filters */
+	debug_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -184,6 +220,11 @@ int main(int argc, char **argv)
 	}
 	printf("DB: Database prepared.\n");
 
+	/* setup the timer */
+	db_sync_timer.cb = db_sync_timer_cb;
+	db_sync_timer.data = NULL;
+	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
@@ -191,9 +232,12 @@ int main(int argc, char **argv)
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
+		debug_reset_context();
 		bsc_select_main(0);
 	}
 }

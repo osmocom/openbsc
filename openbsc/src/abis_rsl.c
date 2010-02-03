@@ -38,6 +38,8 @@
 #include <openbsc/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/meas_rep.h>
+#include <openbsc/rtp_proxy.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
@@ -205,42 +207,44 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 		if (ts->pchan != GSM_PCHAN_TCH_F &&
 		    ts->pchan != GSM_PCHAN_PDCH &&
 		    ts->pchan != GSM_PCHAN_TCH_F_PDCH)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1e) == 0x02) {
 		lch_idx = cbits & 0x1;	/* TCH/H */
 		if (ts->pchan != GSM_PCHAN_TCH_H)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x1c) == 0x04) {
 		lch_idx = cbits & 0x3;	/* SDCCH/4 */
 		if (ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if ((cbits & 0x18) == 0x08) {
 		lch_idx = cbits & 0x7;	/* SDCCH/8 */
 		if (ts->pchan != GSM_PCHAN_SDCCH8_SACCH8C)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 	} else if (cbits == 0x10 || cbits == 0x11 || cbits == 0x12) {
 		lch_idx = 0;
 		if (ts->pchan != GSM_PCHAN_CCCH &&
 		    ts->pchan != GSM_PCHAN_CCCH_SDCCH4)
-			fprintf(stderr, "chan_nr=0x%02x but pchan=%u\n",
+			LOGP(DRSL, LOGL_ERROR, "chan_nr=0x%02x but pchan=%u\n",
 				chan_nr, ts->pchan);
 		/* FIXME: we should not return first sdcch4 !!! */
 	} else {
-		fprintf(stderr, "unknown chan_nr=0x%02x\n", chan_nr);
+		LOGP(DRSL, LOGL_ERROR, "unknown chan_nr=0x%02x\n", chan_nr);
 		return NULL;
 	}
 
 	lchan = &ts->lchan[lch_idx];
+	debug_set_context(BSC_CTX_LCHAN, lchan);
+	debug_set_context(BSC_CTX_SUBSCR, lchan->subscr);
 
 	return lchan;
 }
 
 /* See Table 10.5.25 of GSM04.08 */
-u_int8_t lchan2chan_nr(struct gsm_lchan *lchan)
+u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan)
 {
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 	u_int8_t cbits, chan_nr;
@@ -366,6 +370,24 @@ static const char *rsl_err_vals[0xff] = {
 	[RSL_ERR_INTERWORKING] =	"Interworking error, unspecified",
 };
 
+static const struct value_string rlm_cause_strs[] = {
+	{ RLL_CAUSE_T200_EXPIRED,	"Timer T200 expired (N200+1) times" },
+	{ RLL_CAUSE_REEST_REQ,		"Re-establishment request" },
+	{ RLL_CAUSE_UNSOL_UA_RESP,	"Unsolicited UA response" },
+	{ RLL_CAUSE_UNSOL_DM_RESP,	"Unsolicited DM response" },
+	{ RLL_CAUSE_UNSOL_DM_RESP_MF,	"Unsolicited DM response, multiple frame" },
+	{ RLL_CAUSE_UNSOL_SPRV_RESP,	"Unsolicited supervisory response" },
+	{ RLL_CAUSE_SEQ_ERR,		"Sequence Error" },
+	{ RLL_CAUSE_UFRM_INC_PARAM,	"U-Frame with incorrect parameters" },
+	{ RLL_CAUSE_SFRM_INC_PARAM,	"S-Frame with incorrect parameters" },
+	{ RLL_CAUSE_IFRM_INC_MBITS,	"I-Frame with incorrect use of M bit" },
+	{ RLL_CAUSE_IFRM_INC_LEN,	"I-Frame with incorrect length" },
+	{ RLL_CAUSE_FRM_UNIMPL,		"Fraeme not implemented" },
+	{ RLL_CAUSE_SABM_MF,		"SABM command, multiple frame established state" },
+	{ RLL_CAUSE_SABM_INFO_NOTALL,	"SABM frame with information not allowed in this state" },
+	{ 0,				NULL },
+};
+
 static const char *rsl_err_name(u_int8_t err)
 {
 	if (rsl_err_vals[err])
@@ -374,14 +396,14 @@ static const char *rsl_err_name(u_int8_t err)
 		return "unknown";
 }
 
-static void print_rsl_cause(const u_int8_t *cause_v, u_int8_t cause_len)
+static void print_rsl_cause(int lvl, const u_int8_t *cause_v, u_int8_t cause_len)
 {
 	int i;
 
-	DEBUGPC(DRSL, "CAUSE=0x%02x(%s) ",
+	LOGPC(DRSL, lvl, "CAUSE=0x%02x(%s) ",
 		cause_v[0], rsl_err_name(cause_v[0]));
 	for (i = 1; i < cause_len-1; i++) 
-		DEBUGPC(DRSL, "%02x ", cause_v[i]);
+		LOGPC(DRSL, lvl, "%02x ", cause_v[i]);
 }
 
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
@@ -488,6 +510,11 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 	/* set TCH Speech/Data */
 	cm->spd_ind = lchan->rsl_cmode;
 
+	if (lchan->rsl_cmode == RSL_CMOD_SPD_SIGN &&
+	    lchan->tch_mode != GSM48_CMODE_SIGN)
+		LOGP(DRSL, LOGL_ERROR, "unsupported: rsl_mode == signalling, "
+			"but tch_mode != signalling\n");
+
 	switch (lchan->type) {
 	case GSM_LCHAN_SDCCH:
 		cm->chan_rt = RSL_CMOD_CRT_SDCCH;
@@ -570,7 +597,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 #endif
 
 int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta)
+			    u_int8_t ta, u_int8_t ho_ref)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
@@ -597,9 +624,9 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	dh->chan_nr = chan_nr;
 
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, act_type);
-	/* For compatibility with Phase 1 */
 	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
 		     (u_int8_t *) &cm);
+	/* For compatibility with Phase 1 */
 	msgb_tlv_put(msg, RSL_IE_CHAN_IDENT, 4,
 		     (u_int8_t *) &ci);
 
@@ -610,9 +637,22 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 			msgb_tlv_put(msg, RSL_IE_ENCR_INFO, rc, encr_info);
 	}
 
+	switch (act_type) {
+	case RSL_ACT_INTER_ASYNC:
+	case RSL_ACT_INTER_SYNC:
+		msgb_tv_put(msg, RSL_IE_HANDO_REF, ho_ref);
+		break;
+	default:
+		break;
+	}
+
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
+			     (u_int8_t *) &lchan->mr_conf);
 
 	msg->trx = lchan->ts->trx;
 
@@ -703,8 +743,7 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "DEACTivate SACCH CMD channel=%s chan_nr=0x%02x\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr);
+	DEBUGP(DRSL, "%s DEACTivate SACCH CMD\n", gsm_lchan_name(lchan));
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -722,8 +761,7 @@ int rsl_rf_chan_release(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "RF Channel Release CMD channel=%s chan_nr=0x%02x\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr);
+	DEBUGP(DRSL, "%s RF Channel Release CMD\n", gsm_lchan_name(lchan));
 
 	/* BTS will respond by RF CHAN REL ACK */
 	return abis_rsl_sendmsg(msg);
@@ -816,8 +854,8 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 	dh->chan_nr = lchan2chan_nr(lchan);
 	msgb_tv_put(msg, RSL_IE_SIEMENS_MRPCI, *(u_int8_t *)mrpci);
 
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x TX Siemens MRPCI 0x%02x\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr, *(u_int8_t *)mrpci);
+	DEBUGP(DRSL, "%s TX Siemens MRPCI 0x%02x\n",
+		gsm_lchan_name(lchan), *(u_int8_t *)mrpci);
 
 	msg->trx = lchan->ts->trx;
 
@@ -833,7 +871,7 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 	struct abis_rsl_rll_hdr *rh;
 
 	if (msg->lchan == NULL) {
-		fprintf(stderr, "cannot send DATA REQUEST to unknown lchan\n");
+		LOGP(DRSL, LOGL_ERROR, "cannot send DATA REQUEST to unknown lchan\n");
 		return -EINVAL;
 	}
 
@@ -887,6 +925,9 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 	rh->link_id = link_id;
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
+	lchan->state = LCHAN_S_REL_REQ;
+	/* FIXME: start some timer in case we don't receive a REL ACK ? */
+
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -901,7 +942,15 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	 * to assign the activated channel to the MS */
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
-	
+
+	if (msg->lchan->state != LCHAN_S_ACT_REQ)
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
+			gsm_lchan_name(msg->lchan),
+			gsm_lchans_name(msg->lchan->state));
+	msg->lchan->state = LCHAN_S_ACTIVE;
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
+
 	return 0;
 }
 
@@ -911,14 +960,26 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
+	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK",
+		gsm_lchan_name(msg->lchan));
+
 	/* BTS has rejected channel activation ?!? */
 	if (dh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
-	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
-		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE)) {
+		const u_int8_t *cause = TLVP_VAL(&tp, RSL_IE_CAUSE);
+		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
+			msg->lchan->state = LCHAN_S_NONE;
+	} else
+		msg->lchan->state = LCHAN_S_NONE;
+ 
+	LOGPC(DRSL, LOGL_ERROR, "\n");
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
 	lchan_free(msg->lchan);
 	return 0;
@@ -930,61 +991,158 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGPC(DRSL, "CONNECTION FAIL: ");
+	/* FIXME: print which channel */
+	LOGP(DRSL, LOGL_NOTICE, "%s CONNECTION FAIL: RELEASING ",
+	     gsm_lchan_name(msg->lchan));
 
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
-		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+		print_rsl_cause(LOGL_NOTICE, TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
-	DEBUGPC(DRSL, "RELEASING.\n");
-
+	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
 	return rsl_rf_chan_release(msg->lchan);
+}
+
+static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
+				const char *prefix)
+{
+	DEBUGPC(DMEAS, "RXL-FULL-%s=%3ddBm RXL-SUB-%s=%3ddBm ",
+		prefix, rxlev2dbm(mru->full.rx_lev),
+		prefix, rxlev2dbm(mru->sub.rx_lev));
+	DEBUGPC(DMEAS, "RXQ-FULL-%s=%d RXQ-SUB-%s=%d ",
+		prefix, mru->full.rx_qual, prefix, mru->sub.rx_qual);
+}
+
+static void print_meas_rep(struct gsm_meas_rep *mr)
+{
+	int i;
+
+	DEBUGP(DMEAS, "MEASUREMENT RESULT NR=%d ", mr->nr);
+
+	if (mr->flags & MEAS_REP_F_DL_DTX)
+		DEBUGPC(DMEAS, "DTXd ");
+
+	print_meas_rep_uni(&mr->ul, "ul");
+	DEBUGPC(DMEAS, "BS_POWER=%d ", mr->bs_power);
+	if (mr->flags & MEAS_REP_F_MS_TO)
+		DEBUGPC(DMEAS, "MS_TO=%d ", mr->ms_timing_offset);
+
+	if (mr->flags & MEAS_REP_F_MS_L1) {
+		DEBUGPC(DMEAS, "L1_MS_PWR=%3ddBm ", mr->ms_l1.pwr);
+		DEBUGPC(DMEAS, "L1_FPC=%u ",
+			mr->flags & MEAS_REP_F_FPC ? 1 : 0);
+		DEBUGPC(DMEAS, "L1_TA=%u ", mr->ms_l1.ta);
+	}
+
+	if (mr->flags & MEAS_REP_F_UL_DTX)
+		DEBUGPC(DMEAS, "DTXu ");
+	if (mr->flags & MEAS_REP_F_BA1)
+		DEBUGPC(DMEAS, "BA1 ");
+	if (!(mr->flags & MEAS_REP_F_DL_VALID))
+		DEBUGPC(DMEAS, "NOT VALID ");
+	else
+		print_meas_rep_uni(&mr->dl, "dl");
+
+	DEBUGPC(DMEAS, "NUM_NEIGH=%u\n", mr->num_cell);
+	if (mr->num_cell == 7)
+		return;
+	for (i = 0; i < mr->num_cell; i++) {
+		struct gsm_meas_rep_cell *mrc = &mr->cell[i];
+		DEBUGP(DMEAS, "IDX=%u ARFCN=%u BSIC=%u => %d dBm\n",
+			mrc->neigh_idx, mrc->arfcn, mrc->bsic, rxlev2dbm(mrc->rxlev));
+	}
 }
 
 static int rsl_rx_meas_res(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
+	struct gsm_meas_rep *mr = lchan_next_meas_rep(msg->lchan);
+	u_int8_t len;
+	const u_int8_t *val;
+	int rc;
 
-	DEBUGPC(DMEAS, "MEASUREMENT RESULT ");
+	/* check if this channel is actually active */
+	/* FIXME: maybe this check should be way more generic/centralized */
+	if (msg->lchan->state != LCHAN_S_ACTIVE) {
+		LOGP(DRSL, LOGL_NOTICE, "%s: MEAS RES for inactive channel\n",
+			gsm_lchan_name(msg->lchan));
+		return 0;
+	}
+
+	memset(mr, 0, sizeof(*mr));
+	mr->lchan = msg->lchan;
+
 	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
-	if (TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR))
-		DEBUGPC(DMEAS, "NR=%d ", *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR));
-	if (TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS)) {
-		u_int8_t len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
-		if (len >= 3) {
-			if (val[0] & 0x40)
-				DEBUGPC(DMEAS, "DTXd ");
-			DEBUGPC(DMEAS, "RXL-FULL-up=%d RXL-SUB-up=%d ",
-				val[0] & 0x3f, val[1] & 0x3f);
-			DEBUGPC(DMEAS, "RXQ-FULL-up=%d RXQ-SUB-up=%d ",
-				val[2]>>3 & 0x7, val[2] & 0x7);
-		}
+	if (!TLVP_PRESENT(&tp, RSL_IE_MEAS_RES_NR) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_UPLINK_MEAS) ||
+	    !TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
+		return -EIO;
+
+	/* Mandatory Parts */
+	mr->nr = *TLVP_VAL(&tp, RSL_IE_MEAS_RES_NR);
+
+	len = TLVP_LEN(&tp, RSL_IE_UPLINK_MEAS);
+	val = TLVP_VAL(&tp, RSL_IE_UPLINK_MEAS);
+	if (len >= 3) {
+		if (val[0] & 0x40)
+			mr->flags |= MEAS_REP_F_DL_DTX;
+		mr->ul.full.rx_lev = val[0] & 0x3f;
+		mr->ul.sub.rx_lev = val[1] & 0x3f;
+		mr->ul.full.rx_qual = val[2]>>3 & 0x7;
+		mr->ul.sub.rx_qual = val[2] & 0x7;
 	}
-	if (TLVP_PRESENT(&tp, RSL_IE_BS_POWER))
-		DEBUGPC(DMEAS, "BS_POWER=%d ", *TLVP_VAL(&tp, RSL_IE_BS_POWER));
+
+	mr->bs_power = *TLVP_VAL(&tp, RSL_IE_BS_POWER);
+
+	/* Optional Parts */
 	if (TLVP_PRESENT(&tp, RSL_IE_MS_TIMING_OFFSET))
-		DEBUGPC(DMEAS, "MS_TO=%d ", 
-			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET));
+		mr->ms_timing_offset =
+			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
+
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
-		const u_int8_t *val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
-		u_int8_t pwr_lvl = val[0] >> 3;
-		DEBUGPC(DMEAS, "L1_MS_PWR=%ddBm ",
-			ms_pwr_dbm(msg->trx->bts->band, pwr_lvl));
-		DEBUGPC(DMEAS, "L1_FPC=%u ", val[0] & 0x04 ? 1 : 0);
-		DEBUGPC(DMEAS, "L1_TA=%u ", val[1]);
+		val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
+		mr->flags |= MEAS_REP_F_MS_L1;
+		mr->ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
+		if (val[0] & 0x04)
+			mr->flags |= MEAS_REP_F_FPC;
+		mr->ms_l1.ta = val[1];
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
-		DEBUGPC(DMEAS, "L3\n");
 		msg->l3h = (u_int8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
-		return gsm0408_rcvmsg(msg, 0);
-	} else
-		DEBUGPC(DMEAS, "\n");
+		rc = gsm48_parse_meas_rep(mr, msg);
+		if (rc < 0)
+			return rc;
+	}
+
+	print_meas_rep(mr);
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, mr);
+
+	return 0;
+}
+
+/* Chapter 8.4.7 */
+static int rsl_rx_hando_det(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tp;
+
+	DEBUGP(DRSL, "%s HANDOVER DETECT ", gsm_lchan_name(msg->lchan));
+
+	rsl_tlv_parse(&tp, dh->data, msgb_l2len(msg)-sizeof(*dh));
+
+	if (TLVP_PRESENT(&tp, RSL_IE_ACCESS_DELAY))
+		DEBUGPC(DRSL, "access delay = %u\n",
+			*TLVP_VAL(&tp, RSL_IE_ACCESS_DELAY));
+	else
+		DEBUGPC(DRSL, "\n");
+
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
 
 	return 0;
 }
@@ -996,18 +1154,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	char *ts_name;
 
 	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
-	ts_name = gsm_ts_name(msg->lchan->ts);
-
-	if (rslh->c.msg_type != RSL_MT_MEAS_RES)
-		DEBUGP(DRSL, "channel=%s chan_nr=0x%02x ", ts_name, rslh->chan_nr);
+	ts_name = gsm_lchan_name(msg->lchan);
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_ACTIV_ACK:
-		DEBUGPC(DRSL, "CHANNEL ACTIVATE ACK\n");
+		DEBUGP(DRSL, "%s CHANNEL ACTIVATE ACK\n", ts_name);
 		rc = rsl_rx_chan_act_ack(msg);
 		break;
 	case RSL_MT_CHAN_ACTIV_NACK:
-		DEBUGPC(DRSL, "CHANNEL ACTIVATE NACK\n");
 		rc = rsl_rx_chan_act_nack(msg);
 		break;
 	case RSL_MT_CONN_FAIL:
@@ -1016,27 +1170,35 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	case RSL_MT_MEAS_RES:
 		rc = rsl_rx_meas_res(msg);
 		break;
+	case RSL_MT_HANDO_DET:
+		rc = rsl_rx_hando_det(msg);
+		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
-		DEBUGPC(DRSL, "RF CHANNEL RELEASE ACK\n");
+		DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", ts_name);
+		if (msg->lchan->state != LCHAN_S_REL_REQ)
+			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
+				gsm_lchan_name(msg->lchan),
+				gsm_lchans_name(msg->lchan->state));
+		msg->lchan->state = LCHAN_S_NONE;
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
-		DEBUGPC(DRSL, "CHANNEL MODE MODIFY ACK\n");
+		DEBUGP(DRSL, "%s CHANNEL MODE MODIFY ACK\n", ts_name);
 		break;
 	case RSL_MT_MODE_MODIFY_NACK:
-		DEBUGPC(DRSL, "CHANNEL MODE MODIFY NACK\n");
+		LOGP(DRSL, LOGL_ERROR, "%s CHANNEL MODE MODIFY NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
-		DEBUGPC(DRSL, "IPAC PDCH ACT ACK\n");
+		DEBUGPC(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
-		DEBUGPC(DRSL, "IPAC PDCH ACT NACK\n");
+		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH ACT NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_ACK:
-		DEBUGPC(DRSL, "IPAC PDCH DEACT ACK\n");
+		DEBUGP(DRSL, "%s IPAC PDCH DEACT ACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_NACK:
-		DEBUGPC(DRSL, "IPAC PDCH DEACT NACK\n");
+		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH DEACT NACK\n", ts_name);
 		break;
 	case RSL_MT_PHY_CONTEXT_CONF:
 	case RSL_MT_PREPROC_MEAS_RES:
@@ -1046,12 +1208,12 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	case RSL_MT_MR_CODEC_MOD_ACK:
 	case RSL_MT_MR_CODEC_MOD_NACK:
 	case RSL_MT_MR_CODEC_MOD_PER:
-		DEBUGPC(DRSL, "Unimplemented Abis RSL DChan msg 0x%02x\n",
-			rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "%s Unimplemented Abis RSL DChan "
+			"msg 0x%02x\n", ts_name, rslh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRSL, "unknown Abis RSL DChan msg 0x%02x\n",
-			rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "%s unknown Abis RSL DChan msg 0x%02x\n",
+			ts_name, rslh->c.msg_type);
 		return -EINVAL;
 	}
 
@@ -1063,15 +1225,15 @@ static int rsl_rx_error_rep(struct msgb *msg)
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	DEBUGP(DRSL, "ERROR REPORT ");
+	LOGP(DRSL, LOGL_ERROR, "%s ERROR REPORT ", gsm_trx_name(msg->trx));
 
 	rsl_tlv_parse(&tp, rslh->data, msgb_l2len(msg)-sizeof(*rslh));
 
 	if (TLVP_PRESENT(&tp, RSL_IE_CAUSE))
-		print_rsl_cause(TLVP_VAL(&tp, RSL_IE_CAUSE),
+		print_rsl_cause(LOGL_ERROR, TLVP_VAL(&tp, RSL_IE_CAUSE),
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 
-	DEBUGPC(DRSL, "\n");
+	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	return 0;
 }
@@ -1087,15 +1249,16 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_RF_RES_IND:
 		/* interference on idle channels of TRX */
-		//DEBUGP(DRSL, "TRX: RF Interference Indication\n");
+		//DEBUGP(DRSL, "%s RF Resource Indication\n", gsm_trx_name(msg->trx));
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */ 
-		DEBUGP(DRSL, "TRX: CCCH/ACCH/CPU Overload\n");
+		LOGP(DRSL, LOGL_ERROR, "%s CCCH/ACCH/CPU Overload\n",
+		     gsm_trx_name(msg->trx));
 		break;
 	default:
-		DEBUGP(DRSL, "Unknown Abis RSL TRX message type 0x%02x\n",
-			rslh->msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "%s Unknown Abis RSL TRX message "
+			"type 0x%02x\n", gsm_trx_name(msg->trx), rslh->msg_type);
 		return -EINVAL;
 	}
 	return rc;
@@ -1141,14 +1304,23 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lctype = get_ctype_by_chreq(bts, rqd_ref->ra, bts->network->neci);
 	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra, bts->network->neci);
 
+	counter_inc(bts->network->stats.chreq.total);
+
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype);
 	if (!lchan) {
-		DEBUGP(DRSL, "CHAN RQD: no resources for %u 0x%x\n",
-			lctype, rqd_ref->ra);
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
+		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
+		counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
 	}
+
+	if (lchan->state != LCHAN_S_NONE)
+		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
+		     "in state %s\n", gsm_lchan_name(lchan),
+		     gsm_lchans_name(lchan->state));
+	lchan->state = LCHAN_S_ACT_REQ;
 
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
@@ -1159,7 +1331,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->bs_power = 0; /* 0dB reduction, output power = Pn */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	lchan->tch_mode = GSM48_CMODE_SIGN;
-	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta);
+	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(&ia, 0, sizeof(ia));
@@ -1177,16 +1349,15 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.timing_advance = rqd_ta;
 	ia.mob_alloc_len = 0;
 
-	DEBUGP(DRSL, "Activating ARFCN(%u) TS(%u) SS(%u) lctype %s "
-		"chan_nr=0x%02x r=%s ra=0x%02x\n",
-		arfcn, ts_number, subch, gsm_lchan_name(lchan->type),
-		ia.chan_desc.chan_nr, gsm_chreq_name(chreq_reason),
+	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
+		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
+		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
 		rqd_ref->ra);
 
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 	lchan->T3101.cb = t3101_expired;
 	lchan->T3101.data = lchan;
-	bsc_schedule_timer(&lchan->T3101, 10, 0);
+	bsc_schedule_timer(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
@@ -1242,12 +1413,12 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 		/* CCCH overloaded, IMM_ASSIGN was dropped */
 	case RSL_MT_CBCH_LOAD_IND:
 		/* current load on the CBCH */
-		fprintf(stderr, "Unimplemented Abis RSL TRX message type "
-			"0x%02x\n", rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unimplemented Abis RSL TRX message "
+			"type 0x%02x\n", rslh->c.msg_type);
 		break;
 	default:
-		fprintf(stderr, "Unknown Abis RSL TRX message type 0x%02x\n",
-			rslh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unknown Abis RSL TRX message type "
+			"0x%02x\n", rslh->c.msg_type);
 		return -EINVAL;
 	}
 
@@ -1259,10 +1430,12 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	u_int8_t *rlm_cause = rllh->data;
 
-	DEBUGPC(DRLL, "ERROR INDICATION cause=0x%02x\n", rlm_cause[1]);
+	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
+		gsm_lchan_name(msg->lchan),
+		get_value_string(rlm_cause_strs, rlm_cause[1]));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
-		
+
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
 		return rsl_rf_chan_release(msg->lchan);
 
@@ -1283,9 +1456,8 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	u_int8_t sapi = rllh->link_id & 7;
 
 	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
-	ts_name = gsm_ts_name(msg->lchan->ts);
-	DEBUGP(DRLL, "channel=%s chan_nr=0x%02x sapi=%u ", ts_name,
-		rllh->chan_nr, sapi);
+	ts_name = gsm_lchan_name(msg->lchan);
+	DEBUGP(DRLL, "%s SAPI=%u ", ts_name, sapi);
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_DATA_IND:
@@ -1340,38 +1512,111 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rc = rsl_rx_rll_err_ind(msg);
 		break;
 	case RSL_MT_UNIT_DATA_IND:
-		DEBUGPC(DRLL, "unimplemented Abis RLL message type 0x%02x\n",
-			rllh->c.msg_type);
+		LOGP(DRLL, LOGL_NOTICE, "unimplemented Abis RLL message "
+			"type 0x%02x\n", rllh->c.msg_type);
 		break;
 	default:
-		DEBUGPC(DRLL, "unknown Abis RLL message type 0x%02x\n",
-			rllh->c.msg_type);
+		LOGP(DRLL, LOGL_NOTICE, "unknown Abis RLL message "
+			"type 0x%02x\n", rllh->c.msg_type);
 	}
 	return rc;
 }
 
-static u_int8_t ipa_smod_s_for_tch_mode(u_int8_t tch_mode)
+static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 {
-	switch (tch_mode) {
+	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
-		return 0x00;
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x00;
+		case GSM_LCHAN_TCH_H:
+			return 0x03;
+		default:
+			break;
+		}
 	case GSM48_CMODE_SPEECH_EFR:
-		return 0x01;
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x01;
+		/* there's no half-rate EFR */
+		default:
+			break;
+		}
 	case GSM48_CMODE_SPEECH_AMR:
-		return 0x02;
-	/* FIXME: Type1 half-rate and type3 half-rate */
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 0x02;
+		case GSM_LCHAN_TCH_H:
+			return 0x05;
+		default:
+			break;
+		}
+	default:
+		break;
 	}
-	DEBUGPC(DRSL, "Cannot determine ip.access speech mode for "
-		"tch_mode == 0x%02x\n", tch_mode);
+	LOGP(DRSL, LOGL_ERROR, "Cannot determine ip.access speech mode for "
+		"tch_mode == 0x%02x\n", lchan->tch_mode);
 	return 0;
 }
 
 /* ip.access specific RSL extensions */
+static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
+{
+	struct in_addr ip;
+	u_int16_t port, conn_id;
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_IP)) {
+		ip.s_addr = *((u_int32_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_IP));
+		DEBUGPC(DRSL, "LOCAL_IP=%s ", inet_ntoa(ip));
+		lchan->abis_ip.bound_ip = ntohl(ip.s_addr);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_LOCAL_PORT)) {
+		port = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_LOCAL_PORT));
+		port = ntohs(port);
+		DEBUGPC(DRSL, "LOCAL_PORT=%u ", port);
+		lchan->abis_ip.bound_port = port;
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_CONN_ID)) {
+		conn_id = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_CONN_ID));
+		conn_id = ntohs(conn_id);
+		DEBUGPC(DRSL, "CON_ID=%u ", conn_id);
+		lchan->abis_ip.conn_id = conn_id;
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
+		lchan->abis_ip.rtp_payload2 =
+				*TLVP_VAL(tv, RSL_IE_IPAC_RTP_PAYLOAD2);
+		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
+			lchan->abis_ip.rtp_payload2);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_SPEECH_MODE)) {
+		lchan->abis_ip.speech_mode =
+				*TLVP_VAL(tv, RSL_IE_IPAC_SPEECH_MODE);
+		DEBUGPC(DRSL, "speech_mode=0x%02x ",
+			lchan->abis_ip.speech_mode);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_IP)) {
+		ip.s_addr = *((u_int32_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_IP));
+		DEBUGPC(DRSL, "REMOTE_IP=%s ", inet_ntoa(ip));
+		lchan->abis_ip.connect_ip = ntohl(ip.s_addr);
+	}
+
+	if (TLVP_PRESENT(tv, RSL_IE_IPAC_REMOTE_PORT)) {
+		port = *((u_int16_t *) TLVP_VAL(tv, RSL_IE_IPAC_REMOTE_PORT));
+		port = ntohs(port);
+		DEBUGPC(DRSL, "REMOTE_PORT=%u ", port);
+		lchan->abis_ip.connect_port = port;
+	}
+}
+
 int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t speech_mode;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_IPAC_CRCX);
@@ -1379,12 +1624,11 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 	dh->chan_nr = lchan2chan_nr(lchan);
 
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
-	speech_mode = 0x10 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
+	lchan->abis_ip.speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
 
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_BIND "
-		"speech_mode=0x%02x\n", gsm_ts_name(lchan->ts),
-		dh->chan_nr, speech_mode);
+	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x\n",
+		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1392,12 +1636,11 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 }
 
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
-		      u_int16_t conn_id, u_int8_t rtp_payload2)
+		   u_int8_t rtp_payload2)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
-	u_int8_t *att_f8, *att_ip, *att_port;
-	u_int8_t speech_mode;
+	u_int32_t *att_ip;
 	struct in_addr ia;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
@@ -1405,40 +1648,45 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	dh->c.msg_discr = ABIS_RSL_MDISC_IPACCESS;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
+	/* we need to store these now as MDCX_ACK does not return them :( */
+	lchan->abis_ip.rtp_payload2 = rtp_payload2;
+	lchan->abis_ip.connect_port = port;
+	lchan->abis_ip.connect_ip = ip;
+
 	/* 0x0- == both directions, 0x-1 == EFR codec */
-	speech_mode = 0x00 | ipa_smod_s_for_tch_mode(lchan->tch_mode);
+	lchan->abis_ip.speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_MDCX "
-		"IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d speech_mode=0x%02x\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr,
-		inet_ntoa(ia), port, rtp_payload2, conn_id, speech_mode);
+	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d "
+		"speech_mode=0x%02x\n", gsm_lchan_name(lchan), inet_ntoa(ia), port,
+		rtp_payload2, lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
 
-	att_f8 = msgb_put(msg, sizeof(conn_id)+1);
-	att_f8[0] = RSL_IE_IPAC_CONN_ID;
-	att_f8[1] = conn_id >> 8;
-	att_f8[2] = conn_id & 0xff;
-
-	att_ip = msgb_put(msg, sizeof(ip)+1);
-	att_ip[0] = RSL_IE_IPAC_REMOTE_IP;
-	att_ip[1] = ip >> 24;
-	att_ip[2] = ip >> 16;
-	att_ip[3] = ip >> 8;
-	att_ip[4] = ip & 0xff;
-	//att_ip[4] = 11;
-
-	att_port = msgb_put(msg, sizeof(port)+1);
-	att_port[0] = RSL_IE_IPAC_REMOTE_PORT;
-	att_port[1] = port >> 8;
-	att_port[2] = port & 0xff;
-
-	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, speech_mode);
+	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
+	msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
+	att_ip = (u_int32_t *) msgb_put(msg, sizeof(ip));
+	*att_ip = ia.s_addr;
+	msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT, port);
+	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+/* tell BTS to connect RTP stream to our local RTP socket */
+int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
+{
+	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
+	int rc;
+
+	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
+				ntohs(rs->rtp.sin_local.sin_port),
+			/* FIXME: use RTP payload of bound socket, not BTS*/
+				lchan->abis_ip.rtp_payload2);
+
+	return rc;
 }
 
 int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
@@ -1451,8 +1699,7 @@ int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x IPAC_PDCH_ACT\n",
-		gsm_ts_name(lchan->ts), dh->chan_nr);
+	DEBUGP(DRSL, "%s IPAC_PDCH_ACT\n", gsm_lchan_name(lchan));
 
 	msg->trx = lchan->ts->trx;
 
@@ -1463,9 +1710,7 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
-	struct gsm_bts_trx_ts *ts = msg->lchan->ts;
-	struct in_addr ip;
-	u_int16_t port, attr_f8;
+	struct gsm_lchan *lchan = msg->lchan;
 
 	/* the BTS has acknowledged a local bind, it now tells us the IP
 	* address and port number to which it has bound the given logical
@@ -1475,29 +1720,53 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 	if (!TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_PORT) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_LOCAL_IP) ||
 	    !TLVP_PRESENT(&tv, RSL_IE_IPAC_CONN_ID)) {
-		DEBUGPC(DRSL, "mandatory IE missing");
+		LOGP(DRSL, LOGL_NOTICE, "mandatory IE missing");
 		return -EINVAL;
 	}
-	ip.s_addr = *((u_int32_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_IP));
-	port = *((u_int16_t *) TLVP_VAL(&tv, RSL_IE_IPAC_LOCAL_PORT));
-	attr_f8 = *((u_int16_t *) TLVP_VAL(&tv, 0xf8));
 
-	DEBUGPC(DRSL, "IP=%s PORT=%d CONN_ID=%d ",
-		inet_ntoa(ip), ntohs(port), ntohs(attr_f8));
+	ipac_parse_rtp(lchan, &tv);
 
-	if (TLVP_PRESENT(&tv, RSL_IE_IPAC_RTP_PAYLOAD2)) {
-		ts->abis_ip.rtp_payload2 = 
-				*TLVP_VAL(&tv, RSL_IE_IPAC_RTP_PAYLOAD2);
-		DEBUGPC(DRSL, "RTP_PAYLOAD2=0x%02x ",
-			ts->abis_ip.rtp_payload2);
+	/* in case we don't use direct BTS-to-BTS RTP */
+	if (!ipacc_rtp_direct) {
+		int rc;
+		/* the BTS has successfully bound a TCH to a local ip/port,
+		 * which means we can connect our UDP socket to it */
+		if (lchan->abis_ip.rtp_socket) {
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+		}
+
+		lchan->abis_ip.rtp_socket = rtp_socket_create();
+		if (!lchan->abis_ip.rtp_socket)
+			goto out_err;
+
+		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
+				   lchan->abis_ip.bound_ip,
+				   lchan->abis_ip.bound_port);
+		if (rc < 0)
+			goto out_err;
 	}
 
-	/* update our local information about this TS */
-	ts->abis_ip.bound_ip = ntohl(ip.s_addr);
-	ts->abis_ip.bound_port = ntohs(port);
-	ts->abis_ip.conn_id = ntohs(attr_f8);
-
 	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
+
+	return 0;
+out_err:
+	return -EIO;
+}
+
+static int abis_rsl_rx_ipacc_mdcx_ack(struct msgb *msg)
+{
+	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
+	struct tlv_parsed tv;
+	struct gsm_lchan *lchan = msg->lchan;
+
+	/* the BTS has acknowledged a remote connect request and
+	 * it now tells us the IP address and port number to which it has
+	 * connected the given logical channel */
+
+	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
+	ipac_parse_rtp(lchan, &tv);
+	dispatch_signal(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
 
 	return 0;
 }
@@ -1506,12 +1775,19 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 {
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tv;
+	struct gsm_lchan *lchan = msg->lchan;
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 
 	if (TLVP_PRESENT(&tv, RSL_IE_CAUSE))
-		print_rsl_cause(TLVP_VAL(&tv, RSL_IE_CAUSE),
+		print_rsl_cause(LOGL_DEBUG, TLVP_VAL(&tv, RSL_IE_CAUSE),
 				TLVP_LEN(&tv, RSL_IE_CAUSE));
+
+	/* the BTS tells us a RTP stream has been disconnected */
+	if (lchan->abis_ip.rtp_socket) {
+		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+	}
 
 	dispatch_signal(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
 
@@ -1521,37 +1797,39 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 static int abis_rsl_rx_ipacc(struct msgb *msg)
 {
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
+	char *ts_name;
 	int rc = 0;
 
 	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
-	DEBUGP(DRSL, "channel=%s chan_nr=0x%02x ",
-		gsm_ts_name(msg->lchan->ts), rllh->chan_nr);
+	ts_name = gsm_lchan_name(msg->lchan);
 	
 	switch (rllh->c.msg_type) {
 	case RSL_MT_IPAC_CRCX_ACK:
-		DEBUGPC(DRSL, "IPAC_CRCX_ACK ");
+		DEBUGP(DRSL, "%s IPAC_CRCX_ACK ", ts_name);
 		rc = abis_rsl_rx_ipacc_crcx_ack(msg);
 		break;
 	case RSL_MT_IPAC_CRCX_NACK:
 		/* somehow the BTS was unable to bind the lchan to its local
 		 * port?!? */
-		DEBUGPC(DRSL, "IPAC_CRCX_NACK ");
+		LOGP(DRSL, LOGL_ERROR, "%s IPAC_CRCX_NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_MDCX_ACK:
 		/* the BTS tells us that a connect operation was successful */
-		DEBUGPC(DRSL, "IPAC_MDCX_ACK ");
+		DEBUGP(DRSL, "%s IPAC_MDCX_ACK ", ts_name);
+		rc = abis_rsl_rx_ipacc_mdcx_ack(msg);
 		break;
 	case RSL_MT_IPAC_MDCX_NACK:
 		/* somehow the BTS was unable to connect the lchan to a remote
 		 * port */
-		DEBUGPC(DRSL, "IPAC_MDCX_NACK ");
+		LOGP(DRSL, LOGL_ERROR, "%s IPAC_MDCX_NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_DLCX_IND:
-		DEBUGPC(DRSL, "IPAC_DLCX_IND ");
+		DEBUGP(DRSL, "%s IPAC_DLCX_IND ", ts_name);
 		rc = abis_rsl_rx_ipacc_dlcx_ind(msg);
 		break;
 	default:
-		DEBUGPC(DRSL, "Unknown ip.access msg_type 0x%02x", rllh->c.msg_type);
+		LOGP(DRSL, LOGL_NOTICE, "Unknown ip.access msg_type 0x%02x\n",
+			rllh->c.msg_type);
 		break;
 	}
 	DEBUGPC(DRSL, "\n");
@@ -1580,15 +1858,15 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 		rc = abis_rsl_rx_trx(msg);
 		break;
 	case ABIS_RSL_MDISC_LOC:
-		fprintf(stderr, "unimplemented RSL msg disc 0x%02x\n",
+		LOGP(DRSL, LOGL_NOTICE, "unimplemented RSL msg disc 0x%02x\n",
 			rslh->msg_discr);
 		break;
 	case ABIS_RSL_MDISC_IPACCESS:
 		rc = abis_rsl_rx_ipacc(msg);
 		break;
 	default:
-		fprintf(stderr, "unknown RSL message discriminator 0x%02x\n",
-			rslh->msg_discr);
+		LOGP(DRSL, LOGL_NOTICE, "unknown RSL message discriminator "
+			"0x%02x\n", rslh->msg_discr);
 		return -EINVAL;
 	}
 	msgb_free(msg);
@@ -1637,11 +1915,11 @@ int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf)
 /* From Table 10.5.33 of GSM 04.08 */
 int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
 {
-	if (bts->chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
-		return MAX(1, (3 - bts->chan_desc.bs_ag_blks_res))
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+	if (bts->si_common.chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
+		return MAX(1, (3 - bts->si_common.chan_desc.bs_ag_blks_res))
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	} else {
-		return (9 - bts->chan_desc.bs_ag_blks_res)
-			* (bts->chan_desc.bs_pa_mfrms + 2);
+		return (9 - bts->si_common.chan_desc.bs_ag_blks_res)
+			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	}
 }

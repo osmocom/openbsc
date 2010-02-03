@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/types.h>
 
 #include <openbsc/gsm_04_08.h>
@@ -29,6 +30,8 @@
 #include <openbsc/mncc.h>
 #include <openbsc/talloc.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/transaction.h>
+#include <openbsc/rtp_proxy.h>
 
 void *tall_call_ctx;
 
@@ -82,10 +85,9 @@ static struct mncc_names {
 	{"MNCC_FRAME_DROP",	0x0202},
 	{"MNCC_LCHAN_MODIFY",	0x0203},
 
-	{"GSM_TRAU_FRAME",	0x0300},
+	{"GSM_TCH_FRAME",	0x0300},
 
-	{NULL, 0}
-};
+	{NULL, 0} };
 
 static LLIST_HEAD(call_list);
 
@@ -136,19 +138,36 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	struct gsm_mncc mncc;
 	struct gsm_call *remote;
 
+	memset(&mncc, 0, sizeof(struct gsm_mncc));
+	mncc.callref = call->callref;
+
 	/* already have remote call */
 	if (call->remote_ref)
 		return 0;
 	
+	/* transfer mode 1 would be packet mode, which was never specified */
+	if (setup->bearer_cap.mode != 0) {
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We don't support "
+			"packet mode\n", call->callref);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+		goto out_reject;
+	}
+
+	/* we currently only do speech */
+	if (setup->bearer_cap.transfer != GSM_MNCC_BCAP_SPEECH) {
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We only support "
+			"voice calls\n", call->callref);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+		goto out_reject;
+	}
+
 	/* create remote call */
 	if (!(remote = talloc(tall_call_ctx, struct gsm_call))) {
-		memset(&mncc, 0, sizeof(struct gsm_mncc));
-		mncc.callref = call->callref;
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
-		mncc_send(call->net, MNCC_REJ_REQ, &mncc);
-		free_call(call);
-		return 0;
+		goto out_reject;
 	}
 	llist_add_tail(&remote->entry, &call_list);
 	remote->net = call->net;
@@ -179,6 +198,11 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	setup->callref = remote->callref;
 	DEBUGP(DMNCC, "(call %x) Forwarding SETUP to remote.\n", call->callref);
 	return mncc_send(remote->net, MNCC_SETUP_REQ, setup);
+
+out_reject:
+	mncc_send(call->net, MNCC_REJ_REQ, &mncc);
+	free_call(call);
+	return 0;
 }
 
 static int mncc_alert_ind(struct gsm_call *call, int msg_type,
@@ -210,7 +234,8 @@ static int mncc_notify_ind(struct gsm_call *call, int msg_type,
 static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 			  struct gsm_mncc *connect)
 {
-	struct gsm_mncc connect_ack;
+	struct gsm_mncc connect_ack, frame_recv;
+	struct gsm_network *net = call->net;
 	struct gsm_call *remote;
 	u_int32_t refs[2];
 
@@ -231,7 +256,26 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 	refs[0] = call->callref;
 	refs[1] = call->remote_ref;
 	DEBUGP(DMNCC, "(call %x) Bridging with remote.\n", call->callref);
-	return mncc_send(call->net, MNCC_BRIDGE, refs);
+
+	/* in direct mode, we always have to bridge the channels */
+	if (ipacc_rtp_direct)
+		return mncc_send(call->net, MNCC_BRIDGE, refs);
+
+	/* proxy mode */
+	if (!net->handover.active) {
+		/* in the no-handover case, we can bridge, i.e. use
+		 * the old RTP proxy code */
+		return mncc_send(call->net, MNCC_BRIDGE, refs);
+	} else {
+		/* in case of handover, we need to re-write the RTP
+		 * SSRC, sequence and timestamp values and thus
+		 * need to enable RTP receive for both directions */
+		memset(&frame_recv, 0, sizeof(struct gsm_mncc));
+		frame_recv.callref = call->callref;
+		mncc_send(call->net, MNCC_FRAME_RECV, &frame_recv);
+		frame_recv.callref = call->remote_ref;
+		return mncc_send(call->net, MNCC_FRAME_RECV, &frame_recv);
+	}
 }
 
 static int mncc_disc_ind(struct gsm_call *call, int msg_type,
@@ -279,6 +323,28 @@ static int mncc_rel_cnf(struct gsm_call *call, int msg_type, struct gsm_mncc *re
 	return 0;
 }
 
+/* receiving a TCH/F frame from the BSC code */
+static int mncc_rcv_tchf(struct gsm_call *call, int msg_type,
+			 struct gsm_data_frame *dfr)
+{
+	struct gsm_trans *remote_trans;
+
+	remote_trans = trans_find_by_callref(call->net, call->remote_ref);
+
+	/* this shouldn't really happen */
+	if (!remote_trans || !remote_trans->lchan) {
+		LOGP(DMNCC, LOGL_ERROR, "No transaction or transaction without lchan?!?\n");
+		return -EIO;
+	}
+
+	/* RTP socket of remote end has meanwhile died */
+	if (!remote_trans->lchan->abis_ip.rtp_socket)
+		return -EIO;
+
+	return rtp_send_frame(remote_trans->lchan->abis_ip.rtp_socket, dfr);
+}
+
+
 int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 {
 	struct gsm_mncc *data = arg;
@@ -320,8 +386,15 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 		DEBUGP(DMNCC, "(call %x) Call created.\n", call->callref);
 	}
 
-	DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
-		get_mncc_name(msg_type));
+	switch (msg_type) {
+	case GSM_TCHF_FRAME:
+	case GSM_TCHF_FRAME_EFR:
+		break;
+	default:
+		DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
+			get_mncc_name(msg_type));
+		break;
+	}
 
 	switch(msg_type) {
 	case MNCC_SETUP_IND:
@@ -382,8 +455,12 @@ int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 			call->callref, data->cause.value);
 		rc = mncc_send(net, MNCC_RETRIEVE_REJ, data);
 		break;
+	case GSM_TCHF_FRAME:
+	case GSM_TCHF_FRAME_EFR:
+		rc = mncc_rcv_tchf(call, msg_type, arg);
+		break;
 	default:
-		DEBUGP(DMNCC, "(call %x) Message unhandled\n", callref);
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x) Message unhandled\n", callref);
 		break;
 	}
 

@@ -8,6 +8,18 @@ my $dbh = DBI->connect("dbi:SQLite:dbname=hlr.sqlite3","","");
 my %mcc_names;
 my %mcc_mnc_names;
 
+sub get_mcc_mnc_name($)
+{
+	my $mcc_mnc = shift;
+	my $ret = $mcc_mnc;
+
+	if ($mcc_mnc_names{$mcc_mnc} ne '') {
+		$ret = $mcc_mnc_names{$mcc_mnc};
+	}
+
+	return $ret;
+}
+
 sub read_networks($)
 {
 	my $filename = shift;
@@ -37,6 +49,7 @@ read_networks("networks.tab");
 my %oper_count;
 my %country_count;
 
+#my $sth = $dbh->prepare("SELECT imsi FROM subscriber where authorized=1");
 my $sth = $dbh->prepare("SELECT imsi FROM subscriber");
 
 $sth->execute();
@@ -49,10 +62,12 @@ while (my $href = $sth->fetchrow_hashref) {
 }
 
 
-foreach my $c (keys %country_count) {
+foreach my $c (sort{$country_count{$b} <=> $country_count{$a}} keys %country_count) {
 	printf("%s: %d\n", $mcc_names{$c}, $country_count{$c});
-}
-	foreach my $k (keys %oper_count) {
-		printf("\t%s: %d\n", $mcc_mnc_names{$k}, $oper_count{$k});
+
+	foreach my $k (sort{$oper_count{$b} <=> $oper_count{$a}} keys %oper_count) {
+		if ($k =~ /^$c-/) {
+			printf("\t%s: %d\n", get_mcc_mnc_name($k), $oper_count{$k});
+		}
 	}
-#//}
+}

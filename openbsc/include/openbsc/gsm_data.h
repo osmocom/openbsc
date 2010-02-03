@@ -9,6 +9,7 @@ struct value_string {
 };
 
 const char *get_value_string(const struct value_string *vs, u_int32_t val);
+int get_string_value(const struct value_string *vs, const char *str);
 
 enum gsm_band {
 	GSM_BAND_400,
@@ -38,6 +39,13 @@ enum gsm_chan_t {
 	GSM_LCHAN_UNKNOWN,
 };
 
+/* RRLP mode of operation */
+enum rrlp_mode {
+	RRLP_MODE_NONE,
+	RRLP_MODE_MS_BASED,
+	RRLP_MODE_MS_PREF,
+	RRLP_MODE_ASS_PREF,
+};
 
 /* Channel Request reason */
 enum gsm_chreq_reason_t {
@@ -53,6 +61,8 @@ enum gsm_chreq_reason_t {
 #include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
 #include <openbsc/tlv.h>
+#include <openbsc/bitvec.h>
+#include <openbsc/statistics.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 
@@ -92,14 +102,14 @@ typedef int gsm_cbfn(unsigned int hooknum,
 #define LCHAN_RELEASE_TIMEOUT 20, 0
 #define use_lchan(lchan) \
 	do {	lchan->use_count++; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
 			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
 			lchan->nr, lchan->use_count); \
 		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
 
 #define put_lchan(lchan) \
 	do { lchan->use_count--; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
 			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
 			lchan->nr, lchan->use_count); \
 	} while(0);
@@ -109,6 +119,28 @@ typedef int gsm_cbfn(unsigned int hooknum,
 struct gsm_bts_link {
 	struct gsm_bts *bts;
 };
+
+/* Real authentication information containing Ki */
+enum gsm_auth_algo {
+	AUTH_ALGO_NONE,
+	AUTH_ALGO_XOR,
+	AUTH_ALGO_COMP128v1,
+};
+
+struct gsm_auth_info {
+	enum gsm_auth_algo auth_algo;
+	unsigned int a3a8_ki_len;
+	u_int8_t a3a8_ki[16];
+};
+
+struct gsm_auth_tuple {
+	int use_count;
+	int key_seq;
+	u_int8_t rand[16];
+	u_int8_t sres[4];
+	u_int8_t kc[8];
+};
+
 
 struct gsm_lchan;
 struct gsm_subscriber;
@@ -135,6 +167,20 @@ struct gsm_loc_updating_operation {
 	unsigned int waiting_for_imei : 1;
 };
 
+/* Maximum number of neighbor cells whose average we track */
+#define MAX_NEIGH_MEAS		10
+/* Maximum size of the averaging window for neighbor cells */
+#define MAX_WIN_NEIGH_AVG	10
+
+/* processed neighbor measurements for one cell */
+struct neigh_meas_proc {
+	u_int16_t arfcn;
+	u_int8_t bsic;
+	u_int8_t rxlev[MAX_WIN_NEIGH_AVG];
+	unsigned int rxlev_cnt;
+	u_int8_t last_seen_nr;
+};
+
 #define MAX_A5_KEY_LEN	(128/8)
 #define RSL_ENC_ALG_A5(x)	(x+1)
 
@@ -142,6 +188,15 @@ struct gsm_loc_updating_operation {
 #define LCHAN_SAPI_UNUSED	0
 #define LCHAN_SAPI_MS		1
 #define LCHAN_SAPI_NET		2
+
+/* state of a logical channel */
+enum gsm_lchan_state {
+	LCHAN_S_NONE,		/* channel is not active */
+	LCHAN_S_ACT_REQ,	/* channel activatin requested */
+	LCHAN_S_ACTIVE,		/* channel is active and operational */
+	LCHAN_S_REL_REQ,	/* channel release has been requested */
+	LCHAN_S_INACTIVE,	/* channel is set inactive */
+};
 
 struct gsm_lchan {
 	/* The TS that we're part of */
@@ -154,6 +209,8 @@ struct gsm_lchan {
 	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
 	enum gsm48_chan_mode tch_mode;
+	/* State */
+	enum gsm_lchan_state state;
 	/* Power levels for MS and BTS */
 	u_int8_t bs_power;
 	u_int8_t ms_power;
@@ -163,6 +220,8 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
+	/* Are we part of a special "silent" call */
+	int silent_call;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
@@ -185,6 +244,24 @@ struct gsm_lchan {
 
 	/* use count. how many users use this channel */
 	unsigned int use_count;
+
+	/* cache of last measurement reports on this lchan */
+	struct gsm_meas_rep meas_rep[6];
+	int meas_rep_idx;
+
+	/* table of neighbor cell measurements */
+	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
+
+	struct {
+		u_int32_t bound_ip;
+		u_int32_t connect_ip;
+		u_int16_t bound_port;
+		u_int16_t connect_port;
+		u_int16_t conn_id;
+		u_int8_t rtp_payload2;
+		u_int8_t speech_mode;
+		struct rtp_socket *rtp_socket;
+	} abis_ip;
 };
 
 struct gsm_e1_subslot {
@@ -212,13 +289,6 @@ struct gsm_bts_trx_ts {
 
 	/* To which E1 subslot are we connected */
 	struct gsm_e1_subslot e1_link;
-	struct {
-		u_int32_t bound_ip;
-		u_int16_t bound_port;
-		u_int8_t rtp_payload2;
-		u_int16_t conn_id;
-		struct rtp_socket *rtp_socket;
-	} abis_ip;
 
 	struct gsm_lchan lchan[TS_MAX_LCHAN];
 };
@@ -265,6 +335,15 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 };
 
+struct gsm_bts_model {
+	struct llist_head list;
+
+	enum gsm_bts_type type;
+	const char *name;
+
+	struct tlv_definition nm_att_tlvdef;
+};
+
 /**
  * A pending paging request 
  */
@@ -286,7 +365,6 @@ struct gsm_paging_request {
 	gsm_cbfn *cbfn;
 	void *cbfn_param;
 };
-#define T3113_VALUE	60, 0
 
 /*
  * This keeps track of the paging status of one BTS. It
@@ -333,11 +411,11 @@ struct gsm_bts {
 	u_int8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	struct gsm_bts_model *model;
 	enum gsm_band band;
 	/* should the channel allocator allocate channels from high TRX to TRX0,
 	 * rather than starting from TRX0 and go upwards? */
 	int chan_alloc_reverse;
-	int cell_barred;
 	/* maximum Tx power that the MS is permitted to use in this cell */
 	int ms_max_power;
 
@@ -354,8 +432,6 @@ struct gsm_bts {
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;
 
-	struct gsm48_control_channel_descr chan_desc;
-
 	/* paging state and control */
 	struct gsm_bts_paging_state paging;
 
@@ -366,11 +442,28 @@ struct gsm_bts {
 		struct gsm_nm_state nm_state;
 	} site_mgr;
 
+	/* parameters from which we build SYSTEM INFORMATION */
+	struct {
+		struct gsm48_rach_control rach_control;
+		u_int8_t ncc_permitted;
+		struct gsm48_cell_sel_par cell_sel_par;
+		struct gsm48_cell_options cell_options;
+		struct gsm48_control_channel_descr chan_desc;
+		struct bitvec neigh_list;
+		struct bitvec cell_alloc;
+		struct {
+			/* bitmask large enough for all possible ARFCN's */
+			u_int8_t neigh_list[1024/8];
+			u_int8_t cell_alloc[1024/8];
+		} data;
+	} si_common;
+
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
 		struct {
 			u_int16_t site_id;
 			u_int16_t bts_id;
+			u_int32_t flags;
 		} ip_access;
 		struct {
 			struct {
@@ -399,11 +492,57 @@ struct gsm_bts {
 	struct llist_head trx_list;
 };
 
+/* Some statistics of our network */
+struct gsmnet_stats {
+	struct {
+		struct counter *total;
+		struct counter *no_channel;
+	} chreq;
+	struct {
+		struct counter *attempted;
+		struct counter *no_channel;	/* no channel available */
+		struct counter *timeout;		/* T3103 timeout */
+		struct counter *completed;	/* HO COMPL received */
+		struct counter *failed;		/* HO FAIL received */
+	} handover;
+	struct {
+		struct counter *attach;
+		struct counter *normal;
+		struct counter *periodic;
+		struct counter *detach;
+	} loc_upd_type;
+	struct {
+		struct counter *reject;
+		struct counter *accept;
+	} loc_upd_resp;
+	struct {
+		struct counter *attempted;
+		struct counter *detached;
+		struct counter *completed;
+		struct counter *expired;
+	} paging;
+	struct {
+		struct counter *submitted; /* MO SMS submissions */
+		struct counter *no_receiver;
+		struct counter *delivered; /* MT SMS deliveries */
+		struct counter *rp_err_mem;
+		struct counter *rp_err_other;
+	} sms;
+	struct {
+		struct counter *dialled;	/* total number of dialled calls */
+		struct counter *alerted;	/* we alerted the other end */
+		struct counter *connected;/* how many calls were accepted */
+	} call;
+};
+
 enum gsm_auth_policy {
 	GSM_AUTH_POLICY_CLOSED, /* only subscribers authorized in DB */
 	GSM_AUTH_POLICY_ACCEPT_ALL, /* accept everyone, even if not authorized in DB */
 	GSM_AUTH_POLICY_TOKEN, /* accept first, send token per sms, then revoke authorization */
 };
+
+#define GSM_T3101_DEFAULT 10
+#define GSM_T3113_DEFAULT 60
 
 struct gsm_network {
 	/* global parameters */
@@ -412,8 +551,28 @@ struct gsm_network {
 	char *name_long;
 	char *name_short;
 	enum gsm_auth_policy auth_policy;
+	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
 	int neci;
+	int send_mm_info;
+	struct {
+		int active;
+		/* Window RXLEV averaging */
+		unsigned int win_rxlev_avg;	/* number of SACCH frames */
+		/* Window RXQUAL averaging */
+		unsigned int win_rxqual_avg;	/* number of SACCH frames */
+		/* Window RXLEV neighbouring cells averaging */
+		unsigned int win_rxlev_avg_neigh; /* number of SACCH frames */
+
+		/* how often should we check for power budget HO */
+		unsigned int pwr_interval;	/* SACCH frames */
+		/* how much better does a neighbor cell have to be ? */
+		unsigned int pwr_hysteresis;	/* dBm */
+		/* maximum distacne before we try a handover */
+		unsigned int max_distance;	/* TA values */
+	} handover;
+
+	struct gsmnet_stats stats;
 
 	/* layer 4 */
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
@@ -422,6 +581,24 @@ struct gsm_network {
 
 	unsigned int num_bts;
 	struct llist_head bts_list;
+
+	/* timer values */
+	int T3101;
+	int T3103;
+	int T3105;
+	int T3107;
+	int T3109;
+	int T3111;
+	int T3113;
+	int T3115;
+	int T3117;
+	int T3119;
+	int T3141;
+
+	/* Radio Resource Location Protocol (TS 04.31) */
+	struct {
+		enum rrlp_mode mode;
+	} rrlp;
 };
 
 #define SMS_HDR_SIZE	128
@@ -446,20 +623,30 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
+
 struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, int, void *));
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
+int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
+
+/* Get reference to a neighbor cell on a given BCCH ARFCN */
+struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
+				 u_int16_t arfcn, u_int8_t bsic);
+
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
-const char *gsm_lchan_name(enum gsm_chan_t c);
+const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
+char *gsm_trx_name(struct gsm_bts_trx *trx);
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
+char *gsm_lchan_name(struct gsm_lchan *lchan);
+const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 enum gsm_e1_event {
 	EVT_E1_NONE,
@@ -471,6 +658,7 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
 enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
+struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
 
@@ -478,6 +666,7 @@ char *gsm_band_name(enum gsm_band band);
 enum gsm_band gsm_band_parse(const char *mhz);
 
 extern void *tall_bsc_ctx;
+extern int ipacc_rtp_direct;
 
 static inline int is_ipaccess_bts(struct gsm_bts *bts)
 {
@@ -505,5 +694,12 @@ static inline int is_siemens_bts(struct gsm_bts *bts)
 
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg);
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
+
+enum rrlp_mode rrlp_mode_parse(const char *arg);
+const char *rrlp_mode_name(enum rrlp_mode mode);
+
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+
+struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 #endif

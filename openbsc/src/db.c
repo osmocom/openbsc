@@ -25,6 +25,7 @@
 #include <openbsc/db.h>
 #include <openbsc/talloc.h>
 #include <openbsc/debug.h>
+#include <openbsc/statistics.h>
 
 #include <libgen.h>
 #include <stdio.h>
@@ -117,12 +118,35 @@ static char *create_stmts[] = {
 		"subscriber_id INTEGER NOT NULL, "
 		"apdu BLOB "
 		")",
+	"CREATE TABLE IF NOT EXISTS Counters ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"timestamp TIMESTAMP NOT NULL, "
+		"value INTEGER NOT NULL, "
+		"name TEXT NOT NULL "
+		")",
+	"CREATE TABLE IF NOT EXISTS AuthKeys ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id INTEGER UNIQUE NOT NULL, "
+		"algorithm_id INTEGER NOT NULL, "
+		"a3a8_ki BLOB "
+		")",
+	"CREATE TABLE IF NOT EXISTS AuthTuples ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"subscriber_id NUMERIC UNIQUE NOT NULL, "
+		"issued TIMESTAMP NOT NULL, "
+		"use_count INTEGER NOT NULL DEFAULT 0, "
+		"key_seq INTEGER NOT NULL, "
+		"rand BLOB NOT NULL, "
+		"sres BLOB NOT NULL, "
+		"kc BLOB NOT NULL "
+		")",
 };
 
-void db_error_func(dbi_conn conn, void* data) {
-	const char* msg;
+void db_error_func(dbi_conn conn, void *data)
+{
+	const char *msg;
 	dbi_conn_error(conn, &msg);
-	printf("DBI: %s\n", msg);
+	LOGP(DDB, LOGL_ERROR, "DBI: %s\n", msg);
 }
 
 static int check_db_revision(void)
@@ -149,11 +173,13 @@ static int check_db_revision(void)
 	return 0;
 }
 
-int db_init(const char *name) {
+int db_init(const char *name)
+{
 	dbi_initialize(NULL);
+
 	conn = dbi_conn_new("sqlite3");
-	if (conn==NULL) {
-		printf("DB: Failed to create connection.\n");
+	if (conn == NULL) {
+		LOGP(DDB, LOGL_FATAL, "Failed to create connection.\n");
 		return 1;
 	}
 
@@ -186,21 +212,23 @@ out_err:
 }
 
 
-int db_prepare() {
+int db_prepare()
+{
 	dbi_result result;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(create_stmts); i++) {
 		result = dbi_conn_query(conn, create_stmts[i]);
-		if (result==NULL) {
-			printf("DB: Failed to create some table.\n");
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR,
+			     "Failed to create some table.\n");
 			return 1;
 		}
 		dbi_result_free(result);
 	}
 
 	if (check_db_revision() < 0) {
-		fprintf(stderr, "Database schema revision invalid, "
+		LOGP(DDB, LOGL_FATAL, "Database schema revision invalid, "
 			"please update your database schema\n");
                 return -1;
 	}
@@ -208,7 +236,8 @@ int db_prepare() {
 	return 0;
 }
 
-int db_fini() {
+int db_fini()
+{
 	dbi_conn_close(conn);
 	dbi_shutdown();
 
@@ -219,10 +248,10 @@ int db_fini() {
 	return 0;
 }
 
-struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
+struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 {
 	dbi_result result;
-	struct gsm_subscriber* subscr;
+	struct gsm_subscriber *subscr;
 
 	/* Is this subscriber known in the db? */
 	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi); 
@@ -230,11 +259,10 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 		result = dbi_conn_queryf(conn,
                          "UPDATE Subscriber set updated = datetime('now') "
                          "WHERE imsi = %s " , imsi);
-		if (result==NULL) {
-			printf("DB: failed to update timestamp\n");
-		} else {
+		if (!result)
+			LOGP(DDB, LOGL_ERROR, "failed to update timestamp\n");
+		else
 			dbi_result_free(result);
-		}
 		return subscr;
 	}
 
@@ -249,14 +277,13 @@ struct gsm_subscriber* db_create_subscriber(struct gsm_network *net, char *imsi)
 		"(%s, datetime('now'), datetime('now')) ",
 		imsi
 	);
-	if (result==NULL) {
-		printf("DB: Failed to create Subscriber by IMSI.\n");
-	}
+	if (!result)
+		LOGP(DDB, LOGL_ERROR, "Failed to create Subscriber by IMSI.\n");
 	subscr->net = net;
 	subscr->id = dbi_conn_sequence_last(conn, NULL);
 	strncpy(subscr->imsi, imsi, GSM_IMSI_LENGTH-1);
 	dbi_result_free(result);
-	printf("DB: New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
+	LOGP(DDB, LOGL_INFO, "New Subscriber: ID %llu, IMSI %s\n", subscr->id, subscr->imsi);
 	db_subscriber_alloc_exten(subscr);
 	return subscr;
 }
@@ -265,7 +292,7 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	const char *string;
-	unsigned int cm1;
+	unsigned char cm1;
 	const unsigned char *cm2, *cm3;
 	struct gsm_equipment *equip = &subscr->equipment;
 
@@ -288,7 +315,9 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	if (string)
 		strncpy(equip->imei, string, sizeof(equip->imei));
 
-	cm1 = dbi_result_get_uint(result, "classmark1") & 0xff;
+	string = dbi_result_get_string(result, "classmark1");
+	if (string)
+		 cm1 = atoi(string) & 0xff;
 	equip->classmark1 = *((struct gsm48_classmark1 *) &cm1);
 
 	equip->classmark2_len = dbi_result_get_field_length(result, "classmark2");
@@ -307,6 +336,214 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 
 	return 0;
 }
+
+int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
+			   struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	const unsigned char *a3a8_ki;
+
+	result = dbi_conn_queryf(conn,
+			"SELECT * FROM AuthKeys WHERE subscriber_id=%u",
+			 subscr->id);
+	if (!result)
+		return -EIO;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	ainfo->auth_algo = dbi_result_get_ulonglong(result, "algorithm_id");
+	ainfo->a3a8_ki_len = dbi_result_get_field_length(result, "a3a8_ki");
+	a3a8_ki = dbi_result_get_binary(result, "a3a8_ki");
+	if (ainfo->a3a8_ki_len > sizeof(ainfo->a3a8_ki))
+		ainfo->a3a8_ki_len = sizeof(ainfo->a3a8_ki_len);
+	memcpy(ainfo->a3a8_ki, a3a8_ki, ainfo->a3a8_ki_len);
+
+	dbi_result_free(result);
+
+	return 0;
+}
+
+int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
+			    struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	struct gsm_auth_info ainfo_old;
+	int rc, upd;
+	unsigned char *ki_str;
+
+	/* Deletion ? */
+	if (ainfo == NULL) {
+		result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthKeys WHERE subscriber_id=%u",
+			subscr->id);
+
+		if (!result)
+			return -EIO;
+
+		dbi_result_free(result);
+
+		return 0;
+	}
+
+	/* Check if already existing */
+	rc = get_authinfo_by_subscr(&ainfo_old, subscr);
+	if (rc && rc != -ENOENT)
+		return rc;
+	upd = rc ? 0 : 1;
+
+	/* Update / Insert */
+	dbi_conn_quote_binary_copy(conn,
+		ainfo->a3a8_ki, ainfo->a3a8_ki_len, &ki_str);
+
+	if (!upd) {
+		result = dbi_conn_queryf(conn,
+				"INSERT INTO AuthKeys "
+				"(subscriber_id, algorithm_id, a3a8_ki) "
+				"VALUES (%u, %u, %s)",
+				subscr->id, ainfo->auth_algo, ki_str);
+	} else {
+		result = dbi_conn_queryf(conn,
+				"UPDATE AuthKeys "
+				"SET algorithm_id=%u, a3a8_ki=%s "
+				"WHERE subscriber_id=%u",
+				ainfo->auth_algo, ki_str, subscr->id);
+	}
+
+	free(ki_str);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+
+	return 0;
+}
+
+int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
+			    struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	int len;
+	const unsigned char *blob;
+
+	result = dbi_conn_queryf(conn,
+			"SELECT * FROM AuthTuples WHERE subscriber_id=%u",
+			subscr->id);
+	if (!result)
+		return -EIO;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	memset(atuple, 0, sizeof(atuple));
+
+	atuple->use_count = dbi_result_get_ulonglong(result, "use_count");
+	atuple->key_seq = dbi_result_get_ulonglong(result, "key_seq");
+
+	len = dbi_result_get_field_length(result, "rand");
+	if (len != sizeof(atuple->rand))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "rand");
+	memcpy(atuple->rand, blob, len);
+
+	len = dbi_result_get_field_length(result, "sres");
+	if (len != sizeof(atuple->sres))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "sres");
+	memcpy(atuple->sres, blob, len);
+
+	len = dbi_result_get_field_length(result, "kc");
+	if (len != sizeof(atuple->kc))
+		goto err_size;
+
+	blob = dbi_result_get_binary(result, "kc");
+	memcpy(atuple->kc, blob, len);
+
+	dbi_result_free(result);
+
+	return 0;
+
+err_size:
+	dbi_result_free(result);
+	return -EIO;
+}
+
+int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
+			     struct gsm_subscriber *subscr)
+{
+	dbi_result result;
+	int rc, upd;
+	struct gsm_auth_tuple atuple_old;
+	unsigned char *rand_str, *sres_str, *kc_str;
+
+	/* Deletion ? */
+	if (atuple == NULL) {
+		result = dbi_conn_queryf(conn,
+			"DELETE FROM AuthTuples WHERE subscriber_id=%u",
+			subscr->id);
+
+		if (!result)
+			return -EIO;
+
+		dbi_result_free(result);
+
+		return 0;
+	}
+
+	/* Check if already existing */
+	rc = get_authtuple_by_subscr(&atuple_old, subscr);
+	if (rc && rc != -ENOENT)
+		return rc;
+	upd = rc ? 0 : 1;
+
+	/* Update / Insert */
+	dbi_conn_quote_binary_copy(conn,
+		atuple->rand, sizeof(atuple->rand), &rand_str);
+	dbi_conn_quote_binary_copy(conn,
+		atuple->sres, sizeof(atuple->sres), &sres_str);
+	dbi_conn_quote_binary_copy(conn,
+		atuple->kc, sizeof(atuple->kc), &kc_str);
+
+	if (!upd) {
+		result = dbi_conn_queryf(conn,
+				"INSERT INTO AuthTuples "
+				"(subscriber_id, issued, use_count, "
+				 "key_seq, rand, sres, kc) "
+				"VALUES (%u, datetime('now'), %u, "
+				 "%u, %s, %s, %s ) ",
+				subscr->id, atuple->use_count, atuple->key_seq,
+				rand_str, sres_str, kc_str);
+	} else {
+		char *issued = atuple->key_seq == atuple_old.key_seq ?
+					"issued" : "datetime('now')";
+		result = dbi_conn_queryf(conn,
+				"UPDATE AuthKeys "
+				"SET issued=%s, use_count=%u, "
+				 "key_seq=%u, rand=%s, sres=%s, kc=%s "
+				"WHERE subscriber_id = %u",
+				issued, atuple->use_count, atuple->key_seq,
+				rand_str, sres_str, kc_str, subscr->id);
+	}
+
+	free(rand_str);
+	free(sres_str);
+	free(kc_str);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+
+	return 0;
+}
+
 #define BASE_QUERY "SELECT * FROM Subscriber "
 struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
@@ -353,15 +590,15 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 		free(quoted);
 		break;
 	default:
-		printf("DB: Unknown query selector for Subscriber.\n");
+		LOGP(DDB, LOGL_NOTICE, "Unknown query selector for Subscriber.\n");
 		return NULL;
 	}
-	if (result==NULL) {
-		printf("DB: Failed to query Subscriber.\n");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber.\n");
 		return NULL;
 	}
 	if (!dbi_result_next_row(result)) {
-		printf("DB: Failed to find the Subscriber. '%u' '%s'\n",
+		DEBUGP(DDB, "Failed to find the Subscriber. '%u' '%s'\n",
 			field, id);
 		dbi_result_free(result);
 		return NULL;
@@ -388,7 +625,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 
 	subscr->lac = dbi_result_get_uint(result, "lac");
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
-	printf("DB: Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
 	dbi_result_free(result);
@@ -398,7 +635,8 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	return subscr;
 }
 
-int db_sync_subscriber(struct gsm_subscriber* subscriber) {
+int db_sync_subscriber(struct gsm_subscriber *subscriber)
+{
 	dbi_result result;
 	char tmsi[14];
 	char *q_tmsi;
@@ -410,6 +648,7 @@ int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 				   &q_tmsi);
 	} else
 		q_tmsi = strdup("NULL");
+
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
 		"SET updated = datetime('now'), "
@@ -424,14 +663,17 @@ int db_sync_subscriber(struct gsm_subscriber* subscriber) {
 		subscriber->authorized,
 		q_tmsi,
 		subscriber->lac,
-		subscriber->imsi
-	);
+		subscriber->imsi);
+
 	free(q_tmsi);
-	if (result==NULL) {
-		printf("DB: Failed to update Subscriber (by IMSI).\n");
+
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to update Subscriber (by IMSI).\n");
 		return 1;
 	}
+
 	dbi_result_free(result);
+
 	return 0;
 }
 
@@ -442,15 +684,15 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	u_int8_t classmark1;
 
 	memcpy(&classmark1, &equip->classmark1, sizeof(classmark1));
-	printf("DB: Sync Equipment IMEI=%s, classmark1=%02x",
+	DEBUGP(DDB, "Sync Equipment IMEI=%s, classmark1=%02x",
 		equip->imei, classmark1);
 	if (equip->classmark2_len)
- 		printf(", classmark2=%s",
+		DEBUGPC(DDB, ", classmark2=%s",
 			hexdump(equip->classmark2, equip->classmark2_len));
 	if (equip->classmark3_len)
-		printf(", classmark3=%s",
+		DEBUGPC(DDB, ", classmark3=%s",
 			hexdump(equip->classmark3, equip->classmark3_len));
-	printf("\n");
+	DEBUGPC(DDB, "\n");
 
 	dbi_conn_quote_binary_copy(conn, equip->classmark2,
 				   equip->classmark2_len, &cm2);
@@ -470,7 +712,7 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	free(cm3);
 
 	if (!result) {
-		printf("DB: Failed to update Equipment\n");
+		LOGP(DDB, LOGL_ERROR, "Failed to update Equipment\n");
 		return -EIO;
 	}
 
@@ -478,10 +720,12 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	return 0;
 }
 
-int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
-	dbi_result result=NULL;
+int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
+{
+	dbi_result result = NULL;
 	char tmsi[14];
 	char* tmsi_quoted;
+
 	for (;;) {
 		subscriber->tmsi = rand();
 		if (subscriber->tmsi == GSM_RESERVED_TMSI)
@@ -492,20 +736,23 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 		result = dbi_conn_queryf(conn,
 			"SELECT * FROM Subscriber "
 			"WHERE tmsi = %s ",
-			tmsi_quoted
-		);
+			tmsi_quoted);
+
 		free(tmsi_quoted);
-		if (result==NULL) {
-			printf("DB: Failed to query Subscriber while allocating new TMSI.\n");
+
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber "
+				"while allocating new TMSI.\n");
 			return 1;
 		}
-		if (dbi_result_get_numrows(result)){
+		if (dbi_result_get_numrows(result)) {
 			dbi_result_free(result);
 			continue;
 		}
 		if (!dbi_result_next_row(result)) {
 			dbi_result_free(result);
-			printf("DB: Allocated TMSI %u for IMSI %s.\n", subscriber->tmsi, subscriber->imsi);
+			DEBUGP(DDB, "Allocated TMSI %u for IMSI %s.\n",
+				subscriber->tmsi, subscriber->imsi);
 			return db_sync_subscriber(subscriber);
 		}
 		dbi_result_free(result);
@@ -513,9 +760,11 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber) {
 	return 0;
 }
 
-int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
-	dbi_result result=NULL;
+int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
+{
+	dbi_result result = NULL;
 	u_int32_t try;
+
 	for (;;) {
 		try = (rand()%(GSM_MAX_EXTEN-GSM_MIN_EXTEN+1)+GSM_MIN_EXTEN);
 		result = dbi_conn_queryf(conn,
@@ -523,8 +772,9 @@ int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
 			"WHERE extension = %i",
 			try
 		);
-		if (result==NULL) {
-			printf("DB: Failed to query Subscriber while allocating new extension.\n");
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber "
+				"while allocating new extension.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)){
@@ -538,7 +788,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
 		dbi_result_free(result);
 	}
 	sprintf(subscriber->extension, "%i", try);
-	printf("DB: Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
+	DEBUGP(DDB, "Allocated extension %i for IMSI %s.\n", try, subscriber->imsi);
 	return db_sync_subscriber(subscriber);
 }
 /*
@@ -547,7 +797,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber) {
  * an error.
  */
 
-int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* token)
+int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t *token)
 {
 	dbi_result result;
 	u_int32_t try;
@@ -561,7 +811,8 @@ int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* toke
 			"WHERE subscriber_id = %llu OR token = \"%08X\" ",
 			subscriber->id, try);
 		if (!result) {
-			printf("DB: Failed to query AuthToken while allocating new token.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to query AuthToken "
+				"while allocating new token.\n");
 			return 1;
 		}
 		if (dbi_result_get_numrows(result)) {
@@ -581,17 +832,19 @@ int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* toke
 		"(%llu, datetime('now'), \"%08X\") ",
 		subscriber->id, try);
 	if (!result) {
-		printf("DB: Failed to create token %08X for IMSI %s.\n", try, subscriber->imsi);
+		LOGP(DDB, LOGL_ERROR, "Failed to create token %08X for "
+			"IMSI %s.\n", try, subscriber->imsi);
 		return 1;
 	}
 	dbi_result_free(result);
 	*token = try;
-	printf("DB: Allocated token %08X for IMSI %s.\n", try, subscriber->imsi);
+	DEBUGP(DDB, "Allocated token %08X for IMSI %s.\n", try, subscriber->imsi);
 
 	return 0;
 }
 
-int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IMEI_LENGTH]) {
+int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char imei[GSM_IMEI_LENGTH])
+{
 	unsigned long long equipment_id, watch_id;
 	dbi_result result;
 
@@ -603,32 +856,32 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 		"(imei, created, updated) "
 		"VALUES "
 		"(%s, datetime('now'), datetime('now')) ",
-		imei
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create Equipment by IMEI.\n");
+		imei);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to create Equipment by IMEI.\n");
 		return 1;
 	}
+
 	equipment_id = 0;
 	if (dbi_result_get_numrows_affected(result)) {
 		equipment_id = dbi_conn_sequence_last(conn, NULL);
 	}
 	dbi_result_free(result);
-	if (equipment_id) {
-		printf("DB: New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
-	}
+
+	if (equipment_id)
+		DEBUGP(DDB, "New Equipment: ID %llu, IMEI %s\n", equipment_id, imei);
 	else {
 		result = dbi_conn_queryf(conn,
 			"SELECT id FROM Equipment "
 			"WHERE imei = %s ",
 			imei
 		);
-		if (result==NULL) {
-			printf("DB: Failed to query Equipment by IMEI.\n");
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR, "Failed to query Equipment by IMEI.\n");
 			return 1;
 		}
 		if (!dbi_result_next_row(result)) {
-			printf("DB: Failed to find the Equipment.\n");
+			LOGP(DDB, LOGL_ERROR, "Failed to find the Equipment.\n");
 			dbi_result_free(result);
 			return 1;
 		}
@@ -641,33 +894,33 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char imei[GSM_IM
 		"(subscriber_id, equipment_id, created, updated) "
 		"VALUES "
 		"(%llu, %llu, datetime('now'), datetime('now')) ",
-		subscriber->id, equipment_id
-	);
-	if (result==NULL) {
-		printf("DB: Failed to create EquipmentWatch.\n");
+		subscriber->id, equipment_id);
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to create EquipmentWatch.\n");
 		return 1;
 	}
+
 	watch_id = 0;
-	if (dbi_result_get_numrows_affected(result)) {
+	if (dbi_result_get_numrows_affected(result))
 		watch_id = dbi_conn_sequence_last(conn, NULL);
-	}
+
 	dbi_result_free(result);
-	if (watch_id) {
-		printf("DB: New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
-	}
+	if (watch_id)
+		DEBUGP(DDB, "New EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n",
+			equipment_id, subscriber->imsi, imei);
 	else {
 		result = dbi_conn_queryf(conn,
 			"UPDATE EquipmentWatch "
 			"SET updated = datetime('now') "
 			"WHERE subscriber_id = %llu AND equipment_id = %llu ",
-			subscriber->id, equipment_id
-		);
-		if (result==NULL) {
-			printf("DB: Failed to update EquipmentWatch.\n");
+			subscriber->id, equipment_id);
+		if (!result) {
+			LOGP(DDB, LOGL_ERROR, "Failed to update EquipmentWatch.\n");
 			return 1;
 		}
 		dbi_result_free(result);
-		printf("DB: Updated EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n", equipment_id, subscriber->imsi, imei);
+		DEBUGP(DDB, "Updated EquipmentWatch: ID %llu, IMSI %s, IMEI %s\n",
+			equipment_id, subscriber->imsi, imei);
 	}
 
 	return 0;
@@ -769,8 +1022,9 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS,Subscriber "
 		"WHERE sms.id >= %llu AND sms.sent is NULL "
+			"AND sms.receiver_id = subscriber.id "
 			"AND subscriber.lac > 0 "
-		"ORDER BY id",
+		"ORDER BY sms.id LIMIT 1",
 		min_id);
 	if (!result)
 		return NULL;
@@ -787,7 +1041,34 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	return sms;
 }
 
-/* retrieve the next unsent SMS with ID >= min_id */
+struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, int min_subscr_id)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS,Subscriber "
+		"WHERE sms.receiver_id >= %llu AND sms.sent is NULL "
+			"AND sms.receiver_id = subscriber.id " 
+			"AND subscriber.lac > 0 "
+		"ORDER BY sms.receiver_id, id LIMIT 1",
+		min_subscr_id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(net, result);
+
+	dbi_result_free(result);
+
+	return sms;
+}
+
+/* retrieve the next unsent SMS for a given subscriber */
 struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
@@ -796,8 +1077,9 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS,Subscriber "
 		"WHERE sms.receiver_id = %llu AND sms.sent is NULL "
+			"AND sms.receiver_id = subscriber.id "
 			"AND subscriber.lac > 0 "
-		"ORDER BY id",
+		"ORDER BY sms.id LIMIT 1",
 		subscr->id);
 	if (!result)
 		return NULL;
@@ -824,7 +1106,7 @@ int db_sms_mark_sent(struct gsm_sms *sms)
 		"SET sent = datetime('now') "
 		"WHERE id = %llu", sms->id);
 	if (!result) {
-		printf("DB: Failed to mark SMS %llu as sent.\n", sms->id);
+		LOGP(DDB, LOGL_ERROR, "Failed to mark SMS %llu as sent.\n", sms->id);
 		return 1;
 	}
 
@@ -842,7 +1124,8 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
 		"SET deliver_attempts = deliver_attempts + 1 "
 		"WHERE id = %llu", sms->id);
 	if (!result) {
-		printf("DB: Failed to inc deliver attempts for SMS %llu.\n", sms->id);
+		LOGP(DDB, LOGL_ERROR, "Failed to inc deliver attempts for "
+			"SMS %llu.\n", sms->id);
 		return 1;
 	}
 
@@ -866,6 +1149,27 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 		subscr->id, apdu_id_flags, q_apdu);
 
 	free(q_apdu);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_store_counter(struct counter *ctr)
+{
+	dbi_result result;
+	char *q_name;
+
+	dbi_conn_quote_string_copy(conn, ctr->name, &q_name);
+
+	result = dbi_conn_queryf(conn,
+		"INSERT INTO Counters "
+		"(timestamp,name,value) VALUES "
+		"(datetime('now'),%s,%lu)", q_name, ctr->value);
+
+	free(q_name);
 
 	if (!result)
 		return -EIO;

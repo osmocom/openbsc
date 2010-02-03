@@ -35,6 +35,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
+#include <openbsc/debug.h>
 
 #include <vty/buffer.h>
 
@@ -71,7 +72,7 @@ void telnet_init(struct gsm_network *network, int port) {
 	fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	if (fd < 0) {
-		perror("Telnet interface socket creation failed");
+		LOGP(DNM, LOGL_ERROR, "Telnet interface socket creation failed\n");
 		return;
 	}
 
@@ -83,12 +84,12 @@ void telnet_init(struct gsm_network *network, int port) {
 	sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
 	if (bind(fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) < 0) {
-		perror("Telnet interface failed to bind");
+		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to bind\n");
 		return;
 	}
 
 	if (listen(fd, 0) < 0) {
-		perror("Telnet interface failed to listen");
+		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to listen\n");
 		return;
 	}
 
@@ -101,9 +102,9 @@ static void print_welcome(int fd) {
 	int ret;
 	static char *msg =
 		"Welcome to the OpenBSC Control interface\n"
-		"Copyright (C) 2008, 2009 Harald Welte\n"
+		"Copyright (C) 2008-2010 Harald Welte\n"
 		"Contributions by Daniel Willmann, Jan Lübbe, "
-		"Stefan Schmidt, Holger Freyther\n\n"
+		"Stefan Schmidt, Holger Freyther, Andreas Eversberg\n\n"
 		"License GPLv2+: GNU GPL version 2 or later "
 		"<http://gnu.org/licenses/gpl.html>\n"
 		"This is free software: you are free to change "
@@ -119,6 +120,12 @@ int telnet_close_client(struct bsc_fd *fd) {
 
 	close(fd->fd);
 	bsc_unregister_fd(fd);
+
+	if (conn->dbg) {
+		debug_del_target(conn->dbg);
+		talloc_free(conn->dbg);
+	}
+
 	llist_del(&conn->entry);
 	talloc_free(conn);
 	return 0;
@@ -154,7 +161,7 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	int new_connection = accept(fd->fd, (struct sockaddr*)&sockaddr, &len);
 
 	if (new_connection < 0) {
-		perror("telnet accept failed");
+		LOGP(DNM, LOGL_ERROR, "telnet accept failed\n");
 		return -1;
 	}
 
@@ -171,8 +178,10 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
 	print_welcome(new_connection);
 
 	connection->vty = vty_create(new_connection, connection);
-	if (!connection->vty)
+	if (!connection->vty) {
+		LOGP(DNM, LOGL_ERROR, "couldn't create VTY\n");
 		return -1;
+	}
 
 	return 0;
 }

@@ -28,16 +28,15 @@
 #include <openbsc/debug.h>
 #include <openbsc/misdn.h>
 #include <openbsc/telnet_interface.h>
+#include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/talloc.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-extern int ipacc_rtp_direct;
 
 static void patch_nm_tables(struct gsm_bts *bts);
-static void patch_si_tables(struct gsm_bts *bts);
 
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */
@@ -356,8 +355,10 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	switch (obj_class) {
 	case NM_OC_SITE_MANAGER:
 		bts = container_of(obj, struct gsm_bts, site_mgr);
-		if (new_state->operational == 2 &&
-		    new_state->availability == NM_AVSTATE_OK)
+		if ((new_state->operational == 2 &&
+		     new_state->availability == NM_AVSTATE_OK) ||
+		    (new_state->operational == 1 &&
+		     new_state->availability == NM_AVSTATE_OFF_LINE))
 			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
 		break;
 	case NM_OC_BTS:
@@ -392,36 +393,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;
 		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_OFF_LINE) {
-			/* Patch ARFCN into radio attribute */
-			nanobts_attr_radio[5] &= 0xf0;
-			nanobts_attr_radio[5] |= trx->arfcn >> 8;
-			nanobts_attr_radio[6] = trx->arfcn & 0xff;
-			abis_nm_set_radio_attr(trx, nanobts_attr_radio,
-						sizeof(nanobts_attr_radio));
-			abis_nm_chg_adm_state(trx->bts, obj_class,
-					      trx->bts->bts_nr, trx->nr, 0xff,
-					      NM_STATE_UNLOCKED);
-			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
-					trx->nr, 0xff);
-		}
-		if (new_state->operational == 1 &&
 		    new_state->availability == NM_AVSTATE_OK)
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
-		break;
-	case NM_OC_BASEB_TRANSC:
-		trx = container_of(obj, struct gsm_bts_trx, bb_transc);
-		if (new_state->operational == 1 &&
-		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			abis_nm_chg_adm_state(trx->bts, obj_class,
-					trx->bts->bts_nr, trx->nr, 0xff,
-					NM_STATE_UNLOCKED);
-			abis_nm_opstart(trx->bts, obj_class,
-					trx->bts->bts_nr, trx->nr, 0xff);
-			/* TRX software is active, tell it to initiate RSL Link */
-			abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
-		}
 		break;
 	default:
 		break;
@@ -436,8 +410,43 @@ static int sw_activ_rep(struct msgb *mb)
 	struct gsm_bts *bts = mb->trx->bts;
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 
+	if (!trx)
+		return -EINVAL;
 
 	switch (foh->obj_class) {
+	case NM_OC_BASEB_TRANSC:
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      NM_STATE_UNLOCKED);
+		abis_nm_opstart(trx->bts, foh->obj_class,
+				trx->bts->bts_nr, trx->nr, 0xff);
+		/* TRX software is active, tell it to initiate RSL Link */
+		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
+		break;
+	case NM_OC_RADIO_CARRIER: {
+		/*
+		 * Locking the radio carrier will make it go
+		 * offline again and we would come here. The
+		 * framework should determine that there was
+		 * no change and avoid recursion.
+		 *
+		 * This code is here to make sure that on start
+		 * a TRX remains locked.
+		 */
+		int rc_state = trx->nm_state.administrative;
+		/* Patch ARFCN into radio attribute */
+		nanobts_attr_radio[5] &= 0xf0;
+		nanobts_attr_radio[5] |= trx->arfcn >> 8;
+		nanobts_attr_radio[6] = trx->arfcn & 0xff;
+		abis_nm_set_radio_attr(trx, nanobts_attr_radio,
+				       sizeof(nanobts_attr_radio));
+		abis_nm_chg_adm_state(trx->bts, foh->obj_class,
+				      trx->bts->bts_nr, trx->nr, 0xff,
+				      rc_state);
+		abis_nm_opstart(trx->bts, foh->obj_class, trx->bts->bts_nr,
+				trx->nr, 0xff);
+		break;
+		}
 	}
 	return 0;
 }
@@ -446,7 +455,7 @@ static int sw_activ_rep(struct msgb *mb)
 static int oml_msg_nack(u_int8_t mt)
 {
 	if (mt == NM_MT_SET_BTS_ATTR_NACK) {
-		fprintf(stderr, "Failed to set BTS attributes. That is fatal. "
+		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
 		exit(-1);
 	}
@@ -549,7 +558,7 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 			trx->nominal_power = 23;
 			break;
 		default:
-			fprintf(stderr, "Unsupported nanoBTS GSM band %s\n",
+			LOGP(DNM, LOGL_ERROR, "Unsupported nanoBTS GSM band %s\n",
 				gsm_band_name(trx->bts->band));
 			break;
 		}
@@ -568,6 +577,7 @@ static void nm_reconfig_bts(struct gsm_bts *bts)
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
+		patch_nm_tables(bts);
 		abis_nm_raw_msg(bts, sizeof(msg_1), msg_1); /* set BTS SiteMgr attr*/
 		abis_nm_set_bts_attr(bts, bs11_attr_bts, sizeof(bs11_attr_bts));
 		abis_nm_raw_msg(bts, sizeof(msg_3), msg_3); /* set BTS handover attr */
@@ -613,7 +623,7 @@ static void bootstrap_om_bs11(struct gsm_bts *bts)
 
 static void bootstrap_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "bootstrapping OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -623,13 +633,13 @@ static void bootstrap_om(struct gsm_bts *bts)
 		bootstrap_om_nanobts(bts);
 		break;
 	default:
-		fprintf(stderr, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
+		LOGP(DNM, LOGL_ERROR, "Unable to bootstrap OML: Unknown BTS type %d\n", bts->type);
 	}
 }
 
 static int shutdown_om(struct gsm_bts *bts)
 {
-	fprintf(stdout, "shutting down OML for BTS %u\n", bts->nr);
+	LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
 
 	/* stop sending event reports */
 	abis_nm_event_reports(bts, 0);
@@ -660,219 +670,55 @@ int bsc_shutdown_net(struct gsm_network *net)
 	return 0;
 }
 
-struct bcch_info {
-	u_int8_t type;
-	u_int8_t len;
-	const u_int8_t *data;
-};
-
-/*
-SYSTEM INFORMATION TYPE 1
-  Cell channel description
-    Format-ID bit map 0
-    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01
-  RACH Control Parameters
-    maximum 7 retransmissions
-    8 slots used to spread transmission
-    cell not barred for access
-    call reestablishment not allowed
-    Access Control Class = 0000
-*/
-static u_int8_t si1[] = {
-	/* header */0x55, 0x06, 0x19,
-	/* ccdesc */0x04 /*0x00*/, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 /*0x01*/,
-	/* rach */0xD5, 0x04, 0x00,
-	/* s1 reset*/0x2B
-};
-
-/*
- SYSTEM INFORMATION TYPE 2
-  Neighbour Cells Description
-    EXT-IND: Carries the complete BA
-    BA-IND = 0
-    Format-ID bit map 0
-    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  NCC permitted (NCC) = FF
-  RACH Control Parameters
-    maximum 7 retransmissions
-    8 slots used to spread transmission
-    cell not barred for access
-    call reestablishment not allowed
-    Access Control Class = 0000
-*/
-static u_int8_t si2[] = {
-	/* header */0x59, 0x06, 0x1A,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	/* ncc */0xFF,
-	/* rach*/0xD5, 0x04, 0x00
-};
-
-/*
-SYSTEM INFORMATION TYPE 3
-  Cell identity = 00001 (1h)
-  Location area identification
-    Mobile Country Code (MCC): 001
-    Mobile Network Code (MNC): 01
-    Location Area Code  (LAC): 00001 (1h)
-  Control Channel Description
-    Attach-detach: MSs in the cell are not allowed to apply IMSI attach /detach
-    0 blocks reserved for access grant
-    1 channel used for CCCH, with SDCCH
-    5 multiframes period for PAGING REQUEST
-    Time-out T3212 = 0
-  Cell Options BCCH
-    Power control indicator: not set
-    MSs shall not use uplink DTX
-    Radio link timeout = 36
-  Cell Selection Parameters
-    Cell reselect hysteresis = 6 dB RXLEV hysteresis for LA re-selection
-    max.TX power level MS may use for CCH = 2 <- according to GSM05.05 39dBm (max)
-    Additional Reselect Parameter Indication (ACS) = only SYSTEM INFO 4: The SI rest octets, if present, shall be used to derive the value of PI and possibly C2 parameters
-    Half rate support (NECI): New establishment causes are not supported
-    min.RX signal level for MS = 0
-  RACH Control Parameters
-    maximum 7 retransmissions
-    8 slots used to spread transmission
-    cell not barred for access
-    call reestablishment not allowed
-    Access Control Class = 0000
-  SI 3 Rest Octets (not present)
-*/
-static u_int8_t si3[] = {
-	/* header */0x49, 0x06, 0x1B,
-	/* cell */0x00, 0x01,
-	/* lai  */0x00, 0xF1, 0x10, 0x00, 0x01,
-	/* desc */0x01, 0x03, 0x00,
-	/* option*/0x28,
-	/* selection*/0x62, 0x00,
-	/* rach */0xD5, 0x04, 0x00,
-	/* rest */ 0x2B, 0x2B, 0x2B, 0x2B
-};
-
-/*
-SYSTEM INFORMATION TYPE 4
-  Location area identification
-    Mobile Country Code (MCC): 001
-    Mobile Network Code (MNC): 01
-    Location Area Code  (LAC): 00001 (1h)
-  Cell Selection Parameters
-    Cell reselect hysteresis = 6 dB RXLEV hysteresis for LA re-selection
-    max.TX power level MS may use for CCH = 2
-    Additional Reselect Parameter Indication (ACS) = only SYSTEM INFO 4: The SI rest octets, if present, shall be used to derive the value of PI and possibly C2 parameters
-    Half rate support (NECI): New establishment causes are not supported
-    min.RX signal level for MS = 0
-  RACH Control Parameters
-    maximum 7 retransmissions
-    8 slots used to spread transmission
-    cell not barred for access
-    call reestablishment not allowed
-    Access Control Class = 0000
-  CBCH Channel Description
-    Type = SDCCH/4[2]
-    Timeslot Number: 0
-    Training Sequence Code: 7h
-    ARFCN: 1
-  SI Rest Octets (not present)
-*/
-static u_int8_t si4[] = {
-	/* header */0x41, 0x06, 0x1C,
-	/* lai */0x00, 0xF1, 0x10, 0x00, 0x01,
-	/* sel */0x62, 0x00,
-	/* rach*/0xD5, 0x04, 0x00,
-	/* cbch chan desc */ 0x64, 0x30, 0xE0, HARDCODED_ARFCN/*0x01*/,
-	/* rest octets */ 0x2B, 0x2B, 0x2B, 0x2B, 0x2B, 0x2B
-};
-
-/*
- SYSTEM INFORMATION TYPE 5
-  Neighbour Cells Description
-    EXT-IND: Carries the complete BA
-    BA-IND = 0
-    Format-ID bit map 0
-    CA-ARFCN Bit 124...001 (Hex): 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-*/
-
-static u_int8_t si5[] = {
-	/* header without l2 len*/0x06, 0x1D,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-};
-
-// SYSTEM INFORMATION TYPE 6
-
-/*
-SACCH FILLING
-  System Info Type: SYSTEM INFORMATION 6
-  L3 Information (Hex): 06 1E 00 01 xx xx 10 00 01 28 FF
-
-SYSTEM INFORMATION TYPE 6
-  Cell identity = 00001 (1h)
-  Location area identification
-    Mobile Country Code (MCC): 001
-    Mobile Network Code (MNC): 01
-    Location Area Code  (LAC): 00001 (1h)
-  Cell Options SACCH
-    Power control indicator: not set
-    MSs shall not use uplink DTX on a TCH-F. MS shall not use uplink DTX on TCH-H.
-    Radio link timeout = 36
-  NCC permitted (NCC) = FF
-*/
-
-static u_int8_t si6[] = {
-	/* header */0x06, 0x1E,
-	/* cell id*/ 0x00, 0x01,
-	/* lai */ 0x00, 0xF1, 0x10, 0x00, 0x01,
-	/* options */ 0x28,
-	/* ncc */ 0xFF,
-};
-
-
-
-static const struct bcch_info bcch_infos[] = {
-	{
-		.type = RSL_SYSTEM_INFO_1,
-		.len = sizeof(si1),
-		.data = si1,
-	}, {
-		.type = RSL_SYSTEM_INFO_2,
-		.len = sizeof(si2),
-		.data = si2,
-	}, {
-		.type = RSL_SYSTEM_INFO_3,
-		.len = sizeof(si3),
-		.data = si3,
-	}, {
-		.type = RSL_SYSTEM_INFO_4,
-		.len = sizeof(si4),
-		.data = si4,
-	},
-};
-
-static_assert(sizeof(si1) == sizeof(struct gsm48_system_information_type_1), type1)
-static_assert(sizeof(si2) == sizeof(struct gsm48_system_information_type_2), type2)
-static_assert(sizeof(si3) == sizeof(struct gsm48_system_information_type_3), type3)
-static_assert(sizeof(si4) >= sizeof(struct gsm48_system_information_type_4), type4)
-static_assert(sizeof(si5) == sizeof(struct gsm48_system_information_type_5), type5)
-static_assert(sizeof(si6) >= sizeof(struct gsm48_system_information_type_6), type6)
-
 /* set all system information types */
 static int set_system_infos(struct gsm_bts_trx *trx)
 {
-	int i;
+	int i, rc;
+	u_int8_t si_tmp[23];
+	struct gsm_bts *bts = trx->bts;
+
+	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
+			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
+	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
 	if (trx == trx->bts->c0) {
-		for (i = 0; i < ARRAY_SIZE(bcch_infos); i++) {
-			rsl_bcch_info(trx, bcch_infos[i].type,
-				      bcch_infos[i].data,
-				      bcch_infos[i].len);
+		for (i = 1; i <= 4; i++) {
+			rc = gsm_generate_si(si_tmp, trx->bts, i);
+			if (rc < 0)
+				goto err_out;
+			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
+#ifdef GPRS
+		i = 13;
+		rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
+		if (rc < 0)
+			goto err_out;
+		DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+		rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
+#endif
 	}
-	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si5, sizeof(si5));
-	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si6, sizeof(si6));
+
+	i = 5;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_5);
+	if (rc < 0)
+		goto err_out;
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
+
+	i = 6;
+	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_6);
+	if (rc < 0)
+		goto err_out;
+	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 	return 0;
+err_out:
+	LOGP(DRR, LOGL_ERROR, "Cannot generate SI %u for BTS %u, most likely "
+		"a problem with neighbor cell list generation\n",
+		i, trx->bts->nr);
+	return rc;
 }
 
 /*
@@ -906,81 +752,13 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
 }
 
-/*
- * Patch the various SYSTEM INFORMATION tables to update
- * the LAI
- */
-static void patch_si_tables(struct gsm_bts *bts)
-{
-	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
-	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
-
-	/* covert the raw packet to the struct */
-	struct gsm48_system_information_type_1 *type_1 =
-		(struct gsm48_system_information_type_1*)&si1;
-	struct gsm48_system_information_type_2 *type_2 =
-		(struct gsm48_system_information_type_2*)&si2;
-	struct gsm48_system_information_type_3 *type_3 =
-		(struct gsm48_system_information_type_3*)&si3;
-	struct gsm48_system_information_type_4 *type_4 =
-		(struct gsm48_system_information_type_4*)&si4;
-	struct gsm48_system_information_type_6 *type_6 =
-		(struct gsm48_system_information_type_6*)&si6;
-	struct gsm48_loc_area_id lai;
-
-	gsm0408_generate_lai(&lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
-
-	/* assign the MCC and MNC */
-	type_3->lai = lai;
-	type_4->lai = lai;
-	type_6->lai = lai;
-
-	/* set the CI */
-	type_3->cell_identity = htons(bts->cell_identity);
-	type_6->cell_identity = htons(bts->cell_identity);
-
-	type_4->data[2] &= 0xf0;
-	type_4->data[2] |= arfcn_high;
-	type_4->data[3] = arfcn_low;
-
-	/* patch Control Channel Description 10.5.2.11 */
-	type_3->control_channel_desc = bts->chan_desc;
-
-	/* patch TSC */
-	si4[15] &= ~0xe0;
-	si4[15] |= (bts->tsc & 7) << 5;
-
-	/* patch MS max power for CCH */
-	type_4->cell_sel_par.ms_txpwr_max_ccch =
-			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
-
-	/* Set NECI to influence channel request */
-	type_3->cell_sel_par.neci = bts->network->neci;
-	type_4->cell_sel_par.neci = bts->network->neci;
-
-	if (bts->cell_barred) {
-		type_1->rach_control.cell_bar = 1;
-		type_2->rach_control.cell_bar = 1;
-		type_3->rach_control.cell_bar = 1;
-		type_4->rach_control.cell_bar = 1;
-	} else {
-		type_1->rach_control.cell_bar = 0;
-		type_2->rach_control.cell_bar = 0;
-		type_3->rach_control.cell_bar = 0;
-		type_4->rach_control.cell_bar = 0;
-	}
-}
-
-
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
-	fprintf(stdout, "bootstrapping RSL for BTS/TRX (%u/%u) "
-		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->bts->nr, trx->nr, bsc_gsmnet->country_code,
-		bsc_gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
-	patch_si_tables(trx->bts);
+	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
+		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
+		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
+		bsc_gsmnet->network_code, trx->bts->location_area_code,
+		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
 	set_system_infos(trx);
 }
 
@@ -1000,7 +778,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		}
 		break;
 	case EVT_E1_TEI_DN:
-		fprintf(stderr, "Lost some E1 TEI link\n");
+		LOGP(DMI, LOGL_NOTICE, "Lost some E1 TEI link\n");
 		/* FIXME: deal with TEI or L1 link loss */
 		break;
 	default:
@@ -1013,32 +791,49 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	switch (bts->band) {
 	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
-			fprintf(stderr, "GSM1800 channel must be between 512-885.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1800 channel must be between 512-885.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_1900:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 810) {
-			fprintf(stderr, "GSM1900 channel must be between 512-810.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM1900 channel must be between 512-810.\n");
 			return -EINVAL;
 		}
 		break;
 	case GSM_BAND_900:
 		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
-			fprintf(stderr, "GSM900 channel must be between 1-124.\n");
+			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 1-124.\n");
 			return -EINVAL;
 		}
 		break;
 	default:
-		fprintf(stderr, "Unsupported frequency band.\n");
+		LOGP(DNM, LOGL_ERROR, "Unsupported frequency band.\n");
 		return -EINVAL;
 	}
 
+	if (bts->network->auth_policy == GSM_AUTH_POLICY_ACCEPT_ALL &&
+	    !bts->si_common.rach_control.cell_bar)
+		LOGP(DNM, LOGL_ERROR, "\nWARNING: You are running an 'accept-all' "
+			"network on a BTS that is not barred.  This "
+			"configuration is likely to interfere with production "
+			"GSM networks and should only be used in a RF "
+			"shielded environment such as a faraday cage!\n\n");
+
 	/* Control Channel Description */
-	bts->chan_desc.att = 1;
-	bts->chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
-	bts->chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
+	bts->si_common.chan_desc.att = 1;
+	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
+	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
 	/* T3212 is set from vty/config */
+
+	/* some defaults for our system information */
+	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */
+	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
+	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
+
+	bts->si_common.cell_sel_par.acs = 0;
+
+	bts->si_common.ncc_permitted = 0xff;
 
 	paging_init(bts);
 
@@ -1062,7 +857,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 	telnet_init(bsc_gsmnet, 4242);
 	rc = vty_read_config_file(config_file);
 	if (rc < 0) {
-		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
+		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
 	}
 
