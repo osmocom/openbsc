@@ -106,6 +106,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
 	struct msgb *msg;
+	struct msgb *resp;
 
 	msg = (struct msgb *) fd->data;
 
@@ -123,14 +124,25 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 
 	if (first_request) {
 		first_request = 0;
-		mgcp_send_rsip(bfd.fd, &addr);
+		resp = mgcp_create_rsip();
+
+		if (resp) {
+			sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0,
+				(struct sockaddr *) &addr, sizeof(addr));
+			msgb_free(resp);
+		}
 		return 0;
         }
 
 	/* handle message now */
 	msg->l2h = msgb_put(msg, rc);
-	mgcp_handle_message(bfd.fd, msg, &addr);
+	resp = mgcp_handle_message(msg);
 	msgb_reset(msg);
+
+	if (resp) {
+		sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0, (struct sockaddr *) &addr, sizeof(addr));
+		msgb_free(resp);
+	}
 	return 0;
 }
 

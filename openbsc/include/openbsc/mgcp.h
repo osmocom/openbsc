@@ -21,6 +21,11 @@
  *
  */
 
+#ifndef OPENBSC_MGCP_H
+#define OPENBSC_MGCP_H
+
+#include "msgb.h"
+
 #define RTP_PORT_DEFAULT 4000
 extern unsigned int rtp_base_port;
 
@@ -49,8 +54,9 @@ static inline int rtp_calculate_port(int multiplex, int base)
 }
 
 int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network);
-int mgcp_handle_message(int fd, struct msgb *msg, struct sockaddr_in *source);
-int mgcp_send_rsip(int fd, struct sockaddr_in *source);
+
+struct msgb *mgcp_handle_message(struct msgb *msg);
+struct msgb *mgcp_create_rsip(void);
 int mgcp_vty_init(void);
 
 /* endpoint managed */
@@ -60,3 +66,5 @@ int mgcp_vty_init(void);
 
 typedef int (*mgcp_change)(int endpoint, int state, int local_rtp, void *);
 void mgcp_set_change_cb(mgcp_change cb, void *data);
+
+#endif
