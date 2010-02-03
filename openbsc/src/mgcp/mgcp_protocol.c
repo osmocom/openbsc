@@ -162,6 +162,9 @@ static int handle_create_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *source);
 static int handle_modify_con(int fd, struct msgb *msg, struct sockaddr_in *source);
 
+static mgcp_change change_cb;
+static void *change_cb_data;
+
 static int generate_call_id()
 {
 	int i;
@@ -661,6 +664,9 @@ static int handle_create_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 
 	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u\n",
 		ENDPOINT_NUMBER(endp), endp->ci, endp->rtp_port);
+	if (change_cb)
+		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, endp->rtp_port, change_cb_data);
+
 	return send_with_sdp(fd, endp, "CRCX", trans_id, source);
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
@@ -752,6 +758,8 @@ static int handle_modify_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 	/* modify */
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
+	if (change_cb)
+		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port, change_cb_data);
 	return send_with_sdp(fd, endp, "MDCX", trans_id, source);
 
 error:
@@ -814,6 +822,8 @@ static int handle_delete_con(int fd, struct msgb *msg, struct sockaddr_in *sourc
 	}
 
 	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	if (change_cb)
+		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port, change_cb_data);
 
 	return send_response(fd, 250, "DLCX", trans_id, source);
 
@@ -1116,4 +1126,10 @@ int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network
 	}
 
 	return !!forward_ip;
+}
+
+void mgcp_set_change_cb(mgcp_change cb, void *data)
+{
+	change_cb = cb;
+	change_cb_data = data;
 }

@@ -52,3 +52,11 @@ int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network
 int mgcp_handle_message(int fd, struct msgb *msg, struct sockaddr_in *source);
 int mgcp_send_rsip(int fd, struct sockaddr_in *source);
 int mgcp_vty_init(void);
+
+/* endpoint managed */
+#define MGCP_ENDP_CRCX 1
+#define MGCP_ENDP_DLCX 2
+#define MGCP_ENDP_MDCX 3
+
+typedef int (*mgcp_change)(int endpoint, int state, int local_rtp, void *);
+void mgcp_set_change_cb(mgcp_change cb, void *data);
