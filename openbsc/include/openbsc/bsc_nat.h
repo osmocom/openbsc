@@ -24,6 +24,8 @@
 
 #include <sys/types.h>
 #include <sccp/sccp_types.h>
+
+#include "select.h"
 #include "msgb.h"
 
 #define DIR_BSC 1
@@ -61,6 +63,34 @@ struct bsc_nat_parsed {
 	/* the gsm0808 message type */
 	int gsm_type;
 };
+
+/*
+ * Per BSC data structure
+ */
+struct bsc_connection {
+	struct llist_head list_entry;
+
+	/* do we know anything about this BSC? */
+	int authenticated;
+
+	/* the fd we use to communicate */
+	struct bsc_fd bsc_fd;
+};
+
+/*
+ * Per SCCP source local reference patch table. It needs to
+ * be updated on new SCCP connections, connection confirm and reject,
+ * and on the loss of the BSC connection.
+ */
+struct sccp_connections {
+	struct llist_head list_entry;
+
+	struct bsc_connection *bsc;
+
+	struct sccp_source_reference real_ref;
+	struct sccp_source_reference patched_ref;
+};
+
 
 /**
  * parse the given message into the above structure
