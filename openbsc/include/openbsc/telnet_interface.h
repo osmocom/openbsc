@@ -27,9 +27,6 @@
 
 #include <vty/vty.h>
 
-#define TELNET_COMMAND_48	1
-#define TELNET_COMMAND_11	2
-
 struct telnet_connection {
 	struct llist_head entry;
 	struct gsm_network *network;
