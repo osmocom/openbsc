@@ -170,6 +170,11 @@ int ipaccess_send_id_ack(int fd)
 	return write(fd, id_ack, sizeof(id_ack));
 }
 
+int ipaccess_send_id_req(int fd)
+{
+	return write(fd, id_req, sizeof(id_req));
+}
+
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
 			 struct bsc_fd *bfd)
@@ -536,7 +541,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
         return ret;
 	//return e1inp_line_register(line);
