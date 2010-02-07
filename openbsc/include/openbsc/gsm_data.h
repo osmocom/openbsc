@@ -599,6 +599,9 @@ struct gsm_network {
 	/* a hack for On Waves. It must be signed */
 	int32_t core_country_code;
 	int32_t core_network_code;
+
+	/* a simple token for this network... */
+	char *bsc_token;
 };
 
 #define SMS_HDR_SIZE	128

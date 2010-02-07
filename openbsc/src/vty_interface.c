@@ -353,6 +353,9 @@ static int config_write_net(struct vty *vty)
 		vty_out(vty, "%s", VTY_NEWLINE);
 	}
 
+	if (gsmnet->bsc_token)
+		vty_out(vty, " bsc_token %s%s", gsmnet->bsc_token, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -1110,6 +1113,18 @@ DEFUN(cfg_net_rtp_base_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_bsc_token,
+      cfg_net_bsc_token_cmd,
+      "bsc_token TOKEN",
+      "A token for the BSC to be sent to the MSC")
+{
+	if (gsmnet->bsc_token)
+		talloc_free(gsmnet->bsc_token);
+	gsmnet->bsc_token = talloc_strdup(gsmnet, argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 #define DECLARE_TIMER(number) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -1641,6 +1656,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
+	install_element(GSMNET_NODE, &cfg_net_bsc_token_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
