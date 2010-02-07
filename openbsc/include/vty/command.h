@@ -107,6 +107,8 @@ enum node_type {
 	TS_NODE,
 	SUBSCR_NODE,
 	MGCP_NODE,
+	NAT_NODE,
+	BSC_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration

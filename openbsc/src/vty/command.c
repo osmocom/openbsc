@@ -48,6 +48,7 @@ Boston, MA 02111-1307, USA.  */
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/talloc.h>
+#include <openbsc/bsc_nat.h>
 
 /* Command vector which includes some level of command lists. Normally
    each daemon maintains each own cmdvec. */
@@ -1946,6 +1947,13 @@ enum node_type vty_go_parent(struct vty *vty)
 		vty->node = VIEW_NODE;
 		subscr_put(vty->index);
 		vty->index = NULL;
+		break;
+	case BSC_NODE:
+		vty->node = NAT_NODE;
+		{
+			struct bsc_config *bsc = vty->index;
+			vty->index = bsc->nat;
+		}
 		break;
 	default:
 		vty->node = CONFIG_NODE;
