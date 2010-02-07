@@ -54,36 +54,8 @@ static struct bsc_fd msc_connection;
 static struct bsc_fd bsc_connection;
 
 
-/*
- * Per BSC data structure
- */
-struct bsc_connection {
-	struct llist_head list_entry;
-
-	/* do we know anything about this BSC? */
-	int authenticated;
-
-	/* the fd we use to communicate */
-	struct bsc_fd bsc_fd;
-};
-
-/*
- * Per SCCP source local reference patch table. It needs to
- * be updated on new SCCP connections, connection confirm and reject,
- * and on the loss of the BSC connection.
- */
-struct sccp_connections {
-	struct llist_head list_entry;
-
-	struct bsc_connection *bsc;
-
-	struct sccp_source_reference real_ref;
-	struct sccp_source_reference patched_ref;
-};
-
 static LLIST_HEAD(bsc_connections);
 static LLIST_HEAD(sccp_connections);
-
 
 /*
  * below are stubs we need to link
