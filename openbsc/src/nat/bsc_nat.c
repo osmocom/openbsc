@@ -308,11 +308,19 @@ static int forward_sccp_to_bts(struct msgb *msg)
 	talloc_free(parsed);
 	if (!bsc)
 		return -1;
+	if (!bsc->authenticated) {
+		LOGP(DNAT, LOGL_ERRO, "Selected BSC not authenticated.\n");
+		return -1;
+	}
+
 	return write(bsc->bsc_fd.fd, msg->data, msg->len);
 
 send_to_all:
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+		if (!bsc->authenticated)
+			continue;
+
 		rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
 
 		/* try the next one */
@@ -433,6 +441,11 @@ static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 
 	if (found_bsc != bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Found the wrong entry.\n");
+		goto exit2;
+	}
+
+	if (!bsc->authenticated) {
+		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
 		goto exit2;
 	}
 
