@@ -1260,7 +1260,7 @@ void bts_unblock_queue(struct bss_sccp_connection_data *data)
 
 	/* now queue them again to send RSL establish and such */
 	while (!llist_empty(&head)) {
-		msg = msgb_dequeue(&data->gsm_queue);
+		msg = msgb_dequeue(&head);
 		bts_queue_send(msg, (int) msg->smsh);
 	}
 }
