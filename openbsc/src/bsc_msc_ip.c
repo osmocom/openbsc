@@ -610,6 +610,33 @@ static void initialize_if_needed(void)
 	}
 }
 
+static void send_id_get_response(int fd)
+{
+	struct msgb *msg;
+	if (!bsc_gsmnet) {
+		LOGP(DMSC, LOGL_ERROR, "The network is not initialized yet.\n");
+		return;
+	}
+
+	if (!bsc_gsmnet->bsc_token) {
+		LOGP(DMSC, LOGL_ERROR, "The bsc token is not set.\n");
+		return;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "id resp");
+
+	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
+	msgb_l16tv_put(msg, strlen(bsc_gsmnet->bsc_token) + 1,
+			IPAC_IDTAG_UNITNAME, (u_int8_t *) bsc_gsmnet->bsc_token);
+	ipaccess_prepend_header(msg, IPAC_PROTO_IPACCESS);
+
+	if (write(fd, msg->data, msg->len) != msg->len) {
+		LOGP(DMSC, LOGL_ERROR, "Short write.\n");
+	}
+
+	msgb_free(msg);
+}
+
 /*
  * callback with IP access data
  */
@@ -636,9 +663,13 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	ipaccess_rcvmsg_base(msg, bfd);
 
 	/* initialize the networking. This includes sending a GSM08.08 message */
-	if (hh->proto == IPAC_PROTO_IPACCESS && msg->l2h[0] == IPAC_MSGT_ID_ACK)
-		initialize_if_needed();
-	else if (hh->proto == IPAC_PROTO_SCCP)
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
+			initialize_if_needed();
+		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
+			send_id_get_response(bfd->fd);
+		}
+	} else if (hh->proto == IPAC_PROTO_SCCP)
 		sccp_system_incoming(msg);
 
 	return 0;
