@@ -6,6 +6,11 @@ sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
 noinst_HEADERS = vty/cardshell.h
 
+bscdir = $(libdir)
+bsc_LIBRARIES = liblaf0rge1.a
+
+liblaf0rge1_a_SOURCES = msgb.c timer.c talloc.c select.c signal.c
+
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		msgb.c select.c chan_alloc.c timer.c debug.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
