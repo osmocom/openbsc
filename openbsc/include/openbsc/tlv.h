@@ -22,6 +22,7 @@
 #define TLV_GROSS_LEN(x)	(x+2)
 #define TLV16_GROSS_LEN(x)	((2*x)+2)
 #define TL16V_GROSS_LEN(x)	(x+3)
+#define L16TV_GROSS_LEN(x)	(x+3)
 
 #define TVLV_MAX_ONEBYTE	0x7f
 
@@ -103,6 +104,18 @@ static inline u_int8_t *msgb_tvlv_put(struct msgb *msg, u_int8_t tag, u_int16_t 
 {
 	u_int8_t *buf = msgb_put(msg, TVLV_GROSS_LEN(len));
 	return tvlv_put(buf, tag, len, val);
+}
+
+static inline u_int8_t *msgb_l16tv_put(struct msgb *msg, u_int16_t len, u_int8_t tag,
+                                       const u_int8_t *val)
+{
+	u_int8_t *buf = msgb_put(msg, L16TV_GROSS_LEN(len));
+
+	*buf++ = len >> 8;
+	*buf++ = len & 0xff;
+	*buf++ = tag;
+	memcpy(buf, val, len);
+	return buf + len;
 }
 
 static inline u_int8_t *v_put(u_int8_t *buf, u_int8_t val)
