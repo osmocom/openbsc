@@ -423,7 +423,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 {
 	struct bsc_connection *bsc;
-	struct bsc_connection *found_bsc;
+	struct bsc_connection *found_bsc = NULL;
 	struct bsc_nat_parsed *parsed;
 	int rc = -1;
 
