@@ -89,7 +89,7 @@ static const char *ipac_idtag_name(int tag)
 	return idtag_names[tag];
 }
 
-static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 {
 	u_int8_t t_len;
 	u_int8_t t_tag;
@@ -212,7 +212,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
 				 msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
