@@ -51,6 +51,9 @@ void ipaccess_prepend_header(struct msgb *msg, int proto);
 int ipaccess_send_id_ack(int fd);
 int ipaccess_send_id_req(int fd);
 
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
+
+
 /*
  * Firmware specific header
  */
