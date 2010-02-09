@@ -7,5 +7,5 @@ Name: LaF0rge Lib
 Description: C Utility Library
 Version: @VERSION@
 Libs: -L${libdir} -llaf0rge1
-Cflags: -I${includedir}/la
+Cflags: -I${includedir}/
 
