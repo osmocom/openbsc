@@ -63,6 +63,11 @@ static const struct tlv_definition bss_att_tlvdef = {
 	},
 };
 
+const struct tlv_definition *gsm0808_att_tlvdef()
+{
+	return &bss_att_tlvdef;
+}
+
 static u_int16_t get_network_code_for_msc(struct gsm_network *net)
 {
 	if (net->core_network_code > 0)

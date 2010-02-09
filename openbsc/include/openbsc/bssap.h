@@ -331,4 +331,6 @@ void bts_send_queued(struct bss_sccp_connection_data*);
 void bts_free_queued(struct bss_sccp_connection_data*);
 void bts_unblock_queue(struct bss_sccp_connection_data*);
 
+const struct tlv_definition *gsm0808_att_tlvdef();
+
 #endif
