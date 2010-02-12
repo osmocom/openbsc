@@ -9,10 +9,10 @@ noinst_HEADERS = vty/cardshell.h
 bscdir = $(libdir)
 bsc_LIBRARIES = liblaf0rge1.a libsccp.a
 
-liblaf0rge1_a_SOURCES = msgb.c timer.c talloc.c select.c signal.c
+liblaf0rge1_a_SOURCES = msgb.c timer.c talloc.c select.c signal.c debug.c
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
-		chan_alloc.c debug.c \
+		chan_alloc.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c tlv_parser.c \
 		input/misdn.c input/ipaccess.c signal.c gsm_utils.c \
