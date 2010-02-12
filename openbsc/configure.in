@@ -39,6 +39,7 @@ AM_CONFIG_HEADER(bscconfig.h)
 AC_OUTPUT(
     openbsc.pc
     liblaf0rge1.pc
+    libsccp.pc
     include/openbsc/Makefile
     include/vty/Makefile
     include/sccp/Makefile

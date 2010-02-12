@@ -3,11 +3,11 @@ AM_CFLAGS=-Wall
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
                 isdnsync bsc_mgcp ipaccess-proxy
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a
 noinst_HEADERS = vty/cardshell.h
 
 bscdir = $(libdir)
-bsc_LIBRARIES = liblaf0rge1.a
+bsc_LIBRARIES = liblaf0rge1.a libsccp.a
 
 liblaf0rge1_a_SOURCES = msgb.c timer.c talloc.c select.c signal.c
 
