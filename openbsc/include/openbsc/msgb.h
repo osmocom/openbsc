@@ -20,7 +20,8 @@
  *
  */
 
-#include <openbsc/linuxlist.h>
+#include <sys/types.h>
+#include "linuxlist.h"
 
 struct bts_link;
 
