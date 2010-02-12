@@ -26,9 +26,11 @@
 
 #include <arpa/inet.h>
 
-#include <sccp/sccp.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/msgb.h>
+
+#include <sccp/sccp.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 

@@ -27,11 +27,11 @@
 #include <stdlib.h>
 
 #include <sys/socket.h>
-
-#include <openbsc/msgb.h>
+#include <sys/types.h>
 
 #include "sccp_types.h"
 
+struct msgb;
 struct sccp_system;
 
 enum {
