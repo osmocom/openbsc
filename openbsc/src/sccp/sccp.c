@@ -459,6 +459,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 
 	msgb->l3h = &udt->data[udt->variable_data];
+	result->data_len = msgb_l3len(msgb);
 
 	if (msgb_l3len(msgb) !=  msgb->l3h[-1]) {
 		DEBUGP(DSCCP, "msgb is truncated is: %u should: %u\n",
