@@ -92,7 +92,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "mISDN TS1");
+	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
 	struct sockaddr_mISDN l2addr;
 	struct mISDNhead *hh;
 	socklen_t alen;
@@ -389,7 +389,6 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
-		struct sockaddr_mISDN addr;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
@@ -437,7 +436,7 @@ int mi_e1_line_update(struct e1inp_line *line)
 
 	if (!line->driver) {
 		/* this must be the first update */
-		line->driver = &misdn_driver;
+		line->driver = &dahdi_driver;
 	} else {
 		/* this is a subsequent update */
 		/* FIXME: first close all sockets */
@@ -445,9 +444,10 @@ int mi_e1_line_update(struct e1inp_line *line)
 		return 0;
 	}
 
-	if (line->driver != &misdn_driver)
+	if (line->driver != &dahdi_driver)
 		return -EINVAL;
 
+#if 0
 	/* open the ISDN card device */
 	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
 	if (sk < 0) {
@@ -485,6 +485,7 @@ int mi_e1_line_update(struct e1inp_line *line)
 		fprintf(stderr, "error: card is not of type E1 (NT-mode)\n");
 		return -EINVAL;
 	}
+#endif
 
 	ret = mi_e1_setup(line, 1);
 	if (ret)
