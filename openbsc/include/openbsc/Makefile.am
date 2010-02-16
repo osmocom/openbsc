@@ -10,3 +10,6 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 laforge_HEADERS = signal.h linuxlist.h timer.h talloc.h msgb.h select.h tlv.h \
 		  debug.h
 laforgedir= $(includedir)/laf0rge1
+
+openbsc_HEADERS = gsm_04_08.h meas_rep.h
+openbscdir = $(includedir)/openbsc
