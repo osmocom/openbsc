@@ -1,7 +1,8 @@
-/* OpenBSC Abis input driver for mISDNuser */
+/* OpenBSC Abis input driver for DAHDI */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010 by Digium and Matthew Fredrickson <creslin@digium.com>
  *
  * All Rights Reserved
  *
