@@ -52,6 +52,8 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/talloc.h>
 
+#include "lapd.h"
+
 #define TS1_ALLOC_SIZE	300
 
 struct prim_name {
@@ -95,8 +97,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	struct e1inp_sign_link *link;
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
 	struct sockaddr_mISDN l2addr;
-	struct mISDNhead *hh;
-	socklen_t alen;
+	struct mISDNhead ah;
+	struct mISDNhead *hh = &ah;
 	int ret;
 
 	if (!msg)
@@ -104,27 +106,124 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	hh = (struct mISDNhead *) msg->data;
 
-	alen = sizeof(l2addr);
-	ret = recvfrom(bfd->fd, msg->data, 300, 0,
-		       (struct sockaddr *) &l2addr, &alen);
+	ret = read(bfd->fd, &msg->data, TS1_ALLOC_SIZE - 16);
 	if (ret < 0) {
-		fprintf(stderr, "recvfrom error  %s\n", strerror(errno));
-		return ret;
+		perror("read ");
 	}
-
-	if (alen != sizeof(l2addr)) {
-		fprintf(stderr, "%s error len\n", __func__);
-		return -EINVAL;
-	}
-
 	msgb_put(msg, ret);
-
-	DEBUGP(DMI, "alen =%d, dev(%d) channel(%d) sapi(%d) tei(%d)\n",
-		alen, l2addr.dev, l2addr.channel, l2addr.sapi, l2addr.tei);
+	if (ret <= 3) {
+		perror("read ");
+	}
 
 	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
 		ret, hh->prim, hh->id, get_prim_name(hh->prim));
 
+	int		ilen;
+	lapd_mph_type prim;
+	uint8_t *idata = lapd_receive(msg->data, msg->len, &ilen, &prim, bfd);
+
+	switch (prim) {
+		case 0: break;
+		case LAPD_MPH_ACTIVATE_IND: hh->prim = MPH_ACTIVATE_IND; break;
+		case LAPD_MPH_DEACTIVATE_IND: hh->prim = MPH_DEACTIVATE_IND; break;
+		case LAPD_DL_DATA_IND: hh->prim = DL_DATA_IND; break;
+		default: printf("ERROR: unknown prim\n");
+	};
+
+	int pass_on = (prim != 0);
+
+	if (!pass_on) {
+		return 0;
+	};
+
+	l2addr.sapi = msg->data[0] >> 2;
+	l2addr.tei = msg->data[1] >> 1;
+	msgb_pull(msg, 2);
+
+#if 0
+	switch (hh->prim) {
+	case DL_INFORMATION_IND:
+		DEBUGP(DMI, "got DL_INFORMATION_IND\n");
+		struct sockaddr_mISDN *sa = NULL;
+		char *lstr = "UNKN";
+
+		switch (l2addr.tei) {
+		case TEI_OML:
+			sa = &e1h->omladdr;
+			lstr = "OML";
+			break;
+		case TEI_RSL:
+			sa = &e1h->l2addr;
+			lstr = "RSL";
+			break;
+		default:
+			break;
+		}
+		if (sa) {
+			DEBUGP(DMI, "%s use channel(%d) sapi(%d) tei(%d) for now\n",
+				lstr, l2addr.channel, l2addr.sapi, l2addr.tei);
+			memcpy(sa, &l2addr, sizeof(l2addr));
+		}
+		break;
+	case DL_ESTABLISH_IND:
+		DEBUGP(DMI, "got DL_ESTABLISH_IND\n");
+		break;
+	case DL_ESTABLISH_CNF:
+		DEBUGP(DMI, "got DL_ESTABLISH_CNF\n");
+		break;
+	case DL_RELEASE_IND:
+		DEBUGP(DMI, "got DL_RELEASE_IND: E1 Layer 1 disappeared?\n");
+		break;
+#if 0
+	case MPH_ACTIVATE_IND:
+		DEBUGP(DMI, "got MPH_ACTIVATE_IND\n");
+		printf("tei %d, sapi %d\n", l2addr.tei, l2addr.sapi);
+		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
+			e1h->cb(EVT_E1_OML_UP, e1h->bts);
+		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
+			e1h->cb(EVT_E1_RSL_UP, e1h->bts);
+		break;
+	case MPH_DEACTIVATE_IND:
+		DEBUGP(DMI, "got MPH_DEACTIVATE_IND: TEI link closed?\n");
+		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
+			e1h->cb(EVT_E1_OML_DN, e1h->bts);
+		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
+			e1h->cb(EVT_E1_RSL_DN, e1h->bts);
+		break;
+#endif
+	case DL_DATA_IND:
+		DEBUGP(DMI, "got DL_DATA_IND\n");
+
+		ret = msg->len;
+		msg->l2h = msg->data + 2;// + MISDN_HEADER_LEN;
+
+#if 0
+		if (debug_mask & DMI) { 
+			fprintf(stdout, "RX: ");
+			hexdump(msgb_l2(msg), ret - (msg->l2h - msg->data));// - MISDN_HEADER_LEN);
+		}
+#endif
+		switch (l2addr.tei) {
+		case TEI_OML:
+			ret = abis_nm_rcvmsg(msg);
+			break;
+		case TEI_RSL:
+			ret = abis_rsl_rcvmsg(msg);
+			break;
+		default:
+			fprintf(stderr, "DATA_IND for unknown TEI\n");
+			break;
+		}
+		break;
+	default:
+		DEBUGP(DMI, "got unexpected 0x%x prim\n", hh->prim);
+		break;
+	}
+#endif
+
+
+
+#if 1
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
 		/* mISDN tells us which channel number is allocated for this
@@ -167,6 +266,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	default:
 		break;
 	}
+#endif
 	return ret;
 }
 
@@ -197,11 +297,10 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
-	struct sockaddr_mISDN sa;
 	struct msgb *msg;
-	struct mISDNhead *hh;
-	u_int8_t *l2_data;
+	//u_int8_t *l2_data;
 	int ret;
+	//int no_oml = 0;
 
 	bfd->when &= ~BSC_FD_WRITE;
 
@@ -212,25 +311,17 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	l2_data = msg->data;
-
-	/* prepend the mISDNhead */
-	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
-	hh->prim = DL_DATA_REQ;
-
+#if 0
 	DEBUGP(DMI, "TX TEI(%d) SAPI(%d): %s\n", sign_link->tei,
 		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
+#endif
 
-	/* construct the sockaddr */
-	sa.family = AF_ISDN;
-	sa.sapi = sign_link->sapi;
-	sa.dev = sign_link->tei;
-	sa.channel = sign_link->driver.misdn.channel;
+	lapd_transmit(sign_link->tei, msg->data, msg->len, bfd);
 
-	ret = sendto(bfd->fd, msg->data, msg->len, 0,
-		     (struct sockaddr *)&sa, sizeof(sa));
+	ret = write(bfd->fd, msg->data, msg->len + 2);
+
 	if (ret < 0)
-		fprintf(stderr, "%s sendto failed %d\n", __func__, ret);
+		fprintf(stderr, "%s write failed %d\n", __func__, ret);
 	msgb_free(msg);
 
 	/* set tx delay timer for next event */
@@ -277,7 +368,8 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "DAHDI TSx");
-	struct mISDNhead *hh;
+	struct mISDNhead ah;
+	struct mISDNhead *hh = &ah;
 	int ret;
 
 	if (!msg)
@@ -285,7 +377,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 
 	hh = (struct mISDNhead *) msg->data;
 
-	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE, 0);
+	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE);
 	if (ret < 0) {
 		fprintf(stderr, "read error  %s\n", strerror(errno));
 		return ret;
@@ -433,7 +525,8 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 int mi_e1_line_update(struct e1inp_line *line)
 {
 	struct mISDN_devinfo devinfo;
-	int sk, ret, cnt;
+	//int sk, ret, cnt;
+	int ret;
 
 	if (!line->driver) {
 		/* this must be the first update */
