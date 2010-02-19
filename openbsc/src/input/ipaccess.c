@@ -598,6 +598,11 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	bfd->when = BSC_FD_READ;
 	//bfd->data = line;
 
+	if (bfd->fd < 0) {
+		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
+		return -EIO;
+	}
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
@@ -609,18 +614,21 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not bind l2 socket %s\n",
 			strerror(errno));
+		close(bfd->fd);
 		return -EIO;
 	}
 
 	ret = listen(bfd->fd, 1);
 	if (ret < 0) {
 		perror("listen");
+		close(bfd->fd);
 		return ret;
 	}
 	
 	ret = bsc_register_fd(bfd);
 	if (ret < 0) {
 		perror("register_listen_fd");
+		close(bfd->fd);
 		return ret;
 	}
 	return 0;
@@ -638,6 +646,11 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
 	bfd->data = line;
 	bfd->priv_nr = 1;
+
+	if (bfd->fd < 0) {
+		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
+		return -EIO;
+	}
 
 	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
