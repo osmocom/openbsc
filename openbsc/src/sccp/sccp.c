@@ -209,7 +209,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 	static const u_int32_t called_offset =
 			offsetof(struct sccp_connection_request, variable_called);
 
-	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->data;
+	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->l2h;
 	struct sccp_optional_data optional_data;
 
 	/* header check */
