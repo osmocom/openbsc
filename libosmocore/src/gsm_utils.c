@@ -26,12 +26,13 @@
 #include <osmocore/gsm_utils.h>
 
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
 
 /* GSM 03.38 6.2.1 Charachter packing */
-int gsm_7bit_decode(char *text, const u_int8_t *user_data, u_int8_t length)
+int gsm_7bit_decode(char *text, const uint8_t *user_data, uint8_t length)
 {
 	int i = 0;
 	int l = 0;
@@ -51,7 +52,7 @@ int gsm_7bit_decode(char *text, const u_int8_t *user_data, u_int8_t length)
 
 
 /* GSM 03.38 6.2.1 Charachter packing */
-int gsm_7bit_encode(u_int8_t *result, const char *data)
+int gsm_7bit_encode(uint8_t *result, const char *data)
 {
 	int i,j = 0;
 	unsigned char ch1, ch2;
@@ -129,7 +130,7 @@ int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm)
 	return -EINVAL;
 }
 
-int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
+int ms_pwr_dbm(enum gsm_band band, uint8_t lvl)
 {
 	lvl &= 0x1f;
 
@@ -168,7 +169,7 @@ int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 }
 
 /* According to TS 08.05 Chapter 8.1.4 */
-int rxlev2dbm(u_int8_t rxlev)
+int rxlev2dbm(uint8_t rxlev)
 {
 	if (rxlev > 63)
 		rxlev = 63;
@@ -177,7 +178,7 @@ int rxlev2dbm(u_int8_t rxlev)
 }
 
 /* According to TS 08.05 Chapter 8.1.4 */
-u_int8_t dbm2rxlev(int dbm)
+uint8_t dbm2rxlev(int dbm)
 {
 	int rxlev = dbm + 110;
 

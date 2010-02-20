@@ -22,7 +22,7 @@
 
 
 #include <errno.h>
-#include <sys/types.h>
+#include <stdint.h>
 
 #include <osmocore/bitvec.h>
 
@@ -36,7 +36,7 @@ static inline unsigned int bytenum_from_bitnum(unsigned int bitnum)
 }
 
 /* convert ZERO/ONE/L/H to a bitmask at given pos in a byte */
-static u_int8_t bitval2mask(enum bit_value bit, u_int8_t bitnum)
+static uint8_t bitval2mask(enum bit_value bit, uint8_t bitnum)
 {
 	int bitval;
 
@@ -64,7 +64,7 @@ enum bit_value bitvec_get_bit_pos(struct bitvec *bv, unsigned int bitnr)
 {
 	unsigned int bytenum = bytenum_from_bitnum(bitnr);
 	unsigned int bitnum = 7 - (bitnr % 8);
-	u_int8_t bitval;
+	uint8_t bitval;
 
 	if (bytenum >= bv->data_len)
 		return -EINVAL;
@@ -99,7 +99,7 @@ int bitvec_set_bit_pos(struct bitvec *bv, unsigned int bitnr,
 {
 	unsigned int bytenum = bytenum_from_bitnum(bitnr);
 	unsigned int bitnum = 7 - (bitnr % 8);
-	u_int8_t bitval;
+	uint8_t bitval;
 
 	if (bytenum >= bv->data_len)
 		return -EINVAL;

@@ -66,10 +66,10 @@
  */
 
 #include <string.h>
-#include <sys/types.h>
+#include <stdint.h>
 
 /* The compression tables (just copied ...) */
-static const u_int8_t table_0[512] = {
+static const uint8_t table_0[512] = {
  102, 177, 186, 162,   2, 156, 112,  75,  55,  25,   8,  12, 251, 193, 246, 188,
  109, 213, 151,  53,  42,  79, 191, 115, 233, 242, 164, 223, 209, 148, 108, 161,
  252,  37, 244,  47,  64, 211,   6, 237, 185, 160, 139, 113,  76, 138,  59,  70,
@@ -138,11 +138,11 @@ static const u_int8_t table_0[512] = {
  10,   3,   4,   9,   6,   0,   3,   2,   5,   6,   8,   9,  11,  13,  15,  12,
 };
 
-static const u_int8_t *_comp128_table[5] = { table_0, table_1, table_2, table_3, table_4 };
+static const uint8_t *_comp128_table[5] = { table_0, table_1, table_2, table_3, table_4 };
 
 
 static inline void
-_comp128_compression_round(u_int8_t *x, int n, const u_int8_t *tbl)
+_comp128_compression_round(uint8_t *x, int n, const uint8_t *tbl)
 {
 	int i, j, m, a, b, y, z;
 	m = 4 - n;
@@ -158,7 +158,7 @@ _comp128_compression_round(u_int8_t *x, int n, const u_int8_t *tbl)
 }
 
 static inline void
-_comp128_compression(u_int8_t *x)
+_comp128_compression(uint8_t *x)
 {
 	int n;
 	for (n=0; n<5; n++)
@@ -166,7 +166,7 @@ _comp128_compression(u_int8_t *x)
 }
 
 static inline void
-_comp128_bitsfrombytes(u_int8_t *x, u_int8_t *bits)
+_comp128_bitsfrombytes(uint8_t *x, uint8_t *bits)
 {
 	int i;
 	memset(bits, 0x00, 128);
@@ -176,7 +176,7 @@ _comp128_bitsfrombytes(u_int8_t *x, u_int8_t *bits)
 }
 
 static inline void
-_comp128_permutation(u_int8_t *x, u_int8_t *bits)
+_comp128_permutation(uint8_t *x, uint8_t *bits)
 {
 	int i;
 	memset(&x[16], 0x00, 16);
@@ -185,10 +185,10 @@ _comp128_permutation(u_int8_t *x, u_int8_t *bits)
 }
 
 void
-comp128(u_int8_t *ki, u_int8_t *rand, u_int8_t *sres, u_int8_t *kc)
+comp128(uint8_t *ki, uint8_t *rand, uint8_t *sres, uint8_t *kc)
 {
 	int i;
-	u_int8_t x[32], bits[128];
+	uint8_t x[32], bits[128];
 
 	/* x[16-31] = RAND */
 	memcpy(&x[16], rand, 16);

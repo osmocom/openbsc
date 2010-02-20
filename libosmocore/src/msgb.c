@@ -30,7 +30,7 @@
 
 void *tall_msgb_ctx;
 
-struct msgb *msgb_alloc(u_int16_t size, const char *name)
+struct msgb *msgb_alloc(uint16_t size, const char *name)
 {
 	struct msgb *msg;
 

@@ -36,7 +36,7 @@ enum bit_value {
 struct bitvec {
 	unsigned int cur_bit;	/* curser to the next unused bit */
 	unsigned int data_len;	/* length of data array in bytes */
-	u_int8_t *data;		/* pointer to data array */
+	uint8_t *data;		/* pointer to data array */
 };
 
 /* check if the bit is 0 or 1 for a given position inside a bitvec */

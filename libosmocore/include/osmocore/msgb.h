@@ -20,7 +20,7 @@
  *
  */
 
-#include <sys/types.h>
+#include <stdint.h>
 #include "linuxlist.h"
 
 struct bts_link;
@@ -39,8 +39,8 @@ struct msgb {
 	unsigned char *l3h;
 	unsigned char *smsh;
 
-	u_int16_t data_len;
-	u_int16_t len;
+	uint16_t data_len;
+	uint16_t len;
 
 	unsigned char *head;
 	unsigned char *tail;
@@ -48,7 +48,7 @@ struct msgb {
 	unsigned char _data[0];
 };
 
-extern struct msgb *msgb_alloc(u_int16_t size, const char *name);
+extern struct msgb *msgb_alloc(uint16_t size, const char *name);
 extern void msgb_free(struct msgb *m);
 extern void msgb_enqueue(struct llist_head *queue, struct msgb *msg);
 extern struct msgb *msgb_dequeue(struct llist_head *queue);
@@ -60,12 +60,12 @@ extern void msgb_reset(struct msgb *m);
 
 static inline unsigned int msgb_l2len(const struct msgb *msgb)
 {
-	return msgb->tail - (u_int8_t *)msgb_l2(msgb);
+	return msgb->tail - (uint8_t *)msgb_l2(msgb);
 }
 
 static inline unsigned int msgb_l3len(const struct msgb *msgb)
 {
-	return msgb->tail - (u_int8_t *)msgb_l3(msgb);
+	return msgb->tail - (uint8_t *)msgb_l3(msgb);
 }
 
 static inline unsigned int msgb_headlen(const struct msgb *msgb)

@@ -25,7 +25,7 @@
 #ifndef GSM_UTILS_H
 #define GSM_UTILS_H
 
-#include <sys/types.h>
+#include <stdint.h>
 
 enum gsm_band {
 	GSM_BAND_850	= 1,
@@ -38,15 +38,15 @@ enum gsm_band {
 	GSM_BAND_810	= 0x80,
 };
 
-int gsm_7bit_decode(char *decoded, const u_int8_t *user_data, u_int8_t length);
-int gsm_7bit_encode(u_int8_t *result, const char *data);
+int gsm_7bit_decode(char *decoded, const uint8_t *user_data, uint8_t length);
+int gsm_7bit_encode(uint8_t *result, const char *data);
 
 int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm);
-int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl);
+int ms_pwr_dbm(enum gsm_band band, uint8_t lvl);
 
 /* According to TS 08.05 Chapter 8.1.4 */
-int rxlev2dbm(u_int8_t rxlev);
-u_int8_t dbm2rxlev(int dbm);
+int rxlev2dbm(uint8_t rxlev);
+uint8_t dbm2rxlev(int dbm);
 
 /* According to GSM 04.08 Chapter 10.5.2.29 */
 static inline int rach_max_trans_val2raw(int val) { return (val >> 1) & 3; }

@@ -7,16 +7,16 @@
 #ifndef __COMP128_H__
 #define __COMP128_H__
 
-#include <sys/types.h>
+#include <stdint.h>
 
 /*
  * Performs the COMP128 algorithm (used as A3/A8)
- * ki    : u_int8_t [16]
- * srand : u_int8_t [16]
- * sres  : u_int8_t [4]
- * kc    : u_int8_t [8]
+ * ki    : uint8_t [16]
+ * srand : uint8_t [16]
+ * sres  : uint8_t [4]
+ * kc    : uint8_t [8]
  */
-void comp128(u_int8_t *ki, u_int8_t *srand, u_int8_t *sres, u_int8_t *kc);
+void comp128(uint8_t *ki, uint8_t *srand, uint8_t *sres, uint8_t *kc);
 
 #endif /* __COMP128_H__ */
 
