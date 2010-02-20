@@ -31,6 +31,8 @@
 #include <stdio.h>
 #include <errno.h>
 
+#include "../config.h"
+
 /* GSM 03.38 6.2.1 Charachter packing */
 int gsm_7bit_decode(char *text, const uint8_t *user_data, uint8_t length)
 {
@@ -190,6 +192,7 @@ uint8_t dbm2rxlev(int dbm)
 	return rxlev;
 }
 
+#ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
 void generate_backtrace()
 {
@@ -209,3 +212,4 @@ void generate_backtrace()
 
 	free(strings);
 }
+#endif

@@ -23,6 +23,8 @@
 #include <osmocore/timer.h>
 #include <osmocore/select.h>
 
+#include "../config.h"
+
 static void timer_fired(unsigned long data);
 
 static struct timer_list timer_one = {
@@ -64,7 +66,11 @@ int main(int argc, char** argv)
     bsc_schedule_timer(&timer_two, 5, 0);
     bsc_schedule_timer(&timer_three, 4, 0);
 
+#ifdef HAVE_SYS_SELECT_H
     while (1) {
         bsc_select_main(0);
     }
+#else
+    printf("Select not supported on this platform!\n");
+#endif
 }

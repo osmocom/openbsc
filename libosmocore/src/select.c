@@ -23,6 +23,8 @@
 #include <osmocore/linuxlist.h>
 #include <osmocore/timer.h>
 
+#ifdef HAVE_SYS_SELECT_H
+
 static int maxfd = 0;
 static LLIST_HEAD(bsc_fds);
 static int unregistered_count;
@@ -122,3 +124,5 @@ restart:
 	}
 	return work;
 }
+
+#endif /* _HAVE_SYS_SELECT_H */
