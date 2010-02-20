@@ -29,13 +29,13 @@ int main(int argc, char** argv)
 {
 	printf("SMS testing\n");
 	struct msgb *msg;
-	u_int8_t *sms;
-	u_int8_t i;
+	uint8_t *sms;
+	uint8_t i;
 
         /* test 7-bit coding/decoding */
 	const char *input = "test text";
-	u_int8_t length;
-	u_int8_t coded[256];
+	uint8_t length;
+	uint8_t coded[256];
 	char result[256];
 
 	length = gsm_7bit_encode(coded, input);
