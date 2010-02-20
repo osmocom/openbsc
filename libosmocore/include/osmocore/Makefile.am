@@ -3,3 +3,5 @@ osmocore_HEADERS = signal.h linuxlist.h timer.h talloc.h msgb.h select.h \
 		   gsmtap.h
 
 osmocoredir = $(includedir)/osmocore
+
+SUBDIRS = protocol

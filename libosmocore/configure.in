@@ -32,6 +32,7 @@ AM_CONFIG_HEADER(config.h)
 AC_OUTPUT(
 	libosmocore.pc
 	include/osmocore/Makefile
+	include/osmocore/protocol/Makefile
 	include/Makefile
 	src/Makefile
 	tests/Makefile
