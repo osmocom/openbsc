@@ -1,8 +1,8 @@
 /* A Media Gateway Control Protocol Media Gateway: RFC 3435 */
 
 /*
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by On-Waves
+ * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,8 +26,9 @@
 
 #include "msgb.h"
 
+#include <arpa/inet.h>
+
 #define RTP_PORT_DEFAULT 4000
-extern unsigned int rtp_base_port;
 
 /**
  * Calculate the RTP audio port for the given multiplex
@@ -53,18 +54,54 @@ static inline int rtp_calculate_port(int multiplex, int base)
 	return base + (multiplex * 2);
 }
 
-int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network);
 
-struct msgb *mgcp_handle_message(struct msgb *msg);
-struct msgb *mgcp_create_rsip(void);
-int mgcp_vty_init(void);
+/*
+ * Handling of MGCP Endpoints and the MGCP Config
+ */
+struct mgcp_endpoint;
+struct mgcp_config;
 
-/* endpoint managed */
 #define MGCP_ENDP_CRCX 1
 #define MGCP_ENDP_DLCX 2
 #define MGCP_ENDP_MDCX 3
 
-typedef int (*mgcp_change)(int endpoint, int state, int local_rtp, void *);
-void mgcp_set_change_cb(mgcp_change cb, void *data);
+typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state, int local_rtp);
+
+struct mgcp_config {
+	int source_port;
+	char *local_ip;
+	char *source_addr;
+	unsigned int number_endpoints;
+	char *bts_ip;
+
+	struct in_addr bts_in;
+	char *audio_name;
+	int audio_payload;
+	int audio_loop;
+	int early_bind;
+	int rtp_base_port;
+
+	char *forward_ip;
+	int forward_port;
+
+	mgcp_change change_cb;
+
+	struct mgcp_endpoint *endpoints;
+	unsigned int last_call_id;
+};
+
+/* config management */
+struct mgcp_config *mgcp_config_alloc(void);
+int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
+int mgcp_vty_init(void);
+int mgcp_endpoints_allocate(struct mgcp_config *cfg);
+int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
+
+/*
+ * format helper functions
+ */
+struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
+struct msgb *mgcp_create_rsip(void);
+
 
 #endif

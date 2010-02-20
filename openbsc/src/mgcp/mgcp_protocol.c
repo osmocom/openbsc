@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by On-Waves
+ * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -39,26 +39,9 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/select.h>
 #include <openbsc/mgcp.h>
-#include <openbsc/telnet_interface.h>
-
-#include <vty/command.h>
-#include <vty/vty.h>
+#include <openbsc/mgcp_internal.h>
 
 #warning "Make use of the rtp proxy code"
-
-static int source_port = 2427;
-static const char *local_ip = NULL;
-static const char *source_addr = "0.0.0.0";
-static unsigned int number_endpoints = 0;
-static const char *bts_ip = NULL;
-static struct in_addr bts_in;
-static const char *audio_name = "GSM-EFR/8000";
-static int audio_payload = 97;
-static int audio_loop = 0;
-static int early_bind = 0;
-
-static char *forward_ip = NULL;
-static int forward_port = 0;
 
 enum mgcp_connection_mode {
 	MGCP_CONN_NONE = 0,
@@ -76,37 +59,6 @@ enum {
 	PROTO_RTP,
 	PROTO_RTCP,
 };
-
-#define CI_UNUSED 0
-static unsigned int last_call_id = 0;
-
-struct mgcp_endpoint {
-	int ci;
-	char *callid;
-	char *local_options;
-	int conn_mode;
-
-	/* the local rtp port we are binding to */
-	int rtp_port;
-
-	/*
-	 * RTP mangling:
-	 *  - we get RTP and RTCP to us and need to forward to the BTS
-	 *  - we get RTP and RTCP from the BTS and forward to the network
-	 */
-	struct bsc_fd local_rtp;
-	struct bsc_fd local_rtcp;
-
-	struct in_addr remote;
-	struct in_addr bts;
-
-	/* in network byte order */
-	int net_rtp, net_rtcp;
-	int bts_rtp, bts_rtcp;
-};
-
-static struct mgcp_endpoint *endpoints = NULL;
-#define ENDPOINT_NUMBER(endp) abs(endp - endpoints)
 
 /**
  * Macro for tokenizing MGCP messages and SDP in one go.
@@ -150,39 +102,36 @@ struct mgcp_msg_ptr {
 
 struct mgcp_request {
 	char *name;
-	struct msgb *(*handle_request) (struct msgb *msg);
+	struct msgb *(*handle_request) (struct mgcp_config *cfg, struct msgb *msg);
 	char *debug_name;
 };
 
 #define MGCP_REQUEST(NAME, REQ, DEBUG_NAME) \
 	{ .name = NAME, .handle_request = REQ, .debug_name = DEBUG_NAME },
 
-static struct msgb *handle_audit_endpoint(struct msgb *msg);
-static struct msgb *handle_create_con(struct msgb *msg);
-static struct msgb *handle_delete_con(struct msgb *msg);
-static struct msgb *handle_modify_con(struct msgb *msg);
+static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *msg);
+static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg);
+static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg);
+static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg);
 
-static mgcp_change change_cb;
-static void *change_cb_data;
-
-static int generate_call_id()
+static int generate_call_id(struct mgcp_config *cfg)
 {
 	int i;
 
 	/* use the call id */
-	++last_call_id;
+	++cfg->last_call_id;
 
 	/* handle wrap around */
-	if (last_call_id == CI_UNUSED)
-		++last_call_id;
+	if (cfg->last_call_id == CI_UNUSED)
+		++cfg->last_call_id;
 
 	/* callstack can only be of size number_of_endpoints */
 	/* verify that the call id is free, e.g. in case of overrun */
-	for (i = 1; i < number_endpoints; ++i)
-		if (endpoints[i].ci == last_call_id)
-			return generate_call_id();
+	for (i = 1; i < cfg->number_endpoints; ++i)
+		if (cfg->endpoints[i].ci == cfg->last_call_id)
+			return generate_call_id(cfg);
 
-	return last_call_id;
+	return cfg->last_call_id;
 }
 
 /* FIXIME/TODO: need to have a list of pending transactions and check that */
@@ -217,9 +166,11 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
 	struct mgcp_endpoint *endp;
+	struct mgcp_config *cfg;
 	int rc, dest, proto;
 
 	endp = (struct mgcp_endpoint *) fd->data;
+	cfg = endp->cfg;
 
 	rc = recvfrom(fd->fd, &buf, sizeof(buf), 0,
 			    (struct sockaddr *) &addr, &slen);
@@ -249,9 +200,9 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
-	if (dest == DEST_NETWORK && (endp->bts_rtp == 0 || forward_ip)) {
+	if (dest == DEST_NETWORK && (endp->bts_rtp == 0 || cfg->forward_ip)) {
 		/* it was the BTS... */
-		if (!bts_ip || memcmp(&addr.sin_addr, &bts_in, sizeof(bts_in)) == 0) {
+		if (!cfg->bts_ip || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0) {
 			if (fd == &endp->local_rtp) {
 				endp->bts_rtp = addr.sin_port;
 			} else {
@@ -265,7 +216,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	}
 
 	/* dispatch */
-	if (audio_loop)
+	if (cfg->audio_loop)
 		dest = !dest;
 
 	if (dest == DEST_NETWORK) {
@@ -279,7 +230,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	}
 }
 
-static int create_bind(struct bsc_fd *fd, int port)
+static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
 {
 	struct sockaddr_in addr;
 	int on = 1;
@@ -305,15 +256,17 @@ static int create_bind(struct bsc_fd *fd, int port)
 
 static int bind_rtp(struct mgcp_endpoint *endp)
 {
-	if (create_bind(&endp->local_rtp, endp->rtp_port) != 0) {
+	struct mgcp_config *cfg = endp->cfg;
+
+	if (create_bind(cfg->source_addr, &endp->local_rtp, endp->rtp_port) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
-		       source_addr, endp->rtp_port, ENDPOINT_NUMBER(endp));
+		       cfg->source_addr, endp->rtp_port, ENDPOINT_NUMBER(endp));
 		goto cleanup0;
 	}
 
-	if (create_bind(&endp->local_rtcp, endp->rtp_port + 1) != 0) {
+	if (create_bind(cfg->source_addr, &endp->local_rtcp, endp->rtp_port + 1) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
-		       source_addr, endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
+		       cfg->source_addr, endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup1;
 	}
 
@@ -397,13 +350,14 @@ static struct msgb *send_response(int code, const char *msg, const char *trans)
 	return send_response_with_data(code, msg, trans, NULL);
 }
 
-static struct msgb *send_with_sdp(struct mgcp_endpoint *endp, const char *msg, const char *trans_id)
+static struct msgb *send_with_sdp(struct mgcp_endpoint *endp,
+				  const char *msg, const char *trans_id)
 {
-	const char *addr = local_ip;
+	const char *addr = endp->cfg->local_ip;
 	char sdp_record[4096];
 
 	if (!addr)
-		addr = source_addr;
+		addr = endp->cfg->source_addr;
 
 	snprintf(sdp_record, sizeof(sdp_record) - 1,
 			"I: %d\n\n"
@@ -412,7 +366,8 @@ static struct msgb *send_with_sdp(struct mgcp_endpoint *endp, const char *msg, c
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
 			endp->ci, addr, endp->rtp_port,
-			audio_payload, audio_payload, audio_name);
+			endp->cfg->audio_payload, endp->cfg->audio_payload,
+		        endp->cfg->audio_name);
 	return send_response_with_data(200, msg, trans_id, sdp_record);
 }
 
@@ -438,7 +393,7 @@ struct msgb *mgcp_create_rsip(void)
  *   - this can be a command (four letters, space, transaction id)
  *   - or a response (three numbers, space, transaction id)
  */
-struct msgb *mgcp_handle_message(struct msgb *msg)
+struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 {
         int code;
 	struct msgb *resp = NULL;
@@ -457,7 +412,7 @@ struct msgb *mgcp_handle_message(struct msgb *msg)
 		for (i = 0; i < ARRAY_SIZE(mgcp_requests); ++i)
 			if (strncmp(mgcp_requests[i].name, (const char *) &msg->data[0], 4) == 0) {
 				handled = 1;
-				resp = mgcp_requests[i].handle_request(msg);
+				resp = mgcp_requests[i].handle_request(cfg, msg);
 				break;
 			}
 		if (!handled) {
@@ -504,21 +459,22 @@ static int find_msg_pointers(struct msgb *msg, struct mgcp_msg_ptr *ptrs, int pt
 	return found;
 }
 
-static struct mgcp_endpoint *find_endpoint(const char *mgcp)
+static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *mgcp)
 {
 	char *endptr = NULL;
 	unsigned int gw = INT_MAX;
 
 	gw = strtoul(mgcp, &endptr, 16);
-	if (gw == 0 || gw >= number_endpoints || strcmp(endptr, "@mgw") != 0) {
+	if (gw == 0 || gw >= cfg->number_endpoints || strcmp(endptr, "@mgw") != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
 		return NULL;
 	}
 
-	return &endpoints[gw];
+	return &cfg->endpoints[gw];
 }
 
-static int analyze_header(struct msgb *msg, struct mgcp_msg_ptr *ptr, int size,
+static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
+			  struct mgcp_msg_ptr *ptr, int size,
 			  const char **transaction_id, struct mgcp_endpoint **endp)
 {
 	int found;
@@ -553,7 +509,7 @@ static int analyze_header(struct msgb *msg, struct mgcp_msg_ptr *ptr, int size,
 	}
 
 	*transaction_id = (const char *)&msg->l3h[ptr[0].start];
-	*endp = find_endpoint((const char *)&msg->l3h[ptr[1].start]);
+	*endp = find_endpoint(cfg, (const char *)&msg->l3h[ptr[1].start]);
 	return *endp == NULL;
 }
 
@@ -581,14 +537,14 @@ static int verify_ci(const struct mgcp_endpoint *endp,
 	return 0;
 }
 
-static struct msgb *handle_audit_endpoint(struct msgb *msg)
+static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *msg)
 {
 	struct mgcp_msg_ptr data_ptrs[6];
 	int found, response;
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 
-	found = analyze_header(msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 	    response = 500;
 	else
@@ -612,7 +568,7 @@ static int parse_conn_mode(const char* msg, int *conn_mode)
 	return ret;
 }
 
-static struct msgb *handle_create_con(struct msgb *msg)
+static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 {
 	struct mgcp_msg_ptr data_ptrs[6];
 	int found, i, line_start;
@@ -620,7 +576,7 @@ static struct msgb *handle_create_con(struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return send_response(500, "CRCX", trans_id);
 
@@ -633,11 +589,11 @@ static struct msgb *handle_create_con(struct msgb *msg)
 	MSG_TOKENIZE_START
 	switch (msg->l3h[line_start]) {
 	case 'L':
-		endp->local_options = talloc_strdup(endpoints,
+		endp->local_options = talloc_strdup(cfg->endpoints,
 			(const char *)&msg->l3h[line_start + 3]);
 		break;
 	case 'C':
-		endp->callid = talloc_strdup(endpoints,
+		endp->callid = talloc_strdup(cfg->endpoints,
 			(const char *)&msg->l3h[line_start + 3]);
 		break;
 	case 'M':
@@ -662,19 +618,19 @@ static struct msgb *handle_create_con(struct msgb *msg)
 	memset(&endp->remote, 0, sizeof(endp->remote));
 
 	/* bind to the port now */
-	endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
-	if (!early_bind && bind_rtp(endp) != 0)
+	endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_base_port);
+	if (!cfg->early_bind && bind_rtp(endp) != 0)
 		goto error2;
 
 	/* assign a local call identifier or fail */
-	endp->ci = generate_call_id();
+	endp->ci = generate_call_id(cfg);
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
 	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u\n",
 		ENDPOINT_NUMBER(endp), endp->ci, endp->rtp_port);
-	if (change_cb)
-		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, endp->rtp_port, change_cb_data);
+	if (cfg->change_cb)
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, endp->rtp_port);
 
 	return send_with_sdp(endp, "CRCX", trans_id);
 error:
@@ -688,7 +644,7 @@ error2:
 	return send_response(error_code, "CRCX", trans_id);
 }
 
-static struct msgb *handle_modify_con(struct msgb *msg)
+static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 {
 	struct mgcp_msg_ptr data_ptrs[6];
 	int found, i, line_start;
@@ -696,7 +652,7 @@ static struct msgb *handle_modify_con(struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return send_response(error_code, "MDCX", trans_id);
 
@@ -767,8 +723,8 @@ static struct msgb *handle_modify_con(struct msgb *msg)
 	/* modify */
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
-	if (change_cb)
-		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port, change_cb_data);
+	if (cfg->change_cb)
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
 	return send_with_sdp(endp, "MDCX", trans_id);
 
 error:
@@ -781,7 +737,7 @@ error3:
 	return send_response(error_code, "MDCX", trans_id);
 }
 
-static struct msgb *handle_delete_con(struct msgb *msg)
+static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 {
 	struct mgcp_msg_ptr data_ptrs[6];
 	int found, i, line_start;
@@ -789,7 +745,7 @@ static struct msgb *handle_delete_con(struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return send_response(error_code, "DLCX", trans_id);
 
@@ -825,14 +781,14 @@ static struct msgb *handle_delete_con(struct msgb *msg)
 	talloc_free(endp->callid);
 	talloc_free(endp->local_options);
 
-	if (!early_bind) {
+	if (!cfg->early_bind) {
 		bsc_unregister_fd(&endp->local_rtp);
 		bsc_unregister_fd(&endp->local_rtcp);
 	}
 
 	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
-	if (change_cb)
-		change_cb(ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port, change_cb_data);
+	if (cfg->change_cb)
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
 
 	return send_response(250, "DLCX", trans_id);
 
@@ -846,299 +802,48 @@ error3:
 	return send_response(error_code, "DLCX", trans_id);
 }
 
-/*
- * vty code for mgcp below
- */
-struct cmd_node mgcp_node = {
-	MGCP_NODE,
-	"%s(mgcp)#",
-	1,
-};
-
-static int config_write_mgcp(struct vty *vty)
+struct mgcp_config *mgcp_config_alloc(void)
 {
-	vty_out(vty, "mgcp%s", VTY_NEWLINE);
-	if (local_ip)
-		vty_out(vty, " local ip %s%s", local_ip, VTY_NEWLINE);
-	if (bts_ip)
-		vty_out(vty, "  bts ip %s%s", bts_ip, VTY_NEWLINE);
-	vty_out(vty, "  bind ip %s%s", source_addr, VTY_NEWLINE);
-	vty_out(vty, "  bind port %u%s", source_port, VTY_NEWLINE);
-	vty_out(vty, "  bind early %u%s", !!early_bind, VTY_NEWLINE);
-	vty_out(vty, "  rtp base %u%s", rtp_base_port, VTY_NEWLINE);
-	vty_out(vty, "  sdp audio payload number %u%s", audio_payload, VTY_NEWLINE);
-	vty_out(vty, "  sdp audio payload name %s%s", audio_name, VTY_NEWLINE);
-	vty_out(vty, "  loop %u%s", !!audio_loop, VTY_NEWLINE);
-	vty_out(vty, "  endpoints %u%s", number_endpoints, VTY_NEWLINE);
-	if (forward_ip)
-		vty_out(vty, " forward audio ip %s%s", forward_ip, VTY_NEWLINE);
-	if (forward_port != 0)
-		vty_out(vty, " forward audio port %d%s", forward_port, VTY_NEWLINE);
+	struct mgcp_config *cfg;
 
-	return CMD_SUCCESS;
+	cfg = talloc_zero(NULL, struct mgcp_config);
+	if (!cfg) {
+		LOGP(DMGCP, LOGL_FATAL, "Failed to allocate config.\n");
+		return NULL;
+	}
+
+	cfg->source_port = 2427;
+	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
+	cfg->audio_name = talloc_strdup(cfg, "GSM-EFR/8000");
+	cfg->audio_payload = 97;
+	cfg->rtp_base_port = RTP_PORT_DEFAULT;
+
+	return cfg;
 }
 
-DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
-      SHOW_STR "Display information about the MGCP Media Gateway")
+int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 {
 	int i;
 
-	vty_out(vty, "MGCP is up and running with %u endpoints:%s", number_endpoints - 1, VTY_NEWLINE);
-	for (i = 1; i < number_endpoints; ++i) {
-		struct mgcp_endpoint *endp = &endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u%s",
-			i, endp->ci,
-			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
-			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp), VTY_NEWLINE);
+	/* Initialize all endpoints */
+	cfg->endpoints = _talloc_zero_array(cfg,
+				       sizeof(struct mgcp_endpoint),
+				       cfg->number_endpoints, "endpoints");
+	if (!cfg->endpoints)
+		return -1;
+
+	for (i = 0; i < cfg->number_endpoints; ++i) {
+		cfg->endpoints[i].local_rtp.fd = -1;
+		cfg->endpoints[i].local_rtcp.fd = -1;
+		cfg->endpoints[i].ci = CI_UNUSED;
+		cfg->endpoints[i].cfg = cfg;
 	}
 
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp,
-      cfg_mgcp_cmd,
-      "mgcp",
-      "Configure the MGCP")
-{
-	vty->node = MGCP_NODE;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_local_ip,
-      cfg_mgcp_local_ip_cmd,
-      "local ip IP",
-      "Set the IP to be used in SDP records")
-{
-	local_ip = talloc_strdup(tall_bsc_ctx, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_bts_ip,
-      cfg_mgcp_bts_ip_cmd,
-      "bts ip IP",
-      "Set the IP of the BTS for RTP forwarding")
-{
-	bts_ip = talloc_strdup(tall_bsc_ctx, argv[0]);
-	inet_aton(bts_ip, &bts_in);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_bind_ip,
-      cfg_mgcp_bind_ip_cmd,
-      "bind ip IP",
-      "Bind the MGCP to this local addr")
-{
-	source_addr = talloc_strdup(tall_bsc_ctx, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_bind_port,
-      cfg_mgcp_bind_port_cmd,
-      "bind port <0-65534>",
-      "Bind the MGCP to this port")
-{
-	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong bind port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	source_port = port;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_bind_early,
-      cfg_mgcp_bind_early_cmd,
-      "bind early (0|1)",
-      "Bind all RTP ports early")
-{
-	unsigned int bind = atoi(argv[0]);
-	if (bind != 0 && bind != 1) {
-		vty_out(vty, "%% param must be 0 or 1.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	early_bind = bind == 1;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_rtp_base_port,
-      cfg_mgcp_rtp_base_port_cmd,
-      "rtp base <0-65534>",
-      "Base port to use")
-{
-	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong base port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	rtp_base_port = port;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_sdp_payload_number,
-      cfg_mgcp_sdp_payload_number_cmd,
-      "sdp audio payload number <1-255>",
-      "Set the audio codec to use")
-{
-	unsigned int payload = atoi(argv[0]);
-	if (payload > 255) {
-		vty_out(vty, "%% wrong payload number '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	audio_payload = payload;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_sdp_payload_name,
-      cfg_mgcp_sdp_payload_name_cmd,
-      "sdp audio payload name NAME",
-      "Set the audio name to use")
-{
-	audio_name = talloc_strdup(tall_bsc_ctx, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_loop,
-      cfg_mgcp_loop_cmd,
-      "loop (0|1)",
-      "Loop the audio")
-{
-	audio_loop = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_number_endp,
-      cfg_mgcp_number_endp_cmd,
-      "number endpoints <0-65534>",
-      "The number of endpoints to allocate. This is not dynamic.")
-{
-	/* + 1 as we start counting at one */
-	number_endpoints = atoi(argv[0]) + 1;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_forward_ip,
-      cfg_mgcp_forward_ip_cmd,
-      "forward audio ip IP",
-      "Forward packets from and to the IP. This disables most of the MGCP feature.")
-{
-	if (forward_ip)
-		talloc_free(forward_ip);
-	forward_ip = talloc_strdup(tall_bsc_ctx, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_forward_port,
-      cfg_mgcp_forward_port_cmd,
-      "forward audio port <1-15000>",
-      "Forward packets from and to the port. This disables most of the MGCP feature.")
-{
-	forward_port = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-int mgcp_vty_init(void)
-{
-	install_element(VIEW_NODE, &show_mgcp_cmd);
-
-	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
-	install_node(&mgcp_node, config_write_mgcp);
-	install_default(MGCP_NODE);
-	install_element(MGCP_NODE, &cfg_mgcp_local_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_bts_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_bind_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_bind_port_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_bind_early_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_rtp_base_port_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_forward_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_forward_port_cmd);
 	return 0;
 }
 
-int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network)
+int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	int i, rc;
-
-	rc = vty_read_config_file(config_file);
-	if (rc < 0) {
-		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
-		return rc;
-	}
-
-
-	if (!bts_ip)
-		fprintf(stderr, "No BTS ip address specified. This will allow everyone to connect.\n");
-
-	endpoints = _talloc_zero_array(tall_bsc_ctx,
-				       sizeof(struct mgcp_endpoint),
-				       number_endpoints, "endpoints");
-	if (!endpoints) {
-		fprintf(stderr, "Failed to allocate endpoints: %d. Quitting.\n", number_endpoints);
-		return -1;
-	}
-
-	/* Initialize all endpoints */
-	for (i = 0; i < number_endpoints; ++i) {
-		endpoints[i].local_rtp.fd = -1;
-		endpoints[i].local_rtcp.fd = -1;
-		endpoints[i].ci = CI_UNUSED;
-	}
-
-	/*
-	 * This application supports two modes.
-         *    1.) a true MGCP gateway with support for AUEP, CRCX, MDCX, DLCX
-         *    2.) plain forwarding of RTP packets on the endpoints.
-	 * both modes are mutual exclusive
-	 */
-	if (forward_ip) {
-		int port = rtp_base_port;
-		if (forward_port != 0)
-			port = forward_port;
-
-		if (!early_bind) {
-			LOGP(DMGCP, LOGL_NOTICE, "Forwarding requires early bind.\n");
-			return -1;
-		}
-
-		/*
-		 * Store the forward IP and assign a ci. For early bind
-		 * the sockets will be created after this.
-		 */
-		for (i = 1; i < number_endpoints; ++i) {
-			struct mgcp_endpoint *endp = &endpoints[i];
-			inet_aton(forward_ip, &endp->remote);
-			endp->ci = CI_UNUSED + 23;
-			endp->net_rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port));
-			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port) + 1);
-		}
-
-		LOGP(DMGCP, LOGL_NOTICE, "Configured for Audio Forwarding.\n");
-	}
-
-	/* early bind */
-	if (early_bind) {
-		for (i = 1; i < number_endpoints; ++i) {
-			struct mgcp_endpoint *endp = &endpoints[i];
-			endp->rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), rtp_base_port);
-			if (bind_rtp(endp) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", endp->rtp_port);
-				return -1;
-			}
-		}
-	}
-
-	return !!forward_ip;
-}
-
-void mgcp_set_change_cb(mgcp_change cb, void *data)
-{
-	change_cb = cb;
-	change_cb_data = data;
+	endp->rtp_port = rtp_port;
+	return bind_rtp(endp);
 }

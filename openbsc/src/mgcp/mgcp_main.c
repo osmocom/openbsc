@@ -31,7 +31,6 @@
 #include <unistd.h>
 
 #include <sys/socket.h>
-#include <arpa/inet.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/msgb.h>
@@ -41,9 +40,6 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/telnet_interface.h>
 
-#include <vty/command.h>
-#include <vty/vty.h>
-
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
 
@@ -52,17 +48,14 @@ void subscr_put() { abort(); }
 
 #warning "Make use of the rtp proxy code"
 
-static int source_port = 2427;
-static const char *source_addr = "0.0.0.0";
 static struct bsc_fd bfd;
 static int first_request = 1;
+static struct mgcp_config *cfg;
 
 static char *config_file = "mgcp.cfg";
 
 /* used by msgb and mgcp */
 void *tall_bsc_ctx = NULL;
-
-unsigned int rtp_base_port = RTP_PORT_DEFAULT;
 
 static void print_help()
 {
@@ -136,7 +129,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 
 	/* handle message now */
 	msg->l2h = msgb_put(msg, rc);
-	resp = mgcp_handle_message(msg);
+	resp = mgcp_handle_message(cfg, msg);
 	msgb_reset(msg);
 
 	if (resp) {
@@ -146,15 +139,6 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	return 0;
 }
 
-
-int bsc_vty_init(struct gsm_network *dummy)
-{
-	cmd_init(1);
-	vty_init();
-
-        mgcp_vty_init();
-	return 0;
-}
 
 int main(int argc, char** argv)
 {
@@ -170,10 +154,14 @@ int main(int argc, char** argv)
 	debug_add_target(stderr_target);
 	debug_set_all_filter(stderr_target, 1);
 
+	cfg = mgcp_config_alloc();
+	if (!cfg)
+		return -1;
+
 	handle_options(argc, argv);
 
 	telnet_init(&dummy_network, 4243);
-        rc = mgcp_parse_config(config_file, &dummy_network);
+        rc = mgcp_parse_config(config_file, cfg);
 	if (rc < 0)
 		return rc;
 
@@ -192,8 +180,8 @@ int main(int argc, char** argv)
 
 		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
-		addr.sin_port = htons(source_port);
-		inet_aton(source_addr, &addr.sin_addr);
+		addr.sin_port = htons(cfg->source_port);
+		inet_aton(cfg->source_addr, &addr.sin_addr);
 
 		if (bind(bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 			perror("Gateway failed to bind");
