@@ -1,5 +1,6 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
                 isdnsync bsc_mgcp ipaccess-proxy
@@ -28,22 +29,19 @@ libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
 libsccp_a_SOURCES = sccp/sccp.c
 
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
-bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -losmocore -ldl -ldbi $(LIBCRYPT)
+bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
-bs11_config_LDADD = -losmocore
 
 ipaccess_find_SOURCES = ipaccess/ipaccess-find.c
-ipaccess_find_LDADD = -losmocore
 
 ipaccess_config_SOURCES = ipaccess/ipaccess-config.c ipaccess/ipaccess-firmware.c
-ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -losmocore -ldl -ldbi $(LIBCRYPT)
+ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c debug.c telnet_interface.c
-bsc_mgcp_LDADD = libvty.a -losmocore
+bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
-ipaccess_proxy_LDADD = -losmocore

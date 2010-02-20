@@ -16,6 +16,8 @@ dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore)
+
 dnl checks for header files
 AC_HEADER_STDC
 
@@ -38,7 +40,6 @@ AM_CONFIG_HEADER(bscconfig.h)
 
 AC_OUTPUT(
     openbsc.pc
-    liblaf0rge1.pc
     libsccp.pc
     include/openbsc/Makefile
     include/vty/Makefile
@@ -47,8 +48,6 @@ AC_OUTPUT(
     src/Makefile
     tests/Makefile
     tests/debug/Makefile
-    tests/timer/Makefile
-    tests/sms/Makefile
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile

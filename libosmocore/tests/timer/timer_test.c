@@ -20,8 +20,8 @@
 
 #include <stdio.h>
 
-#include <openbsc/timer.h>
-#include <openbsc/select.h>
+#include <osmocore/timer.h>
+#include <osmocore/select.h>
 
 static void timer_fired(unsigned long data);
 

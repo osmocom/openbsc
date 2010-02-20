@@ -22,14 +22,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
-#include <openbsc/debug.h>
-#include <openbsc/msgb.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/msgb.h>
+#include <osmocore/gsm_utils.h>
 
 int main(int argc, char** argv)
 {
-	DEBUGP(DSMS, "SMS testing\n");
+	printf("SMS testing\n");
 	struct msgb *msg;
 	u_int8_t *sms;
 	u_int8_t i;
@@ -47,7 +45,3 @@ int main(int argc, char** argv)
 		printf("Wanted: '%s' got '%s'\n", input, result);
 	}
 }
-
-/* stubs */
-void input_event(void) {}
-void nm_state_event(void) {}

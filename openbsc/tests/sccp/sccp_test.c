@@ -28,7 +28,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 
 #include <sccp/sccp.h>
 
