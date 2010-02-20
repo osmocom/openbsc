@@ -24,7 +24,7 @@
 #ifndef OPENBSC_MGCP_H
 #define OPENBSC_MGCP_H
 
-#include "msgb.h"
+#include <osmocore/msgb.h>
 
 #define RTP_PORT_DEFAULT 4000
 extern unsigned int rtp_base_port;

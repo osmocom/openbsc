@@ -32,9 +32,9 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <openbsc/select.h>
-#include <openbsc/tlv.h>
-#include <openbsc/msgb.h>
+#include <osmocore/select.h>
+#include <osmocore/tlv.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -42,7 +42,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {

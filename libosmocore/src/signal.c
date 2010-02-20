@@ -18,11 +18,12 @@
  *
  */
 
-#include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/signal.h>
+#include <osmocore/talloc.h>
+#include <osmocore/linuxlist.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <errno.h>
 
 void *tall_sigh_ctx;
 static LLIST_HEAD(signal_handler_list);

@@ -484,7 +484,7 @@ enum rsl_ipac_rtp_csd_format_ir {
 	RSL_IPAC_RTP_CSD_IR_64k = 3,
 };
 
-#include "msgb.h"
+#include <osmocore/msgb.h>
 
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len);

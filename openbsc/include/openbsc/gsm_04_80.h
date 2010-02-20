@@ -123,7 +123,7 @@
 #define ASN1_IA5_STRING_TAG		0x16
 #define ASN1_UNICODE_STRING_TAG		0x1E
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 
 #define MAX_LEN_USSD_STRING	31
 

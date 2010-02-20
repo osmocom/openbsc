@@ -23,10 +23,10 @@
 #include <stdlib.h>
 #include <sys/types.h>
 
-#include <openbsc/msgb.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/talloc.h>
-#include <openbsc/debug.h>
+#include <osmocore/msgb.h>
+//#include <openbsc/gsm_data.h>
+#include <osmocore/talloc.h>
+//#include <openbsc/debug.h>
 
 void *tall_msgb_ctx;
 
@@ -37,7 +37,7 @@ struct msgb *msgb_alloc(u_int16_t size, const char *name)
 	msg = _talloc_zero(tall_msgb_ctx, sizeof(*msg) + size, name);
 
 	if (!msg) {
-		LOGP(DRSL, LOGL_FATAL, "unable to allocate msgb\n");
+		//LOGP(DRSL, LOGL_FATAL, "unable to allocate msgb\n");
 		return NULL;
 	}
 

@@ -23,7 +23,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/mncc.h>
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mncc.h>

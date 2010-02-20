@@ -22,7 +22,7 @@
  */
 
 #include <sys/types.h>
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 
 #define NR_SUBCH	4
 #define TRAU_FRAME_SIZE	40

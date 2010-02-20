@@ -24,9 +24,9 @@
 
 #include <string.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 #include <sccp/sccp.h>
 

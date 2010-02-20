@@ -21,9 +21,10 @@
  *
  */
 
-#include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
-#include <execinfo.h>
+//#include <openbsc/gsm_data.h>
+#include <osmocore/utils.h>
+#include <osmocore/gsm_utils.h>
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -83,8 +84,11 @@ int gsm_7bit_encode(u_int8_t *result, const char *data)
 int ms_pwr_ctl_lvl(enum gsm_band band, unsigned int dbm)
 {
 	switch (band) {
-	case GSM_BAND_400:
+	case GSM_BAND_450:
+	case GSM_BAND_480:
+	case GSM_BAND_750:
 	case GSM_BAND_900:
+	case GSM_BAND_810:
 	case GSM_BAND_850:
 		if (dbm >= 39)
 			return 0;
@@ -130,8 +134,11 @@ int ms_pwr_dbm(enum gsm_band band, u_int8_t lvl)
 	lvl &= 0x1f;
 
 	switch (band) {
-	case GSM_BAND_400:
+	case GSM_BAND_450:
+	case GSM_BAND_480:
+	case GSM_BAND_750:
 	case GSM_BAND_900:
+	case GSM_BAND_810:
 	case GSM_BAND_850:
 		if (lvl < 2)
 			return 39;
@@ -182,6 +189,7 @@ u_int8_t dbm2rxlev(int dbm)
 	return rxlev;
 }
 
+#include <execinfo.h>
 void generate_backtrace()
 {
 	int i, nptrs;

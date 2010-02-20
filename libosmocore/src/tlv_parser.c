@@ -1,6 +1,6 @@
 #include <stdio.h>
-#include <openbsc/tlv.h>
-#include <openbsc/gsm_data.h>
+#include <osmocore/utils.h>
+#include <osmocore/tlv.h>
 
 struct tlv_definition tvlv_att_def;
 

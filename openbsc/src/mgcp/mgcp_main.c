@@ -34,10 +34,10 @@
 #include <arpa/inet.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/msgb.h>
-#include <openbsc/talloc.h>
+#include <osmocore/msgb.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/select.h>
+#include <osmocore/select.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/telnet_interface.h>
 

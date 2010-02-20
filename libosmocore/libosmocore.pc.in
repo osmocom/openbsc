@@ -1,11 +1,10 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
+prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 
-Name: LaF0rge Lib
+Name: Osmocom Core Library
 Description: C Utility Library
 Version: @VERSION@
-Libs: -L${libdir} -llaf0rge1
+Libs: -L${libdir} -losmocore
 Cflags: -I${includedir}/
 

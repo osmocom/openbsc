@@ -23,13 +23,9 @@
 
 #include <sys/types.h>
 
-#include <openbsc/gsm_data.h>
-#include <openbsc/signal.h>
-#include <openbsc/linuxlist.h>
-#include <openbsc/talloc.h>
-#include <openbsc/statistics.h>
-#include <openbsc/db.h>
-#include <openbsc/timer.h>
+#include <osmocore/linuxlist.h>
+#include <osmocore/talloc.h>
+#include <osmocore/statistics.h>
 
 static LLIST_HEAD(counters);
 

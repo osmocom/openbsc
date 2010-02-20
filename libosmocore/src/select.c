@@ -19,9 +19,9 @@
  */
 
 #include <fcntl.h>
-#include <openbsc/select.h>
-#include <openbsc/linuxlist.h>
-#include <openbsc/timer.h>
+#include <osmocore/select.h>
+#include <osmocore/linuxlist.h>
+#include <osmocore/timer.h>
 
 static int maxfd = 0;
 static LLIST_HEAD(bsc_fds);

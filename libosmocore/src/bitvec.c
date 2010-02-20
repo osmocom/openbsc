@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <sys/types.h>
 
-#include <openbsc/bitvec.h>
+#include <osmocore/bitvec.h>
 
 #define BITNUM_FROM_COMP(byte, bit)	((byte*8)+bit)
 

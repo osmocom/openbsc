@@ -8,8 +8,8 @@
 #include <arpa/inet.h>
 
 
-#include <openbsc/select.h>
-#include <openbsc/timer.h>
+#include <osmocore/select.h>
+#include <osmocore/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 

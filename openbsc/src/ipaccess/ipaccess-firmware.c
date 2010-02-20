@@ -21,7 +21,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 #include <stdio.h>
 #include <stdlib.h>

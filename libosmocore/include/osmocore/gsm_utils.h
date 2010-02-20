@@ -27,6 +27,17 @@
 
 #include <sys/types.h>
 
+enum gsm_band {
+	GSM_BAND_850	= 1,
+	GSM_BAND_900	= 2,
+	GSM_BAND_1800	= 4,
+	GSM_BAND_1900	= 8,
+	GSM_BAND_450	= 0x10,
+	GSM_BAND_480	= 0x20,
+	GSM_BAND_750	= 0x40,
+	GSM_BAND_810	= 0x80,
+};
+
 int gsm_7bit_decode(char *decoded, const u_int8_t *user_data, u_int8_t length);
 int gsm_7bit_encode(u_int8_t *result, const char *data);
 

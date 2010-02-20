@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>

@@ -25,7 +25,7 @@
 
 #include <sys/types.h>
 
-#include <openbsc/tlv.h>
+#include <osmocore/tlv.h>
 
 /* PRIVATE */
 

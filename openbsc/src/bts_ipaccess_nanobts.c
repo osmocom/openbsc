@@ -23,7 +23,7 @@
 #include <sys/types.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/tlv.h>
+#include <osmocore/tlv.h>
 #include <openbsc/abis_nm.h>
 
 static struct gsm_bts_model model_nanobts = {
