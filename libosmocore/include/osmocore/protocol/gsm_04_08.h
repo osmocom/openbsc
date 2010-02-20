@@ -1,11 +1,13 @@
 #ifndef PROTO_GSM_04_08_H
 #define PROTO_GSM_04_08_H
 
+#include <stdint.h>
+
 /* GSM TS 04.08  definitions */
 struct gsm_lchan;
 
 struct gsm48_classmark1 {
-	u_int8_t spare:1,
+	uint8_t spare:1,
 		 rev_level:2,
 		 es_ind:1,
 		 a5_1:1,
@@ -14,33 +16,33 @@ struct gsm48_classmark1 {
 
 /* Chapter 10.5.2.5 */
 struct gsm48_chan_desc {
-	u_int8_t chan_nr;
+	uint8_t chan_nr;
 	union {
 		struct {
-			u_int8_t maio_high:4,
+			uint8_t maio_high:4,
 				 h:1,
 				 tsc:3;
-			u_int8_t hsn:6,
+			uint8_t hsn:6,
 				 maio_low:2;
 		} h1;
 		struct {
-			u_int8_t arfcn_high:2,
+			uint8_t arfcn_high:2,
 				 spare:2,
 				 h:1,
 				 tsc:3;
-			u_int8_t arfcn_low;
+			uint8_t arfcn_low;
 		} h0;
 	};
 } __attribute__ ((packed));
 
 /* Chapter 10.5.2.21aa */
 struct gsm48_multi_rate_conf {
-	u_int8_t smod : 2,
+	uint8_t smod : 2,
 		 spare: 1,
 		 icmi : 1,
 		 nscb : 1,
 		 ver : 3;
-	u_int8_t m4_75 : 1,
+	uint8_t m4_75 : 1,
 		 m5_15 : 1,
 		 m5_90 : 1,
 		 m6_70 : 1,
@@ -52,10 +54,10 @@ struct gsm48_multi_rate_conf {
 
 /* Chapter 10.5.2.30 */
 struct gsm48_req_ref {
-	u_int8_t ra;
-	u_int8_t t3_high:3,
+	uint8_t ra;
+	uint8_t t3_high:3,
 		 t1_:5;
-	u_int8_t t2:5,
+	uint8_t t2:5,
 		 t3_low:3;
 } __attribute__ ((packed));
 
@@ -66,7 +68,7 @@ struct gsm48_req_ref {
  */
 struct gsm48_chan_mode_modify {
 	struct gsm48_chan_desc chan_desc;
-	u_int8_t mode;
+	uint8_t mode;
 } __attribute__ ((packed));
 
 enum gsm48_chan_mode {
@@ -84,109 +86,109 @@ enum gsm48_chan_mode {
 struct gsm48_ass_cmd {
 	/* Semantic is from 10.5.2.5a */
 	struct gsm48_chan_desc chan_desc;
-	u_int8_t power_command;
-	u_int8_t data[0];
+	uint8_t power_command;
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 10.5.2.2 */
 struct gsm48_cell_desc {
-	u_int8_t bcc:3,
+	uint8_t bcc:3,
 		 ncc:3,
 		 arfcn_hi:2;
-	u_int8_t arfcn_lo;
+	uint8_t arfcn_lo;
 } __attribute__((packed));
 
 /* Chapter 9.1.15 */
 struct gsm48_ho_cmd {
 	struct gsm48_cell_desc cell_desc;
 	struct gsm48_chan_desc chan_desc;
-	u_int8_t ho_ref;
-	u_int8_t power_command;
-	u_int8_t data[0];
+	uint8_t ho_ref;
+	uint8_t power_command;
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 9.1.18 */
 struct gsm48_imm_ass {
-	u_int8_t l2_plen;
-	u_int8_t proto_discr;
-	u_int8_t msg_type;
-	u_int8_t page_mode;
+	uint8_t l2_plen;
+	uint8_t proto_discr;
+	uint8_t msg_type;
+	uint8_t page_mode;
 	struct gsm48_chan_desc chan_desc;
 	struct gsm48_req_ref req_ref;
-	u_int8_t timing_advance;
-	u_int8_t mob_alloc_len;
-	u_int8_t mob_alloc[0];
+	uint8_t timing_advance;
+	uint8_t mob_alloc_len;
+	uint8_t mob_alloc[0];
 } __attribute__ ((packed));
 
 /* Chapter 10.5.1.3 */
 struct gsm48_loc_area_id {
-	u_int8_t digits[3];	/* BCD! */
-	u_int16_t lac;
+	uint8_t digits[3];	/* BCD! */
+	uint16_t lac;
 } __attribute__ ((packed));
 
 /* Section 9.2.2 */
 struct gsm48_auth_req {
-	u_int8_t key_seq:4,
+	uint8_t key_seq:4,
 	         spare:4;
-	u_int8_t rand[16];
+	uint8_t rand[16];
 } __attribute__ ((packed));
 
 /* Section 9.2.15 */
 struct gsm48_loc_upd_req {
-	u_int8_t type:4,
+	uint8_t type:4,
 		 key_seq:4;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_classmark1 classmark1;
-	u_int8_t mi_len;
-	u_int8_t mi[0];
+	uint8_t mi_len;
+	uint8_t mi[0];
 } __attribute__ ((packed));
 
 /* Section 10.1 */
 struct gsm48_hdr {
-	u_int8_t proto_discr;
-	u_int8_t msg_type;
-	u_int8_t data[0];
+	uint8_t proto_discr;
+	uint8_t msg_type;
+	uint8_t data[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.3x System information Type header */
 struct gsm48_system_information_type_header {
-	u_int8_t l2_plen;
-	u_int8_t rr_protocol_discriminator :4,
+	uint8_t l2_plen;
+	uint8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
-	u_int8_t system_information;
+	uint8_t system_information;
 } __attribute__ ((packed));
 
 struct gsm48_rach_control {
-	u_int8_t re :1,
+	uint8_t re :1,
 		 cell_bar :1,
 		 tx_integer :4,
 		 max_trans :2;
-	u_int8_t t2;
-	u_int8_t t3;
+	uint8_t t2;
+	uint8_t t3;
 } __attribute__ ((packed));
 
 /* Section 10.5.2.4 Cell Selection Parameters */
 struct gsm48_cell_sel_par {
-	u_int8_t ms_txpwr_max_ccch:5,	/* GSM 05.08 MS-TXPWR-MAX-CCCH */
+	uint8_t ms_txpwr_max_ccch:5,	/* GSM 05.08 MS-TXPWR-MAX-CCCH */
 		 cell_resel_hyst:3;	/* GSM 05.08 CELL-RESELECT-HYSTERESIS */
-	u_int8_t rxlev_acc_min:6,	/* GSM 05.08 RXLEV-ACCESS-MIN */
+	uint8_t rxlev_acc_min:6,	/* GSM 05.08 RXLEV-ACCESS-MIN */
 		 neci:1,
 		 acs:1;
 } __attribute__ ((packed));
 
 /* Section 10.5.2.11 Control Channel Description , Figure 10.5.33 */
 struct gsm48_control_channel_descr {
-	u_int8_t ccch_conf :3,
+	uint8_t ccch_conf :3,
 		bs_ag_blks_res :3,
 		att :1,
 		spare1 :1;
-	u_int8_t bs_pa_mfrms : 3,
+	uint8_t bs_pa_mfrms : 3,
 		spare2 :5;
-	u_int8_t t3212;
+	uint8_t t3212;
 } __attribute__ ((packed));
 
 struct gsm48_cell_options {
-	u_int8_t radio_link_timeout:4,
+	uint8_t radio_link_timeout:4,
 		 dtx:2,
 		 pwrc:1,
 		 spare:1;
@@ -194,41 +196,41 @@ struct gsm48_cell_options {
 
 /* Section 9.2.9 CM service request */
 struct gsm48_service_request {
-	u_int8_t cm_service_type : 4,
+	uint8_t cm_service_type : 4,
 		 cipher_key_seq  : 4;
 	/* length + 3 bytes */
-	u_int32_t classmark;
-	u_int8_t mi_len;
-	u_int8_t mi[0];
+	uint32_t classmark;
+	uint8_t mi_len;
+	uint8_t mi[0];
 	/* optional priority level */
 } __attribute__ ((packed));
 
 /* Section 9.1.31 System information Type 1 */
 struct gsm48_system_information_type_1 {
 	struct gsm48_system_information_type_header header;
-	u_int8_t cell_channel_description[16];
+	uint8_t cell_channel_description[16];
 	struct gsm48_rach_control rach_control;
-	u_int8_t rest_octets[0]; /* NCH position on the CCCH */
+	uint8_t rest_octets[0]; /* NCH position on the CCCH */
 } __attribute__ ((packed));
 
 /* Section 9.1.32 System information Type 2 */
 struct gsm48_system_information_type_2 {
 	struct gsm48_system_information_type_header header;
-	u_int8_t bcch_frequency_list[16];
-	u_int8_t ncc_permitted;
+	uint8_t bcch_frequency_list[16];
+	uint8_t ncc_permitted;
 	struct gsm48_rach_control rach_control;
 } __attribute__ ((packed));
 
 /* Section 9.1.35 System information Type 3 */
 struct gsm48_system_information_type_3 {
 	struct gsm48_system_information_type_header header;
-	u_int16_t cell_identity;
+	uint16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_control_channel_descr control_channel_desc;
 	struct gsm48_cell_options cell_options;
 	struct gsm48_cell_sel_par cell_sel_par;
 	struct gsm48_rach_control rach_control;
-	u_int8_t rest_octets[0];
+	uint8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.36 System information Type 4 */
@@ -240,40 +242,40 @@ struct gsm48_system_information_type_4 {
 	/*	optional CBCH conditional CBCH... followed by
 		mandantory SI 4 Reset Octets
 	 */
-	u_int8_t data[0];
+	uint8_t data[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.37 System information Type 5 */
 struct gsm48_system_information_type_5 {
-	u_int8_t rr_protocol_discriminator :4,
+	uint8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
-	u_int8_t system_information;
-	u_int8_t bcch_frequency_list[16];
+	uint8_t system_information;
+	uint8_t bcch_frequency_list[16];
 } __attribute__ ((packed));
 
 /* Section 9.1.40 System information Type 6 */
 struct gsm48_system_information_type_6 {
-	u_int8_t rr_protocol_discriminator :4,
+	uint8_t rr_protocol_discriminator :4,
 		skip_indicator:4; 
-	u_int8_t system_information;
-	u_int16_t cell_identity;
+	uint8_t system_information;
+	uint16_t cell_identity;
 	struct gsm48_loc_area_id lai;
 	struct gsm48_cell_options cell_options;
-	u_int8_t ncc_permitted;
-	u_int8_t rest_octets[0];
+	uint8_t ncc_permitted;
+	uint8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.1.43a System Information type 13 */
 struct gsm48_system_information_type_13 {
 	struct gsm48_system_information_type_header header;
-	u_int8_t rest_octets[0];
+	uint8_t rest_octets[0];
 } __attribute__ ((packed));
 
 /* Section 9.2.12 IMSI Detach Indication */
 struct gsm48_imsi_detach_ind {
 	struct gsm48_classmark1 classmark1;
-	u_int8_t mi_len;
-	u_int8_t mi[0];
+	uint8_t mi_len;
+	uint8_t mi[0];
 } __attribute__ ((packed));
 
 /* Section 10.2 + GSM 04.07 12.2.3.1.1 */

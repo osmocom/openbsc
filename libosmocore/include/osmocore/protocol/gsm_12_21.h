@@ -23,16 +23,16 @@
  *
  */
 
-#include <sys/types.h>
+#include <stdint.h>
 #include <osmocore/tlv.h>
 
 /* generic header in front of every OML message according to TS 08.59 */
 struct abis_om_hdr {
-	u_int8_t	mdisc;
-	u_int8_t	placement;
-	u_int8_t	sequence;
-	u_int8_t	length;
-	u_int8_t	data[0];
+	uint8_t	mdisc;
+	uint8_t	placement;
+	uint8_t	sequence;
+	uint8_t	length;
+	uint8_t	data[0];
 } __attribute__ ((packed));
 
 #define ABIS_OM_MDISC_FOM		0x80
@@ -45,16 +45,16 @@ struct abis_om_hdr {
 #define ABIS_OM_PLACEMENT_LAST		0x10
 
 struct abis_om_obj_inst {
-	u_int8_t	bts_nr;
-	u_int8_t	trx_nr;
-	u_int8_t	ts_nr;
+	uint8_t	bts_nr;
+	uint8_t	trx_nr;
+	uint8_t	ts_nr;
 } __attribute__ ((packed));
 
 struct abis_om_fom_hdr {
-	u_int8_t	msg_type;
-	u_int8_t	obj_class;
+	uint8_t	msg_type;
+	uint8_t	obj_class;
 	struct abis_om_obj_inst	obj_inst;
-	u_int8_t	data[0];
+	uint8_t	data[0];
 } __attribute__ ((packed));
 
 #define ABIS_OM_FOM_HDR_SIZE	(sizeof(struct abis_om_hdr) + sizeof(struct abis_om_fom_hdr))
@@ -578,10 +578,10 @@ enum abis_nm_nack_cause {
 
 /* Section 9.4.1 */
 struct abis_nm_channel {
-	u_int8_t	attrib;
-	u_int8_t	bts_port;
-	u_int8_t	timeslot;
-	u_int8_t	subslot;
+	uint8_t	attrib;
+	uint8_t	bts_port;
+	uint8_t	timeslot;
+	uint8_t	subslot;
 } __attribute__ ((packed));
 
 /* Siemens BS-11 specific objects in the SienemsHW (0xA5) object class */

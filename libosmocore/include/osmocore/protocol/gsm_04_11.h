@@ -1,6 +1,8 @@
 #ifndef PROTO_GSM_04_11_H
 #define PROTO_GSM_04_11_H
 
+#include <stdint.h>
+
 /* GSM TS 04.11  definitions */
 
 /* Chapter 5.2.3: SMC-CS states at the network side */
@@ -97,10 +99,10 @@ enum gsm411_rp_cause {
 
 /* Chapter 8.2.1 */
 struct gsm411_rp_hdr {
-	u_int8_t len;
-	u_int8_t msg_type;
-	u_int8_t msg_ref;
-	u_int8_t data[0];
+	uint8_t len;
+	uint8_t msg_type;
+	uint8_t msg_ref;
+	uint8_t data[0];
 } __attribute__ ((packed));
 
 /* our own enum, not related to on-air protocol */

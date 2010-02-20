@@ -23,28 +23,30 @@
  *
  */
 
+#include <stdint.h>
+
 struct abis_rsl_common_hdr {
-	u_int8_t	msg_discr;
-	u_int8_t	msg_type;
-	u_int8_t	data[0];
+	uint8_t	msg_discr;
+	uint8_t	msg_type;
+	uint8_t	data[0];
 } __attribute__ ((packed));
 
 /* Chapter 8.3 */
 struct abis_rsl_rll_hdr {
 	struct abis_rsl_common_hdr c;
-	u_int8_t	ie_chan;
-	u_int8_t	chan_nr;
-	u_int8_t	ie_link_id;
-	u_int8_t	link_id;
-	u_int8_t	data[0];
+	uint8_t	ie_chan;
+	uint8_t	chan_nr;
+	uint8_t	ie_link_id;
+	uint8_t	link_id;
+	uint8_t	data[0];
 } __attribute__ ((packed));
 
 /* Chapter 8.3 and 8.4 */
 struct abis_rsl_dchan_hdr {
 	struct abis_rsl_common_hdr c;
-	u_int8_t	ie_chan;
-	u_int8_t	chan_nr;
-	u_int8_t	data[0];
+	uint8_t	ie_chan;
+	uint8_t	chan_nr;
+	uint8_t	data[0];
 } __attribute__ ((packed));
 
 
@@ -289,10 +291,10 @@ enum abis_rsl_ie {
 
 /* Chapter 9.3.6 */
 struct rsl_ie_chan_mode {
-	u_int8_t dtx_dtu;
-	u_int8_t spd_ind;
-	u_int8_t chan_rt;
-	u_int8_t chan_rate;
+	uint8_t dtx_dtu;
+	uint8_t spd_ind;
+	uint8_t chan_rt;
+	uint8_t chan_rate;
 } __attribute__ ((packed));
 #define RSL_CMOD_DTXu		0x01	/* uplink */
 #define RSL_CMOD_DTXd		0x02	/* downlink */
@@ -318,15 +320,15 @@ enum rsl_cmod_spd {
 struct rsl_ie_chan_ident {
 	/* GSM 04.08 10.5.2.5 */
 	struct {
-		u_int8_t iei;
-		u_int8_t chan_nr;	/* enc_chan_nr */
-		u_int8_t oct3;
-		u_int8_t oct4;
+		uint8_t iei;
+		uint8_t chan_nr;	/* enc_chan_nr */
+		uint8_t oct3;
+		uint8_t oct4;
 	} chan_desc;
 #if 0	/* spec says we need this but Abissim doesn't use it */
 	struct {
-		u_int8_t tag;
-		u_int8_t len;
+		uint8_t tag;
+		uint8_t len;
 	} mobile_alloc;
 #endif
 } __attribute__ ((packed));
@@ -486,7 +488,7 @@ enum rsl_ipac_rtp_csd_format_ir {
 
 /* Siemens vendor-specific RSL extensions */
 struct rsl_mrpci {
-	u_int8_t power_class:3,
+	uint8_t power_class:3,
 		 vgcs_capable:1,
 		 vbs_capable:1,
 		 gsm_phase:2;

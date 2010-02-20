@@ -3,7 +3,7 @@
 
 /* gsmtap header, pseudo-header in front of the actua GSM payload*/
 
-#include <sys/types.h>
+#include <stdint.h>
 
 #define GSMTAP_VERSION		0x01
 
@@ -25,20 +25,20 @@
 #define GSMTAP_UDP_PORT                 4729
 
 struct gsmtap_hdr {
-	u_int8_t version;		/* version, set to 0x01 currently */
-	u_int8_t hdr_len;		/* length in number of 32bit words */
-	u_int8_t type;			/* see GSMTAP_TYPE_* */
-	u_int8_t timeslot;		/* timeslot (0..7 on Um) */
+	uint8_t version;		/* version, set to 0x01 currently */
+	uint8_t hdr_len;		/* length in number of 32bit words */
+	uint8_t type;			/* see GSMTAP_TYPE_* */
+	uint8_t timeslot;		/* timeslot (0..7 on Um) */
 
-	u_int16_t arfcn;		/* ARFCN (frequency) */
-	u_int8_t noise_db;		/* noise figure in dB */
-	u_int8_t signal_db;		/* signal level in dB */
+	uint16_t arfcn;			/* ARFCN (frequency) */
+	uint8_t noise_db;		/* noise figure in dB */
+	uint8_t signal_db;		/* signal level in dB */
 
-	u_int32_t frame_number;		/* GSM Frame Number (FN) */
+	uint32_t frame_number;		/* GSM Frame Number (FN) */
 
-	u_int8_t burst_type;		/* Type of burst, see above */
-	u_int8_t antenna_nr;		/* Antenna Number */
-	u_int16_t res;			/* reserved for future use (RFU) */
+	uint8_t burst_type;		/* Type of burst, see above */
+	uint8_t antenna_nr;		/* Antenna Number */
+	uint16_t res;			/* reserved for future use (RFU) */
 
 } __attribute__((packed));
 
@@ -55,8 +55,8 @@ struct pcap_timeval {
 
 struct pcap_sf_pkthdr {
 	struct pcap_timeval ts;		/* time stamp */
-	u_int32_t caplen;		/* lenght of portion present */
-	u_int32_t len;			/* length of this packet */
+	uint32_t caplen;		/* lenght of portion present */
+	uint32_t len;			/* length of this packet */
 };
 
 #endif /* _GSMTAP_H */
