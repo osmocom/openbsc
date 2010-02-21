@@ -324,7 +324,7 @@ static struct msgb *mgcp_msgb_alloc(void)
 	return msg;
 }
 
-static struct msgb *send_response_with_data(int code, const char *msg, const char *trans,
+static struct msgb *create_response_with_data(int code, const char *msg, const char *trans,
 				    const char *data)
 {
 	int len;
@@ -345,13 +345,13 @@ static struct msgb *send_response_with_data(int code, const char *msg, const cha
 	return res;
 }
 
-static struct msgb *send_response(int code, const char *msg, const char *trans)
+static struct msgb *create_response(int code, const char *msg, const char *trans)
 {
-	return send_response_with_data(code, msg, trans, NULL);
+	return create_response_with_data(code, msg, trans, NULL);
 }
 
-static struct msgb *send_with_sdp(struct mgcp_endpoint *endp,
-				  const char *msg, const char *trans_id)
+static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
+					     const char *msg, const char *trans_id)
 {
 	const char *addr = endp->cfg->local_ip;
 	char sdp_record[4096];
@@ -368,7 +368,7 @@ static struct msgb *send_with_sdp(struct mgcp_endpoint *endp,
 			endp->ci, addr, endp->rtp_port,
 			endp->cfg->audio_payload, endp->cfg->audio_payload,
 		        endp->cfg->audio_name);
-	return send_response_with_data(200, msg, trans_id, sdp_record);
+	return create_response_with_data(200, msg, trans_id, sdp_record);
 }
 
 /* send a static record */
@@ -550,7 +550,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 	else
 	    response = 200;
 
-	return send_response(response, "AUEP", trans_id);
+	return create_response(response, "AUEP", trans_id);
 }
 
 static int parse_conn_mode(const char* msg, int *conn_mode)
@@ -578,11 +578,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
-		return send_response(500, "CRCX", trans_id);
+		return create_response(500, "CRCX", trans_id);
 
 	if (endp->ci != CI_UNUSED) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return send_response(500, "CRCX", trans_id);
+		return create_response(500, "CRCX", trans_id);
 	}
 
 	/* parse CallID C: and LocalParameters L: */
@@ -632,16 +632,16 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, endp->rtp_port);
 
-	return send_with_sdp(endp, "CRCX", trans_id);
+	return create_response_with_sdp(endp, "CRCX", trans_id);
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
-	return send_response(error_code, "CRCX", trans_id);
+	return create_response(error_code, "CRCX", trans_id);
 
 error2:
 	LOGP(DMGCP, LOGL_NOTICE, "Resource error on 0x%x\n", ENDPOINT_NUMBER(endp));
-	return send_response(error_code, "CRCX", trans_id);
+	return create_response(error_code, "CRCX", trans_id);
 }
 
 static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
@@ -654,11 +654,11 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
-		return send_response(error_code, "MDCX", trans_id);
+		return create_response(error_code, "MDCX", trans_id);
 
 	if (endp->ci == CI_UNUSED) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not holding a connection. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return send_response(error_code, "MDCX", trans_id);
+		return create_response(error_code, "MDCX", trans_id);
 	}
 
 	MSG_TOKENIZE_START
@@ -725,16 +725,16 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
-	return send_with_sdp(endp, "MDCX", trans_id);
+	return create_response_with_sdp(endp, "MDCX", trans_id);
 
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i, msg->l3h[line_start]);
-	return send_response(error_code, "MDCX", trans_id);
+	return create_response(error_code, "MDCX", trans_id);
 
 error3:
-	return send_response(error_code, "MDCX", trans_id);
+	return create_response(error_code, "MDCX", trans_id);
 }
 
 static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
@@ -747,11 +747,11 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
-		return send_response(error_code, "DLCX", trans_id);
+		return create_response(error_code, "DLCX", trans_id);
 
 	if (endp->ci == CI_UNUSED) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return send_response(error_code, "DLCX", trans_id);
+		return create_response(error_code, "DLCX", trans_id);
 	}
 
 	MSG_TOKENIZE_START
@@ -790,16 +790,16 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
 
-	return send_response(250, "DLCX", trans_id);
+	return create_response(250, "DLCX", trans_id);
 
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
-	return send_response(error_code, "DLCX", trans_id);
+	return create_response(error_code, "DLCX", trans_id);
 
 error3:
-	return send_response(error_code, "DLCX", trans_id);
+	return create_response(error_code, "DLCX", trans_id);
 }
 
 struct mgcp_config *mgcp_config_alloc(void)
