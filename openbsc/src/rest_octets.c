@@ -27,7 +27,7 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/bitvec.h>
+#include <osmocore/bitvec.h>
 #include <openbsc/rest_octets.h>
 
 /* generate SI1 rest octets */
@@ -37,7 +37,7 @@ int rest_octets_si1(u_int8_t *data, u_int8_t *nch_pos)
 
 	memset(&bv, 0, sizeof(bv));
 	bv.data = data;
-	bv.data_len = 2;
+	bv.data_len = 1;
 
 	if (nch_pos) {
 		bitvec_set_bit(&bv, H);
@@ -45,8 +45,8 @@ int rest_octets_si1(u_int8_t *data, u_int8_t *nch_pos)
 	} else
 		bitvec_set_bit(&bv, L);
 
-	bitvec_spare_padding(&bv, 15);
-	return 0;
+	bitvec_spare_padding(&bv, 7);
+	return bv.data_len;
 }
 
 /* Append selection parameters to bitvec */
@@ -95,7 +95,7 @@ int rest_octets_si3(u_int8_t *data, const struct gsm48_si_ro_info *si3)
 
 	memset(&bv, 0, sizeof(bv));
 	bv.data = data;
-	bv.data_len = 5;
+	bv.data_len = 4;
 
 	/* Optional Selection Parameters */
 	append_selection_params(&bv, &si3->selection_params);
@@ -125,7 +125,8 @@ int rest_octets_si3(u_int8_t *data, const struct gsm48_si_ro_info *si3)
 	/* GPRS Indicator */
 	append_gprs_ind(&bv, &si3->gprs_ind);
 
-	return bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
+	return bv.data_len;
 }
 
 static int append_lsa_params(struct bitvec *bv,
@@ -141,7 +142,7 @@ int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4)
 
 	memset(&bv, 0, sizeof(bv));
 	bv.data = data;
-	bv.data_len = 11; /* FIXME: up to ? */
+	bv.data_len = 10; /* FIXME: up to ? */
 
 	/* SI4 Rest Octets O */
 	append_selection_params(&bv, &si4->selection_params);
@@ -178,7 +179,7 @@ int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4)
 		bitvec_set_bit(&bv, si4->break_ind ? H : L);
 	}
 
-	return 0;
+	return bv.data_len;
 }
 
 /* GPRS Mobile Allocation as per TS 04.60 Chapter 12.10a:
@@ -337,11 +338,10 @@ static void append_gprs_pwr_ctrl_pars(struct bitvec *bv,
 int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 {
 	struct bitvec bv;
-	int len;
 
 	memset(&bv, 0, sizeof(bv));
 	bv.data = data;
-	bv.data_len = 21;
+	bv.data_len = 20;
 
 	if (0) {
 		/* No rest octets */
@@ -391,7 +391,6 @@ int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 			}
 		}
 	}
-	len = bv.cur_bit / 8;
 	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
-	return len;
+	return bv.data_len;
 }

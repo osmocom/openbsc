@@ -1,6 +1,6 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
@@ -31,10 +31,10 @@
 #include <getopt.h>
 
 #include <openbsc/db.h>
-#include <openbsc/select.h>
+#include <osmocore/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
@@ -178,6 +178,10 @@ static void db_sync_timer_cb(void *data)
 	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
+extern int bts_model_unknown_init(void);
+extern int bts_model_bs11_init(void);
+extern int bts_model_nanobts_init(void);
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -190,6 +194,10 @@ int main(int argc, char **argv)
 	on_dso_load_ho_dec();
 	stderr_target = debug_target_create_stderr();
 	debug_add_target(stderr_target);
+
+	bts_model_unknown_init();
+	bts_model_bs11_init();
+	bts_model_nanobts_init();
 
 	/* enable filters */
 	debug_set_all_filter(stderr_target, 1);

@@ -11,14 +11,6 @@ struct value_string {
 const char *get_value_string(const struct value_string *vs, u_int32_t val);
 int get_string_value(const struct value_string *vs, const char *str);
 
-enum gsm_band {
-	GSM_BAND_400,
-	GSM_BAND_850,
-	GSM_BAND_900,
-	GSM_BAND_1800,
-	GSM_BAND_1900,
-};
-
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -56,15 +48,15 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_OTHER,
 };
 
-#include <openbsc/timer.h>
+#include <osmocore/timer.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
-#include <openbsc/tlv.h>
-#include <openbsc/bitvec.h>
-#include <openbsc/statistics.h>
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#include <osmocore/tlv.h>
+#include <osmocore/bitvec.h>
+#include <osmocore/statistics.h>
+#include <osmocore/gsm_utils.h>
+#include <osmocore/utils.h>
 
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
@@ -335,6 +327,15 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 };
 
+struct gsm_bts_model {
+	struct llist_head list;
+
+	enum gsm_bts_type type;
+	const char *name;
+
+	struct tlv_definition nm_att_tlvdef;
+};
+
 /**
  * A pending paging request 
  */
@@ -403,6 +404,7 @@ struct gsm_bts {
 	u_int8_t bsic;
 	/* type of BTS */
 	enum gsm_bts_type type;
+	struct gsm_bts_model *model;
 	enum gsm_band band;
 	/* should the channel allocator allocate channels from high TRX to TRX0,
 	 * rather than starting from TRX0 and go upwards? */
@@ -622,7 +624,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
-void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
+int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num);
 
@@ -651,6 +653,7 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
 enum gsm_bts_type parse_btstype(const char *arg);
 const char *btstype2str(enum gsm_bts_type type);
+struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
 

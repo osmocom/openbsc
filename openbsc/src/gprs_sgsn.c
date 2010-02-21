@@ -22,9 +22,9 @@
 
 #include <sys/types.h>
 
-#include <openbsc/linuxlist.h>
-#include <openbsc/talloc.h>
-#include <openbsc/timer.h>
+#include <osmocore/linuxlist.h>
+#include <osmocore/talloc.h>
+#include <osmocore/timer.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gprs_sgsn.h>
 

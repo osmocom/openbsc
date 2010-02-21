@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -35,15 +36,15 @@
 #include <arpa/inet.h>
 
 
-#include <openbsc/select.h>
-#include <openbsc/timer.h>
+#include <osmocore/select.h>
+#include <osmocore/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 static struct gsm_network *gsmnet;
 
@@ -268,7 +269,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		msg->l2h[1] = msgb_l3len(msg) >> 8;
 		msg->l2h[2] = msgb_l3len(msg) & 0xff;
 		printf("Foo l2h: %p l3h: %p... length l2: %u  l3: %u\n", msg->l2h, msg->l3h, msgb_l2len(msg), msgb_l3len(msg));
-		abis_nm_ipaccess_set_nvattr(bts, msg->l2h, msgb_l2len(msg));
+		abis_nm_ipaccess_set_nvattr(bts->c0, msg->l2h, msgb_l2len(msg));
 		msgb_free(msg);
 		break;
 	case NM_MT_LOAD_END_NACK:
@@ -313,7 +314,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		memcpy(buf+3, unit_id, len);
 		buf[3+len] = 0;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len+1);
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len+1);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
@@ -337,7 +338,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
 		oml_state = 1;
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
 	}
 	if (nv_mask) {
 		len = 4;
@@ -351,7 +352,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = nv_mask >> 8;
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(bts, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
 	}
 
 	if (restart && !prim_oml_ip && !software) {
@@ -561,6 +562,7 @@ int main(int argc, char **argv)
 	debug_set_all_filter(stderr_target, 1);
 	debug_set_log_level(stderr_target, 0);
 	debug_parse_category_mask(stderr_target, "DNM,0");
+	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");

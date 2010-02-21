@@ -1,5 +1,7 @@
-/*
- * (C) 2008 by Daniel Willmann <daniel@totalueberwachung.de>
+/* Generic BTS - VTY code tries to allocate this BTS before type is known */
+
+/* (C) 2010 by Daniel Willmann <daniel@totalueberwachung.de>
+ *
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -18,36 +20,21 @@
  *
  */
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/types.h>
-#include <openbsc/debug.h>
-#include <openbsc/msgb.h>
+
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/tlv.h>
+#include <openbsc/abis_nm.h>
 
-int main(int argc, char** argv)
+static struct gsm_bts_model model_unknown = {
+	.type = GSM_BTS_TYPE_UNKNOWN,
+	.nm_att_tlvdef = {
+		.def = {
+		},
+	},
+};
+
+int bts_model_unknown_init(void)
 {
-	DEBUGP(DSMS, "SMS testing\n");
-	struct msgb *msg;
-	u_int8_t *sms;
-	u_int8_t i;
-
-        /* test 7-bit coding/decoding */
-	const char *input = "test text";
-	u_int8_t length;
-	u_int8_t coded[256];
-	char result[256];
-
-	length = gsm_7bit_encode(coded, input);
-	gsm_7bit_decode(result, coded, length);
-	if (strcmp(result, input) != 0) {
-		printf("7 Bit coding failed... life sucks\n");
-		printf("Wanted: '%s' got '%s'\n", input, result);
-	}
+	return gsm_bts_model_register(&model_unknown);
 }
-
-/* stubs */
-void input_event(void) {}
-void nm_state_event(void) {}

@@ -4,7 +4,7 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 SUBDIRS = include src tests
 
 pkgconfigdir = $(libdir)/pkgconfig
-pkgconfig_DATA = openbsc.pc
+pkgconfig_DATA = openbsc.pc libsccp.pc
 
 #dist-hook:
 #	rm -rf `find $(distdir) -name .svn`

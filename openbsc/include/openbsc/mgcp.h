@@ -2,7 +2,7 @@
 
 /*
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by on-waves.com
+ * (C) 2009 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,13 @@
  *
  */
 
-unsigned int rtp_base_port = 4000;
+#ifndef OPENBSC_MGCP_H
+#define OPENBSC_MGCP_H
+
+#include <osmocore/msgb.h>
+
+#define RTP_PORT_DEFAULT 4000
+extern unsigned int rtp_base_port;
 
 /**
  * Calculate the RTP audio port for the given multiplex
@@ -42,7 +48,23 @@ unsigned int rtp_base_port = 4000;
  * network and BTS.
  *
  */
-int rtp_calculate_port(int multiplex, int base)
+static inline int rtp_calculate_port(int multiplex, int base)
 {
 	return base + (multiplex * 2);
 }
+
+int mgcp_parse_config(const char *config_file, struct gsm_network *dummy_network);
+
+struct msgb *mgcp_handle_message(struct msgb *msg);
+struct msgb *mgcp_create_rsip(void);
+int mgcp_vty_init(void);
+
+/* endpoint managed */
+#define MGCP_ENDP_CRCX 1
+#define MGCP_ENDP_DLCX 2
+#define MGCP_ENDP_MDCX 3
+
+typedef int (*mgcp_change)(int endpoint, int state, int local_rtp, void *);
+void mgcp_set_change_cb(mgcp_change cb, void *data);
+
+#endif

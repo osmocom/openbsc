@@ -23,10 +23,10 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
-#include <openbsc/linuxlist.h>
-#include <openbsc/timer.h>
+#include <osmocore/linuxlist.h>
+#include <osmocore/timer.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>

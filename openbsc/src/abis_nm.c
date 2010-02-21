@@ -38,13 +38,12 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
+#include <osmocore/talloc.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
-#include <openbsc/gsm_04_08.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -265,7 +264,7 @@ static const enum abis_nm_attr nm_att_settable[] = {
 	NM_ATT_MEAS_TYPE,
 };
 
-static const struct tlv_definition nm_att_tlvdef = {
+const struct tlv_definition nm_att_tlvdef = {
 	.def = {
 		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
 		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V },
@@ -331,77 +330,6 @@ static const struct tlv_definition nm_att_tlvdef = {
 		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
 		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
 		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
-		/* BS11 specifics */
-		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV },
-		[0xd5] =			{ TLV_TYPE_TLV },
-		[0xa8] =			{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV },	
-		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV },
-		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV },
-		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV },
-		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV },
-		/* ip.access specifics */
-		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
-		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_TV, },
-		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
-		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-		[NM_ATT_IPACC_IN_SERV_TIME] =	{ TLV_TYPE_FIXED, 4 },
-		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_PRIM_OML_CFG_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_IPACC_PRIM_OML_FB_TOUT] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIMING_BUS] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CGI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_GPRS_PAGING_CFG]= { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_ALM_THRESH_LIST]=	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_MONIT_VAL_LIST] = { TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_TIB_CONTROL] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_HEARTB_TOUT] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_UPTIME] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SSL_CFG] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_SEC_POSSIBLE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_IML_SSL_STATE] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_IPACC_REVOC_DATE] =	{ TLV_TYPE_TL16V },
-		//[0x95] =			{ TLV_TYPE_FIXED, 2 },
-		[0x85] =			{ TLV_TYPE_TV },
-
 	},
 };
 
@@ -424,9 +352,11 @@ int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan)
 	return -EINVAL;
 }
 
-int abis_nm_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
+int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const u_int8_t *buf, int len)
 {
-	return tlv_parse(tp, &nm_att_tlvdef, buf, len, 0, 0);
+	if (!bts->model)
+		return -EIO;
+	return tlv_parse(tp, &bts->model->nm_att_tlvdef, buf, len, 0, 0);
 }
 
 static int is_in_arr(enum abis_nm_msgtype mt, const enum abis_nm_msgtype *arr, int size)
@@ -802,7 +732,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	new_state = *nm_state;
 	
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
 		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
 		DEBUGPC(DNM, "OP_STATE=%s ", nm_opstate_name(new_state.operational));
@@ -854,7 +784,7 @@ static int rx_fail_evt_rep(struct msgb *mb)
 
 	DEBUGPC(DNM, "Failure Event Report ");
 	
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
 		DEBUGPC(DNM, "Type=%s ", event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
@@ -940,7 +870,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
 
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
 	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
 	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
@@ -974,7 +904,7 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 	struct tlv_parsed tp;
 	u_int8_t adm_state;
 
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
 		return -EINVAL;
 
@@ -990,7 +920,7 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	struct tlv_parsed tp;
 
 	DEBUGP(DNM, "LMT Event ");
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) &&
 	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) >= 1) {
 		u_int8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
@@ -1036,7 +966,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			DEBUGPC(DNM, "NACK 0x%02x ", mt);
 
-		abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, "CAUSE=%s\n", 
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
@@ -2410,10 +2340,18 @@ int abis_nm_bs11_get_cclk(struct gsm_bts *bts)
 }
 
 //static const u_int8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
-static const u_int8_t bs11_logon_c8[] = { 0x02 };
-static const u_int8_t bs11_logon_c9[] = "FACTORY";
 
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
+{
+	return abis_nm_bs11_logon(bts, 0x02, "FACTORY", on);
+}
+
+int abis_nm_bs11_infield_logon(struct gsm_bts *bts, int on)
+{
+	return abis_nm_bs11_logon(bts, 0x03, "FIELD  ", on);
+}
+
+int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2424,15 +2362,15 @@ int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	if (on) {
 		u_int8_t len = 3*2 + sizeof(bdt)
-				+ sizeof(bs11_logon_c8) + sizeof(bs11_logon_c9);
+				+ 1 + strlen(name);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
 			     sizeof(bdt), (u_int8_t *) &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
-			     sizeof(bs11_logon_c8), bs11_logon_c8);
+			     1, &level);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
-			     sizeof(bs11_logon_c9), bs11_logon_c9);
+			     strlen(name), (u_int8_t *)name);
 	} else {
 		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LMT_LOGOFF,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
@@ -2477,6 +2415,27 @@ int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked)
 	
 	msgb_tlv_put(msg, NM_ATT_BS11_PLL_MODE, 1, &tlv_value);
 	
+	return abis_nm_sendmsg(bts, msg);
+}
+
+/* Set the calibration value of the PLL (work value/set value)
+ * It depends on the login which one is changed */
+int abis_nm_bs11_set_pll(struct gsm_bts *bts, int value)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg;
+	u_int8_t tlv_value[2];
+
+	msg = nm_msgb_alloc();
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 3, NM_MT_BS11_SET_ATTR, NM_OC_BS11,
+			BS11_OBJ_TRX1, 0x00, 0x00);
+
+	tlv_value[0] = value>>8;
+	tlv_value[1] = value&0xff;
+
+	msgb_tlv_put(msg, NM_ATT_BS11_PLL, 2, tlv_value);
+
 	return abis_nm_sendmsg(bts, msg);
 }
 
@@ -2734,7 +2693,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	}
 
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
-	abis_nm_tlv_parse(&tp, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, msg->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	debugp_foh(foh);
 
@@ -2863,11 +2822,11 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 }
 
 /* set some attributes in NVRAM */
-int abis_nm_ipaccess_set_nvattr(struct gsm_bts *bts, u_int8_t *attr,
+int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
 				int attr_len)
 {
-	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_NVATTR,
-				    NM_OC_BASEB_TRANSC, 0, 0, 0xff, attr,
+	return abis_nm_ipaccess_msg(trx->bts, NM_MT_IPACC_SET_NVATTR,
+				    NM_OC_BASEB_TRANSC, 0, trx->nr, 0xff, attr,
 				    attr_len);
 }
 

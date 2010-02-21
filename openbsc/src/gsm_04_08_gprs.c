@@ -29,17 +29,17 @@
 #include <netinet/in.h>
 
 #include <openbsc/db.h>
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/paging.h>
-#include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/signal.h>
+#include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>

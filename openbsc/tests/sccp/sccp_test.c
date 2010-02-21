@@ -2,7 +2,7 @@
  * SCCP testing code
  *
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by on-waves.com
+ * (C) 2009 by On-Waves
  *
  * All Rights Reserved
  *
@@ -26,9 +26,11 @@
 
 #include <arpa/inet.h>
 
-#include <sccp/sccp.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
+#include <osmocore/msgb.h>
+
+#include <sccp/sccp.h>
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 

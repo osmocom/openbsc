@@ -28,8 +28,8 @@
 #include <termios.h>
 #include <fcntl.h>
 
-#include <openbsc/select.h>
-#include <openbsc/msgb.h>
+#include <osmocore/select.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/rs232.h>

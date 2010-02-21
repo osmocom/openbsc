@@ -25,8 +25,8 @@
 
 #include <netinet/in.h>
 
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08_gprs.h>

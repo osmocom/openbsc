@@ -30,12 +30,12 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/debug.h>
-#include <openbsc/tlv.h>
+#include <osmocore/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
@@ -649,6 +649,10 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
+
+	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
+			     (u_int8_t *) &lchan->mr_conf);
 
 	msg->trx = lchan->ts->trx;
 

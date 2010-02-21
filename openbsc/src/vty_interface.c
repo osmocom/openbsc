@@ -28,15 +28,15 @@
 
 #include <arpa/inet.h>
 
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
 
 static struct gsm_network *gsmnet;
@@ -1219,13 +1219,15 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
       "handover (0|1)",
 	"Whether or not to use in-call handover")
 {
-	if (ipacc_rtp_direct) {
+	int enable = atoi(argv[0]);
+
+	if (enable && ipacc_rtp_direct) {
 		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
 			"is enabled by using the -P command line option%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	gsmnet->handover.active = atoi(argv[0]);
+	gsmnet->handover.active = enable;
 
 	return CMD_SUCCESS;
 }
@@ -1329,8 +1331,11 @@ DEFUN(cfg_bts,
 	} else 
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
-	if (!bts)
+	if (!bts) {
+		vty_out(vty, "%% Unable to allocate BTS %u%s",
+			gsmnet->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
+	}
 
 	vty->index = bts;
 	vty->node = BTS_NODE;
@@ -1344,8 +1349,11 @@ DEFUN(cfg_bts_type,
       "Set the BTS type\n")
 {
 	struct gsm_bts *bts = vty->index;
+	int rc;
 
-	gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	rc = gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	if (rc < 0)
+		return CMD_WARNING;
 
 	return CMD_SUCCESS;
 }

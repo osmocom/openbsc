@@ -28,11 +28,13 @@
 #include <netinet/in.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/statistics.h>
+#include <osmocore/statistics.h>
 
 void *tall_bsc_ctx;
+
+static LLIST_HEAD(bts_models);
 
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
@@ -120,6 +122,29 @@ const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 	return chreq_names[c];
 }
 
+static struct gsm_bts_model *bts_model_find(enum gsm_bts_type type)
+{
+	struct gsm_bts_model *model;
+
+	llist_for_each_entry(model, &bts_models, list) {
+		if (model->type == type)
+			return model;
+	}
+
+	return NULL;
+}
+
+int gsm_bts_model_register(struct gsm_bts_model *model)
+{
+	if (bts_model_find(model->type))
+		return -EEXIST;
+
+	tlv_def_patch(&model->nm_att_tlvdef, &nm_att_tlvdef);
+	llist_add_tail(&model->list, &bts_models);
+	return 0;
+}
+
+
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
@@ -162,14 +187,21 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
 	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
+	struct gsm_bts_model *model = bts_model_find(type);
 	int i;
 
 	if (!bts)
 		return NULL;
 
+	if (!model && type != GSM_BTS_TYPE_UNKNOWN) {
+		talloc_free(bts);
+		return NULL;
+	}
+
 	bts->network = net;
 	bts->nr = net->num_bts++;
 	bts->type = type;
+	bts->model = model;
 	bts->tsc = tsc;
 	bts->bsic = bsic;
 	bts->num_trx = 0;
@@ -218,6 +250,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->country_code = country_code;
 	net->network_code = network_code;
 	net->num_bts = 0;
+	net->reject_cause = GSM48_REJECT_ROAMING_NOT_ALLOWED;
 	net->T3101 = GSM_T3101_DEFAULT;
 	net->T3113 = GSM_T3113_DEFAULT;
 	/* FIXME: initialize all other timers! */
@@ -366,6 +399,17 @@ const char *btstype2str(enum gsm_bts_type type)
 	return bts_types[type];
 }
 
+struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->nr == nr)
+			return trx;
+	}
+	return NULL;
+}
+
 /* Search for a BTS in the given Location Area; optionally start searching
  * with start_bts (for continuing to search after the first result) */
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
@@ -396,8 +440,14 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 char *gsm_band_name(enum gsm_band band)
 {
 	switch (band) {
-	case GSM_BAND_400:
-		return "GSM400";
+	case GSM_BAND_450:
+		return "GSM450";
+	case GSM_BAND_480:
+		return "GSM450";
+	case GSM_BAND_750:
+		return "GSM750";
+	case GSM_BAND_810:
+		return "GSM810";
 	case GSM_BAND_850:
 		return "GSM850";
 	case GSM_BAND_900:
@@ -419,8 +469,14 @@ enum gsm_band gsm_band_parse(const char* mhz)
 		return -EINVAL;
 
 	switch (atoi(mhz)) {
-	case 400:
-		return GSM_BAND_400;
+	case 450:
+		return GSM_BAND_450;
+	case 480:
+		return GSM_BAND_480;
+	case 750:
+		return GSM_BAND_750;
+	case 810:
+		return GSM_BAND_810;
 	case 850:
 		return GSM_BAND_850;
 	case 900:
@@ -538,9 +594,16 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 	return meas_rep;
 }
 
-void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
+int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 {
+	struct gsm_bts_model *model;
+
+	model = bts_model_find(type);
+	if (!model)
+		return -EINVAL;
+
 	bts->type = type;
+	bts->model = model;
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
@@ -551,4 +614,6 @@ void gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	case GSM_BTS_TYPE_BS11:
 		break;
 	}
+
+	return 0;
 }

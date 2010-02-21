@@ -31,12 +31,12 @@
 #include <netinet/in.h>
 
 #include <openbsc/db.h>
-#include <openbsc/msgb.h>
-#include <openbsc/bitvec.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/bitvec.h>
+#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
@@ -47,7 +47,7 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>

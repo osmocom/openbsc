@@ -2,7 +2,7 @@
 #define _IPACCESS_H
 
 #include "e1_input.h"
-#include "linuxlist.h"
+#include <osmocore/linuxlist.h>
 
 #define IPA_TCP_PORT_OML	3002
 #define IPA_TCP_PORT_RSL	3003
@@ -48,6 +48,11 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
 int ipaccess_rcvmsg_base(struct msgb *msg, struct bsc_fd *bfd);
 struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
+int ipaccess_send_id_ack(int fd);
+int ipaccess_send_id_req(int fd);
+
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
+
 
 /*
  * Firmware specific header

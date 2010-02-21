@@ -52,9 +52,9 @@
 #include <arpa/inet.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
-#include <openbsc/talloc.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>

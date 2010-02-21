@@ -25,7 +25,7 @@
 #ifndef _MNCC_H
 #define _MNCC_H
 
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 
 /* One end of a call */
 struct gsm_call {

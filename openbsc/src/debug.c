@@ -28,7 +28,7 @@
 #include <errno.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 

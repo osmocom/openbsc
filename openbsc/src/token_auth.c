@@ -21,7 +21,7 @@
  */
 
 #include <stdio.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_11.h>
