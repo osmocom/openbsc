@@ -324,7 +324,7 @@ static struct msgb *mgcp_msgb_alloc(void)
 	return msg;
 }
 
-static struct msgb *create_response_with_data(int code, const char *msg, const char *trans,
+struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans,
 				    const char *data)
 {
 	int len;
@@ -347,7 +347,7 @@ static struct msgb *create_response_with_data(int code, const char *msg, const c
 
 static struct msgb *create_response(int code, const char *msg, const char *trans)
 {
-	return create_response_with_data(code, msg, trans, NULL);
+	return mgcp_create_response_with_data(code, msg, trans, NULL);
 }
 
 static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
@@ -368,7 +368,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			endp->ci, addr, endp->rtp_port,
 			endp->cfg->audio_payload, endp->cfg->audio_payload,
 		        endp->cfg->audio_name);
-	return create_response_with_data(200, msg, trans_id, sdp_record);
+	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
 }
 
 /* send a static record */

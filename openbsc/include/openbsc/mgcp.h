@@ -102,6 +102,7 @@ int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
  */
 struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
 struct msgb *mgcp_create_rsip(void);
+struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans, const char *data);
 
 
 #endif
