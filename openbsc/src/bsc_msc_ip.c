@@ -641,7 +641,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	else if (hh->proto == IPAC_PROTO_SCCP)
 		sccp_system_incoming(msg);
 
-	talloc_free(msg);
+	msgb_free(msg);
 	return 0;
 }
 
