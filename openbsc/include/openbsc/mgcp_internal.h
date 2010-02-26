@@ -34,6 +34,9 @@ struct mgcp_endpoint {
 	char *local_options;
 	int conn_mode;
 
+	int bts_payload_type;
+	int net_payload_type;
+
 	/* the local rtp port we are binding to */
 	int rtp_port;
 

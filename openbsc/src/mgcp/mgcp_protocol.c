@@ -189,7 +189,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
 			endp->ci, addr, endp->rtp_port,
-			endp->cfg->audio_payload, endp->cfg->audio_payload,
+			endp->bts_payload_type, endp->bts_payload_type,
 		        endp->cfg->audio_name);
 	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
 }
@@ -455,6 +455,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
+	endp->bts_payload_type = cfg->audio_payload;
+
 	/* policy CB */
 	if (cfg->policy_cb) {
 		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, trans_id)) {
@@ -542,11 +544,13 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		break;
 	case 'm': {
 		int port;
+		int payload;
 		const char *param = (const char *)&msg->l3h[line_start];
 
-		if (sscanf(param, "m=audio %d RTP/AVP %*d", &port) == 1) {
+		if (sscanf(param, "m=audio %d RTP/AVP %d", &port, &payload) == 2) {
 			endp->net_rtp = htons(port);
 			endp->net_rtcp = htons(port + 1);
+			endp->net_payload_type = payload;
 		}
 		break;
 	}
@@ -709,6 +713,8 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 		cfg->endpoints[i].local_rtcp.fd = -1;
 		cfg->endpoints[i].ci = CI_UNUSED;
 		cfg->endpoints[i].cfg = cfg;
+		cfg->endpoints[i].net_payload_type = -1;
+		cfg->endpoints[i].bts_payload_type = -1;
 	}
 
 	return 0;
