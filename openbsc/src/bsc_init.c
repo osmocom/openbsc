@@ -21,7 +21,7 @@
  */
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
@@ -31,7 +31,7 @@
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -802,8 +802,10 @@ static int bootstrap_bts(struct gsm_bts *bts)
 		}
 		break;
 	case GSM_BAND_900:
-		if (bts->c0->arfcn < 1 || bts->c0->arfcn > 124) {
-			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 1-124.\n");
+		if (bts->c0->arfcn < 1 ||
+		   (bts->c0->arfcn > 124 && bts->c0->arfcn < 955) ||
+		    bts->c0->arfcn > 1023)  {
+			LOGP(DNM, LOGL_ERROR, "GSM900 channel must be between 1-124, 955-1023.\n");
 			return -EINVAL;
 		}
 		break;

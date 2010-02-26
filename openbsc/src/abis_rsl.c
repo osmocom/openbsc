@@ -30,12 +30,12 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/debug.h>
-#include <openbsc/tlv.h>
+#include <osmocore/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>

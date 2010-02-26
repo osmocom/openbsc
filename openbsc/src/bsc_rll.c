@@ -24,9 +24,9 @@
 #include <errno.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
-#include <openbsc/timer.h>
-#include <openbsc/linuxlist.h>
+#include <osmocore/talloc.h>
+#include <osmocore/timer.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>

@@ -26,9 +26,9 @@
 #include <ctype.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/statistics.h>
+#include <osmocore/statistics.h>
 
 void *tall_bsc_ctx;
 
@@ -438,8 +438,14 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 char *gsm_band_name(enum gsm_band band)
 {
 	switch (band) {
-	case GSM_BAND_400:
-		return "GSM400";
+	case GSM_BAND_450:
+		return "GSM450";
+	case GSM_BAND_480:
+		return "GSM450";
+	case GSM_BAND_750:
+		return "GSM750";
+	case GSM_BAND_810:
+		return "GSM810";
 	case GSM_BAND_850:
 		return "GSM850";
 	case GSM_BAND_900:
@@ -461,8 +467,14 @@ enum gsm_band gsm_band_parse(const char* mhz)
 		return -EINVAL;
 
 	switch (atoi(mhz)) {
-	case 400:
-		return GSM_BAND_400;
+	case 450:
+		return GSM_BAND_450;
+	case 480:
+		return GSM_BAND_480;
+	case 750:
+		return GSM_BAND_750;
+	case 810:
+		return GSM_BAND_810;
 	case 850:
 		return GSM_BAND_850;
 	case 900:

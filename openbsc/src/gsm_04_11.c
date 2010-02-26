@@ -31,18 +31,18 @@
 #include <time.h>
 #include <netinet/in.h>
 
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/signal.h>
 #include <openbsc/db.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/paging.h>
 #include <openbsc/bsc_rll.h>

@@ -3,7 +3,7 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/gsm_04_11.h>
 
 /* One transaction */

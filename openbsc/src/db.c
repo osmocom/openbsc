@@ -23,9 +23,9 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/db.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
-#include <openbsc/statistics.h>
+#include <osmocore/statistics.h>
 
 #include <libgen.h>
 #include <stdio.h>

@@ -29,12 +29,13 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <osmocore/msgb.h>
+#include <osmocore/talloc.h>
+#include <osmocore/select.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/msgb.h>
-#include <openbsc/talloc.h>
-#include <openbsc/select.h>
 
 #warning "Make use of the rtp proxy code"
 

@@ -11,14 +11,6 @@ struct value_string {
 const char *get_value_string(const struct value_string *vs, u_int32_t val);
 int get_string_value(const struct value_string *vs, const char *str);
 
-enum gsm_band {
-	GSM_BAND_400,
-	GSM_BAND_850,
-	GSM_BAND_900,
-	GSM_BAND_1800,
-	GSM_BAND_1900,
-};
-
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -56,15 +48,15 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_OTHER,
 };
 
-#include <openbsc/timer.h>
+#include <osmocore/timer.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/mncc.h>
-#include <openbsc/tlv.h>
-#include <openbsc/bitvec.h>
-#include <openbsc/statistics.h>
-
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#include <osmocore/tlv.h>
+#include <osmocore/bitvec.h>
+#include <osmocore/statistics.h>
+#include <osmocore/gsm_utils.h>
+#include <osmocore/utils.h>
 
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8

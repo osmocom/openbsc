@@ -24,10 +24,11 @@
 
 #include <sys/types.h>
 
+#include <osmocore/talloc.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/talloc.h>
 
 #include <vty/command.h>
 #include <vty/vty.h>

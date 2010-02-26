@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <netinet/in.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/transaction.h>

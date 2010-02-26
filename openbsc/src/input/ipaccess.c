@@ -32,9 +32,9 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <openbsc/select.h>
-#include <openbsc/tlv.h>
-#include <openbsc/msgb.h>
+#include <osmocore/select.h>
+#include <osmocore/tlv.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -42,7 +42,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
@@ -89,7 +89,7 @@ static const char *ipac_idtag_name(int tag)
 	return idtag_names[tag];
 }
 
-static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
+int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 {
 	u_int8_t t_len;
 	u_int8_t t_tag;
@@ -164,6 +164,17 @@ static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 	return 0;
 }
 
+/* send the id ack */
+int ipaccess_send_id_ack(int fd)
+{
+	return write(fd, id_ack, sizeof(id_ack));
+}
+
+int ipaccess_send_id_req(int fd)
+{
+	return write(fd, id_req, sizeof(id_req));
+}
+
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
 			 struct bsc_fd *bfd)
@@ -180,7 +191,7 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	}
 	return 0;
@@ -201,7 +212,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
 				 msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
@@ -530,7 +541,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
         return ret;
 	//return e1inp_line_register(line);
@@ -587,6 +598,11 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	bfd->when = BSC_FD_READ;
 	//bfd->data = line;
 
+	if (bfd->fd < 0) {
+		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
+		return -EIO;
+	}
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
@@ -598,18 +614,21 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not bind l2 socket %s\n",
 			strerror(errno));
+		close(bfd->fd);
 		return -EIO;
 	}
 
 	ret = listen(bfd->fd, 1);
 	if (ret < 0) {
 		perror("listen");
+		close(bfd->fd);
 		return ret;
 	}
 	
 	ret = bsc_register_fd(bfd);
 	if (ret < 0) {
 		perror("register_listen_fd");
+		close(bfd->fd);
 		return ret;
 	}
 	return 0;
@@ -627,6 +646,11 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
 	bfd->data = line;
 	bfd->priv_nr = 1;
+
+	if (bfd->fd < 0) {
+		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
+		return -EIO;
+	}
 
 	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 

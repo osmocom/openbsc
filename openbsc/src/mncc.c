@@ -28,7 +28,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/transaction.h>
 #include <openbsc/rtp_proxy.h>

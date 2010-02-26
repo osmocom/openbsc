@@ -24,7 +24,7 @@
 #ifndef OPENBSC_MGCP_DATA_H
 #define OPENBSC_MGCP_DATA_H
 
-#include "select.h"
+#include <osmocore/select.h>
 
 #define CI_UNUSED 0
 

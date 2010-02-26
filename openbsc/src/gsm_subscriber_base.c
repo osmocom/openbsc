@@ -27,11 +27,10 @@
 #include <string.h>
 #include <assert.h>
 
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/paging.h>
 #include <openbsc/debug.h>
-#include <openbsc/paging.h>
 
 LLIST_HEAD(active_subscribers);
 void *tall_subscr_ctx;

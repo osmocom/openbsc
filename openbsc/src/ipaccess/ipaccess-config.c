@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -35,15 +36,15 @@
 #include <arpa/inet.h>
 
 
-#include <openbsc/select.h>
-#include <openbsc/timer.h>
+#include <osmocore/select.h>
+#include <osmocore/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 static struct gsm_network *gsmnet;
 
