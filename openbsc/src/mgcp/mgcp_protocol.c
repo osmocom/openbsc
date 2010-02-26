@@ -455,6 +455,25 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
+	/* policy CB */
+	if (cfg->policy_cb) {
+		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, trans_id)) {
+		case MGCP_POLICY_REJECT:
+			LOGP(DMGCP, LOGL_NOTICE, "CRCX rejected by policy on 0x%x\n",
+			     ENDPOINT_NUMBER(endp));
+			mgcp_free_endp(endp);
+			return create_response(500, "CRCX", trans_id);
+			break;
+		case MGCP_POLICY_DEFER:
+			/* stop processing */
+			return NULL;
+			break;
+		case MGCP_POLICY_CONT:
+			/* just continue */
+			break;
+		}
+	}
+
 	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u\n",
 		ENDPOINT_NUMBER(endp), endp->ci, endp->rtp_port);
 	if (cfg->change_cb)
@@ -548,6 +567,24 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 	MSG_TOKENIZE_END
 
+	/* policy CB */
+	if (cfg->policy_cb) {
+		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, trans_id)) {
+		case MGCP_POLICY_REJECT:
+			LOGP(DMGCP, LOGL_NOTICE, "MDCX rejected by policy on 0x%x\n",
+			     ENDPOINT_NUMBER(endp));
+			return create_response(500, "MDCX", trans_id);
+			break;
+		case MGCP_POLICY_DEFER:
+			/* stop processing */
+			return NULL;
+			break;
+		case MGCP_POLICY_CONT:
+			/* just continue */
+			break;
+		}
+	}
+
 	/* modify */
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
@@ -601,6 +638,24 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 		break;
 	}
 	MSG_TOKENIZE_END
+
+	/* policy CB */
+	if (cfg->policy_cb) {
+		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, trans_id)) {
+		case MGCP_POLICY_REJECT:
+			LOGP(DMGCP, LOGL_NOTICE, "DLCX rejected by policy on 0x%x\n",
+			     ENDPOINT_NUMBER(endp));
+			return create_response(500, "DLCX", trans_id);
+			break;
+		case MGCP_POLICY_DEFER:
+			/* stop processing */
+			return NULL;
+			break;
+		case MGCP_POLICY_CONT:
+			/* just continue */
+			break;
+		}
+	}
 
 	/* free the connection */
 	mgcp_free_endp(endp);

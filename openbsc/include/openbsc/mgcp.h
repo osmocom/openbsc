@@ -65,7 +65,18 @@ struct mgcp_config;
 #define MGCP_ENDP_DLCX 2
 #define MGCP_ENDP_MDCX 3
 
+/*
+ * what to do with the msg?
+ *	- continue as usual?
+ *	- reject and send a failure code?
+ *	- defer? do not send anything
+ */
+#define MGCP_POLICY_CONT	4
+#define MGCP_POLICY_REJECT	5
+#define MGCP_POLICY_DEFER	6
+
 typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state, int local_rtp);
+typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
 
 struct mgcp_config {
 	int source_port;
@@ -85,6 +96,8 @@ struct mgcp_config {
 	int forward_port;
 
 	mgcp_change change_cb;
+	mgcp_policy policy_cb;
+	void *data;
 
 	struct mgcp_endpoint *endpoints;
 	unsigned int last_call_id;
