@@ -1,4 +1,5 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
 noinst_PROGRAMS = gsm0408_test
 
 gsm0408_test_SOURCES = gsm0408_test.c
