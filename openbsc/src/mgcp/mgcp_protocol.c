@@ -302,6 +302,8 @@ static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 {
 	int found;
 
+	*transaction_id = "000000";
+
 	if (size < 3) {
 		LOGP(DMGCP, LOGL_ERROR, "Not enough space in ptr\n");
 		return -1;
@@ -309,7 +311,7 @@ static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 
 	found = find_msg_pointers(msg, ptr, size);
 
-	if (found < 3) {
+	if (found <= 3) {
 		LOGP(DMGCP, LOGL_ERROR, "Gateway: Not enough params. Found: %d\n", found);
 		return -1;
 	}
