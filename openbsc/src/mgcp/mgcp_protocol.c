@@ -600,19 +600,8 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 	MSG_TOKENIZE_END
 
-
 	/* free the connection */
-	LOGP(DMGCP, LOGL_NOTICE, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
-	endp->ci= CI_UNUSED;
-	talloc_free(endp->callid);
-	talloc_free(endp->local_options);
-
-	if (!cfg->early_bind) {
-		bsc_unregister_fd(&endp->local_rtp);
-		bsc_unregister_fd(&endp->local_rtcp);
-	}
-
-	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	mgcp_free_endp(endp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
 
@@ -666,4 +655,28 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 	}
 
 	return 0;
+}
+
+void mgcp_free_endp(struct mgcp_endpoint *endp)
+{
+	LOGP(DMGCP, LOGL_NOTICE, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
+	endp->ci= CI_UNUSED;
+
+	if (endp->callid) {
+		talloc_free(endp->callid);
+		endp->callid = NULL;
+	}
+
+	if (endp->local_options) {
+		talloc_free(endp->local_options);
+		endp->callid = NULL;
+	}
+
+	if (!endp->cfg->early_bind) {
+		bsc_unregister_fd(&endp->local_rtp);
+		bsc_unregister_fd(&endp->local_rtcp);
+	}
+
+	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	endp->net_payload_type = endp->bts_payload_type = -1;
 }

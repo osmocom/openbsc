@@ -96,6 +96,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
 int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_config *cfg);
 int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
+void mgcp_free_endp(struct mgcp_endpoint *endp);
 
 /*
  * format helper functions
