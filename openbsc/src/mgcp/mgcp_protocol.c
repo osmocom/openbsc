@@ -164,7 +164,7 @@ struct msgb *mgcp_create_response_with_data(int code, const char *msg, const cha
 	}
 
 	res->l2h = msgb_put(res, len);
-	LOGP(DMGCP, LOGL_NOTICE, "Sending response: code: %d for '%s'\n", code, res->l2h);
+	LOGP(DMGCP, LOGL_DEBUG, "Sending response: code: %d for '%s'\n", code, res->l2h);
 	return res;
 }
 
@@ -228,7 +228,7 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 
         /* attempt to treat it as a response */
         if (sscanf((const char *)&msg->data[0], "%3d %*s", &code) == 1) {
-		LOGP(DMGCP, LOGL_NOTICE, "Response: Code: %d\n", code);
+		LOGP(DMGCP, LOGL_DEBUG, "Response: Code: %d\n", code);
 	} else {
 		int i, handled = 0;
 		msg->l3h = &msg->l2h[4];
@@ -548,7 +548,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* modify */
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
-		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), endp->net_rtp);
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
 	return create_response_with_sdp(endp, "MDCX", trans_id);
