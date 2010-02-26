@@ -24,6 +24,7 @@
 
 #include <string.h>
 #include <unistd.h>
+#include <endian.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -36,6 +37,28 @@
 #include <openbsc/select.h>
 
 #warning "Make use of the rtp proxy code"
+
+/* according to rtp_proxy.c RFC 3550 */
+struct rtp_hdr {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	u_int8_t  csrc_count:4,
+		  extension:1,
+		  padding:1,
+		  version:2;
+	u_int8_t  payload_type:7,
+		  marker:1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	u_int8_t  version:2,
+		  padding:1,
+		  extension:1,
+		  csrc_count:4;
+	u_int8_t  marker:1,
+		  payload_type:7;
+#endif
+	u_int16_t sequence;
+	u_int32_t timestamp;
+	u_int32_t ssrc;
+} __attribute__((packed));
 
 
 enum {
@@ -57,6 +80,17 @@ static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 	memcpy(&out.sin_addr, addr, sizeof(*addr));
 
 	return sendto(fd, buf, len, 0, (struct sockaddr *)&out, sizeof(out));
+}
+
+static void patch_payload(int payload, char *data, int len)
+{
+	struct rtp_hdr *rtp_hdr;
+
+	if (len < sizeof(*rtp_hdr))
+		return;
+
+	rtp_hdr = (struct rtp_hdr *) data;
+	rtp_hdr->payload_type = payload;
 }
 
 /*
@@ -129,10 +163,12 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		dest = !dest;
 
 	if (dest == DEST_NETWORK) {
+		patch_payload(endp->net_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->remote,
 			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
 			     buf, rc);
 	} else {
+		patch_payload(endp->bts_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
 			     buf, rc);
