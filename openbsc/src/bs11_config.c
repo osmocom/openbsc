@@ -36,10 +36,10 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
-#include <openbsc/select.h>
+#include <osmocore/select.h>
 #include <openbsc/rs232.h>
 
 /* state of our bs11_config application */

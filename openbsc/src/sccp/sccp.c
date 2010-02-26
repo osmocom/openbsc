@@ -24,11 +24,12 @@
 
 #include <string.h>
 
+#include <osmocore/msgb.h>
+#include <openbsc/debug.h>
+#include <osmocore/talloc.h>
+
 #include <sccp/sccp.h>
 
-#include <openbsc/debug.h>
-#include <openbsc/talloc.h>
-#include <openbsc/linuxlist.h>
 
 static void *tall_sccp_ctx;
 static LLIST_HEAD(sccp_connections);

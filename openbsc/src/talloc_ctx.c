@@ -1,4 +1,4 @@
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
 
 extern void *tall_msgb_ctx;

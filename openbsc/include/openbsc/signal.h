@@ -28,6 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 
+#include <osmocore/signal.h>
 
 /*
  * Signalling subsystems
@@ -110,9 +111,6 @@ enum signal_global {
 	S_GLOBAL_SHUTDOWN,
 };
 
-typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
-			void *handler_data, void *signal_data);
-
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
@@ -131,13 +129,5 @@ struct ipacc_ack_signal_data {
 	struct gsm_bts *bts;
 	u_int8_t msg_type;	
 };
-
-/* Management */
-int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
-void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
-
-/* Dispatch */
-void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data);
-
 
 #endif

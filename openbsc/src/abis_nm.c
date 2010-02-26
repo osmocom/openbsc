@@ -38,12 +38,12 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
-#include <openbsc/msgb.h>
-#include <openbsc/tlv.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
+#include <osmocore/talloc.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128

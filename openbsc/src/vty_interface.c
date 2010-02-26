@@ -28,15 +28,15 @@
 
 #include <arpa/inet.h>
 
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
 
 static struct gsm_network *gsmnet;

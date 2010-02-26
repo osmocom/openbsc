@@ -30,11 +30,11 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_11.h>
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 
 #include <vty/buffer.h>

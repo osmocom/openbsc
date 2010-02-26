@@ -4,10 +4,10 @@
 #include <stdlib.h>
 #include <netinet/in.h>
 
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/msgb.h>
-#include <openbsc/select.h>
+#include <osmocore/msgb.h>
+#include <osmocore/select.h>
 #include <openbsc/subchan_demux.h>
 
 #define NUM_E1_TS   32
