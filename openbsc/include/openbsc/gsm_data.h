@@ -3,14 +3,6 @@
 
 #include <sys/types.h>
 
-struct value_string {
-	unsigned int value;
-	const char *str;
-};
-
-const char *get_value_string(const struct value_string *vs, u_int32_t val);
-int get_string_value(const struct value_string *vs, const char *str);
-
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
