@@ -732,7 +732,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	if (endp->local_options) {
 		talloc_free(endp->local_options);
-		endp->callid = NULL;
+		endp->local_options = NULL;
 	}
 
 	if (!endp->cfg->early_bind) {
