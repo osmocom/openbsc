@@ -4,6 +4,7 @@
 #include <openbsc/meas_rep.h>
 
 #include <osmocore/protocol/gsm_04_08.h>
+#include <osmocore/gsm48.h>
 
 struct msgb;
 struct gsm_bts;

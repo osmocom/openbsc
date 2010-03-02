@@ -58,114 +58,6 @@
 
 void *tall_locop_ctx;
 
-static const struct tlv_definition rsl_att_tlvdef = {
-	.def = {
-		[GSM48_IE_MOBILE_ID]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NAME_LONG]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NAME_SHORT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_UTC]		= { TLV_TYPE_TV },
-		[GSM48_IE_NET_TIME_TZ]	= { TLV_TYPE_FIXED, 7 },
-		[GSM48_IE_LSA_IDENT]	= { TLV_TYPE_TLV },
-
-		[GSM48_IE_BEARER_CAP]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CAUSE]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CC_CAP]	= { TLV_TYPE_TLV },
-		[GSM48_IE_ALERT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_FACILITY]	= { TLV_TYPE_TLV },
-		[GSM48_IE_PROGR_IND]	= { TLV_TYPE_TLV },
-		[GSM48_IE_AUX_STATUS]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NOTIFY]	= { TLV_TYPE_TV },
-		[GSM48_IE_KPD_FACILITY]	= { TLV_TYPE_TV },
-		[GSM48_IE_SIGNAL]	= { TLV_TYPE_TV },
-		[GSM48_IE_CONN_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CONN_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLING_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLING_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLED_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLED_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_REDIR_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_REDIR_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_LOWL_COMPAT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_HIGHL_COMPAT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_USER_USER]	= { TLV_TYPE_TLV },
-		[GSM48_IE_SS_VERS]	= { TLV_TYPE_TLV },
-		[GSM48_IE_MORE_DATA]	= { TLV_TYPE_T },
-		[GSM48_IE_CLIR_SUPP]	= { TLV_TYPE_T },
-		[GSM48_IE_CLIR_INVOC]	= { TLV_TYPE_T },
-		[GSM48_IE_REV_C_SETUP]	= { TLV_TYPE_T },
-		[GSM48_IE_REPEAT_CIR]   = { TLV_TYPE_T },
-		[GSM48_IE_REPEAT_SEQ]   = { TLV_TYPE_T },
-		/* FIXME: more elements */
-	},
-};
-
-static const char *rr_cause_names[] = {
-	[GSM48_RR_CAUSE_NORMAL]			= "Normal event",
-	[GSM48_RR_CAUSE_ABNORMAL_UNSPEC]	= "Abnormal release, unspecified",
-	[GSM48_RR_CAUSE_ABNORMAL_UNACCT]	= "Abnormal release, channel unacceptable",
-	[GSM48_RR_CAUSE_ABNORMAL_TIMER]		= "Abnormal release, timer expired",
-	[GSM48_RR_CAUSE_ABNORMAL_NOACT]		= "Abnormal release, no activity on radio path",
-	[GSM48_RR_CAUSE_PREMPTIVE_REL]		= "Preemptive release",
-	[GSM48_RR_CAUSE_HNDOVER_IMP]		= "Handover impossible, timing advance out of range",
-	[GSM48_RR_CAUSE_CHAN_MODE_UNACCT]	= "Channel mode unacceptable",
-	[GSM48_RR_CAUSE_FREQ_NOT_IMPL]		= "Frequency not implemented",
-	[GSM48_RR_CAUSE_CALL_CLEARED]		= "Call already cleared",
-	[GSM48_RR_CAUSE_SEMANT_INCORR]		= "Semantically incorrect message",
-	[GSM48_RR_CAUSE_INVALID_MAND_INF]	= "Invalid mandatory information",
-	[GSM48_RR_CAUSE_MSG_TYPE_N]		= "Message type non-existant or not implemented",
-	[GSM48_RR_CAUSE_MSG_TYPE_N_COMPAT]	= "Message type not compatible with protocol state",
-	[GSM48_RR_CAUSE_COND_IE_ERROR]		= "Conditional IE error",
-	[GSM48_RR_CAUSE_NO_CELL_ALLOC_A]	= "No cell allocation available",
-	[GSM48_RR_CAUSE_PROT_ERROR_UNSPC]	= "Protocol error unspecified",
-};
-
-static const char *cc_state_names[] = {
-	"NULL",
-	"INITIATED",
-	"illegal state 2",
-	"MO_CALL_PROC",
-	"CALL_DELIVERED",
-	"illegal state 5",
-	"CALL_PRESENT",
-	"CALL_RECEIVED",
-	"CONNECT_REQUEST",
-	"MO_TERM_CALL_CONF",
-	"ACTIVE",
-	"DISCONNECT_REQ",
-	"DISCONNECT_IND",
-	"illegal state 13",
-	"illegal state 14",
-	"illegal state 15",
-	"illegal state 16",
-	"illegal state 17",
-	"illegal state 18",
-	"RELEASE_REQ",
-	"illegal state 20",
-	"illegal state 21",
-	"illegal state 22",
-	"illegal state 23",
-	"illegal state 24",
-	"illegal state 25",
-	"MO_ORIG_MODIFY",
-	"MO_TERM_MODIFY",
-	"CONNECT_IND",
-	"illegal state 29",
-	"illegal state 30",
-	"illegal state 31",
-};
-
-static char strbuf[64];
-
-static const char *rr_cause_name(u_int8_t cause)
-{
-	if (cause < ARRAY_SIZE(rr_cause_names) &&
-	    rr_cause_names[cause])
-		return rr_cause_names[cause];
-
-	snprintf(strbuf, sizeof(strbuf), "0x%02x", cause);
-	return strbuf;
-}
-
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
@@ -2092,7 +1984,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&setup, 0, sizeof(struct gsm_mncc));
 	setup.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* emergency setup is identified by msg_type */
 	if (msg_type == GSM48_MT_CC_EMERG_SETUP)
 		setup.emergency = 1;
@@ -2244,7 +2136,7 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&call_conf, 0, sizeof(struct gsm_mncc));
 	call_conf.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 #if 0
 	/* repeat */
 	if (TLVP_PRESENT(&tp, GSM48_IE_REPEAT_CIR))
@@ -2312,7 +2204,7 @@ static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&alerting, 0, sizeof(struct gsm_mncc));
 	alerting.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		alerting.fields |= MNCC_F_FACILITY;
@@ -2419,7 +2311,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&connect, 0, sizeof(struct gsm_mncc));
 	connect.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* use subscriber as connected party number */
 	if (trans->subscr) {
 		connect.fields |= MNCC_F_CONNECTED;
@@ -2492,7 +2384,7 @@ static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&disc, 0, sizeof(struct gsm_mncc));
 	disc.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_CAUSE, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_CAUSE, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		disc.fields |= MNCC_F_CAUSE;
@@ -2579,7 +2471,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
 	rel.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		rel.fields |= MNCC_F_CAUSE;
@@ -2667,7 +2559,7 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
 	rel.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		rel.fields |= MNCC_F_CAUSE;
@@ -2754,7 +2646,7 @@ static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&fac, 0, sizeof(struct gsm_mncc));
 	fac.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_FACILITY, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_FACILITY, 0);
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		fac.fields |= MNCC_F_FACILITY;
@@ -2867,7 +2759,7 @@ static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&dtmf, 0, sizeof(struct gsm_mncc));
 	dtmf.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* keypad facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_KPD_FACILITY)) {
 		dtmf.fields |= MNCC_F_KEYPAD;
@@ -2939,7 +2831,7 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= MNCC_F_BEARER_CAP;
@@ -2981,7 +2873,7 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= MNCC_F_BEARER_CAP;
@@ -3021,7 +2913,7 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, GSM48_IE_CAUSE);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, GSM48_IE_CAUSE);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= GSM48_IE_BEARER_CAP;
@@ -3081,7 +2973,7 @@ static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&notify, 0, sizeof(struct gsm_mncc));
 	notify.callref = trans->callref;
-//	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len);
+//	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len);
 	if (payload_len >= 1)
 		decode_notify(&notify.notify, gh->data);
 
@@ -3115,7 +3007,7 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&user, 0, sizeof(struct gsm_mncc));
 	user.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_USER_USER, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_USER_USER, 0);
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		user.fields |= MNCC_F_USERUSER;
