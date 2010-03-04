@@ -3,14 +3,6 @@
 
 #include <sys/types.h>
 
-struct value_string {
-	unsigned int value;
-	const char *str;
-};
-
-const char *get_value_string(const struct value_string *vs, u_int32_t val);
-int get_string_value(const struct value_string *vs, const char *str);
-
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -656,9 +648,6 @@ const char *btstype2str(enum gsm_bts_type type);
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
-
-char *gsm_band_name(enum gsm_band band);
-enum gsm_band gsm_band_parse(const char *mhz);
 
 extern void *tall_bsc_ctx;
 extern int ipacc_rtp_direct;
