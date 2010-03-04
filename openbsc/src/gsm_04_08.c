@@ -748,7 +748,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm0408_generate_lai(lai, bts->network->country_code,
+	gsm48_generate_lai(lai, bts->network->country_code,
 		     bts->network->network_code, bts->location_area_code);
 
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
@@ -3349,7 +3349,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
-		gsm0408_cc_msg_names[msg_type], trans?(trans->cc.state):0,
+		gsm48_cc_msg_names[msg_type], trans?(trans->cc.state):0,
 		cc_state_names[trans?(trans->cc.state):0]);
 
 	/* Create transaction */
