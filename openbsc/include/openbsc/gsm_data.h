@@ -683,4 +683,6 @@ void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
+int gsm_bts_model_register(struct gsm_bts_model *model);
+
 #endif
