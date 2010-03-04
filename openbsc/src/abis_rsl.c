@@ -1,7 +1,7 @@
 /* GSM Radio Signalling Link messages on the A-bis interface 
  * 3GPP TS 08.58 version 8.6.0 Release 1999 / ETSI TS 100 596 V8.6.0 */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -687,23 +687,13 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 /* Chapter 8.3.1 */
 int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 {
-	u_int8_t l3_len = msg->tail - (u_int8_t *)msgb_l3(msg);
-	struct abis_rsl_rll_hdr *rh;
-
 	if (msg->lchan == NULL) {
 		LOGP(DRSL, LOGL_ERROR, "cannot send DATA REQUEST to unknown lchan\n");
 		return -EINVAL;
 	}
 
-	/* First push the L3 IE tag and length */
-	msgb_tv16_push(msg, RSL_IE_L3_INFO, l3_len);
-
-	/* Then push the RSL header */
-	rh = (struct abis_rsl_rll_hdr *) msgb_push(msg, sizeof(*rh));
-	rsl_init_rll_hdr(rh, RSL_MT_DATA_REQ);
-	rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
-	rh->chan_nr = lchan2chan_nr(msg->lchan);
-	rh->link_id = link_id;
+	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, lchan2chan_nr(msg->lchan),
+			link_id, 1);
 
 	msg->trx = msg->lchan->ts->trx;
 
@@ -714,15 +704,10 @@ int rsl_data_request(struct msgb *msg, u_int8_t link_id)
 /* Chapter 8.3.1 */
 int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id)
 {
-	struct msgb *msg = rsl_msgb_alloc();
-	struct abis_rsl_rll_hdr *rh;
+	struct msgb *msg;
 
-	rh = (struct abis_rsl_rll_hdr *) msgb_put(msg, sizeof(*rh));
-	rsl_init_rll_hdr(rh, RSL_MT_EST_REQ);
-	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
-	rh->chan_nr = lchan2chan_nr(lchan);
-	rh->link_id = link_id;
-
+	msg = rsl_rll_simple(RSL_MT_EST_REQ, lchan2chan_nr(lchan),
+			     link_id, 0);
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
@@ -735,14 +720,11 @@ int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id)
    lchan_free() */
 int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 {
-	struct msgb *msg = rsl_msgb_alloc();
-	struct abis_rsl_rll_hdr *rh;
 
-	rh = (struct abis_rsl_rll_hdr *) msgb_put(msg, sizeof(*rh));
-	rsl_init_rll_hdr(rh, RSL_MT_REL_REQ);
-	//rh->c.msg_discr |= ABIS_RSL_MDISC_TRANSP;
-	rh->chan_nr = lchan2chan_nr(lchan);
-	rh->link_id = link_id;
+	struct msgb *msg;
+
+	msg = rsl_rll_simple(RSL_MT_REL_REQ, lchan2chan_nr(lchan),
+			     link_id, 0);
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
 	lchan->state = LCHAN_S_REL_REQ;
