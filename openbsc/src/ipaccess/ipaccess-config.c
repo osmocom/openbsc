@@ -44,6 +44,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <openbsc/network_listen.h>
 #include <osmocore/talloc.h>
 
 static struct gsm_network *gsmnet;
@@ -115,81 +116,17 @@ static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 	return 0;
 }
 
-struct ipacc_ferr_elem {
-	int16_t freq_err;
-	u_int8_t freq_qual;
-	u_int8_t arfcn;
-} __attribute__((packed));
-
-struct ipacc_cusage_elem {
-	u_int16_t arfcn:10,
-		  rxlev:6;
-} __attribute__ ((packed));
-
-static int test_rep(void *_msg)
+static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
+		      void *handler_data, void *signal_data)
 {
-	struct msgb *msg = _msg;
-	struct abis_om_fom_hdr *foh = msgb_l3(msg);
-	u_int16_t test_rep_len, ferr_list_len;
-	struct ipacc_ferr_elem *ife;
-	struct ipac_bcch_info binfo;
-	int i, rc;
+	struct gsm_bts_trx *trx;
 
-	DEBUGP(DNM, "TEST REPORT: ");
-
-	if (foh->data[0] != NM_ATT_TEST_NO ||
-	    foh->data[2] != NM_ATT_TEST_REPORT)
-		return -EINVAL;
-
-	DEBUGPC(DNM, "test_no=0x%02x ", foh->data[1]);
-	/* data[2] == NM_ATT_TEST_REPORT */
-	/* data[3..4]: test_rep_len */
-	test_rep_len = ntohs(*(u_int16_t *) &foh->data[3]);
-	/* data[5]: ip.access test result */
-	DEBUGPC(DNM, "test_res=%s\n", ipacc_testres_name(foh->data[5]));
-
-	/* data[6]: ip.access nested IE. 3 == freq_err_list */
-	switch (foh->data[6]) {
-	case NM_IPAC_EIE_FREQ_ERR_LIST:
-		/* data[7..8]: length of ferr_list */
-		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
-
-		/* data[9...]: frequency error list elements */
-		for (i = 0; i < ferr_list_len; i+= sizeof(*ife)) {
-			ife = (struct ipacc_ferr_elem *) (foh->data + 9 + i);
-			DEBUGP(DNM, "==> ARFCN %4u, Frequency Error %6hd\n",
-			ife->arfcn, ntohs(ife->freq_err));
-		}
-		break;
-	case NM_IPAC_EIE_CHAN_USE_LIST:
-		/* data[7..8]: length of ferr_list */
-		ferr_list_len = ntohs(*(u_int16_t *) &foh->data[7]);
-
-		/* data[9...]: channel usage list elements */
-		for (i = 0; i < ferr_list_len; i+= 2) {
-			u_int16_t *cu_ptr = (u_int16_t *)(foh->data + 9 + i);
-			u_int16_t cu = ntohs(*cu_ptr);
-			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n",
-				cu & 0x3ff, cu >> 10);
-		}
-		break;
-	case NM_IPAC_EIE_BCCH_INFO_TYPE:
-		break;
-	case NM_IPAC_EIE_BCCH_INFO:
-		rc = ipac_parse_bcch_info(&binfo, foh->data+6);
-		if (rc < 0) {
-			DEBUGP(DNM, "BCCH Info parsing failed\n");
-			break;
-		}
-		DEBUGP(DNM, "==> ARFCN %u, RxLev %2u, RxQual %2u: %3d-%d, LAC %d CI %d\n",
-			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
-			binfo.cgi.mcc, binfo.cgi.mnc,
-			binfo.cgi.lac, binfo.cgi.ci);
-		break;
-	default:
+	switch (signal) {
+	case S_IPAC_NWL_COMPLETE:
+		trx = signal_data;
+		ipac_nwl_test_start(trx, net_listen_testnr);
 		break;
 	}
-
 	return 0;
 }
 
@@ -205,8 +142,6 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_NM_IPACC_ACK:
 		ipacc_data = signal_data;
 		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->trx);
-	case S_NM_TEST_REP:
-		return test_rep(signal_data);
 	case S_NM_IPACC_RESTART_ACK:
 		printf("The BTS has acked the restart. Exiting.\n");
 		exit(0);
@@ -505,12 +440,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
 
-		if (net_listen_testnr) {
-			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-			abis_nm_perform_test(trx->bts, 2, 0, trx->nr, 0xff,
-					     net_listen_testnr, 1,
-					     phys_config, sizeof(phys_config));
-		} else if (software) {
+		if (net_listen_testnr)
+			ipac_nwl_test_start(trx, net_listen_testnr);
+		else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);
 			rc = abis_nm_software_load(trx->bts, trx->nr, software, 19, 0, swload_cbfn, trx);
@@ -861,6 +793,10 @@ int main(int argc, char **argv)
 	bts->oml_tei = stream_id;
 	
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
+	register_signal_handler(SS_IPAC_NWL, nwl_sig_cb, NULL);
+
+	ipac_nwl_init();
+
 	printf("Trying to connect to ip.access BTS ...\n");
 
 	memset(&sin, 0, sizeof(sin));

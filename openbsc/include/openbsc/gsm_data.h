@@ -379,6 +379,9 @@ struct gsm_bts_trx {
 				struct gsm_nm_state nm_state;
 			} pa;
 		} bs11;
+		struct {
+			unsigned int test_state;
+		} ipaccess;
 	};
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };

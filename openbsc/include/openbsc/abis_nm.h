@@ -107,7 +107,7 @@ int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0
 int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
 			 u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
 			 u_int8_t test_nr, u_int8_t auton_report,
-			 u_int8_t *phys_config, u_int16_t phys_config_len);
+			 const u_int8_t *phys_config, u_int16_t phys_config_len);
 
 int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan);
 
