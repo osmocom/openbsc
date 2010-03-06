@@ -27,13 +27,35 @@
 #include <errno.h>
 #include <stdint.h>
 
+#include <arpa/inet.h>
+
 #include <osmocore/talloc.h>
 #include <osmocore/timer.h>
+#include <osmocore/rxlev_stat.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+
+#define WHITELIST_MAX_SIZE ((NUM_ARFCNS*2)+2+1)
+
+int ipac_rxlevstat2whitelist(uint16_t *buf, const struct rxlev_stats *st)
+{
+	int i;
+	unsigned int num_arfcn = 0;
+
+	for (i = NUM_RXLEVS-1; i >= 0; i--) {
+		int16_t arfcn = -1;
+
+		while ((arfcn = rxlev_stat_get_next(st, i, arfcn)) >= 0) {
+			*buf++ = htons(arfcn);
+			num_arfcn++;
+		}
+	}
+
+	return num_arfcn;
+}
 
 enum ipac_test_state {
 	IPAC_TEST_S_IDLE,
@@ -42,17 +64,34 @@ enum ipac_test_state {
 	IPAC_TEST_S_PARTIAL,
 };
 
-int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr)
+int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr,
+			const uint8_t *phys_conf, unsigned int phys_conf_len)
 {
-	const uint8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+	struct msgb *msg;
 
 	if (trx->ipaccess.test_state != IPAC_TEST_S_IDLE) {
 		fprintf(stderr, "Cannot start test in state %u\n", trx->ipaccess.test_state);
 		return -EINVAL;
 	}
 
-	abis_nm_perform_test(trx->bts, 2, 0, trx->nr, 0xff, testnr, 1,
-			     phys_config, sizeof(phys_config));
+	switch (testnr) {
+	case NM_IPACC_TESTNO_CHAN_USAGE:
+		rxlev_stat_reset(&trx->ipaccess.rxlev_stat);
+		break;
+	}
+
+	msg = msgb_alloc_headroom(phys_conf_len+256, 128, "OML");
+
+	if (phys_conf && phys_conf_len) {
+		uint8_t *payload;
+		/* first put the phys conf header */
+		msgb_tv16_put(msg, NM_ATT_PHYS_CONF, phys_conf_len);
+		payload = msgb_put(msg, phys_conf_len);
+		memcpy(payload, phys_conf, phys_conf_len);
+	}
+
+	abis_nm_perform_test(trx->bts, NM_OC_RADIO_CARRIER, 0, trx->nr, 0xff,
+			     testnr, 1, msg);
 
 	/* FIXME: start safety timer until when test is supposed to complete */
 
@@ -113,8 +152,11 @@ static int test_rep(void *_msg)
 		for (i = 0; i < ferr_list_len; i+= 2) {
 			uint16_t *cu_ptr = (uint16_t *)(foh->data + 9 + i);
 			uint16_t cu = ntohs(*cu_ptr);
-			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n",
-				cu & 0x3ff, cu >> 10);
+			uint16_t arfcn = cu & 0x3ff;
+			uint8_t rxlev = cu >> 10;
+			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n", arfcn, rxlev);
+			rxlev_stat_input(&msg->trx->ipaccess.rxlev_stat,
+					 arfcn, rxlev);
 		}
 		break;
 	case NM_IPAC_EIE_BCCH_INFO_TYPE:
@@ -141,6 +183,7 @@ static int test_rep(void *_msg)
 	case NM_IPACC_TESTRES_NO_CHANS:
 		msg->trx->ipaccess.test_state = IPAC_TEST_S_IDLE;
 		/* Send signal to notify higher layers of test completion */
+		DEBUGP(DNM, "dispatching S_IPAC_NWL_COMPLETE signal\n");
 		dispatch_signal(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
 		break;
 	case NM_IPACC_TESTRES_PARTIAL:
@@ -154,8 +197,6 @@ static int test_rep(void *_msg)
 static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
-	struct ipacc_ack_signal_data *ipacc_data;
-
 	switch (signal) {
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);

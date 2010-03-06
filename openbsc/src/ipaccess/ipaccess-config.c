@@ -116,6 +116,8 @@ static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 	return 0;
 }
 
+const uint8_t phys_conf[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+
 static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
@@ -124,7 +126,11 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_IPAC_NWL_COMPLETE:
 		trx = signal_data;
-		ipac_nwl_test_start(trx, net_listen_testnr);
+		DEBUGP(DNM, "received S_IPAC_NWL_COMPLETE signal\n");
+		rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
+		DEBUGP(DNM, "starting next test\n");
+		ipac_nwl_test_start(trx, net_listen_testnr, phys_conf,
+				    sizeof(phys_conf));
 		break;
 	}
 	return 0;
@@ -441,7 +447,8 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		struct gsm_bts_trx *trx = obj;
 
 		if (net_listen_testnr)
-			ipac_nwl_test_start(trx, net_listen_testnr);
+			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf,
+					    sizeof(phys_conf));
 		else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);

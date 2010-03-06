@@ -7,6 +7,7 @@
 void ipac_nwl_init(void);
 
 /* Start a NWL test.  It will raise the S_IPAC_TEST_COMPLETE signal. */
-int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr);
+int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr,
+			const uint8_t *phys_conf, unsigned int phys_conf_len);
 
 #endif /* _OPENBSC_NWL_H */
