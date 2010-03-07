@@ -426,7 +426,7 @@ static int gsm340_gen_oa(u_int8_t *oa, unsigned int oa_len,
 
 	oa[1] = 0xb9; /* networks-specific number, private numbering plan */
 
-	len_in_bytes = encode_bcd_number(oa, oa_len, 1, subscr->extension);
+	len_in_bytes = gsm48_encode_bcd_number(oa, oa_len, 1, subscr->extension);
 
 	/* GSM 03.40 tells us the length is in 'useful semi-octets' */
 	oa[0] = strlen(subscr->extension) & 0xff;
@@ -551,7 +551,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	/* mangle first byte to reflect length in bytes, not digits */
 	address_lv[0] = da_len_bytes - 1;
 	/* convert to real number */
-	decode_bcd_number(gsms->dest_addr, sizeof(gsms->dest_addr), address_lv, 1);
+	gsm48_decode_bcd_number(gsms->dest_addr, sizeof(gsms->dest_addr), address_lv, 1);
 	smsp += da_len_bytes;
 
 	gsms->protocol_id = *smsp++;
