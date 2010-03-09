@@ -116,21 +116,63 @@ static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 	return 0;
 }
 
-const uint8_t phys_conf[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
+static const uint8_t phys_conf_min[] = { 0x02 };
+
+static uint16_t build_physconf(uint8_t *physconf_buf, const struct rxlev_stats *st)
+{
+	uint16_t *whitelist = (uint16_t *) (physconf_buf + 4);
+	int num_arfcn;
+	unsigned int arfcnlist_size;
+
+	/* Create whitelist from rxlevels */
+	physconf_buf[0] = phys_conf_min[0];
+	physconf_buf[1] = NM_IPAC_EIE_ARFCN_WHITE;
+	num_arfcn = ipac_rxlevstat2whitelist(whitelist, st);
+	arfcnlist_size = num_arfcn; // * 2;
+	*((uint16_t *) (physconf_buf+2)) = htons(arfcnlist_size);
+	printf("pc_buf (%s)\n", hexdump(physconf_buf, arfcnlist_size+4));
+	return arfcnlist_size+4;
+}
 
 static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
 {
 	struct gsm_bts_trx *trx;
+	uint8_t physconf_buf[2*NUM_ARFCNS+16];
+	uint16_t physconf_len;
 
 	switch (signal) {
 	case S_IPAC_NWL_COMPLETE:
 		trx = signal_data;
 		DEBUGP(DNM, "received S_IPAC_NWL_COMPLETE signal\n");
-		rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
-		DEBUGP(DNM, "starting next test\n");
-		ipac_nwl_test_start(trx, net_listen_testnr, phys_conf,
-				    sizeof(phys_conf));
+		switch (trx->ipaccess.test_nr) {
+		case NM_IPACC_TESTNO_CHAN_USAGE:
+			/* Dump RxLev results */
+			rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
+			/* Create whitelist from results */
+			physconf_len = build_physconf(physconf_buf,
+						      &trx->ipaccess.rxlev_stat);
+			/* Start next test abbout BCCH channel usage */
+			ipac_nwl_test_start(trx, NM_IPACC_TESTNO_BCCH_CHAN_USAGE,
+					    physconf_buf, physconf_len);
+			break;
+		case NM_IPACC_TESTNO_BCCH_CHAN_USAGE:
+			/* Dump BCCH RxLev results */
+			rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
+			/* Create whitelist from results */
+			physconf_len = build_physconf(physconf_buf,
+						      &trx->ipaccess.rxlev_stat);
+			/* Start next test about BCCH info */
+			ipac_nwl_test_start(trx, NM_IPACC_TESTNO_BCCH_INFO,
+					    physconf_buf, physconf_len);
+			break;
+		case NM_IPAC_EIE_BCCH_INFO:
+			/* re-start full process with CHAN_USAGE */
+			DEBUGP(DNM, "starting next test cycle\n");
+			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
+					    sizeof(phys_conf_min));
+			break;
+		}
 		break;
 	}
 	return 0;
@@ -447,8 +489,8 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		struct gsm_bts_trx *trx = obj;
 
 		if (net_listen_testnr)
-			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf,
-					    sizeof(phys_conf));
+			ipac_nwl_test_start(trx, net_listen_testnr,
+					    phys_conf_min, sizeof(phys_conf_min));
 		else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);

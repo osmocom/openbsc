@@ -76,6 +76,7 @@ int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr,
 
 	switch (testnr) {
 	case NM_IPACC_TESTNO_CHAN_USAGE:
+	case NM_IPACC_TESTNO_BCCH_CHAN_USAGE:
 		rxlev_stat_reset(&trx->ipaccess.rxlev_stat);
 		break;
 	}
@@ -92,6 +93,7 @@ int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr,
 
 	abis_nm_perform_test(trx->bts, NM_OC_RADIO_CARRIER, 0, trx->nr, 0xff,
 			     testnr, 1, msg);
+	trx->ipaccess.test_nr = testnr;
 
 	/* FIXME: start safety timer until when test is supposed to complete */
 

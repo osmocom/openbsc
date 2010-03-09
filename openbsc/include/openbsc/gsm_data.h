@@ -383,6 +383,7 @@ struct gsm_bts_trx {
 		} bs11;
 		struct {
 			unsigned int test_state;
+			u_int8_t test_nr;
 			struct rxlev_stats rxlev_stat;
 		} ipaccess;
 	};
