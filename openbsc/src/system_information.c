@@ -249,7 +249,7 @@ static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2);
 }
 
-struct gsm48_si_ro_info si_info = {
+static struct gsm48_si_ro_info si_info = {
 	.selection_params = {
 		.present = 0,
 	},
@@ -464,6 +464,8 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 
 int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
 {
+	si_info.gprs_ind.present = bts->gprs.enabled;
+
 	switch (type) {
 	case RSL_SYSTEM_INFO_1:
 		return generate_si1(output, bts);
