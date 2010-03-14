@@ -696,4 +696,6 @@ int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
+int gsm_bts_model_register(struct gsm_bts_model *model);
+
 #endif
