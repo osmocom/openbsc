@@ -1633,6 +1633,11 @@ DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	bts->gprs.cell.bvci = atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -1644,6 +1649,11 @@ DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	bts->gprs.nsvc[idx].nsvci = atoi(argv[1]);
 
@@ -1657,6 +1667,11 @@ DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	bts->gprs.nsvc[idx].local_port = atoi(argv[1]);
 
 	return CMD_SUCCESS;
@@ -1668,6 +1683,11 @@ DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	bts->gprs.nsvc[idx].remote_port = atoi(argv[1]);
 
@@ -1682,6 +1702,11 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	int idx = atoi(argv[0]);
 	struct in_addr ia;
 
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	inet_aton(argv[1], &ia);
 	bts->gprs.nsvc[idx].remote_ip = ntohl(ia.s_addr);
 
@@ -1693,6 +1718,11 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	"GPRS Routing Area Code")
 {
 	struct gsm_bts *bts = vty->index;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	bts->gprs.rac = atoi(argv[0]);
 
