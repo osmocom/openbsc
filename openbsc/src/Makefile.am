@@ -4,7 +4,7 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
                 isdnsync bsc_mgcp ipaccess-proxy
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libsgsn.a
 noinst_HEADERS = vty/cardshell.h
 
 bscdir = $(libdir)
@@ -19,6 +19,9 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
 		bts_unknown.c bsc_version.c bsc_api.c
 
+libsgsn_a_SOURCES = gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
+		crc24.c gprs_sgsn.c
+
 libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
 		token_auth.c rrlp.c gsm_04_80.c ussd.c silent_call.c \
@@ -30,7 +33,7 @@ libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
 libsccp_a_SOURCES = sccp/sccp.c
 
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
-bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
+bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libsgsn.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
