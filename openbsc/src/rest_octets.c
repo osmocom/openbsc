@@ -350,7 +350,7 @@ int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 		bitvec_set_bit(&bv, H);
 		bitvec_set_uint(&bv, si13->bcch_change_mark, 3);
 		bitvec_set_uint(&bv, si13->si_change_field, 4);
-		if (0) {
+		if (1) {
 			bitvec_set_bit(&bv, 0);
 		} else {
 			bitvec_set_bit(&bv, 1);

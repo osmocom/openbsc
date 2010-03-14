@@ -278,6 +278,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
+	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -313,6 +314,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
+	vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac, VTY_NEWLINE);
+	vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
+		VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++)
+		vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
+			bts->gprs.cell.bvci, VTY_NEWLINE);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -1604,6 +1611,40 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_bvci, cfg_bts_gprs_bvci_cmd,
+	"gprs cell bvci <0-65535>",
+	"GPRS BSSGP VC Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->gprs.cell.bvci = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
+	"gprs nsvc <0-1> nsvci <0-65535>",
+	"GPRS NS VC Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	bts->gprs.nsvc[idx].nsvci = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
+	"gprs routing area <0-255>",
+	"GPRS Routing Area Code")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->gprs.rac = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1865,7 +1906,9 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
-
+	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <ctype.h>
 
+#include <netinet/in.h>
+
 #include <openbsc/gsm_data.h>
 #include <osmocore/talloc.h>
 #include <osmocore/gsm_utils.h>
@@ -457,6 +459,50 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 	if (policy > ARRAY_SIZE(gsm_auth_policy_names))
 		return "undefined";
 	return gsm_auth_policy_names[policy];
+}
+
+/* this should not be here but in gsm_04_08... but that creates
+   in turn a dependency nightmare (abis_nm depending on 04_08, ...) */
+static int gsm48_construct_ra(u_int8_t *buf, const struct gprs_ra_id *raid)
+{
+	u_int16_t mcc = raid->mcc;
+	u_int16_t mnc = raid->mnc;
+
+	buf[0] = ((mcc / 100) % 10) | (((mcc / 10) % 10) << 4);
+	buf[1] = (mcc % 10);
+
+	/* I wonder who came up with the stupidity of encoding the MNC
+	 * differently depending on how many digits its decimal number has! */
+	if (mnc < 100) {
+		buf[1] |= 0xf0;
+		buf[2] = ((mnc / 10) % 10) | ((mnc % 10) << 4);
+	} else {
+		buf[1] |= (mnc % 10) << 4;
+		buf[2] = ((mnc / 100) % 10) | (((mcc / 10) % 10) << 4);
+	}
+
+	*(u_int16_t *)(buf+3) = htons(raid->lac);
+
+	buf[5] = raid->rac;
+
+	return 6;
+}
+
+void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
+{
+	raid->mcc = bts->network->country_code;
+	raid->mnc = bts->network->network_code;
+	raid->lac = bts->location_area_code;
+	raid->rac = bts->gprs.rac;
+}
+
+int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts)
+{
+	struct gprs_ra_id raid;
+
+	gprs_ra_id_by_bts(&raid, bts);
+
+	return gsm48_construct_ra(buf, &raid);
 }
 
 static const char *rrlp_mode_names[] = {

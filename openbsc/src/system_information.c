@@ -264,7 +264,7 @@ struct gsm48_si_ro_info si_info = {
 	.gprs_ind = {
 		.si13_position = 0,
 		.ra_colour = 0,
-		.present = 0,
+		.present = 1,
 	},
 	.lsa_params = {
 		.present = 0,
@@ -398,9 +398,9 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 static struct gsm48_si13_info si13_default = {
 	.cell_opts = {
 		.nmo 		= GPRS_NMO_III,
-		.t3168		= 1000,
-		.t3192		= 1000,
-		.drx_timer_max	= 1,
+		.t3168		= 1500,
+		.t3192		= 500,
+		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
 	},
 	.pwr_ctrl_pars = {
@@ -410,17 +410,29 @@ static struct gsm48_si13_info si13_default = {
 		.pc_meas_chan	= 0, 	/* downling measured on CCCH */
 		.n_avg_i	= 15,
 	},
-	.bcch_change_mark	= 0,
+	.bcch_change_mark	= 1,
 	.si_change_field	= 0,
 	.pbcch_present		= 0,
 	{
 		.no_pbcch = {
-			.rac		= 0,
+			.rac		= 0,	/* needs to be patched */
 			.spgc_ccch_sup 	= 0,
 			.net_ctrl_ord	= 0,
-			.prio_acc_thr	= 0,
+			.prio_acc_thr	= 6,
 		},
 	},
+};
+
+static u_int8_t si13_template[] = {
+	0x09, 0x06, 0x00,
+#if 0
+       /* This is what our system_information branch geneates */
+       0x2a, 0x01, 0x00, 0x04, 0x00, 0xd8, 0xa5, 0xef, 0xff, 0xf7,
+#else
+       /* This is what Dieter has sent me as hand-coded example */
+       0x90, 0x00, 0x58, 0x98, 0x6f, 0xc9, 0x70, 0x4a, 0x84, 0x10,
+#endif
+       0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b, 0x2b,
 };
 
 static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
@@ -435,11 +447,17 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 	si13->header.skip_indicator = 0;
 	si13->header.system_information = GSM48_MT_RR_SYSINFO_13;
 
+	si13_default.no_pbcch.rac = bts->gprs.rac;
+
 	ret = rest_octets_si13(si13->rest_octets, &si13_default);
 	if (ret < 0)
 		return ret;
 
 	si13->header.l2_plen = ret & 0xff;
+
+	printf("SI13 template : %s\n", hexdump(si13_template, GSM_MACBLOCK_LEN));
+	printf("SI13 generated: %s\n", hexdump(si13, GSM_MACBLOCK_LEN));
+	//memcpy(si13, si13_template, sizeof(si13_template));
 
 	return sizeof (*si13) + ret;
 }

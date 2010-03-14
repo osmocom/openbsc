@@ -856,27 +856,19 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	const u_int8_t *sw_config;
 	int sw_config_len;
 	int file_id_len;
-	int nack = 0;
 	int ret;
 
 	debugp_foh(foh);
 
 	DEBUGPC(DNM, "SW Activate Request: ");
 
-	if (foh->obj_class >= 0xf0 && foh->obj_class <= 0xf3) {
-		DEBUGPC(DNM, "NACKing for GPRS obj_class 0x%02x\n", foh->obj_class);
-		nack = 1;
-	} else
-		DEBUGPC(DNM, "ACKing and Activating\n");
+	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
 
 	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
-				      foh->obj_inst.ts_nr, nack,
+				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
-
-	if (nack)
-		return ret;
 
 	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
@@ -2881,6 +2873,14 @@ int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 				     attr, attr_len);
 }
 
+void abis_nm_ipaccess_cgi(u_int8_t *buf, struct gsm_bts *bts)
+{
+	/* we simply reuse the GSM48 function and overwrite the RAC
+	 * with the Cell ID */
+	gsm48_ra_id_by_bts(buf, bts);
+	*((u_int16_t *)(buf + 5)) = htons(bts->cell_identity);
+}
+
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
 {
 	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
@@ -3000,5 +3000,3 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 
 	return 0;
 }
-
-

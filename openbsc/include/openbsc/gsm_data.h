@@ -374,6 +374,7 @@ struct gsm_envabtse {
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
 	int id;
+	u_int16_t nsvci;
 	struct gsm_nm_state nm_state;
 };
 
@@ -467,8 +468,10 @@ struct gsm_bts {
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
+			u_int16_t bvci;
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
+		u_int8_t rac;
 	} gprs;
 	
 	/* transceivers */
@@ -681,6 +684,16 @@ const char *rrlp_mode_name(enum rrlp_mode mode);
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
+/* A parsed GPRS routing area */
+struct gprs_ra_id {
+	u_int16_t	mnc;
+	u_int16_t	mcc;
+	u_int16_t	lac;
+	u_int8_t	rac;
+};
+
+int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
+void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
 int gsm_bts_model_register(struct gsm_bts_model *model);
