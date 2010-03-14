@@ -330,7 +330,6 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 	NM_ATT_BSIC, HARDCODED_BSIC,
-	/* FIXME: do not hardcode the CGI */
 	NM_ATT_IPACC_CGI, 0, 7,  0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x00,
 };
 
