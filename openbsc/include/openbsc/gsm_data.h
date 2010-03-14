@@ -375,6 +375,9 @@ struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
 	int id;
 	u_int16_t nsvci;
+	u_int16_t local_port;
+	u_int16_t remote_port;
+	u_int32_t remote_ip;
 	struct gsm_nm_state nm_state;
 };
 
@@ -463,6 +466,7 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
+		int enabled;
 		struct {
 			struct gsm_nm_state nm_state;
 		} nse;

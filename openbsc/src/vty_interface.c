@@ -1,5 +1,5 @@
 /* OpenBSC interface to quagga VTY */
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -314,12 +314,28 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
-	vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac, VTY_NEWLINE);
-	vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
-		VTY_NEWLINE);
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++)
-		vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
-			bts->gprs.cell.bvci, VTY_NEWLINE);
+	vty_out(vty, "  gprs enabled %u%s", bts->gprs.enabled, VTY_NEWLINE);
+	if (bts->gprs.enabled) {
+		vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
+			VTY_NEWLINE);
+		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
+			VTY_NEWLINE);
+		for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+			struct gsm_bts_gprs_nsvc *nsvc =
+						&bts->gprs.nsvc[i];
+			struct in_addr ia;
+
+			ia.s_addr = htonl(nsvc->remote_ip);
+			vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
+				nsvc->nsvci, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
+				nsvc->local_port, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
+				nsvc->remote_port, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
+				inet_ntoa(ia), VTY_NEWLINE);
+		}
+	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -1611,7 +1627,7 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_gprs_bvci, cfg_bts_gprs_bvci_cmd,
+DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
 	"gprs cell bvci <0-65535>",
 	"GPRS BSSGP VC Identifier")
 {
@@ -1634,6 +1650,44 @@ DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
+	"gprs nsvc <0-1> local udp port <0-65535>",
+	"GPRS NS Local UDP Port")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	bts->gprs.nsvc[idx].local_port = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
+	"gprs nsvc <0-1> remote udp port <0-65535>",
+	"GPRS NS Remote UDP Port")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	bts->gprs.nsvc[idx].remote_port = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
+	"gprs nsvc <0-1> remote ip A.B.C.D",
+	"GPRS NS Remote IP Address")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+	struct in_addr ia;
+
+	inet_aton(argv[1], &ia);
+	bts->gprs.nsvc[idx].remote_ip = ntohl(ia.s_addr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	"gprs routing area <0-255>",
 	"GPRS Routing Area Code")
@@ -1641,6 +1695,17 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	struct gsm_bts *bts = vty->index;
 
 	bts->gprs.rac = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_enabled, cfg_bts_gprs_enabled_cmd,
+	"gprs enabled <0-1>",
+	"GPRS Enabled on this BTS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->gprs.enabled = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1906,9 +1971,13 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_enabled_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rip_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

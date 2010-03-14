@@ -870,8 +870,13 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
 	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;
 
-	/* FIXME: patch our own IP address as SGSN IP */
-	//nanobts_attr_nsvc0[10] = 
+	/* patch IP address as SGSN IP */
+	*(u_int16_t *)(nanobts_attr_nsvc0+8) =
+				htons(bts->gprs.nsvc[0].remote_port);
+	*(u_int32_t *)(nanobts_attr_nsvc0+10) =
+				htonl(bts->gprs.nsvc[0].remote_ip);
+	*(u_int16_t *)(nanobts_attr_nsvc0+14) =
+				htons(bts->gprs.nsvc[0].local_port);
 
 	/* patch BVCI */
 	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
