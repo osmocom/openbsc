@@ -34,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <mISDNif.h>
+#include <dahdi/user.h>
 
 //#define AF_COMPATIBILITY_FUNC
 //#include <compat_af_isdn.h>
@@ -106,17 +107,20 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	hh = (struct mISDNhead *) msg->data;
 
-	ret = read(bfd->fd, &msg->data, TS1_ALLOC_SIZE - 16);
+	ret = read(bfd->fd, msg->data, TS1_ALLOC_SIZE - 16);
 	if (ret < 0) {
 		perror("read ");
 	}
-	msgb_put(msg, ret);
+	msgb_put(msg, ret - 2);
 	if (ret <= 3) {
 		perror("read ");
 	}
 
-	DEBUGP(DMI, "<= len = %d, prim(0x%x) id(0x%x): %s\n",
-		ret, hh->prim, hh->id, get_prim_name(hh->prim));
+	l2addr.sapi = msg->data[0] >> 2;
+	l2addr.tei = msg->data[1] >> 1;
+
+	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)",
+		ret, l2addr.sapi, l2addr.tei);
 
 	int		ilen;
 	lapd_mph_type prim;
@@ -127,6 +131,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		case LAPD_MPH_ACTIVATE_IND: hh->prim = MPH_ACTIVATE_IND; break;
 		case LAPD_MPH_DEACTIVATE_IND: hh->prim = MPH_DEACTIVATE_IND; break;
 		case LAPD_DL_DATA_IND: hh->prim = DL_DATA_IND; break;
+		case LAPD_DL_UNITDATA_IND: hh->prim = DL_UNITDATA_IND; break;
 		default: printf("ERROR: unknown prim\n");
 	};
 
@@ -136,8 +141,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return 0;
 	};
 
-	l2addr.sapi = msg->data[0] >> 2;
-	l2addr.tei = msg->data[1] >> 1;
+	//l2addr.sapi = msg->data[0] >> 2;
+	//l2addr.tei = msg->data[1] >> 1;
 	msgb_pull(msg, 2);
 
 #if 0
@@ -223,6 +228,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 
 
+	DEBUGP(DMI, "hh->prim %08x\n", hh->prim);
 #if 1
 	switch (hh->prim) {
 	case DL_INFORMATION_IND:
@@ -239,6 +245,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		/* save the channel number in the driver private struct */
 		link->driver.misdn.channel = l2addr.channel;
 		break;
+	case MPH_ACTIVATE_IND:
 	case DL_ESTABLISH_IND:
 		DEBUGP(DMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
@@ -251,8 +258,11 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:
-		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		if (hh->prim == DL_DATA_IND)
+			msg->l2h = msg->data + 2;
+		else
+			msg->l2h = msg->data + 1;
+		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	case PH_ACTIVATE_IND:
@@ -267,6 +277,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	}
 #endif
+	DEBUGP(DMI, "Returned ok\n");
 	return ret;
 }
 
@@ -275,8 +286,10 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 	/* We never include the mISDN B-Channel FD into the
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */		
-	if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
+	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
+		fprintf(stderr, "Trying to write TRAU ts\n");
 		return 0;
+	}
 
 	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
 
@@ -291,6 +304,17 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
+static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
+{
+	struct bsc_fd *bfd = cbdata;
+	int ret;
+
+	ret = write(bfd->fd, data, len + 2);
+
+	if (ret < 0)
+		fprintf(stderr, "%s write failed %d\n", __func__, ret);
+}
+
 static int handle_ts1_write(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -299,7 +323,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
 	//u_int8_t *l2_data;
-	int ret;
+	//int ret;
 	//int no_oml = 0;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -311,17 +335,14 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-#if 0
-	DEBUGP(DMI, "TX TEI(%d) SAPI(%d): %s\n", sign_link->tei,
-		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
-#endif
-
 	lapd_transmit(sign_link->tei, msg->data, msg->len, bfd);
 
-	ret = write(bfd->fd, msg->data, msg->len + 2);
+	//ret = write(bfd->fd, msg->data, msg->len + 2);
 
+#if 0
 	if (ret < 0)
 		fprintf(stderr, "%s write failed %d\n", __func__, ret);
+#endif
 	msgb_free(msg);
 
 	/* set tx delay timer for next event */
@@ -329,82 +350,105 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 50000);
 
-	return ret;
+	return 0;
 }
 
-#define BCHAN_TX_GRAN	160
+
+static int invertbits = 1;
+
+static u_int8_t flip_table[256];
+
+static void init_flip_bits(void)
+{
+        int i,k;
+
+        for (i = 0 ; i < 256 ; i++) {
+                u_int8_t sample = 0 ;
+                for (k = 0; k<8; k++) {
+                        if ( i & 1 << k ) sample |= 0x80 >>  k;
+                }
+                flip_table[i] = sample;
+        }
+}
+
+static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
+{
+        int i;
+        char * start = buf;
+
+        for (i = 0 ; i < len; i++) {
+                buf[i] = flip_table[(u_int8_t)buf[i]];
+        }
+
+        return start;
+}
+
+#define D_BCHAN_TX_GRAN 1024
 /* write to a B channel TS */
 static int handle_tsX_write(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct mISDNhead *hh;
-	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	u_int8_t tx_buf[D_BCHAN_TX_GRAN];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 
-	hh = (struct mISDNhead *) tx_buf;
-	hh->prim = PH_DATA_REQ;
+	ret = subchan_mux_out(mx, tx_buf, D_BCHAN_TX_GRAN);
 
-	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
+	if (ret != D_BCHAN_TX_GRAN) {
+		fprintf(stderr, "Huh, got ret of %d\n", ret);
+		if (ret < 0)
+			return ret;
+	}
 
 	DEBUGP(DMIB, "BCHAN TX: %s\n",
-		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
+		hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
-	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
-	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
-		DEBUGP(DMIB, "send returns %d instead of %lu\n", ret,
-			sizeof(*hh) + BCHAN_TX_GRAN);
+	if (invertbits) {
+		flip_buf_bits(tx_buf, ret);
+	}
+
+	ret = write(bfd->fd, tx_buf, ret);
+	if (ret < D_BCHAN_TX_GRAN)
+		fprintf(stderr, "send returns %d instead of %lu\n", ret,
+			D_BCHAN_TX_GRAN);
 
 	return ret;
 }
 
-#define TSX_ALLOC_SIZE 4096
+#define D_TSX_ALLOC_SIZE 1024
 /* FIXME: read from a B channel TS */
 static int handle_tsX_read(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct msgb *msg = msgb_alloc(TSX_ALLOC_SIZE, "DAHDI TSx");
-	struct mISDNhead ah;
-	struct mISDNhead *hh = &ah;
+	struct msgb *msg = msgb_alloc(D_TSX_ALLOC_SIZE, "DAHDI TSx");
 	int ret;
 
 	if (!msg)
 		return -ENOMEM;
 
-	hh = (struct mISDNhead *) msg->data;
-
-	ret = read(bfd->fd, msg->data, TSX_ALLOC_SIZE);
-	if (ret < 0) {
-		fprintf(stderr, "read error  %s\n", strerror(errno));
+	ret = read(bfd->fd, msg->data, D_TSX_ALLOC_SIZE);
+	if (ret < 0 || ret != D_TSX_ALLOC_SIZE) {
+		fprintf(stderr, "read error  %d %s\n", ret, strerror(errno));
 		return ret;
 	}
 
-	msgb_put(msg, ret - 2);
-
-	if (hh->prim != PH_CONTROL_IND)
-		DEBUGP(DMIB, "<= BCHAN len = %d, prim(0x%x) id(0x%x): %s\n",
-			ret, hh->prim, hh->id, get_prim_name(hh->prim));
-
-	switch (hh->prim) {
-	case PH_DATA_IND:
-		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMIB, "BCHAN RX: %s\n",
-			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
-		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
-		break;
-	case PH_ACTIVATE_IND:
-	case PH_DATA_CNF:
-		/* physical layer indicates that data has been sent,
-		 * we thus can send some more data */
-		ret = handle_tsX_write(bfd);
-	default:
-		break;
+	if (invertbits) {
+		flip_buf_bits(msg->data, ret);
 	}
-	/* FIXME: why do we free signalling msgs in the caller, and trau not? */
+
+	msgb_put(msg, ret);
+
+	msg->l2h = msg->data;
+	DEBUGP(DMIB, "BCHAN RX: %s\n",
+		hexdump(msgb_l2(msg), ret));
+	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
+	/* physical layer indicates that data has been sent,
+	 * we thus can send some more data */
+	//ret = handle_tsX_write(bfd);
 	msgb_free(msg);
 
 	return ret;
@@ -429,6 +473,8 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	case E1INP_TS_TYPE_TRAU:
 		if (what & BSC_FD_READ)
 			rc = handle_tsX_read(bfd);
+		if (what & BSC_FD_WRITE)
+			rc = handle_tsX_write(bfd);
 		/* We never include the mISDN B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */		
@@ -472,6 +518,39 @@ struct e1inp_driver dahdi_driver = {
 	.want_write = ts_want_write,
 };
 
+void dahdi_set_bufinfo(int fd, int as_sigchan)
+{
+	struct dahdi_bufferinfo bi;
+	int x = 0;
+
+	if (ioctl(fd, DAHDI_GET_BUFINFO, &bi)) {
+		fprintf(stderr, "Error getting bufinfo\n");
+		exit(-1);
+	}
+
+	if (as_sigchan) {
+		bi.numbufs = 4;
+		bi.bufsize = 512;
+	} else {
+		bi.numbufs = 4;
+		bi.bufsize = D_BCHAN_TX_GRAN;
+		//bi.txbufpolicy = DAHDI_POLICY_WHEN_FULL;
+	}
+
+	if (ioctl(fd, DAHDI_SET_BUFINFO, &bi)) {
+		fprintf(stderr, "Error setting bufinfo\n");
+		exit(-1);
+	}
+
+	if (!as_sigchan) {
+		if (ioctl(fd, DAHDI_AUDIOMODE, &x)) {
+			fprintf(stderr, "Error setting bufinfo\n");
+			exit(-1);
+		}
+	}
+
+}
+
 static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 {
 	int ts, ret;
@@ -493,15 +572,27 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			continue;
 			break;
 		case E1INP_TS_TYPE_SIGN:
-			bfd->fd = open(openstr, O_RDWR);
+			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
+			if (bfd->fd == -1) {
+				fprintf(stderr, "%s could not open %s %s\n",
+					__func__, openstr, strerror(errno));
+				exit(-1);
+			}
 			bfd->when = BSC_FD_READ;
+			dahdi_set_bufinfo(bfd->fd, 1);
 			break;
 		case E1INP_TS_TYPE_TRAU:
-			bfd->fd = open(openstr, O_RDWR);
+			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
+			if (bfd->fd == -1) {
+				fprintf(stderr, "%s could not open %s %s\n",
+					__func__, openstr, strerror(errno));
+				exit(-1);
+			}
+			dahdi_set_bufinfo(bfd->fd, 0);
 			/* We never include the mISDN B-Channel FD into the
 	 		* writeset, since it doesn't support poll() based
 	 		* write flow control */		
-			bfd->when = BSC_FD_READ;
+			bfd->when = BSC_FD_READ | BSC_FD_WRITE;
 			break;
 		}
 
@@ -580,10 +671,13 @@ int mi_e1_line_update(struct e1inp_line *line)
 		return -EINVAL;
 	}
 #endif
+	init_flip_bits();
 
 	ret = mi_e1_setup(line, 1);
 	if (ret)
 		return ret;
+
+	lapd_transmit_cb = dahdi_write_msg;
 
 	return 0;
 }
