@@ -197,7 +197,7 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 	//DEBUG_LAPD("  address sapi %x tei %d cmd %d cr %d\n", sapi, tei, command, cr);
 
 	if (len < 3) {
-		DEBUG_LAPD("len %d < 4\n", len);
+		DEBUG_LAPD("len %d < 3\n", len);
 		return NULL;
 	};
 
@@ -260,7 +260,7 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 			case LAPD_CMD_I: {
 				if (ns != teip->vr) {
 					DEBUG_LAPD("ns %d != vr %d\n", ns, teip->vr);
-					if (ns == teip->vr-1) {
+					if (ns == ((teip->vr-1) & 0x7f)) {
 						DEBUG_LAPD("DOUBLE FRAME, ignoring\n");
 						cmd = 0; // ignore
 					} else {
@@ -268,11 +268,13 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 					};
 				} else {
 					//printf("IN SEQUENCE\n");
+					teip->vr = (ns + 1) & 0x7f; // FIXME: hack!
 				};
-				teip->vr = (ns + 1) & 0x7f; // FIXME: hack!
 
 				
 				break; }
+			case LAPD_CMD_UI:
+				break;
 			case LAPD_CMD_SABME: {
 				teip->vs = 0;
 				teip->vr = 0;
@@ -285,10 +287,32 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 				resp[l++] = (tei << 1) | 1;
 				resp[l++] = 0x73;
 				lapd_transmit_cb(resp, l, cbdata);
+				if (teip->state != LAPD_TEI_ACTIVE) {
+					if (teip->state == LAPD_TEI_ASSIGNED) {
+						lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
+						//printf("ASSIGNED and ACTIVE\n");
+					} else {
+#if 0
+						DEBUG_LAPD("rr in strange state, send rej\n");
+
+						// rej
+						uint8_t resp[8];
+						int l = 0;
+						resp[l++] = (teip->sapi << 2) | (network_side ? 0 : 2);
+						resp[l++] = (tei << 1) | 1;
+						resp[l++] = 0x09; //rej
+						resp[l++] = ((teip->vr+1) << 1) | 0;
+						lapd_transmit_cb(resp, l, cbdata);
+						pf = 0; // dont reply
+#endif
+					};
+				};
 				
+				*prim = LAPD_MPH_ACTIVATE_IND;
 				break; }
 			case LAPD_CMD_RR: {
 				teip->va = (nr & 0x7f);
+#if 0
 				if (teip->state != LAPD_TEI_ACTIVE) {
 					if (teip->state == LAPD_TEI_ASSIGNED) {
 						lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
@@ -310,6 +334,7 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 #endif
 					};
 				};
+#endif
 				if (pf) {
 					// interrogating us, send rr
 					uint8_t resp[8];
@@ -356,6 +381,7 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 		// lapd <- S RR sapi 3e tei  25 cmd 0 pf 0 ns  -1 nr   5 ilen 0 teip 0x613800 vs 7 va 5 vr 2 len 4
 
 		// interrogating us, send rr
+		DEBUG_LAPD("Sending RR response\n");
 		uint8_t resp[8];
 		int l = 0;
 		resp[l++] = data[0];
@@ -365,9 +391,14 @@ uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, vo
 
 		lapd_transmit_cb(resp, l, cbdata);
 
-		*prim = LAPD_DL_DATA_IND;
+		if (cmd != 0) {
+			*prim = LAPD_DL_DATA_IND;
+			return contents;
+		}
+	} else if (tei != 127 && typ == LAPD_TYPE_U && cmd == LAPD_CMD_UI) {
+		*prim = LAPD_DL_UNITDATA_IND;
 		return contents;
-	};
+	}
 
 	return NULL;
 };
