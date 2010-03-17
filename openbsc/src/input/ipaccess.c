@@ -603,21 +603,20 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return rc;
 }
 
-/* declare this as a weak symbol to ensure code will still build
- * even if it does not provide this function */
-extern int gprs_ns_rcvmsg(struct msgb *msg) __attribute__((weak));
-
-static struct msgb *read_gprs_msg(struct bsc_fd *bfd, int *error)
+static struct msgb *read_gprs_msg(struct bsc_fd *bfd, int *error,
+				  struct sockaddr_in *saddr)
 {
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP/GPRS");
 	int ret = 0;
+	socklen_t saddr_len = sizeof(*saddr);
 
 	if (!msg) {
 		*error = -ENOMEM;
 		return NULL;
 	}
 
-	ret = recv(bfd->fd, msg->data, TS1_ALLOC_SIZE, 0);
+	ret = recvfrom(bfd->fd, msg->data, TS1_ALLOC_SIZE, 0,
+			(struct sockaddr *)saddr, &saddr_len);
 	if (ret < 0) {
 		fprintf(stderr, "recv error  %s\n", strerror(errno));
 		msgb_free(msg);
@@ -638,34 +637,25 @@ static struct msgb *read_gprs_msg(struct bsc_fd *bfd, int *error)
 static int handle_gprs_read(struct bsc_fd *bfd)
 {
 	int error;
-	struct msgb *msg = read_gprs_msg(bfd, &error);
+	struct sockaddr_in saddr;
+	struct msgb *msg = read_gprs_msg(bfd, &error, &saddr);
 
 	if (!msg)
 		return error;
 
-	if (gprs_ns_rcvmsg)
-		return gprs_ns_rcvmsg(msg);
-	else {
-		msgb_free(msg);
-		return 0;
-	}
+	return gprs_ns_rcvmsg(msg, &saddr);
 }
 
 static int handle_gprs_write(struct bsc_fd *bfd)
 {
 }
 
-int ipac_gprs_send(struct msgb *msg)
+int ipac_gprs_send(struct msgb *msg, struct sockaddr_in *daddr)
 {
-	struct sockaddr_in sin;
 	int rc;
 
-	sin.sin_family = AF_INET;
-	inet_aton("192.168.100.111", &sin.sin_addr);
-	sin.sin_port = htons(23000);
-
 	rc = sendto(e1h->gprs_fd.fd, msg->data, msg->len, 0,
-		  (struct sockaddr *)&sin, sizeof(sin));
+		  (struct sockaddr *)daddr, sizeof(*daddr));
 
 	talloc_free(msg);
 
