@@ -391,11 +391,14 @@ struct gsm_envabtse {
 
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
+	/* data read via VTY config file, to configure the BTS
+	 * via OML from BSC */
 	int id;
 	u_int16_t nsvci;
-	u_int16_t local_port;
-	u_int16_t remote_port;
-	u_int32_t remote_ip;
+	u_int16_t local_port;	/* on the BTS */
+	u_int16_t remote_port;	/* on the SGSN */
+	u_int32_t remote_ip;	/* on the SGSN */
+
 	struct gsm_nm_state nm_state;
 };
 
