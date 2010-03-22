@@ -496,7 +496,7 @@ static void dump_entry(struct sdp_header_item *sub_entry, int part, int fd)
 		return;
 	}
 
-	target = sub_entry->absolute_offset;
+	target = sub_entry->absolute_offset + ntohl(sub_entry->header_entry.start) + 4;
 	if (lseek(fd, target, SEEK_SET) != target) {
 		perror("seek failed");
 		close(out_fd);
