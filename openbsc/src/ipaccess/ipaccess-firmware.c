@@ -44,6 +44,7 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	int rc, i;
 	u_int16_t table_size;
 	u_int16_t table_offset;
+	off_t table_start;
 
 
 	rc = read(fd, buf, sizeof(*firmware_header));
@@ -77,14 +78,9 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	INIT_LLIST_HEAD(&header->header_list);
 	llist_add(&header->entry, list);
 
-	if (ntohs(firmware_header->table_offset) != 0) {
-		fprintf(stderr, "The table offset is not zero. That is not supported: 0x%x at 0x%x\n",
-			ntohs(firmware_header->table_offset), base_offset);
-		return -1;
-	}
-
 	table_offset = ntohs(firmware_header->table_offset);
-	if (lseek(fd, table_offset, SEEK_CUR) == -1) {
+	table_start = lseek(fd, table_offset, SEEK_CUR);
+	if (table_start == -1) {
 		fprintf(stderr, "Failed to seek to the rel position: 0x%x\n", table_offset);
 		return -1;
 	}
@@ -105,7 +101,7 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	for (i = 0; i < table_size / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
 		struct sdp_header_item *header_entry;
-		unsigned int offset = base_offset + sizeof(struct sdp_firmware) + 2;
+		unsigned int offset = table_start + 2;
 		offset += i * 138;
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
