@@ -63,9 +63,6 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	}
 
 
-	if (!firmware_header)
-		return -1;
-
 	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
 		return -1;
