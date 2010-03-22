@@ -23,6 +23,9 @@ install-sh
 missing
 stamp-h1
 
+# git-version-gen magic
+.tarball-version
+.version
 
 
 # apps and app data

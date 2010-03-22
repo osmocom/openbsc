@@ -37,12 +37,21 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 
+#include "../bscconfig.h"
+
 /* MCC and MNC for the Location Area Identifier */
 static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-
+const char *openbsc_version = "OpenBSC " PACKAGE_VERSION;
+const char *openbsc_copyright =
+	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\n"
+	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
+	"Dieter Spaar, Andreas Eversberg\n\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.\n";
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -83,6 +92,16 @@ static void print_help()
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 }
 
+static void print_version()
+{
+	printf("%s\n", openbsc_version);
+}
+
+static void print_copyright()
+{
+	printf(openbsc_copyright);
+}
+
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
@@ -96,11 +115,12 @@ static void handle_options(int argc, char** argv)
 			{"authorize-everyone", 0, 0, 'a'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
+			{"version", 0, 0, 'V' },
 			{"rtp-proxy", 0, 0, 'P'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sl:ar:p:TPc:",
+		c = getopt_long(argc, argv, "hd:sl:ar:p:TPVc:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -130,6 +150,12 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
+			break;
+		case 'V':
+			print_version();
+			printf("\n");
+			print_copyright();
+			exit(0);
 			break;
 		default:
 			/* ignore */
