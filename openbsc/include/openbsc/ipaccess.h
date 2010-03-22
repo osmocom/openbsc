@@ -89,6 +89,7 @@ struct sdp_header_entry {
 struct sdp_header_item {
 	struct sdp_header_entry header_entry;
 	struct llist_head entry;
+	off_t absolute_offset;
 };
 
 struct sdp_header {

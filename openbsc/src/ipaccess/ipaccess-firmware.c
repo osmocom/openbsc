@@ -117,6 +117,7 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 
 		header_entry = talloc_zero(header,  struct sdp_header_item);
 		header_entry->header_entry = entry;
+		header_entry->absolute_offset = lseek(fd, 0, SEEK_CUR);
 		llist_add(&header_entry->entry, &header->header_list);
 
 		/* now we need to find the SDP file... */

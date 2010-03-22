@@ -57,6 +57,7 @@ static u_int16_t nv_mask;
 static char *software = NULL;
 static int sw_load_state = 0;
 static int oml_state = 0;
+static int dump_files = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -475,6 +476,49 @@ static int find_sw_load_params(const char *filename)
 	return 0;
 }
 
+static void dump_entry(struct sdp_header_item *sub_entry, int part, int fd)
+{
+	int out_fd;
+	int copied;
+	char filename[4096];
+	off_t target;
+
+	if (!dump_files)
+		return;
+
+	if (sub_entry->header_entry.something1 == 0)
+		return;
+
+	snprintf(filename, sizeof(filename), "part.%d", part++);
+	out_fd = open(filename, O_WRONLY | O_CREAT, 0660);
+	if (out_fd < 0) {
+		perror("Can not dump firmware");
+		return;
+	}
+
+	target = sub_entry->absolute_offset;
+	if (lseek(fd, target, SEEK_SET) != target) {
+		perror("seek failed");
+		close(out_fd);
+		return;
+	}
+
+	for (copied = 0; copied < ntohl(sub_entry->header_entry.length); ++copied) {
+		char c;
+		if (read(fd, &c, sizeof(c)) != sizeof(c)) {
+			perror("copy failed");
+			break;
+		}
+
+		if (write(out_fd, &c, sizeof(c)) != sizeof(c)) {
+			perror("write failed");
+			break;
+		}
+	}
+
+	close(out_fd);
+}
+
 static void analyze_firmware(const char *filename)
 {
 	struct stat stat;
@@ -483,6 +527,7 @@ static void analyze_firmware(const char *filename)
 	struct llist_head *entry;
 	int fd;
 	void *tall_firm_ctx = 0;
+	int part = 0;
 
 	entry = talloc_zero(tall_firm_ctx, struct llist_head);
 	INIT_LLIST_HEAD(entry);
@@ -501,10 +546,6 @@ static void analyze_firmware(const char *filename)
 	}
 
 	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
-	if (close(fd) != 0) {
-		perror("Close failed.\n");
-		return;
-	}
 
 	llist_for_each_entry(header, entry, entry) {
 		printf("Printing header information:\n");
@@ -530,9 +571,17 @@ static void analyze_firmware(const char *filename)
 			printf("\taddr1: 0x%x\n", ntohl(sub_entry->header_entry.addr1));
 			printf("\taddr2: 0x%x\n", ntohl(sub_entry->header_entry.addr2));
 			printf("\tstart: 0x%x\n", ntohl(sub_entry->header_entry.start));
+			printf("\tabs. offset: 0x%lx\n", sub_entry->absolute_offset);
 			printf("\n\n");
+
+			dump_entry(sub_entry, part++, fd);
 		}
 		printf("\n\n");
+	}
+
+	if (close(fd) != 0) {
+		perror("Close failed.\n");
+		return;
 	}
 
 	talloc_free(tall_firm_ctx);
@@ -554,6 +603,7 @@ static void print_help(void)
 	printf("  -s --stream-id ID\n");
 	printf("  -d --software firmware\n");
 	printf("  -f --firmware firmware Provide firmware information\n");
+	printf("  -w --write-firmware. This will dump the firmware parts to the filesystem. Use with -f.\n");
 }
 
 int main(int argc, char **argv)
@@ -587,9 +637,10 @@ int main(int argc, char **argv)
 			{ "stream-id", 1, 0, 's' },
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
+			{ "write-firmware", 0, 0, 'w' },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:w", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -628,6 +679,9 @@ int main(int argc, char **argv)
 		case 'f':
 			analyze_firmware(optarg);
 			exit(0);
+		case 'w':
+			dump_files = 1;
+			break;
 		case 'h':
 			print_usage();
 			print_help();
