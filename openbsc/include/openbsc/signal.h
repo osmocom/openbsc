@@ -28,6 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 
+#include <osmocore/signal.h>
 
 /*
  * Signalling subsystems
@@ -45,7 +46,8 @@ enum signal_subsystems {
 
 /* SS_PAGING signals */
 enum signal_paging {
-	S_PAGING_COMPLETED,
+	S_PAGING_SUCCEEDED,
+	S_PAGING_EXPIRED,
 };
 
 /* SS_SMS signals */
@@ -69,6 +71,9 @@ enum signal_nm {
 	S_NM_FAIL_REP,		/* GSM 12.21 failure event report */
 	S_NM_NACK,		/* GSM 12.21 various NM_MT_*_NACK happened */
 	S_NM_IPACC_NACK,	/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_NACK happened */
+	S_NM_IPACC_ACK,		/* GSM 12.21 nanoBTS extensions NM_MT_IPACC_*_*_ACK happened */
+	S_NM_IPACC_RESTART_ACK, /* nanoBTS has send a restart ack */
+	S_NM_IPACC_RESTART_NACK,/* nanoBTS has send a restart ack */
 	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
 };
 
@@ -106,9 +111,6 @@ enum signal_global {
 	S_GLOBAL_SHUTDOWN,
 };
 
-typedef int signal_cbfn(unsigned int subsys, unsigned int signal,
-			void *handler_data, void *signal_data);
-
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
@@ -123,12 +125,9 @@ struct scall_signal_data {
 	void *data;
 };
 
-/* Management */
-int register_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
-void unregister_signal_handler(unsigned int subsys, signal_cbfn *cbfn, void *data);
-
-/* Dispatch */
-void dispatch_signal(unsigned int subsys, unsigned int signal, void *signal_data);
-
+struct ipacc_ack_signal_data {
+	struct gsm_bts *bts;
+	u_int8_t msg_type;	
+};
 
 #endif

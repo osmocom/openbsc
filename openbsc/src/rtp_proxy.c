@@ -19,6 +19,7 @@
  *
  */
 
+#include <endian.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -29,10 +30,10 @@
 #include <time.h>        /* clock() */
 #include <sys/utsname.h> /* uname() */
 
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/msgb.h>
-#include <openbsc/select.h>
+#include <osmocore/msgb.h>
+#include <osmocore/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
 
@@ -63,12 +64,21 @@ struct rtcp_hdr {
 
 /* according to RFC 3550 */
 struct rtp_hdr {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	u_int8_t  csrc_count:4,
 		  extension:1,
 		  padding:1,
 		  version:2;
 	u_int8_t  payload_type:7,
 		  marker:1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	u_int8_t  version:2,
+		  padding:1,
+		  extension:1,
+		  csrc_count:4;
+	u_int8_t  marker:1,
+		  payload_type:7;
+#endif
 	u_int16_t sequence;
 	u_int32_t timestamp;
 	u_int32_t ssrc;
@@ -240,7 +250,8 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		if (abs(frame_diff) > 1) {
 			long int frame_diff_excess = frame_diff - 1;
 
-			DEBUGP(DMUX, "Correcting frame difference of %ld frames\n", frame_diff_excess);
+			LOGP(DMUX, LOGL_NOTICE,
+				"Correcting frame difference of %ld frames\n", frame_diff_excess);
 			rs->transmit.sequence += frame_diff_excess;
 			rs->transmit.timestamp += frame_diff_excess * duration;
 		}

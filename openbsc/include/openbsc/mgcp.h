@@ -1,8 +1,8 @@
 /* A Media Gateway Control Protocol Media Gateway: RFC 3435 */
 
 /*
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by on-waves.com
+ * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,6 +21,14 @@
  *
  */
 
+#ifndef OPENBSC_MGCP_H
+#define OPENBSC_MGCP_H
+
+#include <osmocore/msgb.h>
+
+#include <arpa/inet.h>
+
+#define RTP_PORT_DEFAULT 4000
 /**
  * Calculate the RTP audio port for the given multiplex
  * and the direction. This allows a semi static endpoint
@@ -40,7 +48,74 @@
  * network and BTS.
  *
  */
-int rtp_calculate_port(int multiplex, int base)
+static inline int rtp_calculate_port(int multiplex, int base)
 {
 	return base + (multiplex * 2);
 }
+
+
+/*
+ * Handling of MGCP Endpoints and the MGCP Config
+ */
+struct mgcp_endpoint;
+struct mgcp_config;
+
+#define MGCP_ENDP_CRCX 1
+#define MGCP_ENDP_DLCX 2
+#define MGCP_ENDP_MDCX 3
+
+/*
+ * what to do with the msg?
+ *	- continue as usual?
+ *	- reject and send a failure code?
+ *	- defer? do not send anything
+ */
+#define MGCP_POLICY_CONT	4
+#define MGCP_POLICY_REJECT	5
+#define MGCP_POLICY_DEFER	6
+
+typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state, int local_rtp);
+typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
+
+struct mgcp_config {
+	int source_port;
+	char *local_ip;
+	char *source_addr;
+	unsigned int number_endpoints;
+	char *bts_ip;
+
+	struct in_addr bts_in;
+	char *audio_name;
+	int audio_payload;
+	int audio_loop;
+	int early_bind;
+	int rtp_base_port;
+
+	char *forward_ip;
+	int forward_port;
+
+	mgcp_change change_cb;
+	mgcp_policy policy_cb;
+	void *data;
+
+	struct mgcp_endpoint *endpoints;
+	unsigned int last_call_id;
+};
+
+/* config management */
+struct mgcp_config *mgcp_config_alloc(void);
+int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
+int mgcp_vty_init(void);
+int mgcp_endpoints_allocate(struct mgcp_config *cfg);
+int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
+void mgcp_free_endp(struct mgcp_endpoint *endp);
+
+/*
+ * format helper functions
+ */
+struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
+struct msgb *mgcp_create_rsip(void);
+struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans, const char *data);
+
+
+#endif

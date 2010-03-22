@@ -28,13 +28,16 @@
 
 #include <arpa/inet.h>
 
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
+#include <openbsc/chan_alloc.h>
+#include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
+#include <openbsc/telnet_interface.h>
 
 static struct gsm_network *gsmnet;
 
@@ -74,9 +77,30 @@ static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 		nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
+static void dump_pchan_load_vty(struct vty *vty, char *prefix,
+				const struct pchan_load *pl)
+{
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(pl->pchan); i++) {
+		const struct load_counter *lc = &pl->pchan[i];
+		unsigned int percent;
+
+		if (lc->total == 0)
+			continue;
+
+		percent = (lc->used * 100) / lc->total;
+
+		vty_out(vty, "%s%20s: %3u%% (%u/%u)%s", prefix,
+			gsm_pchan_name(i), percent, lc->used, lc->total,
+			VTY_NEWLINE);
+	}
+}
+
 static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
 	int i;
+	struct pchan_load pl;
 
 	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
 		"and has %u BTS%s", net->country_code, net->network_code,
@@ -99,6 +123,10 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  Handover: %s%s", net->handover.active ? "On" : "Off",
 		VTY_NEWLINE);
+	network_chan_load(&pl, net);
+	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
+	dump_pchan_load_vty(vty, "    ", &pl);
+
 	vty_out(vty, "  Allowed Audio Codecs: ");
 	for (i = 0; i < net->audio_length; ++i)
 		vty_out(vty, "hr: %d ver: %d, ",
@@ -135,6 +163,8 @@ static void e1isl_dump_vty(struct vty *vty, struct e1inp_sign_link *e1l)
 
 static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
+	struct pchan_load pl;
+
 	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
@@ -147,6 +177,11 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "Cell Reselection Hysteresis: %u dBm%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
+	vty_out(vty, "RACH TX-Integer: %u%s", bts->si_common.rach_control.tx_integer,
+		VTY_NEWLINE);
+	vty_out(vty, "RACH Max transmissions: %u%s",
+		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
+		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
@@ -164,6 +199,10 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		e1isl_dump_vty(vty, bts->oml_link);
 	}
 	/* FIXME: oml_link, chan_desc */
+	memset(&pl, 0, sizeof(pl));
+	bts_chan_load(&pl, bts);
+	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
+	dump_pchan_load_vty(vty, "    ", &pl);
 }
 
 DEFUN(show_bts, show_bts_cmd, "show bts [number]",
@@ -234,6 +273,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
 	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
 	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
@@ -264,6 +304,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
+		VTY_NEWLINE);
+	vty_out(vty, "  rach tx integer %u%s",
+		bts->si_common.rach_control.tx_integer, VTY_NEWLINE);
+	vty_out(vty, "  rach max transmission %u%s",
+		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
 		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
@@ -500,8 +545,12 @@ DEFUN(show_ts,
 	return CMD_SUCCESS;
 }
 
-void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
+static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
+	int rc;
+	struct gsm_auth_info ainfo;
+	struct gsm_auth_tuple atuple;
+
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
@@ -514,16 +563,54 @@ void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	if (subscr->tmsi != GSM_RESERVED_TMSI)
 		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
+
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
+}
+
+static void meas_rep_dump_uni_vty(struct vty *vty,
+				  struct gsm_meas_rep_unidir *mru,
+				  const char *prefix,
+				  const char *dir)
+{
+	vty_out(vty, "%s  RXL-FULL-%s: %4d dBm, RXL-SUB-%s: %4d dBm ",
+		prefix, dir, rxlev2dbm(mru->full.rx_lev),
+			dir, rxlev2dbm(mru->sub.rx_lev));
+	vty_out(vty, "RXQ-FULL-%s: %d, RXQ-SUB-%s: %d%s",
+		dir, mru->full.rx_qual, dir, mru->sub.rx_qual,
+		VTY_NEWLINE);
+}
+
+static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
+			      const char *prefix)
+{
+	vty_out(vty, "%sMeasurement Report:%s", prefix, VTY_NEWLINE);
+	vty_out(vty, "%s  Flags: %s%s%s%s%s", prefix,
+			mr->flags & MEAS_REP_F_UL_DTX ? "DTXu " : "",
+			mr->flags & MEAS_REP_F_DL_DTX ? "DTXd " : "",
+			mr->flags & MEAS_REP_F_FPC ? "FPC " : "",
+			mr->flags & MEAS_REP_F_DL_VALID ? " " : "DLinval ",
+			VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_MS_TO)
+		vty_out(vty, "%s  MS Timing Offset: %u%s", prefix,
+			mr->ms_timing_offset, VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_MS_L1)
+		vty_out(vty, "%s  L1 MS Power: %u dBm, Timing Advance: %u%s",
+			prefix, mr->ms_l1.pwr, mr->ms_l1.ta, VTY_NEWLINE);
+	if (mr->flags & MEAS_REP_F_DL_VALID)
+		meas_rep_dump_uni_vty(vty, &mr->dl, prefix, "dl");
+	meas_rep_dump_uni_vty(vty, &mr->ul, prefix, "ul");
 }
 
 static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
+	int idx;
+
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
-		lchan->ts->trx->bts->nr, gsm_lchan_name(lchan->type),
+		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u%s", lchan->use_count, VTY_NEWLINE);
+	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->use_count,
+		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
@@ -542,6 +629,11 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
 			VTY_NEWLINE);
 	}
+
+	/* we want to report the last measurement report */
+	idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+			       lchan->meas_rep_idx, 1);
+	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
 #if 0
@@ -794,6 +886,204 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
+static void _vty_output(struct debug_target *tgt, const char *line)
+{
+	struct vty *vty = tgt->tgt_vty.vty;
+	vty_out(vty, "%s", line);
+	/* This is an ugly hack, but there is no easy way... */
+	if (strchr(line, '\n'))
+		vty_out(vty, "\r");
+}
+
+struct debug_target *debug_target_create_vty(struct vty *vty)
+{
+	struct debug_target *target;
+
+	target = debug_target_create();
+	if (!target)
+		return NULL;
+
+	target->tgt_vty.vty = vty;
+	target->output = _vty_output;
+	return target;
+}
+
+DEFUN(enable_logging,
+      enable_logging_cmd,
+      "logging enable",
+      "Enables logging to this vty\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (conn->dbg) {
+		vty_out(vty, "Logging already enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn->dbg = debug_target_create_vty(vty);
+	if (!conn->dbg)
+		return CMD_WARNING;
+
+	debug_add_target(conn->dbg);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_fltr_imsi,
+      logging_fltr_imsi_cmd,
+      "logging filter imsi IMSI",
+      "Print all messages related to a IMSI\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_imsi_filter(conn->dbg, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_fltr_all,
+      logging_fltr_all_cmd,
+      "logging filter all <0-1>",
+      "Print all messages to the console\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_all_filter(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_use_clr,
+      logging_use_clr_cmd,
+      "logging color <0-1>",
+      "Use color for printing messages\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_use_color(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_prnt_timestamp,
+      logging_prnt_timestamp_cmd,
+      "logging timestamp <0-1>",
+      "Print the timestamp of each message\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_print_timestamp(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+/* FIXME: those have to be kept in sync with the log levels and categories */
+#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref)"
+#define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
+DEFUN(logging_level,
+      logging_level_cmd,
+      "logging level " VTY_DEBUG_CATEGORIES " " VTY_DEBUG_LEVELS,
+      "Set the log level for a specified category\n")
+{
+	struct telnet_connection *conn;
+	int category = debug_parse_category(argv[0]);
+	int level = debug_parse_level(argv[1]);
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (category < 0) {
+		vty_out(vty, "Invalid category `%s'%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (level < 0) {
+		vty_out(vty, "Invalid level `%s'%s", argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn->dbg->categories[category].enabled = 1;
+	conn->dbg->categories[category].loglevel = level;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_set_category_mask,
+      logging_set_category_mask_cmd,
+      "logging set debug mask MASK",
+      "Decide which categories to output.\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_parse_category_mask(conn->dbg, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(logging_set_log_level,
+      logging_set_log_level_cmd,
+      "logging set log level <0-8>",
+      "Set the global log level. The value 0 implies no filtering.\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_set_log_level(conn->dbg, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(diable_logging,
+      disable_logging_cmd,
+      "logging disable",
+      "Disables logging to this vty\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	debug_del_target(conn->dbg);
+	talloc_free(conn->dbg);
+	conn->dbg = NULL;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_stats,
       show_stats_cmd,
       "show statistics",
@@ -801,31 +1091,36 @@ DEFUN(show_stats,
 {
 	struct gsm_network *net = gsmnet;
 
-	vty_out(vty, "Channel Requests: %lu total, %lu no channel%s",
-		net->stats.chreq.total, net->stats.chreq.no_channel,
-		VTY_NEWLINE);
-	vty_out(vty, "Location Update: %lu attach, %lu normal, %lu periodic%s",
-		net->stats.loc_upd_type.attach, net->stats.loc_upd_type.normal,
-		net->stats.loc_upd_type.periodic, VTY_NEWLINE);
-	vty_out(vty, "IMSI Detach Indications: %lu%s\n",
-		net->stats.loc_upd_type.detach, VTY_NEWLINE);
+	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
+		counter_get(net->stats.chreq.total),
+		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
+	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
+		counter_get(net->stats.loc_upd_type.attach),
+		counter_get(net->stats.loc_upd_type.normal),
+		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+	vty_out(vty, "IMSI Detach Indications : %lu%s",
+		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		net->stats.loc_upd_resp.accept,
-		net->stats.loc_upd_resp.reject, VTY_NEWLINE);
-	vty_out(vty, "Paging: %lu attempted, %lu complete, %lu expired%s",
-		net->stats.paging.attempted, net->stats.paging.completed,
-		net->stats.paging.expired, VTY_NEWLINE);
-	vty_out(vty, "Handover: %lu attempted, %lu no_channel, %lu timeout, "
-		"%lu completed, %lu failed%s", net->stats.handover.attempted,
-		net->stats.handover.no_channel, net->stats.handover.timeout,
-		net->stats.handover.completed, net->stats.handover.failed,
-		VTY_NEWLINE);
-	vty_out(vty, "SMS MO: %lu submitted, %lu no receiver%s",
-		net->stats.sms.submitted, net->stats.sms.no_receiver,
-		VTY_NEWLINE);
-	vty_out(vty, "SMS MT: %lu delivered, %lu no memory, %lu other error%s",
-		net->stats.sms.delivered, net->stats.sms.rp_err_mem,
-		net->stats.sms.rp_err_other, VTY_NEWLINE);
+		counter_get(net->stats.loc_upd_resp.accept),
+		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
+	vty_out(vty, "Paging                  : %lu attempted, %lu complete, %lu expired%s",
+		counter_get(net->stats.paging.attempted),
+		counter_get(net->stats.paging.completed),
+		counter_get(net->stats.paging.expired), VTY_NEWLINE);
+	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
+		"%lu completed, %lu failed%s",
+		counter_get(net->stats.handover.attempted),
+		counter_get(net->stats.handover.no_channel),
+		counter_get(net->stats.handover.timeout),
+		counter_get(net->stats.handover.completed),
+		counter_get(net->stats.handover.failed), VTY_NEWLINE);
+	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
+		counter_get(net->stats.sms.submitted),
+		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
+	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
+		counter_get(net->stats.sms.delivered),
+		counter_get(net->stats.sms.rp_err_mem),
+		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -970,13 +1265,15 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
       "handover (0|1)",
 	"Whether or not to use in-call handover")
 {
-	if (ipacc_rtp_direct) {
+	int enable = atoi(argv[0]);
+
+	if (enable && ipacc_rtp_direct) {
 		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
 			"is enabled by using the -P command line option%s",
 			VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	gsmnet->handover.active = atoi(argv[0]);
+	gsmnet->handover.active = enable;
 
 	return CMD_SUCCESS;
 }
@@ -1125,11 +1422,11 @@ DEFUN(cfg_net_bsc_token,
 	return CMD_SUCCESS;
 }
 
-#define DECLARE_TIMER(number) \
+#define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
-      "Set the T" #number " value.")				\
+      doc)							\
 {								\
 	int value = atoi(argv[0]);				\
 								\
@@ -1143,17 +1440,17 @@ DEFUN(cfg_net_bsc_token,
 	return CMD_SUCCESS;					\
 }
 
-DECLARE_TIMER(3101)
-DECLARE_TIMER(3103)
-DECLARE_TIMER(3105)
-DECLARE_TIMER(3107)
-DECLARE_TIMER(3109)
-DECLARE_TIMER(3111)
-DECLARE_TIMER(3113)
-DECLARE_TIMER(3115)
-DECLARE_TIMER(3117)
-DECLARE_TIMER(3119)
-DECLARE_TIMER(3141)
+DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.")
+DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.")
+DECLARE_TIMER(3105, "Currently not used.")
+DECLARE_TIMER(3107, "Currently not used.")
+DECLARE_TIMER(3109, "Currently not used.")
+DECLARE_TIMER(3111, "Currently not used.")
+DECLARE_TIMER(3113, "Set the time to try paging a subscriber.")
+DECLARE_TIMER(3115, "Currently not used.")
+DECLARE_TIMER(3117, "Currently not used.")
+DECLARE_TIMER(3119, "Currently not used.")
+DECLARE_TIMER(3141, "Currently not used.")
 
 /* per-BTS configuration */
 DEFUN(cfg_bts,
@@ -1175,8 +1472,11 @@ DEFUN(cfg_bts,
 	} else 
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
-	if (!bts)
+	if (!bts) {
+		vty_out(vty, "%% Unable to allocate BTS %u%s",
+			gsmnet->num_bts, VTY_NEWLINE);
 		return CMD_WARNING;
+	}
 
 	vty->index = bts;
 	vty->node = BTS_NODE;
@@ -1190,13 +1490,11 @@ DEFUN(cfg_bts_type,
       "Set the BTS type\n")
 {
 	struct gsm_bts *bts = vty->index;
+	int rc;
 
-	bts->type = parse_btstype(argv[0]);
-
-	if (is_ipaccess_bts(bts)) {
-		/* Set the default OML Stream ID to 0xff */
-		bts->oml_tei = 0xff;
-	}
+	rc = gsm_set_bts_type(bts, parse_btstype(argv[0]));
+	if (rc < 0)
+		return CMD_WARNING;
 
 	return CMD_SUCCESS;
 }
@@ -1379,6 +1677,26 @@ DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_rach_tx_integer,
+      cfg_bts_rach_tx_integer_cmd,
+      "rach tx integer <0-15>",
+      "Set the raw tx integer value in RACH Control parameters IE")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->si_common.rach_control.tx_integer = atoi(argv[0]) & 0xf;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rach_max_trans,
+      cfg_bts_rach_max_trans_cmd,
+      "rach max transmission (1|2|4|7)",
+      "Set the maximum number of RACH burst transmissions")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->si_common.rach_control.max_trans = rach_max_trans_val2raw(atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
       "cell barred (0|1)",
       "Should this cell be barred from access?")
@@ -1479,6 +1797,18 @@ DEFUN(cfg_trx_arfcn,
 	/* FIXME: patch ARFCN into SYSTEM INFORMATION */
 	/* FIXME: use OML layer to update the ARFCN */
 	/* FIXME: use RSL layer to update SYSTEM INFORMATION */
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trx_nominal_power,
+      cfg_trx_nominal_power_cmd,
+      "nominal power <0-100>",
+      "Nominal TRX RF Power in dB\n")
+{
+	struct gsm_bts_trx *trx = vty->index;
+
+	trx->nominal_power = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1620,6 +1950,16 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_paging_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
 
+	install_element(VIEW_NODE, &enable_logging_cmd);
+	install_element(VIEW_NODE, &disable_logging_cmd);
+	install_element(VIEW_NODE, &logging_fltr_imsi_cmd);
+	install_element(VIEW_NODE, &logging_fltr_all_cmd);
+	install_element(VIEW_NODE, &logging_use_clr_cmd);
+	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
+	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
+	install_element(VIEW_NODE, &logging_level_cmd);
+	install_element(VIEW_NODE, &logging_set_log_level_cmd);
+
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
 	install_default(GSMNET_NODE);
@@ -1672,6 +2012,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_tx_integer_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_max_trans_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
@@ -1683,6 +2025,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
+	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_tei_cmd);

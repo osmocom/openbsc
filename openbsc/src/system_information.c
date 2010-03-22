@@ -31,12 +31,28 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
-#include <openbsc/bitvec.h>
+#include <osmocore/bitvec.h>
 #include <openbsc/debug.h>
 
 #define GSM48_CELL_CHAN_DESC_SIZE	16
 #define GSM_MACBLOCK_LEN 		23
 #define GSM_MACBLOCK_PADDING		0x2b
+
+/* verify the sizes of the system information type structs */
+
+/* rest octets are not part of the struct */
+static_assert(sizeof(struct gsm48_system_information_type_header) == 3, _si_header_size);
+static_assert(sizeof(struct gsm48_rach_control) == 3, _si_rach_control);
+static_assert(sizeof(struct gsm48_system_information_type_1) == 22, _si1_size);
+static_assert(sizeof(struct gsm48_system_information_type_2) == 23, _si2_size);
+static_assert(sizeof(struct gsm48_system_information_type_3) == 19, _si3_size);
+static_assert(sizeof(struct gsm48_system_information_type_4) == 13, _si4_size);
+
+/* bs11 forgot the l2 len, 0-6 rest octets */
+static_assert(sizeof(struct gsm48_system_information_type_5) == 18, _si5_size);
+static_assert(sizeof(struct gsm48_system_information_type_6) == 11, _si6_size);
+
+static_assert(sizeof(struct gsm48_system_information_type_13) == 3, _si13_size);
 
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
 
@@ -98,7 +114,7 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 			    const struct gsm_bts *bts)
 {
-	int i, rc, min = 1024, max = 0;
+	int i, rc, min = 1024, max = -1;
 
 	memset(chan_list, 0, 16);
 
@@ -126,6 +142,12 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 			if (i > max)
 				max = i;
 		}
+	}
+
+	if (max == -1) {
+		/* Empty set, use 'bit map 0 format' */
+		chan_list[0] = 0;
+		return 0;
 	}
 
 	if ((max - min) > 111) {
@@ -200,9 +222,8 @@ static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 	si1->rach_control = bts->si_common.rach_control;
 
 	/* SI1 Rest Octets (10.5.2.32), contains NCH position */
-	rest_octets_si1(si1->rest_octets, NULL);
-
-	return GSM_MACBLOCK_LEN;
+	rc = rest_octets_si1(si1->rest_octets, NULL);
+	return sizeof(*si1) + rc;
 }
 
 static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
@@ -225,7 +246,7 @@ static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 	si2->ncc_permitted = bts->si_common.ncc_permitted;
 	si2->rach_control = bts->si_common.rach_control;
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si2);
 }
 
 struct gsm48_si_ro_info si_info = {
@@ -254,6 +275,7 @@ struct gsm48_si_ro_info si_info = {
 
 static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 {
+	int rc;
 	struct gsm48_system_information_type_3 *si3 =
 		(struct gsm48_system_information_type_3 *) output;
 
@@ -265,9 +287,9 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 	si3->header.system_information = GSM48_MT_RR_SYSINFO_3;
 
 	si3->cell_identity = htons(bts->cell_identity);
-	gsm0408_generate_lai(&si3->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si3->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si3->control_channel_desc = bts->si_common.chan_desc;
 	si3->cell_options = bts->si_common.cell_options;
 	si3->cell_sel_par = bts->si_common.cell_sel_par;
@@ -277,13 +299,14 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
 		Power Offset, 2ter Indicator, Early Classmark Sending,
 		Scheduling if and WHERE, GPRS Indicator, SI13 position */
-	rest_octets_si3(si3->rest_octets, &si_info);
+	rc = rest_octets_si3(si3->rest_octets, &si_info);
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si3) + rc;
 }
 
 static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 {
+	int rc;
 	struct gsm48_system_information_type_4 *si4 =
 		(struct gsm48_system_information_type_4 *) output;
 
@@ -296,9 +319,9 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	si4->header.skip_indicator = 0;
 	si4->header.system_information = GSM48_MT_RR_SYSINFO_4;
 
-	gsm0408_generate_lai(&si4->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si4->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si4->cell_sel_par = bts->si_common.cell_sel_par;
 	si4->rach_control = bts->si_common.rach_control;
 
@@ -309,9 +332,9 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
 		Cell Identity, LSA ID, Selection Parameter */
-	rest_octets_si4(si4->data, &si_info);
+	rc = rest_octets_si4(si4->data, &si_info);
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof(*si4) + rc;
 }
 
 static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
@@ -361,9 +384,9 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 	si6->skip_indicator = 0;
 	si6->system_information = GSM48_MT_RR_SYSINFO_6;
 	si6->cell_identity = htons(bts->cell_identity);
-	gsm0408_generate_lai(&si6->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si6->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si6->cell_options = bts->si_common.cell_options;
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
 
@@ -418,7 +441,7 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 
 	si13->header.l2_plen = ret & 0xff;
 
-	return GSM_MACBLOCK_LEN;
+	return sizeof (*si13) + ret;
 }
 
 int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)

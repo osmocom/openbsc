@@ -35,11 +35,8 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
-#include <openbsc/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
-#include <openbsc/talloc.h>
-#include <openbsc/select.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/bssap.h>
 #include <openbsc/paging.h>
@@ -47,12 +44,16 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_msc.h>
 
+#include <osmocore/select.h>
+#include <osmocore/talloc.h>
+
 #include <sccp/sccp.h>
 
 /* SCCP helper */
 #define SCCP_IT_TIMER 60
 
 /* MCC and MNC for the Location Area Identifier */
+static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
@@ -714,16 +715,16 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_use_color(0);
+			debug_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			debug_timestamp(1);
+			debug_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
@@ -802,11 +803,25 @@ static void test_mode()
 	bssmap_rcvmsg_dt1(&conn, msg, ARRAY_SIZE(assignment_req));
 }
 
+extern int bts_model_unknown_init(void);
+extern int bts_model_bs11_init(void);
+extern int bts_model_nanobts_init(void);
+
 int main(int argc, char **argv)
 {
 	int rc;
 
+	debug_init();
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+
+	bts_model_unknown_init();
+	bts_model_bs11_init();
+	bts_model_nanobts_init();
+
+	/* enable filters */
+	debug_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);

@@ -21,7 +21,7 @@
  */
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
@@ -31,7 +31,7 @@
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -355,11 +355,11 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	switch (obj_class) {
 	case NM_OC_SITE_MANAGER:
 		bts = container_of(obj, struct gsm_bts, site_mgr);
-		if (new_state->operational == 2 &&
-		    new_state->availability == NM_AVSTATE_OK) {
-			printf("STARTING SITE MANAGER\n");
+		if ((new_state->operational == 2 &&
+		     new_state->availability == NM_AVSTATE_OK) ||
+		    (new_state->operational == 1 &&
+		     new_state->availability == NM_AVSTATE_OFF_LINE))
 			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
-		}
 		break;
 	case NM_OC_BTS:
 		bts = obj;
@@ -412,6 +412,8 @@ static int sw_activ_rep(struct msgb *mb)
 	struct gsm_bts *bts = mb->trx->bts;
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 
+	if (!trx)
+		return -EINVAL;
 
 	switch (foh->obj_class) {
 	case NM_OC_BASEB_TRANSC:
@@ -433,8 +435,7 @@ static int sw_activ_rep(struct msgb *mb)
 		 * This code is here to make sure that on start
 		 * a TRX remains locked.
 		 */
-		int rc_state = trx->rf_locked ?
-					NM_STATE_LOCKED : NM_STATE_UNLOCKED;
+		int rc_state = trx->nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
@@ -691,7 +692,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 #ifdef GPRS
-		i = 13
+		i = 13;
 		rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 		if (rc < 0)
 			goto err_out;
@@ -756,9 +757,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
 	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
-		"using MCC=%u MNC=%u BSIC=%u TSC=%u\n",
-		trx->bts->nr, trx->nr, bsc_gsmnet->country_code,
-		bsc_gsmnet->network_code, trx->bts->bsic, trx->bts->tsc);
+		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
+		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
+		bsc_gsmnet->network_code, trx->bts->location_area_code,
+		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
 	set_system_infos(trx);
 }
 
@@ -829,11 +831,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	/* T3212 is set from vty/config */
 
 	/* some defaults for our system information */
-	bts->si_common.rach_control.re = 1; /* no re-establishment */
-	bts->si_common.rach_control.tx_integer = 5; /* 8 slots spread */
-	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
-	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
-
 	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */
 	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */

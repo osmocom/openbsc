@@ -26,9 +26,10 @@
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/signal.h>
-#include <openbsc/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/chan_alloc.h>
+
+#include <osmocore/tlv.h>
 
 #include <sccp/sccp.h>
 
@@ -684,9 +685,9 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 			if (gh->msg_type == GSM48_MT_MM_LOC_UPD_ACCEPT) {
 				struct gsm_network *net = gsm48->trx->bts->network;
 				struct gsm48_loc_area_id *lai = (struct gsm48_loc_area_id *) &gh->data[0];
-				gsm0408_generate_lai(lai, net->country_code,
-						     net->network_code,
-						     gsm48->trx->bts->location_area_code);
+				gsm48_generate_lai(lai, net->country_code,
+						   net->network_code,
+						   gsm48->trx->bts->location_area_code);
 			}
 		}
 	}
@@ -726,8 +727,8 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	data[2] = CELL_IDENT_WHOLE_GLOBAL;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm0408_generate_lai(lai, country_code,
-			     network_code, bts->location_area_code);
+	gsm48_generate_lai(lai, country_code,
+			   network_code, bts->location_area_code);
 
 	ci = (u_int16_t *) msgb_put(msg, 2);
 	*ci = htons(bts->cell_identity);

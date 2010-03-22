@@ -1,0 +1,17 @@
+Index: skeletons/per_support.c
+===================================================================
+--- skeletons/per_support.c	(revision 1407)
++++ skeletons/per_support.c	(working copy)
+@@ -336,7 +336,12 @@
+ 		buf[3] = bits;
+ 	else {
+ 		ASN_DEBUG("->[PER out split %d]", obits);
++#if 1 // Dieter
++		po->nboff -= obits; // undo incrementation from a few lines above
++		per_put_few_bits(po, bits >> (obits - 24), 24); // shift according to the rest of the bits 
++#else		
+ 		per_put_few_bits(po, bits >> 8, 24);
++#endif
+ 		per_put_few_bits(po, bits, obits - 24);
+ 		ASN_DEBUG("<-[PER out split %d]", obits);
+ 	}

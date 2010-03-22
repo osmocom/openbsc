@@ -25,7 +25,8 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_04_08.h>
-#include <openbsc/talloc.h>
+
+#include <osmocore/talloc.h>
 
 #include <sccp/sccp.h>
 

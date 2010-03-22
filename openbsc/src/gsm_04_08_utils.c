@@ -28,7 +28,8 @@
 #include <errno.h>
 #include <netinet/in.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
+#include <osmocore/gsm48.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/transaction.h>
@@ -41,75 +42,6 @@
 /* should ip.access BTS use direct RTP streams between each other (1),
  * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
 int ipacc_rtp_direct = 1;
-
-
-const char *gsm0408_cc_msg_names[] = {
-	"unknown 0x00",
-	"ALERTING",
-	"CALL_PROC",
-	"PROGRESS",
-	"ESTAB",
-	"SETUP",
-	"ESTAB_CONF",
-	"CONNECT",
-	"CALL_CONF",
-	"START_CC",
-	"unknown 0x0a",
-	"RECALL",
-	"unknown 0x0c",
-	"unknown 0x0d",
-	"EMERG_SETUP",
-	"CONNECT_ACK",
-	"USER_INFO",
-	"unknown 0x11",
-	"unknown 0x12",
-	"MODIFY_REJECT",
-	"unknown 0x14",
-	"unknown 0x15",
-	"unknown 0x16",
-	"MODIFY",
-	"HOLD",
-	"HOLD_ACK",
-	"HOLD_REJ",
-	"unknown 0x1b",
-	"RETR",
-	"RETR_ACK",
-	"RETR_REJ",
-	"MODIFY_COMPL",
-	"unknown 0x20",
-	"unknown 0x21",
-	"unknown 0x22",
-	"unknown 0x23",
-	"unknown 0x24",
-	"DISCONNECT",
-	"unknown 0x26",
-	"unknown 0x27",
-	"unknown 0x28",
-	"unknown 0x29",
-	"RELEASE_COMPL",
-	"unknown 0x2b",
-	"unknown 0x2c",
-	"RELEASE",
-	"unknown 0x2e",
-	"unknown 0x2f",
-	"unknown 0x30",
-	"STOP_DTMF",
-	"STOP_DTMF_ACK",
-	"unknown 0x33",
-	"STATUS_ENQ",
-	"START_DTMF",
-	"START_DTMF_ACK",
-	"START_DTMF_REJ",
-	"unknown 0x38",
-	"CONG_CTRL",
-	"FACILITY",
-	"unknown 0x3b",
-	"STATUS",
-	"unknown 0x3c",
-	"NOTIFY",
-	"unknown 0x3f",
-};
-
 
 struct msgb *gsm48_msgb_alloc(void)
 {
@@ -136,7 +68,7 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 				"Sending '%s' to MS.\n", msg->trx->bts->nr,
 				msg->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr & 0xf0,
-				gsm0408_cc_msg_names[gh->msg_type & 0x3f]);
+				gsm48_cc_msg_names[gh->msg_type & 0x3f]);
 		else
 			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
 				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,
@@ -147,94 +79,6 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 	msg->l3h = msg->data;
 
 	return rsl_data_request(msg, 0);
-}
-
-static void to_bcd(u_int8_t *bcd, u_int16_t val)
-{
-	bcd[2] = val % 10;
-	val = val / 10;
-	bcd[1] = val % 10;
-	val = val / 10;
-	bcd[0] = val % 10;
-	val = val / 10;
-}
-
-static char bcd2char(u_int8_t bcd)
-{
-	if (bcd < 0xa)
-		return '0' + bcd;
-	else
-		return 'A' + (bcd - 0xa);
-}
-
-/* only works for numbers in ascci */
-static u_int8_t char2bcd(char c)
-{
-	return c - 0x30;
-}
-
-
-void gsm0408_generate_lai(struct gsm48_loc_area_id *lai48, u_int16_t mcc,
-			 u_int16_t mnc, u_int16_t lac)
-{
-	u_int8_t bcd[3];
-
-	to_bcd(bcd, mcc);
-	lai48->digits[0] = bcd[0] | (bcd[1] << 4);
-	lai48->digits[1] = bcd[2];
-
-	to_bcd(bcd, mnc);
-	/* FIXME: do we need three-digit MNC? See Table 10.5.3 */
-#if 0
-	lai48->digits[1] |= bcd[2] << 4;
-	lai48->digits[2] = bcd[0] | (bcd[1] << 4);
-#else
-	lai48->digits[1] |= 0xf << 4;
-	lai48->digits[2] = bcd[1] | (bcd[2] << 4);
-#endif
-
-	lai48->lac = htons(lac);
-}
-
-int gsm48_generate_mid_from_tmsi(u_int8_t *buf, u_int32_t tmsi)
-{
-	u_int32_t *tptr = (u_int32_t *) &buf[3];
-
-	buf[0] = GSM48_IE_MOBILE_ID;
-	buf[1] = GSM48_TMSI_LEN;
-	buf[2] = 0xf0 | GSM_MI_TYPE_TMSI;
-	*tptr = htonl(tmsi);
-
-	return 7;
-}
-
-int gsm48_generate_mid_from_imsi(u_int8_t *buf, const char *imsi)
-{
-	unsigned int length = strlen(imsi), i, off = 0;
-	u_int8_t odd = (length & 0x1) == 1;
-
-	buf[0] = GSM48_IE_MOBILE_ID;
-	buf[2] = char2bcd(imsi[0]) << 4 | GSM_MI_TYPE_IMSI | (odd << 3);
-
-	/* if the length is even we will fill half of the last octet */
-	if (odd)
-		buf[1] = (length + 1) >> 1;
-	else
-		buf[1] = (length + 2) >> 1;
-
-	for (i = 1; i < buf[1]; ++i) {
-		u_int8_t lower, upper;
-
-		lower = char2bcd(imsi[++off]);
-		if (!odd && off + 1 == length)
-			upper = 0x0f;
-		else
-			upper = char2bcd(imsi[++off]) & 0x0f;
-
-		buf[2 + i] = (upper << 4) | lower;
-	}
-
-	return 2 + buf[1];
 }
 
 /* Section 9.1.8 / Table 9.9 */
@@ -340,7 +184,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 		if ((ra & chr->mask) == chr->val)
 			return ctype_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
 	return GSM_LCHAN_SDCCH;
 }
 
@@ -363,7 +207,7 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, in
 		if ((ra & chr->mask) == chr->val)
 			return reason_by_chreq[chr->type];
 	}
-	fprintf(stderr, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
+	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST REASON 0x%02x\n", ra);
 	return GSM_CHREQ_REASON_OTHER;
 }
 
@@ -475,7 +319,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	if (!msg->lchan->subscr) {
 		msg->lchan->subscr = subscr;
 	} else if (msg->lchan->subscr != subscr) {
-		DEBUGP(DRR, "<- Channel already owned by someone else?\n");
+		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
@@ -490,7 +334,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 
 	bts->network->stats.paging.completed++;
 
-	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(msg->trx->bts, subscr, msg->lchan);
@@ -596,7 +440,8 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -636,7 +481,8 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
 		if (lchan->mr_conf.ver == 0) {
-			DEBUGP(DRR, "BUG: Using multirate codec without multirate config.\n");
+			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
+				"without multirate config.\n");
 		} else {
 			u_int8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
@@ -669,7 +515,7 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 	DEBUGP(DRR, "CHANNEL MODE MODIFY ACK\n");
 
 	if (mod->mode != msg->lchan->tch_mode) {
-		DEBUGP(DRR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
+		LOGP(DRR, LOGL_ERROR, "CHANNEL MODE change failed. Wanted: %d Got: %d\n",
 			msg->lchan->tch_mode, mod->mode);
 		return -1;
 	}
@@ -710,6 +556,7 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 	u_int8_t *data = gh->data;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct bitvec *nbv = &bts->si_common.neigh_list;
+	struct gsm_meas_rep_cell *mrc;
 
 	if (gh->msg_type != GSM48_MT_RR_MEAS_REP)
 		return -EINVAL;
@@ -731,42 +578,51 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 		return 0;
 
 	/* an encoding nightmare in perfection */
-
-	rep->cell[0].rxlev = data[3] & 0x3f;
-	rep->cell[0].arfcn = bitvec_get_nth_set_bit(nbv, data[4] >> 2);
-	rep->cell[0].bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
+	mrc = &rep->cell[0];
+	mrc->rxlev = data[3] & 0x3f;
+	mrc->neigh_idx = data[4] >> 3;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[4] & 0x07) << 3) | (data[5] >> 5);
 	if (rep->num_cell < 2)
 		return 0;
 
-	rep->cell[1].rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
-	rep->cell[1].arfcn = bitvec_get_nth_set_bit(nbv, (data[6] >> 2) & 0x1f);
-	rep->cell[1].bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
+	mrc = &rep->cell[1];
+	mrc->rxlev = ((data[5] & 0x1f) << 1) | (data[6] >> 7);
+	mrc->neigh_idx = (data[6] >> 2) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[6] & 0x03) << 4) | (data[7] >> 4);
 	if (rep->num_cell < 3)
 		return 0;
 
-	rep->cell[2].rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
-	rep->cell[2].arfcn = bitvec_get_nth_set_bit(nbv, (data[8] >> 1) & 0x1f);
-	rep->cell[2].bsic = ((data[8] & 0x01) << 6) | (data[9] >> 3);
+	mrc = &rep->cell[2];
+	mrc->rxlev = ((data[7] & 0x0f) << 2) | (data[8] >> 6);
+	mrc->neigh_idx = (data[8] >> 1) & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = ((data[8] & 0x01) << 5) | (data[9] >> 3);
 	if (rep->num_cell < 4)
 		return 0;
 
-	rep->cell[3].rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
-	rep->cell[3].arfcn = bitvec_get_nth_set_bit(nbv, data[10] & 0x1f);
-	rep->cell[3].bsic = data[11] >> 2;
+	mrc = &rep->cell[3];
+	mrc->rxlev = ((data[9] & 0x07) << 3) | (data[10] >> 5);
+	mrc->neigh_idx = data[10] & 0x1f;
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = data[11] >> 2;
 	if (rep->num_cell < 5)
 		return 0;
 
-	rep->cell[4].rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
-	rep->cell[4].arfcn = bitvec_get_nth_set_bit(nbv,
-				((data[12] & 0xf) << 1) | (data[13] >> 7));
-	rep->cell[4].bsic = (data[13] >> 1) & 0x3f;
+	mrc = &rep->cell[4];
+	mrc->rxlev = ((data[11] & 0x03) << 4) | (data[12] >> 4);
+	mrc->neigh_idx = ((data[12] & 0xf) << 1) | (data[13] >> 7);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = (data[13] >> 1) & 0x3f;
 	if (rep->num_cell < 6)
 		return 0;
 
-	rep->cell[5].rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
-	rep->cell[5].arfcn = bitvec_get_nth_set_bit(nbv,
-				((data[14] & 0x07) << 2) | (data[15] >> 6));
-	rep->cell[5].bsic = data[15] & 0x3f;
+	mrc = &rep->cell[5];
+	mrc->rxlev = ((data[13] & 0x01) << 5) | (data[14] >> 3);
+	mrc->neigh_idx = ((data[14] & 0x07) << 2) | (data[15] >> 6);
+	mrc->arfcn = bitvec_get_nth_set_bit(nbv, mrc->neigh_idx + 1);
+	mrc->bsic = data[15] & 0x3f;
 
 	return 0;
 }

@@ -40,7 +40,7 @@
 #include <assert.h>
 
 #include <openbsc/paging.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
@@ -212,9 +212,9 @@ static void paging_T3113_expired(void *data)
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
-	req->bts->network->stats.paging.expired++;
+	counter_inc(req->bts->network->stats.paging.expired);
 
-	dispatch_signal(SS_PAGING, S_PAGING_COMPLETED, &sig_data);
+	dispatch_signal(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
 			  cbfn_param);
@@ -256,7 +256,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
-	network->stats.paging.attempted++;
+	counter_inc(network->stats.paging.attempted);
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -265,6 +265,11 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		bts = gsm_bts_by_lac(network, subscr->lac, bts);
 		if (!bts)
 			break;
+
+		/* skip all currently inactive TRX */
+		if (!trx_is_usable(bts->c0))
+			continue;
+
 		num_pages++;
 
 		/* Trigger paging, pass any error to caller */
@@ -274,7 +279,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	} while (1);
 
 	if (num_pages == 0)
-		network->stats.paging.detached++;
+		counter_inc(network->stats.paging.detached);
 
 	return num_pages;
 }

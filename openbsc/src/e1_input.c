@@ -40,18 +40,18 @@
 #define PF_ISDN AF_ISDN
 #endif
 
-#include <openbsc/select.h>
-#include <openbsc/msgb.h>
+#include <osmocore/select.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
-#include <openbsc/linuxlist.h>
+#include <osmocore/linuxlist.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
@@ -234,10 +234,16 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	msg->l2h = msg->data;
 
-	if (!msg->trx || !msg->trx->rsl_link) {
-		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL\n");
+	if (!msg->trx) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
+			hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
+	} else if (!msg->trx->rsl_link) {
+		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
+			hexdump(msg->data, msg->len));
+		talloc_free(msg);
+		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
@@ -435,6 +441,8 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 				"tei %d, sapi %d\n", tei, sapi);
 			return -EINVAL;
 		}
+
+		debug_set_context(BSC_CTX_BTS, link->trx->bts);
 		switch (link->type) {
 		case E1INP_SIGN_OML:
 			msg->trx = link->trx;

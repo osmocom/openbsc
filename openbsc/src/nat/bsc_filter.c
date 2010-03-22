@@ -24,8 +24,9 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/talloc.h>
 #include <openbsc/debug.h>
+
+#include <osmocore/talloc.h>
 
 #include <sccp/sccp.h>
 

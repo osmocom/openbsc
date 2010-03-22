@@ -5,7 +5,7 @@
 
 #include <stdlib.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/gsm_data.h>
 
 /*

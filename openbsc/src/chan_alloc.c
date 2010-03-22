@@ -33,6 +33,29 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 
+static int ts_is_usable(struct gsm_bts_trx_ts *ts)
+{
+	/* FIXME: How does this behave for BS-11 ? */
+	if (is_ipaccess_bts(ts->trx->bts)) {
+		if (!nm_is_running(&ts->nm_state))
+			return 0;
+	}
+
+	return 1;
+}
+
+int trx_is_usable(struct gsm_bts_trx *trx)
+{
+	/* FIXME: How does this behave for BS-11 ? */
+	if (is_ipaccess_bts(trx->bts)) {
+		if (!nm_is_running(&trx->nm_state) ||
+		    !nm_is_running(&trx->bb_transc.nm_state))
+			return 0;
+	}
+
+	return 1;
+}
+
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan)
 {
@@ -60,6 +83,9 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		int from, to;
+
+		if (!trx_is_usable(trx))
+			continue;
 
 		/* the following constraints are pure policy,
 		 * no requirement to put this restriction in place */
@@ -95,6 +121,10 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 
 		for (j = from; j <= to; j++) {
 			struct gsm_bts_trx_ts *ts = &trx->ts[j];
+
+			if (!ts_is_usable(ts))
+				continue;
+
 			if (ts->pchan == GSM_PCHAN_NONE) {
 				ts->pchan = pchan;
 				/* set channel attribute on OML */
@@ -119,6 +149,7 @@ static const u_int8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_TCH_F] = 1,
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
+	/* FIXME: what about dynamic TCH_F_TCH_H ? */
 };
 
 static struct gsm_lchan *
@@ -127,14 +158,20 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 	struct gsm_bts_trx_ts *ts;
 	int j, ss;
 
+	if (!trx_is_usable(trx))
+		return NULL;
+
 	for (j = 0; j < 8; j++) {
 		ts = &trx->ts[j];
+		if (!ts_is_usable(ts))
+			continue;
 		if (ts->pchan != pchan)
 			continue;
 		/* check if all sub-slots are allocated yet */
 		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
 			struct gsm_lchan *lc = &ts->lchan[ss];
-			if (lc->type == GSM_LCHAN_NONE)
+			if (lc->type == GSM_LCHAN_NONE &&
+			    lc->state == LCHAN_S_NONE)
 				return lc;
 		}
 	}
@@ -256,6 +293,8 @@ void lchan_free(struct gsm_lchan *lchan)
 	}
 	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
 		lchan->neigh_meas[i].arfcn = 0;
+	lchan->silent_call = 0;
+
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }
@@ -280,7 +319,7 @@ int _lchan_release(struct gsm_lchan *lchan)
 		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
 			lchan->use_count);
 
-	DEBUGP(DRLL, "Recycling the channel with: %d (%x)\n", lchan->nr, lchan->nr);
+	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
 	rsl_release_request(lchan, 0);
 	return 1;
 }
@@ -316,4 +355,52 @@ struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr)
 	}
 
 	return NULL;
+}
+
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		int i;
+
+		/* skip administratively deactivated tranxsceivers */
+		if (!nm_is_running(&trx->nm_state) ||
+		    !nm_is_running(&trx->bb_transc.nm_state))
+			continue;
+
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			struct load_counter *pl = &cl->pchan[ts->pchan];
+			int j;
+
+			/* skip administratively deactivated timeslots */
+			if (!nm_is_running(&ts->nm_state))
+				continue;
+
+			for (j = 0; j < subslots_per_pchan[ts->pchan]; j++) {
+				struct gsm_lchan *lchan = &ts->lchan[j];
+
+				pl->total++;
+
+				switch (lchan->state) {
+				case LCHAN_S_NONE:
+					break;
+				default:
+					pl->used++;
+					break;
+				}
+			}
+		}
+	}
+}
+
+void network_chan_load(struct pchan_load *pl, struct gsm_network *net)
+{
+	struct gsm_bts *bts;
+
+	memset(pl, 0, sizeof(*pl));
+
+	llist_for_each_entry(bts, &net->bts_list, list)
+		bts_chan_load(pl, bts);
 }

@@ -2,7 +2,7 @@
  * SCCP management code
  *
  * (C) 2009, 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009, 2010 by on-waves.com
+ * (C) 2009, 2010 by On-Waves
  *
  * All Rights Reserved
  *
@@ -24,11 +24,12 @@
 
 #include <string.h>
 
+#include <osmocore/msgb.h>
+#include <openbsc/debug.h>
+#include <osmocore/talloc.h>
+
 #include <sccp/sccp.h>
 
-#include <openbsc/debug.h>
-#include <openbsc/talloc.h>
-#include <openbsc/linuxlist.h>
 
 static void *tall_sccp_ctx;
 static LLIST_HEAD(sccp_connections);
@@ -208,7 +209,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 	static const u_int32_t called_offset =
 			offsetof(struct sccp_connection_request, variable_called);
 
-	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->data;
+	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->l2h;
 	struct sccp_optional_data optional_data;
 
 	/* header check */
@@ -459,6 +460,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 
 	msgb->l3h = &udt->data[udt->variable_data];
+	result->data_len = msgb_l3len(msgb);
 
 	if (msgb_l3len(msgb) !=  msgb->l3h[-1]) {
 		DEBUGP(DSCCP, "msgb is truncated is: %u should: %u\n",
@@ -466,6 +468,25 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 		return -1;
 	}
 
+	return 0;
+}
+
+static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
+{
+	static const u_int32_t header_size = sizeof(struct sccp_data_it);
+
+	struct sccp_data_it *it;
+
+	if (msgb_l2len(msgb) < header_size) {
+		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		        msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	it = (struct sccp_data_it *) msgb->l2h;
+	result->data_len = 0;
+	result->source_local_reference = &it->source_local_reference;
+	result->destination_local_reference = &it->destination_local_reference;
 	return 0;
 }
 
@@ -1305,8 +1326,12 @@ int sccp_parse_header(struct msgb *msg, struct sccp_parse_result *result)
 	case SCCP_MSG_TYPE_UDT:
 		return _sccp_parse_udt(msg, result);
 		break;
+	case SCCP_MSG_TYPE_IT:
+		return _sccp_parse_it(msg, result);
+		break;
 	};
 
+	LOGP(DSCCP, LOGL_ERROR, "Unimplemented MSG Type: 0x%x\n", type);
 	return -1;
 }
 

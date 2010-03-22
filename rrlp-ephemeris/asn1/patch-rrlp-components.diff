@@ -1,0 +1,36 @@
+--- RRLP-Components.asn	2009-10-26 22:10:44.000000000 +0100
++++ RRLP-Components.asn	2009-10-26 22:10:44.000000000 +0100
+@@ -18,16 +18,16 @@
+ 	Ext-GeographicalInformation, VelocityEstimate
+ FROM
+ 	MAP-LCS-DataTypes {
+-	ccitt identified-organization (4) etsi (0) mobileDomain (0)
+-	gsm-Network (1) modules (3) map-LCS-DataTypes (25) version5 (5)}
++	itu-t identified-organization (4) etsi (0) mobileDomain (0)
++	gsm-Network (1) modules (3) map-LCS-DataTypes (25) version11 (11)}
+ 
+ 	ExtensionContainer
+ FROM MAP-ExtensionDataTypes {
+-	ccitt identified-organization (4) etsi (0) mobileDomain (0)
+-	gsm-Network (1) modules (3) map-ExtensionDataTypes (21) version4 (4)}
++	itu-t identified-organization (4) etsi (0) mobileDomain (0)
++	gsm-Network (1) modules (3) map-ExtensionDataTypes (21) version11 (11)}
+ ;
+ 
+ -- Add here other ASN.1 definitions presented below
+ -- in chapters 4 and 5.
+ 
+@@ -305,11 +305,11 @@
+ SystemInfoIndex ::= INTEGER (1..32)
+ 
+ CellIDAndLAC ::= SEQUENCE {
+-	referenceLAC	LAC,				-- Location area code
++	referenceLAC	LACID,				-- Location area code
+ 	referenceCI		CellID				-- Cell identity
+ }
+ CellID ::= INTEGER (0..65535)
+-LAC ::= INTEGER (0..65535)
++LACID ::= INTEGER (0..65535)
+ 
+ -- OTD-MeasureInfo
+ OTD-MeasureInfo ::= SEQUENCE {

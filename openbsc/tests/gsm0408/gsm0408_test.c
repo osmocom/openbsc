@@ -23,6 +23,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <arpa/inet.h>
+
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
@@ -52,13 +54,13 @@ static void test_location_area_identifier(void)
      * Test the default/test setup. Coming from
      * bsc_hack.c dumps
      */
-    gsm0408_generate_lai(&lai48, 1, 1, 1);
+    gsm48_generate_lai(&lai48, 1, 1, 1);
     COMPARE(lai48.digits[0], ==, 0x00);
     COMPARE(lai48.digits[1], ==, 0xF1);
     COMPARE(lai48.digits[2], ==, 0x10);
     COMPARE(lai48.lac, ==, htons(0x0001));
 
-    gsm0408_generate_lai(&lai48, 602, 1, 15);
+    gsm48_generate_lai(&lai48, 602, 1, 15);
     COMPARE(lai48.digits[0], ==, 0x06);
     COMPARE(lai48.digits[1], ==, 0xF2);
     COMPARE(lai48.digits[2], ==, 0x10);
@@ -97,6 +99,8 @@ int main(int argc, char** argv)
 {
 	test_location_area_identifier();
 	test_mi_functionality();
+
+	exit(0);
 }
 
 

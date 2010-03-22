@@ -9,7 +9,7 @@
 #include <openbsc/trau_mux.h>
 #include <openbsc/misdn.h>
 #include <openbsc/ipaccess.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 
 #define SAPI_L2ML	0

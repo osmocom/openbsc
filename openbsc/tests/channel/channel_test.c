@@ -23,7 +23,7 @@
 
 #include <assert.h>
 
-#include <openbsc/select.h>
+#include <osmocore/select.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/abis_rsl.h>
 
@@ -77,4 +77,6 @@ void nm_state_event() {}
 void input_event() {}
 void sms_alloc() {}
 void _lchan_release() {}
+
+struct tlv_definition nm_att_tlvdef;
 

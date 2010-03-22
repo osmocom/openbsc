@@ -28,7 +28,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/debug.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/gsm_data.h>
 
 void *tall_tqe_ctx;

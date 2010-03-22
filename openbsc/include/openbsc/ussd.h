@@ -3,7 +3,7 @@
 
 /* Handler function for mobile-originated USSD messages */
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 
 int handle_rcv_ussd(struct msgb *msg);
 

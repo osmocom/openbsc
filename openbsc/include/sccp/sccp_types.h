@@ -24,6 +24,8 @@
 #ifndef SCCP_TYPES_H
 #define SCCP_TYPES_H
 
+#include <endian.h>
+
 /* Table 1/Q.713 - SCCP message types */
 enum sccp_message_types {
 	SCCP_MSG_TYPE_CR	= 1,
@@ -87,11 +89,19 @@ enum {
 };
 
 struct sccp_called_party_address {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	u_int8_t	point_code_indicator : 1,
 			ssn_indicator	     : 1,
 			global_title_indicator : 4,
 			routing_indicator    : 1,
 			reserved	     : 1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	u_int8_t	reserved	     : 1,
+			routing_indicator    : 1,
+			global_title_indicator : 4,
+			ssn_indicator	     : 1,
+			point_code_indicator : 1;
+#endif
 	u_int8_t	data[0];
 } __attribute__((packed));
 
@@ -100,8 +110,13 @@ struct sccp_called_party_address {
 /* Figure 6/Q.713 */
 struct sccp_signalling_point_code {
 	u_int8_t	lsb;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	u_int8_t	msb : 6,
 			reserved : 2;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	u_int8_t	reserved : 2,
+			msb : 6;
+#endif
 } __attribute__((packed));
 
 /* SSN == subsystem number */
@@ -137,8 +152,13 @@ enum {
 };
 
 struct sccp_global_title {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	u_int8_t	nature_of_addr_ind : 7,
 			odd_even : 1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	u_int8_t	odd_even : 1,
+			nature_of_addr_ind : 7;
+#endif
 	u_int8_t	data[0];
 } __attribute__((packed));
 

@@ -36,19 +36,20 @@
 #include <getopt.h>
 
 #include <openbsc/debug.h>
-#include <openbsc/msgb.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/talloc.h>
 #include <openbsc/telnet_interface.h>
+
+#include <osmocore/talloc.h>
 
 #include <vty/vty.h>
 
 #include <sccp/sccp.h>
 
+struct debug_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
@@ -309,7 +310,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 	if (!bsc)
 		return -1;
 	if (!bsc->authenticated) {
-		LOGP(DNAT, LOGL_ERRO, "Selected BSC not authenticated.\n");
+		LOGP(DNAT, LOGL_ERROR, "Selected BSC not authenticated.\n");
 		return -1;
 	}
 
@@ -707,16 +708,16 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_use_color(0);
+			debug_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(optarg);
+			debug_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			debug_timestamp(1);
+			debug_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'm':
 			msc_address = strdup(optarg);
@@ -748,6 +749,11 @@ static void signal_handler(int signal)
 int main(int argc, char** argv)
 {
 	int rc;
+
+	debug_init();
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	local_addr.s_addr = INADDR_ANY;

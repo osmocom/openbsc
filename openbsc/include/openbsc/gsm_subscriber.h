@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 #include "gsm_data.h"
-#include "linuxlist.h"
+#include <osmocore/linuxlist.h>
 
 #define GSM_IMEI_LENGTH 17
 #define GSM_IMSI_LENGTH 17
@@ -87,6 +87,8 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_lchan *lchan);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
+
+char *subscr_name(struct gsm_subscriber *subscr);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);

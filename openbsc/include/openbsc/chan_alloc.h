@@ -71,4 +71,18 @@ void lchan_free(struct gsm_lchan *lchan);
 /* internal.. do not use */
 int _lchan_release(struct gsm_lchan *lchan);
 
+struct load_counter {
+	unsigned int total;
+	unsigned int used;
+};
+
+struct pchan_load {
+	struct load_counter pchan[GSM_PCHAN_UNKNOWN];
+};
+
+void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts);
+void network_chan_load(struct pchan_load *pl, struct gsm_network *net);
+
+int trx_is_usable(struct gsm_bts_trx *trx);
+
 #endif /* _CHAN_ALLOC_H */

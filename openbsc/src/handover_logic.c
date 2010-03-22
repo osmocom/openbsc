@@ -29,16 +29,16 @@
 #include <time.h>
 #include <netinet/in.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_utils.h>
+#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/rtp_proxy.h>
 
@@ -97,12 +97,12 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
-	bts->network->stats.handover.attempted++;
+	counter_inc(bts->network->stats.handover.attempted);
 
 	new_lchan = lchan_alloc(bts, old_lchan->type);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
-		bts->network->stats.handover.no_channel++;
+		counter_inc(bts->network->stats.handover.no_channel);
 		return -ENOSPC;
 	}
 
@@ -144,9 +144,10 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 static void ho_T3103_cb(void *_ho)
 {
 	struct bsc_handover *ho = _ho;
+	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
-	ho->new_lchan->ts->trx->bts->network->stats.handover.timeout++;
+	counter_inc(net->stats.handover.timeout);
 
 	lchan_free(ho->new_lchan);
 	llist_del(&ho->list);
@@ -207,6 +208,7 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 /* GSM 04.08 HANDOVER COMPLETE has been received on new channel */
 static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 {
+	struct gsm_network *net = new_lchan->ts->trx->bts->network;
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
@@ -215,7 +217,12 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 		return -ENODEV;
 	}
 
-	new_lchan->ts->trx->bts->network->stats.handover.completed++;
+	LOGP(DHO, LOGL_INFO, "Subscriber %s HO from BTS %u->%u on ARFCN "
+	     "%u->%u\n", subscr_name(ho->old_lchan->subscr),
+	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
+	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
+
+	counter_inc(net->stats.handover.completed);
 
 	bsc_del_timer(&ho->T3103);
 
@@ -235,6 +242,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 /* GSM 04.08 HANDOVER FAIL has been received */
 static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 {
+	struct gsm_network *net = old_lchan->ts->trx->bts->network;
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_old_lchan(old_lchan);
@@ -243,7 +251,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 		return -ENODEV;
 	}
 
-	old_lchan->ts->trx->bts->network->stats.handover.failed++;
+	counter_inc(net->stats.handover.failed);
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
@@ -276,8 +284,8 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
-		return -ENODEV;
+		/* it is perfectly normal, we have CRCX even in non-HO cases */
+		return 0;
 	}
 
 	if (ipacc_rtp_direct) {
