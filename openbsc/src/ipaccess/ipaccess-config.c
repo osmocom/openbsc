@@ -427,7 +427,7 @@ static struct sw_load *create_swload(struct sdp_header *header)
 	return load;
 }
 
-static void find_sw_load_params(const char *filename)
+static int find_sw_load_params(const char *filename)
 {
 	struct stat stat;
 	struct sdp_header *header;
@@ -441,19 +441,19 @@ static void find_sw_load_params(const char *filename)
 	fd = open(filename, O_RDONLY);
 	if (!fd) {
 		perror("nada");
-		return;
+		return -1;
 	}
 
 	/* verify the file */
 	if (fstat(fd, &stat) == -1) {
 		perror("Can not stat the file");
-		return;
+		return -1;
 	}
 
 	ipaccess_analyze_file(fd, stat.st_size, 0, entry);
 	if (close(fd) != 0) {
 		perror("Close failed.\n");
-		return;
+		return -1;
 	}
 
 	/* try to find what we are looking for */
@@ -465,7 +465,14 @@ static void find_sw_load_params(const char *filename)
 		}
 	}
 
+	if (!sw_load1 || !sw_load2) {
+		fprintf(stderr, "Did not find data.\n");
+		talloc_free(tall_firm_ctx);
+		return -1;
+        }
+
 	talloc_free(tall_firm_ctx);
+	return 0;
 }
 
 static void analyze_firmware(const char *filename)
@@ -615,7 +622,8 @@ int main(int argc, char **argv)
 			break;
 		case 'd':
 			software = strdup(optarg);
-			find_sw_load_params(optarg);
+			if (find_sw_load_params(optarg) != 0)
+				exit(0);
 			break;
 		case 'f':
 			analyze_firmware(optarg);
