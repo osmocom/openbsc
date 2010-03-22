@@ -69,8 +69,7 @@ struct sdp_firmware {
 	char date[14];
 	char text2[10];
 	char version[20];
-	u_int8_t dummy[2];
-	u_int16_t part_length;
+	u_int16_t table_offset;
 	/* stuff i don't know */
 } __attribute__((packed));
 
