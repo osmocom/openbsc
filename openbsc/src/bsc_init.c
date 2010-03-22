@@ -863,6 +863,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	bs11_attr_radio[5] = bts->c0->max_power_red / 2;
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
 
+	/* patch NSEI */
+	nanobts_attr_nse[3] = bts->gprs.nse.nsei >> 8;
+	nanobts_attr_nse[4] = bts->gprs.nse.nsei & 0xff;
+
 	/* patch NSVCI */
 	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
 	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;

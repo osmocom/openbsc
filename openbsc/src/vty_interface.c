@@ -320,6 +320,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			VTY_NEWLINE);
 		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
 			VTY_NEWLINE);
+		vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
+			VTY_NEWLINE);
 		for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 			struct gsm_bts_gprs_nsvc *nsvc =
 						&bts->gprs.nsvc[i];
@@ -1643,6 +1645,23 @@ DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
+	"gprs nsei <0-65535>",
+	"GPRS NS Entity Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.nse.nsei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 	"gprs nsvc <0-1> nsvci <0-65535>",
 	"GPRS NS VC Identifier")
@@ -2004,6 +2023,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_gprs_enabled_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);

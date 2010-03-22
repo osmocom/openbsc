@@ -469,6 +469,7 @@ struct gsm_bts {
 		int enabled;
 		struct {
 			struct gsm_nm_state nm_state;
+			u_int16_t nsei;
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
