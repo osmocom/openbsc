@@ -77,10 +77,6 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	INIT_LLIST_HEAD(&header->header_list);
 	llist_add(&header->entry, list);
 
-	/* this semantic appears to be only the case for 0x0000 */
-	if (firmware_header->more_more_magic != 0)
-		return -1;
-
 	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
 		fprintf(stderr, "The part length seems to be wrong.\n");
 		return -1;
