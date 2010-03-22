@@ -115,6 +115,10 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 			return -1;
 		}
 
+		header_entry = talloc_zero(header,  struct sdp_header_item);
+		header_entry->header_entry = entry;
+		llist_add(&header_entry->entry, &header->header_list);
+
 		/* now we need to find the SDP file... */
 		offset = ntohl(entry.start) + 4 + base_offset;
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -122,9 +126,6 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 			return -1;
 		}
 
-		header_entry = talloc_zero(header,  struct sdp_header_item);
-		header_entry->header_entry = entry;
-		llist_add(&header_entry->entry, &header->header_list);
 
 		ipaccess_analyze_file(fd, ntohl(entry.length), offset, list);
 	}
