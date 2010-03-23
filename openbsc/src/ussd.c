@@ -62,7 +62,7 @@ int handle_rcv_ussd(struct msgb *msg)
 /* A network-specific handler function */
 static int send_own_number(const struct msgb *msg, const struct ussd_request *req)
 {
-	char *own_number = msg->lchan->subscr->extension;
+	char *own_number = msg->lchan->conn.subscr->extension;
 	char response_string[GSM_EXTENSION_LENGTH + 20];
 
 	/* Need trailing CR as EOT character */

@@ -316,16 +316,16 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
 
-	if (!msg->lchan->subscr) {
-		msg->lchan->subscr = subscr;
-	} else if (msg->lchan->subscr != subscr) {
+	if (!msg->lchan->conn.subscr) {
+		msg->lchan->conn.subscr = subscr;
+	} else if (msg->lchan->conn.subscr != subscr) {
 		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
 		DEBUGP(DRR, "<- Channel already owned by us\n");
 		subscr_put(subscr);
-		subscr = msg->lchan->subscr;
+		subscr = msg->lchan->conn.subscr;
 	}
 
 	sig_data.subscr = subscr;

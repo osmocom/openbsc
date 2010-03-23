@@ -96,7 +96,7 @@ void trans_free(struct gsm_trans *trans)
 	}
 
 	if (trans->lchan)
-		put_lchan(trans->lchan);
+		put_subscr_con(&trans->lchan->conn);
 
 	if (!trans->lchan && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
@@ -157,12 +157,16 @@ int trans_lchan_change(struct gsm_lchan *lchan_old,
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
 		if (trans->lchan == lchan_old) {
-			/* drop old channel use cound */
-			put_lchan(trans->lchan);
+			struct gsm_subscriber_connection *conn;
+
+			/* drop old channel use count */
+			conn = &trans->lchan->conn;
+			put_subscr_con(conn);
 			/* assign new channel */
 			trans->lchan = lchan_new;
 			/* bump new channel use count */
-			use_lchan(trans->lchan);
+			conn = &trans->lchan->conn;
+			use_subscr_con(conn);
 			num++;
 		}
 	}

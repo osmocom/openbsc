@@ -594,7 +594,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 		}
 	}
 
-	gsms->sender = subscr_get(msg->lchan->subscr);
+	gsms->sender = subscr_get(msg->lchan->conn.subscr);
 
 	LOGP(DSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
@@ -753,7 +753,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	trans->sms.sms = NULL;
 
 	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	sms = db_sms_get_unsent_for_subscr(msg->lchan->conn.subscr);
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
 
@@ -780,7 +780,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * the cause and take action depending on it */
 
 	LOGP(DSMS, LOGL_NOTICE, "%s: RX SMS RP-ERROR, cause %d:%d (%s)\n",
-	     subscr_name(msg->lchan->subscr), cause_len, cause,
+	     subscr_name(msg->lchan->conn.subscr), cause_len, cause,
 	     get_value_string(rp_cause_strs, cause));
 
 	if (!trans->sms.is_mt) {
@@ -833,7 +833,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
 
 	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	sms = db_sms_get_unsent_for_subscr(msg->lchan->conn.subscr);
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
 	else
@@ -920,16 +920,16 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	struct gsm_trans *trans;
 	int rc = 0;
 
-	if (!lchan->subscr)
+	if (!lchan->conn.subscr)
 		return -EIO;
 		/* FIXME: send some error message */
 
 	DEBUGP(DSMS, "trans_id=%x ", transaction_id);
-	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
+	trans = trans_find_by_id(lchan->conn.subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
 		DEBUGPC(DSMS, "(new) ");
-		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
+		trans = trans_alloc(lchan->conn.subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGPC(DSMS, "No memory for trans\n");
@@ -942,7 +942,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		trans->sms.link_id = link_id;
 
 		trans->lchan = lchan;
-		use_lchan(lchan);
+		use_subscr_con(&lchan->conn);
 	}
 
 	switch(msg_type) {
@@ -961,7 +961,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 				if (i == transaction_id)
 					continue;
 
-				ptrans = trans_find_by_id(lchan->subscr,
+				ptrans = trans_find_by_id(lchan->conn.subscr,
 				                          GSM48_PDISC_SMS, i);
 				if (!ptrans)
 					continue;
@@ -1050,7 +1050,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	int transaction_id;
 	int rc;
 
-	transaction_id = trans_assign_trans_id(lchan->subscr, GSM48_PDISC_SMS, 0);
+	transaction_id = trans_assign_trans_id(lchan->conn.subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DSMS, LOGL_ERROR, "No available transaction ids\n");
 		return -EBUSY;
@@ -1061,7 +1061,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	DEBUGP(DSMS, "send_sms_lchan()\n");
 
 	/* FIXME: allocate transaction with message reference */
-	trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
+	trans = trans_alloc(lchan->conn.subscr, GSM48_PDISC_SMS,
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DSMS, LOGL_ERROR, "No memory for trans\n");
@@ -1075,7 +1075,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
 	trans->lchan = lchan;
-	use_lchan(lchan);
+	use_subscr_con(&lchan->conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);

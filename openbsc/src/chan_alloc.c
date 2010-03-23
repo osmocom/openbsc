@@ -252,7 +252,6 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 
 	if (lchan) {
 		lchan->type = type;
-		lchan->use_count = 0;
 
 		/* clear sapis */
 		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
@@ -260,10 +259,15 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		/* clear multi rate config */
 		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
 
+		/* clear per MSC/BSC data */
+		memset(&lchan->conn, 0, sizeof(lchan->conn));
+
 		/* Configure the time and start it so it will be closed */
-		lchan->release_timer.cb = auto_release_channel;
-		lchan->release_timer.data = lchan;
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		lchan->conn.lchan = lchan;
+		lchan->conn.release_timer.cb = auto_release_channel;
+		lchan->conn.release_timer.data = lchan;
+		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
+
 	}
 
 	return lchan;
@@ -275,19 +279,19 @@ void lchan_free(struct gsm_lchan *lchan)
 	int i;
 
 	lchan->type = GSM_LCHAN_NONE;
-	if (lchan->subscr) {
-		subscr_put(lchan->subscr);
-		lchan->subscr = NULL;
+	if (lchan->conn.subscr) {
+		subscr_put(lchan->conn.subscr);
+		lchan->conn.subscr = NULL;
 	}
 
 	/* We might kill an active channel... */
-	if (lchan->use_count != 0) {
+	if (lchan->conn.use_count != 0) {
 		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
-		lchan->use_count = 0;
+		lchan->conn.use_count = 0;
 	}
 
 	/* stop the timer */
-	bsc_del_timer(&lchan->release_timer);
+	bsc_del_timer(&lchan->conn.release_timer);
 	bsc_del_timer(&lchan->T3101);
 
 	/* clear cached measuement reports */
@@ -299,7 +303,7 @@ void lchan_free(struct gsm_lchan *lchan)
 	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
 		lchan->neigh_meas[i].arfcn = 0;
 
-	lchan->silent_call = 0;
+	lchan->conn.silent_call = 0;
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -308,19 +312,19 @@ void lchan_free(struct gsm_lchan *lchan)
 /* Consider releasing the channel now */
 int lchan_auto_release(struct gsm_lchan *lchan)
 {
-	if (lchan->use_count > 0) {
+	if (lchan->conn.use_count > 0) {
 		return 0;
 	}
 
 	/* Assume we have GSM04.08 running and send a release */
-	if (lchan->subscr) {
+	if (lchan->conn.subscr) {
 		gsm48_send_rr_release(lchan);
 	}
 
 	/* spoofed? message */
-	if (lchan->use_count < 0)
+	if (lchan->conn.use_count < 0)
 		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
-			lchan->use_count);
+			lchan->conn.use_count);
 
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
 	rsl_release_request(lchan, 0);
@@ -333,7 +337,7 @@ static void auto_release_channel(void *_lchan)
 	struct gsm_lchan *lchan = _lchan;
 
 	if (!lchan_auto_release(lchan))
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
@@ -345,7 +349,7 @@ struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 			for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
 				struct gsm_lchan *lchan =
 					&trx->ts[ts_no].lchan[lchan_no];
-				if (subscr == lchan->subscr)
+				if (subscr == lchan->conn.subscr)
 					return lchan;
 			}
 		}

@@ -122,7 +122,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan->bs_power = old_lchan->bs_power;
 	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
 	new_lchan->tch_mode = old_lchan->tch_mode;
-	new_lchan->subscr = subscr_get(old_lchan->subscr);
+	new_lchan->conn.subscr = subscr_get(old_lchan->conn.subscr);
 
 	/* FIXME: do we have a better idea of the timing advance? */
 	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
@@ -218,7 +218,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	}
 
 	LOGP(DHO, LOGL_INFO, "Subscriber %s HO from BTS %u->%u on ARFCN "
-	     "%u->%u\n", subscr_name(ho->old_lchan->subscr),
+	     "%u->%u\n", subscr_name(ho->old_lchan->conn.subscr),
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
 	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
 
@@ -243,6 +243,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 /* GSM 04.08 HANDOVER FAIL has been received */
 static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm_network *net = old_lchan->ts->trx->bts->network;
 	struct bsc_handover *ho;
 
@@ -256,7 +257,8 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
-	put_lchan(ho->new_lchan);
+	conn = &ho->new_lchan->conn;
+	put_subscr_con(conn);
 	talloc_free(ho);
 
 	return 0;

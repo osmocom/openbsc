@@ -601,16 +601,16 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->use_count,
+	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->conn.use_count,
 		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
 		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
 		VTY_NEWLINE);
-	if (lchan->subscr) {
+	if (lchan->conn.subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, lchan->subscr);
+		subscr_dump_vty(vty, lchan->conn.subscr);
 	} else
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
