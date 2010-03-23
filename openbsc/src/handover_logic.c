@@ -227,7 +227,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	bsc_del_timer(&ho->T3103);
 
 	/* update lchan pointer of transaction */
-	trans_lchan_change(ho->old_lchan, new_lchan);
+	trans_lchan_change(&ho->old_lchan->conn, &new_lchan->conn);
 
 	ho->old_lchan->state = LCHAN_S_INACTIVE;
 	lchan_auto_release(ho->old_lchan);

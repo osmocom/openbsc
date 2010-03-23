@@ -57,7 +57,7 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 	 * work that the caller no longer has to do */
 	if (trans) {
 		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
-		msg->lchan = trans->lchan;
+		msg->lchan = trans->conn->lchan;
 	}
 
 	if (msg->lchan) {

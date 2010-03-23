@@ -166,7 +166,7 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	 * only set trans->lchan to NULL and wait for another lchan to be
 	 * established to the same MM entity (phone/subscriber) */
 	llist_for_each_entry_safe(trans, temp, &lchan->ts->trx->bts->network->trans_list, entry) {
-		if (trans->lchan == lchan)
+		if (trans->conn && trans->conn->lchan == lchan)
 			trans_free(trans);
 	}
 
@@ -1071,12 +1071,12 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	struct msgb *msg;
 
 	if (trans)
-		if (trans->lchan)
+		if (trans->conn)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 				"Sending '%s' to MNCC.\n",
-				trans->lchan->ts->trx->bts->nr,
-				trans->lchan->ts->trx->nr,
-				trans->lchan->ts->nr, trans->transaction_id,
+				trans->conn->lchan->ts->trx->bts->nr,
+				trans->conn->lchan->ts->trx->nr,
+				trans->conn->lchan->ts->nr, trans->transaction_id,
 				(trans->subscr)?(trans->subscr->extension):"-",
 				get_mncc_name(msg_type));
 		else
@@ -1125,8 +1125,8 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
-	if (trans->lchan)
-		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
+	if (trans->conn)
+		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1139,7 +1139,6 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	struct gsm_subscriber *subscr = param;
 	struct gsm_trans *transt, *tmp;
 	struct gsm_network *net;
-	struct gsm_subscriber_connection *conn;
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
@@ -1152,11 +1151,9 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 		return -EINVAL;
 	}
 
-	conn = &lchan->conn;
-
 	/* check all tranactions (without lchan) for subscriber */
 	llist_for_each_entry_safe(transt, tmp, &net->trans_list, entry) {
-		if (transt->subscr != subscr || transt->lchan)
+		if (transt->subscr != subscr || transt->conn)
 			continue;
 		switch (event) {
 		case GSM_PAGING_SUCCEEDED:
@@ -1165,9 +1162,9 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			DEBUGP(DCC, "Paging subscr %s succeeded!\n",
 				subscr->extension);
 			/* Assign lchan */
-			if (!transt->lchan) {
-				transt->lchan = lchan;
-				use_subscr_con(conn);
+			if (!transt->conn) {
+				transt->conn = &lchan->conn;
+				use_subscr_con(transt->conn);
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
@@ -1212,7 +1209,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		 * a tch_recv_mncc request pending */
 		net = lchan->ts->trx->bts->network;
 		llist_for_each_entry(trans, &net->trans_list, entry) {
-			if (trans->lchan == lchan && trans->tch_recv) {
+			if (trans->conn && trans->conn->lchan == lchan && trans->tch_recv) {
 				DEBUGP(DCC, "pending tch_recv_mncc request\n");
 				tch_recv_mncc(net, trans->callref, 1);
 			}
@@ -1285,11 +1282,11 @@ static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 	if (!trans1 || !trans2)
 		return -EIO;
 
-	if (!trans1->lchan || !trans2->lchan)
+	if (!trans1->conn || !trans2->conn)
 		return -EIO;
 
 	/* through-connect channel */
-	return tch_map(trans1->lchan, trans2->lchan);
+	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 }
 
 /* enable receive of channels to MNCC upqueue */
@@ -1304,9 +1301,9 @@ static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 	trans = trans_find_by_callref(net, callref);
 	if (!trans)
 		return -EIO;
-	if (!trans->lchan)
+	if (!trans->conn)
 		return 0;
-	lchan = trans->lchan;
+	lchan = trans->conn->lchan;
 	bts = lchan->ts->trx->bts;
 
 	switch (bts->type) {
@@ -2502,7 +2499,7 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
 
-	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode);
+	return gsm48_lchan_modify(trans->conn->lchan, mode->lchan_mode);
 }
 
 static struct downstate {
@@ -2574,7 +2571,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	struct gsm_lchan *lchan = NULL;
 	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
-	struct gsm_subscriber_connection *conn;
 
 	/* handle special messages */
 	switch(msg_type) {
@@ -2589,18 +2585,18 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		trans = trans_find_by_callref(net, data->callref);
 		if (!trans)
 			return -EIO;
-		if (!trans->lchan)
+		if (!trans->conn)
 			return 0;
-		if (trans->lchan->type != GSM_LCHAN_TCH_F)
+		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F)
 			return 0;
-		bts = trans->lchan->ts->trx->bts;
+		bts = trans->conn->lchan->ts->trx->bts;
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
-			if (!trans->lchan->abis_ip.rtp_socket)
+			if (!trans->conn->lchan->abis_ip.rtp_socket)
 				return 0;
-			return rtp_send_frame(trans->lchan->abis_ip.rtp_socket, arg);
+			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
-			return trau_send_frame(trans->lchan, arg);
+			return trau_send_frame(trans->conn->lchan, arg);
 		default:
 			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
 		}
@@ -2706,12 +2702,13 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return 0;
 		}
 		/* Assign lchan */
-		trans->lchan = lchan;
-		conn = &lchan->conn;
-		use_subscr_con(conn);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 		subscr_put(subscr);
 	}
-	lchan = trans->lchan;
+
+	if (trans->conn)
+		lchan = trans->conn->lchan;
 
 	/* if paging did not respond yet */
 	if (!lchan) {
@@ -2730,12 +2727,11 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		return rc;
 	}
 
-	conn = &lchan->conn;
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
 		"Received '%s' from MNCC in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		trans->transaction_id,
-		(conn->subscr)?(conn->subscr->extension):"-",
+		(trans->conn->subscr)?(trans->conn->subscr->extension):"-",
 		get_mncc_name(msg_type), trans->cc.state,
 		gsm48_cc_state_name(trans->cc.state));
 
@@ -2851,8 +2847,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 			return -ENOMEM;
 		}
 		/* Assign transaction */
-		trans->lchan = lchan;
-		use_subscr_con(conn);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 	}
 
 	/* find function for current state and message */

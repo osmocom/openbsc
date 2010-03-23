@@ -155,7 +155,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	gh->msg_type = msg_type;
 
 	/* assign the outgoing lchan */
-	msg->lchan = trans->lchan;
+	msg->lchan = trans->conn->lchan;
 
 	/* mobile originating */
 	switch (gh->msg_type) {
@@ -770,7 +770,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 			      struct gsm411_rp_hdr *rph)
 {
-	struct gsm_network *net = trans->lchan->ts->trx->bts->network;
+	struct gsm_network *net = trans->conn->lchan->ts->trx->bts->network;
 	struct gsm_sms *sms = trans->sms.sms;
 	u_int8_t cause_len = rph->data[0];
 	u_int8_t cause = rph->data[1];
@@ -941,8 +941,8 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		trans->sms.is_mt = 0;
 		trans->sms.link_id = link_id;
 
-		trans->lchan = lchan;
-		use_subscr_con(&lchan->conn);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 	}
 
 	switch(msg_type) {
@@ -1074,8 +1074,8 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	trans->sms.sms = sms;
 	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
-	trans->lchan = lchan;
-	use_subscr_con(&lchan->conn);
+	trans->conn = &lchan->conn;
+	use_subscr_con(trans->conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);

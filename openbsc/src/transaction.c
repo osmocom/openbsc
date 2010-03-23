@@ -95,10 +95,10 @@ void trans_free(struct gsm_trans *trans)
 		break;
 	}
 
-	if (trans->lchan)
-		put_subscr_con(&trans->lchan->conn);
+	if (trans->conn)
+		put_subscr_con(trans->conn);
 
-	if (!trans->lchan && trans->subscr && trans->subscr->net) {
+	if (!trans->conn && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
 		paging_request_stop(NULL, trans->subscr, NULL);
 	}
@@ -148,25 +148,22 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 
 /* update all transactions to use a different LCHAN, e.g.
  * after handover has succeeded */
-int trans_lchan_change(struct gsm_lchan *lchan_old,
-		       struct gsm_lchan *lchan_new)
+int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
+		       struct gsm_subscriber_connection *conn_new)
 {
-	struct gsm_network *net = lchan_old->ts->trx->bts->network;
+	struct gsm_network *net = conn_old->lchan->ts->trx->bts->network;
 	struct gsm_trans *trans;
 	int num = 0;
 
 	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->lchan == lchan_old) {
-			struct gsm_subscriber_connection *conn;
+		if (trans->conn == conn_old) {
 
 			/* drop old channel use count */
-			conn = &trans->lchan->conn;
-			put_subscr_con(conn);
+			put_subscr_con(conn_old);
 			/* assign new channel */
-			trans->lchan = lchan_new;
+			trans->conn = conn_new;
 			/* bump new channel use count */
-			conn = &trans->lchan->conn;
-			use_subscr_con(conn);
+			use_subscr_con(conn_new);
 			num++;
 		}
 	}
