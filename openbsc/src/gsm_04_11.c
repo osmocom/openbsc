@@ -122,16 +122,11 @@ struct msgb *gsm411_msgb_alloc(void)
 				   "GSM 04.11");
 }
 
-static int gsm411_sendmsg(struct msgb *msg, u_int8_t link_id)
+static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, u_int8_t link_id)
 {
-	if (msg->lchan)
-		msg->trx = msg->lchan->ts->trx;
-
-	msg->l3h = msg->data;
-
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
-
-	return rsl_data_request(msg, link_id);
+	msg->l3h = msg->data;
+	return gsm0808_submit_dtap(conn, msg, link_id);
 }
 
 /* SMC TC1* is expired */
@@ -155,9 +150,6 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	gh->proto_discr = trans->protocol | (trans->transaction_id<<4);
 	gh->msg_type = msg_type;
 
-	/* assign the outgoing lchan */
-	msg->lchan = trans->conn->lchan;
-
 	/* mobile originating */
 	switch (gh->msg_type) {
 	case GSM411_MT_CP_DATA:
@@ -180,7 +172,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGPC(DSMS, "trans=%x\n", trans->transaction_id);
 
-	return gsm411_sendmsg(msg, trans->sms.link_id);
+	return gsm411_sendmsg(trans->conn, msg, trans->sms.link_id);
 }
 
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
