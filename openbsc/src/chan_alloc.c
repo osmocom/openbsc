@@ -264,6 +264,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 
 		/* Configure the time and start it so it will be closed */
 		lchan->conn.lchan = lchan;
+		lchan->conn.bts = lchan->ts->trx->bts;
 		lchan->conn.release_timer.cb = auto_release_channel;
 		lchan->conn.release_timer.data = lchan;
 		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);

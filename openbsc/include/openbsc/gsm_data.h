@@ -201,8 +201,9 @@ struct gsm_subscriber_connection {
 	/* Are we part of a special "silent" call */
 	int silent_call;
 
-	/* back pointer to the gsm_lchan */
+	/* back pointers */
 	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
 };
 
 struct gsm_lchan {

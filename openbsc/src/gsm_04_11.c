@@ -504,9 +504,8 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 
 /* process an incoming TPDU (called from RP-DATA) 
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
-static int gsm340_rx_tpdu(struct msgb *msg)
+static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	u_int8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
 	u_int8_t sms_mti, sms_mms, sms_vpf, sms_alphabet, sms_rp;
@@ -515,7 +514,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	counter_inc(bts->network->stats.sms.submitted);
+	counter_inc(conn->bts->network->stats.sms.submitted);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -603,10 +602,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	dispatch_signal(SS_SMS, 0, gsms);
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(bts->network, gsms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
-		counter_inc(bts->network->stats.sms.no_receiver);
+		counter_inc(conn->bts->network->stats.sms.no_receiver);
 		goto out;
 	}
 
@@ -680,7 +679,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
 
-	rc = gsm340_rx_tpdu(msg);
+	rc = gsm340_rx_tpdu(trans->conn, msg);
 	if (rc == 0)
 		return gsm411_send_rp_ack(trans, rph->msg_ref);
 	else if (rc > 0)
@@ -766,7 +765,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 			      struct gsm411_rp_hdr *rph)
 {
-	struct gsm_network *net = trans->conn->lchan->ts->trx->bts->network;
+	struct gsm_network *net = trans->conn->bts->network;
 	struct gsm_sms *sms = trans->sms.sms;
 	u_int8_t cause_len = rph->data[0];
 	u_int8_t cause = rph->data[1];
