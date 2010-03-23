@@ -775,7 +775,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * the cause and take action depending on it */
 
 	LOGP(DSMS, LOGL_NOTICE, "%s: RX SMS RP-ERROR, cause %d:%d (%s)\n",
-	     subscr_name(msg->lchan->conn.subscr), cause_len, cause,
+	     subscr_name(trans->conn->subscr), cause_len, cause,
 	     get_value_string(rp_cause_strs, cause));
 
 	if (!trans->sms.is_mt) {
@@ -1053,8 +1053,6 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 		return -EBUSY;
 	}
 
-	msg->lchan = conn->lchan;
-
 	DEBUGP(DSMS, "send_sms_lchan()\n");
 
 	/* FIXME: allocate transaction with message reference */
@@ -1109,7 +1107,7 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
-	counter_inc(conn->lchan->ts->trx->bts->network->stats.sms.delivered);
+	counter_inc(conn->bts->network->stats.sms.delivered);
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
