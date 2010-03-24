@@ -33,24 +33,10 @@
 #include <openbsc/signal.h>
 #include <osmocore/talloc.h>
 
-#include "bscconfig.h"
-
-
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
 
 static void patch_nm_tables(struct gsm_bts *bts);
-
-
-const char *openbsc_version = "OpenBSC " PACKAGE_VERSION;
-const char *openbsc_copyright =
-	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\n"
-	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg\n\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
-
 
 /* The following definitions are for OM and NM packets that we cannot yet
  * generate by code but we just pass on */

@@ -17,7 +17,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		input/misdn.c input/ipaccess.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
-		bts_unknown.c
+		bts_unknown.c bsc_version.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
