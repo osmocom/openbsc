@@ -28,10 +28,9 @@ enum {
 	DHO,
 	DDB,
 	DREF,
+	DNAT,
 	Debug_LastEntry,
 };
-
-#define DNAT		0x100000
 
 #ifdef DEBUG
 #define DEBUGP(ss, fmt, args...) debugp(ss, __FILE__, __LINE__, 0, fmt, ## args)
