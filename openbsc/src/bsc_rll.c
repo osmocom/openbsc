@@ -80,8 +80,7 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 	/* If we are a TCH and not in signalling mode, we need to
 	 * indicate that the new RLL connection is to be made on the SACCH */
 	if ((lchan->type == GSM_LCHAN_TCH_F ||
-	     lchan->type == GSM_LCHAN_TCH_H) &&
-	    lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
+	     lchan->type == GSM_LCHAN_TCH_H) && sapi != 0)
 		link_id |= 0x40;
 
 	use_lchan(lchan);
