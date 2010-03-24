@@ -44,6 +44,9 @@
 #include <openbsc/ipaccess.h>
 #include <osmocore/talloc.h>
 
+#define PRIV_OML 1
+#define PRIV_RSL 2
+
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
 	struct bsc_fd listen_fd;
@@ -230,26 +233,33 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			return -EIO;
 		}
 		DEBUGP(DINP, "Identified BTS %u/%u/%u\n", site_id, bts_id, trx_id);
-		if (bfd->priv_nr == 1) {
-			bts->oml_link = e1inp_sign_link_create(&line->ts[1-1],
+		if (bfd->priv_nr == PRIV_OML) {
+			bts->oml_link = e1inp_sign_link_create(&line->ts[PRIV_OML - 1],
 						  E1INP_SIGN_OML, bts->c0,
 						  bts->oml_tei, 0);
-		} else if (bfd->priv_nr == 2) {
+		} else if (bfd->priv_nr == PRIV_RSL) {
 			struct e1inp_ts *e1i_ts;
 			struct bsc_fd *newbfd;
 			struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_id);
 			
 			bfd->data = line = bts->oml_link->ts->line;
-			e1i_ts = &line->ts[2+trx_id - 1];
+			e1i_ts = &line->ts[PRIV_RSL + trx_id - 1];
 			newbfd = &e1i_ts->driver.ipaccess.fd;
 			e1inp_ts_config(e1i_ts, line, E1INP_TS_TYPE_SIGN);
 
 			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
+
+			if (newbfd->fd >= 0) {
+				LOGP(DINP, LOGL_ERROR, "BTS is still registered. Closing old connection.\n");
+				bsc_unregister_fd(newbfd);
+				close(newbfd->fd);
+			}
+
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
-			newbfd->priv_nr = 2+trx_id;
+			newbfd->priv_nr = PRIV_RSL + trx_id;
 			bsc_unregister_fd(bfd);
 			bsc_register_fd(newbfd);
 			talloc_free(bfd);
@@ -279,14 +289,14 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 
 	/* first read our 3-byte header */
 	hh = (struct ipaccess_head *) msg->data;
-	ret = recv(bfd->fd, msg->data, 3, 0);
-	if (ret < 0) {
-		if (errno != EAGAIN)
-			LOGP(DINP, LOGL_ERROR, "recv error %d %s\n", ret, strerror(errno));
+	ret = recv(bfd->fd, msg->data, sizeof(*hh), 0);
+	if (ret == 0) {
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
-	} else if (ret == 0) {
+	} else if (ret != sizeof(*hh)) {
+		if (errno != EAGAIN)
+			LOGP(DINP, LOGL_ERROR, "recv error %d %s\n", ret, strerror(errno));
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
@@ -297,9 +307,17 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	/* then read te length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
 	len = ntohs(hh->len);
+
+	if (len < 0 || TS1_ALLOC_SIZE < len + sizeof(*hh)) {
+		LOGP(DINP, LOGL_ERROR, "Can not read this packet. %d avail\n", len);
+		msgb_free(msg);
+		*error = -EIO;
+		return NULL;
+	}
+
 	ret = recv(bfd->fd, msg->l2h, len, 0);
 	if (ret < len) {
-		LOGP(DINP, LOGL_ERROR, "short read!\n");
+		LOGP(DINP, LOGL_ERROR, "short read! Got %d from %d\n", ret, len);
 		msgb_free(msg);
 		*error = -EIO;
 		return NULL;
@@ -456,7 +474,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
 	e1i_ts->sign.tx_timer.data = e1i_ts;
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100000);
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100);
 
 	return ret;
 }
@@ -529,7 +547,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd = &e1i_ts->driver.ipaccess.fd;
 	bfd->fd = ret;
 	bfd->data = line;
-	bfd->priv_nr = 1;
+	bfd->priv_nr = PRIV_OML;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = bsc_register_fd(bfd);
@@ -571,7 +589,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		return bfd->fd;
 	}
 	LOGP(DINP, LOGL_NOTICE, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
-	bfd->priv_nr = 2;
+	bfd->priv_nr = PRIV_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = bsc_register_fd(bfd);
@@ -645,7 +663,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
 	bfd->data = line;
-	bfd->priv_nr = 1;
+	bfd->priv_nr = PRIV_OML;
 
 	if (bfd->fd < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");

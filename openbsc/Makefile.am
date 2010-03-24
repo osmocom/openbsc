@@ -6,5 +6,8 @@ SUBDIRS = include src tests
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = openbsc.pc libsccp.pc
 
-#dist-hook:
-#	rm -rf `find $(distdir) -name .svn`
+BUILT_SOURCES = $(top_srcdir)/.version
+$(top_srcdir)/.version:
+	echo $(VERSION) > $@-t && mv $@-t $@
+dist-hook:
+	echo $(VERSION) > $(distdir)/.tarball-version

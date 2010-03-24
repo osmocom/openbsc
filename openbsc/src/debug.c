@@ -99,7 +99,7 @@ static const struct debug_info debug_info[] = {
 	DEBUG_CATEGORY(DHO, "DHO", "", "")
 	DEBUG_CATEGORY(DNAT, "DNAT", "", "")
 	DEBUG_CATEGORY(DDB, "DDB", "", "")
-	DEBUG_CATEGORY(DDB, "DREF", "", "")
+	DEBUG_CATEGORY(DREF, "DREF", "", "")
 };
 
 static const struct value_string loglevel_strs[] = {

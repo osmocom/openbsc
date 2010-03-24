@@ -31,7 +31,7 @@
 #define PART_LENGTH 138
 
 static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
-static_assert(sizeof(struct sdp_firmware) == 160, _right_header_length);
+static_assert(sizeof(struct sdp_firmware) == 158, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
@@ -42,6 +42,10 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	struct sdp_header *header;
 	char buf[4096];
 	int rc, i;
+	u_int16_t table_size;
+	u_int16_t table_offset;
+	off_t table_start;
+
 
 	rc = read(fd, buf, sizeof(*firmware_header));
 	if (rc < 0) {
@@ -63,9 +67,6 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	}
 
 
-	if (!firmware_header)
-		return -1;
-
 	if (ntohl(firmware_header->file_length) != st_size) {
 		fprintf(stderr, "The filesize and the header do not match.\n");
 		return -1;
@@ -77,20 +78,30 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	INIT_LLIST_HEAD(&header->header_list);
 	llist_add(&header->entry, list);
 
-	/* this semantic appears to be only the case for 0x0000 */
-	if (firmware_header->more_more_magic != 0)
+	table_offset = ntohs(firmware_header->table_offset);
+	table_start = lseek(fd, table_offset, SEEK_CUR);
+	if (table_start == -1) {
+		fprintf(stderr, "Failed to seek to the rel position: 0x%x\n", table_offset);
 		return -1;
+	}
 
-	if (ntohs(firmware_header->part_length) % PART_LENGTH != 0) {
-		fprintf(stderr, "The part length seems to be wrong.\n");
+	if (read(fd, &table_size, sizeof(table_size)) != sizeof(table_size)) {
+		fprintf(stderr, "The table size could not be read.\n");
+		return -1;
+	}
+
+	table_size = ntohs(table_size);
+
+	if (table_size % PART_LENGTH != 0) {
+		fprintf(stderr, "The part length seems to be wrong: 0x%x\n", table_size);
 		return -1;
 	}
 
 	/* look into each firmware now */
-	for (i = 0; i < ntohs(firmware_header->part_length) / PART_LENGTH; ++i) {
+	for (i = 0; i < table_size / PART_LENGTH; ++i) {
 		struct sdp_header_entry entry;
 		struct sdp_header_item *header_entry;
-		unsigned int offset = base_offset + sizeof(struct sdp_firmware);
+		unsigned int offset = table_start + 2;
 		offset += i * 138;
 
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -104,6 +115,11 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 			return -1;
 		}
 
+		header_entry = talloc_zero(header,  struct sdp_header_item);
+		header_entry->header_entry = entry;
+		header_entry->absolute_offset = base_offset;
+		llist_add(&header_entry->entry, &header->header_list);
+
 		/* now we need to find the SDP file... */
 		offset = ntohl(entry.start) + 4 + base_offset;
 		if (lseek(fd, offset, SEEK_SET) != offset) {
@@ -111,9 +127,6 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 			return -1;
 		}
 
-		header_entry = talloc_zero(header,  struct sdp_header_item);
-		header_entry->header_entry = entry;
-		llist_add(&header_entry->entry, &header->header_list);
 
 		ipaccess_analyze_file(fd, ntohl(entry.length), offset, list);
 	}

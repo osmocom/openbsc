@@ -154,6 +154,7 @@ int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 				u_int8_t *attr, u_int8_t attr_len);
 int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
 				 u_int32_t ip, u_int16_t port, u_int8_t stream);
+void abis_nm_ipaccess_cgi(u_int8_t *buf, struct gsm_bts *bts);
 int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf);
 const char *ipacc_testres_name(u_int8_t res);
 
