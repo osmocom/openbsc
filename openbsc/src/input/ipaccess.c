@@ -255,6 +255,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 				LOGP(DINP, LOGL_ERROR, "BTS is still registered. Closing old connection.\n");
 				bsc_unregister_fd(newbfd);
 				close(newbfd->fd);
+				newbfd->fd = -1;
 			}
 
 			/* get rid of our old temporary bfd */
@@ -515,6 +516,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
+	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
 	struct bsc_fd *bfd;
@@ -541,6 +543,10 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	//line->driver_data = e1h;
 	/* create virrtual E1 timeslots for signalling */
 	e1inp_ts_config(&line->ts[1-1], line, E1INP_TS_TYPE_SIGN);
+
+	/* initialize the fds */
+	for (i = 0; i < ARRAY_SIZE(line->ts); ++i)
+		line->ts[i].driver.ipaccess.fd.fd = -1;
 
 	e1i_ts = &line->ts[idx];
 
