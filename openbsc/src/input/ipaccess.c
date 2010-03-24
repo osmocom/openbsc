@@ -289,14 +289,14 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 
 	/* first read our 3-byte header */
 	hh = (struct ipaccess_head *) msg->data;
-	ret = recv(bfd->fd, msg->data, 3, 0);
-	if (ret < 0) {
-		if (errno != EAGAIN)
-			LOGP(DINP, LOGL_ERROR, "recv error %d %s\n", ret, strerror(errno));
+	ret = recv(bfd->fd, msg->data, sizeof(*hh), 0);
+	if (ret == 0) {
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
-	} else if (ret == 0) {
+	} else if (ret != sizeof(*hh)) {
+		if (errno != EAGAIN)
+			LOGP(DINP, LOGL_ERROR, "recv error %d %s\n", ret, strerror(errno));
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
@@ -307,9 +307,17 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	/* then read te length as specified in header */
 	msg->l2h = msg->data + sizeof(*hh);
 	len = ntohs(hh->len);
+
+	if (len < 0 || TS1_ALLOC_SIZE < len + sizeof(*hh)) {
+		LOGP(DINP, LOGL_ERROR, "Can not read this packet. %d avail\n", len);
+		msgb_free(msg);
+		*error = -EIO;
+		return NULL;
+	}
+
 	ret = recv(bfd->fd, msg->l2h, len, 0);
 	if (ret < len) {
-		LOGP(DINP, LOGL_ERROR, "short read!\n");
+		LOGP(DINP, LOGL_ERROR, "short read! Got %d from %d\n", ret, len);
 		msgb_free(msg);
 		*error = -EIO;
 		return NULL;
