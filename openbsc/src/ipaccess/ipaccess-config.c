@@ -58,6 +58,7 @@ static char *software = NULL;
 static int sw_load_state = 0;
 static int oml_state = 0;
 static int dump_files = 0;
+static char *firmware_analysis = NULL;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -677,8 +678,8 @@ int main(int argc, char **argv)
 				exit(0);
 			break;
 		case 'f':
-			analyze_firmware(optarg);
-			exit(0);
+			firmware_analysis = optarg;
+			break;
 		case 'w':
 			dump_files = 1;
 			break;
@@ -689,8 +690,13 @@ int main(int argc, char **argv)
 		}
 	};
 
+	if (firmware_analysis)
+		analyze_firmware(firmware_analysis);
+
 	if (optind >= argc) {
-		fprintf(stderr, "you have to specify the IP address of the BTS. Use --help for more information\n");
+		/* only warn if we have not done anything else */
+		if (!firmware_analysis)
+			fprintf(stderr, "you have to specify the IP address of the BTS. Use --help for more information\n");
 		exit(2);
 	}
 
