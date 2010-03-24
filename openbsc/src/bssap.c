@@ -640,6 +640,7 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	struct dtap_header *header;
 	struct msgb *gsm48;
 	u_int8_t *data;
+	u_int8_t link_id;
 
 	if (!lchan) {
 		DEBUGP(DMSC, "No lchan available\n");
@@ -693,7 +694,14 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 		}
 	}
 
-	bts_queue_send(gsm48, header->link_id);
+	link_id = header->link_id;
+
+	/* If we are on a TCH and need to submit a SMS (on SAPI=3) we need to use the SACH */
+	if ((lchan->type == GSM_LCHAN_TCH_F ||
+	     lchan->type == GSM_LCHAN_TCH_H) && (link_id & 0x7) != 0)
+		link_id |= 0x40;
+
+	bts_queue_send(gsm48, link_id);
 	return 0;
 }
 
