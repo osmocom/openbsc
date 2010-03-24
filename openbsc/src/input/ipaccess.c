@@ -247,6 +247,13 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
+
+			if (newbfd->fd >= 0) {
+				LOGP(DINP, LOGL_ERROR, "BTS is still registered. Closing old connection.\n");
+				bsc_unregister_fd(newbfd);
+				close(newbfd->fd);
+			}
+
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			newbfd->priv_nr = 2+trx_id;
