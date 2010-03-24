@@ -33,7 +33,7 @@
 #include <openbsc/signal.h>
 #include <osmocore/talloc.h>
 
-#include "../bscconfig.h"
+#include "bscconfig.h"
 
 
 /* global pointer to the gsm network data structure */
