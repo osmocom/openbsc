@@ -37,21 +37,13 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 
-#include "../bscconfig.h"
-
 /* MCC and MNC for the Location Area Identifier */
 static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-const char *openbsc_version = "OpenBSC " PACKAGE_VERSION;
-const char *openbsc_copyright =
-	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\n"
-	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg\n\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
+extern const char *openbsc_version;
+extern const char *openbsc_copyright;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
