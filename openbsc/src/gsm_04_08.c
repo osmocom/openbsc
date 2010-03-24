@@ -104,7 +104,7 @@ static void release_loc_updating_req(struct gsm_lchan *lchan)
 	bsc_del_timer(&lchan->loc_operation->updating_timer);
 	talloc_free(lchan->loc_operation);
 	lchan->loc_operation = 0;
-	put_lchan(lchan);
+	put_lchan(lchan, 0);
 }
 
 static void allocate_loc_updating_req(struct gsm_lchan *lchan)

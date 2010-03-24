@@ -191,10 +191,10 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 
 		/* we might got killed during an assignment */
 		if (msg->lchan->msc_data->secondary_lchan)
-			put_lchan(msg->lchan->msc_data->secondary_lchan);
+			put_lchan(msg->lchan->msc_data->secondary_lchan, 0);
 
 		msg->lchan->msc_data = NULL;
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 	}
 
 	/* send the clear complete message */
@@ -439,13 +439,13 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 {
 	if (!new_lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No BSS data found.\n");
-		put_lchan(new_lchan);
+		put_lchan(new_lchan, 0);
 		return;
 	}
 
 	if (new_lchan->msc_data->secondary_lchan != new_lchan) {
 		LOGP(DMSC, LOGL_ERROR, "This is not the secondary channel?\n");
-		put_lchan(new_lchan);
+		put_lchan(new_lchan, 0);
 		return;
 	}
 

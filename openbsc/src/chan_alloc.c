@@ -300,7 +300,7 @@ void lchan_free(struct gsm_lchan *lchan)
 }
 
 /* Consider releasing the channel now */
-int _lchan_release(struct gsm_lchan *lchan)
+int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
 {
 	if (lchan->use_count > 0) {
 		DEBUGP(DRLL, "BUG: _lchan_release called without zero use_count.\n");
@@ -320,7 +320,7 @@ int _lchan_release(struct gsm_lchan *lchan)
 			lchan->use_count);
 
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
-	rsl_release_request(lchan, 0);
+	rsl_release_request(lchan, 0, release_reason);
 	return 1;
 }
 

@@ -160,7 +160,7 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 			DEBUGP(DMSC, "ERROR: The lchan is still associated\n.");
 
 			lchan->msc_data = NULL;
-			put_lchan(lchan);
+			put_lchan(lchan, 0);
 		}
 
 		bss_sccp_free_data((struct bss_sccp_connection_data *)conn->data_ctx);
@@ -306,20 +306,20 @@ static int handle_ass_compl(struct msgb *msg)
 
 	if (!msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No MSC data\n");
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 
@@ -332,7 +332,7 @@ static int handle_ass_compl(struct msgb *msg)
 	/* give up the old channel to not do a SACCH deactivate */
 	subscr_put(old_chan->subscr);
 	old_chan->subscr = NULL;
-	put_lchan(old_chan);
+	put_lchan(old_chan, 1);
 
 	/* activate audio on it... */
 	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && msg->lchan->tch_mode != GSM48_CMODE_SIGN)
@@ -353,20 +353,20 @@ static int handle_ass_fail(struct msgb *msg)
 	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No MSC data\n");
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
-		put_lchan(msg->lchan);
+		put_lchan(msg->lchan, 0);
 		return -1;
 	}
 

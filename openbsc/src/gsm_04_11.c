@@ -762,7 +762,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 
 	/* release channel if done */
 	if (!sms)
-		rsl_release_request(msg->lchan, trans->sms.link_id);
+		rsl_release_request(msg->lchan, trans->sms.link_id, 0);
 
 	return 0;
 }
@@ -837,7 +837,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	if (sms)
 		gsm411_send_sms_lchan(msg->lchan, sms);
 	else
-		rsl_release_request(msg->lchan, trans->sms.link_id);
+		rsl_release_request(msg->lchan, trans->sms.link_id, 0);
 
 	return rc;
 }

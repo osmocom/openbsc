@@ -207,7 +207,7 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 	 * will listen to the paging requests before we timeout
 	 */
 
-	put_lchan(lchan);
+	put_lchan(lchan, 0);
 
 	if (lchan->subscr && !llist_empty(&lchan->subscr->requests))
 		subscr_send_paging_request(lchan->subscr);

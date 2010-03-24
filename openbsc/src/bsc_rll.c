@@ -52,7 +52,7 @@ static LLIST_HEAD(bsc_rll_reqs);
 static void complete_rllr(struct bsc_rll_req *rllr, enum bsc_rllr_ind type)
 {
 	llist_del(&rllr->list);
-	put_lchan(rllr->lchan);
+	put_lchan(rllr->lchan, 0);
 	rllr->cb(rllr->lchan, rllr->link_id, rllr->data, type);
 	talloc_free(rllr);
 }

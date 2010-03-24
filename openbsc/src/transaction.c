@@ -102,7 +102,7 @@ void trans_free(struct gsm_trans *trans)
 	}
 
 	if (trans->lchan)
-		put_lchan(trans->lchan);
+		put_lchan(trans->lchan, 0);
 
 	if (trans->subscr)
 		subscr_put(trans->subscr);
@@ -159,7 +159,7 @@ int trans_lchan_change(struct gsm_lchan *lchan_old,
 	llist_for_each_entry(trans, &net->trans_list, entry) {
 		if (trans->lchan == lchan_old) {
 			/* drop old channel use cound */
-			put_lchan(trans->lchan);
+			put_lchan(trans->lchan, 0);
 			/* assign new channel */
 			trans->lchan = lchan_new;
 			/* bump new channel use count */

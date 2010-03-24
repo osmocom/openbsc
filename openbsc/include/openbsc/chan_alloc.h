@@ -34,13 +34,13 @@
 			lchan->nr, lchan->use_count); \
 	} while(0);
 
-#define put_lchan(lchan) \
+#define put_lchan(lchan, reason) \
 	do { lchan->use_count--; \
 		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
 			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
 			lchan->nr, lchan->use_count); \
 	    if (lchan->use_count <= 0) \
-		_lchan_release(lchan); \
+		_lchan_release(lchan, reason); \
 	} while(0);
 
 
@@ -69,7 +69,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);
 void lchan_free(struct gsm_lchan *lchan);
 
 /* internal.. do not use */
-int _lchan_release(struct gsm_lchan *lchan);
+int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason);
 
 struct load_counter {
 	unsigned int total;

@@ -255,7 +255,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
-	put_lchan(ho->new_lchan);
+	put_lchan(ho->new_lchan, 0);
 	talloc_free(ho);
 
 	return 0;

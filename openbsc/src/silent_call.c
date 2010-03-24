@@ -135,7 +135,7 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 	if (!lchan->silent_call)
 		return -EINVAL;
 
-	put_lchan(lchan);
+	put_lchan(lchan, 0);
 
 	return 0;
 }
