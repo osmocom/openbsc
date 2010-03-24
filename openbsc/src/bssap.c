@@ -424,6 +424,7 @@ static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
 	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
 		lchan_free(new_lchan);
+		return -1;
 	}
 
 	msc_data->secondary_lchan = new_lchan;
