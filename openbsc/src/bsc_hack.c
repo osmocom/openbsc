@@ -91,7 +91,7 @@ static void print_version()
 
 static void print_copyright()
 {
-	printf(openbsc_copyright);
+	puts(openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
