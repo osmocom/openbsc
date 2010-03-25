@@ -68,7 +68,7 @@ int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 				"Sending '%s' to MS.\n", msg->trx->bts->nr,
 				msg->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr & 0xf0,
-				gsm48_cc_msg_names[gh->msg_type & 0x3f]);
+				gsm48_cc_msg_name(gh->msg_type));
 		else
 			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
 				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,

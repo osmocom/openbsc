@@ -1234,7 +1234,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
 		gsm_lchan_name(msg->lchan),
-		get_value_string(rsl_rlm_cause_strs, rlm_cause[1]));
+		rsl_rlm_cause_name(rlm_cause[1]));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 

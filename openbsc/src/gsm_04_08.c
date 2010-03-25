@@ -1008,7 +1008,8 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 		return;
 
 	DEBUGP(DCC, "new state %s -> %s\n",
-		cc_state_names[trans->cc.state], cc_state_names[state]);
+		gsm48_cc_state_name(trans->cc.state),
+		gsm48_cc_state_name(state));
 
 	trans->cc.state = state;
 }
@@ -2720,7 +2721,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		trans->transaction_id,
 		(lchan->subscr)?(lchan->subscr->extension):"-",
 		get_mncc_name(msg_type), trans->cc.state,
-		cc_state_names[trans->cc.state]);
+		gsm48_cc_state_name(trans->cc.state));
 
 	/* Find function for current state and message */
 	for (i = 0; i < DOWNSLLEN; i++)
@@ -2813,8 +2814,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
-		gsm48_cc_msg_names[msg_type], trans?(trans->cc.state):0,
-		cc_state_names[trans?(trans->cc.state):0]);
+		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
+		gsm48_cc_state_name(trans?(trans->cc.state):0));
 
 	/* Create transaction */
 	if (!trans) {
