@@ -1014,7 +1014,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 }
 
 /* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
@@ -1041,7 +1041,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	return sms;
 }
 
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, int min_subscr_id)
+struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
