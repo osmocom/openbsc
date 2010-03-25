@@ -45,52 +45,41 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 	ts->e1_link.e1_ts_ss = e1_ts_ss;
 }
 
-static const char *pchan_names[] = {
-	[GSM_PCHAN_NONE]	= "NONE",
-	[GSM_PCHAN_CCCH]	= "CCCH",
-	[GSM_PCHAN_CCCH_SDCCH4]	= "CCCH+SDCCH4",
-	[GSM_PCHAN_TCH_F]	= "TCH/F",
-	[GSM_PCHAN_TCH_H]	= "TCH/H",
-	[GSM_PCHAN_SDCCH8_SACCH8C] = "SDCCH8",
-	[GSM_PCHAN_PDCH]	= "PDCH",
-	[GSM_PCHAN_TCH_F_PDCH]	= "TCH/F_PDCH",
-	[GSM_PCHAN_UNKNOWN]	= "UNKNOWN",
+static const struct value_string pchan_names[] = {
+	{ GSM_PCHAN_NONE,	"NONE" },
+	{ GSM_PCHAN_CCCH,	"CCCH" },
+	{ GSM_PCHAN_CCCH_SDCCH4,"CCCH+SDCCH4" },
+	{ GSM_PCHAN_TCH_F,	"TCH/F" },
+	{ GSM_PCHAN_TCH_H,	"TCH/H" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C, "SDCCH8" },
+	{ GSM_PCHAN_PDCH,	"PDCH" },
+	{ GSM_PCHAN_TCH_F_PDCH,	"TCH/F_PDCH" },
+	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
+	{ 0,			NULL }
 };
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c)
 {
-	if (c >= ARRAY_SIZE(pchan_names))
-		return "INVALID";
-
-	return pchan_names[c];
+	return get_value_string(pchan_names, c);
 }
 
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
 {
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(pchan_names); i++) {
-		if (!strcasecmp(name, pchan_names[i]))
-			return i;
-	}
-
-	return -1;
+	return get_string_value(pchan_names, name);
 }
 
-static const char *lchan_names[] = {
-	[GSM_LCHAN_NONE]	= "NONE",
-	[GSM_LCHAN_SDCCH]	= "SDCCH",
-	[GSM_LCHAN_TCH_F]	= "TCH/F",
-	[GSM_LCHAN_TCH_H]	= "TCH/H",
-	[GSM_LCHAN_UNKNOWN]	= "UNKNOWN",
+static const struct value_string lchant_names[] = {
+	{ GSM_LCHAN_NONE,	"NONE" },
+	{ GSM_LCHAN_SDCCH,	"SDCCH" },
+	{ GSM_LCHAN_TCH_F,	"TCH/F" },
+	{ GSM_LCHAN_TCH_H,	"TCH/H" },
+	{ GSM_LCHAN_UNKNOWN,	"UNKNOWN" },
+	{ 0,			NULL }
 };
 
 const char *gsm_lchant_name(enum gsm_chan_t c)
 {
-	if (c >= ARRAY_SIZE(lchan_names))
-		return "INVALID";
-
-	return lchan_names[c];
+	return get_value_string(lchant_names, c);
 }
 
 static const struct value_string lchan_s_names[] = {
@@ -99,7 +88,7 @@ static const struct value_string lchan_s_names[] = {
 	{ LCHAN_S_ACTIVE,	"ACTIVE" },
 	{ LCHAN_S_INACTIVE,	"INACTIVE" },
 	{ LCHAN_S_REL_REQ,	"RELEASE REQUESTED" },
-	{ 0,			NULL },
+	{ 0,			NULL }
 };
 
 const char *gsm_lchans_name(enum gsm_lchan_state s)
@@ -107,20 +96,18 @@ const char *gsm_lchans_name(enum gsm_lchan_state s)
 	return get_value_string(lchan_s_names, s);
 }
 
-static const char *chreq_names[] = {
-	[GSM_CHREQ_REASON_EMERG]	= "EMERGENCY",
-	[GSM_CHREQ_REASON_PAG]		= "PAGING",
-	[GSM_CHREQ_REASON_CALL]		= "CALL",
-	[GSM_CHREQ_REASON_LOCATION_UPD]	= "LOCATION_UPDATE",
-	[GSM_CHREQ_REASON_OTHER]	= "OTHER",
+static const struct value_string chreq_names[] = {
+	{ GSM_CHREQ_REASON_EMERG,	"EMERGENCY" },
+	{ GSM_CHREQ_REASON_PAG,		"PAGING" },
+	{ GSM_CHREQ_REASON_CALL,	"CALL" },
+	{ GSM_CHREQ_REASON_LOCATION_UPD,"LOCATION_UPDATE" },
+	{ GSM_CHREQ_REASON_OTHER,	"OTHER" },
+	{ 0,				NULL }
 };
 
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
 {
-	if (c >= ARRAY_SIZE(chreq_names))
-		return "INVALID";
-
-	return chreq_names[c];
+	return get_value_string(chreq_names, c);
 }
 
 static struct gsm_bts_model *bts_model_find(enum gsm_bts_type type)
@@ -377,27 +364,21 @@ char *gsm_lchan_name(struct gsm_lchan *lchan)
 	return ts2str;
 }
 
-static const char *bts_types[] = {
-	[GSM_BTS_TYPE_UNKNOWN] = "unknown",
-	[GSM_BTS_TYPE_BS11] = "bs11",
-	[GSM_BTS_TYPE_NANOBTS] = "nanobts",
+static const struct value_string bts_types[] = {
+	{ GSM_BTS_TYPE_UNKNOWN,	"unknown" },
+	{ GSM_BTS_TYPE_BS11,	"bs11" },
+	{ GSM_BTS_TYPE_NANOBTS,	"nanobts" },
+	{ 0,			NULL }
 };
 
 enum gsm_bts_type parse_btstype(const char *arg)
 {
-	int i;
-	for (i = 0; i < ARRAY_SIZE(bts_types); i++) {
-		if (!strcmp(arg, bts_types[i]))
-			return i;
-	}	
-	return GSM_BTS_TYPE_BS11; /* Default: BS11 */
+	return get_string_value(bts_types, arg);
 }
 
 const char *btstype2str(enum gsm_bts_type type)
 {
-	if (type > ARRAY_SIZE(bts_types))
-		return "undefined";
-	return bts_types[type];
+	return get_value_string(bts_types, type);
 }
 
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr)
@@ -438,27 +419,21 @@ struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 	return NULL;
 }
 
-static const char *gsm_auth_policy_names[] = {
-	[GSM_AUTH_POLICY_CLOSED] = "closed",
-	[GSM_AUTH_POLICY_ACCEPT_ALL] = "accept-all",
-	[GSM_AUTH_POLICY_TOKEN] = "token",
+static const struct value_string auth_policy_names[] = {
+	{ GSM_AUTH_POLICY_CLOSED,	"closed" },
+	{ GSM_AUTH_POLICY_ACCEPT_ALL,	"accept-all" },
+	{ GSM_AUTH_POLICY_TOKEN,	"token" },
+	{ 0,				NULL }
 };
 
 enum gsm_auth_policy gsm_auth_policy_parse(const char *arg)
 {
-	int i;
-	for (i = 0; i < ARRAY_SIZE(gsm_auth_policy_names); i++) {
-		if (!strcmp(arg, gsm_auth_policy_names[i]))
-			return i;
-	}
-	return GSM_AUTH_POLICY_CLOSED;
+	return get_string_value(auth_policy_names, arg);
 }
 
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 {
-	if (policy > ARRAY_SIZE(gsm_auth_policy_names))
-		return "undefined";
-	return gsm_auth_policy_names[policy];
+	return get_value_string(auth_policy_names, policy);
 }
 
 /* this should not be here but in gsm_04_08... but that creates
@@ -505,28 +480,22 @@ int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts)
 	return gsm48_construct_ra(buf, &raid);
 }
 
-static const char *rrlp_mode_names[] = {
-	[RRLP_MODE_NONE] = "none",
-	[RRLP_MODE_MS_BASED] = "ms-based",
-	[RRLP_MODE_MS_PREF] = "ms-preferred",
-	[RRLP_MODE_ASS_PREF] = "ass-preferred",
+static const struct value_string rrlp_mode_names[] = {
+	{ RRLP_MODE_NONE,	"none" },
+	{ RRLP_MODE_MS_BASED,	"ms-based" },
+	{ RRLP_MODE_MS_PREF,	"ms-preferred" },
+	{ RRLP_MODE_ASS_PREF,	"ass-preferred" },
+	{ 0,			NULL }
 };
 
 enum rrlp_mode rrlp_mode_parse(const char *arg)
 {
-	int i;
-	for (i = 0; i < ARRAY_SIZE(rrlp_mode_names); i++) {
-		if (!strcmp(arg, rrlp_mode_names[i]))
-			return i;
-	}
-	return RRLP_MODE_NONE;
+	return get_string_value(rrlp_mode_names, arg);
 }
 
 const char *rrlp_mode_name(enum rrlp_mode mode)
 {
-	if (mode > ARRAY_SIZE(rrlp_mode_names))
-		return "none";
-	return rrlp_mode_names[mode];
+	return get_value_string(rrlp_mode_names, mode);
 }
 
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
