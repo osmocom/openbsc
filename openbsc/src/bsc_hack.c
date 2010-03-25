@@ -82,6 +82,7 @@ static void print_help()
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
+	printf("  -e --log-level number. Set a global loglevel.\n");
 }
 
 static void print_version()
@@ -109,10 +110,11 @@ static void handle_options(int argc, char** argv)
 			{"timestamp", 0, 0, 'T'},
 			{"version", 0, 0, 'V' },
 			{"rtp-proxy", 0, 0, 'P'},
+			{"log-level", 1, 0, 'e'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sl:ar:p:TPVc:",
+		c = getopt_long(argc, argv, "hd:sl:ar:p:TPVc:e:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -142,6 +144,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
+			break;
+		case 'e':
+			debug_set_log_level(stderr_target, atoi(optarg));
 			break;
 		case 'V':
 			print_version();
