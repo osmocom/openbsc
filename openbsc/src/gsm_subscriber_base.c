@@ -187,6 +187,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 
 void subscr_put_channel(struct gsm_lchan *lchan)
 {
+	struct gsm_subscriber_connection *conn = &lchan->conn;
 	/*
 	 * FIXME: Continue with other requests now... by checking
 	 * the gsm_subscriber inside the gsm_lchan. Drop the ref count
@@ -205,9 +206,9 @@ void subscr_put_channel(struct gsm_lchan *lchan)
 	 * will listen to the paging requests before we timeout
 	 */
 
-	put_lchan(lchan);
+	put_subscr_con(conn);
 
-	if (lchan->subscr && !llist_empty(&lchan->subscr->requests))
-		subscr_send_paging_request(lchan->subscr);
+	if (lchan->conn.subscr && !llist_empty(&lchan->conn.subscr->requests))
+		subscr_send_paging_request(lchan->conn.subscr);
 }
 

@@ -24,6 +24,7 @@
  */
 
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -121,16 +122,11 @@ struct msgb *gsm411_msgb_alloc(void)
 				   "GSM 04.11");
 }
 
-static int gsm411_sendmsg(struct msgb *msg, u_int8_t link_id)
+static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, u_int8_t link_id)
 {
-	if (msg->lchan)
-		msg->trx = msg->lchan->ts->trx;
-
-	msg->l3h = msg->data;
-
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
-
-	return rsl_data_request(msg, link_id);
+	msg->l3h = msg->data;
+	return gsm0808_submit_dtap(conn, msg, link_id);
 }
 
 /* SMC TC1* is expired */
@@ -154,9 +150,6 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	gh->proto_discr = trans->protocol | (trans->transaction_id<<4);
 	gh->msg_type = msg_type;
 
-	/* assign the outgoing lchan */
-	msg->lchan = trans->lchan;
-
 	/* mobile originating */
 	switch (gh->msg_type) {
 	case GSM411_MT_CP_DATA:
@@ -179,7 +172,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGPC(DSMS, "trans=%x\n", trans->transaction_id);
 
-	return gsm411_sendmsg(msg, trans->sms.link_id);
+	return gsm411_sendmsg(trans->conn, msg, trans->sms.link_id);
 }
 
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
@@ -511,9 +504,8 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 
 /* process an incoming TPDU (called from RP-DATA) 
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
-static int gsm340_rx_tpdu(struct msgb *msg)
+static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	u_int8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
 	u_int8_t sms_mti, sms_mms, sms_vpf, sms_alphabet, sms_rp;
@@ -522,7 +514,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	counter_inc(bts->network->stats.sms.submitted);
+	counter_inc(conn->bts->network->stats.sms.submitted);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -594,7 +586,7 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 		}
 	}
 
-	gsms->sender = subscr_get(msg->lchan->subscr);
+	gsms->sender = subscr_get(msg->lchan->conn.subscr);
 
 	LOGP(DSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
@@ -610,10 +602,10 @@ static int gsm340_rx_tpdu(struct msgb *msg)
 	dispatch_signal(SS_SMS, 0, gsms);
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(bts->network, gsms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
-		counter_inc(bts->network->stats.sms.no_receiver);
+		counter_inc(conn->bts->network->stats.sms.no_receiver);
 		goto out;
 	}
 
@@ -687,7 +679,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
 
-	rc = gsm340_rx_tpdu(msg);
+	rc = gsm340_rx_tpdu(trans->conn, msg);
 	if (rc == 0)
 		return gsm411_send_rp_ack(trans, rph->msg_ref);
 	else if (rc > 0)
@@ -753,14 +745,17 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	trans->sms.sms = NULL;
 
 	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	assert(msg->lchan->conn.subscr == trans->subscr);
+
+	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
-		gsm411_send_sms_lchan(msg->lchan, sms);
+		gsm411_send_sms_lchan(trans->conn, sms);
 
 	/* free the transaction here */
 	trans_free(trans);
 
 	/* release channel if done */
+#warning "BROKEN. The SAPI will be released automatically by the BSC"
 	if (!sms)
 		rsl_release_request(msg->lchan, trans->sms.link_id);
 
@@ -770,7 +765,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 			      struct gsm411_rp_hdr *rph)
 {
-	struct gsm_network *net = trans->lchan->ts->trx->bts->network;
+	struct gsm_network *net = trans->conn->bts->network;
 	struct gsm_sms *sms = trans->sms.sms;
 	u_int8_t cause_len = rph->data[0];
 	u_int8_t cause = rph->data[1];
@@ -780,7 +775,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	 * the cause and take action depending on it */
 
 	LOGP(DSMS, LOGL_NOTICE, "%s: RX SMS RP-ERROR, cause %d:%d (%s)\n",
-	     subscr_name(msg->lchan->subscr), cause_len, cause,
+	     subscr_name(trans->conn->subscr), cause_len, cause,
 	     get_value_string(rp_cause_strs, cause));
 
 	if (!trans->sms.is_mt) {
@@ -833,11 +828,13 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
 
 	/* check for more messages for this subscriber */
-	sms = db_sms_get_unsent_for_subscr(msg->lchan->subscr);
+	assert(msg->lchan->conn.subscr == trans->subscr);
+	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
-		gsm411_send_sms_lchan(msg->lchan, sms);
+		gsm411_send_sms_lchan(trans->conn, sms);
 	else
 		rsl_release_request(msg->lchan, trans->sms.link_id);
+#warning "BROKEN: The SAPI=3 will be released automatically by the BSC"
 
 	return rc;
 }
@@ -920,16 +917,16 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	struct gsm_trans *trans;
 	int rc = 0;
 
-	if (!lchan->subscr)
+	if (!lchan->conn.subscr)
 		return -EIO;
 		/* FIXME: send some error message */
 
 	DEBUGP(DSMS, "trans_id=%x ", transaction_id);
-	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_SMS,
+	trans = trans_find_by_id(lchan->conn.subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
 		DEBUGPC(DSMS, "(new) ");
-		trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
+		trans = trans_alloc(lchan->conn.subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGPC(DSMS, "No memory for trans\n");
@@ -941,8 +938,8 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		trans->sms.is_mt = 0;
 		trans->sms.link_id = link_id;
 
-		trans->lchan = lchan;
-		use_lchan(lchan);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 	}
 
 	switch(msg_type) {
@@ -961,7 +958,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 				if (i == transaction_id)
 					continue;
 
-				ptrans = trans_find_by_id(lchan->subscr,
+				ptrans = trans_find_by_id(lchan->conn.subscr,
 				                          GSM48_PDISC_SMS, i);
 				if (!ptrans)
 					continue;
@@ -1041,7 +1038,7 @@ static u_int8_t tpdu_test[] = {
 /* Take a SMS in gsm_sms structure and send it through an already
  * existing lchan. We also assume that the caller ensured this lchan already
  * has a SAPI3 RLL connection! */
-int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
+int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
@@ -1050,18 +1047,16 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	int transaction_id;
 	int rc;
 
-	transaction_id = trans_assign_trans_id(lchan->subscr, GSM48_PDISC_SMS, 0);
+	transaction_id = trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DSMS, LOGL_ERROR, "No available transaction ids\n");
 		return -EBUSY;
 	}
 
-	msg->lchan = lchan;
-
 	DEBUGP(DSMS, "send_sms_lchan()\n");
 
 	/* FIXME: allocate transaction with message reference */
-	trans = trans_alloc(lchan->subscr, GSM48_PDISC_SMS,
+	trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DSMS, LOGL_ERROR, "No memory for trans\n");
@@ -1074,8 +1069,8 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 	trans->sms.sms = sms;
 	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
-	trans->lchan = lchan;
-	use_lchan(lchan);
+	trans->conn = conn;
+	use_subscr_con(trans->conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);
@@ -1112,7 +1107,7 @@ int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms)
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
-	counter_inc(lchan->ts->trx->bts->network->stats.sms.delivered);
+	counter_inc(conn->bts->network->stats.sms.delivered);
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
@@ -1130,11 +1125,13 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 
 	switch (type) {
 	case BSC_RLLR_IND_EST_CONF:
-		gsm411_send_sms_lchan(lchan, sms);
+#warning "BROKEN: The BSC will establish this transparently"
+		gsm411_send_sms_lchan(&lchan->conn, sms);
 		break;
 	case BSC_RLLR_IND_REL_IND:
 	case BSC_RLLR_IND_ERR_IND:
 	case BSC_RLLR_IND_TIMEOUT:
+#warning "BROKEN: We will need to handle SAPI n Reject"
 		sms_free(sms);
 		break;
 	}

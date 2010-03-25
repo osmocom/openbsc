@@ -38,6 +38,7 @@
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			    struct msgb *msg, void *_lchan, void *_data)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm_lchan *lchan = _lchan;
 	struct scall_signal_data sigdata;
 	int rc;
@@ -47,6 +48,8 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 
 	DEBUGP(DSMS, "paging_cb_silent: ");
 
+	conn = &lchan->conn;
+
 	sigdata.lchan = lchan;
 	sigdata.data = _data;
 
@@ -54,10 +57,10 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
 			lchan->ts->nr, lchan->ts->trx->arfcn);
-		lchan->silent_call = 1;
+		conn->silent_call = 1;
 		/* increment lchan reference count */
 		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
-		use_lchan(lchan);
+		use_subscr_con(conn);
 		break;
 	case GSM_PAGING_EXPIRED:
 		DEBUGP(DSMS, "expired\n");
@@ -97,7 +100,7 @@ int silent_call_reroute(struct msgb *msg)
 	int i;
 
 	/* if we're not part of a silent call, never reroute */
-	if (!msg->lchan->silent_call)
+	if (!msg->lchan->conn.silent_call)
 		return 0;
 
 	/* check if we are a special message that is handled in openbsc */
@@ -126,16 +129,18 @@ int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 {
 	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 
 	lchan = lchan_for_subscr(subscr);
 	if (!lchan)
 		return -EINVAL;
 
 	/* did we actually establish a silent call for this guy? */
-	if (!lchan->silent_call)
+	conn = &lchan->conn;
+	if (!conn->silent_call)
 		return -EINVAL;
 
-	put_lchan(lchan);
+	put_subscr_con(conn);
 
 	return 0;
 }
