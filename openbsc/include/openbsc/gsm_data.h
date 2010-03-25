@@ -624,6 +624,8 @@ struct gsm_network {
 		enum rrlp_mode mode;
 	} rrlp;
 
+	enum gsm_chan_t ctype_by_chreq[16];
+
 	/* a hack for On Waves. It must be signed */
 	int32_t core_country_code;
 	int32_t core_network_code;

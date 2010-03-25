@@ -1265,6 +1265,7 @@ DEFUN(cfg_net_neci,
       "Set if NECI of cell selection is to be set")
 {
 	gsmnet->neci = atoi(argv[0]);
+	gsm_net_update_ctype(gsmnet);
 	return CMD_SUCCESS;
 }
 
