@@ -686,6 +686,7 @@ static void print_help()
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
 	printf("  -l --local=IP. The local address of the MGCP.\n");
+	printf("  -e --log-level number. Set a global loglevel.\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -701,6 +702,7 @@ static void handle_options(int argc, char** argv)
 			{"rtp-proxy", 0, 0, 'P'},
 			{"msc", 1, 0, 'm'},
 			{"local", 1, 0, 'l'},
+			{"log-level", 1, 0, 'e'},
 			{0, 0, 0, 0}
 		};
 
@@ -734,6 +736,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'l':
 			inet_aton(optarg, &local_addr);
+			break;
+		case 'e':
+			debug_set_log_level(stderr_target, atoi(optarg));
 			break;
 		default:
 			/* ignore */
