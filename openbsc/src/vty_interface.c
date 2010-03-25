@@ -117,6 +117,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		VTY_NEWLINE);
 	vty_out(vty, "  NECI (TCH/H): %u%s", net->neci,
 		VTY_NEWLINE);
+	vty_out(vty, "  Use TCH for Paging any: %d%s", net->pag_any_tch,
+		VTY_NEWLINE);
 	vty_out(vty, "  RRLP Mode: %s%s", rrlp_mode_name(net->rrlp.mode),
 		VTY_NEWLINE);
 	vty_out(vty, "  MM Info: %s%s", net->send_mm_info ? "On" : "Off",
@@ -376,6 +378,7 @@ static int config_write_net(struct vty *vty)
 		gsmnet->reject_cause, VTY_NEWLINE);
 	vty_out(vty, " encryption a5 %u%s", gsmnet->a5_encryption, VTY_NEWLINE);
 	vty_out(vty, " neci %u%s", gsmnet->neci, VTY_NEWLINE);
+	vty_out(vty, " paging any use tch %d%s", gsmnet->pag_any_tch, VTY_NEWLINE);
 	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
 		VTY_NEWLINE);
 	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
@@ -1448,6 +1451,16 @@ DEFUN(cfg_net_bsc_token,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_pag_any_tch,
+      cfg_net_pag_any_tch_cmd,
+      "paging any use tch (0|1)",
+      "Assign a TCH when receiving a Paging Any request")
+{
+	gsmnet->pag_any_tch = atoi(argv[0]);
+	gsm_net_update_ctype(gsmnet);
+	return CMD_SUCCESS;
+}
+
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -2153,6 +2166,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_bsc_token_cmd);
+	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
