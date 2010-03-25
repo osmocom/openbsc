@@ -242,7 +242,7 @@ static void _debugp(unsigned int subsys, int level, char *file, int line,
 			continue;
 
 		/* Check the category log level */
-		if (category->loglevel != 0 && level < category->loglevel)
+		if (tar->loglevel == 0 && category->loglevel != 0 && level < category->loglevel)
 			continue;
 
 		/*
