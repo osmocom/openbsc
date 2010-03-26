@@ -529,7 +529,7 @@ static void print_usage()
 /*
  * SCCP handling
  */
-static int msc_sccp_write_ipa(struct msgb *msg, void *data)
+static void msc_sccp_write_ipa(struct msgb *msg, void *data)
 {
 	int ret;
 
@@ -539,13 +539,10 @@ static int msc_sccp_write_ipa(struct msgb *msg, void *data)
 
 	DEBUGP(DMI, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
 	ret = write(msc_connection.fd, msg->data, msg->len);
+	msgb_free(msg);
 
-	if (ret <= 0) {
+	if (ret <= 0)
 		perror("MSC: Failed to send SCCP");
-		return -1;
-        }
-
-	return 0;
 }
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)

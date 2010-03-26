@@ -354,14 +354,14 @@ int sccp_read_cb(struct msgb *data, unsigned len, void *context)
 	return 0;
 }
 
-int sccp_write_cb(struct msgb *data, void *ctx)
+void sccp_write_cb(struct msgb *data, void *ctx)
 {
 	int i = 0;
 	const u_int8_t *got, *wanted;
 
 	if (test_data[current_test].response == NULL) {
 		FAIL("Didn't expect write callback\n");
-		return -1;
+		goto exit;
 	} else if (test_data[current_test].response_length != msgb_l2len(data)) {
 		FAIL("Size does not match. Got: %d Wanted: %d\n",
 		     msgb_l2len(data), test_data[current_test].response_length);
@@ -374,12 +374,14 @@ int sccp_write_cb(struct msgb *data, void *ctx)
 		if (got[i] != wanted[i]) {
 			FAIL("Failed to compare byte. Got: 0x%x Wanted: 0x%x at %d\n",
 			     got[i], wanted[i], i);
-			return -1;
+			goto exit;
 		}
 	}
 
 	write_called = 1;
-	return 0;
+
+exit:
+	msgb_free(data);
 }
 
 void sccp_c_read(struct sccp_connection *connection, struct msgb *msgb, unsigned int len)
@@ -409,7 +411,7 @@ int sccp_accept_cb(struct sccp_connection *connection, void *user_data)
 	return 0;
 }
 
-static int sccp_udt_write_cb(struct msgb *data, void *context)
+static void sccp_udt_write_cb(struct msgb *data, void *context)
 {
 	const u_int8_t *got, *wanted;
 	int i;
@@ -419,7 +421,7 @@ static int sccp_udt_write_cb(struct msgb *data, void *context)
 	if (send_data[current_test].length != msgb_l2len(data)) {
 		FAIL("Size does not match. Got: %d Wanted: %d\n",
 		     msgb_l2len(data), send_data[current_test].length);
-		return -1;
+		goto exit;
 	}
 
 	got = &data->l2h[0];
@@ -429,12 +431,14 @@ static int sccp_udt_write_cb(struct msgb *data, void *context)
 		if (got[i] != wanted[i]) {
 			FAIL("Failed to compare byte. Got: 0x%x Wanted: 0x%x at %d\n",
 			     got[i], wanted[i], i);
-			return -1;
+			goto exit;
 		}
 	}
 
 	matched = 1;
-	return 0;
+
+exit:
+	msgb_free(data);
 }
 
 static void test_sccp_system(void)
@@ -504,11 +508,11 @@ static int sccp_udt_read(struct msgb *data, unsigned int len, void *context)
 	return 0;
 }
 
-static int sccp_write_loop(struct msgb *data, void *context)
+static void sccp_write_loop(struct msgb *data, void *context)
 {
 	/* send it back to us */
 	sccp_system_incoming(data);
-	return 0;
+	msgb_free(data);
 }
 
 static void test_sccp_udt_communication(void)

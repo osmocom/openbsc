@@ -94,7 +94,7 @@ struct sccp_connection {
  *   call sccp_system_incoming for incoming data (from the network)
  *   sccp will call outgoing whenever outgoing data exists
  */
-int sccp_system_init(int (*outgoing)(struct msgb *data, void *ctx), void *context);
+int sccp_system_init(void (*outgoing)(struct msgb *data, void *ctx), void *context);
 int sccp_system_incoming(struct msgb *data);
 
 /**

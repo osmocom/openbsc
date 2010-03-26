@@ -45,7 +45,7 @@ const struct sockaddr_sccp sccp_ssn_bssap = {
 
 struct sccp_system {
 	/* layer3 -> layer2 */
-	int (*write_data)(struct msgb *data, void *context);
+	void (*write_data)(struct msgb *data, void *context);
 	void *write_context;
 };
 
@@ -91,9 +91,9 @@ static struct sccp_data_callback *_find_ssn(u_int8_t ssn)
 }
 
 
-static int _send_msg(struct msgb *msg)
+static void _send_msg(struct msgb *msg)
 {
-	return sccp_system.write_data(msg, sccp_system.write_context);
+	sccp_system.write_data(msg, sccp_system.write_context);
 }
 
 /*
@@ -499,7 +499,6 @@ static int _sccp_send_data(int class, const struct sockaddr_sccp *in,
 {
 	struct sccp_data_unitdata *udt;
 	u_int8_t *data;
-	int ret;
 
 	if (msgb_l3len(payload) > 256) {
 		DEBUGP(DSCCP, "The payload is too big for one udt\n");
@@ -533,10 +532,8 @@ static int _sccp_send_data(int class, const struct sockaddr_sccp *in,
 	data[0] = msgb_l3len(payload);
 	memcpy(&data[1], payload->l3h, msgb_l3len(payload));
 
-	ret = _send_msg(msg);
-	msgb_free(msg);
-
-	return ret;
+	_send_msg(msg);
+	return 0;
 }
 
 static int _sccp_handle_read(struct msgb *msgb)
@@ -627,7 +624,6 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
 	u_int8_t *data;
-	int ret;
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp ref");
@@ -643,9 +639,8 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 	data = msgb_put(msgb, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
 
-	ret = _send_msg(msgb);
-	msgb_free(msgb);
-	return ret;
+	_send_msg(msgb);
+	return 0;
 }
 
 static int _sccp_send_connection_confirm(struct sccp_connection *connection)
@@ -653,7 +648,6 @@ static int _sccp_send_connection_confirm(struct sccp_connection *connection)
 	struct msgb *response;
 	struct sccp_connection_confirm *confirm;
 	u_int8_t *optional_data;
-	int ret;
 
 	if (assign_source_local_reference(connection) != 0)
 		return -1;
@@ -677,11 +671,9 @@ static int _sccp_send_connection_confirm(struct sccp_connection *connection)
 	optional_data = (u_int8_t *) msgb_put(response, 1);
 	optional_data[0] = SCCP_PNC_END_OF_OPTIONAL;
 
-	ret = _send_msg(response);
-	msgb_free(response);
-
+	_send_msg(response);
 	_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_ESTABLISHED);
-	return ret;
+	return 0;
 }
 
 static int _sccp_send_connection_request(struct sccp_connection *connection,
@@ -691,7 +683,6 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 	struct sccp_connection_request *req;
 	u_int8_t *data;
 	u_int8_t extra_size = 3 + 1;
-	int ret;
 
 
 	if (msg && (msgb_l3len(msg) < 3 || msgb_l3len(msg) > 130)) {
@@ -741,10 +732,8 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 	llist_add_tail(&connection->list, &sccp_connections);
 	_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_REQUEST);
 
-	ret = _send_msg(request);
-	msgb_free(request);
-
-	return ret;
+	_send_msg(request);
+	return 0;
 }
 
 static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb *_data)
@@ -753,7 +742,6 @@ static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb 
 	struct sccp_data_form1 *dt1;
 	u_int8_t *data;
 	int extra_size;
-	int ret;
 
 	if (msgb_l3len(_data) < 2 || msgb_l3len(_data) > 256) {
 		DEBUGP(DSCCP, "data size too big, segmenting unimplemented.\n");
@@ -777,17 +765,14 @@ static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb 
 	data[0] = extra_size - 1;
 	memcpy(&data[1], _data->l3h, extra_size - 1);
 
-	ret = _send_msg(msgb);
-	msgb_free(msgb);
-
-	return ret;
+	_send_msg(msgb);
+	return 0;
 }
 
 static int _sccp_send_connection_it(struct sccp_connection *conn)
 {
 	struct msgb *msgb;
 	struct sccp_data_it *it;
-	int ret;
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp it");
@@ -803,9 +788,8 @@ static int _sccp_send_connection_it(struct sccp_connection *conn)
 	it->sequencing[0] = it->sequencing[1] = 0;
 	it->credit = 0;
 
-	ret = _send_msg(msgb);
-	msgb_free(msgb);
-	return ret;
+	_send_msg(msgb);
+	return 0;
 }
 
 static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
@@ -813,7 +797,6 @@ static int _sccp_send_connection_released(struct sccp_connection *conn, int caus
 	struct msgb *msg;
 	struct sccp_connection_released *rel;
 	u_int8_t *data;
-	int ret;
 
 	msg = msgb_alloc_headroom(SCCP_MSG_SIZE, SCCP_MSG_HEADROOM,
 				  "sccp: connection released");
@@ -832,10 +815,8 @@ static int _sccp_send_connection_released(struct sccp_connection *conn, int caus
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
 
 	_sccp_set_connection_state(conn, SCCP_CONNECTION_STATE_RELEASE);
-	ret = _send_msg(msg);
-	msgb_free(msg);
-
-	return ret;
+	_send_msg(msg);
+	return 0;
 }
 
 /*
@@ -982,7 +963,6 @@ static int _sccp_send_connection_release_complete(struct sccp_connection *connec
 {
 	struct msgb *msgb;
 	struct sccp_connection_release_complete *rlc;
-	int ret;
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp rlc");
@@ -995,8 +975,7 @@ static int _sccp_send_connection_release_complete(struct sccp_connection *connec
 	memcpy(&rlc->source_local_reference,
 	       &connection->source_local_reference, sizeof(struct sccp_source_reference));
 
-	ret = _send_msg(msgb);
-	msgb_free(msgb);
+	_send_msg(msgb);
 
 	/*
 	 * Remove from the list of active connections and set the state. User code
@@ -1004,8 +983,7 @@ static int _sccp_send_connection_release_complete(struct sccp_connection *connec
 	 */
 	llist_del(&connection->list);
 	_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_RELEASE_COMPLETE);
-
-	return ret;
+	return 0;
 }
 
 /* connection released, send a released confirm */
@@ -1118,7 +1096,7 @@ found:
 }
 
 
-int sccp_system_init(int (*outgoing)(struct msgb *data, void *ctx), void *ctx)
+int sccp_system_init(void (*outgoing)(struct msgb *data, void *ctx), void *ctx)
 {
 	sccp_system.write_data = outgoing;
 	sccp_system.write_context = ctx;

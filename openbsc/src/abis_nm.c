@@ -114,125 +114,117 @@ static const enum abis_nm_msgtype nacks[] = {
 	NM_MT_BS11_DELETE_OBJ_NACK,
 };
 
-static const char *nack_names[0xff] = {
-	[NM_MT_LOAD_INIT_NACK]		= "SOFTWARE LOAD INIT",
-	[NM_MT_LOAD_END_NACK]		= "SOFTWARE LOAD END",
-	[NM_MT_SW_ACT_REQ_NACK]		= "SOFTWARE ACTIVATE REQUEST",
-	[NM_MT_ACTIVATE_SW_NACK]	= "ACTIVATE SOFTWARE",
-	[NM_MT_ESTABLISH_TEI_NACK]	= "ESTABLISH TEI",
-	[NM_MT_CONN_TERR_SIGN_NACK]	= "CONNECT TERRESTRIAL SIGNALLING",
-	[NM_MT_DISC_TERR_SIGN_NACK]	= "DISCONNECT TERRESTRIAL SIGNALLING",
-	[NM_MT_CONN_TERR_TRAF_NACK]	= "CONNECT TERRESTRIAL TRAFFIC",
-	[NM_MT_DISC_TERR_TRAF_NACK]	= "DISCONNECT TERRESTRIAL TRAFFIC",
-	[NM_MT_CONN_MDROP_LINK_NACK]	= "CONNECT MULTI-DROP LINK",
-	[NM_MT_DISC_MDROP_LINK_NACK]	= "DISCONNECT MULTI-DROP LINK",
-	[NM_MT_SET_BTS_ATTR_NACK]	= "SET BTS ATTRIBUTE",
-	[NM_MT_SET_RADIO_ATTR_NACK]	= "SET RADIO ATTRIBUTE",
-	[NM_MT_SET_CHAN_ATTR_NACK]	= "SET CHANNEL ATTRIBUTE",
-	[NM_MT_PERF_TEST_NACK]		= "PERFORM TEST",
-	[NM_MT_SEND_TEST_REP_NACK]	= "SEND TEST REPORT",
-	[NM_MT_STOP_TEST_NACK]		= "STOP TEST",
-	[NM_MT_STOP_EVENT_REP_NACK]	= "STOP EVENT REPORT",
-	[NM_MT_REST_EVENT_REP_NACK]	= "RESET EVENT REPORT",
-	[NM_MT_CHG_ADM_STATE_NACK]	= "CHANGE ADMINISTRATIVE STATE",
-	[NM_MT_CHG_ADM_STATE_REQ_NACK]	= "CHANGE ADMINISTRATIVE STATE REQUEST",
-	[NM_MT_REP_OUTST_ALARMS_NACK]	= "REPORT OUTSTANDING ALARMS",
-	[NM_MT_CHANGEOVER_NACK]		= "CHANGEOVER",
-	[NM_MT_OPSTART_NACK]		= "OPSTART",
-	[NM_MT_REINIT_NACK]		= "REINIT",
-	[NM_MT_SET_SITE_OUT_NACK]	= "SET SITE OUTPUT",
-	[NM_MT_CHG_HW_CONF_NACK]	= "CHANGE HARDWARE CONFIGURATION",
-	[NM_MT_GET_ATTR_NACK]		= "GET ATTRIBUTE",
-	[NM_MT_SET_ALARM_THRES_NACK]	= "SET ALARM THRESHOLD",
-	[NM_MT_BS11_BEGIN_DB_TX_NACK]	= "BS11 BEGIN DATABASE TRANSMISSION",
-	[NM_MT_BS11_END_DB_TX_NACK]	= "BS11 END DATABASE TRANSMISSION",
-	[NM_MT_BS11_CREATE_OBJ_NACK]	= "BS11 CREATE OBJECT",
-	[NM_MT_BS11_DELETE_OBJ_NACK]	= "BS11 DELETE OBJECT",
+static const struct value_string nack_names[] = {
+	{ NM_MT_LOAD_INIT_NACK,		"SOFTWARE LOAD INIT" },
+	{ NM_MT_LOAD_END_NACK,		"SOFTWARE LOAD END" },
+	{ NM_MT_SW_ACT_REQ_NACK,	"SOFTWARE ACTIVATE REQUEST" },
+	{ NM_MT_ACTIVATE_SW_NACK,	"ACTIVATE SOFTWARE" },
+	{ NM_MT_ESTABLISH_TEI_NACK,	"ESTABLISH TEI" },
+	{ NM_MT_CONN_TERR_SIGN_NACK,	"CONNECT TERRESTRIAL SIGNALLING" },
+	{ NM_MT_DISC_TERR_SIGN_NACK,	"DISCONNECT TERRESTRIAL SIGNALLING" },
+	{ NM_MT_CONN_TERR_TRAF_NACK,	"CONNECT TERRESTRIAL TRAFFIC" },
+	{ NM_MT_DISC_TERR_TRAF_NACK,	"DISCONNECT TERRESTRIAL TRAFFIC" },
+	{ NM_MT_CONN_MDROP_LINK_NACK,	"CONNECT MULTI-DROP LINK" },
+	{ NM_MT_DISC_MDROP_LINK_NACK,	"DISCONNECT MULTI-DROP LINK" },
+	{ NM_MT_SET_BTS_ATTR_NACK,	"SET BTS ATTRIBUTE" },
+	{ NM_MT_SET_RADIO_ATTR_NACK,	"SET RADIO ATTRIBUTE" },
+	{ NM_MT_SET_CHAN_ATTR_NACK,	"SET CHANNEL ATTRIBUTE" },
+	{ NM_MT_PERF_TEST_NACK,		"PERFORM TEST" },
+	{ NM_MT_SEND_TEST_REP_NACK,	"SEND TEST REPORT" },
+	{ NM_MT_STOP_TEST_NACK,		"STOP TEST" },
+	{ NM_MT_STOP_EVENT_REP_NACK,	"STOP EVENT REPORT" },
+	{ NM_MT_REST_EVENT_REP_NACK,	"RESET EVENT REPORT" },
+	{ NM_MT_CHG_ADM_STATE_NACK,	"CHANGE ADMINISTRATIVE STATE" },
+	{ NM_MT_CHG_ADM_STATE_REQ_NACK,
+				"CHANGE ADMINISTRATIVE STATE REQUEST" },
+	{ NM_MT_REP_OUTST_ALARMS_NACK,	"REPORT OUTSTANDING ALARMS" },
+	{ NM_MT_CHANGEOVER_NACK,	"CHANGEOVER" },
+	{ NM_MT_OPSTART_NACK,		"OPSTART" },
+	{ NM_MT_REINIT_NACK,		"REINIT" },
+	{ NM_MT_SET_SITE_OUT_NACK,	"SET SITE OUTPUT" },
+	{ NM_MT_CHG_HW_CONF_NACK,	"CHANGE HARDWARE CONFIGURATION" },
+	{ NM_MT_GET_ATTR_NACK,		"GET ATTRIBUTE" },
+	{ NM_MT_SET_ALARM_THRES_NACK,	"SET ALARM THRESHOLD" },
+	{ NM_MT_BS11_BEGIN_DB_TX_NACK,	"BS11 BEGIN DATABASE TRANSMISSION" },
+	{ NM_MT_BS11_END_DB_TX_NACK,	"BS11 END DATABASE TRANSMISSION" },
+	{ NM_MT_BS11_CREATE_OBJ_NACK,	"BS11 CREATE OBJECT" },
+	{ NM_MT_BS11_DELETE_OBJ_NACK,	"BS11 DELETE OBJECT" },
+	{ 0,				NULL }
 };
 
 /* Chapter 9.4.36 */
-static const char *nack_cause_names[] = {
+static const struct value_string nack_cause_names[] = {
 	/* General Nack Causes */
-	[NM_NACK_INCORR_STRUCT]		= "Incorrect message structure",
-	[NM_NACK_MSGTYPE_INVAL]		= "Invalid message type value",
-	[NM_NACK_OBJCLASS_INVAL]	= "Invalid Object class value",
-	[NM_NACK_OBJCLASS_NOTSUPP]	= "Object class not supported",
-	[NM_NACK_BTSNR_UNKN]		= "BTS no. unknown",
-	[NM_NACK_TRXNR_UNKN]		= "Baseband Transceiver no. unknown",
-	[NM_NACK_OBJINST_UNKN]		= "Object Instance unknown",
-	[NM_NACK_ATTRID_INVAL]		= "Invalid attribute identifier value",
-	[NM_NACK_ATTRID_NOTSUPP]	= "Attribute identifier not supported",
-	[NM_NACK_PARAM_RANGE]		= "Parameter value outside permitted range",
-	[NM_NACK_ATTRLIST_INCONSISTENT]	= "Inconsistency in attribute list",
-	[NM_NACK_SPEC_IMPL_NOTSUPP]	= "Specified implementation not supported",
-	[NM_NACK_CANT_PERFORM]		= "Message cannot be performed",
+	{ NM_NACK_INCORR_STRUCT,	"Incorrect message structure" },
+	{ NM_NACK_MSGTYPE_INVAL,	"Invalid message type value" },
+	{ NM_NACK_OBJCLASS_INVAL,	"Invalid Object class value" },
+	{ NM_NACK_OBJCLASS_NOTSUPP,	"Object class not supported" },
+	{ NM_NACK_BTSNR_UNKN,		"BTS no. unknown" },
+	{ NM_NACK_TRXNR_UNKN,		"Baseband Transceiver no. unknown" },
+	{ NM_NACK_OBJINST_UNKN,		"Object Instance unknown" },
+	{ NM_NACK_ATTRID_INVAL,		"Invalid attribute identifier value" },
+	{ NM_NACK_ATTRID_NOTSUPP,	"Attribute identifier not supported" },
+	{ NM_NACK_PARAM_RANGE,		"Parameter value outside permitted range" },
+	{ NM_NACK_ATTRLIST_INCONSISTENT,"Inconsistency in attribute list" },
+	{ NM_NACK_SPEC_IMPL_NOTSUPP,	"Specified implementation not supported" },
+	{ NM_NACK_CANT_PERFORM,		"Message cannot be performed" },
 	/* Specific Nack Causes */
-	[NM_NACK_RES_NOTIMPL]		= "Resource not implemented",
-	[NM_NACK_RES_NOTAVAIL]		= "Resource not available",
-	[NM_NACK_FREQ_NOTAVAIL]		= "Frequency not available",
-	[NM_NACK_TEST_NOTSUPP]		= "Test not supported",
-	[NM_NACK_CAPACITY_RESTR]	= "Capacity restrictions",
-	[NM_NACK_PHYSCFG_NOTPERFORM]	= "Physical configuration cannot be performed",
-	[NM_NACK_TEST_NOTINIT]		= "Test not initiated",
-	[NM_NACK_PHYSCFG_NOTRESTORE]	= "Physical configuration cannot be restored",
-	[NM_NACK_TEST_NOSUCH]		= "No such test",
-	[NM_NACK_TEST_NOSTOP]		= "Test cannot be stopped",
-	[NM_NACK_MSGINCONSIST_PHYSCFG]	= "Message inconsistent with physical configuration",
-	[NM_NACK_FILE_INCOMPLETE]	= "Complete file notreceived",
-	[NM_NACK_FILE_NOTAVAIL]		= "File not available at destination",
-	[NM_NACK_FILE_NOTACTIVATE]	= "File cannot be activate",
-	[NM_NACK_REQ_NOT_GRANT]		= "Request not granted",
-	[NM_NACK_WAIT]			= "Wait",
-	[NM_NACK_NOTH_REPORT_EXIST]	= "Nothing reportable existing",
-	[NM_NACK_MEAS_NOTSUPP]		= "Measurement not supported",
-	[NM_NACK_MEAS_NOTSTART]		= "Measurement not started",
+	{ NM_NACK_RES_NOTIMPL,		"Resource not implemented" },
+	{ NM_NACK_RES_NOTAVAIL,		"Resource not available" },
+	{ NM_NACK_FREQ_NOTAVAIL,	"Frequency not available" },
+	{ NM_NACK_TEST_NOTSUPP,		"Test not supported" },
+	{ NM_NACK_CAPACITY_RESTR,	"Capacity restrictions" },
+	{ NM_NACK_PHYSCFG_NOTPERFORM,	"Physical configuration cannot be performed" },
+	{ NM_NACK_TEST_NOTINIT,		"Test not initiated" },
+	{ NM_NACK_PHYSCFG_NOTRESTORE,	"Physical configuration cannot be restored" },
+	{ NM_NACK_TEST_NOSUCH,		"No such test" },
+	{ NM_NACK_TEST_NOSTOP,		"Test cannot be stopped" },
+	{ NM_NACK_MSGINCONSIST_PHYSCFG,	"Message inconsistent with physical configuration" },
+	{ NM_NACK_FILE_INCOMPLETE,	"Complete file notreceived" },
+	{ NM_NACK_FILE_NOTAVAIL,	"File not available at destination" },
+	{ NM_NACK_FILE_NOTACTIVATE,	"File cannot be activate" },
+	{ NM_NACK_REQ_NOT_GRANT,	"Request not granted" },
+	{ NM_NACK_WAIT,			"Wait" },
+	{ NM_NACK_NOTH_REPORT_EXIST,	"Nothing reportable existing" },
+	{ NM_NACK_MEAS_NOTSUPP,		"Measurement not supported" },
+	{ NM_NACK_MEAS_NOTSTART,	"Measurement not started" },
+	{ 0,				NULL }
 };
 
-static char namebuf[255];
 static const char *nack_cause_name(u_int8_t cause)
 {
-	if (cause < ARRAY_SIZE(nack_cause_names) && nack_cause_names[cause])
-		return nack_cause_names[cause];
-
-	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
-	return namebuf;
+	return get_value_string(nack_cause_names, cause);
 }
 
 /* Chapter 9.4.16: Event Type */
-static const char *event_type_names[] = {
-	[NM_EVT_COMM_FAIL]		= "communication failure",
-	[NM_EVT_QOS_FAIL]		= "quality of service failure",
-	[NM_EVT_PROC_FAIL]		= "processing failure",
-	[NM_EVT_EQUIP_FAIL]		= "equipment failure",
-	[NM_EVT_ENV_FAIL]		= "environment failure",
+static const struct value_string event_type_names[] = {
+	{ NM_EVT_COMM_FAIL,		"communication failure" },
+	{ NM_EVT_QOS_FAIL,		"quality of service failure" },
+	{ NM_EVT_PROC_FAIL,		"processing failure" },
+	{ NM_EVT_EQUIP_FAIL,		"equipment failure" },
+	{ NM_EVT_ENV_FAIL,		"environment failure" },
+	{ 0,				NULL }
 };
 
 static const char *event_type_name(u_int8_t cause)
 {
-	if (cause < ARRAY_SIZE(event_type_names) && event_type_names[cause])
-		return event_type_names[cause];
-
-	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
-	return namebuf;
+	return get_value_string(event_type_names, cause);
 }
 
 /* Chapter 9.4.63: Perceived Severity */
-static const char *severity_names[] = {
-	[NM_SEVER_CEASED]		= "failure ceased",
-	[NM_SEVER_CRITICAL]		= "critical failure",
-	[NM_SEVER_MAJOR]		= "major failure",
-	[NM_SEVER_MINOR]		= "minor failure",
-	[NM_SEVER_WARNING]		= "warning level failure",
-	[NM_SEVER_INDETERMINATE]	= "indeterminate failure",
+static const struct value_string severity_names[] = {
+	{ NM_SEVER_CEASED,		"failure ceased" },
+	{ NM_SEVER_CRITICAL,		"critical failure" },
+	{ NM_SEVER_MAJOR,		"major failure" },
+	{ NM_SEVER_MINOR,		"minor failure" },
+	{ NM_SEVER_WARNING,		"warning level failure" },
+	{ NM_SEVER_INDETERMINATE,	"indeterminate failure" },
+	{ 0,				NULL }
 };
 
 static const char *severity_name(u_int8_t cause)
 {
-	if (cause < ARRAY_SIZE(severity_names) && severity_names[cause])
-		return severity_names[cause];
-
-	snprintf(namebuf, sizeof(namebuf), "0x%02x\n", cause);
-	return namebuf;
+	return get_value_string(severity_names, cause);
 }
 
 /* Attributes that the BSC can set, not only get, according to Section 9.4 */
@@ -427,46 +419,30 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
+static struct value_string obj_class_names[] = {
+	{ NM_OC_SITE_MANAGER,	"SITE MANAGER" },
+	{ NM_OC_BTS,		"BTS" },
+	{ NM_OC_RADIO_CARRIER,	"RADIO CARRIER" },
+	{ NM_OC_BASEB_TRANSC,	"BASEBAND TRANSCEIVER" },
+	{ NM_OC_CHANNEL,	"CHANNEL" },
+	{ NM_OC_BS11_ADJC,	"ADJC" },
+	{ NM_OC_BS11_HANDOVER,	"HANDOVER" },
+	{ NM_OC_BS11_PWR_CTRL,	"POWER CONTROL" },
+	{ NM_OC_BS11_BTSE,	"BTSE" },
+	{ NM_OC_BS11_RACK,	"RACK" },
+	{ NM_OC_BS11_TEST,	"TEST" },
+	{ NM_OC_BS11_ENVABTSE,	"ENVABTSE" },
+	{ NM_OC_BS11_BPORT,	"BPORT" },
+	{ NM_OC_GPRS_NSE,	"GPRS NSE" },
+	{ NM_OC_GPRS_CELL,	"GPRS CELL" },
+	{ NM_OC_GPRS_NSVC,	"GPRS NSVC" },
+	{ NM_OC_BS11,		"SIEMENSHW" },
+	{ 0,			NULL }
+};
+
 static const char *obj_class_name(u_int8_t oc)
 {
-	switch (oc) {
-	case NM_OC_SITE_MANAGER:
-		return "SITE MANAGER";
-	case NM_OC_BTS:
-		return "BTS";
-	case NM_OC_RADIO_CARRIER:
-		return "RADIO CARRIER";
-	case NM_OC_BASEB_TRANSC:
-		return "BASEBAND TRANSCEIVER";
-	case NM_OC_CHANNEL:
-		return "CHANNEL";
-	case NM_OC_BS11_ADJC:
-		return "ADJC";
-	case NM_OC_BS11_HANDOVER:
-		return "HANDOVER";
-	case NM_OC_BS11_PWR_CTRL:
-		return "POWER CONTROL";
-	case NM_OC_BS11_BTSE:
-		return "BTSE";
-	case NM_OC_BS11_RACK:
-		return "RACK";
-	case NM_OC_BS11_TEST:
-		return "TEST";
-	case NM_OC_BS11_ENVABTSE:
-		return "ENVABTSE";
-	case NM_OC_BS11_BPORT:
-		return "BPORT";
-	case NM_OC_GPRS_NSE:
-		return "GPRS NSE";
-	case NM_OC_GPRS_CELL:
-		return "GPRS CELL";
-	case NM_OC_GPRS_NSVC:
-		return "GPRS NSVC";
-	case NM_OC_BS11:
-		return "SIEMENSHW";
-	}
-
-	return "UNKNOWN";
+	return get_value_string(obj_class_names, oc);
 }
 
 const char *nm_opstate_name(u_int8_t os)
@@ -484,24 +460,22 @@ const char *nm_opstate_name(u_int8_t os)
 }
 
 /* Chapter 9.4.7 */
-static const char *avail_names[] = {
-	"In test",
-	"Failed",
-	"Power off",
-	"Off line",
-	"<not used>",
-	"Dependency",
-	"Degraded",
-	"Not installed",
+static const struct value_string avail_names[] = {
+	{ 0, 	"In test" },
+	{ 1,	"Failed" },
+	{ 2,	"Power off" },
+	{ 3,	"Off line" },
+	/* Not used */
+	{ 5,	"Dependency" },
+	{ 6,	"Degraded" },
+	{ 7,	"Not installed" },
+	{ 0xff, "OK" },
+	{ 0,	NULL }
 };
 
 const char *nm_avail_name(u_int8_t avail)
 {
-	if (avail == 0xff)
-		return "OK";
-	if (avail >= ARRAY_SIZE(avail_names))
-		return "UNKNOWN";
-	return avail_names[avail];
+	return get_value_string(avail_names, avail);
 }
 
 static struct value_string test_names[] = {
@@ -960,11 +934,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		debugp_foh(foh);
 
-		if (nack_names[mt])
-			DEBUGPC(DNM, "%s NACK ", nack_names[mt]);
-			/* FIXME: NACK cause */
-		else
-			DEBUGPC(DNM, "NACK 0x%02x ", mt);
+		DEBUGPC(DNM, "%s NACK ", get_value_string(nack_names, mt));
 
 		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
@@ -2894,21 +2864,18 @@ void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
 			      new_state);
 }
 
-static const char *ipacc_testres_names[] = {
-	[NM_IPACC_TESTRES_SUCCESS]	= "SUCCESS",
-	[NM_IPACC_TESTRES_TIMEOUT]	= "TIMEOUT",
-	[NM_IPACC_TESTRES_NO_CHANS]	= "NO CHANNELS",
-	[NM_IPACC_TESTRES_PARTIAL]	= "PARTIAL",
-	[NM_IPACC_TESTRES_STOPPED]	= "STOPPED",
+static const struct value_string ipacc_testres_names[] = {
+	{ NM_IPACC_TESTRES_SUCCESS,	"SUCCESS" },
+	{ NM_IPACC_TESTRES_TIMEOUT,	"TIMEOUT" },
+	{ NM_IPACC_TESTRES_NO_CHANS,	"NO CHANNELS" },
+	{ NM_IPACC_TESTRES_PARTIAL,	"PARTIAL" },
+	{ NM_IPACC_TESTRES_STOPPED,	"STOPPED" },
+	{ 0,				NULL }
 };
 
 const char *ipacc_testres_name(u_int8_t res)
 {
-	if (res < ARRAY_SIZE(ipacc_testres_names) &&
-	    ipacc_testres_names[res])
-		return ipacc_testres_names[res];
-
-	return "unknown";
+	return get_value_string(ipacc_testres_names, res);
 }
 
 void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
