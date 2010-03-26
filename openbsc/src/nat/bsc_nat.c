@@ -638,7 +638,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
 	ipaccess_send_id_ack(bsc->write_queue.bfd.fd);
-	ipaccess_send_id_req(ret);
+	ipaccess_send_id_req(bsc->write_queue.bfd.fd);
 
 	/*
 	 * start the hangup timer
