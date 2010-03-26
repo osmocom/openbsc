@@ -46,6 +46,7 @@
 
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
+#include <osmocore/write_queue.h>
 
 #include <sccp/sccp.h>
 
@@ -57,7 +58,7 @@ static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
-static struct bsc_fd msc_connection;
+static struct write_queue msc_queue;
 static struct in_addr local_addr;
 extern int ipacc_rtp_direct;
 
@@ -529,20 +530,27 @@ static void print_usage()
 /*
  * SCCP handling
  */
-static void msc_sccp_write_ipa(struct msgb *msg, void *data)
+static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 {
 	int ret;
 
 	DEBUGP(DMSC, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
-
-
 	DEBUGP(DMI, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
-	ret = write(msc_connection.fd, msg->data, msg->len);
-	msgb_free(msg);
 
-	if (ret <= 0)
+	ret = write(msc_queue.bfd.fd, msg->data, msg->len);
+	if (ret < msg->len)
 		perror("MSC: Failed to send SCCP");
+
+	return ret;
+}
+
+static void msc_sccp_write_ipa(struct msgb *msg, void *data)
+{
+	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+	if (write_queue_enqueue(&msc_queue, msg) != 0) {
+		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/SCCP\n");
+		msgb_free(msg);
+	}
 }
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
@@ -638,7 +646,7 @@ static void send_id_get_response(int fd)
 /*
  * callback with IP access data
  */
-static int ipaccess_a_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
@@ -839,8 +847,11 @@ int main(int argc, char **argv)
 	/* initialize ipaccess handling */
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
-	msc_connection.cb = ipaccess_a_fd_cb;
-	rc = connect_to_msc(&msc_connection, msc_address, 5000);
+
+	write_queue_init(&msc_queue, 100);
+	msc_queue.read_cb = ipaccess_a_fd_cb;
+	msc_queue.write_cb = msc_sccp_do_write;
+	rc = connect_to_msc(&msc_queue.bfd, msc_address, 5000);
 	if (rc < 0) {
 		fprintf(stderr, "Opening the MSC connection failed.\n");
 		exit(1);
