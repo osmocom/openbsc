@@ -492,6 +492,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 		if (sccp_patch->bsc != connection)
 			continue;
 
+#warning "TODO: Send a RLSD to the MSC. Or at least a clear command."
 		llist_del(&sccp_patch->list_entry);
 		talloc_free(sccp_patch);
 	}
