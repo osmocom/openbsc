@@ -54,7 +54,7 @@ static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
 static struct bsc_fd msc_connection;
-static struct bsc_fd bsc_connection;
+static struct bsc_fd bsc_listen;
 
 
 static struct bsc_nat *nat;
@@ -785,7 +785,7 @@ int main(int argc, char** argv)
 	}
 
 	/* wait for the BSC */
-	if (listen_for_bsc(&bsc_connection, &local_addr, 5000) < 0) {
+	if (listen_for_bsc(&bsc_listen, &local_addr, 5000) < 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
 	}
