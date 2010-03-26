@@ -8,6 +8,7 @@ typedef enum {
 	LAPD_MPH_DEACTIVATE_IND,
 
 	LAPD_DL_DATA_IND,
+	LAPD_DL_UNITDATA_IND,
 
 } lapd_mph_type;
 

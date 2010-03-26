@@ -374,7 +374,7 @@ static void init_flip_bits(void)
 static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
 {
         int i;
-        char * start = buf;
+        u_int8_t * start = buf;
 
         for (i = 0 ; i < len; i++) {
                 buf[i] = flip_table[(u_int8_t)buf[i]];
@@ -383,7 +383,7 @@ static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
         return start;
 }
 
-#define D_BCHAN_TX_GRAN 1024
+#define D_BCHAN_TX_GRAN 160
 /* write to a B channel TS */
 static int handle_tsX_write(struct bsc_fd *bfd)
 {
@@ -417,7 +417,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	return ret;
 }
 
-#define D_TSX_ALLOC_SIZE 1024
+#define D_TSX_ALLOC_SIZE (D_BCHAN_TX_GRAN)
 /* FIXME: read from a B channel TS */
 static int handle_tsX_read(struct bsc_fd *bfd)
 {
@@ -448,7 +448,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
-	//ret = handle_tsX_write(bfd);
+	ret = handle_tsX_write(bfd);
 	msgb_free(msg);
 
 	return ret;
@@ -532,9 +532,9 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 		bi.numbufs = 4;
 		bi.bufsize = 512;
 	} else {
-		bi.numbufs = 4;
+		bi.numbufs = 8;
 		bi.bufsize = D_BCHAN_TX_GRAN;
-		//bi.txbufpolicy = DAHDI_POLICY_WHEN_FULL;
+		bi.txbufpolicy = DAHDI_POLICY_WHEN_FULL;
 	}
 
 	if (ioctl(fd, DAHDI_SET_BUFINFO, &bi)) {
@@ -592,7 +592,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 			/* We never include the mISDN B-Channel FD into the
 	 		* writeset, since it doesn't support poll() based
 	 		* write flow control */		
-			bfd->when = BSC_FD_READ | BSC_FD_WRITE;
+			bfd->when = BSC_FD_READ;// | BSC_FD_WRITE;
 			break;
 		}
 
