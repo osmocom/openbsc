@@ -23,8 +23,24 @@
 #ifndef BSC_MSC_H
 #define BSC_MSC_H
 
-#include <osmocore/select.h>
+#include <osmocore/write_queue.h>
+#include <osmocore/timer.h>
 
-int connect_to_msc(struct bsc_fd *fd, const char *ip, int port);
+struct bsc_msc_connection {
+	struct write_queue write_queue;
+	int is_connected;
+	const char *ip;
+	int port;
+
+	void (*connection_loss) (struct bsc_msc_connection *);
+	void (*connected) (struct bsc_msc_connection *);
+	struct timer_list reconnect_timer;
+};
+
+struct bsc_msc_connection *bsc_msc_create(const char *ip, int port);
+int bsc_msc_connect(struct bsc_msc_connection *);
+void bsc_msc_schedule_connect(struct bsc_msc_connection *);
+
+void bsc_msc_lost(struct bsc_msc_connection *);
 
 #endif

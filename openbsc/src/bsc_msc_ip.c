@@ -58,7 +58,7 @@ static struct debug_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
-static struct write_queue msc_queue;
+static struct bsc_msc_connection *msc_con;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
 extern int ipacc_rtp_direct;
@@ -540,7 +540,7 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 	DEBUGP(DMSC, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
 	DEBUGP(DMI, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
 
-	ret = write(msc_queue.bfd.fd, msg->data, msg->len);
+	ret = write(msc_con->write_queue.bfd.fd, msg->data, msg->len);
 	if (ret < msg->len)
 		perror("MSC: Failed to send SCCP");
 
@@ -550,7 +550,7 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 static void msc_sccp_write_ipa(struct msgb *msg, void *data)
 {
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
-	if (write_queue_enqueue(&msc_queue, msg) != 0) {
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/SCCP\n");
 		msgb_free(msg);
 	}
@@ -647,6 +647,17 @@ static void send_id_get_response(int fd)
 }
 
 /*
+ * The connection to the MSC was lost and we will need to free all
+ * resources and then attempt to reconnect.
+ */
+static void msc_connection_was_lost(struct bsc_msc_connection *con)
+{
+	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freeing information.\n");
+
+	exit(0);
+}
+
+/*
  * callback with IP access data
  */
 static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
@@ -657,8 +668,9 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 
 	if (!msg) {
 		if (error == 0) {
-			fprintf(stderr, "The connection to the MSC was lost, exiting\n");
-			exit(-2);
+			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
+			
+			return -1;
 		}
 
 		fprintf(stderr, "Failed to parse ip access message: %d\n", error);
@@ -771,6 +783,9 @@ static void signal_handler(int signal)
 	case SIGUSR1:
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
+	case SIGUSR2:
+		bsc_msc_lost(msc_con);
+		break;
 	default:
 		break;
 	}
@@ -822,8 +837,6 @@ extern int bts_model_nanobts_init(void);
 
 int main(int argc, char **argv)
 {
-	int rc;
-
 	debug_init();
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	stderr_target = debug_target_create_stderr();
@@ -851,14 +864,18 @@ int main(int argc, char **argv)
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
 
-	write_queue_init(&msc_queue, 100);
-	msc_queue.read_cb = ipaccess_a_fd_cb;
-	msc_queue.write_cb = msc_sccp_do_write;
-	rc = connect_to_msc(&msc_queue.bfd, msc_address, 5000);
-	if (rc < 0) {
-		fprintf(stderr, "Opening the MSC connection failed.\n");
+	/* setup MSC Connection handling */
+	msc_con = bsc_msc_create(msc_address, 5000);
+	if (!msc_con) {
+		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
 	}
+
+	msc_con->connection_loss = msc_connection_was_lost;
+	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
+	msc_con->write_queue.write_cb = msc_sccp_do_write;
+	bsc_msc_connect(msc_con);
+	
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
