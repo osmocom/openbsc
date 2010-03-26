@@ -481,6 +481,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 	struct sccp_connections *sccp_patch, *tmp;
 	bsc_unregister_fd(&connection->write_queue.bfd);
 	close(connection->write_queue.bfd.fd);
+	write_queue_clear(&connection->write_queue);
 	llist_del(&connection->list_entry);
 
 	/* stop the timeout timer */
