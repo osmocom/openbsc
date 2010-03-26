@@ -153,7 +153,8 @@ enum log_ctxt {
 };
 
 enum log_filter {
-	FLT_IMSI,
+	_FLT_ALL = LOG_FILTER_ALL,	/* libosmocore */
+	FLT_IMSI = 1,
 };
 
 static int filter_fn(const struct log_context *ctx,
