@@ -21,12 +21,81 @@
  */
 
 #include <openbsc/bsc_msc.h>
+#include <openbsc/debug.h>
+
+#include <osmocore/write_queue.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+
+/* called in the case of a non blocking connect */
+static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
+{
+	int rc;
+	int val;
+	struct write_queue *queue;
+
+	socklen_t len = sizeof(val);
+
+	if ((what & BSC_FD_WRITE) == 0) {
+		LOGP(DMSC, LOGL_ERROR, "Callback but not readable.\n");
+		return -1;
+	}
+
+	/* check the socket state */
+	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
+	if (rc != 0) {
+		LOGP(DMSC, LOGL_ERROR, "getsockopt for the MSC socket failed.\n");
+		goto error;
+	}
+	if (val != 0) {
+		LOGP(DMSC, LOGL_ERROR, "Not connected to the MSC.\n");
+		goto error;
+	}
+
+
+	/* go to full operation */
+	queue = container_of(fd, struct write_queue, bfd);
+	fd->cb = write_queue_bfd_cb;
+	fd->when = BSC_FD_READ;
+	if (!llist_empty(&queue->msg_queue))
+		fd->when |= BSC_FD_WRITE;
+	return 0;
+
+error:
+	bsc_unregister_fd(fd);
+	close(fd->fd);
+	fd->fd = -1;
+	fd->cb = write_queue_bfd_cb;
+	fd->when = 0;
+	return -1;
+}
+static void setnonblocking(struct bsc_fd *fd)
+{
+	int flags;
+
+	flags = fcntl(fd->fd, F_GETFL);
+	if (flags < 0) {
+		perror("fcntl get failed");
+		close(fd->fd);
+		fd->fd = -1;
+		return;
+	}
+
+	flags |= O_NONBLOCK;
+	flags = fcntl(fd->fd, F_SETFL, flags);
+	if (flags < 0) {
+		perror("fcntl get failed");
+		close(fd->fd);
+		fd->fd = -1;
+		return;
+	}
+}
 
 int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 {
@@ -36,7 +105,6 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 	printf("Attempting to connect MSC at %s:%d\n", ip, port);
 
 	fd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	fd->when = BSC_FD_READ;
 	fd->data = NULL;
 	fd->priv_nr = 1;
 
@@ -45,6 +113,8 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 		return fd->fd;
 	}
 
+	/* make it non blocking */
+	setnonblocking(fd);
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
@@ -54,9 +124,18 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	ret = connect(fd->fd, (struct sockaddr *) &sin, sizeof(sin));
 
-	if (ret < 0) {
+	if (ret == -1 && errno == EINPROGRESS) {
+		LOGP(DMSC, LOGL_ERROR, "MSC Connection in progress\n");
+		fd->when = BSC_FD_WRITE;
+		fd->cb = msc_connection_connect;
+	} else if (ret < 0) {
 		perror("Connection failed");
+		close(fd->fd);
+		fd->fd = -1;
 		return ret;
+	} else {
+		fd->when = BSC_FD_READ;
+		fd->cb = write_queue_bfd_cb;
 	}
 
 	ret = bsc_register_fd(fd);
