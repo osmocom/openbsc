@@ -138,6 +138,32 @@ static int send_reset_ack(struct bsc_connection *bsc)
 	return bsc_write(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
 }
 
+static int send_id_ack(struct bsc_connection *bsc)
+{
+	static const u_int8_t id_ack[] = {
+		0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
+	};
+
+	return bsc_write(bsc, id_ack, sizeof(id_ack));
+}
+
+static int send_id_req(struct bsc_connection *bsc)
+{
+	static const u_int8_t id_req[] = {
+		0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
+		0x01, IPAC_IDTAG_UNIT,
+		0x01, IPAC_IDTAG_MACADDR,
+		0x01, IPAC_IDTAG_LOCATION1,
+		0x01, IPAC_IDTAG_LOCATION2,
+		0x01, IPAC_IDTAG_EQUIPVERS,
+		0x01, IPAC_IDTAG_SWVERSION,
+		0x01, IPAC_IDTAG_UNITNAME,
+		0x01, IPAC_IDTAG_SERNR,
+	};
+
+	return bsc_write(bsc, id_req, sizeof(id_req));
+}
+
 /*
  * SCCP patching below
  */
@@ -637,8 +663,8 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
-	ipaccess_send_id_ack(bsc->write_queue.bfd.fd);
-	ipaccess_send_id_req(bsc->write_queue.bfd.fd);
+	send_id_ack(bsc);
+	send_id_req(bsc);
 
 	/*
 	 * start the hangup timer
