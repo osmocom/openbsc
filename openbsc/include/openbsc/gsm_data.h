@@ -138,6 +138,9 @@ struct bss_sccp_connection_data {
 
 	struct llist_head sccp_queue;
 	unsigned int sccp_queue_size;
+
+	/* Active connections */
+	struct llist_head active_connections;
 };
 
 #define GSM0808_T10_VALUE	6, 0

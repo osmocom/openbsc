@@ -60,6 +60,7 @@ static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
 static struct write_queue msc_queue;
 static struct in_addr local_addr;
+static LLIST_HEAD(active_connections);
 extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
@@ -77,6 +78,7 @@ struct bss_sccp_connection_data *bss_sccp_create_data()
 
 	INIT_LLIST_HEAD(&data->sccp_queue);
 	INIT_LLIST_HEAD(&data->gsm_queue);
+	llist_add_tail(&data->active_connections, &active_connections);
 	return data;
 }
 
@@ -86,6 +88,7 @@ void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 	bsc_del_timer(&data->sccp_it);
 	bsc_free_queued(data->sccp);
 	bts_free_queued(data);
+	llist_del(&data->active_connections);
 	talloc_free(data);
 }
 
