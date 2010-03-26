@@ -269,6 +269,11 @@ static void initialize_msc_if_needed()
 	/* do we need to send a GSM 08.08 message here? */
 }
 
+static int bsc_write(struct bsc_connection *bsc, u_int8_t *data, unsigned int length)
+{
+	return write(bsc->write_queue.bfd.fd, data, length);
+}
+
 static int forward_sccp_to_bts(struct msgb *msg)
 {
 	struct bsc_connection *bsc = NULL;
@@ -314,7 +319,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		return -1;
 	}
 
-	return write(bsc->write_queue.bfd.fd, msg->data, msg->len);
+	return bsc_write(bsc, msg->data, msg->len);
 
 send_to_all:
 	/*
@@ -348,7 +353,7 @@ send_to_all:
 				if (!bsc->authenticated || _lac != bsc->lac)
 					continue;
 
-				rc = write(bsc->write_queue.bfd.fd, msg->data, msg->len);
+				rc = bsc_write(bsc, msg->data, msg->len);
 				if (rc < msg->len)
 					LOGP(DNAT, LOGL_ERROR,
 					     "Failed to write message to BTS: %d\n", rc);
@@ -362,7 +367,7 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		rc = write(bsc->write_queue.bfd.fd, msg->data, msg->len);
+		rc = bsc_write(bsc, msg->data, msg->len);
 
 		/* try the next one */
 		if (rc < msg->len)
