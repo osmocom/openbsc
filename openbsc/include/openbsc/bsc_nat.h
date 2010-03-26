@@ -28,6 +28,7 @@
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>
 #include <osmocore/timer.h>
+#include <osmocore/write_queue.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
@@ -77,7 +78,7 @@ struct bsc_connection {
 	int authenticated;
 
 	/* the fd we use to communicate */
-	struct bsc_fd bsc_fd;
+	struct write_queue write_queue;
 
 	/* the LAC assigned to this connection */
 	unsigned int lac;
