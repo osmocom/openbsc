@@ -58,6 +58,7 @@ static struct bsc_fd bsc_listen;
 
 
 static struct bsc_nat *nat;
+static int bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 
 static struct bsc_nat *bsc_nat_alloc(void)
 {
@@ -125,7 +126,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	return -1;
 }
 
-static int send_reset_ack(struct bsc_fd *bfd)
+static int send_reset_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t gsm_reset_ack[] = {
 		0x00, 0x13, 0xfd,
@@ -134,7 +135,7 @@ static int send_reset_ack(struct bsc_fd *bfd)
 		0x00, 0x01, 0x31,
 	};
 
-	return write(bfd->fd, gsm_reset_ack, sizeof(gsm_reset_ack));
+	return bsc_write(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
 }
 
 /*
@@ -269,7 +270,7 @@ static void initialize_msc_if_needed()
 	/* do we need to send a GSM 08.08 message here? */
 }
 
-static int bsc_write(struct bsc_connection *bsc, u_int8_t *data, unsigned int length)
+static int bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
 {
 	return write(bsc->write_queue.bfd.fd, data, length);
 }
@@ -480,13 +481,10 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	}
 }
 
-static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
+static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
-	struct bsc_connection *bsc;
 	struct bsc_connection *found_bsc = NULL;
 	struct bsc_nat_parsed *parsed;
-
-	bsc = bfd->data;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
@@ -546,8 +544,8 @@ static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 exit:
 	/* if we filter out the reset send an ack to the BSC */
 	if (parsed->bssap == 0 && parsed->gsm_type == BSS_MAP_MSG_RESET) {
-		send_reset_ack(bfd);
-		send_reset_ack(bfd);
+		send_reset_ack(bsc);
+		send_reset_ack(bsc);
 	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
 		/* do we know who is handling this? */
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
@@ -571,12 +569,13 @@ exit2:
 static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
+	struct bsc_connection *bsc = bfd->data;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
 
 	if (!msg) {
 		if (error == 0) {
 			LOGP(DNAT, LOGL_ERROR,	"The connection to the BSC was lost. Cleaning it\n");
-			remove_bsc_connection((struct bsc_connection *) bfd->data);
+			remove_bsc_connection(bsc);
 		} else {
 			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 		}
@@ -589,7 +588,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	/* Handle messages from the BSC */
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
-	forward_sccp_to_msc(bfd, msg);
+	forward_sccp_to_msc(bsc, msg);
 
 	return 0;
 }
