@@ -42,7 +42,7 @@
 #include <openbsc/ipaccess.h>
 #include <osmocore/talloc.h>
 
-static struct debug_target *stderr_target;
+static struct log_target *stderr_target;
 
 /* one instance of an ip.access protocol proxy */
 struct ipa_proxy {
@@ -265,10 +265,10 @@ static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int li
 			   struct ipa_bts_conn *ipbc, u_int8_t trx_id)
 {
 	if (ipbc)
-		debugp2(ss, lvl, file, line, 0, "(%u/%u/%u) ", ipbc->unit_id.site_id,
+		logp2(ss, lvl, file, line, 0, "(%u/%u/%u) ", ipbc->unit_id.site_id,
 		     ipbc->unit_id.bts_id, trx_id);
 	else
-		debugp2(ss, lvl, file, line, 0, "unknown ");
+		logp2(ss, lvl, file, line, 0, "unknown ");
 }
 
 /* UDP socket handling */
@@ -1108,11 +1108,11 @@ int main(int argc, char **argv)
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
-	debug_parse_category_mask(stderr_target, "DINP:DMI");
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
+	log_parse_category_mask(stderr_target, "DINP:DMI");
 
 	rc = ipaccess_proxy_setup();
 	if (rc < 0)

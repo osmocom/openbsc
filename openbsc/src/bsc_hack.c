@@ -38,7 +38,7 @@
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
-static struct debug_target *stderr_target;
+static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
@@ -127,10 +127,10 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_set_use_color(stderr_target, 0);
+			log_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -142,13 +142,13 @@ static void handle_options(int argc, char** argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			debug_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
 			break;
 		case 'e':
-			debug_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(stderr_target, atoi(optarg));
 			break;
 		case 'V':
 			print_version();
@@ -211,21 +211,21 @@ int main(int argc, char **argv)
 {
 	int rc;
 
-	debug_init();
+	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
 
 	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
 	/* enable filters */
-	debug_set_all_filter(stderr_target, 1);
+	log_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -262,7 +262,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
-		debug_reset_context();
+		log_reset_context();
 		bsc_select_main(0);
 	}
 }

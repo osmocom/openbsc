@@ -878,7 +878,7 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-static void _vty_output(struct debug_target *tgt, const char *line)
+static void _vty_output(struct log_target *tgt, const char *line)
 {
 	struct vty *vty = tgt->tgt_vty.vty;
 	vty_out(vty, "%s", line);
@@ -887,11 +887,11 @@ static void _vty_output(struct debug_target *tgt, const char *line)
 		vty_out(vty, "\r");
 }
 
-struct debug_target *debug_target_create_vty(struct vty *vty)
+struct log_target *log_target_create_vty(struct vty *vty)
 {
-	struct debug_target *target;
+	struct log_target *target;
 
-	target = debug_target_create();
+	target = log_target_create();
 	if (!target)
 		return NULL;
 
@@ -913,11 +913,11 @@ DEFUN(enable_logging,
 		return CMD_WARNING;
 	}
 
-	conn->dbg = debug_target_create_vty(vty);
+	conn->dbg = log_target_create_vty(vty);
 	if (!conn->dbg)
 		return CMD_WARNING;
 
-	debug_add_target(conn->dbg);
+	log_add_target(conn->dbg);
 	return CMD_SUCCESS;
 }
 
@@ -934,7 +934,7 @@ DEFUN(logging_fltr_imsi,
 		return CMD_WARNING;
 	}
 
-	debug_set_imsi_filter(conn->dbg, argv[0]);
+	log_set_imsi_filter(conn->dbg, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -951,7 +951,7 @@ DEFUN(logging_fltr_all,
 		return CMD_WARNING;
 	}
 
-	debug_set_all_filter(conn->dbg, atoi(argv[0]));
+	log_set_all_filter(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -968,7 +968,7 @@ DEFUN(logging_use_clr,
 		return CMD_WARNING;
 	}
 
-	debug_set_use_color(conn->dbg, atoi(argv[0]));
+	log_set_use_color(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -985,7 +985,7 @@ DEFUN(logging_prnt_timestamp,
 		return CMD_WARNING;
 	}
 
-	debug_set_print_timestamp(conn->dbg, atoi(argv[0]));
+	log_set_print_timestamp(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -998,8 +998,8 @@ DEFUN(logging_level,
       "Set the log level for a specified category\n")
 {
 	struct telnet_connection *conn;
-	int category = debug_parse_category(argv[0]);
-	int level = debug_parse_level(argv[1]);
+	int category = log_parse_category(argv[0]);
+	int level = log_parse_level(argv[1]);
 
 	conn = (struct telnet_connection *) vty->priv;
 	if (!conn->dbg) {
@@ -1025,7 +1025,7 @@ DEFUN(logging_level,
 
 DEFUN(logging_set_category_mask,
       logging_set_category_mask_cmd,
-      "logging set debug mask MASK",
+      "logging set log mask MASK",
       "Decide which categories to output.\n")
 {
 	struct telnet_connection *conn;
@@ -1036,7 +1036,7 @@ DEFUN(logging_set_category_mask,
 		return CMD_WARNING;
 	}
 
-	debug_parse_category_mask(conn->dbg, argv[0]);
+	log_parse_category_mask(conn->dbg, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1053,7 +1053,7 @@ DEFUN(logging_set_log_level,
 		return CMD_WARNING;
 	}
 
-	debug_set_log_level(conn->dbg, atoi(argv[0]));
+	log_set_log_level(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -1070,7 +1070,7 @@ DEFUN(diable_logging,
 		return CMD_WARNING;
 	}
 
-	debug_del_target(conn->dbg);
+	log_del_target(conn->dbg);
 	talloc_free(conn->dbg);
 	conn->dbg = NULL;
 	return CMD_SUCCESS;

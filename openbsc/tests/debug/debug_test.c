@@ -24,17 +24,17 @@
 
 int main(int argc, char** argv)
 {
-	struct debug_target *stderr_target;
+	struct log_target *stderr_target;
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 
-	debug_parse_category_mask(stderr_target, "DRLL");
+	log_parse_category_mask(stderr_target, "DRLL");
 	DEBUGP(DCC, "You should not see this\n");
 
-	debug_parse_category_mask(stderr_target, "DRLL:DCC");
+	log_parse_category_mask(stderr_target, "DRLL:DCC");
 	DEBUGP(DRLL, "You should see this\n");
 	DEBUGP(DCC, "You should see this\n");
 	DEBUGP(DMM, "You should not see this\n");
