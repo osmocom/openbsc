@@ -58,7 +58,7 @@ static struct bsc_fd bsc_listen;
 
 
 static struct bsc_nat *nat;
-static int bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
+static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 
 static struct bsc_nat *bsc_nat_alloc(void)
 {
@@ -126,7 +126,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	return -1;
 }
 
-static int send_reset_ack(struct bsc_connection *bsc)
+static void send_reset_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t gsm_reset_ack[] = {
 		0x00, 0x13, 0xfd,
@@ -135,19 +135,19 @@ static int send_reset_ack(struct bsc_connection *bsc)
 		0x00, 0x01, 0x31,
 	};
 
-	return bsc_write(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
+	bsc_write(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
 }
 
-static int send_id_ack(struct bsc_connection *bsc)
+static void send_id_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t id_ack[] = {
 		0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
 	};
 
-	return bsc_write(bsc, id_ack, sizeof(id_ack));
+	bsc_write(bsc, id_ack, sizeof(id_ack));
 }
 
-static int send_id_req(struct bsc_connection *bsc)
+static void send_id_req(struct bsc_connection *bsc)
 {
 	static const u_int8_t id_req[] = {
 		0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
@@ -161,7 +161,7 @@ static int send_id_req(struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
-	return bsc_write(bsc, id_req, sizeof(id_req));
+	bsc_write(bsc, id_req, sizeof(id_req));
 }
 
 /*
@@ -296,16 +296,36 @@ static void initialize_msc_if_needed()
 	/* do we need to send a GSM 08.08 message here? */
 }
 
-static int bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+/*
+ * Currently we are lacking refcounting so we need to copy each message.
+ */
+static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
 {
-	return write(bsc->write_queue.bfd.fd, data, length);
+	struct msgb *msg;
+
+	if (length > 4096) {
+		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
+		return;
+	}
+
+	msg = msgb_alloc(4096, "to-bsc");
+	if (!msg) {
+		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
+		return;
+	}
+
+	msgb_put(msg, length);
+	memcpy(msg->data, data, length);
+	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+	}
 }
 
 static int forward_sccp_to_bts(struct msgb *msg)
 {
 	struct bsc_connection *bsc = NULL;
 	struct bsc_nat_parsed *parsed;
-	int rc;
 
 	/* filter, drop, patch the message? */
 	parsed = bsc_nat_parse(msg);
@@ -346,7 +366,8 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		return -1;
 	}
 
-	return bsc_write(bsc, msg->data, msg->len);
+	bsc_write(bsc, msg->data, msg->len);
+	return 0;
 
 send_to_all:
 	/*
@@ -380,10 +401,7 @@ send_to_all:
 				if (!bsc->authenticated || _lac != bsc->lac)
 					continue;
 
-				rc = bsc_write(bsc, msg->data, msg->len);
-				if (rc < msg->len)
-					LOGP(DNAT, LOGL_ERROR,
-					     "Failed to write message to BTS: %d\n", rc);
+				bsc_write(bsc, msg->data, msg->len);
 			}
 		}
 
@@ -394,11 +412,7 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		rc = bsc_write(bsc, msg->data, msg->len);
-
-		/* try the next one */
-		if (rc < msg->len)
-			LOGP(DNAT, LOGL_ERROR, "Failed to write message to BTS: %d\n", rc);
+		bsc_write(bsc, msg->data, msg->len);
 	}
 
 exit:
@@ -619,6 +633,17 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
+static int ipaccess_bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+{
+	int rc;
+
+	rc = write(bfd->fd, msg->data, msg->len);
+	if (rc != msg->len)
+		LOGP(DNAT, LOGL_ERROR, "Failed to write message to the BSC.\n");
+
+	return rc;
+}
+
 static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
@@ -653,6 +678,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->write_queue.bfd.data = bsc;
 	bsc->write_queue.bfd.fd = ret;
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
+	bsc->write_queue.write_cb = ipaccess_bsc_write_cb;
 	bsc->write_queue.bfd.when = BSC_FD_READ;
 	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
