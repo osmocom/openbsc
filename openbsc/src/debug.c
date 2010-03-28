@@ -146,6 +146,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "Reference Counting",
 		.enabled = 0, .loglevel = LOGL_NOTICE,
 	},
+	[DGPRS] = {
+		.name = "DGPRS",
+		.description = "GPRS Packet Service",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_ctxt {
