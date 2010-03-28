@@ -24,7 +24,6 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
 struct msgb *gsm48_msgb_alloc(void);
 int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
-int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, const int mi_len);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);

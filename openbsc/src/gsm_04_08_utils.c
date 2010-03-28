@@ -236,50 +236,6 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 	return rsl_deact_sacch(lchan);
 }
 
-/* Convert Mobile Identity (10.5.1.4) to string */
-int gsm48_mi_to_string(char *string, const int str_len, const u_int8_t *mi, const int mi_len)
-{
-	int i;
-	u_int8_t mi_type;
-	char *str_cur = string;
-	u_int32_t tmsi;
-
-	mi_type = mi[0] & GSM_MI_TYPE_MASK;
-
-	switch (mi_type) {
-	case GSM_MI_TYPE_NONE:
-		break;
-	case GSM_MI_TYPE_TMSI:
-		/* Table 10.5.4.3, reverse generate_mid_from_tmsi */
-		if (mi_len == GSM48_TMSI_LEN && mi[0] == (0xf0 | GSM_MI_TYPE_TMSI)) {
-			memcpy(&tmsi, &mi[1], 4);
-			tmsi = ntohl(tmsi);
-			return snprintf(string, str_len, "%u", tmsi);
-		}
-		break;
-	case GSM_MI_TYPE_IMSI:
-	case GSM_MI_TYPE_IMEI:
-	case GSM_MI_TYPE_IMEISV:
-		*str_cur++ = bcd2char(mi[0] >> 4);
-
-                for (i = 1; i < mi_len; i++) {
-			if (str_cur + 2 >= string + str_len)
-				return str_cur - string;
-			*str_cur++ = bcd2char(mi[i] & 0xf);
-			/* skip last nibble in last input byte when GSM_EVEN */
-			if( (i != mi_len-1) || (mi[0] & GSM_MI_ODD))
-				*str_cur++ = bcd2char(mi[i] >> 4);
-		}
-		break;
-	default:
-		break;
-	}
-	*str_cur++ = '\0';
-
-	return str_cur - string;
-}
-
-
 int send_siemens_mrpci(struct gsm_lchan *lchan,
 		       u_int8_t *classmark2_lv)
 {
@@ -626,4 +582,3 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 
 	return 0;
 }
-
