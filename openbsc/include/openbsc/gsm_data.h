@@ -267,7 +267,7 @@ struct gsm_e1_subslot {
 	u_int8_t	e1_ts_ss;
 };
 
-#define BTS_TRX_F_ACTIVATED	0x0001
+#define TS_F_PDCH_MODE	0x1000
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
 	struct gsm_bts_trx *trx;

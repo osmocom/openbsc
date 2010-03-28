@@ -992,12 +992,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
 		DEBUGPC(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
+		msg->lchan->ts->flags |= TS_F_PDCH_MODE;
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH ACT NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_ACK:
 		DEBUGP(DRSL, "%s IPAC PDCH DEACT ACK\n", ts_name);
+		msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH DEACT NACK\n", ts_name);
@@ -1491,17 +1493,24 @@ int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 	return rc;
 }
 
-int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
+int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan, int act)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t msg_type;
+
+	if (act)
+		msg_type = RSL_MT_IPAC_PDCH_ACT;
+	else
+		msg_type = RSL_MT_IPAC_PDCH_DEACT;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
-	init_dchan_hdr(dh, RSL_MT_IPAC_PDCH_ACT);
+	init_dchan_hdr(dh, msg_type);
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	DEBUGP(DRSL, "%s IPAC_PDCH_ACT\n", gsm_lchan_name(lchan));
+	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_lchan_name(lchan),
+		act ? "" : "DE");
 
 	msg->trx = lchan->ts->trx;
 
