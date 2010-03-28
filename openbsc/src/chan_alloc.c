@@ -152,6 +152,7 @@ static const u_int8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
 	/* FIXME: what about dynamic TCH_F_TCH_H ? */
+	[GSM_PCHAN_TCH_F_PDCH] = 1,
 };
 
 static struct gsm_lchan *
@@ -167,7 +168,14 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 		ts = &trx->ts[j];
 		if (!ts_is_usable(ts))
 			continue;
-		if (ts->pchan != pchan)
+		/* ip.access dynamic TCH/F + PDCH combination */
+		if (ts->pchan == GSM_PCHAN_TCH_F_PDCH &&
+		    pchan == GSM_PCHAN_TCH_F) {
+			/* we can only consider such a dynamic channel
+			 * if the PDCH is currently inactive */
+			if (ts->flags & TS_F_PDCH_MODE)
+				continue;
+		} else if (ts->pchan != pchan)
 			continue;
 		/* check if all sub-slots are allocated yet */
 		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
@@ -177,6 +185,7 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 				return lc;
 		}
 	}
+
 	return NULL;
 }
 
@@ -269,6 +278,11 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		lchan->conn.release_timer.data = lchan;
 		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
 
+	} else {
+		struct challoc_signal_data sig;
+		sig.bts = bts;
+		sig.type = type;
+		dispatch_signal(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
 	}
 
 	return lchan;
@@ -277,8 +291,10 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 /* Free a logical channel */
 void lchan_free(struct gsm_lchan *lchan)
 {
+	struct challoc_signal_data sig;
 	int i;
 
+	sig.type = lchan->type;
 	lchan->type = GSM_LCHAN_NONE;
 	if (lchan->conn.subscr) {
 		subscr_put(lchan->conn.subscr);
@@ -305,6 +321,10 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->neigh_meas[i].arfcn = 0;
 
 	lchan->conn.silent_call = 0;
+
+	sig.lchan = lchan;
+	sig.bts = lchan->ts->trx->bts;
+	dispatch_signal(SS_CHALLOC, S_CHALLOC_FREED, &sig);
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
