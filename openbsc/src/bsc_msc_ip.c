@@ -669,7 +669,6 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 	if (!msg) {
 		if (error == 0) {
 			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
-			
 			return -1;
 		}
 
@@ -875,7 +874,7 @@ int main(int argc, char **argv)
 	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
 	msc_con->write_queue.write_cb = msc_sccp_do_write;
 	bsc_msc_connect(msc_con);
-	
+
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

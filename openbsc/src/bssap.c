@@ -892,7 +892,7 @@ static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 	}
 
 	if (lchan->type == GSM_LCHAN_TCH_H)
-		mode |= 0x4;        
+		mode |= 0x4;
 
         return mode;
 }
