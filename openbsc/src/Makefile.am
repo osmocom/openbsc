@@ -52,5 +52,5 @@ bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
 
-bsc_nat_SOURCES = nat/bsc_nat.c nat/bsc_filter.c nat/bsc_nat_vty.c bsc_msc.c bssap.c
+bsc_nat_SOURCES = nat/bsc_nat.c nat/bsc_filter.c nat/bsc_sccp.c nat/bsc_nat_vty.c bsc_msc.c bssap.c
 bsc_nat_LDADD = libvty.a libbsc.a libsccp.a
