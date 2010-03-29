@@ -363,7 +363,7 @@ static void auto_release_channel(void *_lchan)
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
 	struct gsm_bts_trx *trx;
-	int ts_no, lchan_no; 
+	int ts_no, lchan_no;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		for (ts_no = 0; ts_no < 8; ++ts_no) {

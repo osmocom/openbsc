@@ -54,7 +54,7 @@ static struct bsc_fd bfd;
 static int first_request = 1;
 static struct mgcp_config *cfg;
 const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
-const char *openbsc_copyright = 
+const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
 	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
 	"Dieter Spaar, Andreas Eversberg, Harald Welte\n\n"

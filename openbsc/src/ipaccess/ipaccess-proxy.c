@@ -946,7 +946,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		perror("accept");
 		return ret;
 	}
-	DEBUGP(DINP, "accept()ed new %s link from %s\n", 
+	DEBUGP(DINP, "accept()ed new %s link from %s\n",
 		(listen_bfd->priv_nr & 0xff) == OML_FROM_BTS ? "OML" : "RSL",
 		inet_ntoa(sa.sin_addr));
 

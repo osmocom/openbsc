@@ -162,7 +162,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->cell_identity,
-		bts->location_area_code, bts->bsic, bts->tsc, 
+		bts->location_area_code, bts->bsic, bts->tsc,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
@@ -598,7 +598,7 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	int idx;
 
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
-		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
+		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
 	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->conn.use_count,
@@ -1346,7 +1346,7 @@ DEFUN(cfg_bts,
 		/* allocate a new one */
 		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
 				    HARDCODED_TSC, HARDCODED_BSIC);
-	} else 
+	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
 	if (!bts) {
@@ -1777,9 +1777,9 @@ DEFUN(cfg_trx,
 	} else if (trx_nr == bts->num_trx) {
 		/* we need to allocate a new one */
 		trx = gsm_bts_trx_alloc(bts);
-	} else 
+	} else
 		trx = gsm_bts_trx_num(bts, trx_nr);
-	
+
 	if (!trx)
 		return CMD_WARNING;
 

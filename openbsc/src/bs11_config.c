@@ -3,7 +3,7 @@
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
- * This software is based on ideas (but not code) of BS11Config 
+ * This software is based on ideas (but not code) of BS11Config
  * (C) 2009 by Dieter Spaar <spaar@mirider.augusta.de>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -54,9 +54,9 @@ static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 static char *command, *value;
 struct timer_list status_timer;
 
-static const u_int8_t obj_li_attr[] = { 
+static const u_int8_t obj_li_attr[] = {
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
-	NM_ATT_BS11_L1_PROT_TYPE, 0x00, 
+	NM_ATT_BS11_L1_PROT_TYPE, 0x00,
 	NM_ATT_BS11_LINE_CFG, 0x00,
 };
 static const u_int8_t obj_bbsig0_attr[] = {

@@ -1,4 +1,4 @@
-/* GSM Network Management (OML) messages on the A-bis interface 
+/* GSM Network Management (OML) messages on the A-bis interface
  * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
@@ -514,7 +514,7 @@ int nm_is_running(struct gsm_nm_state *s) {
 static void debugp_foh(struct abis_om_fom_hdr *foh)
 {
 	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class, 
+		obj_class_name(foh->obj_class), foh->obj_class,
 		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
 		foh->obj_inst.ts_nr);
 }
@@ -938,7 +938,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, "CAUSE=%s\n", 
+			DEBUGPC(DNM, "CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
@@ -1349,7 +1349,7 @@ static int sw_open_file(struct abis_nm_sw *sw, const char *fname)
 			return -1;
 		}
 		/* read first line and parse file ID and VERSION */
-		rc = fscanf(sw->stream, "@(#)%12s:%80s\r\n", 
+		rc = fscanf(sw->stream, "@(#)%12s:%80s\r\n",
 			    file_id, file_version);
 		if (rc != 2) {
 			perror("parsing header line of software file");
@@ -2233,7 +2233,7 @@ int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
 }
 
 /* like abis_nm_conn_terr_traf + set_tei */
-int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port, 
+int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port,
 			  u_int8_t e1_timeslot, u_int8_t e1_subslot,
 			  u_int8_t tei)
 {
@@ -2595,7 +2595,7 @@ static u_int8_t req_attr_btsm[] = {
 	NM_ATT_SW_DESCR, NM_ATT_GET_ARI };
 #endif
 	
-static u_int8_t req_attr[] = { 
+static u_int8_t req_attr[] = {
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xa8, NM_ATT_OPER_STATE,
 	0xd5, 0xa1, NM_ATT_BS11_ESN_FW_CODE_NO, NM_ATT_BS11_ESN_HW_CODE_NO,
 	0x42, NM_ATT_BS11_ESN_PCB_SERIAL, NM_ATT_BS11_PLL };
@@ -2674,11 +2674,11 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		DEBUGPC(DNM, "RSL CONNECT ACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP))
 			DEBUGPC(DNM, "IP=%s ",
-				inet_ntoa(*((struct in_addr *) 
+				inet_ntoa(*((struct in_addr *)
 					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP))));
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP_PORT))
 			DEBUGPC(DNM, "PORT=%u ",
-				ntohs(*((u_int16_t *) 
+				ntohs(*((u_int16_t *)
 					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_STREAM_ID))
 			DEBUGPC(DNM, "STREAM=0x%02x ",
@@ -2688,7 +2688,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 		LOGP(DNM, LOGL_ERROR, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, " CAUSE=%s\n", 
+			DEBUGPC(DNM, " CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
@@ -2700,7 +2700,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 		LOGP(DNM, LOGL_ERROR, "SET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
@@ -2712,7 +2712,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_GET_NVATTR_NACK:
 		LOGPC(DNM, LOGL_ERROR, "GET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
@@ -2723,7 +2723,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_SET_ATTR_NACK:
 		LOGPC(DNM, LOGL_ERROR, "SET ATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n", 
+			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
@@ -2800,7 +2800,7 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
 				    attr_len);
 }
 
-int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx, 
+int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 				 u_int32_t ip, u_int16_t port, u_int8_t stream)
 {
 	struct in_addr ia;

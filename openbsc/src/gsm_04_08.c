@@ -1,4 +1,4 @@
-/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface 
+/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
@@ -872,7 +872,7 @@ static int gsm48_rx_rr_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DRR, "STATUS rr_cause = %s\n", 
+	DEBUGP(DRR, "STATUS rr_cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
 	return 0;
@@ -1064,7 +1064,7 @@ static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 		trans->cc.Tcurrent = 0;
 	}
 }
- 
+
 static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 			int msg_type, struct gsm_mncc *mncc)
 {
@@ -1130,7 +1130,7 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
- 
+
 /* call-back from paging the B-end of the connection */
 static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_lchan, void *param)
@@ -1142,7 +1142,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
-  
+
 	if (!subscr)
 		return -EINVAL;
 	net = subscr->net;
@@ -2713,7 +2713,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 	/* if paging did not respond yet */
 	if (!lchan) {
 		DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
-			"Received '%s' from MNCC in paging state\n", 
+			"Received '%s' from MNCC in paging state\n",
 			(trans->subscr)?(trans->subscr->extension):"-",
 			get_mncc_name(msg_type));
 		mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
@@ -2768,7 +2768,7 @@ static struct datastate {
 	 GSM48_MT_CC_CALL_CONF, gsm48_cc_rx_call_conf},
 	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF), /* ???? | 5.2.2.3.2 */
 	 GSM48_MT_CC_ALERTING, gsm48_cc_rx_alerting},
-	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF) | SBIT(GSM_CSTATE_CALL_RECEIVED), /* (5.2.2.6) | 5.2.2.6 | 5.2.2.6 */  
+	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF) | SBIT(GSM_CSTATE_CALL_RECEIVED), /* (5.2.2.6) | 5.2.2.6 | 5.2.2.6 */
 	 GSM48_MT_CC_CONNECT, gsm48_cc_rx_connect},
 	 /* signalling during call */
 	{ALL_STATES - SBIT(GSM_CSTATE_NULL),

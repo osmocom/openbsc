@@ -64,7 +64,7 @@ static const struct value_string cp_cause_strs[] = {
 	{ GSM411_CP_CAUSE_SEMANT_INC_MSG, "Semantically Incorrect Message" },
 	{ GSM411_CP_CAUSE_INV_MAND_INF,	"Invalid Mandatory Information" },
 	{ GSM411_CP_CAUSE_MSGTYPE_NOTEXIST, "Message Type doesn't exist" },
-	{ GSM411_CP_CAUSE_MSG_INCOMP_STATE, 
+	{ GSM411_CP_CAUSE_MSG_INCOMP_STATE,
 				"Message incompatible with protocol state" },
 	{ GSM411_CP_CAUSE_IE_NOTEXIST,	"IE does not exist" },
 	{ GSM411_CP_CAUSE_PROTOCOL_ERR,	"Protocol Error" },
@@ -208,7 +208,7 @@ static u_int8_t unbcdify(u_int8_t value)
 	u_int8_t ret;
 
 	if ((value & 0x0F) > 9 || (value >> 4) > 9)
-		LOGP(DSMS, LOGL_ERROR, 
+		LOGP(DSMS, LOGL_ERROR,
 		     "unbcdify got too big nibble: 0x%02X\n", value);
 
 	ret = (value&0x0F)*10;
@@ -502,8 +502,8 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	return msg->len - old_msg_len;
 }
 
-/* process an incoming TPDU (called from RP-DATA) 
- * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */ 
+/* process an incoming TPDU (called from RP-DATA)
+ * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
 static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	u_int8_t *smsp = msgb_sms(msg);
@@ -567,7 +567,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		sms_vp = 0;
 		break;
 	default:
-		LOGP(DSMS, LOGL_NOTICE, 
+		LOGP(DSMS, LOGL_NOTICE,
 		     "SMS Validity period not implemented: 0x%02x\n", sms_vpf);
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
@@ -594,7 +594,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	     subscr_name(gsms->sender), sms_mti, sms_vpf, gsms->msg_ref,
 	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dest_addr,
 	     gsms->user_data_len,
-			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text : 
+			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
 				hexdump(gsms->user_data, gsms->user_data_len));
 
 	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
