@@ -93,6 +93,13 @@ struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
 
 	msg->l2h = &hh->data[0];
 
+	/* do a size check on the input */
+	if (ntohs(hh->len) != msgb_l2len(msg)) {
+		LOGP(DINP, LOGL_ERROR, "Wrong input length?\n");
+		talloc_free(parsed);
+		return NULL;
+	}
+
 	/* analyze sccp down here */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
 		memset(&result, 0, sizeof(result));
