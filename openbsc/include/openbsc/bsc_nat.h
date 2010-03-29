@@ -135,6 +135,8 @@ struct bsc_nat {
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+struct bsc_nat *bsc_nat_alloc(void);
+struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 
 
 /**

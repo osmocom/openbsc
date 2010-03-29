@@ -61,44 +61,6 @@ static struct bsc_nat *nat;
 static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 static void remove_bsc_connection(struct bsc_connection *connection);
 
-static struct bsc_nat *bsc_nat_alloc(void)
-{
-	struct bsc_nat *nat = talloc_zero(tall_bsc_ctx, struct bsc_nat);
-	if (!nat)
-		return NULL;
-
-	INIT_LLIST_HEAD(&nat->sccp_connections);
-	INIT_LLIST_HEAD(&nat->bsc_connections);
-	INIT_LLIST_HEAD(&nat->bsc_configs);
-	return nat;
-}
-
-static struct bsc_connection *bsc_connection_alloc(void)
-{
-	struct bsc_connection *con = talloc_zero(nat, struct bsc_connection);
-	if (!con)
-		return NULL;
-
-	return con;
-}
-
-struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac)
-{
-	struct bsc_config *conf = talloc_zero(nat, struct bsc_config);
-	if (!conf)
-		return NULL;
-
-	conf->token = talloc_strdup(conf, token);
-	conf->lac = lac;
-	conf->nr = nat->num_bsc;
-	conf->nat = nat;
-
-	llist_add(&conf->entry, &nat->bsc_configs);
-	++nat->num_bsc;
-
-	return conf;
-}
-
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
 	struct bsc_config *conf;
@@ -574,7 +536,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/*
 	 *
 	 */
-	bsc = bsc_connection_alloc();
+	bsc = bsc_connection_alloc(nat);
 	if (!bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate BSC struct.\n");
 		close(ret);
