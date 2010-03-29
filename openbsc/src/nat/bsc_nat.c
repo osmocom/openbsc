@@ -191,7 +191,11 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
+			bsc = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+			break;
 		case SCCP_MSG_TYPE_CC:
+			if (update_sccp_src_ref(bsc, msg, parsed) != 0)
+				goto exit;
 			bsc = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_RLC:
