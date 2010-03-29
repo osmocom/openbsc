@@ -27,6 +27,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
 
+#include <osmocore/talloc.h>
+
 #include <stdio.h>
 
 /* test messages for ipa */
@@ -145,12 +147,13 @@ static const struct filter_result results[] = {
 	},
 };
 
-int main(int argc, char **argv)
+static void test_filter(void)
 {
 	int i;
 
 
 	/* start testinh with proper messages */
+	fprintf(stderr, "Testing BSS Filtering.\n");
 	for (i = 0; i < ARRAY_SIZE(results); ++i) {
 		int result;
 		struct bsc_nat_parsed *parsed;
@@ -174,6 +177,143 @@ int main(int argc, char **argv)
 
 		msgb_free(msg);
 	}
+}
 
+#include "bsc_data.c"
+
+static void copy_to_msg(struct msgb *msg, const u_int8_t *data, unsigned int length)
+{
+	msgb_reset(msg);
+	msg->l2h = msgb_put(msg, length);
+	memcpy(msg->l2h, data, msgb_l2len(msg));
+}
+
+#define VERIFY(con_found, con, msg, ver, str) \
+	if (con_found != con) { \
+		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found); \
+		abort(); \
+	} \
+	if (memcmp(msg->data, ver, sizeof(ver)) != 0) { \
+		fprintf(stderr, "Failed to patch the %s msg.\n", str); \
+		abort(); \
+	}
+
+/* test conn tracking once */
+static void test_contrack()
+{
+	int rc;
+	struct bsc_nat *nat;
+	struct bsc_connection *con, *con_found;
+	struct bsc_nat_parsed *parsed;
+	struct msgb *msg;
+
+	fprintf(stderr, "Testing connection tracking.\n");
+	nat = bsc_nat_alloc();
+	con = bsc_connection_alloc(nat);
+	msg = msgb_alloc(4096, "test");
+
+	/* 1.) create a connection */
+	copy_to_msg(msg, bsc_cr, sizeof(bsc_cr));
+	parsed = bsc_nat_parse(msg);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	if (con_found != NULL) {
+		fprintf(stderr, "Con should not exist 0x%p\n", con_found);
+		abort();
+	}
+	rc = create_sccp_src_ref(con, msg, parsed);
+	if (rc != 0) {
+		fprintf(stderr, "Failed to create a ref\n");
+		abort();
+	}
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	if (con_found != con) {
+		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found);
+		abort();
+	}
+	if (memcmp(msg->data, bsc_cr_patched, sizeof(bsc_cr_patched)) != 0) {
+		fprintf(stderr, "Failed to patch the BSC CR msg.\n");
+		abort();
+	}
+	talloc_free(parsed);
+
+	/* 2.) get the cc */
+	copy_to_msg(msg, msc_cc, sizeof(msc_cc));
+	parsed = bsc_nat_parse(msg);
+	if (update_sccp_src_ref(con, msg, parsed) != 0) {
+		fprintf(stderr, "Failed to update the SCCP con.\n");
+		abort();
+	}
+	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	VERIFY(con_found, con, msg, msc_cc_patched, "MSC CC");
+
+	/* 3.) send some data */
+	copy_to_msg(msg, bsc_dtap, sizeof(bsc_dtap));
+	parsed = bsc_nat_parse(msg);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	VERIFY(con_found, con, msg, bsc_dtap_patched, "BSC DTAP");
+
+	/* 4.) receive some data */
+	copy_to_msg(msg, msc_dtap, sizeof(msc_dtap));
+	parsed = bsc_nat_parse(msg);
+	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	VERIFY(con_found, con, msg, msc_dtap_patched, "MSC DTAP");
+
+	/* 5.) close the connection */
+	copy_to_msg(msg, msc_rlsd, sizeof(msc_rlsd));
+	parsed = bsc_nat_parse(msg);
+	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	VERIFY(con_found, con, msg, msc_rlsd_patched, "MSC RLSD");
+
+	/* 6.) confirm the connection close */
+	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
+	parsed = bsc_nat_parse(msg);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	if (con_found != con) {
+		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found);
+		abort();
+	}
+	if (memcmp(msg->data, bsc_rlc_patched, sizeof(bsc_rlc_patched)) != 0) {
+		fprintf(stderr, "Failed to patch the BSC CR msg.\n");
+		abort();
+	}
+	remove_sccp_src_ref(con, msg, parsed);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+
+	/* verify that it is gone */
+	if (con_found != NULL) {
+		fprintf(stderr, "Con should be gone. 0x%p\n", con_found);
+		abort();
+	}
+	talloc_free(parsed);
+
+
+	talloc_free(nat);
+	msgb_free(msg);
+}
+
+int main(int argc, char **argv)
+{
+	struct debug_target *stderr_target;
+
+	stderr_target = debug_target_create_stderr();
+	debug_add_target(stderr_target);
+	debug_set_all_filter(stderr_target, 1);
+
+	test_filter();
+
+	debug_set_log_level(stderr_target, 1);
+	test_contrack();
 	return 0;
+}
+
+void input_event()
+{}
+int nm_state_event()
+{
+	return -1;
+}
+
+int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
+{
+	return -1;
 }
