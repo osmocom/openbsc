@@ -103,6 +103,34 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 	return 0;
 }
 
+int update_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	struct sccp_connections *conn;
+
+	if (!parsed->dest_local_ref || !parsed->src_local_ref) {
+		LOGP(DNAT, LOGL_ERROR, "CC MSG should contain both local and dest address.\n");
+		return -1;
+	}
+
+	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
+		if (conn->bsc != bsc)
+			continue;
+
+		if (memcmp(parsed->dest_local_ref,
+			   &conn->patched_ref, sizeof(conn->patched_ref)) != 0)
+			continue;
+
+		conn->remote_ref = *parsed->src_local_ref;
+		LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on 0x%p\n",
+		     sccp_src_ref_to_int(&conn->patched_ref),
+		     sccp_src_ref_to_int(&conn->remote_ref), bsc);
+		return 0;
+	}
+
+	LOGP(DNAT, LOGL_ERROR, "Referenced connection not found on BSC: 0x%p\n", bsc);
+	return -1;
+}
+
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
