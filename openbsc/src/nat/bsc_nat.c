@@ -59,6 +59,7 @@ static struct bsc_fd bsc_listen;
 
 static struct bsc_nat *nat;
 static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
+static void remove_bsc_connection(struct bsc_connection *connection);
 
 static struct bsc_nat *bsc_nat_alloc(void)
 {
@@ -422,8 +423,13 @@ exit:
 
 static void msc_connection_was_lost(struct bsc_msc_connection *con)
 {
-	LOGP(DMSC, LOGL_FATAL, "Lost the connection.\n");
-	exit(0);
+	struct bsc_connection *bsc, *tmp;
+
+	LOGP(DMSC, LOGL_ERROR, "Closing all connections downstream.\n");
+	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
+		remove_bsc_connection(bsc);
+
+	bsc_msc_schedule_connect(con);
 }
 
 static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
@@ -667,6 +673,14 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	if (ret < 0) {
 		perror("accept");
 		return ret;
+	}
+
+	/*
+	 * if we are not connected to a msc... just close the socket
+	 */
+	if (!msc_con->is_connected) {
+		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
+		return 0;
 	}
 
 	/* todo... do something with the connection */
