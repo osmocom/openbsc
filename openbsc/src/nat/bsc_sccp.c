@@ -29,6 +29,11 @@
 
 #include <string.h>
 
+static int equal(struct sccp_source_reference *ref1, struct sccp_source_reference *ref2)
+{
+	return memcmp(ref1, ref2, sizeof(*ref1)) == 0;
+}
+
 /*
  * SCCP patching below
  */
@@ -155,34 +160,61 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 	LOGP(DNAT, LOGL_ERROR, "Unknown connection.\n");
 }
 
+/*
+ * We have a message from the MSC to the BSC. The MSC is using
+ * an address that was assigned by the MUX, we need to update the
+ * dest reference to the real network.
+ */
 struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
 						 struct bsc_nat_parsed *parsed,
 						 struct bsc_nat *nat)
 {
 	struct sccp_connections *conn;
+
+	if (!parsed->dest_local_ref) {
+		LOGP(DNAT, LOGL_ERROR, "MSG should contain dest_local_ref.\n");
+		return NULL;
+	}
+
+
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
-		if (memcmp(parsed->dest_local_ref,
-			   &conn->real_ref, sizeof(*parsed->dest_local_ref)) == 0) {
-			memcpy(parsed->dest_local_ref,
-			       &conn->patched_ref, sizeof(*parsed->dest_local_ref));
-			return conn->bsc;
-		}
+		if (!equal(parsed->dest_local_ref, &conn->patched_ref))
+			continue;
+
+		/* Change the dest address to the real one */
+		*parsed->dest_local_ref = conn->real_ref;
+		return conn->bsc;
 	}
 
 	return NULL;
 }
 
+/*
+ * These are message to the MSC. We will need to find the BSC
+ * Connection by either the SRC or the DST local reference.
+ *
+ * In case of a CR we need to work by the SRC local reference
+ * in all other cases we need to work by the destination local
+ * reference..
+ */
 struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 						 struct bsc_nat_parsed *parsed,
 						 struct bsc_nat *nat)
 {
 	struct sccp_connections *conn;
+
 	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
-		if (memcmp(parsed->src_local_ref,
-			   &conn->real_ref, sizeof(*parsed->src_local_ref)) == 0) {
-			memcpy(parsed->src_local_ref,
-			       &conn->patched_ref, sizeof(*parsed->src_local_ref));
-			return conn->bsc;
+		if (parsed->src_local_ref) {
+			if (equal(parsed->src_local_ref, &conn->real_ref)) {
+				*parsed->src_local_ref = conn->patched_ref;
+				return conn->bsc;
+			}
+		} else if (parsed->dest_local_ref) {
+			if (equal(parsed->dest_local_ref, &conn->remote_ref))
+				return conn->bsc;
+		} else {
+			LOGP(DNAT, LOGL_ERROR, "Header has neither loc/dst ref.\n");
+			return NULL;
 		}
 	}
 
