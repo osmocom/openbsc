@@ -45,6 +45,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 	if (!con)
 		return NULL;
 
+	con->nat = nat;
 	return con;
 }
 
