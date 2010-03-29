@@ -193,11 +193,19 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
  * IMMEDIATE SETUP is coming from GROUP CC that is not yet
  * supported...
  */
-int open_sccp_connection(struct msgb *layer3)
+static int open_sccp_connection(struct msgb *layer3)
 {
 	struct bss_sccp_connection_data *con_data;
 	struct sccp_connection *sccp_connection;
 	struct msgb *data;
+
+	/* When not connected to a MSC. We will simply close things down. */
+	if (!msc_con->is_connected) {
+		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
+		use_lchan(layer3->lchan);
+		put_lchan(layer3->lchan, 0);
+		return -1;
+	}
 
 	DEBUGP(DMSC, "Opening new layer3 connection\n");
 	sccp_connection = sccp_connection_socket();
@@ -650,11 +658,36 @@ static void send_id_get_response(int fd)
  * The connection to the MSC was lost and we will need to free all
  * resources and then attempt to reconnect.
  */
-static void msc_connection_was_lost(struct bsc_msc_connection *con)
+static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 {
-	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freeing information.\n");
+	struct bss_sccp_connection_data *bss, *tmp;
 
-	exit(0);
+	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
+
+	llist_for_each_entry_safe(bss, tmp, &active_connections, active_connections) {
+		if (bss->lchan) {
+			bss->lchan->msc_data = NULL;
+			put_lchan(bss->lchan, 0);
+			bss->lchan = NULL;
+		}
+
+		if (bss->secondary_lchan) {
+			bss->secondary_lchan->msc_data = NULL;
+			put_lchan(bss->secondary_lchan, 0);
+			bss->secondary_lchan = NULL;
+		}
+
+		/* force the close by poking stuff */
+		if (bss->sccp) {
+			bss->sccp->connection_state = SCCP_CONNECTION_STATE_REFUSED;
+			sccp_connection_free(bss->sccp);
+			bss->sccp = NULL;
+		}
+
+		bss_sccp_free_data(bss);
+	}
+
+	bsc_msc_schedule_connect(msc);
 }
 
 /*
@@ -669,6 +702,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 	if (!msg) {
 		if (error == 0) {
 			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
+			bsc_msc_lost(msc_con);
 			return -1;
 		}
 
