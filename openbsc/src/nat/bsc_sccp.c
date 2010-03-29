@@ -23,6 +23,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/bsc_nat.h>
 
+#include <sccp/sccp.h>
+
 #include <osmocore/talloc.h>
 
 #include <string.h>
@@ -84,12 +86,19 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 		return -1;
 	}
 
+	conn->bsc = bsc;
 	conn->real_ref = *parsed->src_local_ref;
 	if (assign_src_local_reference(&conn->patched_ref, bsc->nat) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");
 		talloc_free(conn);
 		return -1;
 	}
+
+	llist_add(&conn->list_entry, &bsc->nat->sccp_connections);
+
+	LOGP(DNAT, LOGL_DEBUG, "Created 0x%x <-> 0x%x mapping for con 0x%p\n",
+	     sccp_src_ref_to_int(&conn->real_ref),
+	     sccp_src_ref_to_int(&conn->patched_ref), bsc);
 
 	return 0;
 }
@@ -101,12 +110,14 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->src_local_ref,
 			   &conn->real_ref, sizeof(conn->real_ref)) == 0) {
-			if (bsc != conn->bsc) {
-				LOGP(DNAT, LOGL_ERROR, "Someone else...\n");
+
+			/* two BSCs have used the same real ref... this is why we rewrite it */
+			if (bsc != conn->bsc)
 				continue;
-			}
 
-
+			LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con 0x%p\n",
+				sccp_src_ref_to_int(&conn->real_ref),
+				sccp_src_ref_to_int(&conn->patched_ref), bsc);
 			llist_del(&conn->list_entry);
 			talloc_free(conn);
 			return;
