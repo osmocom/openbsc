@@ -163,11 +163,11 @@ int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 				continue;
 
 			/* blacklisted */
-			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
+			LOGP(DNAT, LOGL_INFO, "Blacklisted with rule %d\n", i);
 			return 1;
 		} else {
 			/* blacklisted, we have no content sniffing yet */
-			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
+			LOGP(DNAT, LOGL_INFO, "Blacklisted with rule %d\n", i);
 			return 1;
 		}
 	}
@@ -201,7 +201,7 @@ int bsc_nat_filter_ipa(int dir, struct msgb *msg, struct bsc_nat_parsed *parsed)
 				continue;
 
 			/* whitelisted */
-			LOGP(DNAT, LOGL_NOTICE, "Whitelisted with rule %d\n", i);
+			LOGP(DNAT, LOGL_INFO, "Whitelisted with rule %d\n", i);
 			return 0;
 		} else {
 			/* whitelisted */
