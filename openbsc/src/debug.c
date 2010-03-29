@@ -55,6 +55,7 @@ static struct debug_category default_categories[Debug_LastEntry] = {
     [DHO]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DDB]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
     [DREF]	= { .enabled = 0, .loglevel = LOGL_NOTICE },
+    [DNAT]	= { .enabled = 1, .loglevel = LOGL_NOTICE },
 };
 
 struct debug_info {
