@@ -274,6 +274,11 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	if (!g_cfg->bts_ip)
 		fprintf(stderr, "No BTS ip address specified. This will allow everyone to connect.\n");
 
+	if (!g_cfg->source_addr) {
+		fprintf(stderr, "You need to specify a bind address.\n");
+		return -1;
+	}
+
 	if (mgcp_endpoints_allocate(g_cfg) != 0) {
 		fprintf(stderr, "Failed to allocate endpoints: %d. Quitting.\n", g_cfg->number_endpoints);
 		return -1;
