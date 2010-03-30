@@ -288,6 +288,8 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	return subscr;
 }
 
+static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
+
 static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
@@ -316,9 +318,10 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 		strncpy(equip->imei, string, sizeof(equip->imei));
 
 	string = dbi_result_get_string(result, "classmark1");
-	if (string)
-		 cm1 = atoi(string) & 0xff;
-	equip->classmark1 = *((struct gsm48_classmark1 *) &cm1);
+	if (string) {
+		cm1 = atoi(string) & 0xff;
+		memcpy(&equip->classmark1, &cm1, sizeof(equip->classmark1));
+	}
 
 	equip->classmark2_len = dbi_result_get_field_length(result, "classmark2");
 	cm2 = dbi_result_get_binary(result, "classmark2");
