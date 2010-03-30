@@ -150,7 +150,7 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
  */
 int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
 int bsc_nat_vty_init(struct bsc_nat *nat);
-struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *bsc, struct msgb *msg);
+struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg);
 
 /**
  * SCCP patching and handling
