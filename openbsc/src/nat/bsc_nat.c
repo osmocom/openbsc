@@ -193,6 +193,13 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+			if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
+				if (con) {
+					if (bsc_mgcp_assign(con, msg) != 0)
+						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
+				} else
+					LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");
+			}
 			break;
 		case SCCP_MSG_TYPE_CC:
 			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
@@ -401,7 +408,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
-			remove_sccp_src_ref(bsc, msg, parsed);
+			if (con) {
+				remove_sccp_src_ref(bsc, msg, parsed);
+				bsc_mgcp_clear(con);
+			}
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */

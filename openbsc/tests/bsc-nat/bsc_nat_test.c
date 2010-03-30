@@ -335,6 +335,41 @@ static void test_paging(void)
 	talloc_free(parsed);
 }
 
+static void test_mgcp(void)
+{
+	struct sccp_connections con;
+	struct bsc_nat_parsed *parsed;
+	struct msgb *msg;
+
+	fprintf(stderr, "Testing MGCP.\n");
+	memset(&con, 0, sizeof(con));
+
+	msg = msgb_alloc(4096, "foo");
+	copy_to_msg(msg, ass_cmd, sizeof(ass_cmd));
+	parsed = bsc_nat_parse(msg);
+	if (bsc_mgcp_assign(&con, msg) != 0) {
+		fprintf(stderr, "Failed to handle assignment.\n");
+		abort();
+	}
+
+	if (con.msc_timeslot != 21) {
+		fprintf(stderr, "Timeslot should be 21.\n");
+		abort();
+	}
+
+	if (con.bsc_timeslot != 21) {
+		fprintf(stderr, "Assigned timeslot should have been 21.\n");
+		abort();
+	}
+	talloc_free(parsed);
+
+	bsc_mgcp_clear(&con);
+	if (con.bsc_timeslot != -1 || con.msc_timeslot != -1) {
+		fprintf(stderr, "Clearing should remove the mapping.\n");
+		abort();
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -345,9 +380,8 @@ int main(int argc, char **argv)
 
 	test_filter();
 	test_contrack();
-
-	debug_set_log_level(stderr_target, 1);
 	test_paging();
+	test_mgcp();
 	return 0;
 }
 
