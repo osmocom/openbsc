@@ -449,7 +449,7 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 		return;
 	}
 
-	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: 0x%p\n", new_lchan);
+	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: %p\n", new_lchan);
 	gsm48_send_rr_ass_cmd(new_lchan->msc_data->lchan, new_lchan, 0x3);
 }
 

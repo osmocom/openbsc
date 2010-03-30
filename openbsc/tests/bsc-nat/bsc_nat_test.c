@@ -190,7 +190,7 @@ static void copy_to_msg(struct msgb *msg, const u_int8_t *data, unsigned int len
 
 #define VERIFY(con_found, con, msg, ver, str) \
 	if (con_found != con) { \
-		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found); \
+		fprintf(stderr, "Failed to find the con: %p\n", con_found); \
 		abort(); \
 	} \
 	if (memcmp(msg->data, ver, sizeof(ver)) != 0) { \
@@ -217,7 +217,7 @@ static void test_contrack()
 	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 	if (con_found != NULL) {
-		fprintf(stderr, "Con should not exist 0x%p\n", con_found);
+		fprintf(stderr, "Con should not exist %p\n", con_found);
 		abort();
 	}
 	rc = create_sccp_src_ref(con, msg, parsed);
@@ -227,7 +227,7 @@ static void test_contrack()
 	}
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 	if (con_found != con) {
-		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found);
+		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
 	}
 	if (memcmp(msg->data, bsc_cr_patched, sizeof(bsc_cr_patched)) != 0) {
@@ -269,7 +269,7 @@ static void test_contrack()
 	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 	if (con_found != con) {
-		fprintf(stderr, "Failed to find the con: 0x%p\n", con_found);
+		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
 	}
 	if (memcmp(msg->data, bsc_rlc_patched, sizeof(bsc_rlc_patched)) != 0) {
@@ -281,7 +281,7 @@ static void test_contrack()
 
 	/* verify that it is gone */
 	if (con_found != NULL) {
-		fprintf(stderr, "Con should be gone. 0x%p\n", con_found);
+		fprintf(stderr, "Con should be gone. %p\n", con_found);
 		abort();
 	}
 	talloc_free(parsed);
