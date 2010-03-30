@@ -53,7 +53,6 @@ void subscr_put() { abort(); }
 #warning "Make use of the rtp proxy code"
 
 static struct bsc_fd bfd;
-static int first_request = 1;
 static struct mgcp_config *cfg;
 const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
 const char *openbsc_copyright =
@@ -137,18 +136,6 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 			slen, sizeof(addr));
 		return -1;
 	}
-
-	if (first_request) {
-		first_request = 0;
-		resp = mgcp_create_rsip();
-
-		if (resp) {
-			sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0,
-				(struct sockaddr *) &addr, sizeof(addr));
-			msgb_free(resp);
-		}
-		return 0;
-        }
 
 	/* handle message now */
 	msg->l2h = msgb_put(msg, rc);

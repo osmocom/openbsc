@@ -194,23 +194,6 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
 }
 
-/* send a static record */
-struct msgb *mgcp_create_rsip(void)
-{
-	struct msgb *msg;
-	int len;
-
-	msg = mgcp_msgb_alloc();
-	if (!msg)
-		return NULL;
-
-	len = snprintf((char *) msg->data, 2048,
-			"RSIP %u *@mgw MGCP 1.0\n"
-			"RM: restart\n", generate_transaction_id());
-	msg->l2h = msgb_put(msg, len);
-	return msg;
-}
-
 /*
  * handle incoming messages:
  *   - this can be a command (four letters, space, transaction id)

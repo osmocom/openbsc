@@ -115,7 +115,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp);
  * format helper functions
  */
 struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
-struct msgb *mgcp_create_rsip(void);
 struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans, const char *data);
 
 
