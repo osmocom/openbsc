@@ -334,8 +334,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 			continue;
 
 #warning "TODO: Send a RLSD to the MSC. Or at least a clear command."
-		llist_del(&sccp_patch->list_entry);
-		talloc_free(sccp_patch);
+		sccp_connection_destroy(sccp_patch);
 	}
 
 	talloc_free(connection);
