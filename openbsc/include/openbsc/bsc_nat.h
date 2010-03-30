@@ -22,6 +22,8 @@
 #ifndef BSC_NAT_H
 #define BSC_NAT_H
 
+#include "mgcp.h"
+
 #include <sys/types.h>
 #include <sccp/sccp_types.h>
 
@@ -32,6 +34,8 @@
 
 #define DIR_BSC 1
 #define DIR_MSC 2
+
+#define NAT_IPAC_PROTO_MGCP
 
 struct bsc_nat;
 
@@ -135,6 +139,9 @@ struct bsc_nat {
 	/* known BSC's */
 	struct llist_head bsc_configs;
 	int num_bsc;
+
+	/* MGCP config */
+	struct mgcp_config *mgcp_cfg;
 };
 
 /* create and init the structures */
