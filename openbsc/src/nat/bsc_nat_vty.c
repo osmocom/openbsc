@@ -154,6 +154,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN", "Set the token")
 DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
       "Set the Location Area Code (LAC) of this BSC\n")
 {
+	struct bsc_config *tmp;
 	struct bsc_config *conf = vty->index;
 
 	int lac = atoi(argv[0]);
@@ -168,6 +169,14 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
 			lac, VTY_NEWLINE);
 		return CMD_WARNING;
+	}
+
+	/* verify that the LACs are unique */
+	llist_for_each_entry(tmp, &_nat->bsc_configs, entry) {
+		if (tmp->lac == lac) {
+			vty_out(vty, "%% LAC %d is already used.%s", lac, VTY_NEWLINE);
+			return CMD_ERR_INCOMPLETE;
+		}
 	}
 
 	conf->lac = lac;
