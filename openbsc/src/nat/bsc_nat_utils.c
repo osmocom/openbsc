@@ -80,6 +80,11 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
 	struct tlv_parsed tp;
 	int i = 0;
 
+	if (!msg->l3h || msgb_l3len(msg) < 3) {
+		LOGP(DNAT, LOGL_ERROR, "Paging message is too short.\n");
+		return NULL;
+	}
+
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
 		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
