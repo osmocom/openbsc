@@ -40,6 +40,8 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/telnet_interface.h>
 
+#include <vty/command.h>
+
 #include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
@@ -74,7 +76,7 @@ static void print_help()
 	printf(" -c --config-file filename The config file to use.\n");
 }
 
-static void print_version()
+static void print_mgcp_version()
 {
 	printf("%s\n\n", openbsc_version);
 	printf("%s", openbsc_copyright);
@@ -105,7 +107,7 @@ static void handle_options(int argc, char** argv)
 			config_file = talloc_strdup(tall_bsc_ctx, optarg);
 			break;
 		case 'V':
-			print_version();
+			print_mgcp_version();
 			exit(0);
 			break;
 		default:
@@ -235,3 +237,14 @@ int main(int argc, char** argv)
 
 	return 0;
 }
+
+struct gsm_network;
+int bsc_vty_init(struct gsm_network *dummy)
+{
+	cmd_init(1);
+	vty_init();
+
+        mgcp_vty_init();
+	return 0;
+}
+

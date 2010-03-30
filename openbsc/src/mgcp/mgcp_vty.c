@@ -327,13 +327,3 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	return !!g_cfg->forward_ip;
 }
 
-struct gsm_network;
-int bsc_vty_init(struct gsm_network *dummy)
-{
-	cmd_init(1);
-	vty_init();
-
-        mgcp_vty_init();
-	return 0;
-}
-
