@@ -189,7 +189,7 @@ static void copy_to_msg(struct msgb *msg, const u_int8_t *data, unsigned int len
 }
 
 #define VERIFY(con_found, con, msg, ver, str) \
-	if (con_found != con) { \
+	if (!con_found || con_found->bsc != con) { \
 		fprintf(stderr, "Failed to find the con: %p\n", con_found); \
 		abort(); \
 	} \
@@ -203,7 +203,8 @@ static void test_contrack()
 {
 	int rc;
 	struct bsc_nat *nat;
-	struct bsc_connection *con, *con_found;
+	struct bsc_connection *con;
+	struct sccp_connections *con_found;
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
@@ -226,7 +227,7 @@ static void test_contrack()
 		abort();
 	}
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
-	if (con_found != con) {
+	if (!con_found || con_found->bsc != con) {
 		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
 	}
@@ -239,12 +240,12 @@ static void test_contrack()
 	/* 2.) get the cc */
 	copy_to_msg(msg, msc_cc, sizeof(msc_cc));
 	parsed = bsc_nat_parse(msg);
-	if (update_sccp_src_ref(con, msg, parsed) != 0) {
+	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+	VERIFY(con_found, con, msg, msc_cc_patched, "MSC CC");
+	if (update_sccp_src_ref(con_found, parsed) != 0) {
 		fprintf(stderr, "Failed to update the SCCP con.\n");
 		abort();
 	}
-	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
-	VERIFY(con_found, con, msg, msc_cc_patched, "MSC CC");
 
 	/* 3.) send some data */
 	copy_to_msg(msg, bsc_dtap, sizeof(bsc_dtap));
@@ -268,7 +269,7 @@ static void test_contrack()
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
 	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
-	if (con_found != con) {
+	if (!con_found || con_found->bsc != con) {
 		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
 	}

@@ -108,32 +108,19 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 	return 0;
 }
 
-int update_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed)
 {
-	struct sccp_connections *conn;
-
 	if (!parsed->dest_local_ref || !parsed->src_local_ref) {
 		LOGP(DNAT, LOGL_ERROR, "CC MSG should contain both local and dest address.\n");
 		return -1;
 	}
 
-	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
-		if (conn->bsc != bsc)
-			continue;
+	sccp->remote_ref = *parsed->src_local_ref;
+	LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on %p\n",
+	     sccp_src_ref_to_int(&sccp->patched_ref),
+	     sccp_src_ref_to_int(&sccp->remote_ref), sccp->bsc);
 
-		if (memcmp(parsed->dest_local_ref,
-			   &conn->patched_ref, sizeof(conn->patched_ref)) != 0)
-			continue;
-
-		conn->remote_ref = *parsed->src_local_ref;
-		LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on %p\n",
-		     sccp_src_ref_to_int(&conn->patched_ref),
-		     sccp_src_ref_to_int(&conn->remote_ref), bsc);
-		return 0;
-	}
-
-	LOGP(DNAT, LOGL_ERROR, "Referenced connection not found on BSC: %p\n", bsc);
-	return -1;
+	return 0;
 }
 
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
@@ -165,9 +152,9 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
  * an address that was assigned by the MUX, we need to update the
  * dest reference to the real network.
  */
-struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
-						 struct bsc_nat_parsed *parsed,
-						 struct bsc_nat *nat)
+struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *msg,
+						   struct bsc_nat_parsed *parsed,
+						   struct bsc_nat *nat)
 {
 	struct sccp_connections *conn;
 
@@ -183,7 +170,7 @@ struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
 
 		/* Change the dest address to the real one */
 		*parsed->dest_local_ref = conn->real_ref;
-		return conn->bsc;
+		return conn;
 	}
 
 	return NULL;
@@ -197,9 +184,9 @@ struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg,
  * in all other cases we need to work by the destination local
  * reference..
  */
-struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
-						 struct bsc_nat_parsed *parsed,
-						 struct bsc_nat *nat)
+struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *msg,
+						   struct bsc_nat_parsed *parsed,
+						   struct bsc_nat *nat)
 {
 	struct sccp_connections *conn;
 
@@ -207,11 +194,11 @@ struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg,
 		if (parsed->src_local_ref) {
 			if (equal(parsed->src_local_ref, &conn->real_ref)) {
 				*parsed->src_local_ref = conn->patched_ref;
-				return conn->bsc;
+				return conn;
 			}
 		} else if (parsed->dest_local_ref) {
 			if (equal(parsed->dest_local_ref, &conn->remote_ref))
-				return conn->bsc;
+				return conn;
 		} else {
 			LOGP(DNAT, LOGL_ERROR, "Header has neither loc/dst ref.\n");
 			return NULL;

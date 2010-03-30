@@ -168,7 +168,8 @@ static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned
 
 static int forward_sccp_to_bts(struct msgb *msg)
 {
-	struct bsc_connection *bsc = NULL;
+	struct sccp_connections *con;
+	struct bsc_connection *bsc;
 	struct bsc_nat_parsed *parsed;
 
 	/* filter, drop, patch the message? */
@@ -191,12 +192,12 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
-			bsc = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_CC:
-			if (update_sccp_src_ref(bsc, msg, parsed) != 0)
+			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
+			if (!con || update_sccp_src_ref(con, parsed) != 0)
 				goto exit;
-			bsc = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			LOGP(DNAT, LOGL_ERROR, "Unexpected release complete from MSC.\n");
@@ -210,14 +211,14 @@ static int forward_sccp_to_bts(struct msgb *msg)
 	}
 
 	talloc_free(parsed);
-	if (!bsc)
+	if (!con)
 		return -1;
-	if (!bsc->authenticated) {
+	if (!con->bsc->authenticated) {
 		LOGP(DNAT, LOGL_ERROR, "Selected BSC not authenticated.\n");
 		return -1;
 	}
 
-	bsc_write(bsc, msg->data, msg->len);
+	bsc_write(con->bsc, msg->data, msg->len);
 	return 0;
 
 send_to_all:
@@ -365,7 +366,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
-	struct bsc_connection *found_bsc = NULL;
+	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
 
 	if (!bsc->authenticated) {
@@ -391,29 +392,34 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_CR:
 			if (create_sccp_src_ref(bsc, msg, parsed) != 0)
 				goto exit2;
-			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_CC:
-			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_RLC:
-			found_bsc = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 			remove_sccp_src_ref(bsc, msg, parsed);
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */
+			con = NULL;
 			break;
 		default:
 			LOGP(DNAT, LOGL_ERROR, "Not forwarding to msc sccp type: 0x%x\n", parsed->sccp_type);
+			con = NULL;
 			goto exit2;
 			break;
 		}
+	} else {
+		LOGP(DNAT, LOGL_ERROR, "Not forwarding unknown stream id: 0x%x\n", parsed->ipa_proto);
+		goto exit2;
 	}
 
-	if (found_bsc != bsc) {
+	if (con && con->bsc != bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Found the wrong entry.\n");
 		goto exit2;
 	}
