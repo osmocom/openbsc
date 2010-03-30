@@ -368,10 +368,17 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	struct bsc_connection *found_bsc = NULL;
 	struct bsc_nat_parsed *parsed;
 
+	if (!bsc->authenticated) {
+		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
 		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -408,11 +415,6 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 	if (found_bsc != bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Found the wrong entry.\n");
-		goto exit2;
-	}
-
-	if (!bsc->authenticated) {
-		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
 		goto exit2;
 	}
 
