@@ -291,6 +291,49 @@ static void test_contrack()
 	msgb_free(msg);
 }
 
+static void test_paging(void)
+{
+	struct bsc_nat *nat;
+	struct bsc_connection *con;
+	struct bsc_nat_parsed *parsed;
+	struct msgb *msg;
+
+	fprintf(stderr, "Testing paging by lac.\n");
+
+	nat = bsc_nat_alloc();
+	con = bsc_connection_alloc(nat);
+	con->lac = 23;
+	con->authenticated = 1;
+	llist_add(&con->list_entry, &nat->bsc_connections);
+	msg = msgb_alloc(4096, "test");
+
+	/* Test completely bad input */
+	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
+	if (bsc_nat_find_bsc(nat, msg) != 0) {
+		fprintf(stderr, "Should have not found anything.\n");
+		abort();
+	}
+
+	/* Test it by not finding it */
+	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
+	parsed = bsc_nat_parse(msg);
+	if (bsc_nat_find_bsc(nat, msg) != 0) {
+		fprintf(stderr, "Should have not found aynthing.\n");
+		abort();
+	}
+	talloc_free(parsed);
+
+	/* Test by finding it */
+	con->lac = 8213;
+	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
+	parsed = bsc_nat_parse(msg);
+	if (bsc_nat_find_bsc(nat, msg) != con) {
+		fprintf(stderr, "Should have found it.\n");
+		abort();
+	}
+	talloc_free(parsed);
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -300,9 +343,10 @@ int main(int argc, char **argv)
 	debug_set_all_filter(stderr_target, 1);
 
 	test_filter();
+	test_contrack();
 
 	debug_set_log_level(stderr_target, 1);
-	test_contrack();
+	test_paging();
 	return 0;
 }
 
