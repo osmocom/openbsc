@@ -227,34 +227,11 @@ send_to_all:
 	 * message and then send it to the authenticated messages...
 	 */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
-		int data_length;
-		const u_int8_t *data;
-		struct tlv_parsed tp;
-		int i = 0;
-
-		tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
-		if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
-			LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
-			goto exit;
-		}
-
-		data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
-		data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
-		if (data[0] !=  CELL_IDENT_LAC) {
-			LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %c\n", data[0]);
-			goto exit;
-		}
-
-		/* go through each LAC and forward the message */
-		for (i = 1; i < data_length - 1; i += 2) {
-			unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
-			llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-				if (!bsc->authenticated || _lac != bsc->lac)
-					continue;
-
-				bsc_write(bsc, msg->data, msg->len);
-			}
-		}
+		bsc = bsc_nat_find_bsc(nat, msg);
+		if (bsc)
+			bsc_write(bsc, msg->data, msg->len);
+		else
+			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging.\n");
 
 		goto exit;
 	}

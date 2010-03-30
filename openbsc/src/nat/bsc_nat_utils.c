@@ -24,8 +24,14 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/bssap.h>
+#include <openbsc/debug.h>
 
+#include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 struct bsc_nat *bsc_nat_alloc(void)
 {
@@ -64,4 +70,39 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 	++nat->num_bsc;
 
 	return conf;
+}
+
+struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
+{
+	struct bsc_connection *bsc;
+	int data_length;
+	const u_int8_t *data;
+	struct tlv_parsed tp;
+	int i = 0;
+
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
+		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
+		return NULL;
+	}
+
+	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
+	data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
+	if (data[0] !=  CELL_IDENT_LAC) {
+		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %c\n", data[0]);
+		return NULL;
+	}
+
+	/* Currently we only handle one BSC */
+	for (i = 1; i < data_length - 1; i += 2) {
+		unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
+		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+			if (!bsc->authenticated || _lac != bsc->lac)
+				continue;
+
+			return bsc;
+		}
+	}
+
+	return NULL;
 }
