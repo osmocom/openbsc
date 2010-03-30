@@ -77,7 +77,7 @@ static void print_help()
 static void print_version()
 {
 	printf("%s\n\n", openbsc_version);
-	printf(openbsc_copyright);
+	printf("%s", openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
