@@ -30,6 +30,8 @@
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
 
+#include <sccp/sccp.h>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -70,6 +72,15 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 	++nat->num_bsc;
 
 	return conf;
+}
+
+void sccp_connection_destroy(struct sccp_connections *conn)
+{
+	LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
+	     sccp_src_ref_to_int(&conn->real_ref),
+	     sccp_src_ref_to_int(&conn->patched_ref), conn->bsc);
+	llist_del(&conn->list_entry);
+	talloc_free(conn);
 }
 
 struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)

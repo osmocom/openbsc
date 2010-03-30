@@ -139,6 +139,7 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 
+void sccp_connection_destroy(struct sccp_connections *);
 
 /**
  * parse the given message into the above structure

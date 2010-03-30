@@ -135,11 +135,7 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 			if (bsc != conn->bsc)
 				continue;
 
-			LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
-				sccp_src_ref_to_int(&conn->real_ref),
-				sccp_src_ref_to_int(&conn->patched_ref), bsc);
-			llist_del(&conn->list_entry);
-			talloc_free(conn);
+			sccp_connection_destroy(conn);
 			return;
 		}
 	}
