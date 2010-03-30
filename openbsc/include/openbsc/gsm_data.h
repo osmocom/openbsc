@@ -3,14 +3,6 @@
 
 #include <sys/types.h>
 
-struct value_string {
-	unsigned int value;
-	const char *str;
-};
-
-const char *get_value_string(const struct value_string *vs, u_int32_t val);
-int get_string_value(const struct value_string *vs, const char *str);
-
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -92,18 +84,18 @@ typedef int gsm_cbfn(unsigned int hooknum,
  * will be started.
  */
 #define LCHAN_RELEASE_TIMEOUT 20, 0
-#define use_lchan(lchan) \
-	do {	lchan->use_count++; \
+#define use_subscr_con(con) \
+	do {	(con)->use_count++; \
 		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
+			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
+			(con)->lchan->nr, (con)->use_count); \
+		bsc_schedule_timer(&(con)->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
 
-#define put_lchan(lchan) \
-	do { lchan->use_count--; \
+#define put_subscr_con(con) \
+	do { (con)->use_count--; \
 		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
+			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
+			(con)->lchan->nr, (con)->use_count); \
 	} while(0);
 
 
@@ -190,6 +182,30 @@ enum gsm_lchan_state {
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
+/* the per subscriber data for lchan */
+struct gsm_subscriber_connection {
+	/* To whom we are allocated at the moment */
+	struct gsm_subscriber *subscr;
+
+	/* Timer started to release the channel */
+	struct timer_list release_timer;
+
+	/*
+	 * Operations that have a state and might be pending
+	 */
+	struct gsm_loc_updating_operation *loc_operation;
+
+	/* use count. how many users use this channel */
+	unsigned int use_count;
+
+	/* Are we part of a special "silent" call */
+	int silent_call;
+
+	/* back pointers */
+	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -212,30 +228,14 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
-	/* Are we part of a special "silent" call */
-	int silent_call;
+
+	struct timer_list T3101;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
 	
-	/* To whom we are allocated at the moment */
-	struct gsm_subscriber *subscr;
-
-	/* Timer started to release the channel */
-	struct timer_list release_timer;
-
-	struct timer_list T3101;
-
 	/* Established data link layer services */
 	u_int8_t sapis[8];
-
-	/*
-	 * Operations that have a state and might be pending
-	 */
-	struct gsm_loc_updating_operation *loc_operation;
-
-	/* use count. how many users use this channel */
-	unsigned int use_count;
 
 	/* cache of last measurement reports on this lchan */
 	struct gsm_meas_rep meas_rep[6];
@@ -254,6 +254,8 @@ struct gsm_lchan {
 		u_int8_t speech_mode;
 		struct rtp_socket *rtp_socket;
 	} abis_ip;
+
+	struct gsm_subscriber_connection conn;
 };
 
 struct gsm_e1_subslot {
@@ -265,7 +267,7 @@ struct gsm_e1_subslot {
 	u_int8_t	e1_ts_ss;
 };
 
-#define BTS_TRX_F_ACTIVATED	0x0001
+#define TS_F_PDCH_MODE	0x1000
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
 	struct gsm_bts_trx *trx;
@@ -382,6 +384,10 @@ struct gsm_envabtse {
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
 	int id;
+	u_int16_t nsvci;
+	u_int16_t local_port;
+	u_int16_t remote_port;
+	u_int32_t remote_ip;
 	struct gsm_nm_state nm_state;
 };
 
@@ -470,13 +476,17 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
+		int enabled;
 		struct {
 			struct gsm_nm_state nm_state;
+			u_int16_t nsei;
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
+			u_int16_t bvci;
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
+		u_int8_t rac;
 	} gprs;
 	
 	/* transceivers */
@@ -654,9 +664,6 @@ struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 struct gsm_bts *gsm_bts_by_lac(struct gsm_network *net, unsigned int lac,
 				struct gsm_bts *start_bts);
 
-char *gsm_band_name(enum gsm_band band);
-enum gsm_band gsm_band_parse(const char *mhz);
-
 extern void *tall_bsc_ctx;
 extern int ipacc_rtp_direct;
 
@@ -692,6 +699,18 @@ const char *rrlp_mode_name(enum rrlp_mode mode);
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
+/* A parsed GPRS routing area */
+struct gprs_ra_id {
+	u_int16_t	mnc;
+	u_int16_t	mcc;
+	u_int16_t	lac;
+	u_int8_t	rac;
+};
+
+int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
+void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
+
+int gsm_bts_model_register(struct gsm_bts_model *model);
 
 #endif

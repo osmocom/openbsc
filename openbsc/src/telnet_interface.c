@@ -98,21 +98,16 @@ void telnet_init(struct gsm_network *network, int port) {
 	bsc_register_fd(&server_socket);
 }
 
+extern const char *openbsc_copyright;
+extern const char *openbsc_version;
+
 static void print_welcome(int fd) {
 	int ret;
 	static char *msg =
-		"Welcome to the OpenBSC Control interface\n"
-		"Copyright (C) 2008-2010 Harald Welte\n"
-		"Contributions by Daniel Willmann, Jan Lübbe, "
-		"Stefan Schmidt, Holger Freyther, Andreas Eversberg\n\n"
-		"License GPLv2+: GNU GPL version 2 or later "
-		"<http://gnu.org/licenses/gpl.html>\n"
-		"This is free software: you are free to change "
-		"and redistribute it.\n"
-		"There is NO WARRANTY, to the extent permitted "
-		"by law.\nType \"help\" to get a short introduction.\n";
+		"Welcome to the OpenBSC Control interface\n";
 
 	ret = write(fd, msg, strlen(msg));
+	ret = write(fd, openbsc_copyright, strlen(openbsc_copyright));
 }
 
 int telnet_close_client(struct bsc_fd *fd) {
@@ -122,7 +117,7 @@ int telnet_close_client(struct bsc_fd *fd) {
 	bsc_unregister_fd(fd);
 
 	if (conn->dbg) {
-		debug_del_target(conn->dbg);
+		log_del_target(conn->dbg);
 		talloc_free(conn->dbg);
 	}
 

@@ -59,7 +59,7 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan);
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip,
 		   u_int16_t port, u_int8_t rtp_payload2);
 int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan);
-int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan);
+int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan, int act);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 

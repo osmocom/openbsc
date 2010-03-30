@@ -51,8 +51,11 @@ static LLIST_HEAD(bsc_rll_reqs);
 
 static void complete_rllr(struct bsc_rll_req *rllr, enum bsc_rllr_ind type)
 {
+	struct gsm_subscriber_connection *conn;
+
+	conn = &rllr->lchan->conn;
 	llist_del(&rllr->list);
-	put_lchan(rllr->lchan);
+	put_subscr_con(conn);
 	rllr->cb(rllr->lchan, rllr->link_id, rllr->data, type);
 	talloc_free(rllr);
 }
@@ -70,6 +73,7 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 			     enum bsc_rllr_ind),
 		  void *data)
 {
+	struct gsm_subscriber_connection *conn;
 	struct bsc_rll_req *rllr = talloc_zero(tall_bsc_ctx, struct bsc_rll_req);
 	u_int8_t link_id;
 	if (!rllr)
@@ -80,11 +84,11 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 	/* If we are a TCH and not in signalling mode, we need to
 	 * indicate that the new RLL connection is to be made on the SACCH */
 	if ((lchan->type == GSM_LCHAN_TCH_F ||
-	     lchan->type == GSM_LCHAN_TCH_H) &&
-	    lchan->rsl_cmode != RSL_CMOD_SPD_SIGN)
+	     lchan->type == GSM_LCHAN_TCH_H) && sapi != 0)
 		link_id |= 0x40;
 
-	use_lchan(lchan);
+	conn = &lchan->conn;
+	use_subscr_con(conn);
 	rllr->lchan = lchan;
 	rllr->link_id = link_id;
 	rllr->cb = cb;

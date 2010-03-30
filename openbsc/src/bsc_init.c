@@ -330,11 +330,72 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 	NM_ATT_BSIC, HARDCODED_BSIC,
+	NM_ATT_IPACC_CGI, 0, 7,  0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x00,
 };
 
 static unsigned char nanobts_attr_radio[] = {
 	NM_ATT_RF_MAXPOWR_R, 0x0c, /* number of -2dB reduction steps / Pn */
 	NM_ATT_ARFCN_LIST, 0x00, 0x02, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
+};
+
+static unsigned char nanobts_attr_nse[] = {
+	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
+	NM_ATT_IPACC_NS_CFG, 0, 7,  3,  /* (un)blocking timer (Tns-block) */
+				    3,  /* (un)blocking retries */
+				    3,  /* reset timer (Tns-reset) */
+				    3,  /* reset retries */
+				    30,  /* test timer (Tns-test) */
+				    3,  /* alive timer (Tns-alive) */
+				    10, /* alive retrires */
+	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
+				    3,  /* blockimg timer (T1) */
+				    3,  /* blocking retries */
+				    3,  /* unblocking retries */
+				    3,  /* reset timer */
+				    3,  /* reset retries */
+				    10, /* suspend timer (T3) in 100ms */
+				    3,  /* suspend retries */
+				    10, /* resume timer (T4) in 100ms */
+				    3,  /* resume retries */
+				    10, /* capability update timer (T5) */
+				    3,  /* capability update retries */
+};
+
+static unsigned char nanobts_attr_cell[] = {
+	NM_ATT_IPACC_RAC, 0, 1,  1, /* routing area code */
+	NM_ATT_IPACC_GPRS_PAGING_CFG, 0, 2,
+		5,	/* repeat time (50ms) */
+		3,	/* repeat count */
+	NM_ATT_IPACC_BVCI, 0, 2,  0x03, 0x9d, /* BVCI 925 */
+	NM_ATT_IPACC_RLC_CFG, 0, 9,
+		20, 	/* T3142 */
+		5, 	/* T3169 */
+		5,	/* T3191 */
+		200,	/* T3193 */
+		5,	/* T3195 */
+		10,	/* N3101 */
+		4,	/* N3103 */
+		8,	/* N3105 */
+		15,	/* RLC CV countdown */
+	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,
+	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
+		0x00, 250,
+		0x00, 250,
+		2,	/* MCS2 */
+#if 0
+	/* EDGE model only, breaks older models.
+	 * Should inquire the BTS capabilities */
+	NM_ATT_IPACC_RLC_CFG_3, 0, 1,
+		2,	/* MCS2 */
+#endif
+};
+
+static unsigned char nanobts_attr_nsvc0[] = {
+	NM_ATT_IPACC_NSVCI, 0, 2,  0x03, 0x9d, /* 925 */
+	NM_ATT_IPACC_NS_LINK_CFG, 0, 8,
+		0x59, 0xd8, /* remote udp port (23000) */
+		192, 168, 100, 11, /* remote ip address */
+		0x59, 0xd8, /* local udp port (23000) */
 };
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
@@ -344,6 +405,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
+	struct gsm_bts_gprs_nsvc *nsvc;
 
 	/* This event-driven BTS setup is currently only required on nanoBTS */
 
@@ -397,6 +459,53 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
 		break;
+	case NM_OC_GPRS_NSE:
+		bts = container_of(obj, struct gsm_bts, gprs.nse);
+		if (!bts->gprs.enabled)
+			break;
+		if (new_state->availability == 5) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  0xff, 0xff, nanobts_attr_nse,
+						  sizeof(nanobts_attr_nse));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					0xff, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      0xff, 0xff, NM_STATE_UNLOCKED);
+		}
+		break;
+	case NM_OC_GPRS_CELL:
+		bts = container_of(obj, struct gsm_bts, gprs.cell);
+		if (!bts->gprs.enabled)
+			break;
+		if (new_state->availability == 5) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  0, 0xff, nanobts_attr_cell,
+						  sizeof(nanobts_attr_cell));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					0, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      0, 0xff, NM_STATE_UNLOCKED);
+		}
+		break;
+	case NM_OC_GPRS_NSVC:
+		nsvc = obj;
+		bts = nsvc->bts;
+		if (!bts->gprs.enabled)
+			break;
+	        /* We skip NSVC1 since we only use NSVC0 */
+		if (nsvc->id == 1)
+			break;
+		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
+						  nsvc->id, 0xff,
+						  nanobts_attr_nsvc0,
+						  sizeof(nanobts_attr_nsvc0));
+			abis_nm_opstart(bts, obj_class, bts->bts_nr,
+					nsvc->id, 0xff);
+			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
+					      nsvc->id, 0xff,
+					      NM_STATE_UNLOCKED);
+		}
 	default:
 		break;
 	}
@@ -689,14 +798,14 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
-#ifdef GPRS
-		i = 13;
-		rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
-		if (rc < 0)
-			goto err_out;
-		DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
-		rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
-#endif
+		if (bts->gprs.enabled) {
+			i = 13;
+			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
+			if (rc < 0)
+				goto err_out;
+			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+			rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
+		}
 	}
 
 	i = 5;
@@ -745,11 +854,37 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
-	nanobts_attr_bts[sizeof(nanobts_attr_bts)-1] = bts->bsic;
+	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
+
+	/* patch CGI */
+	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
 
 	/* patch the power reduction */
 	bs11_attr_radio[5] = bts->c0->max_power_red / 2;
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
+
+	/* patch NSEI */
+	nanobts_attr_nse[3] = bts->gprs.nse.nsei >> 8;
+	nanobts_attr_nse[4] = bts->gprs.nse.nsei & 0xff;
+
+	/* patch NSVCI */
+	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
+	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;
+
+	/* patch IP address as SGSN IP */
+	*(u_int16_t *)(nanobts_attr_nsvc0+8) =
+				htons(bts->gprs.nsvc[0].remote_port);
+	*(u_int32_t *)(nanobts_attr_nsvc0+10) =
+				htonl(bts->gprs.nsvc[0].remote_ip);
+	*(u_int16_t *)(nanobts_attr_nsvc0+14) =
+				htons(bts->gprs.nsvc[0].local_port);
+
+	/* patch BVCI */
+	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
+	nanobts_attr_cell[13] = bts->gprs.cell.bvci & 0xff;
+	/* patch RAC */
+	nanobts_attr_cell[3] = bts->gprs.rac;
+
 }
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)

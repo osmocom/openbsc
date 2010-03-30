@@ -1,5 +1,5 @@
 /* OpenBSC interface to quagga VTY */
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -162,7 +162,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->cell_identity,
-		bts->location_area_code, bts->bsic, bts->tsc, 
+		bts->location_area_code, bts->bsic, bts->tsc,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
@@ -278,6 +278,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
+	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -312,6 +313,30 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	} else {
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
+	}
+	vty_out(vty, "  gprs enabled %u%s", bts->gprs.enabled, VTY_NEWLINE);
+	if (bts->gprs.enabled) {
+		vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
+			VTY_NEWLINE);
+		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
+			VTY_NEWLINE);
+		vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
+			VTY_NEWLINE);
+		for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+			struct gsm_bts_gprs_nsvc *nsvc =
+						&bts->gprs.nsvc[i];
+			struct in_addr ia;
+
+			ia.s_addr = htonl(nsvc->remote_ip);
+			vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
+				nsvc->nsvci, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
+				nsvc->local_port, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
+				nsvc->remote_port, VTY_NEWLINE);
+			vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
+				inet_ntoa(ia), VTY_NEWLINE);
+		}
 	}
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
@@ -573,19 +598,19 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	int idx;
 
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
-		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
+		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->use_count,
+	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->conn.use_count,
 		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
 		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
 		VTY_NEWLINE);
-	if (lchan->subscr) {
+	if (lchan->conn.subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, lchan->subscr);
+		subscr_dump_vty(vty, lchan->conn.subscr);
 	} else
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
@@ -853,7 +878,7 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-static void _vty_output(struct debug_target *tgt, const char *line)
+static void _vty_output(struct log_target *tgt, const char *line)
 {
 	struct vty *vty = tgt->tgt_vty.vty;
 	vty_out(vty, "%s", line);
@@ -862,11 +887,11 @@ static void _vty_output(struct debug_target *tgt, const char *line)
 		vty_out(vty, "\r");
 }
 
-struct debug_target *debug_target_create_vty(struct vty *vty)
+struct log_target *log_target_create_vty(struct vty *vty)
 {
-	struct debug_target *target;
+	struct log_target *target;
 
-	target = debug_target_create();
+	target = log_target_create();
 	if (!target)
 		return NULL;
 
@@ -888,11 +913,11 @@ DEFUN(enable_logging,
 		return CMD_WARNING;
 	}
 
-	conn->dbg = debug_target_create_vty(vty);
+	conn->dbg = log_target_create_vty(vty);
 	if (!conn->dbg)
 		return CMD_WARNING;
 
-	debug_add_target(conn->dbg);
+	log_add_target(conn->dbg);
 	return CMD_SUCCESS;
 }
 
@@ -909,7 +934,7 @@ DEFUN(logging_fltr_imsi,
 		return CMD_WARNING;
 	}
 
-	debug_set_imsi_filter(conn->dbg, argv[0]);
+	log_set_imsi_filter(conn->dbg, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -926,7 +951,7 @@ DEFUN(logging_fltr_all,
 		return CMD_WARNING;
 	}
 
-	debug_set_all_filter(conn->dbg, atoi(argv[0]));
+	log_set_all_filter(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -943,7 +968,7 @@ DEFUN(logging_use_clr,
 		return CMD_WARNING;
 	}
 
-	debug_set_use_color(conn->dbg, atoi(argv[0]));
+	log_set_use_color(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -960,7 +985,7 @@ DEFUN(logging_prnt_timestamp,
 		return CMD_WARNING;
 	}
 
-	debug_set_print_timestamp(conn->dbg, atoi(argv[0]));
+	log_set_print_timestamp(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -973,8 +998,8 @@ DEFUN(logging_level,
       "Set the log level for a specified category\n")
 {
 	struct telnet_connection *conn;
-	int category = debug_parse_category(argv[0]);
-	int level = debug_parse_level(argv[1]);
+	int category = log_parse_category(argv[0]);
+	int level = log_parse_level(argv[1]);
 
 	conn = (struct telnet_connection *) vty->priv;
 	if (!conn->dbg) {
@@ -1000,7 +1025,7 @@ DEFUN(logging_level,
 
 DEFUN(logging_set_category_mask,
       logging_set_category_mask_cmd,
-      "logging set debug mask MASK",
+      "logging set log mask MASK",
       "Decide which categories to output.\n")
 {
 	struct telnet_connection *conn;
@@ -1011,7 +1036,7 @@ DEFUN(logging_set_category_mask,
 		return CMD_WARNING;
 	}
 
-	debug_parse_category_mask(conn->dbg, argv[0]);
+	log_parse_category_mask(conn->dbg, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1028,7 +1053,7 @@ DEFUN(logging_set_log_level,
 		return CMD_WARNING;
 	}
 
-	debug_set_log_level(conn->dbg, atoi(argv[0]));
+	log_set_log_level(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -1045,7 +1070,7 @@ DEFUN(diable_logging,
 		return CMD_WARNING;
 	}
 
-	debug_del_target(conn->dbg);
+	log_del_target(conn->dbg);
 	talloc_free(conn->dbg);
 	conn->dbg = NULL;
 	return CMD_SUCCESS;
@@ -1321,7 +1346,7 @@ DEFUN(cfg_bts,
 		/* allocate a new one */
 		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
 				    HARDCODED_TSC, HARDCODED_BSIC);
-	} else 
+	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
 	if (!bts) {
@@ -1604,6 +1629,136 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
+	"gprs cell bvci <0-65535>",
+	"GPRS BSSGP VC Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.cell.bvci = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
+	"gprs nsei <0-65535>",
+	"GPRS NS Entity Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.nse.nsei = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
+	"gprs nsvc <0-1> nsvci <0-65535>",
+	"GPRS NS VC Identifier")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.nsvc[idx].nsvci = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
+	"gprs nsvc <0-1> local udp port <0-65535>",
+	"GPRS NS Local UDP Port")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.nsvc[idx].local_port = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
+	"gprs nsvc <0-1> remote udp port <0-65535>",
+	"GPRS NS Remote UDP Port")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.nsvc[idx].remote_port = atoi(argv[1]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
+	"gprs nsvc <0-1> remote ip A.B.C.D",
+	"GPRS NS Remote IP Address")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = atoi(argv[0]);
+	struct in_addr ia;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	inet_aton(argv[1], &ia);
+	bts->gprs.nsvc[idx].remote_ip = ntohl(ia.s_addr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
+	"gprs routing area <0-255>",
+	"GPRS Routing Area Code")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!bts->gprs.enabled) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.rac = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_gprs_enabled, cfg_bts_gprs_enabled_cmd,
+	"gprs enabled <0-1>",
+	"GPRS Enabled on this BTS")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->gprs.enabled = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
@@ -1622,9 +1777,9 @@ DEFUN(cfg_trx,
 	} else if (trx_nr == bts->num_trx) {
 		/* we need to allocate a new one */
 		trx = gsm_bts_trx_alloc(bts);
-	} else 
+	} else
 		trx = gsm_bts_trx_num(bts, trx_nr);
-	
+
 	if (!trx)
 		return CMD_WARNING;
 
@@ -1865,7 +2020,14 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
-
+	install_element(BTS_NODE, &cfg_bts_gprs_enabled_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rip_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

@@ -504,7 +504,7 @@ static int rtp_bfd_cb(struct bsc_fd *bfd, unsigned int flags)
 	return 0;
 }
 
-static void init_rss(struct rtp_sub_socket *rss, 
+static void init_rss(struct rtp_sub_socket *rss,
 		     struct rtp_socket *rs, int fd, int priv_nr)
 {
 	/* initialize bfd */

@@ -71,7 +71,7 @@ static int udp_sock(const char *ifname)
 	rc = connect(fd, (struct sockaddr *)&sa, sizeof(sa));
 	if (rc < 0)
 		goto err;
-#endif		
+#endif
 	return fd;
 
 err:
@@ -79,7 +79,7 @@ err:
 	return rc;
 }
 
-const unsigned char find_pkt[] = { 0x00, 0x0b+8, IPAC_PROTO_IPACCESS, 0x00, 
+const unsigned char find_pkt[] = { 0x00, 0x0b+8, IPAC_PROTO_IPACCESS, 0x00,
 				IPAC_MSGT_ID_GET,
 					0x01, IPAC_IDTAG_MACADDR,
 					0x01, IPAC_IDTAG_IPADDR,

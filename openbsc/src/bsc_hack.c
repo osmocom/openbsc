@@ -38,11 +38,12 @@
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */
-static struct debug_target *stderr_target;
+static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-
+extern const char *openbsc_version;
+extern const char *openbsc_copyright;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -75,12 +76,25 @@ static void print_help()
 	printf("  Some useful help...\n");
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
-	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
+	printf("  -s --disable-color\n");
 	printf("  -l --database db-name The database to use\n");
+	printf("  -a --authorize-everyone. Authorize every new subscriber. Dangerous!.\n");
 	printf("  -p --pcap file  The filename of the pcap file\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
+	printf("  -V --version. Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
+	printf("  -e --log-level number. Set a global loglevel.\n");
+}
+
+static void print_version()
+{
+	printf("%s\n", openbsc_version);
+}
+
+static void print_copyright()
+{
+	puts(openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
@@ -96,11 +110,13 @@ static void handle_options(int argc, char** argv)
 			{"authorize-everyone", 0, 0, 'a'},
 			{"pcap", 1, 0, 'p'},
 			{"timestamp", 0, 0, 'T'},
+			{"version", 0, 0, 'V' },
 			{"rtp-proxy", 0, 0, 'P'},
+			{"log-level", 1, 0, 'e'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sl:ar:p:TPc:",
+		c = getopt_long(argc, argv, "hd:sl:ar:p:TPVc:e:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -111,10 +127,10 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_set_use_color(stderr_target, 0);
+			log_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -126,10 +142,19 @@ static void handle_options(int argc, char** argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			debug_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
+			break;
+		case 'e':
+			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		case 'V':
+			print_version();
+			printf("\n");
+			print_copyright();
+			exit(0);
 			break;
 		default:
 			/* ignore */
@@ -186,21 +211,21 @@ int main(int argc, char **argv)
 {
 	int rc;
 
-	debug_init();
+	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
 
 	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
 	/* enable filters */
-	debug_set_all_filter(stderr_target, 1);
+	log_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -237,7 +262,7 @@ int main(int argc, char **argv)
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
-		debug_reset_context();
+		log_reset_context();
 		bsc_select_main(0);
 	}
 }

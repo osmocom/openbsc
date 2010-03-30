@@ -244,6 +244,52 @@ static const struct connection_test connection_tests[] = {
 	},
 };
 
+struct sccp_parse_header_result {
+	/* results */
+	int msg_type;
+	int wanted_len;
+	int src_ssn;
+	int dst_ssn;
+
+	int has_src_ref, has_dst_ref;
+	struct sccp_source_reference src_ref;
+	struct sccp_source_reference dst_ref;
+
+	/* the input */
+	const u_int8_t *input;
+	int input_len;
+};
+
+static const u_int8_t it_test[] = {
+0x10, 0x01, 0x07, 
+0x94, 0x01, 0x04, 0x00, 0x02, 0x00, 0x00, 0x00 };
+
+static const struct sccp_parse_header_result parse_result[] = {
+	{
+		.msg_type	= SCCP_MSG_TYPE_IT,
+		.wanted_len	= 0,
+		.src_ssn	= -1,
+		.dst_ssn	= -1,
+		.has_src_ref	= 1,
+		.has_dst_ref	= 1,
+
+		.src_ref	= {
+			.octet1 = 0x01,
+			.octet2 = 0x04,
+			.octet3 = 0x00
+		},
+		.dst_ref	= {
+			.octet1 = 0x01,
+			.octet2 = 0x07,
+			.octet3 = 0x94,
+		},
+
+		.input		= it_test,
+		.input_len	= sizeof(it_test),
+	},
+};
+
+
 /* testing procedure:
  *	- we will use sccp_write and see what will be set in the
  *	  outgoing callback
@@ -714,6 +760,59 @@ static void test_sccp_system_crash(void)
 	printf("survived\n");
 }
 
+static void test_sccp_parsing(void)
+{
+	for (current_test = 0; current_test < ARRAY_SIZE(parse_result); ++current_test) {
+		struct msgb *msg;
+		struct sccp_parse_result result;
+
+		msg = msgb_alloc_headroom(1024, 128, "parse-test");
+		msgb_put(msg, 1);
+		msg->l2h = msgb_put(msg, parse_result[current_test].input_len);
+		memcpy(msg->l2h, parse_result[current_test].input, msgb_l2len(msg));
+
+		memset(&result, 0, sizeof(result));
+		if (sccp_parse_header(msg, &result) != 0) {
+			fprintf(stderr, "Failed to parse test: %d\n", current_test);
+		} else {
+			if (parse_result[current_test].wanted_len != result.data_len) {
+				fprintf(stderr, "Unexpected data length.\n");
+				abort();
+			}
+
+			if (parse_result[current_test].has_src_ref) {
+				if (memcmp(result.source_local_reference,
+					   &parse_result[current_test].src_ref,
+					   sizeof(struct sccp_source_reference)) != 0) {
+					fprintf(stderr, "SRC REF did not match\n");
+					abort();
+				}
+			}
+
+			if (parse_result[current_test].has_dst_ref) {
+				if (memcmp(result.destination_local_reference,
+					   &parse_result[current_test].dst_ref,
+					   sizeof(struct sccp_source_reference)) != 0) {
+					fprintf(stderr, "DST REF did not match\n");
+					abort();
+				}
+			}
+
+			if (parse_result[current_test].src_ssn != -1) {
+				fprintf(stderr, "Not implemented.\n");
+				abort();
+			}
+
+			if (parse_result[current_test].dst_ssn != -1) {
+				fprintf(stderr, "Not implemented.\n");
+				abort();
+			}
+		}
+
+		msgb_free(msg);
+	}
+}
+
 
 int main(int argc, char **argv)
 {
@@ -722,6 +821,7 @@ int main(int argc, char **argv)
 	test_sccp_udt_communication();
 	test_sccp_connection();
 	test_sccp_system_crash();
+	test_sccp_parsing();
 	return 0;
 }
 

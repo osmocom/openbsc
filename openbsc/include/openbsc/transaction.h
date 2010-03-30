@@ -20,8 +20,8 @@ struct gsm_trans {
 	/* To whom we belong, unique identifier of remote MM entity */
 	struct gsm_subscriber *subscr;
 
-	/* The LCHAN that we're currently using to transmit messages */
-	struct gsm_lchan *lchan;
+	/* The associated connection we are using to transmit messages */
+	struct gsm_subscriber_connection *conn;
 
 	/* reference from MNCC or other application */
 	u_int32_t callref;
@@ -71,6 +71,6 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 
 /* update all transactions to use a different LCHAN, e.g.
  * after handover has succeeded */
-int trans_lchan_change(struct gsm_lchan *lchan_old,
-		       struct gsm_lchan *lchan_new);
+int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
+		       struct gsm_subscriber_connection *conn_new);
 #endif

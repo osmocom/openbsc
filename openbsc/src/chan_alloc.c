@@ -152,6 +152,7 @@ static const u_int8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_TCH_H] = 2,
 	[GSM_PCHAN_SDCCH8_SACCH8C] = 8,
 	/* FIXME: what about dynamic TCH_F_TCH_H ? */
+	[GSM_PCHAN_TCH_F_PDCH] = 1,
 };
 
 static struct gsm_lchan *
@@ -167,7 +168,14 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 		ts = &trx->ts[j];
 		if (!ts_is_usable(ts))
 			continue;
-		if (ts->pchan != pchan)
+		/* ip.access dynamic TCH/F + PDCH combination */
+		if (ts->pchan == GSM_PCHAN_TCH_F_PDCH &&
+		    pchan == GSM_PCHAN_TCH_F) {
+			/* we can only consider such a dynamic channel
+			 * if the PDCH is currently inactive */
+			if (ts->flags & TS_F_PDCH_MODE)
+				continue;
+		} else if (ts->pchan != pchan)
 			continue;
 		/* check if all sub-slots are allocated yet */
 		for (ss = 0; ss < subslots_per_pchan[pchan]; ss++) {
@@ -177,6 +185,7 @@ _lc_find_trx(struct gsm_bts_trx *trx, enum gsm_phys_chan_config pchan)
 				return lc;
 		}
 	}
+
 	return NULL;
 }
 
@@ -252,7 +261,6 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 
 	if (lchan) {
 		lchan->type = type;
-		lchan->use_count = 0;
 
 		/* clear sapis */
 		memset(lchan->sapis, 0, ARRAY_SIZE(lchan->sapis));
@@ -260,10 +268,21 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		/* clear multi rate config */
 		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
 
+		/* clear per MSC/BSC data */
+		memset(&lchan->conn, 0, sizeof(lchan->conn));
+
 		/* Configure the time and start it so it will be closed */
-		lchan->release_timer.cb = auto_release_channel;
-		lchan->release_timer.data = lchan;
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		lchan->conn.lchan = lchan;
+		lchan->conn.bts = lchan->ts->trx->bts;
+		lchan->conn.release_timer.cb = auto_release_channel;
+		lchan->conn.release_timer.data = lchan;
+		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
+
+	} else {
+		struct challoc_signal_data sig;
+		sig.bts = bts;
+		sig.type = type;
+		dispatch_signal(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
 	}
 
 	return lchan;
@@ -272,22 +291,24 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 /* Free a logical channel */
 void lchan_free(struct gsm_lchan *lchan)
 {
+	struct challoc_signal_data sig;
 	int i;
 
+	sig.type = lchan->type;
 	lchan->type = GSM_LCHAN_NONE;
-	if (lchan->subscr) {
-		subscr_put(lchan->subscr);
-		lchan->subscr = NULL;
+	if (lchan->conn.subscr) {
+		subscr_put(lchan->conn.subscr);
+		lchan->conn.subscr = NULL;
 	}
 
 	/* We might kill an active channel... */
-	if (lchan->use_count != 0) {
+	if (lchan->conn.use_count != 0) {
 		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
-		lchan->use_count = 0;
+		lchan->conn.use_count = 0;
 	}
 
 	/* stop the timer */
-	bsc_del_timer(&lchan->release_timer);
+	bsc_del_timer(&lchan->conn.release_timer);
 	bsc_del_timer(&lchan->T3101);
 
 	/* clear cached measuement reports */
@@ -299,7 +320,11 @@ void lchan_free(struct gsm_lchan *lchan)
 	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
 		lchan->neigh_meas[i].arfcn = 0;
 
-	lchan->silent_call = 0;
+	lchan->conn.silent_call = 0;
+
+	sig.lchan = lchan;
+	sig.bts = lchan->ts->trx->bts;
+	dispatch_signal(SS_CHALLOC, S_CHALLOC_FREED, &sig);
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -308,19 +333,19 @@ void lchan_free(struct gsm_lchan *lchan)
 /* Consider releasing the channel now */
 int lchan_auto_release(struct gsm_lchan *lchan)
 {
-	if (lchan->use_count > 0) {
+	if (lchan->conn.use_count > 0) {
 		return 0;
 	}
 
 	/* Assume we have GSM04.08 running and send a release */
-	if (lchan->subscr) {
+	if (lchan->conn.subscr) {
 		gsm48_send_rr_release(lchan);
 	}
 
 	/* spoofed? message */
-	if (lchan->use_count < 0)
+	if (lchan->conn.use_count < 0)
 		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
-			lchan->use_count);
+			lchan->conn.use_count);
 
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
 	rsl_release_request(lchan, 0);
@@ -333,19 +358,19 @@ static void auto_release_channel(void *_lchan)
 	struct gsm_lchan *lchan = _lchan;
 
 	if (!lchan_auto_release(lchan))
-		bsc_schedule_timer(&lchan->release_timer, LCHAN_RELEASE_TIMEOUT);
+		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
 struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
 	struct gsm_bts_trx *trx;
-	int ts_no, lchan_no; 
+	int ts_no, lchan_no;
 
 	llist_for_each_entry(trx, &bts->trx_list, list) {
 		for (ts_no = 0; ts_no < 8; ++ts_no) {
 			for (lchan_no = 0; lchan_no < TS_MAX_LCHAN; ++lchan_no) {
 				struct gsm_lchan *lchan =
 					&trx->ts[ts_no].lchan[lchan_no];
-				if (subscr == lchan->subscr)
+				if (subscr == lchan->conn.subscr)
 					return lchan;
 			}
 		}

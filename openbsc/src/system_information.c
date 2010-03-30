@@ -249,7 +249,7 @@ static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si2);
 }
 
-struct gsm48_si_ro_info si_info = {
+static struct gsm48_si_ro_info si_info = {
 	.selection_params = {
 		.present = 0,
 	},
@@ -264,7 +264,7 @@ struct gsm48_si_ro_info si_info = {
 	.gprs_ind = {
 		.si13_position = 0,
 		.ra_colour = 0,
-		.present = 0,
+		.present = 1,
 	},
 	.lsa_params = {
 		.present = 0,
@@ -287,9 +287,9 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 	si3->header.system_information = GSM48_MT_RR_SYSINFO_3;
 
 	si3->cell_identity = htons(bts->cell_identity);
-	gsm0408_generate_lai(&si3->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si3->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si3->control_channel_desc = bts->si_common.chan_desc;
 	si3->cell_options = bts->si_common.cell_options;
 	si3->cell_sel_par = bts->si_common.cell_sel_par;
@@ -319,9 +319,9 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	si4->header.skip_indicator = 0;
 	si4->header.system_information = GSM48_MT_RR_SYSINFO_4;
 
-	gsm0408_generate_lai(&si4->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si4->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si4->cell_sel_par = bts->si_common.cell_sel_par;
 	si4->rach_control = bts->si_common.rach_control;
 
@@ -384,9 +384,9 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 	si6->skip_indicator = 0;
 	si6->system_information = GSM48_MT_RR_SYSINFO_6;
 	si6->cell_identity = htons(bts->cell_identity);
-	gsm0408_generate_lai(&si6->lai, bts->network->country_code,
-			     bts->network->network_code,
-			     bts->location_area_code);
+	gsm48_generate_lai(&si6->lai, bts->network->country_code,
+			   bts->network->network_code,
+			   bts->location_area_code);
 	si6->cell_options = bts->si_common.cell_options;
 	si6->ncc_permitted = bts->si_common.ncc_permitted;
 
@@ -398,9 +398,9 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 static struct gsm48_si13_info si13_default = {
 	.cell_opts = {
 		.nmo 		= GPRS_NMO_III,
-		.t3168		= 1000,
-		.t3192		= 1000,
-		.drx_timer_max	= 1,
+		.t3168		= 1500,
+		.t3192		= 500,
+		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
 	},
 	.pwr_ctrl_pars = {
@@ -410,15 +410,15 @@ static struct gsm48_si13_info si13_default = {
 		.pc_meas_chan	= 0, 	/* downling measured on CCCH */
 		.n_avg_i	= 15,
 	},
-	.bcch_change_mark	= 0,
+	.bcch_change_mark	= 1,
 	.si_change_field	= 0,
 	.pbcch_present		= 0,
 	{
 		.no_pbcch = {
-			.rac		= 0,
+			.rac		= 0,	/* needs to be patched */
 			.spgc_ccch_sup 	= 0,
 			.net_ctrl_ord	= 0,
-			.prio_acc_thr	= 0,
+			.prio_acc_thr	= 6,
 		},
 	},
 };
@@ -435,6 +435,8 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 	si13->header.skip_indicator = 0;
 	si13->header.system_information = GSM48_MT_RR_SYSINFO_13;
 
+	si13_default.no_pbcch.rac = bts->gprs.rac;
+
 	ret = rest_octets_si13(si13->rest_octets, &si13_default);
 	if (ret < 0)
 		return ret;
@@ -446,6 +448,8 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 
 int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
 {
+	si_info.gprs_ind.present = bts->gprs.enabled;
+
 	switch (type) {
 	case RSL_SYSTEM_INFO_1:
 		return generate_si1(output, bts);

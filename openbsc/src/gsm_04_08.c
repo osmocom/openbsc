@@ -1,4 +1,4 @@
-/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface 
+/* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
@@ -48,128 +48,17 @@
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
 #include <osmocore/talloc.h>
+#include <osmocore/gsm48.h>
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>
 
-#define GSM_MAX_FACILITY       128
-#define GSM_MAX_SSVERSION      128
-#define GSM_MAX_USERUSER       128
-
 void *tall_locop_ctx;
-
-static const struct tlv_definition rsl_att_tlvdef = {
-	.def = {
-		[GSM48_IE_MOBILE_ID]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NAME_LONG]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NAME_SHORT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_UTC]		= { TLV_TYPE_TV },
-		[GSM48_IE_NET_TIME_TZ]	= { TLV_TYPE_FIXED, 7 },
-		[GSM48_IE_LSA_IDENT]	= { TLV_TYPE_TLV },
-
-		[GSM48_IE_BEARER_CAP]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CAUSE]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CC_CAP]	= { TLV_TYPE_TLV },
-		[GSM48_IE_ALERT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_FACILITY]	= { TLV_TYPE_TLV },
-		[GSM48_IE_PROGR_IND]	= { TLV_TYPE_TLV },
-		[GSM48_IE_AUX_STATUS]	= { TLV_TYPE_TLV },
-		[GSM48_IE_NOTIFY]	= { TLV_TYPE_TV },
-		[GSM48_IE_KPD_FACILITY]	= { TLV_TYPE_TV },
-		[GSM48_IE_SIGNAL]	= { TLV_TYPE_TV },
-		[GSM48_IE_CONN_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CONN_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLING_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLING_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLED_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_CALLED_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_REDIR_BCD]	= { TLV_TYPE_TLV },
-		[GSM48_IE_REDIR_SUB]	= { TLV_TYPE_TLV },
-		[GSM48_IE_LOWL_COMPAT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_HIGHL_COMPAT]	= { TLV_TYPE_TLV },
-		[GSM48_IE_USER_USER]	= { TLV_TYPE_TLV },
-		[GSM48_IE_SS_VERS]	= { TLV_TYPE_TLV },
-		[GSM48_IE_MORE_DATA]	= { TLV_TYPE_T },
-		[GSM48_IE_CLIR_SUPP]	= { TLV_TYPE_T },
-		[GSM48_IE_CLIR_INVOC]	= { TLV_TYPE_T },
-		[GSM48_IE_REV_C_SETUP]	= { TLV_TYPE_T },
-		[GSM48_IE_REPEAT_CIR]   = { TLV_TYPE_T },
-		[GSM48_IE_REPEAT_SEQ]   = { TLV_TYPE_T },
-		/* FIXME: more elements */
-	},
-};
-
-static const char *rr_cause_names[] = {
-	[GSM48_RR_CAUSE_NORMAL]			= "Normal event",
-	[GSM48_RR_CAUSE_ABNORMAL_UNSPEC]	= "Abnormal release, unspecified",
-	[GSM48_RR_CAUSE_ABNORMAL_UNACCT]	= "Abnormal release, channel unacceptable",
-	[GSM48_RR_CAUSE_ABNORMAL_TIMER]		= "Abnormal release, timer expired",
-	[GSM48_RR_CAUSE_ABNORMAL_NOACT]		= "Abnormal release, no activity on radio path",
-	[GSM48_RR_CAUSE_PREMPTIVE_REL]		= "Preemptive release",
-	[GSM48_RR_CAUSE_HNDOVER_IMP]		= "Handover impossible, timing advance out of range",
-	[GSM48_RR_CAUSE_CHAN_MODE_UNACCT]	= "Channel mode unacceptable",
-	[GSM48_RR_CAUSE_FREQ_NOT_IMPL]		= "Frequency not implemented",
-	[GSM48_RR_CAUSE_CALL_CLEARED]		= "Call already cleared",
-	[GSM48_RR_CAUSE_SEMANT_INCORR]		= "Semantically incorrect message",
-	[GSM48_RR_CAUSE_INVALID_MAND_INF]	= "Invalid mandatory information",
-	[GSM48_RR_CAUSE_MSG_TYPE_N]		= "Message type non-existant or not implemented",
-	[GSM48_RR_CAUSE_MSG_TYPE_N_COMPAT]	= "Message type not compatible with protocol state",
-	[GSM48_RR_CAUSE_COND_IE_ERROR]		= "Conditional IE error",
-	[GSM48_RR_CAUSE_NO_CELL_ALLOC_A]	= "No cell allocation available",
-	[GSM48_RR_CAUSE_PROT_ERROR_UNSPC]	= "Protocol error unspecified",
-};
-
-static const char *cc_state_names[] = {
-	"NULL",
-	"INITIATED",
-	"illegal state 2",
-	"MO_CALL_PROC",
-	"CALL_DELIVERED",
-	"illegal state 5",
-	"CALL_PRESENT",
-	"CALL_RECEIVED",
-	"CONNECT_REQUEST",
-	"MO_TERM_CALL_CONF",
-	"ACTIVE",
-	"DISCONNECT_REQ",
-	"DISCONNECT_IND",
-	"illegal state 13",
-	"illegal state 14",
-	"illegal state 15",
-	"illegal state 16",
-	"illegal state 17",
-	"illegal state 18",
-	"RELEASE_REQ",
-	"illegal state 20",
-	"illegal state 21",
-	"illegal state 22",
-	"illegal state 23",
-	"illegal state 24",
-	"illegal state 25",
-	"MO_ORIG_MODIFY",
-	"MO_TERM_MODIFY",
-	"CONNECT_IND",
-	"illegal state 29",
-	"illegal state 30",
-	"illegal state 31",
-};
-
-static char strbuf[64];
-
-static const char *rr_cause_name(u_int8_t cause)
-{
-	if (cause < ARRAY_SIZE(rr_cause_names) &&
-	    rr_cause_names[cause])
-		return rr_cause_names[cause];
-
-	snprintf(strbuf, sizeof(strbuf), "0x%02x", cause);
-	return strbuf;
-}
 
 int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
-static void schedule_reject(struct gsm_lchan *lchan);
+static void schedule_reject(struct gsm_subscriber_connection *conn);
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -207,35 +96,35 @@ static int authorize_subscriber(struct gsm_loc_updating_operation *loc,
 	}
 }
 
-static void release_loc_updating_req(struct gsm_lchan *lchan)
+static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 {
-	if (!lchan->loc_operation)
+	if (!conn->loc_operation)
 		return;
 
-	bsc_del_timer(&lchan->loc_operation->updating_timer);
-	talloc_free(lchan->loc_operation);
-	lchan->loc_operation = 0;
-	put_lchan(lchan);
+	bsc_del_timer(&conn->loc_operation->updating_timer);
+	talloc_free(conn->loc_operation);
+	conn->loc_operation = 0;
+	put_subscr_con(conn);
 }
 
-static void allocate_loc_updating_req(struct gsm_lchan *lchan)
+static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 {
-	use_lchan(lchan);
-	release_loc_updating_req(lchan);
+	use_subscr_con(conn)
+	release_loc_updating_req(conn);
 
-	lchan->loc_operation = talloc_zero(tall_locop_ctx,
+	conn->loc_operation = talloc_zero(tall_locop_ctx,
 					   struct gsm_loc_updating_operation);
 }
 
-static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
+static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	if (authorize_subscriber(lchan->loc_operation, lchan->subscr)) {
+	if (authorize_subscriber(conn->loc_operation, conn->subscr)) {
 		int rc;
 
-		db_subscriber_alloc_tmsi(lchan->subscr);
-		release_loc_updating_req(lchan);
-		rc = gsm0408_loc_upd_acc(msg->lchan, lchan->subscr->tmsi);
-		if (lchan->ts->trx->bts->network->send_mm_info) {
+		db_subscriber_alloc_tmsi(conn->subscr);
+		release_loc_updating_req(conn);
+		rc = gsm0408_loc_upd_acc(msg->lchan, conn->subscr->tmsi);
+		if (msg->lchan->ts->trx->bts->network->send_mm_info) {
 			/* send MM INFO with network name */
 			rc = gsm48_tx_mm_info(msg->lchan);
 		}
@@ -243,10 +132,11 @@ static int gsm0408_authorize(struct gsm_lchan *lchan, struct msgb *msg)
 		/* call subscr_update after putting the loc_upd_acc
 		 * in the transmit queue, since S_SUBSCR_ATTACHED might
 		 * trigger further action like SMS delivery */
-		subscr_update(lchan->subscr, msg->trx->bts,
+		subscr_update(conn->subscr, msg->trx->bts,
 			      GSM_SUBSCRIBER_UPDATE_ATTACHED);
+
 		/* try to close channel ASAP */
-		lchan_auto_release(lchan);
+		lchan_auto_release(conn->lchan);
 		return rc;
 	}
 
@@ -269,549 +159,16 @@ static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!lchan)
 		return 0;
 
-	release_loc_updating_req(lchan);
+	release_loc_updating_req(&lchan->conn);
 
 	/* Free all transactions that are associated with the released lchan */
 	/* FIXME: this is not neccessarily the right thing to do, we should
 	 * only set trans->lchan to NULL and wait for another lchan to be
 	 * established to the same MM entity (phone/subscriber) */
 	llist_for_each_entry_safe(trans, temp, &lchan->ts->trx->bts->network->trans_list, entry) {
-		if (trans->lchan == lchan)
+		if (trans->conn && trans->conn->lchan == lchan)
 			trans_free(trans);
 	}
-
-	return 0;
-}
-
-static const char bcd_num_digits[] = {
-	'0', '1', '2', '3', '4', '5', '6', '7', 
-	'8', '9', '*', '#', 'a', 'b', 'c', '\0'
-};
-
-/* decode a 'called/calling/connect party BCD number' as in 10.5.4.7 */
-int decode_bcd_number(char *output, int output_len, const u_int8_t *bcd_lv,
-		      int h_len)
-{
-	u_int8_t in_len = bcd_lv[0];
-	int i;
-
-	for (i = 1 + h_len; i <= in_len; i++) {
-		/* lower nibble */
-		output_len--;
-		if (output_len <= 1)
-			break;
-		*output++ = bcd_num_digits[bcd_lv[i] & 0xf];
-
-		/* higher nibble */
-		output_len--;
-		if (output_len <= 1)
-			break;
-		*output++ = bcd_num_digits[bcd_lv[i] >> 4];
-	}
-	if (output_len >= 1)
-		*output++ = '\0';
-
-	return 0;
-}
-
-/* convert a single ASCII character to call-control BCD */
-static int asc_to_bcd(const char asc)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(bcd_num_digits); i++) {
-		if (bcd_num_digits[i] == asc)
-			return i;
-	}
-	return -EINVAL;
-}
-
-/* convert a ASCII phone number to 'called/calling/connect party BCD number' */
-int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
-		      int h_len, const char *input)
-{
-	int in_len = strlen(input);
-	int i;
-	u_int8_t *bcd_cur = bcd_lv + 1 + h_len;
-
-	/* two digits per byte, plus type byte */
-	bcd_lv[0] = in_len/2 + h_len;
-	if (in_len % 2)
-		bcd_lv[0]++;
-
-	if (bcd_lv[0] > max_len)
-		return -EIO;
-
-	for (i = 0; i < in_len; i++) {
-		int rc = asc_to_bcd(input[i]);
-		if (rc < 0)
-			return rc;
-		if (i % 2 == 0)
-			*bcd_cur = rc;	
-		else
-			*bcd_cur++ |= (rc << 4);
-	}
-	/* append padding nibble in case of odd length */
-	if (i % 2)
-		*bcd_cur++ |= 0xf0;
-
-	/* return how many bytes we used */
-	return (bcd_cur - bcd_lv);
-}
-
-/* decode 'bearer capability' */
-static int decode_bearer_cap(struct gsm_mncc_bearer_cap *bcap,
-			     const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-	int i, s;
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	bcap->speech_ver[0] = -1; /* end of list, of maximum 7 values */
-
-	/* octet 3 */
-	bcap->transfer = lv[1] & 0x07;
-	bcap->mode = (lv[1] & 0x08) >> 3;
-	bcap->coding = (lv[1] & 0x10) >> 4;
-	bcap->radio = (lv[1] & 0x60) >> 5;
-
-	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
-		i = 1;
-		s = 0;
-		while(!(lv[i] & 0x80)) {
-			i++; /* octet 3a etc */
-			if (in_len < i)
-				return 0;
-			bcap->speech_ver[s++] = lv[i] & 0x0f;
-			bcap->speech_ver[s] = -1; /* end of list */
-			if (i == 2) /* octet 3a */
-				bcap->speech_ctm = (lv[i] & 0x20) >> 5;
-			if (s == 7) /* maximum speech versions + end of list */
-				return 0;
-		}
-	} else {
-		i = 1;
-		while (!(lv[i] & 0x80)) {
-			i++; /* octet 3a etc */
-			if (in_len < i)
-				return 0;
-			/* ignore them */
-		}
-		/* FIXME: implement OCTET 4+ parsing */
-	}
-
-	return 0;
-}
-
-/* encode 'bearer capability' */
-static int encode_bearer_cap(struct msgb *msg, int lv_only,
-			     const struct gsm_mncc_bearer_cap *bcap)
-{
-	u_int8_t lv[32 + 1];
-	int i = 1, s;
-
-	lv[1] = bcap->transfer;
-	lv[1] |= bcap->mode << 3;
-	lv[1] |= bcap->coding << 4;
-	lv[1] |= bcap->radio << 5;
-
-	if (bcap->transfer == GSM_MNCC_BCAP_SPEECH) {
-		for (s = 0; bcap->speech_ver[s] >= 0; s++) {
-			i++; /* octet 3a etc */
-			lv[i] = bcap->speech_ver[s];
-			if (i == 2) /* octet 3a */
-				lv[i] |= bcap->speech_ctm << 5;
-		}
-		lv[i] |= 0x80; /* last IE of octet 3 etc */
-	} else {
-		/* FIXME: implement OCTET 4+ encoding */
-	}
-
-	lv[0] = i;
-	if (lv_only)
-		msgb_lv_put(msg, lv[0], lv+1);
-	else
-		msgb_tlv_put(msg, GSM48_IE_BEARER_CAP, lv[0], lv+1);
-
-	return 0;
-}
-
-/* decode 'call control cap' */
-static int decode_cccap(struct gsm_mncc_cccap *ccap, const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	/* octet 3 */
-	ccap->dtmf = lv[1] & 0x01;
-	ccap->pcp = (lv[1] & 0x02) >> 1;
-	
-	return 0;
-}
-
-/* decode 'called party BCD number' */
-static int decode_called(struct gsm_mncc_number *called,
-			 const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	/* octet 3 */
-	called->plan = lv[1] & 0x0f;
-	called->type = (lv[1] & 0x70) >> 4;
-
-	/* octet 4..N */
-	decode_bcd_number(called->number, sizeof(called->number), lv, 1);
-	
-	return 0;
-}
-
-/* encode 'called party BCD number' */
-static int encode_called(struct msgb *msg,
-			 const struct gsm_mncc_number *called)
-{
-	u_int8_t lv[18];
-	int ret;
-
-	/* octet 3 */
-	lv[1] = called->plan;
-	lv[1] |= called->type << 4;
-
-	/* octet 4..N, octet 2 */
-	ret = encode_bcd_number(lv, sizeof(lv), 1, called->number);
-	if (ret < 0)
-		return ret;
-
-	msgb_tlv_put(msg, GSM48_IE_CALLED_BCD, lv[0], lv+1);
-
-	return 0;
-}
-
-/* encode callerid of various IEs */
-static int encode_callerid(struct msgb *msg, int ie, 
-			   const struct gsm_mncc_number *callerid)
-{
-	u_int8_t lv[13];
-	int h_len = 1;
-	int ret;
-
-	/* octet 3 */
-	lv[1] = callerid->plan;
-	lv[1] |= callerid->type << 4;
-
-	if (callerid->present || callerid->screen) {
-		/* octet 3a */
-		lv[2] = callerid->screen;
-		lv[2] |= callerid->present << 5;
-		lv[2] |= 0x80;
-		h_len++;
-	} else
-		lv[1] |= 0x80;
-
-	/* octet 4..N, octet 2 */
-	ret = encode_bcd_number(lv, sizeof(lv), h_len, callerid->number);
-	if (ret < 0)
-		return ret;
-
-	msgb_tlv_put(msg, ie, lv[0], lv+1);
-
-	return 0;
-}
-
-/* decode 'cause' */
-static int decode_cause(struct gsm_mncc_cause *cause,
-			const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-	int i;
-
-	if (in_len < 2)
-		return -EINVAL;
-
-	cause->diag_len = 0;
-
-	/* octet 3 */
-	cause->location = lv[1] & 0x0f;
-	cause->coding = (lv[1] & 0x60) >> 5;
-	
-	i = 1;
-	if (!(lv[i] & 0x80)) {
-		i++; /* octet 3a */
-		if (in_len < i+1)
-			return 0;
-		cause->rec = 1;
-		cause->rec_val = lv[i] & 0x7f;
-		
-	}
-	i++;
-
-	/* octet 4 */
-	cause->value = lv[i] & 0x7f;
-	i++;
-
-	if (in_len < i) /* no diag */
-		return 0;
-
-	if (in_len - (i-1) > 32) /* maximum 32 octets */
-		return 0;
-
-	/* octet 5-N */
-	memcpy(cause->diag, lv + i, in_len - (i-1));
-	cause->diag_len = in_len - (i-1);
-
-	return 0;
-}
-
-/* encode 'cause' */
-static int encode_cause(struct msgb *msg, int lv_only,
-			const struct gsm_mncc_cause *cause)
-{
-	u_int8_t lv[32+4];
-	int i;
-
-	if (cause->diag_len > 32)
-		return -EINVAL;
-
-	/* octet 3 */
-	lv[1] = cause->location;
-	lv[1] |= cause->coding << 5;
-
-	i = 1;
-	if (cause->rec) {
-		i++; /* octet 3a */
-		lv[i] = cause->rec_val;
-	}
-	lv[i] |= 0x80; /* end of octet 3 */
-
-	/* octet 4 */
-	i++;
-	lv[i] = 0x80 | cause->value;
-
-	/* octet 5-N */
-	if (cause->diag_len) {
-		memcpy(lv + i, cause->diag, cause->diag_len);
-		i += cause->diag_len;
-	}
-
-	lv[0] = i;
-	if (lv_only)
-		msgb_lv_put(msg, lv[0], lv+1);
-	else
-		msgb_tlv_put(msg, GSM48_IE_CAUSE, lv[0], lv+1);
-
-	return 0;
-}
-
-/* encode 'calling number' */
-static int encode_calling(struct msgb *msg, 
-			  const struct gsm_mncc_number *calling)
-{
-	return encode_callerid(msg, GSM48_IE_CALLING_BCD, calling);
-}
-
-/* encode 'connected number' */
-static int encode_connected(struct msgb *msg, 
-			    const struct gsm_mncc_number *connected)
-{
-	return encode_callerid(msg, GSM48_IE_CONN_BCD, connected);
-}
-
-/* encode 'redirecting number' */
-static int encode_redirecting(struct msgb *msg,
-			      const struct gsm_mncc_number *redirecting)
-{
-	return encode_callerid(msg, GSM48_IE_REDIR_BCD, redirecting);
-}
-
-/* decode 'facility' */
-static int decode_facility(struct gsm_mncc_facility *facility,
-			   const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	if (in_len > sizeof(facility->info))
-		return -EINVAL;
-
-	memcpy(facility->info, lv+1, in_len);
-	facility->len = in_len;
-
-	return 0;
-}
-
-/* encode 'facility' */
-static int encode_facility(struct msgb *msg, int lv_only,
-			   const struct gsm_mncc_facility *facility)
-{
-	u_int8_t lv[GSM_MAX_FACILITY + 1];
-
-	if (facility->len < 1 || facility->len > GSM_MAX_FACILITY)
-		return -EINVAL;
-
-	memcpy(lv+1, facility->info, facility->len);
-	lv[0] = facility->len;
-	if (lv_only)
-		msgb_lv_put(msg, lv[0], lv+1);
-	else
-		msgb_tlv_put(msg, GSM48_IE_FACILITY, lv[0], lv+1);
-
-	return 0;
-}
-
-/* decode 'notify' */
-static int decode_notify(int *notify, const u_int8_t *v)
-{
-	*notify = v[0] & 0x7f;
-	
-	return 0;
-}
-
-/* encode 'notify' */
-static int encode_notify(struct msgb *msg, int notify)
-{
-	msgb_v_put(msg, notify | 0x80);
-
-	return 0;
-}
-
-/* encode 'signal' */
-static int encode_signal(struct msgb *msg, int signal)
-{
-	msgb_tv_put(msg, GSM48_IE_SIGNAL, signal);
-
-	return 0;
-}
-
-/* decode 'keypad' */
-static int decode_keypad(int *keypad, const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	*keypad = lv[1] & 0x7f;
-	
-	return 0;
-}
-
-/* encode 'keypad' */
-static int encode_keypad(struct msgb *msg, int keypad)
-{
-	msgb_tv_put(msg, GSM48_IE_KPD_FACILITY, keypad);
-
-	return 0;
-}
-
-/* decode 'progress' */
-static int decode_progress(struct gsm_mncc_progress *progress,
-			   const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 2)
-		return -EINVAL;
-
-	progress->coding = (lv[1] & 0x60) >> 5;
-	progress->location = lv[1] & 0x0f;
-	progress->descr = lv[2] & 0x7f;
-	
-	return 0;
-}
-
-/* encode 'progress' */
-static int encode_progress(struct msgb *msg, int lv_only,
-			   const struct gsm_mncc_progress *p)
-{
-	u_int8_t lv[3];
-
-	lv[0] = 2;
-	lv[1] = 0x80 | ((p->coding & 0x3) << 5) | (p->location & 0xf);
-	lv[2] = 0x80 | (p->descr & 0x7f);
-	if (lv_only)
-		msgb_lv_put(msg, lv[0], lv+1);
-	else
-		msgb_tlv_put(msg, GSM48_IE_PROGR_IND, lv[0], lv+1);
-
-	return 0;
-}
-
-/* decode 'user-user' */
-static int decode_useruser(struct gsm_mncc_useruser *uu,
-			   const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-	char *info = uu->info;
-	int info_len = sizeof(uu->info);
-	int i;
-
-	if (in_len < 1)
-		return -EINVAL;
-
-	uu->proto = lv[1];
-
-	for (i = 2; i <= in_len; i++) {
-		info_len--;
-		if (info_len <= 1)
-			break;
-		*info++ = lv[i];
-	}
-	if (info_len >= 1)
-		*info++ = '\0';
-	
-	return 0;
-}
-
-/* encode 'useruser' */
-static int encode_useruser(struct msgb *msg, int lv_only,
-			   const struct gsm_mncc_useruser *uu)
-{
-	u_int8_t lv[GSM_MAX_USERUSER + 2];
-
-	if (strlen(uu->info) > GSM_MAX_USERUSER)
-		return -EINVAL;
-
-	lv[0] = 1 + strlen(uu->info);
-	lv[1] = uu->proto;
-	memcpy(lv + 2, uu->info, strlen(uu->info));
-	if (lv_only)
-		msgb_lv_put(msg, lv[0], lv+1);
-	else
-		msgb_tlv_put(msg, GSM48_IE_USER_USER, lv[0], lv+1);
-
-	return 0;
-}
-
-/* decode 'ss version' */
-static int decode_ssversion(struct gsm_mncc_ssversion *ssv,
-			    const u_int8_t *lv)
-{
-	u_int8_t in_len = lv[0];
-
-	if (in_len < 1 || in_len < sizeof(ssv->info))
-		return -EINVAL;
-
-	memcpy(ssv->info, lv + 1, in_len);
-	ssv->len = in_len;
-
-	return 0;
-}
-
-/* encode 'more data' */
-static int encode_more(struct msgb *msg)
-{
-	u_int8_t *ie;
-
-	ie = msgb_put(msg, 1);
-	ie[0] = GSM48_IE_MORE_DATA;
 
 	return 0;
 }
@@ -819,11 +176,13 @@ static int encode_more(struct msgb *msg)
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	
 	msg->lchan = lchan;
+	conn = &lchan->conn;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -831,8 +190,8 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	gh->data[0] = cause;
 
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
-	     "LAC=%u BTS=%u\n", lchan->subscr ?
-	     			subscr_name(lchan->subscr) : "unknown",
+	     "LAC=%u BTS=%u\n", conn->subscr ?
+	     			subscr_name(conn->subscr) : "unknown",
 	     lchan->ts->trx->bts->location_area_code, lchan->ts->trx->bts->nr);
 
 	counter_inc(bts->network->stats.loc_upd_resp.reject);
@@ -856,7 +215,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm0408_generate_lai(lai, bts->network->country_code,
+	gsm48_generate_lai(lai, bts->network->country_code,
 		     bts->network->network_code, bts->location_area_code);
 
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
@@ -889,6 +248,7 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 /* Parse Chapter 9.2.11 Identity Response */
 static int mm_rx_id_resp(struct msgb *msg)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
@@ -900,51 +260,54 @@ static int mm_rx_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
+	conn = &lchan->conn;
+
 	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* look up subscriber based on IMSI, create if not found */
-		if (!lchan->subscr) {
-			lchan->subscr = subscr_get_by_imsi(net, mi_string);
-			if (!lchan->subscr)
-				lchan->subscr = db_create_subscriber(net, mi_string);
+		if (!conn->subscr) {
+			conn->subscr = subscr_get_by_imsi(net, mi_string);
+			if (!conn->subscr)
+				conn->subscr = db_create_subscriber(net, mi_string);
 		}
-		if (lchan->loc_operation)
-			lchan->loc_operation->waiting_for_imsi = 0;
+		if (conn->loc_operation)
+			conn->loc_operation->waiting_for_imsi = 0;
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* update subscribe <-> IMEI mapping */
-		if (lchan->subscr) {
-			db_subscriber_assoc_imei(lchan->subscr, mi_string);
-			db_sync_equipment(&lchan->subscr->equipment);
+		if (conn->subscr) {
+			db_subscriber_assoc_imei(conn->subscr, mi_string);
+			db_sync_equipment(&conn->subscr->equipment);
 		}
-		if (lchan->loc_operation)
-			lchan->loc_operation->waiting_for_imei = 0;
+		if (conn->loc_operation)
+			conn->loc_operation->waiting_for_imei = 0;
 		break;
 	}
 
 	/* Check if we can let the mobile station enter */
-	return gsm0408_authorize(lchan, msg);
+	return gsm0408_authorize(conn, msg);
 }
 
 
 static void loc_upd_rej_cb(void *data)
 {
-	struct gsm_lchan *lchan = data;
+	struct gsm_subscriber_connection *conn = data;
+	struct gsm_lchan *lchan = conn->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	release_loc_updating_req(lchan);
+	release_loc_updating_req(conn);
 	gsm0408_loc_upd_rej(lchan, bts->network->reject_cause);
 	lchan_auto_release(lchan);
 }
 
-static void schedule_reject(struct gsm_lchan *lchan)
+static void schedule_reject(struct gsm_subscriber_connection *conn)
 {
-	lchan->loc_operation->updating_timer.cb = loc_upd_rej_cb;
-	lchan->loc_operation->updating_timer.data = lchan;
-	bsc_schedule_timer(&lchan->loc_operation->updating_timer, 5, 0);
+	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
+	conn->loc_operation->updating_timer.data = conn;
+	bsc_schedule_timer(&conn->loc_operation->updating_timer, 5, 0);
 }
 
 static const char *lupd_name(u_int8_t type)
@@ -964,6 +327,7 @@ static const char *lupd_name(u_int8_t type)
 /* Chapter 9.2.15: Receive Location Updating Request */
 static int mm_rx_loc_upd_req(struct msgb *msg)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
@@ -974,6 +338,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
+	conn = &lchan->conn;
 
 	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
@@ -1000,21 +365,21 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	 * Pseudo Spoof detection: Just drop a second/concurrent
 	 * location updating request.
 	 */
-	if (lchan->loc_operation) {
+	if (conn->loc_operation) {
 		DEBUGPC(DMM, "ignoring request due an existing one: %p.\n",
-			lchan->loc_operation);
+			conn->loc_operation);
 		gsm0408_loc_upd_rej(lchan, GSM48_REJECT_PROTOCOL_ERROR);
 		return 0;
 	}
 
-	allocate_loc_updating_req(lchan);
+	allocate_loc_updating_req(&lchan->conn);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
-		lchan->loc_operation->waiting_for_imei = 1;
+		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI, create if not found */
 		subscr = subscr_get_by_imsi(bts->network, mi_string);
@@ -1026,7 +391,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
 		rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMEI);
-		lchan->loc_operation->waiting_for_imei = 1;
+		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up the subscriber based on TMSI, request IMSI if it fails */
 		subscr = subscr_get_by_tmsi(bts->network,
@@ -1034,7 +399,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
 			rc = mm_tx_identity_req(lchan, GSM_MI_TYPE_IMSI);
-			lchan->loc_operation->waiting_for_imsi = 1;
+			conn->loc_operation->waiting_for_imsi = 1;
 		}
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -1048,7 +413,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	}
 
 	/* schedule the reject timer */
-	schedule_reject(lchan);
+	schedule_reject(conn);
 
 	if (!subscr) {
 		DEBUGPC(DRR, "<- Can't find any subscriber for this ID\n");
@@ -1056,12 +421,12 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	lchan->subscr = subscr;
-	lchan->subscr->equipment.classmark1 = lu->classmark1;
+	conn->subscr = subscr;
+	conn->subscr->equipment.classmark1 = lu->classmark1;
 
 	/* check if we can let the subscriber into our network immediately
 	 * or if we need to wait for identity responses. */
-	return gsm0408_authorize(lchan, msg);
+	return gsm0408_authorize(conn, msg);
 }
 
 #if 0
@@ -1210,7 +575,7 @@ static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 }
 
 /* 9.2.6 CM service reject */
-static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
+static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 				enum gsm48_reject_value value)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -1218,8 +583,8 @@ static int gsm48_tx_mm_serv_rej(struct gsm_lchan *lchan,
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 
-	msg->lchan = lchan;
-	use_lchan(lchan);
+	msg->lchan = conn->lchan;
+	use_subscr_con(conn);
 
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
@@ -1257,20 +622,20 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
 		DEBUGPC(DMM, "wrong sized message\n");
-		return gsm48_tx_mm_serv_rej(msg->lchan,
+		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	if (msg->data_len < req->mi_len + 6) {
 		DEBUGPC(DMM, "does not fit in packet\n");
-		return gsm48_tx_mm_serv_rej(msg->lchan,
+		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 	if (mi_type != GSM_MI_TYPE_TMSI) {
 		DEBUGPC(DMM, "mi_type is not TMSI: %d\n", mi_type);
-		return gsm48_tx_mm_serv_rej(msg->lchan,
+		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
@@ -1288,12 +653,12 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
-		return gsm48_tx_mm_serv_rej(msg->lchan,
+		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
 
-	if (!msg->lchan->subscr)
-		msg->lchan->subscr = subscr;
-	else if (msg->lchan->subscr == subscr)
+	if (!msg->lchan->conn.subscr)
+		msg->lchan->conn.subscr = subscr;
+	else if (msg->lchan->conn.subscr == subscr)
 		subscr_put(subscr); /* lchan already has a ref, don't need another one */
 	else {
 		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
@@ -1393,8 +758,8 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
-		       msg->lchan->subscr ?
-				subscr_name(msg->lchan->subscr) :
+		       msg->lchan->conn.subscr ?
+				subscr_name(msg->lchan->conn.subscr) :
 				"unknown subscriber");
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
@@ -1459,7 +824,7 @@ static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 static int gsm48_rx_rr_classmark(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_subscriber *subscr = msg->lchan->subscr;
+	struct gsm_subscriber *subscr = msg->lchan->conn.subscr;
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	u_int8_t cm2_len, cm3_len = 0;
 	u_int8_t *cm2, *cm3 = NULL;
@@ -1507,7 +872,7 @@ static int gsm48_rx_rr_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DRR, "STATUS rr_cause = %s\n", 
+	DEBUGP(DRR, "STATUS rr_cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
 	return 0;
@@ -1540,7 +905,7 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
 
-	return db_apdu_blob_store(msg->lchan->subscr, apdu_id_flags, apdu_len, apdu_data);
+	return db_apdu_blob_store(msg->lchan->conn.subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
 /* Chapter 9.1.16 Handover complete */
@@ -1652,7 +1017,8 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 		return;
 
 	DEBUGP(DCC, "new state %s -> %s\n",
-		cc_state_names[trans->cc.state], cc_state_names[state]);
+		gsm48_cc_state_name(trans->cc.state),
+		gsm48_cc_state_name(state));
 
 	trans->cc.state = state;
 }
@@ -1698,19 +1064,19 @@ static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 		trans->cc.Tcurrent = 0;
 	}
 }
- 
+
 static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 			int msg_type, struct gsm_mncc *mncc)
 {
 	struct msgb *msg;
 
 	if (trans)
-		if (trans->lchan)
+		if (trans->conn)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 				"Sending '%s' to MNCC.\n",
-				trans->lchan->ts->trx->bts->nr,
-				trans->lchan->ts->trx->nr,
-				trans->lchan->ts->nr, trans->transaction_id,
+				trans->conn->lchan->ts->trx->bts->nr,
+				trans->conn->lchan->ts->trx->nr,
+				trans->conn->lchan->ts->nr, trans->transaction_id,
 				(trans->subscr)?(trans->subscr->extension):"-",
 				get_mncc_name(msg_type));
 		else
@@ -1759,12 +1125,12 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
-	if (trans->lchan)
-		trau_mux_unmap(&trans->lchan->ts->e1_link, trans->callref);
+	if (trans->conn)
+		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref);
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
- 
+
 /* call-back from paging the B-end of the connection */
 static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_lchan, void *param)
@@ -1776,7 +1142,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
-  
+
 	if (!subscr)
 		return -EINVAL;
 	net = subscr->net;
@@ -1787,7 +1153,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	/* check all tranactions (without lchan) for subscriber */
 	llist_for_each_entry_safe(transt, tmp, &net->trans_list, entry) {
-		if (transt->subscr != subscr || transt->lchan)
+		if (transt->subscr != subscr || transt->conn)
 			continue;
 		switch (event) {
 		case GSM_PAGING_SUCCEEDED:
@@ -1796,9 +1162,9 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			DEBUGP(DCC, "Paging subscr %s succeeded!\n",
 				subscr->extension);
 			/* Assign lchan */
-			if (!transt->lchan) {
-				transt->lchan = lchan;
-				use_lchan(lchan);
+			if (!transt->conn) {
+				transt->conn = &lchan->conn;
+				use_subscr_con(transt->conn);
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
@@ -1843,7 +1209,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 		 * a tch_recv_mncc request pending */
 		net = lchan->ts->trx->bts->network;
 		llist_for_each_entry(trans, &net->trans_list, entry) {
-			if (trans->lchan == lchan && trans->tch_recv) {
+			if (trans->conn && trans->conn->lchan == lchan && trans->tch_recv) {
 				DEBUGP(DCC, "pending tch_recv_mncc request\n");
 				tch_recv_mncc(net, trans->callref, 1);
 			}
@@ -1916,11 +1282,11 @@ static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 	if (!trans1 || !trans2)
 		return -EIO;
 
-	if (!trans1->lchan || !trans2->lchan)
+	if (!trans1->conn || !trans2->conn)
 		return -EIO;
 
 	/* through-connect channel */
-	return tch_map(trans1->lchan, trans2->lchan);
+	return tch_map(trans1->conn->lchan, trans2->conn->lchan);
 }
 
 /* enable receive of channels to MNCC upqueue */
@@ -1935,9 +1301,9 @@ static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 	trans = trans_find_by_callref(net, callref);
 	if (!trans)
 		return -EIO;
-	if (!trans->lchan)
+	if (!trans->conn)
 		return 0;
-	lchan = trans->lchan;
+	lchan = trans->conn->lchan;
 	bts = lchan->ts->trx->bts;
 
 	switch (bts->type) {
@@ -2092,7 +1458,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&setup, 0, sizeof(struct gsm_mncc));
 	setup.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* emergency setup is identified by msg_type */
 	if (msg_type == GSM48_MT_CC_EMERG_SETUP)
 		setup.emergency = 1;
@@ -2108,31 +1474,31 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		setup.fields |= MNCC_F_BEARER_CAP;
-		decode_bearer_cap(&setup.bearer_cap,
+		gsm48_decode_bearer_cap(&setup.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		setup.fields |= MNCC_F_FACILITY;
-		decode_facility(&setup.facility,
+		gsm48_decode_facility(&setup.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* called party bcd number */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD)) {
 		setup.fields |= MNCC_F_CALLED;
-		decode_called(&setup.called,
+		gsm48_decode_called(&setup.called,
 			      TLVP_VAL(&tp, GSM48_IE_CALLED_BCD)-1);
 	}
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		setup.fields |= MNCC_F_USERUSER;
-		decode_useruser(&setup.useruser,
+		gsm48_decode_useruser(&setup.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		setup.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&setup.ssversion,
+		gsm48_decode_ssversion(&setup.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 	/* CLIR suppression */
@@ -2144,7 +1510,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	/* cc cap */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CC_CAP)) {
 		setup.fields |= MNCC_F_CCCAP;
-		decode_cccap(&setup.cccap,
+		gsm48_decode_cccap(&setup.cccap,
 			     TLVP_VAL(&tp, GSM48_IE_CC_CAP)-1);
 	}
 
@@ -2204,28 +1570,28 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 
 	/* bearer capability */
 	if (setup->fields & MNCC_F_BEARER_CAP)
-		encode_bearer_cap(msg, 0, &setup->bearer_cap);
+		gsm48_encode_bearer_cap(msg, 0, &setup->bearer_cap);
 	/* facility */
 	if (setup->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &setup->facility);
+		gsm48_encode_facility(msg, 0, &setup->facility);
 	/* progress */
 	if (setup->fields & MNCC_F_PROGRESS)
-		encode_progress(msg, 0, &setup->progress);
+		gsm48_encode_progress(msg, 0, &setup->progress);
 	/* calling party BCD number */
 	if (setup->fields & MNCC_F_CALLING)
-		encode_calling(msg, &setup->calling);
+		gsm48_encode_calling(msg, &setup->calling);
 	/* called party BCD number */
 	if (setup->fields & MNCC_F_CALLED)
-		encode_called(msg, &setup->called);
+		gsm48_encode_called(msg, &setup->called);
 	/* user-user */
 	if (setup->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &setup->useruser);
+		gsm48_encode_useruser(msg, 0, &setup->useruser);
 	/* redirecting party BCD number */
 	if (setup->fields & MNCC_F_REDIRECTING)
-		encode_redirecting(msg, &setup->redirecting);
+		gsm48_encode_redirecting(msg, &setup->redirecting);
 	/* signal */
 	if (setup->fields & MNCC_F_SIGNAL)
-		encode_signal(msg, setup->signal);
+		gsm48_encode_signal(msg, setup->signal);
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
@@ -2244,7 +1610,7 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&call_conf, 0, sizeof(struct gsm_mncc));
 	call_conf.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 #if 0
 	/* repeat */
 	if (TLVP_PRESENT(&tp, GSM48_IE_REPEAT_CIR))
@@ -2255,19 +1621,19 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		call_conf.fields |= MNCC_F_BEARER_CAP;
-		decode_bearer_cap(&call_conf.bearer_cap,
+		gsm48_decode_bearer_cap(&call_conf.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		call_conf.fields |= MNCC_F_CAUSE;
-		decode_cause(&call_conf.cause,
+		gsm48_decode_cause(&call_conf.cause,
 			     TLVP_VAL(&tp, GSM48_IE_CAUSE)-1);
 	}
 	/* cc cap */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CC_CAP)) {
 		call_conf.fields |= MNCC_F_CCCAP;
-		decode_cccap(&call_conf.cccap,
+		gsm48_decode_cccap(&call_conf.cccap,
 			     TLVP_VAL(&tp, GSM48_IE_CC_CAP)-1);
 	}
 
@@ -2289,13 +1655,13 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 
 	/* bearer capability */
 	if (proceeding->fields & MNCC_F_BEARER_CAP)
-		encode_bearer_cap(msg, 0, &proceeding->bearer_cap);
+		gsm48_encode_bearer_cap(msg, 0, &proceeding->bearer_cap);
 	/* facility */
 	if (proceeding->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &proceeding->facility);
+		gsm48_encode_facility(msg, 0, &proceeding->facility);
 	/* progress */
 	if (proceeding->fields & MNCC_F_PROGRESS)
-		encode_progress(msg, 0, &proceeding->progress);
+		gsm48_encode_progress(msg, 0, &proceeding->progress);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2312,24 +1678,24 @@ static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&alerting, 0, sizeof(struct gsm_mncc));
 	alerting.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		alerting.fields |= MNCC_F_FACILITY;
-		decode_facility(&alerting.facility,
+		gsm48_decode_facility(&alerting.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 
 	/* progress */
 	if (TLVP_PRESENT(&tp, GSM48_IE_PROGR_IND)) {
 		alerting.fields |= MNCC_F_PROGRESS;
-		decode_progress(&alerting.progress,
+		gsm48_decode_progress(&alerting.progress,
 				TLVP_VAL(&tp, GSM48_IE_PROGR_IND)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		alerting.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&alerting.ssversion,
+		gsm48_decode_ssversion(&alerting.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2349,13 +1715,13 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 
 	/* facility */
 	if (alerting->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &alerting->facility);
+		gsm48_encode_facility(msg, 0, &alerting->facility);
 	/* progress */
 	if (alerting->fields & MNCC_F_PROGRESS)
-		encode_progress(msg, 0, &alerting->progress);
+		gsm48_encode_progress(msg, 0, &alerting->progress);
 	/* user-user */
 	if (alerting->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &alerting->useruser);
+		gsm48_encode_useruser(msg, 0, &alerting->useruser);
 
 	new_cc_state(trans, GSM_CSTATE_CALL_DELIVERED);
 	
@@ -2371,10 +1737,10 @@ static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_PROGRESS;
 
 	/* progress */
-	encode_progress(msg, 1, &progress->progress);
+	gsm48_encode_progress(msg, 1, &progress->progress);
 	/* user-user */
 	if (progress->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &progress->useruser);
+		gsm48_encode_useruser(msg, 0, &progress->useruser);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2392,16 +1758,16 @@ static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
 
 	/* facility */
 	if (connect->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &connect->facility);
+		gsm48_encode_facility(msg, 0, &connect->facility);
 	/* progress */
 	if (connect->fields & MNCC_F_PROGRESS)
-		encode_progress(msg, 0, &connect->progress);
+		gsm48_encode_progress(msg, 0, &connect->progress);
 	/* connected number */
 	if (connect->fields & MNCC_F_CONNECTED)
-		encode_connected(msg, &connect->connected);
+		gsm48_encode_connected(msg, &connect->connected);
 	/* user-user */
 	if (connect->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &connect->useruser);
+		gsm48_encode_useruser(msg, 0, &connect->useruser);
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_IND);
 
@@ -2419,7 +1785,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&connect, 0, sizeof(struct gsm_mncc));
 	connect.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* use subscriber as connected party number */
 	if (trans->subscr) {
 		connect.fields |= MNCC_F_CONNECTED;
@@ -2431,19 +1797,19 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		connect.fields |= MNCC_F_FACILITY;
-		decode_facility(&connect.facility,
+		gsm48_decode_facility(&connect.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		connect.fields |= MNCC_F_USERUSER;
-		decode_useruser(&connect.useruser,
+		gsm48_decode_useruser(&connect.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		connect.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&connect.ssversion,
+		gsm48_decode_ssversion(&connect.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2492,29 +1858,29 @@ static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&disc, 0, sizeof(struct gsm_mncc));
 	disc.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_CAUSE, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_CAUSE, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		disc.fields |= MNCC_F_CAUSE;
-		decode_cause(&disc.cause,
+		gsm48_decode_cause(&disc.cause,
 			     TLVP_VAL(&tp, GSM48_IE_CAUSE)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		disc.fields |= MNCC_F_FACILITY;
-		decode_facility(&disc.facility,
+		gsm48_decode_facility(&disc.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		disc.fields |= MNCC_F_USERUSER;
-		decode_useruser(&disc.useruser,
+		gsm48_decode_useruser(&disc.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		disc.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&disc.ssversion,
+		gsm48_decode_ssversion(&disc.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2545,19 +1911,19 @@ static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (disc->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 1, &disc->cause);
+		gsm48_encode_cause(msg, 1, &disc->cause);
 	else
-		encode_cause(msg, 1, &default_cause);
+		gsm48_encode_cause(msg, 1, &default_cause);
 
 	/* facility */
 	if (disc->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &disc->facility);
+		gsm48_encode_facility(msg, 0, &disc->facility);
 	/* progress */
 	if (disc->fields & MNCC_F_PROGRESS)
-		encode_progress(msg, 0, &disc->progress);
+		gsm48_encode_progress(msg, 0, &disc->progress);
 	/* user-user */
 	if (disc->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &disc->useruser);
+		gsm48_encode_useruser(msg, 0, &disc->useruser);
 
 	/* store disconnect cause for T306 expiry */
 	memcpy(&trans->cc.msg, disc, sizeof(struct gsm_mncc));
@@ -2579,29 +1945,29 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
 	rel.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		rel.fields |= MNCC_F_CAUSE;
-		decode_cause(&rel.cause,
+		gsm48_decode_cause(&rel.cause,
 			     TLVP_VAL(&tp, GSM48_IE_CAUSE)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		rel.fields |= MNCC_F_FACILITY;
-		decode_facility(&rel.facility,
+		gsm48_decode_facility(&rel.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		rel.fields |= MNCC_F_USERUSER;
-		decode_useruser(&rel.useruser,
+		gsm48_decode_useruser(&rel.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		rel.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&rel.ssversion,
+		gsm48_decode_ssversion(&rel.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2638,13 +2004,13 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (rel->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 0, &rel->cause);
+		gsm48_encode_cause(msg, 0, &rel->cause);
 	/* facility */
 	if (rel->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &rel->facility);
+		gsm48_encode_facility(msg, 0, &rel->facility);
 	/* user-user */
 	if (rel->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &rel->useruser);
+		gsm48_encode_useruser(msg, 0, &rel->useruser);
 
 	trans->cc.T308_second = 0;
 	memcpy(&trans->cc.msg, rel, sizeof(struct gsm_mncc));
@@ -2667,29 +2033,29 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
 	rel.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		rel.fields |= MNCC_F_CAUSE;
-		decode_cause(&rel.cause,
+		gsm48_decode_cause(&rel.cause,
 			     TLVP_VAL(&tp, GSM48_IE_CAUSE)-1);
 	}
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		rel.fields |= MNCC_F_FACILITY;
-		decode_facility(&rel.facility,
+		gsm48_decode_facility(&rel.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		rel.fields |= MNCC_F_USERUSER;
-		decode_useruser(&rel.useruser,
+		gsm48_decode_useruser(&rel.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		rel.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&rel.ssversion,
+		gsm48_decode_ssversion(&rel.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2732,13 +2098,13 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (rel->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 0, &rel->cause);
+		gsm48_encode_cause(msg, 0, &rel->cause);
 	/* facility */
 	if (rel->fields & MNCC_F_FACILITY)
-		encode_facility(msg, 0, &rel->facility);
+		gsm48_encode_facility(msg, 0, &rel->facility);
 	/* user-user */
 	if (rel->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 0, &rel->useruser);
+		gsm48_encode_useruser(msg, 0, &rel->useruser);
 
 	trans_free(trans);
 
@@ -2754,17 +2120,17 @@ static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&fac, 0, sizeof(struct gsm_mncc));
 	fac.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_FACILITY, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_FACILITY, 0);
 	/* facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_FACILITY)) {
 		fac.fields |= MNCC_F_FACILITY;
-		decode_facility(&fac.facility,
+		gsm48_decode_facility(&fac.facility,
 				TLVP_VAL(&tp, GSM48_IE_FACILITY)-1);
 	}
 	/* ss-version */
 	if (TLVP_PRESENT(&tp, GSM48_IE_SS_VERS)) {
 		fac.fields |= MNCC_F_SSVERSION;
-		decode_ssversion(&fac.ssversion,
+		gsm48_decode_ssversion(&fac.ssversion,
 				 TLVP_VAL(&tp, GSM48_IE_SS_VERS)-1);
 	}
 
@@ -2780,7 +2146,7 @@ static int gsm48_cc_tx_facility(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_FACILITY;
 
 	/* facility */
-	encode_facility(msg, 1, &fac->facility);
+	gsm48_encode_facility(msg, 1, &fac->facility);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2814,9 +2180,9 @@ static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (hold_rej->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 1, &hold_rej->cause);
+		gsm48_encode_cause(msg, 1, &hold_rej->cause);
 	else
-		encode_cause(msg, 1, &default_cause);
+		gsm48_encode_cause(msg, 1, &default_cause);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2851,9 +2217,9 @@ static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (retrieve_rej->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 1, &retrieve_rej->cause);
+		gsm48_encode_cause(msg, 1, &retrieve_rej->cause);
 	else
-		encode_cause(msg, 1, &default_cause);
+		gsm48_encode_cause(msg, 1, &default_cause);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2867,11 +2233,11 @@ static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&dtmf, 0, sizeof(struct gsm_mncc));
 	dtmf.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, 0, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* keypad facility */
 	if (TLVP_PRESENT(&tp, GSM48_IE_KPD_FACILITY)) {
 		dtmf.fields |= MNCC_F_KEYPAD;
-		decode_keypad(&dtmf.keypad,
+		gsm48_decode_keypad(&dtmf.keypad,
 			      TLVP_VAL(&tp, GSM48_IE_KPD_FACILITY)-1);
 	}
 
@@ -2888,7 +2254,7 @@ static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
 
 	/* keypad */
 	if (dtmf->fields & MNCC_F_KEYPAD)
-		encode_keypad(msg, dtmf->keypad);
+		gsm48_encode_keypad(msg, dtmf->keypad);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2903,9 +2269,9 @@ static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 
 	/* cause */
 	if (dtmf->fields & MNCC_F_CAUSE)
-		encode_cause(msg, 1, &dtmf->cause);
+		gsm48_encode_cause(msg, 1, &dtmf->cause);
 	else
-		encode_cause(msg, 1, &default_cause);
+		gsm48_encode_cause(msg, 1, &default_cause);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -2939,11 +2305,11 @@ static int gsm48_cc_rx_modify(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= MNCC_F_BEARER_CAP;
-		decode_bearer_cap(&modify.bearer_cap,
+		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 	}
 
@@ -2963,7 +2329,7 @@ static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
 	gsm48_start_cc_timer(trans, 0x323, GSM48_T323);
 
 	/* bearer capability */
-	encode_bearer_cap(msg, 1, &modify->bearer_cap);
+	gsm48_encode_bearer_cap(msg, 1, &modify->bearer_cap);
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_MODIFY);
 
@@ -2981,11 +2347,11 @@ static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, 0);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= MNCC_F_BEARER_CAP;
-		decode_bearer_cap(&modify.bearer_cap,
+		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 	}
 
@@ -3003,7 +2369,7 @@ static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_MODIFY_COMPL;
 
 	/* bearer capability */
-	encode_bearer_cap(msg, 1, &modify->bearer_cap);
+	gsm48_encode_bearer_cap(msg, 1, &modify->bearer_cap);
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
@@ -3021,17 +2387,17 @@ static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&modify, 0, sizeof(struct gsm_mncc));
 	modify.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, GSM48_IE_CAUSE);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_BEARER_CAP, GSM48_IE_CAUSE);
 	/* bearer capability */
 	if (TLVP_PRESENT(&tp, GSM48_IE_BEARER_CAP)) {
 		modify.fields |= GSM48_IE_BEARER_CAP;
-		decode_bearer_cap(&modify.bearer_cap,
+		gsm48_decode_bearer_cap(&modify.bearer_cap,
 				  TLVP_VAL(&tp, GSM48_IE_BEARER_CAP)-1);
 	}
 	/* cause */
 	if (TLVP_PRESENT(&tp, GSM48_IE_CAUSE)) {
 		modify.fields |= MNCC_F_CAUSE;
-		decode_cause(&modify.cause,
+		gsm48_decode_cause(&modify.cause,
 			     TLVP_VAL(&tp, GSM48_IE_CAUSE)-1);
 	}
 
@@ -3049,9 +2415,9 @@ static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_MODIFY_REJECT;
 
 	/* bearer capability */
-	encode_bearer_cap(msg, 1, &modify->bearer_cap);
+	gsm48_encode_bearer_cap(msg, 1, &modify->bearer_cap);
 	/* cause */
-	encode_cause(msg, 1, &modify->cause);
+	gsm48_encode_cause(msg, 1, &modify->cause);
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
@@ -3067,7 +2433,7 @@ static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
 	gh->msg_type = GSM48_MT_CC_NOTIFY;
 
 	/* notify */
-	encode_notify(msg, notify->notify);
+	gsm48_encode_notify(msg, notify->notify);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -3081,9 +2447,9 @@ static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&notify, 0, sizeof(struct gsm_mncc));
 	notify.callref = trans->callref;
-//	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len);
+//	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len);
 	if (payload_len >= 1)
-		decode_notify(&notify.notify, gh->data);
+		gsm48_decode_notify(&notify.notify, gh->data);
 
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_NOTIFY_IND, &notify);
 }
@@ -3098,10 +2464,10 @@ static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
 
 	/* user-user */
 	if (user->fields & MNCC_F_USERUSER)
-		encode_useruser(msg, 1, &user->useruser);
+		gsm48_encode_useruser(msg, 1, &user->useruser);
 	/* more data */
 	if (user->more)
-		encode_more(msg);
+		gsm48_encode_more(msg);
 
 	return gsm48_sendmsg(msg, trans);
 }
@@ -3115,11 +2481,11 @@ static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&user, 0, sizeof(struct gsm_mncc));
 	user.callref = trans->callref;
-	tlv_parse(&tp, &rsl_att_tlvdef, gh->data, payload_len, GSM48_IE_USER_USER, 0);
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, GSM48_IE_USER_USER, 0);
 	/* user-user */
 	if (TLVP_PRESENT(&tp, GSM48_IE_USER_USER)) {
 		user.fields |= MNCC_F_USERUSER;
-		decode_useruser(&user.useruser,
+		gsm48_decode_useruser(&user.useruser,
 				TLVP_VAL(&tp, GSM48_IE_USER_USER)-1);
 	}
 	/* more data */
@@ -3133,7 +2499,7 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
 
-	return gsm48_lchan_modify(trans->lchan, mode->lchan_mode);
+	return gsm48_lchan_modify(trans->conn->lchan, mode->lchan_mode);
 }
 
 static struct downstate {
@@ -3219,18 +2585,18 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		trans = trans_find_by_callref(net, data->callref);
 		if (!trans)
 			return -EIO;
-		if (!trans->lchan)
+		if (!trans->conn)
 			return 0;
-		if (trans->lchan->type != GSM_LCHAN_TCH_F)
+		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F)
 			return 0;
-		bts = trans->lchan->ts->trx->bts;
+		bts = trans->conn->lchan->ts->trx->bts;
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
-			if (!trans->lchan->abis_ip.rtp_socket)
+			if (!trans->conn->lchan->abis_ip.rtp_socket)
 				return 0;
-			return rtp_send_frame(trans->lchan->abis_ip.rtp_socket, arg);
+			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
-			return trau_send_frame(trans->lchan, arg);
+			return trau_send_frame(trans->conn->lchan, arg);
 		default:
 			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
 		}
@@ -3308,6 +2674,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		}
 		/* Find lchan */
 		lchan = lchan_for_subscr(subscr);
+
 		/* If subscriber has no lchan */
 		if (!lchan) {
 			/* find transaction with this subscriber already paging */
@@ -3335,16 +2702,18 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return 0;
 		}
 		/* Assign lchan */
-		trans->lchan = lchan;
-		use_lchan(lchan);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 		subscr_put(subscr);
 	}
-	lchan = trans->lchan;
+
+	if (trans->conn)
+		lchan = trans->conn->lchan;
 
 	/* if paging did not respond yet */
 	if (!lchan) {
 		DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
-			"Received '%s' from MNCC in paging state\n", 
+			"Received '%s' from MNCC in paging state\n",
 			(trans->subscr)?(trans->subscr->extension):"-",
 			get_mncc_name(msg_type));
 		mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
@@ -3362,9 +2731,9 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		"Received '%s' from MNCC in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
 		trans->transaction_id,
-		(lchan->subscr)?(lchan->subscr->extension):"-",
+		(trans->conn->subscr)?(trans->conn->subscr->extension):"-",
 		get_mncc_name(msg_type), trans->cc.state,
-		cc_state_names[trans->cc.state]);
+		gsm48_cc_state_name(trans->cc.state));
 
 	/* Find function for current state and message */
 	for (i = 0; i < DOWNSLLEN; i++)
@@ -3399,7 +2768,7 @@ static struct datastate {
 	 GSM48_MT_CC_CALL_CONF, gsm48_cc_rx_call_conf},
 	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF), /* ???? | 5.2.2.3.2 */
 	 GSM48_MT_CC_ALERTING, gsm48_cc_rx_alerting},
-	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF) | SBIT(GSM_CSTATE_CALL_RECEIVED), /* (5.2.2.6) | 5.2.2.6 | 5.2.2.6 */  
+	{SBIT(GSM_CSTATE_CALL_PRESENT) | SBIT(GSM_CSTATE_MO_TERM_CALL_CONF) | SBIT(GSM_CSTATE_CALL_RECEIVED), /* (5.2.2.6) | 5.2.2.6 | 5.2.2.6 */
 	 GSM48_MT_CC_CONNECT, gsm48_cc_rx_connect},
 	 /* signalling during call */
 	{ALL_STATES - SBIT(GSM_CSTATE_NULL),
@@ -3438,6 +2807,7 @@ static struct datastate {
 
 static int gsm0408_rcv_cc(struct msgb *msg)
 {
+	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
 	u_int8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
@@ -3449,23 +2819,25 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		DEBUGP(DCC, "MSG 0x%2x not defined for PD error\n", msg_type);
 		return -EINVAL;
 	}
-	
+
+	conn = &lchan->conn;
+
 	/* Find transaction */
-	trans = trans_find_by_id(lchan->subscr, GSM48_PDISC_CC, transaction_id);
+	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_CC, transaction_id);
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		transaction_id, (lchan->subscr)?(lchan->subscr->extension):"-",
-		gsm0408_cc_msg_names[msg_type], trans?(trans->cc.state):0,
-		cc_state_names[trans?(trans->cc.state):0]);
+		transaction_id, (conn->subscr)?(conn->subscr->extension):"-",
+		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
+		gsm48_cc_state_name(trans?(trans->cc.state):0));
 
 	/* Create transaction */
 	if (!trans) {
 		DEBUGP(DCC, "Unknown transaction ID %x, "
 			"creating new trans.\n", transaction_id);
 		/* Create transaction */
-		trans = trans_alloc(lchan->subscr, GSM48_PDISC_CC,
+		trans = trans_alloc(conn->subscr, GSM48_PDISC_CC,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
@@ -3475,8 +2847,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 			return -ENOMEM;
 		}
 		/* Assign transaction */
-		trans->lchan = lchan;
-		use_lchan(lchan);
+		trans->conn = &lchan->conn;
+		use_subscr_con(trans->conn);
 	}
 
 	/* find function for current state and message */

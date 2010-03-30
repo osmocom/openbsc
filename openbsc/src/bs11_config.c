@@ -3,7 +3,7 @@
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
- * This software is based on ideas (but not code) of BS11Config 
+ * This software is based on ideas (but not code) of BS11Config
  * (C) 2009 by Dieter Spaar <spaar@mirider.augusta.de>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -54,9 +54,9 @@ static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 static char *command, *value;
 struct timer_list status_timer;
 
-static const u_int8_t obj_li_attr[] = { 
+static const u_int8_t obj_li_attr[] = {
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
-	NM_ATT_BS11_L1_PROT_TYPE, 0x00, 
+	NM_ATT_BS11_L1_PROT_TYPE, 0x00,
 	NM_ATT_BS11_LINE_CFG, 0x00,
 };
 static const u_int8_t obj_bbsig0_attr[] = {
@@ -71,7 +71,7 @@ static const char *trx1_password = "1111111111";
 
 static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
-static struct debug_target *stderr_target;
+static struct log_target *stderr_target;
 
 /* dummy function to keep gsm_data.c happy */
 struct counter *counter_alloc(const char *name)
@@ -778,7 +778,7 @@ static void handle_options(int argc, char **argv)
 			serial_port = optarg;
 			break;
 		case 'b':
-			debug_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(stderr_target, optarg);
 			break;
 		case 's':
 			fname_software = optarg;
@@ -834,10 +834,10 @@ int main(int argc, char **argv)
 	struct gsm_network *gsmnet;
 	int rc;
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 	handle_options(argc, argv);
 	bts_model_bs11_init();
 

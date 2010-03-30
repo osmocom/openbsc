@@ -40,6 +40,8 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/telnet_interface.h>
 
+#include "../../bscconfig.h"
+
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
 
@@ -51,6 +53,14 @@ void subscr_put() { abort(); }
 static struct bsc_fd bfd;
 static int first_request = 1;
 static struct mgcp_config *cfg;
+const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
+const char *openbsc_copyright =
+	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
+	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
+	"Dieter Spaar, Andreas Eversberg, Harald Welte\n\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.\n";
 
 static char *config_file = "mgcp.cfg";
 
@@ -64,6 +74,12 @@ static void print_help()
 	printf(" -c --config-file filename The config file to use.\n");
 }
 
+static void print_version()
+{
+	printf("%s\n\n", openbsc_version);
+	printf(openbsc_copyright);
+}
+
 static void handle_options(int argc, char** argv)
 {
 	while (1) {
@@ -71,10 +87,11 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"config-file", 1, 0, 'c'},
+			{"version", 0, 0, 'V'},
 			{0, 0, 0, 0},
 		};
 
-		c = getopt_long(argc, argv, "hc:", long_options, &option_index);
+		c = getopt_long(argc, argv, "hc:V", long_options, &option_index);
 
 		if (c == -1)
 			break;
@@ -86,6 +103,10 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'c':
 			config_file = talloc_strdup(tall_bsc_ctx, optarg);
+			break;
+		case 'V':
+			print_version();
+			exit(0);
 			break;
 		default:
 			/* ignore */
@@ -145,14 +166,14 @@ int main(int argc, char** argv)
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
-	struct debug_target *stderr_target;
+	struct log_target *stderr_target;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 
 	cfg = mgcp_config_alloc();
 	if (!cfg)
