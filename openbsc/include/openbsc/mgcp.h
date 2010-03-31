@@ -119,5 +119,13 @@ void mgcp_free_endp(struct mgcp_endpoint *endp);
 struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
 struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans, const char *data);
 
+/* adc helper */
+static inline int mgcp_timeslot_to_endpoint(int multiplex, int timeslot)
+{
+	if (timeslot == 0)
+		timeslot = 1;
+	return timeslot + (31 * multiplex);
+}
+
 
 #endif
