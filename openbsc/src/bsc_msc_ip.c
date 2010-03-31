@@ -43,6 +43,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_msc.h>
+#include <openbsc/bsc_nat.h>
 
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
@@ -61,6 +62,7 @@ static char *msc_address = "127.0.0.1";
 static struct bsc_msc_connection *msc_con;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
+static struct write_queue mgcp_agent;
 extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
@@ -541,6 +543,18 @@ static void print_usage()
 /*
  * SCCP handling
  */
+static int msc_queue_write(struct msgb *msg, int proto)
+{
+	ipaccess_prepend_header(msg, proto);
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
+		msgb_free(msg);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 {
 	int ret;
@@ -557,12 +571,128 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 
 static void msc_sccp_write_ipa(struct msgb *msg, void *data)
 {
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
-		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/SCCP\n");
-		msgb_free(msg);
+	msc_queue_write(msg, IPAC_PROTO_SCCP);
+}
+
+/*
+ * mgcp forwarding is below
+ */
+static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
+{
+	int ret;
+
+	LOGP(DMGCP, LOGL_DEBUG, "Sending msg to MGCP GW size: %u\n", msg->len);
+
+	ret = write(fd->fd, msg->data, msg->len);
+	if (ret != msg->len)
+		LOGP(DMGCP, LOGL_ERROR, "Failed to forward message to MGCP GW.\n");
+
+	return ret;
+}
+
+static int mgcp_do_read(struct bsc_fd *fd)
+{
+	struct msgb *mgcp;
+	int ret;
+
+	mgcp = msgb_alloc_headroom(4096, 128, "mgcp_from_gw");
+	if (!mgcp) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate MGCP message.\n");
+		return -1;
+	}
+
+	ret = read(fd->fd, mgcp->data, mgcp->len);
+	if (ret <= 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to read: %d\n", errno);
+		msgb_free(mgcp);
+	}
+
+	msgb_put(mgcp, ret);
+	msc_queue_write(mgcp, NAT_IPAC_PROTO_MGCP);
+	return 0;
+}
+
+static void mgcp_forward(struct msgb *msg)
+{
+	struct msgb *mgcp;
+
+	if (msgb_l2len(msg) > 4096) {
+		LOGP(DMGCP, LOGL_ERROR, "Can not forward too big message.\n");
+		return;
+	}
+
+	mgcp = msgb_alloc(4096, "mgcp_to_gw");
+	if (!mgcp) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to send message.\n");
+		return;
+	}
+
+	msgb_put(mgcp, msgb_l2len(msg));
+	memcpy(mgcp->data, msg->l2h, mgcp->len);
+	if (write_queue_enqueue(&mgcp_agent, mgcp) != 0) {
+		LOGP(DMGCP, LOGL_FATAL, "Could not queue message to MGCP GW.\n");
+		msgb_free(mgcp);
 	}
 }
+static int mgcp_create_port(void)
+{
+	int on;
+	int port;
+	struct sockaddr_in addr;
+
+	mgcp_agent.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (mgcp_agent.bfd.fd < 0) {
+		LOGP(DMGCP, LOGL_FATAL, "Failed to create UDP socket errno: %d\n", errno);
+		return -1;
+	}
+
+	on = 1;
+	setsockopt(mgcp_agent.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	/* try to bind the socket */
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+
+	for (port = 2727; port < 3000; ++port) {
+		addr.sin_port = htons(port);
+		if (bind(mgcp_agent.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) == 0)
+			break;
+		perror("foo");
+	}
+
+	if (port >= 3000) {
+		LOGP(DMGCP, LOGL_FATAL, "Failed to bind to any port.\n");
+		close(mgcp_agent.bfd.fd);
+		mgcp_agent.bfd.fd = -1;
+		return -1;
+	}
+
+	/* connect to the remote */
+	addr.sin_port = htons(2427);
+	if (connect(mgcp_agent.bfd.fd, (struct sockaddr *) & addr, sizeof(addr)) < 0) {
+		LOGP(DMGCP, LOGL_FATAL, "Failed to connect to local MGCP GW. %d\n", errno);
+		close(mgcp_agent.bfd.fd);
+		mgcp_agent.bfd.fd = -1;
+		return -1;
+	}
+
+	write_queue_init(&mgcp_agent, 10);
+	mgcp_agent.bfd.when = BSC_FD_READ;
+	mgcp_agent.read_cb = mgcp_do_read;
+	mgcp_agent.write_cb = mgcp_do_write;
+
+	if (bsc_register_fd(&mgcp_agent.bfd) != 0) {
+		LOGP(DMGCP, LOGL_FATAL, "Failed to register BFD\n");
+		close(mgcp_agent.bfd.fd);
+		mgcp_agent.bfd.fd = -1;
+		return -1;
+	}
+
+
+	return 0;
+}
+
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 {
@@ -723,8 +853,11 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(bfd->fd);
 		}
-	} else if (hh->proto == IPAC_PROTO_SCCP)
+	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
+	} else if (hh->proto == NAT_IPAC_PROTO_MGCP) {
+		mgcp_forward(msg);
+	}
 
 	msgb_free(msg);
 	return 0;
@@ -887,6 +1020,12 @@ int main(int argc, char **argv)
 
 	/* seed the PRNG */
 	srand(time(NULL));
+
+	/* attempt to register the local mgcp forward */
+	if (mgcp_create_port() != 0) {
+		fprintf(stderr, "Failed to bind local MGCP port\n");
+		exit(1);
+	}
 
 	/* initialize sccp */
 	sccp_system_init(msc_sccp_write_ipa, NULL);
