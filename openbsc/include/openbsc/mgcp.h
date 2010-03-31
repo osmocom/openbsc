@@ -84,6 +84,7 @@ struct mgcp_config {
 	char *local_ip;
 	char *source_addr;
 	char *bts_ip;
+	char *call_agent_addr;
 
 	/* default endpoint data */
 	struct in_addr bts_in;
