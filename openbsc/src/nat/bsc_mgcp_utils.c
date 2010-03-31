@@ -23,6 +23,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bssap.h>
 #include <openbsc/debug.h>
+#include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -63,4 +65,12 @@ void bsc_mgcp_clear(struct sccp_connections *con)
 {
 	con->msc_timeslot = -1;
 	con->bsc_timeslot = -1;
+}
+
+void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
+{
+	int i;
+
+	for (i = 1; i < nat->mgcp_cfg->number_endpoints; ++i)
+		mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
 }

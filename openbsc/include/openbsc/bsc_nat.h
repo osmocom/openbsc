@@ -179,5 +179,6 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
 int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_clear(struct sccp_connections *);
+void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 
 #endif
