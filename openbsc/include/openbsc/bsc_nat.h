@@ -35,7 +35,7 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
-#define NAT_IPAC_PROTO_MGCP
+#define NAT_IPAC_PROTO_MGCP	0xfc
 
 struct bsc_nat;
 
@@ -176,6 +176,7 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
 /**
  * MGCP/Audio handling
  */
+int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_clear(struct sccp_connections *);
 

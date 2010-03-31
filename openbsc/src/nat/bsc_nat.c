@@ -127,6 +127,15 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_write(bsc, id_req, sizeof(id_req));
 }
 
+static void send_mgcp_reset(struct bsc_connection *bsc)
+{
+	static const u_int8_t mgcp_reset[] = {
+	    "RSIP 1 13@mgw MGCP 1.0\r\n"
+	};
+
+	bsc_write_mgcp(bsc, mgcp_reset, sizeof mgcp_reset - 1);
+}
+
 /*
  * Below is the handling of messages coming
  * from the MSC and need to be forwarded to
@@ -164,6 +173,37 @@ static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
+}
+
+int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+{
+	struct msgb *msg;
+
+	if (length > 4096 - 128) {
+		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
+		return -1;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
+	if (!msg) {
+		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
+		return -1;
+	}
+
+	/* copy the data */
+	msg->l3h = msgb_put(msg, length);
+	memcpy(msg->l3h, data, length);
+
+	/* prepend the header */
+	ipaccess_prepend_header(msg, NAT_IPAC_PROTO_MGCP);
+
+	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	return 0;
 }
 
 static int forward_sccp_to_bts(struct msgb *msg)
@@ -558,6 +598,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
 	send_id_ack(bsc);
 	send_id_req(bsc);
+	send_mgcp_reset(bsc);
 
 	/*
 	 * start the hangup timer
