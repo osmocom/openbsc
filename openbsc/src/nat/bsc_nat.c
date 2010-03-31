@@ -755,6 +755,12 @@ int main(int argc, char** argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
+	/*
+	 * Setup the MGCP code..
+	 */
+	if (bsc_mgcp_init(nat) != 0)
+		return -4;
+
 	/* connect to the MSC */
 	msc_con = bsc_msc_create(msc_address, 5000);
 	if (!msc_con) {
