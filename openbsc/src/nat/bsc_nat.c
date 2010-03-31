@@ -448,10 +448,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
-			if (con) {
-				remove_sccp_src_ref(bsc, msg, parsed);
-				bsc_mgcp_clear(con);
-			}
+			remove_sccp_src_ref(bsc, msg, parsed);
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */
