@@ -63,6 +63,8 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, " forward audio ip %s%s", g_cfg->forward_ip, VTY_NEWLINE);
 	if (g_cfg->forward_port != 0)
 		vty_out(vty, " forward audio port %d%s", g_cfg->forward_port, VTY_NEWLINE);
+	if (g_cfg->call_agent_addr)
+		vty_out(vty, " call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -237,6 +239,17 @@ DEFUN(cfg_mgcp_forward_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_agent_addr,
+      cfg_mgcp_agent_addr_cmd,
+      "call agent ip IP",
+      "Set the address of the call agent.")
+{
+	if (g_cfg->call_agent_addr)
+		talloc_free(g_cfg->call_agent_addr);
+	g_cfg->call_agent_addr = talloc_strdup(g_cfg, argv[0]);
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element(VIEW_NODE, &show_mgcp_cmd);
@@ -256,6 +269,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_forward_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_forward_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	return 0;
 }
 

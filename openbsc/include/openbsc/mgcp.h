@@ -85,6 +85,7 @@ struct mgcp_config {
 	char *source_addr;
 	unsigned int number_endpoints;
 	char *bts_ip;
+	char *call_agent_addr;
 
 	struct in_addr bts_in;
 	char *audio_name;
