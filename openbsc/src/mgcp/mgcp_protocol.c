@@ -202,25 +202,25 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
         int code;
 	struct msgb *resp = NULL;
 
-	if (msg->len < 4) {
+	if (msgb_l2len(msg) < 4) {
 		LOGP(DMGCP, LOGL_ERROR, "mgs too short: %d\n", msg->len);
 		return NULL;
 	}
 
         /* attempt to treat it as a response */
-        if (sscanf((const char *)&msg->data[0], "%3d %*s", &code) == 1) {
+        if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
 		LOGP(DMGCP, LOGL_DEBUG, "Response: Code: %d\n", code);
 	} else {
 		int i, handled = 0;
 		msg->l3h = &msg->l2h[4];
 		for (i = 0; i < ARRAY_SIZE(mgcp_requests); ++i)
-			if (strncmp(mgcp_requests[i].name, (const char *) &msg->data[0], 4) == 0) {
+			if (strncmp(mgcp_requests[i].name, (const char *) &msg->l2h[0], 4) == 0) {
 				handled = 1;
 				resp = mgcp_requests[i].handle_request(cfg, msg);
 				break;
 			}
 		if (!handled) {
-			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->data[0]);
+			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->l2h[0]);
 		}
 	}
 
