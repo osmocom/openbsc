@@ -190,6 +190,7 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port)
 
 void bsc_msc_lost(struct bsc_msc_connection *con)
 {
+	write_queue_clear(&con->write_queue);
 	bsc_unregister_fd(&con->write_queue.bfd);
 	connection_loss(con);
 }
