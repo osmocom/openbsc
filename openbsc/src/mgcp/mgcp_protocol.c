@@ -98,6 +98,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg);
+static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg);
 
 static int generate_call_id(struct mgcp_config *cfg)
 {
@@ -129,6 +130,9 @@ static const struct mgcp_request mgcp_requests [] = {
 	MGCP_REQUEST("CRCX", handle_create_con, "CreateConnection")
 	MGCP_REQUEST("DLCX", handle_delete_con, "DeleteConnection")
 	MGCP_REQUEST("MDCX", handle_modify_con, "ModifiyConnection")
+
+	/* SPEC extension */
+	MGCP_REQUEST("RSIP", handle_rsip, "ReSetInProgress")
 };
 
 static struct msgb *mgcp_msgb_alloc(void)
@@ -653,6 +657,13 @@ error:
 
 error3:
 	return create_response(error_code, "DLCX", trans_id);
+}
+
+static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg)
+{
+	if (cfg->reset_cb)
+		cfg->reset_cb(cfg);
+	return NULL;
 }
 
 struct mgcp_config *mgcp_config_alloc(void)
