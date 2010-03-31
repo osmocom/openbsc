@@ -77,6 +77,7 @@ struct mgcp_config;
 
 typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state, int local_rtp);
 typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
+typedef int (*mgcp_reset)(struct mgcp_config *cfg);
 
 struct mgcp_config {
 	int source_port;
@@ -97,6 +98,7 @@ struct mgcp_config {
 
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
+	mgcp_reset reset_cb;
 	void *data;
 
 	struct mgcp_endpoint *endpoints;
