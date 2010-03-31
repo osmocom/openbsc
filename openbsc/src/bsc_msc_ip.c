@@ -637,7 +637,6 @@ static void mgcp_forward(struct msgb *msg)
 static int mgcp_create_port(void)
 {
 	int on;
-	int port;
 	struct sockaddr_in addr;
 
 	mgcp_agent.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -649,26 +648,10 @@ static int mgcp_create_port(void)
 	on = 1;
 	setsockopt(mgcp_agent.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
-	/* try to bind the socket */
+	/* connect to the remote by using autobind */
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-
-	for (port = 2727; port < 3000; ++port) {
-		addr.sin_port = htons(port);
-		if (bind(mgcp_agent.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) == 0)
-			break;
-		perror("foo");
-	}
-
-	if (port >= 3000) {
-		LOGP(DMGCP, LOGL_FATAL, "Failed to bind to any port.\n");
-		close(mgcp_agent.bfd.fd);
-		mgcp_agent.bfd.fd = -1;
-		return -1;
-	}
-
-	/* connect to the remote */
 	addr.sin_port = htons(2427);
 	if (connect(mgcp_agent.bfd.fd, (struct sockaddr *) & addr, sizeof(addr)) < 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Failed to connect to local MGCP GW. %d\n", errno);
