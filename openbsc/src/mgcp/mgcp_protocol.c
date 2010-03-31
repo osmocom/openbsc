@@ -119,12 +119,6 @@ static int generate_call_id(struct mgcp_config *cfg)
 	return cfg->last_call_id;
 }
 
-/* FIXIME/TODO: need to have a list of pending transactions and check that */
-static unsigned int generate_transaction_id()
-{
-	return abs(rand());
-}
-
 /*
  * array of function pointers for handling various
  * messages. In the future this might be binary sorted
