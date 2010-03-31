@@ -206,11 +206,11 @@ int main(int argc, char** argv)
 
 
 		if (bsc_register_fd(&bfd) != 0) {
-			DEBUGP(DMGCP, "Failed to register the fd\n");
+			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
 			return -1;
 		}
 
-		DEBUGP(DMGCP, "Configured for MGCP.\n");
+		LOGP(DMGCP, LOGL_NOTICE, "Configured for MGCP.\n");
 	}
 
 	/* initialisation */
