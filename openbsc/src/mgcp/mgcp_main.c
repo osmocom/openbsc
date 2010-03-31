@@ -38,6 +38,7 @@
 #include <openbsc/gsm_data.h>
 #include <osmocore/select.h>
 #include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
 #include <openbsc/telnet_interface.h>
 
 #include <vty/command.h>
@@ -54,6 +55,8 @@ void subscr_put() { abort(); }
 
 static struct bsc_fd bfd;
 static struct mgcp_config *cfg;
+static int reset_endpoints = 0;
+
 const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
@@ -116,12 +119,21 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+/* simply remember this */
+static int mgcp_rsip_cb(struct mgcp_config *cfg)
+{
+	reset_endpoints = 1;
+
+	return 0;
+}
+
 static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 {
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
 	struct msgb *msg;
 	struct msgb *resp;
+	int i;
 
 	msg = (struct msgb *) fd->data;
 
@@ -146,6 +158,16 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 		sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0, (struct sockaddr *) &addr, sizeof(addr));
 		msgb_free(resp);
 	}
+
+	if (reset_endpoints) {
+		LOGP(DMGCP, LOGL_NOTICE, "Asked to reset endpoints.\n");
+		reset_endpoints = 0;
+
+		/* is checking in_addr.s_addr == INADDR_LOOPBACK making it more secure? */
+		for (i = 1; i < cfg->number_endpoints; ++i)
+			mgcp_free_endp(&cfg->endpoints[i]);
+	}
+
 	return 0;
 }
 
@@ -175,6 +197,8 @@ int main(int argc, char** argv)
 	if (rc < 0)
 		return rc;
 
+	/* set some callbacks */
+	cfg->reset_cb = mgcp_rsip_cb;
 
         /* we need to bind a socket */
         if (rc == 0) {
