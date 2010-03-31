@@ -556,9 +556,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
 
 	/* the mgcp call agent starts counting at one. a bit of a weird mapping */
-	if (timeslot == 0)
-		timeslot = 1;
-	port = timeslot + (31 * multiplex);
+	port = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 	msc_data->rtp_port = rtp_calculate_port(port,
 						network->rtp_base_port);
 
