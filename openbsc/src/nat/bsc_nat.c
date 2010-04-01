@@ -175,37 +175,6 @@ static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned
 	}
 }
 
-int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
-{
-	struct msgb *msg;
-
-	if (length > 4096 - 128) {
-		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
-		return -1;
-	}
-
-	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
-	if (!msg) {
-		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
-		return -1;
-	}
-
-	/* copy the data */
-	msg->l3h = msgb_put(msg, length);
-	memcpy(msg->l3h, data, length);
-
-	/* prepend the header */
-	ipaccess_prepend_header(msg, NAT_IPAC_PROTO_MGCP);
-
-	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
-		msgb_free(msg);
-		return -1;
-	}
-
-	return 0;
-}
-
 static int forward_sccp_to_bts(struct msgb *msg)
 {
 	struct sccp_connections *con;

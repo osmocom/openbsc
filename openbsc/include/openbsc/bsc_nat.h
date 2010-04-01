@@ -127,6 +127,16 @@ struct bsc_config {
 };
 
 /**
+ * BSCs point of view of endpoints
+ */
+struct bsc_endpoint {
+	/* the pending transaction id */
+	char *transaction_id;
+	/* the bsc we are talking to */
+	struct bsc_connection *bsc;
+};
+
+/**
  * the structure of the "nat" network
  */
 struct bsc_nat {
@@ -143,6 +153,9 @@ struct bsc_nat {
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
 	struct write_queue mgcp_queue;
+	struct msgb *mgcp_msg;
+
+	struct bsc_endpoint *bsc_endpoints;
 };
 
 /* create and init the structures */
@@ -177,9 +190,11 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
 /**
  * MGCP/Audio handling
  */
+int bsc_write_mgcp_msg(struct bsc_connection *bsc, struct msgb *msg);
 int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_clear(struct sccp_connections *);
+void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_init(struct bsc_nat *nat);
 
