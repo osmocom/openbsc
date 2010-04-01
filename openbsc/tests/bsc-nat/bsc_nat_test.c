@@ -335,7 +335,7 @@ static void test_paging(void)
 	talloc_free(parsed);
 }
 
-static void test_mgcp(void)
+static void test_mgcp_ass_tracking(void)
 {
 	struct sccp_connections con;
 	struct bsc_nat_parsed *parsed;
@@ -370,6 +370,46 @@ static void test_mgcp(void)
 	}
 }
 
+/* test the code to find a given connection */
+static void test_mgcp_find(void)
+{
+	struct bsc_nat *nat;
+	struct bsc_connection *con;
+	struct sccp_connections *sccp_con;
+
+	fprintf(stderr, "Testing finding of a BSC Connection\n");
+
+	nat = bsc_nat_alloc();
+	con = bsc_connection_alloc(nat);
+	llist_add(&con->list_entry, &nat->bsc_connections);
+
+	sccp_con = talloc_zero(con, struct sccp_connections);
+	sccp_con->msc_timeslot = 12;
+	sccp_con->bsc_timeslot = 12;
+	sccp_con->bsc = con;
+	llist_add(&sccp_con->list_entry, &nat->sccp_connections);
+
+	if (bsc_mgcp_find_con(nat, 11) != NULL) {
+		fprintf(stderr, "Found the wrong connection.\n");
+		abort();
+	}
+
+	if (bsc_mgcp_find_con(nat, 12) != con) {
+		fprintf(stderr, "Didn't find the connection\n");
+		abort();
+	}
+
+	sccp_con->msc_timeslot = 0;
+	sccp_con->bsc_timeslot = 0;
+	if (bsc_mgcp_find_con(nat, 1) != con) {
+		fprintf(stderr, "Didn't find the connection\n");
+		abort();
+	}
+
+	/* free everything */
+	talloc_free(nat);
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -381,7 +421,8 @@ int main(int argc, char **argv)
 	test_filter();
 	test_contrack();
 	test_paging();
-	test_mgcp();
+	test_mgcp_ass_tracking();
+	test_mgcp_find();
 	return 0;
 }
 
