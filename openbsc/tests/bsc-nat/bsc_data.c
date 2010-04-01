@@ -87,3 +87,58 @@ static const u_int8_t ass_cmd[] = {
 0x00, 0x00, 0x49, 0x00, 0x01, 0x0b, 0x00, 0x09,
 0x01, 0x0b, 0x03, 0x01, 0x0a, 0x11, 0x01, 0x00,
 0x15 };
+
+/*
+ * MGCP messages
+ */
+
+/* nothing to patch */
+static const char crcx[] = "CRCX 23265295 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n";
+static const char crcx_patched[] = "CRCX 23265295 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n";
+
+
+/* patch the ip and port */
+static const char crcx_resp[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 172.16.18.2\r\nm=audio 4002 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
+static const char crcx_resp_patched[] = "200 23265295\r\nI: 1\r\n\r\nv=0\r\nc=IN IP4 10.0.0.1\r\nm=audio 999 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
+
+/* patch the ip and port */
+static const char mdcx[] = " MDCX 23330829 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nI: 1\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n\r\nv=0\r\no=- 1049380491 0 IN IP4 172.16.18.2\r\ns=-\r\nc=IN IP4 172.16.18.2\r\nt=0 0\r\nm=audio 4410 RTP/AVP 126\r\na=rtpmap:126 AMR/8000/1\r\na=fmtp:126 mode-set=2;start-mode=0\r\na=ptime:20\r\na=recvonly\r\nm=image 4412 udptl t38\r\na=T38FaxVersion:0\r\na=T38MaxBitRate:14400\r\n";
+static const char mdcx_patched[] = " MDCX 23330829 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nI: 1\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n\r\nv=0\r\no=- 1049380491 0 IN IP4 172.16.18.2\r\ns=-\r\nc=IN IP4 10.0.0.23\r\nt=0 0\r\nm=audio 6666 RTP/AVP 126\r\na=rtpmap:126 AMR/8000/1\r\na=fmtp:126 mode-set=2;start-mode=0\r\na=ptime:20\r\na=recvonly\r\nm=image 4412 udptl t38\r\na=T38FaxVersion:0\r\na=T38MaxBitRate:14400\r\n";
+
+
+static const char mdcx_resp[] = "200 23330829\r\n\r\nv=0\r\nc=IN IP4 172.16.18.2\r\nm=audio 4002 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
+static const char mdcx_resp_patched[] = "200 23330829\r\n\r\nv=0\r\nc=IN IP4 10.0.0.23\r\nm=audio 5555 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
+
+struct mgcp_patch_test {
+	const char *orig;
+	const char *patch;
+	const char *ip;
+	const int port;
+};
+
+static const struct mgcp_patch_test mgcp_messages[] = {
+	{
+		.orig = crcx,
+		.patch = crcx_patched,
+		.ip = "0.0.0.0",
+		.port = 2323,
+	},
+	{
+		.orig = crcx_resp,
+		.patch = crcx_resp_patched,
+		.ip = "10.0.0.1",
+		.port = 999,
+	},
+	{
+		.orig = mdcx,
+		.patch = mdcx_patched,
+		.ip = "10.0.0.23",
+		.port = 6666,
+	},
+	{
+		.orig = mdcx_resp,
+		.patch = mdcx_resp_patched,
+		.ip = "10.0.0.23",
+		.port = 5555,
+	},
+};
