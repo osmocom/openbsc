@@ -26,6 +26,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/bssap.h>
 #include <openbsc/debug.h>
+#include <openbsc/ipaccess.h>
 
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
@@ -122,4 +123,40 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
 	}
 
 	return NULL;
+}
+
+int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+{
+	struct msgb *msg;
+
+	if (length > 4096 - 128) {
+		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
+		return -1;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
+	if (!msg) {
+		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
+		return -1;
+	}
+
+	/* copy the data */
+	msg->l3h = msgb_put(msg, length);
+	memcpy(msg->l3h, data, length);
+
+        return bsc_write_mgcp_msg(bsc, msg);
+}
+
+int bsc_write_mgcp_msg(struct bsc_connection *bsc, struct msgb *msg)
+{
+	/* prepend the header */
+	ipaccess_prepend_header(msg, NAT_IPAC_PROTO_MGCP);
+
+	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	return 0;
 }

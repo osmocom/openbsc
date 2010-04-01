@@ -26,6 +26,8 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
+#include <osmocore/talloc.h>
+
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -70,12 +72,23 @@ void bsc_mgcp_clear(struct sccp_connections *con)
 	con->bsc_timeslot = -1;
 }
 
+void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
+{
+	if (nat->bsc_endpoints[i].transaction_id) {
+		talloc_free(nat->bsc_endpoints[i].transaction_id);
+		nat->bsc_endpoints[i].transaction_id = NULL;
+	}
+
+	nat->bsc_endpoints[i].bsc = NULL;
+	mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
+}
+
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 {
 	int i;
 
 	for (i = 1; i < nat->mgcp_cfg->number_endpoints; ++i)
-		mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
+		bsc_mgcp_free_endpoint(nat, i);
 }
 
 struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
@@ -93,6 +106,71 @@ struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 
 	LOGP(DMGCP, LOGL_ERROR, "Failed to find the connection.\n");
 	return NULL;
+}
+
+int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const char *transaction_id)
+{
+	struct bsc_nat *nat;
+	struct bsc_endpoint *bsc_endp;
+	struct bsc_connection *bsc_con;
+	struct mgcp_endpoint *mgcp_endp;
+	struct msgb *bsc_msg;
+
+	nat = cfg->data;
+	bsc_endp = &nat->bsc_endpoints[endpoint];
+	mgcp_endp = &nat->mgcp_cfg->endpoints[endpoint];
+
+	bsc_con = bsc_mgcp_find_con(nat, endpoint);
+
+	if (!bsc_con) {
+		LOGP(DMGCP, LOGL_ERROR, "Did not find BSC for a new connection on 0x%x for %d\n", endpoint, state);
+
+		switch (state) {
+		case MGCP_ENDP_CRCX:
+			return MGCP_POLICY_REJECT;
+			break;
+		case MGCP_ENDP_DLCX:
+			return MGCP_POLICY_CONT;
+			break;
+		case MGCP_ENDP_MDCX:
+			return MGCP_POLICY_CONT;
+			break;
+		default:
+			LOGP(DMGCP, LOGL_FATAL, "Unhandled state: %d\n", state);
+			return MGCP_POLICY_CONT;
+			break;
+		}
+	}
+
+	if (bsc_endp->transaction_id) {
+		LOGP(DMGCP, LOGL_ERROR, "One transaction with id '%s' on 0x%x\n",
+		     bsc_endp->transaction_id, endpoint);
+		talloc_free(bsc_endp->transaction_id);
+	}
+
+	bsc_endp->transaction_id = talloc_strdup(bsc_endp, transaction_id);
+	bsc_endp->bsc = bsc_con;
+
+	/* we need to update some bits */
+	if (state == MGCP_ENDP_CRCX) {
+		struct sockaddr_in sock;
+		socklen_t len = sizeof(sock);
+		if (getpeername(nat->mgcp_queue.bfd.fd, (struct sockaddr *) &sock, &len) != 0) {
+			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...\n");
+		} else {
+			mgcp_endp->bts = sock.sin_addr;
+		}
+	}
+
+	/* we need to generate a new and patched message */
+	bsc_msg = bsc_mgcp_rewrite(nat->mgcp_msg, nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
+	if (!bsc_msg) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
+		return MGCP_POLICY_CONT;
+	}
+
+	bsc_write_mgcp_msg(bsc_con, bsc_msg);
+	return MGCP_POLICY_DEFER;
 }
 
 /* we need to replace some strings... */
@@ -177,9 +255,11 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	}
 
 	nat = fd->data;
+	nat->mgcp_msg = msg;
 	msg->l2h = msgb_put(msg, rc);
 	resp = mgcp_handle_message(nat->mgcp_cfg, msg);
 	msgb_free(msg);
+	nat->mgcp_msg = NULL;
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp) {
@@ -213,6 +293,11 @@ int bsc_mgcp_init(struct bsc_nat *nat)
 
 	if (!nat->mgcp_cfg->call_agent_addr) {
 		LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
+		return -1;
+	}
+
+	if (nat->mgcp_cfg->bts_ip) {
+		LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
 		return -1;
 	}
 
@@ -258,6 +343,13 @@ int bsc_mgcp_init(struct bsc_nat *nat)
 		nat->mgcp_queue.bfd.fd = -1;
 		return -1;
 	}
+
+	/* some more MGCP config handling */
+	nat->mgcp_cfg->data = nat;
+	nat->mgcp_cfg->policy_cb = bsc_mgcp_policy_cb;
+	nat->bsc_endpoints = talloc_zero_array(nat,
+					       struct bsc_endpoint,
+					       nat->mgcp_cfg->number_endpoints + 1);
 
 	return 0;
 }
