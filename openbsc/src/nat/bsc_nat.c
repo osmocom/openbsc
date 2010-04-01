@@ -430,6 +430,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			goto exit2;
 			break;
 		}
+        } else if (parsed->ipa_proto == NAT_IPAC_PROTO_MGCP) {
+                bsc_mgcp_forward(bsc, msg);
+                goto exit2;
 	} else {
 		LOGP(DNAT, LOGL_ERROR, "Not forwarding unknown stream id: 0x%x\n", parsed->ipa_proto);
 		goto exit2;
