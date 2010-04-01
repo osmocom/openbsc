@@ -80,11 +80,6 @@ enum mgcp_connection_mode {
 	}
 
 
-struct mgcp_msg_ptr {
-	unsigned int start;
-	unsigned int length;
-};
-
 struct mgcp_request {
 	char *name;
 	struct msgb *(*handle_request) (struct mgcp_config *cfg, struct msgb *msg);
@@ -277,9 +272,9 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 	return &cfg->endpoints[gw];
 }
 
-static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
-			  struct mgcp_msg_ptr *ptr, int size,
-			  const char **transaction_id, struct mgcp_endpoint **endp)
+int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
+			struct mgcp_msg_ptr *ptr, int size,
+			const char **transaction_id, struct mgcp_endpoint **endp)
 {
 	int found;
 
@@ -315,8 +310,11 @@ static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 	}
 
 	*transaction_id = (const char *)&msg->l3h[ptr[0].start];
-	*endp = find_endpoint(cfg, (const char *)&msg->l3h[ptr[1].start]);
-	return *endp == NULL;
+	if (endp) {
+		*endp = find_endpoint(cfg, (const char *)&msg->l3h[ptr[1].start]);
+		return *endp == NULL;
+	}
+	return 0;
 }
 
 static int verify_call_id(const struct mgcp_endpoint *endp,
@@ -350,7 +348,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 	    response = 500;
 	else
@@ -383,7 +381,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	int error_code = 500;
 	int port;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(500, "CRCX", trans_id);
 
@@ -482,7 +480,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(error_code, "MDCX", trans_id);
 
@@ -595,7 +593,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(error_code, "DLCX", trans_id);
 
