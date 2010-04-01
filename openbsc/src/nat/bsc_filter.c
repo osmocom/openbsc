@@ -67,6 +67,9 @@ static struct bsc_pkt_filter black_list[] = {
 static struct bsc_pkt_filter white_list[] = {
 	/* allow IPAC_PROTO_SCCP messages to both sides */
 	{ IPAC_PROTO_SCCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_BOTH },
+
+	/* allow MGCP messages to both sides */
+	{ NAT_IPAC_PROTO_MGCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_BOTH },
 };
 
 struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
