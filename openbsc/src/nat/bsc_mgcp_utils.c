@@ -173,6 +173,85 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	return MGCP_POLICY_DEFER;
 }
 
+/*
+ * We have received a msg from the BSC. We will see if we know
+ * this transaction and if it belongs to the BSC. Then we will
+ * need to patch the content to point to the local network and we
+ * need to update the I: that was assigned by the BSS.
+ */
+void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
+{
+	struct msgb *output;
+	struct bsc_endpoint *bsc_endp = NULL;
+	struct mgcp_endpoint *endp = NULL;
+	int i, code;
+	char transaction_id[60];
+
+	/* Some assumption that our buffer is big enough.. and null terminate */
+	if (msgb_l2len(msg) > 2000) {
+		LOGP(DMGCP, LOGL_ERROR, "MGCP message too long.\n");
+		return;
+	}
+
+	msg->l2h[msgb_l2len(msg)] = '\0';
+
+	if (bsc_mgcp_parse_response((const char *) msg->l2h, &code, transaction_id) != 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to parse response code.\n");
+		return;
+	}
+
+	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
+		if (bsc->nat->bsc_endpoints[i].bsc != bsc)
+			continue;
+		if (strcmp(transaction_id, bsc->nat->bsc_endpoints[i].transaction_id) != 0)
+			continue;
+
+		endp = &bsc->nat->mgcp_cfg->endpoints[i];
+		bsc_endp = &bsc->nat->bsc_endpoints[i];
+		break;
+	}
+
+	if (!bsc_endp) {
+		LOGP(DMGCP, LOGL_ERROR, "Could not find active endpoint: %s\n", transaction_id);
+		return;
+	}
+
+	/* free some stuff */
+	talloc_free(bsc_endp->transaction_id);
+	bsc_endp->transaction_id = NULL;
+
+	/* make it point to our endpoint */
+	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
+	output = bsc_mgcp_rewrite(msg, bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
+	if (!output) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
+		return;
+	}
+
+	if (write_queue_enqueue(&bsc->nat->mgcp_queue, output) != 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
+		msgb_free(output);
+	}
+}
+
+int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
+{
+	/* we want to parse two strings */
+	return sscanf(str, "%3d %59s\n", code, transaction) != 2;
+}
+
+int bsc_mgcp_extract_ci(const char *str)
+{
+	int ci;
+	char *res = strstr(str, "I: ");
+	if (!res)
+		return CI_UNUSED;
+
+	if (sscanf(res, "I: %d\r\n", &ci) != 1)
+		return CI_UNUSED;
+	return ci;
+}
+
 /* we need to replace some strings... */
 struct msgb *bsc_mgcp_rewrite(struct msgb *input, const char *ip, int port)
 {

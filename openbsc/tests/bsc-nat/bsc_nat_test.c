@@ -456,6 +456,35 @@ static void test_mgcp_rewrite(void)
 	msgb_free(input);
 }
 
+static void test_mgcp_parse(void)
+{
+	int code, ci;
+	char transaction[60];
+
+	fprintf(stderr, "Test MGCP response parsing.\n");
+
+	if (bsc_mgcp_parse_response(crcx_resp, &code, transaction) != 0) {
+		fprintf(stderr, "Failed to parse CRCX resp.\n");
+		abort();
+	}
+
+	if (code != 200) {
+		fprintf(stderr, "Failed to parse the CODE properly. Got: %d\n", code);
+		abort();
+	}
+
+	if (strcmp(transaction, "23265295") != 0) {
+		fprintf(stderr, "Failed to parse transaction id: '%s'\n", transaction);
+		abort();
+	}
+
+	ci = bsc_mgcp_extract_ci(crcx_resp);
+	if (ci != 1) {
+		fprintf(stderr, "Failed to parse the CI. Got: %d\n", ci);
+		abort();
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -470,6 +499,7 @@ int main(int argc, char **argv)
 	test_mgcp_ass_tracking();
 	test_mgcp_find();
 	test_mgcp_rewrite();
+	test_mgcp_parse();
 	return 0;
 }
 

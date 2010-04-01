@@ -200,5 +200,9 @@ int bsc_mgcp_init(struct bsc_nat *nat);
 
 struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(struct msgb *msg, const char *ip, int port);
+void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
+
+int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60]);
+int bsc_mgcp_extract_ci(const char *resp);
 
 #endif
