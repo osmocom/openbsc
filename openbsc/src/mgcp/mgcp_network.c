@@ -144,7 +144,9 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	/* We have no idea who called us, maybe it is the BTS. */
 	if (dest == DEST_NETWORK && (endp->bts_rtp == 0 || cfg->forward_ip)) {
 		/* it was the BTS... */
-		if (!cfg->bts_ip || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0) {
+		if (!cfg->bts_ip
+		    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
+		    || memcmp(&addr.sin_addr, &endp->bts, sizeof(endp->bts)) == 0) {
 			if (fd == &endp->local_rtp) {
 				endp->bts_rtp = addr.sin_port;
 			} else {
