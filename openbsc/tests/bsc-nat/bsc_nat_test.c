@@ -89,6 +89,12 @@ static const u_int8_t bssmap_release_complete[] = {
 	0x05, 0x01, 0x02, 0x03, 0x00, 0x00, 0x03
 };
 
+/* MGCP wrap... */
+static const u_int8_t mgcp_msg[] = {
+	0x00, 0x03, 0xfc,
+	0x20, 0x20, 0x20,
+};
+
 struct filter_result {
 	const u_int8_t *data;
 	const u_int16_t length;
@@ -143,6 +149,12 @@ static const struct filter_result results[] = {
 		.data = bssmap_release_complete,
 		.length = ARRAY_SIZE(bssmap_release_complete),
 		.dir = DIR_BSC,
+		.result = 0,
+	},
+	{
+		.data = mgcp_msg,
+		.length = ARRAY_SIZE(mgcp_msg),
+		.dir = DIR_MSC,
 		.result = 0,
 	},
 };
