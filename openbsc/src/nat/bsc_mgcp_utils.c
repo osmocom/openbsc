@@ -95,6 +95,67 @@ struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	return NULL;
 }
 
+/* we need to replace some strings... */
+struct msgb *bsc_mgcp_rewrite(struct msgb *input, const char *ip, int port)
+{
+	static const char *ip_str = "c=IN IP4 ";
+	static const char *aud_str = "m=audio ";
+
+	char buf[128];
+	char *running, *token;
+	struct msgb *output;
+
+	if (msgb_l2len(input) > 4096 - 128) {
+		LOGP(DMGCP, LOGL_ERROR, "Input is too long.\n");
+		return NULL;
+	}
+
+	output = msgb_alloc_headroom(4096, 128, "MGCP rewritten");
+	if (!output) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate new MGCP msg.\n");
+		return NULL;
+	}
+
+	running = (char *) input->l2h;
+	output->l2h = output->data;
+	for (token = strsep(&running, "\n"); token; token = strsep(&running, "\n")) {
+		int len = strlen(token);
+
+		/* ignore completely empty lines for now */
+		if (len == 0)
+			continue;
+
+		if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
+			output->l3h = msgb_put(output, strlen(ip_str));
+			memcpy(output->l3h, ip_str, strlen(ip_str));
+			output->l3h = msgb_put(output, strlen(ip));
+			memcpy(output->l3h, ip, strlen(ip));
+			output->l3h = msgb_put(output, 2);
+			output->l3h[0] = '\r';
+			output->l3h[1] = '\n';
+		} else if (strncmp(aud_str, token, (sizeof aud_str) - 1) == 0) {
+			int payload;
+			if (sscanf(token, "m=audio %*d RTP/AVP %d", &payload) != 1) {
+				LOGP(DMGCP, LOGL_ERROR, "Could not parsed audio line.\n");
+				msgb_free(output);
+				return NULL;
+			}
+
+			snprintf(buf, sizeof(buf)-1, "m=audio %d RTP/AVP %d\r\n", port, payload);
+			buf[sizeof(buf)-1] = '\0';
+
+			output->l3h = msgb_put(output, strlen(buf));
+			memcpy(output->l3h, buf, strlen(buf));
+		} else {
+			output->l3h = msgb_put(output, len + 1);
+			memcpy(output->l3h, token, len);
+			output->l3h[len] = '\n';
+		}
+	}
+
+	return output;
+}
+
 static int mgcp_do_read(struct bsc_fd *fd)
 {
 	struct bsc_nat *nat;

@@ -410,6 +410,40 @@ static void test_mgcp_find(void)
 	talloc_free(nat);
 }
 
+static void test_mgcp_rewrite(void)
+{
+	int i;
+	struct msgb *input, *output;
+	fprintf(stderr, "Test rewriting MGCP messages.\n");
+
+	input = msgb_alloc(4096, "input");
+
+	for (i = 0; i < ARRAY_SIZE(mgcp_messages); ++i) {
+		const char *orig = mgcp_messages[i].orig;
+		const char *patc = mgcp_messages[i].patch;
+		const char *ip = mgcp_messages[i].ip;
+		const int port = mgcp_messages[i].port;
+
+		copy_to_msg(input, (const u_int8_t *) orig, strlen(orig) + 1);
+
+		output = bsc_mgcp_rewrite(input, ip, port);
+		if (msgb_l2len(output) != strlen(patc)) {
+			fprintf(stderr, "Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
+			fprintf(stderr, "String '%s' vs '%s'\n", (const char *) output->l2h, patc);
+			abort();
+		}
+
+		if (memcmp(output->l2h, patc, msgb_l2len(output)) != 0) {
+			fprintf(stderr, "Broken on %d msg: '%s'\n", i, (const char *) output->l2h);
+			abort();
+		}
+
+		msgb_free(output);
+	}
+
+	msgb_free(input);
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -423,6 +457,7 @@ int main(int argc, char **argv)
 	test_paging();
 	test_mgcp_ass_tracking();
 	test_mgcp_find();
+	test_mgcp_rewrite();
 	return 0;
 }
 
