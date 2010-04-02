@@ -603,9 +603,14 @@ static int mgcp_do_read(struct bsc_fd *fd)
 
 	ret = read(fd->fd, mgcp->data, mgcp->len);
 	if (ret <= 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to read: %d\n", errno);
+		LOGP(DMGCP, LOGL_ERROR, "Failed to read: %d/%s\n", errno, strerror(errno));
 		msgb_free(mgcp);
-	}
+		return -1;
+	} else if (ret > 4096 - 128) {
+		LOGP(DMGCP, LOGL_ERROR, "Too much data: %d\n", ret);
+		msgb_free(mgcp);
+		return -1; 
+        }
 
 	msgb_put(mgcp, ret);
 	msc_queue_write(mgcp, NAT_IPAC_PROTO_MGCP);
