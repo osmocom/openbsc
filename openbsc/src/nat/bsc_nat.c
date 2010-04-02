@@ -385,12 +385,6 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
 
-	if (!bsc->authenticated) {
-		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
-		msgb_free(msg);
-		return -1;
-	}
-
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
@@ -401,6 +395,18 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 	if (bsc_nat_filter_ipa(DIR_MSC, msg, parsed))
 		goto exit;
+
+	/*
+	 * check authentication after filtering to not reject auth
+	 * responses coming from the BSC. We have to make sure that
+	 * nothing from the exit path will forward things to the MSC
+	 */
+	if (!bsc->authenticated) {
+		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
 
 	/* modify the SCCP entries */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
