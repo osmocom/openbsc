@@ -45,7 +45,7 @@ def generate_tid():
 i = 1
 while True:
     send_receive(rsip_resp)
-    send_receive(audit_packet)
+    send_receive(audit_packet % generate_tid())
     send_receive(crcx_packet % generate_tid() )
     send_receive(mdcx_packet % (generate_tid(), i))
     send_receive(dlcx_packet % (generate_tid(), i))
