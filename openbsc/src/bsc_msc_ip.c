@@ -658,15 +658,9 @@ static int mgcp_create_port(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	addr.sin_port = 0;
 
-	for (port = 2727; port < 3000; ++port) {
-		addr.sin_port = htons(port);
-		if (bind(mgcp_agent.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) == 0)
-			break;
-		perror("foo");
-	}
-
-	if (port >= 3000) {
+	if (bind(mgcp_agent.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Failed to bind to any port.\n");
 		close(mgcp_agent.bfd.fd);
 		mgcp_agent.bfd.fd = -1;
