@@ -109,6 +109,10 @@ static const char mdcx_patched[] = " MDCX 23330829 8@mgw MGCP 1.0\r\nC: 394b0439
 static const char mdcx_resp[] = "200 23330829\r\n\r\nv=0\r\nc=IN IP4 172.16.18.2\r\nm=audio 4002 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
 static const char mdcx_resp_patched[] = "200 23330829\r\n\r\nv=0\r\nc=IN IP4 10.0.0.23\r\nm=audio 5555 RTP/AVP 98\r\na=rtpmap:98 AMR/8000\r\n";
 
+/* different line ending */
+static const char mdcx_resp2[] = "200 33330829\n\nv=0\nc=IN IP4 172.16.18.2\nm=audio 4002 RTP/AVP 98\na=rtpmap:98 AMR/8000\n";
+static const char mdcx_resp_patched2[] = "200 33330829\n\nv=0\nc=IN IP4 10.0.0.23\nm=audio 5555 RTP/AVP 98\na=rtpmap:98 AMR/8000\n";
+
 struct mgcp_patch_test {
 	const char *orig;
 	const char *patch;
@@ -138,6 +142,12 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 	{
 		.orig = mdcx_resp,
 		.patch = mdcx_resp_patched,
+		.ip = "10.0.0.23",
+		.port = 5555,
+	},
+	{
+		.orig = mdcx_resp2,
+		.patch = mdcx_resp_patched2,
 		.ip = "10.0.0.23",
 		.port = 5555,
 	},

@@ -277,21 +277,24 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port)
 
 	running = input;
 	output->l2h = output->data;
-	for (token = strsep(&running, "\n"); token; token = strsep(&running, "\n")) {
+	for (token = strsep(&running, "\n"); running; token = strsep(&running, "\n")) {
 		int len = strlen(token);
-
-		/* ignore completely empty lines for now */
-		if (len == 0)
-			continue;
+		int cr = len > 0 && token[len - 1] == '\r';
 
 		if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
 			output->l3h = msgb_put(output, strlen(ip_str));
 			memcpy(output->l3h, ip_str, strlen(ip_str));
 			output->l3h = msgb_put(output, strlen(ip));
 			memcpy(output->l3h, ip, strlen(ip));
-			output->l3h = msgb_put(output, 2);
-			output->l3h[0] = '\r';
-			output->l3h[1] = '\n';
+
+			if (cr) {
+				output->l3h = msgb_put(output, 2);
+				output->l3h[0] = '\r';
+				output->l3h[1] = '\n';
+			} else {
+				output->l3h = msgb_put(output, 1);
+				output->l3h[0] = '\n';
+			}
 		} else if (strncmp(aud_str, token, (sizeof aud_str) - 1) == 0) {
 			int payload;
 			if (sscanf(token, "m=audio %*d RTP/AVP %d", &payload) != 1) {
@@ -300,7 +303,8 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port)
 				return NULL;
 			}
 
-			snprintf(buf, sizeof(buf)-1, "m=audio %d RTP/AVP %d\r\n", port, payload);
+			snprintf(buf, sizeof(buf)-1, "m=audio %d RTP/AVP %d%s",
+				 port, payload, cr ? "\r\n" : "\n");
 			buf[sizeof(buf)-1] = '\0';
 
 			output->l3h = msgb_put(output, strlen(buf));
