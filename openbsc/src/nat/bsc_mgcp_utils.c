@@ -163,7 +163,8 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	}
 
 	/* we need to generate a new and patched message */
-	bsc_msg = bsc_mgcp_rewrite(nat->mgcp_msg, nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
+	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
+				   nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -222,7 +223,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	/* make it point to our endpoint */
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
-	output = bsc_mgcp_rewrite(msg, bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
+	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
+				  bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
 		return;
@@ -253,7 +255,7 @@ int bsc_mgcp_extract_ci(const char *str)
 }
 
 /* we need to replace some strings... */
-struct msgb *bsc_mgcp_rewrite(struct msgb *input, const char *ip, int port)
+struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port)
 {
 	static const char *ip_str = "c=IN IP4 ";
 	static const char *aud_str = "m=audio ";
@@ -262,7 +264,7 @@ struct msgb *bsc_mgcp_rewrite(struct msgb *input, const char *ip, int port)
 	char *running, *token;
 	struct msgb *output;
 
-	if (msgb_l2len(input) > 4096 - 128) {
+	if (length > 4096 - 128) {
 		LOGP(DMGCP, LOGL_ERROR, "Input is too long.\n");
 		return NULL;
 	}
@@ -273,7 +275,7 @@ struct msgb *bsc_mgcp_rewrite(struct msgb *input, const char *ip, int port)
 		return NULL;
 	}
 
-	running = (char *) input->l2h;
+	running = input;
 	output->l2h = output->data;
 	for (token = strsep(&running, "\n"); token; token = strsep(&running, "\n")) {
 		int len = strlen(token);
@@ -319,26 +321,27 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	struct msgb *msg, *resp;
 	int rc;
 
-	msg = msgb_alloc(4096, "MGCP GW Read");
+	nat = fd->data;
+
+	rc = read(fd->fd, nat->mgcp_msg, sizeof(nat->mgcp_msg) - 1);
+	if (rc <= 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to read errno: %d\n", errno);
+		return -1;
+	}
+
+	nat->mgcp_msg[rc] = '\0';
+	nat->mgcp_length = rc;
+
+	msg = msgb_alloc(sizeof(nat->mgcp_msg), "MGCP GW Read");
 	if (!msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create buffer.\n");
 		return -1;
 	}
 
-
-	rc = read(fd->fd, msg->data, msg->data_len);
-	if (rc <= 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to read errno: %d\n", errno);
-		msgb_free(msg);
-		return -1;
-	}
-
-	nat = fd->data;
-	nat->mgcp_msg = msg;
 	msg->l2h = msgb_put(msg, rc);
+	memcpy(msg->l2h, nat->mgcp_msg, msgb_l2len(msg));
 	resp = mgcp_handle_message(nat->mgcp_cfg, msg);
 	msgb_free(msg);
-	nat->mgcp_msg = NULL;
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp) {
