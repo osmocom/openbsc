@@ -148,7 +148,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		talloc_free(bsc_endp->transaction_id);
 	}
 
-	bsc_endp->transaction_id = talloc_strdup(bsc_endp, transaction_id);
+	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
 	bsc_endp->bsc = bsc_con;
 
 	/* we need to update some bits */
