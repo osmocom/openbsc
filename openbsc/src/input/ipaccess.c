@@ -57,7 +57,7 @@ struct ia_e1_handle {
 static struct ia_e1_handle *e1h;
 
 
-#define TS1_ALLOC_SIZE	300
+#define TS1_ALLOC_SIZE	900
 
 static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
 static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
