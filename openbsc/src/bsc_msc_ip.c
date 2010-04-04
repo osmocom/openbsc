@@ -601,7 +601,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 		return -1;
 	}
 
-	ret = read(fd->fd, mgcp->data, mgcp->len);
+	ret = read(fd->fd, mgcp->data, mgcp->data_len);
 	if (ret <= 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to read: %d/%s\n", errno, strerror(errno));
 		msgb_free(mgcp);
