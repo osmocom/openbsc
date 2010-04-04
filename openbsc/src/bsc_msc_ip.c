@@ -585,7 +585,7 @@ static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
 
 	ret = write(fd->fd, msg->data, msg->len);
 	if (ret != msg->len)
-		LOGP(DMGCP, LOGL_ERROR, "Failed to forward message to MGCP GW.\n");
+		LOGP(DMGCP, LOGL_ERROR, "Failed to forward message to MGCP GW (%s).\n", strerror(errno));
 
 	return ret;
 }
@@ -676,7 +676,7 @@ static int mgcp_create_port(void)
 	/* connect to the remote */
 	addr.sin_port = htons(2427);
 	if (connect(mgcp_agent.bfd.fd, (struct sockaddr *) & addr, sizeof(addr)) < 0) {
-		LOGP(DMGCP, LOGL_FATAL, "Failed to connect to local MGCP GW. %d\n", errno);
+		LOGP(DMGCP, LOGL_FATAL, "Failed to connect to local MGCP GW. %s\n", strerror(errno));
 		close(mgcp_agent.bfd.fd);
 		mgcp_agent.bfd.fd = -1;
 		return -1;
