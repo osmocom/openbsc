@@ -612,7 +612,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 		return -1; 
         }
 
-	msgb_put(mgcp, ret);
+	mgcp->l2h = msgb_put(mgcp, ret);
 	msc_queue_write(mgcp, NAT_IPAC_PROTO_MGCP);
 	return 0;
 }
