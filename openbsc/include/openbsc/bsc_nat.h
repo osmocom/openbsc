@@ -153,7 +153,8 @@ struct bsc_nat {
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
 	struct write_queue mgcp_queue;
-	struct msgb *mgcp_msg;
+	u_int8_t mgcp_msg[4096];
+	int mgcp_length;
 
 	struct bsc_endpoint *bsc_endpoints;
 };
@@ -199,7 +200,7 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_init(struct bsc_nat *nat);
 
 struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
-struct msgb *bsc_mgcp_rewrite(struct msgb *msg, const char *ip, int port);
+struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60]);
