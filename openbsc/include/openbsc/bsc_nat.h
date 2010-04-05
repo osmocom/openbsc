@@ -134,6 +134,8 @@ struct bsc_endpoint {
 	char *transaction_id;
 	/* the bsc we are talking to */
 	struct bsc_connection *bsc;
+	/* pending delete */
+	int pending_delete;
 };
 
 /**

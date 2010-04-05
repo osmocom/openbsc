@@ -150,6 +150,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
 	bsc_endp->bsc = bsc_con;
+	bsc_endp->pending_delete = state == MGCP_ENDP_DLCX;
 
 	/* we need to update some bits */
 	if (state == MGCP_ENDP_CRCX) {
@@ -232,6 +233,13 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	endp->bts_rtcp = htons(port + 1);
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
 				  bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
+
+	if (bsc_endp->pending_delete) {
+		mgcp_free_endp(endp);
+		bsc_endp->bsc = NULL;
+		bsc_endp->pending_delete = 0;
+	}
+
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
 		return;
