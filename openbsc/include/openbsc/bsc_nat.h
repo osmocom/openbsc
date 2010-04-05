@@ -205,5 +205,6 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60]);
 int bsc_mgcp_extract_ci(const char *resp);
+int bsc_mgcp_extract_port(const char *resp);
 
 #endif
