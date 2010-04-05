@@ -213,7 +213,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	if (!bsc_endp) {
-		LOGP(DMGCP, LOGL_ERROR, "Could not find active endpoint: %s\n", transaction_id);
+		LOGP(DMGCP, LOGL_ERROR, "Could not find active endpoint: %s for msg: '%s'\n",
+		     transaction_id, (const char *) msg->l2h);
 		return;
 	}
 

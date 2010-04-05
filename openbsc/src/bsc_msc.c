@@ -84,6 +84,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	fd->when = BSC_FD_READ;
 
 	con->is_connected = 1;
+	LOGP(DMSC, LOGL_NOTICE, "(Re)Connected to the MSC.\n");
 	if (con->connected)
 		con->connected(con);
 	return 0;

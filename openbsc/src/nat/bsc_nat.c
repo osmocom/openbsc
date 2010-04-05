@@ -375,6 +375,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 			bsc->authenticated = 1;
 			bsc->lac = conf->lac;
 			bsc_del_timer(&bsc->id_timeout);
+			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc %d\n", bsc->lac);
 			break;
 		}
 	}
@@ -570,7 +571,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		return -2;
 	}
 
-	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
+	LOGP(DNAT, LOGL_NOTICE, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
 	send_id_ack(bsc);
 	send_id_req(bsc);

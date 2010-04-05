@@ -140,7 +140,8 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 		}
 	}
 
-	LOGP(DNAT, LOGL_ERROR, "Unknown connection.\n");
+	LOGP(DNAT, LOGL_ERROR, "Can not remove connection: 0x%x\n",
+	     sccp_src_ref_to_int(parsed->src_local_ref));
 }
 
 /*
