@@ -185,7 +185,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	struct msgb *output;
 	struct bsc_endpoint *bsc_endp = NULL;
 	struct mgcp_endpoint *endp = NULL;
-	int i, code;
+	int i, code, port;
 	char transaction_id[60];
 
 	/* Some assumption that our buffer is big enough.. and null terminate */
@@ -223,6 +223,9 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	/* make it point to our endpoint */
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
+	port = bsc_mgcp_extract_port((const char *) msg->l2h);
+	endp->bts_rtp = htons(port);
+	endp->bts_rtcp = htons(port + 1);
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
 				  bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
 	if (!output) {
@@ -252,6 +255,18 @@ int bsc_mgcp_extract_ci(const char *str)
 	if (sscanf(res, "I: %d", &ci) != 1)
 		return CI_UNUSED;
 	return ci;
+}
+
+int bsc_mgcp_extract_port(const char *str)
+{
+	int port;
+	char *res = strstr(str, "m=audio ");
+	if (!res)
+		return 0;
+
+	if (sscanf(res, "m=audio %d RTP/AVP %*d", &port) != 1)
+		return 0;
+	return port;
 }
 
 /* we need to replace some strings... */

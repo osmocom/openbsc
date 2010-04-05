@@ -482,6 +482,19 @@ static void test_mgcp_parse(void)
 	}
 }
 
+static void test_mgcp_parse_port(void)
+{
+	int port;
+
+	fprintf(stderr, "Test MGCP port parsing.\n");
+
+	port = bsc_mgcp_extract_port(mdcx_resp);
+	if (port != 4002) {
+		fprintf(stderr, "Could not parse port. Got: %d\n", port);
+		abort();
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -497,6 +510,7 @@ int main(int argc, char **argv)
 	test_mgcp_find();
 	test_mgcp_rewrite();
 	test_mgcp_parse();
+	test_mgcp_parse_port();
 	return 0;
 }
 
