@@ -129,11 +129,7 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 
 	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->src_local_ref,
-			   &conn->real_ref, sizeof(conn->real_ref)) == 0) {
-
-			/* two BSCs have used the same real ref... this is why we rewrite it */
-			if (bsc != conn->bsc)
-				continue;
+			   &conn->patched_ref, sizeof(conn->patched_ref)) == 0) {
 
 			sccp_connection_destroy(conn);
 			return;
