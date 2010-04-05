@@ -354,6 +354,9 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 		sccp_connection_destroy(sccp_patch);
 	}
 
+	/* close endpoints allocated by this BSC */
+	bsc_mgcp_clear_endpoints_for(connection);
+
 	talloc_free(connection);
 }
 

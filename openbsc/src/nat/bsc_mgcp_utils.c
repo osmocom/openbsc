@@ -466,3 +466,21 @@ int bsc_mgcp_init(struct bsc_nat *nat)
 
 	return 0;
 }
+
+void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
+{
+	int i;
+	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
+		struct bsc_endpoint *bsc_endp = &bsc->nat->bsc_endpoints[i];
+
+		if (bsc_endp->bsc != bsc)
+			continue;
+
+		bsc_endp->bsc = NULL;
+		bsc_endp->pending_delete = 0;
+		if (bsc_endp->transaction_id)
+			talloc_free(bsc_endp->transaction_id);
+		bsc_endp->transaction_id = NULL;
+		mgcp_free_endp(&bsc->nat->mgcp_cfg->endpoints[i]);
+	}
+}
