@@ -88,7 +88,8 @@ void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
 	bsc_del_timer(&data->T10);
 	bsc_del_timer(&data->sccp_it);
-	bsc_free_queued(data->sccp);
+	if (data->sccp)
+		bsc_free_queued(data->sccp);
 	bts_free_queued(data);
 	llist_del(&data->active_connections);
 	talloc_free(data);
