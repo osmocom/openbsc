@@ -2370,6 +2370,15 @@ DEFUN(config_exit,
 	case VTY_NODE:
 		vty->node = CONFIG_NODE;
 		break;
+	case NAT_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	case BSC_NODE:
+		vty->node = NAT_NODE;
+		vty->index = NULL;
+		break;
+
 	default:
 		break;
 	}
