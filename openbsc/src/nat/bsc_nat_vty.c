@@ -75,7 +75,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show connections sccp",
 {
 	struct sccp_connections *con;
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "SCCP for BSC: %d BSC ref: %u Local ref: %u MSC/BSC mux: 0x%x/0x%x%s",
+		vty_out(vty, "SCCP for BSC: %d BSC ref: 0x%x Local ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
 			con->bsc->lac,
 			sccp_src_ref_to_int(&con->real_ref),
 			sccp_src_ref_to_int(&con->patched_ref),
