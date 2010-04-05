@@ -809,8 +809,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 
 		/* force the close by poking stuff */
 		if (bss->sccp) {
-			bss->sccp->connection_state = SCCP_CONNECTION_STATE_REFUSED;
-			sccp_connection_free(bss->sccp);
+			sccp_connection_force_free(bss->sccp);
 			bss->sccp = NULL;
 		}
 
