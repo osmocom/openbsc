@@ -290,6 +290,10 @@ static void test_contrack()
 		abort();
 	}
 	remove_sccp_src_ref(con, msg, parsed);
+	talloc_free(parsed);
+
+	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
+	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 
 	/* verify that it is gone */
