@@ -204,6 +204,9 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
 		if (bsc->nat->bsc_endpoints[i].bsc != bsc)
 			continue;
+		/* no one listening? a bug? */
+		if (!bsc->nat->bsc_endpoints[i].transaction_id)
+			continue;
 		if (strcmp(transaction_id, bsc->nat->bsc_endpoints[i].transaction_id) != 0)
 			continue;
 
