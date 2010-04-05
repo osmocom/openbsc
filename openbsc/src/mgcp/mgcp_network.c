@@ -126,7 +126,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 
 	/* do not forward aynthing... maybe there is a packet from the bts */
 	if (endp->ci == CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "Unknown message on endpoint: 0x%x\n", ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_DEBUG, "Unknown message on endpoint: 0x%x\n", ENDPOINT_NUMBER(endp));
 		return -1;
 	}
 
