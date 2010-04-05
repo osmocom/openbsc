@@ -249,7 +249,7 @@ int bsc_mgcp_extract_ci(const char *str)
 	if (!res)
 		return CI_UNUSED;
 
-	if (sscanf(res, "I: %d\r\n", &ci) != 1)
+	if (sscanf(res, "I: %d", &ci) != 1)
 		return CI_UNUSED;
 	return ci;
 }
