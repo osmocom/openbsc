@@ -1198,6 +1198,17 @@ int sccp_connection_free(struct sccp_connection *connection)
 	return 0;
 }
 
+int sccp_connection_force_free(struct sccp_connection *con)
+{
+	if (con->connection_state > SCCP_CONNECTION_STATE_NONE &&
+	    con->connection_state < SCCP_CONNECTION_STATE_RELEASE_COMPLETE)
+		llist_del(&con->list);
+
+	con->connection_state = SCCP_CONNECTION_STATE_REFUSED;
+	sccp_connection_free(con);
+        return 0;
+}
+
 struct sccp_connection *sccp_connection_socket(void)
 {
 	return talloc_zero(tall_sccp_ctx, struct sccp_connection);
