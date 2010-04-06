@@ -297,6 +297,11 @@ static int handle_cipher_m_complete(struct msgb *msg)
 {
 	struct msgb *resp;
 
+	if (!msg->lchan->msc_data) {
+		LOGP(DMSC, LOGL_ERROR, "No MSC data for CIPHER MODE COMPLETE.\n");
+		return -1;
+	}
+
 	DEBUGP(DMSC, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
 	resp = bssmap_create_cipher_complete(msg);
 	if (!resp) {
@@ -320,7 +325,7 @@ static int handle_ass_compl(struct msgb *msg)
 	DEBUGP(DMSC, "ASSIGNMENT COMPLETE from MS, forwarding to MSC\n");
 
 	if (!msg->lchan->msc_data) {
-		DEBUGP(DMSC, "No MSC data\n");
+		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
 		put_lchan(msg->lchan, 0);
 		return -1;
 	}
@@ -367,7 +372,7 @@ static int handle_ass_fail(struct msgb *msg)
 
 	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
-		DEBUGP(DMSC, "No MSC data\n");
+		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
 		put_lchan(msg->lchan, 0);
 		return -1;
 	}
@@ -397,6 +402,11 @@ static int handle_ass_fail(struct msgb *msg)
 static int handle_modify_ack(struct msgb *msg)
 {
 	int rc;
+
+	if (!msg->lchan->msc_data) {
+		LOGP(DMSC, LOGL_ERROR, "No MSC data for modify ack.\n");
+		return -1;
+	}
 
 	/* modify RSL */
 	rc = gsm48_rx_rr_modif_ack(msg);
