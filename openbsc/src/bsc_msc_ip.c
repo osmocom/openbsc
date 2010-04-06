@@ -55,7 +55,7 @@
 #define SCCP_IT_TIMER 60
 
 /* MCC and MNC for the Location Area Identifier */
-static struct debug_target *stderr_target;
+static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
@@ -167,7 +167,7 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 			DEBUGP(DMSC, "ERROR: The lchan is still associated\n.");
 
 			lchan->msc_data = NULL;
-			put_lchan(lchan, 0);
+			put_subscr_con(&lchan->conn, 0);
 		}
 
 		bss_sccp_free_data((struct bss_sccp_connection_data *)conn->data_ctx);
@@ -205,8 +205,8 @@ static int open_sccp_connection(struct msgb *layer3)
 	/* When not connected to a MSC. We will simply close things down. */
 	if (!msc_con->is_connected) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
-		use_lchan(layer3->lchan);
-		put_lchan(layer3->lchan, 0);
+		use_subscr_con(&layer3->lchan->conn);
+		put_subscr_con(&layer3->lchan->conn, 0);
 		return -1;
 	}
 
@@ -242,7 +242,7 @@ static int open_sccp_connection(struct msgb *layer3)
 	layer3->lchan->msc_data = con_data;
 
 	/* FIXME: Use transaction for this */
-	use_lchan(layer3->lchan);
+	use_subscr_con(&layer3->lchan->conn);
 	sccp_connection_connect(sccp_connection, &sccp_ssn_bssap, data);
 	msgb_free(data);
 
@@ -326,20 +326,20 @@ static int handle_ass_compl(struct msgb *msg)
 
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
@@ -350,9 +350,9 @@ static int handle_ass_compl(struct msgb *msg)
 	old_chan->msc_data = NULL;
 
 	/* give up the old channel to not do a SACCH deactivate */
-	subscr_put(old_chan->subscr);
-	old_chan->subscr = NULL;
-	put_lchan(old_chan, 1);
+	subscr_put(old_chan->conn.subscr);
+	old_chan->conn.subscr = NULL;
+	put_subscr_con(&old_chan->conn, 1);
 
 	/* activate audio on it... */
 	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && msg->lchan->tch_mode != GSM48_CMODE_SIGN)
@@ -373,20 +373,20 @@ static int handle_ass_fail(struct msgb *msg)
 	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		DEBUGP(DMSC, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
@@ -806,13 +806,13 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 	llist_for_each_entry_safe(bss, tmp, &active_connections, active_connections) {
 		if (bss->lchan) {
 			bss->lchan->msc_data = NULL;
-			put_lchan(bss->lchan, 0);
+			put_subscr_con(&bss->lchan->conn, 0);
 			bss->lchan = NULL;
 		}
 
 		if (bss->secondary_lchan) {
 			bss->secondary_lchan->msc_data = NULL;
-			put_lchan(bss->secondary_lchan, 0);
+			put_subscr_con(&bss->secondary_lchan->conn, 0);
 			bss->secondary_lchan = NULL;
 		}
 
@@ -911,16 +911,16 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_set_use_color(stderr_target, 0);
+			log_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			debug_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
@@ -932,7 +932,7 @@ static void handle_options(int argc, char** argv)
 			inet_aton(optarg, &local_addr);
 			break;
 		case 'e':
-			debug_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(stderr_target, atoi(optarg));
 			break;
 		default:
 			/* ignore */
@@ -1013,17 +1013,17 @@ extern int bts_model_nanobts_init(void);
 
 int main(int argc, char **argv)
 {
-	debug_init();
+	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
 
 	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
 	/* enable filters */
-	debug_set_all_filter(stderr_target, 1);
+	log_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	handle_options(argc, argv);

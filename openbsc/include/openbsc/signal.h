@@ -42,6 +42,7 @@ enum signal_subsystems {
 	SS_SUBSCR,
 	SS_SCALL,
 	SS_GLOBAL,
+	SS_CHALLOC,
 };
 
 /* SS_PAGING signals */
@@ -93,6 +94,12 @@ enum signal_lchan {
 	S_LCHAN_MEAS_REP,		/* 08.58 Measurement Report */
 };
 
+/* SS_CHALLOC signals */
+enum signal_challoc {
+	S_CHALLOC_ALLOC_FAIL,	/* allocation of lchan has failed */
+	S_CHALLOC_FREED,	/* lchan has been successfully freed */
+};
+
 /* SS_SUBSCR signals */
 enum signal_subscr {
 	S_SUBSCR_ATTACHED,
@@ -128,6 +135,12 @@ struct scall_signal_data {
 struct ipacc_ack_signal_data {
 	struct gsm_bts *bts;
 	u_int8_t msg_type;	
+};
+
+struct challoc_signal_data {
+	struct gsm_bts *bts;
+	struct gsm_lchan *lchan;
+	enum gsm_chan_t type;
 };
 
 #endif

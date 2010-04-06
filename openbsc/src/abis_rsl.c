@@ -1,4 +1,4 @@
-/* GSM Radio Signalling Link messages on the A-bis interface 
+/* GSM Radio Signalling Link messages on the A-bis interface
  * 3GPP TS 08.58 version 8.6.0 Release 1999 / ETSI TS 100 596 V8.6.0 */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
@@ -118,8 +118,8 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 	}
 
 	lchan = &ts->lchan[lch_idx];
-	debug_set_context(BSC_CTX_LCHAN, lchan);
-	debug_set_context(BSC_CTX_SUBSCR, lchan->subscr);
+	log_set_context(BSC_CTX_LCHAN, lchan);
+	log_set_context(BSC_CTX_SUBSCR, lchan->conn.subscr);
 
 	return lchan;
 }
@@ -222,7 +222,7 @@ static void print_rsl_cause(int lvl, const u_int8_t *cause_v, u_int8_t cause_len
 
 	LOGPC(DRSL, lvl, "CAUSE=0x%02x(%s) ",
 		cause_v[0], rsl_err_name(cause_v[0]));
-	for (i = 1; i < cause_len-1; i++) 
+	for (i = 1; i < cause_len-1; i++)
 		LOGPC(DRSL, lvl, "%02x ", cause_v[i]);
 }
 
@@ -245,7 +245,7 @@ int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type, 
+int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 		      const u_int8_t *data, int len)
 {
 	struct abis_rsl_common_hdr *ch;
@@ -416,7 +416,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
 }
 #endif
 
-int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
+int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 			    u_int8_t ta, u_int8_t ho_ref)
 {
 	struct abis_rsl_dchan_hdr *dh;
@@ -779,7 +779,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 			msg->lchan->state = LCHAN_S_NONE;
 	} else
 		msg->lchan->state = LCHAN_S_NONE;
- 
+
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
@@ -993,12 +993,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_ACK:
 		DEBUGPC(DRSL, "%s IPAC PDCH ACT ACK\n", ts_name);
+		msg->lchan->ts->flags |= TS_F_PDCH_MODE;
 		break;
 	case RSL_MT_IPAC_PDCH_ACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH ACT NACK\n", ts_name);
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_ACK:
 		DEBUGP(DRSL, "%s IPAC PDCH DEACT ACK\n", ts_name);
+		msg->lchan->ts->flags &= ~TS_F_PDCH_MODE;
 		break;
 	case RSL_MT_IPAC_PDCH_DEACT_NACK:
 		LOGP(DRSL, LOGL_ERROR, "%s IPAC PDCH DEACT NACK\n", ts_name);
@@ -1055,7 +1057,7 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		//DEBUGP(DRSL, "%s RF Resource Indication\n", gsm_trx_name(msg->trx));
 		break;
 	case RSL_MT_OVERLOAD:
-		/* indicate CCCH / ACCH / processor overload */ 
+		/* indicate CCCH / ACCH / processor overload */
 		LOGP(DRSL, LOGL_ERROR, "%s CCCH/ACCH/CPU Overload\n",
 		     gsm_trx_name(msg->trx));
 		break;
@@ -1245,7 +1247,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	return 0;
 }
 
-/*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST 
+/*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST
 	0x02, 0x06,
 	0x01, 0x20,
 	0x02, 0x00,
@@ -1265,7 +1267,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 	switch (rllh->c.msg_type) {
 	case RSL_MT_DATA_IND:
 		DEBUGPC(DRLL, "DATA INDICATION\n");
-		if (msgb_l2len(msg) > 
+		if (msgb_l2len(msg) >
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {
 			msg->l3h = &rllh->data[3];
@@ -1277,7 +1279,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		/* lchan is established, stop T3101 */
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_MS;
 		bsc_del_timer(&msg->lchan->T3101);
-		if (msgb_l2len(msg) > 
+		if (msgb_l2len(msg) >
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {
 			msg->l3h = &rllh->data[3];
@@ -1472,17 +1474,24 @@ int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 	return rc;
 }
 
-int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan)
+int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan, int act)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
+	u_int8_t msg_type;
+
+	if (act)
+		msg_type = RSL_MT_IPAC_PDCH_ACT;
+	else
+		msg_type = RSL_MT_IPAC_PDCH_DEACT;
 
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
-	init_dchan_hdr(dh, RSL_MT_IPAC_PDCH_ACT);
+	init_dchan_hdr(dh, msg_type);
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
 	dh->chan_nr = lchan2chan_nr(lchan);
 
-	DEBUGP(DRSL, "%s IPAC_PDCH_ACT\n", gsm_lchan_name(lchan));
+	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_lchan_name(lchan),
+		act ? "" : "DE");
 
 	msg->trx = lchan->ts->trx;
 

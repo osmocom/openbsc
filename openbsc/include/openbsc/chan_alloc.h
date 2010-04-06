@@ -27,20 +27,20 @@
  * Refcounting for the lchan. If the refcount drops to zero
  * the channel will send a RSL release request.
  */
-#define use_lchan(lchan) \
-	do {	lchan->use_count++; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
+#define use_subscr_con(con) \
+	do {	(con)->use_count++; \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
+			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
+			(con)->lchan->nr, (con)->use_count); \
 	} while(0);
 
-#define put_lchan(lchan, reason) \
-	do { lchan->use_count--; \
-		DEBUGP(DCC, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
-			lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr, \
-			lchan->nr, lchan->use_count); \
-	    if (lchan->use_count <= 0) \
-		_lchan_release(lchan, reason); \
+#define put_subscr_con(con, reason) \
+	do { (con)->use_count--; \
+		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
+			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
+			(con)->lchan->nr, (con)->use_count); \
+	    if ((con)->use_count <= 0) \
+		_lchan_release((con)->lchan, reason); \
 	} while(0);
 
 

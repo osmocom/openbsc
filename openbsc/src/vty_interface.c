@@ -38,6 +38,7 @@
 #include <openbsc/db.h>
 #include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
+#include <openbsc/vty.h>
 
 static struct gsm_network *gsmnet;
 
@@ -171,7 +172,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
 		bts->cell_identity,
-		bts->location_area_code, bts->bsic, bts->tsc, 
+		bts->location_area_code, bts->bsic, bts->tsc,
 		bts->num_trx, VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
@@ -634,19 +635,19 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	int idx;
 
 	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
-		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr, 
+		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->use_count,
+	vty_out(vty, "  Use Count: %u, State: %s%s", lchan->conn.use_count,
 		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red
 		- lchan->bs_power*2,
 		ms_pwr_dbm(lchan->ts->trx->bts->band, lchan->ms_power),
 		VTY_NEWLINE);
-	if (lchan->subscr) {
+	if (lchan->conn.subscr) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, lchan->subscr);
+		subscr_dump_vty(vty, lchan->conn.subscr);
 	} else
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
@@ -1310,7 +1311,7 @@ DEFUN(cfg_bts,
 		/* allocate a new one */
 		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
 				    HARDCODED_TSC, HARDCODED_BSIC);
-	} else 
+	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
 	if (!bts) {
@@ -1741,9 +1742,9 @@ DEFUN(cfg_trx,
 	} else if (trx_nr == bts->num_trx) {
 		/* we need to allocate a new one */
 		trx = gsm_bts_trx_alloc(bts);
-	} else 
+	} else
 		trx = gsm_bts_trx_num(bts, trx_nr);
-	
+
 	if (!trx)
 		return CMD_WARNING;
 

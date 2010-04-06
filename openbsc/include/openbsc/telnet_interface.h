@@ -22,7 +22,7 @@
 #define TELNET_INTERFACE_H
 
 #include "gsm_data.h"
-#include "debug.h"
+#include <openbsc/debug.h>
 #include <osmocore/select.h>
 
 #include <vty/vty.h>
@@ -32,7 +32,7 @@ struct telnet_connection {
 	struct gsm_network *network;
 	struct bsc_fd fd;
 	struct vty *vty;
-	struct debug_target *dbg;
+	struct log_target *dbg;
 };
 
 

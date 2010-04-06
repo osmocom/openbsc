@@ -191,10 +191,10 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 
 		/* we might got killed during an assignment */
 		if (msg->lchan->msc_data->secondary_lchan)
-			put_lchan(msg->lchan->msc_data->secondary_lchan, 0);
+			put_subscr_con(&msg->lchan->msc_data->secondary_lchan->conn, 0);
 
 		msg->lchan->msc_data = NULL;
-		put_lchan(msg->lchan, 0);
+		put_subscr_con(&msg->lchan->conn, 0);
 	}
 
 	/* send the clear complete message */
@@ -407,10 +407,10 @@ static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
 	memcpy(&new_lchan->encr, &msg->lchan->encr, sizeof(new_lchan->encr));
 	new_lchan->ms_power = msg->lchan->ms_power;
 	new_lchan->bs_power = msg->lchan->bs_power;
-	new_lchan->subscr = subscr_get(msg->lchan->subscr);
+	new_lchan->conn.subscr = subscr_get(msg->lchan->conn.subscr);
 
 	/* copy new data to it */
-	use_lchan(new_lchan);
+	use_subscr_con(&new_lchan->conn);
 	new_lchan->tch_mode = chan_mode;
 	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
 
@@ -439,13 +439,13 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 {
 	if (!new_lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No BSS data found.\n");
-		put_lchan(new_lchan, 0);
+		put_subscr_con(&new_lchan->conn, 0);
 		return;
 	}
 
 	if (new_lchan->msc_data->secondary_lchan != new_lchan) {
 		LOGP(DMSC, LOGL_ERROR, "This is not the secondary channel?\n");
-		put_lchan(new_lchan, 0);
+		put_subscr_con(&new_lchan->conn, 0);
 		return;
 	}
 

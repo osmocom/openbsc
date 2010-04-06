@@ -25,7 +25,7 @@ struct msgb;
 
 int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id);
 
-int gsm411_send_sms_lchan(struct gsm_lchan *lchan, struct gsm_sms *sms);
+int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms *sms);
 
 struct gsm_sms *sms_alloc(void);
 void sms_free(struct gsm_sms *sms);

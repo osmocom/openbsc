@@ -59,7 +59,7 @@ static struct mgcp_config *cfg;
 static int reset_endpoints = 0;
 
 const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
-const char *openbsc_copyright = 
+const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
 	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
 	"Dieter Spaar, Andreas Eversberg, Harald Welte\n\n"
@@ -178,14 +178,14 @@ int main(int argc, char** argv)
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
-	struct debug_target *stderr_target;
+	struct log_target *stderr_target;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 
 	cfg = mgcp_config_alloc();
 	if (!cfg)

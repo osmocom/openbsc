@@ -332,16 +332,16 @@ static int mncc_rcv_tchf(struct gsm_call *call, int msg_type,
 	remote_trans = trans_find_by_callref(call->net, call->remote_ref);
 
 	/* this shouldn't really happen */
-	if (!remote_trans || !remote_trans->lchan) {
+	if (!remote_trans || !remote_trans->conn) {
 		LOGP(DMNCC, LOGL_ERROR, "No transaction or transaction without lchan?!?\n");
 		return -EIO;
 	}
 
 	/* RTP socket of remote end has meanwhile died */
-	if (!remote_trans->lchan->abis_ip.rtp_socket)
+	if (!remote_trans->conn->lchan->abis_ip.rtp_socket)
 		return -EIO;
 
-	return rtp_send_frame(remote_trans->lchan->abis_ip.rtp_socket, dfr);
+	return rtp_send_frame(remote_trans->conn->lchan->abis_ip.rtp_socket, dfr);
 }
 
 

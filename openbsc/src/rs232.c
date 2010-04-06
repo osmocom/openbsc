@@ -156,7 +156,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 				fprintf(stderr, "Invalid length in hdr: %u\n",
 					sh->rxmsg_bytes_missing);
 		}
-	} else { 
+	} else {
 		/* try to read as many of the missing bytes as are available */
 		rc = read(sh->fd.fd, msg->tail, sh->rxmsg_bytes_missing);
 		if (rc < 0) {

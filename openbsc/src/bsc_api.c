@@ -1,7 +1,6 @@
-/* Generic write queue implementation */
-/*
- * (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On-Waves
+/* GSM 08.08 like API for OpenBSC. The bridge from MSC to BSC */
+
+/* (C) 2010 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -20,26 +19,15 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  *
  */
-#ifndef write_queue_h
-#define write_queue_h
 
-#include "select.h"
-#include "msgb.h"
+#include <openbsc/bsc_api.h>
+#include <openbsc/abis_rsl.h>
 
-struct write_queue {
-	struct bsc_fd bfd;
-	unsigned int max_length;
-	unsigned int current_length;
 
-	struct llist_head msg_queue;
-
-	int (*read_cb)(struct bsc_fd *fd);
-	int (*write_cb)(struct bsc_fd *fd, struct msgb *msg);
-};
-
-void write_queue_init(struct write_queue *queue, int max_length);
-void write_queue_clear(struct write_queue *queue);
-int write_queue_enqueue(struct write_queue *queue, struct msgb *data);
-int write_queue_bfd_cb(struct bsc_fd *fd, unsigned int what);
-
-#endif
+int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
+			struct msgb *msg, int link_id)
+{
+	msg->lchan = conn->lchan;
+	msg->trx = msg->lchan->ts->trx;
+	return rsl_data_request(msg, link_id);
+}

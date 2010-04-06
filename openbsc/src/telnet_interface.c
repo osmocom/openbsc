@@ -117,7 +117,7 @@ int telnet_close_client(struct bsc_fd *fd) {
 	bsc_unregister_fd(fd);
 
 	if (conn->dbg) {
-		debug_del_target(conn->dbg);
+		log_del_target(conn->dbg);
 		talloc_free(conn->dbg);
 	}
 

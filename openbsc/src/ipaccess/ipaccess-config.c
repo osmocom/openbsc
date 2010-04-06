@@ -612,14 +612,14 @@ int main(int argc, char **argv)
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
 	int rc, option_index = 0, stream_id = 0xff;
-	struct debug_target *stderr_target;
+	struct log_target *stderr_target;
 
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
-	debug_set_log_level(stderr_target, 0);
-	debug_parse_category_mask(stderr_target, "DNM,0");
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
+	log_set_log_level(stderr_target, 0);
+	log_parse_category_mask(stderr_target, "DNM,0");
 	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009 by Harald Welte\n");

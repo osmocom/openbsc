@@ -201,6 +201,27 @@ enum gsm_lchan_state {
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
+/* the per subscriber data for lchan */
+struct gsm_subscriber_connection {
+	/* To whom we are allocated at the moment */
+	struct gsm_subscriber *subscr;
+
+	/*
+	 * Operations that have a state and might be pending
+	 */
+	struct gsm_loc_updating_operation *loc_operation;
+
+	/* use count. how many users use this channel */
+	unsigned int use_count;
+
+	/* Are we part of a special "silent" call */
+	int silent_call;
+
+	/* back pointers */
+	struct gsm_lchan *lchan;
+	struct gsm_bts *bts;
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -223,33 +244,20 @@ struct gsm_lchan {
 		u_int8_t key_len;
 		u_int8_t key[MAX_A5_KEY_LEN];
 	} encr;
-	/* Are we part of a special "silent" call */
-	int silent_call;
+
+	struct timer_list T3101;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
 	
-	/* To whom we are allocated at the moment */
-	struct gsm_subscriber *subscr;
-
-	struct timer_list T3101;
-
 	/* Established data link layer services */
 	u_int8_t sapis[8];
-
-	/*
-	 * Operations that have a state and might be pending
-	 */
-	struct gsm_loc_updating_operation *loc_operation;
 
 	/*
 	 * MSC handling...
 	 */
 	struct bss_sccp_connection_data *msc_data;
 
-
-	/* use count. how many users use this channel */
-	unsigned int use_count;
 
 	/* cache of last measurement reports on this lchan */
 	struct gsm_meas_rep meas_rep[6];
@@ -268,6 +276,8 @@ struct gsm_lchan {
 		u_int8_t speech_mode;
 		struct rtp_socket *rtp_socket;
 	} abis_ip;
+
+	struct gsm_subscriber_connection conn;
 };
 
 struct gsm_e1_subslot {
@@ -279,7 +289,7 @@ struct gsm_e1_subslot {
 	u_int8_t	e1_ts_ss;
 };
 
-#define BTS_TRX_F_ACTIVATED	0x0001
+#define TS_F_PDCH_MODE	0x1000
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
 	struct gsm_bts_trx *trx;

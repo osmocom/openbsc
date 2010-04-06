@@ -526,7 +526,7 @@ vty_telnet_option (struct vty *vty, unsigned char *buf, int nbytes)
       vty->iac_sb_in_progress = 1;
       return 0;
       break;
-    case SE: 
+    case SE:
       {
 	if (!vty->iac_sb_in_progress)
 	  return 0;

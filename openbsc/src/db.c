@@ -254,7 +254,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	struct gsm_subscriber *subscr;
 
 	/* Is this subscriber known in the db? */
-	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi); 
+	subscr = db_get_subscriber(net, GSM_SUBSCRIBER_IMSI, imsi);
 	if (subscr) {
 		result = dbi_conn_queryf(conn,
                          "UPDATE Subscriber set updated = datetime('now') "
@@ -288,6 +288,8 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	return subscr;
 }
 
+static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
+
 static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
 	dbi_result result;
@@ -316,9 +318,10 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 		strncpy(equip->imei, string, sizeof(equip->imei));
 
 	string = dbi_result_get_string(result, "classmark1");
-	if (string)
-		 cm1 = atoi(string) & 0xff;
-	equip->classmark1 = *((struct gsm48_classmark1 *) &cm1);
+	if (string) {
+		cm1 = atoi(string) & 0xff;
+		memcpy(&equip->classmark1, &cm1, sizeof(equip->classmark1));
+	}
 
 	equip->classmark2_len = dbi_result_get_field_length(result, "classmark2");
 	cm2 = dbi_result_get_binary(result, "classmark2");
@@ -1014,7 +1017,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 }
 
 /* retrieve the next unsent SMS with ID >= min_id */
-struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
+struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
@@ -1041,7 +1044,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, int min_id)
 	return sms;
 }
 
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, int min_subscr_id)
+struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
@@ -1049,7 +1052,7 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, int min_sub
 	result = dbi_conn_queryf(conn,
 		"SELECT * FROM SMS,Subscriber "
 		"WHERE sms.receiver_id >= %llu AND sms.sent is NULL "
-			"AND sms.receiver_id = subscriber.id " 
+			"AND sms.receiver_id = subscriber.id "
 			"AND subscriber.lac > 0 "
 		"ORDER BY sms.receiver_id, id LIMIT 1",
 		min_subscr_id);
@@ -1133,7 +1136,7 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
 	return 0;
 }
 
-int db_apdu_blob_store(struct gsm_subscriber *subscr, 
+int db_apdu_blob_store(struct gsm_subscriber *subscr,
 			u_int8_t apdu_id_flags, u_int8_t len,
 			u_int8_t *apdu)
 {
