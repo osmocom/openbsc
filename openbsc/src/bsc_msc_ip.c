@@ -1050,6 +1050,7 @@ int main(int argc, char **argv)
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {
