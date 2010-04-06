@@ -225,6 +225,9 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		default:
 			goto exit;
 		}
+
+		if (!con)
+			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x.\n", parsed->sccp_type);
 	}
 
 	talloc_free(parsed);
