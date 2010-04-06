@@ -76,8 +76,9 @@ DEFUN(show_sccp, show_sccp_cmd, "show connections sccp",
 {
 	struct sccp_connections *con;
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "SCCP for BSC: %d BSC ref: 0x%x Local ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
-			con->bsc->lac,
+		vty_out(vty, "SCCP for BSC: Nr: %d lac: %d BSC ref: 0x%x Local ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
+			con->bsc->cfg ? con->bsc->cfg->nr : -1,
+			con->bsc->cfg ? con->bsc->cfg->lac : -1,
 			sccp_src_ref_to_int(&con->real_ref),
 			sccp_src_ref_to_int(&con->patched_ref),
 			con->msc_timeslot, con->bsc_timeslot,
@@ -92,8 +93,10 @@ DEFUN(show_bsc, show_bsc_cmd, "show connections bsc",
 {
 	struct bsc_connection *con;
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
-		vty_out(vty, "BSC lac: %d auth: %d fd: %d%s",
-			con->lac, con->authenticated, con->write_queue.bfd.fd, VTY_NEWLINE);
+		vty_out(vty, "BSC lac: %d, %d auth: %d fd: %d%s",
+			con->cfg ? con->cfg->nr : -1,
+			con->cfg ? con->cfg->lac : -1,
+			con->authenticated, con->write_queue.bfd.fd, VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

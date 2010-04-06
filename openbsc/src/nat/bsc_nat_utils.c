@@ -115,7 +115,9 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
 	for (i = 1; i < data_length - 1; i += 2) {
 		unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
 		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-			if (!bsc->authenticated || _lac != bsc->lac)
+			if (!bsc->cfg)
+				continue;
+			if (!bsc->authenticated || _lac != bsc->cfg->lac)
 				continue;
 
 			return bsc;
