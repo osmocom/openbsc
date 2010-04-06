@@ -26,6 +26,7 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mgcp.h>
+#include <openbsc/vty.h>
 
 #include <osmocore/talloc.h>
 
@@ -198,6 +199,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(VIEW_NODE, &show_sccp_cmd);
 	install_element(VIEW_NODE, &show_bsc_cmd);
 	install_element(VIEW_NODE, &show_bsc_cfg_cmd);
+
+	openbsc_vty_add_cmds();
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
