@@ -377,9 +377,9 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
 		if (strcmp(conf->token, token) == 0) {
 			bsc->authenticated = 1;
-			bsc->lac = conf->lac;
+			bsc->cfg = conf;
 			bsc_del_timer(&bsc->id_timeout);
-			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc %d\n", bsc->lac);
+			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d lac: %d\n", conf->nr, conf->lac);
 			break;
 		}
 	}

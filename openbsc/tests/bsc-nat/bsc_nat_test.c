@@ -332,13 +332,15 @@ static void test_paging(void)
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
 	struct bsc_nat_parsed *parsed;
+	struct bsc_config cfg;
 	struct msgb *msg;
 
 	fprintf(stderr, "Testing paging by lac.\n");
 
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
-	con->lac = 23;
+	con->cfg = &cfg;
+	cfg.lac = 23;
 	con->authenticated = 1;
 	llist_add(&con->list_entry, &nat->bsc_connections);
 	msg = msgb_alloc(4096, "test");
@@ -360,7 +362,7 @@ static void test_paging(void)
 	talloc_free(parsed);
 
 	/* Test by finding it */
-	con->lac = 8213;
+	cfg.lac = 8213;
 	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
 	parsed = bsc_nat_parse(msg);
 	if (bsc_nat_find_bsc(nat, msg) != con) {

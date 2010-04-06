@@ -84,8 +84,8 @@ struct bsc_connection {
 	/* the fd we use to communicate */
 	struct write_queue write_queue;
 
-	/* the LAC assigned to this connection */
-	unsigned int lac;
+	/* the BSS associated */
+	struct bsc_config *cfg;
 
 	/* a timeout node */
 	struct timer_list id_timeout;
