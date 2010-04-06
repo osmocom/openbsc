@@ -127,6 +127,32 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_write(bsc, id_req, sizeof(id_req));
 }
 
+static void nat_send_rlsd(struct sccp_connections *conn)
+{
+	struct sccp_connection_released *rel;
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "rlsd");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		return;
+	}
+
+	msg->l2h = msgb_put(msg, sizeof(*rel));
+	rel = (struct sccp_connection_released *) msg->l2h;
+	rel->type = SCCP_MSG_TYPE_RLSD;
+	rel->release_cause = SCCP_RELEASE_CAUSE_SCCP_FAILURE;
+	rel->destination_local_reference = conn->remote_ref;
+	rel->source_local_reference = conn->patched_ref;
+
+	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+	}
+}
+
 static void send_mgcp_reset(struct bsc_connection *bsc)
 {
 	static const u_int8_t mgcp_reset[] = {
@@ -354,7 +380,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 		if (sccp_patch->bsc != connection)
 			continue;
 
-#warning "TODO: Send a RLSD to the MSC. Or at least a clear command."
+		nat_send_rlsd(sccp_patch);
 		sccp_connection_destroy(sccp_patch);
 	}
 
