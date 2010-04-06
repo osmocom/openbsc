@@ -443,6 +443,7 @@ int bsc_mgcp_init(struct bsc_nat *nat)
 	}
 
 	/* some more MGCP config handling */
+	nat->mgcp_cfg->audio_payload = -1;
 	nat->mgcp_cfg->data = nat;
 	nat->mgcp_cfg->policy_cb = bsc_mgcp_policy_cb;
 	nat->bsc_endpoints = talloc_zero_array(nat,
