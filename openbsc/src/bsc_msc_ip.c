@@ -643,7 +643,6 @@ static void mgcp_forward(struct msgb *msg)
 static int mgcp_create_port(void)
 {
 	int on;
-	int port;
 	struct sockaddr_in addr;
 
 	mgcp_agent.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
