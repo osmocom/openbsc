@@ -547,6 +547,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	if (!msc_con->is_connected) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
+		close(ret);
 		return 0;
 	}
 
