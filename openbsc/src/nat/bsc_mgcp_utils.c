@@ -157,7 +157,8 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		struct sockaddr_in sock;
 		socklen_t len = sizeof(sock);
 		if (getpeername(nat->mgcp_queue.bfd.fd, (struct sockaddr *) &sock, &len) != 0) {
-			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...\n");
+			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...%d/%s\n",
+			      errno, strerror(errno));
 		} else {
 			mgcp_endp->bts = sock.sin_addr;
 		}
