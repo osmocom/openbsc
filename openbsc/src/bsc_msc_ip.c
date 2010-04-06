@@ -958,6 +958,8 @@ static void signal_handler(int signal)
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
 	case SIGUSR2:
+		if (!msc_con->is_connected)
+			return;
 		bsc_msc_lost(msc_con);
 		break;
 	default:
