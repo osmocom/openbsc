@@ -201,6 +201,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
+		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
 				if (con) {
@@ -424,6 +425,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_CC:
+		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
 			break;
 		case SCCP_MSG_TYPE_RLC:
