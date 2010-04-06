@@ -90,6 +90,9 @@ static void patch_payload(int payload, char *data, int len)
 	if (len < sizeof(*rtp_hdr))
 		return;
 
+	if (payload < 0)
+		return;
+
 	rtp_hdr = (struct rtp_hdr *) data;
 	rtp_hdr->payload_type = payload;
 }
