@@ -74,7 +74,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 		goto error;
 	}
 	if (val != 0) {
-		LOGP(DMSC, LOGL_ERROR, "Not connected to the MSC.\n");
+		LOGP(DMSC, LOGL_ERROR, "Not connected to the MSC: %d\n", val);
 		goto error;
 	}
 
