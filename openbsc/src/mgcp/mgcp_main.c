@@ -38,7 +38,10 @@
 #include <openbsc/gsm_data.h>
 #include <osmocore/select.h>
 #include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
 #include <openbsc/telnet_interface.h>
+
+#include <vty/command.h>
 
 #include "../../bscconfig.h"
 
@@ -51,8 +54,9 @@ void subscr_put() { abort(); }
 #warning "Make use of the rtp proxy code"
 
 static struct bsc_fd bfd;
-static int first_request = 1;
 static struct mgcp_config *cfg;
+static int reset_endpoints = 0;
+
 const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
@@ -74,10 +78,10 @@ static void print_help()
 	printf(" -c --config-file filename The config file to use.\n");
 }
 
-static void print_version()
+static void print_mgcp_version()
 {
 	printf("%s\n\n", openbsc_version);
-	printf(openbsc_copyright);
+	printf("%s", openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
@@ -105,7 +109,7 @@ static void handle_options(int argc, char** argv)
 			config_file = talloc_strdup(tall_bsc_ctx, optarg);
 			break;
 		case 'V':
-			print_version();
+			print_mgcp_version();
 			exit(0);
 			break;
 		default:
@@ -115,12 +119,21 @@ static void handle_options(int argc, char** argv)
 	}
 }
 
+/* simply remember this */
+static int mgcp_rsip_cb(struct mgcp_config *cfg)
+{
+	reset_endpoints = 1;
+
+	return 0;
+}
+
 static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 {
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
 	struct msgb *msg;
 	struct msgb *resp;
+	int i;
 
 	msg = (struct msgb *) fd->data;
 
@@ -136,18 +149,6 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	if (first_request) {
-		first_request = 0;
-		resp = mgcp_create_rsip();
-
-		if (resp) {
-			sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0,
-				(struct sockaddr *) &addr, sizeof(addr));
-			msgb_free(resp);
-		}
-		return 0;
-        }
-
 	/* handle message now */
 	msg->l2h = msgb_put(msg, rc);
 	resp = mgcp_handle_message(cfg, msg);
@@ -157,6 +158,16 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 		sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0, (struct sockaddr *) &addr, sizeof(addr));
 		msgb_free(resp);
 	}
+
+	if (reset_endpoints) {
+		LOGP(DMGCP, LOGL_NOTICE, "Asked to reset endpoints.\n");
+		reset_endpoints = 0;
+
+		/* is checking in_addr.s_addr == INADDR_LOOPBACK making it more secure? */
+		for (i = 1; i < cfg->number_endpoints; ++i)
+			mgcp_free_endp(&cfg->endpoints[i]);
+	}
+
 	return 0;
 }
 
@@ -186,6 +197,8 @@ int main(int argc, char** argv)
 	if (rc < 0)
 		return rc;
 
+	/* set some callbacks */
+	cfg->reset_cb = mgcp_rsip_cb;
 
         /* we need to bind a socket */
         if (rc == 0) {
@@ -217,11 +230,11 @@ int main(int argc, char** argv)
 
 
 		if (bsc_register_fd(&bfd) != 0) {
-			DEBUGP(DMGCP, "Failed to register the fd\n");
+			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
 			return -1;
 		}
 
-		DEBUGP(DMGCP, "Configured for MGCP.\n");
+		LOGP(DMGCP, LOGL_NOTICE, "Configured for MGCP.\n");
 	}
 
 	/* initialisation */
@@ -235,3 +248,14 @@ int main(int argc, char** argv)
 
 	return 0;
 }
+
+struct gsm_network;
+int bsc_vty_init(struct gsm_network *dummy)
+{
+	cmd_init(1);
+	vty_init();
+
+        mgcp_vty_init();
+	return 0;
+}
+

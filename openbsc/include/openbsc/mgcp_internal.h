@@ -57,8 +57,21 @@ struct mgcp_endpoint {
 
 	/* backpointer */
 	struct mgcp_config *cfg;
+
+	/* statistics */
+	unsigned int in_bts;
+	unsigned int in_remote;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)
+
+struct mgcp_msg_ptr {
+	unsigned int start;
+	unsigned int length;
+};
+
+int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
+			struct mgcp_msg_ptr *ptr, int size,
+			const char **transaction_id, struct mgcp_endpoint **endp);
 
 #endif

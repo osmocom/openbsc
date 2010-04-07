@@ -63,6 +63,8 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, " forward audio ip %s%s", g_cfg->forward_ip, VTY_NEWLINE);
 	if (g_cfg->forward_port != 0)
 		vty_out(vty, " forward audio port %d%s", g_cfg->forward_port, VTY_NEWLINE);
+	if (g_cfg->call_agent_addr)
+		vty_out(vty, " call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -75,10 +77,12 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	for (i = 1; i < g_cfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u%s",
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic in :%u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
-			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp), VTY_NEWLINE);
+			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
+			inet_ntoa(endp->bts), endp->in_bts, endp->in_remote,
+			VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -237,6 +241,17 @@ DEFUN(cfg_mgcp_forward_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_agent_addr,
+      cfg_mgcp_agent_addr_cmd,
+      "call agent ip IP",
+      "Set the address of the call agent.")
+{
+	if (g_cfg->call_agent_addr)
+		talloc_free(g_cfg->call_agent_addr);
+	g_cfg->call_agent_addr = talloc_strdup(g_cfg, argv[0]);
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element(VIEW_NODE, &show_mgcp_cmd);
@@ -256,6 +271,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_forward_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_forward_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	return 0;
 }
 
@@ -273,6 +289,11 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 
 	if (!g_cfg->bts_ip)
 		fprintf(stderr, "No BTS ip address specified. This will allow everyone to connect.\n");
+
+	if (!g_cfg->source_addr) {
+		fprintf(stderr, "You need to specify a bind address.\n");
+		return -1;
+	}
 
 	if (mgcp_endpoints_allocate(g_cfg) != 0) {
 		fprintf(stderr, "Failed to allocate endpoints: %d. Quitting.\n", g_cfg->number_endpoints);
@@ -325,15 +346,5 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	}
 
 	return !!g_cfg->forward_ip;
-}
-
-struct gsm_network;
-int bsc_vty_init(struct gsm_network *dummy)
-{
-	cmd_init(1);
-	vty_init();
-
-        mgcp_vty_init();
-	return 0;
 }
 

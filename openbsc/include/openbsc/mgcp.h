@@ -77,6 +77,7 @@ struct mgcp_config;
 
 typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state, int local_rtp);
 typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
+typedef int (*mgcp_reset)(struct mgcp_config *cfg);
 
 struct mgcp_config {
 	int source_port;
@@ -84,6 +85,7 @@ struct mgcp_config {
 	char *source_addr;
 	unsigned int number_endpoints;
 	char *bts_ip;
+	char *call_agent_addr;
 
 	struct in_addr bts_in;
 	char *audio_name;
@@ -95,8 +97,12 @@ struct mgcp_config {
 	char *forward_ip;
 	int forward_port;
 
+	/* spec handling */
+	int force_realloc;
+
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
+	mgcp_reset reset_cb;
 	void *data;
 
 	struct mgcp_endpoint *endpoints;
@@ -115,8 +121,15 @@ void mgcp_free_endp(struct mgcp_endpoint *endp);
  * format helper functions
  */
 struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg);
-struct msgb *mgcp_create_rsip(void);
 struct msgb *mgcp_create_response_with_data(int code, const char *msg, const char *trans, const char *data);
+
+/* adc helper */
+static inline int mgcp_timeslot_to_endpoint(int multiplex, int timeslot)
+{
+	if (timeslot == 0)
+		timeslot = 1;
+	return timeslot + (31 * multiplex);
+}
 
 
 #endif

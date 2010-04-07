@@ -10,7 +10,7 @@ rsip_resp = """200 321321332\r\n"""
 audit_packet = """AUEP %d 13@mgw MGCP 1.0\r\n"""
 crcx_packet = """CRCX %d 14@mgw MGCP 1.0\r\nC: 4a84ad5d25f\r\nL: p:20, a:GSM-EFR, nt:IN\r\nM: recvonly\r\n"""
 dlcx_packet = """DLCX %d 14@mgw MGCP 1.0\r\nC: 4a84ad5d25f\r\nI: %d\r\n"""
-mdcx_packet = """MDCX %d 14@mgw MGCP 1.0\r\nC: 4a84ad5d25f\r\nI: %d\r\nL: p:20, a:GSM-EFR, nt:IN\r\nM: recvonly\r\n\r\nv=0\r\no=- 258696477 0 IN IP4 172.16.1.107\r\ns=-\r\nc=IN IP4 172.16.1.107\r\nt=0 0\r\nm=audio 4400 RTP/AVP 127\r\na=rtpmap:127 GSM-EFR/8000/1\r\na=ptime:20\r\na=recvonly\r\nm=image 4402 udptl t38\r\na=T38FaxVersion:0\r\na=T38MaxBitRate:14400\r\n"""
+mdcx_packet = """MDCX %d 14@mgw MGCP 1.0\r\nC: 4a84ad5d25f\r\nI: %d\r\nL: p:20, a:GSM-EFR, nt:IN\r\nM: recvonly\r\n\r\nv=0\r\no=- 258696477 0 IN IP4 172.16.1.107\r\ns=-\r\nc=IN IP4 172.16.1.107\r\nt=0 0\r\nm=audio 6666 RTP/AVP 127\r\na=rtpmap:127 GSM-EFR/8000/1\r\na=ptime:20\r\na=recvonly\r\nm=image 4402 udptl t38\r\na=T38FaxVersion:0\r\na=T38MaxBitRate:14400\r\n"""
 
 def hexdump(src, length=8):
     """Recipe is from http://code.activestate.com/recipes/142812/"""
@@ -25,15 +25,24 @@ def hexdump(src, length=8):
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 server_socket.bind(("127.0.0.1", MGCP_CALLAGENT_PORT))
-server_socket.setblocking(0)
+server_socket.setblocking(1)
 
-
-def send_receive(packet):
+last_ci = 1
+def send_and_receive(packet):
+    global last_ci
     server_socket.sendto(packet, ("127.0.0.1", MGCP_GATEWAY_PORT))
     try:
         data, addr = server_socket.recvfrom(4096)
+
+        # attempt to store the CI of the response
+        list = data.split("\n")
+        for item in list:
+           if item.startswith("I: "):
+               last_ci = int(item[3:])
+
         print hexdump(data), addr
-    except socket.error:
+    except socket.error, e:
+        print e
         pass
 
 def generate_tid():
@@ -42,13 +51,10 @@ def generate_tid():
 
 
 
-i = 1
 while True:
-    send_receive(rsip_resp)
-    send_receive(audit_packet)
-    send_receive(crcx_packet % generate_tid() )
-    send_receive(mdcx_packet % (generate_tid(), i))
-    send_receive(dlcx_packet % (generate_tid(), i))
-    i = i + 1
+    send_and_receive(audit_packet % generate_tid())
+    send_and_receive(crcx_packet % generate_tid() )
+    send_and_receive(mdcx_packet % (generate_tid(), last_ci))
+    send_and_receive(dlcx_packet % (generate_tid(), last_ci))
 
     time.sleep(3)

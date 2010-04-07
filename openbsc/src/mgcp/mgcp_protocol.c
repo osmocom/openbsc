@@ -80,11 +80,6 @@ enum mgcp_connection_mode {
 	}
 
 
-struct mgcp_msg_ptr {
-	unsigned int start;
-	unsigned int length;
-};
-
 struct mgcp_request {
 	char *name;
 	struct msgb *(*handle_request) (struct mgcp_config *cfg, struct msgb *msg);
@@ -98,6 +93,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg);
+static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg);
 
 static int generate_call_id(struct mgcp_config *cfg)
 {
@@ -119,12 +115,6 @@ static int generate_call_id(struct mgcp_config *cfg)
 	return cfg->last_call_id;
 }
 
-/* FIXIME/TODO: need to have a list of pending transactions and check that */
-static unsigned int generate_transaction_id()
-{
-	return abs(rand());
-}
-
 /*
  * array of function pointers for handling various
  * messages. In the future this might be binary sorted
@@ -135,6 +125,9 @@ static const struct mgcp_request mgcp_requests [] = {
 	MGCP_REQUEST("CRCX", handle_create_con, "CreateConnection")
 	MGCP_REQUEST("DLCX", handle_delete_con, "DeleteConnection")
 	MGCP_REQUEST("MDCX", handle_modify_con, "ModifiyConnection")
+
+	/* SPEC extension */
+	MGCP_REQUEST("RSIP", handle_rsip, "ReSetInProgress")
 };
 
 static struct msgb *mgcp_msgb_alloc(void)
@@ -194,23 +187,6 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
 }
 
-/* send a static record */
-struct msgb *mgcp_create_rsip(void)
-{
-	struct msgb *msg;
-	int len;
-
-	msg = mgcp_msgb_alloc();
-	if (!msg)
-		return NULL;
-
-	len = snprintf((char *) msg->data, 2048,
-			"RSIP %u *@mgw MGCP 1.0\n"
-			"RM: restart\n", generate_transaction_id());
-	msg->l2h = msgb_put(msg, len);
-	return msg;
-}
-
 /*
  * handle incoming messages:
  *   - this can be a command (four letters, space, transaction id)
@@ -221,25 +197,25 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
         int code;
 	struct msgb *resp = NULL;
 
-	if (msg->len < 4) {
+	if (msgb_l2len(msg) < 4) {
 		LOGP(DMGCP, LOGL_ERROR, "mgs too short: %d\n", msg->len);
 		return NULL;
 	}
 
         /* attempt to treat it as a response */
-        if (sscanf((const char *)&msg->data[0], "%3d %*s", &code) == 1) {
+        if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
 		LOGP(DMGCP, LOGL_DEBUG, "Response: Code: %d\n", code);
 	} else {
 		int i, handled = 0;
 		msg->l3h = &msg->l2h[4];
 		for (i = 0; i < ARRAY_SIZE(mgcp_requests); ++i)
-			if (strncmp(mgcp_requests[i].name, (const char *) &msg->data[0], 4) == 0) {
+			if (strncmp(mgcp_requests[i].name, (const char *) &msg->l2h[0], 4) == 0) {
 				handled = 1;
 				resp = mgcp_requests[i].handle_request(cfg, msg);
 				break;
 			}
 		if (!handled) {
-			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->data[0]);
+			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->l2h[0]);
 		}
 	}
 
@@ -296,9 +272,9 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 	return &cfg->endpoints[gw];
 }
 
-static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
-			  struct mgcp_msg_ptr *ptr, int size,
-			  const char **transaction_id, struct mgcp_endpoint **endp)
+int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
+			struct mgcp_msg_ptr *ptr, int size,
+			const char **transaction_id, struct mgcp_endpoint **endp)
 {
 	int found;
 
@@ -334,8 +310,11 @@ static int analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 	}
 
 	*transaction_id = (const char *)&msg->l3h[ptr[0].start];
-	*endp = find_endpoint(cfg, (const char *)&msg->l3h[ptr[1].start]);
-	return *endp == NULL;
+	if (endp) {
+		*endp = find_endpoint(cfg, (const char *)&msg->l3h[ptr[1].start]);
+		return *endp == NULL;
+	}
+	return 0;
 }
 
 static int verify_call_id(const struct mgcp_endpoint *endp,
@@ -369,7 +348,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 	    response = 500;
 	else
@@ -402,13 +381,19 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	int error_code = 500;
 	int port;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(500, "CRCX", trans_id);
 
 	if (endp->ci != CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return create_response(500, "CRCX", trans_id);
+		if (cfg->force_realloc) {
+			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
+			    ENDPOINT_NUMBER(endp));
+		} else {
+			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
+			     ENDPOINT_NUMBER(endp));
+			return create_response(500, "CRCX", trans_id);
+		}
 	}
 
 	/* parse CallID C: and LocalParameters L: */
@@ -501,7 +486,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(error_code, "MDCX", trans_id);
 
@@ -614,7 +599,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
 
-	found = analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_response(error_code, "DLCX", trans_id);
 
@@ -678,6 +663,13 @@ error3:
 	return create_response(error_code, "DLCX", trans_id);
 }
 
+static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg)
+{
+	if (cfg->reset_cb)
+		cfg->reset_cb(cfg);
+	return NULL;
+}
+
 struct mgcp_config *mgcp_config_alloc(void)
 {
 	struct mgcp_config *cfg;
@@ -722,7 +714,7 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 
 void mgcp_free_endp(struct mgcp_endpoint *endp)
 {
-	LOGP(DMGCP, LOGL_NOTICE, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
+	LOGP(DMGCP, LOGL_DEBUG, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
 	endp->ci= CI_UNUSED;
 
 	if (endp->callid) {
@@ -732,7 +724,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	if (endp->local_options) {
 		talloc_free(endp->local_options);
-		endp->callid = NULL;
+		endp->local_options = NULL;
 	}
 
 	if (!endp->cfg->early_bind) {
@@ -742,4 +734,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 	endp->net_payload_type = endp->bts_payload_type = -1;
+	endp->in_bts = endp->in_remote = 0;
+	memset(&endp->remote, 0, sizeof(endp->remote));
+	memset(&endp->bts, 0, sizeof(endp->bts));
 }

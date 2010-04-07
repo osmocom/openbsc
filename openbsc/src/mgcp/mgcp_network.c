@@ -25,6 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <endian.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -90,6 +91,9 @@ static void patch_payload(int payload, char *data, int len)
 	if (len < sizeof(*rtp_hdr))
 		return;
 
+	if (payload < 0)
+		return;
+
 	rtp_hdr = (struct rtp_hdr *) data;
 	rtp_hdr->payload_type = payload;
 }
@@ -119,16 +123,14 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	rc = recvfrom(fd->fd, &buf, sizeof(buf), 0,
 			    (struct sockaddr *) &addr, &slen);
 	if (rc < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x\n",
-			ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x errno: %d/%s\n",
+			ENDPOINT_NUMBER(endp), errno, strerror(errno));
 		return -1;
 	}
 
 	/* do not forward aynthing... maybe there is a packet from the bts */
-	if (endp->ci == CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "Unknown message on endpoint: 0x%x\n", ENDPOINT_NUMBER(endp));
+	if (endp->ci == CI_UNUSED)
 		return -1;
-	}
 
 	/*
 	 * Figure out where to forward it to. This code assumes that we
@@ -146,7 +148,9 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	/* We have no idea who called us, maybe it is the BTS. */
 	if (dest == DEST_NETWORK && (endp->bts_rtp == 0 || cfg->forward_ip)) {
 		/* it was the BTS... */
-		if (!cfg->bts_ip || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0) {
+		if (!cfg->bts_ip
+		    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
+		    || memcmp(&addr.sin_addr, &endp->bts, sizeof(endp->bts)) == 0) {
 			if (fd == &endp->local_rtp) {
 				endp->bts_rtp = addr.sin_port;
 			} else {
@@ -158,6 +162,12 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp));
 		}
 	}
+
+	/* do this before the loop handling */
+	if (dest == DEST_NETWORK)
+		++endp->in_bts;
+	else
+		++endp->in_remote;
 
 	/* dispatch */
 	if (cfg->audio_loop)
