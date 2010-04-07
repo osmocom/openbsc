@@ -104,6 +104,9 @@ struct mgcp_config {
 	unsigned int number_endpoints;
 	struct mgcp_endpoint *endpoints;
 
+	/* spec handling */
+	int force_realloc;
+
 	/* callback functionality */
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
