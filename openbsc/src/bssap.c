@@ -280,7 +280,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	return gsm48_send_rr_ciph_mode(msg->lchan, include_imeisv);
 
 reject:
-	if (msg->lchan->msc_data)
+	if (msg->lchan && msg->lchan->msc_data)
 		msg->lchan->msc_data->block_gsm = 0;
 
 	resp = bssmap_create_cipher_reject(reject_cause);
