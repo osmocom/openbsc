@@ -728,6 +728,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
 	endp->net_payload_type = endp->bts_payload_type = -1;
+	endp->in_bts = endp->in_remote = 0;
 	memset(&endp->remote, 0, sizeof(endp->remote));
 	memset(&endp->bts, 0, sizeof(endp->bts));
 }
