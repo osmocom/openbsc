@@ -148,9 +148,18 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		talloc_free(bsc_endp->transaction_id);
 	}
 
+	/* we need to generate a new and patched message */
+	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
+				   nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
+	if (!bsc_msg) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
+		return MGCP_POLICY_CONT;
+	}
+
+
 	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
 	bsc_endp->bsc = bsc_con;
-	bsc_endp->pending_delete = state == MGCP_ENDP_DLCX;
+	bsc_endp->pending_delete = 0;
 
 	/* we need to update some bits */
 	if (state == MGCP_ENDP_CRCX) {
@@ -162,14 +171,10 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		} else {
 			mgcp_endp->bts = sock.sin_addr;
 		}
-	}
-
-	/* we need to generate a new and patched message */
-	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
-				   nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
-	if (!bsc_msg) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
-		return MGCP_POLICY_CONT;
+	} else if (state == MGCP_ENDP_DLCX) {
+		/* we will free the endpoint now in case the BSS does not respond */
+		bsc_endp->pending_delete = 1;
+		mgcp_free_endp(mgcp_endp);
 	}
 
 	bsc_write_mgcp_msg(bsc_con, bsc_msg);
@@ -223,20 +228,25 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
+	/* make it point to our endpoint if it was not deleted */
+	if (bsc_endp->pending_delete) {
+		bsc_endp->bsc = NULL;
+		bsc_endp->pending_delete = 0;
+	} else {
+		endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
+	}
+
 	/* free some stuff */
 	talloc_free(bsc_endp->transaction_id);
 	bsc_endp->transaction_id = NULL;
 
-	/* make it point to our endpoint */
-	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
+	/*
+	 * rewrite the information. In case the endpoint was deleted
+	 * there should be nothing for us to rewrite so putting endp->rtp_port
+	 * with the value of 0 should be no problem.
+	 */
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
 				  bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
-
-	if (bsc_endp->pending_delete) {
-		mgcp_free_endp(endp);
-		bsc_endp->bsc = NULL;
-		bsc_endp->pending_delete = 0;
-	}
 
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
