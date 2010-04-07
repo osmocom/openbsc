@@ -900,7 +900,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTPc:m:l:",
+		c = getopt_long(argc, argv, "hd:sTPc:m:l:e:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
