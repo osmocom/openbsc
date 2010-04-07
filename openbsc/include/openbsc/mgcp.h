@@ -97,6 +97,9 @@ struct mgcp_config {
 	char *forward_ip;
 	int forward_port;
 
+	/* spec handling */
+	int force_realloc;
+
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
 	mgcp_reset reset_cb;

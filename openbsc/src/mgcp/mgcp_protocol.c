@@ -386,8 +386,14 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		return create_response(500, "CRCX", trans_id);
 
 	if (endp->ci != CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return create_response(500, "CRCX", trans_id);
+		if (cfg->force_realloc) {
+			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
+			    ENDPOINT_NUMBER(endp));
+		} else {
+			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
+			     ENDPOINT_NUMBER(endp));
+			return create_response(500, "CRCX", trans_id);
+		}
 	}
 
 	/* parse CallID C: and LocalParameters L: */
