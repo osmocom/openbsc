@@ -38,6 +38,7 @@
 #include <openbsc/db.h>
 #include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
+#include <openbsc/vty.h>
 
 static struct gsm_network *gsmnet;
 
@@ -615,7 +616,7 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
 		struct in_addr ia;
-		ia.s_addr = lchan->abis_ip.bound_ip;
+		ia.s_addr = htonl(lchan->abis_ip.bound_ip);
 		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
 			inet_ntoa(ia), lchan->abis_ip.bound_port,
 			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
@@ -875,204 +876,6 @@ DEFUN(show_paging,
 		bts_paging_dump_vty(vty, bts);
 	}
 
-	return CMD_SUCCESS;
-}
-
-static void _vty_output(struct log_target *tgt, const char *line)
-{
-	struct vty *vty = tgt->tgt_vty.vty;
-	vty_out(vty, "%s", line);
-	/* This is an ugly hack, but there is no easy way... */
-	if (strchr(line, '\n'))
-		vty_out(vty, "\r");
-}
-
-struct log_target *log_target_create_vty(struct vty *vty)
-{
-	struct log_target *target;
-
-	target = log_target_create();
-	if (!target)
-		return NULL;
-
-	target->tgt_vty.vty = vty;
-	target->output = _vty_output;
-	return target;
-}
-
-DEFUN(enable_logging,
-      enable_logging_cmd,
-      "logging enable",
-      "Enables logging to this vty\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (conn->dbg) {
-		vty_out(vty, "Logging already enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	conn->dbg = log_target_create_vty(vty);
-	if (!conn->dbg)
-		return CMD_WARNING;
-
-	log_add_target(conn->dbg);
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_fltr_imsi,
-      logging_fltr_imsi_cmd,
-      "logging filter imsi IMSI",
-      "Print all messages related to a IMSI\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_imsi_filter(conn->dbg, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_fltr_all,
-      logging_fltr_all_cmd,
-      "logging filter all <0-1>",
-      "Print all messages to the console\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_all_filter(conn->dbg, atoi(argv[0]));
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_use_clr,
-      logging_use_clr_cmd,
-      "logging color <0-1>",
-      "Use color for printing messages\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_use_color(conn->dbg, atoi(argv[0]));
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_prnt_timestamp,
-      logging_prnt_timestamp_cmd,
-      "logging timestamp <0-1>",
-      "Print the timestamp of each message\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_print_timestamp(conn->dbg, atoi(argv[0]));
-	return CMD_SUCCESS;
-}
-
-/* FIXME: those have to be kept in sync with the log levels and categories */
-#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref)"
-#define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
-DEFUN(logging_level,
-      logging_level_cmd,
-      "logging level " VTY_DEBUG_CATEGORIES " " VTY_DEBUG_LEVELS,
-      "Set the log level for a specified category\n")
-{
-	struct telnet_connection *conn;
-	int category = log_parse_category(argv[0]);
-	int level = log_parse_level(argv[1]);
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (category < 0) {
-		vty_out(vty, "Invalid category `%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	if (level < 0) {
-		vty_out(vty, "Invalid level `%s'%s", argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	conn->dbg->categories[category].enabled = 1;
-	conn->dbg->categories[category].loglevel = level;
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_set_category_mask,
-      logging_set_category_mask_cmd,
-      "logging set log mask MASK",
-      "Decide which categories to output.\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_parse_category_mask(conn->dbg, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_set_log_level,
-      logging_set_log_level_cmd,
-      "logging set log level <0-8>",
-      "Set the global log level. The value 0 implies no filtering.\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_log_level(conn->dbg, atoi(argv[0]));
-	return CMD_SUCCESS;
-}
-
-DEFUN(diable_logging,
-      disable_logging_cmd,
-      "logging disable",
-      "Disables logging to this vty\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_del_target(conn->dbg);
-	talloc_free(conn->dbg);
-	conn->dbg = NULL;
 	return CMD_SUCCESS;
 }
 
@@ -1957,15 +1760,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_paging_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
 
-	install_element(VIEW_NODE, &enable_logging_cmd);
-	install_element(VIEW_NODE, &disable_logging_cmd);
-	install_element(VIEW_NODE, &logging_fltr_imsi_cmd);
-	install_element(VIEW_NODE, &logging_fltr_all_cmd);
-	install_element(VIEW_NODE, &logging_use_clr_cmd);
-	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
-	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
-	install_element(VIEW_NODE, &logging_level_cmd);
-	install_element(VIEW_NODE, &logging_set_log_level_cmd);
+	openbsc_vty_add_cmds();
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);

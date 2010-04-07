@@ -550,6 +550,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		}
 
 		/* lookup BTS, create sign_link, ... */
+		site_id = bts_id = trx_id = 0;
 		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
 			     &site_id, &bts_id, &trx_id);
 		ipbc = find_bts_by_unitid(ipp, site_id, bts_id);

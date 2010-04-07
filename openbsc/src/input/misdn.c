@@ -262,7 +262,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
-		DEBUGP(DMIB, "send returns %d instead of %lu\n", ret,
+		DEBUGP(DMIB, "send returns %d instead of %zu\n", ret,
 			sizeof(*hh) + BCHAN_TX_GRAN);
 
 	return ret;

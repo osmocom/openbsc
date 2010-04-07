@@ -17,7 +17,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		input/misdn.c input/ipaccess.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
-		bts_unknown.c bsc_version.c bsc_api.c
+		bts_unknown.c bsc_version.c bsc_api.c vty_interface_cmds.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
@@ -42,7 +42,7 @@ ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYP
 isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c \
-		   debug.c telnet_interface.c
+		   debug.c telnet_interface.c vty_interface_cmds.c
 bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c

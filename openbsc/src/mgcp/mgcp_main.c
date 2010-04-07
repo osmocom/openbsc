@@ -40,6 +40,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/telnet_interface.h>
+#include <openbsc/vty.h>
 
 #include <vty/command.h>
 
@@ -255,6 +256,7 @@ int bsc_vty_init(struct gsm_network *dummy)
 	cmd_init(1);
 	vty_init();
 
+	openbsc_vty_add_cmds();
         mgcp_vty_init();
 	return 0;
 }
