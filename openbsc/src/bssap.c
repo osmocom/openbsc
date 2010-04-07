@@ -473,7 +473,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
-		goto reject;
+		return -1;
 	}
 
 	msc_data = msg->lchan->msc_data;
