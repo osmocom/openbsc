@@ -616,7 +616,7 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 		vty_out(vty, "  No Subscriber%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(lchan->ts->trx->bts)) {
 		struct in_addr ia;
-		ia.s_addr = lchan->abis_ip.bound_ip;
+		ia.s_addr = htonl(lchan->abis_ip.bound_ip);
 		vty_out(vty, "  Bound IP: %s Port %u RTP_TYPE2=%u CONN_ID=%u%s",
 			inet_ntoa(ia), lchan->abis_ip.bound_port,
 			lchan->abis_ip.rtp_payload2, lchan->abis_ip.conn_id,
