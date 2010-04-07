@@ -38,4 +38,6 @@ int main(int argc, char** argv)
 	DEBUGP(DRLL, "You should see this\n");
 	DEBUGP(DCC, "You should see this\n");
 	DEBUGP(DMM, "You should not see this\n");
+
+	return 0;
 }
