@@ -227,7 +227,6 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	int reject_cause = -1;
 	int include_imeisv = 1;
 
-	/* HACK: Sending A5/0 to the MS */
 	if (!msg->lchan || !msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
 		goto reject;
@@ -344,8 +343,8 @@ enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *a
 			return GSM0808_PERM_FR3;
 			break;
 		default:
-			    LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
-			    return GSM0808_PERM_HR1;
+			LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
+			return GSM0808_PERM_HR1;
 		}
 	}
 }
