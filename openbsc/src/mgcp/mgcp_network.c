@@ -25,6 +25,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <endian.h>
+#include <errno.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -122,8 +123,8 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	rc = recvfrom(fd->fd, &buf, sizeof(buf), 0,
 			    (struct sockaddr *) &addr, &slen);
 	if (rc < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x\n",
-			ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x errno: %d/%s\n",
+			ENDPOINT_NUMBER(endp), errno, strerror(errno));
 		return -1;
 	}
 
