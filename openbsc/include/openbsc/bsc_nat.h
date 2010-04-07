@@ -158,6 +158,9 @@ struct bsc_nat {
 	u_int8_t mgcp_msg[4096];
 	int mgcp_length;
 
+	/* msc things */
+	int first_contact;
+
 	struct bsc_endpoint *bsc_endpoints;
 };
 
