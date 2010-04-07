@@ -307,6 +307,33 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 	bsc_msc_schedule_connect(con);
 }
 
+static void msc_connected(struct bsc_msc_connection *con)
+{
+	static const u_int8_t reset[] = {
+		0x09, 0x00, 0x03, 0x05, 0x07, 0x02, 0x42, 0xfe,
+		0x02, 0x42, 0xfe, 0x06, 0x00, 0x04, 0x30, 0x04,
+		0x01, 0x20
+	};
+
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "08.08 reset");
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate reset msg.\n");
+		return;
+	}
+
+	msg->l2h = msgb_put(msg, sizeof(reset));
+	memcpy(msg->l2h, reset, msgb_l2len(msg));
+
+	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to enqueue reset msg.\n");
+		msgb_free(msg);
+	}
+
+	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
+}
+
 static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
@@ -782,6 +809,7 @@ int main(int argc, char** argv)
 	}
 
 	msc_con->connection_loss = msc_connection_was_lost;
+	msc_con->connected = msc_connected;
 	msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
 	msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
 	bsc_msc_connect(msc_con);
