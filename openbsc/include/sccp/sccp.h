@@ -94,7 +94,7 @@ struct sccp_connection {
  *   call sccp_system_incoming for incoming data (from the network)
  *   sccp will call outgoing whenever outgoing data exists
  */
-int sccp_system_init(int (*outgoing)(struct msgb *data, void *ctx), void *context);
+int sccp_system_init(void (*outgoing)(struct msgb *data, void *ctx), void *context);
 int sccp_system_incoming(struct msgb *data);
 
 /**
@@ -104,6 +104,11 @@ int sccp_connection_write(struct sccp_connection *connection, struct msgb *data)
 int sccp_connection_send_it(struct sccp_connection *connection);
 int sccp_connection_close(struct sccp_connection *connection, int cause);
 int sccp_connection_free(struct sccp_connection *connection);
+
+/**
+ * internal.. 
+ */
+int sccp_connection_force_free(struct sccp_connection *conn);
 
 /**
  * Create a new socket. Set your callbacks and then call bind to open
