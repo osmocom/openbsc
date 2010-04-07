@@ -60,6 +60,7 @@ static struct bsc_fd bsc_listen;
 static struct bsc_nat *nat;
 static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 static void remove_bsc_connection(struct bsc_connection *connection);
+static void msc_send_reset(struct bsc_msc_connection *con);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
@@ -169,10 +170,11 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
  */
 static void initialize_msc_if_needed()
 {
-	static int init = 0;
-	init = 1;
+	if (nat->first_contact)
+		return;
 
-	/* do we need to send a GSM 08.08 message here? */
+	nat->first_contact = 1;
+	msc_send_reset(msc_con);
 }
 
 /*
@@ -303,11 +305,12 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
 		remove_bsc_connection(bsc);
 
+	nat->first_contact = 0;
 	bsc_mgcp_free_endpoints(nat);
 	bsc_msc_schedule_connect(con);
 }
 
-static void msc_connected(struct bsc_msc_connection *con)
+static void msc_send_reset(struct bsc_msc_connection *con)
 {
 	static const u_int8_t reset[] = {
 		0x00, 0x12, 0xfd,
@@ -810,7 +813,6 @@ int main(int argc, char** argv)
 	}
 
 	msc_con->connection_loss = msc_connection_was_lost;
-	msc_con->connected = msc_connected;
 	msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
 	msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
 	bsc_msc_connect(msc_con);
