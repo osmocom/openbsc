@@ -85,13 +85,13 @@ static u_int16_t get_country_code_for_msc(struct gsm_network *net)
 
 static int bssmap_paging_cb(unsigned int hooknum, unsigned int event, struct msgb *msg, void *data, void *param)
 {
-	DEBUGP(DMSC, "Paging is complete.\n");
+	LOGP(DMSC, LOGL_DEBUG, "Paging is complete.\n");
 	return 0;
 }
 
 static int bssmap_handle_reset_ack(struct gsm_network *net, struct msgb *msg, unsigned int length)
 {
-	DEBUGP(DMSC, "Reset ACK from MSC\n");
+	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
 
 	return 0;
 }
@@ -112,15 +112,15 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_IMSI)) {
-		DEBUGP(DMSC, "Mandantory IMSI not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandantory IMSI not present.\n");
 		return -1;
 	} else if ((TLVP_VAL(&tp, GSM0808_IE_IMSI)[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI) {
-		DEBUGP(DMSC, "Wrong content in the IMSI\n");
+		LOGP(DMSC, LOGL_ERROR, "Wrong content in the IMSI\n");
 		return -1;
 	}
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
-		DEBUGP(DMSC, "Mandantory CELL IDENTIFIER LIST not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandantory CELL IDENTIFIER LIST not present.\n");
 		return -1;
 	}
 
@@ -150,7 +150,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 		unsigned int *_lac = (unsigned int *)&data[1];
 		lac = ntohs(*_lac);
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
-		DEBUGPC(DMSC, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
+		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
 		return -1;
 	}
 
@@ -158,10 +158,10 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 		chan_needed = TLVP_VAL(&tp, GSM0808_IE_CHANNEL_NEEDED)[0] & 0x03;
 
 	if (TLVP_PRESENT(&tp, GSM0808_IE_EMLPP_PRIORITY)) {
-		DEBUGP(DMSC, "eMLPP is not handled\n");
+		LOGP(DMSC, LOGL_ERROR, "eMLPP is not handled\n");
 	}
 
-	DEBUGP(DMSC, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
+	LOGP(DMSC, LOGL_DEBUG, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
 	subscr = subscr_get_or_create(net, mi_string);
 	if (!subscr)
 		return -1;
@@ -170,7 +170,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	subscr->tmsi = tmsi;
 	subscr->lac = lac;
 	paged = paging_request(net, subscr, chan_needed, bssmap_paging_cb, subscr);
-	DEBUGP(DMSC, "Paged IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x on #bts: %d\n", mi_string, tmsi, tmsi, lac, paged);
+	LOGP(DMSC, LOGL_DEBUG, "Paged IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x on #bts: %d\n", mi_string, tmsi, tmsi, lac, paged);
 
 	subscr_put(subscr);
 	return -1;
@@ -185,7 +185,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 	/* TODO: handle the cause of this package */
 
 	if (msg->lchan) {
-		DEBUGP(DMSC, "Releasing all transactions on %p\n", conn);
+		LOGP(DMSC, LOGL_DEBUG, "Releasing all transactions on %p\n", conn);
 		bsc_del_timer(&msg->lchan->msc_data->T10);
 		msg->lchan->msc_data->lchan = NULL;
 
@@ -200,7 +200,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 	/* send the clear complete message */
 	resp = bssmap_create_clear_complete();
 	if (!resp) {
-		DEBUGP(DMSC, "Sending clear complete failed.\n");
+		LOGP(DMSC, LOGL_ERROR, "Sending clear complete failed.\n");
 		return -1;
 	}
 
@@ -229,12 +229,12 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 
 	/* HACK: Sending A5/0 to the MS */
 	if (!msg->lchan || !msg->lchan->msc_data) {
-		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
+		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
 		goto reject;
 	}
 
 	if (msg->lchan->msc_data->ciphering_handled) {
-		DEBUGP(DMSC, "Already seen ciphering command. Protocol Error.\n");
+		LOGP(DMSC, LOGL_ERROR, "Already seen ciphering command. Protocol Error.\n");
 		goto reject;
 	}
 
@@ -243,7 +243,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 
 	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_ENCRYPTION_INFORMATION)) {
-		DEBUGP(DMSC, "IE Encryption Information missing.\n");
+		LOGP(DMSC, LOGL_ERROR, "IE Encryption Information missing.\n");
 		goto reject;
 	}
 
@@ -255,7 +255,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	 */
 	len = TLVP_LEN(&tp, GSM0808_IE_ENCRYPTION_INFORMATION);
 	if (len < 1) {
-		DEBUGP(DMSC, "IE Encryption Information is too short.\n");
+		LOGP(DMSC, LOGL_ERROR, "IE Encryption Information is too short.\n");
 		goto reject;
 	}
 
@@ -269,7 +269,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 		msg->lchan->encr.key_len = len - 1;
 		memcpy(msg->lchan->encr.key, &data[1], len - 1);
 	} else {
-		DEBUGP(DMSC, "Can not select encryption...\n");
+		LOGP(DMSC, LOGL_ERROR, "Can not select encryption...\n");
 		goto reject;
 	}
 
@@ -285,7 +285,7 @@ reject:
 
 	resp = bssmap_create_cipher_reject(reject_cause);
 	if (!resp) {
-		DEBUGP(DMSC, "Sending the cipher reject failed.\n");
+		LOGP(DMSC, LOGL_ERROR, "Sending the cipher reject failed.\n");
 		return -1;
 	}
 
@@ -301,11 +301,11 @@ static void bssmap_t10_fired(void *_conn)
 	struct sccp_connection *conn = (struct sccp_connection *) _conn;
 	struct msgb *resp;
 
-	DEBUGP(DMSC, "T10 fired, assignment failed: %p\n", conn);
+	LOGP(DMSC, LOGL_ERROR, "T10 fired, assignment failed: %p\n", conn);
 	resp = bssmap_create_assignment_failure(
 		GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 	if (!resp) {
-		DEBUGP(DMSC, "Allocation failure: %p\n", conn);
+		LOGP(DMSC, LOGL_ERROR, "Allocation failure: %p\n", conn);
 		return;
 	}
 
@@ -329,7 +329,7 @@ enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *a
 			return GSM0808_PERM_HR3;
 			break;
 		default:
-			    DEBUGP(DMSC, "Wrong speech mode: %d\n", audio->ver);
+			    LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
 			    return GSM0808_PERM_FR1;
 		}
 	} else {
@@ -344,7 +344,7 @@ enum gsm0808_permitted_speech audio_support_to_gsm88(struct gsm_audio_support *a
 			return GSM0808_PERM_FR3;
 			break;
 		default:
-			    DEBUGP(DMSC, "Wrong speech mode: %d\n", audio->ver);
+			    LOGP(DMSC, LOGL_ERROR, "Wrong speech mode: %d\n", audio->ver);
 			    return GSM0808_PERM_HR1;
 		}
 	}
@@ -472,7 +472,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	int i, supported, port, full_rate = -1;
 
 	if (!msg->lchan || !msg->lchan->msc_data) {
-		DEBUGP(DMSC, "No lchan/msc_data in cipher mode command.\n");
+		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
 		return -1;
 	}
 
@@ -481,12 +481,12 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
-		DEBUGP(DMSC, "Mandantory channel type not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandantory channel type not present.\n");
 		goto reject;
 	}
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)) {
-		DEBUGP(DMSC, "Identity code missing. Audio routing will not work.\n");
+		LOGP(DMSC, LOGL_ERROR, "Identity code missing. Audio routing will not work.\n");
 		goto reject;
 	}
 
@@ -500,7 +500,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	 * multi-slot, limiting the channel coding, speech...
 	 */
 	if (TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE) < 3) {
-		DEBUGP(DMSC, "ChannelType len !=3 not supported: %d\n",
+		LOGP(DMSC, LOGL_ERROR, "ChannelType len !=3 not supported: %d\n",
 			TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE));
 		goto reject;
 	}
@@ -512,12 +512,12 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 
 	data = (u_int8_t *) TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
 	if ((data[0] & 0xf) != 0x1) {
-		DEBUGP(DMSC, "ChannelType != speech: %d\n", data[0]);
+		LOGP(DMSC, LOGL_ERROR, "ChannelType != speech: %d\n", data[0]);
 		goto reject;
 	}
 
 	if (data[1] != GSM0808_SPEECH_FULL_PREF && data[1] != GSM0808_SPEECH_HALF_PREF) {
-		DEBUGP(DMSC, "ChannelType full not allowed: %d\n", data[1]);
+		LOGP(DMSC, LOGL_ERROR, "ChannelType full not allowed: %d\n", data[1]);
 		goto reject;
 	}
 
@@ -546,7 +546,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	}
 
 	if (chan_mode == GSM48_CMODE_SIGN) {
-		DEBUGP(DMSC, "No supported audio type found.\n");
+		LOGP(DMSC, LOGL_ERROR, "No supported audio type found.\n");
 		goto reject;
 	}
 
@@ -567,7 +567,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		else
 			goto reject;
 	} else {
-		DEBUGP(DMSC, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on port %d %d/0x%x port: %u\n",
+		LOGP(DMSC, LOGL_ERROR, "Sending ChanModify for speech on: sccp: %p mode: 0x%x on port %d %d/0x%x port: %u\n",
 			conn, chan_mode, port, multiplex, timeslot, msc_data->rtp_port);
 
 		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
@@ -590,7 +590,7 @@ int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int le
 	int ret = 0;
 
 	if (length < 1) {
-		DEBUGP(DMSC, "Not enough room: %d\n", length);
+		LOGP(DMSC, LOGL_ERROR, "Not enough room: %d\n", length);
 		return -1;
 	}
 
@@ -611,7 +611,7 @@ int bssmap_rcvmsg_dt1(struct sccp_connection *conn, struct msgb *msg, unsigned i
 	int ret = 0;
 
 	if (length < 1) {
-		DEBUGP(DMSC, "Not enough room: %d\n", length);
+		LOGP(DMSC, LOGL_ERROR, "Not enough room: %d\n", length);
 		return -1;
 	}
 
@@ -626,7 +626,7 @@ int bssmap_rcvmsg_dt1(struct sccp_connection *conn, struct msgb *msg, unsigned i
 		ret = bssmap_handle_assignm_req(conn, msg, length);
 		break;
 	default:
-		DEBUGP(DMSC, "Unimplemented msg type: %d\n", msg->l4h[0]);
+		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l4h[0]);
 		break;
 	}
 
@@ -641,29 +641,29 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	u_int8_t link_id;
 
 	if (!lchan) {
-		DEBUGP(DMSC, "No lchan available\n");
+		LOGP(DMSC, LOGL_ERROR, "No lchan available\n");
 		return -1;
 	}
 
 	header = (struct dtap_header *) msg->l3h;
 	if (sizeof(*header) >= length) {
-		DEBUGP(DMSC, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
-                DEBUGP(DMSC, "hex: %s\n", hexdump(msg->l3h, length));
+		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
                 return -1;
 	}
 
 	if (header->length > length - sizeof(*header)) {
-		DEBUGP(DMSC, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
-                DEBUGP(DMSC, "hex: %s\n", hexdump(msg->l3h, length));
+		LOGP(DMSC, LOGL_ERROR, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
 		return -1;
 	}
 
-	DEBUGP(DMSC, "DTAP message: SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
+	LOGP(DMSC, LOGL_DEBUG, "DTAP message: SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
 
 	/* forward the data */
 	gsm48 = gsm48_msgb_alloc();
 	if (!gsm48) {
-		DEBUGP(DMSC, "Allocation of the message failed.\n");
+		LOGP(DMSC, LOGL_ERROR, "Allocation of the message failed.\n");
 		return -1;
 	}
 
@@ -884,7 +884,7 @@ static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 	case GSM48_CMODE_DATA_6k0:
 	case GSM48_CMODE_DATA_3k6:
 	default:
-		DEBUGP(DMSC, "Using non speech mode: %d\n", mode);
+		LOGP(DMSC, LOGL_ERROR, "Using non speech mode: %d\n", mode);
 		return 0;
 		break;
 	}
@@ -937,7 +937,7 @@ static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 		channel = 0x9;
 		break;
 	case GSM_LCHAN_UNKNOWN:
-		DEBUGP(DMSC, "Unknown lchan type: %p\n", lchan);
+		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %p\n", lchan);
 		break;
 	}
 
@@ -1075,7 +1075,7 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 
 			msg = msgb_alloc(30, "sccp: clear request");
 			if (!msg) {
-				DEBUGP(DMSC, "Failed to allocate clear request.\n");
+				LOGP(DMSC, LOGL_ERROR, "Failed to allocate clear request.\n");
 				return 0;
 			}
 
@@ -1088,7 +1088,7 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 			msg->l3h[4] = 1;
 			msg->l3h[5] = GSM0808_CAUSE_RADIO_INTERFACE_FAILURE;
 
-			DEBUGP(DMSC, "Sending clear request on unexpected channel release.\n");
+			LOGP(DMSC, LOGL_NOTICE, "Sending clear request on unexpected channel release.\n");
 			bsc_queue_connection_write(conn, msg);
 			break;
 		case S_LCHAN_ACTIVATE_ACK:
@@ -1111,17 +1111,17 @@ void bsc_queue_connection_write(struct sccp_connection *conn, struct msgb *msg)
 	data = (struct bss_sccp_connection_data *)conn->data_ctx;
 
 	if (conn->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
-		DEBUGP(DMSC, "Connection closing, dropping packet on: %p\n", conn);
+		LOGP(DMSC, LOGL_ERROR, "Connection closing, dropping packet on: %p\n", conn);
 		msgb_free(msg);
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED
 		   && data->sccp_queue_size == 0) {
 		sccp_connection_write(conn, msg);
 		msgb_free(msg);
 	} else if (data->sccp_queue_size > 10) {
-		DEBUGP(DMSC, "Dropping packet on %p due queue overflow\n", conn);
+		LOGP(DMSC, LOGL_ERROR, "Dropping packet on %p due queue overflow\n", conn);
 		msgb_free(msg);
 	} else {
-		DEBUGP(DMSC, "Queuing packet on %p. Queue size: %d\n", conn, data->sccp_queue_size);
+		LOGP(DMSC, LOGL_DEBUG, "Queuing packet on %p. Queue size: %d\n", conn, data->sccp_queue_size);
 		++data->sccp_queue_size;
 		msgb_enqueue(&data->sccp_queue, msg);
 	}
@@ -1166,13 +1166,13 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 	struct bss_sccp_connection_data *data = lchan->msc_data;
 
 	if (!data || !data->sccp) {
-		DEBUGP(DMSC, "Time-out/Establish after sccp release? Ind: %d lchan: %p\n",
+		LOGP(DMSC, LOGL_ERROR, "Time-out/Establish after sccp release? Ind: %d lchan: %p\n",
 		       rllr_ind, lchan);
 		return;
 	}
 
 	if (memcmp(&data->sccp->source_local_reference, &ref, sizeof(ref)) != 0) {
-		DEBUGP(DMSC, "Wrong SCCP connection. Not handling RLL callback: %u %u\n",
+		LOGP(DMSC, LOGL_ERROR, "Wrong SCCP connection. Not handling RLL callback: %u %u\n",
 			sccp_src_ref_to_int(&ref),
 			sccp_src_ref_to_int(&data->sccp->source_local_reference));
 		return;
@@ -1192,7 +1192,7 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 		bts_free_queued(data);
 		sapi_reject = bssmap_create_sapi_reject(link_id);
 		if (!sapi_reject){
-			DEBUGP(DMSC, "Failed to create SAPI reject\n");
+			LOGP(DMSC, LOGL_ERROR, "Failed to create SAPI reject\n");
 			return;
 		}
 
@@ -1221,9 +1221,9 @@ void bts_queue_send(struct msgb *msg, int link_id)
 				      (void *)sccp_src_ref_to_int(&data->sccp->source_local_reference));
 		}
 	} else if (data->gsm_queue_size == 10) {
-		DEBUGP(DMSC, "Queue full on %p. Dropping GSM0408.\n", data->sccp);
+		LOGP(DMSC, LOGL_ERROR, "Queue full on %p. Dropping GSM0408.\n", data->sccp);
 	} else {
-		DEBUGP(DMSC, "Queueing GSM0408 message on %p. Queue size: %d\n",
+		LOGP(DMSC, LOGL_DEBUG, "Queueing GSM0408 message on %p. Queue size: %d\n",
 		       data->sccp, data->gsm_queue_size + 1);
 
 		msg->smsh = (unsigned char*) link_id;
@@ -1285,7 +1285,7 @@ void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_
 	bsc_del_timer(&lchan->msc_data->T10);
 	resp = bssmap_create_assignment_failure(cause, rr_value);
 	if (!resp) {
-		DEBUGP(DMSC, "Allocation failure: %p\n", lchan_get_sccp(lchan));
+		LOGP(DMSC, LOGL_ERROR, "Allocation failure: %p\n", lchan_get_sccp(lchan));
 		return;
 	}
 
@@ -1299,7 +1299,7 @@ void gsm0808_send_assignment_compl(struct gsm_lchan *lchan, u_int8_t rr_cause)
 	bsc_del_timer(&lchan->msc_data->T10);
 	resp = bssmap_create_assignment_completed(lchan, rr_cause);
 	if (!resp) {
-		DEBUGP(DMSC, "Creating MSC response failed: %p\n", lchan_get_sccp(lchan));
+		LOGP(DMSC, LOGL_ERROR, "Creating MSC response failed: %p\n", lchan_get_sccp(lchan));
 		return;
 	}
 
