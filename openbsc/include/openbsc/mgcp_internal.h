@@ -57,6 +57,10 @@ struct mgcp_endpoint {
 
 	/* backpointer */
 	struct mgcp_config *cfg;
+
+	/* statistics */
+	unsigned int in_bts;
+	unsigned int in_remote;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)

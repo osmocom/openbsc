@@ -162,6 +162,12 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		}
 	}
 
+	/* do this before the loop handling */
+	if (dest == DEST_NETWORK)
+		++endp->in_bts;
+	else
+		++endp->in_remote;
+
 	/* dispatch */
 	if (cfg->audio_loop)
 		dest = !dest;

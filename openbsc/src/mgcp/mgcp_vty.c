@@ -77,11 +77,12 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	for (i = 1; i < g_cfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s%s",
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic in :%u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
 			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
-			inet_ntoa(endp->bts), VTY_NEWLINE);
+			inet_ntoa(endp->bts), endp->in_bts, endp->in_remote,
+			VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
