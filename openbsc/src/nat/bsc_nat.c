@@ -58,7 +58,7 @@ static struct bsc_fd bsc_listen;
 
 
 static struct bsc_nat *nat;
-static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
+static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int);
 static void remove_bsc_connection(struct bsc_connection *connection);
 static void msc_send_reset(struct bsc_msc_connection *con);
 
@@ -93,28 +93,27 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 static void send_reset_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t gsm_reset_ack[] = {
-		0x00, 0x13, 0xfd,
 		0x09, 0x00, 0x03, 0x07, 0x0b, 0x04, 0x43, 0x01,
 		0x00, 0xfe, 0x04, 0x43, 0x5c, 0x00, 0xfe, 0x03,
 		0x00, 0x01, 0x31,
 	};
 
-	bsc_send_data(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
+	bsc_send_data(bsc, gsm_reset_ack, sizeof(gsm_reset_ack), IPAC_PROTO_SCCP);
 }
 
 static void send_id_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t id_ack[] = {
-		0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
+		IPAC_MSGT_ID_ACK
 	};
 
-	bsc_send_data(bsc, id_ack, sizeof(id_ack));
+	bsc_send_data(bsc, id_ack, sizeof(id_ack), IPAC_PROTO_IPACCESS);
 }
 
 static void send_id_req(struct bsc_connection *bsc)
 {
 	static const u_int8_t id_req[] = {
-		0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
+		IPAC_MSGT_ID_GET,
 		0x01, IPAC_IDTAG_UNIT,
 		0x01, IPAC_IDTAG_MACADDR,
 		0x01, IPAC_IDTAG_LOCATION1,
@@ -125,7 +124,7 @@ static void send_id_req(struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
-	bsc_send_data(bsc, id_req, sizeof(id_req));
+	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
 static void nat_send_rlsd(struct sccp_connections *conn)
@@ -180,27 +179,25 @@ static void initialize_msc_if_needed()
 /*
  * Currently we are lacking refcounting so we need to copy each message.
  */
-static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int proto)
 {
 	struct msgb *msg;
 
-	if (length > 4096) {
+	if (length > 4096 - 128) {
 		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
 		return;
 	}
 
-	msg = msgb_alloc(4096, "to-bsc");
+	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
 	if (!msg) {
 		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
 		return;
 	}
 
-	msgb_put(msg, length);
+	msg->l2h = msgb_put(msg, length);
 	memcpy(msg->data, data, length);
-	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
-		msgb_free(msg);
-	}
+
+	bsc_write(bsc, msg, proto);
 }
 
 static int forward_sccp_to_bts(struct msgb *msg)
@@ -208,6 +205,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 	struct sccp_connections *con;
 	struct bsc_connection *bsc;
 	struct bsc_nat_parsed *parsed;
+	int proto;
 
 	/* filter, drop, patch the message? */
 	parsed = bsc_nat_parse(msg);
@@ -219,8 +217,10 @@ static int forward_sccp_to_bts(struct msgb *msg)
 	if (bsc_nat_filter_ipa(DIR_BSC, msg, parsed))
 		goto exit;
 
+	proto = parsed->ipa_proto;
+
 	/* Route and modify the SCCP packet */
-	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+	if (proto == IPAC_PROTO_SCCP) {
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_UDT:
 			/* forward UDT messages to every BSC */
@@ -266,7 +266,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		return -1;
 	}
 
-	bsc_send_data(con->bsc, msg->data, msg->len);
+	bsc_send_data(con->bsc, msg->l2h, msgb_l2len(msg), proto);
 	return 0;
 
 send_to_all:
@@ -278,7 +278,7 @@ send_to_all:
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
 		bsc = bsc_nat_find_bsc(nat, msg);
 		if (bsc)
-			bsc_send_data(bsc, msg->data, msg->len);
+			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
 		else
 			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging.\n");
 
@@ -289,7 +289,7 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		bsc_send_data(bsc, msg->data, msg->len);
+		bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
 	}
 
 exit:

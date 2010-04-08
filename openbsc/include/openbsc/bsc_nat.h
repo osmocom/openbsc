@@ -196,7 +196,6 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
 /**
  * MGCP/Audio handling
  */
-int bsc_write_mgcp_msg(struct bsc_connection *bsc, struct msgb *msg);
 int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_clear(struct sccp_connections *);
@@ -211,5 +210,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc);
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60]);
 int bsc_mgcp_extract_ci(const char *resp);
+
+
+int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 
 #endif
