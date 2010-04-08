@@ -92,11 +92,16 @@ DEFUN(show_bsc, show_bsc_cmd, "show connections bsc",
       SHOW_STR "Display information about current BSCs")
 {
 	struct bsc_connection *con;
+	struct sockaddr_in sock;
+	socklen_t len = sizeof(sock);
+
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
-		vty_out(vty, "BSC lac: %d, %d auth: %d fd: %d%s",
+		getpeername(con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
+		vty_out(vty, "BSC lac: %d, %d auth: %d fd: %d peername: %s%s",
 			con->cfg ? con->cfg->nr : -1,
 			con->cfg ? con->cfg->lac : -1,
-			con->authenticated, con->write_queue.bfd.fd, VTY_NEWLINE);
+			con->authenticated, con->write_queue.bfd.fd,
+			inet_ntoa(sock.sin_addr), VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
