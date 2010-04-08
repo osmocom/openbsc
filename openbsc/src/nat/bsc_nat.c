@@ -310,7 +310,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 	bsc_msc_schedule_connect(con);
 }
 
-static void msc_send_reset(struct bsc_msc_connection *con)
+static void msc_send_reset(struct bsc_msc_connection *msc_con)
 {
 	static const u_int8_t reset[] = {
 		0x00, 0x12, 0xfd,
@@ -330,7 +330,7 @@ static void msc_send_reset(struct bsc_msc_connection *con)
 	msg->l2h = msgb_put(msg, sizeof(reset));
 	memcpy(msg->l2h, reset, msgb_l2len(msg));
 
-	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to enqueue reset msg.\n");
 		msgb_free(msg);
 	}
