@@ -58,7 +58,7 @@ static struct bsc_fd bsc_listen;
 
 
 static struct bsc_nat *nat;
-static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
+static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 static void remove_bsc_connection(struct bsc_connection *connection);
 static void msc_send_reset(struct bsc_msc_connection *con);
 
@@ -99,7 +99,7 @@ static void send_reset_ack(struct bsc_connection *bsc)
 		0x00, 0x01, 0x31,
 	};
 
-	bsc_write(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
+	bsc_send_data(bsc, gsm_reset_ack, sizeof(gsm_reset_ack));
 }
 
 static void send_id_ack(struct bsc_connection *bsc)
@@ -108,7 +108,7 @@ static void send_id_ack(struct bsc_connection *bsc)
 		0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
 	};
 
-	bsc_write(bsc, id_ack, sizeof(id_ack));
+	bsc_send_data(bsc, id_ack, sizeof(id_ack));
 }
 
 static void send_id_req(struct bsc_connection *bsc)
@@ -125,7 +125,7 @@ static void send_id_req(struct bsc_connection *bsc)
 		0x01, IPAC_IDTAG_SERNR,
 	};
 
-	bsc_write(bsc, id_req, sizeof(id_req));
+	bsc_send_data(bsc, id_req, sizeof(id_req));
 }
 
 static void nat_send_rlsd(struct sccp_connections *conn)
@@ -180,7 +180,7 @@ static void initialize_msc_if_needed()
 /*
  * Currently we are lacking refcounting so we need to copy each message.
  */
-static void bsc_write(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
 {
 	struct msgb *msg;
 
@@ -266,7 +266,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		return -1;
 	}
 
-	bsc_write(con->bsc, msg->data, msg->len);
+	bsc_send_data(con->bsc, msg->data, msg->len);
 	return 0;
 
 send_to_all:
@@ -278,7 +278,7 @@ send_to_all:
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
 		bsc = bsc_nat_find_bsc(nat, msg);
 		if (bsc)
-			bsc_write(bsc, msg->data, msg->len);
+			bsc_send_data(bsc, msg->data, msg->len);
 		else
 			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging.\n");
 
@@ -289,7 +289,7 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		bsc_write(bsc, msg->data, msg->len);
+		bsc_send_data(bsc, msg->data, msg->len);
 	}
 
 exit:
