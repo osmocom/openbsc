@@ -891,6 +891,7 @@ static void print_help()
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
 	printf("  -s --disable-color\n");
+	printf("  -T --timestamp. Print a timestamp in the debug output.\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
 	printf("  -l --local=IP. The local address of the MGCP.\n");
