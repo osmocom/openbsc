@@ -208,11 +208,11 @@ static void paging_T3113_expired(void *data)
 	sig_data.lchan	= NULL;
 
 	/* must be destroyed before calling cbfn, to prevent double free */
+	counter_inc(req->bts->network->stats.paging.expired);
 	cbfn_param = req->cbfn_param;
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
-	counter_inc(req->bts->network->stats.paging.expired);
 
 	dispatch_signal(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
 	if (cbfn)
