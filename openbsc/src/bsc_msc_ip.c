@@ -136,21 +136,35 @@ struct gsm_subscriber *find_subscriber(u_int8_t type, const char *mi_string)
 /* SCCP handling */
 void msc_outgoing_sccp_data(struct sccp_connection *conn, struct msgb *msg, unsigned int len)
 {
+	struct gsm_lchan *lchan;
 	struct bssmap_header *bs;
 
 	if (len < 1) {
-		DEBUGP(DMSC, "The header is too short.\n");
+		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");
+		return;
+	}
+
+	lchan = sccp_get_lchan(conn->data_ctx);
+	if (!lchan) {
+		LOGP(DMSC, LOGL_ERROR, "SCCP data without lchan for type: 0x%x\n", msg->l3h[0]);
+		return;
+	}
+
+	/* that is bad */
+	if (!lchan->msc_data) {
+		LOGP(DMSC, LOGL_ERROR, "SCCP data for lchan without msc data type: 0x%x\n",
+		     msg->l3h[0]);
 		return;
 	}
 
 	switch (msg->l3h[0]) {
 	case BSSAP_MSG_BSS_MANAGEMENT:
 		msg->l4h = &msg->l3h[sizeof(*bs)];
-		msg->lchan = sccp_get_lchan(conn->data_ctx);
+		msg->lchan = lchan;
 		bssmap_rcvmsg_dt1(conn, msg, len - sizeof(*bs));
 		break;
 	case BSSAP_MSG_DTAP:
-		dtap_rcvmsg(sccp_get_lchan(conn->data_ctx), msg, len);
+		dtap_rcvmsg(lchan, msg, len);
 		break;
 	default:
 		DEBUGPC(DMSC, "Unimplemented msg type: %d\n", msg->l3h[0]);

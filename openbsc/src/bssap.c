@@ -40,6 +40,8 @@
 #define BSSMAP_MSG_SIZE 512
 #define BSSMAP_MSG_HEADROOM 128
 
+static void bts_queue_send(struct msgb *msg, int link_id);
+
 
 static const struct tlv_definition bss_att_tlvdef = {
 	.def = {
@@ -1202,9 +1204,17 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 }
 
 /* decide if we need to queue because of SAPI != 0 */
-void bts_queue_send(struct msgb *msg, int link_id)
+static void bts_queue_send(struct msgb *msg, int link_id)
 {
-	struct bss_sccp_connection_data *data = msg->lchan->msc_data;
+
+	struct bss_sccp_connection_data *data;
+
+	if (!msg->lchan || !msg->lchan->msc_data) {
+		LOGP(DMSC, LOGL_ERROR, "BAD: Wrongly configured lchan: %p\n", msg->lchan);
+		msgb_free(msg);
+	}
+
+	data = msg->lchan->msc_data;
 
 	if (!data->block_gsm && data->gsm_queue_size == 0) {
 		if (msg->lchan->sapis[link_id & 0x7] != LCHAN_SAPI_UNUSED) {
@@ -1221,6 +1231,7 @@ void bts_queue_send(struct msgb *msg, int link_id)
 		}
 	} else if (data->gsm_queue_size == 10) {
 		LOGP(DMSC, LOGL_ERROR, "Queue full on %p. Dropping GSM0408.\n", data->sccp);
+		msgb_free(msg);
 	} else {
 		LOGP(DMSC, LOGL_DEBUG, "Queueing GSM0408 message on %p. Queue size: %d\n",
 		       data->sccp, data->gsm_queue_size + 1);

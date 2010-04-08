@@ -326,7 +326,6 @@ void bsc_queue_connection_write(struct sccp_connection *conn, struct msgb *msg);
 void bsc_free_queued(struct sccp_connection *conn);
 void bsc_send_queued(struct sccp_connection *conn);
 
-void bts_queue_send(struct msgb *msg, int link_id);
 void bts_send_queued(struct bss_sccp_connection_data*);
 void bts_free_queued(struct bss_sccp_connection_data*);
 void bts_unblock_queue(struct bss_sccp_connection_data*);
