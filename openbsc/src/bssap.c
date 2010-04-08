@@ -1100,8 +1100,14 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		switch (signal) {
 		case S_LCHAN_UNEXPECTED_RELEASE:
 			/* handle this through the T10 timeout */
-			if (lchan->msc_data->lchan != lchan)
+			if (lchan->msc_data->lchan != lchan) {
+				if (lchan->msc_data->secondary_lchan == lchan) {
+					LOGP(DMSC, LOGL_NOTICE, "Setting secondary to NULL.\n");
+					lchan->msc_data->secondary_lchan = NULL;
+					lchan->msc_data = NULL;
+				}
 				return 0;
+			}
 
 			bsc_del_timer(&lchan->msc_data->T10);
 			conn = lchan->msc_data->sccp;
