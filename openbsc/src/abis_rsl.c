@@ -1258,6 +1258,14 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	return 0;
 }
 
+static void rsl_handle_release(struct gsm_lchan *lchan)
+{
+	/* we can now releae the channel on the BTS/Abis side */
+	/* FIXME: officially we need to start T3111 and wait for
+	 * some grace period */
+	rsl_rf_chan_release(lchan);
+}
+
 /*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST
 	0x02, 0x06,
 	0x01, 0x20,
@@ -1309,20 +1317,14 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
-		/* we can now releae the channel on the BTS/Abis side */
-		/* FIXME: officially we need to start T3111 and wait for
-		 * some grace period */
-		rsl_rf_chan_release(msg->lchan);
+		rsl_handle_release(msg->lchan);
 		break;
 	case RSL_MT_REL_CONF:
 		/* BTS informs us of having received UA from MS,
 		 * in response to DISC that we've sent earlier */
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
-		/* we can now releae the channel on the BTS/Abis side */
-		/* FIXME: officially we need to start T3111 and wait for
-		 * some grace period */
-		rsl_rf_chan_release(msg->lchan);
+		rsl_handle_release(msg->lchan);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
