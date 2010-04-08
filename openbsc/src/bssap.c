@@ -41,6 +41,7 @@
 #define BSSMAP_MSG_HEADROOM 128
 
 static void bts_queue_send(struct msgb *msg, int link_id);
+static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
 
 static const struct tlv_definition bss_att_tlvdef = {
@@ -192,8 +193,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 		msg->lchan->msc_data->lchan = NULL;
 
 		/* we might got killed during an assignment */
-		if (msg->lchan->msc_data->secondary_lchan)
-			put_subscr_con(&msg->lchan->msc_data->secondary_lchan->conn, 0);
+		bssmap_free_secondary(msg->lchan->msc_data);
 
 		msg->lchan->msc_data = NULL;
 		put_subscr_con(&msg->lchan->conn, 0);
