@@ -114,7 +114,7 @@ struct gsm_subscriber *find_subscriber(u_int8_t type, const char *mi_string)
 	if (type == GSM_MI_TYPE_TMSI) {
 		tmsi = tmsi_from_string(mi_string);
 		if (tmsi == GSM_RESERVED_TMSI) {
-			DEBUGP(DMSC, "The TMSI is the reserved one.\n");
+			LOGP(DMSC, LOGL_ERROR, "The TMSI is the reserved one.\n");
 			return NULL;
 		}
 	}
@@ -127,7 +127,7 @@ struct gsm_subscriber *find_subscriber(u_int8_t type, const char *mi_string)
 		}
 	}
 
-	DEBUGP(DMSC, "No subscriber has been found.\n");
+	LOGP(DMSC, LOGL_ERROR, "No subscriber has been found.\n");
 	return NULL;
 }
 
@@ -167,18 +167,18 @@ void msc_outgoing_sccp_data(struct sccp_connection *conn, struct msgb *msg, unsi
 		dtap_rcvmsg(lchan, msg, len);
 		break;
 	default:
-		DEBUGPC(DMSC, "Unimplemented msg type: %d\n", msg->l3h[0]);
+		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l3h[0]);
 	}
 }
 
 void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 {
 	if (conn->connection_state >= SCCP_CONNECTION_STATE_RELEASE_COMPLETE) {
-		DEBUGP(DMSC, "Freeing sccp conn: %p state: %d\n", conn, conn->connection_state);
+		LOGP(DMSC, LOGL_DEBUG, "Freeing sccp conn: %p state: %d\n", conn, conn->connection_state);
 		if (sccp_get_lchan(conn->data_ctx) != NULL) {
 			struct gsm_lchan *lchan = sccp_get_lchan(conn->data_ctx);
 
-			DEBUGP(DMSC, "ERROR: The lchan is still associated\n.");
+			LOGP(DMSC, LOGL_ERROR, "ERROR: The lchan is still associated\n.");
 
 			lchan->msc_data = NULL;
 			put_subscr_con(&lchan->conn, 0);
@@ -190,7 +190,7 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
 		struct bss_sccp_connection_data *con_data;
 
-		DEBUGP(DMSC, "Connection established: %p\n", conn);
+		LOGP(DMSC, LOGL_DEBUG, "Connection established: %p\n", conn);
 
 		/* start the inactivity test timer */
 		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
@@ -224,23 +224,23 @@ static int open_sccp_connection(struct msgb *layer3)
 		return -1;
 	}
 
-	DEBUGP(DMSC, "Opening new layer3 connection\n");
+	LOGP(DMSC, LOGL_DEBUG, "Opening new layer3 connection\n");
 	sccp_connection = sccp_connection_socket();
 	if (!sccp_connection) {
-		DEBUGP(DMSC, "Failed to allocate memory.\n");
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate memory.\n");
 		return -ENOMEM;
 	}
 
 	data = bssmap_create_layer3(layer3);
 	if (!data) {
-		DEBUGP(DMSC, "Failed to allocate complete layer3.\n");
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate complete layer3.\n");
 		sccp_connection_free(sccp_connection);
 		return -ENOMEM;
 	}
 
 	con_data = bss_sccp_create_data();
 	if (!con_data) {
-		DEBUGP(DMSC, "Failed to allocate bss<->msc data.\n");
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate bss<->msc data.\n");
 		sccp_connection_free(sccp_connection);
 		msgb_free(data);
 		return -ENOMEM;
@@ -269,7 +269,7 @@ static int send_dtap_or_open_connection(struct msgb *msg)
 	if (msg->lchan->msc_data) {
 		struct msgb *dtap = dtap_create_msg(msg, 0);
 		if (!dtap) {
-			DEBUGP(DMSC, "Creating a DTAP message failed.\n");
+			LOGP(DMSC, LOGL_ERROR, "Creating a DTAP message failed.\n");
 			return -1;
 		}
 
@@ -288,7 +288,7 @@ static int handle_paging_response(struct msgb *msg)
 	u_int8_t mi_type;
 
 	gsm48_paging_extract_mi(msg, mi_string, &mi_type);
-	DEBUGP(DMSC, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
+	LOGP(DMSC, LOGL_DEBUG, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
 	subscr = find_subscriber(mi_type, mi_string);
@@ -298,7 +298,7 @@ static int handle_paging_response(struct msgb *msg)
 	/* force the paging to stop at every bts */
 	subscr->lac = GSM_LAC_RESERVED_ALL_BTS;
 	if (gsm48_handle_paging_resp(msg, subscr) != 0) {
-		DEBUGP(DMSC, "Paging failed.\n");
+		LOGP(DMSC, LOGL_ERROR, "Paging failed.\n");
 		return -1;
 	}
 
@@ -316,10 +316,10 @@ static int handle_cipher_m_complete(struct msgb *msg)
 		return -1;
 	}
 
-	DEBUGP(DMSC, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
+	LOGP(DMSC, LOGL_DEBUG, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
 	resp = bssmap_create_cipher_complete(msg);
 	if (!resp) {
-		DEBUGP(DMSC, "Creating MSC response failed.\n");
+		LOGP(DMSC, LOGL_ERROR, "Creating MSC response failed.\n");
 		return -1;
 	}
 
@@ -336,7 +336,7 @@ static int handle_ass_compl(struct msgb *msg)
 	struct gsm_lchan *old_chan;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMSC, "ASSIGNMENT COMPLETE from MS, forwarding to MSC\n");
+	LOGP(DMSC, LOGL_DEBUG, "ASSIGNMENT COMPLETE from MS, forwarding to MSC\n");
 
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
@@ -345,13 +345,13 @@ static int handle_ass_compl(struct msgb *msg)
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
-		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
+		LOGP(DMSC, LOGL_ERROR, "Wrong assignment complete.\n");
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		DEBUGP(DMSC, "assignment failure invalid: %d\n",
+		LOGP(DMSC, LOGL_ERROR, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
@@ -384,7 +384,7 @@ static int handle_ass_fail(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMSC, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
+	LOGP(DMSC, LOGL_ERROR, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
 		put_subscr_con(&msg->lchan->conn, 0);
@@ -398,7 +398,7 @@ static int handle_ass_fail(struct msgb *msg)
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		DEBUGP(DMSC, "assignment failure invalid: %d\n",
+		LOGP(DMSC, LOGL_ERROR, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
@@ -510,7 +510,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	if (rc == 0 && msg->lchan->msc_data && lchan_get_sccp(msg->lchan)) {
 		struct msgb *dtap = dtap_create_msg(msg, link_id);
 		if (!dtap) {
-			DEBUGP(DMSC, "Creating a DTAP message failed.\n");
+			LOGP(DMSC, LOGL_ERROR, "Creating a DTAP message failed.\n");
 			return -1;
 		}
 
@@ -537,7 +537,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 	case S_ABISIP_CRCX_ACK:
 		/* we can ask it to connect now */
 		if (lchan->msc_data) {
-			DEBUGP(DMSC, "Connecting BTS to port: %d conn: %d\n",
+			LOGP(DMSC, LOGL_DEBUG, "Connecting BTS to port: %d conn: %d\n",
 				lchan->msc_data->rtp_port, lchan->abis_ip.conn_id);
 
 			int rtp_payload = ts->trx->bts->network->rtp_payload;
@@ -548,7 +548,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 					    lchan->msc_data->rtp_port,
 					    rtp_payload);
 			if (rc < 0) {
-				DEBUGP(DMSC, "Failed to send connect: %d\n", rc);
+				LOGP(DMSC, LOGL_ERROR, "Failed to send connect: %d\n", rc);
 				return rc;
 			}
 		}
@@ -584,8 +584,8 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 {
 	int ret;
 
-	DEBUGP(DMSC, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	DEBUGP(DMI, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
+	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
+	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = write(msc_con->write_queue.bfd.fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -719,7 +719,7 @@ static int mgcp_create_port(void)
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 {
-	DEBUGP(DMSC, "Rejecting incoming SCCP connection.\n");
+	LOGP(DMSC, LOGL_DEBUG, "Rejecting incoming SCCP connection.\n");
 	return -1;
 }
 
@@ -727,10 +727,10 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
 	struct bssmap_header *bs;
 
-	DEBUGP(DMSC, "Incoming SCCP message ftom MSC: %s\n", hexdump(msgb->l3h, length));
+	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n", hexdump(msgb->l3h, length));
 
 	if (length < sizeof(*bs)) {
-		DEBUGP(DMSC, "The header is too short.\n");
+		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");
 		return -1;
 	}
 
@@ -744,7 +744,7 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 		bssmap_rcvmsg_udt(bsc_gsmnet, msgb, length - sizeof(*bs));
 		break;
 	default:
-		DEBUGPC(DMSC, "Unimplemented msg type: %d\n", bs->type);
+		LOGP(DMSC, LOGL_ERROR, "Unimplemented msg type: %d\n", bs->type);
 	}
 
 	return 0;
@@ -771,7 +771,7 @@ static void initialize_if_needed(void)
 		/* send a gsm 08.08 reset message from here */
 		msg = bssmap_create_reset();
 		if (!msg) {
-			DEBUGP(DMSC, "Failed to create the reset message.\n");
+			LOGP(DMSC, LOGL_ERROR, "Failed to create the reset message.\n");
 			return;
 		}
 
@@ -862,7 +862,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		return -1;
 	}
 
-	DEBUGP(DMSC, "From MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
