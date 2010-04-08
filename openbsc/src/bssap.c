@@ -480,6 +480,7 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 
 	if (new_lchan->msc_data->secondary_lchan != new_lchan) {
 		LOGP(DMSC, LOGL_ERROR, "This is not the secondary channel?\n");
+		new_lchan->msc_data = NULL;
 		put_subscr_con(&new_lchan->conn, 0);
 		return;
 	}
