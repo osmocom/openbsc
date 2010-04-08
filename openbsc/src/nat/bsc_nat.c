@@ -153,6 +153,32 @@ static void nat_send_rlsd(struct sccp_connections *conn)
 	}
 }
 
+static void nat_send_rlc(struct sccp_source_reference *src,
+			 struct sccp_source_reference *dst)
+{
+	struct sccp_connection_release_complete *rlc;
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "rlc");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		return;
+	}
+
+	msg->l2h = msgb_put(msg, sizeof(*rlc));
+	rlc = (struct sccp_connection_release_complete *) msg->l2h;
+	rlc->type = SCCP_MSG_TYPE_RLC;
+	rlc->destination_local_reference = *dst;
+	rlc->source_local_reference = *src;
+
+	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+	}
+}
+
 static void send_mgcp_reset(struct bsc_connection *bsc)
 {
 	static const u_int8_t mgcp_reset[] = {
@@ -254,7 +280,11 @@ static int forward_sccp_to_bts(struct msgb *msg)
 			goto exit;
 		}
 
-		if (!con)
+		if (!con && parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
+			LOGP(DNAT, LOGL_NOTICE, "Sending fake RLC on RLSD message to network.\n");
+			/* Exchange src/dest for the reply */
+			nat_send_rlc(parsed->dest_local_ref, parsed->src_local_ref);
+		} else if (!con)
 			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x.\n", parsed->sccp_type);
 	}
 
