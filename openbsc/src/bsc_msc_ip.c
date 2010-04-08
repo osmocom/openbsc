@@ -968,8 +968,10 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		bsc_shutdown_net(bsc_gsmnet);
-		sleep(3);
+		if (bsc_gsmnet) {
+			bsc_shutdown_net(bsc_gsmnet);
+			sleep(3);
+		}
 		exit(0);
 		break;
 	case SIGABRT:
