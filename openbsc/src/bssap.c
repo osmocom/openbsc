@@ -295,14 +295,48 @@ reject:
 }
 
 /*
+ * handle network failures... and free the secondary lchan
+ */
+static void bssmap_free_secondary(struct bss_sccp_connection_data *data)
+{
+	struct gsm_lchan *lchan;
+
+	if (!data || !data->secondary_lchan)
+		return;
+
+	lchan = data->secondary_lchan;
+	if (lchan->msc_data != data) {
+		LOGP(DMSC, LOGL_ERROR, "MSC data does not match on lchan and cb.\n");
+		data->secondary_lchan = NULL;
+	}
+
+	/* give up additional data */
+	lchan->msc_data->secondary_lchan = NULL;
+	if (lchan->msc_data->lchan == lchan)
+		lchan->msc_data->lchan = NULL;
+	lchan->msc_data = NULL;
+
+	/* give up the new channel to not do a SACCH deactivate */
+	subscr_put(lchan->conn.subscr);
+	lchan->conn.subscr = NULL;
+	put_subscr_con(&lchan->conn, 1);
+}
+
+/*
  * Handle the network configurable T10 parameter
  */
 static void bssmap_t10_fired(void *_conn)
 {
+	struct bss_sccp_connection_data *msc_data;
 	struct sccp_connection *conn = (struct sccp_connection *) _conn;
 	struct msgb *resp;
 
 	LOGP(DMSC, LOGL_ERROR, "T10 fired, assignment failed: %p\n", conn);
+
+	/* free the secondary channel if we have one */
+	msc_data = conn->data_ctx;
+	bssmap_free_secondary(msc_data);
+
 	resp = bssmap_create_assignment_failure(
 		GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 	if (!resp) {
@@ -1293,6 +1327,7 @@ void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_
 	struct msgb *resp;
 
 	bsc_del_timer(&lchan->msc_data->T10);
+	bssmap_free_secondary(lchan->msc_data);
 	resp = bssmap_create_assignment_failure(cause, rr_value);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Allocation failure: %p\n", lchan_get_sccp(lchan));

@@ -351,7 +351,7 @@ static int handle_ass_compl(struct msgb *msg)
 	}
 
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
-		LOGP(DMSC, LOGL_ERROR, "assignment failure invalid: %d\n",
+		LOGP(DMSC, LOGL_ERROR, "assignment compl invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
@@ -382,6 +382,7 @@ static int handle_ass_compl(struct msgb *msg)
  */
 static int handle_ass_fail(struct msgb *msg)
 {
+	u_int8_t *rr_cause;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	LOGP(DMSC, LOGL_ERROR, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
@@ -391,21 +392,26 @@ static int handle_ass_fail(struct msgb *msg)
 		return -1;
 	}
 
-	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
-		LOGP(DMSC, LOGL_NOTICE, "Wrong assignment complete.\n");
+	/* assignment failure comes on the old link */
+	if (msg->lchan->msc_data->lchan != msg->lchan) {
+		LOGP(DMSC, LOGL_NOTICE, "Failure should come on the old link.\n");
+		msg->lchan->msc_data = NULL;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
+	/* Giving up the secondary will happen in bssap */
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		LOGP(DMSC, LOGL_ERROR, "assignment failure invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
-		put_subscr_con(&msg->lchan->conn, 0);
-		return -1;
+		rr_cause = NULL;
+	} else {
+		rr_cause = &gh->data[0];
 	}
 
+	/* this will also free the secondary channel */
 	gsm0808_send_assignment_failure(msg->lchan,
-		GSM0808_CAUSE_RADIO_INTERFACE_MESSAGE_FAILURE, &gh->data[0]);
+		GSM0808_CAUSE_RADIO_INTERFACE_MESSAGE_FAILURE, rr_cause);
 	return 1;
 }
 
