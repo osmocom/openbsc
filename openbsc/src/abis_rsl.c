@@ -1260,6 +1260,12 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 static void rsl_handle_release(struct gsm_lchan *lchan)
 {
+	if (lchan->state != LCHAN_S_REL_REQ)
+		LOGP(DRSL, LOGL_ERROR, "RF release on %s but state %s\n",
+			gsm_lchan_name(lchan),
+			gsm_lchans_name(lchan->state));
+
+
 	/* we can now releae the channel on the BTS/Abis side */
 	/* FIXME: officially we need to start T3111 and wait for
 	 * some grace period */
