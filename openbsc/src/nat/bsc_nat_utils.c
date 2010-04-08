@@ -146,13 +146,13 @@ int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned in
 	msg->l3h = msgb_put(msg, length);
 	memcpy(msg->l3h, data, length);
 
-        return bsc_write_mgcp_msg(bsc, msg);
+        return bsc_write(bsc, msg, NAT_IPAC_PROTO_MGCP);
 }
 
-int bsc_write_mgcp_msg(struct bsc_connection *bsc, struct msgb *msg)
+int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 {
 	/* prepend the header */
-	ipaccess_prepend_header(msg, NAT_IPAC_PROTO_MGCP);
+	ipaccess_prepend_header(msg, proto);
 
 	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");

@@ -177,7 +177,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		mgcp_free_endp(mgcp_endp);
 	}
 
-	bsc_write_mgcp_msg(bsc_con, bsc_msg);
+	bsc_write(bsc_con, bsc_msg, NAT_IPAC_PROTO_MGCP);
 	return MGCP_POLICY_DEFER;
 }
 
