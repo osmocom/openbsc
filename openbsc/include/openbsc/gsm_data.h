@@ -368,7 +368,6 @@ struct gsm_paging_request {
 struct gsm_bts_paging_state {
 	/* pending requests */
 	struct llist_head pending_requests;
-	struct gsm_paging_request *last_request;
 	struct gsm_bts *bts;
 
 	struct timer_list work_timer;
