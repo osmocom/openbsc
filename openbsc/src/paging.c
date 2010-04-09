@@ -167,7 +167,7 @@ void paging_init(struct gsm_bts *bts)
 	bts->paging.work_timer.data = &bts->paging;
 
 	/* Large number, until we get a proper message */
-	bts->paging.available_slots = 100;
+	bts->paging.available_slots = 20;
 }
 
 static int paging_pending_request(struct gsm_bts_paging_state *bts,
