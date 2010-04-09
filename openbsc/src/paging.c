@@ -82,7 +82,7 @@ static void page_ms(struct gsm_paging_request *request)
 	unsigned int mi_len;
 	unsigned int page_group;
 
-	DEBUGP(DPAG, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
+	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
 		request->subscr->imsi, request->subscr->tmsi);
 
 	if (request->subscr->tmsi == GSM_RESERVED_TMSI)
@@ -189,7 +189,7 @@ static void paging_T3113_expired(void *data)
 	void *cbfn_param;
 	gsm_cbfn *cbfn;
 
-	DEBUGP(DPAG, "T3113 expired for request %p (%s)\n",
+	LOGP(DPAG, LOGL_INFO, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
 	
 	sig_data.subscr = req->subscr;
@@ -216,11 +216,11 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	struct gsm_paging_request *req;
 
 	if (paging_pending_request(bts_entry, subscr)) {
-		DEBUGP(DPAG, "Paging request already pending\n");
+		LOGP(DPAG, LOGL_INFO, "Paging request already pending for %s\n", subscr->imsi);
 		return -EEXIST;
 	}
 
-	DEBUGP(DPAG, "Start paging of subscriber %llu on bts %d.\n",
+	LOGP(DPAG, LOGL_DEBUG, "Start paging of subscriber %llu on bts %d.\n",
 		subscr->id, bts->nr);
 	req = talloc_zero(tall_paging_ctx, struct gsm_paging_request);
 	req->subscr = subscr_get(subscr);
@@ -285,11 +285,11 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 				 entry) {
 		if (req->subscr == subscr) {
 			if (lchan && req->cbfn) {
-				DEBUGP(DPAG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
 					  NULL, lchan, req->cbfn_param);
 			} else
-				DEBUGP(DPAG, "Stop paging on bts %d silently.\n", bts->nr);
+				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d silently.\n", bts->nr);
 			paging_remove_request(&bts->paging, req);
 			break;
 		}
