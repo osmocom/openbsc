@@ -322,13 +322,30 @@ void lchan_free(struct gsm_lchan *lchan)
 	 * channel using it */
 }
 
-/* Consider releasing the channel now */
-int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
+static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
 {
-	if (lchan->conn.use_count > 0) {
-		DEBUGP(DRLL, "BUG: _lchan_release called without zero use_count.\n");
+	int sapi;
+
+	for (sapi = 1; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		u_int8_t link_id;
+		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
+			continue;
+
+		link_id = sapi;
+		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+		rsl_release_request(lchan, link_id, lchan->release_reason);
 		return 0;
 	}
+
+	return 1;
+}
+
+static void _lchan_handle_release(struct gsm_lchan *lchan)
+{
+	/* Ask for SAPI != 0 to be freed first and stop if we need to wait */
+	if (_lchan_release_next_sapi(lchan) == 0)
+		return;
 
 	/* Assume we have GSM04.08 running and send a release */
 	if (lchan->conn.subscr) {
@@ -342,9 +359,42 @@ int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
 		LOGP(DRLL, LOGL_ERROR, "Channel count is negative: %d\n",
 			lchan->conn.use_count);
 
+	rsl_release_request(lchan, 0, lchan->release_reason);
+}
+
+/* called from abis rsl */
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id)
+{
+	if (lchan->state != LCHAN_S_REL_REQ)
+		return -1;
+
+	if ((link_id & 0x7) != 0)
+		_lchan_handle_release(lchan);
+	return 0;
+}
+
+
+/*
+ * Start the channel release procedure now. We will start by shutting
+ * down SAPI!=0, then we will deactivate the SACCH and finish by releasing
+ * the last SAPI at which point the RSL code will send the channel release
+ * for us. We should guard the whole shutdown by T3109 or similiar and then
+ * update the fixme inside gsm_04_08_utils.c
+ * When we request to release the RLL and we don't get an answer within T200
+ * the BTS will send us an Error indication which we will handle by closing
+ * the channel and be done.
+ */
+int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
+{
+	if (lchan->conn.use_count > 0) {
+		DEBUGP(DRLL, "BUG: _lchan_release called without zero use_count.\n");
+		return 0;
+	}
+
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
-	rsl_release_request(lchan, 0, release_reason);
+	lchan->release_reason = release_reason;
+	_lchan_handle_release(lchan);
 	return 1;
 }
 

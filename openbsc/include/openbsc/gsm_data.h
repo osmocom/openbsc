@@ -281,6 +281,9 @@ struct gsm_lchan {
 	} abis_ip;
 
 	struct gsm_subscriber_connection conn;
+
+	/* release reason */
+	u_int8_t release_reason;
 };
 
 struct gsm_e1_subslot {
