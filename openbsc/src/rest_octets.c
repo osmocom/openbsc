@@ -133,6 +133,7 @@ static int append_lsa_params(struct bitvec *bv,
 			     const struct gsm48_lsa_params *lsa_params)
 {
 	/* FIXME */
+	return -1;
 }
 
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
