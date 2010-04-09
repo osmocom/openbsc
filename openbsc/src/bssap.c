@@ -462,6 +462,7 @@ static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
 		return -1;
 	}
 
+	rsl_lchan_set_state(new_lchan, LCHAN_S_ACT_REQ);
 	msc_data->secondary_lchan = new_lchan;
 	new_lchan->msc_data = msc_data;
 	return 0;
