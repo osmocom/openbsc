@@ -134,6 +134,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 		return rc;
 	}
 
+	rsl_lchan_set_state(new_lchan, LCHAN_S_ACT_REQ);
 	llist_add(&ho->list, &bsc_handovers);
 	/* we continue in the SS_LCHAN handler / ho_chan_activ_ack */
 
