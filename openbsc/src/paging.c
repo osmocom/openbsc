@@ -133,6 +133,20 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		return;
 	}
 
+	/*
+	 * In case the BTS does not provide us with load indication just fill
+	 * up our slots for this round. We should be able to page 20 subscribers
+	 * every two seconds. So we will just give the BTS some extra credit.
+	 * We will have to see how often we run out of this credit, so we might
+	 * need a low watermark and then add credit or give 20 every run when
+	 * the bts sets an option for that.
+	 */
+	if (paging_bts->available_slots == 0) {
+		LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n",
+		     paging_bts->bts->nr);
+		paging_bts->available_slots = 20;
+	}
+
 	if (!paging_bts->last_request)
 		paging_bts->last_request =
 			(struct gsm_paging_request *)paging_bts->pending_requests.next;
