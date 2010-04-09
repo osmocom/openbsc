@@ -343,6 +343,7 @@ int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
 			lchan->conn.use_count);
 
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	rsl_release_request(lchan, 0, release_reason);
 	return 1;
 }
