@@ -727,7 +727,6 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 			     link_id, 0);
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
-	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->trx = lchan->ts->trx;
