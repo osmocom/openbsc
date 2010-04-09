@@ -540,10 +540,6 @@ DEFUN(show_ts,
 
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
-	int rc;
-	struct gsm_auth_info ainfo;
-	struct gsm_auth_tuple atuple;
-
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
