@@ -70,14 +70,6 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 				struct gsm_paging_request *to_be_deleted)
 {
-	/* Update the last_request if that is necessary */
-	if (to_be_deleted == paging_bts->last_request) {
-		paging_bts->last_request =
-			(struct gsm_paging_request *)paging_bts->last_request->entry.next;
-		if (&to_be_deleted->entry == &paging_bts->pending_requests)
-			paging_bts->last_request = NULL;
-	}
-
 	bsc_del_timer(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
@@ -103,14 +95,6 @@ static void page_ms(struct gsm_paging_request *request)
 			request->chan_type);
 }
 
-static void paging_move_to_next(struct gsm_bts_paging_state *paging_bts)
-{
-	paging_bts->last_request =
-		(struct gsm_paging_request *)paging_bts->last_request->entry.next;
-	if (&paging_bts->last_request->entry == &paging_bts->pending_requests)
-		paging_bts->last_request = NULL;
-}
-
 /*
  * This is kicked by the periodic PAGING LOAD Indicator
  * coming from abis_rsl.c
@@ -128,7 +112,6 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	 * return then.
 	 */
 	if (llist_empty(&paging_bts->pending_requests)) {
-		paging_bts->last_request = NULL;
 		/* since the list is empty, no need to reschedule the timer */
 		return;
 	}
@@ -147,12 +130,8 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		paging_bts->available_slots = 20;
 	}
 
-	if (!paging_bts->last_request)
-		paging_bts->last_request =
-			(struct gsm_paging_request *)paging_bts->pending_requests.next;
-
-	assert(paging_bts->last_request);
-	initial_request = paging_bts->last_request;
+	initial_request = llist_entry(paging_bts->pending_requests.next,
+				      struct gsm_paging_request, entry);
 	current_request = initial_request;
 
 	do {
@@ -160,17 +139,13 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		page_ms(current_request);
 		paging_bts->available_slots--;
 
-		/*
-		 * move to the next item. We might wrap around
-		 * this means last_request will be NULL and we just
-		 * call paging_page_to_next again. It it guranteed
-		 * that the list is not empty.
-		 */
-		paging_move_to_next(paging_bts);
-		if (!paging_bts->last_request)
-			paging_bts->last_request =
-				(struct gsm_paging_request *)paging_bts->pending_requests.next;
-		current_request = paging_bts->last_request;
+		/* take the current and add it to the back */
+		llist_del(&current_request->entry);
+		llist_add_tail(&current_request->entry, &paging_bts->pending_requests);
+
+		/* take the next request */
+		current_request = llist_entry(paging_bts->pending_requests.next,
+					      struct gsm_paging_request, entry);
 	} while (paging_bts->available_slots > 0
 		    &&  initial_request != current_request);
 
