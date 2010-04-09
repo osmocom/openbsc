@@ -727,12 +727,18 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 			     link_id, 0);
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
-	lchan->state = LCHAN_S_REL_REQ;
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
+{
+	lchan->state = state;
+	return 0;
 }
 
 /* Chapter 8.4.2: Channel Activate Acknowledge */
@@ -749,7 +755,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
 			gsm_lchan_name(msg->lchan),
 			gsm_lchans_name(msg->lchan->state));
-	msg->lchan->state = LCHAN_S_ACTIVE;
+	rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
@@ -775,9 +781,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			msg->lchan->state = LCHAN_S_NONE;
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 	} else
-		msg->lchan->state = LCHAN_S_NONE;
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
@@ -981,7 +987,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 				gsm_lchan_name(msg->lchan),
 				gsm_lchans_name(msg->lchan->state));
-		msg->lchan->state = LCHAN_S_NONE;
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
@@ -1124,7 +1130,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
 		     "in state %s\n", gsm_lchan_name(lchan),
 		     gsm_lchans_name(lchan->state));
-	lchan->state = LCHAN_S_ACT_REQ;
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;

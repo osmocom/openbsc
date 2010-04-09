@@ -70,6 +70,8 @@ u_int64_t str_to_imsi(const char *imsi_str);
 u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan);
 int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id);
 
+int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
+
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_deact_sacch(struct gsm_lchan *lchan);
