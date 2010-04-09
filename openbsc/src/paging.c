@@ -142,7 +142,8 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	 * the bts sets an option for that.
 	 */
 	if (paging_bts->available_slots == 0) {
-		LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n");
+		LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n",
+		     paging_bts->bts->nr);
 		paging_bts->available_slots = 20;
 	}
 
