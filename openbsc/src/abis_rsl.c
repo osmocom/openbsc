@@ -568,12 +568,33 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+static void error_timeout_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+	if (lchan->state != LCHAN_S_REL_ERR) {
+		LOGP(DRSL, LOGL_ERROR, "%s error timeout but not in error state: %d\n",
+		     gsm_lchan_name(lchan), lchan->state);
+		return;
+	}
+
+	/* go back to the none state */
+	LOGP(DRSL, LOGL_NOTICE, "%s is back in operation.\n", gsm_lchan_name(lchan));
+	lchan->state = LCHAN_S_NONE;
+}
+
 /* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
-int rsl_rf_chan_release(struct gsm_lchan *lchan)
+static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 {
 	struct abis_rsl_dchan_hdr *dh;
-	struct msgb *msg = rsl_msgb_alloc();
+	struct msgb *msg;
 
+	if (lchan->state == LCHAN_S_REL_ERR) {
+		LOGP(DRSL, LOGL_NOTICE, "%s is in error state not sending release.\n",
+		     gsm_lchan_name(lchan));
+		return -1;
+	}
+
+	msg = rsl_msgb_alloc();
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, RSL_MT_RF_CHAN_REL);
 	dh->chan_nr = lchan2chan_nr(lchan);
@@ -581,7 +602,20 @@ int rsl_rf_chan_release(struct gsm_lchan *lchan)
 	msg->lchan = lchan;
 	msg->trx = lchan->ts->trx;
 
-	DEBUGP(DRSL, "%s RF Channel Release CMD\n", gsm_lchan_name(lchan));
+	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
+
+	if (error) {
+		/*
+		 * the nanoBTS sends RLL release indications after the channel release. This can
+		 * be a problem when we have reassigned the channel to someone else and then can
+		 * not figure out who used this channel.
+		 */
+		lchan->state = LCHAN_S_REL_ERR;
+		lchan->error_timer.data = lchan;
+		lchan->error_timer.cb = error_timeout_cb;
+		bsc_schedule_timer(&lchan->error_timer,
+				   msg->trx->bts->network->T3111 + 2, 0);
+	}
 
 	/* BTS will respond by RF CHAN REL ACK */
 	return abis_rsl_sendmsg(msg);
@@ -806,7 +840,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
-	return rsl_rf_chan_release(msg->lchan);
+	return rsl_rf_chan_release(msg->lchan, 1);
 }
 
 static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
@@ -978,12 +1012,14 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
 		DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", ts_name);
-		if (msg->lchan->state != LCHAN_S_REL_REQ)
+		if (msg->lchan->state != LCHAN_S_REL_REQ && msg->lchan->state != LCHAN_S_REL_ERR)
 			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 				gsm_lchan_name(msg->lchan),
 				gsm_lchans_name(msg->lchan->state));
 		bsc_del_timer(&msg->lchan->T3111);
-		msg->lchan->state = LCHAN_S_NONE;
+		/* we have an error timer pending to release that */
+		if (msg->lchan->state != LCHAN_S_REL_ERR)
+			msg->lchan->state = LCHAN_S_NONE;
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
@@ -1075,7 +1111,7 @@ static void t3101_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	rsl_rf_chan_release(lchan);
+	rsl_rf_chan_release(lchan, 1);
 }
 
 /* If T3111 expires, we will send the RF Channel Request */
@@ -1083,7 +1119,7 @@ static void t3111_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	rsl_rf_chan_release(lchan);
+	rsl_rf_chan_release(lchan, 0);
 }
 
 /* MS has requested a channel on the RACH */
@@ -1251,7 +1287,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
-		return rsl_rf_chan_release(msg->lchan);
+		return rsl_rf_chan_release(msg->lchan, 1);
 
 	return 0;
 }
