@@ -158,8 +158,9 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 			}
 
 			endp->bts = addr.sin_addr;
-			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d\n",
-				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp));
+			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
+				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
+				inet_ntoa(addr.sin_addr));
 		}
 	}
 
