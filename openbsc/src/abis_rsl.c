@@ -579,7 +579,7 @@ static void error_timeout_cb(void *data)
 
 	/* go back to the none state */
 	LOGP(DRSL, LOGL_NOTICE, "%s is back in operation.\n", gsm_lchan_name(lchan));
-	lchan->state = LCHAN_S_NONE;
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 }
 
 /* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
@@ -610,7 +610,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 		 * be a problem when we have reassigned the channel to someone else and then can
 		 * not figure out who used this channel.
 		 */
-		lchan->state = LCHAN_S_REL_ERR;
+		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
 		bsc_schedule_timer(&lchan->error_timer,
@@ -762,12 +762,18 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t reas
         /* 0 is normal release, 1 is local end */
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, reason);
 
-	lchan->state = LCHAN_S_REL_REQ;
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
+{
+	lchan->state = state;
+	return 0;
 }
 
 /* Chapter 8.4.2: Channel Activate Acknowledge */
@@ -784,7 +790,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
 			gsm_lchan_name(msg->lchan),
 			gsm_lchans_name(msg->lchan->state));
-	msg->lchan->state = LCHAN_S_ACTIVE;
+	rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
@@ -810,9 +816,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			msg->lchan->state = LCHAN_S_NONE;
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 	} else
-		msg->lchan->state = LCHAN_S_NONE;
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
@@ -1019,7 +1025,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		bsc_del_timer(&msg->lchan->T3111);
 		/* we have an error timer pending to release that */
 		if (msg->lchan->state != LCHAN_S_REL_ERR)
-			msg->lchan->state = LCHAN_S_NONE;
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
@@ -1170,7 +1176,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
 		     "in state %s\n", gsm_lchan_name(lchan),
 		     gsm_lchans_name(lchan->state));
-	lchan->state = LCHAN_S_ACT_REQ;
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
