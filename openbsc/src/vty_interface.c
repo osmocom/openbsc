@@ -1740,6 +1740,8 @@ DEFUN(cfg_ts_e1_subslot,
 	return CMD_SUCCESS;
 }
 
+extern int bsc_vty_init_extra(struct gsm_network *net);
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
