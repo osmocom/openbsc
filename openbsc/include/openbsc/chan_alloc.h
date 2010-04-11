@@ -67,6 +67,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);
 
 /* Free a logical channel (SDCCH, TCH, ...) */
 void lchan_free(struct gsm_lchan *lchan);
+void lchan_reset(struct gsm_lchan *lchan);
 
 /* internal.. do not use */
 int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason);
