@@ -428,6 +428,9 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 		msgb_free(msg);
 	}
 
+	if (link->ts->type == E1INP_TS_TYPE_SIGN)
+		bsc_del_timer(&link->ts->sign.tx_timer);
+
 	talloc_free(link);
 }
 
