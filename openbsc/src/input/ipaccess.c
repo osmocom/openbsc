@@ -1,6 +1,8 @@
 /* OpenBSC Abis input driver for ip.access */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010 by Holger Hans Peter Freyther
+ * (C) 2010 by On-Waves
  *
  * All Rights Reserved
  *
@@ -234,6 +236,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		}
 		DEBUGP(DINP, "Identified BTS %u/%u/%u\n", site_id, bts_id, trx_id);
 		if (bfd->priv_nr == PRIV_OML) {
+			/* drop any old oml connection */
+			ipaccess_drop_oml(bts);
 			bts->oml_link = e1inp_sign_link_create(&line->ts[PRIV_OML - 1],
 						  E1INP_SIGN_OML, bts->c0,
 						  bts->oml_tei, 0);
@@ -241,7 +245,18 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			struct e1inp_ts *e1i_ts;
 			struct bsc_fd *newbfd;
 			struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_id);
-			
+
+			/* drop any old rsl connection */
+			ipaccess_drop_rsl(trx);
+
+			if (!bts->oml_link) {
+				bsc_unregister_fd(bfd);
+				close(bfd->fd);
+				bfd->fd = -1;
+				talloc_free(bfd);
+				return 0;
+			}
+
 			bfd->data = line = bts->oml_link->ts->line;
 			e1i_ts = &line->ts[PRIV_RSL + trx_id - 1];
 			newbfd = &e1i_ts->driver.ipaccess.fd;
@@ -251,19 +266,13 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
 
-			if (newbfd->fd >= 0) {
-				LOGP(DINP, LOGL_ERROR, "BTS is still registered. Closing old connection.\n");
-				bsc_unregister_fd(newbfd);
-				close(newbfd->fd);
-				newbfd->fd = -1;
-			}
-
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			newbfd->priv_nr = PRIV_RSL + trx_id;
 			bsc_unregister_fd(bfd);
-			bsc_register_fd(newbfd);
+			bfd->fd = -1;
 			talloc_free(bfd);
+			bsc_register_fd(newbfd);
 		}
 		break;
 	}
@@ -328,6 +337,103 @@ struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
 	return msg;
 }
 
+int ipaccess_drop_oml(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+	struct e1inp_ts *ts;
+	struct e1inp_line *line;
+	struct bsc_fd *bfd;
+
+	if (!bts || !bts->oml_link)
+		return -1;
+
+	/* send OML down */
+	ts = bts->oml_link->ts;
+	line = ts->line;
+	e1inp_event(ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
+
+	bfd = &ts->driver.ipaccess.fd;
+	bsc_unregister_fd(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
+
+	/* clean up OML and RSL */
+	e1inp_sign_link_destroy(bts->oml_link);
+	bts->oml_link = NULL;
+	bts->ip_access.flags = 0;
+
+	/* drop all RSL connections too */
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		ipaccess_drop_rsl(trx);
+
+	/* kill the E1 line now... as we have no one left to use it */
+	talloc_free(line);
+
+	return -1;
+}
+
+static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
+{
+	struct e1inp_sign_link *link;
+	int bts_nr;
+
+	if (!ts) {
+		/*
+		 * If we don't have a TS this means that this is a RSL
+		 * connection but we are not past the authentication
+		 * handling yet. So we can safely delete this bfd and
+		 * wait for a reconnect.
+		 */
+		bsc_unregister_fd(bfd);
+		close(bfd->fd);
+		bfd->fd = -1;
+		talloc_free(bfd);
+		return -1;
+	}
+
+	/* attempt to find a signalling link */
+	if (ts->type == E1INP_TS_TYPE_SIGN) {
+		llist_for_each_entry(link, &ts->sign.sign_links, list) {
+			bts_nr = link->trx->bts->bts_nr;
+			/* we have issues just reconnecting RLS so we drop OML */
+			ipaccess_drop_oml(link->trx->bts);
+			return bts_nr;
+		}
+	}
+
+	/* error case */
+	LOGP(DINP, LOGL_ERROR, "Failed to find a signalling link for ts: %p\n", ts);
+	bsc_unregister_fd(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
+	return -1;
+}
+
+int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
+{
+	struct bsc_fd *bfd;
+	struct e1inp_ts *ts;
+
+	if (!trx || !trx->rsl_link)
+		return -1;
+
+	/* send RSL down */
+	ts = trx->rsl_link->ts;
+	e1inp_event(ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
+
+	/* close the socket */
+	bfd = &ts->driver.ipaccess.fd;
+	bsc_unregister_fd(bfd);
+	close(bfd->fd);
+	bfd->fd = -1;
+
+	/* destroy */
+	e1inp_sign_link_destroy(trx->rsl_link);
+	trx->rsl_link = NULL;
+
+	return -1;
+}
+
 static int handle_ts1_read(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -341,18 +447,12 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
 		if (error == 0) {
-			link = e1inp_lookup_sign_link(e1i_ts, IPAC_PROTO_OML, 0);
-			if (link) {
-				link->trx->bts->ip_access.flags = 0;
+			int ret = ipaccess_drop(e1i_ts, bfd);
+			if (ret >= 0)
 				LOGP(DINP, LOGL_NOTICE, "BTS %u disappeared, dead socket\n",
-					link->trx->bts->nr);
-			} else
+					ret);
+			else
 				LOGP(DINP, LOGL_NOTICE, "unknown BTS disappeared, dead socket\n");
-			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
-			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
-			bsc_unregister_fd(bfd);
-			close(bfd->fd);
-			bfd->fd = -1;
 		}
 		return error;
 	}
@@ -362,13 +462,8 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		ret = ipaccess_rcvmsg(line, msg, bfd);
-		if (ret < 0) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
-			e1inp_event(e1i_ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
-			bsc_unregister_fd(bfd);
-			close(bfd->fd);
-			bfd->fd = -1;
-		}
+		if (ret < 0)
+			ipaccess_drop(e1i_ts, bfd);
 		msgb_free(msg);
 		return ret;
 	}

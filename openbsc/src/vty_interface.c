@@ -39,6 +39,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
+#include <openbsc/ipaccess.h>
 
 static struct gsm_network *gsmnet;
 
@@ -984,14 +985,12 @@ DEFUN(drop_bts,
 
 
 	/* close all connections */
-	if (strcmp(argv[1], "oml") == 0) {
-		if (bts->oml_link)
-			close(bts->oml_link->ts->driver.ipaccess.fd.fd);
-	} else if (strcmp(argv[1], "rsl") == 0) {
+	if (strcmp(argv[1], "oml") == 0)
+		ipaccess_drop_oml(bts);
+	else if (strcmp(argv[1], "rsl") == 0) {
 		/* close all rsl connections */
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->rsl_link)
-				close(trx->rsl_link->ts->driver.ipaccess.fd.fd);
+			ipaccess_drop_rsl(trx);
 		}
 	} else {
 		vty_out(vty, "Argument must be 'oml# or 'rsl'.%s", VTY_NEWLINE);
