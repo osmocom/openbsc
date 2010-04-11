@@ -350,7 +350,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	/* send OML down */
 	ts = bts->oml_link->ts;
 	line = ts->line;
-	e1inp_event(ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_OML);
+	e1inp_event(ts, EVT_E1_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
 	bsc_unregister_fd(bfd);
@@ -419,7 +419,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 
 	/* send RSL down */
 	ts = trx->rsl_link->ts;
-	e1inp_event(ts, EVT_E1_TEI_DN, 0, IPAC_PROTO_RSL);
+	e1inp_event(ts, EVT_E1_TEI_DN, trx->rsl_link->tei, trx->rsl_link->sapi);
 
 	/* close the socket */
 	bfd = &ts->driver.ipaccess.fd;
