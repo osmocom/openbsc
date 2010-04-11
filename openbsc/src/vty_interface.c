@@ -957,8 +957,8 @@ DEFUN(show_stats,
 
 DEFUN(drop_bts,
       drop_bts_cmd,
-      "drop bts connection [nr] (oml|rsl)",
-      SHOW_STR "Debug/Simulation command to drop ipaccess BTS\n")
+      "drop bts connection <0-65535> (oml|rsl)",
+      "Debug/Simulation command to drop ipaccess BTS\n")
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_bts *bts;
@@ -985,11 +985,13 @@ DEFUN(drop_bts,
 
 	/* close all connections */
 	if (strcmp(argv[1], "oml") == 0) {
-		close(bts->oml_link->ts->driver.ipaccess.fd.fd);
+		if (bts->oml_link)
+			close(bts->oml_link->ts->driver.ipaccess.fd.fd);
 	} else if (strcmp(argv[1], "rsl") == 0) {
 		/* close all rsl connections */
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			close(trx->rsl_link->ts->driver.ipaccess.fd.fd);
+			if (trx->rsl_link)
+				close(trx->rsl_link->ts->driver.ipaccess.fd.fd);
 		}
 	} else {
 		vty_out(vty, "Argument must be 'oml# or 'rsl'.%s", VTY_NEWLINE);
