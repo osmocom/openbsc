@@ -804,13 +804,7 @@ static void send_id_get_response(int fd)
 	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
 	msgb_l16tv_put(msg, strlen(bsc_gsmnet->bsc_token) + 1,
 			IPAC_IDTAG_UNITNAME, (u_int8_t *) bsc_gsmnet->bsc_token);
-	ipaccess_prepend_header(msg, IPAC_PROTO_IPACCESS);
-
-	if (write(fd, msg->data, msg->len) != msg->len) {
-		LOGP(DMSC, LOGL_ERROR, "Short write.\n");
-	}
-
-	msgb_free(msg);
+	msc_queue_write(msg, IPAC_PROTO_IPACCESS);
 }
 
 /*
