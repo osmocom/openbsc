@@ -334,6 +334,8 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 {
 	struct bsc_connection *bsc, *tmp;
 
+	counter_inc(nat->stats.msc.reconn);
+
 	LOGP(DMSC, LOGL_ERROR, "Closing all connections downstream.\n");
 	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
 		remove_bsc_connection(bsc);
