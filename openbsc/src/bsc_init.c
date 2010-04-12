@@ -918,6 +918,11 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 	case EVT_E1_TEI_DN:
 		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", type, trx);
 
+		if (type == E1INP_SIGN_OML)
+			counter_inc(trx->bts->network->stats.bts.oml_fail);
+		else if (type == E1INP_SIGN_RSL)
+			counter_inc(trx->bts->network->stats.bts.rsl_fail);
+
 		/*
 		 * free all allocated channels. change the nm_state so the
 		 * trx and trx_ts becomes unusable and chan_alloc.c can not

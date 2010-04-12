@@ -240,6 +240,9 @@ void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 		counter_get(net->stats.paging.attempted),
 		counter_get(net->stats.paging.completed),
 		counter_get(net->stats.paging.expired), VTY_NEWLINE);
+	vty_out(vty, "BTS failures            : %lu OML, %lu RSL%s",
+		counter_get(net->stats.bts.oml_fail),
+		counter_get(net->stats.bts.rsl_fail), VTY_NEWLINE);
 }
 
 void openbsc_vty_add_cmds()

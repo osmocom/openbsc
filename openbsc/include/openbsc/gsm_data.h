@@ -539,6 +539,10 @@ struct gsmnet_stats {
 		struct counter *rf_fail;
 		struct counter *rll_err;
 	} chan;
+	struct {
+		struct counter *oml_fail;
+		struct counter *rsl_fail;
+	} bts;
 };
 
 enum gsm_auth_policy {
