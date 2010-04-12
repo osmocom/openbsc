@@ -71,7 +71,7 @@ static int config_write_bsc(struct vty *vty)
 }
 
 
-DEFUN(show_sccp, show_sccp_cmd, "show connections sccp",
+DEFUN(show_sccp, show_sccp_cmd, "sccp connections show",
       SHOW_STR "Display information about current SCCP connections")
 {
 	struct sccp_connections *con;
@@ -88,7 +88,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show connections sccp",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_bsc, show_bsc_cmd, "show connections bsc",
+DEFUN(show_bsc, show_bsc_cmd, "bsc connections show",
       SHOW_STR "Display information about current BSCs")
 {
 	struct bsc_connection *con;
@@ -107,7 +107,7 @@ DEFUN(show_bsc, show_bsc_cmd, "show connections bsc",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
+DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "bsc config show",
       SHOW_STR "Display information about known BSC configs")
 {
 	struct bsc_config *conf;
