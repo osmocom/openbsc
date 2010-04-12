@@ -27,13 +27,25 @@
 #include <vty/vty.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/vty.h>
 
-static struct gsmnet *gsmnet = NULL;
+static struct gsm_network *gsmnet = NULL;
 
 DEFUN(show_bsc, show_bsc_cmd, "show bsc",
 	SHOW_STR "Display information about the BSC\n")
 {
 	vty_out(vty, "BSC... not implemented yet%s", VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_stats,
+      show_stats_cmd,
+      "show statistics",
+	SHOW_STR "Display network statistics\n")
+{
+	struct gsm_network *net = gsmnet;
+
+	openbsc_vty_print_statistics(vty, net);
 	return CMD_SUCCESS;
 }
 
@@ -43,6 +55,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 
 	/* get runtime information */
 	install_element(VIEW_NODE, &show_bsc_cmd);
+	install_element(VIEW_NODE, &show_stats_cmd);
 
 	return 0;
 }
