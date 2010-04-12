@@ -119,6 +119,35 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "bsc config show",
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_stats,
+      show_stats_cmd,
+      "show statistics",
+	SHOW_STR "Display network statistics\n")
+{
+	struct bsc_config *conf;
+
+	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
+	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
+		counter_get(_nat->stats.sccp.conn),
+		counter_get(_nat->stats.sccp.calls), VTY_NEWLINE);
+	vty_out(vty, " MSC Connections %lu%s",
+		counter_get(_nat->stats.msc.reconn), VTY_NEWLINE);
+	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
+		counter_get(_nat->stats.bsc.reconn),
+		counter_get(_nat->stats.bsc.auth_fail), VTY_NEWLINE);
+
+	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
+		vty_out(vty, " BSC lac: %d nr: %d%s",
+			conf->lac, conf->nr, VTY_NEWLINE);
+		vty_out(vty, "   SCCP Connnections %lu total, %lu calls%s",
+			counter_get(conf->stats.sccp.conn),
+			counter_get(conf->stats.sccp.calls), VTY_NEWLINE);
+		vty_out(vty, "   BSC Connections %lu total%s",
+			counter_get(conf->stats.net.reconn), VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
 {
@@ -207,6 +236,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(VIEW_NODE, &show_sccp_cmd);
 	install_element(VIEW_NODE, &show_bsc_cmd);
 	install_element(VIEW_NODE, &show_bsc_cfg_cmd);
+	install_element(VIEW_NODE, &show_stats_cmd);
 
 	openbsc_vty_add_cmds();
 
