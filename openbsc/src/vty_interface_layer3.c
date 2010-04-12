@@ -41,6 +41,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <openbsc/vty.h>
 
 static struct gsm_network *gsmnet;
 
@@ -502,6 +503,41 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+DEFUN(show_stats,
+      show_stats_cmd,
+      "show statistics",
+	SHOW_STR "Display network statistics\n")
+{
+	struct gsm_network *net = gsmnet;
+
+	openbsc_vty_print_statistics(vty, net);
+	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
+		counter_get(net->stats.loc_upd_type.attach),
+		counter_get(net->stats.loc_upd_type.normal),
+		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+	vty_out(vty, "IMSI Detach Indications : %lu%s",
+		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
+	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
+		counter_get(net->stats.loc_upd_resp.accept),
+		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
+	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
+		"%lu completed, %lu failed%s",
+		counter_get(net->stats.handover.attempted),
+		counter_get(net->stats.handover.no_channel),
+		counter_get(net->stats.handover.timeout),
+		counter_get(net->stats.handover.completed),
+		counter_get(net->stats.handover.failed), VTY_NEWLINE);
+	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
+		counter_get(net->stats.sms.submitted),
+		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
+	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
+		counter_get(net->stats.sms.delivered),
+		counter_get(net->stats.sms.rp_err_mem),
+		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
+
 int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -517,6 +553,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
 	install_element(VIEW_NODE, &subscriber_silent_call_start_cmd);
 	install_element(VIEW_NODE, &subscriber_silent_call_stop_cmd);
+	install_element(VIEW_NODE, &show_stats_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);
