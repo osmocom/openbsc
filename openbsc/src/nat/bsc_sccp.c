@@ -100,6 +100,8 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 	}
 
 	llist_add(&conn->list_entry, &bsc->nat->sccp_connections);
+	counter_inc(bsc->cfg->stats.sccp.conn);
+	counter_inc(bsc->cfg->nat->stats.sccp.conn);
 
 	LOGP(DNAT, LOGL_DEBUG, "Created 0x%x <-> 0x%x mapping for con %p\n",
 	     sccp_src_ref_to_int(&conn->real_ref),
