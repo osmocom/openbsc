@@ -233,6 +233,9 @@ void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
 		counter_get(net->stats.chreq.total),
 		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
+	vty_out(vty, "Channel Failures        : %lu rf_failures, %lu rll failures%s",
+		counter_get(net->stats.chan.rf_fail),
+		counter_get(net->stats.chan.rll_err), VTY_NEWLINE);
 	vty_out(vty, "Paging                  : %lu attempted, %lu complete, %lu expired%s",
 		counter_get(net->stats.paging.attempted),
 		counter_get(net->stats.paging.completed),
