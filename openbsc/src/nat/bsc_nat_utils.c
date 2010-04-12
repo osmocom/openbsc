@@ -45,6 +45,11 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
+	nat->stats.sccp.conn = counter_alloc("nat.sccp.conn");
+	nat->stats.sccp.calls = counter_alloc("nat.sccp.calls");
+	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
+	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
+	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
 	return nat;
 }
 
@@ -71,6 +76,10 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 
 	llist_add(&conf->entry, &nat->bsc_configs);
 	++nat->num_bsc;
+
+	conf->stats.sccp.conn = counter_alloc("nat.bsc.sccp.conn");
+	conf->stats.sccp.calls = counter_alloc("nat.bsc.sccp.calls");
+	conf->stats.net.reconn = counter_alloc("nat.bsc.net.reconnects");
 
 	return conf;
 }

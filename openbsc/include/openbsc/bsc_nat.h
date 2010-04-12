@@ -31,6 +31,7 @@
 #include <osmocore/msgb.h>
 #include <osmocore/timer.h>
 #include <osmocore/write_queue.h>
+#include <osmocore/statistics.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
@@ -114,6 +115,20 @@ struct sccp_connections {
 };
 
 /**
+ * Stats per BSC
+ */
+struct bsc_config_stats {
+	struct {
+		struct counter *conn;
+		struct counter *calls;
+	} sccp;
+
+	struct {
+		struct counter *reconn;
+	} net;
+};
+
+/**
  * One BSC entry in the config
  */
 struct bsc_config {
@@ -124,6 +139,8 @@ struct bsc_config {
 	int nr;
 
 	struct bsc_nat *nat;
+
+	struct bsc_config_stats stats;
 };
 
 /**
@@ -136,6 +153,25 @@ struct bsc_endpoint {
 	struct bsc_connection *bsc;
 	/* pending delete */
 	int pending_delete;
+};
+
+/**
+ * Statistic for the nat.
+ */
+struct bsc_nat_statistics {
+	struct {
+		struct counter *conn;
+		struct counter *calls;
+	} sccp;
+
+	struct {
+		struct counter *reconn;
+                struct counter *auth_fail;
+	} bsc;
+
+	struct {
+		struct counter *reconn;
+	} msc;
 };
 
 /**
@@ -162,6 +198,9 @@ struct bsc_nat {
 	int first_contact;
 
 	struct bsc_endpoint *bsc_endpoints;
+
+	/* statistics */
+	struct bsc_nat_statistics stats;
 };
 
 /* create and init the structures */
