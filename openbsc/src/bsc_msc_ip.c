@@ -568,7 +568,7 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 static void print_usage()
 {
-	printf("Usage: bsc_hack\n");
+	printf("Usage: bsc_msc_ip\n");
 }
 
 /*
