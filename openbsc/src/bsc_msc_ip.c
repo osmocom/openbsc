@@ -908,14 +908,13 @@ static void handle_options(int argc, char** argv)
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
-			{"rtp-proxy", 0, 0, 'P'},
 			{"msc", 1, 0, 'm'},
 			{"local", 1, 0, 'l'},
 			{"log-level", 1, 0, 'e'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTPc:m:l:e:",
+		c = getopt_long(argc, argv, "hd:sTc:m:l:e:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
