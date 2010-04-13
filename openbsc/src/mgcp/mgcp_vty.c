@@ -55,8 +55,10 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
 	vty_out(vty, "  bind early %u%s", !!g_cfg->early_bind, VTY_NEWLINE);
 	vty_out(vty, "  rtp base %u%s", g_cfg->rtp_base_port, VTY_NEWLINE);
-	vty_out(vty, "  sdp audio payload number %u%s", g_cfg->audio_payload, VTY_NEWLINE);
-	vty_out(vty, "  sdp audio payload name %s%s", g_cfg->audio_name, VTY_NEWLINE);
+	if (g_cfg->audio_payload != -1)
+		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
+	if (g_cfg->audio_name)
+		vty_out(vty, "  sdp audio payload name %s%s", g_cfg->audio_name, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  endpoints %u%s", g_cfg->number_endpoints, VTY_NEWLINE);
 	if (g_cfg->forward_ip)
