@@ -33,6 +33,8 @@
 #include <osmocore/write_queue.h>
 #include <osmocore/statistics.h>
 
+#include <regex.h>
+
 #define DIR_BSC 1
 #define DIR_MSC 2
 
@@ -138,6 +140,13 @@ struct bsc_config {
 	unsigned int lac;
 	int nr;
 
+	/* imsi white and blacklist */
+	char *imsi_allow;
+	regex_t imsi_allow_re;
+	char *imsi_deny;
+	regex_t imsi_deny_re;
+
+	/* backpointer */
 	struct bsc_nat *nat;
 
 	struct bsc_config_stats stats;
@@ -198,6 +207,12 @@ struct bsc_nat {
 	int first_contact;
 
 	struct bsc_endpoint *bsc_endpoints;
+
+	/* filter */
+	char *imsi_allow;
+	regex_t imsi_allow_re;
+	char *imsi_deny;
+	regex_t imsi_deny_re;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
