@@ -974,7 +974,7 @@ static void signal_handler(int signal)
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
 	case SIGUSR2:
-		if (!msc_con->is_connected)
+		if (!msc_con || !msc_con->is_connected)
 			return;
 		bsc_msc_lost(msc_con);
 		break;
@@ -1047,6 +1047,12 @@ int main(int argc, char **argv)
 	/* seed the PRNG */
 	srand(time(NULL));
 
+	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
+
 	/* attempt to register the local mgcp forward */
 	if (mgcp_create_port() != 0) {
 		fprintf(stderr, "Failed to bind local MGCP port\n");
@@ -1074,12 +1080,6 @@ int main(int argc, char **argv)
 	msc_con->write_queue.write_cb = msc_sccp_do_write;
 	bsc_msc_connect(msc_con);
 
-
-	signal(SIGINT, &signal_handler);
-	signal(SIGABRT, &signal_handler);
-	signal(SIGUSR1, &signal_handler);
-	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
 
 	while (1) {
 		bsc_select_main(0);
