@@ -44,6 +44,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_msc_rf.h>
 
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
@@ -63,6 +64,7 @@ static struct bsc_msc_connection *msc_con;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
 static struct write_queue mgcp_agent;
+static const char *rf_ctl = NULL;
 extern int ipacc_rtp_direct;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
@@ -890,6 +892,7 @@ static void print_help()
 	printf("  -m --msc=IP. The address of the MSC.\n");
 	printf("  -l --local=IP. The local address of the MGCP.\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
+	printf("  -r --rf-ctl NAME. A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -905,10 +908,11 @@ static void handle_options(int argc, char** argv)
 			{"msc", 1, 0, 'm'},
 			{"local", 1, 0, 'l'},
 			{"log-level", 1, 0, 'e'},
+			{"rf-ctl", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTc:m:l:e:",
+		c = getopt_long(argc, argv, "hd:sTc:m:l:e:r:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -941,6 +945,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'e':
 			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		case 'r':
+			rf_ctl = optarg;
 			break;
 		default:
 			/* ignore */
@@ -1082,6 +1089,15 @@ int main(int argc, char **argv)
 	if (rc < 0) {
 		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
 		exit(1);
+	}
+
+	if (rf_ctl) {
+		struct bsc_msc_rf *rf;
+		rf = bsc_msc_rf_create(rf_ctl, bsc_gsmnet);
+		if (!rf) {
+			fprintf(stderr, "Failed to create the RF service.\n");
+			exit(1);
+		}
 	}
 
 	while (1) {
