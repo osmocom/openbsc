@@ -217,7 +217,7 @@ static int open_sccp_connection(struct msgb *layer3)
 	struct msgb *data;
 
 	/* When not connected to a MSC. We will simply close things down. */
-	if (!msc_con->is_connected) {
+	if (!msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
 		use_subscr_con(&layer3->lchan->conn);
 		put_subscr_con(&layer3->lchan->conn, 0);
@@ -762,18 +762,10 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
  */
 static void initialize_if_needed(void)
 {
-	if (!bsc_gsmnet) {
-		int rc;
-		struct msgb *msg;
-
-		fprintf(stderr, "Bootstraping the network. Sending GSM08.08 reset.\n");
-		rc = bsc_bootstrap_network(NULL, config_file);
-		if (rc < 0) {
-			fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
-			exit(1);
-		}
+	struct msgb *msg;
 
 
+	if (!msc_con->is_authenticated) {
 		/* send a gsm 08.08 reset message from here */
 		msg = bssmap_create_reset();
 		if (!msg) {
@@ -783,6 +775,7 @@ static void initialize_if_needed(void)
 
 		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0);
 		msgb_free(msg);
+		msc_con->is_authenticated = 1;
 	}
 }
 
@@ -839,6 +832,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 		bss_sccp_free_data(bss);
 	}
 
+	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
 }
 
@@ -1029,6 +1023,8 @@ extern int bts_model_nanobts_init(void);
 
 int main(int argc, char **argv)
 {
+	int rc;
+
 	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	stderr_target = log_target_create_stderr();
@@ -1080,6 +1076,13 @@ int main(int argc, char **argv)
 	msc_con->write_queue.write_cb = msc_sccp_do_write;
 	bsc_msc_connect(msc_con);
 
+
+	fprintf(stderr, "Bootstraping the network. Sending GSM08.08 reset.\n");
+	rc = bsc_bootstrap_network(NULL, config_file);
+	if (rc < 0) {
+		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
+		exit(1);
+	}
 
 	while (1) {
 		bsc_select_main(0);
