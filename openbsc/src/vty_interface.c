@@ -875,46 +875,6 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_stats,
-      show_stats_cmd,
-      "show statistics",
-	SHOW_STR "Display network statistics\n")
-{
-	struct gsm_network *net = gsmnet;
-
-	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
-		counter_get(net->stats.chreq.total),
-		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
-	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		counter_get(net->stats.loc_upd_type.attach),
-		counter_get(net->stats.loc_upd_type.normal),
-		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
-	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
-	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		counter_get(net->stats.loc_upd_resp.accept),
-		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
-	vty_out(vty, "Paging                  : %lu attempted, %lu complete, %lu expired%s",
-		counter_get(net->stats.paging.attempted),
-		counter_get(net->stats.paging.completed),
-		counter_get(net->stats.paging.expired), VTY_NEWLINE);
-	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
-		"%lu completed, %lu failed%s",
-		counter_get(net->stats.handover.attempted),
-		counter_get(net->stats.handover.no_channel),
-		counter_get(net->stats.handover.timeout),
-		counter_get(net->stats.handover.completed),
-		counter_get(net->stats.handover.failed), VTY_NEWLINE);
-	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		counter_get(net->stats.sms.submitted),
-		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
-	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		counter_get(net->stats.sms.delivered),
-		counter_get(net->stats.sms.rp_err_mem),
-		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_net,
       cfg_net_cmd,
       "network",
@@ -1756,7 +1716,6 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_e1ts_cmd);
 
 	install_element(VIEW_NODE, &show_paging_cmd);
-	install_element(VIEW_NODE, &show_stats_cmd);
 
 	openbsc_vty_add_cmds();
 
