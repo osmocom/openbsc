@@ -31,6 +31,7 @@
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/chan_alloc.h>
 #include <osmocore/talloc.h>
 
 /* global pointer to the gsm network data structure */
@@ -899,6 +900,8 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 {
+	int ts_no, lchan_no;
+
 	switch (event) {
 	case EVT_E1_TEI_UP:
 		switch (type) {
@@ -913,8 +916,30 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		}
 		break;
 	case EVT_E1_TEI_DN:
-		LOGP(DMI, LOGL_NOTICE, "Lost some E1 TEI link\n");
-		/* FIXME: deal with TEI or L1 link loss */
+		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", type, trx);
+
+		/*
+		 * free all allocated channels. change the nm_state so the
+		 * trx and trx_ts becomes unusable and chan_alloc.c can not
+		 * allocate from it.
+		 */
+		for (ts_no = 0; ts_no < ARRAY_SIZE(trx->ts); ++ts_no) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[ts_no];
+
+			for (lchan_no = 0; lchan_no < ARRAY_SIZE(ts->lchan); ++lchan_no) {
+				if (ts->lchan[lchan_no].state != GSM_LCHAN_NONE)
+					lchan_free(&ts->lchan[lchan_no]);
+				lchan_reset(&ts->lchan[lchan_no]);
+			}
+
+			ts->nm_state.operational = 0;
+			ts->nm_state.availability = 0;
+		}
+
+		trx->nm_state.operational = 0;
+		trx->nm_state.availability = 0;
+		trx->bb_transc.nm_state.operational = 0;
+		trx->bb_transc.nm_state.availability = 0;
 		break;
 	default:
 		break;
