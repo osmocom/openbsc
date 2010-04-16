@@ -74,7 +74,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 	conf->nr = nat->num_bsc;
 	conf->nat = nat;
 
-	llist_add(&conf->entry, &nat->bsc_configs);
+	llist_add_tail(&conf->entry, &nat->bsc_configs);
 	++nat->num_bsc;
 
 	conf->stats.sccp.conn = counter_alloc("nat.bsc.sccp.conn");

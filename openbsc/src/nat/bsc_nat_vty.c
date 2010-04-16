@@ -62,7 +62,7 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 {
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
-	vty_out(vty, "  lac %u%s", bsc->lac, VTY_NEWLINE);
+	vty_out(vty, "  location_area_code %u%s", bsc->lac, VTY_NEWLINE);
 	if (bsc->imsi_allow)
 		vty_out(vty, "   imsi allow %s%s", bsc->imsi_allow, VTY_NEWLINE);
 	if (bsc->imsi_deny)
