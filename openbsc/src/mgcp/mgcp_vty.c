@@ -33,6 +33,8 @@
 #include <vty/command.h>
 #include <vty/vty.h>
 
+#include <string.h>
+
 static struct mgcp_config *g_cfg = NULL;
 
 /*
@@ -48,8 +50,8 @@ static int config_write_mgcp(struct vty *vty)
 {
 	vty_out(vty, "mgcp%s", VTY_NEWLINE);
 	if (g_cfg->local_ip)
-		vty_out(vty, " local ip %s%s", g_cfg->local_ip, VTY_NEWLINE);
-	if (g_cfg->bts_ip)
+		vty_out(vty, "  local ip %s%s", g_cfg->local_ip, VTY_NEWLINE);
+	if (g_cfg->bts_ip && strlen(g_cfg->bts_ip) != 0)
 		vty_out(vty, "  bts ip %s%s", g_cfg->bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", g_cfg->source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
@@ -60,13 +62,13 @@ static int config_write_mgcp(struct vty *vty)
 	if (g_cfg->audio_name)
 		vty_out(vty, "  sdp audio payload name %s%s", g_cfg->audio_name, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->audio_loop, VTY_NEWLINE);
-	vty_out(vty, "  endpoints %u%s", g_cfg->number_endpoints, VTY_NEWLINE);
+	vty_out(vty, "  number endpoints %u%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->forward_ip)
-		vty_out(vty, " forward audio ip %s%s", g_cfg->forward_ip, VTY_NEWLINE);
+		vty_out(vty, "  forward audio ip %s%s", g_cfg->forward_ip, VTY_NEWLINE);
 	if (g_cfg->forward_port != 0)
-		vty_out(vty, " forward audio port %d%s", g_cfg->forward_port, VTY_NEWLINE);
+		vty_out(vty, "  forward audio port %d%s", g_cfg->forward_port, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
-		vty_out(vty, " call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
+		vty_out(vty, "  call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
