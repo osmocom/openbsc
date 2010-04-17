@@ -51,10 +51,10 @@
 
 struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
-static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
 static struct bsc_msc_connection *msc_con;
 static struct bsc_fd bsc_listen;
+static const char *msc_ip = NULL;
 
 
 static struct bsc_nat *nat;
@@ -782,7 +782,7 @@ static void handle_options(int argc, char** argv)
 			log_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'm':
-			msc_address = strdup(optarg);
+			msc_ip = optarg;
 			break;
 		case 'l':
 			inet_aton(optarg, &local_addr);
@@ -815,10 +815,6 @@ int main(int argc, char** argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
-	/* parse options */
-	local_addr.s_addr = INADDR_ANY;
-	handle_options(argc, argv);
-
 	nat = bsc_nat_alloc();
 	if (!nat) {
 		fprintf(stderr, "Failed to allocate the BSC nat.\n");
@@ -826,6 +822,14 @@ int main(int argc, char** argv)
 	}
 
 	nat->mgcp_cfg = talloc_zero(nat, struct mgcp_config);
+	if (!nat->mgcp_cfg) {
+		fprintf(stderr, "Failed to allocate MGCP cfg.\n");
+		return -5;
+	}
+
+	/* parse options */
+	local_addr.s_addr = INADDR_ANY;
+	handle_options(argc, argv);
 
 	/* init vty and parse */
 	bsc_nat_vty_init(nat);
@@ -834,6 +838,10 @@ int main(int argc, char** argv)
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
 	}
+
+	/* over rule the VTY config */
+	if (msc_ip)
+		bsc_nat_set_msc_ip(nat, msc_ip);
 
 	/* seed the PRNG */
 	srand(time(NULL));
@@ -845,7 +853,7 @@ int main(int argc, char** argv)
 		return -4;
 
 	/* connect to the MSC */
-	msc_con = bsc_msc_create(msc_address, 5000);
+	msc_con = bsc_msc_create(nat->msc_ip, 5000);
 	if (!msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
