@@ -261,7 +261,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 				counter_inc(nat->stats.sccp.calls);
 
 				if (con) {
-					counter_inc(con->bsc->cfg->stats.sccp.conn);
+					counter_inc(con->bsc->cfg->stats.sccp.calls);
 					if (bsc_mgcp_assign(con, msg) != 0)
 						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
 				} else
