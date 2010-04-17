@@ -178,6 +178,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		}
 	} else if (state == MGCP_ENDP_DLCX) {
 		/* we will free the endpoint now in case the BSS does not respond */
+		bsc_mgcp_clear(sccp);
 		bsc_endp->pending_delete = 1;
 		mgcp_free_endp(mgcp_endp);
 	}
