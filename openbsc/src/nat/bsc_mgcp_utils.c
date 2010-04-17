@@ -94,6 +94,7 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 
 struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 {
+	struct bsc_connection *bsc = NULL;
 	struct sccp_connections *sccp;
 
 	llist_for_each_entry(sccp, &nat->sccp_connections, list_entry) {
@@ -102,8 +103,11 @@ struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 		if (mgcp_timeslot_to_endpoint(0, sccp->msc_timeslot) != endpoint)
 			continue;
 
-		return sccp->bsc;
+		bsc = sccp->bsc;
 	}
+
+	if (bsc)
+		return bsc;
 
 	LOGP(DMGCP, LOGL_ERROR, "Failed to find the connection.\n");
 	return NULL;
