@@ -242,6 +242,7 @@ static void test_contrack()
 	fprintf(stderr, "Testing connection tracking.\n");
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
+	con->cfg = bsc_config_alloc(nat, "foo", 23);
 	msg = msgb_alloc(4096, "test");
 
 	/* 1.) create a connection */
