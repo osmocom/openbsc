@@ -294,6 +294,9 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->core_network_code = -1;
 	net->rtp_base_port = 4000;
 
+	net->msc_ip = talloc_strdup(net, "127.0.0.1");
+	net->msc_port = 5000;
+
 	return net;
 }
 

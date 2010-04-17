@@ -661,6 +661,8 @@ struct gsm_network {
 
 	/* a simple token for this network... */
 	char *bsc_token;
+	char *msc_ip;
+	int msc_port;
 };
 
 #define SMS_HDR_SIZE	128

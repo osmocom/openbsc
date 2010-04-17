@@ -433,6 +433,8 @@ static int config_write_net(struct vty *vty)
 
 	if (gsmnet->bsc_token)
 		vty_out(vty, " bsc_token %s%s", gsmnet->bsc_token, VTY_NEWLINE);
+	vty_out(vty, " msc ip %s%s", gsmnet->msc_ip, VTY_NEWLINE);
+	vty_out(vty, " msc port %d%s", gsmnet->msc_port, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1272,6 +1274,27 @@ DEFUN(cfg_net_pag_any_tch,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_ip,
+      cfg_net_msc_ip_cmd,
+      "msc ip IP",
+      "Set the MSC/MUX IP address.")
+{
+	if (gsmnet->msc_ip)
+		talloc_free(gsmnet->msc_ip);
+	gsmnet->msc_ip = talloc_strdup(gsmnet, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_port,
+      cfg_net_msc_port_cmd,
+      "msc port <1-65000>",
+      "Set the MSC/MUX port.")
+{
+	gsmnet->msc_port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -1971,6 +1994,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_bsc_token_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
+	install_element(GSMNET_NODE, &cfg_net_msc_ip_cmd);
+	install_element(GSMNET_NODE, &cfg_net_msc_port_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

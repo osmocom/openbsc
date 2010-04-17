@@ -59,7 +59,7 @@
 static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
-static char *msc_address = "127.0.0.1";
+static char *msc_address = NULL;
 static struct bsc_msc_connection *msc_con;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
@@ -938,7 +938,7 @@ static void handle_options(int argc, char** argv)
 			ipacc_rtp_direct = 0;
 			break;
 		case 'm':
-			msc_address = strdup(optarg);
+			msc_address = optarg;
 			break;
 		case 'l':
 			inet_aton(optarg, &local_addr);
@@ -1030,6 +1030,7 @@ extern int bts_model_nanobts_init(void);
 
 int main(int argc, char **argv)
 {
+	char *msc;
 	int rc;
 
 	log_init(&log_info);
@@ -1070,20 +1071,6 @@ int main(int argc, char **argv)
 	/* initialize ipaccess handling */
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
-
-	/* setup MSC Connection handling */
-	msc_con = bsc_msc_create(msc_address, 5000);
-	if (!msc_con) {
-		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
-		exit(1);
-	}
-
-	msc_con->connection_loss = msc_connection_was_lost;
-	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
-	msc_con->write_queue.write_cb = msc_sccp_do_write;
-	bsc_msc_connect(msc_con);
-
-
 	fprintf(stderr, "Bootstraping the network. Sending GSM08.08 reset.\n");
 	rc = bsc_bootstrap_network(NULL, config_file);
 	if (rc < 0) {
@@ -1099,6 +1086,24 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	/* setup MSC Connection handling */
+	msc = bsc_gsmnet->msc_ip;
+	if (msc_address)
+		msc = msc_address;
+
+	msc_con = bsc_msc_create(msc, bsc_gsmnet->msc_port);
+	if (!msc_con) {
+		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
+		exit(1);
+	}
+
+	msc_con->connection_loss = msc_connection_was_lost;
+	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
+	msc_con->write_queue.write_cb = msc_sccp_do_write;
+	bsc_msc_connect(msc_con);
+
+
 
 	while (1) {
 		bsc_select_main(0);
