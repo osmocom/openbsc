@@ -60,7 +60,7 @@ static u_int16_t get_country_code_for_msc(struct gsm_network *net)
 
 static int bssmap_paging_cb(unsigned int hooknum, unsigned int event, struct msgb *msg, void *data, void *param)
 {
-	LOGP(DMSC, LOGL_DEBUG, "Paging is complete.\n");
+	LOGP(DPAG, LOGL_DEBUG, "Paging is complete.\n");
 	return 0;
 }
 
@@ -145,7 +145,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	subscr->tmsi = tmsi;
 	subscr->lac = lac;
 	paged = paging_request(net, subscr, chan_needed, bssmap_paging_cb, subscr);
-	LOGP(DMSC, LOGL_DEBUG, "Paged IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x on #bts: %d\n", mi_string, tmsi, tmsi, lac, paged);
+	LOGP(DPAG, LOGL_DEBUG, "Paged IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x on #bts: %d\n", mi_string, tmsi, tmsi, lac, paged);
 
 	subscr_put(subscr);
 	return -1;
