@@ -810,6 +810,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
+	counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
 	return rsl_rf_chan_release(msg->lchan);
 }
 
@@ -1245,8 +1246,10 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
-	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
+	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
+		counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
 		return rsl_rf_chan_release(msg->lchan);
+	}
 
 	return 0;
 }

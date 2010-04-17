@@ -280,6 +280,8 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->stats.call.dialled = counter_alloc("net.call.dialled");
 	net->stats.call.alerted = counter_alloc("net.call.alerted");
 	net->stats.call.connected = counter_alloc("net.call.connected");
+	net->stats.chan.rf_fail = counter_alloc("net.chan.rf_fail");
+	net->stats.chan.rll_err = counter_alloc("net.chan.rll_err");
 
 	net->mncc_recv = mncc_recv;
 

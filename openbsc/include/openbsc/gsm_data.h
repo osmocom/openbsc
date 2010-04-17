@@ -535,6 +535,10 @@ struct gsmnet_stats {
 		struct counter *alerted;	/* we alerted the other end */
 		struct counter *connected;/* how many calls were accepted */
 	} call;
+	struct {
+		struct counter *rf_fail;
+		struct counter *rll_err;
+	} chan;
 };
 
 enum gsm_auth_policy {
