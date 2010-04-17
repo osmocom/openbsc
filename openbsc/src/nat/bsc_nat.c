@@ -309,11 +309,13 @@ send_to_all:
 	 * message and then send it to the authenticated messages...
 	 */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
-		bsc = bsc_nat_find_bsc(nat, msg);
+		int lac;
+		bsc = bsc_nat_find_bsc(nat, msg, &lac);
 		if (bsc)
 			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
 		else
-			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging.\n");
+			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging on lac: %d/0x%x\n",
+			     lac, lac);
 
 		goto exit;
 	}

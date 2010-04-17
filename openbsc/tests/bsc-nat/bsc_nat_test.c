@@ -329,6 +329,7 @@ static void test_contrack()
 
 static void test_paging(void)
 {
+	int lac;
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
 	struct bsc_nat_parsed *parsed;
@@ -347,7 +348,7 @@ static void test_paging(void)
 
 	/* Test completely bad input */
 	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	if (bsc_nat_find_bsc(nat, msg) != 0) {
+	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
 		fprintf(stderr, "Should have not found anything.\n");
 		abort();
 	}
@@ -355,7 +356,7 @@ static void test_paging(void)
 	/* Test it by not finding it */
 	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
 	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg) != 0) {
+	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
 		fprintf(stderr, "Should have not found aynthing.\n");
 		abort();
 	}
@@ -365,7 +366,7 @@ static void test_paging(void)
 	cfg.lac = 8213;
 	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
 	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg) != con) {
+	if (bsc_nat_find_bsc(nat, msg, &lac) != con) {
 		fprintf(stderr, "Should have found it.\n");
 		abort();
 	}

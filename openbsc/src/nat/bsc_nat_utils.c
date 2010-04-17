@@ -104,7 +104,7 @@ void sccp_connection_destroy(struct sccp_connections *conn)
 	talloc_free(conn);
 }
 
-struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
+struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, int *lac_out)
 {
 	struct bsc_connection *bsc;
 	int data_length;
@@ -133,6 +133,7 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg)
 	/* Currently we only handle one BSC */
 	for (i = 1; i < data_length - 1; i += 2) {
 		unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
+		*lac_out = _lac;
 		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
 			if (!bsc->cfg)
 				continue;
