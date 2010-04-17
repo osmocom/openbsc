@@ -112,6 +112,8 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 	struct tlv_parsed tp;
 	int i = 0;
 
+	*lac_out = -1;
+
 	if (!msg->l3h || msgb_l3len(msg) < 3) {
 		LOGP(DNAT, LOGL_ERROR, "Paging message is too short.\n");
 		return NULL;
