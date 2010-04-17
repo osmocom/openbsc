@@ -205,6 +205,7 @@ struct bsc_nat {
 
 	/* msc things */
 	char *msc_ip;
+	int msc_port;
 	int first_contact;
 
 	struct bsc_endpoint *bsc_endpoints;
