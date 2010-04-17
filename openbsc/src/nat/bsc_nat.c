@@ -458,9 +458,14 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 
 static void ipaccess_close_bsc(void *data)
 {
+	struct sockaddr_in sock;
+	socklen_t len = sizeof(sock);
 	struct bsc_connection *conn = data;
 
-	LOGP(DNAT, LOGL_ERROR, "BSC didn't respond to identity request. Closing.\n");
+
+	getpeername(conn->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
+	LOGP(DNAT, LOGL_ERROR, "BSC on %s didn't respond to identity request. Closing.\n",
+	     inet_ntoa(sock.sin_addr));
 	remove_bsc_connection(conn);
 }
 
