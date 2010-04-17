@@ -29,12 +29,26 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/vty.h>
 
+#include <sccp/sccp.h>
+
 static struct gsm_network *gsmnet = NULL;
+
+extern struct llist_head *bsc_sccp_connections();
 
 DEFUN(show_bsc, show_bsc_cmd, "show bsc",
 	SHOW_STR "Display information about the BSC\n")
 {
-	vty_out(vty, "BSC... not implemented yet%s", VTY_NEWLINE);
+	struct bss_sccp_connection_data *con;
+
+	vty_out(vty, "BSC Information%s", VTY_NEWLINE);
+	llist_for_each_entry(con, bsc_sccp_connections(), active_connections) {
+		vty_out(vty, " Connection: LCHAN: %p sec LCHAN: %p SCCP src: %d dest: %d%s",
+			con->lchan, con->secondary_lchan,
+			con->sccp ? (int) sccp_src_ref_to_int(&con->sccp->source_local_reference) : -1,
+			con->sccp ? (int) sccp_src_ref_to_int(&con->sccp->destination_local_reference) : -1,
+			VTY_NEWLINE);
+	}
+
 	return CMD_SUCCESS;
 }
 

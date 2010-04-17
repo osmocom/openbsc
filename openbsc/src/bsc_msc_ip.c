@@ -70,6 +70,12 @@ extern int ipacc_rtp_direct;
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
 
+
+struct llist_head *bsc_sccp_connections()
+{
+	return &active_connections;
+}
+
 struct bss_sccp_connection_data *bss_sccp_create_data()
 {
 	struct bss_sccp_connection_data *data;
