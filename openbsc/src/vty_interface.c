@@ -266,6 +266,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	int i;
 
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
+	vty_out(vty, "   rf_locked %u%s",
+		trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
+		VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
