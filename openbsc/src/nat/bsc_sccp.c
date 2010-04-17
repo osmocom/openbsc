@@ -99,6 +99,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 		return -1;
 	}
 
+	bsc_mgcp_clear(conn);
 	llist_add_tail(&conn->list_entry, &bsc->nat->sccp_connections);
 	counter_inc(bsc->cfg->stats.sccp.conn);
 	counter_inc(bsc->cfg->nat->stats.sccp.conn);
