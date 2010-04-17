@@ -92,9 +92,9 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 		bsc_mgcp_free_endpoint(nat, i);
 }
 
-struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
+struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 {
-	struct bsc_connection *bsc = NULL;
+	struct sccp_connections *con = NULL;
 	struct sccp_connections *sccp;
 
 	llist_for_each_entry(sccp, &nat->sccp_connections, list_entry) {
@@ -103,11 +103,11 @@ struct bsc_connection *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 		if (mgcp_timeslot_to_endpoint(0, sccp->msc_timeslot) != endpoint)
 			continue;
 
-		bsc = sccp->bsc;
+		con = sccp;
 	}
 
-	if (bsc)
-		return bsc;
+	if (con)
+		return con;
 
 	LOGP(DMGCP, LOGL_ERROR, "Failed to find the connection.\n");
 	return NULL;
@@ -117,7 +117,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 {
 	struct bsc_nat *nat;
 	struct bsc_endpoint *bsc_endp;
-	struct bsc_connection *bsc_con;
+	struct sccp_connections *sccp;
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
 
@@ -125,9 +125,9 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	bsc_endp = &nat->bsc_endpoints[endpoint];
 	mgcp_endp = &nat->mgcp_cfg->endpoints[endpoint];
 
-	bsc_con = bsc_mgcp_find_con(nat, endpoint);
+	sccp = bsc_mgcp_find_con(nat, endpoint);
 
-	if (!bsc_con) {
+	if (!sccp) {
 		LOGP(DMGCP, LOGL_ERROR, "Did not find BSC for a new connection on 0x%x for %d\n", endpoint, state);
 
 		switch (state) {
@@ -163,14 +163,14 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 
 	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
-	bsc_endp->bsc = bsc_con;
+	bsc_endp->bsc = sccp->bsc;
 	bsc_endp->pending_delete = 0;
 
 	/* we need to update some bits */
 	if (state == MGCP_ENDP_CRCX) {
 		struct sockaddr_in sock;
 		socklen_t len = sizeof(sock);
-		if (getpeername(bsc_con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len) != 0) {
+		if (getpeername(sccp->bsc->write_queue.bfd.fd, (struct sockaddr *) &sock, &len) != 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...%d/%s\n",
 			      errno, strerror(errno));
 		} else {
@@ -182,7 +182,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		mgcp_free_endp(mgcp_endp);
 	}
 
-	bsc_write(bsc_con, bsc_msg, NAT_IPAC_PROTO_MGCP);
+	bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
 	return MGCP_POLICY_DEFER;
 }
 

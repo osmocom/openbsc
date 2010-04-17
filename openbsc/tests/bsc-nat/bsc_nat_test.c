@@ -432,14 +432,14 @@ static void test_mgcp_find(void)
 		abort();
 	}
 
-	if (bsc_mgcp_find_con(nat, 12) != con) {
+	if (bsc_mgcp_find_con(nat, 12) != sccp_con) {
 		fprintf(stderr, "Didn't find the connection\n");
 		abort();
 	}
 
 	sccp_con->msc_timeslot = 0;
 	sccp_con->bsc_timeslot = 0;
-	if (bsc_mgcp_find_con(nat, 1) != con) {
+	if (bsc_mgcp_find_con(nat, 1) != sccp_con) {
 		fprintf(stderr, "Didn't find the connection\n");
 		abort();
 	}
