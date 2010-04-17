@@ -52,6 +52,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
 	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
 	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
+	nat->msc_port = 5000;
 	return nat;
 }
 

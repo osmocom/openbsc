@@ -56,6 +56,7 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->imsi_deny)
 		vty_out(vty, " insi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
+	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -213,6 +214,15 @@ DEFUN(cfg_nat_msc_ip,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_msc_port,
+      cfg_nat_msc_port_cmd,
+      "msc port <1-65500>",
+      "Set the port of the MSC.")
+{
+	_nat->msc_port = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure\n")
 {
@@ -327,6 +337,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_imsi_allow_cmd);
 	install_element(NAT_NODE, &cfg_nat_imsi_deny_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
+	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
