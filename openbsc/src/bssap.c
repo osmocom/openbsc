@@ -29,7 +29,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/chan_alloc.h>
 
-#include <osmocore/tlv.h>
+#include <osmocore/gsm0808.h>
 
 #include <sccp/sccp.h>
 
@@ -43,34 +43,6 @@
 static void bts_queue_send(struct msgb *msg, int link_id);
 static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
-
-static const struct tlv_definition bss_att_tlvdef = {
-	.def = {
-		[GSM0808_IE_IMSI]		    = { TLV_TYPE_TLV },
-		[GSM0808_IE_TMSI]		    = { TLV_TYPE_TLV },
-		[GSM0808_IE_CELL_IDENTIFIER_LIST]   = { TLV_TYPE_TLV },
-		[GSM0808_IE_CHANNEL_NEEDED]	    = { TLV_TYPE_TV },
-		[GSM0808_IE_EMLPP_PRIORITY]	    = { TLV_TYPE_TV },
-		[GSM0808_IE_CHANNEL_TYPE]	    = { TLV_TYPE_TLV },
-		[GSM0808_IE_PRIORITY]		    = { TLV_TYPE_TLV },
-		[GSM0808_IE_CIRCUIT_IDENTITY_CODE]  = { TLV_TYPE_TV },
-		[GSM0808_IE_DOWNLINK_DTX_FLAG]	    = { TLV_TYPE_TV },
-		[GSM0808_IE_INTERFERENCE_BAND_TO_USE] = { TLV_TYPE_TV },
-		[GSM0808_IE_CLASSMARK_INFORMATION_T2] = { TLV_TYPE_TLV },
-		[GSM0808_IE_GROUP_CALL_REFERENCE]   = { TLV_TYPE_TLV },
-		[GSM0808_IE_TALKER_FLAG]	    = { TLV_TYPE_T },
-		[GSM0808_IE_CONFIG_EVO_INDI]	    = { TLV_TYPE_TV },
-		[GSM0808_IE_LSA_ACCESS_CTRL_SUPPR]  = { TLV_TYPE_TV },
-		[GSM0808_IE_SERVICE_HANDOVER]	    = { TLV_TYPE_TV},
-		[GSM0808_IE_ENCRYPTION_INFORMATION] = { TLV_TYPE_TLV },
-		[GSM0808_IE_CIPHER_RESPONSE_MODE]   = { TLV_TYPE_TV },
-	},
-};
-
-const struct tlv_definition *gsm0808_att_tlvdef()
-{
-	return &bss_att_tlvdef;
-}
 
 static u_int16_t get_network_code_for_msc(struct gsm_network *net)
 {
@@ -112,7 +84,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	u_int8_t chan_needed = RSL_CHANNEED_ANY;
 	int paged;
 
-	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, payload_length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_IMSI)) {
 		LOGP(DMSC, LOGL_ERROR, "Mandantory IMSI not present.\n");
@@ -242,7 +214,7 @@ static int bssmap_handle_cipher_mode(struct sccp_connection *conn,
 	msg->lchan->msc_data->ciphering_handled = 1;
 	msg->lchan->msc_data->block_gsm = 1;
 
-	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, payload_length - 1, 0, 0);
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, payload_length - 1, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_ENCRYPTION_INFORMATION)) {
 		LOGP(DMSC, LOGL_ERROR, "IE Encryption Information missing.\n");
 		goto reject;
@@ -515,7 +487,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 
 	msc_data = msg->lchan->msc_data;
 	network = msg->lchan->ts->trx->bts->network;
-	tlv_parse(&tp, &bss_att_tlvdef, msg->l4h + 1, length - 1, 0, 0);
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
 		LOGP(DMSC, LOGL_ERROR, "Mandantory channel type not present.\n");

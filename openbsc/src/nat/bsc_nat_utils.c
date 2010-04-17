@@ -30,6 +30,7 @@
 
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
+#include <osmocore/gsm0808.h>
 
 #include <sccp/sccp.h>
 
