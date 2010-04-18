@@ -502,6 +502,23 @@ const char *rrlp_mode_name(enum rrlp_mode mode)
 	return get_value_string(rrlp_mode_names, mode);
 }
 
+static const struct value_string bts_gprs_mode_names[] = {
+	{ BTS_GPRS_NONE,	"none" },
+	{ BTS_GPRS_GPRS,	"gprs" },
+	{ BTS_GPRS_EGPRS,	"egprs" },
+	{ 0,			NULL }
+};
+
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg)
+{
+	return get_string_value(bts_gprs_mode_names, arg);
+}
+
+const char *bts_gprs_mode_name(enum bts_gprs_mode mode)
+{
+	return get_value_string(bts_gprs_mode_names, mode);
+}
+
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 {
 	struct gsm_meas_rep *meas_rep;

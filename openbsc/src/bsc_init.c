@@ -462,7 +462,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_NSE:
 		bts = container_of(obj, struct gsm_bts, gprs.nse);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -476,7 +476,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_CELL:
 		bts = container_of(obj, struct gsm_bts, gprs.cell);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -491,7 +491,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_GPRS_NSVC:
 		nsvc = obj;
 		bts = nsvc->bts;
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 	        /* We skip NSVC1 since we only use NSVC0 */
 		if (nsvc->id == 1)
@@ -799,7 +799,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
-		if (bts->gprs.enabled) {
+		if (bts->gprs.mode != BTS_GPRS_NONE) {
 			i = 13;
 			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 			if (rc < 0)

@@ -458,7 +458,15 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 
 int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
 {
-	si_info.gprs_ind.present = bts->gprs.enabled;
+	switch (bts->gprs.mode) {
+	case BTS_GPRS_EGPRS:
+	case BTS_GPRS_GPRS:
+		si_info.gprs_ind.present = 1;
+		break;
+	case BTS_GPRS_NONE:
+		si_info.gprs_ind.present = 0;
+		break;
+	}
 
 	switch (type) {
 	case RSL_SYSTEM_INFO_1:

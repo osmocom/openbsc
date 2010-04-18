@@ -73,6 +73,12 @@ enum gsm_paging_event {
 	GSM_PAGING_OOM,
 };
 
+enum bts_gprs_mode {
+	BTS_GPRS_NONE = 0,
+	BTS_GPRS_GPRS = 1,
+	BTS_GPRS_EGPRS = 2,
+};
+
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,
 		     unsigned int event,
@@ -476,7 +482,7 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
-		int enabled;
+		enum bts_gprs_mode mode;
 		struct {
 			struct gsm_nm_state nm_state;
 			u_int16_t nsei;
@@ -704,6 +710,9 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 
 enum rrlp_mode rrlp_mode_parse(const char *arg);
 const char *rrlp_mode_name(enum rrlp_mode mode);
+
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg);
+const char *bts_gprs_mode_name(enum bts_gprs_mode mode);
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
