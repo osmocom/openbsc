@@ -405,7 +405,7 @@ static struct gsm48_si13_info si13_default = {
 		.ext_info_present = 0,
 		.ext_info = {
 			/* The values below are just guesses ! */
-			.egprs_supported = 1,
+			.egprs_supported = 0,
 			.use_egprs_p_ch_req = 1,
 			.bep_period = 4,
 			.pfc_supported = 0,
@@ -460,6 +460,9 @@ int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
 {
 	switch (bts->gprs.mode) {
 	case BTS_GPRS_EGPRS:
+		si13_default.cell_opts.ext_info_present = 1;
+		si13_default.cell_opts.ext_info.egprs_supported = 1;
+		/* fallthrough */
 	case BTS_GPRS_GPRS:
 		si_info.gprs_ind.present = 1;
 		break;
