@@ -402,6 +402,16 @@ static struct gsm48_si13_info si13_default = {
 		.t3192		= 500,
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
+		.ext_info_present = 0,
+		.ext_info = {
+			/* The values below are just guesses ! */
+			.egprs_supported = 1,
+			.use_egprs_p_ch_req = 1,
+			.bep_period = 4,
+			.pfc_supported = 0,
+			.dtm_supported = 0,
+			.bss_paging_coordination = 0,
+		},
 	},
 	.pwr_ctrl_pars = {
 		.alpha		= 10,	/* a = 1.0 */

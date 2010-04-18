@@ -319,8 +319,31 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 	/* hard-code no PAN_{DEC,INC,MAX} */
 	bitvec_set_bit(bv, 0);
 
-	/* no extension information (EDGE) */
-	bitvec_set_bit(bv, 0);
+	if (!gco->ext_info_present) {
+		/* no extension information */
+		bitvec_set_bit(bv, 0);
+	} else {
+		/* extension information */
+		bitvec_set_bit(bv, 1);
+		if (!gco->ext_info.egprs_supported) {
+			/* 6bit length of extension */
+			bitvec_set_uint(bv, 1 + 3, 6);
+			/* EGPRS supported in the cell */
+			bitvec_set_bit(bv, 0);
+		} else {
+			/* 6bit length of extension */
+			bitvec_set_uint(bv, 1 + 5 + 3, 6);
+			/* EGPRS supported in the cell */
+			bitvec_set_bit(bv, 1);
+			/* 1bit EGPRS PACKET CHANNEL REQUEST */
+			bitvec_set_bit(bv, gco->ext_info.use_egprs_p_ch_req);
+			/* 4bit BEP PERIOD */
+			bitvec_set_uint(bv, gco->ext_info.bep_period, 4);
+		}
+		bitvec_set_bit(bv, gco->ext_info.pfc_supported);
+		bitvec_set_bit(bv, gco->ext_info.dtm_supported);
+		bitvec_set_bit(bv, gco->ext_info.bss_paging_coordination);
+	}
 
 	return 0;
 }
