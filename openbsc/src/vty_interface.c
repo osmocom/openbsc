@@ -1392,7 +1392,7 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 }
 
 DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
-	"gprs cell bvci <1-65535>",
+	"gprs cell bvci <2-65535>",
 	"GPRS BSSGP VC Identifier")
 {
 	struct gsm_bts *bts = vty->index;
