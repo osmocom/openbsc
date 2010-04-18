@@ -50,7 +50,7 @@ network
   rach max transmission 7
   ip.access unit_id 1801 0
   oml ip.access stream_id 255
-  gprs enabled 0
+  gprs mode none
   trx 0
    rf_locked 0
    arfcn 514
