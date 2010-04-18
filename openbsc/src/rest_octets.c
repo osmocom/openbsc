@@ -327,12 +327,12 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 		bitvec_set_bit(bv, 1);
 		if (!gco->ext_info.egprs_supported) {
 			/* 6bit length of extension */
-			bitvec_set_uint(bv, 1 + 3, 6);
+			bitvec_set_uint(bv, (1 + 3)-1, 6);
 			/* EGPRS supported in the cell */
 			bitvec_set_bit(bv, 0);
 		} else {
 			/* 6bit length of extension */
-			bitvec_set_uint(bv, 1 + 5 + 3, 6);
+			bitvec_set_uint(bv, (1 + 5 + 3)-1, 6);
 			/* EGPRS supported in the cell */
 			bitvec_set_bit(bv, 1);
 			/* 1bit EGPRS PACKET CHANNEL REQUEST */
