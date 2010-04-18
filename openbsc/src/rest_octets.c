@@ -358,7 +358,7 @@ static void append_gprs_pwr_ctrl_pars(struct bitvec *bv,
 	bitvec_set_uint(bv, pcp->n_avg_i, 4);
 }
 
-/* Generate SI13 Rest Octests (Chapter 10.5.2.37b) */
+/* Generate SI13 Rest Octests (04.08 Chapter 10.5.2.37b) */
 int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 {
 	struct bitvec bv;
@@ -414,6 +414,11 @@ int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 				break;
 			}
 		}
+		/* 3GPP TS 44.018 Release 6 / 10.5.2.37b */
+		bitvec_set_bit(&bv, H);	/* added Release 99 */
+		/* claim our SGSN is compatible with Release 99, as EDGE and EGPRS
+		 * was only added in this Release */
+		bitvec_set_bit(&bv, 1);
 	}
 	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
 	return bv.data_len;
