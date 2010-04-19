@@ -403,7 +403,7 @@ static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
 	bts = msg->lchan->ts->trx->bts;
 	chan_type = full_rate ? GSM_LCHAN_TCH_F : GSM_LCHAN_TCH_H;
 
-	new_lchan = lchan_alloc(bts, chan_type);
+	new_lchan = lchan_alloc(bts, chan_type, 0);
 
 	if (!new_lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "No free channel.\n");
