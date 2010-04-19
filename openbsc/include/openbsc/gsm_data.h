@@ -453,6 +453,7 @@ struct gsm_bts_paging_state {
 	struct gsm_bts *bts;
 
 	struct timer_list work_timer;
+	struct timer_list credit_timer;
 
 	/* load */
 	u_int16_t available_slots;

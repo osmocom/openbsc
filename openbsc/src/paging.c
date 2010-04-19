@@ -96,6 +96,14 @@ static void page_ms(struct gsm_paging_request *request)
 	gsm0808_page(request->bts, page_group, mi_len, mi, request->chan_type);
 }
 
+static void paging_give_credit(void *data)
+{
+	struct gsm_bts_paging_state *paging_bts = data;
+
+	LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n", paging_bts->bts->nr);
+	paging_bts->available_slots = 20;
+}
+
 /*
  * This is kicked by the periodic PAGING LOAD Indicator
  * coming from abis_rsl.c
@@ -118,17 +126,16 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	}
 
 	/*
-	 * In case the BTS does not provide us with load indication just fill
-	 * up our slots for this round. We should be able to page 20 subscribers
-	 * every two seconds. So we will just give the BTS some extra credit.
-	 * We will have to see how often we run out of this credit, so we might
-	 * need a low watermark and then add credit or give 20 every run when
-	 * the bts sets an option for that.
+	 * In case the BTS does not provide us with load indication and we
+	 * ran out of slots, call an autofill routine. It might be that the
+	 * BTS did not like our paging messages and then we have counted down
+	 * to zero and we do not get any messages.
 	 */
 	if (paging_bts->available_slots == 0) {
-		LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n",
-		     paging_bts->bts->nr);
-		paging_bts->available_slots = 20;
+		paging_bts->credit_timer.cb = paging_give_credit;
+		paging_bts->credit_timer.data = paging_bts;
+		bsc_schedule_timer(&paging_bts->credit_timer, 5, 0);
+		return;
 	}
 
 	initial_request = llist_entry(paging_bts->pending_requests.next,
@@ -325,5 +332,6 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
+	bsc_del_timer(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
 }
