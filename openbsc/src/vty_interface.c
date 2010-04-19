@@ -234,6 +234,28 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 	return CMD_SUCCESS;
 }
 
+DEFUN(test_bts_lchan_alloc, test_bts_lchan_alloc_cmd, "test bts alloc sdcch",
+      "Test command to allocate all channels. You will need to restart. To free these channels.\n")
+{
+	struct gsm_network *net = gsmnet;
+	int bts_nr;
+
+	enum gsm_chan_t type = GSM_LCHAN_NONE;
+
+	type = GSM_LCHAN_SDCCH;
+
+	for (bts_nr = 0; bts_nr < net->num_bts; ++bts_nr) {
+		struct gsm_bts *bts = gsm_bts_num(net, bts_nr);
+		struct gsm_lchan *lchan;
+
+		/* alloc the channel */
+		while ((lchan = lchan_alloc(bts, type, 0)) != NULL)
+			rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
+	}
+
+	return CMD_SUCCESS;
+}
+
 /* utility functions */
 static void parse_e1_link(struct gsm_e1_subslot *e1_link, const char *line,
 			  const char *ts, const char *ss)
@@ -1953,6 +1975,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_paging_cmd);
 
 	install_element(VIEW_NODE, &drop_bts_cmd);
+	install_element(VIEW_NODE, &test_bts_lchan_alloc_cmd);
 
 	openbsc_vty_add_cmds();
         
