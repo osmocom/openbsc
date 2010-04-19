@@ -372,7 +372,8 @@ static int handle_ass_compl(struct msgb *msg)
 	old_chan->msc_data = NULL;
 
 	/* give up the old channel to not do a SACCH deactivate */
-	subscr_put(old_chan->conn.subscr);
+	if (old_chan->conn.subscr)
+		subscr_put(old_chan->conn.subscr);
 	old_chan->conn.subscr = NULL;
 	put_subscr_con(&old_chan->conn, 1);
 

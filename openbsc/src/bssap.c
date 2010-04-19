@@ -289,7 +289,8 @@ static void bssmap_free_secondary(struct bss_sccp_connection_data *data)
 	lchan->msc_data = NULL;
 
 	/* give up the new channel to not do a SACCH deactivate */
-	subscr_put(lchan->conn.subscr);
+	if (lchan->conn.subscr)
+		subscr_put(lchan->conn.subscr);
 	lchan->conn.subscr = NULL;
 	put_subscr_con(&lchan->conn, 1);
 }
@@ -414,7 +415,8 @@ static int handle_new_assignment(struct msgb *msg, int full_rate, int chan_mode)
 	memcpy(&new_lchan->encr, &msg->lchan->encr, sizeof(new_lchan->encr));
 	new_lchan->ms_power = msg->lchan->ms_power;
 	new_lchan->bs_power = msg->lchan->bs_power;
-	new_lchan->conn.subscr = subscr_get(msg->lchan->conn.subscr);
+	if (msg->lchan->conn.subscr)
+		new_lchan->conn.subscr = subscr_get(msg->lchan->conn.subscr);
 
 	/* copy new data to it */
 	use_subscr_con(&new_lchan->conn);
