@@ -234,7 +234,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 	return CMD_SUCCESS;
 }
 
-DEFUN(test_bts_lchan_alloc, test_bts_lchan_alloc_cmd, "test bts alloc sdcch",
+DEFUN(test_bts_lchan_alloc, test_bts_lchan_alloc_cmd, "test bts alloc (sdcch|tch_h|tch_f)",
       "Test command to allocate all channels. You will need to restart. To free these channels.\n")
 {
 	struct gsm_network *net = gsmnet;
@@ -242,7 +242,15 @@ DEFUN(test_bts_lchan_alloc, test_bts_lchan_alloc_cmd, "test bts alloc sdcch",
 
 	enum gsm_chan_t type = GSM_LCHAN_NONE;
 
-	type = GSM_LCHAN_SDCCH;
+	if (strcmp("sdcch", argv[0]) == 0)
+		type = GSM_LCHAN_SDCCH;
+	else if (strcmp("tch_h", argv[0]) == 0)
+		type = GSM_LCHAN_TCH_H;
+	else if (strcmp("tch_f", argv[0]) == 0)
+		type = GSM_LCHAN_TCH_F;
+	else {
+		vty_out(vty, "Unknown mode for allocation.%s", VTY_NEWLINE);
+	}
 
 	for (bts_nr = 0; bts_nr < net->num_bts; ++bts_nr) {
 		struct gsm_bts *bts = gsm_bts_num(net, bts_nr);
