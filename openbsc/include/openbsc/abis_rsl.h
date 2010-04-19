@@ -72,6 +72,8 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t rele
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
 
+int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
+
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_deact_sacch(struct gsm_lchan *lchan);

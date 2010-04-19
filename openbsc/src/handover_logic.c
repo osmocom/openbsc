@@ -230,7 +230,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	/* update lchan pointer of transaction */
 	trans_lchan_change(&ho->old_lchan->conn, &new_lchan->conn);
 
-	ho->old_lchan->state = LCHAN_S_INACTIVE;
+	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
 
 	/* do something to re-route the actual speech frames ! */
 

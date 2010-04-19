@@ -822,15 +822,56 @@ static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i
 	return abis_nm_sendmsg(bts, msg);
 }
 
+static int abis_nm_parse_sw_descr(const u_int8_t *sw_descr, int sw_descr_len)
+{
+	static const struct tlv_definition sw_descr_def = {
+		.def = {
+			[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V, },
+			[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V, },
+		},
+	};
+
+	u_int8_t tag;
+	u_int16_t tag_len;
+	const u_int8_t *val;
+	int ofs = 0, len;
+
+	/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
+	 * nested nature and the fact you have to assume it contains only two sub
+	 * tags NM_ATT_FILE_VERSION & NM_ATT_FILE_ID to parse it */
+
+	if (sw_descr[0] != NM_ATT_SW_DESCR) {
+		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
+		return -1;
+	}
+	ofs += 1;
+
+	len = tlv_parse_one(&tag, &tag_len, &val,
+		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
+	if (len < 0 || (tag != NM_ATT_FILE_ID)) {
+		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
+		return -2;
+	}
+	ofs += len;
+
+	len = tlv_parse_one(&tag, &tag_len, &val,
+		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
+	if (len < 0 || (tag != NM_ATT_FILE_VERSION)) {
+		DEBUGP(DNM, "FILE_VERSION attribute identifier not found!\n");
+		return -3;
+	}
+	ofs += len;
+
+	return ofs;
+}
+
 static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct tlv_parsed tp;
 	const u_int8_t *sw_config;
-	int sw_config_len;
-	int file_id_len;
-	int ret;
+	int ret, sw_config_len, sw_descr_len;
 
 	debugp_foh(foh);
 
@@ -854,20 +895,16 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
 	}
 
-	if (sw_config[0] != NM_ATT_SW_DESCR)
-		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
-	if (sw_config[1] != NM_ATT_FILE_ID)
-		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
-	file_id_len = sw_config[2] * 256 + sw_config[3];
+		/* Use the first SW_DESCR present in SW config */
+	sw_descr_len = abis_nm_parse_sw_descr(sw_config, sw_config_len);
+	if (sw_descr_len < 0)
+		return -EINVAL;
 
-	/* Assumes first SW file in list is the one to be activated */
-	/* sw_config + 4 to skip over 2 attribute ID bytes and 16-bit length field */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 sw_config + 4,
-				 file_id_len);
+				 sw_config, sw_descr_len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */

@@ -389,6 +389,7 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 			lchan->conn.use_count);
 
 	rsl_release_request(lchan, 0, lchan->release_reason);
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 }
 
 /* called from abis rsl */

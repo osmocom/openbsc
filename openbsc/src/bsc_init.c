@@ -378,11 +378,11 @@ static unsigned char nanobts_attr_cell[] = {
 		4,	/* N3103 */
 		8,	/* N3105 */
 		15,	/* RLC CV countdown */
-	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,
+	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,	/* CS1..CS4 */
 	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
-		0x00, 250,
-		0x00, 250,
-		2,	/* MCS2 */
+		0x00, 250,	/* T downlink TBF extension (0..500) */
+		0x00, 250,	/* T uplink TBF extension (0..500) */
+		2,	/* CS2 */
 #if 0
 	/* EDGE model only, breaks older models.
 	 * Should inquire the BTS capabilities */
@@ -464,7 +464,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_NSE:
 		bts = container_of(obj, struct gsm_bts, gprs.nse);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -478,7 +478,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_CELL:
 		bts = container_of(obj, struct gsm_bts, gprs.cell);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -493,7 +493,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_GPRS_NSVC:
 		nsvc = obj;
 		bts = nsvc->bts;
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 	        /* We skip NSVC1 since we only use NSVC0 */
 		if (nsvc->id == 1)
@@ -801,7 +801,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
-		if (bts->gprs.enabled) {
+		if (bts->gprs.mode != BTS_GPRS_NONE) {
 			i = 13;
 			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 			if (rc < 0)
@@ -888,6 +888,11 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch RAC */
 	nanobts_attr_cell[3] = bts->gprs.rac;
 
+	if (bts->gprs.mode == BTS_GPRS_EGPRS) {
+		/* patch EGPRS coding schemes MCS 1..9 */
+		nanobts_attr_cell[29] = 0x8f;
+		nanobts_attr_cell[30] = 0xff;
+	}
 }
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)

@@ -360,8 +360,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
-	vty_out(vty, "  gprs enabled %u%s", bts->gprs.enabled, VTY_NEWLINE);
-	if (bts->gprs.enabled) {
+	vty_out(vty, "  gprs mode %s%s", bts_gprs_mode_name(bts->gprs.mode),
+		VTY_NEWLINE);
+	if (bts->gprs.mode != BTS_GPRS_NONE) {
 		vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
 			VTY_NEWLINE);
 		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
@@ -614,10 +615,6 @@ DEFUN(show_ts,
 
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
-	int rc;
-	struct gsm_auth_info ainfo;
-	struct gsm_auth_tuple atuple;
-
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
@@ -990,7 +987,7 @@ DEFUN(drop_bts,
 			ipaccess_drop_rsl(trx);
 		}
 	} else {
-		vty_out(vty, "Argument must be 'oml# or 'rsl'.%s", VTY_NEWLINE);
+		vty_out(vty, "Argument must be 'oml' or 'rsl'.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -1658,12 +1655,12 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 }
 
 DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
-	"gprs cell bvci <0-65535>",
+	"gprs cell bvci <2-65535>",
 	"GPRS BSSGP VC Identifier")
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1679,7 +1676,7 @@ DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1697,7 +1694,7 @@ DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1714,7 +1711,7 @@ DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1731,7 +1728,7 @@ DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1749,7 +1746,7 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	int idx = atoi(argv[0]);
 	struct in_addr ia;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1766,7 +1763,7 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1776,13 +1773,13 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_gprs_enabled, cfg_bts_gprs_enabled_cmd,
-	"gprs enabled <0-1>",
-	"GPRS Enabled on this BTS")
+DEFUN(cfg_bts_gprs_mode, cfg_bts_gprs_mode_cmd,
+	"gprs mode (none|gprs|egprs)",
+	"GPRS Mode for this BTS")
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->gprs.enabled = atoi(argv[0]);
+	bts->gprs.mode = bts_gprs_mode_parse(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -1965,6 +1962,8 @@ DEFUN(cfg_ts_e1_subslot,
 	return CMD_SUCCESS;
 }
 
+extern int bsc_vty_init_extra(struct gsm_network *net);
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -2051,7 +2050,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
-	install_element(BTS_NODE, &cfg_bts_gprs_enabled_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);
