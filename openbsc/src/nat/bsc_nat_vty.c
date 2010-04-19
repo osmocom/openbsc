@@ -81,8 +81,8 @@ static int config_write_bsc(struct vty *vty)
 }
 
 
-DEFUN(show_sccp, show_sccp_cmd, "sccp connections show",
-      "Display information about current SCCP connections")
+DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
+      SHOW_STR "Display information about current SCCP connections")
 {
 	struct sccp_connections *con;
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
@@ -98,8 +98,8 @@ DEFUN(show_sccp, show_sccp_cmd, "sccp connections show",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_bsc, show_bsc_cmd, "bsc connections show",
-      "Display information about current BSCs")
+DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
+      SHOW_STR "Display information about current BSCs")
 {
 	struct bsc_connection *con;
 	struct sockaddr_in sock;
