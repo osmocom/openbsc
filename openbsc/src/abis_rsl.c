@@ -1187,6 +1187,10 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
 		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
+		if (is_ipaccess_bts(msg->trx->bts) && pg_buf_space == 0xffff) {
+			/* paging load below configured threshold, use 50 as default */
+			pg_buf_space = 50;
+		}
 		paging_update_buffer_space(msg->trx->bts, pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
