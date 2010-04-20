@@ -96,12 +96,14 @@ static void page_ms(struct gsm_paging_request *request)
 	gsm0808_page(request->bts, page_group, mi_len, mi, request->chan_type);
 }
 
+static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts);
 static void paging_give_credit(void *data)
 {
 	struct gsm_bts_paging_state *paging_bts = data;
 
 	LOGP(DPAG, LOGL_NOTICE, "No slots available on bts nr %d\n", paging_bts->bts->nr);
 	paging_bts->available_slots = 20;
+	paging_handle_pending_requests(paging_bts);
 }
 
 /*
