@@ -128,10 +128,8 @@ static int can_send_pag_req(struct gsm_bts *bts, int rsl_type)
 
 	switch (rsl_type) {
 	case RSL_CHANNEED_TCH_F:
-		LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
-		break;
 	case RSL_CHANNEED_TCH_ForH:
-		LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
+		goto count_tch;
 		break;
 	case RSL_CHANNEED_SDCCH:
 		goto count_sdcch;
@@ -139,7 +137,7 @@ static int can_send_pag_req(struct gsm_bts *bts, int rsl_type)
 	case RSL_CHANNEED_ANY:
 	default:
 		if (bts->network->pag_any_tch)
-			LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
+			goto count_tch;
 		else
 			goto count_sdcch;
 		break;
@@ -154,6 +152,15 @@ count_sdcch:
 			- pl.pchan[GSM_PCHAN_SDCCH8_SACCH8C].used;
 	count += pl.pchan[GSM_PCHAN_CCCH_SDCCH4].total
 			- pl.pchan[GSM_PCHAN_CCCH_SDCCH4].used;
+	return bts->paging.free_chans_need > count;
+
+count_tch:
+	count = 0;
+	count += pl.pchan[GSM_PCHAN_TCH_F].total
+			- pl.pchan[GSM_PCHAN_TCH_F].used;
+	if (bts->network->neci)
+		count += pl.pchan[GSM_PCHAN_TCH_H].total
+				- pl.pchan[GSM_PCHAN_TCH_H].used;
 	return bts->paging.free_chans_need > count;
 }
 
