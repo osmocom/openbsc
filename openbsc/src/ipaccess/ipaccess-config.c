@@ -59,6 +59,7 @@ static int sw_load_state = 0;
 static int oml_state = 0;
 static int dump_files = 0;
 static char *firmware_analysis = NULL;
+static int trx_nr = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -316,7 +317,8 @@ static void bootstrap_om(struct gsm_bts *bts)
 		memcpy(buf+3, unit_id, len);
 		buf[3+len] = 0;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len+1);
+		abis_nm_ipaccess_set_nvattr(gsm_bts_trx_by_nr(bts, trx_nr),
+					    buf, 3+len+1);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
@@ -354,7 +356,8 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = nv_mask >> 8;
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(gsm_bts_trx_by_nr(bts, trx_nr),
+					    buf, 3+len);
 	}
 
 	if (restart && !prim_oml_ip && !software) {
@@ -605,6 +608,7 @@ static void print_help(void)
 	printf("  -d --software firmware\n");
 	printf("  -f --firmware firmware Provide firmware information\n");
 	printf("  -w --write-firmware. This will dump the firmware parts to the filesystem. Use with -f.\n");
+	printf("  -t --trx NR. The TRX to use for the Unit ID and NVRAM attributes.\n");
 }
 
 int main(int argc, char **argv)
@@ -639,9 +643,11 @@ int main(int argc, char **argv)
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
+			{ "trx", 1, 0, 't' },
+			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:w", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:wt:", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -682,6 +688,9 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			dump_files = 1;
+			break;
+		case 't':
+			trx_nr = atoi(optarg);
 			break;
 		case 'h':
 			print_usage();
