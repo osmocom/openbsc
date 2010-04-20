@@ -116,10 +116,6 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	struct gsm_paging_request *initial_request = NULL;
 	struct gsm_paging_request *current_request = NULL;
 
-	/* BAND AID to throttle the paging requests we send. Not more than 10. */
-	int req = 0;
-	static const int REQ_LIMIT = 5;
-
 	/*
 	 * Determine if the pending_requests list is empty and
 	 * return then.
@@ -159,8 +155,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		current_request = llist_entry(paging_bts->pending_requests.next,
 					      struct gsm_paging_request, entry);
 	} while (paging_bts->available_slots > 0
-		    && initial_request != current_request
-		    && req++ < REQ_LIMIT);
+		 && initial_request != current_request);
 
 	bsc_schedule_timer(&paging_bts->work_timer, 2, 0);
 }
