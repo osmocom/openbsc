@@ -360,6 +360,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
+
+	/* if we have a limit, write it */
+	if (bts->paging.free_chans_need >= 0)
+		vty_out(vty, "  paging free %d%s", bts->paging.free_chans_need, VTY_NEWLINE);
+
 	vty_out(vty, "  gprs mode %s%s", bts_gprs_mode_name(bts->gprs.mode),
 		VTY_NEWLINE);
 	if (bts->gprs.mode != BTS_GPRS_NONE) {
@@ -1757,6 +1762,16 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_pag_free, cfg_bts_pag_free_cmd,
+      "paging free FREE_NR",
+      "Only page when having a certain amount of free slots. -1 to disable")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->paging.free_chans_need = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	"gprs routing area <0-255>",
 	"GPRS Routing Area Code")
@@ -2058,6 +2073,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rip_cmd);
+	install_element(BTS_NODE, &cfg_bts_pag_free_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
