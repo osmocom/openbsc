@@ -148,8 +148,8 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	}
 
 	if (bsc_endp->transaction_id) {
-		LOGP(DMGCP, LOGL_ERROR, "One transaction with id '%s' on 0x%x\n",
-		     bsc_endp->transaction_id, endpoint);
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
+		     endpoint, bsc_endp->transaction_id);
 		talloc_free(bsc_endp->transaction_id);
 	}
 
