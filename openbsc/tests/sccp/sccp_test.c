@@ -264,6 +264,10 @@ static const u_int8_t it_test[] = {
 0x10, 0x01, 0x07, 
 0x94, 0x01, 0x04, 0x00, 0x02, 0x00, 0x00, 0x00 };
 
+static const u_int8_t proto_err[] = {
+0x0f, 0x0c, 0x04, 0x00, 0x00,
+};
+
 static const struct sccp_parse_header_result parse_result[] = {
 	{
 		.msg_type	= SCCP_MSG_TYPE_IT,
@@ -286,6 +290,21 @@ static const struct sccp_parse_header_result parse_result[] = {
 
 		.input		= it_test,
 		.input_len	= sizeof(it_test),
+	},
+	{
+		.msg_type	= SCCP_MSG_TYPE_ERR,
+		.wanted_len	= 0,
+		.src_ssn	= -1,
+		.dst_ssn	= -1,
+		.has_src_ref	= 0,
+		.has_dst_ref	= 1,
+		.dst_ref	= {
+			.octet1 = 0x0c,
+			.octet2 = 0x04,
+			.octet3 = 0x00,
+		},
+		.input		= proto_err,
+		.input_len	= sizeof(proto_err),
 	},
 };
 
@@ -777,7 +796,7 @@ static void test_sccp_parsing(void)
 
 		memset(&result, 0, sizeof(result));
 		if (sccp_parse_header(msg, &result) != 0) {
-			fprintf(stderr, "Failed to parse test: %d\n", current_test);
+			fprintf(stderr, "Failed to sccp parse test: %d\n", current_test);
 		} else {
 			if (parse_result[current_test].wanted_len != result.data_len) {
 				fprintf(stderr, "Unexpected data length.\n");
