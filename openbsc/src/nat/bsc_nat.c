@@ -312,7 +312,7 @@ send_to_all:
 		int lac;
 		bsc = bsc_nat_find_bsc(nat, msg, &lac);
 		if (bsc && bsc->cfg->forbid_paging)
-			LOGP(DNAT, LOGL_NOTICE, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
+			LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
 		else if (bsc)
 			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
 		else
