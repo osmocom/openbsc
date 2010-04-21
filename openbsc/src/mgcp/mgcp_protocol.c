@@ -647,6 +647,8 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 
 	/* free the connection */
+	LOGP(DMGCP, LOGL_NOTICE, "Deleted endpoint on: 0x%x Server: %s:%u\n",
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
