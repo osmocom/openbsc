@@ -556,7 +556,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	if (con && con->bsc != bsc) {
-		LOGP(DNAT, LOGL_ERROR, "Found the wrong entry.\n");
+		LOGP(DNAT, LOGL_ERROR, "The connection belongs to a different BTS: input: %d con: %d\n",
+		     bsc->cfg->nr, con->bsc->cfg->nr);
 		goto exit2;
 	}
 
