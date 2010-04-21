@@ -81,7 +81,7 @@ static struct sccp_data_callback *_find_ssn(u_int8_t ssn)
 	/* need to add one */
 	cb = talloc_zero(tall_sccp_ctx, struct sccp_data_callback);
 	if (!cb) {
-		DEBUGP(DSCCP, "Failed to allocate sccp callback.\n");
+		LOGP(DSCCP, LOGL_ERROR, "Failed to allocate sccp callback.\n");
 		return NULL;
 	}
 
@@ -108,13 +108,13 @@ static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb 
 	u_int8_t length;
 
 	if (room <= 0) {
-		DEBUGP(DSCCP, "Not enough room for an address: %u\n", room);
+		LOGP(DSCCP, LOGL_ERROR, "Not enough room for an address: %u\n", room);
 		return -1;
 	}
 
 	length = msgb->l2h[offset];
 	if (room <= length) {
-		DEBUGP(DSCCP, "Not enough room for optional data %u %u\n", room, length);
+		LOGP(DSCCP, LOGL_ERROR, "Not enough room for optional data %u %u\n", room, length);
 		return -1;
 	}
 
@@ -122,7 +122,7 @@ static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb 
 	party = (struct sccp_called_party_address *)(msgb->l2h + offset + 1);
 	if (party->point_code_indicator) {
 		if (length <= read + 2) {
-		    DEBUGP(DSCCP, "POI does not fit %u\n", length);
+		    LOGP(DSCCP, LOGL_ERROR, "POI does not fit %u\n", length);
 		    return -1;
 		}
 
@@ -133,7 +133,7 @@ static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb 
 
 	if (party->ssn_indicator) {
 		if (length <= read + 1) {
-		    DEBUGP(DSCCP, "SSN does not fit %u\n", length);
+		    LOGP(DSCCP, LOGL_ERROR, "SSN does not fit %u\n", length);
 		    return -1;
 		}
 
@@ -142,7 +142,7 @@ static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb 
 	}
 
 	if (party->global_title_indicator) {
-		DEBUGP(DSCCP, "GTI not supported %u\n", *(u_int8_t *)party);
+		LOGP(DSCCP, LOGL_ERROR, "GTI not supported %u\n", *(u_int8_t *)party);
 		return -1;
 	}
 
@@ -156,7 +156,8 @@ static int check_address(struct sccp_address *addr)
 	if (addr->address.ssn_indicator != 1
 	    || addr->address.global_title_indicator == 1
 	    || addr->address.routing_indicator != 1) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+		LOGP(DSCCP, LOGL_ERROR,
+			"Invalid called address according to 08.06: 0x%x 0x%x\n",
 			*(u_int8_t *)&addr->address, addr->ssn);
 		return -1;
 	}
@@ -176,7 +177,7 @@ static int _sccp_parse_optional_data(const int offset,
 			return 0;
 
 		if (read + 1 >= room) {
-			DEBUGP(DSCCP, "no place for length\n");
+			LOGP(DSCCP, LOGL_ERROR, "no place for length\n");
 			return 0;
 		}
 
@@ -185,7 +186,8 @@ static int _sccp_parse_optional_data(const int offset,
 
 
 		if (room <= read) {
-			DEBUGP(DSCCP, "no space for the data: type: %d read: %d room: %d l2: %d\n",
+			LOGP(DSCCP, LOGL_ERROR,
+			       "no space for the data: type: %d read: %d room: %d l2: %d\n",
 			       type, read, room, msgb_l2len(msgb));
 			return 0;
 		}
@@ -214,7 +216,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 
 	/* header check */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -224,7 +226,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 		return -1;
 
 	if (check_address(&result->called) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
 			*(u_int8_t *)&result->called.address, result->called.ssn);
 		return -1;
 	}
@@ -236,7 +238,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 	 */
 	memset(&optional_data, 0, sizeof(optional_data));
 	if (_sccp_parse_optional_data(optional_offset + req->optional_start, msgb, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		LOGP(DSCCP, LOGL_ERROR, "parsing of optional data failed.\n");
 		return -1;
 	}
 
@@ -260,14 +262,14 @@ int _sccp_parse_connection_released(struct msgb *msgb, struct sccp_parse_result 
 
 	/* we don't have enough size for the struct */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb > header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
 
 	memset(&optional_data, 0, sizeof(optional_data));
 	if (_sccp_parse_optional_data(optional_offset + rls->optional_start, msgb, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		LOGP(DSCCP, LOGL_ERROR, "parsing of optional data failed.\n");
 		return -1;
 	}
 
@@ -295,7 +297,7 @@ int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *
 
 	/* header check */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -306,7 +308,7 @@ int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *
 
 	memset(&optional_data, 0, sizeof(optional_data));
 	if (_sccp_parse_optional_data(optional_offset + ref->optional_start, msgb, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		LOGP(DSCCP, LOGL_ERROR, "parsing of optional data failed.\n");
 		return -1;
 	}
 
@@ -333,7 +335,7 @@ int _sccp_parse_connection_confirm(struct msgb *msgb, struct sccp_parse_result *
 
 	/* header check */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -344,7 +346,7 @@ int _sccp_parse_connection_confirm(struct msgb *msgb, struct sccp_parse_result *
 
 	memset(&optional_data, 0, sizeof(optional_data));
 	if (_sccp_parse_optional_data(optional_offset + con->optional_start, msgb, &optional_data) != 0) {
-		DEBUGP(DSCCP, "parsing of optional data failed.\n");
+		LOGP(DSCCP, LOGL_ERROR, "parsing of optional data failed.\n");
 		return -1;
 	}
 
@@ -366,7 +368,7 @@ int _sccp_parse_connection_release_complete(struct msgb *msgb, struct sccp_parse
 
 	/* header check */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -387,13 +389,13 @@ int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *resu
 
 	/* we don't have enough size for the struct */
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb > header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb > header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
 
 	if (dt1->segmenting != 0) {
-		DEBUGP(DSCCP, "This packet has segmenting, not supported: %d\n", dt1->segmenting);
+		LOGP(DSCCP, LOGL_ERROR, "This packet has segmenting, not supported: %d\n", dt1->segmenting);
 		return -1;
 	}
 
@@ -401,7 +403,7 @@ int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *resu
 
 	/* some more  size checks in here */
 	if (msgb_l2len(msgb) < variable_offset + dt1->variable_start + 1) {
-		DEBUGP(DSCCP, "Not enough space for variable start: %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "Not enough space for variable start: %u %u\n",
 			msgb_l2len(msgb), dt1->variable_start);
 		return -1;
 	}
@@ -410,7 +412,7 @@ int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *resu
 	msgb->l3h = &msgb->l2h[dt1->variable_start + variable_offset + 1];
 
 	if (msgb_l3len(msgb) < result->data_len) {
-		DEBUGP(DSCCP, "Not enough room for the payload: %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "Not enough room for the payload: %u %u\n",
 			msgb_l3len(msgb), result->data_len);
 		return -1;
 	}
@@ -428,7 +430,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 	struct sccp_data_unitdata *udt = (struct sccp_data_unitdata *)msgb->l2h;
 
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -438,7 +440,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 		return -1;
 
 	if (check_address(&result->called) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
 			*(u_int8_t *)&result->called.address, result->called.ssn);
 		return -1;
 	}
@@ -447,13 +449,13 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 		return -1;
 
 	if (check_address(&result->calling) != 0) {
-		DEBUGP(DSCCP, "Invalid called address according to 08.06: 0x%x 0x%x\n",
+		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
 			*(u_int8_t *)&result->called.address, result->called.ssn);
 	}
 
 	/* we don't have enough size for the data */
 	if (msgb_l2len(msgb) < data_offset + udt->variable_data + 1) {
-		DEBUGP(DSCCP, "msgb < header + offset %u %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header + offset %u %u %u\n",
 			msgb_l2len(msgb), header_size, udt->variable_data);
 		return -1;
 	}
@@ -463,7 +465,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 	result->data_len = msgb_l3len(msgb);
 
 	if (msgb_l3len(msgb) !=  msgb->l3h[-1]) {
-		DEBUGP(DSCCP, "msgb is truncated is: %u should: %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb is truncated is: %u should: %u\n",
 			msgb_l3len(msgb), msgb->l3h[-1]);
 		return -1;
 	}
@@ -478,7 +480,7 @@ static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 	struct sccp_data_it *it;
 
 	if (msgb_l2len(msgb) < header_size) {
-		DEBUGP(DSCCP, "msgb < header_size %u %u\n",
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
 		        msgb_l2len(msgb), header_size);
 		return -1;
 	}
@@ -518,7 +520,7 @@ static int _sccp_send_data(int class, const struct sockaddr_sccp *in,
 	u_int8_t *data;
 
 	if (msgb_l3len(payload) > 256) {
-		DEBUGP(DSCCP, "The payload is too big for one udt\n");
+		LOGP(DSCCP, LOGL_ERROR, "The payload is too big for one udt\n");
 		return -1;
 	}
 
@@ -563,7 +565,7 @@ static int _sccp_handle_read(struct msgb *msgb)
 
 	cb = _find_ssn(result.called.ssn);
 	if (!cb || !cb->read_cb) {
-		DEBUGP(DSCCP, "No routing for UDT for called SSN: %u\n", result.called.ssn);
+		LOGP(DSCCP, LOGL_ERROR, "No routing for UDT for called SSN: %u\n", result.called.ssn);
 		return -1;
 	}
 
@@ -612,7 +614,7 @@ static int assign_source_local_reference(struct sccp_connection *connection)
 		++last_ref;
 		/* do not use the reversed word and wrap around */
 		if ((last_ref & 0x00FFFFFF) == 0x00FFFFFF) {
-			DEBUGP(DSCCP, "Wrapped searching for a free code\n");
+			LOGP(DSCCP, LOGL_DEBUG, "Wrapped searching for a free code\n");
 			last_ref = 0;
 			++wrapped;
 		}
@@ -623,7 +625,7 @@ static int assign_source_local_reference(struct sccp_connection *connection)
 		}
 	} while (wrapped != 2);
 
-	DEBUGP(DSCCP, "Finding a free reference failed\n");
+	LOGP(DSCCP, LOGL_ERROR, "Finding a free reference failed\n");
 	return -1;
 }
 
@@ -703,13 +705,13 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 
 
 	if (msg && (msgb_l3len(msg) < 3 || msgb_l3len(msg) > 130)) {
-		DEBUGP(DSCCP, "Invalid amount of data... %d\n", msgb_l3len(msg));
+		LOGP(DSCCP, LOGL_ERROR, "Invalid amount of data... %d\n", msgb_l3len(msg));
 		return -1;
 	}
 
 	/* try to find a id */
 	if (assign_source_local_reference(connection) != 0) {
-		DEBUGP(DSCCP, "Assigning a local reference failed.\n");
+		LOGP(DSCCP, LOGL_ERROR, "Assigning a local reference failed.\n");
 		_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_SETUP_ERROR);
 		return -1;
 	}
@@ -761,7 +763,7 @@ static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb 
 	int extra_size;
 
 	if (msgb_l3len(_data) < 2 || msgb_l3len(_data) > 256) {
-		DEBUGP(DSCCP, "data size too big, segmenting unimplemented.\n");
+		LOGP(DSCCP, LOGL_ERROR, "data size too big, segmenting unimplemented.\n");
 		return -1;
 	}
 
@@ -857,14 +859,14 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 
 	cb = _find_ssn(result.called.ssn);
 	if (!cb || !cb->accept_cb) {
-		DEBUGP(DSCCP, "No routing for CR for called SSN: %u\n", result.called.ssn);
+		LOGP(DSCCP, LOGL_ERROR, "No routing for CR for called SSN: %u\n", result.called.ssn);
 		return -1;
 	}
 
 	/* check if the system wants this connection */
 	connection = talloc_zero(tall_sccp_ctx, struct sccp_connection);
 	if (!connection) {
-		DEBUGP(DSCCP, "Allocation failed\n");
+		LOGP(DSCCP, LOGL_ERROR, "Allocation failed\n");
 		return -1;
 	}
 
@@ -876,7 +878,7 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 	 * one....
 	 */
 	if (destination_local_reference_is_free(result.source_local_reference) != 0) {
-		DEBUGP(DSCCP, "Need to reject connection with existing reference\n");
+		LOGP(DSCCP, LOGL_ERROR, "Need to reject connection with existing reference\n");
 		_sccp_send_refuse(result.source_local_reference, SCCP_REFUSAL_SCCP_FAILURE);
 		talloc_free(connection);
 		return -1;
@@ -896,7 +898,7 @@ static int _sccp_handle_connection_request(struct msgb *msgb)
 	llist_add_tail(&connection->list, &sccp_connections);
 
 	if (_sccp_send_connection_confirm(connection) != 0) {
-		DEBUGP(DSCCP, "Sending confirm failed... no available source reference?\n");
+		LOGP(DSCCP, LOGL_ERROR, "Sending confirm failed... no available source reference?\n");
 
 		_sccp_send_refuse(result.source_local_reference, SCCP_REFUSAL_SCCP_FAILURE);
 		_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_REFUSED);
@@ -939,7 +941,7 @@ static int _sccp_handle_connection_release_complete(struct msgb *msgb)
 	}
 
 
-	DEBUGP(DSCCP, "Release complete of unknown connection\n");
+	LOGP(DSCCP, LOGL_ERROR, "Release complete of unknown connection\n");
 	return -1;
 
 found:
@@ -967,7 +969,7 @@ static int _sccp_handle_connection_dt1(struct msgb *msgb)
 		}
 	}
 
-	DEBUGP(DSCCP, "No connection found for dt1 data\n");
+	LOGP(DSCCP, LOGL_ERROR, "No connection found for dt1 data\n");
 	return -1;
 
 found:
@@ -1026,7 +1028,7 @@ static int _sccp_handle_connection_released(struct msgb *msgb)
 	}
 
 
-	DEBUGP(DSCCP, "Unknown connection was released.\n");
+	LOGP(DSCCP, LOGL_ERROR, "Unknown connection was released.\n");
 	return -1;
 
 	/* we have found a connection */
@@ -1038,7 +1040,7 @@ found:
 
 	/* generate a response */
 	if (_sccp_send_connection_release_complete(conn) != 0) {
-		DEBUGP(DSCCP, "Sending release confirmed failed\n");
+		LOGP(DSCCP, LOGL_ERROR, "Sending release confirmed failed\n");
 		return -1;
 	}
 
@@ -1063,7 +1065,7 @@ static int _sccp_handle_connection_refused(struct msgb *msgb)
 		}
 	}
 
-	DEBUGP(DSCCP, "Refused but no connection found\n");
+	LOGP(DSCCP, LOGL_ERROR, "Refused but no connection found\n");
 	return -1;
 
 found:
@@ -1096,7 +1098,7 @@ static int _sccp_handle_connection_confirm(struct msgb *msgb)
 		}
 	}
 
-	DEBUGP(DSCCP, "Confirmed but no connection found\n");
+	LOGP(DSCCP, LOGL_ERROR, "Confirmed but no connection found\n");
 	return -1;
 
 found:
@@ -1125,7 +1127,7 @@ int sccp_system_init(void (*outgoing)(struct msgb *data, void *ctx), void *ctx)
 int sccp_system_incoming(struct msgb *msgb)
 {
 	if (msgb_l2len(msgb) < 1 ) {
-		DEBUGP(DSCCP, "Too short packet\n");
+		LOGP(DSCCP, LOGL_ERROR, "Too short packet\n");
 		return -1;
 	}
 
@@ -1154,7 +1156,7 @@ int sccp_system_incoming(struct msgb *msgb)
 		return _sccp_handle_read(msgb);
 		break;
 	default:
-		DEBUGP(DSCCP, "unimplemented msg type: %d\n", type);
+		LOGP(DSCCP, LOGL_ERROR, "unimplemented msg type: %d\n", type);
 	};
 
 	return -1;
@@ -1165,7 +1167,7 @@ int sccp_connection_write(struct sccp_connection *connection, struct msgb *data)
 {
 	if (connection->connection_state < SCCP_CONNECTION_STATE_CONFIRM
 	    || connection->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
-		DEBUGP(DSCCP, "sccp_connection_write: Wrong connection state: %p %d\n",
+		LOGP(DSCCP, LOGL_ERROR, "sccp_connection_write: Wrong connection state: %p %d\n",
 		       connection, connection->connection_state);
 		return -1;
 	}
@@ -1182,7 +1184,7 @@ int sccp_connection_send_it(struct sccp_connection *connection)
 {
 	if (connection->connection_state < SCCP_CONNECTION_STATE_CONFIRM
 	    || connection->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
-		DEBUGP(DSCCP, "sccp_connection_write: Wrong connection state: %p %d\n",
+		LOGP(DSCCP, LOGL_ERROR, "sccp_connection_write: Wrong connection state: %p %d\n",
 		       connection, connection->connection_state);
 		return -1;
 	}
@@ -1195,7 +1197,7 @@ int sccp_connection_close(struct sccp_connection *connection, int cause)
 {
 	if (connection->connection_state < SCCP_CONNECTION_STATE_CONFIRM
 	    || connection->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
-		DEBUGPC(DSCCP, "Can not close the connection. It was never opened: %p %d\n",
+		LOGP(DSCCP, LOGL_ERROR, "Can not close the connection. It was never opened: %p %d\n",
 			connection, connection->connection_state);
 		return -1;
 	}
@@ -1207,7 +1209,7 @@ int sccp_connection_free(struct sccp_connection *connection)
 {
 	if (connection->connection_state > SCCP_CONNECTION_STATE_NONE
 	    && connection->connection_state < SCCP_CONNECTION_STATE_RELEASE_COMPLETE) {
-		DEBUGP(DSCCP, "The connection needs to be released before it is freed");
+		LOGP(DSCCP, LOGL_ERROR, "The connection needs to be released before it is freed");
 		return -1;
 	}
 
