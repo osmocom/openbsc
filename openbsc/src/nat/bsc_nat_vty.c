@@ -69,6 +69,7 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 		vty_out(vty, "   imsi allow %s%s", bsc->imsi_allow, VTY_NEWLINE);
 	if (bsc->imsi_deny)
 		vty_out(vty, "   imsi deny %s%s", bsc->imsi_deny, VTY_NEWLINE);
+	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -128,6 +129,8 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "bsc config show",
 			conf->imsi_allow ? conf->imsi_allow: "any",
 			conf->imsi_deny  ? conf->imsi_deny : "none",
 			VTY_NEWLINE);
+		vty_out(vty, " paging forbidden: %d%s",
+			conf->forbid_paging, VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -315,6 +318,21 @@ DEFUN(cfg_bsc_imsi_deny,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_paging,
+      cfg_bsc_paging_cmd,
+      "paging forbidden (0|1)",
+      "Forbid sending PAGING REQUESTS to the BSC.")
+{
+	struct bsc_config *conf = vty->index;
+
+	if (strcmp("1", argv[1]) == 0)
+		conf->forbid_paging = 1;
+	else
+		conf->forbid_paging = 0;
+
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -347,6 +365,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
 	install_element(BSC_NODE, &cfg_bsc_imsi_allow_cmd);
 	install_element(BSC_NODE, &cfg_bsc_imsi_deny_cmd);
+	install_element(BSC_NODE, &cfg_bsc_paging_cmd);
 
 	mgcp_vty_init();
 
