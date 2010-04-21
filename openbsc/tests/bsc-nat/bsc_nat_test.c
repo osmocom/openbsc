@@ -267,7 +267,7 @@ static void test_contrack()
 	/* 1.) create a connection */
 	copy_to_msg(msg, bsc_cr, sizeof(bsc_cr));
 	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (con_found != NULL) {
 		fprintf(stderr, "Con should not exist %p\n", con_found);
 		abort();
@@ -277,7 +277,7 @@ static void test_contrack()
 		fprintf(stderr, "Failed to create a ref\n");
 		abort();
 	}
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (!con_found || con_found->bsc != con) {
 		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
@@ -301,7 +301,7 @@ static void test_contrack()
 	/* 3.) send some data */
 	copy_to_msg(msg, bsc_dtap, sizeof(bsc_dtap));
 	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	VERIFY(con_found, con, msg, bsc_dtap_patched, "BSC DTAP");
 
 	/* 4.) receive some data */
@@ -319,7 +319,7 @@ static void test_contrack()
 	/* 6.) confirm the connection close */
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
 	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (!con_found || con_found->bsc != con) {
 		fprintf(stderr, "Failed to find the con: %p\n", con_found);
 		abort();
@@ -333,7 +333,7 @@ static void test_contrack()
 
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
 	parsed = bsc_nat_parse(msg);
-	con_found = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 
 	/* verify that it is gone */
 	if (con_found != NULL) {

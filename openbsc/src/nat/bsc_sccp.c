@@ -204,11 +204,14 @@ struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *msg,
  */
 struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *msg,
 						   struct bsc_nat_parsed *parsed,
-						   struct bsc_nat *nat)
+						   struct bsc_connection *bsc)
 {
 	struct sccp_connections *conn;
 
-	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
+	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
+		if (conn->bsc != bsc)
+			continue;
+
 		if (parsed->src_local_ref) {
 			if (equal(parsed->src_local_ref, &conn->real_ref)) {
 				*parsed->src_local_ref = conn->patched_ref;
