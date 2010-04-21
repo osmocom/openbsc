@@ -1,8 +1,21 @@
-Index: wireshark/epan/dissectors/Makefile.common
-===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common
-+++ wireshark/epan/dissectors/Makefile.common
-@@ -474,6 +474,7 @@
+From 5857518be87641fdab45e593bc9fd5ef5595e619 Mon Sep 17 00:00:00 2001
+From: Holger Hans Peter Freyther <zecke@selfish.org>
+Date: Mon, 19 Apr 2010 13:23:51 +0800
+Subject: [PATCH 1/2] Add the Abis OML patch.
+
+---
+ epan/dissectors/Makefile.common       |    1 +
+ epan/dissectors/packet-gsm_abis_oml.c | 1382 +++++++++++++++++++++++++++++++++
+ epan/dissectors/packet-gsm_abis_oml.h |  787 +++++++++++++++++++
+ 3 files changed, 2170 insertions(+), 0 deletions(-)
+ create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
+ create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
+
+diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
+index dbc3726..98dcdc3 100644
+--- a/epan/dissectors/Makefile.common
++++ b/epan/dissectors/Makefile.common
+@@ -481,6 +481,7 @@ DISSECTOR_SRC = \
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -12,7 +25,7 @@ Index: wireshark/epan/dissectors/Makefile.common
  	packet-gsm_bssmap_le.c	\
 diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
 new file mode 100644
-index 0000000..2de9dca
+index 0000000..fa46ab5
 --- /dev/null
 +++ b/epan/dissectors/packet-gsm_abis_oml.c
 @@ -0,0 +1,1382 @@
@@ -1398,11 +1411,12 @@ index 0000000..2de9dca
 +	abis_oml_handle = create_dissector_handle(dissect_abis_oml, proto_abis_oml);
 +	dissector_add("lapd.gsm.sapi", LAPD_GSM_SAPI_OM_PROC, abis_oml_handle);
 +}
-Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
-===================================================================
+diff --git a/epan/dissectors/packet-gsm_abis_oml.h b/epan/dissectors/packet-gsm_abis_oml.h
+new file mode 100644
+index 0000000..d523e96
 --- /dev/null
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h
-@@ -0,0 +1,786 @@
++++ b/epan/dissectors/packet-gsm_abis_oml.h
+@@ -0,0 +1,787 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -2190,3 +2204,6 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 +};
 +
 +#endif /* _NM_H */
+-- 
+1.7.0.1
+
