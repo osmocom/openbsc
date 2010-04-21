@@ -248,7 +248,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed);
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
 struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
-struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
+struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_connection *);
 
 /**
  * MGCP/Audio handling

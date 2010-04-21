@@ -524,17 +524,17 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_CR:
 			if (create_sccp_src_ref(bsc, msg, parsed) != 0)
 				goto exit2;
-			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			break;
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_CC:
 		case SCCP_MSG_TYPE_IT:
-			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			break;
 		case SCCP_MSG_TYPE_RLC:
-			con = patch_sccp_src_ref_to_msc(msg, parsed, nat);
+			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			remove_sccp_src_ref(bsc, msg, parsed);
 			break;
 		case SCCP_MSG_TYPE_UDT:
