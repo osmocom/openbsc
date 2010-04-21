@@ -96,6 +96,12 @@ static const u_int8_t connnection_it[] = {
 	0x00, 0x00, 0x00, 0x00,
 };
 
+/* error in both directions */
+static const u_int8_t proto_error[] = {
+	0x00, 0x05, 0xfd,
+	0x0f, 0x22, 0x33, 0x44, 0x00,
+};
+
 /* MGCP wrap... */
 static const u_int8_t mgcp_msg[] = {
 	0x00, 0x03, 0xfc,
@@ -176,6 +182,19 @@ static const struct filter_result results[] = {
 		.dir = DIR_MSC,
 		.result = 0,
 	},
+	{
+		.data = proto_error,
+		.length = ARRAY_SIZE(proto_error),
+		.dir = DIR_BSC,
+		.result = 0,
+	},
+	{
+		.data = proto_error,
+		.length = ARRAY_SIZE(proto_error),
+		.dir = DIR_MSC,
+		.result = 0,
+	},
+
 };
 
 static void test_filter(void)
