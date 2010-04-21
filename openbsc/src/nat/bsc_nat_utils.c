@@ -127,7 +127,11 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 
 	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
 	data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
-	if (data[0] !=  CELL_IDENT_LAC) {
+
+	/* No need to try a different BSS */
+	if (data[0] == CELL_IDENT_BSS) {
+		return NULL;
+	} else if (data[0] != CELL_IDENT_LAC) {
 		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %d\n", data[0]);
 		return NULL;
 	}
