@@ -85,6 +85,28 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 {
 	struct sccp_connections *conn;
 
+	/* Some commercial BSCs like to reassign there SRC ref */
+	llist_for_each_entry(conn, &bsc->nat->sccp_connections, list_entry) {
+		if (conn->bsc != bsc)
+			continue;
+		if (memcmp(&conn->real_ref, parsed->src_local_ref, sizeof(conn->real_ref)) != 0)
+			continue;
+
+		/* the BSC has reassigned the SRC ref and we failed to keep track */
+		memset(&conn->remote_ref, 0, sizeof(conn->remote_ref));
+		if (assign_src_local_reference(&conn->patched_ref, bsc->nat) != 0) {
+			LOGP(DNAT, LOGL_ERROR, "BSC %d reused src ref: %d and we failed to generate a new id.\n",
+			     bsc->cfg->nr, sccp_src_ref_to_int(parsed->src_local_ref));
+			llist_del(&conn->list_entry);
+			talloc_free(conn);
+			return -1;
+		} else {
+			bsc_mgcp_clear(conn);
+			return 0;
+		}
+	}
+
+
 	conn = talloc_zero(bsc->nat, struct sccp_connections);
 	if (!conn) {
 		LOGP(DNAT, LOGL_ERROR, "Memory allocation failure.\n");
