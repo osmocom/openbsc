@@ -311,7 +311,9 @@ send_to_all:
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
 		int lac;
 		bsc = bsc_nat_find_bsc(nat, msg, &lac);
-		if (bsc)
+		if (bsc && bsc->cfg->forbid_paging)
+			LOGP(DNAT, LOGL_NOTICE, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
+		else if (bsc)
 			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
 		else
 			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging on lac: %d/0x%x\n",

@@ -146,6 +146,8 @@ struct bsc_config {
 	char *imsi_deny;
 	regex_t imsi_deny_re;
 
+	int forbid_paging;
+
 	/* backpointer */
 	struct bsc_nat *nat;
 
