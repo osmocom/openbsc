@@ -490,6 +490,23 @@ static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 	return 0;
 }
 
+static int _sccp_parse_err(struct msgb *msgb, struct sccp_parse_result *result)
+{
+	static const u_int32_t header_size = sizeof(struct sccp_proto_err);
+
+	struct sccp_proto_err *err;
+
+	if (msgb_l2len(msgb) < header_size) {
+		LOGP(DSCCP, LOGL_ERROR, "msgb < header_size %u %u\n",
+		     msgb_l2len(msgb), header_size);
+		return -1;
+	}
+
+	err = (struct sccp_proto_err *) msgb->l2h;
+	result->data_len = 0;
+	result->destination_local_reference = &err->destination_local_reference;
+	return 0;
+}
 
 /*
  * Send UDT. Currently we have a fixed address...
@@ -1317,6 +1334,9 @@ int sccp_parse_header(struct msgb *msg, struct sccp_parse_result *result)
 		break;
 	case SCCP_MSG_TYPE_IT:
 		return _sccp_parse_it(msg, result);
+		break;
+	case SCCP_MSG_TYPE_ERR:
+		return _sccp_parse_err(msg, result);
 		break;
 	};
 
