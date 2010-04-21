@@ -325,7 +325,7 @@ DEFUN(cfg_bsc_paging,
 {
 	struct bsc_config *conf = vty->index;
 
-	if (strcmp("1", argv[1]) == 0)
+	if (strcmp("1", argv[0]) == 0)
 		conf->forbid_paging = 1;
 	else
 		conf->forbid_paging = 0;
