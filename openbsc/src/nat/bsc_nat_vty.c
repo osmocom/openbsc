@@ -118,8 +118,8 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "bsc config show",
-      "Display information about known BSC configs")
+DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
+      SHOW_STR "Display information about known BSC configs")
 {
 	struct bsc_config *conf;
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
