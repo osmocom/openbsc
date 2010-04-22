@@ -147,12 +147,13 @@ void bsc_mgcp_init(struct sccp_connections *con)
 {
 	con->msc_timeslot = -1;
 	con->bsc_timeslot = -1;
+	con->crcx = 0;
 }
 
 void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
-	if (con->bsc_timeslot != -1) {
+	if (con->bsc_timeslot != -1 && con->crcx) {
 		int endp = mgcp_timeslot_to_endpoint(0, con->msc_timeslot);
 		bsc_mgcp_send_dlcx(con->bsc, endp);
 		bsc_mgcp_free_endpoint(con->bsc->nat, endp);
@@ -247,6 +248,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		}
 
 		/* send the message and a fake MDCX for force sending of a dummy packet */
+		sccp->crcx = 1;
 		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
 		bsc_mgcp_send_mdcx(sccp->bsc, mgcp_endp);
 		return MGCP_POLICY_DEFER;
