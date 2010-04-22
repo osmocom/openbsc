@@ -70,6 +70,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 		return NULL;
 
 	con->nat = nat;
+	write_queue_init(&con->write_queue, 100);
 	return con;
 }
 

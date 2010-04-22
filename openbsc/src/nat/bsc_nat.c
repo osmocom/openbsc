@@ -676,7 +676,6 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	write_queue_init(&bsc->write_queue, 100);
 	bsc->write_queue.bfd.data = bsc;
 	bsc->write_queue.bfd.fd = ret;
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
