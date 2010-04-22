@@ -162,8 +162,6 @@ struct bsc_endpoint {
 	char *transaction_id;
 	/* the bsc we are talking to */
 	struct bsc_connection *bsc;
-	/* pending delete */
-	int pending_delete;
 };
 
 /**
@@ -257,10 +255,10 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
  */
 int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
-void bsc_mgcp_clear(struct sccp_connections *);
-void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int);
+void bsc_mgcp_init(struct sccp_connections *);
+void bsc_mgcp_dlcx(struct sccp_connections *);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
-int bsc_mgcp_init(struct bsc_nat *nat);
+int bsc_mgcp_nat_init(struct bsc_nat *nat);
 
 struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
 struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port);

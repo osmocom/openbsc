@@ -861,7 +861,7 @@ int main(int argc, char** argv)
 	/*
 	 * Setup the MGCP code..
 	 */
-	if (bsc_mgcp_init(nat) != 0)
+	if (bsc_mgcp_nat_init(nat) != 0)
 		return -4;
 
 	/* connect to the MSC */

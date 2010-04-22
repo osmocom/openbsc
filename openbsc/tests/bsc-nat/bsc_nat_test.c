@@ -395,12 +395,22 @@ static void test_paging(void)
 
 static void test_mgcp_ass_tracking(void)
 {
+	struct bsc_connection *bsc;
+	struct bsc_nat *nat;
 	struct sccp_connections con;
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
 	fprintf(stderr, "Testing MGCP.\n");
 	memset(&con, 0, sizeof(con));
+
+	nat = bsc_nat_alloc();
+	nat->bsc_endpoints = talloc_zero_array(nat,
+					       struct bsc_endpoint,
+					       33);
+	bsc = bsc_connection_alloc(nat);
+	bsc->cfg = bsc_config_alloc(nat, "foo", 2323);
+	con.bsc = bsc;
 
 	msg = msgb_alloc(4096, "foo");
 	copy_to_msg(msg, ass_cmd, sizeof(ass_cmd));
@@ -421,11 +431,13 @@ static void test_mgcp_ass_tracking(void)
 	}
 	talloc_free(parsed);
 
-	bsc_mgcp_clear(&con);
+	bsc_mgcp_dlcx(&con);
 	if (con.bsc_timeslot != -1 || con.msc_timeslot != -1) {
 		fprintf(stderr, "Clearing should remove the mapping.\n");
 		abort();
 	}
+
+	talloc_free(nat);
 }
 
 /* test the code to find a given connection */
