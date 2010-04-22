@@ -26,6 +26,8 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
+#include <sccp/sccp.h>
+
 #include <osmocore/talloc.h>
 #include <osmocore/gsm0808.h>
 
@@ -37,10 +39,12 @@
 
 int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 {
+	struct sccp_connections *mcon;
 	struct tlv_parsed tp;
 	u_int16_t cic;
 	u_int8_t timeslot;
 	u_int8_t multiplex;
+	int combined;
 
 	if (!msg->l3h) {
 		LOGP(DNAT, LOGL_ERROR, "Assignment message should have l3h pointer.\n");
@@ -62,18 +66,27 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 	timeslot = cic & 0x1f;
 	multiplex = (cic & ~0x1f) >> 5;
 
-	con->msc_timeslot = (32 * multiplex) + timeslot;
+
+	combined = (32 * multiplex) + timeslot;
+
+	/* find stale connections using that endpoint */
+	llist_for_each_entry(mcon, &con->bsc->nat->sccp_connections, list_entry) {
+		if (mcon->msc_timeslot == combined) {
+			LOGP(DNAT, LOGL_ERROR,
+			     "Timeslot %d was assigned to 0x%x and now 0x%x\n",
+			     combined,
+			     sccp_src_ref_to_int(&mcon->patched_ref),
+			     sccp_src_ref_to_int(&con->patched_ref));
+			bsc_mgcp_dlcx(mcon);
+		}
+	}
+
+	con->msc_timeslot = combined;
 	con->bsc_timeslot = con->msc_timeslot;
 	return 0;
 }
 
-void bsc_mgcp_clear(struct sccp_connections *con)
-{
-	con->msc_timeslot = -1;
-	con->bsc_timeslot = -1;
-}
-
-void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
+static void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
 {
 	if (nat->bsc_endpoints[i].transaction_id) {
 		talloc_free(nat->bsc_endpoints[i].transaction_id);
@@ -81,16 +94,73 @@ void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
 	}
 
 	nat->bsc_endpoints[i].bsc = NULL;
-	mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
 }
 
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 {
 	int i;
 
-	for (i = 1; i < nat->mgcp_cfg->number_endpoints; ++i)
+	for (i = 1; i < nat->mgcp_cfg->number_endpoints; ++i){
 		bsc_mgcp_free_endpoint(nat, i);
+		mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
+	}
 }
+
+/* send a MDCX where we do not want a response */
+static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, struct mgcp_endpoint *endp)
+{
+	char buf[2096];
+	int len;
+
+	len = snprintf(buf, sizeof(buf),
+		       "MDCX 23 %d@mgw MGCP 1.0\r\n"
+		       "Z: noanswer\r\n"
+		       "\r\n"
+		       "c=IN IP4 %s\r\n"
+		       "m=audio %d RTP/AVP 255\r\n",
+		       ENDPOINT_NUMBER(endp),
+		       bsc->nat->mgcp_cfg->source_addr,
+		       endp->rtp_port);
+	if (len < 0) {
+		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
+		return;
+	}
+}
+
+static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
+{
+	char buf[2096];
+	int len;
+
+	len = snprintf(buf, sizeof(buf),
+		       "DLCX 23 %d@mgw MGCP 1.0\r\n"
+		       "Z: noanswer\r\n", endpoint);
+	if (len < 0) {
+		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
+		return;
+	}
+
+	bsc_write_mgcp(bsc, (u_int8_t *) buf, len);
+}
+
+void bsc_mgcp_init(struct sccp_connections *con)
+{
+	con->msc_timeslot = -1;
+	con->bsc_timeslot = -1;
+}
+
+void bsc_mgcp_dlcx(struct sccp_connections *con)
+{
+	/* send a DLCX down the stream */
+	if (con->bsc_timeslot != -1) {
+		int endp = mgcp_timeslot_to_endpoint(0, con->msc_timeslot);
+		bsc_mgcp_send_dlcx(con->bsc, endp);
+		bsc_mgcp_free_endpoint(con->bsc->nat, endp);
+	}
+
+	bsc_mgcp_init(con);
+}
+
 
 struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 {
@@ -164,7 +234,6 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
 	bsc_endp->bsc = sccp->bsc;
-	bsc_endp->pending_delete = 0;
 
 	/* we need to update some bits */
 	if (state == MGCP_ENDP_CRCX) {
@@ -176,15 +245,19 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		} else {
 			mgcp_endp->bts = sock.sin_addr;
 		}
-	} else if (state == MGCP_ENDP_DLCX) {
-		/* we will free the endpoint now in case the BSS does not respond */
-		bsc_mgcp_clear(sccp);
-		bsc_endp->pending_delete = 1;
-		mgcp_free_endp(mgcp_endp);
-	}
 
-	bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
-	return MGCP_POLICY_DEFER;
+		/* send the message and a fake MDCX for force sending of a dummy packet */
+		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
+		bsc_mgcp_send_mdcx(sccp->bsc, mgcp_endp);
+		return MGCP_POLICY_DEFER;
+	} else if (state == MGCP_ENDP_DLCX) {
+		/* we will free the endpoint now and send a DLCX to the BSC */
+		bsc_mgcp_dlcx(sccp);
+		return MGCP_POLICY_CONT;
+	} else {
+		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
+		return MGCP_POLICY_DEFER;
+	}
 }
 
 /*
@@ -234,13 +307,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	/* make it point to our endpoint if it was not deleted */
-	if (bsc_endp->pending_delete) {
-		bsc_endp->bsc = NULL;
-		bsc_endp->pending_delete = 0;
-	} else {
-		endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
-	}
+	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
 
 	/* free some stuff */
 	talloc_free(bsc_endp->transaction_id);
@@ -401,7 +468,7 @@ static int mgcp_do_write(struct bsc_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
-int bsc_mgcp_init(struct bsc_nat *nat)
+int bsc_mgcp_nat_init(struct bsc_nat *nat)
 {
 	int on;
 	struct sockaddr_in addr;
@@ -481,11 +548,7 @@ void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 		if (bsc_endp->bsc != bsc)
 			continue;
 
-		bsc_endp->bsc = NULL;
-		bsc_endp->pending_delete = 0;
-		if (bsc_endp->transaction_id)
-			talloc_free(bsc_endp->transaction_id);
-		bsc_endp->transaction_id = NULL;
+		bsc_mgcp_free_endpoint(bsc->nat, i);
 		mgcp_free_endp(&bsc->nat->mgcp_cfg->endpoints[i]);
 	}
 }
