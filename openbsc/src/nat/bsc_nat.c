@@ -383,13 +383,12 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	struct ipaccess_head *hh;
 
 	if (!msg) {
-		if (error == 0) {
+		if (error == 0)
 			LOGP(DNAT, LOGL_FATAL, "The connection the MSC was lost, exiting\n");
-			bsc_msc_lost(msc_con);
-			return -1;
-		}
+		else
+			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 
-		LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
+		bsc_msc_lost(msc_con);
 		return -1;
 	}
 
@@ -600,12 +599,12 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
 
 	if (!msg) {
-		if (error == 0) {
+		if (error == 0)
 			LOGP(DNAT, LOGL_ERROR,	"The connection to the BSC was lost. Cleaning it\n");
-			remove_bsc_connection(bsc);
-		} else {
+		else
 			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
-		}
+
+		remove_bsc_connection(bsc);
 		return -1;
 	}
 
