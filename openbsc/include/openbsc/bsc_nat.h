@@ -112,6 +112,7 @@ struct sccp_connections {
 	struct sccp_source_reference remote_ref;
 
 	/* GSM audio handling. That is 32 * multiplex + ts */
+	int crcx;
 	int msc_timeslot;
 	int bsc_timeslot;
 };
