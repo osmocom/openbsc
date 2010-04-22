@@ -90,6 +90,14 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	return -1;
 }
 
+static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
+{
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		msgb_free(msg);
+	}
+}
+
 static void send_reset_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t gsm_reset_ack[] = {
@@ -147,10 +155,7 @@ static void nat_send_rlsd(struct sccp_connections *conn)
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
-		msgb_free(msg);
-	}
+	queue_for_msc(msc_con, msg);
 }
 
 static void nat_send_rlc(struct sccp_source_reference *src,
@@ -173,10 +178,7 @@ static void nat_send_rlc(struct sccp_source_reference *src,
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
-		msgb_free(msg);
-	}
+	queue_for_msc(msc_con, msg);
 }
 
 static void send_mgcp_reset(struct bsc_connection *bsc)
@@ -369,10 +371,7 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	msg->l2h = msgb_put(msg, sizeof(reset));
 	memcpy(msg->l2h, reset, msgb_l2len(msg));
 
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to enqueue reset msg.\n");
-		msgb_free(msg);
-	}
+	queue_for_msc(msc_con, msg);
 
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
@@ -565,10 +564,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	/* send the non-filtered but maybe modified msg */
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
-		LOGP(DNAT, LOGL_ERROR, "Can not queue message for the MSC.\n");
-		msgb_free(msg);
-	}
+	queue_for_msc(msc_con, msg);
 	talloc_free(parsed);
 	return 0;
 
