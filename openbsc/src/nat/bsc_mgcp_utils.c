@@ -113,7 +113,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, struct mgcp_endpoint 
 	int len;
 
 	len = snprintf(buf, sizeof(buf),
-		       "MDCX 23 %d@mgw MGCP 1.0\r\n"
+		       "MDCX 23 %x@mgw MGCP 1.0\r\n"
 		       "Z: noanswer\r\n"
 		       "\r\n"
 		       "c=IN IP4 %s\r\n"
@@ -133,7 +133,7 @@ static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
 	int len;
 
 	len = snprintf(buf, sizeof(buf),
-		       "DLCX 23 %d@mgw MGCP 1.0\r\n"
+		       "DLCX 23 %x@mgw MGCP 1.0\r\n"
 		       "Z: noanswer\r\n", endpoint);
 	if (len < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
