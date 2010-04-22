@@ -437,10 +437,6 @@ static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 static void remove_bsc_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
-	bsc_unregister_fd(&connection->write_queue.bfd);
-	close(connection->write_queue.bfd.fd);
-	write_queue_clear(&connection->write_queue);
-	llist_del(&connection->list_entry);
 
 	/* stop the timeout timer */
 	bsc_del_timer(&connection->id_timeout);
@@ -456,6 +452,11 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 
 	/* close endpoints allocated by this BSC */
 	bsc_mgcp_clear_endpoints_for(connection);
+
+	bsc_unregister_fd(&connection->write_queue.bfd);
+	close(connection->write_queue.bfd.fd);
+	write_queue_clear(&connection->write_queue);
+	llist_del(&connection->list_entry);
 
 	talloc_free(connection);
 }
