@@ -172,14 +172,14 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
 				inet_ntoa(addr.sin_addr));
 
-			/* throw away dummy message */
-			if (rc == 1 && buf[0] == DUMMY_LOAD) {
-				LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy on 0x%x\n",
-				     ENDPOINT_NUMBER(endp));
-				return 0;
-			}
-
 		}
+	}
+
+	/* throw away dummy message */
+	if (rc == 1 && buf[0] == DUMMY_LOAD) {
+		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy on 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		return 0;
 	}
 
 	/* do this before the loop handling */
