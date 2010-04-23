@@ -444,7 +444,8 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 		if (sccp_patch->bsc != connection)
 			continue;
 
-		nat_send_rlsd(sccp_patch);
+		if (sccp_patch->has_remote_ref)
+			nat_send_rlsd(sccp_patch);
 		sccp_connection_destroy(sccp_patch);
 	}
 

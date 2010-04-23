@@ -110,6 +110,7 @@ struct sccp_connections {
 	struct sccp_source_reference real_ref;
 	struct sccp_source_reference patched_ref;
 	struct sccp_source_reference remote_ref;
+	int has_remote_ref;
 
 	/* GSM audio handling. That is 32 * multiplex + ts */
 	int crcx;
