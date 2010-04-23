@@ -132,6 +132,7 @@ struct bss_sccp_connection_data {
         struct timer_list T10;
 
 	/* for SCCP ... */
+	struct timer_list sccp_cc_timeout;
 	struct timer_list sccp_it;
 
 	/* audio handling */

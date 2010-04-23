@@ -112,6 +112,41 @@ static void sccp_it_fired(void *_data)
 	bsc_schedule_timer(&data->sccp_it, SCCP_IT_TIMER, 0);
 }
 
+static void bss_force_close(struct bss_sccp_connection_data *bss)
+{
+	if (bss->lchan) {
+		bss->lchan->msc_data = NULL;
+		put_subscr_con(&bss->lchan->conn, 0);
+		bss->lchan = NULL;
+	}
+
+	if (bss->secondary_lchan) {
+		bss->secondary_lchan->msc_data = NULL;
+		put_subscr_con(&bss->secondary_lchan->conn, 0);
+		bss->secondary_lchan = NULL;
+	}
+
+	/* force the close by poking stuff */
+	if (bss->sccp) {
+		sccp_connection_force_free(bss->sccp);
+		bss->sccp = NULL;
+	}
+
+	bss_sccp_free_data(bss);
+}
+
+/* check if this connection was ever confirmed and then recycle */
+static void sccp_check_cc(void *_data)
+{
+	struct bss_sccp_connection_data *data = _data;
+
+	if (data->sccp->connection_state >= SCCP_CONNECTION_STATE_ESTABLISHED)
+		return;
+
+	LOGP(DMSC, LOGL_ERROR, "The connection was never established\n");
+	bss_force_close(data);
+}
+
 
 /* GSM subscriber drop-ins */
 extern struct llist_head *subscr_bsc_active_subscriber(void);
@@ -200,8 +235,12 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 
 		LOGP(DMSC, LOGL_DEBUG, "Connection established: %p\n", conn);
 
-		/* start the inactivity test timer */
 		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
+
+		/* stop the CC timeout */
+		bsc_del_timer(&con_data->sccp_cc_timeout);
+
+		/* start the inactivity test timer */
 		con_data->sccp_it.cb = sccp_it_fired;
 		con_data->sccp_it.data = con_data;
 		bsc_schedule_timer(&con_data->sccp_it, SCCP_IT_TIMER, 0);
@@ -262,6 +301,11 @@ static int open_sccp_connection(struct msgb *layer3)
 	sccp_connection->data_cb = msc_outgoing_sccp_data;
 	sccp_connection->data_ctx = con_data;
 	layer3->lchan->msc_data = con_data;
+
+	/* Make sure we open the connection */
+	con_data->sccp_cc_timeout.data = con_data;
+	con_data->sccp_cc_timeout.cb = sccp_check_cc;
+	bsc_schedule_timer(&con_data->sccp_cc_timeout, 10, 0);
 
 	/* FIXME: Use transaction for this */
 	use_subscr_con(&layer3->lchan->conn);
@@ -820,25 +864,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
 
 	llist_for_each_entry_safe(bss, tmp, &active_connections, active_connections) {
-		if (bss->lchan) {
-			bss->lchan->msc_data = NULL;
-			put_subscr_con(&bss->lchan->conn, 0);
-			bss->lchan = NULL;
-		}
-
-		if (bss->secondary_lchan) {
-			bss->secondary_lchan->msc_data = NULL;
-			put_subscr_con(&bss->secondary_lchan->conn, 0);
-			bss->secondary_lchan = NULL;
-		}
-
-		/* force the close by poking stuff */
-		if (bss->sccp) {
-			sccp_connection_force_free(bss->sccp);
-			bss->sccp = NULL;
-		}
-
-		bss_sccp_free_data(bss);
+		bss_force_close(bss);
 	}
 
 	msc->is_authenticated = 0;
