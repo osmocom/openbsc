@@ -819,6 +819,7 @@ static void signal_handler(int signal)
 int main(int argc, char** argv)
 {
 	log_init(&log_info);
+	tall_bsc_ctx = talloc_named_const(NULL, 1, "nat");
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
