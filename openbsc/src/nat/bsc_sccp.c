@@ -141,6 +141,7 @@ int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *pa
 	}
 
 	sccp->remote_ref = *parsed->src_local_ref;
+	sccp->has_remote_ref = 1;
 	LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on %p\n",
 	     sccp_src_ref_to_int(&sccp->patched_ref),
 	     sccp_src_ref_to_int(&sccp->remote_ref), sccp->bsc);
