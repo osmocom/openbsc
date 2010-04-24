@@ -196,6 +196,14 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	bsc_endp = &nat->bsc_endpoints[endpoint];
 	mgcp_endp = &nat->mgcp_cfg->endpoints[endpoint];
 
+	if (bsc_endp->transaction_id) {
+		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
+		     endpoint, bsc_endp->transaction_id);
+		talloc_free(bsc_endp->transaction_id);
+		bsc_endp->transaction_id = NULL;
+	}
+	bsc_endp->bsc = NULL;
+
 	sccp = bsc_mgcp_find_con(nat, endpoint);
 
 	if (!sccp) {
@@ -216,12 +224,6 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 			return MGCP_POLICY_CONT;
 			break;
 		}
-	}
-
-	if (bsc_endp->transaction_id) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
-		     endpoint, bsc_endp->transaction_id);
-		talloc_free(bsc_endp->transaction_id);
 	}
 
 	/* we need to generate a new and patched message */
