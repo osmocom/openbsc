@@ -199,7 +199,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	sccp = bsc_mgcp_find_con(nat, endpoint);
 
 	if (!sccp) {
-		LOGP(DMGCP, LOGL_ERROR, "Did not find BSC for a new connection on 0x%x for %d\n", endpoint, state);
+		LOGP(DMGCP, LOGL_ERROR, "Did not find BSC for change on endpoint: 0x%x state: %d\n", endpoint, state);
 
 		switch (state) {
 		case MGCP_ENDP_CRCX:
