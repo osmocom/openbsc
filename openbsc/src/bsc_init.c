@@ -853,6 +853,22 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	bs11_attr_radio[2] |= arfcn_high;
 	bs11_attr_radio[3] = arfcn_low;
 
+	/* patch the RACH attributes */
+	if (bts->rach_b_thresh != -1) {
+		nanobts_attr_bts[33] = bts->rach_b_thresh & 0xff;
+		bs11_attr_bts[33] = bts->rach_b_thresh & 0xff;
+	}
+
+	if (bts->rach_ldavg_slots != -1) {
+		u_int8_t avg_high = bts->rach_ldavg_slots & 0xff;
+		u_int8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
+
+		nanobts_attr_bts[35] = avg_high;
+		nanobts_attr_bts[36] = avg_low;
+		bs11_attr_bts[35] = avg_high;
+		bs11_attr_bts[36] = avg_low;
+	}
+
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;

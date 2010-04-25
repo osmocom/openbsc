@@ -308,6 +308,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  rach max transmission %u%s",
 		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
 		VTY_NEWLINE);
+
+	if (bts->rach_b_thresh != -1)
+		vty_out(vty, "  rach nm busy threshold %u%s",
+			bts->rach_b_thresh, VTY_NEWLINE);
+	if (bts->rach_ldavg_slots != -1)
+		vty_out(vty, "  rach nm load average %u%s",
+			bts->rach_ldavg_slots, VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
@@ -1337,6 +1344,26 @@ DEFUN(cfg_bts_rach_max_trans,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_rach_nm_b_thresh,
+      cfg_bts_rach_nm_b_thresh_cmd,
+      "rach nm busy threshold <0-255>",
+      "Set the NM Busy Threshold in DB")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->rach_b_thresh = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rach_nm_ldavg,
+      cfg_bts_rach_nm_ldavg_cmd,
+      "rach nm load average <0-65535>",
+      "Set the NM Loadaver Slots value")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->rach_ldavg_slots = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
       "cell barred (0|1)",
       "Should this cell be barred from access?")
@@ -1771,6 +1798,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_tx_integer_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_max_trans_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_nm_b_thresh_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_nm_ldavg_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);

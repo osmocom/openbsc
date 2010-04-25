@@ -221,6 +221,8 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	}
 	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 
+	bts->rach_b_thresh = -1;
+	bts->rach_ldavg_slots = -1;
 	llist_add_tail(&bts->list, &net->bts_list);
 
 	return bts;
