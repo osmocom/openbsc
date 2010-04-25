@@ -389,6 +389,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		if (cfg->force_realloc) {
 			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
 			    ENDPOINT_NUMBER(endp));
+			mgcp_free_endp(endp);
 		} else {
 			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
@@ -485,6 +486,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
+	int silent = 0;
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
@@ -516,6 +518,9 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error3;
 		}
+		break;
+	case 'Z':
+		silent = strcmp("noanswer", (const char *)&msg->l3h[line_start + 3]) == 0;
 		break;
 	case '\0':
 		/* SDP file begins */
@@ -562,6 +567,8 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "MDCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
+			if (silent)
+				goto out_silent;
 			return create_response(500, "MDCX", trans_id);
 			break;
 		case MGCP_POLICY_DEFER:
@@ -579,6 +586,9 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
+	if (silent)
+		goto out_silent;
+
 	return create_response_with_sdp(endp, "MDCX", trans_id);
 
 error:
@@ -589,6 +599,10 @@ error:
 
 error3:
 	return create_response(error_code, "MDCX", trans_id);
+
+
+out_silent:
+	return NULL;
 }
 
 static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
@@ -598,6 +612,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
+	int silent = 0;
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
@@ -619,6 +634,9 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 		if (verify_ci(endp, (const char *)&msg->l3h[line_start + 3]) != 0)
 			goto error3;
 		break;
+	case 'Z':
+		silent = strcmp("noanswer", (const char *)&msg->l3h[line_start + 3]) == 0;
+		break;
 	}
 	default:
 		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
@@ -634,6 +652,8 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "DLCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
+			if (silent)
+				goto out_silent;
 			return create_response(500, "DLCX", trans_id);
 			break;
 		case MGCP_POLICY_DEFER:
@@ -647,10 +667,14 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 
 	/* free the connection */
+	LOGP(DMGCP, LOGL_NOTICE, "Deleted endpoint on: 0x%x Server: %s:%u\n",
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
 
+	if (silent)
+		goto out_silent;
 	return create_response(250, "DLCX", trans_id);
 
 error:
@@ -661,6 +685,9 @@ error:
 
 error3:
 	return create_response(error_code, "DLCX", trans_id);
+
+out_silent:
+	return NULL;
 }
 
 static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg)

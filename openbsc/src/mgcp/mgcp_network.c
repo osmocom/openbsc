@@ -73,6 +73,8 @@ enum {
 	PROTO_RTCP,
 };
 
+#define DUMMY_LOAD 0x23
+
 
 static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 {
@@ -82,6 +84,14 @@ static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 	memcpy(&out.sin_addr, addr, sizeof(*addr));
 
 	return sendto(fd, buf, len, 0, (struct sockaddr *)&out, sizeof(out));
+}
+
+int mgcp_send_dummy(struct mgcp_endpoint *endp)
+{
+	static char buf[] = { DUMMY_LOAD };
+
+	return udp_send(endp->local_rtp.fd, &endp->remote,
+			endp->net_rtp, buf, 1);
 }
 
 static void patch_payload(int payload, char *data, int len)
@@ -161,7 +171,15 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
 				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
 				inet_ntoa(addr.sin_addr));
+
 		}
+	}
+
+	/* throw away dummy message */
+	if (rc == 1 && buf[0] == DUMMY_LOAD) {
+		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy on 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		return 0;
 	}
 
 	/* do this before the loop handling */
