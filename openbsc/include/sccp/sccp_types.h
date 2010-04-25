@@ -411,4 +411,10 @@ struct sccp_data_it {
 	u_int8_t			credit;
 } __attribute__((packed));
 
+struct sccp_proto_err {
+	u_int8_t			type;
+	struct sccp_source_reference	destination_local_reference;
+	u_int8_t			error_cause;
+};
+
 #endif
