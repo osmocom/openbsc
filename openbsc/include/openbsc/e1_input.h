@@ -66,6 +66,8 @@ struct e1inp_ts {
 		struct {
 			/* list of all signalling links on this TS */
 			struct llist_head sign_links;
+			/* delay for the queue */
+			int delay;
 			/* timer when to dequeue next frame */
 			struct timer_list tx_timer;
 		} sign;
@@ -93,6 +95,7 @@ struct e1inp_driver {
 	struct llist_head list;
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
+	int default_delay;
 };	
 
 struct e1inp_line {
