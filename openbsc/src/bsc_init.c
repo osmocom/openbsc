@@ -419,9 +419,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	switch (obj_class) {
 	case NM_OC_SITE_MANAGER:
 		bts = container_of(obj, struct gsm_bts, site_mgr);
-		if ((new_state->operational == 2 &&
+		if ((new_state->operational == NM_OPSTATE_ENABLED &&
 		     new_state->availability == NM_AVSTATE_OK) ||
-		    (new_state->operational == 1 &&
+		    (new_state->operational == NM_OPSTATE_DISABLED &&
 		     new_state->availability == NM_AVSTATE_OFF_LINE))
 			abis_nm_opstart(bts, obj_class, 0xff, 0xff, 0xff);
 		break;
@@ -441,7 +441,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_CHANNEL:
 		ts = obj;
 		trx = ts->trx;
-		if (new_state->operational == 1 &&
+		if (new_state->operational == NM_OPSTATE_DISABLED &&
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
 			patch_nm_tables(trx->bts);
 			enum abis_nm_chan_comb ccomb =
@@ -456,7 +456,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_RADIO_CARRIER:
 		trx = obj;
-		if (new_state->operational == 1 &&
+		if (new_state->operational == NM_OPSTATE_DISABLED &&
 		    new_state->availability == NM_AVSTATE_OK)
 			abis_nm_opstart(trx->bts, obj_class, trx->bts->bts_nr,
 					trx->nr, 0xff);
@@ -465,7 +465,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		bts = container_of(obj, struct gsm_bts, gprs.nse);
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
-		if (new_state->availability == 5) {
+		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  0xff, 0xff, nanobts_attr_nse,
 						  sizeof(nanobts_attr_nse));
@@ -479,7 +479,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		bts = container_of(obj, struct gsm_bts, gprs.cell);
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
-		if (new_state->availability == 5) {
+		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  0, 0xff, nanobts_attr_cell,
 						  sizeof(nanobts_attr_cell));
