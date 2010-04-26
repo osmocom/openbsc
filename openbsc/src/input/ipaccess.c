@@ -53,7 +53,6 @@
 struct ia_e1_handle {
 	struct bsc_fd listen_fd;
 	struct bsc_fd rsl_listen_fd;
-	struct bsc_fd gprs_fd;
 	struct gsm_network *gsmnet;
 };
 
@@ -603,78 +602,6 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return rc;
 }
 
-static struct msgb *read_gprs_msg(struct bsc_fd *bfd, int *error,
-				  struct sockaddr_in *saddr)
-{
-	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP/GPRS");
-	int ret = 0;
-	socklen_t saddr_len = sizeof(*saddr);
-
-	if (!msg) {
-		*error = -ENOMEM;
-		return NULL;
-	}
-
-	ret = recvfrom(bfd->fd, msg->data, TS1_ALLOC_SIZE, 0,
-			(struct sockaddr *)saddr, &saddr_len);
-	if (ret < 0) {
-		fprintf(stderr, "recv error  %s\n", strerror(errno));
-		msgb_free(msg);
-		*error = ret;
-		return NULL;
-	} else if (ret == 0) {
-		msgb_free(msg);
-		*error = ret;
-		return NULL;
-	}
-
-	msg->l2h = msg->data;
-	msgb_put(msg, ret);
-
-	return msg;
-}
-
-static int handle_gprs_read(struct bsc_fd *bfd)
-{
-	int error;
-	struct sockaddr_in saddr;
-	struct msgb *msg = read_gprs_msg(bfd, &error, &saddr);
-
-	if (!msg)
-		return error;
-
-	return gprs_ns_rcvmsg(msg, &saddr);
-}
-
-static int handle_gprs_write(struct bsc_fd *bfd)
-{
-}
-
-int ipac_gprs_send(struct msgb *msg, struct sockaddr_in *daddr)
-{
-	int rc;
-
-	rc = sendto(e1h->gprs_fd.fd, msg->data, msg->len, 0,
-		  (struct sockaddr *)daddr, sizeof(*daddr));
-
-	talloc_free(msg);
-
-	return rc;
-}
-
-/* UDP Port 23000 carries the LLC-in-BSSGP-in-NS protocol stack */
-static int gprs_fd_cb(struct bsc_fd *bfd, unsigned int what)
-{
-	int rc;
-
-	if (what & BSC_FD_READ)
-		rc = handle_gprs_read(bfd);
-	if (what & BSC_FD_WRITE)
-		rc = handle_gprs_write(bfd);
-
-	return rc;
-}
-
 struct e1inp_driver ipaccess_driver = {
 	.name = "ip.access",
 	.want_write = ts_want_write,
@@ -780,8 +707,8 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
+int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
+	      int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
 	int ret, on = 1;
@@ -898,9 +825,6 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 			IPA_TCP_PORT_RSL, rsl_listen_fd_cb);
 	if (ret < 0)
 		return ret;
-
-	/* Listen for incoming GPRS packets */
-	ret = make_sock(&e1h->gprs_fd, IPPROTO_UDP, 23000, gprs_fd_cb);
 
 	return ret;
 }
