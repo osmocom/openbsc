@@ -303,6 +303,10 @@ int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 
 	switch (type) {
 	case E1INP_TS_TYPE_SIGN:
+		if (line->driver)
+			ts->sign.delay = line->driver->default_delay;
+		else
+			ts->sign.delay = 100000;
 		INIT_LLIST_HEAD(&ts->sign.sign_links);
 		break;
 	case E1INP_TS_TYPE_TRAU:

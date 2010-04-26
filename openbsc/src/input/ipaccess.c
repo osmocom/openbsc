@@ -282,6 +282,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
+			trx->rsl_link->ts->sign.delay = 10;
 
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
@@ -589,7 +590,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100000);
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
@@ -622,6 +623,7 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 struct e1inp_driver ipaccess_driver = {
 	.name = "ip.access",
 	.want_write = ts_want_write,
+	.default_delay = 100000,
 };
 
 /* callback of the OML listening filedescriptor */
