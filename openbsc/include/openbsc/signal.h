@@ -26,7 +26,6 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_subscriber.h>
 
 #include <osmocore/signal.h>
 
@@ -117,6 +116,8 @@ enum signal_scall {
 enum signal_global {
 	S_GLOBAL_SHUTDOWN,
 };
+
+struct gsm_subscriber;
 
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
