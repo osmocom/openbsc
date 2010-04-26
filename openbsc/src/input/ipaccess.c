@@ -572,8 +572,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	/* BAND AID for paging problem */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100);
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 100000);
 
 	return ret;
 }
