@@ -427,7 +427,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_BTS:
 		bts = obj;
 		if (new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			printf("STARTING BTS...\n");
 			patch_nm_tables(bts);
 			abis_nm_set_bts_attr(bts, nanobts_attr_bts,
 					     sizeof(nanobts_attr_bts));
@@ -443,7 +442,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		trx = ts->trx;
 		if (new_state->operational == 1 &&
 		    new_state->availability == NM_AVSTATE_DEPENDENCY) {
-			printf("STARTING OC Channel...\n");
 			patch_nm_tables(trx->bts);
 			enum abis_nm_chan_comb ccomb =
 						abis_nm_chcomb4pchan(ts->pchan);
