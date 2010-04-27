@@ -59,7 +59,6 @@ static const char *msc_ip = NULL;
 
 static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int);
-static void remove_bsc_connection(struct bsc_connection *connection);
 static void msc_send_reset(struct bsc_msc_connection *con);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
@@ -344,7 +343,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 
 	LOGP(DMSC, LOGL_ERROR, "Closing all connections downstream.\n");
 	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
-		remove_bsc_connection(bsc);
+		bsc_close_connection(bsc);
 
 	nat->first_contact = 0;
 	bsc_mgcp_free_endpoints(nat);
@@ -432,7 +431,7 @@ static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
  * remove it from the patching of SCCP header lists
  * as well. Maybe in the future even close connection..
  */
-static void remove_bsc_connection(struct bsc_connection *connection)
+void bsc_close_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
 
@@ -470,7 +469,7 @@ static void ipaccess_close_bsc(void *data)
 	getpeername(conn->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
 	LOGP(DNAT, LOGL_ERROR, "BSC on %s didn't respond to identity request. Closing.\n",
 	     inet_ntoa(sock.sin_addr));
-	remove_bsc_connection(conn);
+	bsc_close_connection(conn);
 }
 
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
@@ -605,7 +604,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 		else
 			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 
-		remove_bsc_connection(bsc);
+		bsc_close_connection(bsc);
 		return -1;
 	}
 
