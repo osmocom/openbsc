@@ -230,6 +230,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
 
 void sccp_connection_destroy(struct sccp_connections *);
+void bsc_close_connection(struct bsc_connection *);
 
 /**
  * parse the given message into the above structure

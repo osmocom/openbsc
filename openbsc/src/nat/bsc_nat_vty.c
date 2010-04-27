@@ -170,6 +170,24 @@ DEFUN(show_stats,
 	return CMD_SUCCESS;
 }
 
+DEFUN(close_bsc,
+      close_bsc_cmd,
+      "close bsc connection BSC_NR",
+      "Close the connection with the BSC identified by the config number.\n")
+{
+	struct bsc_connection *bsc;
+	int bsc_nr = atoi(argv[0]);
+
+	llist_for_each_entry(bsc, &_nat->bsc_connections, list_entry) {
+		if (!bsc->cfg || bsc->cfg->nr != bsc_nr)
+			continue;
+		bsc_close_connection(bsc);
+		break;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
 {
 	vty->index = _nat;
@@ -349,6 +367,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(VIEW_NODE, &show_bsc_cmd);
 	install_element(VIEW_NODE, &show_bsc_cfg_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
+	install_element(VIEW_NODE, &close_bsc_cmd);
 
 	openbsc_vty_add_cmds();
 
