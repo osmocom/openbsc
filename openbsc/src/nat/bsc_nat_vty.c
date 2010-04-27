@@ -86,7 +86,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
       SHOW_STR "Display information about current SCCP connections")
 {
 	struct sccp_connections *con;
-	vty_out(vty, "Listing all opening SCCP connections\n");
+	vty_out(vty, "Listing all opening SCCP connections%s", VTY_NEWLINE);
 
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
 		vty_out(vty, "For BSC Nr: %d lac: %d; BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
@@ -143,7 +143,7 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 DEFUN(show_stats,
       show_stats_cmd,
       "show statistics",
-	SHOW_STR "Display network statistics\n")
+	SHOW_STR "Display network statistics")
 {
 	struct bsc_config *conf;
 
@@ -173,7 +173,7 @@ DEFUN(show_stats,
 DEFUN(close_bsc,
       close_bsc_cmd,
       "close bsc connection BSC_NR",
-      "Close the connection with the BSC identified by the config number.\n")
+      "Close the connection with the BSC identified by the config number.")
 {
 	struct bsc_connection *bsc;
 	int bsc_nr = atoi(argv[0]);
@@ -249,7 +249,7 @@ DEFUN(cfg_nat_msc_port,
 }
 
 /* per BSC configuration */
-DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure\n")
+DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 {
 	int bsc_nr = atoi(argv[0]);
 	struct bsc_config *bsc;
@@ -284,7 +284,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN", "Set the token")
 }
 
 DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
-      "Set the Location Area Code (LAC) of this BSC\n")
+      "Set the Location Area Code (LAC) of this BSC")
 {
 	struct bsc_config *tmp;
 	struct bsc_config *conf = vty->index;
