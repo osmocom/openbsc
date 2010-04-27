@@ -86,12 +86,16 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
       SHOW_STR "Display information about current SCCP connections")
 {
 	struct sccp_connections *con;
+	vty_out(vty, "Listing all opening SCCP connections\n");
+
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "SCCP for BSC: Nr: %d lac: %d BSC ref: 0x%x Local ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
+		vty_out(vty, "For BSC Nr: %d lac: %d; BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
 			con->bsc->cfg ? con->bsc->cfg->nr : -1,
 			con->bsc->cfg ? con->bsc->cfg->lac : -1,
 			sccp_src_ref_to_int(&con->real_ref),
 			sccp_src_ref_to_int(&con->patched_ref),
+			con->has_remote_ref,
+			sccp_src_ref_to_int(&con->remote_ref),
 			con->msc_timeslot, con->bsc_timeslot,
 			VTY_NEWLINE);
 	}
