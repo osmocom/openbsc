@@ -974,6 +974,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static int bootstrap_bts(struct gsm_bts *bts)
 {
+	int i, n;
+
 	switch (bts->band) {
 	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
@@ -1010,9 +1012,33 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
-	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-	/* T3212 is set from vty/config */
+		/* T3212 is set from vty/config */
+
+		/* Set ccch config by looking at ts config */
+	for (n=0, i=0; i<8; i++)
+		n += bts->c0->ts[i].pchan == GSM_PCHAN_CCCH ? 1 : 0;
+
+	switch (n) {
+	case 0:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
+		break;
+	case 1:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_NC;
+		break;
+	case 2:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_2_NC;
+		break;
+	case 3:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_3_NC;
+		break;
+	case 4:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_4_NC;
+		break;
+	default:
+		LOGP(DNM, LOGL_ERROR, "Unsupported CCCH timeslot configuration\n");
+		return -EINVAL;
+	}
 
 	/* some defaults for our system information */
 	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */
