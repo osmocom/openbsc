@@ -31,7 +31,6 @@
 #include <arpa/inet.h>
 
 #include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
 #include <osmocore/select.h>
 
 #include <openbsc/debug.h>
