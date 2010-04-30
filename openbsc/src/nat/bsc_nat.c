@@ -815,10 +815,20 @@ static void signal_handler(int signal)
 	}
 }
 
+extern void *tall_msgb_ctx;
+extern void *tall_ctr_ctx;
+static void talloc_init_ctx()
+{
+	tall_bsc_ctx = talloc_named_const(NULL, 0, "nat");
+	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+	tall_ctr_ctx = talloc_named_const(tall_bsc_ctx, 0, "counter");
+}
+
 int main(int argc, char** argv)
 {
+	talloc_init_ctx();
 	log_init(&log_info);
-	tall_bsc_ctx = talloc_named_const(NULL, 1, "nat");
+
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
