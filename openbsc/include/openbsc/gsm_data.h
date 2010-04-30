@@ -79,6 +79,13 @@ enum bts_gprs_mode {
 	BTS_GPRS_EGPRS = 2,
 };
 
+/* the data structure stored in msgb->cb for openbsc apps */
+struct openbsc_msgb_cb {
+	unsigned char *gmmh;
+	u_int32_t tlli;
+};
+#define OBSC_MSGB_CB(__msgb)	((struct openbsc_msgb_cb *)&((__msgb)->cb[0]))
+
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,
 		     unsigned int event,
