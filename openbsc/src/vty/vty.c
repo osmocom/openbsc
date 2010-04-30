@@ -915,7 +915,9 @@ static void vty_complete_command(struct vty *vty)
 		vty_backward_pure_word(vty);
 		vty_insert_word_overwrite(vty, matched[0]);
 		vty_self_insert(vty, ' ');
-		//talloc_free(matched[0]);
+		talloc_free(matched[0]);
+		vector_only_index_free(matched);
+		return;
 		break;
 	case CMD_COMPLETE_MATCH:
 		vty_prompt(vty);
