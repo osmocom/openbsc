@@ -54,7 +54,7 @@ struct vty *vty_new()
 	new->obuf = buffer_new(0);	/* Use default buffer size. */
 	if (!new->obuf)
 		goto out_new;
-	new->buf = _talloc_zero(tall_vty_ctx, VTY_BUFSIZ, "vty_new->buf");
+	new->buf = _talloc_zero(new, VTY_BUFSIZ, "vty_new->buf");
 	if (!new->buf)
 		goto out_obuf;
 
@@ -210,7 +210,7 @@ int vty_out(struct vty *vty, const char *format, ...)
 				else
 					size = size * 2;
 
-				p = talloc_realloc_size(tall_vty_ctx, p, size);
+				p = talloc_realloc_size(vty, p, size);
 				if (!p)
 					return -1;
 
@@ -357,7 +357,7 @@ static void vty_ensure(struct vty *vty, int length)
 {
 	if (vty->max <= length) {
 		vty->max *= 2;
-		vty->buf = talloc_realloc_size(tall_vty_ctx, vty->buf, vty->max);
+		vty->buf = talloc_realloc_size(vty, vty->buf, vty->max);
 		// FIXME: check return
 	}
 }
@@ -458,7 +458,7 @@ static void vty_hist_add(struct vty *vty)
 	/* Insert history entry. */
 	if (vty->hist[vty->hindex])
 		talloc_free(vty->hist[vty->hindex]);
-	vty->hist[vty->hindex] = talloc_strdup(tall_vty_ctx, vty->buf);
+	vty->hist[vty->hindex] = talloc_strdup(vty, vty->buf);
 
 	/* History index rotation. */
 	vty->hindex++;
@@ -965,7 +965,7 @@ vty_describe_fold(struct vty *vty, int cmd_width,
 		return;
 	}
 
-	buf = _talloc_zero(tall_vty_ctx, strlen(desc->str) + 1, "describe_fold");
+	buf = _talloc_zero(vty, strlen(desc->str) + 1, "describe_fold");
 	if (!buf)
 		return;
 
