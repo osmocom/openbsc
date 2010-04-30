@@ -85,6 +85,9 @@ struct openbsc_msgb_cb {
 	u_int32_t tlli;
 };
 #define OBSC_MSGB_CB(__msgb)	((struct openbsc_msgb_cb *)&((__msgb)->cb[0]))
+#define msgb_tlli(__x)		OBSC_MSGB_CB(__x)->tlli
+#define msgb_gmmh(__x)		OBSC_MSGB_CB(__x)->gmmh
+#define msgb_llch(__x)		(__x)->l4h
 
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,

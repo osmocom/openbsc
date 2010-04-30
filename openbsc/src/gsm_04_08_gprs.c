@@ -177,7 +177,7 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -203,7 +203,7 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, u_int8_t gmm_cause)
 
 	DEBUGP(DMM, "<- GPRS ATTACH REJECT\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
@@ -222,7 +222,7 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, u_int8_t id_type)
 
 	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
@@ -253,7 +253,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 /* Parse Chapter 9.4.13 Identity Response */
 static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
@@ -264,9 +264,9 @@ static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 		mi_type, mi_string);
 
 	gprs_ra_id_by_bts(&ra_id, msg->trx->bts);
-	ctx = sgsn_mm_ctx_by_tlli(msg->tlli, &ra_id);
+	ctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
 	if (!ctx) {
-		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msg->tlli);
+		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msgb_tlli(msg));
 		return -EINVAL;
 	}
 
@@ -310,7 +310,7 @@ static void schedule_reject(struct sgsn_mm_ctx *ctx)
 /* Section 9.4.1 Attach request */
 static int gsm48_rx_gmm_att_req(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	u_int8_t *cur = gh->data, *msnc, *mi, *old_ra_info;
 	u_int8_t msnc_len, att_type, mi_len, mi_type;
 	u_int16_t drx_par;
@@ -378,17 +378,17 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 		}
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
-		ctx->tlli = msg->tlli;
+		ctx->tlli = msgb_tlli(msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		tmsi = strtoul(mi_string, NULL, 10);
 		/* Try to find MM context based on P-TMSI */
 		ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
-			ctx = sgsn_mm_ctx_alloc(msg->tlli, &ra_id);
+			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			/* FIXME: Start some timer */
 			ctx->mm_state = GMM_COMMON_PROC_INIT;
-			ctx->tlli = msg->tlli;
+			ctx->tlli = msgb_tlli(msg);
 		}
 		break;
 	default:
@@ -416,7 +416,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -441,7 +441,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, u_int8_t cause)
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE REJECT\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2);
@@ -457,7 +457,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, u_int8_t cause)
 /* Chapter 9.4.14: Routing area update request */
 static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct sgsn_mm_ctx *mmctx;
 	u_int8_t *cur = gh->data;
 	struct gprs_ra_id old_ra_id;
@@ -489,7 +489,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 	}
 
 	/* Look-up the MM context based on old RA-ID and TLLI */
-	mmctx = sgsn_mm_ctx_by_tlli(msg->tlli, &old_ra_id);
+	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &old_ra_id);
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
@@ -518,7 +518,7 @@ static int gsm48_rx_gmm_status(struct msgb *msg)
 /* GPRS Mobility Management */
 static int gsm0408_rcv_gmm(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
 	switch (gh->msg_type) {
@@ -556,7 +556,7 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 /* Section 9.5.2: Ativate PDP Context Accept */
 static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_ctx_req *req)
 {
-	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) old_msg->gmmh;
+	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
@@ -564,7 +564,7 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 
 	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -582,14 +582,14 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 /* Section 9.5.9: Deactivate PDP Context Accept */
 static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
 {
-	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) old_msg->gmmh;
+	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	u_int8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
-	msg->tlli = old_msg->tlli;
+	msgb_tlli(msg) = msgb_tlli(old_msg);
 	msg->trx = old_msg->trx;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -602,7 +602,7 @@ static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
 /* Section 9.5.1: Activate PDP Context Request */
 static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
 	u_int8_t *pdp_addr_lv = act_req->data;
 
@@ -616,7 +616,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 /* Section 9.5.8: Deactivate PDP Context Request */
 static int gsm48_rx_gsm_deact_pdp_req(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 
 	DEBUGP(DMM, "DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
@@ -637,7 +637,7 @@ static int gsm48_rx_gsm_status(struct msgb *msg)
 /* GPRS Session Management */
 static int gsm0408_rcv_gsm(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
 	switch (gh->msg_type) {
@@ -668,7 +668,7 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 /* Main entry point for incoming 04.08 GPRS messages */
 int gsm0408_gprs_rcvmsg(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->gmmh;
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
 	int rc = -EINVAL;
 

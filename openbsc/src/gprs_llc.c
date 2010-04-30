@@ -396,7 +396,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msg->l3h;
-	struct gprs_llc_hdr *lh = msg->llch;
+	struct gprs_llc_hdr *lh = msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_entity *lle;
 	int rc;
@@ -409,7 +409,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	rc = gprs_llc_hdr_rx(&llhp, lle);
 
 	if (llhp.data) {
-		msg->gmmh = llhp.data;
+		msgb_gmmh(msg) = llhp.data;
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
 			rc = gsm0408_gprs_rcvmsg(msg);
