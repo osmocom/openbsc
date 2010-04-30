@@ -675,7 +675,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 				     GSM411_RP_CAUSE_INV_MAND_INF);
 		return -EIO;
 	}
-	msg->smsh = tpdu;
+	msg->l4h = tpdu;
 
 	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
 
