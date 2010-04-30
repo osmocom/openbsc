@@ -170,8 +170,7 @@ void vty_close(struct vty *vty)
 	/* Check configure. */
 	vty_config_unlock(vty);
 
-	/* FIXME: memory leak. We need to call telnet_close_client() but don't
-	 * have bfd */
+	/* VTY_CLOSED is handled by the telnet_interface */
 	vty_event(VTY_CLOSED, vty->fd, vty);
 
 	/* OK free vty. */
