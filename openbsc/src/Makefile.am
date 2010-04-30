@@ -3,7 +3,7 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
-                isdnsync bsc_mgcp ipaccess-proxy
+                isdnsync bsc_mgcp ipaccess-proxy osmo-gb_proxy
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libsgsn.a
 noinst_HEADERS = vty/cardshell.h
 
@@ -11,7 +11,7 @@ bscdir = $(libdir)
 bsc_LIBRARIES = libsccp.a
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
-		chan_alloc.c debug.c \
+		chan_alloc.c debug.c socket.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
 		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c \
 		input/misdn.c input/ipaccess.c \
@@ -50,3 +50,8 @@ bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgc
 bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
+
+osmo_gb_proxy_SOURCES = gb_proxy.c gb_proxy_main.c \
+			gprs_ns.c \
+			socket.c debug.c telnet_interface.c vty_interface_cmds.c 
+osmo_gb_proxy_LDADD = libvty.a

@@ -707,58 +707,6 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
-	      int (*cb)(struct bsc_fd *fd, unsigned int what))
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-	int type = SOCK_STREAM;
-
-	if (proto == IPPROTO_UDP)
-		type = SOCK_DGRAM;
-	
-	bfd->fd = socket(AF_INET, type, proto);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	//bfd->data = line;
-
-	if (bfd->fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
-		return -EIO;
-	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind l2 socket %s\n",
-			strerror(errno));
-		close(bfd->fd);
-		return -EIO;
-	}
-
-	if (proto != IPPROTO_UDP) {
-		ret = listen(bfd->fd, 1);
-		if (ret < 0) {
-			perror("listen");
-			return ret;
-		}
-	}
-	
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		close(bfd->fd);
-		return ret;
-	}
-	return 0;
-}
-
 /* Actively connect to a BTS.  Currently used by ipaccess-config.c */
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 {
