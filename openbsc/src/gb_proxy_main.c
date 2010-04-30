@@ -53,7 +53,7 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 struct gprs_ns_inst *gbprox_nsi;
-static u_int16_t nsip_listen_port;
+static u_int16_t nsip_listen_port = 23000;
 
 const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
@@ -114,6 +114,7 @@ int main(int argc, char **argv)
 	nsip_listen(gbprox_nsi, nsip_listen_port);
 
 	/* 'establish' the outgoing connection to the SGSN */
+	sin.sin_family = AF_INET;
 	sin.sin_port = ntohs(23000);
 	inet_aton("192.168.100.239", &sin.sin_addr);
 	gbprox_peer_sgsn = nsip_connect(gbprox_nsi, &sin, 2342);
