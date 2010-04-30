@@ -51,7 +51,7 @@ struct vty *vty_new()
 	if (!new)
 		goto out;
 
-	new->obuf = buffer_new(0);	/* Use default buffer size. */
+	new->obuf = buffer_new(new, 0);	/* Use default buffer size. */
 	if (!new->obuf)
 		goto out_new;
 	new->buf = _talloc_zero(new, VTY_BUFSIZ, "vty_new->buf");

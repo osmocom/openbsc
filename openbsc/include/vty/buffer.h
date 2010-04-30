@@ -28,7 +28,7 @@
 /* Create a new buffer.  Memory will be allocated in chunks of the given
    size.  If the argument is 0, the library will supply a reasonable
    default size suitable for buffering socket I/O. */
-struct buffer *buffer_new(size_t);
+struct buffer *buffer_new(void *ctx, size_t);
 
 /* Free all data in the buffer. */
 void buffer_reset(struct buffer *);
