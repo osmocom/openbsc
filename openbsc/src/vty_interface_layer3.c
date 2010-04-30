@@ -58,7 +58,7 @@ static int dummy_config_write(struct vty *v)
 
 static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
 {
-	struct buffer *b = buffer_new(1024);
+	struct buffer *b = buffer_new(NULL, 1024);
 	int i;
 
 	if (!b)

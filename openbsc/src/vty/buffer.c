@@ -65,11 +65,11 @@ struct buffer_data {
 #define BUFFER_DATA_FREE(D) talloc_free((D))
 
 /* Make new buffer. */
-struct buffer *buffer_new(size_t size)
+struct buffer *buffer_new(void *ctx, size_t size)
 {
 	struct buffer *b;
 
-	b = talloc_zero(tall_vty_ctx, struct buffer);
+	b = talloc_zero(ctx, struct buffer);
 
 	if (size)
 		b->size = size;
@@ -138,7 +138,7 @@ static struct buffer_data *buffer_add(struct buffer *b)
 {
 	struct buffer_data *d;
 
-	d = _talloc_zero(tall_vty_ctx,
+	d = _talloc_zero(b,
 			 offsetof(struct buffer_data, data[b->size]),
 			 "buffer_add");
 	if (!d)
