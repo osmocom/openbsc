@@ -2363,6 +2363,7 @@ gDEFUN(config_exit,
 		vty->node = CONFIG_NODE;
 		break;
 	case MGCP_NODE:
+	case GBPROXY_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 	default:
