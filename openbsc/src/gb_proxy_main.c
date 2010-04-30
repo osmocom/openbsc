@@ -135,7 +135,7 @@ int bsc_vty_init(struct gsm_network *dummy)
 	vty_init();
 
 	openbsc_vty_add_cmds();
-        //mgcp_vty_init();
+        gbproxy_vty_init();
 	return 0;
 }
 

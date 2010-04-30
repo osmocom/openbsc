@@ -51,7 +51,7 @@ bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
 
-osmo_gb_proxy_SOURCES = gb_proxy.c gb_proxy_main.c \
+osmo_gb_proxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
 			gprs_ns.c \
 			socket.c debug.c telnet_interface.c vty_interface_cmds.c 
 osmo_gb_proxy_LDADD = libvty.a
