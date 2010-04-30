@@ -105,11 +105,6 @@ typedef int gsm_cbfn(unsigned int hooknum,
 	} while(0);
 
 
-/* communications link with a BTS */
-struct gsm_bts_link {
-	struct gsm_bts *bts;
-};
-
 /* Real authentication information containing Ki */
 enum gsm_auth_algo {
 	AUTH_ALGO_NONE,
