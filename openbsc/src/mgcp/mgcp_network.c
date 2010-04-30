@@ -151,7 +151,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	 */
 	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
 	dest = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0 &&
-                    (endp->net_rtp == addr.sin_port || endp->net_rtcp == addr.sin_port)
+		    (endp->net_rtp == addr.sin_port || endp->net_rtcp == addr.sin_port)
 			? DEST_BTS : DEST_NETWORK;
 	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
 

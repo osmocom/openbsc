@@ -493,7 +493,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		bts = nsvc->bts;
 		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
-	        /* We skip NSVC1 since we only use NSVC0 */
+		/* We skip NSVC1 since we only use NSVC0 */
 		if (nsvc->id == 1)
 			break;
 		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
@@ -1013,9 +1013,9 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-		/* T3212 is set from vty/config */
+	/* T3212 is set from vty/config */
 
-		/* Set ccch config by looking at ts config */
+	/* Set ccch config by looking at ts config */
 	for (n=0, i=0; i<8; i++)
 		n += bts->c0->ts[i].pchan == GSM_PCHAN_CCCH ? 1 : 0;
 

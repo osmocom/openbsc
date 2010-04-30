@@ -318,7 +318,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 			break;
 
 		/* Stop paging */
-                if (bts != _bts)
+		if (bts != _bts)
 			_paging_request_stop(bts, subscr, NULL);
 	} while (1);
 }
