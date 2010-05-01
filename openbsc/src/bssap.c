@@ -40,6 +40,8 @@
 #define BSSMAP_MSG_SIZE 512
 #define BSSMAP_MSG_HEADROOM 128
 
+#define LINK_ID_CB 0
+
 static void bts_queue_send(struct msgb *msg, int link_id);
 static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
@@ -1236,7 +1238,7 @@ static void bts_queue_send(struct msgb *msg, int link_id)
 		if (msg->lchan->sapis[link_id & 0x7] != LCHAN_SAPI_UNUSED) {
 			rsl_data_request(msg, link_id);
 		} else {
-			msg->smsh = (unsigned char*) link_id;
+			msg->cb[LINK_ID_CB] = link_id;
 			msgb_enqueue(&data->gsm_queue, msg);
 			++data->gsm_queue_size;
 
@@ -1252,7 +1254,7 @@ static void bts_queue_send(struct msgb *msg, int link_id)
 		LOGP(DMSC, LOGL_DEBUG, "Queueing GSM0408 message on %p. Queue size: %d\n",
 		       data->sccp, data->gsm_queue_size + 1);
 
-		msg->smsh = (unsigned char*) link_id;
+		msg->cb[LINK_ID_CB] = link_id;
 		msgb_enqueue(&data->gsm_queue, msg);
 		++data->gsm_queue_size;
 	}
@@ -1278,7 +1280,7 @@ void bts_send_queued(struct bss_sccp_connection_data *data)
 	while (!llist_empty(&data->gsm_queue)) {
 		/* this is not allowed to fail */
 		msg = msgb_dequeue(&data->gsm_queue);
-		rsl_data_request(msg, (int) msg->smsh);
+		rsl_data_request(msg, msg->cb[LINK_ID_CB]);
 	}
 
 	data->gsm_queue_size = 0;
@@ -1300,7 +1302,7 @@ void bts_unblock_queue(struct bss_sccp_connection_data *data)
 	/* now queue them again to send RSL establish and such */
 	while (!llist_empty(&head)) {
 		msg = msgb_dequeue(&head);
-		bts_queue_send(msg, (int) msg->smsh);
+		bts_queue_send(msg, msg->cb[LINK_ID_CB]);
 	}
 }
 
