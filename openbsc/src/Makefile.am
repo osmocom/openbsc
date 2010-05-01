@@ -3,7 +3,7 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
-                isdnsync bsc_mgcp ipaccess-proxy osmo-gb_proxy
+                isdnsync bsc_mgcp ipaccess-proxy osmo-gbproxy osmo-sgsn
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libsgsn.a
 noinst_HEADERS = vty/cardshell.h
 
@@ -33,7 +33,7 @@ libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
 libsccp_a_SOURCES = sccp/sccp.c
 
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
-bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libsgsn.a libvty.a -ldl -ldbi $(LIBCRYPT)
+bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
@@ -51,6 +51,10 @@ bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
 
-osmo_gb_proxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
+osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
 			gprs_ns.c socket.c debug.c
-osmo_gb_proxy_LDADD = libvty.a
+osmo_gbproxy_LDADD = libvty.a
+
+osmo_sgsn_SOURCES = sgsn_main.c sgsn_vty.c \
+			socket.c debug.c
+osmo_sgsn_LDADD = libvty.a libsgsn.a

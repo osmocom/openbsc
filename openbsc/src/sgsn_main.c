@@ -1,4 +1,4 @@
-/* NS-over-IP proxy */
+/* GPRS SGSN Implementation */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On Waves
@@ -38,10 +38,11 @@
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/gprs_ns.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
-#include <openbsc/gb_proxy.h>
+#include <openbsc/sgsn.h>
+#include <openbsc/gprs_ns.h>
+#include <openbsc/gprs_bssgp.h>
 
 #include "../bscconfig.h"
 
@@ -53,7 +54,7 @@ void subscr_put() { abort(); }
 
 void *tall_bsc_ctx;
 
-struct gprs_ns_inst *gbprox_nsi;
+struct gprs_ns_inst *sgsn_nsi;
 
 const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
@@ -64,21 +65,19 @@ const char *openbsc_copyright =
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
-static char *config_file = "osmo_gbproxy.cfg";
-static struct gbproxy_config gbcfg;
-
-/* Pointer to the SGSN peer */
-extern struct gbprox_peer *gbprox_peer_sgsn;
+static char *config_file = "osmo_sgsn.cfg";
+static struct sgsn_config sgcfg;
 
 /* call-back function for the NS protocol */
-static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
+static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 		      struct msgb *msg, u_int16_t bvci)
 {
 	int rc = 0;
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
-		rc = gbprox_rcvmsg(msg, nsvc, bvci);
+		/* hand the message into the BSSGP implementation */
+		rc = gprs_bssgp_rcvmsg(msg, bvci);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);
@@ -98,35 +97,27 @@ int main(int argc, char **argv)
 	struct sockaddr_in sin;
 	int rc;
 
-	tall_bsc_ctx = talloc_named_const(NULL, 0, "nsip_proxy");
+	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
 
 	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
-	telnet_init(&dummy_network, 4244);
-	rc = gbproxy_parse_config(config_file, &gbcfg);
+	telnet_init(&dummy_network, 4245);
+	rc = sgsn_parse_config(config_file, &sgcfg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
 		exit(2);
 	}
 
-	gbprox_nsi = gprs_ns_instantiate(&proxy_ns_cb);
-	if (!gbprox_nsi) {
+	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb);
+	if (!sgsn_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
-	gbcfg.nsi = gbprox_nsi;
-	nsip_listen(gbprox_nsi, gbcfg.nsip_listen_port);
-
-	/* 'establish' the outgoing connection to the SGSN */
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(gbcfg.nsip_sgsn_port);
-	sin.sin_addr.s_addr = htonl(gbcfg.nsip_sgsn_ip);
-	gbprox_peer_sgsn = nsip_connect(gbprox_nsi, &sin,
-					gbcfg.nsip_sgsn_nsei,
-					gbcfg.nsip_sgsn_nsvci);
+	sgcfg.nsi = sgsn_nsi;
+	nsip_listen(sgsn_nsi, sgcfg.nsip_listen_port);
 
 	while (1) {
 		rc = bsc_select_main(0);
@@ -144,7 +135,7 @@ int bsc_vty_init(struct gsm_network *dummy)
 	vty_init();
 
 	openbsc_vty_add_cmds();
-        gbproxy_vty_init();
+        sgsn_vty_init();
 	return 0;
 }
 

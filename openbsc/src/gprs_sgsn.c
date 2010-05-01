@@ -94,35 +94,3 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(u_int32_t tlli,
 
 	return ctx;
 }
-
-/* call-back function for the NS protocol */
-static int gprs_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
-		      struct msgb *msg, u_int16_t bvci)
-{
-	int rc = 0;
-
-	switch (event) {
-	case GPRS_NS_EVT_UNIT_DATA:
-		/* hand the message into the BSSGP implementation */
-		rc = gprs_bssgp_rcvmsg(msg, bvci);
-		break;
-	default:
-		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);
-		if (msg)
-			talloc_free(msg);
-		rc = -EIO;
-		break;
-	}
-	return rc;
-}
-
-int sgsn_init(void)
-{
-	struct gprs_ns_inst *nsi;
-
-	nsi = gprs_ns_instantiate(&gprs_ns_cb);
-	if (!nsi)
-		return -EIO;
-
-	return nsip_listen(nsi, 23000);
-}
