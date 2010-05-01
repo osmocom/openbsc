@@ -17,14 +17,15 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		input/misdn.c input/ipaccess.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
-		bts_unknown.c bsc_version.c bsc_api.c vty_interface_cmds.c
+		bts_unknown.c bsc_version.c bsc_api.c
 
-libmsc_a_SOURCES = gsm_subscriber.c db.c telnet_interface.c \
+libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
 		token_auth.c rrlp.c gsm_04_80.c ussd.c silent_call.c \
 		handover_logic.c handover_decision.c meas_rep.c
 
-libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
+libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
+		telnet_interface.c vty_interface_cmds.c
 
 libsccp_a_SOURCES = sccp/sccp.c
 
@@ -42,7 +43,7 @@ ipaccess_config_LDADD = libbsc.a libmsc.a libbsc.a libvty.a -ldl -ldbi $(LIBCRYP
 isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c \
-		   debug.c telnet_interface.c vty_interface_cmds.c
+		   debug.c
 bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
