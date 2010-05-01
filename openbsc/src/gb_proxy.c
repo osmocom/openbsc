@@ -82,7 +82,7 @@ static struct gbprox_peer *peer_by_nsvc(struct gprs_nsvc *nsvc)
 }
 
 /* look-up a peer by its Routeing Area Code (RAC) */
-static struct gbprox_peer *peer_by_rac(uint8_t *ra)
+static struct gbprox_peer *peer_by_rac(const uint8_t *ra)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
@@ -93,7 +93,7 @@ static struct gbprox_peer *peer_by_rac(uint8_t *ra)
 }
 
 /* look-up a peer by its Location Area Code (LAC) */
-static struct gbprox_peer *peer_by_lac(uint8_t *la)
+static struct gbprox_peer *peer_by_lac(const uint8_t *la)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
@@ -156,9 +156,10 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	uint8_t pdu_type = bgph->pdu_type;
 	int data_len = msgb_l3len(msg) - sizeof(*bgph);
 	struct gbprox_peer *from_peer;
+	struct gprs_ra_id raid;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u not signalling\n", ns_bvci);
+		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u is not signalling\n", ns_bvci);
 		return -EINVAL;
 	}
 
@@ -175,7 +176,11 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	switch (pdu_type) {
 	case BSSGP_PDUT_SUSPEND:
 	case BSSGP_PDUT_RESUME:
-		/* RAC snooping for SUSPEND/RESUME */
+		/* We implement RAC snooping during SUSPEND/RESUME, since
+		 * it establishes a relationsip between BVCI/peer and the
+		 * routeing area code.  The snooped information is then
+		 * used for routing the {SUSPEND,RESUME}_[N]ACK back to
+		 * the correct BSSGP */
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_ROUTEING_AREA))
 			goto err_mand_ie;
 		from_peer = peer_by_nsvc(nsvc);
@@ -183,6 +188,10 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 			goto err_no_peer;
 		memcpy(&from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 			sizeof(&from_peer->ra));
+		gsm48_parse_ra(&raid, &from_peer->ra);
+		DEBUGP(DGPRS, "RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
+			"NSVCI=%u, NSEI=%u\n", raid.mcc, raid.mnc, raid.lac,
+			raid.rac , from_peer->bvci, nsvc->nsvci, nsvc->nsei);
 		/* FIXME: This only supports one BSS per RA */
 		break;
 	}
@@ -227,7 +236,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	int rc = 0;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u not signalling\n", ns_bvci);
+		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u is not signalling\n", ns_bvci);
 		return -EINVAL;
 	}
 
@@ -307,8 +316,19 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 	/* All other BVCI are PTP and thus can be simply forwarded */
 	peer = peer_by_bvci(ns_bvci);
 	if (!peer) {
-		LOGP(DGPRS, LOGL_ERROR, "Couldn't find peer for BVCI %u\n", ns_bvci);
-		return -EIO;
+		if (!nsvc->remote_end_is_sgsn) {
+			LOGP(DGPRS, LOGL_NOTICE, "Allocationg new peer for "
+			     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
+			     nsvc->nsvci, nsvc->nsei);
+			peer = peer_alloc(ns_bvci);
+			peer->nsvc = nsvc;
+		} else {
+			LOGP(DGPRS, LOGL_ERROR, "Couldn't find peer for "
+			     "BVCI %u\n", ns_bvci);
+			/* FIXME: do we really have to free the message here? */
+			msgb_free(msg);
+			return -EIO;
+		}
 	}
 
 	return gbprox_tx2peer(msg, peer, ns_bvci);
