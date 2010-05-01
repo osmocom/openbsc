@@ -41,6 +41,7 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
+#include <openbsc/gb_proxy.h>
 
 #include "../bscconfig.h"
 
@@ -53,7 +54,6 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 struct gprs_ns_inst *gbprox_nsi;
-static u_int16_t nsip_listen_port = 23000;
 
 const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
@@ -64,7 +64,8 @@ const char *openbsc_copyright =
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
-static char *config_file = "nsip_proxy.cfg";
+static char *config_file = "gb_proxy.cfg";
+static struct gbproxy_config gbcfg;
 
 /* Pointer to the SGSN peer */
 extern struct gbprox_peer *gbprox_peer_sgsn;
@@ -105,19 +106,27 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	telnet_init(&dummy_network, 4244);
+	rc = gbproxy_parse_config(config_file, &gbcfg);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
+		exit(2);
+	}
 
 	gbprox_nsi = gprs_ns_instantiate(&proxy_ns_cb);
 	if (!gbprox_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
-	nsip_listen(gbprox_nsi, nsip_listen_port);
+	gbcfg.nsi = gbprox_nsi;
+	nsip_listen(gbprox_nsi, gbcfg.nsip_listen_port);
 
 	/* 'establish' the outgoing connection to the SGSN */
 	sin.sin_family = AF_INET;
-	sin.sin_port = ntohs(23000);
-	inet_aton("192.168.100.239", &sin.sin_addr);
-	gbprox_peer_sgsn = nsip_connect(gbprox_nsi, &sin, 2342);
+	sin.sin_port = htons(gbcfg.nsip_sgsn_port);
+	sin.sin_addr.s_addr = htonl(gbcfg.nsip_sgsn_ip);
+	gbprox_peer_sgsn = nsip_connect(gbprox_nsi, &sin,
+					gbcfg.nsip_sgsn_nsei,
+					gbcfg.nsip_sgsn_nsvci);
 
 	while (1) {
 		rc = bsc_select_main(0);

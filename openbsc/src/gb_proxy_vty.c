@@ -27,27 +27,18 @@
 #include <osmocore/talloc.h>
 
 #include <openbsc/debug.h>
+#include <openbsc/gb_proxy.h>
+#include <openbsc/gprs_ns.h>
 
 #include <vty/command.h>
 #include <vty/vty.h>
-
-struct gbproxy_config {
-	u_int32_t nsip_listen_ip;
-	u_int16_t nsip_listen_port;
-
-	u_int32_t nsip_sgsn_ip;
-	u_int16_t nsip_sgsn_port;
-
-	u_int16_t nsip_sgsn_nsei;
-	u_int16_t nsip_sgsn_nsvci;
-};
 
 static struct gbproxy_config *g_cfg = NULL;
 
 /*
  * vty code for mgcp below
  */
-struct cmd_node gbproxy_node = {
+static struct cmd_node gbproxy_node = {
 	GBPROXY_NODE,
 	"%s(gbproxy)#",
 	1,
@@ -83,6 +74,21 @@ DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
       SHOW_STR "Display information about the Gb proxy")
 {
 	/* FIXME: iterate over list of NS-VC's and display their state */
+	struct gprs_ns_inst *nsi = g_cfg->nsi;
+	struct gprs_nsvc *nsvc;
+
+	llist_for_each_entry(nsvc, &nsi->gprs_nsvcs, list) {
+		vty_out(vty, "NSEI %5u, NS-VC %5u, %s-mode, %s %s%s",
+			nsvc->nsei, nsvc->nsvci,
+			nsvc->remote_end_is_sgsn ? "BSS" : "SGSN",
+			nsvc->state & NSE_S_ALIVE ? "ALIVE" : "DEAD",
+			nsvc->state & NSE_S_BLOCKED ? "BLOCKED" : "UNBLOCKED",
+			VTY_NEWLINE);
+		if (nsvc->nsi->ll == GPRS_NS_LL_UDP)
+			vty_out(vty, "  remote peer %s:%u%s",
+				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
+				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
+	}
 
 	return CMD_SUCCESS;
 }
