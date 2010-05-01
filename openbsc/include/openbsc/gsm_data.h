@@ -85,11 +85,6 @@ typedef int gsm_cbfn(unsigned int hooknum,
 		     struct msgb *msg,
 		     void *data, void *param);
 
-/* communications link with a BTS */
-struct gsm_bts_link {
-	struct gsm_bts *bts;
-};
-
 struct sccp_connection;
 
 /* Real authentication information containing Ki */

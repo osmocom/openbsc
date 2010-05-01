@@ -257,7 +257,6 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 	if (((strlen(response_text) * 7) % 8) != 0)
 		response_len += 1;
 
-	msg->bts_link = in_msg->bts_link;
 	msg->lchan = in_msg->lchan;
 
 	/* First put the payload text into the message */
@@ -304,7 +303,6 @@ int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	msg->bts_link = in_msg->bts_link;
 	msg->lchan = in_msg->lchan;
 
 	/* First insert the problem code */
