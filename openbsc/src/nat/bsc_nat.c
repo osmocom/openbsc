@@ -600,9 +600,13 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 
 	if (!msg) {
 		if (error == 0)
-			LOGP(DNAT, LOGL_ERROR,	"The connection to the BSC was lost. Cleaning it\n");
+			LOGP(DNAT, LOGL_ERROR,
+			     "The connection to the BSC Nr: %d was lost. Cleaning it\n",
+			     bsc->cfg ? bsc->cfg->nr : -1);
 		else
-			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
+			LOGP(DNAT, LOGL_ERROR,
+			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d\n",
+			     bsc->cfg ? bsc->cfg->nr : -1, error);
 
 		bsc_close_connection(bsc);
 		return -1;
