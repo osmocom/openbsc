@@ -12,6 +12,15 @@ struct gsm_subscriber;
 struct gsm_network;
 struct gsm_trans;
 
+#define GSM48_ALLOC_SIZE	1024
+#define GSM48_ALLOC_HEADROOM	128
+
+static inline struct msgb *gsm48_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM,
+				   "GSM 04.08");
+}
+
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
 
@@ -22,7 +31,6 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, in
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
 int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
-struct msgb *gsm48_msgb_alloc(void);
 int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
 
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
