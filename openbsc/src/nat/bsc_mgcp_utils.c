@@ -256,6 +256,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		return MGCP_POLICY_DEFER;
 	} else if (state == MGCP_ENDP_DLCX) {
 		/* we will free the endpoint now and send a DLCX to the BSC */
+		msgb_free(bsc_msg);
 		bsc_mgcp_dlcx(sccp);
 		return MGCP_POLICY_CONT;
 	} else {
