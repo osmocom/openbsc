@@ -108,6 +108,7 @@ enum node_type {
 	SUBSCR_NODE,
 	MGCP_NODE,
 	GBPROXY_NODE,
+	SGSN_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration
