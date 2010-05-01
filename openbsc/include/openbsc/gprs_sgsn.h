@@ -19,6 +19,7 @@ enum gprs_ciph_algo {
 #define MS_RADIO_ACCESS_CAPA
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
+/* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
 	struct llist_head	list;
 
@@ -27,14 +28,18 @@ struct sgsn_mm_ctx {
 	u_int32_t 		p_tmsi;
 	u_int32_t 		p_tmsi_sig;
 	char 			imei[GSM_IMEI_LENGTH];
+	/* Opt: Software Version Numbber / TS 23.195 */
 	char 			msisdn[GSM_EXTENSION_LENGTH];
 	struct gprs_ra_id	ra;
 	u_int16_t		cell_id;
 	u_int32_t		cell_id_age;
+	u_int16_t		sac;	/* Iu: Service Area Code */
+	u_int32_t		sac_age;/* Iu: Service Area Code age */
 	/* VLR number */
 	u_int32_t		new_sgsn_addr;
 	/* Authentication Triplets */
 	/* Kc */
+	/* Iu: CK, IK, KSI */
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
 	struct {
