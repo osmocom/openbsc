@@ -72,13 +72,6 @@ enum gsm48_gprs_ie_sm {
 	GSM48_IE_GSM_LSA_ID		= 0x48, /* 10.5.3.11 */
 };
 
-/* Chapter 10.4.4.15 */
-struct gsm48_ra_id {
-	u_int8_t digits[3];	/* MCC + MNC BCD digits */
-	u_int16_t lac;		/* Location Area Code */
-	u_int8_t rac;		/* Routing Area Code */
-} __attribute__ ((packed));
-
 /* Chapter 9.4.15 / Table 9.4.15 */
 struct gsm48_ra_upd_ack {
 	u_int8_t force_stby:4,	/* 10.5.5.7 */
@@ -175,15 +168,6 @@ enum gsm48_gsm_cause {
 	GSM_CAUSE_COND_IE_ERR		= 0x64,
 	GSM_CAUSE_MSG_INCOMP_P_STATE	= 0x65,
 	GSM_CAUSE_PROTO_ERR_UNSPEC	= 0x6f,
-};
-
-/* GSM TS 03.03 Chapter 2.6 */
-enum gprs_tlli_tyoe {
-	TLLI_LOCAL,
-	TLLI_FOREIGN,
-	TLLI_RANDOM,
-	TLLI_AUXILIARY,
-	TLLI_RESERVED,
 };
 
 /* Section 6.1.2.2: Session management states on the network side */
