@@ -58,7 +58,7 @@ struct sgsn_mm_ctx {
 	int			ppf;	/* paging for GPRS + non-GPRS? */
 	/* SMS Parameters */
 	int			recovery;
-	uint8_t		radio_prio_sms;
+	uint8_t			radio_prio_sms;
 
 	struct llist_head	pdp_list;
 
@@ -86,13 +86,13 @@ struct sgsn_pdp_ctx {
 	char 			*apn_subscribed;
 	char 			*apn_used;
 	uint16_t		nsapi;
-	uint8_t		ti;	/* transaction identifier */
+	uint8_t			ti;	/* transaction identifier */
 	uint32_t		ggsn_in_use;
 	int			vplmn_allowed;
 	uint32_t		qos_profile_subscr;
 	uint32_t		qos_profile_req;
 	uint32_t		qos_profile_neg;
-	uint8_t		radio_prio;
+	uint8_t			radio_prio;
 	uint32_t		tx_npdu_nr;
 	uint32_t		rx_npdu_nr;
 	uint32_t		tx_gtp_snd;
