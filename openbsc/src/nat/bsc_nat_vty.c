@@ -142,10 +142,15 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 
 DEFUN(show_stats,
       show_stats_cmd,
-      "show statistics",
+      "show statistics [NR]",
 	SHOW_STR "Display network statistics")
 {
 	struct bsc_config *conf;
+
+	int nr = -1;
+
+	if (argc == 1)
+		nr = atoi(argv[0]);
 
 	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
 	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
@@ -158,6 +163,9 @@ DEFUN(show_stats,
 		counter_get(_nat->stats.bsc.auth_fail), VTY_NEWLINE);
 
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
+		if (argc == 1 && nr != conf->nr)
+			continue;
+
 		vty_out(vty, " BSC lac: %d nr: %d%s",
 			conf->lac, conf->nr, VTY_NEWLINE);
 		vty_out(vty, "   SCCP Connnections %lu total, %lu calls%s",
