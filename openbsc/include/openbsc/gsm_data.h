@@ -100,6 +100,7 @@ struct openbsc_msgb_cb {
 #define msgb_bvci(__x)		OBSC_MSGB_CB(__x)->bvci
 #define msgb_gmmh(__x)		(__x)->l3h
 #define msgb_bssgph(__x)	OBSC_MSGB_CB(__x)->bssgph
+#define msgb_bssgp_len(__x)	((__x)->tail - (uint8_t *)msgb_bssgph(__x))
 #define msgb_bcid(__x)		OBSC_MSGB_CB(__x)->bssgp_cell_id
 #define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
 
