@@ -477,6 +477,12 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	struct bsc_config *conf;
 	const char* token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
 
+	if (bsc->cfg) {
+		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
+		     bsc->write_queue.bfd.fd, bsc->cfg->nr);
+		return;
+	}
+
 	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
 		if (strcmp(conf->token, token) == 0) {
 			counter_inc(conf->stats.net.reconn);
