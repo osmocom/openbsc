@@ -42,6 +42,7 @@
 #include <osmocore/signal.h>
 #include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
+#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 
@@ -130,7 +131,17 @@ static const char *upd_name(uint8_t type)
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command)
 {
+	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command);
+}
+
+/* copy identifiers from old message to new message, this
+ * is required so lower layers can route it correctly */
+static void gmm_copy_id(struct msgb *msg, const struct msgb *old)
+{
+	msgb_tlli(msg) = msgb_tlli(old);
+	msgb_bvci(msg) = msgb_bvci(old);
+	msgb_nsei(msg) = msgb_nsei(old);
 }
 
 /* Chapter 9.4.2: Attach accept */
@@ -139,11 +150,11 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
+	struct gprs_ra_id ra_id;
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -154,7 +165,8 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	aa->att_result = 1;	/* GPRS only */
 	aa->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 	aa->radio_prio = 4;	/* lowest */
-	//FIXME gsm48_ra_id_by_bts(aa->ra_id.digits, old_msg->trx->bts);
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	gsm48_construct_ra(aa->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0);
@@ -168,8 +180,7 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
 
 	DEBUGP(DMM, "<- GPRS ATTACH REJECT\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -187,8 +198,7 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
 
 	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -228,7 +238,7 @@ static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 	DEBUGP(DMM, "GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
 		mi_type, mi_string);
 
-	//FIXME gprs_ra_id_by_bts(&ra_id, msg->trx->bts);
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 	ctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
 	if (!ctx) {
 		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msgb_tlli(msg));
@@ -290,7 +300,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
-	//FIXME gprs_ra_id_by_bts(&ra_id, msg->trx->bts);
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
@@ -378,11 +388,11 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_ra_upd_ack *rua;
+	struct gprs_ra_id ra_id;
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -392,7 +402,9 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	rua->force_stby = 0;	/* not indicated */
 	rua->upd_result = 0;	/* RA updated */
 	rua->ra_upd_timer = GPRS_TMR_MINUTE | 10;
-	//FIXME gsm48_ra_id_by_bts(rua->ra_id.digits, old_msg->trx->bts);
+
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	gsm48_construct_ra(rua->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0);
@@ -406,8 +418,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE REJECT\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 2);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -529,8 +540,7 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 
 	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
@@ -554,8 +564,7 @@ static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
-	msgb_tlli(msg) = msgb_tlli(old_msg);
-	msg->trx = old_msg->trx;
+	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
@@ -652,30 +661,3 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 
 	return rc;
 }
-
-/* Determine the 'struct gsm_bts' from a RA ID */
-struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
-				   const uint8_t *buf, unsigned int len)
-{
-	struct gprs_ra_id raid;
-	struct gsm_bts *bts;
-
-	if (len < 6)
-		return NULL;
-
-	gsm48_parse_ra(&raid, buf);
-
-	if (net->country_code != raid.mcc ||
-	    net->network_code != raid.mnc)
-		return NULL;
-
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		/* FIXME: we actually also need to check the
-		 * routing area code! */
-		if (bts->location_area_code == raid.lac)
-			return bts;
-	}
-
-	return NULL;
-}
-

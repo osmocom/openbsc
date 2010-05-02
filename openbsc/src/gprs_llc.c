@@ -452,6 +452,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	struct gprs_llc_entity *lle;
 	int rc = 0;
 
+	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
+
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
 	/* FIXME */
 

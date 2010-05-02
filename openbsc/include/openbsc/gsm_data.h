@@ -84,6 +84,9 @@ struct openbsc_msgb_cb {
 	unsigned char *bssgph;
 	unsigned char *llch;
 
+	/* Cell Identifier */
+	unsigned char *bssgp_cell_id;
+
 	/* Identifiers of a BTS, equal to 'struct bssgp_bts_ctx' */
 	u_int16_t nsei;
 	u_int16_t bvci;
@@ -97,6 +100,7 @@ struct openbsc_msgb_cb {
 #define msgb_bvci(__x)		OBSC_MSGB_CB(__x)->bvci
 #define msgb_gmmh(__x)		(__x)->l3h
 #define msgb_bssgph(__x)	OBSC_MSGB_CB(__x)->bssgph
+#define msgb_bcid(__x)		OBSC_MSGB_CB(__x)->bssgp_cell_id
 #define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
 
 struct msgb;
