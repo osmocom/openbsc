@@ -108,6 +108,46 @@ static void send_reset_ack(struct bsc_connection *bsc)
 	bsc_send_data(bsc, gsm_reset_ack, sizeof(gsm_reset_ack), IPAC_PROTO_SCCP);
 }
 
+static void send_ping(struct bsc_connection *bsc)
+{
+	static const u_int8_t id_ping[] = {
+		IPAC_MSGT_PING,
+	};
+
+	bsc_send_data(bsc, id_ping, sizeof(id_ping), IPAC_PROTO_IPACCESS);
+}
+
+static void bsc_pong_timeout(void *_bsc)
+{
+	struct bsc_connection *bsc = _bsc;
+
+	LOGP(DNAT, LOGL_ERROR, "BSC Nr: %d PONG timeout.\n", bsc->cfg->nr);
+	bsc_close_connection(bsc);
+}
+
+static void bsc_ping_timeout(void *_bsc)
+{
+	struct bsc_connection *bsc = _bsc;
+
+	send_ping(bsc);
+
+	/* send another ping in 20 seconds */
+	bsc_schedule_timer(&bsc->ping_timeout, 20, 0);
+
+	/* also start a pong timer */
+	bsc_schedule_timer(&bsc->pong_timeout, 5, 0);
+}
+
+static void start_ping_pong(struct bsc_connection *bsc)
+{
+	bsc->pong_timeout.data = bsc;
+	bsc->pong_timeout.cb = bsc_pong_timeout;
+	bsc->ping_timeout.data = bsc;
+	bsc->ping_timeout.cb = bsc_ping_timeout;
+
+	bsc_ping_timeout(bsc);
+}
+
 static void send_id_ack(struct bsc_connection *bsc)
 {
 	static const u_int8_t id_ack[] = {
@@ -437,6 +477,8 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 	/* stop the timeout timer */
 	bsc_del_timer(&connection->id_timeout);
+	bsc_del_timer(&connection->ping_timeout);
+	bsc_del_timer(&connection->pong_timeout);
 
 	/* remove all SCCP connections */
 	llist_for_each_entry_safe(sccp_patch, tmp, &nat->sccp_connections, list_entry) {
@@ -490,6 +532,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 			bsc->cfg = conf;
 			bsc_del_timer(&bsc->id_timeout);
 			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d lac: %d\n", conf->nr, conf->lac);
+			start_ping_pong(bsc);
 			return;
 		}
 	}
@@ -622,6 +665,18 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
+	if (bsc->authenticated) {
+		struct ipaccess_head *hh;
+		hh = (struct ipaccess_head *) msg->data;
+
+		/* stop the pong timeout */
+		if (hh->proto == IPAC_PROTO_IPACCESS && msg->l2h[0] == IPAC_MSGT_PONG) {
+			bsc_del_timer(&bsc->pong_timeout);
+			msgb_free(msg);
+			return 0;
+		}
+	}
+
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
 	forward_sccp_to_msc(bsc, msg);
