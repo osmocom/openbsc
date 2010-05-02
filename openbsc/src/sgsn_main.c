@@ -77,7 +77,7 @@ static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
 		/* hand the message into the BSSGP implementation */
-		rc = gprs_bssgp_rcvmsg(msg, bvci);
+		rc = gprs_bssgp_rcvmsg(msg);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);

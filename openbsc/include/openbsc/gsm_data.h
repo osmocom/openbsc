@@ -84,9 +84,11 @@ struct openbsc_msgb_cb {
 	unsigned char *bssgph;
 	unsigned char *llch;
 
+	/* Identifiers of a BTS, equal to 'struct bssgp_bts_ctx' */
 	u_int16_t nsei;
 	u_int16_t bvci;
 
+	/* Identifier of a MS (inside BTS), equal to 'struct sgsn_mm_ctx' */
 	u_int32_t tlli;
 } __attribute__((packed));
 #define OBSC_MSGB_CB(__msgb)	((struct openbsc_msgb_cb *)&((__msgb)->cb[0]))

@@ -61,6 +61,10 @@ struct gprs_llc_lle {
 
 	unsigned int n200;
 	unsigned int retrans_ctr;
+
+	/* over which BSSGP BTS ctx do we need to transmit */
+	uint16_t bvci;
+	uint16_t nsei;
 };
 
 static LLIST_HEAD(gprs_llc_lles);
@@ -190,10 +194,21 @@ static void t201_expired(void *data)
 /* Transmit a UI frame over the given SAPI */
 int gprs_llc_tx_ui(struct msgb *msg, u_int8_t sapi, int command)
 {
+	struct gprs_llc_lle *lle;
 	u_int8_t *fcs, *llch;
 	u_int8_t addr, ctrl[2];
 	u_int32_t fcs_calc;
 	u_int16_t nu = 0;
+
+	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	/* look-up or create the LL Entity for this (TLLI, SAPI) tuple */
+	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
+	if (!lle)
+		lle = lle_alloc(msgb_tlli(msg), sapi);
+	/* Update LLE's (BVCI, NSEI) tuple */
+	lle->bvci = msgb_bvci(msg);
+	lle->nsei = msgb_nsei(msg);
 
 	/* Address Field */
 	addr = sapi & 0xf;
@@ -218,6 +233,8 @@ int gprs_llc_tx_ui(struct msgb *msg, u_int8_t sapi, int command)
 	fcs[0] = fcs_calc & 0xff;
 	fcs[1] = (fcs_calc >> 8) & 0xff;
 	fcs[2] = (fcs_calc >> 16) & 0xff;
+
+	/* Identifiers passed down: (BVCI, NSEI) */
 
 	return gprs_bssgp_tx_dl_ud(msg);
 }
