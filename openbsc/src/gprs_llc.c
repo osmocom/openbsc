@@ -1,6 +1,6 @@
 /* GPRS LLC protocol implementation as per 3GPP TS 04.64 */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -22,11 +22,13 @@
 
 #include <errno.h>
 
-#include <openbsc/gsm_data.h>
 #include <osmocore/msgb.h>
-#include <openbsc/debug.h>
 #include <osmocore/linuxlist.h>
 #include <osmocore/timer.h>
+#include <osmocore/talloc.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/debug.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
@@ -60,6 +62,37 @@ struct gprs_llc_lle {
 	unsigned int n200;
 	unsigned int retrans_ctr;
 };
+
+static LLIST_HEAD(gprs_llc_lles);
+void *llc_tall_ctx;
+
+/* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
+static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint32_t sapi)
+{
+	struct gprs_llc_lle *lle;
+
+	llist_for_each_entry(lle, &gprs_llc_lles, list) {
+		if (lle->tlli == tlli && lle->sapi == sapi)
+			return lle;
+	}
+	return NULL;
+}
+
+static struct gprs_llc_lle *lle_alloc(uint32_t tlli, uint32_t sapi)
+{
+	struct gprs_llc_lle *lle;
+
+	lle = talloc_zero(llc_tall_ctx, struct gprs_llc_lle);
+	if (!lle)
+		return NULL;
+
+	lle->tlli = tlli;
+	lle->sapi = sapi;
+	lle->state = GPRS_LLS_UNASSIGNED;
+	llist_add(&lle->list, &gprs_llc_lles);
+
+	return lle;
+}
 
 enum gprs_llc_cmd {
 	GPRS_LLC_NULL,
@@ -392,29 +425,51 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	/* FIXME: parse sack frame */
 }
 
-/* receive an incoming LLC PDU */
+/* receive an incoming LLC PDU (BSSGP-UL-UNITDATA-IND, 7.2.4.2) */
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msg->l3h;
 	struct gprs_llc_hdr *lh = msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_entity *lle;
-	int rc;
+	int rc = 0;
 
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
-
-	/* FIXME: find LLC Entity */
+	/* FIXME */
 
 	gprs_llc_hdr_dump(&llhp);
+
+	/* find the LLC Entity for this TLLI+SAPI tuple */
+	lle = lle_by_tlli_sapi(msgb_tlli(msg), llhp.sapi);
+	/* allocate a new LLE if needed */
+	if (!lle)
+		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
+
 	rc = gprs_llc_hdr_rx(&llhp, lle);
+	/* FIXME */
 
 	if (llhp.data) {
 		msgb_gmmh(msg) = llhp.data;
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
 			rc = gsm0408_gprs_rcvmsg(msg);
+			break;
+		case GPRS_SAPI_TOM2:
+		case GPRS_SAPI_TOM8:
+			/* FIXME */
+		case GPRS_SAPI_SNDCP3:
+		case GPRS_SAPI_SNDCP5:
+		case GPRS_SAPI_SNDCP9:
+		case GPRS_SAPI_SNDCP11:
+			/* FIXME */
+		case GPRS_SAPI_SMS:
+			/* FIXME */
+		default:
+			LOGP(DGPRS, LOGL_NOTICE, "Unsupported SAPI %u\n", llhp.sapi);
+			rc = -EINVAL;
+			break;
 		}
 	}
 
-	return 0;
+	return rc;
 }
