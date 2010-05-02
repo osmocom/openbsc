@@ -32,15 +32,16 @@
 #include <openbsc/db.h>
 #include <osmocore/msgb.h>
 #include <osmocore/tlv.h>
+#include <osmocore/gsm_utils.h>
+#include <osmocore/signal.h>
+#include <osmocore/talloc.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/paging.h>
-#include <osmocore/signal.h>
-#include <osmocore/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
