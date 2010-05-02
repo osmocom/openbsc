@@ -105,7 +105,6 @@ struct gsm48_attach_ack {
 struct gsm48_act_pdp_ctx_req {
 	uint8_t req_nsapi;
 	uint8_t req_llc_sapi;
-	uint8_t req_qos_lv[4];
 	uint8_t data[0];
 } __attribute__((packed));
 

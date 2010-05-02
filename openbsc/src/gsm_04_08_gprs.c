@@ -555,7 +555,7 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 	act_ack = (struct gsm48_act_pdp_ctx_ack *)
 					msgb_put(msg, sizeof(*act_ack));
 	act_ack->llc_sapi = req->req_llc_sapi;
-	memcpy(act_ack->qos_lv, req->req_qos_lv, sizeof(act_ack->qos_lv));
+	memcpy(act_ack->qos_lv, req->data, sizeof(act_ack->qos_lv));
 	//act_ack->radio_prio = 4;
 
 	return gsm48_gmm_sendmsg(msg, 0);
@@ -586,10 +586,51 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
 	uint8_t *pdp_addr_lv = act_req->data;
+	uint8_t req_qos_len, req_pdpa_len;
+	uint8_t *req_qos, *req_pdpa;
+	struct tlv_parsed tp;
 
-	DEBUGP(DMM, "ACTIVATE PDP CONTEXT REQ\n");
+	DEBUGP(DMM, "ACTIVATE PDP CONTEXT REQ: ");
+	req_qos_len = act_req->data[0];
+	req_qos = act_req->data + 1;	/* 10.5.6.5 */
+	req_pdpa_len = act_req->data[1 + req_qos_len];
+	req_pdpa = act_req->data + 1 + req_qos_len + 1;	/* 10.5.6.4 */
 
-	/* FIXME: parse access point name + IPCP config options */
+	switch (req_pdpa[0] & 0xf) {
+	case 0x0:
+		DEBUGPC(DMM, "ETSI ");
+		break;
+	case 0x1:
+		DEBUGPC(DMM, "IETF ");
+		break;
+	case 0xf:
+		DEBUGPC(DMM, "Empty ");
+		break;
+	}
+
+	switch (req_pdpa[1]) {
+	case 0x21:
+		DEBUGPC(DMM, "IPv4 ");
+		if (req_pdpa_len >= 6) {
+			struct in_addr ia;
+			ia.s_addr = ntohl(*((uint32_t *) (req_pdpa+2)));
+			DEBUGPC(DMM, "%s ", inet_ntoa(ia));
+		}
+		break;
+	case 0x57:
+		DEBUGPC(DMM, "IPv6 ");
+		if (req_pdpa_len >= 18) {
+			/* FIXME: print IPv6 address */
+		}
+		break;
+	default:	
+		DEBUGPC(DMM, "0x%02x ", req_pdpa[1]);
+		break;
+	}
+
+	/* FIXME: parse TLV for AP name and protocol config options */
+	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_APN)) {}
+	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_PROTO_CONF_OPT)) {}
 
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
 }
