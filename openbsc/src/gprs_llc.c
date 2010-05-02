@@ -21,6 +21,7 @@
  */
 
 #include <errno.h>
+#include <stdint.h>
 
 #include <osmocore/msgb.h>
 #include <osmocore/linuxlist.h>
@@ -52,12 +53,12 @@ struct gprs_llc_lle {
 
 	enum gprs_llc_ll_state state;
 
-	u_int32_t tlli;
-	u_int32_t sapi;
+	uint32_t tlli;
+	uint32_t sapi;
 
-	u_int8_t v_sent;
-	u_int8_t v_ack;
-	u_int8_t v_recv;
+	uint8_t v_sent;
+	uint8_t v_ack;
+	uint8_t v_recv;
 
 	unsigned int n200;
 	unsigned int retrans_ctr;
@@ -113,15 +114,15 @@ enum gprs_llc_cmd {
 };
 
 struct gprs_llc_hdr_parsed {
-	u_int8_t sapi;
-	u_int8_t is_cmd:1,
+	uint8_t sapi;
+	uint8_t is_cmd:1,
 		 ack_req:1,
 		 is_encrypted:1;
-	u_int32_t seq_rx;
-	u_int32_t seq_tx;
-	u_int32_t fcs;
-	u_int32_t fcs_calc;
-	u_int8_t *data;
+	uint32_t seq_rx;
+	uint32_t seq_tx;
+	uint32_t fcs;
+	uint32_t fcs_calc;
+	uint8_t *data;
 	enum gprs_llc_cmd cmd;
 };
 
@@ -130,9 +131,9 @@ struct gprs_llc_hdr_parsed {
 #define N202		4
 #define CRC24_LENGTH	3
 
-static int gprs_llc_fcs(u_int8_t *data, unsigned int len)
+static int gprs_llc_fcs(uint8_t *data, unsigned int len)
 {
-	u_int32_t fcs_calc;
+	uint32_t fcs_calc;
 
 	fcs_calc = crc24_calc(INIT_CRC24, data, len);
 	fcs_calc = ~fcs_calc;
@@ -192,13 +193,13 @@ static void t201_expired(void *data)
 }
 
 /* Transmit a UI frame over the given SAPI */
-int gprs_llc_tx_ui(struct msgb *msg, u_int8_t sapi, int command)
+int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 {
 	struct gprs_llc_lle *lle;
-	u_int8_t *fcs, *llch;
-	u_int8_t addr, ctrl[2];
-	u_int32_t fcs_calc;
-	u_int16_t nu = 0;
+	uint8_t *fcs, *llch;
+	uint8_t addr, ctrl[2];
+	uint32_t fcs_calc;
+	uint16_t nu = 0;
 
 	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
 
@@ -291,12 +292,12 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 
 /* parse a GPRS LLC header, also check for invalid frames */
 static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
-			      const u_int8_t *llc_hdr, int len)
+			      const uint8_t *llc_hdr, int len)
 {
-	u_int8_t *ctrl = llc_hdr+1;
+	uint8_t *ctrl = llc_hdr+1;
 	int is_sack = 0;
 	unsigned int crc_length;
-	u_int32_t fcs_calc;
+	uint32_t fcs_calc;
 
 	if (len <= CRC24_LENGTH)
 		return -EIO;
@@ -336,7 +337,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 
 	if ((ctrl[0] & 0x80) == 0) {
 		/* I (Information transfer + Supervisory) format */
-		u_int8_t k;
+		uint8_t k;
 
 		ghp->data = ctrl + 3;
 

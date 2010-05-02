@@ -1,6 +1,8 @@
 #ifndef _GPRS_LLC_H
 #define _GPRS_LLC_H
 
+#include <stdint.h>
+
 /* Section 4.7 LLC Layer Structure */
 enum gprs_llc_sapi {
 	GPRS_SAPI_GMM		= 1,
@@ -15,6 +17,6 @@ enum gprs_llc_sapi {
 
 
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
-int gprs_llc_tx_ui(struct msgb *msg, u_int8_t sapi, int command);
+int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command);
 
 #endif

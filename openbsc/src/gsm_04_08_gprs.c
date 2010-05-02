@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <errno.h>
 
 #include <netinet/in.h>
@@ -97,7 +98,7 @@ struct value_string gsm_cause_names[] = {
 	{ 0, NULL }
 };
 
-static const char *att_name(u_int8_t type)
+static const char *att_name(uint8_t type)
 {
 	switch (type) {
 	case GPRS_ATT_T_ATTACH:
@@ -111,7 +112,7 @@ static const char *att_name(u_int8_t type)
 	}
 }
 
-static const char *upd_name(u_int8_t type)
+static const char *upd_name(uint8_t type)
 {
 	switch (type) {
 	case GPRS_UPD_T_RA:
@@ -160,7 +161,7 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 }
 
 /* Chapter 9.4.5: Attach reject */
-static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, u_int8_t gmm_cause)
+static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -179,7 +180,7 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, u_int8_t gmm_cause)
 }
 
 /* Transmit Chapter 9.4.12 Identity Request */
-static int gsm48_tx_gmm_id_req(struct msgb *old_msg, u_int8_t id_type)
+static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -218,7 +219,7 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
+	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
 	struct sgsn_mm_ctx *ctx;
@@ -275,10 +276,10 @@ static void schedule_reject(struct sgsn_mm_ctx *ctx)
 static int gsm48_rx_gmm_att_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	u_int8_t *cur = gh->data, *msnc, *mi, *old_ra_info;
-	u_int8_t msnc_len, att_type, mi_len, mi_type;
-	u_int16_t drx_par;
-	u_int32_t tmsi;
+	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info;
+	uint8_t msnc_len, att_type, mi_len, mi_type;
+	uint16_t drx_par;
+	uint32_t tmsi;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
 	struct sgsn_mm_ctx *ctx;
@@ -398,7 +399,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 }
 
 /* Chapter 9.4.17: Routing area update reject */
-static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, u_int8_t cause)
+static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -423,9 +424,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct sgsn_mm_ctx *mmctx;
-	u_int8_t *cur = gh->data;
+	uint8_t *cur = gh->data;
 	struct gprs_ra_id old_ra_id;
-	u_int8_t upd_type;
+	uint8_t upd_type;
 
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
@@ -524,7 +525,7 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
-	u_int8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
 
 	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
 
@@ -549,7 +550,7 @@ static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
 	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	u_int8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
@@ -568,7 +569,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
-	u_int8_t *pdp_addr_lv = act_req->data;
+	uint8_t *pdp_addr_lv = act_req->data;
 
 	DEBUGP(DMM, "ACTIVATE PDP CONTEXT REQ\n");
 
@@ -633,7 +634,7 @@ static int gsm0408_rcv_gsm(struct msgb *msg)
 int gsm0408_gprs_rcvmsg(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	u_int8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gh->proto_discr & 0x0f;
 	int rc = -EINVAL;
 
 	switch (pdisc) {
@@ -654,7 +655,7 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 
 /* Determine the 'struct gsm_bts' from a RA ID */
 struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
-				   const u_int8_t *buf, unsigned int len)
+				   const uint8_t *buf, unsigned int len)
 {
 	struct gprs_ra_id raid;
 	struct gsm_bts *bts;

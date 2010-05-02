@@ -20,7 +20,7 @@
  *
  */
 
-#include <sys/types.h>
+#include <stdint.h>
 
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
@@ -41,7 +41,7 @@ static int ra_id_equals(const struct gprs_ra_id *id1,
 }
 
 /* look-up a SGSN MM context based on TLLI + RAI */
-struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(u_int32_t tlli,
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
 	struct sgsn_mm_ctx *ctx;
@@ -54,7 +54,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(u_int32_t tlli,
 	return NULL;
 }
 
-struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(u_int32_t p_tmsi)
+struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t p_tmsi)
 {
 	struct sgsn_mm_ctx *ctx;
 
@@ -78,7 +78,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi)
 }
 
 /* Allocate a new SGSN MM context */
-struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(u_int32_t tlli,
+struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
 	struct sgsn_mm_ctx *ctx = talloc_zero(NULL, struct sgsn_mm_ctx);

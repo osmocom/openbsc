@@ -1,6 +1,8 @@
 #ifndef _GSM48_GPRS_H
 #define _GSM48_GPRS_H
 
+#include <stdint.h>
+
 /* Table 10.4 / 10.4a, GPRS Mobility Management (GMM) */
 #define GSM48_MT_GMM_ATTACH_REQ		0x01
 #define GSM48_MT_GMM_ATTACH_ACK		0x02
@@ -74,11 +76,11 @@ enum gsm48_gprs_ie_sm {
 
 /* Chapter 9.4.15 / Table 9.4.15 */
 struct gsm48_ra_upd_ack {
-	u_int8_t force_stby:4,	/* 10.5.5.7 */
+	uint8_t force_stby:4,	/* 10.5.5.7 */
 		 upd_result:4;	/* 10.5.5.17 */
-	u_int8_t ra_upd_timer;	/* 10.5.7.3 */
+	uint8_t ra_upd_timer;	/* 10.5.7.3 */
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
-	u_int8_t data[0];
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 10.5.7.3 */
@@ -91,29 +93,29 @@ enum gsm48_gprs_tmr_unit {
 
 /* Chapter 9.4.2 / Table 9.4.2 */
 struct gsm48_attach_ack {
-	u_int8_t att_result:4,	/* 10.5.5.7 */
+	uint8_t att_result:4,	/* 10.5.5.7 */
 		 force_stby:4;	/* 10.5.5.1 */
-	u_int8_t ra_upd_timer;	/* 10.5.7.3 */
-	u_int8_t radio_prio;	/* 10.5.7.2 */
+	uint8_t ra_upd_timer;	/* 10.5.7.3 */
+	uint8_t radio_prio;	/* 10.5.7.2 */
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
-	u_int8_t data[0];
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 9.5.1 / Table 9.5.1 */
 struct gsm48_act_pdp_ctx_req {
-	u_int8_t req_nsapi;
-	u_int8_t req_llc_sapi;
-	u_int8_t req_qos_lv[4];
-	u_int8_t data[0];
+	uint8_t req_nsapi;
+	uint8_t req_llc_sapi;
+	uint8_t req_qos_lv[4];
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 9.5.2 / Table 9.5.2 */
 struct gsm48_act_pdp_ctx_ack {
-	u_int8_t llc_sapi;
-	u_int8_t qos_lv[4];
-	u_int8_t radio_prio:4,
+	uint8_t llc_sapi;
+	uint8_t qos_lv[4];
+	uint8_t radio_prio:4,
 		 spare:4;
-	u_int8_t data[0];
+	uint8_t data[0];
 } __attribute__((packed));
 
 /* Chapter 10.5.5.14 / Table 10.5.147 */
@@ -179,9 +181,9 @@ enum gsm48_pdp_state {
 	PDP_S_MODIFY_PENDING,
 };
 
-int gprs_tlli_type(u_int32_t tlli);
+int gprs_tlli_type(uint32_t tlli);
 
 struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
-				   const u_int8_t *buf, unsigned int len);
+				   const uint8_t *buf, unsigned int len);
 
 #endif /* _GSM48_GPRS_H */
