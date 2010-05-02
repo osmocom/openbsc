@@ -89,6 +89,8 @@ static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	return rc;
 }
 
+/* NSI that BSSGP uses when transmitting on NS */
+extern struct gprs_ns_inst *bssgp_nsi;
 
 int main(int argc, char **argv)
 {
@@ -116,7 +118,7 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
-	sgcfg.nsi = sgsn_nsi;
+	bssgp_nsi = sgcfg.nsi = sgsn_nsi;
 	nsip_listen(sgsn_nsi, sgcfg.nsip_listen_port);
 
 	while (1) {
