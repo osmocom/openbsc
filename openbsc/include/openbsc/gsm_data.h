@@ -81,7 +81,8 @@ enum bts_gprs_mode {
 
 /* the data structure stored in msgb->cb for openbsc apps */
 struct openbsc_msgb_cb {
-	unsigned char *gmmh;
+	unsigned char *bssgph;
+	unsigned char *llch;
 
 	u_int16_t nsei;
 	u_int16_t bvci;
@@ -90,10 +91,11 @@ struct openbsc_msgb_cb {
 } __attribute__((packed));
 #define OBSC_MSGB_CB(__msgb)	((struct openbsc_msgb_cb *)&((__msgb)->cb[0]))
 #define msgb_tlli(__x)		OBSC_MSGB_CB(__x)->tlli
-#define msgb_gmmh(__x)		OBSC_MSGB_CB(__x)->gmmh
 #define msgb_nsei(__x)		OBSC_MSGB_CB(__x)->nsei
 #define msgb_bvci(__x)		OBSC_MSGB_CB(__x)->bvci
-#define msgb_llch(__x)		(__x)->l4h
+#define msgb_gmmh(__x)		(__x)->l3h
+#define msgb_bssgph(__x)	OBSC_MSGB_CB(__x)->bssgph
+#define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
 
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,
