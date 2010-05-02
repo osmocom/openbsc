@@ -108,15 +108,6 @@ struct gsm48_act_pdp_ctx_req {
 	uint8_t data[0];
 } __attribute__((packed));
 
-/* Chapter 9.5.2 / Table 9.5.2 */
-struct gsm48_act_pdp_ctx_ack {
-	uint8_t llc_sapi;
-	uint8_t qos_lv[4];
-	uint8_t radio_prio:4,
-		 spare:4;
-	uint8_t data[0];
-} __attribute__((packed));
-
 /* Chapter 10.5.5.14 / Table 10.5.147 */
 enum gsm48_gmm_cause {
 	GMM_CAUSE_IMSI_UNKNOWN		= 0x02,
@@ -178,6 +169,18 @@ enum gsm48_pdp_state {
 	PDP_S_ACTIVE,
 	PDP_S_INACTIVE_PENDING,
 	PDP_S_MODIFY_PENDING,
+};
+
+/* Table 10.5.155/3GPP TS 24.008 */
+enum gsm48_pdp_type_org {
+	PDP_TYPE_ORG_ETSI		= 0x00,
+	PDP_TYPE_ORG_IETF		= 0x01,
+};
+enum gsm48_pdp_type_nr {
+	PDP_TYPE_N_ETSI_RESERVED	= 0x00,
+	PDP_TYPE_N_ETSI_PPP		= 0x01,
+	PDP_TYPE_N_IETF_IPv4		= 0x21,
+	PDP_TYPE_N_IETF_IPv6		= 0x57,
 };
 
 int gprs_tlli_type(uint32_t tlli);

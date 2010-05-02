@@ -28,6 +28,7 @@
 #include <errno.h>
 
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <openbsc/db.h>
 #include <osmocore/msgb.h>
@@ -536,6 +537,27 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	return rc;
 }
 
+static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
+{
+	uint8_t v[6];
+
+	v[0] = PDP_TYPE_ORG_IETF;
+	v[1] = PDP_TYPE_N_IETF_IPv4;
+	*(uint32_t *)(v+2) = htonl(ipaddr);
+
+	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR, sizeof(v), v);
+}
+
+static void msgb_put_pdp_addr_ppp(struct msgb *msg)
+{
+	uint8_t v[2];
+
+	v[0] = PDP_TYPE_ORG_ETSI;
+	v[1] = PDP_TYPE_N_ETSI_PPP;
+
+	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR, sizeof(v), v);
+}
+
 /* Section 9.5.2: Ativate PDP Context Accept */
 static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_ctx_req *req)
 {
@@ -552,11 +574,17 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_ACT_PDP_ACK;
-	act_ack = (struct gsm48_act_pdp_ctx_ack *)
-					msgb_put(msg, sizeof(*act_ack));
-	act_ack->llc_sapi = req->req_llc_sapi;
-	memcpy(act_ack->qos_lv, req->data, sizeof(act_ack->qos_lv));
-	//act_ack->radio_prio = 4;
+
+	/* Negotiated LLC SAPI */
+	msgb_v_put(msg, req->req_llc_sapi);
+	/* copy QoS parameters from original request */
+	msgb_lv_put(msg, req->data[0], req->data+1);
+	/* Radio priority 10.5.7.2 */
+	msgb_v_put(msg, 4);
+	/* PDP address */
+	msgb_put_pdp_addr_ipv4(msg, 0x01020304);
+	/* Optional: Protocol configuration options */
+	/* Optional: Packet Flow Identifier */
 
 	return gsm48_gmm_sendmsg(msg, 0);
 }
