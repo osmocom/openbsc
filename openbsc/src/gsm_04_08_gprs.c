@@ -166,7 +166,7 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	aa->att_result = 1;	/* GPRS only */
 	aa->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 	aa->radio_prio = 4;	/* lowest */
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(old_msg));
 	gsm48_construct_ra(aa->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
@@ -408,7 +408,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	rua->upd_result = 0;	/* RA updated */
 	rua->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(old_msg));
 	gsm48_construct_ra(rua->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
