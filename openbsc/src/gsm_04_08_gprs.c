@@ -1,7 +1,7 @@
 /* GSM Mobile Radio Interface Layer 3 messages on the A-bis interface
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -292,6 +292,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	uint32_t tmsi;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
+	uint16_t cid;
 	struct sgsn_mm_ctx *ctx;
 
 	DEBUGP(DMM, "GMM ATTACH REQUEST ");
@@ -300,7 +301,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
 
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	cid = bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
@@ -367,8 +368,11 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 		}
 		break;
 	default:
-		break;
+		return 0;
 	}
+	/* Update MM Context with currient RA and Cell ID */
+	ctx->ra = ra_id;
+	ctx->cell_id = cid;
 
 	/* FIXME: allocate a new P-TMSI (+ P-TMSI signature) */
 	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
@@ -472,8 +476,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_IMPL_DETACHED);
 	}
 
-	/* FIXME: Update the MM context with the new RA-ID */
-	/* FIXME: Update the MM context with the new TLLI */
+	/* Update the MM context with the new RA-ID */
+	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
+	/* Update the MM context with the new TLLI */
+	mmctx->tlli = msgb_tlli(msg);
 	/* FIXME: Update the MM context with the MS radio acc capabilities */
 	/* FIXME: Update the MM context with the MS network capabilities */
 
