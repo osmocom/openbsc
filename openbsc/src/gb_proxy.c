@@ -155,7 +155,7 @@ static int bssgp_tx_simple_bvci(uint8_t pdu_type, uint16_t nsei,
 static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 {
 	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN (NS_BVCI=%u, NSEI=%u)\n",
-		ns_bvci, gbcfg.nsip_sgsn_nsei);
+		msgb_nsei(msg), ns_bvci, gbcfg.nsip_sgsn_nsei);
 
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = gbcfg.nsip_sgsn_nsei;
@@ -170,7 +170,7 @@ static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
 	DEBUGP(DGPRS, "NSEI=%u proxying to to BSS (NS_BVCI=%u, NSEI=%u)\n",
-		ns_bvci, peer->nsvc->nsei);
+		msgb_nsei(msg), ns_bvci, peer->nsvc->nsei);
 
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = peer->nsvc->nsei;
