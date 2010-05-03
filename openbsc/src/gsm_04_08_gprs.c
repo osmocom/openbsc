@@ -146,6 +146,29 @@ static void gmm_copy_id(struct msgb *msg, const struct msgb *old)
 	msgb_nsei(msg) = msgb_nsei(old);
 }
 
+static struct gsm48_qos default_qos = {
+	.delay_class = 4,	/* best effort */
+	.reliab_class = GSM48_QOS_RC_LLC_UN_RLC_ACK_DATA_PROT,
+	.peak_tput = GSM48_QOS_PEAK_TPUT_32000bps,
+	.preced_class = GSM48_QOS_PC_NORMAL,
+	.mean_tput = GSM48_QOS_MEAN_TPUT_BEST_EFFORT,
+	.traf_class = GSM48_QOS_TC_INTERACTIVE,
+	.deliv_order = GSM48_QOS_DO_UNORDERED,
+	.deliv_err_sdu = GSM48_QOS_ERRSDU_YES,
+	.max_sdu_size = GSM48_QOS_MAXSDU_1520,
+	.max_bitrate_up = GSM48_QOS_MBRATE_63k,
+	.max_bitrate_down = GSM48_QOS_MBRATE_63k,
+	.resid_ber = GSM48_QOS_RBER_5e_2,
+	.sdu_err_ratio = GSM48_QOS_SERR_1e_2,
+	.handling_prio = 3,
+	.xfer_delay = 0x10,	/* 200ms */
+	.guar_bitrate_up = GSM48_QOS_MBRATE_0k,
+	.guar_bitrate_down = GSM48_QOS_MBRATE_0k,
+	.sig_ind = 0,	/* not optimised for signalling */
+	.max_bitrate_down_ext = 0,	/* use octet 9 */
+	.guar_bitrate_down_ext = 0,	/* use octet 13 */
+};
+
 /* Chapter 9.4.2: Attach accept */
 static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 {
@@ -578,7 +601,7 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 	/* Negotiated LLC SAPI */
 	msgb_v_put(msg, req->req_llc_sapi);
 	/* copy QoS parameters from original request */
-	msgb_lv_put(msg, req->data[0], req->data+1);
+	msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
 	/* Radio priority 10.5.7.2 */
 	msgb_v_put(msg, 4);
 	/* PDP address */

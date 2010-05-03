@@ -183,6 +183,165 @@ enum gsm48_pdp_type_nr {
 	PDP_TYPE_N_IETF_IPv6		= 0x57,
 };
 
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_reliab_class {
+	GSM48_QOS_RC_LLC_ACK_RLC_ACK_DATA_PROT	= 2,
+	GSM48_QOS_RC_LLC_UN_RLC_ACK_DATA_PROT	= 3,
+	GSM48_QOS_RC_LLC_UN_RLC_UN_PROT_DATA	= 4,
+	GSM48_QOS_RC_LLC_UN_RLC_UN_DATA_UN	= 5,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_preced_class {
+	GSM48_QOS_PC_HIGH	= 1,
+	GSM48_QOS_PC_NORMAL	= 2,
+	GSM48_QOS_PC_LOW	= 3,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_peak_tput {
+	GSM48_QOS_PEAK_TPUT_1000bps	= 1,
+	GSM48_QOS_PEAK_TPUT_2000bps	= 2,
+	GSM48_QOS_PEAK_TPUT_4000bps	= 3,
+	GSM48_QOS_PEAK_TPUT_8000bps	= 4,
+	GSM48_QOS_PEAK_TPUT_16000bps	= 5,
+	GSM48_QOS_PEAK_TPUT_32000bps	= 6,
+	GSM48_QOS_PEAK_TPUT_64000bps	= 7,
+	GSM48_QOS_PEAK_TPUT_128000bps	= 8,
+	GSM48_QOS_PEAK_TPUT_256000bps	= 9,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_mean_tput {
+	GSM48_QOS_MEAN_TPUT_100bph	= 1,
+	GSM48_QOS_MEAN_TPUT_200bph	= 2,
+	GSM48_QOS_MEAN_TPUT_500bph	= 3,
+	GSM48_QOS_MEAN_TPUT_1000bph	= 4,
+	GSM48_QOS_MEAN_TPUT_2000bph	= 5,
+	GSM48_QOS_MEAN_TPUT_5000bph	= 6,
+	GSM48_QOS_MEAN_TPUT_10000bph	= 7,
+	GSM48_QOS_MEAN_TPUT_20000bph	= 8,
+	GSM48_QOS_MEAN_TPUT_50000bph	= 9,
+	GSM48_QOS_MEAN_TPUT_100kbph	= 10,
+	GSM48_QOS_MEAN_TPUT_200kbph	= 11,
+	GSM48_QOS_MEAN_TPUT_500kbph	= 0xc,
+	GSM48_QOS_MEAN_TPUT_1Mbph	= 0xd,
+	GSM48_QOS_MEAN_TPUT_2Mbph	= 0xe,
+	GSM48_QOS_MEAN_TPUT_5Mbph	= 0xf,
+	GSM48_QOS_MEAN_TPUT_10Mbph	= 0x10,
+	GSM48_QOS_MEAN_TPUT_20Mbph	= 0x11,
+	GSM48_QOS_MEAN_TPUT_50Mbph	= 0x12,
+	GSM48_QOS_MEAN_TPUT_BEST_EFFORT	= 0x1f,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_err_sdu {
+	GSM48_QOS_ERRSDU_NODETECT	= 1,
+	GSM48_QOS_ERRSDU_YES		= 2,
+	GSM48_QOS_ERRSDU_NO		= 3,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_deliv_order {
+	GSM48_QOS_DO_ORDERED		= 1,
+	GSM48_QOS_DO_UNORDERED		= 2,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_traf_class {
+	GSM48_QOS_TC_CONVERSATIONAL	= 1,
+	GSM48_QOS_TC_STREAMING		= 2,
+	GSM48_QOS_TC_INTERACTIVE	= 3,
+	GSM48_QOS_TC_BACKGROUND		= 4,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_max_sdu_size {
+	/* values below in 10 octet granularity */
+	GSM48_QOS_MAXSDU_1502		= 0x97,
+	GSM48_QOS_MAXSDU_1510		= 0x98,
+	GSM48_QOS_MAXSDU_1520		= 0x99,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_max_bitrate {
+	GSM48_QOS_MBRATE_1k		= 0x01,
+	GSM48_QOS_MBRATE_63k		= 0x3f,
+	GSM48_QOS_MBRATE_64k		= 0x40,
+	GSM48_QOS_MBRATE_568k		= 0x7f,
+	GSM48_QOS_MBRATE_576k		= 0x80,
+	GSM48_QOS_MBRATE_8640k		= 0xfe,
+	GSM48_QOS_MBRATE_0k		= 0xff,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_resid_ber {
+	GSM48_QOS_RBER_5e_2		= 0x01,
+	GSM48_QOS_RBER_1e_2		= 0x02,
+	GSM48_QOS_RBER_5e_3		= 0x03,
+	GSM48_QOS_RBER_4e_3		= 0x04,
+	GSM48_QOS_RBER_1e_3		= 0x05,
+	GSM48_QOS_RBER_1e_4		= 0x06,
+	GSM48_QOS_RBER_1e_5		= 0x07,
+	GSM48_QOS_RBER_1e_6		= 0x08,
+	GSM48_QOS_RBER_6e_8		= 0x09,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+enum gsm48_qos_sdu_err {
+	GSM48_QOS_SERR_1e_2		= 0x01,
+	GSM48_QOS_SERR_7e_2		= 0x02,
+	GSM48_QOS_SERR_1e_3		= 0x03,
+	GSM48_QOS_SERR_1e_4		= 0x04,
+	GSM48_QOS_SERR_1e_5		= 0x05,
+	GSM48_QOS_SERR_1e_6		= 0x06,
+	GSM48_QOS_SERR_1e_1		= 0x07,
+};
+
+/* Figure 10.5.138/24.008 / Chapter 10.5.6.5 */
+struct gsm48_qos {
+	/* octet 3 */
+	uint8_t reliab_class:3;
+	uint8_t delay_class:3;
+	uint8_t spare:2;
+	/* octet 4 */
+	uint8_t preced_class:3;
+	uint8_t spare2:1;
+	uint8_t peak_tput:4;
+	/* octet 5 */
+	uint8_t mean_tput:5;
+	uint8_t spare3:3;
+	/* octet 6 */
+	uint8_t deliv_err_sdu:3;
+	uint8_t deliv_order:2;
+	uint8_t traf_class:3;
+	/* octet 7 */
+	uint8_t max_sdu_size;
+	/* octet 8 */
+	uint8_t max_bitrate_up;
+	/* octet 9 */
+	uint8_t max_bitrate_down;
+	/* octet 10 */
+	uint8_t sdu_err_ratio:4;
+	uint8_t resid_ber:4;
+	/* octet 11 */
+	uint8_t handling_prio:2;
+	uint8_t xfer_delay:6;
+	/* octet 12 */
+	uint8_t guar_bitrate_up;
+	/* octet 13 */
+	uint8_t guar_bitrate_down;
+	/* octet 14 */
+	uint8_t src_stats_desc:4;
+	uint8_t sig_ind:1;
+	uint8_t spare5:3;
+	/* octet 15 */
+	uint8_t max_bitrate_down_ext;
+	/* octet 16 */
+	uint8_t guar_bitrate_down_ext;
+};
+
+
 int gprs_tlli_type(uint32_t tlli);
 
 struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
