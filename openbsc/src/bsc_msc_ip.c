@@ -99,6 +99,7 @@ struct bss_sccp_connection_data *bss_sccp_create_data()
 void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
 	bsc_del_timer(&data->T10);
+	bsc_del_timer(&data->sccp_cc_timeout);
 	bsc_del_timer(&data->sccp_it);
 	if (data->sccp)
 		bsc_free_queued(data->sccp);
