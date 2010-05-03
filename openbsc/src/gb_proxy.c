@@ -120,8 +120,15 @@ static void peer_free(struct gbprox_peer *peer)
 	talloc_free(peer);
 }
 
+/* strip off the NS header */
+static void strip_ns_hdr(struct msgb *msg)
+{
+	int strip_len = msgb_bssgph(msg) - msg->data;
+	msgb_pull(msg, strip_len);
+}
+
 /* feed a message down the NS-VC associated with the specified peer */
-static int gbprox_tx2sgsn(struct msgb *msg, uint16_t ns_bvci)
+static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 {
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = gbcfg.nsip_sgsn_nsei;
@@ -129,12 +136,13 @@ static int gbprox_tx2sgsn(struct msgb *msg, uint16_t ns_bvci)
 	DEBUGP(DGPRS, "proxying message to SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		ns_bvci, gbcfg.nsip_sgsn_nsei);
 
+	strip_ns_hdr(msg);
+
 	return gprs_ns_sendmsg(gbprox_nsi, msg);
 }
 
-
 /* feed a message down the NS-VC associated with the specified peer */
-static int gbprox_tx2peer(struct msgb *msg, struct gbprox_peer *peer,
+static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
 	msgb_bvci(msg) = ns_bvci;
@@ -143,12 +151,14 @@ static int gbprox_tx2peer(struct msgb *msg, struct gbprox_peer *peer,
 	DEBUGP(DGPRS, "proxying message to BSS (NS_BVCI=%u, NSEI=%u)\n",
 		ns_bvci, peer->nsvc->nsei);
 
+	strip_ns_hdr(msg);
+
 	return gprs_ns_sendmsg(gbprox_nsi, msg);
 }
 
 /* Send a message to a peer identified by ptp_bvci but using ns_bvci
  * in the NS hdr */
-static int gbprox_tx2bvci(struct msgb *msg, uint16_t ptp_bvci,
+static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 			  uint16_t ns_bvci)
 {
 	struct gbprox_peer *peer;
@@ -157,7 +167,7 @@ static int gbprox_tx2bvci(struct msgb *msg, uint16_t ptp_bvci,
 	if (!peer)
 		return -ENOENT;
 
-	return gbprox_tx2peer(msg, peer, ns_bvci);
+	return gbprox_relay2peer(msg, peer, ns_bvci);
 }
 
 /* Receive an incoming signalling message from a BSS-side NS-VC */
@@ -210,7 +220,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	}
 
 	/* Normally, we can simply pass on all signalling messages from BSS to SGSN */
-	return gbprox_tx2sgsn(msg, ns_bvci);
+	return gbprox_relay2sgsn(msg, ns_bvci);
 err_no_peer:
 err_mand_ie:
 	/* FIXME: do something */
@@ -225,13 +235,13 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 
 	if (TLVP_PRESENT(tp, BSSGP_IE_BVCI)) {
 		uint16_t bvci = ntohs(*(uint16_t *)TLVP_VAL(tp, BSSGP_IE_BVCI));
-		return gbprox_tx2bvci(msg, bvci, ns_bvci);
+		return gbprox_relay2bvci(msg, bvci, ns_bvci);
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA)) {
 		peer = peer_by_rac(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
-		return gbprox_tx2peer(msg, peer, ns_bvci);
+		return gbprox_relay2peer(msg, peer, ns_bvci);
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_LOCATION_AREA)) {
 		peer = peer_by_lac(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
-		return gbprox_tx2peer(msg, peer, ns_bvci);
+		return gbprox_relay2peer(msg, peer, ns_bvci);
 	} else
 		return -EINVAL;
 }
@@ -273,7 +283,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
 			goto err_mand_ie;
 		bvci = ntohs(*(uint16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
-		rc = gbprox_tx2bvci(msg, bvci, ns_bvci);
+		rc = gbprox_relay2bvci(msg, bvci, ns_bvci);
 		break;
 	case BSSGP_PDUT_PAGING_PS:
 	case BSSGP_PDUT_PAGING_CS:
@@ -295,7 +305,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		peer = peer_by_rac(TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA));
 		if (!peer)
 			goto err_no_peer;
-		rc = gbprox_tx2peer(msg, peer, ns_bvci);
+		rc = gbprox_relay2peer(msg, peer, ns_bvci);
 		break;
 	case BSSGP_PDUT_SGSN_INVOKE_TRACE:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN INVOKE TRACE not supported\n");
@@ -327,7 +337,7 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 	} else {
 		/* All other BVCI are PTP and thus can be simply forwarded */
 		if (nsvc->remote_end_is_sgsn) {
-			rc = gbprox_tx2sgsn(msg, ns_bvci);
+			rc = gbprox_relay2sgsn(msg, ns_bvci);
 		} else {
 			struct gbprox_peer *peer = peer_by_bvci(ns_bvci);
 			if (!peer) {
@@ -337,7 +347,7 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 				peer = peer_alloc(ns_bvci);
 				peer->nsvc = nsvc;
 			}
-			rc = gbprox_tx2peer(msg, peer, ns_bvci);
+			rc = gbprox_relay2peer(msg, peer, ns_bvci);
 		}
 	}
 
