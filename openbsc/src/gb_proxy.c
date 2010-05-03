@@ -151,10 +151,10 @@ static int gbprox_tx2bvci(struct msgb *msg, uint16_t ptp_bvci,
 static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 				  uint16_t ns_bvci)
 {
-	struct bssgp_normal_hdr *bgph = (struct bssgp_normal_hdr *) msg->l3h;
+	struct bssgp_normal_hdr *bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
 	struct tlv_parsed tp;
 	uint8_t pdu_type = bgph->pdu_type;
-	int data_len = msgb_l3len(msg) - sizeof(*bgph);
+	int data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
 	struct gbprox_peer *from_peer;
 	struct gprs_ra_id raid;
 
@@ -227,10 +227,10 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 				   uint16_t ns_bvci)
 {
-	struct bssgp_normal_hdr *bgph = (struct bssgp_normal_hdr *) msg->l3h;
+	struct bssgp_normal_hdr *bgph = (struct bssgp_normal_hdr *) msgb_bssgph(msg);
 	struct tlv_parsed tp;
 	uint8_t pdu_type = bgph->pdu_type;
-	int data_len = msgb_l3len(msg) - sizeof(*bgph);
+	int data_len = msgb_bssgp_len(msg) - sizeof(*bgph);
 	struct gbprox_peer *peer;
 	uint16_t bvci;
 	int rc = 0;
