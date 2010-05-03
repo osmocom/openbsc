@@ -60,12 +60,16 @@ static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = NULL;
-static struct bsc_msc_connection *msc_con;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
 static struct write_queue mgcp_agent;
 static const char *rf_ctl = NULL;
 extern int ipacc_rtp_direct;
+
+/* msc handling */
+static struct bsc_msc_connection *msc_con;
+static struct timer_list msc_ping_timeout;
+static struct timer_list msc_pong_timeout;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
@@ -867,8 +871,49 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 		bss_force_close(bss);
 	}
 
+	bsc_del_timer(&msc_ping_timeout);
+	bsc_del_timer(&msc_pong_timeout);
+
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
+}
+
+static void msc_pong_timeout_cb(void *data)
+{
+	LOGP(DMSC, LOGL_ERROR, "MSC didn't answer PING. Closing connection.\n");
+	bsc_msc_lost(msc_con);
+}
+
+static void send_ping(void)
+{
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "ping");
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to create PING.\n");
+		return;
+	}
+
+	msg->l2h = msgb_put(msg, 1);
+	msg->l2h[0] = IPAC_MSGT_PING;
+
+	msc_queue_write(msg, IPAC_PROTO_IPACCESS);
+}
+
+static void msc_ping_timeout_cb(void *data)
+{
+	send_ping();
+
+	/* send another ping in 20 seconds */
+	bsc_schedule_timer(&msc_ping_timeout, 20, 0);
+
+	/* also start a pong timer */
+	bsc_schedule_timer(&msc_pong_timeout, 5, 0);
+}
+
+static void msc_connection_connected(struct bsc_msc_connection *con)
+{
+	msc_ping_timeout_cb(con);
 }
 
 /*
@@ -903,6 +948,8 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 			initialize_if_needed();
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(bfd->fd);
+		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
+			bsc_del_timer(&msc_pong_timeout);
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
@@ -1131,7 +1178,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	msc_ping_timeout.cb = msc_ping_timeout_cb;
+	msc_pong_timeout.cb = msc_pong_timeout_cb;
+
 	msc_con->connection_loss = msc_connection_was_lost;
+	msc_con->connected = msc_connection_connected;
 	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
 	msc_con->write_queue.write_cb = msc_sccp_do_write;
 	bsc_msc_connect(msc_con);
