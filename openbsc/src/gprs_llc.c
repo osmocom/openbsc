@@ -123,6 +123,7 @@ struct gprs_llc_hdr_parsed {
 	uint32_t fcs;
 	uint32_t fcs_calc;
 	uint8_t *data;
+	uint16_t data_len;
 	enum gprs_llc_cmd cmd;
 };
 
@@ -291,8 +292,6 @@ static int gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 			   struct gprs_llc_lle *lle)
 {
-	struct msgb *resp;
-
 	switch (gph->cmd) {
 	case GPRS_LLC_SABM: /* Section 6.4.1.1 */
 		lle->v_sent = lle->v_ack = lle->v_recv = 0;
@@ -320,9 +319,15 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 	case GPRS_LLC_FRMR: /* Section 6.4.1.5 */
 		break;
 	case GPRS_LLC_XID: /* Section 6.4.1.6 */
-		/* FIXME: implement XID negotiation */
-		resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
-		gprs_llc_tx_xid(lle, resp);
+		/* FIXME: implement XID negotiation using SNDCP */
+		{
+			struct msgb *resp;
+			uint8_t *xid;
+			resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+			xid = msgb_put(resp, gph->data_len);
+			memcpy(xid, gph->data, gph->data_len);
+			gprs_llc_tx_xid(lle, resp);
+		}
 		break;
 	}
 
@@ -405,9 +410,11 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 			ghp->data += 1 + k;
 			break;
 		}
+		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
 	} else if ((ctrl[0] & 0xc0) == 0x80) {
 		/* S (Supervisory) format */
 		ghp->data = NULL;
+		ghp->data_len = 0;
 
 		if (ctrl[0] & 0x20)
 			ghp->ack_req = 1;
@@ -431,6 +438,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	} else if ((ctrl[0] & 0xe0) == 0xc0) {
 		/* UI (Unconfirmed Inforamtion) format */
 		ghp->data = ctrl + 2;
+		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
 
 		ghp->seq_tx  = (ctrl[0] & 0x7) << 6;
 		ghp->seq_tx |= (ctrl[1] >> 2);
@@ -448,28 +456,31 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	} else {
 		/* U (Unnumbered) format: 1 1 1 P/F M4 M3 M2 M1 */
 		ghp->data = NULL;
+		ghp->data_len = 0;
 
 		switch (ctrl[0] & 0xf) {
-		case 0:
+		case GPRS_LLC_U_NULL_CMD:
 			ghp->cmd = GPRS_LLC_NULL;
 			break;
-		case 0x1:
+		case GPRS_LLC_U_DM_RESP:
 			ghp->cmd = GPRS_LLC_DM;
 			break;
-		case 0x4:
+		case GPRS_LLC_U_DISC_CMD:
 			ghp->cmd = GPRS_LLC_DISC;
 			break;
-		case 0x6:
+		case GPRS_LLC_U_UA_RESP:
 			ghp->cmd = GPRS_LLC_UA;
 			break;
-		case 0x7:
+		case GPRS_LLC_U_SABM_CMD:
 			ghp->cmd = GPRS_LLC_SABM;
 			break;
-		case 0x8:
+		case GPRS_LLC_U_FRMR_RESP:
 			ghp->cmd = GPRS_LLC_FRMR;
 			break;
-		case 0xb:
+		case GPRS_LLC_U_XID:
 			ghp->cmd = GPRS_LLC_XID;
+			ghp->data = ctrl + 1;
+			ghp->data_len = (llc_hdr + len - 3) - ghp->data;
 			break;
 		default:
 			return -EIO;
