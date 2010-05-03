@@ -22,6 +22,7 @@ struct gbproxy_config {
 	struct gprs_ns_inst *nsi;
 };
 
+extern struct gbproxy_config gbcfg;
 
 /* gb_proxy_vty .c */
 

@@ -37,6 +37,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
+#include <openbsc/gb_proxy.h>
 
 struct gbprox_peer {
 	struct llist_head list;
@@ -54,10 +55,6 @@ struct gbprox_peer {
 /* Linked list of all Gb peers (except SGSN) */
 static LLIST_HEAD(gbprox_bts_peers);
 
-/* Pointer to the SGSN peer */
-struct gbprox_peer *gbprox_peer_sgsn;
-
-/* The NS protocol stack instance we're using */
 extern struct gprs_ns_inst *gbprox_nsi;
 
 /* Find the gbprox_peer by its BVCI */
@@ -124,11 +121,27 @@ static void peer_free(struct gbprox_peer *peer)
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
+static int gbprox_tx2sgsn(struct msgb *msg, uint16_t ns_bvci)
+{
+	msgb_bvci(msg) = ns_bvci;
+	msgb_nsei(msg) = gbcfg.nsip_sgsn_nsei;
+
+	DEBUGP(DGPRS, "proxying message to SGSN (NS_BVCI=%u, NSEI=%u)\n",
+		ns_bvci, gbcfg.nsip_sgsn_nsei);
+
+	return gprs_ns_sendmsg(gbprox_nsi, msg);
+}
+
+
+/* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_tx2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = peer->nsvc->nsei;
+
+	DEBUGP(DGPRS, "proxying message to BSS (NS_BVCI=%u, NSEI=%u)\n",
+		ns_bvci, peer->nsvc->nsei);
 
 	return gprs_ns_sendmsg(gbprox_nsi, msg);
 }
@@ -197,7 +210,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	}
 
 	/* Normally, we can simply pass on all signalling messages from BSS to SGSN */
-	return gbprox_tx2peer(msg, gbprox_peer_sgsn, ns_bvci);
+	return gbprox_tx2sgsn(msg, ns_bvci);
 err_no_peer:
 err_mand_ie:
 	/* FIXME: do something */
@@ -303,33 +316,30 @@ err_no_peer:
 /* Main input function for Gb proxy */
 int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 {
-	struct gbprox_peer *peer;
+	int rc;
 
 	/* Only BVCI=0 messages need special treatment */
 	if (ns_bvci == 0 || ns_bvci == 1) {
 		if (nsvc->remote_end_is_sgsn)
-			return gbprox_rx_sig_from_sgsn(msg, nsvc, ns_bvci);
+			rc = gbprox_rx_sig_from_sgsn(msg, nsvc, ns_bvci);
 		else
-			return gbprox_rx_sig_from_bss(msg, nsvc, ns_bvci);
-	}
-
-	/* All other BVCI are PTP and thus can be simply forwarded */
-	peer = peer_by_bvci(ns_bvci);
-	if (!peer) {
-		if (!nsvc->remote_end_is_sgsn) {
-			LOGP(DGPRS, LOGL_NOTICE, "Allocationg new peer for "
-			     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
-			     nsvc->nsvci, nsvc->nsei);
-			peer = peer_alloc(ns_bvci);
-			peer->nsvc = nsvc;
+			rc = gbprox_rx_sig_from_bss(msg, nsvc, ns_bvci);
+	} else {
+		/* All other BVCI are PTP and thus can be simply forwarded */
+		if (nsvc->remote_end_is_sgsn) {
+			rc = gbprox_tx2sgsn(msg, ns_bvci);
 		} else {
-			LOGP(DGPRS, LOGL_ERROR, "Couldn't find peer for "
-			     "BVCI %u\n", ns_bvci);
-			/* FIXME: do we really have to free the message here? */
-			msgb_free(msg);
-			return -EIO;
+			struct gbprox_peer *peer = peer_by_bvci(ns_bvci);
+			if (!peer) {
+				LOGP(DGPRS, LOGL_NOTICE, "Allocationg new peer for "
+				     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
+				     nsvc->nsvci, nsvc->nsei);
+				peer = peer_alloc(ns_bvci);
+				peer->nsvc = nsvc;
+			}
+			rc = gbprox_tx2peer(msg, peer, ns_bvci);
 		}
 	}
 
-	return gbprox_tx2peer(msg, peer, ns_bvci);
+	return rc;
 }

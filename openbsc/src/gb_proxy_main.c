@@ -65,7 +65,7 @@ const char *openbsc_copyright =
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
 static char *config_file = "osmo_gbproxy.cfg";
-static struct gbproxy_config gbcfg;
+struct gbproxy_config gbcfg;
 
 /* Pointer to the SGSN peer */
 extern struct gbprox_peer *gbprox_peer_sgsn;
@@ -124,9 +124,8 @@ int main(int argc, char **argv)
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(gbcfg.nsip_sgsn_port);
 	sin.sin_addr.s_addr = htonl(gbcfg.nsip_sgsn_ip);
-	gbprox_peer_sgsn = nsip_connect(gbprox_nsi, &sin,
-					gbcfg.nsip_sgsn_nsei,
-					gbcfg.nsip_sgsn_nsvci);
+	nsip_connect(gbprox_nsi, &sin, gbcfg.nsip_sgsn_nsei,
+			gbcfg.nsip_sgsn_nsvci);
 
 	while (1) {
 		rc = bsc_select_main(0);
