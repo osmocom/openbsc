@@ -142,19 +142,6 @@ static int gprs_llc_fcs(uint8_t *data, unsigned int len)
 	return fcs_calc;
 }
 
-/* transmit a simple U frame */
-static int gprs_llc_tx_u()
-{
-	struct msgb *msg = msgb_alloc(LLC_ALLOC_SIZE, "GPRS/LLC");
-
-	if (!msg)
-		return -ENOMEM;
-
-
-
-	/* transmit the frame via BSSGP->NS->... */
-}
-
 static void t200_expired(void *data)
 {
 	struct gprs_llc_lle *lle = data;
@@ -190,6 +177,53 @@ static void t201_expired(void *data)
 		/* set timer T201 */
 		lle->retrans_ctr++;
 	}
+}
+
+int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
+		  enum gprs_llc_u_cmd u_cmd, int pf_bit)
+{
+	uint8_t *fcs, *llch;
+	uint8_t addr, ctrl;
+	uint32_t fcs_calc;
+
+	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	/* Address Field */
+	addr = sapi & 0xf;
+	if (command)
+		addr |= 0x40;
+
+	/* 6.3 Figure 8 */
+	ctrl = 0xe0 | u_cmd;
+	if (pf_bit)
+		ctrl |= 0x10;
+
+	/* prepend LLC UI header */
+	llch = msgb_push(msg, 2);
+	llch[0] = addr;
+	llch[1] = ctrl;
+
+	/* append FCS to end of frame */
+	fcs = msgb_put(msg, 3);
+	fcs_calc = gprs_llc_fcs(llch, fcs - llch);
+	fcs[0] = fcs_calc & 0xff;
+	fcs[1] = (fcs_calc >> 8) & 0xff;
+	fcs[2] = (fcs_calc >> 16) & 0xff;
+
+	/* Identifiers passed down: (BVCI, NSEI) */
+
+	return gprs_bssgp_tx_dl_ud(msg);
+}
+
+/* Send XID response to LLE */
+static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg)
+{
+	/* copy identifiers from LLE to ensure lower layers can route */
+	msgb_tlli(msg) = lle->tlli;
+	msgb_bvci(msg) = lle->bvci;
+	msgb_nsei(msg) = lle->nsei;
+
+	return gprs_llc_tx_u(msg, lle->sapi, 0, GPRS_LLC_U_XID, 1);
 }
 
 /* Transmit a UI frame over the given SAPI */
@@ -257,6 +291,8 @@ static int gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 			   struct gprs_llc_lle *lle)
 {
+	struct msgb *resp;
+
 	switch (gph->cmd) {
 	case GPRS_LLC_SABM: /* Section 6.4.1.1 */
 		lle->v_sent = lle->v_ack = lle->v_recv = 0;
@@ -284,6 +320,9 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 	case GPRS_LLC_FRMR: /* Section 6.4.1.5 */
 		break;
 	case GPRS_LLC_XID: /* Section 6.4.1.6 */
+		/* FIXME: implement XID negotiation */
+		resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+		gprs_llc_tx_xid(lle, resp);
 		break;
 	}
 
@@ -449,7 +488,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
 	struct gprs_llc_hdr *lh = msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
-	struct gprs_llc_entity *lle;
+	struct gprs_llc_lle *lle;
 	int rc = 0;
 
 	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
@@ -464,6 +503,10 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	/* allocate a new LLE if needed */
 	if (!lle)
 		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
+
+	/* Update LLE's (BVCI, NSEI) tuple */
+	lle->bvci = msgb_bvci(msg);
+	lle->nsei = msgb_nsei(msg);
 
 	rc = gprs_llc_hdr_rx(&llhp, lle);
 	/* FIXME */
