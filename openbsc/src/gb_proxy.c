@@ -169,7 +169,7 @@ static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
-	DEBUGP(DGPRS, "NSEI=%u proxying to to BSS (NS_BVCI=%u, NSEI=%u)\n",
+	DEBUGP(DGPRS, "NSEI=%u proxying to BSS (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, peer->nsvc->nsei);
 
 	msgb_bvci(msg) = ns_bvci;
@@ -188,8 +188,11 @@ static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 	struct gbprox_peer *peer;
 
 	peer = peer_by_bvci(ptp_bvci);
-	if (!peer)
+	if (!peer) {
+		LOGP(DGPRS, LOGL_ERROR, "Cannot find BSS for BVCI %u\n",
+			ptp_bvci);
 		return -ENOENT;
+	}
 
 	return gbprox_relay2peer(msg, peer, ns_bvci);
 }
@@ -255,6 +258,14 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 					"BVC RESET ACK of BVCI=0\n", nsvc->nsei);
 				return bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
 							    nsvc->nsei, 0, ns_bvci);
+			} else if (!peer_by_bvci(bvci)) {
+				/* if a PTP-BVC is reset, and we don't know that
+				 * PTP-BVCI yet, we should allocate a new peer */
+				LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
+				     "BVCI=%u via NSVCI=%u/NSEI=%u\n", bvci,
+				     nsvc->nsvci, nsvc->nsei);
+				from_peer = peer_alloc(bvci);
+				from_peer->nsvc = nsvc;
 			}
 		}
 		break;
@@ -362,10 +373,15 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 
 	return rc;
 err_mand_ie:
-	; /* FIXME: this would pull gprs_bssgp.c in, which in turn has dependencies */
+	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) missing mandatory IE\n",
+		nsvc->nsei);
+	/* FIXME: this would pull gprs_bssgp.c in, which in turn has dependencies */
 	//return bssgp_tx_status(BSSGP_CAUSE_MISSING_MAND_IE, NULL, msg);
+	return;
 err_no_peer:
-	; /* FIXME */
+	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) cannot find peer based on RAC\n");
+	/* FIXME */
+	return;
 }
 
 /* Main input function for Gb proxy */
@@ -381,7 +397,7 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 			rc = gbprox_rx_sig_from_bss(msg, nsvc, ns_bvci);
 	} else {
 		/* All other BVCI are PTP and thus can be simply forwarded */
-		if (nsvc->remote_end_is_sgsn) {
+		if (!nsvc->remote_end_is_sgsn) {
 			rc = gbprox_relay2sgsn(msg, ns_bvci);
 		} else {
 			struct gbprox_peer *peer = peer_by_bvci(ns_bvci);
