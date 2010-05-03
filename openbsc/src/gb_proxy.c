@@ -127,14 +127,38 @@ static void strip_ns_hdr(struct msgb *msg)
 	msgb_pull(msg, strip_len);
 }
 
+/* FIXME: this is copy+paste from gprs_bssgp.c */
+static inline struct msgb *bssgp_msgb_alloc(void)
+{
+	return msgb_alloc_headroom(4096, 128, "BSSGP");
+}
+static int bssgp_tx_simple_bvci(uint8_t pdu_type, uint16_t nsei,
+			        uint16_t bvci, uint16_t ns_bvci)
+{
+	struct msgb *msg = bssgp_msgb_alloc();
+	struct bssgp_normal_hdr *bgph =
+			(struct bssgp_normal_hdr *) msgb_put(msg, sizeof(*bgph));
+	uint16_t _bvci;
+
+	msgb_nsei(msg) = nsei;
+	msgb_bvci(msg) = ns_bvci;
+
+	bgph->pdu_type = pdu_type;
+	_bvci = htons(bvci);
+	msgb_tvlv_put(msg, BSSGP_IE_BVCI, 2, (uint8_t *) &_bvci);
+
+	return gprs_ns_sendmsg(gbprox_nsi, msg);
+}
+
+
 /* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 {
+	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN (NS_BVCI=%u, NSEI=%u)\n",
+		ns_bvci, gbcfg.nsip_sgsn_nsei);
+
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = gbcfg.nsip_sgsn_nsei;
-
-	DEBUGP(DGPRS, "proxying message to SGSN (NS_BVCI=%u, NSEI=%u)\n",
-		ns_bvci, gbcfg.nsip_sgsn_nsei);
 
 	strip_ns_hdr(msg);
 
@@ -145,11 +169,11 @@ static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
+	DEBUGP(DGPRS, "NSEI=%u proxying to to BSS (NS_BVCI=%u, NSEI=%u)\n",
+		ns_bvci, peer->nsvc->nsei);
+
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = peer->nsvc->nsei;
-
-	DEBUGP(DGPRS, "proxying message to BSS (NS_BVCI=%u, NSEI=%u)\n",
-		ns_bvci, peer->nsvc->nsei);
 
 	strip_ns_hdr(msg);
 
@@ -182,7 +206,8 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	struct gprs_ra_id raid;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u is not signalling\n", ns_bvci);
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u BVCI %u is not signalling\n",
+			nsvc->nsei, ns_bvci);
 		return -EINVAL;
 	}
 
@@ -190,7 +215,8 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	 * just to make sure  */
 	if (pdu_type == BSSGP_PDUT_UL_UNITDATA ||
 	    pdu_type == BSSGP_PDUT_DL_UNITDATA) {
-		LOGP(DGPRS, LOGL_NOTICE, "UNITDATA not allowed in signalling\n");
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u UNITDATA not allowed in "
+			"signalling\n", nsvc->nsei);
 		return -EINVAL;
 	}
 
@@ -212,10 +238,25 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		memcpy(&from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 			sizeof(&from_peer->ra));
 		gsm48_parse_ra(&raid, &from_peer->ra);
-		DEBUGP(DGPRS, "RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
-			"NSVCI=%u, NSEI=%u\n", raid.mcc, raid.mnc, raid.lac,
-			raid.rac , from_peer->bvci, nsvc->nsvci, nsvc->nsei);
+		DEBUGP(DGPRS, "NSEI=%u RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
+			"NSVCI=%u\n", nsvc->nsei, raid.mcc, raid.mnc, raid.lac,
+			raid.rac , from_peer->bvci, nsvc->nsvci);
 		/* FIXME: This only supports one BSS per RA */
+		break;
+	case BSSGP_PDUT_BVC_RESET:
+		/* If we receive a BVC reset on the signalling endpoint, we
+		 * don't want the SGSN to reset, as the signalling endpoint
+		 * is common for all point-to-point BVCs (and thus all BTS) */
+		if (TLVP_PRESENT(&tp, BSSGP_IE_BVCI)) {
+			uint16_t bvci = ntohs(*(uint16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+			if (bvci == 0) {
+				/* FIXME: only do this if SGSN is alive! */
+				LOGP(DGPRS, LOGL_INFO, "NSEI=%u Sending fake "
+					"BVC RESET ACK of BVCI=0\n", nsvc->nsei);
+				return bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
+							    nsvc->nsei, 0, ns_bvci);
+			}
+		}
 		break;
 	}
 
@@ -259,7 +300,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	int rc = 0;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "BVCI %u is not signalling\n", ns_bvci);
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BVCI %u is not "
+			"signalling\n", nsvc->nsei, ns_bvci);
 		return -EINVAL;
 	}
 
@@ -267,7 +309,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	 * just to make sure  */
 	if (pdu_type == BSSGP_PDUT_UL_UNITDATA ||
 	    pdu_type == BSSGP_PDUT_DL_UNITDATA) {
-		LOGP(DGPRS, LOGL_NOTICE, "UNITDATA not allowed in signalling\n");
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) UNITDATA not allowed in "
+			"signalling\n", nsvc->nsei);
 		return -EINVAL;
 	}
 
@@ -292,7 +335,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		break;
 	case BSSGP_PDUT_STATUS:
 		/* FIXME: Some exception has occurred */
-		LOGP(DGPRS, LOGL_NOTICE, "STATUS not implemented yet\n");
+		LOGP(DGPRS, LOGL_NOTICE,
+			"NSEI=%u(SGSN) STATUS not implemented yet\n", nsvc->nsei);
 		break;
 	/* those only exist in the SGSN -> BSS direction */
 	case BSSGP_PDUT_SUSPEND_ACK:
@@ -308,7 +352,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		rc = gbprox_relay2peer(msg, peer, ns_bvci);
 		break;
 	case BSSGP_PDUT_SGSN_INVOKE_TRACE:
-		LOGP(DGPRS, LOGL_ERROR, "SGSN INVOKE TRACE not supported\n");
+		LOGP(DGPRS, LOGL_ERROR,
+		     "NSEI=%u(SGSN) INVOKE TRACE not supported\n", nsvc->nsei);
 		break;
 	default:
 		DEBUGP(DGPRS, "BSSGP PDU type 0x%02x unknown\n", pdu_type);
