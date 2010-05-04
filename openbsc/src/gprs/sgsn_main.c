@@ -44,7 +44,7 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }

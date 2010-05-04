@@ -2,9 +2,12 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
+# build current directory before building gprs
+SUBDIRS = . gprs
+
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
-                isdnsync bsc_mgcp ipaccess-proxy osmo-gbproxy osmo-sgsn
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libsgsn.a
+                isdnsync bsc_mgcp ipaccess-proxy
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
 noinst_HEADERS = vty/cardshell.h
 
 bscdir = $(libdir)
@@ -18,9 +21,6 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
 		bts_unknown.c bsc_version.c bsc_api.c
-
-libsgsn_a_SOURCES = gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
-		crc24.c gprs_sgsn.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
@@ -50,11 +50,3 @@ bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgc
 bsc_mgcp_LDADD = libvty.a
 
 ipaccess_proxy_SOURCES = ipaccess/ipaccess-proxy.c debug.c
-
-osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
-			gprs_ns.c socket.c debug.c
-osmo_gbproxy_LDADD = libvty.a
-
-osmo_sgsn_SOURCES = sgsn_main.c sgsn_vty.c \
-			socket.c debug.c
-osmo_sgsn_LDADD = libvty.a libsgsn.a

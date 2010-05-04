@@ -43,7 +43,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
