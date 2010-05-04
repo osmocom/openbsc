@@ -9,9 +9,9 @@ libsgsn_a_SOURCES = gprs_ns.c gprs_bssgp.c gprs_llc.c gsm_04_08_gprs.c \
 		crc24.c gprs_sgsn.c
 
 osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
-			gprs_ns.c ../socket.c ../debug.c
-osmo_gbproxy_LDADD = ../libvty.a
+			gprs_ns.c $(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
+osmo_gbproxy_LDADD = $(top_builddir)/src/libvty.a
 
 osmo_sgsn_SOURCES = sgsn_main.c sgsn_vty.c \
-			../socket.c ../debug.c
-osmo_sgsn_LDADD = ../libvty.a libsgsn.a
+			$(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
+osmo_sgsn_LDADD = $(top_builddir)/src/libvty.a libsgsn.a
