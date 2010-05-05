@@ -717,17 +717,17 @@ static int ipaccess_bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
-	int ret, on;
+	int fd, rc, on;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	ret = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
-	if (ret < 0) {
+	fd = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
+	if (fd < 0) {
 		perror("accept");
-		return ret;
+		return fd;
 	}
 
 	/* count the reconnect */
@@ -738,13 +738,13 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	if (!msc_con->is_connected) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
-		close(ret);
+		close(fd);
 		return 0;
 	}
 
 	on = 1;
-	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-	if (ret != 0)
+	rc = setsockopt(bfd->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+	if (rc != 0)
                 LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
 	/* todo... do something with the connection */
@@ -756,24 +756,24 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc = bsc_connection_alloc(nat);
 	if (!bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate BSC struct.\n");
-		close(ret);
+		close(fd);
 		return -1;
 	}
 
 	bsc->write_queue.bfd.data = bsc;
-	bsc->write_queue.bfd.fd = ret;
+	bsc->write_queue.bfd.fd = fd;
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
 	bsc->write_queue.write_cb = ipaccess_bsc_write_cb;
 	bsc->write_queue.bfd.when = BSC_FD_READ;
 	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
-		close(ret);
+		close(fd);
 		talloc_free(bsc);
 		return -2;
 	}
 
 	LOGP(DNAT, LOGL_NOTICE, "BSC connection on %d with IP: %s\n",
-		ret, inet_ntoa(sa.sin_addr));
+		fd, inet_ntoa(sa.sin_addr));
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
 	send_id_ack(bsc);
 	send_id_req(bsc);
