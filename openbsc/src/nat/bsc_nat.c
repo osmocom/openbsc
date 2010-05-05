@@ -23,6 +23,7 @@
  */
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #include <errno.h>
@@ -716,7 +717,7 @@ static int ipaccess_bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
-	int ret;
+	int ret, on;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -740,6 +741,11 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		close(ret);
 		return 0;
 	}
+
+	on = 1;
+	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+	if (ret != 0)
+                LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
 	/* todo... do something with the connection */
 	/* todo... use GNUtls to see if we want to trust this as a BTS */
