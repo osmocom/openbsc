@@ -673,6 +673,8 @@ struct gsm_network {
 	char *bsc_token;
 	char *msc_ip;
 	int msc_port;
+	int ping_timeout;
+	int pong_timeout;
 };
 
 #define SMS_HDR_SIZE	128

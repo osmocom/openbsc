@@ -906,10 +906,10 @@ static void msc_ping_timeout_cb(void *data)
 	send_ping();
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&msc_ping_timeout, 20, 0);
+	bsc_schedule_timer(&msc_ping_timeout, bsc_gsmnet->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&msc_pong_timeout, 5, 0);
+	bsc_schedule_timer(&msc_pong_timeout, bsc_gsmnet->pong_timeout, 0);
 }
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
