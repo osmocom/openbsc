@@ -30,6 +30,7 @@
 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #define _GNU_SOURCE
@@ -917,6 +918,12 @@ static void msc_ping_timeout_cb(void *data)
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
 {
+	int ret, on;
+	on = 1;
+	ret = setsockopt(con->write_queue.bfd.fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+	if (ret != 0)
+                LOGP(DMSC, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
+
 	msc_ping_timeout_cb(con);
 }
 
