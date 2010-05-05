@@ -49,6 +49,14 @@ static void connection_loss(struct bsc_msc_connection *con)
 	con->connection_loss(con);
 }
 
+static void msc_con_timeout(void *_con)
+{
+	struct bsc_msc_connection *con = _con;
+
+	LOGP(DMSC, LOGL_ERROR, "MSC Connection timeout.\n");
+	bsc_msc_lost(con);
+}
+
 static int bsc_msc_except(struct bsc_fd *bfd)
 {
 	struct write_queue *wrt;
@@ -98,6 +106,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 
 	con->is_connected = 1;
+	bsc_del_timer(&con->timeout_timer);
 	LOGP(DMSC, LOGL_NOTICE, "(Re)Connected to the MSC.\n");
 	if (con->connected)
 		con->connected(con);
@@ -165,6 +174,9 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		LOGP(DMSC, LOGL_ERROR, "MSC Connection in progress\n");
 		fd->when = BSC_FD_WRITE;
 		fd->cb = msc_connection_connect;
+		con->timeout_timer.cb = msc_con_timeout;
+		con->timeout_timer.data = con;
+		bsc_schedule_timer(&con->timeout_timer, 20, 0);
 	} else if (ret < 0) {
 		perror("Connection failed");
 		connection_loss(con);

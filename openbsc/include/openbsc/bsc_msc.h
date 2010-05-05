@@ -36,6 +36,7 @@ struct bsc_msc_connection {
 	void (*connection_loss) (struct bsc_msc_connection *);
 	void (*connected) (struct bsc_msc_connection *);
 	struct timer_list reconnect_timer;
+	struct timer_list timeout_timer;
 };
 
 struct bsc_msc_connection *bsc_msc_create(const char *ip, int port);
