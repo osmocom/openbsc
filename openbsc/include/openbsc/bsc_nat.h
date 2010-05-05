@@ -214,6 +214,11 @@ struct bsc_nat {
 	int msc_port;
 	int first_contact;
 
+	/* timeouts */
+	int auth_timeout;
+	int ping_timeout;
+	int pong_timeout;
+
 	struct bsc_endpoint *bsc_endpoints;
 
 	/* filter */

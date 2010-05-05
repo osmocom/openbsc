@@ -138,13 +138,16 @@ static void bsc_ping_timeout(void *_bsc)
 {
 	struct bsc_connection *bsc = _bsc;
 
+	if (bsc->nat->ping_timeout < 0)
+		return;
+
 	send_ping(bsc);
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&bsc->ping_timeout, 20, 0);
+	bsc_schedule_timer(&bsc->ping_timeout, bsc->nat->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&bsc->pong_timeout, 5, 0);
+	bsc_schedule_timer(&bsc->pong_timeout, bsc->nat->pong_timeout, 0);
 }
 
 static void start_ping_pong(struct bsc_connection *bsc)
@@ -772,7 +775,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	bsc->id_timeout.data = bsc;
 	bsc->id_timeout.cb = ipaccess_close_bsc;
-	bsc_schedule_timer(&bsc->id_timeout, 2, 0);
+	bsc_schedule_timer(&bsc->id_timeout, nat->auth_timeout, 0);
 	return 0;
 }
 
