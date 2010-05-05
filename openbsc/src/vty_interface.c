@@ -480,6 +480,8 @@ static int config_write_net(struct vty *vty)
 		vty_out(vty, " bsc_token %s%s", gsmnet->bsc_token, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", gsmnet->msc_ip, VTY_NEWLINE);
 	vty_out(vty, " msc port %d%s", gsmnet->msc_port, VTY_NEWLINE);
+	vty_out(vty, " timeout ping %d%s", gsmnet->ping_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout pong %d%s", gsmnet->pong_timeout, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1335,6 +1337,23 @@ DEFUN(cfg_net_msc_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_ping_time,
+      cfg_net_ping_time_cmd,
+      "timeout ping NR",
+      "Set the PING interval, negative for not sending PING")
+{
+	gsmnet->ping_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_pong_time,
+      cfg_net_pong_time_cmd,
+      "timeout pong NR",
+      "Set the time to wait for a PONG.")
+{
+	gsmnet->pong_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
@@ -2070,6 +2089,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 	install_element(GSMNET_NODE, &cfg_net_msc_ip_cmd);
 	install_element(GSMNET_NODE, &cfg_net_msc_port_cmd);
+	install_element(GSMNET_NODE, &cfg_net_ping_time_cmd);
+	install_element(GSMNET_NODE, &cfg_net_pong_time_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
