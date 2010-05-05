@@ -53,6 +53,9 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
 	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
 	nat->msc_port = 5000;
+	nat->auth_timeout = 2;
+	nat->ping_timeout = 20;
+	nat->pong_timeout = 5;
 	return nat;
 }
 

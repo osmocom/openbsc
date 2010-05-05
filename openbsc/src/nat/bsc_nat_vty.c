@@ -57,6 +57,9 @@ static int config_write_nat(struct vty *vty)
 		vty_out(vty, " insi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
 	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
+	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -256,6 +259,33 @@ DEFUN(cfg_nat_msc_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_auth_time,
+      cfg_nat_auth_time_cmd,
+      "timeout auth <1-256>",
+      "The time to wait for an auth response.")
+{
+	_nat->auth_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_ping_time,
+      cfg_nat_ping_time_cmd,
+      "timeout ping NR",
+      "Send a ping every NR seconds. Negative to disable.")
+{
+	_nat->ping_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_pong_time,
+      cfg_nat_pong_time_cmd,
+      "timeout pong NR",
+      "Wait NR seconds for the PONG response. Should be smaller than ping.")
+{
+	_nat->pong_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 {
@@ -387,6 +417,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_imsi_deny_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
+	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
+	install_element(NAT_NODE, &cfg_nat_ping_time_cmd);
+	install_element(NAT_NODE, &cfg_nat_pong_time_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
