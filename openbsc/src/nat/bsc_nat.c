@@ -743,7 +743,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	on = 1;
-	rc = setsockopt(bfd->fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
+	rc = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 	if (rc != 0)
                 LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
