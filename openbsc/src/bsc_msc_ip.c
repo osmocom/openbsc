@@ -903,6 +903,9 @@ static void send_ping(void)
 
 static void msc_ping_timeout_cb(void *data)
 {
+	if (bsc_gsmnet->ping_timeout < 0)
+		return;
+
 	send_ping();
 
 	/* send another ping in 20 seconds */
