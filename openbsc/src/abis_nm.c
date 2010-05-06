@@ -3027,3 +3027,51 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 
 	return 0;
 }
+
+void *tall_nmattr_ctx;
+
+struct nm_attr *nm_attr_alloc(struct llist_head *nma_list,
+			      uint8_t tag, uint16_t len)
+{
+	struct nm_attr *na;
+
+	na = talloc_zero_size(tall_nmattr_ctx, sizeof(*na)+len);
+	na->tag = tag;
+	na->len = len;
+
+	llist_add(&na->list, nma_list);
+
+	return na;
+}
+
+struct nm_attr *nm_attr_realloc(struct llist_head *nma_list,
+				struct nm_attr *orig, uint16_t new_len)
+{
+	struct nm_attr *new;
+
+	llist_del(&orig->list);
+
+	new = talloc_realloc_size(tall_nmattr_ctx, orig, new_len);
+
+	llist_add(&new->list, nma_list);
+
+	return new;
+}
+
+struct nm_attr *nm_attr_get(struct llist_head *nma_list, uint8_t tag)
+{
+	struct nm_attr *na;
+
+	llist_for_each_entry(na, nma_list, list) {
+		if (na->tag == tag)
+			return na;
+	}
+
+	return NULL;
+}
+
+void nm_attr_free(struct nm_attr *nma)
+{
+	llist_del(&nma->list);
+	talloc_free(nma);
+}

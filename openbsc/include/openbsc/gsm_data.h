@@ -174,6 +174,8 @@ struct gsm_nm_state {
 	u_int8_t operational;
 	u_int8_t administrative;
 	u_int8_t availability;
+	/* linked list of 'struct nm_attr' */
+	struct llist_head nma_list;
 };
 
 /*
@@ -335,7 +337,6 @@ struct gsm_bts_trx_ts {
 
 	unsigned int flags;
 	struct gsm_nm_state nm_state;
-	struct tlv_parsed nm_attr;
 	u_int8_t nm_chan_comb;
 
 	struct {
@@ -373,7 +374,6 @@ struct gsm_bts_trx {
 	struct e1inp_sign_link *rsl_link;
 
 	struct gsm_nm_state nm_state;
-	struct tlv_parsed nm_attr;
 	struct {
 		struct gsm_nm_state nm_state;
 	} bb_transc;
@@ -514,7 +514,6 @@ struct gsm_bts {
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
 	struct gsm_nm_state nm_state;
-	struct tlv_parsed nm_attr;
 
 	/* number of this BTS on given E1 link */
 	u_int8_t bts_nr;

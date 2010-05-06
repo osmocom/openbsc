@@ -25,6 +25,7 @@
 
 #include <sys/types.h>
 #include <osmocore/tlv.h>
+#include <osmocore/linuxlist.h>
 #include <osmocore/protocol/gsm_12_21.h>
 
 struct cell_global_id {
@@ -55,9 +56,24 @@ struct ipac_bcch_info {
 	u_int8_t ca_list_si1[16];
 };
 
+struct nm_attr {
+	struct llist_head list;
+	uint8_t tag;
+	uint16_t len;
+	uint8_t val[0];
+};
+
+struct nm_attr *nm_attr_alloc(struct llist_head *nma_list,
+			      uint8_t tag, uint16_t len);
+struct nm_attr *nm_attr_realloc(struct llist_head *nma_list,
+				struct nm_attr *orig, uint16_t new_len);
+struct nm_attr *nm_attr_get(struct llist_head *nma_list, uint8_t tag);
+void nm_attr_free(struct nm_attr *nma);
+
+extern const struct tlv_definition nm_att_tlvdef;
+
 extern const struct value_string abis_nm_adm_state_names[];
 extern const struct value_string abis_nm_obj_class_names[];
-extern const struct tlv_definition nm_att_tlvdef;
 
 /* PUBLIC */
 
