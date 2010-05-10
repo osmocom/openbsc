@@ -65,6 +65,7 @@ static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
 static struct write_queue mgcp_agent;
 static const char *rf_ctl = NULL;
+static int testmode = 0;
 extern int ipacc_rtp_direct;
 
 /* msc handling */
@@ -860,6 +861,32 @@ static void send_id_get_response(int fd)
 }
 
 /*
+ * Send some packets to test the MSC.
+ */
+static void test_msc()
+{
+	struct msgb *msg;
+
+	if (!testmode)
+		return;
+
+	static const uint8_t pag_resp[] = {
+		0x01, 0xf3, 0x26, 0x09, 0x02, 0x02, 0x04, 0x02, 0x42,
+		0xfe, 0x0f, 0x1f, 0x00, 0x1d, 0x57, 0x05, 0x08, 0x00,
+		0x72, 0xf4, 0x80, 0x10, 0x1c, 0x9c, 0x40, 0x17, 0x10,
+		0x06, 0x27, 0x02, 0x03, 0x30, 0x18, 0xa0, 0x08, 0x59,
+		0x51, 0x30, 0x10, 0x30, 0x32, 0x80, 0x06, 0x00
+	};
+
+	msg = msgb_alloc_headroom(4096, 128, "paging response");
+	if (!msg)
+		return;
+	msg->l2h = msgb_put(msg, sizeof(pag_resp));
+	memcpy(msg->l2h, pag_resp, sizeof(pag_resp));
+	msc_queue_write(msg, IPAC_PROTO_SCCP);
+}
+
+/*
  * The connection to the MSC was lost and we will need to free all
  * resources and then attempt to reconnect.
  */
@@ -959,6 +986,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 			initialize_if_needed();
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(bfd->fd);
+			test_msc();
 		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
 			bsc_del_timer(&msc_pong_timeout);
 		}
@@ -984,6 +1012,7 @@ static void print_help()
 	printf("  -l --local=IP. The local address of the MGCP.\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
 	printf("  -r --rf-ctl NAME. A unix domain socket to listen for cmds.\n");
+	printf("  -t --testmode. A special mode to provoke failures at the MSC.\n");
 }
 
 static void handle_options(int argc, char** argv)
@@ -1000,10 +1029,11 @@ static void handle_options(int argc, char** argv)
 			{"local", 1, 0, 'l'},
 			{"log-level", 1, 0, 'e'},
 			{"rf-ctl", 1, 0, 'r'},
+			{"testmode", 0, 0, 't'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTc:m:l:e:r:",
+		c = getopt_long(argc, argv, "hd:sTc:m:l:e:r:t",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1039,6 +1069,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'r':
 			rf_ctl = optarg;
+			break;
+		case 't':
+			testmode = 1;
 			break;
 		default:
 			/* ignore */
