@@ -30,6 +30,8 @@
 
 #include <stdlib.h>
 
+#define LOGGING_STR	"Configure log message to this terminal\n"
+
 static void _vty_output(struct log_target *tgt, const char *line)
 {
 	struct vty *vty = tgt->tgt_vty.vty;
@@ -55,6 +57,7 @@ struct log_target *log_target_create_vty(struct vty *vty)
 DEFUN(enable_logging,
       enable_logging_cmd,
       "logging enable",
+	LOGGING_STR
       "Enables logging to this vty\n")
 {
 	struct telnet_connection *conn;
@@ -76,6 +79,7 @@ DEFUN(enable_logging,
 DEFUN(logging_fltr_imsi,
       logging_fltr_imsi_cmd,
       "logging filter imsi IMSI",
+	LOGGING_STR
       "Print all messages related to a IMSI\n")
 {
 	struct telnet_connection *conn;
@@ -93,6 +97,7 @@ DEFUN(logging_fltr_imsi,
 DEFUN(logging_fltr_all,
       logging_fltr_all_cmd,
       "logging filter all <0-1>",
+	LOGGING_STR
       "Print all messages to the console\n")
 {
 	struct telnet_connection *conn;
@@ -110,6 +115,7 @@ DEFUN(logging_fltr_all,
 DEFUN(logging_use_clr,
       logging_use_clr_cmd,
       "logging color <0-1>",
+	LOGGING_STR
       "Use color for printing messages\n")
 {
 	struct telnet_connection *conn;
@@ -127,6 +133,7 @@ DEFUN(logging_use_clr,
 DEFUN(logging_prnt_timestamp,
       logging_prnt_timestamp_cmd,
       "logging timestamp <0-1>",
+	LOGGING_STR
       "Print the timestamp of each message\n")
 {
 	struct telnet_connection *conn;
@@ -143,11 +150,47 @@ DEFUN(logging_prnt_timestamp,
 
 /* FIXME: those have to be kept in sync with the log levels and categories */
 #define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|all)"
+#define CATEGORIES_HELP	\
+	"A-bis Radio Link Layer (RLL)\n"			\
+	"Layer3 Call Control (CC)\n"				\
+	"Layer3 Mobility Management (MM)\n"			\
+	"Layer3 Radio Resource (RR)\n"				\
+	"A-bis Radio Signalling Link (RSL)\n"			\
+	"A-bis Network Management / O&M (NM/OML)\n"		\
+	"Layer3 Short Messagaging Service (SMS)\n"		\
+	"Paging Subsystem\n"					\
+	"MNCC API for Call Control application\n"		\
+	"A-bis Input Subsystem\n"				\
+	"A-bis Input Driver for Signalling\n"			\
+	"A-bis Input Driver for B-Channel (voice data)\n"	\
+	"A-bis B-Channel / Sub-channel Multiplexer\n"		\
+	"Radio Measurements\n"					\
+	"SCCP\n"						\
+	"Mobile Switching Center\n"				\
+	"Media Gateway Control Protocol\n"			\
+	"Hand-over\n"						\
+	"Database Layer\n"					\
+	"Reference Counting\n"					\
+	"GPRS Core\n"						\
+	"GPRS Network Service (NS)\n"				\
+	"GPRS BSS Gateway Protocol (BSSGP)\n"			\
+	"Global setting for all subsytems\n"
+
 #define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
+#define LEVELS_HELP	\
+	"Log simply everything\n"				\
+	"Log debug messages and higher levels\n"		\
+	"Log informational messages and higher levels\n"	\
+	"Log noticable messages and higher levels\n"		\
+	"Log error messages and higher levels\n"		\
+	"Log only fatal messages\n"
 DEFUN(logging_level,
       logging_level_cmd,
       "logging level " VTY_DEBUG_CATEGORIES " " VTY_DEBUG_LEVELS,
-      "Set the log level for a specified category\n")
+      LOGGING_STR
+      "Set the log level for a specified category\n"
+      CATEGORIES_HELP
+      LEVELS_HELP)
 {
 	struct telnet_connection *conn;
 	int category = log_parse_category(argv[0]);
@@ -184,6 +227,7 @@ DEFUN(logging_level,
 DEFUN(logging_set_category_mask,
       logging_set_category_mask_cmd,
       "logging set log mask MASK",
+	LOGGING_STR
       "Decide which categories to output.\n")
 {
 	struct telnet_connection *conn;
@@ -201,6 +245,7 @@ DEFUN(logging_set_category_mask,
 DEFUN(diable_logging,
       disable_logging_cmd,
       "logging disable",
+	LOGGING_STR
       "Disables logging to this vty\n")
 {
 	struct telnet_connection *conn;
