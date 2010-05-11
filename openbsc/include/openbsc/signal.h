@@ -42,6 +42,7 @@ enum signal_subsystems {
 	SS_SCALL,
 	SS_GLOBAL,
 	SS_CHALLOC,
+	SS_NS,
 };
 
 /* SS_PAGING signals */
@@ -142,6 +143,17 @@ struct challoc_signal_data {
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	enum gsm_chan_t type;
+};
+
+enum signal_ns {
+	S_NS_RESET,
+	S_NS_BLOCK,
+	S_NS_UNBLOCK,
+};
+
+struct ns_signal_data {
+	struct gprs_nsvc *nsvc;
+	uint8_t cause;
 };
 
 #endif
