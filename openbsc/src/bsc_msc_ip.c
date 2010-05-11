@@ -69,7 +69,6 @@ static int testmode = 0;
 extern int ipacc_rtp_direct;
 
 /* msc handling */
-static struct bsc_msc_connection *msc_con;
 static struct timer_list msc_ping_timeout;
 static struct timer_list msc_pong_timeout;
 
@@ -271,7 +270,7 @@ static int open_sccp_connection(struct msgb *layer3)
 	struct msgb *data;
 
 	/* When not connected to a MSC. We will simply close things down. */
-	if (!msc_con->is_authenticated) {
+	if (!bsc_gsmnet->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
 		use_subscr_con(&layer3->lchan->conn);
 		put_subscr_con(&layer3->lchan->conn, 0);
@@ -637,7 +636,7 @@ static void print_usage()
 static int msc_queue_write(struct msgb *msg, int proto)
 {
 	ipaccess_prepend_header(msg, proto);
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+	if (write_queue_enqueue(&bsc_gsmnet->msc_con->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
 		return -1;
@@ -653,7 +652,7 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
 	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
 
-	ret = write(msc_con->write_queue.bfd.fd, msg->data, msg->len);
+	ret = write(bsc_gsmnet->msc_con->write_queue.bfd.fd, msg->data, msg->len);
 	if (ret < msg->len)
 		perror("MSC: Failed to send SCCP");
 
@@ -825,7 +824,7 @@ static void initialize_if_needed(void)
 	struct msgb *msg;
 
 
-	if (!msc_con->is_authenticated) {
+	if (!bsc_gsmnet->msc_con->is_authenticated) {
 		/* send a gsm 08.08 reset message from here */
 		msg = bssmap_create_reset();
 		if (!msg) {
@@ -835,7 +834,7 @@ static void initialize_if_needed(void)
 
 		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0);
 		msgb_free(msg);
-		msc_con->is_authenticated = 1;
+		bsc_gsmnet->msc_con->is_authenticated = 1;
 	}
 }
 
@@ -910,7 +909,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 static void msc_pong_timeout_cb(void *data)
 {
 	LOGP(DMSC, LOGL_ERROR, "MSC didn't answer PING. Closing connection.\n");
-	bsc_msc_lost(msc_con);
+	bsc_msc_lost(bsc_gsmnet->msc_con);
 }
 
 static void send_ping(void)
@@ -966,7 +965,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 	if (!msg) {
 		if (error == 0) {
 			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
-			bsc_msc_lost(msc_con);
+			bsc_msc_lost(bsc_gsmnet->msc_con);
 			return -1;
 		}
 
@@ -1099,9 +1098,9 @@ static void signal_handler(int signal)
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
 	case SIGUSR2:
-		if (!msc_con || !msc_con->is_connected)
+		if (!bsc_gsmnet->msc_con || !bsc_gsmnet->msc_con->is_connected)
 			return;
-		bsc_msc_lost(msc_con);
+		bsc_msc_lost(bsc_gsmnet->msc_con);
 		break;
 	default:
 		break;
@@ -1216,8 +1215,8 @@ int main(int argc, char **argv)
 	if (msc_address)
 		msc = msc_address;
 
-	msc_con = bsc_msc_create(msc, bsc_gsmnet->msc_port);
-	if (!msc_con) {
+	bsc_gsmnet->msc_con = bsc_msc_create(msc, bsc_gsmnet->msc_port);
+	if (!bsc_gsmnet->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
 	}
@@ -1225,11 +1224,11 @@ int main(int argc, char **argv)
 	msc_ping_timeout.cb = msc_ping_timeout_cb;
 	msc_pong_timeout.cb = msc_pong_timeout_cb;
 
-	msc_con->connection_loss = msc_connection_was_lost;
-	msc_con->connected = msc_connection_connected;
-	msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
-	msc_con->write_queue.write_cb = msc_sccp_do_write;
-	bsc_msc_connect(msc_con);
+	bsc_gsmnet->msc_con->connection_loss = msc_connection_was_lost;
+	bsc_gsmnet->msc_con->connected = msc_connection_connected;
+	bsc_gsmnet->msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
+	bsc_gsmnet->msc_con->write_queue.write_cb = msc_sccp_do_write;
+	bsc_msc_connect(bsc_gsmnet->msc_con);
 
 
 

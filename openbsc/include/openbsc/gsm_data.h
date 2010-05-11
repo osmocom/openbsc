@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+struct bsc_msc_connection;
+
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -673,6 +675,7 @@ struct gsm_network {
 	char *bsc_token;
 	char *msc_ip;
 	int msc_port;
+	struct bsc_msc_connection *msc_con;
 	int ping_timeout;
 	int pong_timeout;
 };
