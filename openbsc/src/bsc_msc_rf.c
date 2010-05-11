@@ -59,14 +59,14 @@ static void handle_query(struct bsc_msc_rf_conn *conn)
 {
 	struct msgb *msg;
 	struct gsm_bts *bts;
-	char send = '0';
+	char send = RF_CMD_OFF;
 
 	llist_for_each_entry(bts, &conn->gsm_network->bts_list, list) {
 		struct gsm_bts_trx *trx;
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->nm_state.availability == NM_AVSTATE_OK &&
 			    trx->nm_state.operational != NM_STATE_LOCKED) {
-					send = '1';
+					send = RF_CMD_ON;
 					break;
 			}
 		}
