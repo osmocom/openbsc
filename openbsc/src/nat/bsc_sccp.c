@@ -98,6 +98,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 		if (assign_src_local_reference(&conn->patched_ref, bsc->nat) != 0) {
 			LOGP(DNAT, LOGL_ERROR, "BSC %d reused src ref: %d and we failed to generate a new id.\n",
 			     bsc->cfg->nr, sccp_src_ref_to_int(parsed->src_local_ref));
+			bsc_mgcp_dlcx(conn);
 			llist_del(&conn->list_entry);
 			talloc_free(conn);
 			return -1;
