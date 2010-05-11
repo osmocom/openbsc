@@ -104,7 +104,7 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
-	telnet_init(&dummy_network, 4244);
+	telnet_init(&dummy_network, 4246);
 	rc = gbproxy_parse_config(config_file, &gbcfg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
