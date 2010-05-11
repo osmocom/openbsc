@@ -142,7 +142,7 @@ DEFUN(logging_prnt_timestamp,
 }
 
 /* FIXME: those have to be kept in sync with the log levels and categories */
-#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp)"
+#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp|all)"
 #define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
 DEFUN(logging_level,
       logging_level_cmd,
@@ -159,13 +159,19 @@ DEFUN(logging_level,
 		return CMD_WARNING;
 	}
 
-	if (category < 0) {
-		vty_out(vty, "Invalid category `%s'%s", argv[0], VTY_NEWLINE);
+	if (level < 0) {
+		vty_out(vty, "Invalid level `%s'%s", argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	if (level < 0) {
-		vty_out(vty, "Invalid level `%s'%s", argv[1], VTY_NEWLINE);
+	/* Check for special case where we want to set global log level */
+	if (!strcmp(argv[0], "all")) {
+		log_set_log_level(conn->dbg, level);
+		return CMD_SUCCESS;
+	}
+
+	if (category < 0) {
+		vty_out(vty, "Invalid category `%s'%s", argv[0], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -189,23 +195,6 @@ DEFUN(logging_set_category_mask,
 	}
 
 	log_parse_category_mask(conn->dbg, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_set_log_level,
-      logging_set_log_level_cmd,
-      "logging set log level <0-8>",
-      "Set the global log level. The value 0 implies no filtering.\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_log_level(conn->dbg, atoi(argv[0]));
 	return CMD_SUCCESS;
 }
 
@@ -255,6 +244,5 @@ void openbsc_vty_add_cmds()
 	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
 	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
 	install_element(VIEW_NODE, &logging_level_cmd);
-	install_element(VIEW_NODE, &logging_set_log_level_cmd);
 
 }
