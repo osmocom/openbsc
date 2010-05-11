@@ -142,7 +142,7 @@ DEFUN(logging_prnt_timestamp,
 }
 
 /* FIXME: those have to be kept in sync with the log levels and categories */
-#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref|gprs)"
+#define VTY_DEBUG_CATEGORIES "(rll|cc|mm|rr|rsl|nm|sms|pag|mncc|inp|mi|mib|mux|meas|sccp|msc|mgcp|ho|db|ref|gprs|ns|bssgp)"
 #define VTY_DEBUG_LEVELS "(everything|debug|info|notice|error|fatal)"
 DEFUN(logging_level,
       logging_level_cmd,

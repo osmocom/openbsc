@@ -30,6 +30,8 @@ enum {
 	DDB,
 	DREF,
 	DGPRS,
+	DNS,
+	DBSSGP,
 	Debug_LastEntry,
 };
 

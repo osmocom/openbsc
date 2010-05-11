@@ -151,6 +151,16 @@ static const struct log_info_cat default_categories[] = {
 		.description = "GPRS Packet Service",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DNS] = {
+		.name = "DNS",
+		.description = "GPRS Network Service",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DBSSGP] = {
+		.name = "DBSSGP",
+		.description = "GPRS BSSGP Protocol",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
 };
 
 enum log_ctxt {
