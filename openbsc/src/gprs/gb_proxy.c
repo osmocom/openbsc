@@ -458,6 +458,14 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	if (subsys != SS_NS)
 		return 0;
 
+	if (signal == S_NS_RESET && nsvc->nsei == gbcfg.nsip_sgsn_nsei) {
+		/* We have received a NS-RESET from the NSEI and NSVC
+		 * of the SGSN.  This might happen with SGSN that start
+		 * their own NS-RESET procedure without waiting for our
+		 * NS-RESET */
+		nsvc->remote_end_is_sgsn = 1;
+	}
+
 	/* We currently only care about signals from the SGSN */
 	if (!nsvc->remote_end_is_sgsn)
 		return 0;
