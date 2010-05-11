@@ -39,81 +39,81 @@
 static const struct log_info_cat default_categories[] = {
 	[DRLL] = {
 		.name = "DRLL",
-		.description = "Radio Link Layer",
+		.description = "A-bis Radio Link Layer (RLL)",
 		.color = "\033[1;31m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DCC] = {
 		.name = "DCC",
-		.description = "Call Control",
+		.description = "Layer3 Call Control (CC)",
 		.color = "\033[1;32m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DMM] = {
 		.name = "DMM",
-		.description = "Mobility Management",
+		.description = "Layer3 Mobility Management (MM)",
 		.color = "\033[1;33m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DRR] = {
 		.name = "DRR",
-		.description = "Radio Resource",
+		.description = "Layer3 Radio Resource (RR)",
 		.color = "\033[1;34m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DRSL] = {
 		.name = "DRSL",
-		.description = "Radio Siganlling Link",
+		.description = "A-bis Radio Siganlling Link (RSL)",
 		.color = "\033[1;35m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DNM] =	{
 		.name = "DNM",
-		.description = "Network Management (OML)",
+		.description = "A-bis Network Management / O&M (NM/OML)",
 		.color = "\033[1;36m",
 		.enabled = 1, .loglevel = LOGL_INFO,
 	},
 	[DMNCC] = {
 		.name = "DMNCC",
-		.description = "BSC<->MSC interface",
+		.description = "MNCC API for Call Control application",
 		.color = "\033[1;39m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DSMS] = {
 		.name = "DSMS",
-		.description = "Short Message Service",
+		.description = "Layer3 Short Message Service (SMS)",
 		.color = "\033[1;37m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DPAG]	= {
 		.name = "DPAG",
-		.description = "Paging",
+		.description = "Paging Subsystem",
 		.color = "\033[1;38m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DMEAS] = {
 		.name = "DMEAS",
-		.description = "Measurement Processing",
+		.description = "Radio Measurement Processing",
 		.enabled = 0, .loglevel = LOGL_NOTICE,
 	},
 	[DMI] = {
 		.name = "DMI",
-		.description = "mISDN Input Driver",
+		.description = "A-bis Input Driver for Signalling",
 		.enabled = 0, .loglevel = LOGL_NOTICE,
 	},
 	[DMIB] = {
 		.name = "DMIB",
-		.description = "mISDN B-Channels",
+		.description = "A-bis Input Driver for B-Channels (voice)",
 		.enabled = 0, .loglevel = LOGL_NOTICE,
 	},
 	[DMUX] = {
 		.name = "DMUX",
-		.description = "TRAU Frame Multiplex",
+		.description = "A-bis B-Subchannel TRAU Frame Multiplex",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DINP] = {
 		.name = "DINP",
-		.description = "Input Driver",
+		.description = "A-bis Intput Subsystem",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DSCCP] = {
@@ -138,7 +138,7 @@ static const struct log_info_cat default_categories[] = {
 	},
 	[DDB] = {
 		.name = "DDB",
-		.description = "Database",
+		.description = "Database Layer",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DREF] = {
@@ -153,12 +153,12 @@ static const struct log_info_cat default_categories[] = {
 	},
 	[DNS] = {
 		.name = "DNS",
-		.description = "GPRS Network Service",
+		.description = "GPRS Network Service (NS)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 	[DBSSGP] = {
 		.name = "DBSSGP",
-		.description = "GPRS BSSGP Protocol",
+		.description = "GPRS BSS Gateway Protocol (BSSGP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 };
