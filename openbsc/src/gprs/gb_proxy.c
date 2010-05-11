@@ -414,3 +414,28 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 
 	return rc;
 }
+
+
+#include <vty/command.h>
+
+gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
+       SHOW_STR "Display information about the Gb proxy")
+{
+	struct gbprox_peer *peer;
+
+	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+		struct gprs_nsvc *nsvc = peer->nsvc;
+		struct gprs_ra_id raid;
+		gsm48_parse_ra(&raid, &peer->ra);
+
+		vty_out(vty, "NSEI %5u, NS-VC %5u, PTP-BVCI %u, "
+			"RAC %u-%u-%u-%u%s",
+			nsvc->nsei, nsvc->nsvci, peer->bvci,
+			raid.mcc, raid.mnc, raid.lac, raid.rac, VTY_NEWLINE);
+		if (nsvc->nsi->ll == GPRS_NS_LL_UDP)
+			vty_out(vty, "  remote address %s:%u%s",
+				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
+				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
+	}
+	return CMD_SUCCESS;
+}

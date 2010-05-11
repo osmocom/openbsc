@@ -6,6 +6,7 @@
 #include <osmocore/msgb.h>
 
 #include <openbsc/gprs_ns.h>
+#include <vty/command.h>
 
 struct gbproxy_config {
 	/* parsed from config file */
@@ -23,6 +24,7 @@ struct gbproxy_config {
 };
 
 extern struct gbproxy_config gbcfg;
+extern struct cmd_element show_gbproxy_cmd;
 
 /* gb_proxy_vty .c */
 

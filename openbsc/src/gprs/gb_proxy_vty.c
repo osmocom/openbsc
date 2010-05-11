@@ -70,8 +70,8 @@ static int config_write_gbproxy(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
-      SHOW_STR "Display information about the Gb proxy")
+DEFUN(show_ns, show_ns_cmd, "show ns",
+      SHOW_STR "Display information about the NS protocol")
 {
 	/* FIXME: iterate over list of NS-VC's and display their state */
 	struct gprs_ns_inst *nsi = g_cfg->nsi;
@@ -176,6 +176,7 @@ DEFUN(cfg_nsip_sgsn_nsvci,
 
 int gbproxy_vty_init(void)
 {
+	install_element(VIEW_NODE, &show_ns_cmd);
 	install_element(VIEW_NODE, &show_gbproxy_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
