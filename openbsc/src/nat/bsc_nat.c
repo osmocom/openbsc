@@ -53,7 +53,6 @@
 struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
-static struct bsc_msc_connection *msc_con;
 static struct bsc_fd bsc_listen;
 static const char *msc_ip = NULL;
 
@@ -92,7 +91,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
-	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
+	if (write_queue_enqueue(&nat->msc_con->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
@@ -207,7 +206,7 @@ static void nat_send_rlsd(struct sccp_connections *conn)
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	queue_for_msc(msc_con, msg);
+	queue_for_msc(nat->msc_con, msg);
 }
 
 static void nat_send_rlc(struct sccp_source_reference *src,
@@ -230,7 +229,7 @@ static void nat_send_rlc(struct sccp_source_reference *src,
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	queue_for_msc(msc_con, msg);
+	queue_for_msc(nat->msc_con, msg);
 }
 
 static void send_mgcp_reset(struct bsc_connection *bsc)
@@ -253,7 +252,7 @@ static void initialize_msc_if_needed()
 		return;
 
 	nat->first_contact = 1;
-	msc_send_reset(msc_con);
+	msc_send_reset(nat->msc_con);
 }
 
 /*
@@ -423,7 +422,7 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	msg->l2h = msgb_put(msg, sizeof(reset));
 	memcpy(msg->l2h, reset, msgb_l2len(msg));
 
-	queue_for_msc(msc_con, msg);
+	queue_for_msc(nat->msc_con, msg);
 
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
@@ -440,7 +439,7 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 		else
 			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 
-		bsc_msc_lost(msc_con);
+		bsc_msc_lost(nat->msc_con);
 		return -1;
 	}
 
@@ -627,7 +626,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	/* send the non-filtered but maybe modified msg */
-	queue_for_msc(msc_con, msg);
+	queue_for_msc(nat->msc_con, msg);
 	talloc_free(parsed);
 	return 0;
 
@@ -736,7 +735,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/*
 	 * if we are not connected to a msc... just close the socket
 	 */
-	if (!msc_con->is_connected) {
+	if (!nat->msc_con->is_connected) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
 		close(fd);
 		return 0;
@@ -962,16 +961,16 @@ int main(int argc, char** argv)
 		return -4;
 
 	/* connect to the MSC */
-	msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port);
-	if (!msc_con) {
+	nat->msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port);
+	if (!nat->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
 	}
 
-	msc_con->connection_loss = msc_connection_was_lost;
-	msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
-	msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
-	bsc_msc_connect(msc_con);
+	nat->msc_con->connection_loss = msc_connection_was_lost;
+	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
+	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+	bsc_msc_connect(nat->msc_con);
 
 	/* wait for the BSC */
 	if (listen_for_bsc(&bsc_listen, &local_addr, 5000) < 0) {

@@ -24,6 +24,7 @@
 #include <vty/vty.h>
 
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_msc.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/vty.h>
@@ -178,6 +179,22 @@ DEFUN(show_stats,
 			counter_get(conf->stats.net.reconn), VTY_NEWLINE);
 	}
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_msc,
+      show_msc_cmd,
+      "show msc connection",
+      SHOW_STR "Show the status of the MSC connection.")
+{
+	if (!_nat->msc_con) {
+		vty_out(vty, "The MSC is not yet configured.\n");
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "MSC on %s:%d is connected: %d%s\n",
+		_nat->msc_con->ip, _nat->msc_con->port,
+		_nat->msc_con->is_connected, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -406,6 +423,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(VIEW_NODE, &show_bsc_cfg_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
 	install_element(VIEW_NODE, &close_bsc_cmd);
+	install_element(VIEW_NODE, &show_msc_cmd);
 
 	openbsc_vty_add_cmds();
 
