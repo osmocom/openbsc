@@ -509,10 +509,12 @@ struct gsm_bts {
 		struct {
 			struct gsm_nm_state nm_state;
 			u_int16_t nsei;
+			uint8_t timer[7];
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
 			u_int16_t bvci;
+			uint8_t timer[11];
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
 		u_int8_t rac;

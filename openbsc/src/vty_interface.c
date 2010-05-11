@@ -42,6 +42,32 @@
 
 static struct gsm_network *gsmnet;
 
+static struct value_string gprs_ns_timer_strs[] = {
+	{ 0, "tns-block" },
+	{ 1, "tns-block-retries" },
+	{ 2, "tns-reset" },
+	{ 3, "tns-reset-retries" },
+	{ 4, "tns-test" },
+	{ 5, "tns-alive" },
+	{ 6, "tns-alive-retries" },
+	{ 0, NULL }
+};
+
+static struct value_string gprs_bssgp_cfg_strs[] = {
+	{ 0,	"blocking-timer" },
+	{ 1,	"blocking-retries" },
+	{ 2,	"unblocking-retries" },
+	{ 3,	"reset-timer" },
+	{ 4,	"reset-retries" },
+	{ 5,	"suspend-timer" },
+	{ 6,	"suspend-retries" },
+	{ 7,	"resume-timer" },
+	{ 8,	"resume-retries" },
+	{ 9,	"capability-update-timer" },
+	{ 10,	"capability-update-retries" },
+	{ 0,	NULL }
+};
+
 struct cmd_node net_node = {
 	GSMNET_NODE,
 	"%s(network)#",
@@ -279,10 +305,48 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 		config_write_ts_single(vty, &trx->ts[i]);
 }
 
+static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
+{
+	unsigned int i;
+	vty_out(vty, "  gprs mode %s%s", bts_gprs_mode_name(bts->gprs.mode),
+		VTY_NEWLINE);
+	if (bts->gprs.mode == BTS_GPRS_NONE)
+		return;
+
+	vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
+		VTY_NEWLINE);
+	vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
+		VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.cell.timer); i++)
+		vty_out(vty, "  gprs cell timer %s %u%s",
+			get_value_string(gprs_bssgp_cfg_strs, i),
+			bts->gprs.cell.timer[i], VTY_NEWLINE);
+	vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
+		VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nse.timer); i++)
+		vty_out(vty, "  gprs ns timer %s %u%s",
+			get_value_string(gprs_ns_timer_strs, i),
+			bts->gprs.nse.timer[i], VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+		struct gsm_bts_gprs_nsvc *nsvc =
+					&bts->gprs.nsvc[i];
+		struct in_addr ia;
+
+		ia.s_addr = htonl(nsvc->remote_ip);
+		vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
+			nsvc->nsvci, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
+			nsvc->local_port, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
+			nsvc->remote_port, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
+			inet_ntoa(ia), VTY_NEWLINE);
+	}
+}
+
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -325,31 +389,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
-	vty_out(vty, "  gprs mode %s%s", bts_gprs_mode_name(bts->gprs.mode),
-		VTY_NEWLINE);
-	if (bts->gprs.mode != BTS_GPRS_NONE) {
-		vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
-			VTY_NEWLINE);
-		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
-			VTY_NEWLINE);
-		vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
-			VTY_NEWLINE);
-		for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-			struct gsm_bts_gprs_nsvc *nsvc =
-						&bts->gprs.nsvc[i];
-			struct in_addr ia;
-
-			ia.s_addr = htonl(nsvc->remote_ip);
-			vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
-				nsvc->nsvci, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
-				nsvc->local_port, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
-				nsvc->remote_port, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
-				inet_ntoa(ia), VTY_NEWLINE);
-		}
-	}
+	config_write_bts_gprs(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -1586,6 +1626,63 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	return CMD_SUCCESS;
 }
 
+#define NS_TIMERS "(tns-block|tns-block-retries|tns-reset|tns-reset-retries|tns-test|tns-alive|tns-alive-retries)"
+#define NS_TIMERS_HELP	\
+	"(un)blocking Timer (Tns-block) timeout\n"		\
+	"(un)blocking Timer (Tns-block) number of retries\n"	\
+	"Reset Timer (Tns-reset) timeout\n"			\
+	"Reset Timer (Tns-reset) number of retries\n"		\
+	"Test Timer (Tns-test) timeout\n"			\
+
+DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
+	"gprs ns timer " NS_TIMERS " <0-255>",
+	GPRS_TEXT "Network Service\n"
+	"Network Service Timer\n"
+	NS_TIMERS_HELP "Timer Value\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = get_string_value(gprs_ns_timer_strs, argv[0]);
+	int val = atoi(argv[1]);
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.nse.timer))
+		return CMD_WARNING;
+
+	bts->gprs.nse.timer[idx] = val;
+
+	return CMD_SUCCESS;
+}
+
+#define BSSGP_TIMERS "(blocking-timer|blocking-retries|unblocking-retries|reset-timer|reset-retries|suspend-timer|suspend-retries|resume-timer|resume-retries|capability-update-timer|capability-update-retries)"
+#define BSSGP_TIMERS_HELP	""
+
+DEFUN(cfg_bts_gprs_cell_timer, cfg_bts_gprs_cell_timer_cmd,
+	"gprs cell timer " BSSGP_TIMERS " <0-255>",
+	GPRS_TEXT "Cell / BSSGP\n"
+	"Cell/BSSGP Timer\n"
+	BSSGP_TIMERS_HELP "Timer Value\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = get_string_value(gprs_bssgp_cfg_strs, argv[0]);
+	int val = atoi(argv[1]);
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.cell.timer))
+		return CMD_WARNING;
+
+	bts->gprs.cell.timer[idx] = val;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	"gprs routing area <0-255>",
 	GPRS_TEXT
@@ -1877,8 +1974,10 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_cell_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);

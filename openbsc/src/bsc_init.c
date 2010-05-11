@@ -883,6 +883,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch NSEI */
 	nanobts_attr_nse[3] = bts->gprs.nse.nsei >> 8;
 	nanobts_attr_nse[4] = bts->gprs.nse.nsei & 0xff;
+	memcpy(nanobts_attr_nse+8, bts->gprs.nse.timer,
+		ARRAY_SIZE(bts->gprs.nse.timer));
+	memcpy(nanobts_attr_nse+18, bts->gprs.cell.timer,
+		ARRAY_SIZE(bts->gprs.cell.timer));
 
 	/* patch NSVCI */
 	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;

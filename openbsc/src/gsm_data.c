@@ -171,6 +171,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	return trx;
 }
 
+static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
+static const uint8_t bts_cell_timer_default[] =
+				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
+
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
@@ -212,6 +216,10 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 		bts->gprs.nsvc[i].bts = bts;
 		bts->gprs.nsvc[i].id = i;
 	}
+	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
+		sizeof(bts->gprs.nse.timer));
+	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
+		sizeof(bts->gprs.cell.timer));
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
