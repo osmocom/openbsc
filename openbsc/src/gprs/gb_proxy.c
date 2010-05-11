@@ -415,6 +415,38 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 	return rc;
 }
 
+/* Signal handler for signals from NS layer */
+int gbprox_signal(unsigned int subsys, unsigned int signal,
+		  void *handler_data, void *signal_data)
+{
+	struct ns_signal_data *nssd = signal_data;
+	struct gprs_nsvc *nsvc = nssd->nsvc;
+	struct gbprox_peer *peer;
+
+	if (subsys != SS_NS)
+		return 0;
+
+	/* We currently only care about signals from the SGSN */
+	if (!nsvc->remote_end_is_sgsn)
+		return 0;
+
+	/* iterate over all BTS peers and send the respective PDU */
+	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+		switch (signal) {
+		case S_NS_RESET:
+			gprs_ns_tx_reset(peer->nsvc, nssd->cause);
+			break;
+		case S_NS_BLOCK:
+			gprs_ns_tx_block(peer->nsvc, nssd->cause);
+			break;
+		case S_NS_UNBLOCK:
+			gprs_ns_tx_unblock(peer->nsvc);
+			break;
+		}
+	}
+	return 0;
+}
+
 
 #include <vty/command.h>
 

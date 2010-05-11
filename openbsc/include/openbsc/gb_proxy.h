@@ -37,4 +37,6 @@ int gbproxy_parse_config(const char *config_file, struct gbproxy_config *cfg);
 /* Main input function for Gb proxy */
 int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci);
 
+int gbprox_signal(unsigned int subsys, unsigned int signal,
+		  void *handler_data, void *signal_data);
 #endif

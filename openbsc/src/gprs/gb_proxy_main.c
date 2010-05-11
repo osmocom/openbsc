@@ -118,6 +118,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	gbcfg.nsi = gbprox_nsi;
+	register_signal_handler(SS_NS, &gbprox_signal, NULL);
 	nsip_listen(gbprox_nsi, gbcfg.nsip_listen_port);
 
 	/* 'establish' the outgoing connection to the SGSN */
