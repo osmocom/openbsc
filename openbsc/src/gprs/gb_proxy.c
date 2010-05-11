@@ -129,7 +129,7 @@ static void strip_ns_hdr(struct msgb *msg)
 /* feed a message down the NS-VC associated with the specified peer */
 static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 {
-	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN (NS_BVCI=%u, NSEI=%u)\n",
+	DEBUGP(DGPRS, "NSEI=%u proxying BTS->SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, gbcfg.nsip_sgsn_nsei);
 
 	msgb_bvci(msg) = ns_bvci;
@@ -144,7 +144,7 @@ static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
-	DEBUGP(DGPRS, "NSEI=%u proxying to BSS (NS_BVCI=%u, NSEI=%u)\n",
+	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, peer->nsvc->nsei);
 
 	msgb_bvci(msg) = ns_bvci;
@@ -227,9 +227,11 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		 * is common for all point-to-point BVCs (and thus all BTS) */
 		if (TLVP_PRESENT(&tp, BSSGP_IE_BVCI)) {
 			uint16_t bvci = ntohs(*(uint16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+			LOGP(DGPRS, LOGL_DEBUG, "NSEI=%u Rx BVC RESET (BVCI=%u)\n",
+				nsvc->nsei, bvci);
 			if (bvci == 0) {
 				/* FIXME: only do this if SGSN is alive! */
-				LOGP(DGPRS, LOGL_INFO, "NSEI=%u Sending fake "
+				LOGP(DGPRS, LOGL_INFO, "NSEI=%u Tx fake "
 					"BVC RESET ACK of BVCI=0\n", nsvc->nsei);
 				return bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
 							    nsvc->nsei, 0, ns_bvci);
@@ -246,7 +248,8 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		break;
 	}
 
-	/* Normally, we can simply pass on all signalling messages from BSS to SGSN */
+	/* Normally, we can simply pass on all signalling messages from BSS to
+	 * SGSN */
 	return gbprox_relay2sgsn(msg, ns_bvci);
 err_no_peer:
 	LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(BSS) cannot find peer based on RAC\n",
