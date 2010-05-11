@@ -29,6 +29,7 @@
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <arpa/inet.h>
 
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
@@ -214,7 +215,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 			goto err_no_peer;
 		memcpy(&from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 			sizeof(&from_peer->ra));
-		gsm48_parse_ra(&raid, &from_peer->ra);
+		gsm48_parse_ra(&raid, from_peer->ra);
 		DEBUGP(DGPRS, "NSEI=%u RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
 			"NSVCI=%u\n", nsvc->nsei, raid.mcc, raid.mnc, raid.lac,
 			raid.rac , from_peer->bvci, nsvc->nsvci);
@@ -373,7 +374,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 			"cause=0x%02x(%s) ", *TLVP_VAL(&tp, BSSGP_IE_CAUSE),
 			bssgp_cause_str(*TLVP_VAL(&tp, BSSGP_IE_CAUSE)));
 		if (TLVP_PRESENT(&tp, BSSGP_IE_BVCI)) {
-			uint16_t *bvci = TLVP_VAL(&tp, BSSGP_IE_BVCI);
+			uint16_t *bvci = (uint16_t *)
+						TLVP_VAL(&tp, BSSGP_IE_BVCI);
 			LOGPC(DGPRS, LOGL_NOTICE,
 				"BVCI=%u\n", ntohs(*bvci));
 		} else
@@ -488,7 +490,7 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
 		struct gprs_nsvc *nsvc = peer->nsvc;
 		struct gprs_ra_id raid;
-		gsm48_parse_ra(&raid, &peer->ra);
+		gsm48_parse_ra(&raid, peer->ra);
 
 		vty_out(vty, "NSEI %5u, NS-VC %5u, PTP-BVCI %u, "
 			"RAC %u-%u-%u-%u%s",
