@@ -39,6 +39,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_ns.h>
+#include <openbsc/gprs_bssgp.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
@@ -52,8 +53,6 @@ void subscr_put() { abort(); }
 #include <getopt.h>
 
 void *tall_bsc_ctx;
-
-struct gprs_ns_inst *gbprox_nsi;
 
 const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
@@ -112,20 +111,20 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	gbprox_nsi = gprs_ns_instantiate(&proxy_ns_cb);
-	if (!gbprox_nsi) {
+	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);
+	if (!bssgp_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
-	gbcfg.nsi = gbprox_nsi;
+	gbcfg.nsi = bssgp_nsi;
 	register_signal_handler(SS_NS, &gbprox_signal, NULL);
-	nsip_listen(gbprox_nsi, gbcfg.nsip_listen_port);
+	nsip_listen(bssgp_nsi, gbcfg.nsip_listen_port);
 
 	/* 'establish' the outgoing connection to the SGSN */
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(gbcfg.nsip_sgsn_port);
 	sin.sin_addr.s_addr = htonl(gbcfg.nsip_sgsn_ip);
-	nsip_connect(gbprox_nsi, &sin, gbcfg.nsip_sgsn_nsei,
+	nsip_connect(bssgp_nsi, &sin, gbcfg.nsip_sgsn_nsei,
 			gbcfg.nsip_sgsn_nsvci);
 
 	while (1) {
