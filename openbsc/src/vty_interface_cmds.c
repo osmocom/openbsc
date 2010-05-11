@@ -262,6 +262,49 @@ DEFUN(diable_logging,
 	return CMD_SUCCESS;
 }
 
+static void vty_print_logtarget(struct vty *vty, const struct log_info *info,
+				const struct log_target *tgt)
+{
+	unsigned int i;
+
+	vty_out(vty, " Global Loglevel: %s%s",
+		log_level_str(tgt->loglevel), VTY_NEWLINE);
+	vty_out(vty, " Use color: %s, Print Timestamp: %s%s",
+		tgt->use_color ? "On" : "Off",
+		tgt->print_timestamp ? "On" : "Off", VTY_NEWLINE);
+
+	vty_out(vty, " Log Level specific information:%s", VTY_NEWLINE);
+
+	for (i = 0; i < info->num_cat; i++) {
+		const struct log_category *cat = &tgt->categories[i];
+		vty_out(vty, "  %-10s %-10s %-8s %s%s",
+			info->cat[i].name+1, log_level_str(cat->loglevel),
+			cat->enabled ? "Enabled" : "Disabled",
+ 			info->cat[i].description,
+			VTY_NEWLINE);
+	}
+}
+
+#define SHOW_LOG_STR "Show current logging configuration\n"
+
+DEFUN(show_logging_vty,
+      show_logging_vty_cmd,
+      "show logging vty",
+	SHOW_STR SHOW_LOG_STR
+	"Show current logging configuration for this vty\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	vty_print_logtarget(vty, &log_info, conn->dbg);
+
+	return CMD_SUCCESS;
+}
+
 void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 {
 	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
@@ -289,5 +332,6 @@ void openbsc_vty_add_cmds()
 	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
 	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
 	install_element(VIEW_NODE, &logging_level_cmd);
+	install_element(VIEW_NODE, &show_logging_vty_cmd);
 
 }
