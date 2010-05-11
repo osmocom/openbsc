@@ -216,9 +216,10 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		memcpy(from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 			sizeof(from_peer->ra));
 		gsm48_parse_ra(&raid, from_peer->ra);
-		DEBUGP(DGPRS, "NSEI=%u RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
-			"NSVCI=%u\n", nsvc->nsei, raid.mcc, raid.mnc, raid.lac,
-			raid.rac , from_peer->bvci, nsvc->nsvci);
+		LOGP(DGPRS, LOGL_INFO, "NSEI=%u RAC snooping: RAC %u-%u-%u-%u "
+			"behind BVCI=%u, NSVCI=%u\n", nsvc->nsei, raid.mcc,
+			raid.mnc, raid.lac, raid.rac , from_peer->bvci,
+			nsvc->nsvci);
 		/* FIXME: This only supports one BSS per RA */
 		break;
 	case BSSGP_PDUT_BVC_RESET:
@@ -227,7 +228,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		 * is common for all point-to-point BVCs (and thus all BTS) */
 		if (TLVP_PRESENT(&tp, BSSGP_IE_BVCI)) {
 			uint16_t bvci = ntohs(*(uint16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
-			LOGP(DGPRS, LOGL_DEBUG, "NSEI=%u Rx BVC RESET (BVCI=%u)\n",
+			LOGP(DGPRS, LOGL_INFO, "NSEI=%u Rx BVC RESET (BVCI=%u)\n",
 				nsvc->nsei, bvci);
 			if (bvci == 0) {
 				/* FIXME: only do this if SGSN is alive! */
@@ -257,7 +258,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 					sizeof(from_peer->ra));
 				gsm48_parse_ra(&raid, from_peer->ra);
 				LOGP(DGPRS, LOGL_INFO, "NSEI=%u/BVCI=%u "
-				     "Cell ID " "%u-%u-%u-%u\n", nsvc->nsei,
+				     "Cell ID %u-%u-%u-%u\n", nsvc->nsei,
 				     bvci, raid.mcc, raid.mnc, raid.lac,
 				     raid.rac);
 			}
@@ -420,7 +421,8 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		rc = bssgp_tx_status(BSSGP_CAUSE_PDU_INCOMP_FEAT, NULL, msg);
 		break;
 	default:
-		DEBUGP(DGPRS, "BSSGP PDU type 0x%02x unknown\n", pdu_type);
+		LOGP(DGPRS, LOGL_NOTICE, "BSSGP PDU type 0x%02x unknown\n",
+			pdu_type);
 		rc = bssgp_tx_status(BSSGP_CAUSE_PROTO_ERR_UNSPEC, NULL, msg);
 		break;
 	}
@@ -454,7 +456,7 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 		} else {
 			struct gbprox_peer *peer = peer_by_bvci(ns_bvci);
 			if (!peer) {
-				LOGP(DGPRS, LOGL_NOTICE, "Allocationg new peer for "
+				LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
 				     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
 				     nsvc->nsvci, nsvc->nsei);
 				peer = peer_alloc(ns_bvci);
