@@ -82,7 +82,7 @@ static struct gbprox_peer *peer_by_rac(const uint8_t *ra)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
-		if (!memcmp(&peer->ra, ra, 6))
+		if (!memcmp(peer->ra, ra, 6))
 			return peer;
 	}
 	return NULL;
@@ -93,7 +93,7 @@ static struct gbprox_peer *peer_by_lac(const uint8_t *la)
 {
 	struct gbprox_peer *peer;
 	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
-		if (!memcmp(&peer->ra, la, 5))
+		if (!memcmp(peer->ra, la, 5))
 			return peer;
 	}
 	return NULL;
@@ -213,8 +213,8 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		from_peer = peer_by_nsvc(nsvc);
 		if (!from_peer)
 			goto err_no_peer;
-		memcpy(&from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
-			sizeof(&from_peer->ra));
+		memcpy(from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
+			sizeof(from_peer->ra));
 		gsm48_parse_ra(&raid, from_peer->ra);
 		DEBUGP(DGPRS, "NSEI=%u RAC snooping: RAC %u/%u/%u/%u behind BVCI=%u, "
 			"NSVCI=%u\n", nsvc->nsei, raid.mcc, raid.mnc, raid.lac,
@@ -235,7 +235,9 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 					"BVC RESET ACK of BVCI=0\n", nsvc->nsei);
 				return bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_RESET_ACK,
 							    nsvc->nsei, 0, ns_bvci);
-			} else if (!peer_by_bvci(bvci)) {
+			}
+			from_peer = peer_by_bvci(bvci);
+			if (!from_peer) {
 				/* if a PTP-BVC is reset, and we don't know that
 				 * PTP-BVCI yet, we should allocate a new peer */
 				LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
@@ -243,6 +245,21 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 				     nsvc->nsvci, nsvc->nsei);
 				from_peer = peer_alloc(bvci);
 				from_peer->nsvc = nsvc;
+			}
+			if (TLVP_PRESENT(&tp, BSSGP_IE_CELL_ID)) {
+				struct gprs_ra_id raid;
+				/* We have a Cell Identifier present in this
+				 * PDU, this means we can extend our local
+				 * state information about this particular cell
+				 * */
+				memcpy(from_peer->ra,
+					TLVP_VAL(&tp, BSSGP_IE_CELL_ID),
+					sizeof(from_peer->ra));
+				gsm48_parse_ra(&raid, from_peer->ra);
+				LOGP(DGPRS, LOGL_INFO, "NSEI=%u/BVCI=%u "
+				     "Cell ID " "%u-%u-%u-%u\n", nsvc->nsei,
+				     bvci, raid.mcc, raid.mnc, raid.lac,
+				     raid.rac);
 			}
 		}
 		break;
