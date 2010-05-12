@@ -381,6 +381,11 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 		++lchan->conn.use_count;
 		gsm48_send_rr_release(lchan);
 		--lchan->conn.use_count;
+
+		/* avoid reentrancy */
+		subscr_put(lchan->conn.subscr);
+		lchan->conn.subscr = NULL;
+		return;
 	}
 
 	/* spoofed? message */
