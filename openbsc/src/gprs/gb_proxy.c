@@ -119,6 +119,23 @@ static void peer_free(struct gbprox_peer *peer)
 	talloc_free(peer);
 }
 
+/* FIXME: this needs to go to libosmocore/msgb.c */
+static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
+{
+	struct msgb *new_msg;
+
+	new_msg = msgb_alloc(msg->data_len, name);
+	if (!new_msg)
+		return NULL;
+
+	/* copy header */
+	memcpy(new_msg, msg, sizeof(*new_msg));
+	/* copy data */
+	memcpy(new_msg->data, msg->data, new_msg->data_len);
+
+	return new_msg;
+}
+
 /* strip off the NS header */
 static void strip_ns_hdr(struct msgb *msg)
 {
@@ -127,8 +144,12 @@ static void strip_ns_hdr(struct msgb *msg)
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
-static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
+static int gbprox_relay2sgsn(struct msgb *old_msg, uint16_t ns_bvci)
 {
+	/* create a copy of the message so the old one can
+	 * be free()d safely when we return from gbprox_rcvmsg() */
+	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2sgsn");
+
 	DEBUGP(DGPRS, "NSEI=%u proxying BTS->SGSN (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, gbcfg.nsip_sgsn_nsei);
 
@@ -141,9 +162,13 @@ static int gbprox_relay2sgsn(struct msgb *msg, uint16_t ns_bvci)
 }
 
 /* feed a message down the NS-VC associated with the specified peer */
-static int gbprox_relay2peer(struct msgb *msg, struct gbprox_peer *peer,
+static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 			  uint16_t ns_bvci)
 {
+	/* create a copy of the message so the old one can
+	 * be free()d safely when we return from gbprox_rcvmsg() */
+	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2peer");
+
 	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, peer->nsvc->nsei);
 
@@ -466,6 +491,10 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 		}
 	}
 
+	/* We free the original message here, as we will have created a
+	 * copy in case it is forwarded to another peer */
+	msgb_free(msg);
+	
 	return rc;
 }
 
