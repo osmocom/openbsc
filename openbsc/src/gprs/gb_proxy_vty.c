@@ -52,19 +52,19 @@ static int config_write_gbproxy(struct vty *vty)
 
 	if (g_cfg->nsip_listen_ip) {
 		ia.s_addr = htonl(g_cfg->nsip_listen_ip);
-		vty_out(vty, "  nsip bss local ip %s%s", inet_ntoa(ia),
+		vty_out(vty, " nsip bss local ip %s%s", inet_ntoa(ia),
 			VTY_NEWLINE);
 	}
-	vty_out(vty, "  nsip bss local port %u%s", g_cfg->nsip_listen_port,
+	vty_out(vty, " nsip bss local port %u%s", g_cfg->nsip_listen_port,
 		VTY_NEWLINE);
 	ia.s_addr = htonl(g_cfg->nsip_sgsn_ip);
-	vty_out(vty, "  nsip sgsn remote ip %s%s", inet_ntoa(ia),
+	vty_out(vty, " nsip sgsn remote ip %s%s", inet_ntoa(ia),
 		VTY_NEWLINE);
-	vty_out(vty, "  nsip sgsn remote port %u%s", g_cfg->nsip_sgsn_port,
+	vty_out(vty, " nsip sgsn remote port %u%s", g_cfg->nsip_sgsn_port,
 		VTY_NEWLINE);
-	vty_out(vty, "  nsip sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
+	vty_out(vty, " nsip sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
 		VTY_NEWLINE);
-	vty_out(vty, "  nsip sgsn nsvci %u%s", g_cfg->nsip_sgsn_nsvci,
+	vty_out(vty, " nsip sgsn nsvci %u%s", g_cfg->nsip_sgsn_nsvci,
 		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
