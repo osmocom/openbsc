@@ -92,7 +92,7 @@ int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
-int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+int abis_nm_software_load(struct gsm_bts *bts, int trx_nr, const char *fname,
 			  u_int8_t win_size, int forced,
 			  gsm_cbfn *cbfn, void *cb_data);
 int abis_nm_software_load_status(struct gsm_bts *bts);

@@ -411,7 +411,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		} else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);
-			rc = abis_nm_software_load(trx->bts, software, 19, 0, swload_cbfn, trx->bts);
+			rc = abis_nm_software_load(trx->bts, trx->nr, software, 19, 0, swload_cbfn, trx->bts);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to start software load\n");
 				exit(-3);
