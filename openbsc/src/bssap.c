@@ -312,7 +312,7 @@ static void bssmap_t10_fired(void *_conn)
 	msc_data = conn->data_ctx;
 	bssmap_free_secondary(msc_data);
 
-	resp = bssmap_create_assignment_failure(
+	resp = gsm0808_create_assignment_failure(
 		GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Allocation failure: %p\n", conn);
@@ -1005,36 +1005,6 @@ struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_
 	return msg;
 }
 
-struct msgb *bssmap_create_assignment_failure(u_int8_t cause, u_int8_t *rr_cause)
-{
-	u_int8_t *data;
-	struct msgb *msg = msgb_alloc(35, "bssmap: ass fail");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 6);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 0xff;
-	msg->l3h[2] = BSS_MAP_MSG_ASSIGMENT_FAILURE;
-	msg->l3h[3] = GSM0808_IE_CAUSE;
-	msg->l3h[4] = 1;
-	msg->l3h[5] = cause;
-
-	/* RR cause 3.2.2.22 */
-	if (rr_cause) {
-		data = msgb_put(msg, 2);
-		data[0] = GSM0808_IE_RR_CAUSE;
-		data[1] = *rr_cause;
-	}
-
-	/* Circuit pool 3.22.45 */
-	/* Circuit pool list 3.2.2.46 */
-
-	/* update the size */
-	msg->l3h[1] = msgb_l3len(msg) - 2;
-	return msg;
-}
-
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id)
 {
 	struct dtap_header *header;
@@ -1312,7 +1282,7 @@ void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_
 
 	bsc_del_timer(&lchan->msc_data->T10);
 	bssmap_free_secondary(lchan->msc_data);
-	resp = bssmap_create_assignment_failure(cause, rr_value);
+	resp = gsm0808_create_assignment_failure(cause, rr_value);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Allocation failure: %p\n", lchan_get_sccp(lchan));
 		return;
