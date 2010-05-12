@@ -491,10 +491,6 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 		}
 	}
 
-	/* We free the original message here, as we will have created a
-	 * copy in case it is forwarded to another peer */
-	msgb_free(msg);
-	
 	return rc;
 }
 
