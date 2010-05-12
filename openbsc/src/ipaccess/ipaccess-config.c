@@ -92,23 +92,23 @@ static int ipacc_msg_nack(u_int8_t mt)
 	return 0;
 }
 
-static void check_restart_or_exit(struct gsm_bts *bts)
+static void check_restart_or_exit(struct gsm_bts_trx *trx)
 {
 	if (restart) {
-		abis_nm_ipaccess_restart(bts);
+		abis_nm_ipaccess_restart(trx);
 	} else {
 		exit(0);
 	}
 }
 
-static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts *bts)
+static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
-		check_restart_or_exit(bts);
+		check_restart_or_exit(trx);
 	} else if (oml_state == 1) {
 		fprintf(stderr, "Set the primary OML IP.\n");
-		check_restart_or_exit(bts);
+		check_restart_or_exit(trx);
 	}
 
 	return 0;
@@ -203,7 +203,7 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		return ipacc_msg_nack(ipacc_data->msg_type);
 	case S_NM_IPACC_ACK:
 		ipacc_data = signal_data;
-		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->bts);
+		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->trx);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	case S_NM_IPACC_RESTART_ACK:
@@ -304,7 +304,6 @@ static void bootstrap_om(struct gsm_bts_trx *trx)
 	int len;
 	static u_int8_t buf[1024];
 	u_int8_t *cur = buf;
-	struct gsm_bts *bts = trx->bts;
 
 	printf("OML link established using TRX %d\n", trx->nr);
 
@@ -361,7 +360,7 @@ static void bootstrap_om(struct gsm_bts_trx *trx)
 
 	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
-		abis_nm_ipaccess_restart(bts);
+		abis_nm_ipaccess_restart(trx);
 	}
 
 }
