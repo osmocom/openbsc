@@ -342,7 +342,7 @@ static void bootstrap_om(struct gsm_bts_trx *trx)
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
 		oml_state = 1;
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
 	if (nv_mask) {
 		len = 4;
