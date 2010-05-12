@@ -481,7 +481,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 		 * argument, so our swload_cbfn can distinguish
 		 * a safety load from a regular software */
 		if (file_is_readable(fname_safety))
-			rc = abis_nm_software_load(g_bts, fname_safety,
+			rc = abis_nm_software_load(g_bts, 0xff, fname_safety,
 						   win_size, param_forced,
 						   swload_cbfn, g_bts);
 		else

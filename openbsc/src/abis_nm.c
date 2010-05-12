@@ -1139,6 +1139,7 @@ enum sw_state {
 
 struct abis_nm_sw {
 	struct gsm_bts *bts;
+	int trx_nr;
 	gsm_cbfn *cbfn;
 	void *cb_data;
 	int forced;
@@ -1592,7 +1593,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 }
 
 /* Load the specified software into the BTS */
-int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+int abis_nm_software_load(struct gsm_bts *bts, int trx_nr, const char *fname,
 			  u_int8_t win_size, int forced,
 			  gsm_cbfn *cbfn, void *cb_data)
 {
@@ -1606,6 +1607,7 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		return -EBUSY;
 
 	sw->bts = bts;
+	sw->trx_nr = trx_nr;
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -1616,8 +1618,8 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		break;
 	case GSM_BTS_TYPE_NANOBTS:
 		sw->obj_class = NM_OC_BASEB_TRANSC;
-		sw->obj_instance[0] = 0x00;
-		sw->obj_instance[1] = 0x00;
+		sw->obj_instance[0] = sw->bts->nr;
+		sw->obj_instance[1] = sw->trx_nr;
 		sw->obj_instance[2] = 0xff;
 		break;
 	case GSM_BTS_TYPE_UNKNOWN:
@@ -2551,7 +2553,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 		fle = fl_dequeue(&bs11_sw->file_list);
 		if (fle) {
 			/* start download the next file of our file list */
-			rc = abis_nm_software_load(bs11_sw->bts, fle->fname,
+			rc = abis_nm_software_load(bs11_sw->bts, 0xff, fle->fname,
 						   bs11_sw->win_size,
 						   bs11_sw->forced,
 						   &bs11_swload_cbfn, bs11_sw);
@@ -2607,7 +2609,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 		return -EINVAL;
 
 	/* start download the next file of our file list */
-	rc = abis_nm_software_load(bts, fle->fname, win_size, forced,
+	rc = abis_nm_software_load(bts, 0xff, fle->fname, win_size, forced,
 				   bs11_swload_cbfn, bs11_sw);
 	talloc_free(fle);
 	return rc;
