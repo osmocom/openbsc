@@ -42,7 +42,8 @@
 
 static struct gsm_network *gsmnet;
 
-static struct value_string gprs_ns_timer_strs[] = {
+/* FIXME: this should go to some common file */
+static const struct value_string gprs_ns_timer_strs[] = {
 	{ 0, "tns-block" },
 	{ 1, "tns-block-retries" },
 	{ 2, "tns-reset" },
@@ -53,7 +54,7 @@ static struct value_string gprs_ns_timer_strs[] = {
 	{ 0, NULL }
 };
 
-static struct value_string gprs_bssgp_cfg_strs[] = {
+static const struct value_string gprs_bssgp_cfg_strs[] = {
 	{ 0,	"blocking-timer" },
 	{ 1,	"blocking-retries" },
 	{ 2,	"unblocking-retries" },
@@ -1625,14 +1626,6 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 
 	return CMD_SUCCESS;
 }
-
-#define NS_TIMERS "(tns-block|tns-block-retries|tns-reset|tns-reset-retries|tns-test|tns-alive|tns-alive-retries)"
-#define NS_TIMERS_HELP	\
-	"(un)blocking Timer (Tns-block) timeout\n"		\
-	"(un)blocking Timer (Tns-block) number of retries\n"	\
-	"Reset Timer (Tns-reset) timeout\n"			\
-	"Reset Timer (Tns-reset) number of retries\n"		\
-	"Test Timer (Tns-test) timeout\n"			\
 
 DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
 	"gprs ns timer " NS_TIMERS " <0-255>",
