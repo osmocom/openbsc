@@ -105,11 +105,6 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	telnet_init(&dummy_network, 4246);
-	rc = gbproxy_parse_config(config_file, &gbcfg);
-	if (rc < 0) {
-		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
-		exit(2);
-	}
 
 	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);
 	if (!bssgp_nsi) {
@@ -117,7 +112,15 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	gbcfg.nsi = bssgp_nsi;
+	gprs_ns_vty_init(bssgp_nsi);
 	register_signal_handler(SS_NS, &gbprox_signal, NULL);
+
+	rc = gbproxy_parse_config(config_file, &gbcfg);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
+		exit(2);
+	}
+
 	nsip_listen(bssgp_nsi, gbcfg.nsip_listen_port);
 
 	/* 'establish' the outgoing connection to the SGSN */

@@ -70,29 +70,6 @@ static int config_write_gbproxy(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_ns, show_ns_cmd, "show ns",
-      SHOW_STR "Display information about the NS protocol")
-{
-	/* FIXME: iterate over list of NS-VC's and display their state */
-	struct gprs_ns_inst *nsi = g_cfg->nsi;
-	struct gprs_nsvc *nsvc;
-
-	llist_for_each_entry(nsvc, &nsi->gprs_nsvcs, list) {
-		vty_out(vty, "NSEI %5u, NS-VC %5u, %s-mode, %s %s%s",
-			nsvc->nsei, nsvc->nsvci,
-			nsvc->remote_end_is_sgsn ? "BSS" : "SGSN",
-			nsvc->state & NSE_S_ALIVE ? "ALIVE" : "DEAD",
-			nsvc->state & NSE_S_BLOCKED ? "BLOCKED" : "UNBLOCKED",
-			VTY_NEWLINE);
-		if (nsvc->nsi->ll == GPRS_NS_LL_UDP)
-			vty_out(vty, "  remote peer %s:%u%s",
-				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
-				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
-	}
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_gbproxy,
       cfg_gbproxy_cmd,
       "gbproxy",
@@ -173,10 +150,8 @@ DEFUN(cfg_nsip_sgsn_nsvci,
 	return CMD_SUCCESS;
 }
 
-
 int gbproxy_vty_init(void)
 {
-	install_element(VIEW_NODE, &show_ns_cmd);
 	install_element(VIEW_NODE, &show_gbproxy_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
