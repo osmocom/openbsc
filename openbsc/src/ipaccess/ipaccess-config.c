@@ -1,8 +1,8 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther
- * (C) 2009 by On Waves
+ * (C) 2009,2010 by Holger Hans Peter Freyther
+ * (C) 2009,2010 by On Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -59,7 +59,7 @@ static int sw_load_state = 0;
 static int oml_state = 0;
 static int dump_files = 0;
 static char *firmware_analysis = NULL;
-static int trx_nr = 0;
+static int found_trx = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -299,13 +299,14 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 	return 0;
 }
 
-static void bootstrap_om(struct gsm_bts *bts)
+static void bootstrap_om(struct gsm_bts_trx *trx)
 {
 	int len;
 	static u_int8_t buf[1024];
 	u_int8_t *cur = buf;
+	struct gsm_bts *bts = trx->bts;
 
-	printf("OML link established\n");
+	printf("OML link established using TRX %d\n", trx->nr);
 
 	if (unit_id) {
 		len = strlen(unit_id);
@@ -317,8 +318,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		memcpy(buf+3, unit_id, len);
 		buf[3+len] = 0;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(gsm_bts_trx_by_nr(bts, trx_nr),
-					    buf, 3+len+1);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len+1);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
@@ -356,8 +356,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = nv_mask >> 8;
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(gsm_bts_trx_by_nr(bts, trx_nr),
-					    buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
 
 	if (restart && !prim_oml_ip && !software) {
@@ -373,7 +372,6 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 	case EVT_E1_TEI_UP:
 		switch (type) {
 		case E1INP_SIGN_OML:
-			bootstrap_om(trx->bts);
 			break;
 		case E1INP_SIGN_RSL:
 			/* FIXME */
@@ -395,7 +393,13 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 		   struct abis_om_obj_inst *obj_inst)
 {
-	if (evt == EVT_STATECHG_OPER &&
+	if (obj_class == NM_OC_BASEB_TRANSC) {
+		if (!found_trx && obj_inst->trx_nr != 0xff) {
+			struct gsm_bts_trx *trx = container_of(obj, struct gsm_bts_trx, bb_transc);
+			bootstrap_om(trx);
+			found_trx = 1;
+		}
+	} else if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
 	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
@@ -609,7 +613,6 @@ static void print_help(void)
 	printf("  -d --software firmware\n");
 	printf("  -f --firmware firmware Provide firmware information\n");
 	printf("  -w --write-firmware. This will dump the firmware parts to the filesystem. Use with -f.\n");
-	printf("  -t --trx NR. The TRX to use for the Unit ID and NVRAM attributes.\n");
 }
 
 int main(int argc, char **argv)
@@ -644,11 +647,10 @@ int main(int argc, char **argv)
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
-			{ "trx", 1, 0, 't' },
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:wt:", long_options,
+		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:w", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -689,9 +691,6 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			dump_files = 1;
-			break;
-		case 't':
-			trx_nr = atoi(optarg);
 			break;
 		case 'h':
 			print_usage();
