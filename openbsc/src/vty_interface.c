@@ -39,6 +39,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
+#include <openbsc/gprs_ns.h>
 
 static struct gsm_network *gsmnet;
 
