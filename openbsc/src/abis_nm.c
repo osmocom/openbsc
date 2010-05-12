@@ -2775,12 +2775,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		signal.bts = msg->trx->bts;
+		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
-		signal.bts = msg->trx->bts;
+		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;
@@ -2866,9 +2866,16 @@ int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 }
 
 /* restart / reboot an ip.access nanoBTS */
-int abis_nm_ipaccess_restart(struct gsm_bts *bts)
+int abis_nm_ipaccess_restart(struct gsm_bts_trx *trx)
 {
-	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_IPACC_RESTART, NM_OC_BASEB_TRANSC,
+			trx->bts->nr, trx->nr, 0xff);
+
+	return abis_nm_sendmsg(trx->bts, msg);
 }
 
 int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,

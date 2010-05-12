@@ -135,7 +135,7 @@ struct scall_signal_data {
 };
 
 struct ipacc_ack_signal_data {
-	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
 	u_int8_t msg_type;	
 };
 
