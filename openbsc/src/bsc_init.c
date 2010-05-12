@@ -401,7 +401,8 @@ static unsigned char nanobts_attr_nsvc0[] = {
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_inst)
 {
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;

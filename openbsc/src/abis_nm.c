@@ -678,7 +678,7 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	new_state = *nm_state;
 	new_state.administrative = adm_state;
 
-	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state);
+	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state, obj_inst);
 
 	nm_state->administrative = adm_state;
 
@@ -732,7 +732,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 		/* Update the operational state of a given object in our in-memory data
  		* structures and send an event to the higher layer */
 		void *obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state);
+		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state, &foh->obj_inst);
 		nm_state->operational = new_state.operational;
 		nm_state->availability = new_state.availability;
 		if (nm_state->administrative == 0)

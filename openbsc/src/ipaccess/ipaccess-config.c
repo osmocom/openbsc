@@ -392,7 +392,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 }
 
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_inst)
 {
 	if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
