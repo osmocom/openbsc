@@ -26,6 +26,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -89,6 +90,32 @@ static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	return rc;
 }
 
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGINT:
+		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		sleep(1);
+		exit(0);
+		break;
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report
+		 * and then return to the caller, who will abort the process */
+	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
+		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		talloc_report_full(tall_vty_ctx, stderr);
+		break;
+	default:
+		break;
+	}
+}
+
+extern void *tall_msgb_ctx;
 
 int main(int argc, char **argv)
 {
@@ -98,6 +125,13 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "nsip_proxy");
+	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+
+	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 
 	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
