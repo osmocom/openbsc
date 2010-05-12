@@ -149,6 +149,7 @@ enum signal_ns {
 	S_NS_RESET,
 	S_NS_BLOCK,
 	S_NS_UNBLOCK,
+	S_NS_ALIVE_EXP,	/* Tns-alive expired more than N times */
 };
 
 struct ns_signal_data {
