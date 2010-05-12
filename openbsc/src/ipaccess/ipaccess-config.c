@@ -92,23 +92,23 @@ static int ipacc_msg_nack(u_int8_t mt)
 	return 0;
 }
 
+static void check_restart_or_exit(struct gsm_bts *bts)
+{
+	if (restart) {
+		abis_nm_ipaccess_restart(bts);
+	} else {
+		exit(0);
+	}
+}
+
 static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts *bts)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
-
-		if (restart) {
-			abis_nm_ipaccess_restart(bts);
-		} else {
-			exit(0);
-		}
+		check_restart_or_exit(bts);
 	} else if (oml_state == 1) {
 		fprintf(stderr, "Set the primary OML IP.\n");
-		if (restart) {
-			abis_nm_ipaccess_restart(bts);
-		} else {
-			exit(0);
-		}
+		check_restart_or_exit(bts);
 	}
 
 	return 0;
