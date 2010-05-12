@@ -153,6 +153,7 @@ DEFUN(cfg_nsip_sgsn_nsvci,
 int gbproxy_vty_init(void)
 {
 	install_element(VIEW_NODE, &show_gbproxy_cmd);
+	install_element(ENABLE_NODE, &show_gbproxy_cmd);
 
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
 	install_node(&gbproxy_node, config_write_gbproxy);
