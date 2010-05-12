@@ -228,12 +228,12 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		       void *data, void *param)
 {
 	struct msgb *msg;
-	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
 
 	if (hook != GSM_HOOK_NM_SWLOAD)
 		return 0;
 
-	bts = (struct gsm_bts *) data;
+	trx = (struct gsm_bts_trx *) data;
 
 	switch (event) {
 	case NM_MT_LOAD_INIT_ACK:
@@ -272,7 +272,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		msg->l2h[1] = msgb_l3len(msg) >> 8;
 		msg->l2h[2] = msgb_l3len(msg) & 0xff;
 		printf("Foo l2h: %p l3h: %p... length l2: %u  l3: %u\n", msg->l2h, msg->l3h, msgb_l2len(msg), msgb_l3len(msg));
-		abis_nm_ipaccess_set_nvattr(bts->c0, msg->l2h, msgb_l2len(msg));
+		abis_nm_ipaccess_set_nvattr(trx, msg->l2h, msgb_l2len(msg));
 		msgb_free(msg);
 		break;
 	case NM_MT_LOAD_END_NACK:
@@ -286,7 +286,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 	case NM_MT_ACTIVATE_SW_ACK:
 		break;
 	case NM_MT_LOAD_SEG_ACK:
-		percent = abis_nm_software_load_status(bts);
+		percent = abis_nm_software_load_status(trx->bts);
 		if (percent > percent_old)
 			printf("Software Download Progress: %d%%\n", percent);
 		percent_old = percent;
@@ -411,7 +411,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		} else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);
-			rc = abis_nm_software_load(trx->bts, trx->nr, software, 19, 0, swload_cbfn, trx->bts);
+			rc = abis_nm_software_load(trx->bts, trx->nr, software, 19, 0, swload_cbfn, trx);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to start software load\n");
 				exit(-3);
