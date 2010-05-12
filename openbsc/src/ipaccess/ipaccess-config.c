@@ -406,7 +406,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 
 		if (net_listen_testnr) {
 			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-			abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+			abis_nm_perform_test(trx->bts, 2, 0, trx->nr, 0xff,
 					     net_listen_testnr, 1,
 					     phys_config, sizeof(phys_config));
 		} else if (software) {
