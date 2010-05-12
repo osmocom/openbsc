@@ -324,14 +324,13 @@ void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 
 void openbsc_vty_add_cmds()
 {
-	install_element(VIEW_NODE, &enable_logging_cmd);
-	install_element(VIEW_NODE, &disable_logging_cmd);
-	install_element(VIEW_NODE, &logging_fltr_imsi_cmd);
-	install_element(VIEW_NODE, &logging_fltr_all_cmd);
-	install_element(VIEW_NODE, &logging_use_clr_cmd);
-	install_element(VIEW_NODE, &logging_prnt_timestamp_cmd);
-	install_element(VIEW_NODE, &logging_set_category_mask_cmd);
-	install_element(VIEW_NODE, &logging_level_cmd);
-	install_element(VIEW_NODE, &show_logging_vty_cmd);
-
+	install_element_ve(&enable_logging_cmd);
+	install_element_ve(&disable_logging_cmd);
+	install_element_ve(&logging_fltr_imsi_cmd);
+	install_element_ve(&logging_fltr_all_cmd);
+	install_element_ve(&logging_use_clr_cmd);
+	install_element_ve(&logging_prnt_timestamp_cmd);
+	install_element_ve(&logging_set_category_mask_cmd);
+	install_element_ve(&logging_level_cmd);
+	install_element_ve(&show_logging_vty_cmd);
 }

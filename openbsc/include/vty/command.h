@@ -350,6 +350,7 @@ struct desc {
 void install_node(struct cmd_node *, int (*)(struct vty *));
 void install_default(enum node_type);
 void install_element(enum node_type, struct cmd_element *);
+void install_element_ve(struct cmd_element *cmd);
 void sort_node();
 
 /* Concatenates argv[shift] through argv[argc-1] into a single NUL-terminated

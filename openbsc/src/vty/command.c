@@ -478,6 +478,13 @@ void install_element(enum node_type ntype, struct cmd_element *cmd)
 	cmd->cmdsize = cmd_cmdsize(cmd->strvec);
 }
 
+/* Install a command into VIEW and ENABLE node */
+void install_element_ve(struct cmd_element *cmd)
+{
+	install_element(VIEW_NODE, cmd);
+	install_element(ENABLE_NODE, cmd);
+}
+
 #ifdef VTY_CRYPT_PW
 static unsigned char itoa64[] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";

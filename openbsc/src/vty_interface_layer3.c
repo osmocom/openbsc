@@ -544,16 +544,16 @@ int bsc_vty_init_extra(struct gsm_network *net)
 
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
 
-	install_element(VIEW_NODE, &show_subscr_cmd);
-	install_element(VIEW_NODE, &show_subscr_cache_cmd);
+	install_element_ve(&show_subscr_cmd);
+	install_element_ve(&show_subscr_cache_cmd);
 
-	install_element(VIEW_NODE, &sms_send_pend_cmd);
+	install_element_ve(&sms_send_pend_cmd);
 
-	install_element(VIEW_NODE, &subscriber_send_sms_cmd);
-	install_element(VIEW_NODE, &subscriber_silent_sms_cmd);
-	install_element(VIEW_NODE, &subscriber_silent_call_start_cmd);
-	install_element(VIEW_NODE, &subscriber_silent_call_stop_cmd);
-	install_element(VIEW_NODE, &show_stats_cmd);
+	install_element_ve(&subscriber_send_sms_cmd);
+	install_element_ve(&subscriber_silent_sms_cmd);
+	install_element_ve(&subscriber_silent_call_start_cmd);
+	install_element_ve(&subscriber_silent_call_stop_cmd);
+	install_element_ve(&show_stats_cmd);
 
 	install_element(CONFIG_NODE, &cfg_subscr_cmd);
 	install_node(&subscr_node, dummy_config_write);

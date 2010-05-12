@@ -1904,17 +1904,17 @@ int bsc_vty_init(struct gsm_network *net)
 	cmd_init(1);
 	vty_init();
 
-	install_element(VIEW_NODE, &show_net_cmd);
-	install_element(VIEW_NODE, &show_bts_cmd);
-	install_element(VIEW_NODE, &show_trx_cmd);
-	install_element(VIEW_NODE, &show_ts_cmd);
-	install_element(VIEW_NODE, &show_lchan_cmd);
+	install_element_ve(&show_net_cmd);
+	install_element_ve(&show_bts_cmd);
+	install_element_ve(&show_trx_cmd);
+	install_element_ve(&show_ts_cmd);
+	install_element_ve(&show_lchan_cmd);
 
-	install_element(VIEW_NODE, &show_e1drv_cmd);
-	install_element(VIEW_NODE, &show_e1line_cmd);
-	install_element(VIEW_NODE, &show_e1ts_cmd);
+	install_element_ve(&show_e1drv_cmd);
+	install_element_ve(&show_e1line_cmd);
+	install_element_ve(&show_e1ts_cmd);
 
-	install_element(VIEW_NODE, &show_paging_cmd);
+	install_element_ve(&show_paging_cmd);
 
 	openbsc_vty_add_cmds();
 
