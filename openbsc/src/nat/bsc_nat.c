@@ -80,7 +80,8 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
  * below are stubs we need to link
  */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_ins)
 {
 	return -1;
 }
