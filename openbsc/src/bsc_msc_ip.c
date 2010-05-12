@@ -52,6 +52,7 @@
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
 #include <osmocore/write_queue.h>
+#include <osmocore/gsm0808.h>
 
 #include <sccp/sccp.h>
 
@@ -830,7 +831,7 @@ static void initialize_if_needed(void)
 
 	if (!bsc_gsmnet->msc_con->is_authenticated) {
 		/* send a gsm 08.08 reset message from here */
-		msg = bssmap_create_reset();
+		msg = gsm0808_create_reset();
 		if (!msg) {
 			LOGP(DMSC, LOGL_ERROR, "Failed to create the reset message.\n");
 			return;

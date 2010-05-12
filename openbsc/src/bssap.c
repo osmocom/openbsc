@@ -765,22 +765,6 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	return msg;
 }
 
-struct msgb *bssmap_create_reset(void)
-{
-	struct msgb *msg = msgb_alloc(30, "bssmap: reset");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 6);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 0x04;
-	msg->l3h[2] = 0x30;
-	msg->l3h[3] = 0x04;
-	msg->l3h[4] = 0x01;
-	msg->l3h[5] = 0x20;
-	return msg;
-}
-
 struct msgb *bssmap_create_clear_complete(void)
 {
 	struct msgb *msg = msgb_alloc(30, "bssmap: clear complete");
