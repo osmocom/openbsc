@@ -174,7 +174,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 	}
 
 	/* send the clear complete message */
-	resp = bssmap_create_clear_complete();
+	resp = gsm0808_create_clear_complete();
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Sending clear complete failed.\n");
 		return -1;
@@ -761,20 +761,6 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 
 	/* update the size */
 	msg->l3h[1] = msgb_l3len(msg) - 2;
-
-	return msg;
-}
-
-struct msgb *bssmap_create_clear_complete(void)
-{
-	struct msgb *msg = msgb_alloc(30, "bssmap: clear complete");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 3);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 1;
-	msg->l3h[2] = BSS_MAP_MSG_CLEAR_COMPLETE;
 
 	return msg;
 }
