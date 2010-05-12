@@ -86,6 +86,19 @@ struct llist_head *bsc_sccp_connections()
 	return &active_connections;
 }
 
+/*
+ * Having a subscriber in the lchan is used to indicate that a SACH DEACTIVATE
+ * should be send. We will just introduce a fake subscriber and bind it to the
+ * lchan.
+ */
+static void assign_dummy_subscr(struct gsm_lchan *lchan)
+{
+	if (!lchan->conn.subscr) {
+		lchan->conn.subscr = subscr_get_or_create(bsc_gsmnet, "2323");
+		lchan->conn.subscr->lac = 2323;
+	}
+}
+
 struct bss_sccp_connection_data *bss_sccp_create_data()
 {
 	struct bss_sccp_connection_data *data;
@@ -319,6 +332,8 @@ static int open_sccp_connection(struct msgb *layer3)
 	bsc_schedule_timer(&con_data->sccp_cc_timeout, 10, 0);
 
 	/* FIXME: Use transaction for this */
+	/* assign a dummy subscriber */
+	assign_dummy_subscr(layer3->lchan);
 	use_subscr_con(&layer3->lchan->conn);
 	sccp_connection_connect(sccp_connection, &sccp_ssn_bssap, data);
 	msgb_free(data);
@@ -425,6 +440,9 @@ static int handle_ass_compl(struct msgb *msg)
 	msg->lchan->msc_data->lchan = msg->lchan;
 	msg->lchan->msc_data->secondary_lchan = NULL;
 	old_chan->msc_data = NULL;
+
+	/* assign a dummy subscriber */
+	assign_dummy_subscr(msg->lchan);
 
 	/* give up the old channel to not do a SACCH deactivate */
 	if (old_chan->conn.subscr)
