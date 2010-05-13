@@ -154,11 +154,21 @@ static const struct log_info_cat default_categories[] = {
 	[DNS] = {
 		.name = "DNS",
 		.description = "GPRS Network Service (NS)",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
+		.enabled = 1, .loglevel = LOGL_INFO,
 	},
 	[DBSSGP] = {
 		.name = "DBSSGP",
 		.description = "GPRS BSS Gateway Protocol (BSSGP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DLLC] = {
+		.name = "DLLC",
+		.description = "GPRS Logical Link Control Protocol (LLC)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DSNDCP] = {
+		.name = "DSNDCP",
+		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
 };

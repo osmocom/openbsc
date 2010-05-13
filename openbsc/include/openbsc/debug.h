@@ -32,6 +32,8 @@ enum {
 	DGPRS,
 	DNS,
 	DBSSGP,
+	DLLC,
+	DSNDCP,
 	Debug_LastEntry,
 };
 
