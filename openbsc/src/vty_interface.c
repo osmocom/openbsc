@@ -648,7 +648,7 @@ static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
 	meas_rep_dump_uni_vty(vty, &mr->ul, prefix, "ul");
 }
 
-static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
+static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
 	int idx;
 
@@ -683,12 +683,8 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
-DEFUN(show_lchan,
-      show_lchan_cmd,
-      "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
-	SHOW_STR "Display information about a logical channel\n"
-	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
-	"Logical Channel Number\n")
+static int lchan_summary(struct vty *vty, int argc, const char **argv,
+			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts;
@@ -733,7 +729,7 @@ DEFUN(show_lchan,
 			return CMD_WARNING;
 		}
 		lchan = &ts->lchan[lchan_nr];
-		lchan_dump_vty(vty, lchan);
+		dump_cb(vty, lchan);
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
@@ -747,13 +743,25 @@ DEFUN(show_lchan,
 					lchan = &ts->lchan[lchan_nr];
 					if (lchan->type == GSM_LCHAN_NONE)
 						continue;
-					lchan_dump_vty(vty, lchan);
+					dump_cb(vty, lchan);
 				}
 			}
 		}
 	}
 
 	return CMD_SUCCESS;
+}
+
+
+DEFUN(show_lchan,
+      show_lchan_cmd,
+      "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+	SHOW_STR "Display information about a logical channel\n"
+	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
+	"Logical Channel Number\n")
+
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
 }
 
 static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
