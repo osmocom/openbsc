@@ -141,11 +141,6 @@ DEFUN(cfg_mgcp_bind_port,
       "Bind the MGCP to this port")
 {
 	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong bind port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->source_port = port;
 	return CMD_SUCCESS;
 }
@@ -156,11 +151,6 @@ DEFUN(cfg_mgcp_bind_early,
       "Bind all RTP ports early")
 {
 	unsigned int bind = atoi(argv[0]);
-	if (bind != 0 && bind != 1) {
-		vty_out(vty, "%% param must be 0 or 1.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->early_bind = bind == 1;
 	return CMD_SUCCESS;
 }
@@ -171,11 +161,6 @@ DEFUN(cfg_mgcp_rtp_base_port,
       "Base port to use")
 {
 	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong base port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->rtp_base_port = port;
 	return CMD_SUCCESS;
 }
@@ -186,11 +171,6 @@ DEFUN(cfg_mgcp_sdp_payload_number,
       "Set the audio codec to use")
 {
 	unsigned int payload = atoi(argv[0]);
-	if (payload > 255) {
-		vty_out(vty, "%% wrong payload number '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->audio_payload = payload;
 	return CMD_SUCCESS;
 }
