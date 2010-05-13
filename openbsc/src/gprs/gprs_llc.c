@@ -496,7 +496,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 
 	/* FIXME: parse sack frame */
 	if (ghp->cmd == GPRS_LLC_SACK) {
-		DEBUGP(DLLC, "Unsupported SACK frame\n");
+		LOGP(DLLC, LOGL_NOTICE, "Unsupported SACK frame\n");
 		return -EIO;
 	}
 
@@ -517,12 +517,12 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
 	gprs_llc_hdr_dump(&llhp);
 	if (rc < 0) {
-		DEBUGP(DLLC, "Error during LLC header parsing\n");
+		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
 		return rc;
 	}
 
 	if (llhp.fcs != llhp.fcs_calc) {
-		DEBUGP(DLLC, "Dropping frame with invalid FCS\n");
+		LOGP(DLLC, LOGL_INFO, "Dropping frame with invalid FCS\n");
 		return -EIO;
 	}
 
@@ -536,7 +536,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
 	} else {
-		DEBUGP(DLLC, "unknown TLLI/SAPI: Silently dropping\n");
+		LOGP(DLLC, LOGL_NOTICE,
+			"unknown TLLI/SAPI: Silently dropping\n");
 		return 0;
 	}
 
