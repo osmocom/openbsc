@@ -638,7 +638,7 @@ static void _sccp_set_connection_state(struct sccp_connection *connection, int n
 		connection->state_cb(connection, old_state);
 }
 
-static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
+struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause)
 {
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
@@ -646,6 +646,11 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp ref");
+	if (!msgb) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to allocate refusal msg.\n");
+		return NULL;
+	}
+
 	msgb->l2h = &msgb->data[0];
 
 	ref = (struct sccp_connection_refused *) msgb_put(msgb, sizeof(*ref));
@@ -657,6 +662,14 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 
 	data = msgb_put(msgb, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return msgb;
+}
+
+static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
+{
+	struct msgb *msgb = sccp_create_refuse(src_ref, cause);
+	if (!msgb)
+		return -1;
 
 	_send_msg(msgb);
 	return 0;
