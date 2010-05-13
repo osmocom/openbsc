@@ -746,6 +746,9 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	//return e1inp_line_register(line);
 }
 
+extern int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
+		     int (*cb)(struct bsc_fd *fd, unsigned int what));
+
 int ipaccess_setup(struct gsm_network *gsmnet)
 {
 	int ret;
