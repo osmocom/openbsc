@@ -685,9 +685,21 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 
 static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
-	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
+	struct gsm_meas_rep *mr;
+	int idx;
+
+	/* we want to report the last measurement report */
+	idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+			       lchan->meas_rep_idx, 1);
+	mr =  &lchan->meas_rep[idx];
+
+	vty_out(vty, "Lchan: %u Timeslot: %u TRX: %u BTS: %u Type: %s - L1 MS Power: %u dBm "
+		     "RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
+		mr->ms_l1.pwr,
+		rxlev2dbm(mr->dl.full.rx_lev),
+		rxlev2dbm(mr->ul.full.rx_lev),
 		VTY_NEWLINE);
 }
 
