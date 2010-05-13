@@ -192,3 +192,10 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 
 	return 0;
 }
+
+/* Filter out CM Service Requests... */
+int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	/* the data we want to look at is optional. We want to have it here... */
+	return 0;
+}

@@ -258,6 +258,11 @@ int bsc_nat_vty_init(struct bsc_nat *nat);
 struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, int *_lac);
 
 /**
+ * Content filtering.
+ */
+int bsc_nat_filter_sccp_cr(struct bsc_connection *, struct msgb *msg, struct bsc_nat_parsed *);
+
+/**
  * SCCP patching and handling
  */
 int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
