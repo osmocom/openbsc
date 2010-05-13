@@ -716,6 +716,14 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
+static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
+{
+	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
+		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
+		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
+		VTY_NEWLINE);
+}
+
 static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
@@ -792,6 +800,14 @@ DEFUN(show_lchan,
 	SHOW_STR "Display information about a logical channel\n")
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
+}
+
+DEFUN(show_lchan_summary,
+      show_lchan_summary_cmd,
+      "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+	SHOW_STR "Display a short summary about a logical channel\n")
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
 static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
@@ -2033,6 +2049,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(VIEW_NODE, &show_trx_cmd);
 	install_element(VIEW_NODE, &show_ts_cmd);
 	install_element(VIEW_NODE, &show_lchan_cmd);
+	install_element(VIEW_NODE, &show_lchan_summary_cmd);
 
 	install_element(VIEW_NODE, &show_e1drv_cmd);
 	install_element(VIEW_NODE, &show_e1line_cmd);
