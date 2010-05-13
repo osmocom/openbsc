@@ -534,6 +534,8 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 		break;
 	case GSM_BTS_TYPE_BS11:
 		break;
+	case GSM_BTS_TYPE_UNKNOWN:
+		break;
 	}
 
 	return 0;
