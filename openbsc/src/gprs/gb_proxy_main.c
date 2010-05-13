@@ -36,6 +36,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
+#include <osmocore/rate_ctr.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -138,6 +139,7 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
+	rate_ctr_init(tall_bsc_ctx);
 	telnet_init(&dummy_network, 4246);
 
 	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);

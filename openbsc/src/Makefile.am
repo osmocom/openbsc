@@ -27,7 +27,7 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		handover_logic.c handover_decision.c meas_rep.c
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
-		telnet_interface.c vty_interface_cmds.c
+		telnet_interface.c vty_interface_cmds.c vty/utils.c
 
 libsccp_a_SOURCES = sccp/sccp.c
 
