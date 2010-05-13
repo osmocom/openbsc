@@ -614,6 +614,8 @@ static void print_help(void)
 	printf("  -w --write-firmware. This will dump the firmware parts to the filesystem. Use with -f.\n");
 }
 
+extern void bts_model_nanobts_init();
+
 int main(int argc, char **argv)
 {
 	struct gsm_bts *bts;
