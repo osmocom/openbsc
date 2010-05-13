@@ -103,7 +103,7 @@ DEFUN(cfg_mgcp,
 
 DEFUN(cfg_mgcp_local_ip,
       cfg_mgcp_local_ip_cmd,
-      "local ip IP",
+      "local ip A.B.C.D",
       "Set the IP to be used in SDP records")
 {
 	if (g_cfg->local_ip)
@@ -114,7 +114,7 @@ DEFUN(cfg_mgcp_local_ip,
 
 DEFUN(cfg_mgcp_bts_ip,
       cfg_mgcp_bts_ip_cmd,
-      "bts ip IP",
+      "bts ip A.B.C.D",
       "Set the IP of the BTS for RTP forwarding")
 {
 	if (g_cfg->bts_ip)
@@ -126,7 +126,7 @@ DEFUN(cfg_mgcp_bts_ip,
 
 DEFUN(cfg_mgcp_bind_ip,
       cfg_mgcp_bind_ip_cmd,
-      "bind ip IP",
+      "bind ip A.B.C.D",
       "Bind the MGCP to this local addr")
 {
 	if (g_cfg->source_addr)
@@ -141,11 +141,6 @@ DEFUN(cfg_mgcp_bind_port,
       "Bind the MGCP to this port")
 {
 	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong bind port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->source_port = port;
 	return CMD_SUCCESS;
 }
@@ -156,11 +151,6 @@ DEFUN(cfg_mgcp_bind_early,
       "Bind all RTP ports early")
 {
 	unsigned int bind = atoi(argv[0]);
-	if (bind != 0 && bind != 1) {
-		vty_out(vty, "%% param must be 0 or 1.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->early_bind = bind == 1;
 	return CMD_SUCCESS;
 }
@@ -171,11 +161,6 @@ DEFUN(cfg_mgcp_rtp_base_port,
       "Base port to use")
 {
 	unsigned int port = atoi(argv[0]);
-	if (port > 65534) {
-		vty_out(vty, "%% wrong base port '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->rtp_base_port = port;
 	return CMD_SUCCESS;
 }
@@ -186,11 +171,6 @@ DEFUN(cfg_mgcp_sdp_payload_number,
       "Set the audio codec to use")
 {
 	unsigned int payload = atoi(argv[0]);
-	if (payload > 255) {
-		vty_out(vty, "%% wrong payload number '%s'%s", argv[0], VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	g_cfg->audio_payload = payload;
 	return CMD_SUCCESS;
 }
@@ -227,7 +207,7 @@ DEFUN(cfg_mgcp_number_endp,
 
 DEFUN(cfg_mgcp_forward_ip,
       cfg_mgcp_forward_ip_cmd,
-      "forward audio ip IP",
+      "forward audio ip A.B.C.D",
       "Forward packets from and to the IP. This disables most of the MGCP feature.")
 {
 	if (g_cfg->forward_ip)
@@ -258,7 +238,7 @@ DEFUN(cfg_mgcp_agent_addr,
 
 int mgcp_vty_init(void)
 {
-	install_element(VIEW_NODE, &show_mgcp_cmd);
+	install_element_ve(&show_mgcp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
