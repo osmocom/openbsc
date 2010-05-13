@@ -1329,7 +1329,7 @@ DEFUN(cfg_net_pag_any_tch,
 
 DEFUN(cfg_net_msc_ip,
       cfg_net_msc_ip_cmd,
-      "msc ip IP",
+      "msc ip A.B.C.D",
       "Set the MSC/MUX IP address.")
 {
 	if (gsmnet->msc_ip)
