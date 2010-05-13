@@ -26,6 +26,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <errno.h>
+#include <signal.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -35,6 +36,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
+#include <osmocore/rate_ctr.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -89,8 +91,34 @@ static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	return rc;
 }
 
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGINT:
+		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		sleep(1);
+		exit(0);
+		break;
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report
+		 * and then return to the caller, who will abort the process */
+	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
+		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		talloc_report_full(tall_vty_ctx, stderr);
+		break;
+	default:
+		break;
+	}
+}
+
 /* NSI that BSSGP uses when transmitting on NS */
 extern struct gprs_ns_inst *bssgp_nsi;
+extern void *tall_msgb_ctx;
 
 int main(int argc, char **argv)
 {
@@ -100,18 +128,21 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");
+	tall_msgb_ctx = talloc_named_const(tall_bsc_ctx, 0, "msgb");
+
+	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 
 	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
+	rate_ctr_init(tall_bsc_ctx);
 	telnet_init(&dummy_network, 4245);
-	rc = sgsn_parse_config(config_file, &sgcfg);
-	if (rc < 0) {
-		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
-		exit(2);
-	}
 
 	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb);
 	if (!sgsn_nsi) {
@@ -119,6 +150,15 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	bssgp_nsi = sgcfg.nsi = sgsn_nsi;
+	gprs_ns_vty_init(bssgp_nsi);
+	/* FIXME: register signal handler for SS_NS */
+
+	rc = sgsn_parse_config(config_file, &sgcfg);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
+		exit(2);
+	}
+
 	nsip_listen(sgsn_nsi, sgcfg.nsip_listen_port);
 
 	while (1) {
