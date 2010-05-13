@@ -238,7 +238,7 @@ DEFUN(cfg_mgcp_agent_addr,
 
 int mgcp_vty_init(void)
 {
-	install_element(VIEW_NODE, &show_mgcp_cmd);
+	install_element_ve(&show_mgcp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
