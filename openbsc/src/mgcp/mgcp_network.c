@@ -175,7 +175,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		}
 	}
 
-	/* throw away dummy message */
+	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == DUMMY_LOAD) {
 		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy on 0x%x\n",
 			ENDPOINT_NUMBER(endp));
@@ -188,7 +188,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	else
 		++endp->in_remote;
 
-	/* dispatch */
+	/* For loop toggle the destination and then dispatch. */
 	if (cfg->audio_loop)
 		dest = !dest;
 
