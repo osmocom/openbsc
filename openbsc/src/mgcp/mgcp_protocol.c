@@ -135,7 +135,7 @@ static struct msgb *mgcp_msgb_alloc(void)
 	struct msgb *msg;
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
 	if (!msg)
-	    LOGP(DMGCP, LOGL_ERROR, "Failed to msgb for MGCP data.\n");
+		LOGP(DMGCP, LOGL_ERROR, "Failed to msgb for MGCP data.\n");
 
 	return msg;
 }
