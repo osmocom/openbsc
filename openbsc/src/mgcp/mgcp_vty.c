@@ -103,7 +103,7 @@ DEFUN(cfg_mgcp,
 
 DEFUN(cfg_mgcp_local_ip,
       cfg_mgcp_local_ip_cmd,
-      "local ip IP",
+      "local ip A.B.C.D",
       "Set the IP to be used in SDP records")
 {
 	if (g_cfg->local_ip)
@@ -114,7 +114,7 @@ DEFUN(cfg_mgcp_local_ip,
 
 DEFUN(cfg_mgcp_bts_ip,
       cfg_mgcp_bts_ip_cmd,
-      "bts ip IP",
+      "bts ip A.B.C.D",
       "Set the IP of the BTS for RTP forwarding")
 {
 	if (g_cfg->bts_ip)
@@ -126,7 +126,7 @@ DEFUN(cfg_mgcp_bts_ip,
 
 DEFUN(cfg_mgcp_bind_ip,
       cfg_mgcp_bind_ip_cmd,
-      "bind ip IP",
+      "bind ip A.B.C.D",
       "Bind the MGCP to this local addr")
 {
 	if (g_cfg->source_addr)
@@ -227,7 +227,7 @@ DEFUN(cfg_mgcp_number_endp,
 
 DEFUN(cfg_mgcp_forward_ip,
       cfg_mgcp_forward_ip_cmd,
-      "forward audio ip IP",
+      "forward audio ip A.B.C.D",
       "Forward packets from and to the IP. This disables most of the MGCP feature.")
 {
 	if (g_cfg->forward_ip)
