@@ -190,7 +190,7 @@ static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 
 	peer = peer_by_bvci(ptp_bvci);
 	if (!peer) {
-		LOGP(DGPRS, LOGL_ERROR, "Cannot find BSS for BVCI %u\n",
+		LOGP(DGPRS, LOGL_ERROR, "BVCI=%u: Cannot find BSS\n",
 			ptp_bvci);
 		return -ENOENT;
 	}
@@ -210,7 +210,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	struct gprs_ra_id raid;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u BVCI %u is not signalling\n",
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u BVCI=%u is not signalling\n",
 			nsvc->nsei, ns_bvci);
 		return -EINVAL;
 	}
@@ -242,10 +242,10 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 		memcpy(from_peer->ra, TLVP_VAL(&tp, BSSGP_IE_ROUTEING_AREA),
 			sizeof(from_peer->ra));
 		gsm48_parse_ra(&raid, from_peer->ra);
-		LOGP(DGPRS, LOGL_INFO, "NSEI=%u RAC snooping: RAC %u-%u-%u-%u "
-			"behind BVCI=%u, NSVCI=%u\n", nsvc->nsei, raid.mcc,
-			raid.mnc, raid.lac, raid.rac , from_peer->bvci,
-			nsvc->nsvci);
+		LOGP(DGPRS, LOGL_INFO, "NSEI=%u BSSGP SUSPEND/RESUME "
+			"RAC snooping: RAC %u-%u-%u-%u behind BVCI=%u, "
+			"NSVCI=%u\n",nsvc->nsei, raid.mcc, raid.mnc, raid.lac,
+			raid.rac , from_peer->bvci, nsvc->nsvci);
 		/* FIXME: This only supports one BSS per RA */
 		break;
 	case BSSGP_PDUT_BVC_RESET:
@@ -309,19 +309,31 @@ err_mand_ie:
 static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 			    struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 {
-	struct gbprox_peer *peer;
+	struct gbprox_peer *peer = NULL;
 
+	LOGP(DGPRS, LOGL_INFO, "NSEI=%u(SGSN) BSSGP PAGING ",
+		nsvc->nsei);
 	if (TLVP_PRESENT(tp, BSSGP_IE_BVCI)) {
 		uint16_t bvci = ntohs(*(uint16_t *)TLVP_VAL(tp, BSSGP_IE_BVCI));
-		return gbprox_relay2bvci(msg, bvci, ns_bvci);
+		LOGPC(DGPRS, LOGL_INFO, "routing by BVCI to peer BVCI=%u\n",
+			bvci);
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA)) {
 		peer = peer_by_rac(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
-		return gbprox_relay2peer(msg, peer, ns_bvci);
+		LOGPC(DGPRS, LOGL_INFO, "routing by RAC to peer BVCI=%u\n",
+			peer->bvci);
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_LOCATION_AREA)) {
 		peer = peer_by_lac(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
-		return gbprox_relay2peer(msg, peer, ns_bvci);
+		LOGPC(DGPRS, LOGL_INFO, "routing by LAC to peer BVCI=%u\n",
+			peer->bvci);
 	} else
+		LOGPC(DGPRS, LOGL_INFO, "\n");
+
+	if (!peer) {
+		LOGP(DGPRS, LOGL_ERROR, "NSEI=%u(SGSN) BSSGP PAGING: "
+			"unable to route, missing IE\n", nsvc->nsei);
 		return -EINVAL;
+	}
+	return gbprox_relay2peer(msg, peer, ns_bvci);
 }
 
 /* Receive an incoming BVC-RESET message from the SGSN */
@@ -342,8 +354,8 @@ static int rx_reset_from_sgsn(struct msgb *msg, struct tlv_parsed *tp,
 		 * respective peer */
 		peer = peer_by_bvci(ptp_bvci);
 		if (!peer) {
-			LOGP(DGPRS, LOGL_ERROR, "Cannot find BSS for BVCI %u\n",
-				ptp_bvci);
+			LOGP(DGPRS, LOGL_ERROR, "NSEI=%u BVCI=%u: Cannot find BSS\n",
+				nsvc->nsei, ptp_bvci);
 			return bssgp_tx_status(BSSGP_CAUSE_UNKNOWN_BVCI,
 					       NULL, msg);
 		}
@@ -373,7 +385,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	int rc = 0;
 
 	if (ns_bvci != 0) {
-		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BVCI %u is not "
+		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BVCI=%u is not "
 			"signalling\n", nsvc->nsei, ns_bvci);
 		/* FIXME: Send proper error message */
 		return -EINVAL;
@@ -412,7 +424,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	case BSSGP_PDUT_STATUS:
 		/* Some exception has occurred */
 		LOGP(DGPRS, LOGL_NOTICE,
-			"NSEI=%u(SGSN) STATUS ", nsvc->nsei);
+			"NSEI=%u(SGSN) BSSGP STATUS ", nsvc->nsei);
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_CAUSE)) {
 			LOGPC(DGPRS, LOGL_NOTICE, "\n");
 			goto err_mand_ie;
@@ -443,7 +455,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		break;
 	case BSSGP_PDUT_SGSN_INVOKE_TRACE:
 		LOGP(DGPRS, LOGL_ERROR,
-		     "NSEI=%u(SGSN) INVOKE TRACE not supported\n", nsvc->nsei);
+		     "NSEI=%u(SGSN) BSSGP INVOKE TRACE not supported\n",nsvc->nsei);
 		rc = bssgp_tx_status(BSSGP_CAUSE_PDU_INCOMP_FEAT, NULL, msg);
 		break;
 	default:
