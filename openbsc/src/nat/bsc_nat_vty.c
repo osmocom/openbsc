@@ -260,7 +260,7 @@ DEFUN(cfg_nat_imsi_deny,
 
 DEFUN(cfg_nat_msc_ip,
       cfg_nat_msc_ip_cmd,
-      "msc ip IP",
+      "msc ip A.B.C.D",
       "Set the IP address of the MSC.")
 {
 	bsc_nat_set_msc_ip(_nat, argv[0]);
