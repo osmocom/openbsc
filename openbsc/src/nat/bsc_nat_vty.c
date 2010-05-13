@@ -346,12 +346,6 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 
 	int lac = atoi(argv[0]);
 
-	if (lac < 0 || lac > 0xffff) {
-		vty_out(vty, "%% LAC %d is not in the valid range (0-65535)%s",
-			lac, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
 	if (lac == GSM_LAC_RESERVED_DETACHED || lac == GSM_LAC_RESERVED_ALL_BTS) {
 		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
 			lac, VTY_NEWLINE);
