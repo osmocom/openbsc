@@ -683,33 +683,6 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
-#if 0
-TODO: callref and remote callref of call must be resolved to get gsm_trans object
-static void call_dump_vty(struct vty *vty, struct gsm_call *call)
-{
-	vty_out(vty, "Call Type %u, State %u, Transaction ID %u%s",
-		call->type, call->state, call->transaction_id, VTY_NEWLINE);
-
-	if (call->local_lchan) {
-		vty_out(vty, "Call Local Channel:%s", VTY_NEWLINE);
-		lchan_dump_vty(vty, call->local_lchan);
-	} else
-		vty_out(vty, "Call has no Local Channel%s", VTY_NEWLINE);
-
-	if (call->remote_lchan) {
-		vty_out(vty, "Call Remote Channel:%s", VTY_NEWLINE);
-		lchan_dump_vty(vty, call->remote_lchan);
-	} else
-		vty_out(vty, "Call has no Remote Channel%s", VTY_NEWLINE);
-
-	if (call->called_subscr) {
-		vty_out(vty, "Called Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, call->called_subscr);
-	} else
-		vty_out(vty, "Call has no Called Subscriber%s", VTY_NEWLINE);
-}
-#endif
-
 DEFUN(show_lchan,
       show_lchan_cmd,
       "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
