@@ -280,17 +280,17 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 
 static int gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 {
-	DEBUGP(DGPRS, "LLC SAPI=%u %c %c FCS=0x%06x(%s) ",
+	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x(%s) ",
 		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
 		gph->fcs, gph->fcs_calc == gph->fcs ? "correct" : "WRONG");
 
 	if (gph->cmd)
-		DEBUGPC(DGPRS, "CMD=%u ", gph->cmd);
+		DEBUGPC(DLLC, "CMD=%u ", gph->cmd);
 
 	if (gph->data)
-		DEBUGPC(DGPRS, "DATA ");
+		DEBUGPC(DLLC, "DATA ");
 
-	DEBUGPC(DGPRS, "\n");
+	DEBUGPC(DLLC, "\n");
 }
 static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 			   struct gprs_llc_lle *lle)
@@ -496,7 +496,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 
 	/* FIXME: parse sack frame */
 	if (ghp->cmd == GPRS_LLC_SACK) {
-		DEBUGP(DGPRS, "Unsupported SACK frame\n");
+		DEBUGP(DLLC, "Unsupported SACK frame\n");
 		return -EIO;
 	}
 
@@ -517,12 +517,12 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
 	gprs_llc_hdr_dump(&llhp);
 	if (rc < 0) {
-		DEBUGP(DGPRS, "Error during LLC header parsing\n");
+		DEBUGP(DLLC, "Error during LLC header parsing\n");
 		return rc;
 	}
 
 	if (llhp.fcs != llhp.fcs_calc) {
-		DEBUGP(DGPRS, "Dropping frame with invalid FCS\n");
+		DEBUGP(DLLC, "Dropping frame with invalid FCS\n");
 		return -EIO;
 	}
 
@@ -536,7 +536,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
 	} else {
-		DEBUGP(DGPRS, "unknown TLLI/SAPI: Silently dropping\n");
+		DEBUGP(DLLC, "unknown TLLI/SAPI: Silently dropping\n");
 		return 0;
 	}
 
@@ -568,7 +568,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		case GPRS_SAPI_SMS:
 			/* FIXME */
 		default:
-			LOGP(DGPRS, LOGL_NOTICE, "Unsupported SAPI %u\n", llhp.sapi);
+			LOGP(DLLC, LOGL_NOTICE, "Unsupported SAPI %u\n", llhp.sapi);
 			rc = -EINVAL;
 			break;
 		}
