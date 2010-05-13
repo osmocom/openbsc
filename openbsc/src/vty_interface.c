@@ -383,6 +383,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 			bts->rach_ldavg_slots, VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
+	if ((bts->si_common.rach_control.t2 & 0x4) == 0)
+		vty_out(vty, "  rach emergency call allowed 1%s", VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
@@ -1469,6 +1471,20 @@ DEFUN(cfg_bts_cell_barred, cfg_bts_cell_barred_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_rach_ec_allowed, cfg_bts_rach_ec_allowed_cmd,
+      "rach emergency call allowed (0|1)",
+      "Should this cell allow emergency calls?")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (atoi(argv[0]) == 0)
+		bts->si_common.rach_control.t2 |= 0x4;
+	else
+		bts->si_common.rach_control.t2 &= ~0x4;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
       "ms max power <0-40>",
       "Maximum transmit power of the MS")
@@ -1963,6 +1979,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_rach_nm_b_thresh_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_nm_ldavg_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_ec_allowed_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
