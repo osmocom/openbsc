@@ -127,6 +127,13 @@ static char *create_stmts[] = {
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL "
 		")",
+	"CREATE TABLE IF NOT EXISTS RateCounters ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"timestamp TIMESTAMP NOT NULL, "
+		"value INTEGER NOT NULL, "
+		"name TEXT NOT NULL, "
+		"index INTEGER NOT NULL "
+		")",
 	"CREATE TABLE IF NOT EXISTS AuthKeys ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id INTEGER UNIQUE NOT NULL, "
@@ -1194,10 +1201,10 @@ static int db_store_rate_ctr(struct rate_ctr_group *ctrg, unsigned int num,
 				   &q_name);
 
 	result = dbi_conn_queryf(conn,
-		"Insert INTO Counters "
-		"(timestamp,name,value) VALUES "
-		"(datetime('now'),%s.%s,%"PRIu64")",
-		q_prefix, q_name, ctrg->ctr[num].current);
+		"Insert INTO RateCounters "
+		"(timestamp,name,index,value) VALUES "
+		"(datetime('now'),%s.%s,%u,%"PRIu64")",
+		q_prefix, q_name, ctrg->idx, ctrg->ctr[num].current);
 
 	free(q_name);
 
@@ -1213,7 +1220,7 @@ int db_store_rate_ctr_group(struct rate_ctr_group *ctrg)
 	unsigned int i;
 	char *q_prefix;
 
-	dbi_conn_quote_string_copy(conn, ctrg->name_prefix, &q_prefix);
+	dbi_conn_quote_string_copy(conn, ctrg->desc->group_name_prefix, &q_prefix);
 
 	for (i = 0; i < ctrg->desc->num_ctr; i++)
 		db_store_rate_ctr(ctrg, i, q_prefix);
