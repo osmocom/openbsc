@@ -51,10 +51,10 @@ struct vty *vty_new()
 	if (!new)
 		goto out;
 
-	new->obuf = buffer_new(0);	/* Use default buffer size. */
+	new->obuf = buffer_new(new, 0);	/* Use default buffer size. */
 	if (!new->obuf)
 		goto out_new;
-	new->buf = _talloc_zero(tall_vty_ctx, VTY_BUFSIZ, "vty_new->buf");
+	new->buf = _talloc_zero(new, VTY_BUFSIZ, "vty_new->buf");
 	if (!new->buf)
 		goto out_obuf;
 
@@ -170,8 +170,7 @@ void vty_close(struct vty *vty)
 	/* Check configure. */
 	vty_config_unlock(vty);
 
-	/* FIXME: memory leak. We need to call telnet_close_client() but don't
-	 * have bfd */
+	/* VTY_CLOSED is handled by the telnet_interface */
 	vty_event(VTY_CLOSED, vty->fd, vty);
 
 	/* OK free vty. */
@@ -211,7 +210,7 @@ int vty_out(struct vty *vty, const char *format, ...)
 				else
 					size = size * 2;
 
-				p = talloc_realloc_size(tall_vty_ctx, p, size);
+				p = talloc_realloc_size(vty, p, size);
 				if (!p)
 					return -1;
 
@@ -358,7 +357,7 @@ static void vty_ensure(struct vty *vty, int length)
 {
 	if (vty->max <= length) {
 		vty->max *= 2;
-		vty->buf = talloc_realloc_size(tall_vty_ctx, vty->buf, vty->max);
+		vty->buf = talloc_realloc_size(vty, vty->buf, vty->max);
 		// FIXME: check return
 	}
 }
@@ -459,7 +458,7 @@ static void vty_hist_add(struct vty *vty)
 	/* Insert history entry. */
 	if (vty->hist[vty->hindex])
 		talloc_free(vty->hist[vty->hindex]);
-	vty->hist[vty->hindex] = talloc_strdup(tall_vty_ctx, vty->buf);
+	vty->hist[vty->hindex] = talloc_strdup(vty, vty->buf);
 
 	/* History index rotation. */
 	vty->hindex++;
@@ -916,7 +915,7 @@ static void vty_complete_command(struct vty *vty)
 		vty_backward_pure_word(vty);
 		vty_insert_word_overwrite(vty, matched[0]);
 		vty_self_insert(vty, ' ');
-		//talloc_free(matched[0]);
+		talloc_free(matched[0]);
 		break;
 	case CMD_COMPLETE_MATCH:
 		vty_prompt(vty);
@@ -924,8 +923,6 @@ static void vty_complete_command(struct vty *vty)
 		vty_backward_pure_word(vty);
 		vty_insert_word_overwrite(vty, matched[0]);
 		talloc_free(matched[0]);
-		vector_only_index_free(matched);
-		return;
 		break;
 	case CMD_COMPLETE_LIST_MATCH:
 		for (i = 0; matched[i] != NULL; i++) {
@@ -966,7 +963,7 @@ vty_describe_fold(struct vty *vty, int cmd_width,
 		return;
 	}
 
-	buf = _talloc_zero(tall_vty_ctx, strlen(desc->str) + 1, "describe_fold");
+	buf = _talloc_zero(vty, strlen(desc->str) + 1, "describe_fold");
 	if (!buf)
 		return;
 

@@ -39,8 +39,36 @@
 #include <osmocore/talloc.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
+#include <openbsc/gprs_ns.h>
 
 static struct gsm_network *gsmnet;
+
+/* FIXME: this should go to some common file */
+static const struct value_string gprs_ns_timer_strs[] = {
+	{ 0, "tns-block" },
+	{ 1, "tns-block-retries" },
+	{ 2, "tns-reset" },
+	{ 3, "tns-reset-retries" },
+	{ 4, "tns-test" },
+	{ 5, "tns-alive" },
+	{ 6, "tns-alive-retries" },
+	{ 0, NULL }
+};
+
+static const struct value_string gprs_bssgp_cfg_strs[] = {
+	{ 0,	"blocking-timer" },
+	{ 1,	"blocking-retries" },
+	{ 2,	"unblocking-retries" },
+	{ 3,	"reset-timer" },
+	{ 4,	"reset-retries" },
+	{ 5,	"suspend-timer" },
+	{ 6,	"suspend-retries" },
+	{ 7,	"resume-timer" },
+	{ 8,	"resume-retries" },
+	{ 9,	"capability-update-timer" },
+	{ 10,	"capability-update-retries" },
+	{ 0,	NULL }
+};
 
 struct cmd_node net_node = {
 	GSMNET_NODE,
@@ -266,6 +294,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	int i;
 
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
+	vty_out(vty, "   rf_locked %u%s",
+		trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
+		VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
@@ -276,10 +307,48 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 		config_write_ts_single(vty, &trx->ts[i]);
 }
 
+static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
+{
+	unsigned int i;
+	vty_out(vty, "  gprs mode %s%s", bts_gprs_mode_name(bts->gprs.mode),
+		VTY_NEWLINE);
+	if (bts->gprs.mode == BTS_GPRS_NONE)
+		return;
+
+	vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
+		VTY_NEWLINE);
+	vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
+		VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.cell.timer); i++)
+		vty_out(vty, "  gprs cell timer %s %u%s",
+			get_value_string(gprs_bssgp_cfg_strs, i),
+			bts->gprs.cell.timer[i], VTY_NEWLINE);
+	vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
+		VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nse.timer); i++)
+		vty_out(vty, "  gprs ns timer %s %u%s",
+			get_value_string(gprs_ns_timer_strs, i),
+			bts->gprs.nse.timer[i], VTY_NEWLINE);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
+		struct gsm_bts_gprs_nsvc *nsvc =
+					&bts->gprs.nsvc[i];
+		struct in_addr ia;
+
+		ia.s_addr = htonl(nsvc->remote_ip);
+		vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
+			nsvc->nsvci, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
+			nsvc->local_port, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
+			nsvc->remote_port, VTY_NEWLINE);
+		vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
+			inet_ntoa(ia), VTY_NEWLINE);
+	}
+}
+
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -305,6 +374,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  rach max transmission %u%s",
 		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
 		VTY_NEWLINE);
+
+	if (bts->rach_b_thresh != -1)
+		vty_out(vty, "  rach nm busy threshold %u%s",
+			bts->rach_b_thresh, VTY_NEWLINE);
+	if (bts->rach_ldavg_slots != -1)
+		vty_out(vty, "  rach nm load average %u%s",
+			bts->rach_ldavg_slots, VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if ((bts->si_common.rach_control.t2 & 0x4) == 0)
@@ -317,30 +393,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
-	vty_out(vty, "  gprs enabled %u%s", bts->gprs.enabled, VTY_NEWLINE);
-	if (bts->gprs.enabled) {
-		vty_out(vty, "  gprs routing area %u%s", bts->gprs.rac,
-			VTY_NEWLINE);
-		vty_out(vty, "  gprs cell bvci %u%s", bts->gprs.cell.bvci,
-			VTY_NEWLINE);
-		vty_out(vty, "  gprs nsei %u%s", bts->gprs.nse.nsei,
-			VTY_NEWLINE);
-		for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-			struct gsm_bts_gprs_nsvc *nsvc =
-						&bts->gprs.nsvc[i];
-			struct in_addr ia;
-
-			ia.s_addr = htonl(nsvc->remote_ip);
-			vty_out(vty, "  gprs nsvc %u nsvci %u%s", i,
-				nsvc->nsvci, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u local udp port %u%s", i,
-				nsvc->local_port, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u remote udp port %u%s", i,
-				nsvc->remote_port, VTY_NEWLINE);
-			vty_out(vty, "  gprs nsvc %u remote ip %s%s", i,
-				inet_ntoa(ia), VTY_NEWLINE);
-		}
-	}
+	config_write_bts_gprs(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);
@@ -423,7 +476,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 DEFUN(show_trx,
       show_trx_cmd,
       "show trx [bts_nr] [trx_nr]",
-	SHOW_STR "Display information about a TRX\n")
+	SHOW_STR "Display information about a TRX\n"
+	"BTS Number\n"
+	"TRX Number\n")
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts = NULL;
@@ -488,7 +543,8 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 DEFUN(show_ts,
       show_ts_cmd,
       "show timeslot [bts_nr] [trx_nr] [ts_nr]",
-	SHOW_STR "Display information about a TS\n")
+	SHOW_STR "Display information about a TS\n"
+	"BTS Number\n" "TRX Number\n" "Timeslot Number\n")
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts;
@@ -542,10 +598,6 @@ DEFUN(show_ts,
 
 static void subscr_dump_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
-	int rc;
-	struct gsm_auth_info ainfo;
-	struct gsm_auth_tuple atuple;
-
 	vty_out(vty, "    ID: %llu, Authorized: %d%s", subscr->id,
 		subscr->authorized, VTY_NEWLINE);
 	if (subscr->name)
@@ -596,7 +648,7 @@ static void meas_rep_dump_vty(struct vty *vty, struct gsm_meas_rep *mr,
 	meas_rep_dump_uni_vty(vty, &mr->ul, prefix, "ul");
 }
 
-static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
+static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
 	int idx;
 
@@ -631,37 +683,28 @@ static void lchan_dump_vty(struct vty *vty, struct gsm_lchan *lchan)
 	meas_rep_dump_vty(vty, &lchan->meas_rep[idx], "  ");
 }
 
-#if 0
-TODO: callref and remote callref of call must be resolved to get gsm_trans object
-static void call_dump_vty(struct vty *vty, struct gsm_call *call)
+static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
-	vty_out(vty, "Call Type %u, State %u, Transaction ID %u%s",
-		call->type, call->state, call->transaction_id, VTY_NEWLINE);
+	struct gsm_meas_rep *mr;
+	int idx;
 
-	if (call->local_lchan) {
-		vty_out(vty, "Call Local Channel:%s", VTY_NEWLINE);
-		lchan_dump_vty(vty, call->local_lchan);
-	} else
-		vty_out(vty, "Call has no Local Channel%s", VTY_NEWLINE);
+	/* we want to report the last measurement report */
+	idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+			       lchan->meas_rep_idx, 1);
+	mr =  &lchan->meas_rep[idx];
 
-	if (call->remote_lchan) {
-		vty_out(vty, "Call Remote Channel:%s", VTY_NEWLINE);
-		lchan_dump_vty(vty, call->remote_lchan);
-	} else
-		vty_out(vty, "Call has no Remote Channel%s", VTY_NEWLINE);
-
-	if (call->called_subscr) {
-		vty_out(vty, "Called Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_vty(vty, call->called_subscr);
-	} else
-		vty_out(vty, "Call has no Called Subscriber%s", VTY_NEWLINE);
+	vty_out(vty, "Lchan: %u Timeslot: %u TRX: %u BTS: %u Type: %s - L1 MS Power: %u dBm "
+		     "RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
+		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
+		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
+		mr->ms_l1.pwr,
+		rxlev2dbm(mr->dl.full.rx_lev),
+		rxlev2dbm(mr->ul.full.rx_lev),
+		VTY_NEWLINE);
 }
-#endif
 
-DEFUN(show_lchan,
-      show_lchan_cmd,
-      "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
-	SHOW_STR "Display information about a logical channel\n")
+static int lchan_summary(struct vty *vty, int argc, const char **argv,
+			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts;
@@ -706,7 +749,7 @@ DEFUN(show_lchan,
 			return CMD_WARNING;
 		}
 		lchan = &ts->lchan[lchan_nr];
-		lchan_dump_vty(vty, lchan);
+		dump_cb(vty, lchan);
 		return CMD_SUCCESS;
 	}
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
@@ -720,13 +763,35 @@ DEFUN(show_lchan,
 					lchan = &ts->lchan[lchan_nr];
 					if (lchan->type == GSM_LCHAN_NONE)
 						continue;
-					lchan_dump_vty(vty, lchan);
+					dump_cb(vty, lchan);
 				}
 			}
 		}
 	}
 
 	return CMD_SUCCESS;
+}
+
+
+DEFUN(show_lchan,
+      show_lchan_cmd,
+      "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+	SHOW_STR "Display information about a logical channel\n"
+	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
+	"Logical Channel Number\n")
+
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
+}
+
+DEFUN(show_lchan_summary,
+      show_lchan_summary_cmd,
+      "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+	SHOW_STR "Display information about a logical channel\n"
+	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
+	"Logical Channel Number\n")
+{
+	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
 static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
@@ -757,7 +822,8 @@ static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line)
 DEFUN(show_e1line,
       show_e1line_cmd,
       "show e1_line [line_nr]",
-	SHOW_STR "Display information about a E1 line\n")
+	SHOW_STR "Display information about a E1 line\n"
+	"E1 Line Number\n")
 {
 	struct e1inp_line *line;
 
@@ -790,7 +856,8 @@ static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
 DEFUN(show_e1ts,
       show_e1ts_cmd,
       "show e1_timeslot [line_nr] [ts_nr]",
-	SHOW_STR "Display information about a E1 timeslot\n")
+	SHOW_STR "Display information about a E1 timeslot\n"
+	"E1 Line Number\n" "E1 Timeslot Number\n")
 {
 	struct e1inp_line *line = NULL;
 	struct e1inp_ts *ts;
@@ -854,7 +921,8 @@ static void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
 DEFUN(show_paging,
       show_paging_cmd,
       "show paging [bts_nr]",
-	SHOW_STR "Display information about paging reuqests of a BTS\n")
+	SHOW_STR "Display information about paging reuqests of a BTS\n"
+	"BTS Number\n")
 {
 	struct gsm_network *net = gsmnet;
 	struct gsm_bts *bts;
@@ -881,50 +949,11 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_stats,
-      show_stats_cmd,
-      "show statistics",
-	SHOW_STR "Display network statistics\n")
-{
-	struct gsm_network *net = gsmnet;
-
-	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
-		counter_get(net->stats.chreq.total),
-		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
-	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		counter_get(net->stats.loc_upd_type.attach),
-		counter_get(net->stats.loc_upd_type.normal),
-		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
-	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
-	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		counter_get(net->stats.loc_upd_resp.accept),
-		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
-	vty_out(vty, "Paging                  : %lu attempted, %lu complete, %lu expired%s",
-		counter_get(net->stats.paging.attempted),
-		counter_get(net->stats.paging.completed),
-		counter_get(net->stats.paging.expired), VTY_NEWLINE);
-	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
-		"%lu completed, %lu failed%s",
-		counter_get(net->stats.handover.attempted),
-		counter_get(net->stats.handover.no_channel),
-		counter_get(net->stats.handover.timeout),
-		counter_get(net->stats.handover.completed),
-		counter_get(net->stats.handover.failed), VTY_NEWLINE);
-	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		counter_get(net->stats.sms.submitted),
-		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
-	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		counter_get(net->stats.sms.delivered),
-		counter_get(net->stats.sms.rp_err_mem),
-		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
-	return CMD_SUCCESS;
-}
+#define NETWORK_STR "Configure the GSM network\n"
 
 DEFUN(cfg_net,
       cfg_net_cmd,
-      "network",
-      "Configure the GSM network")
+      "network", NETWORK_STR)
 {
 	vty->index = gsmnet;
 	vty->node = GSMNET_NODE;
@@ -982,7 +1011,11 @@ DEFUN(cfg_net_name_long,
 DEFUN(cfg_net_auth_policy,
       cfg_net_auth_policy_cmd,
       "auth policy (closed|accept-all|token)",
-      "Set the GSM network authentication policy\n")
+	"Authentication (not cryptographic)\n"
+	"Set the GSM network authentication policy\n"
+	"Require the MS to be activated in HLR\n"
+	"Accept all MS, whether in HLR or not\n"
+	"Use SMS-token based authentication\n")
 {
 	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
 
@@ -1022,7 +1055,12 @@ DEFUN(cfg_net_neci,
 
 DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
       "rrlp mode (none|ms-based|ms-preferred|ass-preferred)",
-	"Set the Radio Resource Location Protocol Mode")
+	"Radio Resource Location Protocol\n"
+	"Set the Radio Resource Location Protocol Mode\n"
+	"Don't send RRLP request\n"
+	"Request MS-based location\n"
+	"Request any location, prefer MS-based\n"
+	"Request any location, prefer MS-assisted\n")
 {
 	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
 
@@ -1038,9 +1076,13 @@ DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
 	return CMD_SUCCESS;
 }
 
+#define HANDOVER_STR	"Handover Options\n"
+
 DEFUN(cfg_net_handover, cfg_net_handover_cmd,
       "handover (0|1)",
-	"Whether or not to use in-call handover")
+	HANDOVER_STR
+	"Don't perform in-call handover\n"
+	"Perform in-call handover\n")
 {
 	int enable = atoi(argv[0]);
 
@@ -1055,8 +1097,14 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
 	return CMD_SUCCESS;
 }
 
+#define HO_WIN_STR HANDOVER_STR "Measurement Window\n"
+#define HO_WIN_RXLEV_STR HO_WIN_STR "Received Level Averaging\n"
+#define HO_WIN_RXQUAL_STR HO_WIN_STR "Received Quality Averaging\n"
+#define HO_PBUDGET_STR HANDOVER_STR "Power Budget\n"
+
 DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
       "handover window rxlev averaging <1-10>",
+	HO_WIN_RXLEV_STR
 	"How many RxLev measurements are used for averaging")
 {
 	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
@@ -1065,6 +1113,7 @@ DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
 
 DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
       "handover window rxqual averaging <1-10>",
+	HO_WIN_RXQUAL_STR
 	"How many RxQual measurements are used for averaging")
 {
 	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
@@ -1073,6 +1122,7 @@ DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
 
 DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
       "handover window rxlev neighbor averaging <1-10>",
+	HO_WIN_RXLEV_STR
 	"How many RxQual measurements are used for averaging")
 {
 	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
@@ -1081,6 +1131,7 @@ DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
 
 DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
       "handover power budget interval <1-99>",
+	HO_PBUDGET_STR
 	"How often to check if we have a better cell (SACCH frames)")
 {
 	gsmnet->handover.pwr_interval = atoi(argv[0]);
@@ -1089,6 +1140,7 @@ DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
 
 DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
       "handover power budget hysteresis <0-999>",
+	HO_PBUDGET_STR
 	"How many dB does a neighbor to be stronger to become a HO candidate")
 {
 	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
@@ -1097,6 +1149,7 @@ DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
 
 DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
       "handover maximum distance <0-9999>",
+	HANDOVER_STR
 	"How big is the maximum timing advance before HO is forced")
 {
 	gsmnet->handover.max_distance = atoi(argv[0]);
@@ -1107,6 +1160,7 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
+      "Configure GSM Timers\n"					\
       doc)							\
 {								\
 	int value = atoi(argv[0]);				\
@@ -1138,7 +1192,8 @@ DECLARE_TIMER(3141, "Currently not used.")
 DEFUN(cfg_bts,
       cfg_bts_cmd,
       "bts BTS_NR",
-      "Select a BTS to configure\n")
+      "Select a BTS to configure\n"
+	"BTS Number\n")
 {
 	int bts_nr = atoi(argv[0]);
 	struct gsm_bts *bts;
@@ -1301,9 +1356,13 @@ DEFUN(cfg_bts_unit_id,
 	return CMD_SUCCESS;
 }
 
+#define OML_STR	"Organization & Maintenance Link\n"
+#define IPA_STR "ip.access Specific Options\n"
+
 DEFUN(cfg_bts_stream_id,
       cfg_bts_stream_id_cmd,
       "oml ip.access stream_id <0-255>",
+	OML_STR IPA_STR
       "Set the ip.access Stream ID of the OML link of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
@@ -1319,10 +1378,12 @@ DEFUN(cfg_bts_stream_id,
 	return CMD_SUCCESS;
 }
 
+#define OML_E1_STR OML_STR "E1 Line\n"
 
 DEFUN(cfg_bts_oml_e1,
       cfg_bts_oml_e1_cmd,
       "oml e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
+	OML_E1_STR
       "E1 interface to be used for OML\n")
 {
 	struct gsm_bts *bts = vty->index;
@@ -1336,6 +1397,7 @@ DEFUN(cfg_bts_oml_e1,
 DEFUN(cfg_bts_oml_e1_tei,
       cfg_bts_oml_e1_tei_cmd,
       "oml e1 tei <0-63>",
+	OML_E1_STR
       "Set the TEI to be used for OML")
 {
 	struct gsm_bts *bts = vty->index;
@@ -1347,7 +1409,9 @@ DEFUN(cfg_bts_oml_e1_tei,
 
 DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
       "channel allocator (ascending|descending)",
-      "Should the channel allocator allocate in reverse TRX order?")
+	"Channnel Allocator\n" "Channel Allocator\n"
+	"Allocate Timeslots and Transceivers in ascending order\n"
+	"Allocate Timeslots and Transceivers in descending order\n")
 {
 	struct gsm_bts *bts = vty->index;
 
@@ -1359,9 +1423,12 @@ DEFUN(cfg_bts_challoc, cfg_bts_challoc_cmd,
 	return CMD_SUCCESS;
 }
 
+#define RACH_STR "Random Access Control Channel\n"
+
 DEFUN(cfg_bts_rach_tx_integer,
       cfg_bts_rach_tx_integer_cmd,
       "rach tx integer <0-15>",
+	RACH_STR
       "Set the raw tx integer value in RACH Control parameters IE")
 {
 	struct gsm_bts *bts = vty->index;
@@ -1372,10 +1439,35 @@ DEFUN(cfg_bts_rach_tx_integer,
 DEFUN(cfg_bts_rach_max_trans,
       cfg_bts_rach_max_trans_cmd,
       "rach max transmission (1|2|4|7)",
+	RACH_STR
       "Set the maximum number of RACH burst transmissions")
 {
 	struct gsm_bts *bts = vty->index;
 	bts->si_common.rach_control.max_trans = rach_max_trans_val2raw(atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+#define NM_STR "Network Management\n"
+
+DEFUN(cfg_bts_rach_nm_b_thresh,
+      cfg_bts_rach_nm_b_thresh_cmd,
+      "rach nm busy threshold <0-255>",
+	RACH_STR NM_STR
+      "Set the NM Busy Threshold in dB")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->rach_b_thresh = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_rach_nm_ldavg,
+      cfg_bts_rach_nm_ldavg_cmd,
+      "rach nm load average <0-65535>",
+	RACH_STR NM_STR
+      "Set the NM Loadaverage Slots value")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->rach_ldavg_slots = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1448,13 +1540,17 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
+#define GPRS_TEXT	"GPRS Packet Network\n"
+
 DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
-	"gprs cell bvci <0-65535>",
+	"gprs cell bvci <2-65535>",
+	GPRS_TEXT
+	"GPRS Cell Settings\n"
 	"GPRS BSSGP VC Identifier")
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1466,11 +1562,12 @@ DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
 
 DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
 	"gprs nsei <0-65535>",
+	GPRS_TEXT
 	"GPRS NS Entity Identifier")
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1480,15 +1577,19 @@ DEFUN(cfg_bts_gprs_nsei, cfg_bts_gprs_nsei_cmd,
 	return CMD_SUCCESS;
 }
 
+#define NSVC_TEXT "Network Service Virtual Connection (NS-VC)\n" \
+		"NSVC Logical Number\n"
 
 DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 	"gprs nsvc <0-1> nsvci <0-65535>",
+	GPRS_TEXT NSVC_TEXT
+	"NS Virtual Connection Identifier\n"
 	"GPRS NS VC Identifier")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1500,12 +1601,13 @@ DEFUN(cfg_bts_gprs_nsvci, cfg_bts_gprs_nsvci_cmd,
 
 DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 	"gprs nsvc <0-1> local udp port <0-65535>",
+	GPRS_TEXT NSVC_TEXT
 	"GPRS NS Local UDP Port")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1517,12 +1619,13 @@ DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 
 DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 	"gprs nsvc <0-1> remote udp port <0-65535>",
+	GPRS_TEXT NSVC_TEXT
 	"GPRS NS Remote UDP Port")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1534,13 +1637,14 @@ DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 
 DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	"gprs nsvc <0-1> remote ip A.B.C.D",
+	GPRS_TEXT NSVC_TEXT
 	"GPRS NS Remote IP Address")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
 	struct in_addr ia;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1551,13 +1655,63 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
+	"gprs ns timer " NS_TIMERS " <0-255>",
+	GPRS_TEXT "Network Service\n"
+	"Network Service Timer\n"
+	NS_TIMERS_HELP "Timer Value\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = get_string_value(gprs_ns_timer_strs, argv[0]);
+	int val = atoi(argv[1]);
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.nse.timer))
+		return CMD_WARNING;
+
+	bts->gprs.nse.timer[idx] = val;
+
+	return CMD_SUCCESS;
+}
+
+#define BSSGP_TIMERS "(blocking-timer|blocking-retries|unblocking-retries|reset-timer|reset-retries|suspend-timer|suspend-retries|resume-timer|resume-retries|capability-update-timer|capability-update-retries)"
+#define BSSGP_TIMERS_HELP	""
+
+DEFUN(cfg_bts_gprs_cell_timer, cfg_bts_gprs_cell_timer_cmd,
+	"gprs cell timer " BSSGP_TIMERS " <0-255>",
+	GPRS_TEXT "Cell / BSSGP\n"
+	"Cell/BSSGP Timer\n"
+	BSSGP_TIMERS_HELP "Timer Value\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int idx = get_string_value(gprs_bssgp_cfg_strs, argv[0]);
+	int val = atoi(argv[1]);
+
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
+		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (idx < 0 || idx >= ARRAY_SIZE(bts->gprs.cell.timer))
+		return CMD_WARNING;
+
+	bts->gprs.cell.timer[idx] = val;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	"gprs routing area <0-255>",
+	GPRS_TEXT
 	"GPRS Routing Area Code")
 {
 	struct gsm_bts *bts = vty->index;
 
-	if (!bts->gprs.enabled) {
+	if (bts->gprs.mode == BTS_GPRS_NONE) {
 		vty_out(vty, "%% GPRS not enabled on this BTS%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
@@ -1567,22 +1721,28 @@ DEFUN(cfg_bts_gprs_rac, cfg_bts_gprs_rac_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bts_gprs_enabled, cfg_bts_gprs_enabled_cmd,
-	"gprs enabled <0-1>",
-	"GPRS Enabled on this BTS")
+DEFUN(cfg_bts_gprs_mode, cfg_bts_gprs_mode_cmd,
+	"gprs mode (none|gprs|egprs)",
+	GPRS_TEXT
+	"GPRS Mode for this BTS\n"
+	"GPRS Disabled on this BTS\n"
+	"GPRS Enabled on this BTS\n"
+	"EGPRS (EDGE) Enabled on this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->gprs.enabled = atoi(argv[0]);
+	bts->gprs.mode = bts_gprs_mode_parse(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
+#define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
 DEFUN(cfg_trx,
       cfg_trx_cmd,
       "trx TRX_NR",
+	TRX_TEXT
       "Select a TRX to configure")
 {
 	int trx_nr = atoi(argv[0]);
@@ -1756,6 +1916,8 @@ DEFUN(cfg_ts_e1_subslot,
 	return CMD_SUCCESS;
 }
 
+extern int bsc_vty_init_extra(struct gsm_network *net);
+
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -1763,18 +1925,18 @@ int bsc_vty_init(struct gsm_network *net)
 	cmd_init(1);
 	vty_init();
 
-	install_element(VIEW_NODE, &show_net_cmd);
-	install_element(VIEW_NODE, &show_bts_cmd);
-	install_element(VIEW_NODE, &show_trx_cmd);
-	install_element(VIEW_NODE, &show_ts_cmd);
-	install_element(VIEW_NODE, &show_lchan_cmd);
+	install_element_ve(&show_net_cmd);
+	install_element_ve(&show_bts_cmd);
+	install_element_ve(&show_trx_cmd);
+	install_element_ve(&show_ts_cmd);
+	install_element_ve(&show_lchan_cmd);
+	install_element_ve(&show_lchan_summary_cmd);
 
-	install_element(VIEW_NODE, &show_e1drv_cmd);
-	install_element(VIEW_NODE, &show_e1line_cmd);
-	install_element(VIEW_NODE, &show_e1ts_cmd);
+	install_element_ve(&show_e1drv_cmd);
+	install_element_ve(&show_e1line_cmd);
+	install_element_ve(&show_e1ts_cmd);
 
-	install_element(VIEW_NODE, &show_paging_cmd);
-	install_element(VIEW_NODE, &show_stats_cmd);
+	install_element_ve(&show_paging_cmd);
 
 	openbsc_vty_add_cmds();
 
@@ -1826,15 +1988,19 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_tx_integer_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_max_trans_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_nm_b_thresh_cmd);
+	install_element(BTS_NODE, &cfg_bts_rach_nm_ldavg_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_ec_allowed_cmd);
 	install_element(BTS_NODE, &cfg_bts_ms_max_power_cmd);
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
-	install_element(BTS_NODE, &cfg_bts_gprs_enabled_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_bvci_cmd);
+	install_element(BTS_NODE, &cfg_bts_gprs_cell_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsei_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvci_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);

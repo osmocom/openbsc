@@ -27,6 +27,13 @@
 
 #include <stdint.h>
 
+#define ADD_MODULO(sum, delta, modulo) do {	\
+	if ((sum += delta) >= modulo)		\
+		sum -= modulo;			\
+	} while (0)
+
+#define GSM_MAX_FN	(26*51*2048)
+
 struct gsm_time {
 	uint32_t	fn;	/* FN count */
 	uint16_t	t1;	/* FN div (26*51) */
@@ -79,6 +86,18 @@ void gsm_fn2gsmtime(struct gsm_time *time, uint32_t fn);
 
 /* Convert from GSM time to frame number */
 uint32_t gsm_gsmtime2fn(struct gsm_time *time);
+
+/* GSM TS 03.03 Chapter 2.6 */
+enum gprs_tlli_tyoe {
+	TLLI_LOCAL,
+	TLLI_FOREIGN,
+	TLLI_RANDOM,
+	TLLI_AUXILIARY,
+	TLLI_RESERVED,
+};
+
+/* TS 03.03 Chapter 2.6 */
+int gprs_tlli_type(uint32_t tlli);
 
 void generate_backtrace();
 #endif

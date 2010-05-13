@@ -73,6 +73,37 @@ enum gsm_paging_event {
 	GSM_PAGING_OOM,
 };
 
+enum bts_gprs_mode {
+	BTS_GPRS_NONE = 0,
+	BTS_GPRS_GPRS = 1,
+	BTS_GPRS_EGPRS = 2,
+};
+
+/* the data structure stored in msgb->cb for openbsc apps */
+struct openbsc_msgb_cb {
+	unsigned char *bssgph;
+	unsigned char *llch;
+
+	/* Cell Identifier */
+	unsigned char *bssgp_cell_id;
+
+	/* Identifiers of a BTS, equal to 'struct bssgp_bts_ctx' */
+	u_int16_t nsei;
+	u_int16_t bvci;
+
+	/* Identifier of a MS (inside BTS), equal to 'struct sgsn_mm_ctx' */
+	u_int32_t tlli;
+} __attribute__((packed));
+#define OBSC_MSGB_CB(__msgb)	((struct openbsc_msgb_cb *)&((__msgb)->cb[0]))
+#define msgb_tlli(__x)		OBSC_MSGB_CB(__x)->tlli
+#define msgb_nsei(__x)		OBSC_MSGB_CB(__x)->nsei
+#define msgb_bvci(__x)		OBSC_MSGB_CB(__x)->bvci
+#define msgb_gmmh(__x)		(__x)->l3h
+#define msgb_bssgph(__x)	OBSC_MSGB_CB(__x)->bssgph
+#define msgb_bssgp_len(__x)	((__x)->tail - (uint8_t *)msgb_bssgph(__x))
+#define msgb_bcid(__x)		OBSC_MSGB_CB(__x)->bssgp_cell_id
+#define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
+
 struct msgb;
 typedef int gsm_cbfn(unsigned int hooknum,
 		     unsigned int event,
@@ -98,11 +129,6 @@ typedef int gsm_cbfn(unsigned int hooknum,
 			(con)->lchan->nr, (con)->use_count); \
 	} while(0);
 
-
-/* communications link with a BTS */
-struct gsm_bts_link {
-	struct gsm_bts *bts;
-};
 
 /* Real authentication information containing Ki */
 enum gsm_auth_algo {
@@ -250,6 +276,7 @@ struct gsm_lchan {
 		u_int16_t bound_port;
 		u_int16_t connect_port;
 		u_int16_t conn_id;
+		u_int8_t rtp_payload;
 		u_int8_t rtp_payload2;
 		u_int8_t speech_mode;
 		struct rtp_socket *rtp_socket;
@@ -368,7 +395,6 @@ struct gsm_paging_request {
 struct gsm_bts_paging_state {
 	/* pending requests */
 	struct llist_head pending_requests;
-	struct gsm_paging_request *last_request;
 	struct gsm_bts *bts;
 
 	struct timer_list work_timer;
@@ -383,11 +409,14 @@ struct gsm_envabtse {
 
 struct gsm_bts_gprs_nsvc {
 	struct gsm_bts *bts;
+	/* data read via VTY config file, to configure the BTS
+	 * via OML from BSC */
 	int id;
 	u_int16_t nsvci;
-	u_int16_t local_port;
-	u_int16_t remote_port;
-	u_int32_t remote_ip;
+	u_int16_t local_port;	/* on the BTS */
+	u_int16_t remote_port;	/* on the SGSN */
+	u_int32_t remote_ip;	/* on the SGSN */
+
 	struct gsm_nm_state nm_state;
 };
 
@@ -476,18 +505,24 @@ struct gsm_bts {
 
 	/* Not entirely sure how ip.access specific this is */
 	struct {
-		int enabled;
+		enum bts_gprs_mode mode;
 		struct {
 			struct gsm_nm_state nm_state;
 			u_int16_t nsei;
+			uint8_t timer[7];
 		} nse;
 		struct {
 			struct gsm_nm_state nm_state;
 			u_int16_t bvci;
+			uint8_t timer[11];
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
 		u_int8_t rac;
 	} gprs;
+
+	/* RACH NM values */
+	int rach_b_thresh;
+	int rach_ldavg_slots;
 	
 	/* transceivers */
 	int num_trx;
@@ -535,6 +570,14 @@ struct gsmnet_stats {
 		struct counter *alerted;	/* we alerted the other end */
 		struct counter *connected;/* how many calls were accepted */
 	} call;
+	struct {
+		struct counter *rf_fail;
+		struct counter *rll_err;
+	} chan;
+	struct {
+		struct counter *oml_fail;
+		struct counter *rsl_fail;
+	} bts;
 };
 
 enum gsm_auth_policy {
@@ -697,15 +740,10 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy);
 enum rrlp_mode rrlp_mode_parse(const char *arg);
 const char *rrlp_mode_name(enum rrlp_mode mode);
 
-void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg);
+const char *bts_gprs_mode_name(enum bts_gprs_mode mode);
 
-/* A parsed GPRS routing area */
-struct gprs_ra_id {
-	u_int16_t	mnc;
-	u_int16_t	mcc;
-	u_int16_t	lac;
-	u_int8_t	rac;
-};
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 
 int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);

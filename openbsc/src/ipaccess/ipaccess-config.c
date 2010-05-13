@@ -1,8 +1,8 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther
- * (C) 2009 by On Waves
+ * (C) 2009,2010 by Holger Hans Peter Freyther
+ * (C) 2009,2010 by On Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -59,6 +59,7 @@ static int sw_load_state = 0;
 static int oml_state = 0;
 static int dump_files = 0;
 static char *firmware_analysis = NULL;
+static int found_trx = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -91,23 +92,23 @@ static int ipacc_msg_nack(u_int8_t mt)
 	return 0;
 }
 
-static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts *bts)
+static void check_restart_or_exit(struct gsm_bts_trx *trx)
+{
+	if (restart) {
+		abis_nm_ipaccess_restart(trx);
+	} else {
+		exit(0);
+	}
+}
+
+static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
-
-		if (restart) {
-			abis_nm_ipaccess_restart(bts);
-		} else {
-			exit(0);
-		}
+		check_restart_or_exit(trx);
 	} else if (oml_state == 1) {
 		fprintf(stderr, "Set the primary OML IP.\n");
-		if (restart) {
-			abis_nm_ipaccess_restart(bts);
-		} else {
-			exit(0);
-		}
+		check_restart_or_exit(trx);
 	}
 
 	return 0;
@@ -202,7 +203,7 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		return ipacc_msg_nack(ipacc_data->msg_type);
 	case S_NM_IPACC_ACK:
 		ipacc_data = signal_data;
-		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->bts);
+		return ipacc_msg_ack(ipacc_data->msg_type, ipacc_data->trx);
 	case S_NM_TEST_REP:
 		return test_rep(signal_data);
 	case S_NM_IPACC_RESTART_ACK:
@@ -227,12 +228,12 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		       void *data, void *param)
 {
 	struct msgb *msg;
-	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
 
 	if (hook != GSM_HOOK_NM_SWLOAD)
 		return 0;
 
-	bts = (struct gsm_bts *) data;
+	trx = (struct gsm_bts_trx *) data;
 
 	switch (event) {
 	case NM_MT_LOAD_INIT_ACK:
@@ -271,7 +272,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 		msg->l2h[1] = msgb_l3len(msg) >> 8;
 		msg->l2h[2] = msgb_l3len(msg) & 0xff;
 		printf("Foo l2h: %p l3h: %p... length l2: %u  l3: %u\n", msg->l2h, msg->l3h, msgb_l2len(msg), msgb_l3len(msg));
-		abis_nm_ipaccess_set_nvattr(bts->c0, msg->l2h, msgb_l2len(msg));
+		abis_nm_ipaccess_set_nvattr(trx, msg->l2h, msgb_l2len(msg));
 		msgb_free(msg);
 		break;
 	case NM_MT_LOAD_END_NACK:
@@ -285,7 +286,7 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 	case NM_MT_ACTIVATE_SW_ACK:
 		break;
 	case NM_MT_LOAD_SEG_ACK:
-		percent = abis_nm_software_load_status(bts);
+		percent = abis_nm_software_load_status(trx->bts);
 		if (percent > percent_old)
 			printf("Software Download Progress: %d%%\n", percent);
 		percent_old = percent;
@@ -298,13 +299,13 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 	return 0;
 }
 
-static void bootstrap_om(struct gsm_bts *bts)
+static void bootstrap_om(struct gsm_bts_trx *trx)
 {
 	int len;
 	static u_int8_t buf[1024];
 	u_int8_t *cur = buf;
 
-	printf("OML link established\n");
+	printf("OML link established using TRX %d\n", trx->nr);
 
 	if (unit_id) {
 		len = strlen(unit_id);
@@ -316,7 +317,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		memcpy(buf+3, unit_id, len);
 		buf[3+len] = 0;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len+1);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len+1);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
@@ -340,7 +341,7 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = 0;
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
 		oml_state = 1;
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
 	if (nv_mask) {
 		len = 4;
@@ -354,12 +355,12 @@ static void bootstrap_om(struct gsm_bts *bts)
 		*cur++ = nv_mask >> 8;
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(bts->c0, buf, 3+len);
+		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
 
 	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
-		abis_nm_ipaccess_restart(bts);
+		abis_nm_ipaccess_restart(trx);
 	}
 
 }
@@ -370,7 +371,6 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 	case EVT_E1_TEI_UP:
 		switch (type) {
 		case E1INP_SIGN_OML:
-			bootstrap_om(trx->bts);
 			break;
 		case E1INP_SIGN_RSL:
 			/* FIXME */
@@ -389,22 +389,29 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 }
 
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_inst)
 {
-	if (evt == EVT_STATECHG_OPER &&
+	if (obj_class == NM_OC_BASEB_TRANSC) {
+		if (!found_trx && obj_inst->trx_nr != 0xff) {
+			struct gsm_bts_trx *trx = container_of(obj, struct gsm_bts_trx, bb_transc);
+			bootstrap_om(trx);
+			found_trx = 1;
+		}
+	} else if (evt == EVT_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
 	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;
 
 		if (net_listen_testnr) {
 			u_int8_t phys_config[] = { 0x02, 0x0a, 0x00, 0x01, 0x02 };
-			abis_nm_perform_test(trx->bts, 2, 0, 0, 0xff,
+			abis_nm_perform_test(trx->bts, 2, 0, trx->nr, 0xff,
 					     net_listen_testnr, 1,
 					     phys_config, sizeof(phys_config));
 		} else if (software) {
 			int rc;
 			printf("Attempting software upload with '%s'\n", software);
-			rc = abis_nm_software_load(trx->bts, software, 19, 0, swload_cbfn, trx->bts);
+			rc = abis_nm_software_load(trx->bts, trx->nr, software, 19, 0, swload_cbfn, trx);
 			if (rc < 0) {
 				fprintf(stderr, "Failed to start software load\n");
 				exit(-3);
@@ -639,6 +646,7 @@ int main(int argc, char **argv)
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
+			{ 0, 0, 0, 0 },
 		};
 
 		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:w", long_options,

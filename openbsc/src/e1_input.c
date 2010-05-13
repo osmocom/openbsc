@@ -420,7 +420,17 @@ e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
 
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 {
+	struct msgb *msg;
+
 	llist_del(&link->list);
+	while (!llist_empty(&link->tx_list)) {
+		msg = msgb_dequeue(&link->tx_list);
+		msgb_free(msg);
+	}
+
+	if (link->ts->type == E1INP_TS_TYPE_SIGN)
+		bsc_del_timer(&link->ts->sign.tx_timer);
+
 	talloc_free(link);
 }
 

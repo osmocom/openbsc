@@ -286,8 +286,8 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 
 	/*
 	 * This application supports two modes.
-         *    1.) a true MGCP gateway with support for AUEP, CRCX, MDCX, DLCX
-         *    2.) plain forwarding of RTP packets on the endpoints.
+	 *    1.) a true MGCP gateway with support for AUEP, CRCX, MDCX, DLCX
+	 *    2.) plain forwarding of RTP packets on the endpoints.
 	 * both modes are mutual exclusive
 	 */
 	if (g_cfg->forward_ip) {

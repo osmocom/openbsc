@@ -171,6 +171,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	return trx;
 }
 
+static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
+static const uint8_t bts_cell_timer_default[] =
+				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
+
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic)
 {
@@ -212,6 +216,10 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 		bts->gprs.nsvc[i].bts = bts;
 		bts->gprs.nsvc[i].id = i;
 	}
+	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
+		sizeof(bts->gprs.nse.timer));
+	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
+		sizeof(bts->gprs.cell.timer));
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
@@ -221,6 +229,8 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	}
 	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
 
+	bts->rach_b_thresh = -1;
+	bts->rach_ldavg_slots = -1;
 	llist_add_tail(&bts->list, &net->bts_list);
 
 	return bts;
@@ -280,6 +290,10 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->stats.call.dialled = counter_alloc("net.call.dialled");
 	net->stats.call.alerted = counter_alloc("net.call.alerted");
 	net->stats.call.connected = counter_alloc("net.call.connected");
+	net->stats.chan.rf_fail = counter_alloc("net.chan.rf_fail");
+	net->stats.chan.rll_err = counter_alloc("net.chan.rll_err");
+	net->stats.bts.oml_fail = counter_alloc("net.bts.oml_fail");
+	net->stats.bts.rsl_fail = counter_alloc("net.bts.rsl_fail");
 
 	net->mncc_recv = mncc_recv;
 
@@ -436,33 +450,6 @@ const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 	return get_value_string(auth_policy_names, policy);
 }
 
-/* this should not be here but in gsm_04_08... but that creates
-   in turn a dependency nightmare (abis_nm depending on 04_08, ...) */
-static int gsm48_construct_ra(u_int8_t *buf, const struct gprs_ra_id *raid)
-{
-	u_int16_t mcc = raid->mcc;
-	u_int16_t mnc = raid->mnc;
-
-	buf[0] = ((mcc / 100) % 10) | (((mcc / 10) % 10) << 4);
-	buf[1] = (mcc % 10);
-
-	/* I wonder who came up with the stupidity of encoding the MNC
-	 * differently depending on how many digits its decimal number has! */
-	if (mnc < 100) {
-		buf[1] |= 0xf0;
-		buf[2] = ((mnc / 10) % 10) | ((mnc % 10) << 4);
-	} else {
-		buf[1] |= (mnc % 10) << 4;
-		buf[2] = ((mnc / 100) % 10) | (((mcc / 10) % 10) << 4);
-	}
-
-	*(u_int16_t *)(buf+3) = htons(raid->lac);
-
-	buf[5] = raid->rac;
-
-	return 6;
-}
-
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
 {
 	raid->mcc = bts->network->country_code;
@@ -496,6 +483,23 @@ enum rrlp_mode rrlp_mode_parse(const char *arg)
 const char *rrlp_mode_name(enum rrlp_mode mode)
 {
 	return get_value_string(rrlp_mode_names, mode);
+}
+
+static const struct value_string bts_gprs_mode_names[] = {
+	{ BTS_GPRS_NONE,	"none" },
+	{ BTS_GPRS_GPRS,	"gprs" },
+	{ BTS_GPRS_EGPRS,	"egprs" },
+	{ 0,			NULL }
+};
+
+enum bts_gprs_mode bts_gprs_mode_parse(const char *arg)
+{
+	return get_string_value(bts_gprs_mode_names, arg);
+}
+
+const char *bts_gprs_mode_name(enum bts_gprs_mode mode)
+{
+	return get_value_string(bts_gprs_mode_names, mode);
 }
 
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)

@@ -133,6 +133,7 @@ static int append_lsa_params(struct bitvec *bv,
 			     const struct gsm48_lsa_params *lsa_params)
 {
 	/* FIXME */
+	return -1;
 }
 
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
@@ -318,8 +319,31 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 	/* hard-code no PAN_{DEC,INC,MAX} */
 	bitvec_set_bit(bv, 0);
 
-	/* no extension information (EDGE) */
-	bitvec_set_bit(bv, 0);
+	if (!gco->ext_info_present) {
+		/* no extension information */
+		bitvec_set_bit(bv, 0);
+	} else {
+		/* extension information */
+		bitvec_set_bit(bv, 1);
+		if (!gco->ext_info.egprs_supported) {
+			/* 6bit length of extension */
+			bitvec_set_uint(bv, (1 + 3)-1, 6);
+			/* EGPRS supported in the cell */
+			bitvec_set_bit(bv, 0);
+		} else {
+			/* 6bit length of extension */
+			bitvec_set_uint(bv, (1 + 5 + 3)-1, 6);
+			/* EGPRS supported in the cell */
+			bitvec_set_bit(bv, 1);
+			/* 1bit EGPRS PACKET CHANNEL REQUEST */
+			bitvec_set_bit(bv, gco->ext_info.use_egprs_p_ch_req);
+			/* 4bit BEP PERIOD */
+			bitvec_set_uint(bv, gco->ext_info.bep_period, 4);
+		}
+		bitvec_set_bit(bv, gco->ext_info.pfc_supported);
+		bitvec_set_bit(bv, gco->ext_info.dtm_supported);
+		bitvec_set_bit(bv, gco->ext_info.bss_paging_coordination);
+	}
 
 	return 0;
 }
@@ -334,7 +358,7 @@ static void append_gprs_pwr_ctrl_pars(struct bitvec *bv,
 	bitvec_set_uint(bv, pcp->n_avg_i, 4);
 }
 
-/* Generate SI13 Rest Octests (Chapter 10.5.2.37b) */
+/* Generate SI13 Rest Octests (04.08 Chapter 10.5.2.37b) */
 int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 {
 	struct bitvec bv;
@@ -390,6 +414,11 @@ int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
 				break;
 			}
 		}
+		/* 3GPP TS 44.018 Release 6 / 10.5.2.37b */
+		bitvec_set_bit(&bv, H);	/* added Release 99 */
+		/* claim our SGSN is compatible with Release 99, as EDGE and EGPRS
+		 * was only added in this Release */
+		bitvec_set_bit(&bv, 1);
 	}
 	bitvec_spare_padding(&bv, (bv.data_len*8)-1);
 	return bv.data_len;

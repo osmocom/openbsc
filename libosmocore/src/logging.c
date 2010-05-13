@@ -20,11 +20,16 @@
  *
  */
 
+#include "../config.h"
+
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
+#ifdef HAVE_STRINGS_H
 #include <strings.h>
+#endif
 #include <time.h>
 #include <errno.h>
 
@@ -51,6 +56,11 @@ static const struct value_string loglevel_strs[] = {
 int log_parse_level(const char *lvl)
 {
 	return get_string_value(loglevel_strs, lvl);
+}
+
+const char *log_level_str(unsigned int lvl)
+{
+	return get_value_string(loglevel_strs, lvl);
 }
 
 int log_parse_category(const char *category)
@@ -302,31 +312,46 @@ void log_set_category_filter(struct log_target *target, int category,
 	target->categories[category].loglevel = level;
 }
 
+/* since C89/C99 says stderr is a macro, we can safely do this! */
+#ifdef stderr
 static void _stderr_output(struct log_target *target, const char *log)
 {
 	fprintf(target->tgt_stdout.out, "%s", log);
 	fflush(target->tgt_stdout.out);
 }
+#endif
 
 struct log_target *log_target_create(void)
 {
 	struct log_target *target;
+	unsigned int i;
 
 	target = talloc_zero(tall_log_ctx, struct log_target);
 	if (!target)
 		return NULL;
 
 	INIT_LLIST_HEAD(&target->entry);
-	memcpy(target->categories, log_info->cat,
-		sizeof(struct log_category)*log_info->num_cat);
+
+	/* initialize the per-category enabled/loglevel from defaults */
+	for (i = 0; i < log_info->num_cat; i++) {
+		struct log_category *cat = &target->categories[i];
+		cat->enabled = log_info->cat[i].enabled;
+		cat->loglevel = log_info->cat[i].loglevel;
+	}
+
+	/* global settings */
 	target->use_color = 1;
 	target->print_timestamp = 0;
+
+	/* global log level */
 	target->loglevel = 0;
 	return target;
 }
 
 struct log_target *log_target_create_stderr(void)
 {
+/* since C89/C99 says stderr is a macro, we can safely do this! */
+#ifdef stderr
 	struct log_target *target;
 
 	target = log_target_create();
@@ -336,6 +361,55 @@ struct log_target *log_target_create_stderr(void)
 	target->tgt_stdout.out = stderr;
 	target->output = _stderr_output;
 	return target;
+#else
+	return NULL;
+#endif /* stderr */
+}
+
+const char *log_vty_level_string(struct log_info *info)
+{
+	const struct value_string *vs;
+	unsigned int len = 3; /* ()\0 */
+	char *str;
+
+	for (vs = loglevel_strs; vs->value || vs->str; vs++)
+		len += strlen(vs->str) + 1;
+
+	str = talloc_zero_size(NULL, len);
+	if (!str)
+		return NULL;
+
+	str[0] = '(';
+	for (vs = loglevel_strs; vs->value || vs->str; vs++) {
+		strcat(str, vs->str);
+		strcat(str, "|");
+	}
+	str[strlen(str)-1] = ')';
+
+	return str;
+}
+
+const char *log_vty_category_string(struct log_info *info)
+{
+	unsigned int len = 3;	/* "()\0" */
+	unsigned int i;
+	char *str;
+
+	for (i = 0; i < info->num_cat; i++)
+		len += strlen(info->cat[i].name) + 1;
+
+	str = talloc_zero_size(NULL, len);
+	if (!str)
+		return NULL;
+
+	str[0] = '(';
+	for (i = 0; i < info->num_cat; i++) {
+		strcat(str, info->cat[i].name+1);
+		strcat(str, "|");
+	}
+	str[strlen(str)-1] = ')';
+
+	return str;
 }
 
 void log_init(const struct log_info *cat)

@@ -91,9 +91,6 @@ struct rtp_x_hdr {
 
 #define RTP_VERSION	2
 
-#define RTP_PT_GSM_FULL	3
-#define RTP_PT_GSM_EFR	97
-
 /* decode an rtp frame and create a new buffer with payload */
 static int rtp_decode(struct msgb *msg, u_int32_t callref, struct msgb **data)
 {

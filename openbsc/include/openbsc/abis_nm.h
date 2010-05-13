@@ -92,7 +92,7 @@ int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *msg);
 int abis_nm_event_reports(struct gsm_bts *bts, int on);
 int abis_nm_reset_resource(struct gsm_bts *bts);
-int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+int abis_nm_software_load(struct gsm_bts *bts, int trx_nr, const char *fname,
 			  u_int8_t win_size, int forced,
 			  gsm_cbfn *cbfn, void *cb_data);
 int abis_nm_software_load_status(struct gsm_bts *bts);
@@ -148,7 +148,7 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 			 u_int8_t *attr, int attr_len);
 int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
 				int attr_len);
-int abis_nm_ipaccess_restart(struct gsm_bts *bts);
+int abis_nm_ipaccess_restart(struct gsm_bts_trx *trx);
 int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
 				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
 				u_int8_t *attr, u_int8_t attr_len);
@@ -164,7 +164,8 @@ enum nm_evt {
 	EVT_STATECHG_ADM,
 };
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state); 
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_inst);
 
 const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);

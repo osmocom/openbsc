@@ -330,6 +330,20 @@ void lchan_free(struct gsm_lchan *lchan)
 	 * channel using it */
 }
 
+/*
+ * There was an error with the TRX and we need to forget
+ * any state so that a lchan can be allocated again after
+ * the trx is fully usable.
+ */
+void lchan_reset(struct gsm_lchan *lchan)
+{
+	bsc_del_timer(&lchan->T3101);
+
+	lchan->type = GSM_LCHAN_NONE;
+	lchan->state = LCHAN_S_NONE;
+}
+
+
 /* Consider releasing the channel now */
 int lchan_auto_release(struct gsm_lchan *lchan)
 {
@@ -348,6 +362,7 @@ int lchan_auto_release(struct gsm_lchan *lchan)
 			lchan->conn.use_count);
 
 	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	rsl_release_request(lchan, 0);
 	return 1;
 }

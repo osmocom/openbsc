@@ -18,7 +18,7 @@ dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.3)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.6)
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -48,6 +48,8 @@ AC_OUTPUT(
     include/sccp/Makefile
     include/Makefile
     src/Makefile
+    src/ipaccess/Makefile
+    src/gprs/Makefile
     tests/Makefile
     tests/debug/Makefile
     tests/gsm0408/Makefile

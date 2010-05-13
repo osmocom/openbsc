@@ -31,6 +31,7 @@
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
+#include <openbsc/chan_alloc.h>
 #include <osmocore/talloc.h>
 
 /* global pointer to the gsm network data structure */
@@ -377,11 +378,11 @@ static unsigned char nanobts_attr_cell[] = {
 		4,	/* N3103 */
 		8,	/* N3105 */
 		15,	/* RLC CV countdown */
-	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,
+	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,	/* CS1..CS4 */
 	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
-		0x00, 250,
-		0x00, 250,
-		2,	/* MCS2 */
+		0x00, 250,	/* T downlink TBF extension (0..500) */
+		0x00, 250,	/* T uplink TBF extension (0..500) */
+		2,	/* CS2 */
 #if 0
 	/* EDGE model only, breaks older models.
 	 * Should inquire the BTS capabilities */
@@ -400,7 +401,8 @@ static unsigned char nanobts_attr_nsvc0[] = {
 
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_inst)
 {
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
@@ -461,7 +463,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_NSE:
 		bts = container_of(obj, struct gsm_bts, gprs.nse);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -475,7 +477,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 		break;
 	case NM_OC_GPRS_CELL:
 		bts = container_of(obj, struct gsm_bts, gprs.cell);
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
 		if (new_state->availability == 5) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
@@ -490,9 +492,9 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 	case NM_OC_GPRS_NSVC:
 		nsvc = obj;
 		bts = nsvc->bts;
-		if (!bts->gprs.enabled)
+		if (bts->gprs.mode == BTS_GPRS_NONE)
 			break;
-	        /* We skip NSVC1 since we only use NSVC0 */
+		/* We skip NSVC1 since we only use NSVC0 */
 		if (nsvc->id == 1)
 			break;
 		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
@@ -798,7 +800,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
-		if (bts->gprs.enabled) {
+		if (bts->gprs.mode != BTS_GPRS_NONE) {
 			i = 13;
 			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 			if (rc < 0)
@@ -852,6 +854,22 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	bs11_attr_radio[2] |= arfcn_high;
 	bs11_attr_radio[3] = arfcn_low;
 
+	/* patch the RACH attributes */
+	if (bts->rach_b_thresh != -1) {
+		nanobts_attr_bts[33] = bts->rach_b_thresh & 0xff;
+		bs11_attr_bts[33] = bts->rach_b_thresh & 0xff;
+	}
+
+	if (bts->rach_ldavg_slots != -1) {
+		u_int8_t avg_high = bts->rach_ldavg_slots & 0xff;
+		u_int8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
+
+		nanobts_attr_bts[35] = avg_high;
+		nanobts_attr_bts[36] = avg_low;
+		bs11_attr_bts[35] = avg_high;
+		bs11_attr_bts[36] = avg_low;
+	}
+
 	/* patch BSIC */
 	bs11_attr_bts[1] = bts->bsic;
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
@@ -866,6 +884,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch NSEI */
 	nanobts_attr_nse[3] = bts->gprs.nse.nsei >> 8;
 	nanobts_attr_nse[4] = bts->gprs.nse.nsei & 0xff;
+	memcpy(nanobts_attr_nse+8, bts->gprs.nse.timer,
+		ARRAY_SIZE(bts->gprs.nse.timer));
+	memcpy(nanobts_attr_nse+18, bts->gprs.cell.timer,
+		ARRAY_SIZE(bts->gprs.cell.timer));
 
 	/* patch NSVCI */
 	nanobts_attr_nsvc0[3] = bts->gprs.nsvc[0].nsvci >> 8;
@@ -885,6 +907,11 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch RAC */
 	nanobts_attr_cell[3] = bts->gprs.rac;
 
+	if (bts->gprs.mode == BTS_GPRS_EGPRS) {
+		/* patch EGPRS coding schemes MCS 1..9 */
+		nanobts_attr_cell[29] = 0x8f;
+		nanobts_attr_cell[30] = 0xff;
+	}
 }
 
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
@@ -899,6 +926,8 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 {
+	int ts_no, lchan_no;
+
 	switch (event) {
 	case EVT_E1_TEI_UP:
 		switch (type) {
@@ -913,8 +942,35 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		}
 		break;
 	case EVT_E1_TEI_DN:
-		LOGP(DMI, LOGL_NOTICE, "Lost some E1 TEI link\n");
-		/* FIXME: deal with TEI or L1 link loss */
+		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", type, trx);
+
+		if (type == E1INP_SIGN_OML)
+			counter_inc(trx->bts->network->stats.bts.oml_fail);
+		else if (type == E1INP_SIGN_RSL)
+			counter_inc(trx->bts->network->stats.bts.rsl_fail);
+
+		/*
+		 * free all allocated channels. change the nm_state so the
+		 * trx and trx_ts becomes unusable and chan_alloc.c can not
+		 * allocate from it.
+		 */
+		for (ts_no = 0; ts_no < ARRAY_SIZE(trx->ts); ++ts_no) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[ts_no];
+
+			for (lchan_no = 0; lchan_no < ARRAY_SIZE(ts->lchan); ++lchan_no) {
+				if (ts->lchan[lchan_no].state != GSM_LCHAN_NONE)
+					lchan_free(&ts->lchan[lchan_no]);
+				lchan_reset(&ts->lchan[lchan_no]);
+			}
+
+			ts->nm_state.operational = 0;
+			ts->nm_state.availability = 0;
+		}
+
+		trx->nm_state.operational = 0;
+		trx->nm_state.availability = 0;
+		trx->bb_transc.nm_state.operational = 0;
+		trx->bb_transc.nm_state.availability = 0;
 		break;
 	default:
 		break;
@@ -923,6 +979,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static int bootstrap_bts(struct gsm_bts *bts)
 {
+	int i, n;
+
 	switch (bts->band) {
 	case GSM_BAND_1800:
 		if (bts->c0->arfcn < 512 || bts->c0->arfcn > 885) {
@@ -959,9 +1017,33 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
-	bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
 	/* T3212 is set from vty/config */
+
+	/* Set ccch config by looking at ts config */
+	for (n=0, i=0; i<8; i++)
+		n += bts->c0->ts[i].pchan == GSM_PCHAN_CCCH ? 1 : 0;
+
+	switch (n) {
+	case 0:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
+		break;
+	case 1:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_NC;
+		break;
+	case 2:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_2_NC;
+		break;
+	case 3:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_3_NC;
+		break;
+	case 4:
+		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_4_NC;
+		break;
+	default:
+		LOGP(DNM, LOGL_ERROR, "Unsupported CCCH timeslot configuration\n");
+		return -EINVAL;
+	}
 
 	/* some defaults for our system information */
 	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */

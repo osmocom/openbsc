@@ -29,6 +29,9 @@ enum {
 	DHO,
 	DDB,
 	DREF,
+	DGPRS,
+	DNS,
+	DBSSGP,
 	Debug_LastEntry,
 };
 

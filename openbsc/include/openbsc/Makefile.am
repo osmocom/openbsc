@@ -6,7 +6,9 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		 bsc_rll.h mncc.h transaction.h ussd.h gsm_04_80.h \
 		 silent_call.h mgcp.h meas_rep.h rest_octets.h \
 		 system_information.h handover.h mgcp_internal.h \
-		 vty.h
+		 vty.h \
+		crc24.h gprs_bssgp.h gprs_llc.h gprs_ns.h \
+		gb_proxy.h gprs_sgsn.h gsm_04_08_gprs.h sgsn.h
 
 openbsc_HEADERS = gsm_04_08.h meas_rep.h bsc_api.h
 openbscdir = $(includedir)/openbsc

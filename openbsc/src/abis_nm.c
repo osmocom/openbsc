@@ -678,7 +678,7 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	new_state = *nm_state;
 	new_state.administrative = adm_state;
 
-	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state);
+	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state, obj_inst);
 
 	nm_state->administrative = adm_state;
 
@@ -732,7 +732,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 		/* Update the operational state of a given object in our in-memory data
  		* structures and send an event to the higher layer */
 		void *obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state);
+		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state, &foh->obj_inst);
 		nm_state->operational = new_state.operational;
 		nm_state->availability = new_state.availability;
 		if (nm_state->administrative == 0)
@@ -822,15 +822,56 @@ static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i
 	return abis_nm_sendmsg(bts, msg);
 }
 
+static int abis_nm_parse_sw_descr(const u_int8_t *sw_descr, int sw_descr_len)
+{
+	static const struct tlv_definition sw_descr_def = {
+		.def = {
+			[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V, },
+			[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V, },
+		},
+	};
+
+	u_int8_t tag;
+	u_int16_t tag_len;
+	const u_int8_t *val;
+	int ofs = 0, len;
+
+	/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
+	 * nested nature and the fact you have to assume it contains only two sub
+	 * tags NM_ATT_FILE_VERSION & NM_ATT_FILE_ID to parse it */
+
+	if (sw_descr[0] != NM_ATT_SW_DESCR) {
+		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
+		return -1;
+	}
+	ofs += 1;
+
+	len = tlv_parse_one(&tag, &tag_len, &val,
+		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
+	if (len < 0 || (tag != NM_ATT_FILE_ID)) {
+		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
+		return -2;
+	}
+	ofs += len;
+
+	len = tlv_parse_one(&tag, &tag_len, &val,
+		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
+	if (len < 0 || (tag != NM_ATT_FILE_VERSION)) {
+		DEBUGP(DNM, "FILE_VERSION attribute identifier not found!\n");
+		return -3;
+	}
+	ofs += len;
+
+	return ofs;
+}
+
 static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct tlv_parsed tp;
 	const u_int8_t *sw_config;
-	int sw_config_len;
-	int file_id_len;
-	int ret;
+	int ret, sw_config_len, sw_descr_len;
 
 	debugp_foh(foh);
 
@@ -854,20 +895,16 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
 	}
 
-	if (sw_config[0] != NM_ATT_SW_DESCR)
-		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
-	if (sw_config[1] != NM_ATT_FILE_ID)
-		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
-	file_id_len = sw_config[2] * 256 + sw_config[3];
+		/* Use the first SW_DESCR present in SW config */
+	sw_descr_len = abis_nm_parse_sw_descr(sw_config, sw_config_len);
+	if (sw_descr_len < 0)
+		return -EINVAL;
 
-	/* Assumes first SW file in list is the one to be activated */
-	/* sw_config + 4 to skip over 2 attribute ID bytes and 16-bit length field */
 	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 sw_config + 4,
-				 file_id_len);
+				 sw_config, sw_descr_len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
@@ -1102,6 +1139,7 @@ enum sw_state {
 
 struct abis_nm_sw {
 	struct gsm_bts *bts;
+	int trx_nr;
 	gsm_cbfn *cbfn;
 	void *cb_data;
 	int forced;
@@ -1555,7 +1593,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 }
 
 /* Load the specified software into the BTS */
-int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
+int abis_nm_software_load(struct gsm_bts *bts, int trx_nr, const char *fname,
 			  u_int8_t win_size, int forced,
 			  gsm_cbfn *cbfn, void *cb_data)
 {
@@ -1569,6 +1607,7 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		return -EBUSY;
 
 	sw->bts = bts;
+	sw->trx_nr = trx_nr;
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_BS11:
@@ -1579,8 +1618,8 @@ int abis_nm_software_load(struct gsm_bts *bts, const char *fname,
 		break;
 	case GSM_BTS_TYPE_NANOBTS:
 		sw->obj_class = NM_OC_BASEB_TRANSC;
-		sw->obj_instance[0] = 0x00;
-		sw->obj_instance[1] = 0x00;
+		sw->obj_instance[0] = sw->bts->nr;
+		sw->obj_instance[1] = sw->trx_nr;
 		sw->obj_instance[2] = 0xff;
 		break;
 	case GSM_BTS_TYPE_UNKNOWN:
@@ -2514,7 +2553,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
 		fle = fl_dequeue(&bs11_sw->file_list);
 		if (fle) {
 			/* start download the next file of our file list */
-			rc = abis_nm_software_load(bs11_sw->bts, fle->fname,
+			rc = abis_nm_software_load(bs11_sw->bts, 0xff, fle->fname,
 						   bs11_sw->win_size,
 						   bs11_sw->forced,
 						   &bs11_swload_cbfn, bs11_sw);
@@ -2570,7 +2609,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 		return -EINVAL;
 
 	/* start download the next file of our file list */
-	rc = abis_nm_software_load(bts, fle->fname, win_size, forced,
+	rc = abis_nm_software_load(bts, 0xff, fle->fname, win_size, forced,
 				   bs11_swload_cbfn, bs11_sw);
 	talloc_free(fle);
 	return rc;
@@ -2738,12 +2777,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		signal.bts = msg->trx->bts;
+		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
-		signal.bts = msg->trx->bts;
+		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;
@@ -2829,9 +2868,16 @@ int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 }
 
 /* restart / reboot an ip.access nanoBTS */
-int abis_nm_ipaccess_restart(struct gsm_bts *bts)
+int abis_nm_ipaccess_restart(struct gsm_bts_trx *trx)
 {
-	return __simple_cmd(bts, NM_MT_IPACC_RESTART);
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 0, NM_MT_IPACC_RESTART, NM_OC_BASEB_TRANSC,
+			trx->bts->nr, trx->nr, 0xff);
+
+	return abis_nm_sendmsg(trx->bts, msg);
 }
 
 int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,

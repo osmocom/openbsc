@@ -727,12 +727,17 @@ int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
 			     link_id, 0);
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
 
-	lchan->state = LCHAN_S_REL_REQ;
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->trx = lchan->ts->trx;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
+{
+	lchan->state = state;
+	return 0;
 }
 
 /* Chapter 8.4.2: Channel Activate Acknowledge */
@@ -749,7 +754,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
 			gsm_lchan_name(msg->lchan),
 			gsm_lchans_name(msg->lchan->state));
-	msg->lchan->state = LCHAN_S_ACTIVE;
+	rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
 
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
@@ -775,9 +780,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			msg->lchan->state = LCHAN_S_NONE;
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 	} else
-		msg->lchan->state = LCHAN_S_NONE;
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
@@ -805,6 +810,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
+	counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
 	return rsl_rf_chan_release(msg->lchan);
 }
 
@@ -981,7 +987,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 				gsm_lchan_name(msg->lchan),
 				gsm_lchans_name(msg->lchan->state));
-		msg->lchan->state = LCHAN_S_NONE;
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 		lchan_free(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
@@ -1124,7 +1130,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
 		     "in state %s\n", gsm_lchan_name(lchan),
 		     gsm_lchans_name(lchan->state));
-	lchan->state = LCHAN_S_ACT_REQ;
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
@@ -1181,6 +1187,10 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
 		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
+		if (is_ipaccess_bts(msg->trx->bts) && pg_buf_space == 0xffff) {
+			/* paging load below configured threshold, use 50 as default */
+			pg_buf_space = 50;
+		}
 		paging_update_buffer_space(msg->trx->bts, pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
@@ -1240,8 +1250,10 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
-	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED)
+	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
+		counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
 		return rsl_rf_chan_release(msg->lchan);
+	}
 
 	return 0;
 }
@@ -1363,6 +1375,44 @@ static u_int8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 	return 0;
 }
 
+static u_int8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
+{
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_GSM_FULL;
+		case GSM_LCHAN_TCH_H:
+			return RTP_PT_GSM_HALF;
+		default:
+			break;
+		}
+	case GSM48_CMODE_SPEECH_EFR:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_GSM_EFR;
+		/* there's no half-rate EFR */
+		default:
+			break;
+		}
+	case GSM48_CMODE_SPEECH_AMR:
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return RTP_PT_AMR_FULL;
+		case GSM_LCHAN_TCH_H:
+			return RTP_PT_AMR_HALF;
+		default:
+			break;
+		}
+	default:
+		break;
+	}
+	LOGP(DRSL, LOGL_ERROR, "Cannot determine ip.access rtp payload type for "
+		"tch_mode == 0x%02x\n & lchan_type == %d",
+		lchan->tch_mode, lchan->type);
+	return 0;
+}
+
 /* ip.access specific RSL extensions */
 static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
 {
@@ -1429,10 +1479,13 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 
 	/* 0x1- == receive-only, 0x-1 == EFR codec */
 	lchan->abis_ip.speech_mode = 0x10 | ipa_smod_s_for_lchan(lchan);
+	lchan->abis_ip.rtp_payload = ipa_rtp_pt_for_lchan(lchan);
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD, lchan->abis_ip.rtp_payload);
 
-	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x\n",
-		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode);
+	DEBUGP(DRSL, "%s IPAC_BIND speech_mode=0x%02x RTP_PAYLOAD=%d\n",
+		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode,
+		lchan->abis_ip.rtp_payload);
 
 	msg->trx = lchan->ts->trx;
 
@@ -1459,11 +1512,13 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 
 	/* 0x0- == both directions, 0x-1 == EFR codec */
 	lchan->abis_ip.speech_mode = 0x00 | ipa_smod_s_for_lchan(lchan);
+	lchan->abis_ip.rtp_payload = ipa_rtp_pt_for_lchan(lchan);
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD2=%d CONN_ID=%d "
-		"speech_mode=0x%02x\n", gsm_lchan_name(lchan), inet_ntoa(ia), port,
-		rtp_payload2, lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
+	DEBUGP(DRSL, "%s IPAC_MDCX IP=%s PORT=%d RTP_PAYLOAD=%d RTP_PAYLOAD2=%d "
+		"CONN_ID=%d speech_mode=0x%02x\n", gsm_lchan_name(lchan),
+		inet_ntoa(ia), port, lchan->abis_ip.rtp_payload, rtp_payload2,
+		lchan->abis_ip.conn_id, lchan->abis_ip.speech_mode);
 
 	msgb_tv16_put(msg, RSL_IE_IPAC_CONN_ID, lchan->abis_ip.conn_id);
 	msgb_v_put(msg, RSL_IE_IPAC_REMOTE_IP);
@@ -1471,6 +1526,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip, u_int16_t port,
 	*att_ip = ia.s_addr;
 	msgb_tv16_put(msg, RSL_IE_IPAC_REMOTE_PORT, port);
 	msgb_tv_put(msg, RSL_IE_IPAC_SPEECH_MODE, lchan->abis_ip.speech_mode);
+	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD, lchan->abis_ip.rtp_payload);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
 	
@@ -1652,8 +1708,20 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 /* Entry-point where L2 RSL from BTS enters */
 int abis_rsl_rcvmsg(struct msgb *msg)
 {
-	struct abis_rsl_common_hdr *rslh = msgb_l2(msg)	;
+	struct abis_rsl_common_hdr *rslh;
 	int rc = 0;
+
+	if (!msg) {
+		DEBUGP(DRSL, "Empty RSL msg?..\n");
+		return -1;
+	}
+
+	if (msgb_l2len(msg) < sizeof(*rslh)) {
+		DEBUGP(DRSL, "Truncated RSL message with l2len: %u\n", msgb_l2len(msg));
+		return -1;
+	}
+
+	rslh = msgb_l2(msg);
 
 	switch (rslh->msg_discr & 0xfe) {
 	case ABIS_RSL_MDISC_RLL:

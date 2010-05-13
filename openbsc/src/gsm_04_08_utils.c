@@ -36,18 +36,9 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 
-#define GSM48_ALLOC_SIZE	1024
-#define GSM48_ALLOC_HEADROOM	128
-
 /* should ip.access BTS use direct RTP streams between each other (1),
  * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
 int ipacc_rtp_direct = 1;
-
-struct msgb *gsm48_msgb_alloc(void)
-{
-	return msgb_alloc_headroom(GSM48_ALLOC_SIZE, GSM48_ALLOC_HEADROOM,
-				   "GSM 04.08");
-}
 
 int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
 {
@@ -288,7 +279,7 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	sig_data.bts	= msg->lchan->ts->trx->bts;
 	sig_data.lchan	= msg->lchan;
 
-	bts->network->stats.paging.completed++;
+	counter_inc(bts->network->stats.paging.completed);
 
 	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 

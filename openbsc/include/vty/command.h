@@ -107,6 +107,9 @@ enum node_type {
 	TS_NODE,
 	SUBSCR_NODE,
 	MGCP_NODE,
+	GBPROXY_NODE,
+	SGSN_NODE,
+	NS_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration
@@ -173,6 +176,17 @@ struct desc {
 
 /* helper defines for end-user DEFUN* macros */
 #define DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum) \
+  static struct cmd_element cmdname = \
+  { \
+    .string = cmdstr, \
+    .func = funcname, \
+    .doc = helpstr, \
+    .attr = attrs, \
+    .daemon = dnum, \
+  };
+
+/* global (non static) cmd_element */
+#define gDEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attrs, dnum) \
   struct cmd_element cmdname = \
   { \
     .string = cmdstr, \
@@ -193,6 +207,12 @@ struct desc {
 #define DEFUN(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_FUNC_DECL(funcname) \
   DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0) \
+  DEFUN_CMD_FUNC_TEXT(funcname)
+
+/* global (non static) cmd_element */
+#define gDEFUN(funcname, cmdname, cmdstr, helpstr) \
+  DEFUN_CMD_FUNC_DECL(funcname) \
+  gDEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0) \
   DEFUN_CMD_FUNC_TEXT(funcname)
 
 #define DEFUN_ATTR(funcname, cmdname, cmdstr, helpstr, attr) \
@@ -235,6 +255,10 @@ struct desc {
 /* ALIAS macro which define existing command's alias. */
 #define ALIAS(funcname, cmdname, cmdstr, helpstr) \
   DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0)
+
+/* global (non static) cmd_element */
+#define gALIAS(funcname, cmdname, cmdstr, helpstr) \
+  gDEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, 0, 0)
 
 #define ALIAS_ATTR(funcname, cmdname, cmdstr, helpstr, attr) \
   DEFUN_CMD_ELEMENT(funcname, cmdname, cmdstr, helpstr, attr, 0)
@@ -326,6 +350,7 @@ struct desc {
 void install_node(struct cmd_node *, int (*)(struct vty *));
 void install_default(enum node_type);
 void install_element(enum node_type, struct cmd_element *);
+void install_element_ve(struct cmd_element *cmd);
 void sort_node();
 
 /* Concatenates argv[shift] through argv[argc-1] into a single NUL-terminated

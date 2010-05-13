@@ -20,19 +20,22 @@
  *
  */
 
-#include <openbsc/gsm_data.h>
-#include <openbsc/gsm_04_11.h>
-#include <openbsc/db.h>
-#include <osmocore/talloc.h>
-#include <openbsc/debug.h>
-#include <osmocore/statistics.h>
-
+#include <stdint.h>
+#include <inttypes.h>
 #include <libgen.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <dbi/dbi.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_04_11.h>
+#include <openbsc/db.h>
+#include <osmocore/talloc.h>
+#include <openbsc/debug.h>
+#include <osmocore/statistics.h>
+#include <osmocore/rate_ctr.h>
 
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
@@ -123,6 +126,13 @@ static char *create_stmts[] = {
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL "
+		")",
+	"CREATE TABLE IF NOT EXISTS RateCounters ("
+		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
+		"timestamp TIMESTAMP NOT NULL, "
+		"value INTEGER NOT NULL, "
+		"name TEXT NOT NULL, "
+		"index INTEGER NOT NULL "
 		")",
 	"CREATE TABLE IF NOT EXISTS AuthKeys ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -1178,5 +1188,44 @@ int db_store_counter(struct counter *ctr)
 		return -EIO;
 
 	dbi_result_free(result);
+	return 0;
+}
+
+static int db_store_rate_ctr(struct rate_ctr_group *ctrg, unsigned int num,
+			     char *q_prefix)
+{
+	dbi_result result;
+	char *q_name;
+
+	dbi_conn_quote_string_copy(conn, ctrg->desc->ctr_desc[num].name,
+				   &q_name);
+
+	result = dbi_conn_queryf(conn,
+		"Insert INTO RateCounters "
+		"(timestamp,name,index,value) VALUES "
+		"(datetime('now'),%s.%s,%u,%"PRIu64")",
+		q_prefix, q_name, ctrg->idx, ctrg->ctr[num].current);
+
+	free(q_name);
+
+	if (!result)
+		return -EIO;
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_store_rate_ctr_group(struct rate_ctr_group *ctrg)
+{
+	unsigned int i;
+	char *q_prefix;
+
+	dbi_conn_quote_string_copy(conn, ctrg->desc->group_name_prefix, &q_prefix);
+
+	for (i = 0; i < ctrg->desc->num_ctr; i++)
+		db_store_rate_ctr(ctrg, i, q_prefix);
+
+	free(q_prefix);
+
 	return 0;
 }

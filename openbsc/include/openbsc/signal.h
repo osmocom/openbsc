@@ -26,7 +26,6 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/gsm_subscriber.h>
 
 #include <osmocore/signal.h>
 
@@ -43,6 +42,7 @@ enum signal_subsystems {
 	SS_SCALL,
 	SS_GLOBAL,
 	SS_CHALLOC,
+	SS_NS,
 };
 
 /* SS_PAGING signals */
@@ -118,6 +118,8 @@ enum signal_global {
 	S_GLOBAL_SHUTDOWN,
 };
 
+struct gsm_subscriber;
+
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
@@ -133,7 +135,7 @@ struct scall_signal_data {
 };
 
 struct ipacc_ack_signal_data {
-	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
 	u_int8_t msg_type;	
 };
 
@@ -141,6 +143,18 @@ struct challoc_signal_data {
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	enum gsm_chan_t type;
+};
+
+enum signal_ns {
+	S_NS_RESET,
+	S_NS_BLOCK,
+	S_NS_UNBLOCK,
+	S_NS_ALIVE_EXP,	/* Tns-alive expired more than N times */
+};
+
+struct ns_signal_data {
+	struct gprs_nsvc *nsvc;
+	uint8_t cause;
 };
 
 #endif

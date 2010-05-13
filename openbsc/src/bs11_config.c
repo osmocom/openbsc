@@ -481,7 +481,7 @@ static int handle_state_resp(enum abis_bs11_phase state)
 		 * argument, so our swload_cbfn can distinguish
 		 * a safety load from a regular software */
 		if (file_is_readable(fname_safety))
-			rc = abis_nm_software_load(g_bts, fname_safety,
+			rc = abis_nm_software_load(g_bts, 0xff, fname_safety,
 						   win_size, param_forced,
 						   swload_cbfn, g_bts);
 		else
@@ -697,7 +697,8 @@ int handle_serial_msg(struct msgb *rx_msg)
 }
 
 int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state)
+		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+		   struct abis_om_obj_inst *obj_ins)
 {
 	return 0;
 }

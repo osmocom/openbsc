@@ -478,6 +478,13 @@ void install_element(enum node_type ntype, struct cmd_element *cmd)
 	cmd->cmdsize = cmd_cmdsize(cmd->strvec);
 }
 
+/* Install a command into VIEW and ENABLE node */
+void install_element_ve(struct cmd_element *cmd)
+{
+	install_element(VIEW_NODE, cmd);
+	install_element(ENABLE_NODE, cmd);
+}
+
 #ifdef VTY_CRYPT_PW
 static unsigned char itoa64[] =
     "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
@@ -2311,7 +2318,7 @@ DEFUN(disable,
 }
 
 /* Down vty node level. */
-DEFUN(config_exit,
+gDEFUN(config_exit,
       config_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
 {
 	switch (vty->node) {
@@ -2363,6 +2370,9 @@ DEFUN(config_exit,
 		vty->node = CONFIG_NODE;
 		break;
 	case MGCP_NODE:
+	case GBPROXY_NODE:
+	case SGSN_NODE:
+	case NS_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 	default:
@@ -2372,11 +2382,11 @@ DEFUN(config_exit,
 }
 
 /* quit is alias of exit. */
-ALIAS(config_exit,
+gALIAS(config_exit,
       config_quit_cmd, "quit", "Exit current mode and down to previous mode\n")
 
 /* End of configuration. */
-    DEFUN(config_end,
+    gDEFUN(config_end,
       config_end_cmd, "end", "End current mode and change to enable mode.")
 {
 	switch (vty->node) {
@@ -2407,7 +2417,7 @@ DEFUN(show_version,
 }
 
 /* Help display function for all node. */
-DEFUN(config_help,
+gDEFUN(config_help,
       config_help_cmd, "help", "Description of the interactive help system\n")
 {
 	vty_out(vty,
@@ -2428,7 +2438,7 @@ argument.%s\
 }
 
 /* Help display function for all node. */
-DEFUN(config_list, config_list_cmd, "list", "Print command list\n")
+gDEFUN(config_list, config_list_cmd, "list", "Print command list\n")
 {
 	unsigned int i;
 	struct cmd_node *cnode = vector_slot(cmdvec, vty->node);

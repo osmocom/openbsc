@@ -53,6 +53,8 @@ int ipaccess_send_id_req(int fd);
 
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
 
+int ipaccess_drop_oml(struct gsm_bts *bts);
+int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
 
 /*
  * Firmware specific header

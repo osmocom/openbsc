@@ -14,6 +14,8 @@ Its currently supported interfaces towards the BTS are:
 
  * A-bis over IP as used by the ip.access nanoBTS product family
 
+You can find the project documentation at http://openbsc.gnumonks.org/
+
 This project is still in its early days, and there are lots of areas where it
 doesn't behave as per GSM spec.
 

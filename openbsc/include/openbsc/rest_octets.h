@@ -71,6 +71,7 @@ enum gprs_nmo {
 	GPRS_NMO_III	= 2,	/* no paging coordination */
 };
 
+/* TS 04.60 12.24 */
 struct gprs_cell_options {
 	enum gprs_nmo nmo;
 	/* T3168: wait for packet uplink assignment message */
@@ -79,6 +80,16 @@ struct gprs_cell_options {
 	u_int32_t t3192;	/* in milliseconds */
 	u_int32_t drx_timer_max;/* in seconds */
 	u_int32_t bs_cv_max;
+
+	u_int8_t ext_info_present;
+	struct {
+		u_int8_t egprs_supported;
+			u_int8_t use_egprs_p_ch_req;
+			u_int8_t bep_period;
+		u_int8_t pfc_supported;
+		u_int8_t dtm_supported;
+		u_int8_t bss_paging_coordination;
+	} ext_info;
 };
 
 /* TS 04.60 Table 12.9.2 */

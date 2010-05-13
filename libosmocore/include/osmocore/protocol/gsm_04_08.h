@@ -685,6 +685,7 @@ enum chreq_type {
 /* Chapter 5.1.2.2 */
 #define	GSM_CSTATE_NULL			0
 #define	GSM_CSTATE_INITIATED		1
+#define	GSM_CSTATE_MM_CONNECTION_PEND	2 /* see 10.5.4.6 */
 #define	GSM_CSTATE_MO_CALL_PROC		3
 #define	GSM_CSTATE_CALL_DELIVERED	4
 #define	GSM_CSTATE_CALL_PRESENT		6
@@ -734,10 +735,17 @@ enum gsm48_bcap_rrq {
 	GSM48_BCAP_RRQ_DUAL_FR	= 3,
 };
 
-
 #define GSM48_TMSI_LEN	5
 #define GSM48_MID_TMSI_LEN	(GSM48_TMSI_LEN + 2)
 #define GSM48_MI_SIZE 32
+
+/* Chapter 10.4.4.15 */
+struct gsm48_ra_id {
+	uint8_t digits[3];	/* MCC + MNC BCD digits */
+	uint16_t lac;		/* Location Area Code */
+	uint8_t rac;		/* Routing Area Code */
+} __attribute__ ((packed));
+
 
 
 #endif /* PROTO_GSM_04_08_H */
