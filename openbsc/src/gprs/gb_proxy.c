@@ -169,12 +169,13 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 	 * be free()d safely when we return from gbprox_rcvmsg() */
 	struct msgb *msg = msgb_copy(old_msg, "msgb_relay2peer");
 
-	DEBUGP(DGPRS, "NSEI=%u proxying to SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
+	DEBUGP(DGPRS, "NSEI=%u proxying SGSN->BSS (NS_BVCI=%u, NSEI=%u)\n",
 		msgb_nsei(msg), ns_bvci, peer->nsvc->nsei);
 
 	msgb_bvci(msg) = ns_bvci;
 	msgb_nsei(msg) = peer->nsvc->nsei;
 
+	/* Strip the old NS header, it will be replaced with a new one */
 	strip_ns_hdr(msg);
 
 	return gprs_ns_sendmsg(bssgp_nsi, msg);
