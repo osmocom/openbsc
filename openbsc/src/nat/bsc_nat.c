@@ -561,6 +561,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
+	struct msgb *refuse;
 	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
 
@@ -591,6 +592,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
+			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed) != 0)
+				goto exit3;
 			if (create_sccp_src_ref(bsc, msg, parsed) != 0)
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
@@ -654,6 +657,13 @@ exit:
 		goto exit2;
 	}
 
+exit3:
+	/* send a SCCP Connection Refused */
+	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE);
+	if (refuse) {
+		bsc_send_data(bsc, refuse->l2h, msgb_l2len(refuse), IPAC_PROTO_SCCP);
+		msgb_free(refuse);
+	}
 exit2:
 	talloc_free(parsed);
 	msgb_free(msg);
