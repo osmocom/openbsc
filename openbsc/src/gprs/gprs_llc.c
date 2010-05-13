@@ -111,6 +111,7 @@ enum gprs_llc_cmd {
 	GPRS_LLC_SABM,
 	GPRS_LLC_FRMR,
 	GPRS_LLC_XID,
+	GPRS_LLC_UI,
 };
 
 struct gprs_llc_hdr_parsed {
@@ -156,13 +157,13 @@ static void t200_expired(void *data)
 
 	switch (lle->state) {
 	case GPRS_LLS_LOCAL_EST:
-		/* retransmit SABM */
-		/* re-start T200 */
+		/* FIXME: retransmit SABM */
+		/* FIXME: re-start T200 */
 		lle->retrans_ctr++;
 		break;
 	case GPRS_LLS_LOCAL_REL:
-		/* retransmit DISC */
-		/* re-start T200 */
+		/* FIXME: retransmit DISC */
+		/* FIXME: re-start T200 */
 		lle->retrans_ctr++;
 		break;
 	}
@@ -174,8 +175,8 @@ static void t201_expired(void *data)
 	struct gprs_llc_lle *lle = data;
 
 	if (lle->retrans_ctr < lle->n200) {
-		/* transmit apropriate supervisory frame (8.6.4.1) */
-		/* set timer T201 */
+		/* FIXME: transmit apropriate supervisory frame (8.6.4.1) */
+		/* FIXME: set timer T201 */
 		lle->retrans_ctr++;
 	}
 }
@@ -213,6 +214,7 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 
 	/* Identifiers passed down: (BVCI, NSEI) */
 
+	/* Send BSSGP-DL-UNITDATA.req */
 	return gprs_bssgp_tx_dl_ud(msg);
 }
 
@@ -272,6 +274,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 
 	/* Identifiers passed down: (BVCI, NSEI) */
 
+	/* Send BSSGP-DL-UNITDATA.req */
 	return gprs_bssgp_tx_dl_ud(msg);
 }
 
@@ -437,6 +440,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 		}
 	} else if ((ctrl[0] & 0xe0) == 0xc0) {
 		/* UI (Unconfirmed Inforamtion) format */
+		ghp->cmd = GPRS_LLC_UI;
 		ghp->data = ctrl + 2;
 		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
 
@@ -491,6 +495,12 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 	ghp->fcs_calc = gprs_llc_fcs(llc_hdr, crc_length);
 
 	/* FIXME: parse sack frame */
+	if (ghp->cmd == GPRS_LLC_SACK) {
+		DEBUGP(DGPRS, "Unsupported SACK frame\n");
+		return -EIO;
+	}
+
+	return 0;
 }
 
 /* receive an incoming LLC PDU (BSSGP-UL-UNITDATA-IND, 7.2.4.2) */
@@ -505,37 +515,56 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
 
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
-	/* FIXME */
-
 	gprs_llc_hdr_dump(&llhp);
+	if (rc < 0) {
+		DEBUGP(DGPRS, "Error during LLC header parsing\n");
+		return rc;
+	}
+
+	if (llhp.fcs != llhp.fcs_calc) {
+		DEBUGP(DGPRS, "Dropping frame with invalid FCS\n");
+		return -EIO;
+	}
 
 	/* find the LLC Entity for this TLLI+SAPI tuple */
 	lle = lle_by_tlli_sapi(msgb_tlli(msg), llhp.sapi);
-	/* allocate a new LLE if needed */
-	if (!lle)
+
+	/* 7.2.1.1 LLC belonging to unassigned TLLI+SAPI shall be discarded,
+	 * except UID and XID frames with SAPI=1 */
+	if (!lle && llhp.sapi == GPRS_SAPI_GMM &&
+	    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
+		/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
+	} else {
+		DEBUGP(DGPRS, "unknown TLLI/SAPI: Silently dropping\n");
+		return 0;
+	}
 
 	/* Update LLE's (BVCI, NSEI) tuple */
 	lle->bvci = msgb_bvci(msg);
 	lle->nsei = msgb_nsei(msg);
 
+	/* Receive and Process the actual LLC frame */
 	rc = gprs_llc_hdr_rx(&llhp, lle);
-	/* FIXME */
+	if (rc < 0)
+		return rc;
 
+	/* llhp.data is only set when we need to send LL_[UNIT]DATA_IND up */
 	if (llhp.data) {
 		msgb_gmmh(msg) = llhp.data;
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
+			/* send LL_UNITDATA_IND to GMM */
 			rc = gsm0408_gprs_rcvmsg(msg);
 			break;
 		case GPRS_SAPI_TOM2:
 		case GPRS_SAPI_TOM8:
-			/* FIXME */
+			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to TOM */
 		case GPRS_SAPI_SNDCP3:
 		case GPRS_SAPI_SNDCP5:
 		case GPRS_SAPI_SNDCP9:
 		case GPRS_SAPI_SNDCP11:
-			/* FIXME */
+			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to SNDCP */
 		case GPRS_SAPI_SMS:
 			/* FIXME */
 		default:
