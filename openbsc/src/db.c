@@ -132,7 +132,7 @@ static char *create_stmts[] = {
 		"timestamp TIMESTAMP NOT NULL, "
 		"value INTEGER NOT NULL, "
 		"name TEXT NOT NULL, "
-		"index INTEGER NOT NULL "
+		"idx INTEGER NOT NULL "
 		")",
 	"CREATE TABLE IF NOT EXISTS AuthKeys ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -1202,7 +1202,7 @@ static int db_store_rate_ctr(struct rate_ctr_group *ctrg, unsigned int num,
 
 	result = dbi_conn_queryf(conn,
 		"Insert INTO RateCounters "
-		"(timestamp,name,index,value) VALUES "
+		"(timestamp,name,idx,value) VALUES "
 		"(datetime('now'),%s.%s,%u,%"PRIu64")",
 		q_prefix, q_name, ctrg->idx, ctrg->ctr[num].current);
 
