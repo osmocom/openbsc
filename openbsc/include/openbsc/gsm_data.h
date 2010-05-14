@@ -322,6 +322,8 @@ struct gsm_bts_trx {
 	struct gsm_bts *bts;
 	/* number of this TRX in the BTS */
 	u_int8_t nr;
+	/* human readable name / description */
+	char *description;
 	/* how do we talk RSL with this TRX? */
 	struct gsm_e1_subslot rsl_e1_link;
 	u_int8_t rsl_tei;
@@ -428,6 +430,8 @@ struct gsm_bts {
 	struct gsm_network *network;
 	/* number of ths BTS in network */
 	u_int8_t nr;
+	/* human readable name / description */
+	char *description;
 	/* Cell Identity */
 	u_int16_t cell_identity;
 	/* location area code of this BTS */

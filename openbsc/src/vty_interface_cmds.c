@@ -41,6 +41,23 @@ static void _vty_output(struct log_target *tgt, const char *line)
 		vty_out(vty, "\r");
 }
 
+struct buffer *vty_argv_to_buffer(int argc, const char *argv[], int base)
+{
+	struct buffer *b = buffer_new(NULL, 1024);
+	int i;
+
+	if (!b)
+		return NULL;
+
+	for (i = base; i < argc; i++) {
+		buffer_putstr(b, argv[i]);
+		buffer_putc(b, ' ');
+	}
+	buffer_putc(b, '\0');
+
+	return b;
+}
+
 struct log_target *log_target_create_vty(struct vty *vty)
 {
 	struct log_target *target;
@@ -303,6 +320,52 @@ DEFUN(show_logging_vty,
 		return CMD_WARNING;
 	}
 	vty_print_logtarget(vty, &log_info, conn->dbg);
+
+	return CMD_SUCCESS;
+}
+
+gDEFUN(cfg_description, cfg_description_cmd,
+	"description .TEXT",
+	"Save human-readable decription of the object\n")
+{
+	char **dptr = vty->index_sub;
+	struct buffer *b;
+
+	if (!dptr) {
+		vty_out(vty, "vty->index_sub == NULL%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	b = vty_argv_to_buffer(argc, argv, 0);
+	if (!b)
+		return CMD_WARNING;
+
+	if (*dptr)
+		talloc_free(*dptr);
+
+	*dptr = talloc_strdup(NULL, buffer_getstr(b));
+
+	buffer_free(b);
+
+	return CMD_SUCCESS;
+}
+
+gDEFUN(cfg_no_description, cfg_no_description_cmd,
+	"no description",
+	NO_STR
+	"Remove description of the object\n")
+{
+	char **dptr = vty->index_sub;
+
+	if (!dptr) {
+		vty_out(vty, "vty->index_sub == NULL%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (*dptr) {
+		talloc_free(*dptr);
+		*dptr = NULL;
+	}
 
 	return CMD_SUCCESS;
 }

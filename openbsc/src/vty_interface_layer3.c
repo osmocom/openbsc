@@ -56,23 +56,6 @@ static int dummy_config_write(struct vty *v)
 	return CMD_SUCCESS;
 }
 
-static struct buffer *argv_to_buffer(int argc, const char *argv[], int base)
-{
-	struct buffer *b = buffer_new(NULL, 1024);
-	int i;
-
-	if (!b)
-		return NULL;
-
-	for (i = base; i < argc; i++) {
-		buffer_putstr(b, argv[i]);
-		buffer_putc(b, ' ');
-	}
-	buffer_putc(b, '\0');
-
-	return b;
-}
-
 static int hexparse(const char *str, u_int8_t *b, int max_len)
 
 {
@@ -308,7 +291,7 @@ DEFUN(subscriber_send_sms,
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	b = argv_to_buffer(argc, argv, 2);
+	b = vty_argv_to_buffer(argc, argv, 2);
 	rc = _send_sms_buffer(subscr, b, 0);
 	buffer_free(b);
 
@@ -332,7 +315,7 @@ DEFUN(subscriber_silent_sms,
 		return CMD_WARNING;
 	}
 
-	b = argv_to_buffer(argc, argv, 2);
+	b = vty_argv_to_buffer(argc, argv, 2);
 	rc = _send_sms_buffer(subscr, b, 64);
 	buffer_free(b);
 

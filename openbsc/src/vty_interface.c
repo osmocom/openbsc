@@ -193,6 +193,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		bts->cell_identity,
 		bts->location_area_code, bts->bsic, bts->tsc,
 		bts->num_trx, VTY_NEWLINE);
+	vty_out(vty, "Description: %s%s",
+		bts->description ? bts->description : "(null)", VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "Minimum Rx Level for Access: %i dBm%s",
 		rxlev2dbm(bts->si_common.cell_sel_par.rxlev_acc_min),
@@ -294,6 +296,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	int i;
 
 	vty_out(vty, "  trx %u%s", trx->nr, VTY_NEWLINE);
+	if (trx->description)
+		vty_out(vty, "   description %s%s", trx->description,
+			VTY_NEWLINE);
 	vty_out(vty, "   rf_locked %u%s",
 		trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
 		VTY_NEWLINE);
@@ -352,6 +357,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
+	if (bts->description)
+		vty_out(vty, "  description %s%s", bts->description, VTY_NEWLINE);
 	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
 	vty_out(vty, "  cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
@@ -456,6 +463,8 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 {
 	vty_out(vty, "TRX %u of BTS %u is on ARFCN %u%s",
 		trx->nr, trx->bts->nr, trx->arfcn, VTY_NEWLINE);
+	vty_out(vty, "Description: %s%s",
+		trx->description ? trx->description : "(null)", VTY_NEWLINE);
 	vty_out(vty, "  RF Nominal Power: %d dBm, reduced by %u dB, "
 		"resulting BS power: %d dBm%s",
 		trx->nominal_power, trx->max_power_red,
@@ -1216,6 +1225,7 @@ DEFUN(cfg_bts,
 	}
 
 	vty->index = bts;
+	vty->index_sub = &bts->description;
 	vty->node = BTS_NODE;
 
 	return CMD_SUCCESS;
@@ -1763,6 +1773,7 @@ DEFUN(cfg_trx,
 		return CMD_WARNING;
 
 	vty->index = trx;
+	vty->index_sub = &trx->description;
 	vty->node = TRX_NODE;
 
 	return CMD_SUCCESS;
@@ -1976,6 +1987,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&bts_node, config_write_bts);
 	install_default(BTS_NODE);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
+	install_element(BTS_NODE, &cfg_description_cmd);
+	install_element(BTS_NODE, &cfg_no_description_cmd);
 	install_element(BTS_NODE, &cfg_bts_band_cmd);
 	install_element(BTS_NODE, &cfg_bts_ci_cmd);
 	install_element(BTS_NODE, &cfg_bts_lac_cmd);
@@ -2011,6 +2024,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_node(&trx_node, dummy_config_write);
 	install_default(TRX_NODE);
 	install_element(TRX_NODE, &cfg_trx_arfcn_cmd);
+	install_element(TRX_NODE, &cfg_description_cmd);
+	install_element(TRX_NODE, &cfg_no_description_cmd);
 	install_element(TRX_NODE, &cfg_trx_nominal_power_cmd);
 	install_element(TRX_NODE, &cfg_trx_max_power_red_cmd);
 	install_element(TRX_NODE, &cfg_trx_rsl_e1_cmd);
