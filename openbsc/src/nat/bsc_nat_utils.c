@@ -193,6 +193,54 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 	return 0;
 }
 
+/* apply white/black list */
+static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
+{
+	regmatch_t match[1];
+
+	/*
+	 * Now apply blacklist/whitelist of the BSC and the NAT.
+	 * 1.) Reject if the IMSI is not allowed at the BSC
+	 * 2.) Allow directly if the IMSI is allowed at the BSC
+	 * 3.) Reject if the IMSI not allowed at the global level.
+	 * 4.) Allow directly if the IMSI is allowed at the global level
+	 */
+
+	/* 1. BSC deny */
+	if (bsc->cfg->imsi_deny) {
+		if (regexec(&bsc->cfg->imsi_deny_re, mi_string, 1, match, 0) == 0) {
+			LOGP(DNAT, LOGL_ERROR,
+			     "Filtering %s by imsi_deny.\n", mi_string);
+			return -2;
+		}
+	}
+
+	/* 2. BSC allow */
+	if (bsc->cfg->imsi_allow) {
+		if (regexec(&bsc->cfg->imsi_allow_re, mi_string, 1, match, 0) == 0)
+			return 0;
+	}
+
+	/* 3. NAT deny */
+	if (bsc->nat->imsi_deny) {
+		if (regexec(&bsc->nat->imsi_deny_re, mi_string, 1, match, 0) == 0) {
+			LOGP(DNAT, LOGL_ERROR,
+			     "Filtering %s by nat imsi_deny.\n", mi_string);
+			return -3;
+		}
+	}
+
+	/* 4. NAT allow */
+	if (bsc->nat->imsi_allow) {
+		if (regexec(&bsc->nat->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
+			return 0;
+	} else {
+		return 0;
+	}
+
+	/* unmatched */
+	return -3;
+}
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
 {
@@ -217,12 +265,7 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned
 		return 0;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
-
-	/*
-	 * Now apply blacklist/whitelist
-	 */
-
-	return 0;
+	return auth_imsi(bsc, mi_string);
 }
 
 
