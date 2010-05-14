@@ -71,6 +71,55 @@ struct log_target *log_target_create_vty(struct vty *vty)
 	return target;
 }
 
+/* Down vty node level. */
+gDEFUN(ournode_exit,
+       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
+{
+	switch (vty->node) {
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+			vty->index_sub = NULL;
+		}
+		break;
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+			vty->index_sub = &trx->bts->description;
+		}
+		break;
+	case TS_NODE:
+		vty->node = TRX_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx_ts *ts = vty->index;
+			vty->index = ts->trx;
+			vty->index_sub = &ts->trx->description;
+		}
+		break;
+	case MGCP_NODE:
+	case GBPROXY_NODE:
+	case SGSN_NODE:
+	case NS_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	default:
+		break;
+	}
+	return CMD_SUCCESS;
+}
+
 DEFUN(enable_logging,
       enable_logging_cmd,
       "logging enable",

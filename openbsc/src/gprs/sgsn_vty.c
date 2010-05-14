@@ -29,6 +29,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_ns.h>
+#include <openbsc/vty.h>
 
 #include <vty/command.h>
 #include <vty/vty.h>
@@ -125,6 +126,7 @@ int sgsn_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_sgsn_cmd);
 	install_node(&sgsn_node, config_write_sgsn);
 	install_default(SGSN_NODE);
+	install_element(SGSN_NODE, &ournode_exit_cmd);
 	install_element(SGSN_NODE, &cfg_nsip_local_ip_cmd);
 	install_element(SGSN_NODE, &cfg_nsip_local_port_cmd);
 

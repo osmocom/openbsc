@@ -731,6 +731,8 @@ static void vty_backward_word(struct vty *vty)
 static void vty_down_level(struct vty *vty)
 {
 	vty_out(vty, "%s", VTY_NEWLINE);
+	/* FIXME: we need to call the exit function of the specific node
+	 * in question, not this generic one that doesn't know all nodes */
 	(*config_exit_cmd.func) (NULL, vty, 0, NULL);
 	vty_prompt(vty);
 	vty->cp = 0;
@@ -741,6 +743,8 @@ static void vty_end_config(struct vty *vty)
 {
 	vty_out(vty, "%s", VTY_NEWLINE);
 
+	/* FIXME: we need to call the exit function of the specific node
+	 * in question, not this generic one that doesn't know all nodes */
 	switch (vty->node) {
 	case VIEW_NODE:
 	case ENABLE_NODE:

@@ -51,6 +51,20 @@ struct cmd_node subscr_node = {
 	1,
 };
 
+/* Down vty node level. */
+DEFUN(subscr_node_exit,
+      subscr_node_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
+{
+	switch (vty->node) {
+	case SUBSCR_NODE:
+		vty->node = VIEW_NODE;
+		subscr_put(vty->index);
+		vty->index = NULL;
+		break;
+	}
+	return CMD_SUCCESS;
+}
+
 static int dummy_config_write(struct vty *v)
 {
 	return CMD_SUCCESS;
@@ -542,6 +556,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	install_node(&subscr_node, dummy_config_write);
 
 	install_default(SUBSCR_NODE);
+	install_element(SUBSCR_NODE, &subscr_node_exit_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
 	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);

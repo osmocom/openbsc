@@ -29,6 +29,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
+#include <openbsc/vty.h>
 
 #include <vty/command.h>
 #include <vty/vty.h>
@@ -243,6 +244,7 @@ int mgcp_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
 	install_default(MGCP_NODE);
+	install_element(MGCP_NODE, &ournode_exit_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_local_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_bts_ip_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_bind_ip_cmd);

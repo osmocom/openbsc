@@ -371,9 +371,7 @@ void config_replace_string(struct cmd_element *, char *, ...);
 void cmd_init(int);
 
 /* Export typical functions. */
-extern struct cmd_element config_end_cmd;
 extern struct cmd_element config_exit_cmd;
-extern struct cmd_element config_quit_cmd;
 extern struct cmd_element config_help_cmd;
 extern struct cmd_element config_list_cmd;
 char *host_config_file();

@@ -2322,39 +2322,6 @@ gDEFUN(config_exit,
       config_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
 {
 	switch (vty->node) {
-	case GSMNET_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case BTS_NODE:
-		vty->node = GSMNET_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts *bts = vty->index;
-			vty->index = bts->network;
-		}
-		break;
-	case TRX_NODE:
-		vty->node = BTS_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx *trx = vty->index;
-			vty->index = trx->bts;
-		}
-		break;
-	case TS_NODE:
-		vty->node = TRX_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx_ts *ts = vty->index;
-			vty->index = ts->trx;
-		}
-		break;
-	case SUBSCR_NODE:
-		vty->node = VIEW_NODE;
-		subscr_put(vty->index);
-		vty->index = NULL;
-		break;
 	case VIEW_NODE:
 	case ENABLE_NODE:
 		if (0)		//vty_shell (vty))
@@ -2369,21 +2336,11 @@ gDEFUN(config_exit,
 	case VTY_NODE:
 		vty->node = CONFIG_NODE;
 		break;
-	case MGCP_NODE:
-	case GBPROXY_NODE:
-	case SGSN_NODE:
-	case NS_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
 	default:
 		break;
 	}
 	return CMD_SUCCESS;
 }
-
-/* quit is alias of exit. */
-gALIAS(config_exit,
-      config_quit_cmd, "quit", "Exit current mode and down to previous mode\n")
 
 /* End of configuration. */
     gDEFUN(config_end,
@@ -3333,9 +3290,6 @@ void host_config_set(const char *filename)
 
 void install_default(enum node_type node)
 {
-	install_element(node, &config_exit_cmd);
-	install_element(node, &config_quit_cmd);
-	install_element(node, &config_end_cmd);
 	install_element(node, &config_help_cmd);
 	install_element(node, &config_list_cmd);
 
@@ -3374,7 +3328,6 @@ void cmd_init(int terminal)
 	if (terminal) {
 		install_element(VIEW_NODE, &config_list_cmd);
 		install_element(VIEW_NODE, &config_exit_cmd);
-		install_element(VIEW_NODE, &config_quit_cmd);
 		install_element(VIEW_NODE, &config_help_cmd);
 		install_element(VIEW_NODE, &config_enable_cmd);
 		install_element(VIEW_NODE, &config_terminal_length_cmd);
@@ -3383,6 +3336,7 @@ void cmd_init(int terminal)
 	}
 
 	if (terminal) {
+		install_element(ENABLE_NODE, &config_exit_cmd);
 		install_default(ENABLE_NODE);
 		install_element(ENABLE_NODE, &config_disable_cmd);
 		install_element(ENABLE_NODE, &config_terminal_cmd);
@@ -3397,6 +3351,7 @@ void cmd_init(int terminal)
 		install_element(ENABLE_NODE, &echo_cmd);
 
 		install_default(CONFIG_NODE);
+		install_element(CONFIG_NODE, &config_exit_cmd);
 	}
 
 	install_element(CONFIG_NODE, &hostname_cmd);
