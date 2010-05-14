@@ -1046,7 +1046,9 @@ DEFUN(cfg_net_reject_cause,
 DEFUN(cfg_net_encryption,
       cfg_net_encryption_cmd,
       "encryption a5 (0|1|2)",
-      "Enable or disable encryption (A5) for this network\n")
+	"Encryption options\n"
+	"A5 encryption\n" "A5/0: No encryption\n"
+	"A5/1: Encryption\n" "A5/2: Export-grade Encryption\n")
 {
 	gsmnet->a5_encryption= atoi(argv[0]);
 
@@ -1056,7 +1058,8 @@ DEFUN(cfg_net_encryption,
 DEFUN(cfg_net_neci,
       cfg_net_neci_cmd,
       "neci (0|1)",
-      "Set if NECI of cell selection is to be set")
+	"New Establish Cause Indication\n"
+	"Don't set the NECI bit\n" "Set the NECI bit\n")
 {
 	gsmnet->neci = atoi(argv[0]);
 	return CMD_SUCCESS;
@@ -1689,7 +1692,18 @@ DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
 }
 
 #define BSSGP_TIMERS "(blocking-timer|blocking-retries|unblocking-retries|reset-timer|reset-retries|suspend-timer|suspend-retries|resume-timer|resume-retries|capability-update-timer|capability-update-retries)"
-#define BSSGP_TIMERS_HELP	""
+#define BSSGP_TIMERS_HELP	\
+	"Tbvc-block timeout\n"			\
+	"Tbvc-block retries\n"			\
+	"Tbvc-unblock retries\n"		\
+	"Tbvcc-reset timeout\n"			\
+	"Tbvc-reset retries\n"			\
+	"Tbvc-suspend timeout\n"		\
+	"Tbvc-suspend retries\n"		\
+	"Tbvc-resume timeout\n"			\
+	"Tbvc-resume retries\n"			\
+	"Tbvc-capa-update timeout\n"		\
+	"Tbvc-capa-update retries\n"
 
 DEFUN(cfg_bts_gprs_cell_timer, cfg_bts_gprs_cell_timer_cmd,
 	"gprs cell timer " BSSGP_TIMERS " <0-255>",

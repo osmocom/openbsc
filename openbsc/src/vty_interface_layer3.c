@@ -290,11 +290,17 @@ static struct gsm_subscriber *get_subscr_by_argv(const char *type,
 	return NULL;
 }
 #define SUBSCR_TYPES "(extension|imsi|tmsi|id)"
+#define SUBSCR_HELP "Operations on a Subscriber\n"			\
+	"Identify subscriber by his extension (phone number)\n"		\
+	"Identify subscriber by his IMSI\n"				\
+	"Identify subscriber by his TMSI\n"				\
+	"Identify subscriber by his database ID\n"			\
+	"Identifier for the subscriber\n"
 
 DEFUN(subscriber_send_sms,
       subscriber_send_sms_cmd,
       "subscriber " SUBSCR_TYPES " EXTEN sms send .LINE",
-      "Select subscriber based on extension")
+	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
@@ -316,8 +322,9 @@ DEFUN(subscriber_send_sms,
 
 DEFUN(subscriber_silent_sms,
       subscriber_silent_sms_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent sms send .LINE",
-      "Select subscriber based on extension")
+      "subscriber " SUBSCR_TYPES " EXTEN silent-sms send .LINE",
+	SUBSCR_HELP
+	"Silent SMS Operation\n" "Send Silent SMS\n" "Actual SMS text\n")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	struct buffer *b;
@@ -338,10 +345,18 @@ DEFUN(subscriber_silent_sms,
 	return rc;
 }
 
+#define CHAN_TYPES "(any|tch/f|tch/any|sdcch)"
+#define CHAN_TYPE_HELP 			\
+		"Any channel\n"		\
+		"TCH/F channel\n"	\
+		"Any TCH channel\n"	\
+		"SDCCH channel\n"
+
 DEFUN(subscriber_silent_call_start,
       subscriber_silent_call_start_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent call start (any|tch/f|tch/any|sdcch)",
-      "Start a silent call to a subscriber")
+      "subscriber " SUBSCR_TYPES " EXTEN silent-call start (any|tch/f|tch/any|sdcch)",
+	SUBSCR_HELP "Silent call operation\n" "Start silent call\n"
+	CHAN_TYPE_HELP)
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	int rc, type;
@@ -376,8 +391,9 @@ DEFUN(subscriber_silent_call_start,
 
 DEFUN(subscriber_silent_call_stop,
       subscriber_silent_call_stop_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent call stop",
-      "Stop a silent call to a subscriber")
+      "subscriber " SUBSCR_TYPES " EXTEN silent-call stop",
+	SUBSCR_HELP "Silent call operation\n" "Stop silent call\n"
+	CHAN_TYPE_HELP)
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
 	int rc;
@@ -431,8 +447,9 @@ DEFUN(cfg_subscr_extension,
 
 DEFUN(cfg_subscr_authorized,
       cfg_subscr_authorized_cmd,
-      "auth <0-1>",
-      "Set the authorization status of the subscriber")
+      "auth (0|1)",
+      "Set the authorization status of the subscriber\n"
+	"Not authorized\n" "Authorized\n")
 {
 	int auth = atoi(argv[0]);
 	struct gsm_subscriber *subscr = vty->index;
@@ -448,11 +465,15 @@ DEFUN(cfg_subscr_authorized,
 }
 
 #define A3A8_ALG_TYPES "(none|comp128v1)"
+#define A3A8_ALG_HELP 			\
+	"Use No A3A8 algorithm\n"	\
+	"Use COMP128v1 algorithm\n"
 
 DEFUN(cfg_subscr_a3a8,
       cfg_subscr_a3a8_cmd,
       "a3a8 " A3A8_ALG_TYPES " [KI]",
-      "Set a3a8 parameters for the subscriber")
+      "Set a3a8 parameters for the subscriber\n" A3A8_ALG_HELP
+      "Encryption Key Ki\n")
 {
 	struct gsm_subscriber *subscr = vty->index;
 	const char *alg_str = argv[0];
