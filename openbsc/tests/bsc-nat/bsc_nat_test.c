@@ -581,12 +581,12 @@ static struct cr_filter cr_filter[] = {
 		.nat_imsi_deny = "[0-9]*",
 	},
 	{
-		/* nat deny is before blank/null BSC */
+		/* BSC allow is before NAT deny */
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
-		.result = -3,
+		.result = 0,
 		.nat_imsi_deny = "[0-9]*",
-		.bsc_imsi_allow = "(2440(*",
+		.bsc_imsi_allow = "2440[0-9]*",
 	},
 	{
 		/* BSC allow is before NAT deny */
