@@ -410,6 +410,24 @@ DEFUN(cfg_bsc_desc,
 	return CMD_SUCCESS;
 }
 
+DEFUN(test_regex, test_regex_cmd,
+      "test regex PATTERN STRING",
+      "Check if the string is matching the current pattern.")
+{
+	regex_t reg;
+	char *str = NULL;
+
+	memset(&reg, 0, sizeof(reg));
+	bsc_parse_reg(_nat, &reg, &str, 1, argv);
+
+	vty_out(vty, "String matches allow pattern: %d%s",
+		regexec(&reg, argv[1], 0, NULL, 0) == 0, VTY_NEWLINE);
+
+	talloc_free(str);
+	regfree(&reg);
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -424,6 +442,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(VIEW_NODE, &show_stats_cmd);
 	install_element(VIEW_NODE, &close_bsc_cmd);
 	install_element(VIEW_NODE, &show_msc_cmd);
+	install_element(VIEW_NODE, &test_regex_cmd);
 
 	openbsc_vty_add_cmds();
 
