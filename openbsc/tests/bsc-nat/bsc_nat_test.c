@@ -540,6 +540,24 @@ static void test_mgcp_parse(void)
 	}
 }
 
+static void test_cr_filter()
+{
+	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
+	copy_to_msg(msg, bssmap_cr, sizeof(bssmap_cr));
+	struct bsc_nat_parsed *parsed;
+
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Failed to parse the message\n");
+		abort();
+	}
+
+	bsc_nat_filter_sccp_cr(NULL, msg, parsed);
+
+	talloc_free(parsed);
+	msgb_free(msg);
+}
+
 int main(int argc, char **argv)
 {
 	struct debug_target *stderr_target;
@@ -555,6 +573,7 @@ int main(int argc, char **argv)
 	test_mgcp_find();
 	test_mgcp_rewrite();
 	test_mgcp_parse();
+	test_cr_filter();
 	return 0;
 }
 
