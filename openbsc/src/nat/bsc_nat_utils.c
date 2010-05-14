@@ -196,8 +196,6 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 /* apply white/black list */
 static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 {
-	regmatch_t match[1];
-
 	/*
 	 * Now apply blacklist/whitelist of the BSC and the NAT.
 	 * 1.) Reject if the IMSI is not allowed at the BSC
@@ -208,7 +206,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 	/* 1. BSC deny */
 	if (bsc->cfg->imsi_deny) {
-		if (regexec(&bsc->cfg->imsi_deny_re, mi_string, 1, match, 0) == 0) {
+		if (regexec(&bsc->cfg->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny.\n", mi_string);
 			return -2;
@@ -217,13 +215,13 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 	/* 2. BSC allow */
 	if (bsc->cfg->imsi_allow) {
-		if (regexec(&bsc->cfg->imsi_allow_re, mi_string, 1, match, 0) == 0)
+		if (regexec(&bsc->cfg->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
 			return 0;
 	}
 
 	/* 3. NAT deny */
 	if (bsc->nat->imsi_deny) {
-		if (regexec(&bsc->nat->imsi_deny_re, mi_string, 1, match, 0) == 0) {
+		if (regexec(&bsc->nat->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny.\n", mi_string);
 			return -3;
