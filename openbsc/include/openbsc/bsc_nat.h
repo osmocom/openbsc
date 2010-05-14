@@ -229,8 +229,6 @@ struct bsc_nat {
 	struct bsc_endpoint *bsc_endpoints;
 
 	/* filter */
-	char *imsi_allow;
-	regex_t imsi_allow_re;
 	char *imsi_deny;
 	regex_t imsi_deny_re;
 

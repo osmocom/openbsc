@@ -228,16 +228,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		}
 	}
 
-	/* 4. NAT allow */
-	if (bsc->nat->imsi_allow) {
-		if (regexec(&bsc->nat->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
-			return 0;
-	} else {
-		return 0;
-	}
-
-	/* unmatched */
-	return -3;
+	return 0;
 }
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
