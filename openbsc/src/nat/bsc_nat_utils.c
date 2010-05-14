@@ -200,8 +200,9 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned
 	struct gsm48_loc_upd_req *lu;
 	char mi_string[GSM48_MI_SIZE];
 
-	if (sizeof(*lu) < length) {
-		LOGP(DNAT, LOGL_ERROR, "Location updating request does not fit.\n");
+	if (length < sizeof(*lu)) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "LU does not fit. Length is %d \n", length);
 		return -1;
 	}
 
