@@ -55,7 +55,7 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->imsi_allow)
 		vty_out(vty, " imsi allow %s%s", _nat->imsi_allow, VTY_NEWLINE);
 	if (_nat->imsi_deny)
-		vty_out(vty, " insi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
+		vty_out(vty, " imsi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
 	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
