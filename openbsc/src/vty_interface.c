@@ -1781,7 +1781,7 @@ DEFUN(cfg_trx,
 
 DEFUN(cfg_trx_arfcn,
       cfg_trx_arfcn_cmd,
-      "arfcn <1-1024>",
+      "arfcn <0-1024>",
       "Set the ARFCN for this TRX\n")
 {
 	int arfcn = atoi(argv[0]);
