@@ -272,3 +272,17 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 		return 0;
 	}
 }
+
+void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
+{
+	if (*imsi) {
+		talloc_free(*imsi);
+		*imsi = NULL;
+	}
+	regfree(reg);
+
+	if (argc > 0) {
+		*imsi = talloc_strdup(ctx, argv[0]);
+		regcomp(reg, argv[0], 0);
+	}
+}
