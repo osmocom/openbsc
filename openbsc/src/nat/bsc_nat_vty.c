@@ -52,8 +52,6 @@ static struct cmd_node bsc_node = {
 static int config_write_nat(struct vty *vty)
 {
 	vty_out(vty, "nat%s", VTY_NEWLINE);
-	if (_nat->imsi_allow)
-		vty_out(vty, " imsi allow %s%s", _nat->imsi_allow, VTY_NEWLINE);
 	if (_nat->imsi_deny)
 		vty_out(vty, " imsi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
@@ -230,16 +228,6 @@ DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
 	vty->index = _nat;
 	vty->node = NAT_NODE;
 
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nat_imsi_allow,
-      cfg_nat_imsi_allow_cmd,
-      "imsi allow [REGEXP]",
-      "Allow matching IMSIs to talk to the MSC. "
-      "The defualt is to allow everyone.")
-{
-	bsc_parse_reg(_nat, &_nat->imsi_allow_re, &_nat->imsi_allow, argc, argv);
 	return CMD_SUCCESS;
 }
 
@@ -462,7 +450,6 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
 	install_node(&nat_node, config_write_nat);
 	install_default(NAT_NODE);
-	install_element(NAT_NODE, &cfg_nat_imsi_allow_cmd);
 	install_element(NAT_NODE, &cfg_nat_imsi_deny_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);

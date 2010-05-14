@@ -558,7 +558,6 @@ struct cr_filter {
 
 	const char *bsc_imsi_allow;
 	const char *bsc_imsi_deny;
-	const char *nat_imsi_allow;
 	const char *nat_imsi_deny;
 };
 
@@ -604,7 +603,6 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
-		.nat_imsi_allow = "[0-9]*",
 	},
 
 };
@@ -623,9 +621,6 @@ static void test_cr_filter()
 		msgb_reset(msg);
 		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
 
-		bsc_parse_reg(nat, &nat->imsi_allow_re, &nat->imsi_allow,
-			      cr_filter[i].nat_imsi_allow ? 1 : 0,
-			      &cr_filter[i].nat_imsi_allow);
 		bsc_parse_reg(nat, &nat->imsi_deny_re, &nat->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
 			      &cr_filter[i].nat_imsi_deny);
