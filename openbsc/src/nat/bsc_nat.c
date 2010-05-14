@@ -677,7 +677,7 @@ exit2:
 
 exit3:
 	/* send a SCCP Connection Refused */
-	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE);
+	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE, NULL, 0);
 	if (refuse) {
 		bsc_send_data(bsc, refuse->l2h, msgb_l2len(refuse), IPAC_PROTO_SCCP);
 		msgb_free(refuse);

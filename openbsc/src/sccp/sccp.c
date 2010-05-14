@@ -638,7 +638,7 @@ static void _sccp_set_connection_state(struct sccp_connection *connection, int n
 		connection->state_cb(connection, old_state);
 }
 
-struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause)
+struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause, uint8_t *inp, int length)
 {
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
@@ -660,6 +660,13 @@ struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause
 	ref->cause = cause;
 	ref->optional_start = 1;
 
+	if (inp) {
+		data = msgb_put(msgb, 1 + 1 + length);
+		data[0] = SCCP_PNC_DATA;
+		data[1] = length;
+		memcpy(&data[2], inp, length);
+	}
+
 	data = msgb_put(msgb, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
 	return msgb;
@@ -667,7 +674,7 @@ struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause
 
 static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 {
-	struct msgb *msgb = sccp_create_refuse(src_ref, cause);
+	struct msgb *msgb = sccp_create_refuse(src_ref, cause, NULL, 0);
 	if (!msgb)
 		return -1;
 
