@@ -507,6 +507,18 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 	return rc;
 }
 
+int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi)
+{
+	struct gprs_nsvc *nsvc;
+
+	llist_for_each_entry(nsvc, &nsi->gprs_nsvcs, list) {
+		if (!nsvc->persistent)
+			continue;
+		gprs_nsvc_reset(nsvc, NS_CAUSE_OM_INTERVENTION);
+	}
+	return 0;
+}
+
 /* Signal handler for signals from NS layer */
 int gbprox_signal(unsigned int subsys, unsigned int signal,
 		  void *handler_data, void *signal_data)

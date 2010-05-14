@@ -237,6 +237,10 @@ int main(int argc, char **argv)
 	nsip_connect(bssgp_nsi, &sin, gbcfg.nsip_sgsn_nsei,
 			gbcfg.nsip_sgsn_nsvci);
 
+
+	/* Reset all the persistent NS-VCs that we've read from the config */
+	gbprox_reset_persistent_nsvcs(bssgp_nsi);
+
 	while (1) {
 		rc = bsc_select_main(0);
 		if (rc < 0)

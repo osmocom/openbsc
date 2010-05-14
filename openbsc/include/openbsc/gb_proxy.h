@@ -39,4 +39,8 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci);
 
 int gbprox_signal(unsigned int subsys, unsigned int signal,
 		  void *handler_data, void *signal_data);
+
+/* Reset all persistent NS-VC's */
+int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
+
 #endif
