@@ -224,27 +224,13 @@ DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
 	return CMD_SUCCESS;
 }
 
-static void parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
-{
-	if (*imsi) {
-		talloc_free(*imsi);
-		*imsi = NULL;
-	}
-	regfree(reg);
-
-	if (argc > 0) {
-		*imsi = talloc_strdup(ctx, argv[0]);
-		regcomp(reg, argv[0], 0);
-	}
-}
-
 DEFUN(cfg_nat_imsi_allow,
       cfg_nat_imsi_allow_cmd,
       "imsi allow [REGEXP]",
       "Allow matching IMSIs to talk to the MSC. "
       "The defualt is to allow everyone.")
 {
-	parse_reg(_nat, &_nat->imsi_allow_re, &_nat->imsi_allow, argc, argv);
+	bsc_parse_reg(_nat, &_nat->imsi_allow_re, &_nat->imsi_allow, argc, argv);
 	return CMD_SUCCESS;
 }
 
@@ -254,7 +240,7 @@ DEFUN(cfg_nat_imsi_deny,
       "Deny matching IMSIs to talk to the MSC. "
       "The defualt is to not deny.")
 {
-	parse_reg(_nat, &_nat->imsi_deny_re, &_nat->imsi_deny, argc, argv);
+	bsc_parse_reg(_nat, &_nat->imsi_deny_re, &_nat->imsi_deny, argc, argv);
 	return CMD_SUCCESS;
 }
 
@@ -373,7 +359,7 @@ DEFUN(cfg_bsc_imsi_allow,
 {
 	struct bsc_config *conf = vty->index;
 
-	parse_reg(conf, &conf->imsi_allow_re, &conf->imsi_allow, argc, argv);
+	bsc_parse_reg(conf, &conf->imsi_allow_re, &conf->imsi_allow, argc, argv);
 	return CMD_SUCCESS;
 }
 
@@ -385,7 +371,7 @@ DEFUN(cfg_bsc_imsi_deny,
 {
 	struct bsc_config *conf = vty->index;
 
-	parse_reg(conf, &conf->imsi_deny_re, &conf->imsi_deny, argc, argv);
+	bsc_parse_reg(conf, &conf->imsi_deny_re, &conf->imsi_deny, argc, argv);
 	return CMD_SUCCESS;
 }
 

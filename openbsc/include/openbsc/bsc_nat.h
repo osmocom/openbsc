@@ -292,4 +292,7 @@ int bsc_mgcp_extract_ci(const char *resp);
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 
+/* regexp handling */
+void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv);
+
 #endif
