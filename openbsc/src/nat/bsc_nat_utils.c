@@ -193,9 +193,82 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 	return 0;
 }
 
-/* Filter out CM Service Requests... */
+
+static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
+{
+	u_int8_t mi_type;
+	struct gsm48_loc_upd_req *lu;
+	char mi_string[GSM48_MI_SIZE];
+
+	if (sizeof(*lu) < length) {
+		LOGP(DNAT, LOGL_ERROR, "Location updating request does not fit.\n");
+		return -1;
+	}
+
+	lu = (struct gsm48_loc_upd_req *) data;
+	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
+
+	/*
+	 * We can only deal with the IMSI. This will fail for a phone that
+	 * will send the TMSI of a previous network to us.
+	 */
+	if (mi_type != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
+
+	/*
+	 * Now apply blacklist/whitelist
+	 */
+
+	return 0;
+}
+
+
+/* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
-	/* the data we want to look at is optional. We want to have it here... */
-	return 0;
+	struct tlv_parsed tp;
+	struct gsm48_hdr *hdr48;
+	int hdr48_len;
+	int len;
+
+	if (parsed->gsm_type != BSS_MAP_MSG_COMPLETE_LAYER_3) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "Rejecting CR message due wrong GSM Type %d\n", parsed->gsm_type);
+		return -1;
+	}
+
+	/* the parsed has had some basic l3 length check */
+	len = msg->l3h[1];
+	if (msgb_l3len(msg) - 3 < len) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "The CR Data has not enough space...\n");
+		return -1;
+	}
+
+	msg->l4h = &msg->l3h[3];
+	len -= 1;
+
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h, len, 0, 0);
+
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_LAYER_3_INFORMATION)) {
+		LOGP(DNAT, LOGL_ERROR, "CR Data does not contain layer3 information.\n");
+		return -1;
+	}
+
+	hdr48_len = TLVP_LEN(&tp, GSM0808_IE_LAYER_3_INFORMATION);
+
+	if (hdr48_len < sizeof(*hdr48)) {
+		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
+		return -1;
+	}
+
+	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
+
+	if (hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
+		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
+	} else {
+		return 0;
+	}
 }
