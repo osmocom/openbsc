@@ -613,7 +613,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
 			(struct gsm48_service_request *)gh->data;
-	/* unfortunately in Phase1 the classmar2 length is variable */
+	/* unfortunately in Phase1 the classmark2 length is variable */
 	u_int8_t classmark2_len = gh->data[1];
 	u_int8_t *classmark2 = gh->data+2;
 	u_int8_t mi_len = *(classmark2 + classmark2_len);
