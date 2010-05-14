@@ -869,16 +869,9 @@ static void send_id_get_response(int fd)
 		return;
 	}
 
-	if (!bsc_gsmnet->bsc_token) {
-		LOGP(DMSC, LOGL_ERROR, "The bsc token is not set.\n");
+	msg = bsc_msc_id_get_resp(bsc_gsmnet->bsc_token);
+	if (!msg)
 		return;
-	}
-
-	msg = msgb_alloc_headroom(4096, 128, "id resp");
-
-	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
-	msgb_l16tv_put(msg, strlen(bsc_gsmnet->bsc_token) + 1,
-			IPAC_IDTAG_UNITNAME, (u_int8_t *) bsc_gsmnet->bsc_token);
 	msc_queue_write(msg, IPAC_PROTO_IPACCESS);
 }
 
