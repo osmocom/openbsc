@@ -149,6 +149,8 @@ struct bsc_config {
 	unsigned int lac;
 	int nr;
 
+	char *description;
+
 	/* imsi white and blacklist */
 	char *imsi_allow;
 	regex_t imsi_allow_re;
