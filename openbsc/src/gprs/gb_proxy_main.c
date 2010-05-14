@@ -65,6 +65,7 @@ const char *openbsc_copyright =
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
+static struct log_target *stderr_target;
 static char *config_file = "osmo_gbproxy.cfg";
 struct gbproxy_config gbcfg;
 
@@ -116,12 +117,80 @@ static void signal_handler(int signal)
 	}
 }
 
+static void print_usage()
+{
+	printf("Usage: bsc_hack\n");
+}
+
+static void print_help()
+{
+	printf("  Some useful help...\n");
+	printf("  -h --help this text\n");
+	printf("  -d option --debug=DNS:DGPRS,0:0 enable debugging\n");
+	printf("  -c --config-file filename The config file to use.\n");
+	printf("  -s --disable-color\n");
+	printf("  -T --timestamp Prefix every log line with a timestamp\n");
+	printf("  -V --version. Print the version of OpenBSC.\n");
+	printf("  -e --log-level number. Set a global loglevel.\n");
+}
+
+static void handle_options(int argc, char **argv)
+{
+	while (1) {
+		int option_index = 0, c;
+		static struct option long_options[] = {
+			{ "help", 0, 0, 'h' },
+			{ "debug", 1, 0, 'd' },
+			{ "config-file", 1, 0, 'c' },
+			{ "disable-color", 0, 0, 's' },
+			{ "timestamp", 0, 0, 'T' },
+			{ "version", 0, 0, 'V' },
+			{ "log-level", 1, 0, 'e' },
+			{ 0, 0, 0, 0 }
+		};
+
+		c = getopt_long(argc, argv, "hd:c:sTVe:",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			print_usage();
+			print_help();
+			exit(0);
+		case 's':
+			log_set_use_color(stderr_target, 0);
+			break;
+		case 'd':
+			log_parse_category_mask(stderr_target, optarg);
+			break;
+		case 'c':
+			config_file = strdup(optarg);
+			break;
+		case 'T':
+			log_set_print_timestamp(stderr_target, 1);
+			break;
+		case 'e':
+			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		case 'V':
+			printf("%s\n", openbsc_version);
+			printf("\n");
+			puts(openbsc_copyright);
+			exit(0);
+			break;
+		default:
+			break;
+		}
+	}
+}
+
 extern void *tall_msgb_ctx;
 
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
-	struct log_target *stderr_target;
 	struct sockaddr_in sin;
 	int rc;
 
@@ -138,6 +207,8 @@ int main(int argc, char **argv)
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
+
+	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
 	telnet_init(&dummy_network, 4246);
