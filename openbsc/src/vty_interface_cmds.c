@@ -120,6 +120,36 @@ gDEFUN(ournode_exit,
 	return CMD_SUCCESS;
 }
 
+/* End of configuration. */
+gDEFUN(ournode_end,
+       ournode_end_cmd, "end", "End current mode and change to enable mode.")
+{
+	switch (vty->node) {
+	case VIEW_NODE:
+	case ENABLE_NODE:
+		/* Nothing to do. */
+		break;
+	case CONFIG_NODE:
+	case GSMNET_NODE:
+	case BTS_NODE:
+	case TRX_NODE:
+	case TS_NODE:
+	case MGCP_NODE:
+	case GBPROXY_NODE:
+	case SGSN_NODE:
+	case NS_NODE:
+	case VTY_NODE:
+		vty_config_unlock(vty);
+		vty->node = ENABLE_NODE;
+		vty->index = NULL;
+		vty->index_sub = NULL;
+		break;
+	default:
+		break;
+	}
+	return CMD_SUCCESS;
+}
+
 DEFUN(enable_logging,
       enable_logging_cmd,
       "logging enable",

@@ -159,6 +159,7 @@ int gbproxy_vty_init(void)
 	install_node(&gbproxy_node, config_write_gbproxy);
 	install_default(GBPROXY_NODE);
 	install_element(GBPROXY_NODE, &ournode_exit_cmd);
+	install_element(GBPROXY_NODE, &ournode_end_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_ip_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_port_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_ip_cmd);

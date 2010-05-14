@@ -127,6 +127,7 @@ int sgsn_vty_init(void)
 	install_node(&sgsn_node, config_write_sgsn);
 	install_default(SGSN_NODE);
 	install_element(SGSN_NODE, &ournode_exit_cmd);
+	install_element(SGSN_NODE, &ournode_end_cmd);
 	install_element(SGSN_NODE, &cfg_nsip_local_ip_cmd);
 	install_element(SGSN_NODE, &cfg_nsip_local_port_cmd);
 

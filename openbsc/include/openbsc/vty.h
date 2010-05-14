@@ -15,5 +15,6 @@ struct buffer *vty_argv_to_buffer(int argc, const char *argv[], int base);
 extern struct cmd_element cfg_description_cmd;
 extern struct cmd_element cfg_no_description_cmd;
 extern struct cmd_element ournode_exit_cmd;
+extern struct cmd_element ournode_end_cmd;
 
 #endif
