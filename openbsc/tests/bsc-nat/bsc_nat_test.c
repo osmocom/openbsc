@@ -108,6 +108,17 @@ static const u_int8_t mgcp_msg[] = {
 	0x20, 0x20, 0x20,
 };
 
+/* location updating request */
+static const u_int8_t bss_lu[] = {
+	0x00, 0x2e, 0xfd,
+	0x01, 0x91, 0x45, 0x14, 0x02, 0x02, 0x04, 0x02,
+	0x42, 0xfe, 0x0f, 0x21, 0x00, 0x1f, 0x57, 0x05,
+	0x08, 0x00, 0x72, 0xf4, 0x80, 0x20, 0x14, 0xc3,
+	0x50, 0x17, 0x12, 0x05, 0x08, 0x70, 0x72, 0xf4,
+	0x80, 0xff, 0xfe, 0x30, 0x08, 0x29, 0x44, 0x50,
+	0x12, 0x03, 0x24, 0x01, 0x95, 0x00
+};
+
 struct filter_result {
 	const u_int8_t *data;
 	const u_int16_t length;
@@ -540,21 +551,106 @@ static void test_mgcp_parse(void)
 	}
 }
 
+struct cr_filter {
+	const u_int8_t *data;
+	int length;
+	int result;
+
+	const char *bsc_imsi_allow;
+	const char *bsc_imsi_deny;
+	const char *nat_imsi_allow;
+	const char *nat_imsi_deny;
+};
+
+static struct cr_filter cr_filter[] = {
+	{
+		.data = bssmap_cr,
+		.length = sizeof(bssmap_cr),
+		.result = 0,
+	},
+	{
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = 0,
+	},
+	{
+		/* nat deny is before blank/null BSC */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -3,
+		.nat_imsi_deny = "[0-9]*",
+	},
+	{
+		/* nat deny is before blank/null BSC */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -3,
+		.nat_imsi_deny = "[0-9]*",
+		.bsc_imsi_allow = "(2440(*",
+	},
+	{
+		/* BSC allow is before NAT deny */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = 0,
+		.bsc_imsi_allow = "[0-9]*",
+		.nat_imsi_deny = "[0-9]*",
+	},
+	{
+		/* filter as deny is first */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -2,
+		.bsc_imsi_deny = "[0-9]*",
+		.bsc_imsi_allow = "[0-9]*",
+		.nat_imsi_deny = "[0-9]*",
+		.nat_imsi_allow = "[0-9]*",
+	},
+
+};
+
 static void test_cr_filter()
 {
+	int i, res;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
-	copy_to_msg(msg, bssmap_cr, sizeof(bssmap_cr));
 	struct bsc_nat_parsed *parsed;
 
-	parsed = bsc_nat_parse(msg);
-	if (!parsed) {
-		fprintf(stderr, "FAIL: Failed to parse the message\n");
-		abort();
+	struct bsc_nat *nat = bsc_nat_alloc();
+	struct bsc_connection *bsc = bsc_connection_alloc(nat);
+	bsc->cfg = bsc_config_alloc(nat, "foo", 1234);
+
+	for (i = 0; i < ARRAY_SIZE(cr_filter); ++i) {
+		msgb_reset(msg);
+		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
+
+		bsc_parse_reg(nat, &nat->imsi_allow_re, &nat->imsi_allow,
+			      cr_filter[i].nat_imsi_allow ? 1 : 0,
+			      &cr_filter[i].nat_imsi_allow);
+		bsc_parse_reg(nat, &nat->imsi_deny_re, &nat->imsi_deny,
+			      cr_filter[i].nat_imsi_deny ? 1 : 0,
+			      &cr_filter[i].nat_imsi_deny);
+		bsc_parse_reg(bsc->cfg, &bsc->cfg->imsi_allow_re, &bsc->cfg->imsi_allow,
+			      cr_filter[i].bsc_imsi_allow ? 1 : 0,
+			      &cr_filter[i].bsc_imsi_allow);
+		bsc_parse_reg(bsc->cfg, &bsc->cfg->imsi_deny_re, &bsc->cfg->imsi_deny,
+			      cr_filter[i].bsc_imsi_deny ? 1 : 0,
+			      &cr_filter[i].bsc_imsi_deny);
+
+		parsed = bsc_nat_parse(msg);
+		if (!parsed) {
+			fprintf(stderr, "FAIL: Failed to parse the message\n");
+			abort();
+		}
+
+		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed);
+		if (res != cr_filter[i].result) {
+			fprintf(stderr, "FAIL: Wrong result %d for test %d.\n", res, i);
+			abort();
+		}
+
+		talloc_free(parsed);
 	}
 
-	bsc_nat_filter_sccp_cr(NULL, msg, parsed);
-
-	talloc_free(parsed);
 	msgb_free(msg);
 }
 
