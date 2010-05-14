@@ -61,6 +61,8 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
+	if (_nat->token)
+		vty_out(vty, " token %s%s", _nat->token, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -296,6 +298,16 @@ DEFUN(cfg_nat_pong_time,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_token, cfg_nat_token_cmd,
+      "token TOKEN",
+      "Set a token for the NAT")
+{
+	if (_nat->token)
+		talloc_free(_nat->token);
+	_nat->token = talloc_strdup(_nat, argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 {
@@ -457,6 +469,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_ping_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_pong_time_cmd);
+	install_element(NAT_NODE, &cfg_nat_token_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);

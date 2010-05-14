@@ -260,6 +260,16 @@ static void initialize_msc_if_needed()
 	msc_send_reset(nat->msc_con);
 }
 
+static void send_id_get_response()
+{
+	struct msgb *msg = bsc_msc_id_get_resp(nat->token);
+	if (!msg)
+		return;
+
+	ipaccess_prepend_header(msg, IPAC_PROTO_IPACCESS);
+	queue_for_msc(nat->msc_con, msg);
+}
+
 /*
  * Currently we are lacking refcounting so we need to copy each message.
  */
@@ -455,9 +465,12 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	ipaccess_rcvmsg_base(msg, bfd);
 
 	/* initialize the networking. This includes sending a GSM08.08 message */
-	if (hh->proto == IPAC_PROTO_IPACCESS && msg->l2h[0] == IPAC_MSGT_ID_ACK)
-		initialize_msc_if_needed();
-	else if (hh->proto == IPAC_PROTO_SCCP)
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
+			initialize_msc_if_needed();
+		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
+			send_id_get_response();
+	} else if (hh->proto == IPAC_PROTO_SCCP)
 		forward_sccp_to_bts(msg);
 
 	msgb_free(msg);

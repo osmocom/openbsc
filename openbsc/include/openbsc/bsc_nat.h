@@ -219,6 +219,7 @@ struct bsc_nat {
 	int msc_port;
 	int first_contact;
 	struct bsc_msc_connection *msc_con;
+	char *token;
 
 	/* timeouts */
 	int auth_timeout;
