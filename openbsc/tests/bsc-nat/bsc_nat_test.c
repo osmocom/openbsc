@@ -566,6 +566,7 @@ struct cr_filter {
 	const u_int8_t *data;
 	int length;
 	int result;
+	int contype;
 
 	const char *bsc_imsi_allow;
 	const char *bsc_imsi_deny;
@@ -577,16 +578,19 @@ static struct cr_filter cr_filter[] = {
 		.data = bssmap_cr,
 		.length = sizeof(bssmap_cr),
 		.result = 0,
+		.contype = NAT_CON_TYPE_CM_SERV_REQ,
 	},
 	{
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
 		.result = 0,
+		.contype = NAT_CON_TYPE_LU,
 	},
 	{
 		.data = pag_resp,
 		.length = sizeof(pag_resp),
 		.result = 0,
+		.contype = NAT_CON_TYPE_PAG_RESP,
 	},
 	{
 		/* nat deny is before blank/null BSC */
@@ -594,6 +598,7 @@ static struct cr_filter cr_filter[] = {
 		.length = sizeof(bss_lu),
 		.result = -3,
 		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
 	},
 	{
 		/* BSC allow is before NAT deny */
@@ -602,6 +607,7 @@ static struct cr_filter cr_filter[] = {
 		.result = 0,
 		.nat_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "2440[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
 	},
 	{
 		/* BSC allow is before NAT deny */
@@ -610,6 +616,7 @@ static struct cr_filter cr_filter[] = {
 		.result = 0,
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
 	},
 	{
 		/* filter as deny is first */
@@ -619,13 +626,14 @@ static struct cr_filter cr_filter[] = {
 		.bsc_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
 	},
 
 };
 
 static void test_cr_filter()
 {
-	int i, res;
+	int i, res, contype;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
 	struct bsc_nat_parsed *parsed;
 
@@ -653,9 +661,14 @@ static void test_cr_filter()
 			abort();
 		}
 
-		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed);
+		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype);
 		if (res != cr_filter[i].result) {
 			fprintf(stderr, "FAIL: Wrong result %d for test %d.\n", res, i);
+			abort();
+		}
+
+		if (contype != cr_filter[i].contype) {
+			fprintf(stderr, "FAIL: Wrong contype %d for test %d.\n", res, contype);
 			abort();
 		}
 

@@ -315,12 +315,14 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc, uint8_t *data, unsigne
 }
 
 /* Filter out CR data... */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed, int *con_type)
 {
 	struct tlv_parsed tp;
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
 	int len;
+
+	*con_type = NAT_CON_TYPE_NONE;
 
 	if (parsed->gsm_type != BSS_MAP_MSG_COMPLETE_LAYER_3) {
 		LOGP(DNAT, LOGL_ERROR,
@@ -357,15 +359,19 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 
 	if (hdr48->proto_discr == GSM48_PDISC_MM &&
 	    hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
+		*con_type = NAT_CON_TYPE_LU;
 		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
 		  hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
+		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
 		   hdr48->msg_type == GSM48_MT_RR_PAG_RESP) {
+		*con_type = NAT_CON_TYPE_PAG_RESP;
 		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
 		/* We only want to filter the above, let other things pass */
+		*con_type = NAT_CON_TYPE_OTHER;
 		return 0;
 	}
 }
