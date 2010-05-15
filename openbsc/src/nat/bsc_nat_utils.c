@@ -259,15 +259,15 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned
 
 static int _cr_check_cm_serv_req(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
 {
+	static const uint32_t classmark_offset =
+				offsetof(struct gsm48_service_request, classmark);
+
 	char mi_string[GSM48_MI_SIZE];
+	uint8_t mi_type;
+	int rc;
 	struct gsm48_service_request *req;
 
 	/* unfortunately in Phase1 the classmark2 length is variable */
-	uint8_t classmark2_len;
-	uint8_t *classmark2;
-	uint8_t mi_len;
-	uint8_t *mi;
-	uint8_t mi_type;
 
 	if (length < sizeof(*req)) {
 		LOGP(DNAT, LOGL_ERROR,
@@ -276,30 +276,17 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc, uint8_t *data, unsi
 	}
 
 	req = (struct gsm48_service_request *) data;
-	classmark2_len = ((uint8_t *) &req->classmark)[0];
-	if (length < 2 + classmark2_len) {
-		LOGP(DNAT, LOGL_ERROR,
-		     "Classmark2 does not fit. cml: %d\n", classmark2_len);
+	rc = gsm48_extract_mi((uint8_t *) &req->classmark,
+			      length - classmark_offset, mi_string, &mi_type);
+	if (rc < 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to parse the classmark2/mi. error: %d\n", rc);
 		return -1;
 	}
-
-	classmark2 = ((uint8_t *) &req->classmark) + 1;
-	mi_len = *(classmark2 + classmark2_len);
-	if (length < 3 + classmark2_len + mi_len) {
-		LOGP(DNAT, LOGL_ERROR,
-		    "MI does not fit length: %d vs. %d\n",
-		     length, 3 + classmark2_len + mi_len);
-		return -1;
-	}
-
-	mi = (classmark2 + classmark2_len + 1);
-	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 
 	/* we have to let the TMSI or such pass */
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 	return auth_imsi(bsc, mi_string);
 }
 
