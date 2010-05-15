@@ -95,7 +95,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 	vty_out(vty, "Listing all opening SCCP connections%s", VTY_NEWLINE);
 
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "For BSC Nr: %d lac: %d; BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x%s",
+		vty_out(vty, "For BSC Nr: %d lac: %d; BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x type: %s%s",
 			con->bsc->cfg ? con->bsc->cfg->nr : -1,
 			con->bsc->cfg ? con->bsc->cfg->lac : -1,
 			sccp_src_ref_to_int(&con->real_ref),
@@ -103,6 +103,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 			con->has_remote_ref,
 			sccp_src_ref_to_int(&con->remote_ref),
 			con->msc_timeslot, con->bsc_timeslot,
+			bsc_con_type_to_string(con->con_type),
 			VTY_NEWLINE);
 	}
 

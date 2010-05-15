@@ -124,6 +124,9 @@ struct sccp_connections {
 	struct sccp_source_reference remote_ref;
 	int has_remote_ref;
 
+	/* status */
+	int con_type;
+
 	/* GSM audio handling. That is 32 * multiplex + ts */
 	int crcx;
 	int msc_timeslot;
@@ -253,6 +256,8 @@ void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
 
 void sccp_connection_destroy(struct sccp_connections *);
 void bsc_close_connection(struct bsc_connection *);
+
+const char *bsc_con_type_to_string(int type);
 
 /**
  * parse the given message into the above structure
