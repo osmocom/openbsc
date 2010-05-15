@@ -378,9 +378,8 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 		   hdr48->msg_type == GSM48_MT_RR_PAG_RESP) {
 		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
-		LOGP(DNAT, LOGL_ERROR, "Unknown GSM48 content: proto: %d msg: %d\n",
-		     hdr48->proto_discr, hdr48->msg_type);
-		return -1;
+		/* We only want to filter the above, let other things pass */
+		return 0;
 	}
 }
 
