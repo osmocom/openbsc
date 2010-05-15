@@ -574,6 +574,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
+	int con_type;
 	struct msgb *refuse;
 	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
@@ -605,7 +606,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
-			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed) != 0)
+			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type) != 0)
 				goto exit3;
 			if (create_sccp_src_ref(bsc, msg, parsed) != 0)
 				goto exit2;

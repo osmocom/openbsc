@@ -42,6 +42,14 @@
 
 struct bsc_nat;
 
+enum {
+	NAT_CON_TYPE_NONE,
+	NAT_CON_TYPE_LU,
+	NAT_CON_TYPE_CM_SERV_REQ,
+	NAT_CON_TYPE_PAG_RESP,
+	NAT_CON_TYPE_OTHER,
+};
+
 /*
  * For the NAT we will need to analyze and later patch
  * the received message. This would require us to parse
@@ -261,7 +269,8 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 /**
  * Content filtering.
  */
-int bsc_nat_filter_sccp_cr(struct bsc_connection *, struct msgb *msg, struct bsc_nat_parsed *);
+int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
+			   struct bsc_nat_parsed *, int *con_type);
 
 /**
  * SCCP patching and handling
