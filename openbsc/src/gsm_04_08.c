@@ -785,13 +785,16 @@ static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
+	struct gsm48_pag_resp *resp;
 	u_int8_t *classmark2_lv = gh->data + 1;
 	u_int8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
 	int rc = 0;
 
-	gsm48_paging_extract_mi(msg, mi_string, &mi_type);
+	resp = (struct gsm48_pag_resp *) &gh->data[0];
+	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
+				mi_string, &mi_type);
 	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
