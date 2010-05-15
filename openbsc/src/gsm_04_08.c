@@ -175,24 +175,24 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 {
 	struct gsm_subscriber_connection *conn;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	counter_inc(bts->network->stats.loc_upd_resp.reject);
+
+	msg = gsm48_create_loc_upd_rej(cause);
+	if (!msg) {
+		LOGP(DMM, LOGL_ERROR, "Failed to create msg for LOCATION UPDATING REJECT.\n");
+		return -1;
+	}
 	
 	msg->lchan = lchan;
 	conn = &lchan->conn;
-
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
-	gh->proto_discr = GSM48_PDISC_MM;
-	gh->msg_type = GSM48_MT_MM_LOC_UPD_REJECT;
-	gh->data[0] = cause;
 
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
 	     "LAC=%u BTS=%u\n", conn->subscr ?
 	     			subscr_name(conn->subscr) : "unknown",
 	     lchan->ts->trx->bts->location_area_code, lchan->ts->trx->bts->nr);
 
-	counter_inc(bts->network->stats.loc_upd_resp.reject);
-	
 	return gsm48_sendmsg(msg, NULL);
 }
 
