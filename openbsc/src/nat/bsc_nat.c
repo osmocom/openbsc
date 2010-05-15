@@ -294,6 +294,22 @@ static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsi
 	bsc_write(bsc, msg, proto);
 }
 
+static void bsc_send_con_refuse(struct bsc_connection *bsc,
+				struct bsc_nat_parsed *parsed, int con_type)
+{
+	struct msgb *refuse;
+	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE, NULL, 0);
+	if (!refuse) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "Creating refuse msg failed for SCCP 0x%x on BSC Nr: %d.\n",
+		      sccp_src_ref_to_int(parsed->src_local_ref), bsc->cfg->nr);
+		return;
+	}
+
+	bsc_write(bsc, refuse, IPAC_PROTO_SCCP);
+}
+
+
 static int forward_sccp_to_bts(struct msgb *msg)
 {
 	struct sccp_connections *con;
@@ -575,7 +591,6 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
 	int con_type;
-	struct msgb *refuse;
 	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
 
@@ -679,12 +694,7 @@ exit2:
 
 exit3:
 	/* send a SCCP Connection Refused */
-	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE, NULL, 0);
-	if (refuse) {
-		bsc_send_data(bsc, refuse->l2h, msgb_l2len(refuse), IPAC_PROTO_SCCP);
-		msgb_free(refuse);
-	}
-
+	bsc_send_con_refuse(bsc, parsed, con_type);
 	talloc_free(parsed);
 	msgb_free(msg);
 	return -1;
