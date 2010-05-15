@@ -173,8 +173,8 @@ DEFUN(enable_logging,
 DEFUN(logging_fltr_imsi,
       logging_fltr_imsi_cmd,
       "logging filter imsi IMSI",
-	LOGGING_STR
-      "Print all messages related to a IMSI\n")
+	LOGGING_STR FILTER_STR
+      "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
 	struct telnet_connection *conn;
 
@@ -190,9 +190,11 @@ DEFUN(logging_fltr_imsi,
 
 DEFUN(logging_fltr_all,
       logging_fltr_all_cmd,
-      "logging filter all <0-1>",
-	LOGGING_STR
-      "Print all messages to the console\n")
+      "logging filter all (0|1)",
+	LOGGING_STR FILTER_STR
+	"Do you want to log all messages?\n"
+	"Only print messages matched by other filters\n"
+	"Bypass filter and print all messages\n")
 {
 	struct telnet_connection *conn;
 
@@ -208,8 +210,9 @@ DEFUN(logging_fltr_all,
 
 DEFUN(logging_use_clr,
       logging_use_clr_cmd,
-      "logging color <0-1>",
-	LOGGING_STR
+      "logging color (0|1)",
+	LOGGING_STR "Configure color-printing for log messages\n"
+      "Don't use color for printing messages\n"
       "Use color for printing messages\n")
 {
 	struct telnet_connection *conn;
@@ -226,9 +229,10 @@ DEFUN(logging_use_clr,
 
 DEFUN(logging_prnt_timestamp,
       logging_prnt_timestamp_cmd,
-      "logging timestamp <0-1>",
-	LOGGING_STR
-      "Print the timestamp of each message\n")
+      "logging timestamp (0|1)",
+	LOGGING_STR "Configure log message timestamping\n"
+	"Don't prefix each log message\n"
+	"Prefix each log message with current timestamp\n")
 {
 	struct telnet_connection *conn;
 

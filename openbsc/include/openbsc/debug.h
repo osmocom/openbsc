@@ -45,6 +45,7 @@ enum {
 #define BSC_CTX_NSVC	4
 
 #define LOGGING_STR	"Configure log message to this terminal\n"
+#define FILTER_STR	"Filter log messages\n"
 
 /* target */
 
