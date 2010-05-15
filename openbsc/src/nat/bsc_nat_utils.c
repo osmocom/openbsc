@@ -390,3 +390,15 @@ void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **
 	}
 }
 
+static const char *con_types [] = {
+	[NAT_CON_TYPE_NONE] = "n/a",
+	[NAT_CON_TYPE_LU] = "Location Update",
+	[NAT_CON_TYPE_CM_SERV_REQ] = "CM Serv Req",
+	[NAT_CON_TYPE_PAG_RESP] = "Paging Response",
+	[NAT_CON_TYPE_OTHER] = "Other",
+};
+
+const char *bsc_con_type_to_string(int type)
+{
+	return con_types[type];
+}
