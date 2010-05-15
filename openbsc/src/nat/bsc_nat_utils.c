@@ -208,7 +208,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	if (bsc->cfg->imsi_deny) {
 		if (regexec(&bsc->cfg->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by imsi_deny.\n", mi_string);
+			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -2;
 		}
 	}
@@ -223,7 +223,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	if (bsc->nat->imsi_deny) {
 		if (regexec(&bsc->nat->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by nat imsi_deny.\n", mi_string);
+			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -3;
 		}
 	}
