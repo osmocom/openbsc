@@ -345,9 +345,11 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 
 	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
-	if (hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
+	if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	    hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
-	} else if (hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
+	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
+		  hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
 		return 0;
