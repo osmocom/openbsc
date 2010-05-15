@@ -30,8 +30,6 @@
 
 #include <stdlib.h>
 
-#define LOGGING_STR	"Configure log message to this terminal\n"
-
 static void _vty_output(struct log_target *tgt, const char *line)
 {
 	struct vty *vty = tgt->tgt_vty.vty;
