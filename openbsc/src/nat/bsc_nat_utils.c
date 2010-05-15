@@ -303,6 +303,29 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc, uint8_t *data, unsi
 	return auth_imsi(bsc, mi_string);
 }
 
+static int _cr_check_pag_resp(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
+{
+	struct gsm48_pag_resp *resp;
+	char mi_string[GSM48_MI_SIZE];
+	u_int8_t mi_type;
+
+	if (length < sizeof(*resp)) {
+		LOGP(DNAT, LOGL_ERROR, "PAG RESP does not fit. Length was %d.\n", length);
+		return -1;
+	}
+
+	resp = (struct gsm48_pag_resp *) data;
+	if (gsm48_paging_extract_mi(resp, length, mi_string, &mi_type) < 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to extract the MI.\n");
+		return -1;
+	}
+
+	/* we need to let it pass for now */
+	if (mi_type != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	return auth_imsi(bsc, mi_string);
+}
 
 /* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
@@ -351,8 +374,13 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
 		  hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
+	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
+		   hdr48->msg_type == GSM48_MT_RR_PAG_RESP) {
+		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
-		return 0;
+		LOGP(DNAT, LOGL_ERROR, "Unknown GSM48 content: proto: %d msg: %d\n",
+		     hdr48->proto_discr, hdr48->msg_type);
+		return -1;
 	}
 }
 
