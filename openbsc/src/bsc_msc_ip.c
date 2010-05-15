@@ -365,7 +365,14 @@ static int handle_paging_response(struct msgb *msg)
 	char mi_string[GSM48_MI_SIZE];
 	u_int8_t mi_type;
 
-	gsm48_paging_extract_mi(msg, mi_string, &mi_type);
+	struct gsm48_hdr *hdr;
+	struct gsm48_pag_resp *resp;
+
+	hdr = msgb_l3(msg);
+	resp = (struct gsm48_pag_resp *) &hdr->data[0];
+
+	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*hdr),
+				mi_string, &mi_type);
 	LOGP(DMSC, LOGL_DEBUG, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
