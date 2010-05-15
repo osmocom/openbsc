@@ -356,7 +356,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 			/* Exchange src/dest for the reply */
 			nat_send_rlc(parsed->dest_local_ref, parsed->src_local_ref);
 		} else if (!con)
-			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x.\n", parsed->sccp_type);
+			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed->sccp_type);
 	}
 
 	talloc_free(parsed);
