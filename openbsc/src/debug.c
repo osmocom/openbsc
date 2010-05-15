@@ -173,10 +173,6 @@ static const struct log_info_cat default_categories[] = {
 	},
 };
 
-enum log_ctxt {
-	CTX_SUBSCRIBER,
-};
-
 enum log_filter {
 	_FLT_ALL = LOG_FILTER_ALL,	/* libosmocore */
 	FLT_IMSI = 1,
@@ -185,7 +181,7 @@ enum log_filter {
 static int filter_fn(const struct log_context *ctx,
 		     struct log_target *tar)
 {
-	struct gsm_subscriber *subscr = ctx->ctx[CTX_SUBSCRIBER];
+	struct gsm_subscriber *subscr = ctx->ctx[BSC_CTX_SUBSCR];
 
 	if ((tar->filter_map & (1 << FLT_IMSI)) != 0
 	    && subscr && strcmp(subscr->imsi, tar->filter_data[FLT_IMSI]) == 0)
