@@ -27,6 +27,7 @@
 #include <vty/vty.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/bsc_msc.h>
 #include <openbsc/vty.h>
 
 #include <sccp/sccp.h>
@@ -63,6 +64,24 @@ DEFUN(show_stats,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_msc,
+      show_msc_cmd,
+      "show msc connection",
+      SHOW_STR "Show the status of the MSC connection.")
+{
+	if (!gsmnet->msc_con) {
+		vty_out(vty, "The MSC is not yet configured.\n");
+		return CMD_WARNING;
+	}
+
+	vty_out(vty, "MSC on %s:%d is connected: %d%s\n",
+		gsmnet->msc_con->ip, gsmnet->msc_con->port,
+		gsmnet->msc_con->is_connected, VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
+
 int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
@@ -70,6 +89,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 	/* get runtime information */
 	install_element(VIEW_NODE, &show_bsc_cmd);
 	install_element(VIEW_NODE, &show_stats_cmd);
+	install_element(VIEW_NODE, &show_msc_cmd);
 
 	return 0;
 }

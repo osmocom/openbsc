@@ -47,8 +47,6 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_msc_rf.h>
 
-#include <vty/command.h>
-
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
 #include <osmocore/write_queue.h>
@@ -77,9 +75,6 @@ static struct timer_list msc_pong_timeout;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
-
-static void install_extra_commands();
-
 
 struct llist_head *bsc_sccp_connections()
 {
@@ -1244,8 +1239,6 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	install_extra_commands();
-
 	msc_ping_timeout.cb = msc_ping_timeout_cb;
 	msc_pong_timeout.cb = msc_pong_timeout_cb;
 
@@ -1262,24 +1255,3 @@ int main(int argc, char **argv)
 	}
 }
 
-DEFUN(show_msc,
-      show_msc_cmd,
-      "show msc connection",
-      SHOW_STR "Show the status of the MSC connection.")
-{
-	if (!bsc_gsmnet->msc_con) {
-		vty_out(vty, "The MSC is not yet configured.\n");
-		return CMD_WARNING;
-	}
-
-	vty_out(vty, "MSC on %s:%d is connected: %d%s\n",
-		bsc_gsmnet->msc_con->ip, bsc_gsmnet->msc_con->port,
-		bsc_gsmnet->msc_con->is_connected, VTY_NEWLINE);
-
-	return CMD_SUCCESS;
-}
-
-static void install_extra_commands()
-{
-	install_element(VIEW_NODE, &show_msc_cmd);
-}
