@@ -42,7 +42,7 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc",
 
 	vty_out(vty, "BSC Information%s", VTY_NEWLINE);
 	llist_for_each_entry(con, bsc_sccp_connections(), active_connections) {
-		vty_out(vty, " Connection: LCHAN: %p sec LCHAN: %p SCCP src: %d dest: %d%s",
+		vty_out(vty, " Connection: LCHAN: %p sec LCHAN: 0x%p SCCP src: 0x%x dest: 0x%x%s",
 			con->lchan, con->secondary_lchan,
 			con->sccp ? (int) sccp_src_ref_to_int(&con->sccp->source_local_reference) : -1,
 			con->sccp ? (int) sccp_src_ref_to_int(&con->sccp->destination_local_reference) : -1,
