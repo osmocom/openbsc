@@ -59,19 +59,19 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 struct gprs_ns_inst *sgsn_nsi;
-
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Harald Welte and On-Waves\n"
 	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
-struct sgsn_instance sgsn_inst = {
+static struct sgsn_instance sgsn_inst = {
 	.config_file = "osmo_sgsn.cfg",
 	.cfg = {
 		.gtp_statedir = "./",
 	},
 };
+struct sgsn_instance *sgsn = &sgsn_inst;
 
 /* call-back function for the NS protocol */
 static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,

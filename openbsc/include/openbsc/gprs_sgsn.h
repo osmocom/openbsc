@@ -24,14 +24,10 @@ enum gprs_ciph_algo {
 
 #define MS_RADIO_ACCESS_CAPA
 
-struct sgsn_instance;
-
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
 	struct llist_head	list;
-
-	struct sgsn_instance	*sgsn;
 
 	char 			imsi[GSM_IMSI_LENGTH];
 	enum gprs_mm_state	mm_state;

@@ -32,6 +32,7 @@ struct sgsn_instance {
 	struct gsn_t *gsn;
 };
 
+extern struct sgsn_instance *sgsn;
 
 /* sgsn_vty.c */
 

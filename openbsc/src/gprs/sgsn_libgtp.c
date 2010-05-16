@@ -99,7 +99,6 @@ const struct value_string gtp_cause_strs[] = {
 int sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn, struct sgsn_mm_ctx *mmctx,
 			uint16_t nsapi, struct tlv_parsed *tp)
 {
-	struct sgsn_instance *sgsn = mmctx->sgsn;
 	struct pdp_t *pdp;
 	uint64_t imsi_ui64;
 	int rc;
@@ -184,7 +183,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		LOGP(DGPRS, LOGL_NOTICE, "Create PDP ctx req timed out\n");
 		if (pdp->version == 1) {
 			pdp->version = 0;
-			gtp_create_context_req(mmctx->sgsn->gsn, pdp, cbp);
+			gtp_create_context_req(sgsn->gsn, pdp, cbp);
 			return 0;
 		} else {
 			pdp_freepdp(pdp);
