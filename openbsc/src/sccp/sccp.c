@@ -846,7 +846,8 @@ static int _sccp_send_connection_it(struct sccp_connection *conn)
 	return 0;
 }
 
-static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
+struct msgb *sccp_create_rlsd(struct sccp_source_reference *src_ref,
+			      struct sccp_source_reference *dst_ref, int cause)
 {
 	struct msgb *msg;
 	struct sccp_connection_released *rel;
@@ -854,19 +855,36 @@ static int _sccp_send_connection_released(struct sccp_connection *conn, int caus
 
 	msg = msgb_alloc_headroom(SCCP_MSG_SIZE, SCCP_MSG_HEADROOM,
 				  "sccp: connection released");
+	if (!msg) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to allocate RLSD.\n");
+		return NULL;
+	}
+
 	msg->l2h = &msg->data[0];
 	rel = (struct sccp_connection_released *) msgb_put(msg, sizeof(*rel));
 	rel->type = SCCP_MSG_TYPE_RLSD;
 	rel->release_cause = cause;
 
 	/* copy the source references */
-	memcpy(&rel->destination_local_reference, &conn->destination_local_reference,
+	memcpy(&rel->destination_local_reference, dst_ref,
 	       sizeof(struct sccp_source_reference));
-	memcpy(&rel->source_local_reference, &conn->source_local_reference,
+	memcpy(&rel->source_local_reference, src_ref,
 	       sizeof(struct sccp_source_reference));
 
 	data = msgb_put(msg, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return msg;
+}
+
+static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
+{
+	struct msgb *msg;
+
+	msg = sccp_create_rlsd(&conn->source_local_reference,
+			       &conn->destination_local_reference,
+			       cause);
+	if (!msg)
+		return -1;
 
 	_sccp_set_connection_state(conn, SCCP_CONNECTION_STATE_RELEASE);
 	_send_msg(msg);

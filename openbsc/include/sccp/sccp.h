@@ -150,6 +150,7 @@ struct sccp_source_reference sccp_src_ref_from_int(u_int32_t);
 
 struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause, uint8_t *data, int length);
 struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref, struct sccp_source_reference *dst_ref);
+struct msgb *sccp_create_rlsd(struct sccp_source_reference *src_ref, struct sccp_source_reference *dst_ref, int cause);
 
 /**
  * Below this are helper functions and structs for parsing SCCP messages
