@@ -13,6 +13,6 @@ osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
 			$(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
 osmo_gbproxy_LDADD = $(top_builddir)/src/libvty.a
 
-osmo_sgsn_SOURCES = sgsn_main.c sgsn_vty.c gprs_ns_vty.c \
+osmo_sgsn_SOURCES = sgsn_main.c sgsn_vty.c gprs_ns_vty.c sgsn_libgtp.c \
 			$(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
-osmo_sgsn_LDADD = $(top_builddir)/src/libvty.a libsgsn.a
+osmo_sgsn_LDADD = $(top_builddir)/src/libvty.a libsgsn.a -lgtp

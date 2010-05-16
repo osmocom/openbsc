@@ -46,6 +46,15 @@
 #define GPRS_ATT_T_ATT_WHILE_IMSI	2
 #define GPRS_ATT_T_COMBINED		3
 
+/* Chapter 10.5.5.5 / Table 10.5.138 */
+#define GPRS_DET_T_MO_GPRS		1
+#define GPRS_DET_T_MO_IMSI		2
+#define GPRS_DET_T_MO_COMBINED		3
+/* Network to MS direction */
+#define GPRS_DET_T_MT_REATT_REQ		1
+#define GPRS_DET_T_MT_REATT_NOTREQ	2
+#define GPRS_DET_T_MT_IMSI		3
+
 /* Chapter 10.5.5.18 / Table 105.150 */
 #define GPRS_UPD_T_RA			0
 #define GPRS_UPD_T_RA_LA		1
@@ -72,6 +81,11 @@ enum gsm48_gprs_ie_sm {
 	GSM48_IE_GSM_TIMEZONE		= 0x46, /* 10.5.3.8 */
 	GSM48_IE_GSM_UTC_AND_TZ		= 0x47, /* 10.5.3.9 */
 	GSM48_IE_GSM_LSA_ID		= 0x48, /* 10.5.3.11 */
+
+	/* Fake IEs that are not present on the Layer3 air interface,
+	 * but which we use to simplify internal APIs */
+	OSMO_IE_GSM_REQ_QOS		= 0xfd,
+	OSMO_IE_GSM_REQ_PDP_ADDR	= 0xfe,
 };
 
 /* Chapter 9.4.15 / Table 9.4.15 */

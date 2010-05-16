@@ -3,6 +3,10 @@
 
 #include <stdint.h>
 
+#define GSM_IMSI_LENGTH 17
+#define GSM_IMEI_LENGTH 17
+#define GSM_EXTENSION_LENGTH 15
+
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
 enum gprs_mm_state {
 	GMM_DEREGISTERED,		/* 4.1.3.3.1.1 */
@@ -20,10 +24,14 @@ enum gprs_ciph_algo {
 
 #define MS_RADIO_ACCESS_CAPA
 
+struct sgsn_instance;
+
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
 struct sgsn_mm_ctx {
 	struct llist_head	list;
+
+	struct sgsn_instance	*sgsn;
 
 	char 			imsi[GSM_IMSI_LENGTH];
 	enum gprs_mm_state	mm_state;
@@ -82,7 +90,7 @@ struct sgsn_pdp_ctx {
 	unsigned int		id;
 	enum pdp_ctx_state	state;
 	enum pdp_type		type;
-	uint32_t		addresss;
+	uint32_t		address;
 	char 			*apn_subscribed;
 	char 			*apn_used;
 	uint16_t		nsapi;

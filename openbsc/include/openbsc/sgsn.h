@@ -12,8 +12,24 @@ struct sgsn_config {
 	u_int32_t nsip_listen_ip;
 	u_int16_t nsip_listen_port;
 
+	char *gtp_statedir;
+	struct sockaddr_in gtp_listenaddr;
+
 	/* misc */
 	struct gprs_ns_inst *nsi;
+};
+
+struct sgsn_instance {
+	char *config_file;
+	struct sgsn_config cfg;
+	/* File descriptor wrappers for LibGTP */
+	struct bsc_fd gtp_fd0;
+	struct bsc_fd gtp_fd1c;
+	struct bsc_fd gtp_fd1u;
+	/* Timer for libGTP */
+	struct timer_list gtp_timer;
+	/* GSN instance for libgtp */
+	struct gsn_t *gsn;
 };
 
 

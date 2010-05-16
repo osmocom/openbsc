@@ -48,8 +48,10 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
 
+/* Protocol related stuff, should go into libosmocore */
+
 /* 10.5.5.14 GPRS MM Cause / Table 10.5.147 */
-struct value_string gmm_cause_names[] = {
+const struct value_string gmm_cause_names[] = {
 	/* FIXME */
 	{ GMM_CAUSE_SEM_INCORR_MSG, "Semantically incorrect message" },
 	{ GMM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
@@ -67,7 +69,7 @@ struct value_string gmm_cause_names[] = {
 };
 
 /* 10.5.6.6 SM Cause / Table 10.5.157 */
-struct value_string gsm_cause_names[] = {
+const struct value_string gsm_cause_names[] = {
 	{ GSM_CAUSE_INSUFF_RSRC, "Insufficient resources" },
 	{ GSM_CAUSE_MISSING_APN, "Missing or unknown APN" },
 	{ GSM_CAUSE_UNKNOWN_PDP, "Unknown PDP address or PDP type" },
@@ -101,34 +103,31 @@ struct value_string gsm_cause_names[] = {
 	{ 0, NULL }
 };
 
-static const char *att_name(uint8_t type)
-{
-	switch (type) {
-	case GPRS_ATT_T_ATTACH:
-		return "GPRS attach";
-	case GPRS_ATT_T_ATT_WHILE_IMSI:
-		return "GPRS attach while IMSI attached";
-	case GPRS_ATT_T_COMBINED:
-		return "Combined GPRS/IMSI attach";
-	default:
-		return "unknown";
-	}
-}
+/* 10.5.5.2 */
+const struct value_string gprs_att_t_strs[] = {
+	{ GPRS_ATT_T_ATTACH, 		"GPRS attach" },
+	{ GPRS_ATT_T_ATT_WHILE_IMSI, 	"GPRS attach while IMSI attached" },
+	{ GPRS_ATT_T_COMBINED, 		"Combined GPRS/IMSI attach" },
+	{ 0, NULL }
+};
 
-static const char *upd_name(uint8_t type)
-{
-	switch (type) {
-	case GPRS_UPD_T_RA:
-		return "RA updating";
-	case GPRS_UPD_T_RA_LA:
-		return "combined RA/LA updating";
-	case GPRS_UPD_T_RA_LA_IMSI_ATT:
-		return "combined RA/LA updating + IMSI attach";
-	case GPRS_UPD_T_PERIODIC:
-		return "periodic updating";
-	}
-	return "unknown";
-}
+const struct value_string gprs_upd_t_strs[] = {
+	{ GPRS_UPD_T_RA,		"RA updating" },
+	{ GPRS_UPD_T_RA_LA,		"combined RA/LA updating" },
+	{ GPRS_UPD_T_RA_LA_IMSI_ATT,	"combined RA/LA updating + IMSI attach" },
+	{ GPRS_UPD_T_PERIODIC,		"periodic updating" },
+	{ 0, NULL }
+};
+
+/* 10.5.5.5 */
+const struct value_string gprs_det_t_mo_strs[] = {
+	{ GPRS_DET_T_MO_GPRS,		"GPRS detach" },
+	{ GPRS_DET_T_MO_IMSI,		"IMSI detach" },
+	{ GPRS_DET_T_MO_COMBINED,	"Combined GPRS/IMSI detach" },
+	{ 0, NULL }
+};
+
+/* Our implementation, should be kept in SGSN */
 
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command)
@@ -215,6 +214,22 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
 	return gsm48_gmm_sendmsg(msg, 0);
 }
 
+/* Chapter 9.4.6.2 Detach accept */
+static gsm48_tx_gmm_det_ack(struct msgb *old_msg, uint8_t force_stby)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	DEBUGP(DMM, "<- GPRS DETACH ACCEPT\n");
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_DETACH_ACK;
+	gh->data[0] = force_stby;
+
+	return gsm48_gmm_sendmsg(msg, 0);
+}
+
 /* Transmit Chapter 9.4.12 Identity Request */
 static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
 {
@@ -260,7 +275,7 @@ static int gsm48_rx_gmm_id_resp(struct msgb *msg)
 	struct sgsn_mm_ctx *ctx;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
-	DEBUGP(DMM, "GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
+	DEBUGP(DMM, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
 		mi_type, mi_string);
 
 	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
@@ -320,7 +335,7 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 	uint16_t cid;
 	struct sgsn_mm_ctx *ctx;
 
-	DEBUGP(DMM, "GMM ATTACH REQUEST ");
+	DEBUGP(DMM, "-> GMM ATTACH REQUEST ");
 
 	/* As per TS 04.08 Chapter 4.7.1.4, the attach request arrives either
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
@@ -352,7 +367,8 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), mi, mi_len);
 
-	DEBUGPC(DMM, "MI(%s) type=\"%s\" ", mi_string, att_name(att_type));
+	DEBUGPC(DMM, "MI(%s) type=\"%s\" ", mi_string,
+		get_value_string(gprs_att_t_strs, att_type));
 
 	/* Old routing area identification 10.5.5.15 */
 	old_ra_info = cur;
@@ -409,6 +425,38 @@ static int gsm48_rx_gmm_att_req(struct msgb *msg)
 err_inval:
 	DEBUGPC(DMM, "\n");
 	return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_SEM_INCORR_MSG);
+}
+
+/* Section 4.7.4.1 / 9.4.5.2 MO Detach request */
+static int gsm48_rx_gmm_det_req(struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	struct sgsn_mm_ctx *ctx;
+	uint8_t detach_type, power_off;
+	struct gprs_ra_id ra_id;
+
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	ctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
+	if (!ctx) {
+		LOGP(DMM, LOGL_NOTICE, "-> GMM DETACH REQUEST for unknown "
+			"TLLI=0x%08x\n", msgb_tlli(msg));
+		/* FIXME: send detach reject */
+	}
+
+	detach_type = gh->data[0] & 0x7;
+	power_off = gh->data[0] & 0x8;
+
+	/* FIXME: In 24.008 there is an optional P-TMSI and P-TMSI signature IE */
+
+	DEBUGP(DMM, "-> GMM DETACH REQUEST TLLI=0x%08x type=%s %s\n",
+		msgb_tlli(msg), get_value_string(gprs_det_t_mo_strs, detach_type),
+		power_off ? "Power-off" : "");
+
+	/* Mark MM state as deregistered */
+	ctx->mm_state = GMM_DEREGISTERED;
+
+	/* force_stby = 0 */
+	return gsm48_tx_gmm_det_ack(msg, 0);
 }
 
 /* Chapter 9.4.15: Routing area update accept */
@@ -471,7 +519,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
 
-	DEBUGP(DMM, "GMM RA UPDATE REQUEST type=\"%s\" ", upd_name(upd_type));
+	DEBUGP(DMM, "-> GMM RA UPDATE REQUEST type=\"%s\" ",
+		get_value_string(gprs_upd_t_strs, upd_type));
 
 	/* Old routing area identification 10.5.5.15 */
 	gsm48_parse_ra(&old_ra_id, cur);
@@ -516,7 +565,7 @@ static int gsm48_rx_gmm_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMM, "GPRS MM STATUS (cause: %s)\n",
+	DEBUGP(DMM, "-> GPRS MM STATUS (cause: %s)\n",
 		get_value_string(gmm_cause_names, gh->data[0]));
 
 	return 0;
@@ -541,19 +590,23 @@ static int gsm0408_rcv_gmm(struct msgb *msg)
 	case GSM48_MT_GMM_STATUS:
 		rc = gsm48_rx_gmm_status(msg);
 		break;
+	case GSM48_MT_GMM_DETACH_REQ:
+		rc = gsm48_rx_gmm_det_req(msg);
+		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 	case GSM48_MT_GMM_ATTACH_COMPL:
 		/* only in case SGSN offered new P-TMSI */
-	case GSM48_MT_GMM_DETACH_REQ:
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
+		/* FIXME: Send GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL */
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
+		/* FIXME: Send GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL */
 		break;
 	}
 
@@ -641,7 +694,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	uint8_t *req_qos, *req_pdpa;
 	struct tlv_parsed tp;
 
-	DEBUGP(DMM, "ACTIVATE PDP CONTEXT REQ: ");
+	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: ");
 	req_qos_len = act_req->data[0];
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
@@ -679,11 +732,22 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 		break;
 	}
 
+	/* put the non-TLV elements in the TLV parser structure to
+	 * pass them on to the SGSN / GTP code */
+	tp.lv[OSMO_IE_GSM_REQ_QOS].len = req_qos_len;
+	tp.lv[OSMO_IE_GSM_REQ_QOS].val = req_qos;
+	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = req_pdpa_len;
+	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = req_pdpa;
+
 	/* FIXME: parse TLV for AP name and protocol config options */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_APN)) {}
 	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_PROTO_CONF_OPT)) {}
 
+#if 0
+	return sgsn_create_pdp_ctx(ggsn, &tp);
+#else
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
+#endif
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
@@ -691,7 +755,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 
-	DEBUGP(DMM, "DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
+	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
 	return gsm48_tx_gsm_deact_pdp_acc(msg);
@@ -701,7 +765,7 @@ static int gsm48_rx_gsm_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
-	DEBUGP(DMM, "GPRS SM STATUS (cause: %s)\n",
+	DEBUGP(DMM, "-> GPRS SM STATUS (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
 	return 0;

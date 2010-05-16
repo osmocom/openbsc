@@ -54,6 +54,9 @@ struct sndcp_udata_hdr {
 	uint8_t npdu_low;
 };
 
+struct sndcp_entity {
+};
+
 /* Entry point for the LL-UNITDATA.indication */
 int sndcp_unitdata_ind(struct msgb *msg, uint8_t sapi, uint8_t *hdr, uint8_t len)
 {
@@ -68,3 +71,59 @@ int sndcp_unitdata_ind(struct msgb *msg, uint8_t sapi, uint8_t *hdr, uint8_t len
 	npdu = (suh->npdu_high << 8) | suh->npdu_low;
 }
 
+/* Section 5.1.2.1 LL-RESET.ind */
+static int sndcp_ll_reset_ind(struct sndcp_entity *se,)
+{
+	/* treat all outstanding SNDCP-LLC request type primitives as not sent */
+	/* reset all SNDCP XID parameters to default values */
+}
+
+/* Section 5.1.2.17 LL-UNITDATA.ind */
+static int sndcp_ll_unitdata_ind()
+{
+}
+
+static int sndcp_ll_status_ind()
+{
+	/* inform the SM sub-layer by means of SNSM-STATUS.req */
+}
+
+static struct sndcp_state_list {{
+	uint32_t	states;
+	unsigned int	type;
+	int		(*rout)(struct sndcp_entity *se, struct msgb *msg);
+} sndcp_state_list[] = {
+	{ ALL_STATES,
+	  LL_RESET_IND, sndcp_ll_reset_ind },
+	{ ALL_STATES,
+	  LL_ESTABLISH_IND, sndcp_ll_est_ind },
+	{ SBIT(SNDCP_S_EST_RQD),
+	  LL_ESTABLISH_RESP, sndcp_ll_est_ind },
+	{ SBIT(SNDCP_S_EST_RQD),
+	  LL_ESTABLISH_CONF, sndcp_ll_est_conf },
+	{ SBIT(SNDCP_S_
+};
+
+static int sndcp_rx_llc_prim()
+{
+	case LL_ESTABLISH_REQ:
+	case LL_RELEASE_REQ:
+	case LL_XID_REQ:
+	case LL_DATA_REQ:
+	LL_UNITDATA_REQ,	/* TLLI, SN-PDU, Ref, QoS, Radio Prio, Ciph */
+
+	switch (prim) {
+	case LL_RESET_IND:
+	case LL_ESTABLISH_IND:
+	case LL_ESTABLISH_RESP:
+	case LL_ESTABLISH_CONF:
+	case LL_RELEASE_IND:
+	case LL_RELEASE_CONF:
+	case LL_XID_IND:
+	case LL_XID_RESP:
+	case LL_XID_CONF:
+	case LL_DATA_IND:
+	case LL_DATA_CONF:
+	case LL_UNITDATA_IND:
+	case LL_STATUS_IND:
+}

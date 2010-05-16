@@ -81,8 +81,9 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi)
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
-	struct sgsn_mm_ctx *ctx = talloc_zero(NULL, struct sgsn_mm_ctx);
+	struct sgsn_mm_ctx *ctx;
 
+	ctx = talloc_zero(tall_bsc_ctx, struct sgsn_mm_ctx);
 	if (!ctx)
 		return NULL;
 

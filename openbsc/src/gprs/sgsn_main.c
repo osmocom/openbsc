@@ -46,6 +46,8 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
 
+#include <gtp.h>
+
 #include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
@@ -64,8 +66,12 @@ const char *openbsc_copyright =
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
-static char *config_file = "osmo_sgsn.cfg";
-static struct sgsn_config sgcfg;
+struct sgsn_instance sgsn_inst = {
+	.config_file = "osmo_sgsn.cfg",
+	.cfg = {
+		.gtp_statedir = "./",
+	},
+};
 
 /* call-back function for the NS protocol */
 static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
@@ -152,17 +158,18 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
-	bssgp_nsi = sgcfg.nsi = sgsn_nsi;
+	bssgp_nsi = sgsn_inst.cfg.nsi = sgsn_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
 	/* FIXME: register signal handler for SS_NS */
 
-	rc = sgsn_parse_config(config_file, &sgcfg);
+	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot parse config file\n");
 		exit(2);
 	}
 
-	nsip_listen(sgsn_nsi, sgcfg.nsip_listen_port);
+	rc = sgsn_gtp_init(&sgsn_inst);
+	nsip_listen(sgsn_nsi, sgsn_inst.cfg.nsip_listen_port);
 
 	while (1) {
 		rc = bsc_select_main(0);
