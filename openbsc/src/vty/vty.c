@@ -469,7 +469,6 @@ static void vty_hist_add(struct vty *vty)
 	vty->hp = vty->hindex;
 }
 
-#define TELNET_OPTION_DEBUG
 /* Get telnet window size. */
 static int
 vty_telnet_option (struct vty *vty, unsigned char *buf, int nbytes)
