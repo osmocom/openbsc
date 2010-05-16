@@ -43,8 +43,6 @@
 
 #include "../bscconfig.h"
 
-static struct gsm_network *gsmnet;
-
 /* FIXME: this should go to some common file */
 static const struct value_string gprs_ns_timer_strs[] = {
 	{ 0, "tns-block" },
@@ -95,6 +93,12 @@ struct cmd_node ts_node = {
 	"%s(ts)#",
 	1,
 };
+
+struct gsm_network *gsmnet_from_vty(struct vty *v)
+{
+	struct telnet_connection *conn = v->priv;
+	return (struct gsm_network *) conn->priv;
+}
 
 static int dummy_config_write(struct vty *v)
 {
@@ -161,7 +165,7 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 DEFUN(show_net, show_net_cmd, "show network",
 	SHOW_STR "Display information about a GSM NETWORK\n")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	net_dump_vty(vty, net);
 
 	return CMD_SUCCESS;
@@ -235,7 +239,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 	SHOW_STR "Display information about a BTS\n"
 		"BTS number")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	int bts_nr;
 
 	if (argc != 0) {
@@ -410,6 +414,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 static int config_write_bts(struct vty *v)
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(v);
 	struct gsm_bts *bts;
 
 	llist_for_each_entry(bts, &gsmnet->bts_list, list)
@@ -420,6 +425,8 @@ static int config_write_bts(struct vty *v)
 
 static int config_write_net(struct vty *vty)
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	vty_out(vty, "network%s", VTY_NEWLINE);
 	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
 	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
@@ -491,7 +498,7 @@ DEFUN(show_trx,
 	"BTS Number\n"
 	"TRX Number\n")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts = NULL;
 	struct gsm_bts_trx *trx;
 	int bts_nr, trx_nr;
@@ -557,7 +564,7 @@ DEFUN(show_ts,
 	SHOW_STR "Display information about a TS\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
@@ -717,7 +724,7 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
@@ -935,7 +942,7 @@ DEFUN(show_paging,
 	SHOW_STR "Display information about paging reuqests of a BTS\n"
 	"BTS Number\n")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 	struct gsm_bts *bts;
 	int bts_nr;
 
@@ -966,7 +973,7 @@ DEFUN(cfg_net,
       cfg_net_cmd,
       "network", NETWORK_STR)
 {
-	vty->index = gsmnet;
+	vty->index = gsmnet_from_vty(vty);
 	vty->node = GSMNET_NODE;
 
 	return CMD_SUCCESS;
@@ -978,6 +985,8 @@ DEFUN(cfg_net_ncc,
       "network country code <1-999>",
       "Set the GSM network country code")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->country_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -988,6 +997,8 @@ DEFUN(cfg_net_mnc,
       "mobile network code <1-999>",
       "Set the GSM mobile network code")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->network_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -998,6 +1009,8 @@ DEFUN(cfg_net_name_short,
       "short name NAME",
       "Set the short GSM network name")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	if (gsmnet->name_short)
 		talloc_free(gsmnet->name_short);
 
@@ -1011,6 +1024,8 @@ DEFUN(cfg_net_name_long,
       "long name NAME",
       "Set the long GSM network name")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	if (gsmnet->name_long)
 		talloc_free(gsmnet->name_long);
 
@@ -1029,6 +1044,7 @@ DEFUN(cfg_net_auth_policy,
 	"Use SMS-token based authentication\n")
 {
 	enum gsm_auth_policy policy = gsm_auth_policy_parse(argv[0]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	gsmnet->auth_policy = policy;
 
@@ -1040,6 +1056,8 @@ DEFUN(cfg_net_reject_cause,
       "location updating reject cause <2-111>",
       "Set the reject cause of location updating reject\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->reject_cause = atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -1052,6 +1070,8 @@ DEFUN(cfg_net_encryption,
 	"A5 encryption\n" "A5/0: No encryption\n"
 	"A5/1: Encryption\n" "A5/2: Export-grade Encryption\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->a5_encryption= atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -1063,6 +1083,8 @@ DEFUN(cfg_net_neci,
 	"New Establish Cause Indication\n"
 	"Don't set the NECI bit\n" "Set the NECI bit\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->neci = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1076,6 +1098,8 @@ DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
 	"Request any location, prefer MS-based\n"
 	"Request any location, prefer MS-assisted\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
 
 	return CMD_SUCCESS;
@@ -1085,6 +1109,8 @@ DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
       "mm info (0|1)",
 	"Whether to send MM INFO after LOC UPD ACCEPT")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
 	gsmnet->send_mm_info = atoi(argv[0]);
 
 	return CMD_SUCCESS;
@@ -1099,6 +1125,7 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
 	"Perform in-call handover\n")
 {
 	int enable = atoi(argv[0]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	if (enable && ipacc_rtp_direct) {
 		vty_out(vty, "%% Cannot enable handover unless RTP Proxy mode "
@@ -1121,6 +1148,7 @@ DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
 	HO_WIN_RXLEV_STR
 	"How many RxLev measurements are used for averaging")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1130,6 +1158,7 @@ DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
 	HO_WIN_RXQUAL_STR
 	"How many RxQual measurements are used for averaging")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1139,6 +1168,7 @@ DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
 	HO_WIN_RXLEV_STR
 	"How many RxQual measurements are used for averaging")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1148,6 +1178,7 @@ DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
 	HO_PBUDGET_STR
 	"How often to check if we have a better cell (SACCH frames)")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_interval = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1157,6 +1188,7 @@ DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
 	HO_PBUDGET_STR
 	"How many dB does a neighbor to be stronger to become a HO candidate")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1166,6 +1198,7 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
 	HANDOVER_STR
 	"How big is the maximum timing advance before HO is forced")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.max_distance = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -1177,6 +1210,7 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
       "Configure GSM Timers\n"					\
       doc)							\
 {								\
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
 								\
 	if (value < 0 || value > 65535) {			\
@@ -1209,6 +1243,7 @@ DEFUN(cfg_bts,
       "Select a BTS to configure\n"
 	"BTS Number\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	int bts_nr = atoi(argv[0]);
 	struct gsm_bts *bts;
 
@@ -1943,16 +1978,11 @@ DEFUN(cfg_ts_e1_subslot,
 	return CMD_SUCCESS;
 }
 
-extern int bsc_vty_init_extra(struct gsm_network *net);
+extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
 
-int bsc_vty_init(struct gsm_network *net)
+int bsc_vty_init(void)
 {
-	gsmnet = net;
-
-	cmd_init(1);
-	vty_init("OpenBSC", PACKAGE_VERSION, openbsc_copyright);
-
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);
 	install_element_ve(&show_trx_cmd);
@@ -2063,7 +2093,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
-	bsc_vty_init_extra(net);
+	bsc_vty_init_extra();
 
 	return 0;
 }

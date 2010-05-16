@@ -19,16 +19,19 @@
  *
  */
 
-#include <openbsc/vty.h>
-#include <openbsc/telnet_interface.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <osmocore/talloc.h>
+
+#include <openbsc/vty.h>
+#include <openbsc/telnet_interface.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/debug.h>
 
 #include <vty/command.h>
 #include <vty/buffer.h>
 #include <vty/vty.h>
-
-#include <stdlib.h>
 
 static void _vty_output(struct log_target *tgt, const char *line)
 {

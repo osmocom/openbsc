@@ -193,11 +193,17 @@ int main(int argc, char** argv)
 	if (!cfg)
 		return -1;
 
-	telnet_init(&dummy_network, 4243);
+	vty_init("OpenBSC MGCP", PACKAGE_VERSION, openbsc_copyright);
+	openbsc_vty_add_cmds();
+	mgcp_vty_init();
 
 	handle_options(argc, argv);
 
         rc = mgcp_parse_config(config_file, cfg);
+	if (rc < 0)
+		return rc;
+
+	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4243);
 	if (rc < 0)
 		return rc;
 
@@ -253,15 +259,3 @@ int main(int argc, char** argv)
 
 	return 0;
 }
-
-struct gsm_network;
-int bsc_vty_init(struct gsm_network *dummy)
-{
-	cmd_init(1);
-	vty_init("OpenBSC MGCP", PACKAGE_VERSION, openbsc_copyright);
-
-	openbsc_vty_add_cmds();
-        mgcp_vty_init();
-	return 0;
-}
-

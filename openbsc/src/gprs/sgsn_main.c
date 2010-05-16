@@ -138,8 +138,14 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
+	vty_init("Osmocom SGSN", PACKAGE_VERSION, openbsc_copyright);
+	openbsc_vty_add_cmds();
+        sgsn_vty_init();
+
 	rate_ctr_init(tall_bsc_ctx);
-	telnet_init(&dummy_network, 4245);
+	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4245);
+	if (rc < 0)
+		exit(1);
 
 	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb);
 	if (!sgsn_nsi) {
@@ -166,15 +172,3 @@ int main(int argc, char **argv)
 
 	exit(0);
 }
-
-struct gsm_network;
-int bsc_vty_init(struct gsm_network *dummy)
-{
-	cmd_init(1);
-	vty_init("Osmocom SGSN", PACKAGE_VERSION, openbsc_copyright);
-
-	openbsc_vty_add_cmds();
-        sgsn_vty_init();
-	return 0;
-}
-

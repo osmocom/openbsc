@@ -43,7 +43,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
 
-static struct gsm_network *gsmnet;
+extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
 struct cmd_node subscr_node = {
 	SUBSCR_NODE,
@@ -103,6 +103,7 @@ DEFUN(cfg_subscr,
       "subscriber IMSI",
       "Select a Subscriber to configure\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	const char *imsi = argv[0];
 	struct gsm_subscriber *subscr;
 
@@ -175,6 +176,7 @@ DEFUN(show_subscr,
       "show subscriber [IMSI]",
 	SHOW_STR "Display information about a subscriber\n")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	const char *imsi;
 	struct gsm_subscriber *subscr;
 
@@ -218,6 +220,7 @@ DEFUN(sms_send_pend,
       "sms send pending",
       "Send all pending SMS")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_sms *sms;
 	int id = 0;
 
@@ -250,7 +253,7 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
 	/* FIXME: don't use ID 1 static */
-	sms->sender = subscr_get_by_id(gsmnet, 1);
+	sms->sender = subscr_get_by_id(receiver->net, 1);
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
@@ -275,7 +278,8 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 	return CMD_SUCCESS;
 }
 
-static struct gsm_subscriber *get_subscr_by_argv(const char *type,
+static struct gsm_subscriber *get_subscr_by_argv(struct gsm_network *gsmnet,
+						 const char *type,
 						 const char *id)
 {
 	if (!strcmp(type, "extension"))
@@ -302,7 +306,8 @@ DEFUN(subscriber_send_sms,
       "subscriber " SUBSCR_TYPES " EXTEN sms send .LINE",
 	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
 {
-	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	char *str;
 	int rc;
 
@@ -326,7 +331,8 @@ DEFUN(subscriber_silent_sms,
 	SUBSCR_HELP
 	"Silent SMS Operation\n" "Send Silent SMS\n" "Actual SMS text\n")
 {
-	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	char *str;
 	int rc;
 
@@ -358,7 +364,8 @@ DEFUN(subscriber_silent_call_start,
 	SUBSCR_HELP "Silent call operation\n" "Start silent call\n"
 	CHAN_TYPE_HELP)
 {
-	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	int rc, type;
 
 	if (!subscr) {
@@ -395,7 +402,8 @@ DEFUN(subscriber_silent_call_stop,
 	SUBSCR_HELP "Silent call operation\n" "Stop silent call\n"
 	CHAN_TYPE_HELP)
 {
-	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	int rc;
 
 	if (!subscr) {
@@ -526,7 +534,7 @@ DEFUN(show_stats,
       "show statistics",
 	SHOW_STR "Display network statistics\n")
 {
-	struct gsm_network *net = gsmnet;
+	struct gsm_network *net = gsmnet_from_vty(vty);
 
 	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
@@ -556,10 +564,8 @@ DEFUN(show_stats,
 }
 
 
-int bsc_vty_init_extra(struct gsm_network *net)
+int bsc_vty_init_extra(void)
 {
-	gsmnet = net;
-
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
 
 	install_element_ve(&show_subscr_cmd);

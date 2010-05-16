@@ -25,17 +25,10 @@
 #include <string.h>
 #include <unistd.h>
 
-#include <openbsc/telnet_interface.h>
-#include <openbsc/gsm_subscriber.h>
-#include <openbsc/chan_alloc.h>
-#include <openbsc/gsm_04_08.h>
-#include <openbsc/gsm_04_11.h>
 #include <osmocore/msgb.h>
-#include <openbsc/abis_rsl.h>
-#include <openbsc/paging.h>
-#include <openbsc/signal.h>
 #include <osmocore/talloc.h>
-#include <openbsc/debug.h>
+#include <osmocore/logging.h>
+#include <openbsc/telnet_interface.h>
 
 #include <vty/buffer.h>
 
@@ -53,21 +46,19 @@ static struct bsc_fd server_socket = {
 	.priv_nr    = 0,
 };
 
-void telnet_init(struct gsm_network *network, int port)
+int telnet_init(void *tall_ctx, void *priv, int port)
 {
 	struct sockaddr_in sock_addr;
-	int fd, on = 1;
+	int fd, rc, on = 1;
 
-	tall_telnet_ctx = talloc_named_const(tall_bsc_ctx, 1,
+	tall_telnet_ctx = talloc_named_const(tall_ctx, 1,
 					     "telnet_connection");
-
-	bsc_vty_init(network);
 
 	fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 
 	if (fd < 0) {
-		LOGP(DNM, LOGL_ERROR, "Telnet interface socket creation failed\n");
-		return;
+		LOGP(0, LOGL_ERROR, "Telnet interface socket creation failed\n");
+		return fd;
 	}
 
 	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
@@ -77,19 +68,25 @@ void telnet_init(struct gsm_network *network, int port)
 	sock_addr.sin_port = htons(port);
 	sock_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-	if (bind(fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr)) < 0) {
-		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to bind\n");
-		return;
+	rc = bind(fd, (struct sockaddr*)&sock_addr, sizeof(sock_addr));
+	if (bind < 0) {
+		LOGP(0, LOGL_ERROR, "Telnet interface failed to bind\n");
+		close(fd);
+		return rc;
 	}
 
-	if (listen(fd, 0) < 0) {
-		LOGP(DNM, LOGL_ERROR, "Telnet interface failed to listen\n");
-		return;
+	rc = listen(fd, 0);
+	if (rc < 0) {
+		LOGP(0, LOGL_ERROR, "Telnet interface failed to listen\n");
+		close(fd);
+		return rc;
 	}
 
-	server_socket.data = network;
+	server_socket.data = priv;
 	server_socket.fd = fd;
 	bsc_register_fd(&server_socket);
+
+	return 0;
 }
 
 extern const char *openbsc_copyright;
@@ -152,13 +149,12 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what)
 	int new_connection = accept(fd->fd, (struct sockaddr*)&sockaddr, &len);
 
 	if (new_connection < 0) {
-		LOGP(DNM, LOGL_ERROR, "telnet accept failed\n");
-		return -1;
+		LOGP(0, LOGL_ERROR, "telnet accept failed\n");
+		return new_connection;
 	}
 
-
 	connection = talloc_zero(tall_telnet_ctx, struct telnet_connection);
-	connection->network = (struct gsm_network*)fd->data;
+	connection->priv = fd->data;
 	connection->fd.data = connection;
 	connection->fd.fd = new_connection;
 	connection->fd.when = BSC_FD_READ;
@@ -170,7 +166,9 @@ static int telnet_new_connection(struct bsc_fd *fd, unsigned int what)
 
 	connection->vty = vty_create(new_connection, connection);
 	if (!connection->vty) {
-		LOGP(DNM, LOGL_ERROR, "couldn't create VTY\n");
+		LOGP(0, LOGL_ERROR, "couldn't create VTY\n");
+		close(new_connection);
+		talloc_free(connection);
 		return -1;
 	}
 

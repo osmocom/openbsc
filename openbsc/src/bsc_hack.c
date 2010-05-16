@@ -37,11 +37,16 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 
+#include <vty/command.h>
+
+#include "../bscconfig.h"
+
 /* MCC and MNC for the Location Area Identifier */
 static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
+extern const char *openbsc_copyright;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -213,7 +218,10 @@ int main(int argc, char **argv)
 	/* enable filters */
 	log_set_all_filter(stderr_target, 1);
 
-	/* This needs to precede handle_options() as it calls vty_init() */
+	/* This needs to precede handle_options() */
+	vty_init("OpenBSC", PACKAGE_VERSION, openbsc_copyright);
+	bsc_vty_init();
+
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);

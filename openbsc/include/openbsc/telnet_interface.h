@@ -21,23 +21,20 @@
 #ifndef TELNET_INTERFACE_H
 #define TELNET_INTERFACE_H
 
-#include "gsm_data.h"
-#include <openbsc/debug.h>
+#include <osmocore/logging.h>
 #include <osmocore/select.h>
 
 #include <vty/vty.h>
 
 struct telnet_connection {
 	struct llist_head entry;
-	struct gsm_network *network;
+	void *priv;
 	struct bsc_fd fd;
 	struct vty *vty;
 	struct log_target *dbg;
 };
 
 
-void telnet_init(struct gsm_network *network, int port);
-
-int bsc_vty_init(struct gsm_network *net);
+int telnet_init(void *tall_ctx, void *priv, int port);
 
 #endif

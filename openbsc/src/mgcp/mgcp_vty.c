@@ -267,7 +267,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	int i, rc;
 
 	g_cfg = cfg;
-	rc = vty_read_config_file(config_file);
+	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;

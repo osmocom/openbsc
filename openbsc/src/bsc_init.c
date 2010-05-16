@@ -1,6 +1,6 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
@@ -1062,6 +1062,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 			  const char *config_file)
 {
+	struct telnet_connection dummy_conn;
 	struct gsm_bts *bts;
 	int rc;
 
@@ -1073,12 +1074,17 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
 	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
 
-	telnet_init(bsc_gsmnet, 4242);
-	rc = vty_read_config_file(config_file);
+	/* our vty command code expects vty->priv to point to a telnet_connection */
+	dummy_conn.priv = bsc_gsmnet;
+	rc = vty_read_config_file(config_file, &dummy_conn);
 	if (rc < 0) {
 		LOGP(DNM, LOGL_FATAL, "Failed to parse the config file: '%s'\n", config_file);
 		return rc;
 	}
+
+	rc = telnet_init(tall_bsc_ctx, bsc_gsmnet, 4242);
+	if (rc < 0)
+		return rc;
 
 	register_signal_handler(SS_NM, nm_sig_cb, NULL);
 

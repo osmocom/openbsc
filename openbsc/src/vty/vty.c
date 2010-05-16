@@ -1354,7 +1354,7 @@ int vty_read(struct vty *vty)
 
 /* Read up configuration file */
 static int
-vty_read_file(FILE *confp)
+vty_read_file(FILE *confp, void *priv)
 {
 	int ret;
 	struct vty *vty;
@@ -1363,6 +1363,7 @@ vty_read_file(FILE *confp)
 	vty->fd = 0;
 	vty->type = VTY_FILE;
 	vty->node = CONFIG_NODE;
+	vty->priv = priv;
 
 	ret = config_from_file(vty, confp);
 
@@ -1634,13 +1635,15 @@ extern void *tall_bsc_ctx;
 /* Install vty's own commands like `who' command. */
 void vty_init(const char *name, const char *version, const char *copyright)
 {
-	host.prog_name = name;
-	host.prog_version = version;
-	host.prog_copyright = copyright;
-
 	tall_vty_ctx = talloc_named_const(NULL, 0, "vty");
 	tall_vty_vec_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_vector");
 	tall_vty_cmd_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_command");
+
+	cmd_init(1);
+
+	host.prog_name = name;
+	host.prog_version = version;
+	host.prog_copyright = copyright;
 
 	/* For further configuration read, preserve current directory. */
 	vty_save_cwd();
@@ -1664,7 +1667,7 @@ void vty_init(const char *name, const char *version, const char *copyright)
 	install_element(VTY_NODE, &no_vty_login_cmd);
 }
 
-int vty_read_config_file(const char *file_name)
+int vty_read_config_file(const char *file_name, void *priv)
 {
 	FILE *cfile;
 	int rc;
@@ -1673,7 +1676,7 @@ int vty_read_config_file(const char *file_name)
 	if (!cfile)
 		return -ENOENT;
 
-	rc = vty_read_file(cfile);
+	rc = vty_read_file(cfile, priv);
 	fclose(cfile);
 
 	host_config_set(file_name);
