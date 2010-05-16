@@ -682,33 +682,48 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 	return 0;
 }
 
-static int _sccp_send_connection_confirm(struct sccp_connection *connection)
+struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref,
+			    struct sccp_source_reference *dst_ref)
 {
 	struct msgb *response;
 	struct sccp_connection_confirm *confirm;
 	u_int8_t *optional_data;
 
-	if (assign_source_local_reference(connection) != 0)
-		return -1;
-
 	response = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				       SCCP_MSG_HEADROOM, "sccp confirm");
+	if (!response) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to create SCCP Confirm.\n");
+		return NULL;
+	}
+
 	response->l2h = &response->data[0];
 
 	confirm = (struct sccp_connection_confirm *) msgb_put(response, sizeof(*confirm));
 
 	confirm->type = SCCP_MSG_TYPE_CC;
 	memcpy(&confirm->destination_local_reference,
-	       &connection->destination_local_reference,
-	       sizeof(connection->destination_local_reference));
+	       dst_ref, sizeof(*dst_ref));
 	memcpy(&confirm->source_local_reference,
-	       &connection->source_local_reference,
-	       sizeof(connection->source_local_reference));
+	       src_ref, sizeof(*src_ref));
 	confirm->proto_class = 2;
 	confirm->optional_start = 1;
 
 	optional_data = (u_int8_t *) msgb_put(response, 1);
 	optional_data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return response;
+}
+
+static int _sccp_send_connection_confirm(struct sccp_connection *connection)
+{
+	struct msgb *response;
+
+	if (assign_source_local_reference(connection) != 0)
+		return -1;
+
+	response = sccp_create_cc(&connection->source_local_reference,
+				  &connection->destination_local_reference);
+	if (!response)
+		return -1;
 
 	_send_msg(response);
 	_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_ESTABLISHED);
