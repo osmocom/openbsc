@@ -608,8 +608,9 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
+	int con_found = 0;
+	struct bsc_connection *con_bsc = NULL;
 	int con_type;
-	struct sccp_connections *con;
 	struct bsc_nat_parsed *parsed;
 
 	/* Parse and filter messages */
@@ -637,6 +638,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 	/* modify the SCCP entries */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+		struct sccp_connections *con;
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
 			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type) != 0)
@@ -645,6 +647,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			con->con_type = con_type;
+			con_found = 1;
+			con_bsc = con->bsc;
 			break;
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:
@@ -652,9 +656,17 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_CC:
 		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			if (con) {
+				con_found = 1;
+				con_bsc = con->bsc;
+			}
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			if (con) {
+				con_found = 1;
+				con_bsc = con->bsc;
+			}
 			remove_sccp_src_ref(bsc, msg, parsed);
 			break;
 		case SCCP_MSG_TYPE_UDT:
@@ -675,9 +687,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		goto exit2;
 	}
 
-	if (con && con->bsc != bsc) {
+	if (con_found && con_bsc != bsc) {
 		LOGP(DNAT, LOGL_ERROR, "The connection belongs to a different BTS: input: %d con: %d\n",
-		     bsc->cfg->nr, con->bsc->cfg->nr);
+		     bsc->cfg->nr, con_bsc->cfg->nr);
 		goto exit2;
 	}
 
