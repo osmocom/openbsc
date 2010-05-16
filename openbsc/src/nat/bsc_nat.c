@@ -609,6 +609,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
 	int con_found = 0;
+	int con_filter = 0;
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
 	struct bsc_nat_parsed *parsed;
@@ -659,6 +660,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (con) {
 				con_found = 1;
 				con_bsc = con->bsc;
+				con_filter = con->con_local;
 			}
 			break;
 		case SCCP_MSG_TYPE_RLC:
@@ -666,6 +668,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (con) {
 				con_found = 1;
 				con_bsc = con->bsc;
+				con_filter = con->con_local;
 			}
 			remove_sccp_src_ref(bsc, msg, parsed);
 			break;
@@ -692,6 +695,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		     bsc->cfg->nr, con_bsc->cfg->nr);
 		goto exit2;
 	}
+
+	/* do not forward messages to the MSC */
+	if (con_filter)
+		goto exit2;
 
 	/* send the non-filtered but maybe modified msg */
 	queue_for_msc(nat->msc_con, msg);
