@@ -39,13 +39,6 @@
 
 #include <vty/buffer.h>
 
-#define WRITE_CONNECTION(fd, msg...) \
-	int ret; \
-	char buf[4096]; \
-	snprintf(buf, sizeof(buf), msg); \
-	ret = write(fd, buf, strlen(buf));
-
-
 /* per connection data */
 LLIST_HEAD(active_connections);
 
