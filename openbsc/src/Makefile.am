@@ -18,7 +18,7 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		input/misdn.c input/ipaccess.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		rtp_proxy.c bts_siemens_bs11.c bts_ipaccess_nanobts.c \
-		bts_unknown.c bsc_version.c bsc_api.c
+		bts_unknown.c bsc_version.c bsc_api.c bsc_vty.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
@@ -26,7 +26,8 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		handover_logic.c handover_decision.c meas_rep.c
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
-		telnet_interface.c vty_interface_cmds.c vty/utils.c
+		telnet_interface.c vty/utils.c common_vty.c \
+		logging_vty.c
 
 libsccp_a_SOURCES = sccp/sccp.c
 

@@ -206,7 +206,7 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	vty_init("Osmocom Gb Proxy", PACKAGE_VERSION, openbsc_copyright);
-	openbsc_vty_add_cmds();
+	logging_vty_add_cmds();
         gbproxy_vty_init();
 
 	handle_options(argc, argv);

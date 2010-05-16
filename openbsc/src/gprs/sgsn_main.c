@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	vty_init("Osmocom SGSN", PACKAGE_VERSION, openbsc_copyright);
-	openbsc_vty_add_cmds();
+	logging_vty_add_cmds();
         sgsn_vty_init();
 
 	rate_ctr_init(tall_bsc_ctx);

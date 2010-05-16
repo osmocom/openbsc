@@ -40,6 +40,7 @@
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/gprs_ns.h>
+#include <openbsc/debug.h>
 
 #include "../bscconfig.h"
 
@@ -1995,6 +1996,24 @@ void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *net)
 		counter_get(net->stats.bts.rsl_fail), VTY_NEWLINE);
 }
 
+DEFUN(logging_fltr_imsi,
+      logging_fltr_imsi_cmd,
+      "logging filter imsi IMSI",
+	LOGGING_STR FILTER_STR
+      "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
+{
+	struct telnet_connection *conn;
+
+	conn = (struct telnet_connection *) vty->priv;
+	if (!conn->dbg) {
+		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	log_set_imsi_filter(conn->dbg, argv[0]);
+	return CMD_SUCCESS;
+}
+
 extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
 
@@ -2006,6 +2025,7 @@ int bsc_vty_init(void)
 	install_element_ve(&show_ts_cmd);
 	install_element_ve(&show_lchan_cmd);
 	install_element_ve(&show_lchan_summary_cmd);
+	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element_ve(&show_e1drv_cmd);
 	install_element_ve(&show_e1line_cmd);
@@ -2013,7 +2033,7 @@ int bsc_vty_init(void)
 
 	install_element_ve(&show_paging_cmd);
 
-	openbsc_vty_add_cmds();
+	logging_vty_add_cmds();
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);

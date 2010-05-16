@@ -55,85 +55,6 @@ struct log_target *log_target_create_vty(struct vty *vty)
 	return target;
 }
 
-/* Down vty node level. */
-gDEFUN(ournode_exit,
-       ournode_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
-{
-	switch (vty->node) {
-	case GSMNET_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case BTS_NODE:
-		vty->node = GSMNET_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts *bts = vty->index;
-			vty->index = bts->network;
-			vty->index_sub = NULL;
-		}
-		break;
-	case TRX_NODE:
-		vty->node = BTS_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx *trx = vty->index;
-			vty->index = trx->bts;
-			vty->index_sub = &trx->bts->description;
-		}
-		break;
-	case TS_NODE:
-		vty->node = TRX_NODE;
-		{
-			/* set vty->index correctly ! */
-			struct gsm_bts_trx_ts *ts = vty->index;
-			vty->index = ts->trx;
-			vty->index_sub = &ts->trx->description;
-		}
-		break;
-	case MGCP_NODE:
-	case GBPROXY_NODE:
-	case SGSN_NODE:
-	case NS_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	default:
-		break;
-	}
-	return CMD_SUCCESS;
-}
-
-/* End of configuration. */
-gDEFUN(ournode_end,
-       ournode_end_cmd, "end", "End current mode and change to enable mode.")
-{
-	switch (vty->node) {
-	case VIEW_NODE:
-	case ENABLE_NODE:
-		/* Nothing to do. */
-		break;
-	case CONFIG_NODE:
-	case GSMNET_NODE:
-	case BTS_NODE:
-	case TRX_NODE:
-	case TS_NODE:
-	case MGCP_NODE:
-	case GBPROXY_NODE:
-	case SGSN_NODE:
-	case NS_NODE:
-	case VTY_NODE:
-		vty_config_unlock(vty);
-		vty->node = ENABLE_NODE;
-		vty->index = NULL;
-		vty->index_sub = NULL;
-		break;
-	default:
-		break;
-	}
-	return CMD_SUCCESS;
-}
-
 DEFUN(enable_logging,
       enable_logging_cmd,
       "logging enable",
@@ -153,24 +74,6 @@ DEFUN(enable_logging,
 		return CMD_WARNING;
 
 	log_add_target(conn->dbg);
-	return CMD_SUCCESS;
-}
-
-DEFUN(logging_fltr_imsi,
-      logging_fltr_imsi_cmd,
-      "logging filter imsi IMSI",
-	LOGGING_STR FILTER_STR
-      "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
-{
-	struct telnet_connection *conn;
-
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	log_set_imsi_filter(conn->dbg, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -429,11 +332,10 @@ gDEFUN(cfg_no_description, cfg_no_description_cmd,
 	return CMD_SUCCESS;
 }
 
-void openbsc_vty_add_cmds()
+void logging_vty_add_cmds()
 {
 	install_element_ve(&enable_logging_cmd);
 	install_element_ve(&disable_logging_cmd);
-	install_element_ve(&logging_fltr_imsi_cmd);
 	install_element_ve(&logging_fltr_all_cmd);
 	install_element_ve(&logging_use_clr_cmd);
 	install_element_ve(&logging_prnt_timestamp_cmd);

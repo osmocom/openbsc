@@ -194,7 +194,7 @@ int main(int argc, char** argv)
 		return -1;
 
 	vty_init("OpenBSC MGCP", PACKAGE_VERSION, openbsc_copyright);
-	openbsc_vty_add_cmds();
+	logging_vty_add_cmds();
 	mgcp_vty_init();
 
 	handle_options(argc, argv);
