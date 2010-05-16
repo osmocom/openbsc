@@ -790,34 +790,49 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 	return 0;
 }
 
-static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb *_data)
+struct msgb *sccp_create_dt1(struct sccp_source_reference *dst_ref, uint8_t *inp_data, uint8_t len)
 {
 	struct msgb *msgb;
 	struct sccp_data_form1 *dt1;
 	u_int8_t *data;
-	int extra_size;
+
+	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
+				   SCCP_MSG_HEADROOM, "sccp dt1");
+	if (!msgb) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to create DT1 msg.\n");
+		return NULL;
+	}
+
+	msgb->l2h = &msgb->data[0];
+
+	dt1 = (struct sccp_data_form1 *) msgb_put(msgb, sizeof(*dt1));
+	dt1->type = SCCP_MSG_TYPE_DT1;
+	memcpy(&dt1->destination_local_reference, dst_ref,
+	       sizeof(struct sccp_source_reference));
+	dt1->segmenting = 0;
+
+	/* copy the data */
+	dt1->variable_start = 1;
+	data = msgb_put(msgb, 1 + len);
+	data[0] = len;
+	memcpy(&data[1], inp_data, len);
+
+	return msgb;
+}
+
+static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb *_data)
+{
+	struct msgb *msgb;
 
 	if (msgb_l3len(_data) < 2 || msgb_l3len(_data) > 256) {
 		LOGP(DSCCP, LOGL_ERROR, "data size too big, segmenting unimplemented.\n");
 		return -1;
 	}
 
-	extra_size = 1 + msgb_l3len(_data);
-	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
-				   SCCP_MSG_HEADROOM, "sccp dt1");
-	msgb->l2h = &msgb->data[0];
-
-	dt1 = (struct sccp_data_form1 *) msgb_put(msgb, sizeof(*dt1));
-	dt1->type = SCCP_MSG_TYPE_DT1;
-	memcpy(&dt1->destination_local_reference, &conn->destination_local_reference,
-	       sizeof(struct sccp_source_reference));
-	dt1->segmenting = 0;
-
-	/* copy the data */
-	dt1->variable_start = 1;
-	data = msgb_put(msgb, extra_size);
-	data[0] = extra_size - 1;
-	memcpy(&data[1], _data->l3h, extra_size - 1);
+	msgb = sccp_create_dt1(&conn->destination_local_reference,
+			       _data->l3h, msgb_l3len(_data));
+	if (!msgb)
+		return -1;
 
 	_send_msg(msgb);
 	return 0;
