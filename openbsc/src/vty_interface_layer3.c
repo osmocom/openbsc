@@ -263,12 +263,12 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 	return sms;
 }
 
-static int _send_sms_buffer(struct gsm_subscriber *receiver,
-			     struct buffer *b, u_int8_t tp_pid)
+static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
+			 u_int8_t tp_pid)
 {
 	struct gsm_sms *sms;
 
-	sms = sms_from_text(receiver, buffer_getstr(b));
+	sms = sms_from_text(receiver, str);
 	sms->protocol_id = tp_pid;
 	gsm411_send_sms_subscr(receiver, sms);
 
@@ -303,7 +303,7 @@ DEFUN(subscriber_send_sms,
 	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
-	struct buffer *b;
+	char *str;
 	int rc;
 
 	if (!subscr) {
@@ -311,9 +311,9 @@ DEFUN(subscriber_send_sms,
 			argv[0], argv[1], VTY_NEWLINE);
 		return CMD_WARNING;
 	}
-	b = vty_argv_to_buffer(argc, argv, 2);
-	rc = _send_sms_buffer(subscr, b, 0);
-	buffer_free(b);
+	str = argv_concat(argv, argc, 2);
+	rc = _send_sms_str(subscr, str, 0);
+	talloc_free(str);
 
 	subscr_put(subscr);
 
@@ -327,7 +327,7 @@ DEFUN(subscriber_silent_sms,
 	"Silent SMS Operation\n" "Send Silent SMS\n" "Actual SMS text\n")
 {
 	struct gsm_subscriber *subscr = get_subscr_by_argv(argv[0], argv[1]);
-	struct buffer *b;
+	char *str;
 	int rc;
 
 	if (!subscr) {
@@ -336,9 +336,9 @@ DEFUN(subscriber_silent_sms,
 		return CMD_WARNING;
 	}
 
-	b = vty_argv_to_buffer(argc, argv, 2);
-	rc = _send_sms_buffer(subscr, b, 64);
-	buffer_free(b);
+	str = argv_concat(argv, argc, 2);
+	rc = _send_sms_str(subscr, str, 0);
+	talloc_free(str);
 
 	subscr_put(subscr);
 
