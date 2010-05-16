@@ -13,11 +13,12 @@
 
 #include <arpa/telnet.h>
 
-#include "cardshell.h"
 #include <vty/vty.h>
 #include <vty/command.h>
 #include <vty/buffer.h>
 #include <osmocore/talloc.h>
+
+#define SYSCONFDIR "/usr/local/etc"
 
 /* our callback, located in telnet_interface.c */
 void vty_event(enum event event, int sock, struct vty *vty);
@@ -468,6 +469,7 @@ static void vty_hist_add(struct vty *vty)
 	vty->hp = vty->hindex;
 }
 
+#define TELNET_OPTION_DEBUG
 /* Get telnet window size. */
 static int
 vty_telnet_option (struct vty *vty, unsigned char *buf, int nbytes)
@@ -1631,8 +1633,12 @@ void vty_init_vtysh()
 
 extern void *tall_bsc_ctx;
 /* Install vty's own commands like `who' command. */
-void vty_init()
+void vty_init(const char *name, const char *version, const char *copyright)
 {
+	host.prog_name = name;
+	host.prog_version = version;
+	host.prog_copyright = copyright;
+
 	tall_vty_ctx = talloc_named_const(NULL, 0, "vty");
 	tall_vty_vec_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_vector");
 	tall_vty_cmd_ctx = talloc_named_const(tall_vty_ctx, 0, "vty_command");

@@ -57,6 +57,10 @@ struct host {
 	/* Banner configuration. */
 	const char *motd;
 	char *motdfile;
+
+	const char *prog_name;
+	const char *prog_version;
+	const char *prog_copyright;
 };
 
 /* There are some command levels which called from command node. */
@@ -377,7 +381,8 @@ extern struct cmd_element config_list_cmd;
 char *host_config_file();
 void host_config_set(const char *);
 
-void print_version(const char *);
+/* This is called from main when a daemon is invoked with -v or --version. */
+void print_version(int print_copyright);
 
 extern void *tall_vty_cmd_ctx;
 

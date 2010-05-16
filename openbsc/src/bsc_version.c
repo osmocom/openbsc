@@ -20,7 +20,6 @@
 
 #include "bscconfig.h"
 
-const char *openbsc_version = "OpenBSC " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\n"
 	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"

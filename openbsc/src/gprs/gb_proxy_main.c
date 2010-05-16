@@ -46,6 +46,8 @@
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
 
+#include <vty/command.h>
+
 #include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
@@ -56,11 +58,8 @@ void subscr_put() { abort(); }
 
 void *tall_bsc_ctx;
 
-const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Harald Welte and On-Waves\n"
-	"Contributions by Daniel Willmann, Jan Lübbe, Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg, Holger Freyther\n\n"
 	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
@@ -175,9 +174,7 @@ static void handle_options(int argc, char **argv)
 			log_set_log_level(stderr_target, atoi(optarg));
 			break;
 		case 'V':
-			printf("%s\n", openbsc_version);
-			printf("\n");
-			puts(openbsc_copyright);
+			print_version(1);
 			exit(0);
 			break;
 		default:
@@ -208,10 +205,11 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
+	telnet_init(&dummy_network, 4246);
+
 	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
-	telnet_init(&dummy_network, 4246);
 
 	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);
 	if (!bssgp_nsi) {
@@ -254,7 +252,7 @@ struct gsm_network;
 int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
-	vty_init();
+	vty_init("Osmocom Gb Proxy", PACKAGE_VERSION, openbsc_copyright);
 
 	openbsc_vty_add_cmds();
         gbproxy_vty_init();

@@ -41,6 +41,8 @@
 #include <openbsc/vty.h>
 #include <openbsc/gprs_ns.h>
 
+#include "../bscconfig.h"
+
 static struct gsm_network *gsmnet;
 
 /* FIXME: this should go to some common file */
@@ -1942,13 +1944,14 @@ DEFUN(cfg_ts_e1_subslot,
 }
 
 extern int bsc_vty_init_extra(struct gsm_network *net);
+extern const char *openbsc_copyright;
 
 int bsc_vty_init(struct gsm_network *net)
 {
 	gsmnet = net;
 
 	cmd_init(1);
-	vty_init();
+	vty_init("OpenBSC", PACKAGE_VERSION, openbsc_copyright);
 
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);

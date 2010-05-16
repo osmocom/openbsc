@@ -42,8 +42,6 @@ static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
-extern const char *openbsc_version;
-extern const char *openbsc_copyright;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -85,16 +83,6 @@ static void print_help()
 	printf("  -V --version. Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
-}
-
-static void print_version()
-{
-	printf("%s\n", openbsc_version);
-}
-
-static void print_copyright()
-{
-	puts(openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
@@ -151,9 +139,7 @@ static void handle_options(int argc, char** argv)
 			log_set_log_level(stderr_target, atoi(optarg));
 			break;
 		case 'V':
-			print_version();
-			printf("\n");
-			print_copyright();
+			print_version(1);
 			exit(0);
 			break;
 		default:
@@ -227,6 +213,11 @@ int main(int argc, char **argv)
 	/* enable filters */
 	log_set_all_filter(stderr_target, 1);
 
+	/* This needs to precede handle_options() as it calls vty_init() */
+	rc = bsc_bootstrap_network(mncc_recv, config_file);
+	if (rc < 0)
+		exit(1);
+
 	/* parse options */
 	handle_options(argc, argv);
 
@@ -249,10 +240,6 @@ int main(int argc, char **argv)
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
 	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
-
-	rc = bsc_bootstrap_network(mncc_recv, config_file);
-	if (rc < 0)
-		exit(1);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

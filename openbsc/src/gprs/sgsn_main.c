@@ -58,11 +58,8 @@ void *tall_bsc_ctx;
 
 struct gprs_ns_inst *sgsn_nsi;
 
-const char *openbsc_version = "Osmocom NSIP Proxy " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Harald Welte and On-Waves\n"
-	"Contributions by Daniel Willmann, Jan Lübbe, Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg, Holger Freyther\n\n"
 	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
 	"This is free software: you are free to change and redistribute it.\n"
 	"There is NO WARRANTY, to the extent permitted by law.\n";
@@ -174,7 +171,7 @@ struct gsm_network;
 int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
-	vty_init();
+	vty_init("Osmocom SGSN", PACKAGE_VERSION, openbsc_copyright);
 
 	openbsc_vty_add_cmds();
         sgsn_vty_init();

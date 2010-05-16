@@ -99,7 +99,6 @@ void telnet_init(struct gsm_network *network, int port) {
 }
 
 extern const char *openbsc_copyright;
-extern const char *openbsc_version;
 
 static void print_welcome(int fd) {
 	int ret;

@@ -128,7 +128,7 @@ static inline char *vty_newline(struct vty *vty)
 }
 
 /* Prototypes. */
-void vty_init (void);
+void vty_init(const char *name, const char *version, const char *copyright);
 int vty_read_config_file(const char *file_name);
 void vty_init_vtysh (void);
 void vty_reset (void);

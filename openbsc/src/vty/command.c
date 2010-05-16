@@ -21,8 +21,6 @@ along with GNU Zebra; see the file COPYING.  If not, write to the
 Free Software Foundation, Inc., 59 Temple Place - Suite 330,
 Boston, MA 02111-1307, USA.  */
 
-#include "cardshell.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,6 +41,8 @@ Boston, MA 02111-1307, USA.  */
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <osmocore/talloc.h>
+
+#define CONFIGFILE_MASK 022
 
 void *tall_vty_cmd_ctx;
 
@@ -81,16 +81,14 @@ struct cmd_node config_node = {
 };
 
 /* Default motd string. */
-const char *default_motd = "\r\n\
-Hello, this is " QUAGGA_PROGNAME " (version " QUAGGA_VERSION ").\r\n\
-" QUAGGA_COPYRIGHT "\r\n\
-\r\n";
+const char *default_motd = "";
 
 /* This is called from main when a daemon is invoked with -v or --version. */
-void print_version(const char *progname)
+void print_version(int print_copyright)
 {
-	printf("%s version %s\n", progname, QUAGGA_VERSION);
-	printf("%s\n", QUAGGA_COPYRIGHT);
+	printf("%s version %s\n", host.prog_name, host.prog_version);
+	if (print_copyright)
+		printf("\n%s\n", host.prog_copyright);
 }
 
 /* Utility function to concatenate argv argument into a single string
@@ -2199,9 +2197,9 @@ gDEFUN(config_exit,
 DEFUN(show_version,
       show_version_cmd, "show version", SHOW_STR "Displays program version\n")
 {
-	vty_out(vty, "%s %s (%s).%s", QUAGGA_PROGNAME, QUAGGA_VERSION,
+	vty_out(vty, "%s %s (%s).%s", host.prog_name, host.prog_version,
 		host.name ? host.name : "", VTY_NEWLINE);
-	vty_out(vty, "%s%s", QUAGGA_COPYRIGHT, VTY_NEWLINE);
+	vty_out(vty, "%s%s", host.prog_copyright, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -2294,7 +2292,8 @@ DEFUN(config_write_file,
 	file_vty->type = VTY_FILE;
 
 	/* Config file header print. */
-	vty_out(file_vty, "!\n! OpenBSC configuration saved from vty\n!   ");
+	vty_out(file_vty, "!\n! %s (%s) configuration saved from vty\n!",
+		host.prog_name, host.prog_version);
 	//vty_time_print (file_vty, 1);
 	vty_out(file_vty, "!\n");
 

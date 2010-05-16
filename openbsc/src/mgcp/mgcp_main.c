@@ -58,7 +58,6 @@ static struct bsc_fd bfd;
 static struct mgcp_config *cfg;
 static int reset_endpoints = 0;
 
-const char *openbsc_version = "OpenBSC MGCP " PACKAGE_VERSION;
 const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
 	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
@@ -77,12 +76,6 @@ static void print_help()
 	printf("Some useful help...\n");
 	printf(" -h --help is printing this text.\n");
 	printf(" -c --config-file filename The config file to use.\n");
-}
-
-static void print_mgcp_version()
-{
-	printf("%s\n\n", openbsc_version);
-	printf("%s", openbsc_copyright);
 }
 
 static void handle_options(int argc, char** argv)
@@ -110,7 +103,7 @@ static void handle_options(int argc, char** argv)
 			config_file = talloc_strdup(tall_bsc_ctx, optarg);
 			break;
 		case 'V':
-			print_mgcp_version();
+			print_version(1);
 			exit(0);
 			break;
 		default:
@@ -200,9 +193,10 @@ int main(int argc, char** argv)
 	if (!cfg)
 		return -1;
 
+	telnet_init(&dummy_network, 4243);
+
 	handle_options(argc, argv);
 
-	telnet_init(&dummy_network, 4243);
         rc = mgcp_parse_config(config_file, cfg);
 	if (rc < 0)
 		return rc;
@@ -264,7 +258,7 @@ struct gsm_network;
 int bsc_vty_init(struct gsm_network *dummy)
 {
 	cmd_init(1);
-	vty_init();
+	vty_init("OpenBSC MGCP", PACKAGE_VERSION, openbsc_copyright);
 
 	openbsc_vty_add_cmds();
         mgcp_vty_init();

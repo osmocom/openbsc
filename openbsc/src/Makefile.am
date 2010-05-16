@@ -7,7 +7,6 @@ SUBDIRS = . ipaccess gprs
 
 sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
-noinst_HEADERS = vty/cardshell.h
 
 bscdir = $(libdir)
 bsc_LIBRARIES = libsccp.a
