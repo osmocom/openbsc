@@ -301,22 +301,66 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 	struct msgb *payload;
 	struct msgb *refuse;
 
-	if (con_type == NAT_CON_TYPE_LU) {
+	if (con_type == NAT_CON_TYPE_LU)
 		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
-		gsm0808_prepend_dtap_header(payload, 0);
-	} else if (con_type == NAT_CON_TYPE_CM_SERV_REQ) {
+	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ)
 		payload = gsm48_create_mm_serv_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+
+	/*
+	 * Some BSCs do not handle the payload inside a SCCP CREF msg
+	 * so we will need to:
+	 * 1.) Allocate a local connection and mark it as local..
+	 * 2.) queue data for downstream.. and the RLC should delete everything
+	 */
+	if (payload) {
+		struct msgb *cc, *udt, *rlsd;
+		struct sccp_connections *con;
+		con = create_sccp_src_ref(bsc, parsed);
+		if (!con)
+			goto send_refuse;
+
+		/* declare it local and assign a unique remote_ref */
+		con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+		con->con_local = 1;
+		con->has_remote_ref = 1;
+		con->remote_ref = con->patched_ref;
+
+		/* 1. create a confirmation */
+		cc = sccp_create_cc(&con->remote_ref, &con->real_ref);
+		if (!cc)
+			goto send_refuse;
+
+		/* 2. create the DT1 */
 		gsm0808_prepend_dtap_header(payload, 0);
+		udt = sccp_create_dt1(&con->real_ref, payload->data, payload->len);
+		if (!udt) {
+			msgb_free(cc);
+			goto send_refuse;
+		}
+
+		/* 3. send a RLSD */
+		rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
+					SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+		if (!rlsd) {
+			msgb_free(cc);
+			msgb_free(udt);
+			goto send_refuse;
+		}
+
+		bsc_write(bsc, cc, IPAC_PROTO_SCCP);
+		bsc_write(bsc, udt, IPAC_PROTO_SCCP);
+		bsc_write(bsc, rlsd, IPAC_PROTO_SCCP);
+		msgb_free(payload);
+		return;
 	}
 
-	refuse = sccp_create_refuse(parsed->src_local_ref,
-				    SCCP_REFUSAL_SCCP_FAILURE,
-				    payload ? payload->data : NULL,
-				    payload ? payload->len : 0);
 
+send_refuse:
 	if (payload)
 		msgb_free(payload);
 
+	refuse = sccp_create_refuse(parsed->src_local_ref,
+				    SCCP_REFUSAL_SCCP_FAILURE, NULL, 0);
 	if (!refuse) {
 		LOGP(DNAT, LOGL_ERROR,
 		     "Creating refuse msg failed for SCCP 0x%x on BSC Nr: %d.\n",
