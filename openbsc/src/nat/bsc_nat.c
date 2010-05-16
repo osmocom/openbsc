@@ -644,7 +644,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_CR:
 			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type) != 0)
 				goto exit3;
-			if (create_sccp_src_ref(bsc, parsed) != 0)
+			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			con->con_type = con_type;
