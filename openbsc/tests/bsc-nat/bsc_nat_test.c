@@ -294,7 +294,7 @@ static void test_contrack()
 		fprintf(stderr, "Con should not exist %p\n", con_found);
 		abort();
 	}
-	rc = create_sccp_src_ref(con, msg, parsed);
+	rc = create_sccp_src_ref(con, parsed);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to create a ref\n");
 		abort();
