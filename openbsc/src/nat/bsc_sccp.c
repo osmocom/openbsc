@@ -82,7 +82,7 @@ static int assign_src_local_reference(struct sccp_source_reference *ref, struct 
 	return -1;
 }
 
-int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed)
+int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 
