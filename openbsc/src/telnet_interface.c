@@ -53,7 +53,8 @@ static struct bsc_fd server_socket = {
 	.priv_nr    = 0,
 };
 
-void telnet_init(struct gsm_network *network, int port) {
+void telnet_init(struct gsm_network *network, int port)
+{
 	struct sockaddr_in sock_addr;
 	int fd, on = 1;
 
@@ -93,7 +94,8 @@ void telnet_init(struct gsm_network *network, int port) {
 
 extern const char *openbsc_copyright;
 
-static void print_welcome(int fd) {
+static void print_welcome(int fd)
+{
 	int ret;
 	static char *msg =
 		"Welcome to the OpenBSC Control interface\n";
@@ -102,7 +104,8 @@ static void print_welcome(int fd) {
 	ret = write(fd, openbsc_copyright, strlen(openbsc_copyright));
 }
 
-int telnet_close_client(struct bsc_fd *fd) {
+int telnet_close_client(struct bsc_fd *fd)
+{
 	struct telnet_connection *conn = (struct telnet_connection*)fd->data;
 
 	close(fd->fd);
@@ -141,7 +144,8 @@ static int client_data(struct bsc_fd *fd, unsigned int what)
 	return rc;
 }
 
-static int telnet_new_connection(struct bsc_fd *fd, unsigned int what) {
+static int telnet_new_connection(struct bsc_fd *fd, unsigned int what)
+{
 	struct telnet_connection *connection;
 	struct sockaddr_in sockaddr;
 	socklen_t len = sizeof(sockaddr);
