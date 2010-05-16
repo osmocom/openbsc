@@ -395,6 +395,7 @@ static const char *con_types [] = {
 	[NAT_CON_TYPE_LU] = "Location Update",
 	[NAT_CON_TYPE_CM_SERV_REQ] = "CM Serv Req",
 	[NAT_CON_TYPE_PAG_RESP] = "Paging Response",
+	[NAT_CON_TYPE_LOCAL_REJECT] = "Local Reject",
 	[NAT_CON_TYPE_OTHER] = "Other",
 };
 
