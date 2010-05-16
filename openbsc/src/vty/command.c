@@ -36,14 +36,9 @@ Boston, MA 02111-1307, USA.  */
 #include <sys/time.h>
 #include <sys/stat.h>
 
-//#include "memory.h"
-//#include "log.h"
-//#include <lib/version.h>
-//#include "thread.h"
 #include <vty/vector.h>
 #include <vty/vty.h>
 #include <vty/command.h>
-//#include "workqueue.h"
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
@@ -91,76 +86,13 @@ Hello, this is " QUAGGA_PROGNAME " (version " QUAGGA_VERSION ").\r\n\
 " QUAGGA_COPYRIGHT "\r\n\
 \r\n";
 
-#if 0
-static struct facility_map {
-	int facility;
-	const char *name;
-	size_t match;
-} syslog_facilities[] = {
-	{
-	LOG_KERN, "kern", 1}, {
-	LOG_USER, "user", 2}, {
-	LOG_MAIL, "mail", 1}, {
-	LOG_DAEMON, "daemon", 1}, {
-	LOG_AUTH, "auth", 1}, {
-	LOG_SYSLOG, "syslog", 1}, {
-	LOG_LPR, "lpr", 2}, {
-	LOG_NEWS, "news", 1}, {
-	LOG_UUCP, "uucp", 2}, {
-	LOG_CRON, "cron", 1},
-#ifdef LOG_FTP
-	{
-	LOG_FTP, "ftp", 1},
-#endif
-	{
-	LOG_LOCAL0, "local0", 6}, {
-	LOG_LOCAL1, "local1", 6}, {
-	LOG_LOCAL2, "local2", 6}, {
-	LOG_LOCAL3, "local3", 6}, {
-	LOG_LOCAL4, "local4", 6}, {
-	LOG_LOCAL5, "local5", 6}, {
-	LOG_LOCAL6, "local6", 6}, {
-	LOG_LOCAL7, "local7", 6}, {
-0, NULL, 0},};
-
-static const char *facility_name(int facility)
-{
-	struct facility_map *fm;
-
-	for (fm = syslog_facilities; fm->name; fm++)
-		if (fm->facility == facility)
-			return fm->name;
-	return "";
-}
-
-static int facility_match(const char *str)
-{
-	struct facility_map *fm;
-
-	for (fm = syslog_facilities; fm->name; fm++)
-		if (!strncmp(str, fm->name, fm->match))
-			return fm->facility;
-	return -1;
-}
-
-static int level_match(const char *s)
-{
-	int level;
-
-	for (level = 0; zlog_priority[level] != NULL; level++)
-		if (!strncmp(s, zlog_priority[level], 2))
-			return level;
-	return ZLOG_DISABLED;
-}
-#endif
-
 /* This is called from main when a daemon is invoked with -v or --version. */
 void print_version(const char *progname)
 {
 	printf("%s version %s\n", progname, QUAGGA_VERSION);
 	printf("%s\n", QUAGGA_COPYRIGHT);
 }
-
+
 /* Utility function to concatenate argv argument into a single string
    with inserting ' ' character between each argument.  */
 char *argv_concat(const char **argv, int argc, int shift)
@@ -535,60 +467,6 @@ static int config_write_host(struct vty *vty)
 				VTY_NEWLINE);
 	}
 
-#if 0
-	if (zlog_default->default_lvl != LOG_DEBUG) {
-		vty_out(vty, "! N.B. The 'log trap' command is deprecated.%s",
-			VTY_NEWLINE);
-		vty_out(vty, "log trap %s%s",
-			zlog_priority[zlog_default->default_lvl], VTY_NEWLINE);
-	}
-
-	if (host.logfile
-	    && (zlog_default->maxlvl[ZLOG_DEST_FILE] != ZLOG_DISABLED)) {
-		vty_out(vty, "log file %s", host.logfile);
-		if (zlog_default->maxlvl[ZLOG_DEST_FILE] !=
-		    zlog_default->default_lvl)
-			vty_out(vty, " %s",
-				zlog_priority[zlog_default->
-					      maxlvl[ZLOG_DEST_FILE]]);
-		vty_out(vty, "%s", VTY_NEWLINE);
-	}
-
-	if (zlog_default->maxlvl[ZLOG_DEST_STDOUT] != ZLOG_DISABLED) {
-		vty_out(vty, "log stdout");
-		if (zlog_default->maxlvl[ZLOG_DEST_STDOUT] !=
-		    zlog_default->default_lvl)
-			vty_out(vty, " %s",
-				zlog_priority[zlog_default->
-					      maxlvl[ZLOG_DEST_STDOUT]]);
-		vty_out(vty, "%s", VTY_NEWLINE);
-	}
-
-	if (zlog_default->maxlvl[ZLOG_DEST_MONITOR] == ZLOG_DISABLED)
-		vty_out(vty, "no log monitor%s", VTY_NEWLINE);
-	else if (zlog_default->maxlvl[ZLOG_DEST_MONITOR] !=
-		 zlog_default->default_lvl)
-		vty_out(vty, "log monitor %s%s",
-			zlog_priority[zlog_default->maxlvl[ZLOG_DEST_MONITOR]],
-			VTY_NEWLINE);
-
-	if (zlog_default->maxlvl[ZLOG_DEST_SYSLOG] != ZLOG_DISABLED) {
-		vty_out(vty, "log syslog");
-		if (zlog_default->maxlvl[ZLOG_DEST_SYSLOG] !=
-		    zlog_default->default_lvl)
-			vty_out(vty, " %s",
-				zlog_priority[zlog_default->
-					      maxlvl[ZLOG_DEST_SYSLOG]]);
-		vty_out(vty, "%s", VTY_NEWLINE);
-	}
-
-	if (zlog_default->facility != LOG_DAEMON)
-		vty_out(vty, "log facility %s%s",
-			facility_name(zlog_default->facility), VTY_NEWLINE);
-
-	if (zlog_default->record_priority == 1)
-		vty_out(vty, "log record-priority%s", VTY_NEWLINE);
-#endif
 	if (host.advanced)
 		vty_out(vty, "service advanced-vty%s", VTY_NEWLINE);
 
@@ -614,51 +492,6 @@ static vector cmd_node_vector(vector v, enum node_type ntype)
 	struct cmd_node *cnode = vector_slot(v, ntype);
 	return cnode->cmd_vector;
 }
-
-#if 0
-/* Filter command vector by symbol.  This function is not actually used;
- * should it be deleted? */
-static int cmd_filter_by_symbol(char *command, char *symbol)
-{
-	int i, lim;
-
-	if (strcmp(symbol, "IPV4_ADDRESS") == 0) {
-		i = 0;
-		lim = strlen(command);
-		while (i < lim) {
-			if (!
-			    (isdigit((int)command[i]) || command[i] == '.'
-			     || command[i] == '/'))
-				return 1;
-			i++;
-		}
-		return 0;
-	}
-	if (strcmp(symbol, "STRING") == 0) {
-		i = 0;
-		lim = strlen(command);
-		while (i < lim) {
-			if (!
-			    (isalpha((int)command[i]) || command[i] == '_'
-			     || command[i] == '-'))
-				return 1;
-			i++;
-		}
-		return 0;
-	}
-	if (strcmp(symbol, "IFNAME") == 0) {
-		i = 0;
-		lim = strlen(command);
-		while (i < lim) {
-			if (!isalnum((int)command[i]))
-				return 1;
-			i++;
-		}
-		return 0;
-	}
-	return 0;
-}
-#endif
 
 /* Completion match types. */
 enum match_type {
