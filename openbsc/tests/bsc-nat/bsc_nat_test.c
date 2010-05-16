@@ -273,10 +273,10 @@ static void copy_to_msg(struct msgb *msg, const u_int8_t *data, unsigned int len
 /* test conn tracking once */
 static void test_contrack()
 {
-	int rc;
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
 	struct sccp_connections *con_found;
+	struct sccp_connections *rc_con;
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
@@ -294,14 +294,18 @@ static void test_contrack()
 		fprintf(stderr, "Con should not exist %p\n", con_found);
 		abort();
 	}
-	rc = create_sccp_src_ref(con, parsed);
-	if (rc != 0) {
+	rc_con = create_sccp_src_ref(con, parsed);
+	if (!rc_con) {
 		fprintf(stderr, "Failed to create a ref\n");
 		abort();
 	}
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (!con_found || con_found->bsc != con) {
 		fprintf(stderr, "Failed to find the con: %p\n", con_found);
+		abort();
+	}
+	if (con_found != rc_con) {
+		fprintf(stderr, "Failed to find the right connection.\n");
 		abort();
 	}
 	if (memcmp(msg->data, bsc_cr_patched, sizeof(bsc_cr_patched)) != 0) {

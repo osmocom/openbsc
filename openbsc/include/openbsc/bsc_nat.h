@@ -281,7 +281,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 /**
  * SCCP patching and handling
  */
-int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed);
+struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed);
 int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed);
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
 struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);

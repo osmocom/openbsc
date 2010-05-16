@@ -82,7 +82,8 @@ static int assign_src_local_reference(struct sccp_source_reference *ref, struct 
 	return -1;
 }
 
-int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parsed)
+struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc,
+					     struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
 
@@ -101,11 +102,11 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parse
 			bsc_mgcp_dlcx(conn);
 			llist_del(&conn->list_entry);
 			talloc_free(conn);
-			return -1;
+			return NULL;
 		} else {
 			clock_gettime(CLOCK_MONOTONIC, &conn->creation_time);
 			bsc_mgcp_dlcx(conn);
-			return 0;
+			return conn;
 		}
 	}
 
@@ -113,7 +114,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parse
 	conn = talloc_zero(bsc->nat, struct sccp_connections);
 	if (!conn) {
 		LOGP(DNAT, LOGL_ERROR, "Memory allocation failure.\n");
-		return -1;
+		return NULL;
 	}
 
 	conn->bsc = bsc;
@@ -122,7 +123,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parse
 	if (assign_src_local_reference(&conn->patched_ref, bsc->nat) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");
 		talloc_free(conn);
-		return -1;
+		return NULL;
 	}
 
 	bsc_mgcp_init(conn);
@@ -134,7 +135,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct bsc_nat_parsed *parse
 	     sccp_src_ref_to_int(&conn->real_ref),
 	     sccp_src_ref_to_int(&conn->patched_ref), bsc);
 
-	return 0;
+	return conn;
 }
 
 int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *parsed)
