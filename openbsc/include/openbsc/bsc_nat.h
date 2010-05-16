@@ -126,6 +126,7 @@ struct sccp_connections {
 
 	/* status */
 	int con_type;
+	int con_local;
 
 	/* GSM audio handling. That is 32 * multiplex + ts */
 	int crcx;
