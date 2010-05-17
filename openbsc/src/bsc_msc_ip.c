@@ -1233,7 +1233,9 @@ int main(int argc, char **argv)
 	if (msc_address)
 		msc = msc_address;
 
-	bsc_gsmnet->msc_con = bsc_msc_create(msc, bsc_gsmnet->msc_port);
+	bsc_gsmnet->msc_con = bsc_msc_create(msc,
+					     bsc_gsmnet->msc_port,
+					     bsc_gsmnet->msc_prio);
 	if (!bsc_gsmnet->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);

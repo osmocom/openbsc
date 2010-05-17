@@ -27,6 +27,7 @@
 #include <vty/vty.h>
 
 #include <arpa/inet.h>
+#include <netinet/ip.h>
 
 #include <osmocore/linuxlist.h>
 #include <openbsc/gsm_data.h>
@@ -482,6 +483,7 @@ static int config_write_net(struct vty *vty)
 		vty_out(vty, " bsc_token %s%s", gsmnet->bsc_token, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", gsmnet->msc_ip, VTY_NEWLINE);
 	vty_out(vty, " msc port %d%s", gsmnet->msc_port, VTY_NEWLINE);
+	vty_out(vty, " msc ip-tos %d%s", gsmnet->msc_prio, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", gsmnet->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", gsmnet->pong_timeout, VTY_NEWLINE);
 
@@ -1347,6 +1349,15 @@ DEFUN(cfg_net_msc_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_prio,
+      cfg_net_msc_prio_cmd,
+      "msc ip-tos <0-255>",
+      "Set the IP_TOS socket attribite")
+{
+	gsmnet->msc_prio = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_ping_time,
       cfg_net_ping_time_cmd,
       "timeout ping NR",
@@ -2114,6 +2125,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 	install_element(GSMNET_NODE, &cfg_net_msc_ip_cmd);
 	install_element(GSMNET_NODE, &cfg_net_msc_port_cmd);
+	install_element(GSMNET_NODE, &cfg_net_msc_prio_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ping_time_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pong_time_cmd);
 

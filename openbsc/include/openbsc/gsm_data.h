@@ -675,6 +675,7 @@ struct gsm_network {
 	char *bsc_token;
 	char *msc_ip;
 	int msc_port;
+	int msc_prio;
 	struct bsc_msc_connection *msc_con;
 	int ping_timeout;
 	int pong_timeout;

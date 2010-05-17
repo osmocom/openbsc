@@ -32,6 +32,7 @@ struct bsc_msc_connection {
 	int is_authenticated;
 	const char *ip;
 	int port;
+	int prio;
 
 	void (*connection_loss) (struct bsc_msc_connection *);
 	void (*connected) (struct bsc_msc_connection *);
@@ -39,7 +40,7 @@ struct bsc_msc_connection {
 	struct timer_list timeout_timer;
 };
 
-struct bsc_msc_connection *bsc_msc_create(const char *ip, int port);
+struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio);
 int bsc_msc_connect(struct bsc_msc_connection *);
 void bsc_msc_schedule_connect(struct bsc_msc_connection *);
 
