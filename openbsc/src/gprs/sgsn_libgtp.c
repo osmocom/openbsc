@@ -49,12 +49,6 @@
 #include <gtp.h>
 #include <pdp.h>
 
-struct ggsn_ctx {
-	unsigned int gtp_version;
-	struct in_addr remote_addr;
-	struct gsn_t *gsn;
-};
-
 const struct value_string gtp_cause_strs[] = {
 	{ GTPCAUSE_REQ_IMSI, "Request IMSI" },
 	{ GTPCAUSE_REQ_IMEI, "Request IMEI" },
@@ -96,18 +90,30 @@ const struct value_string gtp_cause_strs[] = {
 
 /* generate a PDP context based on the IE's from the 04.08 message,
  * and send the GTP create pdp context request to the GGSN */
-int sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn, struct sgsn_mm_ctx *mmctx,
-			uint16_t nsapi, struct tlv_parsed *tp)
+struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
+					 struct sgsn_mm_ctx *mmctx,
+					 uint16_t nsapi,
+					 struct tlv_parsed *tp)
 {
+	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
 	uint64_t imsi_ui64;
 	int rc;
 
+	pctx = sgsn_pdp_ctx_alloc(mmctx, nsapi);
+	if (!pctx) {
+		LOGP(DGPRS, LOGL_ERROR, "Couldn't allocate PDP Ctx\n");
+		return NULL;
+	}
+
 	rc = pdp_newpdp(&pdp, imsi_ui64, nsapi, NULL);
 	if (rc) {
-		LOGP(DGPRS, LOGL_ERROR, "Out of PDP Contexts\n");
-		return -ENOMEM;
+		LOGP(DGPRS, LOGL_ERROR, "Out of libgtp PDP Contexts\n");
+		return NULL;
 	}
+	pctx->lib = pdp;
+	pctx->ggsn = ggsn;
+
 	//pdp->peer =	/* sockaddr_in of GGSN (receive) */
 	//pdp->ipif =	/* not used by library */
 	pdp->version = ggsn->gtp_version;
@@ -166,14 +172,16 @@ int sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn, struct sgsn_mm_ctx *mmctx,
 
 	/* FIXME: change pdp state to 'requested' */
 
-	/* FIXME: pass along a pointer to the MM CTX */
-	return gtp_create_context_req(ggsn->gsn, pdp, mmctx);
+	rc = gtp_create_context_req(ggsn->gsn, pdp, pctx);
+	/* FIXME */
+
+	return pctx;
 }
 
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
-	struct sgsn_mm_ctx *mmctx = cbp;
+	struct sgsn_pdp_ctx *pctx = cbp;
 
 	DEBUGP(DGPRS, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
@@ -197,7 +205,6 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		return EOF;
 	}
 
-	/* FIXME: Determine MM ctx for the PDP ctx */
 	/* FIXME: Send PDP CTX ACT ACK/REJ to MS */
 	return 0;
 }

@@ -47,6 +47,9 @@
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/sgsn.h>
+
+extern struct sgsn_instance *sgsn;
 
 /* Protocol related stuff, should go into libosmocore */
 
@@ -266,20 +269,17 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 }
 
 /* Parse Chapter 9.4.13 Identity Response */
-static int gsm48_rx_gmm_id_resp(struct msgb *msg)
+static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
-	struct sgsn_mm_ctx *ctx;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
 		mi_type, mi_string);
 
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	ctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
 	if (!ctx) {
 		DEBUGP(DMM, "from unknown TLLI 0x%08x?!?\n", msgb_tlli(msg));
 		return -EINVAL;
@@ -323,7 +323,7 @@ static void schedule_reject(struct sgsn_mm_ctx *ctx)
 }
 
 /* Section 9.4.1 Attach request */
-static int gsm48_rx_gmm_att_req(struct msgb *msg)
+static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info;
@@ -428,20 +428,10 @@ err_inval:
 }
 
 /* Section 4.7.4.1 / 9.4.5.2 MO Detach request */
-static int gsm48_rx_gmm_det_req(struct msgb *msg)
+static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	struct sgsn_mm_ctx *ctx;
 	uint8_t detach_type, power_off;
-	struct gprs_ra_id ra_id;
-
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	ctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
-	if (!ctx) {
-		LOGP(DMM, LOGL_NOTICE, "-> GMM DETACH REQUEST for unknown "
-			"TLLI=0x%08x\n", msgb_tlli(msg));
-		/* FIXME: send detach reject */
-	}
 
 	detach_type = gh->data[0] & 0x7;
 	power_off = gh->data[0] & 0x8;
@@ -508,10 +498,9 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 }
 
 /* Chapter 9.4.14: Routing area update request */
-static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
+static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	struct sgsn_mm_ctx *mmctx;
 	uint8_t *cur = gh->data;
 	struct gprs_ra_id old_ra_id;
 	uint8_t upd_type;
@@ -543,7 +532,6 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 	}
 
 	/* Look-up the MM context based on old RA-ID and TLLI */
-	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &old_ra_id);
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
@@ -561,7 +549,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct msgb *msg)
 	return gsm48_tx_gmm_ra_upd_ack(msg);
 }
 
-static int gsm48_rx_gmm_status(struct msgb *msg)
+static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
@@ -572,26 +560,34 @@ static int gsm48_rx_gmm_status(struct msgb *msg)
 }
 
 /* GPRS Mobility Management */
-static int gsm0408_rcv_gmm(struct msgb *msg)
+static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
+	if (!mmctx &&
+	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
+	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
+		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
+		return -EINVAL;
+	}
+
+
 	switch (gh->msg_type) {
 	case GSM48_MT_GMM_RA_UPD_REQ:
-		rc = gsm48_rx_gmm_ra_upd_req(msg);
+		rc = gsm48_rx_gmm_ra_upd_req(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
-		rc = gsm48_rx_gmm_att_req(msg);
+		rc = gsm48_rx_gmm_att_req(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_ID_RESP:
-		rc = gsm48_rx_gmm_id_resp(msg);
+		rc = gsm48_rx_gmm_id_resp(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_STATUS:
-		rc = gsm48_rx_gmm_status(msg);
+		rc = gsm48_rx_gmm_status(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_DETACH_REQ:
-		rc = gsm48_rx_gmm_det_req(msg);
+		rc = gsm48_rx_gmm_det_req(mmctx, msg);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -666,7 +662,8 @@ static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_c
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
-static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
+static int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mmctx,
+				      struct msgb *old_msg)
 {
 	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
@@ -685,7 +682,8 @@ static int gsm48_tx_gsm_deact_pdp_acc(struct msgb *old_msg)
 }
 
 /* Section 9.5.1: Activate PDP Context Request */
-static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
+static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
+				    struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
@@ -743,25 +741,31 @@ static int gsm48_rx_gsm_act_pdp_req(struct msgb *msg)
 	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_APN)) {}
 	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_PROTO_CONF_OPT)) {}
 
-#if 0
-	return sgsn_create_pdp_ctx(ggsn, &tp);
+#if 1
+	{
+		struct ggsn_ctx ggsn;
+		ggsn.gtp_version = 1;
+		inet_aton("192.168.100.239", &ggsn.remote_addr);
+		ggsn.gsn = sgsn->gsn;
+		return sgsn_create_pdp_ctx(ggsn, mmctx, 5, &tp);
+	}
 #else
 	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
 #endif
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
-static int gsm48_rx_gsm_deact_pdp_req(struct msgb *msg)
+static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 
 	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
-	return gsm48_tx_gsm_deact_pdp_acc(msg);
+	return gsm48_tx_gsm_deact_pdp_acc(ctx, msg);
 }
 
-static int gsm48_rx_gsm_status(struct msgb *msg)
+static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
@@ -772,19 +776,24 @@ static int gsm48_rx_gsm_status(struct msgb *msg)
 }
 
 /* GPRS Session Management */
-static int gsm0408_rcv_gsm(struct msgb *msg)
+static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
 
+	if (!mmctx) {
+		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
+		return -EINVAL;
+	}
+
 	switch (gh->msg_type) {
 	case GSM48_MT_GSM_ACT_PDP_REQ:
-		rc = gsm48_rx_gsm_act_pdp_req(msg);
+		rc = gsm48_rx_gsm_act_pdp_req(mmctx, msg);
 		break;
 	case GSM48_MT_GSM_DEACT_PDP_REQ:
-		rc = gsm48_rx_gsm_deact_pdp_req(msg);
+		rc = gsm48_rx_gsm_deact_pdp_req(mmctx, msg);
 	case GSM48_MT_GSM_STATUS:
-		rc = gsm48_rx_gsm_status(msg);
+		rc = gsm48_rx_gsm_status(mmctx, msg);
 		break;
 	case GSM48_MT_GSM_REQ_PDP_ACT_REJ:
 	case GSM48_MT_GSM_ACT_AA_PDP_REQ:
@@ -807,14 +816,21 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gh->proto_discr & 0x0f;
+	struct sgsn_mm_ctx *mmctx;
+	struct gprs_ra_id ra_id;
 	int rc = -EINVAL;
+
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
+
+	/* MMCTX can be NULL */
 
 	switch (pdisc) {
 	case GSM48_PDISC_MM_GPRS:
-		rc = gsm0408_rcv_gmm(msg);
+		rc = gsm0408_rcv_gmm(mmctx, msg);
 		break;
 	case GSM48_PDISC_SM_GPRS:
-		rc = gsm0408_rcv_gsm(msg);
+		rc = gsm0408_rcv_gsm(mmctx, msg);
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 discriminator 0x%02x\n",

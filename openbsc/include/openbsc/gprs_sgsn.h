@@ -2,6 +2,9 @@
 #define _GPRS_SGSN_H
 
 #include <stdint.h>
+#include <netinet/in.h>
+
+#include <osmocore/gsm48.h>
 
 #define GSM_IMSI_LENGTH 17
 #define GSM_IMEI_LENGTH 17
@@ -72,39 +75,6 @@ struct sgsn_mm_ctx {
 	unsigned int		T;
 };
 
-enum pdp_ctx_state {
-	PDP_STAE_NONE,
-};
-
-enum pdp_type {
-	PDP_TYPE_NONE,
-};
-
-struct sgsn_pdp_ctx {
-	struct llist_head	list;
-
-	unsigned int		id;
-	enum pdp_ctx_state	state;
-	enum pdp_type		type;
-	uint32_t		address;
-	char 			*apn_subscribed;
-	char 			*apn_used;
-	uint16_t		nsapi;
-	uint8_t			ti;	/* transaction identifier */
-	uint32_t		ggsn_in_use;
-	int			vplmn_allowed;
-	uint32_t		qos_profile_subscr;
-	uint32_t		qos_profile_req;
-	uint32_t		qos_profile_neg;
-	uint8_t			radio_prio;
-	uint32_t		tx_npdu_nr;
-	uint32_t		rx_npdu_nr;
-	uint32_t		tx_gtp_snd;
-	uint32_t		rx_gtp_snu;
-	uint32_t		charging_id;
-	int			reordering_reqd;
-};
-
 /* look-up a SGSN MM context based on TLLI + RAI */
 struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid);
@@ -114,5 +84,73 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
 /* Allocate a new SGSN MM context */
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid);
+
+
+enum pdp_ctx_state {
+	PDP_STATE_NONE,
+};
+
+enum pdp_type {
+	PDP_TYPE_NONE,
+};
+
+struct sgsn_pdp_ctx {
+	struct llist_head	list;	/* list_head for mmctx->pdp_list */
+	struct llist_head	g_list;	/* list_head for global list */
+	struct sgsn_mm_ctx	*mm;	/* back pointer to MM CTX */
+	struct sgsn_ggsn_ctx	*ggsn;	/* which GGSN serves this PDP */
+
+	//unsigned int		id;
+	struct pdp_t		*lib;	/* pointer to libgtp PDP ctx */
+	enum pdp_ctx_state	state;
+	enum pdp_type		type;
+	uint32_t		address;
+	char 			*apn_subscribed;
+	//char 			*apn_used;
+	uint16_t		nsapi;
+	uint8_t			ti;	/* transaction identifier */
+	int			vplmn_allowed;
+	uint32_t		qos_profile_subscr;
+	//uint32_t		qos_profile_req;
+	//uint32_t		qos_profile_neg;
+	uint8_t			radio_prio;
+	uint32_t		tx_npdu_nr;
+	uint32_t		rx_npdu_nr;
+	uint32_t		tx_gtp_snd;
+	uint32_t		rx_gtp_snu;
+	//uint32_t		charging_id;
+	int			reordering_reqd;
+};
+
+
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
+					   uint8_t nsapi);
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
+					uint8_t nsapi);
+void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp);
+
+
+struct ggsn_ctx {
+	struct llist_head list;
+	uint32_t id;
+	unsigned int gtp_version;
+	struct in_addr remote_addr;
+	struct gsn_t *gsn;
+};
+struct ggsn_ctx *ggsn_ctx_alloc(uint32_t id);
+struct ggsn_ctx *ggsn_ctx_by_id(uint32_t id);
+struct ggsn_ctx *ggsn_ctx_find_alloc(uint32_t id);
+
+struct apn_ctx {
+	struct llist_head list;
+	struct ggsn_ctx *ggsn;
+	char *name;
+	char *description;
+};
+
+extern struct llist_head sgsn_mm_ctxts;
+extern struct llist_head sgsn_ggsn_ctxts;
+extern struct llist_head sgsn_apn_ctxts;
+extern struct llist_head sgsn_pdp_ctxts;
 
 #endif /* _GPRS_SGSN_H */

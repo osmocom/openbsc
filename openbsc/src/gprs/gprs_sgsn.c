@@ -31,7 +31,10 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
 
-static LLIST_HEAD(sgsn_mm_ctxts);
+LLIST_HEAD(sgsn_mm_ctxts);
+LLIST_HEAD(sgsn_ggsn_ctxts);
+LLIST_HEAD(sgsn_apn_ctxts);
+LLIST_HEAD(sgsn_pdp_ctxts);
 
 static int ra_id_equals(const struct gprs_ra_id *id1,
 			const struct gprs_ra_id *id2)
@@ -95,3 +98,118 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 
 	return ctx;
 }
+
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
+					   uint8_t nsapi)
+{
+	struct sgsn_pdp_ctx *pdp;
+
+	llist_for_each_entry(pdp, &mm->pdp_list, list) {
+		if (pdp->nsapi == nsapi)
+			return pdp;
+	}
+	return NULL;
+}
+
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
+					uint8_t nsapi)
+{
+	struct sgsn_pdp_ctx *pdp;
+
+	pdp = sgsn_pdp_ctx_by_nsapi(mm, nsapi);
+	if (pdp)
+		return NULL;
+
+	pdp = talloc_zero(tall_bsc_ctx, struct sgsn_pdp_ctx);
+	if (!pdp)
+		return NULL;
+
+	pdp->mm = mm;
+	pdp->nsapi = nsapi;
+	llist_add(&pdp->list, &mm->pdp_list);
+	llist_add(&pdp->g_list, &sgsn_pdp_ctxts);
+
+	return pdp;
+}
+
+void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
+{
+	llist_del(&pdp->list);
+	llist_del(&pdp->g_list);
+	talloc_free(pdp);
+}
+
+/* GGSN contexts */
+
+struct ggsn_ctx *ggsn_ctx_alloc(uint32_t id)
+{
+	struct ggsn_ctx *ggc;
+
+	ggc = talloc_zero(tall_bsc_ctx, struct ggsn_ctx);
+	if (!ggc)
+		return NULL;
+
+	ggc->id = id;
+	ggc->gtp_version = 1;
+
+	return ggc;
+}
+
+struct ggsn_ctx *ggsn_ctx_by_id(uint32_t id)
+{
+	struct ggsn_ctx *ggc;
+
+	llist_for_each_entry(ggc, &sgsn_ggsn_ctxts, list) {
+		if (id == ggc->id)
+			return ggc;
+	}
+	return NULL;
+}
+
+struct ggsn_ctx *ggsn_ctx_find_alloc(uint32_t id)
+{
+	struct ggsn_ctx *ggc;
+
+	ggc = ggsn_ctx_by_id(id);
+	if (!ggc)
+		ggc = ggsn_ctx_alloc(id);
+	return ggc;
+}
+
+/* APN contexts */
+
+#if 0
+struct apn_ctx *apn_ctx_alloc(const char *ap_name)
+{
+	struct apn_ctx *actx;
+
+	actx = talloc_zero(talloc_bsc_ctx, struct apn_ctx);
+	if (!actx)
+		return NULL;
+	actx->name = talloc_strdup(actx, ap_name);
+
+	return actx;
+}
+
+struct apn_ctx *apn_ctx_by_name(const char *name)
+{
+	struct apn_ctx *actx;
+
+	llist_for_each_entry(actx, &sgsn_apn_ctxts, list) {
+		if (!strcmp(name, actx->name))
+			return actx;
+	}
+	return NULL;
+}
+
+struct apn_ctx *apn_ctx_find_alloc(const char *name)
+{
+	struct apn_ctx *actx;
+
+	actx = apn_ctx_by_name(name);
+	if (!actx)
+		actx = apn_ctx_alloc(name);
+
+	return actx;
+}
+#endif
