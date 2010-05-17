@@ -176,7 +176,8 @@ static const struct log_info_cat default_categories[] = {
 enum log_filter {
 	_FLT_ALL = LOG_FILTER_ALL,	/* libosmocore */
 	FLT_IMSI = 1,
-	FLT_NSVC = 1,
+	FLT_NSVC = 2,
+	FLT_BVC  = 3,
 };
 
 static int filter_fn(const struct log_context *ctx,
@@ -184,6 +185,7 @@ static int filter_fn(const struct log_context *ctx,
 {
 	struct gsm_subscriber *subscr = ctx->ctx[BSC_CTX_SUBSCR];
 	const struct gprs_nsvc *nsvc = ctx->ctx[BSC_CTX_NSVC];
+	const struct gprs_nsvc *bvc = ctx->ctx[BSC_CTX_BVC];
 
 	if ((tar->filter_map & (1 << FLT_IMSI)) != 0
 	    && subscr && strcmp(subscr->imsi, tar->filter_data[FLT_IMSI]) == 0)
@@ -192,6 +194,11 @@ static int filter_fn(const struct log_context *ctx,
 	/* Filter on the NS Virtual Connection */
 	if ((tar->filter_map & (1 << FLT_NSVC)) != 0
 	    && nsvc && (nsvc == tar->filter_data[FLT_NSVC]))
+		return 1;
+
+	/* Filter on the NS Virtual Connection */
+	if ((tar->filter_map & (1 << FLT_BVC)) != 0
+	    && bvc && (bvc == tar->filter_data[FLT_BVC]))
 		return 1;
 
 	return 0;
@@ -224,5 +231,17 @@ void log_set_nsvc_filter(struct log_target *target,
 	} else if (target->filter_data[FLT_NSVC]) {
 		target->filter_map = ~(1 << FLT_NSVC);
 		target->filter_data[FLT_NSVC] = NULL;
+	}
+}
+
+void log_set_bvc_filter(struct log_target *target,
+			const struct bssgp_bvc_ctx *bctx)
+{
+	if (bctx) {
+		target->filter_map |= (1 << FLT_BVC);
+		target->filter_data[FLT_BVC] = bctx;
+	} else if (target->filter_data[FLT_NSVC]) {
+		target->filter_map = ~(1 << FLT_BVC);
+		target->filter_data[FLT_BVC] = NULL;
 	}
 }

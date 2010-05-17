@@ -43,6 +43,7 @@ enum {
 #define BSC_CTX_BTS	2
 #define BSC_CTX_SCCP	3
 #define BSC_CTX_NSVC	4
+#define BSC_CTX_BVC	5
 
 #define LOGGING_STR	"Configure log message to this terminal\n"
 #define FILTER_STR	"Filter log messages\n"
@@ -53,14 +54,18 @@ enum {
 	//DEBUG_FILTER_ALL = 1 << 0,
 	LOG_FILTER_IMSI = 1 << 1,
 	LOG_FILTER_NSVC = 1 << 2,
+	LOG_FILTER_BVC  = 1 << 3,
 };
 
 /* we don't need a header dependency for this... */
 struct gprs_nsvc;
+struct bssgp_bvc_ctx;
 
 void log_set_imsi_filter(struct log_target *target, const char *imsi);
 void log_set_nsvc_filter(struct log_target *target,
 			 const struct gprs_nsvc *nsvc);
+void log_set_bvc_filter(struct log_target *target,
+			const struct bssgp_bvc_ctx *bctx);
 
 extern const struct log_info log_info;
 
