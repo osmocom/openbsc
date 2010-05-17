@@ -114,6 +114,7 @@ enum node_type {
 	GBPROXY_NODE,
 	SGSN_NODE,
 	NS_NODE,
+	BSSGP_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration

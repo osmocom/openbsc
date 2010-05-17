@@ -74,6 +74,7 @@ gDEFUN(ournode_exit,
 	case GBPROXY_NODE:
 	case SGSN_NODE:
 	case NS_NODE:
+	case BSSGP_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 		break;
