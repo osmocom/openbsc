@@ -2,7 +2,12 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
+if HAVE_LIBGTP
 sbin_PROGRAMS = osmo-gbproxy osmo-sgsn
+else
+sbin_PROGRAMS = osmo-gbproxy
+endif
+
 noinst_LIBRARIES = libsgsn.a
 
 libsgsn_a_SOURCES = gprs_ns.c gprs_bssgp.c gprs_llc.c gprs_gmm.c \

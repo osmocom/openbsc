@@ -17,6 +17,10 @@ AC_PROG_RANLIB
 dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
+AC_SEARCH_LIBS(gtp_new, gtp,
+    [LIBCRYPT="-lgtp"; AC_SUBST([GPRS_LIBGTP], [1])])
+
+AM_CONDITIONAL(HAVE_LIBGTP, test "x$GPRS_LIBGTP" != "x")
 
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.6)
 
