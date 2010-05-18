@@ -54,7 +54,7 @@
 #include <pdp.h>
 
 extern struct sgsn_instance *sgsn;
-extern struct ggsn_ctx *dummy_ggsn;
+extern struct sgsn_ggsn_ctx *dummy_ggsn;
 
 /* Protocol related stuff, should go into libosmocore */
 
@@ -201,7 +201,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
-	char *ptsig, *mid;
+	uint8_t *ptsig, *mid;
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
 
@@ -268,7 +268,7 @@ static int gsm48_tx_gmm_att_rej(struct sgsn_mm_ctx *mm,
 }
 
 /* Chapter 9.4.6.2 Detach accept */
-static gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
+static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -326,7 +326,6 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
-	struct gprs_ra_id ra_id;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "-> GMM IDENTITY RESPONSE: mi_type=0x%02x MI(%s) ",
@@ -691,7 +690,6 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
 
@@ -736,7 +734,6 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 			     uint8_t cause, uint8_t pco_len, uint8_t *pco_v)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
@@ -761,7 +758,6 @@ int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
-	int rc;
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
@@ -780,7 +776,6 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct gsm48_act_pdp_ctx_req *act_req = (struct gsm48_act_pdp_ctx_req *) gh->data;
-	uint8_t *pdp_addr_lv = act_req->data;
 	uint8_t req_qos_len, req_pdpa_len;
 	uint8_t *req_qos, *req_pdpa;
 	struct tlv_parsed tp;

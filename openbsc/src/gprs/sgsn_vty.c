@@ -26,6 +26,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/utils.h>
+#include <osmocore/rate_ctr.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
@@ -136,7 +137,6 @@ DEFUN(cfg_ggsn_gtp_version, cfg_ggsn_gtp_version_cmd,
 {
 	uint32_t id = atoi(argv[0]);
 	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
-	uint16_t port = atoi(argv[1]);
 
 	if (atoi(argv[1]))
 		ggc->gtp_version = 1;

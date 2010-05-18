@@ -162,9 +162,9 @@ struct sgsn_ggsn_ctx {
 	struct in_addr remote_addr;
 	struct gsn_t *gsn;
 };
-struct ggsn_ctx *ggsn_ctx_alloc(uint32_t id);
-struct ggsn_ctx *ggsn_ctx_by_id(uint32_t id);
-struct ggsn_ctx *ggsn_ctx_find_alloc(uint32_t id);
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id);
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id);
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_find_alloc(uint32_t id);
 
 struct apn_ctx {
 	struct llist_head list;

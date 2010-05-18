@@ -96,7 +96,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 {
 	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
-	uint64_t imsi_ui64;
+	uint64_t imsi_ui64 = 0;
 	int rc;
 
 	LOGP(DGPRS, LOGL_ERROR, "Create PDP Context\n");
@@ -374,6 +374,9 @@ static int sgsn_gtp_fd_cb(struct bsc_fd *fd, unsigned int what)
 	case 2:
 		rc = gtp_decaps1u(sgi->gsn);
 		break;
+	default:
+		rc = -EINVAL;
+		break;
 	}
 	return rc;
 }
@@ -395,7 +398,7 @@ static int timeval_diff(struct timeval *diff,
 	timeval_normalize(b);
 
 	if (b->tv_sec > a->tv_sec ||
-	    b->tv_sec == a->tv_sec && b->tv_usec > a->tv_usec) {
+	    (b->tv_sec == a->tv_sec && b->tv_usec > a->tv_usec)) {
 		b->tv_sec = b->tv_usec = 0;
 		return -ERANGE;
 	}
@@ -413,7 +416,7 @@ static int timeval_diff(struct timeval *diff,
 
 static void sgsn_gtp_tmr_start(struct sgsn_instance *sgi)
 {
-	struct timeval now, next, diff;
+	struct timeval now, next, diff = { 0, 0 };
 
 	/* Retrieve next retransmission as struct timeval */
 	gtp_retranstimeout(sgi->gsn, &next);
