@@ -178,4 +178,6 @@ extern struct llist_head sgsn_ggsn_ctxts;
 extern struct llist_head sgsn_apn_ctxts;
 extern struct llist_head sgsn_pdp_ctxts;
 
+uint32_t sgsn_alloc_ptmsi(void);
+
 #endif /* _GPRS_SGSN_H */

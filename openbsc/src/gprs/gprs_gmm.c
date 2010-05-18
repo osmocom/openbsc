@@ -196,16 +196,16 @@ static struct gsm48_qos default_qos = {
 };
 
 /* Chapter 9.4.2: Attach accept */
-static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
+static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
-	struct gprs_ra_id ra_id;
+	char *ptsig, *mid;
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
 
-	gmm_copy_id(msg, old_msg);
+	mmctx2msgid(msg, mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -216,22 +216,34 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	aa->att_result = 1;	/* GPRS only */
 	aa->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 	aa->radio_prio = 4;	/* lowest */
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(old_msg));
-	gsm48_construct_ra(aa->ra_id.digits, &ra_id);
+	gsm48_construct_ra(aa->ra_id.digits, &mm->ra);
 
-	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
+	/* Optional: P-TMSI signature */
+	msgb_v_put(msg, GSM48_IE_GMM_PTMSI_SIG);
+	ptsig = msgb_put(msg, 3);
+	ptsig[0] = mm->p_tmsi_sig >> 16;
+	ptsig[1] = mm->p_tmsi_sig >> 8;
+	ptsig[2] = mm->p_tmsi_sig & 0xff;
+
+	/* Optional: Negotiated Ready timer value */
+
+	/* Optional: Allocated P-TMSI */
+	msgb_v_put(msg, GSM48_IE_GMM_ALLOC_PTMSI);
+	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
+	gsm48_generate_mid_from_tmsi(mid, mm->p_tmsi);
+
+	/* Optional: MS-identity (combined attach) */
+	/* Optional: GMM cause (partial attach result for combined attach) */
+
 	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Chapter 9.4.5: Attach reject */
-static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
+static int _tx_gmm_att_rej(struct msgb *msg, uint8_t gmm_cause)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
 	DEBUGP(DMM, "<- GPRS ATTACH REJECT\n");
-
-	gmm_copy_id(msg, old_msg);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -240,14 +252,30 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
 
 	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
+static int gsm48_tx_gmm_att_rej_oldmsg(const struct msgb *old_msg,
+					uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	gmm_copy_id(msg, old_msg);
+	return _tx_gmm_att_rej(msg, gmm_cause);
+}
+static int gsm48_tx_gmm_att_rej(struct sgsn_mm_ctx *mm,
+				uint8_t gmm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	mmctx2msgid(msg, mm);
+	return _tx_gmm_att_rej(msg, gmm_cause);
+}
 
 /* Chapter 9.4.6.2 Detach accept */
-static gsm48_tx_gmm_det_ack(struct msgb *old_msg, uint8_t force_stby)
+static gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
 	DEBUGP(DMM, "<- GPRS DETACH ACCEPT\n");
+
+	mmctx2msgid(msg, mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -258,14 +286,14 @@ static gsm48_tx_gmm_det_ack(struct msgb *old_msg, uint8_t force_stby)
 }
 
 /* Transmit Chapter 9.4.12 Identity Request */
-static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
+static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
 	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
-	gmm_copy_id(msg, old_msg);
+	mmctx2msgid(msg, mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -277,17 +305,17 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
 }
 
 /* Check if we can already authorize a subscriber */
-static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx, struct msgb *msg)
+static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
 {
 	if (strlen(ctx->imei) && strlen(ctx->imsi)) {
 		ctx->mm_state = GMM_REGISTERED_NORMAL;
-		return gsm48_tx_gmm_att_ack(msg);
+		return gsm48_tx_gmm_att_ack(ctx);
 	} 
 	if (!strlen(ctx->imei))
-		return gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMEI);
+		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMEI);
 
 	if (!strlen(ctx->imsi))
-		return gsm48_tx_gmm_id_req(msg, GSM_MI_TYPE_IMSI);
+		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMSI);
 
 	return 0;
 }
@@ -325,15 +353,14 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	DEBUGPC(DMM, "\n");
 	/* Check if we can let the mobile station enter */
-	return gsm48_gmm_authorize(ctx, msg);
+	return gsm48_gmm_authorize(ctx);
 }
 
 static void attach_rej_cb(void *data)
 {
 	struct sgsn_mm_ctx *ctx = data;
 
-	/* FIXME: determine through which BTS/TRX to send this */
-	//gsm48_tx_gmm_att_rej(ctx->tlli, GMM_CAUSE_MS_ID_NOT_DERIVED);
+	gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	ctx->mm_state = GMM_DEREGISTERED;
 	/* FIXME: release the context */
 }
@@ -413,7 +440,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 			/* As a temorary hack, we simply assume that the IMSI exists */
 			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
 			if (!ctx)
-				return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_NET_FAIL);
+				return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_NET_FAIL);
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
@@ -433,6 +460,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 			ctx->tlli = msgb_tlli(msg);
 			msgid2mmctx(ctx, msg);
 		}
+		ctx->p_tmsi = tmsi;
 		break;
 	default:
 		return 0;
@@ -441,16 +469,18 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	ctx->ra = ra_id;
 	ctx->cell_id = cid;
 
-	/* FIXME: allocate a new P-TMSI (+ P-TMSI signature) */
+	/* Allocate a new P-TMSI (+ P-TMSI signature) */
+	ctx->p_tmsi = sgsn_alloc_ptmsi();
+
 	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
 
 	DEBUGPC(DMM, "\n");
 
-	return ctx ? gsm48_gmm_authorize(ctx, msg) : 0;
+	return ctx ? gsm48_gmm_authorize(ctx) : 0;
 
 err_inval:
 	DEBUGPC(DMM, "\n");
-	return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_SEM_INCORR_MSG);
+	return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_SEM_INCORR_MSG);
 }
 
 /* Section 4.7.4.1 / 9.4.5.2 MO Detach request */
@@ -472,20 +502,19 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	ctx->mm_state = GMM_DEREGISTERED;
 
 	/* force_stby = 0 */
-	return gsm48_tx_gmm_det_ack(msg, 0);
+	return gsm48_tx_gmm_det_ack(ctx, 0);
 }
 
 /* Chapter 9.4.15: Routing area update accept */
-static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
+static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_ra_upd_ack *rua;
-	struct gprs_ra_id ra_id;
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
 
-	gmm_copy_id(msg, old_msg);
+	mmctx2msgid(msg, mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM_GPRS;
@@ -496,8 +525,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	rua->upd_result = 0;	/* RA updated */
 	rua->ra_upd_timer = GPRS_TMR_MINUTE | 10;
 
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(old_msg));
-	gsm48_construct_ra(rua->ra_id.digits, &ra_id);
+	gsm48_construct_ra(rua->ra_id.digits, &mm->ra);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0, NULL);
@@ -574,7 +602,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
 
 	DEBUGPC(DMM, " ACCEPT\n");
-	return gsm48_tx_gmm_ra_upd_ack(msg);
+	return gsm48_tx_gmm_ra_upd_ack(mmctx);
 }
 
 static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
@@ -838,6 +866,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 		pdp->ti = transaction_id;
 		
 	}
+	return 0;
 #else
 	return gsm48_tx_gsm_act_pdp_acc(mmctx, transaction_id, act_req);
 #endif

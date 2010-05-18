@@ -251,3 +251,18 @@ struct apn_ctx *apn_ctx_find_alloc(const char *name)
 	return actx;
 }
 #endif
+
+uint32_t sgsn_alloc_ptmsi(void)
+{
+	struct sgsn_mm_ctx *mm;
+	uint32_t ptmsi;
+
+restart:
+	ptmsi = rand();
+	llist_for_each_entry(mm, &sgsn_mm_ctxts, list) {
+		if (mm->p_tmsi == ptmsi)
+			goto restart;
+	}
+
+	return ptmsi;
+}
