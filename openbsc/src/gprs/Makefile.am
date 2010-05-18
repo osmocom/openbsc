@@ -4,11 +4,11 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 if HAVE_LIBGTP
 sbin_PROGRAMS = osmo-gbproxy osmo-sgsn
+noinst_LIBRARIES = libsgsn.a
 else
 sbin_PROGRAMS = osmo-gbproxy
 endif
 
-noinst_LIBRARIES = libsgsn.a
 
 libsgsn_a_SOURCES = gprs_ns.c gprs_bssgp.c gprs_llc.c gprs_gmm.c \
 		crc24.c gprs_sgsn.c gprs_bssgp_util.c gprs_bssgp_vty.c
