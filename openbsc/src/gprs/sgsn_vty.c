@@ -171,6 +171,7 @@ static void vty_dump_pdp(struct vty *vty, const char *pfx,
 		pfx, pdp->mm->imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
 	vty_out(vty, "%s  APN: %s\n", pfx, pdp->lib->apn_use.v);
 	/* FIXME: statistics */
+	//vty_out_rate_ctr_group(vty, " ", pdp->ctrg);
 }
 
 static void vty_dump_mmctx(struct vty *vty, const char *pfx,
@@ -185,6 +186,8 @@ static void vty_dump_mmctx(struct vty *vty, const char *pfx,
 		get_value_string(gprs_mm_st_strs, mm->mm_state),
 		mm->ra.mcc, mm->ra.mnc, mm->ra.lac, mm->ra.rac,
 		mm->cell_id, VTY_NEWLINE);
+
+	vty_out_rate_ctr_group(vty, " ", mm->ctrg);
 
 	if (pdp) {
 		struct sgsn_pdp_ctx *pdp;

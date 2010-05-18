@@ -25,6 +25,7 @@
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
 #include <osmocore/timer.h>
+#include <osmocore/rate_ctr.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_sgsn.h>
@@ -35,6 +36,27 @@ LLIST_HEAD(sgsn_mm_ctxts);
 LLIST_HEAD(sgsn_ggsn_ctxts);
 LLIST_HEAD(sgsn_apn_ctxts);
 LLIST_HEAD(sgsn_pdp_ctxts);
+
+static const struct rate_ctr_desc mmctx_ctr_description[] = {
+	{ "sign.packets.in",	"Signalling Messages ( In)" },
+	{ "sign.packets.out",	"Signalling Messages (Out)" },
+	{ "udata.packets.in",	"User Data  Messages ( In)" },
+	{ "udata.packets.out",	"User Data  Messages (Out)" },
+	{ "udata.bytes.in",	"User Data  Bytes    ( In)" },
+	{ "udata.bytes.out",	"User Data  Bytes    (Out)" },
+	{ "pdp_ctx_act",	"PDP Context Activations  " },
+	{ "suspend",		"SUSPEND Count            " },
+	{ "paging.ps",		"Paging Packet Switched   " },
+	{ "paging.cs",		"Paging Circuit Switched  " },
+	{ "ra_update",		"Routing Area Update      " },
+};
+
+static const struct rate_ctr_group_desc mmctx_ctrg_desc = {
+	.group_name_prefix = "sgsn.mmctx",
+	.group_description = "SGSN MM Context Statistics",
+	.num_ctr = ARRAY_SIZE(mmctx_ctr_description),
+	.ctr_desc = mmctx_ctr_description,
+};
 
 static int ra_id_equals(const struct gprs_ra_id *id1,
 			const struct gprs_ra_id *id2)
@@ -93,6 +115,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	memcpy(&ctx->ra, raid, sizeof(ctx->ra));
 	ctx->tlli = tlli;
 	ctx->mm_state = GMM_DEREGISTERED;
+	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
 
 	llist_add(&ctx->list, &sgsn_mm_ctxts);
 

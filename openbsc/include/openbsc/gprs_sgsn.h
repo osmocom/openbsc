@@ -25,6 +25,20 @@ enum gprs_ciph_algo {
 	GPRS_ALGO_GEA2,
 };
 
+enum grs_mm_ctr {
+	GMM_CTR_PKTS_SIG_IN,
+	GMM_CTR_PKTS_SIG_OUT,
+	GMM_CTR_PKTS_UDATA_IN,
+	GMM_CTR_PKTS_UDATA_OUT,
+	GMM_CTR_BYTES_UDATA_IN,
+	GMM_CTR_BYTES_UDATA_OUT,
+	GMM_CTR_PDP_CTX_ACT,
+	GMM_CTR_SUSPEND,
+	GMM_CTR_PAGING_PS,
+	GMM_CTR_PAGING_CS,
+	GMM_CTR_RA_UPDATE,
+};
+
 #define MS_RADIO_ACCESS_CAPA
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
@@ -73,6 +87,7 @@ struct sgsn_mm_ctx {
 	uint32_t		tlli;
 	uint16_t		nsei;
 	uint16_t		bvci;
+	struct rate_ctr_group	*ctrg;
 	struct timer_list	timer;
 	unsigned int		T;
 };

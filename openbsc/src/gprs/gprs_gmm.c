@@ -36,6 +36,7 @@
 #include <osmocore/gsm_utils.h>
 #include <osmocore/signal.h>
 #include <osmocore/talloc.h>
+#include <osmocore/rate_ctr.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -136,8 +137,12 @@ const struct value_string gprs_det_t_mo_strs[] = {
 /* Our implementation, should be kept in SGSN */
 
 /* Send a message through the underlying layer */
-static int gsm48_gmm_sendmsg(struct msgb *msg, int command)
+static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
+			     const struct sgsn_mm_ctx *mm)
 {
+	if (mm)
+		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
+
 	/* caller needs to provide TLLI, BVCI and NSEI */
 	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command);
 }
@@ -214,7 +219,7 @@ static int gsm48_tx_gmm_att_ack(struct msgb *old_msg)
 	gsm48_construct_ra(aa->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Chapter 9.4.5: Attach reject */
@@ -232,7 +237,7 @@ static int gsm48_tx_gmm_att_rej(struct msgb *old_msg, uint8_t gmm_cause)
 	gh->msg_type = GSM48_MT_GMM_ATTACH_REJ;
 	gh->data[0] = gmm_cause;
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Chapter 9.4.6.2 Detach accept */
@@ -248,7 +253,7 @@ static gsm48_tx_gmm_det_ack(struct msgb *old_msg, uint8_t force_stby)
 	gh->msg_type = GSM48_MT_GMM_DETACH_ACK;
 	gh->data[0] = force_stby;
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Transmit Chapter 9.4.12 Identity Request */
@@ -267,7 +272,7 @@ static int gsm48_tx_gmm_id_req(struct msgb *old_msg, uint8_t id_type)
 	/* 10.5.5.9 ID type 2 + identity type and 10.5.5.7 'force to standby' IE */
 	gh->data[0] = id_type & 0xf;
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Check if we can already authorize a subscriber */
@@ -494,7 +499,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct msgb *old_msg)
 	gsm48_construct_ra(rua->ra_id.digits, &ra_id);
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Chapter 9.4.17: Routing area update reject */
@@ -514,7 +519,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 	gh->data[1] = 0; /* ? */
 
 	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
 /* Chapter 9.4.14: Routing area update request */
@@ -524,6 +529,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	uint8_t *cur = gh->data;
 	struct gprs_ra_id old_ra_id;
 	uint8_t upd_type;
+
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
 
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
@@ -683,7 +690,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 			     pdp->lib->pco_neg.l, pdp->lib->pco_neg.v);
 	/* Optional: Packet Flow Identifier */
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, pdp->mm);
 }
 
 /* Section 9.5.3: Activate PDP Context reject */
@@ -695,7 +702,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
+	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT REJ\n");
 
 	mmctx2msgid(msg, mm);
 
@@ -707,7 +714,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	if (pco_len && pco_v)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT, pco_len, pco_v);
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
@@ -727,7 +734,7 @@ static int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mmctx,
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_ACK;
 
-	return gsm48_gmm_sendmsg(msg, 0);
+	return gsm48_gmm_sendmsg(msg, 0, mmctx);
 }
 
 /* Section 9.5.1: Activate PDP Context Request */
@@ -745,6 +752,9 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 
 	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
+
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
+
 	req_qos_len = act_req->data[0];
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
@@ -894,8 +904,10 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 
 	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
-	if (mmctx)
+	if (mmctx) {
 		msgid2mmctx(mmctx, msg);
+		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
+	}
 
 	/* MMCTX can be NULL */
 
