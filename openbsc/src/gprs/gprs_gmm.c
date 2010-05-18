@@ -419,7 +419,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->tlli = msgb_tlli(msg);
-		msgid2mmctx(mmctx, msg);
+		msgid2mmctx(ctx, msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		tmsi = strtoul(mi_string, NULL, 10);
@@ -430,7 +430,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 			/* FIXME: Start some timer */
 			ctx->mm_state = GMM_COMMON_PROC_INIT;
 			ctx->tlli = msgb_tlli(msg);
-			msgid2mmctx(mmctx, msg);
+			msgid2mmctx(ctx, msg);
 		}
 		break;
 	default:
