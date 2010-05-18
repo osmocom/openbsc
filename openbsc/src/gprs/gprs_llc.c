@@ -513,14 +513,16 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 
 	/* 7.2.1.1 LLC belonging to unassigned TLLI+SAPI shall be discarded,
 	 * except UID and XID frames with SAPI=1 */
-	if (!lle && llhp.sapi == GPRS_SAPI_GMM &&
-	    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
-		/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
-		lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
-	} else {
-		LOGP(DLLC, LOGL_NOTICE,
-			"unknown TLLI/SAPI: Silently dropping\n");
-		return 0;
+	if (!lle) {
+		if (llhp.sapi == GPRS_SAPI_GMM &&
+		    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
+			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
+			lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
+		} else {
+			LOGP(DLLC, LOGL_NOTICE,
+				"unknown TLLI/SAPI: Silently dropping\n");
+			return 0;
+		}
 	}
 
 	/* Update LLE's (BVCI, NSEI) tuple */
