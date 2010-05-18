@@ -160,6 +160,7 @@ int main(int argc, char **argv)
 	}
 	bssgp_nsi = sgsn_inst.cfg.nsi = sgsn_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
+	gprs_bssgp_vty_init();
 	/* FIXME: register signal handler for SS_NS */
 
 	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
