@@ -54,7 +54,6 @@
 #include <pdp.h>
 
 extern struct sgsn_instance *sgsn;
-extern struct sgsn_ggsn_ctx *dummy_ggsn;
 
 /* Protocol related stuff, should go into libosmocore */
 
@@ -218,6 +217,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	aa->radio_prio = 4;	/* lowest */
 	gsm48_construct_ra(aa->ra_id.digits, &mm->ra);
 
+#if 0
 	/* Optional: P-TMSI signature */
 	msgb_v_put(msg, GSM48_IE_GMM_PTMSI_SIG);
 	ptsig = msgb_put(msg, 3);
@@ -228,10 +228,10 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	/* Optional: Negotiated Ready timer value */
 
 	/* Optional: Allocated P-TMSI */
-	msgb_v_put(msg, GSM48_IE_GMM_ALLOC_PTMSI);
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 	gsm48_generate_mid_from_tmsi(mid, mm->p_tmsi);
-
+	mid[0] = GSM48_IE_GMM_ALLOC_PTMSI;
+#endif
 	/* Optional: MS-identity (combined attach) */
 	/* Optional: GMM cause (partial attach result for combined attach) */
 
@@ -449,7 +449,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		msgid2mmctx(ctx, msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
-		tmsi = strtoul(mi_string, NULL, 10);
+		memcpy(&tmsi, mi+1, 4);
+		tmsi = ntohl(tmsi);
 		/* Try to find MM context based on P-TMSI */
 		ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
@@ -467,10 +468,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
 	ctx->cell_id = cid;
-
+#if 0
 	/* Allocate a new P-TMSI (+ P-TMSI signature) */
 	ctx->p_tmsi = sgsn_alloc_ptmsi();
-
+#endif
 	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
 
 	DEBUGPC(DMM, "\n");
@@ -622,7 +623,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 
 	if (!mmctx &&
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
-	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
+	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ &&
+	    gh->msg_type != GSM48_MT_GMM_ATTACH_COMPL &&
+	    gh->msg_type != GSM48_MT_GMM_RA_UPD_COMPL) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
 		/* FIXME: Send GMM_CAUSE_IMPL_DETACHED */
 		return -EINVAL;
@@ -645,9 +648,9 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	case GSM48_MT_GMM_DETACH_REQ:
 		rc = gsm48_rx_gmm_det_req(mmctx, msg);
 		break;
-	case GSM48_MT_GMM_RA_UPD_COMPL:
-		/* only in case SGSN offered new P-TMSI */
 	case GSM48_MT_GMM_ATTACH_COMPL:
+		/* only in case SGSN offered new P-TMSI */
+	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
@@ -782,6 +785,8 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	uint8_t transaction_id = (gh->proto_discr >> 4);
 	struct sgsn_pdp_ctx *pdp;
 
+	memset(&tp, 0, sizeof(tp));
+
 	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
 
@@ -854,7 +859,13 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 
 #if 1
 	{
-		pdp = sgsn_create_pdp_ctx(dummy_ggsn, mmctx, act_req->req_nsapi, &tp);
+		struct sgsn_ggsn_ctx *ggsn = sgsn_ggsn_ctx_by_id(0);
+		if (!ggsn) {
+			LOGP(DGPRS, LOGL_ERROR, "No GGSN context 0 found!\n");
+			return -EIO;
+		}
+		ggsn->gsn = sgsn->gsn;
+		pdp = sgsn_create_pdp_ctx(ggsn, mmctx, act_req->req_nsapi, &tp);
 		if (!pdp)
 			return -1;
 		pdp->sapi = act_req->req_llc_sapi;

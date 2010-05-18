@@ -31,6 +31,9 @@
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
+#include <openbsc/sgsn.h>
+
+extern struct sgsn_instance *sgsn;
 
 LLIST_HEAD(sgsn_mm_ctxts);
 LLIST_HEAD(sgsn_ggsn_ctxts);
@@ -70,12 +73,24 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 					const struct gprs_ra_id *raid)
 {
 	struct sgsn_mm_ctx *ctx;
+	int tlli_type;
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
 		if (tlli == ctx->tlli &&
 		    ra_id_equals(raid, &ctx->ra))
 			return ctx;
 	}
+
+	tlli_type = gprs_tlli_type(tlli);
+	if (tlli_type == TLLI_LOCAL) {
+		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
+			if ((ctx->p_tmsi | 0xC0000000) == tlli) {
+				ctx->tlli = tlli;
+				return ctx;
+			}
+		}
+	}
+
 	return NULL;
 }
 
@@ -189,6 +204,8 @@ struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id)
 
 	ggc->id = id;
 	ggc->gtp_version = 1;
+	/* if we are called from config file parse, this gsn doesn't exist yet */
+	ggc->gsn = sgsn->gsn;
 	llist_add(&ggc->list, &sgsn_ggsn_ctxts);
 
 	return ggc;
