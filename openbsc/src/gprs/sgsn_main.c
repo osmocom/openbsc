@@ -174,6 +174,9 @@ int main(int argc, char **argv)
 	}
 
 	rc = sgsn_gtp_init(&sgsn_inst);
+	if (rc)
+		exit(2);
+
 	nsip_listen(sgsn_nsi, sgsn_inst.cfg.nsip_listen_port);
 
 	_ggsn.gtp_version = 1;
