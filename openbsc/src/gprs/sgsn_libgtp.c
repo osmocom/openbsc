@@ -381,52 +381,15 @@ static int sgsn_gtp_fd_cb(struct bsc_fd *fd, unsigned int what)
 	return rc;
 }
 
-static void timeval_normalize(struct timeval *tv)
-{
-	unsigned int sec = tv->tv_usec / 1000000;
-	tv->tv_sec += sec;
-	tv->tv_usec -= sec * 1000000;
-}
-
-/* diff = a - b */
-static int timeval_diff(struct timeval *diff,
-			struct timeval *a,
-			struct timeval *b)
-{
-	/* Step 1: normalize input values */
-	timeval_normalize(a);
-	timeval_normalize(b);
-
-	if (b->tv_sec > a->tv_sec ||
-	    (b->tv_sec == a->tv_sec && b->tv_usec > a->tv_usec)) {
-		b->tv_sec = b->tv_usec = 0;
-		return -ERANGE;
-	}
-
-	if (b->tv_usec > a->tv_usec) {
-		a->tv_sec -= 1;
-		a->tv_usec += 1000000;
-	}
-
-	diff->tv_usec = a->tv_usec - b->tv_usec;
-	diff->tv_sec = a->tv_sec - b->tv_sec;
-
-	return 0;
-}
-
 static void sgsn_gtp_tmr_start(struct sgsn_instance *sgi)
 {
-	struct timeval now, next, diff = { 0, 0 };
+	struct timeval next;
 
 	/* Retrieve next retransmission as struct timeval */
 	gtp_retranstimeout(sgi->gsn, &next);
 
-	/* Calculate the difference to now */
-	gettimeofday(&now, NULL);
-	timeval_diff(&diff, &next, &now);
-
 	/* re-schedule the timer */
-	bsc_schedule_timer(&sgi->gtp_timer, diff.tv_sec, diff.tv_usec/1000);
+	bsc_schedule_timer(&sgi->gtp_timer, next.tv_sec, next.tv_usec/1000);
 }
 
 /* timer callback for libgtp retransmissions and ping */
