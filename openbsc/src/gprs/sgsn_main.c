@@ -123,6 +123,8 @@ static void signal_handler(int signal)
 /* NSI that BSSGP uses when transmitting on NS */
 extern struct gprs_ns_inst *bssgp_nsi;
 extern void *tall_msgb_ctx;
+static struct sgsn_ggsn_ctx _ggsn;
+struct sgsn_ggsn_ctx *dummy_ggsn = &_ggsn;
 
 int main(int argc, char **argv)
 {
@@ -173,6 +175,10 @@ int main(int argc, char **argv)
 
 	rc = sgsn_gtp_init(&sgsn_inst);
 	nsip_listen(sgsn_nsi, sgsn_inst.cfg.nsip_listen_port);
+
+	_ggsn.gtp_version = 1;
+	inet_aton("192.168.100.239", &_ggsn.remote_addr);
+	_ggsn.gsn = sgsn_inst.gsn;
 
 	while (1) {
 		rc = bsc_select_main(0);

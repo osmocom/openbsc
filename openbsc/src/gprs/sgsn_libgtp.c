@@ -89,7 +89,7 @@ const struct value_string gtp_cause_strs[] = {
 
 /* generate a PDP context based on the IE's from the 04.08 message,
  * and send the GTP create pdp context request to the GGSN */
-struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
+struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 					 struct sgsn_mm_ctx *mmctx,
 					 uint16_t nsapi,
 					 struct tlv_parsed *tp)
@@ -99,6 +99,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
 	uint64_t imsi_ui64;
 	int rc;
 
+	LOGP(DGPRS, LOGL_ERROR, "Create PDP Context\n");
 	pctx = sgsn_pdp_ctx_alloc(mmctx, nsapi);
 	if (!pctx) {
 		LOGP(DGPRS, LOGL_ERROR, "Couldn't allocate PDP Ctx\n");
@@ -178,6 +179,13 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
 	return pctx;
 }
 
+int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx)
+{
+	LOGP(DGPRS, LOGL_ERROR, "Delete PDP Context\n");
+
+	/* FIXME: decide if we need teardown or not ! */
+	return gtp_delete_context_req(pctx->ggsn->gsn, pctx->lib, pctx, 1);
+}
 
 struct cause_map {
 	uint8_t cause_in;
@@ -261,20 +269,21 @@ reject:
 	return EOF;
 }
 
-/* If we receive a 04.08 DEACT PDP CTX REQ or GPRS DETACH, we need to
- * look-up the PDP context and request its deletion from the SGSN */
-int sgsn_delete_pdp_ctx(struct ggsn_ctx *ggsn, struct sgsn_mm_ctx *mmctx,
-			struct tlv_parsed *tp)
-{
-	//return gtp_delete_context_req(gsn, pdp, cbp, teardown);
-}
-
 /* Confirmation of a PDP Context Delete */
-static int delete_pdp_conf(struct pdp_t *pdp, int cause)
+static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
+	struct sgsn_pdp_ctx *pctx = cbp;
+	int rc;
+
 	DEBUGP(DGPRS, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
-	return 0;
+
+	/* Confirm deactivation of PDP context to MS */
+	rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
+
+	sgsn_pdp_ctx_free(pctx);
+
+	return rc;
 }
 
 /* Confirmation of an GTP ECHO request */
@@ -305,7 +314,7 @@ static int cb_conf(int type, int cause, struct pdp_t *pdp, void *cbp)
 	case GTP_CREATE_PDP_REQ:
 		return create_pdp_conf(pdp, cbp, cause);
 	case GTP_DELETE_PDP_REQ:
-		return delete_pdp_conf(pdp, cause);
+		return delete_pdp_conf(pdp, cbp, cause);
 	default:
 		break;
 	}

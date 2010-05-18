@@ -148,12 +148,14 @@ struct sgsn_pdp_ctx {
 
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
 					   uint8_t nsapi);
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tid(const struct sgsn_mm_ctx *mm,
+					 uint8_t tid);
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 					uint8_t nsapi);
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp);
 
 
-struct ggsn_ctx {
+struct sgsn_ggsn_ctx {
 	struct llist_head list;
 	uint32_t id;
 	unsigned int gtp_version;
@@ -166,7 +168,7 @@ struct ggsn_ctx *ggsn_ctx_find_alloc(uint32_t id);
 
 struct apn_ctx {
 	struct llist_head list;
-	struct ggsn_ctx *ggsn;
+	struct sgsn_ggsn_ctx *ggsn;
 	char *name;
 	char *description;
 };

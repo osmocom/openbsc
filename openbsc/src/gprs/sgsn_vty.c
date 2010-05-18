@@ -49,7 +49,7 @@ static struct cmd_node sgsn_node = {
 static int config_write_sgsn(struct vty *vty)
 {
 	struct in_addr ia;
-	struct ggsn_ctx *gctx;
+	struct sgsn_ggsn_ctx *gctx;
 
 	vty_out(vty, "sgsn%s", VTY_NEWLINE);
 
@@ -111,7 +111,7 @@ DEFUN(cfg_ggsn_remote_ip, cfg_ggsn_remote_ip_cmd,
 	"")
 {
 	uint32_t id = atoi(argv[0]);
-	struct ggsn_ctx *ggc = ggsn_ctx_find_alloc(id);
+	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
 
 	inet_aton(argv[1], &ggc->remote_addr);
 
@@ -124,7 +124,7 @@ DEFUN(cfg_ggsn_remote_port, cfg_ggsn_remote_port_cmd,
 	"")
 {
 	uint32_t id = atoi(argv[0]);
-	struct ggsn_ctx *ggc = ggsn_ctx_find_alloc(id);
+	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
 	uint16_t port = atoi(argv[1]);
 
 }
@@ -135,7 +135,7 @@ DEFUN(cfg_ggsn_gtp_version, cfg_ggsn_gtp_version_cmd,
 	"")
 {
 	uint32_t id = atoi(argv[0]);
-	struct ggsn_ctx *ggc = ggsn_ctx_find_alloc(id);
+	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
 	uint16_t port = atoi(argv[1]);
 
 	if (atoi(argv[1]))

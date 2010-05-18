@@ -46,8 +46,10 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg);
 int sgsn_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci);
 
 
-struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
+struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 					 struct sgsn_mm_ctx *mmctx,
 					 uint16_t nsapi,
 					 struct tlv_parsed *tp);
+int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx);
+
 #endif

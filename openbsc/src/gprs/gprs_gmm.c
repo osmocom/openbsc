@@ -54,6 +54,7 @@
 #include <pdp.h>
 
 extern struct sgsn_instance *sgsn;
+extern struct ggsn_ctx *dummy_ggsn;
 
 /* Protocol related stuff, should go into libosmocore */
 
@@ -530,8 +531,6 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	struct gprs_ra_id old_ra_id;
 	uint8_t upd_type;
 
-	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
-
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
 
@@ -572,6 +571,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	/* FIXME: Update the MM context with the MS radio acc capabilities */
 	/* FIXME: Update the MM context with the MS network capabilities */
 
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
+
 	DEBUGPC(DMM, " ACCEPT\n");
 	return gsm48_tx_gmm_ra_upd_ack(msg);
 }
@@ -596,6 +597,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
+		/* FIXME: Send GMM_CAUSE_IMPL_DETACHED */
 		return -EINVAL;
 	}
 
@@ -683,8 +685,8 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	/* PDP address */
 	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR,
 		     pdp->lib->eua.l, pdp->lib->eua.v);
-	/* Optional: Protocol configuration options */
-	if (pdp->lib->pco_neg.l && pdp->lib->pco_neg.v)
+	/* Optional: Protocol configuration options (FIXME: why 'req') */
+	if (pdp->lib->pco_req.l && pdp->lib->pco_req.v)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT,
 			     pdp->lib->pco_neg.l, pdp->lib->pco_neg.v);
 	/* Optional: Packet Flow Identifier */
@@ -701,7 +703,7 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 	struct gsm48_hdr *gh;
 	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
-	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT REJ\n");
+	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT REJ(cause=%u)\n", cause);
 
 	mmctx2msgid(msg, mm);
 
@@ -717,23 +719,22 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
-static int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mmctx,
-				      struct msgb *old_msg)
+int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
-	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	uint8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
+	int rc;
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
-	gmm_copy_id(msg, old_msg);
+	mmctx2msgid(msg, pdp->mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_ACK;
 
-	return gsm48_gmm_sendmsg(msg, 0, mmctx);
+	return gsm48_gmm_sendmsg(msg, 0, pdp->mm);
 }
 
 /* Section 9.5.1: Activate PDP Context Request */
@@ -791,6 +792,8 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 		break;
 	}
 
+	DEBUGPC(DMM, "\n");
+
 	/* put the non-TLV elements in the TLV parser structure to
 	 * pass them on to the SGSN / GTP code */
 	tp.lv[OSMO_IE_GSM_REQ_QOS].len = req_qos_len;
@@ -819,11 +822,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 
 #if 1
 	{
-		struct ggsn_ctx ggsn;
-		ggsn.gtp_version = 1;
-		inet_aton("192.168.100.239", &ggsn.remote_addr);
-		ggsn.gsn = sgsn->gsn;
-		pdp = sgsn_create_pdp_ctx(&ggsn, mmctx, act_req->req_nsapi, &tp);
+		pdp = sgsn_create_pdp_ctx(dummy_ggsn, mmctx, act_req->req_nsapi, &tp);
 		if (!pdp)
 			return -1;
 		pdp->sapi = act_req->req_llc_sapi;
@@ -836,14 +835,24 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
-static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
+static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	uint8_t transaction_id = (gh->proto_discr >> 4);
+	struct sgsn_pdp_ctx *pdp;
 
 	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT REQ (cause: %s)\n",
 		get_value_string(gsm_cause_names, gh->data[0]));
 
-	return gsm48_tx_gsm_deact_pdp_acc(ctx, msg);
+	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
+	if (!pdp) {
+		LOGP(DMM, LOGL_NOTICE, "Deactivate PDP Context Request for "
+			"non-existing PDP Context (IMSI=%s, TI=%u)\n",
+			mm->imsi, transaction_id);
+		return -EINVAL;
+	}
+
+	return sgsn_delete_pdp_ctx(pdp);
 }
 
 static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
@@ -873,6 +882,7 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		break;
 	case GSM48_MT_GSM_DEACT_PDP_REQ:
 		rc = gsm48_rx_gsm_deact_pdp_req(mmctx, msg);
+		break;
 	case GSM48_MT_GSM_STATUS:
 		rc = gsm48_rx_gsm_status(mmctx, msg);
 		break;

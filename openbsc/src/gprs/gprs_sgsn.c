@@ -123,6 +123,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	return ctx;
 }
 
+
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
 					   uint8_t nsapi)
 {
@@ -134,6 +135,19 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
 	}
 	return NULL;
 }
+
+struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tid(const struct sgsn_mm_ctx *mm,
+					 uint8_t tid)
+{
+	struct sgsn_pdp_ctx *pdp;
+
+	llist_for_each_entry(pdp, &mm->pdp_list, list) {
+		if (pdp->ti == tid)
+			return pdp;
+	}
+	return NULL;
+}
+
 
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 					uint8_t nsapi)
@@ -165,11 +179,11 @@ void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 
 /* GGSN contexts */
 
-struct ggsn_ctx *ggsn_ctx_alloc(uint32_t id)
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id)
 {
-	struct ggsn_ctx *ggc;
+	struct sgsn_ggsn_ctx *ggc;
 
-	ggc = talloc_zero(tall_bsc_ctx, struct ggsn_ctx);
+	ggc = talloc_zero(tall_bsc_ctx, struct sgsn_ggsn_ctx);
 	if (!ggc)
 		return NULL;
 
@@ -179,9 +193,9 @@ struct ggsn_ctx *ggsn_ctx_alloc(uint32_t id)
 	return ggc;
 }
 
-struct ggsn_ctx *ggsn_ctx_by_id(uint32_t id)
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id)
 {
-	struct ggsn_ctx *ggc;
+	struct sgsn_ggsn_ctx *ggc;
 
 	llist_for_each_entry(ggc, &sgsn_ggsn_ctxts, list) {
 		if (id == ggc->id)
@@ -190,13 +204,13 @@ struct ggsn_ctx *ggsn_ctx_by_id(uint32_t id)
 	return NULL;
 }
 
-struct ggsn_ctx *ggsn_ctx_find_alloc(uint32_t id)
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_find_alloc(uint32_t id)
 {
-	struct ggsn_ctx *ggc;
+	struct sgsn_ggsn_ctx *ggc;
 
-	ggc = ggsn_ctx_by_id(id);
+	ggc = sgsn_ggsn_ctx_by_id(id);
 	if (!ggc)
-		ggc = ggsn_ctx_alloc(id);
+		ggc = sgsn_ggsn_ctx_alloc(id);
 	return ggc;
 }
 
