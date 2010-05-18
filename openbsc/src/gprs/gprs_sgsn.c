@@ -189,6 +189,7 @@ struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id)
 
 	ggc->id = id;
 	ggc->gtp_version = 1;
+	llist_add(&ggc->list, &sgsn_ggsn_ctxts);
 
 	return ggc;
 }
