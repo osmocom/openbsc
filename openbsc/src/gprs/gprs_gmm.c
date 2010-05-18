@@ -47,7 +47,10 @@
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/gprs_sgsn.h>
+#include <openbsc/gprs_gmm.h>
 #include <openbsc/sgsn.h>
+
+#include <pdp.h>
 
 extern struct sgsn_instance *sgsn;
 
@@ -146,6 +149,21 @@ static void gmm_copy_id(struct msgb *msg, const struct msgb *old)
 	msgb_tlli(msg) = msgb_tlli(old);
 	msgb_bvci(msg) = msgb_bvci(old);
 	msgb_nsei(msg) = msgb_nsei(old);
+}
+
+/* Store BVCI/NSEI in MM context */
+static void msgid2mmctx(struct sgsn_mm_ctx *mm, const struct msgb *msg)
+{
+	mm->bvci = msgb_bvci(msg);
+	mm->nsei = msgb_nsei(msg);
+}
+
+/* Store BVCI/NSEI in MM context */
+static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
+{
+	msgb_tlli(msg) = mm->tlli;
+	msgb_bvci(msg) = mm->bvci;
+	msgb_nsei(msg) = mm->nsei;
 }
 
 static struct gsm48_qos default_qos = {
@@ -396,6 +414,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		/* FIXME: Start some timer */
 		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->tlli = msgb_tlli(msg);
+		msgid2mmctx(mmctx, msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		tmsi = strtoul(mi_string, NULL, 10);
@@ -406,6 +425,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 			/* FIXME: Start some timer */
 			ctx->mm_state = GMM_COMMON_PROC_INIT;
 			ctx->tlli = msgb_tlli(msg);
+			msgid2mmctx(mmctx, msg);
 		}
 		break;
 	default:
@@ -631,32 +651,61 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 }
 
 /* Section 9.5.2: Ativate PDP Context Accept */
-static int gsm48_tx_gsm_act_pdp_acc(struct msgb *old_msg, struct gsm48_act_pdp_ctx_req *req)
+int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 {
-	struct gsm48_hdr *old_gh = (struct gsm48_hdr *) msgb_gmmh(old_msg);
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_act_pdp_ctx_ack *act_ack;
 	struct gsm48_hdr *gh;
-	uint8_t transaction_id = ((old_gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
 
 	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
 
-	gmm_copy_id(msg, old_msg);
+	mmctx2msgid(msg, pdp->mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_ACT_PDP_ACK;
 
 	/* Negotiated LLC SAPI */
-	msgb_v_put(msg, req->req_llc_sapi);
+	msgb_v_put(msg, pdp->sapi);
 	/* copy QoS parameters from original request */
-	msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
+	msgb_lv_put(msg, pdp->lib->qos_neg.l, pdp->lib->qos_neg.v);
+	//msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
 	/* Radio priority 10.5.7.2 */
-	msgb_v_put(msg, 4);
+	msgb_v_put(msg, pdp->lib->radio_pri);
 	/* PDP address */
-	msgb_put_pdp_addr_ipv4(msg, 0x01020304);
+	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR,
+		     pdp->lib->eua.l, pdp->lib->eua.v);
+	//msgb_put_pdp_addr_ipv4(msg, 0x01020304);
 	/* Optional: Protocol configuration options */
+	if (pdp->lib->pco_neg.l && pdp->lib->pco_neg.v)
+		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT,
+			     pdp->lib->pco_neg.l, pdp->lib->pco_neg.v);
 	/* Optional: Packet Flow Identifier */
+
+	return gsm48_gmm_sendmsg(msg, 0);
+}
+
+/* Section 9.5.3: Activate PDP Context reject */
+int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
+			     uint8_t cause, uint8_t pco_len, uint8_t *pco_v)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_act_pdp_ctx_ack *act_ack;
+	struct gsm48_hdr *gh;
+	uint8_t transaction_id = tid ^ 0x8; /* flip */
+
+	DEBUGP(DMM, "<- ACTIVATE PDP CONTEXT ACK\n");
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
+	gh->msg_type = GSM48_MT_GSM_ACT_PDP_REJ;
+
+	msgb_v_put(msg, cause);
+	if (pco_len && pco_v)
+		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT, pco_len, pco_v);
 
 	return gsm48_gmm_sendmsg(msg, 0);
 }
@@ -691,8 +740,11 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	uint8_t req_qos_len, req_pdpa_len;
 	uint8_t *req_qos, *req_pdpa;
 	struct tlv_parsed tp;
+	uint8_t transaction_id = (gh->proto_discr >> 4);
+	struct sgsn_pdp_ctx *pdp;
 
-	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: ");
+	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
+		act_req->req_llc_sapi, act_req->req_nsapi);
 	req_qos_len = act_req->data[0];
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
@@ -737,9 +789,24 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].len = req_pdpa_len;
 	tp.lv[OSMO_IE_GSM_REQ_PDP_ADDR].val = req_pdpa;
 
-	/* FIXME: parse TLV for AP name and protocol config options */
+	/* FIXME:  determine GGSN based on APN and subscription options */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_APN)) {}
-	if (TLVP_PRESENT(&tp, GSM48_IE_GSM_PROTO_CONF_OPT)) {}
+
+	/* Check if NSAPI is out of range (TS 04.65 / 7.2) */
+	if (act_req->req_nsapi < 5 || act_req->req_nsapi > 15) {
+		/* Send reject with GSM_CAUSE_INV_MAND_INFO */
+		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
+						GSM_CAUSE_INV_MAND_INFO,
+						0, NULL);
+	}
+
+	/* Check if NSAPI is already in use */
+	if (sgsn_pdp_ctx_by_nsapi(mmctx, act_req->req_nsapi)) {
+		/* FIXME: send reject with GSM_CAUSE_NSAPI_IN_USE */
+		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
+						GSM_CAUSE_NSAPI_IN_USE,
+						0, NULL);
+	}
 
 #if 1
 	{
@@ -747,10 +814,15 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 		ggsn.gtp_version = 1;
 		inet_aton("192.168.100.239", &ggsn.remote_addr);
 		ggsn.gsn = sgsn->gsn;
-		return sgsn_create_pdp_ctx(ggsn, mmctx, 5, &tp);
+		pdp = sgsn_create_pdp_ctx(&ggsn, mmctx, act_req->req_nsapi, &tp);
+		if (!pdp)
+			return -1;
+		pdp->sapi = act_req->req_llc_sapi;
+		pdp->ti = transaction_id;
+		
 	}
 #else
-	return gsm48_tx_gsm_act_pdp_acc(msg, act_req);
+	return gsm48_tx_gsm_act_pdp_acc(mmctx, transaction_id, act_req);
 #endif
 }
 
@@ -822,6 +894,8 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 
 	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
 	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
+	if (mmctx)
+		msgid2mmctx(mmctx, msg);
 
 	/* MMCTX can be NULL */
 
@@ -835,6 +909,7 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 discriminator 0x%02x\n",
 			pdisc);
+		/* FIXME: return status message */
 		break;
 	}
 

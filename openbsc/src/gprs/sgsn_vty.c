@@ -168,7 +168,7 @@ static void vty_dump_pdp(struct vty *vty, const char *pfx,
 			 struct sgsn_pdp_ctx *pdp)
 {
 	vty_out(vty, "%sPDP Context IMSI: %s, SAPI: %u, NSAPI: %u%s",
-		pfx, pdp->mm->imsi, 2342 /* FIXME */, pdp->nsapi, VTY_NEWLINE);
+		pfx, pdp->mm->imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
 	vty_out(vty, "%s  APN: %s\n", pfx, pdp->lib->apn_use.v);
 	/* FIXME: statistics */
 }

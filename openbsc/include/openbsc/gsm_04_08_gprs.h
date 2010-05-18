@@ -2,6 +2,7 @@
 #define _GSM48_GPRS_H
 
 #include <stdint.h>
+#include <osmocore/protocol/gsm_04_08.h>
 
 /* Table 10.4 / 10.4a, GPRS Mobility Management (GMM) */
 #define GSM48_MT_GMM_ATTACH_REQ		0x01
@@ -357,8 +358,5 @@ struct gsm48_qos {
 
 
 int gprs_tlli_type(uint32_t tlli);
-
-struct gsm_bts *gsm48_bts_by_ra_id(struct gsm_network *net,
-				   const uint8_t *buf, unsigned int len);
 
 #endif /* _GSM48_GPRS_H */

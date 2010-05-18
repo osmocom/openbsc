@@ -71,6 +71,8 @@ struct sgsn_mm_ctx {
 
 	/* Additional bits not present in the GSM TS */
 	uint32_t		tlli;
+	uint16_t		nsei;
+	uint16_t		bvci;
 	struct timer_list	timer;
 	unsigned int		T;
 };
@@ -88,10 +90,15 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 
 enum pdp_ctx_state {
 	PDP_STATE_NONE,
+	PDP_STATE_CR_REQ,
+	PDP_STATE_CR_CONF,
 };
 
 enum pdp_type {
 	PDP_TYPE_NONE,
+	PDP_TYPE_ETSI_PPP,
+	PDP_TYPE_IANA_IPv4,
+	PDP_TYPE_IANA_IPv6,
 };
 
 struct sgsn_pdp_ctx {
@@ -107,7 +114,8 @@ struct sgsn_pdp_ctx {
 	uint32_t		address;
 	char 			*apn_subscribed;
 	//char 			*apn_used;
-	uint16_t		nsapi;
+	uint16_t		nsapi;	/* SNDCP */
+	uint16_t		sapi;	/* LLC */
 	uint8_t			ti;	/* transaction identifier */
 	int			vplmn_allowed;
 	uint32_t		qos_profile_subscr;

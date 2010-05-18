@@ -37,14 +37,13 @@
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
 #include <osmocore/rate_ctr.h>
+#include <openbsc/gsm_04_08_gprs.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
-//#include <openbsc/gprs_ns.h>
-//#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_sgsn.h>
-#include <openbsc/gsm_04_08_gprs.h>
+#include <openbsc/gprs_gmm.h>
 
 #include <gtp.h>
 #include <pdp.h>
@@ -170,7 +169,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
 	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr,
 		sizeof(sgsn->cfg.gtp_listenaddr));
 
-	/* FIXME: change pdp state to 'requested' */
+	/* change pdp state to 'requested' */
+	pctx->state = PDP_STATE_CR_REQ;
 
 	rc = gtp_create_context_req(ggsn->gsn, pdp, pctx);
 	/* FIXME */
@@ -178,10 +178,51 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
 	return pctx;
 }
 
+
+struct cause_map {
+	uint8_t cause_in;
+	uint8_t cause_out;
+};
+
+static uint8_t cause_map(const struct cause_map *map, uint8_t in, uint8_t deflt)
+{
+	const struct cause_map *m;
+
+	for (m = map; m->cause_in && m->cause_out; m++) {
+		if (m->cause_in == in)
+			return m->cause_out;
+	}
+	return deflt;
+}
+
+/* how do we map from gtp cause to SM cause */
+static const struct cause_map gtp2sm_cause_map[] = {
+	{ GTPCAUSE_NO_RESOURCES, 	GSM_CAUSE_INSUFF_RSRC },
+	{ GTPCAUSE_NOT_SUPPORTED,	GSM_CAUSE_SERV_OPT_NOTSUPP },
+	{ GTPCAUSE_MAN_IE_INCORRECT,	GSM_CAUSE_INV_MAND_INFO },
+	{ GTPCAUSE_MAN_IE_MISSING,	GSM_CAUSE_INV_MAND_INFO },
+	{ GTPCAUSE_OPT_IE_INCORRECT,	GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_SYS_FAIL,		GSM_CAUSE_NET_FAIL },
+	{ GTPCAUSE_ROAMING_REST,	GSM_CAUSE_REQ_SERV_OPT_NOTSUB },
+	{ GTPCAUSE_PTIMSI_MISMATCH,	GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_CONN_SUSP,		GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_AUTH_FAIL,		GSM_CAUSE_AUTH_FAILED },
+	{ GTPCAUSE_USER_AUTH_FAIL,	GSM_CAUSE_ACT_REJ_GGSN },
+	{ GTPCAUSE_CONTEXT_NOT_FOUND,	GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_ADDR_OCCUPIED,	GSM_CAUSE_INSUFF_RSRC },
+	{ GTPCAUSE_NO_MEMORY,		GSM_CAUSE_INSUFF_RSRC },
+	{ GTPCAUSE_RELOC_FAIL,		GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_UNKNOWN_MAN_EXTHEADER, GSM_CAUSE_PROTO_ERR_UNSPEC },
+	{ GTPCAUSE_MISSING_APN,		GSM_CAUSE_MISSING_APN },
+	{ GTPCAUSE_UNKNOWN_PDP,		GSM_CAUSE_UNKNOWN_PDP },
+	{ 0, 0 }
+};
+
 /* The GGSN has confirmed the creation of a PDP Context */
 static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
 	struct sgsn_pdp_ctx *pctx = cbp;
+	uint8_t reject_cause;
 
 	DEBUGP(DGPRS, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
@@ -194,19 +235,30 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 			gtp_create_context_req(sgsn->gsn, pdp, cbp);
 			return 0;
 		} else {
-			pdp_freepdp(pdp);
-			return EOF;
+			reject_cause = GSM_CAUSE_NET_FAIL;
+			goto reject;
 		}
 	}
 
 	/* Check for cause value if it was really successful */
 	if (cause != GTPCAUSE_ACC_REQ) {
-		pdp_freepdp(pdp);
-		return EOF;
+		reject_cause = cause_map(gtp2sm_cause_map, cause,
+					 GSM_CAUSE_ACT_REJ_GGSN);
+		goto reject;
 	}
 
-	/* FIXME: Send PDP CTX ACT ACK/REJ to MS */
-	return 0;
+	/* Send PDP CTX ACT to MS */
+	return gsm48_tx_gsm_act_pdp_acc(pctx);
+
+reject:
+	pctx->state = PDP_STATE_NONE;
+	pdp_freepdp(pdp);
+	sgsn_pdp_ctx_free(pctx);
+	/* Send PDP CTX ACT REJ to MS */
+	return gsm48_tx_gsm_act_pdp_rej(pctx->mm, pdp->ti, reject_cause,
+					0, NULL);
+
+	return EOF;
 }
 
 /* If we receive a 04.08 DEACT PDP CTX REQ or GPRS DETACH, we need to
@@ -289,6 +341,7 @@ static int cb_extheader_ind(struct sockaddr_in *peer)
 static int cb_data_ind(struct pdp_t *pdp, void *packet, unsigned int len)
 {
 	DEBUGP(DGPRS, "GTP DATA IND from GGSN, length=%u\n", len);
+	/* FIXME: resolve PDP/MM context, forward to SNDCP layer */
 
 	return 0;
 }

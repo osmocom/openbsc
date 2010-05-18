@@ -6,6 +6,7 @@
 #include <osmocore/msgb.h>
 
 #include <openbsc/gprs_ns.h>
+#include <openbsc/gprs_sgsn.h>
 
 struct sgsn_config {
 	/* parsed from config file */
@@ -44,4 +45,9 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg);
 /* Main input function for Gb proxy */
 int sgsn_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci);
 
+
+struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct ggsn_ctx *ggsn,
+					 struct sgsn_mm_ctx *mmctx,
+					 uint16_t nsapi,
+					 struct tlv_parsed *tp);
 #endif
