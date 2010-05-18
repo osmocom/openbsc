@@ -80,6 +80,22 @@ enum gprs_llc_cmd {
 	GPRS_LLC_UI,
 };
 
+static const struct value_string llc_cmd_strs[] = {
+	{ GPRS_LLC_NULL,	"NULL" },
+	{ GPRS_LLC_RR,		"RR" },
+	{ GPRS_LLC_ACK,		"ACK" },
+	{ GPRS_LLC_RNR,		"RNR" },
+	{ GPRS_LLC_SACK,	"SACK" },
+	{ GPRS_LLC_DM,		"DM" },
+	{ GPRS_LLC_DISC,	"DISC" },
+	{ GPRS_LLC_UA,		"UA" },
+	{ GPRS_LLC_SABM,	"SABM" },
+	{ GPRS_LLC_FRMR,	"FRMR" },
+	{ GPRS_LLC_XID,		"XID" },
+	{ GPRS_LLC_UI,		"UI" },
+	{ 0, NULL }
+};
+
 struct gprs_llc_hdr_parsed {
 	uint8_t sapi;
 	uint8_t is_cmd:1,
@@ -251,7 +267,7 @@ static int gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 		gph->fcs, gph->fcs_calc == gph->fcs ? "correct" : "WRONG");
 
 	if (gph->cmd)
-		DEBUGPC(DLLC, "CMD=%u ", gph->cmd);
+		DEBUGPC(DLLC, "CMD=%s ", get_value_string(llc_cmd_strs, gph->cmd));
 
 	if (gph->data)
 		DEBUGPC(DLLC, "DATA ");
