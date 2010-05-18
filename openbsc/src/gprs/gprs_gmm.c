@@ -675,15 +675,14 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 
 	/* Negotiated LLC SAPI */
 	msgb_v_put(msg, pdp->sapi);
-	/* copy QoS parameters from original request */
-	msgb_lv_put(msg, pdp->lib->qos_neg.l, pdp->lib->qos_neg.v);
-	//msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
+	/* FIXME: copy QoS parameters from original request */
+	//msgb_lv_put(msg, pdp->lib->qos_neg.l, pdp->lib->qos_neg.v);
+	msgb_lv_put(msg, sizeof(default_qos), (uint8_t *)&default_qos);
 	/* Radio priority 10.5.7.2 */
 	msgb_v_put(msg, pdp->lib->radio_pri);
 	/* PDP address */
 	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR,
 		     pdp->lib->eua.l, pdp->lib->eua.v);
-	//msgb_put_pdp_addr_ipv4(msg, 0x01020304);
 	/* Optional: Protocol configuration options */
 	if (pdp->lib->pco_neg.l && pdp->lib->pco_neg.v)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT,
