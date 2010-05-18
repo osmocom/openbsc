@@ -34,41 +34,7 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
 
-/* Section 4.5.2 Logical Link States + Annex C.2 */
-enum gprs_llc_ll_state {
-	GPRS_LLS_UNASSIGNED	= 1,	/* No TLLI yet */
-	GPRS_LLS_ASSIGNED_ADM	= 2,	/* TLLI assigned */
-	GPRS_LLS_LOCAL_EST	= 3,	/* Local Establishment */
-	GPRS_LLS_REMOTE_EST	= 4,	/* Remote Establishment */
-	GPRS_LLS_ABM		= 5,
-	GPRS_LLS_LOCAL_REL	= 6,	/* Local Release */
-	GPRS_LLS_TIMER_REC 	= 7,	/* Timer Recovery */
-};
-
-/* Section 4.7.1: Logical Link Entity: One per DLCI (TLLI + SAPI) */
-struct gprs_llc_lle {
-	struct llist_head list;
-	struct timer_list t200;
-	struct timer_list t201;	/* wait for acknowledgement */
-
-	enum gprs_llc_ll_state state;
-
-	uint32_t tlli;
-	uint32_t sapi;
-
-	uint8_t v_sent;
-	uint8_t v_ack;
-	uint8_t v_recv;
-
-	unsigned int n200;
-	unsigned int retrans_ctr;
-
-	/* over which BSSGP BTS ctx do we need to transmit */
-	uint16_t bvci;
-	uint16_t nsei;
-};
-
-static LLIST_HEAD(gprs_llc_lles);
+LLIST_HEAD(gprs_llc_lles);
 void *llc_tall_ctx;
 
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
