@@ -444,6 +444,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd0.fd = gsn->fd0;
 	sgi->gtp_fd0.priv_nr = 0;
 	sgi->gtp_fd0.data = sgi;
+	sgi->gtp_fd0.when = BSC_FD_READ;
 	sgi->gtp_fd0.cb = sgsn_gtp_fd_cb;
 	rc = bsc_register_fd(&sgi->gtp_fd0);
 	if (rc < 0)
@@ -452,6 +453,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd1c.fd = gsn->fd1c;
 	sgi->gtp_fd1c.priv_nr = 1;
 	sgi->gtp_fd1c.data = sgi;
+	sgi->gtp_fd1c.when = BSC_FD_READ;
 	sgi->gtp_fd1c.cb = sgsn_gtp_fd_cb;
 	bsc_register_fd(&sgi->gtp_fd1c);
 	if (rc < 0)
@@ -460,6 +462,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd1u.fd = gsn->fd1u;
 	sgi->gtp_fd1u.priv_nr = 2;
 	sgi->gtp_fd1u.data = sgi;
+	sgi->gtp_fd1u.when = BSC_FD_READ;
 	sgi->gtp_fd1u.cb = sgsn_gtp_fd_cb;
 	bsc_register_fd(&sgi->gtp_fd1u);
 	if (rc < 0)
