@@ -116,6 +116,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	ctx->tlli = tlli;
 	ctx->mm_state = GMM_DEREGISTERED;
 	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
+	INIT_LLIST_HEAD(&ctx->pdp_list);
 
 	llist_add(&ctx->list, &sgsn_mm_ctxts);
 
