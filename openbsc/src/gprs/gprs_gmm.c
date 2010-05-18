@@ -688,7 +688,7 @@ int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
 	/* Optional: Protocol configuration options (FIXME: why 'req') */
 	if (pdp->lib->pco_req.l && pdp->lib->pco_req.v)
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT,
-			     pdp->lib->pco_neg.l, pdp->lib->pco_neg.v);
+			     pdp->lib->pco_req.l, pdp->lib->pco_req.v);
 	/* Optional: Packet Flow Identifier */
 
 	return gsm48_gmm_sendmsg(msg, 0, pdp->mm);
