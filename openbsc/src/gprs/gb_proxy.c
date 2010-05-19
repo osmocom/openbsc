@@ -579,7 +579,7 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 		struct gprs_ra_id raid;
 		gsm48_parse_ra(&raid, peer->ra);
 
-		vty_out(vty, "NSEI %5u, NS-VC %5u, PTP-BVCI %u, "
+		vty_out(vty, "NSEI %5u, NS-VC %5u, PTP-BVCI %5u, "
 			"RAC %u-%u-%u-%u",
 			nsvc->nsei, nsvc->nsvci, peer->bvci,
 			raid.mcc, raid.mnc, raid.lac, raid.rac);
