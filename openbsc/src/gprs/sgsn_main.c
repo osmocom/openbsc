@@ -175,8 +175,9 @@ int main(int argc, char **argv)
 	if (rc)
 		exit(2);
 
-	nsip_listen(sgsn_nsi, sgsn_inst.cfg.nsip_listen_ip,
-		    sgsn_inst.cfg.nsip_listen_port);
+	rc = gprs_ns_nsip_listen(sgsn_nsi);
+	if (rc)
+		exit(2);
 
 	while (1) {
 		rc = bsc_select_main(0);

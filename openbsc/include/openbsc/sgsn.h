@@ -10,8 +10,6 @@
 
 struct sgsn_config {
 	/* parsed from config file */
-	u_int32_t nsip_listen_ip;
-	u_int16_t nsip_listen_port;
 
 	char *gtp_statedir;
 	struct sockaddr_in gtp_listenaddr;

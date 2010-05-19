@@ -51,14 +51,7 @@ static int config_write_gbproxy(struct vty *vty)
 
 	vty_out(vty, "gbproxy%s", VTY_NEWLINE);
 
-	if (g_cfg->nsip_listen_ip) {
-		ia.s_addr = htonl(g_cfg->nsip_listen_ip);
-		vty_out(vty, " nsip bss local ip %s%s", inet_ntoa(ia),
-			VTY_NEWLINE);
-	}
-	vty_out(vty, " nsip bss local port %u%s", g_cfg->nsip_listen_port,
-		VTY_NEWLINE);
-	vty_out(vty, " nsip sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
+	vty_out(vty, " sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
 		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
@@ -73,33 +66,9 @@ DEFUN(cfg_gbproxy,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nsip_bss_local_ip,
-      cfg_nsip_bss_local_ip_cmd,
-      "nsip bss local ip A.B.C.D",
-      "Set the IP address on which we listen for BSS connects")
-{
-	struct in_addr ia;
-
-	inet_aton(argv[0], &ia);
-	g_cfg->nsip_listen_ip = ntohl(ia.s_addr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nsip_bss_local_port,
-      cfg_nsip_bss_local_port_cmd,
-      "nsip bss local port <0-65534>",
-      "Set the UDP port on which we listen for BSS connects")
-{
-	unsigned int port = atoi(argv[0]);
-
-	g_cfg->nsip_listen_port = port;
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_nsip_sgsn_nsei,
       cfg_nsip_sgsn_nsei_cmd,
-      "nsip sgsn nsei <0-65534>",
+      "sgsn nsei <0-65534>",
       "Set the NSEI to be used in the connection with the SGSN")
 {
 	unsigned int port = atoi(argv[0]);
@@ -117,8 +86,6 @@ int gbproxy_vty_init(void)
 	install_default(GBPROXY_NODE);
 	install_element(GBPROXY_NODE, &ournode_exit_cmd);
 	install_element(GBPROXY_NODE, &ournode_end_cmd);
-	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_ip_cmd);
-	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_port_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 
 	return 0;
