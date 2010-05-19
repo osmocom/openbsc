@@ -124,7 +124,7 @@ static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
 {
 	struct msgb *new_msg;
 
-	new_msg = msgb_alloc(msg->data_len, name);
+	new_msg = msgb_alloc_headroom(msg->data_len, NS_ALLOC_HEADROOM, name);
 	if (!new_msg)
 		return NULL;
 
