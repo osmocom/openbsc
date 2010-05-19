@@ -238,10 +238,20 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	rc = nsip_listen(bssgp_nsi, gbcfg.nsip_listen_port);
+	rc = nsip_listen(bssgp_nsi, gbcfg.nsip_listen_ip,
+			 gbcfg.nsip_listen_port);
 	if (rc < 0) {
 		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen on NSIP socket\n");
 		exit(2);
+	}
+
+	if (gbcfg.frgre_enabled) {
+		rc = gprs_ns_frgre_listen(bssgp_nsi, gbcfg.nsip_listen_ip);
+		if (rc < 0) {
+			LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen GRE "
+				"socket. Do you have CAP_NET_RAW?\n");
+			exit(2);
+		}
 	}
 
 	/* Reset all the persistent NS-VCs that we've read from the config */

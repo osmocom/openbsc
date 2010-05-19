@@ -41,7 +41,7 @@
 #include <openbsc/gsm_data.h>
 #include <osmocore/talloc.h>
 
-int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
+int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
 	      int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
@@ -75,7 +75,10 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
+	if (ip)
+		addr.sin_addr.s_addr = htonl(ip);
+	else
+		addr.sin_addr.s_addr = INADDR_ANY;
 
 	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 

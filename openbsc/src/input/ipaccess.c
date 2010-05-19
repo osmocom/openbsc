@@ -44,6 +44,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/socket.h>
 #include <osmocore/talloc.h>
 
 #define PRIV_OML 1
@@ -746,9 +747,6 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 	//return e1inp_line_register(line);
 }
 
-extern int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what));
-
 int ipaccess_setup(struct gsm_network *gsmnet)
 {
 	int ret;
@@ -766,13 +764,13 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
-	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, IPA_TCP_PORT_OML,
+	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, 0, IPA_TCP_PORT_OML,
 			listen_fd_cb);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP,
+	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, 0,
 			IPA_TCP_PORT_RSL, rsl_listen_fd_cb);
 	if (ret < 0)
 		return ret;

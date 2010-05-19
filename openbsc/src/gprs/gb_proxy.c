@@ -583,7 +583,7 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 			"RAC %u-%u-%u-%u%s",
 			nsvc->nsei, nsvc->nsvci, peer->bvci,
 			raid.mcc, raid.mnc, raid.lac, raid.rac, VTY_NEWLINE);
-		if (nsvc->nsi->ll == GPRS_NS_LL_UDP)
+		if (nsvc->ll == GPRS_NS_LL_UDP)
 			vty_out(vty, "  remote address %s:%u%s",
 				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
 				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
