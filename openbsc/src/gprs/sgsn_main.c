@@ -172,12 +172,23 @@ int main(int argc, char **argv)
 	}
 
 	rc = sgsn_gtp_init(&sgsn_inst);
-	if (rc)
+	if (rc) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen on GTP socket\n");
 		exit(2);
+	}
 
 	rc = gprs_ns_nsip_listen(sgsn_nsi);
-	if (rc)
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen on NSIP socket\n");
 		exit(2);
+	}
+
+	rc = gprs_ns_frgre_listen(sgsn_nsi);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen GRE "
+			"socket. Do you have CAP_NET_RAW?\n");
+		exit(2);
+	}
 
 	while (1) {
 		rc = bsc_select_main(0);
