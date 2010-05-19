@@ -580,13 +580,15 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 		gsm48_parse_ra(&raid, peer->ra);
 
 		vty_out(vty, "NSEI %5u, NS-VC %5u, PTP-BVCI %u, "
-			"RAC %u-%u-%u-%u%s",
+			"RAC %u-%u-%u-%u",
 			nsvc->nsei, nsvc->nsvci, peer->bvci,
-			raid.mcc, raid.mnc, raid.lac, raid.rac, VTY_NEWLINE);
-		if (nsvc->ll == GPRS_NS_LL_UDP)
-			vty_out(vty, "  remote address %s:%u%s",
+			raid.mcc, raid.mnc, raid.lac, raid.rac);
+		if (nsvc->ll == GPRS_NS_LL_UDP || nsvc->ll == GPRS_NS_LL_FR_GRE)
+			vty_out(vty, " %s:%u%s",
 				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
 				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
+		else
+			vty_out(vty, "%s", VTY_NEWLINE);
 	}
 	return CMD_SUCCESS;
 }
