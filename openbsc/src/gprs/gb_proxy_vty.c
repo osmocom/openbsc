@@ -58,14 +58,7 @@ static int config_write_gbproxy(struct vty *vty)
 	}
 	vty_out(vty, " nsip bss local port %u%s", g_cfg->nsip_listen_port,
 		VTY_NEWLINE);
-	ia.s_addr = htonl(g_cfg->nsip_sgsn_ip);
-	vty_out(vty, " nsip sgsn remote ip %s%s", inet_ntoa(ia),
-		VTY_NEWLINE);
-	vty_out(vty, " nsip sgsn remote port %u%s", g_cfg->nsip_sgsn_port,
-		VTY_NEWLINE);
 	vty_out(vty, " nsip sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
-		VTY_NEWLINE);
-	vty_out(vty, " nsip sgsn nsvci %u%s", g_cfg->nsip_sgsn_nsvci,
 		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
@@ -104,31 +97,6 @@ DEFUN(cfg_nsip_bss_local_port,
 	return CMD_SUCCESS;
 }
 
-
-DEFUN(cfg_nsip_sgsn_ip,
-      cfg_nsip_sgsn_ip_cmd,
-      "nsip sgsn remote ip A.B.C.D",
-      "Set the IP of the SGSN to which the proxy shall connect")
-{
-	struct in_addr ia;
-
-	inet_aton(argv[0], &ia);
-	g_cfg->nsip_sgsn_ip = ntohl(ia.s_addr);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nsip_sgsn_port,
-      cfg_nsip_sgsn_port_cmd,
-      "nsip sgsn remote port <0-65534>",
-      "Set the UDP port of the SGSN to which the proxy shall connect")
-{
-	unsigned int port = atoi(argv[0]);
-
-	g_cfg->nsip_sgsn_port = port;
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_nsip_sgsn_nsei,
       cfg_nsip_sgsn_nsei_cmd,
       "nsip sgsn nsei <0-65534>",
@@ -137,17 +105,6 @@ DEFUN(cfg_nsip_sgsn_nsei,
 	unsigned int port = atoi(argv[0]);
 
 	g_cfg->nsip_sgsn_nsei = port;
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_nsip_sgsn_nsvci,
-      cfg_nsip_sgsn_nsvci_cmd,
-      "nsip sgsn nsvci <0-65534>",
-      "Set the NSVCI to be used in the connection with the SGSN")
-{
-	unsigned int port = atoi(argv[0]);
-
-	g_cfg->nsip_sgsn_nsvci = port;
 	return CMD_SUCCESS;
 }
 
@@ -162,10 +119,7 @@ int gbproxy_vty_init(void)
 	install_element(GBPROXY_NODE, &ournode_end_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_ip_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_bss_local_port_cmd);
-	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_ip_cmd);
-	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_port_cmd);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
-	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsvci_cmd);
 
 	return 0;
 }

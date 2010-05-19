@@ -13,11 +13,7 @@ struct gbproxy_config {
 	u_int32_t nsip_listen_ip;
 	u_int16_t nsip_listen_port;
 
-	u_int32_t nsip_sgsn_ip;
-	u_int16_t nsip_sgsn_port;
-
 	u_int16_t nsip_sgsn_nsei;
-	u_int16_t nsip_sgsn_nsvci;
 
 	/* misc */
 	struct gprs_ns_inst *nsi;

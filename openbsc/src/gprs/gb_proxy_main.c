@@ -188,7 +188,6 @@ extern void *tall_msgb_ctx;
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
-	struct sockaddr_in sin;
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "nsip_proxy");
@@ -207,7 +206,7 @@ int main(int argc, char **argv)
 
 	vty_init("Osmocom Gb Proxy", PACKAGE_VERSION, openbsc_copyright);
 	logging_vty_add_cmds();
-        gbproxy_vty_init();
+	gbproxy_vty_init();
 
 	handle_options(argc, argv);
 
@@ -232,15 +231,18 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	nsip_listen(bssgp_nsi, gbcfg.nsip_listen_port);
+	if (!nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
+		LOGP(DGPRS, LOGL_FATAL, "You cannot proxy to NSEI %u "
+			"without creating that NSEI before\n",
+			gbcfg.nsip_sgsn_nsei);
+		exit(2);
+	}
 
-	/* 'establish' the outgoing connection to the SGSN */
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(gbcfg.nsip_sgsn_port);
-	sin.sin_addr.s_addr = htonl(gbcfg.nsip_sgsn_ip);
-	nsip_connect(bssgp_nsi, &sin, gbcfg.nsip_sgsn_nsei,
-			gbcfg.nsip_sgsn_nsvci);
-
+	rc = nsip_listen(bssgp_nsi, gbcfg.nsip_listen_port);
+	if (rc < 0) {
+		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen on NSIP socket\n");
+		exit(2);
+	}
 
 	/* Reset all the persistent NS-VCs that we've read from the config */
 	gbprox_reset_persistent_nsvcs(bssgp_nsi);
