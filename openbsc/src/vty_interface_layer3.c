@@ -23,9 +23,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <vty/command.h>
-#include <vty/buffer.h>
-#include <vty/vty.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/buffer.h>
+#include <osmocom/vty/vty.h>
 
 #include <arpa/inet.h>
 

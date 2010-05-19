@@ -25,14 +25,58 @@
 #include <osmocore/talloc.h>
 
 #include <openbsc/vty.h>
-#include <openbsc/telnet_interface.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_subscriber.h>
 
-#include <vty/command.h>
-#include <vty/buffer.h>
-#include <vty/vty.h>
+#include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/buffer.h>
+#include <osmocom/vty/vty.h>
 
+
+int bsc_vty_go_parent(struct vty *vty)
+{
+	switch (vty->node) {
+	case GSMNET_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	case BTS_NODE:
+		vty->node = GSMNET_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts *bts = vty->index;
+			vty->index = bts->network;
+		}
+		break;
+	case TRX_NODE:
+		vty->node = BTS_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx *trx = vty->index;
+			vty->index = trx->bts;
+		}
+		break;
+	case TS_NODE:
+		vty->node = TRX_NODE;
+		{
+			/* set vty->index correctly ! */
+			struct gsm_bts_trx_ts *ts = vty->index;
+			vty->index = ts->trx;
+		}
+		break;
+	case SUBSCR_NODE:
+		vty->node = VIEW_NODE;
+		subscr_put(vty->index);
+		vty->index = NULL;
+		break;
+	default:
+		vty->node = CONFIG_NODE;
+	}
+
+	return vty->node;
+}
 
 /* Down vty node level. */
 gDEFUN(ournode_exit,

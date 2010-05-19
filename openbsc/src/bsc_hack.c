@@ -37,7 +37,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 
-#include <vty/command.h>
+#include <osmocom/vty/command.h>
 
 #include "../bscconfig.h"
 

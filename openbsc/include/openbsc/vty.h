@@ -1,8 +1,8 @@
 #ifndef OPENBSC_VTY_H
 #define OPENBSC_VTY_H
 
-#include <vty/vty.h>
-#include <vty/buffer.h>
+#include <osmocom/vty/vty.h>
+#include <osmocom/vty/buffer.h>
 
 struct gsm_network;
 struct vty;

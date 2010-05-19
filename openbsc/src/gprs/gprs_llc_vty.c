@@ -37,8 +37,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/gprs_llc.h>
 
-#include <vty/vty.h>
-#include <vty/command.h>
+#include <osmocom/vty/vty.h>
+#include <osmocom/vty/command.h>
 
 struct value_string gprs_llc_state_strs[] = {
 	{ GPRS_LLS_UNASSIGNED, 		"TLLI Unassigned" },

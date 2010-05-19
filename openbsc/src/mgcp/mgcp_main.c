@@ -39,10 +39,10 @@
 #include <osmocore/select.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <openbsc/telnet_interface.h>
+#include <osmocom/vty//telnet_interface.h>
 #include <openbsc/vty.h>
 
-#include <vty/command.h>
+#include <osmocom/vty/command.h>
 
 #include "../../bscconfig.h"
 

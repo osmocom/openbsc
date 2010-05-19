@@ -27,7 +27,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 #include <openbsc/misdn.h>
-#include <openbsc/telnet_interface.h>
+#include <osmocom/vty/telnet_interface.h>
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>

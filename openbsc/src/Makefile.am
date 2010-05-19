@@ -1,5 +1,5 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 # build current directory before building gprs
@@ -25,14 +25,13 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		token_auth.c rrlp.c gsm_04_80.c ussd.c silent_call.c \
 		handover_logic.c handover_decision.c meas_rep.c
 
-libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c \
-		telnet_interface.c vty/utils.c common_vty.c \
-		logging_vty.c
+libvty_a_SOURCES = common_vty.c
 
 libsccp_a_SOURCES = sccp/sccp.c
 
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c bsc_vty.c vty_interface_layer3.c
-bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
+bsc_hack_LDADD = libmsc.a libbsc.a libvty.a libmsc.a \
+		-ldl -ldbi $(LIBCRYPT) $(LIBOSMOVTY_LIBS)
 
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
@@ -41,4 +40,4 @@ isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c \
 		   debug.c
-bsc_mgcp_LDADD = libvty.a
+bsc_mgcp_LDADD = libvty.a $(LIBOSMOVTY_LIBS)

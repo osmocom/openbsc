@@ -31,8 +31,8 @@
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/vty.h>
 
-#include <vty/command.h>
-#include <vty/vty.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/vty.h>
 
 #include <string.h>
 

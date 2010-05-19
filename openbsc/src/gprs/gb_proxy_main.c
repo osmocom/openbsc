@@ -42,11 +42,11 @@
 #include <openbsc/debug.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
-#include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
 
-#include <vty/command.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/telnet_interface.h>
 
 #include "../../bscconfig.h"
 

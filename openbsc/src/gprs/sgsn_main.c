@@ -38,9 +38,10 @@
 #include <osmocore/select.h>
 #include <osmocore/rate_ctr.h>
 
+#include <osmocom/vty/telnet_interface.h>
+
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_ns.h>

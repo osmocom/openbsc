@@ -22,9 +22,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 
-#include <vty/command.h>
-#include <vty/buffer.h>
-#include <vty/vty.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/buffer.h>
+#include <osmocom/vty/vty.h>
+#include <osmocom/vty/logging.h>
+#include <osmocom/vty/telnet_interface.h>
 
 #include <arpa/inet.h>
 
@@ -37,7 +39,6 @@
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
 #include <osmocore/talloc.h>
-#include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/debug.h>

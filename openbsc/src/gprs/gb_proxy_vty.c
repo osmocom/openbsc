@@ -31,8 +31,8 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/vty.h>
 
-#include <vty/command.h>
-#include <vty/vty.h>
+#include <osmocom/vty/command.h>
+#include <osmocom/vty/vty.h>
 
 static struct gbproxy_config *g_cfg = NULL;
 

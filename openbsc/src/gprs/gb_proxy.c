@@ -567,7 +567,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 }
 
 
-#include <vty/command.h>
+#include <osmocom/vty/command.h>
 
 gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
        SHOW_STR "Display information about the Gb proxy")

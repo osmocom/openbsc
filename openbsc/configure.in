@@ -23,6 +23,7 @@ AC_SEARCH_LIBS(gtp_new, gtp,
 AM_CONDITIONAL(HAVE_LIBGTP, test "x$GPRS_LIBGTP" != "x")
 
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.6)
+PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.1.6)
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -48,7 +49,6 @@ AC_OUTPUT(
     openbsc.pc
     libsccp.pc
     include/openbsc/Makefile
-    include/vty/Makefile
     include/sccp/Makefile
     include/Makefile
     src/Makefile
