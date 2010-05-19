@@ -48,8 +48,19 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
 	int ret, on = 1;
 	int type = SOCK_STREAM;
 
-	if (proto == IPPROTO_UDP)
+	switch (proto) {
+	case IPPROTO_TCP:
+		type = SOCK_STREAM;
+		break;
+	case IPPROTO_UDP:
 		type = SOCK_DGRAM;
+		break;
+	case IPPROTO_GRE:
+		type = SOCK_RAW;
+		break;
+	default:
+		return -EINVAL;
+	}
 
 	bfd->fd = socket(AF_INET, type, proto);
 	bfd->cb = cb;
@@ -57,7 +68,7 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
 	//bfd->data = line;
 
 	if (bfd->fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not create TCP socket.\n");
+		LOGP(DINP, LOGL_ERROR, "could not create socket.\n");
 		return -EIO;
 	}
 
@@ -70,13 +81,13 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int16_t port,
 
 	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind l2 socket %s\n",
+		LOGP(DINP, LOGL_ERROR, "could not bind socket %s\n",
 			strerror(errno));
 		close(bfd->fd);
 		return -EIO;
 	}
 
-	if (proto != IPPROTO_UDP) {
+	if (proto == IPPROTO_TCP) {
 		ret = listen(bfd->fd, 1);
 		if (ret < 0) {
 			perror("listen");
