@@ -193,12 +193,14 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		dest = !dest;
 
 	if (dest == DEST_NETWORK) {
-		patch_payload(endp->net_payload_type, buf, rc);
+		if (proto == PROTO_RTP)
+			patch_payload(endp->net_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->remote,
 			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
 			     buf, rc);
 	} else {
-		patch_payload(endp->bts_payload_type, buf, rc);
+		if (proto == PROTO_RTP)
+			patch_payload(endp->bts_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
 			     buf, rc);
