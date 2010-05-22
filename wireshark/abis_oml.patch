@@ -6,8 +6,8 @@ Subject: [PATCH 1/2] Add the Abis OML patch.
 ---
  epan/dissectors/Makefile.common       |    1 +
  epan/dissectors/packet-gsm_abis_oml.c | 1386 +++++++++++++++++++++++++++++++++
- epan/dissectors/packet-gsm_abis_oml.h |  787 +++++++++++++++++++
- 3 files changed, 2174 insertions(+), 0 deletions(-)
+ epan/dissectors/packet-gsm_abis_oml.h |  788 +++++++++++++++++++
+ 3 files changed, 2175 insertions(+), 0 deletions(-)
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
 
@@ -1417,10 +1417,10 @@ index 0000000..526a1e5
 +}
 diff --git a/epan/dissectors/packet-gsm_abis_oml.h b/epan/dissectors/packet-gsm_abis_oml.h
 new file mode 100644
-index 0000000..d523e96
+index 0000000..a176a98
 --- /dev/null
 +++ b/epan/dissectors/packet-gsm_abis_oml.h
-@@ -0,0 +1,787 @@
+@@ -0,0 +1,788 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -2204,6 +2204,7 @@ index 0000000..d523e96
 +		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_IPACC_FILE_DATA] =	{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_IPACC_CGI] = 		{ TLV_TYPE_TL16V, 0 },
 +	},
 +};
 +
