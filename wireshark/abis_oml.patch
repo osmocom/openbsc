@@ -1,21 +1,21 @@
-From 5857518be87641fdab45e593bc9fd5ef5595e619 Mon Sep 17 00:00:00 2001
+From 61a4d5540a7860e7eddc67b3db0f2f80357f1da0 Mon Sep 17 00:00:00 2001
 From: Holger Hans Peter Freyther <zecke@selfish.org>
 Date: Mon, 19 Apr 2010 13:23:51 +0800
 Subject: [PATCH 1/2] Add the Abis OML patch.
 
 ---
  epan/dissectors/Makefile.common       |    1 +
- epan/dissectors/packet-gsm_abis_oml.c | 1382 +++++++++++++++++++++++++++++++++
+ epan/dissectors/packet-gsm_abis_oml.c | 1386 +++++++++++++++++++++++++++++++++
  epan/dissectors/packet-gsm_abis_oml.h |  787 +++++++++++++++++++
- 3 files changed, 2170 insertions(+), 0 deletions(-)
+ 3 files changed, 2174 insertions(+), 0 deletions(-)
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
 
 diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
-index dbc3726..98dcdc3 100644
+index 4973c3b..65e6d01 100644
 --- a/epan/dissectors/Makefile.common
 +++ b/epan/dissectors/Makefile.common
-@@ -481,6 +481,7 @@ DISSECTOR_SRC = \
+@@ -483,6 +483,7 @@ DISSECTOR_SRC = \
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -25,10 +25,10 @@ index dbc3726..98dcdc3 100644
  	packet-gsm_bssmap_le.c	\
 diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
 new file mode 100644
-index 0000000..fa46ab5
+index 0000000..526a1e5
 --- /dev/null
 +++ b/epan/dissectors/packet-gsm_abis_oml.c
-@@ -0,0 +1,1382 @@
+@@ -0,0 +1,1386 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -695,7 +695,9 @@ index 0000000..fa46ab5
 +ipacc_tr_ie_chan_usage(tvbuff_t *tvb, proto_tree *att_tree, int offset)
 +{
 +	while (tvb_reported_length_remaining(tvb, offset) != 0) {
-+		guint16 result = tvb_get_ntohs(tvb, offset);
++		guint16 result;
++
++		result = tvb_get_ntohs(tvb, offset);
 +		proto_tree_add_uint(att_tree, hf_attr_ipa_tr_arfcn,
 +				    tvb, offset, 2, result);
 +		proto_tree_add_uint(att_tree, hf_attr_ipa_tr_rxlev,
@@ -715,11 +717,13 @@ index 0000000..fa46ab5
 +			    1, FALSE);
 +
 +	while (tvb_reported_length_remaining(tvb, offset) != 0) {
-+		guint8 ie = tvb_get_guint8(tvb, offset);
-+		guint16 len = tvb_get_ntohs(tvb, offset+1);
++		guint8 ie;
++		guint16 len;
 +		proto_item *ti;
 +		proto_tree *att_tree;
 +
++		ie = tvb_get_guint8(tvb, offset);
++		len = tvb_get_ntohs(tvb, offset+1);
 +		ti = proto_tree_add_item(tree, hf_oml_ipa_tres_attr_tag, tvb,
 +					 offset++, 1, FALSE);
 +		att_tree = proto_item_add_subtree(ti, ett_oml_fom_att);
