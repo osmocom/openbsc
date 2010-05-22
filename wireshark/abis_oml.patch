@@ -5,9 +5,9 @@ Subject: [PATCH 1/2] Add the Abis OML patch.
 
 ---
  epan/dissectors/Makefile.common       |    1 +
- epan/dissectors/packet-gsm_abis_oml.c | 1386 +++++++++++++++++++++++++++++++++
- epan/dissectors/packet-gsm_abis_oml.h |  788 +++++++++++++++++++
- 3 files changed, 2175 insertions(+), 0 deletions(-)
+ epan/dissectors/packet-gsm_abis_oml.c | 1402 +++++++++++++++++++++++++++++++++
+ epan/dissectors/packet-gsm_abis_oml.h |  798 +++++++++++++++++++
+ 3 files changed, 2201 insertions(+), 0 deletions(-)
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
 
@@ -25,10 +25,10 @@ index 4973c3b..65e6d01 100644
  	packet-gsm_bssmap_le.c	\
 diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
 new file mode 100644
-index 0000000..526a1e5
+index 0000000..dc53496
 --- /dev/null
 +++ b/epan/dissectors/packet-gsm_abis_oml.c
-@@ -0,0 +1,1386 @@
+@@ -0,0 +1,1402 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
@@ -145,7 +145,7 @@ index 0000000..526a1e5
 +static int ett_oml_fom_att = -1;
 +
 +/* Decode things as nanoBTS traces */
-+static gboolean global_oml_use_nano_bts = FALSE;
++static gboolean global_oml_use_nano_bts = TRUE;
 +
 +static proto_tree *top_tree;
 +
@@ -611,6 +611,22 @@ index 0000000..526a1e5
 +	{ NM_IPACC_TR_IE_FREQ_ERR,	"Frequency Error" },
 +};
 +
++static const struct tlv_def *
++find_tlv_tag(guint8 tag)
++{
++	const struct tlv_def *specific;
++
++	if (global_oml_use_nano_bts)
++		specific = &nm_att_tlvdef_ipa.def[tag];
++	else
++		specific = &nm_att_tlvdev_bs11.def[tag];
++
++	if (specific->type != TLV_TYPE_FIXED)
++		return specific;
++
++	return &nm_att_tlvdef_base.def[tag];
++}
++
 +/* Parse the ip.access specific BCCH Information IE embedded into the Test
 + * Report IE */
 +static gint
@@ -766,7 +782,7 @@ index 0000000..526a1e5
 +		tvbuff_t *sub_tvb;
 +
 +		tag = tvb_get_guint8(tvb, offset);
-+		tdef = &nm_att_tlvdef.def[tag];
++		tdef = find_tlv_tag(tag);
 +
 +		switch (tdef->type) {
 +		case TLV_TYPE_FIXED:
@@ -1417,10 +1433,10 @@ index 0000000..526a1e5
 +}
 diff --git a/epan/dissectors/packet-gsm_abis_oml.h b/epan/dissectors/packet-gsm_abis_oml.h
 new file mode 100644
-index 0000000..a176a98
+index 0000000..98aeb24
 --- /dev/null
 +++ b/epan/dissectors/packet-gsm_abis_oml.h
-@@ -0,0 +1,788 @@
+@@ -0,0 +1,798 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -2079,7 +2095,7 @@ index 0000000..a176a98
 +};
 +
 +/* From openbsc/src/abis_nm.c */
-+static const struct tlv_definition nm_att_tlvdef = {
++static const struct tlv_definition nm_att_tlvdef_base = {
 +	.def = {
 +		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
 +		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V, 0 },
@@ -2102,7 +2118,6 @@ index 0000000..a176a98
 +		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
 +		[NM_ATT_HSN] =			{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V, 0 },
-+		//BS11 [NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
@@ -2146,8 +2161,15 @@ index 0000000..a176a98
 +		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V, 0 },
-+#if 0
-+		/* BS11 specifics */
++
++	},
++};
++
++/* BS11 specifics */
++static const struct tlv_definition nm_att_tlvdev_bs11 = {
++	.def = {
++		/* a difference.. */
++		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V, 0 },
 +		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV, 0 },
@@ -2172,8 +2194,12 @@ index 0000000..a176a98
 +		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV, 0 },
 +		[0x95] =			{ TLV_TYPE_FIXED, 2 },
-+#endif
-+		/* ip.access specifics */
++	},
++};
++
++/* ip.access specifics */
++static const struct tlv_definition nm_att_tlvdef_ipa = {
++	.def = {
 +		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
 +		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
 +		[NM_ATT_IPACC_PRIM_OML_CFG] =	{ TLV_TYPE_TL16V, 0 },
