@@ -63,9 +63,9 @@ struct bssgp_bvc_ctx;
 
 void log_set_imsi_filter(struct log_target *target, const char *imsi);
 void log_set_nsvc_filter(struct log_target *target,
-			 const struct gprs_nsvc *nsvc);
+			 struct gprs_nsvc *nsvc);
 void log_set_bvc_filter(struct log_target *target,
-			const struct bssgp_bvc_ctx *bctx);
+			struct bssgp_bvc_ctx *bctx);
 
 extern const struct log_info log_info;
 

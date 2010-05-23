@@ -222,8 +222,7 @@ void log_set_imsi_filter(struct log_target *target, const char *imsi)
 	}
 }
 
-void log_set_nsvc_filter(struct log_target *target,
-			 const struct gprs_nsvc *nsvc)
+void log_set_nsvc_filter(struct log_target *target, struct gprs_nsvc *nsvc)
 {
 	if (nsvc) {
 		target->filter_map |= (1 << FLT_NSVC);
@@ -234,8 +233,7 @@ void log_set_nsvc_filter(struct log_target *target,
 	}
 }
 
-void log_set_bvc_filter(struct log_target *target,
-			const struct bssgp_bvc_ctx *bctx)
+void log_set_bvc_filter(struct log_target *target, struct bssgp_bvc_ctx *bctx)
 {
 	if (bctx) {
 		target->filter_map |= (1 << FLT_BVC);
