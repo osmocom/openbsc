@@ -260,7 +260,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 	return gprs_bssgp_tx_dl_ud(msg);
 }
 
-static int gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
+static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 {
 	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x(%s) ",
 		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
