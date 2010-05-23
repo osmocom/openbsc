@@ -7,7 +7,7 @@
 struct gsm_network;
 struct vty;
 
-void openbsc_vty_add_cmds(void);
+void logging_vty_add_cmds(void);
 void openbsc_vty_print_statistics(struct vty *vty, struct gsm_network *);
 
 struct buffer *vty_argv_to_buffer(int argc, const char *argv[], int base);
