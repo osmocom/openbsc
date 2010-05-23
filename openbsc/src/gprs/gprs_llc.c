@@ -496,6 +496,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 
 	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
 
+	memset(&llhp, 0, sizeof(llhp));
 	rc = gprs_llc_hdr_parse(&llhp, lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
 	gprs_llc_hdr_dump(&llhp);
 	if (rc < 0) {
