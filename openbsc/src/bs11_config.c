@@ -830,6 +830,7 @@ static void signal_handler(int signal)
 	}
 }
 
+extern int bts_model_bs11_init(void);
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
