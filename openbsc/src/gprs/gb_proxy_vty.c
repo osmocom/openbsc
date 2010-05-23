@@ -47,8 +47,6 @@ static struct cmd_node gbproxy_node = {
 
 static int config_write_gbproxy(struct vty *vty)
 {
-	struct in_addr ia;
-
 	vty_out(vty, "gbproxy%s", VTY_NEWLINE);
 
 	vty_out(vty, " sgsn nsei %u%s", g_cfg->nsip_sgsn_nsei,
