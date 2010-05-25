@@ -125,6 +125,14 @@ static void signal_handler(int signal)
 extern struct gprs_ns_inst *bssgp_nsi;
 extern void *tall_msgb_ctx;
 
+extern int bsc_vty_go_parent(struct vty *vty);
+
+static struct vty_app_info vty_info = {
+	.name 		= "Osmocom SGSN",
+	.version	= PACKAGE_VERSION,
+	.go_parent_cb	= bsc_vty_go_parent,
+};
+
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
@@ -146,7 +154,8 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 
-	vty_init("Osmocom SGSN", PACKAGE_VERSION, openbsc_copyright);
+	vty_info.copyright = openbsc_copyright;
+	vty_init(&vty_info);
 	logging_vty_add_cmds();
         sgsn_vty_init();
 

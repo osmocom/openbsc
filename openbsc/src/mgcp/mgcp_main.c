@@ -174,6 +174,13 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	return 0;
 }
 
+extern int bsc_vty_go_parent(struct vty *vty);
+
+static struct vty_app_info vty_info = {
+	.name 		= "OpenBSC MGCP",
+	.version	= PACKAGE_VERSION,
+	.go_parent_cb	= bsc_vty_go_parent,
+};
 
 int main(int argc, char** argv)
 {
@@ -193,7 +200,8 @@ int main(int argc, char** argv)
 	if (!cfg)
 		return -1;
 
-	vty_init("OpenBSC MGCP", PACKAGE_VERSION, openbsc_copyright);
+	vty_info.copyright = openbsc_copyright;
+	vty_init(&vty_info);
 	logging_vty_add_cmds();
 	mgcp_vty_init();
 

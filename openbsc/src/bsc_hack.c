@@ -198,9 +198,19 @@ extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
 
+extern int bsc_vty_go_parent(struct vty *vty);
+
+static struct vty_app_info vty_info = {
+	.name 		= "OpenBSC",
+	.version	= PACKAGE_VERSION,
+	.go_parent_cb	= bsc_vty_go_parent,
+};
+
 int main(int argc, char **argv)
 {
 	int rc;
+
+	vty_info.copyright = openbsc_copyright;
 
 	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
@@ -219,7 +229,7 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
-	vty_init("OpenBSC", PACKAGE_VERSION, openbsc_copyright);
+	vty_init(&vty_info);
 	bsc_vty_init();
 
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
