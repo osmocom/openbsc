@@ -21,7 +21,12 @@ socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 socket.bind(("0.0.0.0", 0))
 socket.setblocking(1)
 
-def send_and_receive(packet, port):
+
+import sys
+port = int(sys.argv[1])
+print "Sending data to port: %d" % port
+
+def send_and_receive(packet):
     socket.sendto(packet, ("127.0.0.1", port))
 
     try:
@@ -33,27 +38,21 @@ def send_and_receive(packet, port):
     return data
 
 #send stuff once
-import sys
-port = int(sys.argv[1])
-print "Sending data to port: %d" % port
+
+to_send = [
+    (bts_ns_reset, ns_reset_ack, "reset ack"),
+    (bts_ns_unblock, ns_unblock_ack, "unblock ack"),
+    (bts_bvc_reset_0, ns_bvc_reset_0_ack, "BVCI=0 reset ack"),
+]
 
 
-res = send_and_receive(bts_ns_reset, port)
-if res != ns_reset_ack:
-    print "Failed to get the reset ack"
-    sys.exit(-1)
-
-res = send_and_receive(bts_ns_unblock, port)
-if res != ns_unblock_ack:
-    print "Failed to get the unblock ack"
-    sys.exit(-1)
-
-res = send_and_receive(bts_bvc_reset_0, port)
-if res != ns_bvc_reset_0_ack:
-    print "Failed to get NS BVCI=0 reset ack"
-    sys.exit(-1)
+for (out, inp, type) in to_send:
+    res = send_and_receive(out)
+    if res != inp:
+        print "Failed to get the %s" % type
+        sys.exit(-1)
 
 import time
 time.sleep(3)
-res = send_and_receive(bts_bvc_reset_8167, port)
+res = send_and_receive(bts_bvc_reset_8167)
 print "Send all messages... check wireshark for the last response"
