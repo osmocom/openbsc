@@ -450,8 +450,8 @@ DEFUN(ena_subscr_extension,
 DEFUN(ena_subscr_a3a8,
       ena_subscr_a3a8_cmd,
       "subscriber " SUBSCR_TYPES " ID a3a8 " A3A8_ALG_TYPES " [KI]",
-      "Set a3a8 parameters for the subscriber\n" A3A8_ALG_HELP
-      "Encryption Key Ki\n")
+      SUBSCR_HELP "Set a3a8 parameters for the subscriber\n"
+      A3A8_ALG_HELP "Encryption Key Ki\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
