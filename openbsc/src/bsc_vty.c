@@ -96,10 +96,19 @@ struct cmd_node ts_node = {
 	1,
 };
 
+extern struct gsm_network *bsc_gsmnet;
+
 struct gsm_network *gsmnet_from_vty(struct vty *v)
 {
+	/* In case we read from the config file, the vty->priv cannot
+	 * point to a struct telnet_connection, and thus conn->priv
+	 * will not point to the gsm_network structure */
+#if 0
 	struct telnet_connection *conn = v->priv;
 	return (struct gsm_network *) conn->priv;
+#else
+	return bsc_gsmnet;
+#endif
 }
 
 static int dummy_config_write(struct vty *v)
