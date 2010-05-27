@@ -45,31 +45,6 @@
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
-struct cmd_node subscr_node = {
-	SUBSCR_NODE,
-	"%s(subscriber)#",
-	1,
-};
-
-/* Down vty node level. */
-DEFUN(subscr_node_exit,
-      subscr_node_exit_cmd, "exit", "Exit current mode and down to previous mode\n")
-{
-	switch (vty->node) {
-	case SUBSCR_NODE:
-		vty->node = VIEW_NODE;
-		subscr_put(vty->index);
-		vty->index = NULL;
-		break;
-	}
-	return CMD_SUCCESS;
-}
-
-static int dummy_config_write(struct vty *v)
-{
-	return CMD_SUCCESS;
-}
-
 static int hexparse(const char *str, u_int8_t *b, int max_len)
 
 {
@@ -95,30 +70,6 @@ static int hexparse(const char *str, u_int8_t *b, int max_len)
 	}
 
 	return i>>1;
-}
-
-/* per-subscriber configuration */
-DEFUN(cfg_subscr,
-      cfg_subscr_cmd,
-      "subscriber IMSI",
-      "Select a Subscriber to configure\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	const char *imsi = argv[0];
-	struct gsm_subscriber *subscr;
-
-	subscr = subscr_get_by_imsi(gsmnet, imsi);
-	if (!subscr) {
-		vty_out(vty, "%% No subscriber for IMSI %s%s",
-			imsi, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	/* vty_go_parent should put this subscriber */
-	vty->index = subscr;
-	vty->node = SUBSCR_NODE;
-
-	return CMD_SUCCESS;
 }
 
 static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
@@ -171,35 +122,6 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 
 
 /* Subscriber */
-DEFUN(show_subscr,
-      show_subscr_cmd,
-      "show subscriber [IMSI]",
-	SHOW_STR "Display information about a subscriber\n")
-{
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
-	const char *imsi;
-	struct gsm_subscriber *subscr;
-
-	if (argc >= 1) {
-		imsi = argv[0];
-		subscr = subscr_get_by_imsi(gsmnet, imsi);
-		if (!subscr) {
-			vty_out(vty, "%% unknown subscriber%s",
-				VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-		subscr_dump_full_vty(vty, subscr);
-		subscr_put(subscr);
-
-		return CMD_SUCCESS;
-	}
-
-	/* FIXME: iterate over all subscribers ? */
-	return CMD_WARNING;
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(show_subscr_cache,
       show_subscr_cache_cmd,
       "show subscriber cache",
@@ -301,9 +223,31 @@ static struct gsm_subscriber *get_subscr_by_argv(struct gsm_network *gsmnet,
 	"Identify subscriber by his database ID\n"			\
 	"Identifier for the subscriber\n"
 
+DEFUN(show_subscr,
+      show_subscr_cmd,
+      "show subscriber " SUBSCR_TYPES " ID",
+	SHOW_STR SUBSCR_HELP)
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+				get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr_dump_full_vty(vty, subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(subscriber_send_sms,
       subscriber_send_sms_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN sms send .LINE",
+      "subscriber " SUBSCR_TYPES " ID sms send .LINE",
 	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -327,7 +271,7 @@ DEFUN(subscriber_send_sms,
 
 DEFUN(subscriber_silent_sms,
       subscriber_silent_sms_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent-sms send .LINE",
+      "subscriber " SUBSCR_TYPES " ID silent-sms send .LINE",
 	SUBSCR_HELP
 	"Silent SMS Operation\n" "Send Silent SMS\n" "Actual SMS text\n")
 {
@@ -360,7 +304,7 @@ DEFUN(subscriber_silent_sms,
 
 DEFUN(subscriber_silent_call_start,
       subscriber_silent_call_start_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent-call start (any|tch/f|tch/any|sdcch)",
+      "subscriber " SUBSCR_TYPES " ID silent-call start (any|tch/f|tch/any|sdcch)",
 	SUBSCR_HELP "Silent call operation\n" "Start silent call\n"
 	CHAN_TYPE_HELP)
 {
@@ -398,7 +342,7 @@ DEFUN(subscriber_silent_call_start,
 
 DEFUN(subscriber_silent_call_stop,
       subscriber_silent_call_stop_cmd,
-      "subscriber " SUBSCR_TYPES " EXTEN silent-call stop",
+      "subscriber " SUBSCR_TYPES " ID silent-call stop",
 	SUBSCR_HELP "Silent call operation\n" "Stop silent call\n"
 	CHAN_TYPE_HELP)
 {
@@ -423,51 +367,77 @@ DEFUN(subscriber_silent_call_stop,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_subscr_name,
-      cfg_subscr_name_cmd,
-      "name NAME",
-      "Set the name of the subscriber")
+DEFUN(ena_subscr_authorizde,
+      ena_subscr_authorized_cmd,
+      "subscriber " SUBSCR_TYPES " ID authorized (0|1)",
+	SUBSCR_HELP "(De-)Authorize subscriber in HLR\n"
+	"Subscriber should NOT be authorized\n"
+	"Subscriber should be authorized\n")
 {
-	const char *name = argv[0];
-	struct gsm_subscriber *subscr = vty->index;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr->authorized = atoi(argv[2]);
+	db_sync_subscriber(subscr);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(ena_subscr_name,
+      ena_subscr_name_cmd,
+      "subscriber " SUBSCR_TYPES " ID name NAME",
+	SUBSCR_HELP "Set the name of the subscriber\n"
+	"Name of the Subscriber\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	const char *name = argv[2];
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	strncpy(subscr->name, name, sizeof(subscr->name));
-
 	db_sync_subscriber(subscr);
+
+	subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_subscr_extension,
-      cfg_subscr_extension_cmd,
-      "extension EXTENSION",
-      "Set the extension of the subscriber")
+DEFUN(ena_subscr_extension,
+      ena_subscr_extension_cmd,
+      "subscriber " SUBSCR_TYPES " ID extension EXTENSION",
+	SUBSCR_HELP "Set the extension (phone number) of the subscriber\n"
+	"Extension (phone number)\n")
 {
-	const char *name = argv[0];
-	struct gsm_subscriber *subscr = vty->index;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	const char *name = argv[2];
 
-	strncpy(subscr->extension, name, sizeof(subscr->extension));
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
+	strncpy(subscr->extension, name, sizeof(subscr->name));
 	db_sync_subscriber(subscr);
 
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_subscr_authorized,
-      cfg_subscr_authorized_cmd,
-      "auth (0|1)",
-      "Set the authorization status of the subscriber\n"
-	"Not authorized\n" "Authorized\n")
-{
-	int auth = atoi(argv[0]);
-	struct gsm_subscriber *subscr = vty->index;
-
-	if (auth)
-		subscr->authorized = 1;
-	else
-		subscr->authorized = 0;
-
-	db_sync_subscriber(subscr);
+	subscr_put(subscr);
 
 	return CMD_SUCCESS;
 }
@@ -477,17 +447,25 @@ DEFUN(cfg_subscr_authorized,
 	"Use No A3A8 algorithm\n"	\
 	"Use COMP128v1 algorithm\n"
 
-DEFUN(cfg_subscr_a3a8,
-      cfg_subscr_a3a8_cmd,
-      "a3a8 " A3A8_ALG_TYPES " [KI]",
+DEFUN(ena_subscr_a3a8,
+      ena_subscr_a3a8_cmd,
+      "subscriber " SUBSCR_TYPES " ID a3a8 " A3A8_ALG_TYPES " [KI]",
       "Set a3a8 parameters for the subscriber\n" A3A8_ALG_HELP
       "Encryption Key Ki\n")
 {
-	struct gsm_subscriber *subscr = vty->index;
-	const char *alg_str = argv[0];
-	const char *ki_str = argv[1];
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	const char *alg_str = argv[2];
+	const char *ki_str = argv[3];
 	struct gsm_auth_info ainfo;
 	int rc;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	if (!strcasecmp(alg_str, "none")) {
 		/* Just erase */
@@ -579,15 +557,10 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_silent_call_stop_cmd);
 	install_element_ve(&show_stats_cmd);
 
-	install_element(CONFIG_NODE, &cfg_subscr_cmd);
-	install_node(&subscr_node, dummy_config_write);
-
-	install_default(SUBSCR_NODE);
-	install_element(SUBSCR_NODE, &subscr_node_exit_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_name_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_extension_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_authorized_cmd);
-	install_element(SUBSCR_NODE, &cfg_subscr_a3a8_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
 
 	return 0;
 }
