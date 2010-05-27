@@ -66,11 +66,6 @@ int bsc_vty_go_parent(struct vty *vty)
 			vty->index = ts->trx;
 		}
 		break;
-	case SUBSCR_NODE:
-		vty->node = VIEW_NODE;
-		subscr_put(vty->index);
-		vty->index = NULL;
-		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
