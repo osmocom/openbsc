@@ -55,4 +55,4 @@ for (out, inp, type) in to_send:
 import time
 time.sleep(3)
 res = send_and_receive(bts_bvc_reset_8167)
-print "Send all messages... check wireshark for the last response"
+print "Sent all messages... check wireshark for the last response"
