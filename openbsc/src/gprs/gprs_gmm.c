@@ -917,6 +917,7 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 
 	if (!mmctx) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
+		/* FIXME: return SM / MM STATUS */
 		return -EINVAL;
 	}
 
@@ -935,10 +936,12 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
+		/* FIXME: return SM / MM STATUS */
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
+		/* FIXME: return SM / MM STATUS */
 		break;
 
 	}
