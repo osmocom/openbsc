@@ -82,9 +82,12 @@ struct gprs_llc_lle {
 	uint32_t tlli;
 	uint32_t sapi;
 
-	uint8_t v_sent;
-	uint8_t v_ack;
-	uint8_t v_recv;
+	uint16_t v_sent;
+	uint16_t v_ack;
+	uint16_t v_recv;
+
+	uint16_t vu_send;
+	uint16_t vu_recv;
 
 	unsigned int n200;
 	unsigned int retrans_ctr;

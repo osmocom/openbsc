@@ -230,6 +230,10 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 	lle->bvci = msgb_bvci(msg);
 	lle->nsei = msgb_nsei(msg);
 
+	/* Increment V(U) */
+	nu = lle->vu_send;
+	lle->vu_send = (lle->vu_send + 1) % 512;
+
 	/* Address Field */
 	addr = sapi & 0xf;
 	if (command)
