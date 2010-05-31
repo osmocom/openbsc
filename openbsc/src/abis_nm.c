@@ -419,30 +419,30 @@ int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
-static struct value_string obj_class_names[] = {
-	{ NM_OC_SITE_MANAGER,	"SITE MANAGER" },
+const struct value_string abis_nm_obj_class_names[] = {
+	{ NM_OC_SITE_MANAGER,	"SITE-MANAGER" },
 	{ NM_OC_BTS,		"BTS" },
-	{ NM_OC_RADIO_CARRIER,	"RADIO CARRIER" },
-	{ NM_OC_BASEB_TRANSC,	"BASEBAND TRANSCEIVER" },
+	{ NM_OC_RADIO_CARRIER,	"RADIO-CARRIER" },
+	{ NM_OC_BASEB_TRANSC,	"BASEBAND-TRANSCEIVER" },
 	{ NM_OC_CHANNEL,	"CHANNEL" },
 	{ NM_OC_BS11_ADJC,	"ADJC" },
 	{ NM_OC_BS11_HANDOVER,	"HANDOVER" },
-	{ NM_OC_BS11_PWR_CTRL,	"POWER CONTROL" },
+	{ NM_OC_BS11_PWR_CTRL,	"POWER-CONTROL" },
 	{ NM_OC_BS11_BTSE,	"BTSE" },
 	{ NM_OC_BS11_RACK,	"RACK" },
 	{ NM_OC_BS11_TEST,	"TEST" },
 	{ NM_OC_BS11_ENVABTSE,	"ENVABTSE" },
 	{ NM_OC_BS11_BPORT,	"BPORT" },
-	{ NM_OC_GPRS_NSE,	"GPRS NSE" },
-	{ NM_OC_GPRS_CELL,	"GPRS CELL" },
-	{ NM_OC_GPRS_NSVC,	"GPRS NSVC" },
+	{ NM_OC_GPRS_NSE,	"GPRS-NSE" },
+	{ NM_OC_GPRS_CELL,	"GPRS-CELL" },
+	{ NM_OC_GPRS_NSVC,	"GPRS-NSVC" },
 	{ NM_OC_BS11,		"SIEMENSHW" },
 	{ 0,			NULL }
 };
 
 static const char *obj_class_name(u_int8_t oc)
 {
-	return get_value_string(obj_class_names, oc);
+	return get_value_string(abis_nm_obj_class_names, oc);
 }
 
 const char *nm_opstate_name(u_int8_t os)
@@ -490,18 +490,17 @@ static struct value_string test_names[] = {
 	{ 0, NULL }
 };
 
+const struct value_string abis_nm_adm_state_names[] = {
+	{ NM_STATE_LOCKED,	"Locked" },
+	{ NM_STATE_UNLOCKED,	"Unlocked" },
+	{ NM_STATE_SHUTDOWN,	"Shutdown" },
+	{ NM_STATE_NULL,	"NULL" },
+	{ 0, NULL }
+};
+
 const char *nm_adm_name(u_int8_t adm)
 {
-	switch (adm) {
-	case 1:
-		return "Locked";
-	case 2:
-		return "Unlocked";
-	case 3:
-		return "Shutdown";
-	default:
-		return "<not used>";
-	}
+	return get_value_string(abis_nm_adm_state_names, adm);
 }
 
 int nm_is_running(struct gsm_nm_state *s) {

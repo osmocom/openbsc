@@ -2140,6 +2140,8 @@ int bsc_vty_init(void)
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
+	abis_nm_vty_init();
+
 	bsc_vty_init_extra();
 
 	return 0;
