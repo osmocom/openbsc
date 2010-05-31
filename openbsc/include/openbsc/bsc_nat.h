@@ -165,10 +165,7 @@ struct bsc_config {
 	char *description;
 
 	/* imsi white and blacklist */
-	char *imsi_allow;
-	regex_t imsi_allow_re;
-	char *imsi_deny;
-	regex_t imsi_deny_re;
+	char *acc_lst_name;
 
 	int forbid_paging;
 
@@ -207,6 +204,19 @@ struct bsc_nat_statistics {
 	} msc;
 };
 
+struct bsc_nat_access_list {
+	struct llist_head list;
+
+	/* the name of the list */
+	const char *name;
+
+	/* the filter */
+	char *imsi_allow;
+	regex_t imsi_allow_re;
+	char *imsi_deny;
+	regex_t imsi_deny_re;
+};
+
 /**
  * the structure of the "nat" network
  */
@@ -216,6 +226,9 @@ struct bsc_nat {
 
 	/* active BSC connections that need patching */
 	struct llist_head bsc_connections;
+
+	/* access lists */
+	struct llist_head access_lists;
 
 	/* known BSC's */
 	struct llist_head bsc_configs;
@@ -243,8 +256,7 @@ struct bsc_nat {
 	struct bsc_endpoint *bsc_endpoints;
 
 	/* filter */
-	char *imsi_deny;
-	regex_t imsi_deny_re;
+	char *acc_lst_name;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
@@ -310,7 +322,9 @@ int bsc_mgcp_extract_ci(const char *resp);
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 
-/* regexp handling */
+/* IMSI allow/deny handling */
 void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv);
+struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const char *name);
+struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const char *name);
 
 #endif

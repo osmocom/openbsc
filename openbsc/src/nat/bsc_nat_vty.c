@@ -51,9 +51,9 @@ static struct cmd_node bsc_node = {
 
 static int config_write_nat(struct vty *vty)
 {
+	struct bsc_nat_access_list *lst;
+
 	vty_out(vty, "nat%s", VTY_NEWLINE);
-	if (_nat->imsi_deny)
-		vty_out(vty, " imsi deny %s%s", _nat->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
 	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
@@ -62,6 +62,18 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->token)
 		vty_out(vty, " token %s%s", _nat->token, VTY_NEWLINE);
 	vty_out(vty, " ip-tos %d%s", _nat->bsc_ip_tos, VTY_NEWLINE);
+	if (_nat->acc_lst_name)
+		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
+
+	llist_for_each_entry(lst, &_nat->access_lists, list) {
+		if (lst->imsi_allow)
+			vty_out(vty, " access-list %s imsi-allow %s%s",
+				lst->name, lst->imsi_allow, VTY_NEWLINE);
+		if (lst->imsi_deny)
+			vty_out(vty, " access-list %s imsi-deny %s%s",
+				lst->name, lst->imsi_deny, VTY_NEWLINE);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -70,13 +82,11 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bsc->lac, VTY_NEWLINE);
-	if (bsc->imsi_allow)
-		vty_out(vty, "   imsi allow %s%s", bsc->imsi_allow, VTY_NEWLINE);
-	if (bsc->imsi_deny)
-		vty_out(vty, "   imsi deny %s%s", bsc->imsi_deny, VTY_NEWLINE);
 	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
+	if (bsc->acc_lst_name)
+		vty_out(vty, " access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -137,10 +147,9 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
 		vty_out(vty, "BSC token: '%s' lac: %u nr: %u%s",
 			conf->token, conf->lac, conf->nr, VTY_NEWLINE);
-		vty_out(vty, " imsi_allow: '%s' imsi_deny: '%s'%s",
-			conf->imsi_allow ? conf->imsi_allow: "any",
-			conf->imsi_deny  ? conf->imsi_deny : "none",
-			VTY_NEWLINE);
+		if (conf->acc_lst_name)
+			vty_out(vty, " access-list: %s%s",
+				conf->acc_lst_name, VTY_NEWLINE);
 		vty_out(vty, " paging forbidden: %d%s",
 			conf->forbid_paging, VTY_NEWLINE);
 		if (conf->description)
@@ -233,16 +242,6 @@ DEFUN(cfg_nat, cfg_nat_cmd, "nat", "Configute the NAT")
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nat_imsi_deny,
-      cfg_nat_imsi_deny_cmd,
-      "imsi deny [REGEXP]",
-      "Deny matching IMSIs to talk to the MSC. "
-      "The defualt is to not deny.")
-{
-	bsc_parse_reg(_nat, &_nat->imsi_deny_re, &_nat->imsi_deny, argc, argv);
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_nat_msc_ip,
       cfg_nat_msc_ip_cmd,
       "msc ip A.B.C.D",
@@ -303,6 +302,18 @@ DEFUN(cfg_nat_bsc_ip_tos, cfg_nat_bsc_ip_tos_cmd,
       "Set the IP_TOS for the BSCs to use\n" "Set the IP_TOS attribute")
 {
 	_nat->bsc_ip_tos = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_acc_lst_name,
+      cfg_nat_acc_lst_name_cmd,
+      "access-list-name NAME",
+      "Set the name of the access list to use.\n"
+      "The name of the to be used access list.")
+{
+	if (_nat->acc_lst_name)
+		talloc_free(_nat->acc_lst_name);
+	_nat->acc_lst_name = talloc_strdup(_nat, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -368,27 +379,53 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bsc_imsi_allow,
-      cfg_bsc_imsi_allow_cmd,
-      "imsi allow [REGEXP]",
-      "Allow IMSIs with the following network to talk to the MSC."
-      "The default is to allow everyone)")
+DEFUN(cfg_lst_imsi_allow,
+      cfg_lst_imsi_allow_cmd,
+      "access-list NAME imsi-allow [REGEXP]",
+      "Allow IMSIs matching the REGEXP\n"
+      "The name of the access-list\n"
+      "The regexp of allowed IMSIs\n")
 {
+	struct bsc_nat_access_list *acc;
 	struct bsc_config *conf = vty->index;
 
-	bsc_parse_reg(conf, &conf->imsi_allow_re, &conf->imsi_allow, argc, argv);
+	acc = bsc_nat_accs_list_get(conf->nat, argv[0]);
+	if (!acc)
+		return CMD_WARNING;
+
+	bsc_parse_reg(acc, &acc->imsi_allow_re, &acc->imsi_allow, argc, argv);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bsc_imsi_deny,
-      cfg_bsc_imsi_deny_cmd,
-      "imsi deny [REGEXP]",
-      "Deny IMSIs with the following network to talk to the MSC."
-      "The default is to not deny anyone.)")
+DEFUN(cfg_lst_imsi_deny,
+      cfg_lst_imsi_deny_cmd,
+      "access-list NAME imsi-deny [REGEXP]",
+      "Allow IMSIs matching the REGEXP\n"
+      "The name of the access-list\n"
+      "The regexp of to be denied IMSIs\n")
+{
+	struct bsc_nat_access_list *acc;
+	struct bsc_config *conf = vty->index;
+
+	acc = bsc_nat_accs_list_get(conf->nat, argv[0]);
+	if (!acc)
+		return CMD_WARNING;
+
+	bsc_parse_reg(acc, &acc->imsi_deny_re, &acc->imsi_deny, argc, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_acc_lst_name,
+      cfg_bsc_acc_lst_name_cmd,
+      "access-list-name NAME",
+      "Set the name of the access list to use.\n"
+      "The name of the to be used access list.")
 {
 	struct bsc_config *conf = vty->index;
 
-	bsc_parse_reg(conf, &conf->imsi_deny_re, &conf->imsi_deny, argc, argv);
+	if (conf->acc_lst_name)
+		talloc_free(conf->acc_lst_name);
+	conf->acc_lst_name = talloc_strdup(conf, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -460,7 +497,6 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
 	install_node(&nat_node, config_write_nat);
 	install_default(NAT_NODE);
-	install_element(NAT_NODE, &cfg_nat_imsi_deny_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
 	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
@@ -468,6 +504,11 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_pong_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_token_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
+	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
+
+	/* access-list */
+	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
+	install_element(NAT_NODE, &cfg_lst_imsi_deny_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
@@ -475,10 +516,9 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_default(BSC_NODE);
 	install_element(BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
-	install_element(BSC_NODE, &cfg_bsc_imsi_allow_cmd);
-	install_element(BSC_NODE, &cfg_bsc_imsi_deny_cmd);
 	install_element(BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(BSC_NODE, &cfg_bsc_desc_cmd);
+	install_element(NAT_NODE, &cfg_bsc_acc_lst_name_cmd);
 
 	mgcp_vty_init();
 
