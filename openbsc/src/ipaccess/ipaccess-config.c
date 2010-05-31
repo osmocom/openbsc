@@ -602,16 +602,16 @@ static void print_usage(void)
 
 static void print_help(void)
 {
-	printf("  -u --unit-id UNIT_ID\n");
-	printf("  -o --oml-ip ip\n");
-	printf("  -r --restart\n");
-	printf("  -n flags/mask\tSet NVRAM attributes.\n");
-	printf("  -l --listen testnr \tPerform specified test number\n");
-	printf("  -h --help this text\n");
-	printf("  -s --stream-id ID\n");
-	printf("  -d --software firmware\n");
+	printf("  -u --unit-id UNIT_ID\tSet the Unit ID of the BTS\n");
+	printf("  -o --oml-ip IP\tSet primary OML IP (IP of your BSC)\n");
+	printf("  -r --restart\t\tRestart the BTS (after other operations)\n");
+	printf("  -n flags/mask\t\tSet NVRAM attributes.\n");
+	printf("  -l --listen testnr\tPerform specified test number\n");
+	printf("  -h --help\t\tthis text\n");
+	printf("  -s --stream-id ID\tSet the IPA Stream Identifier for OML\n");
+	printf("  -d --software firmware Download firmware into BTS\n");
 	printf("  -f --firmware firmware Provide firmware information\n");
-	printf("  -w --write-firmware. This will dump the firmware parts to the filesystem. Use with -f.\n");
+	printf("  -w --write-firmware    This will dump the firmware parts to the filesystem. Use with -f.\n");
 }
 
 extern void bts_model_nanobts_init();
