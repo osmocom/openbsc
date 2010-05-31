@@ -232,12 +232,12 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	bsc_vty_init();
 
+	/* parse options */
+	handle_options(argc, argv);
+
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
-
-	/* parse options */
-	handle_options(argc, argv);
 
 	/* seed the PRNG */
 	srand(time(NULL));
