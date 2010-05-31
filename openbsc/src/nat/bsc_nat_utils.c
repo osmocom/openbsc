@@ -46,6 +46,8 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
+	INIT_LLIST_HEAD(&nat->access_lists);
+
 	nat->stats.sccp.conn = counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = counter_alloc("nat.sccp.calls");
 	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
@@ -203,10 +205,16 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	 * 3.) Reject if the IMSI not allowed at the global level.
 	 * 4.) Allow directly if the IMSI is allowed at the global level
 	 */
+	struct bsc_nat_access_list *nat_lst = NULL;
+	struct bsc_nat_access_list *bsc_lst = NULL;
+
+	bsc_lst = bsc_nat_accs_list_find(bsc->nat, bsc->cfg->acc_lst_name);
+	nat_lst = bsc_nat_accs_list_find(bsc->nat, bsc->nat->acc_lst_name);
+
 
 	/* 1. BSC deny */
-	if (bsc->cfg->imsi_deny) {
-		if (regexec(&bsc->cfg->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
+	if (bsc_lst && bsc_lst->imsi_deny) {
+		if (regexec(&bsc_lst->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -2;
@@ -214,14 +222,14 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	}
 
 	/* 2. BSC allow */
-	if (bsc->cfg->imsi_allow) {
-		if (regexec(&bsc->cfg->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
+	if (bsc_lst && bsc_lst->imsi_allow) {
+		if (regexec(&bsc_lst->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
 			return 0;
 	}
 
 	/* 3. NAT deny */
-	if (bsc->nat->imsi_deny) {
-		if (regexec(&bsc->nat->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
+	if (nat_lst && nat_lst->imsi_deny) {
+		if (regexec(&nat_lst->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -3;
@@ -402,4 +410,37 @@ static const char *con_types [] = {
 const char *bsc_con_type_to_string(int type)
 {
 	return con_types[type];
+}
+
+struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const char *name)
+{
+	struct bsc_nat_access_list *lst;
+
+	if (!name)
+		return NULL;
+
+	llist_for_each_entry(lst, &nat->access_lists, list)
+		if (strcmp(lst->name, name) == 0)
+			return lst;
+
+	return NULL;
+}
+
+struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const char *name)
+{
+	struct bsc_nat_access_list *lst;
+
+	lst = bsc_nat_accs_list_find(nat, name);
+	if (lst)
+		return lst;
+
+	lst = talloc_zero(nat, struct bsc_nat_access_list);
+	if (!lst) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate access list");
+		return NULL;
+	}
+
+	lst->name = talloc_strdup(lst, name);
+	llist_add(&lst->list, &nat->access_lists);
+	return lst;
 }
