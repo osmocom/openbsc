@@ -316,8 +316,16 @@ static int append_gprs_cell_opt(struct bitvec *bv,
 	bitvec_set_bit(bv, 1);
 	bitvec_set_uint(bv, gco->bs_cv_max, 4);
 
-	/* hard-code no PAN_{DEC,INC,MAX} */
-	bitvec_set_bit(bv, 0);
+	if (0) {
+		/* hard-code no PAN_{DEC,INC,MAX} */
+		bitvec_set_bit(bv, 0);
+	} else {
+		/* copied from ip.access BSC protocol trace */
+		bitvec_set_bit(bv, 1);
+		bitvec_set_uint(bv, 1, 3);	/* DEC */
+		bitvec_set_uint(bv, 1, 3);	/* INC */
+		bitvec_set_uint(bv, 15, 3);	/* MAX */
+	}
 
 	if (!gco->ext_info_present) {
 		/* no extension information */
