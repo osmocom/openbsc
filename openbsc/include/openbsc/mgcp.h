@@ -93,6 +93,7 @@ struct mgcp_config {
 	int audio_loop;
 	int early_bind;
 	int rtp_base_port;
+	int endp_tos;
 
 	char *forward_ip;
 	int forward_port;

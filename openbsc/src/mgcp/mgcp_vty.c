@@ -57,6 +57,7 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
 	vty_out(vty, "  bind early %u%s", !!g_cfg->early_bind, VTY_NEWLINE);
 	vty_out(vty, "  rtp base %u%s", g_cfg->rtp_base_port, VTY_NEWLINE);
+	vty_out(vty, "  rtp ip-tos %d%s", g_cfg->endp_tos, VTY_NEWLINE);
 	if (g_cfg->audio_payload != -1)
 		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
 	if (g_cfg->audio_name)
@@ -165,6 +166,16 @@ DEFUN(cfg_mgcp_rtp_base_port,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_rtp_ip_tos,
+      cfg_mgcp_rtp_ip_tos_cmd,
+      "rtp ip-tos <0-255>",
+      "Set the IP_TOS socket attribute on the RTP/RTCP sockets.\n" "The TOS value.")
+{
+	int tos = atoi(argv[0]);
+	g_cfg->endp_tos = tos;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_sdp_payload_number,
       cfg_mgcp_sdp_payload_number_cmd,
       "sdp audio payload number <1-255>",
@@ -249,6 +260,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_bind_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_bind_early_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_base_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);

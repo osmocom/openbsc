@@ -231,6 +231,14 @@ static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
 	return 0;
 }
 
+static int set_ip_tos(int fd, int tos)
+{
+	int ret;
+	ret = setsockopt(fd, IPPROTO_IP, IP_TOS,
+			 &tos, sizeof(tos));
+	return ret != 0;
+}
+
 static int bind_rtp(struct mgcp_endpoint *endp)
 {
 	struct mgcp_config *cfg = endp->cfg;
@@ -246,6 +254,9 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 		       cfg->source_addr, endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup1;
 	}
+
+	set_ip_tos(endp->local_rtp.fd, cfg->endp_tos);
+	set_ip_tos(endp->local_rtcp.fd, cfg->endp_tos);
 
 	endp->local_rtp.cb = rtp_data_cb;
 	endp->local_rtp.data = endp;
