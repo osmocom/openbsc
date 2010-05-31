@@ -66,6 +66,11 @@ int bsc_vty_go_parent(struct vty *vty)
 			vty->index = ts->trx;
 		}
 		break;
+	case OML_NODE:
+		vty->node = ENABLE_NODE;
+		talloc_free(vty->index);
+		vty->index = NULL;
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -115,6 +120,11 @@ gDEFUN(ournode_exit,
 	case NS_NODE:
 	case BSSGP_NODE:
 		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	case OML_NODE:
+		vty->node = ENABLE_NODE;
+		talloc_free(vty->index);
 		vty->index = NULL;
 		break;
 	default:
