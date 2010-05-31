@@ -334,7 +334,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	DEBUGP(DMM, "-> GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
+	DEBUGP(DMM, "<- GPRS IDENTITY REQUEST: mi_type=%02x\n", id_type);
 
 	mmctx2msgid(msg, mm);
 
@@ -344,7 +344,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	/* 10.5.5.9 ID type 2 + identity type and 10.5.5.7 'force to standby' IE */
 	gh->data[0] = id_type & 0xf;
 
-	return gsm48_gmm_sendmsg(msg, 0, mm);
+	return gsm48_gmm_sendmsg(msg, 1, mm);
 }
 
 /* Check if we can already authorize a subscriber */
