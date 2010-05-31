@@ -398,16 +398,16 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 static struct gsm48_si13_info si13_default = {
 	.cell_opts = {
 		.nmo 		= GPRS_NMO_III,
-		.t3168		= 1500,
-		.t3192		= 500,
+		.t3168		= 2000,
+		.t3192		= 200,
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
-		.ext_info_present = 0,
+		.ext_info_present = 1,
 		.ext_info = {
 			/* The values below are just guesses ! */
 			.egprs_supported = 0,
 			.use_egprs_p_ch_req = 1,
-			.bep_period = 4,
+			.bep_period = 5,
 			.pfc_supported = 0,
 			.dtm_supported = 0,
 			.bss_paging_coordination = 0,
@@ -415,10 +415,10 @@ static struct gsm48_si13_info si13_default = {
 	},
 	.pwr_ctrl_pars = {
 		.alpha		= 10,	/* a = 1.0 */
-		.t_avg_w	= 25,
-		.t_avg_t	= 25,
+		.t_avg_w	= 16,
+		.t_avg_t	= 16,
 		.pc_meas_chan	= 0, 	/* downling measured on CCCH */
-		.n_avg_i	= 15,
+		.n_avg_i	= 8,
 	},
 	.bcch_change_mark	= 1,
 	.si_change_field	= 0,
