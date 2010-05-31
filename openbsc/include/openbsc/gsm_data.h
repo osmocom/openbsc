@@ -205,6 +205,7 @@ enum gsm_lchan_state {
 	LCHAN_S_ACT_REQ,	/* channel activatin requested */
 	LCHAN_S_ACTIVE,		/* channel is active and operational */
 	LCHAN_S_REL_REQ,	/* channel release has been requested */
+	LCHAN_S_REL_ERR,	/* channel is in an error state */
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
@@ -257,6 +258,7 @@ struct gsm_lchan {
 
 	struct timer_list T3101;
 	struct timer_list T3111;
+	struct timer_list error_timer;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
