@@ -197,7 +197,7 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 	/* Identifiers passed down: (BVCI, NSEI) */
 
 	/* Send BSSGP-DL-UNITDATA.req */
-	return gprs_bssgp_tx_dl_ud(msg);
+	return gprs_bssgp_tx_dl_ud(msg, NULL);
 }
 
 /* Send XID response to LLE */
@@ -212,7 +212,8 @@ static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg)
 }
 
 /* Transmit a UI frame over the given SAPI */
-int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
+int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
+		   void *mmctx)
 {
 	struct gprs_llc_lle *lle;
 	uint8_t *fcs, *llch;
@@ -261,7 +262,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command)
 	/* Identifiers passed down: (BVCI, NSEI) */
 
 	/* Send BSSGP-DL-UNITDATA.req */
-	return gprs_bssgp_tx_dl_ud(msg);
+	return gprs_bssgp_tx_dl_ud(msg, mmctx);
 }
 
 static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)

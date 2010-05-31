@@ -184,7 +184,7 @@ static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
 
 	/* caller needs to provide TLLI, BVCI and NSEI */
-	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command);
+	return gprs_llc_tx_ui(msg, GPRS_SAPI_GMM, command, mm);
 }
 
 /* copy identifiers from old message to new message, this
@@ -278,7 +278,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	/* Optional: MS-identity (combined attach) */
 	/* Optional: GMM cause (partial attach result for combined attach) */
 
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
 
 /* Chapter 9.4.5: Attach reject */
@@ -325,7 +325,7 @@ static int gsm48_tx_gmm_det_ack(struct sgsn_mm_ctx *mm, uint8_t force_stby)
 	gh->msg_type = GSM48_MT_GMM_DETACH_ACK;
 	gh->data[0] = force_stby;
 
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
 
 /* Transmit Chapter 9.4.12 Identity Request */
@@ -344,7 +344,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	/* 10.5.5.9 ID type 2 + identity type and 10.5.5.7 'force to standby' IE */
 	gh->data[0] = id_type & 0xf;
 
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
 
 /* Check if we can already authorize a subscriber */
@@ -419,8 +419,8 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
-	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info;
-	uint8_t msnc_len, att_type, mi_len, mi_type;
+	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info, *ms_ra_acc_cap;
+	uint8_t msnc_len, att_type, mi_len, mi_type, ms_ra_acc_cap_len;
 	uint16_t drx_par;
 	uint32_t tmsi;
 	char mi_string[GSM48_MI_SIZE];
@@ -447,8 +447,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	att_type = *cur++ & 0x0f;
 
 	/* DRX parameter 10.5.5.6 */
-	drx_par = *cur++;
-	drx_par |= *cur++ << 8;
+	drx_par = *cur++ << 8;
+	drx_par |= *cur++;
 
 	/* Mobile Identity (P-TMSI or IMSI) 10.5.1.4 */
 	mi_len = *cur++;
@@ -468,6 +468,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	cur += 6;
 
 	/* MS Radio Access Capability 10.5.5.12a */
+	ms_ra_acc_cap_len = *cur++;
+	ms_ra_acc_cap = cur;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status */
 
@@ -509,6 +511,13 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
 	ctx->cell_id = cid;
+	/* Update MM Context with other data */
+	ctx->drx_parms = drx_par;
+	ctx->ms_radio_access_capa.len = ms_ra_acc_cap_len;
+	memcpy(ctx->ms_radio_access_capa.buf, ms_ra_acc_cap, ms_ra_acc_cap_len);
+	ctx->ms_network_capa.len = msnc_len;
+	memcpy(ctx->ms_network_capa.buf, msnc, msnc_len);
+
 #ifdef PTMSI_ALLOC
 	/* Allocate a new P-TMSI (+ P-TMSI signature) */
 	ctx->p_tmsi_old = ctx->p_tmsi;
@@ -587,7 +596,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 #endif
 
 	/* Option: MS ID, ... */
-	return gsm48_gmm_sendmsg(msg, 0, NULL);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
 
 /* Chapter 9.4.17: Routing area update reject */

@@ -103,7 +103,8 @@ extern struct llist_head gprs_llc_lles;
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
 
 /* LL-UNITDATA.req */
-int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command);
+int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
+		   void *mmctx);
 
 int gprs_llc_vty_init(void);
 
