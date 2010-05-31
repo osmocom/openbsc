@@ -23,9 +23,10 @@ enum gprs_ciph_algo {
 	GPRS_ALGO_GEA0,
 	GPRS_ALGO_GEA1,
 	GPRS_ALGO_GEA2,
+	GPRS_ALGO_GEA3,
 };
 
-enum grs_mm_ctr {
+enum gprs_mm_ctr {
 	GMM_CTR_PKTS_SIG_IN,
 	GMM_CTR_PKTS_SIG_OUT,
 	GMM_CTR_PKTS_UDATA_IN,
@@ -39,6 +40,12 @@ enum grs_mm_ctr {
 	GMM_CTR_RA_UPDATE,
 };
 
+enum gprs_t3350_mode {
+	GMM_T3350_MODE_ATT,
+	GMM_T3350_MODE_RAU,
+	GMM_T3350_MODE_PTMSI_REALL,
+};
+
 #define MS_RADIO_ACCESS_CAPA
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
@@ -49,6 +56,7 @@ struct sgsn_mm_ctx {
 	char 			imsi[GSM_IMSI_LENGTH];
 	enum gprs_mm_state	mm_state;
 	uint32_t 		p_tmsi;
+	uint32_t 		p_tmsi_old;	/* old P-TMSI before new is confirmed */
 	uint32_t 		p_tmsi_sig;
 	char 			imei[GSM_IMEI_LENGTH];
 	/* Opt: Software Version Numbber / TS 23.195 */
@@ -89,7 +97,11 @@ struct sgsn_mm_ctx {
 	uint16_t		bvci;
 	struct rate_ctr_group	*ctrg;
 	struct timer_list	timer;
-	unsigned int		T;
+	unsigned int		T;		/* Txxxx number */
+	unsigned int		num_T_exp;	/* number of consecutive T expirations */
+
+	enum gprs_t3350_mode	t3350_mode;
+	uint8_t			t3370_id_type;
 };
 
 /* look-up a SGSN MM context based on TLLI + RAI */

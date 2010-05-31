@@ -84,7 +84,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 	tlli_type = gprs_tlli_type(tlli);
 	if (tlli_type == TLLI_LOCAL) {
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-			if ((ctx->p_tmsi | 0xC0000000) == tlli) {
+			if ((ctx->p_tmsi | 0xC0000000) == tlli ||
+			     (ctx->p_tmsi_old && (ctx->p_tmsi_old | 0xC0000000) == tlli)) {
 				ctx->tlli = tlli;
 				return ctx;
 			}
@@ -99,7 +100,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_ptmsi(uint32_t p_tmsi)
 	struct sgsn_mm_ctx *ctx;
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-		if (p_tmsi == ctx->p_tmsi)
+		if (p_tmsi == ctx->p_tmsi ||
+		    (ctx->p_tmsi_old && ctx->p_tmsi_old == p_tmsi))
 			return ctx;
 	}
 	return NULL;

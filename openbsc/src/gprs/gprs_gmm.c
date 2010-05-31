@@ -2,6 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010 by On-Waves
  *
  * All Rights Reserved
  *
@@ -52,6 +53,19 @@
 #include <openbsc/sgsn.h>
 
 #include <pdp.h>
+
+#define PTMSI_ALLOC
+
+/* Section 11.2.2 / Table 11.4 MM timers netowkr side */
+#define GSM0408_T3322_SECS	6	/* DETACH_REQ -> DETACH_ACC */
+#define GSM0408_T3350_SECS	6	/* waiting for ATT/RAU/TMSI COMPL */
+#define GSM0408_T3360_SECS	6	/* waiting for AUTH/CIPH RESP */
+#define GSM0408_T3370_SECS	6	/* waiting for ID RESP */
+
+/* Section 11.2.2 / Table 11.4a MM timers netowkr side */
+#define GSM0408_T3313_SECS	30	/* waiting for paging response */
+#define GSM0408_T3314_SECS	44	/* force to STBY on expiry */
+#define GSM0408_T3316_SECS	44
 
 extern struct sgsn_instance *sgsn;
 
@@ -136,6 +150,32 @@ const struct value_string gprs_det_t_mo_strs[] = {
 
 /* Our implementation, should be kept in SGSN */
 
+static void mmctx_timer_cb(void *_mm);
+
+static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
+				unsigned int seconds)
+{
+	if (bsc_timer_pending(&mm->timer))
+		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
+			"timer %u pending\n", T, mm->T);
+	mm->T = T;
+	mm->num_T_exp = 0;
+
+	/* FIXME: we should do this only once ? */
+	mm->timer.data = mm;
+	mm->timer.cb = &mmctx_timer_cb;
+
+	bsc_schedule_timer(&mm->timer, seconds, 0);
+}
+
+static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
+{
+	if (mm->T != T)
+		LOGP(DMM, LOGL_ERROR, "Stopping MM timer %u but "
+			"%u is running\n", T, mm->T);
+	bsc_del_timer(&mm->timer);
+}
+
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
 			     const struct sgsn_mm_ctx *mm)
@@ -202,7 +242,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	struct gsm48_attach_ack *aa;
 	uint8_t *ptsig, *mid;
 
-	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT\n");
+	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
 
 	mmctx2msgid(msg, mm);
 
@@ -226,12 +266,15 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	ptsig[2] = mm->p_tmsi_sig & 0xff;
 
 	/* Optional: Negotiated Ready timer value */
+#endif
 
+#ifdef PTMSI_ALLOC
 	/* Optional: Allocated P-TMSI */
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 	gsm48_generate_mid_from_tmsi(mid, mm->p_tmsi);
 	mid[0] = GSM48_IE_GMM_ALLOC_PTMSI;
 #endif
+
 	/* Optional: MS-identity (combined attach) */
 	/* Optional: GMM cause (partial attach result for combined attach) */
 
@@ -305,17 +348,31 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 }
 
 /* Check if we can already authorize a subscriber */
-static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx)
+static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx,
+				enum gprs_t3350_mode t3350_mode)
 {
 	if (strlen(ctx->imei) && strlen(ctx->imsi)) {
+#ifdef PTMSI_ALLOC
+		/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
+		ctx->t3350_mode = t3350_mode;
+		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
+#endif
 		ctx->mm_state = GMM_REGISTERED_NORMAL;
 		return gsm48_tx_gmm_att_ack(ctx);
 	} 
-	if (!strlen(ctx->imei))
+	if (!strlen(ctx->imei)) {
+		ctx->mm_state = GMM_COMMON_PROC_INIT;
+		ctx->t3370_id_type = GSM_MI_TYPE_IMEI;
+		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMEI);
+	}
 
-	if (!strlen(ctx->imsi))
+	if (!strlen(ctx->imsi)) {
+		ctx->mm_state = GMM_COMMON_PROC_INIT;
+		ctx->t3370_id_type = GSM_MI_TYPE_IMSI;
+		mmctx_timer_start(ctx, 3370, GSM0408_T3370_SECS);
 		return gsm48_tx_gmm_id_req(ctx, GSM_MI_TYPE_IMSI);
+	}
 
 	return 0;
 }
@@ -336,6 +393,9 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		return -EINVAL;
 	}
 
+	if (mi_type == ctx->t3370_id_type)
+		mmctx_timer_stop(ctx, 3370);
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* we already have a mm context with current TLLI, but no
@@ -352,24 +412,7 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	DEBUGPC(DMM, "\n");
 	/* Check if we can let the mobile station enter */
-	return gsm48_gmm_authorize(ctx);
-}
-
-static void attach_rej_cb(void *data)
-{
-	struct sgsn_mm_ctx *ctx = data;
-
-	gsm48_tx_gmm_att_rej(ctx, GMM_CAUSE_MS_ID_NOT_DERIVED);
-	ctx->mm_state = GMM_DEREGISTERED;
-	/* FIXME: release the context */
-}
-
-static void schedule_reject(struct sgsn_mm_ctx *ctx)
-{
-	ctx->T = 3370;
-	ctx->timer.cb = attach_rej_cb;
-	ctx->timer.data = ctx;
-	bsc_schedule_timer(&ctx->timer, 6, 0);
+	return gsm48_gmm_authorize(ctx, ctx->t3350_mode);
 }
 
 /* Section 9.4.1 Attach request */
@@ -443,8 +486,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
-		/* FIXME: Start some timer */
-		ctx->mm_state = GMM_COMMON_PROC_INIT;
 		ctx->tlli = msgb_tlli(msg);
 		msgid2mmctx(ctx, msg);
 		break;
@@ -455,28 +496,29 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
 			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
-			/* FIXME: Start some timer */
-			ctx->mm_state = GMM_COMMON_PROC_INIT;
 			ctx->tlli = msgb_tlli(msg);
 			msgid2mmctx(ctx, msg);
 		}
 		ctx->p_tmsi = tmsi;
 		break;
 	default:
-		return 0;
+		LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST with "
+			"MI type %u\n", mi_type);
+		return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 	/* Update MM Context with currient RA and Cell ID */
 	ctx->ra = ra_id;
 	ctx->cell_id = cid;
-#if 0
+#ifdef PTMSI_ALLOC
 	/* Allocate a new P-TMSI (+ P-TMSI signature) */
+	ctx->p_tmsi_old = ctx->p_tmsi;
 	ctx->p_tmsi = sgsn_alloc_ptmsi();
 #endif
 	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
 
 	DEBUGPC(DMM, "\n");
 
-	return ctx ? gsm48_gmm_authorize(ctx) : 0;
+	return ctx ? gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT) : 0;
 
 err_inval:
 	DEBUGPC(DMM, "\n");
@@ -511,6 +553,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_ra_upd_ack *rua;
+	uint8_t *mid;
 
 	DEBUGP(DMM, "<- ROUTING AREA UPDATE ACCEPT\n");
 
@@ -527,7 +570,23 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 
 	gsm48_construct_ra(rua->ra_id.digits, &mm->ra);
 
-	/* Option: P-TMSI signature, allocated P-TMSI, MS ID, ... */
+#if 0
+	/* Optional: P-TMSI signature */
+	msgb_v_put(msg, GSM48_IE_GMM_PTMSI_SIG);
+	ptsig = msgb_put(msg, 3);
+	ptsig[0] = mm->p_tmsi_sig >> 16;
+	ptsig[1] = mm->p_tmsi_sig >> 8;
+	ptsig[2] = mm->p_tmsi_sig & 0xff;
+#endif
+
+#ifdef PTMSI_ALLOC
+	/* Optional: Allocated P-TMSI */
+	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
+	gsm48_generate_mid_from_tmsi(mid, mm->p_tmsi);
+	mid[0] = GSM48_IE_GMM_ALLOC_PTMSI;
+#endif
+
+	/* Option: MS ID, ... */
 	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
@@ -589,7 +648,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
-		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_IMPL_DETACHED);
+		/* Device is still IMSI atached for CS but initiate GPRS ATTACH */
+		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 
 	/* Update the MM context with the new RA-ID */
@@ -602,6 +662,14 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_RA_UPDATE]);
 
 	DEBUGPC(DMM, " ACCEPT\n");
+#ifdef PTMSI_ALLOC
+	mmctx->p_tmsi_old = mmctx->p_tmsi;
+	mmctx->p_tmsi = sgsn_alloc_ptmsi();
+	/* Start T3350 and re-transmit up to 5 times until ATTACH COMPLETE */
+	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
+	mmctx_timer_start(mmctx, 3350, GSM0408_T3350_SECS);
+#endif
+
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
 }
 
@@ -623,9 +691,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 
 	if (!mmctx &&
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
-	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ &&
-	    gh->msg_type != GSM48_MT_GMM_ATTACH_COMPL &&
-	    gh->msg_type != GSM48_MT_GMM_RA_UPD_COMPL) {
+	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
 		/* FIXME: Send GMM_CAUSE_IMPL_DETACHED */
 		return -EINVAL;
@@ -650,9 +716,21 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		break;
 	case GSM48_MT_GMM_ATTACH_COMPL:
 		/* only in case SGSN offered new P-TMSI */
+		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
+		mmctx_timer_stop(mmctx, 3350);
+		mmctx->p_tmsi_old = 0;
+		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
+		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
+		mmctx_timer_stop(mmctx, 3350);
+		mmctx->p_tmsi_old = 0;
+		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
+		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
+		mmctx_timer_stop(mmctx, 3350);
+		mmctx->p_tmsi_old = 0;
+		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
@@ -667,6 +745,53 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 
 	return rc;
 }
+
+static void mmctx_timer_cb(void *_mm)
+{
+	struct sgsn_mm_ctx *mm = _mm;
+
+	mm->num_T_exp++;
+
+	switch (mm->T) {
+	case 3350:	/* waiting for ATTACH COMPLETE */
+		if (mm->num_T_exp >= 5) {
+			LOGP(DMM, LOGL_NOTICE, "T3350 expired >= 5 times\n");
+			mm->mm_state = GMM_DEREGISTERED;
+			/* FIXME: should we return some error? */
+			break;
+		}
+		/* re-transmit the respective msg and re-start timer */
+		switch (mm->t3350_mode) {
+		case GMM_T3350_MODE_ATT:
+			gsm48_tx_gmm_att_ack(mm);
+			break;
+		case GMM_T3350_MODE_RAU:
+			gsm48_tx_gmm_ra_upd_ack(mm);
+			break;
+		case GMM_T3350_MODE_PTMSI_REALL:
+			/* FIXME */
+			break;
+		}
+		bsc_schedule_timer(&mm->timer, GSM0408_T3350_SECS, 0);
+		break;
+	case 3370:	/* waiting for IDENTITY RESPONSE */
+		if (mm->num_T_exp >= 5) {
+			LOGP(DMM, LOGL_NOTICE, "T3370 expired >= 5 times\n");
+			gsm48_tx_gmm_att_rej(mm, GMM_CAUSE_MS_ID_NOT_DERIVED);
+			mm->mm_state = GMM_DEREGISTERED;
+			break;
+		}
+		/* re-tranmit IDENTITY REQUEST and re-start timer */
+		gsm48_tx_gmm_id_req(mm, mm->t3370_id_type);
+		bsc_schedule_timer(&mm->timer, GSM0408_T3370_SECS, 0);
+		break;
+	default:
+		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",
+			mm->T);
+	}
+}
+
+/* GPRS SESSION MANAGEMENT */
 
 static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
 {
