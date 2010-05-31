@@ -987,6 +987,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 				gsm_lchan_name(msg->lchan),
 				gsm_lchans_name(msg->lchan->state));
+		bsc_del_timer(&msg->lchan->T3111);
 		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 		lchan_free(msg->lchan);
 		break;
@@ -1076,6 +1077,14 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 
 /* If T3101 expires, we never received a response to IMMEDIATE ASSIGN */
 static void t3101_expired(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	rsl_rf_chan_release(lchan);
+}
+
+/* If T3111 expires, we will send the RF Channel Request */
+static void t3111_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
@@ -1260,16 +1269,18 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 static void rsl_handle_release(struct gsm_lchan *lchan)
 {
+	struct gsm_bts *bts;
 	if (lchan->state != LCHAN_S_REL_REQ)
 		LOGP(DRSL, LOGL_ERROR, "RF release on %s but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
 
 
-	/* we can now releae the channel on the BTS/Abis side */
-	/* FIXME: officially we need to start T3111 and wait for
-	 * some grace period */
-	rsl_rf_chan_release(lchan);
+	/* wait a bit to send the RF Channel Release */
+	lchan->T3111.cb = t3111_expired;
+	lchan->T3111.data = lchan;
+	bts = lchan->ts->trx->bts;
+	bsc_schedule_timer(&lchan->T3111, bts->network->T3111, 0);
 }
 
 /*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST

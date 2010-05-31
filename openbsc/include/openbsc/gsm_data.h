@@ -256,6 +256,7 @@ struct gsm_lchan {
 	} encr;
 
 	struct timer_list T3101;
+	struct timer_list T3111;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
