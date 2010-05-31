@@ -345,7 +345,7 @@ static unsigned char nanobts_attr_nse[] = {
 				    3,  /* (un)blocking retries */
 				    3,  /* reset timer (Tns-reset) */
 				    3,  /* reset retries */
-				    30,  /* test timer (Tns-test) */
+				    3,  /* test timer (Tns-test) */
 				    3,  /* alive timer (Tns-alive) */
 				    10, /* alive retrires */
 	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
@@ -366,29 +366,27 @@ static unsigned char nanobts_attr_cell[] = {
 	NM_ATT_IPACC_RAC, 0, 1,  1, /* routing area code */
 	NM_ATT_IPACC_GPRS_PAGING_CFG, 0, 2,
 		5,	/* repeat time (50ms) */
-		3,	/* repeat count */
+		1,	/* repeat count */
 	NM_ATT_IPACC_BVCI, 0, 2,  0x03, 0x9d, /* BVCI 925 */
 	NM_ATT_IPACC_RLC_CFG, 0, 9,
-		20, 	/* T3142 */
-		5, 	/* T3169 */
-		5,	/* T3191 */
-		200,	/* T3193 */
-		5,	/* T3195 */
-		10,	/* N3101 */
-		4,	/* N3103 */
-		8,	/* N3105 */
-		15,	/* RLC CV countdown */
-	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x0f, 0x00,	/* CS1..CS4 */
+		0x14, 	/* T3142 */
+		0x05, 	/* T3169 */
+		0x05,	/* T3191 */
+		0x14,	/* T3193 */
+		0x05,	/* T3195 */
+		0x0a,	/* N3101 */
+		0x04,	/* N3103 */
+		0x08,	/* N3105 */
+		0x0f,	/* RLC CV countdown */
+	NM_ATT_IPACC_CODING_SCHEMES, 0, 2,  0x8f, 0xff,	/* CS1..CS4 */
 	NM_ATT_IPACC_RLC_CFG_2, 0, 5,
-		0x00, 250,	/* T downlink TBF extension (0..500) */
-		0x00, 250,	/* T uplink TBF extension (0..500) */
+		0x00, 0x96,	/* T downlink TBF extension (0..500) */
+		0x00, 0x32,	/* T uplink TBF extension (0..500) */
 		2,	/* CS2 */
-#if 0
 	/* EDGE model only, breaks older models.
 	 * Should inquire the BTS capabilities */
 	NM_ATT_IPACC_RLC_CFG_3, 0, 1,
 		2,	/* MCS2 */
-#endif
 };
 
 static unsigned char nanobts_attr_nsvc0[] = {

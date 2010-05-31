@@ -172,7 +172,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	return trx;
 }
 
-static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
+static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 3, 3, 10 };
 static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
 
