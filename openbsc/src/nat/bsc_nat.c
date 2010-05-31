@@ -872,6 +872,11 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	if (rc != 0)
                 LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
+	rc = setsockopt(fd, IPPROTO_IP, IP_TOS,
+			&nat->bsc_ip_tos, sizeof(nat->bsc_ip_tos));
+	if (rc != 0)
+		LOGP(DNAT, LOGL_ERROR, "Failed to set IP_TOS: %s\n", strerror(errno));
+
 	/* todo... do something with the connection */
 	/* todo... use GNUtls to see if we want to trust this as a BTS */
 

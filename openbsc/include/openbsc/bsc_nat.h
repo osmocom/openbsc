@@ -220,6 +220,7 @@ struct bsc_nat {
 	/* known BSC's */
 	struct llist_head bsc_configs;
 	int num_bsc;
+	int bsc_ip_tos;
 
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
