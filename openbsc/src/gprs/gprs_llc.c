@@ -30,39 +30,57 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/gprs_sgsn.h>
+#include <openbsc/gprs_gmm.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
 
-LLIST_HEAD(gprs_llc_lles);
+LLIST_HEAD(gprs_llc_llmes);
 void *llc_tall_ctx;
 
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
 static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint32_t sapi)
 {
-	struct gprs_llc_lle *lle;
+	struct gprs_llc_llme *llme;
 
-	llist_for_each_entry(lle, &gprs_llc_lles, list) {
-		if (lle->tlli == tlli && lle->sapi == sapi)
-			return lle;
+	llist_for_each_entry(llme, &gprs_llc_llmes, list) {
+		if (llme->tlli == tlli || llme->old_tlli == tlli)
+			return &llme->lle[sapi];
 	}
 	return NULL;
 }
 
-static struct gprs_llc_lle *lle_alloc(uint32_t tlli, uint32_t sapi)
+static void lle_init(struct gprs_llc_llme *llme, uint32_t sapi)
 {
-	struct gprs_llc_lle *lle;
+	struct gprs_llc_lle *lle = &llme->lle[sapi];
 
-	lle = talloc_zero(llc_tall_ctx, struct gprs_llc_lle);
-	if (!lle)
+	lle->llme = llme;
+	lle->sapi = sapi;
+	lle->state = GPRS_LLES_UNASSIGNED;
+
+	/* FIXME: Initialize according to parameters from SAPI9 */
+
+}
+
+static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
+{
+	struct gprs_llc_llme *llme;
+	uint32_t i;
+
+	llme = talloc_zero(llc_tall_ctx, struct gprs_llc_llme);
+	if (!llme)
 		return NULL;
 
-	lle->tlli = tlli;
-	lle->sapi = sapi;
-	lle->state = GPRS_LLS_UNASSIGNED;
-	llist_add(&lle->list, &gprs_llc_lles);
+	llme->tlli = tlli;
+	llme->state = GPRS_LLMS_UNASSIGNED;
 
-	return lle;
+	for (i = 0; i < ARRAY_SIZE(llme->lle); i++)
+		lle_init(llme, i);
+
+	llist_add(&llme->list, &gprs_llc_llmes);
+
+	return llme;
 }
 
 enum gprs_llc_cmd {
@@ -134,16 +152,16 @@ static void t200_expired(void *data)
 
 	if (lle->retrans_ctr >= lle->n200) {
 		/* FIXME: LLGM-STATUS-IND, LL-RELEASE-IND/CNF */
-		lle->state = GPRS_LLS_ASSIGNED_ADM;
+		lle->state = GPRS_LLES_ASSIGNED_ADM;
 	}
 
 	switch (lle->state) {
-	case GPRS_LLS_LOCAL_EST:
+	case GPRS_LLES_LOCAL_EST:
 		/* FIXME: retransmit SABM */
 		/* FIXME: re-start T200 */
 		lle->retrans_ctr++;
 		break;
-	case GPRS_LLS_LOCAL_REL:
+	case GPRS_LLES_LOCAL_REL:
 		/* FIXME: retransmit DISC */
 		/* FIXME: re-start T200 */
 		lle->retrans_ctr++;
@@ -204,9 +222,9 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg)
 {
 	/* copy identifiers from LLE to ensure lower layers can route */
-	msgb_tlli(msg) = lle->tlli;
-	msgb_bvci(msg) = lle->bvci;
-	msgb_nsei(msg) = lle->nsei;
+	msgb_tlli(msg) = lle->llme->tlli;
+	msgb_bvci(msg) = lle->llme->bvci;
+	msgb_nsei(msg) = lle->llme->nsei;
 
 	return gprs_llc_tx_u(msg, lle->sapi, 0, GPRS_LLC_U_XID, 1);
 }
@@ -225,11 +243,14 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 
 	/* look-up or create the LL Entity for this (TLLI, SAPI) tuple */
 	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
-	if (!lle)
-		lle = lle_alloc(msgb_tlli(msg), sapi);
+	if (!lle) {
+		struct gprs_llc_llme *llme;
+		llme = llme_alloc(msgb_tlli(msg));
+		lle = &llme->lle[sapi];
+	}
 	/* Update LLE's (BVCI, NSEI) tuple */
-	lle->bvci = msgb_bvci(msg);
-	lle->nsei = msgb_nsei(msg);
+	lle->llme->bvci = msgb_bvci(msg);
+	lle->llme->nsei = msgb_nsei(msg);
 
 	/* Increment V(U) */
 	nu = lle->vu_send;
@@ -285,26 +306,26 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 	switch (gph->cmd) {
 	case GPRS_LLC_SABM: /* Section 6.4.1.1 */
 		lle->v_sent = lle->v_ack = lle->v_recv = 0;
-		if (lle->state == GPRS_LLS_ASSIGNED_ADM) {
+		if (lle->state == GPRS_LLES_ASSIGNED_ADM) {
 			/* start re-establishment (8.7.1) */
 		}
-		lle->state = GPRS_LLS_REMOTE_EST;
+		lle->state = GPRS_LLES_REMOTE_EST;
 		/* FIXME: Send UA */
-		lle->state = GPRS_LLS_ABM;
+		lle->state = GPRS_LLES_ABM;
 		/* FIXME: process data */
 		break;
 	case GPRS_LLC_DISC: /* Section 6.4.1.2 */
 		/* FIXME: Send UA */
 		/* terminate ABM */
-		lle->state = GPRS_LLS_ASSIGNED_ADM;
+		lle->state = GPRS_LLES_ASSIGNED_ADM;
 		break;
 	case GPRS_LLC_UA: /* Section 6.4.1.3 */
-		if (lle->state == GPRS_LLS_LOCAL_EST)
-			lle->state = GPRS_LLS_ABM;
+		if (lle->state == GPRS_LLES_LOCAL_EST)
+			lle->state = GPRS_LLES_ABM;
 		break;
 	case GPRS_LLC_DM: /* Section 6.4.1.4: ABM cannot be performed */
-		if (lle->state == GPRS_LLS_LOCAL_EST)
-			lle->state = GPRS_LLS_ASSIGNED_ADM;
+		if (lle->state == GPRS_LLES_LOCAL_EST)
+			lle->state = GPRS_LLES_ASSIGNED_ADM;
 		break;
 	case GPRS_LLC_FRMR: /* Section 6.4.1.5 */
 		break;
@@ -514,6 +535,18 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		return -EIO;
 	}
 
+	switch (gprs_tlli_type(msgb_tlli(msg))) {
+	case TLLI_LOCAL:
+	case TLLI_FOREIGN:
+	case TLLI_RANDOM:
+	case TLLI_AUXILIARY:
+		break;
+	default:
+		LOGP(DLLC, LOGL_ERROR,
+			"Discarding frame with strange TLLI type\n");
+		break;
+	}
+
 	/* find the LLC Entity for this TLLI+SAPI tuple */
 	lle = lle_by_tlli_sapi(msgb_tlli(msg), llhp.sapi);
 
@@ -522,8 +555,10 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	if (!lle) {
 		if (llhp.sapi == GPRS_SAPI_GMM &&
 		    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
+			struct gprs_llc_llme *llme;
 			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
-			lle = lle_alloc(msgb_tlli(msg), llhp.sapi);
+			llme = llme_alloc(msgb_tlli(msg));
+			lle = &llme->lle[llhp.sapi];
 		} else {
 			LOGP(DLLC, LOGL_NOTICE,
 				"unknown TLLI/SAPI: Silently dropping\n");
@@ -532,8 +567,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	}
 
 	/* Update LLE's (BVCI, NSEI) tuple */
-	lle->bvci = msgb_bvci(msg);
-	lle->nsei = msgb_nsei(msg);
+	lle->llme->bvci = msgb_bvci(msg);
+	lle->llme->nsei = msgb_nsei(msg);
 
 	/* Receive and Process the actual LLC frame */
 	rc = gprs_llc_hdr_rx(&llhp, lle);
@@ -546,7 +581,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 		switch (llhp.sapi) {
 		case GPRS_SAPI_GMM:
 			/* send LL_UNITDATA_IND to GMM */
-			rc = gsm0408_gprs_rcvmsg(msg);
+			rc = gsm0408_gprs_rcvmsg(msg, lle->llme);
 			break;
 		case GPRS_SAPI_TOM2:
 		case GPRS_SAPI_TOM8:
@@ -566,4 +601,52 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	}
 
 	return rc;
+}
+
+/* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
+int gprs_llgmm_assign(struct gprs_llc_llme *llme,
+		      uint32_t old_tlli, uint32_t new_tlli,
+		      enum gprs_ciph_algo alg, const uint8_t *kc)
+{
+	unsigned int i;
+
+	if (old_tlli == 0xffffffff && new_tlli != 0xffffffff) {
+		/* TLLI Assignment 8.3.1 */
+		/* New TLLI shall be assigned and used when (re)transmitting LLC frames */
+		/* If old TLLI != 0xffffffff was assigned to LLME, then TLLI
+		 * old is unassigned.  Only TLLI new shall be accepted when
+		 * received from peer. */
+
+		/* If TLLI old == 0xffffffff was assigned to LLME, then this is
+		 * TLLI assignmemt according to 8.3.1 */
+		llme->old_tlli = 0;
+		llme->tlli = new_tlli;
+		llme->state = GPRS_LLMS_ASSIGNED;
+		/* 8.5.3.1 For all LLE's */
+		for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+			struct gprs_llc_lle *l = &llme->lle[i];
+			l->vu_send = l->vu_recv = 0;
+			l->retrans_ctr = 0;
+			l->state = GPRS_LLES_ASSIGNED_ADM;
+			/* FIXME Set parameters according to table 9 */
+		}
+	} else if (old_tlli != 0xffffffff && new_tlli != 0xffffffff) {
+		/* TLLI Change 8.3.2 */
+		/* Both TLLI Old and TLLI New are assigned; use New when
+		 * (re)transmitting.  Accept toth Old and New on Rx */
+		llme->old_tlli = llme->tlli;
+		llme->tlli = new_tlli;
+		llme->state = GPRS_LLMS_ASSIGNED;
+	} else if (old_tlli != 0xffffffff && new_tlli == 0xffffffff) {
+		/* TLLI Unassignment 8.3.3) */
+		llme->tlli = llme->old_tlli = 0;
+		llme->state = GPRS_LLMS_UNASSIGNED;
+		for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+			struct gprs_llc_lle *l = &llme->lle[i];
+			l->state = GPRS_LLES_UNASSIGNED;
+		}
+	} else
+		return -EINVAL;
+
+	return 0;
 }

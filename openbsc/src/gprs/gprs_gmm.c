@@ -416,7 +416,8 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 }
 
 /* Section 9.4.1 Attach request */
-static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
+static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
+				struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data, *msnc, *mi, *old_ra_info, *ms_ra_acc_cap;
@@ -426,7 +427,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	char mi_string[GSM48_MI_SIZE];
 	struct gprs_ra_id ra_id;
 	uint16_t cid;
-	struct sgsn_mm_ctx *ctx;
 
 	DEBUGP(DMM, "-> GMM ATTACH REQUEST ");
 
@@ -476,7 +476,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		/* Try to find MM context based on IMSI */
-		ctx = sgsn_mm_ctx_by_imsi(mi_string);
+		if (!ctx)
+			ctx = sgsn_mm_ctx_by_imsi(mi_string);
 		if (!ctx) {
 #if 0
 			return gsm48_tx_gmm_att_rej(msg, GMM_CAUSE_IMSI_UNKNOWN);
@@ -489,19 +490,22 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 #endif
 		}
 		ctx->tlli = msgb_tlli(msg);
+		ctx->llme = llme;
 		msgid2mmctx(ctx, msg);
 		break;
 	case GSM_MI_TYPE_TMSI:
 		memcpy(&tmsi, mi+1, 4);
 		tmsi = ntohl(tmsi);
 		/* Try to find MM context based on P-TMSI */
-		ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
+		if (!ctx)
+			ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
 			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
-			ctx->tlli = msgb_tlli(msg);
-			msgid2mmctx(ctx, msg);
+			ctx->p_tmsi = tmsi;
 		}
-		ctx->p_tmsi = tmsi;
+		ctx->tlli = msgb_tlli(msg);
+		ctx->llme = llme;
+		msgid2mmctx(ctx, msg);
 		break;
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Rejecting ATTACH REQUEST with "
@@ -519,14 +523,18 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	memcpy(ctx->ms_network_capa.buf, msnc, msnc_len);
 
 #ifdef PTMSI_ALLOC
-	/* Allocate a new P-TMSI (+ P-TMSI signature) */
+	/* Allocate a new P-TMSI (+ P-TMSI signature) and update TLLI */
 	ctx->p_tmsi_old = ctx->p_tmsi;
 	ctx->p_tmsi = sgsn_alloc_ptmsi();
 #endif
-	/* FIXME: update the TLLI with the new local TLLI based on the P-TMSI */
+	/* Even if there is no P-TMSI allocated, the MS will switch from
+	 * foreign TLLI to local TLLI */
+	ctx->tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
+
+	/* Inform LLC layer about new TLLI but keep old active */
+	gprs_llgmm_assign(ctx->llme, ctx->tlli, ctx->tlli_new, 0, NULL);
 
 	DEBUGPC(DMM, "\n");
-
 	return ctx ? gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT) : 0;
 
 err_inval:
@@ -620,12 +628,14 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 }
 
 /* Chapter 9.4.14: Routing area update request */
-static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
+static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
+				   struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data;
 	struct gprs_ra_id old_ra_id;
 	uint8_t upd_type;
+	int rc;
 
 	/* Update Type 10.5.5.18 */
 	upd_type = *cur++ & 0x0f;
@@ -678,7 +688,14 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 	mmctx->t3350_mode = GMM_T3350_MODE_RAU;
 	mmctx_timer_start(mmctx, 3350, GSM0408_T3350_SECS);
 #endif
+	/* Even if there is no P-TMSI allocated, the MS will switch from
+	 * foreign TLLI to local TLLI */
+	mmctx->tlli_new = gprs_tmsi2tlli(mmctx->p_tmsi, TLLI_LOCAL);
 
+	/* Inform LLC layer about new TLLI but keep old active */
+	gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new, 0, NULL);
+
+	/* Send RA UPDATE ACCEPT */
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
 }
 
@@ -693,10 +710,13 @@ static int gsm48_rx_gmm_status(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 }
 
 /* GPRS Mobility Management */
-static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
+static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
+			   struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
+
+	/* MMCTX can be NULL when called */
 
 	if (!mmctx &&
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
@@ -706,13 +726,12 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		return -EINVAL;
 	}
 
-
 	switch (gh->msg_type) {
 	case GSM48_MT_GMM_RA_UPD_REQ:
-		rc = gsm48_rx_gmm_ra_upd_req(mmctx, msg);
+		rc = gsm48_rx_gmm_ra_upd_req(mmctx, msg, llme);
 		break;
 	case GSM48_MT_GMM_ATTACH_REQ:
-		rc = gsm48_rx_gmm_att_req(mmctx, msg);
+		rc = gsm48_rx_gmm_att_req(mmctx, msg, llme);
 		break;
 	case GSM48_MT_GMM_ID_RESP:
 		rc = gsm48_rx_gmm_id_resp(mmctx, msg);
@@ -728,17 +747,26 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
+		/* Unassign the old TLLI */
+		mmctx->tlli = mmctx->tlli_new;
+		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
+		/* Unassign the old TLLI */
+		mmctx->tlli = mmctx->tlli_new;
+		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
+		/* Unassign the old TLLI */
+		mmctx->tlli = mmctx->tlli_new;
+		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
@@ -1044,10 +1072,13 @@ static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 }
 
 /* GPRS Session Management */
-static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
+static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
+			   struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	int rc;
+
+	/* MMCTX can be NULL when called */
 
 	if (!mmctx) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
@@ -1084,7 +1115,7 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg)
 }
 
 /* Main entry point for incoming 04.08 GPRS messages */
-int gsm0408_gprs_rcvmsg(struct msgb *msg)
+int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t pdisc = gh->proto_discr & 0x0f;
@@ -1097,16 +1128,17 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg)
 	if (mmctx) {
 		msgid2mmctx(mmctx, msg);
 		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
+		mmctx->llme = llme;
 	}
 
 	/* MMCTX can be NULL */
 
 	switch (pdisc) {
 	case GSM48_PDISC_MM_GPRS:
-		rc = gsm0408_rcv_gmm(mmctx, msg);
+		rc = gsm0408_rcv_gmm(mmctx, msg, llme);
 		break;
 	case GSM48_PDISC_SM_GPRS:
-		rc = gsm0408_rcv_gsm(mmctx, msg);
+		rc = gsm0408_rcv_gsm(mmctx, msg, llme);
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 discriminator 0x%02x\n",

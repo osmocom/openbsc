@@ -10,6 +10,8 @@
 #define GSM_IMEI_LENGTH 17
 #define GSM_EXTENSION_LENGTH 15
 
+struct gprs_llc_lle;
+
 /* TS 04.08 4.1.3.3 GMM mobility management states on the network side */
 enum gprs_mm_state {
 	GMM_DEREGISTERED,		/* 4.1.3.3.1.1 */
@@ -92,7 +94,9 @@ struct sgsn_mm_ctx {
 	struct llist_head	pdp_list;
 
 	/* Additional bits not present in the GSM TS */
+	struct gprs_llc_llme	*llme;
 	uint32_t		tlli;
+	uint32_t		tlli_new;
 	uint16_t		nsei;
 	uint16_t		bvci;
 	struct rate_ctr_group	*ctrg;

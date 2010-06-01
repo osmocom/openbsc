@@ -2,6 +2,7 @@
 #define _GPRS_LLC_H
 
 #include <stdint.h>
+#include <openbsc/gprs_sgsn.h>
 
 /* Section 4.7 LLC Layer Structure */
 enum gprs_llc_sapi {
@@ -60,27 +61,33 @@ enum gprs_llc_primitive {
 };
 
 /* Section 4.5.2 Logical Link States + Annex C.2 */
-enum gprs_llc_ll_state {
-	GPRS_LLS_UNASSIGNED	= 1,	/* No TLLI yet */
-	GPRS_LLS_ASSIGNED_ADM	= 2,	/* TLLI assigned */
-	GPRS_LLS_LOCAL_EST	= 3,	/* Local Establishment */
-	GPRS_LLS_REMOTE_EST	= 4,	/* Remote Establishment */
-	GPRS_LLS_ABM		= 5,
-	GPRS_LLS_LOCAL_REL	= 6,	/* Local Release */
-	GPRS_LLS_TIMER_REC 	= 7,	/* Timer Recovery */
+enum gprs_llc_lle_state {
+	GPRS_LLES_UNASSIGNED	= 1,	/* No TLLI yet */
+	GPRS_LLES_ASSIGNED_ADM	= 2,	/* TLLI assigned */
+	GPRS_LLES_LOCAL_EST	= 3,	/* Local Establishment */
+	GPRS_LLES_REMOTE_EST	= 4,	/* Remote Establishment */
+	GPRS_LLES_ABM		= 5,
+	GPRS_LLES_LOCAL_REL	= 6,	/* Local Release */
+	GPRS_LLES_TIMER_REC 	= 7,	/* Timer Recovery */
+};
+
+enum gprs_llc_llme_state {
+	GPRS_LLMS_UNASSIGNED	= 1,	/* No TLLI yet */
+	GPRS_LLMS_ASSIGNED	= 2,	/* TLLI assigned */
 };
 
 /* Section 4.7.1: Logical Link Entity: One per DLCI (TLLI + SAPI) */
 struct gprs_llc_lle {
 	struct llist_head list;
 
+	uint32_t sapi;
+
+	struct gprs_llc_llme *llme;
+
+	enum gprs_llc_lle_state state;
+
 	struct timer_list t200;
 	struct timer_list t201;	/* wait for acknowledgement */
-
-	enum gprs_llc_ll_state state;
-
-	uint32_t tlli;
-	uint32_t sapi;
 
 	uint16_t v_sent;
 	uint16_t v_ack;
@@ -91,13 +98,25 @@ struct gprs_llc_lle {
 
 	unsigned int n200;
 	unsigned int retrans_ctr;
+};
+
+#define NUM_SAPIS	16
+
+struct gprs_llc_llme {
+	struct llist_head list;
+
+	enum gprs_llc_llme_state state;
+
+	uint32_t tlli;
+	uint32_t old_tlli;
 
 	/* over which BSSGP BTS ctx do we need to transmit */
 	uint16_t bvci;
 	uint16_t nsei;
+	struct gprs_llc_lle lle[NUM_SAPIS];
 };
 
-extern struct llist_head gprs_llc_lles;
+extern struct llist_head gprs_llc_llmes;
 
 /* BSSGP-UL-UNITDATA.ind */
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
@@ -105,6 +124,11 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
 /* LL-UNITDATA.req */
 int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		   void *mmctx);
+
+/* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
+int gprs_llgmm_assign(struct gprs_llc_llme *llme,
+		      uint32_t old_tlli, uint32_t new_tlli,
+		      enum gprs_ciph_algo alg, const uint8_t *kc);
 
 int gprs_llc_vty_init(void);
 
