@@ -238,7 +238,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	/* Check for cause value if it was really successful */
 	if (cause < 0) {
 		LOGP(DGPRS, LOGL_NOTICE, "Create PDP ctx req timed out\n");
-		if (pdp->version == 1) {
+		if (pdp && pdp->version == 1) {
 			pdp->version = 0;
 			gtp_create_context_req(sgsn->gsn, pdp, cbp);
 			return 0;
@@ -260,7 +260,8 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 
 reject:
 	pctx->state = PDP_STATE_NONE;
-	pdp_freepdp(pdp);
+	if (pdp)
+		pdp_freepdp(pdp);
 	sgsn_pdp_ctx_free(pctx);
 	/* Send PDP CTX ACT REJ to MS */
 	return gsm48_tx_gsm_act_pdp_rej(pctx->mm, pdp->ti, reject_cause,
