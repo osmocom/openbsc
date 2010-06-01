@@ -340,6 +340,15 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 			gprs_llc_tx_xid(lle, resp);
 		}
 		break;
+	case GPRS_LLC_UI:
+		if (gph->seq_tx < lle->vu_recv) {
+			LOGP(DLLC, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+				gph->seq_tx, lle->vu_recv);
+			return -EIO;
+		}
+		/* Increment the sequence number that we expect in the next frame */
+		lle->vu_recv = (gph->seq_tx + 1) % 512;
+		break;
 	}
 
 	return 0;
@@ -583,16 +592,18 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 			/* send LL_UNITDATA_IND to GMM */
 			rc = gsm0408_gprs_rcvmsg(msg, lle->llme);
 			break;
-		case GPRS_SAPI_TOM2:
-		case GPRS_SAPI_TOM8:
-			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to TOM */
 		case GPRS_SAPI_SNDCP3:
 		case GPRS_SAPI_SNDCP5:
 		case GPRS_SAPI_SNDCP9:
 		case GPRS_SAPI_SNDCP11:
-			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to SNDCP */
+			/* send LL_DATA_IND/LL_UNITDATA_IND to SNDCP */
+			rc = sndcp_llunitdata_ind(msg, lle, llhp.data, llhp.data_len);
+			break;
 		case GPRS_SAPI_SMS:
 			/* FIXME */
+		case GPRS_SAPI_TOM2:
+		case GPRS_SAPI_TOM8:
+			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to TOM */
 		default:
 			LOGP(DLLC, LOGL_NOTICE, "Unsupported SAPI %u\n", llhp.sapi);
 			rc = -EINVAL;

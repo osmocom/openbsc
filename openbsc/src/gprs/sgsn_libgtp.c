@@ -42,6 +42,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
+#include <openbsc/gprs_llc.h>
+#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 
@@ -255,6 +257,9 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 		goto reject;
 	}
 
+	/* Activate the SNDCP layer */
+	sndcp_sm_activate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+
 	/* Send PDP CTX ACT to MS */
 	return gsm48_tx_gsm_act_pdp_acc(pctx);
 
@@ -354,6 +359,36 @@ static int cb_data_ind(struct pdp_t *pdp, void *packet, unsigned int len)
 	/* FIXME: resolve PDP/MM context, forward to SNDCP layer */
 
 	return 0;
+}
+
+/* Called by SNDCP when it has received/re-assembled a N-PDU */
+int sgsn_rx_sndcp_ud_ind(uint32_t tlli, uint8_t nsapi, struct msgb *msg,
+			 uint32_t npdu_len, uint8_t *npdu)
+{
+	struct sgsn_mm_ctx *mmctx;
+	struct sgsn_pdp_ctx *pdp;
+	struct gprs_ra_id ra_id;
+
+	/* look-up the MM context for this message */
+	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
+	mmctx = sgsn_mm_ctx_by_tlli(tlli, &ra_id);
+	if (!mmctx) {
+		LOGP(DGPRS, LOGL_ERROR,
+			"Cannot find MM CTX for TLLI %08x\n", tlli);
+		return -EIO;
+	}
+	/* look-up the PDP context for this message */
+	pdp = sgsn_pdp_ctx_by_nsapi(mmctx, nsapi);
+	if (!pdp) {
+		LOGP(DGPRS, LOGL_ERROR, "Cannot find PDP CTX for "
+			"TLLI=%08x, NSAPI=%u\n", tlli, nsapi);
+		return -EIO;
+	}
+	if (!pdp->lib) {
+		LOGP(DGPRS, LOGL_ERROR, "PDP CTX without libgtp\n");
+		return -EIO;
+	}
+	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
 }
 
 /* libgtp select loop integration */
