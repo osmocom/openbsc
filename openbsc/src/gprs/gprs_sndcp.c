@@ -43,8 +43,8 @@ struct sndcp_common_hdr {
 	uint8_t first:1;
 	uint8_t spare:1;
 	/* octet 2 */
-	uint8_t pcomp;
-	uint8_t dcomp;
+	uint8_t pcomp:4;
+	uint8_t dcomp:4;
 } __attribute__((packed));
 
 struct sndcp_udata_hdr {
