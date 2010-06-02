@@ -444,3 +444,9 @@ struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const cha
 	llist_add(&lst->list, &nat->access_lists);
 	return lst;
 }
+
+void bsc_nat_accs_list_delete(struct bsc_nat_access_list *lst)
+{
+	llist_del(&lst->list);
+	talloc_free(lst);
+}

@@ -326,5 +326,6 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv);
 struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const char *name);
 struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const char *name);
+void bsc_nat_accs_list_delete(struct bsc_nat_access_list *lst);
 
 #endif
