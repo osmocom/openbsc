@@ -163,14 +163,14 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		pdp->qos_req.l);
 
 	/* SGSN address for control plane */
-	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr);
-	memcpy(pdp->gsnlc.v, &sgsn->cfg.gtp_listenaddr,
-		sizeof(sgsn->cfg.gtp_listenaddr));
+	pdp->gsnlc.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
+	memcpy(pdp->gsnlc.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
+		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
 
 	/* SGSN address for user plane */
-	pdp->gsnlu.l = sizeof(sgsn->cfg.gtp_listenaddr);
-	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr,
-		sizeof(sgsn->cfg.gtp_listenaddr));
+	pdp->gsnlu.l = sizeof(sgsn->cfg.gtp_listenaddr.sin_addr);
+	memcpy(pdp->gsnlu.v, &sgsn->cfg.gtp_listenaddr.sin_addr,
+		sizeof(sgsn->cfg.gtp_listenaddr.sin_addr));
 
 	/* change pdp state to 'requested' */
 	pctx->state = PDP_STATE_CR_REQ;
