@@ -392,7 +392,7 @@ DEFUN(cfg_lst_imsi_allow,
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &acc->imsi_allow_re, &acc->imsi_allow, argc, argv);
+	bsc_parse_reg(acc, &acc->imsi_allow_re, &acc->imsi_allow, argc - 1, &argv[1]);
 	return CMD_SUCCESS;
 }
 
@@ -409,7 +409,7 @@ DEFUN(cfg_lst_imsi_deny,
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &acc->imsi_deny_re, &acc->imsi_deny, argc, argv);
+	bsc_parse_reg(acc, &acc->imsi_deny_re, &acc->imsi_deny, argc - 1, &argv[1]);
 	return CMD_SUCCESS;
 }
 
