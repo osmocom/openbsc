@@ -146,11 +146,20 @@ static struct sndcp_entity *sndcp_entity_alloc(struct gprs_llc_lle *lle,
 /* Entry point for the SNSM-ACTIVATE.indication */
 int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 {
-	if (sndcp_entity_by_lle(lle, nsapi))
-		return -EEXIST;
+	LOGP(DSNDCP, LOGL_INFO, "SNSM-ACTIVATE.ind (TLLI=%08x, NSAPI=%u)\n",
+		lle->llme->tlli, nsapi);
 
-	if (!sndcp_entity_alloc(lle, nsapi))
+	if (sndcp_entity_by_lle(lle, nsapi)) {
+		LOGP(DSNDCP, LOGL_ERROR, "Trying to ACTIVATE "
+			"already-existing entity (TLLI=%08x, NSAPI=%u)\n",
+			lle->llme->tlli, nsapi);
+		return -EEXIST;
+	}
+
+	if (!sndcp_entity_alloc(lle, nsapi)) {
+		LOGP(DSNDCP, LOGL_ERROR, "Out of memory during ACTIVATE\n");
 		return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -161,7 +170,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	struct sndcp_entity *sne;
 	struct sndcp_common_hdr *sch = (struct sndcp_common_hdr *)hdr;
 	struct sndcp_udata_hdr *suh;
-	uint8_t *comp, *npdu;
+	uint8_t *npdu;
 	uint16_t npdu_num;
 	int npdu_len;
 
@@ -170,14 +179,15 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 		return -EINVAL;
 	}
 
-	if (len < sizeof(*sch) + sizeof(*comp) + sizeof(*suh)) {
+	if (len < sizeof(*sch) + sizeof(*suh)) {
 		LOGP(DGPRS, LOGL_ERROR, "SN-UNITDATA PDU too short (%u)\n", len);
 		return -EIO;
 	}
 
 	sne = sndcp_entity_by_lle(lle, sch->nsapi);
 	if (!sne) {
-		LOGP(DGPRS, LOGL_ERROR, "Message for non-existing SNDCP Entity\n");
+		LOGP(DGPRS, LOGL_ERROR, "Message for non-existing SNDCP Entity "
+			"(TLLI=%08x, NSAPI=%u)\n", lle->llme->tlli, sch->nsapi);
 		return -EIO;
 	}
 
@@ -187,14 +197,13 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 		return -EIO;
 	}
 
-	comp = (hdr + sizeof(struct sndcp_common_hdr));
-	if (comp) {
+	if (sch->pcomp || sch->dcomp) {
 		LOGP(DGPRS, LOGL_ERROR, "We don't support compression yet\n");
 		return -EIO;
 	}
-	suh = (struct sndcp_udata_hdr *) (comp + sizeof(*comp));
-	npdu_num = (suh->npdu_high << 8) | suh->npdu_low;
 
+	suh = (struct sndcp_udata_hdr *) (hdr + sizeof(struct sndcp_common_hdr));
+	npdu_num = (suh->npdu_high << 8) | suh->npdu_low;
 	npdu = (uint8_t *)suh + sizeof(*suh);
 	npdu_len = (msg->data + msg->len) - npdu;
 	if (npdu_len) {
