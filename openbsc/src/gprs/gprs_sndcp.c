@@ -175,30 +175,30 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	int npdu_len;
 
 	if (sch->type == 0) {
-		LOGP(DGPRS, LOGL_ERROR, "SN-DATA PDU at unitdata_ind() function\n");
+		LOGP(DSNDCP, LOGL_ERROR, "SN-DATA PDU at unitdata_ind() function\n");
 		return -EINVAL;
 	}
 
 	if (len < sizeof(*sch) + sizeof(*suh)) {
-		LOGP(DGPRS, LOGL_ERROR, "SN-UNITDATA PDU too short (%u)\n", len);
+		LOGP(DSNDCP, LOGL_ERROR, "SN-UNITDATA PDU too short (%u)\n", len);
 		return -EIO;
 	}
 
 	sne = sndcp_entity_by_lle(lle, sch->nsapi);
 	if (!sne) {
-		LOGP(DGPRS, LOGL_ERROR, "Message for non-existing SNDCP Entity "
+		LOGP(DSNDCP, LOGL_ERROR, "Message for non-existing SNDCP Entity "
 			"(TLLI=%08x, NSAPI=%u)\n", lle->llme->tlli, sch->nsapi);
 		return -EIO;
 	}
 
 	if (!sch->first || sch->more) {
 		/* FIXME: implement fragment re-assembly */
-		LOGP(DGPRS, LOGL_ERROR, "We don't support reassembly yet\n");
+		LOGP(DSNDCP, LOGL_ERROR, "We don't support reassembly yet\n");
 		return -EIO;
 	}
 
 	if (sch->pcomp || sch->dcomp) {
-		LOGP(DGPRS, LOGL_ERROR, "We don't support compression yet\n");
+		LOGP(DSNDCP, LOGL_ERROR, "We don't support compression yet\n");
 		return -EIO;
 	}
 
@@ -207,7 +207,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	npdu = (uint8_t *)suh + sizeof(*suh);
 	npdu_len = (msg->data + msg->len) - npdu;
 	if (npdu_len) {
-		LOGP(DGPRS, LOGL_ERROR, "Short SNDCP N-PDU: %d\n", npdu_len);
+		LOGP(DSNDCP, LOGL_ERROR, "Short SNDCP N-PDU: %d\n", npdu_len);
 		return -EIO;
 	}
 	/* actually send the N-PDU to the SGSN core code, which then
