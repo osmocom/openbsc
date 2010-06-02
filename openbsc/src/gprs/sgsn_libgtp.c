@@ -233,6 +233,7 @@ static int create_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 {
 	struct sgsn_pdp_ctx *pctx = cbp;
 	uint8_t reject_cause;
+	int rc;
 
 	DEBUGP(DGPRS, "Received CREATE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
@@ -267,10 +268,10 @@ reject:
 	pctx->state = PDP_STATE_NONE;
 	if (pdp)
 		pdp_freepdp(pdp);
-	sgsn_pdp_ctx_free(pctx);
 	/* Send PDP CTX ACT REJ to MS */
-	return gsm48_tx_gsm_act_pdp_rej(pctx->mm, pdp->ti, reject_cause,
+	rc = gsm48_tx_gsm_act_pdp_rej(pctx->mm, pctx->ti, reject_cause,
 					0, NULL);
+	sgsn_pdp_ctx_free(pctx);
 
 	return EOF;
 }
