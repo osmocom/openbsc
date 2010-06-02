@@ -387,9 +387,8 @@ DEFUN(cfg_lst_imsi_allow,
       "The regexp of allowed IMSIs\n")
 {
 	struct bsc_nat_access_list *acc;
-	struct bsc_config *conf = vty->index;
 
-	acc = bsc_nat_accs_list_get(conf->nat, argv[0]);
+	acc = bsc_nat_accs_list_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -405,9 +404,8 @@ DEFUN(cfg_lst_imsi_deny,
       "The regexp of to be denied IMSIs\n")
 {
 	struct bsc_nat_access_list *acc;
-	struct bsc_config *conf = vty->index;
 
-	acc = bsc_nat_accs_list_get(conf->nat, argv[0]);
+	acc = bsc_nat_accs_list_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
