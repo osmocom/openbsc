@@ -140,14 +140,16 @@ static struct sndcp_entity *sndcp_entity_alloc(struct gprs_llc_lle *lle,
 	//sne->fqueue.timer.cb = FIXME;
 	sne->rx_state = SNDCP_RX_S_FIRST;
 
+	llist_add(&sne->list, &sndcp_entities);
+
 	return sne;
 }
 
 /* Entry point for the SNSM-ACTIVATE.indication */
 int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 {
-	LOGP(DSNDCP, LOGL_INFO, "SNSM-ACTIVATE.ind (TLLI=%08x, NSAPI=%u)\n",
-		lle->llme->tlli, nsapi);
+	LOGP(DSNDCP, LOGL_INFO, "SNSM-ACTIVATE.ind (lle=%p TLLI=%08x, "
+	     "SAPI=%u, NSAPI=%u)\n", lle, lle->llme->tlli, lle->sapi, nsapi);
 
 	if (sndcp_entity_by_lle(lle, nsapi)) {
 		LOGP(DSNDCP, LOGL_ERROR, "Trying to ACTIVATE "
@@ -187,7 +189,8 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	sne = sndcp_entity_by_lle(lle, sch->nsapi);
 	if (!sne) {
 		LOGP(DSNDCP, LOGL_ERROR, "Message for non-existing SNDCP Entity "
-			"(TLLI=%08x, NSAPI=%u)\n", lle->llme->tlli, sch->nsapi);
+			"(lle=%p, TLLI=%08x, SAPI=%u, NSAPI=%u)\n", lle,
+			lle->llme->tlli, lle->sapi, sch->nsapi);
 		return -EIO;
 	}
 
@@ -206,7 +209,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	npdu_num = (suh->npdu_high << 8) | suh->npdu_low;
 	npdu = (uint8_t *)suh + sizeof(*suh);
 	npdu_len = (msg->data + msg->len) - npdu;
-	if (npdu_len) {
+	if (npdu_len <= 0) {
 		LOGP(DSNDCP, LOGL_ERROR, "Short SNDCP N-PDU: %d\n", npdu_len);
 		return -EIO;
 	}
