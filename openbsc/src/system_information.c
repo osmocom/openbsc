@@ -397,7 +397,7 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 
 static struct gsm48_si13_info si13_default = {
 	.cell_opts = {
-		.nmo 		= GPRS_NMO_III,
+		.nmo 		= GPRS_NMO_II,
 		.t3168		= 2000,
 		.t3192		= 200,
 		.drx_timer_max	= 3,
