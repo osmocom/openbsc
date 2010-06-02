@@ -49,10 +49,12 @@ static struct cmd_node sgsn_node = {
 
 static int config_write_sgsn(struct vty *vty)
 {
-	struct in_addr ia;
 	struct sgsn_ggsn_ctx *gctx;
 
 	vty_out(vty, "sgsn%s", VTY_NEWLINE);
+
+	vty_out(vty, " gtp local-ip %s%s",
+		inet_ntoa(g_cfg->gtp_listenaddr.sin_addr), VTY_NEWLINE);
 
 	llist_for_each_entry(gctx, &sgsn_ggsn_ctxts, list) {
 		vty_out(vty, " ggsn %u remote-ip %s%s", gctx->id,
@@ -64,12 +66,23 @@ static int config_write_sgsn(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_sgsn,
-      cfg_sgsn_cmd,
-      "sgsn",
-      "Configure the SGSN")
+#define SGSN_STR	"Configure the SGSN"
+
+DEFUN(cfg_sgsn, cfg_sgsn_cmd,
+	"sgsn",
+	SGSN_STR)
 {
 	vty->node = SGSN_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_sgsn_bind_addr, cfg_sgsn_bind_addr_cmd,
+	"gtp local-ip A.B.C.D",
+	"GTP Parameters\n"
+	"Set the IP address for the local GTP bind\n")
+{
+	inet_aton(argv[0], &g_cfg->gtp_listenaddr.sin_addr);
+
 	return CMD_SUCCESS;
 }
 
@@ -254,6 +267,7 @@ int sgsn_vty_init(void)
 	install_default(SGSN_NODE);
 	install_element(SGSN_NODE, &ournode_exit_cmd);
 	install_element(SGSN_NODE, &ournode_end_cmd);
+	install_element(SGSN_NODE, &cfg_sgsn_bind_addr_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_remote_ip_cmd);
 	//install_element(SGSN_NODE, &cfg_ggsn_remote_port_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
