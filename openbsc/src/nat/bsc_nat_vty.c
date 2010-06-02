@@ -413,6 +413,22 @@ DEFUN(cfg_lst_imsi_deny,
 	return CMD_SUCCESS;
 }
 
+/* naming to follow Zebra... */
+DEFUN(cfg_lst_no,
+      cfg_lst_no_cmd,
+      "no access-list NAME",
+      NO_STR "Remove an access-list by name\n"
+      "The access-list to remove\n")
+{
+	struct bsc_nat_access_list *acc;
+	acc = bsc_nat_accs_list_find(_nat, argv[0]);
+	if (!acc)
+		return CMD_WARNING;
+
+	bsc_nat_accs_list_delete(acc);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bsc_acc_lst_name,
       cfg_bsc_acc_lst_name_cmd,
       "access-list-name NAME",
@@ -507,6 +523,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* access-list */
 	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
 	install_element(NAT_NODE, &cfg_lst_imsi_deny_cmd);
+	install_element(NAT_NODE, &cfg_lst_no_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
