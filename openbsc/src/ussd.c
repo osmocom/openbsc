@@ -37,28 +37,6 @@
 /* Declarations of USSD strings to be recognised */
 const char USSD_TEXT_OWN_NUMBER[] = "*#100#";
 
-/* Forward declarations of network-specific handler functions */
-static int send_own_number(const struct msgb *msg, const struct ussd_request *req);
-
-
-/* Entrypoint - handler function common to all mobile-originated USSDs */
-int handle_rcv_ussd(struct msgb *msg)
-{
-	struct ussd_request req;
-
-	gsm0480_decode_ussd_request(msg, &req);
-	if (req.text[0] == 0xFF)  /* Release-Complete */
-		return 0;
-
-	if (strstr(USSD_TEXT_OWN_NUMBER, req.text) != NULL) {
-		DEBUGP(DMM, "USSD: Own number requested\n");
-		return send_own_number(msg, &req);
-	} else {
-		DEBUGP(DMM, "Unhandled USSD %s\n", req.text);
-		return gsm0480_send_ussd_reject(msg, &req);
-	}
-}
-
 /* A network-specific handler function */
 static int send_own_number(const struct msgb *msg, const struct ussd_request *req)
 {
@@ -69,3 +47,59 @@ static int send_own_number(const struct msgb *msg, const struct ussd_request *re
 	snprintf(response_string, sizeof(response_string), "Your extension is %s\r", own_number);
 	return gsm0480_send_ussd_response(msg, response_string, req);
 }
+
+static int handle_rcv_uss_req(struct msgb *msg, struct ussd_request *req)
+{
+	if (req->unstructured.text[0] == 0xFF)  /* Release-Complete */
+		return 0;
+
+	if (strstr(USSD_TEXT_OWN_NUMBER, req->unstructured.text) != NULL) {
+		LOGP(DMM, LOGL_INFO, "USSD: Own number requested\n");
+		return send_own_number(msg, req);
+	} else {
+		LOGP(DMM, LOGL_NOTICE, "Unhandled USSD %s\n", req->unstructured.text);
+		return gsm0480_send_ussd_reject(msg, req);
+	}
+}
+
+static int handle_rcv_interrogate(struct msgb *msg, struct ussd_request *req)
+{
+	uint8_t ss_status;
+
+	switch (req->interrogate.ss_code) {
+	case MAP_SS_CODE_CLIP:
+	case MAP_SS_CODE_COLP:
+		ss_status = SS_STATUS_P_BIT | SS_STATUS_R_BIT | SS_STATUS_A_BIT;
+		break;
+	case MAP_SS_CODE_CLIR:
+	case MAP_SS_CODE_COLR:
+		ss_status = SS_STATUS_P_BIT | SS_STATUS_R_BIT;
+		break;
+	default:
+		ss_status = 0;
+		break;
+	}
+
+	return gsm0480_send_ss_interr_resp(msg, ss_status, req);
+}
+
+/* Entrypoint - handler function common to all mobile-originated USSDs */
+int handle_rcv_ussd(struct msgb *msg)
+{
+	struct ussd_request req;
+
+	gsm0480_decode_ussd_request(msg, &req);
+
+	switch (req.opcode) {
+	case GSM0480_OP_CODE_INTERROGATE_SS:
+		return handle_rcv_interrogate(msg, &req);
+	case GSM0480_OP_CODE_USS_REQUEST:
+		return handle_rcv_uss_req(msg, &req);
+	default:
+		LOGP(DMM, LOGL_NOTICE, "Unknown SS opcode 0x%02x\n", req.opcode);
+		break;
+	}
+	return 0;
+}
+
+

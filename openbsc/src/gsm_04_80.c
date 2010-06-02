@@ -47,6 +47,8 @@ static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length,
 					struct ussd_request *req);
 static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 					struct ussd_request *req);
+static int parse_process_ss_interr_req(uint8_t *uss_req_data, uint8_t length,
+					struct ussd_request *req);
 
 static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 {
@@ -95,7 +97,7 @@ static int parse_ussd(u_int8_t *ussd, struct ussd_request *req)
 	case GSM0480_MTYPE_RELEASE_COMPLETE:
 		DEBUGP(DMM, "USS Release Complete\n");
 		/* could also parse out the optional Cause/Facility data */
-		req->text[0] = 0xFF;
+		req->unstructured.text[0] = 0xFF;
 		break;
 	case GSM0480_MTYPE_REGISTER:
 	case GSM0480_MTYPE_FACILITY:
@@ -194,11 +196,16 @@ static int parse_ss_invoke(u_int8_t *invoke_data, u_int8_t length,
 	/* mandatory part */
 	if (invoke_data[offset] == GSM0480_OPERATION_CODE) {
 		u_int8_t operation_code = invoke_data[offset+2];
+		req->opcode = operation_code;
 		switch (operation_code) {
 		case GSM0480_OP_CODE_PROCESS_USS_REQ:
 			rc = parse_process_uss_req(invoke_data + offset + 3,
 						   length - offset - 3,
 						   req);
+			break;
+		case GSM0480_OP_CODE_INTERROGATE_SS:
+			rc = parse_process_ss_interr_req(invoke_data + offset + 3,
+							length - offset - 3, req);
 			break;
 		default:
 			fprintf(stderr, "GSM 04.80 operation code 0x%02x "
@@ -233,16 +240,72 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 				/* Prevent a mobile-originated buffer-overrun! */
 				if (num_chars > MAX_LEN_USSD_STRING)
 					num_chars = MAX_LEN_USSD_STRING;
-				gsm_7bit_decode(req->text,
+				gsm_7bit_decode(req->unstructured.text,
 						&(uss_req_data[7]), num_chars);
 				/* append null-terminator */
-				req->text[num_chars+1] = 0;
+				req->unstructured.text[num_chars+1] = 0;
 				rc = 1;
 			}
 		}
 	}
 	return rc;
 }
+
+static int parse_process_ss_interr_req(uint8_t *uss_req_data, uint8_t length,
+					struct ussd_request *req)
+{
+	int rc = -EIO;
+
+	if (uss_req_data[0] != GSM_0480_SEQUENCE_TAG)
+		goto err;
+
+	if (uss_req_data[2] != ASN1_OCTET_STRING_TAG)
+		goto err;
+
+	req->interrogate.ss_code = uss_req_data[4];
+
+	return rc;
+err:
+	return -EIO;
+}
+
+/* Send response to a mobile-originated InterrogateSS-Request */
+int gsm0480_send_ss_interr_resp(const struct msgb *in_msg, uint8_t status,
+				const struct ussd_request *req)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	msg->lchan = in_msg->lchan;
+
+	/* Pre-pend the ss-Status */
+	msgb_push_TLV1(msg, 0, status);
+
+	/* Pre-pend the operation code */
+	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE,
+			GSM0480_OP_CODE_INTERROGATE_SS);
+
+	/* Wrap the operation code and IA5 string as a sequence */
+	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+
+	/* Pre-pend the invoke ID */
+	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+
+	/* Wrap this up as a Return Result component */
+	msgb_wrap_with_TL(msg, GSM0480_CTYPE_RETURN_RESULT);
+
+	/* Wrap the component in a Facility message */
+	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+
+	/* And finally pre-pend the L3 header */
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS | req->transaction_id
+					| (1<<7);  /* TI direction = 1 */
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return gsm48_sendmsg(msg, NULL);
+}
+
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_text,
