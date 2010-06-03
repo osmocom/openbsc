@@ -57,5 +57,7 @@ int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi);
 /* Called by SNDCP when it has received/re-assembled a N-PDU */
 int sgsn_rx_sndcp_ud_ind(uint32_t tlli, uint8_t nsapi, struct msgb *msg,
 			 uint32_t npdu_len, uint8_t *npdu);
+int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi,
+			void *mmcontext);
 
 #endif

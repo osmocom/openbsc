@@ -113,6 +113,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		LOGP(DGPRS, LOGL_ERROR, "Out of libgtp PDP Contexts\n");
 		return NULL;
 	}
+	pdp->priv = pctx;
 	pctx->lib = pdp;
 	pctx->ggsn = ggsn;
 
@@ -354,12 +355,29 @@ static int cb_extheader_ind(struct sockaddr_in *peer)
 }
 
 /* Called whenever we recive a DATA packet */
-static int cb_data_ind(struct pdp_t *pdp, void *packet, unsigned int len)
+static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 {
+	struct sgsn_pdp_ctx *pdp;
+	struct msgb *msg = msgb_alloc_headroom(len+128, 128, "GTP->SNDCP");
+	uint8_t *ud;
+
 	DEBUGP(DGPRS, "GTP DATA IND from GGSN, length=%u\n", len);
 	/* FIXME: resolve PDP/MM context, forward to SNDCP layer */
 
-	return 0;
+	pdp = lib->priv;
+	if (!pdp) {
+		DEBUGP(DGPRS, "GTP DATA IND from GGSN for unknown PDP\n");
+		return -EIO;
+	}
+
+	ud = msgb_put(msg, len);
+	memcpy(ud, packet, len);
+
+	msgb_tlli(msg) = pdp->mm->tlli;
+	msgb_bvci(msg) = pdp->mm->bvci;
+	msgb_nsei(msg) = pdp->mm->nsei;
+
+	return sndcp_unitdata_req(msg, &pdp->mm->llme->lle[pdp->sapi], pdp->nsapi, pdp->mm);
 }
 
 /* Called by SNDCP when it has received/re-assembled a N-PDU */

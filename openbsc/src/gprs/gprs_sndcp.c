@@ -86,10 +86,16 @@ struct frag_queue_head {
 struct sndcp_entity {
 	struct llist_head list;
 
+	/* reference to the LLC Entity below this SNDCP entity */
 	struct gprs_llc_lle *lle;
+	/* The NSAPI we shall use on top of LLC */
 	uint8_t nsapi;
 
+	/* NPDU number for the GTP->SNDCP side */
+	uint16_t npdu_nr;
+	/* SNDCP eeceiver state */
 	enum sndcp_rx_state rx_state;
+	/* The defragmentation queue */
 	struct frag_queue_head fqueue;
 };
 
@@ -164,6 +170,36 @@ int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 	}
 
 	return 0;
+}
+
+int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi,
+			void *mmcontext)
+{
+	struct sndcp_entity *sne;
+	struct sndcp_common_hdr *sch;
+	struct sndcp_udata_hdr *suh;
+
+	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	sne = sndcp_entity_by_lle(lle, nsapi);
+	if (!sne) {
+		LOGP(DSNDCP, LOGL_ERROR, "Cannot find SNDCP Entity\n");
+		return -EIO;
+	}
+
+	/* prepend the user-data header */
+	suh = (struct sndcp_udata_hdr *) msgb_push(msg, sizeof(*suh));
+	suh->npdu_low = sne->npdu_nr & 0xff;
+	suh->npdu_high = (sne->npdu_nr >> 8) & 0xf;
+	sne->npdu_nr = (sne->npdu_nr + 1) % 0xfff;
+
+	/* prepend common SNDCP header */
+	sch = (struct sndcp_common_hdr *) msgb_push(msg, sizeof(*sch));
+	sch->first = 1;
+	sch->type = 1;
+	sch->nsapi = nsapi;
+
+	return gprs_llc_tx_ui(msg, lle->sapi, 0, mmcontext);
 }
 
 /* Section 5.1.2.17 LL-UNITDATA.ind */
