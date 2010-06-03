@@ -36,11 +36,79 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
 
+/* Section 8.9.9 LLC layer parameter default values */
+static const struct gprs_llc_params llc_default_params[] = {
+	[1] = {
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 400,
+	},
+	[2] = {
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[3] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 1520,
+		.mU		= 1520,
+		.kD		= 16,
+		.kU		= 16,
+	},
+	[5] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 10,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 760,
+		.mU		= 760,
+		.kD		= 8,
+		.kU		= 8,
+	},
+	[7] = {
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[8] = {
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[9] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 380,
+		.mU		= 380,
+		.kD		= 4,
+		.kU		= 4,
+	},
+	[11] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 40,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 190,
+		.mU		= 190,
+		.kD		= 2,
+		.kU		= 2,
+	},
+};
+
 LLIST_HEAD(gprs_llc_llmes);
 void *llc_tall_ctx;
 
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
-static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint32_t sapi)
+static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint8_t sapi)
 {
 	struct gprs_llc_llme *llme;
 
@@ -51,7 +119,7 @@ static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint32_t sapi)
 	return NULL;
 }
 
-static void lle_init(struct gprs_llc_llme *llme, uint32_t sapi)
+static void lle_init(struct gprs_llc_llme *llme, uint8_t sapi)
 {
 	struct gprs_llc_lle *lle = &llme->lle[sapi];
 
@@ -59,8 +127,8 @@ static void lle_init(struct gprs_llc_llme *llme, uint32_t sapi)
 	lle->sapi = sapi;
 	lle->state = GPRS_LLES_UNASSIGNED;
 
-	/* FIXME: Initialize according to parameters from SAPI9 */
-
+	/* Initialize according to parameters */
+	memcpy(&lle->params, &llc_default_params[sapi], sizeof(lle->params));
 }
 
 static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
@@ -150,7 +218,7 @@ static void t200_expired(void *data)
 
 	/* 8.5.1.3: Expiry of T200 */
 
-	if (lle->retrans_ctr >= lle->n200) {
+	if (lle->retrans_ctr >= lle->params.n200) {
 		/* FIXME: LLGM-STATUS-IND, LL-RELEASE-IND/CNF */
 		lle->state = GPRS_LLES_ASSIGNED_ADM;
 	}
@@ -174,7 +242,7 @@ static void t201_expired(void *data)
 {
 	struct gprs_llc_lle *lle = data;
 
-	if (lle->retrans_ctr < lle->n200) {
+	if (lle->retrans_ctr < lle->params.n200) {
 		/* FIXME: transmit apropriate supervisory frame (8.6.4.1) */
 		/* FIXME: set timer T201 */
 		lle->retrans_ctr++;
@@ -248,6 +316,13 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		llme = llme_alloc(msgb_tlli(msg));
 		lle = &llme->lle[sapi];
 	}
+
+	if (msg->len > lle->params.n201_u) {
+		LOGP(DLLC, LOGL_ERROR, "Cannot Tx %u bytes (N201-U=%u)\n",
+			msg->len, lle->params.n201_u);
+		return -EFBIG;
+	}
+
 	/* Update LLE's (BVCI, NSEI) tuple */
 	lle->llme->bvci = msgb_bvci(msg);
 	lle->llme->nsei = msgb_nsei(msg);

@@ -76,6 +76,19 @@ enum gprs_llc_llme_state {
 	GPRS_LLMS_ASSIGNED	= 2,	/* TLLI assigned */
 };
 
+/* Section 8.9.9 LLC layer parameter default values */
+struct gprs_llc_params {
+	uint16_t iov_i_exp;
+	uint16_t t200_201;
+	uint16_t n200;
+	uint16_t n201_u;
+	uint16_t n201_i;
+	uint16_t mD;
+	uint16_t mU;
+	uint16_t kD;
+	uint16_t kU;
+};
+
 /* Section 4.7.1: Logical Link Entity: One per DLCI (TLLI + SAPI) */
 struct gprs_llc_lle {
 	struct llist_head list;
@@ -96,8 +109,9 @@ struct gprs_llc_lle {
 	uint16_t vu_send;
 	uint16_t vu_recv;
 
-	unsigned int n200;
 	unsigned int retrans_ctr;
+
+	struct gprs_llc_params params;
 };
 
 #define NUM_SAPIS	16
