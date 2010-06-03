@@ -162,10 +162,13 @@ struct sgsn_pdp_ctx {
 };
 
 
+/* look up PDP context by MM context and NSAPI */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
 					   uint8_t nsapi);
+/* look up PDP context by MM context and transaction ID */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tid(const struct sgsn_mm_ctx *mm,
 					 uint8_t tid);
+
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 					uint8_t nsapi);
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp);
