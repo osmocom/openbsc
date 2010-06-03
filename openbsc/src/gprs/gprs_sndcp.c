@@ -172,6 +172,7 @@ int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 	return 0;
 }
 
+/* Request transmission of a SN-PDU over specified LLC Entity + SAPI */
 int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi,
 			void *mmcontext)
 {
@@ -180,6 +181,13 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 	struct sndcp_udata_hdr *suh;
 
 	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	if (msg->len > lle->params.n201_u - (sizeof(*sch) + sizeof(*suh))) {
+		LOGP(DSNDCP, LOGL_ERROR, "Message length %u > N201-U (%u): "
+			"SNDCP Fragmentation not yet implemented\n",
+			msg->len, lle->params.n201_u);
+		return -EIO;
+	}
 
 	sne = sndcp_entity_by_lle(lle, nsapi);
 	if (!sne) {
