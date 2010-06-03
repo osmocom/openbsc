@@ -54,6 +54,8 @@ int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx);
 
 /* Entry point for the SNSM-ACTIVATE.indication */
 int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi);
+/* Entry point for the SNSM-DEACTIVATE.indication */
+int sndcp_sm_deactivate_ind(struct gprs_llc_lle *lle, uint8_t nsapi);
 /* Called by SNDCP when it has received/re-assembled a N-PDU */
 int sgsn_rx_sndcp_ud_ind(uint32_t tlli, uint8_t nsapi, struct msgb *msg,
 			 uint32_t npdu_len, uint8_t *npdu);
