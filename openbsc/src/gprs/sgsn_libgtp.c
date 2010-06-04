@@ -1,4 +1,5 @@
 /* GPRS SGSN integration with libgtp of OpenGGSN */
+/* libgtp implements the GPRS Tunelling Protocol GTP per TS 09.60 / 29.060 */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On Waves
