@@ -317,14 +317,14 @@ static unsigned char bs11_attr_radio[] =
 static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_INTERF_BOUND, 0x55, 0x5b, 0x61, 0x67, 0x6d, 0x73,
 	/* interference avg. period in numbers of SACCH multifr */
-	NM_ATT_INTAVE_PARAM, 0x06,
+	NM_ATT_INTAVE_PARAM, 0x1f,
 	/* conn fail based on SACCH error rate */
-	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x10,
-	NM_ATT_T200, 0x1e, 0x24, 0x24, 0xa8, 0x34, 0x21, 0xa8,
-	NM_ATT_MAX_TA, 0x3f,
-	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 10, /* seconds */
-	NM_ATT_CCCH_L_T, 10, /* percent */
-	NM_ATT_CCCH_L_I_P, 1, /* seconds */
+	NM_ATT_CONN_FAIL_CRIT, 0x00, 0x02, 0x01, 0x20,
+	NM_ATT_T200, 0x1e, 0x1e, 0x24, 0xa8, 0x34, 0x21, 0xa8,
+	NM_ATT_MAX_TA, 0x00,
+	NM_ATT_OVERL_PERIOD, 0x00, 0x01, 5, /* seconds */
+	NM_ATT_CCCH_L_T, 32, /* percent */
+	NM_ATT_CCCH_L_I_P, 5, /* seconds */
 	NM_ATT_RACH_B_THRESH, 10, /* busy threshold in - dBm */
 	NM_ATT_LDAVG_SLOTS, 0x03, 0xe8, /* rach load averaging 1000 slots */
 	NM_ATT_BTS_AIR_TIMER, 128, /* miliseconds */
