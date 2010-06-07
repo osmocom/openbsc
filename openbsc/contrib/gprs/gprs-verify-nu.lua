@@ -43,7 +43,7 @@ do
 
 			nu_state_src[src_key] = llc_nu
 			if tonumber(last_nu) + 1 ~= tonumber(llc_nu) then
-				print("JUMP in N(U) on TLLI " .. tohex(bssgp_tlli) .. " and SAPI: " .. llc_sapi)
+				print("JUMP in N(U) on TLLI " .. tohex(bssgp_tlli) .. " and SAPI: " .. llc_sapi .. " src: " .. ip_src)
 				print("\t last: " .. last_nu .. " now: " .. llc_nu)
 			end
 		end
