@@ -14,29 +14,29 @@ do
 		-- we will be called once for every IP Header.
 		-- If there's more than one IP header in a given packet we'll dump the packet once per every header
 		function tap.packet(pinfo,tvb,ip)
-			local ttli = field_tlli()
-			if not ttli then
+			local tlli = field_tlli()
+			if not tlli then
 				return
 			end
 
-			local ttli_str = tostring(ttli)
-			ttli_dmp = dumpers[ttli_str]
-			if not ttli_dmp then
-				local ttli_hex = string.format("0x%x", tonumber(ttli_str))
-				print("Creating dump for TLLI " .. ttli_hex)
-				ttli_dmp = Dumper.new_for_current(dir .. "/" .. ttli_hex .. ".pcap")
-				dumpers[ttli_str] = ttli_dmp
+			local tlli_str = tostring(tlli)
+			tlli_dmp = dumpers[tlli_str]
+			if not tlli_dmp then
+				local tlli_hex = string.format("0x%x", tonumber(tlli_str))
+				print("Creating dump for TLLI " .. tlli_hex)
+				tlli_dmp = Dumper.new_for_current(dir .. "/" .. tlli_hex .. ".pcap")
+				dumpers[tlli_str] = tlli_dmp
 			end
-			ttli_dmp:dump_current()
-			ttli_dmp:flush()
+			tlli_dmp:dump_current()
+			tlli_dmp:flush()
 		end
 		function tap.draw()
-			for ttli,dumper in pairs(dumpers) do
+			for tlli,dumper in pairs(dumpers) do
 				 dumper:flush()
 			end
 		end
 		function tap.reset()
-			for ttli,dumper in pairs(dumpers) do
+			for tlli,dumper in pairs(dumpers) do
 				 dumper:close()
 			end
 			dumpers = {}

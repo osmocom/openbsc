@@ -25,11 +25,11 @@ do
 			end
 
 			local ip_src = tostring(ip.ip_src)
-			local bssgp_ttli = tostring(bssgp_tlli)
+			local bssgp_tlli = tostring(bssgp_tlli)
 			local llc_nu = tostring(llc_nu)
 			local llc_sapi = tostring(llc_sapi)
 
-			local src_key = ip_src .. "-" .. bssgp_ttli .. "-" .. llc_sapi
+			local src_key = ip_src .. "-" .. bssgp_tlli .. "-" .. llc_sapi
 			local last_nu = nu_state_src[src_key]
 			if not last_nu then
 				-- print("Establishing mapping for " .. src_key)
@@ -43,7 +43,7 @@ do
 
 			nu_state_src[src_key] = llc_nu
 			if tonumber(last_nu) + 1 ~= tonumber(llc_nu) then
-				print("JUMP in N(U) on TLLI " .. tohex(bssgp_ttli) .. " and SAPI: " .. llc_sapi)
+				print("JUMP in N(U) on TLLI " .. tohex(bssgp_tlli) .. " and SAPI: " .. llc_sapi)
 				print("\t last: " .. last_nu .. " now: " .. llc_nu)
 			end
 		end
