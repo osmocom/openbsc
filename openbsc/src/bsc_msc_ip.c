@@ -441,20 +441,22 @@ static int handle_ass_compl(struct msgb *msg)
 		return -1;
 	}
 
-	/* swap the channels and release the old */
-	old_chan = msg->lchan->msc_data->lchan;
-	msg->lchan->msc_data->lchan = msg->lchan;
-	msg->lchan->msc_data->secondary_lchan = NULL;
-	old_chan->msc_data = NULL;
-
 	/* assign a dummy subscriber */
 	assign_dummy_subscr(msg->lchan);
 
-	/* give up the old channel to not do a SACCH deactivate */
-	if (old_chan->conn.subscr)
-		subscr_put(old_chan->conn.subscr);
-	old_chan->conn.subscr = NULL;
-	put_subscr_con(&old_chan->conn, 1);
+	/* swap the channels and release the old */
+	old_chan = msg->lchan->msc_data->lchan;
+	if (old_chan) {
+		msg->lchan->msc_data->lchan = msg->lchan;
+		msg->lchan->msc_data->secondary_lchan = NULL;
+		old_chan->msc_data = NULL;
+
+		/* give up the old channel to not do a SACCH deactivate */
+		if (old_chan->conn.subscr)
+			subscr_put(old_chan->conn.subscr);
+		old_chan->conn.subscr = NULL;
+		put_subscr_con(&old_chan->conn, 1);
+	}
 
 	/* activate audio on it... */
 	if (is_ipaccess_bts(msg->lchan->ts->trx->bts) && msg->lchan->tch_mode != GSM48_CMODE_SIGN)
