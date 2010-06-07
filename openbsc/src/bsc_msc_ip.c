@@ -131,7 +131,8 @@ static void sccp_it_fired(void *_data)
 	bsc_schedule_timer(&data->sccp_it, SCCP_IT_TIMER, 0);
 }
 
-static void bss_force_close(struct bss_sccp_connection_data *bss)
+/* make sure to stop the T10 timer... bss_sccp_free_data is doing that */
+static void bss_close_lchans(struct bss_sccp_connection_data *bss)
 {
 	if (bss->lchan) {
 		bss->lchan->msc_data = NULL;
@@ -144,6 +145,11 @@ static void bss_force_close(struct bss_sccp_connection_data *bss)
 		put_subscr_con(&bss->secondary_lchan->conn, 0);
 		bss->secondary_lchan = NULL;
 	}
+}
+
+static void bss_force_close(struct bss_sccp_connection_data *bss)
+{
+	bss_close_lchans(bss);
 
 	/* force the close by poking stuff */
 	if (bss->sccp) {
@@ -235,23 +241,21 @@ void msc_outgoing_sccp_data(struct sccp_connection *conn, struct msgb *msg, unsi
 
 void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 {
+	struct bss_sccp_connection_data *con_data;
+
 	if (conn->connection_state >= SCCP_CONNECTION_STATE_RELEASE_COMPLETE) {
+		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
+
 		LOGP(DMSC, LOGL_DEBUG, "Freeing sccp conn: %p state: %d\n", conn, conn->connection_state);
-		if (sccp_get_lchan(conn->data_ctx) != NULL) {
-			struct gsm_lchan *lchan = sccp_get_lchan(conn->data_ctx);
-
+		if (con_data->lchan || con_data->secondary_lchan) {
 			LOGP(DMSC, LOGL_ERROR, "ERROR: The lchan is still associated\n.");
-
-			lchan->msc_data = NULL;
-			put_subscr_con(&lchan->conn, 0);
+			bss_close_lchans(con_data);
 		}
 
-		bss_sccp_free_data((struct bss_sccp_connection_data *)conn->data_ctx);
+		bss_sccp_free_data(con_data);
 		sccp_connection_free(conn);
 		return;
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
-		struct bss_sccp_connection_data *con_data;
-
 		LOGP(DMSC, LOGL_DEBUG, "Connection established: %p\n", conn);
 
 		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
