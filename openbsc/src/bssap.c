@@ -872,7 +872,9 @@ static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 		break;
 	}
 
-	if (lchan->type == GSM_LCHAN_TCH_H)
+	/* assume to always do AMR HR on any TCH type */
+	if (lchan->type == GSM_LCHAN_TCH_H ||
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
 		mode |= 0x4;
 
         return mode;
