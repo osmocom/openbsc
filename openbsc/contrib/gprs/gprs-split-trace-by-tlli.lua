@@ -22,8 +22,9 @@ do
 			local ttli_str = tostring(ttli)
 			ttli_dmp = dumpers[ttli_str]
 			if not ttli_dmp then
-				print("Creating TLLI " .. tostring(ttli) .. " " .. ttli_str)
-				ttli_dmp = Dumper.new_for_current(dir .. "/" .. ttli_str .. ".pcap")
+				local ttli_hex = string.format("0x%x", tonumber(ttli_str))
+				print("Creating dump for TLLI " .. ttli_hex)
+				ttli_dmp = Dumper.new_for_current(dir .. "/" .. ttli_hex .. ".pcap")
 				dumpers[ttli_str] = ttli_dmp
 			end
 			ttli_dmp:dump_current()

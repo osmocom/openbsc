@@ -37,9 +37,13 @@ do
 				return
 			end
 
+			local function tohex(number)
+				return string.format("0x%x", tonumber(number))
+			end
+
 			nu_state_src[src_key] = llc_nu
 			if tonumber(last_nu) + 1 ~= tonumber(llc_nu) then
-				print("JUMP in N(U) on TLLI " .. bssgp_ttli .. " and SAPI: " .. llc_sapi)
+				print("JUMP in N(U) on TLLI " .. tohex(bssgp_ttli) .. " and SAPI: " .. llc_sapi)
 				print("\t last: " .. last_nu .. " now: " .. llc_nu)
 			end
 		end
