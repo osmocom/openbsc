@@ -338,6 +338,8 @@ void lchan_free(struct gsm_lchan *lchan)
 void lchan_reset(struct gsm_lchan *lchan)
 {
 	bsc_del_timer(&lchan->T3101);
+	bsc_del_timer(&lchan->T3111);
+	bsc_del_timer(&lchan->error_timer);
 
 	lchan->type = GSM_LCHAN_NONE;
 	lchan->state = LCHAN_S_NONE;
