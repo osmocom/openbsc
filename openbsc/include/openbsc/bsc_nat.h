@@ -204,7 +204,7 @@ struct bsc_nat_statistics {
 	} msc;
 };
 
-struct bsc_nat_access_list {
+struct bsc_nat_acc_lst {
 	struct llist_head list;
 
 	/* the name of the list */
@@ -324,8 +324,8 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 
 /* IMSI allow/deny handling */
 void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv);
-struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const char *name);
-struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const char *name);
-void bsc_nat_accs_list_delete(struct bsc_nat_access_list *lst);
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
+void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 
 #endif
