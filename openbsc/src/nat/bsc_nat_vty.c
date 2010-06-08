@@ -95,7 +95,7 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
-		vty_out(vty, " access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
+		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -552,7 +552,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
 	install_element(BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(BSC_NODE, &cfg_bsc_desc_cmd);
-	install_element(NAT_NODE, &cfg_bsc_acc_lst_name_cmd);
+	install_element(BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
 
 	mgcp_vty_init();
 
