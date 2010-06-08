@@ -35,7 +35,7 @@
 #include <osmocom/vty/vty.h>
 
 
-int bsc_vty_go_parent(struct vty *vty)
+enum node_type bsc_vty_go_parent(struct vty *vty)
 {
 	switch (vty->node) {
 	case GSMNET_NODE:

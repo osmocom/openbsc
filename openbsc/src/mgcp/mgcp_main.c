@@ -174,7 +174,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	return 0;
 }
 
-extern int bsc_vty_go_parent(struct vty *vty);
+extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
 	.name 		= "OpenBSC MGCP",

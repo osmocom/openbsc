@@ -198,7 +198,7 @@ extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
 
-extern int bsc_vty_go_parent(struct vty *vty);
+extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
 	.name 		= "OpenBSC",
