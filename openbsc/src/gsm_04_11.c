@@ -754,12 +754,6 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 
 	/* free the transaction here */
 	trans_free(trans);
-
-	/* release channel if done */
-#warning "BROKEN. The SAPI will be released automatically by the BSC"
-	if (!sms)
-		rsl_release_request(msg->lchan, trans->sms.link_id);
-
 	return 0;
 }
 
@@ -833,9 +827,6 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(trans->conn, sms);
-	else
-		rsl_release_request(msg->lchan, trans->sms.link_id);
-#warning "BROKEN: The SAPI=3 will be released automatically by the BSC"
 
 	return rc;
 }
