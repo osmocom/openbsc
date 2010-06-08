@@ -752,14 +752,15 @@ int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id)
    RELEASE CONFIRM, which we in turn use to trigger RSL CHANNEL RELEASE,
    which in turn is acknowledged by RSL CHANNEL RELEASE ACK, which calls
    lchan_free() */
-int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id)
+int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t reason)
 {
 
 	struct msgb *msg;
 
 	msg = rsl_rll_simple(RSL_MT_REL_REQ, lchan2chan_nr(lchan),
 			     link_id, 0);
-	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, 0);	/* normal release */
+	/* 0 is normal release, 1 is local end */
+	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, reason);
 
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 

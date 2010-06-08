@@ -68,7 +68,7 @@ unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
 unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
 u_int64_t str_to_imsi(const char *imsi_str);
 u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan);
-int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id);
+int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t reason);
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
 
