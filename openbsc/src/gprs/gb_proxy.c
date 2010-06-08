@@ -320,11 +320,11 @@ static int gbprox_rx_paging(struct msgb *msg, struct tlv_parsed *tp,
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_ROUTEING_AREA)) {
 		peer = peer_by_rac(TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
 		LOGPC(DGPRS, LOGL_INFO, "routing by RAC to peer BVCI=%u\n",
-			peer->bvci);
+			peer ? peer->bvci : -1);
 	} else if (TLVP_PRESENT(tp, BSSGP_IE_LOCATION_AREA)) {
 		peer = peer_by_lac(TLVP_VAL(tp, BSSGP_IE_LOCATION_AREA));
 		LOGPC(DGPRS, LOGL_INFO, "routing by LAC to peer BVCI=%u\n",
-			peer->bvci);
+			peer ? peer->bvci : -1);
 	} else
 		LOGPC(DGPRS, LOGL_INFO, "\n");
 
