@@ -579,7 +579,7 @@ static void error_timeout_cb(void *data)
 
 	/* go back to the none state */
 	LOGP(DRSL, LOGL_NOTICE, "%s is back in operation.\n", gsm_lchan_name(lchan));
-	lchan->state = LCHAN_S_NONE;
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 }
 
 /* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
@@ -610,7 +610,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 		 * be a problem when we have reassigned the channel to someone else and then can
 		 * not figure out who used this channel.
 		 */
-		lchan->state = LCHAN_S_REL_ERR;
+		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
 		bsc_schedule_timer(&lchan->error_timer,
