@@ -122,16 +122,38 @@ static void peer_free(struct gbprox_peer *peer)
 /* FIXME: this needs to go to libosmocore/msgb.c */
 static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
 {
+	struct openbsc_msgb_cb *old_cb, *new_cb;
 	struct msgb *new_msg;
 
-	new_msg = msgb_alloc_headroom(msg->data_len, NS_ALLOC_HEADROOM, name);
+	new_msg = msgb_alloc(msg->data_len, name);
 	if (!new_msg)
 		return NULL;
 
-	/* copy header */
-	memcpy(new_msg, msg, sizeof(*new_msg));
 	/* copy data */
-	memcpy(new_msg->data, msg->data, new_msg->data_len);
+	memcpy(new_msg->_data, msg->_data, new_msg->data_len);
+
+	/* copy header */
+	new_msg->len = msg->len;
+	new_msg->data += msg->data - msg->_data;
+	new_msg->head += msg->head - msg->_data;
+	new_msg->tail += msg->tail - msg->_data;
+
+	new_msg->l1h = new_msg->_data + (msg->l1h - msg->_data);
+	new_msg->l2h = new_msg->_data + (msg->l2h - msg->_data);
+	new_msg->l3h = new_msg->_data + (msg->l3h - msg->_data);
+	new_msg->l4h = new_msg->_data + (msg->l4h - msg->_data);
+
+	/* copy GB specific data */
+	old_cb = OBSC_MSGB_CB(msg);
+	new_cb = OBSC_MSGB_CB(new_msg);
+
+	new_cb->bssgph = new_msg->_data + (old_cb->bssgph - msg->_data);
+	new_cb->llch = new_msg->_data + (old_cb->llch - msg->_data);
+
+	new_cb->bssgp_cell_id = old_cb->bssgp_cell_id;
+	new_cb->nsei = old_cb->nsei;
+	new_cb->bvci = old_cb->bvci;
+	new_cb->tlli = old_cb->tlli;
 
 	return new_msg;
 }
