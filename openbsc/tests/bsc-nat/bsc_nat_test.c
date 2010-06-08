@@ -640,7 +640,7 @@ static void test_cr_filter()
 	int i, res, contype;
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
 	struct bsc_nat_parsed *parsed;
-	struct bsc_nat_access_list *nat_lst, *bsc_lst;
+	struct bsc_nat_acc_lst *nat_lst, *bsc_lst;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -652,8 +652,8 @@ static void test_cr_filter()
 		msgb_reset(msg);
 		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
 
-		nat_lst = bsc_nat_accs_list_get(nat, "nat");
-		bsc_lst = bsc_nat_accs_list_get(nat, "bsc");
+		nat_lst = bsc_nat_acc_lst_get(nat, "nat");
+		bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
 
 		bsc_parse_reg(nat_lst, &nat_lst->imsi_deny_re, &nat_lst->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,

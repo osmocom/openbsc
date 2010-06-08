@@ -51,7 +51,7 @@ static struct cmd_node bsc_node = {
 
 static int config_write_nat(struct vty *vty)
 {
-	struct bsc_nat_access_list *lst;
+	struct bsc_nat_acc_lst *lst;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
@@ -386,9 +386,9 @@ DEFUN(cfg_lst_imsi_allow,
       "The name of the access-list\n"
       "The regexp of allowed IMSIs\n")
 {
-	struct bsc_nat_access_list *acc;
+	struct bsc_nat_acc_lst *acc;
 
-	acc = bsc_nat_accs_list_get(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -403,9 +403,9 @@ DEFUN(cfg_lst_imsi_deny,
       "The name of the access-list\n"
       "The regexp of to be denied IMSIs\n")
 {
-	struct bsc_nat_access_list *acc;
+	struct bsc_nat_acc_lst *acc;
 
-	acc = bsc_nat_accs_list_get(_nat, argv[0]);
+	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
@@ -420,12 +420,12 @@ DEFUN(cfg_lst_no,
       NO_STR "Remove an access-list by name\n"
       "The access-list to remove\n")
 {
-	struct bsc_nat_access_list *acc;
-	acc = bsc_nat_accs_list_find(_nat, argv[0]);
+	struct bsc_nat_acc_lst *acc;
+	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_nat_accs_list_delete(acc);
+	bsc_nat_acc_lst_delete(acc);
 	return CMD_SUCCESS;
 }
 

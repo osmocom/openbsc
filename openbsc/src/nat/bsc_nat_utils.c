@@ -205,11 +205,11 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	 * 3.) Reject if the IMSI not allowed at the global level.
 	 * 4.) Allow directly if the IMSI is allowed at the global level
 	 */
-	struct bsc_nat_access_list *nat_lst = NULL;
-	struct bsc_nat_access_list *bsc_lst = NULL;
+	struct bsc_nat_acc_lst *nat_lst = NULL;
+	struct bsc_nat_acc_lst *bsc_lst = NULL;
 
-	bsc_lst = bsc_nat_accs_list_find(bsc->nat, bsc->cfg->acc_lst_name);
-	nat_lst = bsc_nat_accs_list_find(bsc->nat, bsc->nat->acc_lst_name);
+	bsc_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->cfg->acc_lst_name);
+	nat_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->nat->acc_lst_name);
 
 
 	/* 1. BSC deny */
@@ -412,9 +412,9 @@ const char *bsc_con_type_to_string(int type)
 	return con_types[type];
 }
 
-struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const char *name)
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name)
 {
-	struct bsc_nat_access_list *lst;
+	struct bsc_nat_acc_lst *lst;
 
 	if (!name)
 		return NULL;
@@ -426,15 +426,15 @@ struct bsc_nat_access_list *bsc_nat_accs_list_find(struct bsc_nat *nat, const ch
 	return NULL;
 }
 
-struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const char *name)
+struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name)
 {
-	struct bsc_nat_access_list *lst;
+	struct bsc_nat_acc_lst *lst;
 
-	lst = bsc_nat_accs_list_find(nat, name);
+	lst = bsc_nat_acc_lst_find(nat, name);
 	if (lst)
 		return lst;
 
-	lst = talloc_zero(nat, struct bsc_nat_access_list);
+	lst = talloc_zero(nat, struct bsc_nat_acc_lst);
 	if (!lst) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate access list");
 		return NULL;
@@ -445,7 +445,7 @@ struct bsc_nat_access_list *bsc_nat_accs_list_get(struct bsc_nat *nat, const cha
 	return lst;
 }
 
-void bsc_nat_accs_list_delete(struct bsc_nat_access_list *lst)
+void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst)
 {
 	llist_del(&lst->list);
 	talloc_free(lst);
