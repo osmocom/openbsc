@@ -918,21 +918,25 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
-int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
+static int _gsm48_tx_gsm_deact_pdp_acc(struct sgsn_mm_ctx *mm, uint8_t tid)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	uint8_t transaction_id = pdp->ti ^ 0x8; /* flip */
+	uint8_t transaction_id = tid ^ 0x8; /* flip */
 
 	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT ACK\n");
 
-	mmctx2msgid(msg, pdp->mm);
+	mmctx2msgid(msg, mm);
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
 	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_ACK;
 
-	return gsm48_gmm_sendmsg(msg, 0, pdp->mm);
+	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+int gsm48_tx_gsm_deact_pdp_acc(struct sgsn_pdp_ctx *pdp)
+{
+	return _gsm48_tx_gsm_deact_pdp_acc(pdp->mm, pdp->ti);
 }
 
 /* Section 9.5.1: Activate PDP Context Request */
@@ -1055,7 +1059,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 		LOGP(DMM, LOGL_NOTICE, "Deactivate PDP Context Request for "
 			"non-existing PDP Context (IMSI=%s, TI=%u)\n",
 			mm->imsi, transaction_id);
-		return -EINVAL;
+		return _gsm48_tx_gsm_deact_pdp_acc(mm, transaction_id);
 	}
 
 	return sgsn_delete_pdp_ctx(pdp);
