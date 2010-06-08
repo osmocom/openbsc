@@ -641,12 +641,19 @@ static void test_cr_filter()
 	struct msgb *msg = msgb_alloc(4096, "test_cr_filter");
 	struct bsc_nat_parsed *parsed;
 	struct bsc_nat_acc_lst *nat_lst, *bsc_lst;
+	struct bsc_nat_acc_lst_entry *nat_entry, *bsc_entry;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo", 1234);
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
+
+	nat_lst = bsc_nat_acc_lst_get(nat, "nat");
+	bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
+
+	bsc_entry = bsc_nat_acc_lst_entry_create(bsc_lst);
+	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
 
 	for (i = 0; i < ARRAY_SIZE(cr_filter); ++i) {
 		msgb_reset(msg);
@@ -655,13 +662,13 @@ static void test_cr_filter()
 		nat_lst = bsc_nat_acc_lst_get(nat, "nat");
 		bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
 
-		bsc_parse_reg(nat_lst, &nat_lst->imsi_deny_re, &nat_lst->imsi_deny,
+		bsc_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
 			      &cr_filter[i].nat_imsi_deny);
-		bsc_parse_reg(bsc_lst, &bsc_lst->imsi_allow_re, &bsc_lst->imsi_allow,
+		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_allow_re, &bsc_entry->imsi_allow,
 			      cr_filter[i].bsc_imsi_allow ? 1 : 0,
 			      &cr_filter[i].bsc_imsi_allow);
-		bsc_parse_reg(bsc_lst, &bsc_lst->imsi_deny_re, &bsc_lst->imsi_deny,
+		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_deny_re, &bsc_entry->imsi_deny,
 			      cr_filter[i].bsc_imsi_deny ? 1 : 0,
 			      &cr_filter[i].bsc_imsi_deny);
 

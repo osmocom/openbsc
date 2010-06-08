@@ -195,6 +195,34 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 	return 0;
 }
 
+static int lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
+{
+	struct bsc_nat_acc_lst_entry *entry;
+
+	llist_for_each_entry(entry, &lst->fltr_list, list) {
+		if (!entry->imsi_allow)
+			continue;
+		if (regexec(&entry->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
+			return 0;
+	}
+
+	return 1;
+}
+
+static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string)
+{
+	struct bsc_nat_acc_lst_entry *entry;
+
+	llist_for_each_entry(entry, &lst->fltr_list, list) {
+		if (!entry->imsi_deny)
+			continue;
+		if (regexec(&entry->imsi_deny_re, mi_string, 0, NULL, 0) == 0)
+			return 0;
+	}
+
+	return 1;
+}
+
 /* apply white/black list */
 static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 {
@@ -212,24 +240,22 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 	nat_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->nat->acc_lst_name);
 
 
-	/* 1. BSC deny */
-	if (bsc_lst && bsc_lst->imsi_deny) {
-		if (regexec(&bsc_lst->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
+	if (bsc_lst) {
+		/* 1. BSC deny */
+		if (lst_check_deny(bsc_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -2;
 		}
-	}
 
-	/* 2. BSC allow */
-	if (bsc_lst && bsc_lst->imsi_allow) {
-		if (regexec(&bsc_lst->imsi_allow_re, mi_string, 0, NULL, 0) == 0)
+		/* 2. BSC allow */
+		if (lst_check_allow(bsc_lst, mi_string) == 0)
 			return 0;
 	}
 
 	/* 3. NAT deny */
-	if (nat_lst && nat_lst->imsi_deny) {
-		if (regexec(&nat_lst->imsi_deny_re, mi_string, 0, NULL, 0) == 0) {
+	if (nat_lst) {
+		if (lst_check_deny(nat_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
 			return -3;
@@ -440,6 +466,7 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 		return NULL;
 	}
 
+	INIT_LLIST_HEAD(&lst->fltr_list);
 	lst->name = talloc_strdup(lst, name);
 	llist_add(&lst->list, &nat->access_lists);
 	return lst;
@@ -449,4 +476,16 @@ void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst)
 {
 	llist_del(&lst->list);
 	talloc_free(lst);
+}
+
+struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *lst)
+{
+	struct bsc_nat_acc_lst_entry *entry;
+
+	entry = talloc_zero(lst, struct bsc_nat_acc_lst_entry);
+	if (!entry)
+		return NULL;
+
+	llist_add(&entry->list, &lst->fltr_list);
+	return entry;
 }

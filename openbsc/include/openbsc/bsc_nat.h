@@ -209,6 +209,11 @@ struct bsc_nat_acc_lst {
 
 	/* the name of the list */
 	const char *name;
+	struct llist_head fltr_list;
+};
+
+struct bsc_nat_acc_lst_entry {
+	struct llist_head list;
 
 	/* the filter */
 	char *imsi_allow;
@@ -327,5 +332,7 @@ void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
+
+struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
 
 #endif

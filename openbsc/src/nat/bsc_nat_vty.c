@@ -49,6 +49,20 @@ static struct cmd_node bsc_node = {
 	1,
 };
 
+static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
+{
+	struct bsc_nat_acc_lst_entry *entry;
+
+	llist_for_each_entry(entry, &lst->fltr_list, list) {
+		if (entry->imsi_allow)
+			vty_out(vty, " access-list %s imsi-allow %s%s",
+				lst->name, entry->imsi_allow, VTY_NEWLINE);
+		if (entry->imsi_deny)
+			vty_out(vty, " access-list %s imsi-deny %s%s",
+				lst->name, entry->imsi_deny, VTY_NEWLINE);
+	}
+}
+
 static int config_write_nat(struct vty *vty)
 {
 	struct bsc_nat_acc_lst *lst;
@@ -66,12 +80,7 @@ static int config_write_nat(struct vty *vty)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list) {
-		if (lst->imsi_allow)
-			vty_out(vty, " access-list %s imsi-allow %s%s",
-				lst->name, lst->imsi_allow, VTY_NEWLINE);
-		if (lst->imsi_deny)
-			vty_out(vty, " access-list %s imsi-deny %s%s",
-				lst->name, lst->imsi_deny, VTY_NEWLINE);
+		write_acc_lst(vty, lst);
 	}
 
 	return CMD_SUCCESS;
@@ -387,12 +396,17 @@ DEFUN(cfg_lst_imsi_allow,
       "The regexp of allowed IMSIs\n")
 {
 	struct bsc_nat_acc_lst *acc;
+	struct bsc_nat_acc_lst_entry *entry;
 
 	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &acc->imsi_allow_re, &acc->imsi_allow, argc - 1, &argv[1]);
+	entry = bsc_nat_acc_lst_entry_create(acc);
+	if (!entry)
+		return CMD_WARNING;
+
+	bsc_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]);
 	return CMD_SUCCESS;
 }
 
@@ -404,12 +418,17 @@ DEFUN(cfg_lst_imsi_deny,
       "The regexp of to be denied IMSIs\n")
 {
 	struct bsc_nat_acc_lst *acc;
+	struct bsc_nat_acc_lst_entry *entry;
 
 	acc = bsc_nat_acc_lst_get(_nat, argv[0]);
 	if (!acc)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &acc->imsi_deny_re, &acc->imsi_deny, argc - 1, &argv[1]);
+	entry = bsc_nat_acc_lst_entry_create(acc);
+	if (!entry)
+		return CMD_WARNING;
+
+	bsc_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]);
 	return CMD_SUCCESS;
 }
 
