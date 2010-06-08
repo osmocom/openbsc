@@ -468,7 +468,7 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 
 	INIT_LLIST_HEAD(&lst->fltr_list);
 	lst->name = talloc_strdup(lst, name);
-	llist_add(&lst->list, &nat->access_lists);
+	llist_add_tail(&lst->list, &nat->access_lists);
 	return lst;
 }
 
@@ -486,6 +486,6 @@ struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_ls
 	if (!entry)
 		return NULL;
 
-	llist_add(&entry->list, &lst->fltr_list);
+	llist_add_tail(&entry->list, &lst->fltr_list);
 	return entry;
 }
