@@ -182,7 +182,7 @@ static int defrag_segments(struct sndcp_entity *sne)
 	unsigned int seg_nr;
 	uint8_t *npdu;
 
-	msg = msgb_alloc_headroom(sne->defrag.tot_len+128, 128, "SNDCP Defrag");
+	msg = msgb_alloc_headroom(sne->defrag.tot_len+256, 128, "SNDCP Defrag");
 	if (!msg)
 		return -ENOMEM;
 
@@ -379,7 +379,7 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 	uint8_t *data;
 	int rc, more;
 
-	fmsg = msgb_alloc_headroom(fs->sne->lle->params.n201_u+128, 128,
+	fmsg = msgb_alloc_headroom(fs->sne->lle->params.n201_u+256, 128,
 				   "SNDCP Frag");
 	if (!fmsg)
 		return -ENOMEM;
