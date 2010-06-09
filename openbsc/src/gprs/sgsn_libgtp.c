@@ -373,7 +373,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 	}
 	mm = pdp->mm;
 
-	msg = msgb_alloc_headroom(len+128, 128, "GTP->SNDCP");
+	msg = msgb_alloc_headroom(len+256, 128, "GTP->SNDCP");
 	ud = msgb_put(msg, len);
 	memcpy(ud, packet, len);
 
