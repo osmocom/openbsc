@@ -55,13 +55,12 @@ struct ipa_proxy {
 	struct bsc_fd oml_listen_fd;
 	/* socket where we listen for incoming RSL from BTS */
 	struct bsc_fd rsl_listen_fd;
-	/* socket where we get the GPRS NS data */
-	struct bsc_fd gprs_ns_fd;
-	int gprs_port;
 	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 	/* the BSC reconnect timer */
 	struct timer_list reconn_timer;
+	/* global GPRS NS data */
+	struct in_addr gprs_addr;
 };
 
 /* global pointer to the proxy structure */
@@ -72,7 +71,6 @@ struct ipa_proxy_conn {
 	struct llist_head tx_queue;
 	struct ipa_bts_conn *bts_conn;
 };
-
 #define MAX_TRX 4
 
 /* represents a particular BTS in our proxy */
@@ -99,6 +97,11 @@ struct ipa_bts_conn {
 	struct bsc_fd udp_bts_fd;
 	struct bsc_fd udp_bsc_fd;
 
+	/* NS data */
+	struct in_addr bts_addr;
+	struct bsc_fd gprs_ns_fd;
+	int gprs_local_port;
+
 	char *id_tags[0xff];
 	u_int8_t *id_resp;
 	unsigned int id_resp_len;
@@ -119,6 +122,9 @@ void *tall_bsc_ctx;
 static char *listen_ipaddr;
 static char *bsc_ipaddr;
 static char *gprs_ns_ipaddr;
+
+static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *);
+static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
@@ -501,6 +507,28 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 		goto err_udp_bsc;
 	DEBUGP(DINP, "(%u/%u/%u) Created UDP socket for injection "
 		"towards BSC at port %u\n", site_id, bts_id, trx_id, udp_port);
+
+
+	/* GPRS NS related code */
+	if (gprs_ns_ipaddr) {
+		struct sockaddr_in sock;
+		socklen_t len = sizeof(sock);
+		ret = make_gprs_sock(&ipbc->gprs_ns_fd, gprs_ns_cb, ipbc);
+		if (ret < 0) {
+			LOGP(DINP, LOGL_ERROR, "Creating the GPRS socket failed.\n");
+			goto err_udp_bsc;
+		}
+
+		ret = getsockname(ipbc->gprs_ns_fd.fd, (struct sockaddr* ) &sock, &len);
+		ipbc->gprs_local_port = ntohs(sock.sin_port);
+		LOGP(DINP, LOGL_NOTICE,
+			"Created GPRS NS Socket. Listening on: %s:%d\n",
+			inet_ntoa(sock.sin_addr), ipbc->gprs_local_port);
+
+		ret = getpeername(bfd->fd, (struct sockaddr* ) &sock, &len);
+		ipbc->bts_addr = sock.sin_addr;
+	}
+
 	llist_add(&ipbc->list, &ipp->bts_list);
 
 	return 0;
@@ -986,8 +1014,49 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
+static void send_ns(int fd, const char *buf, int size, struct in_addr ip, int port)
+{
+	int ret;
+	struct sockaddr_in addr;
+	socklen_t len = sizeof(addr);
+	memset(&addr, 0, sizeof(addr));
+
+	addr.sin_family = AF_INET;
+	addr.sin_port = port;
+	addr.sin_addr = ip;
+
+	ret = sendto(fd, buf, size, 0, (struct sockaddr *) &addr, len);
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to forward GPRS message.\n");
+	}
+}
+
 static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 {
+	struct ipa_bts_conn *bts;
+	char buf[4096];
+	int ret;
+	struct sockaddr_in sock;
+	socklen_t len = sizeof(sock);
+
+	/* 1. get the data... */
+	ret = recvfrom(bfd->fd, buf, sizeof(buf), 0, (struct sockaddr *) &sock, &len);
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR, "Failed to recv GPRS NS msg: %s.\n", strerror(errno));
+		return -1;
+	}
+
+	bts = bfd->data;
+
+	/* 2. figure out where to send it to */
+	if (memcmp(&sock.sin_addr, &ipp->gprs_addr, sizeof(sock.sin_addr)) == 0) {
+		LOGP(DINP, LOGL_DEBUG, "GPRS NS msg from network.\n");
+		send_ns(bfd->fd, buf, ret, bts->bts_addr, 23000);
+	} else if (memcmp(&sock.sin_addr, &bts->bts_addr, sizeof(sock.sin_addr)) == 0) {
+		LOGP(DINP, LOGL_DEBUG, "GPRS NS msg from BTS.\n");
+		send_ns(bfd->fd, buf, ret, ipp->gprs_addr, 23000);
+	}
+
 	return 0;
 }
 
@@ -1034,13 +1103,14 @@ static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 	return 0;
 }
 
-static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int))
+static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *data)
 {
 	struct sockaddr_in addr;
 	int ret;
 
 	bfd->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	bfd->cb = cb;
+	bfd->data = data;
 	bfd->when = BSC_FD_READ;
 
 	memset(&addr, 0, sizeof(addr));
@@ -1131,21 +1201,8 @@ static int ipaccess_proxy_setup(void)
 		return ret;
 
 	/* Connect the GPRS NS Socket */
-	if (gprs_ns_ipaddr) {
-		struct sockaddr_in sock;
-		socklen_t len = sizeof(sock);
-		ret = make_gprs_sock(&ipp->gprs_ns_fd, gprs_ns_cb);
-		if (ret < 0)
-			return ret;
-
-		ret = getsockname(ipp->gprs_ns_fd.fd, (struct sockaddr* ) &sock, &len);
-		if (ret < 0)
-			return ret;
-		ipp->gprs_port = ntohs(sock.sin_port);
-		LOGP(DINP, LOGL_NOTICE,
-			"Created GPRS NS Socket. Listening on: %s:%d\n",
-			inet_ntoa(sock.sin_addr), ipp->gprs_port);
-	}
+	if (gprs_ns_ipaddr)
+		inet_aton(gprs_ns_ipaddr, &ipp->gprs_addr);
 
 	return ret;
 }
