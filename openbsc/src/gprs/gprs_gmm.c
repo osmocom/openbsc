@@ -1270,3 +1270,51 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 
 	return rc;
 }
+
+int gprs_gmm_rx_suspend(struct gprs_ra_id *raid, uint32_t tlli)
+{
+	struct sgsn_mm_ctx *mmctx;
+
+	mmctx = sgsn_mm_ctx_by_tlli(tlli, raid);
+	if (!mmctx) {
+		LOGP(DMM, LOGL_NOTICE, "SUSPEND request for unknown "
+			"TLLI=%08x\n", tlli);
+		return -EINVAL;
+	}
+
+	if (mmctx->mm_state != GMM_REGISTERED_NORMAL) {
+		LOGP(DMM, LOGL_NOTICE, "SUSPEND request while state "
+			"!= REGISTERED (TLLI=%08x)\n", tlli);
+		return -EINVAL;
+	}
+
+	/* Transition from REGISTERED_NORMAL to REGISTERED_SUSPENDED */
+	mmctx->mm_state = GMM_REGISTERED_SUSPENDED;
+	return 0;
+}
+
+int gprs_gmm_rx_resume(struct gprs_ra_id *raid, uint32_t tlli,
+		       uint8_t suspend_ref)
+{
+	struct sgsn_mm_ctx *mmctx;
+
+	/* FIXME: make use of suspend reference? */
+
+	mmctx = sgsn_mm_ctx_by_tlli(tlli, raid);
+	if (!mmctx) {
+		LOGP(DMM, LOGL_NOTICE, "RESUME request for unknown "
+			"TLLI=%08x\n", tlli);
+		return -EINVAL;
+	}
+
+	if (mmctx->mm_state != GMM_REGISTERED_SUSPENDED) {
+		LOGP(DMM, LOGL_NOTICE, "RESUME request while state "
+			"!= SUSPENDED (TLLI=%08x)\n", tlli);
+		/* FIXME: should we not simply ignore it? */
+		return -EINVAL;
+	}
+
+	/* Transition from SUSPENDED to NORMAL */
+	mmctx->mm_state = GMM_REGISTERED_NORMAL;
+	return 0;
+}
