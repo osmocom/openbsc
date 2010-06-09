@@ -1048,7 +1048,8 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not connect socket\n");
+		LOGP(DINP, LOGL_ERROR, "Could not connect socket: %s\n",
+		     inet_ntoa(sa->sin_addr));
 		close(bfd->fd);
 		talloc_free(ipc);
 		return NULL;
