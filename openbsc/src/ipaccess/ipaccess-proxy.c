@@ -1005,8 +1005,9 @@ static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 
 	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind listen socket %s\n",
-			strerror(errno));
+		LOGP(DINP, LOGL_ERROR,
+			"Could not bind listen socket for IP %s with error: %s.\n",
+			listen_ipaddr, strerror(errno));
 		return -EIO;
 	}
 
