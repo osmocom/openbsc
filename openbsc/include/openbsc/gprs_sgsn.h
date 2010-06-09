@@ -42,6 +42,13 @@ enum gprs_mm_ctr {
 	GMM_CTR_RA_UPDATE,
 };
 
+enum gprs_pdp_ctx {
+	PDP_CTR_PKTS_UDATA_IN,
+	PDP_CTR_PKTS_UDATA_OUT,
+	PDP_CTR_BYTES_UDATA_IN,
+	PDP_CTR_BYTES_UDATA_OUT,
+};
+
 enum gprs_t3350_mode {
 	GMM_T3350_MODE_ATT,
 	GMM_T3350_MODE_RAU,
@@ -137,6 +144,7 @@ struct sgsn_pdp_ctx {
 	struct llist_head	g_list;	/* list_head for global list */
 	struct sgsn_mm_ctx	*mm;	/* back pointer to MM CTX */
 	struct sgsn_ggsn_ctx	*ggsn;	/* which GGSN serves this PDP */
+	struct rate_ctr_group	*ctrg;
 
 	//unsigned int		id;
 	struct pdp_t		*lib;	/* pointer to libgtp PDP ctx */

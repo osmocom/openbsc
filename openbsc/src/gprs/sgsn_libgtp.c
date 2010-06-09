@@ -393,6 +393,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		pinfo.drx_params = mm->drx_parms;
 		pinfo.qos[0] = 0; // FIXME
 		rc = gprs_bssgp_tx_paging(mm->nsei, 0, &pinfo);
+		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PAGING_PS]);
 		/* FIXME: queue the packet we received from GTP */
 		break;
 	case GMM_REGISTERED_NORMAL:
@@ -403,6 +404,11 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		msgb_free(msg);
 		return -1;
 	}
+
+	rate_ctr_inc(&pdp->ctrg->ctr[PDP_CTR_PKTS_UDATA_OUT]);
+	rate_ctr_add(&pdp->ctrg->ctr[PDP_CTR_BYTES_UDATA_OUT], len);
+	rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_UDATA_OUT]);
+	rate_ctr_add(&mm->ctrg->ctr[GMM_CTR_BYTES_UDATA_OUT], len);
 
 	return sndcp_unitdata_req(msg, &mm->llme->lle[pdp->sapi],
 				  pdp->nsapi, mm);
@@ -435,6 +441,14 @@ int sgsn_rx_sndcp_ud_ind(uint32_t tlli, uint8_t nsapi, struct msgb *msg,
 		LOGP(DGPRS, LOGL_ERROR, "PDP CTX without libgtp\n");
 		return -EIO;
 	}
+
+	rate_ctr_inc(&pdp->ctrg->ctr[PDP_CTR_PKTS_UDATA_IN]);
+	rate_ctr_add(&pdp->ctrg->ctr[PDP_CTR_BYTES_UDATA_IN], npdu_len);
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_UDATA_IN]);
+	rate_ctr_add(&mmctx->ctrg->ctr[GMM_CTR_BYTES_UDATA_IN], npdu_len);
+
+	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
+
 	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
 }
 

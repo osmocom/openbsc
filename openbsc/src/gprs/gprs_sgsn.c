@@ -61,6 +61,20 @@ static const struct rate_ctr_group_desc mmctx_ctrg_desc = {
 	.ctr_desc = mmctx_ctr_description,
 };
 
+static const struct rate_ctr_desc pdpctx_ctr_description[] = {
+	{ "udata.packets.in",	"User Data  Messages ( In)" },
+	{ "udata.packets.out",	"User Data  Messages (Out)" },
+	{ "udata.bytes.in",	"User Data  Bytes    ( In)" },
+	{ "udata.bytes.out",	"User Data  Bytes    (Out)" },
+};
+
+static const struct rate_ctr_group_desc pdpctx_ctrg_desc = {
+	.group_name_prefix = "sgsn.pdpctx",
+	.group_description = "SGSN PDP Context Statistics",
+	.num_ctr = ARRAY_SIZE(pdpctx_ctr_description),
+	.ctr_desc = pdpctx_ctr_description,
+};
+
 static int ra_id_equals(const struct gprs_ra_id *id1,
 			const struct gprs_ra_id *id2)
 {
@@ -182,6 +196,7 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 
 	pdp->mm = mm;
 	pdp->nsapi = nsapi;
+	pdp->ctrg = rate_ctr_group_alloc(pdp, &pdpctx_ctrg_desc, nsapi);
 	llist_add(&pdp->list, &mm->pdp_list);
 	llist_add(&pdp->g_list, &sgsn_pdp_ctxts);
 

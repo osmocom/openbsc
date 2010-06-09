@@ -149,8 +149,7 @@ static void vty_dump_pdp(struct vty *vty, const char *pfx,
 	vty_out(vty, "%sPDP Context IMSI: %s, SAPI: %u, NSAPI: %u%s",
 		pfx, pdp->mm->imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
 	vty_out(vty, "%s  APN: %s\n", pfx, pdp->lib->apn_use.v);
-	/* FIXME: statistics */
-	//vty_out_rate_ctr_group(vty, " ", pdp->ctrg);
+	vty_out_rate_ctr_group(vty, " ", pdp->ctrg);
 }
 
 static void vty_dump_mmctx(struct vty *vty, const char *pfx,
