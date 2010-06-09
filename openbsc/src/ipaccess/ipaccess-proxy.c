@@ -1,6 +1,8 @@
 /* OpenBSC Abis/IP proxy ip.access nanoBTS */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010 by On Waves
+ * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -33,6 +35,9 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+
+#define _GNU_SOURCE
+#include <getopt.h>
 
 #include <openbsc/gsm_data.h>
 #include <osmocore/select.h>
@@ -1100,6 +1105,69 @@ static void signal_handler(int signal)
 	}
 }
 
+static void print_help()
+{
+	printf(" ipaccess-proxy is a proxy BTS.\n");
+	printf(" -h --help. This help text.\n");
+	printf(" -l --listen IP. The ip to listen to.\n");
+	printf(" -b --bsc IP. The BSC IP address.\n\n");
+	printf(" -s --disable-color. Disable the color inside the logging message.\n");
+	printf(" -e --log-level number. Set the global loglevel.\n");
+	printf(" -T --timestamp. Prefix every log message with a timestamp.\n");
+	printf(" -V --version. Print the version of OpenBSC.\n");
+}
+
+static void print_usage()
+{
+	printf("Usage: ipaccess-proxy\n");
+}
+
+static void handle_options(int argc, char** argv)
+{
+	while (1) {
+		int option_index = 0, c;
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"disable-color", 0, 0, 's'},
+			{"timestamp", 0, 0, 'T'},
+			{"log-level", 1, 0, 'e'},
+			{"listen", 1, 0, 'l'},
+			{"bsc", 1, 0, 'b'},
+			{0, 0, 0, 0}
+		};
+
+		c = getopt_long(argc, argv, "hsTe:l:b:",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			print_usage();
+			print_help();
+			exit(0);
+		case 'l':
+			listen_ipaddr = optarg;
+			break;
+		case 'b':
+			bsc_ipaddr = optarg;
+			break;
+		case 's':
+			log_set_use_color(stderr_target, 0);
+			break;
+		case 'T':
+			log_set_print_timestamp(stderr_target, 1);
+			break;
+		case 'e':
+			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		default:
+			/* ignore */
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -1114,6 +1182,8 @@ int main(int argc, char **argv)
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
 	log_parse_category_mask(stderr_target, "DINP:DMI");
+
+	handle_options(argc, argv);
 
 	rc = ipaccess_proxy_setup();
 	if (rc < 0)
