@@ -369,9 +369,11 @@ enum sms_alphabet gsm338_get_sms_alphabet(u_int8_t dcs)
 	enum sms_alphabet alpha = DCS_NONE;
 
 	if ((cgbits & 0xc) == 0) {
-		if (cgbits & 2)
+		if (cgbits & 2) {
 			LOGP(DSMS, LOGL_NOTICE,
 			     "Compressed SMS not supported yet\n");
+			return 0xffffffff;
+		}
 
 		switch ((dcs >> 2)&0x03) {
 		case 0:
@@ -551,6 +553,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	gsms->data_coding_scheme = *smsp++;
 
 	sms_alphabet = gsm338_get_sms_alphabet(gsms->data_coding_scheme);
+	if (sms_alphabet == 0xffffffff)
+		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 
 	switch (sms_vpf) {
 	case GSM340_TP_VPF_RELATIVE:
