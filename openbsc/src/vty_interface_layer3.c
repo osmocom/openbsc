@@ -91,7 +91,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "    TMSI: %08X%s", subscr->tmsi,
 			VTY_NEWLINE);
 
-	rc = get_authinfo_by_subscr(&ainfo, subscr);
+	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 	if (!rc) {
 		vty_out(vty, "    A3A8 algorithm id: %d%s",
 			ainfo.auth_algo, VTY_NEWLINE);
@@ -100,7 +100,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			VTY_NEWLINE);
 	}
 
-	rc = get_lastauthtuple_by_subscr(&atuple, subscr);
+	rc = db_get_lastauthtuple_for_subscr(&atuple, subscr);
 	if (!rc) {
 		vty_out(vty, "    A3A8 last tuple (used %d times):%s",
 			atuple.use_count, VTY_NEWLINE);
@@ -469,7 +469,7 @@ DEFUN(ena_subscr_a3a8,
 
 	if (!strcasecmp(alg_str, "none")) {
 		/* Just erase */
-		rc = set_authinfo_for_subscr(NULL, subscr);
+		rc = db_sync_authinfo_for_subscr(NULL, subscr);
 	} else if (!strcasecmp(alg_str, "comp128v1")) {
 		/* Parse hex string Ki */
 		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
@@ -479,7 +479,7 @@ DEFUN(ena_subscr_a3a8,
 		/* Set the infos */
 		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
 		ainfo.a3a8_ki_len = rc;
-		rc = set_authinfo_for_subscr(&ainfo, subscr);
+		rc = db_sync_authinfo_for_subscr(&ainfo, subscr);
 	} else {
 		/* Unknown method */
 		return CMD_WARNING;

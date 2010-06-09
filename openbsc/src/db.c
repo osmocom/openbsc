@@ -348,8 +348,8 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	return 0;
 }
 
-int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
-			   struct gsm_subscriber *subscr)
+int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,
+                               struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	const unsigned char *a3a8_ki;
@@ -377,8 +377,8 @@ int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
 	return 0;
 }
 
-int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
-			    struct gsm_subscriber *subscr)
+int db_sync_authinfo_for_subscr(struct gsm_auth_info *ainfo,
+                                struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	struct gsm_auth_info ainfo_old;
@@ -400,7 +400,7 @@ int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	}
 
 	/* Check if already existing */
-	rc = get_authinfo_by_subscr(&ainfo_old, subscr);
+	rc = db_get_authinfo_for_subscr(&ainfo_old, subscr);
 	if (rc && rc != -ENOENT)
 		return rc;
 	upd = rc ? 0 : 1;
@@ -433,8 +433,8 @@ int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	return 0;
 }
 
-int get_lastauthtuple_by_subscr(struct gsm_auth_tuple *atuple,
-                                struct gsm_subscriber *subscr)
+int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                    struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	int len;
@@ -486,8 +486,8 @@ err_size:
 	return -EIO;
 }
 
-int set_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
-                                 struct gsm_subscriber *subscr)
+int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                     struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	int rc, upd;
@@ -509,7 +509,7 @@ int set_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 
 	/* Check if already existing */
-	rc = get_lastauthtuple_by_subscr(&atuple_old, subscr);
+	rc = db_get_lastauthtuple_for_subscr(&atuple_old, subscr);
 	if (rc && rc != -ENOENT)
 		return rc;
 	upd = rc ? 0 : 1;

@@ -44,14 +44,14 @@ int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
 int db_sync_equipment(struct gsm_equipment *equip);
 
 /* auth info */
-int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
-                           struct gsm_subscriber *subscr);
-int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
-                            struct gsm_subscriber *subscr);
-int get_lastauthtuple_by_subscr(struct gsm_auth_tuple *atuple,
+int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,
+                               struct gsm_subscriber *subscr);
+int db_sync_authinfo_for_subscr(struct gsm_auth_info *ainfo,
                                 struct gsm_subscriber *subscr);
-int set_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
-                                 struct gsm_subscriber *subscr);
+int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                    struct gsm_subscriber *subscr);
+int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                     struct gsm_subscriber *subscr);
 
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
