@@ -150,6 +150,7 @@ struct gsm_auth_tuple {
 	u_int8_t sres[4];
 	u_int8_t kc[8];
 };
+#define GSM_KEY_SEQ_INVAL	7	/* GSM 04.08 - 10.5.1.2 */
 
 
 struct gsm_lchan;
