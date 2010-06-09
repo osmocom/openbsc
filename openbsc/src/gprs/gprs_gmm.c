@@ -241,6 +241,59 @@ static void mmctx2msgid(struct msgb *msg, const struct sgsn_mm_ctx *mm)
 	msgb_nsei(msg) = mm->nsei;
 }
 
+/* Chapter 9.4.18 */
+static int _tx_status(struct msgb *msg, uint8_t cause,
+		      struct sgsn_mm_ctx *mmctx, int sm)
+{
+	struct gsm48_hdr *gh;
+
+	/* MMCTX might be NULL! */
+
+	DEBUGP(DMM, "<- GPRS MM STATUS (cause: %s)\n",
+		get_value_string(gmm_cause_names, cause));
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	if (sm) {
+		gh->proto_discr = GSM48_PDISC_SM_GPRS;
+		gh->msg_type = GSM48_MT_GSM_STATUS;
+	} else {
+		gh->proto_discr = GSM48_PDISC_MM_GPRS;
+		gh->msg_type = GSM48_MT_GMM_STATUS;
+	}
+	gh->data[0] = cause;
+
+	return gsm48_gmm_sendmsg(msg, 0, mmctx);
+}
+static int gsm48_tx_gmm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	mmctx2msgid(msg, mmctx);
+	return _tx_status(msg, cause, mmctx, 0);
+};
+static int gsm48_tx_gmm_status_oldmsg(struct msgb *oldmsg, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	gmm_copy_id(msg, oldmsg);
+	return _tx_status(msg, cause, NULL, 0);
+}
+static int gsm48_tx_sm_status(struct sgsn_mm_ctx *mmctx, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	mmctx2msgid(msg, mmctx);
+	return _tx_status(msg, cause, mmctx, 1);
+};
+static int gsm48_tx_sm_status_oldmsg(struct msgb *oldmsg, uint8_t cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+
+	gmm_copy_id(msg, oldmsg);
+	return _tx_status(msg, cause, NULL, 1);
+}
+
+
 static struct gsm48_qos default_qos = {
 	.delay_class = 4,	/* best effort */
 	.reliab_class = GSM48_QOS_RC_LLC_UN_RLC_ACK_DATA_PROT,
@@ -670,7 +723,7 @@ static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
 
 	llist_for_each_entry_safe(pdp, pdp2, &mmctx->pdp_list, list) {
 		if (!(pdp_status & (1 << pdp->nsapi))) {
-			LOGP(DMM, "Dropping PDP context for NSAPI=%u "
+			LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
 				"due to PDP CTX STATUS IE= 0x%04x\n",
 				pdp->nsapi, pdp_status);
 			sgsn_delete_pdp_ctx(pdp);
@@ -788,8 +841,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
-		/* FIXME: Send GMM_CAUSE_IMPL_DETACHED */
-		return -EINVAL;
+		return gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 
 	switch (gh->msg_type) {
@@ -837,12 +889,12 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
-		/* FIXME: Send GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL */
+		rc = gsm48_tx_gmm_status(mmctx, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
 			gh->msg_type);
-		/* FIXME: Send GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL */
+		rc = gsm48_tx_gmm_status(mmctx, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 	}
 
@@ -1152,8 +1204,7 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	if (!mmctx) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
-		/* FIXME: return SM / MM STATUS */
-		return -EINVAL;
+		return gsm48_tx_gmm_status_oldmsg(msg, GSM_CAUSE_PROTO_ERR_UNSPEC);
 	}
 
 	switch (gh->msg_type) {
@@ -1171,12 +1222,12 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GSM_DEACT_AA_PDP_REQ:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
-		/* FIXME: return SM / MM STATUS */
+		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 GSM msg type 0x%02x\n",
 			gh->msg_type);
-		/* FIXME: return SM / MM STATUS */
+		rc = gsm48_tx_sm_status(mmctx, GSM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
 		break;
 
 	}
