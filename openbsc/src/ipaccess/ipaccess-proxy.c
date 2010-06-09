@@ -654,6 +654,10 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
 		ret = write(bfd->fd, id_ack, sizeof(id_ack));
 		break;
+	default:
+		LOGP(DMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
+		return 1;
+		break;
 	}
 	return 0;
 }
@@ -880,11 +884,14 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 			close(bfd->fd);
 			bfd->fd = -1;
 			talloc_free(bfd);
+			msgb_free(msg);
+			return ret;
+		} else if (ret == 0) {
+			/* we do not forward parts of the CCM protocol
+			 * through the proxy but rather terminate it ourselves. */
+			msgb_free(msg);
+			return ret;
 		}
-		/* we do not forward the CCM protocol through the
-		 * proxy but rather terminate it ourselves */
-		msgb_free(msg);
-		return ret;
 	}
 
 	if (!ipbc) {
