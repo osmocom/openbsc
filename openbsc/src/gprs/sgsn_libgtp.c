@@ -357,27 +357,55 @@ static int cb_extheader_ind(struct sockaddr_in *peer)
 /* Called whenever we recive a DATA packet */
 static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 {
+	struct bssgp_paging_info pinfo;
 	struct sgsn_pdp_ctx *pdp;
-	struct msgb *msg = msgb_alloc_headroom(len+128, 128, "GTP->SNDCP");
+	struct sgsn_mm_ctx *mm;
+	struct msgb *msg;
 	uint8_t *ud;
+	int rc;
 
 	DEBUGP(DGPRS, "GTP DATA IND from GGSN, length=%u\n", len);
-	/* FIXME: resolve PDP/MM context, forward to SNDCP layer */
 
 	pdp = lib->priv;
 	if (!pdp) {
 		DEBUGP(DGPRS, "GTP DATA IND from GGSN for unknown PDP\n");
 		return -EIO;
 	}
+	mm = pdp->mm;
 
+	msg = msgb_alloc_headroom(len+128, 128, "GTP->SNDCP");
 	ud = msgb_put(msg, len);
 	memcpy(ud, packet, len);
 
-	msgb_tlli(msg) = pdp->mm->tlli;
-	msgb_bvci(msg) = pdp->mm->bvci;
-	msgb_nsei(msg) = pdp->mm->nsei;
+	msgb_tlli(msg) = mm->tlli;
+	msgb_bvci(msg) = mm->bvci;
+	msgb_nsei(msg) = mm->nsei;
 
-	return sndcp_unitdata_req(msg, &pdp->mm->llme->lle[pdp->sapi], pdp->nsapi, pdp->mm);
+	switch (mm->mm_state) {
+	case GMM_REGISTERED_SUSPENDED:
+		/* initiate PS PAGING procedure */
+		memset(&pinfo, 0, sizeof(pinfo));
+		pinfo.mode = BSSGP_PAGING_PS;
+		pinfo.scope = BSSGP_PAGING_BVCI;
+		pinfo.bvci = mm->bvci;
+		pinfo.imsi = mm->imsi;
+		pinfo.ptmsi = mm->p_tmsi;
+		pinfo.drx_params = mm->drx_parms;
+		pinfo.qos[0] = 0; // FIXME
+		rc = gprs_bssgp_tx_paging(mm->nsei, 0, &pinfo);
+		/* FIXME: queue the packet we received from GTP */
+		break;
+	case GMM_REGISTERED_NORMAL:
+		break;
+	default:
+		LOGP(DGPRS, LOGL_ERROR, "GTP DATA IND for TLLI %08X in state "
+			"%u\n", mm->tlli, mm->mm_state);
+		msgb_free(msg);
+		return -1;
+	}
+
+	return sndcp_unitdata_req(msg, &mm->llme->lle[pdp->sapi],
+				  pdp->nsapi, mm);
 }
 
 /* Called by SNDCP when it has received/re-assembled a N-PDU */
