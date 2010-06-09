@@ -140,7 +140,7 @@ static char *create_stmts[] = {
 		"algorithm_id INTEGER NOT NULL, "
 		"a3a8_ki BLOB "
 		")",
-	"CREATE TABLE IF NOT EXISTS AuthTuples ("
+	"CREATE TABLE IF NOT EXISTS AuthLastTuples ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"subscriber_id NUMERIC UNIQUE NOT NULL, "
 		"issued TIMESTAMP NOT NULL, "
@@ -435,15 +435,15 @@ int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	return 0;
 }
 
-int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
-			    struct gsm_subscriber *subscr)
+int get_lastauthtuple_by_subscr(struct gsm_auth_tuple *atuple,
+                                struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	int len;
 	const unsigned char *blob;
 
 	result = dbi_conn_queryf(conn,
-			"SELECT * FROM AuthTuples WHERE subscriber_id=%u",
+			"SELECT * FROM AuthLastTuples WHERE subscriber_id=%u",
 			subscr->id);
 	if (!result)
 		return -EIO;
@@ -488,8 +488,8 @@ err_size:
 	return -EIO;
 }
 
-int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
-			     struct gsm_subscriber *subscr)
+int set_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                 struct gsm_subscriber *subscr)
 {
 	dbi_result result;
 	int rc, upd;
@@ -499,7 +499,7 @@ int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Deletion ? */
 	if (atuple == NULL) {
 		result = dbi_conn_queryf(conn,
-			"DELETE FROM AuthTuples WHERE subscriber_id=%u",
+			"DELETE FROM AuthLastTuples WHERE subscriber_id=%u",
 			subscr->id);
 
 		if (!result)
@@ -511,7 +511,7 @@ int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	}
 
 	/* Check if already existing */
-	rc = get_authtuple_by_subscr(&atuple_old, subscr);
+	rc = get_lastauthtuple_by_subscr(&atuple_old, subscr);
 	if (rc && rc != -ENOENT)
 		return rc;
 	upd = rc ? 0 : 1;
@@ -526,7 +526,7 @@ int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 	if (!upd) {
 		result = dbi_conn_queryf(conn,
-				"INSERT INTO AuthTuples "
+				"INSERT INTO AuthLastTuples "
 				"(subscriber_id, issued, use_count, "
 				 "key_seq, rand, sres, kc) "
 				"VALUES (%u, datetime('now'), %u, "

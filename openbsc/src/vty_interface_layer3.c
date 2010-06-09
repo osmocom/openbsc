@@ -100,7 +100,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			VTY_NEWLINE);
 	}
 
-	rc = get_authtuple_by_subscr(&atuple, subscr);
+	rc = get_lastauthtuple_by_subscr(&atuple, subscr);
 	if (!rc) {
 		vty_out(vty, "    A3A8 last tuple (used %d times):%s",
 			atuple.use_count, VTY_NEWLINE);

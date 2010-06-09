@@ -48,10 +48,10 @@ int get_authinfo_by_subscr(struct gsm_auth_info *ainfo,
                            struct gsm_subscriber *subscr);
 int set_authinfo_for_subscr(struct gsm_auth_info *ainfo,
                             struct gsm_subscriber *subscr);
-int get_authtuple_by_subscr(struct gsm_auth_tuple *atuple,
-                            struct gsm_subscriber *subscr);
-int set_authtuple_for_subscr(struct gsm_auth_tuple *atuple,
-                             struct gsm_subscriber *subscr);
+int get_lastauthtuple_by_subscr(struct gsm_auth_tuple *atuple,
+                                struct gsm_subscriber *subscr);
+int set_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
+                                 struct gsm_subscriber *subscr);
 
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
