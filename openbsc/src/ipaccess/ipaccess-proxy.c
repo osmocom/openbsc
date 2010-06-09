@@ -55,6 +55,9 @@ struct ipa_proxy {
 	struct bsc_fd oml_listen_fd;
 	/* socket where we listen for incoming RSL from BTS */
 	struct bsc_fd rsl_listen_fd;
+	/* socket where we get the GPRS NS data */
+	struct bsc_fd gprs_ns_fd;
+	int gprs_port;
 	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 	/* the BSC reconnect timer */
@@ -115,6 +118,7 @@ void *tall_bsc_ctx;
 
 static char *listen_ipaddr;
 static char *bsc_ipaddr;
+static char *gprs_ns_ipaddr;
 
 #define PROXY_ALLOC_SIZE	1200
 
@@ -982,6 +986,11 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
+static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	return 0;
+}
+
 static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 		     int (*cb)(struct bsc_fd *fd, unsigned int what))
 {
@@ -1015,6 +1024,36 @@ static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 	if (ret < 0) {
 		perror("listen");
 		return ret;
+	}
+
+	ret = bsc_register_fd(bfd);
+	if (ret < 0) {
+		perror("register_listen_fd");
+		return ret;
+	}
+	return 0;
+}
+
+static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int))
+{
+	struct sockaddr_in addr;
+	int ret;
+
+	bfd->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	bfd->cb = cb;
+	bfd->when = BSC_FD_READ;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = 0;
+	inet_aton(listen_ipaddr, &addr.sin_addr);
+
+	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
+	if (ret < 0) {
+		LOGP(DINP, LOGL_ERROR,
+			"Could not bind n socket for IP %s with error: %s.\n",
+			listen_ipaddr, strerror(errno));
+		return -EIO;
 	}
 
 	ret = bsc_register_fd(bfd);
@@ -1088,6 +1127,26 @@ static int ipaccess_proxy_setup(void)
 	ret = make_listen_sock(&ipp->rsl_listen_fd, IPA_TCP_PORT_RSL,
 				RSL_FROM_BTS, listen_fd_cb);
 
+	if (ret < 0)
+		return ret;
+
+	/* Connect the GPRS NS Socket */
+	if (gprs_ns_ipaddr) {
+		struct sockaddr_in sock;
+		socklen_t len = sizeof(sock);
+		ret = make_gprs_sock(&ipp->gprs_ns_fd, gprs_ns_cb);
+		if (ret < 0)
+			return ret;
+
+		ret = getsockname(ipp->gprs_ns_fd.fd, (struct sockaddr* ) &sock, &len);
+		if (ret < 0)
+			return ret;
+		ipp->gprs_port = ntohs(sock.sin_port);
+		LOGP(DINP, LOGL_NOTICE,
+			"Created GPRS NS Socket. Listening on: %s:%d\n",
+			inet_ntoa(sock.sin_addr), ipp->gprs_port);
+	}
+
 	return ret;
 }
 
@@ -1112,7 +1171,9 @@ static void print_help()
 	printf(" ipaccess-proxy is a proxy BTS.\n");
 	printf(" -h --help. This help text.\n");
 	printf(" -l --listen IP. The ip to listen to.\n");
-	printf(" -b --bsc IP. The BSC IP address.\n\n");
+	printf(" -b --bsc IP. The BSC IP address.\n");
+	printf(" -g --gprs IP. Take GPRS NS from that IP.\n");
+	printf("\n");
 	printf(" -s --disable-color. Disable the color inside the logging message.\n");
 	printf(" -e --log-level number. Set the global loglevel.\n");
 	printf(" -T --timestamp. Prefix every log message with a timestamp.\n");
@@ -1135,10 +1196,11 @@ static void handle_options(int argc, char** argv)
 			{"log-level", 1, 0, 'e'},
 			{"listen", 1, 0, 'l'},
 			{"bsc", 1, 0, 'b'},
+			{"udp", 1, 0, 'u'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hsTe:l:b:",
+		c = getopt_long(argc, argv, "hsTe:l:b:g:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1153,6 +1215,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'b':
 			bsc_ipaddr = optarg;
+			break;
+		case 'g':
+			gprs_ns_ipaddr = optarg;
 			break;
 		case 's':
 			log_set_use_color(stderr_target, 0);
