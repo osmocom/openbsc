@@ -148,6 +148,36 @@ const struct value_string gprs_det_t_mo_strs[] = {
 	{ 0, NULL }
 };
 
+static const struct tlv_definition gsm48_gmm_att_tlvdef = {
+	.def = {
+		[GSM48_IE_GMM_TIMER_READY]	= { TLV_TYPE_TV, 1 },
+		[GSM48_IE_GMM_ALLOC_PTMSI]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_PTMSI_SIG]	= { TLV_TYPE_TV, 3 },
+		[GSM48_IE_GMM_AUTH_RAND]	= { TLV_TYPE_TV, 16 },
+		[GSM48_IE_GMM_AUTH_SRES]	= { TLV_TYPE_TV, 4 },
+		[GSM48_IE_GMM_IMEISV]		= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_DRX_PARAM]	= { TLV_TYPE_TV, 2 },
+		[GSM48_IE_GMM_MS_NET_CAPA]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_PDP_CTX_STATUS]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_PS_LCS_CAPA]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GMM_GMM_MBMS_CTX_ST]	= { TLV_TYPE_TLV, 0 },
+	},
+};
+
+static const struct tlv_definition gsm48_sm_att_tlvdef = {
+	.def = {
+		[GSM48_IE_GSM_APN]		= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GSM_PROTO_CONF_OPT]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GSM_PDP_ADDR]		= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GSM_AA_TMR]		= { TLV_TYPE_TV, 1 },
+		[GSM48_IE_GSM_NAME_FULL]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GSM_NAME_SHORT]	= { TLV_TYPE_TLV, 0 },
+		[GSM48_IE_GSM_TIMEZONE]		= { TLV_TYPE_TV, 1 },
+		[GSM48_IE_GSM_UTC_AND_TZ]	= { TLV_TYPE_TV, 7 },
+		[GSM48_IE_GSM_LSA_ID]		= { TLV_TYPE_TLV, 0 },
+	},
+};
+
 /* Our implementation, should be kept in SGSN */
 
 static void mmctx_timer_cb(void *_mm);
@@ -627,13 +657,37 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 	return gsm48_gmm_sendmsg(msg, 0, NULL);
 }
 
+static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
+				  uint16_t pdp_status)
+{
+	struct sgsn_pdp_ctx *pdp, *pdp2;
+	/* 24.008 4.7.5.1.3: If the PDP context status information element is
+	 * included in ROUTING AREA UPDATE REQUEST message, then the network
+	 * shall deactivate all those PDP contexts locally (without peer to
+	 * peer signalling between the MS and the network), which are not in SM
+	 * state PDP-INACTIVE on network side but are indicated by the MS as
+	 * being in state PDP-INACTIVE. */
+
+	llist_for_each_entry_safe(pdp, pdp2, &mmctx->pdp_list, list) {
+		if (!(pdp_status & (1 << pdp->nsapi))) {
+			LOGP(DMM, "Dropping PDP context for NSAPI=%u "
+				"due to PDP CTX STATUS IE= 0x%04x\n",
+				pdp->nsapi, pdp_status);
+			sgsn_delete_pdp_ctx(pdp);
+		}
+	}
+}
+
 /* Chapter 9.4.14: Routing area update request */
 static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 				   struct gprs_llc_llme *llme)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	uint8_t *cur = gh->data;
+	uint8_t *ms_ra_acc_cap;
+	uint8_t ms_ra_acc_cap_len;
 	struct gprs_ra_id old_ra_id;
+	struct tlv_parsed tp;
 	uint8_t upd_type;
 	int rc;
 
@@ -648,9 +702,13 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	cur += 6;
 
 	/* MS Radio Access Capability 10.5.5.12a */
+	ms_ra_acc_cap_len = *cur++;
+	ms_ra_acc_cap = cur;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status,
 	 * DRX parameter, MS network capability */
+	rc = tlv_parse(&tp, &gsm48_gmm_att_tlvdef, cur,
+			(msg->data + msg->len) - cur, 0, 0);
 
 	switch (upd_type) {
 	case GPRS_UPD_T_RA_LA:
@@ -694,6 +752,14 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	/* Inform LLC layer about new TLLI but keep old active */
 	gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new, 0, NULL);
+
+	/* Look at PDP Context Status IE and see if MS's view of
+	 * activated/deactivated NSAPIs agrees with our view */
+	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {
+		uint16_t pdp_status = ntohs(*(uint16_t *)
+				TLVP_VAL(&tp, GSM48_IE_GMM_PDP_CTX_STATUS));
+		process_ms_ctx_status(mmctx, pdp_status);
+	}
 
 	/* Send RA UPDATE ACCEPT */
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
