@@ -871,7 +871,6 @@ static void patch_gprs_msg(struct ipa_bts_conn *ipbc, int priv_nr, struct msgb *
 	if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf5 && msg->l2h[19] == 0xf2) {
-		printf("found GPRS NSVC SET foo...\n");
 		nsvci = &msg->l2h[23];
 		ipbc->gprs_orig_port =  *(u_int16_t *)(nsvci+8);
 		ipbc->gprs_orig_ip = *(u_int32_t *)(nsvci+10);
@@ -880,7 +879,6 @@ static void patch_gprs_msg(struct ipa_bts_conn *ipbc, int priv_nr, struct msgb *
 	} else if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf6 && msg->l2h[19] == 0xf2) {
-		printf("found GPRS NSVC SET ACK...\n");
 		nsvci = &msg->l2h[23];
 		*(u_int16_t *)(nsvci+8) = ipbc->gprs_orig_port;
 		*(u_int32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
