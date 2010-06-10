@@ -535,7 +535,7 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 		char *issued = atuple->key_seq == atuple_old.key_seq ?
 					"issued" : "datetime('now')";
 		result = dbi_conn_queryf(conn,
-				"UPDATE AuthKeys "
+				"UPDATE AuthLastTuples "
 				"SET issued=%s, use_count=%u, "
 				 "key_seq=%u, rand=%s, sres=%s, kc=%s "
 				"WHERE subscriber_id = %u",
