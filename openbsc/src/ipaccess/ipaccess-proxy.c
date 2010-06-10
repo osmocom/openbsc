@@ -61,6 +61,7 @@ struct ipa_proxy {
 	struct timer_list reconn_timer;
 	/* global GPRS NS data */
 	struct in_addr gprs_addr;
+	struct in_addr listen_addr;
 };
 
 /* global pointer to the proxy structure */
@@ -101,6 +102,8 @@ struct ipa_bts_conn {
 	struct in_addr bts_addr;
 	struct bsc_fd gprs_ns_fd;
 	int gprs_local_port;
+	uint16_t gprs_orig_port;
+	uint32_t gprs_orig_ip;
 
 	char *id_tags[0xff];
 	u_int8_t *id_resp;
@@ -846,6 +849,44 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 	talloc_free(ipc);
 }
 
+static void patch_gprs_msg(struct ipa_bts_conn *ipbc, int priv_nr, struct msgb *msg)
+{
+	uint8_t *nsvci;
+
+	if ((priv_nr & 0xff) != OML_FROM_BTS && (priv_nr & 0xff) != OML_TO_BSC)
+		return;
+
+	if (msgb_l2len(msg) != 39)
+		return;
+
+	/*
+	 * Check if this is a IPA Set Attribute or IPA Set Attribute ACK
+	 * and if the FOM Class is GPRS NSVC0 and then we will patch it.
+	 *
+	 * The patch assumes the message looks like the one from the trace
+	 * but we only match messages with a specific size anyway... So
+	 * this hack should work just fine.
+	 */
+
+	if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
+	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
+	    msg->l2h[18] == 0xf5 && msg->l2h[19] == 0xf2) {
+		printf("found GPRS NSVC SET foo...\n");
+		nsvci = &msg->l2h[23];
+		ipbc->gprs_orig_port =  *(u_int16_t *)(nsvci+8);
+		ipbc->gprs_orig_ip = *(u_int32_t *)(nsvci+10);
+		*(u_int16_t *)(nsvci+8) = htons(ipbc->gprs_local_port);
+		*(u_int32_t *)(nsvci+10) = ipbc->ipp->listen_addr.s_addr;
+	} else if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
+	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
+	    msg->l2h[18] == 0xf6 && msg->l2h[19] == 0xf2) {
+		printf("found GPRS NSVC SET ACK...\n");
+		nsvci = &msg->l2h[23];
+		*(u_int16_t *)(nsvci+8) = ipbc->gprs_orig_port;
+		*(u_int32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
+	}
+}
+
 static int handle_tcp_read(struct bsc_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
@@ -903,6 +944,8 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 
 	bsc_conn = ipc_by_priv_nr(ipbc, bfd->priv_nr);
 	if (bsc_conn) {
+		if (gprs_ns_ipaddr)
+			patch_gprs_msg(ipbc, bfd->priv_nr, msg);
 		/* enqueue packet towards BSC */
 		msgb_enqueue(&bsc_conn->tx_queue, msg);
 		/* mark respective filedescriptor as 'we want to write' */
@@ -1210,8 +1253,10 @@ static int ipaccess_proxy_setup(void)
 		return ret;
 
 	/* Connect the GPRS NS Socket */
-	if (gprs_ns_ipaddr)
+	if (gprs_ns_ipaddr) {
 		inet_aton(gprs_ns_ipaddr, &ipp->gprs_addr);
+		inet_aton(listen_ipaddr, &ipp->listen_addr);
+	}
 
 	return ret;
 }
