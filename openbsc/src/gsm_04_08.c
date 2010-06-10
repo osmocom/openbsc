@@ -886,7 +886,7 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
 	struct gsm_network *net = lchan->ts->trx->bts->network;
 
-	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s)\n",
+	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
 		hexdump(ar->sres, 4));
 
 	/* Safety check */
@@ -898,6 +898,10 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 	/* Validate SRES */
 	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
 		gsm_cbfn *cb = conn->sec_operation->cb;
+
+		DEBUGPC(DMM, "Invalid (expected %s)\n",
+			hexdump(conn->sec_operation->atuple.sres, 4));
+
 		if (cb)
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
 			   NULL, lchan, conn->sec_operation->cb_data);
@@ -905,6 +909,8 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 		release_security_operation(conn);
 		return gsm48_tx_mm_auth_rej(lchan);
 	}
+
+	DEBUGPC(DMM, "OK\n");
 
 	/* Start ciphering */
 	lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
