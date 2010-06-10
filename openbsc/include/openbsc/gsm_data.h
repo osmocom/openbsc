@@ -211,6 +211,8 @@ struct neigh_meas_proc {
 };
 
 #define MAX_A5_KEY_LEN	(128/8)
+#define A38_XOR_MIN_KEY_LEN	12
+#define A38_XOR_MAX_KEY_LEN	16
 #define A38_COMP128_KEY_LEN	16
 #define RSL_ENC_ALG_A5(x)	(x+1)
 

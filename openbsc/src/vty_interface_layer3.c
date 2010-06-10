@@ -442,9 +442,10 @@ DEFUN(ena_subscr_extension,
 	return CMD_SUCCESS;
 }
 
-#define A3A8_ALG_TYPES "(none|comp128v1)"
+#define A3A8_ALG_TYPES "(none|xor|comp128v1)"
 #define A3A8_ALG_HELP 			\
 	"Use No A3A8 algorithm\n"	\
+	"Use XOR algorithm\n"		\
 	"Use COMP128v1 algorithm\n"
 
 DEFUN(ena_subscr_a3a8,
@@ -457,9 +458,9 @@ DEFUN(ena_subscr_a3a8,
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	const char *alg_str = argv[2];
-	const char *ki_str = argv[3];
+	const char *ki_str = argc == 4 ? argv[3] : NULL;
 	struct gsm_auth_info ainfo;
-	int rc;
+	int rc, minlen, maxlen;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -468,22 +469,34 @@ DEFUN(ena_subscr_a3a8,
 	}
 
 	if (!strcasecmp(alg_str, "none")) {
-		/* Just erase */
-		rc = db_sync_authinfo_for_subscr(NULL, subscr);
+		ainfo.auth_algo = AUTH_ALGO_NONE;
+		minlen = maxlen = 0;
+	} else if (!strcasecmp(alg_str, "xor")) {
+		ainfo.auth_algo = AUTH_ALGO_XOR;
+		minlen = A38_XOR_MIN_KEY_LEN;
+		maxlen = A38_XOR_MAX_KEY_LEN;
 	} else if (!strcasecmp(alg_str, "comp128v1")) {
-		/* Parse hex string Ki */
-		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
-		if (rc != 16)
-			return CMD_WARNING;
-
-		/* Set the infos */
 		ainfo.auth_algo = AUTH_ALGO_COMP128v1;
-		ainfo.a3a8_ki_len = rc;
-		rc = db_sync_authinfo_for_subscr(&ainfo, subscr);
+		minlen = maxlen = A38_COMP128_KEY_LEN;
 	} else {
 		/* Unknown method */
 		return CMD_WARNING;
 	}
+
+	if (ki_str) {
+		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		if ((rc > maxlen) || (rc < minlen))
+			return CMD_WARNING;
+		ainfo.a3a8_ki_len = rc;
+	} else {
+		ainfo.a3a8_ki_len = 0;
+		if (minlen)
+			return CMD_WARNING;
+	}
+
+	rc = db_sync_authinfo_for_subscr(
+		ainfo.auth_algo == AUTH_ALGO_NONE ? NULL : &ainfo,
+		subscr);
 
 	/* the last tuple probably invalid with the new auth settings */
 	db_sync_lastauthtuple_for_subscr(NULL, subscr);

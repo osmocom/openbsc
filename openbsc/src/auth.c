@@ -31,6 +31,26 @@
 
 
 static int
+_use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
+{
+	int i, l = ainfo->a3a8_ki_len;
+
+	if ((l > A38_XOR_MAX_KEY_LEN) || (l < A38_XOR_MIN_KEY_LEN)) {
+		DEBUGP(DMM, "Invalid XOR key (len=%d) %s",
+			ainfo->a3a8_ki_len,
+			hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
+		return -1;
+	}
+
+	for (i=0; i<4; i++)
+		atuple->sres[i] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
+	for (i=8; i<12; i++)
+		atuple->kc[i-4] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
+
+	return 0;
+}
+
+static int
 _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 {
 	if (ainfo->a3a8_ki_len != A38_COMP128_KEY_LEN) {
@@ -84,6 +104,11 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	switch (ainfo.auth_algo) {
 		case AUTH_ALGO_NONE:
 			return 0;
+
+		case AUTH_ALGO_XOR:
+			if (_use_xor(&ainfo, atuple))
+				return 0;
+			break;
 
 		case AUTH_ALGO_COMP128v1:
 			if (_use_comp128_v1(&ainfo, atuple))
