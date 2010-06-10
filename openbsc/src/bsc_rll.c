@@ -31,6 +31,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/signal.h>
 
 struct bsc_rll_req {
 	struct llist_head list;
@@ -55,7 +56,6 @@ static void complete_rllr(struct bsc_rll_req *rllr, enum bsc_rllr_ind type)
 
 	conn = &rllr->lchan->conn;
 	llist_del(&rllr->list);
-	put_subscr_con(conn);
 	rllr->cb(rllr->lchan, rllr->link_id, rllr->data, type);
 	talloc_free(rllr);
 }
@@ -88,7 +88,6 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 		link_id |= 0x40;
 
 	conn = &lchan->conn;
-	use_subscr_con(conn);
 	rllr->lchan = lchan;
 	rllr->link_id = link_id;
 	rllr->cb = cb;
@@ -119,4 +118,30 @@ void rll_indication(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t type)
 			return;
 		}
 	}
+}
+
+static int rll_lchan_signal(unsigned int subsys, unsigned int signal,
+			    void *handler_data, void *signal_data)
+{
+	struct challoc_signal_data *challoc;
+	struct bsc_rll_req *rllr, *rllr2;
+
+	if (subsys != SS_CHALLOC || signal != S_CHALLOC_FREED)
+		return 0;
+
+	challoc = (struct challoc_signal_data *) signal_data;
+
+	llist_for_each_entry_safe(rllr, rllr2, &bsc_rll_reqs, list) {
+		if (rllr->lchan == challoc->lchan) {
+			bsc_del_timer(&rllr->timer);
+			complete_rllr(rllr, BSC_RLLR_IND_ERR_IND);
+		}
+	}
+
+	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_rll(void)
+{
+	register_signal_handler(SS_CHALLOC, rll_lchan_signal, NULL);
 }
