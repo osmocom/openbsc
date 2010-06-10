@@ -996,7 +996,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		bsc_del_timer(&trans->sms.cp_timer);
 
 		if (!trans->sms.is_mt) {
-			/* FIXME: we have sont one CP-DATA, which was now
+			/* FIXME: we have sent one CP-DATA, which was now
 			 * acknowledged.  Check if we want to transfer more,
 			 * i.e. multi-part message */
 			trans->sms.cp_state = GSM411_CPS_IDLE;
