@@ -485,6 +485,9 @@ DEFUN(ena_subscr_a3a8,
 		return CMD_WARNING;
 	}
 
+	/* the last tuple probably invalid with the new auth settings */
+	db_sync_lastauthtuple_for_subscr(NULL, subscr);
+
 	return rc ? CMD_WARNING : CMD_SUCCESS;
 }
 
