@@ -184,6 +184,7 @@ struct gsm_loc_updating_operation {
         struct timer_list updating_timer;
 	unsigned int waiting_for_imsi : 1;
 	unsigned int waiting_for_imei : 1;
+	unsigned int key_seq : 4;
 };
 
 /*

@@ -462,6 +462,8 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 
 	allocate_loc_updating_req(&lchan->conn);
 
+	conn->loc_operation->key_seq = lu->key_seq;
+
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
