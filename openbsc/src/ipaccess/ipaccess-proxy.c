@@ -1029,7 +1029,7 @@ static void send_ns(int fd, const char *buf, int size, struct in_addr ip, int po
 	memset(&addr, 0, sizeof(addr));
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = port;
+	addr.sin_port = htons(port);
 	addr.sin_addr = ip;
 
 	ret = sendto(fd, buf, size, 0, (struct sockaddr *) &addr, len);
@@ -1062,6 +1062,8 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 	} else if (memcmp(&sock.sin_addr, &bts->bts_addr, sizeof(sock.sin_addr)) == 0) {
 		LOGP(DINP, LOGL_DEBUG, "GPRS NS msg from BTS.\n");
 		send_ns(bfd->fd, buf, ret, ipp->gprs_addr, 23000);
+	} else {
+		LOGP(DINP, LOGL_ERROR, "Unknown GPRS source: %s\n", inet_ntoa(sock.sin_addr));
 	}
 
 	return 0;
