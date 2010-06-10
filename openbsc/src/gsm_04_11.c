@@ -1160,11 +1160,9 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 		rc = rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
+	case GSM_PAGING_OOM:
 		sms_free(sms);
 		rc = -ETIMEDOUT;
-		break;
-	default:
-		rc = -EINVAL;
 		break;
 	}
 
