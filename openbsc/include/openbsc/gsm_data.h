@@ -288,6 +288,9 @@ struct gsm_lchan {
 
 	/* release reason */
 	u_int8_t release_reason;
+
+	/* timestamp */
+	struct timeval alloc_time;
 };
 
 struct gsm_e1_subslot {

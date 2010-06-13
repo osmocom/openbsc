@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <time.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
@@ -287,6 +288,9 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		memset(&lchan->conn, 0, sizeof(lchan->conn));
 		lchan->conn.lchan = lchan;
 		lchan->conn.bts = lchan->ts->trx->bts;
+
+		/* set the alloc time */
+		gettimeofday(&lchan->alloc_time, NULL);
 	} else {
 		struct challoc_signal_data sig;
 		sig.bts = bts;
