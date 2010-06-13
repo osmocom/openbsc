@@ -289,8 +289,6 @@ static int open_sccp_connection(struct msgb *layer3)
 	/* When not connected to a MSC. We will simply close things down. */
 	if (!bsc_gsmnet->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
-		use_subscr_con(&layer3->lchan->conn);
-		put_subscr_con(&layer3->lchan->conn, 0);
 		return -1;
 	}
 
@@ -611,6 +609,12 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		}
 
 		bsc_queue_connection_write(lchan_get_sccp(msg->lchan), dtap);
+	} else if (rc <= 0 && !msg->lchan->msc_data && msg->lchan->conn.use_count == 0) {
+		if (msg->lchan->state == LCHAN_S_ACTIVE) {
+			LOGP(DMSC, LOGL_NOTICE, "Closing unowned channel.\n");
+			use_subscr_con(&msg->lchan->conn);
+			put_subscr_con(&msg->lchan->conn, 0);
+		}
 	}
 
 	return rc;
