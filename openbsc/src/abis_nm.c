@@ -1976,11 +1976,23 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 			NM_OC_CHANNEL, bts->bts_nr,
 			ts->trx->nr, ts->nr);
 	msgb_tv_put(msg, NM_ATT_CHAN_COMB, chan_comb);
-	if (ts->hopping.hsn) {
+	if (ts->hopping.enabled) {
+		unsigned int i;
+		uint8_t *len;
+
 		msgb_tv_put(msg, NM_ATT_HSN, ts->hopping.hsn);
 		msgb_tv_put(msg, NM_ATT_MAIO, ts->hopping.maio);
-		/* FIXME: compute ARFCN list */
-		msgb_tlv16_put(msg, NM_ATT_ARFCN_LIST, 1, &arfcn);
+
+		/* build the ARFCN list */
+		msgb_put_u8(msg, NM_ATT_ARFCN_LIST);
+		len = msgb_put(msg, 1);
+		*len = 0;
+		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
+			if (bitvec_get_bit_pos(&ts->hopping.arfcns, i)) {
+				msgb_put_u16(msg, i);
+				*len += sizeof(uint16_t);
+			}
+		}
 	}
 	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)

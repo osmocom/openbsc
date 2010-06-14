@@ -305,13 +305,21 @@ static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 	if (ts->pchan != GSM_PCHAN_NONE)
 		vty_out(vty, "     phys_chan_config %s%s",
 			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
-	if (ts->hopping.hsn) {
-		vty_out(vty, "      hopping sequence number %u%s",
+	vty_out(vty, "     hopping enabled %u%s",
+		ts->hopping.enabled, VTY_NEWLINE);
+	if (ts->hopping.enabled) {
+		unsigned int i;
+		vty_out(vty, "     hopping sequence-number %u%s",
 			ts->hopping.hsn, VTY_NEWLINE);
-		vty_out(vty, "      hopping maio %u%s",
+		vty_out(vty, "     hopping maio %u%s",
 			ts->hopping.maio, VTY_NEWLINE);
-		/* FIXME: ARFCN list */
-	}
+		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
+			if (!bitvec_get_bit_pos(&ts->hopping.arfcns, i))
+				continue;
+			vty_out(vty, "     hopping arfcn add %u%s",
+				i, VTY_NEWLINE);
+		}
+	} else
 	config_write_e1_link(vty, &ts->e1_link, "     ");
 }
 
@@ -1984,9 +1992,25 @@ DEFUN(cfg_ts_pchan,
 	return CMD_SUCCESS;
 }
 
+#define HOPPING_STR "Configure frequency hopping\n"
+
+DEFUN(cfg_ts_hopping,
+      cfg_ts_hopping_cmd,
+      "hopping enabled (0|1)",
+	HOPPING_STR "Enable or disable frequency hopping\n"
+      "Disable frequency hopping\n" "Enable frequency hopping\n")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->hopping.enabled = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_ts_hsn,
       cfg_ts_hsn_cmd,
-      "hopping sequence number <0-63>",
+      "hopping sequence-number <0-63>",
+	HOPPING_STR
       "Which hopping sequence to use for this channel")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
@@ -1999,6 +2023,7 @@ DEFUN(cfg_ts_hsn,
 DEFUN(cfg_ts_maio,
       cfg_ts_maio_cmd,
       "hopping maio <0-63>",
+	HOPPING_STR
       "Which hopping MAIO to use for this channel")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
@@ -2011,24 +2036,28 @@ DEFUN(cfg_ts_maio,
 DEFUN(cfg_ts_arfcn_add,
       cfg_ts_arfcn_add_cmd,
       "hopping arfcn add <0-1023>",
-      "Add an entry to the hopping ARFCN list")
+	HOPPING_STR "Configure hopping ARFCN list\n"
+      "Add an entry to the hopping ARFCN list\n" "ARFCN\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
 	int arfcn = atoi(argv[0]);
 
-	/* FIXME */
+	bitvec_set_bit_pos(&ts->hopping.arfcns, arfcn, 1);
+
 	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_ts_arfcn_del,
       cfg_ts_arfcn_del_cmd,
       "hopping arfcn del <0-1023>",
-      "Delete an entry to the hopping ARFCN list")
+	HOPPING_STR "Configure hopping ARFCN list\n"
+      "Delete an entry to the hopping ARFCN list\n" "ARFCN\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
 	int arfcn = atoi(argv[0]);
 
-	/* FIXME */
+	bitvec_set_bit_pos(&ts->hopping.arfcns, arfcn, 0);
+
 	return CMD_SUCCESS;
 }
 
@@ -2193,6 +2222,7 @@ int bsc_vty_init(void)
 	install_element(TS_NODE, &ournode_exit_cmd);
 	install_element(TS_NODE, &ournode_end_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_hopping_cmd);
 	install_element(TS_NODE, &cfg_ts_hsn_cmd);
 	install_element(TS_NODE, &cfg_ts_maio_cmd);
 	install_element(TS_NODE, &cfg_ts_arfcn_add_cmd);

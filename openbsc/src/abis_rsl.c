@@ -1195,15 +1195,16 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	ia.proto_discr = GSM48_PDISC_RR;
 	ia.msg_type = GSM48_MT_RR_IMM_ASS;
 	ia.page_mode = GSM48_PM_SAME;
-	ia.chan_desc.chan_nr = lchan2chan_nr(lchan);
-	ia.chan_desc.h0.h = 0;
-	ia.chan_desc.h0.arfcn_high = arfcn >> 8;
-	ia.chan_desc.h0.arfcn_low = arfcn & 0xff;
-	ia.chan_desc.h0.tsc = bts->tsc;
+	gsm48_lchan2chan_desc(&ia.chan_desc, lchan);
+
 	/* use request reference extracted from CHAN_RQD */
 	memcpy(&ia.req_ref, rqd_ref, sizeof(ia.req_ref));
 	ia.timing_advance = rqd_ta;
-	ia.mob_alloc_len = 0;
+	if (!lchan->ts->hopping.enabled) {
+		ia.mob_alloc_len = 0;
+	} else {
+		/* FIXME: Mobile Allocation in case of hopping */
+	}
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
 		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,

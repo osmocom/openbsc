@@ -177,9 +177,23 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	struct bitvec *bv = &bts->si_common.cell_alloc;
 
+	/* Zero-initialize the bit-vector */
+	memset(&bv->data, 0, bv->data_len);
+
 	/* first we generate a bitvec of all TRX ARFCN's in our BTS */
-	llist_for_each_entry(trx, &bts->trx_list, list)
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		unsigned int i, j;
+		/* Always add the TRX's ARFCN */
 		bitvec_set_bit_pos(bv, trx->arfcn, 1);
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			/* Add any ARFCNs present in hopping channels */
+			for (j = 0; j < 1024; j++) {
+				if (bitvec_get_bit_pos(&ts->hopping.arfcns, j))
+					bitvec_set_bit_pos(bv, j, 1);
+			}
+		}
+	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
 	return bitvec2freq_list(chan_list, bv, bts);
@@ -190,6 +204,9 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv = &bts->si_common.neigh_list;
+
+	/* Zero-initialize the bit-vector */
+	memset(&bv->data, 0, bv->data_len);
 
 	/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
 	llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {

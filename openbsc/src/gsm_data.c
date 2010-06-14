@@ -154,6 +154,9 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->nr = k;
 		ts->pchan = GSM_PCHAN_NONE;
 
+		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
+		ts->hopping.arfcns.data = ts->hopping.arfcns_data;
+
 		for (l = 0; l < TS_MAX_LCHAN; l++) {
 			struct gsm_lchan *lchan;
 			lchan = &ts->lchan[l];

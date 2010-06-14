@@ -312,16 +312,24 @@ static void gsm48_cell_desc(struct gsm48_cell_desc *cd,
 	cd->arfcn_lo = bts->c0->arfcn & 0xff;
 }
 
-static void gsm48_chan_desc(struct gsm48_chan_desc *cd,
-			    const struct gsm_lchan *lchan)
+void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
+			   const struct gsm_lchan *lchan)
 {
 	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
 	cd->chan_nr = lchan2chan_nr(lchan);
-	cd->h0.tsc = lchan->ts->trx->bts->tsc;
-	cd->h0.h = 0;
-	cd->h0.arfcn_high = arfcn >> 8;
-	cd->h0.arfcn_low = arfcn & 0xff;
+	if (!lchan->ts->hopping.enabled) {
+		cd->h0.tsc = lchan->ts->trx->bts->tsc;
+		cd->h0.h = 0;
+		cd->h0.arfcn_high = arfcn >> 8;
+		cd->h0.arfcn_low = arfcn & 0xff;
+	} else {
+		cd->h1.tsc = lchan->ts->trx->bts->tsc;
+		cd->h1.h = 1;
+		cd->h1.maio_high = lchan->ts->hopping.maio >> 2;
+		cd->h1.maio_low = lchan->ts->hopping.maio & 0x03;
+		cd->h1.hsn = lchan->ts->hopping.hsn;
+	}
 }
 
 /* Chapter 9.1.15: Handover Command */
@@ -339,7 +347,7 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 
 	/* mandatory bits */
 	gsm48_cell_desc(&ho->cell_desc, new_lchan->ts->trx->bts);
-	gsm48_chan_desc(&ho->chan_desc, new_lchan);
+	gsm48_lchan2chan_desc(&ho->chan_desc, new_lchan);
 	ho->ho_ref = ho_ref;
 	ho->power_command = power_command;
 
@@ -370,7 +378,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	 * the chan_desc. But as long as multi-slot configurations
 	 * are not used we seem to be fine.
 	 */
-	gsm48_chan_desc(&ass->chan_desc, lchan);
+	gsm48_lchan2chan_desc(&ass->chan_desc, lchan);
 	ass->power_command = power_command;
 
 	msgb_tv_put(msg, GSM48_IE_CHANMODE_1, lchan->tch_mode);
@@ -409,11 +417,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 
 	/* fill the channel information element, this code
 	 * should probably be shared with rsl_rx_chan_rqd() */
-	cmm->chan_desc.chan_nr = lchan2chan_nr(lchan);
-	cmm->chan_desc.h0.tsc = lchan->ts->trx->bts->tsc;
-	cmm->chan_desc.h0.h = 0;
-	cmm->chan_desc.h0.arfcn_high = arfcn >> 8;
-	cmm->chan_desc.h0.arfcn_low = arfcn & 0xff;
+	gsm48_lchan2chan_desc(&cmm->chan_desc, lchan);
 	cmm->mode = mode;
 
 	/* in case of multi rate we need to attach a config */
