@@ -136,12 +136,14 @@ static void bss_close_lchans(struct bss_sccp_connection_data *bss)
 {
 	if (bss->lchan) {
 		bss->lchan->msc_data = NULL;
+		bss->lchan->conn.hand_off += 1;
 		put_subscr_con(&bss->lchan->conn, 0);
 		bss->lchan = NULL;
 	}
 
 	if (bss->secondary_lchan) {
 		bss->secondary_lchan->msc_data = NULL;
+		bss->secondary_lchan->conn.hand_off += 1;
 		put_subscr_con(&bss->secondary_lchan->conn, 0);
 		bss->secondary_lchan = NULL;
 	}
@@ -422,12 +424,14 @@ static int handle_ass_compl(struct msgb *msg)
 
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
 
 	if (msg->lchan->msc_data->secondary_lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_ERROR, "Wrong assignment complete.\n");
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
@@ -435,6 +439,7 @@ static int handle_ass_compl(struct msgb *msg)
 	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
 		LOGP(DMSC, LOGL_ERROR, "assignment compl invalid: %d\n",
 			msgb_l3len(msg) - sizeof(*gh));
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
@@ -453,6 +458,7 @@ static int handle_ass_compl(struct msgb *msg)
 		if (old_chan->conn.subscr)
 			subscr_put(old_chan->conn.subscr);
 		old_chan->conn.subscr = NULL;
+		old_chan->conn.hand_off += 1;
 		put_subscr_con(&old_chan->conn, 1);
 	}
 
@@ -476,6 +482,7 @@ static int handle_ass_fail(struct msgb *msg)
 	LOGP(DMSC, LOGL_ERROR, "ASSIGNMENT FAILURE from MS, forwarding to MSC\n");
 	if (!msg->lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No MSC data\n");
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
@@ -484,6 +491,7 @@ static int handle_ass_fail(struct msgb *msg)
 	if (msg->lchan->msc_data->lchan != msg->lchan) {
 		LOGP(DMSC, LOGL_NOTICE, "Failure should come on the old link.\n");
 		msg->lchan->msc_data = NULL;
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 		return -1;
 	}
@@ -612,6 +620,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	} else if (rc <= 0 && !msg->lchan->msc_data && msg->lchan->conn.use_count == 0) {
 		if (msg->lchan->state == LCHAN_S_ACTIVE) {
 			LOGP(DMSC, LOGL_NOTICE, "Closing unowned channel.\n");
+			msg->lchan->conn.hand_off += 1;
 			use_subscr_con(&msg->lchan->conn);
 			put_subscr_con(&msg->lchan->conn, 0);
 		}

@@ -170,6 +170,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 		bssmap_free_secondary(msg->lchan->msc_data);
 
 		msg->lchan->msc_data = NULL;
+		msg->lchan->conn.hand_off += 1;
 		put_subscr_con(&msg->lchan->conn, 0);
 	}
 
@@ -294,6 +295,7 @@ static void bssmap_free_secondary(struct bss_sccp_connection_data *data)
 	if (lchan->conn.subscr)
 		subscr_put(lchan->conn.subscr);
 	lchan->conn.subscr = NULL;
+	lchan->conn.hand_off += 1;
 	put_subscr_con(&lchan->conn, 1);
 }
 
@@ -451,6 +453,7 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 {
 	if (!new_lchan->msc_data) {
 		LOGP(DMSC, LOGL_ERROR, "No BSS data found.\n");
+		new_lchan->conn.hand_off += 1;
 		put_subscr_con(&new_lchan->conn, 0);
 		return;
 	}
@@ -458,6 +461,7 @@ static void continue_new_assignment(struct gsm_lchan *new_lchan)
 	if (new_lchan->msc_data->secondary_lchan != new_lchan) {
 		LOGP(DMSC, LOGL_ERROR, "This is not the secondary channel?\n");
 		new_lchan->msc_data = NULL;
+		new_lchan->conn.hand_off += 1;
 		put_subscr_con(&new_lchan->conn, 0);
 		return;
 	}
