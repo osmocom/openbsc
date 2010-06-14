@@ -2908,25 +2908,6 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 	return rc;
 }
 
-/* dequeue messages to layer 4 */
-int bsc_upqueue(struct gsm_network *net)
-{
-	struct gsm_mncc *mncc;
-	struct msgb *msg;
-	int work = 0;
-
-	if (net)
-		while ((msg = msgb_dequeue(&net->upqueue))) {
-			mncc = (struct gsm_mncc *)msg->data;
-			if (net->mncc_recv)
-				net->mncc_recv(net, mncc->msg_type, mncc);
-			work = 1; /* work done */
-			talloc_free(msg);
-		}
-
-	return work;
-}
-
 /*
  * This will be ran by the linker when loading the DSO. We use it to
  * do system initialization, e.g. registration of signal handlers.
