@@ -408,8 +408,6 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 	}
 	/* dispatch a signal to tell higher level about it */
 	dispatch_signal(SS_SMS, S_SMS_SUBMITTED, gsms);
-	/* try delivering the SMS right now */
-	//gsm411_send_sms_subscr(gsms->receiver, gsms);
 
 	return 0;
 }
@@ -453,11 +451,6 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	/* TP-UDHI (indicating TP-UD contains a header) */
 	if (sms->ud_hdr_ind)
 		*smsp |= 0x40;
-#if 0
-	/* TP-RP (indicating that a reply path exists) */
-	if (sms->
-		*smsp |= 0x80;
-#endif
 	
 	/* generate originator address */
 	oa_len = gsm340_gen_oa(oa, sizeof(oa), sms->sender);
@@ -1021,16 +1014,6 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	return rc;
 }
 
-#if 0
-/* Test TPDU - ALL YOUR */
-static u_int8_t tpdu_test[] = {
-	0x04, 0x04, 0x81, 0x32, 0x24, 0x00, 0x00, 0x80, 0x21, 0x03, 0x41, 0x24,
-	0x32, 0x40, 0x1F, 0x41, 0x26, 0x13, 0x94, 0x7D, 0x56, 0xA5, 0x20, 0x28,
-	0xF2, 0xE9, 0x2C, 0x82, 0x82, 0xD2, 0x22, 0x48, 0x58, 0x64, 0x3E, 0x9D,
-	0x47, 0x10, 0xF5, 0x09, 0xAA, 0x4E, 0x01
-};
-#endif
-
 /* Take a SMS in gsm_sms structure and send it through an already
  * existing lchan. We also assume that the caller ensured this lchan already
  * has a SAPI3 RLL connection! */
@@ -1086,7 +1069,6 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 	/* obtain a pointer for the rp_ud_len, so we can fill it later */
 	rp_ud_len = (u_int8_t *)msgb_put(msg, 1);
 
-#if 1
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
@@ -1095,11 +1077,6 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 	}
 
 	*rp_ud_len = rc;
-#else
-	data = msgb_put(msg, sizeof(tpdu_test));
-	memcpy(data, tpdu_test, sizeof(tpdu_test));
-	*rp_ud_len = sizeof(tpdu_test);
-#endif
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
@@ -1140,7 +1117,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 {
 	struct gsm_lchan *lchan = _lchan;
 	struct gsm_sms *sms = _sms;
-	int rc;
+	int rc = 0;
 
 	DEBUGP(DSMS, "paging_cb_send_sms(hooknum=%u, event=%u, msg=%p,"
 		"lchan=%p, sms=%p)\n", hooknum, event, msg, lchan, sms);
@@ -1176,7 +1153,6 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms)
 {
 	struct gsm_lchan *lchan;
-	int rc;
 
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
