@@ -20,6 +20,7 @@ struct bsc_api {
 	void (*clear_compl)(struct gsm_subscriber_connection *conn);
 };
 
+int bsc_api_init(struct gsm_network *network, struct bsc_api *api);
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg, int link_id);
 
 #endif

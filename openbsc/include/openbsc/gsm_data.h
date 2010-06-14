@@ -156,6 +156,7 @@ struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
 struct rtp_socket;
+struct bsc_api;
 
 /* Network Management State */
 struct gsm_nm_state {
@@ -630,6 +631,7 @@ struct gsm_network {
 	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
 	struct llist_head upqueue;
 	struct llist_head trans_list;
+	struct bsc_api *bsc_api;
 
 	unsigned int num_bts;
 	struct llist_head bts_list;

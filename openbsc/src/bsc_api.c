@@ -1,6 +1,7 @@
 /* GSM 08.08 like API for OpenBSC. The bridge from MSC to BSC */
 
 /* (C) 2010 by Holger Hans Peter Freyther
+ * (C) 2010 by On Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
@@ -22,8 +23,17 @@
  */
 
 #include <openbsc/bsc_api.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 
+#include <osmocore/talloc.h>
+
+int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
+{
+	network->bsc_api = api;
+	return 0;
+}
 
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, int link_id)
@@ -50,4 +60,31 @@ int bsc_upqueue(struct gsm_network *net)
 		}
 
 	return work;
+}
+
+static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
+				   void *handler_data, void *signal_data)
+{
+	struct bsc_api *bsc;
+	struct gsm_lchan *lchan;
+
+	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
+		return 0;
+
+	lchan = (struct gsm_lchan *)signal_data;
+	if (!lchan)
+		return 0;
+
+
+	bsc = lchan->ts->trx->bts->network->bsc_api;
+	if (!bsc || !bsc->clear_request)
+		return 0;
+
+	bsc->clear_request(&lchan->conn, 0);
+	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_bsc(void)
+{
+	register_signal_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
 }
