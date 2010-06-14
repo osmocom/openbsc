@@ -426,11 +426,11 @@ int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id)
 int _lchan_release(struct gsm_lchan *lchan, u_int8_t release_reason)
 {
 	if (lchan->conn.use_count > 0) {
-		DEBUGP(DRLL, "BUG: _lchan_release called without zero use_count.\n");
+		LOGP(DRLL, LOGL_ERROR, "BUG: _lchan_release called without zero use_count.\n");
 		return 0;
 	}
 
-	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
+	LOGP(DRLL, LOGL_NOTICE, "%s Recycling Channel.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 	lchan->release_reason = release_reason;
 	_lchan_handle_release(lchan);
