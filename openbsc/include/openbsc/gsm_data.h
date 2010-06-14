@@ -402,6 +402,17 @@ struct gsm_bts_model {
 	const char *name;
 
 	struct tlv_definition nm_att_tlvdef;
+
+	struct bitvec features;
+	uint8_t _features_data[128/8];
+};
+
+enum gsm_bts_features {
+	BTS_FEAT_HSCSD,
+	BTS_FEAT_GPRS,
+	BTS_FEAT_EGPRS,
+	BTS_FEAT_ECSD,
+	BTS_FEAT_HOPPING,
 };
 
 /**
@@ -792,6 +803,8 @@ int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts);
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts);
 struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 
+int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
+int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);
 
 #endif

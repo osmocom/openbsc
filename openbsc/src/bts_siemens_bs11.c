@@ -62,5 +62,11 @@ static struct gsm_bts_model model_bs11 = {
 
 int bts_model_bs11_init(void)
 {
+	model_bs11.features.data = &model_bs11._features_data;
+	model_bs11.features.data_len = sizeof(model_bs11._features_data);
+
+	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HOPPING);
+	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HSCSD);
+
 	return gsm_bts_model_register(&model_bs11);
 }

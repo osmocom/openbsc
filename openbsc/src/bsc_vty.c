@@ -1817,8 +1817,22 @@ DEFUN(cfg_bts_gprs_mode, cfg_bts_gprs_mode_cmd,
 	"EGPRS (EDGE) Enabled on this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
+	enum bts_gprs_mode mode = bts_gprs_mode_parse(argv[0]);
 
-	bts->gprs.mode = bts_gprs_mode_parse(argv[0]);
+	if (mode != BTS_GPRS_NONE &&
+	    !gsm_bts_has_feature(bts, BTS_FEAT_GPRS)) {
+		vty_out(vty, "This BTS type does not support %s%s", argv[0],
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (mode == BTS_GPRS_EGPRS &&
+	    !gsm_bts_has_feature(bts, BTS_FEAT_EGPRS)) {
+		vty_out(vty, "This BTS type does not support %s%s", argv[0],
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->gprs.mode = mode;
 
 	return CMD_SUCCESS;
 }

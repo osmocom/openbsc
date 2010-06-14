@@ -519,6 +519,16 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan)
 	return meas_rep;
 }
 
+int gsm_btsmodel_set_feature(struct gsm_bts_model *bts, enum gsm_bts_features feat)
+{
+	return bitvec_set_bit_pos(&bts->features, feat, 1);
+}
+
+int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat)
+{
+	return bitvec_get_bit_pos(&bts->model->features, feat);
+}
+
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 {
 	struct gsm_bts_model *model;

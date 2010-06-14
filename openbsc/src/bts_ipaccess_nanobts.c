@@ -80,5 +80,11 @@ static struct gsm_bts_model model_nanobts = {
 
 int bts_model_nanobts_init(void)
 {
+	model_nanobts.features.data = &model_nanobts._features_data;
+	model_nanobts.features.data_len = sizeof(model_nanobts._features_data);
+
+	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_GPRS);
+	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_EGPRS);
+
 	return gsm_bts_model_register(&model_nanobts);
 }
