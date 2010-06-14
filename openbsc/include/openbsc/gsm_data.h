@@ -218,6 +218,7 @@ struct gsm_subscriber_connection {
 
 	/* use count. how many users use this channel */
 	unsigned int use_count;
+	int hand_off;
 
 	/* Are we part of a special "silent" call */
 	int silent_call;

@@ -781,11 +781,12 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 
 static void lchan_dump_status_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
-	vty_out(vty, "Lchan: %u/%u/%u/%u Type: %s State: %s ref: %u Subscriber: %d "
+	vty_out(vty, "Lchan: %u/%u/%u/%u Type: %s State: %s ref: %u HO: %d Subscriber: %d "
 		"Time: %lu %s",
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		gsm_lchans_name(lchan->state), lchan->conn.use_count,
+		lchan->conn.hand_off,
 		lchan->conn.subscr != NULL, (unsigned long) lchan->alloc_time.tv_sec,
 		VTY_NEWLINE);
 }
