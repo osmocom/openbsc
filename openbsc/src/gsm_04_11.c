@@ -546,8 +546,10 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	gsms->data_coding_scheme = *smsp++;
 
 	sms_alphabet = gsm338_get_sms_alphabet(gsms->data_coding_scheme);
-	if (sms_alphabet == 0xffffffff)
+	if (sms_alphabet == 0xffffffff) {
+		sms_free(gsms);
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
+	}
 
 	switch (sms_vpf) {
 	case GSM340_TP_VPF_RELATIVE:
@@ -1029,6 +1031,7 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 	transaction_id = trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DSMS, LOGL_ERROR, "No available transaction ids\n");
+		sms_free(sms);
 		return -EBUSY;
 	}
 
@@ -1039,6 +1042,7 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DSMS, LOGL_ERROR, "No memory for trans\n");
+		sms_free(sms);
 		/* FIXME: send some error message */
 		return -ENOMEM;
 	}
@@ -1072,6 +1076,8 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
+		trans_free(trans);
+		sms_free(sms);
 		msgb_free(msg);
 		return rc;
 	}
