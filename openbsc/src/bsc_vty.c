@@ -2015,8 +2015,15 @@ DEFUN(cfg_ts_hopping,
       "Disable frequency hopping\n" "Enable frequency hopping\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
+	int enabled = atoi(argv[0]);
 
-	ts->hopping.enabled = atoi(argv[0]);
+	if (enabled && !gsm_bts_has_feature(ts->trx->bts, BTS_FEAT_HOPPING)) {
+		vty_out(vty, "BTS model does not support hopping%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	ts->hopping.enabled = enabled;
 
 	return CMD_SUCCESS;
 }
