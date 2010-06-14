@@ -859,7 +859,7 @@ DEFUN(show_lchan,
 
 DEFUN(show_lchan_summary,
       show_lchan_summary_cmd,
-      "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+      "show lchan-summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
 	SHOW_STR "Display a short summary about a logical channel\n")
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
