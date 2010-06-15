@@ -564,3 +564,20 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 
 	return 0;
 }
+
+struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value)
+{
+	struct msgb *msg;
+	struct gsm48_hdr *gh;
+
+	msg = gsm48_msgb_alloc();
+	if (!msg)
+		return NULL;
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	gh->proto_discr = GSM48_PDISC_MM;
+	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
+	gh->data[0] = value;
+
+	return msg;
+}

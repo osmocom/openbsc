@@ -709,19 +709,17 @@ static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
 static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 				enum gsm48_reject_value value)
 {
-	struct msgb *msg = gsm48_msgb_alloc();
-	struct gsm48_hdr *gh;
+	struct msgb *msg;
 
-	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
+	msg = gsm48_create_mm_serv_rej(value);
+	if (!msg) {
+		LOGP(DMM, LOGL_ERROR, "Failed to allocate CM Service Reject.\n");
+		return -1;
+	}
 
+	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 	msg->lchan = conn->lchan;
 	use_subscr_con(conn);
-
-	gh->proto_discr = GSM48_PDISC_MM;
-	gh->msg_type = GSM48_MT_MM_CM_SERV_REJ;
-	gh->data[0] = value;
-	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
-
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 

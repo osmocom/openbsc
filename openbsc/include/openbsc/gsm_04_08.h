@@ -60,5 +60,6 @@ int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
 int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg);
 
+struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value);
 
 #endif
