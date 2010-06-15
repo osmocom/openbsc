@@ -101,7 +101,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 
 	llist_add(&conn->list_entry, &bsc->nat->sccp_connections);
 
-	LOGP(DNAT, LOGL_DEBUG, "Created 0x%x <-> 0x%x mapping for con 0x%p\n",
+	LOGP(DNAT, LOGL_DEBUG, "Created 0x%x <-> 0x%x mapping for con %p\n",
 	     sccp_src_ref_to_int(&conn->real_ref),
 	     sccp_src_ref_to_int(&conn->patched_ref), bsc);
 
@@ -126,13 +126,13 @@ int update_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 			continue;
 
 		conn->remote_ref = *parsed->src_local_ref;
-		LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on 0x%p\n",
+		LOGP(DNAT, LOGL_DEBUG, "Updating 0x%x to remote 0x%x on %p\n",
 		     sccp_src_ref_to_int(&conn->patched_ref),
 		     sccp_src_ref_to_int(&conn->remote_ref), bsc);
 		return 0;
 	}
 
-	LOGP(DNAT, LOGL_ERROR, "Referenced connection not found on BSC: 0x%p\n", bsc);
+	LOGP(DNAT, LOGL_ERROR, "Referenced connection not found on BSC: %p\n", bsc);
 	return -1;
 }
 
@@ -148,7 +148,7 @@ void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bs
 			if (bsc != conn->bsc)
 				continue;
 
-			LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con 0x%p\n",
+			LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
 				sccp_src_ref_to_int(&conn->real_ref),
 				sccp_src_ref_to_int(&conn->patched_ref), bsc);
 			llist_del(&conn->list_entry);
