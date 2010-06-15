@@ -89,7 +89,7 @@ DEFUN(show_bsc, show_bsc_cmd, "show connections bsc",
 	struct bsc_connection *con;
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
 		vty_out(vty, "BSC lac: %d auth: %d fd: %d%s",
-			con->lac, con->authenticated, con->bsc_fd.fd, VTY_NEWLINE);
+			con->lac, con->authenticated, con->write_queue.bfd.fd, VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

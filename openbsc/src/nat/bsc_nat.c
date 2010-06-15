@@ -44,7 +44,6 @@
 #include <openbsc/telnet_interface.h>
 
 #include <osmocore/talloc.h>
-#include <osmocore/write_queue.h>
 
 #include <vty/vty.h>
 
@@ -315,7 +314,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		return -1;
 	}
 
-	return write(bsc->bsc_fd.fd, msg->data, msg->len);
+	return write(bsc->write_queue.bfd.fd, msg->data, msg->len);
 
 send_to_all:
 	/*
@@ -349,7 +348,7 @@ send_to_all:
 				if (!bsc->authenticated || _lac != bsc->lac)
 					continue;
 
-				rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
+				rc = write(bsc->write_queue.bfd.fd, msg->data, msg->len);
 				if (rc < msg->len)
 					LOGP(DNAT, LOGL_ERROR,
 					     "Failed to write message to BTS: %d\n", rc);
@@ -363,7 +362,7 @@ send_to_all:
 		if (!bsc->authenticated)
 			continue;
 
-		rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
+		rc = write(bsc->write_queue.bfd.fd, msg->data, msg->len);
 
 		/* try the next one */
 		if (rc < msg->len)
@@ -434,8 +433,8 @@ static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 static void remove_bsc_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
-	bsc_unregister_fd(&connection->bsc_fd);
-	close(connection->bsc_fd.fd);
+	bsc_unregister_fd(&connection->write_queue.bfd);
+	close(connection->write_queue.bfd.fd);
 	llist_del(&connection->list_entry);
 
 	/* stop the timeout timer */
@@ -564,7 +563,7 @@ exit2:
 	return -1;
 }
 
-static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
@@ -620,11 +619,12 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	bsc->nat = nat;
-	bsc->bsc_fd.data = bsc;
-	bsc->bsc_fd.fd = ret;
-	bsc->bsc_fd.cb = ipaccess_bsc_cb;
-	bsc->bsc_fd.when = BSC_FD_READ;
-	if (bsc_register_fd(&bsc->bsc_fd) < 0) {
+	write_queue_init(&bsc->write_queue, 100);
+	bsc->write_queue.bfd.data = bsc;
+	bsc->write_queue.bfd.fd = ret;
+	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
+	bsc->write_queue.bfd.when = BSC_FD_READ;
+	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
 		close(ret);
 		talloc_free(bsc);
@@ -633,7 +633,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
-	ipaccess_send_id_ack(bsc->bsc_fd.fd);
+	ipaccess_send_id_ack(bsc->write_queue.bfd.fd);
 	ipaccess_send_id_req(ret);
 
 	/*
