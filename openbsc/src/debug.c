@@ -171,6 +171,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
 		.enabled = 1, .loglevel = LOGL_DEBUG,
 	},
+	[DNAT] = {
+		.name = "DNAT",
+		.description = "GSM 08.08 NAT/Multipkexer",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
 };
 
 enum log_filter {
