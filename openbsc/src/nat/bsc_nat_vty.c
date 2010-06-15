@@ -25,6 +25,7 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/mgcp.h>
 
 #include <osmocore/talloc.h>
 
@@ -207,6 +208,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_default(BSC_NODE);
 	install_element(BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
+
+	mgcp_vty_init();
 
 	return 0;
 }

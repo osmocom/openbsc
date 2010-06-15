@@ -703,10 +703,12 @@ int main(int argc, char** argv)
 		return -4;
 	}
 
+	nat->mgcp_cfg = talloc_zero(nat, struct mgcp_config);
+
 	/* init vty and parse */
 	bsc_nat_vty_init(nat);
 	telnet_init(NULL, 4244);
-	if (vty_read_config_file(config_file) < 0) {
+	if (mgcp_parse_config(config_file, nat->mgcp_cfg) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
 	}
