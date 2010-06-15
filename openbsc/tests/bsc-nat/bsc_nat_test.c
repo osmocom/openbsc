@@ -2,7 +2,7 @@
  * BSC NAT Message filtering
  *
  * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by on-waves.com
+ * (C) 2010 by On-Waves
  *
  * All Rights Reserved
  *
