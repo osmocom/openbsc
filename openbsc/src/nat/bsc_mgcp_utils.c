@@ -27,6 +27,7 @@
 #include <openbsc/mgcp_internal.h>
 
 #include <osmocore/talloc.h>
+#include <osmocore/gsm0808.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
