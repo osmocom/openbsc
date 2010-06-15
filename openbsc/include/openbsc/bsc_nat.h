@@ -103,6 +103,10 @@ struct sccp_connections {
 	struct sccp_source_reference real_ref;
 	struct sccp_source_reference patched_ref;
 	struct sccp_source_reference remote_ref;
+
+	/* GSM audio handling. That is 32 * multiplex + ts */
+	int msc_timeslot;
+	int bsc_timeslot;
 };
 
 /**
@@ -161,5 +165,11 @@ int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *pa
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
 struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
 struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
+
+/**
+ * MGCP/Audio handling
+ */
+int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
+void bsc_mgcp_clear(struct sccp_connections *);
 
 #endif

@@ -79,6 +79,7 @@ void sccp_connection_destroy(struct sccp_connections *conn)
 	LOGP(DNAT, LOGL_DEBUG, "Destroy 0x%x <-> 0x%x mapping for con %p\n",
 	     sccp_src_ref_to_int(&conn->real_ref),
 	     sccp_src_ref_to_int(&conn->patched_ref), conn->bsc);
+	bsc_mgcp_clear(conn);
 	llist_del(&conn->list_entry);
 	talloc_free(conn);
 }
