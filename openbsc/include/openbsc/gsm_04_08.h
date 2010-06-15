@@ -11,6 +11,7 @@ struct gsm_bts;
 struct gsm_subscriber;
 struct gsm_network;
 struct gsm_trans;
+struct gsm_subscriber_connection;
 
 #define GSM48_ALLOC_SIZE	1024
 #define GSM48_ALLOC_HEADROOM	128
@@ -23,6 +24,7 @@ static inline struct msgb *gsm48_msgb_alloc(void)
 
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
+void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
 
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);

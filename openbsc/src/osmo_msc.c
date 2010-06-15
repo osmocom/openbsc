@@ -35,8 +35,14 @@ static void msc_sapi_n_reject(struct gsm_subscriber_connection* conn, int dlci)
 		gsm411_sapi_n_reject(conn);
 }
 
+static void msc_clear_request(struct gsm_subscriber_connection* conn, uint32_t cause)
+{
+	gsm0408_clear_request(conn, cause);
+}
+
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
+	.clear_request = msc_clear_request,
 };
 
 struct bsc_api *msc_bsc_api() {

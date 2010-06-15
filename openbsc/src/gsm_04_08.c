@@ -253,35 +253,24 @@ static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb
 	return 0;
 }
 
-static int gsm0408_handle_lchan_signal(unsigned int subsys, unsigned int signal,
-					void *handler_data, void *signal_data)
+void gsm0408_clear_request(struct gsm_subscriber_connection* conn, uint32_t cause)
 {
 	struct gsm_trans *trans, *temp;
-
-	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
-		return 0;
-
 	/*
 	 * Cancel any outstanding location updating request
-	 * operation taking place on the lchan.
+	 * operation taking place on the subscriber connection.
 	 */
-	struct gsm_lchan *lchan = (struct gsm_lchan *)signal_data;
-	if (!lchan)
-		return 0;
-
-	release_loc_updating_req(&lchan->conn);
-	release_security_operation(&lchan->conn);
+	release_loc_updating_req(conn);
+	release_security_operation(conn);
 
 	/* Free all transactions that are associated with the released lchan */
 	/* FIXME: this is not neccessarily the right thing to do, we should
 	 * only set trans->lchan to NULL and wait for another lchan to be
 	 * established to the same MM entity (phone/subscriber) */
-	llist_for_each_entry_safe(trans, temp, &lchan->ts->trx->bts->network->trans_list, entry) {
-		if (trans->conn && trans->conn->lchan == lchan)
+	llist_for_each_entry_safe(trans, temp, &conn->bts->network->trans_list, entry) {
+		if (trans->conn == conn)
 			trans_free(trans);
 	}
-
-	return 0;
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
@@ -3129,6 +3118,5 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
-	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }
