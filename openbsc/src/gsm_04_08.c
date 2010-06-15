@@ -306,15 +306,13 @@ void gsm0408_clear_request(struct gsm_subscriber_connection* conn, uint32_t caus
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
-int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
+int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, u_int8_t cause)
 {
-	struct gsm_subscriber_connection *conn;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	
-	msg->lchan = lchan;
-	conn = &lchan->conn;
+	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh) + 1);
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -324,7 +322,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	LOGP(DMM, LOGL_INFO, "Subscriber %s: LOCATION UPDATING REJECT "
 	     "LAC=%u BTS=%u\n", conn->subscr ?
 	     			subscr_name(conn->subscr) : "unknown",
-	     lchan->ts->trx->bts->location_area_code, lchan->ts->trx->bts->nr);
+	     bts->location_area_code, bts->nr);
 
 	counter_inc(bts->network->stats.loc_upd_resp.reject);
 	
@@ -431,7 +429,7 @@ static void loc_upd_rej_cb(void *data)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
 	release_loc_updating_req(conn);
-	gsm0408_loc_upd_rej(lchan, bts->network->reject_cause);
+	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 	lchan_auto_release(lchan);
 }
 
@@ -500,7 +498,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	if (conn->loc_operation) {
 		DEBUGPC(DMM, "ignoring request due an existing one: %p.\n",
 			conn->loc_operation);
-		gsm0408_loc_upd_rej(lchan, GSM48_REJECT_PROTOCOL_ERROR);
+		gsm0408_loc_upd_rej(conn, GSM48_REJECT_PROTOCOL_ERROR);
 		return 0;
 	}
 
