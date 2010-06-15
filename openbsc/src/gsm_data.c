@@ -156,6 +156,8 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 
 		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
 		ts->hopping.arfcns.data = ts->hopping.arfcns_data;
+		ts->hopping.ma.data_len = sizeof(ts->hopping.ma_data);
+		ts->hopping.ma.data = ts->hopping.ma_data;
 
 		for (l = 0; l < TS_MAX_LCHAN; l++) {
 			struct gsm_lchan *lchan;

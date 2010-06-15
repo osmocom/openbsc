@@ -338,11 +338,15 @@ struct gsm_bts_trx_ts {
 	u_int8_t nm_chan_comb;
 
 	struct {
+		/* Parameters below are configured by VTY */
 		int enabled;
 		u_int8_t maio;
 		u_int8_t hsn;
 		struct bitvec arfcns;
 		u_int8_t arfcns_data[1024/8];
+		/* This is the pre-computed MA for channel assignments */
+		struct bitvec ma;
+		u_int8_t ma_data[8];	/* 10.5.2.21: max 8 bytes value part */
 	} hopping;
 
 	/* To which E1 subslot are we connected */

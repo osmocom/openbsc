@@ -915,14 +915,58 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	}
 }
 
+/* Produce a MA as specified in 10.5.2.21 */
+static int generate_ma_for_ts(struct gsm_bts_trx_ts *ts)
+{
+	/* we have three bitvecs: the per-timeslot ARFCNs, the cell chan ARFCNs
+	 * and the MA */
+	struct bitvec *cell_chan = &ts->trx->bts->si_common.cell_alloc;
+	struct bitvec *ts_arfcn = &ts->hopping.arfcns;
+	struct bitvec *ma = &ts->hopping.ma;
+	int i;
+
+	/* re-set the MA to all-zero */
+	ma->cur_bit = 0;
+	memset(ma->data, 0, ma->data_len);
+
+	if (!ts->hopping.enabled)
+		return 0;
+
+	for (i = 1; i < 1024; i++) {
+		if (!bitvec_get_bit_pos(cell_chan, i))
+			continue;
+		/* append a bit to the MA */
+		if (bitvec_get_bit_pos(ts_arfcn, i))
+			bitvec_set_bit(ma, 1);
+		else
+			bitvec_set_bit(ma, 0);
+	}
+
+	/* ARFCN 0 is special: It is coded last in the bitmask */
+	if (bitvec_get_bit_pos(cell_chan, 0)) {
+		/* append a bit to the MA */
+		if (bitvec_get_bit_pos(ts_arfcn, 0))
+			bitvec_set_bit(ma, 1);
+		else
+			bitvec_set_bit(ma, 0);
+	}
+
+	return 0;
+}
+
 static void bootstrap_rsl(struct gsm_bts_trx *trx)
 {
+	unsigned int i;
+
 	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
 		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
 	set_system_infos(trx);
+
+	for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
+		generate_ma_for_ts(&trx->ts[i]);
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
