@@ -28,6 +28,7 @@
 #include <osmocore/talloc.h>
 
 #include <string.h>
+#include <time.h>
 
 static int equal(struct sccp_source_reference *ref1, struct sccp_source_reference *ref2)
 {
@@ -101,6 +102,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 			talloc_free(conn);
 			return -1;
 		} else {
+			clock_gettime(CLOCK_MONOTONIC, &conn->creation_time);
 			bsc_mgcp_dlcx(conn);
 			return 0;
 		}
@@ -114,6 +116,7 @@ int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc
 	}
 
 	conn->bsc = bsc;
+	clock_gettime(CLOCK_MONOTONIC, &conn->creation_time);
 	conn->real_ref = *parsed->src_local_ref;
 	if (assign_src_local_reference(&conn->patched_ref, bsc->nat) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to assign a ref.\n");

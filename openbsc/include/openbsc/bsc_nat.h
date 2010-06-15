@@ -120,6 +120,9 @@ struct sccp_connections {
 	int crcx;
 	int msc_timeslot;
 	int bsc_timeslot;
+
+	/* timeout handling */
+	struct timespec creation_time;
 };
 
 /**

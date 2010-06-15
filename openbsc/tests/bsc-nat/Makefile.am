@@ -13,4 +13,4 @@ bsc_nat_test_SOURCES = bsc_nat_test.c \
 			$(top_srcdir)/src/mgcp/mgcp_protocol.c \
 			$(top_srcdir)/src/mgcp/mgcp_network.c \
 			$(top_srcdir)/src/bssap.c
-bsc_nat_test_LDADD = $(top_builddir)/src/libbsc.a $(top_builddir)/src/libsccp.a $(LIBOSMOCORE_LIBS)
+bsc_nat_test_LDADD = $(top_builddir)/src/libbsc.a $(top_builddir)/src/libsccp.a $(LIBOSMOCORE_LIBS) -lrt
