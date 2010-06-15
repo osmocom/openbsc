@@ -697,11 +697,11 @@ static void test_cr_filter()
 
 int main(int argc, char **argv)
 {
-	struct debug_target *stderr_target;
+	struct log_target *stderr_target;
 
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 
 	test_filter();
 	test_contrack();
