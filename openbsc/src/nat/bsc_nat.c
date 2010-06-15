@@ -41,14 +41,19 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/telnet_interface.h>
+#include <openbsc/vty.h>
 
 #include <osmocore/gsm0808.h>
 #include <osmocore/talloc.h>
 
 #include <osmocore/protocol/gsm_08_08.h>
 
+#include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/vty.h>
+
 #include <sccp/sccp.h>
+
+#include "../../bscconfig.h"
 
 #define SCCP_CLOSE_TIME 20
 #define SCCP_CLOSE_TIME_TIMEOUT 19
@@ -60,6 +65,11 @@ static struct bsc_fd bsc_listen;
 static const char *msc_ip = NULL;
 static struct timer_list sccp_close;
 
+const char *openbsc_copyright =
+	"Copyright (C) 2010 Holger Hans Peter Freyther and On-Waves\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
+	"This is free software: you are free to change and redistribute it.\n"
+	"There is NO WARRANTY, to the extent permitted by law.\n";
 
 static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int);
@@ -1066,6 +1076,14 @@ static void talloc_init_ctx()
 	tall_ctr_ctx = talloc_named_const(tall_bsc_ctx, 0, "counter");
 }
 
+extern enum node_type bsc_vty_go_parent(struct vty *vty);
+
+static struct vty_app_info vty_info = {
+	.name 		= "BSC NAT",
+	.version	= PACKAGE_VERSION,
+	.go_parent_cb	= bsc_vty_go_parent,
+};
+
 int main(int argc, char** argv)
 {
 	talloc_init_ctx();
@@ -1088,13 +1106,18 @@ int main(int argc, char** argv)
 		return -5;
 	}
 
+	vty_info.copyright = openbsc_copyright;
+	vty_init(&vty_info);
+	logging_vty_add_cmds();
+	bsc_nat_vty_init(nat);
+
+
 	/* parse options */
 	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
 
 	/* init vty and parse */
-	bsc_nat_vty_init(nat);
-	telnet_init(NULL, 4244);
+	telnet_init(tall_bsc_ctx, NULL, 4244);
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;

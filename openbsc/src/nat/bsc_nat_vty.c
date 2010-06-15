@@ -19,10 +19,7 @@
  *
  */
 
-#include <vty/command.h>
-#include <vty/buffer.h>
-#include <vty/vty.h>
-
+#include <openbsc/vty.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/gsm_04_08.h>
@@ -512,19 +509,14 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
 
-	cmd_init(1);
-	vty_init();
-
 	/* show commands */
-	install_element(VIEW_NODE, &show_sccp_cmd);
-	install_element(VIEW_NODE, &show_bsc_cmd);
-	install_element(VIEW_NODE, &show_bsc_cfg_cmd);
-	install_element(VIEW_NODE, &show_stats_cmd);
-	install_element(VIEW_NODE, &close_bsc_cmd);
-	install_element(VIEW_NODE, &show_msc_cmd);
-	install_element(VIEW_NODE, &test_regex_cmd);
-
-	openbsc_vty_add_cmds();
+	install_element_ve(&show_sccp_cmd);
+	install_element_ve(&show_bsc_cmd);
+	install_element_ve(&show_bsc_cfg_cmd);
+	install_element_ve(&show_stats_cmd);
+	install_element_ve(&close_bsc_cmd);
+	install_element_ve(&show_msc_cmd);
+	install_element_ve(&test_regex_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
