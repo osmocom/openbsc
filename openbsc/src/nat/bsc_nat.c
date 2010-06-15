@@ -44,6 +44,7 @@
 #include <openbsc/telnet_interface.h>
 
 #include <osmocore/talloc.h>
+#include <osmocore/write_queue.h>
 
 #include <vty/vty.h>
 
@@ -53,7 +54,7 @@ struct debug_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
-static struct bsc_fd msc_connection;
+static struct write_queue msc_queue;
 static struct bsc_fd bsc_listen;
 
 
@@ -374,7 +375,7 @@ exit:
 	return 0;
 }
 
-static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
@@ -404,6 +405,19 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	msgb_free(msg);
 	return 0;
+}
+
+static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+{
+	int rc;
+	rc = write(bfd->fd, msg->data, msg->len);
+
+	if (rc != msg->len) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to write MSG to MSC.\n");
+		return -1;
+	}
+
+	return rc;
 }
 
 /*
@@ -467,7 +481,6 @@ static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 	struct bsc_connection *bsc;
 	struct bsc_connection *found_bsc = NULL;
 	struct bsc_nat_parsed *parsed;
-	int rc = -1;
 
 	bsc = bfd->data;
 
@@ -519,9 +532,12 @@ static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
 	}
 
 	/* send the non-filtered but maybe modified msg */
-	rc = write(msc_connection.fd, msg->data, msg->len);
+	if (write_queue_enqueue(&msc_queue, msg) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Can not queue message for the MSC.\n");
+		msgb_free(msg);
+	}
 	talloc_free(parsed);
-	return rc;
+	return 0;
 
 exit:
 	/* if we filter out the reset send an ack to the BSC */
@@ -544,7 +560,8 @@ exit:
 
 exit2:
 	talloc_free(parsed);
-	return rc;
+	msgb_free(msg);
+	return -1;
 }
 
 static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
@@ -569,7 +586,6 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
 	forward_sccp_to_msc(bfd, msg);
-	msgb_free(msg);
 
 	return 0;
 }
@@ -777,8 +793,10 @@ int main(int argc, char** argv)
 	srand(time(NULL));
 
 	/* connect to the MSC */
-	msc_connection.cb = ipaccess_msc_cb;
-	rc = connect_to_msc(&msc_connection, msc_address, 5000);
+	write_queue_init(&msc_queue, 100);
+	msc_queue.read_cb = ipaccess_msc_read_cb;
+	msc_queue.write_cb = ipaccess_msc_write_cb;
+	rc = connect_to_msc(&msc_queue.bfd, msc_address, 5000);
 	if (rc < 0) {
 		fprintf(stderr, "Opening the MSC connection failed.\n");
 		exit(1);
