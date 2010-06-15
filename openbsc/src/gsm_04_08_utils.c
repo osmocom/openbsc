@@ -40,35 +40,12 @@
  * or should OpenBSC always act as RTP relay/proxy in between (0) ? */
 int ipacc_rtp_direct = 1;
 
-int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans)
+static int gsm48_sendmsg(struct msgb *msg)
 {
-	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
-
-	/* if we get passed a transaction reference, do some common
-	 * work that the caller no longer has to do */
-	if (trans) {
-		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
-		msg->lchan = trans->conn->lchan;
-	}
-
-	if (msg->lchan) {
+	if (msg->lchan)
 		msg->trx = msg->lchan->ts->trx;
 
-		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
-			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
-				"Sending '%s' to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
-				gh->proto_discr & 0xf0,
-				gsm48_cc_msg_name(gh->msg_type));
-		else
-			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
-				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
-				gh->proto_discr, gh->msg_type);
-	}
-
 	msg->l3h = msg->data;
-
 	return rsl_data_request(msg, 0);
 }
 
@@ -220,7 +197,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 		lchan->nr, lchan->type);
 
 	/* Send actual release request to MS */
-	gsm48_sendmsg(msg, NULL);
+	gsm48_sendmsg(msg);
 	/* FIXME: Start Timer T3109 */
 
 	/* Deactivate the SACCH on the BTS side */
@@ -368,7 +345,7 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 
 	/* FIXME: optional bits for type of synchronization? */
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_sendmsg(msg);
 }
 
 /* Chapter 9.1.2: Assignment Command */
@@ -411,7 +388,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 		}
 	}
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_sendmsg(msg);
 }
 
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
@@ -452,7 +429,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 		}
 	}
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_sendmsg(msg);
 }
 
 int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)

@@ -53,6 +53,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>
+#include <openbsc/bsc_api.h>
 
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
@@ -70,6 +71,37 @@ struct gsm_lai {
 
 static u_int32_t new_callref = 0x80000001;
 
+static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection *conn,
+			      struct gsm_trans *trans)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msg->data;
+
+	/* if we get passed a transaction reference, do some common
+	 * work that the caller no longer has to do */
+	if (trans) {
+		gh->proto_discr = trans->protocol | (trans->transaction_id << 4);
+		msg->lchan = trans->conn->lchan;
+	}
+
+
+	if (msg->lchan) {
+		msg->trx = msg->lchan->ts->trx;
+		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
+			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
+				"Sending '%s' to MS.\n", msg->trx->bts->nr,
+				msg->trx->nr, msg->lchan->ts->nr,
+				gh->proto_discr & 0xf0,
+				gsm48_cc_msg_name(gh->msg_type));
+		else
+			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
+				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,
+				msg->trx->nr, msg->lchan->ts->nr,
+				gh->proto_discr, gh->msg_type);
+	}
+
+	msg->l3h = msg->data;
+	return gsm0808_submit_dtap(conn, msg, 0);
+}
 
 static void release_security_operation(struct gsm_subscriber_connection *conn)
 {
@@ -296,7 +328,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 
 	counter_inc(bts->network->stats.loc_upd_resp.reject);
 	
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
@@ -325,7 +357,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	counter_inc(bts->network->stats.loc_upd_resp.accept);
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 /* Transmit Chapter 9.2.10 Identity Request */
@@ -341,7 +373,7 @@ static int mm_tx_identity_req(struct gsm_lchan *lchan, u_int8_t id_type)
 	gh->msg_type = GSM48_MT_MM_ID_REQ;
 	gh->data[0] = id_type;
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 
@@ -637,7 +669,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 
 	DEBUGP(DMM, "-> MM INFO\n");
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 /* Section 9.2.2 */
@@ -659,7 +691,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 	if (rand)
 		memcpy(ar->rand, rand, 16);
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 /* Section 9.2.1 */
@@ -692,7 +724,7 @@ static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 	gh->data[0] = value;
 	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 static int _gsm48_rx_mm_serv_req_sec_cb(
@@ -1207,7 +1239,7 @@ int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 	gh->data[1] = apdu_len;
 	memcpy(gh->data+2, apdu, apdu_len);
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 /* Call Control */
@@ -1245,7 +1277,7 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 	call_state = msgb_put(msg, 1);
 	call_state[0] = 0xc0 | 0x00;
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
@@ -1259,7 +1291,7 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
 }
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
@@ -1801,7 +1833,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
@@ -1869,7 +1901,7 @@ static int gsm48_cc_tx_call_proc(struct gsm_trans *trans, void *arg)
 	if (proceeding->fields & MNCC_F_PROGRESS)
 		gsm48_encode_progress(msg, 0, &proceeding->progress);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_alerting(struct gsm_trans *trans, struct msgb *msg)
@@ -1931,7 +1963,7 @@ static int gsm48_cc_tx_alerting(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_CALL_DELIVERED);
 	
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
@@ -1948,7 +1980,7 @@ static int gsm48_cc_tx_progress(struct gsm_trans *trans, void *arg)
 	if (progress->fields & MNCC_F_USERUSER)
 		gsm48_encode_useruser(msg, 0, &progress->useruser);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
@@ -1977,7 +2009,7 @@ static int gsm48_cc_tx_connect(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_IND);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
@@ -2048,7 +2080,7 @@ static int gsm48_cc_tx_connect_ack(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_disconnect(struct gsm_trans *trans, struct msgb *msg)
@@ -2136,7 +2168,7 @@ static int gsm48_cc_tx_disconnect(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_DISCONNECT_IND);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
@@ -2224,7 +2256,7 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 	if (trans->cc.state != GSM_CSTATE_RELEASE_REQ)
 		new_cc_state(trans, GSM_CSTATE_RELEASE_REQ);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
@@ -2314,7 +2346,7 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 
 	trans_free(trans);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
@@ -2354,7 +2386,7 @@ static int gsm48_cc_tx_facility(struct gsm_trans *trans, void *arg)
 	/* facility */
 	gsm48_encode_facility(msg, 1, &fac->facility);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_hold(struct gsm_trans *trans, struct msgb *msg)
@@ -2373,7 +2405,7 @@ static int gsm48_cc_tx_hold_ack(struct gsm_trans *trans, void *arg)
 
 	gh->msg_type = GSM48_MT_CC_HOLD_ACK;
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
@@ -2390,7 +2422,7 @@ static int gsm48_cc_tx_hold_rej(struct gsm_trans *trans, void *arg)
 	else
 		gsm48_encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_retrieve(struct gsm_trans *trans, struct msgb *msg)
@@ -2410,7 +2442,7 @@ static int gsm48_cc_tx_retrieve_ack(struct gsm_trans *trans, void *arg)
 
 	gh->msg_type = GSM48_MT_CC_RETR_ACK;
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
@@ -2427,7 +2459,7 @@ static int gsm48_cc_tx_retrieve_rej(struct gsm_trans *trans, void *arg)
 	else
 		gsm48_encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_start_dtmf(struct gsm_trans *trans, struct msgb *msg)
@@ -2462,7 +2494,7 @@ static int gsm48_cc_tx_start_dtmf_ack(struct gsm_trans *trans, void *arg)
 	if (dtmf->fields & MNCC_F_KEYPAD)
 		gsm48_encode_keypad(msg, dtmf->keypad);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
@@ -2479,7 +2511,7 @@ static int gsm48_cc_tx_start_dtmf_rej(struct gsm_trans *trans, void *arg)
 	else
 		gsm48_encode_cause(msg, 1, &default_cause);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_stop_dtmf_ack(struct gsm_trans *trans, void *arg)
@@ -2489,7 +2521,7 @@ static int gsm48_cc_tx_stop_dtmf_ack(struct gsm_trans *trans, void *arg)
 
 	gh->msg_type = GSM48_MT_CC_STOP_DTMF_ACK;
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_stop_dtmf(struct gsm_trans *trans, struct msgb *msg)
@@ -2539,7 +2571,7 @@ static int gsm48_cc_tx_modify(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_MO_TERM_MODIFY);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_modify_complete(struct gsm_trans *trans, struct msgb *msg)
@@ -2579,7 +2611,7 @@ static int gsm48_cc_tx_modify_complete(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_modify_reject(struct gsm_trans *trans, struct msgb *msg)
@@ -2627,7 +2659,7 @@ static int gsm48_cc_tx_modify_reject(struct gsm_trans *trans, void *arg)
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
@@ -2641,7 +2673,7 @@ static int gsm48_cc_tx_notify(struct gsm_trans *trans, void *arg)
 	/* notify */
 	gsm48_encode_notify(msg, notify->notify);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_notify(struct gsm_trans *trans, struct msgb *msg)
@@ -2675,7 +2707,7 @@ static int gsm48_cc_tx_userinfo(struct gsm_trans *trans, void *arg)
 	if (user->more)
 		gsm48_encode_more(msg);
 
-	return gsm48_sendmsg(msg, trans);
+	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
 static int gsm48_cc_rx_userinfo(struct gsm_trans *trans, struct msgb *msg)

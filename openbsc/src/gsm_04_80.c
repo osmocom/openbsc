@@ -36,6 +36,7 @@
 #include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_80.h>
+#include <openbsc/bsc_api.h>
 
 /* Forward declarations */
 static int parse_ussd(u_int8_t *ussd, struct ussd_request *req);
@@ -294,7 +295,7 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 					| (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm0808_submit_dtap(&msg->lchan->conn, msg, 0);
 }
 
 int gsm0480_send_ussd_reject(const struct msgb *in_msg,
@@ -324,5 +325,5 @@ int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 	gh->proto_discr |= req->transaction_id | (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm48_sendmsg(msg, NULL);
+	return gsm0808_submit_dtap(&msg->lchan->conn, msg, 0);
 }

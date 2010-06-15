@@ -33,8 +33,6 @@ enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, in
 int gsm48_tx_mm_info(struct gsm_lchan *lchan);
 int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq);
 int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan);
-int gsm48_sendmsg(struct msgb *msg, struct gsm_trans *trans);
-
 int gsm48_send_rr_release(struct gsm_lchan *lchan);
 int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv);
 int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
