@@ -255,7 +255,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			rc = gsm0408_loc_upd_acc(conn, conn->subscr->tmsi);
 			if (lchan->ts->trx->bts->network->send_mm_info) {
 				/* send MM INFO with network name */
-				rc = gsm48_tx_mm_info(lchan);
+				rc = gsm48_tx_mm_info(conn);
 			}
 
 			/* call subscr_update after putting the loc_upd_acc
@@ -568,11 +568,11 @@ static u_int8_t to_bcd8(u_int8_t val)
 #endif
 
 /* Section 9.2.15a */
-int gsm48_tx_mm_info(struct gsm_lchan *lchan)
+int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_network *net = conn->bts->network;
 	u_int8_t *ptr8;
 	int name_len, name_pad;
 #if 0
@@ -581,7 +581,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 	int tz15min;
 #endif
 
-	msg->lchan = lchan;
+	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -667,7 +667,7 @@ int gsm48_tx_mm_info(struct gsm_lchan *lchan)
 
 	DEBUGP(DMM, "-> MM INFO\n");
 
-	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 /* Section 9.2.2 */
