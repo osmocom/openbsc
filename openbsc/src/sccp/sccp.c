@@ -638,7 +638,7 @@ static void _sccp_set_connection_state(struct sccp_connection *connection, int n
 		connection->state_cb(connection, old_state);
 }
 
-static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
+struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause, uint8_t *inp, int length)
 {
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
@@ -646,6 +646,11 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp ref");
+	if (!msgb) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to allocate refusal msg.\n");
+		return NULL;
+	}
+
 	msgb->l2h = &msgb->data[0];
 
 	ref = (struct sccp_connection_refused *) msgb_put(msgb, sizeof(*ref));
@@ -655,40 +660,70 @@ static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
 	ref->cause = cause;
 	ref->optional_start = 1;
 
+	if (inp) {
+		data = msgb_put(msgb, 1 + 1 + length);
+		data[0] = SCCP_PNC_DATA;
+		data[1] = length;
+		memcpy(&data[2], inp, length);
+	}
+
 	data = msgb_put(msgb, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return msgb;
+}
+
+static int _sccp_send_refuse(struct sccp_source_reference *src_ref, int cause)
+{
+	struct msgb *msgb = sccp_create_refuse(src_ref, cause, NULL, 0);
+	if (!msgb)
+		return -1;
 
 	_send_msg(msgb);
 	return 0;
 }
 
-static int _sccp_send_connection_confirm(struct sccp_connection *connection)
+struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref,
+			    struct sccp_source_reference *dst_ref)
 {
 	struct msgb *response;
 	struct sccp_connection_confirm *confirm;
 	u_int8_t *optional_data;
 
-	if (assign_source_local_reference(connection) != 0)
-		return -1;
-
 	response = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				       SCCP_MSG_HEADROOM, "sccp confirm");
+	if (!response) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to create SCCP Confirm.\n");
+		return NULL;
+	}
+
 	response->l2h = &response->data[0];
 
 	confirm = (struct sccp_connection_confirm *) msgb_put(response, sizeof(*confirm));
 
 	confirm->type = SCCP_MSG_TYPE_CC;
 	memcpy(&confirm->destination_local_reference,
-	       &connection->destination_local_reference,
-	       sizeof(connection->destination_local_reference));
+	       dst_ref, sizeof(*dst_ref));
 	memcpy(&confirm->source_local_reference,
-	       &connection->source_local_reference,
-	       sizeof(connection->source_local_reference));
+	       src_ref, sizeof(*src_ref));
 	confirm->proto_class = 2;
 	confirm->optional_start = 1;
 
 	optional_data = (u_int8_t *) msgb_put(response, 1);
 	optional_data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return response;
+}
+
+static int _sccp_send_connection_confirm(struct sccp_connection *connection)
+{
+	struct msgb *response;
+
+	if (assign_source_local_reference(connection) != 0)
+		return -1;
+
+	response = sccp_create_cc(&connection->source_local_reference,
+				  &connection->destination_local_reference);
+	if (!response)
+		return -1;
 
 	_send_msg(response);
 	_sccp_set_connection_state(connection, SCCP_CONNECTION_STATE_ESTABLISHED);
@@ -755,34 +790,49 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 	return 0;
 }
 
-static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb *_data)
+struct msgb *sccp_create_dt1(struct sccp_source_reference *dst_ref, uint8_t *inp_data, uint8_t len)
 {
 	struct msgb *msgb;
 	struct sccp_data_form1 *dt1;
 	u_int8_t *data;
-	int extra_size;
+
+	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
+				   SCCP_MSG_HEADROOM, "sccp dt1");
+	if (!msgb) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to create DT1 msg.\n");
+		return NULL;
+	}
+
+	msgb->l2h = &msgb->data[0];
+
+	dt1 = (struct sccp_data_form1 *) msgb_put(msgb, sizeof(*dt1));
+	dt1->type = SCCP_MSG_TYPE_DT1;
+	memcpy(&dt1->destination_local_reference, dst_ref,
+	       sizeof(struct sccp_source_reference));
+	dt1->segmenting = 0;
+
+	/* copy the data */
+	dt1->variable_start = 1;
+	data = msgb_put(msgb, 1 + len);
+	data[0] = len;
+	memcpy(&data[1], inp_data, len);
+
+	return msgb;
+}
+
+static int _sccp_send_connection_data(struct sccp_connection *conn, struct msgb *_data)
+{
+	struct msgb *msgb;
 
 	if (msgb_l3len(_data) < 2 || msgb_l3len(_data) > 256) {
 		LOGP(DSCCP, LOGL_ERROR, "data size too big, segmenting unimplemented.\n");
 		return -1;
 	}
 
-	extra_size = 1 + msgb_l3len(_data);
-	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
-				   SCCP_MSG_HEADROOM, "sccp dt1");
-	msgb->l2h = &msgb->data[0];
-
-	dt1 = (struct sccp_data_form1 *) msgb_put(msgb, sizeof(*dt1));
-	dt1->type = SCCP_MSG_TYPE_DT1;
-	memcpy(&dt1->destination_local_reference, &conn->destination_local_reference,
-	       sizeof(struct sccp_source_reference));
-	dt1->segmenting = 0;
-
-	/* copy the data */
-	dt1->variable_start = 1;
-	data = msgb_put(msgb, extra_size);
-	data[0] = extra_size - 1;
-	memcpy(&data[1], _data->l3h, extra_size - 1);
+	msgb = sccp_create_dt1(&conn->destination_local_reference,
+			       _data->l3h, msgb_l3len(_data));
+	if (!msgb)
+		return -1;
 
 	_send_msg(msgb);
 	return 0;
@@ -811,7 +861,8 @@ static int _sccp_send_connection_it(struct sccp_connection *conn)
 	return 0;
 }
 
-static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
+struct msgb *sccp_create_rlsd(struct sccp_source_reference *src_ref,
+			      struct sccp_source_reference *dst_ref, int cause)
 {
 	struct msgb *msg;
 	struct sccp_connection_released *rel;
@@ -819,19 +870,36 @@ static int _sccp_send_connection_released(struct sccp_connection *conn, int caus
 
 	msg = msgb_alloc_headroom(SCCP_MSG_SIZE, SCCP_MSG_HEADROOM,
 				  "sccp: connection released");
+	if (!msg) {
+		LOGP(DSCCP, LOGL_ERROR, "Failed to allocate RLSD.\n");
+		return NULL;
+	}
+
 	msg->l2h = &msg->data[0];
 	rel = (struct sccp_connection_released *) msgb_put(msg, sizeof(*rel));
 	rel->type = SCCP_MSG_TYPE_RLSD;
 	rel->release_cause = cause;
 
 	/* copy the source references */
-	memcpy(&rel->destination_local_reference, &conn->destination_local_reference,
+	memcpy(&rel->destination_local_reference, dst_ref,
 	       sizeof(struct sccp_source_reference));
-	memcpy(&rel->source_local_reference, &conn->source_local_reference,
+	memcpy(&rel->source_local_reference, src_ref,
 	       sizeof(struct sccp_source_reference));
 
 	data = msgb_put(msg, 1);
 	data[0] = SCCP_PNC_END_OF_OPTIONAL;
+	return msg;
+}
+
+static int _sccp_send_connection_released(struct sccp_connection *conn, int cause)
+{
+	struct msgb *msg;
+
+	msg = sccp_create_rlsd(&conn->source_local_reference,
+			       &conn->destination_local_reference,
+			       cause);
+	if (!msg)
+		return -1;
 
 	_sccp_set_connection_state(conn, SCCP_CONNECTION_STATE_RELEASE);
 	_send_msg(msg);
