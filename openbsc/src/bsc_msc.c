@@ -163,6 +163,13 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	/* make it non blocking */
 	setnonblocking(fd);
 
+	/* set the socket priority */
+	ret = setsockopt(fd->fd, IPPROTO_IP, IP_TOS,
+			 &con->prio, sizeof(con->prio));
+	if (ret != 0)
+		LOGP(DMSC, LOGL_ERROR, "Failed to set prio to %d. %s\n",
+		     con->prio, strerror(errno));
+
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(con->port);
@@ -200,7 +207,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	return ret;
 }
 
-struct bsc_msc_connection *bsc_msc_create(const char *ip, int port)
+struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
 {
 	struct bsc_msc_connection *con;
 
@@ -212,6 +219,7 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port)
 
 	con->ip = ip;
 	con->port = port;
+	con->prio = prio;
 	write_queue_init(&con->write_queue, 100);
 	con->write_queue.except_cb = bsc_msc_except;
 	return con;

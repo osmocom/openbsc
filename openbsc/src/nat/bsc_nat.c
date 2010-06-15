@@ -1110,7 +1110,7 @@ int main(int argc, char** argv)
 		return -4;
 
 	/* connect to the MSC */
-	nat->msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port);
+	nat->msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port, 0);
 	if (!nat->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
