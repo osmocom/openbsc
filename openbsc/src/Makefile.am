@@ -23,7 +23,8 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		mncc.c gsm_04_08.c gsm_04_11.c transaction.c \
 		token_auth.c rrlp.c gsm_04_80.c ussd.c silent_call.c \
-		handover_logic.c handover_decision.c meas_rep.c auth.c
+		handover_logic.c handover_decision.c meas_rep.c auth.c \
+		osmo_msc.c
 
 libvty_a_SOURCES = common_vty.c
 
