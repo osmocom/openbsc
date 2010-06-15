@@ -54,10 +54,12 @@ AC_OUTPUT(
     src/Makefile
     src/ipaccess/Makefile
     src/gprs/Makefile
+    src/nat/Makefile
     tests/Makefile
     tests/debug/Makefile
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
     tests/sccp/Makefile
+    tests/bsc-nat/Makefile
     Makefile)
