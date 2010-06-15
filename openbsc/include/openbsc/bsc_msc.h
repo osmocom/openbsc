@@ -23,7 +23,7 @@
 #ifndef BSC_MSC_H
 #define BSC_MSC_H
 
-#include "select.h"
+#include <osmocore/select.h>
 
 int connect_to_msc(struct bsc_fd *fd, const char *ip, int port);
 

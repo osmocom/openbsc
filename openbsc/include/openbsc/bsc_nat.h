@@ -25,9 +25,9 @@
 #include <sys/types.h>
 #include <sccp/sccp_types.h>
 
-#include "select.h"
-#include "msgb.h"
-#include "timer.h"
+#include <osmocore/select.h>
+#include <osmocore/msgb.h>
+#include <osmocore/timer.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
