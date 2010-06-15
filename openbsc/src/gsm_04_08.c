@@ -58,7 +58,7 @@
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
-int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi);
+int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_lchan *lchan,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_subscriber_connection *conn);
@@ -252,7 +252,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			/* We're all good */
 			db_subscriber_alloc_tmsi(conn->subscr);
 			release_loc_updating_req(conn);
-			rc = gsm0408_loc_upd_acc(lchan, conn->subscr->tmsi);
+			rc = gsm0408_loc_upd_acc(conn, conn->subscr->tmsi);
 			if (lchan->ts->trx->bts->network->send_mm_info) {
 				/* send MM INFO with network name */
 				rc = gsm48_tx_mm_info(lchan);
@@ -332,15 +332,15 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
-int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
+int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi)
 {
-	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
 	u_int8_t *mid;
 	
-	msg->lchan = lchan;
+	msg->lchan = conn->lchan;
 
 	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -357,7 +357,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	counter_inc(bts->network->stats.loc_upd_resp.accept);
 
-	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 /* Transmit Chapter 9.2.10 Identity Request */
