@@ -332,6 +332,8 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 	}
 }
 
+#define GSM48_HOCMD_CCHDESC_LEN	16
+
 /* Chapter 9.1.15: Handover Command */
 int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 		      u_int8_t power_command, u_int8_t ho_ref)
@@ -351,6 +353,22 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 	ho->ho_ref = ho_ref;
 	ho->power_command = power_command;
 
+	if (new_lchan->ts->hopping.enabled) {
+		struct gsm_bts *bts = new_lchan->ts->trx->bts;
+		struct gsm48_system_information_type_1 *si1;
+		uint8_t *cur;
+
+		si1 = GSM_BTS_SI(bts, SYSINFO_TYPE_1);
+		/* Copy the Cell Chan Desc (ARFCNS in this cell) */
+		msgb_put_u8(msg, GSM48_IE_CELL_CH_DESC);
+		cur = msgb_put(msg, GSM48_HOCMD_CCHDESC_LEN);
+		memcpy(cur, si1->cell_channel_description,
+			GSM48_HOCMD_CCHDESC_LEN);
+		/* Copy the Mobile Allocation */
+		msgb_tlv_put(msg, GSM48_IE_MA_BEFORE,
+			     new_lchan->ts->hopping.ma_len,
+			     new_lchan->ts->hopping.ma_data);
+	}
 	/* FIXME: optional bits for type of synchronization? */
 
 	return gsm48_sendmsg(msg);
@@ -381,7 +399,15 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 	gsm48_lchan2chan_desc(&ass->chan_desc, lchan);
 	ass->power_command = power_command;
 
+	/* optional: cell channel description */
+
 	msgb_tv_put(msg, GSM48_IE_CHANMODE_1, lchan->tch_mode);
+
+	/* mobile allocation in case of hopping */
+	if (lchan->ts->hopping.enabled) {
+		msgb_tlv_put(msg, GSM48_IE_MA_BEFORE, lchan->ts->hopping.ma_len,
+			     lchan->ts->hopping.ma_data);
+	}
 
 	/* in case of multi rate we need to attach a config */
 	if (lchan->tch_mode == GSM48_CMODE_SPEECH_AMR) {
@@ -406,7 +432,6 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_chan_mode_modify *cmm =
 		(struct gsm48_chan_mode_modify *) msgb_put(msg, sizeof(*cmm));
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
 	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
 

@@ -940,32 +940,51 @@ static int generate_ma_for_ts(struct gsm_bts_trx_ts *ts)
 	struct bitvec *cell_chan = &ts->trx->bts->si_common.cell_alloc;
 	struct bitvec *ts_arfcn = &ts->hopping.arfcns;
 	struct bitvec *ma = &ts->hopping.ma;
+	unsigned int num_cell_arfcns, bitnum, n_chan;
 	int i;
 
 	/* re-set the MA to all-zero */
 	ma->cur_bit = 0;
+	ts->hopping.ma_len = 0;
 	memset(ma->data, 0, ma->data_len);
 
 	if (!ts->hopping.enabled)
 		return 0;
 
+	/* count the number of ARFCNs in the cell channel allocation */
+	num_cell_arfcns = 0;
+	for (i = 1; i < 1024; i++) {
+		if (bitvec_get_bit_pos(cell_chan, i))
+			num_cell_arfcns++;
+	}
+
+	/* pad it to octet-aligned number of bits */
+	ts->hopping.ma_len = num_cell_arfcns / 8;
+	if (num_cell_arfcns % 8)
+		ts->hopping.ma_len++;
+
+	n_chan = 0;
 	for (i = 1; i < 1024; i++) {
 		if (!bitvec_get_bit_pos(cell_chan, i))
 			continue;
-		/* append a bit to the MA */
+		n_chan++;
+		/* set the corresponding bit in the MA */
+		bitnum = (ts->hopping.ma_len * 8) - 1 - n_chan;
 		if (bitvec_get_bit_pos(ts_arfcn, i))
-			bitvec_set_bit(ma, 1);
+			bitvec_set_bit_pos(ma, bitnum, 1);
 		else
-			bitvec_set_bit(ma, 0);
+			bitvec_set_bit_pos(ma, bitnum, 0);
 	}
 
 	/* ARFCN 0 is special: It is coded last in the bitmask */
 	if (bitvec_get_bit_pos(cell_chan, 0)) {
-		/* append a bit to the MA */
+		n_chan++;
+		/* set the corresponding bit in the MA */
+		bitnum = (ts->hopping.ma_len * 8) - 1 - n_chan;
 		if (bitvec_get_bit_pos(ts_arfcn, 0))
-			bitvec_set_bit(ma, 1);
+			bitvec_set_bit_pos(ma, bitnum, 1);
 		else
-			bitvec_set_bit(ma, 0);
+			bitvec_set_bit_pos(ma, bitnum, 0);
 	}
 
 	return 0;

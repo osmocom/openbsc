@@ -347,6 +347,7 @@ struct gsm_bts_trx_ts {
 		u_int8_t arfcns_data[1024/8];
 		/* This is the pre-computed MA for channel assignments */
 		struct bitvec ma;
+		u_int8_t ma_len;	/* part of ma_data that is used */
 		u_int8_t ma_data[8];	/* 10.5.2.21: max 8 bytes value part */
 	} hopping;
 

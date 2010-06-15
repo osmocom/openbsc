@@ -1203,7 +1203,10 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	if (!lchan->ts->hopping.enabled) {
 		ia.mob_alloc_len = 0;
 	} else {
-		/* FIXME: Mobile Allocation in case of hopping */
+		uint8_t *ma;
+		ia.mob_alloc_len = lchan->ts->hopping.ma_len;
+		ma = msgb_put(msg, ia.mob_alloc_len);
+		memcpy(ma, lchan->ts->hopping.ma_data, ia.mob_alloc_len);
 	}
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
