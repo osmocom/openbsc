@@ -204,6 +204,7 @@ struct bsc_nat {
 	int mgcp_length;
 
 	/* msc things */
+	char *msc_ip;
 	int first_contact;
 
 	struct bsc_endpoint *bsc_endpoints;
@@ -223,6 +224,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
+void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);
 
 void sccp_connection_destroy(struct sccp_connections *);
 
