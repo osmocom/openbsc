@@ -50,11 +50,15 @@
 
 #include <sccp/sccp.h>
 
+#define SCCP_CLOSE_TIME 20
+#define SCCP_CLOSE_TIME_TIMEOUT 19
+
 struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
 static struct bsc_fd bsc_listen;
 static const char *msc_ip = NULL;
+static struct timer_list sccp_close;
 
 
 static struct bsc_nat *nat;
@@ -904,6 +908,29 @@ static void signal_handler(int signal)
 	}
 }
 
+static void sccp_close_unconfirmed(void *_data)
+{
+	struct sccp_connections *conn, *tmp1;
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+
+	llist_for_each_entry_safe(conn, tmp1, &nat->sccp_connections, list_entry) {
+		if (conn->has_remote_ref)
+			continue;
+
+		int diff = (now.tv_sec - conn->creation_time.tv_sec) / 60;
+		if (diff < SCCP_CLOSE_TIME_TIMEOUT)
+			continue;
+
+		LOGP(DNAT, LOGL_ERROR, "SCCP connection 0x%x/0x%x was never confirmed.\n",
+		     sccp_src_ref_to_int(&conn->real_ref),
+		     sccp_src_ref_to_int(&conn->patched_ref));
+		sccp_connection_destroy(conn);
+	}
+
+	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
+}
+
 extern void *tall_msgb_ctx;
 extern void *tall_ctr_ctx;
 static void talloc_init_ctx()
@@ -981,6 +1008,11 @@ int main(int argc, char** argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
+
+	/* recycle timer */
+	sccp_close.cb = sccp_close_unconfirmed;
+	sccp_close.data = NULL;
+	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
 
 	while (1) {
 		bsc_select_main(0);
