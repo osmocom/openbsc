@@ -401,7 +401,7 @@ static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
 	else if (hh->proto == IPAC_PROTO_SCCP)
 		forward_sccp_to_bts(msg);
 
-	talloc_free(msg);
+	msgb_free(msg);
 	return 0;
 }
 
@@ -568,7 +568,7 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
 	forward_sccp_to_msc(bfd, msg);
-	talloc_free(msg);
+	msgb_free(msg);
 
 	return 0;
 }
