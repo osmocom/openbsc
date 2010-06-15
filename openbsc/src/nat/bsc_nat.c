@@ -379,7 +379,11 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
 	bsc_unregister_fd(&connection->bsc_fd);
+	close(connection->bsc_fd.fd);
 	llist_del(&connection->list_entry);
+
+	/* stop the timeout timer */
+	bsc_del_timer(&connection->id_timeout);
 
 	/* remove all SCCP connections */
 	llist_for_each_entry_safe(sccp_patch, tmp, &nat->sccp_connections, list_entry) {
@@ -391,6 +395,29 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 	}
 
 	talloc_free(connection);
+}
+
+static void ipaccess_close_bsc(void *data)
+{
+	struct bsc_connection *conn = data;
+
+	LOGP(DNAT, LOGL_ERROR, "BSC didn't respond to identity request. Closing.\n");
+	remove_bsc_connection(conn);
+}
+
+static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
+{
+	struct bsc_config *conf;
+	const char* token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
+
+	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
+		if (strcmp(conf->token, token) == 0) {
+			bsc->authenticated = 1;
+			bsc->lac = conf->lac;
+			bsc_del_timer(&bsc->id_timeout);
+			break;
+		}
+	}
 }
 
 static int forward_sccp_to_msc(struct bsc_fd *bfd, struct msgb *msg)
@@ -459,6 +486,18 @@ exit:
 	if (parsed->bssap == 0 && parsed->gsm_type == BSS_MAP_MSG_RESET) {
 		send_reset_ack(bfd);
 		send_reset_ack(bfd);
+	} else if (parsed->ipa_proto == IPAC_PROTO_IPACCESS) {
+		/* do we know who is handling this? */
+		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
+			struct tlv_parsed tvp;
+			ipaccess_idtag_parse(&tvp,
+					     (unsigned char *) msg->l2h + 2,
+					     msgb_l2len(msg) - 2);
+			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
+				ipaccess_auth_bsc(&tvp, bsc);
+		}
+
+		goto exit2;
 	}
 
 exit2:
@@ -521,6 +560,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
+	bsc->nat = nat;
 	bsc->bsc_fd.data = bsc;
 	bsc->bsc_fd.fd = ret;
 	bsc->bsc_fd.cb = ipaccess_bsc_cb;
@@ -534,7 +574,15 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 
 	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
-	ipaccess_send_id_ack(ret);
+	ipaccess_send_id_ack(bsc->bsc_fd.fd);
+	ipaccess_send_id_req(ret);
+
+	/*
+	 * start the hangup timer
+	 */
+	bsc->id_timeout.data = bsc;
+	bsc->id_timeout.cb = ipaccess_close_bsc;
+	bsc_schedule_timer(&bsc->id_timeout, 2, 0);
 	return 0;
 }
 

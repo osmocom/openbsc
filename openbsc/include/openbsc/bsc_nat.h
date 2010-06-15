@@ -32,6 +32,8 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
+struct bsc_nat;
+
 /*
  * For the NAT we will need to analyze and later patch
  * the received message. This would require us to parse
@@ -82,6 +84,9 @@ struct bsc_connection {
 
 	/* a timeout node */
 	struct timer_list id_timeout;
+
+	/* a back pointer */
+	struct bsc_nat *nat;
 };
 
 /*
