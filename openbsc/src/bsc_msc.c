@@ -22,6 +22,7 @@
 
 #include <openbsc/bsc_msc.h>
 #include <openbsc/debug.h>
+#include <openbsc/ipaccess.h>
 
 #include <osmocore/write_queue.h>
 #include <osmocore/talloc.h>
@@ -237,4 +238,25 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 	con->reconnect_timer.cb = reconnect_msc;
 	con->reconnect_timer.data = con;
 	bsc_schedule_timer(&con->reconnect_timer, 5, 0);
+}
+
+struct msgb *bsc_msc_id_get_resp(const char *token)
+{
+	struct msgb *msg;
+
+	if (!token) {
+		LOGP(DMSC, LOGL_ERROR, "No token specified.\n");
+		return NULL;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "id resp");
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to create the message.\n");
+		return NULL;
+	}
+
+	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
+	msgb_l16tv_put(msg, strlen(token) + 1,
+			IPAC_IDTAG_UNITNAME, (u_int8_t *) token);
+	return msg;
 }
