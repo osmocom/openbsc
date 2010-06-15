@@ -117,6 +117,19 @@ void sms_free(struct gsm_sms *sms)
 	talloc_free(sms);
 }
 
+/*
+ * This should be called whenever all SMS to a given subscriber
+ * on a given connection has been sent. This will inform the higher
+ * layers that a channel can be given up.
+ */
+static void gsm411_release_conn(struct gsm_subscriber_connection *conn)
+{
+	if (!conn->lchan)
+		return;
+
+	subscr_put_channel(conn->lchan);
+}
+
 struct msgb *gsm411_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM,
@@ -750,6 +763,8 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(trans->conn, sms);
+	else
+		gsm411_release_conn(trans->conn);
 
 	/* free the transaction here */
 	trans_free(trans);
@@ -824,6 +839,8 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(trans->conn, sms);
+	else
+		gsm411_release_conn(trans->conn);
 
 	return rc;
 }
@@ -1107,6 +1124,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
+		use_subscr_con(&lchan->conn);
 		gsm411_send_sms_lchan(&lchan->conn, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
@@ -1130,8 +1148,10 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
 	lchan = lchan_for_subscr(subscr);
-	if (lchan)
+	if (lchan) {
+		use_subscr_con(&lchan->conn);
 		gsm411_send_sms_lchan(&lchan->conn, sms);
+	}
 
 	/* if not, we have to start paging */
 	subscr_get_channel(subscr, RSL_CHANNEED_SDCCH, paging_cb_send_sms, sms);
@@ -1156,6 +1176,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		sms = db_sms_get_unsent_for_subscr(subscr);
 		if (!sms)
 			break;
+		use_subscr_con(&lchan->conn);
 		gsm411_send_sms_lchan(&lchan->conn, sms);
 		break;
 	default:
@@ -1191,6 +1212,8 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 			trans->sms.sms = NULL;
 			trans_free(trans);
 		}
+
+	gsm411_release_conn(conn);
 }
 
 static __attribute__((constructor)) void on_dso_load_sms(void)
