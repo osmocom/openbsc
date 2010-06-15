@@ -117,6 +117,15 @@ static void send_ping(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_ping, sizeof(id_ping), IPAC_PROTO_IPACCESS);
 }
 
+static void send_pong(struct bsc_connection *bsc)
+{
+	static const u_int8_t id_pong[] = {
+		IPAC_MSGT_PONG,
+	};
+
+	bsc_send_data(bsc, id_pong, sizeof(id_pong), IPAC_PROTO_IPACCESS);
+}
+
 static void bsc_pong_timeout(void *_bsc)
 {
 	struct bsc_connection *bsc = _bsc;
@@ -646,6 +655,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	int error;
 	struct bsc_connection *bsc = bfd->data;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct ipaccess_head *hh;
 
 	if (!msg) {
 		if (error == 0)
@@ -665,13 +675,16 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
-	if (bsc->authenticated) {
-		struct ipaccess_head *hh;
-		hh = (struct ipaccess_head *) msg->data;
+	hh = (struct ipaccess_head *) msg->data;
 
-		/* stop the pong timeout */
-		if (hh->proto == IPAC_PROTO_IPACCESS && msg->l2h[0] == IPAC_MSGT_PONG) {
+	/* stop the pong timeout */
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		if (msg->l2h[0] == IPAC_MSGT_PONG) {
 			bsc_del_timer(&bsc->pong_timeout);
+			msgb_free(msg);
+			return 0;
+		} else if (msg->l2h[0] == IPAC_MSGT_PING) {
+			send_pong(bsc);
 			msgb_free(msg);
 			return 0;
 		}
