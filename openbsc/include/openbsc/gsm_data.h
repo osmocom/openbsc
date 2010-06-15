@@ -43,6 +43,7 @@ enum gsm_chreq_reason_t {
 #include <osmocore/timer.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/system_information.h>
 #include <openbsc/mncc.h>
 #include <osmocore/tlv.h>
 #include <osmocore/bitvec.h>
@@ -393,6 +394,8 @@ struct gsm_bts_trx {
 	struct gsm_bts_trx_ts ts[TRX_NR_TS];
 };
 
+#define GSM_BTS_SI(bts, i)	(void *)(bts->si_buf[i])
+
 enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
 	GSM_BTS_TYPE_BS11,
@@ -540,6 +543,9 @@ struct gsm_bts {
 			u_int8_t cell_alloc[1024/8];
 		} data;
 	} si_common;
+
+	/* buffers where we put the pre-computed SI */
+	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {

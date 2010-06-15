@@ -1,7 +1,7 @@
 /* GSM 04.08 System Information (SI) encoding and decoding
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -32,10 +32,10 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
 #include <osmocore/bitvec.h>
+#include <osmocore/utils.h>
 #include <openbsc/debug.h>
 
 #define GSM48_CELL_CHAN_DESC_SIZE	16
-#define GSM_MACBLOCK_LEN 		23
 #define GSM_MACBLOCK_PADDING		0x2b
 
 /* verify the sizes of the system information type structs */
@@ -240,6 +240,7 @@ static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 
 	/* SI1 Rest Octets (10.5.2.32), contains NCH position */
 	rc = rest_octets_si1(si1->rest_octets, NULL);
+
 	return sizeof(*si1) + rc;
 }
 
@@ -474,8 +475,91 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof (*si13) + ret;
 }
 
-int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
+static const uint8_t sitype2rsl[_MAX_SYSINFO_TYPE] = {
+	[SYSINFO_TYPE_1]	= RSL_SYSTEM_INFO_1,
+	[SYSINFO_TYPE_2]	= RSL_SYSTEM_INFO_2,
+	[SYSINFO_TYPE_3]	= RSL_SYSTEM_INFO_3,
+	[SYSINFO_TYPE_4]	= RSL_SYSTEM_INFO_4,
+	[SYSINFO_TYPE_5]	= RSL_SYSTEM_INFO_5,
+	[SYSINFO_TYPE_6]	= RSL_SYSTEM_INFO_6,
+	[SYSINFO_TYPE_7]	= RSL_SYSTEM_INFO_7,
+	[SYSINFO_TYPE_8]	= RSL_SYSTEM_INFO_8,
+	[SYSINFO_TYPE_9]	= RSL_SYSTEM_INFO_9,
+	[SYSINFO_TYPE_10]	= RSL_SYSTEM_INFO_10,
+	[SYSINFO_TYPE_13]	= RSL_SYSTEM_INFO_13,
+	[SYSINFO_TYPE_16]	= RSL_SYSTEM_INFO_16,
+	[SYSINFO_TYPE_17]	= RSL_SYSTEM_INFO_17,
+	[SYSINFO_TYPE_18]	= RSL_SYSTEM_INFO_18,
+	[SYSINFO_TYPE_19]	= RSL_SYSTEM_INFO_19,
+	[SYSINFO_TYPE_20]	= RSL_SYSTEM_INFO_20,
+	[SYSINFO_TYPE_2bis]	= RSL_SYSTEM_INFO_2bis,
+	[SYSINFO_TYPE_2ter]	= RSL_SYSTEM_INFO_2ter,
+	[SYSINFO_TYPE_2quater]	= RSL_SYSTEM_INFO_2quater,
+	[SYSINFO_TYPE_5bis]	= RSL_SYSTEM_INFO_5bis,
+	[SYSINFO_TYPE_5ter]	= RSL_SYSTEM_INFO_5ter,
+};
+
+static const uint8_t rsl2sitype[0xff] = {
+	[RSL_SYSTEM_INFO_1] = SYSINFO_TYPE_1,
+	[RSL_SYSTEM_INFO_2] = SYSINFO_TYPE_2,
+	[RSL_SYSTEM_INFO_3] = SYSINFO_TYPE_3,
+	[RSL_SYSTEM_INFO_4] = SYSINFO_TYPE_4,
+	[RSL_SYSTEM_INFO_5] = SYSINFO_TYPE_5,
+	[RSL_SYSTEM_INFO_6] = SYSINFO_TYPE_6,
+	[RSL_SYSTEM_INFO_13] = SYSINFO_TYPE_13,
+};
+
+typedef int (*gen_si_fn_t)(uint8_t *output, struct gsm_bts *bts);
+
+static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
+	[SYSINFO_TYPE_1] = &generate_si1,
+	[SYSINFO_TYPE_2] = &generate_si2,
+	[SYSINFO_TYPE_3] = &generate_si3,
+	[SYSINFO_TYPE_4] = &generate_si4,
+	[SYSINFO_TYPE_5] = &generate_si5,
+	[SYSINFO_TYPE_6] = &generate_si6,
+	[SYSINFO_TYPE_13] = &generate_si13,
+};
+
+static const struct value_string sitype_strs[] = {
+	{ SYSINFO_TYPE_1,	"1" },
+	{ SYSINFO_TYPE_2,	"2" },
+	{ SYSINFO_TYPE_3,	"3" },
+	{ SYSINFO_TYPE_4,	"4" },
+	{ SYSINFO_TYPE_5,	"5" },
+	{ SYSINFO_TYPE_6,	"6" },
+	{ SYSINFO_TYPE_7,	"7" },
+	{ SYSINFO_TYPE_8,	"8" },
+	{ SYSINFO_TYPE_9,	"9" },
+	{ SYSINFO_TYPE_10,	"10" },
+	{ SYSINFO_TYPE_13,	"13" },
+	{ SYSINFO_TYPE_16,	"16" },
+	{ SYSINFO_TYPE_17,	"17" },
+	{ SYSINFO_TYPE_18,	"18" },
+	{ SYSINFO_TYPE_19,	"19" },
+	{ SYSINFO_TYPE_20,	"20" },
+	{ SYSINFO_TYPE_2bis,	"2bis" },
+	{ SYSINFO_TYPE_2ter,	"2ter" },
+	{ SYSINFO_TYPE_2quater,	"2quater" },
+	{ SYSINFO_TYPE_5bis,	"5bis" },
+	{ SYSINFO_TYPE_5ter,	"5ter" },
+	{ 0, NULL }
+};
+
+uint8_t gsm_sitype2rsl(enum osmo_sysinfo_type si_type)
 {
+	return sitype2rsl[si_type];
+}
+
+const char *gsm_sitype_name(enum osmo_sysinfo_type si_type)
+{
+	return get_value_string(sitype_strs, si_type);
+}
+
+int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type si_type)
+{
+	gen_si_fn_t gen_si;
+
 	switch (bts->gprs.mode) {
 	case BTS_GPRS_EGPRS:
 		si13_default.cell_opts.ext_info_present = 1;
@@ -489,24 +573,9 @@ int gsm_generate_si(u_int8_t *output, struct gsm_bts *bts, int type)
 		break;
 	}
 
-	switch (type) {
-	case RSL_SYSTEM_INFO_1:
-		return generate_si1(output, bts);
-	case RSL_SYSTEM_INFO_2:
-		return generate_si2(output, bts);
-	case RSL_SYSTEM_INFO_3:
-		return generate_si3(output, bts);
-	case RSL_SYSTEM_INFO_4:
-		return generate_si4(output, bts);
-	case RSL_SYSTEM_INFO_5:
-		return generate_si5(output, bts);
-	case RSL_SYSTEM_INFO_6:
-		return generate_si6(output, bts);
-	case RSL_SYSTEM_INFO_13:
-		return generate_si13(output, bts);
-	default:
+	gen_si = gen_si_fn[si_type];
+	if (!gen_si)
 		return -EINVAL;
-	}
 
-	return 0;
+	return gen_si(bts->si_buf[si_type], bts);
 }

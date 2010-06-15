@@ -782,54 +782,71 @@ int bsc_shutdown_net(struct gsm_network *net)
 	return 0;
 }
 
+static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i)
+{
+	struct gsm_bts *bts = trx->bts;
+	int rc;
+
+	rc = gsm_generate_si(bts, i);
+	if (rc < 0)
+		return rc;
+
+	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
+		hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
+
+	switch (i) {
+	case SYSINFO_TYPE_5:
+	case SYSINFO_TYPE_5bis:
+	case SYSINFO_TYPE_5ter:
+	case SYSINFO_TYPE_6:
+		rc = rsl_sacch_filling(trx, gsm_sitype2rsl(i),
+				       GSM_BTS_SI(bts, i), rc);
+		break;
+	default:
+		rc = rsl_bcch_info(trx, gsm_sitype2rsl(i),
+				   GSM_BTS_SI(bts, i), rc);
+		break;
+	}
+
+	return rc;
+}
+
 /* set all system information types */
 static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
-	u_int8_t si_tmp[23];
 	struct gsm_bts *bts = trx->bts;
 
 	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
-	if (trx == trx->bts->c0) {
-		for (i = 1; i <= 4; i++) {
-			rc = gsm_generate_si(si_tmp, trx->bts, i);
+	if (trx == bts->c0) {
+		for (i = SYSINFO_TYPE_1; i <= SYSINFO_TYPE_4; i++) {
+			rc = generate_and_rsl_si(trx, i);
 			if (rc < 0)
 				goto err_out;
-			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
-			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 		if (bts->gprs.mode != BTS_GPRS_NONE) {
-			i = 13;
-			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
+			rc = generate_and_rsl_si(trx, SYSINFO_TYPE_13);
 			if (rc < 0)
 				goto err_out;
-			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
-			rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
 		}
 	}
 
-	i = 5;
-	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_5);
+	rc = generate_and_rsl_si(trx, SYSINFO_TYPE_5);
 	if (rc < 0)
 		goto err_out;
-	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
-	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
 
-	i = 6;
-	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_6);
+	rc = generate_and_rsl_si(trx, SYSINFO_TYPE_6);
 	if (rc < 0)
 		goto err_out;
-	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
-	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 	return 0;
 err_out:
 	LOGP(DRR, LOGL_ERROR, "Cannot generate SI %u for BTS %u, most likely "
 		"a problem with neighbor cell list generation\n",
-		i, trx->bts->nr);
+		i, bts->nr);
 	return rc;
 }
 
