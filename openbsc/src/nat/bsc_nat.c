@@ -38,10 +38,13 @@
 #include <openbsc/debug.h>
 #include <openbsc/msgb.h>
 #include <openbsc/bsc_msc.h>
+#include <openbsc/bsc_nat.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/talloc.h>
 #include <openbsc/linuxlist.h>
+
+#include <sccp/sccp.h>
 
 static const char *config_file = "openbsc.cfg";
 static char *msc_address = "127.0.0.1";
@@ -64,6 +67,7 @@ struct bsc_connection {
 };
 
 static LLIST_HEAD(bsc_connections);
+
 
 /*
  * below are stubs we need to link
@@ -100,6 +104,10 @@ static void forward_sccp_to_bts(struct msgb *msg)
 	struct bsc_connection *bsc;
 
 	/* filter, drop, patch the message? */
+
+	/* drop packets with the wrong IPA header */
+	if (bsc_nat_filter_ipa(msg))
+		return;
 
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
@@ -160,6 +168,10 @@ static int forward_sccp_to_msc(struct msgb *msg)
 {
 	/* FIXME: We need to filter out certain messages */
 
+	/* drop packets with the wrong IPA header */
+	if (bsc_nat_filter_ipa(msg))
+		return 0;
+
 	/* send the non-filtered but maybe modified msg */
 	return write(msc_connection.fd, msg->data, msg->len);
 }
@@ -168,7 +180,6 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
-	struct ipaccess_head *hh;
 
 	if (!msg) {
 		if (error == 0) {
@@ -180,16 +191,13 @@ static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	DEBUGP(DMSC, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
-	/* handle base message handling */
-	hh = (struct ipaccess_head *) msg->data;
+	DEBUGP(DMSC, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
 	/* FIXME: Currently no PONG is sent to the BSC */
 	/* FIXME: Currently no ID ACK is sent to the BSC */
-	if (hh->proto == IPAC_PROTO_SCCP)
-		forward_sccp_to_msc(msg);
+	forward_sccp_to_msc(msg);
 
 	return 0;
 }
