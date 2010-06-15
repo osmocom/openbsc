@@ -53,7 +53,7 @@ struct debug_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
-static struct write_queue msc_queue;
+static struct bsc_msc_connection *msc_con;
 static struct bsc_fd bsc_listen;
 
 
@@ -420,6 +420,12 @@ exit:
 	return 0;
 }
 
+static void msc_connection_was_lost(struct bsc_msc_connection *con)
+{
+	LOGP(DMSC, LOGL_FATAL, "Lost the connection.\n");
+	exit(0);
+}
+
 static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
@@ -429,7 +435,8 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	if (!msg) {
 		if (error == 0) {
 			LOGP(DNAT, LOGL_FATAL, "The connection the MSC was lost, exiting\n");
-			exit(-2);
+			bsc_msc_lost(msc_con);
+			return -1;
 		}
 
 		LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
@@ -576,7 +583,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	/* send the non-filtered but maybe modified msg */
-	if (write_queue_enqueue(&msc_queue, msg) != 0) {
+	if (write_queue_enqueue(&msc_con->write_queue, msg) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Can not queue message for the MSC.\n");
 		msgb_free(msg);
 	}
@@ -822,7 +829,6 @@ static void signal_handler(int signal)
 
 int main(int argc, char** argv)
 {
-	int rc;
 
 	debug_init();
 	stderr_target = debug_target_create_stderr();
@@ -851,14 +857,16 @@ int main(int argc, char** argv)
 	srand(time(NULL));
 
 	/* connect to the MSC */
-	write_queue_init(&msc_queue, 100);
-	msc_queue.read_cb = ipaccess_msc_read_cb;
-	msc_queue.write_cb = ipaccess_msc_write_cb;
-	rc = connect_to_msc(&msc_queue.bfd, msc_address, 5000);
-	if (rc < 0) {
-		fprintf(stderr, "Opening the MSC connection failed.\n");
+	msc_con = bsc_msc_create(msc_address, 5000);
+	if (!msc_con) {
+		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
 	}
+
+	msc_con->connection_loss = msc_connection_was_lost;
+	msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
+	msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+	bsc_msc_connect(msc_con);
 
 	/* wait for the BSC */
 	if (listen_for_bsc(&bsc_listen, &local_addr, 5000) < 0) {

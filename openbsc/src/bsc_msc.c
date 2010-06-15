@@ -24,6 +24,7 @@
 #include <openbsc/debug.h>
 
 #include <osmocore/write_queue.h>
+#include <osmocore/talloc.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -33,11 +34,27 @@
 #include <string.h>
 #include <unistd.h>
 
+static void connection_loss(struct bsc_msc_connection *con)
+{
+	struct bsc_fd *fd;
+
+	fd = &con->write_queue.bfd;
+
+	close(fd->fd);
+	fd->fd = -1;
+	fd->cb = write_queue_bfd_cb;
+	fd->when = 0;
+
+	con->is_connected = 0;
+	con->connection_loss(con);
+}
+
 /* called in the case of a non blocking connect */
 static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 {
 	int rc;
 	int val;
+	struct bsc_msc_connection *con;
 	struct write_queue *queue;
 
 	socklen_t len = sizeof(val);
@@ -46,6 +63,9 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 		LOGP(DMSC, LOGL_ERROR, "Callback but not readable.\n");
 		return -1;
 	}
+
+	queue = container_of(fd, struct write_queue, bfd);
+	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
 	/* check the socket state */
 	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
@@ -60,19 +80,17 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 
 
 	/* go to full operation */
-	queue = container_of(fd, struct write_queue, bfd);
 	fd->cb = write_queue_bfd_cb;
 	fd->when = BSC_FD_READ;
-	if (!llist_empty(&queue->msg_queue))
-		fd->when |= BSC_FD_WRITE;
+
+	con->is_connected = 1;
+	if (con->connected)
+		con->connected(con);
 	return 0;
 
 error:
 	bsc_unregister_fd(fd);
-	close(fd->fd);
-	fd->fd = -1;
-	fd->cb = write_queue_bfd_cb;
-	fd->when = 0;
+	connection_loss(con);
 	return -1;
 }
 static void setnonblocking(struct bsc_fd *fd)
@@ -97,13 +115,17 @@ static void setnonblocking(struct bsc_fd *fd)
 	}
 }
 
-int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
+int bsc_msc_connect(struct bsc_msc_connection *con)
 {
+	struct bsc_fd *fd;
 	struct sockaddr_in sin;
 	int on = 1, ret;
 
-	printf("Attempting to connect MSC at %s:%d\n", ip, port);
+	LOGP(DMSC, LOGL_NOTICE, "Attempting to connect MSC at %s:%d\n", con->ip, con->port);
 
+	con->is_connected = 0;
+
+	fd = &con->write_queue.bfd;
 	fd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	fd->data = NULL;
 	fd->priv_nr = 1;
@@ -118,8 +140,8 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-        inet_aton(ip, &sin.sin_addr);
+	sin.sin_port = htons(con->port);
+	inet_aton(con->ip, &sin.sin_addr);
 
 	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	ret = connect(fd->fd, (struct sockaddr *) &sin, sizeof(sin));
@@ -130,12 +152,14 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 		fd->cb = msc_connection_connect;
 	} else if (ret < 0) {
 		perror("Connection failed");
-		close(fd->fd);
-		fd->fd = -1;
+		connection_loss(con);
 		return ret;
 	} else {
 		fd->when = BSC_FD_READ;
 		fd->cb = write_queue_bfd_cb;
+		con->is_connected = 1;
+		if (con->connected)
+			con->connected(con);
 	}
 
 	ret = bsc_register_fd(fd);
@@ -146,4 +170,42 @@ int connect_to_msc(struct bsc_fd *fd, const char *ip, int port)
 	}
 
 	return ret;
+}
+
+struct bsc_msc_connection *bsc_msc_create(const char *ip, int port)
+{
+	struct bsc_msc_connection *con;
+
+	con = talloc_zero(NULL, struct bsc_msc_connection);
+	if (!con) {
+		LOGP(DMSC, LOGL_FATAL, "Failed to create the MSC connection.\n");
+		return NULL;
+	}
+
+	con->ip = ip;
+	con->port = port;
+	write_queue_init(&con->write_queue, 100);
+	return con;
+}
+
+void bsc_msc_lost(struct bsc_msc_connection *con)
+{
+	bsc_unregister_fd(&con->write_queue.bfd);
+	connection_loss(con);
+}
+
+static void reconnect_msc(void *_msc)
+{
+	struct bsc_msc_connection *con = _msc;
+
+	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
+	bsc_msc_connect(con);
+}
+
+void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
+{
+	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
+	con->reconnect_timer.cb = reconnect_msc;
+	con->reconnect_timer.data = con;
+	bsc_schedule_timer(&con->reconnect_timer, 5, 0);
 }
