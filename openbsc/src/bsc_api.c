@@ -23,11 +23,15 @@
  */
 
 #include <openbsc/bsc_api.h>
+#include <openbsc/bsc_rll.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 
 #include <osmocore/talloc.h>
+
+static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
+static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 {
@@ -38,9 +42,21 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, int link_id)
 {
+	uint8_t sapi = link_id & 0x7;
 	msg->lchan = conn->lchan;
 	msg->trx = msg->lchan->ts->trx;
-	return rsl_data_request(msg, link_id);
+
+	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
+		OBSC_LINKID_CB(msg) = link_id;
+		if (rll_establish(msg->lchan, sapi, rll_ind_cb, msg) != 0) {
+			msgb_free(msg);
+			send_sapi_reject(conn, link_id);
+			return -1;
+		}
+		return 0;
+	} else {
+		return rsl_data_request(msg, link_id);
+	}
 }
 
 /* dequeue messages to layer 4 */
@@ -60,6 +76,34 @@ int bsc_upqueue(struct gsm_network *net)
 		}
 
 	return work;
+}
+
+static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id)
+{
+	struct bsc_api *api;
+
+	api = conn->bts->network->bsc_api;
+	if (!api || !api->sapi_n_reject)
+		return;
+
+	api->sapi_n_reject(conn, link_id);
+}
+
+static void rll_ind_cb(struct gsm_lchan *lchan, uint8_t link_id, void *_data, enum bsc_rllr_ind rllr_ind)
+{
+	struct msgb *msg = _data;
+
+	switch (rllr_ind) {
+	case BSC_RLLR_IND_EST_CONF:
+		rsl_data_request(msg, OBSC_LINKID_CB(msg));
+		break;
+	case BSC_RLLR_IND_REL_IND:
+	case BSC_RLLR_IND_ERR_IND:
+	case BSC_RLLR_IND_TIMEOUT:
+		send_sapi_reject(&lchan->conn, OBSC_LINKID_CB(msg));
+		msgb_free(msg);
+		break;
+	}
 }
 
 static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,

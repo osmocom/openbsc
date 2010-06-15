@@ -105,6 +105,8 @@ struct openbsc_msgb_cb {
 #define msgb_bcid(__x)		OBSC_MSGB_CB(__x)->bssgp_cell_id
 #define msgb_llch(__x)		OBSC_MSGB_CB(__x)->llch
 
+#define OBSC_LINKID_CB(__msgb)	(__msgb)->cb[3]
+
 enum gsm_security_event {
 	GSM_SECURITY_NOAVAIL,
 	GSM_SECURITY_AUTH_FAILED,
