@@ -3,6 +3,8 @@
 
 #include <osmocore/protocol/gsm_04_11.h>
 
+#define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
+
 /* SMS deliver PDU */
 struct sms_deliver {
 	u_int8_t mti:2;		/* message type indicator */
@@ -33,4 +35,5 @@ void sms_free(struct gsm_sms *sms);
 void _gsm411_sms_trans_free(struct gsm_trans *trans);
 int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms);
+void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn);
 #endif

@@ -4,6 +4,8 @@
 
 /* (C) 2008 by Daniel Willmann <daniel@totalueberwachung.de>
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010 by On Waves
  *
  * All Rights Reserved
  *
@@ -52,8 +54,6 @@
 
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
-
-#define UM_SAPI_SMS 3	/* See GSM 04.05/04.06 */
 
 void *tall_gsms_ctx;
 static u_int32_t new_callref = 0x40000001;
@@ -1092,30 +1092,6 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
 }
 
-/* RLL SAPI3 establish callback. Now we have a RLL connection and
- * can deliver the actual message */
-static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
-			void *_sms, enum bsc_rllr_ind type)
-{
-	struct gsm_sms *sms = _sms;
-
-	DEBUGP(DSMS, "rll_ind_cb(lchan=%p, link_id=%u, sms=%p, type=%u\n",
-		lchan, link_id, sms, type);
-
-	switch (type) {
-	case BSC_RLLR_IND_EST_CONF:
-#warning "BROKEN: The BSC will establish this transparently"
-		gsm411_send_sms_lchan(&lchan->conn, sms);
-		break;
-	case BSC_RLLR_IND_REL_IND:
-	case BSC_RLLR_IND_ERR_IND:
-	case BSC_RLLR_IND_TIMEOUT:
-#warning "BROKEN: We will need to handle SAPI n Reject"
-		sms_free(sms);
-		break;
-	}
-}
-
 /* paging callback. Here we get called if paging a subscriber has
  * succeeded or failed. */
 static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
@@ -1133,14 +1109,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
-		/* Paging aborted without lchan ?!? */
-		if (!lchan) {
-			sms_free(sms);
-			rc = -EIO;
-			break;
-		}
-		/* Establish a SAPI3 RLL connection for SMS */
-		rc = rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
+		gsm411_send_sms_lchan(&lchan->conn, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
@@ -1164,8 +1133,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	 * if yes, send the SMS this way */
 	lchan = lchan_for_subscr(subscr);
 	if (lchan)
-		return rll_establish(lchan, UM_SAPI_SMS,
-				     rll_ind_cb, sms);
+		gsm411_send_sms_lchan(&lchan->conn, sms);
 
 	/* if not, we have to start paging */
 	subscr_get_channel(subscr, RSL_CHANNEED_SDCCH, paging_cb_send_sms, sms);
@@ -1190,8 +1158,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		sms = db_sms_get_unsent_for_subscr(subscr);
 		if (!sms)
 			break;
-		/* Establish a SAPI3 RLL connection for SMS */
-		rll_establish(lchan, UM_SAPI_SMS, rll_ind_cb, sms);
+		gsm411_send_sms_lchan(&lchan->conn, sms);
 		break;
 	default:
 		break;
@@ -1202,6 +1169,24 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
 	bsc_del_timer(&trans->sms.cp_timer);
+}
+
+void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_trans *trans, *tmp;
+
+	llist_for_each_entry_safe(trans, tmp, &conn->bts->network->trans_list, entry)
+		if (trans->conn == conn) {
+			struct gsm_sms *sms = trans->sms.sms;
+			if (!sms) {
+				LOGP(DSMS, LOGL_ERROR, "SAPI Reject but no SMS.\n");
+				continue;
+			}
+
+			sms_free(sms);
+			trans->sms.sms = NULL;
+			trans_free(trans);
+		}
 }
 
 static __attribute__((constructor)) void on_dso_load_sms(void)

@@ -25,8 +25,14 @@
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 
+#include <openbsc/gsm_04_11.h>
+
 static void msc_sapi_n_reject(struct gsm_subscriber_connection* conn, int dlci)
 {
+	int sapi = dlci & 0x7;
+
+	if (sapi == UM_SAPI_SMS)
+		gsm411_sapi_n_reject(conn);
 }
 
 static struct bsc_api msc_handler = {
