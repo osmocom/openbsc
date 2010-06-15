@@ -28,6 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/bsc_nat.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/command.h>
@@ -70,6 +71,17 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 		vty->node = ENABLE_NODE;
 		talloc_free(vty->index);
 		vty->index = NULL;
+		break;
+	case NAT_NODE:
+		vty->node = CONFIG_NODE;
+		vty->index = NULL;
+		break;
+	case BSC_NODE:
+		vty->node = NAT_NODE;
+		{
+			struct bsc_config *bsc_config = vty->index;
+			vty->index = bsc_config->nat;
+		}
 		break;
 	default:
 		vty->node = CONFIG_NODE;
@@ -114,11 +126,19 @@ gDEFUN(ournode_exit,
 			vty->index_sub = &ts->trx->description;
 		}
 		break;
+	case BSC_NODE:
+		vty->node = NAT_NODE;
+		{
+			struct bsc_config *bsc_config = vty->index;
+			vty->index = bsc_config->nat;
+		}
+		break;
 	case MGCP_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
 	case NS_NODE:
 	case BSSGP_NODE:
+	case NAT_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 		break;
