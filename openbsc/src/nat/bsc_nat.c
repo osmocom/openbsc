@@ -39,7 +39,6 @@
 #include <openbsc/debug.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
-#include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/telnet_interface.h>
@@ -47,7 +46,7 @@
 #include <osmocore/gsm0808.h>
 #include <osmocore/talloc.h>
 
-#include <vty/vty.h>
+#include <osmocore/protocol/gsm_08_08.h>
 
 #include <sccp/sccp.h>
 

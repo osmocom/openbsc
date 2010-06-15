@@ -21,7 +21,6 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/bssap.h>
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
@@ -30,6 +29,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/gsm0808.h>
+#include <osmocore/protocol/gsm_08_08.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>

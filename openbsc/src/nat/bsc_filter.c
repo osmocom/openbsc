@@ -22,11 +22,11 @@
  */
 
 #include <openbsc/bsc_nat.h>
-#include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/debug.h>
 
 #include <osmocore/talloc.h>
+#include <osmocore/protocol/gsm_08_08.h>
 
 #include <sccp/sccp.h>
 
