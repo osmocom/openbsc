@@ -43,19 +43,69 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/talloc.h>
-#include <openbsc/linuxlist.h>
+#include <openbsc/telnet_interface.h>
+
+#include <vty/vty.h>
 
 #include <sccp/sccp.h>
 
-static const char *config_file = "openbsc.cfg";
+static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
 static struct bsc_fd msc_connection;
 static struct bsc_fd bsc_connection;
 
 
-static LLIST_HEAD(bsc_connections);
-static LLIST_HEAD(sccp_connections);
+static struct bsc_nat *nat;
+
+static struct bsc_nat *bsc_nat_alloc(void)
+{
+	struct bsc_nat *nat = talloc_zero(tall_bsc_ctx, struct bsc_nat);
+	if (!nat)
+		return NULL;
+
+	INIT_LLIST_HEAD(&nat->sccp_connections);
+	INIT_LLIST_HEAD(&nat->bsc_connections);
+	INIT_LLIST_HEAD(&nat->bsc_configs);
+	return nat;
+}
+
+static struct bsc_connection *bsc_connection_alloc(void)
+{
+	struct bsc_connection *con = talloc_zero(nat, struct bsc_connection);
+	if (!con)
+		return NULL;
+
+	return con;
+}
+
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac)
+{
+	struct bsc_config *conf = talloc_zero(nat, struct bsc_config);
+	if (!conf)
+		return NULL;
+
+	conf->token = talloc_strdup(conf, token);
+	conf->lac = lac;
+	conf->nr = nat->num_bsc;
+	conf->nat = nat;
+
+	llist_add(&conf->entry, &nat->bsc_configs);
+	++nat->num_bsc;
+
+	return conf;
+}
+
+struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
+{
+	struct bsc_config *conf;
+
+	llist_for_each_entry(conf, &nat->bsc_configs, entry)
+		if (conf->nr == num)
+			return conf;
+
+	return NULL;
+}
 
 /*
  * below are stubs we need to link
@@ -95,7 +145,7 @@ static int sccp_ref_is_free(struct sccp_source_reference *ref)
 {
 	struct sccp_connections *conn;
 
-	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(ref, &conn->patched_ref, sizeof(*ref)) == 0)
 			return -1;
 	}
@@ -137,7 +187,7 @@ static int create_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, str
 {
 	struct sccp_connections *conn;
 
-	conn = talloc_zero(tall_bsc_ctx, struct sccp_connections);
+	conn = talloc_zero(nat, struct sccp_connections);
 	if (!conn) {
 		LOGP(DNAT, LOGL_ERROR, "Memory allocation failure.\n");
 		return -1;
@@ -157,7 +207,7 @@ static void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, st
 {
 	struct sccp_connections *conn;
 
-	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->src_local_ref,
 			   &conn->real_ref, sizeof(conn->real_ref)) == 0) {
 			if (bsc != conn->bsc) {
@@ -178,7 +228,7 @@ static void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, st
 static struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
-	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->dest_local_ref,
 			   &conn->real_ref, sizeof(*parsed->dest_local_ref)) == 0) {
 			memcpy(parsed->dest_local_ref,
@@ -193,7 +243,7 @@ static struct bsc_connection *patch_sccp_src_ref_to_bsc(struct msgb *msg, struct
 static struct bsc_connection *patch_sccp_src_ref_to_msc(struct msgb *msg, struct bsc_nat_parsed *parsed)
 {
 	struct sccp_connections *conn;
-	llist_for_each_entry(conn, &sccp_connections, list_entry) {
+	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
 		if (memcmp(parsed->src_local_ref,
 			   &conn->real_ref, sizeof(*parsed->src_local_ref)) == 0) {
 			memcpy(parsed->src_local_ref,
@@ -262,7 +312,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 
 send_to_all:
 	/* currently send this to every BSC connected */
-	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
+	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
 		rc = write(bsc->bsc_fd.fd, msg->data, msg->len);
 
 		/* try the next one */
@@ -324,7 +374,7 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 	llist_del(&connection->list_entry);
 
 	/* remove all SCCP connections */
-	llist_for_each_entry_safe(sccp_patch, tmp, &sccp_connections, list_entry) {
+	llist_for_each_entry_safe(sccp_patch, tmp, &nat->sccp_connections, list_entry) {
 		if (sccp_patch->bsc != connection)
 			continue;
 
@@ -451,7 +501,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/*
 	 *
 	 */
-	bsc = talloc_zero(tall_bsc_ctx, struct bsc_connection);
+	bsc = bsc_connection_alloc();
 	if (!bsc) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate BSC struct.\n");
 		close(ret);
@@ -470,7 +520,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	LOGP(DNAT, LOGL_INFO, "Registered new BSC\n");
-	llist_add(&bsc->list_entry, &bsc_connections);
+	llist_add(&bsc->list_entry, &nat->bsc_connections);
 	ipaccess_send_id_ack(ret);
 	return 0;
 }
@@ -599,6 +649,20 @@ int main(int argc, char** argv)
 	/* parse options */
 	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
+
+	nat = bsc_nat_alloc();
+	if (!nat) {
+		fprintf(stderr, "Failed to allocate the BSC nat.\n");
+		return -4;
+	}
+
+	/* init vty and parse */
+	bsc_nat_vty_init(nat);
+	telnet_init(NULL, 4244);
+	if (vty_read_config_file(config_file) < 0) {
+		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
+		return -3;
+	}
 
 	/* seed the PRNG */
 	srand(time(NULL));

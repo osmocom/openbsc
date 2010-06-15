@@ -27,6 +27,7 @@
 
 #include "select.h"
 #include "msgb.h"
+#include "timer.h"
 
 #define DIR_BSC 1
 #define DIR_MSC 2
@@ -75,6 +76,12 @@ struct bsc_connection {
 
 	/* the fd we use to communicate */
 	struct bsc_fd bsc_fd;
+
+	/* the LAC assigned to this connection */
+	unsigned int lac;
+
+	/* a timeout node */
+	struct timer_list id_timeout;
 };
 
 /*
@@ -91,6 +98,38 @@ struct sccp_connections {
 	struct sccp_source_reference patched_ref;
 };
 
+/**
+ * One BSC entry in the config
+ */
+struct bsc_config {
+	struct llist_head entry;
+
+	char *token;
+	unsigned int lac;
+	int nr;
+
+	struct bsc_nat *nat;
+};
+
+/**
+ * the structure of the "nat" network
+ */
+struct bsc_nat {
+	/* active SCCP connections that need patching */
+	struct llist_head sccp_connections;
+
+	/* active BSC connections that need patching */
+	struct llist_head bsc_connections;
+
+	/* known BSC's */
+	struct llist_head bsc_configs;
+	int num_bsc;
+};
+
+/* create and init the structures */
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac);
+struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+
 
 /**
  * parse the given message into the above structure
@@ -101,5 +140,6 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
  * filter based on IP Access header in both directions
  */
 int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
+int bsc_nat_vty_init(struct bsc_nat *nat);
 
 #endif
