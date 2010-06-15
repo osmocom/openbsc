@@ -802,8 +802,6 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 	sms_free(sms);
 	trans->sms.sms = NULL;
 
-	//trans_free(trans);
-
 	return 0;
 }
 
@@ -1168,6 +1166,12 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
+	if (trans->sms.sms) {
+		LOGP(DSMS, LOGL_ERROR, "Transaction contains SMS.\n");
+		sms_free(trans->sms.sms);
+		trans->sms.sms = NULL;
+	}
+
 	bsc_del_timer(&trans->sms.cp_timer);
 }
 
