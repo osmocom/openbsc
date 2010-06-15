@@ -49,7 +49,7 @@
 
 #include <sccp/sccp.h>
 
-struct debug_target *stderr_target;
+struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static char *msc_address = "127.0.0.1";
 static struct in_addr local_addr;
@@ -700,16 +700,16 @@ static void handle_options(int argc, char** argv)
 			print_help();
 			exit(0);
 		case 's':
-			debug_set_use_color(stderr_target, 0);
+			log_set_use_color(stderr_target, 0);
 			break;
 		case 'd':
-			debug_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			debug_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(stderr_target, 1);
 			break;
 		case 'm':
 			msc_address = strdup(optarg);
@@ -740,11 +740,10 @@ static void signal_handler(int signal)
 
 int main(int argc, char** argv)
 {
-
-	debug_init();
-	stderr_target = debug_target_create_stderr();
-	debug_add_target(stderr_target);
-	debug_set_all_filter(stderr_target, 1);
+	log_init(&log_info);
+	stderr_target = log_target_create_stderr();
+	log_add_target(stderr_target);
+	log_set_all_filter(stderr_target, 1);
 
 	/* parse options */
 	local_addr.s_addr = INADDR_ANY;
