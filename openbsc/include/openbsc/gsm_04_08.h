@@ -61,5 +61,6 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg);
 int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg);
 
 struct msgb *gsm48_create_mm_serv_rej(enum gsm48_reject_value value);
+struct msgb *gsm48_create_loc_upd_rej(uint8_t cause);
 
 #endif
