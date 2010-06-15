@@ -44,6 +44,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/telnet_interface.h>
 
+#include <osmocore/gsm0808.h>
 #include <osmocore/talloc.h>
 
 #include <vty/vty.h>
@@ -297,8 +298,25 @@ static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsi
 static void bsc_send_con_refuse(struct bsc_connection *bsc,
 				struct bsc_nat_parsed *parsed, int con_type)
 {
+	struct msgb *payload;
 	struct msgb *refuse;
-	refuse = sccp_create_refuse(parsed->src_local_ref, SCCP_REFUSAL_SCCP_FAILURE, NULL, 0);
+
+	if (con_type == NAT_CON_TYPE_LU) {
+		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+		gsm0808_prepend_dtap_header(payload, 0);
+	} else if (con_type == NAT_CON_TYPE_CM_SERV_REQ) {
+		payload = gsm48_create_mm_serv_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+		gsm0808_prepend_dtap_header(payload, 0);
+	}
+
+	refuse = sccp_create_refuse(parsed->src_local_ref,
+				    SCCP_REFUSAL_SCCP_FAILURE,
+				    payload ? payload->data : NULL,
+				    payload ? payload->len : 0);
+
+	if (payload)
+		msgb_free(payload);
+
 	if (!refuse) {
 		LOGP(DNAT, LOGL_ERROR,
 		     "Creating refuse msg failed for SCCP 0x%x on BSC Nr: %d.\n",
