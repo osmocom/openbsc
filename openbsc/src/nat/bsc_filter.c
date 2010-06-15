@@ -22,13 +22,169 @@
  */
 
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bssap.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/talloc.h>
+#include <openbsc/debug.h>
 
-int bsc_nat_filter_ipa(struct msgb *msg)
+#include <sccp/sccp.h>
+
+/*
+ * The idea is to have a simple struct describing a IPA packet with
+ * SCCP SSN and the GSM 08.08 payload and decide. We will both have
+ * a white and a blacklist of packets we want to handle.
+ *
+ * TODO: Implement a "NOT" in the filter language.
+ */
+
+#define ALLOW_ANY -1
+
+struct bsc_pkt_filter {
+	int ipa_proto;
+	int dest_ssn;
+	int bssap;
+	int gsm;
+	int filter_dir;
+};
+
+static struct bsc_pkt_filter black_list[] = {
+	/* filter reset messages to the MSC */
+	{ IPAC_PROTO_SCCP, SCCP_SSN_BSSAP, 0, BSS_MAP_MSG_RESET, FILTER_TO_MSC },
+
+	/* filter reset ack messages to the BSC */
+	{ IPAC_PROTO_SCCP, SCCP_SSN_BSSAP, 0, BSS_MAP_MSG_RESET_ACKNOWLEDGE, FILTER_TO_BSC },
+
+	/* filter ip access */
+	{ IPAC_PROTO_IPACCESS, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_MSC },
+};
+
+static struct bsc_pkt_filter white_list[] = {
+	/* allow IPAC_PROTO_SCCP messages to both sides */
+	{ IPAC_PROTO_SCCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_NONE },
+};
+
+struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
 {
+	struct sccp_parse_result result;
+	struct bsc_nat_parsed *parsed;
 	struct ipaccess_head *hh;
 
-	/* handle base message handling */
+	/* quick fail */
+	if (msg->len < 4)
+		return NULL;
+
+	parsed = talloc_zero(msg, struct bsc_nat_parsed);
+	if (!parsed)
+		return NULL;
+
+	/* more init */
+	parsed->ipa_proto = parsed->called_ssn = parsed->calling_ssn = -1;
+	parsed->sccp_type = parsed->bssap = parsed->gsm_type = -1;
+
+	/* start parsing */
 	hh = (struct ipaccess_head *) msg->data;
-	return hh->proto == IPAC_PROTO_IPACCESS;
+	parsed->ipa_proto = hh->proto;
+
+	msg->l2h = &hh->data[0];
+
+	/* analyze sccp down here */
+	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+		memset(&result, 0, sizeof(result));
+		if (sccp_parse_header(msg, &result) != 0) {
+			talloc_free(parsed);
+			return 0;
+		}
+
+		if (msg->l3h && msgb_l3len(msg) < 3) {
+			LOGP(DNAT, LOGL_ERROR, "Not enough space or GSM payload\n");
+			talloc_free(parsed);
+			return 0;
+		}
+
+		parsed->sccp_type = sccp_determine_msg_type(msg);
+		parsed->src_local_ref = result.source_local_reference;
+		parsed->dest_local_ref = result.destination_local_reference;
+		parsed->called_ssn = result.called.ssn;
+		parsed->calling_ssn = result.calling.ssn;
+
+		/* in case of connection confirm we have no payload */
+		if (msg->l3h) {
+			parsed->bssap = msg->l3h[0];
+			parsed->gsm_type = msg->l3h[2];
+		}
+	}
+
+	return parsed;
+}
+
+int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed)
+{
+	int i;
+
+	/* go through the blacklist now */
+	for (i = 0; i < ARRAY_SIZE(black_list); ++i) {
+		/* the proto is not blacklisted */
+		if (black_list[i].ipa_proto != ALLOW_ANY
+		    && black_list[i].ipa_proto != parsed->ipa_proto)
+			continue;
+
+		if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+			/* the SSN is not blacklisted */
+			if (black_list[i].dest_ssn != ALLOW_ANY
+			    && black_list[i].dest_ssn != parsed->called_ssn)
+				continue;
+
+			/* bssap */
+			if (black_list[i].bssap != ALLOW_ANY
+			    && black_list[i].bssap != parsed->bssap)
+				continue;
+
+			/* gsm */
+			if (black_list[i].gsm != ALLOW_ANY
+			    && black_list[i].gsm != parsed->gsm_type)
+				continue;
+
+			/* blacklisted */
+			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
+			return black_list[i].filter_dir;
+		} else {
+			/* blacklisted, we have no content sniffing yet */
+			LOGP(DNAT, LOGL_NOTICE, "Blacklisted with rule %d\n", i);
+			return black_list[i].filter_dir;
+		}
+	}
+
+	/* go through the whitelust now */
+	for (i = 0; i < ARRAY_SIZE(white_list); ++i) {
+		/* the proto is not whitelisted */
+		if (white_list[i].ipa_proto != ALLOW_ANY
+		    && white_list[i].ipa_proto != parsed->ipa_proto)
+			continue;
+
+		if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+			/* the SSN is not whitelisted */
+			if (white_list[i].dest_ssn != ALLOW_ANY
+			    && white_list[i].dest_ssn != parsed->called_ssn)
+				continue;
+
+			/* bssap */
+			if (white_list[i].bssap != ALLOW_ANY
+			    && white_list[i].bssap != parsed->bssap)
+				continue;
+
+			/* gsm */
+			if (white_list[i].gsm != ALLOW_ANY
+			    && white_list[i].gsm != parsed->gsm_type)
+				continue;
+
+			/* whitelisted */
+			LOGP(DNAT, LOGL_NOTICE, "Whitelisted with rule %d\n", i);
+			return FILTER_NONE;
+		} else {
+			/* whitelisted */
+			return FILTER_NONE;
+		}
+	}
+
+	return FILTER_TO_BOTH;
 }

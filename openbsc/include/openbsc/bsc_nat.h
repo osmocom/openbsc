@@ -23,11 +23,55 @@
 #define BSC_NAT_H
 
 #include <sys/types.h>
+#include <sccp/sccp_types.h>
 #include "msgb.h"
+
+#define FILTER_NONE	0
+#define FILTER_TO_BSC	1
+#define FILTER_TO_MSC	2
+#define FILTER_TO_BOTH	3
+
+/*
+ * For the NAT we will need to analyze and later patch
+ * the received message. This would require us to parse
+ * the IPA and SCCP header twice. Instead of doing this
+ * we will have one analyze structure and have the patching
+ * and filter operate on the same structure.
+ */
+struct bsc_nat_parsed {
+	/* ip access prototype */
+	int ipa_proto;
+
+	/* source local reference */
+	struct sccp_source_reference *src_local_ref;
+
+	/* destination local reference */
+	struct sccp_source_reference *dest_local_ref;
+
+	/* called ssn number */
+	int called_ssn;
+
+	/* calling ssn number */
+	int calling_ssn;
+
+	/* sccp message type */
+	int sccp_type;
+
+	/* bssap type, e.g. 0 for BSS Management */
+	int bssap;
+
+	/* the gsm0808 message type */
+	int gsm_type;
+};
+
+/**
+ * parse the given message into the above structure
+ */
+struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
 
 /**
  * filter based on IP Access header in both directions
  */
-int bsc_nat_filter_ipa(struct msgb *msg);
+int bsc_nat_filter_ipa(struct msgb *msg, struct bsc_nat_parsed *parsed);
 
 #endif

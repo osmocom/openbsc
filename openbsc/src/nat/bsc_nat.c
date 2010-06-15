@@ -102,13 +102,18 @@ static void initialize_msc_if_needed()
 static void forward_sccp_to_bts(struct msgb *msg)
 {
 	struct bsc_connection *bsc;
+	struct bsc_nat_parsed *parsed;
 	int rc;
 
 	/* filter, drop, patch the message? */
-
-	/* drop packets with the wrong IPA header */
-	if (bsc_nat_filter_ipa(msg))
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
 		return;
+	}
+
+	if (bsc_nat_filter_ipa(msg, parsed))
+		goto exit;
 
 	/* currently send this to every BSC connected */
 	llist_for_each_entry(bsc, &bsc_connections, list_entry) {
@@ -118,6 +123,9 @@ static void forward_sccp_to_bts(struct msgb *msg)
 		if (rc < msg->len)
 			LOGP(DNAT, LOGL_ERROR, "Failed to write message to BTS: %d\n", rc);
 	}
+
+exit:
+	talloc_free(parsed);
 }
 
 static int ipaccess_msc_cb(struct bsc_fd *bfd, unsigned int what)
@@ -171,14 +179,25 @@ static void remove_bsc_connection(struct bsc_connection *connection)
 
 static int forward_sccp_to_msc(struct msgb *msg)
 {
-	/* FIXME: We need to filter out certain messages */
+	struct bsc_nat_parsed *parsed;
+	int rc = -1;
 
-	/* drop packets with the wrong IPA header */
-	if (bsc_nat_filter_ipa(msg))
-		return 0;
+	/* Parse and filter messages */
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from BSC.\n");
+		return -1;
+	}
+
+	if (bsc_nat_filter_ipa(msg, parsed))
+		goto exit;
 
 	/* send the non-filtered but maybe modified msg */
-	return write(msc_connection.fd, msg->data, msg->len);
+	rc = write(msc_connection.fd, msg->data, msg->len);
+
+exit:
+	talloc_free(parsed);
+	return rc;
 }
 
 static int ipaccess_bsc_cb(struct bsc_fd *bfd, unsigned int what)
