@@ -305,7 +305,7 @@ static unsigned long gsm340_vp_absolute(u_int8_t *sms_vp)
 	unsigned long minutes;
 
 	expires = gsm340_scts(sms_vp);
-	now = mktime(gmtime(NULL));
+	now = time(NULL);
 	if (expires <= now)
 		minutes = 0;
 	else
