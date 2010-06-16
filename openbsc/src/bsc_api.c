@@ -59,6 +59,12 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	}
 }
 
+int gsm0808_page(struct gsm_bts *bts, unsigned int page_group, unsigned int mi_len,
+		 uint8_t *mi, int chan_type)
+{
+	return rsl_paging_cmd(bts, page_group, mi_len, mi, chan_type);
+}
+
 /* dequeue messages to layer 4 */
 int bsc_upqueue(struct gsm_network *net)
 {
