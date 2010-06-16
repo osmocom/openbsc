@@ -250,7 +250,6 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 		case GSM_SECURITY_SUCCEEDED:
 			/* We're all good */
 			db_subscriber_alloc_tmsi(conn->subscr);
-			release_loc_updating_req(conn);
 			rc = gsm0408_loc_upd_acc(conn, conn->subscr->tmsi);
 			if (conn->bts->network->send_mm_info) {
 				/* send MM INFO with network name */
@@ -264,8 +263,8 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 				      GSM_SUBSCRIBER_UPDATE_ATTACHED);
 
 			/* try to close channel ASAP */
+			release_loc_updating_req(conn);
 			lchan_auto_release(conn->lchan);
-
 			break;
 
 		default:
@@ -427,8 +426,8 @@ static void loc_upd_rej_cb(void *data)
 	struct gsm_lchan *lchan = conn->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
-	release_loc_updating_req(conn);
 	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
+	release_loc_updating_req(conn);
 	lchan_auto_release(lchan);
 }
 
