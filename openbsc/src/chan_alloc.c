@@ -378,7 +378,7 @@ static void auto_release_channel(void *_lchan)
 		bsc_schedule_timer(&lchan->conn.release_timer, LCHAN_RELEASE_TIMEOUT);
 }
 
-struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
+static struct gsm_lchan* lchan_find(struct gsm_bts *bts, struct gsm_subscriber *subscr) {
 	struct gsm_bts_trx *trx;
 	int ts_no, lchan_no;
 
