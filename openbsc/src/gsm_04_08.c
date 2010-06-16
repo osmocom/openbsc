@@ -59,7 +59,7 @@ void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
 int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi);
-static int gsm48_tx_simple(struct gsm_lchan *lchan,
+static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_subscriber_connection *conn);
 
@@ -174,7 +174,7 @@ int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
 	/* Then do whatever is needed ... */
 	if (rc == 1) {
 		/* Start authentication */
-		return gsm48_tx_mm_auth_req(lchan, op->atuple.rand, op->atuple.key_seq);
+		return gsm48_tx_mm_auth_req(&lchan->conn, op->atuple.rand, op->atuple.key_seq);
 	} else if (rc == 2) {
 		/* Start ciphering directly */
 		lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
@@ -671,7 +671,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 }
 
 /* Section 9.2.2 */
-int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
+int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, u_int8_t *rand, int key_seq)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -679,7 +679,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 
 	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", hexdump(rand, 16));
 
-	msg->lchan = lchan;
+	msg->lchan = conn->lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_AUTH_REQ;
 
@@ -689,20 +689,20 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 	if (rand)
 		memcpy(ar->rand, rand, 16);
 
-	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 /* Section 9.2.1 */
-int gsm48_tx_mm_auth_rej(struct gsm_lchan *lchan)
+int gsm48_tx_mm_auth_rej(struct gsm_subscriber_connection *conn)
 {
 	DEBUGP(DMM, "-> AUTH REJECT\n");
-	return gsm48_tx_simple(lchan, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
+	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_AUTH_REJ);
 }
 
-static int gsm48_tx_mm_serv_ack(struct gsm_lchan *lchan)
+static int gsm48_tx_mm_serv_ack(struct gsm_subscriber_connection *conn)
 {
 	DEBUGP(DMM, "-> CM SERVICE ACK\n");
-	return gsm48_tx_simple(lchan, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
+	return gsm48_tx_simple(conn, GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_ACC);
 }
 
 /* 9.2.6 CM service reject */
@@ -736,7 +736,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 			break;
 
 		case GSM_SECURITY_NOAVAIL:
-			rc = gsm48_tx_mm_serv_ack(lchan);
+			rc = gsm48_tx_mm_serv_ack(&lchan->conn);
 			break;
 
 		case GSM_SECURITY_SUCCEEDED:
@@ -924,7 +924,7 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 			   NULL, lchan, conn->sec_operation->cb_data);
 
 		release_security_operation(conn);
-		return gsm48_tx_mm_auth_rej(lchan);
+		return gsm48_tx_mm_auth_rej(conn);
 	}
 
 	DEBUGPC(DMM, "OK\n");
@@ -1276,18 +1276,18 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
 
-static int gsm48_tx_simple(struct gsm_lchan *lchan,
+static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   u_int8_t pdisc, u_int8_t msg_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 
-	msg->lchan = lchan;
+	msg->lchan = conn->lchan;
 
 	gh->proto_discr = pdisc;
 	gh->msg_type = msg_type;
 
-	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
@@ -2209,7 +2209,7 @@ static int gsm48_cc_rx_release(struct gsm_trans *trans, struct msgb *msg)
 		/* release collision 5.4.5 */
 		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_CNF, &rel);
 	} else {
-		rc = gsm48_tx_simple(msg->lchan,
+		rc = gsm48_tx_simple(trans->conn,
 				     GSM48_PDISC_CC | (trans->transaction_id << 4),
 				     GSM48_MT_CC_RELEASE_COMPL);
 		rc = mncc_recvmsg(trans->subscr->net, trans, MNCC_REL_IND, &rel);
@@ -3075,7 +3075,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGP(DCC, "No memory for trans.\n");
-			rc = gsm48_tx_simple(msg->lchan,
+			rc = gsm48_tx_simple(trans->conn,
 					     GSM48_PDISC_CC | (transaction_id << 4),
 					     GSM48_MT_CC_RELEASE_COMPL);
 			return -ENOMEM;
