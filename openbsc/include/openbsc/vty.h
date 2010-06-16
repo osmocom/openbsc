@@ -30,6 +30,8 @@ enum bsc_vty_node {
 	NS_NODE,
 	BSSGP_NODE,
 	OML_NODE,
+	NAT_NODE,
+	BSC_NODE,
 };
 
 #endif

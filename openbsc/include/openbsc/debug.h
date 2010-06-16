@@ -34,6 +34,7 @@ enum {
 	DBSSGP,
 	DLLC,
 	DSNDCP,
+	DNAT,
 	Debug_LastEntry,
 };
 

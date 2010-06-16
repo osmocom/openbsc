@@ -677,6 +677,7 @@ struct gsm_network {
 	struct {
 		enum rrlp_mode mode;
 	} rrlp;
+	int msc_prio;
 };
 
 #define SMS_HDR_SIZE	128

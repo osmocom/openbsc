@@ -3,10 +3,10 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 # build current directory before building gprs
-SUBDIRS = . ipaccess gprs
+SUBDIRS = . ipaccess gprs nat
 
 sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libmgcp.a
 
 bscdir = $(libdir)
 bsc_LIBRARIES = libsccp.a
@@ -30,6 +30,8 @@ libvty_a_SOURCES = common_vty.c
 
 libsccp_a_SOURCES = sccp/sccp.c
 
+libmgcp_a_SOURCES = mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c
+
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c bsc_vty.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libvty.a libmsc.a \
 		-ldl -ldbi $(LIBCRYPT) $(LIBOSMOVTY_LIBS)
@@ -39,6 +41,5 @@ bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 
 isdnsync_SOURCES = isdnsync.c
 
-bsc_mgcp_SOURCES = mgcp/mgcp_main.c mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c \
-		   debug.c
-bsc_mgcp_LDADD = libvty.a $(LIBOSMOVTY_LIBS)
+bsc_mgcp_SOURCES = mgcp/mgcp_main.c debug.c
+bsc_mgcp_LDADD = libvty.a libmgcp.a $(LIBOSMOVTY_LIBS)
