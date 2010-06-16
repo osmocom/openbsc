@@ -678,6 +678,9 @@ struct gsm_network {
 
 	enum gsm_chan_t ctype_by_chreq[16];
 
+	/* enable the DTXu and DTXd for this network */
+	int dtx_enabled;
+
 	/* Use a TCH for handling requests of type paging any */
 	int pag_any_tch;
 

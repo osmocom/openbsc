@@ -1,4 +1,4 @@
-/* OpenBSC interface to quagga VTY */
+/* ipenBSC interface to quagga VTY */
 /* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -500,6 +500,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
+	vty_out(vty, " use-dtx %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 	vty_out(vty, " ipacc rtp_payload %u%s", gsmnet->rtp_payload, VTY_NEWLINE);
 	vty_out(vty, " rtp base %u%s", gsmnet->rtp_base_port, VTY_NEWLINE);
 
@@ -1468,6 +1469,16 @@ DECLARE_TIMER(3117, "Currently not used.")
 DECLARE_TIMER(3119, "Currently not used.")
 DECLARE_TIMER(3141, "Currently not used.")
 
+DEFUN(cfg_net_dtx,
+      cfg_net_dtx_cmd,
+      "dtx-used (0|1)",
+      "Enable the usage of DTX.\n"
+      "DTX is enabled/disabled")
+{
+	gsmnet->dtx_enabled = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
@@ -2241,6 +2252,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
+	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_bsc_token_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 	install_element(GSMNET_NODE, &cfg_net_msc_ip_cmd);
