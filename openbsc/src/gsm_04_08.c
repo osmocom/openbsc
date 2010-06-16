@@ -121,11 +121,11 @@ static void allocate_security_operation(struct gsm_subscriber_connection *conn)
 	                                  struct gsm_security_operation);
 }
 
-int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
-                         gsm_cbfn *cb, void *cb_data)
+static int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
+				gsm_cbfn *cb, void *cb_data)
 {
-	struct gsm_network *net = lchan->ts->trx->bts->network;
-	struct gsm_subscriber *subscr = lchan->conn.subscr;
+	struct gsm_network *net = conn->bts->network;
+	struct gsm_subscriber *subscr = conn->subscr;
 	struct gsm_security_operation *op;
 	struct gsm_auth_tuple atuple;
 	int status = -1, rc;
@@ -137,7 +137,7 @@ int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
 	 */
 	if (!net->a5_encryption) {
 		status = GSM_SECURITY_NOAVAIL;
-	} else if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
+	} else if (conn->lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		DEBUGP(DMM, "Requesting to secure an already secure channel");
 		status = GSM_SECURITY_SUCCEEDED;
 	} else if (!ms_cm2_a5n_support(subscr->equipment.classmark2,
@@ -156,15 +156,15 @@ int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
 	/* Are we done yet ? */
 	if (status >= 0)
 		return cb ?
-			cb(GSM_HOOK_RR_SECURITY, status, NULL, lchan, cb_data) :
+			cb(GSM_HOOK_RR_SECURITY, status, NULL, conn, cb_data) :
 			0;
 
 	/* Start an operation (can't have more than one pending !!!) */
-	if (lchan->conn.sec_operation)
+	if (conn->sec_operation)
 		return -EBUSY;
 
-	allocate_security_operation(&lchan->conn);
-	op = lchan->conn.sec_operation;
+	allocate_security_operation(conn);
+	op = conn->sec_operation;
 	op->cb = cb;
 	op->cb_data = cb_data;
 	memcpy(&op->atuple, &atuple, sizeof(struct gsm_auth_tuple));
@@ -174,14 +174,14 @@ int gsm48_secure_channel(struct gsm_lchan *lchan, int key_seq,
 	/* Then do whatever is needed ... */
 	if (rc == 1) {
 		/* Start authentication */
-		return gsm48_tx_mm_auth_req(&lchan->conn, op->atuple.rand, op->atuple.key_seq);
+		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
 	} else if (rc == 2) {
 		/* Start ciphering directly */
-		lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
-		lchan->encr.key_len = 8;
-		memcpy(lchan->encr.key, op->atuple.kc, 8);
+		conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
+		conn->lchan->encr.key_len = 8;
+		memcpy(conn->lchan->encr.key, op->atuple.kc, 8);
 
-		return gsm48_send_rr_ciph_mode(lchan, 0);
+		return gsm48_send_rr_ciph_mode(conn->lchan, 0);
 	}
 
 	return -EINVAL; /* not reached */
@@ -238,8 +238,7 @@ static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
                                      struct msgb *msg, void *data, void *param)
 {
-	struct gsm_lchan *lchan = data;
-	struct gsm_subscriber_connection *conn = &lchan->conn;
+	struct gsm_subscriber_connection *conn = data;
 	int rc = 0;
 
 	switch (event) {
@@ -253,7 +252,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			db_subscriber_alloc_tmsi(conn->subscr);
 			release_loc_updating_req(conn);
 			rc = gsm0408_loc_upd_acc(conn, conn->subscr->tmsi);
-			if (lchan->ts->trx->bts->network->send_mm_info) {
+			if (conn->bts->network->send_mm_info) {
 				/* send MM INFO with network name */
 				rc = gsm48_tx_mm_info(conn);
 			}
@@ -261,11 +260,11 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			/* call subscr_update after putting the loc_upd_acc
 			 * in the transmit queue, since S_SUBSCR_ATTACHED might
 			 * trigger further action like SMS delivery */
-			subscr_update(conn->subscr, lchan->ts->trx->bts,
+			subscr_update(conn->subscr, conn->bts,
 				      GSM_SUBSCRIBER_UPDATE_ATTACHED);
 
 			/* try to close channel ASAP */
-			lchan_auto_release(lchan);
+			lchan_auto_release(conn->lchan);
 
 			break;
 
@@ -279,7 +278,7 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	if (authorize_subscriber(conn->loc_operation, conn->subscr))
-		return gsm48_secure_channel(conn->lchan,
+		return gsm48_secure_channel(conn,
 			conn->loc_operation->key_seq,
 			_gsm0408_authorize_sec_cb, NULL);
 	return 0;
@@ -727,7 +726,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 	unsigned int hooknum, unsigned int event,
 	struct msgb *msg, void *data, void *param)
 {
-	struct gsm_lchan *lchan = data;
+	struct gsm_subscriber_connection *conn = data;
 	int rc = 0;
 
 	switch (event) {
@@ -736,7 +735,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
 			break;
 
 		case GSM_SECURITY_NOAVAIL:
-			rc = gsm48_tx_mm_serv_ack(&lchan->conn);
+			rc = gsm48_tx_mm_serv_ack(conn);
 			break;
 
 		case GSM_SECURITY_SUCCEEDED:
@@ -826,7 +825,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
 	db_sync_equipment(&subscr->equipment);
 
-	return gsm48_secure_channel(msg->lchan, req->cipher_key_seq,
+	return gsm48_secure_channel(&msg->lchan->conn, req->cipher_key_seq,
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
 }
 
@@ -899,9 +898,8 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
-	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_network *net = conn->bts->network;
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
 		hexdump(ar->sres, 4));
@@ -921,7 +919,7 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 
 		if (cb)
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
-			   NULL, lchan, conn->sec_operation->cb_data);
+			   NULL, conn, conn->sec_operation->cb_data);
 
 		release_security_operation(conn);
 		return gsm48_tx_mm_auth_rej(conn);
@@ -930,9 +928,9 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 	DEBUGPC(DMM, "OK\n");
 
 	/* Start ciphering */
-	lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
-	lchan->encr.key_len = 8;
-	memcpy(msg->lchan->encr.key, conn->sec_operation->atuple.kc, 8);
+	conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
+	conn->lchan->encr.key_len = 8;
+	memcpy(conn->lchan->encr.key, conn->sec_operation->atuple.kc, 8);
 
 	return gsm48_send_rr_ciph_mode(msg->lchan, 0);
 }
@@ -1115,8 +1113,7 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 /* Chapter 9.1.10 Ciphering Mode Complete */
 static int gsm48_rx_rr_ciph_m_compl(struct msgb *msg)
 {
-	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_subscriber_connection *conn = &lchan->conn;
+	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
 	gsm_cbfn *cb;
 	int rc = 0;
 
@@ -1134,7 +1131,7 @@ static int gsm48_rx_rr_ciph_m_compl(struct msgb *msg)
 	cb = conn->sec_operation->cb;
 	if (cb) {
 		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
-			NULL, lchan, conn->sec_operation->cb_data);
+			NULL, conn, conn->sec_operation->cb_data);
 	}
 
 	/* Complete the operation */
