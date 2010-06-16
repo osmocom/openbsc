@@ -124,10 +124,10 @@ void sms_free(struct gsm_sms *sms)
  */
 static void gsm411_release_conn(struct gsm_subscriber_connection *conn)
 {
-	if (!conn->lchan)
+	if (!conn)
 		return;
 
-	subscr_put_channel(conn->lchan);
+	subscr_put_channel(conn);
 }
 
 struct msgb *gsm411_msgb_alloc(void)

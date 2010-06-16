@@ -82,7 +82,7 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 					unsigned long long id);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
-void subscr_put_channel(struct gsm_lchan *lchan);
+void subscr_put_channel(struct gsm_subscriber_connection *conn);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
 
