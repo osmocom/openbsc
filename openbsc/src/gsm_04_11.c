@@ -1150,7 +1150,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	lchan = lchan_for_subscr(subscr);
 	if (lchan) {
 		use_subscr_con(&lchan->conn);
-		gsm411_send_sms_lchan(&lchan->conn, sms);
+		return gsm411_send_sms_lchan(&lchan->conn, sms);
 	}
 
 	/* if not, we have to start paging */
