@@ -100,6 +100,8 @@ static const struct value_string rp_cause_strs[] = {
 	{ 0, NULL }
 };
 
+static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms);
+
 struct gsm_sms *sms_alloc(void)
 {
 	return talloc_zero(tall_gsms_ctx, struct gsm_sms);
@@ -759,7 +761,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
-		gsm411_send_sms_lchan(trans->conn, sms);
+		gsm411_send_sms(trans->conn, sms);
 	else
 		gsm411_release_conn(trans->conn);
 
@@ -834,7 +836,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
-		gsm411_send_sms_lchan(trans->conn, sms);
+		gsm411_send_sms(trans->conn, sms);
 	else
 		gsm411_release_conn(trans->conn);
 
@@ -1030,7 +1032,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 /* Take a SMS in gsm_sms structure and send it through an already
  * existing lchan. We also assume that the caller ensured this lchan already
  * has a SAPI3 RLL connection! */
-int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
+static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
@@ -1121,7 +1123,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		use_subscr_con(&lchan->conn);
-		gsm411_send_sms_lchan(&lchan->conn, sms);
+		gsm411_send_sms(&lchan->conn, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
@@ -1146,7 +1148,7 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	conn = connection_for_subscr(subscr);
 	if (conn) {
 		use_subscr_con(conn);
-		return gsm411_send_sms_lchan(conn, sms);
+		return gsm411_send_sms(conn, sms);
 	}
 
 	/* if not, we have to start paging */
@@ -1173,7 +1175,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		if (!sms)
 			break;
 		use_subscr_con(conn);
-		gsm411_send_sms_lchan(conn, sms);
+		gsm411_send_sms(conn, sms);
 		break;
 	default:
 		break;
