@@ -178,7 +178,7 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	struct bitvec *bv = &bts->si_common.cell_alloc;
 
 	/* Zero-initialize the bit-vector */
-	memset(&bv->data, 0, bv->data_len);
+	memset(bv->data, 0, bv->data_len);
 
 	/* first we generate a bitvec of all TRX ARFCN's in our BTS */
 	llist_for_each_entry(trx, &bts->trx_list, list) {
@@ -206,7 +206,7 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	struct bitvec *bv = &bts->si_common.neigh_list;
 
 	/* Zero-initialize the bit-vector */
-	memset(&bv->data, 0, bv->data_len);
+	memset(bv->data, 0, bv->data_len);
 
 	/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
 	llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
