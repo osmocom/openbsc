@@ -912,25 +912,25 @@ static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
 }
 
 /* Entry point for incoming GSM48_PDISC_SMS from abis_rsl.c */
-int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
+int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
+		    struct msgb *msg, u_int8_t link_id)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type;
 	u_int8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
-	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_trans *trans;
 	int rc = 0;
 
-	if (!lchan->conn.subscr)
+	if (!conn->subscr)
 		return -EIO;
 		/* FIXME: send some error message */
 
 	DEBUGP(DSMS, "trans_id=%x ", transaction_id);
-	trans = trans_find_by_id(lchan->conn.subscr, GSM48_PDISC_SMS,
+	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
 		DEBUGPC(DSMS, "(new) ");
-		trans = trans_alloc(lchan->conn.subscr, GSM48_PDISC_SMS,
+		trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
 			DEBUGPC(DSMS, "No memory for trans\n");
@@ -942,7 +942,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		trans->sms.is_mt = 0;
 		trans->sms.link_id = link_id;
 
-		trans->conn = &lchan->conn;
+		trans->conn = conn;
 		use_subscr_con(trans->conn);
 	}
 
@@ -962,7 +962,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 				if (i == transaction_id)
 					continue;
 
-				ptrans = trans_find_by_id(lchan->conn.subscr,
+				ptrans = trans_find_by_id(conn->subscr,
 				                          GSM48_PDISC_SMS, i);
 				if (!ptrans)
 					continue;

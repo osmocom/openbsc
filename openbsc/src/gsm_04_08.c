@@ -3117,7 +3117,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		rc = gsm0408_rcv_rr(msg);
 		break;
 	case GSM48_PDISC_SMS:
-		rc = gsm0411_rcv_sms(msg, link_id);
+		rc = gsm0411_rcv_sms(&msg->lchan->conn, msg, link_id);
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:
