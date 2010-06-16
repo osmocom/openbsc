@@ -40,9 +40,9 @@ static const u_int8_t ms_pref_pos_req[]  = { 0x40, 0x02, 0x79, 0x50 };
 	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
 static const u_int8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
 
-static int send_rrlp_req(struct gsm_lchan *lchan)
+static int send_rrlp_req(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_network *net = lchan->ts->trx->bts->network;
+	struct gsm_network *net = conn->bts->network;
 	const u_int8_t *req;
 
 	switch (net->rrlp.mode) {
@@ -60,7 +60,7 @@ static int send_rrlp_req(struct gsm_lchan *lchan)
 		return 0;
 	}
 
-	return gsm48_send_rr_app_info(lchan, 0x00,
+	return gsm48_send_rr_app_info(conn, 0x00,
 				      sizeof(ms_based_pos_req), req);
 }
 
@@ -77,7 +77,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		conn = connection_for_subscr(subscr);
 		if (!conn)
 			break;
-		send_rrlp_req(&conn->lchan);
+		send_rrlp_req(conn);
 		break;
 	}
 	return 0;
@@ -91,7 +91,7 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_PAGING_SUCCEEDED:
 		/* A subscriber has attached. */
-		send_rrlp_req(psig_data->lchan);
+		send_rrlp_req(&psig_data->lchan->conn);
 		break;
 	case S_PAGING_EXPIRED:
 		break;

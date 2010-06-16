@@ -1213,13 +1213,13 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 	return rc;
 }
 
-int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
+int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, u_int8_t apdu_id,
 			   u_int8_t apdu_len, const u_int8_t *apdu)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
-	msg->lchan = lchan;
+	msg->lchan = conn->lchan;
 	
 	DEBUGP(DRR, "TX APPLICATION INFO id=0x%02x, len=%u\n",
 		apdu_id, apdu_len);
@@ -1231,7 +1231,7 @@ int gsm48_send_rr_app_info(struct gsm_lchan *lchan, u_int8_t apdu_id,
 	gh->data[1] = apdu_len;
 	memcpy(gh->data+2, apdu, apdu_len);
 
-	return gsm48_conn_sendmsg(msg, &lchan->conn, NULL);
+	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
 /* Call Control */
