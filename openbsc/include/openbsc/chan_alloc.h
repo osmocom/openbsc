@@ -23,6 +23,8 @@
 
 #include "gsm_subscriber.h"
 
+struct gsm_subscriber_connection;
+
 /* Special allocator for C0 of BTS */
 struct gsm_bts_trx_ts *ts_c0_alloc(struct gsm_bts *bts,
 				   enum gsm_phys_chan_config pchan);
@@ -35,7 +37,7 @@ struct gsm_bts_trx_ts *ts_alloc(struct gsm_bts *bts,
 void ts_free(struct gsm_bts_trx_ts *ts);
 
 /* Find an allocated channel for a specified subscriber */
-struct gsm_lchan *lchan_for_subscr(struct gsm_subscriber *subscr);
+struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr);
 
 /* Allocate a logical channel (SDCCH, TCH, ...) */
 struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);

@@ -68,16 +68,16 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 			 void *handler_data, void *signal_data)
 {
 	struct gsm_subscriber *subscr;
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 
 	switch (signal) {
 	case S_SUBSCR_ATTACHED:
 		/* A subscriber has attached. */
 		subscr = signal_data;
-		lchan = lchan_for_subscr(subscr);
-		if (!lchan)
+		conn = connection_for_subscr(subscr);
+		if (!conn)
 			break;
-		send_rrlp_req(lchan);
+		send_rrlp_req(&conn->lchan);
 		break;
 	}
 	return 0;

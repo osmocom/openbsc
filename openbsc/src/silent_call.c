@@ -128,15 +128,13 @@ int gsm_silent_call_start(struct gsm_subscriber *subscr, void *data, int type)
 /* end a silent call with a given subscriber */
 int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 {
-	struct gsm_lchan *lchan;
 	struct gsm_subscriber_connection *conn;
 
-	lchan = lchan_for_subscr(subscr);
-	if (!lchan)
+	conn = connection_for_subscr(subscr);
+	if (!conn)
 		return -EINVAL;
 
 	/* did we actually establish a silent call for this guy? */
-	conn = &lchan->conn;
 	if (!conn->silent_call)
 		return -EINVAL;
 

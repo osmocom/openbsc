@@ -2798,7 +2798,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 {
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
-	struct gsm_lchan *lchan = NULL;
+	struct gsm_subscriber_connection *conn = NULL;
 	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
 
@@ -2903,10 +2903,10 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return -ENOMEM;
 		}
 		/* Find lchan */
-		lchan = lchan_for_subscr(subscr);
+		conn = connection_for_subscr(subscr);
 
 		/* If subscriber has no lchan */
-		if (!lchan) {
+		if (!conn) {
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
 				/* Transaction of our lchan? */
@@ -2932,16 +2932,16 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			return 0;
 		}
 		/* Assign lchan */
-		trans->conn = &lchan->conn;
+		trans->conn = conn;
 		use_subscr_con(trans->conn);
 		subscr_put(subscr);
 	}
 
 	if (trans->conn)
-		lchan = trans->conn->lchan;
+		conn = trans->conn;
 
 	/* if paging did not respond yet */
-	if (!lchan) {
+	if (!conn) {
 		DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 			"Received '%s' from MNCC in paging state\n",
 			(trans->subscr)?(trans->subscr->extension):"-",
@@ -2959,7 +2959,7 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x sub %s) "
 		"Received '%s' from MNCC in state %d (%s)\n",
-		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
 		trans->transaction_id,
 		(trans->conn->subscr)?(trans->conn->subscr->extension):"-",
 		get_mncc_name(msg_type), trans->cc.state,

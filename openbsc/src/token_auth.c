@@ -99,12 +99,12 @@ unauth:
 		subscr->authorized = 0;
 		db_sync_subscriber(subscr);
 		if (rc) {
-			struct gsm_lchan *lchan = lchan_for_subscr(subscr);
-			if (lchan) {
+			struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
+			if (conn) {
 				u_int8_t auth_rand[16];
 				/* kick the subscriber off the network */
-				gsm48_tx_mm_auth_req(&lchan->conn, auth_rand, 0);
-				gsm48_tx_mm_auth_rej(&lchan->conn);
+				gsm48_tx_mm_auth_req(conn, auth_rand, 0);
+				gsm48_tx_mm_auth_rej(conn);
 				/* FIXME: close the channel early ?*/
 				//gsm48_send_rr_Release(lchan);
 			}
@@ -118,7 +118,7 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
 	struct gsm_sms *sms = signal_data;
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 	u_int8_t auth_rand[16];
 
 
@@ -136,11 +136,11 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 
-	lchan = lchan_for_subscr(sms->receiver);
-	if (lchan) {
+	conn = connection_for_subscr(sms->receiver);
+	if (conn) {
 		/* kick the subscriber off the network */
-		gsm48_tx_mm_auth_req(&lchan->conn, auth_rand, 0);
-		gsm48_tx_mm_auth_rej(&lchan->conn);
+		gsm48_tx_mm_auth_req(conn, auth_rand, 0);
+		gsm48_tx_mm_auth_rej(conn);
 		/* FIXME: close the channel early ?*/
 		//gsm48_send_rr_Release(lchan);
 	}

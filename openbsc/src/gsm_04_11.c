@@ -1143,14 +1143,14 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms)
 {
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 
 	/* check if we already have an open lchan to the subscriber.
 	 * if yes, send the SMS this way */
-	lchan = lchan_for_subscr(subscr);
-	if (lchan) {
-		use_subscr_con(&lchan->conn);
-		return gsm411_send_sms_lchan(&lchan->conn, sms);
+	conn = connection_for_subscr(subscr);
+	if (conn) {
+		use_subscr_con(conn);
+		return gsm411_send_sms_lchan(conn, sms);
 	}
 
 	/* if not, we have to start paging */
@@ -1162,7 +1162,7 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 			 void *handler_data, void *signal_data)
 {
 	struct gsm_subscriber *subscr;
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 	struct gsm_sms *sms;
 
 	switch (signal) {
@@ -1170,14 +1170,14 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		/* A subscriber has attached. Check if there are
 		 * any pending SMS for him to be delivered */
 		subscr = signal_data;
-		lchan = lchan_for_subscr(subscr);
-		if (!lchan)
+		conn = connection_for_subscr(subscr);
+		if (!conn)
 			break;
 		sms = db_sms_get_unsent_for_subscr(subscr);
 		if (!sms)
 			break;
-		use_subscr_con(&lchan->conn);
-		gsm411_send_sms_lchan(&lchan->conn, sms);
+		use_subscr_con(conn);
+		gsm411_send_sms_lchan(conn, sms);
 		break;
 	default:
 		break;
