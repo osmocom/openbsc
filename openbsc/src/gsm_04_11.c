@@ -26,7 +26,6 @@
  */
 
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -599,7 +598,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		}
 	}
 
-	gsms->sender = subscr_get(msg->lchan->conn.subscr);
+	gsms->sender = subscr_get(conn->subscr);
 
 	LOGP(DSMS, LOGL_INFO, "RX SMS: Sender: %s, MTI: 0x%02x, VPF: 0x%02x, "
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
@@ -758,8 +757,6 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	trans->sms.sms = NULL;
 
 	/* check for more messages for this subscriber */
-	assert(msg->lchan->conn.subscr == trans->subscr);
-
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(trans->conn, sms);
@@ -835,7 +832,6 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
 
 	/* check for more messages for this subscriber */
-	assert(msg->lchan->conn.subscr == trans->subscr);
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms_lchan(trans->conn, sms);
