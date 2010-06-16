@@ -36,6 +36,9 @@ ipaccess-find
 ipaccess-firmware
 ipaccess-proxy
 isdnsync
+bsc_nat
+osmo-sgsn
+osmo-gbproxy
 
 #tests
 tests/channel/channel_test
