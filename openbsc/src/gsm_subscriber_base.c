@@ -106,7 +106,7 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 	/* paging failed, quit now */
 	if (rc <= 0) {
 		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
-				 NULL, NULL, request->param);
+				 NULL, NULL, subscr);
 	}
 }
 
