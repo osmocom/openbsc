@@ -451,7 +451,8 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 	if (ret < 0)
 		return ret;
 
-	si13->header.l2_plen = ret & 0xff;
+	/* length is coded in bit 2 an up */
+	si13->header.l2_plen = 0x01;
 
 	return sizeof (*si13) + ret;
 }
