@@ -374,9 +374,8 @@ static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, u_int8_t i
 
 
 /* Parse Chapter 9.2.11 Identity Response */
-static int mm_rx_id_resp(struct msgb *msg)
+static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
@@ -387,8 +386,6 @@ static int mm_rx_id_resp(struct msgb *msg)
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
-
-	conn = &lchan->conn;
 
 	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
@@ -453,20 +450,17 @@ static const char *lupd_name(u_int8_t type)
 }
 
 /* Chapter 9.2.15: Receive Location Updating Request */
-static int mm_rx_loc_upd_req(struct msgb *msg)
+static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
-	struct gsm_lchan *lchan = msg->lchan;
-	struct gsm_bts *bts = lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	u_int8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
-	conn = &lchan->conn;
 
 	mi_type = lu->mi[0] & GSM_MI_TYPE_MASK;
 
@@ -500,7 +494,7 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 		return 0;
 	}
 
-	allocate_loc_updating_req(&lchan->conn);
+	allocate_loc_updating_req(conn);
 
 	conn->loc_operation->key_seq = lu->key_seq;
 
@@ -758,12 +752,12 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
  *    with a HLR cause
  * d) Set the subscriber on the gsm_lchan and accept
  */
-static int gsm48_rx_mm_serv_req(struct msgb *msg)
+static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	u_int8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 
-	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	struct gsm_subscriber *subscr;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_service_request *req =
@@ -777,20 +771,20 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
 		DEBUGPC(DMM, "wrong sized message\n");
-		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
+		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	if (msg->data_len < req->mi_len + 6) {
 		DEBUGPC(DMM, "does not fit in packet\n");
-		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
+		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
 	mi_type = mi[0] & GSM_MI_TYPE_MASK;
 	if (mi_type != GSM_MI_TYPE_TMSI) {
 		DEBUGPC(DMM, "mi_type is not TMSI: %d\n", mi_type);
-		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
+		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_INCORRECT_MESSAGE);
 	}
 
@@ -808,12 +802,12 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 
 	/* FIXME: if we don't know the TMSI, inquire abit IMSI and allocate new TMSI */
 	if (!subscr)
-		return gsm48_tx_mm_serv_rej(&msg->lchan->conn,
+		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
 
-	if (!msg->lchan->conn.subscr)
-		msg->lchan->conn.subscr = subscr;
-	else if (msg->lchan->conn.subscr == subscr)
+	if (!conn->subscr)
+		conn->subscr = subscr;
+	else if (conn->subscr == subscr)
 		subscr_put(subscr); /* lchan already has a ref, don't need another one */
 	else {
 		DEBUGP(DMM, "<- CM Channel already owned by someone else?\n");
@@ -824,7 +818,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	memcpy(subscr->equipment.classmark2, classmark2, classmark2_len);
 	db_sync_equipment(&subscr->equipment);
 
-	return gsm48_secure_channel(&msg->lchan->conn, req->cipher_key_seq,
+	return gsm48_secure_channel(conn, req->cipher_key_seq,
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
 }
 
@@ -893,11 +887,10 @@ static int gsm48_rx_mm_status(struct msgb *msg)
 }
 
 /* Chapter 9.2.3: Authentication Response */
-static int gsm48_rx_mm_auth_resp(struct msgb *msg)
+static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_auth_resp *ar = (struct gsm48_auth_resp*) gh->data;
-	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
 	struct gsm_network *net = conn->bts->network;
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
@@ -935,7 +928,7 @@ static int gsm48_rx_mm_auth_resp(struct msgb *msg)
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
-static int gsm0408_rcv_mm(struct msgb *msg)
+static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	int rc = 0;
@@ -943,21 +936,21 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	switch (gh->msg_type & 0xbf) {
 	case GSM48_MT_MM_LOC_UPD_REQUEST:
 		DEBUGP(DMM, "LOCATION UPDATING REQUEST: ");
-		rc = mm_rx_loc_upd_req(msg);
+		rc = mm_rx_loc_upd_req(conn, msg);
 		break;
 	case GSM48_MT_MM_ID_RESP:
-		rc = mm_rx_id_resp(msg);
+		rc = mm_rx_id_resp(conn, msg);
 		break;
 	case GSM48_MT_MM_CM_SERV_REQ:
-		rc = gsm48_rx_mm_serv_req(msg);
+		rc = gsm48_rx_mm_serv_req(conn, msg);
 		break;
 	case GSM48_MT_MM_STATUS:
 		rc = gsm48_rx_mm_status(msg);
 		break;
 	case GSM48_MT_MM_TMSI_REALL_COMPL:
 		DEBUGP(DMM, "TMSI Reallocation Completed. Subscriber: %s\n",
-		       msg->lchan->conn.subscr ?
-				subscr_name(msg->lchan->conn.subscr) :
+		       conn->subscr ?
+				subscr_name(conn->subscr) :
 				"unknown subscriber");
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
@@ -967,7 +960,7 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 		DEBUGP(DMM, "CM REESTABLISH REQUEST: Not implemented\n");
 		break;
 	case GSM48_MT_MM_AUTH_RESP:
-		rc = gsm48_rx_mm_auth_resp(msg);
+		rc = gsm48_rx_mm_auth_resp(conn, msg);
 		break;
 	default:
 		LOGP(DMM, LOGL_NOTICE, "Unknown GSM 04.08 MM msg type 0x%02x\n",
@@ -1022,10 +1015,10 @@ static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 	return rc;
 }
 
-static int gsm48_rx_rr_classmark(struct msgb *msg)
+static int gsm48_rx_rr_classmark(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_subscriber *subscr = msg->lchan->conn.subscr;
+	struct gsm_subscriber *subscr = conn->subscr;
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	u_int8_t cm2_len, cm3_len = 0;
 	u_int8_t *cm2, *cm3 = NULL;
@@ -1092,7 +1085,7 @@ static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 	return 0;
 }
 
-static int gsm48_rx_rr_app_info(struct msgb *msg)
+static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t apdu_id_flags;
@@ -1106,13 +1099,12 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
 
-	return db_apdu_blob_store(msg->lchan->conn.subscr, apdu_id_flags, apdu_len, apdu_data);
+	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
 /* Chapter 9.1.10 Ciphering Mode Complete */
-static int gsm48_rx_rr_ciph_m_compl(struct msgb *msg)
+static int gsm48_rx_rr_ciph_m_compl(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_subscriber_connection *conn = &msg->lchan->conn;
 	gsm_cbfn *cb;
 	int rc = 0;
 
@@ -1168,14 +1160,14 @@ static int gsm48_rx_rr_ho_fail(struct msgb *msg)
 }
 
 /* Receive a GSM 04.08 Radio Resource (RR) message */
-static int gsm0408_rcv_rr(struct msgb *msg)
+static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	int rc = 0;
 
 	switch (gh->msg_type) {
 	case GSM48_MT_RR_CLSM_CHG:
-		rc = gsm48_rx_rr_classmark(msg);
+		rc = gsm48_rx_rr_classmark(conn, msg);
 		break;
 	case GSM48_MT_RR_GPRS_SUSP_REQ:
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
@@ -1193,10 +1185,10 @@ static int gsm0408_rcv_rr(struct msgb *msg)
 		rc = gsm48_rx_rr_meas_rep(msg);
 		break;
 	case GSM48_MT_RR_APP_INFO:
-		rc = gsm48_rx_rr_app_info(msg);
+		rc = gsm48_rx_rr_app_info(conn, msg);
 		break;
 	case GSM48_MT_RR_CIPH_M_COMPL:
-		rc = gsm48_rx_rr_ciph_m_compl(msg);
+		rc = gsm48_rx_rr_ciph_m_compl(conn, msg);
 		break;
 	case GSM48_MT_RR_HANDO_COMPL:
 		rc = gsm48_rx_rr_ho_compl(msg);
@@ -3035,13 +3027,11 @@ static struct datastate {
 #define DATASLLEN \
 	(sizeof(datastatelist) / sizeof(struct datastate))
 
-static int gsm0408_rcv_cc(struct msgb *msg)
+static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type & 0xbf;
 	u_int8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
-	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
 
@@ -3050,14 +3040,12 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	conn = &lchan->conn;
-
 	/* Find transaction */
 	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_CC, transaction_id);
 
 	DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 		"Received '%s' from MS in state %d (%s)\n",
-		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		conn->bts->nr, conn->lchan->ts->trx->nr, conn->lchan->ts->nr,
 		transaction_id, (conn->subscr)?(conn->subscr->extension):"-",
 		gsm48_cc_msg_name(msg_type), trans?(trans->cc.state):0,
 		gsm48_cc_state_name(trans?(trans->cc.state):0));
@@ -3077,7 +3065,7 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 			return -ENOMEM;
 		}
 		/* Assign transaction */
-		trans->conn = &lchan->conn;
+		trans->conn = conn;
 		use_subscr_con(trans->conn);
 	}
 
@@ -3108,13 +3096,13 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
-		rc = gsm0408_rcv_cc(msg);
+		rc = gsm0408_rcv_cc(conn, msg);
 		break;
 	case GSM48_PDISC_MM:
-		rc = gsm0408_rcv_mm(msg);
+		rc = gsm0408_rcv_mm(conn, msg);
 		break;
 	case GSM48_PDISC_RR:
-		rc = gsm0408_rcv_rr(msg);
+		rc = gsm0408_rcv_rr(conn, msg);
 		break;
 	case GSM48_PDISC_SMS:
 		rc = gsm0411_rcv_sms(conn, msg);
