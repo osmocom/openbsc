@@ -913,7 +913,7 @@ static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
 
 /* Entry point for incoming GSM48_PDISC_SMS from abis_rsl.c */
 int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
-		    struct msgb *msg, u_int8_t link_id)
+		    struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t msg_type = gh->msg_type;
@@ -940,7 +940,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans->sms.rp_state = GSM411_RPS_IDLE;
 		trans->sms.is_mt = 0;
-		trans->sms.link_id = link_id;
+		trans->sms.link_id = UM_SAPI_SMS;
 
 		trans->conn = conn;
 		use_subscr_con(trans->conn);

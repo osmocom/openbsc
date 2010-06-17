@@ -40,9 +40,25 @@ static void msc_clear_request(struct gsm_subscriber_connection* conn, uint32_t c
 	gsm0408_clear_request(conn, cause);
 }
 
+static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
+			uint16_t chosen_channel)
+{
+	gsm0408_dispatch(conn, msg);
+
+	/* TODO: do better */
+	return BSC_API_CONN_POL_ACCEPT;
+}
+
+static void msc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	gsm0408_dispatch(conn, msg);
+}
+
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
 	.clear_request = msc_clear_request,
+	.compl_l3 = msc_compl_l3,
+	.dtap  = msc_dtap,
 };
 
 struct bsc_api *msc_bsc_api() {

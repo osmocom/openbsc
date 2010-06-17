@@ -27,6 +27,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/chan_alloc.h>
 
 #include <osmocore/talloc.h>
 
@@ -82,6 +83,27 @@ int bsc_upqueue(struct gsm_network *net)
 		}
 
 	return work;
+}
+
+int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
+{
+	int rc;
+	struct gsm_subscriber_connection *conn;
+	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+
+	conn = &msg->lchan->conn;
+	if (conn->allocated) {
+		api->dtap(conn, msg);
+	} else {
+		/* accept the connection or close the lchan */
+		rc = api->compl_l3(conn, msg, 0);
+		if (rc == BSC_API_CONN_POL_ACCEPT)
+			conn->allocated = 1;
+		else
+			lchan_auto_release(msg->lchan);
+	}
+
+	return 0;
 }
 
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id)

@@ -5,12 +5,16 @@
 
 #include "gsm_data.h"
 
+#define BSC_API_CONN_POL_ACCEPT	0
+#define BSC_API_CONN_POL_REJECT	1
+
 struct bsc_api {
 	void (*sapi_n_reject)(struct gsm_subscriber_connection *conn, int dlci);
 	void (*cipher_mode_compl)(struct gsm_subscriber_connection *conn,
 				  struct msgb *msg, uint16_t ind);
-	void (*compl_l3)(struct gsm_subscriber_connection *conn,
-			 struct msgb *msg, uint16_t chosen_channel); 
+	int (*compl_l3)(struct gsm_subscriber_connection *conn,
+			struct msgb *msg, uint16_t chosen_channel); 
+	void (*dtap)(struct gsm_subscriber_connection *conn, struct msgb *msg);
 	void (*ass_compl)(struct gsm_subscriber_connection *conn,
 			  uint16_t rr_cause);
 	void (*ass_fail)(struct gsm_subscriber_connection *conn,

@@ -99,11 +99,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 {}
 
-int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
-{
-	return -1;
-}
-
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
 	if (write_queue_enqueue(&nat->msc_con->write_queue, msg) != 0) {

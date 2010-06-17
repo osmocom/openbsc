@@ -3096,8 +3096,8 @@ static int gsm0408_rcv_cc(struct msgb *msg)
 	return rc;
 }
 
-/* here we pass in a msgb from the RSL->RLL.  We expect the l3 pointer to be set */
-int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
+/* here we get data from the BSC level... */
+int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
@@ -3117,7 +3117,7 @@ int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
 		rc = gsm0408_rcv_rr(msg);
 		break;
 	case GSM48_PDISC_SMS:
-		rc = gsm0411_rcv_sms(&msg->lchan->conn, msg, link_id);
+		rc = gsm0411_rcv_sms(conn, msg);
 		break;
 	case GSM48_PDISC_MM_GPRS:
 	case GSM48_PDISC_SM_GPRS:

@@ -721,7 +721,3 @@ int nm_state_event()
 	return -1;
 }
 
-int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id)
-{
-	return -1;
-}

@@ -25,7 +25,7 @@ struct sms_deliver {
 
 struct msgb;
 
-int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn, struct msgb *msg, u_int8_t link_id);
+int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 struct gsm_sms *sms_alloc(void);
 void sms_free(struct gsm_sms *sms);

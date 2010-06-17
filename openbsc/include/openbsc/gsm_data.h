@@ -254,6 +254,7 @@ struct gsm_subscriber_connection {
 	int silent_call;
 
 	/* back pointers */
+	int allocated;
 	struct gsm_lchan *lchan;
 	struct gsm_bts *bts;
 };
