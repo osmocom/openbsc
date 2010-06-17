@@ -99,7 +99,6 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 				gh->proto_discr, gh->msg_type);
 	}
 
-	msg->l3h = msg->data;
 	return gsm0808_submit_dtap(conn, msg, 0);
 }
 

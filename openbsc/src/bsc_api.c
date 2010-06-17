@@ -47,6 +47,7 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	msg->lchan = conn->lchan;
 	msg->trx = msg->lchan->ts->trx;
 
+	msg->l3h = msg->data;
 	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
 		OBSC_LINKID_CB(msg) = link_id;
 		if (rll_establish(msg->lchan, sapi, rll_ind_cb, msg) != 0) {
