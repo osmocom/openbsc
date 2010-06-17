@@ -43,6 +43,8 @@ static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn", "SCCP Connections" },
 	[BCFG_CTR_SCCP_CALLS]    = { "sccp.calls", "SCCP Assignment Commands"},
 	[BCFG_CTR_NET_RECONN]    = { "net.reconnects", "Network reconnects"},
+	[BCFG_CTR_DROPPED_SCCP]  = { "dropped.sccp", "Dropped SCCP connections."},
+	[BCFG_CTR_DROPPED_CALLS] = { "dropped.calls", "Dropped active calls."},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {

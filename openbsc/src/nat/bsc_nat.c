@@ -588,17 +588,23 @@ static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 void bsc_close_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
+	struct rate_ctr *ctr = NULL;
 
 	/* stop the timeout timer */
 	bsc_del_timer(&connection->id_timeout);
 	bsc_del_timer(&connection->ping_timeout);
 	bsc_del_timer(&connection->pong_timeout);
 
+	if (connection->cfg)
+		ctr = &connection->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_SCCP];
+
 	/* remove all SCCP connections */
 	llist_for_each_entry_safe(sccp_patch, tmp, &nat->sccp_connections, list_entry) {
 		if (sccp_patch->bsc != connection)
 			continue;
 
+		if (ctr)
+			rate_ctr_inc(ctr);
 		if (sccp_patch->has_remote_ref)
 			nat_send_rlsd(sccp_patch);
 		sccp_connection_destroy(sccp_patch);

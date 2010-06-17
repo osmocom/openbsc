@@ -546,12 +546,20 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 {
+	struct rate_ctr *ctr = NULL;
 	int i;
+
+	if (bsc->cfg)
+		ctr = &bsc->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_CALLS];
+
 	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
 		struct bsc_endpoint *bsc_endp = &bsc->nat->bsc_endpoints[i];
 
 		if (bsc_endp->bsc != bsc)
 			continue;
+
+		if (ctr)
+			rate_ctr_inc(ctr);
 
 		bsc_mgcp_free_endpoint(bsc->nat, i);
 		mgcp_free_endp(&bsc->nat->mgcp_cfg->endpoints[i]);
