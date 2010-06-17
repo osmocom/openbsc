@@ -513,7 +513,7 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_SCALL_SUCCESS:
 		vty_out(vty, "%% silent call on ARFCN %u timeslot %u%s",
-			sigdata->lchan->ts->trx->arfcn, sigdata->lchan->ts->nr,
+			sigdata->conn->lchan->ts->trx->arfcn, sigdata->conn->lchan->ts->nr,
 			VTY_NEWLINE);
 		break;
 	case S_SCALL_EXPIRED:

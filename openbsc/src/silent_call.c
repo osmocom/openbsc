@@ -36,10 +36,9 @@
 
 /* paging of the requested subscriber has completed */
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,
-			    struct msgb *msg, void *_lchan, void *_data)
+			    struct msgb *msg, void *_conn, void *_data)
 {
-	struct gsm_subscriber_connection *conn;
-	struct gsm_lchan *lchan = _lchan;
+	struct gsm_subscriber_connection *conn = _conn;
 	struct scall_signal_data sigdata;
 	int rc;
 
@@ -48,15 +47,13 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 
 	DEBUGP(DSMS, "paging_cb_silent: ");
 
-	conn = &lchan->conn;
-
-	sigdata.lchan = lchan;
+	sigdata.conn = conn;
 	sigdata.data = _data;
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
 		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
-			lchan->ts->nr, lchan->ts->trx->arfcn);
+			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
 		/* increment lchan reference count */
 		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);

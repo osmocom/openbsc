@@ -125,12 +125,12 @@ struct paging_signal_data {
 	struct gsm_bts *bts;
 
 	/* NULL in case the paging didn't work */
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 };
 
 struct scall_signal_data {
 	struct gsm_subscriber *subscr;
-	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 	void *data;
 };
 

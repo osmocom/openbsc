@@ -91,7 +91,7 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_PAGING_SUCCEEDED:
 		/* A subscriber has attached. */
-		send_rrlp_req(&psig_data->lchan->conn);
+		send_rrlp_req(psig_data->conn);
 		break;
 	case S_PAGING_EXPIRED:
 		break;

@@ -1363,9 +1363,9 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
 
 /* call-back from paging the B-end of the connection */
 static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
-			      struct msgb *msg, void *_lchan, void *param)
+			      struct msgb *msg, void *_conn, void *param)
 {
-	struct gsm_lchan *lchan = _lchan;
+	struct gsm_subscriber_connection *conn = _conn;
 	struct gsm_subscriber *subscr = param;
 	struct gsm_trans *transt, *tmp;
 	struct gsm_network *net;
@@ -1387,13 +1387,13 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			continue;
 		switch (event) {
 		case GSM_PAGING_SUCCEEDED:
-			if (!lchan) // paranoid
+			if (!conn) // paranoid
 				break;
 			DEBUGP(DCC, "Paging subscr %s succeeded!\n",
 				subscr->extension);
 			/* Assign lchan */
 			if (!transt->conn) {
-				transt->conn = &lchan->conn;
+				transt->conn = conn;
 				use_subscr_con(transt->conn);
 			}
 			/* send SETUP request to called party */

@@ -1108,22 +1108,22 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 /* paging callback. Here we get called if paging a subscriber has
  * succeeded or failed. */
 static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
-			      struct msgb *msg, void *_lchan, void *_sms)
+			      struct msgb *msg, void *_conn, void *_sms)
 {
-	struct gsm_lchan *lchan = _lchan;
+	struct gsm_subscriber_connection *conn = _conn;
 	struct gsm_sms *sms = _sms;
 	int rc = 0;
 
 	DEBUGP(DSMS, "paging_cb_send_sms(hooknum=%u, event=%u, msg=%p,"
-		"lchan=%p, sms=%p)\n", hooknum, event, msg, lchan, sms);
+		"conn=%p, sms=%p)\n", hooknum, event, msg, conn, sms);
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
-		use_subscr_con(&lchan->conn);
-		gsm411_send_sms(&lchan->conn, sms);
+		use_subscr_con(conn);
+		gsm411_send_sms(conn, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:

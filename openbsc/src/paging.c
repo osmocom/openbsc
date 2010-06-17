@@ -194,7 +194,7 @@ static void paging_T3113_expired(void *data)
 	
 	sig_data.subscr = req->subscr;
 	sig_data.bts	= req->bts;
-	sig_data.lchan	= NULL;
+	sig_data.conn	= NULL;
 
 	/* must be destroyed before calling cbfn, to prevent double free */
 	counter_inc(req->bts->network->stats.paging.expired);
@@ -276,7 +276,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 
 /* we consciously ignore the type of the request here */
 static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-				 struct gsm_lchan *lchan)
+				 struct gsm_subscriber_connection *conn)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
@@ -284,10 +284,10 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
 		if (req->subscr == subscr) {
-			if (lchan && req->cbfn) {
+			if (conn && req->cbfn) {
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-					  NULL, lchan, req->cbfn_param);
+					  NULL, conn, req->cbfn_param);
 			} else
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d silently.\n", bts->nr);
 			paging_remove_request(&bts->paging, req);
@@ -298,12 +298,12 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 
 /* Stop paging on all other bts' */
 void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
-			 struct gsm_lchan *lchan)
+			 struct gsm_subscriber_connection *conn)
 {
 	struct gsm_bts *bts = NULL;
 
 	if (_bts)
-		_paging_request_stop(_bts, subscr, lchan);
+		_paging_request_stop(_bts, subscr, conn);
 
 	do {
 		/*
