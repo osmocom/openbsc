@@ -354,14 +354,14 @@ static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 		/* ignore additional fi */
 		if (fi & (1<<7)) sms_vp++;
 		/* read validity period format */
-		switch (fi & 0b111) {
-		case 0b000:
+		switch (fi & 0x7) {
+		case 0x0:
 			return gsm340_vp_default(); /* no vpf specified */
-		case 0b001:
+		case 0x1:
 			return gsm340_vp_relative(sms_vp);
-		case 0b010:
+		case 0x2:
 			return gsm340_vp_relative_integer(sms_vp);
-		case 0b011:
+		case 0x3:
 			return gsm340_vp_relative_semioctet(sms_vp);
 		default:
 			/* The GSM spec says that the SC should reject any
