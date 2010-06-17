@@ -246,8 +246,9 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 }
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
-int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_text,
-						const struct ussd_request *req)
+int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
+			       const struct msgb *in_msg, const char *response_text,
+			       const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -257,8 +258,6 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 	response_len = (strlen(response_text) * 7) / 8;
 	if (((strlen(response_text) * 7) % 8) != 0)
 		response_len += 1;
-
-	msg->lchan = in_msg->lchan;
 
 	/* First put the payload text into the message */
 	ptr8 = msgb_put(msg, response_len);
@@ -295,16 +294,15 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 					| (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(&msg->lchan->conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0);
 }
 
-int gsm0480_send_ussd_reject(const struct msgb *in_msg,
-				const struct ussd_request *req)
+int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
+			     const struct msgb *in_msg,
+			     const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-
-	msg->lchan = in_msg->lchan;
 
 	/* First insert the problem code */
 	msgb_push_TLV1(msg, GSM_0480_PROBLEM_CODE_TAG_GENERAL,
@@ -325,5 +323,5 @@ int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 	gh->proto_discr |= req->transaction_id | (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(&msg->lchan->conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0);
 }

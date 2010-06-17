@@ -3113,7 +3113,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
 		break;
 	case GSM48_PDISC_NC_SS:
-		rc = handle_rcv_ussd(msg);
+		rc = handle_rcv_ussd(conn, msg);
 		break;
 	default:
 		LOGP(DRLL, LOGL_NOTICE, "Unknown "

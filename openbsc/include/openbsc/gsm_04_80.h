@@ -6,6 +6,8 @@
 
 #define MAX_LEN_USSD_STRING	31
 
+struct gsm_subscriber_connection;
+
 struct ussd_request {
 			char text[MAX_LEN_USSD_STRING + 1];
 			u_int8_t transaction_id;
@@ -14,9 +16,11 @@ struct ussd_request {
 
 int gsm0480_decode_ussd_request(const struct msgb *msg, 
 				struct ussd_request *request); 
-int gsm0480_send_ussd_response(const struct msgb *in_msg, const char* response_text, 
-						const struct ussd_request *req);
-int gsm0480_send_ussd_reject(const struct msgb *msg, 
-				const struct ussd_request *request);
+int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
+			       const struct msgb *in_msg, const char* response_text, 
+			       const struct ussd_request *req);
+int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
+			     const struct msgb *msg, 
+			     const struct ussd_request *request);
 
 #endif
