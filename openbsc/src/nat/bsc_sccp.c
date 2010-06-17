@@ -128,7 +128,7 @@ struct sccp_connections *create_sccp_src_ref(struct bsc_connection *bsc,
 
 	bsc_mgcp_init(conn);
 	llist_add_tail(&conn->list_entry, &bsc->nat->sccp_connections);
-	counter_inc(bsc->cfg->stats.sccp.conn);
+	rate_ctr_inc(&bsc->cfg->stats.ctrg->ctr[BCFG_CTR_SCCP_CONN]);
 	counter_inc(bsc->cfg->nat->stats.sccp.conn);
 
 	LOGP(DNAT, LOGL_DEBUG, "Created 0x%x <-> 0x%x mapping for con %p\n",

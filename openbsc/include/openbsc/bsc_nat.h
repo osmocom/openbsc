@@ -31,6 +31,7 @@
 #include <osmocore/msgb.h>
 #include <osmocore/timer.h>
 #include <osmocore/write_queue.h>
+#include <osmocore/rate_ctr.h>
 #include <osmocore/statistics.h>
 
 #include <regex.h>
@@ -142,14 +143,13 @@ struct sccp_connections {
  * Stats per BSC
  */
 struct bsc_config_stats {
-	struct {
-		struct counter *conn;
-		struct counter *calls;
-	} sccp;
+	struct rate_ctr_group *ctrg;
+};
 
-	struct {
-		struct counter *reconn;
-	} net;
+enum bsc_cfg_ctr {
+	BCFG_CTR_SCCP_CONN,
+	BCFG_CTR_SCCP_CALLS,
+	BCFG_CTR_NET_RECONN,
 };
 
 /**

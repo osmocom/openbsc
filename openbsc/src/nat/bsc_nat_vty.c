@@ -27,6 +27,7 @@
 #include <openbsc/vty.h>
 
 #include <osmocore/talloc.h>
+#include <osmocore/rate_ctr.h>
 
 #include <sccp/sccp.h>
 
@@ -196,11 +197,7 @@ DEFUN(show_stats,
 
 		vty_out(vty, " BSC lac: %d nr: %d%s",
 			conf->lac, conf->nr, VTY_NEWLINE);
-		vty_out(vty, "   SCCP Connnections %lu total, %lu calls%s",
-			counter_get(conf->stats.sccp.conn),
-			counter_get(conf->stats.sccp.calls), VTY_NEWLINE);
-		vty_out(vty, "   BSC Connections %lu total%s",
-			counter_get(conf->stats.net.reconn), VTY_NEWLINE);
+		vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
 	}
 
 	return CMD_SUCCESS;

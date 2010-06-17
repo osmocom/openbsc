@@ -411,7 +411,9 @@ static int forward_sccp_to_bts(struct msgb *msg)
 				counter_inc(nat->stats.sccp.calls);
 
 				if (con) {
-					counter_inc(con->bsc->cfg->stats.sccp.calls);
+					struct rate_ctr_group *ctrg;
+					ctrg = con->bsc->cfg->stats.ctrg;
+					rate_ctr_inc(&ctrg->ctr[BCFG_CTR_SCCP_CALLS]);
 					if (bsc_mgcp_assign(con, msg) != 0)
 						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
 				} else
@@ -639,7 +641,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
 		if (strcmp(conf->token, token) == 0) {
-			counter_inc(conf->stats.net.reconn);
+			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
 			bsc_del_timer(&bsc->id_timeout);
@@ -1110,6 +1112,8 @@ int main(int argc, char** argv)
 	/* parse options */
 	local_addr.s_addr = INADDR_ANY;
 	handle_options(argc, argv);
+
+	rate_ctr_init(tall_bsc_ctx);
 
 	/* init vty and parse */
 	telnet_init(tall_bsc_ctx, NULL, 4244);

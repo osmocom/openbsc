@@ -38,6 +38,20 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+
+static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
+	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn", "SCCP Connections" },
+	[BCFG_CTR_SCCP_CALLS]    = { "sccp.calls", "SCCP Assignment Commands"},
+	[BCFG_CTR_NET_RECONN]    = { "net.reconnects", "Network reconnects"},
+};
+
+static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
+	.group_name_prefix = "nat.bsc",
+	.group_description = "NAT BSC Statistics",
+	.num_ctr = ARRAY_SIZE(bsc_cfg_ctr_description),
+	.ctr_desc = bsc_cfg_ctr_description,
+};
+
 struct bsc_nat *bsc_nat_alloc(void)
 {
 	struct bsc_nat *nat = talloc_zero(tall_bsc_ctx, struct bsc_nat);
@@ -94,9 +108,11 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsi
 	llist_add_tail(&conf->entry, &nat->bsc_configs);
 	++nat->num_bsc;
 
-	conf->stats.sccp.conn = counter_alloc("nat.bsc.sccp.conn");
-	conf->stats.sccp.calls = counter_alloc("nat.bsc.sccp.calls");
-	conf->stats.net.reconn = counter_alloc("nat.bsc.net.reconnects");
+	conf->stats.ctrg = rate_ctr_group_alloc(conf, &bsc_cfg_ctrg_desc, conf->lac);
+	if (!conf->stats.ctrg) {
+		talloc_free(conf);
+		return NULL;
+	}
 
 	return conf;
 }
