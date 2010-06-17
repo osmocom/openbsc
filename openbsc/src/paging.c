@@ -46,6 +46,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/bsc_api.h>
 
 void *tall_paging_ctx;
 
