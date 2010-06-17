@@ -31,7 +31,7 @@ enum bsc_vty_node {
 	BSSGP_NODE,
 	OML_NODE,
 	NAT_NODE,
-	BSC_NODE,
+	NAT_BSC_NODE,
 };
 
 #endif

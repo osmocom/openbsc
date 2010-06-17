@@ -41,7 +41,7 @@ static struct cmd_node nat_node = {
 };
 
 static struct cmd_node bsc_node = {
-	BSC_NODE,
+	NAT_BSC_NODE,
 	"%s(bsc)#",
 	1,
 };
@@ -343,7 +343,7 @@ DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 		return CMD_WARNING;
 
 	vty->index = bsc;
-	vty->node = BSC_NODE;
+	vty->node = NAT_BSC_NODE;
 
 	return CMD_SUCCESS;
 }
@@ -541,14 +541,14 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
 	install_node(&bsc_node, config_write_bsc);
-	install_default(BSC_NODE);
-	install_element(BSC_NODE, &ournode_exit_cmd);
-	install_element(BSC_NODE, &ournode_end_cmd);
-	install_element(BSC_NODE, &cfg_bsc_token_cmd);
-	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
-	install_element(BSC_NODE, &cfg_bsc_paging_cmd);
-	install_element(BSC_NODE, &cfg_bsc_desc_cmd);
-	install_element(BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
+	install_default(NAT_BSC_NODE);
+	install_element(NAT_BSC_NODE, &ournode_exit_cmd);
+	install_element(NAT_BSC_NODE, &ournode_end_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_token_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_lac_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
 
 	mgcp_vty_init();
 

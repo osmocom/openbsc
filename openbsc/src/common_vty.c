@@ -76,7 +76,7 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
 		break;
-	case BSC_NODE:
+	case NAT_BSC_NODE:
 		vty->node = NAT_NODE;
 		{
 			struct bsc_config *bsc_config = vty->index;
@@ -126,7 +126,7 @@ gDEFUN(ournode_exit,
 			vty->index_sub = &ts->trx->description;
 		}
 		break;
-	case BSC_NODE:
+	case NAT_BSC_NODE:
 		vty->node = NAT_NODE;
 		{
 			struct bsc_config *bsc_config = vty->index;
