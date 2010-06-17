@@ -522,6 +522,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
 	install_node(&nat_node, config_write_nat);
 	install_default(NAT_NODE);
+	install_element(NAT_NODE, &ournode_exit_cmd);
+	install_element(NAT_NODE, &ournode_end_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_ip_cmd);
 	install_element(NAT_NODE, &cfg_nat_msc_port_cmd);
 	install_element(NAT_NODE, &cfg_nat_auth_time_cmd);
@@ -540,6 +542,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_bsc_cmd);
 	install_node(&bsc_node, config_write_bsc);
 	install_default(BSC_NODE);
+	install_element(BSC_NODE, &ournode_exit_cmd);
+	install_element(BSC_NODE, &ournode_end_cmd);
 	install_element(BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(BSC_NODE, &cfg_bsc_lac_cmd);
 	install_element(BSC_NODE, &cfg_bsc_paging_cmd);
