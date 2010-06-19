@@ -11,11 +11,11 @@ Subject: [PATCH 1/2] Add the Abis OML patch.
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
 
-diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
-index b18f42e..115fa09 100644
---- a/epan/dissectors/Makefile.common
-+++ b/epan/dissectors/Makefile.common
-@@ -485,6 +485,7 @@ DISSECTOR_SRC = \
+Index: wireshark/epan/dissectors/Makefile.common
+===================================================================
+--- wireshark.orig/epan/dissectors/Makefile.common
++++ wireshark/epan/dissectors/Makefile.common
+@@ -483,6 +483,7 @@
  	packet-gsm_a_gm.c		\
  	packet-gsm_a_rp.c		\
  	packet-gsm_a_rr.c	\
@@ -23,15 +23,14 @@ index b18f42e..115fa09 100644
  	packet-gsm_ipa.c	\
  	packet-gsm_bsslap.c		\
  	packet-gsm_bssmap_le.c	\
-diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
-new file mode 100644
-index 0000000..0f16f18
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
+===================================================================
 --- /dev/null
-+++ b/epan/dissectors/packet-gsm_abis_oml.c
-@@ -0,0 +1,1405 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c
+@@ -0,0 +1,1604 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
-+ * Copyright 2009 by Harald Welte <laforge@gnumonks.org>
++ * Copyright 2009-2010 by Harald Welte <laforge@gnumonks.org>
 + * Copyright 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
 + * based on A-bis OML code in OpenBSC
 + *
@@ -106,6 +105,8 @@ index 0000000..0f16f18
 +static int hf_attr_ach_sslot = -1;
 +static int hf_attr_gsm_time = -1;
 +static int hf_attr_chan_comb = -1;
++static int hf_attr_hsn = -1;
++static int hf_attr_maio = -1;
 +/* Ipaccess */
 +static int hf_oml_ipa_tres_attr_tag = -1;
 +static int hf_oml_ipa_tres_attr_len = -1;
@@ -167,8 +168,8 @@ index 0000000..0f16f18
 +	{ ABIS_OM_PLACEMENT_LAST,	"Last" },
 +};
 +
-+/* TS 12.21 Chapter 9.2 */
-+static const value_string oml_fom_msgtype_vals[] = {
++/* Standard Message Types as per TS 12.21 Chapter 9.2 */
++static const value_string _oml_fom_msgtype_vals[] = {
 +	{ NM_MT_LOAD_INIT,		"Software Load Init" },
 +	{ NM_MT_LOAD_INIT_ACK,		"Software Load Init ACK" },
 +	{ NM_MT_LOAD_INIT_NACK,		"Software Load Init NACK" },
@@ -266,7 +267,11 @@ index 0000000..0f16f18
 +	{ NM_MT_SET_ALARM_THRES,	"Set Alarm Threshold" },
 +	{ NM_MT_SET_ALARM_THRES_ACK,	"Set Alarm Threshold ACK" },
 +	{ NM_MT_SET_ALARM_THRES_NACK,	"Set Alarm Threshold NACK" },
-+	/* proprietary, not in the standard */
++	{ 0, NULL }
++};
++
++/* proprietary ip.access message types, not in the standard */
++static const value_string _oml_fom_msgtype_vals_ipa[] = {
 +	{ NM_MT_IPACC_RESTART,		"IPA Restart" },
 +	{ NM_MT_IPACC_RESTART_ACK,	"IPA Restart ACK" },
 +	{ NM_MT_IPACC_RSL_CONNECT,	"IPA RSL Connect" },
@@ -300,6 +305,11 @@ index 0000000..0f16f18
 +	{ NM_MT_IPACC_MEAS_RES_REQ_NACK,"IPA Measurement Result Request NACK" },
 +	{ NM_MT_IPACC_START_MEAS_NACK,	"IPA Start Measurement NACK" },
 +	{ NM_MT_IPACC_STOP_MEAS_NACK,	"IPA Stop Measurement NACK" },
++	{ 0, NULL }
++};
++
++/* proprietary Siemens message types, not in the standard */
++static const value_string _oml_fom_msgtype_vals_bs11[] = {
 +	{ NM_MT_BS11_RESET_RESOURCE,	"SIE Reset Resource" },
 +	{ NM_MT_BS11_BEGIN_DB_TX,	"SIE Begin Database Transmission" },
 +	{ NM_MT_BS11_BEGIN_DB_TX_ACK,	"SIE Begin Database Transmission ACK" },
@@ -313,6 +323,9 @@ index 0000000..0f16f18
 +	{ NM_MT_BS11_DELETE_OBJ,	"SIE Delete Object" },
 +	{ NM_MT_BS11_DELETE_OBJ_ACK,	"SIE Delete Object ACK" },
 +	{ NM_MT_BS11_DELETE_OBJ_NACK,	"SIE Delete Object NACK" },
++	{ NM_MT_BS11_SET_ATTR,		"SIE Set Attribute" },
++	{ NM_MT_BS11_SET_ATTR_ACK,	"SIE Set Attribute ACK" },
++	{ NM_MT_BS11_SET_ATTR_NACK,	"SIE Set Attribute NACK" },
 +	{ NM_MT_BS11_GET_STATE,		"SIE Get State" },
 +	{ NM_MT_BS11_GET_STATE_ACK,	"SIE Get State ACK" },
 +	{ NM_MT_BS11_LMT_LOGON,		"SIE LMT Logon" },
@@ -325,7 +338,11 @@ index 0000000..0f16f18
 +	{ NM_MT_BS11_LMT_LOGOFF_ACK,	"SIE LMT Logoff ACK" },
 +	{ NM_MT_BS11_RECONNECT,		"SIE Reconnect BTS" },
 +	{ NM_MT_BS11_RECONNECT_ACK,	"SIE Reconnect BTS ACK" },
++	{ 0, NULL }
 +};
++
++/* initialize with the standard message types only */
++static value_string_ext oml_fom_msgtype_vse = VALUE_STRING_EXT_INIT(_oml_fom_msgtype_vals);
 +
 +/* TS 12.21 Section 9.2: Object Class */
 +static const value_string oml_fom_objclass_vals[] = {
@@ -334,6 +351,7 @@ index 0000000..0f16f18
 +	{ NM_OC_RADIO_CARRIER,		"Radio Carrier" },
 +	{ NM_OC_CHANNEL,		"Radio Channel" },
 +	{ NM_OC_BASEB_TRANSC,		"Baseband Transceiver" },
++
 +	/* proprietary, vendor specific */
 +	{ NM_OC_BS11_ADJC,		"SIE Adjacend Channel" },
 +	{ NM_OC_BS11_HANDOVER,		"SIE Handover" },
@@ -344,15 +362,18 @@ index 0000000..0f16f18
 +	{ NM_OC_BS11_TEST,		"SIE Test" },
 +	{ NM_OC_BS11_ENVABTSE,		"SIE EnvaBTSE" },
 +	{ NM_OC_BS11_BPORT,		"SIE BPort" },
++
 +	{ NM_OC_GPRS_NSE,		"GPRS NSE" },
 +	{ NM_OC_GPRS_CELL,		"GPRS Cell" },
 +	{ NM_OC_GPRS_NSVC0,		"GPRS NSVC0" },
 +	{ NM_OC_GPRS_NSVC1,		"GPRS NSVC1" },
++
 +	{ NM_OC_NULL,			"NULL" },
++	{ 0, NULL }
 +};
 +
 +/* TS 12.21 Section 9.4: Attributes */
-+static const value_string oml_fom_attr_vals[] = {
++static const value_string _oml_fom_attr_vals[] = {
 +	{ NM_ATT_ABIS_CHANNEL,		"A-bis Channel" },
 +	{ NM_ATT_ADD_INFO,		"Additional Information" },
 +	{ NM_ATT_ADD_TEXT,		"Additional Text" },
@@ -422,6 +443,54 @@ index 0000000..0f16f18
 +	{ NM_ATT_FILE_DATA,		"File Data" },
 +	{ NM_ATT_MEAS_RES,		"Measurement Result" },
 +	{ NM_ATT_MEAS_TYPE,		"Measurement Type" },
++	{ 0, NULL }
++};
++
++static value_string_ext oml_fom_attr_vse = VALUE_STRING_EXT_INIT(_oml_fom_attr_vals);
++
++/* proprietary Siemens attributes, not in the standard */
++static const value_string oml_fom_attr_vals_bs11[] = {
++	{ NM_ATT_BS11_OM_LAPD_REL_TIMER,"SIE OML LAPD Release Timer" },
++	{ NM_ATT_BS11_RF_RES_IND_PER,	"SIE RF Resource Indication Period" },
++	{ NM_ATT_BS11_RX_LEV_MIN_CELL,	"SIE RxLevel Min Cell" },
++	{ NM_ATT_BS11_ABIS_EXT_TIME,	"SIE A-bis external time" },
++	{ NM_ATT_BS11_TIMER_HO_REQUEST,	"SIE Timer Handover Request" },
++	{ NM_ATT_BS11_TIMER_NCELL,	"SIE Timer nCell" },
++	{ NM_ATT_BS11_TSYNC,		"SIE Timer Tsync" },
++	{ NM_ATT_BS11_TTRAU,		"SIE Timer Ttrau" },
++	{ NM_ATT_BS11_EMRG_CFG_MEMBER,	"SIE Emergency Config Member" },
++	{ NM_ATT_BS11_TRX_AREA,		"SIE TRX Area" },
++	{ NM_ATT_BS11_BCCH_RECONF,	"SIE BCCH Reconfiguration" },
++	{ NM_ATT_BS11_BIT_ERR_THESH,	"SIE Bit Error Threshold" },
++	{ NM_ATT_BS11_BOOT_SW_VERS,	"SIE Boot Software Version" },
++	{ NM_ATT_BS11_CCLK_ACCURACY,	"SIE CCLK Accuracy" },
++	{ NM_ATT_BS11_CCLK_TYPE,	"SIE CCLK Type" },
++	{ NM_ATT_BS11_INP_IMPEDANCE,	"SIE Input Impedance" },
++	{ NM_ATT_BS11_L1_PROT_TYPE,	"SIE L1 Protocol Type" },
++	{ NM_ATT_BS11_LINE_CFG,		"SIE Line Configuration" },
++	{ NM_ATT_BS11_LI_PORT_1,	"SIE Line Interface Port 1" },
++	{ NM_ATT_BS11_LI_PORT_2,	"SIE Line Interface Port 2" },
++	{ NM_ATT_BS11_L1_REM_ALM_TYPE,	"SIE L1 Remote Alarm Type" },
++	{ NM_ATT_BS11_SW_LOAD_INTENDED,	"SIE Software Load Intended" },
++	{ NM_ATT_BS11_SW_LOAD_SAFETY,	"SIE Software Load Safety" },
++	{ NM_ATT_BS11_SW_LOAD_STORED,	"SIE Software Load Stored" },
++	{ NM_ATT_BS11_VENDOR_NAME,	"SIE Vendor Name" },
++	{ NM_ATT_BS11_HOPPING_MODE,	"SIE Hopping Mode" },
++	{ NM_ATT_BS11_LMT_LOGON_SESSION,"SIE LMT Logon Session" },
++	{ NM_ATT_BS11_LMT_LOGIN_TIME,	"SIE LMT Login Time" },
++	{ NM_ATT_BS11_LMT_USER_ACC_LEV,	"SIE LMT User Account Level" },
++	{ NM_ATT_BS11_LMT_USER_NAME,	"SIE LMT User Account Name" },
++	{ NM_ATT_BS11_L1_CONTROL_TS,	"SIE L1 Control TS" },
++	{ NM_ATT_BS11_RADIO_MEAS_GRAN,	"SIE Radio Measurement Granularity" },
++	{ NM_ATT_BS11_RADIO_MEAS_REP,	"SIE Rdadio Measurement Report" },
++	{ NM_ATT_BS11_SH_LAPD_INT_TIMER,"SIE LAPD Internal Timer" },
++	{ NM_ATT_BS11_BTS_STATE,	"SIE BTS State" },
++	{ NM_ATT_BS11_E1_STATE,		"SIE E1 State" },
++	{ NM_ATT_BS11_PLL,		"SIE PLL" },
++	{ NM_ATT_BS11_RX_OFFSET,	"SIE Rx Offset" },
++	{ NM_ATT_BS11_ANT_TYPE,		"SIE Antenna Type" },
++	{ NM_ATT_BS11_PLL_MODE,		"SIE PLL Mode" },
++	{ NM_ATT_BS11_PASSWORD,		"SIE Password" },
 +	{ NM_ATT_BS11_ESN_FW_CODE_NO,	"SIE ESN FW Code Number" },
 +	{ NM_ATT_BS11_ESN_HW_CODE_NO,	"SIE ESN HW Code Number" },
 +	{ NM_ATT_BS11_ESN_PCB_SERIAL,	"SIE ESN PCB Serial Number" },
@@ -431,12 +500,18 @@ index 0000000..0f16f18
 +	{ NM_ATT_BS11_CELL_ALLOC_NR,	"SIE Cell Allocation Number" },
 +	{ NM_ATT_BS11_CELL_GLOBAL_ID,	"SIE Cell Global ID" },
 +	{ NM_ATT_BS11_ENA_INTERF_CLASS,	"SIE Enable Interference Class" },
-+	/* FIXME */
++	{ NM_ATT_BS11_ENA_INT_INTEC_HANDO, "SIE Enable Int Intec Handover" },
++	{ NM_ATT_BS11_ENA_INT_INTRC_HANDO, "SIE Enable Int Intrc Handover" },
 +	{ NM_ATT_BS11_ENA_MS_PWR_CTRL,	"SIE Enable MS Power Control" },
 +	{ NM_ATT_BS11_ENA_PWR_BDGT_HO,	"SIE Enable Power Budget HO" },
 +	{ NM_ATT_BS11_ENA_RXLEV_HO,	"SIE Enable RxLevel HO" },
 +	{ NM_ATT_BS11_ENA_RXQUAL_HO,	"SIE Enable RxQual HO" },
 +	{ NM_ATT_BS11_FACCH_QUAL,	"SIE FACCH Quality" },
++	{ 0, NULL }
++};
++
++/* proprietary ip.access attributes, not in the standard */
++static const value_string oml_fom_attr_vals_ipa[] = {
 +	{ NM_ATT_IPACC_DST_IP,		"IPA Destination IP Address" },
 +	{ NM_ATT_IPACC_DST_IP_PORT,	"IPA Destionation IP Port" },
 +	{ NM_ATT_IPACC_SSRC,		"IPA RTP SSRC" },
@@ -486,8 +561,69 @@ index 0000000..0f16f18
 +	{ NM_ATT_IPACC_SEC_POSSIBLE,	"IPA Security Possible" },
 +	{ NM_ATT_IPACC_IML_SSL_STATE,	"IPA IML SSL State" },
 +	{ NM_ATT_IPACC_REVOC_DATE,	"IPA Revocation Date" },
-+	/* FIXME: More SIE */
++	{ 0, NULL }
 +};
++
++#if 0
++static gint merge_value_strings(value_string **dst, const value_string *base, const value_string delta)
++{
++	const value_string *cur;
++	guint num_base, num_delta, num_max, num_out;
++
++	for (cur = base; cur->value || cur->strptr; cur++)
++		num_base++;
++	for (cur = delta; cur->value || cur->strptr; cur++)
++		num_delta++;
++	num_max = num_base + num_delta + 1; /* terminating entry */
++
++	*dst = g_malloc(sizeof(value_string) * num_max);
++	if (!*dst)
++		return -ENOMEM;
++	/* zero-initialize the entire array so we always are zero-
++	 * terminated */
++	memset(*dst, 0, sizeof(value_string * num_max));
++
++	/* initialize with the 'base' */
++	memcpy(*dst, base, sizeof(value_string)*num_base);
++	num_out = num_base;
++
++	/* patch/append the delta */
++	for (cur = delta; cur->value || cur->strptr; cur++) {
++		guint idx;
++		if (match_strval_idx(cur->value, base, &idx)) {
++			/* the base set already contains a definition,
++ 			 * we need to override it */
++			memcpy((*dst)[idx], cur, sizeof(value_string));
++		} else {
++			/* append the entry to the end */
++			memcpy((*dst)[num_out], cur, sizeof(value_string));
++			num_out++;
++		}
++	}
++
++	return 0;
++}
++#endif
++
++static const gchar *
++_match_oml_fom_msgtype(const guint32 val, const value_string_ext *vs)
++{
++	const char *ret;
++	ret = match_strval(val, vs->vals);
++	if (!ret)
++		ret = match_strval(val, _oml_fom_msgtype_vals);
++	return ret;
++}
++
++static const gchar *
++_match_oml_fom_attr(const guint32 val, const value_string_ext *vs)
++{
++	const char *ret;
++	ret = match_strval(val, vs->vals);
++	if (!ret)
++		ret = match_strval(val, _oml_fom_attr_vals);
++	return ret;
++}
 +
 +/* Section 9.4.4: Administrative State */
 +static const value_string oml_adm_state_vals[] = {
@@ -495,12 +631,14 @@ index 0000000..0f16f18
 +	{ NM_STATE_UNLOCKED,		"Unlocked" },
 +	{ NM_STATE_SHUTDOWN,		"Shutdown" },
 +	{ NM_STATE_NULL,		"Null" },
++	{ 0, NULL }
 +};
 +
 +static const value_string oml_oper_state_vals[] = {
 +	{ 1,	"Disabled" },
 +	{ 2,	"Enabled" },
 +	{ 0xff,	"NULL" },
++	{ 0, NULL }
 +};
 +
 +/* Section 9.4.7 Availability Status */
@@ -513,6 +651,7 @@ index 0000000..0f16f18
 +	{ 6,	"Degraded" },
 +	{ 7, 	"Not installed" },
 +	{ 0xff,	"OK" },
++	{ 0, NULL }
 +};
 +
 +/* Section 9.4.13: Channel Combination */
@@ -526,6 +665,7 @@ index 0000000..0f16f18
 +	{ NM_CHANC_BCCH,		"BCCH" },
 +	{ NM_CHANC_BCCH_CBCH,		"BCCH+CBCH" },
 +	{ NM_CHANC_SDCCH_CBCH,		"SDCCH+CBCH" },
++	{ 0, NULL }
 +};
 +
 +/* Section 9.4.16: Event Type */
@@ -535,6 +675,7 @@ index 0000000..0f16f18
 +	{ NM_EVT_PROC_FAIL,		"Processor Failure" },
 +	{ NM_EVT_EQUIP_FAIL,		"Equipment Failure" },
 +	{ NM_EVT_ENV_FAIL,		"Environment Failure" },
++	{ 0, NULL }
 +};
 +
 +/* Section 9.4.63: Perceived Severity */
@@ -545,6 +686,7 @@ index 0000000..0f16f18
 +	{ NM_SEVER_MINOR,		"Minor" },
 +	{ NM_SEVER_WARNING,		"Warning" },
 +	{ NM_SEVER_INDETERMINATE,	"Indeterminate" },
++	{ 0, NULL }
 +};
 +
 +/* Section 9.4.36: NACK Causes */
@@ -582,6 +724,7 @@ index 0000000..0f16f18
 +	{ NM_NACK_MEAS_NOTSUPP,		"Measurement not supported" },
 +	{ NM_NACK_MEAS_NOTSTART,	"Measurement not started" },
 +	{ 0xff,				"NULL" },
++	{ 0, NULL }
 +};
 +
 +static const value_string oml_test_no_vals[] = {
@@ -595,6 +738,7 @@ index 0000000..0f16f18
 +	{ NM_IPACC_TESTNO_TX_BEACON,	"Transmit Beacon" },
 +	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "SysInfo Monitor" },
 +	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH & CCCH Monitor" },
++	{ 0, NULL }
 +};
 +
 +static const value_string ipacc_test_res_vals[] = {
@@ -603,6 +747,7 @@ index 0000000..0f16f18
 +	{ NM_IPACC_TESTRES_NO_CHANS,	"No suitable channels available" },
 +	{ NM_IPACC_TESTRES_PARTIAL,	"Partial" },
 +	{ NM_IPACC_TESTRES_STOPPED,	"Stopped" },
++	{ 0, NULL }
 +};
 +
 +static const value_string ipacc_testres_ie_vals[] = {
@@ -611,6 +756,7 @@ index 0000000..0f16f18
 +	{ NM_IPACC_TR_IE_BCCH_INFO,	"BCCH Information" },
 +	{ NM_IPACC_TR_IE_RESULT_DETAILS,"Result Details" },
 +	{ NM_IPACC_TR_IE_FREQ_ERR,	"Frequency Error" },
++	{ 0, NULL }
 +};
 +
 +static const struct tlv_def *
@@ -813,6 +959,11 @@ index 0000000..0f16f18
 +			len = tvb_get_guint8(tvb, offset+1) << 8 |
 +						tvb_get_guint8(tvb, offset+2);
 +			break;
++		case TLV_TYPE_TLV16:
++			hlen = 2;
++			len_len = 1;
++			len = tvb_get_guint8(tvb, offset+1) * 2;
++			break;
 +		case TLV_TYPE_UNKNOWN: /* fall through */
 +		default:
 +			hlen = len_len = len = 0;
@@ -869,7 +1020,7 @@ index 0000000..0f16f18
 +			break;
 +		case NM_ATT_BCCH_ARFCN:
 +			proto_tree_add_item(att_tree, hf_attr_bcch_arfcn, tvb,
-+					    offset, len, TRUE);
++					    offset, len, FALSE);
 +			break;
 +		case NM_ATT_BSIC:
 +			proto_tree_add_item(att_tree, hf_attr_bsic, tvb,
@@ -918,7 +1069,20 @@ index 0000000..0f16f18
 +					val_to_str(val8, oml_test_no_vals,
 +						   "%02x"));
 +			break;
++		case NM_ATT_HSN:
++			proto_tree_add_item(att_tree, hf_attr_hsn, tvb,
++					    offset, len, TRUE);
++			break;
++		case NM_ATT_MAIO:
++			proto_tree_add_item(att_tree, hf_attr_maio, tvb,
++					    offset, len, TRUE);
++			break;
++		default:
++			proto_tree_add_item(att_tree, hf_oml_fom_attr_val, tvb,
++					    offset, len, FALSE);
++		}
 +
++		if (global_oml_use_nano_bts) switch (tag) {
 +		/* proprietary ip.access extensions */
 +		case NM_ATT_IPACC_DST_IP:
 +			val32 = tvb_get_ntohl(tvb, offset);
@@ -991,9 +1155,6 @@ index 0000000..0f16f18
 +			proto_tree_add_uint(att_tree, hf_attr_ipa_nsl_dport,
 +					   tvb, offset+6, 2, val16);
 +			break;
-+		default:
-+			proto_tree_add_item(att_tree, hf_oml_fom_attr_val, tvb,
-+					    offset, len, FALSE);
 +		}
 +		offset += len;
 +	}
@@ -1016,12 +1177,12 @@ index 0000000..0f16f18
 +	proto_item_append_text(top_ti, ", %s(%02x,%02x,%02x) %s ",
 +			val_to_str(obj_class, oml_fom_objclass_vals, "%02x"),
 +			bts_nr, trx_nr, ts_nr,
-+			val_to_str(msg_type, oml_fom_msgtype_vals,
++			val_to_str_ext(msg_type, &oml_fom_msgtype_vse,
 +				   "unknown 0x%x"));
 +	col_append_fstr(pinfo->cinfo, COL_INFO, "%s(%02x,%02x,%02x) %s ",
 +			val_to_str(obj_class, oml_fom_objclass_vals, "%02x"),
 +			bts_nr, trx_nr, ts_nr,
-+			val_to_str(msg_type, oml_fom_msgtype_vals,
++			val_to_str_ext(msg_type, &oml_fom_msgtype_vse,
 +				   "unknown 0x%x"));
 +	ti = proto_tree_add_item(tree, hf_oml_fom_msgtype, tvb, offset++, 1, FALSE);
 +	fom_tree = proto_item_add_subtree(ti, ett_oml_fom);
@@ -1123,7 +1284,7 @@ index 0000000..0f16f18
 +		},
 +		{ &hf_oml_fom_msgtype,
 +			{ "FOM Message Type", "oml.fom.msg_type",
-+			  FT_UINT8, BASE_HEX, VALS(oml_fom_msgtype_vals), 0,
++			  FT_UINT8, BASE_HEX|BASE_EXT_STRING, (&oml_fom_msgtype_vse), 0,
 +			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_objclass,
@@ -1148,7 +1309,7 @@ index 0000000..0f16f18
 +		},
 +		{ &hf_oml_fom_attr_tag,
 +			{ "FOM Attribute ID", "oml.fom.attr_id",
-+			  FT_UINT8, BASE_HEX, VALS(oml_fom_attr_vals), 0,
++			  FT_UINT8, BASE_HEX|BASE_EXT_STRING, (&oml_fom_attr_vse), 0,
 +			  NULL, HFILL }
 +		},
 +		{ &hf_oml_fom_attr_len,
@@ -1244,6 +1405,17 @@ index 0000000..0f16f18
 +			  FT_UINT8, BASE_HEX, VALS(oml_chan_comb_vals), 0,
 +			  NULL, HFILL }
 +		},
++		{ &hf_attr_hsn,
++			{ "HSN", "oml.fom.attr.hsn",
++			  FT_UINT8, BASE_DEC, NULL, 0,
++			  "Hopping Sequence Number", HFILL }
++		},
++		{ &hf_attr_maio,
++			{ "MAIO", "oml.fom.attr.maio",
++			  FT_UINT8, BASE_DEC, NULL, 0,
++			  "Mobile Allocation Index Offset", HFILL }
++		},
++
 +		/* IP Access */
 +		{ &hf_oml_ipa_tres_attr_tag,
 +			{ "IPA Test Result Embedded IE",
@@ -1409,7 +1581,11 @@ index 0000000..0f16f18
 +
 +	module_t *oml_module;
 +
-+	proto_abis_oml = proto_register_protocol("GSM A-bis OML", "OML",
++	/* assign our custom match functions */
++	oml_fom_msgtype_vse.match = _match_oml_fom_msgtype;
++	oml_fom_attr_vse.match = _match_oml_fom_attr;
++
++	proto_abis_oml = proto_register_protocol("GSM A-bis OML", "A-bis OML",
 +						 "gsm_abis_oml");
 +
 +	proto_register_field_array(proto_abis_oml, hf, array_length(hf));
@@ -1418,7 +1594,6 @@ index 0000000..0f16f18
 +
 +	register_dissector("gsm_abis_oml", dissect_abis_oml, proto_abis_oml);
 +
-+
 +	oml_module = prefs_register_protocol(proto_abis_oml, proto_reg_handoff_abis_oml);
 +	prefs_register_bool_preference(oml_module, "use_ipaccess_oml",
 +		    "Use nanoBTS definitions",
@@ -1426,20 +1601,42 @@ index 0000000..0f16f18
 +		    &global_oml_use_nano_bts);
 +}
 +
++/* This function is called once at startup and every time the user hits
++ * 'apply' in the preferences dialogue */
 +void
 +proto_reg_handoff_abis_oml(void)
 +{
-+	dissector_handle_t abis_oml_handle;
++	static gboolean initialized = FALSE;
 +
-+	abis_oml_handle = create_dissector_handle(dissect_abis_oml, proto_abis_oml);
-+	dissector_add("lapd.gsm.sapi", LAPD_GSM_SAPI_OM_PROC, abis_oml_handle);
++	if (!initialized) {
++		dissector_handle_t abis_oml_handle;
++
++		abis_oml_handle = create_dissector_handle(dissect_abis_oml, proto_abis_oml);
++		dissector_add("lapd.gsm.sapi", LAPD_GSM_SAPI_OM_PROC, abis_oml_handle);
++
++	} else {
++		/* preferences have been changed */
++	}
++
++	if (global_oml_use_nano_bts == TRUE) {
++		/* initialize with nanobts definitions */
++		oml_fom_msgtype_vse.vals = _oml_fom_msgtype_vals_ipa;
++		oml_fom_msgtype_vse.length = array_length(_oml_fom_msgtype_vals_ipa)-1;
++		oml_fom_attr_vse.vals = oml_fom_attr_vals_ipa;
++		oml_fom_attr_vse.length = array_length(oml_fom_attr_vals_ipa)-1;
++	} else {
++		/* initialize with BS11 defaults */
++		oml_fom_msgtype_vse.vals = _oml_fom_msgtype_vals_bs11;
++		oml_fom_msgtype_vse.length = array_length(_oml_fom_msgtype_vals_bs11)-1;
++		oml_fom_attr_vse.vals = oml_fom_attr_vals_bs11;
++		oml_fom_attr_vse.length = array_length(oml_fom_attr_vals_bs11)-1;
++	}
 +}
-diff --git a/epan/dissectors/packet-gsm_abis_oml.h b/epan/dissectors/packet-gsm_abis_oml.h
-new file mode 100644
-index 0000000..bdc414d
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
+===================================================================
 --- /dev/null
-+++ b/epan/dissectors/packet-gsm_abis_oml.h
-@@ -0,0 +1,800 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h
+@@ -0,0 +1,830 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -1790,9 +1987,16 @@ index 0000000..bdc414d
 +	NM_ATT_FILE_DATA,
 +	NM_ATT_MEAS_RES,
 +	NM_ATT_MEAS_TYPE,
++};
 +
++enum abis_nm_attr_bs11 {
++	NM_ATT_BS11_OM_LAPD_REL_TIMER	= 0x02,
++	NM_ATT_BS11_EMERG_TIMER1	= 0x42,
++	NM_ATT_BS11_EMERG_TIMER2	= 0x44,
 +	NM_ATT_BS11_ESN_FW_CODE_NO	= 0x4c,
 +	NM_ATT_BS11_ESN_HW_CODE_NO	= 0x4f,
++
++	NM_ATT_BS11_FILE_DATA		= NM_ATT_EVENT_TYPE,
 +
 +	NM_ATT_BS11_ESN_PCB_SERIAL	= 0x55,
 +	NM_ATT_BS11_EXCESSIVE_DISTANCE	= 0x58,
@@ -1810,57 +2014,6 @@ index 0000000..bdc414d
 +	NM_ATT_BS11_ENA_RXLEV_HO	= 0x6c,
 +	NM_ATT_BS11_ENA_RXQUAL_HO	= 0x6d,
 +	NM_ATT_BS11_FACCH_QUAL		= 0x6e,
-+
-+	NM_ATT_IPACC_DST_IP		= 0x80,
-+	NM_ATT_IPACC_DST_IP_PORT	= 0x81,
-+	NM_ATT_IPACC_SSRC		= 0x82,		/* RTP Sync Source */
-+	NM_ATT_IPACC_RTP_PAYLD_TYPE	= 0x83,
-+	NM_ATT_IPACC_BASEB_ID		= 0x84,
-+	NM_ATT_IPACC_STREAM_ID		= 0x85,
-+	NM_ATT_IPACC_NV_FLAGS		= 0x86,
-+	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
-+	NM_ATT_IPACC_PRIM_OML_CFG	= 0x88,
-+	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
-+	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
-+	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
-+	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
-+	NM_ATT_IPACC_TRX_BTS_ASS	= 0x8d,
-+	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
-+	NM_ATT_IPACC_PAGING_CFG		= 0x8f,
-+	NM_ATT_IPACC_FILE_DATA		= 0x90,
-+	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
-+	NM_ATT_IPACC_PARENT_UNIT_ID	= 0x92,
-+	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
-+	NM_ATT_IPACC_SNMP_CFG		= 0x94,
-+	NM_ATT_IPACC_PRIM_OML_CFG_LIST	= 0x95,
-+	NM_ATT_IPACC_PRIM_OML_FB_TOUT	= 0x96,		/* fallback timeout */
-+	NM_ATT_IPACC_CUR_SW_CFG		= 0x97,
-+	NM_ATT_IPACC_TIMING_BUS		= 0x98,
-+	NM_ATT_IPACC_CGI		= 0x99,		/* Cell Global ID */
-+	NM_ATT_IPACC_RAC		= 0x9a,
-+	NM_ATT_IPACC_OBJ_VERSION	= 0x9b,
-+	NM_ATT_IPACC_GPRS_PAGING_CFG	= 0x9c,
-+	NM_ATT_IPACC_NSEI		= 0x9d,
-+	NM_ATT_IPACC_BVCI		= 0x9e,
-+	NM_ATT_IPACC_NSVCI		= 0x9f,
-+	NM_ATT_IPACC_NS_CFG		= 0xa0,
-+	NM_ATT_IPACC_BSSGP_CFG		= 0xa1,
-+	NM_ATT_IPACC_NS_LINK_CFG	= 0xa2,
-+	NM_ATT_IPACC_RLC_CFG		= 0xa3,
-+	NM_ATT_IPACC_ALM_THRESH_LIST	= 0xa4,
-+	NM_ATT_IPACC_MONIT_VAL_LIST	= 0xa5,
-+	NM_ATT_IPACC_TIB_CONTROL	= 0xa6,
-+	NM_ATT_IPACC_SUPP_FEATURES	= 0xa7,
-+	NM_ATT_IPACC_CODING_SCHEMES	= 0xa8,
-+	NM_ATT_IPACC_RLC_CFG_2		= 0xa9,
-+	NM_ATT_IPACC_HEARTB_TOUT	= 0xaa,
-+	NM_ATT_IPACC_UPTIME		= 0xab,
-+	NM_ATT_IPACC_RLC_CFG_3		= 0xac,
-+	NM_ATT_IPACC_SSL_CFG		= 0xad,
-+	NM_ATT_IPACC_SEC_POSSIBLE	= 0xae,
-+	NM_ATT_IPACC_IML_SSL_STATE	= 0xaf,
-+	NM_ATT_IPACC_REVOC_DATE		= 0xb0,
-+
 +
 +	NM_ATT_BS11_RF_RES_IND_PER	= 0x8f,
 +
@@ -1910,7 +2063,58 @@ index 0000000..bdc414d
 +	NM_ATT_BS11_PLL_MODE		= 0xfc,
 +	NM_ATT_BS11_PASSWORD		= 0xfd,
 +};
-+#define NM_ATT_BS11_FILE_DATA	NM_ATT_EVENT_TYPE
++
++enum abis_nm_attr_ipa {
++	NM_ATT_IPACC_DST_IP		= 0x80,
++	NM_ATT_IPACC_DST_IP_PORT	= 0x81,
++	NM_ATT_IPACC_SSRC		= 0x82,		/* RTP Sync Source */
++	NM_ATT_IPACC_RTP_PAYLD_TYPE	= 0x83,
++	NM_ATT_IPACC_BASEB_ID		= 0x84,
++	NM_ATT_IPACC_STREAM_ID		= 0x85,
++	NM_ATT_IPACC_NV_FLAGS		= 0x86,
++	NM_ATT_IPACC_FREQ_CTRL		= 0x87,
++	NM_ATT_IPACC_PRIM_OML_CFG	= 0x88,
++	NM_ATT_IPACC_SEC_OML_CFG	= 0x89,
++	NM_ATT_IPACC_IP_IF_CFG		= 0x8a,		/* IP interface */
++	NM_ATT_IPACC_IP_GW_CFG		= 0x8b,		/* IP gateway */
++	NM_ATT_IPACC_IN_SERV_TIME	= 0x8c,
++	NM_ATT_IPACC_TRX_BTS_ASS	= 0x8d,
++	NM_ATT_IPACC_LOCATION		= 0x8e,		/* string describing location */
++	NM_ATT_IPACC_PAGING_CFG		= 0x8f,
++	NM_ATT_IPACC_FILE_DATA		= 0x90,
++	NM_ATT_IPACC_UNIT_ID		= 0x91,		/* Site/BTS/TRX */
++	NM_ATT_IPACC_PARENT_UNIT_ID	= 0x92,
++	NM_ATT_IPACC_UNIT_NAME		= 0x93,		/* default: nbts-<mac-as-string> */
++	NM_ATT_IPACC_SNMP_CFG		= 0x94,
++	NM_ATT_IPACC_PRIM_OML_CFG_LIST	= 0x95,
++	NM_ATT_IPACC_PRIM_OML_FB_TOUT	= 0x96,		/* fallback timeout */
++	NM_ATT_IPACC_CUR_SW_CFG		= 0x97,
++	NM_ATT_IPACC_TIMING_BUS		= 0x98,
++	NM_ATT_IPACC_CGI		= 0x99,		/* Cell Global ID */
++	NM_ATT_IPACC_RAC		= 0x9a,
++	NM_ATT_IPACC_OBJ_VERSION	= 0x9b,
++	NM_ATT_IPACC_GPRS_PAGING_CFG	= 0x9c,
++	NM_ATT_IPACC_NSEI		= 0x9d,
++	NM_ATT_IPACC_BVCI		= 0x9e,
++	NM_ATT_IPACC_NSVCI		= 0x9f,
++	NM_ATT_IPACC_NS_CFG		= 0xa0,
++	NM_ATT_IPACC_BSSGP_CFG		= 0xa1,
++	NM_ATT_IPACC_NS_LINK_CFG	= 0xa2,
++	NM_ATT_IPACC_RLC_CFG		= 0xa3,
++	NM_ATT_IPACC_ALM_THRESH_LIST	= 0xa4,
++	NM_ATT_IPACC_MONIT_VAL_LIST	= 0xa5,
++	NM_ATT_IPACC_TIB_CONTROL	= 0xa6,
++	NM_ATT_IPACC_SUPP_FEATURES	= 0xa7,
++	NM_ATT_IPACC_CODING_SCHEMES	= 0xa8,
++	NM_ATT_IPACC_RLC_CFG_2		= 0xa9,
++	NM_ATT_IPACC_HEARTB_TOUT	= 0xaa,
++	NM_ATT_IPACC_UPTIME		= 0xab,
++	NM_ATT_IPACC_RLC_CFG_3		= 0xac,
++	NM_ATT_IPACC_SSL_CFG		= 0xad,
++	NM_ATT_IPACC_SEC_POSSIBLE	= 0xae,
++	NM_ATT_IPACC_IML_SSL_STATE	= 0xaf,
++	NM_ATT_IPACC_REVOC_DATE		= 0xb0,
++};
 +
 +/* Section 9.4.4: Administrative State */
 +enum abis_nm_adm_state {
@@ -2056,6 +2260,7 @@ index 0000000..bdc414d
 +	TLV_TYPE_TV,
 +	TLV_TYPE_TLV,
 +	TLV_TYPE_TL16V,
++	TLV_TYPE_TLV16,
 +};
 +
 +struct tlv_def {
@@ -2172,12 +2377,35 @@ index 0000000..bdc414d
 +/* BS11 specifics */
 +static const struct tlv_definition nm_att_tlvdev_bs11 = {
 +	.def = {
-+		/* a difference.. */
++		/* different stndard IEs */
++		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V, 0 },
++		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TLV16, 0 },
++
++		/* proprietary IEs */
++		[NM_ATT_BS11_ABIS_EXT_TIME] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_OM_LAPD_REL_TIMER]={ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_BS11_SH_LAPD_INT_TIMER]={ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_EMERG_TIMER1] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_EMERG_TIMER2] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_BTSLS_HOPPING] =	{ TLV_TYPE_FIXED, 1 },
++		[NM_ATT_BS11_CELL_ALLOC_NR] =	{ TLV_TYPE_FIXED, 1 },
++		[NM_ATT_BS11_ENA_INTERF_CLASS]= { TLV_TYPE_FIXED, 1 },
++		[NM_ATT_BS11_FACCH_QUAL] =	{ TLV_TYPE_FIXED, 1 },
++		[NM_ATT_BS11_TSYNC] =		{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_BS11_TTRAU] =		{ TLV_TYPE_FIXED, 2 },
++		[NM_ATT_BS11_EXCESSIVE_DISTANCE] = { TLV_TYPE_TLV, 1 },
++		[NM_ATT_BS11_HOPPING_MODE] =	{ TLV_TYPE_TLV, 1 },
++		[NM_ATT_BS11_RF_RES_IND_PER] =	{ TLV_TYPE_FIXED, 1 },
++		[NM_ATT_BS11_RADIO_MEAS_GRAN] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_RADIO_MEAS_REP] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_EMRG_CFG_MEMBER] =	{ TLV_TYPE_TLV, 0 },
++		[NM_ATT_BS11_TRX_AREA] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV, 0 },
++		[0x59] =			{ TLV_TYPE_TLV, 0 },
 +		[0xd5] =			{ TLV_TYPE_TLV, 0 },
 +		[0xa8] =			{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV, 0 },
@@ -2197,7 +2425,6 @@ index 0000000..bdc414d
 +		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV, 0 },
 +		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV, 0 },
 +		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV, 0 },
-+		[0x95] =			{ TLV_TYPE_FIXED, 2 },
 +	},
 +};
 +
@@ -2240,6 +2467,3 @@ index 0000000..bdc414d
 +};
 +
 +#endif /* _NM_H */
--- 
-1.7.0.1
-
