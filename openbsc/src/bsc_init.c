@@ -967,13 +967,13 @@ static int generate_ma_for_ts(struct gsm_bts_trx_ts *ts)
 	for (i = 1; i < 1024; i++) {
 		if (!bitvec_get_bit_pos(cell_chan, i))
 			continue;
-		n_chan++;
 		/* set the corresponding bit in the MA */
 		bitnum = (ts->hopping.ma_len * 8) - 1 - n_chan;
 		if (bitvec_get_bit_pos(ts_arfcn, i))
 			bitvec_set_bit_pos(ma, bitnum, 1);
 		else
 			bitvec_set_bit_pos(ma, bitnum, 0);
+		n_chan++;
 	}
 
 	/* ARFCN 0 is special: It is coded last in the bitmask */
