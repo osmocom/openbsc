@@ -1990,7 +1990,11 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
 			if (bitvec_get_bit_pos(&ts->hopping.arfcns, i)) {
 				msgb_put_u16(msg, i);
-				*len += sizeof(uint16_t);
+				/* At least BS-11 wants a TLV16 here */
+				if (bts->type == GSM_BTS_TYPE_BS11)
+					*len += 1;
+				else
+					*len += sizeof(uint16_t);
 			}
 		}
 	}
