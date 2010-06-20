@@ -141,7 +141,18 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case DL_ESTABLISH_IND:
 		DEBUGP(DMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
-		l2addr.channel, l2addr.sapi, l2addr.tei);
+			l2addr.channel, l2addr.sapi, l2addr.tei);
+		/* For some strange reason, sometimes the DL_INFORMATION_IND tells
+		 * us the wrong channel, and we only get the real channel number
+		 * during the DL_ESTABLISH_IND */
+		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
+		if (!link) {
+			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
+			msgb_free(msg);
+			return -EINVAL;
+		}
+		/* save the channel number in the driver private struct */
+		link->driver.misdn.channel = l2addr.channel;
 		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_RELEASE_IND:
@@ -217,7 +228,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	hh = (struct mISDNhead *) msgb_push(msg, sizeof(*hh));
 	hh->prim = DL_DATA_REQ;
 
-	DEBUGP(DMI, "TX TEI(%d) SAPI(%d): %s\n", sign_link->tei,
+	DEBUGP(DMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
+		sign_link->driver.misdn.channel, sign_link->tei,
 		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
 	/* construct the sockaddr */
