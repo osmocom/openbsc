@@ -1133,8 +1133,9 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
 	struct abis_rsl_dchan_hdr *rqd_hdr = msgb_l2(msg);
+	u_int8_t buf[GSM_MACBLOCK_LEN];
+	struct gsm48_imm_ass *ia = (struct gsm48_imm_ass *) buf;
 	struct gsm48_req_ref *rqd_ref;
-	struct gsm48_imm_ass ia;
 	enum gsm_chan_t lctype;
 	enum gsm_chreq_reason_t chreq_reason;
 	struct gsm_lchan *lchan;
@@ -1190,23 +1191,21 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
-	memset(&ia, 0, sizeof(ia));
-	ia.l2_plen = 0x2d;
-	ia.proto_discr = GSM48_PDISC_RR;
-	ia.msg_type = GSM48_MT_RR_IMM_ASS;
-	ia.page_mode = GSM48_PM_SAME;
-	gsm48_lchan2chan_desc(&ia.chan_desc, lchan);
+	memset(ia, 0, sizeof(*ia));
+	ia->l2_plen = 0x2d;
+	ia->proto_discr = GSM48_PDISC_RR;
+	ia->msg_type = GSM48_MT_RR_IMM_ASS;
+	ia->page_mode = GSM48_PM_SAME;
+	gsm48_lchan2chan_desc(&ia->chan_desc, lchan);
 
 	/* use request reference extracted from CHAN_RQD */
-	memcpy(&ia.req_ref, rqd_ref, sizeof(ia.req_ref));
-	ia.timing_advance = rqd_ta;
+	memcpy(&ia->req_ref, rqd_ref, sizeof(ia->req_ref));
+	ia->timing_advance = rqd_ta;
 	if (!lchan->ts->hopping.enabled) {
-		ia.mob_alloc_len = 0;
+		ia->mob_alloc_len = 0;
 	} else {
-		uint8_t *ma;
-		ia.mob_alloc_len = lchan->ts->hopping.ma_len;
-		ma = msgb_put(msg, ia.mob_alloc_len);
-		memcpy(ma, lchan->ts->hopping.ma_data, ia.mob_alloc_len);
+		ia->mob_alloc_len = lchan->ts->hopping.ma_len;
+		memcpy(ia->mob_alloc, lchan->ts->hopping.ma_data, ia->mob_alloc_len);
 	}
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
@@ -1220,7 +1219,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	bsc_schedule_timer(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
-	ret = rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
+	ret = rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (u_int8_t *) ia);
 
 	return ret;
 }
