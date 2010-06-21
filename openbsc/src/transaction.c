@@ -151,7 +151,7 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
 		       struct gsm_subscriber_connection *conn_new)
 {
-	struct gsm_network *net = conn_old->lchan->ts->trx->bts->network;
+	struct gsm_network *net = conn_old->bts->network;
 	struct gsm_trans *trans;
 	int num = 0;
 
