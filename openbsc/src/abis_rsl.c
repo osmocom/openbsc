@@ -1132,6 +1132,8 @@ static void t3111_expired(void *data)
 	rsl_rf_chan_release(lchan, 0);
 }
 
+#define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
+
 /* MS has requested a channel on the RACH */
 static int rsl_rx_chan_rqd(struct msgb *msg)
 {
@@ -1196,7 +1198,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(ia, 0, sizeof(*ia));
-	ia->l2_plen = 0x2d;
+	/* we set ia->l2_plen once we know the length of the MA below */
 	ia->proto_discr = GSM48_PDISC_RR;
 	ia->msg_type = GSM48_MT_RR_IMM_ASS;
 	ia->page_mode = GSM48_PM_SAME;
@@ -1211,6 +1213,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		ia->mob_alloc_len = lchan->ts->hopping.ma_len;
 		memcpy(ia->mob_alloc, lchan->ts->hopping.ma_data, ia->mob_alloc_len);
 	}
+	ia->l2_plen = GSM48_LEN2PLEN(sizeof(*ia) + ia->mob_alloc_len);
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
 		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
