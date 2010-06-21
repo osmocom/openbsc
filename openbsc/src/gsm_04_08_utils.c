@@ -244,7 +244,8 @@ int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
 				mi_string, mi_type);
 }
 
-int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
+int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
+			     struct msgb *msg, struct gsm_subscriber *subscr)
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -254,28 +255,28 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
 
-	if (!msg->lchan->conn.subscr) {
-		msg->lchan->conn.subscr = subscr;
-	} else if (msg->lchan->conn.subscr != subscr) {
+	if (!conn->subscr) {
+		conn->subscr = subscr;
+	} else if (conn->subscr != subscr) {
 		LOGP(DRR, LOGL_ERROR, "<- Channel already owned by someone else?\n");
 		subscr_put(subscr);
 		return -EINVAL;
 	} else {
 		DEBUGP(DRR, "<- Channel already owned by us\n");
 		subscr_put(subscr);
-		subscr = msg->lchan->conn.subscr;
+		subscr = conn->subscr;
 	}
 
 	sig_data.subscr = subscr;
-	sig_data.bts	= msg->lchan->ts->trx->bts;
-	sig_data.conn	= &msg->lchan->conn;
+	sig_data.bts	= conn->bts;
+	sig_data.conn	= conn;
 
 	counter_inc(bts->network->stats.paging.completed);
 
 	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
-	paging_request_stop(msg->trx->bts, subscr, &msg->lchan->conn);
+	paging_request_stop(conn->bts, subscr, conn);
 	return 0;
 }
 

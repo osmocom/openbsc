@@ -971,9 +971,9 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 }
 
 /* Receive a PAGING RESPONSE message from the MS */
-static int gsm48_rx_rr_pag_resp(struct msgb *msg)
+static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_pag_resp *resp;
 	u_int8_t *classmark2_lv = gh->data + 1;
@@ -1010,7 +1010,7 @@ static int gsm48_rx_rr_pag_resp(struct msgb *msg)
 	memcpy(subscr->equipment.classmark2, classmark2_lv+1, *classmark2_lv);
 	db_sync_equipment(&subscr->equipment);
 
-	rc = gsm48_handle_paging_resp(msg, subscr);
+	rc = gsm48_handle_paging_resp(conn, msg, subscr);
 	return rc;
 }
 
@@ -1172,7 +1172,7 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
 	case GSM48_MT_RR_PAG_RESP:
-		rc = gsm48_rx_rr_pag_resp(msg);
+		rc = gsm48_rx_rr_pag_resp(conn, msg);
 		break;
 	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 		rc = gsm48_rx_rr_modif_ack(msg);
