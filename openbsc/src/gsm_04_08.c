@@ -3090,8 +3090,8 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
 	int rc = 0;
 
-	if (silent_call_reroute(msg))
-		return silent_call_rx(msg);
+	if (silent_call_reroute(conn, msg))
+		return silent_call_rx(conn, msg);
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:

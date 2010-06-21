@@ -72,7 +72,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 }
 
 /* receive a layer 3 message from a silent call */
-int silent_call_rx(struct msgb *msg)
+int silent_call_rx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	/* FIXME: do something like sending it through a UDP port */
 	return 0;
@@ -90,14 +90,14 @@ static const struct msg_match silent_call_accept[] = {
 };
 
 /* decide if we need to reroute a message as part of a silent call */
-int silent_call_reroute(struct msgb *msg)
+int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t pdisc = gh->proto_discr & 0x0f;
 	int i;
 
 	/* if we're not part of a silent call, never reroute */
-	if (!msg->lchan->conn.silent_call)
+	if (!conn->silent_call)
 		return 0;
 
 	/* check if we are a special message that is handled in openbsc */
