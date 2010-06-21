@@ -46,6 +46,19 @@ static void bts_queue_send(struct msgb *msg, int link_id);
 static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
 
+static void put_data_16(uint8_t *data, const uint16_t val)
+{
+	memcpy(data, &val, sizeof(val));
+}
+
+static uint32_t read_data32(const uint8_t *data)
+{
+	uint32_t res;
+
+	memcpy(&res, data, sizeof(res));
+	return res;
+}
+
 static u_int16_t get_network_code_for_msc(struct gsm_network *net)
 {
 	if (net->core_network_code > 0)
@@ -124,8 +137,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	 * Support paging to all network or one BTS at one LAC
 	 */
 	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
-		unsigned int *_lac = (unsigned int *)&data[1];
-		lac = ntohs(*_lac);
+		lac = ntohs(read_data32(&data[1]));
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
 		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
 		return -1;
@@ -724,7 +736,7 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 {
 	u_int8_t *data;
-	u_int16_t *ci;
+	uint8_t *ci;
 	struct msgb* msg;
 	struct gsm48_loc_area_id *lai;
 	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
@@ -754,8 +766,8 @@ struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 	gsm48_generate_lai(lai, country_code,
 			   network_code, bts->location_area_code);
 
-	ci = (u_int16_t *) msgb_put(msg, 2);
-	*ci = htons(bts->cell_identity);
+	ci = msgb_put(msg, 2);
+	put_data_16(ci, htons(bts->cell_identity));
 
 	/* copy the layer3 data */
 	data = msgb_put(msg, msgb_l3len(msg_l3) + 2);
