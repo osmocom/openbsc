@@ -28,6 +28,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/debug.h>
 
 #include <osmocore/talloc.h>
 
@@ -94,6 +95,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 	conn = &msg->lchan->conn;
 	if (conn->allocated) {
+		log_set_context(BSC_CTX_SUBSCR, conn->subscr);
 		api->dtap(conn, msg);
 	} else {
 		/* accept the connection or close the lchan */
