@@ -850,6 +850,16 @@ err_out:
 	return rc;
 }
 
+static void patch_16(uint8_t *data, const uint16_t val)
+{
+	memcpy(data, &val, sizeof(val));
+}
+
+static void patch_32(uint8_t *data, const uint32_t val)
+{
+	memcpy(data, &val, sizeof(val));
+}
+
 /*
  * Patch the various SYSTEM INFORMATION tables to update
  * the LAI
@@ -912,12 +922,12 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	nanobts_attr_nsvc0[4] = bts->gprs.nsvc[0].nsvci & 0xff;
 
 	/* patch IP address as SGSN IP */
-	*(u_int16_t *)(nanobts_attr_nsvc0+8) =
-				htons(bts->gprs.nsvc[0].remote_port);
-	*(u_int32_t *)(nanobts_attr_nsvc0+10) =
-				htonl(bts->gprs.nsvc[0].remote_ip);
-	*(u_int16_t *)(nanobts_attr_nsvc0+14) =
-				htons(bts->gprs.nsvc[0].local_port);
+	patch_16(nanobts_attr_nsvc0 + 8, 
+			htons(bts->gprs.nsvc[0].remote_port));
+	patch_32(nanobts_attr_nsvc0 + 10,
+			htonl(bts->gprs.nsvc[0].remote_ip));
+	patch_16(nanobts_attr_nsvc0 + 14,
+			htons(bts->gprs.nsvc[0].local_port));
 
 	/* patch BVCI */
 	nanobts_attr_cell[12] = bts->gprs.cell.bvci >> 8;
