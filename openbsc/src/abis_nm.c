@@ -2704,6 +2704,7 @@ static const char ipaccess_magic[] = "com.ipaccess";
 
 static int abis_nm_rx_ipacc(struct msgb *msg)
 {
+	struct in_addr addr;
 	struct abis_om_hdr *oh = msgb_l2(msg);
 	struct abis_om_fom_hdr *foh;
 	u_int8_t idstrlen = oh->data[0];
@@ -2725,10 +2726,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	switch (foh->msg_type) {
 	case NM_MT_IPACC_RSL_CONNECT_ACK:
 		DEBUGPC(DNM, "RSL CONNECT ACK ");
-		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP))
-			DEBUGPC(DNM, "IP=%s ",
-				inet_ntoa(*((struct in_addr *)
-					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP))));
+		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP)) {
+			memcpy(&addr,
+				TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP), sizeof(addr));
+
+			DEBUGPC(DNM, "IP=%s ", inet_ntoa(addr));
+		}
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP_PORT))
 			DEBUGPC(DNM, "PORT=%u ",
 				ntohs(*((u_int16_t *)
