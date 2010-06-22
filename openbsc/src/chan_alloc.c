@@ -34,6 +34,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 
+#include <osmocore/talloc.h>
+
 static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 {
 	/* FIXME: How does this behave for BS-11 ? */
@@ -330,6 +332,12 @@ void lchan_free(struct gsm_lchan *lchan)
 	}
 	for (i = 0; i < ARRAY_SIZE(lchan->neigh_meas); i++)
 		lchan->neigh_meas[i].arfcn = 0;
+
+	if (lchan->rqd_ref) {
+		talloc_free(lchan->rqd_ref);
+		lchan->rqd_ref = NULL;
+		lchan->rqd_ta = 0;
+	}
 	lchan->conn.silent_call = 0;
 
 	sig.lchan = lchan;
