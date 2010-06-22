@@ -342,6 +342,11 @@ void lchan_free(struct gsm_lchan *lchan)
  * There was an error with the TRX and we need to forget
  * any state so that a lchan can be allocated again after
  * the trx is fully usable.
+ *
+ * This should be called after lchan_free to force a channel
+ * be available for allocation again. This means that this
+ * method will stop the "delay after error"-timer and set the
+ * state to LCHAN_S_NONE.
  */
 void lchan_reset(struct gsm_lchan *lchan)
 {
