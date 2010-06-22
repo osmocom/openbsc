@@ -1071,6 +1071,20 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		case S_LCHAN_ACTIVATE_ACK:
 			continue_new_assignment(lchan);
 			break;
+		case S_LCHAN_ACTIVATE_NACK:
+			if (lchan->msc_data && lchan->msc_data->secondary_lchan == lchan) {
+				LOGP(DMSC, LOGL_ERROR, "Activating a secondary lchan failed.\n");
+
+				/*
+				 * The channel will be freed, so let us forget about it, T10 will
+				 * fire and we will send the assignment failure to the network. We
+				 * do not give up the refcount so we will get another unexpected
+				 * release... but that will be handled just fine.
+				 */
+				lchan->msc_data->secondary_lchan = NULL;
+				lchan->msc_data = NULL;
+			}
+			break;
 		}
 		break;
 	}
