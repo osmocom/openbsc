@@ -293,6 +293,10 @@ struct gsm_lchan {
 	/* Established data link layer services */
 	u_int8_t sapis[8];
 
+	/* GSM Random Access data */
+	struct gsm48_req_ref *rqd_ref;
+	uint8_t rqd_ta;
+
 	/* cache of last measurement reports on this lchan */
 	struct gsm_meas_rep meas_rep[6];
 	int meas_rep_idx;

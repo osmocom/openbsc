@@ -42,10 +42,14 @@
 #include <openbsc/rtp_proxy.h>
 #include <osmocore/rsl.h>
 
+#include <osmocore/talloc.h>
+
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
 
 #define MAX(a, b) (a) >= (b) ? (a) : (b)
+
+static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 
 static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 {
@@ -795,6 +799,13 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 			gsm_lchans_name(msg->lchan->state));
 	rsl_lchan_set_state(msg->lchan, LCHAN_S_ACTIVE);
 
+	if (msg->lchan->rqd_ref) {
+		rsl_send_imm_assignment(msg->lchan);
+		talloc_free(msg->lchan->rqd_ref);
+		msg->lchan->rqd_ref = NULL;
+		msg->lchan->rqd_ta = 0;
+	}
+
 	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
 	return 0;
@@ -1139,14 +1150,11 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
 	struct abis_rsl_dchan_hdr *rqd_hdr = msgb_l2(msg);
-	u_int8_t buf[GSM_MACBLOCK_LEN];
-	struct gsm48_imm_ass *ia = (struct gsm48_imm_ass *) buf;
 	struct gsm48_req_ref *rqd_ref;
 	enum gsm_chan_t lctype;
 	enum gsm_chreq_reason_t chreq_reason;
 	struct gsm_lchan *lchan;
 	u_int8_t rqd_ta;
-	int ret;
 
 	u_int16_t arfcn;
 	u_int8_t ts_number, subch;
@@ -1185,6 +1193,17 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		     gsm_lchans_name(lchan->state));
 	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
+	/* save the RACH data as we need it after the CHAN ACT ACK */
+	lchan->rqd_ref = talloc_zero(bts, struct gsm48_req_ref);
+	if (!lchan->rqd_ref) {
+		LOGP(DRSL, LOGL_ERROR, "Failed to allocate gsm48_req_ref.\n");
+		lchan_free(lchan);
+		return -ENOMEM;
+	}
+
+	memcpy(lchan->rqd_ref, rqd_ref, sizeof(*rqd_ref));
+	lchan->rqd_ta = rqd_ta;
+
 	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
@@ -1194,7 +1213,22 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->bs_power = 0; /* 0dB reduction, output power = Pn */
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	lchan->tch_mode = GSM48_CMODE_SIGN;
+
+	/* FIXME: Start another timer or assume the BTS sends a ACK/NACK? */
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
+
+	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
+		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
+		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
+		rqd_ref->ra);
+	return 0;
+}
+
+static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+	u_int8_t buf[GSM_MACBLOCK_LEN];
+	struct gsm48_imm_ass *ia = (struct gsm48_imm_ass *) buf;
 
 	/* create IMMEDIATE ASSIGN 04.08 messge */
 	memset(ia, 0, sizeof(*ia));
@@ -1205,8 +1239,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	gsm48_lchan2chan_desc(&ia->chan_desc, lchan);
 
 	/* use request reference extracted from CHAN_RQD */
-	memcpy(&ia->req_ref, rqd_ref, sizeof(ia->req_ref));
-	ia->timing_advance = rqd_ta;
+	memcpy(&ia->req_ref, lchan->rqd_ref, sizeof(ia->req_ref));
+	ia->timing_advance = lchan->rqd_ta;
 	if (!lchan->ts->hopping.enabled) {
 		ia->mob_alloc_len = 0;
 	} else {
@@ -1215,20 +1249,13 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	}
 	ia->l2_plen = GSM48_LEN2PLEN(sizeof(*ia) + ia->mob_alloc_len);
 
-	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
-		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
-		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
-		rqd_ref->ra);
-
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 	lchan->T3101.cb = t3101_expired;
 	lchan->T3101.data = lchan;
 	bsc_schedule_timer(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
-	ret = rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (u_int8_t *) ia);
-
-	return ret;
+	return rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (u_int8_t *) ia);
 }
 
 /* MS has requested a channel on the RACH */
