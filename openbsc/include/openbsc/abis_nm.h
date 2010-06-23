@@ -170,4 +170,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);
 int nm_is_running(struct gsm_nm_state *s);
+void abis_nm_clear_queue(struct gsm_bts *bts);
+
 #endif /* _NM_H */
