@@ -417,7 +417,8 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 		break;
 	case GPRS_LLC_UI:
 		if (gph->seq_tx < lle->vu_recv) {
-			LOGP(DLLC, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+			LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+				lle->llme ? lle->llme->tlli : -1,
 				gph->seq_tx, lle->vu_recv);
 			return -EIO;
 		}
