@@ -394,14 +394,14 @@ DEFUN(ena_subscr_authorizde,
 
 DEFUN(ena_subscr_name,
       ena_subscr_name_cmd,
-      "subscriber " SUBSCR_TYPES " ID name NAME",
+      "subscriber " SUBSCR_TYPES " ID name .NAME",
 	SUBSCR_HELP "Set the name of the subscriber\n"
 	"Name of the Subscriber\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	const char *name = argv[2];
+	char *name;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -409,7 +409,12 @@ DEFUN(ena_subscr_name,
 		return CMD_WARNING;
 	}
 
+	name = argv_concat(argv, argc, 2);
+	if (!name)
+		return CMD_WARNING;
+
 	strncpy(subscr->name, name, sizeof(subscr->name));
+	talloc_free(name);
 	db_sync_subscriber(subscr);
 
 	subscr_put(subscr);
