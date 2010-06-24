@@ -1009,14 +1009,14 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		debugp_foh(foh);
 
-		DEBUGPC(DNM, "%s NACK ", get_value_string(nack_names, mt));
+		LOGPC(DNM, LOGL_ERROR, "%s NACK ", get_value_string(nack_names, mt));
 
 		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
-			DEBUGPC(DNM, "CAUSE=%s\n",
+			LOGPC(DNM, LOGL_ERROR, "CAUSE=%s\n",
 				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
-			DEBUGPC(DNM, "\n");
+			LOGPC(DNM, LOGL_ERROR, "\n");
 
 		dispatch_signal(SS_NM, S_NM_NACK, (void*) &mt);
 		abis_nm_queue_send_next(mb->trx->bts);
