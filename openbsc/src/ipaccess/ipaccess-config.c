@@ -1,8 +1,8 @@
 /* ip.access nanoBTS configuration tool */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009,2010 by Holger Hans Peter Freyther
- * (C) 2009,2010 by On Waves
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2009-2010 by Holger Hans Peter Freyther
+ * (C) 2009-2010 by On Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -51,6 +51,7 @@ static struct gsm_network *gsmnet;
 static int net_listen_testnr;
 static int restart;
 static char *prim_oml_ip;
+static char *bts_ip_addr, *bts_ip_mask, *bts_ip_gw;
 static char *unit_id;
 static u_int16_t nv_flags;
 static u_int16_t nv_mask;
@@ -299,10 +300,62 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 	return 0;
 }
 
-static void bootstrap_om(struct gsm_bts_trx *trx)
+static void nv_put_ip_if_cfg(struct msgb *nmsg, uint32_t ip, uint32_t mask)
+{
+	msgb_put_u8(nmsg, NM_ATT_IPACC_IP_IF_CFG);
+
+	msgb_put_u32(nmsg, ip);
+	msgb_put_u32(nmsg, mask);
+}
+
+static void nv_put_gw_cfg(struct msgb *nmsg, uint32_t addr, uint32_t mask, uint32_t gw)
+{
+	msgb_put_u8(nmsg, NM_ATT_IPACC_IP_GW_CFG);
+	msgb_put_u32(nmsg, addr);
+	msgb_put_u32(nmsg, mask);
+	msgb_put_u32(nmsg, gw);
+}
+
+static void nv_put_unit_id(struct msgb *nmsg, const char *unit_id)
+{
+	msgb_tl16v_put(nmsg, NM_ATT_IPACC_UNIT_ID, strlen(unit_id)+1,
+			(const uint8_t *)unit_id);
+}
+
+static void nv_put_prim_oml(struct msgb *nmsg, uint32_t ip, uint16_t port)
 {
 	int len;
+
+	/* 0x88 + IP + port */
+	len = 1 + sizeof(ip) + sizeof(port);
+
+	msgb_put_u8(nmsg, NM_ATT_IPACC_PRIM_OML_CFG_LIST);
+	msgb_put_u16(nmsg, len);
+
+	msgb_put_u8(nmsg, 0x88);
+
+	/* IP address */
+	msgb_put_u32(nmsg, ip);
+
+	/* port number */
+	msgb_put_u16(nmsg, port);
+}
+
+static void nv_put_flags(struct msgb *nmsg, uint16_t nv_flags, uint16_t nv_mask)
+{
+	msgb_put_u8(nmsg, NM_ATT_IPACC_NV_FLAGS);
+	msgb_put_u16(nmsg, sizeof(nv_flags) + sizeof(nv_mask));
+	msgb_put_u8(nmsg, nv_flags & 0xff);
+	msgb_put_u8(nmsg, nv_mask & 0xff);
+	msgb_put_u8(nmsg, nv_flags >> 8);
+	msgb_put_u8(nmsg, nv_mask >> 8);
+}
+
+static void bootstrap_om(struct gsm_bts_trx *trx)
+{
 	struct msgb *nmsg = msgb_alloc(1024, "nested msgb");
+	int need_to_set_attr = 0;
+	int len;
 
 	printf("OML link established using TRX %d\n", trx->nr);
 
@@ -311,11 +364,11 @@ static void bootstrap_om(struct gsm_bts_trx *trx)
 		if (len > nmsg->data_len-10)
 			goto out_err;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		msgb_tl16v_put(nmsg, NM_ATT_IPACC_UNIT_ID, len+1, (const uint8_t *)unit_id);
+		nv_put_unit_id(nmsg, unit_id);
+		need_to_set_attr = 1;
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
-		uint8_t *cur;
 
 		if (!inet_aton(prim_oml_ip, &ia)) {
 			fprintf(stderr, "invalid IP address: %s\n",
@@ -323,39 +376,54 @@ static void bootstrap_om(struct gsm_bts_trx *trx)
 			goto out_err;
 		}
 
-		/* 0x88 + IP + port */
-		len = 1 + sizeof(ia) + 2;
-
-		msgb_put_u8(nmsg, NM_ATT_IPACC_PRIM_OML_CFG_LIST);
-		msgb_put_u16(nmsg, len);
-
-		msgb_put_u8(nmsg, 0x88);
-
-		/* IP address */
-		cur = msgb_put(nmsg, 4);
-		memcpy(cur, &ia, sizeof(ia));
-
-		/* port number */
-		msgb_put_u16(nmsg, 0);
-
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
+		nv_put_prim_oml(nmsg, ntohl(ia.s_addr), 0);
+		need_to_set_attr = 1;
 	}
 	if (nv_mask) {
-		len = 4;
-
-		msgb_put_u8(nmsg, NM_ATT_IPACC_NV_FLAGS);
-		msgb_put_u16(nmsg, len);
-		msgb_put_u8(nmsg, nv_flags & 0xff);
-		msgb_put_u8(nmsg, nv_mask & 0xff);
-		msgb_put_u8(nmsg, nv_flags >> 8);
-		msgb_put_u8(nmsg, nv_mask >> 8);
-
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
+		nv_put_flags(nmsg, nv_flags, nv_mask);
+		need_to_set_attr = 1;
+	}
+	if (bts_ip_addr && bts_ip_mask) {
+		struct in_addr ia_addr, ia_mask;
+
+		if (!inet_aton(bts_ip_addr, &ia_addr)) {
+			fprintf(stderr, "invalid IP address: %s\n",
+				bts_ip_addr);
+			goto out_err;
+		}
+
+		if (!inet_aton(bts_ip_mask, &ia_mask)) {
+			fprintf(stderr, "invalid IP address: %s\n",
+				bts_ip_mask);
+			goto out_err;
+		}
+
+		printf("setting static IP Address/Mask\n");
+		nv_put_ip_if_cfg(nmsg, ntohl(ia_addr.s_addr), ntohl(ia_mask.s_addr));
+		need_to_set_attr = 1;
+	}
+	if (bts_ip_gw) {
+		struct in_addr ia_gw;
+
+		if (!inet_aton(bts_ip_gw, &ia_gw)) {
+			fprintf(stderr, "invalid IP address: %s\n",
+				bts_ip_gw);
+			goto out_err;
+		}
+
+		printf("setting static IP Gateway\n");
+		/* we only set the default gateway with zero addr/mask */
+		nv_put_gw_cfg(nmsg, 0, 0, ntohl(ia_gw.s_addr));
+		need_to_set_attr = 1;
 	}
 
-	abis_nm_ipaccess_set_nvattr(trx, nmsg->head, nmsg->len);
-	oml_state = 1;
+	if (need_to_set_attr) {
+		abis_nm_ipaccess_set_nvattr(trx, nmsg->head, nmsg->len);
+		oml_state = 1;
+	}
 
 	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
@@ -603,16 +671,18 @@ static void print_usage(void)
 
 static void print_help(void)
 {
-	printf("  -u --unit-id UNIT_ID\tSet the Unit ID of the BTS\n");
-	printf("  -o --oml-ip IP\tSet primary OML IP (IP of your BSC)\n");
-	printf("  -r --restart\t\tRestart the BTS (after other operations)\n");
-	printf("  -n flags/mask\t\tSet NVRAM attributes.\n");
-	printf("  -l --listen testnr\tPerform specified test number\n");
-	printf("  -h --help\t\tthis text\n");
-	printf("  -s --stream-id ID\tSet the IPA Stream Identifier for OML\n");
-	printf("  -d --software firmware Download firmware into BTS\n");
-	printf("  -f --firmware firmware Provide firmware information\n");
-	printf("  -w --write-firmware    This will dump the firmware parts to the filesystem. Use with -f.\n");
+	printf("  -u --unit-id UNIT_ID\t\tSet the Unit ID of the BTS\n");
+	printf("  -o --oml-ip IP\t\tSet primary OML IP (IP of your BSC)\n");
+	printf("  -i --ip-address IP/MASK\tSet static IP address + netmask of BTS\n");
+	printf("  -g --ip-gateway IP\t\tSet static IP gateway of BTS\n");
+	printf("  -r --restart\t\t\tRestart the BTS (after other operations)\n");
+	printf("  -n --nvram-flags FLAGS/MASK\tSet NVRAM attributes.\n");
+	printf("  -l --listen TESTNR\t\tPerform specified test number\n");
+	printf("  -h --help\t\t\tthis text\n");
+	printf("  -s --stream-id ID\t\tSet the IPA Stream Identifier for OML\n");
+	printf("  -d --software FIRMWARE\tDownload firmware into BTS\n");
+	printf("  -f --firmware FIRMWARE\tProvide firmware information\n");
+	printf("  -w --write-firmware\t\tThis will dump the firmware parts to the filesystem. Use with -f.\n");
 }
 
 extern void bts_model_nanobts_init();
@@ -632,7 +702,7 @@ int main(int argc, char **argv)
 	log_parse_category_mask(stderr_target, "DNM,0");
 	bts_model_nanobts_init();
 
-	printf("ipaccess-config (C) 2009 by Harald Welte\n");
+	printf("ipaccess-config (C) 2009-2010 by Harald Welte and others\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
 
 	while (1) {
@@ -642,7 +712,10 @@ int main(int argc, char **argv)
 		static struct option long_options[] = {
 			{ "unit-id", 1, 0, 'u' },
 			{ "oml-ip", 1, 0, 'o' },
+			{ "ip-address", 1, 0, 'i' },
+			{ "ip-gateway", 1, 0, 'g' },
 			{ "restart", 0, 0, 'r' },
+			{ "nvram-flags", 1, 0, 'n' },
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
@@ -652,7 +725,7 @@ int main(int argc, char **argv)
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:rn:l:hs:d:f:w", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:l:hs:d:f:w", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -664,6 +737,16 @@ int main(int argc, char **argv)
 			break;
 		case 'o':
 			prim_oml_ip = optarg;
+			break;
+		case 'i':
+			slash = strchr(optarg, '/');
+			if (!slash)
+				exit(2);
+			bts_ip_addr = optarg;
+			bts_ip_mask = slash+1;
+			break;
+		case 'g':
+			bts_ip_gw = optarg;
 			break;
 		case 'r':
 			restart = 1;
