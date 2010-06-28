@@ -27,11 +27,13 @@
 
 #include <netinet/in.h>
 
-#include <openbsc/gsm_data.h>
+#include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
 #include <osmocore/gsm_utils.h>
-#include <openbsc/abis_nm.h>
 #include <osmocore/statistics.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/abis_nm.h>
 
 void *tall_bsc_ctx;
 
