@@ -107,7 +107,7 @@ static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
 		fprintf(stderr, "The new software is activaed.\n");
 		check_restart_or_exit(trx);
 	} else if (oml_state == 1) {
-		fprintf(stderr, "Set the primary OML IP.\n");
+		fprintf(stderr, "Set the NV Attributes.\n");
 		check_restart_or_exit(trx);
 	}
 
@@ -302,67 +302,68 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *_msg,
 static void bootstrap_om(struct gsm_bts_trx *trx)
 {
 	int len;
-	static u_int8_t buf[1024];
-	u_int8_t *cur = buf;
+	struct msgb *nmsg = msgb_alloc(1024, "nested msgb");
 
 	printf("OML link established using TRX %d\n", trx->nr);
 
 	if (unit_id) {
 		len = strlen(unit_id);
-		if (len > sizeof(buf)-10)
-			return;
-		buf[0] = NM_ATT_IPACC_UNIT_ID;
-		buf[1] = (len+1) >> 8;
-		buf[2] = (len+1) & 0xff;
-		memcpy(buf+3, unit_id, len);
-		buf[3+len] = 0;
+		if (len > nmsg->data_len-10)
+			goto out_err;
 		printf("setting Unit ID to '%s'\n", unit_id);
-		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len+1);
+		msgb_tl16v_put(nmsg, NM_ATT_IPACC_UNIT_ID, len+1, (const uint8_t *)unit_id);
 	}
 	if (prim_oml_ip) {
 		struct in_addr ia;
+		uint8_t *cur;
 
 		if (!inet_aton(prim_oml_ip, &ia)) {
 			fprintf(stderr, "invalid IP address: %s\n",
 				prim_oml_ip);
-			return;
+			goto out_err;
 		}
 
 		/* 0x88 + IP + port */
 		len = 1 + sizeof(ia) + 2;
 
-		*cur++ = NM_ATT_IPACC_PRIM_OML_CFG_LIST;
-		*cur++ = (len) >> 8;
-		*cur++ = (len) & 0xff;
-		*cur++ = 0x88;
+		msgb_put_u8(nmsg, NM_ATT_IPACC_PRIM_OML_CFG_LIST);
+		msgb_put_u16(nmsg, len);
+
+		msgb_put_u8(nmsg, 0x88);
+
+		/* IP address */
+		cur = msgb_put(nmsg, 4);
 		memcpy(cur, &ia, sizeof(ia));
-		cur += sizeof(ia);
-		*cur++ = 0;
-		*cur++ = 0;
+
+		/* port number */
+		msgb_put_u16(nmsg, 0);
+
 		printf("setting primary OML link IP to '%s'\n", inet_ntoa(ia));
-		oml_state = 1;
-		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
 	if (nv_mask) {
 		len = 4;
 
-		*cur++ = NM_ATT_IPACC_NV_FLAGS;
-		*cur++ = (len) >> 8;
-		*cur++ = (len) & 0xff;
-		*cur++ = nv_flags & 0xff;
-		*cur++ = nv_mask & 0xff;
-		*cur++ = nv_flags >> 8;
-		*cur++ = nv_mask >> 8;
+		msgb_put_u8(nmsg, NM_ATT_IPACC_NV_FLAGS);
+		msgb_put_u16(nmsg, len);
+		msgb_put_u8(nmsg, nv_flags & 0xff);
+		msgb_put_u8(nmsg, nv_mask & 0xff);
+		msgb_put_u8(nmsg, nv_flags >> 8);
+		msgb_put_u8(nmsg, nv_mask >> 8);
+
 		printf("setting NV Flags/Mask to 0x%04x/0x%04x\n",
 			nv_flags, nv_mask);
-		abis_nm_ipaccess_set_nvattr(trx, buf, 3+len);
 	}
+
+	abis_nm_ipaccess_set_nvattr(trx, nmsg->head, nmsg->len);
+	oml_state = 1;
 
 	if (restart && !prim_oml_ip && !software) {
 		printf("restarting BTS\n");
 		abis_nm_ipaccess_restart(trx);
 	}
 
+out_err:
+	msgb_free(nmsg);
 }
 
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
