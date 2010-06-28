@@ -351,6 +351,39 @@ static void nv_put_flags(struct msgb *nmsg, uint16_t nv_flags, uint16_t nv_mask)
 	msgb_put_u8(nmsg, nv_mask >> 8);
 }
 
+/* human-readable names for the ip.access nanoBTS NVRAM Flags */
+static const struct value_string ipa_nvflag_strs[] = {
+	{ 0x0001, "static-ip" },
+	{ 0x0002, "static-gw" },
+	{ 0x0004, "no-dhcp-vsi" },
+	{ 0x0008, "dhcp-enabled" },
+	{ 0x0040, "led-disabled" },
+	{ 0x0100, "secondary-oml-enabled" },
+	{ 0x0200, "diag-enabled" },
+	{ 0x0400, "cli-enabled" },
+	{ 0x0800, "http-enabled" },
+	{ 0x1000, "post-enabled" },
+	{ 0x2000, "snmp-enabled" },
+	{ 0, NULL }
+};
+
+/* set the flags in flags/mask according to a string-identified flag and 'enable' */
+static int ipa_nvflag_set(uint16_t *flags, uint16_t *mask, const char *name, int en)
+{
+	int rc;
+	rc = get_string_value(ipa_nvflag_strs, name);
+	if (rc < 0)
+		return rc;
+
+	*mask |= rc;
+	if (en)
+		*flags |= rc;
+	else
+		*flags &= ~rc;
+
+	return 0;
+}
+
 static void bootstrap_om(struct gsm_bts_trx *trx)
 {
 	struct msgb *nmsg = msgb_alloc(1024, "nested msgb");
@@ -671,16 +704,26 @@ static void print_usage(void)
 
 static void print_help(void)
 {
+#if 0
+	printf("Commmands for reading from the BTS:\n");
+	printf("  -D --dump\t\t\tDump the BTS configuration\n");
+	printf("\n");
+#endif
+	printf("Commmands for writing to the BTS:\n");
 	printf("  -u --unit-id UNIT_ID\t\tSet the Unit ID of the BTS\n");
 	printf("  -o --oml-ip IP\t\tSet primary OML IP (IP of your BSC)\n");
 	printf("  -i --ip-address IP/MASK\tSet static IP address + netmask of BTS\n");
 	printf("  -g --ip-gateway IP\t\tSet static IP gateway of BTS\n");
 	printf("  -r --restart\t\t\tRestart the BTS (after other operations)\n");
-	printf("  -n --nvram-flags FLAGS/MASK\tSet NVRAM attributes.\n");
+	printf("  -n --nvram-flags FLAGS/MASK\tSet NVRAM attributes\n");
+	printf("  -S --nvattr-set FLAG\tSet one additional NVRAM attribute\n");
+	printf("  -U --nvattr-unset FLAG\tSet one additional NVRAM attribute\n");
 	printf("  -l --listen TESTNR\t\tPerform specified test number\n");
-	printf("  -h --help\t\t\tthis text\n");
 	printf("  -s --stream-id ID\t\tSet the IPA Stream Identifier for OML\n");
 	printf("  -d --software FIRMWARE\tDownload firmware into BTS\n");
+	printf("\n");
+	printf("Miscellaneous commands:\n");
+	printf("  -h --help\t\t\tthis text\n");
 	printf("  -f --firmware FIRMWARE\tProvide firmware information\n");
 	printf("  -w --write-firmware\t\tThis will dump the firmware parts to the filesystem. Use with -f.\n");
 }
@@ -716,6 +759,8 @@ int main(int argc, char **argv)
 			{ "ip-gateway", 1, 0, 'g' },
 			{ "restart", 0, 0, 'r' },
 			{ "nvram-flags", 1, 0, 'n' },
+			{ "nvattr-set", 1, 0, 'S' },
+			{ "nvattr-unset", 1, 0, 'U' },
 			{ "help", 0, 0, 'h' },
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
@@ -725,7 +770,7 @@ int main(int argc, char **argv)
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:l:hs:d:f:w", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:w", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -743,6 +788,7 @@ int main(int argc, char **argv)
 			if (!slash)
 				exit(2);
 			bts_ip_addr = optarg;
+			*slash = 0;
 			bts_ip_mask = slash+1;
 			break;
 		case 'g':
@@ -759,6 +805,14 @@ int main(int argc, char **argv)
 			nv_flags = ul & 0xffff;
 			ul = strtoul(slash+1, NULL, 16);
 			nv_mask = ul & 0xffff;
+			break;
+		case 'S':
+			if (ipa_nvflag_set(&nv_flags, &nv_mask, optarg, 1) < 0)
+				exit(2);
+			break;
+		case 'U':
+			if (ipa_nvflag_set(&nv_flags, &nv_mask, optarg, 0) < 0)
+				exit(2);
 			break;
 		case 'l':
 			net_listen_testnr = atoi(optarg);
