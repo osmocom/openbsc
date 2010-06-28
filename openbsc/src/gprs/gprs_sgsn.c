@@ -205,6 +205,7 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 {
+	rate_ctr_group_free(pdp->ctrg);
 	llist_del(&pdp->list);
 	llist_del(&pdp->g_list);
 	talloc_free(pdp);
