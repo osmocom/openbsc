@@ -95,9 +95,6 @@ void trans_free(struct gsm_trans *trans)
 		break;
 	}
 
-	if (trans->conn)
-		put_subscr_con(trans->conn);
-
 	if (!trans->conn && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
 		paging_request_stop(NULL, trans->subscr, NULL);
@@ -107,6 +104,10 @@ void trans_free(struct gsm_trans *trans)
 		subscr_put(trans->subscr);
 
 	llist_del(&trans->entry);
+
+	if (trans->conn)
+		msc_release_connection(trans->conn);
+
 
 	talloc_free(trans);
 }
@@ -155,15 +156,17 @@ int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
 	struct gsm_trans *trans;
 	int num = 0;
 
+	if (conn_old == conn_new) {
+		LOGP(DCC, LOGL_ERROR, "Exchanging transaction with itself.\n");
+		return;
+	}
+
 	llist_for_each_entry(trans, &net->trans_list, entry) {
 		if (trans->conn == conn_old) {
+			msc_release_connection(conn_old);
 
-			/* drop old channel use count */
-			put_subscr_con(conn_old);
 			/* assign new channel */
 			trans->conn = conn_new;
-			/* bump new channel use count */
-			use_subscr_con(conn_new);
 			num++;
 		}
 	}

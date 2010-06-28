@@ -24,6 +24,7 @@
 
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
+#include <openbsc/transaction.h>
 
 #include <openbsc/gsm_04_11.h>
 
@@ -63,4 +64,31 @@ static struct bsc_api msc_handler = {
 
 struct bsc_api *msc_bsc_api() {
 	return &msc_handler;
+}
+
+/* lchan release handling */
+void msc_release_connection(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_trans *trans;
+
+	/* skip when we are in release, e.g. due an error */
+	if (conn->in_release)
+		return;
+
+	/* skip releasing of silent calls as they have no transaction */
+	if (conn->silent_call)
+		return;
+
+	/* check if there is a pending operation */
+	if (conn->loc_operation || conn->sec_operation)
+		return;
+
+	llist_for_each_entry(trans, &conn->bts->network->trans_list, entry) {
+		if (trans->conn == conn)
+			return;
+	}
+
+	/* no more connections, asking to release the channel */
+	conn->in_release = 1;
+	gsm0808_clear(conn);
 }

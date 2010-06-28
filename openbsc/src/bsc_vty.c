@@ -700,8 +700,8 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
 		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
 		VTY_NEWLINE);
-	vty_out(vty, "  Use Count: %u, State: %s%s",
-		lchan->conn ? lchan->conn->use_count : -23,
+	vty_out(vty, "  Connection: %u, State: %s%s",
+		lchan->conn ? 1: 0,
 		gsm_lchans_name(lchan->state), VTY_NEWLINE);
 	vty_out(vty, "  BS Power: %u dBm, MS Power: %u dBm%s",
 		lchan->ts->trx->nominal_power - lchan->ts->trx->max_power_red

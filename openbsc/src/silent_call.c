@@ -57,7 +57,6 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 		conn->silent_call = 1;
 		/* increment lchan reference count */
 		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
-		use_subscr_con(conn);
 		break;
 	case GSM_PAGING_EXPIRED:
 		DEBUGP(DSMS, "expired\n");
@@ -135,7 +134,8 @@ int gsm_silent_call_stop(struct gsm_subscriber *subscr)
 	if (!conn->silent_call)
 		return -EINVAL;
 
-	put_subscr_con(conn);
+	conn->silent_call = 0;
+	msc_release_connection(conn);
 
 	return 0;
 }

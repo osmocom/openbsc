@@ -120,26 +120,6 @@ typedef int gsm_cbfn(unsigned int hooknum,
 		     struct msgb *msg,
 		     void *data, void *param);
 
-/*
- * Use the channel. As side effect the lchannel recycle timer
- * will be started.
- */
-#define LCHAN_RELEASE_TIMEOUT 20, 0
-#define use_subscr_con(con) \
-	do {	(con)->use_count++; \
-		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) increases usage to: %d\n", \
-			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
-			(con)->lchan->nr, (con)->use_count); \
-		bsc_schedule_timer(&(con)->release_timer, LCHAN_RELEASE_TIMEOUT); } while(0);
-
-#define put_subscr_con(con) \
-	do { (con)->use_count--; \
-		DEBUGP(DREF, "lchan (bts=%d,trx=%d,ts=%d,ch=%d) decreases usage to: %d\n", \
-			(con)->lchan->ts->trx->bts->nr, (con)->lchan->ts->trx->nr, (con)->lchan->ts->nr, \
-			(con)->lchan->nr, (con)->use_count); \
-	} while(0);
-
-
 /* Real authentication information containing Ki */
 enum gsm_auth_algo {
 	AUTH_ALGO_NONE,
@@ -239,22 +219,17 @@ struct gsm_subscriber_connection {
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
 
-	/* Timer started to release the channel */
-	struct timer_list release_timer;
-
 	/*
 	 * Operations that have a state and might be pending
 	 */
 	struct gsm_loc_updating_operation *loc_operation;
 	struct gsm_security_operation *sec_operation;
 
-	/* use count. how many users use this channel */
-	unsigned int use_count;
-
 	/* Are we part of a special "silent" call */
 	int silent_call;
 
 	/* back pointers */
+	int in_release;
 	struct gsm_lchan *lchan;
 	struct gsm_bts *bts;
 };

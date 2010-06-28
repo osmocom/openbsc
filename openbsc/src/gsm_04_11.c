@@ -943,7 +943,6 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		trans->sms.link_id = UM_SAPI_SMS;
 
 		trans->conn = conn;
-		use_subscr_con(trans->conn);
 	}
 
 	switch(msg_type) {
@@ -1066,7 +1065,6 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
 	trans->conn = conn;
-	use_subscr_con(trans->conn);
 
 	/* Hardcode SMSC Originating Address for now */
 	data = (u_int8_t *)msgb_put(msg, 8);
@@ -1122,7 +1120,6 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
-		use_subscr_con(conn);
 		gsm411_send_sms(conn, sms);
 		break;
 	case GSM_PAGING_EXPIRED:
@@ -1147,7 +1144,6 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	 * if yes, send the SMS this way */
 	conn = connection_for_subscr(subscr);
 	if (conn) {
-		use_subscr_con(conn);
 		return gsm411_send_sms(conn, sms);
 	}
 
@@ -1174,7 +1170,6 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		sms = db_sms_get_unsent_for_subscr(subscr);
 		if (!sms)
 			break;
-		use_subscr_con(conn);
 		gsm411_send_sms(conn, sms);
 		break;
 	default:

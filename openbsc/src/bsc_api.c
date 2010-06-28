@@ -104,10 +104,17 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
 			subscr_con_free(lchan->conn);
-			lchan_auto_release(lchan);
+			lchan_release(lchan, 0, 0);
 		}
 	}
 
+	return 0;
+}
+
+int gsm0808_clear(struct gsm_subscriber_connection* conn)
+{
+	subscr_con_free(conn);
+	lchan_release(conn->lchan, 1, 0);
 	return 0;
 }
 
@@ -155,12 +162,12 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!lchan || !lchan->conn)
 		return 0;
 
-
 	bsc = lchan->ts->trx->bts->network->bsc_api;
 	if (!bsc || !bsc->clear_request)
 		return 0;
 
 	bsc->clear_request(lchan->conn, 0);
+	subscr_con_free(lchan->conn);
 	return 0;
 }
 

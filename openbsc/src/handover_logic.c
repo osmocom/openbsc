@@ -231,7 +231,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	trans_lchan_change(ho->old_lchan->conn, new_lchan->conn);
 
 	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
-	lchan_auto_release(ho->old_lchan);
+	lchan_release(ho->old_lchan, 0, 1);
 
 	/* do something to re-route the actual speech frames ! */
 
@@ -259,7 +259,6 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
 	conn = ho->new_lchan->conn;
-	put_subscr_con(conn);
 	talloc_free(ho);
 
 	return 0;

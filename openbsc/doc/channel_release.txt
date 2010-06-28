@@ -31,6 +31,8 @@ GSM 04.08 3.4.13: RR connection release procedure
 
 == Implementation in OpenBSC ==
 
+THIS IS OUTDATED and will be updated...
+
 chan_alloc.c:lchan_auto_release()
 	* checks if use count still > 0 (abort)
 	* calls gsm48_send_rr_release()

@@ -46,8 +46,8 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);
 void lchan_free(struct gsm_lchan *lchan);
 void lchan_reset(struct gsm_lchan *lchan);
 
-/* Consider releasing the channel */
-int lchan_auto_release(struct gsm_lchan *lchan);
+/* Release the given lchan */
+int lchan_release(struct gsm_lchan *lchan, int sach_deact, int reason);
 
 struct load_counter {
 	unsigned int total;

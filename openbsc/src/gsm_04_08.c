@@ -109,13 +109,11 @@ static void release_security_operation(struct gsm_subscriber_connection *conn)
 
 	talloc_free(conn->sec_operation);
 	conn->sec_operation = NULL;
-	put_subscr_con(conn);
+	msc_release_connection(conn);
 }
 
 static void allocate_security_operation(struct gsm_subscriber_connection *conn)
 {
-	use_subscr_con(conn)
-
 	conn->sec_operation = talloc_zero(tall_authciphop_ctx,
 	                                  struct gsm_security_operation);
 }
@@ -222,12 +220,13 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 	bsc_del_timer(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = 0;
-	put_subscr_con(conn);
+	msc_release_connection(conn);
 }
 
 static void allocate_loc_updating_req(struct gsm_subscriber_connection *conn)
 {
-	use_subscr_con(conn)
+	if (conn->loc_operation)
+		LOGP(DMM, LOGL_ERROR, "Connection already had operation.\n");
 	release_loc_updating_req(conn);
 
 	conn->loc_operation = talloc_zero(tall_locop_ctx,
@@ -263,7 +262,6 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 
 			/* try to close channel ASAP */
 			release_loc_updating_req(conn);
-			lchan_auto_release(conn->lchan);
 			break;
 
 		default:
@@ -285,6 +283,10 @@ static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb
 void gsm0408_clear_request(struct gsm_subscriber_connection* conn, uint32_t cause)
 {
 	struct gsm_trans *trans, *temp;
+
+	/* avoid someone issuing a clear */
+	conn->in_release = 1;
+
 	/*
 	 * Cancel any outstanding location updating request
 	 * operation taking place on the subscriber connection.
@@ -424,7 +426,6 @@ static void loc_upd_rej_cb(void *data)
 
 	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 	release_loc_updating_req(conn);
-	lchan_auto_release(lchan);
 }
 
 static void schedule_reject(struct gsm_subscriber_connection *conn)
@@ -710,7 +711,6 @@ static int gsm48_tx_mm_serv_rej(struct gsm_subscriber_connection *conn,
 
 	DEBUGP(DMM, "-> CM SERVICE Reject cause: %d\n", value);
 	msg->lchan = conn->lchan;
-	use_subscr_con(conn);
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
 
@@ -871,8 +871,6 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	 * imagine an IMSI DETACH happening during an active call! */
 
 	/* subscriber is detached: should we release lchan? */
-	lchan_auto_release(msg->lchan);
-
 	return 0;
 }
 
@@ -1385,7 +1383,6 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			/* Assign lchan */
 			if (!transt->conn) {
 				transt->conn = conn;
-				use_subscr_con(transt->conn);
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
@@ -2289,9 +2286,6 @@ static int gsm48_cc_rx_release_compl(struct gsm_trans *trans, struct msgb *msg)
 		case GSM_CSTATE_RELEASE_REQ:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
 					  MNCC_REL_CNF, &rel);
-			/* FIXME: in case of multiple calls, we can't simply
-			 * hang up here ! */
-			lchan_auto_release(msg->lchan);
 			break;
 		default:
 			rc = mncc_recvmsg(trans->subscr->net, trans,
@@ -2924,7 +2918,6 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 		}
 		/* Assign lchan */
 		trans->conn = conn;
-		use_subscr_con(trans->conn);
 		subscr_put(subscr);
 	}
 
@@ -3065,7 +3058,6 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 		}
 		/* Assign transaction */
 		trans->conn = conn;
-		use_subscr_con(trans->conn);
 	}
 
 	/* find function for current state and message */
