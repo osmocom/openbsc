@@ -1249,7 +1249,8 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 		ia->mob_alloc_len = lchan->ts->hopping.ma_len;
 		memcpy(ia->mob_alloc, lchan->ts->hopping.ma_data, ia->mob_alloc_len);
 	}
-	ia->l2_plen = GSM48_LEN2PLEN(sizeof(*ia) + ia->mob_alloc_len);
+	/* we need to subtract 1 byte from sizeof(*ia) since ia includes the l2_plen field */
+	ia->l2_plen = GSM48_LEN2PLEN((sizeof(*ia)-1) + ia->mob_alloc_len);
 
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 	lchan->T3101.cb = t3101_expired;
