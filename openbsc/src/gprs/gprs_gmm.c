@@ -631,6 +631,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	uint8_t detach_type, power_off;
+	int rc;
 
 	detach_type = gh->data[0] & 0x7;
 	power_off = gh->data[0] & 0x8;
@@ -654,7 +655,12 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	}
 
 	/* force_stby = 0 */
-	return gsm48_tx_gmm_det_ack(ctx, 0);
+	rc = gsm48_tx_gmm_det_ack(ctx, 0);
+
+	/* TLLI unassignment */
+	gprs_llgmm_assign(ctx->llme, ctx->tlli, 0xffffffff, 0, NULL);
+
+	return rc;
 }
 
 /* Chapter 9.4.15: Routing area update accept */
@@ -877,7 +883,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
+		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -886,7 +892,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
+		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
