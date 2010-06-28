@@ -151,6 +151,12 @@ static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
 	return llme;
 }
 
+static void llme_free(struct gprs_llc_llme *llme)
+{
+	llist_del(&llme->list);
+	talloc_free(llme);
+}
+
 enum gprs_llc_cmd {
 	GPRS_LLC_NULL,
 	GPRS_LLC_RR,
@@ -732,6 +738,7 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 			struct gprs_llc_lle *l = &llme->lle[i];
 			l->state = GPRS_LLES_UNASSIGNED;
 		}
+		llme_free(llme);
 	} else
 		return -EINVAL;
 
