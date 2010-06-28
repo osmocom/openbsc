@@ -287,6 +287,9 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	DEBUGP(DGPRS, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
 
+	/* Deactivate the SNDCP layer */
+	sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+
 	/* Confirm deactivation of PDP context to MS */
 	rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
 
