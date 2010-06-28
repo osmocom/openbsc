@@ -629,6 +629,7 @@ err_inval:
 static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	struct sgsn_pdp_ctx *pdp, *pdp2;
 	uint8_t detach_type, power_off;
 
 	detach_type = gh->data[0] & 0x7;
@@ -642,6 +643,15 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	/* Mark MM state as deregistered */
 	ctx->mm_state = GMM_DEREGISTERED;
+
+	/* delete all existing PDP contexts for this MS */
+	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
+		LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
+		     "due to GPRS DETACH REQUEST\n", pdp->nsapi);
+		sgsn_delete_pdp_ctx(pdp);
+		/* FIXME: the callback wants to transmit a DEACT PDP CTX ACK,
+		 * which is quite stupid for a MS that has just detached.. */
+	}
 
 	/* force_stby = 0 */
 	return gsm48_tx_gmm_det_ack(ctx, 0);
