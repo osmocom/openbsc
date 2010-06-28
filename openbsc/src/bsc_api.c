@@ -89,19 +89,23 @@ int bsc_upqueue(struct gsm_network *net)
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;
-	struct gsm_subscriber_connection *conn;
 	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+	struct gsm_lchan *lchan;
 
-	conn = &msg->lchan->conn;
-	if (conn->allocated) {
-		api->dtap(conn, msg);
+	lchan = msg->lchan;
+	if (lchan->conn) {
+		api->dtap(lchan->conn, msg);
 	} else {
-		/* accept the connection or close the lchan */
-		rc = api->compl_l3(conn, msg, 0);
-		if (rc == BSC_API_CONN_POL_ACCEPT)
-			conn->allocated = 1;
-		else
-			lchan_auto_release(msg->lchan);
+		rc = BSC_API_CONN_POL_REJECT;
+		lchan->conn = subscr_con_allocate(msg->lchan);
+
+		if (lchan->conn)
+			rc = api->compl_l3(lchan->conn, msg, 0);
+
+		if (rc != BSC_API_CONN_POL_ACCEPT) {
+			subscr_con_free(lchan->conn);
+			lchan_auto_release(lchan);
+		}
 	}
 
 	return 0;
@@ -110,6 +114,9 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id)
 {
 	struct bsc_api *api;
+
+	if (!conn)
+		return;
 
 	api = conn->bts->network->bsc_api;
 	if (!api || !api->sapi_n_reject)
@@ -129,7 +136,7 @@ static void rll_ind_cb(struct gsm_lchan *lchan, uint8_t link_id, void *_data, en
 	case BSC_RLLR_IND_REL_IND:
 	case BSC_RLLR_IND_ERR_IND:
 	case BSC_RLLR_IND_TIMEOUT:
-		send_sapi_reject(&lchan->conn, OBSC_LINKID_CB(msg));
+		send_sapi_reject(lchan->conn, OBSC_LINKID_CB(msg));
 		msgb_free(msg);
 		break;
 	}
@@ -145,7 +152,7 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	lchan = (struct gsm_lchan *)signal_data;
-	if (!lchan)
+	if (!lchan || !lchan->conn)
 		return 0;
 
 
@@ -153,7 +160,7 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!bsc || !bsc->clear_request)
 		return 0;
 
-	bsc->clear_request(&lchan->conn, 0);
+	bsc->clear_request(lchan->conn, 0);
 	return 0;
 }
 

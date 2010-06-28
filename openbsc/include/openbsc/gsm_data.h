@@ -255,7 +255,6 @@ struct gsm_subscriber_connection {
 	int silent_call;
 
 	/* back pointers */
-	int allocated;
 	struct gsm_lchan *lchan;
 	struct gsm_bts *bts;
 };
@@ -316,7 +315,7 @@ struct gsm_lchan {
 		struct rtp_socket *rtp_socket;
 	} abis_ip;
 
-	struct gsm_subscriber_connection conn;
+	struct gsm_subscriber_connection *conn;
 };
 
 struct gsm_e1_subslot {
@@ -821,5 +820,8 @@ struct gsm_meas_rep *lchan_next_meas_rep(struct gsm_lchan *lchan);
 int gsm_btsmodel_set_feature(struct gsm_bts_model *model, enum gsm_bts_features feat);
 int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
 int gsm_bts_model_register(struct gsm_bts_model *model);
+
+struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan);
+void subscr_con_free(struct gsm_subscriber_connection *conn);
 
 #endif

@@ -123,7 +123,8 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 
 	lchan = &ts->lchan[lch_idx];
 	log_set_context(BSC_CTX_LCHAN, lchan);
-	log_set_context(BSC_CTX_SUBSCR, lchan->conn.subscr);
+	if (lchan->conn)
+		log_set_context(BSC_CTX_SUBSCR, lchan->conn->subscr);
 
 	return lchan;
 }
