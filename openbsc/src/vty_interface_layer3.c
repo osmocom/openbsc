@@ -166,11 +166,6 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 	if (!sms)
 		return NULL;
 
-	if (!receiver->lac) {
-		/* subscriber currently not attached, store in database? */
-		return NULL;
-	}
-
 	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
@@ -195,7 +190,16 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 
 	sms = sms_from_text(receiver, str);
 	sms->protocol_id = tp_pid;
-	gsm411_send_sms_subscr(receiver, sms);
+
+	if(!receiver->lac){
+		/* subscriber currently not attached, store in database */
+		if (db_sms_store(sms) != 0) {
+			LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
+			return CMD_WARNING;
+		}
+	} else {
+		gsm411_send_sms_subscr(receiver, sms);
+	}
 
 	return CMD_SUCCESS;
 }
