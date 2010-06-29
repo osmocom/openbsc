@@ -427,6 +427,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	int rc;
+	uint8_t *len;
 
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
@@ -450,15 +451,22 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	/* For compatibility with Phase 1 */
 	/* RSL IE TAG */
 	msgb_v_put(msg, RSL_IE_CHAN_IDENT);
-	/* RSL IE LEN: 04.08_cd_tag + CD + 04.08_ma_tag + 04.08_ma_len + ma_len */
-	msgb_v_put(msg, 1 + sizeof(struct gsm48_chan_desc) + 2 + lchan->ts->hopping.ma_len);
+	/* RSL IE LEN: 04.08_cd_tag + CD */
+	len = msgb_put(msg, 1);
+	*len = 1 + sizeof(struct gsm48_chan_desc);
+	msgb_v_put(msg, 1 + sizeof(struct gsm48_chan_desc) + 2 +
+						lchan->ts->hopping.ma_len);
 	/* GSM 04.08 Chan Desc 2 (TAG + fixed 3 byte length V) */
 	msgb_v_put(msg, GSM48_IE_CHANDESC_2);
 	msgb_cd = msgb_put(msg, sizeof(cd));
 	memcpy(msgb_cd, &cd, sizeof(cd));
-	/* GSM 04.08 Mobile Allocation: TLV */
-	msgb_tlv_put(msg, GSM48_IE_MA_AFTER, lchan->ts->hopping.ma_len,
-		     lchan->ts->hopping.ma_data);
+	if (lchan->ts->hopping.enabled) {
+		/* RSL IE LEN: += 04.08_ma_tag + 04.08_ma_len + ma_len */
+		*len += 2 + lchan->ts->hopping.ma_len;
+		/* GSM 04.08 Mobile Allocation: TLV */
+		msgb_tlv_put(msg, GSM48_IE_MA_AFTER, lchan->ts->hopping.ma_len,
+			     lchan->ts->hopping.ma_data);
+	}
 	
 	if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		u_int8_t encr_info[MAX_A5_KEY_LEN+2];
