@@ -432,12 +432,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	u_int8_t chan_nr = lchan2chan_nr(lchan);
 	struct rsl_ie_chan_mode cm;
 	struct gsm48_chan_desc cd;
-	uint8_t *msgb_cd;
 
 	rc = channel_mode_from_lchan(&cm, lchan);
 	if (rc < 0)
 		return rc;
 
+	memset(&cd, 0, sizeof(cd));
 	gsm48_lchan2chan_desc(&cd, lchan);
 
 	msg = rsl_msgb_alloc();
@@ -448,26 +448,23 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	msgb_tv_put(msg, RSL_IE_ACT_TYPE, act_type);
 	msgb_tlv_put(msg, RSL_IE_CHAN_MODE, sizeof(cm),
 		     (u_int8_t *) &cm);
-	/* For compatibility with Phase 1 */
-	/* RSL IE TAG */
+
+	/*
+	 * The Channel Identification is needed for Phase1 phones
+	 * and it contains the GSM48 Channel Description and the
+	 * Mobile Allocation. The GSM 08.58 asks for the Mobile
+	 * Allocation to have a length of zero. We are using the
+	 * msgb_l3len to calculate the length of both messages.
+	 */
 	msgb_v_put(msg, RSL_IE_CHAN_IDENT);
-	/* RSL IE LEN: 04.08_cd_tag + CD */
 	len = msgb_put(msg, 1);
-	*len = 1 + sizeof(struct gsm48_chan_desc);
-	msgb_v_put(msg, 1 + sizeof(struct gsm48_chan_desc) + 2 +
-						lchan->ts->hopping.ma_len);
-	/* GSM 04.08 Chan Desc 2 (TAG + fixed 3 byte length V) */
-	msgb_v_put(msg, GSM48_IE_CHANDESC_2);
-	msgb_cd = msgb_put(msg, sizeof(cd));
-	memcpy(msgb_cd, &cd, sizeof(cd));
-	if (lchan->ts->hopping.enabled) {
-		/* RSL IE LEN: += 04.08_ma_tag + 04.08_ma_len + ma_len */
-		*len += 2 + lchan->ts->hopping.ma_len;
-		/* GSM 04.08 Mobile Allocation: TLV */
-		msgb_tlv_put(msg, GSM48_IE_MA_AFTER, lchan->ts->hopping.ma_len,
-			     lchan->ts->hopping.ma_data);
-	}
-	
+	msgb_tlv_put(msg, GSM48_IE_CHANDESC_2, sizeof(cd), (const uint8_t *) &cd);
+	msgb_tlv_put(msg, GSM48_IE_MA_AFTER, 0, NULL);
+
+	/* update the calculated size */
+	msg->l3h = len + 1;
+	*len = msgb_l3len(msg);
+
 	if (lchan->encr.alg_id > RSL_ENC_ALG_A5(0)) {
 		u_int8_t encr_info[MAX_A5_KEY_LEN+2];
 		rc = build_encr_info(encr_info, lchan);
