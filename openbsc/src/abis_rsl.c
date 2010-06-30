@@ -459,7 +459,12 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type,
 	msgb_v_put(msg, RSL_IE_CHAN_IDENT);
 	len = msgb_put(msg, 1);
 	msgb_tlv_put(msg, GSM48_IE_CHANDESC_2, sizeof(cd), (const uint8_t *) &cd);
-	msgb_tlv_put(msg, GSM48_IE_MA_AFTER, 0, NULL);
+
+	if (lchan->ts->hopping.enabled)
+		msgb_tlv_put(msg, GSM48_IE_MA_AFTER, lchan->ts->hopping.ma_len,
+			     lchan->ts->hopping.ma_data);
+	else
+		msgb_tlv_put(msg, GSM48_IE_MA_AFTER, 0, NULL);
 
 	/* update the calculated size */
 	msg->l3h = len + 1;
