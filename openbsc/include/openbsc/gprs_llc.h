@@ -109,6 +109,14 @@ struct gprs_llc_lle {
 	uint16_t vu_send;
 	uint16_t vu_recv;
 
+	/* Overflow Counter for ABM */
+	uint32_t oc_i_send;
+	uint32_t oc_i_recv;
+
+	/* Overflow Counter for unconfirmed transfer */
+	uint32_t oc_ui_send;
+	uint32_t oc_ui_recv;
+
 	unsigned int retrans_ctr;
 
 	struct gprs_llc_params params;
@@ -123,6 +131,10 @@ struct gprs_llc_llme {
 
 	uint32_t tlli;
 	uint32_t old_tlli;
+
+	/* Crypto parameters */
+	enum gprs_ciph_algo algo;
+	uint8_t kc[8];
 
 	/* over which BSSGP BTS ctx do we need to transmit */
 	uint16_t bvci;
