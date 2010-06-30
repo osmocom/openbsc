@@ -6,6 +6,8 @@
 
 #include <osmocore/gsm48.h>
 
+#include <osmocom/crypt/gprs_cipher.h>
+
 #define GSM_IMSI_LENGTH 17
 #define GSM_IMEI_LENGTH 17
 #define GSM_EXTENSION_LENGTH 15
@@ -19,13 +21,6 @@ enum gprs_mm_state {
 	GMM_REGISTERED_NORMAL,		/* 4.1.3.3.2.1 */
 	GMM_REGISTERED_SUSPENDED,	/* 4.1.3.3.2.2 */
 	GMM_DEREGISTERED_INIT,		/* 4.1.3.3.1.4 */
-};
-
-enum gprs_ciph_algo {
-	GPRS_ALGO_GEA0,
-	GPRS_ALGO_GEA1,
-	GPRS_ALGO_GEA2,
-	GPRS_ALGO_GEA3,
 };
 
 enum gprs_mm_ctr {

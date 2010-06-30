@@ -749,3 +749,8 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 
 	return 0;
 }
+
+int gprs_llc_init(const char *cipher_plugin_path)
+{
+	return gprs_cipher_load(cipher_plugin_path);
+}
