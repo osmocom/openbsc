@@ -112,6 +112,14 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 	}
 }
 
+char *subscr_name(struct gsm_subscriber *subscr)
+{
+	if (strlen(subscr->name))
+		return subscr->name;
+
+	return subscr->imsi;
+}
+
 struct gsm_subscriber *subscr_alloc(void)
 {
 	struct gsm_subscriber *s;

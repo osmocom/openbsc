@@ -34,14 +34,6 @@
 
 extern struct llist_head *subscr_bsc_active_subscriber(void);
 
-char *subscr_name(struct gsm_subscriber *subscr)
-{
-	if (strlen(subscr->name))
-		return subscr->name;
-
-	return subscr->imsi;
-}
-
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 					  u_int32_t tmsi)
 {
