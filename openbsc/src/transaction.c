@@ -28,6 +28,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/mncc.h>
 #include <openbsc/paging.h>
+#include <openbsc/osmo_msc.h>
 
 void *tall_trans_ctx;
 

@@ -33,6 +33,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/osmo_msc.h>
 
 /* paging of the requested subscriber has completed */
 static int paging_cb_silent(unsigned int hooknum, unsigned int event,

@@ -33,6 +33,7 @@
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
+#include <openbsc/osmo_msc.h>
 
 /* Declarations of USSD strings to be recognised */
 const char USSD_TEXT_OWN_NUMBER[] = "*#100#";

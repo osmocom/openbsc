@@ -54,6 +54,7 @@
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
+#include <openbsc/osmo_msc.h>
 
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
