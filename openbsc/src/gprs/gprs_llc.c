@@ -200,6 +200,7 @@ struct gprs_llc_hdr_parsed {
 	uint32_t fcs_calc;
 	uint8_t *data;
 	uint16_t data_len;
+	uint16_t crc_length;
 	enum gprs_llc_cmd cmd;
 };
 
@@ -480,13 +481,11 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 {
 	uint8_t *ctrl = llc_hdr+1;
 	int is_sack = 0;
-	unsigned int crc_length;
-	uint32_t fcs_calc;
 
 	if (len <= CRC24_LENGTH)
 		return -EIO;
 
-	crc_length = len - CRC24_LENGTH;
+	ghp->crc_length = len - CRC24_LENGTH;
 
 	ghp->ack_req = 0;
 
@@ -591,8 +590,8 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 			/* FCS over hdr + all inf fields */
 		} else {
 			/* FCS over hdr + N202 octets (4) */
-			if (crc_length > UI_HDR_LEN + N202)
-				crc_length = UI_HDR_LEN + N202;
+			if (ghp->crc_length > UI_HDR_LEN + N202)
+				ghp->crc_length = UI_HDR_LEN + N202;
 		}
 	} else {
 		/* U (Unnumbered) format: 1 1 1 P/F M4 M3 M2 M1 */
@@ -626,11 +625,6 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 		default:
 			return -EIO;
 		}
-	}
-
-	if (!ghp->is_encrypted) {
-		/* calculate what FCS we expect */
-		ghp->fcs_calc = gprs_llc_fcs(llc_hdr, crc_length);
 	}
 
 	/* FIXME: parse sack frame */
@@ -729,6 +723,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 	}
 
 	/* We have to do the FCS check _after_ decryption */
+	llhp.fcs_calc = gprs_llc_fcs((uint8_t *)lh, llhp.crc_length);
 	if (llhp.fcs != llhp.fcs_calc) {
 		LOGP(DLLC, LOGL_INFO, "Dropping frame with invalid FCS\n");
 		return -EIO;
