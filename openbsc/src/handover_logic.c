@@ -149,6 +149,30 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	return 0;
 }
 
+void bsc_clear_handover(struct gsm_subscriber_connection *conn)
+{
+	struct bsc_handover *ho;
+
+	ho = bsc_ho_by_new_lchan(conn->ho_lchan);
+
+
+	if (!ho && conn->ho_lchan)
+		LOGP(DHO, LOGL_ERROR, "BUG: We lost some state.\n");
+
+	if (!ho) {
+		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+		return;
+	}
+
+	conn->ho_lchan->conn = NULL;
+	conn->ho_lchan = NULL;
+	lchan_release(ho->new_lchan, 0, 1);
+
+	bsc_del_timer(&ho->T3103);
+	llist_del(&ho->list);
+	talloc_free(ho);
+}
+
 /* T3103 expired: Handover has failed without HO COMPLETE or HO FAIL */
 static void ho_T3103_cb(void *_ho)
 {

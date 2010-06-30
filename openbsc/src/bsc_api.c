@@ -28,6 +28,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/handover.h>
 
 #include <osmocore/talloc.h>
 
@@ -114,6 +115,8 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 int gsm0808_clear(struct gsm_subscriber_connection* conn)
 {
 	struct gsm_lchan *lchan;
+
+	bsc_clear_handover(conn);
 
 	lchan = conn->lchan;
 	subscr_con_free(conn);
