@@ -182,7 +182,9 @@ static void ho_T3103_cb(void *_ho)
 	DEBUGP(DHO, "HO T3103 expired\n");
 	counter_inc(net->stats.handover.timeout);
 
-	lchan_free(ho->new_lchan);
+	ho->new_lchan->conn->ho_lchan = NULL;
+	ho->new_lchan->conn = NULL;
+	lchan_release(ho->new_lchan, 0, 1);
 	llist_del(&ho->list);
 	talloc_free(ho);
 }
