@@ -63,7 +63,7 @@ static int hexparse(const char *str, u_int8_t *b, int max_len)
 		else if (c >= 'a' && c <= 'f')
 			v = 10 + (c - 'a');
 		else if (c >= 'A' && c <= 'F')
-			v = 10 + (c - 'a');
+			v = 10 + (c - 'A');
 		else
 			return -1;
 		b[i>>1] |= v << (i&1 ? 0 : 4);
