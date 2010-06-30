@@ -54,11 +54,15 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 	if (strstr(USSD_TEXT_OWN_NUMBER, req.text) != NULL) {
 		DEBUGP(DMM, "USSD: Own number requested\n");
-		return send_own_number(conn, msg, &req);
+		rc = send_own_number(conn, msg, &req);
 	} else {
 		DEBUGP(DMM, "Unhandled USSD %s\n", req.text);
-		return gsm0480_send_ussd_reject(conn, msg, &req);
+		rc = gsm0480_send_ussd_reject(conn, msg, &req);
 	}
+
+	/* check if we can release it */
+	msc_release_connection(conn);
+	return rc;
 }
 
 /* A network-specific handler function */
