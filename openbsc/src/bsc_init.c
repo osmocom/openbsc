@@ -27,7 +27,6 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 #include <openbsc/misdn.h>
-#include <openbsc/osmo_msc.h>
 #include <osmocom/vty/telnet_interface.h>
 #include <openbsc/system_information.h>
 #include <openbsc/paging.h>
@@ -1172,7 +1171,6 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 
 	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
 	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
-	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
 	/* our vty command code expects vty->priv to point to a telnet_connection */
 	dummy_conn.priv = bsc_gsmnet;

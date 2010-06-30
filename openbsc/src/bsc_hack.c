@@ -36,6 +36,7 @@
 #include <openbsc/e1_input.h>
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
+#include <openbsc/osmo_msc.h>
 
 #include <osmocom/vty/command.h>
 
@@ -238,6 +239,7 @@ int main(int argc, char **argv)
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
+	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
 	/* seed the PRNG */
 	srand(time(NULL));
