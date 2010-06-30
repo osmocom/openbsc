@@ -69,8 +69,4 @@ void trans_free(struct gsm_trans *trans);
 int trans_assign_trans_id(struct gsm_subscriber *subscr,
 			  u_int8_t protocol, u_int8_t ti_flag);
 
-/* update all transactions to use a different LCHAN, e.g.
- * after handover has succeeded */
-int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
-		       struct gsm_subscriber_connection *conn_new);
 #endif

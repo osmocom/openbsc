@@ -99,6 +99,11 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 
 	counter_inc(bts->network->stats.handover.attempted);
 
+	if (!old_lchan->conn) {
+		LOGP(DHO, LOGL_ERROR, "Old lchan lacks connection data.\n");
+		return -ENOSPC;
+	}
+
 	new_lchan = lchan_alloc(bts, old_lchan->type);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
@@ -122,13 +127,16 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan->bs_power = old_lchan->bs_power;
 	new_lchan->rsl_cmode = old_lchan->rsl_cmode;
 	new_lchan->tch_mode = old_lchan->tch_mode;
-	new_lchan->conn->subscr = subscr_get(old_lchan->conn->subscr);
+
+	new_lchan->conn = old_lchan->conn;
+	new_lchan->conn->ho_lchan = new_lchan;
 
 	/* FIXME: do we have a better idea of the timing advance? */
 	rc = rsl_chan_activate_lchan(new_lchan, RSL_ACT_INTER_ASYNC, 0,
 				     ho->ho_ref);
 	if (rc < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
+		new_lchan->conn->ho_lchan = NULL;
 		talloc_free(ho);
 		lchan_free(new_lchan);
 		return rc;
@@ -227,8 +235,16 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	bsc_del_timer(&ho->T3103);
 
-	/* update lchan pointer of transaction */
-	trans_lchan_change(ho->old_lchan->conn, new_lchan->conn);
+	/* Replace the ho lchan with the primary one */
+	if (ho->old_lchan != new_lchan->conn->lchan)
+		LOGP(DHO, LOGL_ERROR, "Primary lchan changed during handover.\n");
+
+	if (new_lchan != new_lchan->conn->ho_lchan)
+		LOGP(DHO, LOGL_ERROR, "Handover channel changed during this handover.\n");
+
+	new_lchan->conn->ho_lchan = NULL;
+	new_lchan->conn->lchan = new_lchan;
+	ho->old_lchan->conn = NULL;
 
 	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
 	lchan_release(ho->old_lchan, 0, 1);
@@ -244,7 +260,6 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 /* GSM 04.08 HANDOVER FAIL has been received */
 static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm_network *net = old_lchan->ts->trx->bts->network;
 	struct bsc_handover *ho;
 
@@ -258,7 +273,12 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
-	conn = ho->new_lchan->conn;
+
+	/* release the channel and forget about it */
+	ho->new_lchan->conn->ho_lchan = NULL;
+	ho->new_lchan->conn = NULL;
+	lchan_release(ho->new_lchan, 0, 1);
+
 	talloc_free(ho);
 
 	return 0;

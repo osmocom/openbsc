@@ -478,6 +478,14 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 	}
 
 
+	/* Release a handover that might be in operation */
+	if (conn->ho_lchan) {
+		conn->ho_lchan->conn = NULL;
+		lchan_release(conn->ho_lchan, 0, 1);
+		conn->ho_lchan = NULL;
+	}
+
+
 	lchan = conn->lchan;
 	talloc_free(conn);
 

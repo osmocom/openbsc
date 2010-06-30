@@ -231,6 +231,7 @@ struct gsm_subscriber_connection {
 	/* back pointers */
 	int in_release;
 	struct gsm_lchan *lchan;
+	struct gsm_lchan *ho_lchan;
 	struct gsm_bts *bts;
 };
 

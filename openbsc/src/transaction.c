@@ -147,29 +147,3 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 	return -1;
 }
 
-/* update all transactions to use a different LCHAN, e.g.
- * after handover has succeeded */
-int trans_lchan_change(struct gsm_subscriber_connection *conn_old,
-		       struct gsm_subscriber_connection *conn_new)
-{
-	struct gsm_network *net = conn_old->bts->network;
-	struct gsm_trans *trans;
-	int num = 0;
-
-	if (conn_old == conn_new) {
-		LOGP(DCC, LOGL_ERROR, "Exchanging transaction with itself.\n");
-		return;
-	}
-
-	llist_for_each_entry(trans, &net->trans_list, entry) {
-		if (trans->conn == conn_old) {
-			msc_release_connection(conn_old);
-
-			/* assign new channel */
-			trans->conn = conn_new;
-			num++;
-		}
-	}
-
-	return num;
-}
