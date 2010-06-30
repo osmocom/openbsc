@@ -35,6 +35,8 @@
 #include <openbsc/gprs_llc.h>
 #include <openbsc/sgsn.h>
 
+#include "gprs_sndcp.h"
+
 /* Chapter 7.2: SN-PDU Formats */
 struct sndcp_common_hdr {
 	/* octet 1 */
@@ -60,13 +62,6 @@ struct sndcp_udata_hdr {
 	uint8_t npdu_low;
 } __attribute__((packed));
 
-/* See 6.7.1.2 Reassembly */
-enum sndcp_rx_state {
-	SNDCP_RX_S_FIRST,
-	SNDCP_RX_S_SUBSEQ,
-	SNDCP_RX_S_DISCARD,
-};
-
 
 static void *tall_sndcp_ctx;
 
@@ -81,45 +76,10 @@ struct defrag_queue_entry {
 	uint8_t *data;
 };
 
-/* A fragment queue header, maintaining list of fragments for one N-PDU */
-struct defrag_state {
-	/* PDU number for which the defragmentation state applies */
-	uint16_t npdu;
-	/* highest segment number we have received so far */
-	uint8_t highest_seg;
-	/* bitmask of the segments we already have */
-	uint32_t seg_have;
-	/* do we still expect more segments? */
-	unsigned int no_more;
-	/* total length of all segments together */
-	unsigned int tot_len;
-
-	/* linked list of defrag_queue_entry: one for each fragment  */
-	struct llist_head frag_list;
-
-	struct timer_list timer;
-};
-
-struct sndcp_entity {
-	struct llist_head list;
-
-	/* reference to the LLC Entity below this SNDCP entity */
-	struct gprs_llc_lle *lle;
-	/* The NSAPI we shall use on top of LLC */
-	uint8_t nsapi;
-
-	/* NPDU number for the GTP->SNDCP side */
-	uint16_t tx_npdu_nr;
-	/* SNDCP eeceiver state */
-	enum sndcp_rx_state rx_state;
-	/* The defragmentation queue */
-	struct defrag_state defrag;
-};
-
-LLIST_HEAD(sndcp_entities);
+LLIST_HEAD(gprs_sndcp_entities);
 
 /* Enqueue a fragment into the defragment queue */
-static int defrag_enqueue(struct sndcp_entity *sne, uint8_t seg_nr,
+static int defrag_enqueue(struct gprs_sndcp_entity *sne, uint8_t seg_nr,
 			  uint32_t data_len, uint8_t *data)
 {
 	struct defrag_queue_entry *dqe;
@@ -147,7 +107,7 @@ static int defrag_enqueue(struct sndcp_entity *sne, uint8_t seg_nr,
 }
 
 /* return if we have all segments of this N-PDU */
-static int defrag_have_all_segments(struct sndcp_entity *sne)
+static int defrag_have_all_segments(struct gprs_sndcp_entity *sne)
 {
 	uint32_t seg_needed = 0;
 	unsigned int i;
@@ -162,7 +122,7 @@ static int defrag_have_all_segments(struct sndcp_entity *sne)
 	return 0;
 }
 
-static struct defrag_queue_entry *defrag_get_seg(struct sndcp_entity *sne,
+static struct defrag_queue_entry *defrag_get_seg(struct gprs_sndcp_entity *sne,
 						 uint32_t seg_nr)
 {
 	struct defrag_queue_entry *dqe;
@@ -176,7 +136,7 @@ static struct defrag_queue_entry *defrag_get_seg(struct sndcp_entity *sne,
 	return NULL;
 }
 
-static int defrag_segments(struct sndcp_entity *sne)
+static int defrag_segments(struct gprs_sndcp_entity *sne)
 {
 	struct msgb *msg;
 	unsigned int seg_nr;
@@ -214,7 +174,7 @@ static int defrag_segments(struct sndcp_entity *sne)
 				    sne->defrag.tot_len, npdu);
 }
 
-static int defrag_input(struct sndcp_entity *sne, struct msgb *msg, uint8_t *hdr)
+static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t *hdr)
 {
 	struct sndcp_common_hdr *sch;
 	struct sndcp_comp_hdr *scomph = NULL;
@@ -279,24 +239,24 @@ static int defrag_input(struct sndcp_entity *sne, struct msgb *msg, uint8_t *hdr
 	return 0;
 }
 
-static struct sndcp_entity *sndcp_entity_by_lle(const struct gprs_llc_lle *lle,
+static struct gprs_sndcp_entity *gprs_sndcp_entity_by_lle(const struct gprs_llc_lle *lle,
 						uint8_t nsapi)
 {
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 
-	llist_for_each_entry(sne, &sndcp_entities, list) {
+	llist_for_each_entry(sne, &gprs_sndcp_entities, list) {
 		if (sne->lle == lle && sne->nsapi == nsapi)
 			return sne;
 	}
 	return NULL;
 }
 
-static struct sndcp_entity *sndcp_entity_alloc(struct gprs_llc_lle *lle,
+static struct gprs_sndcp_entity *gprs_sndcp_entity_alloc(struct gprs_llc_lle *lle,
 						uint8_t nsapi)
 {
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 
-	sne = talloc_zero(tall_sndcp_ctx, struct sndcp_entity);
+	sne = talloc_zero(tall_sndcp_ctx, struct gprs_sndcp_entity);
 	if (!sne)
 		return NULL;
 
@@ -306,7 +266,7 @@ static struct sndcp_entity *sndcp_entity_alloc(struct gprs_llc_lle *lle,
 	//sne->fqueue.timer.cb = FIXME;
 	sne->rx_state = SNDCP_RX_S_FIRST;
 
-	llist_add(&sne->list, &sndcp_entities);
+	llist_add(&sne->list, &gprs_sndcp_entities);
 
 	return sne;
 }
@@ -317,14 +277,14 @@ int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 	LOGP(DSNDCP, LOGL_INFO, "SNSM-ACTIVATE.ind (lle=%p TLLI=%08x, "
 	     "SAPI=%u, NSAPI=%u)\n", lle, lle->llme->tlli, lle->sapi, nsapi);
 
-	if (sndcp_entity_by_lle(lle, nsapi)) {
+	if (gprs_sndcp_entity_by_lle(lle, nsapi)) {
 		LOGP(DSNDCP, LOGL_ERROR, "Trying to ACTIVATE "
 			"already-existing entity (TLLI=%08x, NSAPI=%u)\n",
 			lle->llme->tlli, nsapi);
 		return -EEXIST;
 	}
 
-	if (!sndcp_entity_alloc(lle, nsapi)) {
+	if (!gprs_sndcp_entity_alloc(lle, nsapi)) {
 		LOGP(DSNDCP, LOGL_ERROR, "Out of memory during ACTIVATE\n");
 		return -ENOMEM;
 	}
@@ -335,12 +295,12 @@ int sndcp_sm_activate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 /* Entry point for the SNSM-DEACTIVATE.indication */
 int sndcp_sm_deactivate_ind(struct gprs_llc_lle *lle, uint8_t nsapi)
 {
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 
 	LOGP(DSNDCP, LOGL_INFO, "SNSM-DEACTIVATE.ind (lle=%p, TLLI=%08x, "
 	     "SAPI=%u, NSAPI=%u)\n", lle, lle->llme->tlli, lle->sapi, nsapi);
 
-	sne = sndcp_entity_by_lle(lle, nsapi);
+	sne = gprs_sndcp_entity_by_lle(lle, nsapi);
 	if (!sne) {
 		LOGP(DSNDCP, LOGL_ERROR, "SNSM-DEACTIVATE.ind for non-"
 		     "existing TLLI=%08x SAPI=%u NSAPI=%u\n", lle->llme->tlli,
@@ -361,14 +321,14 @@ struct sndcp_frag_state {
 	struct msgb *msg;	/* original message */
 	uint8_t *next_byte;	/* first byte of next fragment */
 
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 	void *mmcontext;
 };
 
 /* returns '1' if there are more fragments to send, '0' if none */
 static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 {
-	struct sndcp_entity *sne = fs->sne;
+	struct gprs_sndcp_entity *sne = fs->sne;
 	struct gprs_llc_lle *lle = sne->lle;
 	struct sndcp_common_hdr *sch;
 	struct sndcp_comp_hdr *scomph;
@@ -462,7 +422,7 @@ static int sndcp_send_ud_frag(struct sndcp_frag_state *fs)
 int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi,
 			void *mmcontext)
 {
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 	struct sndcp_common_hdr *sch;
 	struct sndcp_comp_hdr *scomph;
 	struct sndcp_udata_hdr *suh;
@@ -470,7 +430,7 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 
 	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
 
-	sne = sndcp_entity_by_lle(lle, nsapi);
+	sne = gprs_sndcp_entity_by_lle(lle, nsapi);
 	if (!sne) {
 		LOGP(DSNDCP, LOGL_ERROR, "Cannot find SNDCP Entity\n");
 		return -EIO;
@@ -524,7 +484,7 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 /* Section 5.1.2.17 LL-UNITDATA.ind */
 int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hdr, uint8_t len)
 {
-	struct sndcp_entity *sne;
+	struct gprs_sndcp_entity *sne;
 	struct sndcp_common_hdr *sch = (struct sndcp_common_hdr *)hdr;
 	struct sndcp_comp_hdr *scomph = NULL;
 	struct sndcp_udata_hdr *suh;
@@ -549,7 +509,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 		return -EIO;
 	}
 
-	sne = sndcp_entity_by_lle(lle, sch->nsapi);
+	sne = gprs_sndcp_entity_by_lle(lle, sch->nsapi);
 	if (!sne) {
 		LOGP(DSNDCP, LOGL_ERROR, "Message for non-existing SNDCP Entity "
 			"(lle=%p, TLLI=%08x, SAPI=%u, NSAPI=%u)\n", lle,
@@ -558,9 +518,13 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	}
 
 	if (!sch->first || sch->more) {
+#if 0
 		/* FIXME: implement fragment re-assembly */
 		LOGP(DSNDCP, LOGL_ERROR, "We don't support reassembly yet\n");
 		return -EIO;
+#else
+		return defrag_input(sne, msg, hdr);
+#endif
 	}
 
 	if (scomph && (scomph->pcomp || scomph->dcomp)) {
@@ -581,7 +545,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 }
 
 /* Section 5.1.2.1 LL-RESET.ind */
-static int sndcp_ll_reset_ind(struct sndcp_entity *se)
+static int sndcp_ll_reset_ind(struct gprs_sndcp_entity *se)
 {
 	/* treat all outstanding SNDCP-LLC request type primitives as not sent */
 	/* reset all SNDCP XID parameters to default values */
@@ -596,7 +560,7 @@ static int sndcp_ll_status_ind()
 static struct sndcp_state_list {{
 	uint32_t	states;
 	unsigned int	type;
-	int		(*rout)(struct sndcp_entity *se, struct msgb *msg);
+	int		(*rout)(struct gprs_sndcp_entity *se, struct msgb *msg);
 } sndcp_state_list[] = {
 	{ ALL_STATES,
 	  LL_RESET_IND, sndcp_ll_reset_ind },
