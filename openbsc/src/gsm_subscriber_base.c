@@ -1,7 +1,8 @@
 /* The concept of a subscriber as seen by the BSC */
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010 by On Waves
  *
  * All Rights Reserved
  *
@@ -88,6 +89,7 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	request->cbfn(hooknum, event, msg, data, request->param);
 	subscr->in_callback = 0;
 
+	subscr_put(subscr);
 	talloc_free(request);
 	return 0;
 }
@@ -165,7 +167,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	}
 
 	memset(request, 0, sizeof(*request));
-	request->subscr = subscr;
+	request->subscr = subscr_get(subscr);
 	request->channel_type = type;
 	request->cbfn = cbfn;
 	request->param = param;
