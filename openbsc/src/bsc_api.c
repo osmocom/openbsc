@@ -113,8 +113,11 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 int gsm0808_clear(struct gsm_subscriber_connection* conn)
 {
+	struct gsm_lchan *lchan;
+
+	lchan = conn->lchan;
 	subscr_con_free(conn);
-	lchan_release(conn->lchan, 1, 0);
+	lchan_release(lchan, 1, 0);
 	return 0;
 }
 
