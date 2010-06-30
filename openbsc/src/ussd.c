@@ -44,9 +44,11 @@ static int send_own_number(struct gsm_subscriber_connection *conn, const struct 
 /* Entrypoint - handler function common to all mobile-originated USSDs */
 int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
+	int rc;
 	struct ussd_request req;
 
-	gsm0480_decode_ussd_request(msg, &req);
+	memset(&req, 0, sizeof(req));
+	rc = gsm0480_decode_ussd_request(msg, &req);
 	if (req.text[0] == 0xFF)  /* Release-Complete */
 		return 0;
 
