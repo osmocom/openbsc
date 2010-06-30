@@ -776,8 +776,9 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 	unsigned int i;
 
 	/* Update the crypto parameters */
-	memcpy(llme->kc, kc, sizeof(llme->kc));
 	llme->algo = alg;
+	if (alg != GPRS_ALGO_GEA0)
+		memcpy(llme->kc, kc, sizeof(llme->kc));
 
 	if (old_tlli == 0xffffffff && new_tlli != 0xffffffff) {
 		/* TLLI Assignment 8.3.1 */
