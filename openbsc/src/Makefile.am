@@ -3,7 +3,7 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 # build current directory before building gprs
-SUBDIRS = . ipaccess gprs nat
+SUBDIRS = . ipaccess gprs nat bsc
 
 sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libmgcp.a
