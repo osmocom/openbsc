@@ -393,7 +393,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		pinfo.scope = BSSGP_PAGING_BVCI;
 		pinfo.bvci = mm->bvci;
 		pinfo.imsi = mm->imsi;
-		pinfo.ptmsi = mm->p_tmsi;
+		pinfo.ptmsi = &mm->p_tmsi;
 		pinfo.drx_params = mm->drx_parms;
 		pinfo.qos[0] = 0; // FIXME
 		rc = gprs_bssgp_tx_paging(mm->nsei, 0, &pinfo);
