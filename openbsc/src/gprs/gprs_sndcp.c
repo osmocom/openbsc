@@ -265,6 +265,7 @@ static struct gprs_sndcp_entity *gprs_sndcp_entity_alloc(struct gprs_llc_lle *ll
 	sne->defrag.timer.data = sne;
 	//sne->fqueue.timer.cb = FIXME;
 	sne->rx_state = SNDCP_RX_S_FIRST;
+	INIT_LLIST_HEAD(&sne->defrag.frag_list);
 
 	llist_add(&sne->list, &gprs_sndcp_entities);
 
