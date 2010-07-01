@@ -141,6 +141,7 @@ static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
 		return NULL;
 
 	llme->tlli = tlli;
+	llme->old_tlli = 0xffffffff;
 	llme->state = GPRS_LLMS_UNASSIGNED;
 
 	for (i = 0; i < ARRAY_SIZE(llme->lle); i++)
@@ -709,19 +710,23 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 		/* If old TLLI != 0xffffffff was assigned to LLME, then TLLI
 		 * old is unassigned.  Only TLLI new shall be accepted when
 		 * received from peer. */
-
-		/* If TLLI old == 0xffffffff was assigned to LLME, then this is
-		 * TLLI assignmemt according to 8.3.1 */
-		llme->old_tlli = 0;
-		llme->tlli = new_tlli;
-		llme->state = GPRS_LLMS_ASSIGNED;
-		/* 8.5.3.1 For all LLE's */
-		for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
-			struct gprs_llc_lle *l = &llme->lle[i];
-			l->vu_send = l->vu_recv = 0;
-			l->retrans_ctr = 0;
-			l->state = GPRS_LLES_ASSIGNED_ADM;
-			/* FIXME Set parameters according to table 9 */
+		if (llme->old_tlli != 0xffffffff) {
+			llme->old_tlli = 0xffffffff;
+			llme->tlli = new_tlli;
+		} else {
+			/* If TLLI old == 0xffffffff was assigned to LLME, then this is
+			 * TLLI assignmemt according to 8.3.1 */
+			llme->old_tlli = 0xffffffff;
+			llme->tlli = new_tlli;
+			llme->state = GPRS_LLMS_ASSIGNED;
+			/* 8.5.3.1 For all LLE's */
+			for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+				struct gprs_llc_lle *l = &llme->lle[i];
+				l->vu_send = l->vu_recv = 0;
+				l->retrans_ctr = 0;
+				l->state = GPRS_LLES_ASSIGNED_ADM;
+				/* FIXME Set parameters according to table 9 */
+			}
 		}
 	} else if (old_tlli != 0xffffffff && new_tlli != 0xffffffff) {
 		/* TLLI Change 8.3.2 */

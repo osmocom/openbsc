@@ -883,7 +883,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
+		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli, 0, NULL);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -892,7 +892,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
+		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli, 0, NULL);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
@@ -900,7 +900,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->p_tmsi_old = 0;
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, 0, NULL);
+		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli, 0, NULL);
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
