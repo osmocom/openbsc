@@ -113,7 +113,7 @@ static int defrag_have_all_segments(struct gprs_sndcp_entity *sne)
 	unsigned int i;
 
 	/* create a bitmask of needed segments */
-	for (i = 0; i < sne->defrag.highest_seg; i++)
+	for (i = 0; i <= sne->defrag.highest_seg; i++)
 		seg_needed |= (1 << i);
 
 	if (seg_needed == sne->defrag.seg_have)
