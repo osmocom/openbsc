@@ -198,10 +198,10 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 		/* first segment of a new packet.  Discard all leftover fragments of
 		 * previous packet */
 		if (!llist_empty(&sne->defrag.frag_list)) {
-			struct defrag_queue_entry *dqe;
+			struct defrag_queue_entry *dqe, *dqe2;
 			LOGP(DSNDCP, LOGL_INFO, "Dropping SN-PDU due to "
 				"insufficient segments\n");
-			llist_for_each_entry(dqe, &sne->defrag.frag_list, list) {
+			llist_for_each_entry_safe(dqe, dqe2, &sne->defrag.frag_list, list) {
 				llist_del(&dqe->list);
 				talloc_free(dqe);
 			}
