@@ -73,8 +73,25 @@ extern struct sgsn_instance *sgsn;
 
 /* 10.5.5.14 GPRS MM Cause / Table 10.5.147 */
 const struct value_string gmm_cause_names[] = {
-	/* FIXME */
-	{ GMM_CAUSE_SEM_INCORR_MSG, "Semantically incorrect message" },
+	{ GMM_CAUSE_IMSI_UNKNOWN, 	"IMSI unknown in HLR" },
+	{ GMM_CAUSE_ILLEGAL_MS, 	"Illegal MS" },
+	{ GMM_CAUSE_ILLEGAL_ME,		"Illegal ME" },
+	{ GMM_CAUSE_GPRS_NOTALLOWED,	"GPRS services not allowed" },
+	{ GMM_CAUSE_GPRS_OTHER_NOTALLOWED,
+			"GPRS services and non-GPRS services not allowed" },
+	{ GMM_CAUSE_MS_ID_NOT_DERIVED,
+			"MS identity cannot be derived by the network" },
+	{ GMM_CAUSE_IMPL_DETACHED,	"Implicitly detached" },
+	{ GMM_CAUSE_PLMN_NOTALLOWED,	"PLMN not allowed" },
+	{ GMM_CAUSE_LA_NOTALLOWED,	"Location Area not allowed" },
+	{ GMM_CAUSE_ROAMING_NOTALLOWED,
+			"Roaming not allowed in this location area" },
+	{ GMM_CAUSE_NO_GPRS_PLMN,
+				"GPRS services not allowed in this PLMN" },
+	{ GMM_CAUSE_MSC_TEMP_NOTREACH,	"MSC temporarily not reachable" },
+	{ GMM_CAUSE_NET_FAIL,		"Network failure" },
+	{ GMM_CAUSE_CONGESTION,		"Congestion" },
+	{ GMM_CAUSE_SEM_INCORR_MSG,	"Semantically incorrect message" },
 	{ GMM_CAUSE_INV_MAND_INFO, "Invalid mandatory information" },
 	{ GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL,
 			"Message type non-existant or not implemented" },
@@ -82,10 +99,10 @@ const struct value_string gmm_cause_names[] = {
 			"Message type not compatible with protocol state" },
 	{ GMM_CAUSE_IE_NOTEXIST_NOTIMPL,
 			"Information element non-existent or not implemented" },
-	{ GMM_CAUSE_COND_IE_ERR, "Conditional IE error" },
+	{ GMM_CAUSE_COND_IE_ERR,	"Conditional IE error" },
 	{ GMM_CAUSE_MSG_INCOMP_P_STATE,
 				"Message not compatible with protocol state " },
-	{ GMM_CAUSE_PROTO_ERR_UNSPEC, "Protocol error, unspecified" },
+	{ GMM_CAUSE_PROTO_ERR_UNSPEC,	"Protocol error, unspecified" },
 	{ 0, NULL }
 };
 
