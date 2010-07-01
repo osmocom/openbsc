@@ -33,6 +33,8 @@ enum sndcp_rx_state {
 struct gprs_sndcp_entity {
 	struct llist_head list;
 
+	/* FIXME: move this RA_ID up to the LLME or even higher */
+	struct gprs_ra_id ra_id;
 	/* reference to the LLC Entity below this SNDCP entity */
 	struct gprs_llc_lle *lle;
 	/* The NSAPI we shall use on top of LLC */

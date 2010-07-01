@@ -419,16 +419,14 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 }
 
 /* Called by SNDCP when it has received/re-assembled a N-PDU */
-int sgsn_rx_sndcp_ud_ind(uint32_t tlli, uint8_t nsapi, struct msgb *msg,
-			 uint32_t npdu_len, uint8_t *npdu)
+int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
+			 struct msgb *msg, uint32_t npdu_len, uint8_t *npdu)
 {
 	struct sgsn_mm_ctx *mmctx;
 	struct sgsn_pdp_ctx *pdp;
-	struct gprs_ra_id ra_id;
 
 	/* look-up the MM context for this message */
-	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	mmctx = sgsn_mm_ctx_by_tlli(tlli, &ra_id);
+	mmctx = sgsn_mm_ctx_by_tlli(tlli, ra_id);
 	if (!mmctx) {
 		LOGP(DGPRS, LOGL_ERROR,
 			"Cannot find MM CTX for TLLI %08x\n", tlli);

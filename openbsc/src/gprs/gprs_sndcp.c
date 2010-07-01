@@ -170,8 +170,8 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 
 	/* actually send the N-PDU to the SGSN core code, which then
 	 * hands it off to the correct GTP tunnel + GGSN via gtp_data_req() */
-	return sgsn_rx_sndcp_ud_ind(sne->lle->llme->tlli, sne->nsapi, msg,
-				    sne->defrag.tot_len, npdu);
+	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, sne->lle->llme->tlli,
+				    sne->nsapi, msg, sne->defrag.tot_len, npdu);
 }
 
 static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t *hdr)
@@ -517,6 +517,8 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 			lle->llme->tlli, lle->sapi, sch->nsapi);
 		return -EIO;
 	}
+	/* FIXME: move this RA_ID up to the LLME or even higher */
+	bssgp_parse_cell_id(&sne->ra_id, msgb_bcid(msg));
 
 	if (!sch->first || sch->more) {
 #if 0
@@ -542,7 +544,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	}
 	/* actually send the N-PDU to the SGSN core code, which then
 	 * hands it off to the correct GTP tunnel + GGSN via gtp_data_req() */
-	return sgsn_rx_sndcp_ud_ind(lle->llme->tlli, sne->nsapi, msg, npdu_len, npdu);
+	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, lle->llme->tlli, sne->nsapi, msg, npdu_len, npdu);
 }
 
 /* Section 5.1.2.1 LL-RESET.ind */
