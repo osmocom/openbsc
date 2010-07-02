@@ -80,7 +80,7 @@ LLIST_HEAD(gprs_sndcp_entities);
 
 /* Enqueue a fragment into the defragment queue */
 static int defrag_enqueue(struct gprs_sndcp_entity *sne, uint8_t seg_nr,
-			  uint32_t data_len, uint8_t *data)
+			  uint8_t *data, uint32_t data_len)
 {
 	struct defrag_queue_entry *dqe;
 
@@ -237,7 +237,8 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 	}
 
 	/* FIXME: check if seg_nr already exists */
-	rc = defrag_enqueue(sne, suh->seg_nr, len, data);
+	/* make sure to subtract length of SNDCP header from 'len' */
+	rc = defrag_enqueue(sne, suh->seg_nr, data, len - (data - hdr));
 	if (rc < 0)
 		return rc;
 
