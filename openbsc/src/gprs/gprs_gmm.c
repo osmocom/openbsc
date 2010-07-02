@@ -1167,8 +1167,17 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	}
 
 	/* Check if NSAPI is already in use */
-	if (sgsn_pdp_ctx_by_nsapi(mmctx, act_req->req_nsapi)) {
-		/* FIXME: send reject with GSM_CAUSE_NSAPI_IN_USE */
+	pdp = sgsn_pdp_ctx_by_nsapi(mmctx, act_req->req_nsapi);
+	if (pdp) {
+		/* We already have a PDP context for this TLLI + NSAPI tuple */
+		if (pdp->sapi == act_req->req_llc_sapi &&
+		    pdp->ti == transaction_id) {
+			/* This apparently is a re-transmission of a PDP CTX
+			 * ACT REQ (our ACT ACK must have got dropped) */
+			return gsm48_tx_gsm_act_pdp_acc(pdp);
+		}
+
+		/* Send reject with GSM_CAUSE_NSAPI_IN_USE */
 		return gsm48_tx_gsm_act_pdp_rej(mmctx, transaction_id,
 						GSM_CAUSE_NSAPI_IN_USE,
 						0, NULL);
