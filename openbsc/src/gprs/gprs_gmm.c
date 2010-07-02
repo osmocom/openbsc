@@ -1107,8 +1107,6 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
 
-	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
-
 	req_qos_len = act_req->data[0];
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
@@ -1182,6 +1180,10 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 						GSM_CAUSE_NSAPI_IN_USE,
 						0, NULL);
 	}
+
+	/* Only increment counter for a real activation, after we checked
+	 * for re-transmissions */
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
 
 #if 1
 	{
