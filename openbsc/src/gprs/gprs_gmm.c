@@ -1245,7 +1245,8 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 
 	if (!mmctx) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle SM for unknown MM CTX\n");
-		return gsm48_tx_gmm_status_oldmsg(msg, GSM_CAUSE_PROTO_ERR_UNSPEC);
+		gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_IMPL_DETACHED);
+		return gsm48_tx_sm_status_oldmsg(msg, GSM_CAUSE_PROTO_ERR_UNSPEC);
 	}
 
 	switch (gh->msg_type) {
