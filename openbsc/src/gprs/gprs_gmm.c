@@ -1100,6 +1100,7 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	uint8_t *req_qos, *req_pdpa;
 	struct tlv_parsed tp;
 	uint8_t transaction_id = (gh->proto_discr >> 4);
+	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
 
 	memset(&tp, 0, sizeof(tp));
@@ -1185,25 +1186,21 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	 * for re-transmissions */
 	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PDP_CTX_ACT]);
 
-#if 1
-	{
-		struct sgsn_ggsn_ctx *ggsn = sgsn_ggsn_ctx_by_id(0);
-		if (!ggsn) {
-			LOGP(DGPRS, LOGL_ERROR, "No GGSN context 0 found!\n");
-			return -EIO;
-		}
-		ggsn->gsn = sgsn->gsn;
-		pdp = sgsn_create_pdp_ctx(ggsn, mmctx, act_req->req_nsapi, &tp);
-		if (!pdp)
-			return -1;
-		pdp->sapi = act_req->req_llc_sapi;
-		pdp->ti = transaction_id;
-		
+	ggsn = sgsn_ggsn_ctx_by_id(0);
+	if (!ggsn) {
+		LOGP(DGPRS, LOGL_ERROR, "No GGSN context 0 found!\n");
+		return -EIO;
 	}
+	ggsn->gsn = sgsn->gsn;
+	pdp = sgsn_create_pdp_ctx(ggsn, mmctx, act_req->req_nsapi, &tp);
+	if (!pdp)
+		return -1;
+
+	/* Store SAPI and Transaction Identifier */
+	pdp->sapi = act_req->req_llc_sapi;
+	pdp->ti = transaction_id;
+
 	return 0;
-#else
-	return gsm48_tx_gsm_act_pdp_acc(mmctx, transaction_id, act_req);
-#endif
 }
 
 /* Section 9.5.8: Deactivate PDP Context Request */
