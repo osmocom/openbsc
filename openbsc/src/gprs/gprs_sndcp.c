@@ -138,6 +138,7 @@ static struct defrag_queue_entry *defrag_get_seg(struct gprs_sndcp_entity *sne,
 	return NULL;
 }
 
+/* Perform actual defragmentation and create an output packet */
 static int defrag_segments(struct gprs_sndcp_entity *sne)
 {
 	struct msgb *msg;
@@ -172,6 +173,8 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 		/* release memory for the fragment queue entry */
 		talloc_free(dqe);
 	}
+
+	/* FIXME: cancel timer */
 
 	/* actually send the N-PDU to the SGSN core code, which then
 	 * hands it off to the correct GTP tunnel + GGSN via gtp_data_req() */
@@ -220,8 +223,11 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 		}
 		/* store the currently de-fragmented PDU number */
 		sne->defrag.npdu = npdu_num;
+
+		/* Re-set fragmentation state */
 		sne->defrag.no_more = sne->defrag.highest_seg = sne->defrag.seg_have = 0;
-		/* FIXME: Start timer */
+		sne->defrag.tot_len = 0;
+		/* FIXME: (re)start timer */
 	}
 
 	if (sne->defrag.npdu != npdu_num) {
