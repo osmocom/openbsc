@@ -174,7 +174,6 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		pdp->apn_use.l = sizeof(pdp->apn_use.v);
 	memcpy(pdp->apn_use.v, TLVP_VAL(tp, GSM48_IE_GSM_APN),
 		pdp->apn_use.l);
-	DEBUGP(DGPRS, "len(GSM48_IE_GSM_APN)=%u\n", TLVP_LEN(tp, GSM48_IE_GSM_APN));
 
 	/* Protocol Configuration Options from GMM */
 	pdp->pco_req.l = TLVP_LEN(tp, GSM48_IE_GSM_PROTO_CONF_OPT);
