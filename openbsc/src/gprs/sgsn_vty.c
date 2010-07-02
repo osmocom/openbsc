@@ -33,6 +33,7 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/vty.h>
+#include <openbsc/gsm_04_08_gprs.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
@@ -40,6 +41,69 @@
 #include <pdp.h>
 
 static struct sgsn_config *g_cfg = NULL;
+
+
+#define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
+static char *gprs_apn2str(uint8_t *apn, unsigned int len)
+{
+	static char apnbuf[GSM48_MAX_APN_LEN+1];
+	unsigned int i;
+
+	if (!apn)
+		return "";
+
+	if (len > sizeof(apnbuf)-1)
+		len = sizeof(apnbuf)-1;
+
+	memcpy(apnbuf, apn, len);
+	apnbuf[len] = '\0';
+
+	/* replace the domain name step sizes with dots */
+	while (i < len) {
+		unsigned int step = apnbuf[i];
+		apnbuf[i] = '.';
+		i += step+1;
+	}
+
+	return apnbuf+1;
+}
+
+static char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len)
+{
+	static char str[INET6_ADDRSTRLEN + 10];
+
+	if (!pdpa || len < 2)
+		return "none";
+
+	switch (pdpa[0] & 0x0f) {
+	case PDP_TYPE_ORG_IETF:
+		switch (pdpa[1]) {
+		case PDP_TYPE_N_IETF_IPv4:
+			if (len < 2 + 4)
+				break;
+			strcpy(str, "IPv4 ");
+			inet_ntop(AF_INET, pdpa+2, str+5, sizeof(str)-5);
+			return str;
+		case PDP_TYPE_N_IETF_IPv6:
+			if (len < 2 + 8)
+				break;
+			strcpy(str, "IPv6 ");
+			inet_ntop(AF_INET6, pdpa+2, str+5, sizeof(str)-5);
+			return str;
+		default:
+			break;
+		}
+		break;
+	case PDP_TYPE_ORG_ETSI:
+		if (pdpa[1] == PDP_TYPE_N_ETSI_PPP)
+			return "PPP";
+		break;
+	default:
+		break;
+	}
+
+	return "invalid";
+}
 
 static struct cmd_node sgsn_node = {
 	SGSN_NODE,
@@ -148,7 +212,12 @@ static void vty_dump_pdp(struct vty *vty, const char *pfx,
 {
 	vty_out(vty, "%sPDP Context IMSI: %s, SAPI: %u, NSAPI: %u%s",
 		pfx, pdp->mm->imsi, pdp->sapi, pdp->nsapi, VTY_NEWLINE);
-	vty_out(vty, "%s  APN: %s\n", pfx, pdp->lib->apn_use.v);
+	vty_out(vty, "%s  APN: %s%s", pfx,
+		gprs_apn2str(pdp->lib->apn_use.v, pdp->lib->apn_use.l),
+		VTY_NEWLINE);
+	vty_out(vty, "%s  PDP Address: %s%s", pfx,
+		gprs_pdpaddr2str(pdp->lib->eua.v, pdp->lib->eua.l),
+		VTY_NEWLINE);
 	vty_out_rate_ctr_group(vty, " ", pdp->ctrg);
 }
 
