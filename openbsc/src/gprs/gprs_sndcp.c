@@ -150,7 +150,7 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 
 	npdu = msg->data;
 
-	for (seg_nr = 0; seg_nr < sne->defrag.highest_seg; seg_nr++) {
+	for (seg_nr = 0; seg_nr <= sne->defrag.highest_seg; seg_nr++) {
 		struct defrag_queue_entry *dqe;
 		uint8_t *data;
 
