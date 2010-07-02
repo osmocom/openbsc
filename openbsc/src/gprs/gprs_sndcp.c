@@ -144,6 +144,9 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 	unsigned int seg_nr;
 	uint8_t *npdu;
 
+	LOGP(DSNDCP, LOGL_DEBUG, "TLLI=0x%08x NSAPI=%u: Defragment output PDU %u "
+		"num_seg=%u tot_len=%u\n", sne->lle->llme->tlli, sne->nsapi,
+		sne->defrag.npdu, sne->defrag.highest_seg, sne->defrag.tot_len);
 	msg = msgb_alloc_headroom(sne->defrag.tot_len+256, 128, "SNDCP Defrag");
 	if (!msg)
 		return -ENOMEM;
@@ -197,9 +200,9 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 
 	npdu_num = (suh->npdu_high << 8) | suh->npdu_low;
 
-	LOGP(DSNDCP, LOGL_DEBUG, "TLLI=0x%08x NSAPI=%u: Input PDU %u Segment %u %s%s\n",
-		sne->lle->llme->tlli, sne->nsapi, npdu_num, suh->seg_nr,
-		sch->first ? "F " : "", sch->more ? "M" : "");
+	LOGP(DSNDCP, LOGL_DEBUG, "TLLI=0x%08x NSAPI=%u: Input PDU %u Segment %u "
+		"Length %u %s %s\n", sne->lle->llme->tlli, sne->nsapi, npdu_num,
+		suh->seg_nr, len, sch->first ? "F " : "", sch->more ? "M" : "");
 
 	if (sch->first) {
 		/* first segment of a new packet.  Discard all leftover fragments of
@@ -529,15 +532,10 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 	/* FIXME: move this RA_ID up to the LLME or even higher */
 	bssgp_parse_cell_id(&sne->ra_id, msgb_bcid(msg));
 
-	if (!sch->first || sch->more) {
-#if 0
-		/* FIXME: implement fragment re-assembly */
-		LOGP(DSNDCP, LOGL_ERROR, "We don't support reassembly yet\n");
-		return -EIO;
-#else
+	/* any non-first segment is by definition something to defragment
+	 * as is any segment that tells us there are more segments */
+	if (!sch->first || sch->more)
 		return defrag_input(sne, msg, hdr, len);
-#endif
-	}
 
 	if (scomph && (scomph->pcomp || scomph->dcomp)) {
 		LOGP(DSNDCP, LOGL_ERROR, "We don't support compression yet\n");
