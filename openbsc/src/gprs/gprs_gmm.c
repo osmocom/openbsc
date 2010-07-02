@@ -1103,15 +1103,21 @@ static int gsm48_rx_gsm_act_pdp_req(struct sgsn_mm_ctx *mmctx,
 	struct sgsn_ggsn_ctx *ggsn;
 	struct sgsn_pdp_ctx *pdp;
 
-	memset(&tp, 0, sizeof(tp));
-
 	DEBUGP(DMM, "-> ACTIVATE PDP CONTEXT REQ: SAPI=%u NSAPI=%u ",
 		act_req->req_llc_sapi, act_req->req_nsapi);
 
+	/* FIXME: length checks! */
 	req_qos_len = act_req->data[0];
 	req_qos = act_req->data + 1;	/* 10.5.6.5 */
 	req_pdpa_len = act_req->data[1 + req_qos_len];
 	req_pdpa = act_req->data + 1 + req_qos_len + 1;	/* 10.5.6.4 */
+
+	/* Optional: Access Point Name, Protocol Config Options */
+	if (req_pdpa + req_pdpa_len < msg->data + msg->len)
+		tlv_parse(&tp, &gsm48_sm_att_tlvdef, req_pdpa + req_pdpa_len,
+			  (msg->data + msg->len) - (req_pdpa + req_pdpa_len), 0, 0);
+	else
+		memset(&tp, 0, sizeof(tp));
 
 	switch (req_pdpa[0] & 0xf) {
 	case 0x0:
