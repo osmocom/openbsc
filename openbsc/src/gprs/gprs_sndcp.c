@@ -176,7 +176,8 @@ static int defrag_segments(struct gprs_sndcp_entity *sne)
 				    sne->nsapi, msg, sne->defrag.tot_len, npdu);
 }
 
-static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t *hdr)
+static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t *hdr,
+			unsigned int len)
 {
 	struct sndcp_common_hdr *sch;
 	struct sndcp_comp_hdr *scomph = NULL;
@@ -227,7 +228,7 @@ static int defrag_input(struct gprs_sndcp_entity *sne, struct msgb *msg, uint8_t
 	}
 
 	/* FIXME: check if seg_nr already exists */
-	rc = defrag_enqueue(sne, suh->seg_nr, (msg->data + msg->len) - data, data);
+	rc = defrag_enqueue(sne, suh->seg_nr, len, data);
 	if (rc < 0)
 		return rc;
 
@@ -534,7 +535,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hd
 		LOGP(DSNDCP, LOGL_ERROR, "We don't support reassembly yet\n");
 		return -EIO;
 #else
-		return defrag_input(sne, msg, hdr);
+		return defrag_input(sne, msg, hdr, len);
 #endif
 	}
 
