@@ -103,6 +103,8 @@ static int defrag_enqueue(struct gprs_sndcp_entity *sne, uint8_t seg_nr,
 	sne->defrag.seg_have |= (1 << seg_nr);
 	sne->defrag.tot_len += data_len;
 
+	memcpy(dqe->data, data, data_len);
+
 	return 0;
 }
 
