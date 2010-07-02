@@ -501,7 +501,8 @@ int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi
 }
 
 /* Section 5.1.2.17 LL-UNITDATA.ind */
-int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t *hdr, uint8_t len)
+int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
+			 uint8_t *hdr, uint16_t len)
 {
 	struct gprs_sndcp_entity *sne;
 	struct sndcp_common_hdr *sch = (struct sndcp_common_hdr *)hdr;
