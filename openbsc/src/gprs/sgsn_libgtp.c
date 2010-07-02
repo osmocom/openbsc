@@ -90,6 +90,29 @@ const struct value_string gtp_cause_strs[] = {
 	{ 0, NULL }
 };
 
+/* Generate the GTP IMSI IE according to 09.60 Section 7.9.2 */
+static uint64_t imsi_str2gtp(char *str)
+{
+	uint64_t imsi64 = 0;
+	unsigned int n;
+	unsigned int imsi_len = strlen(str);
+
+	if (imsi_len > 16) {
+		LOGP(DGPRS, LOGL_NOTICE, "IMSI length > 16 not supported!\n");
+		return 0;
+	}
+
+	for (n = 0; n < 16; n++) {
+		uint64_t val;
+		if (n < imsi_len)
+			val = (str[n]-'0') & 0xf;
+		else
+			val = 0xf;
+		imsi64 |= (val << (n*4));
+	}
+	return imsi64;
+}
+
 /* generate a PDP context based on the IE's from the 04.08 message,
  * and send the GTP create pdp context request to the GGSN */
 struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
@@ -99,7 +122,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 {
 	struct sgsn_pdp_ctx *pctx;
 	struct pdp_t *pdp;
-	uint64_t imsi_ui64 = 0;
+	uint64_t imsi_ui64;
 	int rc;
 
 	LOGP(DGPRS, LOGL_ERROR, "Create PDP Context\n");
@@ -108,6 +131,8 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		LOGP(DGPRS, LOGL_ERROR, "Couldn't allocate PDP Ctx\n");
 		return NULL;
 	}
+
+	imsi_ui64 = imsi_str2gtp(mmctx->imsi);
 
 	rc = pdp_newpdp(&pdp, imsi_ui64, nsapi, NULL);
 	if (rc) {
@@ -149,6 +174,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 		pdp->apn_use.l = sizeof(pdp->apn_use.v);
 	memcpy(pdp->apn_use.v, TLVP_VAL(tp, GSM48_IE_GSM_APN),
 		pdp->apn_use.l);
+	DEBUGP(DGPRS, "len(GSM48_IE_GSM_APN)=%u\n", TLVP_LEN(tp, GSM48_IE_GSM_APN));
 
 	/* Protocol Configuration Options from GMM */
 	pdp->pco_req.l = TLVP_LEN(tp, GSM48_IE_GSM_PROTO_CONF_OPT);
