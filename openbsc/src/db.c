@@ -355,7 +355,7 @@ int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	const unsigned char *a3a8_ki;
 
 	result = dbi_conn_queryf(conn,
-			"SELECT * FROM AuthKeys WHERE subscriber_id=%u",
+			"SELECT * FROM AuthKeys WHERE subscriber_id=%llu",
 			 subscr->id);
 	if (!result)
 		return -EIO;
@@ -388,7 +388,7 @@ int db_sync_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 	/* Deletion ? */
 	if (ainfo == NULL) {
 		result = dbi_conn_queryf(conn,
-			"DELETE FROM AuthKeys WHERE subscriber_id=%u",
+			"DELETE FROM AuthKeys WHERE subscriber_id=%llu",
 			subscr->id);
 
 		if (!result)
@@ -413,13 +413,13 @@ int db_sync_authinfo_for_subscr(struct gsm_auth_info *ainfo,
 		result = dbi_conn_queryf(conn,
 				"INSERT INTO AuthKeys "
 				"(subscriber_id, algorithm_id, a3a8_ki) "
-				"VALUES (%u, %u, %s)",
+				"VALUES (%llu, %u, %s)",
 				subscr->id, ainfo->auth_algo, ki_str);
 	} else {
 		result = dbi_conn_queryf(conn,
 				"UPDATE AuthKeys "
 				"SET algorithm_id=%u, a3a8_ki=%s "
-				"WHERE subscriber_id=%u",
+				"WHERE subscriber_id=%llu",
 				ainfo->auth_algo, ki_str, subscr->id);
 	}
 
@@ -441,7 +441,7 @@ int db_get_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	const unsigned char *blob;
 
 	result = dbi_conn_queryf(conn,
-			"SELECT * FROM AuthLastTuples WHERE subscriber_id=%u",
+			"SELECT * FROM AuthLastTuples WHERE subscriber_id=%llu",
 			subscr->id);
 	if (!result)
 		return -EIO;
@@ -497,7 +497,7 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Deletion ? */
 	if (atuple == NULL) {
 		result = dbi_conn_queryf(conn,
-			"DELETE FROM AuthLastTuples WHERE subscriber_id=%u",
+			"DELETE FROM AuthLastTuples WHERE subscriber_id=%llu",
 			subscr->id);
 
 		if (!result)
@@ -527,7 +527,7 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 				"INSERT INTO AuthLastTuples "
 				"(subscriber_id, issued, use_count, "
 				 "key_seq, rand, sres, kc) "
-				"VALUES (%u, datetime('now'), %u, "
+				"VALUES (%llu, datetime('now'), %u, "
 				 "%u, %s, %s, %s ) ",
 				subscr->id, atuple->use_count, atuple->key_seq,
 				rand_str, sres_str, kc_str);
@@ -538,7 +538,7 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 				"UPDATE AuthLastTuples "
 				"SET issued=%s, use_count=%u, "
 				 "key_seq=%u, rand=%s, sres=%s, kc=%s "
-				"WHERE subscriber_id = %u",
+				"WHERE subscriber_id = %llu",
 				issued, atuple->use_count, atuple->key_seq,
 				rand_str, sres_str, kc_str, subscr->id);
 	}
