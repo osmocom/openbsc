@@ -307,10 +307,11 @@ static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 	struct gsm_equipment *equip = &subscr->equipment;
 
 	result = dbi_conn_queryf(conn,
-				"SELECT equipment.* FROM Equipment,EquipmentWatch "
-				"WHERE EquipmentWatch.equipment_id=Equipment.id "
-				"AND EquipmentWatch.subscriber_id = %llu "
-				"ORDER BY updated DESC", subscr->id);
+		"SELECT Equipment.* "
+			"FROM Equipment JOIN EquipmentWatch ON "
+				"EquipmentWatch.equipment_id=Equipment.id "
+			"WHERE EquipmentWatch.subscriber_id = %llu "
+			"ORDER BY EquipmentWatch.updated DESC", subscr->id);
 	if (!result)
 		return -EIO;
 
@@ -1031,11 +1032,12 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS,Subscriber "
-		"WHERE sms.id >= %llu AND sms.sent is NULL "
-			"AND sms.receiver_id = subscriber.id "
-			"AND subscriber.lac > 0 "
-		"ORDER BY sms.id LIMIT 1",
+		"SELECT SMS.* "
+			"FROM SMS JOIN Subscriber ON "
+				"SMS.receiver_id = Subscriber.id "
+			"WHERE SMS.id >= %llu AND SMS.sent IS NULL "
+				"AND Subscriber.lac > 0 "
+			"ORDER BY SMS.id LIMIT 1",
 		min_id);
 	if (!result)
 		return NULL;
@@ -1058,11 +1060,12 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned lo
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS,Subscriber "
-		"WHERE sms.receiver_id >= %llu AND sms.sent is NULL "
-			"AND sms.receiver_id = subscriber.id "
-			"AND subscriber.lac > 0 "
-		"ORDER BY sms.receiver_id, id LIMIT 1",
+		"SELECT SMS.* "
+			"FROM SMS JOIN Subscriber ON "
+				"SMS.receiver_id = Subscriber.id "
+			"WHERE SMS.receiver_id >= %llu AND SMS.sent IS NULL "
+				"AND Subscriber.lac > 0 "
+			"ORDER BY SMS.receiver_id, SMS.id LIMIT 1",
 		min_subscr_id);
 	if (!result)
 		return NULL;
@@ -1086,11 +1089,12 @@ struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr)
 	struct gsm_sms *sms;
 
 	result = dbi_conn_queryf(conn,
-		"SELECT * FROM SMS,Subscriber "
-		"WHERE sms.receiver_id = %llu AND sms.sent is NULL "
-			"AND sms.receiver_id = subscriber.id "
-			"AND subscriber.lac > 0 "
-		"ORDER BY sms.id LIMIT 1",
+		"SELECT SMS.* "
+			"FROM SMS JOIN Subscriber ON "
+				"SMS.receiver_id = Subscriber.id "
+			"WHERE SMS.receiver_id = %llu AND SMS.sent IS NULL "
+				"AND Subscriber.lac > 0 "
+			"ORDER BY SMS.id LIMIT 1",
 		subscr->id);
 	if (!result)
 		return NULL;
