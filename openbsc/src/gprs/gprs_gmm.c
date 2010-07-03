@@ -167,13 +167,14 @@ const struct value_string gprs_det_t_mo_strs[] = {
 
 static const struct tlv_definition gsm48_gmm_att_tlvdef = {
 	.def = {
+		[GSM48_IE_GMM_CIPH_CKSN]	= { TLV_TYPE_FIXED, 1 },
 		[GSM48_IE_GMM_TIMER_READY]	= { TLV_TYPE_TV, 1 },
 		[GSM48_IE_GMM_ALLOC_PTMSI]	= { TLV_TYPE_TLV, 0 },
-		[GSM48_IE_GMM_PTMSI_SIG]	= { TLV_TYPE_TV, 3 },
-		[GSM48_IE_GMM_AUTH_RAND]	= { TLV_TYPE_TV, 16 },
-		[GSM48_IE_GMM_AUTH_SRES]	= { TLV_TYPE_TV, 4 },
+		[GSM48_IE_GMM_PTMSI_SIG]	= { TLV_TYPE_FIXED, 3 },
+		[GSM48_IE_GMM_AUTH_RAND]	= { TLV_TYPE_FIXED, 16 },
+		[GSM48_IE_GMM_AUTH_SRES]	= { TLV_TYPE_FIXED, 4 },
 		[GSM48_IE_GMM_IMEISV]		= { TLV_TYPE_TLV, 0 },
-		[GSM48_IE_GMM_DRX_PARAM]	= { TLV_TYPE_TV, 2 },
+		[GSM48_IE_GMM_DRX_PARAM]	= { TLV_TYPE_FIXED, 2 },
 		[GSM48_IE_GMM_MS_NET_CAPA]	= { TLV_TYPE_TLV, 0 },
 		[GSM48_IE_GMM_PDP_CTX_STATUS]	= { TLV_TYPE_TLV, 0 },
 		[GSM48_IE_GMM_PS_LCS_CAPA]	= { TLV_TYPE_TLV, 0 },
@@ -189,8 +190,8 @@ static const struct tlv_definition gsm48_sm_att_tlvdef = {
 		[GSM48_IE_GSM_AA_TMR]		= { TLV_TYPE_TV, 1 },
 		[GSM48_IE_GSM_NAME_FULL]	= { TLV_TYPE_TLV, 0 },
 		[GSM48_IE_GSM_NAME_SHORT]	= { TLV_TYPE_TLV, 0 },
-		[GSM48_IE_GSM_TIMEZONE]		= { TLV_TYPE_TV, 1 },
-		[GSM48_IE_GSM_UTC_AND_TZ]	= { TLV_TYPE_TV, 7 },
+		[GSM48_IE_GSM_TIMEZONE]		= { TLV_TYPE_FIXED, 1 },
+		[GSM48_IE_GSM_UTC_AND_TZ]	= { TLV_TYPE_FIXED, 7 },
 		[GSM48_IE_GSM_LSA_ID]		= { TLV_TYPE_TLV, 0 },
 	},
 };
@@ -445,6 +446,92 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	gh->data[0] = id_type & 0xf;
 
 	return gsm48_gmm_sendmsg(msg, 1, mm);
+}
+
+/* Section 9.4.9: Authentication and Ciphering Request */
+static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
+				      uint8_t key_seq, uint8_t algo)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	struct gsm48_auth_ciph_req *acreq;
+	uint8_t *m_rand, *m_cksn;
+
+	DEBUGP(DMM, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
+		hexdump(rand, 16));
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_AUTH_CIPH_REQ;
+
+	acreq = (struct gsm48_auth_ciph_req *) msgb_put(msg, sizeof(*acreq));
+	acreq->ciph_alg = algo & 0xf;
+	acreq->imeisv_req = 0x1;
+	acreq->force_stby = 0x0;
+	acreq->ac_ref_nr = 0x0;	/* FIXME: increment this? */
+
+	/* Only if authentication is requested we need to set RAND + CKSN */
+	if (rand) {
+		m_rand = msgb_put(msg, 16+1);
+		m_rand[0] = GSM48_IE_GMM_AUTH_RAND;
+		memcpy(m_rand+1, rand, 16);
+
+		m_cksn = msgb_put(msg, 1+1);
+		m_cksn[0] = GSM48_IE_GMM_CIPH_CKSN;
+		m_cksn[1] = key_seq;
+	}
+
+	/* Start T3360 */
+	mmctx_timer_start(mm, 3360, GSM0408_T3360_SECS);
+
+	/* FIXME: make sure we don't send any other messages to the MS */
+
+	return gsm48_gmm_sendmsg(msg, 1, mm);
+}
+
+/* Section 9.4.11: Authentication and Ciphering Reject */
+static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+
+	DEBUGP(DMM, "<- GPRS AUTH AND CIPH REJECT\n");
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_MM_GPRS;
+	gh->msg_type = GSM48_MT_GMM_AUTH_CIPH_REJ;
+
+	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+
+/* Section 9.4.10: Authentication and Ciphering Response */
+static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
+					struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	struct gsm48_auth_ciph_resp *acr = (struct gsm48_auth_ciph_resp *)gh->data;
+	struct tlv_parsed tp;
+	int rc;
+
+	/* FIXME: Stop T3360 */
+
+	rc = tlv_parse(&tp, &gsm48_gmm_att_tlvdef, acr->data,
+			(msg->data + msg->len) - acr->data, 0, 0);
+
+	/* FIXME: compare ac_ref? */
+
+	if (!TLVP_PRESENT(&tp, GSM48_IE_GMM_AUTH_SRES) ||
+	    !TLVP_PRESENT(&tp, GSM48_IE_GMM_IMEISV)) {
+		/* FIXME: missing mandatory IE */
+	}
+
+	/* FIXME: compare SRES with what we expected */
+	/* FIXME: enable LLC cipheirng */
+	return 0;
 }
 
 /* Check if we can already authorize a subscriber */
@@ -925,9 +1012,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, GPRS_ALGO_GEA0, NULL);
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
-		DEBUGP(DMM, "Unimplemented GSM 04.08 GMM msg type 0x%02x\n",
-			gh->msg_type);
-		rc = gsm48_tx_gmm_status(mmctx, GMM_CAUSE_MSGT_NOTEXIST_NOTIMPL);
+		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
 		break;
 	default:
 		DEBUGP(DMM, "Unknown GSM 04.08 GMM msg type 0x%02x\n",
@@ -966,6 +1051,15 @@ static void mmctx_timer_cb(void *_mm)
 			break;
 		}
 		bsc_schedule_timer(&mm->timer, GSM0408_T3350_SECS, 0);
+		break;
+	case 3360:	/* waiting for AUTH AND CIPH RESP */
+		if (mm->num_T_exp >= 5) {
+			LOGP(DMM, LOGL_NOTICE, "T3360 expired >= 5 times\n");
+			mm->mm_state = GMM_DEREGISTERED;
+			break;
+		}
+		/* FIXME: re-transmit the respective msg and re-start timer */
+		bsc_schedule_timer(&mm->timer, GSM0408_T3360_SECS, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
 		if (mm->num_T_exp >= 5) {

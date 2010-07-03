@@ -63,6 +63,7 @@
 #define GPRS_UPD_T_PERIODIC		3
 
 enum gsm48_gprs_ie_mm {
+	GSM48_IE_GMM_CIPH_CKSN		= 0x08, /* 10.5.1.2 */
 	GSM48_IE_GMM_TIMER_READY	= 0x17,	/* 10.5.7.3 */
 	GSM48_IE_GMM_ALLOC_PTMSI	= 0x18,	/* 10.5.1.4 */
 	GSM48_IE_GMM_PTMSI_SIG		= 0x19,	/* 10.5.5.8 */
@@ -117,6 +118,22 @@ struct gsm48_attach_ack {
 	uint8_t ra_upd_timer;	/* 10.5.7.3 */
 	uint8_t radio_prio;	/* 10.5.7.2 */
 	struct gsm48_ra_id ra_id; /* 10.5.5.15 */
+	uint8_t data[0];
+} __attribute__((packed));
+
+/* Chapter 9.4.9 / Table 9.4.9 */
+struct gsm48_auth_ciph_req {
+	uint8_t ciph_alg:4,	/* 10.5.5.3 */
+		imeisv_req:4;	/* 10.5.5.10 */
+	uint8_t force_stby:4,	/* 10.5.5.7 */
+		ac_ref_nr:4;	/* 10.5.5.19 */
+	uint8_t data[0];
+} __attribute__((packed));
+/* optional: TV RAND, TV CKSN */
+
+struct gsm48_auth_ciph_resp {
+	uint8_t ac_ref_nr:4,
+		spare:4;
 	uint8_t data[0];
 } __attribute__((packed));
 
