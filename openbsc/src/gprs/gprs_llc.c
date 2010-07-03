@@ -405,9 +405,9 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 
 static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 {
-	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x(%s) ",
+	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x",
 		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
-		gph->fcs, gph->fcs_calc == gph->fcs ? "correct" : "WRONG");
+		gph->fcs);
 
 	if (gph->cmd)
 		DEBUGPC(DLLC, "CMD=%s ", get_value_string(llc_cmd_strs, gph->cmd));
