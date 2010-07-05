@@ -22,7 +22,7 @@ AC_SEARCH_LIBS(gtp_new, gtp,
 
 AM_CONDITIONAL(HAVE_LIBGTP, test "x$GPRS_LIBGTP" != "x")
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.12)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.1.13)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.1.9)
 
 dnl checks for header files
