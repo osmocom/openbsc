@@ -252,7 +252,6 @@ struct bsc_nat {
 	/* msc things */
 	char *msc_ip;
 	int msc_port;
-	int first_contact;
 	struct bsc_msc_connection *msc_con;
 	char *token;
 

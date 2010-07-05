@@ -497,7 +497,6 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
 		bsc_close_connection(bsc);
 
-	nat->first_contact = 0;
 	bsc_mgcp_free_endpoints(nat);
 	bsc_msc_schedule_connect(con);
 }
