@@ -30,6 +30,7 @@ struct bsc_msc_connection {
 	struct write_queue write_queue;
 	int is_connected;
 	int is_authenticated;
+	int first_contact;
 	const char *ip;
 	int port;
 	int prio;

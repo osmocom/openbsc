@@ -47,6 +47,7 @@ static void connection_loss(struct bsc_msc_connection *con)
 	fd->when = 0;
 
 	con->is_connected = 0;
+	con->first_contact = 0;
 	con->connection_loss(con);
 }
 

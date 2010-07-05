@@ -257,13 +257,13 @@ static void send_mgcp_reset(struct bsc_connection *bsc)
  * from the MSC and need to be forwarded to
  * a real BSC.
  */
-static void initialize_msc_if_needed()
+static void initialize_msc_if_needed(struct bsc_msc_connection *msc_con)
 {
-	if (nat->first_contact)
+	if (msc_con->first_contact)
 		return;
 
-	nat->first_contact = 1;
-	msc_send_reset(nat->msc_con);
+	msc_con->first_contact = 1;
+	msc_send_reset(msc_con);
 }
 
 static void send_id_get_response(struct bsc_msc_connection *msc_con)
@@ -530,8 +530,11 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 {
 	int error;
+	struct bsc_msc_connection *msc_con;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
 	struct ipaccess_head *hh;
+
+	msc_con = (struct bsc_msc_connection *) bfd->data;
 
 	if (!msg) {
 		if (error == 0)
@@ -539,7 +542,7 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 		else
 			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
 
-		bsc_msc_lost(nat->msc_con);
+		bsc_msc_lost(msc_con);
 		return -1;
 	}
 
@@ -552,11 +555,11 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	/* initialize the networking. This includes sending a GSM08.08 message */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
-			initialize_msc_if_needed();
+			initialize_msc_if_needed(msc_con);
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
-			send_id_get_response(nat->msc_con);
+			send_id_get_response(msc_con);
 	} else if (hh->proto == IPAC_PROTO_SCCP)
-		forward_sccp_to_bts(nat->msc_con, msg);
+		forward_sccp_to_bts(msc_con, msg);
 
 	msgb_free(msg);
 	return 0;
@@ -1158,6 +1161,7 @@ int main(int argc, char** argv)
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
 	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
+	nat->msc_con->write_queue.bfd.data = nat->msc_con;
 	bsc_msc_connect(nat->msc_con);
 
 	/* wait for the BSC */
