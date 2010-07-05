@@ -703,6 +703,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
+			con->msc_con = bsc->nat->msc_con;
 			con->con_type = con_type;
 			con_found = 1;
 			con_bsc = con->bsc;

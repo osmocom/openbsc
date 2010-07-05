@@ -120,6 +120,7 @@ struct sccp_connections {
 	struct llist_head list_entry;
 
 	struct bsc_connection *bsc;
+	struct bsc_msc_connection *msc_con;
 
 	struct sccp_source_reference real_ref;
 	struct sccp_source_reference patched_ref;
