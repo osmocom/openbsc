@@ -44,6 +44,7 @@ static void msc_clear_request(struct gsm_subscriber_connection* conn, uint32_t c
 static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
+	gsm0408_new_conn(conn);
 	gsm0408_dispatch(conn, msg);
 
 	/* TODO: do better */
@@ -80,7 +81,7 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 		return;
 
 	/* check if there is a pending operation */
-	if (conn->loc_operation || conn->sec_operation)
+	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
 		return;
 
 	llist_for_each_entry(trans, &conn->bts->network->trans_list, entry) {

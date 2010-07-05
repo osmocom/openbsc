@@ -28,6 +28,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
+int gsm0408_new_conn(struct gsm_subscriber_connection *conn);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci);
 

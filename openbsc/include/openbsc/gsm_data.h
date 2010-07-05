@@ -179,6 +179,14 @@ struct gsm_security_operation {
 	void *cb_data;
 };
 
+/*
+ * A dummy to keep a connection up for at least
+ * a couple of seconds to work around MSC issues.
+ */
+struct gsm_anchor_operation {
+	struct timer_list timeout;
+};
+
 /* Maximum number of neighbor cells whose average we track */
 #define MAX_NEIGH_MEAS		10
 /* Maximum size of the averaging window for neighbor cells */
@@ -224,6 +232,7 @@ struct gsm_subscriber_connection {
 	 */
 	struct gsm_loc_updating_operation *loc_operation;
 	struct gsm_security_operation *sec_operation;
+	struct gsm_anchor_operation *anch_operation;
 
 	/* Are we part of a special "silent" call */
 	int silent_call;

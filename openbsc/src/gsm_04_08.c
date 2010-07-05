@@ -63,6 +63,7 @@ int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 			   u_int8_t pdisc, u_int8_t msg_type);
 static void schedule_reject(struct gsm_subscriber_connection *conn);
+static void release_anchor(struct gsm_subscriber_connection *conn);
 
 struct gsm_lai {
 	u_int16_t mcc;
@@ -218,6 +219,9 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 	if (!conn->loc_operation)
 		return;
 
+	/* No need to keep the connection up */
+	release_anchor(conn);
+
 	bsc_del_timer(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = 0;
@@ -294,6 +298,7 @@ void gsm0408_clear_request(struct gsm_subscriber_connection* conn, uint32_t caus
 	 */
 	release_loc_updating_req(conn);
 	release_security_operation(conn);
+	release_anchor(conn);
 
 	/* Free all transactions that are associated with the released lchan */
 	/* FIXME: this is not neccessarily the right thing to do, we should
@@ -3076,6 +3081,37 @@ static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
+/* Create a dummy to wait five seconds */
+static void release_anchor(struct gsm_subscriber_connection *conn)
+{
+	if (!conn->anch_operation)
+		return;
+
+	bsc_del_timer(&conn->anch_operation->timeout);
+	talloc_free(conn->anch_operation);
+	conn->anch_operation = NULL;
+}
+
+static void anchor_timeout(void *_data)
+{
+	struct gsm_subscriber_connection *con = _data;
+
+	release_anchor(con);
+	msc_release_connection(con);
+}
+
+int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
+{
+	conn->anch_operation = talloc_zero(conn, struct gsm_anchor_operation);
+	if (!conn->anch_operation)
+		return -1;
+
+	conn->anch_operation->timeout.data = conn;
+	conn->anch_operation->timeout.cb = anchor_timeout;
+	bsc_schedule_timer(&conn->anch_operation->timeout, 5, 0);
+	return 0;
+}
+
 /* here we get data from the BSC level... */
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -3088,6 +3124,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:
+		release_anchor(conn);
 		rc = gsm0408_rcv_cc(conn, msg);
 		break;
 	case GSM48_PDISC_MM:
@@ -3097,6 +3134,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		rc = gsm0408_rcv_rr(conn, msg);
 		break;
 	case GSM48_PDISC_SMS:
+		release_anchor(conn);
 		rc = gsm0411_rcv_sms(conn, msg);
 		break;
 	case GSM48_PDISC_MM_GPRS:
@@ -3105,6 +3143,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 			"GSM 04.08 discriminator 0x%02x\n", pdisc);
 		break;
 	case GSM48_PDISC_NC_SS:
+		release_anchor(conn);
 		rc = handle_rcv_ussd(conn, msg);
 		break;
 	default:
