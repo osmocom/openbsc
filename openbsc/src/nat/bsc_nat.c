@@ -883,7 +883,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	/*
 	 * if we are not connected to a msc... just close the socket
 	 */
-	if (!nat->msc_con->is_connected) {
+	if (!bsc_nat_msc_is_connected(nat)) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
 		close(fd);
 		return 0;

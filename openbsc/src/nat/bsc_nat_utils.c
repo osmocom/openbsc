@@ -23,6 +23,7 @@
  */
 
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_msc.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
@@ -507,4 +508,9 @@ struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_ls
 
 	llist_add_tail(&entry->list, &lst->fltr_list);
 	return entry;
+}
+
+int bsc_nat_msc_is_connected(struct bsc_nat *nat)
+{
+	return nat->msc_con->is_connected;
 }

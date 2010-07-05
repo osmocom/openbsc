@@ -338,4 +338,6 @@ void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
 
+int bsc_nat_msc_is_connected(struct bsc_nat *nat);
+
 #endif
