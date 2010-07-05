@@ -5,7 +5,7 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS)
 bin_PROGRAMS = osmo-bsc
 
 
-osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_rf.c osmo_bsc_vty.c \
+osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_rf.c osmo_bsc_vty.c osmo_bsc_api.c \
 		   $(top_srcdir)/src/debug.c $(top_srcdir)/src/bsc_msc.c \
 		   $(top_srcdir)/src/bsc_init.c
 osmo_bsc_LDADD = $(top_builddir)/src/libvty.a $(top_builddir)/src/libsccp.a \
