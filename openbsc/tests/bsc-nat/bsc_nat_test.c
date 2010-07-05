@@ -699,6 +699,7 @@ int main(int argc, char **argv)
 {
 	struct log_target *stderr_target;
 
+	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
