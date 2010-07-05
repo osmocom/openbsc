@@ -29,6 +29,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/handover.h>
+#include <openbsc/debug.h>
 
 #include <osmocore/talloc.h>
 
@@ -94,6 +95,12 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 	struct gsm_lchan *lchan;
 
 	lchan = msg->lchan;
+	if (lchan->state != LCHAN_S_ACTIVE) {
+		LOGP(DRSL, LOGL_ERROR, "Got data in non active state. discarding.\n");
+		return -1;
+	}
+
+
 	if (lchan->conn) {
 		api->dtap(lchan->conn, msg);
 	} else {
