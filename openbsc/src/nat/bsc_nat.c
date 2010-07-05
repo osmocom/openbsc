@@ -101,7 +101,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
-	if (write_queue_enqueue(&nat->msc_con->write_queue, msg) != 0) {
+	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
@@ -216,10 +216,11 @@ static void nat_send_rlsd(struct sccp_connections *conn)
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	queue_for_msc(nat->msc_con, msg);
+	queue_for_msc(conn->msc_con, msg);
 }
 
-static void nat_send_rlc(struct sccp_source_reference *src,
+static void nat_send_rlc(struct bsc_msc_connection *msc_con,
+			 struct sccp_source_reference *src,
 			 struct sccp_source_reference *dst)
 {
 	struct sccp_connection_release_complete *rlc;
@@ -239,7 +240,7 @@ static void nat_send_rlc(struct sccp_source_reference *src,
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
-	queue_for_msc(nat->msc_con, msg);
+	queue_for_msc(msc_con, msg);
 }
 
 static void send_mgcp_reset(struct bsc_connection *bsc)
@@ -265,14 +266,14 @@ static void initialize_msc_if_needed()
 	msc_send_reset(nat->msc_con);
 }
 
-static void send_id_get_response()
+static void send_id_get_response(struct bsc_msc_connection *msc_con)
 {
 	struct msgb *msg = bsc_msc_id_get_resp(nat->token);
 	if (!msg)
 		return;
 
 	ipaccess_prepend_header(msg, IPAC_PROTO_IPACCESS);
-	queue_for_msc(nat->msc_con, msg);
+	queue_for_msc(msc_con, msg);
 }
 
 /*
@@ -376,7 +377,7 @@ send_refuse:
 }
 
 
-static int forward_sccp_to_bts(struct msgb *msg)
+static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *msg)
 {
 	struct sccp_connections *con;
 	struct bsc_connection *bsc;
@@ -438,7 +439,7 @@ static int forward_sccp_to_bts(struct msgb *msg)
 		if (!con && parsed->sccp_type == SCCP_MSG_TYPE_RLSD) {
 			LOGP(DNAT, LOGL_NOTICE, "Sending fake RLC on RLSD message to network.\n");
 			/* Exchange src/dest for the reply */
-			nat_send_rlc(parsed->dest_local_ref, parsed->src_local_ref);
+			nat_send_rlc(msc_con, parsed->dest_local_ref, parsed->src_local_ref);
 		} else if (!con)
 			LOGP(DNAT, LOGL_ERROR, "Unknown connection for msg type: 0x%x from the MSC.\n", parsed->sccp_type);
 	}
@@ -521,7 +522,7 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	msg->l2h = msgb_put(msg, sizeof(reset));
 	memcpy(msg->l2h, reset, msgb_l2len(msg));
 
-	queue_for_msc(nat->msc_con, msg);
+	queue_for_msc(msc_con, msg);
 
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
@@ -553,9 +554,9 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_msc_if_needed();
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET)
-			send_id_get_response();
+			send_id_get_response(nat->msc_con);
 	} else if (hh->proto == IPAC_PROTO_SCCP)
-		forward_sccp_to_bts(msg);
+		forward_sccp_to_bts(nat->msc_con, msg);
 
 	msgb_free(msg);
 	return 0;
@@ -664,8 +665,8 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
-	int con_found = 0;
 	int con_filter = 0;
+	struct bsc_msc_connection *con_msc = NULL;
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
 	struct bsc_nat_parsed *parsed;
@@ -704,8 +705,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			con->msc_con = bsc->nat->msc_con;
+			con_msc = con->msc_con;
 			con->con_type = con_type;
-			con_found = 1;
 			con_bsc = con->bsc;
 			break;
 		case SCCP_MSG_TYPE_RLSD:
@@ -715,16 +716,16 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			if (con) {
-				con_found = 1;
 				con_bsc = con->bsc;
+				con_msc = con->msc_con;
 				con_filter = con->con_local;
 			}
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			if (con) {
-				con_found = 1;
 				con_bsc = con->bsc;
+				con_msc = con->msc_con;
 				con_filter = con->con_local;
 			}
 			remove_sccp_src_ref(bsc, msg, parsed);
@@ -747,9 +748,14 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		goto exit2;
 	}
 
-	if (con_found && con_bsc != bsc) {
+	if (con_msc && con_bsc != bsc) {
 		LOGP(DNAT, LOGL_ERROR, "The connection belongs to a different BTS: input: %d con: %d\n",
 		     bsc->cfg->nr, con_bsc->cfg->nr);
+		goto exit2;
+	}
+
+	if (!con_msc) {
+		LOGP(DNAT, LOGL_ERROR, "No connection found, dropping data.\n");
 		goto exit2;
 	}
 
@@ -758,7 +764,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		goto exit2;
 
 	/* send the non-filtered but maybe modified msg */
-	queue_for_msc(nat->msc_con, msg);
+	queue_for_msc(con_msc, msg);
 	talloc_free(parsed);
 	return 0;
 
