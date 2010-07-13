@@ -966,6 +966,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		return abis_nm_rcvmsg_sw(mb);
 
 	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
+		struct nm_nack_signal_data nack_data;
 		struct tlv_parsed tp;
 
 		debugp_foh(foh);
@@ -979,7 +980,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			DEBUGPC(DNM, "\n");
 
-		dispatch_signal(SS_NM, S_NM_NACK, (void*) &mt);
+		nack_data.msg = mb;
+		nack_data.mt = mt;
+		dispatch_signal(SS_NM, S_NM_NACK, &nack_data);
 		return 0;
 	}
 #if 0

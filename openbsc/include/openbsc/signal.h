@@ -1,5 +1,5 @@
 /* Generic signalling/notification infrastructure */
-/* (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+/* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -137,6 +137,11 @@ struct scall_signal_data {
 struct ipacc_ack_signal_data {
 	struct gsm_bts_trx *trx;
 	u_int8_t msg_type;	
+};
+
+struct nm_nack_signal_data {
+	struct msgb *msg;
+	uint8_t mt;
 };
 
 struct challoc_signal_data {
