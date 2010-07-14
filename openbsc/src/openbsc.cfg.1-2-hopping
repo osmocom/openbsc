@@ -14,7 +14,7 @@ network
  auth policy closed
  location updating reject cause 13
  encryption a5 0
- neci 0
+ neci 1
  rrlp mode none
  mm info 0
  handover 0
