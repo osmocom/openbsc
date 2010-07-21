@@ -1869,3 +1869,25 @@ int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
 			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
 	}
 }
+
+int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
+		       uint8_t cb_command, const uint8_t *data, int len)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *cb_cmd;
+
+	cb_cmd = rsl_msgb_alloc();
+	if (!cb_cmd)
+		return -1;
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(cb_cmd, sizeof*dh);
+	init_dchan_hdr(dh, RSL_MT_SMS_BC_CMD);
+	dh->chan_nr = RSL_CHAN_SDCCH4_ACCH; /* TODO: check the chan config */
+
+	msgb_tv_put(cb_cmd, RSL_IE_CB_CMD_TYPE, cb_command);
+	msgb_tlv_put(cb_cmd, RSL_IE_SMSCB_MSG, len, data);
+
+	cb_cmd->trx = bts->c0;
+
+	return abis_rsl_sendmsg(cb_cmd);
+}

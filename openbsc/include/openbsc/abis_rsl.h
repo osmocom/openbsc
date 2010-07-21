@@ -84,5 +84,9 @@ int rsl_number_of_paging_subchannels(struct gsm_bts *bts);
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db);
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm);
 
+/* SMSCB functionality */
+int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
+		       uint8_t cb_command, const uint8_t *data, int len);
+
 #endif /* RSL_MT_H */
 
