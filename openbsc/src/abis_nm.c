@@ -1058,7 +1058,8 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
 		LOGP(DNM, LOGL_ERROR, "ABIS OML placement 0x%x not supported\n",
 			oh->placement);
-		return -EINVAL;
+		if (oh->placement != ABIS_OM_PLACEMENT_FIRST)
+			return -EINVAL;
 	}
 	if (oh->sequence != 0) {
 		LOGP(DNM, LOGL_ERROR, "ABIS OML sequence 0x%x != 0x00\n",

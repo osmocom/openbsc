@@ -40,18 +40,23 @@
 
 #define WHITELIST_MAX_SIZE ((NUM_ARFCNS*2)+2+1)
 
-int ipac_rxlevstat2whitelist(uint16_t *buf, const struct rxlev_stats *st)
+int ipac_rxlevstat2whitelist(uint16_t *buf, const struct rxlev_stats *st, uint8_t min_rxlev,
+			     uint16_t max_num_arfcns)
 {
 	int i;
 	unsigned int num_arfcn = 0;
 
-	for (i = NUM_RXLEVS-1; i >= 0; i--) {
+	for (i = NUM_RXLEVS-1; i >= min_rxlev; i--) {
 		int16_t arfcn = -1;
 
 		while ((arfcn = rxlev_stat_get_next(st, i, arfcn)) >= 0) {
 			*buf++ = htons(arfcn);
 			num_arfcn++;
+
 		}
+
+		if (num_arfcn > max_num_arfcns)
+			break;
 	}
 
 	return num_arfcn;
