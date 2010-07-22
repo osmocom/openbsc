@@ -128,8 +128,8 @@ static uint16_t build_physconf(uint8_t *physconf_buf, const struct rxlev_stats *
 	physconf_buf[0] = phys_conf_min[0];
 	physconf_buf[1] = NM_IPAC_EIE_ARFCN_WHITE;
 	num_arfcn = ipac_rxlevstat2whitelist(whitelist, st);
-	arfcnlist_size = num_arfcn; // * 2;
-	*((uint16_t *) (physconf_buf+2)) = htons(arfcnlist_size);
+	arfcnlist_size = num_arfcn * 2;
+	*((uint16_t *) (physconf_buf+2)) = htons(num_arfcn);
 	printf("pc_buf (%s)\n", hexdump(physconf_buf, arfcnlist_size+4));
 	return arfcnlist_size+4;
 }
