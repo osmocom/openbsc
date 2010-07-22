@@ -2963,7 +2963,7 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	u_int8_t *cur = buf;
 	u_int16_t len;
 
-	memset(binf, 0, sizeof(binf));
+	memset(binf, 0, sizeof(*binf));
 
 	if (cur[0] != NM_IPAC_EIE_BCCH_INFO)
 		return -EINVAL;
@@ -2978,7 +2978,7 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
 		binf->freq_qual = *cur >> 2;
 
-	binf->arfcn = *cur++ & 3 << 8;
+	binf->arfcn = (*cur++ & 3) << 8;
 	binf->arfcn |= *cur++;
 
 	if (binf->info_type & IPAC_BINF_RXLEV)
