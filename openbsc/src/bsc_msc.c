@@ -153,7 +153,6 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 
 	fd = &con->write_queue.bfd;
 	fd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	fd->data = NULL;
 	fd->priv_nr = 1;
 
 	if (fd->fd < 0) {
