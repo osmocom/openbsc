@@ -178,6 +178,12 @@ static int test_rep(void *_msg)
 			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
 			binfo.cgi.mcc, binfo.cgi.mnc,
 			binfo.cgi.lac, binfo.cgi.ci);
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2)
+			DEBUGP(DNM, "BA SI2: %s\n", hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2bis)
+			DEBUGP(DNM, "BA SI2bis: %s\n", hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2ter)
+			DEBUGP(DNM, "BA SI2ter: %s\n", hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
 		break;
 	default:
 		break;
