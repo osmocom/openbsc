@@ -184,9 +184,21 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 
 static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
 {
+	int connected = 0;
+	struct bsc_connection *con;
+
 	vty_out(vty, " BSC lac: %d nr: %d%s",
 		conf->lac, conf->nr, VTY_NEWLINE);
 	vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
+
+	llist_for_each_entry(con, &conf->nat->bsc_connections, list_entry) {
+		if (con->cfg != conf)
+			continue;
+		connected = 1;
+		break;
+	}
+
+	vty_out(vty, " Connected: %d%s", connected, VTY_NEWLINE);
 }
 
 DEFUN(show_stats,
