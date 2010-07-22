@@ -169,6 +169,26 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 	return CMD_SUCCESS;
 }
 
+static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
+{
+	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
+	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
+		counter_get(nat->stats.sccp.conn),
+		counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
+	vty_out(vty, " MSC Connections %lu%s",
+		counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
+	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
+		counter_get(nat->stats.bsc.reconn),
+		counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
+}
+
+static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
+{
+	vty_out(vty, " BSC lac: %d nr: %d%s",
+		conf->lac, conf->nr, VTY_NEWLINE);
+	vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
+}
+
 DEFUN(show_stats,
       show_stats_cmd,
       "show statistics [NR]",
@@ -181,23 +201,32 @@ DEFUN(show_stats,
 	if (argc == 1)
 		nr = atoi(argv[0]);
 
-	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
-	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
-		counter_get(_nat->stats.sccp.conn),
-		counter_get(_nat->stats.sccp.calls), VTY_NEWLINE);
-	vty_out(vty, " MSC Connections %lu%s",
-		counter_get(_nat->stats.msc.reconn), VTY_NEWLINE);
-	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
-		counter_get(_nat->stats.bsc.reconn),
-		counter_get(_nat->stats.bsc.auth_fail), VTY_NEWLINE);
-
+	dump_stat_total(vty, _nat);
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
 		if (argc == 1 && nr != conf->nr)
 			continue;
+		dump_stat_bsc(vty, conf);
+	}
 
-		vty_out(vty, " BSC lac: %d nr: %d%s",
-			conf->lac, conf->nr, VTY_NEWLINE);
-		vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_stats_lac,
+      show_stats_lac_cmd,
+      "show statistics-by-lac <0-65535>",
+      SHOW_STR "Display network statistics by lac\n"
+      "The lac of the BSC\n")
+{
+	int lac;
+	struct bsc_config *conf;
+
+	lac = atoi(argv[0]);
+
+	dump_stat_total(vty, _nat);
+	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
+		if (conf->lac != lac)
+			continue;
+		dump_stat_bsc(vty, conf);
 	}
 
 	return CMD_SUCCESS;
@@ -511,6 +540,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_bsc_cmd);
 	install_element_ve(&show_bsc_cfg_cmd);
 	install_element_ve(&show_stats_cmd);
+	install_element_ve(&show_stats_lac_cmd);
 	install_element_ve(&close_bsc_cmd);
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
