@@ -43,18 +43,18 @@
 /* according to rtp_proxy.c RFC 3550 */
 struct rtp_hdr {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t  csrc_count:4,
+	uint8_t  csrc_count:4,
 		  extension:1,
 		  padding:1,
 		  version:2;
-	u_int8_t  payload_type:7,
+	uint8_t  payload_type:7,
 		  marker:1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t  version:2,
+	uint8_t  version:2,
 		  padding:1,
 		  extension:1,
 		  csrc_count:4;
-	u_int8_t  marker:1,
+	uint8_t  marker:1,
 		  payload_type:7;
 #endif
 	uint16_t sequence;
