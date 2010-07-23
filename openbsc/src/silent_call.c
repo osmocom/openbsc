@@ -41,7 +41,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 {
 	struct gsm_subscriber_connection *conn = _conn;
 	struct scall_signal_data sigdata;
-	int rc;
+	int rc = 0;
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
