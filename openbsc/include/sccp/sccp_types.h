@@ -90,31 +90,31 @@ enum {
 
 struct sccp_called_party_address {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t	point_code_indicator : 1,
+	uint8_t	point_code_indicator : 1,
 			ssn_indicator	     : 1,
 			global_title_indicator : 4,
 			routing_indicator    : 1,
 			reserved	     : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t	reserved	     : 1,
+	uint8_t	reserved	     : 1,
 			routing_indicator    : 1,
 			global_title_indicator : 4,
 			ssn_indicator	     : 1,
 			point_code_indicator : 1;
 #endif
-	u_int8_t	data[0];
+	uint8_t	data[0];
 } __attribute__((packed));
 
 /* indicator indicates presence in the above order */
 
 /* Figure 6/Q.713 */
 struct sccp_signalling_point_code {
-	u_int8_t	lsb;
+	uint8_t	lsb;
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t	msb : 6,
+	uint8_t	msb : 6,
 			reserved : 2;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t	reserved : 2,
+	uint8_t	reserved : 2,
 			msb : 6;
 #endif
 } __attribute__((packed));
@@ -153,20 +153,20 @@ enum {
 
 struct sccp_global_title {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t	nature_of_addr_ind : 7,
+	uint8_t	nature_of_addr_ind : 7,
 			odd_even : 1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t	odd_even : 1,
+	uint8_t	odd_even : 1,
 			nature_of_addr_ind : 7;
 #endif
-	u_int8_t	data[0];
+	uint8_t	data[0];
 } __attribute__((packed));
 
 /* Q.713, 3.3 */
 struct sccp_source_reference {
-	u_int8_t    octet1;
-	u_int8_t    octet2;
-	u_int8_t    octet3;
+	uint8_t    octet1;
+	uint8_t    octet2;
+	uint8_t    octet3;
 } __attribute__((packed));
 
 /* Q.714, 3.6 */
@@ -271,19 +271,19 @@ enum sccp_refusal_cause {
  */
 struct sccp_connection_request {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	source_local_reference;
-	u_int8_t			proto_class;
+	uint8_t			proto_class;
 
 
 	/* variable */
-	u_int8_t			variable_called;
+	uint8_t			variable_called;
 #if VARIABLE
 	called_party_address
 #endif
 
 	/* optional */
-	u_int8_t			optional_start;
+	uint8_t			optional_start;
 
 #if OPTIONAL
 	credit 3
@@ -294,18 +294,18 @@ struct sccp_connection_request {
 	end_of_optional 1
 #endif
 
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 struct sccp_connection_confirm {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
 	struct sccp_source_reference	source_local_reference;
-	u_int8_t			proto_class;
+	uint8_t			proto_class;
 
 	/* optional */
-	u_int8_t			optional_start;
+	uint8_t			optional_start;
 
 	/* optional */
 #if OPTIONAL
@@ -316,17 +316,17 @@ struct sccp_connection_confirm {
 	end_of_optional 1
 #endif
 
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 struct sccp_connection_refused {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
-	u_int8_t			cause;
+	uint8_t			cause;
 
 	/* optional */
-	u_int8_t			optional_start;
+	uint8_t			optional_start;
 
 	/* optional */
 #if OPTIONAL
@@ -336,85 +336,85 @@ struct sccp_connection_refused {
 	end_of_optional 1
 #endif
 
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 struct sccp_connection_released {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
 	struct sccp_source_reference	source_local_reference;
-	u_int8_t			release_cause;
+	uint8_t			release_cause;
 
 
 	/* optional */
-	u_int8_t			optional_start;
+	uint8_t			optional_start;
 
 #if OPTIONAL
 	data            3-130
 	importance      3
 	end_of_optional 1
 #endif
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 struct sccp_connection_release_complete {
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
 	struct sccp_source_reference	source_local_reference;
 } __attribute__((packed));
 
 struct sccp_data_form1 {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
-	u_int8_t			segmenting;
+	uint8_t			segmenting;
 
 	/* variable */
-	u_int8_t			variable_start;
+	uint8_t			variable_start;
 
 #if VARIABLE
 	data 2-256;
 #endif
 
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 
 struct sccp_data_unitdata {
 	/* mandantory */
-	u_int8_t			type;
-	u_int8_t			proto_class;
+	uint8_t			type;
+	uint8_t			proto_class;
 
 
 	/* variable */
-	u_int8_t			variable_called;
-	u_int8_t			variable_calling;
-	u_int8_t			variable_data;
+	uint8_t			variable_called;
+	uint8_t			variable_calling;
+	uint8_t			variable_data;
 
 #if VARIABLE
 	called party address
 	calling party address
 #endif
 
-	u_int8_t			data[0];
+	uint8_t			data[0];
 } __attribute__((packed));
 
 struct sccp_data_it {
 	/* mandantory */
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
 	struct sccp_source_reference	source_local_reference;
-	u_int8_t			proto_class;
+	uint8_t			proto_class;
 
-	u_int8_t			sequencing[2];
-	u_int8_t			credit;
+	uint8_t			sequencing[2];
+	uint8_t			credit;
 } __attribute__((packed));
 
 struct sccp_proto_err {
-	u_int8_t			type;
+	uint8_t			type;
 	struct sccp_source_reference	destination_local_reference;
-	u_int8_t			error_cause;
+	uint8_t			error_cause;
 };
 
 #endif
