@@ -401,7 +401,7 @@ static int handle_cipher_m_complete(struct msgb *msg)
 	}
 
 	LOGP(DMSC, LOGL_DEBUG, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
-	resp = bssmap_create_cipher_complete(msg);
+	resp = gsm0808_create_cipher_complete(msg, msg->lchan->encr.alg_id);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Creating MSC response failed.\n");
 		return -1;
