@@ -132,7 +132,7 @@ static const uint8_t pag_resp[] = {
 
 struct filter_result {
 	const uint8_t *data;
-	const u_int16_t length;
+	const uint16_t length;
 	const int dir;
 	const int result;
 };

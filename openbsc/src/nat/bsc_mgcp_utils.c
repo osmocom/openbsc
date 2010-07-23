@@ -41,7 +41,7 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 {
 	struct sccp_connections *mcon;
 	struct tlv_parsed tp;
-	u_int16_t cic;
+	uint16_t cic;
 	uint8_t timeslot;
 	uint8_t multiplex;
 	int combined;
@@ -62,7 +62,7 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 		return -1;
 	}
 
-	cic = ntohs(*(u_int16_t *)TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+	cic = ntohs(*(uint16_t *)TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
 	timeslot = cic & 0x1f;
 	multiplex = (cic & ~0x1f) >> 5;
 
