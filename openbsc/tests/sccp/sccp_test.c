@@ -335,7 +335,7 @@ static int write_called = 0;
  */
 int sccp_read_cb(struct msgb *data, unsigned len, void *context)
 {
-	u_int16_t payload_length = test_data[current_test].payload_length;
+	uint16_t payload_length = test_data[current_test].payload_length;
 	const uint8_t *got, *wanted;
 	int i;
 

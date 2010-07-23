@@ -168,8 +168,8 @@ static int check_address(struct sccp_address *addr)
 static int _sccp_parse_optional_data(const int offset,
 				     struct msgb *msgb, struct sccp_optional_data *data)
 {
-	u_int16_t room = msgb_l2len(msgb) - offset;
-	u_int16_t read = 0;
+	uint16_t room = msgb_l2len(msgb) - offset;
+	uint16_t read = 0;
 
 	while (room > read) {
 		uint8_t type = msgb->l2h[offset + read];
