@@ -310,6 +310,10 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
 	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ)
 		payload = gsm48_create_mm_serv_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+	else {
+		LOGP(DNAT, LOGL_ERROR, "Unknown connection type: %d\n", con_type);
+		payload = NULL;
+	}
 
 	/*
 	 * Some BSCs do not handle the payload inside a SCCP CREF msg
@@ -379,7 +383,7 @@ send_refuse:
 
 static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *msg)
 {
-	struct sccp_connections *con;
+	struct sccp_connections *con = NULL;
 	struct bsc_connection *bsc;
 	struct bsc_nat_parsed *parsed;
 	int proto;
