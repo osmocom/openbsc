@@ -821,50 +821,10 @@ static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 
 struct msgb *bssmap_create_assignment_completed(struct gsm_lchan *lchan, u_int8_t rr_cause)
 {
-	u_int8_t *data;
-	u_int8_t speech_mode;
-
-	struct msgb *msg = msgb_alloc(35, "bssmap: ass compl");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 3);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 0xff;
-	msg->l3h[2] = BSS_MAP_MSG_ASSIGMENT_COMPLETE;
-
-	/* write 3.2.2.22 */
-	data = msgb_put(msg, 2);
-	data[0] = GSM0808_IE_RR_CAUSE;
-	data[1] = rr_cause;
-
-	/* write cirtcuit identity  code 3.2.2.2 */
-	/* write cell identifier 3.2.2.17 */
-	/* write chosen channel 3.2.2.33 when BTS picked it */
-	data = msgb_put(msg, 2);
-	data[0] = GSM0808_IE_CHOSEN_CHANNEL;
-	data[1] = lchan_to_chosen_channel(lchan);
-
-	/* write chosen encryption algorithm 3.2.2.44 */
-	data = msgb_put(msg, 2);
-	data[0] = GSM0808_IE_CHOSEN_ENCR_ALG;
-	data[1] = lchan->encr.alg_id;
-
-	/* write circuit pool 3.2.2.45 */
-	/* write speech version chosen: 3.2.2.51 when BTS picked it */
-	speech_mode = chan_mode_to_speech(lchan);
-	if (speech_mode != 0) {
-		data = msgb_put(msg, 2);
-		data[0] = GSM0808_IE_SPEECH_VERSION;
-		data[1] = speech_mode;
-	}
-
-	/* write LSA identifier 3.2.2.15 */
-
-
-	/* update the size */
-	msg->l3h[1] = msgb_l3len(msg) - 2;
-	return msg;
+	return gsm0808_create_assignment_completed(rr_cause,
+						   lchan_to_chosen_channel(lchan),
+						   lchan->encr.alg_id,
+						   chan_mode_to_speech(lchan));
 }
 
 struct msgb *dtap_create_msg(struct msgb *msg_l3, u_int8_t link_id)
