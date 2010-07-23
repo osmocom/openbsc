@@ -47,12 +47,12 @@ enum {
 
 struct sockaddr_sccp {
 	sa_family_t	sccp_family;		/* AF_SCCP in the future??? */
-	u_int8_t	sccp_ssn;		/* subssystem number for routing */
+	uint8_t	sccp_ssn;		/* subssystem number for routing */
 
 	/* TODO fill in address indicator... if that is ever needed */
 
 	/* not sure about these */
-	/* u_int8_t    sccp_class; */
+	/* uint8_t    sccp_class; */
 };
 
 /*
@@ -60,13 +60,13 @@ struct sockaddr_sccp {
  */
 struct sccp_address {
 	struct sccp_called_party_address    address;
-	u_int8_t			    ssn;
-	u_int8_t			    poi[2];
+	uint8_t			    ssn;
+	uint8_t			    poi[2];
 };
 
 struct sccp_optional_data {
-	u_int8_t			    data_len;
-	u_int8_t			    data_start;
+	uint8_t			    data_len;
+	uint8_t			    data_start;
 };
 
 struct sccp_connection {
@@ -145,8 +145,8 @@ int sccp_set_read(const struct sockaddr_sccp *sock,
 extern const struct sockaddr_sccp sccp_ssn_bssap;
 
 /* helpers */
-u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
-struct sccp_source_reference sccp_src_ref_from_int(u_int32_t);
+uint32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
+struct sccp_source_reference sccp_src_ref_from_int(uint32_t);
 
 struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause, uint8_t *data, int length);
 struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref, struct sccp_source_reference *dst_ref);

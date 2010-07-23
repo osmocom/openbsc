@@ -35,21 +35,21 @@
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 
 /* BSC -> MSC */
-static const u_int8_t bssmap_reset[] = {
+static const uint8_t bssmap_reset[] = {
 	0x09, 0x00, 0x03, 0x05, 0x07, 0x02, 0x42, 0xfe,
 	0x02, 0x42, 0xfe, 0x06, 0x00, 0x04, 0x30, 0x04,
 	0x01, 0x20,
 };
 
 /* MSC -> BSC reset ack */
-static const u_int8_t bssmap_reset_ack[] = {
+static const uint8_t bssmap_reset_ack[] = {
 	0x09, 0x00, 0x03, 0x07, 0x0b, 0x04, 0x43, 0x01,
 	0x00, 0xfe, 0x04, 0x43, 0x5c, 0x00, 0xfe, 0x03,
 	0x00, 0x01, 0x31,
 };
 
 /* MSC -> BSC paging, connection less */
-static const u_int8_t bssmap_paging[] = {
+static const uint8_t bssmap_paging[] = {
 	0x09, 0x00, 0x03, 0x07, 0x0b, 0x04, 0x43, 0x01,
 	0x00, 0xfe, 0x04, 0x43, 0x5c, 0x00, 0xfe, 0x10,
 	0x00, 0x0e, 0x52, 0x08, 0x08, 0x29, 0x47, 0x10,
@@ -57,7 +57,7 @@ static const u_int8_t bssmap_paging[] = {
 };
 
 /* MSC -> BSC paging, UDT without PC  */
-static const u_int8_t bssmap_udt[] = {
+static const uint8_t bssmap_udt[] = {
 	0x09, 0x00, 0x03, 0x05, 0x07, 0x02, 0x42, 0xfe,
 	0x02, 0x42, 0xfe, 0x10, 0x00, 0x0e, 0x52, 0x08,
 	0x08, 0x29, 0x47, 0x10, 0x02, 0x01, 0x31, 0x97,
@@ -65,7 +65,7 @@ static const u_int8_t bssmap_udt[] = {
 };
 
 /* BSC -> MSC connection open */
-static const u_int8_t bssmap_cr[] = {
+static const uint8_t bssmap_cr[] = {
 	0x01, 0x01, 0x02, 0x03, 0x02, 0x02, 0x04, 0x02,
 	0x42, 0xfe, 0x0f, 0x1f, 0x00, 0x1d, 0x57, 0x05,
 	0x08, 0x00, 0x72, 0xf4, 0x80, 0x20, 0x12, 0xc3,
@@ -75,7 +75,7 @@ static const u_int8_t bssmap_cr[] = {
 };
 
 /* MSC -> BSC connection confirm */
-static const u_int8_t bssmap_cc[] = {
+static const uint8_t bssmap_cc[] = {
 	0x02, 0x01, 0x02, 0x03, 0x00, 0x00, 0x03, 0x02, 0x01, 0x00,
 };
 
@@ -84,39 +84,39 @@ static const u_int8_t bssmap_cc[] = {
  * we fake a bit and make it BSC -> MSC... so the
  * payload does not make any sense..
  */
-static const u_int8_t bssmap_dtap[] = {
+static const uint8_t bssmap_dtap[] = {
 	0x06, 0x00, 0x00, 0x03, 0x00, 0x01, 0x0f, 0x01, 0x00, 0x0c,
 	0x03, 0x05, 0x5c, 0x08, 0x11, 0x81, 0x33, 0x66, 0x02, 0x13,
 	0x45, 0xf4,
 };
 
 /* MSC -> BSC clear command */
-static const u_int8_t bssmap_clear[] = {
+static const uint8_t bssmap_clear[] = {
 	0x06, 0x00, 0x00, 0x03, 0x00, 0x01, 0x06, 0x00, 0x04, 0x20,
 	0x04, 0x01, 0x09,
 };
 
 /* MSC -> BSC released */
-static const u_int8_t bssmap_released[] = {
+static const uint8_t bssmap_released[] = {
 	0x04, 0x00, 0x00, 0x03, 0x01, 0x02, 0x03, 0x00, 0x01, 0x0f,
 	0x02, 0x23, 0x42, 0x00,
 };
 
 /* BSC -> MSC released */
-static const u_int8_t bssmap_release_complete[] = {
+static const uint8_t bssmap_release_complete[] = {
 	0x05, 0x01, 0x02, 0x03, 0x00, 0x00, 0x03
 };
 
 struct test_data {
 	int length;
-	const u_int8_t *data;
+	const uint8_t *data;
 	int payload_start;
 	int payload_length;
-	u_int8_t first_byte;
+	uint8_t first_byte;
 
         /* in case it should trigger a sccp response */
 	int write;
-	const u_int8_t  *response;
+	const uint8_t  *response;
 	int response_length;
 };
 
@@ -256,15 +256,15 @@ struct sccp_parse_header_result {
 	struct sccp_source_reference dst_ref;
 
 	/* the input */
-	const u_int8_t *input;
+	const uint8_t *input;
 	int input_len;
 };
 
-static const u_int8_t it_test[] = {
+static const uint8_t it_test[] = {
 0x10, 0x01, 0x07, 
 0x94, 0x01, 0x04, 0x00, 0x02, 0x00, 0x00, 0x00 };
 
-static const u_int8_t proto_err[] = {
+static const uint8_t proto_err[] = {
 0x0f, 0x0c, 0x04, 0x00, 0x00,
 };
 
@@ -335,8 +335,8 @@ static int write_called = 0;
  */
 int sccp_read_cb(struct msgb *data, unsigned len, void *context)
 {
-	u_int16_t payload_length = test_data[current_test].payload_length;
-	const u_int8_t *got, *wanted;
+	uint16_t payload_length = test_data[current_test].payload_length;
+	const uint8_t *got, *wanted;
 	int i;
 
 	called = 1;
@@ -376,7 +376,7 @@ int sccp_read_cb(struct msgb *data, unsigned len, void *context)
 void sccp_write_cb(struct msgb *data, void *ctx)
 {
 	int i = 0;
-	const u_int8_t *got, *wanted;
+	const uint8_t *got, *wanted;
 
 	if (test_data[current_test].response == NULL) {
 		FAIL("Didn't expect write callback\n");
@@ -432,7 +432,7 @@ int sccp_accept_cb(struct sccp_connection *connection, void *user_data)
 
 static void sccp_udt_write_cb(struct msgb *data, void *context)
 {
-	const u_int8_t *got, *wanted;
+	const uint8_t *got, *wanted;
 	int i;
 
 	write_called = 1;

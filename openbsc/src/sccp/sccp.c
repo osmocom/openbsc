@@ -63,13 +63,13 @@ struct sccp_data_callback {
 	int (*read_cb)(struct msgb *, unsigned int, void *);
 	void *read_context;
 
-	u_int8_t ssn;
+	uint8_t ssn;
 	struct llist_head callback;
 };
 
 static LLIST_HEAD(sccp_callbacks);
 
-static struct sccp_data_callback *_find_ssn(u_int8_t ssn)
+static struct sccp_data_callback *_find_ssn(uint8_t ssn)
 {
 	struct sccp_data_callback *cb;
 
@@ -99,13 +99,13 @@ static void _send_msg(struct msgb *msg)
 /*
  * parsing routines
  */
-static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb *msgb)
+static int copy_address(struct sccp_address *addr, uint8_t offset, struct msgb *msgb)
 {
 	struct sccp_called_party_address *party;
 
 	int room = msgb_l2len(msgb) - offset;
-	u_int8_t read = 0;
-	u_int8_t length;
+	uint8_t read = 0;
+	uint8_t length;
 
 	if (room <= 0) {
 		LOGP(DSCCP, LOGL_ERROR, "Not enough room for an address: %u\n", room);
@@ -142,7 +142,7 @@ static int copy_address(struct sccp_address *addr, u_int8_t offset, struct msgb 
 	}
 
 	if (party->global_title_indicator) {
-		LOGP(DSCCP, LOGL_ERROR, "GTI not supported %u\n", *(u_int8_t *)party);
+		LOGP(DSCCP, LOGL_ERROR, "GTI not supported %u\n", *(uint8_t *)party);
 		return -1;
 	}
 
@@ -158,7 +158,7 @@ static int check_address(struct sccp_address *addr)
 	    || addr->address.routing_indicator != 1) {
 		LOGP(DSCCP, LOGL_ERROR,
 			"Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&addr->address, addr->ssn);
+			*(uint8_t *)&addr->address, addr->ssn);
 		return -1;
 	}
 
@@ -168,11 +168,11 @@ static int check_address(struct sccp_address *addr)
 static int _sccp_parse_optional_data(const int offset,
 				     struct msgb *msgb, struct sccp_optional_data *data)
 {
-	u_int16_t room = msgb_l2len(msgb) - offset;
-	u_int16_t read = 0;
+	uint16_t room = msgb_l2len(msgb) - offset;
+	uint16_t read = 0;
 
 	while (room > read) {
-		u_int8_t type = msgb->l2h[offset + read];
+		uint8_t type = msgb->l2h[offset + read];
 		if (type == SCCP_PNC_END_OF_OPTIONAL)
 			return 0;
 
@@ -181,7 +181,7 @@ static int _sccp_parse_optional_data(const int offset,
 			return 0;
 		}
 
-		u_int8_t length = msgb->l2h[offset + read + 1];
+		uint8_t length = msgb->l2h[offset + read + 1];
 		read += 2 + length;
 
 
@@ -204,11 +204,11 @@ static int _sccp_parse_optional_data(const int offset,
 
 int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size =
+	static const uint32_t header_size =
 			sizeof(struct sccp_connection_request);
-	static const u_int32_t optional_offset =
+	static const uint32_t optional_offset =
 			offsetof(struct sccp_connection_request, optional_start);
-	static const u_int32_t called_offset =
+	static const uint32_t called_offset =
 			offsetof(struct sccp_connection_request, variable_called);
 
 	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->l2h;
@@ -227,7 +227,7 @@ int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *
 
 	if (check_address(&result->called) != 0) {
 		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&result->called.address, result->called.ssn);
+			*(uint8_t *)&result->called.address, result->called.ssn);
 		return -1;
 	}
 
@@ -288,7 +288,7 @@ int _sccp_parse_connection_released(struct msgb *msgb, struct sccp_parse_result 
 
 int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size =
+	static const uint32_t header_size =
 			sizeof(struct sccp_connection_refused);
 	static int optional_offset = offsetof(struct sccp_connection_refused, optional_start);
 
@@ -325,9 +325,9 @@ int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *
 
 int _sccp_parse_connection_confirm(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static u_int32_t header_size =
+	static uint32_t header_size =
 		    sizeof(struct sccp_connection_confirm);
-	static const u_int32_t optional_offset =
+	static const uint32_t optional_offset =
 			offsetof(struct sccp_connection_confirm, optional_start);
 
 	struct sccp_optional_data optional_data;
@@ -422,10 +422,10 @@ int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *resu
 
 int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_data_unitdata);
-	static const u_int32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
-	static const u_int32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
-	static const u_int32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
+	static const uint32_t header_size = sizeof(struct sccp_data_unitdata);
+	static const uint32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
+	static const uint32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
+	static const uint32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
 
 	struct sccp_data_unitdata *udt = (struct sccp_data_unitdata *)msgb->l2h;
 
@@ -441,7 +441,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 	if (check_address(&result->called) != 0) {
 		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&result->called.address, result->called.ssn);
+			*(uint8_t *)&result->called.address, result->called.ssn);
 		return -1;
 	}
 
@@ -450,7 +450,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 	if (check_address(&result->calling) != 0) {
 		LOGP(DSCCP, LOGL_ERROR, "Invalid called address according to 08.06: 0x%x 0x%x\n",
-			*(u_int8_t *)&result->called.address, result->called.ssn);
+			*(uint8_t *)&result->called.address, result->called.ssn);
 	}
 
 	/* we don't have enough size for the data */
@@ -475,7 +475,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_data_it);
+	static const uint32_t header_size = sizeof(struct sccp_data_it);
 
 	struct sccp_data_it *it;
 
@@ -494,7 +494,7 @@ static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 
 static int _sccp_parse_err(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_proto_err);
+	static const uint32_t header_size = sizeof(struct sccp_proto_err);
 
 	struct sccp_proto_err *err;
 
@@ -517,7 +517,7 @@ static int _sccp_send_data(int class, const struct sockaddr_sccp *in,
 			   const struct sockaddr_sccp *out, struct msgb *payload)
 {
 	struct sccp_data_unitdata *udt;
-	u_int8_t *data;
+	uint8_t *data;
 
 	if (msgb_l3len(payload) > 256) {
 		LOGP(DSCCP, LOGL_ERROR, "The payload is too big for one udt\n");
@@ -602,7 +602,7 @@ static int destination_local_reference_is_free(struct sccp_source_reference *ref
 
 static int assign_source_local_reference(struct sccp_connection *connection)
 {
-	static u_int32_t last_ref = 0x30000;
+	static uint32_t last_ref = 0x30000;
 	int wrapped = 0;
 
 	do {
@@ -642,7 +642,7 @@ struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause
 {
 	struct msgb *msgb;
 	struct sccp_connection_refused *ref;
-	u_int8_t *data;
+	uint8_t *data;
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp ref");
@@ -687,7 +687,7 @@ struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref,
 {
 	struct msgb *response;
 	struct sccp_connection_confirm *confirm;
-	u_int8_t *optional_data;
+	uint8_t *optional_data;
 
 	response = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				       SCCP_MSG_HEADROOM, "sccp confirm");
@@ -708,7 +708,7 @@ struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref,
 	confirm->proto_class = 2;
 	confirm->optional_start = 1;
 
-	optional_data = (u_int8_t *) msgb_put(response, 1);
+	optional_data = (uint8_t *) msgb_put(response, 1);
 	optional_data[0] = SCCP_PNC_END_OF_OPTIONAL;
 	return response;
 }
@@ -735,8 +735,8 @@ static int _sccp_send_connection_request(struct sccp_connection *connection,
 {
 	struct msgb *request;
 	struct sccp_connection_request *req;
-	u_int8_t *data;
-	u_int8_t extra_size = 3 + 1;
+	uint8_t *data;
+	uint8_t extra_size = 3 + 1;
 
 
 	if (msg && (msgb_l3len(msg) < 3 || msgb_l3len(msg) > 130)) {
@@ -794,7 +794,7 @@ struct msgb *sccp_create_dt1(struct sccp_source_reference *dst_ref, uint8_t *inp
 {
 	struct msgb *msgb;
 	struct sccp_data_form1 *dt1;
-	u_int8_t *data;
+	uint8_t *data;
 
 	msgb = msgb_alloc_headroom(SCCP_MSG_SIZE,
 				   SCCP_MSG_HEADROOM, "sccp dt1");
@@ -866,7 +866,7 @@ struct msgb *sccp_create_rlsd(struct sccp_source_reference *src_ref,
 {
 	struct msgb *msg;
 	struct sccp_connection_released *rel;
-	u_int8_t *data;
+	uint8_t *data;
 
 	msg = msgb_alloc_headroom(SCCP_MSG_SIZE, SCCP_MSG_HEADROOM,
 				  "sccp: connection released");
@@ -1348,16 +1348,16 @@ int sccp_set_read(const struct sockaddr_sccp *sock,
 	return 0;
 }
 
-static_assert(sizeof(struct sccp_source_reference) <= sizeof(u_int32_t), enough_space);
+static_assert(sizeof(struct sccp_source_reference) <= sizeof(uint32_t), enough_space);
 
-u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref)
+uint32_t sccp_src_ref_to_int(struct sccp_source_reference *ref)
 {
-	u_int32_t src_ref = 0;
+	uint32_t src_ref = 0;
 	memcpy(&src_ref, ref, sizeof(*ref));
 	return src_ref;
 }
 
-struct sccp_source_reference sccp_src_ref_from_int(u_int32_t int_ref)
+struct sccp_source_reference sccp_src_ref_from_int(uint32_t int_ref)
 {
 	struct sccp_source_reference ref;
 	memcpy(&ref, &int_ref, sizeof(ref));
