@@ -42,8 +42,8 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 	struct sccp_connections *mcon;
 	struct tlv_parsed tp;
 	u_int16_t cic;
-	u_int8_t timeslot;
-	u_int8_t multiplex;
+	uint8_t timeslot;
+	uint8_t multiplex;
 	int combined;
 
 	if (!msg->l3h) {
@@ -140,7 +140,7 @@ static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
 		return;
 	}
 
-	bsc_write_mgcp(bsc, (u_int8_t *) buf, len);
+	bsc_write_mgcp(bsc, (uint8_t *) buf, len);
 }
 
 void bsc_mgcp_init(struct sccp_connections *con)

@@ -134,7 +134,7 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 {
 	struct bsc_connection *bsc;
 	int data_length;
-	const u_int8_t *data;
+	const uint8_t *data;
 	struct tlv_parsed tp;
 	int i = 0;
 
@@ -179,7 +179,7 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 	return NULL;
 }
 
-int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length)
+int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length)
 {
 	struct msgb *msg;
 
@@ -287,7 +287,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
 {
-	u_int8_t mi_type;
+	uint8_t mi_type;
 	struct gsm48_loc_upd_req *lu;
 	char mi_string[GSM48_MI_SIZE];
 
@@ -348,7 +348,7 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc, uint8_t *data, unsigne
 {
 	struct gsm48_pag_resp *resp;
 	char mi_string[GSM48_MI_SIZE];
-	u_int8_t mi_type;
+	uint8_t mi_type;
 
 	if (length < sizeof(*resp)) {
 		LOGP(DNAT, LOGL_ERROR, "PAG RESP does not fit. Length was %d.\n", length);

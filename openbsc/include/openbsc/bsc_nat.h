@@ -246,7 +246,7 @@ struct bsc_nat {
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
 	struct write_queue mgcp_queue;
-	u_int8_t mgcp_msg[4096];
+	uint8_t mgcp_msg[4096];
 	int mgcp_length;
 
 	/* msc things */
@@ -311,7 +311,7 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
 /**
  * MGCP/Audio handling
  */
-int bsc_write_mgcp(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length);
+int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length);
 int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_init(struct sccp_connections *);
 void bsc_mgcp_dlcx(struct sccp_connections *);

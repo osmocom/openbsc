@@ -72,7 +72,7 @@ const char *openbsc_copyright =
 	"There is NO WARRANTY, to the extent permitted by law.\n";
 
 static struct bsc_nat *nat;
-static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int);
+static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int);
 static void msc_send_reset(struct bsc_msc_connection *con);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
@@ -89,7 +89,7 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 /*
  * below are stubs we need to link
  */
-int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
+int nm_state_event(enum nm_evt evt, uint8_t obj_class, void *obj,
 		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 		   struct abis_om_obj_inst *obj_ins)
 {
@@ -109,7 +109,7 @@ static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 
 static void send_reset_ack(struct bsc_connection *bsc)
 {
-	static const u_int8_t gsm_reset_ack[] = {
+	static const uint8_t gsm_reset_ack[] = {
 		0x09, 0x00, 0x03, 0x07, 0x0b, 0x04, 0x43, 0x01,
 		0x00, 0xfe, 0x04, 0x43, 0x5c, 0x00, 0xfe, 0x03,
 		0x00, 0x01, 0x31,
@@ -120,7 +120,7 @@ static void send_reset_ack(struct bsc_connection *bsc)
 
 static void send_ping(struct bsc_connection *bsc)
 {
-	static const u_int8_t id_ping[] = {
+	static const uint8_t id_ping[] = {
 		IPAC_MSGT_PING,
 	};
 
@@ -129,7 +129,7 @@ static void send_ping(struct bsc_connection *bsc)
 
 static void send_pong(struct bsc_connection *bsc)
 {
-	static const u_int8_t id_pong[] = {
+	static const uint8_t id_pong[] = {
 		IPAC_MSGT_PONG,
 	};
 
@@ -172,7 +172,7 @@ static void start_ping_pong(struct bsc_connection *bsc)
 
 static void send_id_ack(struct bsc_connection *bsc)
 {
-	static const u_int8_t id_ack[] = {
+	static const uint8_t id_ack[] = {
 		IPAC_MSGT_ID_ACK
 	};
 
@@ -181,7 +181,7 @@ static void send_id_ack(struct bsc_connection *bsc)
 
 static void send_id_req(struct bsc_connection *bsc)
 {
-	static const u_int8_t id_req[] = {
+	static const uint8_t id_req[] = {
 		IPAC_MSGT_ID_GET,
 		0x01, IPAC_IDTAG_UNIT,
 		0x01, IPAC_IDTAG_MACADDR,
@@ -245,7 +245,7 @@ static void nat_send_rlc(struct bsc_msc_connection *msc_con,
 
 static void send_mgcp_reset(struct bsc_connection *bsc)
 {
-	static const u_int8_t mgcp_reset[] = {
+	static const uint8_t mgcp_reset[] = {
 	    "RSIP 1 13@mgw MGCP 1.0\r\n"
 	};
 
@@ -279,7 +279,7 @@ static void send_id_get_response(struct bsc_msc_connection *msc_con)
 /*
  * Currently we are lacking refcounting so we need to copy each message.
  */
-static void bsc_send_data(struct bsc_connection *bsc, const u_int8_t *data, unsigned int length, int proto)
+static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int proto)
 {
 	struct msgb *msg;
 
@@ -503,7 +503,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 
 static void msc_send_reset(struct bsc_msc_connection *msc_con)
 {
-	static const u_int8_t reset[] = {
+	static const uint8_t reset[] = {
 		0x00, 0x12, 0xfd,
 		0x09, 0x00, 0x03, 0x05, 0x07, 0x02, 0x42, 0xfe,
 		0x02, 0x42, 0xfe, 0x06, 0x00, 0x04, 0x30, 0x04,
