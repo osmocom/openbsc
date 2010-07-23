@@ -114,7 +114,7 @@ static int parse_ussd(u_int8_t *ussd, struct ussd_request *req)
 
 static int parse_ussd_info_elements(u_int8_t *ussd_ie, struct ussd_request *req)
 {
-	int rc;
+	int rc = -1;
 	/* Information Element Identifier - table 3.2 & GSM 04.08 section 10.5 */
 	u_int8_t iei = ussd_ie[0];
 	u_int8_t iei_length = ussd_ie[1];
