@@ -34,7 +34,6 @@ static struct gsm_bts_model model_nanobts = {
 			[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
 			[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
 			[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, },
-			[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_TV, },
 			[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
 			[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
 			[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
