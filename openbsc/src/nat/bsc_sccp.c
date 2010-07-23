@@ -55,7 +55,7 @@ static int sccp_ref_is_free(struct sccp_source_reference *ref, struct bsc_nat *n
 /* copied from sccp.c */
 static int assign_src_local_reference(struct sccp_source_reference *ref, struct bsc_nat *nat)
 {
-	static u_int32_t last_ref = 0x50000;
+	static uint32_t last_ref = 0x50000;
 	int wrapped = 0;
 
 	do {
