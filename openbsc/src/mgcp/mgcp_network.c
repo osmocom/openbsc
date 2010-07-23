@@ -57,7 +57,7 @@ struct rtp_hdr {
 	u_int8_t  marker:1,
 		  payload_type:7;
 #endif
-	u_int16_t sequence;
+	uint16_t sequence;
 	uint32_t timestamp;
 	uint32_t ssrc;
 } __attribute__((packed));
