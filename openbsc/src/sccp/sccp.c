@@ -204,11 +204,11 @@ static int _sccp_parse_optional_data(const int offset,
 
 int _sccp_parse_connection_request(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size =
+	static const uint32_t header_size =
 			sizeof(struct sccp_connection_request);
-	static const u_int32_t optional_offset =
+	static const uint32_t optional_offset =
 			offsetof(struct sccp_connection_request, optional_start);
-	static const u_int32_t called_offset =
+	static const uint32_t called_offset =
 			offsetof(struct sccp_connection_request, variable_called);
 
 	struct sccp_connection_request *req = (struct sccp_connection_request *)msgb->l2h;
@@ -288,7 +288,7 @@ int _sccp_parse_connection_released(struct msgb *msgb, struct sccp_parse_result 
 
 int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size =
+	static const uint32_t header_size =
 			sizeof(struct sccp_connection_refused);
 	static int optional_offset = offsetof(struct sccp_connection_refused, optional_start);
 
@@ -325,9 +325,9 @@ int _sccp_parse_connection_refused(struct msgb *msgb, struct sccp_parse_result *
 
 int _sccp_parse_connection_confirm(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static u_int32_t header_size =
+	static uint32_t header_size =
 		    sizeof(struct sccp_connection_confirm);
-	static const u_int32_t optional_offset =
+	static const uint32_t optional_offset =
 			offsetof(struct sccp_connection_confirm, optional_start);
 
 	struct sccp_optional_data optional_data;
@@ -422,10 +422,10 @@ int _sccp_parse_connection_dt1(struct msgb *msgb, struct sccp_parse_result *resu
 
 int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_data_unitdata);
-	static const u_int32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
-	static const u_int32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
-	static const u_int32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
+	static const uint32_t header_size = sizeof(struct sccp_data_unitdata);
+	static const uint32_t called_offset = offsetof(struct sccp_data_unitdata, variable_called);
+	static const uint32_t calling_offset = offsetof(struct sccp_data_unitdata, variable_calling);
+	static const uint32_t data_offset = offsetof(struct sccp_data_unitdata, variable_data);
 
 	struct sccp_data_unitdata *udt = (struct sccp_data_unitdata *)msgb->l2h;
 
@@ -475,7 +475,7 @@ int _sccp_parse_udt(struct msgb *msgb, struct sccp_parse_result *result)
 
 static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_data_it);
+	static const uint32_t header_size = sizeof(struct sccp_data_it);
 
 	struct sccp_data_it *it;
 
@@ -494,7 +494,7 @@ static int _sccp_parse_it(struct msgb *msgb, struct sccp_parse_result *result)
 
 static int _sccp_parse_err(struct msgb *msgb, struct sccp_parse_result *result)
 {
-	static const u_int32_t header_size = sizeof(struct sccp_proto_err);
+	static const uint32_t header_size = sizeof(struct sccp_proto_err);
 
 	struct sccp_proto_err *err;
 
@@ -602,7 +602,7 @@ static int destination_local_reference_is_free(struct sccp_source_reference *ref
 
 static int assign_source_local_reference(struct sccp_connection *connection)
 {
-	static u_int32_t last_ref = 0x30000;
+	static uint32_t last_ref = 0x30000;
 	int wrapped = 0;
 
 	do {
@@ -1348,16 +1348,16 @@ int sccp_set_read(const struct sockaddr_sccp *sock,
 	return 0;
 }
 
-static_assert(sizeof(struct sccp_source_reference) <= sizeof(u_int32_t), enough_space);
+static_assert(sizeof(struct sccp_source_reference) <= sizeof(uint32_t), enough_space);
 
-u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref)
+uint32_t sccp_src_ref_to_int(struct sccp_source_reference *ref)
 {
-	u_int32_t src_ref = 0;
+	uint32_t src_ref = 0;
 	memcpy(&src_ref, ref, sizeof(*ref));
 	return src_ref;
 }
 
-struct sccp_source_reference sccp_src_ref_from_int(u_int32_t int_ref)
+struct sccp_source_reference sccp_src_ref_from_int(uint32_t int_ref)
 {
 	struct sccp_source_reference ref;
 	memcpy(&ref, &int_ref, sizeof(ref));

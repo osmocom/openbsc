@@ -145,8 +145,8 @@ int sccp_set_read(const struct sockaddr_sccp *sock,
 extern const struct sockaddr_sccp sccp_ssn_bssap;
 
 /* helpers */
-u_int32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
-struct sccp_source_reference sccp_src_ref_from_int(u_int32_t);
+uint32_t sccp_src_ref_to_int(struct sccp_source_reference *ref);
+struct sccp_source_reference sccp_src_ref_from_int(uint32_t);
 
 struct msgb *sccp_create_refuse(struct sccp_source_reference *src_ref, int cause, uint8_t *data, int length);
 struct msgb *sccp_create_cc(struct sccp_source_reference *src_ref, struct sccp_source_reference *dst_ref);
