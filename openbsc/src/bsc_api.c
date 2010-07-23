@@ -132,6 +132,12 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 	return 0;
 }
 
+int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
+			uint8_t *key, int len)
+{
+	return -1;
+}
+
 int gsm0808_clear(struct gsm_subscriber_connection* conn)
 {
 	struct gsm_lchan *lchan;
