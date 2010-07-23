@@ -45,12 +45,6 @@
 static void bts_queue_send(struct msgb *msg, int link_id);
 static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
-
-static void put_data_16(uint8_t *data, const uint16_t val)
-{
-	memcpy(data, &val, sizeof(val));
-}
-
 static uint32_t read_data32(const uint8_t *data)
 {
 	uint32_t res;
@@ -735,50 +729,12 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 /* Create messages */
 struct msgb *bssmap_create_layer3(struct msgb *msg_l3)
 {
-	u_int8_t *data;
-	uint8_t *ci;
-	struct msgb* msg;
-	struct gsm48_loc_area_id *lai;
 	struct gsm_bts *bts = msg_l3->lchan->ts->trx->bts;
 	u_int16_t network_code = get_network_code_for_msc(bts->network);
 	u_int16_t country_code = get_country_code_for_msc(bts->network);
 
-	msg  = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
-				   "bssmap cmpl l3");
-	if (!msg)
-		return NULL;
-
-	/* create the bssmap header */
-	msg->l3h = msgb_put(msg, 2);
-	msg->l3h[0] = 0x0;
-
-	/* create layer 3 header */
-	data = msgb_put(msg, 1);
-	data[0] = BSS_MAP_MSG_COMPLETE_LAYER_3;
-
-	/* create the cell header */
-	data = msgb_put(msg, 3);
-	data[0] = GSM0808_IE_CELL_IDENTIFIER;
-	data[1] = 1 + sizeof(*lai) + 2;
-	data[2] = CELL_IDENT_WHOLE_GLOBAL;
-
-	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm48_generate_lai(lai, country_code,
-			   network_code, bts->location_area_code);
-
-	ci = msgb_put(msg, 2);
-	put_data_16(ci, htons(bts->cell_identity));
-
-	/* copy the layer3 data */
-	data = msgb_put(msg, msgb_l3len(msg_l3) + 2);
-	data[0] = GSM0808_IE_LAYER_3_INFORMATION;
-	data[1] = msgb_l3len(msg_l3);
-	memcpy(&data[2], msg_l3->l3h, data[1]);
-
-	/* update the size */
-	msg->l3h[1] = msgb_l3len(msg) - 2;
-
-	return msg;
+	return gsm0808_create_layer3(msg_l3, network_code, country_code,
+				     bts->location_area_code, bts->cell_identity);
 }
 
 static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
