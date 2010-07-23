@@ -11,7 +11,9 @@
 struct bsc_api {
 	void (*sapi_n_reject)(struct gsm_subscriber_connection *conn, int dlci);
 	void (*cipher_mode_compl)(struct gsm_subscriber_connection *conn,
-				  struct msgb *msg, uint16_t chosen_encr);
+				  struct msgb *msg, uint8_t chosen_encr);
+	void (*cipher_mode_reject)(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg, uint16_t reason);
 	int (*compl_l3)(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, uint16_t chosen_channel); 
 	void (*dtap)(struct gsm_subscriber_connection *conn, struct msgb *msg);
