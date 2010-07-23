@@ -271,7 +271,7 @@ reject:
 	if (msg->lchan && msg->lchan->msc_data)
 		msg->lchan->msc_data->block_gsm = 0;
 
-	resp = bssmap_create_cipher_reject(reject_cause);
+	resp = gsm0808_create_cipher_reject(reject_cause);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Sending the cipher reject failed.\n");
 		return -1;
@@ -812,57 +812,6 @@ struct msgb *bssmap_create_cipher_complete(struct msgb *layer3)
 	return msg;
 }
 
-struct msgb *bssmap_create_cipher_reject(u_int8_t cause)
-{
-	struct msgb *msg = msgb_alloc(30, "bssmap: clear complete");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 3);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 2;
-	msg->l3h[2] = BSS_MAP_MSG_CIPHER_MODE_REJECT;
-	msg->l3h[3] = cause;
-
-	return msg;
-}
-
-struct msgb *bssmap_create_classmark_update(const u_int8_t *classmark_data, u_int8_t length)
-{
-	struct msgb *msg = msgb_alloc_headroom(BSSMAP_MSG_SIZE, BSSMAP_MSG_HEADROOM,
-					       "classmark-update");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 3);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 0xff;
-	msg->l3h[2] = BSS_MAP_MSG_CLASSMARK_UPDATE;
-
-	msg->l4h = msgb_put(msg, length);
-	memcpy(msg->l4h, classmark_data, length);
-
-	/* update the size */
-	msg->l3h[1] = msgb_l3len(msg) - 2;
-	return msg;
-}
-
-struct msgb *bssmap_create_sapi_reject(u_int8_t link_id)
-{
-	struct msgb *msg = msgb_alloc(30, "bssmap: sapi 'n' reject");
-	if (!msg)
-		return NULL;
-
-	msg->l3h = msgb_put(msg, 5);
-	msg->l3h[0] = BSSAP_MSG_BSS_MANAGEMENT;
-	msg->l3h[1] = 3;
-	msg->l3h[2] = BSS_MAP_MSG_SAPI_N_REJECT;
-	msg->l3h[3] = link_id;
-	msg->l3h[4] = GSM0808_CAUSE_BSS_NOT_EQUIPPED;
-
-	return msg;
-}
-
 static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 {
 	int mode = 0;
@@ -1181,7 +1130,7 @@ static void rll_ind_cb(struct gsm_lchan *lchan, u_int8_t link_id,
 		struct msgb *sapi_reject;
 
 		bts_free_queued(data);
-		sapi_reject = bssmap_create_sapi_reject(link_id);
+		sapi_reject = gsm0808_create_sapi_reject(link_id);
 		if (!sapi_reject){
 			LOGP(DMSC, LOGL_ERROR, "Failed to create SAPI reject\n");
 			return;
