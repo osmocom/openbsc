@@ -2,7 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008, 2009, 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009 by Mike Haben <michael.haben@btinternet.com>
  *
  * All Rights Reserved
@@ -243,6 +243,69 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 		}
 	}
 	return rc;
+}
+
+struct msgb *gsm0480_create_notifySS(const char *text)
+{
+	struct msgb *msg;
+	uint8_t *data, *tmp_len;
+	uint8_t *seq_len_ptr, *cal_len_ptr, *opt_len_ptr, *nam_len_ptr;
+	int len;
+
+	len = strlen(text);
+	if (len < 1 || len > 160)
+		return NULL;
+
+	msg = gsm48_msgb_alloc();
+	if (!msg)
+		return NULL;
+
+	msgb_put_u8(msg, GSM_0480_SEQUENCE_TAG);
+	seq_len_ptr = msgb_put(msg, 1);
+
+
+	/* nameIndicator { */
+	msgb_put_u8(msg, 0xB4);
+	nam_len_ptr = msgb_put(msg, 1);
+
+	/* callingName { */
+	msgb_put_u8(msg, 0xA0);
+	opt_len_ptr = msgb_put(msg, 1);
+	msgb_put_u8(msg, 0xA0);
+	cal_len_ptr = msgb_put(msg, 1);
+
+	/* namePresentationAllowed { */
+	/* add the DCS value */
+	msgb_put_u8(msg, 0x80);
+	msgb_put_u8(msg, 1);
+	msgb_put_u8(msg, 0x0F);
+
+	/* add the lengthInCharacters */
+	msgb_put_u8(msg, 0x81);
+	msgb_put_u8(msg, 1);
+	msgb_put_u8(msg, strlen(text));
+
+	/* add the actual string */
+	msgb_put_u8(msg, 0x82);
+	tmp_len = msgb_put(msg, 1);
+	data = msgb_put(msg, 0);
+	len = gsm_7bit_encode(data, text);
+	tmp_len[0] = len;
+	msgb_put(msg, len);
+
+	/* }; namePresentationAllowed */
+
+	cal_len_ptr[0] = 3 + 3 + 2 + len;
+	opt_len_ptr[0] = cal_len_ptr[0] + 2;
+	/* }; callingName */
+
+	nam_len_ptr[0] = opt_len_ptr[0] + 2;
+	/* ); nameIndicator */
+
+	/* write the lengths... */
+	seq_len_ptr[0] = nam_len_ptr[0] + 2;
+
+	return msg;
 }
 
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */

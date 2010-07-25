@@ -23,4 +23,6 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 			     const struct msgb *msg, 
 			     const struct ussd_request *request);
 
+struct msgb * gsm0480_create_notifySS(const char *text);
+
 #endif
