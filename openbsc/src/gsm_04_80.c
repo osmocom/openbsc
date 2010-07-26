@@ -469,3 +469,19 @@ int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, const char *
 
 	return gsm0808_submit_dtap(conn, msg, 0);
 }
+
+int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm48_msgb_alloc();
+	if (!msg)
+		return -1;
+
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return gsm0808_submit_dtap(conn, msg, 0);
+}

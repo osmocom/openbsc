@@ -408,6 +408,7 @@ DEFUN(subscriber_ussd_notify,
 	}
 
 	gsm0480_send_ussdNotify(conn, text);
+	gsm0480_send_releaseComplete(conn);
 
 	subscr_put(subscr);
 	talloc_free(text);
