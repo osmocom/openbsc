@@ -416,6 +416,14 @@ int gsm0480_wrap_invoke(struct msgb *msg, int op, int link_id)
 	return 0;
 }
 
+/* wrap the GSM 04.08 Facility IE around it */
+int gsm0480_wrap_facility(struct msgb *msg)
+{
+	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+
+	return 0;
+}
+
 int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 			     const struct ussd_request *req)
 {
