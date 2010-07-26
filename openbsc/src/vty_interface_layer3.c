@@ -414,8 +414,10 @@ DEFUN(ena_subscr_name,
 	}
 
 	name = argv_concat(argv, argc, 2);
-	if (!name)
+	if (!name) {
+		subscr_put(subscr);
 		return CMD_WARNING;
+	}
 
 	strncpy(subscr->name, name, sizeof(subscr->name));
 	talloc_free(name);
