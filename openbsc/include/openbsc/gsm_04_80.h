@@ -25,6 +25,8 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 
 struct msgb *gsm0480_create_notifySS(const char *text);
 struct msgb *gsm0480_create_unstructuredSS_Notify(const char *text);
+
 int gsm0480_wrap_invoke(struct msgb *msg, int op, int link_id);
+int gsm0480_wrap_facility(struct msgb *msg);
 
 #endif
