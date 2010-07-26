@@ -308,6 +308,41 @@ struct msgb *gsm0480_create_notifySS(const char *text)
 	return msg;
 }
 
+struct msgb *gsm0480_create_unstructuredSS_Notify(const char *text)
+{
+	struct msgb *msg;
+	uint8_t *seq_len_ptr, *ussd_len_ptr, *data;
+	int len;
+
+	msg = gsm48_msgb_alloc();
+	if (!msg)
+		return NULL;
+
+	/* SEQUENCE { */
+	msgb_put_u8(msg, GSM_0480_SEQUENCE_TAG);
+	seq_len_ptr = msgb_put(msg, 1);
+
+	/* DCS { */
+	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
+	msgb_put_u8(msg, 1);
+	msgb_put_u8(msg, 0x0F);
+	/* } DCS */
+
+	/* USSD-String { */
+	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
+	ussd_len_ptr = msgb_put(msg, 1);
+	data = msgb_put(msg, 0);
+	len = gsm_7bit_encode(data, text);
+	msgb_put(msg, len);
+	ussd_len_ptr[0] = len;
+	/* USSD-String } */
+
+	seq_len_ptr[0] = 3 + 2 + ussd_len_ptr[0];
+	/* } SEQUENCE */
+
+	return msg;
+}
+
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			       const struct msgb *in_msg, const char *response_text,
