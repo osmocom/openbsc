@@ -54,7 +54,7 @@ static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 	uint8_t *data = msgb_push(msgb, 2);
 
 	data[0] = tag;
-	data[1] = msgb->len;
+	data[1] = msgb->len - 2;
 	return data;
 }
 
