@@ -263,6 +263,12 @@ struct msgb *gsm0480_create_notifySS(const char *text)
 	msgb_put_u8(msg, GSM_0480_SEQUENCE_TAG);
 	seq_len_ptr = msgb_put(msg, 1);
 
+	/* ss_code for CNAP { */
+	msgb_put_u8(msg, 0x81);
+	msgb_put_u8(msg, 1);
+	msgb_put_u8(msg, 0x19);
+	/* } ss_code */
+
 
 	/* nameIndicator { */
 	msgb_put_u8(msg, 0xB4);
@@ -303,7 +309,7 @@ struct msgb *gsm0480_create_notifySS(const char *text)
 	/* ); nameIndicator */
 
 	/* write the lengths... */
-	seq_len_ptr[0] = nam_len_ptr[0] + 2;
+	seq_len_ptr[0] = 3 + nam_len_ptr[0] + 2;
 
 	return msg;
 }
