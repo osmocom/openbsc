@@ -318,13 +318,10 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	u_int8_t *ptr8;
 	int response_len;
 
-	response_len = (strlen(response_text) * 7) / 8;
-	if (((strlen(response_text) * 7) % 8) != 0)
-		response_len += 1;
-
 	/* First put the payload text into the message */
-	ptr8 = msgb_put(msg, response_len);
-	gsm_7bit_encode(ptr8, response_text);
+	ptr8 = msgb_put(msg, 0);
+	response_len = gsm_7bit_encode(ptr8, response_text);
+	msgb_put(msg, response_len);
 
 	/* Then wrap it as an Octet String */
 	msgb_wrap_with_TL(msg, ASN1_OCTET_STRING_TAG);
