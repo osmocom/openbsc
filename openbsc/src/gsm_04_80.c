@@ -51,22 +51,22 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 
 static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 {
-	msgb->data -= 2;
-	msgb->data[0] = tag;
-	msgb->data[1] = msgb->len;
-	msgb->len += 2;
-	return msgb->data;
+	uint8_t *data = msgb_push(msgb, 2);
+
+	data[0] = tag;
+	data[1] = msgb->len;
+	return data;
 }
 
 static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag,
 					    u_int8_t value)
 {
-	msgb->data -= 3;
-	msgb->len += 3;
-	msgb->data[0] = tag;
-	msgb->data[1] = 1;
-	msgb->data[2] = value;
-	return msgb->data;
+	uint8_t *data = msgb_push(msgb, 3);
+
+	data[0] = tag;
+	data[1] = 1;
+	data[2] = value;
+	return data;
 }
 
 
