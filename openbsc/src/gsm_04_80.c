@@ -449,3 +449,23 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 
 	return gsm0808_submit_dtap(conn, msg, 0);
 }
+
+int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, const char *text)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm0480_create_unstructuredSS_Notify(text);
+	if (!msg)
+		return -1;
+
+	gsm0480_wrap_invoke(msg, GSM0480_OP_CODE_USS_NOTIFY, 0);
+	gsm0480_wrap_facility(msg);
+
+	/* And finally pre-pend the L3 header */
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->msg_type = GSM0480_MTYPE_REGISTER;
+
+	return gsm0808_submit_dtap(conn, msg, 0);
+}

@@ -42,6 +42,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
+#include <openbsc/gsm_04_80.h>
+#include <openbsc/chan_alloc.h>
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
@@ -371,6 +373,47 @@ DEFUN(subscriber_silent_call_stop,
 	return CMD_SUCCESS;
 }
 
+DEFUN(subscriber_ussd_notify,
+      subscriber_ussd_notify_cmd,
+      "subscriber " SUBSCR_TYPES " ID ussd-notify .TEXT",
+      SUBSCR_HELP "USSD Notify\n"
+      "Subscriber ID\n"
+      "Text Message to send\n")
+{
+	char *text;
+	struct gsm_subscriber_connection *conn;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	int rc;
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	text = argv_concat(argv, argc, 2);
+	if (!text) {
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	conn = connection_for_subscr(subscr);
+	if (!conn) {
+		vty_out(vty, "%% An active connection is required for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		subscr_put(subscr);
+		talloc_free(text);
+		return CMD_WARNING;
+	}
+
+	gsm0480_send_ussdNotify(conn, text);
+
+	subscr_put(subscr);
+	talloc_free(text);
+	return CMD_SUCCESS;
+}
+
 DEFUN(ena_subscr_authorizde,
       ena_subscr_authorized_cmd,
       "subscriber " SUBSCR_TYPES " ID authorized (0|1)",
@@ -582,6 +625,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_silent_sms_cmd);
 	install_element_ve(&subscriber_silent_call_start_cmd);
 	install_element_ve(&subscriber_silent_call_stop_cmd);
+	install_element_ve(&subscriber_ussd_notify_cmd);
 	install_element_ve(&show_stats_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
