@@ -255,8 +255,8 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 		goto cleanup1;
 	}
 
-	set_ip_tos(endp->local_rtp.fd, cfg->endp_tos);
-	set_ip_tos(endp->local_rtcp.fd, cfg->endp_tos);
+	set_ip_tos(endp->local_rtp.fd, cfg->endp_dscp);
+	set_ip_tos(endp->local_rtcp.fd, cfg->endp_dscp);
 
 	endp->local_rtp.cb = rtp_data_cb;
 	endp->local_rtp.data = endp;
