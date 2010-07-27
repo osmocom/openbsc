@@ -375,9 +375,10 @@ DEFUN(subscriber_silent_call_stop,
 
 DEFUN(subscriber_ussd_notify,
       subscriber_ussd_notify_cmd,
-      "subscriber " SUBSCR_TYPES " ID ussd-notify .TEXT",
+      "subscriber " SUBSCR_TYPES " ID ussd-notify (0|1|2) .TEXT",
       SUBSCR_HELP "USSD Notify\n"
       "Subscriber ID\n"
+      "Alerting Level\n"
       "Text Message to send\n")
 {
 	char *text;
@@ -385,6 +386,7 @@ DEFUN(subscriber_ussd_notify,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
 	int rc;
+	int level;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -392,7 +394,8 @@ DEFUN(subscriber_ussd_notify,
 		return CMD_WARNING;
 	}
 
-	text = argv_concat(argv, argc, 2);
+	level = atoi(argv[2]);
+	text = argv_concat(argv, argc, 3);
 	if (!text) {
 		subscr_put(subscr);
 		return CMD_WARNING;
@@ -407,7 +410,7 @@ DEFUN(subscriber_ussd_notify,
 		return CMD_WARNING;
 	}
 
-	gsm0480_send_ussdNotify(conn, text);
+	gsm0480_send_ussdNotify(conn, level, text);
 	gsm0480_send_releaseComplete(conn);
 
 	subscr_put(subscr);
