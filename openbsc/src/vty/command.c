@@ -47,7 +47,6 @@ Boston, MA 02111-1307, USA.  */
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
-#include <openbsc/bsc_nat.h>
 #include <osmocore/talloc.h>
 
 void *tall_vty_cmd_ctx;
@@ -1950,13 +1949,6 @@ enum node_type vty_go_parent(struct vty *vty)
 		subscr_put(vty->index);
 		vty->index = NULL;
 		break;
-	case BSC_NODE:
-		vty->node = NAT_NODE;
-		{
-			struct bsc_config *bsc = vty->index;
-			vty->index = bsc->nat;
-		}
-		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -2373,14 +2365,6 @@ DEFUN(config_exit,
 	case MGCP_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
-	case NAT_NODE:
-		vty->node = CONFIG_NODE;
-		vty->index = NULL;
-		break;
-	case BSC_NODE:
-		vty->node = NAT_NODE;
-		vty->index = NULL;
-		break;
 
 	default:
 		break;
