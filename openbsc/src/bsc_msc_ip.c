@@ -1,8 +1,8 @@
 /* The BSC Process to handle GSM08.08 (A-Interface) */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by On-Waves
+ * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -1254,7 +1254,7 @@ int main(int argc, char **argv)
 
 	bsc_gsmnet->msc_con = bsc_msc_create(msc,
 					     bsc_gsmnet->msc_port,
-					     bsc_gsmnet->msc_prio);
+					     bsc_gsmnet->msc_ip_dscp);
 	if (!bsc_gsmnet->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
