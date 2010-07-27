@@ -898,7 +898,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
                 LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
 	rc = setsockopt(fd, IPPROTO_IP, IP_TOS,
-			&nat->bsc_ip_tos, sizeof(nat->bsc_ip_tos));
+			&nat->bsc_ip_dscp, sizeof(nat->bsc_ip_dscp));
 	if (rc != 0)
 		LOGP(DNAT, LOGL_ERROR, "Failed to set IP_TOS: %s\n", strerror(errno));
 

@@ -73,7 +73,7 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
 	if (_nat->token)
 		vty_out(vty, " token %s%s", _nat->token, VTY_NEWLINE);
-	vty_out(vty, " ip-tos %d%s", _nat->bsc_ip_tos, VTY_NEWLINE);
+	vty_out(vty, " ip-dscp %d%s", _nat->bsc_ip_dscp, VTY_NEWLINE);
 	if (_nat->acc_lst_name)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
 
@@ -341,13 +341,18 @@ DEFUN(cfg_nat_token, cfg_nat_token_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_nat_bsc_ip_tos, cfg_nat_bsc_ip_tos_cmd,
-      "ip-tos <0-255>",
-      "Set the IP_TOS for the BSCs to use\n" "Set the IP_TOS attribute")
+DEFUN(cfg_nat_bsc_ip_dscp, cfg_nat_bsc_ip_dscp_cmd,
+      "ip-dscp <0-255>",
+      "Set the IP DSCP for the BSCs to use\n" "Set the IP_TOS attribute")
 {
-	_nat->bsc_ip_tos = atoi(argv[0]);
+	_nat->bsc_ip_dscp = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
+
+ALIAS_DEPRECATED(cfg_nat_bsc_ip_dscp, cfg_nat_bsc_ip_tos_cmd,
+      "ip-tos <0-255>",
+      "Use ip-dscp in the future.\n" "Set the DSCP\n")
+
 
 DEFUN(cfg_nat_acc_lst_name,
       cfg_nat_acc_lst_name_cmd,
@@ -569,6 +574,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_ping_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_pong_time_cmd);
 	install_element(NAT_NODE, &cfg_nat_token_cmd);
+	install_element(NAT_NODE, &cfg_nat_bsc_ip_dscp_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
 
