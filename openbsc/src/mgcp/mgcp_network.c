@@ -109,7 +109,7 @@ static void patch_and_count(uint16_t *last_seq, int *lost, int payload, char *da
 	if (*last_seq == 0)
 		*last_seq = seq;
 	else if (*last_seq + 1 != seq)
-		*lost += abs(*last_seq - seq);
+		*lost = abs(seq - (*last_seq + 1));
 
 	*last_seq = seq;
 
