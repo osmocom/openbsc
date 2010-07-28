@@ -24,6 +24,7 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/signal.h>
 
 #include <osmocore/talloc.h>
 #include <osmocore/protocol/gsm_12_21.h>
@@ -37,6 +38,7 @@
 #define RF_CMD_QUERY '?'
 #define RF_CMD_OFF   '0'
 #define RF_CMD_ON    '1'
+#define RF_CMD_GRACE 'g'
 
 static int lock_each_trx(struct gsm_network *net, int lock)
 {
@@ -90,6 +92,14 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	return;
 }
 
+static void send_signal(struct osmo_bsc_rf_conn *conn, int val)
+{
+	struct rf_signal_data sig;
+	sig.net = conn->gsm_network;
+
+	dispatch_signal(SS_RF, val, &sig);
+}
+
 static int rf_read_cmd(struct bsc_fd *fd)
 {
 	struct osmo_bsc_rf_conn *conn = fd->data;
@@ -112,9 +122,14 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		break;
 	case RF_CMD_OFF:
 		lock_each_trx(conn->gsm_network, 1);
+		send_signal(conn, S_RF_OFF);
 		break;
 	case RF_CMD_ON:
 		lock_each_trx(conn->gsm_network, 0);
+		send_signal(conn, S_RF_ON);
+		break;
+	case RF_CMD_GRACE:
+		send_signal(conn, S_RF_GRACE);
 		break;
 	default:
 		LOGP(DINP, LOGL_ERROR, "Unknown command %d\n", buf[0]);
