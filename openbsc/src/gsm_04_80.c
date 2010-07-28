@@ -475,3 +475,21 @@ int gsm0480_send_ussdNotify(struct gsm_lchan *lchan, const char *text)
 
 	return gsm48_sendmsg(msg, NULL);
 }
+
+int gsm0480_send_releaseComplete(struct gsm_lchan *lchan)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *msg;
+
+	msg = gsm48_msgb_alloc();
+	if (!msg)
+		return -1;
+
+	msg->lchan = lchan;
+
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return gsm48_sendmsg(msg, NULL);
+}
