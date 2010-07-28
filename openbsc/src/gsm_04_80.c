@@ -360,8 +360,29 @@ int gsm0480_send_ussd_response(const struct msgb *in_msg, const char *response_t
 	return gsm48_sendmsg(msg, NULL);
 }
 
+/* wrap an invoke around it... the other way around
+ *
+ * 1.) Invoke Component tag
+ * 2.) Invoke ID Tag
+ * 3.) Operation
+ * 4.) Data
+ */
+int gsm0480_wrap_invoke(struct msgb *msg, int op, int link_id)
+{
+	/* 3. operation */
+	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, op);
+
+	/* 2. invoke id tag */
+	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, link_id);
+
+	/* 1. component tag */
+	msgb_wrap_with_TL(msg, GSM0480_CTYPE_INVOKE);
+
+	return 0;
+}
+
 int gsm0480_send_ussd_reject(const struct msgb *in_msg,
-				const struct ussd_request *req)
+			     const struct ussd_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
