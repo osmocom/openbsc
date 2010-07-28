@@ -94,17 +94,29 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			endp->net_rtp, buf, 1);
 }
 
-static void patch_payload(int payload, char *data, int len)
+static void patch_and_count(uint16_t *last_seq, int *lost, int payload, char *data, int len)
 {
+	uint16_t seq;
 	struct rtp_hdr *rtp_hdr;
 
 	if (len < sizeof(*rtp_hdr))
 		return;
 
+	rtp_hdr = (struct rtp_hdr *) data;
+	seq = ntohs(rtp_hdr->sequence);
+
+	/* 0 is assumed to be not set */
+	if (*last_seq == 0)
+		*last_seq = seq;
+	else if (*last_seq + 1 != seq)
+		*lost += abs(*last_seq - seq);
+
+	*last_seq = seq;
+
+
 	if (payload < 0)
 		return;
 
-	rtp_hdr = (struct rtp_hdr *) data;
 	rtp_hdr->payload_type = payload;
 }
 
@@ -194,13 +206,15 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 
 	if (dest == DEST_NETWORK) {
 		if (proto == PROTO_RTP)
-			patch_payload(endp->net_payload_type, buf, rc);
+			patch_and_count(&endp->bts_seq_no, &endp->bts_lost_no,
+					endp->net_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->remote,
 			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
 			     buf, rc);
 	} else {
 		if (proto == PROTO_RTP)
-			patch_payload(endp->bts_payload_type, buf, rc);
+			patch_and_count(&endp->net_seq_no, &endp->net_lost_no,
+					endp->bts_payload_type, buf, rc);
 		return udp_send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
 			     buf, rc);

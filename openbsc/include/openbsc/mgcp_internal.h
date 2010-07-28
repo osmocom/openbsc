@@ -61,6 +61,12 @@ struct mgcp_endpoint {
 	/* statistics */
 	unsigned int in_bts;
 	unsigned int in_remote;
+
+	/* sequence bits */
+	uint16_t net_seq_no;
+	uint16_t bts_seq_no;
+	int net_lost_no;
+	int bts_lost_no;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)
