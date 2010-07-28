@@ -313,7 +313,7 @@ struct msgb *gsm0480_create_notifySS(const char *text)
 	return msg;
 }
 
-struct msgb *gsm0480_create_unstructuredSS_Notify(const char *text)
+struct msgb *gsm0480_create_unstructuredSS_Notify(int alertPattern, const char *text)
 {
 	struct msgb *msg;
 	uint8_t *seq_len_ptr, *ussd_len_ptr, *data;
@@ -342,7 +342,13 @@ struct msgb *gsm0480_create_unstructuredSS_Notify(const char *text)
 	ussd_len_ptr[0] = len;
 	/* USSD-String } */
 
-	seq_len_ptr[0] = 3 + 2 + ussd_len_ptr[0];
+	/* alertingPattern { */
+	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
+	msgb_put_u8(msg, 1);
+	msgb_put_u8(msg, alertPattern);
+	/* } alertingPattern */
+
+	seq_len_ptr[0] = 3 + 2 + ussd_len_ptr[0] + 3;
 	/* } SEQUENCE */
 
 	return msg;
@@ -460,12 +466,12 @@ int gsm0480_send_ussd_reject(const struct msgb *in_msg,
 	return gsm48_sendmsg(msg, NULL);
 }
 
-int gsm0480_send_ussdNotify(struct gsm_lchan *lchan, const char *text)
+int gsm0480_send_ussdNotify(struct gsm_lchan *lchan, int level, const char *text)
 {
 	struct gsm48_hdr *gh;
 	struct msgb *msg;
 
-	msg = gsm0480_create_unstructuredSS_Notify(text);
+	msg = gsm0480_create_unstructuredSS_Notify(level, text);
 	if (!msg)
 		return -1;
 

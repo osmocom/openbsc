@@ -20,12 +20,12 @@ int gsm0480_send_ussd_reject(const struct msgb *msg,
 				const struct ussd_request *request);
 
 struct msgb *gsm0480_create_notifySS(const char *text);
-struct msgb *gsm0480_create_unstructuredSS_Notify(const char *text);
+struct msgb *gsm0480_create_unstructuredSS_Notify(int alertLevel, const char *text);
 
 int gsm0480_wrap_invoke(struct msgb *msg, int op, int link_id);
 int gsm0480_wrap_facility(struct msgb *msg);
 
-int gsm0480_send_ussdNotify(struct gsm_lchan *lchan, const char *text);
+int gsm0480_send_ussdNotify(struct gsm_lchan *lchan, int level, const char *text);
 int gsm0480_send_releaseComplete(struct gsm_lchan *lchan);
 
 #endif
