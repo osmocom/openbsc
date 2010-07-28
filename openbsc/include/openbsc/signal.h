@@ -43,6 +43,7 @@ enum signal_subsystems {
 	SS_SCALL,
 	SS_GLOBAL,
 	SS_CHALLOC,
+	SS_RF,
 };
 
 /* SS_PAGING signals */
@@ -118,6 +119,13 @@ enum signal_global {
 	S_GLOBAL_SHUTDOWN,
 };
 
+/* SS_RF signals */
+enum signal_rf {
+	S_RF_OFF,
+	S_RF_ON,
+	S_RF_GRACE,
+};
+
 struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
@@ -141,6 +149,10 @@ struct challoc_signal_data {
 	struct gsm_bts *bts;
 	struct gsm_lchan *lchan;
 	enum gsm_chan_t type;
+};
+
+struct rf_signal_data {
+	struct gsm_network *net;
 };
 
 #endif
