@@ -272,6 +272,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		if (lchan->conn) {
 			LOGP(DRLL, LOGL_ERROR, "lchan->conn should be NULL.\n");
 			subscr_con_free(lchan->conn);
+			lchan->conn = NULL;
 		}
 	} else {
 		struct challoc_signal_data sig;
