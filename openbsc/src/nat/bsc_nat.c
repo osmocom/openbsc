@@ -1178,6 +1178,7 @@ int main(int argc, char** argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	/* recycle timer */
+	sccp_set_log_area(DSCCP);
 	sccp_close.cb = sccp_close_unconfirmed;
 	sccp_close.data = NULL;
 	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);

@@ -3,13 +3,18 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
 
 # build current directory before building gprs
-SUBDIRS = . ipaccess gprs nat bsc
+SUBDIRS = . ipaccess gprs
+
+# Conditional modules
+if BUILD_NAT
+SUBDIRS += nat
+endif
+if BUILD_BSC
+SUBDIRS += bsc
+endif
 
 sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
-noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libsccp.a libmgcp.a
-
-bscdir = $(libdir)
-bsc_LIBRARIES = libsccp.a
+noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libmgcp.a
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		chan_alloc.c debug.c socket.c abis_nm_vty.c \
@@ -27,8 +32,6 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c \
 		osmo_msc.c
 
 libvty_a_SOURCES = common_vty.c
-
-libsccp_a_SOURCES = sccp/sccp.c
 
 libmgcp_a_SOURCES = mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c
 

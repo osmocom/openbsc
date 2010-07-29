@@ -26,6 +26,8 @@
 #include <osmocom/vty/command.h>
 #include <osmocore/talloc.h>
 
+#include <sccp/sccp.h>
+
 #define _GNU_SOURCE
 #include <getopt.h>
 
@@ -157,6 +159,9 @@ int main(int argc, char **argv)
 
 	/* seed the PRNG */
 	srand(time(NULL));
+
+	/* initialize SCCP */
+	sccp_set_log_area(DSCCP);
 
 
 	rc = bsc_bootstrap_network(NULL, config_file);

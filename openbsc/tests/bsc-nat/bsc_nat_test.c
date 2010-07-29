@@ -29,6 +29,8 @@
 
 #include <osmocore/talloc.h>
 
+#include <sccp/sccp.h>
+
 #include <stdio.h>
 
 /* test messages for ipa */
@@ -699,6 +701,7 @@ int main(int argc, char **argv)
 {
 	struct log_target *stderr_target;
 
+	sccp_set_log_area(DSCCP);
 	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
