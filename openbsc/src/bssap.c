@@ -622,7 +622,8 @@ int bssmap_rcvmsg_udt(struct gsm_network *net, struct msgb *msg, unsigned int le
 		ret = bssmap_handle_reset_ack(net, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
-		ret = bssmap_handle_paging(net, msg, length);
+		if (bsc_grace_allow_new_connection(net))
+			ret = bssmap_handle_paging(net, msg, length);
 		break;
 	}
 

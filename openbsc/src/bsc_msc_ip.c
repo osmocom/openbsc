@@ -46,6 +46,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_msc_rf.h>
+#include <openbsc/bsc_msc_grace.h>
 
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
@@ -291,6 +292,11 @@ static int open_sccp_connection(struct msgb *layer3)
 	/* When not connected to a MSC. We will simply close things down. */
 	if (!bsc_gsmnet->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
+		return -1;
+	}
+
+	if (!bsc_grace_allow_new_connection(bsc_gsmnet)) {
+		LOGP(DMSC, LOGL_NOTICE, "BSC in grace period. No new connections.\n");
 		return -1;
 	}
 
