@@ -27,3 +27,34 @@ int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
 	return network->rf->policy == S_RF_ON;
 }
+
+/*
+ * The place to handle the grace mode. Right now we will send
+ * USSD messages to the subscriber, in the future we might start
+ * a timer to have different modes for the grace period.
+ */
+static int handle_grace(struct gsm_network *network)
+{
+	return 0;
+}
+
+static int handle_rf_signal(unsigned int subsys, unsigned int signal,
+			    void *handler_data, void *signal_data)
+{
+	struct rf_signal_data *sig;
+
+	if (subsys != SS_RF)
+		return -1;
+
+	sig = signal_data;
+
+	if (signal == S_RF_GRACE)
+		handle_grace(sig->net);
+
+	return 0;
+}
+
+static __attribute__((constructor)) void on_dso_load_grace(void)
+{
+	register_signal_handler(SS_RF, handle_rf_signal, NULL);
+}
