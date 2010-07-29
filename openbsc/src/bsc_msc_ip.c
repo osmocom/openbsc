@@ -1245,9 +1245,8 @@ int main(int argc, char **argv)
 	}
 
 	if (rf_ctl) {
-		struct bsc_msc_rf *rf;
-		rf = bsc_msc_rf_create(rf_ctl, bsc_gsmnet);
-		if (!rf) {
+		bsc_gsmnet->rf = bsc_msc_rf_create(rf_ctl, bsc_gsmnet);
+		if (!bsc_gsmnet->rf) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);
 		}
