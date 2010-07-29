@@ -938,7 +938,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 	/* check if this channel is actually active */
 	/* FIXME: maybe this check should be way more generic/centralized */
 	if (msg->lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DRSL, LOGL_NOTICE, "%s: MEAS RES for inactive channel\n",
+		LOGP(DRSL, LOGL_DEBUG, "%s: MEAS RES for inactive channel\n",
 			gsm_lchan_name(msg->lchan));
 		return 0;
 	}
