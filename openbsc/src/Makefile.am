@@ -35,7 +35,7 @@ bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
 bsc_msc_ip_SOURCES = bssap.c bsc_msc_ip.c bsc_init.c vty_interface.c vty_interface_bsc.c \
-		bsc_msc.c bsc_msc_rf.c bsc_msc_grace.c
+		bsc_msc.c bsc_msc_rf.c bsc_msc_grace.c gsm_04_80.c
 bsc_msc_ip_LDADD = libbsc.a libvty.a libsccp.a
 
 

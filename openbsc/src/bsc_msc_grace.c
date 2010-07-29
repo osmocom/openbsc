@@ -21,11 +21,28 @@
 
 #include <openbsc/bsc_msc_grace.h>
 #include <openbsc/bsc_msc_rf.h>
+#include <openbsc/gsm_04_80.h>
 #include <openbsc/signal.h>
 
 int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
 	return network->rf->policy == S_RF_ON;
+}
+
+static int handle_sub(struct gsm_lchan *lchan, const char *text)
+{
+	/* only send it to TCH */
+	if (lchan->type != GSM_LCHAN_TCH_H && lchan->type != GSM_LCHAN_TCH_F)
+		return -1;
+
+	/* only when active */
+	if (lchan->state != LCHAN_S_ACTIVE)
+		return -1;
+
+	gsm0480_send_ussdNotify(lchan, 0, text);
+	gsm0480_send_releaseComplete(lchan);
+
+	return 0;
 }
 
 /*
@@ -35,6 +52,24 @@ int bsc_grace_allow_new_connection(struct gsm_network *network)
  */
 static int handle_grace(struct gsm_network *network)
 {
+	int ts_nr, lchan_nr;
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+
+	if (!network->ussd_grace_txt)
+		return 0;
+
+	llist_for_each_entry(bts, &network->bts_list, list) {
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			for (ts_nr = 0; ts_nr < TRX_NR_TS; ++ts_nr) {
+				struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; ++lchan_nr) {
+					handle_sub(&ts->lchan[lchan_nr],
+						   network->ussd_grace_txt);
+				}
+			}
+		}
+	}
 	return 0;
 }
 
