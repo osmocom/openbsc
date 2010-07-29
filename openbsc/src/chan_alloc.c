@@ -328,6 +328,9 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->conn = NULL;
 	}
 
+	lchan->sach_deact = 0;
+	lchan->release_reason = 0;
+
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }
@@ -352,18 +355,62 @@ void lchan_reset(struct gsm_lchan *lchan)
 	lchan->state = LCHAN_S_NONE;
 }
 
+/* release the next allocated SAPI or return 0 */
+static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
+{
+	int sapi;
+
+	for (sapi = 1; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		u_int8_t link_id;
+		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
+			continue;
+
+		link_id = sapi;
+		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+		rsl_release_request(lchan, link_id, lchan->release_reason);
+		return 0;
+	}
+
+	return 1;
+}
+
+/* Drive the release process of the lchan */
+static void _lchan_handle_release(struct gsm_lchan *lchan)
+{
+	/* Ask for SAPI != 0 to be freed first and stop if we need to wait */
+	if (_lchan_release_next_sapi(lchan) == 0)
+		return;
+
+	if (lchan->sach_deact) {
+		gsm48_send_rr_release(lchan);
+		return;
+	}
+
+	rsl_release_request(lchan, 0, lchan->release_reason);
+	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
+}
+
+/* called from abis rsl */
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id)
+{
+	if (lchan->state != LCHAN_S_REL_REQ)
+		return -1;
+
+	if ((link_id & 0x7) != 0)
+		_lchan_handle_release(lchan);
+	return 0;
+}
 
 /* Consider releasing the channel now */
 int lchan_release(struct gsm_lchan *lchan, int sach_deact, int reason)
 {
-	/* Assume we have GSM04.08 running and send a release */
-	if (sach_deact) {
-		gsm48_send_rr_release(lchan);
-	}
-
-	DEBUGP(DRLL, "%s Recycling Channel\n", gsm_lchan_name(lchan));
+	DEBUGP(DRLL, "%s starting release sequence\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
-	rsl_release_request(lchan, 0, 0);
+
+	lchan->release_reason = reason;
+	lchan->sach_deact = sach_deact;
+	_lchan_handle_release(lchan);
 	return 1;
 }
 

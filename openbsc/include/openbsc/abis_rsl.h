@@ -75,6 +75,7 @@ int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_deact_sacch(struct gsm_lchan *lchan);
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id);
 
 /* BCCH related code */
 int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf);

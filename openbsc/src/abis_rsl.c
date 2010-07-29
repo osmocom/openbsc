@@ -1356,11 +1356,21 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 static void rsl_handle_release(struct gsm_lchan *lchan)
 {
+	int sapi;
 	struct gsm_bts *bts;
+
+	/* maybe we have only brought down one RLL */
 	if (lchan->state != LCHAN_S_REL_REQ)
-		LOGP(DRSL, LOGL_ERROR, "RF release on %s but state %s\n",
-			gsm_lchan_name(lchan),
-			gsm_lchans_name(lchan->state));
+		return;
+
+	for (sapi = 0; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
+			continue;
+		LOGP(DRSL, LOGL_NOTICE, "%s waiting for SAPI=%d to be released.\n",
+		     gsm_lchan_name(lchan), sapi);
+		return;
+	}
+
 
 
 	/* wait a bit to send the RF Channel Release */
@@ -1422,6 +1432,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
 		rsl_handle_release(msg->lchan);
+		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_REL_CONF:
 		/* BTS informs us of having received UA from MS,
@@ -1429,6 +1440,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		rsl_handle_release(msg->lchan);
+		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);

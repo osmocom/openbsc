@@ -278,6 +278,8 @@ struct gsm_lchan {
 	
 	/* Established data link layer services */
 	u_int8_t sapis[8];
+	int sach_deact;
+	int release_reason;
 
 	/* GSM Random Access data */
 	struct gsm48_req_ref *rqd_ref;
