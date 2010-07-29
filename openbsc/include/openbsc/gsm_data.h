@@ -698,6 +698,7 @@ struct gsm_network {
 	int ping_timeout;
 	int pong_timeout;
 	struct bsc_msc_rf *rf;
+	char *ussd_grace_txt;
 };
 
 #define SMS_HDR_SIZE	128
