@@ -20,8 +20,10 @@
  */
 
 #include <openbsc/bsc_msc_grace.h>
+#include <openbsc/bsc_msc_rf.h>
+#include <openbsc/signal.h>
 
 int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
-	return 1;
+	return network->rf->policy == S_RF_ON;
 }
