@@ -787,9 +787,12 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 	struct gsm_bts *bts = trx->bts;
 	int rc;
 
-	rc = gsm_generate_si(bts, i);
-	if (rc < 0)
-		return rc;
+	/* Only generate SI if this SI is not in "static" (user-defined) mode */
+	if (!(bts->si_mode_static & (1 << i))) {
+		rc = gsm_generate_si(bts, i);
+		if (rc < 0)
+			return rc;
+	}
 
 	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
 		hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
@@ -821,26 +824,31 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
 
+	/* First, we determine which of the SI messages we actually need */
+
 	if (trx == bts->c0) {
-		for (i = SYSINFO_TYPE_1; i <= SYSINFO_TYPE_4; i++) {
-			rc = generate_and_rsl_si(trx, i);
-			if (rc < 0)
-				goto err_out;
-		}
-		if (bts->gprs.mode != BTS_GPRS_NONE) {
-			rc = generate_and_rsl_si(trx, SYSINFO_TYPE_13);
-			if (rc < 0)
-				goto err_out;
-		}
+		/* 1...4 are always present on a C0 TRX */
+		for (i = SYSINFO_TYPE_1; i <= SYSINFO_TYPE_4; i++)
+			bts->si_valid |= (1 << i);
+
+		/* 13 is always present on a C0 TRX of a GPRS BTS */
+		if (bts->gprs.mode != BTS_GPRS_NONE)
+			bts->si_valid |= (1 << SYSINFO_TYPE_13);
 	}
 
-	rc = generate_and_rsl_si(trx, SYSINFO_TYPE_5);
-	if (rc < 0)
-		goto err_out;
+	/* 5 and 6 are always present on every TRX */
+	bts->si_valid |= (1 << SYSINFO_TYPE_5);
+	bts->si_valid |= (1 << SYSINFO_TYPE_6);
 
-	rc = generate_and_rsl_si(trx, SYSINFO_TYPE_6);
-	if (rc < 0)
-		goto err_out;
+	/* Second, we generate and send the selected SI via RSL */
+	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
+		if (!(bts->si_valid & (1 << i)))
+			continue;
+
+		rc = generate_and_rsl_si(trx, i);
+		if (rc < 0)
+			goto err_out;
+	}
 
 	return 0;
 err_out:

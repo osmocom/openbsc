@@ -540,6 +540,10 @@ struct gsm_bts {
 		} data;
 	} si_common;
 
+	/* do we use static (user-defined) system information messages? (bitmask) */
+	uint32_t si_mode_static;
+	/* bitmask of all SI that are present/valid in si_buf */
+	uint32_t si_valid;
 	/* buffers where we put the pre-computed SI */
 	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 

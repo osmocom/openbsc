@@ -34,6 +34,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <osmocore/utils.h>
 #include <osmocore/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
@@ -41,6 +42,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/vty.h>
 #include <openbsc/gprs_ns.h>
+#include <openbsc/system_information.h>
 #include <openbsc/debug.h>
 
 #include "../bscconfig.h"
@@ -225,6 +227,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
+	vty_out(vty, "System Information present: 0x%08x, static: 0x%08x%s",
+		bts->si_valid, bts->si_mode_static, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
@@ -386,6 +390,7 @@ static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
+	int i;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -424,6 +429,16 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if ((bts->si_common.rach_control.t2 & 0x4) == 0)
 		vty_out(vty, "  rach emergency call allowed 1%s", VTY_NEWLINE);
+	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
+		if (bts->si_mode_static & (1 << i)) {
+			vty_out(vty, "  system-information %s mode static%s",
+				get_value_string(osmo_sitype_strs, i), VTY_NEWLINE);
+			vty_out(vty, "  system-information %s static %s%s",
+				get_value_string(osmo_sitype_strs, i),
+				hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
+				VTY_NEWLINE);
+		}
+	}
 	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
@@ -1838,6 +1853,88 @@ DEFUN(cfg_bts_gprs_mode, cfg_bts_gprs_mode_cmd,
 	return CMD_SUCCESS;
 }
 
+#define SI_TEXT		"System Information Messages\n"
+#define SI_TYPE_TEXT "(1|2|3|4|5|6|7|8|9|10|13|16|17|18|19|20|2bis|2ter|2quater|5bis|5ter)"
+#define SI_TYPE_HELP 	"System Information Type 1\n"	\
+			"System Information Type 2\n"	\
+			"System Information Type 3\n"	\
+			"System Information Type 4\n"	\
+			"System Information Type 5\n"	\
+			"System Information Type 6\n"	\
+			"System Information Type 7\n"	\
+			"System Information Type 8\n"	\
+			"System Information Type 9\n"	\
+			"System Information Type 10\n"	\
+			"System Information Type 13\n"	\
+			"System Information Type 16\n"	\
+			"System Information Type 17\n"	\
+			"System Information Type 18\n"	\
+			"System Information Type 19\n"	\
+			"System Information Type 20\n"	\
+			"System Information Type 2bis\n"	\
+			"System Information Type 2ter\n"	\
+			"System Information Type 2quater\n"	\
+			"System Information Type 5bis\n"	\
+			"System Information Type 5ter\n"
+
+DEFUN(cfg_bts_si_mode, cfg_bts_si_mode_cmd,
+	"system-information " SI_TYPE_TEXT " mode (static|computed)",
+	SI_TEXT SI_TYPE_HELP
+	"System Information Mode\n"
+	"Static user-specified\n"
+	"Dynamic, BSC-computed\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int type;
+
+	type = get_string_value(osmo_sitype_strs, argv[0]);
+	if (type < 0) {
+		vty_out(vty, "Error SI Type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[1], "static"))
+		bts->si_mode_static |= (1 << type);
+	else
+		bts->si_mode_static &= ~(1 << type);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
+	"system-information " SI_TYPE_TEXT " static HEXSTRING",
+	SI_TEXT SI_TYPE_HELP
+	"Static System Information filling\n"
+	"Static user-specified SI content in HEX notation\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int rc, type;
+
+	type = get_string_value(osmo_sitype_strs, argv[0]);
+	if (type < 0) {
+		vty_out(vty, "Error SI Type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!(bts->si_mode_static & (1 << type))) {
+		vty_out(vty, "SI Type %s is not configured in static mode%s",
+			get_value_string(osmo_sitype_strs, type), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	rc = hexparse(argv[1], bts->si_buf[type], sizeof(bts->si_buf[0]));
+	if (rc < 0 || rc > sizeof(bts->si_buf[0])) {
+		vty_out(vty, "Error parsing HEXSTRING%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* Mark this SI as present */
+	bts->si_valid |= (1 << type);
+
+	return CMD_SUCCESS;
+}
+
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -2223,6 +2320,8 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rip_cmd);
+	install_element(BTS_NODE, &cfg_bts_si_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
