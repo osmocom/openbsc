@@ -506,7 +506,21 @@ static const uint8_t rsl2sitype[0xff] = {
 	[RSL_SYSTEM_INFO_4] = SYSINFO_TYPE_4,
 	[RSL_SYSTEM_INFO_5] = SYSINFO_TYPE_5,
 	[RSL_SYSTEM_INFO_6] = SYSINFO_TYPE_6,
+	[RSL_SYSTEM_INFO_7] = SYSINFO_TYPE_7,
+	[RSL_SYSTEM_INFO_8] = SYSINFO_TYPE_8,
+	[RSL_SYSTEM_INFO_9] = SYSINFO_TYPE_9,
+	[RSL_SYSTEM_INFO_10] = SYSINFO_TYPE_10,
 	[RSL_SYSTEM_INFO_13] = SYSINFO_TYPE_13,
+	[RSL_SYSTEM_INFO_16] = SYSINFO_TYPE_16,
+	[RSL_SYSTEM_INFO_17] = SYSINFO_TYPE_17,
+	[RSL_SYSTEM_INFO_18] = SYSINFO_TYPE_18,
+	[RSL_SYSTEM_INFO_19] = SYSINFO_TYPE_19,
+	[RSL_SYSTEM_INFO_20] = SYSINFO_TYPE_20,
+	[RSL_SYSTEM_INFO_2bis] = SYSINFO_TYPE_2bis,
+	[RSL_SYSTEM_INFO_2ter] = SYSINFO_TYPE_2ter,
+	[RSL_SYSTEM_INFO_2quater] = SYSINFO_TYPE_2quater,
+	[RSL_SYSTEM_INFO_5bis] = SYSINFO_TYPE_5bis,
+	[RSL_SYSTEM_INFO_5ter] = SYSINFO_TYPE_5ter,
 };
 
 typedef int (*gen_si_fn_t)(uint8_t *output, struct gsm_bts *bts);
@@ -521,7 +535,7 @@ static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_13] = &generate_si13,
 };
 
-static const struct value_string sitype_strs[] = {
+const struct value_string osmo_sitype_strs[_MAX_SYSINFO_TYPE] = {
 	{ SYSINFO_TYPE_1,	"1" },
 	{ SYSINFO_TYPE_2,	"2" },
 	{ SYSINFO_TYPE_3,	"3" },
@@ -553,7 +567,7 @@ uint8_t gsm_sitype2rsl(enum osmo_sysinfo_type si_type)
 
 const char *gsm_sitype_name(enum osmo_sysinfo_type si_type)
 {
-	return get_value_string(sitype_strs, si_type);
+	return get_value_string(osmo_sitype_strs, si_type);
 }
 
 int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type si_type)
