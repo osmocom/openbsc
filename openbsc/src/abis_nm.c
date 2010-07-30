@@ -3002,7 +3002,10 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 		binf->frame_nr_offset = ntohl(*(u_int32_t *)cur);
 	cur += 4;
 
+#if 0
+	/* Somehow this is not set correctly */
 	if (binf->info_type & IPAC_BINF_BSIC)
+#endif
 		binf->bsic = *cur & 0x3f;
 	cur++;
 
