@@ -37,6 +37,7 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <osmocore/gsm_utils.h>
+#include <osmocore/utils.h>
 #include <openbsc/db.h>
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
@@ -46,33 +47,6 @@
 #include <openbsc/chan_alloc.h>
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
-
-static int hexparse(const char *str, u_int8_t *b, int max_len)
-
-{
-	int i, l, v;
-
-	l = strlen(str);
-	if ((l&1) || ((l>>1) > max_len))
-		return -1;
-
-	memset(b, 0x00, max_len);
-
-	for (i=0; i<l; i++) {
-		char c = str[i];
-		if (c >= '0' && c <= '9')
-			v = c - '0';
-		else if (c >= 'a' && c <= 'f')
-			v = 10 + (c - 'a');
-		else if (c >= 'A' && c <= 'F')
-			v = 10 + (c - 'A');
-		else
-			return -1;
-		b[i>>1] |= v << (i&1 ? 0 : 4);
-	}
-
-	return i>>1;
-}
 
 static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 {
