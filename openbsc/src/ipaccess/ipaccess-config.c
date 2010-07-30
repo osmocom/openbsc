@@ -166,11 +166,15 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 			ipac_nwl_test_start(trx, NM_IPACC_TESTNO_BCCH_INFO,
 					    physconf_buf, physconf_len);
 			break;
-		case NM_IPAC_EIE_BCCH_INFO:
+		case NM_IPACC_TESTNO_BCCH_INFO:
+#if 0
 			/* re-start full process with CHAN_USAGE */
 			DEBUGP(DNM, "starting next test cycle\n");
 			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
 					    sizeof(phys_conf_min));
+#else
+			exit(0);
+#endif
 			break;
 		}
 		break;
