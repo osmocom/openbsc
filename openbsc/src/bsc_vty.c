@@ -1922,6 +1922,10 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 		return CMD_WARNING;
 	}
 
+	/* Fill buffer with padding pattern */
+	memset(bts->si_buf[type], 0x2b, sizeof(bts->si_buf[type]));
+
+	/* Parse the user-specified SI in hex format, [partially] overwriting padding */
 	rc = hexparse(argv[1], bts->si_buf[type], sizeof(bts->si_buf[0]));
 	if (rc < 0 || rc > sizeof(bts->si_buf[0])) {
 		vty_out(vty, "Error parsing HEXSTRING%s", VTY_NEWLINE);
