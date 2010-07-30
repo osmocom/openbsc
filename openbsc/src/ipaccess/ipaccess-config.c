@@ -148,7 +148,7 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 		switch (trx->ipaccess.test_nr) {
 		case NM_IPACC_TESTNO_CHAN_USAGE:
 			/* Dump RxLev results */
-			rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
+			//rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
 			/* Create whitelist from results */
 			physconf_len = build_physconf(physconf_buf,
 						      &trx->ipaccess.rxlev_stat);
@@ -158,7 +158,7 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 			break;
 		case NM_IPACC_TESTNO_BCCH_CHAN_USAGE:
 			/* Dump BCCH RxLev results */
-			rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
+			//rxlev_stat_dump(&trx->ipaccess.rxlev_stat);
 			/* Create whitelist from results */
 			physconf_len = build_physconf(physconf_buf,
 						      &trx->ipaccess.rxlev_stat);
