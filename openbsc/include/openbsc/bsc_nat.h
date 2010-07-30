@@ -25,7 +25,6 @@
 #include "mgcp.h"
 
 #include <sys/types.h>
-#include <sccp/sccp_types.h>
 
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>
@@ -41,6 +40,8 @@
 
 #define NAT_IPAC_PROTO_MGCP	0xfc
 
+struct sccp_connections;
+struct bsc_nat_parsed;
 struct bsc_nat;
 
 enum {
@@ -50,39 +51,6 @@ enum {
 	NAT_CON_TYPE_PAG_RESP,
 	NAT_CON_TYPE_LOCAL_REJECT,
 	NAT_CON_TYPE_OTHER,
-};
-
-/*
- * For the NAT we will need to analyze and later patch
- * the received message. This would require us to parse
- * the IPA and SCCP header twice. Instead of doing this
- * we will have one analyze structure and have the patching
- * and filter operate on the same structure.
- */
-struct bsc_nat_parsed {
-	/* ip access prototype */
-	int ipa_proto;
-
-	/* source local reference */
-	struct sccp_source_reference *src_local_ref;
-
-	/* destination local reference */
-	struct sccp_source_reference *dest_local_ref;
-
-	/* called ssn number */
-	int called_ssn;
-
-	/* calling ssn number */
-	int calling_ssn;
-
-	/* sccp message type */
-	int sccp_type;
-
-	/* bssap type, e.g. 0 for BSS Management */
-	int bssap;
-
-	/* the gsm0808 message type */
-	int gsm_type;
 };
 
 /*
@@ -109,35 +77,6 @@ struct bsc_connection {
 
 	/* a back pointer */
 	struct bsc_nat *nat;
-};
-
-/*
- * Per SCCP source local reference patch table. It needs to
- * be updated on new SCCP connections, connection confirm and reject,
- * and on the loss of the BSC connection.
- */
-struct sccp_connections {
-	struct llist_head list_entry;
-
-	struct bsc_connection *bsc;
-	struct bsc_msc_connection *msc_con;
-
-	struct sccp_source_reference real_ref;
-	struct sccp_source_reference patched_ref;
-	struct sccp_source_reference remote_ref;
-	int has_remote_ref;
-
-	/* status */
-	int con_type;
-	int con_local;
-
-	/* GSM audio handling. That is 32 * multiplex + ts */
-	int crcx;
-	int msc_timeslot;
-	int bsc_timeslot;
-
-	/* timeout handling */
-	struct timespec creation_time;
 };
 
 /**

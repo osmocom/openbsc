@@ -26,6 +26,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_nat_sccp.h>
 
 #include <osmocore/talloc.h>
 

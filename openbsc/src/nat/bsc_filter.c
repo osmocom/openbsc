@@ -22,6 +22,7 @@
  */
 
 #include <openbsc/bsc_nat.h>
+#include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/debug.h>
 
