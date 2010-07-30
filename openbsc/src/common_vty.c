@@ -172,6 +172,8 @@ gDEFUN(ournode_end,
 	case SGSN_NODE:
 	case NS_NODE:
 	case VTY_NODE:
+	case NAT_NODE:
+	case NAT_BSC_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
 		vty->index = NULL;
