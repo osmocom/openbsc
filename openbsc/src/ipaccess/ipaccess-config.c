@@ -748,10 +748,11 @@ int main(int argc, char **argv)
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
+			{ "disable-color", 0, 0, 'c'},
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:w", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wc", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -811,6 +812,9 @@ int main(int argc, char **argv)
 			break;
 		case 'w':
 			dump_files = 1;
+			break;
+		case 'c':
+			log_set_use_color(stderr_target, 0);
 			break;
 		case 'h':
 			print_usage();
