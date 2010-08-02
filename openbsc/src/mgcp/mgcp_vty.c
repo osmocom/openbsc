@@ -254,12 +254,41 @@ DEFUN(cfg_mgcp_agent_addr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(loop_endp,
+      loop_endp_cmd,
+      "loop-endpoint NAME (0|1)",
+      "Loop a given endpoint\n"
+      "The name in hex of the endpoint\n" "Enable/Disable the loop\n")
+{
+	struct mgcp_endpoint *endp;
+
+	int endp_no = strtoul(argv[0], NULL, 16);
+	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+		vty_out(vty, "Loopback number %s/%d is invalid.%s",
+		argv[0], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+
+	endp = &g_cfg->endpoints[endp_no];
+	int loop = atoi(argv[1]);
+
+	if (loop)
+		endp->conn_mode = MGCP_CONN_LOOPBACK;
+	else
+		endp->conn_mode = endp->orig_mode;
+
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
+	install_element(ENABLE_NODE, &loop_endp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
+
 	install_default(MGCP_NODE);
 	install_element(MGCP_NODE, &ournode_exit_cmd);
 	install_element(MGCP_NODE, &ournode_end_cmd);

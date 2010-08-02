@@ -38,13 +38,6 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
-enum mgcp_connection_mode {
-	MGCP_CONN_NONE = 0,
-	MGCP_CONN_RECV_ONLY = 1,
-	MGCP_CONN_SEND_ONLY = 2,
-	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
-};
-
 /**
  * Macro for tokenizing MGCP messages and SDP in one go.
  *
@@ -364,6 +357,8 @@ static int parse_conn_mode(const char* msg, int *conn_mode)
 		*conn_mode = MGCP_CONN_RECV_ONLY;
 	else if (strcmp(msg, "sendrecv") == 0)
 		*conn_mode = MGCP_CONN_RECV_SEND;
+	else if (strcmp(msg, "loopback") == 0)
+		*conn_mode = MGCP_CONN_LOOPBACK;
 	else {
 		LOGP(DMGCP, LOGL_ERROR, "Unknown connection mode: '%s'\n", msg);
 		ret = -1;
@@ -414,6 +409,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error2;
 		}
+
+		endp->orig_mode = endp->conn_mode;
 		break;
 	default:
 		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
@@ -518,6 +515,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error3;
 		}
+		endp->orig_mode = endp->conn_mode;
 		break;
 	case 'Z':
 		silent = strcmp("noanswer", (const char *)&msg->l3h[line_start + 3]) == 0;
@@ -767,4 +765,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	endp->net_seq_no = endp->bts_seq_no = 0;
 	endp->net_lost_no = endp->bts_lost_no = 0;
+
+	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
 }
