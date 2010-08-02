@@ -204,6 +204,10 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (cfg->audio_loop)
 		dest = !dest;
 
+	/* Loop based on the conn_mode, maybe undoing the above */
+	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
+		dest = !dest;
+
 	if (dest == DEST_NETWORK) {
 		if (proto == PROTO_RTP)
 			patch_and_count(&endp->bts_seq_no, &endp->bts_lost_no,

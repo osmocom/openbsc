@@ -28,6 +28,15 @@
 
 #define CI_UNUSED 0
 
+enum mgcp_connection_mode {
+	MGCP_CONN_NONE = 0,
+	MGCP_CONN_RECV_ONLY = 1,
+	MGCP_CONN_SEND_ONLY = 2,
+	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
+	MGCP_CONN_LOOPBACK  = 4,
+};
+
+
 struct mgcp_endpoint {
 	int ci;
 	char *callid;
