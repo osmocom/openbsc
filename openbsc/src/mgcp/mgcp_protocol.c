@@ -38,13 +38,6 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
-enum mgcp_connection_mode {
-	MGCP_CONN_NONE = 0,
-	MGCP_CONN_RECV_ONLY = 1,
-	MGCP_CONN_SEND_ONLY = 2,
-	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
-};
-
 /**
  * Macro for tokenizing MGCP messages and SDP in one go.
  *
@@ -364,6 +357,8 @@ static int parse_conn_mode(const char* msg, int *conn_mode)
 		*conn_mode = MGCP_CONN_RECV_ONLY;
 	else if (strcmp(msg, "sendrecv") == 0)
 		*conn_mode = MGCP_CONN_RECV_SEND;
+	else if (strcmp(msg, "loopback") == 0)
+		*conn_mode = MGCP_CONN_LOOPBACK;
 	else {
 		LOGP(DMGCP, LOGL_ERROR, "Unknown connection mode: '%s'\n", msg);
 		ret = -1;
