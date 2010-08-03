@@ -740,7 +740,7 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 void mgcp_free_endp(struct mgcp_endpoint *endp)
 {
 	LOGP(DMGCP, LOGL_DEBUG, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
-	endp->ci= CI_UNUSED;
+	endp->ci = CI_UNUSED;
 
 	if (endp->callid) {
 		talloc_free(endp->callid);
