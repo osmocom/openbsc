@@ -39,8 +39,13 @@ enum mgcp_connection_mode {
 struct mgcp_rtp_state {
 	int initialized;
 
+	uint32_t orig_ssrc;
+	uint32_t ssrc;
 	uint16_t seq_no;
 	int lost_no;
+	int seq_offset;
+	uint32_t last_timestamp;
+	int32_t  timestamp_offset;
 };
 
 struct mgcp_endpoint {
