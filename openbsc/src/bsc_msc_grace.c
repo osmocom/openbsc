@@ -26,6 +26,8 @@
 
 int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
+	if (!network->rf)
+		return 1;
 	return network->rf->policy == S_RF_ON;
 }
 
