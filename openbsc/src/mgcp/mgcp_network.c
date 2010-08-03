@@ -97,6 +97,7 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 static void patch_and_count(struct mgcp_rtp_state *state, int payload, char *data, int len)
 {
 	uint16_t seq;
+	uint32_t timestamp;
 	struct rtp_hdr *rtp_hdr;
 
 	if (len < sizeof(*rtp_hdr))
@@ -104,14 +105,35 @@ static void patch_and_count(struct mgcp_rtp_state *state, int payload, char *dat
 
 	rtp_hdr = (struct rtp_hdr *) data;
 	seq = ntohs(rtp_hdr->sequence);
+	timestamp = ntohl(rtp_hdr->timestamp);
 
 	if (!state->initialized) {
-		state->seq_no = seq;
+		state->seq_no = seq - 1;
+		state->ssrc = state->orig_ssrc = rtp_hdr->ssrc;
 		state->initialized = 1;
-	} else if (state->seq_no + 1u != seq)
-		state->lost_no = abs(seq - (state->seq_no + 1));
+		state->last_timestamp = timestamp;
+	} else if (state->ssrc != rtp_hdr->ssrc) {
+		state->ssrc = rtp_hdr->ssrc;
+		state->seq_offset = (state->seq_no + 1) - seq;
+		state->timestamp_offset = state->last_timestamp - timestamp;
+		LOGP(DMGCP, LOGL_NOTICE, "The SSRC changed... SSRC: %u offset: %d\n",
+			state->ssrc, state->seq_offset);
+	}
 
+	/* apply the offset and store it back to the packet */
+	seq += state->seq_offset;
+	rtp_hdr->sequence = htons(seq);
+	rtp_hdr->ssrc = state->orig_ssrc;
+
+	timestamp += state->timestamp_offset;
+	rtp_hdr->timestamp = htonl(timestamp);
+
+	/* seq changed, now compare if we have lost something */
+	if (state->seq_no + 1u != seq)
+		state->lost_no = abs(seq - (state->seq_no + 1));
 	state->seq_no = seq;
+
+	state->last_timestamp = timestamp;
 
 	if (payload < 0)
 		return;
