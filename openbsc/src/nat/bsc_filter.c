@@ -29,7 +29,7 @@
 #include <osmocore/talloc.h>
 #include <osmocore/protocol/gsm_08_08.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 /*
  * The idea is to have a simple struct describing a IPA packet with

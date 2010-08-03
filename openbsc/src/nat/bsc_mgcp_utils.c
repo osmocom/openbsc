@@ -26,7 +26,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include <osmocore/talloc.h>
 #include <osmocore/gsm0808.h>

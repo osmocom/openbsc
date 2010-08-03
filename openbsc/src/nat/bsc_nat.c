@@ -52,7 +52,7 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/vty.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include "../../bscconfig.h"
 

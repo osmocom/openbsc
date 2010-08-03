@@ -26,7 +26,7 @@
 #include <osmocom/vty/command.h>
 #include <osmocore/talloc.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #define _GNU_SOURCE
 #include <getopt.h>

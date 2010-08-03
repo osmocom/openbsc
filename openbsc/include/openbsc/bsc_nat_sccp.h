@@ -24,7 +24,7 @@
 #define BSC_NAT_SCCP_H
 
 #include <sys/types.h>
-#include <sccp/sccp_types.h>
+#include <osmocom/sccp/sccp_types.h>
 
 /*
  * For the NAT we will need to analyze and later patch

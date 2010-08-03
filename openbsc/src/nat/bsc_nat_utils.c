@@ -35,7 +35,7 @@
 
 #include <osmocore/protocol/gsm_08_08.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>

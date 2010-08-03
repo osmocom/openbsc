@@ -24,7 +24,7 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include <osmocore/talloc.h>
 

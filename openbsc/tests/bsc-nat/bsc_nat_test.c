@@ -30,7 +30,7 @@
 
 #include <osmocore/talloc.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include <stdio.h>
 
