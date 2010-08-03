@@ -42,6 +42,7 @@ struct mgcp_endpoint {
 	char *callid;
 	char *local_options;
 	int conn_mode;
+	int orig_mode;
 
 	int bts_payload_type;
 	int net_payload_type;

@@ -409,6 +409,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error2;
 		}
+
+		endp->orig_mode = endp->conn_mode;
 		break;
 	default:
 		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
@@ -513,6 +515,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error3;
 		}
+		endp->orig_mode = endp->conn_mode;
 		break;
 	case 'Z':
 		silent = strcmp("noanswer", (const char *)&msg->l3h[line_start + 3]) == 0;
@@ -762,4 +765,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	endp->net_seq_no = endp->bts_seq_no = 0;
 	endp->net_lost_no = endp->bts_lost_no = 0;
+
+	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
 }
