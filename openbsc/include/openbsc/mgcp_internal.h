@@ -38,6 +38,7 @@ enum mgcp_connection_mode {
 
 struct mgcp_rtp_state {
 	int initialized;
+	int patch;
 
 	uint32_t orig_ssrc;
 	uint32_t ssrc;

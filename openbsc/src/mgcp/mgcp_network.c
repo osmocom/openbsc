@@ -116,17 +116,20 @@ static void patch_and_count(struct mgcp_rtp_state *state, int payload, char *dat
 		state->ssrc = rtp_hdr->ssrc;
 		state->seq_offset = (state->seq_no + 1) - seq;
 		state->timestamp_offset = state->last_timestamp - timestamp;
+		state->patch = 1;
 		LOGP(DMGCP, LOGL_NOTICE, "The SSRC changed... SSRC: %u offset: %d\n",
 			state->ssrc, state->seq_offset);
 	}
 
 	/* apply the offset and store it back to the packet */
-	seq += state->seq_offset;
-	rtp_hdr->sequence = htons(seq);
-	rtp_hdr->ssrc = state->orig_ssrc;
+	if (state->patch) {
+		seq += state->seq_offset;
+		rtp_hdr->sequence = htons(seq);
+		rtp_hdr->ssrc = state->orig_ssrc;
 
-	timestamp += state->timestamp_offset;
-	rtp_hdr->timestamp = htonl(timestamp);
+		timestamp += state->timestamp_offset;
+		rtp_hdr->timestamp = htonl(timestamp);
+	}
 
 	/* seq changed, now compare if we have lost something */
 	if (state->seq_no + 1u != seq)
