@@ -87,8 +87,8 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 			i, endp->ci,
 			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
 			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
-			inet_ntoa(endp->bts), endp->in_bts, endp->bts_lost_no,
-			endp->in_remote, endp->net_lost_no,
+			inet_ntoa(endp->bts), endp->in_bts, endp->bts_state.lost_no,
+			endp->in_remote, endp->net_state.lost_no,
 			VTY_NEWLINE);
 	}
 

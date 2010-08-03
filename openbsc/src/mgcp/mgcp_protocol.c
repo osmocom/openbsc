@@ -763,8 +763,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	memset(&endp->remote, 0, sizeof(endp->remote));
 	memset(&endp->bts, 0, sizeof(endp->bts));
 
-	endp->net_seq_no = endp->bts_seq_no = 0;
-	endp->net_lost_no = endp->bts_lost_no = 0;
+	memset(&endp->net_state, 0, sizeof(endp->net_state));
+	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
 
 	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
 }
