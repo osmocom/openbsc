@@ -496,14 +496,17 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 {
 	struct bsc_connection *bsc, *tmp;
 
-	counter_inc(nat->stats.msc.reconn);
-
 	LOGP(DMSC, LOGL_ERROR, "Closing all connections downstream.\n");
 	llist_for_each_entry_safe(bsc, tmp, &nat->bsc_connections, list_entry)
 		bsc_close_connection(bsc);
 
 	bsc_mgcp_free_endpoints(nat);
 	bsc_msc_schedule_connect(con);
+}
+
+static void msc_connection_connected(struct bsc_msc_connection *con)
+{
+	counter_inc(nat->stats.msc.reconn);
 }
 
 static void msc_send_reset(struct bsc_msc_connection *msc_con)
@@ -1163,6 +1166,7 @@ int main(int argc, char** argv)
 	}
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;
+	nat->msc_con->connected = msc_connection_connected;
 	nat->msc_con->write_queue.read_cb = ipaccess_msc_read_cb;
 	nat->msc_con->write_queue.write_cb = ipaccess_msc_write_cb;;
 	nat->msc_con->write_queue.bfd.data = nat->msc_con;
