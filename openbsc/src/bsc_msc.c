@@ -84,7 +84,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	socklen_t len = sizeof(val);
 
 	if ((what & BSC_FD_WRITE) == 0) {
-		LOGP(DMSC, LOGL_ERROR, "Callback but not readable.\n");
+		LOGP(DMSC, LOGL_ERROR, "Callback but not writable.\n");
 		return -1;
 	}
 
