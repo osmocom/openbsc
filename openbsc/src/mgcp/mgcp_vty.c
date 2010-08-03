@@ -258,7 +258,7 @@ DEFUN(loop_endp,
       loop_endp_cmd,
       "loop-endpoint NAME (0|1)",
       "Loop a given endpoint\n"
-      "The name in hex of the endpoint\n" "Enable/Disable the loop\n")
+      "The name in hex of the endpoint\n" "Disable the loop\n" "Enable the loop\n")
 {
 	struct mgcp_endpoint *endp;
 
