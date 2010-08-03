@@ -36,6 +36,12 @@ enum mgcp_connection_mode {
 	MGCP_CONN_LOOPBACK  = 4,
 };
 
+struct mgcp_rtp_state {
+	int initialized;
+
+	uint16_t seq_no;
+	int lost_no;
+};
 
 struct mgcp_endpoint {
 	int ci;
@@ -73,10 +79,8 @@ struct mgcp_endpoint {
 	unsigned int in_remote;
 
 	/* sequence bits */
-	uint16_t net_seq_no;
-	uint16_t bts_seq_no;
-	int net_lost_no;
-	int bts_lost_no;
+	struct mgcp_rtp_state net_state;
+	struct mgcp_rtp_state bts_state;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)
