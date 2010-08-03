@@ -178,6 +178,8 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 		counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
 	vty_out(vty, " MSC Connections %lu%s",
 		counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
+	vty_out(vty, " MSC Connected: %d%s",
+		nat->msc_con->is_connected, VTY_NEWLINE);
 	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
 		counter_get(nat->stats.bsc.reconn),
 		counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
