@@ -199,7 +199,7 @@ static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
 		break;
 	}
 
-	vty_out(vty, " Connected: %d%s", connected, VTY_NEWLINE);
+	vty_out(vty, "  Connected: %d%s", connected, VTY_NEWLINE);
 }
 
 DEFUN(show_stats,
