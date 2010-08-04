@@ -94,8 +94,8 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			endp->net_rtp, buf, 1);
 }
 
-static void patch_and_count(struct mgcp_rtp_state *state, int endp_no, int conn_mode,
-			    struct sockaddr_in *addr, int payload, char *data, int len)
+static void patch_and_count(struct mgcp_rtp_state *state, int payload, int conn_mode,
+			    struct sockaddr_in *addr, int endp_no, char *data, int len)
 {
 	uint16_t seq;
 	uint32_t timestamp;
@@ -119,7 +119,7 @@ static void patch_and_count(struct mgcp_rtp_state *state, int endp_no, int conn_
 		state->timestamp_offset = state->last_timestamp - timestamp;
 		//state->patch = 1;
 		LOGP(DMGCP, LOGL_NOTICE,
-			"The SSRC changed on %d SSRC: %u offset: %d from %s:%d in %d\n",
+			"The SSRC changed on 0x%x SSRC: %u offset: %d from %s:%d in %d\n",
 			endp_no, state->ssrc, state->seq_offset,
 			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port), conn_mode);
 	}
