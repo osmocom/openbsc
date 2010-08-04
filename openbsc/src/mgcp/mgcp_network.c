@@ -179,20 +179,14 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	}
 }
 
-static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
+static int recevice_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *addr,
+			 char *buf, int bufsize)
 {
-	char buf[4096];
-	struct sockaddr_in addr;
-	socklen_t slen = sizeof(addr);
-	struct mgcp_endpoint *endp;
-	struct mgcp_config *cfg;
-	int rc, dest, proto;
+	int rc;
+	socklen_t slen = sizeof(*addr);
 
-	endp = (struct mgcp_endpoint *) fd->data;
-	cfg = endp->cfg;
-
-	rc = recvfrom(fd->fd, &buf, sizeof(buf), 0,
-			    (struct sockaddr *) &addr, &slen);
+	rc = recvfrom(fd, buf, bufsize, 0,
+			    (struct sockaddr *) addr, &slen);
 	if (rc < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to receive message on: 0x%x errno: %d/%s\n",
 			ENDPOINT_NUMBER(endp), errno, strerror(errno));
@@ -203,6 +197,27 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (endp->ci == CI_UNUSED)
 		return -1;
 
+	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
+
+	return rc;
+}
+
+static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
+{
+	char buf[4096];
+	struct sockaddr_in addr;
+	struct mgcp_endpoint *endp;
+	struct mgcp_config *cfg;
+	int rc, dest, proto;
+
+	endp = (struct mgcp_endpoint *) fd->data;
+	cfg = endp->cfg;
+
+	rc = recevice_from(endp, fd->fd, &addr, buf, sizeof(buf));
+	if (rc <= 0)
+		return -1;
+
+
 	/*
 	 * Figure out where to forward it to. This code assumes that we
 	 * have received the Connection Modify and know who is a legitimate
@@ -210,7 +225,6 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	 * after the Create Connection but we will not as we are not really
 	 * able to tell if this is legitimate.
 	 */
-	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
 	dest = memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) == 0 &&
 		    (endp->net_end.rtp_port == addr.sin_port || endp->net_end.rtcp_port == addr.sin_port)
 			? DEST_BTS : DEST_NETWORK;
