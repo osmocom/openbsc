@@ -91,6 +91,11 @@ struct mgcp_port_range {
 
 	/* pre-allocated from a base? */
 	int base_port;
+
+	/* dynamically allocated */
+	int range_start;
+	int range_end;
+	int last_port;
 };
 
 struct mgcp_config {

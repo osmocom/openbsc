@@ -59,8 +59,16 @@ static int config_write_mgcp(struct vty *vty)
 
 	if (g_cfg->bts_ports.mode == PORT_ALLOC_STATIC)
 		vty_out(vty, "  rtp bts-base %u%s", g_cfg->bts_ports.base_port, VTY_NEWLINE);
+	else
+		vty_out(vty, "  rtp bts-range %u %u%s",
+			g_cfg->bts_ports.range_start, g_cfg->bts_ports.range_end, VTY_NEWLINE);
+
 	if (g_cfg->net_ports.mode == PORT_ALLOC_STATIC)
 		vty_out(vty, "  rtp net-base %u%s", g_cfg->net_ports.base_port, VTY_NEWLINE);
+	else
+		vty_out(vty, "  rtp net-range %u %u%s",
+			g_cfg->net_ports.range_start, g_cfg->net_ports.range_end, VTY_NEWLINE);
+
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
 	if (g_cfg->audio_payload != -1)
 		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
@@ -165,6 +173,32 @@ DEFUN(cfg_mgcp_rtp_bts_base_port,
 	unsigned int port = atoi(argv[0]);
 	g_cfg->bts_ports.mode = PORT_ALLOC_STATIC;
 	g_cfg->bts_ports.base_port = port;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_bts_range,
+      cfg_mgcp_rtp_bts_range_cmd,
+      "rtp bts-range <0-65534> <0-65534>",
+      "Range of ports to allocate for endpoints\n"
+      "Start of the range of ports\n" "End of the range of ports\n")
+{
+	g_cfg->bts_ports.mode = PORT_ALLOC_DYNAMIC;
+	g_cfg->bts_ports.range_start = atoi(argv[0]);
+	g_cfg->bts_ports.range_end = atoi(argv[1]);
+	g_cfg->bts_ports.last_port = g_cfg->bts_ports.range_start;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_net_range,
+      cfg_mgcp_rtp_net_range_cmd,
+      "rtp net-range <0-65534> <0-65534>",
+      "Range of ports to allocate for endpoints\n"
+      "Start of the range of ports\n" "End of the range of ports\n")
+{
+	g_cfg->net_ports.mode = PORT_ALLOC_DYNAMIC;
+	g_cfg->net_ports.range_start = atoi(argv[0]);
+	g_cfg->net_ports.range_end = atoi(argv[1]);
+	g_cfg->net_ports.last_port = g_cfg->net_ports.range_start;
 	return CMD_SUCCESS;
 }
 
@@ -294,6 +328,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_base_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_range_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
@@ -334,18 +370,22 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
 		int rtp_port;
 
-		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
-					      g_cfg->bts_ports.base_port);
-		if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
-			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
-			return -1;
+		if (g_cfg->bts_ports.mode == PORT_ALLOC_STATIC) {
+			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+						      g_cfg->bts_ports.base_port);
+			if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+				return -1;
+			}
 		}
 
-		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
-					      g_cfg->net_ports.base_port);
-		if (mgcp_bind_net_rtp_port(endp, rtp_port) != 0) {
-			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
-			return -1;
+		if (g_cfg->net_ports.mode == PORT_ALLOC_STATIC) {
+			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+						      g_cfg->net_ports.base_port);
+			if (mgcp_bind_net_rtp_port(endp, rtp_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+				return -1;
+			}
 		}
 	}
 
