@@ -117,7 +117,7 @@ static void patch_and_count(struct mgcp_rtp_state *state, int endp_no,
 		state->ssrc = rtp_hdr->ssrc;
 		state->seq_offset = (state->seq_no + 1) - seq;
 		state->timestamp_offset = state->last_timestamp - timestamp;
-		state->patch = 1;
+		//state->patch = 1;
 		LOGP(DMGCP, LOGL_NOTICE,
 			"The SSRC changed on %d SSRC: %u offset: %d from %s:%d\n",
 			endp_no, state->ssrc, state->seq_offset,
