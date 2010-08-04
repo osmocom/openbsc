@@ -94,7 +94,8 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			endp->net_rtp, buf, 1);
 }
 
-static void patch_and_count(struct mgcp_rtp_state *state, int payload, char *data, int len)
+static void patch_and_count(struct mgcp_rtp_state *state, int endp_no,
+			    struct sockaddr_in *addr, int payload, char *data, int len)
 {
 	uint16_t seq;
 	uint32_t timestamp;
@@ -117,8 +118,10 @@ static void patch_and_count(struct mgcp_rtp_state *state, int payload, char *dat
 		state->seq_offset = (state->seq_no + 1) - seq;
 		state->timestamp_offset = state->last_timestamp - timestamp;
 		state->patch = 1;
-		LOGP(DMGCP, LOGL_NOTICE, "The SSRC changed... SSRC: %u offset: %d\n",
-			state->ssrc, state->seq_offset);
+		LOGP(DMGCP, LOGL_NOTICE,
+			"The SSRC changed on %d SSRC: %u offset: %d from %s:%d\n",
+			endp_no, state->ssrc, state->seq_offset,
+			inet_ntoa(addr->sin_addr), ntohs(addr->sin_port));
 	}
 
 	/* apply the offset and store it back to the packet */
@@ -235,14 +238,18 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (dest == DEST_NETWORK) {
 		if (proto == PROTO_RTP)
 			patch_and_count(&endp->bts_state,
-					endp->net_payload_type, buf, rc);
+					endp->net_payload_type,
+					&addr,
+					ENDPOINT_NUMBER(endp), buf, rc);
 		return udp_send(fd->fd, &endp->remote,
 			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
 			     buf, rc);
 	} else {
 		if (proto == PROTO_RTP)
 			patch_and_count(&endp->net_state,
-					endp->bts_payload_type, buf, rc);
+					endp->bts_payload_type,
+					&addr,
+					ENDPOINT_NUMBER(endp), buf, rc);
 		return udp_send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
 			     buf, rc);
