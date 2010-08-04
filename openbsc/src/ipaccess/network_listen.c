@@ -32,6 +32,7 @@
 #include <osmocore/talloc.h>
 #include <osmocore/timer.h>
 #include <osmocore/rxlev_stat.h>
+#include <osmocore/gsm48_ie.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -104,6 +105,12 @@ int ipac_nwl_test_start(struct gsm_bts_trx *trx, uint8_t testnr,
 
 	return 0;
 }
+
+static uint16_t last_arfcn;
+static struct gsm_sysinfo_freq nwl_si_freq[1024];
+#define FREQ_TYPE_NCELL_2	0x04 /* sub channel of SI 2 */
+#define FREQ_TYPE_NCELL_2bis	0x08 /* sub channel of SI 2bis */
+#define FREQ_TYPE_NCELL_2ter	0x10 /* sub channel of SI 2ter */
 
 struct ipacc_ferr_elem {
 	int16_t freq_err;
@@ -178,12 +185,31 @@ static int test_rep(void *_msg)
 			binfo.arfcn, binfo.rx_lev, binfo.rx_qual,
 			binfo.cgi.mcc, binfo.cgi.mnc,
 			binfo.cgi.lac, binfo.cgi.ci, binfo.bsic);
-		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2)
+
+		if (binfo.arfcn != last_arfcn) {
+			/* report is on a new arfcn, need to clear channel list */
+			memset(nwl_si_freq, 0, sizeof(nwl_si_freq));
+			last_arfcn = binfo.arfcn;
+		}
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2) {
 			DEBUGP(DNM, "BA SI2: %s\n", hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
-		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2bis)
+			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2, sizeof(binfo.ba_list_si2),
+						0x8c, FREQ_TYPE_NCELL_2);
+		}
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2bis) {
 			DEBUGP(DNM, "BA SI2bis: %s\n", hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
-		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2ter)
+			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis),
+						0x8e, FREQ_TYPE_NCELL_2bis);
+		}
+		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2ter) {
 			DEBUGP(DNM, "BA SI2ter: %s\n", hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
+			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter),
+						0x8e, FREQ_TYPE_NCELL_2ter);
+		}
+		for (i = 0; i < ARRAY_SIZE(nwl_si_freq); i++) {
+			if (nwl_si_freq[i].mask)
+				DEBUGP(DNM, "Neighbor Cell on ARFCN %u\n", i);
+		}
 		break;
 	default:
 		break;
