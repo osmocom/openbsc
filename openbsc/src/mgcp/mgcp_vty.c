@@ -81,10 +81,11 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
 		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u%s",
 			i, endp->ci,
-			ntohs(endp->net_rtp), ntohs(endp->net_rtcp),
-			ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
-			inet_ntoa(endp->bts), endp->in_bts, endp->bts_state.lost_no,
-			endp->in_remote, endp->net_state.lost_no,
+			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
+			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
+			inet_ntoa(endp->bts_end.addr),
+			endp->bts_end.packets, endp->bts_state.lost_no,
+			endp->net_end.packets, endp->net_state.lost_no,
 			VTY_NEWLINE);
 	}
 

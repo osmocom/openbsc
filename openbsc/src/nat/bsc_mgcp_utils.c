@@ -247,7 +247,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 			LOGP(DMGCP, LOGL_ERROR, "Can not get the peername...%d/%s\n",
 			      errno, strerror(errno));
 		} else {
-			mgcp_endp->bts = sock.sin_addr;
+			mgcp_endp->bts_end.addr = sock.sin_addr;
 		}
 
 		/* send the message and a fake MDCX to force sending of a dummy packet */

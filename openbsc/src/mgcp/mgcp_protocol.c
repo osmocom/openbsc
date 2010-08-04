@@ -175,7 +175,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
 			endp->ci, addr, endp->rtp_port,
-			endp->bts_payload_type, endp->bts_payload_type,
+			endp->bts_end.payload_type, endp->bts_end.payload_type,
 		        endp->cfg->audio_name);
 	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
 }
@@ -421,10 +421,10 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	MSG_TOKENIZE_END
 
 	/* initialize */
-	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
+	endp->net_end.rtp_port = endp->net_end.rtcp_port = endp->bts_end.rtp_port = endp->bts_end.rtcp_port = 0;
 
 	/* set to zero until we get the info */
-	memset(&endp->remote, 0, sizeof(endp->remote));
+	memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
 
 	/* bind to the port now */
 	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_base_port);
@@ -438,7 +438,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
-	endp->bts_payload_type = cfg->audio_payload;
+	endp->bts_end.payload_type = cfg->audio_payload;
 
 	/* policy CB */
 	if (cfg->policy_cb) {
@@ -536,9 +536,9 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		const char *param = (const char *)&msg->l3h[line_start];
 
 		if (sscanf(param, "m=audio %d RTP/AVP %d", &port, &payload) == 2) {
-			endp->net_rtp = htons(port);
-			endp->net_rtcp = htons(port + 1);
-			endp->net_payload_type = payload;
+			endp->net_end.rtp_port = htons(port);
+			endp->net_end.rtcp_port = htons(port + 1);
+			endp->net_end.payload_type = payload;
 		}
 		break;
 	}
@@ -547,7 +547,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 		const char *param = (const char *)&msg->l3h[line_start];
 
 		if (sscanf(param, "c=IN IP4 %15s", ipv4) == 1) {
-			inet_aton(ipv4, &endp->remote);
+			inet_aton(ipv4, &endp->net_end.addr);
 		}
 		break;
 	}
@@ -581,7 +581,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* modify */
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
-		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
 	if (silent)
@@ -666,7 +666,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* free the connection */
 	LOGP(DMGCP, LOGL_NOTICE, "Deleted endpoint on: 0x%x Server: %s:%u\n",
-		ENDPOINT_NUMBER(endp), inet_ntoa(endp->remote), ntohs(endp->net_rtp));
+		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
@@ -714,6 +714,12 @@ struct mgcp_config *mgcp_config_alloc(void)
 	return cfg;
 }
 
+static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
+{
+	memset(end, 0, sizeof(*end));
+	end->payload_type = -1;
+}
+
 int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 {
 	int i;
@@ -730,8 +736,8 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 		cfg->endpoints[i].local_rtcp.fd = -1;
 		cfg->endpoints[i].ci = CI_UNUSED;
 		cfg->endpoints[i].cfg = cfg;
-		cfg->endpoints[i].net_payload_type = -1;
-		cfg->endpoints[i].bts_payload_type = -1;
+		mgcp_rtp_end_reset(&cfg->endpoints[i].net_end);
+		mgcp_rtp_end_reset(&cfg->endpoints[i].bts_end);
 	}
 
 	return 0;
@@ -757,11 +763,8 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 		bsc_unregister_fd(&endp->local_rtcp);
 	}
 
-	endp->net_rtp = endp->net_rtcp = endp->bts_rtp = endp->bts_rtcp = 0;
-	endp->net_payload_type = endp->bts_payload_type = -1;
-	endp->in_bts = endp->in_remote = 0;
-	memset(&endp->remote, 0, sizeof(endp->remote));
-	memset(&endp->bts, 0, sizeof(endp->bts));
+	mgcp_rtp_end_reset(&endp->bts_end);
+	mgcp_rtp_end_reset(&endp->net_end);
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));

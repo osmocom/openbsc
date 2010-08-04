@@ -49,15 +49,23 @@ struct mgcp_rtp_state {
 	int32_t  timestamp_offset;
 };
 
+struct mgcp_rtp_end {
+	/* statistics */
+	unsigned int packets;
+	struct in_addr addr;
+
+	/* in network byte order */
+	int rtp_port, rtcp_port;
+
+	int payload_type;
+};
+
 struct mgcp_endpoint {
 	int ci;
 	char *callid;
 	char *local_options;
 	int conn_mode;
 	int orig_mode;
-
-	int bts_payload_type;
-	int net_payload_type;
 
 	/* the local rtp port we are binding to */
 	int rtp_port;
@@ -70,19 +78,12 @@ struct mgcp_endpoint {
 	struct bsc_fd local_rtp;
 	struct bsc_fd local_rtcp;
 
-	struct in_addr remote;
-	struct in_addr bts;
-
-	/* in network byte order */
-	int net_rtp, net_rtcp;
-	int bts_rtp, bts_rtcp;
-
 	/* backpointer */
 	struct mgcp_config *cfg;
 
-	/* statistics */
-	unsigned int in_bts;
-	unsigned int in_remote;
+	/* port status for bts/net */
+	struct mgcp_rtp_end bts_end;
+	struct mgcp_rtp_end net_end;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;

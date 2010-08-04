@@ -90,8 +90,8 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 {
 	static char buf[] = { DUMMY_LOAD };
 
-	return udp_send(endp->local_rtp.fd, &endp->remote,
-			endp->net_rtp, buf, 1);
+	return udp_send(endp->local_rtp.fd, &endp->net_end.addr,
+			endp->net_end.rtp_port, buf, 1);
 }
 
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
@@ -189,26 +189,26 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	 * able to tell if this is legitimate.
 	 */
 	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
-	dest = memcmp(&addr.sin_addr, &endp->remote, sizeof(addr.sin_addr)) == 0 &&
-		    (endp->net_rtp == addr.sin_port || endp->net_rtcp == addr.sin_port)
+	dest = memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) == 0 &&
+		    (endp->net_end.rtp_port == addr.sin_port || endp->net_end.rtcp_port == addr.sin_port)
 			? DEST_BTS : DEST_NETWORK;
 	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
-	if (dest == DEST_NETWORK && endp->bts_rtp == 0) {
+	if (dest == DEST_NETWORK && endp->bts_end.rtp_port == 0) {
 		/* it was the BTS... */
 		if (!cfg->bts_ip
 		    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
-		    || memcmp(&addr.sin_addr, &endp->bts, sizeof(endp->bts)) == 0) {
+		    || memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
 			if (fd == &endp->local_rtp) {
-				endp->bts_rtp = addr.sin_port;
+				endp->bts_end.rtp_port = addr.sin_port;
 			} else {
-				endp->bts_rtcp = addr.sin_port;
+				endp->bts_end.rtcp_port = addr.sin_port;
 			}
 
-			endp->bts = addr.sin_addr;
+			endp->bts_end.addr = addr.sin_addr;
 			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
-				ENDPOINT_NUMBER(endp), ntohs(endp->bts_rtp), ntohs(endp->bts_rtcp),
+				ENDPOINT_NUMBER(endp), ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 				inet_ntoa(addr.sin_addr));
 
 		}
@@ -223,9 +223,9 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 
 	/* do this before the loop handling */
 	if (dest == DEST_NETWORK)
-		++endp->in_bts;
+		++endp->bts_end.packets;
 	else
-		++endp->in_remote;
+		++endp->net_end.packets;
 
 	/* For loop toggle the destination and then dispatch. */
 	if (cfg->audio_loop)
@@ -238,18 +238,18 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (dest == DEST_NETWORK) {
 		if (proto == PROTO_RTP)
 			patch_and_count(endp, &endp->bts_state,
-					endp->net_payload_type,
+					endp->net_end.payload_type,
 					&addr, buf, rc);
-		return udp_send(fd->fd, &endp->remote,
-			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
+		return udp_send(fd->fd, &endp->net_end.addr,
+			     proto == PROTO_RTP ? endp->net_end.rtp_port : endp->net_end.rtcp_port,
 			     buf, rc);
 	} else {
 		if (proto == PROTO_RTP)
 			patch_and_count(endp, &endp->net_state,
-					endp->bts_payload_type,
+					endp->bts_end.payload_type,
 					&addr, buf, rc);
-		return udp_send(fd->fd, &endp->bts,
-			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
+		return udp_send(fd->fd, &endp->bts_end.addr,
+			     proto == PROTO_RTP ? endp->bts_end.rtp_port : endp->bts_end.rtcp_port,
 			     buf, rc);
 	}
 }
