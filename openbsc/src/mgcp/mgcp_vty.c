@@ -56,7 +56,6 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  bts ip %s%s", g_cfg->bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", g_cfg->source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
-	vty_out(vty, "  bind early %u%s", !!g_cfg->early_bind, VTY_NEWLINE);
 	vty_out(vty, "  rtp base %u%s", g_cfg->rtp_base_port, VTY_NEWLINE);
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
 	if (g_cfg->audio_payload != -1)
@@ -150,9 +149,8 @@ DEFUN(cfg_mgcp_bind_early,
       "bind early (0|1)",
       "Bind all RTP ports early")
 {
-	unsigned int bind = atoi(argv[0]);
-	g_cfg->early_bind = bind == 1;
-	return CMD_SUCCESS;
+	vty_out(vty, "bind early is deprecated, remove it from the config.\n");
+	return CMD_WARNING;
 }
 
 DEFUN(cfg_mgcp_rtp_base_port,
@@ -311,16 +309,14 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	}
 
 	/* early bind */
-	if (g_cfg->early_bind) {
-		for (i = 1; i < g_cfg->number_endpoints; ++i) {
-			struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-			int rtp_port;
+	for (i = 1; i < g_cfg->number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
+		int rtp_port;
 
-			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_base_port);
-			if (mgcp_bind_rtp_port(endp, rtp_port) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
-				return -1;
-			}
+		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_base_port);
+		if (mgcp_bind_rtp_port(endp, rtp_port) != 0) {
+			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+			return -1;
 		}
 	}
 

@@ -428,11 +428,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* bind to the port now */
 	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_base_port);
-	if (cfg->early_bind) {
-		endp->bts_end.local_port = port;
-		endp->net_end.local_port = port;
-	} else if (mgcp_bind_rtp_port(endp, port) != 0)
-		goto error2;
+	endp->bts_end.local_port = port;
+	endp->net_end.local_port = port;
 
 	/* assign a local call identifier or fail */
 	endp->ci = generate_call_id(cfg);
@@ -758,11 +755,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	if (endp->local_options) {
 		talloc_free(endp->local_options);
 		endp->local_options = NULL;
-	}
-
-	if (!endp->cfg->early_bind) {
-		bsc_unregister_fd(&endp->local_rtp);
-		bsc_unregister_fd(&endp->local_rtcp);
 	}
 
 	mgcp_rtp_end_reset(&endp->bts_end);
