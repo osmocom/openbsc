@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 
 #define RTP_PORT_DEFAULT 4000
+#define RTP_PORT_NET_DEFAULT 16000
 
 /**
  * Calculate the RTP audio port for the given multiplex
@@ -92,6 +93,7 @@ struct mgcp_config {
 	int audio_payload;
 	int audio_loop;
 	int rtp_bts_base_port;
+	int rtp_net_base_port;
 	int endp_dscp;
 
 	/* spec handling */
