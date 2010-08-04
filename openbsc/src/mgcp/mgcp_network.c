@@ -154,6 +154,15 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		   struct sockaddr_in *addr, char *buf, int rc)
 {
+	struct mgcp_config *cfg = endp->cfg;
+	/* For loop toggle the destination and then dispatch. */
+	if (cfg->audio_loop)
+		dest = !dest;
+
+	/* Loop based on the conn_mode, maybe undoing the above */
+	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
+		dest = !dest;
+
 	if (dest == DEST_NETWORK) {
 		if (is_rtp) {
 			patch_and_count(endp, &endp->bts_state,
@@ -262,14 +271,6 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		++endp->bts_end.packets;
 	else
 		++endp->net_end.packets;
-
-	/* For loop toggle the destination and then dispatch. */
-	if (cfg->audio_loop)
-		dest = !dest;
-
-	/* Loop based on the conn_mode, maybe undoing the above */
-	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
-		dest = !dest;
 
 	return send_to(endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
