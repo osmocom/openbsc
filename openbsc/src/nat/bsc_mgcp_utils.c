@@ -250,7 +250,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 			mgcp_endp->bts = sock.sin_addr;
 		}
 
-		/* send the message and a fake MDCX for force sending of a dummy packet */
+		/* send the message and a fake MDCX to force sending of a dummy packet */
 		sccp->crcx = 1;
 		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
 		bsc_mgcp_send_mdcx(sccp->bsc, mgcp_endp);
