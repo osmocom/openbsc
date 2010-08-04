@@ -715,8 +715,17 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 {
-	memset(end, 0, sizeof(*end));
+	end->packets = 0;
+	memset(&end->addr, 0, sizeof(end->addr));
+	end->rtp_port = end->rtcp_port = end->local_port;
 	end->payload_type = -1;
+}
+
+static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
+{
+	mgcp_rtp_end_reset(end);
+	end->rtp.fd = -1;
+	end->rtcp.fd = -1;
 }
 
 int mgcp_endpoints_allocate(struct mgcp_config *cfg)
@@ -731,12 +740,10 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 		return -1;
 
 	for (i = 0; i < cfg->number_endpoints; ++i) {
-		cfg->endpoints[i].local_rtp.fd = -1;
-		cfg->endpoints[i].local_rtcp.fd = -1;
 		cfg->endpoints[i].ci = CI_UNUSED;
 		cfg->endpoints[i].cfg = cfg;
-		mgcp_rtp_end_reset(&cfg->endpoints[i].net_end);
-		mgcp_rtp_end_reset(&cfg->endpoints[i].bts_end);
+		mgcp_rtp_end_init(&cfg->endpoints[i].net_end);
+		mgcp_rtp_end_init(&cfg->endpoints[i].bts_end);
 	}
 
 	return 0;

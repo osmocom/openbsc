@@ -90,7 +90,7 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 {
 	static char buf[] = { DUMMY_LOAD };
 
-	return udp_send(endp->local_rtp.fd, &endp->net_end.addr,
+	return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 			endp->net_end.rtp_port, buf, 1);
 }
 
@@ -192,7 +192,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	dest = memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) == 0 &&
 		    (endp->net_end.rtp_port == addr.sin_port || endp->net_end.rtcp_port == addr.sin_port)
 			? DEST_BTS : DEST_NETWORK;
-	proto = fd == &endp->local_rtp ? PROTO_RTP : PROTO_RTCP;
+	proto = (fd == &endp->net_end.rtp || fd == &endp->bts_end.rtp) ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
 	if (dest == DEST_NETWORK && endp->bts_end.rtp_port == 0) {
@@ -200,7 +200,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 		if (!cfg->bts_ip
 		    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
 		    || memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
-			if (fd == &endp->local_rtp) {
+			if (proto == PROTO_RTP) {
 				endp->bts_end.rtp_port = addr.sin_port;
 			} else {
 				endp->bts_end.rtcp_port = addr.sin_port;
@@ -290,34 +290,34 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 {
 	struct mgcp_config *cfg = endp->cfg;
 
-	if (create_bind(cfg->source_addr, &endp->local_rtp, endp->bts_end.local_port) != 0) {
+	if (create_bind(cfg->source_addr, &endp->bts_end.rtp, endp->bts_end.local_port) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
 		       cfg->source_addr, endp->bts_end.local_port, ENDPOINT_NUMBER(endp));
 		goto cleanup0;
 	}
 
-	if (create_bind(cfg->source_addr, &endp->local_rtcp, endp->bts_end.local_port + 1) != 0) {
+	if (create_bind(cfg->source_addr, &endp->bts_end.rtcp, endp->bts_end.local_port + 1) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
 		       cfg->source_addr, endp->bts_end.local_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup1;
 	}
 
-	set_ip_tos(endp->local_rtp.fd, cfg->endp_dscp);
-	set_ip_tos(endp->local_rtcp.fd, cfg->endp_dscp);
+	set_ip_tos(endp->bts_end.rtp.fd, cfg->endp_dscp);
+	set_ip_tos(endp->bts_end.rtcp.fd, cfg->endp_dscp);
 
-	endp->local_rtp.cb = rtp_data_cb;
-	endp->local_rtp.data = endp;
-	endp->local_rtp.when = BSC_FD_READ;
-	if (bsc_register_fd(&endp->local_rtp) != 0) {
+	endp->bts_end.rtp.cb = rtp_data_cb;
+	endp->bts_end.rtp.data = endp;
+	endp->bts_end.rtp.when = BSC_FD_READ;
+	if (bsc_register_fd(&endp->bts_end.rtp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTP port %d on 0x%x\n",
 			endp->bts_end.local_port, ENDPOINT_NUMBER(endp));
 		goto cleanup2;
 	}
 
-	endp->local_rtcp.cb = rtp_data_cb;
-	endp->local_rtcp.data = endp;
-	endp->local_rtcp.when = BSC_FD_READ;
-	if (bsc_register_fd(&endp->local_rtcp) != 0) {
+	endp->bts_end.rtcp.cb = rtp_data_cb;
+	endp->bts_end.rtcp.data = endp;
+	endp->bts_end.rtcp.when = BSC_FD_READ;
+	if (bsc_register_fd(&endp->bts_end.rtcp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTCP port %d on 0x%x\n",
 			endp->bts_end.local_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup3;
@@ -326,13 +326,13 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 	return 0;
 
 cleanup3:
-	bsc_unregister_fd(&endp->local_rtp);
+	bsc_unregister_fd(&endp->bts_end.rtp);
 cleanup2:
-	close(endp->local_rtcp.fd);
-	endp->local_rtcp.fd = -1;
+	close(endp->bts_end.rtcp.fd);
+	endp->bts_end.rtcp.fd = -1;
 cleanup1:
-	close(endp->local_rtp.fd);
-	endp->local_rtp.fd = -1;
+	close(endp->bts_end.rtp.fd);
+	endp->bts_end.rtp.fd = -1;
 cleanup0:
 	return -1;
 }

@@ -59,6 +59,12 @@ struct mgcp_rtp_end {
 
 	int payload_type;
 
+	/*
+	 * Each end has a socket...
+	 */
+	struct bsc_fd rtp;
+	struct bsc_fd rtcp;
+
 	int local_port;
 };
 
@@ -68,14 +74,6 @@ struct mgcp_endpoint {
 	char *local_options;
 	int conn_mode;
 	int orig_mode;
-
-	/*
-	 * RTP mangling:
-	 *  - we get RTP and RTCP to us and need to forward to the BTS
-	 *  - we get RTP and RTCP from the BTS and forward to the network
-	 */
-	struct bsc_fd local_rtp;
-	struct bsc_fd local_rtcp;
 
 	/* backpointer */
 	struct mgcp_config *cfg;
