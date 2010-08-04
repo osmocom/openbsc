@@ -91,7 +91,7 @@ struct mgcp_config {
 	char *audio_name;
 	int audio_payload;
 	int audio_loop;
-	int rtp_base_port;
+	int rtp_bts_base_port;
 	int endp_dscp;
 
 	/* spec handling */

@@ -427,7 +427,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
 
 	/* bind to the port now */
-	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_base_port);
+	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_bts_base_port);
 	endp->bts_end.local_port = port;
 	endp->net_end.local_port = port;
 
@@ -708,7 +708,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
 	cfg->audio_name = talloc_strdup(cfg, "GSM-EFR/8000");
 	cfg->audio_payload = 97;
-	cfg->rtp_base_port = RTP_PORT_DEFAULT;
+	cfg->rtp_bts_base_port = RTP_PORT_DEFAULT;
 
 	return cfg;
 }

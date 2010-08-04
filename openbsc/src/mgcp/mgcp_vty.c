@@ -56,7 +56,7 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  bts ip %s%s", g_cfg->bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", g_cfg->source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
-	vty_out(vty, "  rtp base %u%s", g_cfg->rtp_base_port, VTY_NEWLINE);
+	vty_out(vty, "  rtp bts-base %u%s", g_cfg->rtp_bts_base_port, VTY_NEWLINE);
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
 	if (g_cfg->audio_payload != -1)
 		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
@@ -153,15 +153,18 @@ DEFUN(cfg_mgcp_bind_early,
 	return CMD_WARNING;
 }
 
-DEFUN(cfg_mgcp_rtp_base_port,
-      cfg_mgcp_rtp_base_port_cmd,
-      "rtp base <0-65534>",
+DEFUN(cfg_mgcp_rtp_bts_base_port,
+      cfg_mgcp_rtp_bts_base_port_cmd,
+      "rtp bts-base <0-65534>",
       "Base port to use")
 {
 	unsigned int port = atoi(argv[0]);
-	g_cfg->rtp_base_port = port;
+	g_cfg->rtp_bts_base_port = port;
 	return CMD_SUCCESS;
 }
+
+ALIAS_DEPRECATED(cfg_mgcp_rtp_bts_base_port, cfg_mgcp_rtp_base_port_cmd,
+      "rtp base <0-65534>", "Base port to use")
 
 DEFUN(cfg_mgcp_rtp_ip_dscp,
       cfg_mgcp_rtp_ip_dscp_cmd,
@@ -273,6 +276,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_bind_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_bind_early_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_base_port_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
@@ -313,7 +317,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
 		int rtp_port;
 
-		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_base_port);
+		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_bts_base_port);
 		if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 			return -1;
