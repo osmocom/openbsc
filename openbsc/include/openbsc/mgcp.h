@@ -80,6 +80,19 @@ typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state);
 typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
 typedef int (*mgcp_reset)(struct mgcp_config *cfg);
 
+#define PORT_ALLOC_STATIC	0
+#define PORT_ALLOC_DYNAMIC	1
+
+/**
+ * This holds information on how to allocate ports
+ */
+struct mgcp_port_range {
+	int mode;
+
+	/* pre-allocated from a base? */
+	int base_port;
+};
+
 struct mgcp_config {
 	int source_port;
 	char *local_ip;
@@ -92,8 +105,9 @@ struct mgcp_config {
 	char *audio_name;
 	int audio_payload;
 	int audio_loop;
-	int rtp_bts_base_port;
-	int rtp_net_base_port;
+
+	struct mgcp_port_range bts_ports;
+	struct mgcp_port_range net_ports;
 	int endp_dscp;
 
 	/* spec handling */

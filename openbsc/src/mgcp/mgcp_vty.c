@@ -56,8 +56,11 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  bts ip %s%s", g_cfg->bts_ip, VTY_NEWLINE);
 	vty_out(vty, "  bind ip %s%s", g_cfg->source_addr, VTY_NEWLINE);
 	vty_out(vty, "  bind port %u%s", g_cfg->source_port, VTY_NEWLINE);
-	vty_out(vty, "  rtp bts-base %u%s", g_cfg->rtp_bts_base_port, VTY_NEWLINE);
-	vty_out(vty, "  rtp net-base %u%s", g_cfg->rtp_net_base_port, VTY_NEWLINE);
+
+	if (g_cfg->bts_ports.mode == PORT_ALLOC_STATIC)
+		vty_out(vty, "  rtp bts-base %u%s", g_cfg->bts_ports.base_port, VTY_NEWLINE);
+	if (g_cfg->net_ports.mode == PORT_ALLOC_STATIC)
+		vty_out(vty, "  rtp net-base %u%s", g_cfg->net_ports.base_port, VTY_NEWLINE);
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
 	if (g_cfg->audio_payload != -1)
 		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
@@ -160,7 +163,8 @@ DEFUN(cfg_mgcp_rtp_bts_base_port,
       "Base port to use")
 {
 	unsigned int port = atoi(argv[0]);
-	g_cfg->rtp_bts_base_port = port;
+	g_cfg->bts_ports.mode = PORT_ALLOC_STATIC;
+	g_cfg->bts_ports.base_port = port;
 	return CMD_SUCCESS;
 }
 
@@ -170,7 +174,8 @@ DEFUN(cfg_mgcp_rtp_net_base_port,
       "Base port to use for network port\n" "Port\n")
 {
 	unsigned int port = atoi(argv[0]);
-	g_cfg->rtp_net_base_port = port;
+	g_cfg->net_ports.mode = PORT_ALLOC_STATIC;
+	g_cfg->net_ports.base_port = port;
 	return CMD_SUCCESS;
 }
 
@@ -329,13 +334,15 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
 		int rtp_port;
 
-		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_bts_base_port);
+		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+					      g_cfg->bts_ports.base_port);
 		if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 			return -1;
 		}
 
-		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_net_base_port);
+		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+					      g_cfg->net_ports.base_port);
 		if (mgcp_bind_net_rtp_port(endp, rtp_port) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 			return -1;
