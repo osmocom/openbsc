@@ -211,13 +211,54 @@ static int recevice_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in 
 	return rc;
 }
 
-static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_net(struct bsc_fd *fd, unsigned int what)
+{
+	char buf[4096];
+	struct sockaddr_in addr;
+	struct mgcp_endpoint *endp;
+	int rc, proto;
+
+	endp = (struct mgcp_endpoint *) fd->data;
+
+	rc = recevice_from(endp, fd->fd, &addr, buf, sizeof(buf));
+	if (rc <= 0)
+		return -1;
+
+	if (memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) != 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Data from wrong address %s on 0x%x\n",
+			inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	if (endp->net_end.rtp_port != addr.sin_port &&
+	    endp->net_end.rtcp_port != addr.sin_port) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Data from wrong source port %d on 0x%x\n",
+			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	/* throw away the dummy message */
+	if (rc == 1 && buf[0] == DUMMY_LOAD) {
+		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy from network on 0x%x\n",
+			ENDPOINT_NUMBER(endp));
+		return 0;
+	}
+
+	proto = fd == &endp->net_end.rtp ? PROTO_RTP : PROTO_RTCP;
+	endp->net_end.packets += 1;
+	return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+}
+
+
+static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 {
 	char buf[4096];
 	struct sockaddr_in addr;
 	struct mgcp_endpoint *endp;
 	struct mgcp_config *cfg;
-	int rc, dest, proto;
+	int rc, proto;
 
 	endp = (struct mgcp_endpoint *) fd->data;
 	cfg = endp->cfg;
@@ -226,53 +267,35 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (rc <= 0)
 		return -1;
 
-
-	/*
-	 * Figure out where to forward it to. This code assumes that we
-	 * have received the Connection Modify and know who is a legitimate
-	 * partner. According to the spec we could attempt to forward even
-	 * after the Create Connection but we will not as we are not really
-	 * able to tell if this is legitimate.
-	 */
-	dest = memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) == 0 &&
-		    (endp->net_end.rtp_port == addr.sin_port || endp->net_end.rtcp_port == addr.sin_port)
-			? DEST_BTS : DEST_NETWORK;
-	proto = (fd == &endp->net_end.rtp || fd == &endp->bts_end.rtp) ? PROTO_RTP : PROTO_RTCP;
+	proto = &endp->bts_end.rtp ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
-	if (dest == DEST_NETWORK && endp->bts_end.rtp_port == 0) {
-		/* it was the BTS... */
-		if (!cfg->bts_ip
-		    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
-		    || memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
-			if (proto == PROTO_RTP) {
-				endp->bts_end.rtp_port = addr.sin_port;
-			} else {
-				endp->bts_end.rtcp_port = addr.sin_port;
-			}
+	/* it was the BTS... */
+	if (!cfg->bts_ip
+		|| memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
+		|| memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
+		if (proto == PROTO_RTP)
+			endp->bts_end.rtp_port = addr.sin_port;
+		else
+			endp->bts_end.rtcp_port = addr.sin_port;
 
-			endp->bts_end.addr = addr.sin_addr;
-			LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
-				ENDPOINT_NUMBER(endp), ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
-				inet_ntoa(addr.sin_addr));
-
-		}
+		endp->bts_end.addr = addr.sin_addr;
+		LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
+			ENDPOINT_NUMBER(endp), ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
+			inet_ntoa(addr.sin_addr));
 	}
 
 	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == DUMMY_LOAD) {
-		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy on 0x%x\n",
+		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy from bts on 0x%x\n",
 			ENDPOINT_NUMBER(endp));
 		return 0;
 	}
 
 	/* do this before the loop handling */
-	if (dest == DEST_NETWORK)
-		++endp->bts_end.packets;
-	else
-		++endp->net_end.packets;
+	endp->bts_end.packets += 1;
 
-	return send_to(endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
+	return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
 static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
@@ -355,19 +378,19 @@ cleanup0:
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	endp->bts_end.local_port = rtp_port;
-	endp->bts_end.rtp.cb = rtp_data_cb;
+	endp->bts_end.rtp.cb = rtp_data_bts;
 	endp->bts_end.rtp.data = endp;
 	endp->bts_end.rtcp.data = endp;
-	endp->bts_end.rtcp.cb = rtp_data_cb;
+	endp->bts_end.rtcp.cb = rtp_data_bts;
 	return bind_rtp(endp->cfg, &endp->bts_end, ENDPOINT_NUMBER(endp));
 }
 
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	endp->net_end.local_port = rtp_port;
-	endp->net_end.rtp.cb = rtp_data_cb;
+	endp->net_end.rtp.cb = rtp_data_net;
 	endp->net_end.rtp.data = endp;
 	endp->net_end.rtcp.data = endp;
-	endp->net_end.rtcp.cb = rtp_data_cb;
+	endp->net_end.rtcp.cb = rtp_data_net;
 	return bind_rtp(endp->cfg, &endp->net_end, ENDPOINT_NUMBER(endp));
 }
