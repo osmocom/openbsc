@@ -65,10 +65,6 @@ static int config_write_mgcp(struct vty *vty)
 		vty_out(vty, "  sdp audio payload name %s%s", g_cfg->audio_name, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  number endpoints %u%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
-	if (g_cfg->forward_ip)
-		vty_out(vty, "  forward audio ip %s%s", g_cfg->forward_ip, VTY_NEWLINE);
-	if (g_cfg->forward_port != 0)
-		vty_out(vty, "  forward audio port %d%s", g_cfg->forward_port, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 
@@ -223,26 +219,6 @@ DEFUN(cfg_mgcp_number_endp,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_mgcp_forward_ip,
-      cfg_mgcp_forward_ip_cmd,
-      "forward audio ip A.B.C.D",
-      "Forward packets from and to the IP. This disables most of the MGCP feature.")
-{
-	if (g_cfg->forward_ip)
-		talloc_free(g_cfg->forward_ip);
-	g_cfg->forward_ip = talloc_strdup(g_cfg, argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_mgcp_forward_port,
-      cfg_mgcp_forward_port_cmd,
-      "forward audio port <1-15000>",
-      "Forward packets from and to the port. This disables most of the MGCP feature.")
-{
-	g_cfg->forward_port = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
 DEFUN(cfg_mgcp_agent_addr,
       cfg_mgcp_agent_addr_cmd,
       "call agent ip IP",
@@ -304,8 +280,6 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_forward_ip_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_forward_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	return 0;
 }
@@ -335,37 +309,6 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		return -1;
 	}
 
-	/*
-	 * This application supports two modes.
-	 *    1.) a true MGCP gateway with support for AUEP, CRCX, MDCX, DLCX
-	 *    2.) plain forwarding of RTP packets on the endpoints.
-	 * both modes are mutual exclusive
-	 */
-	if (g_cfg->forward_ip) {
-		int port = g_cfg->rtp_base_port;
-		if (g_cfg->forward_port != 0)
-			port = g_cfg->forward_port;
-
-		if (!g_cfg->early_bind) {
-			LOGP(DMGCP, LOGL_NOTICE, "Forwarding requires early bind.\n");
-			return -1;
-		}
-
-		/*
-		 * Store the forward IP and assign a ci. For early bind
-		 * the sockets will be created after this.
-		 */
-		for (i = 1; i < g_cfg->number_endpoints; ++i) {
-			struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-			inet_aton(g_cfg->forward_ip, &endp->remote);
-			endp->ci = CI_UNUSED + 23;
-			endp->net_rtp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port));
-			endp->net_rtcp = htons(rtp_calculate_port(ENDPOINT_NUMBER(endp), port) + 1);
-		}
-
-		LOGP(DMGCP, LOGL_NOTICE, "Configured for Audio Forwarding.\n");
-	}
-
 	/* early bind */
 	if (g_cfg->early_bind) {
 		for (i = 1; i < g_cfg->number_endpoints; ++i) {
@@ -380,6 +323,6 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		}
 	}
 
-	return !!g_cfg->forward_ip;
+	return 0;
 }
 

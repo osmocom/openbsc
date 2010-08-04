@@ -95,9 +95,6 @@ struct mgcp_config {
 	int rtp_base_port;
 	int endp_dscp;
 
-	char *forward_ip;
-	int forward_port;
-
 	/* spec handling */
 	int force_realloc;
 
