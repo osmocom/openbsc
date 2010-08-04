@@ -148,15 +148,37 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 }
 
 /*
- * There is data coming. We will have to figure out if it
- * came from the BTS or the MediaGateway of the MSC. On top
- * of that we need to figure out if it was RTP or RTCP.
- *
- * Currently we do not communicate with the BSC so we have
- * no idea where the BTS is listening for RTP and need to
- * do the classic routing trick. Wait for the first packet
- * from the BTS and then go ahead.
+ * The below code is for dispatching. We have a dedicated port for
+ * the data coming from the net and one to discover the BTS.
  */
+static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
+		   struct sockaddr_in *addr, char *buf, int rc)
+{
+	if (dest == DEST_NETWORK) {
+		if (is_rtp) {
+			patch_and_count(endp, &endp->bts_state,
+					endp->net_end.payload_type,
+					addr, buf, rc);
+			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
+					endp->net_end.rtp_port, buf, rc);
+		} else {
+			return udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
+					endp->net_end.rtcp_port, buf, rc);
+		}
+	} else {
+		if (is_rtp) {
+			patch_and_count(endp, &endp->net_state,
+					endp->bts_end.payload_type,
+					addr, buf, rc);
+			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
+					endp->bts_end.rtp_port, buf, rc);
+		} else {
+			return udp_send(endp->bts_end.rtcp.fd, &endp->bts_end.addr,
+					endp->bts_end.rtcp_port, buf, rc);
+		}
+	}
+}
+
 static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 {
 	char buf[4096];
@@ -235,29 +257,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
 		dest = !dest;
 
-	if (dest == DEST_NETWORK) {
-		if (proto == PROTO_RTP) {
-			patch_and_count(endp, &endp->bts_state,
-					endp->net_end.payload_type,
-					&addr, buf, rc);
-			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
-					endp->net_end.rtp_port, buf, rc);
-		} else {
-			return udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
-					endp->net_end.rtcp_port, buf, rc);
-		}
-	} else {
-		if (proto == PROTO_RTP) {
-			patch_and_count(endp, &endp->net_state,
-					endp->bts_end.payload_type,
-					&addr, buf, rc);
-			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
-					endp->bts_end.rtp_port, buf, rc);
-		} else {
-			return udp_send(endp->bts_end.rtcp.fd, &endp->bts_end.addr,
-					endp->bts_end.rtcp_port, buf, rc);
-		}
-	}
+	return send_to(endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
 static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
