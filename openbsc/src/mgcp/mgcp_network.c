@@ -337,9 +337,8 @@ cleanup0:
 	return -1;
 }
 
-int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
+int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	endp->bts_end.local_port = rtp_port;
-	endp->net_end.local_port = rtp_port;
 	return bind_rtp(endp);
 }

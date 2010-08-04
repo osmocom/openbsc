@@ -314,7 +314,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		int rtp_port;
 
 		rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), g_cfg->rtp_base_port);
-		if (mgcp_bind_rtp_port(endp, rtp_port) != 0) {
+		if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 			return -1;
 		}
