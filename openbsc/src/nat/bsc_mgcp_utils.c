@@ -121,7 +121,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, struct mgcp_endpoint 
 		       "m=audio %d RTP/AVP 255\r\n",
 		       ENDPOINT_NUMBER(endp),
 		       bsc->nat->mgcp_cfg->source_addr,
-		       endp->rtp_port);
+		       endp->bts_end.local_port);
 	if (len < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
 		return;
@@ -229,7 +229,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
-				   nat->mgcp_cfg->source_addr, mgcp_endp->rtp_port);
+				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -325,7 +325,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	 * with the value of 0 should be no problem.
 	 */
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
-				  bsc->nat->mgcp_cfg->source_addr, endp->rtp_port);
+				  bsc->nat->mgcp_cfg->source_addr, endp->net_end.local_port);
 
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");

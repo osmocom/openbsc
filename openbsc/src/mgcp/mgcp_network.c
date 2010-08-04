@@ -290,15 +290,15 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 {
 	struct mgcp_config *cfg = endp->cfg;
 
-	if (create_bind(cfg->source_addr, &endp->local_rtp, endp->rtp_port) != 0) {
+	if (create_bind(cfg->source_addr, &endp->local_rtp, endp->bts_end.local_port) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
-		       cfg->source_addr, endp->rtp_port, ENDPOINT_NUMBER(endp));
+		       cfg->source_addr, endp->bts_end.local_port, ENDPOINT_NUMBER(endp));
 		goto cleanup0;
 	}
 
-	if (create_bind(cfg->source_addr, &endp->local_rtcp, endp->rtp_port + 1) != 0) {
+	if (create_bind(cfg->source_addr, &endp->local_rtcp, endp->bts_end.local_port + 1) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
-		       cfg->source_addr, endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
+		       cfg->source_addr, endp->bts_end.local_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup1;
 	}
 
@@ -310,7 +310,7 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 	endp->local_rtp.when = BSC_FD_READ;
 	if (bsc_register_fd(&endp->local_rtp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTP port %d on 0x%x\n",
-			endp->rtp_port, ENDPOINT_NUMBER(endp));
+			endp->bts_end.local_port, ENDPOINT_NUMBER(endp));
 		goto cleanup2;
 	}
 
@@ -319,7 +319,7 @@ static int bind_rtp(struct mgcp_endpoint *endp)
 	endp->local_rtcp.when = BSC_FD_READ;
 	if (bsc_register_fd(&endp->local_rtcp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTCP port %d on 0x%x\n",
-			endp->rtp_port + 1, ENDPOINT_NUMBER(endp));
+			endp->bts_end.local_port + 1, ENDPOINT_NUMBER(endp));
 		goto cleanup3;
 	}
 
@@ -339,6 +339,7 @@ cleanup0:
 
 int mgcp_bind_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	endp->rtp_port = rtp_port;
+	endp->bts_end.local_port = rtp_port;
+	endp->net_end.local_port = rtp_port;
 	return bind_rtp(endp);
 }

@@ -174,7 +174,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"c=IN IP4 %s\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
-			endp->ci, addr, endp->rtp_port,
+			endp->ci, addr, endp->net_end.local_port,
 			endp->bts_end.payload_type, endp->bts_end.payload_type,
 		        endp->cfg->audio_name);
 	return mgcp_create_response_with_data(200, msg, trans_id, sdp_record);
@@ -428,9 +428,10 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* bind to the port now */
 	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_base_port);
-	if (cfg->early_bind)
-		endp->rtp_port = port;
-	else if (mgcp_bind_rtp_port(endp, port) != 0)
+	if (cfg->early_bind) {
+		endp->bts_end.local_port = port;
+		endp->net_end.local_port = port;
+	} else if (mgcp_bind_rtp_port(endp, port) != 0)
 		goto error2;
 
 	/* assign a local call identifier or fail */
@@ -459,10 +460,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		}
 	}
 
-	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u\n",
-		ENDPOINT_NUMBER(endp), endp->ci, endp->rtp_port);
+	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u/%u\n",
+		ENDPOINT_NUMBER(endp), endp->ci,
+		endp->net_end.local_port, endp->bts_end.local_port);
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, endp->rtp_port);
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
 	return create_response_with_sdp(endp, "CRCX", trans_id);
 error:
@@ -583,7 +585,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, endp->rtp_port);
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
 	if (silent)
 		goto out_silent;
 
@@ -669,7 +671,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, endp->rtp_port);
+		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
 
 	if (silent)
 		goto out_silent;
