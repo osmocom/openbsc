@@ -238,7 +238,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	if (dest == DEST_NETWORK) {
 		if (proto == PROTO_RTP)
 			patch_and_count(endp, &endp->bts_state,
-					endp->net_payload_type,
+					endp->bts_payload_type,
 					&addr, buf, rc);
 		return udp_send(fd->fd, &endp->remote,
 			     proto == PROTO_RTP ? endp->net_rtp : endp->net_rtcp,
@@ -246,7 +246,7 @@ static int rtp_data_cb(struct bsc_fd *fd, unsigned int what)
 	} else {
 		if (proto == PROTO_RTP)
 			patch_and_count(endp, &endp->net_state,
-					endp->bts_payload_type,
+					endp->net_payload_type,
 					&addr, buf, rc);
 		return udp_send(fd->fd, &endp->bts,
 			     proto == PROTO_RTP ? endp->bts_rtp : endp->bts_rtcp,
