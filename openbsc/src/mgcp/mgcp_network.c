@@ -265,6 +265,32 @@ static int rtp_data_net(struct bsc_fd *fd, unsigned int what)
 	return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
+static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_in *addr)
+{
+	struct mgcp_config *cfg = endp->cfg;
+
+	if (proto == PROTO_RTP && endp->bts_end.rtp_port == 0) {
+		if (!cfg->bts_ip ||
+		    memcmp(&addr->sin_addr,
+			   &cfg->bts_in, sizeof(cfg->bts_in)) == 0 ||
+		    memcmp(&addr->sin_addr,
+			   &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
+
+			endp->bts_end.rtp_port = addr->sin_port;
+			endp->bts_end.addr = addr->sin_addr;
+
+			LOGP(DMGCP, LOGL_NOTICE,
+				"Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
+				ENDPOINT_NUMBER(endp), ntohs(endp->bts_end.rtp_port),
+				ntohs(endp->bts_end.rtcp_port), inet_ntoa(addr->sin_addr));
+		}
+	} else if (proto == PROTO_RTCP && endp->bts_end.rtcp_port == 0) {
+		if (memcmp(&endp->bts_end.addr, &addr->sin_addr,
+				sizeof(endp->bts_end.addr)) == 0) {
+			endp->bts_end.rtcp_port = addr->sin_port;
+		}
+	}
+}
 
 static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 {
@@ -285,19 +311,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 
 	/* We have no idea who called us, maybe it is the BTS. */
 	/* it was the BTS... */
-	if (endp->bts_end.rtp_port == 0 && (!cfg->bts_ip
-	    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
-		|| memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0)) {
-		if (proto == PROTO_RTP)
-			endp->bts_end.rtp_port = addr.sin_port;
-		else
-			endp->bts_end.rtcp_port = addr.sin_port;
-
-		endp->bts_end.addr = addr.sin_addr;
-		LOGP(DMGCP, LOGL_NOTICE, "Found BTS for endpoint: 0x%x on port: %d/%d of %s\n",
-			ENDPOINT_NUMBER(endp), ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
-			inet_ntoa(addr.sin_addr));
-	}
+	discover_bts(endp, proto, &addr);
 
 	if (memcmp(&endp->bts_end.addr, &addr.sin_addr, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
