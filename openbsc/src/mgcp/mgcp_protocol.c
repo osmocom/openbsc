@@ -515,10 +515,10 @@ error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
-	mgcp_free_endp(endp);
 	return create_response(error_code, "CRCX", trans_id);
 
 error2:
+	mgcp_free_endp(endp);
 	LOGP(DMGCP, LOGL_NOTICE, "Resource error on 0x%x\n", ENDPOINT_NUMBER(endp));
 	return create_response(error_code, "CRCX", trans_id);
 }
