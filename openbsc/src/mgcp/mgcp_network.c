@@ -409,6 +409,12 @@ cleanup0:
 
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
+	if (endp->bts_end.rtp.fd != -1 || endp->bts_end.rtcp.fd != -1) {
+		LOGP(DMGCP, LOGL_ERROR, "Previous bts-port was still bound on %d\n",
+			ENDPOINT_NUMBER(endp));
+		mgcp_free_rtp_port(&endp->bts_end);
+	}
+
 	endp->bts_end.local_port = rtp_port;
 	endp->bts_end.rtp.cb = rtp_data_bts;
 	endp->bts_end.rtp.data = endp;
@@ -419,6 +425,12 @@ int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
+	if (endp->net_end.rtp.fd != -1 || endp->net_end.rtcp.fd != -1) {
+		LOGP(DMGCP, LOGL_ERROR, "Previous net-port was still bound on %d\n",
+			ENDPOINT_NUMBER(endp));
+		mgcp_free_rtp_port(&endp->net_end);
+	}
+
 	endp->net_end.local_port = rtp_port;
 	endp->net_end.rtp.cb = rtp_data_net;
 	endp->net_end.rtp.data = endp;
@@ -429,11 +441,6 @@ int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
 {
-	if (end->local_alloc != PORT_ALLOC_DYNAMIC) {
-		LOGP(DMGCP, LOGL_ERROR, "Should only be called for dynamic ports.\n");
-		return -1;
-	}
-
 	if (end->rtp.fd != -1) {
 		close(end->rtp.fd);
 		end->rtp.fd = -1;
