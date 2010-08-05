@@ -59,20 +59,6 @@ static void msc_con_timeout(void *_con)
 	bsc_msc_lost(con);
 }
 
-static int bsc_msc_except(struct bsc_fd *bfd)
-{
-	struct write_queue *wrt;
-	struct bsc_msc_connection *con;
-
-	LOGP(DMSC, LOGL_ERROR, "Exception on the BFD. Closing down.\n");
-
-	wrt = container_of(bfd, struct write_queue, bfd);
-	con = container_of(wrt, struct bsc_msc_connection, write_queue);
-
-	connection_loss(con);
-	return 0;
-}
-
 /* called in the case of a non blocking connect */
 static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 {
@@ -221,7 +207,6 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
 	con->port = port;
 	con->prio = prio;
 	write_queue_init(&con->write_queue, 100);
-	con->write_queue.except_cb = bsc_msc_except;
 	return con;
 }
 
