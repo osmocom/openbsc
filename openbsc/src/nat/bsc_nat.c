@@ -1120,7 +1120,7 @@ int main(int argc, char** argv)
 		return -4;
 	}
 
-	nat->mgcp_cfg = talloc_zero(nat, struct mgcp_config);
+	nat->mgcp_cfg = mgcp_config_alloc();
 	if (!nat->mgcp_cfg) {
 		fprintf(stderr, "Failed to allocate MGCP cfg.\n");
 		return -5;

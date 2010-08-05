@@ -533,11 +533,19 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	}
 
 	/* some more MGCP config handling */
+	if (nat->mgcp_cfg->audio_name)
+		talloc_free(nat->mgcp_cfg->audio_name);
+	nat->mgcp_cfg->audio_name = NULL;
+
 	nat->mgcp_cfg->audio_payload = -1;
 	nat->mgcp_cfg->data = nat;
 	nat->mgcp_cfg->policy_cb = bsc_mgcp_policy_cb;
 	nat->mgcp_cfg->force_realloc = 1;
+
+	if (nat->mgcp_cfg->bts_ip)
+		talloc_free(nat->mgcp_cfg->bts_ip);
 	nat->mgcp_cfg->bts_ip = "";
+
 	nat->bsc_endpoints = talloc_zero_array(nat,
 					       struct bsc_endpoint,
 					       nat->mgcp_cfg->number_endpoints + 1);
