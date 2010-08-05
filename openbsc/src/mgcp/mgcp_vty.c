@@ -305,6 +305,7 @@ DEFUN(loop_endp,
 		endp->conn_mode = MGCP_CONN_LOOPBACK;
 	else
 		endp->conn_mode = endp->orig_mode;
+	endp->allow_patch = 1;
 
 	return CMD_SUCCESS;
 }
