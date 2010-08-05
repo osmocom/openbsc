@@ -405,10 +405,10 @@ static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
 
 static int allocate_ports(struct mgcp_endpoint *endp)
 {
-	if (allocate_port(endp, &endp->net_end, &endp->cfg->net_ports, 0) != 0)
+	if (allocate_port(endp, &endp->net_end, &endp->cfg->net_ports, 1) != 0)
 		return -1;
 
-	if (allocate_port(endp, &endp->bts_end, &endp->cfg->bts_ports, 1) != 0) {
+	if (allocate_port(endp, &endp->bts_end, &endp->cfg->bts_ports, 0) != 0) {
 		mgcp_rtp_end_reset(&endp->net_end);
 		return -1;
 	}
