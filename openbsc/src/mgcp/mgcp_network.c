@@ -346,6 +346,8 @@ static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
 	inet_aton(source_addr, &addr.sin_addr);
 
 	if (bind(fd->fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		close(fd->fd);
+		fd->fd = -1;
 		return -1;
 	}
 
