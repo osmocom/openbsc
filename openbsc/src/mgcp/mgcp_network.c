@@ -281,7 +281,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 	if (rc <= 0)
 		return -1;
 
-	proto = &endp->bts_end.rtp ? PROTO_RTP : PROTO_RTCP;
+	proto = fd == &endp->bts_end.rtp ? PROTO_RTP : PROTO_RTCP;
 
 	/* We have no idea who called us, maybe it is the BTS. */
 	/* it was the BTS... */
