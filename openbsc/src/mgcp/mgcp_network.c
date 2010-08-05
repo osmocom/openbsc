@@ -394,3 +394,25 @@ int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 	endp->net_end.rtcp.cb = rtp_data_net;
 	return bind_rtp(endp->cfg, &endp->net_end, ENDPOINT_NUMBER(endp));
 }
+
+int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
+{
+	if (end->local_alloc != PORT_ALLOC_DYNAMIC) {
+		LOGP(DMGCP, LOGL_ERROR, "Should only be called for dynamic ports.\n");
+		return -1;
+	}
+
+	if (end->rtp.fd != -1) {
+		close(end->rtp.fd);
+		end->rtp.fd = -1;
+		bsc_unregister_fd(&end->rtp);
+	}
+
+	if (end->rtcp.fd != -1) {
+		close(end->rtcp.fd);
+		end->rtcp.fd = -1;
+		bsc_unregister_fd(&end->rtcp);
+	}
+
+	return 0;
+}

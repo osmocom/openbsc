@@ -72,6 +72,7 @@
 		}			    \
 	}
 
+static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end);
 
 struct mgcp_request {
 	char *name;
@@ -367,6 +368,54 @@ static int parse_conn_mode(const char* msg, int *conn_mode)
 	return ret;
 }
 
+static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
+			 struct mgcp_port_range *range, int for_net)
+{
+	int i;
+
+	if (range->mode == PORT_ALLOC_STATIC) {
+		end->local_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), range->base_port);
+		end->local_alloc = PORT_ALLOC_STATIC;
+		return 0;
+	}
+
+	/* attempt to find a port */
+	for (i = 0; i < 200; ++i) {
+		int rc;
+
+		if (range->last_port >= range->range_end)
+			range->last_port = range->range_start;
+
+		rc = for_net ?
+			mgcp_bind_net_rtp_port(endp, range->last_port) :
+			mgcp_bind_bts_rtp_port(endp, range->last_port);
+
+		range->last_port += 2;
+		if (rc == 0) {
+			end->local_alloc = PORT_ALLOC_DYNAMIC;
+			return 0;
+		}
+
+	}
+
+	LOGP(DMGCP, LOGL_ERROR, "Allocating a RTP/RTCP port failed 200 times 0x%x net: %d\n",
+	     ENDPOINT_NUMBER(endp), for_net);
+	return -1;
+}
+
+static int allocate_ports(struct mgcp_endpoint *endp)
+{
+	if (allocate_port(endp, &endp->net_end, &endp->cfg->net_ports, 0) != 0)
+		return -1;
+
+	if (allocate_port(endp, &endp->bts_end, &endp->cfg->bts_ports, 1) != 0) {
+		mgcp_rtp_end_reset(&endp->net_end);
+		return -1;
+	}
+
+	return 0;
+}
+
 static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 {
 	struct mgcp_msg_ptr data_ptrs[6];
@@ -374,7 +423,6 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
 	int error_code = 500;
-	int port;
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
@@ -427,11 +475,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
 
 	/* bind to the port now */
-	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->bts_ports.base_port);
-	endp->bts_end.local_port = port;
-
-	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->net_ports.base_port);
-	endp->net_end.local_port = port;
+	if (allocate_ports(endp) != 0)
+		goto error2;
 
 	/* assign a local call identifier or fail */
 	endp->ci = generate_call_id(cfg);
@@ -470,6 +515,7 @@ error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
 		    hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
+	mgcp_free_endp(endp);
 	return create_response(error_code, "CRCX", trans_id);
 
 error2:
@@ -719,10 +765,14 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 {
+	if (end->local_alloc == PORT_ALLOC_DYNAMIC)
+		mgcp_free_rtp_port(end);
+
 	end->packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
-	end->rtp_port = end->rtcp_port = end->local_port;
+	end->rtp_port = end->rtcp_port = end->local_port = 0;
 	end->payload_type = -1;
+	end->local_alloc = -1;
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)

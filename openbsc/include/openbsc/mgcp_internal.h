@@ -66,6 +66,7 @@ struct mgcp_rtp_end {
 	struct bsc_fd rtcp;
 
 	int local_port;
+	int local_alloc;
 };
 
 struct mgcp_endpoint {
@@ -100,5 +101,6 @@ int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
+int mgcp_free_rtp_port(struct mgcp_rtp_end *end);
 
 #endif

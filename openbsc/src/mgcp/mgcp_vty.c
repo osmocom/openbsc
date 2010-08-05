@@ -377,6 +377,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 				return -1;
 			}
+			endp->bts_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 
 		if (g_cfg->net_ports.mode == PORT_ALLOC_STATIC) {
@@ -386,6 +387,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 				return -1;
 			}
+			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
 
