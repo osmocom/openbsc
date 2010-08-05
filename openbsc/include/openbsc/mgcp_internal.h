@@ -69,6 +69,21 @@ struct mgcp_rtp_end {
 	int local_alloc;
 };
 
+enum {
+	MGCP_TAP_BTS_IN,
+	MGCP_TAP_BTS_OUT,
+	MGCP_TAP_NET_IN,
+	MGCP_TAP_NET_OUT,
+
+	/* last element */
+	MGCP_TAP_COUNT
+};
+
+struct mgcp_rtp_tap {
+	int enabled;
+	struct sockaddr_in forward;
+};
+
 struct mgcp_endpoint {
 	int ci;
 	char *callid;
@@ -89,6 +104,9 @@ struct mgcp_endpoint {
 
 	/* SSRC/seq/ts patching for loop */
 	int allow_patch;
+
+	/* tap for the endpoint */
+	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)

@@ -826,4 +826,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	endp->conn_mode = endp->orig_mode = MGCP_CONN_NONE;
 	endp->allow_patch = 0;
+
+	memset(&endp->taps, 0, sizeof(endp->taps));
 }

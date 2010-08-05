@@ -310,10 +310,55 @@ DEFUN(loop_endp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(tap_call,
+      tap_call_cmd,
+      "tap-call ENDPOINT (bts-in|bts-out|net-in|net-out) A.B.C.D <0-65534>",
+      "Forward data on endpoint to a different system\n"
+      "The endpoint in hex\n"
+      "Forward the data coming from the bts\n"
+      "Forward the data coming from the bts leaving to the network\n"
+      "Forward the data coming from the net\n"
+      "Forward the data coming from the net leaving to the bts\n"
+      "destination IP of the data\n" "destination port\n")
+{
+	struct mgcp_rtp_tap *tap;
+	struct mgcp_endpoint *endp;
+	int port = 0;
+
+	int endp_no = strtoul(argv[0], NULL, 16);
+	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
+		argv[0], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	endp = &g_cfg->endpoints[endp_no];
+
+	if (strcmp(argv[1], "bts-in") == 0) {
+		port = MGCP_TAP_BTS_IN;
+	} else if (strcmp(argv[1], "bts-out") == 0) {
+		port = MGCP_TAP_BTS_OUT;
+	} else if (strcmp(argv[1], "net-in") == 0) {
+		port = MGCP_TAP_NET_IN;
+	} else if (strcmp(argv[1], "net-out") == 0) {
+		port = MGCP_TAP_NET_OUT;
+	} else {
+		vty_out(vty, "Unknown mode... tricked vty?%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	tap = &endp->taps[port];
+	memset(&tap->forward, 0, sizeof(tap->forward));
+	inet_aton(argv[2], &tap->forward.sin_addr);
+	tap->forward.sin_port = htons(atoi(argv[3]));
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
 	install_element(ENABLE_NODE, &loop_endp_cmd);
+	install_element(ENABLE_NODE, &tap_call_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
