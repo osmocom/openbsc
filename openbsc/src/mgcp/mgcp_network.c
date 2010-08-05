@@ -271,9 +271,9 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 
 	/* We have no idea who called us, maybe it is the BTS. */
 	/* it was the BTS... */
-	if (!cfg->bts_ip
-		|| memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
-		|| memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0) {
+	if (endp->bts_end.rtp_port == 0 && (!cfg->bts_ip
+	    || memcmp(&addr.sin_addr, &cfg->bts_in, sizeof(cfg->bts_in)) == 0
+		|| memcmp(&addr.sin_addr, &endp->bts_end.addr, sizeof(endp->bts_end.addr)) == 0)) {
 		if (proto == PROTO_RTP)
 			endp->bts_end.rtp_port = addr.sin_port;
 		else
