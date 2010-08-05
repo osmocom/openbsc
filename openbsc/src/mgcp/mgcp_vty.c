@@ -351,6 +351,7 @@ DEFUN(tap_call,
 	memset(&tap->forward, 0, sizeof(tap->forward));
 	inet_aton(argv[2], &tap->forward.sin_addr);
 	tap->forward.sin_port = htons(atoi(argv[3]));
+	tap->enabled = 1;
 	return CMD_SUCCESS;
 }
 
