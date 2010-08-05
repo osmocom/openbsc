@@ -86,6 +86,9 @@ struct mgcp_endpoint {
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;
 	struct mgcp_rtp_state bts_state;
+
+	/* SSRC/seq/ts patching for loop */
+	int allow_patch;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)
