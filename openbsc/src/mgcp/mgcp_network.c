@@ -285,6 +285,21 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 			inet_ntoa(addr.sin_addr));
 	}
 
+	if (memcmp(&endp->bts_end.addr, &addr.sin_addr, sizeof(addr.sin_addr)) != 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Data from wrong bts %s on 0x%x\n",
+			inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	if (endp->bts_end.rtp_port != addr.sin_port &&
+	    endp->bts_end.rtcp_port != addr.sin_port) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Data from wrong bts source port %d on 0x%x\n",
+			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
 	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == DUMMY_LOAD) {
 		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy from bts on 0x%x\n",
