@@ -151,6 +151,14 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
  * The below code is for dispatching. We have a dedicated port for
  * the data coming from the net and one to discover the BTS.
  */
+static int forward_data(int fd, struct mgcp_rtp_tap *tap, const char *buf, int len)
+{
+	if (!tap->enabled)
+		return 0;
+
+	return sendto(fd, buf, len, 0,
+		      (struct sockaddr *)&tap->forward, sizeof(tap->forward));
+}
 static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		   struct sockaddr_in *addr, char *buf, int rc)
 {
@@ -168,6 +176,8 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 			patch_and_count(endp, &endp->bts_state,
 					endp->net_end.payload_type,
 					addr, buf, rc);
+			forward_data(endp->net_end.rtp.fd,
+				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
 			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 					endp->net_end.rtp_port, buf, rc);
 		} else {
@@ -179,6 +189,8 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 			patch_and_count(endp, &endp->net_state,
 					endp->bts_end.payload_type,
 					addr, buf, rc);
+			forward_data(endp->bts_end.rtp.fd,
+				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
 			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtp_port, buf, rc);
 		} else {
@@ -248,6 +260,8 @@ static int rtp_data_net(struct bsc_fd *fd, unsigned int what)
 
 	proto = fd == &endp->net_end.rtp ? PROTO_RTP : PROTO_RTCP;
 	endp->net_end.packets += 1;
+
+	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
 	return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
@@ -310,6 +324,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 	/* do this before the loop handling */
 	endp->bts_end.packets += 1;
 
+	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
 	return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
