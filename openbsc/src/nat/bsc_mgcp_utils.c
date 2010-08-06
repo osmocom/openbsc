@@ -318,8 +318,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
 	if (endp->ci == CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x\n",
-			ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x in state %d\n",
+			ENDPOINT_NUMBER(endp), bsc_endp->transaction_state);
 		bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
 		mgcp_free_endp(endp);
 		return;
