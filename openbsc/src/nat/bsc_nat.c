@@ -473,7 +473,7 @@ send_to_all:
 			LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
 		else if (bsc)
 			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
-		else
+		else if (lac != -1)
 			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging on lac: %d/0x%x\n",
 			     lac, lac);
 
