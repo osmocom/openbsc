@@ -121,6 +121,8 @@ struct bsc_config {
  * BSCs point of view of endpoints
  */
 struct bsc_endpoint {
+	/* the operation that is carried out */
+	int transaction_state;
 	/* the pending transaction id */
 	char *transaction_id;
 	/* the bsc we are talking to */

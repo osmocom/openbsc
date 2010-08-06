@@ -94,6 +94,7 @@ static void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
 		nat->bsc_endpoints[i].transaction_id = NULL;
 	}
 
+	nat->bsc_endpoints[i].transaction_state = 0;
 	nat->bsc_endpoints[i].bsc = NULL;
 }
 
@@ -202,6 +203,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		     endpoint, bsc_endp->transaction_id);
 		talloc_free(bsc_endp->transaction_id);
 		bsc_endp->transaction_id = NULL;
+		bsc_endp->transaction_state = 0;
 	}
 	bsc_endp->bsc = NULL;
 
@@ -237,6 +239,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 
 	bsc_endp->transaction_id = talloc_strdup(nat, transaction_id);
+	bsc_endp->transaction_state = state;
 	bsc_endp->bsc = sccp->bsc;
 
 	/* we need to update some bits */
@@ -325,6 +328,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	/* free some stuff */
 	talloc_free(bsc_endp->transaction_id);
 	bsc_endp->transaction_id = NULL;
+	bsc_endp->transaction_state = 0;
 
 	/*
 	 * rewrite the information. In case the endpoint was deleted
