@@ -344,16 +344,16 @@ int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
 	return sscanf(str, "%3d %59s\n", code, transaction) != 2;
 }
 
-int bsc_mgcp_extract_ci(const char *str)
+uint32_t bsc_mgcp_extract_ci(const char *str)
 {
-	int ci;
+	unsigned int ci;
 	char *res = strstr(str, "I: ");
 	if (!res) {
 		LOGP(DMGCP, LOGL_ERROR, "No CI in msg '%s'\n", str);
 		return CI_UNUSED;
 	}
 
-	if (sscanf(res, "I: %d", &ci) != 1) {
+	if (sscanf(res, "I: %u", &ci) != 1) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to parse CI in msg '%s'\n", str);
 		return CI_UNUSED;
 	}

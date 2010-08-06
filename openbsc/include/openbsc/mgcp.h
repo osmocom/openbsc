@@ -124,7 +124,7 @@ struct mgcp_config {
 	void *data;
 
 	struct mgcp_endpoint *endpoints;
-	unsigned int last_call_id;
+	uint32_t last_call_id;
 };
 
 /* config management */

@@ -263,7 +263,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc);
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60]);
-int bsc_mgcp_extract_ci(const char *resp);
+uint32_t bsc_mgcp_extract_ci(const char *resp);
 
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);

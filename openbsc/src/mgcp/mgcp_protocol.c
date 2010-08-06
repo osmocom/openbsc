@@ -89,7 +89,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg);
 
-static int generate_call_id(struct mgcp_config *cfg)
+static uint32_t generate_call_id(struct mgcp_config *cfg)
 {
 	int i;
 
@@ -170,7 +170,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 		addr = endp->cfg->source_addr;
 
 	snprintf(sdp_record, sizeof(sdp_record) - 1,
-			"I: %d\n\n"
+			"I: %u\n\n"
 			"v=0\r\n"
 			"c=IN IP4 %s\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
@@ -324,11 +324,13 @@ static int verify_call_id(const struct mgcp_endpoint *endp,
 }
 
 static int verify_ci(const struct mgcp_endpoint *endp,
-		     const char *ci)
+		     const char *_ci)
 {
-	if (atoi(ci) != endp->ci) {
-		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %d != %s\n",
-			ENDPOINT_NUMBER(endp), endp->ci, ci);
+	uint32_t ci = strtoul(_ci, NULL, 10);
+
+	if (ci != endp->ci) {
+		LOGP(DMGCP, LOGL_ERROR, "ConnectionIdentifiers do not match on 0x%x. %u != %s\n",
+			ENDPOINT_NUMBER(endp), endp->ci, _ci);
 		return -1;
 	}
 
