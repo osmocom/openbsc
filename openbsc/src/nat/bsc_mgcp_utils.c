@@ -270,6 +270,38 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 }
 
 /*
+ * We do have a failure, free data downstream..
+ */
+static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint *bsc_endp,
+				 struct bsc_connection *bsc)
+{
+		LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x in state %d\n",
+			ENDPOINT_NUMBER(endp), bsc_endp->transaction_state);
+
+		/* if a CRCX failed... send a DLCX down the stream */
+		if (bsc_endp->transaction_state == MGCP_ENDP_CRCX) {
+			struct sccp_connections *con;
+			con = bsc_mgcp_find_con(bsc->nat, ENDPOINT_NUMBER(endp));
+			if (!con) {
+				LOGP(DMGCP, LOGL_ERROR,
+					"No SCCP connection for endp 0x%x\n",
+					ENDPOINT_NUMBER(endp));
+			} else {
+				if (con->bsc == bsc) {
+					bsc_mgcp_send_dlcx(bsc, ENDPOINT_NUMBER(endp));
+					con->crcx = 0;
+				} else {
+					LOGP(DMGCP, LOGL_ERROR,
+						"Endpoint belongs to a different BSC\n");
+				}
+			}
+		}
+
+		bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
+		mgcp_free_endp(endp);
+}
+
+/*
  * We have received a msg from the BSC. We will see if we know
  * this transaction and if it belongs to the BSC. Then we will
  * need to patch the content to point to the local network and we
@@ -318,10 +350,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 	endp->ci = bsc_mgcp_extract_ci((const char *) msg->l2h);
 	if (endp->ci == CI_UNUSED) {
-		LOGP(DMGCP, LOGL_ERROR, "No CI, freeing endpoint 0x%x in state %d\n",
-			ENDPOINT_NUMBER(endp), bsc_endp->transaction_state);
-		bsc_mgcp_free_endpoint(bsc->nat, ENDPOINT_NUMBER(endp));
-		mgcp_free_endp(endp);
+		free_chan_downstream(endp, bsc_endp, bsc);
 		return;
 	}
 
