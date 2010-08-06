@@ -348,11 +348,16 @@ int bsc_mgcp_extract_ci(const char *str)
 {
 	int ci;
 	char *res = strstr(str, "I: ");
-	if (!res)
+	if (!res) {
+		LOGP(DMGCP, LOGL_ERROR, "No CI in msg '%s'\n", str);
 		return CI_UNUSED;
+	}
 
-	if (sscanf(res, "I: %d", &ci) != 1)
+	if (sscanf(res, "I: %d", &ci) != 1) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to parse CI in msg '%s'\n", str);
 		return CI_UNUSED;
+	}
+
 	return ci;
 }
 
