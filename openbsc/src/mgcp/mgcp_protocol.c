@@ -430,7 +430,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (found != 0)
 		return create_response(500, "CRCX", trans_id);
 
-	if (endp->ci != CI_UNUSED) {
+	if (endp->allocated) {
 		if (cfg->force_realloc) {
 			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
 			    ENDPOINT_NUMBER(endp));
@@ -487,6 +487,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (endp->ci == CI_UNUSED)
 		goto error2;
 
+	endp->allocated = 1;
 	endp->bts_end.payload_type = cfg->audio_payload;
 
 	/* policy CB */
@@ -667,7 +668,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (found != 0)
 		return create_response(error_code, "DLCX", trans_id);
 
-	if (endp->ci == CI_UNUSED) {
+	if (!endp->allocated) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
 		return create_response(error_code, "DLCX", trans_id);
 	}
@@ -811,6 +812,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 {
 	LOGP(DMGCP, LOGL_DEBUG, "Deleting endpoint on: 0x%x\n", ENDPOINT_NUMBER(endp));
 	endp->ci = CI_UNUSED;
+	endp->allocated = 0;
 
 	if (endp->callid) {
 		talloc_free(endp->callid);
