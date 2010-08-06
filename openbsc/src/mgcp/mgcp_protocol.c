@@ -509,7 +509,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		}
 	}
 
-	LOGP(DMGCP, LOGL_NOTICE, "Creating endpoint on: 0x%x CI: %u port: %u/%u\n",
+	LOGP(DMGCP, LOGL_DEBUG, "Creating endpoint on: 0x%x CI: %u port: %u/%u\n",
 		ENDPOINT_NUMBER(endp), endp->ci,
 		endp->net_end.local_port, endp->bts_end.local_port);
 	if (cfg->change_cb)
@@ -632,7 +632,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 
 	/* modify */
-	LOGP(DMGCP, LOGL_NOTICE, "Modified endpoint on: 0x%x Server: %s:%u\n",
+	LOGP(DMGCP, LOGL_DEBUG, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
@@ -717,7 +717,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	}
 
 	/* free the connection */
-	LOGP(DMGCP, LOGL_NOTICE, "Deleted endpoint on: 0x%x Server: %s:%u\n",
+	LOGP(DMGCP, LOGL_DEBUG, "Deleted endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
