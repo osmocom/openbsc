@@ -215,7 +215,7 @@ static int recevice_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in 
 	}
 
 	/* do not forward aynthing... maybe there is a packet from the bts */
-	if (endp->ci == CI_UNUSED)
+	if (!endp->allocated)
 		return -1;
 
 	#warning "Slight spec violation. With connection mode recvonly we should attempt to forward."
