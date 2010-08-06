@@ -76,6 +76,7 @@ struct mgcp_config;
 #define MGCP_POLICY_REJECT	5
 #define MGCP_POLICY_DEFER	6
 
+typedef int (*mgcp_realloc)(struct mgcp_config *cfg, int endpoint);
 typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state);
 typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
 typedef int (*mgcp_reset)(struct mgcp_config *cfg);
@@ -121,6 +122,7 @@ struct mgcp_config {
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
 	mgcp_reset reset_cb;
+	mgcp_realloc realloc_cb;
 	void *data;
 
 	struct mgcp_endpoint *endpoints;

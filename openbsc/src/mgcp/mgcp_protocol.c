@@ -435,6 +435,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
 			    ENDPOINT_NUMBER(endp));
 			mgcp_free_endp(endp);
+			if (cfg->realloc_cb)
+				cfg->realloc_cb(cfg, ENDPOINT_NUMBER(endp));
 		} else {
 			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
