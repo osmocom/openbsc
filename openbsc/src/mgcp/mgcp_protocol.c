@@ -429,6 +429,8 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	/* bind to the port now */
 	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_bts_base_port);
 	endp->bts_end.local_port = port;
+
+	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->rtp_net_base_port);
 	endp->net_end.local_port = port;
 
 	/* assign a local call identifier or fail */
@@ -709,6 +711,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->audio_name = talloc_strdup(cfg, "GSM-EFR/8000");
 	cfg->audio_payload = 97;
 	cfg->rtp_bts_base_port = RTP_PORT_DEFAULT;
+	cfg->rtp_net_base_port = RTP_PORT_NET_DEFAULT;
 
 	return cfg;
 }
