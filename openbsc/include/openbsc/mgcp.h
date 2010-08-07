@@ -96,9 +96,6 @@ struct mgcp_config {
 	int endp_dscp;
 
 	/* only used in forward mode */
-	char *forward_ip;
-	int forward_port;
-
 	unsigned int last_call_id;
 
 	/* endpoint configuration */
