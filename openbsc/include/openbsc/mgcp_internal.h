@@ -58,6 +58,8 @@ struct mgcp_rtp_end {
 	int rtp_port, rtcp_port;
 
 	int payload_type;
+
+	int local_port;
 };
 
 struct mgcp_endpoint {
@@ -66,9 +68,6 @@ struct mgcp_endpoint {
 	char *local_options;
 	int conn_mode;
 	int orig_mode;
-
-	/* the local rtp port we are binding to */
-	int rtp_port;
 
 	/*
 	 * RTP mangling:
