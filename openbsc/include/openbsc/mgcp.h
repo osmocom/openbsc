@@ -115,9 +115,6 @@ struct mgcp_config {
 	struct mgcp_port_range net_ports;
 	int endp_dscp;
 
-	/* only used in forward mode */
-	unsigned int last_call_id;
-
 	/* endpoint configuration */
 	unsigned int number_endpoints;
 	struct mgcp_endpoint *endpoints;
@@ -130,6 +127,8 @@ struct mgcp_config {
 	mgcp_policy policy_cb;
 	mgcp_reset reset_cb;
 	void *data;
+
+	uint32_t last_call_id;
 };
 
 /* config management */

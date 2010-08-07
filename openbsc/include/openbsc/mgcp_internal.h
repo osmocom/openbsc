@@ -85,7 +85,7 @@ struct mgcp_rtp_tap {
 };
 
 struct mgcp_endpoint {
-	int ci;
+	uint32_t ci;
 	char *callid;
 	char *local_options;
 	int conn_mode;
