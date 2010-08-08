@@ -424,11 +424,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	int found, i, line_start;
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
-	int error_code = 500;
+	int error_code = 400;
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
-		return create_response(500, "CRCX", trans_id);
+		return create_response(510, "CRCX", trans_id);
 
 	if (endp->allocated) {
 		if (cfg->force_realloc) {
@@ -440,7 +440,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		} else {
 			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
-			return create_response(500, "CRCX", trans_id);
+			return create_response(400, "CRCX", trans_id);
 		}
 	}
 
@@ -497,7 +497,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 			LOGP(DMGCP, LOGL_NOTICE, "CRCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
 			mgcp_free_endp(endp);
-			return create_response(500, "CRCX", trans_id);
+			return create_response(400, "CRCX", trans_id);
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
@@ -539,11 +539,11 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
-		return create_response(error_code, "MDCX", trans_id);
+		return create_response(510, "MDCX", trans_id);
 
 	if (endp->ci == CI_UNUSED) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not holding a connection. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return create_response(error_code, "MDCX", trans_id);
+		return create_response(400, "MDCX", trans_id);
 	}
 
 	MSG_TOKENIZE_START
@@ -619,7 +619,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 			     ENDPOINT_NUMBER(endp));
 			if (silent)
 				goto out_silent;
-			return create_response(500, "MDCX", trans_id);
+			return create_response(400, "MDCX", trans_id);
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
@@ -661,7 +661,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	int found, i, line_start;
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
-	int error_code = 500;
+	int error_code = 400;
 	int silent = 0;
 
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
@@ -670,7 +670,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	if (!endp->allocated) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return create_response(error_code, "DLCX", trans_id);
+		return create_response(400, "DLCX", trans_id);
 	}
 
 	MSG_TOKENIZE_START
@@ -704,7 +704,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 			     ENDPOINT_NUMBER(endp));
 			if (silent)
 				goto out_silent;
-			return create_response(500, "DLCX", trans_id);
+			return create_response(400, "DLCX", trans_id);
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
