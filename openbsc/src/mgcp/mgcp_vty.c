@@ -355,11 +355,30 @@ DEFUN(tap_call,
 	return CMD_SUCCESS;
 }
 
+DEFUN(free_endp, free_endp_cmd,
+      "free-endpoint NUMBER",
+      "Free the given endpoint\n" "Endpoint number in hex.\n")
+{
+	struct mgcp_endpoint *endp;
+
+	int endp_no = strtoul(argv[0], NULL, 16);
+	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
+		argv[0], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	endp = &g_cfg->endpoints[endp_no];
+	mgcp_free_endp(endp);
+	return CMD_SUCCESS;
+}
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
 	install_element(ENABLE_NODE, &loop_endp_cmd);
 	install_element(ENABLE_NODE, &tap_call_cmd);
+	install_element(ENABLE_NODE, &free_endp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);
