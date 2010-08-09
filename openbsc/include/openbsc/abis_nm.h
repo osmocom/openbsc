@@ -55,6 +55,8 @@ struct ipac_bcch_info {
 	u_int8_t ca_list_si1[16];
 };
 
+extern const struct value_string abis_nm_adm_state_names[];
+extern const struct value_string abis_nm_obj_class_names[];
 extern const struct tlv_definition nm_att_tlvdef;
 
 /* PUBLIC */
@@ -171,5 +173,8 @@ const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);
 int nm_is_running(struct gsm_nm_state *s);
 void abis_nm_clear_queue(struct gsm_bts *bts);
+
+
+int abis_nm_vty_init(void);
 
 #endif /* _NM_H */

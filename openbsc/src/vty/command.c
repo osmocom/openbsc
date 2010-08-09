@@ -1949,6 +1949,11 @@ enum node_type vty_go_parent(struct vty *vty)
 		subscr_put(vty->index);
 		vty->index = NULL;
 		break;
+	case OML_NODE:
+		vty->node = ENABLE_NODE;
+		talloc_free(vty->index);
+		vty->index = NULL;
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -2365,7 +2370,12 @@ DEFUN(config_exit,
 	case MGCP_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
-
+		break;
+	case OML_NODE:
+		vty->node = ENABLE_NODE;
+		talloc_free(vty->index);
+		vty->index = NULL;
+		break;
 	default:
 		break;
 	}
