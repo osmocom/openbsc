@@ -65,6 +65,7 @@ enum node_type {
 	VIEW_NODE,		/* View node. Default mode of vty interface. */
 	AUTH_ENABLE_NODE,	/* Authentication mode for change enable. */
 	ENABLE_NODE,		/* Enable node. */
+	OML_NODE,
 	CONFIG_NODE,		/* Config node. Default mode of config file. */
 	SERVICE_NODE,		/* Service node. */
 	DEBUG_NODE,		/* Debug node. */
@@ -107,7 +108,6 @@ enum node_type {
 	TS_NODE,
 	SUBSCR_NODE,
 	MGCP_NODE,
-	OML_NODE,
 };
 
 /* Node which has some commands and prompt string and configuration
