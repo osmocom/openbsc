@@ -147,7 +147,7 @@ static inline int mgcp_timeslot_to_endpoint(int multiplex, int timeslot)
 {
 	if (timeslot == 0)
 		timeslot = 1;
-	return timeslot + (31 * multiplex);
+	return timeslot + (32 * multiplex);
 }
 
 
