@@ -2,7 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2008, 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -41,6 +41,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
+#include <openbsc/gsm_04_80.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
@@ -102,6 +103,23 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 	}
 
 	return gsm0808_submit_dtap(conn, msg, 0);
+}
+
+int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
+{
+	struct gsm48_hdr *gh;
+	struct msgb *ss_notify;
+
+	ss_notify = gsm0480_create_notifySS(message);
+	if (!ss_notify)
+		return -1;
+
+	gsm0480_wrap_invoke(ss_notify, GSM0480_OP_CODE_NOTIFY_SS, 0);
+	uint8_t *data = msgb_push(ss_notify, 1);
+	data[0] = ss_notify->len - 1;
+	gh = (struct gsm48_hdr *) msgb_push(ss_notify, sizeof(*gh));
+	gh->msg_type = GSM48_MT_CC_FACILITY;
+	return gsm48_conn_sendmsg(ss_notify, trans->conn, trans);
 }
 
 static void release_security_operation(struct gsm_subscriber_connection *conn)
