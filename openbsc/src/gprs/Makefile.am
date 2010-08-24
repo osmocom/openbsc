@@ -3,6 +3,7 @@ AM_CFLAGS=-Wall -fno-strict-aliasing $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS)
 
 noinst_LIBRARIES = libgb.a
+noinst_HEADERS = gprs_sndcp.h
 
 if HAVE_LIBGTP
 sbin_PROGRAMS = osmo-gbproxy osmo-sgsn
