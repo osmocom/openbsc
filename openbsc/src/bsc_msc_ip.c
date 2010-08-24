@@ -326,6 +326,9 @@ static int open_sccp_connection(struct msgb *layer3)
 	con_data->lchan = layer3->lchan;
 	con_data->sccp = sccp_connection;
 
+	/* assign the outgoing msc connection */
+	con_data->msc_con = bsc_gsmnet->msc_con;
+
 	sccp_connection->state_cb = msc_outgoing_sccp_state;
 	sccp_connection->data_cb = msc_outgoing_sccp_data;
 	sccp_connection->data_ctx = con_data;

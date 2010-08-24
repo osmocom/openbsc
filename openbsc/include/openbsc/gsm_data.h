@@ -145,6 +145,9 @@ struct bss_sccp_connection_data {
 	struct llist_head sccp_queue;
 	unsigned int sccp_queue_size;
 
+	/* which msc connection to use? */
+	struct bsc_msc_connection *msc_con;
+
 	/* Active connections */
 	struct llist_head active_connections;
 };
