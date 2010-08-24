@@ -25,7 +25,7 @@
 #include "mgcp.h"
 
 #include <sys/types.h>
-#include <sccp/sccp_types.h>
+#include <osmocom/sccp/sccp_types.h>
 
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>

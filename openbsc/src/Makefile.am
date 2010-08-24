@@ -1,15 +1,12 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOSCCP_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOSCCP_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
                 isdnsync bsc_mgcp ipaccess-proxy \
                 bsc_msc_ip
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a
 noinst_HEADERS = vty/cardshell.h
-
-bscdir = $(libdir)
-bsc_LIBRARIES = libsccp.a
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		chan_alloc.c debug.c abis_nm_vty.c \
@@ -27,8 +24,6 @@ libmsc_a_SOURCES = gsm_subscriber.c db.c \
 
 libvty_a_SOURCES = vty/buffer.c vty/command.c vty/vector.c vty/vty.c
 
-libsccp_a_SOURCES = sccp/sccp.c
-
 bsc_hack_SOURCES = bsc_hack.c bsc_init.c vty_interface.c vty_interface_layer3.c
 bsc_hack_LDADD = libmsc.a libbsc.a libmsc.a libvty.a -ldl -ldbi $(LIBCRYPT)
 
@@ -36,7 +31,7 @@ bs11_config_SOURCES = bs11_config.c abis_nm.c gsm_data.c debug.c \
 		      rs232.c bts_siemens_bs11.c
 bsc_msc_ip_SOURCES = bssap.c bsc_msc_ip.c bsc_init.c vty_interface.c vty_interface_bsc.c \
 		bsc_msc.c bsc_msc_rf.c bsc_msc_grace.c gsm_04_80.c
-bsc_msc_ip_LDADD = libbsc.a libvty.a libsccp.a
+bsc_msc_ip_LDADD = libbsc.a libvty.a $(LIBOSMOSCCP_LIBS)
 
 
 ipaccess_find_SOURCES = ipaccess/ipaccess-find.c

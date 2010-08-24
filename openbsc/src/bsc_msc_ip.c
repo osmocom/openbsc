@@ -53,7 +53,7 @@
 #include <osmocore/write_queue.h>
 #include <osmocore/gsm0808.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 /* SCCP helper */
 #define SCCP_IT_TIMER 60

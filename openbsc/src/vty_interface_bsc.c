@@ -30,7 +30,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/vty.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 static struct gsm_network *gsmnet = NULL;
 

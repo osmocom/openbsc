@@ -31,7 +31,7 @@
 
 #include <osmocore/gsm0808.h>
 
-#include <sccp/sccp.h>
+#include <osmocom/sccp/sccp.h>
 
 #include <arpa/inet.h>
 #include <assert.h>
