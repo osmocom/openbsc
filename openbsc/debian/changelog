@@ -1,0 +1,5 @@
+openbsc (0.9.4-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Harald Welte <laforge@gnumonks.org>  Tue, 24 Aug 2010 13:34:24 +0200

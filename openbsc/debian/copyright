@@ -1,0 +1,50 @@
+This work was packaged for Debian by:
+
+    Harald Welte <laforge@gnumonks.org> on Tue, 24 Aug 2010 10:55:04 +0200
+
+It was downloaded from:
+
+    git://bs11-abis.gnumonks.org/openbsc.git
+
+Upstream Author(s):
+
+    Harald Welte <laforge@gnumonks.org>
+    Dieter Spaar <spaar@mirider.augusta.de>
+    Holger Hans Peter Freyther <zecke@selfish.org>
+    Sylvain Munaut <tnt@246tNt.com>
+    Daniel Willmann <daniel@totalueberwachung.de>
+    Jan Luebbe <jluebbe@debian.org>
+    Mike Haben <michael.haben@btinternet.com>
+    Andreas Eversberg <Andreas.Eversberg@versatel.de>
+
+Copyright:
+
+    Copyright (C) 2008-2010 Harald Welte <laforge@gnumonks.org>
+    Copyright (C) 2008-2009 Dieter Spaar <spaar@mirider.augusta.de>
+    Copyright (C) 2008-2010 Holger Hans Peter Freyther <zecke@selfish.org>
+    Copyright (C) 2009-2010 Sylvain Munaut <tnt@246tNt.com>
+    Copyright (C) 2009-2010 On-Waves
+    Copyright (C) 2008 Daniel Willmann <daniel@totalueberwachung.de>
+    Copyright (C) 2008 Jan Luebbe <jluebbe@debian.org>
+    Copyright (C) 2009 by Mike Haben <michael.haben@btinternet.com>
+    Copyright (C) 2009 Andreas Eversberg <Andreas.Eversberg@versatel.de>
+
+License:
+
+    GNU General Public License, Version 2 or later
+
+The Debian packaging is:
+
+    Copyright (C) 2010 Harald Welte <laforge@gnumonks.org>
+
+# Please chose a license for your packaging work. If the program you package
+# uses a mainstream license, using the same license is the safest choice.
+# Please avoid to pick license terms that are more restrictive than the
+# packaged work, as it may make Debian's contributions unacceptable upstream.
+# If you just want it to be GPL version 3, leave the following lines in.
+
+and is licensed under the GPL version 3,
+see "/usr/share/common-licenses/GPL-3".
+
+# Please also look if there are files or directories which have a
+# different copyright/license attached and list them here.

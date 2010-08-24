@@ -1,0 +1,44 @@
+Source: openbsc
+Section: net
+Priority: optional
+Maintainer: Harald Welte <laforge@gnumonks.org>
+Build-Depends: debhelper (>= 7.0.50~), autotools-dev, libgtp, libosmocore-dev, libosmo-sccp-dev
+Standards-Version: 3.8.4
+Homepage: http://openbsc.osmocom.org/
+Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git
+Vcs-Browser: http://openbsc.osmocom.org/trac/browser
+
+Package: osmocom-bsc
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: GSM Base Station Controller; BSC-only version of OpenBSC.  Needs a real MSC!
+
+Package: osmocom-nitb
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: GSM Network-in-a-Box, implements BSC, MSC, SMSC, HLR, VLR
+
+Package: osmocom-ipaccess-utils
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Command line utilities for ip.access nanoBTS
+
+Package: osmocom-bs11-utils
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Command line utilities for Siemens BS-11 BTS
+
+Package: osmocom-sgsn
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Osmocom Serving GPRS Support Node
+
+Package: osmocom-gbproxy
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Osmocom GPRS Gb Interface Proxy
+
+Package: osmocom-bsc-nat
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Osmocom Base Station Controller Network Address Translation
