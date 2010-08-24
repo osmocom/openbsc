@@ -1233,6 +1233,7 @@ int main(int argc, char **argv)
 	}
 
 	/* initialize sccp */
+	sccp_set_log_area(DSCCP);
 	sccp_system_init(msc_sccp_write_ipa, NULL);
 	sccp_connection_set_incoming(&sccp_ssn_bssap, msc_sccp_accept, NULL);
 	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, NULL);
