@@ -712,7 +712,7 @@ static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static void msc_sccp_write_ipa(struct msgb *msg, void *data)
+static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
 {
 	msc_queue_write(msg, IPAC_PROTO_SCCP);
 }
