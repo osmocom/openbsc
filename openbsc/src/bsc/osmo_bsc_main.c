@@ -25,6 +25,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocore/talloc.h>
+#include <osmocore/process.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -41,6 +42,7 @@ static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static const char *rf_ctl = NULL;
+static int daemonize = 0;
 
 extern void bsc_vty_init(void);
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
@@ -54,6 +56,7 @@ static void print_help()
 {
 	printf("  Some useful help...\n");
 	printf("  -h --help this text\n");
+	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
 	printf("  -s --disable-color\n");
 	printf("  -T --timestamp. Print a timestamp in the debug output.\n");
@@ -71,6 +74,7 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
+			{"daemonize", 0, 0, 'D'},
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
@@ -82,7 +86,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTc:e:r:t",
+		c = getopt_long(argc, argv, "hd:DsTc:e:r:t",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -97,6 +101,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'd':
 			log_parse_category_mask(stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		case 'c':
 			config_file = strdup(optarg);
@@ -179,6 +186,13 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
+	}
 
 	while (1) {
 		bsc_select_main(0);

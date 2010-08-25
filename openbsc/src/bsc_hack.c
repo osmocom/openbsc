@@ -32,6 +32,7 @@
 
 #include <openbsc/db.h>
 #include <osmocore/select.h>
+#include <osmocore/process.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
 #include <osmocore/talloc.h>
@@ -48,6 +49,7 @@ struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
 extern const char *openbsc_copyright;
+static int daemonize = 0;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -80,6 +82,7 @@ static void print_help()
 	printf("  Some useful help...\n");
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
+	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -s --disable-color\n");
 	printf("  -l --database db-name The database to use\n");
@@ -98,6 +101,7 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
+			{"daemonize", 0, 0, 'D'},
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"database", 1, 0, 'l'},
@@ -110,7 +114,7 @@ static void handle_options(int argc, char** argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sl:ar:p:TPVc:e:",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -125,6 +129,9 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'd':
 			log_parse_category_mask(stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		case 'l':
 			database_name = strdup(optarg);
@@ -266,6 +273,14 @@ int main(int argc, char **argv)
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
+	}
 
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);

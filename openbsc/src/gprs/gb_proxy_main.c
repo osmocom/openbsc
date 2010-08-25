@@ -37,6 +37,7 @@
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
 #include <osmocore/rate_ctr.h>
+#include <osmocore/process.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -67,6 +68,7 @@ const char *openbsc_copyright =
 static struct log_target *stderr_target;
 static char *config_file = "osmo_gbproxy.cfg";
 struct gbproxy_config gbcfg;
+static int daemonize = 0;
 
 /* Pointer to the SGSN peer */
 extern struct gbprox_peer *gbprox_peer_sgsn;
@@ -126,6 +128,7 @@ static void print_help()
 	printf("  Some useful help...\n");
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DNS:DGPRS,0:0 enable debugging\n");
+	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -s --disable-color\n");
 	printf("  -T --timestamp Prefix every log line with a timestamp\n");
@@ -140,6 +143,7 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
 			{ "debug", 1, 0, 'd' },
+			{ "daemonize", 0, 0, 'D' },
 			{ "config-file", 1, 0, 'c' },
 			{ "disable-color", 0, 0, 's' },
 			{ "timestamp", 0, 0, 'T' },
@@ -148,7 +152,7 @@ static void handle_options(int argc, char **argv)
 			{ 0, 0, 0, 0 }
 		};
 
-		c = getopt_long(argc, argv, "hd:c:sTVe:",
+		c = getopt_long(argc, argv, "hd:Dc:sTVe:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -163,6 +167,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'd':
 			log_parse_category_mask(stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		case 'c':
 			config_file = strdup(optarg);
@@ -258,6 +265,14 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen GRE "
 			"socket. Do you have CAP_NET_RAW?\n");
 		exit(2);
+	}
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
 	}
 
 	/* Reset all the persistent NS-VCs that we've read from the config */

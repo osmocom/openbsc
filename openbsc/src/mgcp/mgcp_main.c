@@ -35,6 +35,7 @@
 #include <openbsc/debug.h>
 #include <osmocore/msgb.h>
 #include <osmocore/talloc.h>
+#include <osmocore/process.h>
 #include <openbsc/gsm_data.h>
 #include <osmocore/select.h>
 #include <openbsc/mgcp.h>
@@ -57,6 +58,7 @@ void subscr_put() { abort(); }
 static struct bsc_fd bfd;
 static struct mgcp_config *cfg;
 static int reset_endpoints = 0;
+static int daemonize = 0;
 
 const char *openbsc_copyright =
 	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
@@ -85,11 +87,12 @@ static void handle_options(int argc, char** argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"config-file", 1, 0, 'c'},
+			{"daemonize", 0, 0, 'D'},
 			{"version", 0, 0, 'V'},
 			{0, 0, 0, 0},
 		};
 
-		c = getopt_long(argc, argv, "hc:V", long_options, &option_index);
+		c = getopt_long(argc, argv, "hc:VD", long_options, &option_index);
 
 		if (c == -1)
 			break;
@@ -105,6 +108,9 @@ static void handle_options(int argc, char** argv)
 		case 'V':
 			print_version(1);
 			exit(0);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		default:
 			/* ignore */
@@ -258,6 +264,14 @@ int main(int argc, char** argv)
 
 	/* initialisation */
 	srand(time(NULL));
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
+	}
 
 	/* main loop */
 	while (1) {

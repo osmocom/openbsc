@@ -46,6 +46,7 @@
 
 #include <osmocore/gsm0808.h>
 #include <osmocore/talloc.h>
+#include <osmocore/process.h>
 
 #include <osmocore/protocol/gsm_08_08.h>
 
@@ -65,6 +66,7 @@ static struct in_addr local_addr;
 static struct bsc_fd bsc_listen;
 static const char *msc_ip = NULL;
 static struct timer_list sccp_close;
+static int daemonize = 0;
 
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Holger Hans Peter Freyther and On-Waves\n"
@@ -994,6 +996,7 @@ static void print_help()
 	printf("  Some useful help...\n");
 	printf("  -h --help this text\n");
 	printf("  -d option --debug=DRLL:DCC:DMM:DRR:DRSL:DNM enable debugging\n");
+	printf("  -D --daemonize Fork the process into a background daemon\n");
 	printf("  -s --disable-color\n");
 	printf("  -c --config-file filename The config file to use.\n");
 	printf("  -m --msc=IP. The address of the MSC.\n");
@@ -1106,8 +1109,9 @@ static struct vty_app_info vty_info = {
 
 int main(int argc, char** argv)
 {
-	talloc_init_ctx();
+	int rc;
 
+	talloc_init_ctx();
 
 	log_init(&log_info);
 	stderr_target = log_target_create_stderr();
@@ -1181,6 +1185,14 @@ int main(int argc, char** argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
+	}
 
 	/* recycle timer */
 	sccp_set_log_area(DSCCP);
