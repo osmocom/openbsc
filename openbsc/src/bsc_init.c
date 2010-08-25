@@ -1057,7 +1057,7 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 			struct gsm_bts_trx_ts *ts = &trx->ts[ts_no];
 
 			for (lchan_no = 0; lchan_no < ARRAY_SIZE(ts->lchan); ++lchan_no) {
-				if (ts->lchan[lchan_no].state != GSM_LCHAN_NONE)
+				if (ts->lchan[lchan_no].state != LCHAN_S_NONE)
 					lchan_free(&ts->lchan[lchan_no]);
 				lchan_reset(&ts->lchan[lchan_no]);
 			}
