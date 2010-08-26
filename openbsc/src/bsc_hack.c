@@ -38,8 +38,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
-
-#include <osmocom/vty/command.h>
+#include <openbsc/vty.h>
 
 #include "../bscconfig.h"
 
@@ -212,6 +211,7 @@ static struct vty_app_info vty_info = {
 	.name 		= "OpenBSC",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
+	.is_config_node	= bsc_vty_is_config_node,
 };
 
 int main(int argc, char **argv)
