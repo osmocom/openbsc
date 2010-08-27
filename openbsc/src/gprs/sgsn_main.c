@@ -37,6 +37,8 @@
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
 #include <osmocore/rate_ctr.h>
+#include <osmocore/logging.h>
+#include <osmocore/process.h>
 
 #include <osmocom/vty/telnet_interface.h>
 
@@ -61,6 +63,8 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 struct gprs_ns_inst *sgsn_nsi;
+static struct log_target *stderr_target;
+static int daemonize = 0;
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Harald Welte and On-Waves\n"
 	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
@@ -133,10 +137,70 @@ static struct vty_app_info vty_info = {
 	.go_parent_cb	= bsc_vty_go_parent,
 };
 
+static void print_help(void)
+{
+	printf("Some useful help...\n");
+	printf("  -h --help\tthis text\n");
+	printf("  -D --daemonize\tFork the process into a background daemon\n");
+	printf("  -d option --debug\tenable Debugging\n");
+	printf("  -s --disable-color\n");
+	printf("  -c --config-file\tThe config file to use\n");
+	printf("  -e --log-level number\tSet a global log level\n");
+}
+
+static void handle_options(int argc, char **argv)
+{
+	while (1) {
+		int option_index = 0, c;
+		static struct option long_options[] = {
+			{"help", 0, 0, 'h'},
+			{"debug", 1, 0, 'd'},
+			{"daemonize", 0, 0, 'D'},
+			{"config-file", 1, 0, 'c'},
+			{"disable-color", 0, 0, 's'},
+			{"timestamp", 0, 0, 'T'},
+			{"log-level", 1, 0, 'e'},
+			{NULL, 0, 0, 0}
+		};
+
+		c = getopt_long(argc, argv, "hd:Dc:sTe:",
+				long_options, &option_index);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'h':
+			//print_usage();
+			print_help();
+			exit(0);
+		case 's':
+			log_set_use_color(stderr_target, 0);
+			break;
+		case 'd':
+			log_parse_category_mask(stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
+			break;
+		case 'c':
+			sgsn_inst.config_file = strdup(optarg);
+			break;
+		case 'T':
+			log_set_print_timestamp(stderr_target, 1);
+			break;
+		case 'e':
+			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		default:
+			/* ignore */
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
-	struct log_target *stderr_target;
 	struct sockaddr_in sin;
 	int rc;
 
@@ -158,6 +222,8 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	logging_vty_add_cmds();
         sgsn_vty_init();
+
+	handle_options(argc, argv);
 
 	rate_ctr_init(tall_bsc_ctx);
 	rc = telnet_init(tall_bsc_ctx, &dummy_network, 4245);
@@ -202,6 +268,14 @@ int main(int argc, char **argv)
 		LOGP(DGPRS, LOGL_FATAL, "Cannot bind/listen GRE "
 			"socket. Do you have CAP_NET_RAW?\n");
 		exit(2);
+	}
+
+	if (daemonize) {
+		rc = osmo_daemonize();
+		if (rc < 0) {
+			perror("Error during daemonize");
+			exit(1);
+		}
 	}
 
 	while (1) {
