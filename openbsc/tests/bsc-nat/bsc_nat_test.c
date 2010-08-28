@@ -444,7 +444,7 @@ static void test_mgcp_ass_tracking(void)
 	msg = msgb_alloc(4096, "foo");
 	copy_to_msg(msg, ass_cmd, sizeof(ass_cmd));
 	parsed = bsc_nat_parse(msg);
-	if (bsc_mgcp_assign(&con, msg) != 0) {
+	if (bsc_mgcp_assign_patch(&con, msg) != 0) {
 		fprintf(stderr, "Failed to handle assignment.\n");
 		abort();
 	}
@@ -454,14 +454,19 @@ static void test_mgcp_ass_tracking(void)
 		abort();
 	}
 
-	if (con.bsc_endp != 21) {
-		fprintf(stderr, "Assigned timeslot should have been 21.\n");
+	if (con.bsc_endp != 1) {
+		fprintf(stderr, "Assigned timeslot should have been 1.\n");
 		abort();
 	}
+	if (con.bsc->endpoint_status[1] != 1) {
+		fprintf(stderr, "The status on the BSC is wrong.\n");
+		abort();
+	}
+
 	talloc_free(parsed);
 
 	bsc_mgcp_dlcx(&con);
-	if (con.bsc_endp != -1 || con.msc_endp != -1) {
+	if (con.bsc_endp != -1 || con.msc_endp != -1 || con.bsc->endpoint_status[1] != 0) {
 		fprintf(stderr, "Clearing should remove the mapping.\n");
 		abort();
 	}

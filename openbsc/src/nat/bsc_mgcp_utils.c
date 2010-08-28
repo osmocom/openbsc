@@ -38,7 +38,36 @@
 #include <errno.h>
 #include <unistd.h>
 
-int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
+static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connections *con)
+{
+	const int number_endpoints = ARRAY_SIZE(bsc->endpoint_status);
+	int i;
+
+	for (i = 1; i < number_endpoints; ++i) {
+		int endpoint = (bsc->last_endpoint + i) % number_endpoints;
+		if (endpoint == 0)
+			endpoint = 1;
+
+		if (bsc->endpoint_status[endpoint] == 0) {
+			bsc->endpoint_status[endpoint] = 1;
+			con->bsc_endp = endpoint;
+			bsc->last_endpoint = endpoint;
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
+static uint16_t create_cic(int endpoint)
+{
+	int timeslot, multiplex;
+
+	mgcp_endpoint_to_timeslot(endpoint, &multiplex, &timeslot);
+	return (multiplex << 5) | (timeslot & 0x1f);
+}
+
+int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
 {
 	struct sccp_connections *mcon;
 	struct tlv_parsed tp;
@@ -83,7 +112,17 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 	}
 
 	con->msc_endp = endp;
-	con->bsc_endp = endp;
+	if (bsc_assign_endpoint(con->bsc, con) != 0)
+		return -1;
+
+	/*
+	 * now patch the message for the new CIC...
+	 * still assumed to be one multiplex only
+	 */
+	cic = htons(create_cic(con->bsc_endp));
+	memcpy((uint8_t *) TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE),
+		&cic, sizeof(cic));
+
 	return 0;
 }
 
@@ -92,6 +131,15 @@ static void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
 	if (nat->bsc_endpoints[i].transaction_id) {
 		talloc_free(nat->bsc_endpoints[i].transaction_id);
 		nat->bsc_endpoints[i].transaction_id = NULL;
+	}
+
+	/* Free the endpoint status, so we can allocate it again */
+	if (nat->bsc_endpoints[i].bsc) {
+		struct bsc_connection *bsc = nat->bsc_endpoints[i].bsc;
+		if (bsc->endpoint_status[i] != 1)
+			LOGP(DNAT, LOGL_ERROR, "Endpoint %d should be allocated\n", i);
+
+		bsc->endpoint_status[i] = 0;
 	}
 
 	nat->bsc_endpoints[i].transaction_state = 0;
