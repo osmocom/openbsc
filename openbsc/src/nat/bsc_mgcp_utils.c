@@ -156,9 +156,10 @@ void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
 	if (con->bsc_timeslot != -1 && con->crcx) {
-		int endp = mgcp_timeslot_to_endpoint(0, con->msc_timeslot);
-		bsc_mgcp_send_dlcx(con->bsc, endp);
-		bsc_mgcp_free_endpoint(con->bsc->nat, endp);
+		int bsc_endp = mgcp_timeslot_to_endpoint(0, con->bsc_timeslot);
+		int msc_endp = mgcp_timeslot_to_endpoint(0, con->msc_timeslot);
+		bsc_mgcp_send_dlcx(con->bsc, bsc_endp);
+		bsc_mgcp_free_endpoint(con->bsc->nat, msc_endp);
 	}
 
 	bsc_mgcp_init(con);
