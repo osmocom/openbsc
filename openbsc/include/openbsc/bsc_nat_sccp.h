@@ -83,7 +83,6 @@ struct sccp_connections {
 	 * audio handling. Remember if we have ever send a CRCX,
 	 * remember the endpoint used by the MSC and BSC.
 	 */
-	int crcx;
 	int msc_endp;
 	int bsc_endp;
 

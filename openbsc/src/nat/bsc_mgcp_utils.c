@@ -149,13 +149,12 @@ void bsc_mgcp_init(struct sccp_connections *con)
 {
 	con->msc_endp = -1;
 	con->bsc_endp = -1;
-	con->crcx = 0;
 }
 
 void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
-	if (con->bsc_endp != -1 && con->crcx) {
+	if (con->bsc_endp != -1) {
 		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp);
 		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
 	}
@@ -253,7 +252,6 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		}
 
 		/* send the message and a fake MDCX to force sending of a dummy packet */
-		sccp->crcx = 1;
 		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
 		bsc_mgcp_send_mdcx(sccp->bsc, mgcp_endp);
 		return MGCP_POLICY_DEFER;
@@ -288,7 +286,6 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 		} else {
 			if (con->bsc == bsc) {
 				bsc_mgcp_send_dlcx(bsc, ENDPOINT_NUMBER(endp));
-				con->crcx = 0;
 			} else {
 				LOGP(DMGCP, LOGL_ERROR,
 					"Endpoint belongs to a different BSC\n");
