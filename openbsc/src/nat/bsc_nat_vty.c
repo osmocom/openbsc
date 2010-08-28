@@ -121,7 +121,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 			sccp_src_ref_to_int(&con->patched_ref),
 			con->has_remote_ref,
 			sccp_src_ref_to_int(&con->remote_ref),
-			con->msc_timeslot, con->bsc_timeslot,
+			con->msc_endp, con->bsc_endp,
 			bsc_con_type_to_string(con->con_type),
 			VTY_NEWLINE);
 	}

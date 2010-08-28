@@ -449,19 +449,19 @@ static void test_mgcp_ass_tracking(void)
 		abort();
 	}
 
-	if (con.msc_timeslot != 21) {
+	if (con.msc_endp != 21) {
 		fprintf(stderr, "Timeslot should be 21.\n");
 		abort();
 	}
 
-	if (con.bsc_timeslot != 21) {
+	if (con.bsc_endp != 21) {
 		fprintf(stderr, "Assigned timeslot should have been 21.\n");
 		abort();
 	}
 	talloc_free(parsed);
 
 	bsc_mgcp_dlcx(&con);
-	if (con.bsc_timeslot != -1 || con.msc_timeslot != -1) {
+	if (con.bsc_endp != -1 || con.msc_endp != -1) {
 		fprintf(stderr, "Clearing should remove the mapping.\n");
 		abort();
 	}
@@ -483,8 +483,8 @@ static void test_mgcp_find(void)
 	llist_add(&con->list_entry, &nat->bsc_connections);
 
 	sccp_con = talloc_zero(con, struct sccp_connections);
-	sccp_con->msc_timeslot = 12;
-	sccp_con->bsc_timeslot = 12;
+	sccp_con->msc_endp = 12;
+	sccp_con->bsc_endp = 12;
 	sccp_con->bsc = con;
 	llist_add(&sccp_con->list_entry, &nat->sccp_connections);
 
@@ -494,13 +494,6 @@ static void test_mgcp_find(void)
 	}
 
 	if (bsc_mgcp_find_con(nat, 12) != sccp_con) {
-		fprintf(stderr, "Didn't find the connection\n");
-		abort();
-	}
-
-	sccp_con->msc_timeslot = 0;
-	sccp_con->bsc_timeslot = 0;
-	if (bsc_mgcp_find_con(nat, 1) != sccp_con) {
 		fprintf(stderr, "Didn't find the connection\n");
 		abort();
 	}

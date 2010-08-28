@@ -45,7 +45,7 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 	uint16_t cic;
 	uint8_t timeslot;
 	uint8_t multiplex;
-	int combined;
+	int endp;
 
 	if (!msg->l3h) {
 		LOGP(DNAT, LOGL_ERROR, "Assignment message should have l3h pointer.\n");
@@ -68,22 +68,22 @@ int bsc_mgcp_assign(struct sccp_connections *con, struct msgb *msg)
 	multiplex = (cic & ~0x1f) >> 5;
 
 
-	combined = (32 * multiplex) + timeslot;
+	endp = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 
 	/* find stale connections using that endpoint */
 	llist_for_each_entry(mcon, &con->bsc->nat->sccp_connections, list_entry) {
-		if (mcon->msc_timeslot == combined) {
+		if (mcon->msc_endp == endp) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Timeslot %d was assigned to 0x%x and now 0x%x\n",
-			     combined,
+			     "Endpoint %d was assigned to 0x%x and now 0x%x\n",
+			     endp,
 			     sccp_src_ref_to_int(&mcon->patched_ref),
 			     sccp_src_ref_to_int(&con->patched_ref));
 			bsc_mgcp_dlcx(mcon);
 		}
 	}
 
-	con->msc_timeslot = combined;
-	con->bsc_timeslot = con->msc_timeslot;
+	con->msc_endp = endp;
+	con->bsc_endp = endp;
 	return 0;
 }
 
@@ -147,19 +147,17 @@ static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
 
 void bsc_mgcp_init(struct sccp_connections *con)
 {
-	con->msc_timeslot = -1;
-	con->bsc_timeslot = -1;
+	con->msc_endp = -1;
+	con->bsc_endp = -1;
 	con->crcx = 0;
 }
 
 void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
-	if (con->bsc_timeslot != -1 && con->crcx) {
-		int bsc_endp = mgcp_timeslot_to_endpoint(0, con->bsc_timeslot);
-		int msc_endp = mgcp_timeslot_to_endpoint(0, con->msc_timeslot);
-		bsc_mgcp_send_dlcx(con->bsc, bsc_endp);
-		bsc_mgcp_free_endpoint(con->bsc->nat, msc_endp);
+	if (con->bsc_endp != -1 && con->crcx) {
+		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp);
+		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
 	}
 
 	bsc_mgcp_init(con);
@@ -172,9 +170,9 @@ struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	struct sccp_connections *sccp;
 
 	llist_for_each_entry(sccp, &nat->sccp_connections, list_entry) {
-		if (sccp->msc_timeslot == -1)
+		if (sccp->msc_endp == -1)
 			continue;
-		if (mgcp_timeslot_to_endpoint(0, sccp->msc_timeslot) != endpoint)
+		if (sccp->msc_endp != endpoint)
 			continue;
 
 		con = sccp;

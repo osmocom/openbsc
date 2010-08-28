@@ -79,10 +79,13 @@ struct sccp_connections {
 	int con_type;
 	int con_local;
 
-	/* GSM audio handling. That is 32 * multiplex + ts */
+	/*
+	 * audio handling. Remember if we have ever send a CRCX,
+	 * remember the endpoint used by the MSC and BSC.
+	 */
 	int crcx;
-	int msc_timeslot;
-	int bsc_timeslot;
+	int msc_endp;
+	int bsc_endp;
 
 	/* timeout handling */
 	struct timespec creation_time;
