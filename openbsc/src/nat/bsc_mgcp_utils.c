@@ -148,7 +148,7 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 }
 
 /* send a MDCX where we do not want a response */
-static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, struct mgcp_endpoint *endp)
+static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp_endpoint *endp)
 {
 	char buf[2096];
 	int len;
@@ -159,7 +159,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, struct mgcp_endpoint 
 		       "\r\n"
 		       "c=IN IP4 %s\r\n"
 		       "m=audio %d RTP/AVP 255\r\n",
-		       ENDPOINT_NUMBER(endp),
+		       port,
 		       bsc->nat->mgcp_cfg->source_addr,
 		       endp->bts_end.local_port);
 	if (len < 0) {
@@ -292,7 +292,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 
 		/* send the message and a fake MDCX to force sending of a dummy packet */
 		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
-		bsc_mgcp_send_mdcx(sccp->bsc, mgcp_endp);
+		bsc_mgcp_send_mdcx(sccp->bsc, sccp->bsc_endp, mgcp_endp);
 		return MGCP_POLICY_DEFER;
 	} else if (state == MGCP_ENDP_DLCX) {
 		/* we will free the endpoint now and send a DLCX to the BSC */
