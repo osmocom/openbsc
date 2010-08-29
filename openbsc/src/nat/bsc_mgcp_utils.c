@@ -133,15 +133,6 @@ static void bsc_mgcp_free_endpoint(struct bsc_nat *nat, int i)
 		nat->bsc_endpoints[i].transaction_id = NULL;
 	}
 
-	/* Free the endpoint status, so we can allocate it again */
-	if (nat->bsc_endpoints[i].bsc) {
-		struct bsc_connection *bsc = nat->bsc_endpoints[i].bsc;
-		if (bsc->endpoint_status[i] != 1)
-			LOGP(DNAT, LOGL_ERROR, "Endpoint %d should be allocated\n", i);
-
-		bsc->endpoint_status[i] = 0;
-	}
-
 	nat->bsc_endpoints[i].transaction_state = 0;
 	nat->bsc_endpoints[i].bsc = NULL;
 }
