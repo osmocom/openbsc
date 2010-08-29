@@ -333,7 +333,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 				ENDPOINT_NUMBER(endp));
 		} else {
 			if (con->bsc == bsc) {
-				bsc_mgcp_send_dlcx(bsc, ENDPOINT_NUMBER(endp));
+				bsc_mgcp_send_dlcx(bsc, con->bsc_endp);
 			} else {
 				LOGP(DMGCP, LOGL_ERROR,
 					"Endpoint belongs to a different BSC\n");
