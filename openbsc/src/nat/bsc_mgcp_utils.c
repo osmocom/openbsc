@@ -176,7 +176,7 @@ static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
 	int len;
 
 	len = snprintf(buf, sizeof(buf),
-		       "DLCX 23 %x@mgw MGCP 1.0\r\n"
+		       "DLCX 26 %x@mgw MGCP 1.0\r\n"
 		       "Z: noanswer\r\n", endpoint);
 	if (len < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
