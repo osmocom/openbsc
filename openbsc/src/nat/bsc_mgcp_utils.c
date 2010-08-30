@@ -196,6 +196,9 @@ void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
 	if (con->bsc_endp != -1) {
+		if (con->bsc->endpoint_status[con->bsc_endp] != 1)
+			LOGP(DNAT, LOGL_ERROR, "Endpoint 0x%x was not in use\n", con->bsc_endp);
+		con->bsc->endpoint_status[con->bsc_endp] = 0;
 		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp);
 		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
 	}
@@ -269,7 +272,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	}
 
 	/* we need to generate a new and patched message */
-	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length,
+	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length, sccp->bsc_endp,
 				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
@@ -401,7 +404,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	 * there should be nothing for us to rewrite so putting endp->rtp_port
 	 * with the value of 0 should be no problem.
 	 */
-	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg),
+	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
 				  bsc->nat->mgcp_cfg->source_addr, endp->net_end.local_port);
 
 	if (!output) {
@@ -438,9 +441,28 @@ uint32_t bsc_mgcp_extract_ci(const char *str)
 	return ci;
 }
 
-/* we need to replace some strings... */
-struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port)
+static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
+		       int endp, int len, int cr)
 {
+	int slen;
+	int ret;
+	char buf[40];
+
+	buf[0] = buf[39] = '\0';
+	ret = sscanf(tok, "%*s %s", buf);
+
+	slen = sprintf((char *) output->l3h, "%s %s %x@mgw MGCP 1.0%s",
+			op, buf, endp, cr ? "\r\n" : "\n");
+	output->l3h = msgb_put(output, slen);
+}
+
+/* we need to replace some strings... */
+struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char *ip, int port)
+{
+	static const char *crcx_str = "CRCX ";
+	static const char *dlcx_str = "DLCX ";
+	static const char *mdcx_str = "MDCX ";
+
 	static const char *ip_str = "c=IN IP4 ";
 	static const char *aud_str = "m=audio ";
 
@@ -461,11 +483,18 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port)
 
 	running = input;
 	output->l2h = output->data;
+	output->l3h = output->l2h;
 	for (token = strsep(&running, "\n"); running; token = strsep(&running, "\n")) {
 		int len = strlen(token);
 		int cr = len > 0 && token[len - 1] == '\r';
 
-		if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
+		if (strncmp(crcx_str, token, (sizeof crcx_str) - 1) == 0) {
+			patch_mgcp(output, "CRCX", token, endpoint, len, cr);
+		} else if (strncmp(dlcx_str, token, (sizeof dlcx_str) - 1) == 0) {
+			patch_mgcp(output, "DLCX", token, endpoint, len, cr);
+		} else if (strncmp(mdcx_str, token, (sizeof mdcx_str) - 1) == 0) {
+			patch_mgcp(output, "MDCX", token, endpoint, len, cr);
+		} else if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
 			output->l3h = msgb_put(output, strlen(ip_str));
 			memcpy(output->l3h, ip_str, strlen(ip_str));
 			output->l3h = msgb_put(output, strlen(ip));

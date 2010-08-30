@@ -521,7 +521,7 @@ static void test_mgcp_rewrite(void)
 
 		char *input = strdup(orig);
 
-		output = bsc_mgcp_rewrite(input, strlen(input), ip, port);
+		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e, ip, port);
 		if (msgb_l2len(output) != strlen(patc)) {
 			fprintf(stderr, "Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
 			fprintf(stderr, "String '%s' vs '%s'\n", (const char *) output->l2h, patc);
