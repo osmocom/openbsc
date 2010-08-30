@@ -166,6 +166,8 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
 		return;
 	}
+
+	#warning "The MDCX is not send to the BSC. It should"
 }
 
 static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
