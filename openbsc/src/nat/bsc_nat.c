@@ -422,7 +422,7 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 					struct rate_ctr_group *ctrg;
 					ctrg = con->bsc->cfg->stats.ctrg;
 					rate_ctr_inc(&ctrg->ctr[BCFG_CTR_SCCP_CALLS]);
-					if (bsc_mgcp_assign(con, msg) != 0)
+					if (bsc_mgcp_assign_patch(con, msg) != 0)
 						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
 				} else
 					LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");

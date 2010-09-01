@@ -75,6 +75,10 @@ struct bsc_connection {
 	struct timer_list ping_timeout;
 	struct timer_list pong_timeout;
 
+	/* mgcp related code */
+	int endpoint_status[32];
+	int last_endpoint;
+
 	/* a back pointer */
 	struct bsc_nat *nat;
 };
@@ -253,14 +257,14 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat
  * MGCP/Audio handling
  */
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length);
-int bsc_mgcp_assign(struct sccp_connections *, struct msgb *msg);
+int bsc_mgcp_assign_patch(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_init(struct sccp_connections *);
 void bsc_mgcp_dlcx(struct sccp_connections *);
 void bsc_mgcp_free_endpoints(struct bsc_nat *nat);
 int bsc_mgcp_nat_init(struct bsc_nat *nat);
 
 struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *, int endpoint_number);
-struct msgb *bsc_mgcp_rewrite(char *input, int length, const char *ip, int port);
+struct msgb *bsc_mgcp_rewrite(char *input, int length, int endp, const char *ip, int port);
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg);
 
 void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc);

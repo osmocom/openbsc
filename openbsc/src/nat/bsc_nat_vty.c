@@ -29,6 +29,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/rate_ctr.h>
+#include <osmocore/utils.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -121,7 +122,7 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 			sccp_src_ref_to_int(&con->patched_ref),
 			con->has_remote_ref,
 			sccp_src_ref_to_int(&con->remote_ref),
-			con->msc_timeslot, con->bsc_timeslot,
+			con->msc_endp, con->bsc_endp,
 			bsc_con_type_to_string(con->con_type),
 			VTY_NEWLINE);
 	}
@@ -143,6 +144,30 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 			con->cfg ? con->cfg->lac : -1,
 			con->authenticated, con->write_queue.bfd.fd,
 			inet_ntoa(sock.sin_addr), VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
+      SHOW_STR "Display the MGCP status for a given BSC")
+{
+	struct bsc_connection *con;
+	int nr = atoi(argv[0]);
+	int i;
+
+	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		if (!con->cfg)
+			continue;
+		if (con->cfg->nr != nr)
+			continue;
+
+		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
+		for (i = 1; i < ARRAY_SIZE(con->endpoint_status); ++i)
+			vty_out(vty, " Endpoint 0x%x %s%s", i,
+				con->endpoint_status[i] == 0 ? "free" : "allocated",
+				VTY_NEWLINE);
+		break;
 	}
 
 	return CMD_SUCCESS;
@@ -564,6 +589,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&close_bsc_cmd);
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
+	install_element_ve(&show_bsc_mgcp_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
