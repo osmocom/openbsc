@@ -76,7 +76,7 @@ struct bsc_connection {
 	struct timer_list pong_timeout;
 
 	/* mgcp related code */
-	int endpoint_status[33];
+	int endpoint_status[32];
 	int last_endpoint;
 
 	/* a back pointer */
