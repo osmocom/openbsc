@@ -31,46 +31,65 @@ GSM 04.08 3.4.13: RR connection release procedure
 
 == Implementation in OpenBSC ==
 
-THIS IS OUTDATED and will be updated...
+There are two possible reasons a gsm_subscriber_connection
+will be released. One is a network failure, the other is
+the completion of an operation/transaction.
 
-chan_alloc.c:lchan_auto_release()
-	* checks if use count still > 0 (abort)
-	* calls gsm48_send_rr_release()
-		* which calls rsl_deact_sacch()
-	* calls rsl_release_request()
-		* which sends RLL Link Release request
-	
+=== Failure ===
+The BSC API will call the gsm_04_08.c:gsm0408_clear_request callback
+and the MSC part will release all transactions, operations and such
+and the channels will be released as error case.
+
+=== Success ===
+Every time an 'operation' or 'transaction' is finished msc_release_connection
+will be called and it will determine if the gsm_subscriber_connection can
+be released.
+
+In case it can be released bsc_api.c:gsm0808_clear will be called
+which will release all lchan's associated with the connection. For the
+primary channel a SACH Deactivate will be send with the release
+reason NORMAL RELEASE.
+
+
+bsc_api.c:gsm0808_clear
+	* Release a channel used for handover
+	* Release the primary lchan with normal release, SACH deactivate
+
+chan_alloc.c:lchan_release(chan, sach_deactivate, reason)
+	* Start release procedure. It is working in steps with callbacks
+          coming from the abis_rsl.c code.
+        * Release all SAPI's > 0, wait for them to be released
+	* Send SACH Deactivate on SAPI=0
+	* Finally Release the channel
+
 RX of RELease INDication:
-	* call rsl_rf_chan_release() (send RF_CHAN_REL)
+        * Calls internal rsl_handle_release which might release the RF.
+        * Informs chan_alloc.c about the release with
+          rsl_lchan_rll_release.
 
 RX of RELease CONFimem:
-	* call rsl_rf_chan_release() (send RF_CHAN_REL)
+        * Calls internal rsl_handle_release which might release the RF.
+        * Informs chan_alloc.c about the release with
+          rsl_lchan_rll_release.
 
 * RX of RF_CHAN_REL_ACK
 	* call lchan_free()
-		* subscr_put()
-		* delete release_timer
 
 
 === Integration with SMS ===
 
 * RX of CP_ERROR or unimplemented MT
-	* trigger trans_free() which will lchan_auto_release()
+	* trigger trans_free() which will msc_release_connection()
 
 * CP TC1* expired while waiting for CP-ACK
-	* trigger trans_free() which will lchan_auto_release()
+	* trigger trans_free() which will msc_release_connection()
 
 * RX of RP_ERROR
-	* trigger trans_free() which will lchan_auto_release()
+	* trigger trans_free() which will msc_release_connection()
 	
 * TX of CP-ACK in MT DELIVER
-	* trigger trans_free() which will lchan_auto_release()
+	* trigger trans_free() which will msc_release_connection()
 
 * RX of CP-ACK in MO SUBMIT
-	* trigger trans_free() which will lchan_auto_release()
+	* trigger trans_free() which will msc_release_connection()
 	
-* RX of RP-ACK in MT DELIVER (and no more messages)
-	* trigger rsl_release_request() for SAPI3
-
-* RX of RP-SMMA in MT DELIVER (and no more messages)
-	* trigger rsl_release_request() for SAPI3
