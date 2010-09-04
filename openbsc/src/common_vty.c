@@ -191,6 +191,7 @@ int bsc_vty_is_config_node(struct vty *vty, int node)
 	/* add items that are not config */
 	case OML_NODE:
 	case SUBSCR_NODE:
+	case CONFIG_NODE:
 		return 0;
 
 	default:
