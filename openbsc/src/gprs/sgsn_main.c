@@ -135,6 +135,7 @@ static struct vty_app_info vty_info = {
 	.name 		= "Osmocom SGSN",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
+	.is_config_node	= bsc_vty_is_config_node,
 };
 
 static void print_help(void)
