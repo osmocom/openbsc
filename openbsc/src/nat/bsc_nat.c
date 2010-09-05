@@ -967,7 +967,7 @@ static int listen_for_bsc(struct bsc_fd *bfd, struct in_addr *in_addr, int port)
 
 	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		fprintf(stderr, "Could not bind the BSC socket %s\n",
+		fprintf(stderr, "Could not bind the BSC socket: %s\n",
 			strerror(errno));
 		return -EIO;
 	}
