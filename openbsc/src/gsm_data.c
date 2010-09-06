@@ -239,6 +239,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 
 	bts->rach_b_thresh = -1;
 	bts->rach_ldavg_slots = -1;
+	bts->paging.free_chans_need = -1;
 	llist_add_tail(&bts->list, &net->bts_list);
 
 	return bts;

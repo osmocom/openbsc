@@ -455,6 +455,9 @@ struct gsm_bts_paging_state {
 	struct timer_list work_timer;
 	struct timer_list credit_timer;
 
+	/* free chans needed */
+	int free_chans_need;
+
 	/* load */
 	u_int16_t available_slots;
 };

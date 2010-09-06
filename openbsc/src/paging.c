@@ -118,6 +118,45 @@ static void paging_give_credit(void *data)
 	paging_handle_pending_requests(paging_bts);
 }
 
+static int can_send_pag_req(struct gsm_bts *bts, int rsl_type)
+{
+	struct pchan_load pl;
+	int count;
+
+	memset(&pl, 0, sizeof(pl));
+	bts_chan_load(&pl, bts);
+
+	switch (rsl_type) {
+	case RSL_CHANNEED_TCH_F:
+		LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
+		break;
+	case RSL_CHANNEED_TCH_ForH:
+		LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
+		break;
+	case RSL_CHANNEED_SDCCH:
+		goto count_sdcch;
+		break;
+	case RSL_CHANNEED_ANY:
+	default:
+		if (bts->network->pag_any_tch)
+			LOGP(DPAG, LOGL_ERROR, "Not implemented.\n");
+		else
+			goto count_sdcch;
+		break;
+	}
+
+	return 0;
+
+	/* could available SDCCH */
+count_sdcch:
+	count = 0;
+	count += pl.pchan[GSM_PCHAN_SDCCH8_SACCH8C].total
+			- pl.pchan[GSM_PCHAN_SDCCH8_SACCH8C].used;
+	count += pl.pchan[GSM_PCHAN_CCCH_SDCCH4].total
+			- pl.pchan[GSM_PCHAN_CCCH_SDCCH4].used;
+	return bts->paging.free_chans_need > count;
+}
+
 /*
  * This is kicked by the periodic PAGING LOAD Indicator
  * coming from abis_rsl.c
@@ -154,6 +193,12 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	request = llist_entry(paging_bts->pending_requests.next,
 			      struct gsm_paging_request, entry);
 
+	/* we need to determine the number of free channels */
+	if (paging_bts->free_chans_need != -1) {
+		if (can_send_pag_req(request->bts, request->chan_type) != 0)
+			goto skip_paging;
+	}
+
 	/* handle the paging request now */
 	page_ms(request);
 	paging_bts->available_slots--;
@@ -162,6 +207,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	llist_del(&request->entry);
 	llist_add_tail(&request->entry, &paging_bts->pending_requests);
 
+skip_paging:
 	bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
 }
 

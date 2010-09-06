@@ -449,6 +449,11 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
 	}
+
+	/* if we have a limit, write it */
+	if (bts->paging.free_chans_need >= 0)
+		vty_out(vty, "  paging free %d%s", bts->paging.free_chans_need, VTY_NEWLINE);
+
 	config_write_bts_gprs(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
@@ -1773,6 +1778,16 @@ DEFUN(cfg_bts_gprs_nsvc_rip, cfg_bts_gprs_nsvc_rip_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_pag_free, cfg_bts_pag_free_cmd,
+      "paging free FREE_NR",
+      "Only page when having a certain amount of free slots. -1 to disable")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->paging.free_chans_need = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_gprs_ns_timer, cfg_bts_gprs_ns_timer_cmd,
 	"gprs ns timer " NS_TIMERS " <0-255>",
 	GPRS_TEXT "Network Service\n"
@@ -2352,6 +2367,7 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_lport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rport_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_nsvc_rip_cmd);
+	install_element(BTS_NODE, &cfg_bts_pag_free_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
 
