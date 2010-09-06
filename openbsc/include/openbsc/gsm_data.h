@@ -715,6 +715,9 @@ struct gsm_network {
 
 	enum gsm_chan_t ctype_by_chreq[16];
 
+	/* Use a TCH for handling requests of type paging any */
+	int pag_any_tch;
+
 	int msc_prio;
 };
 

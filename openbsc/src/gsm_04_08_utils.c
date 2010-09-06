@@ -153,6 +153,16 @@ void gsm_net_update_ctype(struct gsm_network *network)
 	 */
 	if (network->neci)
 		network->ctype_by_chreq[CHREQ_T_EMERG_CALL] = GSM_LCHAN_TCH_H;
+
+	if (network->pag_any_tch) {
+		if (network->neci) {
+			network->ctype_by_chreq[CHREQ_T_PAG_R_ANY_NECI0] = GSM_LCHAN_TCH_H;
+			network->ctype_by_chreq[CHREQ_T_PAG_R_ANY_NECI1] = GSM_LCHAN_TCH_H;
+		} else {
+			network->ctype_by_chreq[CHREQ_T_PAG_R_ANY_NECI0] = GSM_LCHAN_TCH_F;
+			network->ctype_by_chreq[CHREQ_T_PAG_R_ANY_NECI1] = GSM_LCHAN_TCH_F;
+		}
+	}
 }
 
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, u_int8_t ra)
