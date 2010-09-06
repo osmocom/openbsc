@@ -132,13 +132,36 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 	[CHREQ_T_RESERVED_IGNORE]	= GSM_CHREQ_REASON_OTHER,
 };
 
-enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
+/* verify that the two tables match */
+static_assert(sizeof(ctype_by_chreq) ==
+	      sizeof(((struct gsm_network *) NULL)->ctype_by_chreq), assert_size);
+
+/*
+ * Update channel types for request based on policy. E.g. in the
+ * case of a TCH/H network/bsc use TCH/H for the emergency calls,
+ * for early assignment assign a SDCCH and some other options.
+ */
+void gsm_net_update_ctype(struct gsm_network *network)
+{
+	/* copy over the data */
+	memcpy(network->ctype_by_chreq, ctype_by_chreq, sizeof(ctype_by_chreq));
+
+	/*
+	 * Use TCH/H for emergency calls when this cell allows TCH/H. Maybe it
+	 * is better to iterate over the BTS/TRX and check if no TCH/F is available
+	 * and then set it to TCH/H.
+	 */
+	if (network->neci)
+		network->ctype_by_chreq[CHREQ_T_EMERG_CALL] = GSM_LCHAN_TCH_H;
+}
+
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, u_int8_t ra)
 {
 	int i;
 	int length;
 	const struct chreq *chreq;
 
-	if (neci) {
+	if (network->neci) {
 		chreq = chreq_type_neci1;
 		length = ARRAY_SIZE(chreq_type_neci1);
 	} else {
@@ -150,13 +173,13 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
 	for (i = 0; i < length; i++) {
 		const struct chreq *chr = &chreq[i];
 		if ((ra & chr->mask) == chr->val)
-			return ctype_by_chreq[chr->type];
+			return network->ctype_by_chreq[chr->type];
 	}
 	LOGP(DRR, LOGL_ERROR, "Unknown CHANNEL REQUEST RQD 0x%02x\n", ra);
 	return GSM_LCHAN_SDCCH;
 }
 
-enum gsm_chreq_reason_t get_reason_by_chreq(struct gsm_bts *bts, u_int8_t ra, int neci)
+enum gsm_chreq_reason_t get_reason_by_chreq(u_int8_t ra, int neci)
 {
 	int i;
 	int length;

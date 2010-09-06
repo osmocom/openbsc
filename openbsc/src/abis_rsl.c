@@ -1188,8 +1188,8 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* determine channel type (SDCCH/TCH_F/TCH_H) based on
 	 * request reference RA */
-	lctype = get_ctype_by_chreq(bts, rqd_ref->ra, bts->network->neci);
-	chreq_reason = get_reason_by_chreq(bts, rqd_ref->ra, bts->network->neci);
+	lctype = get_ctype_by_chreq(bts->network, rqd_ref->ra);
+	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
 
 	counter_inc(bts->network->stats.chreq.total);
 

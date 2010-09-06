@@ -713,6 +713,8 @@ struct gsm_network {
 	/* enable the DTXu and DTXd for this network */
 	int dtx_enabled;
 
+	enum gsm_chan_t ctype_by_chreq[16];
+
 	int msc_prio;
 };
 

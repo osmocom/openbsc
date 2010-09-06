@@ -1129,6 +1129,7 @@ DEFUN(cfg_net_neci,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	gsmnet->neci = atoi(argv[0]);
+	gsm_net_update_ctype(gsmnet);
 	return CMD_SUCCESS;
 }
 

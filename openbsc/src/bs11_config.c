@@ -872,3 +872,8 @@ int main(int argc, char **argv)
 
 	exit(0);
 }
+
+/* dummy to be able to compile */
+void gsm_net_update_ctype(struct gsm_network *net)
+{
+}
