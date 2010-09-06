@@ -330,7 +330,10 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 	memset(cm, 0, sizeof(cm));
 
 	/* FIXME: what to do with data calls ? */
-	cm->dtx_dtu = 0x00;
+	if (lchan->ts->trx->bts->network->dtx_enabled)
+		cm->dtx_dtu = 0x03;
+	else
+		cm->dtx_dtu = 0x00;
 
 	/* set TCH Speech/Data */
 	cm->spd_ind = lchan->rsl_cmode;

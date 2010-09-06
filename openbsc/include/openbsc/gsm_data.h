@@ -709,6 +709,10 @@ struct gsm_network {
 	struct {
 		enum rrlp_mode mode;
 	} rrlp;
+
+	/* enable the DTXu and DTXd for this network */
+	int dtx_enabled;
+
 	int msc_prio;
 };
 

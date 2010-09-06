@@ -505,6 +505,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
+	vty_out(vty, " use-dtx %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1277,6 +1278,16 @@ DECLARE_TIMER(3117, "Currently not used.")
 DECLARE_TIMER(3119, "Currently not used.")
 DECLARE_TIMER(3141, "Currently not used.")
 
+DEFUN(cfg_net_dtx,
+      cfg_net_dtx_cmd,
+      "dtx-used (0|1)",
+      "Enable the usage of DTX.\n"
+      "DTX is enabled/disabled")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->dtx_enabled = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 /* per-BTS configuration */
 DEFUN(cfg_bts,
@@ -2285,6 +2296,7 @@ int bsc_vty_init(void)
 	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
+	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

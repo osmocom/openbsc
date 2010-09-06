@@ -1153,8 +1153,14 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	}
 
 	/* some defaults for our system information */
-	bts->si_common.cell_options.radio_link_timeout = 2; /* 12 */
-	bts->si_common.cell_options.dtx = 2; /* MS shall not use upplink DTX */
+	bts->si_common.cell_options.radio_link_timeout = 7; /* 12 */
+
+	/* allow/disallow DTXu */
+	if (bts->network->dtx_enabled)
+		bts->si_common.cell_options.dtx = 0;
+	else
+		bts->si_common.cell_options.dtx = 2;
+
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
 
 	bts->si_common.cell_sel_par.acs = 0;
