@@ -50,6 +50,8 @@
 
 void *tall_paging_ctx;
 
+#define PAGING_TIMER 0, 500000
+
 static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
 {
 	int ccch_conf;
@@ -96,6 +98,16 @@ static void page_ms(struct gsm_paging_request *request)
 	gsm0808_page(request->bts, page_group, mi_len, mi, request->chan_type);
 }
 
+static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)
+{
+	if (llist_empty(&paging_bts->pending_requests))
+		return;
+
+	if (!bsc_timer_pending(&paging_bts->work_timer))
+		bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
+}
+
+
 static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts);
 static void paging_give_credit(void *data)
 {
@@ -115,8 +127,7 @@ static void paging_give_credit(void *data)
  */
 static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_bts)
 {
-	struct gsm_paging_request *initial_request = NULL;
-	struct gsm_paging_request *current_request = NULL;
+	struct gsm_paging_request *request = NULL;
 
 	/*
 	 * Determine if the pending_requests list is empty and
@@ -140,26 +151,18 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 		return;
 	}
 
-	initial_request = llist_entry(paging_bts->pending_requests.next,
-				      struct gsm_paging_request, entry);
-	current_request = initial_request;
+	request = llist_entry(paging_bts->pending_requests.next,
+			      struct gsm_paging_request, entry);
 
-	do {
-		/* handle the paging request now */
-		page_ms(current_request);
-		paging_bts->available_slots--;
+	/* handle the paging request now */
+	page_ms(request);
+	paging_bts->available_slots--;
 
-		/* take the current and add it to the back */
-		llist_del(&current_request->entry);
-		llist_add_tail(&current_request->entry, &paging_bts->pending_requests);
+	/* take the current and add it to the back */
+	llist_del(&request->entry);
+	llist_add_tail(&request->entry, &paging_bts->pending_requests);
 
-		/* take the next request */
-		current_request = llist_entry(paging_bts->pending_requests.next,
-					      struct gsm_paging_request, entry);
-	} while (paging_bts->available_slots > 0
-		    &&  initial_request != current_request);
-
-	bsc_schedule_timer(&paging_bts->work_timer, 2, 0);
+	bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
 }
 
 static void paging_worker(void *data)
@@ -242,9 +245,7 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->T3113.data = req;
 	bsc_schedule_timer(&req->T3113, bts->network->T3113, 0);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
-
-	if (!bsc_timer_pending(&bts_entry->work_timer))
-		bsc_schedule_timer(&bts_entry->work_timer, 2, 0);
+	paging_schedule_if_needed(bts_entry);
 
 	return 0;
 }
@@ -336,4 +337,5 @@ void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
 	bsc_del_timer(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
+	paging_schedule_if_needed(&bts->paging);
 }
