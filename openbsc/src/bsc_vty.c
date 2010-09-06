@@ -1255,6 +1255,7 @@ DEFUN(cfg_net_pag_any_tch,
       "paging any use tch (0|1)",
       "Assign a TCH when receiving a Paging Any request")
 {
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->pag_any_tch = atoi(argv[0]);
 	gsm_net_update_ctype(gsmnet);
 	return CMD_SUCCESS;
