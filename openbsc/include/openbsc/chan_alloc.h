@@ -40,7 +40,7 @@ void ts_free(struct gsm_bts_trx_ts *ts);
 struct gsm_subscriber_connection *connection_for_subscr(struct gsm_subscriber *subscr);
 
 /* Allocate a logical channel (SDCCH, TCH, ...) */
-struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type);
+struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type, int allow_bigger);
 
 /* Free a logical channel (SDCCH, TCH, ...) */
 void lchan_free(struct gsm_lchan *lchan);

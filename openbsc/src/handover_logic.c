@@ -104,7 +104,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 		return -ENOSPC;
 	}
 
-	new_lchan = lchan_alloc(bts, old_lchan->type);
+	new_lchan = lchan_alloc(bts, old_lchan->type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
 		counter_inc(bts->network->stats.handover.no_channel);

@@ -225,7 +225,8 @@ _lc_find_bts(struct gsm_bts *bts, enum gsm_phys_chan_config pchan)
 }
 
 /* Allocate a logical channel */
-struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
+struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
+			      int allow_bigger)
 {
 	struct gsm_lchan *lchan = NULL;
 	enum gsm_phys_chan_config first, second;
@@ -243,6 +244,19 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type)
 		lchan = _lc_find_bts(bts, first);
 		if (lchan == NULL)
 			lchan = _lc_find_bts(bts, second);
+
+		/* allow to assign bigger channels */
+		if (allow_bigger) {
+			if (lchan == NULL) {
+				lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_H);
+				type = GSM_LCHAN_TCH_H;
+			}
+
+			if (lchan == NULL) {
+				lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);
+				type = GSM_LCHAN_TCH_F;
+			}
+		}
 		break;
 	case GSM_LCHAN_TCH_F:
 		lchan = _lc_find_bts(bts, GSM_PCHAN_TCH_F);

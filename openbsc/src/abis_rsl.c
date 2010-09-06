@@ -1167,6 +1167,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	enum gsm_chreq_reason_t chreq_reason;
 	struct gsm_lchan *lchan;
 	u_int8_t rqd_ta;
+	int is_lu;
 
 	u_int16_t arfcn;
 	u_int8_t ts_number, subch;
@@ -1189,8 +1190,14 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	counter_inc(bts->network->stats.chreq.total);
 
+	/*
+	 * We want LOCATION UPDATES to succeed and will assign a TCH
+	 * if we have no SDCCH available.
+	 */
+	is_lu = !!(chreq_reason == GSM_CHREQ_REASON_LOCATION_UPD);
+
 	/* check availability / allocate channel */
-	lchan = lchan_alloc(bts, lctype);
+	lchan = lchan_alloc(bts, lctype, is_lu);
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
