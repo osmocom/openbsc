@@ -42,6 +42,7 @@ static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static const char *rf_ctl = NULL;
+extern const char *openbsc_copyright;
 static int daemonize = 0;
 
 extern void bsc_vty_init(void);
@@ -159,6 +160,7 @@ int main(int argc, char **argv)
 	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
+	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	bsc_vty_init();
 
