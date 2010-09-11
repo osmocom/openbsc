@@ -61,12 +61,12 @@ static int reset_endpoints = 0;
 static int daemonize = 0;
 
 const char *openbsc_copyright =
-	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\n"
-	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg, Harald Welte\n\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
+	"Copyright (C) 2009-2010 Holger Freyther and On-Waves\r\n"
+	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\r\n"
+	"Dieter Spaar, Andreas Eversberg, Harald Welte\r\n\r\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 static char *config_file = "mgcp.cfg";
 

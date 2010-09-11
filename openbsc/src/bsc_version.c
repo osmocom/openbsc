@@ -21,11 +21,11 @@
 #include "bscconfig.h"
 
 const char *openbsc_copyright =
-	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\n"
-	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\n"
-	"Dieter Spaar, Andreas Eversberg\n\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
+	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\r\n"
+	"Contributions by Daniel Willmann, Jan Lübbe,Stefan Schmidt\r\n"
+	"Dieter Spaar, Andreas Eversberg\r\n\r\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 

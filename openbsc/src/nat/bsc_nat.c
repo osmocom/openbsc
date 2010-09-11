@@ -69,10 +69,10 @@ static struct timer_list sccp_close;
 static int daemonize = 0;
 
 const char *openbsc_copyright =
-	"Copyright (C) 2010 Holger Hans Peter Freyther and On-Waves\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
+	"Copyright (C) 2010 Holger Hans Peter Freyther and On-Waves\r\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int);

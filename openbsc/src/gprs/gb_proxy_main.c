@@ -60,10 +60,10 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 const char *openbsc_copyright =
-	"Copyright (C) 2010 Harald Welte and On-Waves\n"
-	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\n"
-	"This is free software: you are free to change and redistribute it.\n"
-	"There is NO WARRANTY, to the extent permitted by law.\n";
+	"Copyright (C) 2010 Harald Welte and On-Waves\r\n"
+	"License GPLv2+: GNU GPL version 2 or later <http://gnu.org/licenses/gpl.html>\r\n"
+	"This is free software: you are free to change and redistribute it.\r\n"
+	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
 static struct log_target *stderr_target;
 static char *config_file = "osmo_gbproxy.cfg";
