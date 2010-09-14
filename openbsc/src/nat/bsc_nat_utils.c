@@ -405,6 +405,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
 	int len;
+	uint8_t msg_type;
 
 	*con_type = NAT_CON_TYPE_NONE;
 
@@ -441,16 +442,17 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 
 	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
+	msg_type = hdr48->msg_type & 0xbf;
 	if (hdr48->proto_discr == GSM48_PDISC_MM &&
-	    hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
+	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
 		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
-		  hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
+		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
-		   hdr48->msg_type == GSM48_MT_RR_PAG_RESP) {
+		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
 		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
@@ -464,6 +466,7 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
 {
 	uint32_t len;
+	uint8_t msg_type;
 	struct gsm48_hdr *hdr48;
 
 	if (con->imsi_checked)
@@ -488,8 +491,9 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	msg->l4h = &msg->l3h[3];
 	hdr48 = (struct gsm48_hdr *) msg->l4h;
 
+	msg_type = hdr48->msg_type & 0xbf;
 	if (hdr48->proto_discr == GSM48_PDISC_MM &&
-	    (hdr48->msg_type & 0xbf) == GSM48_MT_MM_ID_RESP) {
+	    msg_type == GSM48_MT_MM_ID_RESP) {
 		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
 	} else {
 		printf("%d %x\n", hdr48->proto_discr, hdr48->msg_type);
