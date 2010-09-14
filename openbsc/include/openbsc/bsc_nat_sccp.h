@@ -78,6 +78,7 @@ struct sccp_connections {
 	/* status */
 	int con_type;
 	int con_local;
+	int imsi_checked;
 
 	/*
 	 * audio handling. Remember if we have ever send a CRCX,

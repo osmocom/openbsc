@@ -271,7 +271,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 		/* 2. BSC allow */
 		if (lst_check_allow(bsc_lst, mi_string) == 0)
-			return 0;
+			return 1;
 	}
 
 	/* 3. NAT deny */
@@ -283,7 +283,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)

@@ -713,7 +713,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
 			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type);
-			if (filter != 0)
+			if (filter < 0)
 				goto exit3;
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
@@ -721,6 +721,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con->msc_con = bsc->nat->msc_con;
 			con_msc = con->msc_con;
 			con->con_type = con_type;
+			con->imsi_checked = filter;
 			con_bsc = con->bsc;
 			break;
 		case SCCP_MSG_TYPE_RLSD:
