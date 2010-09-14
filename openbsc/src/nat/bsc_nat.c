@@ -303,6 +303,63 @@ static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsig
 	bsc_write(bsc, msg, proto);
 }
 
+/*
+ * Release an established connection. We will have to release it to the BSC
+ * and to the network and we do it the following way.
+ * 1.) Give up on the MSC side
+ *  1.1) Send a RLSD message, it is a bit non standard but should work, we
+ *       ignore the RLC... we might complain about it. Other options would
+ *       be to send a Release Request, handle the Release Complete..
+ *  1.2) Mark the data structure to be con_local and wait for 2nd
+ *
+ * 2.) Give up on the BSC side
+ *  2.1) Depending on the con type reject the service, or just close it
+ */
+static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connections *con)
+{
+	struct msgb *rlsd;
+	/* 1. release the network */
+	rlsd = sccp_create_rlsd(&con->patched_ref, &con->remote_ref,
+				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+	if (!rlsd)
+		LOGP(DNAT, LOGL_ERROR, "Failed to create RLSD message.\n");
+	else {
+		ipaccess_prepend_header(rlsd, IPAC_PROTO_SCCP);
+		queue_for_msc(con->msc_con, rlsd);
+	}
+	con->con_local = 1;
+
+	/* 2. release the BSC side */
+	if (con->con_type == NAT_CON_TYPE_LU) {
+		struct msgb *payload, *udt;
+		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+
+		if (payload) {
+			gsm0808_prepend_dtap_header(payload, 0);
+			udt = sccp_create_dt1(&con->real_ref, payload->data, payload->len);
+			if (udt)
+				bsc_write(bsc, udt, IPAC_PROTO_SCCP);
+			else
+				LOGP(DNAT, LOGL_ERROR, "Failed to create DT1\n");
+
+			msgb_free(payload);
+		} else {
+			LOGP(DNAT, LOGL_ERROR, "Failed to allocate LU Reject.\n");
+		}
+	}
+
+	rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
+				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+	if (!rlsd) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate RLSD for the BSC.\n");
+		sccp_connection_destroy(con);
+		return;
+	}
+
+	con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
+	bsc_write(bsc, rlsd, IPAC_PROTO_SCCP);
+}
+
 static void bsc_send_con_refuse(struct bsc_connection *bsc,
 				struct bsc_nat_parsed *parsed, int con_type)
 {
@@ -737,10 +794,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					con_msc = con->msc_con;
 					con_filter = con->con_local;
 				} else {
-					LOGP(DNAT, LOGL_ERROR, "Should drop the connection.\n");
-					con_bsc = con->bsc;
-					con_msc = con->msc_con;
-					con_filter = con->con_local;
+					bsc_send_con_release(bsc, con);
+					con = NULL;
+					goto exit2;
 				}
 			}
 			break;
