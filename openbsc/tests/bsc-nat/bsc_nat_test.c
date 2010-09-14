@@ -582,19 +582,19 @@ static struct cr_filter cr_filter[] = {
 	{
 		.data = bssmap_cr,
 		.length = sizeof(bssmap_cr),
-		.result = 0,
+		.result = 1,
 		.contype = NAT_CON_TYPE_CM_SERV_REQ,
 	},
 	{
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
-		.result = 0,
+		.result = 1,
 		.contype = NAT_CON_TYPE_LU,
 	},
 	{
 		.data = pag_resp,
 		.length = sizeof(pag_resp),
-		.result = 0,
+		.result = 1,
 		.contype = NAT_CON_TYPE_PAG_RESP,
 	},
 	{
@@ -609,7 +609,7 @@ static struct cr_filter cr_filter[] = {
 		/* BSC allow is before NAT deny */
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
-		.result = 0,
+		.result = 1,
 		.nat_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "2440[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
@@ -618,7 +618,7 @@ static struct cr_filter cr_filter[] = {
 		/* BSC allow is before NAT deny */
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
-		.result = 0,
+		.result = 1,
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
