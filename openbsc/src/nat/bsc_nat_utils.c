@@ -431,6 +431,15 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 	}
 }
 
+int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
+		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
+{
+	if (con->imsi_checked)
+		return 0;
+
+	return 0;
+}
+
 void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
 {
 	if (*imsi) {
