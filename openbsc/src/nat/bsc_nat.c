@@ -767,7 +767,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	}
 
 	if (!con_msc) {
-		LOGP(DNAT, LOGL_ERROR, "No connection found, dropping data.\n");
+		LOGP(DNAT, LOGL_ERROR, "Not forwarding data bsc_nr: %d ipa: %d type: 0x%x\n",
+			bsc->cfg->nr,
+			parsed ? parsed->ipa_proto : -1,
+			parsed ? parsed->sccp_type : -1);
 		goto exit2;
 	}
 
