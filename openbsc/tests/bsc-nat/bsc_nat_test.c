@@ -31,6 +31,7 @@
 #include <osmocore/talloc.h>
 
 #include <osmocom/sccp/sccp.h>
+#include <osmocore/protocol/gsm_08_08.h>
 
 #include <stdio.h>
 
@@ -696,6 +697,58 @@ static void test_cr_filter()
 	msgb_free(msg);
 }
 
+static void test_dt_filter()
+{
+	int i;
+	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
+	struct bsc_nat_parsed *parsed;
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+	struct bsc_connection *bsc = bsc_connection_alloc(nat);
+	struct sccp_connections *con = talloc_zero(0, struct sccp_connections);
+
+	bsc->cfg = bsc_config_alloc(nat, "foo", 23);
+	con->bsc = bsc;
+
+	msgb_reset(msg);
+	copy_to_msg(msg, id_resp, ARRAY_SIZE(id_resp));
+
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	if (parsed->bssap != BSSAP_MSG_DTAP) {
+		fprintf(stderr, "FAIL: It should be dtap\n");
+		abort();
+	}
+
+	/* gsm_type is actually the size of the dtap */
+	if (parsed->gsm_type < msgb_l3len(msg) - 3) {
+		fprintf(stderr, "FAIL: Not enough space for the content\n");
+		abort();
+	}
+
+	if (bsc_nat_filter_dt(bsc, msg, con, parsed) != 1) {
+		fprintf(stderr, "FAIL: Should have passed..\n");
+		abort();
+	}
+
+	/* just some basic length checking... */
+	for (i = ARRAY_SIZE(id_resp); i >= 0; --i) {
+		msgb_reset(msg);
+		copy_to_msg(msg, id_resp, ARRAY_SIZE(id_resp));
+
+		parsed = bsc_nat_parse(msg);
+		if (!parsed)
+			continue;
+
+		con->imsi_checked = 0;
+		bsc_nat_filter_dt(bsc, msg, con, parsed);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct log_target *stderr_target;
@@ -714,6 +767,7 @@ int main(int argc, char **argv)
 	test_mgcp_rewrite();
 	test_mgcp_parse();
 	test_cr_filter();
+	test_dt_filter();
 	return 0;
 }
 

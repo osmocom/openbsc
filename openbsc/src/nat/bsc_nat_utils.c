@@ -369,6 +369,35 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc, uint8_t *data, unsigne
 	return auth_imsi(bsc, mi_string);
 }
 
+static int _dt_check_id_resp(struct bsc_connection *bsc,
+			     uint8_t *data, unsigned int length,
+			     struct sccp_connections *con)
+{
+	char mi_string[GSM48_MI_SIZE];
+	uint8_t mi_type;
+	int ret;
+
+	if (length < 2) {
+		LOGP(DNAT, LOGL_ERROR, "mi does not fit.\n");
+		return -1;
+	}
+
+	if (data[0] < length - 1) {
+		LOGP(DNAT, LOGL_ERROR, "mi length too big.\n");
+		return -2;
+	}
+
+	mi_type = data[1] & GSM_MI_TYPE_MASK;
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), &data[1], data[0]);
+
+	if (mi_type != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	ret = auth_imsi(bsc, mi_string);
+	con->imsi_checked = 1;
+	return ret;
+}
+
 /* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed, int *con_type)
 {
@@ -434,10 +463,38 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
 {
+	uint32_t len;
+	struct gsm48_hdr *hdr48;
+
 	if (con->imsi_checked)
 		return 0;
 
-	return 0;
+	/* only care about DTAP messages */
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return 0;
+
+	/* gsm_type is actually the size of the dtap */
+	len = parsed->gsm_type;
+	if (len < msgb_l3len(msg) - 3) {
+		LOGP(DNAT, LOGL_ERROR, "Not enough space for DTAP.\n");
+		return -1;
+	}
+
+	if (len < sizeof(*hdr48)) {
+		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
+		return -1;
+	}
+
+	msg->l4h = &msg->l3h[3];
+	hdr48 = (struct gsm48_hdr *) msg->l4h;
+
+	if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	    (hdr48->msg_type & 0xbf) == GSM48_MT_MM_ID_RESP) {
+		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
+	} else {
+		printf("%d %x\n", hdr48->proto_discr, hdr48->msg_type);
+		return 0;
+	}
 }
 
 void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
