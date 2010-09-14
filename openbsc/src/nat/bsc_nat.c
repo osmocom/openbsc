@@ -708,10 +708,12 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 	/* modify the SCCP entries */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP) {
+		int filter;
 		struct sccp_connections *con;
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
-			if (bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type) != 0)
+			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type);
+			if (filter != 0)
 				goto exit3;
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
