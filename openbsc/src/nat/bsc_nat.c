@@ -329,6 +329,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 		queue_for_msc(con->msc_con, rlsd);
 	}
 	con->con_local = 1;
+	con->msc_con = NULL;
 
 	/* 2. release the BSC side */
 	if (con->con_type == NAT_CON_TYPE_LU) {
@@ -676,7 +677,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 		if (ctr)
 			rate_ctr_inc(ctr);
-		if (sccp_patch->has_remote_ref)
+		if (sccp_patch->has_remote_ref && !sccp_patch->con_local)
 			nat_send_rlsd(sccp_patch);
 		sccp_connection_destroy(sccp_patch);
 	}
