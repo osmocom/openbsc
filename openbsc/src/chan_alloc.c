@@ -513,7 +513,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
 
-	conn = talloc_zero(lchan->ts->trx->bts, struct gsm_subscriber_connection);
+	conn = talloc_zero(lchan->ts->trx->bts->network, struct gsm_subscriber_connection);
 	if (!conn)
 		return NULL;
 
