@@ -84,7 +84,6 @@ static void handle_options(int argc, char** argv)
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
-			{"msc", 1, 0, 'm'},
 			{"local", 1, 0, 'l'},
 			{"log-level", 1, 0, 'e'},
 			{"rf-ctl", 1, 0, 'r'},
@@ -181,7 +180,6 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
-	char *msc;
 	int rc;
 
 	log_init(&log_info);
