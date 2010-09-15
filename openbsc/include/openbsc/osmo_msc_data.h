@@ -27,7 +27,17 @@
 #include "bsc_msc.h"
 
 struct osmo_msc_data {
+	/* Connection data */
+	char *bsc_token;
+	int msc_port;
+	int msc_ip_dscp;
+	char *msc_ip;
+	int ping_timeout;
+	int pong_timeout;
 	struct bsc_msc_connection *msc_con;
+
+	/* rf ctl related bits */
+	char *ussd_grace_txt;
 };
 
 #endif

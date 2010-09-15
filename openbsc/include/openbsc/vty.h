@@ -31,6 +31,7 @@ enum bsc_vty_node {
 	OML_NODE,
 	NAT_NODE,
 	NAT_BSC_NODE,
+	MSC_NODE,
 };
 
 extern int bsc_vty_is_config_node(struct vty *vty, int node);

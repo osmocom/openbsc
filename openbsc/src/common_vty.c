@@ -83,6 +83,9 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 			vty->index = bsc_config->nat;
 		}
 		break;
+	case MSC_NODE:
+		vty->node = GSMNET_NODE;
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -147,6 +150,9 @@ gDEFUN(ournode_exit,
 		talloc_free(vty->index);
 		vty->index = NULL;
 		break;
+	case MSC_NODE:
+		vty->node = GSMNET_NODE;
+		break;
 	default:
 		break;
 	}
@@ -174,6 +180,7 @@ gDEFUN(ournode_end,
 	case VTY_NODE:
 	case NAT_NODE:
 	case NAT_BSC_NODE:
+	case MSC_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
 		vty->index = NULL;
