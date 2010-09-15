@@ -88,7 +88,7 @@ typedef int gsm_cbfn(unsigned int hooknum,
 		     struct msgb *msg,
 		     void *data, void *param);
 
-struct bsc_msc_rf;
+struct osmo_bsc_rf;
 struct sccp_connection;
 
 /* Real authentication information containing Ki */
@@ -700,7 +700,7 @@ struct gsm_network {
 	struct bsc_msc_connection *msc_con;
 	int ping_timeout;
 	int pong_timeout;
-	struct bsc_msc_rf *rf;
+	struct osmo_bsc_rf *rf;
 	char *ussd_grace_txt;
 };
 

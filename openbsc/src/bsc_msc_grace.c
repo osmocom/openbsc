@@ -20,7 +20,7 @@
  */
 
 #include <openbsc/bsc_msc_grace.h>
-#include <openbsc/bsc_msc_rf.h>
+#include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/signal.h>
 

@@ -45,7 +45,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
-#include <openbsc/bsc_msc_rf.h>
+#include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/bsc_msc_grace.h>
 
 #include <osmocore/select.h>
@@ -1249,7 +1249,7 @@ int main(int argc, char **argv)
 	}
 
 	if (rf_ctl) {
-		bsc_gsmnet->rf = bsc_msc_rf_create(rf_ctl, bsc_gsmnet);
+		bsc_gsmnet->rf = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
 		if (!bsc_gsmnet->rf) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);

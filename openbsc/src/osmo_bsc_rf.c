@@ -21,7 +21,7 @@
  *
  */
 
-#include <openbsc/bsc_msc_rf.h>
+#include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
@@ -57,7 +57,7 @@ static int lock_each_trx(struct gsm_network *net, int lock)
 /*
  * Send a '1' when one TRX is online, otherwise send 0
  */
-static void handle_query(struct bsc_msc_rf_conn *conn)
+static void handle_query(struct osmo_bsc_rf_conn *conn)
 {
 	struct msgb *msg;
 	struct gsm_bts *bts;
@@ -92,7 +92,7 @@ static void handle_query(struct bsc_msc_rf_conn *conn)
 	return;
 }
 
-static void send_signal(struct bsc_msc_rf_conn *conn, int val)
+static void send_signal(struct osmo_bsc_rf_conn *conn, int val)
 {
 	struct rf_signal_data sig;
 	sig.net = conn->rf->gsm_network;
@@ -103,7 +103,7 @@ static void send_signal(struct bsc_msc_rf_conn *conn, int val)
 
 static int rf_read_cmd(struct bsc_fd *fd)
 {
-	struct bsc_msc_rf_conn *conn = fd->data;
+	struct osmo_bsc_rf_conn *conn = fd->data;
 	char buf[1];
 	int rc;
 
@@ -155,8 +155,8 @@ static int rf_write_cmd(struct bsc_fd *fd, struct msgb *msg)
 
 static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 {
-	struct bsc_msc_rf_conn *conn;
-	struct bsc_msc_rf *rf = bfd->data;
+	struct osmo_bsc_rf_conn *conn;
+	struct osmo_bsc_rf *rf = bfd->data;
 	struct sockaddr_un addr;
 	socklen_t len = sizeof(addr);
 	int fd;
@@ -168,7 +168,7 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	conn = talloc_zero(rf, struct bsc_msc_rf_conn);
+	conn = talloc_zero(rf, struct osmo_bsc_rf_conn);
 	if (!conn) {
 		LOGP(DINP, LOGL_ERROR, "Failed to allocate mem.\n");
 		close(fd);
@@ -192,17 +192,17 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
-struct bsc_msc_rf *bsc_msc_rf_create(const char *path, struct gsm_network *net)
+struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net)
 {
 	unsigned int namelen;
 	struct sockaddr_un local;
 	struct bsc_fd *bfd;
-	struct bsc_msc_rf *rf;
+	struct osmo_bsc_rf *rf;
 	int rc;
 
-	rf = talloc_zero(NULL, struct bsc_msc_rf);
+	rf = talloc_zero(NULL, struct osmo_bsc_rf);
 	if (!rf) {
-		LOGP(DINP, LOGL_ERROR, "Failed to create bsc_msc_rf.\n");
+		LOGP(DINP, LOGL_ERROR, "Failed to create osmo_bsc_rf.\n");
 		return NULL;
 	}
 
