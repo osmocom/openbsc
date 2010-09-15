@@ -496,7 +496,6 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	    msg_type == GSM48_MT_MM_ID_RESP) {
 		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
 	} else {
-		printf("%d %x\n", hdr48->proto_discr, hdr48->msg_type);
 		return 0;
 	}
 }
