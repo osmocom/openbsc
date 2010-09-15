@@ -63,7 +63,7 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	struct gsm_bts *bts;
 	char send = RF_CMD_OFF;
 
-	llist_for_each_entry(bts, &conn->gsm_network->bts_list, list) {
+	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
 		struct gsm_bts_trx *trx;
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->nm_state.availability == NM_AVSTATE_OK &&
@@ -95,8 +95,9 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 static void send_signal(struct osmo_bsc_rf_conn *conn, int val)
 {
 	struct rf_signal_data sig;
-	sig.net = conn->gsm_network;
+	sig.net = conn->rf->gsm_network;
 
+	conn->rf->policy = val;
 	dispatch_signal(SS_RF, val, &sig);
 }
 
@@ -121,11 +122,11 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		handle_query(conn);
 		break;
 	case RF_CMD_OFF:
-		lock_each_trx(conn->gsm_network, 1);
+		lock_each_trx(conn->rf->gsm_network, 1);
 		send_signal(conn, S_RF_OFF);
 		break;
 	case RF_CMD_ON:
-		lock_each_trx(conn->gsm_network, 0);
+		lock_each_trx(conn->rf->gsm_network, 0);
 		send_signal(conn, S_RF_ON);
 		break;
 	case RF_CMD_GRACE:
@@ -180,7 +181,7 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 	conn->queue.bfd.when = BSC_FD_READ | BSC_FD_WRITE;
 	conn->queue.read_cb = rf_read_cmd;
 	conn->queue.write_cb = rf_write_cmd;
-	conn->gsm_network = rf->gsm_network;
+	conn->rf = rf;
 
 	if (bsc_register_fd(&conn->queue.bfd) != 0) {
 		close(fd);
@@ -258,6 +259,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	}
 
 	rf->gsm_network = net;
+	rf->policy = S_RF_ON;
 
 	return rf;
 }
