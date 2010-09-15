@@ -833,6 +833,10 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		goto exit2;
 	}
 
+	/* do not forward messages to the MSC */
+	if (con_filter)
+		goto exit2;
+
 	if (!con_msc) {
 		LOGP(DNAT, LOGL_ERROR, "Not forwarding data bsc_nr: %d ipa: %d type: 0x%x\n",
 			bsc->cfg->nr,
@@ -840,10 +844,6 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			parsed ? parsed->sccp_type : -1);
 		goto exit2;
 	}
-
-	/* do not forward messages to the MSC */
-	if (con_filter)
-		goto exit2;
 
 	/* send the non-filtered but maybe modified msg */
 	queue_for_msc(con_msc, msg);
