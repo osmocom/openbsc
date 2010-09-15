@@ -46,7 +46,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/osmo_bsc_rf.h>
-#include <openbsc/bsc_msc_grace.h>
+#include <openbsc/osmo_bsc_grace.h>
 
 #include <osmocore/select.h>
 #include <osmocore/talloc.h>
