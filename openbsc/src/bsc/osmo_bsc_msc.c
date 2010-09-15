@@ -36,7 +36,6 @@
 #include <unistd.h>
 
 
-static int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto);
 static void initialize_if_needed(struct bsc_msc_connection *conn);
 static void send_id_get_response(struct osmo_msc_data *data, int fd);
 static void send_ping(struct osmo_msc_data *data);
@@ -163,7 +162,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 /*
  * Send data to the network
  */
-static int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto)
+int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto)
 {
 	ipaccess_prepend_header(msg, proto);
 	if (write_queue_enqueue(&conn->write_queue, msg) != 0) {
