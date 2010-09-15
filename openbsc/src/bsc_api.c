@@ -36,6 +36,47 @@
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
 
+struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
+{
+	struct gsm_subscriber_connection *conn;
+
+	conn = talloc_zero(lchan->ts->trx->bts->network, struct gsm_subscriber_connection);
+	if (!conn)
+		return NULL;
+
+	/* Configure the time and start it so it will be closed */
+	conn->lchan = lchan;
+	conn->bts = lchan->ts->trx->bts;
+	lchan->conn = conn;
+	return conn;
+}
+
+/* TODO: move subscriber put here... */
+void subscr_con_free(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_lchan *lchan;
+
+
+	if (!conn)
+		return;
+
+
+	if (conn->subscr) {
+		subscr_put(conn->subscr);
+		conn->subscr = NULL;
+	}
+
+
+	if (conn->ho_lchan)
+		LOGP(DNM, LOGL_ERROR, "The ho_lchan should have been cleared.\n");
+
+	lchan = conn->lchan;
+	talloc_free(conn);
+
+	if (lchan)
+		lchan->conn = NULL;
+}
+
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 {
 	network->bsc_api = api;
