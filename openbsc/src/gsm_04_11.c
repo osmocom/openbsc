@@ -37,6 +37,7 @@
 #include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/db.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
@@ -175,6 +176,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		trans->sms.cp_timer.cb = cp_timer_expired;
 		/* 5.3.2.1: Set Timer TC1A */
 		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
+		db_sms_inc_deliver_attempts(trans->sms.sms);
 		DEBUGP(DSMS, "TX: CP-DATA ");
 		break;
 	case GSM411_MT_CP_ACK:
