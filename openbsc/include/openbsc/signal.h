@@ -1,6 +1,7 @@
 /* Generic signalling/notification infrastructure */
 /* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -45,6 +46,7 @@ enum signal_subsystems {
 	SS_NS,
 	SS_IPAC_NWL,
 	SS_RF,
+	SS_MSC,
 };
 
 /* SS_PAGING signals */
@@ -179,5 +181,17 @@ struct ns_signal_data {
 	struct gprs_nsvc *nsvc;
 	uint8_t cause;
 };
+
+/* MSC signals */
+enum signal_msc {
+	S_MSC_LOST,
+	S_MSC_CONNECTED,
+};
+
+struct osmo_msc_data;
+struct msc_signal_data {
+	struct osmo_msc_data *data;
+};
+
 
 #endif

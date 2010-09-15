@@ -26,7 +26,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/osmo_msc_data.h>
-
+#include <openbsc/signal.h>
 
 #include <osmocore/gsm0808.h>
 
@@ -274,6 +274,7 @@ static void msc_pong_timeout_cb(void *_data)
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
 {
+	struct msc_signal_data sig;
 	struct osmo_msc_data *data;
 	int ret, on;
 	on = 1;
@@ -283,6 +284,9 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 
 	data = (struct osmo_msc_data *) con->write_queue.bfd.data;
 	msc_ping_timeout_cb(con);
+
+	sig.data = data;
+	dispatch_signal(SS_MSC, S_MSC_CONNECTED, &sig);
 }
 
 /*
@@ -291,22 +295,17 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
  */
 static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 {
+	struct msc_signal_data sig;
 	struct osmo_msc_data *data;
 
 	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
 
-#if 0
-	struct bss_sccp_connection_data *bss, *tmp;
-	llist_for_each_entry_safe(bss, tmp, &active_connections, active_connections) {
-		bss_force_close(bss);
-	}
-#else
-#warning "This needs to be ported..."
-#endif
-
 	data = (struct osmo_msc_data *) msc->write_queue.bfd.data;
 	bsc_del_timer(&data->ping_timer);
 	bsc_del_timer(&data->pong_timer);
+
+	sig.data = data;
+	dispatch_signal(SS_MSC, S_MSC_LOST, &sig);
 
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
