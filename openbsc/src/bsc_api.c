@@ -33,6 +33,8 @@
 
 #include <osmocore/talloc.h>
 
+static LLIST_HEAD(sub_connections);
+
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
 
@@ -48,6 +50,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 	conn->lchan = lchan;
 	conn->bts = lchan->ts->trx->bts;
 	lchan->conn = conn;
+	llist_add_tail(&conn->entry, &sub_connections);
 	return conn;
 }
 
@@ -69,6 +72,8 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 
 	if (conn->ho_lchan)
 		LOGP(DNM, LOGL_ERROR, "The ho_lchan should have been cleared.\n");
+
+	llist_del(&conn->entry);
 
 	lchan = conn->lchan;
 	talloc_free(conn);

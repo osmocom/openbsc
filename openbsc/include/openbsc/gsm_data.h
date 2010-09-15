@@ -228,6 +228,8 @@ enum gsm_lchan_state {
 
 /* the per subscriber data for lchan */
 struct gsm_subscriber_connection {
+	struct llist_head entry;
+
 	/* To whom we are allocated at the moment */
 	struct gsm_subscriber *subscr;
 
