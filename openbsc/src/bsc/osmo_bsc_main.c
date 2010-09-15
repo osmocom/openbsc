@@ -216,9 +216,9 @@ int main(int argc, char **argv)
 	}
 
 	if (rf_ctl) {
-		struct osmo_bsc_rf *rf;
-		rf = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
-		if (!rf) {
+		struct osmo_msc_data *data = bsc_gsmnet->msc_data;
+		data->rf_ctl = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
+		if (!data->rf_ctl) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);
 		}
