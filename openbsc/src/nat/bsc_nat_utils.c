@@ -271,7 +271,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 		/* 2. BSC allow */
 		if (lst_check_allow(bsc_lst, mi_string) == 0)
-			return 0;
+			return 1;
 	}
 
 	/* 3. NAT deny */
@@ -283,7 +283,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc, uint8_t *data, unsigned int length)
@@ -369,6 +369,35 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc, uint8_t *data, unsigne
 	return auth_imsi(bsc, mi_string);
 }
 
+static int _dt_check_id_resp(struct bsc_connection *bsc,
+			     uint8_t *data, unsigned int length,
+			     struct sccp_connections *con)
+{
+	char mi_string[GSM48_MI_SIZE];
+	uint8_t mi_type;
+	int ret;
+
+	if (length < 2) {
+		LOGP(DNAT, LOGL_ERROR, "mi does not fit.\n");
+		return -1;
+	}
+
+	if (data[0] < length - 1) {
+		LOGP(DNAT, LOGL_ERROR, "mi length too big.\n");
+		return -2;
+	}
+
+	mi_type = data[1] & GSM_MI_TYPE_MASK;
+	gsm48_mi_to_string(mi_string, sizeof(mi_string), &data[1], data[0]);
+
+	if (mi_type != GSM_MI_TYPE_IMSI)
+		return 0;
+
+	ret = auth_imsi(bsc, mi_string);
+	con->imsi_checked = 1;
+	return ret;
+}
+
 /* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed, int *con_type)
 {
@@ -376,6 +405,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
 	int len;
+	uint8_t msg_type;
 
 	*con_type = NAT_CON_TYPE_NONE;
 
@@ -412,21 +442,60 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg, struct 
 
 	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
+	msg_type = hdr48->msg_type & 0xbf;
 	if (hdr48->proto_discr == GSM48_PDISC_MM &&
-	    hdr48->msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
+	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
 		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
-		  hdr48->msg_type == GSM48_MT_MM_CM_SERV_REQ) {
+		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
-		   hdr48->msg_type == GSM48_MT_RR_PAG_RESP) {
+		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
 		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48));
 	} else {
 		/* We only want to filter the above, let other things pass */
 		*con_type = NAT_CON_TYPE_OTHER;
+		return 0;
+	}
+}
+
+int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
+		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
+{
+	uint32_t len;
+	uint8_t msg_type;
+	struct gsm48_hdr *hdr48;
+
+	if (con->imsi_checked)
+		return 0;
+
+	/* only care about DTAP messages */
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return 0;
+
+	/* gsm_type is actually the size of the dtap */
+	len = parsed->gsm_type;
+	if (len < msgb_l3len(msg) - 3) {
+		LOGP(DNAT, LOGL_ERROR, "Not enough space for DTAP.\n");
+		return -1;
+	}
+
+	if (len < sizeof(*hdr48)) {
+		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
+		return -1;
+	}
+
+	msg->l4h = &msg->l3h[3];
+	hdr48 = (struct gsm48_hdr *) msg->l4h;
+
+	msg_type = hdr48->msg_type & 0xbf;
+	if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	    msg_type == GSM48_MT_MM_ID_RESP) {
+		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
+	} else {
 		return 0;
 	}
 }
