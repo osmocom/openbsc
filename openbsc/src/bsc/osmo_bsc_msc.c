@@ -22,10 +22,11 @@
  */
 
 #include <openbsc/bsc_nat.h>
-#include <openbsc/ipaccess.h>
-#include <openbsc/gsm_data.h>
-#include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/ipaccess.h>
+#include <openbsc/osmo_msc_data.h>
+
 
 #include <osmocore/gsm0808.h>
 
