@@ -22,6 +22,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_bsc_rf.h>
+#include <openbsc/osmo_msc_data.h>
+#include <openbsc/signal.h>
 #include <openbsc/vty.h>
 
 #include <osmocore/talloc.h>
@@ -32,9 +34,12 @@
 #define _GNU_SOURCE
 #include <getopt.h>
 
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
+
 
 #include "bscconfig.h"
 
@@ -141,6 +146,38 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+extern int bsc_shutdown_net(struct gsm_network *net);
+static void signal_handler(int signal)
+{
+	fprintf(stdout, "signal %u received\n", signal);
+
+	switch (signal) {
+	case SIGINT:
+		bsc_shutdown_net(bsc_gsmnet);
+		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		sleep(3);
+		exit(0);
+		break;
+	case SIGABRT:
+		/* in case of abort, we want to obtain a talloc report
+		 * and then return to the caller, who will abort the process */
+	case SIGUSR1:
+		talloc_report(tall_vty_ctx, stderr);
+		talloc_report_full(tall_bsc_ctx, stderr);
+		break;
+	case SIGUSR2:
+		if (!bsc_gsmnet->msc_data)
+			return;
+		if (!bsc_gsmnet->msc_data->msc_con)
+			return;
+		if (!bsc_gsmnet->msc_data->msc_con->is_connected)
+			return;
+		bsc_msc_lost(bsc_gsmnet->msc_data->msc_con);
+		break;
+	default:
+		break;
+	}
+}
 
 int main(int argc, char **argv)
 {
@@ -188,6 +225,12 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 	}
+
+	signal(SIGINT, &signal_handler);
+	signal(SIGABRT, &signal_handler);
+	signal(SIGUSR1, &signal_handler);
+	signal(SIGUSR2, &signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 
 	if (daemonize) {
 		rc = osmo_daemonize();

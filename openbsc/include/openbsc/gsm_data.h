@@ -3,6 +3,8 @@
 
 #include <sys/types.h>
 
+struct osmo_msc_data;
+
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
 	GSM_PCHAN_CCCH,
@@ -722,7 +724,8 @@ struct gsm_network {
 	/* Use a TCH for handling requests of type paging any */
 	int pag_any_tch;
 
-	int msc_prio;
+	/* MSC data in case we are a true BSC */
+	struct osmo_msc_data *msc_data;
 };
 
 #define SMS_HDR_SIZE	128

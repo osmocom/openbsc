@@ -33,6 +33,7 @@
 #include <osmocore/statistics.h>
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/osmo_msc_data.h>
 #include <openbsc/abis_nm.h>
 
 void *tall_bsc_ctx;
@@ -253,6 +254,12 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net = talloc_zero(tall_bsc_ctx, struct gsm_network);
 	if (!net)
 		return NULL;
+
+	net->msc_data = talloc_zero(net, struct osmo_msc_data);
+	if (!net->msc_data) {
+		talloc_free(net);
+		return NULL;
+	}
 
 	net->country_code = country_code;
 	net->network_code = network_code;
