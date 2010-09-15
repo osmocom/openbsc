@@ -224,6 +224,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (osmo_bsc_msc_init(bsc_gsmnet) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to start up. Exiting.\n");
+		exit(1);
+	}
+
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);

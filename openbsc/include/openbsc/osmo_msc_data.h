@@ -26,6 +26,8 @@
 
 #include "bsc_msc.h"
 
+#include <osmocore/timer.h>
+
 struct osmo_bsc_rf;
 
 struct osmo_msc_data {
@@ -36,11 +38,18 @@ struct osmo_msc_data {
 	char *msc_ip;
 	int ping_timeout;
 	int pong_timeout;
+	struct timer_list ping_timer;
+	struct timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
+
+	/* mgcp agent */
+	struct write_queue mgcp_agent;
 
 	/* rf ctl related bits */
 	char *ussd_grace_txt;
 	struct osmo_bsc_rf *rf_ctl;
 };
+
+int osmo_bsc_msc_init(struct gsm_network *network);
 
 #endif
