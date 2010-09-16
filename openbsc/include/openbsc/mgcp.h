@@ -109,8 +109,10 @@ struct mgcp_config {
 	unsigned int number_endpoints;
 	char *bts_ip;
 	char *call_agent_addr;
+	char *transcoder_ip;
 
 	struct in_addr bts_in;
+	struct in_addr transcoder_in;
 	char *audio_name;
 	int audio_payload;
 	int audio_loop;

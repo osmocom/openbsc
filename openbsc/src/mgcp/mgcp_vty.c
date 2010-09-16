@@ -78,6 +78,8 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  number endpoints %u%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
+	if (g_cfg->transcoder_ip)
+		vty_out(vty, "  transcoder-mgw %s%s", g_cfg->transcoder_ip, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -282,6 +284,20 @@ DEFUN(cfg_mgcp_agent_addr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_transcoder,
+      cfg_mgcp_transcoder_cmd,
+      "transcoder-mgw A.B.C.D",
+      "Use a MGW to detranscoder RTP\n"
+      "The IP address of the MGW")
+{
+	if (g_cfg->transcoder_ip)
+		talloc_free(g_cfg->transcoder_ip);
+	g_cfg->transcoder_ip = talloc_strdup(g_cfg, argv[0]);
+	inet_aton(g_cfg->transcoder_ip, &g_cfg->transcoder_in);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(loop_endp,
       loop_endp_cmd,
       "loop-endpoint NAME (0|1)",
@@ -403,6 +419,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
 	return 0;
 }
 
