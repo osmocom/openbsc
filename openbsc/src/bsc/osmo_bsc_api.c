@@ -20,7 +20,59 @@
 
 #include <openbsc/osmo_bsc.h>
 
+static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
+{
+}
+
+static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
+				  struct msgb *msg, uint8_t chosen_encr)
+{
+}
+
+static void bsc_cipher_mode_reject(struct gsm_subscriber_connection *conn,
+				   struct msgb *msg, uint16_t reason)
+{
+}
+
+static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
+			uint16_t chosen_channel)
+{
+	return BSC_API_CONN_POL_REJECT;
+}
+
+static void bsc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+}
+
+static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint16_t rr_cause)
+{
+}
+
+static void bsc_assign_fail(struct gsm_subscriber_connection *conn, uint32_t cause)
+{
+}
+
+static void bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
+{
+}
+
+static void bsc_clear_compl(struct gsm_subscriber_connection *conn)
+{
+}
+
+static struct bsc_api bsc_handler = {
+	.sapi_n_reject = bsc_sapi_n_reject,
+	.cipher_mode_compl = bsc_cipher_mode_compl,
+	.cipher_mode_reject = bsc_cipher_mode_reject,
+	.compl_l3 = bsc_compl_l3,
+	.dtap  = bsc_dtap,
+	.assign_compl = bsc_assign_compl,
+	.assign_fail = bsc_assign_fail,
+	.clear_request = bsc_clear_request,
+	.clear_compl = bsc_clear_compl,
+};
+
 struct bsc_api *osmo_bsc_api()
 {
-	return NULL;
+	return &bsc_handler;
 }

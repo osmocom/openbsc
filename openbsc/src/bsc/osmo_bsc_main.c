@@ -21,6 +21,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/signal.h>
@@ -214,6 +215,7 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Bootstrapping the network failed. exiting.\n");
 		exit(1);
 	}
+	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
 	if (rf_ctl) {
 		struct osmo_msc_data *data = bsc_gsmnet->msc_data;
