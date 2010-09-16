@@ -92,4 +92,5 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 	/* no more connections, asking to release the channel */
 	conn->in_release = 1;
 	gsm0808_clear(conn);
+	subscr_con_free(conn);
 }

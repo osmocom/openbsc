@@ -184,15 +184,25 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 	return -1;
 }
 
+/*
+ * Release all occupied RF Channels but stay around for more.
+ */
 int gsm0808_clear(struct gsm_subscriber_connection* conn)
 {
 	struct gsm_lchan *lchan;
 
-	bsc_clear_handover(conn);
-
 	lchan = conn->lchan;
-	subscr_con_free(conn);
-	lchan_release(lchan, 1, 0);
+	conn->lchan = NULL;
+	conn->ho_lchan = NULL;
+	conn->bts = NULL;
+
+	if (conn->ho_lchan)
+		bsc_clear_handover(conn);
+	if (conn->lchan)
+		lchan_release(lchan, 1, 0);
+	conn->lchan->conn = NULL;
+	conn->lchan = NULL;
+
 	return 0;
 }
 
@@ -232,6 +242,7 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 {
 	struct bsc_api *bsc;
 	struct gsm_lchan *lchan;
+	struct gsm_subscriber_connection *conn;
 
 	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
 		return 0;
@@ -241,11 +252,20 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	bsc = lchan->ts->trx->bts->network->bsc_api;
-	if (!bsc || !bsc->clear_request)
+	if (!bsc)
 		return 0;
 
-	bsc->clear_request(lchan->conn, 0);
-	subscr_con_free(lchan->conn);
+	conn = lchan->conn;
+	if (bsc->clear_request)
+		bsc->clear_request(conn, 0);
+
+	/* now give up all channels */
+	if (conn->lchan == lchan)
+		conn->lchan = NULL;
+	if (conn->ho_lchan == lchan)
+		conn->ho_lchan = NULL;
+	gsm0808_clear(conn);
+
 	return 0;
 }
 
