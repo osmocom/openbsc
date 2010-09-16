@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 struct osmo_msc_data;
+struct osmo_bsc_sccp_con;
 
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
@@ -242,6 +243,9 @@ struct gsm_subscriber_connection {
 
 	/* Are we part of a special "silent" call */
 	int silent_call;
+
+	/* bsc structures */
+	struct osmo_bsc_sccp_con *sccp_con;
 
 	/* back pointers */
 	int in_release;
