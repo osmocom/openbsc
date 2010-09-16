@@ -189,19 +189,17 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
  */
 int gsm0808_clear(struct gsm_subscriber_connection* conn)
 {
-	struct gsm_lchan *lchan;
+	if (conn->ho_lchan)
+		bsc_clear_handover(conn);
 
-	lchan = conn->lchan;
+	if (conn->lchan) {
+		lchan_release(conn->lchan, 1, 0);
+		conn->lchan->conn = NULL;
+	}
+
 	conn->lchan = NULL;
 	conn->ho_lchan = NULL;
 	conn->bts = NULL;
-
-	if (conn->ho_lchan)
-		bsc_clear_handover(conn);
-	if (conn->lchan)
-		lchan_release(lchan, 1, 0);
-	conn->lchan->conn = NULL;
-	conn->lchan = NULL;
 
 	return 0;
 }
