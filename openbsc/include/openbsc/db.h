@@ -59,6 +59,7 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id);
 struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr);
 int db_sms_mark_sent(struct gsm_sms *sms);
+int db_sms_inc_deliver_attempts(struct gsm_sms *sms);
 
 /* APDU blob storage */
 int db_apdu_blob_store(struct gsm_subscriber *subscr, 
