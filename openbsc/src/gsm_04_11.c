@@ -176,7 +176,6 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		trans->sms.cp_timer.cb = cp_timer_expired;
 		/* 5.3.2.1: Set Timer TC1A */
 		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
-		db_sms_inc_deliver_attempts(trans->sms.sms);
 		DEBUGP(DSMS, "TX: CP-DATA ");
 		break;
 	case GSM411_MT_CP_ACK:
@@ -1100,6 +1099,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
 	counter_inc(conn->bts->network->stats.sms.delivered);
+	db_sms_inc_deliver_attempts(trans->sms.sms);
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
