@@ -167,14 +167,28 @@ DEFUN(cfg_mgcp_bind_early,
 	return CMD_WARNING;
 }
 
+static void parse_base(struct mgcp_port_range *range, const char **argv)
+{
+	unsigned int port = atoi(argv[0]);
+	range->mode = PORT_ALLOC_STATIC;
+	range->base_port = port;
+}
+
+static void parse_range(struct mgcp_port_range *range, const char **argv)
+{
+	range->mode = PORT_ALLOC_DYNAMIC;
+	range->range_start = atoi(argv[0]);
+	range->range_end = atoi(argv[1]);
+	range->last_port = g_cfg->bts_ports.range_start;
+}
+
+
 DEFUN(cfg_mgcp_rtp_bts_base_port,
       cfg_mgcp_rtp_bts_base_port_cmd,
       "rtp bts-base <0-65534>",
       "Base port to use")
 {
-	unsigned int port = atoi(argv[0]);
-	g_cfg->bts_ports.mode = PORT_ALLOC_STATIC;
-	g_cfg->bts_ports.base_port = port;
+	parse_base(&g_cfg->bts_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -184,10 +198,7 @@ DEFUN(cfg_mgcp_rtp_bts_range,
       "Range of ports to allocate for endpoints\n"
       "Start of the range of ports\n" "End of the range of ports\n")
 {
-	g_cfg->bts_ports.mode = PORT_ALLOC_DYNAMIC;
-	g_cfg->bts_ports.range_start = atoi(argv[0]);
-	g_cfg->bts_ports.range_end = atoi(argv[1]);
-	g_cfg->bts_ports.last_port = g_cfg->bts_ports.range_start;
+	parse_range(&g_cfg->bts_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -197,10 +208,7 @@ DEFUN(cfg_mgcp_rtp_net_range,
       "Range of ports to allocate for endpoints\n"
       "Start of the range of ports\n" "End of the range of ports\n")
 {
-	g_cfg->net_ports.mode = PORT_ALLOC_DYNAMIC;
-	g_cfg->net_ports.range_start = atoi(argv[0]);
-	g_cfg->net_ports.range_end = atoi(argv[1]);
-	g_cfg->net_ports.last_port = g_cfg->net_ports.range_start;
+	parse_range(&g_cfg->net_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -209,9 +217,7 @@ DEFUN(cfg_mgcp_rtp_net_base_port,
       "rtp net-base <0-65534>",
       "Base port to use for network port\n" "Port\n")
 {
-	unsigned int port = atoi(argv[0]);
-	g_cfg->net_ports.mode = PORT_ALLOC_STATIC;
-	g_cfg->net_ports.base_port = port;
+	parse_base(&g_cfg->net_ports, argv);
 	return CMD_SUCCESS;
 }
 
