@@ -89,6 +89,9 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg);
 static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg);
 
+static void create_transcoder(struct mgcp_endpoint *endp);
+static void delete_transcoder(struct mgcp_endpoint *endp);
+
 static uint32_t generate_call_id(struct mgcp_config *cfg)
 {
 	int i;
@@ -512,6 +515,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
+			create_transcoder(endp);
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -526,6 +530,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
+	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", trans_id);
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
@@ -719,6 +724,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 			break;
 		case MGCP_POLICY_DEFER:
 			/* stop processing */
+			delete_transcoder(endp);
 			return NULL;
 			break;
 		case MGCP_POLICY_CONT:
@@ -730,6 +736,8 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	/* free the connection */
 	LOGP(DMGCP, LOGL_DEBUG, "Deleted endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
+
+	delete_transcoder(endp);
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
 		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
@@ -847,4 +855,98 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	endp->allow_patch = 0;
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
+}
+
+/* For transcoding we need to manage an in and an output that are connected */
+static int back_channel(int endpoint)
+{
+	return endpoint + 60;
+}
+
+static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
+		     const char *msg, const char *mode)
+{
+	struct sockaddr_in addr;
+	char buf[2096];
+	int len;
+
+	/* hardcoded to AMR right now, we do not know the real type at this point */
+	len = snprintf(buf, sizeof(buf),
+			"%s 42 %x@mgw MGCP 1.0\r\n"
+			"C: 4256\r\n"
+			"M: %s\r\n"
+			"\r\n"
+			"c=IN IP4 %s\r\n"
+			"m=audio %d RTP/AVP %d\r\n"
+			"a=rtpmap:%d %s\r\n",
+			msg, endpoint, mode, endp->cfg->source_addr,
+			port, endp->cfg->audio_payload,
+			endp->cfg->audio_payload, endp->cfg->audio_name);
+
+	if (len < 0)
+		return;
+
+	buf[sizeof(buf) - 1] = '\0';
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = endp->cfg->transcoder_in;
+	addr.sin_port = htons(2427);
+	sendto(endp->cfg->gw_fd.bfd.fd, buf, len, 0,
+	       (struct sockaddr *) &addr, sizeof(addr));
+}
+
+static void send_dlcx(struct mgcp_endpoint *endp, int endpoint)
+{
+	struct sockaddr_in addr;
+	char buf[2096];
+	int len;
+
+	len = snprintf(buf, sizeof(buf),
+			"DLCX 43 %x@mgw MGCP 1.0\r\n"
+			"C: 4256\r\n"
+			, endpoint);
+
+	if (len < 0)
+		return;
+
+	buf[sizeof(buf) - 1] = '\0';
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = endp->cfg->transcoder_in;
+	addr.sin_port = htons(2427);
+	sendto(endp->cfg->gw_fd.bfd.fd, buf, len, 0,
+	       (struct sockaddr *) &addr, sizeof(addr));
+}
+
+static void create_transcoder(struct mgcp_endpoint *endp)
+{
+	int port;
+	int in_endp = ENDPOINT_NUMBER(endp);
+	int out_endp = back_channel(in_endp);
+
+	if (!endp->cfg->transcoder_ip)
+		return;
+
+	send_msg(endp, in_endp, endp->bts_end.local_port, "CRCX", "recvonly");
+	send_msg(endp, in_endp, endp->bts_end.local_port, "MDCX", "recvonly");
+	send_msg(endp, out_endp, endp->transcoder_end.local_port, "CRCX", "sendrecv");
+	send_msg(endp, out_endp, endp->transcoder_end.local_port, "MDCX", "sendrecv");
+
+	port = rtp_calculate_port(out_endp, 4000);
+	endp->transcoder_end.rtp_port = htons(port);
+	endp->transcoder_end.rtcp_port = htons(port + 1);
+}
+
+static void delete_transcoder(struct mgcp_endpoint *endp)
+{
+	int in_endp = ENDPOINT_NUMBER(endp);
+	int out_endp = back_channel(in_endp);
+
+	if (!endp->cfg->transcoder_ip)
+		return;
+
+	send_dlcx(endp, in_endp);
+	send_dlcx(endp, out_endp);
 }
