@@ -80,7 +80,7 @@ static void print_help()
 	printf(" -c --config-file filename The config file to use.\n");
 }
 
-static void handle_options(int argc, char** argv)
+static void handle_options(int argc, char **argv)
 {
 	while (1) {
 		int option_index = 0, c;
@@ -189,7 +189,7 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;

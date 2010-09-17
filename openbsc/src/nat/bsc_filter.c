@@ -73,7 +73,7 @@ static struct bsc_pkt_filter white_list[] = {
 	{ NAT_IPAC_PROTO_MGCP, ALLOW_ANY, ALLOW_ANY, ALLOW_ANY, FILTER_TO_BOTH },
 };
 
-struct bsc_nat_parsed* bsc_nat_parse(struct msgb *msg)
+struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 {
 	struct sccp_parse_result result;
 	struct bsc_nat_parsed *parsed;

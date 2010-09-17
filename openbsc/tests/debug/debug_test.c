@@ -22,7 +22,7 @@
 #include <openbsc/debug.h>
 
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	struct log_target *stderr_target;
 

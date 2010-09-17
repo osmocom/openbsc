@@ -28,7 +28,7 @@
 
 #include <openbsc/gsm_04_11.h>
 
-static void msc_sapi_n_reject(struct gsm_subscriber_connection* conn, int dlci)
+static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	int sapi = dlci & 0x7;
 
@@ -36,7 +36,7 @@ static void msc_sapi_n_reject(struct gsm_subscriber_connection* conn, int dlci)
 		gsm411_sapi_n_reject(conn);
 }
 
-static void msc_clear_request(struct gsm_subscriber_connection* conn, uint32_t cause)
+static void msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	gsm0408_clear_request(conn, cause);
 }

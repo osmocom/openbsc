@@ -93,7 +93,7 @@ static void print_help()
 	printf("  -e --log-level number. Set a global loglevel.\n");
 }
 
-static void handle_options(int argc, char** argv)
+static void handle_options(int argc, char **argv)
 {
 	while (1) {
 		int option_index = 0, c;

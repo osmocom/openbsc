@@ -736,7 +736,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 {
 	dbi_result result = NULL;
 	char tmsi[14];
-	char* tmsi_quoted;
+	char *tmsi_quoted;
 
 	for (;;) {
 		subscriber->tmsi = rand();

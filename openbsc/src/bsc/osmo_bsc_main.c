@@ -74,7 +74,7 @@ static void print_help()
 	printf("  -t --testmode. A special mode to provoke failures at the MSC.\n");
 }
 
-static void handle_options(int argc, char** argv)
+static void handle_options(int argc, char **argv)
 {
 	while (1) {
 		int option_index = 0, c;

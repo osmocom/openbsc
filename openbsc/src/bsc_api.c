@@ -187,7 +187,7 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 /*
  * Release all occupied RF Channels but stay around for more.
  */
-int gsm0808_clear(struct gsm_subscriber_connection* conn)
+int gsm0808_clear(struct gsm_subscriber_connection *conn)
 {
 	if (conn->ho_lchan)
 		bsc_clear_handover(conn);

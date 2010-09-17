@@ -95,7 +95,7 @@ static void test_mi_functionality(void)
 	COMPARE_STR(mi_parsed, imsi_even);
 }
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	test_location_area_identifier();
 	test_mi_functionality();

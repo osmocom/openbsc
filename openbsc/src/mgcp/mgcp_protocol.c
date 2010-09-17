@@ -353,7 +353,7 @@ static struct msgb *handle_audit_endpoint(struct mgcp_config *cfg, struct msgb *
 	return create_response(response, "AUEP", trans_id);
 }
 
-static int parse_conn_mode(const char* msg, int *conn_mode)
+static int parse_conn_mode(const char *msg, int *conn_mode)
 {
 	int ret = 0;
 	if (strcmp(msg, "recvonly") == 0)

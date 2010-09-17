@@ -303,7 +303,7 @@ static int gsm0408_authorize(struct gsm_subscriber_connection *conn, struct msgb
 	return 0;
 }
 
-void gsm0408_clear_request(struct gsm_subscriber_connection* conn, uint32_t cause)
+void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	struct gsm_trans *trans, *temp;
 

@@ -709,7 +709,7 @@ static void ipaccess_close_bsc(void *data)
 static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc)
 {
 	struct bsc_config *conf;
-	const char* token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
+	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
 
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
@@ -1075,7 +1075,7 @@ static void print_help()
 	printf("  -l --local=IP. The local address of this BSC.\n");
 }
 
-static void handle_options(int argc, char** argv)
+static void handle_options(int argc, char **argv)
 {
 	while (1) {
 		int option_index = 0, c;
@@ -1180,7 +1180,7 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	int rc;
 

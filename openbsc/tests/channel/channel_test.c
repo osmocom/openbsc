@@ -46,7 +46,7 @@ void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int 
 }
 
 
-int main(int argc, char** argv)
+int main(int argc, char **argv)
 {
 	struct gsm_network *network;
 	struct gsm_bts *bts;
