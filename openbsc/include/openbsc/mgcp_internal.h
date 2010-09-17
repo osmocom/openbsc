@@ -98,6 +98,7 @@ struct mgcp_endpoint {
 	/* port status for bts/net */
 	struct mgcp_rtp_end bts_end;
 	struct mgcp_rtp_end net_end;
+	struct mgcp_rtp_end transcoder_end;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;
@@ -123,6 +124,7 @@ int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
+int mgcp_bind_transcoder_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end);
 
 #endif

@@ -505,6 +505,16 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 			}
 			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
 		}
+
+		if (g_cfg->transcoder_ip && g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
+			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+						      g_cfg->transcoder_ports.base_port);
+			if (mgcp_bind_transcoder_rtp_port(endp, rtp_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+				return -1;
+			}
+			endp->transcoder_end.local_alloc = PORT_ALLOC_STATIC;
+		}
 	}
 
 	return 0;

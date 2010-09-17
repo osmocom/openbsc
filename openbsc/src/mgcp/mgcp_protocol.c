@@ -373,7 +373,8 @@ static int parse_conn_mode(const char *msg, int *conn_mode)
 }
 
 static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
-			 struct mgcp_port_range *range, int for_net)
+			 struct mgcp_port_range *range,
+			 int (*alloc)(struct mgcp_endpoint *endp, int port))
 {
 	int i;
 
@@ -390,9 +391,7 @@ static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
 		if (range->last_port >= range->range_end)
 			range->last_port = range->range_start;
 
-		rc = for_net ?
-			mgcp_bind_net_rtp_port(endp, range->last_port) :
-			mgcp_bind_bts_rtp_port(endp, range->last_port);
+		rc = alloc(endp, range->last_port);
 
 		range->last_port += 2;
 		if (rc == 0) {
@@ -402,18 +401,28 @@ static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
 
 	}
 
-	LOGP(DMGCP, LOGL_ERROR, "Allocating a RTP/RTCP port failed 200 times 0x%x net: %d\n",
-	     ENDPOINT_NUMBER(endp), for_net);
+	LOGP(DMGCP, LOGL_ERROR, "Allocating a RTP/RTCP port failed 200 times 0x%x.\n",
+	     ENDPOINT_NUMBER(endp));
 	return -1;
 }
 
 static int allocate_ports(struct mgcp_endpoint *endp)
 {
-	if (allocate_port(endp, &endp->net_end, &endp->cfg->net_ports, 1) != 0)
+	if (allocate_port(endp, &endp->net_end, &endp->cfg->net_ports,
+			  mgcp_bind_net_rtp_port) != 0)
 		return -1;
 
-	if (allocate_port(endp, &endp->bts_end, &endp->cfg->bts_ports, 0) != 0) {
+	if (allocate_port(endp, &endp->bts_end, &endp->cfg->bts_ports,
+			  mgcp_bind_bts_rtp_port) != 0) {
 		mgcp_rtp_end_reset(&endp->net_end);
+		return -1;
+	}
+
+	if (endp->cfg->transcoder_ip &&
+	    allocate_port(endp, &endp->transcoder_end, &endp->cfg->transcoder_ports,
+			  mgcp_bind_transcoder_rtp_port) != 0) {
+		mgcp_rtp_end_reset(&endp->net_end);
+		mgcp_rtp_end_reset(&endp->bts_end);
 		return -1;
 	}
 
@@ -805,6 +814,7 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 		cfg->endpoints[i].cfg = cfg;
 		mgcp_rtp_end_init(&cfg->endpoints[i].net_end);
 		mgcp_rtp_end_init(&cfg->endpoints[i].bts_end);
+		mgcp_rtp_end_init(&cfg->endpoints[i].transcoder_end);
 	}
 
 	return 0;
@@ -828,6 +838,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
+	mgcp_rtp_end_reset(&endp->transcoder_end);
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
