@@ -81,6 +81,12 @@ static int config_write_mgcp(struct vty *vty)
 	if (g_cfg->transcoder_ip)
 		vty_out(vty, "  transcoder-mgw %s%s", g_cfg->transcoder_ip, VTY_NEWLINE);
 
+	if (g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC)
+		vty_out(vty, "  rtp transcoder-base %u%s", g_cfg->transcoder_ports.base_port, VTY_NEWLINE);
+	else
+		vty_out(vty, "  rtp transcoder-range %u %u%s",
+			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -223,6 +229,25 @@ DEFUN(cfg_mgcp_rtp_net_base_port,
 
 ALIAS_DEPRECATED(cfg_mgcp_rtp_bts_base_port, cfg_mgcp_rtp_base_port_cmd,
       "rtp base <0-65534>", "Base port to use")
+
+DEFUN(cfg_mgcp_rtp_transcoder_range,
+      cfg_mgcp_rtp_transcoder_range_cmd,
+      "rtp transcoder-range <0-65534> <0-65534>",
+      "Range of ports to allocate for the transcoder\n"
+      "Start of the range of ports\n" "End of the range of ports\n")
+{
+	parse_range(&g_cfg->transcoder_ports, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_transcoder_base,
+      cfg_mgcp_rtp_transcoder_base_cmd,
+      "rtp transcoder-base <0-65534>",
+      "Base port for the transcoder range\n" "Port\n")
+{
+	parse_base(&g_cfg->transcoder_ports, argv);
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_mgcp_rtp_ip_dscp,
       cfg_mgcp_rtp_ip_dscp_cmd,
@@ -418,6 +443,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_range_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);

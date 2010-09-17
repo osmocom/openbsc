@@ -121,6 +121,7 @@ struct mgcp_config {
 
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;
+	struct mgcp_port_range transcoder_ports;
 	int endp_dscp;
 
 	/* spec handling */
