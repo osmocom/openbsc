@@ -86,6 +86,7 @@ static int config_write_mgcp(struct vty *vty)
 	else
 		vty_out(vty, "  rtp transcoder-range %u %u%s",
 			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
+	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -329,6 +330,16 @@ DEFUN(cfg_mgcp_transcoder,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_transcoder_remote_base,
+      cfg_mgcp_transcoder_remote_base_cmd,
+      "transcoder-remote-base <0-65534>",
+      "Set the base port for the transcoder\n" "The RTP base port on the transcoder")
+{
+	g_cfg->transcoder_remote_base = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(loop_endp,
       loop_endp_cmd,
       "loop-endpoint NAME (0|1)",
@@ -453,6 +464,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_transcoder_remote_base_cmd);
 	return 0;
 }
 

@@ -780,6 +780,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
 	cfg->audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->audio_payload = 126;
+	cfg->transcoder_remote_base = 4000;
 
 	cfg->bts_ports.base_port = RTP_PORT_DEFAULT;
 	cfg->net_ports.base_port = RTP_PORT_NET_DEFAULT;
@@ -934,7 +935,7 @@ static void create_transcoder(struct mgcp_endpoint *endp)
 	send_msg(endp, out_endp, endp->transcoder_end.local_port, "CRCX", "sendrecv");
 	send_msg(endp, out_endp, endp->transcoder_end.local_port, "MDCX", "sendrecv");
 
-	port = rtp_calculate_port(out_endp, 4000);
+	port = rtp_calculate_port(out_endp, endp->cfg->transcoder_remote_base);
 	endp->transcoder_end.rtp_port = htons(port);
 	endp->transcoder_end.rtcp_port = htons(port + 1);
 }

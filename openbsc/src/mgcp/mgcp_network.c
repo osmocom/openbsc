@@ -174,7 +174,7 @@ static int send_transcoder(struct mgcp_endpoint *endp, int is_rtp,
 		return -1;
 	}
 
-	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), 4000);
+	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->transcoder_remote_base);
 	if (!is_rtp)
 		port += 1;
 
