@@ -25,6 +25,7 @@
 #define OPENBSC_MGCP_H
 
 #include <osmocore/msgb.h>
+#include <osmocore/write_queue.h>
 
 #include "debug.h"
 
@@ -113,6 +114,8 @@ struct mgcp_config {
 	char *audio_name;
 	int audio_payload;
 	int audio_loop;
+
+	struct write_queue gw_fd;
 
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;

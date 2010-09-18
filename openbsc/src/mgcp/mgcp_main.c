@@ -55,7 +55,6 @@ void subscr_put() { abort(); }
 
 #warning "Make use of the rtp proxy code"
 
-static struct bsc_fd bfd;
 static struct mgcp_config *cfg;
 static int reset_endpoints = 0;
 static int daemonize = 0;
@@ -147,7 +146,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	msg = (struct msgb *) fd->data;
 
 	/* read one less so we can use it as a \0 */
-	int rc = recvfrom(bfd.fd, msg->data, msg->data_len - 1, 0,
+	int rc = recvfrom(cfg->gw_fd.bfd.fd, msg->data, msg->data_len - 1, 0,
 		(struct sockaddr *) &addr, &slen);
 	if (rc < 0) {
 		perror("Gateway failed to read");
@@ -164,7 +163,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 	msgb_reset(msg);
 
 	if (resp) {
-		sendto(bfd.fd, resp->l2h, msgb_l2len(resp), 0, (struct sockaddr *) &addr, sizeof(addr));
+		sendto(cfg->gw_fd.bfd.fd, resp->l2h, msgb_l2len(resp), 0, (struct sockaddr *) &addr, sizeof(addr));
 		msgb_free(resp);
 	}
 
@@ -228,34 +227,34 @@ int main(int argc, char **argv)
 
         /* we need to bind a socket */
         if (rc == 0) {
-		bfd.when = BSC_FD_READ;
-		bfd.cb = read_call_agent;
-		bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
-		if (bfd.fd < 0) {
+		cfg->gw_fd.bfd.when = BSC_FD_READ;
+		cfg->gw_fd.bfd.cb = read_call_agent;
+		cfg->gw_fd.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
+		if (cfg->gw_fd.bfd.fd < 0) {
 			perror("Gateway failed to listen");
 			return -1;
 		}
 
-		setsockopt(bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+		setsockopt(cfg->gw_fd.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 		memset(&addr, 0, sizeof(addr));
 		addr.sin_family = AF_INET;
 		addr.sin_port = htons(cfg->source_port);
 		inet_aton(cfg->source_addr, &addr.sin_addr);
 
-		if (bind(bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+		if (bind(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 			perror("Gateway failed to bind");
 			return -1;
 		}
 
-		bfd.data = msgb_alloc(4096, "mgcp-msg");
-		if (!bfd.data) {
+		cfg->gw_fd.bfd.data = msgb_alloc(4096, "mgcp-msg");
+		if (!cfg->gw_fd.bfd.data) {
 			fprintf(stderr, "Gateway memory error.\n");
 			return -1;
 		}
 
 
-		if (bsc_register_fd(&bfd) != 0) {
+		if (bsc_register_fd(&cfg->gw_fd.bfd) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
 			return -1;
 		}
