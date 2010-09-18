@@ -645,11 +645,6 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	}
 
 	/* some more MGCP config handling */
-	if (cfg->audio_name)
-		talloc_free(cfg->audio_name);
-	cfg->audio_name = NULL;
-
-	cfg->audio_payload = -1;
 	cfg->data = nat;
 	cfg->policy_cb = bsc_mgcp_policy_cb;
 	cfg->force_realloc = 1;
