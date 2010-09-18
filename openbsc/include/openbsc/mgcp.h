@@ -146,6 +146,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
 int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_config *cfg);
 void mgcp_free_endp(struct mgcp_endpoint *endp);
+int mgcp_reset_transcoder(struct mgcp_config *cfg);
 
 /*
  * format helper functions

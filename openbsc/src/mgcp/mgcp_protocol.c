@@ -951,3 +951,22 @@ static void delete_transcoder(struct mgcp_endpoint *endp)
 	send_dlcx(endp, in_endp);
 	send_dlcx(endp, out_endp);
 }
+
+int mgcp_reset_transcoder(struct mgcp_config *cfg)
+{
+	struct sockaddr_in addr;
+
+	if (!cfg->transcoder_ip)
+		return -1;
+
+	static const char mgcp_reset[] = {
+	    "RSIP 1 13@mgw MGCP 1.0\r\n"
+	};
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = cfg->transcoder_in;
+	addr.sin_port = htons(2427);
+	return sendto(cfg->gw_fd.bfd.fd, mgcp_reset, sizeof mgcp_reset -1, 0,
+		      (struct sockaddr *) &addr, sizeof(addr));
+}
