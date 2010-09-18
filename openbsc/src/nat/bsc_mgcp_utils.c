@@ -660,6 +660,12 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	nat->bsc_endpoints = talloc_zero_array(nat,
 					       struct bsc_endpoint,
 					       nat->mgcp_cfg->number_endpoints + 1);
+	if (!nat->bsc_endpoints) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate nat endpoints\n");
+		close(nat->mgcp_queue.bfd.fd);
+		nat->mgcp_queue.bfd.fd = -1;
+		return -1;
+	}
 
 	return 0;
 }
