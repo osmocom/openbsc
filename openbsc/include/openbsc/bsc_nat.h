@@ -190,7 +190,6 @@ struct bsc_nat {
 
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
-	struct write_queue mgcp_queue;
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
 
