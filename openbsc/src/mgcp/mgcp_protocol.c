@@ -360,6 +360,8 @@ static int parse_conn_mode(const char *msg, int *conn_mode)
 		*conn_mode = MGCP_CONN_RECV_ONLY;
 	else if (strcmp(msg, "sendrecv") == 0)
 		*conn_mode = MGCP_CONN_RECV_SEND;
+	else if (strcmp(msg, "sendonly") == 0)
+		*conn_mode = MGCP_CONN_SEND_ONLY;
 	else if (strcmp(msg, "loopback") == 0)
 		*conn_mode = MGCP_CONN_LOOPBACK;
 	else {
