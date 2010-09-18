@@ -759,8 +759,8 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 	cfg->source_port = 2427;
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
-	cfg->audio_name = talloc_strdup(cfg, "GSM-EFR/8000");
-	cfg->audio_payload = 97;
+	cfg->audio_name = talloc_strdup(cfg, "AMR/8000");
+	cfg->audio_payload = 126;
 
 	cfg->bts_ports.base_port = RTP_PORT_DEFAULT;
 	cfg->net_ports.base_port = RTP_PORT_NET_DEFAULT;
