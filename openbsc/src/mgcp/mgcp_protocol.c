@@ -864,10 +864,21 @@ static int back_channel(int endpoint)
 	return endpoint + 60;
 }
 
+static int send_trans(struct mgcp_config *cfg, const char *buf, int len)
+{
+	struct sockaddr_in addr;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = cfg->transcoder_in;
+	addr.sin_port = htons(2427);
+	return sendto(cfg->gw_fd.bfd.fd, buf, len, 0,
+		      (struct sockaddr *) &addr, sizeof(addr));
+}
+
 static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 		     const char *msg, const char *mode)
 {
-	struct sockaddr_in addr;
 	char buf[2096];
 	int len;
 
@@ -889,17 +900,11 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 
 	buf[sizeof(buf) - 1] = '\0';
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = endp->cfg->transcoder_in;
-	addr.sin_port = htons(2427);
-	sendto(endp->cfg->gw_fd.bfd.fd, buf, len, 0,
-	       (struct sockaddr *) &addr, sizeof(addr));
+	send_trans(endp->cfg, buf, len);
 }
 
 static void send_dlcx(struct mgcp_endpoint *endp, int endpoint)
 {
-	struct sockaddr_in addr;
 	char buf[2096];
 	int len;
 
@@ -913,12 +918,7 @@ static void send_dlcx(struct mgcp_endpoint *endp, int endpoint)
 
 	buf[sizeof(buf) - 1] = '\0';
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = endp->cfg->transcoder_in;
-	addr.sin_port = htons(2427);
-	sendto(endp->cfg->gw_fd.bfd.fd, buf, len, 0,
-	       (struct sockaddr *) &addr, sizeof(addr));
+	send_trans(endp->cfg, buf, len);
 }
 
 static void create_transcoder(struct mgcp_endpoint *endp)
@@ -954,8 +954,6 @@ static void delete_transcoder(struct mgcp_endpoint *endp)
 
 int mgcp_reset_transcoder(struct mgcp_config *cfg)
 {
-	struct sockaddr_in addr;
-
 	if (!cfg->transcoder_ip)
 		return -1;
 
@@ -963,10 +961,5 @@ int mgcp_reset_transcoder(struct mgcp_config *cfg)
 	    "RSIP 1 13@mgw MGCP 1.0\r\n"
 	};
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = cfg->transcoder_in;
-	addr.sin_port = htons(2427);
-	return sendto(cfg->gw_fd.bfd.fd, mgcp_reset, sizeof mgcp_reset -1, 0,
-		      (struct sockaddr *) &addr, sizeof(addr));
+	return send_trans(cfg, mgcp_reset, sizeof mgcp_reset -1);
 }
