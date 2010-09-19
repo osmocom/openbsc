@@ -446,13 +446,22 @@ static void test_mgcp_ass_tracking(void)
 	msg = msgb_alloc(4096, "foo");
 	copy_to_msg(msg, ass_cmd, sizeof(ass_cmd));
 	parsed = bsc_nat_parse(msg);
+
+	if (msg->l2h[16] != 0 ||
+	    msg->l2h[17] != 0x1) {
+		fprintf(stderr, "Input is not as expected.. %s 0x%x\n",
+			hexdump(msg->l2h, msgb_l2len(msg)),
+			msg->l2h[17]);
+		abort();
+	}
+
 	if (bsc_mgcp_assign_patch(&con, msg) != 0) {
 		fprintf(stderr, "Failed to handle assignment.\n");
 		abort();
 	}
 
-	if (con.msc_endp != 21) {
-		fprintf(stderr, "Timeslot should be 21.\n");
+	if (con.msc_endp != 1) {
+		fprintf(stderr, "Timeslot should be 1.\n");
 		abort();
 	}
 
@@ -462,6 +471,16 @@ static void test_mgcp_ass_tracking(void)
 	}
 	if (con.bsc->endpoint_status[0x1b] != 1) {
 		fprintf(stderr, "The status on the BSC is wrong.\n");
+		abort();
+	}
+
+	int multiplex, timeslot;
+	mgcp_endpoint_to_timeslot(0x1b, &multiplex, &timeslot);
+
+	uint16_t cic = htons(timeslot & 0x1f);
+	if (memcmp(&cic, &msg->l2h[16], sizeof(cic)) != 0) {
+		fprintf(stderr, "Message was not patched properly\n");
+		fprintf(stderr, "data cic: 0x%x %s\n", cic, hexdump(msg->l2h, msgb_l2len(msg)));
 		abort();
 	}
 
