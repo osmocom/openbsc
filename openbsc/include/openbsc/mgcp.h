@@ -26,6 +26,8 @@
 
 #include <osmocore/msgb.h>
 
+#include "debug.h"
+
 #include <arpa/inet.h>
 
 #define RTP_PORT_DEFAULT 4000
@@ -145,8 +147,11 @@ struct msgb *mgcp_create_response_with_data(int code, const char *msg, const cha
 /* adc helper */
 static inline int mgcp_timeslot_to_endpoint(int multiplex, int timeslot)
 {
-	if (timeslot == 0)
-		timeslot = 1;
+	if (timeslot == 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Timeslot should not be 0\n");
+		timeslot = 255;
+	}
+
 	return timeslot + (32 * multiplex);
 }
 
@@ -154,9 +159,6 @@ static inline void mgcp_endpoint_to_timeslot(int endpoint, int *multiplex, int *
 {
 	*multiplex = endpoint / 32;
 	*timeslot = endpoint % 32;
-
-	if (*timeslot == 1)
-		*timeslot = 0;
 }
 
 
