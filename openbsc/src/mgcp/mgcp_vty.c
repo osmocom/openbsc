@@ -99,13 +99,14 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	for (i = 1; i < g_cfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u%s",
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 			inet_ntoa(endp->bts_end.addr),
 			endp->bts_end.packets, endp->bts_state.lost_no,
 			endp->net_end.packets, endp->net_state.lost_no,
+			endp->transcoder_end.packets,
 			VTY_NEWLINE);
 	}
 

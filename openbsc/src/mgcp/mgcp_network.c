@@ -420,6 +420,7 @@ static int rtp_data_transcoder(struct bsc_fd *fd, unsigned int what)
 		return 0;
 	}
 
+	endp->transcoder_end.packets += 1;
 	return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
