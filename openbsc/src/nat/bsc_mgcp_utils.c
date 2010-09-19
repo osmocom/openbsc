@@ -412,7 +412,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	if (write_queue_enqueue(&bsc->nat->mgcp_queue, output) != 0) {
+	if (write_queue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
 		msgb_free(output);
 	}
@@ -562,7 +562,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp) {
-		if (write_queue_enqueue(&nat->mgcp_queue, resp) != 0) {
+		if (write_queue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Failed to enqueue msg.\n");
 			msgb_free(resp);
 		}
@@ -589,81 +589,86 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 {
 	int on;
 	struct sockaddr_in addr;
+	struct mgcp_config *cfg = nat->mgcp_cfg;
 
-	if (!nat->mgcp_cfg->call_agent_addr) {
+	if (!cfg->call_agent_addr) {
 		LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
 		return -1;
 	}
 
-	if (nat->mgcp_cfg->bts_ip) {
+	if (cfg->bts_ip) {
 		LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
 		return -1;
 	}
 
-	nat->mgcp_queue.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
-	if (nat->mgcp_queue.bfd.fd < 0) {
+	cfg->gw_fd.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (cfg->gw_fd.bfd.fd < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create MGCP socket. errno: %d\n", errno);
 		return -1;
 	}
 
 	on = 1;
-	setsockopt(nat->mgcp_queue.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	setsockopt(cfg->gw_fd.bfd.fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(nat->mgcp_cfg->source_port);
-	inet_aton(nat->mgcp_cfg->source_addr, &addr.sin_addr);
+	addr.sin_port = htons(cfg->source_port);
+	inet_aton(cfg->source_addr, &addr.sin_addr);
 
-	if (bind(nat->mgcp_queue.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to bind. errno: %d\n", errno);
-		close(nat->mgcp_queue.bfd.fd);
-		nat->mgcp_queue.bfd.fd = -1;
+		close(cfg->gw_fd.bfd.fd);
+		cfg->gw_fd.bfd.fd = -1;
 		return -1;
 	}
 
 	addr.sin_port = htons(2727);
-	inet_aton(nat->mgcp_cfg->call_agent_addr, &addr.sin_addr);
-	if (connect(nat->mgcp_queue.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	inet_aton(cfg->call_agent_addr, &addr.sin_addr);
+	if (connect(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to connect to: '%s'. errno: %d\n",
-		     nat->mgcp_cfg->call_agent_addr, errno);
-		close(nat->mgcp_queue.bfd.fd);
-		nat->mgcp_queue.bfd.fd = -1;
+		     cfg->call_agent_addr, errno);
+		close(cfg->gw_fd.bfd.fd);
+		cfg->gw_fd.bfd.fd = -1;
 		return -1;
 	}
 
-	write_queue_init(&nat->mgcp_queue, 10);
-	nat->mgcp_queue.bfd.when = BSC_FD_READ;
-	nat->mgcp_queue.bfd.data = nat;
-	nat->mgcp_queue.read_cb = mgcp_do_read;
-	nat->mgcp_queue.write_cb = mgcp_do_write;
+	write_queue_init(&cfg->gw_fd, 10);
+	cfg->gw_fd.bfd.when = BSC_FD_READ;
+	cfg->gw_fd.bfd.data = nat;
+	cfg->gw_fd.read_cb = mgcp_do_read;
+	cfg->gw_fd.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&nat->mgcp_queue.bfd) != 0) {
+	if (bsc_register_fd(&cfg->gw_fd.bfd) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register MGCP fd.\n");
-		close(nat->mgcp_queue.bfd.fd);
-		nat->mgcp_queue.bfd.fd = -1;
+		close(cfg->gw_fd.bfd.fd);
+		cfg->gw_fd.bfd.fd = -1;
 		return -1;
 	}
 
 	/* some more MGCP config handling */
-	if (nat->mgcp_cfg->audio_name)
-		talloc_free(nat->mgcp_cfg->audio_name);
-	nat->mgcp_cfg->audio_name = NULL;
+	cfg->data = nat;
+	cfg->policy_cb = bsc_mgcp_policy_cb;
+	cfg->force_realloc = 1;
 
-	nat->mgcp_cfg->audio_payload = -1;
-	nat->mgcp_cfg->data = nat;
-	nat->mgcp_cfg->policy_cb = bsc_mgcp_policy_cb;
-	nat->mgcp_cfg->force_realloc = 1;
-
-	if (nat->mgcp_cfg->bts_ip)
-		talloc_free(nat->mgcp_cfg->bts_ip);
-	nat->mgcp_cfg->bts_ip = "";
+	if (cfg->bts_ip)
+		talloc_free(cfg->bts_ip);
+	cfg->bts_ip = "";
 
 	nat->bsc_endpoints = talloc_zero_array(nat,
 					       struct bsc_endpoint,
-					       nat->mgcp_cfg->number_endpoints + 1);
+					       cfg->number_endpoints + 1);
 	if (!nat->bsc_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate nat endpoints\n");
-		close(nat->mgcp_queue.bfd.fd);
-		nat->mgcp_queue.bfd.fd = -1;
+		close(cfg->gw_fd.bfd.fd);
+		cfg->gw_fd.bfd.fd = -1;
+		return -1;
+	}
+
+	if (mgcp_reset_transcoder(cfg) < 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to send packet to the transcoder.\n");
+		talloc_free(nat->bsc_endpoints);
+		nat->bsc_endpoints = NULL;
+		close(cfg->gw_fd.bfd.fd);
+		cfg->gw_fd.bfd.fd = -1;
 		return -1;
 	}
 

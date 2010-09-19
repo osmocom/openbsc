@@ -78,6 +78,15 @@ static int config_write_mgcp(struct vty *vty)
 	vty_out(vty, "  number endpoints %u%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
+	if (g_cfg->transcoder_ip)
+		vty_out(vty, "  transcoder-mgw %s%s", g_cfg->transcoder_ip, VTY_NEWLINE);
+
+	if (g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC)
+		vty_out(vty, "  rtp transcoder-base %u%s", g_cfg->transcoder_ports.base_port, VTY_NEWLINE);
+	else
+		vty_out(vty, "  rtp transcoder-range %u %u%s",
+			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
+	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -90,13 +99,14 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	for (i = 1; i < g_cfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u%s",
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 			inet_ntoa(endp->bts_end.addr),
 			endp->bts_end.packets, endp->bts_state.lost_no,
 			endp->net_end.packets, endp->net_state.lost_no,
+			endp->transcoder_end.packets,
 			VTY_NEWLINE);
 	}
 
@@ -165,14 +175,28 @@ DEFUN(cfg_mgcp_bind_early,
 	return CMD_WARNING;
 }
 
+static void parse_base(struct mgcp_port_range *range, const char **argv)
+{
+	unsigned int port = atoi(argv[0]);
+	range->mode = PORT_ALLOC_STATIC;
+	range->base_port = port;
+}
+
+static void parse_range(struct mgcp_port_range *range, const char **argv)
+{
+	range->mode = PORT_ALLOC_DYNAMIC;
+	range->range_start = atoi(argv[0]);
+	range->range_end = atoi(argv[1]);
+	range->last_port = g_cfg->bts_ports.range_start;
+}
+
+
 DEFUN(cfg_mgcp_rtp_bts_base_port,
       cfg_mgcp_rtp_bts_base_port_cmd,
       "rtp bts-base <0-65534>",
       "Base port to use")
 {
-	unsigned int port = atoi(argv[0]);
-	g_cfg->bts_ports.mode = PORT_ALLOC_STATIC;
-	g_cfg->bts_ports.base_port = port;
+	parse_base(&g_cfg->bts_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -182,10 +206,7 @@ DEFUN(cfg_mgcp_rtp_bts_range,
       "Range of ports to allocate for endpoints\n"
       "Start of the range of ports\n" "End of the range of ports\n")
 {
-	g_cfg->bts_ports.mode = PORT_ALLOC_DYNAMIC;
-	g_cfg->bts_ports.range_start = atoi(argv[0]);
-	g_cfg->bts_ports.range_end = atoi(argv[1]);
-	g_cfg->bts_ports.last_port = g_cfg->bts_ports.range_start;
+	parse_range(&g_cfg->bts_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -195,10 +216,7 @@ DEFUN(cfg_mgcp_rtp_net_range,
       "Range of ports to allocate for endpoints\n"
       "Start of the range of ports\n" "End of the range of ports\n")
 {
-	g_cfg->net_ports.mode = PORT_ALLOC_DYNAMIC;
-	g_cfg->net_ports.range_start = atoi(argv[0]);
-	g_cfg->net_ports.range_end = atoi(argv[1]);
-	g_cfg->net_ports.last_port = g_cfg->net_ports.range_start;
+	parse_range(&g_cfg->net_ports, argv);
 	return CMD_SUCCESS;
 }
 
@@ -207,14 +225,31 @@ DEFUN(cfg_mgcp_rtp_net_base_port,
       "rtp net-base <0-65534>",
       "Base port to use for network port\n" "Port\n")
 {
-	unsigned int port = atoi(argv[0]);
-	g_cfg->net_ports.mode = PORT_ALLOC_STATIC;
-	g_cfg->net_ports.base_port = port;
+	parse_base(&g_cfg->net_ports, argv);
 	return CMD_SUCCESS;
 }
 
 ALIAS_DEPRECATED(cfg_mgcp_rtp_bts_base_port, cfg_mgcp_rtp_base_port_cmd,
       "rtp base <0-65534>", "Base port to use")
+
+DEFUN(cfg_mgcp_rtp_transcoder_range,
+      cfg_mgcp_rtp_transcoder_range_cmd,
+      "rtp transcoder-range <0-65534> <0-65534>",
+      "Range of ports to allocate for the transcoder\n"
+      "Start of the range of ports\n" "End of the range of ports\n")
+{
+	parse_range(&g_cfg->transcoder_ports, argv);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_rtp_transcoder_base,
+      cfg_mgcp_rtp_transcoder_base_cmd,
+      "rtp transcoder-base <0-65534>",
+      "Base port for the transcoder range\n" "Port\n")
+{
+	parse_base(&g_cfg->transcoder_ports, argv);
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_mgcp_rtp_ip_dscp,
       cfg_mgcp_rtp_ip_dscp_cmd,
@@ -281,6 +316,30 @@ DEFUN(cfg_mgcp_agent_addr,
 	g_cfg->call_agent_addr = talloc_strdup(g_cfg, argv[0]);
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_mgcp_transcoder,
+      cfg_mgcp_transcoder_cmd,
+      "transcoder-mgw A.B.C.D",
+      "Use a MGW to detranscoder RTP\n"
+      "The IP address of the MGW")
+{
+	if (g_cfg->transcoder_ip)
+		talloc_free(g_cfg->transcoder_ip);
+	g_cfg->transcoder_ip = talloc_strdup(g_cfg, argv[0]);
+	inet_aton(g_cfg->transcoder_ip, &g_cfg->transcoder_in);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_transcoder_remote_base,
+      cfg_mgcp_transcoder_remote_base_cmd,
+      "transcoder-remote-base <0-65534>",
+      "Set the base port for the transcoder\n" "The RTP base port on the transcoder")
+{
+	g_cfg->transcoder_remote_base = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(loop_endp,
       loop_endp_cmd,
@@ -396,6 +455,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_base_port_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_bts_range_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_net_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_range_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
@@ -403,6 +464,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_transcoder_remote_base_cmd);
 	return 0;
 }
 
@@ -454,6 +517,16 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 				return -1;
 			}
 			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
+		}
+
+		if (g_cfg->transcoder_ip && g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
+			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
+						      g_cfg->transcoder_ports.base_port);
+			if (mgcp_bind_transcoder_rtp_port(endp, rtp_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+				return -1;
+			}
+			endp->transcoder_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
 

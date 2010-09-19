@@ -25,6 +25,7 @@
 #define OPENBSC_MGCP_H
 
 #include <osmocore/msgb.h>
+#include <osmocore/write_queue.h>
 
 #include "debug.h"
 
@@ -114,8 +115,16 @@ struct mgcp_config {
 	int audio_payload;
 	int audio_loop;
 
+	/* transcoder handling */
+	char *transcoder_ip;
+	struct in_addr transcoder_in;
+	int transcoder_remote_base;
+
+	struct write_queue gw_fd;
+
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;
+	struct mgcp_port_range transcoder_ports;
 	int endp_dscp;
 
 	/* spec handling */
@@ -137,6 +146,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg);
 int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_config *cfg);
 void mgcp_free_endp(struct mgcp_endpoint *endp);
+int mgcp_reset_transcoder(struct mgcp_config *cfg);
 
 /*
  * format helper functions
