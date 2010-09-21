@@ -44,7 +44,7 @@ _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 
 	for (i=0; i<4; i++)
 		atuple->sres[i] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
-	for (i=8; i<12; i++)
+	for (i=4; i<12; i++)
 		atuple->kc[i-4] = atuple->rand[i] ^ ainfo->a3a8_ki[i];
 
 	return 0;
