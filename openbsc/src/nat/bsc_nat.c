@@ -791,14 +791,14 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
 			if (con) {
 				filter = bsc_nat_filter_dt(bsc, msg, con, parsed);
-				if (filter == 0) {
-					con_bsc = con->bsc;
-					con_msc = con->msc_con;
-					con_filter = con->con_local;
-				} else {
+				if (filter < 0) {
 					bsc_send_con_release(bsc, con);
 					con = NULL;
 					goto exit2;
+				} else {
+					con_bsc = con->bsc;
+					con_msc = con->msc_con;
+					con_filter = con->con_local;
 				}
 			}
 			break;
