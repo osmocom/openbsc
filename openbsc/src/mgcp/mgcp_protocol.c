@@ -955,7 +955,7 @@ static void delete_transcoder(struct mgcp_endpoint *endp)
 int mgcp_reset_transcoder(struct mgcp_config *cfg)
 {
 	if (!cfg->transcoder_ip)
-		return -1;
+		return 0;
 
 	static const char mgcp_reset[] = {
 	    "RSIP 1 13@mgw MGCP 1.0\r\n"
