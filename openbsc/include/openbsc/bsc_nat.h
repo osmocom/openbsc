@@ -152,8 +152,16 @@ struct bsc_nat_statistics {
 	} msc;
 };
 
+enum bsc_nat_acc_ctr {
+	ACC_LIST_BSC_FILTER,
+	ACC_LIST_NAT_FILTER,
+};
+
 struct bsc_nat_acc_lst {
 	struct llist_head list;
+
+	/* counter */
+	struct rate_ctr_group *stats;
 
 	/* the name of the list */
 	const char *name;

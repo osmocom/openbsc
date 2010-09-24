@@ -56,6 +56,18 @@ static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
 	.ctr_desc = bsc_cfg_ctr_description,
 };
 
+static const struct rate_ctr_desc acc_list_ctr_description[] = {
+	[ACC_LIST_BSC_FILTER]	= { "access-list.bsc-filter", "Rejected by rule for BSC"},
+	[ACC_LIST_NAT_FILTER]	= { "access-list.nat-filter", "Rejected by rule for NAT"},
+};
+
+static const struct rate_ctr_group_desc bsc_cfg_acc_list_desc = {
+	.group_name_prefix = "nat.filter",
+	.group_description = "NAT Access-List Statistics",
+	.num_ctr = ARRAY_SIZE(acc_list_ctr_description),
+	.ctr_desc = acc_list_ctr_description,
+};
+
 struct bsc_nat *bsc_nat_alloc(void)
 {
 	struct bsc_nat *nat = talloc_zero(tall_bsc_ctx, struct bsc_nat);
@@ -266,6 +278,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		if (lst_check_deny(bsc_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
+			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_BSC_FILTER]);
 			return -2;
 		}
 
@@ -279,6 +292,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		if (lst_check_deny(nat_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
+			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
 			return -3;
 		}
 	}
@@ -556,6 +570,13 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 		return NULL;
 	}
 
+	/* TODO: get the index right */
+	lst->stats = rate_ctr_group_alloc(lst, &bsc_cfg_acc_list_desc, 0);
+	if (!lst->stats) {
+		talloc_free(lst);
+		return NULL;
+	}
+
 	INIT_LLIST_HEAD(&lst->fltr_list);
 	lst->name = talloc_strdup(lst, name);
 	llist_add_tail(&lst->list, &nat->access_lists);
@@ -565,6 +586,7 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst)
 {
 	llist_del(&lst->list);
+	rate_ctr_group_free(lst->stats);
 	talloc_free(lst);
 }
 
