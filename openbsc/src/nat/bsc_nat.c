@@ -77,6 +77,7 @@ const char *openbsc_copyright =
 static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int);
 static void msc_send_reset(struct bsc_msc_connection *con);
+static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
@@ -302,6 +303,29 @@ static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsig
 	memcpy(msg->data, data, length);
 
 	bsc_write(bsc, msg, proto);
+}
+
+/*
+ * Update the release statistics
+ */
+static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal)
+{
+	if (!bsc->cfg) {
+		LOGP(DNAT, LOGL_ERROR, "BSC is not authenticated.");
+		return;
+	}
+
+	if (filter >= 0) {
+		LOGP(DNAT, LOGL_ERROR, "Connection was not rejected");
+		return;
+	}
+
+	if (filter == -1)
+		rate_ctr_inc(&bsc->cfg->stats.ctrg->ctr[BCFG_CTR_ILL_PACKET]);
+	else if (normal)
+		rate_ctr_inc(&bsc->cfg->stats.ctrg->ctr[BCFG_CTR_REJECTED_MSG]);
+	else
+		rate_ctr_inc(&bsc->cfg->stats.ctrg->ctr[BCFG_CTR_REJECTED_CR]);
 }
 
 /*
@@ -772,8 +796,11 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
 			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type);
-			if (filter < 0)
+			if (filter < 0) {
+				bsc_stat_reject(filter, bsc, 0);
 				goto exit3;
+			}
+
 			if (!create_sccp_src_ref(bsc, parsed))
 				goto exit2;
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
@@ -792,6 +819,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (con) {
 				filter = bsc_nat_filter_dt(bsc, msg, con, parsed);
 				if (filter < 0) {
+					bsc_stat_reject(filter, bsc, 1);
 					bsc_send_con_release(bsc, con);
 					con = NULL;
 					goto exit2;

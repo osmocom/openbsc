@@ -47,6 +47,9 @@ static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_NET_RECONN]    = { "net.reconnects", "Network reconnects       "},
 	[BCFG_CTR_DROPPED_SCCP]  = { "dropped.sccp",   "Dropped SCCP connections."},
 	[BCFG_CTR_DROPPED_CALLS] = { "dropped.calls",  "Dropped active calls.    "},
+	[BCFG_CTR_REJECTED_CR]   = { "rejected.cr",    "Rejected CR due filter   "},
+	[BCFG_CTR_REJECTED_MSG]  = { "rejected.msg",   "Rejected MSG due filter  "},
+	[BCFG_CTR_ILL_PACKET]    = { "rejected.ill",   "Rejected due parse error "},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
