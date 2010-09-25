@@ -516,6 +516,23 @@ DEFUN(cfg_lst_no,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_acc_lst,
+      show_acc_lst_cmd,
+      "show access-list NAME",
+      SHOW_STR "The name of the access list\n")
+{
+	struct bsc_nat_acc_lst *acc;
+	acc = bsc_nat_acc_lst_find(_nat, argv[0]);
+	if (!acc)
+		return CMD_WARNING;
+
+	vty_out(vty, "access-list %s%s", acc->name, VTY_NEWLINE);
+	vty_out_rate_ctr_group(vty, " ", acc->stats);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(cfg_bsc_acc_lst_name,
       cfg_bsc_acc_lst_name_cmd,
       "access-list-name NAME",
@@ -590,6 +607,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_msc_cmd);
 	install_element_ve(&test_regex_cmd);
 	install_element_ve(&show_bsc_mgcp_cmd);
+	install_element_ve(&show_acc_lst_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
