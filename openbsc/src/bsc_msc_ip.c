@@ -544,6 +544,38 @@ static int handle_modify_ack(struct msgb *msg)
 	return 1;
 }
 
+/*
+ * Check if the subscriber is coming from our LAC
+ */
+static void handle_lu(struct msgb *msg)
+{
+	struct gsm48_hdr *gh;
+	struct gsm48_loc_upd_req *lu;
+	struct gsm48_loc_area_id lai;
+	struct gsm_network *net;
+
+	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*lu)) {
+		LOGP(DMSC, LOGL_ERROR, "LU too small to look at: %u\n", msgb_l3len(msg));
+		return;
+	}
+
+	if (!msg->lchan->msc_data)
+		return;
+
+	net = msg->trx->bts->network;
+
+	gh = msgb_l3(msg);
+	lu = (struct gsm48_loc_upd_req *) gh->data;
+
+	gsm48_generate_lai(&lai, net->country_code, net->network_code,
+			   msg->trx->bts->location_area_code);
+
+	if (memcmp(&lai, &lu->lai, sizeof(lai)) != 0) {
+		LOGP(DMSC, LOGL_DEBUG, "Marking con for welcome USSD.\n");
+		msg->lchan->msc_data->new_subscriber = 1;
+	}
+}
+
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct msgb *msg)
 {
@@ -589,6 +621,8 @@ static int gsm0408_rcv_mm(struct msgb *msg)
 	case GSM48_MT_MM_CM_SERV_REQ:
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		rc = send_dtap_or_open_connection(msg);
+		if ((gh->msg_type & 0xbf) == GSM48_MT_MM_LOC_UPD_REQUEST)
+			handle_lu(msg);
 		break;
 	default:
 		break;

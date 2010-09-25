@@ -125,6 +125,8 @@ struct bss_sccp_connection_data {
 	struct sccp_connection *sccp;
 	int ciphering_handled : 1;
 
+	int new_subscriber;
+
         /* Timers... */
 
         /* for assginment command */
