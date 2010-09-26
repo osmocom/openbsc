@@ -1,6 +1,6 @@
 /* GSM 08.08 BSSMAP handling						*/
-/* (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by On-Waves
+/* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -28,6 +28,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/paging.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/gsm_04_80.h>
 
 #include <osmocore/gsm0808.h>
 
@@ -71,6 +72,19 @@ static int bssmap_paging_cb(unsigned int hooknum, unsigned int event, struct msg
 {
 	LOGP(DPAG, LOGL_DEBUG, "Paging is complete.\n");
 	return 0;
+}
+
+/* Send a USSD message */
+static void send_welcome_ussd(struct gsm_lchan *lchan)
+{
+	struct gsm_network *network;
+
+	network = lchan->ts->trx->bts->network;
+	if (!network->ussd_welcome_txt)
+		return;
+
+	gsm0480_send_ussdNotify(lchan, 1, network->ussd_welcome_txt);
+	gsm0480_send_releaseComplete(lchan);
 }
 
 static int bssmap_handle_reset_ack(struct gsm_network *net, struct msgb *msg, unsigned int length)
@@ -663,6 +677,7 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	struct msgb *gsm48;
 	u_int8_t *data;
 	u_int8_t link_id;
+	int is_lu = 0;
 
 	if (!lchan) {
 		LOGP(DMSC, LOGL_ERROR, "No lchan available\n");
@@ -712,6 +727,7 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 				gsm48_generate_lai(lai, net->country_code,
 						   net->network_code,
 						   gsm48->trx->bts->location_area_code);
+				is_lu = 1;
 			}
 		}
 	}
@@ -724,6 +740,11 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 		link_id |= 0x40;
 
 	bts_queue_send(gsm48, link_id);
+
+	/* Feature to send a welcome USSD for a new subscriber */
+	if (is_lu && lchan->msc_data->new_subscriber)
+		send_welcome_ussd(lchan);
+
 	return 0;
 }
 
