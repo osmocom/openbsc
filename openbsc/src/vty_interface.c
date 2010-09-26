@@ -1462,6 +1462,22 @@ DEFUN(cfg_net_grace_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_welcome_ussd,
+      cfg_net_welcome_ussd_cmd,
+      "bsc-welcome-txt .TEXT",
+      "Set the USSD notification to be sent.\n" "Text to be sent\n")
+{
+	char *data = argv_concat(argv, argc, 1);
+	if (!data)
+		return CMD_WARNING;
+
+	if (gsmnet->ussd_welcome_txt)
+		talloc_free(gsmnet->ussd_welcome_txt);
+	gsmnet->ussd_welcome_txt = talloc_strdup(gsmnet, data);
+	talloc_free(data);
+	return CMD_SUCCESS;
+}
+
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -2285,6 +2301,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_ping_time_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pong_time_cmd);
 	install_element(GSMNET_NODE, &cfg_net_grace_ussd_cmd);
+	install_element(GSMNET_NODE, &cfg_net_welcome_ussd_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
