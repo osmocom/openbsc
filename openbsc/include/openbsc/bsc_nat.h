@@ -265,7 +265,7 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
  * Content filtering.
  */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			   struct bsc_nat_parsed *, int *con_type);
+			   struct bsc_nat_parsed *, int *con_type, char **imsi);
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		      struct sccp_connections *con, struct bsc_nat_parsed *parsed);
 

@@ -784,6 +784,7 @@ static void handle_con_stats(struct sccp_connections *con)
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
 	int con_filter = 0;
+	char *imsi = NULL;
 	struct bsc_msc_connection *con_msc = NULL;
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
@@ -818,7 +819,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		struct sccp_connections *con;
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
-			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type);
+			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type, &imsi);
 			if (filter < 0) {
 				bsc_stat_reject(filter, bsc, 0);
 				goto exit3;
@@ -831,6 +832,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con_msc = con->msc_con;
 			con->con_type = con_type;
 			con->imsi_checked = filter;
+			if (imsi)
+				con->imsi = talloc_steal(con, imsi);
+			imsi = NULL;
 			con_bsc = con->bsc;
 			handle_con_stats(con);
 			break;
@@ -927,12 +931,16 @@ exit:
 	}
 
 exit2:
+	if (imsi)
+		talloc_free(imsi);
 	talloc_free(parsed);
 	msgb_free(msg);
 	return -1;
 
 exit3:
 	/* send a SCCP Connection Refused */
+	if (imsi)
+		talloc_free(imsi);
 	bsc_send_con_refuse(bsc, parsed, con_type);
 	talloc_free(parsed);
 	msgb_free(msg);

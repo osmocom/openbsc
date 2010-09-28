@@ -705,6 +705,7 @@ static void test_cr_filter()
 	nat_entry = bsc_nat_acc_lst_entry_create(nat_lst);
 
 	for (i = 0; i < ARRAY_SIZE(cr_filter); ++i) {
+		char *imsi;
 		msgb_reset(msg);
 		copy_to_msg(msg, cr_filter[i].data, cr_filter[i].length);
 
@@ -727,7 +728,7 @@ static void test_cr_filter()
 			abort();
 		}
 
-		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype);
+		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype, &imsi);
 		if (res != cr_filter[i].result) {
 			fprintf(stderr, "FAIL: Wrong result %d for test %d.\n", res, i);
 			abort();
@@ -738,6 +739,7 @@ static void test_cr_filter()
 			abort();
 		}
 
+		talloc_steal(parsed, imsi);
 		talloc_free(parsed);
 	}
 
