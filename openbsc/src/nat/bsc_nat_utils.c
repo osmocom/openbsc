@@ -469,6 +469,7 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 
 	ret = auth_imsi(bsc, mi_string);
 	con->imsi_checked = 1;
+	con->imsi = talloc_strdup(con, mi_string);
 	return ret;
 }
 
