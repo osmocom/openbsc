@@ -32,6 +32,7 @@
 #include <osmocore/write_queue.h>
 #include <osmocore/rate_ctr.h>
 #include <osmocore/statistics.h>
+#include <osmocore/protocol/gsm_04_08.h>
 
 #include <regex.h>
 
@@ -314,5 +315,7 @@ struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_ls
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
 int bsc_conn_type_to_ctr(struct sccp_connections *conn);
+
+struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *msg, uint32_t *len);
 
 #endif

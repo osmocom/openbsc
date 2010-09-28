@@ -549,6 +549,25 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	}
 }
 
+struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed,
+				  struct msgb *msg, uint32_t *len)
+{
+	/* gsm_type is actually the size of the dtap */
+	*len = parsed->gsm_type;
+	if (*len < msgb_l3len(msg) - 3) {
+		LOGP(DNAT, LOGL_ERROR, "Not enough space for DTAP.\n");
+		return NULL;
+	}
+
+	if (*len < sizeof(struct gsm48_hdr)) {
+		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
+		return NULL;
+	}
+
+	msg->l4h = &msg->l3h[3];
+	return (struct gsm48_hdr *) msg->l4h;
+}
+
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
 {
@@ -563,20 +582,9 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	if (parsed->bssap != BSSAP_MSG_DTAP)
 		return 0;
 
-	/* gsm_type is actually the size of the dtap */
-	len = parsed->gsm_type;
-	if (len < msgb_l3len(msg) - 3) {
-		LOGP(DNAT, LOGL_ERROR, "Not enough space for DTAP.\n");
+	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+	if (!hdr48)
 		return -1;
-	}
-
-	if (len < sizeof(*hdr48)) {
-		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
-		return -1;
-	}
-
-	msg->l4h = &msg->l3h[3];
-	hdr48 = (struct gsm48_hdr *) msg->l4h;
 
 	msg_type = hdr48->msg_type & 0xbf;
 	if (hdr48->proto_discr == GSM48_PDISC_MM &&
