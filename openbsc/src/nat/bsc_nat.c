@@ -854,12 +854,19 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 						con = NULL;
 						goto exit2;
 					}
+
+					/* hand data to a side channel */
+					if (bsc_check_ussd(con, parsed, msg) == 1) {
+						/* we are going to take over the connection */
+						/* TODO: */
+					}
 				}
 
 				con_bsc = con->bsc;
 				con_msc = con->msc_con;
 				con_filter = con->con_local;
 			}
+
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);

@@ -320,4 +320,7 @@ int bsc_conn_type_to_ctr(struct sccp_connections *conn);
 
 struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *msg, uint32_t *len);
 
+/** USSD filtering */
+int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
+
 #endif
