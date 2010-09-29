@@ -530,6 +530,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timeout pong %d%s", gsmnet->pong_timeout, VTY_NEWLINE);
 	if (gsmnet->ussd_grace_txt)
 		vty_out(vty, " bsc-grace-text %s%s", gsmnet->ussd_grace_txt, VTY_NEWLINE);
+	if (gsmnet->ussd_welcome_txt)
+		vty_out(vty, " bsc-welcome-text %s%s", gsmnet->ussd_welcome_txt, VTY_NEWLINE);
 
 
 	return CMD_SUCCESS;
