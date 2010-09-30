@@ -29,14 +29,15 @@
 #include <string.h>
 #include <errno.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/bsc_api.h>
+
+#include <osmocore/gsm_utils.h>
+#include <osmocore/msgb.h>
+#include <osmocore/tlv.h>
 
 /* Forward declarations */
 static int parse_ussd(u_int8_t *ussd, struct ussd_request *req);
