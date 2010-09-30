@@ -53,6 +53,7 @@
 #include <osmocore/bitvec.h>
 
 #include <osmocore/gsm48.h>
+#include <osmocore/gsm0480.h>
 #include <osmocore/gsm_utils.h>
 #include <osmocore/msgb.h>
 #include <osmocore/talloc.h>

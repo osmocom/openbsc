@@ -35,6 +35,7 @@
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/bsc_api.h>
 
+#include <osmocore/gsm0480.h>
 #include <osmocore/gsm_utils.h>
 #include <osmocore/msgb.h>
 #include <osmocore/tlv.h>
@@ -246,116 +247,6 @@ static int parse_process_uss_req(u_int8_t *uss_req_data, u_int8_t length,
 	return rc;
 }
 
-struct msgb *gsm0480_create_notifySS(const char *text)
-{
-	struct msgb *msg;
-	uint8_t *data, *tmp_len;
-	uint8_t *seq_len_ptr, *cal_len_ptr, *opt_len_ptr, *nam_len_ptr;
-	int len;
-
-	len = strlen(text);
-	if (len < 1 || len > 160)
-		return NULL;
-
-	msg = gsm48_msgb_alloc();
-	if (!msg)
-		return NULL;
-
-	msgb_put_u8(msg, GSM_0480_SEQUENCE_TAG);
-	seq_len_ptr = msgb_put(msg, 1);
-
-	/* ss_code for CNAP { */
-	msgb_put_u8(msg, 0x81);
-	msgb_put_u8(msg, 1);
-	msgb_put_u8(msg, 0x19);
-	/* } ss_code */
-
-
-	/* nameIndicator { */
-	msgb_put_u8(msg, 0xB4);
-	nam_len_ptr = msgb_put(msg, 1);
-
-	/* callingName { */
-	msgb_put_u8(msg, 0xA0);
-	opt_len_ptr = msgb_put(msg, 1);
-	msgb_put_u8(msg, 0xA0);
-	cal_len_ptr = msgb_put(msg, 1);
-
-	/* namePresentationAllowed { */
-	/* add the DCS value */
-	msgb_put_u8(msg, 0x80);
-	msgb_put_u8(msg, 1);
-	msgb_put_u8(msg, 0x0F);
-
-	/* add the lengthInCharacters */
-	msgb_put_u8(msg, 0x81);
-	msgb_put_u8(msg, 1);
-	msgb_put_u8(msg, strlen(text));
-
-	/* add the actual string */
-	msgb_put_u8(msg, 0x82);
-	tmp_len = msgb_put(msg, 1);
-	data = msgb_put(msg, 0);
-	len = gsm_7bit_encode(data, text);
-	tmp_len[0] = len;
-	msgb_put(msg, len);
-
-	/* }; namePresentationAllowed */
-
-	cal_len_ptr[0] = 3 + 3 + 2 + len;
-	opt_len_ptr[0] = cal_len_ptr[0] + 2;
-	/* }; callingName */
-
-	nam_len_ptr[0] = opt_len_ptr[0] + 2;
-	/* ); nameIndicator */
-
-	/* write the lengths... */
-	seq_len_ptr[0] = 3 + nam_len_ptr[0] + 2;
-
-	return msg;
-}
-
-struct msgb *gsm0480_create_unstructuredSS_Notify(int alertPattern, const char *text)
-{
-	struct msgb *msg;
-	uint8_t *seq_len_ptr, *ussd_len_ptr, *data;
-	int len;
-
-	msg = gsm48_msgb_alloc();
-	if (!msg)
-		return NULL;
-
-	/* SEQUENCE { */
-	msgb_put_u8(msg, GSM_0480_SEQUENCE_TAG);
-	seq_len_ptr = msgb_put(msg, 1);
-
-	/* DCS { */
-	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
-	msgb_put_u8(msg, 1);
-	msgb_put_u8(msg, 0x0F);
-	/* } DCS */
-
-	/* USSD-String { */
-	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
-	ussd_len_ptr = msgb_put(msg, 1);
-	data = msgb_put(msg, 0);
-	len = gsm_7bit_encode(data, text);
-	msgb_put(msg, len);
-	ussd_len_ptr[0] = len;
-	/* USSD-String } */
-
-	/* alertingPattern { */
-	msgb_put_u8(msg, ASN1_OCTET_STRING_TAG);
-	msgb_put_u8(msg, 1);
-	msgb_put_u8(msg, alertPattern);
-	/* } alertingPattern */
-
-	seq_len_ptr[0] = 3 + 2 + ussd_len_ptr[0] + 3;
-	/* } SEQUENCE */
-
-	return msg;
-}
-
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 			       const struct msgb *in_msg, const char *response_text,
@@ -403,35 +294,6 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
 	return gsm0808_submit_dtap(conn, msg, 0);
-}
-
-/* wrap an invoke around it... the other way around
- *
- * 1.) Invoke Component tag
- * 2.) Invoke ID Tag
- * 3.) Operation
- * 4.) Data
- */
-int gsm0480_wrap_invoke(struct msgb *msg, int op, int link_id)
-{
-	/* 3. operation */
-	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, op);
-
-	/* 2. invoke id tag */
-	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, link_id);
-
-	/* 1. component tag */
-	msgb_wrap_with_TL(msg, GSM0480_CTYPE_INVOKE);
-
-	return 0;
-}
-
-/* wrap the GSM 04.08 Facility IE around it */
-int gsm0480_wrap_facility(struct msgb *msg)
-{
-	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
-
-	return 0;
 }
 
 int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
