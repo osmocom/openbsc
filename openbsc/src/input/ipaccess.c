@@ -607,7 +607,7 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 struct e1inp_driver ipaccess_driver = {
 	.name = "ip.access",
 	.want_write = ts_want_write,
-	.default_delay = 100000,
+	.default_delay = 0,
 };
 
 /* callback of the OML listening filedescriptor */
