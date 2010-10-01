@@ -471,8 +471,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 						  sizeof(nanobts_attr_nse));
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0xff, 0xff);
-			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
-					      0xff, 0xff, NM_STATE_UNLOCKED);
 		}
 		break;
 	case NM_OC_GPRS_CELL:
@@ -487,6 +485,8 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 					0, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
 					      0, 0xff, NM_STATE_UNLOCKED);
+			abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSE, bts->bts_nr,
+					      0xff, 0xff, NM_STATE_UNLOCKED);
 		}
 		break;
 	case NM_OC_GPRS_NSVC:
