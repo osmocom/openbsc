@@ -99,6 +99,10 @@ enum bsc_cfg_ctr {
 	BCFG_CTR_REJECTED_CR,
 	BCFG_CTR_REJECTED_MSG,
 	BCFG_CTR_ILL_PACKET,
+	BCFG_CTR_CON_TYPE_LU,
+	BCFG_CTR_CON_CMSERV_RQ,
+	BCFG_CTR_CON_PAG_RESP,
+	BCFG_CTR_CON_OTHER,
 };
 
 /**
@@ -295,5 +299,7 @@ void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
+
+int bsc_conn_type_to_ctr(struct sccp_connections *conn);
 
 #endif

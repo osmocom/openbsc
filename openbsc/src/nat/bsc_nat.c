@@ -758,6 +758,21 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	     bsc->write_queue.bfd.fd);
 }
 
+static void handle_con_stats(struct sccp_connections *con)
+{
+	struct rate_ctr_group *ctrg;
+	int id = bsc_conn_type_to_ctr(con);
+
+	if (id == -1)
+		return;
+
+	if (!con->bsc || !con->bsc->cfg)
+		return;
+
+	ctrg = con->bsc->cfg->stats.ctrg;
+	rate_ctr_inc(&ctrg->ctr[id]);
+}
+
 static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 {
 	int con_filter = 0;
@@ -809,6 +824,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con->con_type = con_type;
 			con->imsi_checked = filter;
 			con_bsc = con->bsc;
+			handle_con_stats(con);
 			break;
 		case SCCP_MSG_TYPE_RLSD:
 		case SCCP_MSG_TYPE_CREF:

@@ -40,7 +40,6 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-
 static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn",      "SCCP Connections         "},
 	[BCFG_CTR_SCCP_CALLS]    = { "sccp.calls",     "SCCP Assignment Commands "},
@@ -50,6 +49,10 @@ static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_REJECTED_CR]   = { "rejected.cr",    "Rejected CR due filter   "},
 	[BCFG_CTR_REJECTED_MSG]  = { "rejected.msg",   "Rejected MSG due filter  "},
 	[BCFG_CTR_ILL_PACKET]    = { "rejected.ill",   "Rejected due parse error "},
+	[BCFG_CTR_CON_TYPE_LU]   = { "conn.lu",        "Conn Location Update     "},
+	[BCFG_CTR_CON_CMSERV_RQ] = { "conn.rq",        "Conn CM Service Req      "},
+	[BCFG_CTR_CON_PAG_RESP]  = { "conn.pag",       "Conn Paging Response     "},
+	[BCFG_CTR_CON_OTHER]     = { "conn.other",     "Conn Other               "},
 };
 
 static const struct rate_ctr_group_desc bsc_cfg_ctrg_desc = {
@@ -608,4 +611,18 @@ struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_ls
 int bsc_nat_msc_is_connected(struct bsc_nat *nat)
 {
 	return nat->msc_con->is_connected;
+}
+
+static const int con_to_ctr[] = {
+	[NAT_CON_TYPE_NONE]		= -1,
+	[NAT_CON_TYPE_LU]		= BCFG_CTR_CON_TYPE_LU,
+	[NAT_CON_TYPE_CM_SERV_REQ]	= BCFG_CTR_CON_CMSERV_RQ,
+	[NAT_CON_TYPE_PAG_RESP]		= BCFG_CTR_CON_PAG_RESP,
+	[NAT_CON_TYPE_LOCAL_REJECT]	= -1,
+	[NAT_CON_TYPE_OTHER]		= BCFG_CTR_CON_OTHER,
+};
+
+int bsc_conn_type_to_ctr(struct sccp_connections *conn)
+{
+	return con_to_ctr[conn->con_type];
 }
