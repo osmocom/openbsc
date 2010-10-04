@@ -31,16 +31,16 @@ int db_prepare();
 int db_fini();
 
 /* subscriber management */
-struct gsm_subscriber* db_create_subscriber(struct gsm_network *net,
+struct gsm_subscriber *db_create_subscriber(struct gsm_network *net,
 					    char *imsi);
-struct gsm_subscriber* db_get_subscriber(struct gsm_network *net,
+struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
 					 const char *subscr);
-int db_sync_subscriber(struct gsm_subscriber* subscriber);
-int db_subscriber_alloc_tmsi(struct gsm_subscriber* subscriber);
-int db_subscriber_alloc_exten(struct gsm_subscriber* subscriber);
-int db_subscriber_alloc_token(struct gsm_subscriber* subscriber, u_int32_t* token);
-int db_subscriber_assoc_imei(struct gsm_subscriber* subscriber, char *imei);
+int db_sync_subscriber(struct gsm_subscriber *subscriber);
+int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber);
+int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
+int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t* token);
+int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char *imei);
 int db_sync_equipment(struct gsm_equipment *equip);
 
 /* auth info */
