@@ -298,7 +298,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 		if (lst_check_deny(nat_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
-			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
+			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
 			return -3;
 		}
 	}
