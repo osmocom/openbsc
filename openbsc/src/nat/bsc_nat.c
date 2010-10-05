@@ -103,9 +103,15 @@ int nm_state_event(enum nm_evt evt, uint8_t obj_class, void *obj,
 void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 {}
 
-static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg) __attribute__((nonnull (1, 2)));
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
+	if (!con) {
+		LOGP(DINP, LOGL_ERROR, "No MSC Connection assigned. Check your code.\n");
+		msgb_free(msg);
+		return;
+	}
+
+
 	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
