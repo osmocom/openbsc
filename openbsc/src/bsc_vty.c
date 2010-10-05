@@ -411,7 +411,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		bts->si_common.cell_sel_par.rxlev_acc_min, VTY_NEWLINE);
 	if (bts->si_common.chan_desc.t3212)
 		vty_out(vty, "  periodic location update %u%s",
-			bts->si_common.chan_desc.t3212 * 10, VTY_NEWLINE);
+			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -1658,7 +1658,7 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 {
 	struct gsm_bts *bts = vty->index;
 
-	bts->si_common.chan_desc.t3212 = atoi(argv[0]) / 10;
+	bts->si_common.chan_desc.t3212 = atoi(argv[0]) / 6;
 
 	return CMD_SUCCESS;
 }
