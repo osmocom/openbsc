@@ -1178,7 +1178,7 @@ static void signal_handler(int signal)
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
 	case SIGUSR2:
-		if (!bsc_gsmnet->msc_con || !bsc_gsmnet->msc_con->is_connected)
+		if (!bsc_gsmnet->msc_con)
 			return;
 		bsc_msc_lost(bsc_gsmnet->msc_con);
 		break;
