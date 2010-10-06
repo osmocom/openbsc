@@ -216,7 +216,9 @@ void bsc_msc_lost(struct bsc_msc_connection *con)
 {
 	write_queue_clear(&con->write_queue);
 	bsc_del_timer(&con->timeout_timer);
-	bsc_unregister_fd(&con->write_queue.bfd);
+
+	if (con->write_queue.bfd.fd >= 0)
+		bsc_unregister_fd(&con->write_queue.bfd);
 	connection_loss(con);
 }
 
