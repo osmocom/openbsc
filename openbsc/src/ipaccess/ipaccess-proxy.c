@@ -1,7 +1,7 @@
 /* OpenBSC Abis/IP proxy ip.access nanoBTS */
 
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010 by On Waves
+ * (C) 2010 by On-Waves
  * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved

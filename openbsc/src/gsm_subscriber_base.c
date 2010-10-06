@@ -2,7 +2,7 @@
 
 /* (C) 2008 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On Waves
+ * (C) 2010 by On-Waves
  *
  * All Rights Reserved
  *

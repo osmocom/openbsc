@@ -1,7 +1,7 @@
 /* GSM 08.08 like API for OpenBSC. The bridge from MSC to BSC */
 
 /* (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On Waves
+ * (C) 2010 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved

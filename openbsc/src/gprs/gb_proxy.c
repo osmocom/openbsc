@@ -1,7 +1,7 @@
 /* NS-over-IP proxy */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010 by On Waves
+ * (C) 2010 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
