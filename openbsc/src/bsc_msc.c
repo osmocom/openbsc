@@ -77,6 +77,9 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	queue = container_of(fd, struct write_queue, bfd);
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
+	/* From here on we will either be connected or reconnect */
+	bsc_del_timer(&con->timeout_timer);
+
 	/* check the socket state */
 	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
 	if (rc != 0) {
@@ -94,7 +97,6 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 
 	con->is_connected = 1;
-	bsc_del_timer(&con->timeout_timer);
 	LOGP(DMSC, LOGL_NOTICE, "(Re)Connected to the MSC.\n");
 	if (con->connected)
 		con->connected(con);
@@ -213,6 +215,7 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
 void bsc_msc_lost(struct bsc_msc_connection *con)
 {
 	write_queue_clear(&con->write_queue);
+	bsc_del_timer(&con->timeout_timer);
 	bsc_unregister_fd(&con->write_queue.bfd);
 	connection_loss(con);
 }
