@@ -52,6 +52,7 @@
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>
+#include <osmocore/gsm0480.h>
 
 void *tall_locop_ctx;
 
