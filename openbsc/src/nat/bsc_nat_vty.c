@@ -86,11 +86,18 @@ static int config_write_nat(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+static void dump_lac(struct vty *vty, struct bsc_config *cfg)
+{
+	struct bsc_lac_entry *lac;
+	llist_for_each_entry(lac, &cfg->lac_list, entry)
+		vty_out(vty, "  location_area_code %u%s", lac->lac, VTY_NEWLINE);
+}
+
 static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 {
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
-	vty_out(vty, "  location_area_code %u%s", bsc->lac, VTY_NEWLINE);
+	dump_lac(vty, bsc);
 	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
@@ -115,9 +122,8 @@ DEFUN(show_sccp, show_sccp_cmd, "show sccp connections",
 	vty_out(vty, "Listing all open SCCP connections%s", VTY_NEWLINE);
 
 	llist_for_each_entry(con, &_nat->sccp_connections, list_entry) {
-		vty_out(vty, "For BSC Nr: %d lac: %d; BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x type: %s%s",
+		vty_out(vty, "For BSC Nr: %d BSC ref: 0x%x; MUX ref: 0x%x; Network has ref: %d ref: 0x%x MSC/BSC mux: 0x%x/0x%x type: %s%s",
 			con->bsc->cfg ? con->bsc->cfg->nr : -1,
-			con->bsc->cfg ? con->bsc->cfg->lac : -1,
 			sccp_src_ref_to_int(&con->real_ref),
 			sccp_src_ref_to_int(&con->patched_ref),
 			con->has_remote_ref,
@@ -139,9 +145,8 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
 		getpeername(con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
-		vty_out(vty, "BSC nr: %d lac: %d auth: %d fd: %d peername: %s%s",
+		vty_out(vty, "BSC nr: %d auth: %d fd: %d peername: %s%s",
 			con->cfg ? con->cfg->nr : -1,
-			con->cfg ? con->cfg->lac : -1,
 			con->authenticated, con->write_queue.bfd.fd,
 			inet_ntoa(sock.sin_addr), VTY_NEWLINE);
 	}
@@ -178,8 +183,8 @@ DEFUN(show_bsc_cfg, show_bsc_cfg_cmd, "show bsc config",
 {
 	struct bsc_config *conf;
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
-		vty_out(vty, "BSC token: '%s' lac: %u nr: %u%s",
-			conf->token, conf->lac, conf->nr, VTY_NEWLINE);
+		vty_out(vty, "BSC token: '%s' nr: %u%s",
+			conf->token, conf->nr, VTY_NEWLINE);
 		if (conf->acc_lst_name)
 			vty_out(vty, " access-list: %s%s",
 				conf->acc_lst_name, VTY_NEWLINE);
@@ -215,8 +220,8 @@ static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
 	int connected = 0;
 	struct bsc_connection *con;
 
-	vty_out(vty, " BSC lac: %d nr: %d%s",
-		conf->lac, conf->nr, VTY_NEWLINE);
+	vty_out(vty, " BSC nr: %d%s",
+		conf->nr, VTY_NEWLINE);
 	vty_out_rate_ctr_group(vty, " ", conf->stats.ctrg);
 
 	llist_for_each_entry(con, &conf->nat->bsc_connections, list_entry) {
@@ -264,7 +269,7 @@ DEFUN(show_stats_lac,
 
 	dump_stat_total(vty, _nat);
 	llist_for_each_entry(conf, &_nat->bsc_configs, entry) {
-		if (conf->lac != lac)
+		if (!bsc_config_handles_lac(conf, lac))
 			continue;
 		dump_stat_bsc(vty, conf);
 	}
@@ -406,7 +411,7 @@ DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 		return CMD_WARNING;
 	} else if (bsc_nr == _nat->num_bsc) {
 		/* allocate a new one */
-		bsc = bsc_config_alloc(_nat, "unknown", 0);
+		bsc = bsc_config_alloc(_nat, "unknown");
 	} else
 		bsc = bsc_config_num(_nat, bsc_nr);
 
@@ -445,16 +450,29 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 
 	/* verify that the LACs are unique */
 	llist_for_each_entry(tmp, &_nat->bsc_configs, entry) {
-		if (tmp->lac == lac) {
+		if (bsc_config_handles_lac(tmp, lac)) {
 			vty_out(vty, "%% LAC %d is already used.%s", lac, VTY_NEWLINE);
 			return CMD_ERR_INCOMPLETE;
 		}
 	}
 
-	conf->lac = lac;
+	bsc_config_add_lac(conf, lac);
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
+      "no location_area_code <0-65535>",
+      NO_STR "Set the Location Area Code (LAC) of this BSC")
+{
+	int lac = atoi(argv[0]);
+	struct bsc_config *conf = vty->index;
+
+	bsc_config_del_lac(conf, lac);
+	return CMD_SUCCESS;
+}
+
+
 
 DEFUN(cfg_lst_imsi_allow,
       cfg_lst_imsi_allow_cmd,
@@ -638,6 +656,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &ournode_end_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_token_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_lac_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_lac_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);

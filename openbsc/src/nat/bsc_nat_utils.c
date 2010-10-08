@@ -116,27 +116,69 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 	return con;
 }
 
-struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac)
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 {
 	struct bsc_config *conf = talloc_zero(nat, struct bsc_config);
 	if (!conf)
 		return NULL;
 
 	conf->token = talloc_strdup(conf, token);
-	conf->lac = lac;
 	conf->nr = nat->num_bsc;
 	conf->nat = nat;
+
+	INIT_LLIST_HEAD(&conf->lac_list);
 
 	llist_add_tail(&conf->entry, &nat->bsc_configs);
 	++nat->num_bsc;
 
-	conf->stats.ctrg = rate_ctr_group_alloc(conf, &bsc_cfg_ctrg_desc, conf->lac);
+	conf->stats.ctrg = rate_ctr_group_alloc(conf, &bsc_cfg_ctrg_desc, conf->nr);
 	if (!conf->stats.ctrg) {
 		talloc_free(conf);
 		return NULL;
 	}
 
 	return conf;
+}
+
+void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
+{
+	struct bsc_lac_entry *lac;
+
+	llist_for_each_entry(lac, &cfg->lac_list, entry)
+		if (lac->lac == _lac)
+			return;
+
+	lac = talloc_zero(cfg, struct bsc_lac_entry);
+	if (!lac) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		return;
+	}
+
+	lac->lac = _lac;
+	llist_add_tail(&lac->entry, &cfg->lac_list);
+}
+
+void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
+{
+	struct bsc_lac_entry *lac;
+
+	llist_for_each_entry(lac, &cfg->lac_list, entry)
+		if (lac->lac == _lac) {
+			llist_del(&lac->entry);
+			talloc_free(lac);
+			return;
+		}
+}
+
+int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)
+{
+	struct bsc_lac_entry *entry;
+
+	llist_for_each_entry(entry, &cfg->lac_list, entry)
+		if (entry->lac == lac_nr)
+			return 1;
+
+	return 0;
 }
 
 void sccp_connection_destroy(struct sccp_connections *conn)
@@ -188,7 +230,9 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
 			if (!bsc->cfg)
 				continue;
-			if (!bsc->authenticated || _lac != bsc->cfg->lac)
+			if (!bsc->authenticated)
+				continue;
+			if (!bsc_config_handles_lac(bsc->cfg, _lac))
 				continue;
 
 			return bsc;

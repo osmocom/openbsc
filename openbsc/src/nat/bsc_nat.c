@@ -753,8 +753,8 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
 			bsc_del_timer(&bsc->id_timeout);
-			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d lac: %d on fd %d\n",
-			     conf->nr, conf->lac, bsc->write_queue.bfd.fd);
+			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
+			     conf->nr, bsc->write_queue.bfd.fd);
 			start_ping_pong(bsc);
 			return;
 		}

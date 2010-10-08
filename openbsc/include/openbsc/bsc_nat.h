@@ -112,7 +112,6 @@ struct bsc_config {
 	struct llist_head entry;
 
 	char *token;
-	unsigned int lac;
 	int nr;
 
 	char *description;
@@ -126,6 +125,13 @@ struct bsc_config {
 	struct bsc_nat *nat;
 
 	struct bsc_config_stats stats;
+
+	struct llist_head lac_list;
+};
+
+struct bsc_lac_entry {
+	struct llist_head entry;
+	uint16_t lac;
 };
 
 /**
@@ -229,8 +235,12 @@ struct bsc_nat {
 };
 
 /* create and init the structures */
-struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token, unsigned int lac);
+struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+void bsc_config_add_lac(struct bsc_config *cfg, int lac);
+void bsc_config_del_lac(struct bsc_config *cfg, int lac);
+int bsc_config_handles_lac(struct bsc_config *cfg, int lac);
+
 struct bsc_nat *bsc_nat_alloc(void);
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat);
 void bsc_nat_set_msc_ip(struct bsc_nat *bsc, const char *ip);

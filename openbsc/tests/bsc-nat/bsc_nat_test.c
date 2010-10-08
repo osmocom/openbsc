@@ -287,7 +287,12 @@ static void test_contrack()
 	fprintf(stderr, "Testing connection tracking.\n");
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
-	con->cfg = bsc_config_alloc(nat, "foo", 23);
+	con->cfg = bsc_config_alloc(nat, "foo");
+	bsc_config_add_lac(con->cfg, 23);
+	bsc_config_add_lac(con->cfg, 49);
+	bsc_config_add_lac(con->cfg, 42);
+	bsc_config_del_lac(con->cfg, 49);
+	bsc_config_add_lac(con->cfg, 1111);
 	msg = msgb_alloc(4096, "test");
 
 	/* 1.) create a connection */
@@ -383,15 +388,16 @@ static void test_paging(void)
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
 	struct bsc_nat_parsed *parsed;
-	struct bsc_config cfg;
+	struct bsc_config *cfg;
 	struct msgb *msg;
 
 	fprintf(stderr, "Testing paging by lac.\n");
 
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
-	con->cfg = &cfg;
-	cfg.lac = 23;
+	cfg = bsc_config_alloc(nat, "unknown");
+	con->cfg = cfg;
+	bsc_config_add_lac(cfg, 23);
 	con->authenticated = 1;
 	llist_add(&con->list_entry, &nat->bsc_connections);
 	msg = msgb_alloc(4096, "test");
@@ -413,7 +419,8 @@ static void test_paging(void)
 	talloc_free(parsed);
 
 	/* Test by finding it */
-	cfg.lac = 8213;
+	bsc_config_del_lac(cfg, 23);
+	bsc_config_add_lac(cfg, 8213);
 	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
 	parsed = bsc_nat_parse(msg);
 	if (bsc_nat_find_bsc(nat, msg, &lac) != con) {
@@ -439,7 +446,8 @@ static void test_mgcp_ass_tracking(void)
 					       struct bsc_endpoint,
 					       33);
 	bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo", 2323);
+	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc_config_add_lac(bsc->cfg, 2323);
 	bsc->last_endpoint = 0x1a;
 	con.bsc = bsc;
 
@@ -668,7 +676,8 @@ static void test_cr_filter()
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
-	bsc->cfg = bsc_config_alloc(nat, "foo", 1234);
+	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc_config_add_lac(bsc->cfg, 1234);
 	bsc->cfg->acc_lst_name = "bsc";
 	nat->acc_lst_name = "nat";
 
@@ -728,7 +737,8 @@ static void test_dt_filter()
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
 	struct sccp_connections *con = talloc_zero(0, struct sccp_connections);
 
-	bsc->cfg = bsc_config_alloc(nat, "foo", 23);
+	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc_config_add_lac(bsc->cfg, 23);
 	con->bsc = bsc;
 
 	msgb_reset(msg);
