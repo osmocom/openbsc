@@ -46,9 +46,9 @@
 static void bts_queue_send(struct msgb *msg, int link_id);
 static void bssmap_free_secondary(struct bss_sccp_connection_data *data);
 
-static uint32_t read_data32(const uint8_t *data)
+static uint16_t read_data16(const uint8_t *data)
 {
-	uint32_t res;
+	uint16_t res;
 
 	memcpy(&res, data, sizeof(res));
 	return res;
@@ -145,7 +145,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	 * Support paging to all network or one BTS at one LAC
 	 */
 	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
-		lac = ntohs(read_data32(&data[1]));
+		lac = ntohs(read_data16(&data[1]));
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
 		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
 		return -1;
