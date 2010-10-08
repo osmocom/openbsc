@@ -527,7 +527,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 		goto reject;
 	}
 
-	cic = ntohs(*(u_int16_t *)TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE));
+	cic = ntohs(read_data16(TLVP_VAL(&tp, GSM0808_IE_CIRCUIT_IDENTITY_CODE)));
 	timeslot = cic & 0x1f;
 	multiplex = (cic & ~0x1f) >> 5;
 
