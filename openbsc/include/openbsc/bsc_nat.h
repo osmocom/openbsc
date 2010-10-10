@@ -232,6 +232,9 @@ struct bsc_nat {
 	/* filter */
 	char *acc_lst_name;
 
+	/* USSD messages  we want to match */
+	char *ussd_lst_name;
+
 	/* statistics */
 	struct bsc_nat_statistics stats;
 };
