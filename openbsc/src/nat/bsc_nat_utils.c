@@ -288,7 +288,7 @@ int bsc_write_msg(struct write_queue *queue, struct msgb *msg)
 	return 0;
 }
 
-static int lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
+int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
 {
 	struct bsc_nat_acc_lst_entry *entry;
 
@@ -335,7 +335,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 	if (bsc_lst) {
 		/* 1. BSC allow */
-		if (lst_check_allow(bsc_lst, mi_string) == 0)
+		if (bsc_nat_lst_check_allow(bsc_lst, mi_string) == 0)
 			return 1;
 
 		/* 2. BSC deny */

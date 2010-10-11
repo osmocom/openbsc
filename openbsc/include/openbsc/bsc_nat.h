@@ -316,6 +316,7 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
+int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
