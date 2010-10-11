@@ -80,6 +80,8 @@ static int config_write_nat(struct vty *vty)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
 	if (_nat->ussd_lst_name)
 		vty_out(vty, " ussd-list-name %s%s", _nat->ussd_lst_name, VTY_NEWLINE);
+	if (_nat->ussd_query)
+		vty_out(vty, " ussd-query %s%s", _nat->ussd_query, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list) {
 		write_acc_lst(vty, lst);
@@ -409,6 +411,18 @@ DEFUN(cfg_nat_ussd_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_ussd_query,
+      cfg_nat_ussd_query_cmd,
+      "ussd-query QUERY",
+      "Set the USSD query to match with the ussd-list-name\n"
+      "The query to match")
+{
+	if (_nat->ussd_query)
+		talloc_free(_nat->ussd_query);
+	_nat->ussd_query = talloc_strdup(_nat, argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 {
@@ -647,6 +661,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 
 	/* access-list */
 	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);
