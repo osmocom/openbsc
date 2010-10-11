@@ -47,9 +47,11 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	int rc;
 	struct ussd_request req;
+	struct gsm48_hdr *gh;
 
 	memset(&req, 0, sizeof(req));
-	rc = gsm0480_decode_ussd_request(msg, &req);
+	gh = msgb_l3(msg);
+	rc = gsm0480_decode_ussd_request(gh, msgb_l3len(msg), &req);
 	if (req.text[0] == 0xFF)  /* Release-Complete */
 		return 0;
 
