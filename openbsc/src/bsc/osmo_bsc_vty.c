@@ -72,10 +72,7 @@ DEFUN(cfg_net_msc_token,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	if (data->bsc_token)
-		talloc_free(data->bsc_token);
-	data->bsc_token = talloc_strdup(data, argv[0]);
-
+	bsc_replace_string(data, &data->bsc_token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -84,10 +81,8 @@ DEFUN(cfg_net_msc_ip,
       "ip A.B.C.D", "Set the MSC/MUX IP address.")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	if (data->msc_ip)
-		talloc_free(data->msc_ip);
-	data->msc_ip = talloc_strdup(data, argv[0]);
 
+	bsc_replace_string(data, &data->msc_ip, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -142,9 +137,7 @@ DEFUN(cfg_net_msc_grace_ussd,
 	if (!txt)
 		return CMD_WARNING;
 
-	if (data->ussd_grace_txt)
-		talloc_free(data->ussd_grace_txt);
-	data->ussd_grace_txt = talloc_strdup(data, txt);
+	bsc_replace_string(data, &data->ussd_grace_txt, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }

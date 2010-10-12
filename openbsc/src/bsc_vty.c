@@ -1062,11 +1062,7 @@ DEFUN(cfg_net_name_short,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
-	if (gsmnet->name_short)
-		talloc_free(gsmnet->name_short);
-
-	gsmnet->name_short = talloc_strdup(gsmnet, argv[0]);
-
+	bsc_replace_string(gsmnet, &gsmnet->name_short, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -1077,11 +1073,7 @@ DEFUN(cfg_net_name_long,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
-	if (gsmnet->name_long)
-		talloc_free(gsmnet->name_long);
-
-	gsmnet->name_long = talloc_strdup(gsmnet, argv[0]);
-
+	bsc_replace_string(gsmnet, &gsmnet->name_long, argv[0]);
 	return CMD_SUCCESS;
 }
 

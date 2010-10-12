@@ -127,9 +127,7 @@ DEFUN(cfg_mgcp_local_ip,
       "local ip A.B.C.D",
       "Set the IP to be used in SDP records")
 {
-	if (g_cfg->local_ip)
-		talloc_free(g_cfg->local_ip);
-	g_cfg->local_ip = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->local_ip, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -138,9 +136,7 @@ DEFUN(cfg_mgcp_bts_ip,
       "bts ip A.B.C.D",
       "Set the IP of the BTS for RTP forwarding")
 {
-	if (g_cfg->bts_ip)
-		talloc_free(g_cfg->bts_ip);
-	g_cfg->bts_ip = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->bts_ip, argv[0]);
 	inet_aton(g_cfg->bts_ip, &g_cfg->bts_in);
 	return CMD_SUCCESS;
 }
@@ -150,9 +146,7 @@ DEFUN(cfg_mgcp_bind_ip,
       "bind ip A.B.C.D",
       "Bind the MGCP to this local addr")
 {
-	if (g_cfg->source_addr)
-		talloc_free(g_cfg->source_addr);
-	g_cfg->source_addr = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->source_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -281,9 +275,7 @@ DEFUN(cfg_mgcp_sdp_payload_name,
       "sdp audio payload name NAME",
       "Set the audio name to use")
 {
-	if (g_cfg->audio_name)
-		talloc_free(g_cfg->audio_name);
-	g_cfg->audio_name = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->audio_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -311,9 +303,7 @@ DEFUN(cfg_mgcp_agent_addr,
       "call agent ip IP",
       "Set the address of the call agent.")
 {
-	if (g_cfg->call_agent_addr)
-		talloc_free(g_cfg->call_agent_addr);
-	g_cfg->call_agent_addr = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->call_agent_addr, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -323,9 +313,7 @@ DEFUN(cfg_mgcp_transcoder,
       "Use a MGW to detranscoder RTP\n"
       "The IP address of the MGW")
 {
-	if (g_cfg->transcoder_ip)
-		talloc_free(g_cfg->transcoder_ip);
-	g_cfg->transcoder_ip = talloc_strdup(g_cfg, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->transcoder_ip, argv[0]);
 	inet_aton(g_cfg->transcoder_ip, &g_cfg->transcoder_in);
 
 	return CMD_SUCCESS;

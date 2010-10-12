@@ -368,9 +368,7 @@ DEFUN(cfg_nat_token, cfg_nat_token_cmd,
       "token TOKEN",
       "Set a token for the NAT")
 {
-	if (_nat->token)
-		talloc_free(_nat->token);
-	_nat->token = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -393,9 +391,7 @@ DEFUN(cfg_nat_acc_lst_name,
       "Set the name of the access list to use.\n"
       "The name of the to be used access list.")
 {
-	if (_nat->acc_lst_name)
-		talloc_free(_nat->acc_lst_name);
-	_nat->acc_lst_name = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -428,9 +424,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN", "Set the token")
 {
 	struct bsc_config *conf = vty->index;
 
-	if (conf->token)
-	    talloc_free(conf->token);
-	conf->token = talloc_strdup(conf, argv[0]);
+	bsc_replace_string(conf, &conf->token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -559,9 +553,7 @@ DEFUN(cfg_bsc_acc_lst_name,
 {
 	struct bsc_config *conf = vty->index;
 
-	if (conf->acc_lst_name)
-		talloc_free(conf->acc_lst_name);
-	conf->acc_lst_name = talloc_strdup(conf, argv[0]);
+	bsc_replace_string(conf, &conf->acc_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -587,9 +579,7 @@ DEFUN(cfg_bsc_desc,
 {
 	struct bsc_config *conf = vty->index;
 
-	if (conf->description)
-		talloc_free(conf->description);
-	conf->description = talloc_strdup(conf, argv[0]);
+	bsc_replace_string(conf, &conf->description, argv[0]);
 	return CMD_SUCCESS;
 }
 

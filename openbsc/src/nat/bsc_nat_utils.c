@@ -28,6 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/vty.h>
 
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
@@ -100,9 +101,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 
 void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
 {
-	if (nat->msc_ip)
-		talloc_free(nat->msc_ip);
-	nat->msc_ip = talloc_strdup(nat, ip);
+	bsc_replace_string(nat, &nat->msc_ip, ip);
 }
 
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
