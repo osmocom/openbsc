@@ -235,6 +235,8 @@ struct bsc_nat {
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
 	char *ussd_query;
+	char *ussd_token;
+	char *ussd_local;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
