@@ -25,7 +25,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <endian.h>
 #include <errno.h>
 
 #include <sys/socket.h>
@@ -39,6 +38,15 @@
 #include <openbsc/mgcp_internal.h>
 
 #warning "Make use of the rtp proxy code"
+
+/* attempt to determine byte order */
+#include <sys/types.h>
+#include <sys/param.h>
+#include <limits.h>
+
+#ifndef __BYTE_ORDER
+#error "__BYTE_ORDER should be defined by someone"
+#endif
 
 /* according to rtp_proxy.c RFC 3550 */
 struct rtp_hdr {

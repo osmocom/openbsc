@@ -19,7 +19,6 @@
  *
  */
 
-#include <endian.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -36,6 +35,15 @@
 #include <osmocore/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
+
+/* attempt to determine byte order */
+#include <sys/types.h>
+#include <sys/param.h>
+#include <limits.h>
+
+#ifndef __BYTE_ORDER
+#error "__BYTE_ORDER should be defined by someone"
+#endif
 
 static LLIST_HEAD(rtp_sockets);
 
