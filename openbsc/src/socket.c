@@ -94,6 +94,7 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
 		ret = listen(bfd->fd, 1);
 		if (ret < 0) {
 			perror("listen");
+			close(bfd->fd);
 			return ret;
 		}
 	}
