@@ -42,6 +42,7 @@
 #include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/socket.h>
 #include <openbsc/vty.h>
 
 #include <osmocore/gsm0808.h>
@@ -1064,43 +1065,6 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
-static int listen_for_bsc(struct bsc_fd *bfd, struct in_addr *in_addr, int port)
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = ipaccess_listen_bsc_cb;
-	bfd->when = BSC_FD_READ;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = in_addr->s_addr;
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		fprintf(stderr, "Could not bind the BSC socket: %s\n",
-			strerror(errno));
-		return -EIO;
-	}
-
-	ret = listen(bfd->fd, 1);
-	if (ret < 0) {
-		perror("listen");
-		return ret;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
-	return 0;
-}
-
 static void print_usage()
 {
 	printf("Usage: bsc_nat\n");
@@ -1293,7 +1257,9 @@ int main(int argc, char **argv)
 	bsc_msc_connect(nat->msc_con);
 
 	/* wait for the BSC */
-	if (listen_for_bsc(&bsc_listen, &local_addr, 5000) < 0) {
+	rc = make_sock(&bsc_listen, IPPROTO_TCP, local_addr.s_addr,
+		       5000, ipaccess_listen_bsc_cb);
+	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
 	}
