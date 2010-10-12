@@ -409,9 +409,7 @@ DEFUN(cfg_nat_ussd_lst_name,
       "Set the name of the access list to check for IMSIs for USSD message\n"
       "The name of the access list for HLR USSD handling")
 {
-	if (_nat->ussd_lst_name)
-		talloc_free(_nat->ussd_lst_name);
-	_nat->ussd_lst_name = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->ussd_lst_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -421,9 +419,7 @@ DEFUN(cfg_nat_ussd_query,
       "Set the USSD query to match with the ussd-list-name\n"
       "The query to match")
 {
-	if (_nat->ussd_query)
-		talloc_free(_nat->ussd_query);
-	_nat->ussd_query = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->ussd_query, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -432,9 +428,7 @@ DEFUN(cfg_nat_ussd_token,
       "ussd-token TOKEN",
       "Set the token used to identify the USSD module\n" "Secret key\n")
 {
-	if (_nat->ussd_token)
-		talloc_free(_nat->ussd_token);
-	_nat->ussd_token = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->ussd_token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -443,9 +437,7 @@ DEFUN(cfg_nat_ussd_local,
       "ussd-local-ip A.B.C.D",
       "Set the IP to listen for the USSD Provider\n" "IP Address\n")
 {
-	if (_nat->ussd_local)
-		talloc_free(_nat->ussd_local);
-	_nat->ussd_local = talloc_strdup(_nat, argv[0]);
+	bsc_replace_string(_nat, &_nat->ussd_local, argv[0]);
 	return CMD_SUCCESS;
 }
 
