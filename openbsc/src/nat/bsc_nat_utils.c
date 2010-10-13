@@ -93,6 +93,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
 	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
 	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
+	nat->stats.ussd.reconn = counter_alloc("nat.ussd.conn");
 	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
 	nat->msc_port = 5000;
 	nat->auth_timeout = 2;

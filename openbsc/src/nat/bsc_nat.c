@@ -1279,6 +1279,12 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	rc = bsc_ussd_init(nat);
+	if (rc != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to bind the USSD socket.\n");
+		exit(1);
+	}
+
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);

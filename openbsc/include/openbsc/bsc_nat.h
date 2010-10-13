@@ -43,6 +43,7 @@ struct sccp_source_reference;
 struct sccp_connections;
 struct bsc_nat_parsed;
 struct bsc_nat;
+struct bsc_nat_ussd_con;
 
 enum {
 	NAT_CON_TYPE_NONE,
@@ -165,6 +166,10 @@ struct bsc_nat_statistics {
 	struct {
 		struct counter *reconn;
 	} msc;
+
+	struct {
+		struct counter *reconn;
+	} ussd;
 };
 
 enum bsc_nat_acc_ctr {
@@ -237,6 +242,8 @@ struct bsc_nat {
 	char *ussd_query;
 	char *ussd_token;
 	char *ussd_local;
+	struct bsc_fd ussd_listen;
+	struct bsc_nat_ussd_con *ussd_con;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
@@ -328,6 +335,7 @@ int bsc_conn_type_to_ctr(struct sccp_connections *conn);
 struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *msg, uint32_t *len);
 
 /** USSD filtering */
+int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 
 #endif

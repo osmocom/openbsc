@@ -23,13 +23,202 @@
 
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/ipaccess.h>
+#include <openbsc/socket.h>
 
 #include <osmocore/protocol/gsm_08_08.h>
-
 #include <osmocore/gsm0480.h>
+#include <osmocore/talloc.h>
+#include <osmocore/tlv.h>
 
+#include <sys/socket.h>
 #include <string.h>
+#include <unistd.h>
 
+struct bsc_nat_ussd_con {
+	struct write_queue queue;
+	struct bsc_nat *nat;
+	int authorized;
+
+	struct timer_list auth_timeout;
+};
+
+static void ussd_auth_con(struct tlv_parsed *, struct bsc_nat_ussd_con *);
+
+static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)
+{
+	struct bsc_nat_ussd_con *con;
+
+	con = talloc_zero(nat, struct bsc_nat_ussd_con);
+	if (!con)
+		return NULL;
+
+	con->nat = nat;
+	return con;
+}
+
+static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
+{
+	if (con->nat->ussd_con == con)
+		con->nat->ussd_con = NULL;
+	close(con->queue.bfd.fd);
+	bsc_unregister_fd(&con->queue.bfd);
+	bsc_del_timer(&con->auth_timeout);
+	write_queue_clear(&con->queue);
+	talloc_free(con);
+}
+
+static int ussd_read_cb(struct bsc_fd *bfd)
+{
+	int error;
+	struct bsc_nat_ussd_con *conn = bfd->data;
+	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct ipaccess_head *hh;
+
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "USSD Connection was lost.\n");
+		bsc_nat_ussd_destroy(conn);
+		return -1;
+	}
+
+	LOGP(DNAT, LOGL_NOTICE, "MSG from USSD: %s proto: %d\n",
+		hexdump(msg->data, msg->len), msg->l2h[0]);
+	hh = (struct ipaccess_head *) msg->data;
+
+	if (hh->proto == IPAC_PROTO_IPACCESS) {
+		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
+			struct tlv_parsed tvp;
+			ipaccess_idtag_parse(&tvp,
+					     (unsigned char *) msg->l2h + 2,
+					     msgb_l2len(msg) - 2);
+			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
+				ussd_auth_con(&tvp, conn);
+		}
+
+		msgb_free(msg);
+	} else if (hh->proto == IPAC_PROTO_SCCP) {
+		LOGP(DNAT, LOGL_ERROR, "USSD SCCP is not handled\n");
+		msgb_free(msg);
+	} else {
+		msgb_free(msg);
+	}
+
+	return 0;
+}
+
+static void ussd_auth_cb(void *_data)
+{
+	LOGP(DNAT, LOGL_ERROR, "USSD module didn't authenticate\n");
+	bsc_nat_ussd_destroy((struct bsc_nat_ussd_con *) _data);
+}
+
+static void ussd_auth_con(struct tlv_parsed *tvp, struct bsc_nat_ussd_con *conn)
+{
+	const char *token;
+	int len;
+	if (!conn->nat->ussd_token) {
+		LOGP(DNAT, LOGL_ERROR, "No USSD token set. Closing\n");
+		bsc_nat_ussd_destroy(conn);
+		return;
+	}
+
+	token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
+ 	len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
+	if (strncmp(conn->nat->ussd_token, token, len) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Wrong USSD token by client: %d\n",
+			conn->queue.bfd.fd);
+		bsc_nat_ussd_destroy(conn);
+		return;
+	}
+
+	/* it is authenticated now */
+	if (conn->nat->ussd_con && conn->nat->ussd_con != conn)
+		bsc_nat_ussd_destroy(conn->nat->ussd_con);
+
+	LOGP(DNAT, LOGL_ERROR, "USSD token specified. USSD provider is connected.\n");
+	bsc_del_timer(&conn->auth_timeout);
+	conn->authorized = 1;
+	conn->nat->ussd_con = conn;
+}
+
+static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
+{
+	struct msgb *msg;
+
+	conn->auth_timeout.data = conn;
+	conn->auth_timeout.cb = ussd_auth_cb;
+	bsc_schedule_timer(&conn->auth_timeout, conn->nat->auth_timeout, 0);
+
+	msg = msgb_alloc_headroom(4096, 128, "auth message");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate auth msg\n");
+		return;
+	}
+
+	msgb_v_put(msg, IPAC_MSGT_ID_GET);
+	bsc_do_write(&conn->queue, msg, IPAC_PROTO_IPACCESS);
+}
+
+static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
+{
+	struct bsc_nat_ussd_con *conn;
+	struct bsc_nat *nat;
+	struct sockaddr_in sa;
+	socklen_t sa_len = sizeof(sa);
+	int fd;
+
+	if (!(what & BSC_FD_READ))
+		return 0;
+
+	fd = accept(bfd->fd, (struct sockaddr *) &sa, &sa_len);
+	if (fd < 0) {
+		perror("accept");
+		return fd;
+	}
+
+	nat = (struct bsc_nat *) bfd->data;
+	counter_inc(nat->stats.ussd.reconn);
+
+	conn = bsc_nat_ussd_alloc(nat);
+	if (!conn) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate USSD con struct.\n");
+		close(fd);
+		return -1;
+	}
+
+	write_queue_init(&conn->queue, 10);
+	conn->queue.bfd.data = conn;
+	conn->queue.bfd.fd = fd;
+	conn->queue.bfd.when = BSC_FD_READ;
+	conn->queue.read_cb = ussd_read_cb;
+	conn->queue.write_cb = bsc_write_cb;
+
+	if (bsc_register_fd(&conn->queue.bfd) < 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to register USSD fd.\n");
+		bsc_nat_ussd_destroy(conn);
+		return -1;
+	}
+
+	LOGP(DNAT, LOGL_NOTICE, "USSD Connection on %d with IP: %s\n",
+	     fd, inet_ntoa(sa.sin_addr));
+
+	/* do authentication */
+	ussd_start_auth(conn);
+	return 0;
+}
+
+int bsc_ussd_init(struct bsc_nat *nat)
+{
+	struct in_addr addr;
+
+	addr.s_addr = INADDR_ANY;
+	if (nat->ussd_local)
+		inet_aton(nat->ussd_local, &addr);
+
+	nat->ussd_listen.data = nat;
+	return make_sock(&nat->ussd_listen, IPPROTO_TCP,
+			 ntohl(addr.s_addr), 5001, ussd_listen_cb);
+}
 
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 		   struct msgb *msg)
