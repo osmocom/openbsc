@@ -40,6 +40,7 @@
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <unistd.h>
 
 static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_SCCP_CONN]     = { "sccp.conn",      "SCCP Connections         "},
@@ -674,3 +675,15 @@ int bsc_conn_type_to_ctr(struct sccp_connections *conn)
 {
 	return con_to_ctr[conn->con_type];
 }
+
+int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+{
+	int rc;
+
+	rc = write(bfd->fd, msg->data, msg->len);
+	if (rc != msg->len)
+		LOGP(DNAT, LOGL_ERROR, "Failed to write message to the BSC.\n");
+
+	return rc;
+}
+

@@ -984,17 +984,6 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int ipaccess_bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
-{
-	int rc;
-
-	rc = write(bfd->fd, msg->data, msg->len);
-	if (rc != msg->len)
-		LOGP(DNAT, LOGL_ERROR, "Failed to write message to the BSC.\n");
-
-	return rc;
-}
-
 static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
@@ -1049,7 +1038,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->write_queue.bfd.data = bsc;
 	bsc->write_queue.bfd.fd = fd;
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
-	bsc->write_queue.write_cb = ipaccess_bsc_write_cb;
+	bsc->write_queue.write_cb = bsc_write_cb;
 	bsc->write_queue.bfd.when = BSC_FD_READ;
 	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
