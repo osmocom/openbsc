@@ -23,6 +23,7 @@
 #include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
@@ -296,7 +297,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		}
 
 		/* send the message and a fake MDCX to force sending of a dummy packet */
-		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
+		bsc_write(sccp->bsc, bsc_msg, IPAC_PROTO_MGCP);
 		bsc_mgcp_send_mdcx(sccp->bsc, sccp->bsc_endp, mgcp_endp);
 		return MGCP_POLICY_DEFER;
 	} else if (state == MGCP_ENDP_DLCX) {
@@ -305,7 +306,7 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 		bsc_mgcp_dlcx(sccp);
 		return MGCP_POLICY_CONT;
 	} else {
-		bsc_write(sccp->bsc, bsc_msg, NAT_IPAC_PROTO_MGCP);
+		bsc_write(sccp->bsc, bsc_msg, IPAC_PROTO_MGCP);
 		return MGCP_POLICY_DEFER;
 	}
 }

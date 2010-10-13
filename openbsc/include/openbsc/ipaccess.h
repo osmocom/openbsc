@@ -18,6 +18,9 @@ enum ipaccess_proto {
 	IPAC_PROTO_IPACCESS	= 0xfe,
 	IPAC_PROTO_SCCP		= 0xfd,
 	IPAC_PROTO_OML		= 0xff,
+
+	/* OpenBSC extensions */
+	IPAC_PROTO_MGCP		= 0xfc,
 };
 
 enum ipaccess_msgtype {

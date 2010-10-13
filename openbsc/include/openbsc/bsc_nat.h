@@ -38,8 +38,6 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
-#define NAT_IPAC_PROTO_MGCP	0xfc
-
 struct sccp_connections;
 struct bsc_nat_parsed;
 struct bsc_nat;

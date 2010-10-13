@@ -260,7 +260,7 @@ int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int
 	msg->l3h = msgb_put(msg, length);
 	memcpy(msg->l3h, data, length);
 
-        return bsc_write(bsc, msg, NAT_IPAC_PROTO_MGCP);
+        return bsc_write(bsc, msg, IPAC_PROTO_MGCP);
 }
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
