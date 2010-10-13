@@ -265,10 +265,15 @@ int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 {
+	return bsc_do_write(&bsc->write_queue, msg, proto);
+}
+
+int bsc_do_write(struct write_queue *queue, struct msgb *msg, int proto)
+{
 	/* prepend the header */
 	ipaccess_prepend_header(msg, proto);
 
-	if (write_queue_enqueue(&bsc->write_queue, msg) != 0) {
+	if (write_queue_enqueue(queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 		return -1;
