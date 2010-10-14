@@ -101,6 +101,8 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 	u_int8_t t_tag;
 	u_int8_t *cur = buf;
 
+	memset(dec, 0, sizeof(*dec));
+
 	while (cur < buf + len) {
 		t_len = *cur++;
 		t_tag = *cur++;
