@@ -740,6 +740,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 {
 	struct bsc_config *conf;
 	const char *token = (const char *) TLVP_VAL(tvp, IPAC_IDTAG_UNITNAME);
+	const int len = TLVP_LEN(tvp, IPAC_IDTAG_UNITNAME);
 
 	if (bsc->cfg) {
 		LOGP(DNAT, LOGL_ERROR, "Reauth on fd %d bsc nr %d\n",
@@ -748,7 +749,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 	}
 
 	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
-		if (strcmp(conf->token, token) == 0) {
+		if (strncmp(conf->token, token, len) == 0) {
 			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
