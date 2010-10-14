@@ -219,6 +219,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	u_int8_t msg_type = *(msg->l2h);
 	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
 	struct gsm_bts *bts;
+	char *unitid;
+	int len;
 
 	/* handle base messages */
 	ipaccess_rcvmsg_base(msg, bfd);
@@ -234,9 +236,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
 			break;
 
+		len = TLVP_LEN(&tlvp, IPAC_IDTAG_UNIT);
+		if (len < 1)
+			break;
+
 		/* lookup BTS, create sign_link, ... */
-		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
-			     &site_id, &bts_id, &trx_id);
+		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
+		unitid[len - 1] = '\0';
+		parse_unitid(unitid, &site_id, &bts_id, &trx_id);
 		bts = find_bts_by_unitid(e1h->gsmnet, site_id, bts_id);
 		if (!bts) {
 			LOGP(DINP, LOGL_ERROR, "Unable to find BTS configuration for "
