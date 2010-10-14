@@ -103,9 +103,15 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 
 	memset(dec, 0, sizeof(*dec));
 
-	while (cur < buf + len) {
+	while (len >= 2) {
+		len -= 2;
 		t_len = *cur++;
 		t_tag = *cur++;
+
+		if (t_len > len + 1) {
+			LOGP(DMI, LOGL_ERROR, "The tag does not fit: %d\n", t_len);
+			return -1;
+		}
 
 		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
 
@@ -113,6 +119,7 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 		dec->lv[t_tag].val = cur;
 
 		cur += t_len;
+		len -= t_len;
 	}
 	return 0;
 }
