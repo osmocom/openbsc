@@ -31,6 +31,8 @@
 #include <osmocore/talloc.h>
 #include <osmocore/tlv.h>
 
+#include <osmocom/sccp/sccp.h>
+
 #include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
@@ -220,6 +222,39 @@ int bsc_ussd_init(struct bsc_nat *nat)
 			 ntohl(addr.s_addr), 5001, ussd_listen_cb);
 }
 
+static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
+			struct msgb *input)
+{
+	struct msgb *msg;
+	struct ipac_msgt_sccp_state *state;
+	struct bsc_nat_ussd_con *ussd;
+
+	if (!con->bsc->nat->ussd_con)
+		return -1;
+
+	msg = msgb_alloc_headroom(4096, 128, "forward ussd");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		return -1;
+	}
+
+	msg->l2h = msgb_put(msg, 1);
+	msg->l2h[0] = IPAC_MSGT_SCCP_STATE;
+
+	/* fill out the data */
+	state = (struct ipac_msgt_sccp_state *) msgb_put(msg, sizeof(*state));
+	state->trans_id = req->transaction_id;
+	state->invoke_id = req->invoke_id;
+	memcpy(&state->src_ref, &con->remote_ref, sizeof(con->remote_ref));
+	memcpy(&state->dst_ref, &con->real_ref, sizeof(con->real_ref));
+	memcpy(state->imsi, con->imsi, strlen(con->imsi));
+
+	ussd = con->bsc->nat->ussd_con;
+	bsc_do_write(&ussd->queue, msg, IPAC_PROTO_IPACCESS);
+
+	return 0;
+}
+
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 		   struct msgb *msg)
 {
@@ -279,5 +314,7 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 
 	/* found a USSD query for our subscriber */
 	LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
+	if (forward_ussd(con, &req, msg) != 0)
+		return 0;
 	return 1;
 }

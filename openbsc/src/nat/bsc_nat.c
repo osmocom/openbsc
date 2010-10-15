@@ -856,10 +856,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					}
 
 					/* hand data to a side channel */
-					if (bsc_check_ussd(con, parsed, msg) == 1) {
-						/* we are going to take over the connection */
-						/* TODO: */
-					}
+					if (bsc_check_ussd(con, parsed, msg) == 1) 
+						con->con_local = 2;
 				}
 
 				con_bsc = con->bsc;
