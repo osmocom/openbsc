@@ -70,6 +70,37 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	talloc_free(con);
 }
 
+static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
+{
+	struct sccp_connections *con;
+	struct bsc_nat_parsed *parsed;
+
+
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		LOGP(DNAT, LOGL_ERROR, "Can not parse msg from USSD.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	if (!parsed->dest_local_ref) {
+		LOGP(DNAT, LOGL_ERROR, "No destination local reference.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	con = bsc_nat_find_con_by_bsc(nat, parsed->dest_local_ref);
+	if (!con || !con->bsc) {
+		LOGP(DNAT, LOGL_ERROR, "No active connection found.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	talloc_free(parsed);
+	bsc_write_msg(&con->bsc->write_queue, msg);
+	return 0;
+}
+
 static int ussd_read_cb(struct bsc_fd *bfd)
 {
 	int error;
@@ -99,8 +130,7 @@ static int ussd_read_cb(struct bsc_fd *bfd)
 
 		msgb_free(msg);
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
-		LOGP(DNAT, LOGL_ERROR, "USSD SCCP is not handled\n");
-		msgb_free(msg);
+		forward_sccp(conn->nat, msg);
 	} else {
 		msgb_free(msg);
 	}
@@ -225,7 +255,7 @@ int bsc_ussd_init(struct bsc_nat *nat)
 static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
 			struct msgb *input)
 {
-	struct msgb *msg;
+	struct msgb *msg, *copy;
 	struct ipac_msgt_sccp_state *state;
 	struct bsc_nat_ussd_con *ussd;
 
@@ -237,6 +267,16 @@ static int forward_ussd(struct sccp_connections *con, const struct ussd_request 
 		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
 		return -1;
 	}
+
+	copy = msgb_alloc_headroom(4096, 128, "forward bts");
+	if (!copy) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	copy->l2h = msgb_put(copy, msgb_l2len(input));
+	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
 
 	msg->l2h = msgb_put(msg, 1);
 	msg->l2h[0] = IPAC_MSGT_SCCP_STATE;
@@ -251,6 +291,7 @@ static int forward_ussd(struct sccp_connections *con, const struct ussd_request 
 
 	ussd = con->bsc->nat->ussd_con;
 	bsc_do_write(&ussd->queue, msg, IPAC_PROTO_IPACCESS);
+	bsc_do_write(&ussd->queue, copy, IPAC_PROTO_SCCP);
 
 	return 0;
 }
