@@ -38,6 +38,7 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
+struct sccp_source_reference;
 struct sccp_connections;
 struct bsc_nat_parsed;
 struct bsc_nat;
@@ -276,6 +277,7 @@ int update_sccp_src_ref(struct sccp_connections *sccp, struct bsc_nat_parsed *pa
 void remove_sccp_src_ref(struct bsc_connection *bsc, struct msgb *msg, struct bsc_nat_parsed *parsed);
 struct sccp_connections *patch_sccp_src_ref_to_bsc(struct msgb *, struct bsc_nat_parsed *, struct bsc_nat *);
 struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *, struct bsc_nat_parsed *, struct bsc_connection *);
+struct sccp_connections *bsc_nat_find_con_by_bsc(struct bsc_nat *, struct sccp_source_reference *);
 
 /**
  * MGCP/Audio handling

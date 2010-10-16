@@ -235,3 +235,16 @@ struct sccp_connections *patch_sccp_src_ref_to_msc(struct msgb *msg,
 
 	return NULL;
 }
+
+struct sccp_connections *bsc_nat_find_con_by_bsc(struct bsc_nat *nat,
+						 struct sccp_source_reference *ref)
+{
+	struct sccp_connections *conn;
+
+	llist_for_each_entry(conn, &nat->sccp_connections, list_entry) {
+		if (memcmp(ref, &conn->real_ref, sizeof(*ref)) == 0)
+			return conn;
+	}
+
+	return NULL;
+}
