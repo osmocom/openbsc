@@ -273,7 +273,11 @@ int bsc_do_write(struct write_queue *queue, struct msgb *msg, int proto)
 {
 	/* prepend the header */
 	ipaccess_prepend_header(msg, proto);
+	return bsc_write_msg(queue, msg);
+}
 
+int bsc_write_msg(struct write_queue *queue, struct msgb *msg)
+{
 	if (write_queue_enqueue(queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);

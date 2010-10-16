@@ -300,6 +300,7 @@ uint32_t bsc_mgcp_extract_ci(const char *resp);
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 int bsc_do_write(struct write_queue *queue, struct msgb *msg, int id);
+int bsc_write_msg(struct write_queue *queue, struct msgb *msg);
 int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg);
 
 /* IMSI allow/deny handling */
