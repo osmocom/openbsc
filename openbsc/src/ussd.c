@@ -45,8 +45,11 @@ static int send_own_number(const struct msgb *msg, const struct ussd_request *re
 int handle_rcv_ussd(struct msgb *msg)
 {
 	struct ussd_request req;
+	struct gsm48_hdr *gh;
 
-	gsm0480_decode_ussd_request(msg, &req);
+	memset(&req, 0, sizeof(req));
+	gh = msgb_l3(msg);
+	gsm0480_decode_ussd_request(gh, msgb_l3len(msg), &req);
 	if (req.text[0] == 0xFF)  /* Release-Complete */
 		return 0;
 
