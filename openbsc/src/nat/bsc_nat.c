@@ -1257,7 +1257,7 @@ int main(int argc, char **argv)
 	bsc_msc_connect(nat->msc_con);
 
 	/* wait for the BSC */
-	rc = make_sock(&bsc_listen, IPPROTO_TCP, local_addr.s_addr,
+	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
 		       5000, ipaccess_listen_bsc_cb);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
