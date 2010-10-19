@@ -657,10 +657,27 @@ static struct cr_filter cr_filter[] = {
 		/* filter as deny is first */
 		.data = bss_lu,
 		.length = sizeof(bss_lu),
-		.result = -2,
+		.result = 1,
 		.bsc_imsi_deny = "[0-9]*",
 		.bsc_imsi_allow = "[0-9]*",
 		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
+	},
+	{
+		/* deny by nat rule */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -3,
+		.bsc_imsi_deny = "000[0-9]*",
+		.nat_imsi_deny = "[0-9]*",
+		.contype = NAT_CON_TYPE_LU,
+	},
+	{
+		/* deny by bsc rule */
+		.data = bss_lu,
+		.length = sizeof(bss_lu),
+		.result = -2,
+		.bsc_imsi_deny = "[0-9]*",
 		.contype = NAT_CON_TYPE_LU,
 	},
 

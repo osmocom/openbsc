@@ -320,8 +320,8 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 {
 	/*
 	 * Now apply blacklist/whitelist of the BSC and the NAT.
-	 * 1.) Reject if the IMSI is not allowed at the BSC
-	 * 2.) Allow directly if the IMSI is allowed at the BSC
+	 * 1.) Allow directly if the IMSI is allowed at the BSC
+	 * 2.) Reject if the IMSI is not allowed at the BSC
 	 * 3.) Reject if the IMSI not allowed at the global level.
 	 * 4.) Allow directly if the IMSI is allowed at the global level
 	 */
@@ -333,7 +333,11 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 
 	if (bsc_lst) {
-		/* 1. BSC deny */
+		/* 1. BSC allow */
+		if (lst_check_allow(bsc_lst, mi_string) == 0)
+			return 1;
+
+		/* 2. BSC deny */
 		if (lst_check_deny(bsc_lst, mi_string) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
 			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
@@ -341,9 +345,6 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 			return -2;
 		}
 
-		/* 2. BSC allow */
-		if (lst_check_allow(bsc_lst, mi_string) == 0)
-			return 1;
 	}
 
 	/* 3. NAT deny */
