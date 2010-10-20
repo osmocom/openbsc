@@ -1,4 +1,5 @@
 -- Split trace based on SCCP Source
+-- There are still bugs to find... bugs bugs bugs... hmm
 do
         local function init_listener()
                 print("CREATED LISTENER")
