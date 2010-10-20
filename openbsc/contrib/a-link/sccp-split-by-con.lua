@@ -25,30 +25,22 @@ do
 		function check_failure(con)
 			check_lu_reject(con)
 			check_disconnect(con)
-			check_ass_failure(con)
-			check_cipher_reject(con)
+			check_failures(con)
 		end
 
 		-- cipher mode reject
-		function check_cipher_reject(con)
+		function check_failures(con)
 			local msgtype = bssmap_msgtype_field()
 			if not msgtype then
 				return
 			end
 
-			if tonumber(msgtype) == 89 then
+			msgtype = tonumber(msgtype)
+			if msgtype == 89 then
+				print("Cipher mode reject")
 				con[4] = true
-			end
-		end
-
-		-- check assignment failures
-		function check_ass_failure(con)
-			local msgtype = bssmap_msgtype_field()
-			if not msgtype then
-				return
-			end
-
-			if tonumber(msgtype) == 0x03 then
+			elseif msgtype == 0x03 then
+				print("Assignment failure")
 				con[4] = true
 			end
 		end
