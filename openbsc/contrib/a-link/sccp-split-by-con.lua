@@ -26,6 +26,19 @@ do
 			check_lu_reject(con)
 			check_disconnect(con)
 			check_ass_failure(con)
+			check_cipher_reject(con)
+		end
+
+		-- cipher mode reject
+		function check_cipher_reject(con)
+			local msgtype = bssmap_msgtype_field()
+			if not msgtype then
+				return
+			end
+
+			if tonumber(msgtype) == 89 then
+				con[4] = true
+			end
 		end
 
 		-- check assignment failures
