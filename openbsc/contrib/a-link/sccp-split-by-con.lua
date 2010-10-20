@@ -2,7 +2,7 @@
 do
         local function init_listener()
                 print("CREATED LISTENER")
-                local tap = Listener.new("ip", "sccp && (ip.src == 172.16.1.81 || ip.dst == 172.16.1.81)")
+		local tap = Listener.new("ip", "sccp && (ip.src == 172.16.1.81 || ip.dst == 172.16.1.81)")
 		local sccp_type_field = Field.new("sccp.message_type")
 		local sccp_src_field = Field.new("sccp.slr")
 		local sccp_dst_field = Field.new("sccp.dlr")
