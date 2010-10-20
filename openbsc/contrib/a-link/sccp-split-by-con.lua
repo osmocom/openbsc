@@ -11,9 +11,47 @@ do
 		local ip_src_field = Field.new("ip.src")
 		local ip_dst_field = Field.new("ip.dst")
 
+		--
+		local bssmap_msgtype_field = Field.new("gsm_a.bssmap_msgtype")
+		-- assignment failure 0x03
+		-- 
+
+		--
+		local dtap_cause_field = Field.new("gsm_a_dtap.cause")
+		local dtap_cc_field = Field.new("gsm_a.dtap_msg_cc_type")
+
 		local connections = {}
 
 		function check_failure(con)
+			check_lu_reject(con)
+			check_disconnect(con)
+		end
+
+		-- check if a DISCONNECT is normal
+		function check_disconnect(con)
+			local msg_type = dtap_cc_field()
+			if not msg_type then
+				return
+			end
+
+			if tonumber(msg_type) ~= 0x25 then
+				return
+			end
+
+			local cause = dtap_cause_field()
+			if not cause then
+				return
+			end
+
+			cause = tonumber(cause)
+			if cause ~= 0x10 then
+				print("DISCONNECT != Normal")
+				con[4] = true
+			end
+		end
+
+		-- check if we have a LU Reject
+		function check_lu_reject(con)
 			local msg_type =  msg_type_field()
 			if not msg_type then
 				return
