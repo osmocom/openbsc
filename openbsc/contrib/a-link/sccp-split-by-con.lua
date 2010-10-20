@@ -42,6 +42,9 @@ do
 			elseif msgtype == 0x03 then
 				print("Assignment failure")
 				con[4] = true
+			elseif msgtype == 0x22 then
+				print("Clear Request... RF failure?")
+				con[4] = true
 			end
 		end
 
