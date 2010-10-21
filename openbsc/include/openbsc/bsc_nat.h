@@ -343,4 +343,6 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *ms
 int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 
+struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *);
+
 #endif

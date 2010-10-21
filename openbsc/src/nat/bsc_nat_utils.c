@@ -721,3 +721,10 @@ int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
+/**
+ * Rewrite non global numbers... according to rules based on the IMSI
+ */
+struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *pa)
+{
+	return msg;
+}

@@ -858,6 +858,15 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					/* hand data to a side channel */
 					if (bsc_check_ussd(con, parsed, msg) == 1) 
 						con->con_local = 2;
+
+					/*
+					 * Optionally rewrite setup message. This can
+					 * replace the msg and the parsed structure becomes
+					 * invalid.
+					 */
+					msg = bsc_nat_rewrite_setup(bsc->nat, msg, parsed);
+					talloc_free(parsed);
+					parsed = NULL;
 				}
 
 				con_bsc = con->bsc;
@@ -913,7 +922,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 	/* send the non-filtered but maybe modified msg */
 	queue_for_msc(con_msc, msg);
-	talloc_free(parsed);
+	if (parsed)
+		talloc_free(parsed);
 	return 0;
 
 exit:
