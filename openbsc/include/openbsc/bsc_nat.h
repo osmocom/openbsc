@@ -28,6 +28,7 @@
 
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>
+#include <osmocore/msgfile.h>
 #include <osmocore/timer.h>
 #include <osmocore/write_queue.h>
 #include <osmocore/rate_ctr.h>
@@ -236,6 +237,10 @@ struct bsc_nat {
 
 	/* filter */
 	char *acc_lst_name;
+
+	/* number rewriting */
+	char *num_rewr_name;
+	struct msg_entries *num_rewr;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
