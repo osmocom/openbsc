@@ -854,12 +854,17 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 						con = NULL;
 						goto exit2;
 					}
+
+					/* hand data to a side channel */
+					if (bsc_check_ussd(con, parsed, msg) == 1) 
+						con->con_local = 2;
 				}
 
 				con_bsc = con->bsc;
 				con_msc = con->msc_con;
 				con_filter = con->con_local;
 			}
+
 			break;
 		case SCCP_MSG_TYPE_RLC:
 			con = patch_sccp_src_ref_to_msc(msg, parsed, bsc);
@@ -1269,6 +1274,12 @@ int main(int argc, char **argv)
 		       5000, ipaccess_listen_bsc_cb);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
+		exit(1);
+	}
+
+	rc = bsc_ussd_init(nat);
+	if (rc != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to bind the USSD socket.\n");
 		exit(1);
 	}
 

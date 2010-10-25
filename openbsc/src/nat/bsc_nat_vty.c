@@ -78,6 +78,14 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " ip-dscp %d%s", _nat->bsc_ip_dscp, VTY_NEWLINE);
 	if (_nat->acc_lst_name)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
+	if (_nat->ussd_lst_name)
+		vty_out(vty, " ussd-list-name %s%s", _nat->ussd_lst_name, VTY_NEWLINE);
+	if (_nat->ussd_query)
+		vty_out(vty, " ussd-query %s%s", _nat->ussd_query, VTY_NEWLINE);
+	if (_nat->ussd_token)
+		vty_out(vty, " ussd-token %s%s", _nat->ussd_token, VTY_NEWLINE);
+	if (_nat->ussd_local)
+		vty_out(vty, " ussd-local-ip %s%s", _nat->ussd_local, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list) {
 		write_acc_lst(vty, lst);
@@ -395,6 +403,44 @@ DEFUN(cfg_nat_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_ussd_lst_name,
+      cfg_nat_ussd_lst_name_cmd,
+      "ussd-list-name NAME",
+      "Set the name of the access list to check for IMSIs for USSD message\n"
+      "The name of the access list for HLR USSD handling")
+{
+	bsc_replace_string(_nat, &_nat->ussd_lst_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_ussd_query,
+      cfg_nat_ussd_query_cmd,
+      "ussd-query QUERY",
+      "Set the USSD query to match with the ussd-list-name\n"
+      "The query to match")
+{
+	bsc_replace_string(_nat, &_nat->ussd_query, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_ussd_token,
+      cfg_nat_ussd_token_cmd,
+      "ussd-token TOKEN",
+      "Set the token used to identify the USSD module\n" "Secret key\n")
+{
+	bsc_replace_string(_nat, &_nat->ussd_token, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_ussd_local,
+      cfg_nat_ussd_local_cmd,
+      "ussd-local-ip A.B.C.D",
+      "Set the IP to listen for the USSD Provider\n" "IP Address\n")
+{
+	bsc_replace_string(_nat, &_nat->ussd_local, argv[0]);
+	return CMD_SUCCESS;
+}
+
 /* per BSC configuration */
 DEFUN(cfg_bsc, cfg_bsc_cmd, "bsc BSC_NR", "Select a BSC to configure")
 {
@@ -632,6 +678,10 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_dscp_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
+	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
+	install_element(NAT_NODE, &cfg_nat_ussd_local_cmd);
 
 	/* access-list */
 	install_element(NAT_NODE, &cfg_lst_imsi_allow_cmd);

@@ -43,12 +43,14 @@ struct sccp_source_reference;
 struct sccp_connections;
 struct bsc_nat_parsed;
 struct bsc_nat;
+struct bsc_nat_ussd_con;
 
 enum {
 	NAT_CON_TYPE_NONE,
 	NAT_CON_TYPE_LU,
 	NAT_CON_TYPE_CM_SERV_REQ,
 	NAT_CON_TYPE_PAG_RESP,
+	NAT_CON_TYPE_SSA,
 	NAT_CON_TYPE_LOCAL_REJECT,
 	NAT_CON_TYPE_OTHER,
 };
@@ -102,6 +104,7 @@ enum bsc_cfg_ctr {
 	BCFG_CTR_CON_TYPE_LU,
 	BCFG_CTR_CON_CMSERV_RQ,
 	BCFG_CTR_CON_PAG_RESP,
+	BCFG_CTR_CON_SSA,
 	BCFG_CTR_CON_OTHER,
 };
 
@@ -163,6 +166,10 @@ struct bsc_nat_statistics {
 	struct {
 		struct counter *reconn;
 	} msc;
+
+	struct {
+		struct counter *reconn;
+	} ussd;
 };
 
 enum bsc_nat_acc_ctr {
@@ -229,6 +236,14 @@ struct bsc_nat {
 
 	/* filter */
 	char *acc_lst_name;
+
+	/* USSD messages  we want to match */
+	char *ussd_lst_name;
+	char *ussd_query;
+	char *ussd_token;
+	char *ussd_local;
+	struct bsc_fd ussd_listen;
+	struct bsc_nat_ussd_con *ussd_con;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
@@ -311,11 +326,16 @@ struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *nam
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
 
 struct bsc_nat_acc_lst_entry *bsc_nat_acc_lst_entry_create(struct bsc_nat_acc_lst *);
+int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *imsi);
 
 int bsc_nat_msc_is_connected(struct bsc_nat *nat);
 
 int bsc_conn_type_to_ctr(struct sccp_connections *conn);
 
 struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *msg, uint32_t *len);
+
+/** USSD filtering */
+int bsc_ussd_init(struct bsc_nat *nat);
+int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 
 #endif

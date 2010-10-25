@@ -54,6 +54,7 @@ static const struct rate_ctr_desc bsc_cfg_ctr_description[] = {
 	[BCFG_CTR_CON_TYPE_LU]   = { "conn.lu",        "Conn Location Update     "},
 	[BCFG_CTR_CON_CMSERV_RQ] = { "conn.rq",        "Conn CM Service Req      "},
 	[BCFG_CTR_CON_PAG_RESP]  = { "conn.pag",       "Conn Paging Response     "},
+	[BCFG_CTR_CON_SSA]       = { "conn.ssa",       "Conn USSD                "},
 	[BCFG_CTR_CON_OTHER]     = { "conn.other",     "Conn Other               "},
 };
 
@@ -92,6 +93,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
 	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
 	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
+	nat->stats.ussd.reconn = counter_alloc("nat.ussd.conn");
 	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
 	nat->msc_port = 5000;
 	nat->auth_timeout = 2;
@@ -287,7 +289,7 @@ int bsc_write_msg(struct write_queue *queue, struct msgb *msg)
 	return 0;
 }
 
-static int lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
+int bsc_nat_lst_check_allow(struct bsc_nat_acc_lst *lst, const char *mi_string)
 {
 	struct bsc_nat_acc_lst_entry *entry;
 
@@ -334,7 +336,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 	if (bsc_lst) {
 		/* 1. BSC allow */
-		if (lst_check_allow(bsc_lst, mi_string) == 0)
+		if (bsc_nat_lst_check_allow(bsc_lst, mi_string) == 0)
 			return 1;
 
 		/* 2. BSC deny */
@@ -391,7 +393,7 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc,
 
 static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 				 uint8_t *data, unsigned int length,
-				 char **imsi)
+				 int *con_type, char **imsi)
 {
 	static const uint32_t classmark_offset =
 				offsetof(struct gsm48_service_request, classmark);
@@ -410,6 +412,8 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 	}
 
 	req = (struct gsm48_service_request *) data;
+	if (req->cm_service_type == 0x8)
+		*con_type = NAT_CON_TYPE_SSA;
 	rc = gsm48_extract_mi((uint8_t *) &req->classmark,
 			      length - classmark_offset, mi_string, &mi_type);
 	if (rc < 0) {
@@ -537,7 +541,9 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
-		return _cr_check_cm_serv_req(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48), imsi);
+		return _cr_check_cm_serv_req(bsc, &hdr48->data[0],
+					     hdr48_len - sizeof(*hdr48),
+					     con_type, imsi);
 	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
@@ -614,6 +620,7 @@ static const char *con_types [] = {
 	[NAT_CON_TYPE_LU] = "Location Update",
 	[NAT_CON_TYPE_CM_SERV_REQ] = "CM Serv Req",
 	[NAT_CON_TYPE_PAG_RESP] = "Paging Response",
+	[NAT_CON_TYPE_SSA] = "Supplementar Service Activation",
 	[NAT_CON_TYPE_LOCAL_REJECT] = "Local Reject",
 	[NAT_CON_TYPE_OTHER] = "Other",
 };
@@ -693,6 +700,7 @@ static const int con_to_ctr[] = {
 	[NAT_CON_TYPE_LU]		= BCFG_CTR_CON_TYPE_LU,
 	[NAT_CON_TYPE_CM_SERV_REQ]	= BCFG_CTR_CON_CMSERV_RQ,
 	[NAT_CON_TYPE_PAG_RESP]		= BCFG_CTR_CON_PAG_RESP,
+	[NAT_CON_TYPE_SSA]		= BCFG_CTR_CON_SSA,
 	[NAT_CON_TYPE_LOCAL_REJECT]	= -1,
 	[NAT_CON_TYPE_OTHER]		= BCFG_CTR_CON_OTHER,
 };

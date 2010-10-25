@@ -2,6 +2,7 @@
 #define _IPACCESS_H
 
 #include "e1_input.h"
+#include "gsm_subscriber.h"
 #include <osmocore/linuxlist.h>
 
 #define IPA_TCP_PORT_OML	3002
@@ -29,6 +30,9 @@ enum ipaccess_msgtype {
 	IPAC_MSGT_ID_GET	= 0x04,
 	IPAC_MSGT_ID_RESP	= 0x05,
 	IPAC_MSGT_ID_ACK	= 0x06,
+
+	/* OpenBSC extension */
+	IPAC_MSGT_SCCP_STATE	= 0xff,
 };
 
 enum ipaccess_id_tags {
@@ -42,6 +46,14 @@ enum ipaccess_id_tags {
 	IPAC_IDTAG_MACADDR		= 0x07,
 	IPAC_IDTAG_UNIT			= 0x08,
 };
+
+struct ipac_msgt_sccp_state {
+	uint8_t	src_ref[3];
+	uint8_t	dst_ref[3];
+	uint8_t trans_id;
+	uint8_t invoke_id;
+	char		imsi[GSM_IMSI_LENGTH];
+} __attribute__((packed));
 
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
 
