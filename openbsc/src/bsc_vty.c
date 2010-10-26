@@ -2264,6 +2264,54 @@ DEFUN(logging_fltr_imsi,
 	return CMD_SUCCESS;
 }
 
+DEFUN(drop_bts,
+      drop_bts_cmd,
+      "drop bts connection [nr] (oml|rsl)",
+      SHOW_STR "Debug/Simulation command to drop ipaccess BTS\n")
+{
+	struct gsm_network *gsmnet;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts *bts;
+	unsigned int bts_nr;
+
+	gsmnet = gsmnet_from_vty(vty);
+
+	bts_nr = atoi(argv[0]);
+	if (bts_nr >= gsmnet->num_bts) {
+		vty_out(vty, "BTS number must be between 0 and %d. It was %d.%s",
+			gsmnet->num_bts, bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "BTS Nr. %d could not be found.%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "This command only works for ipaccess.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+
+	/* close all connections */
+	if (strcmp(argv[1], "oml") == 0) {
+		close(bts->oml_link->ts->driver.ipaccess.fd.fd);
+	} else if (strcmp(argv[1], "rsl") == 0) {
+		/* close all rsl connections */
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			close(trx->rsl_link->ts->driver.ipaccess.fd.fd);
+		}
+	} else {
+		vty_out(vty, "Argument must be 'oml# or 'rsl'.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+
 extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
 
@@ -2389,6 +2437,8 @@ int bsc_vty_init(void)
 	install_element(TS_NODE, &cfg_ts_arfcn_add_cmd);
 	install_element(TS_NODE, &cfg_ts_arfcn_del_cmd);
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
+
+	install_element(ENABLE_NODE, &drop_bts_cmd);
 
 	abis_nm_vty_init();
 
