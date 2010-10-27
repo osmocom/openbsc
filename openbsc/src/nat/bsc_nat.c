@@ -252,6 +252,28 @@ static void nat_send_rlsd_bsc(struct sccp_connections *conn)
 	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
 }
 
+static void nat_send_clrc_bsc(struct sccp_connections *conn)
+{
+	struct msgb *msg;
+	struct msgb *sccp;
+
+	msg = gsm0808_create_clear_command(0x20);
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		return;
+	}
+
+	sccp = sccp_create_dt1(&conn->real_ref, msg->data, msg->len);
+	if (!sccp) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate SCCP msg.\n");
+		msgb_free(msg);
+		return;
+	}
+
+	msgb_free(msg);
+	bsc_write(conn->bsc, sccp, IPAC_PROTO_SCCP);
+}
+
 static void nat_send_rlc(struct bsc_msc_connection *msc_con,
 			 struct sccp_source_reference *src,
 			 struct sccp_source_reference *dst)
@@ -1339,6 +1361,7 @@ int bsc_close_ussd_connections(struct bsc_nat *nat)
 		if (!con->bsc)
 			continue;
 
+		nat_send_clrc_bsc(con);
 		nat_send_rlsd_bsc(con);
 	}
 
