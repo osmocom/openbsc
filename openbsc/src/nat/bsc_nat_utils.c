@@ -773,7 +773,9 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	if (strncmp(called.number, "+", 1) == 0)
+	if (called.plan != 1)
+		return msg;
+	if (called.type == 1)
 		return msg;
 	if (strncmp(called.number, "00", 2) == 0)
 		return msg;
