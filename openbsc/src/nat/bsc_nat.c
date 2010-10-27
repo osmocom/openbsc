@@ -208,7 +208,7 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
-static void nat_send_rlsd(struct sccp_connections *conn)
+static void nat_send_rlsd_msc(struct sccp_connections *conn)
 {
 	struct sccp_connection_released *rel;
 	struct msgb *msg;
@@ -229,6 +229,49 @@ static void nat_send_rlsd(struct sccp_connections *conn)
 	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 
 	queue_for_msc(conn->msc_con, msg);
+}
+
+static void nat_send_rlsd_bsc(struct sccp_connections *conn)
+{
+	struct sccp_connection_released *rel;
+	struct msgb *msg;
+
+	msg = msgb_alloc_headroom(4096, 128, "rlsd");
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		return;
+	}
+
+	msg->l2h = msgb_put(msg, sizeof(*rel));
+	rel = (struct sccp_connection_released *) msg->l2h;
+	rel->type = SCCP_MSG_TYPE_RLSD;
+	rel->release_cause = SCCP_RELEASE_CAUSE_SCCP_FAILURE;
+	rel->destination_local_reference = conn->real_ref;
+	rel->source_local_reference = conn->remote_ref;
+
+	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
+}
+
+static void nat_send_clrc_bsc(struct sccp_connections *conn)
+{
+	struct msgb *msg;
+	struct msgb *sccp;
+
+	msg = gsm0808_create_clear_command(0x20);
+	if (!msg) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
+		return;
+	}
+
+	sccp = sccp_create_dt1(&conn->real_ref, msg->data, msg->len);
+	if (!sccp) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate SCCP msg.\n");
+		msgb_free(msg);
+		return;
+	}
+
+	msgb_free(msg);
+	bsc_write(conn->bsc, sccp, IPAC_PROTO_SCCP);
 }
 
 static void nat_send_rlc(struct bsc_msc_connection *msc_con,
@@ -709,7 +752,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 		if (ctr)
 			rate_ctr_inc(ctr);
 		if (sccp_patch->has_remote_ref && !sccp_patch->con_local)
-			nat_send_rlsd(sccp_patch);
+			nat_send_rlsd_msc(sccp_patch);
 		sccp_connection_destroy(sccp_patch);
 	}
 
@@ -1303,6 +1346,23 @@ int main(int argc, char **argv)
 
 	while (1) {
 		bsc_select_main(0);
+	}
+
+	return 0;
+}
+
+/* Close all connections handed out to the USSD module */
+int bsc_close_ussd_connections(struct bsc_nat *nat)
+{
+	struct sccp_connections *con;
+	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
+		if (con->con_local != 2)
+			continue;
+		if (!con->bsc)
+			continue;
+
+		nat_send_clrc_bsc(con);
+		nat_send_rlsd_bsc(con);
 	}
 
 	return 0;
