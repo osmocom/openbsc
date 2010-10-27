@@ -337,5 +337,6 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *ms
 /** USSD filtering */
 int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
+int bsc_close_ussd_connections(struct bsc_nat *nat);
 
 #endif

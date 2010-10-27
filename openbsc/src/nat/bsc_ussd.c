@@ -61,8 +61,11 @@ static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)
 
 static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 {
-	if (con->nat->ussd_con == con)
+	if (con->nat->ussd_con == con) {
+		bsc_close_ussd_connections(con->nat);
 		con->nat->ussd_con = NULL;
+	}
+
 	close(con->queue.bfd.fd);
 	bsc_unregister_fd(&con->queue.bfd);
 	bsc_del_timer(&con->auth_timeout);
