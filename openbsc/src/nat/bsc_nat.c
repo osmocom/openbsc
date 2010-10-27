@@ -208,7 +208,7 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
-static void nat_send_rlsd(struct sccp_connections *conn)
+static void nat_send_rlsd_msc(struct sccp_connections *conn)
 {
 	struct sccp_connection_released *rel;
 	struct msgb *msg;
@@ -709,7 +709,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 		if (ctr)
 			rate_ctr_inc(ctr);
 		if (sccp_patch->has_remote_ref && !sccp_patch->con_local)
-			nat_send_rlsd(sccp_patch);
+			nat_send_rlsd_msc(sccp_patch);
 		sccp_connection_destroy(sccp_patch);
 	}
 
