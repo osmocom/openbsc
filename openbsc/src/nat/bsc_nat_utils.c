@@ -788,6 +788,12 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 		if (entry->mnc[0] == '*' || strncmp(entry->mnc, imsi + 3, 2) != 0)
 			continue;
 
+		if (entry->text[0] == '+') {
+			LOGP(DNAT, LOGL_ERROR,
+				"Plus is not allowed in the number");
+			continue;
+		}
+
 		/* We have an entry for the IMSI. Need to match now */
 		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
 			LOGP(DNAT, LOGL_ERROR,
