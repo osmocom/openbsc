@@ -721,3 +721,157 @@ int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
+/**
+ * Rewrite non global numbers... according to rules based on the IMSI
+ */
+struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
+{
+	struct tlv_parsed tp;
+	struct gsm48_hdr *hdr48;
+	uint32_t len;
+	uint8_t msg_type;
+	unsigned int payload_len;
+	struct gsm_mncc_number called;
+	struct msg_entry *entry;
+	char *new_number = NULL;
+	struct msgb *out, *sccp;
+	uint8_t *outptr;
+	const uint8_t *msgptr;
+	int sec_len;
+
+	if (!imsi || strlen(imsi) < 5)
+		return msg;
+
+	if (!nat->num_rewr)
+		return msg;
+
+	/* only care about DTAP messages */
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return msg;
+	if (!parsed->dest_local_ref)
+		return msg;
+
+	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+	if (!hdr48)
+		return msg;
+
+	msg_type = hdr48->msg_type & 0xbf;
+	if (hdr48->proto_discr != GSM48_PDISC_CC ||
+	    msg_type != GSM48_MT_CC_SETUP)
+		return msg;
+
+	/* decode and rewrite the message */
+	payload_len = len - sizeof(*hdr48);
+	tlv_parse(&tp, &gsm48_att_tlvdef, hdr48->data, payload_len, 0, 0);
+
+	/* no number, well let us ignore it */
+	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD))
+		return msg;
+
+	memset(&called, 0, sizeof(called));
+	gsm48_decode_called(&called,
+			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
+
+	/* check if it looks international and stop */
+	if (called.plan != 1)
+		return msg;
+	if (called.type == 1)
+		return msg;
+	if (strncmp(called.number, "00", 2) == 0)
+		return msg;
+
+	/* need to find a replacement and then fix it */
+	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
+		regex_t reg;
+		regmatch_t matches[2];
+
+		if (entry->mcc[0] == '*' || strncmp(entry->mcc, imsi, 3) != 0)
+			continue;
+		if (entry->mnc[0] == '*' || strncmp(entry->mnc, imsi + 3, 2) != 0)
+			continue;
+
+		if (entry->text[0] == '+') {
+			LOGP(DNAT, LOGL_ERROR,
+				"Plus is not allowed in the number");
+			continue;
+		}
+
+		/* We have an entry for the IMSI. Need to match now */
+		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Regexp '%s' is not valid.\n", entry->option);
+			continue;
+		}
+
+		/* this regexp matches... */
+		if (regexec(&reg, called.number, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(msg, "%s%s",
+					entry->text,
+					&called.number[matches[1].rm_so]);
+		regfree(&reg);
+
+		if (new_number)
+			break;
+	}
+
+	if (!new_number) {
+		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
+		return msg;
+	}
+
+	/*
+	 * Need to create a new message now based on the old onew
+	 * with a new number. We can sadly not patch this in place
+	 * so we will need to regenerate it.
+	 */
+
+	out = msgb_alloc_headroom(4096, 128, "changed-setup");
+	if (!out) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		talloc_free(new_number);
+		return msg;
+	}
+
+	/* copy the header */
+	outptr = msgb_put(out, sizeof(*hdr48));
+	memcpy(outptr, hdr48, sizeof(*hdr48));
+
+	/* copy everything up to the number */
+	sec_len = TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 2 - &hdr48->data[0];
+	outptr = msgb_put(out, sec_len);
+	memcpy(outptr, &hdr48->data[0], sec_len);
+
+	/* create the new number */
+	strncpy(called.number, new_number, sizeof(called.number));
+	gsm48_encode_called(out, &called);
+
+	/* copy thre rest */
+	msgptr = TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) +
+		 TLVP_LEN(&tp, GSM48_IE_CALLED_BCD);
+	sec_len = payload_len - (msgptr - &hdr48->data[0]);
+	outptr = msgb_put(out, sec_len);
+	memcpy(outptr, msgptr, sec_len);
+
+	/* wrap with DTAP, SCCP, then IPA. TODO: Stop copying */
+	gsm0808_prepend_dtap_header(out, 0);
+	sccp = sccp_create_dt1(parsed->dest_local_ref, out->data, out->len);
+	if (!sccp) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		talloc_free(new_number);
+		talloc_free(out);
+		return msg;
+	}
+
+	ipaccess_prepend_header(sccp, IPAC_PROTO_SCCP);
+
+	/* give up memory, we are done */
+	talloc_free(new_number);
+	/* the parsed hangs off from msg but it needs to survive */
+	talloc_steal(sccp, parsed);
+	msgb_free(msg);
+	msgb_free(out);
+	out = NULL;
+	return sccp;
+}
+

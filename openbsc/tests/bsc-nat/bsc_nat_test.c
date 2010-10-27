@@ -799,6 +799,87 @@ static void test_dt_filter()
 	}
 }
 
+static void test_setup_rewrite()
+{
+	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
+	struct msgb *out;
+	struct bsc_nat_parsed *parsed;
+	const char *imsi = "27408000001234";
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+
+	/* a fake list */
+	struct msg_entries entries;
+	struct msg_entry entry;
+
+	INIT_LLIST_HEAD(&entries.entry);
+	entry.mcc = "274";
+	entry.mnc = "08";
+	entry.option = "^0([1-9])";
+	entry.text = "0049";
+	llist_add_tail(&entry.list, &entries.entry);
+	nat->num_rewr = &entries;
+
+	/* verify that nothing changed */
+	msgb_reset(msg);
+	copy_to_msg(msg, cc_setup_international, ARRAY_SIZE(cc_setup_international));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	if (msg != out) {
+		fprintf(stderr, "FAIL: The message should not have been changed\n");
+		abort();
+	}
+
+	if (out->len != ARRAY_SIZE(cc_setup_international)) {
+		fprintf(stderr, "FAIL: Length of message changed\n");
+		abort();
+	}
+
+	if (memcmp(out->data, cc_setup_international, out->len) != 0) {
+		fprintf(stderr, "FAIL: Content modified..\n");
+		abort();
+	}
+	talloc_free(parsed);
+
+	/* verify that something in the message changes */
+	msgb_reset(msg);
+	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	if (!out) {
+		fprintf(stderr, "FAIL: A new message should be created.\n");
+		abort();
+	}
+
+	if (msg == out) {
+		fprintf(stderr, "FAIL: The message should have changed\n");
+		abort();
+	}
+
+	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
+		fprintf(stderr, "FAIL: Length is wrong.\n");
+		abort();
+	}
+
+	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
+		fprintf(stderr, "FAIL: Data is wrong.\n");
+		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		abort();
+	}
+
+	msgb_free(out);
+}
+
 int main(int argc, char **argv)
 {
 	struct log_target *stderr_target;
@@ -818,6 +899,7 @@ int main(int argc, char **argv)
 	test_mgcp_parse();
 	test_cr_filter();
 	test_dt_filter();
+	test_setup_rewrite();
 	return 0;
 }
 

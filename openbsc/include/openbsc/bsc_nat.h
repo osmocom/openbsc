@@ -28,6 +28,7 @@
 
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>
+#include <osmocore/msgfile.h>
 #include <osmocore/timer.h>
 #include <osmocore/write_queue.h>
 #include <osmocore/rate_ctr.h>
@@ -237,6 +238,10 @@ struct bsc_nat {
 	/* filter */
 	char *acc_lst_name;
 
+	/* number rewriting */
+	char *num_rewr_name;
+	struct msg_entries *num_rewr;
+
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
 	char *ussd_query;
@@ -338,5 +343,7 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed, struct msgb *ms
 int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_close_ussd_connections(struct bsc_nat *nat);
+
+struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
 
 #endif
