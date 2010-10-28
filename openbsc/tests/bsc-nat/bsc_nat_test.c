@@ -878,6 +878,68 @@ static void test_setup_rewrite()
 	}
 
 	msgb_free(out);
+
+	/* Make sure that a wildcard is matching */
+	entry.mnc = "*";
+	msg = msgb_alloc(4096, "test_dt_filter");
+	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	if (!out) {
+		fprintf(stderr, "FAIL: A new message should be created.\n");
+		abort();
+	}
+
+	if (msg == out) {
+		fprintf(stderr, "FAIL: The message should have changed\n");
+		abort();
+	}
+
+	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
+		fprintf(stderr, "FAIL: Length is wrong.\n");
+		abort();
+	}
+
+	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
+		fprintf(stderr, "FAIL: Data is wrong.\n");
+		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		abort();
+	}
+
+	msgb_free(out);
+
+	/* Make sure that a wildcard is matching */
+	entry.mnc = "09";
+	msg = msgb_alloc(4096, "test_dt_filter");
+	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	if (out != msg) {
+		fprintf(stderr, "FAIL: The message should be unchanged.\n");
+		abort();
+	}
+
+	if (out->len != ARRAY_SIZE(cc_setup_national)) {
+		fprintf(stderr, "FAIL: Foo\n");
+		abort();
+	}
+
+	if (memcmp(out->data, cc_setup_national, ARRAY_SIZE(cc_setup_national)) != 0) {
+		fprintf(stderr, "FAIL: The message should really be unchanged.\n");
+		abort();
+	}
+
+	msgb_free(out);
 }
 
 int main(int argc, char **argv)
