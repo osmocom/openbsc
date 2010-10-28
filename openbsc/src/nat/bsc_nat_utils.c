@@ -785,9 +785,9 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 		regex_t reg;
 		regmatch_t matches[2];
 
-		if (entry->mcc[0] == '*' || strncmp(entry->mcc, imsi, 3) != 0)
+		if (entry->mcc[0] != '*' && strncmp(entry->mcc, imsi, 3) != 0)
 			continue;
-		if (entry->mnc[0] == '*' || strncmp(entry->mnc, imsi + 3, 2) != 0)
+		if (entry->mnc[0] != '*' && strncmp(entry->mnc, imsi + 3, 2) != 0)
 			continue;
 
 		if (entry->text[0] == '+') {
