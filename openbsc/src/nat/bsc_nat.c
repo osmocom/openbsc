@@ -252,26 +252,36 @@ static void nat_send_rlsd_bsc(struct sccp_connections *conn)
 	bsc_write(conn->bsc, msg, IPAC_PROTO_SCCP);
 }
 
-static void nat_send_clrc_bsc(struct sccp_connections *conn)
+static struct msgb *nat_creat_clrc(struct sccp_connections *conn, uint8_t cause)
 {
 	struct msgb *msg;
 	struct msgb *sccp;
 
-	msg = gsm0808_create_clear_command(0x20);
+	msg = gsm0808_create_clear_command(cause);
 	if (!msg) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
-		return;
+		return NULL;
 	}
 
 	sccp = sccp_create_dt1(&conn->real_ref, msg->data, msg->len);
 	if (!sccp) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate SCCP msg.\n");
 		msgb_free(msg);
-		return;
+		return NULL;
 	}
 
 	msgb_free(msg);
-	bsc_write(conn->bsc, sccp, IPAC_PROTO_SCCP);
+	return sccp;
+}
+
+static int nat_send_clrc_bsc(struct sccp_connections *conn)
+{
+	struct msgb *sccp;
+
+	sccp = nat_creat_clrc(conn, 0x20);
+	if (!sccp)
+		return -1;
+	return bsc_write(conn->bsc, sccp, IPAC_PROTO_SCCP);
 }
 
 static void nat_send_rlc(struct bsc_msc_connection *msc_con,
@@ -424,6 +434,8 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 		}
 	}
 
+	nat_send_clrc_bsc(con);
+
 	rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
 				SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
 	if (!rlsd) {
@@ -458,7 +470,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 	 * 2.) queue data for downstream.. and the RLC should delete everything
 	 */
 	if (payload) {
-		struct msgb *cc, *udt, *rlsd;
+		struct msgb *cc, *udt, *clear, *rlsd;
 		struct sccp_connections *con;
 		con = create_sccp_src_ref(bsc, parsed);
 		if (!con)
@@ -483,17 +495,27 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 			goto send_refuse;
 		}
 
-		/* 3. send a RLSD */
-		rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
-					SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
-		if (!rlsd) {
+		/* 3. send a Clear Command */
+		clear = nat_creat_clrc(con, 0x20);
+		if (!clear) {
 			msgb_free(cc);
 			msgb_free(udt);
 			goto send_refuse;
 		}
 
+		/* 4. send a RLSD */
+		rlsd = sccp_create_rlsd(&con->remote_ref, &con->real_ref,
+					SCCP_RELEASE_CAUSE_END_USER_ORIGINATED);
+		if (!rlsd) {
+			msgb_free(cc);
+			msgb_free(udt);
+			msgb_free(clear);
+			goto send_refuse;
+		}
+
 		bsc_write(bsc, cc, IPAC_PROTO_SCCP);
 		bsc_write(bsc, udt, IPAC_PROTO_SCCP);
+		bsc_write(bsc, clear, IPAC_PROTO_SCCP);
 		bsc_write(bsc, rlsd, IPAC_PROTO_SCCP);
 		msgb_free(payload);
 		return;
