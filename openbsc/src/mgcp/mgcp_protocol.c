@@ -422,7 +422,7 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 	}
 
 	if (endp->cfg->transcoder_ip) {
-		if (allocate_port(endp, &endp->transcoder_end,
+		if (allocate_port(endp, &endp->trans_net,
 				  &endp->cfg->transcoder_ports,
 				  mgcp_bind_transcoder_rtp_port) != 0) {
 			mgcp_rtp_end_reset(&endp->net_end);
@@ -828,7 +828,7 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 		cfg->endpoints[i].cfg = cfg;
 		mgcp_rtp_end_init(&cfg->endpoints[i].net_end);
 		mgcp_rtp_end_init(&cfg->endpoints[i].bts_end);
-		mgcp_rtp_end_init(&cfg->endpoints[i].transcoder_end);
+		mgcp_rtp_end_init(&cfg->endpoints[i].trans_net);
 	}
 
 	return 0;
@@ -852,7 +852,7 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
-	mgcp_rtp_end_reset(&endp->transcoder_end);
+	mgcp_rtp_end_reset(&endp->trans_net);
 	endp->is_transcoded = 0;
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
@@ -938,12 +938,12 @@ static void create_transcoder(struct mgcp_endpoint *endp)
 
 	send_msg(endp, in_endp, endp->bts_end.local_port, "CRCX", "recvonly");
 	send_msg(endp, in_endp, endp->bts_end.local_port, "MDCX", "recvonly");
-	send_msg(endp, out_endp, endp->transcoder_end.local_port, "CRCX", "sendrecv");
-	send_msg(endp, out_endp, endp->transcoder_end.local_port, "MDCX", "sendrecv");
+	send_msg(endp, out_endp, endp->trans_net.local_port, "CRCX", "sendrecv");
+	send_msg(endp, out_endp, endp->trans_net.local_port, "MDCX", "sendrecv");
 
 	port = rtp_calculate_port(out_endp, endp->cfg->transcoder_remote_base);
-	endp->transcoder_end.rtp_port = htons(port);
-	endp->transcoder_end.rtcp_port = htons(port + 1);
+	endp->trans_net.rtp_port = htons(port);
+	endp->trans_net.rtcp_port = htons(port + 1);
 }
 
 static void delete_transcoder(struct mgcp_endpoint *endp)

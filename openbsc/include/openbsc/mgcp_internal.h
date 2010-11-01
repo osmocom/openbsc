@@ -98,7 +98,8 @@ struct mgcp_endpoint {
 	/* port status for bts/net */
 	struct mgcp_rtp_end bts_end;
 	struct mgcp_rtp_end net_end;
-	struct mgcp_rtp_end transcoder_end;
+
+	struct mgcp_rtp_end trans_net;
 	int is_transcoded;
 
 	/* sequence bits */

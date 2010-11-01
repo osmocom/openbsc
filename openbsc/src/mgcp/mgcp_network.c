@@ -176,7 +176,7 @@ static int send_transcoder(struct mgcp_endpoint *endp, int is_rtp,
 	struct mgcp_config *cfg = endp->cfg;
 	struct sockaddr_in addr;
 
-	if (endp->transcoder_end.rtp_port == 0) {
+	if (endp->trans_net.rtp_port == 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Transcoder port not known on 0x%x\n",
 			ENDPOINT_NUMBER(endp));
 		return -1;
@@ -404,7 +404,7 @@ static int rtp_data_transcoder(struct bsc_fd *fd, unsigned int what)
 	if (rc <= 0)
 		return -1;
 
-	proto = fd == &endp->transcoder_end.rtp ? PROTO_RTP : PROTO_RTCP;
+	proto = fd == &endp->trans_net.rtp ? PROTO_RTP : PROTO_RTCP;
 
 	if (memcmp(&addr.sin_addr, &cfg->transcoder_in, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
@@ -413,8 +413,8 @@ static int rtp_data_transcoder(struct bsc_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	if (endp->transcoder_end.rtp_port != addr.sin_port &&
-	    endp->transcoder_end.rtcp_port != addr.sin_port) {
+	if (endp->trans_net.rtp_port != addr.sin_port &&
+	    endp->trans_net.rtcp_port != addr.sin_port) {
 		LOGP(DMGCP, LOGL_ERROR,
 			"Data from wrong transcoder source port %d on 0x%x\n",
 			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
@@ -428,7 +428,7 @@ static int rtp_data_transcoder(struct bsc_fd *fd, unsigned int what)
 		return 0;
 	}
 
-	endp->transcoder_end.packets += 1;
+	endp->trans_net.packets += 1;
 	return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
@@ -545,18 +545,18 @@ int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 
 int mgcp_bind_transcoder_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	if (endp->transcoder_end.rtp.fd != -1 || endp->transcoder_end.rtcp.fd != -1) {
+	if (endp->trans_net.rtp.fd != -1 || endp->trans_net.rtcp.fd != -1) {
 		LOGP(DMGCP, LOGL_ERROR, "Previous net-port was still bound on %d\n",
 			ENDPOINT_NUMBER(endp));
-		mgcp_free_rtp_port(&endp->transcoder_end);
+		mgcp_free_rtp_port(&endp->trans_net);
 	}
 
-	endp->transcoder_end.local_port = rtp_port;
-	endp->transcoder_end.rtp.cb = rtp_data_transcoder;
-	endp->transcoder_end.rtp.data = endp;
-	endp->transcoder_end.rtcp.data = endp;
-	endp->transcoder_end.rtcp.cb = rtp_data_transcoder;
-	return bind_rtp(endp->cfg, &endp->transcoder_end, ENDPOINT_NUMBER(endp));
+	endp->trans_net.local_port = rtp_port;
+	endp->trans_net.rtp.cb = rtp_data_transcoder;
+	endp->trans_net.rtp.data = endp;
+	endp->trans_net.rtcp.data = endp;
+	endp->trans_net.rtcp.cb = rtp_data_transcoder;
+	return bind_rtp(endp->cfg, &endp->trans_net, ENDPOINT_NUMBER(endp));
 }
 
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end)

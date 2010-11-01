@@ -106,7 +106,7 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 			inet_ntoa(endp->bts_end.addr),
 			endp->bts_end.packets, endp->bts_state.lost_no,
 			endp->net_end.packets, endp->net_state.lost_no,
-			endp->transcoder_end.packets,
+			endp->trans_net.packets,
 			VTY_NEWLINE);
 	}
 
@@ -529,7 +529,7 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 				return -1;
 			}
-			endp->transcoder_end.local_alloc = PORT_ALLOC_STATIC;
+			endp->trans_net.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
 
