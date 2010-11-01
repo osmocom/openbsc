@@ -942,8 +942,8 @@ static void create_transcoder(struct mgcp_endpoint *endp)
 	if (!endp->is_transcoded)
 		return;
 
-	send_msg(endp, in_endp, endp->trans_bts.local_port, "CRCX", "recvonly");
-	send_msg(endp, in_endp, endp->trans_bts.local_port, "MDCX", "recvonly");
+	send_msg(endp, in_endp, endp->trans_bts.local_port, "CRCX", "sendrecv");
+	send_msg(endp, in_endp, endp->trans_bts.local_port, "MDCX", "sendrecv");
 	send_msg(endp, out_endp, endp->trans_net.local_port, "CRCX", "sendrecv");
 	send_msg(endp, out_endp, endp->trans_net.local_port, "MDCX", "sendrecv");
 

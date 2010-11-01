@@ -168,29 +168,22 @@ static int forward_data(int fd, struct mgcp_rtp_tap *tap, const char *buf, int l
 		      (struct sockaddr *)&tap->forward, sizeof(tap->forward));
 }
 
-static int send_transcoder(struct mgcp_endpoint *endp, int is_rtp,
-		       const char *buf, int len)
+static int send_transcoder(struct mgcp_rtp_end *end, struct mgcp_config *cfg,
+			   int is_rtp, const char *buf, int len)
 {
 	int rc;
 	int port;
-	struct mgcp_config *cfg = endp->cfg;
 	struct sockaddr_in addr;
 
-	if (endp->trans_net.rtp_port == 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Transcoder port not known on 0x%x\n",
-			ENDPOINT_NUMBER(endp));
-		return -1;
-	}
-
-	port = is_rtp ? endp->trans_bts.rtp_port : endp->trans_bts.rtcp_port;
+	port = is_rtp ? end->rtp_port : end->rtcp_port;
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr = cfg->transcoder_in;
 	addr.sin_port = port;
 
 	rc = sendto(is_rtp ?
-		endp->trans_bts.rtp.fd :
-		endp->trans_bts.rtcp.fd, buf, len, 0,
+		end->rtp.fd :
+		end->rtcp.fd, buf, len, 0,
 		(struct sockaddr *) &addr, sizeof(addr));
 
 	if (rc != len)
@@ -304,7 +297,10 @@ static int rtp_data_net(struct bsc_fd *fd, unsigned int what)
 	endp->net_end.packets += 1;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
-	return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+	if (endp->is_transcoded)
+		return send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
+	else
+		return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
 static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_in *addr)
@@ -382,7 +378,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
 	if (endp->is_transcoded)
-		return send_transcoder(endp, proto == PROTO_RTP, &buf[0], rc);
+		return send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
 	else
 		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
