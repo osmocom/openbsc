@@ -182,13 +182,11 @@ static int send_transcoder(struct mgcp_endpoint *endp, int is_rtp,
 		return -1;
 	}
 
-	port = rtp_calculate_port(ENDPOINT_NUMBER(endp), cfg->transcoder_remote_base);
-	if (!is_rtp)
-		port += 1;
+	port = is_rtp ? endp->trans_bts.rtp_port : endp->trans_bts.rtcp_port;
 
 	addr.sin_family = AF_INET;
 	addr.sin_addr = cfg->transcoder_in;
-	addr.sin_port = htons(port);
+	addr.sin_port = port;
 
 	rc = sendto(is_rtp ?
 		endp->trans_bts.rtp.fd :
