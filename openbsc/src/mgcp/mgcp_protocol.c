@@ -422,7 +422,7 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 	}
 
 	if (endp->cfg->transcoder_ip &&
-	    allocate_port(endp, &endp->transcoder_end, &endp->cfg->transcoder_ports,
+		allocate_port(endp, &endp->transcoder_end, &endp->cfg->transcoder_ports,
 			  mgcp_bind_transcoder_rtp_port) != 0) {
 		mgcp_rtp_end_reset(&endp->net_end);
 		mgcp_rtp_end_reset(&endp->bts_end);
