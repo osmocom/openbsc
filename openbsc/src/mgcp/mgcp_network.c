@@ -389,47 +389,61 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
-static int rtp_data_transcoder(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,
+			      int dest, struct bsc_fd *fd)
 {
 	char buf[4096];
 	struct sockaddr_in addr;
-	struct mgcp_endpoint *endp;
 	struct mgcp_config *cfg;
 	int rc, proto;
 
-	endp = (struct mgcp_endpoint *) fd->data;
-	cfg = endp->cfg;
-
-	rc = recevice_from(endp, fd->fd, &addr, buf, sizeof(buf));
+	cfg = _endp->cfg;
+	rc = recevice_from(_endp, fd->fd, &addr, buf, sizeof(buf));
 	if (rc <= 0)
 		return -1;
 
-	proto = fd == &endp->trans_net.rtp ? PROTO_RTP : PROTO_RTCP;
+	proto = fd == &end->rtp ? PROTO_RTP : PROTO_RTCP;
 
 	if (memcmp(&addr.sin_addr, &cfg->transcoder_in, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Data not coming from transcoder: %s on 0x%x\n",
-			inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(endp));
+			"Data not coming from transcoder dest: %d %s on 0x%x\n",
+			dest, inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(_endp));
 		return -1;
 	}
 
-	if (endp->trans_net.rtp_port != addr.sin_port &&
-	    endp->trans_net.rtcp_port != addr.sin_port) {
+	if (end->rtp_port != addr.sin_port &&
+	    end->rtcp_port != addr.sin_port) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong transcoder source port %d on 0x%x\n",
-			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
+			"Data from wrong transcoder dest %d source port %d on 0x%x\n",
+			dest, ntohs(addr.sin_port), ENDPOINT_NUMBER(_endp));
 		return -1;
 	}
 
 	/* throw away the dummy message */
 	if (rc == 1 && buf[0] == DUMMY_LOAD) {
-		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy from transcoder on 0x%x\n",
-			ENDPOINT_NUMBER(endp));
+		LOGP(DMGCP, LOGL_NOTICE, "Filtered dummy from transcoder dest %d on 0x%x\n",
+			dest, ENDPOINT_NUMBER(_endp));
 		return 0;
 	}
 
-	endp->trans_net.packets += 1;
-	return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
+	end->packets += 1;
+	return send_to(_endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
+}
+
+static int rtp_data_trans_net(struct bsc_fd *fd, unsigned int what)
+{
+	struct mgcp_endpoint *endp;
+	endp = (struct mgcp_endpoint *) fd->data;
+
+	return rtp_data_transcoder(&endp->trans_net, endp, DEST_NETWORK, fd);
+}
+
+static int rtp_data_trans_bts(struct bsc_fd *fd, unsigned int what)
+{
+	struct mgcp_endpoint *endp;
+	endp = (struct mgcp_endpoint *) fd->data;
+
+	return rtp_data_transcoder(&endp->trans_bts, endp, DEST_BTS, fd);
 }
 
 static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
@@ -545,13 +559,13 @@ int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 int mgcp_bind_trans_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("trans-net", &endp->trans_net,
-			rtp_data_transcoder, endp, rtp_port);
+			rtp_data_trans_net, endp, rtp_port);
 }
 
 int mgcp_bind_trans_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
 	return int_bind("trans-bts", &endp->trans_bts,
-			rtp_data_transcoder, endp, rtp_port);
+			rtp_data_trans_bts, endp, rtp_port);
 }
 
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
