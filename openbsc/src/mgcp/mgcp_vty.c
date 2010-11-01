@@ -319,6 +319,20 @@ DEFUN(cfg_mgcp_transcoder,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_no_transcoder,
+      cfg_mgcp_no_transcoder_cmd,
+      NO_STR "transcoder-mgw",
+      "Disable the transcoding\n")
+{
+	if (g_cfg->transcoder_ip) {
+		LOGP(DMGCP, LOGL_NOTICE, "Disabling transcoding on future calls.\n");
+		talloc_free(g_cfg->transcoder_ip);
+		g_cfg->transcoder_ip = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_transcoder_remote_base,
       cfg_mgcp_transcoder_remote_base_cmd,
       "transcoder-remote-base <0-65534>",
@@ -453,6 +467,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_transcoder_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_remote_base_cmd);
 	return 0;
 }
