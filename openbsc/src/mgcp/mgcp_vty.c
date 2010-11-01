@@ -99,14 +99,14 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
 	for (i = 1; i < g_cfg->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u%s",
+		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 			inet_ntoa(endp->bts_end.addr),
 			endp->bts_end.packets, endp->bts_state.lost_no,
 			endp->net_end.packets, endp->net_state.lost_no,
-			endp->trans_net.packets,
+			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 	}
 
@@ -523,13 +523,23 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		}
 
 		if (g_cfg->transcoder_ip && g_cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
+			/* network side */
 			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
 						      g_cfg->transcoder_ports.base_port);
-			if (mgcp_bind_transcoder_rtp_port(endp, rtp_port) != 0) {
+			if (mgcp_bind_trans_net_rtp_port(endp, rtp_port) != 0) {
 				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
 				return -1;
 			}
 			endp->trans_net.local_alloc = PORT_ALLOC_STATIC;
+
+			/* bts side */
+			rtp_port = rtp_calculate_port(endp_back_channel(ENDPOINT_NUMBER(endp)),
+						      g_cfg->transcoder_ports.base_port);
+			if (mgcp_bind_trans_bts_rtp_port(endp, rtp_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+				return -1;
+			}
+			endp->trans_bts.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
 
