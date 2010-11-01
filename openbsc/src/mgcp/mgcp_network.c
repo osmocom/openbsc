@@ -511,68 +511,47 @@ cleanup0:
 	return -1;
 }
 
-int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
+static int int_bind(const char *port,
+		    struct mgcp_rtp_end *end, int (*cb)(struct bsc_fd *, unsigned),
+		    struct mgcp_endpoint *_endp, int rtp_port)
 {
-	if (endp->bts_end.rtp.fd != -1 || endp->bts_end.rtcp.fd != -1) {
-		LOGP(DMGCP, LOGL_ERROR, "Previous bts-port was still bound on %d\n",
-			ENDPOINT_NUMBER(endp));
-		mgcp_free_rtp_port(&endp->bts_end);
+	if (end->rtp.fd != -1 || end->rtcp.fd != -1) {
+		LOGP(DMGCP, LOGL_ERROR, "Previous %s was still bound on %d\n",
+			port, ENDPOINT_NUMBER(_endp));
+		mgcp_free_rtp_port(end);
 	}
 
-	endp->bts_end.local_port = rtp_port;
-	endp->bts_end.rtp.cb = rtp_data_bts;
-	endp->bts_end.rtp.data = endp;
-	endp->bts_end.rtcp.data = endp;
-	endp->bts_end.rtcp.cb = rtp_data_bts;
-	return bind_rtp(endp->cfg, &endp->bts_end, ENDPOINT_NUMBER(endp));
+	end->local_port = rtp_port;
+	end->rtp.cb = cb;
+	end->rtp.data = _endp;
+	end->rtcp.data = _endp;
+	end->rtcp.cb = cb;
+	return bind_rtp(_endp->cfg, end, ENDPOINT_NUMBER(_endp));
+}
+
+
+int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
+{
+	return int_bind("bts-port", &endp->bts_end,
+			rtp_data_bts, endp, rtp_port);
 }
 
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	if (endp->net_end.rtp.fd != -1 || endp->net_end.rtcp.fd != -1) {
-		LOGP(DMGCP, LOGL_ERROR, "Previous net-port was still bound on %d\n",
-			ENDPOINT_NUMBER(endp));
-		mgcp_free_rtp_port(&endp->net_end);
-	}
-
-	endp->net_end.local_port = rtp_port;
-	endp->net_end.rtp.cb = rtp_data_net;
-	endp->net_end.rtp.data = endp;
-	endp->net_end.rtcp.data = endp;
-	endp->net_end.rtcp.cb = rtp_data_net;
-	return bind_rtp(endp->cfg, &endp->net_end, ENDPOINT_NUMBER(endp));
+	return int_bind("net-port", &endp->net_end,
+			rtp_data_net, endp, rtp_port);
 }
 
 int mgcp_bind_trans_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	if (endp->trans_net.rtp.fd != -1 || endp->trans_net.rtcp.fd != -1) {
-		LOGP(DMGCP, LOGL_ERROR, "Previous net-port was still bound on %d\n",
-			ENDPOINT_NUMBER(endp));
-		mgcp_free_rtp_port(&endp->trans_net);
-	}
-
-	endp->trans_net.local_port = rtp_port;
-	endp->trans_net.rtp.cb = rtp_data_transcoder;
-	endp->trans_net.rtp.data = endp;
-	endp->trans_net.rtcp.data = endp;
-	endp->trans_net.rtcp.cb = rtp_data_transcoder;
-	return bind_rtp(endp->cfg, &endp->trans_net, ENDPOINT_NUMBER(endp));
+	return int_bind("trans-net", &endp->trans_net,
+			rtp_data_transcoder, endp, rtp_port);
 }
 
 int mgcp_bind_trans_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port)
 {
-	if (endp->trans_bts.rtp.fd != -1 || endp->trans_bts.rtcp.fd != -1) {
-		LOGP(DMGCP, LOGL_ERROR, "Previous net-port was still bound on %d\n",
-			ENDPOINT_NUMBER(endp));
-		mgcp_free_rtp_port(&endp->trans_bts);
-	}
-
-	endp->trans_bts.local_port = rtp_port;
-	endp->trans_bts.rtp.cb = rtp_data_transcoder;
-	endp->trans_bts.rtp.data = endp;
-	endp->trans_bts.rtcp.data = endp;
-	endp->trans_bts.rtcp.cb = rtp_data_transcoder;
-	return bind_rtp(endp->cfg, &endp->trans_bts, ENDPOINT_NUMBER(endp));
+	return int_bind("trans-bts", &endp->trans_bts,
+			rtp_data_transcoder, endp, rtp_port);
 }
 
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
