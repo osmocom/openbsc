@@ -383,7 +383,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 	endp->bts_end.packets += 1;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
-	if (cfg->transcoder_ip)
+	if (endp->is_transcoded)
 		return send_transcoder(endp, proto == PROTO_RTP, &buf[0], rc);
 	else
 		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);

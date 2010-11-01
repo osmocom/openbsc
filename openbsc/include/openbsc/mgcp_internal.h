@@ -99,6 +99,7 @@ struct mgcp_endpoint {
 	struct mgcp_rtp_end bts_end;
 	struct mgcp_rtp_end net_end;
 	struct mgcp_rtp_end transcoder_end;
+	int is_transcoded;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;
