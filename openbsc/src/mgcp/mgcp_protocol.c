@@ -382,7 +382,6 @@ static int allocate_port(struct mgcp_endpoint *endp, struct mgcp_rtp_end *end,
 	int i;
 
 	if (range->mode == PORT_ALLOC_STATIC) {
-		end->local_port = rtp_calculate_port(ENDPOINT_NUMBER(endp), range->base_port);
 		end->local_alloc = PORT_ALLOC_STATIC;
 		return 0;
 	}
@@ -795,12 +794,14 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 {
-	if (end->local_alloc == PORT_ALLOC_DYNAMIC)
+	if (end->local_alloc == PORT_ALLOC_DYNAMIC) {
 		mgcp_free_rtp_port(end);
+		end->local_port = 0;
+	}
 
 	end->packets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
-	end->rtp_port = end->rtcp_port = end->local_port = 0;
+	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
 	end->local_alloc = -1;
 }
