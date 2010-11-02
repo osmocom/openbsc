@@ -98,7 +98,15 @@ struct mgcp_endpoint {
 	/* port status for bts/net */
 	struct mgcp_rtp_end bts_end;
 	struct mgcp_rtp_end net_end;
-	struct mgcp_rtp_end transcoder_end;
+
+	/*
+	 * For transcoding we will send from the local_port
+	 * of trans_bts and it will arrive at trans_net from
+	 * where we will forward it to the network.
+	 */
+	struct mgcp_rtp_end trans_bts;
+	struct mgcp_rtp_end trans_net;
+	int is_transcoded;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;
@@ -124,7 +132,15 @@ int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
-int mgcp_bind_transcoder_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
+int mgcp_bind_trans_bts_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
+int mgcp_bind_trans_net_rtp_port(struct mgcp_endpoint *enp, int rtp_port);
 int mgcp_free_rtp_port(struct mgcp_rtp_end *end);
+
+/* For transcoding we need to manage an in and an output that are connected */
+static inline int endp_back_channel(int endpoint)
+{
+	return endpoint + 60;
+}
+
 
 #endif
