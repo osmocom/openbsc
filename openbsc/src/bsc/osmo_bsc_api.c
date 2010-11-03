@@ -19,14 +19,29 @@
  */
 
 #include <openbsc/osmo_bsc.h>
+#include <openbsc/debug.h>
+
+#define return_when_not_connected(conn) \
+	if (!conn->sccp_con) {\
+		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
+		return; \
+	}
+
+#define return_when_not_connected_val(conn, ret) \
+	if (!conn->sccp_con) {\
+		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
+		return ret; \
+	}
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
+	return_when_not_connected(conn);
 }
 
 static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 				  struct msgb *msg, uint8_t chosen_encr)
 {
+	return_when_not_connected(conn);
 }
 
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
@@ -37,21 +52,25 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
+	return_when_not_connected(conn);
 }
 
 static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause,
 			     uint8_t chosen_channel, uint8_t encr_alg_id,
 			     uint8_t speech_model)
 {
+	return_when_not_connected(conn);
 }
 
 static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
+	return_when_not_connected(conn);
 }
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
+	return_when_not_connected_val(conn, 1);
 	return 0;
 }
 
