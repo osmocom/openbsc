@@ -71,6 +71,23 @@ static int config_write_msc(struct vty *vty)
 	if (data->ussd_grace_txt)
 		vty_out(vty, "bsc-grace-text %s%s", data->ussd_grace_txt, VTY_NEWLINE);
 
+	if (data->audio_length != 0) {
+		int i;
+
+		vty_out(vty, " codec_list ");
+		for (i = 0; i < data->audio_length; ++i) {
+			if (i != 0)
+				vty_out(vty, ", ");
+
+			if (data->audio_support[i]->hr)
+				vty_out(vty, "hr%.1u", data->audio_support[i]->ver);
+			else
+				vty_out(vty, "fr%.1u", data->audio_support[i]->ver);
+		}
+		vty_out(vty, "%s", VTY_NEWLINE);
+
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -117,6 +134,66 @@ DEFUN(cfg_net_bsc_rtp_base,
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->rtp_base = atoi(argv[0]);
 	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_codec_list,
+      cfg_net_bsc_codec_list_cmd,
+      "codec-list .LIST",
+      "Set the allowed audio codecs\n"
+      "List of audio codecs\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	int saw_fr, saw_hr;
+	int i;
+
+	saw_fr = saw_hr = 0;
+
+	/* free the old list... if it exists */
+	if (data->audio_support) {
+		talloc_free(data->audio_support);
+		data->audio_support = NULL;
+		data->audio_length = 0;
+	}
+
+	/* create a new array */
+	data->audio_support =
+		talloc_zero_array(data, struct gsm_audio_support *, argc);
+	data->audio_length = argc;
+
+	for (i = 0; i < argc; ++i) {
+		/* check for hrX or frX */
+		if (strlen(argv[i]) != 3
+				|| argv[i][1] != 'r'
+				|| (argv[i][0] != 'h' && argv[i][0] != 'f')
+				|| argv[i][2] < 0x30
+				|| argv[i][2] > 0x39)
+			goto error;
+
+		data->audio_support[i] = talloc_zero(data->audio_support,
+				struct gsm_audio_support);
+		data->audio_support[i]->ver = atoi(argv[i] + 2);
+
+		if (strncmp("hr", argv[i], 2) == 0) {
+			data->audio_support[i]->hr = 1;
+			saw_hr = 1;
+		} else if (strncmp("fr", argv[i], 2) == 0) {
+			data->audio_support[i]->hr = 0;
+			saw_fr = 1;
+		}
+
+		if (saw_hr && saw_fr) {
+			vty_out(vty, "Can not have full-rate and half-rate codec.%s",
+					VTY_NEWLINE);
+			return CMD_ERR_INCOMPLETE;
+		}
+	}
+
+	return CMD_SUCCESS;
+
+error:
+	vty_out(vty, "Codec name must be hrX or frX. Was '%s'%s",
+			argv[i], VTY_NEWLINE);
+	return CMD_ERR_INCOMPLETE;
 }
 
 DEFUN(cfg_net_msc_ip,
@@ -194,6 +271,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_payload_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_base_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_codec_list_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ip_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_port_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_prio_cmd);

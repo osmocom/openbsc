@@ -30,6 +30,11 @@
 
 struct osmo_bsc_rf;
 
+struct gsm_audio_support {
+        u_int8_t hr  : 1,
+                 ver : 7;
+};
+
 struct osmo_msc_data {
 	/* Connection data */
 	char *bsc_token;
@@ -44,6 +49,11 @@ struct osmo_msc_data {
 	int core_ncc;
 	int rtp_payload;
 	int rtp_base;
+
+	/* audio codecs */
+	struct gsm_audio_support **audio_support;
+	int audio_length;
+
 
 	/* mgcp agent */
 	struct write_queue mgcp_agent;
