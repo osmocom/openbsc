@@ -43,6 +43,7 @@ struct osmo_msc_data {
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int rtp_payload;
+	int rtp_base;
 
 	/* mgcp agent */
 	struct write_queue mgcp_agent;

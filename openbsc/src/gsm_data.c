@@ -319,6 +319,7 @@ struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_c
 	net->msc_data->pong_timeout = 5;
 	net->msc_data->core_ncc = -1;
 	net->msc_data->rtp_payload = 126;
+	net->msc_data->rtp_base = 4000;
 
 	gsm_net_update_ctype(net);
 
