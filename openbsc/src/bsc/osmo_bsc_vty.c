@@ -57,6 +57,8 @@ static int config_write_msc(struct vty *vty)
 	if (data->core_ncc != -1)
 		vty_out(vty, "  core-mobile-network-code %d%s",
 			data->core_ncc, VTY_NEWLINE);
+	vty_out(vty, "  ip.access rtp-payload %d%s",
+		data->rtp_payload, VTY_NEWLINE);
 	vty_out(vty, "  ip %s%s", data->msc_ip, VTY_NEWLINE);
 	vty_out(vty, "  port %d%s", data->msc_port, VTY_NEWLINE);
 	vty_out(vty, "  ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
@@ -86,6 +88,18 @@ DEFUN(cfg_net_bsc_ncc,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->core_ncc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_rtp_payload,
+      cfg_net_bsc_rtp_payload_cmd,
+      "ip.access rtp-payload <0-255>",
+      "IP.ACCESS specific\n"
+      "Set the rtp-payload for the RTP stream\n"
+      "RTP payload number\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->rtp_payload = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -162,6 +176,7 @@ int bsc_vty_init_extra(void)
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_rtp_payload_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ip_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_port_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_prio_cmd);

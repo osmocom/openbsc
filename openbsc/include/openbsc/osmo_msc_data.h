@@ -42,6 +42,7 @@ struct osmo_msc_data {
 	struct timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
+	int rtp_payload;
 
 	/* mgcp agent */
 	struct write_queue mgcp_agent;
