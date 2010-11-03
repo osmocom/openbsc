@@ -65,7 +65,7 @@ static int config_write_msc(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_token,
+DEFUN(cfg_net_bsc_token,
       cfg_net_bsc_token_cmd,
       "token TOKEN",
       "A token for the BSC to be sent to the MSC")
