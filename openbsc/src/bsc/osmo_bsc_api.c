@@ -52,8 +52,9 @@ static void bsc_assign_fail(struct gsm_subscriber_connection *conn, uint32_t cau
 {
 }
 
-static void bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
+static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
+	return 0;
 }
 
 static void bsc_clear_compl(struct gsm_subscriber_connection *conn)

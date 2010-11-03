@@ -328,8 +328,6 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 		if (trans->conn == conn)
 			trans_free(trans);
 	}
-
-	subscr_con_free(conn);
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */

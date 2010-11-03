@@ -21,7 +21,7 @@ struct bsc_api {
 			  uint16_t rr_cause);
 	void (*assign_fail)(struct gsm_subscriber_connection *conn,
 			 uint16_t rr_cause);
-	void (*clear_request)(struct gsm_subscriber_connection *conn,
+	int (*clear_request)(struct gsm_subscriber_connection *conn,
 			      uint32_t cause);
 	void (*clear_compl)(struct gsm_subscriber_connection *conn);
 };

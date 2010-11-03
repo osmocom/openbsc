@@ -241,6 +241,7 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	struct bsc_api *bsc;
 	struct gsm_lchan *lchan;
 	struct gsm_subscriber_connection *conn;
+	int destruct = 1;
 
 	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
 		return 0;
@@ -255,7 +256,7 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 
 	conn = lchan->conn;
 	if (bsc->clear_request)
-		bsc->clear_request(conn, 0);
+		destruct = bsc->clear_request(conn, 0);
 
 	/* now give up all channels */
 	if (conn->lchan == lchan)
@@ -263,6 +264,9 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (conn->ho_lchan == lchan)
 		conn->ho_lchan = NULL;
 	gsm0808_clear(conn);
+
+	if (destruct)
+		subscr_con_free(conn);
 
 	return 0;
 }
