@@ -54,6 +54,9 @@ static int config_write_msc(struct vty *vty)
 	vty_out(vty, " msc%s", VTY_NEWLINE);
 	if (data->bsc_token)
 		vty_out(vty, "  token %s%s", data->bsc_token, VTY_NEWLINE);
+	if (data->core_ncc != -1)
+		vty_out(vty, "  core-mobile-network-code %d%s",
+			data->core_ncc, VTY_NEWLINE);
 	vty_out(vty, "  ip %s%s", data->msc_ip, VTY_NEWLINE);
 	vty_out(vty, "  port %d%s", data->msc_port, VTY_NEWLINE);
 	vty_out(vty, "  ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
@@ -73,6 +76,16 @@ DEFUN(cfg_net_bsc_token,
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
 	bsc_replace_string(data, &data->bsc_token, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_ncc,
+      cfg_net_bsc_ncc_cmd,
+      "core-mobile-network-code <0-255>",
+      "Use this network code for the backbone\n" "NCC value\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->core_ncc = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -148,6 +161,7 @@ int bsc_vty_init_extra(void)
 	install_node(&msc_node, config_write_msc);
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ip_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_port_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_prio_cmd);
