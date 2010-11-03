@@ -59,6 +59,7 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 
 	switch (bs->type) {
 	case BSSAP_MSG_BSS_MANAGEMENT:
+		LOGP(DMSC, LOGL_ERROR, "BSS management not implemented.\n");
 		break;
 	default:
 		LOGP(DMSC, LOGL_ERROR, "Unimplemented msg type: %d\n", bs->type);
