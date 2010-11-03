@@ -194,8 +194,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
 	struct ipaccess_head *hh;
-	struct gsm_network *net = (struct gsm_network *) bfd->data;
-	struct osmo_msc_data *data = net->msc_data;
+	struct osmo_msc_data *data = (struct osmo_msc_data *) bfd->data;
 
 	if (!msg) {
 		if (error == 0) {
@@ -283,7 +282,7 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
                 LOGP(DMSC, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 
 	data = (struct osmo_msc_data *) con->write_queue.bfd.data;
-	msc_ping_timeout_cb(con);
+	msc_ping_timeout_cb(data);
 
 	sig.data = data;
 	dispatch_signal(SS_MSC, S_MSC_CONNECTED, &sig);
