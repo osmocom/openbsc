@@ -64,6 +64,7 @@ struct osmo_msc_data {
 };
 
 int osmo_bsc_msc_init(struct gsm_network *network);
+int osmo_bsc_sccp_init(struct gsm_network *gsmnet);
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto);
 
 #endif

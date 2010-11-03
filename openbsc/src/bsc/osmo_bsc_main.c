@@ -231,6 +231,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	if (osmo_bsc_sccp_init(bsc_gsmnet) != 0) {
+		LOGP(DNM, LOGL_ERROR, "Failed to register SCCP.\n");
+		exit(1);
+	}
+
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
