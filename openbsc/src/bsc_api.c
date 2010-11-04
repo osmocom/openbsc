@@ -31,6 +31,8 @@
 #include <openbsc/handover.h>
 #include <openbsc/debug.h>
 
+#include <osmocore/protocol/gsm_08_08.h>
+
 #include <osmocore/talloc.h>
 
 static LLIST_HEAD(sub_connections);
@@ -147,6 +149,54 @@ int bsc_upqueue(struct gsm_network *net)
 	return work;
 }
 
+static void dispatch_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+	struct gsm48_hdr *gh;
+	uint8_t pdisc;
+	int rc;
+
+	if (msgb_l3len(msg) < sizeof(*gh)) {
+		LOGP(DMSC, LOGL_ERROR, "Message too short for a GSM48 header.\n");
+		return;
+	}
+
+	gh = msgb_l3(msg);
+	pdisc = gh->proto_discr & 0x0f;
+	switch (pdisc) {
+	case GSM48_PDISC_RR:
+		switch (gh->msg_type) {
+		case GSM48_MT_RR_CIPH_M_COMPL:
+			if (api->cipher_mode_compl)
+				return api->cipher_mode_compl(conn, msg,
+						conn->lchan->encr.alg_id);
+			break;
+		case GSM48_MT_RR_ASS_COMPL:
+			LOGP(DMSC, LOGL_ERROR, "Assignment command is not handled.\n");
+			break;
+		case GSM48_MT_RR_ASS_FAIL:
+			LOGP(DMSC, LOGL_ERROR, "Assignment failure is not handled.\n");
+			break;
+		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
+			rc = gsm48_rx_rr_modif_ack(msg);
+			if (rc < 0 && api->assign_fail)
+				api->assign_fail(conn,
+						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE);
+			else if (rc >= 0 && api->assign_compl)
+				api->assign_compl(conn, 0);
+			return;
+			break;
+		}
+		break;
+	case GSM48_PDISC_MM:
+		break;
+	}
+
+	/* default case */
+	if (api->dtap)
+		api->dtap(conn, msg);
+}
+
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;
@@ -161,7 +211,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 
 	if (lchan->conn) {
-		api->dtap(lchan->conn, msg);
+		dispatch_dtap(lchan->conn, msg);
 	} else {
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);

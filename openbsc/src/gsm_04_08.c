@@ -1198,9 +1198,6 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 	case GSM48_MT_RR_PAG_RESP:
 		rc = gsm48_rx_rr_pag_resp(conn, msg);
 		break;
-	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
-		rc = gsm48_rx_rr_modif_ack(msg);
-		break;
 	case GSM48_MT_RR_STATUS:
 		rc = gsm48_rx_rr_status(msg);
 		break;
