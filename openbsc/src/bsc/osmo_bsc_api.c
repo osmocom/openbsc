@@ -37,7 +37,16 @@
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
+	struct msgb *resp;
 	return_when_not_connected(conn);
+
+	resp = gsm0808_create_sapi_reject(dlci);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 }
 
 static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
