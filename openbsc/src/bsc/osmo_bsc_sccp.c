@@ -68,6 +68,13 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 	return 0;
 }
 
+int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	LOGP(DMSC, LOGL_ERROR, "Sending SCCP messages is not yet implemented.\n");
+	msgb_free(msg);
+	return 0;
+}
+
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 {
 	sccp_set_log_area(DSCCP);
