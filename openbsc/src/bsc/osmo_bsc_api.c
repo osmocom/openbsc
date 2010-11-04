@@ -21,6 +21,8 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/debug.h>
 
+#include <osmocore/gsm0808.h>
+
 #define return_when_not_connected(conn) \
 	if (!conn->sccp_con) {\
 		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
@@ -41,7 +43,17 @@ static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 				  struct msgb *msg, uint8_t chosen_encr)
 {
+	struct msgb *resp;
 	return_when_not_connected(conn);
+
+	LOGP(DMSC, LOGL_DEBUG, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
+	resp = gsm0808_create_cipher_complete(msg, chosen_encr);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Creating the response failed.\n");
+		return;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 }
 
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
