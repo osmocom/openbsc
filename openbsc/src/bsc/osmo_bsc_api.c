@@ -21,6 +21,7 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/debug.h>
 
+#include <osmocore/protocol/gsm_08_08.h>
 #include <osmocore/gsm0808.h>
 
 #define return_when_not_connected(conn) \
@@ -110,7 +111,16 @@ static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
+	struct msgb *resp;
 	return_when_not_connected_val(conn, 1);
+
+	resp = gsm0808_create_clear_rqst(GSM0808_CAUSE_RADIO_INTERFACE_FAILURE);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return 0;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 	return 0;
 }
 
