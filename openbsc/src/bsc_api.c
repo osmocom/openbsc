@@ -232,7 +232,8 @@ int bsc_upqueue(struct gsm_network *net)
 	return work;
 }
 
-static void dispatch_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static void dispatch_dtap(struct gsm_subscriber_connection *conn,
+			  uint8_t link_id, struct msgb *msg)
 {
 	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
 	struct gsm48_hdr *gh;
@@ -280,7 +281,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	/* default case */
 	if (api->dtap)
-		api->dtap(conn, msg);
+		api->dtap(conn, link_id, msg);
 }
 
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
@@ -297,7 +298,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 
 	if (lchan->conn) {
-		dispatch_dtap(lchan->conn, msg);
+		dispatch_dtap(lchan->conn, link_id, msg);
 	} else {
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);

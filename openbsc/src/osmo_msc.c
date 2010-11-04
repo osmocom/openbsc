@@ -52,7 +52,7 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	return BSC_API_CONN_POL_ACCEPT;
 }
 
-static void msc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
 	gsm0408_dispatch(conn, msg);
 }
