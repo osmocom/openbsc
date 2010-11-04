@@ -71,7 +71,17 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 			     uint8_t chosen_channel, uint8_t encr_alg_id,
 			     uint8_t speech_model)
 {
+	struct msgb *resp;
 	return_when_not_connected(conn);
+
+	resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
+						   encr_alg_id, speech_model);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 }
 
 static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
