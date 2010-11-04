@@ -64,7 +64,16 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
+	struct msgb *resp;
 	return_when_not_connected(conn);
+
+	resp = gsm0808_create_dtap(msg, link_id);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 }
 
 static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause,
