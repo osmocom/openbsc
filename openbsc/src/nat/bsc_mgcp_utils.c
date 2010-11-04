@@ -75,7 +75,7 @@ int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
 	uint16_t cic;
 	uint8_t timeslot;
 	uint8_t multiplex;
-	int endp;
+	unsigned int endp;
 
 	if (!msg->l3h) {
 		LOGP(DNAT, LOGL_ERROR, "Assignment message should have l3h pointer.\n");
@@ -99,6 +99,13 @@ int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
 
 
 	endp = mgcp_timeslot_to_endpoint(multiplex, timeslot);
+
+	if (endp >= con->bsc->nat->mgcp_cfg->number_endpoints) {
+		LOGP(DNAT, LOGL_ERROR,
+			"MSC attempted to assign bad endpoint 0x%x\n",
+			endp);
+		return -1;
+	}
 
 	/* find stale connections using that endpoint */
 	llist_for_each_entry(mcon, &con->bsc->nat->sccp_connections, list_entry) {
