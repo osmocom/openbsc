@@ -29,11 +29,6 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 {
 }
 
-static void bsc_cipher_mode_reject(struct gsm_subscriber_connection *conn,
-				   struct msgb *msg, uint16_t reason)
-{
-}
-
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
@@ -64,7 +59,6 @@ static void bsc_clear_compl(struct gsm_subscriber_connection *conn)
 static struct bsc_api bsc_handler = {
 	.sapi_n_reject = bsc_sapi_n_reject,
 	.cipher_mode_compl = bsc_cipher_mode_compl,
-	.cipher_mode_reject = bsc_cipher_mode_reject,
 	.compl_l3 = bsc_compl_l3,
 	.dtap  = bsc_dtap,
 	.assign_compl = bsc_assign_compl,
