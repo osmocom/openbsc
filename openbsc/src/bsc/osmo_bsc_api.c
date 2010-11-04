@@ -39,7 +39,9 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 }
 
-static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause)
+static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause,
+			     uint8_t chosen_channel, uint8_t encr_alg_id,
+			     uint8_t speech_model)
 {
 }
 

@@ -16,7 +16,8 @@ struct bsc_api {
 			struct msgb *msg, uint16_t chosen_channel); 
 	void (*dtap)(struct gsm_subscriber_connection *conn, struct msgb *msg);
 	void (*assign_compl)(struct gsm_subscriber_connection *conn,
-			  uint8_t rr_cause);
+			  uint8_t rr_cause, uint8_t chosen_channel,
+			  uint8_t encr_alg_id, uint8_t speech_mode);
 	void (*assign_fail)(struct gsm_subscriber_connection *conn,
 			 uint16_t rr_cause);
 	int (*clear_request)(struct gsm_subscriber_connection *conn,

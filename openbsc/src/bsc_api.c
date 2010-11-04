@@ -40,6 +40,89 @@ static LLIST_HEAD(sub_connections);
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
 
+/* GSM 08.08 3.2.2.33 */
+static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
+{
+	u_int8_t channel_mode = 0, channel = 0;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		channel_mode = 0x9;
+		break;
+	case GSM48_CMODE_SIGN:
+		channel_mode = 0x8;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+		channel_mode = 0xe;
+		break;
+	case GSM48_CMODE_DATA_12k0:
+		channel_mode = 0xb;
+		break;
+	case GSM48_CMODE_DATA_6k0:
+		channel_mode = 0xc;
+		break;
+	case GSM48_CMODE_DATA_3k6:
+		channel_mode = 0xd;
+		break;
+	}
+
+	switch (lchan->type) {
+	case GSM_LCHAN_NONE:
+		channel = 0x0;
+		break;
+	case GSM_LCHAN_SDCCH:
+		channel = 0x1;
+		break;
+	case GSM_LCHAN_TCH_F:
+		channel = 0x8;
+		break;
+	case GSM_LCHAN_TCH_H:
+		channel = 0x9;
+		break;
+	case GSM_LCHAN_UNKNOWN:
+		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %p\n", lchan);
+		break;
+	}
+
+	return channel_mode << 4 | channel;
+}
+
+static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
+{
+	int mode = 0;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		mode = 1;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		mode = 0x11;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		mode = 0x21;
+		break;
+	case GSM48_CMODE_SIGN:
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+	default:
+		LOGP(DMSC, LOGL_ERROR, "Using non speech mode: %d\n", mode);
+		return 0;
+		break;
+	}
+
+	/* assume to always do AMR HR on any TCH type */
+	if (lchan->type == GSM_LCHAN_TCH_H ||
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		mode |= 0x4;
+
+        return mode;
+}
+
+
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
 	struct gsm_subscriber_connection *conn;
@@ -183,7 +266,10 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn, struct msgb *m
 				api->assign_fail(conn,
 						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE);
 			else if (rc >= 0 && api->assign_compl)
-				api->assign_compl(conn, 0);
+				api->assign_compl(conn, 0,
+						  lchan_to_chosen_channel(conn->lchan),
+						  conn->lchan->encr.alg_id,
+						  chan_mode_to_speech(conn->lchan));
 			return;
 			break;
 		}
