@@ -101,7 +101,8 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	net = conn->bts->network;
 
 	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
-		if (net->msc_data->core_ncc != -1) {
+		if (net->msc_data->core_ncc != -1 ||
+		    net->msc_data->core_mcc != -1) {
 			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
 				lai = (struct gsm48_loc_area_id *) &gh->data[0];
 				gsm48_generate_lai(lai, net->country_code,

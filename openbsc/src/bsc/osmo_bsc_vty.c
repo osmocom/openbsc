@@ -60,6 +60,9 @@ static int config_write_msc(struct vty *vty)
 	if (data->core_ncc != -1)
 		vty_out(vty, "  core-mobile-network-code %d%s",
 			data->core_ncc, VTY_NEWLINE);
+	if (data->core_mcc != -1)
+		vty_out(vty, "  core-mobile-country-code %d%s",
+			data->core_mcc, VTY_NEWLINE);
 	vty_out(vty, "  ip.access rtp-payload %d%s",
 		data->rtp_payload, VTY_NEWLINE);
 	vty_out(vty, "  ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
@@ -109,6 +112,16 @@ DEFUN(cfg_net_bsc_ncc,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->core_ncc = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_mcc,
+      cfg_net_bsc_mcc_cmd,
+      "core-mobile-country-code <0-255>",
+      "Use this country code for the backbone\n" "MCC value\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->core_mcc = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -269,6 +282,7 @@ int bsc_vty_init_extra(void)
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
+	install_element(MSC_NODE, &cfg_net_bsc_mcc_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_payload_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_base_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_codec_list_cmd);
