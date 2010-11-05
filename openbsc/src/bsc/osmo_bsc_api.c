@@ -66,6 +66,8 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
+	if (bsc_create_new_connection(conn, msg, chosen_channel) == 0)
+		return BSC_API_CONN_POL_ACCEPT;
 	return BSC_API_CONN_POL_REJECT;
 }
 

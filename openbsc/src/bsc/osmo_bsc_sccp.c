@@ -75,6 +75,13 @@ int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return 0;
 }
 
+int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
+			      struct msgb *msg, uint16_t chosen_channel)
+{
+	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
+	return -1;
+}
+
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 {
 	sccp_set_log_area(DSCCP);
