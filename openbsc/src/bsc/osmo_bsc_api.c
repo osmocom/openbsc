@@ -106,7 +106,16 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
+	struct msgb *resp;
 	return_when_not_connected(conn);
+
+	resp = gsm0808_create_assignment_failure(cause, rr_cause);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return;
+	}
+
+	bsc_queue_for_msc(conn, resp);
 }
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
