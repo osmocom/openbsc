@@ -5,6 +5,10 @@
 
 #include "bsc_api.h"
 
+struct osmo_bsc_sccp_con {
+	uint8_t new_subscriber;
+};
+
 struct bsc_api *osmo_bsc_api();
 
 int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg);
