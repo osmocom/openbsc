@@ -25,6 +25,7 @@
 #include <openbsc/debug.h>
 
 #include <osmocore/gsm0808.h>
+#include <osmocore/talloc.h>
 #include <osmocore/protocol/gsm_08_08.h>
 
 #include <osmocom/sccp/sccp.h>
@@ -75,11 +76,26 @@ int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return 0;
 }
 
-int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
-			      struct msgb *msg, uint16_t chosen_channel)
+int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 {
 	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
 	return -1;
+}
+
+int bsc_open_connection(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
+	return -1;
+}
+
+int bsc_delete_connection(struct gsm_subscriber_connection *conn)
+{
+	if (!conn->sccp_con)
+		return 0;
+
+	talloc_free(conn->sccp_con);
+	conn->sccp_con = NULL;
+	return 0;
 }
 
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet)

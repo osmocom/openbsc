@@ -19,6 +19,7 @@
  */
 
 #include <openbsc/osmo_bsc.h>
+#include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
 
 #include <osmocore/protocol/gsm_08_08.h>
@@ -43,6 +44,20 @@
 	} \
 	bsc_queue_for_msc(conn, resp);
 
+static uint16_t get_network_code_for_msc(struct gsm_network *net)
+{
+	if (net->msc_data->core_ncc != -1)
+		return net->msc_data->core_ncc;
+	return net->network_code;
+}
+
+static uint16_t get_country_code_for_msc(struct gsm_network *net)
+{
+	if (net->msc_data->core_mcc != -1)
+		return net->msc_data->core_mcc;
+	return net->country_code;
+}
+
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	struct msgb *resp;
@@ -63,15 +78,38 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 	queue_msg_or_return(resp);
 }
 
+/*
+ * Instruct to reserve data for a new connectiom, create the complete
+ * layer three message, send it to open the connection.
+ */
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
-	if (bsc_create_new_connection(conn, msg, chosen_channel) == 0) {
-		bsc_scan_bts_msg(conn, msg);
-		return BSC_API_CONN_POL_ACCEPT;
+	struct msgb *resp;
+	uint16_t network_code = get_network_code_for_msc(conn->bts->network);
+	uint16_t country_code = get_country_code_for_msc(conn->bts->network);
+
+	/* allocate resource for a new connection */
+	if (bsc_create_new_connection(conn) != 0)
+		return BSC_API_CONN_POL_REJECT;
+
+	bsc_scan_bts_msg(conn, msg);
+	resp = gsm0808_create_layer3(msg, network_code, country_code,
+				     conn->bts->location_area_code,
+				     conn->bts->cell_identity);
+	if (!resp) {
+		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
+		bsc_delete_connection(conn);
+		return BSC_API_CONN_POL_REJECT;
 	}
 
-	return BSC_API_CONN_POL_REJECT;
+	if (bsc_open_connection(conn, resp) != 0) {
+		bsc_delete_connection(conn);
+		msgb_free(resp);
+		return BSC_API_CONN_POL_REJECT;
+	}
+
+	return BSC_API_CONN_POL_ACCEPT;
 }
 
 static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
