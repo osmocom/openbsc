@@ -66,8 +66,11 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
-	if (bsc_create_new_connection(conn, msg, chosen_channel) == 0)
+	if (bsc_create_new_connection(conn, msg, chosen_channel) == 0) {
+		bsc_scan_bts_msg(conn, msg);
 		return BSC_API_CONN_POL_ACCEPT;
+	}
+
 	return BSC_API_CONN_POL_REJECT;
 }
 
@@ -76,6 +79,7 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
+	bsc_scan_bts_msg(conn, msg);
 	resp = gsm0808_create_dtap(msg, link_id);
 	queue_msg_or_return(resp);
 }
