@@ -16,5 +16,6 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 			      struct msgb *msg, uint16_t chosen_channel);
 
 int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg);
+int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 #endif

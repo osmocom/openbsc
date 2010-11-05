@@ -66,3 +66,11 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 	return 0;
 }
+
+/**
+ * Messages coming back from the MSC.
+ */
+int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	return 0;
+}
