@@ -36,18 +36,20 @@
 		return ret; \
 	}
 
+#define queue_msg_or_return(resp) \
+	if (!resp) { \
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n"); \
+		return; \
+	} \
+	bsc_queue_for_msc(conn, resp);
+
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
 	resp = gsm0808_create_sapi_reject(dlci);
-	if (!resp) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
-		return;
-	}
-
-	bsc_queue_for_msc(conn, resp);
+	queue_msg_or_return(resp);
 }
 
 static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
@@ -58,12 +60,7 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 
 	LOGP(DMSC, LOGL_DEBUG, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
 	resp = gsm0808_create_cipher_complete(msg, chosen_encr);
-	if (!resp) {
-		LOGP(DMSC, LOGL_ERROR, "Creating the response failed.\n");
-		return;
-	}
-
-	bsc_queue_for_msc(conn, resp);
+	queue_msg_or_return(resp);
 }
 
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
@@ -78,12 +75,7 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	return_when_not_connected(conn);
 
 	resp = gsm0808_create_dtap(msg, link_id);
-	if (!resp) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
-		return;
-	}
-
-	bsc_queue_for_msc(conn, resp);
+	queue_msg_or_return(resp);
 }
 
 static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause,
@@ -95,12 +87,7 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 
 	resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
 						   encr_alg_id, speech_model);
-	if (!resp) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
-		return;
-	}
-
-	bsc_queue_for_msc(conn, resp);
+	queue_msg_or_return(resp);
 }
 
 static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
@@ -110,12 +97,7 @@ static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 	return_when_not_connected(conn);
 
 	resp = gsm0808_create_assignment_failure(cause, rr_cause);
-	if (!resp) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
-		return;
-	}
-
-	bsc_queue_for_msc(conn, resp);
+	queue_msg_or_return(resp);
 }
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
