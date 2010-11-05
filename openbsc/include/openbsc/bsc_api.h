@@ -20,7 +20,7 @@ struct bsc_api {
 			  uint8_t rr_cause, uint8_t chosen_channel,
 			  uint8_t encr_alg_id, uint8_t speech_mode);
 	void (*assign_fail)(struct gsm_subscriber_connection *conn,
-			 uint16_t rr_cause);
+			 uint8_t cause, uint8_t *rr_cause);
 	int (*clear_request)(struct gsm_subscriber_connection *conn,
 			      uint32_t cause);
 };

@@ -203,7 +203,7 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_type, in
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
 
-	api->assign_fail(conn, 0);
+	api->assign_fail(conn, 0, NULL);
 	return 0;
 }
 
@@ -263,10 +263,11 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			break;
 		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 			rc = gsm48_rx_rr_modif_ack(msg);
-			if (rc < 0 && api->assign_fail)
+			if (rc < 0 && api->assign_fail) {
 				api->assign_fail(conn,
-						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE);
-			else if (rc >= 0 && api->assign_compl)
+						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE,
+						 NULL);
+			} else if (rc >= 0 && api->assign_compl)
 				api->assign_compl(conn, 0,
 						  lchan_to_chosen_channel(conn->lchan),
 						  conn->lchan->encr.alg_id,

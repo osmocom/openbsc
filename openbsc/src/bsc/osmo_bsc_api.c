@@ -45,7 +45,8 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 {
 }
 
-static void bsc_assign_fail(struct gsm_subscriber_connection *conn, uint32_t cause)
+static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
+			    uint8_t cause, uint8_t *rr_cause)
 {
 }
 
