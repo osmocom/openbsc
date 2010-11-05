@@ -19,6 +19,8 @@
  */
 
 #include <openbsc/osmo_bsc.h>
+#include <openbsc/osmo_msc_data.h>
+#include <openbsc/gsm_04_80.h>
 #include <openbsc/debug.h>
 
 static void handle_lu_request(struct gsm_subscriber_connection *conn,
@@ -67,10 +69,50 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return 0;
 }
 
+static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
+{
+	struct gsm_network *net;
+	net = conn->bts->network;
+
+	if (!net->msc_data->ussd_welcome_txt)
+		return;
+
+	gsm0480_send_ussdNotify(conn, 1, net->msc_data->ussd_welcome_txt);
+	gsm0480_send_releaseComplete(conn);
+}
+
 /**
  * Messages coming back from the MSC.
  */
 int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
+	struct gsm_network *net;
+	struct gsm48_loc_area_id *lai;
+	struct gsm48_hdr *gh;
+	uint8_t mtype;
+
+	if (msgb_l3len(msg) < sizeof(*gh)) {
+		LOGP(DMSC, LOGL_ERROR, "GSM48 header does not fit.\n");
+		return -1;
+	}
+
+	gh = (struct gsm48_hdr *) msgb_l3(msg);
+	mtype = gh->msg_type & 0xbf;
+	net = conn->bts->network;
+
+	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
+		if (net->msc_data->core_ncc != -1) {
+			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
+				lai = (struct gsm48_loc_area_id *) &gh->data[0];
+				gsm48_generate_lai(lai, net->country_code,
+						   net->network_code,
+						   conn->bts->location_area_code);
+			}
+		}
+
+		if (conn->sccp_con->new_subscriber)
+			send_welcome_ussd(conn);
+	}
+
 	return 0;
 }

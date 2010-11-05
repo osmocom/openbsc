@@ -61,6 +61,9 @@ struct osmo_msc_data {
 	/* rf ctl related bits */
 	char *ussd_grace_txt;
 	struct osmo_bsc_rf *rf_ctl;
+
+	/* ussd welcome text */
+	char *ussd_welcome_txt;
 };
 
 int osmo_bsc_msc_init(struct gsm_network *network);
