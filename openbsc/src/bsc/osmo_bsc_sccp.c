@@ -126,29 +126,30 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 
 	bsc_con->sccp = sccp;
 	bsc_con->msc_con = net->msc_data->msc_con;
+	bsc_con->conn = conn;
 	llist_add(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
 	return 0;
 }
 
-int bsc_open_connection(struct gsm_subscriber_connection *conn, struct msgb *msg)
+int bsc_open_connection(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
 	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
 	return -1;
 }
 
-int bsc_delete_connection(struct gsm_subscriber_connection *conn)
+int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 {
-	struct osmo_bsc_sccp_con *sccp = conn->sccp_con;
-
 	if (!sccp)
 		return 0;
+
+	if (sccp->conn)
+		LOGP(DMSC, LOGL_ERROR, "Should have been cleared.\n");
 
 	llist_del(&sccp->entry);
 	bsc_del_timer(&sccp->sccp_it_timeout);
 	bsc_del_timer(&sccp->sccp_cc_timeout);
 	talloc_free(sccp);
-	conn->sccp_con = NULL;
 	return 0;
 }
 

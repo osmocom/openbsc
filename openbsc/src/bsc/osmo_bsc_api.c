@@ -99,12 +99,12 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 				     conn->bts->cell_identity);
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
-		bsc_delete_connection(conn);
+		bsc_delete_connection(conn->sccp_con);
 		return BSC_API_CONN_POL_REJECT;
 	}
 
-	if (bsc_open_connection(conn, resp) != 0) {
-		bsc_delete_connection(conn);
+	if (bsc_open_connection(conn->sccp_con, resp) != 0) {
+		bsc_delete_connection(conn->sccp_con);
 		msgb_free(resp);
 		return BSC_API_CONN_POL_REJECT;
 	}
