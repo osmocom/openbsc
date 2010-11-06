@@ -25,6 +25,7 @@
 #include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/signal.h>
 
 #include <osmocore/gsm0808.h>
@@ -83,8 +84,8 @@ static void sccp_cc_timeout(void *_data)
 
 static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
 {
-	LOGP(DMSC, LOGL_ERROR, "Writing is not implemented.\n");
-	msgb_free(msg);
+	struct gsm_network *net = (struct gsm_network *) data;
+	msc_queue_write(net->msc_data->msc_con, msg, IPAC_PROTO_SCCP);
 }
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
