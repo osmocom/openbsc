@@ -61,6 +61,12 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		con_data->sccp = NULL;
 		sccp_connection_free(conn);
 		bsc_delete_connection(con_data);
+	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
+		LOGP(DMSC, LOGL_DEBUG, "Connection established: %p\n", conn);
+		con_data = (struct osmo_bsc_sccp_con *) conn->data_ctx;
+
+		bsc_del_timer(&con_data->sccp_cc_timeout);
+		bsc_schedule_timer(&con_data->sccp_it_timeout, SCCP_IT_TIMER, 0);
 	}
 }
 
