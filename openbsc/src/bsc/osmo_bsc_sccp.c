@@ -32,6 +32,9 @@
 
 #include <osmocom/sccp/sccp.h>
 
+/* SCCP helper */
+#define SCCP_IT_TIMER 60
+
 static LLIST_HEAD(active_connections);
 
 static void msc_outgoing_sccp_data(struct sccp_connection *conn,
@@ -41,6 +44,34 @@ static void msc_outgoing_sccp_data(struct sccp_connection *conn,
 
 static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 {
+}
+
+static void sccp_it_timeout(void *_data)
+{
+	struct osmo_bsc_sccp_con *data =
+		(struct osmo_bsc_sccp_con *) _data;
+
+	sccp_connection_send_it(data->sccp);
+	bsc_schedule_timer(&data->sccp_it_timeout, SCCP_IT_TIMER, 0);
+}
+
+static void sccp_cc_timeout(void *_data)
+{
+	struct osmo_bsc_sccp_con *data =
+		(struct osmo_bsc_sccp_con *) _data;
+
+	if (data->sccp->connection_state >= SCCP_CONNECTION_STATE_ESTABLISHED)
+		return;
+
+	LOGP(DMSC, LOGL_ERROR, "The connection was never established.\n");
+
+
+	if (data->conn) {
+		gsm0808_clear(data->conn);
+		subscr_con_free(data->conn);
+		data->conn = NULL;
+	}
+	bsc_delete_connection(data);
 }
 
 static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
@@ -123,6 +154,12 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	sccp->state_cb = msc_outgoing_sccp_state;
 	sccp->data_cb = msc_outgoing_sccp_data;
 	sccp->data_ctx = bsc_con;
+
+	/* prepare the timers */
+	bsc_con->sccp_it_timeout.cb = sccp_it_timeout;
+	bsc_con->sccp_it_timeout.data = bsc_con;
+	bsc_con->sccp_cc_timeout.cb = sccp_cc_timeout;
+	bsc_con->sccp_cc_timeout.data = bsc_con;
 
 	bsc_con->sccp = sccp;
 	bsc_con->msc_con = net->msc_data->msc_con;
