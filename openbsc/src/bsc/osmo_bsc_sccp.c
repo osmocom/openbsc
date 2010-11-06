@@ -25,6 +25,7 @@
 #include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
+#include <openbsc/signal.h>
 
 #include <osmocore/gsm0808.h>
 #include <osmocore/talloc.h>
@@ -46,6 +47,19 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 {
 }
 
+static void bsc_sccp_force_free(struct osmo_bsc_sccp_con *data)
+{
+	if (data->conn) {
+		gsm0808_clear(data->conn);
+		subscr_con_free(data->conn);
+		data->conn = NULL;
+	}
+
+	sccp_connection_force_free(data->sccp);
+	data->sccp = NULL;
+	bsc_delete_connection(data);
+}
+
 static void sccp_it_timeout(void *_data)
 {
 	struct osmo_bsc_sccp_con *data =
@@ -64,14 +78,7 @@ static void sccp_cc_timeout(void *_data)
 		return;
 
 	LOGP(DMSC, LOGL_ERROR, "The connection was never established.\n");
-
-
-	if (data->conn) {
-		gsm0808_clear(data->conn);
-		subscr_con_free(data->conn);
-		data->conn = NULL;
-	}
-	bsc_delete_connection(data);
+	bsc_sccp_force_free(data);
 }
 
 static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
@@ -198,12 +205,37 @@ int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 	return 0;
 }
 
+static void bsc_close_connections(struct bsc_msc_connection *msc_con)
+{
+	struct osmo_bsc_sccp_con *con, *tmp;
+
+	llist_for_each_entry_safe(con, tmp, &active_connections, entry)
+		bsc_sccp_force_free(con);
+}
+
+static int handle_msc_signal(unsigned int subsys, unsigned int signal,
+			     void *handler_data, void *signal_data)
+{
+	struct osmo_msc_data *data;
+
+	if (subsys != SS_MSC)
+		return 0;
+
+	data = (struct osmo_msc_data *) signal_data;
+	if (signal == S_MSC_LOST)
+		bsc_close_connections(data->msc_con);
+
+	return 0;
+}
+
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 {
 	sccp_set_log_area(DSCCP);
 	sccp_system_init(msc_sccp_write_ipa, gsmnet);
 	sccp_connection_set_incoming(&sccp_ssn_bssap, msc_sccp_accept, NULL);
 	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, NULL);
+
+	register_signal_handler(SS_MSC, handle_msc_signal, gsmnet);
 
 	return 0;
 }
