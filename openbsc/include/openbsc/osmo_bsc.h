@@ -5,7 +5,17 @@
 
 #include "bsc_api.h"
 
+struct sccp_connection;
+
 struct osmo_bsc_sccp_con {
+	struct llist_head entry;
+
+	/* SCCP connection realted */
+	struct sccp_connection *sccp;
+	struct bsc_msc_connection *msc_con;
+	struct timer_list sccp_it_timeout;
+	struct timer_list sccp_cc_timeout;
+
 	uint8_t new_subscriber;
 };
 

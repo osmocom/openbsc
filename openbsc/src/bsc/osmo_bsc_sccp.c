@@ -21,6 +21,8 @@
  */
 
 #include <openbsc/gsm_data.h>
+#include <openbsc/osmo_bsc.h>
+#include <openbsc/osmo_bsc_grace.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
 
@@ -29,6 +31,17 @@
 #include <osmocore/protocol/gsm_08_08.h>
 
 #include <osmocom/sccp/sccp.h>
+
+static LLIST_HEAD(active_connections);
+
+static void msc_outgoing_sccp_data(struct sccp_connection *conn,
+				   struct msgb *msg, unsigned int len)
+{
+}
+
+static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
+{
+}
 
 static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
 {
@@ -78,8 +91,44 @@ int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 {
-	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
-	return -1;
+	struct gsm_network *net;
+	struct osmo_bsc_sccp_con *bsc_con;
+	struct sccp_connection *sccp;
+
+	net = conn->bts->network;
+	if (!net->msc_data->msc_con->is_authenticated) {
+		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
+		return -1;
+	}
+
+	if (!bsc_grace_allow_new_connection(net)) {
+		LOGP(DMSC, LOGL_NOTICE, "BSC in grace period. No new connections.\n");
+		return -1;
+	}
+
+	sccp = sccp_connection_socket();
+	if (!sccp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate memory.\n");
+		return -ENOMEM;
+	}
+
+	bsc_con = talloc_zero(conn->bts, struct osmo_bsc_sccp_con);
+	if (!bsc_con) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate.\n");
+		sccp_connection_free(sccp);
+		return -1;
+	}
+
+	/* callbacks */
+	sccp->state_cb = msc_outgoing_sccp_state;
+	sccp->data_cb = msc_outgoing_sccp_data;
+	sccp->data_ctx = bsc_con;
+
+	bsc_con->sccp = sccp;
+	bsc_con->msc_con = net->msc_data->msc_con;
+	llist_add(&bsc_con->entry, &active_connections);
+	conn->sccp_con = bsc_con;
+	return 0;
 }
 
 int bsc_open_connection(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -90,10 +139,15 @@ int bsc_open_connection(struct gsm_subscriber_connection *conn, struct msgb *msg
 
 int bsc_delete_connection(struct gsm_subscriber_connection *conn)
 {
-	if (!conn->sccp_con)
+	struct osmo_bsc_sccp_con *sccp = conn->sccp_con;
+
+	if (!sccp)
 		return 0;
 
-	talloc_free(conn->sccp_con);
+	llist_del(&sccp->entry);
+	bsc_del_timer(&sccp->sccp_it_timeout);
+	bsc_del_timer(&sccp->sccp_cc_timeout);
+	talloc_free(sccp);
 	conn->sccp_con = NULL;
 	return 0;
 }
