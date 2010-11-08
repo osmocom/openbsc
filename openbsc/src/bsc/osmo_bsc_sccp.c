@@ -209,8 +209,10 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 
 int bsc_open_connection(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
-	LOGP(DMSC, LOGL_ERROR, "Not implemented yet.\n");
-	return -1;
+	bsc_schedule_timer(&conn->sccp_cc_timeout, 10, 0);
+	sccp_connection_connect(conn->sccp, &sccp_ssn_bssap, msg);
+	msgb_free(msg);
+	return 0;
 }
 
 int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
