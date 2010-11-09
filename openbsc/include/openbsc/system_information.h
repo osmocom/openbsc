@@ -34,7 +34,7 @@ enum osmo_sysinfo_type {
 
 typedef u_int8_t sysinfo_buf_t[GSM_MACBLOCK_LEN];
 
-const struct value_string osmo_sitype_strs[_MAX_SYSINFO_TYPE];
+extern const struct value_string osmo_sitype_strs[_MAX_SYSINFO_TYPE];
 uint8_t gsm_sitype2rsl(enum osmo_sysinfo_type si_type);
 const char *gsm_sitype_name(enum osmo_sysinfo_type si_type);
 int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type type);
