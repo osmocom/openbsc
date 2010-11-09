@@ -44,6 +44,7 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/system_information.h>
 #include <openbsc/debug.h>
+#include <openbsc/paging.h>
 
 #include "../bscconfig.h"
 
