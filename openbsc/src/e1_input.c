@@ -110,11 +110,11 @@ struct lapd_header {
 	u_int8_t control_foo; /* fake UM's ... */
 } __attribute__((packed));
 
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->hatype == 2,	hatype_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->halen == 4,		halen_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->addr == 6,		addr_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->protocol == 14,	proto_offset);
-static_assert(sizeof(struct fake_linux_lapd_header) == 16,			lapd_header_size);
+static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
+static_assert(offsetof(struct fake_linux_lapd_header, halen) == 4,     halen_offset);
+static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr_offset);
+static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
+static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
 
 
 static int pcap_fd = -1;
