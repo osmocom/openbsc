@@ -42,6 +42,10 @@ static LLIST_HEAD(active_connections);
 static void msc_outgoing_sccp_data(struct sccp_connection *conn,
 				   struct msgb *msg, unsigned int len)
 {
+	struct osmo_bsc_sccp_con *bsc_con =
+			(struct osmo_bsc_sccp_con *) conn->data_ctx;
+
+	bsc_handle_dt1(bsc_con, msg, len);
 }
 
 static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
@@ -118,29 +122,8 @@ static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 
 static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
-	struct bssmap_header *bs;
-
-	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n",
-		hexdump(msgb->l3h, length));
-
-	if (length < sizeof(*bs)) {
-		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");
-		return -1;
-	}
-
-	bs = (struct bssmap_header *) msgb->l3h;
-	if (bs->length < length - sizeof(*bs))
-		return -1;
-
-	switch (bs->type) {
-	case BSSAP_MSG_BSS_MANAGEMENT:
-		LOGP(DMSC, LOGL_ERROR, "BSS management not implemented.\n");
-		break;
-	default:
-		LOGP(DMSC, LOGL_ERROR, "Unimplemented msg type: %d\n", bs->type);
-	}
-
-	return 0;
+	struct gsm_network *net = (struct gsm_network *) data;
+	return bsc_handle_udt(net, net->msc_data->msc_con, msgb, length);
 }
 
 int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
@@ -258,7 +241,7 @@ int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 	sccp_set_log_area(DSCCP);
 	sccp_system_init(msc_sccp_write_ipa, gsmnet);
 	sccp_connection_set_incoming(&sccp_ssn_bssap, msc_sccp_accept, NULL);
-	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, NULL);
+	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, gsmnet);
 
 	register_signal_handler(SS_MSC, handle_msc_signal, gsmnet);
 
