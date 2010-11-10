@@ -13,10 +13,6 @@
 #define GSM_MIN_EXTEN 20000
 #define GSM_MAX_EXTEN 49999
 
-/* reserved according to GSM 03.03 § 2.4 */
-#define GSM_RESERVED_TMSI   0xFFFFFFFF
-
-
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 #define tmsi_from_string(str) strtoul(str, NULL, 10)
 
