@@ -140,6 +140,81 @@ static int bssmap_handle_clear_command(struct osmo_bsc_sccp_con *conn,
 	return 0;
 }
 
+/*
+ * GSM 08.08 § 3.4.7 cipher mode handling. We will have to pick
+ * the cipher to be used for this. In case we are already using
+ * a cipher we will have to send cipher mode reject to the MSC,
+ * otherwise we will have to pick something that we and the MS
+ * is supporting. Currently we are doing it in a rather static
+ * way by picking one ecnryption or no encrytpion.
+ */
+static int bssmap_handle_cipher_mode(struct osmo_bsc_sccp_con *conn,
+				     struct msgb *msg, unsigned int payload_length)
+{
+	uint16_t len;
+	struct gsm_network *network = NULL;
+	const uint8_t *data;
+	struct tlv_parsed tp;
+	struct msgb *resp;
+	int reject_cause = -1;
+	int include_imeisv = 1;
+
+	if (!conn->conn) {
+		LOGP(DMSC, LOGL_ERROR, "No lchan/msc_data in cipher mode command.\n");
+		goto reject;
+	}
+
+	if (conn->ciphering_handled) {
+		LOGP(DMSC, LOGL_ERROR, "Already seen ciphering command. Protocol Error.\n");
+		goto reject;
+	}
+
+	conn->ciphering_handled = 1;
+
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, payload_length - 1, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_ENCRYPTION_INFORMATION)) {
+		LOGP(DMSC, LOGL_ERROR, "IE Encryption Information missing.\n");
+		goto reject;
+	}
+
+	/*
+	 * check if our global setting is allowed
+	 *  - Currently we check for A5/0 and A5/1
+	 *  - Copy the key if that is necessary
+	 *  - Otherwise reject
+	 */
+	len = TLVP_LEN(&tp, GSM0808_IE_ENCRYPTION_INFORMATION);
+	if (len < 1) {
+		LOGP(DMSC, LOGL_ERROR, "IE Encryption Information is too short.\n");
+		goto reject;
+	}
+
+	network = conn->conn->bts->network;
+	data = TLVP_VAL(&tp, GSM0808_IE_ENCRYPTION_INFORMATION);
+
+	if (TLVP_PRESENT(&tp, GSM0808_IE_CIPHER_RESPONSE_MODE))
+		include_imeisv = TLVP_VAL(&tp, GSM0808_IE_CIPHER_RESPONSE_MODE)[0] & 0x1;
+
+	if (network->a5_encryption == 0 && (data[0] & 0x1) == 0x1) {
+		gsm0808_cipher_mode(conn->conn, 0, NULL, 0, include_imeisv);
+	} else if (network->a5_encryption != 0 && (data[0] & 0x2) == 0x2) {
+		gsm0808_cipher_mode(conn->conn, 1, &data[1], len - 1, include_imeisv);
+	} else {
+		LOGP(DMSC, LOGL_ERROR, "Can not select encryption...\n");
+		goto reject;
+	}
+
+reject:
+	resp = gsm0808_create_cipher_reject(reject_cause);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Sending the cipher reject failed.\n");
+		return -1;
+	}
+
+	bsc_queue_for_msc(conn, resp);
+	return -1;
+}
+
 static int bssmap_rcvmsg_udt(struct gsm_network *net,
 			     struct msgb *msg, unsigned int length)
 {
@@ -176,6 +251,9 @@ static int bssmap_rcvmsg_dt1(struct osmo_bsc_sccp_con *conn,
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_CLEAR_CMD:
 		ret = bssmap_handle_clear_command(conn, msg, length);
+		break;
+	case BSS_MAP_MSG_CIPHER_MODE_CMD:
+		ret = bssmap_handle_cipher_mode(conn, msg, length);
 		break;
 	default:
 		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l4h[0]);

@@ -10,6 +10,8 @@ struct sccp_connection;
 struct osmo_bsc_sccp_con {
 	struct llist_head entry;
 
+	int ciphering_handled;
+
 	/* SCCP connection realted */
 	struct sccp_connection *sccp;
 	struct bsc_msc_connection *msc_con;
