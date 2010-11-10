@@ -319,7 +319,23 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			const uint8_t *key, int len, int include_imeisv)
 {
-	return -1;
+	if (cipher > 0 && key == NULL) {
+		LOGP(DRSL, LOGL_ERROR, "Need to have an encrytpion key.\n");
+		return -1;
+	}
+
+	if (len > MAX_A5_KEY_LEN) {
+		LOGP(DRSL, LOGL_ERROR, "The key is too long: %d\n", len);
+		return -1;
+	}
+
+	conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(cipher);
+	if (key) {
+		conn->lchan->encr.key_len = len;
+		memcpy(conn->lchan->encr.key, key, len);
+	}
+
+	return gsm48_send_rr_ciph_mode(conn->lchan, include_imeisv);
 }
 
 /*
