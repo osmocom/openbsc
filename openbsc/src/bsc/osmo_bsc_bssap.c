@@ -111,6 +111,35 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	return -1;
 }
 
+/*
+ * GSM 08.08 § 3.1.9.1 and 3.2.1.21...
+ * release our gsm_subscriber_connection and send message
+ */
+static int bssmap_handle_clear_command(struct osmo_bsc_sccp_con *conn,
+				       struct msgb *msg, unsigned int payload_length)
+{
+	struct msgb *resp;
+
+	/* TODO: handle the cause of this package */
+
+	if (conn->conn) {
+		LOGP(DMSC, LOGL_DEBUG, "Releasing all transactions on %p\n", conn);
+		gsm0808_clear(conn->conn);
+		subscr_con_free(conn->conn);
+		conn->conn = NULL;
+	}
+
+	/* send the clear complete message */
+	resp = gsm0808_create_clear_complete();
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Sending clear complete failed.\n");
+		return -1;
+	}
+
+	bsc_queue_for_msc(conn, resp);
+	return 0;
+}
+
 static int bssmap_rcvmsg_udt(struct gsm_network *net,
 			     struct msgb *msg, unsigned int length)
 {
@@ -137,7 +166,23 @@ static int bssmap_rcvmsg_udt(struct gsm_network *net,
 static int bssmap_rcvmsg_dt1(struct osmo_bsc_sccp_con *conn,
 			     struct msgb *msg, unsigned int length)
 {
-	return -1;
+	int ret = 0;
+
+	if (length < 1) {
+		LOGP(DMSC, LOGL_ERROR, "Not enough room: %d\n", length);
+		return -1;
+	}
+
+	switch (msg->l4h[0]) {
+	case BSS_MAP_MSG_CLEAR_CMD:
+		ret = bssmap_handle_clear_command(conn, msg, length);
+		break;
+	default:
+		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l4h[0]);
+		break;
+	}
+
+	return ret;
 }
 
 static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
