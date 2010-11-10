@@ -444,7 +444,44 @@ static int bssmap_rcvmsg_dt1(struct osmo_bsc_sccp_con *conn,
 static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 		       struct msgb *msg, unsigned int length)
 {
-	return -1;
+	struct dtap_header *header;
+	struct msgb *gsm48;
+	uint8_t *data;
+
+	if (!conn->conn) {
+		LOGP(DMSC, LOGL_ERROR, "No subscriber connection available\n");
+		return -1;
+	}
+
+	header = (struct dtap_header *) msg->l3h;
+	if (sizeof(*header) >= length) {
+		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+                return -1;
+	}
+
+	if (header->length > length - sizeof(*header)) {
+		LOGP(DMSC, LOGL_ERROR, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+		return -1;
+	}
+
+	LOGP(DMSC, LOGL_DEBUG, "DTAP message: SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
+
+	/* forward the data */
+	gsm48 = gsm48_msgb_alloc();
+	if (!gsm48) {
+		LOGP(DMSC, LOGL_ERROR, "Allocation of the message failed.\n");
+		return -1;
+	}
+
+	gsm48->l3h = gsm48->data;
+	data = msgb_put(gsm48, length - sizeof(*header));
+	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
+
+	/* pass it to the filter for extra actions */
+	bsc_scan_msc_msg(conn->conn, gsm48);
+	return gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
 }
 
 int bsc_handle_udt(struct gsm_network *network,
