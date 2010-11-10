@@ -198,7 +198,7 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
  * audio codec type or the allowed rates for the config.
  */
-int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_type, int audio)
+int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
