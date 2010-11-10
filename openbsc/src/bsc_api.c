@@ -202,14 +202,30 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 
 /**
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
- * audio codec type or the allowed rates for the config.
+ * audio codec type or the allowed rates for the config. It is assumed that
+ * this is for audio handling and that when we have a TCH it is capable of
+ * handling the audio codec. On top of that it is assumed that we are using
+ * AMR 5.9 when assigning a TCH/H.
  */
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
 
-	api->assign_fail(conn, 0, NULL);
+	if (conn->lchan->type == GSM_LCHAN_SDCCH) {
+		api->assign_fail(conn, 0, NULL);
+	} else {
+		LOGP(DMSC, LOGL_NOTICE,
+			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
+		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+			conn->lchan->mr_conf.ver = 1;
+			conn->lchan->mr_conf.icmi = 1;
+			conn->lchan->mr_conf.m5_90 = 1;
+		}
+
+		return gsm48_lchan_modify(conn->lchan, chan_mode);
+	}
+
 	return 0;
 }
 
