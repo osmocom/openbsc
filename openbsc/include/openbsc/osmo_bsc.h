@@ -11,6 +11,7 @@ struct osmo_bsc_sccp_con {
 	struct llist_head entry;
 
 	int ciphering_handled;
+	int rtp_port;
 
 	/* SCCP connection realted */
 	struct sccp_connection *sccp;
