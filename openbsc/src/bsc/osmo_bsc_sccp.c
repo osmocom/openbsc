@@ -126,9 +126,9 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 	return bsc_handle_udt(net, net->msc_data->msc_con, msgb, length);
 }
 
-int bsc_queue_for_msc(struct gsm_subscriber_connection *conn, struct msgb *msg)
+int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
-	struct sccp_connection *sccp = conn->sccp_con->sccp;
+	struct sccp_connection *sccp = conn->sccp;
 
 	if (sccp->connection_state != SCCP_CONNECTION_STATE_ESTABLISHED) {
 		LOGP(DMSC, LOGL_ERROR, "The connection is not established.\n");

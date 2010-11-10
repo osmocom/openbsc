@@ -42,7 +42,7 @@
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n"); \
 		return; \
 	} \
-	bsc_queue_for_msc(conn, resp);
+	bsc_queue_for_msc(conn->sccp_con, resp);
 
 static uint16_t get_network_code_for_msc(struct gsm_network *net)
 {
@@ -155,7 +155,7 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 		return 0;
 	}
 
-	bsc_queue_for_msc(conn, resp);
+	bsc_queue_for_msc(conn->sccp_con, resp);
 	return 0;
 }
 
