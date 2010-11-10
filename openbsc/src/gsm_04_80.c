@@ -107,7 +107,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 					| (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
 
 int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
@@ -136,7 +136,7 @@ int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
 	gh->proto_discr |= req->transaction_id | (1<<7);  /* TI direction = 1 */
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
 
 int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, int level, const char *text)
@@ -156,7 +156,7 @@ int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, int level, c
 	gh->proto_discr = GSM48_PDISC_NC_SS;
 	gh->msg_type = GSM0480_MTYPE_REGISTER;
 
-	return gsm0808_submit_dtap(conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
 
 int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn)
@@ -172,5 +172,5 @@ int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn)
 	gh->proto_discr = GSM48_PDISC_NC_SS;
 	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
 
-	return gsm0808_submit_dtap(conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }

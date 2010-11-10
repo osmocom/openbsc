@@ -174,11 +174,17 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 }
 
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
-			struct msgb *msg, int link_id)
+			struct msgb *msg, int link_id, int allow_sach)
 {
 	uint8_t sapi = link_id & 0x7;
 	msg->lchan = conn->lchan;
 	msg->trx = msg->lchan->ts->trx;
+
+	/* If we are on a TCH and need to submit a SMS (on SAPI=3) we need to use the SACH */
+	if (allow_sach && sapi != 0) {
+		if (conn->lchan->type == GSM_LCHAN_TCH_F || conn->lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+	}
 
 	msg->l3h = msg->data;
 	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
