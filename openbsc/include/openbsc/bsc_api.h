@@ -29,7 +29,7 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api);
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg, int link_id);
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_type, int audio);
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
-			uint8_t *key, int len);
+			const uint8_t *key, int len, int include_imeisv);
 int gsm0808_page(struct gsm_bts *bts, unsigned int page_group,
 		 unsigned int mi_len, uint8_t *mi, int chan_type);
 int gsm0808_clear(struct gsm_subscriber_connection *conn);

@@ -317,7 +317,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 }
 
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
-			uint8_t *key, int len)
+			const uint8_t *key, int len, int include_imeisv)
 {
 	return -1;
 }
