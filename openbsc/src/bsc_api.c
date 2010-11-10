@@ -382,6 +382,14 @@ static void rll_ind_cb(struct gsm_lchan *lchan, uint8_t link_id, void *_data, en
 {
 	struct msgb *msg = _data;
 
+	/*
+	 * There seems to be a small window that the RLL timer can
+	 * fire after a lchan_release call and before the S_CHALLOC_FREED
+	 * is called. Check if a conn is set before proceeding.
+	 */
+	if (!lchan->conn)
+		return;
+
 	switch (rllr_ind) {
 	case BSC_RLLR_IND_EST_CONF:
 		rsl_data_request(msg, OBSC_LINKID_CB(msg));
