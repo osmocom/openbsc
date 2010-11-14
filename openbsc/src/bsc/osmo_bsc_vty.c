@@ -63,8 +63,6 @@ static int config_write_msc(struct vty *vty)
 	if (data->core_mcc != -1)
 		vty_out(vty, "  core-mobile-country-code %d%s",
 			data->core_mcc, VTY_NEWLINE);
-	vty_out(vty, "  ip.access rtp-payload %d%s",
-		data->rtp_payload, VTY_NEWLINE);
 	vty_out(vty, "  ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
 	vty_out(vty, "  ip %s%s", data->msc_ip, VTY_NEWLINE);
 	vty_out(vty, "  port %d%s", data->msc_port, VTY_NEWLINE);
@@ -122,18 +120,6 @@ DEFUN(cfg_net_bsc_mcc,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->core_mcc = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_bsc_rtp_payload,
-      cfg_net_bsc_rtp_payload_cmd,
-      "ip.access rtp-payload <0-255>",
-      IPA_STR
-      "Set the rtp-payload for the RTP stream\n"
-      "RTP payload number\n")
-{
-	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->rtp_payload = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -283,7 +269,6 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_ncc_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_mcc_cmd);
-	install_element(MSC_NODE, &cfg_net_bsc_rtp_payload_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_base_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_codec_list_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ip_cmd);

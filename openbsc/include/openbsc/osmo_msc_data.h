@@ -49,7 +49,6 @@ struct osmo_msc_data {
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int core_mcc;
-	int rtp_payload;
 	int rtp_base;
 
 	/* audio codecs */
