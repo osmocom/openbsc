@@ -255,6 +255,11 @@ struct gsm_subscriber_connection {
 	struct gsm_lchan *lchan;
 	struct gsm_lchan *ho_lchan;
 	struct gsm_bts *bts;
+
+	/* for assignment handling */
+	struct timer_list T10;
+	struct gsm_lchan *secondary_lchan;
+
 };
 
 struct gsm_lchan {
