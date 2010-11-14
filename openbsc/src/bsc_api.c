@@ -368,10 +368,8 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 	if (conn->ho_lchan)
 		bsc_clear_handover(conn);
 
-	if (conn->lchan) {
+	if (conn->lchan)
 		lchan_release(conn->lchan, 1, 0);
-		conn->lchan->conn = NULL;
-	}
 
 	conn->lchan = NULL;
 	conn->ho_lchan = NULL;
