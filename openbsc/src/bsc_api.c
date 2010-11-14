@@ -39,6 +39,7 @@ static LLIST_HEAD(sub_connections);
 
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
+static void handle_release(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
 
 /* GSM 08.08 3.2.2.33 */
 static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
@@ -422,10 +423,8 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 {
 	struct bsc_api *bsc;
 	struct gsm_lchan *lchan;
-	struct gsm_subscriber_connection *conn;
-	int destruct = 1;
 
-	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
+	if (subsys != SS_LCHAN)
 		return 0;
 
 	lchan = (struct gsm_lchan *)signal_data;
@@ -436,7 +435,20 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!bsc)
 		return 0;
 
-	conn = lchan->conn;
+	switch (signal) {
+	case S_LCHAN_UNEXPECTED_RELEASE:
+		handle_release(lchan->conn, bsc, lchan);
+		break;
+	}
+
+	return 0;
+}
+
+static void handle_release(struct gsm_subscriber_connection *conn,
+			   struct bsc_api *bsc, struct gsm_lchan *lchan)
+{
+	int destruct = 1;
+
 	if (bsc->clear_request)
 		destruct = bsc->clear_request(conn, 0);
 
@@ -451,8 +463,6 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 
 	if (destruct)
 		subscr_con_free(conn);
-
-	return 0;
 }
 
 static __attribute__((constructor)) void on_dso_load_bsc(void)
