@@ -142,9 +142,6 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 /* TODO: move subscriber put here... */
 void subscr_con_free(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_lchan *lchan;
-
-
 	if (!conn)
 		return;
 
@@ -155,16 +152,18 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 	}
 
 
-	if (conn->ho_lchan)
+	if (conn->ho_lchan) {
 		LOGP(DNM, LOGL_ERROR, "The ho_lchan should have been cleared.\n");
+		conn->ho_lchan->conn = NULL;
+	}
+
+	if (conn->lchan) {
+		LOGP(DNM, LOGL_ERROR, "The lchan should have been cleared.\n");
+		conn->lchan->conn = NULL;
+	}
 
 	llist_del(&conn->entry);
-
-	lchan = conn->lchan;
 	talloc_free(conn);
-
-	if (lchan)
-		lchan->conn = NULL;
 }
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
