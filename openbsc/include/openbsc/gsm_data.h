@@ -732,6 +732,7 @@ struct gsm_network {
 
 	/* MSC data in case we are a true BSC */
 	struct osmo_msc_data *msc_data;
+	int hardcoded_rtp_payload;
 };
 
 #define SMS_HDR_SIZE	128
