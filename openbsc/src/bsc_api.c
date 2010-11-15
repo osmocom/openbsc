@@ -446,6 +446,8 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 		conn->lchan = NULL;
 	if (conn->ho_lchan == lchan)
 		conn->ho_lchan = NULL;
+	lchan->conn = NULL;
+
 	gsm0808_clear(conn);
 
 	if (destruct)
