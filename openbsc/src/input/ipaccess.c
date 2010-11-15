@@ -282,7 +282,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			trx->rsl_link = e1inp_sign_link_create(e1i_ts,
 							E1INP_SIGN_RSL, trx,
 							trx->rsl_tei, 0);
-			trx->rsl_link->ts->sign.delay = 10;
+			trx->rsl_link->ts->sign.delay = 0;
 
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
@@ -623,7 +623,7 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 struct e1inp_driver ipaccess_driver = {
 	.name = "ip.access",
 	.want_write = ts_want_write,
-	.default_delay = 100000,
+	.default_delay = 0,
 };
 
 /* callback of the OML listening filedescriptor */
