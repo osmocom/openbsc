@@ -329,6 +329,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 			rc = api->compl_l3(lchan->conn, msg, 0);
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
+			lchan->conn->lchan = NULL;
 			subscr_con_free(lchan->conn);
 			lchan_release(lchan, 0, 0);
 		}
