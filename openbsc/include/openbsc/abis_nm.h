@@ -175,4 +175,7 @@ int nm_is_running(struct gsm_nm_state *s);
 
 int abis_nm_vty_init(void);
 
+void abis_nm_clear_queue(struct gsm_bts *bts);
+
+
 #endif /* _NM_H */

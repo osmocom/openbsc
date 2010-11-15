@@ -1081,6 +1081,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		trx->nm_state.availability = 0;
 		trx->bb_transc.nm_state.operational = 0;
 		trx->bb_transc.nm_state.availability = 0;
+
+		abis_nm_clear_queue(trx->bts);
 		break;
 	default:
 		break;

@@ -91,6 +91,8 @@ enum bts_gprs_mode {
 	BTS_GPRS_EGPRS = 2,
 };
 
+#define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
+
 /* the data structure stored in msgb->cb for openbsc apps */
 struct openbsc_msgb_cb {
 	unsigned char *bssgph;
@@ -592,6 +594,10 @@ struct gsm_bts {
 	/* transceivers */
 	int num_trx;
 	struct llist_head trx_list;
+
+	/* Abis NM queue */
+	struct llist_head abis_queue;
+	int abis_nm_pend;
 };
 
 /* Some statistics of our network */

@@ -410,11 +410,31 @@ static struct msgb *nm_msgb_alloc(void)
 }
 
 /* Send a OML NM Message from BSC to BTS */
-int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
+static int abis_nm_queue_msg(struct gsm_bts *bts, struct msgb *msg)
 {
 	msg->trx = bts->c0;
 
-	return _abis_nm_sendmsg(msg);
+	/* queue OML messages */
+	if (llist_empty(&bts->abis_queue) && !bts->abis_nm_pend) {
+		bts->abis_nm_pend = OBSC_NM_W_ACK_CB(msg);
+		return _abis_nm_sendmsg(msg);
+	} else {
+		msgb_enqueue(&bts->abis_queue, msg);
+		return 0;
+	}
+
+}
+
+int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg)
+{
+	OBSC_NM_W_ACK_CB(msg) = 1;
+	return abis_nm_queue_msg(bts, msg);
+}
+
+static int abis_nm_sendmsg_direct(struct gsm_bts *bts, struct msgb *msg)
+{
+	OBSC_NM_W_ACK_CB(msg) = 0;
+	return abis_nm_queue_msg(bts, msg);
 }
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
@@ -951,12 +971,30 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	return 0;
 }
 
+static void abis_nm_queue_send_next(struct gsm_bts *bts)
+{
+	int wait = 0;
+	struct msgb *msg;
+	/* the queue is empty */
+	while (!llist_empty(&bts->abis_queue)) {
+		msg = msgb_dequeue(&bts->abis_queue);
+		wait = OBSC_NM_W_ACK_CB(msg);
+		_abis_nm_sendmsg(msg);
+
+		if (wait)
+			break;
+	}
+
+	bts->abis_nm_pend = wait;
+}
+
 /* Receive a OML NM Message from BTS */
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	u_int8_t mt = foh->msg_type;
+	int ret = 0;
 
 	/* check for unsolicited message */
 	if (is_report(mt))
@@ -983,6 +1021,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		nack_data.msg = mb;
 		nack_data.mt = mt;
 		dispatch_signal(SS_NM, S_NM_NACK, &nack_data);
+		abis_nm_queue_send_next(mb->trx->bts);
 		return 0;
 	}
 #if 0
@@ -1004,13 +1043,13 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	switch (mt) {
 	case NM_MT_CHG_ADM_STATE_ACK:
-		return abis_nm_rx_chg_adm_state_ack(mb);
+		ret = abis_nm_rx_chg_adm_state_ack(mb);
 		break;
 	case NM_MT_SW_ACT_REQ:
-		return abis_nm_rx_sw_act_req(mb);
+		ret = abis_nm_rx_sw_act_req(mb);
 		break;
 	case NM_MT_BS11_LMT_SESSION:
-		return abis_nm_rx_lmt_event(mb);
+		ret = abis_nm_rx_lmt_event(mb);
 		break;
 	case NM_MT_CONN_MDROP_LINK_ACK:
 		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
@@ -1023,7 +1062,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	}
 
-	return 0;
+	abis_nm_queue_send_next(mb->trx->bts);
+	return ret;
 }
 
 static int abis_nm_rx_ipacc(struct msgb *mb);
@@ -1036,6 +1076,7 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 	switch (bts_type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		rc = abis_nm_rx_ipacc(mb);
+		abis_nm_queue_send_next(mb->trx->bts);
 		break;
 	default:
 		LOGP(DNM, LOGL_ERROR, "don't know how to parse OML for this "
@@ -1280,7 +1321,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 			sw->obj_instance[0], sw->obj_instance[1],
 			sw->obj_instance[2]);
 
-	return abis_nm_sendmsg(sw->bts, msg);
+	return abis_nm_sendmsg_direct(sw->bts, msg);
 }
 
 /* 6.2.4 / 8.3.4 Load Data End */
@@ -1473,6 +1514,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 					 sw->cb_data, NULL);
 			rc = sw_fill_window(sw);
 			sw->state = SW_STATE_WAIT_SEGACK;
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		case NM_MT_LOAD_INIT_NACK:
 			if (sw->forced) {
@@ -1493,6 +1535,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 						 sw->cb_data, NULL);
 				sw->state = SW_STATE_ERROR;
 			}
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		}
 		break;
@@ -1513,6 +1556,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->state = SW_STATE_WAIT_ENDACK;
 				rc = sw_load_end(sw);
 			}
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		case NM_MT_LOAD_ABORT:
 			if (sw->cbfn)
@@ -1534,6 +1578,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 					 NM_MT_LOAD_END_ACK, mb,
 					 sw->cb_data, NULL);
 			rc = 0;
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		case NM_MT_LOAD_END_NACK:
 			if (sw->forced) {
@@ -1553,6 +1598,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 						 NM_MT_LOAD_END_NACK, mb,
 						 sw->cb_data, NULL);
 			}
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		}
 	case SW_STATE_WAIT_ACTACK:
@@ -1566,6 +1612,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_ACTIVATE_SW_ACK, mb,
 					 sw->cb_data, NULL);
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		case NM_MT_ACTIVATE_SW_NACK:
 			DEBUGP(DNM, "Activate Software NACK\n");
@@ -1575,6 +1622,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_ACTIVATE_SW_NACK, mb,
 					 sw->cb_data, NULL);
+			abis_nm_queue_send_next(mb->trx->bts);
 			break;
 		}
 	case SW_STATE_NONE:
@@ -2032,7 +2080,7 @@ int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 	if (nack)
 		msgb_tv_put(msg, NM_ATT_NACK_CAUSES, NM_NACK_OBJCLASS_NOTSUPP);
 
-	return abis_nm_sendmsg(bts, msg);
+	return abis_nm_sendmsg_direct(bts, msg);
 }
 
 int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
@@ -3044,4 +3092,16 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	}
 
 	return 0;
+}
+
+void abis_nm_clear_queue(struct gsm_bts *bts)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&bts->abis_queue)) {
+		msg = msgb_dequeue(&bts->abis_queue);
+		msgb_free(msg);
+	}
+
+	bts->abis_nm_pend = 0;
 }
