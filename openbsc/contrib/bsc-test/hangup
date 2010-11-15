@@ -1,0 +1,4 @@
+TIMEOUT 10
+'' ^Z
+SAY "Waiting for hangup confirm\n"
+'' ATH;

@@ -36,9 +36,10 @@ static void msc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 		gsm411_sapi_n_reject(conn);
 }
 
-static void msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
+static int msc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
 	gsm0408_clear_request(conn, cause);
+	return 1;
 }
 
 static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
@@ -51,7 +52,7 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	return BSC_API_CONN_POL_ACCEPT;
 }
 
-static void msc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
 	gsm0408_dispatch(conn, msg);
 }

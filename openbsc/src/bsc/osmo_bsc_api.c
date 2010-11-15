@@ -19,57 +19,154 @@
  */
 
 #include <openbsc/osmo_bsc.h>
+#include <openbsc/osmo_msc_data.h>
+#include <openbsc/debug.h>
+
+#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocore/gsm0808.h>
+
+#define return_when_not_connected(conn) \
+	if (!conn->sccp_con) {\
+		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
+		return; \
+	}
+
+#define return_when_not_connected_val(conn, ret) \
+	if (!conn->sccp_con) {\
+		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
+		return ret; \
+	}
+
+#define queue_msg_or_return(resp) \
+	if (!resp) { \
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n"); \
+		return; \
+	} \
+	bsc_queue_for_msc(conn->sccp_con, resp);
+
+static uint16_t get_network_code_for_msc(struct gsm_network *net)
+{
+	if (net->msc_data->core_ncc != -1)
+		return net->msc_data->core_ncc;
+	return net->network_code;
+}
+
+static uint16_t get_country_code_for_msc(struct gsm_network *net)
+{
+	if (net->msc_data->core_mcc != -1)
+		return net->msc_data->core_mcc;
+	return net->country_code;
+}
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 {
+	struct msgb *resp;
+	return_when_not_connected(conn);
+
+	resp = gsm0808_create_sapi_reject(dlci);
+	queue_msg_or_return(resp);
 }
 
 static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 				  struct msgb *msg, uint8_t chosen_encr)
 {
+	struct msgb *resp;
+	return_when_not_connected(conn);
+
+	LOGP(DMSC, LOGL_DEBUG, "CIPHER MODE COMPLETE from MS, forwarding to MSC\n");
+	resp = gsm0808_create_cipher_complete(msg, chosen_encr);
+	queue_msg_or_return(resp);
 }
 
-static void bsc_cipher_mode_reject(struct gsm_subscriber_connection *conn,
-				   struct msgb *msg, uint16_t reason)
-{
-}
-
+/*
+ * Instruct to reserve data for a new connectiom, create the complete
+ * layer three message, send it to open the connection.
+ */
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
-	return BSC_API_CONN_POL_REJECT;
+	struct msgb *resp;
+	uint16_t network_code = get_network_code_for_msc(conn->bts->network);
+	uint16_t country_code = get_country_code_for_msc(conn->bts->network);
+
+	/* allocate resource for a new connection */
+	if (bsc_create_new_connection(conn) != 0)
+		return BSC_API_CONN_POL_REJECT;
+
+	bsc_scan_bts_msg(conn, msg);
+	resp = gsm0808_create_layer3(msg, network_code, country_code,
+				     conn->bts->location_area_code,
+				     conn->bts->cell_identity);
+	if (!resp) {
+		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
+		bsc_delete_connection(conn->sccp_con);
+		return BSC_API_CONN_POL_REJECT;
+	}
+
+	if (bsc_open_connection(conn->sccp_con, resp) != 0) {
+		bsc_delete_connection(conn->sccp_con);
+		msgb_free(resp);
+		return BSC_API_CONN_POL_REJECT;
+	}
+
+	return BSC_API_CONN_POL_ACCEPT;
 }
 
-static void bsc_dtap(struct gsm_subscriber_connection *conn, struct msgb *msg)
+static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
+	struct msgb *resp;
+	return_when_not_connected(conn);
+
+	bsc_scan_bts_msg(conn, msg);
+	resp = gsm0808_create_dtap(msg, link_id);
+	queue_msg_or_return(resp);
 }
 
-static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint16_t rr_cause)
+static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_cause,
+			     uint8_t chosen_channel, uint8_t encr_alg_id,
+			     uint8_t speech_model)
 {
+	struct msgb *resp;
+	return_when_not_connected(conn);
+
+	resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
+						   encr_alg_id, speech_model);
+	queue_msg_or_return(resp);
 }
 
-static void bsc_assign_fail(struct gsm_subscriber_connection *conn, uint32_t cause)
+static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
+			    uint8_t cause, uint8_t *rr_cause)
 {
+	struct msgb *resp;
+	return_when_not_connected(conn);
+
+	resp = gsm0808_create_assignment_failure(cause, rr_cause);
+	queue_msg_or_return(resp);
 }
 
-static void bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
+static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
-}
+	struct msgb *resp;
+	return_when_not_connected_val(conn, 1);
 
-static void bsc_clear_compl(struct gsm_subscriber_connection *conn)
-{
+	resp = gsm0808_create_clear_rqst(GSM0808_CAUSE_RADIO_INTERFACE_FAILURE);
+	if (!resp) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
+		return 0;
+	}
+
+	bsc_queue_for_msc(conn->sccp_con, resp);
+	return 0;
 }
 
 static struct bsc_api bsc_handler = {
 	.sapi_n_reject = bsc_sapi_n_reject,
 	.cipher_mode_compl = bsc_cipher_mode_compl,
-	.cipher_mode_reject = bsc_cipher_mode_reject,
 	.compl_l3 = bsc_compl_l3,
 	.dtap  = bsc_dtap,
 	.assign_compl = bsc_assign_compl,
 	.assign_fail = bsc_assign_fail,
 	.clear_request = bsc_clear_request,
-	.clear_compl = bsc_clear_compl,
 };
 
 struct bsc_api *osmo_bsc_api()

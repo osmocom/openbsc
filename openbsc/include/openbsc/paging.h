@@ -29,6 +29,28 @@
 #include "gsm_subscriber.h"
 #include <osmocore/timer.h>
 
+/**
+ * A pending paging request
+ */
+struct gsm_paging_request {
+	/* list_head for list of all paging requests */
+	struct llist_head entry;
+	/* the subscriber which we're paging. Later gsm_paging_request
+	 * should probably become a part of the gsm_subscriber struct? */
+	struct gsm_subscriber *subscr;
+	/* back-pointer to the BTS on which we are paging */
+	struct gsm_bts *bts;
+	/* what kind of channel type do we ask the MS to establish */
+	int chan_type;
+
+	/* Timer 3113: how long do we try to page? */
+	struct timer_list T3113;
+
+	/* callback to be called in case paging completes */
+	gsm_cbfn *cbfn;
+	void *cbfn_param;
+};
+
 /* call once for every gsm_bts... */
 void paging_init(struct gsm_bts *bts);
 

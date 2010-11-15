@@ -219,3 +219,45 @@ void subscr_put_channel(struct gsm_subscriber_connection *conn)
 		subscr_send_paging_request(conn->subscr);
 }
 
+struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
+					    const char *imsi)
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
+			return subscr_get(subscr);
+	}
+
+	subscr = subscr_alloc();
+	if (!subscr)
+		return NULL;
+
+	strcpy(subscr->imsi, imsi);
+	subscr->net = net;
+	return subscr;
+}
+
+struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net, uint32_t tmsi)
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+		if (subscr->tmsi == tmsi && subscr->net == net)
+			return subscr_get(subscr);
+	}
+
+	return NULL;
+}
+
+struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net, const char *imsi)
+{
+	struct gsm_subscriber *subscr;
+
+	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
+			return subscr_get(subscr);
+	}
+
+	return NULL;
+}

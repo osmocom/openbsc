@@ -236,6 +236,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	if (osmo_bsc_audio_init(bsc_gsmnet) != 0) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to register audio support.\n");
+		exit(1);
+	}
+
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);

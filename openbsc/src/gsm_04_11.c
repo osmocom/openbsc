@@ -142,7 +142,7 @@ static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *m
 {
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
-	return gsm0808_submit_dtap(conn, msg, link_id);
+	return gsm0808_submit_dtap(conn, msg, link_id, 1);
 }
 
 /* SMC TC1* is expired */

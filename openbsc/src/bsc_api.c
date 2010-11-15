@@ -30,13 +30,179 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/handover.h>
 #include <openbsc/debug.h>
+#include <openbsc/gsm_04_08.h>
+
+#include <osmocore/protocol/gsm_08_08.h>
 
 #include <osmocore/talloc.h>
+
+#define GSM0808_T10_VALUE    6, 0
 
 static LLIST_HEAD(sub_connections);
 
 static void rll_ind_cb(struct gsm_lchan *, uint8_t, void *, enum bsc_rllr_ind);
 static void send_sapi_reject(struct gsm_subscriber_connection *conn, int link_id);
+static void handle_release(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
+static void handle_chan_ack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
+static void handle_chan_nack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
+
+/* GSM 08.08 3.2.2.33 */
+static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
+{
+	u_int8_t channel_mode = 0, channel = 0;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_EFR:
+	case GSM48_CMODE_SPEECH_AMR:
+		channel_mode = 0x9;
+		break;
+	case GSM48_CMODE_SIGN:
+		channel_mode = 0x8;
+		break;
+	case GSM48_CMODE_DATA_14k5:
+		channel_mode = 0xe;
+		break;
+	case GSM48_CMODE_DATA_12k0:
+		channel_mode = 0xb;
+		break;
+	case GSM48_CMODE_DATA_6k0:
+		channel_mode = 0xc;
+		break;
+	case GSM48_CMODE_DATA_3k6:
+		channel_mode = 0xd;
+		break;
+	}
+
+	switch (lchan->type) {
+	case GSM_LCHAN_NONE:
+		channel = 0x0;
+		break;
+	case GSM_LCHAN_SDCCH:
+		channel = 0x1;
+		break;
+	case GSM_LCHAN_TCH_F:
+		channel = 0x8;
+		break;
+	case GSM_LCHAN_TCH_H:
+		channel = 0x9;
+		break;
+	case GSM_LCHAN_UNKNOWN:
+		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %p\n", lchan);
+		break;
+	}
+
+	return channel_mode << 4 | channel;
+}
+
+static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
+{
+	int mode = 0;
+
+	switch (lchan->tch_mode) {
+	case GSM48_CMODE_SPEECH_V1:
+		mode = 1;
+		break;
+	case GSM48_CMODE_SPEECH_EFR:
+		mode = 0x11;
+		break;
+	case GSM48_CMODE_SPEECH_AMR:
+		mode = 0x21;
+		break;
+	case GSM48_CMODE_SIGN:
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_6k0:
+	case GSM48_CMODE_DATA_3k6:
+	default:
+		LOGP(DMSC, LOGL_ERROR, "Using non speech mode: %d\n", mode);
+		return 0;
+		break;
+	}
+
+	/* assume to always do AMR HR on any TCH type */
+	if (lchan->type == GSM_LCHAN_TCH_H ||
+	    lchan->tch_mode == GSM48_CMODE_SPEECH_AMR)
+		mode |= 0x4;
+
+        return mode;
+}
+
+static void assignment_t10_timeout(void *_conn)
+{
+	struct bsc_api *api;
+	struct gsm_subscriber_connection *conn =
+		(struct gsm_subscriber_connection *) _conn;
+
+	LOGP(DMSC, LOGL_ERROR, "Assigment T10 timeout on %p\n", conn);
+
+	/* normal release on the secondary channel */
+	lchan_release(conn->secondary_lchan, 0, 1);
+	conn->secondary_lchan = NULL;
+
+	/* inform them about the failure */
+	api = conn->bts->network->bsc_api;
+	api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+}
+
+/*
+ * Start a new assignment and make sure that it is completed within T10 either
+ * positively, negatively or by the timeout.
+ *
+ *  1.) allocate a new lchan
+ *  2.) copy the encryption key and other data from the
+ *      old to the new channel.
+ *  3.) RSL Channel Activate this channel and wait
+ *
+ * -> Signal handler for the LCHAN
+ *  4.) Send GSM 04.08 assignment command to the MS
+ *
+ * -> Assignment Complete/Assignment Failure
+ *  5.) Release the SDCCH, continue signalling on the new link
+ */
+static int handle_new_assignment(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
+{
+	struct gsm_lchan *new_lchan;
+	int chan_type;
+
+	chan_type = full_rate ? GSM_LCHAN_TCH_F : GSM_LCHAN_TCH_H;
+
+	new_lchan = lchan_alloc(conn->bts, chan_type, 0);
+
+	if (!new_lchan) {
+		LOGP(DMSC, LOGL_NOTICE, "No free channel.\n");
+		return -1;
+	}
+
+	/* copy old data to the new channel */
+	memcpy(&new_lchan->encr, &conn->lchan->encr, sizeof(new_lchan->encr));
+	new_lchan->ms_power = conn->lchan->ms_power;
+	new_lchan->bs_power = conn->lchan->bs_power;
+
+	/* copy new data to it */
+	new_lchan->tch_mode = chan_mode;
+	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
+
+	/* handle AMR correctly */
+	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+		new_lchan->mr_conf.ver = 1;
+		new_lchan->mr_conf.icmi = 1;
+		new_lchan->mr_conf.m5_90 = 1;
+	}
+
+	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
+		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
+		lchan_free(new_lchan);
+		return -1;
+	}
+
+	/* remember that we have the channel */
+	conn->secondary_lchan = new_lchan;
+	new_lchan->conn = conn;
+
+	rsl_lchan_set_state(new_lchan, LCHAN_S_ACT_REQ);
+	return 0;
+}
 
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 {
@@ -57,9 +223,6 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan)
 /* TODO: move subscriber put here... */
 void subscr_con_free(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_lchan *lchan;
-
-
 	if (!conn)
 		return;
 
@@ -70,16 +233,23 @@ void subscr_con_free(struct gsm_subscriber_connection *conn)
 	}
 
 
-	if (conn->ho_lchan)
+	if (conn->ho_lchan) {
 		LOGP(DNM, LOGL_ERROR, "The ho_lchan should have been cleared.\n");
+		conn->ho_lchan->conn = NULL;
+	}
+
+	if (conn->lchan) {
+		LOGP(DNM, LOGL_ERROR, "The lchan should have been cleared.\n");
+		conn->lchan->conn = NULL;
+	}
+
+	if (conn->secondary_lchan) {
+		LOGP(DNM, LOGL_ERROR, "The secondary_lchan should have been cleared.\n");
+		conn->secondary_lchan->conn = NULL;
+	}
 
 	llist_del(&conn->entry);
-
-	lchan = conn->lchan;
 	talloc_free(conn);
-
-	if (lchan)
-		lchan->conn = NULL;
 }
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
@@ -89,11 +259,17 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 }
 
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
-			struct msgb *msg, int link_id)
+			struct msgb *msg, int link_id, int allow_sach)
 {
 	uint8_t sapi = link_id & 0x7;
 	msg->lchan = conn->lchan;
 	msg->trx = msg->lchan->ts->trx;
+
+	/* If we are on a TCH and need to submit a SMS (on SAPI=3) we need to use the SACH */
+	if (allow_sach && sapi != 0) {
+		if (conn->lchan->type == GSM_LCHAN_TCH_F || conn->lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+	}
 
 	msg->l3h = msg->data;
 	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
@@ -111,15 +287,40 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 
 /**
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
- * audio codec type or the allowed rates for the config.
+ * audio codec type or the allowed rates for the config. It is assumed that
+ * this is for audio handling and that when we have a TCH it is capable of
+ * handling the audio codec. On top of that it is assumed that we are using
+ * AMR 5.9 when assigning a TCH/H.
  */
-int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_type, int audio)
+int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
 
-	api->assign_fail(conn, 0);
+	if (conn->lchan->type == GSM_LCHAN_SDCCH) {
+		if (handle_new_assignment(conn, chan_mode, full_rate) != 0)
+			goto error;
+	} else {
+		LOGP(DMSC, LOGL_NOTICE,
+			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
+		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
+			conn->lchan->mr_conf.ver = 1;
+			conn->lchan->mr_conf.icmi = 1;
+			conn->lchan->mr_conf.m5_90 = 1;
+		}
+
+		gsm48_lchan_modify(conn->lchan, chan_mode);
+	}
+
+	/* we will now start the timer to complete the assignment */
+	conn->T10.cb = assignment_t10_timeout;
+	conn->T10.data = conn;
+	bsc_schedule_timer(&conn->T10, GSM0808_T10_VALUE);
 	return 0;
+
+error:
+	api->assign_fail(conn, 0, NULL);
+	return -1;
 }
 
 int gsm0808_page(struct gsm_bts *bts, unsigned int page_group, unsigned int mi_len,
@@ -147,6 +348,126 @@ int bsc_upqueue(struct gsm_network *net)
 	return work;
 }
 
+static void handle_ass_compl(struct gsm_subscriber_connection *conn,
+			     struct msgb *msg)
+{
+	struct gsm48_hdr *gh;
+	struct bsc_api *api = conn->bts->network->bsc_api;
+
+	if (conn->secondary_lchan != msg->lchan) {
+		LOGP(DMSC, LOGL_ERROR, "Assignment Compl should occur on second lchan.\n");
+		return;
+	}
+
+	gh = msgb_l3(msg);
+	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
+		LOGP(DMSC, LOGL_ERROR, "Assignment Compl invalid: %d\n",
+		     msgb_l3len(msg) - sizeof(*gh));
+		return;
+	}
+
+	/* swap channels */
+	bsc_del_timer(&conn->T10);
+
+	lchan_release(conn->lchan, 0, 1);
+	conn->lchan = conn->secondary_lchan;
+	conn->secondary_lchan = NULL;
+
+	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
+		rsl_ipacc_crcx(conn->lchan);
+
+	api->assign_compl(conn, gh->data[0],
+			  lchan_to_chosen_channel(conn->lchan),
+			  conn->lchan->encr.alg_id,
+			  chan_mode_to_speech(conn->lchan));
+}
+
+static void handle_ass_fail(struct gsm_subscriber_connection *conn,
+			    struct msgb *msg)
+{
+	struct bsc_api *api = conn->bts->network->bsc_api;
+	uint8_t *rr_failure;
+	struct gsm48_hdr *gh;
+
+
+	if (conn->lchan != msg->lchan) {
+		LOGP(DMSC, LOGL_ERROR, "Assignment failure should occur on primary lchan.\n");
+		return;
+	}
+
+	/* stop the timer and release it */
+	bsc_del_timer(&conn->T10);
+	lchan_release(conn->secondary_lchan, 0, 1);
+	conn->secondary_lchan = NULL;
+
+	gh = msgb_l3(msg);
+	if (msgb_l3len(msg) - sizeof(*gh) != 1) {
+		LOGP(DMSC, LOGL_ERROR, "assignemnt failure unhandled: %d\n",
+		     msgb_l3len(msg) - sizeof(*gh));
+		rr_failure = NULL;
+	} else {
+		rr_failure = &gh->data[0];
+	}
+
+	api->assign_fail(conn,
+			 GSM0808_CAUSE_RADIO_INTERFACE_MESSAGE_FAILURE,
+			 rr_failure);
+}
+
+static void dispatch_dtap(struct gsm_subscriber_connection *conn,
+			  uint8_t link_id, struct msgb *msg)
+{
+	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+	struct gsm48_hdr *gh;
+	uint8_t pdisc;
+	int rc;
+
+	if (msgb_l3len(msg) < sizeof(*gh)) {
+		LOGP(DMSC, LOGL_ERROR, "Message too short for a GSM48 header.\n");
+		return;
+	}
+
+	gh = msgb_l3(msg);
+	pdisc = gh->proto_discr & 0x0f;
+	switch (pdisc) {
+	case GSM48_PDISC_RR:
+		switch (gh->msg_type) {
+		case GSM48_MT_RR_CIPH_M_COMPL:
+			if (api->cipher_mode_compl)
+				return api->cipher_mode_compl(conn, msg,
+						conn->lchan->encr.alg_id);
+			break;
+		case GSM48_MT_RR_ASS_COMPL:
+			handle_ass_compl(conn, msg);
+			break;
+		case GSM48_MT_RR_ASS_FAIL:
+			handle_ass_fail(conn, msg);
+			break;
+		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
+			bsc_del_timer(&conn->T10);
+			rc = gsm48_rx_rr_modif_ack(msg);
+			if (rc < 0 && api->assign_fail) {
+				api->assign_fail(conn,
+						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE,
+						 NULL);
+			} else if (rc >= 0 && api->assign_compl)
+				api->assign_compl(conn, 0,
+						  lchan_to_chosen_channel(conn->lchan),
+						  conn->lchan->encr.alg_id,
+						  chan_mode_to_speech(conn->lchan));
+			return;
+			break;
+		}
+		break;
+	case GSM48_PDISC_MM:
+		break;
+	}
+
+	/* default case */
+	if (api->dtap)
+		api->dtap(conn, link_id, msg);
+}
+
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;
@@ -161,7 +482,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 
 	if (lchan->conn) {
-		api->dtap(lchan->conn, msg);
+		dispatch_dtap(lchan->conn, link_id, msg);
 	} else {
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);
@@ -170,6 +491,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 			rc = api->compl_l3(lchan->conn, msg, 0);
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
+			lchan->conn->lchan = NULL;
 			subscr_con_free(lchan->conn);
 			lchan_release(lchan, 0, 0);
 		}
@@ -179,9 +501,25 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 }
 
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
-			uint8_t *key, int len)
+			const uint8_t *key, int len, int include_imeisv)
 {
-	return -1;
+	if (cipher > 0 && key == NULL) {
+		LOGP(DRSL, LOGL_ERROR, "Need to have an encrytpion key.\n");
+		return -1;
+	}
+
+	if (len > MAX_A5_KEY_LEN) {
+		LOGP(DRSL, LOGL_ERROR, "The key is too long: %d\n", len);
+		return -1;
+	}
+
+	conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(cipher);
+	if (key) {
+		conn->lchan->encr.key_len = len;
+		memcpy(conn->lchan->encr.key, key, len);
+	}
+
+	return gsm48_send_rr_ciph_mode(conn->lchan, include_imeisv);
 }
 
 /*
@@ -192,14 +530,18 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 	if (conn->ho_lchan)
 		bsc_clear_handover(conn);
 
-	if (conn->lchan) {
+	if (conn->secondary_lchan)
+		lchan_release(conn->secondary_lchan, 0, 1);
+
+	if (conn->lchan)
 		lchan_release(conn->lchan, 1, 0);
-		conn->lchan->conn = NULL;
-	}
 
 	conn->lchan = NULL;
+	conn->secondary_lchan = NULL;
 	conn->ho_lchan = NULL;
 	conn->bts = NULL;
+
+	bsc_del_timer(&conn->T10);
 
 	return 0;
 }
@@ -222,6 +564,14 @@ static void rll_ind_cb(struct gsm_lchan *lchan, uint8_t link_id, void *_data, en
 {
 	struct msgb *msg = _data;
 
+	/*
+	 * There seems to be a small window that the RLL timer can
+	 * fire after a lchan_release call and before the S_CHALLOC_FREED
+	 * is called. Check if a conn is set before proceeding.
+	 */
+	if (!lchan->conn)
+		return;
+
 	switch (rllr_ind) {
 	case BSC_RLLR_IND_EST_CONF:
 		rsl_data_request(msg, OBSC_LINKID_CB(msg));
@@ -240,9 +590,8 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 {
 	struct bsc_api *bsc;
 	struct gsm_lchan *lchan;
-	struct gsm_subscriber_connection *conn;
 
-	if (subsys != SS_LCHAN || signal != S_LCHAN_UNEXPECTED_RELEASE)
+	if (subsys != SS_LCHAN)
 		return 0;
 
 	lchan = (struct gsm_lchan *)signal_data;
@@ -253,18 +602,72 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 	if (!bsc)
 		return 0;
 
-	conn = lchan->conn;
-	if (bsc->clear_request)
-		bsc->clear_request(conn, 0);
+	switch (signal) {
+	case S_LCHAN_UNEXPECTED_RELEASE:
+		handle_release(lchan->conn, bsc, lchan);
+		break;
+	case S_LCHAN_ACTIVATE_ACK:
+		handle_chan_ack(lchan->conn, bsc, lchan);
+		break;
+	case S_LCHAN_ACTIVATE_NACK:
+		handle_chan_nack(lchan->conn, bsc, lchan);
+		break;
+	}
+
+	return 0;
+}
+
+static void handle_release(struct gsm_subscriber_connection *conn,
+			   struct bsc_api *bsc, struct gsm_lchan *lchan)
+{
+	int destruct = 1;
 
 	/* now give up all channels */
 	if (conn->lchan == lchan)
 		conn->lchan = NULL;
 	if (conn->ho_lchan == lchan)
 		conn->ho_lchan = NULL;
+	if (conn->secondary_lchan == lchan) {
+		bsc_del_timer(&conn->T10);
+		conn->secondary_lchan = NULL;
+
+		bsc->assign_fail(conn,
+				 GSM0808_CAUSE_RADIO_INTERFACE_FAILURE,
+				 NULL);
+	}
+
+	lchan->conn = NULL;
+
+	/* clear the connection now */
+	if (bsc->clear_request)
+		destruct = bsc->clear_request(conn, 0);
+
+
 	gsm0808_clear(conn);
 
-	return 0;
+	if (destruct)
+		subscr_con_free(conn);
+}
+
+static void handle_chan_ack(struct gsm_subscriber_connection *conn,
+			    struct bsc_api *api, struct gsm_lchan *lchan)
+{
+	if (conn->secondary_lchan != lchan)
+		return;
+
+	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: %p\n", lchan);
+	gsm48_send_rr_ass_cmd(conn->lchan, lchan, 0x3);
+}
+
+static void handle_chan_nack(struct gsm_subscriber_connection *conn,
+			     struct bsc_api *api, struct gsm_lchan *lchan)
+{
+	if (conn->secondary_lchan != lchan)
+		return;
+
+	LOGP(DMSC, LOGL_ERROR, "Channel activation failed. Waiting for timeout now\n");
+	conn->secondary_lchan->conn = NULL;
+	conn->secondary_lchan = NULL;
 }
 
 static __attribute__((constructor)) void on_dso_load_bsc(void)

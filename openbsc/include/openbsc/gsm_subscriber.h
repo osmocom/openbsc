@@ -13,10 +13,6 @@
 #define GSM_MIN_EXTEN 20000
 #define GSM_MAX_EXTEN 49999
 
-/* reserved according to GSM 03.03 § 2.4 */
-#define GSM_RESERVED_TMSI   0xFFFFFFFF
-
-
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 #define tmsi_from_string(str) strtoul(str, NULL, 10)
 
@@ -81,10 +77,16 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 					       const char *ext);
 struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 					unsigned long long id);
+struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
+					const char *imsi);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_subscriber_connection *conn);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
+struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net,
+					     uint32_t tmsi);
+struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
+					     const char *imsi);
 
 char *subscr_name(struct gsm_subscriber *subscr);
 

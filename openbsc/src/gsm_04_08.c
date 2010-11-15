@@ -104,7 +104,7 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 				gh->proto_discr, gh->msg_type);
 	}
 
-	return gsm0808_submit_dtap(conn, msg, 0);
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
 
 int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
@@ -328,8 +328,6 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 		if (trans->conn == conn)
 			trans_free(trans);
 	}
-
-	subscr_con_free(conn);
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
@@ -1199,9 +1197,6 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 		break;
 	case GSM48_MT_RR_PAG_RESP:
 		rc = gsm48_rx_rr_pag_resp(conn, msg);
-		break;
-	case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
-		rc = gsm48_rx_rr_modif_ack(msg);
 		break;
 	case GSM48_MT_RR_STATUS:
 		rc = gsm48_rx_rr_status(msg);

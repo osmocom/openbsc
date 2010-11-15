@@ -68,6 +68,9 @@ enum gsm_chreq_reason_t {
 #define HARDCODED_BTS1_TS	6
 #define HARDCODED_BTS2_TS	11
 
+/* reserved according to GSM 03.03 § 2.4 */
+#define GSM_RESERVED_TMSI   0xFFFFFFFF
+
 enum gsm_hooks {
 	GSM_HOOK_NM_SWLOAD,
 	GSM_HOOK_RR_PAGING,
@@ -252,6 +255,11 @@ struct gsm_subscriber_connection {
 	struct gsm_lchan *lchan;
 	struct gsm_lchan *ho_lchan;
 	struct gsm_bts *bts;
+
+	/* for assignment handling */
+	struct timer_list T10;
+	struct gsm_lchan *secondary_lchan;
+
 };
 
 struct gsm_lchan {
@@ -426,28 +434,6 @@ enum gsm_bts_features {
 	BTS_FEAT_EGPRS,
 	BTS_FEAT_ECSD,
 	BTS_FEAT_HOPPING,
-};
-
-/**
- * A pending paging request 
- */
-struct gsm_paging_request {
-	/* list_head for list of all paging requests */
-	struct llist_head entry;
-	/* the subscriber which we're paging. Later gsm_paging_request
-	 * should probably become a part of the gsm_subscriber struct? */
-	struct gsm_subscriber *subscr;
-	/* back-pointer to the BTS on which we are paging */
-	struct gsm_bts *bts;
-	/* what kind of channel type do we ask the MS to establish */
-	int chan_type;
-
-	/* Timer 3113: how long do we try to page? */
-	struct timer_list T3113;
-
-	/* callback to be called in case paging completes */
-	gsm_cbfn *cbfn;
-	void *cbfn_param;
 };
 
 /*
@@ -732,6 +718,7 @@ struct gsm_network {
 
 	/* MSC data in case we are a true BSC */
 	struct osmo_msc_data *msc_data;
+	int hardcoded_rtp_payload;
 };
 
 #define SMS_HDR_SIZE	128

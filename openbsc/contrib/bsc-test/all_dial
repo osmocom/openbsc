@@ -1,0 +1,8 @@
+ABORT BUSY
+ABORT 'NO CARRIER'
+ABORT 'OK'
+
+'' AT
+SAY "Dialing a number\n"
+'OK' ATD05660066;
+

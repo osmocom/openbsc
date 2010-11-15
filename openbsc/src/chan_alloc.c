@@ -281,13 +281,6 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 
 		/* clear multi rate config */
 		memset(&lchan->mr_conf, 0, sizeof(lchan->mr_conf));
-
-		/* clear per MSC/BSC data */
-		if (lchan->conn) {
-			LOGP(DRLL, LOGL_ERROR, "lchan->conn should be NULL.\n");
-			subscr_con_free(lchan->conn);
-			lchan->conn = NULL;
-		}
 	} else {
 		struct challoc_signal_data sig;
 		sig.bts = bts;
@@ -338,7 +331,6 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	if (lchan->conn) {
 		LOGP(DRLL, LOGL_ERROR, "the subscriber connection should be gone.\n");
-		subscr_con_free(lchan->conn);
 		lchan->conn = NULL;
 	}
 
@@ -422,6 +414,7 @@ int lchan_release(struct gsm_lchan *lchan, int sach_deact, int reason)
 	DEBUGP(DRLL, "%s starting release sequence\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 
+	lchan->conn = NULL;
 	lchan->release_reason = reason;
 	lchan->sach_deact = sach_deact;
 	_lchan_handle_release(lchan);

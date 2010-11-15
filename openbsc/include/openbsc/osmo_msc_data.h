@@ -29,10 +29,11 @@
 #include <osmocore/timer.h>
 
 struct osmo_bsc_rf;
+struct gsm_network;
 
 struct gsm_audio_support {
-        u_int8_t hr  : 1,
-                 ver : 7;
+        uint8_t hr  : 1,
+                ver : 7;
 };
 
 struct osmo_msc_data {
@@ -47,7 +48,7 @@ struct osmo_msc_data {
 	struct timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
-	int rtp_payload;
+	int core_mcc;
 	int rtp_base;
 
 	/* audio codecs */
@@ -61,10 +62,15 @@ struct osmo_msc_data {
 	/* rf ctl related bits */
 	char *ussd_grace_txt;
 	struct osmo_bsc_rf *rf_ctl;
+
+	/* ussd welcome text */
+	char *ussd_welcome_txt;
 };
 
 int osmo_bsc_msc_init(struct gsm_network *network);
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet);
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto);
+
+int osmo_bsc_audio_init(struct gsm_network *network);
 
 #endif
