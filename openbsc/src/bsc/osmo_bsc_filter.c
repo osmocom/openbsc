@@ -21,7 +21,11 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_04_80.h>
+#include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
+#include <openbsc/paging.h>
+
+#include <stdlib.h>
 
 static void handle_lu_request(struct gsm_subscriber_connection *conn,
 			      struct msgb *msg)
@@ -50,6 +54,48 @@ static void handle_lu_request(struct gsm_subscriber_connection *conn,
 	}
 }
 
+/* we will need to stop the paging request */
+static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	uint8_t mi_type;
+	char mi_string[GSM48_MI_SIZE];
+	struct gsm48_hdr *gh;
+	struct gsm48_pag_resp *resp;
+	struct gsm_subscriber *subscr;
+
+	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*resp)) {
+		LOGP(DMSC, LOGL_ERROR, "PagingResponse too small: %u\n", msgb_l3len(msg));
+		return -1;
+	}
+
+	gh = msgb_l3(msg);
+	resp = (struct gsm48_pag_resp *) &gh->data[0];
+
+	gsm48_paging_extract_mi(resp, msgb_l3len(msg) - sizeof(*gh),
+				mi_string, &mi_type);
+	DEBUGP(DRR, "PAGING RESPONSE: mi_type=0x%02x MI(%s)\n",
+		mi_type, mi_string);
+
+	switch (mi_type) {
+	case GSM_MI_TYPE_TMSI:
+		subscr = subscr_active_by_tmsi(conn->bts->network,
+					       tmsi_from_string(mi_string));
+		break;
+	case GSM_MI_TYPE_IMSI:
+		subscr = subscr_active_by_imsi(conn->bts->network, mi_string);
+		break;
+	}
+
+	if (!subscr) {
+		LOGP(DMSC, LOGL_ERROR, "Non active subscriber got paged.\n");
+		return -1;
+	}
+
+	paging_request_stop(conn->bts, subscr, conn);
+	subscr_put(subscr);
+	return 0;
+}
+
 /**
  * This is used to scan a message for extra functionality of the BSC. This
  * includes scanning for location updating requests/acceptd and then send
@@ -64,6 +110,9 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	if (pdisc == GSM48_PDISC_MM) {
 		if (mtype == GSM48_MT_MM_LOC_UPD_REQUEST)
 			handle_lu_request(conn, msg);
+	} else if (pdisc == GSM48_PDISC_RR) {
+		if (mtype == GSM48_MT_RR_PAG_RESP)
+			handle_page_resp(conn, msg);
 	}
 
 	return 0;
