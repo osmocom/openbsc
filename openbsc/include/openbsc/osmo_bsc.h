@@ -19,6 +19,9 @@ struct osmo_bsc_sccp_con {
 	struct timer_list sccp_it_timeout;
 	struct timer_list sccp_cc_timeout;
 
+	struct llist_head sccp_queue;
+	unsigned int sccp_queue_size;
+
 	struct gsm_subscriber_connection *conn;
 	uint8_t new_subscriber;
 };

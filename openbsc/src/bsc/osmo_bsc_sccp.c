@@ -39,6 +39,32 @@
 
 static LLIST_HEAD(active_connections);
 
+static void free_queued(struct osmo_bsc_sccp_con *conn)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&conn->sccp_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&conn->sccp_queue);
+		msgb_free(msg);
+	}
+
+	conn->sccp_queue_size = 0;
+}
+
+static void send_queued(struct osmo_bsc_sccp_con *conn)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(&conn->sccp_queue)) {
+		/* this is not allowed to fail */
+		msg = msgb_dequeue(&conn->sccp_queue);
+		sccp_connection_write(conn->sccp, msg);
+		msgb_free(msg);
+		conn->sccp_queue_size -= 1;
+	}
+}
+
 static void msc_outgoing_sccp_data(struct sccp_connection *conn,
 				   struct msgb *msg, unsigned int len)
 {
@@ -63,6 +89,7 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		}
 
 		con_data->sccp = NULL;
+		free_queued(con_data);
 		sccp_connection_free(conn);
 		bsc_delete_connection(con_data);
 	} else if (conn->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED) {
@@ -71,6 +98,8 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 
 		bsc_del_timer(&con_data->sccp_cc_timeout);
 		bsc_schedule_timer(&con_data->sccp_it_timeout, SCCP_IT_TIMER, 0);
+
+		send_queued(con_data);
 	}
 }
 
@@ -82,6 +111,7 @@ static void bsc_sccp_force_free(struct osmo_bsc_sccp_con *data)
 		data->conn = NULL;
 	}
 
+	free_queued(data);
 	sccp_connection_force_free(data->sccp);
 	data->sccp = NULL;
 	bsc_delete_connection(data);
@@ -130,14 +160,22 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
 	struct sccp_connection *sccp = conn->sccp;
 
-	if (sccp->connection_state != SCCP_CONNECTION_STATE_ESTABLISHED) {
-		LOGP(DMSC, LOGL_ERROR, "The connection is not established.\n");
+	if (sccp->connection_state > SCCP_CONNECTION_STATE_ESTABLISHED) {
+		LOGP(DMSC, LOGL_ERROR, "Connection closing, dropping packet on: %p\n", sccp);
 		msgb_free(msg);
-		return -1;
+	} else if (sccp->connection_state == SCCP_CONNECTION_STATE_ESTABLISHED
+		   && conn->sccp_queue_size == 0) {
+		sccp_connection_write(sccp, msg);
+		msgb_free(msg);
+	} else if (conn->sccp_queue_size > 10) {
+		LOGP(DMSC, LOGL_ERROR, "Connection closing, dropping packet on: %p\n", sccp);
+		msgb_free(msg);
+	} else {
+		LOGP(DMSC, LOGL_DEBUG, "Queueing packet on %p. Queue size: %d\n", sccp, conn->sccp_queue_size);
+		conn->sccp_queue_size += 1;
+		msgb_enqueue(&conn->sccp_queue, msg);
 	}
 
-	sccp_connection_write(sccp, msg);
-	msgb_free(msg);
 	return 0;
 }
 
@@ -181,6 +219,8 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	bsc_con->sccp_it_timeout.data = bsc_con;
 	bsc_con->sccp_cc_timeout.cb = sccp_cc_timeout;
 	bsc_con->sccp_cc_timeout.data = bsc_con;
+
+	INIT_LLIST_HEAD(&bsc_con->sccp_queue);
 
 	bsc_con->sccp = sccp;
 	bsc_con->msc_con = net->msc_data->msc_con;
