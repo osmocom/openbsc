@@ -77,6 +77,8 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 					       const char *ext);
 struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 					unsigned long long id);
+struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
+					const char *imsi);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
 void subscr_put_channel(struct gsm_subscriber_connection *conn);
 void subscr_get_channel(struct gsm_subscriber *subscr,
