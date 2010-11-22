@@ -1454,7 +1454,7 @@ DEFUN(cfg_net_mid_call_text,
       "mid-call-text .TEXT",
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
-	char *data = argv_concat(argv, argc, 1);
+	char *data = argv_concat(argv, argc, 0);
 	if (!data)
 		return CMD_WARNING;
 
