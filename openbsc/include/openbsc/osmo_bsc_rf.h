@@ -2,6 +2,7 @@
 #define OSMO_BSC_RF
 
 #include <osmocore/write_queue.h>
+#include <osmocore/timer.h>
 
 struct gsm_network;
 
@@ -10,6 +11,9 @@ struct osmo_bsc_rf {
 	int policy;
 	struct bsc_fd listen;
 	struct gsm_network *gsm_network;
+
+	/* some handling for the automatic grace switch */
+	struct timer_list grace_timeout;
 };
 
 struct osmo_bsc_rf_conn {

@@ -25,6 +25,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
+#include <openbsc/osmo_msc_data.h>
 
 #include <osmocore/talloc.h>
 #include <osmocore/protocol/gsm_12_21.h>
@@ -92,13 +93,43 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	return;
 }
 
-static void send_signal(struct osmo_bsc_rf_conn *conn, int val)
+static void send_signal(struct osmo_bsc_rf *rf, int val)
 {
 	struct rf_signal_data sig;
-	sig.net = conn->rf->gsm_network;
+	sig.net = rf->gsm_network;
 
-	conn->rf->policy = val;
+	rf->policy = val;
 	dispatch_signal(SS_RF, val, &sig);
+}
+
+static int switch_rf_off(struct osmo_bsc_rf *rf)
+{
+	lock_each_trx(rf->gsm_network, 1);
+	send_signal(rf, S_RF_OFF);
+
+	return 0;
+}
+
+static void grace_timeout(void *_data)
+{
+	struct osmo_bsc_rf *rf = (struct osmo_bsc_rf *) _data;
+
+	LOGP(DINP, LOGL_NOTICE, "Grace timeout. Disabling the TRX.\n");
+	switch_rf_off(rf);
+}
+
+static int enter_grace(struct osmo_bsc_rf_conn *conn)
+{
+	struct osmo_bsc_rf *rf = conn->rf;
+
+	rf->grace_timeout.cb = grace_timeout;
+	rf->grace_timeout.data = rf;
+	bsc_schedule_timer(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
+	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
+	     rf->gsm_network->msc_data->mid_call_timeout);
+
+	send_signal(conn->rf, S_RF_GRACE);
+	return 0;
 }
 
 static int rf_read_cmd(struct bsc_fd *fd)
@@ -122,15 +153,16 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		handle_query(conn);
 		break;
 	case RF_CMD_OFF:
-		lock_each_trx(conn->rf->gsm_network, 1);
-		send_signal(conn, S_RF_OFF);
+		bsc_del_timer(&conn->rf->grace_timeout);
+		switch_rf_off(conn->rf);
 		break;
 	case RF_CMD_ON:
+		bsc_del_timer(&conn->rf->grace_timeout);
 		lock_each_trx(conn->rf->gsm_network, 0);
-		send_signal(conn, S_RF_ON);
+		send_signal(conn->rf, S_RF_ON);
 		break;
 	case RF_CMD_GRACE:
-		send_signal(conn, S_RF_GRACE);
+		enter_grace(conn);
 		break;
 	default:
 		LOGP(DINP, LOGL_ERROR, "Unknown command %d\n", buf[0]);
