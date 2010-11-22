@@ -39,7 +39,8 @@
 #define RF_CMD_QUERY '?'
 #define RF_CMD_OFF   '0'
 #define RF_CMD_ON    '1'
-#define RF_CMD_GRACE 'g'
+#define RF_CMD_D_OFF 'd'
+#define RF_CMD_ON_G  'g'
 
 static int lock_each_trx(struct gsm_network *net, int lock)
 {
@@ -55,25 +56,9 @@ static int lock_each_trx(struct gsm_network *net, int lock)
 	return 0;
 }
 
-/*
- * Send a '1' when one TRX is online, otherwise send 0
- */
-static void handle_query(struct osmo_bsc_rf_conn *conn)
+static void send_resp(struct osmo_bsc_rf_conn *conn, char send)
 {
 	struct msgb *msg;
-	struct gsm_bts *bts;
-	char send = RF_CMD_OFF;
-
-	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
-		struct gsm_bts_trx *trx;
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->nm_state.availability == NM_AVSTATE_OK &&
-			    trx->nm_state.operational != NM_STATE_LOCKED) {
-					send = RF_CMD_ON;
-					break;
-			}
-		}
-	}
 
 	msg = msgb_alloc(10, "RF Query");
 	if (!msg) {
@@ -91,6 +76,35 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	}
 
 	return;
+}
+
+
+/*
+ * Send a
+ *    'g' when we are in grace mode
+ *    '1' when one TRX is online,
+ *    '0' otherwise
+ */
+static void handle_query(struct osmo_bsc_rf_conn *conn)
+{
+	struct gsm_bts *bts;
+	char send = RF_CMD_OFF;
+
+	if (conn->rf->policy == S_RF_GRACE)
+		return send_resp(conn, RF_CMD_ON_G);
+
+	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
+		struct gsm_bts_trx *trx;
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->nm_state.availability == NM_AVSTATE_OK &&
+			    trx->nm_state.operational != NM_STATE_LOCKED) {
+					send = RF_CMD_ON;
+					break;
+			}
+		}
+	}
+
+	send_resp(conn, send);
 }
 
 static void send_signal(struct osmo_bsc_rf *rf, int val)
@@ -152,7 +166,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	case RF_CMD_QUERY:
 		handle_query(conn);
 		break;
-	case RF_CMD_OFF:
+	case RF_CMD_D_OFF:
 		bsc_del_timer(&conn->rf->grace_timeout);
 		switch_rf_off(conn->rf);
 		break;
@@ -161,7 +175,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		lock_each_trx(conn->rf->gsm_network, 0);
 		send_signal(conn->rf, S_RF_ON);
 		break;
-	case RF_CMD_GRACE:
+	case RF_CMD_OFF:
 		enter_grace(conn);
 		break;
 	default:
