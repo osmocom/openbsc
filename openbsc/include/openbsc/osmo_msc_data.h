@@ -61,6 +61,7 @@ struct osmo_msc_data {
 
 	/* rf ctl related bits */
 	char *ussd_grace_txt;
+	int ussd_grace_timeout;
 	struct osmo_bsc_rf *rf_ctl;
 
 	/* ussd welcome text */
