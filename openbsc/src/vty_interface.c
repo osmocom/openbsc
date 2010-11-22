@@ -528,9 +528,9 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " msc ip-dscp %d%s", gsmnet->msc_ip_dscp, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", gsmnet->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", gsmnet->pong_timeout, VTY_NEWLINE);
-	if (gsmnet->ussd_grace_txt)
-		vty_out(vty, " bsc-grace-text %s%s", gsmnet->ussd_grace_txt, VTY_NEWLINE);
-	vty_out(vty, " bsc-grace-timeout %d%s", gsmnet->ussd_grace_timeout, VTY_NEWLINE);
+	if (gsmnet->mid_call_txt)
+		vty_out(vty, " mid-call-text %s%s", gsmnet->mid_call_txt, VTY_NEWLINE);
+	vty_out(vty, " mid-call-timeout %d%s", gsmnet->mid_call_timeout, VTY_NEWLINE);
 	if (gsmnet->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", gsmnet->ussd_welcome_txt, VTY_NEWLINE);
 
@@ -1449,28 +1449,28 @@ DEFUN(cfg_net_pong_time,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_grace_ussd,
-      cfg_net_grace_ussd_cmd,
-      "bsc-grace-text .TEXT",
+DEFUN(cfg_net_mid_call_text,
+      cfg_net_mid_call_text_cmd,
+      "mid-call-text .TEXT",
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
 	char *data = argv_concat(argv, argc, 1);
 	if (!data)
 		return CMD_WARNING;
 
-	if (gsmnet->ussd_grace_txt)
-		talloc_free(gsmnet->ussd_grace_txt);
-	gsmnet->ussd_grace_txt = talloc_strdup(gsmnet, data);
+	if (gsmnet->mid_call_txt)
+		talloc_free(gsmnet->mid_call_txt);
+	gsmnet->mid_call_txt = talloc_strdup(gsmnet, data);
 	talloc_free(data);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_grace_timeout,
-      cfg_net_grace_timeout_cmd,
-      "bsc-grace-timeout NR",
+DEFUN(cfg_net_mid_call_timeout,
+      cfg_net_mid_call_timeout_cmd,
+      "mid-call-timeout NR",
       "Switch from Grace to Off in NR seconds.\n" "Timeout in seconds\n")
 {
-	gsmnet->ussd_grace_timeout = atoi(argv[0]);
+	gsmnet->mid_call_timeout = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2312,8 +2312,8 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_msc_prio_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ping_time_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pong_time_cmd);
-	install_element(GSMNET_NODE, &cfg_net_grace_ussd_cmd);
-	install_element(GSMNET_NODE, &cfg_net_grace_timeout_cmd);
+	install_element(GSMNET_NODE, &cfg_net_mid_call_text_cmd);
+	install_element(GSMNET_NODE, &cfg_net_mid_call_timeout_cmd);
 	install_element(GSMNET_NODE, &cfg_net_welcome_ussd_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);

@@ -703,7 +703,8 @@ struct gsm_network {
 	int ping_timeout;
 	int pong_timeout;
 	struct osmo_bsc_rf *rf;
-	char *ussd_grace_txt;
+	char *mid_call_txt;
+	int mid_call_timeout;
 	char *ussd_welcome_txt;
 };
 
