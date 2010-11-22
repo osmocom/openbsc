@@ -253,7 +253,7 @@ DEFUN(cfg_net_msc_mid_call_text,
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	char *txt = argv_concat(argv, argc, 1);
+	char *txt = argv_concat(argv, argc, 0);
 	if (!txt)
 		return CMD_WARNING;
 
