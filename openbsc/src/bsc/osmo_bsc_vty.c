@@ -69,9 +69,9 @@ static int config_write_msc(struct vty *vty)
 	vty_out(vty, "  ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
 	vty_out(vty, "  timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, "  timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
-	if (data->ussd_grace_txt)
-		vty_out(vty, "bsc-grace-text %s%s", data->ussd_grace_txt, VTY_NEWLINE);
-	vty_out(vty, " bsc-grace-timeout %d%s", data->ussd_grace_timeout, VTY_NEWLINE);
+	if (data->mid_call_txt)
+		vty_out(vty, "mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
+	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
@@ -247,9 +247,9 @@ DEFUN(cfg_net_msc_pong_time,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_grace_ussd,
-      cfg_net_msc_grace_ussd_cmd,
-      "bsc-grace-text .TEXT",
+DEFUN(cfg_net_msc_mid_call_text,
+      cfg_net_msc_mid_call_text_cmd,
+      "mid-call-text .TEXT",
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
@@ -257,18 +257,18 @@ DEFUN(cfg_net_msc_grace_ussd,
 	if (!txt)
 		return CMD_WARNING;
 
-	bsc_replace_string(data, &data->ussd_grace_txt, txt);
+	bsc_replace_string(data, &data->mid_call_txt, txt);
 	talloc_free(txt);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_grace_timeout,
-      cfg_net_msc_grace_timeout_cmd,
-      "bsc-grace-timeout NR",
+DEFUN(cfg_net_msc_mid_call_timeout,
+      cfg_net_msc_mid_call_timeout_cmd,
+      "mid-call-timeout NR",
       "Switch from Grace to Off in NR seconds.\n" "Timeout in seconds\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->ussd_grace_timeout = atoi(argv[0]);
+	data->mid_call_timeout = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -288,8 +288,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_prio_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_grace_ussd_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_grace_timeout_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
 
 	return 0;
 }

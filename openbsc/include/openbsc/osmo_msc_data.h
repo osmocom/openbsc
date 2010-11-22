@@ -60,8 +60,8 @@ struct osmo_msc_data {
 	struct write_queue mgcp_agent;
 
 	/* rf ctl related bits */
-	char *ussd_grace_txt;
-	int ussd_grace_timeout;
+	char *mid_call_txt;
+	int mid_call_timeout;
 	struct osmo_bsc_rf *rf_ctl;
 
 	/* ussd welcome text */
