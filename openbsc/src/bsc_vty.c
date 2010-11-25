@@ -243,11 +243,15 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	net_dump_nmstate(vty, &bts->site_mgr.nm_state);
 	vty_out(vty, "  Paging: FIXME pending requests, %u free slots%s",
 		bts->paging.available_slots, VTY_NEWLINE);
-	if (!is_ipaccess_bts(bts)) {
+	if (is_ipaccess_bts(bts)) {
+		vty_out(vty, "  OML Link state: %s.%s",
+			bts->oml_link ? "connected" : "disconnected", VTY_NEWLINE);
+	} else {
 		vty_out(vty, "  E1 Signalling Link:%s", VTY_NEWLINE);
 		e1isl_dump_vty(vty, bts->oml_link);
 	}
-	/* FIXME: oml_link, chan_desc */
+
+	/* FIXME: chan_desc */
 	memset(&pl, 0, sizeof(pl));
 	bts_chan_load(&pl, bts);
 	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
