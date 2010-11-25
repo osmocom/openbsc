@@ -72,6 +72,8 @@ static int config_write_msc(struct vty *vty)
 	if (data->mid_call_txt)
 		vty_out(vty, "mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
 	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
+	if (data->ussd_welcome_txt)
+		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
@@ -272,6 +274,20 @@ DEFUN(cfg_net_msc_mid_call_timeout,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_welcome_ussd,
+      cfg_net_msc_welcome_ussd_cmd,
+      "bsc-welcome-text .TEXT",
+      "Set the USSD notification to be sent.\n" "Text to be sent\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	char *str = argv_concat(argv, argc, 0);
+	if (!str)
+		return CMD_WARNING;
+
+	bsc_replace_string(data, &data->ussd_welcome_txt, str);
+	talloc_free(str);
+	return CMD_SUCCESS;
+}
 
 int bsc_vty_init_extra(void)
 {
@@ -290,6 +306,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 
 	return 0;
 }
