@@ -1483,7 +1483,7 @@ DEFUN(cfg_net_welcome_ussd,
       "bsc-welcome-text .TEXT",
       "Set the USSD notification to be sent.\n" "Text to be sent\n")
 {
-	char *data = argv_concat(argv, argc, 1);
+	char *data = argv_concat(argv, argc, 0);
 	if (!data)
 		return CMD_WARNING;
 
