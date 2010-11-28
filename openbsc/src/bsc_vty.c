@@ -415,6 +415,34 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
 	vty_out(vty, "  rxlev access min %u%s",
 		bts->si_common.cell_sel_par.rxlev_acc_min, VTY_NEWLINE);
+
+	if (bts->si_common.cell_ro_sel_par.present) {
+		struct gsm48_si_selection_params *sp;
+		sp = &bts->si_common.cell_ro_sel_par;
+
+		if (sp->cbq)
+			vty_out(vty, "  cell bar qualify %u%s",
+				sp->cbq, VTY_NEWLINE);
+
+		if (sp->cell_resel_off)
+			vty_out(vty, "  cell reselection offset %u%s",
+				sp->cell_resel_off*2, VTY_NEWLINE);
+
+		if (sp->temp_offs == 7)
+			vty_out(vty, "  temporary offset infinite%s",
+				VTY_NEWLINE);
+		else if (sp->temp_offs)
+			vty_out(vty, "  temporary offset %u%s",
+				sp->temp_offs*10, VTY_NEWLINE);
+
+		if (sp->penalty_time == 31)
+			vty_out(vty, "  penalty time reserved%s",
+				VTY_NEWLINE);
+		else if (sp->penalty_time)
+			vty_out(vty, "  penalty time %u%s",
+				(sp->penalty_time*20)+20, VTY_NEWLINE);
+	}
+
 	if (bts->si_common.chan_desc.t3212)
 		vty_out(vty, "  periodic location update %u%s",
 			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
@@ -1650,6 +1678,80 @@ DEFUN(cfg_bts_rxlev_acc_min, cfg_bts_rxlev_acc_min_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_cell_bar_qualify, cfg_bts_cell_bar_qualify_cmd,
+	"cell bar qualify (0|1)",
+	"Cell Bar Qualify")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.cbq = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_cell_resel_ofs, cfg_bts_cell_resel_ofs_cmd,
+	"cell reselection offset <0-126>",
+	"Cell Re-Selection Offset in dB")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.cell_resel_off = atoi(argv[0])/2;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_temp_ofs, cfg_bts_temp_ofs_cmd,
+	"temporary offset <0-60>",
+	"Cell selection temporary negative offset in dB")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.temp_offs = atoi(argv[0])/10;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_temp_ofs_inf, cfg_bts_temp_ofs_inf_cmd,
+	"temporary offset infinite",
+	"Sets cell selection temporary negative offset to infinity")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.temp_offs = 7;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_penalty_time, cfg_bts_penalty_time_cmd,
+	"penalty time <20-620>",
+	"Cell selection penalty time in seconds (by 20s increments)")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.penalty_time = (atoi(argv[0])-20)/20;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_penalty_time_rsvd, cfg_bts_penalty_time_rsvd_cmd,
+	"penalty time reserved",
+	"Set cell selection penalty time to reserved value 31\n"
+		"(indicate that CELL_RESELECT_OFFSET is subtracted from C2 "
+		"and TEMPORARY_OFFSET is ignored)")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_ro_sel_par.present = 1;
+	bts->si_common.cell_ro_sel_par.penalty_time = 31;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
       "periodic location update <0-1530>",
       "Periodic Location Updating Interval in Minutes")
@@ -2404,6 +2506,12 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_per_loc_upd_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_resel_hyst_cmd);
 	install_element(BTS_NODE, &cfg_bts_rxlev_acc_min_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_bar_qualify_cmd);
+	install_element(BTS_NODE, &cfg_bts_cell_resel_ofs_cmd);
+	install_element(BTS_NODE, &cfg_bts_temp_ofs_cmd);
+	install_element(BTS_NODE, &cfg_bts_temp_ofs_inf_cmd);
+	install_element(BTS_NODE, &cfg_bts_penalty_time_cmd);
+	install_element(BTS_NODE, &cfg_bts_penalty_time_rsvd_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);

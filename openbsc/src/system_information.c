@@ -587,6 +587,10 @@ int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type si_type)
 		break;
 	}
 
+	memcpy(&si_info.selection_params,
+	       &bts->si_common.cell_ro_sel_par,
+	       sizeof(struct gsm48_si_selection_params));
+
 	gen_si = gen_si_fn[si_type];
 	if (!gen_si)
 		return -EINVAL;

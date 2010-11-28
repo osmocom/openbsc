@@ -47,6 +47,7 @@ enum gsm_chreq_reason_t {
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/system_information.h>
+#include <openbsc/rest_octets.h>
 #include <openbsc/mncc.h>
 
 #include <osmocore/tlv.h>
@@ -529,6 +530,7 @@ struct gsm_bts {
 		struct gsm48_rach_control rach_control;
 		u_int8_t ncc_permitted;
 		struct gsm48_cell_sel_par cell_sel_par;
+		struct gsm48_si_selection_params cell_ro_sel_par; /* rest octet */
 		struct gsm48_cell_options cell_options;
 		struct gsm48_control_channel_descr chan_desc;
 		struct bitvec neigh_list;
