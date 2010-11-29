@@ -1,0 +1,63 @@
+Index: wireshark/epan/dissectors/packet-gsm_ipa.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-gsm_ipa.c
++++ wireshark/epan/dissectors/packet-gsm_ipa.c
+@@ -39,6 +39,7 @@
+ 
+ static int hf_ipa_data_len = -1;
+ static int hf_ipa_protocol = -1;
++static int hf_ipa_hsl_debug = -1;
+ 
+ static int hf_ipaccess_msgtype = -1;
+ static int hf_ipaccess_attr_tag = -1;
+@@ -70,6 +71,7 @@
+ #define AIP_SCCP	0xfd
+ #define ABISIP_IPACCESS	0xfe
+ #define ABISIP_OML	0xff
++#define HSL_DEBUG	0xdd
+ 
+ static const value_string ipa_protocol_vals[] = {
+ 	{ 0x00,		"RSL" },
+@@ -77,6 +79,7 @@
+ 	{ 0xfd,		"SCCP" },
+ 	{ 0xfe,		"IPA" },
+ 	{ 0xff,		"OML" },
++	{ 0xdd,		"HSL Debug" },
+ 	{ 0, 		NULL }
+ };
+ 
+@@ -184,7 +187,7 @@
+ 
+ 	while ((remaining = tvb_reported_length_remaining(tvb, offset)) > 0) {
+ 		proto_item *ti;
+-		proto_tree *ipa_tree;
++		proto_tree *ipa_tree = NULL;
+ 		guint16 len, msg_type;
+ 		tvbuff_t *next_tvb;
+ 
+@@ -238,6 +241,13 @@
+ 			/* hand this off to the standard MGCP dissector */
+ 			call_dissector(sub_handles[SUB_MGCP], next_tvb, pinfo, tree);
+ 			break;
++		case HSL_DEBUG:
++			if (tree) {
++				proto_tree_add_item(ipa_tree, hf_ipa_hsl_debug, next_tvb, 0, len, FALSE);
++				proto_tree_add_item(tree, hf_ipa_hsl_debug, next_tvb, 0, len, FALSE);
++			}
++			col_append_fstr(pinfo->cinfo, COL_INFO, "%s ", tvb_get_stringz(next_tvb, 0, NULL));
++			break;
+ 		default:
+ 			if (msg_type < ABISIP_RSL_MAX) {
+ 				/* hand this off to the standard A-bis RSL dissector */
+@@ -262,6 +272,11 @@
+ 		  FT_UINT8, BASE_HEX, VALS(ipa_protocol_vals), 0x0,
+ 		  "The IPA Sub-Protocol", HFILL}
+ 		 },
++		{&hf_ipa_hsl_debug,
++		 {"Debug Message", "ipa.hsl_debug",
++		  FT_STRING, BASE_NONE, NULL, 0,
++		  NULL, HFILL}
++		},
+ 	};
+ 	static hf_register_info hf_ipa[] = {
+ 		{&hf_ipaccess_msgtype,
