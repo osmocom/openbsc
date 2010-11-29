@@ -60,7 +60,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 ===================================================================
 --- /dev/null
 +++ wireshark/epan/dissectors/packet-gsm_abis_om2000.c
-@@ -0,0 +1,1195 @@
+@@ -0,0 +1,1439 @@
 +/* packet-abis_om2000.c
 + * Routines for packet dissection of Ericsson A-bis OML (OM 2000)
 + * Copyright 2010 by Harald Welte <laforge@gnumonks.org>
@@ -108,6 +108,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +static int hf_om2k_msg_code = -1;
 +static int hf_om2k_mo_if = -1;
 +static int hf_om2k_mo_class = -1;
++static int hf_om2k_mo_instance = -1;
 +
 +static int hf_om2k_aip = -1;
 +static int hf_om2k_oip = -1;
@@ -140,6 +141,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +static int hf_om2k_cst = -1;
 +static int hf_om2k_ea = -1;
 +static int hf_om2k_unknown_tag = -1;
++static int hf_om2k_unknown_val = -1;
 +static int hf_om2k_nom_pwr = -1;
 +static int hf_om2k_fill_mark = -1;
 +static int hf_om2k_bcc = -1;
@@ -161,9 +163,27 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +static int hf_om2k_cal_time = -1;
 +static int hf_om2k_list_nr = -1;
 +static int hf_om2k_list_nr_end = -1;
++static int hf_om2k_isl = -1;
++static int hf_om2k_isl_icp1 = -1;
++static int hf_om2k_isl_icp2 = -1;
++static int hf_om2k_isl_ci = -1;
++static int hf_om2k_conl = -1;
++static int hf_om2k_conl_nr_cgs = -1;
++static int hf_om2k_conl_nr_cps_cg = -1;
++static int hf_om2k_conl_ccp = -1;
++static int hf_om2k_conl_ci = -1;
++static int hf_om2k_conl_tag = -1;
++static int hf_om2k_conl_tei = -1;
++static int hf_om2k_tf_mode = -1;
++static int hf_om2k_tf_fs_offset = -1;
++
++
 +
 +/* initialize the subtree pointers */
 +static int ett_om2000 = -1;
++static int ett_om2k_mo = -1;
++static int ett_om2k_isl = -1;
++static int ett_om2k_conl = -1;
 +
 +static proto_tree *top_tree;
 +
@@ -275,7 +295,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	{ 0x00a3, "TF Configuration Request Reject" },
 +	{ 0x00a4, "TF Configuration Result ACK" },
 +	{ 0x00a5, "TF Configuration Result NACK" },
-+	{ 0x00a7, "TF Configuration Result" },
++	{ 0x00a6, "TF Configuration Result" },
 +	{ 0x00a8, "TS Configuration Request" },
 +	{ 0x00aa, "TS Configuration Request Accept" },
 +	{ 0x00ab, "TS Configuration Request Reject" },
@@ -300,7 +320,36 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	{ 0x00c8, "DIP Quality Report II ACK" },
 +	{ 0x00c9, "DIP Quality Report II NACK" },
 +	{ 0x00ca, "DIP Quality Report II" },
-+	/* FIXME */
++	{ 0x00dc, "DP Configuration Request" },
++	{ 0x00de, "DP Configuration Request Accept" },
++	{ 0x00df, "DP Configuration Request Reject" },
++	{ 0x00e0, "DP Configuration Result ACK" },
++	{ 0x00e1, "DP Configuration Result NACK" },
++	{ 0x00e2, "DP Configuration Result" },
++	{ 0x00e4, "Capabilities HW Info Report ACK" },
++	{ 0x00e5, "Capabilities HW Info Report NACK" },
++	{ 0x00e6, "Capabilities HW Info Report" },
++	{ 0x00e8, "Capabilities Request" },
++	{ 0x00ea, "Capabilities Request Accept" },
++	{ 0x00eb, "Capabilities Request Reject" },
++	{ 0x00ec, "Capabilities Result ACK" },
++	{ 0x00ed, "Capabilities Result NACK" },
++	{ 0x00ee, "Capabilities Result" },
++	{ 0x00f0, "FM Configuration Request" },
++	{ 0x00f2, "FM Configuration Request Accept" },
++	{ 0x00f3, "FM Configuration Request Reject" },
++	{ 0x00f4, "FM Configuration Result ACK" },
++	{ 0x00f5, "FM Configuration Result NACK" },
++	{ 0x00f6, "FM Configuration Result" },
++	{ 0x00f8, "FM Report Request" },
++	{ 0x00fa, "FM Report Response" },
++	{ 0x00fb, "FM Report Reject" },
++	{ 0x00fc, "FM Start Command" },
++	{ 0x00fe, "FM Start Complete" },
++	{ 0x00ff, "FM Start Reject" },
++	{ 0x0100, "FM Stop Command" },
++	{ 0x0102, "FM Stop Complete" },
++	{ 0x0103, "FM Stop Reject" },
 +	{ 0x0104, "Negotiation Request ACK" },
 +	{ 0x0105, "Negotiation Request NACK" },
 +	{ 0x0106, "Negotiation Request" },
@@ -518,7 +567,20 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	{ 0, NULL }
 +};
 +
++static const value_string om2k_mo_class_short_vals[] = {
++	{ 0x01, "TRXC" },
++	{ 0x03, "TS" },
++	{ 0x04, "TF" },
++	{ 0x05, "IS" },
++	{ 0x06, "CON" },
++	{ 0x0a, "CF" },
++	{ 0x0b, "TX" },
++	{ 0x0c, "RX" },
++	{ 0, NULL }
++};
++
 +static const value_string om2k_mo_class_vals[] = {
++	{ 0x01, "TRXC (TRX Controller)" },
 +	{ 0x03, "TS (Timeslot)" },
 +	{ 0x04, "TF (Timing Function)" },
 +	{ 0x05, "IS (Interface Switch)" },
@@ -526,6 +588,14 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	{ 0x0a, "CF (Central Function)" },
 +	{ 0x0b, "TX (Transmitter)" },
 +	{ 0x0c, "RX (Receiver)" },
++	{ 0, NULL }
++};
++
++static const value_string om2k_tf_mode_vals[] = {
++	{ 0x00, "Master" },
++	{ 0x01, "Standalone" },
++	{ 0x02, "Slave" },
++	{ 0xff, "Not defined" },
 +	{ 0, NULL }
 +};
 +
@@ -552,7 +622,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +
 +
 +static gint
-+dissect_om2k_time(tvbuff_t *tvb, int offset, proto_tree *tree)
++dissect_om2k_time(tvbuff_t *tvb, gint offset, proto_tree *tree)
 +{
 +	nstime_t tmptime;
 +	time_t tval;
@@ -576,7 +646,76 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +}
 +
 +static gint
-+dissect_om2k_attrs(tvbuff_t *tvb, int base_offs, packet_info *pinfo,
++dissect_om2k_attr_unkn(tvbuff_t *tvb, gint offset, gint len, gint iei, proto_tree *tree)
++{
++	proto_tree_add_bytes_format(tree, hf_om2k_unknown_val, tvb,
++				    offset, len, tvb_get_ptr(tvb, offset, len),
++				    "%s: %s",
++				    val_to_str(iei, om2k_attr_vals, "0x%02x"),
++				    tvb_bytes_to_str(tvb, offset, len));
++	return len;
++}
++
++static gint
++dissect_om2k_is_list(tvbuff_t *tvb, gint base_offset, proto_tree *tree)
++{
++	gint offset = base_offset;
++	proto_item *ti;
++	proto_tree *isl_tree;
++	guint8 len = tvb_get_guint8(tvb, offset++);
++
++	ti = proto_tree_add_item(tree, hf_om2k_isl, tvb, offset, len, FALSE);
++	isl_tree = proto_item_add_subtree(ti, ett_om2k_isl);
++
++	while (offset < base_offset + len) {
++		proto_tree_add_item(isl_tree, hf_om2k_isl_icp1, tvb,
++				    offset, 2, FALSE);
++		offset += 2;
++		proto_tree_add_item(isl_tree, hf_om2k_isl_icp2, tvb,
++				    offset, 2, FALSE);
++		offset += 2;
++		proto_tree_add_item(isl_tree, hf_om2k_isl_ci, tvb,
++				    offset++, 1, FALSE);
++	}
++	return offset - base_offset;
++}
++
++static gint
++dissect_om2k_con_list(tvbuff_t *tvb, gint base_offset, proto_tree *tree)
++{
++	gint offset = base_offset;
++	proto_item *ti;
++	proto_tree *conl_tree;
++	guint8 len = tvb_get_guint8(tvb, offset++);
++
++	ti = proto_tree_add_item(tree, hf_om2k_conl, tvb, offset, len, FALSE);
++	conl_tree = proto_item_add_subtree(ti, ett_om2k_conl);
++
++	proto_tree_add_item(conl_tree, hf_om2k_conl_nr_cgs, tvb,
++			    offset++, 1, FALSE);
++
++	while (offset < base_offset + len) {
++		guint8 nr_cps_cg = tvb_get_guint8(tvb, offset);
++		proto_tree_add_item(conl_tree, hf_om2k_conl_nr_cps_cg, tvb,
++				    offset++, 1, FALSE);
++		while (nr_cps_cg--) {
++			proto_tree_add_item(conl_tree, hf_om2k_conl_ccp, tvb,
++				    offset, 2, FALSE);
++			offset += 2;
++			proto_tree_add_item(conl_tree, hf_om2k_conl_ci, tvb,
++				    offset++, 1, FALSE);
++			proto_tree_add_item(conl_tree, hf_om2k_conl_tag, tvb,
++				    offset++, 1, FALSE);
++			proto_tree_add_item(conl_tree, hf_om2k_conl_tei, tvb,
++				    offset++, 1, FALSE);
++		}
++	}
++	return offset - base_offset;
++}
++
++
++static gint
++dissect_om2k_attrs(tvbuff_t *tvb, gint base_offs, packet_info *pinfo,
 +		  proto_tree *tree)
 +{
 +	int offset = base_offs;
@@ -627,9 +766,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +					    offset++, 1, FALSE);
 +			break;
 +		case 0x10: /* CON Connection List */
-+			len = tvb_get_guint8(tvb, offset++);
-+			/* FIXME */
-+			offset += len;
++			offset += dissect_om2k_con_list(tvb, offset, tree);
 +			break;
 +		case 0x12: /* DRX_DEV_MAX */
 +			proto_tree_add_item(tree, hf_om2k_drx_dev_max, tvb,
@@ -643,7 +780,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			/* FIXME */
 +		case 0x15: /* External Condition Map Class 2 */
 +			/* FIXME */
-+			offset += 2;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 2, iei, tree);
 +			break;
 +		case 0x16: /* File Relation Indication */
 +			proto_tree_add_item(tree, hf_om2k_filerel_ilr, tvb,
@@ -672,13 +809,13 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +		case 0x1e: /* Frequency List */
 +			len = tvb_get_guint8(tvb, offset++);
 +			/* FIXME */
-+			offset += len;
++			offset += dissect_om2k_attr_unkn(tvb, offset, len, iei, tree);
 +			break;
 +		case 0x1f: /* Frequency Specifier Rx */
 +			/* FIXME */
 +		case 0x20: /* Frequency Specifier Rx */
 +			/* FIXME */
-+			offset += 2;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 2, iei, tree);
 +			break;
 +		case 0x21: /* HSN */
 +			proto_tree_add_item(tree, hf_om2k_hsn, tvb,
@@ -696,12 +833,10 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			/* FIXME */
 +		case 0x26: /* Internal Fault Map Class 2A Ext */
 +			/* FIXME */
-+			offset += 6;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 6, iei, tree);
 +			break;
 +		case 0x27: /* IS Connection List */
-+			len = tvb_get_guint8(tvb, offset++);
-+			/* FIXME */
-+			offset += len;
++			offset += dissect_om2k_is_list(tvb, offset, tree);
 +			break;
 +		case 0x28: /* List Number */
 +			proto_tree_add_item(tree, hf_om2k_list_nr, tvb,
@@ -737,10 +872,14 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			break;
 +		case 0x34: /* Replacement Unit Map */
 +			/* FIXME */
-+			offset += 6;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 6, iei, tree);
 +			break;
 +		case 0x38: /* T3105 */
 +			proto_tree_add_item(tree, hf_om2k_t3105, tvb,
++					    offset++, 1, FALSE);
++			break;
++		case 0x3a: /* TF Mode */
++			proto_tree_add_item(tree, hf_om2k_tf_mode, tvb,
 +					    offset++, 1, FALSE);
 +			break;
 +		case 0x3c: /* TS Number */
@@ -771,7 +910,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +		case 0x46: /* RSL Function Map 2 */
 +			len = tvb_get_guint8(tvb, offset++);
 +			/* FIXME */
-+			offset += len;
++			offset += dissect_om2k_attr_unkn(tvb, offset, len, iei, tree);
 +			break;
 +		case 0x47: /* Ext Range */
 +			proto_tree_add_item(tree, hf_om2k_ext_range, tvb,
@@ -786,11 +925,11 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			break;
 +		case 0x50: /* Replacement Unit Map Extension */
 +			/* FIXME */
-+			offset += 6;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 6, iei, tree);
 +			break;
 +		case 0x74: /* ICM Boundary */
 +			/* FIXME */
-+			offset += 5;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 5, iei, tree);
 +			break;
 +		case 0x79: /* Link Supervision Control */
 +			proto_tree_add_item(tree, hf_om2k_lsc_fm, tvb,
@@ -831,7 +970,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +		case 0x91: /* Negotiation Record II */
 +			len = tvb_get_guint8(tvb, offset++);
 +			/* FIXME */
-+			offset += len;
++			offset += dissect_om2k_attr_unkn(tvb, offset, len, iei, tree);
 +			break;
 +		case 0x92: /* Encryption Algorithm */
 +			proto_tree_add_item(tree, hf_om2k_ea, tvb,
@@ -843,11 +982,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			break;
 +		case 0x95: /* Dedication information */
 +			/* FIXME */
-+			offset += 3;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 3, iei, tree);
++			break;
++		case 0x98: /* FS Offset */
++			proto_tree_add_item(tree, hf_om2k_tf_fs_offset, tvb,
++					    offset, 5, FALSE);
++			offset += 5;
 +			break;
 +		case 0x9c: /* External Condition Class 2 Extension */
 +			/* FIXME */
-+			offset += 4;
++			offset += dissect_om2k_attr_unkn(tvb, offset, 4, iei, tree);
 +			break;
 +		case 0x9d: /* TSs MO State */
 +			dissect_tss_mo_state(tvb, offset, pinfo, tree);
@@ -868,6 +1012,30 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	return offset;
 +}
 +
++static guint
++dissect_om2k_mo(tvbuff_t *tvb, gint offset, packet_info *pinfo, proto_tree *tree)
++{
++	proto_item *ti;
++	proto_tree *mo_tree;
++	guint8 class = tvb_get_guint8(tvb, offset);
++	guint8 inst = tvb_get_guint8(tvb, offset+3);
++
++	ti = proto_tree_add_item(tree, hf_om2k_mo_if, tvb, offset,
++				 4, FALSE);
++	mo_tree = proto_item_add_subtree(ti, ett_om2k_mo);
++	proto_tree_add_item(mo_tree, hf_om2k_mo_class, tvb, offset,
++				    1, FALSE);
++	proto_tree_add_item(mo_tree, hf_om2k_mo_instance, tvb, offset+3,
++				    1, FALSE);
++	proto_item_append_text(ti, ", Class: %s, Instance: %u",
++				val_to_str(class, om2k_mo_class_vals, "0x%02x"),
++				inst);
++	col_append_fstr(pinfo->cinfo, COL_INFO, ", (%-4s %u)",
++				val_to_str(class, &om2k_mo_class_short_vals,
++					   "0x%02x"), inst);
++	return 4;
++}
++
 +static void
 +dissect_abis_om2000(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
 +{
@@ -881,7 +1049,6 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +	top_tree = tree;
 +	if (tree) {
 +		guint16 msg_code = tvb_get_ntohs(tvb, offset);
-+		guint32 mo_if = tvb_get_ntohl(tvb, offset+2);
 +		guint8 tmp;
 +
 +		ti = proto_tree_add_item(tree, proto_abis_om2000,
@@ -890,18 +1057,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +
 +		proto_tree_add_item(om2k_tree, hf_om2k_msg_code, tvb, offset,
 +				    2, FALSE);
-+		col_append_fstr(pinfo->cinfo, COL_INFO, " %08x %s ", mo_if,
-+				val_to_str(msg_code, &om2k_msgcode_vals,
-+					   "unknown 0x%04x"));
-+		proto_item_append_text(ti, ": %08x %s ", mo_if,
-+				val_to_str(msg_code, &om2k_msgcode_vals,
-+					   "unknown 0x%04x"));
 +		offset += 2;
-+		proto_tree_add_item(om2k_tree, hf_om2k_mo_if, tvb, offset,
-+				    4, FALSE);
-+		proto_tree_add_item(om2k_tree, hf_om2k_mo_class, tvb, offset,
-+				    1, FALSE);
-+		offset += 4;
++
++		offset += dissect_om2k_mo(tvb, offset, pinfo, om2k_tree);
++
++		col_append_fstr(pinfo->cinfo, COL_INFO, " %s ",
++				val_to_str(msg_code, &om2k_msgcode_vals,
++					   "unknown 0x%04x"));
++		proto_item_append_text(ti, " %s ",
++				val_to_str(msg_code, &om2k_msgcode_vals,
++					   "unknown 0x%04x"));
 +
 +		switch (msg_code) {
 +		case 0x74: /* Operational Info */
@@ -950,6 +1115,11 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +		{ &hf_om2k_mo_class,
 +			{ "MO IF Class", "om2000.mo_if.class",
 +			  FT_UINT8, BASE_HEX, VALS(om2k_mo_class_vals), 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_mo_instance,
++			{ "MO IF Instance", "om2000.mo_if.instance",
++			  FT_UINT8, BASE_DEC, NULL, 0,
 +			  NULL, HFILL }
 +		},
 +		{ &hf_om2k_oip,
@@ -1174,10 +1344,16 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +		},
 +
 +		{ &hf_om2k_unknown_tag,
-+			{ "Unknown Tag", "om2000.unknown_tag",
++			{ "Unknown Tag", "om2000.unknown.tag",
 +			  FT_UINT8, BASE_HEX, NULL, 0,
 +			  NULL, HFILL }
 +		},
++		{ &hf_om2k_unknown_val,
++			{ "Unknown Value", "om2000.unknown.val",
++			  FT_BYTES, BASE_NONE, NULL, 0,
++			  NULL, HFILL }
++		},
++
 +		{ &hf_om2k_file_rev,
 +			{ "File Revision", "om2000.file_rev",
 +			  FT_STRING, BASE_NONE, NULL, 0,
@@ -1213,9 +1389,77 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
 +			  FT_UINT8, BASE_DEC, NULL, 0,
 +			  NULL, HFILL }
 +		},
++		{ &hf_om2k_isl,
++			{ "IS Connection List", "om2000.is_list",
++			  FT_BYTES, BASE_NONE, NULL, 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_isl_icp1,
++			{ "ICP1", "om2000.is_list.icp1",
++			  FT_UINT16, BASE_DEC, NULL, 0x7ff,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_isl_icp2,
++			{ "ICP2", "om2000.is_list.icp2",
++			  FT_UINT16, BASE_DEC, NULL, 0x7ff,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_isl_ci,
++			{ "Contiguity Index", "om2000.is_list.ci",
++			  FT_UINT8, BASE_DEC, NULL, 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_conl,
++			{ "Connection List", "om2000.con_list",
++			  FT_BYTES, BASE_NONE, NULL, 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_conl_nr_cgs,
++			{ "Number of CGs", "om2000.con_list.nr_cgs",
++			  FT_UINT8, BASE_DEC, NULL, 0x1f,
++			  "Number of Concentration Groups in the DE", HFILL }
++		},
++		{ &hf_om2k_conl_nr_cps_cg,
++			{ "Number of CPS in CG", "om2000.con_list.nr_cps_cg",
++			  FT_UINT8, BASE_DEC, NULL, 0x1f,
++			  "Number of CPS in Concentration Group", HFILL }
++		},
++		{ &hf_om2k_conl_ccp,
++			{ "CON Connection Point", "om2000.con_list.cpp",
++			  FT_UINT16, BASE_DEC, NULL, 0x3ff,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_conl_ci,
++			{ "Contiguity Index", "om2000.con_list.ci",
++			  FT_UINT8, BASE_DEC, NULL, 0x7,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_conl_tag,
++			{ "Tag", "om2000.con_list.tag",
++			  FT_UINT8, BASE_DEC, NULL, 0x1f,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_conl_tei,
++			{ "TEI", "om2000.con_list.tei",
++			  FT_UINT8, BASE_DEC, NULL, 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_tf_mode,
++			{ "TF Mode", "om2000.tf_mode",
++			  FT_UINT8, BASE_HEX, VALS(om2k_tf_mode_vals), 0,
++			  NULL, HFILL }
++		},
++		{ &hf_om2k_tf_fs_offset,
++			{ "TF FS Offset", "om2000.tf_fs_offset",
++			  FT_UINT64, BASE_DEC, NULL, 0,
++			  NULL, HFILL }
++		},
 +	};
 +	static gint *ett[] = {
 +		&ett_om2000,
++		&ett_om2k_mo,
++		&ett_om2k_isl,
++		&ett_om2k_conl,
 +	};
 +
 +	module_t *oml_module;
@@ -1328,7 +1572,7 @@ Index: wireshark/epan/dissectors/packet-ehdlc.c
 ===================================================================
 --- /dev/null
 +++ wireshark/epan/dissectors/packet-ehdlc.c
-@@ -0,0 +1,301 @@
+@@ -0,0 +1,319 @@
 +/* packet-ehdlc.c
 + * Routines for packet dissection of Ericsson HDLC as used in A-bis over IP
 + * Copyright 2010 by Harald Welte <laforge@gnumonks.org>
@@ -1372,6 +1616,7 @@ Index: wireshark/epan/dissectors/packet-ehdlc.c
 +static int hf_ehdlc_sapi = -1;
 +static int hf_ehdlc_c_r = -1;
 +
++static int hf_ehdlc_xid_payload = -1;
 +static int hf_ehdlc_control = -1;
 +
 +static int hf_ehdlc_p = -1;
@@ -1509,6 +1754,18 @@ Index: wireshark/epan/dissectors/packet-ehdlc.c
 +				call_dissector(sub_handles[SUB_DATA], next_tvb, pinfo, tree);
 +				break;
 +			}
++		} else if (control == XDLC_U | XDLC_XID) {
++			/* XID is formatted like ISO 8885, typically we see
++ 			 * something like
++			 * 82		format identifier
++			 * 80		group identifier
++			 * 00 09 	length
++			 * 07 01 05 	Window Size Tx
++			 * 09 01 04	Ack Timer (msec)
++			 * 08 01 05	Window Size Rx */
++			proto_tree_add_item(ehdlc_tree, hf_ehdlc_xid_payload,
++					    tvb, offset+header_length,
++					    len-header_length, FALSE);
 +		}
 +
 +		offset += len;
@@ -1536,6 +1793,11 @@ Index: wireshark/epan/dissectors/packet-ehdlc.c
 +		{ &hf_ehdlc_c_r,
 +		  { "C/R", "ehdlc.c_r",
 +		    FT_UINT8, BASE_HEX, NULL, 0x20,
++		    NULL, HFILL }
++		},
++		{ &hf_ehdlc_xid_payload,
++		  { "XID Payload", "ehdlc.xid_payload",
++		    FT_BYTES, BASE_NONE, NULL, 0,
 +		    NULL, HFILL }
 +		},
 +		{ &hf_ehdlc_control,
