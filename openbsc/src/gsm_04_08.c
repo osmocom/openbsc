@@ -196,11 +196,8 @@ static int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_
 		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
 	} else if (rc == 2) {
 		/* Start ciphering directly */
-		conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
-		conn->lchan->encr.key_len = 8;
-		memcpy(conn->lchan->encr.key, op->atuple.kc, 8);
-
-		return gsm48_send_rr_ciph_mode(conn->lchan, 0);
+		return gsm0808_cipher_mode(conn, net->a5_encryption,
+		                           op->atuple.kc, 8, 0);
 	}
 
 	return -EINVAL; /* not reached */
@@ -943,11 +940,8 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	DEBUGPC(DMM, "OK\n");
 
 	/* Start ciphering */
-	conn->lchan->encr.alg_id = RSL_ENC_ALG_A5(net->a5_encryption);
-	conn->lchan->encr.key_len = 8;
-	memcpy(conn->lchan->encr.key, conn->sec_operation->atuple.kc, 8);
-
-	return gsm48_send_rr_ciph_mode(msg->lchan, 0);
+	return gsm0808_cipher_mode(conn, net->a5_encryption,
+	                           conn->sec_operation->atuple.kc, 8, 0);
 }
 
 /* Receive a GSM 04.08 Mobility Management (MM) message */
