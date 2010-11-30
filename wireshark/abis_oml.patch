@@ -15,19 +15,19 @@ Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
 --- wireshark.orig/epan/dissectors/Makefile.common
 +++ wireshark/epan/dissectors/Makefile.common
-@@ -483,6 +483,7 @@
- 	packet-gsm_a_gm.c		\
- 	packet-gsm_a_rp.c		\
+@@ -495,6 +495,7 @@
+ 	packet-gsm_a_gm.c	\
+ 	packet-gsm_a_rp.c	\
  	packet-gsm_a_rr.c	\
 +	packet-gsm_abis_oml.c	\
  	packet-gsm_ipa.c	\
- 	packet-gsm_bsslap.c		\
+ 	packet-gsm_bsslap.c	\
  	packet-gsm_bssmap_le.c	\
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null
 +++ wireshark/epan/dissectors/packet-gsm_abis_oml.c
-@@ -0,0 +1,1604 @@
+@@ -0,0 +1,1608 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009-2010 by Harald Welte <laforge@gnumonks.org>
@@ -609,7 +609,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +_match_oml_fom_msgtype(const guint32 val, const value_string_ext *vs)
 +{
 +	const char *ret;
-+	ret = match_strval(val, vs->vals);
++	ret = match_strval(val, vs->_vs_p);
 +	if (!ret)
 +		ret = match_strval(val, _oml_fom_msgtype_vals);
 +	return ret;
@@ -619,7 +619,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +_match_oml_fom_attr(const guint32 val, const value_string_ext *vs)
 +{
 +	const char *ret;
-+	ret = match_strval(val, vs->vals);
++	ret = match_strval(val, vs->_vs_p);
 +	if (!ret)
 +		ret = match_strval(val, _oml_fom_attr_vals);
 +	return ret;
@@ -1582,8 +1582,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	module_t *oml_module;
 +
 +	/* assign our custom match functions */
-+	oml_fom_msgtype_vse.match = _match_oml_fom_msgtype;
-+	oml_fom_attr_vse.match = _match_oml_fom_attr;
++	oml_fom_msgtype_vse._vs_match = _match_oml_fom_msgtype;
++	oml_fom_attr_vse._vs_match = _match_oml_fom_attr;
 +
 +	proto_abis_oml = proto_register_protocol("GSM A-bis OML", "A-bis OML",
 +						 "gsm_abis_oml");
@@ -1620,16 +1620,20 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +
 +	if (global_oml_use_nano_bts == TRUE) {
 +		/* initialize with nanobts definitions */
-+		oml_fom_msgtype_vse.vals = _oml_fom_msgtype_vals_ipa;
-+		oml_fom_msgtype_vse.length = array_length(_oml_fom_msgtype_vals_ipa)-1;
-+		oml_fom_attr_vse.vals = oml_fom_attr_vals_ipa;
-+		oml_fom_attr_vse.length = array_length(oml_fom_attr_vals_ipa)-1;
++		oml_fom_msgtype_vse._vs_p = _oml_fom_msgtype_vals_ipa;
++		oml_fom_msgtype_vse._vs_num_entries =
++				array_length(_oml_fom_msgtype_vals_ipa)-1;
++		oml_fom_attr_vse._vs_p = oml_fom_attr_vals_ipa;
++		oml_fom_attr_vse._vs_num_entries =
++				array_length(oml_fom_attr_vals_ipa)-1;
 +	} else {
 +		/* initialize with BS11 defaults */
-+		oml_fom_msgtype_vse.vals = _oml_fom_msgtype_vals_bs11;
-+		oml_fom_msgtype_vse.length = array_length(_oml_fom_msgtype_vals_bs11)-1;
-+		oml_fom_attr_vse.vals = oml_fom_attr_vals_bs11;
-+		oml_fom_attr_vse.length = array_length(oml_fom_attr_vals_bs11)-1;
++		oml_fom_msgtype_vse._vs_p = _oml_fom_msgtype_vals_bs11;
++		oml_fom_msgtype_vse._vs_num_entries =
++				array_length(_oml_fom_msgtype_vals_bs11)-1;
++		oml_fom_attr_vse._vs_p = oml_fom_attr_vals_bs11;
++		oml_fom_attr_vse._vs_num_entries =
++				array_length(oml_fom_attr_vals_bs11)-1;
 +	}
 +}
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
