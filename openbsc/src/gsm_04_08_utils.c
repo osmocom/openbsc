@@ -309,7 +309,7 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
-	paging_request_stop(conn->bts, subscr, conn);
+	paging_request_stop(conn->bts, subscr, conn, msg);
 	return 0;
 }
 

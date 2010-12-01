@@ -340,7 +340,8 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 
 /* we consciously ignore the type of the request here */
 static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
-				 struct gsm_subscriber_connection *conn)
+				 struct gsm_subscriber_connection *conn,
+				 struct msgb *msg)
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
@@ -351,7 +352,7 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 			if (conn && req->cbfn) {
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d, calling cbfn.\n", bts->nr);
 				req->cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
-					  NULL, conn, req->cbfn_param);
+					  msg, conn, req->cbfn_param);
 			} else
 				LOGP(DPAG, LOGL_DEBUG, "Stop paging on bts %d silently.\n", bts->nr);
 			paging_remove_request(&bts->paging, req);
@@ -362,12 +363,13 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 
 /* Stop paging on all other bts' */
 void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
-			 struct gsm_subscriber_connection *conn)
+			 struct gsm_subscriber_connection *conn,
+			 struct msgb *msg)
 {
 	struct gsm_bts *bts = NULL;
 
 	if (_bts)
-		_paging_request_stop(_bts, subscr, conn);
+		_paging_request_stop(_bts, subscr, conn, msg);
 
 	do {
 		/*
@@ -382,7 +384,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 
 		/* Stop paging */
 		if (bts != _bts)
-			_paging_request_stop(bts, subscr, NULL);
+			_paging_request_stop(bts, subscr, NULL, NULL);
 	} while (1);
 }
 

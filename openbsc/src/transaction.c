@@ -98,7 +98,7 @@ void trans_free(struct gsm_trans *trans)
 
 	if (!trans->conn && trans->subscr && trans->subscr->net) {
 		/* Stop paging on all bts' */
-		paging_request_stop(NULL, trans->subscr, NULL);
+		paging_request_stop(NULL, trans->subscr, NULL, NULL);
 	}
 
 	if (trans->subscr)
