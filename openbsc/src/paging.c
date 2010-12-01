@@ -251,16 +251,11 @@ static int paging_pending_request(struct gsm_bts_paging_state *bts,
 static void paging_T3113_expired(void *data)
 {
 	struct gsm_paging_request *req = (struct gsm_paging_request *)data;
-	struct paging_signal_data sig_data;
 	void *cbfn_param;
 	gsm_cbfn *cbfn;
 
 	LOGP(DPAG, LOGL_INFO, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
-	
-	sig_data.subscr = req->subscr;
-	sig_data.bts	= req->bts;
-	sig_data.conn	= NULL;
 
 	/* must be destroyed before calling cbfn, to prevent double free */
 	counter_inc(req->bts->network->stats.paging.expired);
@@ -268,8 +263,6 @@ static void paging_T3113_expired(void *data)
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
-
-	dispatch_signal(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
 			  cbfn_param);

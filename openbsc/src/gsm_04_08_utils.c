@@ -283,7 +283,6 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	u_int8_t *classmark2_lv = gh->data + 1;
-	struct paging_signal_data sig_data;
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
@@ -300,13 +299,7 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 		subscr = conn->subscr;
 	}
 
-	sig_data.subscr = subscr;
-	sig_data.bts	= conn->bts;
-	sig_data.conn	= conn;
-
 	counter_inc(bts->network->stats.paging.completed);
-
-	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(conn->bts, subscr, conn, msg);

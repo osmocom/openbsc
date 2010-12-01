@@ -72,11 +72,24 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
                                   struct msgb *msg, void *data, void *param)
 {
 	struct subscr_request *request;
+	struct gsm_subscriber_connection *conn = data;
 	struct gsm_subscriber *subscr = param;
+	struct paging_signal_data sig_data;
 
 	/* There is no request anymore... */
 	if (llist_empty(&subscr->requests))
 		return -1;
+
+	/* Dispatch signal */
+	sig_data.subscr = subscr;
+	sig_data.bts	= conn ? conn->bts : NULL;
+	sig_data.conn	= conn;
+	dispatch_signal(
+		SS_PAGING,
+		event == GSM_PAGING_SUCCEEDED ?
+			S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
+		&sig_data
+	);
 
 	/*
 	 * FIXME: What to do with paging requests coming during
