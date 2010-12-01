@@ -2927,9 +2927,10 @@ int mncc_send(struct gsm_network *net, int msg_type, void *arg)
 			}
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
-			/* Trigger paging */
-			paging_request(net, subscr, RSL_CHANNEED_TCH_F,
-					setup_trig_pag_evt, subscr);
+
+			/* Get a channel */
+			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, subscr);
+
 			subscr_put(subscr);
 			return 0;
 		}
