@@ -28,6 +28,9 @@
 #include <osmocore/linuxlist.h>
 #include <osmocore/mncc.h>
 
+struct gsm_network;
+
+
 /* One end of a call */
 struct gsm_call {
 	struct llist_head entry;
