@@ -5,6 +5,9 @@
 
 #define GSM_MACBLOCK_LEN 		23
 
+struct gsm_bts;
+
+
 enum osmo_sysinfo_type {
 	SYSINFO_TYPE_NONE,
 	SYSINFO_TYPE_1,
