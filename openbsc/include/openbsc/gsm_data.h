@@ -44,8 +44,6 @@ enum gsm_chreq_reason_t {
 };
 
 #include <osmocore/timer.h>
-#include <openbsc/gsm_04_08.h>
-#include <openbsc/abis_rsl.h>
 #include <openbsc/system_information.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/mncc.h>
@@ -56,6 +54,9 @@ enum gsm_chreq_reason_t {
 #include <osmocore/gsm_utils.h>
 #include <osmocore/utils.h>
 #include <osmocore/rxlev_stat.h>
+
+#include <osmocore/protocol/gsm_08_58.h>
+
 
 #define TRX_NR_TS	8
 #define TS_MAX_LCHAN	8
