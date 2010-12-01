@@ -27,6 +27,11 @@
 
 #include <osmocore/msgb.h>
 
+struct gsm_bts;
+struct gsm_lchan;
+struct gsm_subscriber;
+
+
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len);
 int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type, 
