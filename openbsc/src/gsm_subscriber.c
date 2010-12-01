@@ -30,6 +30,7 @@
 #include <osmocore/talloc.h>
 
 #include <openbsc/gsm_subscriber.h>
+#include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
@@ -38,6 +39,9 @@
 void *tall_sub_req_ctx;
 
 extern struct llist_head *subscr_bsc_active_subscriber(void);
+
+int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
+                         gsm_cbfn *cb, void *cb_data);
 
 
 /*
@@ -64,11 +68,11 @@ struct subscr_request {
  * We got the channel assigned and can now hand this channel
  * over to one of our callbacks.
  */
-static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
-			     struct msgb *msg, void *data, void *param)
+static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
+                                  struct msgb *msg, void *data, void *param)
 {
 	struct subscr_request *request;
-	struct gsm_subscriber *subscr = (struct gsm_subscriber *)param;
+	struct gsm_subscriber *subscr = param;
 
 	/* There is no request anymore... */
 	if (llist_empty(&subscr->requests))
@@ -90,6 +94,54 @@ static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
 	talloc_free(request);
 	return 0;
 }
+
+static int subscr_paging_sec_cb(unsigned int hooknum, unsigned int event,
+                                struct msgb *msg, void *data, void *param)
+{
+	int rc;
+
+	switch (event) {
+		case GSM_SECURITY_AUTH_FAILED:
+			/* Dispatch as paging failure */
+			rc = subscr_paging_dispatch(
+				GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+				msg, data, param);
+			break;
+
+		case GSM_SECURITY_NOAVAIL:
+		case GSM_SECURITY_SUCCEEDED:
+			/* Dispatch as paging failure */
+			rc = subscr_paging_dispatch(
+				GSM_HOOK_RR_PAGING, GSM_PAGING_SUCCEEDED,
+				msg, data, param);
+			break;
+
+		default:
+			rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+static int subscr_paging_cb(unsigned int hooknum, unsigned int event,
+                            struct msgb *msg, void *data, void *param)
+{
+	struct gsm_subscriber_connection *conn = data;
+	struct gsm48_hdr *gh;
+	struct gsm48_pag_resp *pr;
+
+	/* Other cases mean problem, dispatch direclty */
+	if (event != GSM_PAGING_SUCCEEDED)
+		return subscr_paging_dispatch(hooknum, event, msg, data, param);
+
+	/* Get paging response */
+	gh = msgb_l3(msg);
+	pr = (struct gsm48_pag_resp *)gh->data;
+
+	/* We _really_ have a channel, secure it now ! */
+	return gsm48_secure_channel(conn, pr->key_seq, subscr_paging_sec_cb, param);
+}
+
 
 static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 {
