@@ -140,8 +140,8 @@ static void allocate_security_operation(struct gsm_subscriber_connection *conn)
 	                                  struct gsm_security_operation);
 }
 
-static int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
-				gsm_cbfn *cb, void *cb_data)
+int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
+                         gsm_cbfn *cb, void *cb_data)
 {
 	struct gsm_network *net = conn->bts->network;
 	struct gsm_subscriber *subscr = conn->subscr;
