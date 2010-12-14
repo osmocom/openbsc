@@ -1,6 +1,6 @@
 /* Siemens BS-11 microBTS configuration tool */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This software is based on ideas (but not code) of BS11Config
@@ -741,7 +741,7 @@ void status_timer_cb(void *data)
 
 static void print_banner(void)
 {
-	printf("bs11_config (C) 2009 by Harald Welte and Dieter Spaar\n");
+	printf("bs11_config (C) 2009-2010 by Harald Welte and Dieter Spaar\n");
 	printf("This is FREE SOFTWARE with ABSOLUTELY NO WARRANTY\n\n");
 }
 
