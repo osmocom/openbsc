@@ -331,6 +331,18 @@ static const char *cclk_acc_name(u_int8_t acc)
 	}
 }
 
+static const char *bport_lcfg_name(u_int8_t lcfg)
+{
+	switch (lcfg) {
+	case BS11_LINE_CFG_STAR:
+		return "Star";
+	case BS11_LINE_CFG_MULTIDROP:
+		return "Multi-Drop";
+	default:
+		return "unknown";
+	}
+}
+
 static const char *obj_name(struct abis_om_fom_hdr *foh)
 {
 	static char retbuf[256];
@@ -355,6 +367,10 @@ static const char *obj_name(struct abis_om_fom_hdr *foh)
 		break;
 	case NM_OC_SITE_MANAGER:
 		strcat(retbuf, "SITE MANAGER ");
+		break;
+	case NM_OC_BS11_BPORT:
+		sprintf(retbuf+strlen(retbuf), "BPORT%u ",
+			foh->obj_inst.bts_nr);
 		break;
 	}
 	return retbuf;
@@ -441,6 +457,13 @@ static int print_attr(struct tlv_parsed *tp)
 		const u_int8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_TYPE);
 		printf("\tCCLK Type=%d\n", *acc);
 	}
+	if (TLVP_PRESENT(tp, NM_ATT_BS11_LINE_CFG) &&
+	    TLVP_LEN(tp, NM_ATT_BS11_LINE_CFG) >= 1) {
+		const u_int8_t *lcfg = TLVP_VAL(tp, NM_ATT_BS11_LINE_CFG);
+		printf("\tLine Configuration: %s (%d)\n",
+			bport_lcfg_name(*lcfg), *lcfg);
+	}
+
 
 
 	return 0;
@@ -459,6 +482,8 @@ static void cmd_query(void)
 	trx = gsm_bts_trx_num(g_bts, 1);
 	if (trx)
 		abis_nm_bs11_get_trx_power(trx);
+	abis_nm_bs11_get_bport_line_cfg(g_bts, 0);
+	abis_nm_bs11_get_bport_line_cfg(g_bts, 1);
 	sleep(1);
 	abis_nm_bs11_factory_logon(g_bts, 0);
 	command = NULL;

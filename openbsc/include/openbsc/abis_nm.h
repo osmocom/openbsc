@@ -138,6 +138,7 @@ int abis_nm_bs11_get_state(struct gsm_bts *bts);
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 			  u_int8_t win_size, int forced, gsm_cbfn *cbfn);
 int abis_nm_bs11_set_ext_time(struct gsm_bts *bts);
+int abis_nm_bs11_get_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport);
 int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg);
 int abis_nm_bs11_bsc_disconnect(struct gsm_bts *bts, int reconnect);
 int abis_nm_bs11_restart(struct gsm_bts *bts);

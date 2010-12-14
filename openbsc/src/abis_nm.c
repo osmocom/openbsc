@@ -2681,6 +2681,20 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	return abis_nm_sendmsg(bts, msg);
 }
 
+int abis_nm_bs11_get_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	u_int8_t attr = NM_ATT_BS11_LINE_CFG;
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
+			NM_OC_BS11_BPORT, bport, 0xff, 0x02);
+	msgb_tlv_put(msg, NM_ATT_LIST_REQ_ATTR, sizeof(attr), &attr);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg)
 {
 	struct abis_om_hdr *oh;
