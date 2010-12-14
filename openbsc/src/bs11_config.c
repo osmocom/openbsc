@@ -703,6 +703,21 @@ int handle_serial_msg(struct msgb *rx_msg)
 			foh->obj_class, foh->obj_inst.bts_nr,
 			foh->obj_inst.trx_nr, foh->obj_inst.ts_nr);
 		break;
+	case NM_MT_GET_ATTR_NACK:
+		printf("\n%sGET ATTR NACK\n", obj_name(foh));
+		break;
+	case NM_MT_BS11_CREATE_OBJ_ACK:
+		printf("\n%sCREATE OBJECT ACK\n", obj_name(foh));
+		break;
+	case NM_MT_BS11_CREATE_OBJ_NACK:
+		printf("\n%sCREATE OBJECT NACK\n", obj_name(foh));
+		break;
+	case NM_MT_BS11_DELETE_OBJ_ACK:
+		printf("\n%sDELETE OBJECT ACK\n", obj_name(foh));
+		break;
+	case NM_MT_BS11_DELETE_OBJ_NACK:
+		printf("\n%sDELETE OBJECT NACK\n", obj_name(foh));
+		break;
 	default:
 		rc = abis_nm_rcvmsg(rx_msg);
 	}
