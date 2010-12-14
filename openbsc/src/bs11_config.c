@@ -585,7 +585,13 @@ static int handle_state_resp(enum abis_bs11_phase state)
 				sleep(1);
 				abis_nm_bs11_factory_logon(g_bts, 0);
 				command = NULL;
+			} else if (!strcmp(command, "bport1-multidrop")) {
+				abis_nm_bs11_set_bport_line_cfg(g_bts, 1, BS11_LINE_CFG_MULTIDROP);
+				sleep(1);
+				abis_nm_bs11_factory_logon(g_bts, 0);
+				command = NULL;
 			}
+
 		}
 		break;
 	case BS11_STATE_NORMAL:
@@ -741,6 +747,7 @@ static void print_help(void)
 	printf("\toml-tei\t\t\tSet OML E1 TS and TEI\n");
 	printf("\tbport0-star\t\tSet BPORT0 line config to star\n");
 	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
+	printf("\tbport1-multiport\tSet BPORT1 line config to multiport\n");
 	printf("\tcreate-bport1\t\tCreate BPORT1 object\n");
 	printf("\tdelete-bport1\t\tDelete BPORT1 object\n");
 }
