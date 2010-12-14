@@ -771,8 +771,8 @@ static void print_help(void)
 	printf("\tpll-workvalue <value>\tSet the PLL work value\n");
 	printf("\toml-tei\t\t\tSet OML E1 TS and TEI\n");
 	printf("\tbport0-star\t\tSet BPORT0 line config to star\n");
-	printf("\tbport0-multiport\tSet BPORT0 line config to multiport\n");
-	printf("\tbport1-multiport\tSet BPORT1 line config to multiport\n");
+	printf("\tbport0-multidrop\tSet BPORT0 line config to multidrop\n");
+	printf("\tbport1-multidrop\tSet BPORT1 line config to multidrop\n");
 	printf("\tcreate-bport1\t\tCreate BPORT1 object\n");
 	printf("\tdelete-bport1\t\tDelete BPORT1 object\n");
 }
