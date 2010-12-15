@@ -91,7 +91,7 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 		return -1;
 	}
 
-	paging_request_stop(conn->bts, subscr, conn);
+	paging_request_stop(conn->bts, subscr, conn, msg);
 	subscr_put(subscr);
 	return 0;
 }
