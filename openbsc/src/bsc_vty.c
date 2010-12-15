@@ -547,7 +547,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
-	vty_out(vty, " use-dtx %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
+	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
