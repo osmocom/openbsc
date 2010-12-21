@@ -77,6 +77,8 @@ void nm_state_event() {}
 void input_event() {}
 void sms_alloc() {}
 void gsm_net_update_ctype(struct gsm_network *network) {}
+void gsm48_secure_channel() {}
+
 
 struct tlv_definition nm_att_tlvdef;
 
