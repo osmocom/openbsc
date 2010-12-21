@@ -2321,6 +2321,7 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	struct gsm_mncc *rel = arg;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	int ret;
 
 	gh->msg_type = GSM48_MT_CC_RELEASE_COMPL;
 
@@ -2338,9 +2339,11 @@ static int gsm48_cc_tx_release_compl(struct gsm_trans *trans, void *arg)
 	if (rel->fields & MNCC_F_USERUSER)
 		gsm48_encode_useruser(msg, 0, &rel->useruser);
 
+	ret =  gsm48_conn_sendmsg(msg, trans->conn, trans);
+
 	trans_free(trans);
 
-	return gsm48_conn_sendmsg(msg, trans->conn, trans);
+	return ret;
 }
 
 static int gsm48_cc_rx_facility(struct gsm_trans *trans, struct msgb *msg)
