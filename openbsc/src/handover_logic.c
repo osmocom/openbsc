@@ -111,7 +111,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 		return -ENOSPC;
 	}
 
-	ho = talloc_zero(NULL, struct bsc_handover);
+	ho = talloc_zero(tall_bsc_ctx, struct bsc_handover);
 	if (!ho) {
 		LOGP(DHO, LOGL_FATAL, "Out of Memory\n");
 		lchan_free(new_lchan);
