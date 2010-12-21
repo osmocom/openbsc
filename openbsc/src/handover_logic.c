@@ -232,6 +232,8 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 		return -ENODEV;
 	}
 
+	new_lchan->conn->ho_lchan = NULL;
+	new_lchan->conn = NULL;
 	llist_del(&ho->list);
 	talloc_free(ho);
 
