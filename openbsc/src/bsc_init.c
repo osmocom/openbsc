@@ -33,6 +33,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/chan_alloc.h>
 #include <osmocore/talloc.h>
+#include <openbsc/ipaccess.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -471,8 +472,6 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 						  sizeof(nanobts_attr_nse));
 			abis_nm_opstart(bts, obj_class, bts->bts_nr,
 					0xff, 0xff);
-			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
-					      0xff, 0xff, NM_STATE_UNLOCKED);
 		}
 		break;
 	case NM_OC_GPRS_CELL:
@@ -487,6 +486,8 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 					0, 0xff);
 			abis_nm_chg_adm_state(bts, obj_class, bts->bts_nr,
 					      0, 0xff, NM_STATE_UNLOCKED);
+			abis_nm_chg_adm_state(bts, NM_OC_GPRS_NSE, bts->bts_nr,
+					      0xff, 0xff, NM_STATE_UNLOCKED);
 		}
 		break;
 	case NM_OC_GPRS_NSVC:
@@ -565,10 +566,20 @@ static int sw_activ_rep(struct msgb *mb)
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
 {
+	int i;
+
 	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
+
 		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
 		exit(-1);
+	} else {
+		LOGP(DNM, LOGL_ERROR, "Got a NACK going to drop the OML links.\n");
+		for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
+			struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
+			if (is_ipaccess_bts(bts))
+				ipaccess_drop_oml(bts);
+		}
 	}
 
 	return 0;
@@ -1070,6 +1081,8 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		trx->nm_state.availability = 0;
 		trx->bb_transc.nm_state.operational = 0;
 		trx->bb_transc.nm_state.availability = 0;
+
+		abis_nm_clear_queue(trx->bts);
 		break;
 	default:
 		break;

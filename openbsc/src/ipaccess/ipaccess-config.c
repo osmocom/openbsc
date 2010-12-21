@@ -865,6 +865,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	
+	bts->oml_link->ts->sign.delay = 10;
+	bts->c0->rsl_link->ts->sign.delay = 10;
 	while (1) {
 		rc = bsc_select_main(0);
 		if (rc < 0)

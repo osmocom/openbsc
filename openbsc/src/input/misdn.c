@@ -247,7 +247,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
 	e1i_ts->sign.tx_timer.data = e1i_ts;
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 50000);
+	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
@@ -387,6 +387,7 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 struct e1inp_driver misdn_driver = {
 	.name = "mISDNuser",
 	.want_write = ts_want_write,
+	.default_delay = 50000,
 };
 
 static int mi_e1_setup(struct e1inp_line *line, int release_l2)
