@@ -19,6 +19,7 @@
  */
 
 #include <openbsc/db.h>
+#include <openbsc/gsm_subscriber.h>
 
 #include <stdio.h>
 #include <string.h>
