@@ -2818,7 +2818,7 @@ static struct downstate {
 	(sizeof(downstatelist) / sizeof(struct downstate))
 
 
-int mncc_send(struct gsm_network *net, int msg_type, void *arg)
+int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 {
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;

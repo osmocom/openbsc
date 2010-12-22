@@ -46,7 +46,7 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 
 int bsc_upqueue(struct gsm_network *net);
 
-int mncc_send(struct gsm_network *net, int msg_type, void *arg);
+int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg);
 
 /* convert a ASCII phone number to call-control BCD */
 int encode_bcd_number(u_int8_t *bcd_lv, u_int8_t max_len,
