@@ -549,6 +549,25 @@ DEFUN(subscriber_purge,
 	return CMD_SUCCESS;
 }
 
+DEFUN(subscriber_update,
+      subscriber_update_cmd,
+      "subscriber " SUBSCR_TYPES " ID update",
+      SUBSCR_HELP "Update the subscriber data from the dabase.\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr_update_from_db(subscr);
+	subscr_put(subscr);
+	return CMD_SUCCESS;
+}
+
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -626,6 +645,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_silent_call_start_cmd);
 	install_element_ve(&subscriber_silent_call_stop_cmd);
 	install_element_ve(&subscriber_ussd_notify_cmd);
+	install_element_ve(&subscriber_update_cmd);
 	install_element_ve(&show_stats_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);

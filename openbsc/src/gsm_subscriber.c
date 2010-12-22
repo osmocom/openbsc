@@ -318,4 +318,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 	return db_sync_subscriber(s);
 }
 
-
+void subscr_update_from_db(struct gsm_subscriber *sub)
+{
+	db_subscriber_update(sub);
+}
