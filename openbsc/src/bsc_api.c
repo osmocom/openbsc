@@ -339,25 +339,6 @@ int gsm0808_page(struct gsm_bts *bts, unsigned int page_group, unsigned int mi_l
 	return rsl_paging_cmd(bts, page_group, mi_len, mi, chan_type);
 }
 
-/* dequeue messages to layer 4 */
-int bsc_upqueue(struct gsm_network *net)
-{
-	struct gsm_mncc *mncc;
-	struct msgb *msg;
-	int work = 0;
-
-	if (net)
-		while ((msg = msgb_dequeue(&net->upqueue))) {
-			mncc = (struct gsm_mncc *)msg->data;
-			if (net->mncc_recv)
-				net->mncc_recv(net, mncc->msg_type, mncc);
-			work = 1; /* work done */
-			talloc_free(msg);
-		}
-
-	return work;
-}
-
 static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 			     struct msgb *msg)
 {
