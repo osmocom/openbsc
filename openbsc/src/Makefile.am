@@ -26,7 +26,8 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		bts_unknown.c bsc_version.c bsc_api.c bsc_vty.c meas_rep.c gsm_04_80.c
 
 libmsc_a_SOURCES = gsm_subscriber.c db.c \
-		mncc.c mncc_builtin.c gsm_04_08.c gsm_04_11.c transaction.c \
+		mncc.c mncc_builtin.c mncc_sock.c \
+		gsm_04_08.c gsm_04_11.c transaction.c \
 		token_auth.c rrlp.c ussd.c silent_call.c \
 		handover_decision.c auth.c \
 		osmo_msc.c
