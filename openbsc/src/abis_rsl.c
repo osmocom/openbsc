@@ -663,18 +663,6 @@ int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 	return abis_rsl_sendmsg(msg);
 }
 
-int rsl_paging_cmd_subscr(struct gsm_bts *bts, u_int8_t chan_need,
-			  struct gsm_subscriber *subscr)
-{
-#if 0
-	u_int8_t mi[128];
-	unsigned int mi_len;
-	u_int8_t paging_group;
-#endif
-
-	return -1;
-}
-
 int imsi_str2bcd(u_int8_t *bcd_out, const char *str_in)
 {
 	int i, len = strlen(str_in);
