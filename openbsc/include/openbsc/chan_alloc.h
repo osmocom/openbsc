@@ -21,7 +21,7 @@
 #ifndef _CHAN_ALLOC_H
 #define _CHAN_ALLOC_H
 
-#include "gsm_subscriber.h"
+#include "gsm_data.h"
 
 struct gsm_subscriber_connection;
 

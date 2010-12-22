@@ -26,7 +26,7 @@
 #include <string.h>
 #include <errno.h>
 
-#include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
