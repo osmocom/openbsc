@@ -1328,6 +1328,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 			int msg_type, struct gsm_mncc *mncc)
 {
 	struct msgb *msg;
+	unsigned char *data;
 
 	if (trans)
 		if (trans->conn)
@@ -1352,7 +1353,10 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	msg = msgb_alloc(sizeof(struct gsm_mncc), "MNCC");
 	if (!msg)
 		return -ENOMEM;
-	memcpy(msg->data, mncc, sizeof(struct gsm_mncc));
+
+	data = msgb_put(msg, sizeof(struct gsm_mncc));
+	memcpy(data, mncc, sizeof(struct gsm_mncc));
+
 	cc_tx_to_mncc(net, msg);
 
 	return 0;
@@ -2838,6 +2842,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
 
+	DEBUGP(DMNCC, "receive message %s\n", get_mncc_name(msg_type));
+
 	/* handle special messages */
 	switch(msg_type) {
 	case MNCC_BRIDGE:
@@ -2849,17 +2855,28 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	case GSM_TCHF_FRAME:
 		/* Find callref */
 		trans = trans_find_by_callref(net, data->callref);
-		if (!trans)
+		if (!trans) {
+			LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
 			return -EIO;
-		if (!trans->conn)
+		}
+		if (!trans->conn) {
+			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
-		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F)
+		}
+		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F) {
+			/* This should be LOGL_ERROR or NOTICE, but
+			 * unfortuantely it happens for a couple of frames at
+			 * the beginning of every RTP connection */
+			LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F\n");
 			return 0;
+		}
 		bts = trans->conn->lchan->ts->trx->bts;
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
-			if (!trans->conn->lchan->abis_ip.rtp_socket)
+			if (!trans->conn->lchan->abis_ip.rtp_socket) {
+				LOGP(DMNCC, LOGL_ERROR, "TCH frame for lchan != TCH_F\n");
 				return 0;
+			}
 			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
 			return trau_send_frame(trans->conn->lchan, arg);
