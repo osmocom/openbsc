@@ -241,7 +241,7 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 
 	bsc_del_timer(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
-	conn->loc_operation = 0;
+	conn->loc_operation = NULL;
 	msc_release_connection(conn);
 }
 
