@@ -282,8 +282,11 @@ static int _gsm0408_authorize_sec_cb(unsigned int hooknum, unsigned int event,
 			subscr_update(conn->subscr, conn->bts,
 				      GSM_SUBSCRIBER_UPDATE_ATTACHED);
 
-			/* try to close channel ASAP */
-			release_loc_updating_req(conn);
+			/*
+			 * The gsm0408_loc_upd_acc sends a MI with the TMSI. The
+			 * MS needs to respond with a TMSI REALLOCATION COMPLETE
+			 * (even if the TMSI is the same).
+			 */
 			break;
 
 		default:
@@ -969,6 +972,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		       conn->subscr ?
 				subscr_name(conn->subscr) :
 				"unknown subscriber");
+		release_loc_updating_req(conn);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
 		rc = gsm48_rx_mm_imsi_detach_ind(msg);
