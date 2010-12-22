@@ -66,7 +66,9 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 	state->listen_bfd.when |= BSC_FD_READ;
 
 	/* FIXME: make sure we don't enqueue anymore */
-	/* FIXME: release all exisitng calls */
+
+	/* release all exisitng calls */
+	gsm0408_clear_all_trans(state->net, GSM48_PDISC_CC);
 
 	/* flush the queue */
 	while (!llist_empty(&state->net->upqueue)) {
