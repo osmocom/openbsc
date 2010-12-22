@@ -32,8 +32,9 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/db.h>
-#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
+
+#include <osmocore/talloc.h>
 #include <osmocore/statistics.h>
 #include <osmocore/rate_ctr.h>
 
