@@ -155,7 +155,7 @@ struct gsm_data_frame {
 };
 
 char *get_mncc_name(int value);
-int mncc_recv(struct gsm_network *net, int msg_type, void *arg);
+int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg);
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val);
 
 #endif

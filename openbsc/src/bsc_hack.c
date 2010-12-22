@@ -242,7 +242,7 @@ int main(int argc, char **argv)
 	/* parse options */
 	handle_options(argc, argv);
 
-	rc = bsc_bootstrap_network(mncc_recv, config_file);
+	rc = bsc_bootstrap_network(int_mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());

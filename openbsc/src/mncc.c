@@ -347,7 +347,8 @@ static int mncc_rcv_tchf(struct gsm_call *call, int msg_type,
 }
 
 
-int mncc_recv(struct gsm_network *net, int msg_type, void *arg)
+/* Internal MNCC handler input function (from CC -> MNCC -> here) */
+int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 {
 	struct gsm_mncc *data = arg;
 	int callref;
