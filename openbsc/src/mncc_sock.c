@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -118,7 +119,7 @@ static int mncc_sock_write(struct bsc_fd *bfd)
 	int rc;
 
 	while (!llist_empty(&net->upqueue)) {
-		struct msgb *msg;
+		struct msgb *msg, *msg2;
 		struct gsm_mncc *mncc_prim;
 
 		/* peek at the beginning of the queue */
@@ -139,7 +140,9 @@ static int mncc_sock_write(struct bsc_fd *bfd)
 			goto close;
 		}
 		/* _after_ we send it, we can deueue */
-		msgb_dequeue(&net->upqueue);
+		msg2 = msgb_dequeue(&net->upqueue);
+		assert(msg == msg2);
+		msgb_free(msg);
 	}
 	return 0;
 
