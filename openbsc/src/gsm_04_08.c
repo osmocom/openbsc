@@ -329,6 +329,18 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	}
 }
 
+void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
+{
+	struct gsm_trans *trans, *temp;
+
+	LOGP(DCC, LOGL_NOTICE, "Clearing all currently active transactions!!!\n");
+
+	llist_for_each_entry_safe(trans, temp, &net->trans_list, entry) {
+		if (trans->protocol == protocol)
+			trans_free(trans);
+	}
+}
+
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
 int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, u_int8_t cause)
 {
