@@ -442,7 +442,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		if (rc < 0)
 			goto out_free;
 		msgb_free(msg);
-		mncc_upq_enqueue(rs->receive.net, new_msg);
+		cc_tx_to_mncc(rs->receive.net, new_msg);
 		break;
 
 	case RTP_NONE: /* if socket exists, but disabled by app */

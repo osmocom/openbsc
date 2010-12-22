@@ -213,7 +213,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		}
 		frame->msg_type = GSM_TCHF_FRAME;
 		frame->callref = ue->callref;
-		mncc_upq_enqueue(ue->net, msg);
+		cc_tx_to_mncc(ue->net, msg);
 
 		return 0;
 	}
