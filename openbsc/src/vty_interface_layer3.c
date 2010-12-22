@@ -536,6 +536,19 @@ DEFUN(ena_subscr_a3a8,
 	return rc ? CMD_WARNING : CMD_SUCCESS;
 }
 
+DEFUN(subscriber_purge,
+      subscriber_purge_cmd,
+      "subscriber purge-inactive",
+      "Operations on a Subscriber\n" "Purge subscribers with a zero use count.\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	int purged;
+
+	purged = subscr_purge_inactive(net);
+	vty_out(vty, "%d subscriber(s) were purged.%s", purged, VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 static int scall_cbfn(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -619,6 +632,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
+	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 
 	return 0;
 }
