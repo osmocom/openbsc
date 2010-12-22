@@ -849,7 +849,7 @@ struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan);
 void subscr_con_free(struct gsm_subscriber_connection *conn);
 
 /* FIXME: this should go some other header file, but there is no good one */
-static inline void mncc_upq_enqueue(struct gsm_network *net, struct msgb *msg)
+static inline void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
 {
 	msgb_enqueue(&net->upqueue, msg);
 }
