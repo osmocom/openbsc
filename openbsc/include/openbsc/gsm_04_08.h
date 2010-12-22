@@ -25,6 +25,7 @@ static inline struct msgb *gsm48_msgb_alloc(void)
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
+void gsm0408_clear_all_trans(struct gsm_network *net, int protocol);
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 int gsm0408_rcvmsg(struct msgb *msg, u_int8_t link_id);
