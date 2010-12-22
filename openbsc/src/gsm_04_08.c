@@ -1330,7 +1330,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	if (!msg)
 		return -ENOMEM;
 	memcpy(msg->data, mncc, sizeof(struct gsm_mncc));
-	msgb_enqueue(&net->upqueue, msg);
+	mncc_upq_enqueue(net, msg);
 
 	return 0;
 }

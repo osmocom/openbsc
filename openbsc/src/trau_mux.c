@@ -214,7 +214,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		}
 		frame->msg_type = GSM_TCHF_FRAME;
 		frame->callref = ue->callref;
-		msgb_enqueue(&ue->net->upqueue, msg);
+		mncc_upq_enqueue(ue->net, msg);
 
 		return 0;
 	}
