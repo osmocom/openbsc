@@ -30,6 +30,8 @@
 
 #include <osmocore/msgb.h>
 #include <osmocore/gsm48.h>
+
+#include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/transaction.h>

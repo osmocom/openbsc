@@ -25,6 +25,7 @@
 #include <openbsc/bsc_api.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/gsm_subscriber.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>

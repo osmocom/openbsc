@@ -23,6 +23,7 @@
 
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/osmo_bsc.h>
+#include <openbsc/abis_rsl.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
