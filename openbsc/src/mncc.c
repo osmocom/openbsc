@@ -115,7 +115,7 @@ static void free_call(struct gsm_call *call)
 }
 
 
-struct gsm_call *get_call_ref(u_int32_t callref)
+static struct gsm_call *get_call_ref(u_int32_t callref)
 {
 	struct gsm_call *callt;
 
