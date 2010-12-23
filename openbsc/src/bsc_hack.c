@@ -48,6 +48,7 @@ static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
 extern const char *openbsc_copyright;
 static int daemonize = 0;
+static int use_mncc_sock = 0;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -90,6 +91,7 @@ static void print_help()
 	printf("  -V --version. Print the version of OpenBSC.\n");
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
+	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -109,10 +111,11 @@ static void handle_options(int argc, char **argv)
 			{"version", 0, 0, 'V' },
 			{"rtp-proxy", 0, 0, 'P'},
 			{"log-level", 1, 0, 'e'},
+			{"mncc-sock", 0, 0, 'm'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:m",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -148,6 +151,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'e':
 			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		case 'm':
+			use_mncc_sock = 1;
 			break;
 		case 'V':
 			print_version(1);
@@ -242,7 +248,13 @@ int main(int argc, char **argv)
 	/* parse options */
 	handle_options(argc, argv);
 
-	rc = bsc_bootstrap_network(int_mncc_recv, config_file);
+	/* internal MNCC handler or MNCC socket? */
+	if (use_mncc_sock) {
+		rc = bsc_bootstrap_network(mncc_sock_from_cc, config_file);
+		if (rc >= 0)
+			mncc_sock_init(bsc_gsmnet);
+	} else
+		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
