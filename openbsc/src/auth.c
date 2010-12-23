@@ -23,6 +23,7 @@
 
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
+#include <openbsc/auth.h>
 #include <openbsc/gsm_data.h>
 
 #include <osmocore/comp128.h>
@@ -81,7 +82,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 	if (rc < 0) {
 		DEBUGP(DMM, "No retrievable Ki for subscriber, skipping auth");
-		return rc == -ENOENT ? 0 : -1;
+		return rc == -ENOENT ? AUTH_NOT_AVAIL : -1;
 	}
 
 	/* If possible, re-use the last tuple and skip auth */
@@ -92,7 +93,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	{
 		atuple->use_count++;
 		db_sync_lastauthtuple_for_subscr(atuple, subscr);
-		return 2;
+		return AUTH_DO_CIPH;
 	}
 
 	/* Generate a new one */
@@ -123,6 +124,6 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 
         db_sync_lastauthtuple_for_subscr(atuple, subscr);
 
-	return 1;
+	return AUTH_DO_AUTH_THAN_CIPH;
 }
 

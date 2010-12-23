@@ -191,10 +191,10 @@ int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
 		/* FIXME: Should start a timer for completion ... */
 
 	/* Then do whatever is needed ... */
-	if (rc == 1) {
+	if (rc == AUTH_DO_AUTH_THAN_CIPH) {
 		/* Start authentication */
 		return gsm48_tx_mm_auth_req(conn, op->atuple.rand, op->atuple.key_seq);
-	} else if (rc == 2) {
+	} else if (rc == AUTH_DO_CIPH) {
 		/* Start ciphering directly */
 		return gsm0808_cipher_mode(conn, net->a5_encryption,
 		                           op->atuple.kc, 8, 0);
