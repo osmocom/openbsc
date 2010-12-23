@@ -130,9 +130,8 @@ struct gsm_lchan *lchan_lookup(struct gsm_bts_trx *trx, u_int8_t chan_nr)
 }
 
 /* See Table 10.5.25 of GSM04.08 */
-u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan)
+static u_int8_t ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
 {
-	struct gsm_bts_trx_ts *ts = lchan->ts;
 	u_int8_t cbits, chan_nr;
 
 	switch (ts->pchan) {
@@ -143,15 +142,15 @@ u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan)
 		break;
 	case GSM_PCHAN_TCH_H:
 		cbits = 0x02;
-		cbits += lchan->nr;
+		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_CCCH_SDCCH4:
 		cbits = 0x04;
-		cbits += lchan->nr;
+		cbits += lchan_nr;
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 		cbits = 0x08;
-		cbits += lchan->nr;
+		cbits += lchan_nr;
 		break;
 	default:
 	case GSM_PCHAN_CCCH:
@@ -162,6 +161,11 @@ u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan)
 	chan_nr = (cbits << 3) | (ts->nr & 0x7);
 
 	return chan_nr;
+}
+
+u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan)
+{
+	return ts2chan_nr(lchan->ts, lchan->nr);
 }
 
 /* As per TS 03.03 Section 2.2, the IMSI has 'not more than 15 digits' */
@@ -1671,7 +1675,7 @@ int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 	return rc;
 }
 
-int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan, int act)
+int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 {
 	struct msgb *msg = rsl_msgb_alloc();
 	struct abis_rsl_dchan_hdr *dh;
@@ -1685,12 +1689,12 @@ int rsl_ipacc_pdch_activate(struct gsm_lchan *lchan, int act)
 	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
 	init_dchan_hdr(dh, msg_type);
 	dh->c.msg_discr = ABIS_RSL_MDISC_DED_CHAN;
-	dh->chan_nr = lchan2chan_nr(lchan);
+	dh->chan_nr = ts2chan_nr(ts, 0);
 
-	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_lchan_name(lchan),
+	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_ts_name(ts),
 		act ? "" : "DE");
 
-	msg->trx = lchan->ts->trx;
+	msg->trx = ts->trx;
 
 	return abis_rsl_sendmsg(msg);
 }
