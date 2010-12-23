@@ -277,9 +277,11 @@ static int mncc_rcv_tchf(struct gsm_call *call, int msg_type,
 
 
 /* Internal MNCC handler input function (from CC -> MNCC -> here) */
-int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg)
+int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 {
+	void *arg = msgb_data(msg);
 	struct gsm_mncc *data = arg;
+	int msg_type = data->msg_type;
 	int callref;
 	struct gsm_call *call = NULL, *callt;
 	int rc = 0;
@@ -300,7 +302,7 @@ int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 	/* create callref, if setup is received */
 	if (!call) {
 		if (msg_type != MNCC_SETUP_IND)
-			return 0; /* drop */
+			goto out_free; /* drop */
 		/* create call */
 		if (!(call = talloc_zero(tall_call_ctx, struct gsm_call))) {
 			struct gsm_mncc rel;
@@ -310,7 +312,7 @@ int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 			mncc_set_cause(&rel, GSM48_CAUSE_LOC_PRN_S_LU,
 				       GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 			mncc_tx_to_cc(net, MNCC_REL_REQ, &rel);
-			return 0;
+			goto out_free;
 		}
 		llist_add_tail(&call->entry, &call_list);
 		call->net = net;
@@ -395,6 +397,9 @@ int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg)
 		LOGP(DMNCC, LOGL_NOTICE, "(call %x) Message unhandled\n", callref);
 		break;
 	}
+
+out_free:
+	talloc_free(msg);
 
 	return rc;
 }

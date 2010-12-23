@@ -28,6 +28,7 @@
 #include <osmocore/mncc.h>
 
 struct gsm_network;
+struct msgb;
 
 
 /* One end of a call */
@@ -155,7 +156,7 @@ struct gsm_data_frame {
 };
 
 char *get_mncc_name(int value);
-int int_mncc_recv(struct gsm_network *net, int msg_type, void *arg);
+int int_mncc_recv(struct gsm_network *net, struct msgb *msg);
 void mncc_set_cause(struct gsm_mncc *data, int loc, int val);
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg);
 

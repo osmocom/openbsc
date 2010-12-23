@@ -1184,7 +1184,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	return 0;
 }
 
-int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
+int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			  const char *config_file)
 {
 	struct telnet_connection dummy_conn;

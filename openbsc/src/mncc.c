@@ -110,7 +110,5 @@ void mncc_set_cause(struct gsm_mncc *data, int loc, int val)
 
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
 {
-	struct gsm_mncc *mncc = msgb_data(msg);
-
-	net->mncc_recv(net, mncc->msg_type, mncc);
+	net->mncc_recv(net, msg);
 }

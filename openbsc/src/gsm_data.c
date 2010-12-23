@@ -248,7 +248,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 }
 
 struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, int, void *))
+				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;
 
