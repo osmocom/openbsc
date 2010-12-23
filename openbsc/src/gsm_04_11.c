@@ -807,7 +807,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 
 	if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
 		/* MS has not enough memory to store the message.  We need
-		 * to store this in our database and wati for a SMMA message */
+		 * to store this in our database and wait for a SMMA message */
 		/* FIXME */
 		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
 		counter_inc(net->stats.sms.rp_err_mem);
