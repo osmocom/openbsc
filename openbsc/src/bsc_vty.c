@@ -46,6 +46,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/abis_rsl.h>
 
 #include "../bscconfig.h"
 
@@ -2420,6 +2421,56 @@ DEFUN(drop_bts,
 	return CMD_SUCCESS;
 }
 
+DEFUN(pdch_act, pdch_act_cmd,
+	"bts <0-255> trx <0-255> timeslot <0-7> pdch (activate|deactivate)",
+	"BTS related commands\n" "BTS Number\n" "Transceiver\n" "Transceiver Number\n"
+	"TRX Timeslot\n" "Timeslot Number\n" "Packet Data Channel\n"
+	"Activate Dynamic PDCH/TCH (-> PDCH mode)\n"
+	"Deactivate Dynamic PDCH/TCH (-> TCH mode)\n")
+{
+	struct gsm_bts *bts;
+	struct gsm_bts_trx *trx;
+	struct gsm_bts_trx_ts *ts;
+	int bts_nr = atoi(argv[0]);
+	int trx_nr = atoi(argv[1]);
+	int ts_nr = atoi(argv[2]);
+	int activate;
+
+	bts = gsm_bts_num(bsc_gsmnet, bts_nr);
+	if (!bts) {
+		vty_out(vty, "%% No such BTS (%d)%s", bts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "%% This command only works for ipaccess BTS%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	trx = gsm_bts_trx_num(bts, trx_nr);
+	if (!trx) {
+		vty_out(vty, "%% No such TRX (%d)%s", trx_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	ts = &trx->ts[ts_nr];
+	if (ts->pchan != GSM_PCHAN_TCH_F_PDCH) {
+		vty_out(vty, "%% Timeslot %u is not in dynamic TCH_F/PDCH "
+			"mode%s", ts_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[3], "activate"))
+		activate = 1;
+	else
+		activate = 0;
+
+	rsl_ipacc_pdch_activate(ts, activate);
+
+	return CMD_SUCCESS;
+
+}
 
 extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
@@ -2554,6 +2605,7 @@ int bsc_vty_init(void)
 	install_element(TS_NODE, &cfg_ts_e1_subslot_cmd);
 
 	install_element(ENABLE_NODE, &drop_bts_cmd);
+	install_element(ENABLE_NODE, &pdch_act_cmd);
 
 	abis_nm_vty_init();
 
