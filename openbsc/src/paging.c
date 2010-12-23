@@ -209,6 +209,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	/* handle the paging request now */
 	page_ms(request);
 	paging_bts->available_slots--;
+	request->attempts++;
 
 	/* take the current and add it to the back */
 	llist_del(&request->entry);
@@ -253,6 +254,7 @@ static void paging_T3113_expired(void *data)
 	struct gsm_paging_request *req = (struct gsm_paging_request *)data;
 	void *cbfn_param;
 	gsm_cbfn *cbfn;
+	int msg;
 
 	LOGP(DPAG, LOGL_INFO, "T3113 expired for request %p (%s)\n",
 		req, req->subscr->imsi);
@@ -261,10 +263,15 @@ static void paging_T3113_expired(void *data)
 	counter_inc(req->bts->network->stats.paging.expired);
 	cbfn_param = req->cbfn_param;
 	cbfn = req->cbfn;
+
+	/* did we ever manage to page the subscriber */
+	msg = req->attempts > 0 ? GSM_PAGING_EXPIRED : GSM_PAGING_BUSY;
+
+	/* destroy it now. Do not access req afterwards */
 	paging_remove_request(&req->bts->paging, req);
 
 	if (cbfn)
-		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
+		cbfn(GSM_HOOK_RR_PAGING, msg, NULL, NULL,
 			  cbfn_param);
 }
 

@@ -1409,6 +1409,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
 			break;
 		case GSM_PAGING_EXPIRED:
+		case GSM_PAGING_BUSY:
 			DEBUGP(DCC, "Paging subscr %s expired!\n",
 				subscr->extension);
 			/* Temporarily out of order */

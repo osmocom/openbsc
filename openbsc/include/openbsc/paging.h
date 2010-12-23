@@ -46,6 +46,9 @@ struct gsm_paging_request {
 	/* Timer 3113: how long do we try to page? */
 	struct timer_list T3113;
 
+	/* How often did we ask the BTS to page? */
+	int attempts;
+
 	/* callback to be called in case paging completes */
 	gsm_cbfn *cbfn;
 	void *cbfn_param;

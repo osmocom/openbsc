@@ -84,6 +84,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	sig_data.subscr = subscr;
 	sig_data.bts	= conn ? conn->bts : NULL;
 	sig_data.conn	= conn;
+	sig_data.paging_result = event;
 	dispatch_signal(
 		SS_PAGING,
 		event == GSM_PAGING_SUCCEEDED ?
@@ -169,7 +170,7 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 
 	/* paging failed, quit now */
 	if (rc <= 0) {
-		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED,
+		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_BUSY,
 				 NULL, NULL, subscr);
 	}
 }

@@ -1126,6 +1126,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
+	case GSM_PAGING_BUSY:
 		sms_free(sms);
 		rc = -ETIMEDOUT;
 		break;

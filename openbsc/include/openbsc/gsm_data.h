@@ -83,6 +83,7 @@ enum gsm_paging_event {
 	GSM_PAGING_SUCCEEDED,
 	GSM_PAGING_EXPIRED,
 	GSM_PAGING_OOM,
+	GSM_PAGING_BUSY,
 };
 
 enum bts_gprs_mode {

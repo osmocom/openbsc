@@ -140,6 +140,8 @@ struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
 
+	int paging_result;
+
 	/* NULL in case the paging didn't work */
 	struct gsm_subscriber_connection *conn;
 };
