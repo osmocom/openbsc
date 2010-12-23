@@ -32,6 +32,7 @@
 
 #include <osmocore/talloc.h>
 #include <osmocore/select.h>
+#include <osmocore/protocol/gsm_04_08.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
@@ -45,6 +46,38 @@ struct mncc_sock_state {
 
 /* FIXME: avoid this */
 static struct mncc_sock_state *g_state;
+
+/* input from CC code into mncc_sock */
+void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
+{
+	struct gsm_mncc *mncc_in = msgb_data(msg);
+	int msg_type = mncc_in->msg_type;
+
+	/* Check if we currently have a MNCC handler connected */
+	if (g_state->conn_bfd.fd < 0) {
+		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
+			"but socket is gone\n", get_mncc_name(msg_type));
+		if (msg_type != GSM_TCHF_FRAME &&
+		    msg_type != GSM_TCHF_FRAME_EFR) {
+			/* release the request */
+			struct gsm_mncc mncc_out;
+			memset(&mncc_out, 0, sizeof(mncc_out));
+			mncc_out.callref = mncc_in->callref;
+			mncc_set_cause(&mncc_out, GSM48_CAUSE_LOC_PRN_S_LU,
+					GSM48_CC_CAUSE_TEMP_FAILURE);
+			mncc_tx_to_cc(net, MNCC_REL_REQ, &mncc_out);
+		}
+		/* free the original message */
+		msgb_free(msg);
+		return;
+	}
+
+	/* FIXME: check for some maximum queue depth? */
+
+	/* Actually enqueue the message and mark socket write need */
+	msgb_enqueue(&net->upqueue, msg);
+	g_state->conn_bfd.when |= BSC_FD_WRITE;
+}
 
 void mncc_sock_write_pending(void)
 {
