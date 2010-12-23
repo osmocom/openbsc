@@ -694,7 +694,7 @@ struct gsm_network {
 	struct gsmnet_stats stats;
 
 	/* layer 4 */
-	int (*mncc_recv) (struct gsm_network *net, int msg_type, void *arg);
+	int (*mncc_recv) (struct gsm_network *net, struct msgb *msg);
 	struct llist_head upqueue;
 	struct llist_head trans_list;
 	struct bsc_api *bsc_api;
@@ -762,7 +762,7 @@ struct gsm_sms {
 
 
 struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, int, void *));
+				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 			      u_int8_t tsc, u_int8_t bsic);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
