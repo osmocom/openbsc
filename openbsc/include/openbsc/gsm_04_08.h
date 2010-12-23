@@ -13,8 +13,8 @@ struct gsm_network;
 struct gsm_trans;
 struct gsm_subscriber_connection;
 
-#define GSM48_ALLOC_SIZE	1024
-#define GSM48_ALLOC_HEADROOM	128
+#define GSM48_ALLOC_SIZE	2048
+#define GSM48_ALLOC_HEADROOM	256
 
 static inline struct msgb *gsm48_msgb_alloc(void)
 {
