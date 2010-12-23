@@ -91,6 +91,8 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 {
 	struct bsc_fd *bfd = &state->conn_bfd;
 
+	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has LOST connection\n");
+
 	close(bfd->fd);
 	bfd->fd = -1;
 	bsc_unregister_fd(bfd);
@@ -130,7 +132,6 @@ static int mncc_sock_read(struct bsc_fd *bfd)
 	if (rc < 0) {
 		if (errno == EAGAIN)
 			return 0;
-		fprintf(stderr, "Err from socket: %s\n", strerror(errno));
 		goto close;
 	}
 
@@ -214,14 +215,17 @@ static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
 	len = sizeof(un_addr);
 	rc = accept(bfd->fd, (struct sockaddr *) &un_addr, &len);
 	if (rc < 0) {
-		fprintf(stderr, "Failed to accept a new connection.\n");
+		LOGP(DMNCC, LOGL_ERROR, "Failed to accept a new connection\n");
 		return -1;
 	}
 
-	if (conn_bfd->fd > 0) {
+	if (conn_bfd->fd >= 0) {
+		LOGP(DMNCC, LOGL_NOTICE, "MNCC app connects but we already have "
+			"another active connection ?!?\n");
 		/* We already have one MNCC app connected, this is all we support */
 		state->listen_bfd.when &= ~BSC_FD_READ;
 		close(rc);
+		return 0;
 	}
 
 	conn_bfd->fd = rc;
@@ -230,12 +234,15 @@ static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
 	conn_bfd->data = state;
 
 	if (bsc_register_fd(conn_bfd) != 0) {
-		fprintf(stderr, "Failed to register the fd.\n");
+		LOGP(DMNCC, LOGL_ERROR, "Failed to register new connection fd\n");
 		close(conn_bfd->fd);
 		conn_bfd->fd = -1;
 		state->listen_bfd.when |= ~BSC_FD_READ;
 		return -1;
 	}
+
+	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has connection with external "
+		"call control application\n");
 
 	return 0;
 }
@@ -258,6 +265,8 @@ int mncc_sock_init(struct gsm_network *net)
 
 	rc = osmo_unixsock_listen(bfd, SOCK_SEQPACKET, "/tmp/bsc_mncc");
 	if (rc < 0) {
+		LOGP(DMNCC, LOGL_ERROR, "Could not create unix socket: %s\n",
+			strerror(errno));
 		talloc_free(state);
 		return rc;
 	}
@@ -268,7 +277,7 @@ int mncc_sock_init(struct gsm_network *net)
 
 	rc = bsc_register_fd(bfd);
 	if (rc < 0) {
-		fprintf(stderr, "Failed to register the bfd.\n");
+		LOGP(DMNCC, LOGL_ERROR, "Could not register listen fd: %d\n", rc);
 		close(bfd->fd);
 		talloc_free(state);
 		return rc;
