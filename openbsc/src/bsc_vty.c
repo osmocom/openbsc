@@ -547,6 +547,7 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3115 %u%s", gsmnet->T3115, VTY_NEWLINE);
 	vty_out(vty, " timer t3117 %u%s", gsmnet->T3117, VTY_NEWLINE);
 	vty_out(vty, " timer t3119 %u%s", gsmnet->T3119, VTY_NEWLINE);
+	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
 
@@ -1323,6 +1324,7 @@ DECLARE_TIMER(3113, "Set the time to try paging a subscriber.")
 DECLARE_TIMER(3115, "Currently not used.")
 DECLARE_TIMER(3117, "Currently not used.")
 DECLARE_TIMER(3119, "Currently not used.")
+DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT")
 DECLARE_TIMER(3141, "Currently not used.")
 
 DEFUN(cfg_net_dtx,

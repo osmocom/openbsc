@@ -1152,6 +1152,45 @@ static void t3111_expired(void *data)
 
 #define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
 
+/* Format an IMM ASS REJ according to 04.08 Chapter 9.1.20 */
+static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
+				unsigned int num_req_refs,
+				struct gsm48_req_ref *rqd_refs,
+				uint8_t wait_ind)
+{
+	uint8_t buf[GSM_MACBLOCK_LEN];
+	struct gsm48_imm_ass_rej *iar = (struct gsm48_imm_ass_rej *)buf;
+
+	/* create IMMEDIATE ASSIGN REJECT 04.08 message */
+	memset(iar, 0, sizeof(*iar));
+	iar->proto_discr = GSM48_PDISC_RR;
+	iar->msg_type = GSM48_MT_RR_IMM_ASS;
+	iar->page_mode = GSM48_PM_SAME;
+
+	memcpy(&iar->req_ref1, &rqd_refs[0], sizeof(iar->req_ref1));
+	iar->wait_ind1 = wait_ind;
+
+	if (num_req_refs >= 2)
+		memcpy(&iar->req_ref2, &rqd_refs[1], sizeof(iar->req_ref2));
+	else
+		memcpy(&iar->req_ref2, &rqd_refs[0], sizeof(iar->req_ref2));
+	iar->wait_ind2 = wait_ind;
+
+	if (num_req_refs >= 3)
+		memcpy(&iar->req_ref3, &rqd_refs[2], sizeof(iar->req_ref3));
+	else
+		memcpy(&iar->req_ref3, &rqd_refs[0], sizeof(iar->req_ref3));
+	iar->wait_ind3 = wait_ind;
+
+	if (num_req_refs >= 4)
+		memcpy(&iar->req_ref4, &rqd_refs[3], sizeof(iar->req_ref4));
+	else
+		memcpy(&iar->req_ref4, &rqd_refs[0], sizeof(iar->req_ref4));
+	iar->wait_ind4 = wait_ind;
+
+	return rsl_imm_assign_cmd(bts, sizeof(iar), (uint8_t *) iar);
+}
+
 /* MS has requested a channel on the RACH */
 static int rsl_rx_chan_rqd(struct msgb *msg)
 {
@@ -1197,7 +1236,9 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
 		counter_inc(bts->network->stats.chreq.no_channel);
-		/* FIXME: send some kind of reject ?!? */
+		/* FIXME gather multiple CHAN RQD and reject up to 4 at the same time */
+		if (bts->network->T3122)
+			rsl_send_imm_ass_rej(bts, 1, rqd_ref, bts->network->T3122 & 0xff);
 		return -ENOMEM;
 	}
 

@@ -710,6 +710,7 @@ struct gsm_network {
 	int T3115;
 	int T3117;
 	int T3119;
+	int T3122;
 	int T3141;
 
 	/* Radio Resource Location Protocol (TS 04.31) */
