@@ -2527,6 +2527,7 @@ int bsc_vty_init(void)
 	install_element(GSMNET_NODE, &cfg_net_T3115_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3117_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3119_cmd);
+	install_element(GSMNET_NODE, &cfg_net_T3122_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
