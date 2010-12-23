@@ -899,6 +899,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	}
 
 	/* Look-up the MM context based on old RA-ID and TLLI */
+	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &old_ra_id);
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
