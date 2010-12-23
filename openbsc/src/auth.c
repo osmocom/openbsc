@@ -37,7 +37,7 @@ _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 	int i, l = ainfo->a3a8_ki_len;
 
 	if ((l > A38_XOR_MAX_KEY_LEN) || (l < A38_XOR_MIN_KEY_LEN)) {
-		DEBUGP(DMM, "Invalid XOR key (len=%d) %s",
+		LOGP(DMM, LOGL_ERROR, "Invalid XOR key (len=%d) %s\n",
 			ainfo->a3a8_ki_len,
 			hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
 		return -1;
@@ -55,7 +55,7 @@ static int
 _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 {
 	if (ainfo->a3a8_ki_len != A38_COMP128_KEY_LEN) {
-		DEBUGP(DMM, "Invalid COMP128v1 key (len=%d) %s",
+		LOGP(DMM, LOGL_ERROR, "Invalid COMP128v1 key (len=%d) %s\n",
 			ainfo->a3a8_ki_len,
 			hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
 		return -1;
@@ -81,7 +81,8 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	/* Get subscriber info (if any) */
 	rc = db_get_authinfo_for_subscr(&ainfo, subscr);
 	if (rc < 0) {
-		DEBUGP(DMM, "No retrievable Ki for subscriber, skipping auth");
+		LOGP(DMM, LOGL_NOTICE,
+			"No retrievable Ki for subscriber, skipping auth\n");
 		return rc == -ENOENT ? AUTH_NOT_AVAIL : -1;
 	}
 
@@ -93,6 +94,7 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
 	{
 		atuple->use_count++;
 		db_sync_lastauthtuple_for_subscr(atuple, subscr);
+		DEBUGP(DMM, "Auth tuple use < 3, just doing ciphering\n");
 		return AUTH_DO_CIPH;
 	}
 
@@ -103,27 +105,29 @@ int auth_get_tuple_for_subscr(struct gsm_auth_tuple *atuple,
                 atuple->rand[i] = random() & 0xff;
 
 	switch (ainfo.auth_algo) {
-		case AUTH_ALGO_NONE:
+	case AUTH_ALGO_NONE:
+		DEBUGP(DMM, "No authentication for subscriber\n");
+		return 0;
+
+	case AUTH_ALGO_XOR:
+		if (_use_xor(&ainfo, atuple))
 			return 0;
+		break;
 
-		case AUTH_ALGO_XOR:
-			if (_use_xor(&ainfo, atuple))
-				return 0;
-			break;
-
-		case AUTH_ALGO_COMP128v1:
-			if (_use_comp128_v1(&ainfo, atuple))
-				return 0;
-			break;
-
-		default:
-			DEBUGP(DMM, "Unsupported auth type algo_id=%d\n",
-				ainfo.auth_algo);
+	case AUTH_ALGO_COMP128v1:
+		if (_use_comp128_v1(&ainfo, atuple))
 			return 0;
+		break;
+
+	default:
+		DEBUGP(DMM, "Unsupported auth type algo_id=%d\n",
+			ainfo.auth_algo);
+		return 0;
 	}
 
         db_sync_lastauthtuple_for_subscr(atuple, subscr);
 
+	DEBUGP(DMM, "Need to do authentication and ciphering\n");
 	return AUTH_DO_AUTH_THAN_CIPH;
 }
 
