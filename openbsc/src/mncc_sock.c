@@ -144,6 +144,7 @@ static int mncc_sock_read(struct bsc_fd *bfd)
 	return rc;
 
 close:
+	msgb_free(msg);
 	mncc_sock_close(state);
 	return -1;
 }
