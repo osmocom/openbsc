@@ -336,8 +336,10 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 	LOGP(DCC, LOGL_NOTICE, "Clearing all currently active transactions!!!\n");
 
 	llist_for_each_entry_safe(trans, temp, &net->trans_list, entry) {
-		if (trans->protocol == protocol)
+		if (trans->protocol == protocol) {
+			trans->callref = 0;
 			trans_free(trans);
+		}
 	}
 }
 
