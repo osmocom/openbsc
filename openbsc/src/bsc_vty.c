@@ -332,7 +332,7 @@ static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 			vty_out(vty, "     hopping arfcn add %u%s",
 				i, VTY_NEWLINE);
 		}
-	} else
+	}
 	config_write_e1_link(vty, &ts->e1_link, "     ");
 }
 
