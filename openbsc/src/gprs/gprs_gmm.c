@@ -594,6 +594,19 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 		/* we already have a mm context with current TLLI, but no
 		 * P-TMSI / IMSI yet.  What we now need to do is to fill
 		 * this initial context with data from the HLR */
+		if (strlen(ctx->imsi) == 0) {
+			/* Check if we already have a MM context for this IMSI */
+			struct sgsn_mm_ctx *ictx;
+			ictx = sgsn_mm_ctx_by_imsi(mi_string);
+			if (ictx) {
+				DEBUGP(DMM, "Deleting old MM Context for same IMSI ",
+				       "p_tmsi_old=0x%08x, p_tmsi_new=0x%08x\n",
+					ictx->p_tmsi, ctx->p_tmsi);
+				gprs_llgmm_assign(ictx->llme, ictx->tlli,
+						  0xffffffff, GPRS_ALGO_GEA0, NULL);
+				sgsn_mm_ctx_free(ictx);
+			}
+		}
 		strncpy(ctx->imsi, mi_string, sizeof(ctx->imei));
 		break;
 	case GSM_MI_TYPE_IMEI:
@@ -704,6 +717,8 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 		if (!ctx)
 			ctx = sgsn_mm_ctx_by_ptmsi(tmsi);
 		if (!ctx) {
+			/* Allocate a context as most of our code expects one.
+			 * Context will not have an IMSI ultil ID RESP is received */
 			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
 		}

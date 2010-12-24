@@ -119,6 +119,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_imsi(const char *imsi);
 /* Allocate a new SGSN MM context */
 struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 					const struct gprs_ra_id *raid);
+void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm);
 
 
 enum pdp_ctx_state {

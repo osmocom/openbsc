@@ -173,6 +173,21 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	return ctx;
 }
 
+void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
+{
+	struct sgsn_pdp_ctx *pdp, *pdp2;
+
+	/* Unlink from global list of MM contexts */
+	llist_del(&mm->list);
+
+	/* Free all PDP contexts */
+	llist_for_each_entry_safe(pdp, pdp2, &mm->pdp_list, list)
+		sgsn_pdp_ctx_free(pdp);
+	
+	rate_ctr_group_free(mm->ctrg);
+
+	talloc_free(mm);
+}
 
 /* look up PDP context by MM context and NSAPI */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_nsapi(const struct sgsn_mm_ctx *mm,
