@@ -1114,7 +1114,9 @@ struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long mi
 	return sms;
 }
 
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id)
+struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net,
+					    unsigned long long min_subscr_id,
+					    unsigned int failed)
 {
 	dbi_result result;
 	struct gsm_sms *sms;
@@ -1124,9 +1126,9 @@ struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned lo
 			"FROM SMS JOIN Subscriber ON "
 				"SMS.receiver_id = Subscriber.id "
 			"WHERE SMS.receiver_id >= %llu AND SMS.sent IS NULL "
-				"AND Subscriber.lac > 0 "
+				"AND Subscriber.lac > 0 AND SMS.deliver_attempts < %u "
 			"ORDER BY SMS.receiver_id, SMS.id LIMIT 1",
-		min_subscr_id);
+		min_subscr_id, failed);
 	if (!result)
 		return NULL;
 

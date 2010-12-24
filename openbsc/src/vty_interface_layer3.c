@@ -20,6 +20,7 @@
  */
 
 #include <stdlib.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -125,7 +126,7 @@ DEFUN(sms_send_pend,
 	int id = 0;
 
 	while (1) {
-		sms = db_sms_get_unsent_by_subscr(gsmnet, id);
+		sms = db_sms_get_unsent_by_subscr(gsmnet, id, UINT_MAX);
 		if (!sms)
 			break;
 
