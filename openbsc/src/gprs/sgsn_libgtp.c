@@ -208,6 +208,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 	return pctx;
 }
 
+/* SGSN wants to delete a PDP context */
 int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx)
 {
 	LOGP(DGPRS, LOGL_ERROR, "Delete PDP Context\n");
@@ -331,6 +332,8 @@ static int echo_conf(int recovery)
 		/* FIXME: if version == 1, retry with version 0 */
 	} else {
 		DEBUGP(DGPRS, "GTP Rx Echo Response\n");
+		/* FIXME: check if recovery counter has incremented and
+		 * release all PDP context (if it has) */
 	}
 	return 0;
 }
@@ -347,6 +350,7 @@ static int cb_conf(int type, int cause, struct pdp_t *pdp, void *cbp)
 
 	switch (type) {
 	case GTP_ECHO_REQ:
+		/* libgtp hands us the RECOVERY number instead of a cause */
 		return echo_conf(cause);
 	case GTP_CREATE_PDP_REQ:
 		return create_pdp_conf(pdp, cbp, cause);
