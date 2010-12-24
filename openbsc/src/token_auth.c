@@ -117,7 +117,8 @@ unauth:
 static int token_sms_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
-	struct gsm_sms *sms = signal_data;
+	struct sms_signal_data *sig = signal_data;
+	struct gsm_sms *sms = sig->sms;;
 	struct gsm_subscriber_connection *conn;
 	u_int8_t auth_rand[16];
 

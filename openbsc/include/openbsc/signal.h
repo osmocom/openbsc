@@ -173,6 +173,15 @@ struct rf_signal_data {
 	struct gsm_network *net;
 };
 
+struct sms_signal_data {
+	/* The transaction where this occured */
+	struct gsm_trans *trans;
+	/* Can be NULL for SMMA */
+	struct gsm_sms *sms;
+	/* int paging result. Only the ones with > 0 */
+	int paging_result;
+};
+
 enum signal_ns {
 	S_NS_RESET,
 	S_NS_BLOCK,
