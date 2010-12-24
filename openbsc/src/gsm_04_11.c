@@ -809,7 +809,7 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		/* MS has not enough memory to store the message.  We need
 		 * to store this in our database and wait for a SMMA message */
 		/* FIXME */
-		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
+		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, sms);
 		counter_inc(net->stats.sms.rp_err_mem);
 	} else
 		counter_inc(net->stats.sms.rp_err_other);
@@ -832,7 +832,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
-	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
+	dispatch_signal(SS_SMS, S_SMS_SMMA, trans);
 
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
