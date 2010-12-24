@@ -633,9 +633,13 @@ DEFUN(show_trx,
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s%s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s",
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
-		gsm_pchan_name(ts->pchan), VTY_NEWLINE);
+		gsm_pchan_name(ts->pchan));
+	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
+		vty_out(" (%s mode)",
+			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
+	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &ts->nm_state);
 	if (!is_ipaccess_bts(ts->trx->bts))
