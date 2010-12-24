@@ -637,7 +637,7 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
 		gsm_pchan_name(ts->pchan));
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
-		vty_out(" (%s mode)",
+		vty_out(vty, " (%s mode)",
 			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
 	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
@@ -824,7 +824,7 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u, Type %s - "
 		"L1 MS Power: %u dBm RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
 		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
-		lchan->nr, gsm_lchant_name(lchan->type), mr->ms_l1_pwr,
+		lchan->nr, gsm_lchant_name(lchan->type), mr->ms_l1.pwr,
 		rxlev2dbm(mr->dl.full.rx_lev),
 		rxlev2dbm(mr->ul.full.rx_lev),
 		VTY_NEWLINE);
