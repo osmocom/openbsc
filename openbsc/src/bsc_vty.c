@@ -269,7 +269,7 @@ DEFUN(show_bts, show_bts_cmd, "show bts [number]",
 	if (argc != 0) {
 		/* use the BTS number that the user has specified */
 		bts_nr = atoi(argv[0]);
-		if (bts_nr > net->num_bts) {
+		if (bts_nr >= net->num_bts) {
 			vty_out(vty, "%% can't find BTS '%s'%s", argv[0],
 				VTY_NEWLINE);
 			return CMD_WARNING;
