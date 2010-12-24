@@ -651,9 +651,9 @@ DEFUN(show_ts,
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
-	struct gsm_bts *bts;
-	struct gsm_bts_trx *trx;
-	struct gsm_bts_trx_ts *ts;
+	struct gsm_bts *bts = NULL;
+	struct gsm_bts_trx *trx = NULL;
+	struct gsm_bts_trx_ts *ts = NULL;
 	int bts_nr, trx_nr, ts_nr;
 
 	if (argc >= 1) {
@@ -682,17 +682,37 @@ DEFUN(show_ts,
 				VTY_NEWLINE);
 			return CMD_WARNING;
 		}
+		/* Fully Specified: print and exit */
 		ts = &trx->ts[ts_nr];
 		ts_dump_vty(vty, ts);
 		return CMD_SUCCESS;
 	}
-	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
-		bts = gsm_bts_num(net, bts_nr);
+
+	if (bts && trx) {
+		/* Iterate over all TS in this TRX */
+		for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+			ts = &trx->ts[ts_nr];
+			ts_dump_vty(vty, ts);
+		}
+	} else if (bts) {
+		/* Iterate over all TRX in this BTS, TS in each TRX */
 		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
 			trx = gsm_bts_trx_num(bts, trx_nr);
 			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
 				ts = &trx->ts[ts_nr];
 				ts_dump_vty(vty, ts);
+			}
+		}
+	} else {
+		/* Iterate over all BTS, TRX in each BTS, TS in each TRX */
+		for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
+			bts = gsm_bts_num(net, bts_nr);
+			for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+				trx = gsm_bts_trx_num(bts, trx_nr);
+				for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+					ts = &trx->ts[ts_nr];
+					ts_dump_vty(vty, ts);
+				}
 			}
 		}
 	}
