@@ -101,7 +101,6 @@ static const struct value_string rp_cause_strs[] = {
 	{ 0, NULL }
 };
 
-static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms);
 
 struct gsm_sms *sms_alloc(void)
 {
@@ -1047,7 +1046,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 /* Take a SMS in gsm_sms structure and send it through an already
  * existing lchan. We also assume that the caller ensured this lchan already
  * has a SAPI3 RLL connection! */
-static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
+int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
@@ -1174,32 +1173,6 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
-			 void *handler_data, void *signal_data)
-{
-	struct gsm_subscriber *subscr;
-	struct gsm_subscriber_connection *conn;
-	struct gsm_sms *sms;
-
-	switch (signal) {
-	case S_SUBSCR_ATTACHED:
-		/* A subscriber has attached. Check if there are
-		 * any pending SMS for him to be delivered */
-		subscr = signal_data;
-		conn = connection_for_subscr(subscr);
-		if (!conn)
-			break;
-		sms = db_sms_get_unsent_for_subscr(subscr);
-		if (!sms)
-			break;
-		gsm411_send_sms(conn, sms);
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
 	if (trans->sms.sms) {
@@ -1233,7 +1206,3 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 	gsm411_release_conn(conn);
 }
 
-static __attribute__((constructor)) void on_dso_load_sms(void)
-{
-	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
-}

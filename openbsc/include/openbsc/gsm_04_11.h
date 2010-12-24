@@ -33,5 +33,7 @@ void sms_free(struct gsm_sms *sms);
 void _gsm411_sms_trans_free(struct gsm_trans *trans);
 int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 			   struct gsm_sms *sms);
+int gsm411_send_sms(struct gsm_subscriber_connection *conn,
+		    struct gsm_sms *sms);
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn);
 #endif

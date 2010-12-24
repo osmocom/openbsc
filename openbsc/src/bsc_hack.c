@@ -274,6 +274,10 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	signal(SIGPIPE, SIG_IGN);
 
+	/* start the SMS queue */
+	if (sms_queue_start(bsc_gsmnet, 5) != 0)
+		return -1;
+
 	if (daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {
