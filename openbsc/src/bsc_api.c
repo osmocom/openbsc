@@ -477,7 +477,8 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 	lchan = msg->lchan;
 	if (lchan->state != LCHAN_S_ACTIVE) {
-		LOGP(DRSL, LOGL_ERROR, "Got data in non active state. discarding.\n");
+		LOGP(DRSL, LOGL_INFO, "Got data in non active state(%s), "
+		     "discarding.\n", gsm_lchans_name(lchan->state));
 		return -1;
 	}
 
