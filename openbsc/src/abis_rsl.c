@@ -1409,7 +1409,7 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	for (sapi = 0; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
 		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
 			continue;
-		LOGP(DRSL, LOGL_NOTICE, "%s waiting for SAPI=%d to be released.\n",
+		LOGP(DRSL, LOGL_DEBUG, "%s waiting for SAPI=%d to be released.\n",
 		     gsm_lchan_name(lchan), sapi);
 		return;
 	}
