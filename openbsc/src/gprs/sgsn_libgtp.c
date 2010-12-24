@@ -325,15 +325,38 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 }
 
 /* Confirmation of an GTP ECHO request */
-static int echo_conf(int recovery)
+static int echo_conf(struct pdp_t *pdp, void *cbp, int recovery)
 {
 	if (recovery < 0) {
 		DEBUGP(DGPRS, "GTP Echo Request timed out\n");
 		/* FIXME: if version == 1, retry with version 0 */
 	} else {
 		DEBUGP(DGPRS, "GTP Rx Echo Response\n");
-		/* FIXME: check if recovery counter has incremented and
-		 * release all PDP context (if it has) */
+	}
+	return 0;
+}
+
+/* Any message received by GGSN contains a recovery IE */
+static int cb_recovery(struct sockaddr_in *peer, uint8_t recovery)
+{
+	struct sgsn_ggsn_ctx *ggsn;
+	
+	ggsn = sgsn_ggsn_ctx_by_addr(&peer->sin_addr);
+	if (!ggsn) {
+		DEBUGP(DGPRS, "Received Recovery IE for unknown GGSN\n");
+		return -EINVAL;
+	}
+
+	if (ggsn->remote_restart_ctr == -1) {
+		/* First received ECHO RESPONSE, note the restart ctr */
+		ggsn->remote_restart_ctr = recovery;
+	} else if (ggsn->remote_restart_ctr != recovery) {
+		/* counter has changed (GGSN restart): release all PDP */
+		LOGP(DGPRS, LOGL_NOTICE, "GGSN recovery (%u->%u), "
+		     "releasing all PDP contexts\n",
+		     ggsn->remote_restart_ctr, recovery);
+		ggsn->remote_restart_ctr = recovery;
+		drop_all_pdp_for_ggsn(ggsn);
 	}
 	return 0;
 }
@@ -351,7 +374,7 @@ static int cb_conf(int type, int cause, struct pdp_t *pdp, void *cbp)
 	switch (type) {
 	case GTP_ECHO_REQ:
 		/* libgtp hands us the RECOVERY number instead of a cause */
-		return echo_conf(cause);
+		return echo_conf(pdp, cbp, cause);
 	case GTP_CREATE_PDP_REQ:
 		return create_pdp_conf(pdp, cbp, cause);
 	case GTP_DELETE_PDP_REQ:
@@ -579,6 +602,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	/* Register callbackcs with libgtp */
 	gtp_set_cb_delete_context(gsn, cb_delete_context);
 	gtp_set_cb_conf(gsn, cb_conf);
+	gtp_set_cb_recovery(gsn, cb_recovery);
 	gtp_set_cb_data_ind(gsn, cb_data_ind);
 	gtp_set_cb_unsup_ind(gsn, cb_unsup_ind);
 	gtp_set_cb_extheader_ind(gsn, cb_extheader_ind);

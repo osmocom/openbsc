@@ -67,6 +67,12 @@
 #define GSM0408_T3314_SECS	44	/* force to STBY on expiry */
 #define GSM0408_T3316_SECS	44
 
+/* Section 11.3 / Table 11.2d Timers of Session Management - network side */
+#define GSM0408_T3385_SECS	8	/* wait for ACT PDP CTX REQ */
+#define GSM0408_T3386_SECS	8	/* wait for MODIFY PDP CTX ACK */
+#define GSM0408_T3395_SECS	8	/* wait for DEACT PDP CTX ACK */
+#define GSM0408_T3397_SECS	8	/* wait for DEACT AA PDP CTX ACK */
+
 extern struct sgsn_instance *sgsn;
 
 /* Protocol related stuff, should go into libosmocore */
@@ -1092,6 +1098,25 @@ static void mmctx_timer_cb(void *_mm)
 
 /* GPRS SESSION MANAGEMENT */
 
+static void pdpctx_timer_cb(void *_mm);
+
+static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
+				unsigned int seconds)
+{
+	if (bsc_timer_pending(&pdp->timer))
+		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
+			"timer %u pending\n", T, pdp->T);
+	pdp->T = T;
+	pdp->num_T_exp = 0;
+
+	/* FIXME: we should do this only once ? */
+	pdp->timer.data = pdp;
+	pdp->timer.cb = &pdpctx_timer_cb;
+
+	bsc_schedule_timer(&pdp->timer, seconds, 0);
+}
+
+
 static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
 {
 	uint8_t v[6];
@@ -1177,6 +1202,33 @@ int gsm48_tx_gsm_act_pdp_rej(struct sgsn_mm_ctx *mm, uint8_t tid,
 		msgb_tlv_put(msg, GSM48_IE_GSM_PROTO_CONF_OPT, pco_len, pco_v);
 
 	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+
+/* Section 9.5.8: Deactivate PDP Context Request */
+static int _gsm48_tx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, uint8_t tid,
+					uint8_t sm_cause)
+{
+	struct msgb *msg = gsm48_msgb_alloc();
+	struct gsm48_hdr *gh;
+	uint8_t transaction_id = tid ^ 0x8; /* flip */
+
+	DEBUGP(DMM, "<- DEACTIVATE PDP CONTEXT REQ\n");
+
+	mmctx2msgid(msg, mm);
+
+	gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_SM_GPRS | (transaction_id << 4);
+	gh->msg_type = GSM48_MT_GSM_DEACT_PDP_REQ;
+
+	msgb_v_put(msg, sm_cause);
+
+	return gsm48_gmm_sendmsg(msg, 0, mm);
+}
+int gsm48_tx_gsm_deact_pdp_req(struct sgsn_pdp_ctx *pdp, uint8_t sm_cause)
+{
+	pdpctx_timer_start(pdp, 3395, GSM0408_T3395_SECS);
+
+	return _gsm48_tx_gsm_deact_pdp_req(pdp->mm, pdp->ti, sm_cause);
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
@@ -1341,6 +1393,26 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 	return sgsn_delete_pdp_ctx(pdp);
 }
 
+/* Section 9.5.9: Deactivate PDP Context Accept */
+static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
+{
+	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_gmmh(msg);
+	uint8_t transaction_id = (gh->proto_discr >> 4);
+	struct sgsn_pdp_ctx *pdp;
+
+	DEBUGP(DMM, "-> DEACTIVATE PDP CONTEXT ACK\n");
+
+	pdp = sgsn_pdp_ctx_by_tid(mm, transaction_id);
+	if (!pdp) {
+		LOGP(DMM, LOGL_NOTICE, "Deactivate PDP Context Accept for "
+			"non-existing PDP Context (IMSI=%s, TI=%u)\n",
+			mm->imsi, transaction_id);
+		return 0;
+	}
+
+	return sgsn_delete_pdp_ctx(pdp);
+}
+
 static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1350,6 +1422,30 @@ static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 
 	return 0;
 }
+
+static void pdpctx_timer_cb(void *_pdp)
+{
+	struct sgsn_pdp_ctx *pdp = _pdp;
+
+	pdp->num_T_exp++;
+
+	switch (pdp->T) {
+	case 3395:	/* waiting for PDP CTX DEACT ACK */
+		if (pdp->num_T_exp >= 4) {
+			LOGP(DMM, LOGL_NOTICE, "T3395 expired >= 5 times\n");
+			pdp->state = PDP_STATE_INACTIVE;
+			sgsn_delete_pdp_ctx(pdp);
+			break;
+		}
+		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL); 
+		bsc_schedule_timer(&pdp->timer, GSM0408_T3395_SECS, 0);
+		break;
+	default:
+		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",
+			pdp->T);
+	}
+}
+
 
 /* GPRS Session Management */
 static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
@@ -1372,6 +1468,9 @@ static int gsm0408_rcv_gsm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		break;
 	case GSM48_MT_GSM_DEACT_PDP_REQ:
 		rc = gsm48_rx_gsm_deact_pdp_req(mmctx, msg);
+		break;
+	case GSM48_MT_GSM_DEACT_PDP_ACK:
+		rc = gsm48_rx_gsm_deact_pdp_ack(mmctx, msg);
 		break;
 	case GSM48_MT_GSM_STATUS:
 		rc = gsm48_rx_gsm_status(mmctx, msg);

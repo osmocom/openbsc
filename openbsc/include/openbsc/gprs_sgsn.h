@@ -125,6 +125,10 @@ enum pdp_ctx_state {
 	PDP_STATE_NONE,
 	PDP_STATE_CR_REQ,
 	PDP_STATE_CR_CONF,
+
+	/* 04.08 / Figure 6.2 / 6.1.2.2 */
+	PDP_STATE_INACT_PEND,
+	PDP_STATE_INACTIVE = PDP_STATE_NONE,
 };
 
 enum pdp_type {
@@ -162,6 +166,10 @@ struct sgsn_pdp_ctx {
 	uint32_t		rx_gtp_snu;
 	//uint32_t		charging_id;
 	int			reordering_reqd;
+
+	struct timer_list	timer;
+	unsigned int		T;		/* Txxxx number */
+	unsigned int		num_T_exp;	/* number of consecutive T expirations */
 };
 
 
@@ -182,10 +190,12 @@ struct sgsn_ggsn_ctx {
 	uint32_t id;
 	unsigned int gtp_version;
 	struct in_addr remote_addr;
+	int remote_restart_ctr;
 	struct gsn_t *gsn;
 };
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id);
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id);
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_addr(struct in_addr *addr);
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_find_alloc(uint32_t id);
 
 struct apn_ctx {
@@ -201,5 +211,9 @@ extern struct llist_head sgsn_apn_ctxts;
 extern struct llist_head sgsn_pdp_ctxts;
 
 uint32_t sgsn_alloc_ptmsi(void);
+
+/* High-level function to be called in case a GGSN has disappeared or
+ * ottherwise lost state (recovery procedure) */
+int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn);
 
 #endif /* _GPRS_SGSN_H */

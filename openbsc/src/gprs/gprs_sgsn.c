@@ -32,6 +32,8 @@
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/sgsn.h>
+#include <openbsc/gsm_04_08_gprs.h>
+#include <openbsc/gprs_gmm.h>
 
 extern struct sgsn_instance *sgsn;
 
@@ -240,6 +242,7 @@ struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_alloc(uint32_t id)
 
 	ggc->id = id;
 	ggc->gtp_version = 1;
+	ggc->remote_restart_ctr = -1;
 	/* if we are called from config file parse, this gsn doesn't exist yet */
 	ggc->gsn = sgsn->gsn;
 	llist_add(&ggc->list, &sgsn_ggsn_ctxts);
@@ -257,6 +260,18 @@ struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_id(uint32_t id)
 	}
 	return NULL;
 }
+
+struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_by_addr(struct in_addr *addr)
+{
+	struct sgsn_ggsn_ctx *ggc;
+
+	llist_for_each_entry(ggc, &sgsn_ggsn_ctxts, list) {
+		if (!memcmp(addr, &ggc->remote_addr, sizeof(*addr)))
+			return ggc;
+	}
+	return NULL;
+}
+
 
 struct sgsn_ggsn_ctx *sgsn_ggsn_ctx_find_alloc(uint32_t id)
 {
@@ -319,4 +334,36 @@ restart:
 	}
 
 	return ptmsi;
+}
+
+static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
+{
+	if (pdp->mm->mm_state == GMM_REGISTERED_NORMAL)
+		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL);
+	else  {
+		/* FIXME: GPRS paging in case MS is SUSPENDED */
+		LOGP(DGPRS, LOGL_NOTICE, "Hard-dropping PDP ctx due to GGSN "
+			"recovery\n");
+		sgsn_pdp_ctx_free(pdp);
+	}
+}
+
+/* High-level function to be called in case a GGSN has disappeared or
+ * ottherwise lost state (recovery procedure) */
+int drop_all_pdp_for_ggsn(struct sgsn_ggsn_ctx *ggsn)
+{
+	struct sgsn_mm_ctx *mm;
+	int num = 0;
+
+	llist_for_each_entry(mm, &sgsn_mm_ctxts, list) {
+		struct sgsn_pdp_ctx *pdp;
+		llist_for_each_entry(pdp, &mm->pdp_list, list) {
+			if (pdp->ggsn == ggsn) {
+				drop_one_pdp(pdp);
+				num++;
+			}
+		}
+	}
+
+	return num;
 }
