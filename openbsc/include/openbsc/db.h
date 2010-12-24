@@ -49,6 +49,7 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t* token);
 int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char *imei);
 int db_sync_equipment(struct gsm_equipment *equip);
+int db_subscriber_update(struct gsm_subscriber *subscriber);
 
 /* auth info */
 int db_get_authinfo_for_subscr(struct gsm_auth_info *ainfo,

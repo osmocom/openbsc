@@ -86,7 +86,7 @@ struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr)
 	subscr->use_count--;
 	DEBUGP(DREF, "subscr %s usage decreased usage to: %d\n",
 			subscr->extension, subscr->use_count);
-	if (subscr->use_count <= 0)
+	if (subscr->use_count <= 0 && !subscr->net->keep_subscr)
 		subscr_free(subscr);
 	return NULL;
 }
@@ -132,4 +132,19 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net, const char
 	}
 
 	return NULL;
+}
+
+int subscr_purge_inactive(struct gsm_network *net)
+{
+	struct gsm_subscriber *subscr, *tmp;
+	int purged = 0;
+
+	llist_for_each_entry_safe(subscr, tmp, subscr_bsc_active_subscriber(), entry) {
+		if (subscr->net == net && subscr->use_count <= 0) {
+			subscr_free(subscr);
+			purged += 1;
+		}
+	}
+
+	return purged;
 }

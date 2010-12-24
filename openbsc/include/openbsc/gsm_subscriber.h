@@ -90,6 +90,9 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
 
 char *subscr_name(struct gsm_subscriber *subscr);
 
+int subscr_purge_inactive(struct gsm_network *net);
+void subscr_update_from_db(struct gsm_subscriber *subscr);
+
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
 extern struct llist_head active_subscribers;

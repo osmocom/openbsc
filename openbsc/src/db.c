@@ -558,13 +558,35 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 	return 0;
 }
 
+static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
+{
+	const char *string;
+	string = dbi_result_get_string(result, "imsi");
+	if (string)
+		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH);
+
+	string = dbi_result_get_string(result, "tmsi");
+	if (string)
+		subscr->tmsi = tmsi_from_string(string);
+
+	string = dbi_result_get_string(result, "name");
+	if (string)
+		strncpy(subscr->name, string, GSM_NAME_LENGTH);
+
+	string = dbi_result_get_string(result, "extension");
+	if (string)
+		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
+
+	subscr->lac = dbi_result_get_uint(result, "lac");
+	subscr->authorized = dbi_result_get_uint(result, "authorized");
+}
+
 #define BASE_QUERY "SELECT * FROM Subscriber "
 struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
 					 const char *id)
 {
 	dbi_result result;
-	const char *string;
 	char *quoted;
 	struct gsm_subscriber *subscr;
 
@@ -621,24 +643,8 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	subscr = subscr_alloc();
 	subscr->net = net;
 	subscr->id = dbi_result_get_ulonglong(result, "id");
-	string = dbi_result_get_string(result, "imsi");
-	if (string)
-		strncpy(subscr->imsi, string, GSM_IMSI_LENGTH);
 
-	string = dbi_result_get_string(result, "tmsi");
-	if (string)
-		subscr->tmsi = tmsi_from_string(string);
-
-	string = dbi_result_get_string(result, "name");
-	if (string)
-		strncpy(subscr->name, string, GSM_NAME_LENGTH);
-
-	string = dbi_result_get_string(result, "extension");
-	if (string)
-		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
-
-	subscr->lac = dbi_result_get_uint(result, "lac");
-	subscr->authorized = dbi_result_get_uint(result, "authorized");
+	db_set_from_query(subscr, result);
 	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
 		subscr->lac, subscr->authorized);
@@ -647,6 +653,36 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 	get_equipment_by_subscr(subscr);
 
 	return subscr;
+}
+
+int db_subscriber_update(struct gsm_subscriber *subscr)
+{
+	char buf[32];
+	char *quoted;
+	dbi_result result;
+
+	/* Copy the id to a string as queryf with %llu is failing */
+	sprintf(buf, "%llu", subscr->id);
+	result = dbi_conn_queryf(conn,
+			BASE_QUERY
+			"WHERE id = %s", buf);
+
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to query Subscriber: %llu\n", subscr->id);
+		return -EIO;
+	}
+	if (!dbi_result_next_row(result)) {
+		DEBUGP(DDB, "Failed to find the Subscriber. %llu\n",
+			subscr->id);
+		dbi_result_free(result);
+		return -EIO;
+	}
+
+	db_set_from_query(subscr, result);
+	dbi_result_free(result);
+	get_equipment_by_subscr(subscr);
+
+	return 0;
 }
 
 int db_sync_subscriber(struct gsm_subscriber *subscriber)

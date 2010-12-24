@@ -550,6 +550,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " timer t3122 %u%s", gsmnet->T3122, VTY_NEWLINE);
 	vty_out(vty, " timer t3141 %u%s", gsmnet->T3141, VTY_NEWLINE);
 	vty_out(vty, " dtx-used %u%s", gsmnet->dtx_enabled, VTY_NEWLINE);
+	vty_out(vty, " subscriber-keep-in-ram %d%s",
+		gsmnet->keep_subscr, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -1357,6 +1359,17 @@ DEFUN(cfg_net_dtx,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->dtx_enabled = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_subscr_keep,
+      cfg_net_subscr_keep_cmd,
+      "subscriber-keep-in-ram (0|1)",
+      "Keep unused subscribers in RAM.\n"
+      "Delete unused subscribers\n" "Keep unused subscribers\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	gsmnet->keep_subscr = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -2552,6 +2565,7 @@ int bsc_vty_init(void)
 	install_element(GSMNET_NODE, &cfg_net_T3122_cmd);
 	install_element(GSMNET_NODE, &cfg_net_T3141_cmd);
 	install_element(GSMNET_NODE, &cfg_net_dtx_cmd);
+	install_element(GSMNET_NODE, &cfg_net_subscr_keep_cmd);
 	install_element(GSMNET_NODE, &cfg_net_pag_any_tch_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
