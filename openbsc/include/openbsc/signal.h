@@ -61,6 +61,7 @@ enum signal_sms {
 	S_SMS_DELIVERED,	/* A SMS has been successfully delivered to a MS */
 	S_SMS_SMMA,		/* A MS tells us it has more space available */
 	S_SMS_MEM_EXCEEDED,	/* A MS tells us it has no more space available */
+	S_SMS_UNKNOWN_ERROR,	/* A MS tells us it has an error */
 };
 
 /* SS_ABISIP signals */

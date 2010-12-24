@@ -811,8 +811,10 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		/* FIXME */
 		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, sms);
 		counter_inc(net->stats.sms.rp_err_mem);
-	} else
+	} else {
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 		counter_inc(net->stats.sms.rp_err_other);
+	}
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -832,7 +834,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
-	dispatch_signal(SS_SMS, S_SMS_SMMA, trans);
+	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
 
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
@@ -1044,6 +1046,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	transaction_id = trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DSMS, LOGL_ERROR, "No available transaction ids\n");
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 		sms_free(sms);
 		return -EBUSY;
 	}
@@ -1055,6 +1058,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DSMS, LOGL_ERROR, "No memory for trans\n");
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 		sms_free(sms);
 		/* FIXME: send some error message */
 		return -ENOMEM;
@@ -1088,6 +1092,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 		trans_free(trans);
 		sms_free(sms);
 		msgb_free(msg);
@@ -1127,6 +1132,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
 	case GSM_PAGING_BUSY:
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 		sms_free(sms);
 		rc = -ETIMEDOUT;
 		break;
@@ -1185,6 +1191,7 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
 	if (trans->sms.sms) {
 		LOGP(DSMS, LOGL_ERROR, "Transaction contains SMS.\n");
+		dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, trans->sms.sms);
 		sms_free(trans->sms.sms);
 		trans->sms.sms = NULL;
 	}
@@ -1204,6 +1211,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 				continue;
 			}
 
+			dispatch_signal(SS_SMS, S_SMS_UNKNOWN_ERROR, sms);
 			sms_free(sms);
 			trans->sms.sms = NULL;
 			trans_free(trans);
