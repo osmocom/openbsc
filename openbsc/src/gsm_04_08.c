@@ -2876,7 +2876,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
 			if (!trans->conn->lchan->abis_ip.rtp_socket) {
-				LOGP(DMNCC, LOGL_ERROR, "TCH frame for lchan != TCH_F\n");
+				DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
 				return 0;
 			}
 			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
