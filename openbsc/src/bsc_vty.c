@@ -633,8 +633,8 @@ DEFUN(show_trx,
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "Timeslot %u of TRX %u in BTS %u, phys cfg %s%s",
-		ts->nr, ts->trx->nr, ts->trx->bts->nr,
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s%s",
+		ts->trx->bts->nr, ts->trx->nr, ts->nr,
 		gsm_pchan_name(ts->pchan), VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &ts->nm_state);
