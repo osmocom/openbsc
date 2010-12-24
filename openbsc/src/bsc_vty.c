@@ -780,10 +780,9 @@ static void lchan_dump_full_vty(struct vty *vty, struct gsm_lchan *lchan)
 {
 	int idx;
 
-	vty_out(vty, "Lchan %u in Timeslot %u of TRX %u in BTS %u, Type %s%s",
-		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
-		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
-		VTY_NEWLINE);
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u: Type %s%s",
+		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		lchan->nr, gsm_lchant_name(lchan->type), VTY_NEWLINE);
 	vty_out(vty, "  Connection: %u, State: %s%s",
 		lchan->conn ? 1: 0,
 		gsm_lchans_name(lchan->state), VTY_NEWLINE);
@@ -822,11 +821,10 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 			       lchan->meas_rep_idx, 1);
 	mr =  &lchan->meas_rep[idx];
 
-	vty_out(vty, "Lchan: %u Timeslot: %u TRX: %u BTS: %u Type: %s - L1 MS Power: %u dBm "
-		     "RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
-		lchan->nr, lchan->ts->nr, lchan->ts->trx->nr,
-		lchan->ts->trx->bts->nr, gsm_lchant_name(lchan->type),
-		mr->ms_l1.pwr,
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, Lchan %u, Type %s - "
+		"L1 MS Power: %u dBm RXL-FULL-dl: %4d dBm RXL-FULL-ul: %4d dBm%s",
+		lchan->ts->trx->bts->nr, lchan->ts->trx->nr, lchan->ts->nr,
+		lchan->nr, gsm_lchant_name(lchan->type), mr->ms_l1_pwr,
 		rxlev2dbm(mr->dl.full.rx_lev),
 		rxlev2dbm(mr->ul.full.rx_lev),
 		VTY_NEWLINE);
