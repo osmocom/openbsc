@@ -637,9 +637,10 @@ struct gsmnet_stats {
 		struct counter *rp_err_other;
 	} sms;
 	struct {
-		struct counter *dialled;	/* total number of dialled calls */
-		struct counter *alerted;	/* we alerted the other end */
-		struct counter *connected;/* how many calls were accepted */
+		struct counter *mo_setup;
+		struct counter *mo_connect_ack;
+		struct counter *mt_setup;
+		struct counter *mt_connect;
 	} call;
 	struct {
 		struct counter *rf_fail;

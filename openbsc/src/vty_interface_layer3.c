@@ -589,10 +589,12 @@ DEFUN(show_stats,
 		counter_get(net->stats.sms.delivered),
 		counter_get(net->stats.sms.rp_err_mem),
 		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
-	vty_out(vty, "Calls                   : %lu dialled, %lu alerted, %lu connected%s",
-		counter_get(net->stats.call.dialled),
-		counter_get(net->stats.call.alerted),
-		counter_get(net->stats.call.connected), VTY_NEWLINE);
+	vty_out(vty, "MO Calls                : %lu setup, %lu connect ack%s",
+		counter_get(net->stats.call.mo_setup),
+		counter_get(net->stats.call.mo_connect_ack), VTY_NEWLINE);
+	vty_out(vty, "MT Calls                : %lu setup, %lu connect%s",
+		counter_get(net->stats.call.mt_setup),
+		counter_get(net->stats.call.mt_connect), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 

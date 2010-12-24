@@ -1759,6 +1759,8 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	     subscr_name(trans->subscr), trans->subscr->extension,
 	     setup.called.number);
 
+	counter_inc(trans->subscr->net->stats.call.mo_setup);
+
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
 
@@ -1833,6 +1835,8 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 		gsm48_encode_signal(msg, setup->signal);
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
+
+	counter_inc(trans->subscr->net->stats.call.mt_setup);
 
 	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
@@ -2053,6 +2057,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_REQUEST);
+	counter_inc(trans->subscr->net->stats.call.mt_connect);
 
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_CNF, &connect);
 }
@@ -2065,9 +2070,11 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 	gsm48_stop_cc_timer(trans);
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
+	counter_inc(trans->subscr->net->stats.call.mo_connect_ack);
 	
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
 	connect_ack.callref = trans->callref;
+
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_COMPL_IND,
 			    &connect_ack);
 }
