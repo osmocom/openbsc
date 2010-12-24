@@ -1063,6 +1063,28 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	return sms;
 }
 
+struct gsm_sms *db_sms_get(struct gsm_network *net, unsigned long long id)
+{
+	dbi_result result;
+	struct gsm_sms *sms;
+
+	result = dbi_conn_queryf(conn,
+		"SELECT * FROM SMS WHERE SMS.id = %llu", id);
+	if (!result)
+		return NULL;
+
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		return NULL;
+	}
+
+	sms = sms_from_result(net, result);
+
+	dbi_result_free(result);
+
+	return sms;
+}
+
 /* retrieve the next unsent SMS with ID >= min_id */
 struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id)
 {
