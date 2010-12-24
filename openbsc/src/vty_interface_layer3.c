@@ -563,6 +563,9 @@ DEFUN(show_stats,
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
 	openbsc_vty_print_statistics(vty, net);
+	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
+		counter_get(net->stats.chreq.total),
+		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
 		counter_get(net->stats.loc_upd_type.attach),
 		counter_get(net->stats.loc_upd_type.normal),
@@ -586,6 +589,10 @@ DEFUN(show_stats,
 		counter_get(net->stats.sms.delivered),
 		counter_get(net->stats.sms.rp_err_mem),
 		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
+	vty_out(vty, "Calls                   : %lu dialled, %lu alerted, %lu connected%s",
+		counter_get(net->stats.call.dialled),
+		counter_get(net->stats.call.alerted),
+		counter_get(net->stats.call.connected), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
