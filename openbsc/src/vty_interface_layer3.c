@@ -645,6 +645,16 @@ DEFUN(show_smsqueue,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smsqueue_trigger,
+      smsqueue_trigger_cmd,
+      "sms-queue trigger",
+      "SMS Queue\n" "Trigger sending messages\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_trigger(net->sms_queue);
+	return CMD_SUCCESS;
+}
 
 int bsc_vty_init_extra(void)
 {
@@ -669,6 +679,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
+	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
 
 	return 0;
 }

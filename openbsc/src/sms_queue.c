@@ -403,7 +403,7 @@ int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
 		smsq->max_pending, smsq->pending, VTY_NEWLINE);
 
 	llist_for_each_entry(pending, &smsq->pending_sms, entry)
-		vty_out(vty, " SMS Pending for Subscriber: %llu%s\n",
+		vty_out(vty, " SMS Pending for Subscriber: %llu%s",
 			pending->subscr->id, VTY_NEWLINE);
 	return 0;
 }
