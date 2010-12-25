@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 	signal(SIGPIPE, SIG_IGN);
 
 	/* start the SMS queue */
-	if (sms_queue_start(bsc_gsmnet, 5) != 0)
+	if (sms_queue_start(bsc_gsmnet, 20) != 0)
 		return -1;
 
 	if (daemonize) {

@@ -274,7 +274,7 @@ int sms_queue_start(struct gsm_network *network, int max_pending)
 
 	network->sms_queue = sms;
 	INIT_LLIST_HEAD(&sms->pending_sms);
-	sms->max_fail = 3;
+	sms->max_fail = 1;
 	sms->network = network;
 	sms->max_pending = max_pending;
 	sms->push_queue.data = sms;
