@@ -415,3 +415,16 @@ int sms_queue_set_max_pending(struct gsm_sms_queue *smsq, int max_pending)
 	smsq->max_pending = max_pending;
 	return 0;
 }
+
+int sms_queue_clear(struct gsm_sms_queue *smsq)
+{
+	struct gsm_sms_pending *pending, *tmp;
+
+	llist_for_each_entry_safe(pending, tmp, &smsq->pending_sms, entry) {
+		LOGP(DSMS, LOGL_NOTICE,
+		     "SMSqueue clearing for sub %llu\n", pending->subscr->id);
+		sms_pending_free(pending);
+	}
+
+	return 0;
+}

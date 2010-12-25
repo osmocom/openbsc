@@ -667,6 +667,17 @@ DEFUN(smsqueue_max,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smsqueue_clear,
+      smsqueue_clear_cmd,
+      "sms-queue clear",
+      "SMS Queue\n" "Clear the queue of pending SMS\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_clear(net->sms_queue);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
@@ -692,6 +703,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
+	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
 
 	return 0;
 }
