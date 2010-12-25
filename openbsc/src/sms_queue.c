@@ -190,6 +190,25 @@ static void sms_resend_pending(void *_data)
 	}
 }
 
+static struct gsm_sms *take_next_sms(struct gsm_sms_queue *smsq)
+{
+	struct gsm_sms *sms;
+
+	sms = db_sms_get_unsent_by_subscr(smsq->network, smsq->last_subscr_id, 10);
+	if (sms) {
+		smsq->last_subscr_id = sms->receiver->id + 1;
+		return sms;
+	}
+
+	/* need to wrap around */
+	smsq->last_subscr_id = 0;
+	sms = db_sms_get_unsent_by_subscr(smsq->network,
+					  smsq->last_subscr_id, 10);
+	if (sms)
+		smsq->last_subscr_id = sms->receiver->id + 1;
+	return sms;
+}
+
 /**
  * I will submit up to max_pending - pending SMS to the
  * subsystem.
@@ -206,15 +225,8 @@ static void sms_submit_pending(void *_data)
 		struct gsm_sms_pending *pending;
 		struct gsm_sms *sms;
 
-		sms = db_sms_get_unsent_by_subscr(smsq->network, smsq->last_subscr_id, 10);
 
-		/* handle wrapping around */
-		if (!sms) {
-			smsq->last_subscr_id = 0;
-			sms = db_sms_get_unsent_by_subscr(smsq->network,
-							  smsq->last_subscr_id, 10);
-		}
-
+		sms = take_next_sms(smsq);
 		if (!sms)
 			break;
 
@@ -242,7 +254,6 @@ static void sms_submit_pending(void *_data)
 			continue;
 		}
 
-		smsq->last_subscr_id = sms->receiver->id + 1;
 		smsq->pending += 1;
 		llist_add(&pending->entry, &smsq->pending_sms);
 		gsm411_send_sms_subscr(sms->receiver, sms);
