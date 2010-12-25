@@ -407,3 +407,11 @@ int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
 			pending->subscr->id, VTY_NEWLINE);
 	return 0;
 }
+
+int sms_queue_set_max_pending(struct gsm_sms_queue *smsq, int max_pending)
+{
+	LOGP(DSMS, LOGL_NOTICE, "SMSqueue old max: %d new: %d\n",
+	     smsq->max_pending, max_pending);
+	smsq->max_pending = max_pending;
+	return 0;
+}

@@ -656,6 +656,17 @@ DEFUN(smsqueue_trigger,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smsqueue_max,
+      smsqueue_max_cmd,
+      "sms-queue max-pending <1-500>",
+      "SMS Queue\n" "SMS to attempt to deliver at the same time\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_set_max_pending(net->sms_queue, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
@@ -680,6 +691,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
+	install_element(ENABLE_NODE, &smsqueue_max_cmd);
 
 	return 0;
 }
