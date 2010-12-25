@@ -217,11 +217,13 @@ static void sms_submit_pending(void *_data)
 {
 	struct gsm_sms_queue *smsq = _data;
 	int attempts = smsq->max_pending - smsq->pending;
-	int i;
+	int initialized = 0;
+	unsigned long long first_sub = 0;
+	int attempted = 0;
 
 	LOGP(DSMS, LOGL_NOTICE, "Attempting to send %d SMS\n", attempts);
 
-	for (i = 0; i < attempts; ++i) {
+	do {
 		struct gsm_sms_pending *pending;
 		struct gsm_sms *sms;
 
@@ -229,6 +231,23 @@ static void sms_submit_pending(void *_data)
 		sms = take_next_sms(smsq);
 		if (!sms)
 			break;
+
+		/*
+		 * This code needs to detect a loop. It assumes that no SMS
+		 * will vanish during the time this is executed. We will remember
+		 * the id of the first GSM subscriber we see and then will
+		 * compare this. The Database code should make sure that we will
+		 * see all other subscribers first before seeing this one again.
+		 *
+		 * It is always scary to have an infinite loop like this.
+		 */
+		if (!initialized) {
+			first_sub = sms->receiver->id;
+			initialized = 1;
+		} else if (first_sub == sms->receiver->id) {
+			sms_free(sms);
+			break;
+		}
 
 		/* no need to send a pending sms */
 		if (sms_is_in_pending(smsq, sms)) {
@@ -254,10 +273,13 @@ static void sms_submit_pending(void *_data)
 			continue;
 		}
 
+		attempted += 1;
 		smsq->pending += 1;
 		llist_add(&pending->entry, &smsq->pending_sms);
 		gsm411_send_sms_subscr(sms->receiver, sms);
-	}
+	} while (attempted < attempts);
+
+	LOGP(DSMS, LOGL_DEBUG, "SMSqueue added %d messages\n", attempted);
 }
 
 /*
