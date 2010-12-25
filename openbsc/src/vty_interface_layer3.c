@@ -46,6 +46,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/sms_queue.h>
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
@@ -633,6 +634,17 @@ DEFUN(show_stats,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_smsqueue,
+      show_smsqueue_cmd,
+      "show sms-queue",
+      SHOW_STR "Display SMSqueue statistics\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_stats(net->sms_queue, vty);
+	return CMD_SUCCESS;
+}
+
 
 int bsc_vty_init_extra(void)
 {
@@ -650,6 +662,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_ussd_notify_cmd);
 	install_element_ve(&subscriber_update_cmd);
 	install_element_ve(&show_stats_cmd);
+	install_element_ve(&show_smsqueue_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);

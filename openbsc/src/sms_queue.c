@@ -40,6 +40,8 @@
 
 #include <osmocore/talloc.h>
 
+#include <osmocom/vty/vty.h>
+
 /*
  * One pending SMS that we wait for.
  */
@@ -389,5 +391,19 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 		     sig_sms->paging_result);
 	}
 
+	return 0;
+}
+
+/* VTY helper functions */
+int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
+{
+	struct gsm_sms_pending *pending;
+
+	vty_out(vty, "SMSqueue with max_pending: %d pending: %d%s",
+		smsq->max_pending, smsq->pending, VTY_NEWLINE);
+
+	llist_for_each_entry(pending, &smsq->pending_sms, entry)
+		vty_out(vty, " SMS Pending for Subscriber: %llu%s\n",
+			pending->subscr->id, VTY_NEWLINE);
 	return 0;
 }
