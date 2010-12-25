@@ -678,6 +678,17 @@ DEFUN(smsqueue_clear,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smsqueue_fail,
+      smsqueue_fail_cmd,
+      "sms-queue max-failure <1-500>",
+      "SMS Queue\n" "Set maximum amount of failures\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_set_max_failure(net->sms_queue, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
@@ -704,6 +715,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
 	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
+	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
 
 	return 0;
 }

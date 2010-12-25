@@ -418,6 +418,14 @@ int sms_queue_set_max_pending(struct gsm_sms_queue *smsq, int max_pending)
 	return 0;
 }
 
+int sms_queue_set_max_failure(struct gsm_sms_queue *smsq, int max_fail)
+{
+	LOGP(DSMS, LOGL_NOTICE, "SMSqueue max failure old: %d new: %d\n",
+	     smsq->max_fail, max_fail);
+	smsq->max_fail = max_fail;
+	return 0;
+}
+
 int sms_queue_clear(struct gsm_sms_queue *smsq)
 {
 	struct gsm_sms_pending *pending, *tmp;

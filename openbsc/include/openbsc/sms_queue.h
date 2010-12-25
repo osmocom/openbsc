@@ -11,6 +11,7 @@ int sms_queue_trigger(struct gsm_sms_queue *);
 /* vty helper functions */
 int sms_queue_stats(struct gsm_sms_queue *, struct vty* vty);
 int sms_queue_set_max_pending(struct gsm_sms_queue *, int max);
+int sms_queue_set_max_failure(struct gsm_sms_queue *, int fail);
 int sms_queue_clear(struct gsm_sms_queue *);
 
 #endif
