@@ -219,7 +219,7 @@ static void sms_submit_pending(void *_data)
 	int attempts = smsq->max_pending - smsq->pending;
 	int initialized = 0;
 	unsigned long long first_sub = 0;
-	int attempted = 0;
+	int attempted = 0, rounds = 0;
 
 	LOGP(DSMS, LOGL_NOTICE, "Attempting to send %d SMS\n", attempts);
 
@@ -231,6 +231,8 @@ static void sms_submit_pending(void *_data)
 		sms = take_next_sms(smsq);
 		if (!sms)
 			break;
+
+		rounds += 1;
 
 		/*
 		 * This code needs to detect a loop. It assumes that no SMS
@@ -277,9 +279,9 @@ static void sms_submit_pending(void *_data)
 		smsq->pending += 1;
 		llist_add(&pending->entry, &smsq->pending_sms);
 		gsm411_send_sms_subscr(sms->receiver, sms);
-	} while (attempted < attempts);
+	} while (attempted < attempts && rounds < 1000);
 
-	LOGP(DSMS, LOGL_DEBUG, "SMSqueue added %d messages\n", attempted);
+	LOGP(DSMS, LOGL_DEBUG, "SMSqueue added %d messages in %d rounds\n", attempted, rounds);
 }
 
 /*
