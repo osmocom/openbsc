@@ -294,6 +294,8 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 {
+	int rc;
+
 	/* FIXME: Migrate pending requests from one BSC to another */
 	switch (reason) {
 	case GSM_SUBSCRIBER_UPDATE_ATTACHED:
@@ -302,6 +304,8 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		s->lac = bts->location_area_code;
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
 			subscr_name(s), s->lac);
+		rc = db_sync_subscriber(s);
+		db_subscriber_update(s);
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
@@ -309,14 +313,19 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		if (bts->location_area_code == s->lac)
 			s->lac = GSM_LAC_RESERVED_DETACHED;
 		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", subscr_name(s));
+		rc = db_sync_subscriber(s);
+		db_subscriber_update(s);
 		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:
 		fprintf(stderr, "subscr_update with unknown reason: %d\n",
 			reason);
+		rc = db_sync_subscriber(s);
+		db_subscriber_update(s);
 		break;
 	};
-	return db_sync_subscriber(s);
+
+	return rc;
 }
 
 void subscr_update_from_db(struct gsm_subscriber *sub)
