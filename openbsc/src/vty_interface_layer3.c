@@ -171,16 +171,15 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 	sms = sms_from_text(receiver, str);
 	sms->protocol_id = tp_pid;
 
-	if(!receiver->lac){
-		/* subscriber currently not attached, store in database */
-		if (db_sms_store(sms) != 0) {
-			LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
-			return CMD_WARNING;
-		}
-	} else {
-		gsm411_send_sms_subscr(receiver, sms);
+	/* store in database for the queue */
+	if (db_sms_store(sms) != 0) {
+		LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
+		sms_free(sms);
+		return CMD_WARNING;
 	}
 
+	sms_free(sms);
+	sms_queue_trigger(receiver->net->sms_queue);
 	return CMD_SUCCESS;
 }
 
