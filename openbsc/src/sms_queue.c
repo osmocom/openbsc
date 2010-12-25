@@ -152,6 +152,9 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 		     "Subscriber %llu is not reachable. Setting LAC=0.\n", pending->subscr->id);
 		pending->subscr->lac = GSM_LAC_RESERVED_DETACHED;
 		db_sync_subscriber(pending->subscr);
+
+		/* Workaround a failing sync */
+		db_subscriber_update(pending->subscr);
 	}
 
 	sms_pending_free(pending);
