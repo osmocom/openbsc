@@ -58,6 +58,7 @@ struct gsm_sms_queue {
 	struct timer_list resend_pending;
 	struct timer_list push_queue;
 	struct gsm_network *network;
+	int max_fail;
 	int max_pending;
 	int pending;
 
@@ -143,7 +144,7 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 	     pending->sms_id, pending->failed_attempts);
 
 	smsq = pending->subscr->net->sms_queue;
-	if (++pending->failed_attempts < 3)
+	if (++pending->failed_attempts < smsq->max_fail)
 		return sms_pending_resend(pending);
 
 	if (paging_error) {
@@ -270,6 +271,7 @@ int sms_queue_start(struct gsm_network *network, int max_pending)
 
 	network->sms_queue = sms;
 	INIT_LLIST_HEAD(&sms->pending_sms);
+	sms->max_fail = 3;
 	sms->network = network;
 	sms->max_pending = max_pending;
 	sms->push_queue.data = sms;
