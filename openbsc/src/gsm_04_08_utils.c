@@ -64,7 +64,7 @@ static const struct chreq chreq_type_neci1[] = {
 	{ 0xc0, 0xe0, CHREQ_T_CALL_REEST_TCH_F },
 	{ 0x68, 0xfc, CHREQ_T_CALL_REEST_TCH_H },
 	{ 0x6c, 0xfc, CHREQ_T_CALL_REEST_TCH_H_DBL },
-	{ 0xe0, 0xe0, CHREQ_T_SDCCH },
+	{ 0xe0, 0xe0, CHREQ_T_TCH_F },
 	{ 0x40, 0xf0, CHREQ_T_VOICE_CALL_TCH_H },
 	{ 0x50, 0xf0, CHREQ_T_DATA_CALL_TCH_H },
 	{ 0x00, 0xf0, CHREQ_T_LOCATION_UPD },
