@@ -106,10 +106,27 @@ static const struct gprs_llc_params llc_default_params[] = {
 LLIST_HEAD(gprs_llc_llmes);
 void *llc_tall_ctx;
 
+/* If the TLLI is foreign, return its local version */
+static inline uint32_t tlli_foreign2local(uint32_t tlli)
+{
+	uint32_t new_tlli;
+
+	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
+		new_tlli = tlli | 0x40000000;
+		DEBUGP(DLLC, "TLLI 0x%08x is foreign, converting to "
+			"local TLLI 0x%08x\n", tlli, new_tlli);
+	} else
+		new_tlli = tlli;
+
+	return new_tlli;
+}
+
 /* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
 static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint8_t sapi)
 {
 	struct gprs_llc_llme *llme;
+
+	tlli = tlli_foreign2local(tlli);
 
 	llist_for_each_entry(llme, &gprs_llc_llmes, list) {
 		if (llme->tlli == tlli || llme->old_tlli == tlli)
@@ -321,6 +338,8 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
 	if (!lle) {
 		struct gprs_llc_llme *llme;
+		LOGP(DLLC, LOGL_ERROR, "LLC TX: unknown TLLI 0x%08x, "
+			"creating LLME on the fly\n", msgb_tlli(msg));
 		llme = llme_alloc(msgb_tlli(msg));
 		lle = &llme->lle[sapi];
 	}
@@ -677,6 +696,8 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 			struct gprs_llc_llme *llme;
 			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 			llme = llme_alloc(msgb_tlli(msg));
+			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x08x, "
+				"creating LLME on the fly\n", msgb_tlli(msg));
 			lle = &llme->lle[llhp.sapi];
 		} else {
 			LOGP(DLLC, LOGL_NOTICE,

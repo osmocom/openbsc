@@ -936,9 +936,14 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 
+	/* Store new BVCI/NSEI in MM context (FIXME: delay until we ack?) */
+	msgid2mmctx(mmctx, msg);
+	/* Bump the statistics of received signalling msgs for this MM context */
+	rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
+
 	/* Update the MM context with the new RA-ID */
 	bssgp_parse_cell_id(&mmctx->ra, msgb_bcid(msg));
-	/* Update the MM context with the new TLLI */
+	/* Update the MM context with the new (i.e. foreign) TLLI */
 	mmctx->tlli = msgb_tlli(msg);
 	/* FIXME: Update the MM context with the MS radio acc capabilities */
 	/* FIXME: Update the MM context with the MS network capabilities */
