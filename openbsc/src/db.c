@@ -689,8 +689,13 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 {
 	dbi_result result;
 	char tmsi[14];
-	char *q_tmsi;
+	char *q_tmsi, *q_name, *q_extension;
 
+	dbi_conn_quote_string_copy(conn, 
+				   subscriber->name, &q_name);
+	dbi_conn_quote_string_copy(conn, 
+				   subscriber->extension, &q_extension);
+	
 	if (subscriber->tmsi != GSM_RESERVED_TMSI) {
 		sprintf(tmsi, "%u", subscriber->tmsi);
 		dbi_conn_quote_string_copy(conn,
@@ -708,14 +713,16 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 		"tmsi = %s, "
 		"lac = %i "
 		"WHERE imsi = %s ",
-		subscriber->name,
-		subscriber->extension,
+		q_name,
+		q_extension,
 		subscriber->authorized,
 		q_tmsi,
 		subscriber->lac,
 		subscriber->imsi);
 
 	free(q_tmsi);
+	free(q_name);
+	free(q_extension);
 
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to update Subscriber (by IMSI).\n");
