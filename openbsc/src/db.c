@@ -706,8 +706,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 	result = dbi_conn_queryf(conn,
 		"UPDATE Subscriber "
 		"SET updated = datetime('now'), "
-		"name = '%s', "
-		"extension = '%s', "
+		"name = %s, "
+		"extension = %s, "
 		"authorized = %i, "
 		"tmsi = %s, "
 		"lac = %i "
