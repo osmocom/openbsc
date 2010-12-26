@@ -320,3 +320,81 @@ restart:
 
 	return ptmsi;
 }
+
+int gprs_mmctx_dump(struct osmo_dumper *od)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
+		struct sgsn_mm_ctx *pdp;
+
+		/* first dump the MM context itself */
+		osmo_dump_struct(od, OD_TYPE_GPRS_MM_CTX, ctx, sizeof(*ctx));
+
+		/* dump all pdp contexts for this MM context */
+		llist_for_each_entry(pdp, &ctx->pdp_list, list)
+			osmo_dump_struct(od, OD_TYPE_GPRS_PDP_CTX, ctx, sizeof(*ctx));
+	}
+}
+
+/* pointer to the last-restored MM context */
+static struct sgsn_mm_ctx *restore_last_mm_ctx;
+
+/* callback to restore one data structure from disk */
+static int gprs_mmctx_restore(int type, uint8_t *data, int data_len)
+{
+	struct sgsn_mm_ctx *ctx;
+
+	if (type != OD_TYPE_GPRS_MM_CTX)
+		return -EINVAL;
+	if (sizeof(*ctx) != data_len)
+		return -EMSGSIZE;
+
+	ctx = talloc_zero(tall_bsc_ctx, struct sgsn_mm_ctx);
+	if (!ctx)
+		return -ENOMEM;
+
+	memcpy(ctx, data, sizeof(*llme));
+
+	ctx->ctrg = rate_ctr_group_alloc(ctx, &mmctx_ctrg_desc, tlli);
+	INIT_LLIST_HEAD(&ctx->pdp_list);
+
+	llist_add(&ctx->list, &sgsn_mm_ctxts);
+
+	restore_last_mm_ctx = ctx;
+
+	return 0;
+}
+
+static int gprs_pdpctx_restore(int type, uint8_t *data, int data_len)
+{
+	struct sgsn_pdp_ctx *pdp;
+
+	if (type != OD_TYPE_GPRS_PDP_CTX)
+		return -EINVAL;
+
+	if (sizeof(*pdp) != data_len)
+		return -EMSGSIZE;
+
+	pdp = sgsn_pdp_ctx_by_nsapi(mm, nsapi);
+	if (pdp)
+		return -EEXIST;
+
+	pdp = talloc_zero(tall_bsc_ctx, struct sgsn_pdp_ctx);
+	if (!pdp)
+		return -ENOMEM;
+
+	/* FIXME: how to restore the reference to the MM context? */
+	pdp->mm = restore_last_mm_ctx;
+	if (!pdp->mm) {
+		talloc_free(pdp);
+		return -EIO;
+	}
+
+	pdp->ctrg = rate_ctr_group_alloc(pdp, &pdpctx_ctrg_desc, nsapi);
+
+	llist_add(&pdp->list, &mm->pdp_list);
+	llist_add(&pdp->g_list, &sgsn_pdp_ctxts);
+
+	return pdp;
+}

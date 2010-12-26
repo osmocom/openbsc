@@ -851,3 +851,31 @@ int gprs_llc_init(const char *cipher_plugin_path)
 {
 	return gprs_cipher_load(cipher_plugin_path);
 }
+
+
+int gprs_llc_dump(struct osmo_dumper *od)
+{
+	llist_for_each_entry(llme, &gprs_llc_llmes, list)
+		osmo_dump_struct(od, OD_TYPE_LLC_ME, llme, sizeof(*llme));
+}
+
+/* callback to restore one data structure from disk */
+static int gprs_llc_restore(int type, uint8_t *data, int data_len)
+{
+	struct gprs_llc_llme *llme;
+
+	if (type != OD_TYPE_LLC_ME)
+		return -EINVAL;
+	if (sizeof(*llme) != data_len)
+		return -EMSGSIZE;
+
+	llme = talloc_zero(llc_tall_ctx, struct gprs_llc_llme);
+	if (!llme)
+		return -ENOMEM;
+
+	memcpy(llme, data, sizeof(*llme));
+
+	llist_add(&llme->list, &gprs_llc_llmes);
+
+	return 0;
+}
