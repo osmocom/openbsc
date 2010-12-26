@@ -738,6 +738,7 @@ int db_sync_equipment(struct gsm_equipment *equip)
 {
 	dbi_result result;
 	unsigned char *cm2, *cm3;
+	char *q_imei;
 	u_int8_t classmark1;
 
 	memcpy(&classmark1, &equip->classmark1, sizeof(classmark1));
@@ -755,6 +756,7 @@ int db_sync_equipment(struct gsm_equipment *equip)
 				   equip->classmark2_len, &cm2);
 	dbi_conn_quote_binary_copy(conn, equip->classmark3,
 				   equip->classmark3_len, &cm3);
+	dbi_conn_quote_string_copy(conn, equip->imei, &q_imei);
 
 	result = dbi_conn_queryf(conn,
 		"UPDATE Equipment SET "
@@ -762,11 +764,12 @@ int db_sync_equipment(struct gsm_equipment *equip)
 			"classmark1 = %u, "
 			"classmark2 = %s, "
 			"classmark3 = %s "
-		"WHERE imei = '%s' ",
-		classmark1, cm2, cm3, equip->imei);
+		"WHERE imei = %s ",
+		classmark1, cm2, cm3, q_imei);
 
 	free(cm2);
 	free(cm3);
+	free(q_imei);
 
 	if (!result) {
 		LOGP(DDB, LOGL_ERROR, "Failed to update Equipment\n");
