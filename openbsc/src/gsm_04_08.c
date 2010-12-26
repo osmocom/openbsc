@@ -1333,7 +1333,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 	unsigned char *data;
 
 	if (trans)
-		if (trans->conn)
+		if (trans->conn && trans->conn->lchan)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %x sub %s) "
 				"Sending '%s' to MNCC.\n",
 				trans->conn->lchan->ts->trx->bts->nr,
