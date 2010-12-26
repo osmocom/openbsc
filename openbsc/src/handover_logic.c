@@ -357,7 +357,7 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
 
 	if (!old_rs) {
-		LOGP(DHO, LOGL_ERROR, "no RTP socekt for old_lchan\n");
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for old_lchan\n");
 		return -EIO;
 	}
 
