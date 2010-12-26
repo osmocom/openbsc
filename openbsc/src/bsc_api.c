@@ -617,11 +617,6 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 {
 	int destruct = 1;
 
-	/* now give up all channels */
-	if (conn->lchan == lchan)
-		conn->lchan = NULL;
-	if (conn->ho_lchan == lchan)
-		conn->ho_lchan = NULL;
 	if (conn->secondary_lchan == lchan) {
 		bsc_del_timer(&conn->T10);
 		conn->secondary_lchan = NULL;
@@ -631,12 +626,16 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 				 NULL);
 	}
 
-	lchan->conn = NULL;
-
 	/* clear the connection now */
 	if (bsc->clear_request)
 		destruct = bsc->clear_request(conn, 0);
 
+	/* now give up all channels */
+	if (conn->lchan == lchan)
+		conn->lchan = NULL;
+	if (conn->ho_lchan == lchan)
+		conn->ho_lchan = NULL;
+	lchan->conn = NULL;
 
 	gsm0808_clear(conn);
 
