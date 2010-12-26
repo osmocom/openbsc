@@ -246,7 +246,7 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 /* GSM 04.08 HANDOVER COMPLETE has been received on new channel */
 static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 {
-	struct gsm_network *net = new_lchan->ts->trx->bts->network;
+	struct gsm_network *net;
 	struct bsc_handover *ho;
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
@@ -255,6 +255,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 		return -ENODEV;
 	}
 
+	net = new_lchan->ts->trx->bts->network;
 	LOGP(DHO, LOGL_INFO, "Subscriber %s HO from BTS %u->%u on ARFCN "
 	     "%u->%u\n", subscr_name(ho->old_lchan->conn->subscr),
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
