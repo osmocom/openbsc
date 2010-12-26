@@ -542,7 +542,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
-		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
+		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEISV);
 		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI, create if not found */
@@ -562,7 +562,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 			conn->loc_operation->waiting_for_imsi = 1;
 		}
 		/* we always want the IMEI, too */
-		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
+		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEISV);
 		conn->loc_operation->waiting_for_imei = 1;
 		break;
 	case GSM_MI_TYPE_IMEI:
