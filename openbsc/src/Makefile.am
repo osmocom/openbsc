@@ -35,7 +35,7 @@ libvty_a_SOURCES = common_vty.c
 
 libmgcp_a_SOURCES = mgcp/mgcp_protocol.c mgcp/mgcp_network.c mgcp/mgcp_vty.c
 
-bsc_hack_SOURCES = bsc_hack.c bsc_init.c bsc_vty.c vty_interface_layer3.c
+bsc_hack_SOURCES = bsc_hack.c bsc_init.c bsc_vty.c vty_interface_layer3.c sms_queue.c
 bsc_hack_LDADD = libmsc.a libbsc.a libvty.a libmsc.a \
 		-ldl -ldbi $(LIBCRYPT) $(LIBOSMOVTY_LIBS)
 

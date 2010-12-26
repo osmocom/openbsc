@@ -61,6 +61,7 @@ enum signal_sms {
 	S_SMS_DELIVERED,	/* A SMS has been successfully delivered to a MS */
 	S_SMS_SMMA,		/* A MS tells us it has more space available */
 	S_SMS_MEM_EXCEEDED,	/* A MS tells us it has no more space available */
+	S_SMS_UNKNOWN_ERROR,	/* A MS tells us it has an error */
 };
 
 /* SS_ABISIP signals */
@@ -140,6 +141,8 @@ struct paging_signal_data {
 	struct gsm_subscriber *subscr;
 	struct gsm_bts *bts;
 
+	int paging_result;
+
 	/* NULL in case the paging didn't work */
 	struct gsm_subscriber_connection *conn;
 };
@@ -168,6 +171,15 @@ struct challoc_signal_data {
 
 struct rf_signal_data {
 	struct gsm_network *net;
+};
+
+struct sms_signal_data {
+	/* The transaction where this occured */
+	struct gsm_trans *trans;
+	/* Can be NULL for SMMA */
+	struct gsm_sms *sms;
+	/* int paging result. Only the ones with > 0 */
+	int paging_result;
 };
 
 enum signal_ns {

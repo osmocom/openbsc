@@ -63,8 +63,9 @@ int db_sync_lastauthtuple_for_subscr(struct gsm_auth_tuple *atuple,
 
 /* SMS store-and-forward */
 int db_sms_store(struct gsm_sms *sms);
+struct gsm_sms *db_sms_get(struct gsm_network *net, unsigned long long id);
 struct gsm_sms *db_sms_get_unsent(struct gsm_network *net, unsigned long long min_id);
-struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id);
+struct gsm_sms *db_sms_get_unsent_by_subscr(struct gsm_network *net, unsigned long long min_subscr_id, unsigned int failed);
 struct gsm_sms *db_sms_get_unsent_for_subscr(struct gsm_subscriber *subscr);
 int db_sms_mark_sent(struct gsm_sms *sms);
 int db_sms_inc_deliver_attempts(struct gsm_sms *sms);

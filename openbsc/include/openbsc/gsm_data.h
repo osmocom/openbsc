@@ -5,6 +5,7 @@
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
+struct gsm_sms_queue;
 
 enum gsm_phys_chan_config {
 	GSM_PCHAN_NONE,
@@ -83,6 +84,7 @@ enum gsm_paging_event {
 	GSM_PAGING_SUCCEEDED,
 	GSM_PAGING_EXPIRED,
 	GSM_PAGING_OOM,
+	GSM_PAGING_BUSY,
 };
 
 enum bts_gprs_mode {
@@ -733,6 +735,7 @@ struct gsm_network {
 
 	/* subscriber related features */
 	int keep_subscr;
+	struct gsm_sms_queue *sms_queue;
 };
 
 #define SMS_HDR_SIZE	128

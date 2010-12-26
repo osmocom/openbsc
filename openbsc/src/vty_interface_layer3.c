@@ -20,6 +20,7 @@
  */
 
 #include <stdlib.h>
+#include <limits.h>
 #include <unistd.h>
 #include <sys/types.h>
 
@@ -45,6 +46,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/chan_alloc.h>
+#include <openbsc/sms_queue.h>
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
@@ -61,6 +63,8 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 	if (subscr->extension)
 		vty_out(vty, "    Extension: %s%s", subscr->extension,
 			VTY_NEWLINE);
+	vty_out(vty, "    LAC: %d/0x%x%s",
+		subscr->lac, subscr->lac, VTY_NEWLINE);
 	if (subscr->imsi)
 		vty_out(vty, "    IMSI: %s%s", subscr->imsi, VTY_NEWLINE);
 	if (subscr->tmsi != GSM_RESERVED_TMSI)
@@ -123,7 +127,7 @@ DEFUN(sms_send_pend,
 	int id = 0;
 
 	while (1) {
-		sms = db_sms_get_unsent_by_subscr(gsmnet, id);
+		sms = db_sms_get_unsent_by_subscr(gsmnet, id, UINT_MAX);
 		if (!sms)
 			break;
 
@@ -167,16 +171,15 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 	sms = sms_from_text(receiver, str);
 	sms->protocol_id = tp_pid;
 
-	if(!receiver->lac){
-		/* subscriber currently not attached, store in database */
-		if (db_sms_store(sms) != 0) {
-			LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
-			return CMD_WARNING;
-		}
-	} else {
-		gsm411_send_sms_subscr(receiver, sms);
+	/* store in database for the queue */
+	if (db_sms_store(sms) != 0) {
+		LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
+		sms_free(sms);
+		return CMD_WARNING;
 	}
 
+	sms_free(sms);
+	sms_queue_trigger(receiver->net->sms_queue);
 	return CMD_SUCCESS;
 }
 
@@ -630,6 +633,60 @@ DEFUN(show_stats,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_smsqueue,
+      show_smsqueue_cmd,
+      "show sms-queue",
+      SHOW_STR "Display SMSqueue statistics\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_stats(net->sms_queue, vty);
+	return CMD_SUCCESS;
+}
+
+DEFUN(smsqueue_trigger,
+      smsqueue_trigger_cmd,
+      "sms-queue trigger",
+      "SMS Queue\n" "Trigger sending messages\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_trigger(net->sms_queue);
+	return CMD_SUCCESS;
+}
+
+DEFUN(smsqueue_max,
+      smsqueue_max_cmd,
+      "sms-queue max-pending <1-500>",
+      "SMS Queue\n" "SMS to attempt to deliver at the same time\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_set_max_pending(net->sms_queue, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
+
+DEFUN(smsqueue_clear,
+      smsqueue_clear_cmd,
+      "sms-queue clear",
+      "SMS Queue\n" "Clear the queue of pending SMS\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_clear(net->sms_queue);
+	return CMD_SUCCESS;
+}
+
+DEFUN(smsqueue_fail,
+      smsqueue_fail_cmd,
+      "sms-queue max-failure <1-500>",
+      "SMS Queue\n" "Set maximum amount of failures\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+
+	sms_queue_set_max_failure(net->sms_queue, atoi(argv[0]));
+	return CMD_SUCCESS;
+}
 
 int bsc_vty_init_extra(void)
 {
@@ -647,12 +704,17 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&subscriber_ussd_notify_cmd);
 	install_element_ve(&subscriber_update_cmd);
 	install_element_ve(&show_stats_cmd);
+	install_element_ve(&show_smsqueue_cmd);
 
 	install_element(ENABLE_NODE, &ena_subscr_name_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_extension_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
+	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
+	install_element(ENABLE_NODE, &smsqueue_max_cmd);
+	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
+	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
 
 	return 0;
 }

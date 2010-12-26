@@ -101,7 +101,6 @@ static const struct value_string rp_cause_strs[] = {
 	{ 0, NULL }
 };
 
-static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms);
 
 struct gsm_sms *sms_alloc(void)
 {
@@ -117,6 +116,18 @@ void sms_free(struct gsm_sms *sms)
 		subscr_put(sms->receiver);
 
 	talloc_free(sms);
+}
+
+static void send_signal(int sig_no,
+			struct gsm_trans *trans,
+			struct gsm_sms *sms,
+			int paging_result)
+{
+	struct sms_signal_data sig;
+	sig.trans = trans;
+	sig.sms = sms;
+	sig.paging_result = paging_result;
+	dispatch_signal(SS_SMS, sig_no, &sig);
 }
 
 /*
@@ -422,7 +433,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 	/* dispatch a signal to tell higher level about it */
-	dispatch_signal(SS_SMS, S_SMS_SUBMITTED, gsms);
+	send_signal(S_SMS_SUBMITTED, NULL, gsms, 0);
 
 	return 0;
 }
@@ -614,7 +625,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 
 	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
 
-	dispatch_signal(SS_SMS, 0, gsms);
+	/* FIXME: This looks very wrong */
+	send_signal(0, NULL, gsms, 0);
 
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
@@ -754,7 +766,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	/* mark this SMS as sent in database */
 	db_sms_mark_sent(sms);
 
-	dispatch_signal(SS_SMS, S_SMS_DELIVERED, sms);
+	send_signal(S_SMS_DELIVERED, trans, sms, 0);
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -807,12 +819,14 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 
 	if (cause == GSM411_RP_CAUSE_MT_MEM_EXCEEDED) {
 		/* MS has not enough memory to store the message.  We need
-		 * to store this in our database and wati for a SMMA message */
+		 * to store this in our database and wait for a SMMA message */
 		/* FIXME */
-		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
+		send_signal(S_SMS_MEM_EXCEEDED, trans, sms, 0);
 		counter_inc(net->stats.sms.rp_err_mem);
-	} else
+	} else {
+		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		counter_inc(net->stats.sms.rp_err_other);
+	}
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -832,7 +846,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
-	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
+	send_signal(S_SMS_SMMA, trans, NULL, 0);
 
 	/* check for more messages for this subscriber */
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
@@ -1032,7 +1046,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 /* Take a SMS in gsm_sms structure and send it through an already
  * existing lchan. We also assume that the caller ensured this lchan already
  * has a SAPI3 RLL connection! */
-static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
+int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
@@ -1044,6 +1058,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	transaction_id = trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DSMS, LOGL_ERROR, "No available transaction ids\n");
+		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
 		sms_free(sms);
 		return -EBUSY;
 	}
@@ -1055,6 +1070,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 			    transaction_id, new_callref++);
 	if (!trans) {
 		LOGP(DSMS, LOGL_ERROR, "No memory for trans\n");
+		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
 		sms_free(sms);
 		/* FIXME: send some error message */
 		return -ENOMEM;
@@ -1088,6 +1104,7 @@ static int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sm
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
+		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 		trans_free(trans);
 		sms_free(sms);
 		msgb_free(msg);
@@ -1126,6 +1143,8 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_OOM:
+	case GSM_PAGING_BUSY:
+		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, event);
 		sms_free(sms);
 		rc = -ETIMEDOUT;
 		break;
@@ -1154,36 +1173,11 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
-			 void *handler_data, void *signal_data)
-{
-	struct gsm_subscriber *subscr;
-	struct gsm_subscriber_connection *conn;
-	struct gsm_sms *sms;
-
-	switch (signal) {
-	case S_SUBSCR_ATTACHED:
-		/* A subscriber has attached. Check if there are
-		 * any pending SMS for him to be delivered */
-		subscr = signal_data;
-		conn = connection_for_subscr(subscr);
-		if (!conn)
-			break;
-		sms = db_sms_get_unsent_for_subscr(subscr);
-		if (!sms)
-			break;
-		gsm411_send_sms(conn, sms);
-		break;
-	default:
-		break;
-	}
-	return 0;
-}
-
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
 	if (trans->sms.sms) {
 		LOGP(DSMS, LOGL_ERROR, "Transaction contains SMS.\n");
+		send_signal(S_SMS_UNKNOWN_ERROR, trans, trans->sms.sms, 0);
 		sms_free(trans->sms.sms);
 		trans->sms.sms = NULL;
 	}
@@ -1203,6 +1197,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 				continue;
 			}
 
+			send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
 			sms_free(sms);
 			trans->sms.sms = NULL;
 			trans_free(trans);
@@ -1211,7 +1206,3 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 	gsm411_release_conn(conn);
 }
 
-static __attribute__((constructor)) void on_dso_load_sms(void)
-{
-	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
-}
