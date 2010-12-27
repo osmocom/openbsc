@@ -302,8 +302,12 @@ void lchan_free(struct gsm_lchan *lchan)
 
 
 	if (lchan->conn) {
+		struct lchan_signal_data sig;
+
 		/* We might kill an active channel... */
-		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
+		sig.lchan = lchan;
+		sig.mr = NULL;
+		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
 	}
 
 

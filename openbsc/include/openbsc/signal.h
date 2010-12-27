@@ -182,6 +182,13 @@ struct sms_signal_data {
 	int paging_result;
 };
 
+struct lchan_signal_data {
+	/* The lchan the signal happened on */
+	struct gsm_lchan *lchan;
+	/* Measurement reports on this lchan */
+	struct gsm_meas_rep *mr;
+};
+
 enum signal_ns {
 	S_NS_RESET,
 	S_NS_BLOCK,

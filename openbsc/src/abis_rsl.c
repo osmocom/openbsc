@@ -51,6 +51,15 @@
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 
+static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
+			      struct gsm_meas_rep *resp)
+{
+	struct lchan_signal_data sig;
+	sig.lchan = lchan;
+	sig.mr = resp;
+	dispatch_signal(SS_LCHAN, sig_no, &sig);
+}
+
 static u_int8_t mdisc_by_msgtype(u_int8_t msg_type)
 {
 	/* mask off the transparent bit ? */
@@ -813,7 +822,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		msg->lchan->rqd_ta = 0;
 	}
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
+	send_lchan_signal(S_LCHAN_ACTIVATE_ACK, msg->lchan, NULL);
 
 	return 0;
 }
@@ -843,7 +852,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
+	send_lchan_signal(S_LCHAN_ACTIVATE_NACK, msg->lchan, NULL);
 
 	lchan_free(msg->lchan);
 	return 0;
@@ -986,7 +995,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 
 	print_meas_rep(mr);
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, mr);
+	send_lchan_signal(S_LCHAN_MEAS_REP, msg->lchan, mr);
 
 	return 0;
 }
@@ -1007,7 +1016,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	else
 		DEBUGPC(DRSL, "\n");
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
+	send_lchan_signal(S_LCHAN_HANDOVER_DETECT, msg->lchan, NULL);
 
 	return 0;
 }
