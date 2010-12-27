@@ -80,7 +80,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
 					const char *imsi);
 int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason);
-void subscr_put_channel(struct gsm_subscriber_connection *conn);
+void subscr_put_channel(struct gsm_subscriber *subscr);
 void subscr_get_channel(struct gsm_subscriber *subscr,
                         int type, gsm_cbfn *cbfn, void *param);
 struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net,
