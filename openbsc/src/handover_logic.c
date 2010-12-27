@@ -149,7 +149,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	return 0;
 }
 
-void bsc_clear_handover(struct gsm_subscriber_connection *conn)
+void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan)
 {
 	struct bsc_handover *ho;
 
@@ -166,7 +166,9 @@ void bsc_clear_handover(struct gsm_subscriber_connection *conn)
 
 	conn->ho_lchan->conn = NULL;
 	conn->ho_lchan = NULL;
-	lchan_release(ho->new_lchan, 0, 1);
+
+	if (free_lchan)
+		lchan_release(ho->new_lchan, 0, 1);
 
 	bsc_del_timer(&ho->T3103);
 	llist_del(&ho->list);
