@@ -262,7 +262,17 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, int link_id, int allow_sach)
 {
-	uint8_t sapi = link_id & 0x7;
+	uint8_t sapi;
+
+
+	if (!conn->lchan) {
+		LOGP(DMSC, LOGL_ERROR,
+		     "Called submit dtap without an lchan.\n");
+		msgb_free(msg);
+		return -1;
+	}
+
+	sapi = link_id & 0x7;
 	msg->lchan = conn->lchan;
 	msg->trx = msg->lchan->ts->trx;
 
