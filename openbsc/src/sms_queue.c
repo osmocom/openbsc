@@ -253,7 +253,7 @@ static void sms_submit_pending(void *_data)
 		/* no need to send a pending sms */
 		if (sms_is_in_pending(smsq, sms)) {
 			LOGP(DSMS, LOGL_DEBUG,
-			     "SMSqueue with pending sms: %llu\n. Skipping", sms->id);
+			     "SMSqueue with pending sms: %llu. Skipping\n", sms->id);
 			sms_free(sms);
 			continue;
 		}
