@@ -388,11 +388,13 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			   void *handler_data, void *signal_data)
 {
+	struct lchan_signal_data *lchan_data;
 	struct gsm_lchan *lchan;
 
+	lchan_data = signal_data;
 	switch (subsys) {
 	case SS_LCHAN:
-		lchan = signal_data;
+		lchan = lchan_data->lchan;
 		switch (signal) {
 		case S_LCHAN_ACTIVATE_ACK:
 			return ho_chan_activ_ack(lchan);

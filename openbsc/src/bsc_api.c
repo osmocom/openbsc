@@ -602,28 +602,17 @@ static int bsc_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 {
 	struct bsc_api *bsc;
 	struct gsm_lchan *lchan;
+	struct lchan_signal_data *lchan_data;
 
 	if (subsys != SS_LCHAN)
 		return 0;
 
-	/*
-	 * Check if it is any of the signals we handle. We do want
-	 * to do this early as we will need to check the lchan and
-	 * the bsc api in it.
-	 */
-	switch (signal) {
-	case S_LCHAN_UNEXPECTED_RELEASE:
-	case S_LCHAN_ACTIVATE_ACK:
-	case S_LCHAN_ACTIVATE_NACK:
-		break;
-	default:
-		return -1;
-	}
 
-	lchan = (struct gsm_lchan *)signal_data;
-	if (!lchan || !lchan->conn)
+	lchan_data = signal_data;
+	if (!lchan_data->lchan || !lchan_data->lchan->conn)
 		return 0;
 
+	lchan = lchan_data->lchan;
 	bsc = lchan->ts->trx->bts->network->bsc_api;
 	if (!bsc)
 		return 0;

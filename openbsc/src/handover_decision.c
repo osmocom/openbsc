@@ -277,15 +277,15 @@ static int process_meas_rep(struct gsm_meas_rep *mr)
 static int ho_dec_sig_cb(unsigned int subsys, unsigned int signal,
 			   void *handler_data, void *signal_data)
 {
-	struct gsm_meas_rep *mr;
+	struct lchan_signal_data *lchan_data;
 
 	if (subsys != SS_LCHAN)
 		return 0;
 
+	lchan_data = signal_data;
 	switch (signal) {
 	case S_LCHAN_MEAS_REP:
-		mr = signal_data;
-		process_meas_rep(mr);
+		process_meas_rep(lchan_data->mr);
 		break;
 	}
 

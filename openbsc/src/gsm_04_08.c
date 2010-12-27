@@ -1157,12 +1157,15 @@ static int gsm48_rx_rr_ciph_m_compl(struct gsm_subscriber_connection *conn, stru
 /* Chapter 9.1.16 Handover complete */
 static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 {
+	struct lchan_signal_data sig;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	DEBUGP(DRR, "HANDOVER COMPLETE cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, msg->lchan);
+	sig.lchan = msg->lchan;
+	sig.mr = NULL;
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
 	/* FIXME: release old channel */
 
 	return 0;
@@ -1171,12 +1174,15 @@ static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 /* Chapter 9.1.17 Handover Failure */
 static int gsm48_rx_rr_ho_fail(struct msgb *msg)
 {
+	struct lchan_signal_data sig;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 
 	DEBUGP(DRR, "HANDOVER FAILED cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, msg->lchan);
+	sig.lchan = msg->lchan;
+	sig.mr = NULL;
+	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, &sig);
 	/* FIXME: release allocated new channel */
 
 	return 0;
