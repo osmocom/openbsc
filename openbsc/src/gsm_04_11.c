@@ -139,7 +139,7 @@ static void gsm411_release_conn(struct gsm_subscriber_connection *conn)
 	if (!conn)
 		return;
 
-	subscr_put_channel(conn);
+	subscr_put_channel(conn->subscr);
 }
 
 struct msgb *gsm411_msgb_alloc(void)
@@ -1186,8 +1186,10 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 {
+	struct gsm_subscriber *subscr;
 	struct gsm_trans *trans, *tmp;
 
+	subscr = subscr_get(conn->subscr);
 	llist_for_each_entry_safe(trans, tmp, &conn->bts->network->trans_list, entry)
 		if (trans->conn == conn) {
 			struct gsm_sms *sms = trans->sms.sms;
@@ -1202,6 +1204,7 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 			trans_free(trans);
 		}
 
-	gsm411_release_conn(conn);
+	subscr_put_channel(subscr);
+	subscr_put(subscr);
 }
 

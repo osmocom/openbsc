@@ -208,7 +208,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	}
 }
 
-void subscr_put_channel(struct gsm_subscriber_connection *conn)
+void subscr_put_channel(struct gsm_subscriber *subscr)
 {
 	/*
 	 * FIXME: Continue with other requests now... by checking
@@ -228,8 +228,8 @@ void subscr_put_channel(struct gsm_subscriber_connection *conn)
 	 * will listen to the paging requests before we timeout
 	 */
 
-	if (conn->subscr && !llist_empty(&conn->subscr->requests))
-		subscr_send_paging_request(conn->subscr);
+	if (subscr && !llist_empty(&subscr->requests))
+		subscr_send_paging_request(subscr);
 }
 
 
