@@ -1187,10 +1187,13 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_subscriber *subscr;
+	struct gsm_network *net;
 	struct gsm_trans *trans, *tmp;
 
 	subscr = subscr_get(conn->subscr);
-	llist_for_each_entry_safe(trans, tmp, &conn->bts->network->trans_list, entry)
+	net = conn->bts->network;
+
+	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry)
 		if (trans->conn == conn) {
 			struct gsm_sms *sms = trans->sms.sms;
 			if (!sms) {
