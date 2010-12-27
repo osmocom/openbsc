@@ -927,6 +927,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 
 	/* Validate SRES */
 	if (memcmp(conn->sec_operation->atuple.sres, ar->sres,4)) {
+		int rc;
 		gsm_cbfn *cb = conn->sec_operation->cb;
 
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
@@ -936,8 +937,9 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
 			   NULL, conn, conn->sec_operation->cb_data);
 
+		rc = gsm48_tx_mm_auth_rej(conn);
 		release_security_operation(conn);
-		return gsm48_tx_mm_auth_rej(conn);
+		return rc;
 	}
 
 	DEBUGPC(DMM, "OK\n");
