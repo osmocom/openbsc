@@ -520,7 +520,7 @@ int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 int gsm0808_clear(struct gsm_subscriber_connection *conn)
 {
 	if (conn->ho_lchan)
-		bsc_clear_handover(conn);
+		bsc_clear_handover(conn, 1);
 
 	if (conn->secondary_lchan)
 		lchan_release(conn->secondary_lchan, 0, 1);
@@ -633,8 +633,10 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 	/* now give up all channels */
 	if (conn->lchan == lchan)
 		conn->lchan = NULL;
-	if (conn->ho_lchan == lchan)
+	if (conn->ho_lchan == lchan) {
+		bsc_clear_handover(conn, 0);
 		conn->ho_lchan = NULL;
+	}
 	lchan->conn = NULL;
 
 	gsm0808_clear(conn);
