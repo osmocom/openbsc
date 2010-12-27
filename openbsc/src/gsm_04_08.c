@@ -3048,13 +3048,12 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				if (transt == trans ||
 				    transt->subscr != subscr)
 					continue;
-				DEBUGP(DCC, "(bts %d trx - ts - ti -- sub %s) "
+				DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
 					"Received '%s' from MNCC with "
 					"unallocated channel, paging already "
-					"started.\n",
-					trans->conn->lchan->ts->trx->bts->nr,
+					"started for lac %d.\n",
 					data->called.number,
-					get_mncc_name(msg_type));
+					get_mncc_name(msg_type), subscr->lac);
 				subscr_put(subscr);
 				trans_free(trans);
 				return 0;
