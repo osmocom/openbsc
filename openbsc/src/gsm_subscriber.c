@@ -103,6 +103,9 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	request->cbfn(hooknum, event, msg, data, request->param);
 	subscr->in_callback = 0;
 
+	if (event != GSM_PAGING_SUCCEEDED)
+		subscr_put_channel(subscr);
+
 	subscr_put(subscr);
 	talloc_free(request);
 	return 0;
