@@ -345,3 +345,14 @@ void subscr_update_from_db(struct gsm_subscriber *sub)
 {
 	db_subscriber_update(sub);
 }
+
+int subscr_pending_requests(struct gsm_subscriber *sub)
+{
+	struct subscr_request *req;
+	int pending = 0;
+
+	llist_for_each_entry(req, &sub->requests, entry)
+		pending += 1;
+
+	return pending;
+}

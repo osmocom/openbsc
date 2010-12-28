@@ -49,7 +49,7 @@
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
-static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
+static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr, int pending)
 {
 	int rc;
 	struct gsm_auth_info ainfo;
@@ -95,6 +95,9 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 			hexdump(atuple.kc, sizeof(atuple.kc)),
 			VTY_NEWLINE);
 	}
+	if (pending)
+		vty_out(vty, "    Pending: %d%s",
+			subscr_pending_requests(subscr), VTY_NEWLINE);
 
 	vty_out(vty, "    Use count: %u%s", subscr->use_count, VTY_NEWLINE);
 }
@@ -110,7 +113,7 @@ DEFUN(show_subscr_cache,
 
 	llist_for_each_entry(subscr, &active_subscribers, entry) {
 		vty_out(vty, "  Subscriber:%s", VTY_NEWLINE);
-		subscr_dump_full_vty(vty, subscr);
+		subscr_dump_full_vty(vty, subscr, 0);
 	}
 
 	return CMD_SUCCESS;
@@ -220,7 +223,7 @@ DEFUN(show_subscr,
 		return CMD_WARNING;
 	}
 
-	subscr_dump_full_vty(vty, subscr);
+	subscr_dump_full_vty(vty, subscr, 1);
 
 	subscr_put(subscr);
 
