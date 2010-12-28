@@ -103,8 +103,19 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	request->cbfn(hooknum, event, msg, data, request->param);
 	subscr->in_callback = 0;
 
-	if (event != GSM_PAGING_SUCCEEDED)
+	if (event != GSM_PAGING_SUCCEEDED) {
+		/*
+		 *  This is a workaround for a bigger issue. We have
+		 *  issued paging that might involve multiple BTSes
+		 *  and one of them have failed now. We will stop the
+		 *  other paging requests as well as the next timeout
+		 *  would work on the next paging request and the queue
+		 *  will do bad things. This should be fixed by counting
+		 *  the outstanding results.
+		 */
+		paging_request_stop(NULL, subscr, NULL, NULL);
 		subscr_put_channel(subscr);
+	}
 
 	subscr_put(subscr);
 	talloc_free(request);
