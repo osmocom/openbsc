@@ -475,5 +475,6 @@ int sms_queue_clear(struct gsm_sms_queue *smsq)
 		sms_pending_free(pending);
 	}
 
+	smsq->pending = 0;
 	return 0;
 }
