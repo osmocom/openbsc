@@ -540,18 +540,23 @@ DEFUN(ena_subscr_a3a8,
 		minlen = maxlen = A38_COMP128_KEY_LEN;
 	} else {
 		/* Unknown method */
+		subscr_put(subscr);
 		return CMD_WARNING;
 	}
 
 	if (ki_str) {
 		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
-		if ((rc > maxlen) || (rc < minlen))
+		if ((rc > maxlen) || (rc < minlen)) {
+			subscr_put(subscr);
 			return CMD_WARNING;
+		}
 		ainfo.a3a8_ki_len = rc;
 	} else {
 		ainfo.a3a8_ki_len = 0;
-		if (minlen)
+		if (minlen) {
+			subscr_put(subscr);
 			return CMD_WARNING;
+		}
 	}
 
 	rc = db_sync_authinfo_for_subscr(
@@ -560,6 +565,7 @@ DEFUN(ena_subscr_a3a8,
 
 	/* the last tuple probably invalid with the new auth settings */
 	db_sync_lastauthtuple_for_subscr(NULL, subscr);
+	subscr_put(subscr);
 
 	return rc ? CMD_WARNING : CMD_SUCCESS;
 }
