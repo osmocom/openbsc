@@ -89,6 +89,7 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
 					     const char *imsi);
 
 int subscr_pending_requests(struct gsm_subscriber *subscr);
+int subscr_pending_clear(struct gsm_subscriber *subscr);
 
 char *subscr_name(struct gsm_subscriber *subscr);
 
