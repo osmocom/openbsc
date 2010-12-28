@@ -316,6 +316,13 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	 * operation taking place on the subscriber connection.
 	 */
 	release_loc_updating_req(conn);
+
+	/* We might need to cancel the paging response or such. */
+	if (conn->sec_operation && conn->sec_operation->cb) {
+		conn->sec_operation->cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
+					NULL, conn, conn->sec_operation->cb_data);
+	}
+
 	release_security_operation(conn);
 	release_anchor(conn);
 
