@@ -356,3 +356,18 @@ int subscr_pending_requests(struct gsm_subscriber *sub)
 
 	return pending;
 }
+
+int subscr_pending_clear(struct gsm_subscriber *sub)
+{
+	int deleted = 0;
+	struct subscr_request *req, *tmp;
+
+	llist_for_each_entry_safe(req, tmp, &sub->requests, entry) {
+		subscr_put(req->subscr);
+		llist_del(&req->entry);
+		talloc_free(req);
+		deleted += 1;
+	}
+
+	return deleted;
+}
