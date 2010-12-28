@@ -276,7 +276,7 @@ static void sms_submit_pending(void *_data)
 
 		attempted += 1;
 		smsq->pending += 1;
-		llist_add(&pending->entry, &smsq->pending_sms);
+		llist_add_tail(&pending->entry, &smsq->pending_sms);
 		gsm411_send_sms_subscr(sms->receiver, sms);
 	} while (attempted < attempts && rounds < 1000);
 
