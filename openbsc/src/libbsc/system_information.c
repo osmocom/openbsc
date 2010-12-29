@@ -595,7 +595,7 @@ static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
 		Cell Identity, LSA ID, Selection Parameter */
-	rc = rest_octets_si4(restoct, &si_info);
+	rc = rest_octets_si4(restoct, &si_info, output + GSM_MACBLOCK_LEN - restoct);
 
 	return l2_plen + 1 + rc;
 }

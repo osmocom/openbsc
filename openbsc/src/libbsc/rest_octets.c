@@ -141,13 +141,13 @@ static int append_lsa_params(struct bitvec *bv,
 }
 
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
-int rest_octets_si4(uint8_t *data, const struct gsm48_si_ro_info *si4)
+int rest_octets_si4(uint8_t *data, const struct gsm48_si_ro_info *si4, int len)
 {
 	struct bitvec bv;
 
 	memset(&bv, 0, sizeof(bv));
 	bv.data = data;
-	bv.data_len = 10; /* FIXME: up to ? */
+	bv.data_len = len;
 
 	/* SI4 Rest Octets O */
 	append_selection_params(&bv, &si4->selection_params);
