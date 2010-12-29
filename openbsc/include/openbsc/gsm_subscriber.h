@@ -93,6 +93,7 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
 int subscr_pending_requests(struct gsm_subscriber *subscr);
 int subscr_pending_clear(struct gsm_subscriber *subscr);
 int subscr_pending_dump(struct gsm_subscriber *subscr, struct vty *vty);
+int subscr_pending_kick(struct gsm_subscriber *subscr);
 
 char *subscr_name(struct gsm_subscriber *subscr);
 
