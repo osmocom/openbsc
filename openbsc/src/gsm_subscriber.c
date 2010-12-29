@@ -402,3 +402,9 @@ int subscr_pending_dump(struct gsm_subscriber *sub, struct vty *vty)
 
 	return 0;
 }
+
+int subscr_pending_kick(struct gsm_subscriber *sub)
+{
+	subscr_put_channel(sub);
+	return 0;
+}
