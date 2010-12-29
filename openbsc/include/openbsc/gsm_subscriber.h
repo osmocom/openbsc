@@ -16,6 +16,8 @@
 #define GSM_SUBSCRIBER_FIRST_CONTACT	0x00000001
 #define tmsi_from_string(str) strtoul(str, NULL, 10)
 
+struct vty;
+
 struct gsm_equipment {
 	long long unsigned int id;
 	char imei[GSM_IMEI_LENGTH];
@@ -90,6 +92,7 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net,
 
 int subscr_pending_requests(struct gsm_subscriber *subscr);
 int subscr_pending_clear(struct gsm_subscriber *subscr);
+int subscr_pending_dump(struct gsm_subscriber *subscr, struct vty *vty);
 
 char *subscr_name(struct gsm_subscriber *subscr);
 
