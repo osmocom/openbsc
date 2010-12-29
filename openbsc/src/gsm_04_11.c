@@ -1131,7 +1131,7 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 	int rc = 0;
 
 	DEBUGP(DSMS, "paging_cb_send_sms(hooknum=%u, event=%u, msg=%p,"
-		"conn=%p, sms=%p)\n", hooknum, event, msg, conn, sms);
+		"conn=%p, sms=%p/id: %llu)\n", hooknum, event, msg, conn, sms, sms->id);
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
@@ -1147,6 +1147,8 @@ static int paging_cb_send_sms(unsigned int hooknum, unsigned int event,
 		sms_free(sms);
 		rc = -ETIMEDOUT;
 		break;
+	default:
+		LOGP(DSMS, LOGL_ERROR, "Unhandled paging event: %d\n", event);
 	}
 
 	return rc;
