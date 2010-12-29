@@ -798,7 +798,34 @@ DEFUN(ussd_dump,
 	return CMD_SUCCESS;
 }
 
+DEFUN(smscb,
+      smscb_cmd,
+      "smscb-command <0-255> <0-255> HEX",
+      "Send SMSCB\n" "BTS Nr\n" "CB Cmd Type\n" "Message\n")
+{
+	uint8_t hex[86];
+	struct gsm_network *network;
+	struct gsm_bts *bts;
+	int rc;
 
+ 	network = gsmnet_from_vty(vty);
+	bts = gsm_bts_num(network, atoi(argv[0]));
+	if (!bts) {
+		vty_out(vty, "BTS %d was not found.%s", atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	rc = hexparse(argv[2], hex, sizeof(hex));
+	if (rc < 0) {
+		vty_out(vty, "Parsing the message failed.\n");
+		return CMD_WARNING;
+	}
+
+	/* check channel config */
+	rsl_sms_cb_command(bts, RSL_CHAN_SDCCH4_ACCH, atoi(argv[1]),
+			   hex, rc);
+	return CMD_SUCCESS;
+}
 
 int bsc_vty_init_extra(void)
 {
@@ -834,6 +861,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ussd_add_cmd);
 	install_element(ENABLE_NODE, &ussd_clear_cmd);
 	install_element(ENABLE_NODE, &ussd_dump_cmd);
+	install_element(ENABLE_NODE, &smscb_cmd);
 
 	return 0;
 }

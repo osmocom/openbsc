@@ -324,7 +324,8 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 
 static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 {
-	int rc;
+	int rc, offset = 0;
+	struct gsm48_chan_desc *cd;
 	struct gsm48_system_information_type_4 *si4 =
 		(struct gsm48_system_information_type_4 *) output;
 
@@ -344,13 +345,23 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	si4->rach_control = bts->si_common.rach_control;
 
 	/* Optional: CBCH Channel Description + CBCH Mobile Allocation */
+	if (!bts->c0->ts[0].hopping.enabled) {
+		cd = (struct gsm48_chan_desc *) si4->data;
+		cd->h0.tsc = bts->tsc;
+		cd->h0.h = 0;
+		cd->h0.arfcn_high = (bts->c0->arfcn & 0x3ff) >> 8;
+		cd->h0.arfcn_low = bts->c0->arfcn & 0xff;
+		offset = 4;
+	} else {
+		offset = 0;
+	}
 
-	si4->header.l2_plen = (l2_plen << 2) | 1;
+	si4->header.l2_plen = ((l2_plen + offset)<< 2) | 1;
 
 	/* SI4 Rest Octets (10.5.2.35), containing
 		Optional Power offset, GPRS Indicator,
 		Cell Identity, LSA ID, Selection Parameter */
-	rc = rest_octets_si4(si4->data, &si_info);
+	rc = rest_octets_si4(si4->data + offset, &si_info, 10 - offset);
 
 	return sizeof(*si4) + rc;
 }

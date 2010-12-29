@@ -56,7 +56,7 @@ struct gsm48_si_ro_info {
 int rest_octets_si3(u_int8_t *data, const struct gsm48_si_ro_info *si3);
 
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
-int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4);
+int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4, int len);
 
 enum pbcch_carrier_type {
 	PBCCH_BCCH,
