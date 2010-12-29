@@ -3216,6 +3216,8 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 	if (silent_call_reroute(conn, msg))
 		return silent_call_rx(conn, msg);
+	if (ussd_call_reroute(conn, msg))
+		return ussd_call_rx(conn, msg);
 	
 	switch (pdisc) {
 	case GSM48_PDISC_CC:

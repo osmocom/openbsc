@@ -762,6 +762,44 @@ DEFUN(smsqueue_fail,
 	return CMD_SUCCESS;
 }
 
+DEFUN(ussd_add,
+      ussd_add_cmd,
+      "ussd add NR HEX",
+      "USSD Custom Messages\n" "Add\n" "USSD query\n" "Hex String\n")
+{
+	uint8_t data[256];
+	int len;
+
+	len = hexparse(argv[1], data, 255);
+	if (len < 0) {
+		vty_out(vty, "Can not parse the string.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	ussd_parse_mapping(argv[0], data, len);
+	return CMD_SUCCESS;
+}
+
+DEFUN(ussd_clear,
+      ussd_clear_cmd,
+      "ussd clear NR",
+      "USSD Custom Messages\n" "Clear\n" "USSD query\n")
+{
+	ussd_clear_mapping(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(ussd_dump,
+      ussd_dump_cmd,
+      "ussd dump",
+      "USSD Custom Messages\n" "Dump\n")
+{
+	ussd_dump_mapping(vty);
+	return CMD_SUCCESS;
+}
+
+
+
 int bsc_vty_init_extra(void)
 {
 	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
@@ -792,6 +830,10 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
 	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
 	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
+
+	install_element(ENABLE_NODE, &ussd_add_cmd);
+	install_element(ENABLE_NODE, &ussd_clear_cmd);
+	install_element(ENABLE_NODE, &ussd_dump_cmd);
 
 	return 0;
 }

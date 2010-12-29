@@ -254,6 +254,10 @@ struct gsm_subscriber_connection {
 	int silent_call;
 	int put_channel;
 
+	int ussd_sequence;
+	int ussd_cur_seq;
+	const char *ussd_number;
+
 	/* bsc structures */
 	struct osmo_bsc_sccp_con *sccp_con;
 
