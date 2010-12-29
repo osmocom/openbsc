@@ -1436,6 +1436,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			/* Assign lchan */
 			if (!transt->conn) {
 				transt->conn = conn;
+				conn->put_channel = 1;
 			}
 			/* send SETUP request to called party */
 			gsm48_cc_tx_setup(transt, &transt->cc.msg);
