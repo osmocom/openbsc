@@ -58,9 +58,20 @@ struct subscr_request {
 	/* the requested channel type */
 	int channel_type;
 
+	/* what did we do */
+	int state;
+
 	/* the callback data */
 	gsm_cbfn *cbfn;
 	void *param;
+};
+
+enum {
+	REQ_STATE_INITIAL,
+	REQ_STATE_QUEUED,
+	REQ_STATE_PAGED,
+	REQ_STATE_FAILED_START,
+	REQ_STATE_DISPATCHED,
 };
 
 /*
@@ -98,6 +109,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	 * the subscr_put_channel work as required...
 	 */
 	request = (struct subscr_request *)subscr->requests.next;
+	request->state = REQ_STATE_DISPATCHED;
 	llist_del(&request->entry);
 	subscr->in_callback = 1;
 	request->cbfn(hooknum, event, msg, data, request->param);
@@ -178,11 +190,13 @@ static void subscr_send_paging_request(struct gsm_subscriber *subscr)
 	assert(!llist_empty(&subscr->requests));
 
 	request = (struct subscr_request *)subscr->requests.next;
+	request->state = REQ_STATE_PAGED;
 	rc = paging_request(subscr->net, subscr, request->channel_type,
 			    subscr_paging_cb, subscr);
 
 	/* paging failed, quit now */
 	if (rc <= 0) {
+		request->state = REQ_STATE_FAILED_START;
 		subscr_paging_cb(GSM_HOOK_RR_PAGING, GSM_PAGING_BUSY,
 				 NULL, NULL, subscr);
 	}
@@ -206,6 +220,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	request->channel_type = type;
 	request->cbfn = cbfn;
 	request->param = param;
+	request->state = REQ_STATE_INITIAL;
 
 	/*
 	 * FIXME: We might be able to assign more than one
@@ -219,6 +234,7 @@ void subscr_get_channel(struct gsm_subscriber *subscr,
 	} else {
 		/* this will be picked up later, from subscr_put_channel */
 		llist_add_tail(&request->entry, &subscr->requests);
+		request->state = REQ_STATE_QUEUED;
 	}
 }
 
