@@ -95,9 +95,12 @@ void trans_free(struct gsm_trans *trans)
 		break;
 	}
 
-	if (!trans->conn && trans->subscr && trans->subscr->net) {
-		/* Stop paging on all bts' */
-		paging_request_stop(NULL, trans->subscr, NULL, NULL);
+	/* FIXME: implement a sane way to stop this. */
+	if (!trans->conn && trans->paging_request) {
+		LOGP(DNM, LOGL_ERROR,
+		     "Transaction freed while paging for sub: %llu\n",
+		     trans->subscr->id);
+		trans->paging_request = NULL;
 	}
 
 	if (trans->subscr)

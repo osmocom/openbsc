@@ -29,6 +29,9 @@ struct gsm_trans {
 	/* if traffic channel receive was requested */
 	int tch_recv;
 
+	/* is thats one paging? */
+	struct gsm_network **paging_request;
+
 	union {
 		struct {
 

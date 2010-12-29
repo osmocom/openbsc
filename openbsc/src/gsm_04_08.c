@@ -1407,17 +1407,15 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
 static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 			      struct msgb *msg, void *_conn, void *param)
 {
+	int found = 0;
 	struct gsm_subscriber_connection *conn = _conn;
-	struct gsm_subscriber *subscr = param;
+	struct gsm_network **paging_request = param, *net;
 	struct gsm_trans *transt, *tmp;
-	struct gsm_network *net;
 
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
 
-	if (!subscr)
-		return -EINVAL;
-	net = subscr->net;
+	net = *paging_request;
 	if (!net) {
 		DEBUGP(DCC, "Error Network not set!\n");
 		return -EINVAL;
@@ -1425,16 +1423,18 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 	/* check all tranactions (without lchan) for subscriber */
 	llist_for_each_entry_safe(transt, tmp, &net->trans_list, entry) {
-		if (transt->subscr != subscr || transt->conn)
+		if (transt->paging_request != paging_request || transt->conn)
 			continue;
 		switch (event) {
 		case GSM_PAGING_SUCCEEDED:
 			if (!conn) // paranoid
 				break;
 			DEBUGP(DCC, "Paging subscr %s succeeded!\n",
-				subscr->extension);
+				transt->subscr->extension);
+			found = 1;
 			/* Assign lchan */
 			if (!transt->conn) {
+				transt->paging_request = NULL;
 				transt->conn = conn;
 				conn->put_channel = 1;
 			}
@@ -1444,17 +1444,29 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 		case GSM_PAGING_EXPIRED:
 		case GSM_PAGING_BUSY:
 			DEBUGP(DCC, "Paging subscr %s expired!\n",
-				subscr->extension);
+				transt->subscr->extension);
 			/* Temporarily out of order */
+			found = 1;
 			mncc_release_ind(transt->subscr->net, transt,
 					 transt->callref,
 					 GSM48_CAUSE_LOC_PRN_S_LU,
 					 GSM48_CC_CAUSE_DEST_OOO);
 			transt->callref = 0;
+			transt->paging_request = NULL;
 			trans_free(transt);
 			break;
 		}
 	}
+
+	talloc_free(paging_request);
+
+	/*
+	 * FIXME: The queue needs to be kicked. This is likely to go through a RF
+	 * failure and then the subscr will be poke again. This needs a lot of fixing
+	 * in the subscriber queue code.
+	 */
+	if (!found && conn)
+		conn->put_channel = 1;
 	return 0;
 }
 
@@ -3070,7 +3082,16 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
 			/* Get a channel */
-			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, subscr);
+			trans->paging_request = talloc_zero(subscr->net, struct gsm_network*);
+			if (!trans->paging_request) {
+				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
+				subscr_put(subscr);
+				trans_free(trans);
+				return 0;
+			}
+
+			*trans->paging_request = subscr->net;
+			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, trans->paging_request);
 
 			subscr_put(subscr);
 			return 0;
