@@ -104,3 +104,4 @@ int main() {
 /* stubs */
 void input_event(void) {}
 void nm_state_event(void) {}
+void vty_out() {}

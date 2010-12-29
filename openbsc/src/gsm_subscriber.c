@@ -28,6 +28,8 @@
 
 #include <osmocore/talloc.h>
 
+#include <osmocom/vty/vty.h>
+
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
@@ -386,4 +388,17 @@ int subscr_pending_clear(struct gsm_subscriber *sub)
 	}
 
 	return deleted;
+}
+
+int subscr_pending_dump(struct gsm_subscriber *sub, struct vty *vty)
+{
+	struct subscr_request *req;
+
+	vty_out(vty, "Pending Requests for Subscriber %llu.%s", sub->id, VTY_NEWLINE);
+	llist_for_each_entry(req, &sub->requests, entry) {
+		vty_out(vty, "Channel type: %d State: %d Sub: %llu.%s",
+			req->channel_type, req->state, req->subscr->id, VTY_NEWLINE);
+	}
+
+	return 0;
 }

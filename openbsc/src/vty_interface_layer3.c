@@ -502,6 +502,27 @@ DEFUN(ena_subscr_clear,
 	return CMD_SUCCESS;
 }
 
+DEFUN(ena_subscr_pend,
+      ena_subscr_pend_cmd,
+      "subscriber " SUBSCR_TYPES " ID show-pending",
+	SUBSCR_HELP "Clear the paging requests for this subscriber\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	subscr_pending_dump(subscr, vty);
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 #define A3A8_ALG_TYPES "(none|xor|comp128v1)"
 #define A3A8_ALG_HELP 			\
 	"Use No A3A8 algorithm\n"	\
@@ -742,6 +763,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_authorized_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_a3a8_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_clear_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_pend_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
