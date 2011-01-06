@@ -29,6 +29,7 @@
 struct gsm_bts;
 struct gsm_lchan;
 struct gsm_subscriber;
+struct gsm_bts_trx_ts;
 
 
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
