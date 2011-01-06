@@ -657,7 +657,6 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 int db_subscriber_update(struct gsm_subscriber *subscr)
 {
 	char buf[32];
-	char *quoted;
 	dbi_result result;
 
 	/* Copy the id to a string as queryf with %llu is failing */
