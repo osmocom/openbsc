@@ -260,18 +260,56 @@ static int find_msg_pointers(struct msgb *msg, struct mgcp_msg_ptr *ptrs, int pt
 	return found;
 }
 
+/**
+ * We have a null terminated string with the endpoint name here. We only
+ * support two kinds. Simple ones as seen on the BSC level and the ones
+ * seen on the trunk side.
+ */
+static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
+					     const char *mgcp)
+{
+	char *rest = NULL;
+	int trunk, endp, mgcp_endp;
+
+	trunk = strtoul(mgcp + 6, &rest, 10);
+	if (rest == NULL || rest[0] != '/') {
+		LOGP(DMGCP, LOGL_ERROR, "Wrong trunk name '%s'\n", mgcp);
+		return NULL;
+	}
+
+	endp = strtoul(rest + 1, &rest, 10);
+	if (rest == NULL || rest[0] != '@') {
+		LOGP(DMGCP, LOGL_ERROR, "Wrong trunk name '%s'\n", mgcp);
+		return NULL;
+	}
+
+	/* signalling is on timeslot 1 */
+	if (endp == 1)
+		return NULL;
+
+	mgcp_endp = mgcp_timeslot_to_endpoint(trunk, endp);
+	if (mgcp_endp < 1 || mgcp_endp >= cfg->number_endpoints) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to find endpoint '%s'\n", mgcp);
+	}
+
+	return &cfg->endpoints[mgcp_endp];
+}
+
 static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *mgcp)
 {
 	char *endptr = NULL;
 	unsigned int gw = INT_MAX;
 
-	gw = strtoul(mgcp, &endptr, 16);
-	if (gw == 0 || gw >= cfg->number_endpoints || strcmp(endptr, "@mgw") != 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
-		return NULL;
+	if (strncmp(mgcp, "ds/e1", 5) == 0) {
+		return find_e1_endpoint(cfg, mgcp);
+	} else {
+		gw = strtoul(mgcp, &endptr, 16);
+		if (gw > 0 && gw < cfg->number_endpoints && strcmp(endptr, "@mgw") == 0)
+			return &cfg->endpoints[gw];
 	}
 
-	return &cfg->endpoints[gw];
+	LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
+	return NULL;
 }
 
 int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
