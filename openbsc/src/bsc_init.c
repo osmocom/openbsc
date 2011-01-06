@@ -589,7 +589,6 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
 	struct nm_nack_signal_data *nack;
-	u_int8_t *msg_type;
 
 	switch (signal) {
 	case S_NM_SW_ACTIV_REP:
