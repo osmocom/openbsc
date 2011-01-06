@@ -46,6 +46,7 @@ enum signal_subsystems {
 	SS_IPAC_NWL,
 	SS_RF,
 	SS_MSC,
+	SS_HO,
 };
 
 /* SS_PAGING signals */
@@ -209,6 +210,16 @@ enum signal_msc {
 struct osmo_msc_data;
 struct msc_signal_data {
 	struct osmo_msc_data *data;
+};
+
+/* handover */
+enum signal_ho {
+	S_HANDOVER_ACK,
+};
+
+struct ho_signal_data {
+	struct gsm_lchan *old_lchan;
+	struct gsm_lchan *new_lchan;
 };
 
 

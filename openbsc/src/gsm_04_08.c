@@ -1452,6 +1452,60 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 
 static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable);
 
+/* handle audio path for handover */
+static int handle_ho_signal(unsigned int subsys, unsigned int signal,
+			    void *handler_data, void *signal_data)
+{
+	struct rtp_socket *old_rs, *new_rs, *other_rs;
+	struct ho_signal_data *sig = signal_data;
+
+	if (subsys != SS_HO || signal != S_HANDOVER_ACK)
+		return 0;
+
+	if (ipacc_rtp_direct) {
+		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
+		return 0;
+	}
+
+	/* RTP Proxy mode */
+	new_rs = sig->new_lchan->abis_ip.rtp_socket;
+	old_rs = sig->old_lchan->abis_ip.rtp_socket;
+
+	if (!new_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
+		return -EIO;
+	}
+
+	rsl_ipacc_mdcx_to_rtpsock(sig->new_lchan);
+
+	if (!old_rs) {
+		LOGP(DHO, LOGL_ERROR, "no RTP socket for old_lchan\n");
+		return -EIO;
+	}
+
+	/* copy rx_action and reference to other sock */
+	new_rs->rx_action = old_rs->rx_action;
+	new_rs->tx_action = old_rs->tx_action;
+	new_rs->transmit = old_rs->transmit;
+
+	switch (sig->old_lchan->abis_ip.rtp_socket->rx_action) {
+	case RTP_PROXY:
+		other_rs = old_rs->proxy.other_sock;
+		rtp_socket_proxy(new_rs, other_rs);
+		/* delete reference to other end socket to prevent
+		 * rtp_socket_free() from removing the inverse reference */
+		old_rs->proxy.other_sock = NULL;
+		break;
+	case RTP_RECV_UPSTREAM:
+		new_rs->receive = old_rs->receive;
+		break;
+	case RTP_NONE:
+		break;
+	}
+
+	return 0;
+}
+
 /* some other part of the code sends us a signal */
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
@@ -1470,6 +1524,24 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_ABISIP_CRCX_ACK:
+		/* in case we don't use direct BTS-to-BTS RTP */
+		/* the BTS has successfully bound a TCH to a local ip/port,
+		 * which means we can connect our UDP socket to it */
+		if (lchan->abis_ip.rtp_socket) {
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+		}
+
+		lchan->abis_ip.rtp_socket = rtp_socket_create();
+		if (!lchan->abis_ip.rtp_socket)
+			return -EIO;
+
+		rc = rtp_socket_connect(lchan->abis_ip.rtp_socket,
+				   lchan->abis_ip.bound_ip,
+				   lchan->abis_ip.bound_port);
+		if (rc < 0)
+			return -EIO;
+
 		/* check if any transactions on this lchan still have
 		 * a tch_recv_mncc request pending */
 		net = lchan->ts->trx->bts->network;
@@ -1479,6 +1551,14 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				tch_recv_mncc(net, trans->callref, 1);
 			}
 		}
+		break;
+	case S_ABISIP_DLCX_IND:
+		/* the BTS tells us a RTP stream has been disconnected */
+		if (lchan->abis_ip.rtp_socket) {
+			rtp_socket_free(lchan->abis_ip.rtp_socket);
+			lchan->abis_ip.rtp_socket = NULL;
+		}
+
 		break;
 	}
 
@@ -3226,5 +3306,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
+	register_signal_handler(SS_HO, handle_ho_signal, NULL);
 	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }
