@@ -50,7 +50,7 @@ static struct mncc_sock_state *g_state;
 /* input from CC code into mncc_sock */
 void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 {
-	struct gsm_mncc *mncc_in = msgb_data(msg);
+	struct gsm_mncc *mncc_in = (struct gsm_mncc *) msgb_data(msg);
 	int msg_type = mncc_in->msg_type;
 
 	/* Check if we currently have a MNCC handler connected */
