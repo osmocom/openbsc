@@ -51,7 +51,7 @@ extern const char *openbsc_copyright;
 static int daemonize = 0;
 
 extern void bsc_vty_init(void);
-extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
+extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, struct msgb *), const char *cfg_file);
 
 static void print_usage()
 {

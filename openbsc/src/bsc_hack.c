@@ -54,7 +54,7 @@ static int use_mncc_sock = 0;
 #define DB_SYNC_INTERVAL	60, 0
 static struct timer_list db_sync_timer;
 
-extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
+extern int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 				 const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
 

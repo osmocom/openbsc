@@ -165,6 +165,6 @@ void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg);
 int int_mncc_recv(struct gsm_network *net, struct msgb *msg);
 
 /* input from CC code into mncc_sock */
-void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg);
+int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg);
 
 #endif

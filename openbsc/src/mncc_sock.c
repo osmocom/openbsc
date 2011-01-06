@@ -48,7 +48,7 @@ struct mncc_sock_state {
 static struct mncc_sock_state *g_state;
 
 /* input from CC code into mncc_sock */
-void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
+int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 {
 	struct gsm_mncc *mncc_in = (struct gsm_mncc *) msgb_data(msg);
 	int msg_type = mncc_in->msg_type;
@@ -69,7 +69,7 @@ void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 		}
 		/* free the original message */
 		msgb_free(msg);
-		return;
+		return -1;
 	}
 
 	/* FIXME: check for some maximum queue depth? */
@@ -77,6 +77,7 @@ void mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	/* Actually enqueue the message and mark socket write need */
 	msgb_enqueue(&net->upqueue, msg);
 	g_state->conn_bfd.when |= BSC_FD_WRITE;
+	return 0;
 }
 
 void mncc_sock_write_pending(void)
