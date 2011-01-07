@@ -272,14 +272,14 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 	int trunk, endp, mgcp_endp;
 
 	trunk = strtoul(mgcp + 6, &rest, 10);
-	if (rest == NULL || rest[0] != '/') {
+	if (rest == NULL || rest[0] != '/' || trunk < 1) {
 		LOGP(DMGCP, LOGL_ERROR, "Wrong trunk name '%s'\n", mgcp);
 		return NULL;
 	}
 
 	endp = strtoul(rest + 1, &rest, 10);
 	if (rest == NULL || rest[0] != '@') {
-		LOGP(DMGCP, LOGL_ERROR, "Wrong trunk name '%s'\n", mgcp);
+		LOGP(DMGCP, LOGL_ERROR, "Wrong endpoint name '%s'\n", mgcp);
 		return NULL;
 	}
 
@@ -287,7 +287,7 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 	if (endp == 1)
 		return NULL;
 
-	mgcp_endp = mgcp_timeslot_to_endpoint(trunk, endp);
+	mgcp_endp = mgcp_timeslot_to_endpoint(trunk - 1, endp);
 	if (mgcp_endp < 1 || mgcp_endp >= cfg->number_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to find endpoint '%s'\n", mgcp);
 	}

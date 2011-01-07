@@ -27,7 +27,7 @@ static struct msgb *create_auep1()
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 158663169 ds/e1-0/2@172.16.6.66 MGCP 1.0\r\n");
+	int len = sprintf((char *)msg->data, "AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n");
 	msg->l2h = msgb_put(msg, len);
 	return msg;
 }
@@ -37,7 +37,7 @@ static struct msgb *create_auep2()
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 18983213 ds/e1-1/1@172.16.6.66 MGCP 1.0\r\n");
+	int len = sprintf((char *)msg->data, "AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n");
 	msg->l2h = msgb_put(msg, len);
 	return msg;
 }
