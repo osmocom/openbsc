@@ -67,7 +67,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
         }
 
 	mgcp->l2h = msgb_put(mgcp, ret);
-	msc_queue_write(data->msc_con, mgcp, IPAC_PROTO_MGCP);
+	msc_queue_write(data->msc_con, mgcp, IPAC_PROTO_MGCP_OLD);
 	return 0;
 }
 
@@ -223,7 +223,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
-	} else if (hh->proto == IPAC_PROTO_MGCP) {
+	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
 		mgcp_forward(data, msg);
 	}
 

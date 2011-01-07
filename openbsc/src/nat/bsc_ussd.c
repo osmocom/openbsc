@@ -281,7 +281,7 @@ static int forward_ussd(struct sccp_connections *con, const struct ussd_request 
 	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
 
 	msg->l2h = msgb_put(msg, 1);
-	msg->l2h[0] = IPAC_MSGT_SCCP_STATE;
+	msg->l2h[0] = IPAC_MSGT_SCCP_OLD;
 
 	/* fill out the data */
 	state = (struct ipac_msgt_sccp_state *) msgb_put(msg, sizeof(*state));

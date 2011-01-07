@@ -14,14 +14,21 @@ struct ipaccess_head {
 	u_int8_t data[0];
 } __attribute__ ((packed));
 
+struct ipaccess_head_ext {
+	uint8_t proto;
+	uint8_t data[0];
+} __attribute__ ((packed));
+
 enum ipaccess_proto {
 	IPAC_PROTO_RSL		= 0x00,
 	IPAC_PROTO_IPACCESS	= 0xfe,
 	IPAC_PROTO_SCCP		= 0xfd,
 	IPAC_PROTO_OML		= 0xff,
 
+
 	/* OpenBSC extensions */
-	IPAC_PROTO_MGCP		= 0xfc,
+	IPAC_PROTO_OSMO		= 0xee,
+	IPAC_PROTO_MGCP_OLD	= 0xfc,
 };
 
 enum ipaccess_msgtype {
@@ -32,7 +39,7 @@ enum ipaccess_msgtype {
 	IPAC_MSGT_ID_ACK	= 0x06,
 
 	/* OpenBSC extension */
-	IPAC_MSGT_SCCP_STATE	= 0xff,
+	IPAC_MSGT_SCCP_OLD	= 0xff,
 };
 
 enum ipaccess_id_tags {

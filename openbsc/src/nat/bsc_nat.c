@@ -958,7 +958,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			goto exit2;
 			break;
 		}
-        } else if (parsed->ipa_proto == IPAC_PROTO_MGCP) {
+        } else if (parsed->ipa_proto == IPAC_PROTO_MGCP_OLD) {
                 bsc_mgcp_forward(bsc, msg);
                 goto exit2;
 	} else {
