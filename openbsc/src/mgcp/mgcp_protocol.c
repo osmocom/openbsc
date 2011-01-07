@@ -290,6 +290,7 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 	mgcp_endp = mgcp_timeslot_to_endpoint(trunk - 1, endp);
 	if (mgcp_endp < 1 || mgcp_endp >= cfg->number_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to find endpoint '%s'\n", mgcp);
+		return NULL;
 	}
 
 	return &cfg->endpoints[mgcp_endp];
