@@ -248,7 +248,7 @@ DEFUN(subscriber_silent_sms,
 	}
 
 	str = argv_concat(argv, argc, 2);
-	rc = _send_sms_str(subscr, str, 0);
+	rc = _send_sms_str(subscr, str, 64);
 	talloc_free(str);
 
 	subscr_put(subscr);
