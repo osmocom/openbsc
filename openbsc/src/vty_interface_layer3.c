@@ -141,30 +141,6 @@ DEFUN(sms_send_pend,
 	return CMD_SUCCESS;
 }
 
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
-{
-	struct gsm_sms *sms = sms_alloc();
-
-	if (!sms)
-		return NULL;
-
-	sms->receiver = subscr_get(receiver);
-	strncpy(sms->text, text, sizeof(sms->text)-1);
-
-	/* FIXME: don't use ID 1 static */
-	sms->sender = subscr_get_by_id(receiver->net, 1);
-	sms->reply_path_req = 0;
-	sms->status_rep_req = 0;
-	sms->ud_hdr_ind = 0;
-	sms->protocol_id = 0; /* implicit */
-	sms->data_coding_scheme = 0; /* default 7bit */
-	strncpy(sms->dest_addr, receiver->extension, sizeof(sms->dest_addr)-1);
-	/* Generate user_data */
-	sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
-
-	return sms;
-}
-
 static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 			 u_int8_t tp_pid)
 {
