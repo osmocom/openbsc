@@ -117,7 +117,7 @@ void sms_free(struct gsm_sms *sms)
 	talloc_free(sms);
 }
 
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
+struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, int dcs, const char *text)
 {
 	struct gsm_sms *sms = sms_alloc();
 
@@ -133,7 +133,7 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, const char *text)
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
 	sms->protocol_id = 0; /* implicit */
-	sms->data_coding_scheme = 0; /* default 7bit */
+	sms->data_coding_scheme = dcs;
 	strncpy(sms->dest_addr, receiver->extension, sizeof(sms->dest_addr)-1);
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);

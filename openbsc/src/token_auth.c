@@ -79,7 +79,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 			goto unauth;
 		}
 
-		sms = sms_from_text(subscr, sms_str);
+		sms = sms_from_text(subscr, 0, sms_str);
 		talloc_free(sms_str);
 		if (!sms) {
 			rc = -ENOMEM;

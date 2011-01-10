@@ -146,7 +146,7 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 {
 	struct gsm_sms *sms;
 
-	sms = sms_from_text(receiver, str);
+	sms = sms_from_text(receiver, 0, str);
 	sms->protocol_id = tp_pid;
 
 	/* store in database for the queue */
