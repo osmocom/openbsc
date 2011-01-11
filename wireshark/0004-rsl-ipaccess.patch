@@ -1,14 +1,15 @@
-From 8f35d623641dbba90e6186604c11e892bf515ecc Mon Sep 17 00:00:00 2001
+From 54882db58b6ec12da6b80071e0ac2344d42df24c Mon Sep 17 00:00:00 2001
 From: Holger Hans Peter Freyther <zecke@selfish.org>
-Date: Mon, 19 Apr 2010 13:32:58 +0800
-Subject: [PATCH 2/2] RSL patch
+Date: Tue, 11 Jan 2011 16:22:33 +0100
+Subject: [PATCH 4/4] rsl-ipaccess
 
+Add vendor specific commands for RSL.
 ---
  epan/dissectors/packet-rsl.c |  522 +++++++++++++++++++++++++++++++++++++++++-
  1 files changed, 515 insertions(+), 7 deletions(-)
 
 diff --git a/epan/dissectors/packet-rsl.c b/epan/dissectors/packet-rsl.c
-index b10a671..a455cf3 100644
+index bf83f6f..d858e1a 100644
 --- a/epan/dissectors/packet-rsl.c
 +++ b/epan/dissectors/packet-rsl.c
 @@ -2,6 +2,7 @@
@@ -28,7 +29,7 @@ index b10a671..a455cf3 100644
  
  /* Initialize the protocol and registered fields */
  static int proto_rsl		= -1;
-@@ -115,6 +118,24 @@ static int hf_rsl_emlpp_prio		= -1;
+@@ -116,6 +119,24 @@ static int hf_rsl_emlpp_prio		= -1;
  static int hf_rsl_rtd				= -1;
  static int hf_rsl_delay_ind			= -1;
  static int hf_rsl_tfo				= -1;
@@ -53,7 +54,7 @@ index b10a671..a455cf3 100644
  
  /* Initialize the subtree pointers */
  static int ett_rsl = -1;
-@@ -172,6 +193,15 @@ static int ett_ie_cause = -1;
+@@ -173,6 +194,15 @@ static int ett_ie_cause = -1;
  static int ett_ie_meas_res_no = -1;
  static int ett_ie_message_id = -1;
  static int ett_ie_sys_info_type = -1;
@@ -67,9 +68,9 @@ index b10a671..a455cf3 100644
 +static int ett_ie_rtp_payload = -1;
 +
  
- proto_tree *top_tree;
- dissector_handle_t gsm_a_ccch_handle;
-@@ -207,8 +237,11 @@ static const value_string rsl_msg_disc_vals[] = {
+ static proto_tree *top_tree;
+ static dissector_handle_t gsm_a_ccch_handle;
+@@ -208,8 +238,11 @@ static const value_string rsl_msg_disc_vals[] = {
  	{  0x06,		"Common Channel Management messages" },
  	{  0x08,		"TRX Management messages" },
  	{  0x16,		"Location Services messages" },
@@ -81,7 +82,7 @@ index b10a671..a455cf3 100644
  /*
   * 9.2 MESSAGE TYPE
   */
-@@ -275,6 +308,49 @@ static const value_string rsl_msg_disc_vals[] = {
+@@ -276,6 +309,49 @@ static const value_string rsl_msg_disc_vals[] = {
  	/* 	0 1 - - - - - - Location Services messages: */
  #define RSL_MSG_LOC_INF					65	/* 8.7.1 */
  
@@ -131,7 +132,7 @@ index b10a671..a455cf3 100644
  
  static const value_string rsl_msg_type_vals[] = {
  	  /* 	0 0 0 0 - - - - Radio Link Layer Management messages: */
-@@ -337,6 +413,26 @@ static const value_string rsl_msg_type_vals[] = {
+@@ -338,6 +414,26 @@ static const value_string rsl_msg_type_vals[] = {
  	{  0x3f,	"TFO MODification REQuest" },					/* 8.4.31 */
  	/* 	0 1 - - - - - - Location Services messages: */
  	{  0x41,	"Location Information" },						/* 8.7.1 */
@@ -158,7 +159,7 @@ index b10a671..a455cf3 100644
  	{ 0,		NULL }
  };
  
-@@ -370,10 +466,10 @@ static const value_string rsl_msg_type_vals[] = {
+@@ -371,10 +467,10 @@ static const value_string rsl_msg_type_vals[] = {
  #define RSL_IE_MESSAGE_ID		28
  
  #define RSL_IE_SYS_INFO_TYPE	30
@@ -173,7 +174,7 @@ index b10a671..a455cf3 100644
  #define RSL_IE_FULL_IMM_ASS_INF			35
  #define RSL_IE_SMSCB_INF				36
  #define RSL_IE_FULL_MS_TIMING_OFFSET	37
-@@ -476,6 +572,24 @@ static const value_string rsl_ie_type_vals[] = {
+@@ -477,6 +573,24 @@ static const value_string rsl_ie_type_vals[] = {
  			Not used
  
  	*/
@@ -198,7 +199,7 @@ index b10a671..a455cf3 100644
  	{ 0,			NULL }
  };
  
-@@ -512,6 +626,96 @@ static const value_string rsl_ch_no_Cbits_vals[] = {
+@@ -513,6 +627,96 @@ static const value_string rsl_ch_no_Cbits_vals[] = {
  	{ 0,			NULL }
  };
  
@@ -295,7 +296,7 @@ index b10a671..a455cf3 100644
  /* 9.3.1 Channel number			9.3.1	M TV 2 */
  static int
  dissect_rsl_ie_ch_no(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, int offset, gboolean is_mandatory)
-@@ -2042,7 +2246,6 @@ dissect_rsl_ie_err_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int
+@@ -2045,7 +2249,6 @@ dissect_rsl_ie_err_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int
  	proto_item_set_len(ti, length+2);
  
  	proto_tree_add_item(ie_tree, hf_rsl_ie_length, tvb, offset, 1, FALSE);
@@ -303,7 +304,7 @@ index b10a671..a455cf3 100644
  
  	/* Received Message */
  	offset = dissct_rsl_msg(tvb, pinfo, ie_tree, offset);
-@@ -2907,12 +3110,184 @@ dissect_rsl_ie_tfo_transp_cont(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree
+@@ -2910,12 +3113,184 @@ dissect_rsl_ie_tfo_transp_cont(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree
  }
  
  static int
@@ -489,7 +490,7 @@ index b10a671..a455cf3 100644
  	offset++;
  
  	switch (msg_type){
-@@ -3480,6 +3855,18 @@ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
+@@ -3483,6 +3858,18 @@ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
  		/* LLP APDU 9.3.58 M LV 2-N */
  		offset = dissect_rsl_ie_llp_apdu(tvb, pinfo, tree, offset, TRUE);
  		break;
@@ -508,7 +509,7 @@ index b10a671..a455cf3 100644
  	default:
  		break;
  	}
-@@ -3487,6 +3874,40 @@ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
+@@ -3490,6 +3877,40 @@ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
  	return offset;
  
  }
@@ -549,7 +550,7 @@ index b10a671..a455cf3 100644
  static void
  dissect_rsl(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
  {
-@@ -3514,7 +3935,6 @@ dissect_rsl(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+@@ -3517,7 +3938,6 @@ dissect_rsl(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
  		/* 9.1 Message discriminator */
  		proto_tree_add_item(rsl_tree, hf_rsl_msg_dsc, tvb, offset, 1, FALSE);
  		proto_tree_add_item(rsl_tree, hf_rsl_T_bit, tvb, offset, 1, FALSE);
@@ -557,7 +558,7 @@ index b10a671..a455cf3 100644
  
  		offset = dissct_rsl_msg(tvb, pinfo, rsl_tree, offset);
  
-@@ -3884,6 +4304,86 @@ void proto_register_rsl(void)
+@@ -3892,6 +4312,86 @@ void proto_register_rsl(void)
  			FT_UINT8, BASE_DEC, VALS(rsl_emlpp_prio_vals), 0x03,
  			NULL, HFILL }
  		},
@@ -644,7 +645,7 @@ index b10a671..a455cf3 100644
  	};
  	static gint *ett[] = {
  		&ett_rsl,
-@@ -3941,6 +4441,14 @@ void proto_register_rsl(void)
+@@ -3949,6 +4449,14 @@ void proto_register_rsl(void)
  		&ett_ie_meas_res_no,
  		&ett_ie_message_id,
  		&ett_ie_sys_info_type,
@@ -660,5 +661,5 @@ index b10a671..a455cf3 100644
  
  	/* Register the protocol name and description */
 -- 
-1.7.0.1
+1.7.3.4
 

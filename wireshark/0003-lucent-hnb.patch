@@ -1,7 +1,45 @@
-Index: wireshark/epan/dissectors/packet-lucent_hnb.c
-===================================================================
+From 48f2a191de62686c2ffdb97e46b5cc6bb61a868d Mon Sep 17 00:00:00 2001
+From: Holger Hans Peter Freyther <zecke@selfish.org>
+Date: Tue, 11 Jan 2011 15:16:19 +0100
+Subject: [PATCH 3/4] lucent-hnb
+
+Add lucent hnb patch from OpenBSC
+---
+ epan/CMakeLists.txt                 |    1 +
+ epan/dissectors/Makefile.common     |    1 +
+ epan/dissectors/packet-lucent_hnb.c |  103 +++++++++++++++++++++++++++++++++++
+ 3 files changed, 105 insertions(+), 0 deletions(-)
+ create mode 100644 epan/dissectors/packet-lucent_hnb.c
+
+diff --git a/epan/CMakeLists.txt b/epan/CMakeLists.txt
+index 9217ec0..ac76ab9 100644
+--- a/epan/CMakeLists.txt
++++ b/epan/CMakeLists.txt
+@@ -728,6 +728,7 @@ set(DISSECTOR_SRC
+ 	dissectors/packet-lpd.c
+ 	dissectors/packet-lsc.c
+ 	dissectors/packet-ltp.c
++	dissectors/packet-lucent_hnb.c
+ 	dissectors/packet-lwapp.c
+ 	dissectors/packet-lwres.c
+ 	dissectors/packet-m2pa.c
+diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
+index 4c7094b..9931f28 100644
+--- a/epan/dissectors/Makefile.common
++++ b/epan/dissectors/Makefile.common
+@@ -638,6 +638,7 @@ DISSECTOR_SRC = \
+ 	packet-lpd.c		\
+ 	packet-lsc.c		\
+ 	packet-ltp.c		\
++	packet-lucent_hnb.c	\
+ 	packet-lwapp.c		\
+ 	packet-lwres.c		\
+ 	packet-m2pa.c		\
+diff --git a/epan/dissectors/packet-lucent_hnb.c b/epan/dissectors/packet-lucent_hnb.c
+new file mode 100644
+index 0000000..296f98b
 --- /dev/null
-+++ wireshark/epan/dissectors/packet-lucent_hnb.c
++++ b/epan/dissectors/packet-lucent_hnb.c
 @@ -0,0 +1,103 @@
 +/* packet-lucent_hnb.c
 + * Routines for packet dissection of Alcatel/Lucent HomeNodeB
@@ -106,15 +144,6 @@ Index: wireshark/epan/dissectors/packet-lucent_hnb.c
 +	dissector_add("sctp.ppi", LHNB_SCTP_PPI_GMM, lhnb_handle);
 +	dissector_add("sctp.port", LHNB_SCTP_PORT, lhnb_handle);
 +}
-Index: wireshark/epan/dissectors/Makefile.common
-===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common
-+++ wireshark/epan/dissectors/Makefile.common
-@@ -605,6 +605,7 @@
- 	packet-loop.c		\
- 	packet-lpd.c		\
- 	packet-lsc.c		\
-+	packet-lucent_hnb.c	\
- 	packet-lwapp.c		\
- 	packet-lwres.c		\
- 	packet-m2pa.c		\
+-- 
+1.7.3.4
+
