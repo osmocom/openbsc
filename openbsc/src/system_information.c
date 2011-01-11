@@ -207,11 +207,14 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 	/* Zero-initialize the bit-vector */
 	memset(bv->data, 0, bv->data_len);
 
-	/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
-	llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
-		if (cur_bts == bts)
-			continue;
-		bitvec_set_bit_pos(bv, cur_bts->c0->arfcn, 1);
+	/* Generate list of neighbor cells if we are in automatic mode */
+	if (bts->neigh_list_manual_mode == 0) {
+		/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
+		llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
+			if (cur_bts == bts)
+				continue;
+			bitvec_set_bit_pos(bv, cur_bts->c0->arfcn, 1);
+		}
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */

@@ -531,6 +531,7 @@ struct gsm_bts {
 		struct gsm_nm_state nm_state;
 	} site_mgr;
 
+	int neigh_list_manual_mode;
 	/* parameters from which we build SYSTEM INFORMATION */
 	struct {
 		struct gsm48_rach_control rach_control;

@@ -488,6 +488,16 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->paging.free_chans_need >= 0)
 		vty_out(vty, "  paging free %d%s", bts->paging.free_chans_need, VTY_NEWLINE);
 
+	vty_out(vty, "  neighbor-list mode %s%s",
+		bts->neigh_list_manual_mode ? "manual" : "automatic", VTY_NEWLINE);
+	if (bts->neigh_list_manual_mode) {
+		for (i = 0; i < 1024; i++) {
+			if (bitvec_get_bit_pos(&bts->si_common.neigh_list, i))
+				vty_out(vty, "  neighbor-list add arfcn %u%s",
+					i, VTY_NEWLINE);
+		}
+	}
+
 	config_write_bts_gprs(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
@@ -2116,6 +2126,50 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
+	"neighbor-list mode (automatic|manual)",
+	"Neighbor List\n" "Mode of Neighbor List generation\n"
+	"Automatically from all BTS in this OpenBSC\n" "Manual\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (!strcmp(argv[0], "manual")) {
+		/* make sure we clear the current list when switching to
+		 * manual mode */
+		if (bts->neigh_list_manual_mode == 0)
+			memset(&bts->si_common.data.neigh_list, 0,
+				sizeof(bts->si_common.data.neigh_list));
+		bts->neigh_list_manual_mode = 1;
+	} else
+		bts->neigh_list_manual_mode = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
+	"neighbor-list (add|del) arfcn <0-1024>",
+	"Neighbor List\n" "Add to manual neighbor list\n"
+	"Delete from manual neighbor list\n" "ARFCN of neighbor\n"
+	"ARFCN of neighbor\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bitvec *bv = &bts->si_common.neigh_list;
+	uint16_t arfcn = atoi(argv[1]);
+
+	if (!bts->neigh_list_manual_mode) {
+		vty_out(vty, "%% Cannot configure neighbor list in "
+			"automatic mode%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[0], "add"))
+		bitvec_set_bit_pos(bv, arfcn, 1);
+	else
+		bitvec_set_bit_pos(bv, arfcn, 0);
+
+	return CMD_SUCCESS;
+}
+
 
 #define TRX_TEXT "Radio Transceiver\n"
 
@@ -2614,6 +2668,8 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_pag_free_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
+	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
