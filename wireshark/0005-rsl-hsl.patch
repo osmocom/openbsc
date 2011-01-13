@@ -1,0 +1,127 @@
+Index: wireshark/epan/dissectors/packet-rsl.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-rsl.c	2011-01-13 10:03:21.000000000 +0100
++++ wireshark/epan/dissectors/packet-rsl.c	2011-01-13 11:00:13.000000000 +0100
+@@ -207,6 +207,7 @@
+ static proto_tree *top_tree;
+ static dissector_handle_t gsm_a_ccch_handle;
+ static dissector_handle_t gsm_a_dtap_handle;
++static dissector_handle_t bssgp_handle;
+ 
+ static gboolean is_si2q = FALSE;
+ 
+@@ -239,9 +240,11 @@
+ 	{  0x08,		"TRX Management messages" },
+ 	{  0x16,		"Location Services messages" },
+ 	{  0x3f,		"ip.access Vendor Specific messages" },
++	{  0x80,		"HSL Vendor Specific messages" },
+ 	{ 0,			NULL }
+ };
+ #define RSL_MSGDISC_IPACCESS	0x3f
++#define RSL_MSGDISC_HSL		0x40
+ 
+ /*
+  * 9.2 MESSAGE TYPE
+@@ -353,6 +356,14 @@
+ #define RSL_IE_IPAC_RTP_MPLEX		0xfd
+ #define RSL_IE_IPAC_RTP_MPLEX_ID	0xfe
+ 
++/* Vendor-Specific messages of HSL femtocell. There is no public documentation
++ * about those extensions, all information in this dissector is based on lawful
++ * protocol reverse enginering by Harald Welte <laforge@gnumonks.org> */
++#define RSL_MSG_TYPE_HSL_CONN_TRAU	0x81
++#define RSL_MSG_TYPE_HSL_BSSGP		0x82
++#define RSL_MSG_TYPE_HSL_GPRS_TS_ALLOC	0x83
++#define RSL_MSG_TYPE_HSL_L1_PRIM	0x8a
++
+ static const value_string rsl_msg_type_vals[] = {
+ 	  /* 	0 0 0 0 - - - - Radio Link Layer Management messages: */
+ 	{  0x01,	"DATA REQuest" },								/* 8.3.1 */
+@@ -434,6 +445,11 @@
+ 	{  0x77,	"ip.access DLCX" },
+ 	{  0x78,	"ip.access DLCX ACK" },
+ 	{  0x79,	"ip.access DLCX NACK" },
++	/* HSL */
++	{  0x81,	"HSL CONNECT TRAU" },
++	{  0x82,	"HSL BSSGP" },
++	{  0x83,	"HSL GPRS TS ALLOC" },
++	{  0x8a,	"HSL L1 PRIMITIVE" },
+ 	{ 0,		NULL }
+ };
+ 
+@@ -3279,17 +3295,47 @@
+ }
+ 
+ static int
++dissct_rsl_hsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
++{
++	guint8	msg_type;
++	tvbuff_t *next_tvb;
++
++	msg_type = tvb_get_guint8(tvb, offset)&0x7f;
++	offset++;
++
++	switch (msg_type) {
++	case RSL_MSG_TYPE_HSL_CONN_TRAU:
++		proto_tree_add_item(tree, hf_rsl_remote_ip, tvb,
++					    offset+6, 4, FALSE);
++		break;
++	case RSL_MSG_TYPE_HSL_BSSGP:
++		next_tvb = tvb_new_subset(tvb, offset, -1, tvb_length(tvb));
++		call_dissector(bssgp_handle, next_tvb, pinfo, tree);
++		break;
++	case RSL_MSG_TYPE_HSL_GPRS_TS_ALLOC:
++		break;
++	case RSL_MSG_TYPE_HSL_L1_PRIM:
++		break;
++	}
++	return offset;
++}
++
++static int
+ dissct_rsl_msg(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, int offset)
+ {
+ 	guint8	msg_disc, msg_type;
+ 
+ 	msg_disc = tvb_get_guint8(tvb, offset++) >> 1;
+-	msg_type = tvb_get_guint8(tvb,offset)&0x7f;
++	msg_type = tvb_get_guint8(tvb,offset)&0xff;
+ 	proto_tree_add_item(tree, hf_rsl_msg_type, tvb, offset, 1, FALSE);
+ 
+-	if (msg_disc == RSL_MSGDISC_IPACCESS) {
++	switch (msg_disc) {
++	case RSL_MSGDISC_IPACCESS:
+ 		offset = dissct_rsl_ipaccess_msg(tvb, pinfo, tree, offset);
+ 		return offset;
++	case RSL_MSGDISC_HSL:
++		offset = dissct_rsl_hsl_msg(tvb, pinfo, tree, offset);
++		return offset;
+ 	}
+ 	offset++;
+ 
+@@ -3924,7 +3970,7 @@
+ 	col_set_str(pinfo->cinfo, COL_PROTOCOL, "RSL");
+ 	col_clear(pinfo->cinfo, COL_INFO);
+ 
+-	msg_type = tvb_get_guint8(tvb,offset+1)&0x7f;
++	msg_type = tvb_get_guint8(tvb,offset+1)&0xff;
+ 
+ 	if (check_col(pinfo->cinfo, COL_INFO)){
+ 		col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",val_to_str(msg_type, rsl_msg_type_vals,"unknown %u"));
+@@ -3955,6 +4001,7 @@
+ 
+ 	gsm_a_ccch_handle = find_dissector("gsm_a_ccch");
+ 	gsm_a_dtap_handle = find_dissector("gsm_a_dtap");
++	bssgp_handle = find_dissector("bssgp");
+ }
+ 
+ /* Register the protocol with Wireshark */
+@@ -3975,7 +4022,7 @@
+ 		},
+ 		{ &hf_rsl_msg_type,
+ 			{ "Message type",           "rsl.msg_type",
+-			FT_UINT8, BASE_HEX_DEC, VALS(rsl_msg_type_vals), 0x7f,
++			FT_UINT8, BASE_HEX_DEC, VALS(rsl_msg_type_vals), 0xff,
+ 			NULL, HFILL }
+ 		},
+ 		{ &hf_rsl_ie_id,

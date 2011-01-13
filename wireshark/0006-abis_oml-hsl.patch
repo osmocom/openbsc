@@ -1,0 +1,32 @@
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-gsm_abis_oml.c	2011-01-13 10:11:08.000000000 +0100
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-01-13 10:13:22.000000000 +0100
+@@ -131,6 +131,7 @@
+ 	{ ABIS_OM_MDISC_MMI,	"MMI Transfer" },
+ 	{ ABIS_OM_MDISC_TRAU,	"TRAU O&M" },
+ 	{ ABIS_OM_MDISC_MANUF,	"Manufacturer specific" },
++	{ ABIS_OM_MDISC_FOM_HSL,"HSL Formatted O&M" },
+ };
+ 
+ /* TS 12.21 Chapter 8.1.1 */
+@@ -1223,6 +1224,7 @@
+ 
+ 		switch (msg_disc) {
+ 		case ABIS_OM_MDISC_FOM:
++		case ABIS_OM_MDISC_FOM_HSL:
+ 			offset = dissect_oml_fom(tvb, pinfo, oml_tree,
+ 						 offset, ti);
+ 			break;
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-gsm_abis_oml.h	2011-01-13 10:11:25.000000000 +0100
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-01-13 10:11:54.000000000 +0100
+@@ -40,6 +40,7 @@
+ #define ABIS_OM_MDISC_MMI		0x40
+ #define ABIS_OM_MDISC_TRAU		0x20
+ #define ABIS_OM_MDISC_MANUF		0x10
++#define ABIS_OM_MDISC_FOM_HSL		0x81
+ #define ABIS_OM_PLACEMENT_ONLY		0x80
+ #define ABIS_OM_PLACEMENT_FIRST 	0x40
+ #define ABIS_OM_PLACEMENT_MIDDLE	0x20
