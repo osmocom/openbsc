@@ -1136,6 +1136,8 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	/* Control Channel Description */
 	bts->si_common.chan_desc.att = 1;
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
+	bts->si_common.chan_desc.bs_ag_blks_res = 1;
+
 	/* T3212 is set from vty/config */
 
 	/* Set ccch config by looking at ts config */
