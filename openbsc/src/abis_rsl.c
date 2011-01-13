@@ -280,6 +280,25 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type,
 	return abis_rsl_sendmsg(msg);
 }
 
+int rsl_sacch_info_modify(struct gsm_lchan *lchan, u_int8_t type,
+			  const u_int8_t *data, int len)
+{
+	struct abis_rsl_dchan_hdr *dh;
+	struct msgb *msg = rsl_msgb_alloc();
+	u_int8_t chan_nr = lchan2chan_nr(lchan);
+
+	dh = (struct abis_rsl_dchan_hdr *) msgb_put(msg, sizeof(*dh));
+	init_dchan_hdr(dh, RSL_MT_SACCH_INFO_MODIFY);
+	dh->chan_nr = chan_nr;
+
+	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
+	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
+
+	msg->trx = lchan->ts->trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 {
 	struct abis_rsl_dchan_hdr *dh;
