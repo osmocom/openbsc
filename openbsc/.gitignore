@@ -9,6 +9,7 @@ openbsc.pc
 bsc_hack
 bsc_msc_ip
 bsc_mgcp
+src/bsc/osmo-bsc
 *.*~
 *.sw?
 
@@ -49,3 +50,4 @@ tests/sccp/sccp_test
 tests/sms/sms_test
 tests/timer/timer_test
 
+src/openbsc.cfg*
