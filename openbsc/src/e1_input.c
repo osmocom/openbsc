@@ -66,9 +66,6 @@ LLIST_HEAD(e1inp_line_list);
 
 static void *tall_sigl_ctx;
 
-/* to be implemented, e.g. by bsc_hack.c */
-void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx);
-
 /*
  * pcap writing of the misdn load
  * pcap format is from http://wiki.wireshark.org/Development/LibpcapFileFormat
@@ -563,13 +560,17 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 {
 	struct e1inp_sign_link *link;
+	struct input_signal_data isd;
 
 	link = e1inp_lookup_sign_link(ts, tei, sapi);
 	if (!link)
 		return -EINVAL;
 
-	/* FIXME: report further upwards */
-	input_event(evt, link->type, link->trx);
+	isd.link_type = link->type;
+	isd.trx = link->trx;
+
+	/* report further upwards */
+	dispatch_signal(SS_INPUT, evt, &isd);
 	return 0;
 }
 

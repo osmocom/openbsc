@@ -9,6 +9,7 @@ channel_test_SOURCES = channel_test.c \
 	$(top_srcdir)/src/gsm_subscriber.c \
 	$(top_srcdir)/src/debug.c \
 	$(top_srcdir)/src/gsm_data.c \
+	$(top_srcdir)/src/abis_nm.c \
 	$(top_srcdir)/src/bts_ipaccess_nanobts.c \
 	$(top_srcdir)/src/bts_siemens_bs11.c
 channel_test_LDADD = -ldl -ldbi $(LIBOSMOCORE_LIBS)

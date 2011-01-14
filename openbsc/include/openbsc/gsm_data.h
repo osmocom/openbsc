@@ -787,12 +787,6 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
 char *gsm_lchan_name(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
-enum gsm_e1_event {
-	EVT_E1_NONE,
-	EVT_E1_TEI_UP,
-	EVT_E1_TEI_DN,
-};
-
 void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
 		   u_int8_t e1_ts, u_int8_t e1_ts_ss);
 enum gsm_bts_type parse_btstype(const char *arg);

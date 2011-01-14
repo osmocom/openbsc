@@ -47,6 +47,7 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
+#include <openbsc/signal.h>
 #include <osmocore/talloc.h>
 
 #include "lapd.h"
@@ -94,11 +95,11 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case LAPD_MPH_ACTIVATE_IND:
 		DEBUGP(DMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, tei, sapi);
+		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, tei, sapi);
 		break;
 	case LAPD_MPH_DEACTIVATE_IND:
 		DEBUGP(DMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, tei, sapi);
+		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, tei, sapi);
 		break;
 	case LAPD_DL_DATA_IND:
 	case LAPD_DL_UNITDATA_IND:

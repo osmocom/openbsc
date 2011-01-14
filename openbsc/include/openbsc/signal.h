@@ -47,6 +47,7 @@ enum signal_subsystems {
 	SS_RF,
 	SS_MSC,
 	SS_HO,
+	SS_INPUT,
 };
 
 /* SS_PAGING signals */
@@ -81,6 +82,8 @@ enum signal_nm {
 	S_NM_IPACC_RESTART_ACK, /* nanoBTS has send a restart ack */
 	S_NM_IPACC_RESTART_NACK,/* nanoBTS has send a restart ack */
 	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
+	S_NM_STATECHG_OPER,	/* Operational State changed*/
+	S_NM_STATECHG_ADM,	/* Administrative State changed */
 };
 
 /* SS_LCHAN signals */
@@ -126,6 +129,7 @@ enum signal_ipaccess {
 
 enum signal_global {
 	S_GLOBAL_SHUTDOWN,
+	S_GLOBAL_BTS_CLOSE_OM,
 };
 
 /* SS_RF signals */
@@ -133,6 +137,13 @@ enum signal_rf {
 	S_RF_OFF,
 	S_RF_ON,
 	S_RF_GRACE,
+};
+
+/* SS_INPUT signals */
+enum signal_input {
+	S_INP_NONE,
+	S_INP_TEI_UP,
+	S_INP_TEI_DN,
 };
 
 struct gsm_subscriber;
@@ -156,6 +167,14 @@ struct scall_signal_data {
 struct ipacc_ack_signal_data {
 	struct gsm_bts_trx *trx;
 	u_int8_t msg_type;	
+};
+
+struct nm_statechg_signal_data {
+	u_int8_t obj_class;
+	void *obj;
+	struct gsm_nm_state *old_state;
+	struct gsm_nm_state *new_state;
+	struct abis_om_obj_inst *obj_inst;
 };
 
 struct nm_nack_signal_data {
@@ -222,5 +241,9 @@ struct ho_signal_data {
 	struct gsm_lchan *new_lchan;
 };
 
+struct input_signal_data {
+	int link_type;
+	struct gsm_bts_trx *trx;
+};
 
 #endif

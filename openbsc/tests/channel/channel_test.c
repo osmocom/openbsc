@@ -72,8 +72,7 @@ int main(int argc, char **argv)
 	}
 }
 
-void nm_state_event() {}
-void input_event() {}
+void _abis_nm_sendmsg() {}
 void sms_alloc() {}
 void gsm_net_update_ctype(struct gsm_network *network) {}
 void gsm48_secure_channel() {}

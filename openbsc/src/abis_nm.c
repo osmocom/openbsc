@@ -683,11 +683,10 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 			   struct abis_om_obj_inst *obj_inst, u_int8_t adm_state)
 {
 	struct gsm_nm_state *nm_state, new_state;
-	void *obj;
-	int rc;
+	struct nm_statechg_signal_data nsd;
 
-	obj = objclass2obj(bts, obj_class, obj_inst);
-	if (!obj)
+	nsd.obj = objclass2obj(bts, obj_class, obj_inst);
+	if (!nsd.obj)
 		return -EINVAL;
 	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
 	if (!nm_state)
@@ -696,11 +695,15 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	new_state = *nm_state;
 	new_state.administrative = adm_state;
 
-	rc = nm_state_event(EVT_STATECHG_ADM, obj_class, obj, nm_state, &new_state, obj_inst);
+	nsd.obj_class = obj_class;
+	nsd.old_state = nm_state;
+	nsd.new_state = &new_state;
+	nsd.obj_inst = obj_inst;
+	dispatch_signal(SS_NM, S_NM_STATECHG_ADM, &nsd);
 
 	nm_state->administrative = adm_state;
 
-	return rc;
+	return 0;
 }
 
 static int abis_nm_rx_statechg_rep(struct msgb *mb)
@@ -710,7 +713,6 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	struct gsm_bts *bts = mb->trx->bts;
 	struct tlv_parsed tp;
 	struct gsm_nm_state *nm_state, new_state;
-	int rc;
 
 	DEBUGPC(DNM, "STATE CHG: ");
 
@@ -749,8 +751,13 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	    new_state.availability != nm_state->availability) {
 		/* Update the operational state of a given object in our in-memory data
  		* structures and send an event to the higher layer */
-		void *obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
-		rc = nm_state_event(EVT_STATECHG_OPER, foh->obj_class, obj, nm_state, &new_state, &foh->obj_inst);
+		struct nm_statechg_signal_data nsd;
+		nsd.obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
+		nsd.obj_class = foh->obj_class;
+		nsd.old_state = nm_state;
+		nsd.new_state = &new_state;
+		nsd.obj_inst = &foh->obj_inst;
+		dispatch_signal(SS_NM, S_NM_STATECHG_OPER, &nsd);
 		nm_state->operational = new_state.operational;
 		nm_state->availability = new_state.availability;
 		if (nm_state->administrative == 0)

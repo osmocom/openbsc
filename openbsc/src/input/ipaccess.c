@@ -36,6 +36,7 @@
 #include <osmocore/select.h>
 #include <osmocore/tlv.h>
 #include <osmocore/msgb.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -44,7 +45,7 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
-#include <osmocore/talloc.h>
+#include <openbsc/signal.h>
 
 #define PRIV_OML 1
 #define PRIV_RSL 2
@@ -367,7 +368,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	/* send OML down */
 	ts = bts->oml_link->ts;
 	line = ts->line;
-	e1inp_event(ts, EVT_E1_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
+	e1inp_event(ts, S_INP_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
 	bsc_unregister_fd(bfd);
@@ -436,7 +437,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 
 	/* send RSL down */
 	ts = trx->rsl_link->ts;
-	e1inp_event(ts, EVT_E1_TEI_DN, trx->rsl_link->tei, trx->rsl_link->sapi);
+	e1inp_event(ts, S_INP_TEI_DN, trx->rsl_link->tei, trx->rsl_link->sapi);
 
 	/* close the socket */
 	bfd = &ts->driver.ipaccess.fd;
@@ -499,14 +500,14 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	switch (link->type) {
 	case E1INP_SIGN_RSL:
 		if (!(msg->trx->bts->ip_access.flags & (RSL_UP << msg->trx->nr))) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
+			e1inp_event(e1i_ts, S_INP_TEI_UP, link->tei, link->sapi);
 			msg->trx->bts->ip_access.flags |= (RSL_UP << msg->trx->nr);
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case E1INP_SIGN_OML:
 		if (!(msg->trx->bts->ip_access.flags & OML_UP)) {
-			e1inp_event(e1i_ts, EVT_E1_TEI_UP, link->tei, link->sapi);
+			e1inp_event(e1i_ts, S_INP_TEI_UP, link->tei, link->sapi);
 			msg->trx->bts->ip_access.flags |= OML_UP;
 		}
 		ret = abis_nm_rcvmsg(msg);

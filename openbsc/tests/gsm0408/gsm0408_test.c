@@ -101,11 +101,3 @@ int main(int argc, char **argv)
 
 	exit(0);
 }
-
-
-
-/*
- * Stubs to compile and link
- */
-void input_event(void) {}
-void nm_state_event(void) {}

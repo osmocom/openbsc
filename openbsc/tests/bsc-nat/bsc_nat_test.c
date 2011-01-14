@@ -963,11 +963,3 @@ int main(int argc, char **argv)
 	test_setup_rewrite();
 	return 0;
 }
-
-void input_event()
-{}
-int nm_state_event()
-{
-	return -1;
-}
-

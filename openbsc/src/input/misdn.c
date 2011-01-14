@@ -42,13 +42,14 @@
 
 #include <osmocore/select.h>
 #include <osmocore/msgb.h>
+#include <osmocore/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/talloc.h>
+#include <openbsc/signal.h>
 
 #define TS1_ALLOC_SIZE	300
 
@@ -152,12 +153,12 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		}
 		/* save the channel number in the driver private struct */
 		link->driver.misdn.channel = l2addr.channel;
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, l2addr.tei, l2addr.sapi);
+		ret = e1inp_event(e1i_ts, S_INP_TEI_UP, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_RELEASE_IND:
 		DEBUGP(DMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
 		l2addr.channel, l2addr.sapi, l2addr.tei);
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
+		ret = e1inp_event(e1i_ts, S_INP_TEI_DN, l2addr.tei, l2addr.sapi);
 		break;
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:

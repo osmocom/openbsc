@@ -741,13 +741,6 @@ int handle_serial_msg(struct msgb *rx_msg)
 	return rc;
 }
 
-int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
-		   struct abis_om_obj_inst *obj_ins)
-{
-	return 0;
-}
-
 void status_timer_cb(void *data)
 {
 	abis_nm_bs11_get_state(g_bts);

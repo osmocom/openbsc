@@ -181,10 +181,15 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+			  struct abis_om_obj_inst *obj_inst);
+
 static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
 	struct ipacc_ack_signal_data *ipacc_data;
+	struct nm_statechg_signal_data *nsd;
 
 	switch (signal) {
 	case S_NM_IPACC_NACK:
@@ -200,6 +205,12 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_NM_IPACC_RESTART_NACK:
 		printf("The BTS has nacked the restart. Exiting.\n");
 		exit(0);
+		break;
+	case S_NM_STATECHG_OPER:
+	case S_NM_STATECHG_ADM:
+		nsd = signal_data;
+		nm_state_event(signal, nsd->obj_class, nsd->obj, nsd->old_state,
+				nsd->new_state, nsd->obj_inst);
 		break;
 	default:
 		break;
@@ -453,32 +464,9 @@ out_err:
 	msgb_free(nmsg);
 }
 
-void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
-{
-	switch (event) {
-	case EVT_E1_TEI_UP:
-		switch (type) {
-		case E1INP_SIGN_OML:
-			break;
-		case E1INP_SIGN_RSL:
-			/* FIXME */
-			break;
-		default:
-			break;
-		}
-		break;
-	case EVT_E1_TEI_DN:
-		fprintf(stderr, "Lost some E1 TEI link\n");
-		/* FIXME: deal with TEI or L1 link loss */
-		break;
-	default:
-		break;
-	}
-}
-
-int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
-		   struct abis_om_obj_inst *obj_inst)
+static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
+			  struct abis_om_obj_inst *obj_inst)
 {
 	if (obj_class == NM_OC_BASEB_TRANSC) {
 		if (!found_trx && obj_inst->trx_nr != 0xff) {
@@ -486,7 +474,7 @@ int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
 			bootstrap_om(trx);
 			found_trx = 1;
 		}
-	} else if (evt == EVT_STATECHG_OPER &&
+	} else if (evt == S_NM_STATECHG_OPER &&
 	    obj_class == NM_OC_RADIO_CARRIER &&
 	    new_state->availability == 3) {
 		struct gsm_bts_trx *trx = obj;

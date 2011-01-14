@@ -90,19 +90,6 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 	return NULL;
 }
 
-/*
- * below are stubs we need to link
- */
-int nm_state_event(enum nm_evt evt, uint8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
-		   struct abis_om_obj_inst *obj_ins)
-{
-	return -1;
-}
-
-void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
-{}
-
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
 	if (!con) {

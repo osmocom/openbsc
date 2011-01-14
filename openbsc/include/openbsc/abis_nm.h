@@ -160,14 +160,6 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf);
 const char *ipacc_testres_name(u_int8_t res);
 
 /* Functions calling into other code parts */
-enum nm_evt {
-	EVT_STATECHG_OPER,
-	EVT_STATECHG_ADM,
-};
-int nm_state_event(enum nm_evt evt, u_int8_t obj_class, void *obj,
-		   struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
-		   struct abis_om_obj_inst *obj_inst);
-
 const char *nm_opstate_name(u_int8_t os);
 const char *nm_avail_name(u_int8_t avail);
 int nm_is_running(struct gsm_nm_state *s);
