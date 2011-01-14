@@ -16,4 +16,5 @@ svn version.
 0002-ericsson_rbs2409.patch       Add support for Ericsson Abis over IP
 0003-lucent-hnb.patch             Add support for Lucent HomeNodeB
 0004-rsl-ipaccess.patch           Add IPaccess RSL extensions
-
+0005-rsl-hsl.patch                Add support for HSL RSL extensions
+0006-abis_oml-hsl.patch           Add support for HSL OML
