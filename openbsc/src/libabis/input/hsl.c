@@ -228,7 +228,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	}
 
 	/* HSL proprietary RSL extension */
-	if (hh->proto == 0 && msg->l2h[0] == 0x80) {
+	if (hh->proto == 0 && (msg->l2h[0] == 0x81 || msg->l2h[0] == 0x80)) {
 		ret = process_hsl_rsl(msg, line);
 		if (ret < 0) {
 			/* FIXME: close connection */
@@ -238,11 +238,11 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 			return 0;
 		/* else: continue... */
 	}
-
+#ifdef HSL_SR_1_0
 	/* HSL for whatever reason chose to use 0x81 instead of 0x80 for FOM */
 	if (hh->proto == 255 && msg->l2h[0] == (ABIS_OM_MDISC_FOM | 0x01))
 		msg->l2h[0] = ABIS_OM_MDISC_FOM;
-
+#endif
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
 		LOGP(DINP, LOGL_ERROR, "no matching signalling link for "
@@ -312,9 +312,11 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	switch (sign_link->type) {
 	case E1INP_SIGN_OML:
 		proto = IPAC_PROTO_OML;
+#ifdef HSL_SR_1_0
 		/* HSL uses 0x81 for FOM for some reason */
 		if (msg->data[0] == ABIS_OM_MDISC_FOM)
 			msg->data[0] = ABIS_OM_MDISC_FOM | 0x01;
+#endif
 		break;
 	case E1INP_SIGN_RSL:
 		proto = IPAC_PROTO_RSL;

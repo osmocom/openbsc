@@ -61,7 +61,11 @@ static const uint8_t conn_trau_msg2[] = {
 };
 
 static uint8_t oml_arfcn_bsic[] = {
+#ifdef HSL_SR_1_0
 	0x81, 0x80, 0x00, 10,
+#else
+	0x80, 0x80, 0x00, 10,
+#endif
 		NM_MT_SET_BTS_ATTR, NM_OC_BTS, 0xff, 0xff, 0xff,
 			NM_ATT_BCCH_ARFCN, 0x03, 0x67,
 			NM_ATT_BSIC, 0x00

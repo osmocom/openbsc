@@ -397,7 +397,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	if (bts->network->dtx_enabled)
 		bts->si_common.cell_options.dtx = 0;
 	else
-		bts->si_common.cell_options.dtx = 2;
+		bts->si_common.cell_options.dtx = 3;
 
 	bts->si_common.cell_options.pwrc = 0; /* PWRC not set */
 
