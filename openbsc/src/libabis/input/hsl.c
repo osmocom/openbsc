@@ -190,7 +190,8 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
 	case 0x82:
 		/* FIXME: do something with BSSGP, i.e. forward it over
 		 * NSIP to OsmoSGSN */
-		return 0;
+		msgb_free(msg);
+		return 1;
 	}
 	return 0;
 }
