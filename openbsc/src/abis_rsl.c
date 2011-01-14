@@ -675,6 +675,24 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	return abis_rsl_sendmsg(msg);
 }
 
+static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
+{
+
+	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
+
+	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
+		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
+			gsm_lchan_name(lchan),
+			gsm_lchans_name(lchan->state));
+	bsc_del_timer(&lchan->T3111);
+	/* we have an error timer pending to release that */
+	if (lchan->state != LCHAN_S_REL_ERR)
+		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
+
+	return 0;
+}
+
 int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
 		   u_int8_t *ms_ident, u_int8_t chan_needed)
 {
@@ -1066,16 +1084,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 		rc = rsl_rx_hando_det(msg);
 		break;
 	case RSL_MT_RF_CHAN_REL_ACK:
-		DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", ts_name);
-		if (msg->lchan->state != LCHAN_S_REL_REQ && msg->lchan->state != LCHAN_S_REL_ERR)
-			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
-				gsm_lchan_name(msg->lchan),
-				gsm_lchans_name(msg->lchan->state));
-		bsc_del_timer(&msg->lchan->T3111);
-		/* we have an error timer pending to release that */
-		if (msg->lchan->state != LCHAN_S_REL_ERR)
-			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
-		lchan_free(msg->lchan);
+		rc = rsl_rx_rf_chan_rel_ack(msg->lchan);
 		break;
 	case RSL_MT_MODE_MODIFY_ACK:
 		DEBUGP(DRSL, "%s CHANNEL MODE MODIFY ACK\n", ts_name);
