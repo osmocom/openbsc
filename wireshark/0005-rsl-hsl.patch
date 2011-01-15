@@ -1,7 +1,7 @@
 Index: wireshark/epan/dissectors/packet-rsl.c
 ===================================================================
 --- wireshark.orig/epan/dissectors/packet-rsl.c	2011-01-13 12:51:02.000000000 +0100
-+++ wireshark/epan/dissectors/packet-rsl.c	2011-01-14 10:41:18.000000000 +0100
++++ wireshark/epan/dissectors/packet-rsl.c	2011-01-15 18:05:20.000000000 +0100
 @@ -2,7 +2,7 @@
   * Routines for Radio Signalling Link (RSL) dissection.
   *
@@ -11,20 +11,22 @@ Index: wireshark/epan/dissectors/packet-rsl.c
   *
   * $Id: packet-rsl.c 35224 2010-12-20 05:35:29Z guy $
   *
-@@ -137,6 +137,12 @@
+@@ -137,6 +137,14 @@
  static int hf_rsl_cstat_lost_pkts		= -1;
  static int hf_rsl_cstat_ia_jitter		= -1;
  static int hf_rsl_cstat_avg_tx_dly		= -1;
 +/* HSL */
 +static int hf_rsl_hsl_bts_serno			= -1;
 +static int hf_rsl_hsl_bts_ver			= -1;
-+static int hf_rsl_hsl_l1_prim			= -1;
++static int hf_rsl_hsl_dsp_ver			= -1;
++static int hf_rsl_hsl_fpga_ver			= -1;
 +static int hf_rsl_hsl_trau_remote_port		= -1;
 +static int hf_rsl_hsl_trau_remote_ip		= -1;
++static int hf_rsl_hsl_tx_power			= -1;
  
  /* Initialize the subtree pointers */
  static int ett_rsl = -1;
-@@ -207,6 +213,7 @@
+@@ -207,6 +215,7 @@
  static proto_tree *top_tree;
  static dissector_handle_t gsm_a_ccch_handle;
  static dissector_handle_t gsm_a_dtap_handle;
@@ -32,7 +34,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  static gboolean is_si2q = FALSE;
  
-@@ -239,9 +246,11 @@
+@@ -239,9 +248,11 @@
  	{  0x08,		"TRX Management messages" },
  	{  0x16,		"Location Services messages" },
  	{  0x3f,		"ip.access Vendor Specific messages" },
@@ -44,7 +46,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  /*
   * 9.2 MESSAGE TYPE
-@@ -353,6 +362,22 @@
+@@ -353,6 +364,22 @@
  #define RSL_IE_IPAC_RTP_MPLEX		0xfd
  #define RSL_IE_IPAC_RTP_MPLEX_ID	0xfe
  
@@ -59,15 +61,15 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +
 +#define RSL_IE_HSL_BTS_SERNO		0xc0
 +#define RSL_IE_HSL_TRAU_PARAMS		0xc1
-+#define RSL_IE_HSL_L1_PRIM		0xc4
++#define RSL_IE_HSL_TX_POWER		0xc4
 +#define RSL_IE_HSL_BTS_VERSION		0xc5
-+#define RSL_IE_HSL_UNKNOWN_VERSION1	0xc6
-+#define RSL_IE_HSL_UNKNOWN_VERSION2	0xc7
++#define RSL_IE_HSL_DSP_VERSION		0xc6
++#define RSL_IE_HSL_FPGA_VERSION		0xc7
 +
  static const value_string rsl_msg_type_vals[] = {
  	  /* 	0 0 0 0 - - - - Radio Link Layer Management messages: */
  	{  0x01,	"DATA REQuest" },								/* 8.3.1 */
-@@ -434,6 +459,12 @@
+@@ -434,6 +461,12 @@
  	{  0x77,	"ip.access DLCX" },
  	{  0x78,	"ip.access DLCX ACK" },
  	{  0x79,	"ip.access DLCX NACK" },
@@ -76,11 +78,11 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +	{  0x81,	"HSL CONNECT TRAU" },
 +	{  0x82,	"HSL BSSGP" },
 +	{  0x83,	"HSL GPRS TS ALLOC" },
-+	{  0x8a,	"HSL L1 PRIMITIVE" },
++	{  0x8a,	"HSL TX SET POWER" },
  	{ 0,		NULL }
  };
  
-@@ -573,6 +604,7 @@
+@@ -573,6 +606,7 @@
  			Not used
  
  	*/
@@ -88,36 +90,39 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  	{ 0xe0,		"SRTP Configuration" },
  	{ 0xe1,		"BSC Proxy UDP Port" },
  	{ 0xe2,		"BSC Multiplex Timeout" },
-@@ -591,6 +623,13 @@
+@@ -591,6 +625,13 @@
  	{ 0xfc,		"RTP Payload Type 2" },
  	{ 0xfd,		"RTP Multiplex" },
  	{ 0xfe,		"RTP Multiplex Identifier" },
 +	/* HSL */
 +	{ 0xc0,		"HSL Serial Number" },
 +	{ 0xc1,		"HSL TRAU Parameters" },
-+	{ 0xc4,		"HSL L1 Primitive" },
++	{ 0xc4,		"HSL TX Power (dBm)" },
 +	{ 0xc5,		"HSL BTS SW Version" },
-+	{ 0xc6,		"HSL Unknown Version" },
-+	{ 0xc7,		"HSL Unknown Version" },
++	{ 0xc6,		"HSL DSP SW Version" },
++	{ 0xc7,		"HSL FPGA SW Version" },
  	{ 0,			NULL }
  };
  
-@@ -714,6 +753,13 @@
+@@ -714,6 +755,13 @@
  		[RSL_IE_IPAC_SPEECH_MODE]	= { TLV_TYPE_TV, 0 },
  		[RSL_IE_IPAC_CONN_ID]		= { TLV_TYPE_FIXED, 2 },
  		[RSL_IE_IPAC_RTP_PAYLOAD2]	= { TLV_TYPE_TV, 0 },
 +		/* HSL */
 +		[RSL_IE_HSL_BTS_SERNO]		= { TLV_TYPE_TLV,0 },
 +		[RSL_IE_HSL_TRAU_PARAMS]	= { TLV_TYPE_TLV,0 },
-+		[RSL_IE_HSL_L1_PRIM]		= { TLV_TYPE_TV, 0 },
++		[RSL_IE_HSL_TX_POWER]		= { TLV_TYPE_TV, 0 },
 +		[RSL_IE_HSL_BTS_VERSION]	= { TLV_TYPE_TLV, 0 },
-+		[RSL_IE_HSL_UNKNOWN_VERSION1]	= { TLV_TYPE_TLV, 0 },
-+		[RSL_IE_HSL_UNKNOWN_VERSION2]	= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_HSL_DSP_VERSION]	= { TLV_TYPE_TLV, 0 },
++		[RSL_IE_HSL_FPGA_VERSION]	= { TLV_TYPE_TLV, 0 },
  	},
  };
  
-@@ -3120,7 +3166,7 @@
+@@ -3118,9 +3166,10 @@
+ 	guint8 msg_type;
+ 	guint32 local_addr = 0;
  	guint16 local_port = 0;
++	int old_visited;
  	address src_addr;
  
 -	msg_type = tvb_get_guint8(tvb, offset)&0x7f;
@@ -125,7 +130,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  	offset++;
  
  #if 0
-@@ -3259,6 +3305,35 @@
+@@ -3259,20 +3308,62 @@
  			proto_tree_add_item(ie_tree, hf_rsl_cstat_avg_tx_dly, tvb,
  					    offset+24, 4, FALSE);
  			break;
@@ -139,16 +144,25 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +		case RSL_IE_HSL_TRAU_PARAMS:
 +			proto_tree_add_item(tree, hf_rsl_hsl_trau_remote_port, tvb,
 +					    offset+2, 2, TRUE);
++			local_port = tvb_get_letohs(tvb, offset+2);
 +			proto_tree_add_item(tree, hf_rsl_hsl_trau_remote_ip, tvb,
 +					    offset+4, 4, FALSE);
-+			/* FIXME: other fields !! */
++			local_addr = tvb_get_ipv4(tvb, offset+4);
 +			break;
-+		case RSL_IE_HSL_L1_PRIM:
-+			proto_tree_add_item(ie_tree, hf_rsl_hsl_l1_prim, tvb,
++		case RSL_IE_HSL_TX_POWER:
++			proto_tree_add_item(ie_tree, hf_rsl_hsl_tx_power, tvb,
 +					    offset, len, FALSE);
 +			break;
 +		case RSL_IE_HSL_BTS_VERSION:
 +			proto_tree_add_item(ie_tree, hf_rsl_hsl_bts_ver, tvb,
++					    offset, len, FALSE);
++			break;
++		case RSL_IE_HSL_DSP_VERSION:
++			proto_tree_add_item(ie_tree, hf_rsl_hsl_dsp_ver, tvb,
++					    offset, len, FALSE);
++			break;
++		case RSL_IE_HSL_FPGA_VERSION:
++			proto_tree_add_item(ie_tree, hf_rsl_hsl_fpga_ver, tvb,
 +					    offset, len, FALSE);
 +			break;
 +		case RSL_IE_L3_INF:
@@ -161,7 +175,25 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  		}
  		offset += len;
  	}
-@@ -3284,10 +3359,12 @@
+ 
+ 	switch (msg_type) {
+ 	case RSL_MSG_TYPE_IPAC_CRCX_ACK:
++	case RSL_MSG_TYPE_HSL_CONN_TRAU:
+ 		/* Notify the RTP and RTCP dissectors about a new RTP stream */
+ 		src_addr.type = AT_IPv4;
+ 		src_addr.len = 4;
+ 		src_addr.data = (guint8 *)&local_addr;
++		old_visited = pinfo->fd->flags.visited;
++		pinfo->fd->flags.visited = 0;
+ 		rtp_add_address(pinfo, &src_addr, local_port, 0,
+ 				"GSM A-bis/IP", pinfo->fd->num, 0, NULL);
+ 		rtcp_add_address(pinfo, &src_addr, local_port+1, 0,
+ 				 "GSM A-bis/IP", pinfo->fd->num);
++		pinfo->fd->flags.visited = old_visited;
+ 		break;
+ 	}
+ 	return offset;
+@@ -3284,10 +3375,12 @@
  	guint8	msg_disc, msg_type;
  
  	msg_disc = tvb_get_guint8(tvb, offset++) >> 1;
@@ -176,7 +208,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  		offset = dissct_rsl_ipaccess_msg(tvb, pinfo, tree, offset);
  		return offset;
  	}
-@@ -3924,7 +4001,7 @@
+@@ -3924,7 +4017,7 @@
  	col_set_str(pinfo->cinfo, COL_PROTOCOL, "RSL");
  	col_clear(pinfo->cinfo, COL_INFO);
  
@@ -185,7 +217,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  
  	if (check_col(pinfo->cinfo, COL_INFO)){
  		col_append_fstr(pinfo->cinfo, COL_INFO, "%s ",val_to_str(msg_type, rsl_msg_type_vals,"unknown %u"));
-@@ -3955,6 +4032,7 @@
+@@ -3955,6 +4048,7 @@
  
  	gsm_a_ccch_handle = find_dissector("gsm_a_ccch");
  	gsm_a_dtap_handle = find_dissector("gsm_a_dtap");
@@ -193,7 +225,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  }
  
  /* Register the protocol with Wireshark */
-@@ -3975,7 +4053,7 @@
+@@ -3975,7 +4069,7 @@
  		},
  		{ &hf_rsl_msg_type,
  			{ "Message type",           "rsl.msg_type",
@@ -202,7 +234,7 @@ Index: wireshark/epan/dissectors/packet-rsl.c
  			NULL, HFILL }
  		},
  		{ &hf_rsl_ie_id,
-@@ -4392,6 +4470,28 @@
+@@ -4392,6 +4486,36 @@
  			{ "Average Tx Delay", "rsl.ipacc.cstat.avg_tx_delay",
  			  FT_UINT32, BASE_DEC, NULL, 0, NULL, HFILL }
  		},
@@ -211,12 +243,20 @@ Index: wireshark/epan/dissectors/packet-rsl.c
 +			{ "BTS Serial Number", "rsl.hsl.bts_serno",
 +			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
-+		{ &hf_rsl_hsl_l1_prim,
-+			{ "Layer 1 Primitive?", "rsl.hsl.l1_prim",
-+			  FT_BYTES, BASE_NONE, NULL, 0, NULL, HFILL }
++		{ &hf_rsl_hsl_tx_power,
++			{ "Transmit Power", "rsl.hsl.tx_power",
++			  FT_UINT8, BASE_DEC, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_rsl_hsl_bts_ver,
 +			{ "BTS Version Number", "rsl.hsl.bts_ver",
++			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_rsl_hsl_dsp_ver,
++			{ "DSP Version Number", "rsl.hsl.dsp_ver",
++			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
++		},
++		{ &hf_rsl_hsl_fpga_ver,
++			{ "FPGA Version Number", "rsl.hsl.fpga_ver",
 +			  FT_STRING, BASE_NONE, NULL, 0, NULL, HFILL }
 +		},
 +		{ &hf_rsl_hsl_trau_remote_port,
