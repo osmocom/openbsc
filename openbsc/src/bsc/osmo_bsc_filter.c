@@ -83,6 +83,9 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 	case GSM_MI_TYPE_IMSI:
 		subscr = subscr_active_by_imsi(conn->bts->network, mi_string);
 		break;
+	default:
+		subscr = NULL;
+		break;
 	}
 
 	if (!subscr) {
