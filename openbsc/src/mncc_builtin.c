@@ -238,12 +238,18 @@ static int mncc_rel_ind(struct gsm_call *call, int msg_type, struct gsm_mncc *re
 		free_call(call);
 		return 0;
 	}
+
 	rel->callref = remote->callref;
 	DEBUGP(DMNCC, "(call %x) Releasing remote with cause %d\n",
 		call->callref, rel->cause.value);
-	mncc_tx_to_cc(remote->net, MNCC_REL_REQ, rel);
 
+	/*
+	 * Release this side of the call right now. Otherwise we end up
+	 * in this method for the other call and will also try to release
+	 * it and then we will end up with a double free and a crash
+	 */
 	free_call(call);
+	mncc_tx_to_cc(remote->net, MNCC_REL_REQ, rel);
 
 	return 0;
 }
