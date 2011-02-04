@@ -1,3 +1,5 @@
+#ifndef OPENBSC_LAPD_H
+#define OPENBSC_LAPD_H
 
 #include <stdint.h>
 
@@ -18,3 +20,4 @@ extern void (*lapd_transmit_cb)(uint8_t *data, int len, void *cbdata);
 
 extern void lapd_transmit(int tei, uint8_t *data, int len, void *cbdata);
 
+#endif /* OPENBSC_LAPD_H */
