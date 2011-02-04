@@ -36,7 +36,7 @@ typedef enum {
 } lapd_msg_type;
 
 typedef enum {
-	// commands/responses
+	/* commands/responses */
 	LAPD_CMD_NONE = 0,
 
 	LAPD_CMD_I,
@@ -72,53 +72,53 @@ const char *lapd_cmd_types[] = {
 };
 
 const char *lapd_msg_types = "?ISU";
-const int network_side = 1;	// 0 for user side
+const int network_side = 1;	/* 0 for user side */
 
 typedef struct {
 	int tei;
 	int sapi;
-	//A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S).
-	int vs;			// next to be transmitted
-	int va;			// last acked by peer
-	int vr;			// next expected to be received
+	/* A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S). */
+	int vs;			/* next to be transmitted */
+	int va;			/* last acked by peer */
+	int vr;			/* next expected to be received */
 	lapd_tei_state state;
 } lapd_tei_t;
 
-// 3.5.2.2   Send state variable V(S)
-// Each point-to-point data link connection endpoint shall have an associated V(S) when using I frame
-// commands. V(S) denotes the sequence number of the next I frame to be transmitted. The V(S) can
-// take on the value 0 through n minus 1. The value of V(S) shall be incremented by 1 with each
-// successive I frame transmission, and shall not exceed V(A) by more than the maximum number of
-// outstanding I frames k. The value of k may be in the range of 1 ≤ k ≤ 127.
-//
-// 3.5.2.3   Acknowledge state variable V(A)
-// Each point-to-point data link connection endpoint shall have an associated V(A) when using I frame
-// commands and supervisory frame commands/responses. V(A) identifies the last I frame that has been
-// acknowledged by its peer [V(A) − 1 equals the N(S) of the last acknowledged I frame]. V(A) can
-// take on the value 0 through n minus 1. The value of V(A) shall be updated by the valid N(R) values
-// received from its peer (see 3.5.2.6). A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤
-// V(S).
-//
-// 3.5.2.5    Receive state variable V(R)
-// Each point-to-point data link connection endpoint shall have an associated V(R) when using I frame
-// commands and supervisory frame commands/responses. V(R) denotes the sequence number of the
-// next in-sequence I frame expected to be received. V(R) can take on the value 0 through n minus 1.
-// The value of V(R) shall be incremented by one with the receipt of an error-free, in-sequence I frame
-// whose N(S) equals V(R).
-//
+/* 3.5.2.2   Send state variable V(S)
+ * Each point-to-point data link connection endpoint shall have an associated V(S) when using I frame
+ * commands. V(S) denotes the sequence number of the next I frame to be transmitted. The V(S) can
+ * take on the value 0 through n minus 1. The value of V(S) shall be incremented by 1 with each
+ * successive I frame transmission, and shall not exceed V(A) by more than the maximum number of
+ * outstanding I frames k. The value of k may be in the range of 1 ≤ k ≤ 127.
+ *
+ * 3.5.2.3   Acknowledge state variable V(A)
+ * Each point-to-point data link connection endpoint shall have an associated V(A) when using I frame
+ * commands and supervisory frame commands/responses. V(A) identifies the last I frame that has been
+ * acknowledged by its peer [V(A) − 1 equals the N(S) of the last acknowledged I frame]. V(A) can
+ * take on the value 0 through n minus 1. The value of V(A) shall be updated by the valid N(R) values
+ * received from its peer (see 3.5.2.6). A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤
+ * V(S).
+ *
+ * 3.5.2.5    Receive state variable V(R)
+ * Each point-to-point data link connection endpoint shall have an associated V(R) when using I frame
+ * commands and supervisory frame commands/responses. V(R) denotes the sequence number of the
+ * next in-sequence I frame expected to be received. V(R) can take on the value 0 through n minus 1.
+ * The value of V(R) shall be incremented by one with the receipt of an error-free, in-sequence I frame
+ * whose N(S) equals V(R).
+ */
 #define	LAPD_NS(teip) (teip->vs)
 #define	LAPD_NR(teip) (teip->vr)
 
-// 3.5.2.4    Send sequence number N(S)
-// Only I frames contain N(S), the send sequence number of transmitted I frames. At the time that an in-
-// sequence I frame is designated for transmission, the value of N(S) is set equal to V(S).
-//
-// 3.5.2.6    Receive sequence number N(R)
-// All I frames and supervisory frames contain N(R), the expected send sequence number of the next
-// received I frame. At the time that a frame of the above types is designated for transmission, the value
-// of N(R) is set equal to V(R). N(R) indicates that the data link layer entity transmitting the N(R) has
-// correctly received all I frames numbered up to and including N(R) − 1.
-
+/* 3.5.2.4    Send sequence number N(S)
+ * Only I frames contain N(S), the send sequence number of transmitted I frames. At the time that an in-
+ * sequence I frame is designated for transmission, the value of N(S) is set equal to V(S).
+ *
+ * 3.5.2.6    Receive sequence number N(R)
+ * All I frames and supervisory frames contain N(R), the expected send sequence number of the next
+ * received I frame. At the time that a frame of the above types is designated for transmission, the value
+ * of N(R) is set equal to V(R). N(R) indicates that the data link layer entity transmitting the N(R) has
+ * correctly received all I frames numbered up to and including N(R) − 1.
+ */
 void (*lapd_transmit_cb) (uint8_t * data, int len, void *cbdata);
 
 static lapd_tei_t tei_list[] = {
