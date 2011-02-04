@@ -127,7 +127,7 @@ static lapd_tei_t tei_list[] = {
 	{-1},
 };
 
-lapd_tei_t *teip_from_tei(int tei)
+static lapd_tei_t *teip_from_tei(int tei)
 {
 	lapd_tei_t *p;
 	for (p = tei_list; p->tei != -1; p++) {
@@ -137,14 +137,14 @@ lapd_tei_t *teip_from_tei(int tei)
 	return NULL;
 };
 
-void lapd_tei_set_state(lapd_tei_t * teip, int newstate)
+static void lapd_tei_set_state(lapd_tei_t * teip, int newstate)
 {
 	DEBUG_LAPD("state change on tei %d: %s -> %s\n", teip->tei,
 		   lapd_tei_states[teip->state], lapd_tei_states[newstate]);
 	teip->state = newstate;
 };
 
-void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
+static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 {
 	//DEBUG_LAPD("tei receive %p, %d\n", data, len);
 	int entity = data[0];
