@@ -1,6 +1,6 @@
 /* OpenBSC Abis input driver for DAHDI */
 
-/* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2008-2011 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by Digium and Matthew Fredrickson <creslin@digium.com>
  *
@@ -33,15 +33,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
-#include <mISDNif.h>
 #include <dahdi/user.h>
-
-//#define AF_COMPATIBILITY_FUNC
-//#include <compat_af_isdn.h>
-#ifndef AF_ISDN
-#define AF_ISDN 34
-#define PF_ISDN AF_ISDN
-#endif
 
 #include <openbsc/select.h>
 #include <openbsc/msgb.h>
@@ -57,39 +49,6 @@
 
 #define TS1_ALLOC_SIZE	300
 
-struct prim_name {
-	unsigned int prim;
-	const char *name;
-};
-
-const struct prim_name prim_names[] = {
-	{ PH_CONTROL_IND, "PH_CONTROL_IND" },
-	{ PH_DATA_IND, "PH_DATA_IND" },
-	{ PH_DATA_CNF, "PH_DATA_CNF" },
-	{ PH_ACTIVATE_IND, "PH_ACTIVATE_IND" },
-	{ DL_ESTABLISH_IND, "DL_ESTABLISH_IND" },
-	{ DL_ESTABLISH_CNF, "DL_ESTABLISH_CNF" },
-	{ DL_RELEASE_IND, "DL_RELEASE_IND" },
-	{ DL_RELEASE_CNF, "DL_RELEASE_CNF" },
-	{ DL_DATA_IND, "DL_DATA_IND" },
-	{ DL_UNITDATA_IND, "DL_UNITDATA_IND" },
-	{ DL_INFORMATION_IND, "DL_INFORMATION_IND" },
-	{ MPH_ACTIVATE_IND, "MPH_ACTIVATE_IND" },
-	{ MPH_DEACTIVATE_IND, "MPH_DEACTIVATE_IND" },
-};
-
-const char *get_prim_name(unsigned int prim)
-{
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(prim_names); i++) {
-		if (prim_names[i].prim == prim)
-			return prim_names[i].name;
-	}
-
-	return "UNKNOWN";
-}
-
 static int handle_ts1_read(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -97,15 +56,12 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *link;
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
-	struct sockaddr_mISDN l2addr;
-	struct mISDNhead ah;
-	struct mISDNhead *hh = &ah;
-	int ret;
+	lapd_mph_type prim;
+	unsigned int sapi, tei;
+	int ilen, ret;
 
 	if (!msg)
 		return -ENOMEM;
-
-	hh = (struct mISDNhead *) msg->data;
 
 	ret = read(bfd->fd, msg->data, TS1_ALLOC_SIZE - 16);
 	if (ret < 0) {
@@ -116,174 +72,49 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		perror("read ");
 	}
 
-	l2addr.sapi = msg->data[0] >> 2;
-	l2addr.tei = msg->data[1] >> 1;
+	sapi = msg->data[0] >> 2;
+	tei = msg->data[1] >> 1;
 
-	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)",
-		ret, l2addr.sapi, l2addr.tei);
+	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
-	int		ilen;
-	lapd_mph_type prim;
 	uint8_t *idata = lapd_receive(msg->data, msg->len, &ilen, &prim, bfd);
 
-	switch (prim) {
-		case 0: break;
-		case LAPD_MPH_ACTIVATE_IND: hh->prim = MPH_ACTIVATE_IND; break;
-		case LAPD_MPH_DEACTIVATE_IND: hh->prim = MPH_DEACTIVATE_IND; break;
-		case LAPD_DL_DATA_IND: hh->prim = DL_DATA_IND; break;
-		case LAPD_DL_UNITDATA_IND: hh->prim = DL_UNITDATA_IND; break;
-		default: printf("ERROR: unknown prim\n");
-	};
-
-	int pass_on = (prim != 0);
-
-	if (!pass_on) {
-		return 0;
-	};
-
-	//l2addr.sapi = msg->data[0] >> 2;
-	//l2addr.tei = msg->data[1] >> 1;
 	msgb_pull(msg, 2);
 
-#if 0
-	switch (hh->prim) {
-	case DL_INFORMATION_IND:
-		DEBUGP(DMI, "got DL_INFORMATION_IND\n");
-		struct sockaddr_mISDN *sa = NULL;
-		char *lstr = "UNKN";
+	DEBUGP(DMI, "prim %08x\n", prim);
 
-		switch (l2addr.tei) {
-		case TEI_OML:
-			sa = &e1h->omladdr;
-			lstr = "OML";
-			break;
-		case TEI_RSL:
-			sa = &e1h->l2addr;
-			lstr = "RSL";
-			break;
-		default:
-			break;
-		}
-		if (sa) {
-			DEBUGP(DMI, "%s use channel(%d) sapi(%d) tei(%d) for now\n",
-				lstr, l2addr.channel, l2addr.sapi, l2addr.tei);
-			memcpy(sa, &l2addr, sizeof(l2addr));
-		}
+	switch (prim) {
+	case 0:
 		break;
-	case DL_ESTABLISH_IND:
-		DEBUGP(DMI, "got DL_ESTABLISH_IND\n");
+	case LAPD_MPH_ACTIVATE_IND:
+		DEBUGP(DMI, "MPH_ACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, tei, sapi);
 		break;
-	case DL_ESTABLISH_CNF:
-		DEBUGP(DMI, "got DL_ESTABLISH_CNF\n");
+	case LAPD_MPH_DEACTIVATE_IND:
+		DEBUGP(DMI, "MPH_DEACTIVATE_IND: sapi(%d) tei(%d)\n", sapi, tei);
+		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, tei, sapi);
 		break;
-	case DL_RELEASE_IND:
-		DEBUGP(DMI, "got DL_RELEASE_IND: E1 Layer 1 disappeared?\n");
-		break;
-#if 0
-	case MPH_ACTIVATE_IND:
-		DEBUGP(DMI, "got MPH_ACTIVATE_IND\n");
-		printf("tei %d, sapi %d\n", l2addr.tei, l2addr.sapi);
-		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
-			e1h->cb(EVT_E1_OML_UP, e1h->bts);
-		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
-			e1h->cb(EVT_E1_RSL_UP, e1h->bts);
-		break;
-	case MPH_DEACTIVATE_IND:
-		DEBUGP(DMI, "got MPH_DEACTIVATE_IND: TEI link closed?\n");
-		if (l2addr.tei == TEI_OML && l2addr.sapi == SAPI_OML)
-			e1h->cb(EVT_E1_OML_DN, e1h->bts);
-		else if (l2addr.tei == TEI_RSL && l2addr.sapi == SAPI_RSL)
-			e1h->cb(EVT_E1_RSL_DN, e1h->bts);
-		break;
-#endif
-	case DL_DATA_IND:
-		DEBUGP(DMI, "got DL_DATA_IND\n");
-
-		ret = msg->len;
-		msg->l2h = msg->data + 2;// + MISDN_HEADER_LEN;
-
-#if 0
-		if (debug_mask & DMI) { 
-			fprintf(stdout, "RX: ");
-			hexdump(msgb_l2(msg), ret - (msg->l2h - msg->data));// - MISDN_HEADER_LEN);
-		}
-#endif
-		switch (l2addr.tei) {
-		case TEI_OML:
-			ret = abis_nm_rcvmsg(msg);
-			break;
-		case TEI_RSL:
-			ret = abis_rsl_rcvmsg(msg);
-			break;
-		default:
-			fprintf(stderr, "DATA_IND for unknown TEI\n");
-			break;
-		}
-		break;
-	default:
-		DEBUGP(DMI, "got unexpected 0x%x prim\n", hh->prim);
-		break;
-	}
-#endif
-
-
-
-	DEBUGP(DMI, "hh->prim %08x\n", hh->prim);
-#if 1
-	switch (hh->prim) {
-	case DL_INFORMATION_IND:
-		/* mISDN tells us which channel number is allocated for this
-		 * tuple of (SAPI, TEI). */
-		DEBUGP(DMI, "DL_INFORMATION_IND: use channel(%d) sapi(%d) tei(%d) for now\n",
-			l2addr.channel, l2addr.sapi, l2addr.tei);
-		link = e1inp_lookup_sign_link(e1i_ts, l2addr.tei, l2addr.sapi);
-		if (!link) {
-			DEBUGPC(DMI, "mISDN message for unknown sign_link\n");
-			msgb_free(msg);
-			return -EINVAL;
-		}
-		/* save the channel number in the driver private struct */
-		link->driver.misdn.channel = l2addr.channel;
-		break;
-	case MPH_ACTIVATE_IND:
-	case DL_ESTABLISH_IND:
-		DEBUGP(DMI, "DL_ESTABLISH_IND: channel(%d) sapi(%d) tei(%d)\n",
-		l2addr.channel, l2addr.sapi, l2addr.tei);
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_UP, l2addr.tei, l2addr.sapi);
-		break;
-	case DL_RELEASE_IND:
-		DEBUGP(DMI, "DL_RELEASE_IND: channel(%d) sapi(%d) tei(%d)\n",
-		l2addr.channel, l2addr.sapi, l2addr.tei);
-		ret = e1inp_event(e1i_ts, EVT_E1_TEI_DN, l2addr.tei, l2addr.sapi);
-		break;
-	case DL_DATA_IND:
-	case DL_UNITDATA_IND:
-		if (hh->prim == DL_DATA_IND)
+	case LAPD_DL_DATA_IND:
+	case LAPD_DL_UNITDATA_IND:
+		if (prim == DL_DATA_IND)
 			msg->l2h = msg->data + 2;
 		else
 			msg->l2h = msg->data + 1;
 		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret));
-		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
-		break;
-	case PH_ACTIVATE_IND:
-		DEBUGP(DMI, "PH_ACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
-		l2addr.channel, l2addr.sapi, l2addr.tei);
-		break;
-	case PH_DEACTIVATE_IND:
-		DEBUGP(DMI, "PH_DEACTIVATE_IND: channel(%d) sapi(%d) tei(%d)\n",
-		l2addr.channel, l2addr.sapi, l2addr.tei);
+		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
+		printf("ERROR: unknown prim\n");
 		break;
 	}
-#endif
+
 	DEBUGP(DMI, "Returned ok\n");
 	return ret;
 }
 
 static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
-	/* We never include the mISDN B-Channel FD into the
+	/* We never include the DAHDI B-Channel FD into the
 	 * writeset, since it doesn't support poll() based
 	 * write flow control */		
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
@@ -322,9 +153,6 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	//u_int8_t *l2_data;
-	//int ret;
-	//int no_oml = 0;
 
 	bfd->when &= ~BSC_FD_WRITE;
 
@@ -336,13 +164,6 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	}
 
 	lapd_transmit(sign_link->tei, msg->data, msg->len, bfd);
-
-	//ret = write(bfd->fd, msg->data, msg->len + 2);
-
-#if 0
-	if (ret < 0)
-		fprintf(stderr, "%s write failed %d\n", __func__, ret);
-#endif
 	msgb_free(msg);
 
 	/* set tx delay timer for next event */
@@ -475,7 +296,7 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 			rc = handle_tsX_read(bfd);
 		if (what & BSC_FD_WRITE)
 			rc = handle_tsX_write(bfd);
-		/* We never include the mISDN B-Channel FD into the
+		/* We never include the DAHDI B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
 		 * write flow control */		
 		break;
@@ -486,32 +307,6 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 
 	return rc;
 }
-
-#if 0
-static int activate_bchan(struct e1inp_line *line, int ts, int act)
-{
-	struct mISDNhead hh;
-	int ret;
-	unsigned int idx = ts-1;
-	struct e1inp_ts *e1i_ts = &line->ts[idx];
-	struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
-
-	fprintf(stdout, "activate bchan\n");
-	if (act)
-		hh.prim = PH_ACTIVATE_REQ;
-	else
-		hh.prim = PH_DEACTIVATE_REQ;
-
-	hh.id = MISDN_ID_ANY;
-	ret = sendto(bfd->fd, &hh, sizeof(hh), 0, NULL, 0);
-	if (ret < 0) {
-		fprintf(stdout, "could not send ACTIVATE_RQ %s\n",
-			strerror(errno));
-	}
-
-	return ret;
-}
-#endif
 
 struct e1inp_driver dahdi_driver = {
 	.name = "DAHDI",
@@ -589,7 +384,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 				exit(-1);
 			}
 			dahdi_set_bufinfo(bfd->fd, 0);
-			/* We never include the mISDN B-Channel FD into the
+			/* We never include the DAHDI B-Channel FD into the
 	 		* writeset, since it doesn't support poll() based
 	 		* write flow control */		
 			bfd->when = BSC_FD_READ;// | BSC_FD_WRITE;
@@ -615,8 +410,6 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 
 int mi_e1_line_update(struct e1inp_line *line)
 {
-	struct mISDN_devinfo devinfo;
-	//int sk, ret, cnt;
 	int ret;
 
 	if (!line->driver) {
@@ -632,45 +425,6 @@ int mi_e1_line_update(struct e1inp_line *line)
 	if (line->driver != &dahdi_driver)
 		return -EINVAL;
 
-#if 0
-	/* open the ISDN card device */
-	sk = socket(PF_ISDN, SOCK_RAW, ISDN_P_BASE);
-	if (sk < 0) {
-		fprintf(stderr, "%s could not open socket %s\n",
-			__func__, strerror(errno));
-		return sk;
-	}
-
-	ret = ioctl(sk, IMGETCOUNT, &cnt);
-	if (ret) {
-		fprintf(stderr, "%s error getting interf count: %s\n",
-			__func__, strerror(errno));
-		close(sk);
-		return -ENODEV;
-	}
-	//DEBUGP(DMI,"%d device%s found\n", cnt, (cnt==1)?"":"s");
-	printf("%d device%s found\n", cnt, (cnt==1)?"":"s");
-#if 1
-	devinfo.id = line->num;
-	ret = ioctl(sk, IMGETDEVINFO, &devinfo);
-	if (ret < 0) {
-		fprintf(stdout, "error getting info for device %d: %s\n",
-			line->num, strerror(errno));
-		return -ENODEV;
-	}
-	fprintf(stdout, "        id:             %d\n", devinfo.id);
-	fprintf(stdout, "        Dprotocols:     %08x\n", devinfo.Dprotocols);
-	fprintf(stdout, "        Bprotocols:     %08x\n", devinfo.Bprotocols);
-	fprintf(stdout, "        protocol:       %d\n", devinfo.protocol);
-	fprintf(stdout, "        nrbchan:        %d\n", devinfo.nrbchan);
-	fprintf(stdout, "        name:           %s\n", devinfo.name);
-#endif
-
-	if (!(devinfo.Dprotocols & (1 << ISDN_P_NT_E1))) {
-		fprintf(stderr, "error: card is not of type E1 (NT-mode)\n");
-		return -EINVAL;
-	}
-#endif
 	init_flip_bits();
 
 	ret = mi_e1_setup(line, 1);
