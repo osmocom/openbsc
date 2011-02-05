@@ -19,7 +19,8 @@ noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libmgcp.a
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		chan_alloc.c debug.c socket.c abis_nm_vty.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
-		trau_frame.c trau_mux.c paging.c e1_config.c e1_input.c \
+		trau_frame.c trau_mux.c paging.c \
+		e1_config.c e1_input.c e1_input_vty.c \
 		input/misdn.c input/ipaccess.c handover_logic.c \
 		talloc_ctx.c system_information.c rest_octets.c \
 		bts_siemens_bs11.c bts_ipaccess_nanobts.c mncc_upqueue.c \

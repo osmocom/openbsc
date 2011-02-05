@@ -114,11 +114,17 @@ struct e1inp_line {
 /* register a driver with the E1 core */
 int e1inp_driver_register(struct e1inp_driver *drv);
 
+/* fine a previously registered driver */
+struct e1inp_driver *e1inp_driver_find(const char *name);
+
 /* register a line with the E1 core */
 int e1inp_line_register(struct e1inp_line *line);
 
-/* ensure a certain line exists, return pointer to it */
-struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr);
+/* get a line by its ID */
+struct e1inp_line *e1inp_line_get(u_int8_t e1_nr);
+
+/* create a line in the E1 input core */
+struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name);
 
 /* find a sign_link for given TEI and SAPI in a TS */
 struct e1inp_sign_link *
@@ -168,5 +174,8 @@ int ipaccess_setup(struct gsm_network *gsmnet);
 
 extern struct llist_head e1inp_driver_list;
 extern struct llist_head e1inp_line_list;
+
+int e1inp_vty_init(void);
+void e1inp_init(void);
 
 #endif /* _E1_INPUT_H */

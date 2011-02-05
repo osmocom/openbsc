@@ -238,6 +238,8 @@ int main(int argc, char **argv)
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
+	e1inp_init();
+
 	/* enable filters */
 	log_set_all_filter(stderr_target, 1);
 

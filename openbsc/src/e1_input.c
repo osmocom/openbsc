@@ -322,7 +322,7 @@ int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
-static struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
+struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -334,6 +334,37 @@ static struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 	return NULL;
 }
 
+struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
+{
+	struct e1inp_driver *driver;
+	struct e1inp_line *line;
+	int i;
+
+	line = e1inp_line_get(e1_nr);
+	if (line)
+		return NULL;
+
+	driver = e1inp_driver_find(driver_name);
+	if (!driver)
+		return NULL;
+
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
+	if (!line)
+		return NULL;
+
+	line->driver = driver;
+
+	line->num = e1_nr;
+	for (i = 0; i < NUM_E1_TS; i++) {
+		line->ts[i].num = i+1;
+		line->ts[i].line = line;
+	}
+	llist_add_tail(&line->list, &e1inp_line_list);
+
+	return line;
+}
+
+#if 0
 struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
 {
 	struct e1inp_line *line;
@@ -356,6 +387,7 @@ struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
 
 	return line;
 }
+#endif
 
 static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
 {
@@ -536,8 +568,21 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 /* register a driver with the E1 core */
 int e1inp_driver_register(struct e1inp_driver *drv)
 {
+	printf("registering driver %s\n", drv->name);
 	llist_add_tail(&drv->list, &e1inp_driver_list);
 	return 0;
+}
+
+struct e1inp_driver *e1inp_driver_find(const char *name)
+{
+	struct e1inp_driver *drv;
+
+	printf("trying to find driver %s\n", name);
+	llist_for_each_entry(drv, &e1inp_driver_list, list) {
+		if (!strcasecmp(name, drv->name))
+			return drv;
+	}
+	return NULL;
 }
 
 int e1inp_line_update(struct e1inp_line *line)
@@ -563,9 +608,13 @@ static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static __attribute__((constructor)) void on_dso_load_e1_inp(void)
+void e1inp_misdn_init(void);
+
+void e1inp_init(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
 	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
+
+	e1inp_misdn_init();
 }

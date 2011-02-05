@@ -2702,6 +2702,7 @@ int bsc_vty_init(void)
 	install_element(ENABLE_NODE, &pdch_act_cmd);
 
 	abis_nm_vty_init();
+	e1inp_vty_init();
 
 	bsc_vty_init_extra();
 

@@ -386,7 +386,7 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 static int mi_e1_line_update(struct e1inp_line *line);
 
 struct e1inp_driver misdn_driver = {
-	.name = "mISDNuser",
+	.name = "mISDN",
 	.want_write = ts_want_write,
 	.default_delay = 50000,
 	.line_update = &mi_e1_line_update,
@@ -486,16 +486,6 @@ static int mi_e1_line_update(struct e1inp_line *line)
 	struct mISDN_devinfo devinfo;
 	int sk, ret, cnt;
 
-	if (!line->driver) {
-		/* this must be the first update */
-		line->driver = &misdn_driver;
-	} else {
-		/* this is a subsequent update */
-		/* FIXME: first close all sockets */
-		fprintf(stderr, "incremental line updates not supported yet\n");
-		return 0;
-	}
-
 	if (line->driver != &misdn_driver)
 		return -EINVAL;
 
@@ -544,7 +534,7 @@ static int mi_e1_line_update(struct e1inp_line *line)
 	return 0;
 }
 
-static __attribute__((constructor)) void on_dso_load_sms(void)
+void e1inp_misdn_init(void)
 {
 	/* register the driver with the core */
 	e1inp_driver_register(&misdn_driver);

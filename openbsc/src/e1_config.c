@@ -51,7 +51,7 @@ int e1_reconfig_ts(struct gsm_bts_trx_ts *ts)
 	if (!e1_link->e1_ts)
 		return 0;
 
-	line = e1inp_line_get_create(e1_link->e1_nr);
+	line = e1inp_line_get(e1_link->e1_nr);
 	if (!line)
 		return -ENOMEM;
 
@@ -81,7 +81,7 @@ int e1_reconfig_trx(struct gsm_bts_trx *trx)
 		return -EINVAL;
 
 	/* RSL Link */
-	line = e1inp_line_get_create(e1_link->e1_nr);
+	line = e1inp_line_get(e1_link->e1_nr);
 	if (!line)
 		return -ENOMEM;
 	sign_ts = &line->ts[e1_link->e1_ts-1];
@@ -114,7 +114,7 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 		return -EINVAL;
 
 	/* OML link */
-	line = e1inp_line_get_create(e1_link->e1_nr);
+	line = e1inp_line_get(e1_link->e1_nr);
 	if (!line)
 		return -ENOMEM;
 	sign_ts = &line->ts[e1_link->e1_ts-1];
