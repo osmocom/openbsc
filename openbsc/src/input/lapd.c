@@ -11,8 +11,6 @@
 #include "lapd.h"
 #include "openbsc/debug.h"
 
-#define	DEBUG_LAPD(f, args...)	{ printf("lapd "); printf(f, ## args); };
-
 typedef enum {
 	LAPD_TEI_NONE = 0,
 
@@ -139,28 +137,25 @@ static lapd_tei_t *teip_from_tei(int tei)
 
 static void lapd_tei_set_state(lapd_tei_t * teip, int newstate)
 {
-	DEBUG_LAPD("state change on tei %d: %s -> %s\n", teip->tei,
+	DEBUGP(DMI, "state change on tei %d: %s -> %s\n", teip->tei,
 		   lapd_tei_states[teip->state], lapd_tei_states[newstate]);
 	teip->state = newstate;
 };
 
 static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 {
-	//DEBUG_LAPD("tei receive %p, %d\n", data, len);
 	int entity = data[0];
 	int ref = data[1];
 	int mt = data[3];
 	int action = data[4] >> 1;
 	int e = data[4] & 1;
-	//DEBUG_LAPD("tei mgmt: entity %x, ref %x, mt %x, action %x, e %x\n", entity, ref, mt, action, e);
+	DEBUGP(DMI, "tei mgmt: entity %x, ref %x, mt %x, action %x, e %x\n", entity, ref, mt, action, e);
 
 	switch (mt) {
 	case 0x01:{		// identity request
 			int tei = action;
-			DEBUG_LAPD
-			    ("tei mgmt: identity request, accepting tei %d\n",
-			     tei);
-			//printf("tei: %d\n", tei);
+			DEBUGP(DMI, "tei mgmt: identity request, accepting "
+				   "tei %d\n", tei);
 			uint8_t resp[8];
 			memmove(resp, "\xfe\xff\x03\x0f\x00\x00\x02\x00", 8);
 			resp[7] = (tei << 1) | 1;
@@ -171,7 +166,7 @@ static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 			break;
 		}
 	default:
-		DEBUG_LAPD("tei mgmt: unknown mt %x action %x\n", mt, action);
+		DEBUGP(DMI, "tei mgmt: unknown mt %x action %x\n", mt, action);
 		assert(0);
 	};
 };
@@ -180,7 +175,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		      void *cbdata)
 {
 #if 0
-	DEBUG_LAPD("receive %p, %d\n", data, len);
+	DEBUGP(DMI, "receive %p, %d\n", data, len);
 	hexdump(data, len);
 #endif
 
@@ -188,12 +183,12 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 	*prim = 0;
 
 	if (len < 2) {
-		DEBUG_LAPD("len %d < 2\n", len);
+		DEBUGP(DMI, "len %d < 2\n", len);
 		return NULL;
 	};
 
 	if ((data[0] & 1) != 0 || (data[1] & 1) != 1) {
-		DEBUG_LAPD("address field %x/%x not well formed\n", data[0],
+		DEBUGP(DMI, "address field %x/%x not well formed\n", data[0],
 			   data[1]);
 		return NULL;
 	};
@@ -202,10 +197,10 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 	int cr = (data[0] >> 1) & 1;
 	int tei = data[1] >> 1;
 	int command = network_side ^ cr;
-	//DEBUG_LAPD("  address sapi %x tei %d cmd %d cr %d\n", sapi, tei, command, cr);
+	//DEBUGP(DMI, "  address sapi %x tei %d cmd %d cr %d\n", sapi, tei, command, cr);
 
 	if (len < 3) {
-		DEBUG_LAPD("len %d < 3\n", len);
+		DEBUGP(DMI, "len %d < 3\n", len);
 		return NULL;
 	};
 
@@ -237,7 +232,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 			cmd = LAPD_CMD_REJ;
 			break;
 		default:
-			DEBUG_LAPD("unknown S cmd %x\n", data[2]);
+			DEBUGP(DMI, "unknown S cmd %x\n", data[2]);
 			assert(0);
 		};
 	} else if ((data[2] & 3) == 3) {
@@ -268,7 +263,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 			break;
 
 		default:
-			DEBUG_LAPD("unknown U cmd %x (pf %x data %x)\n", val,
+			DEBUGP(DMI, "unknown U cmd %x (pf %x data %x)\n", val,
 				   pf, data[2]);
 			assert(0);
 		};
@@ -283,8 +278,8 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 	if (tei == 127)
 		lapd_tei_receive(contents, *ilen, cbdata);
 
-	DEBUG_LAPD
-	    ("<- %c %s sapi %x tei %3d cmd %x pf %x ns %3d nr %3d ilen %d teip %p vs %d va %d vr %d len %d\n",
+	DEBUGP(DMI, "<- %c %s sapi %x tei %3d cmd %x pf %x ns %3d nr %3d "
+	     "ilen %d teip %p vs %d va %d vr %d len %d\n",
 	     lapd_msg_types[typ], lapd_cmd_types[cmd], sapi, tei, command, pf,
 	     ns, nr, *ilen, teip, teip ? teip->vs : -1, teip ? teip->va : -1,
 	     teip ? teip->vr : -1, len);
@@ -293,11 +288,10 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		switch (cmd) {
 		case LAPD_CMD_I:{
 				if (ns != teip->vr) {
-					DEBUG_LAPD("ns %d != vr %d\n", ns,
+					DEBUGP(DMI, "ns %d != vr %d\n", ns,
 						   teip->vr);
 					if (ns == ((teip->vr - 1) & 0x7f)) {
-						DEBUG_LAPD
-						    ("DOUBLE FRAME, ignoring\n");
+						DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
 						cmd = 0;	// ignore
 					} else {
 						assert(0);
@@ -330,8 +324,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 						//printf("ASSIGNED and ACTIVE\n");
 					} else {
 #if 0
-						DEBUG_LAPD
-						    ("rr in strange state, send rej\n");
+						DEBUGP(DMI, "rr in strange state, send rej\n");
 
 						// rej
 						uint8_t resp[8];
@@ -365,8 +358,8 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 						//printf("ASSIGNED and ACTIVE\n");
 					} else {
 #if 0
-						DEBUG_LAPD
-						    ("rr in strange state, send rej\n");
+						DEBUGP(DMI, "rr in strange "
+						       "state, send rej\n");
 
 						// rej
 						uint8_t resp[8];
@@ -408,7 +401,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 					*prim = LAPD_MPH_DEACTIVATE_IND;
 				lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 #endif
-				DEBUG_LAPD("frame reject, ignoring\n");
+				DEBUGP(DMI, "frame reject, ignoring\n");
 				assert(0);
 				break;
 			}
@@ -424,7 +417,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 				break;
 			}
 		default:
-			DEBUG_LAPD("unknown cmd for tei %d (cmd %x)\n", tei,
+			DEBUGP(DMI, "unknown cmd for tei %d (cmd %x)\n", tei,
 				   cmd);
 			assert(0);
 		};
@@ -438,7 +431,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		// lapd <- S RR sapi 3e tei  25 cmd 0 pf 0 ns  -1 nr   5 ilen 0 teip 0x613800 vs 7 va 5 vr 2 len 4
 
 		// interrogating us, send rr
-		DEBUG_LAPD("Sending RR response\n");
+		DEBUGP(DMI, "Sending RR response\n");
 		uint8_t resp[8];
 		int l = 0;
 		resp[l++] = data[0];
