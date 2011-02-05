@@ -568,7 +568,6 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 /* register a driver with the E1 core */
 int e1inp_driver_register(struct e1inp_driver *drv)
 {
-	printf("registering driver %s\n", drv->name);
 	llist_add_tail(&drv->list, &e1inp_driver_list);
 	return 0;
 }
@@ -577,7 +576,6 @@ struct e1inp_driver *e1inp_driver_find(const char *name)
 {
 	struct e1inp_driver *drv;
 
-	printf("trying to find driver %s\n", name);
 	llist_for_each_entry(drv, &e1inp_driver_list, list) {
 		if (!strcasecmp(name, drv->name))
 			return drv;
