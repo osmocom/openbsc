@@ -58,7 +58,6 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	struct e1inp_sign_link *link;
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
 	lapd_mph_type prim;
 	unsigned int sapi, tei;
@@ -83,7 +82,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
 	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
-	if (!idata)
+	if (!idata && prim == 0)
 		return -EIO;
 
 	msgb_pull(msg, 2);
