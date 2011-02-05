@@ -97,7 +97,6 @@ struct lapd_tei {
 	struct llist_head list;
 
 	uint8_t tei;
-	uint8_t sapi;
 	/* A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S). */
 	int vs;			/* next to be transmitted */
 	int va;			/* last acked by peer */
@@ -456,7 +455,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	return NULL;
 };
 
-void lapd_transmit(struct lapd_instance *li, uint8_t tei,
+void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 		   uint8_t *data, unsigned int len)
 {
 	//printf("lapd_transmit %d, %d\n", tei, len);
@@ -475,8 +474,8 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei,
 	memmove(buf + 4, data, len);
 	len += 4;
 
-	buf[0] = (teip->sapi << 2) | (li->network_side ? 2 : 0);
-	buf[1] = (teip->tei << 1) | 1;
+	buf[0] = (sapi << 2) | (li->network_side ? 2 : 0);
+	buf[1] = (tei << 1) | 1;
 	buf[2] = (LAPD_NS(teip) << 1);
 	buf[3] = (LAPD_NR(teip) << 1) | 0;
 

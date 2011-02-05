@@ -169,7 +169,8 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei, msg->data, msg->len);
+	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei,
+		      sign_link->sapi, msg->data, msg->len);
 	msgb_free(msg);
 
 	/* set tx delay timer for next event */

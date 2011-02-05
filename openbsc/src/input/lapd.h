@@ -29,7 +29,8 @@ struct lapd_instance {
 extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data, unsigned int len,
 			     int *ilen, lapd_mph_type *prim);
 
-extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t *data, unsigned int len);
+extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
+			  uint8_t *data, unsigned int len);
 
 struct lapd_instance *lapd_instance_alloc(void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata);
