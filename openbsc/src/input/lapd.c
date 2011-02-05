@@ -154,13 +154,22 @@ static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 	switch (mt) {
 	case 0x01:{		// identity request
 			int tei = action;
+			uint8_t resp[8];
+			lapd_tei_t *teip;
+
 			DEBUGP(DMI, "tei mgmt: identity request, accepting "
 				   "tei %d\n", tei);
-			uint8_t resp[8];
 			memmove(resp, "\xfe\xff\x03\x0f\x00\x00\x02\x00", 8);
 			resp[7] = (tei << 1) | 1;
 			lapd_transmit_cb(resp, 8, cbdata);
-			lapd_tei_t *teip = teip_from_tei(tei);
+
+			teip = teip_from_tei(tei);
+			if (!teip) {
+				LOGP(DMI, LOGL_NOTICE, "Message for unknown "
+				     "TEI %u, LAPD code supports only "
+				     "TEI 25, 1, 2\n", tei);
+				return;
+			}
 			if (teip->state == LAPD_TEI_NONE)
 				lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 			break;
@@ -174,10 +183,13 @@ static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		      void *cbdata)
 {
-#if 0
-	DEBUGP(DMI, "receive %p, %d\n", data, len);
-	hexdump(data, len);
-#endif
+	uint8_t sapi, cr, tei, command;
+	int pf, ns, nr;
+	uint8_t *contents;
+	lapd_tei_t *teip;
+
+	uint8_t resp[8];
+	int l = 0;
 
 	*ilen = 0;
 	*prim = 0;
@@ -193,10 +205,10 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		return NULL;
 	};
 
-	int sapi = data[0] >> 2;
-	int cr = (data[0] >> 1) & 1;
-	int tei = data[1] >> 1;
-	int command = network_side ^ cr;
+	sapi = data[0] >> 2;
+	cr = (data[0] >> 1) & 1;
+	tei = data[1] >> 1;
+	command = network_side ^ cr;
 	//DEBUGP(DMI, "  address sapi %x tei %d cmd %d cr %d\n", sapi, tei, command, cr);
 
 	if (len < 3) {
@@ -206,9 +218,9 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 
 	lapd_msg_type typ = 0;
 	lapd_cmd_type cmd = 0;
-	int pf = -1;
-	int ns = -1;
-	int nr = -1;
+	pf = -1;
+	ns = -1;
+	nr = -1;
 	if ((data[2] & 1) == 0) {
 		typ = LAPD_TYPE_I;
 		assert(len >= 4);
@@ -269,14 +281,15 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		};
 	};
 
-	uint8_t *contents = &data[4];
+	contents = &data[4];
 	if (typ == LAPD_TYPE_U)
 		contents--;
 	*ilen = len - (contents - data);
 
-	lapd_tei_t *teip = teip_from_tei(tei);
 	if (tei == 127)
 		lapd_tei_receive(contents, *ilen, cbdata);
+
+	teip = teip_from_tei(tei);
 
 	DEBUGP(DMI, "<- %c %s sapi %x tei %3d cmd %x pf %x ns %3d nr %3d "
 	     "ilen %d teip %p vs %d va %d vr %d len %d\n",
@@ -284,144 +297,119 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 	     ns, nr, *ilen, teip, teip ? teip->vs : -1, teip ? teip->va : -1,
 	     teip ? teip->vr : -1, len);
 
-	if (teip) {
-		switch (cmd) {
-		case LAPD_CMD_I:{
-				if (ns != teip->vr) {
-					DEBUGP(DMI, "ns %d != vr %d\n", ns,
-						   teip->vr);
-					if (ns == ((teip->vr - 1) & 0x7f)) {
-						DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
-						cmd = 0;	// ignore
-					} else {
-						assert(0);
-					};
-				} else {
-					//printf("IN SEQUENCE\n");
-					teip->vr = (ns + 1) & 0x7f;	// FIXME: hack!
-				};
+	if (!teip) {
+		LOGP(DMI, LOGL_NOTICE, "Unknown TEI %u\n", tei);
+		return NULL;
+	}
 
-				break;
-			}
-		case LAPD_CMD_UI:
-			break;
-		case LAPD_CMD_SABME:{
-				teip->vs = 0;
-				teip->vr = 0;
-				teip->va = 0;
-
-				// ua
-				uint8_t resp[8];
-				int l = 0;
-				resp[l++] = data[0];
-				resp[l++] = (tei << 1) | 1;
-				resp[l++] = 0x73;
-				lapd_transmit_cb(resp, l, cbdata);
-				if (teip->state != LAPD_TEI_ACTIVE) {
-					if (teip->state == LAPD_TEI_ASSIGNED) {
-						lapd_tei_set_state(teip,
-								   LAPD_TEI_ACTIVE);
-						//printf("ASSIGNED and ACTIVE\n");
-					} else {
-#if 0
-						DEBUGP(DMI, "rr in strange state, send rej\n");
-
-						// rej
-						uint8_t resp[8];
-						int l = 0;
-						resp[l++] =
-						    (teip->
-						     sapi << 2) | (network_side
-								   ? 0 : 2);
-						resp[l++] = (tei << 1) | 1;
-						resp[l++] = 0x09;	//rej
-						resp[l++] =
-						    ((teip->vr + 1) << 1) | 0;
-						lapd_transmit_cb(resp, l,
-								 cbdata);
-						pf = 0;	// dont reply
-#endif
-					};
-				};
-
-				*prim = LAPD_MPH_ACTIVATE_IND;
-				break;
-			}
-		case LAPD_CMD_RR:{
-				teip->va = (nr & 0x7f);
-#if 0
-				if (teip->state != LAPD_TEI_ACTIVE) {
-					if (teip->state == LAPD_TEI_ASSIGNED) {
-						lapd_tei_set_state(teip,
-								   LAPD_TEI_ACTIVE);
-						*prim = LAPD_MPH_ACTIVATE_IND;
-						//printf("ASSIGNED and ACTIVE\n");
-					} else {
-#if 0
-						DEBUGP(DMI, "rr in strange "
-						       "state, send rej\n");
-
-						// rej
-						uint8_t resp[8];
-						int l = 0;
-						resp[l++] =
-						    (teip->
-						     sapi << 2) | (network_side
-								   ? 0 : 2);
-						resp[l++] = (tei << 1) | 1;
-						resp[l++] = 0x09;	//rej
-						resp[l++] =
-						    ((teip->vr + 1) << 1) | 0;
-						lapd_transmit_cb(resp, l,
-								 cbdata);
-						pf = 0;	// dont reply
-#endif
-					};
-				};
-#endif
-				if (pf) {
-					// interrogating us, send rr
-					uint8_t resp[8];
-					int l = 0;
-					resp[l++] = data[0];
-					resp[l++] = (tei << 1) | 1;
-					resp[l++] = 0x01;	// rr
-					resp[l++] = (LAPD_NR(teip) << 1) | (data[3] & 1);	// pf bit from req
-
-					lapd_transmit_cb(resp, l, cbdata);
-
-				};
-
-				break;
-			}
-		case LAPD_CMD_FRMR:{
-				// frame reject
-#if 0
-				if (teip->state == LAPD_TEI_ACTIVE)
-					*prim = LAPD_MPH_DEACTIVATE_IND;
-				lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
-#endif
-				DEBUGP(DMI, "frame reject, ignoring\n");
+	switch (cmd) {
+	case LAPD_CMD_I:
+		if (ns != teip->vr) {
+			DEBUGP(DMI, "ns %d != vr %d\n", ns, teip->vr);
+			if (ns == ((teip->vr - 1) & 0x7f)) {
+				DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
+				cmd = 0;	// ignore
+			} else {
 				assert(0);
-				break;
-			}
-		case LAPD_CMD_DISC:{
-				// disconnect
-				uint8_t resp[8];
-				int l = 0;
-				resp[l++] = data[0];
-				resp[l++] = (tei << 1) | 1;
-				resp[l++] = 0x73;
-				lapd_transmit_cb(resp, l, cbdata);
-				lapd_tei_set_state(teip, LAPD_TEI_NONE);
-				break;
-			}
-		default:
-			DEBUGP(DMI, "unknown cmd for tei %d (cmd %x)\n", tei,
-				   cmd);
-			assert(0);
+			};
+		} else {
+			//printf("IN SEQUENCE\n");
+			teip->vr = (ns + 1) & 0x7f;	// FIXME: hack!
 		};
-	};
+
+		break;
+	case LAPD_CMD_UI:
+		break;
+	case LAPD_CMD_SABME:
+		teip->vs = 0;
+		teip->vr = 0;
+		teip->va = 0;
+
+		// ua
+		resp[l++] = data[0];
+		resp[l++] = (tei << 1) | 1;
+		resp[l++] = 0x73;
+		lapd_transmit_cb(resp, l, cbdata);
+		if (teip->state != LAPD_TEI_ACTIVE) {
+			if (teip->state == LAPD_TEI_ASSIGNED) {
+				lapd_tei_set_state(teip,
+						   LAPD_TEI_ACTIVE);
+				//printf("ASSIGNED and ACTIVE\n");
+			} else {
+#if 0
+				DEBUGP(DMI, "rr in strange state, send rej\n");
+
+				// rej
+				resp[l++] = (teip-> sapi << 2) | (network_side ? 0 : 2);
+				resp[l++] = (tei << 1) | 1;
+				resp[l++] = 0x09;	//rej
+				resp[l++] = ((teip->vr + 1) << 1) | 0;
+				lapd_transmit_cb(resp, l, cbdata);
+				pf = 0;	// dont reply
+#endif
+			};
+		};
+
+		*prim = LAPD_MPH_ACTIVATE_IND;
+		break;
+	case LAPD_CMD_RR:
+		teip->va = (nr & 0x7f);
+#if 0
+		if (teip->state != LAPD_TEI_ACTIVE) {
+			if (teip->state == LAPD_TEI_ASSIGNED) {
+				lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
+				*prim = LAPD_MPH_ACTIVATE_IND;
+				//printf("ASSIGNED and ACTIVE\n");
+			} else {
+#if 0
+				DEBUGP(DMI, "rr in strange " "state, send rej\n");
+
+				// rej
+				resp[l++] = (teip-> sapi << 2) | (network_side ? 0 : 2);
+				resp[l++] = (tei << 1) | 1;
+				resp[l++] = 0x09;	//rej
+				resp[l++] =
+				    ((teip->vr + 1) << 1) | 0;
+				lapd_transmit_cb(resp, l,
+						 cbdata);
+				pf = 0;	// dont reply
+#endif
+			};
+		};
+#endif
+		if (pf) {
+			// interrogating us, send rr
+			resp[l++] = data[0];
+			resp[l++] = (tei << 1) | 1;
+			resp[l++] = 0x01;	// rr
+			resp[l++] = (LAPD_NR(teip) << 1) | (data[3] & 1);	// pf bit from req
+
+			lapd_transmit_cb(resp, l, cbdata);
+
+		};
+		break;
+	case LAPD_CMD_FRMR:
+		// frame reject
+#if 0
+		if (teip->state == LAPD_TEI_ACTIVE)
+			*prim = LAPD_MPH_DEACTIVATE_IND;
+		lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
+#endif
+		DEBUGP(DMI, "frame reject, ignoring\n");
+		assert(0);
+		break;
+	case LAPD_CMD_DISC:
+		// disconnect
+		resp[l++] = data[0];
+		resp[l++] = (tei << 1) | 1;
+		resp[l++] = 0x73;
+		lapd_transmit_cb(resp, l, cbdata);
+		lapd_tei_set_state(teip, LAPD_TEI_NONE);
+		break;
+	default:
+		DEBUGP(DMI, "unknown cmd for tei %d (cmd %x)\n", tei, cmd);
+		assert(0);
+	}
 
 	//if ((*prim == 0) && (ilen > 0) && (typ != LAPD_TYPE_S)) {
 	//if (cmd == LAPD_CMD_I) {
@@ -432,8 +420,6 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 
 		// interrogating us, send rr
 		DEBUGP(DMI, "Sending RR response\n");
-		uint8_t resp[8];
-		int l = 0;
 		resp[l++] = data[0];
 		resp[l++] = (tei << 1) | 1;
 		resp[l++] = 0x01;	// rr
