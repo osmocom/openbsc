@@ -38,7 +38,7 @@
 
 #include "../bscconfig.h"
 
-#define E1_DRIVER_NAMES		"(misdn)"
+#define E1_DRIVER_NAMES		"(misdn|misdn)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card\n"
 
 DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
@@ -75,6 +75,8 @@ DEFUN(cfg_e1inp, cfg_e1inp_cmd,
 static int e1inp_config_write(struct vty *vty)
 {
 	struct e1inp_line *line;
+
+	vty_out(vty, "e1_input%s", VTY_NEWLINE);
 
 	llist_for_each_entry(line, &e1inp_line_list, list) {
 		vty_out(vty, " e1_line %u driver %s%s", line->num,

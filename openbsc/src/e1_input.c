@@ -341,12 +341,18 @@ struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
 	int i;
 
 	line = e1inp_line_get(e1_nr);
-	if (line)
+	if (line) {
+		LOGP(DINP, LOGL_ERROR, "E1 Line %u already exists\n",
+		     e1_nr);
 		return NULL;
+	}
 
 	driver = e1inp_driver_find(driver_name);
-	if (!driver)
+	if (!driver) {
+		LOGP(DINP, LOGL_ERROR, "No such E1 driver '%s'\n",
+		     driver_name);
 		return NULL;
+	}
 
 	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
 	if (!line)

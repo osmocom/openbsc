@@ -386,7 +386,7 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 static int mi_e1_line_update(struct e1inp_line *line);
 
 struct e1inp_driver misdn_driver = {
-	.name = "mISDN",
+	.name = "misdn",
 	.want_write = ts_want_write,
 	.default_delay = 50000,
 	.line_update = &mi_e1_line_update,
