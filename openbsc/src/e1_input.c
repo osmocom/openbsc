@@ -269,7 +269,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 	msg->l2h = msg->data;
 
 	if (!msg->trx || !msg->trx->bts || !msg->trx->bts->oml_link) {
-		LOGP(DRSL, LOGL_ERROR, "nm_sendmsg: msg->trx == NULL\n");
+		LOGP(DNM, LOGL_ERROR, "nm_sendmsg: msg->trx == NULL\n");
 		return -EINVAL;
 	}
 
