@@ -353,7 +353,7 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 
 }
 
-static int mi_e1_setup(struct e1inp_line *line, int release_l2)
+static int dahdi_e1_setup(struct e1inp_line *line, int release_l2)
 {
 	int ts, ret;
 
@@ -419,22 +419,12 @@ static int dahdi_e1_line_update(struct e1inp_line *line)
 {
 	int ret;
 
-	if (!line->driver) {
-		/* this must be the first update */
-		line->driver = &dahdi_driver;
-	} else {
-		/* this is a subsequent update */
-		/* FIXME: first close all sockets */
-		fprintf(stderr, "incremental line updates not supported yet\n");
-		return 0;
-	}
-
 	if (line->driver != &dahdi_driver)
 		return -EINVAL;
 
 	init_flip_bits();
 
-	ret = mi_e1_setup(line, 1);
+	ret = dahdi_e1_setup(line, 1);
 	if (ret)
 		return ret;
 
@@ -446,7 +436,7 @@ static int dahdi_e1_line_update(struct e1inp_line *line)
 int e1inp_dahdi_init(void)
 {
 	/* register the driver with the core */
-	e1inp_driver_register(&dahdi_driver);
+	return e1inp_driver_register(&dahdi_driver);
 }
 
 #endif /* HAVE_DAHDI_USER_H */
