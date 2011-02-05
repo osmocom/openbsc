@@ -35,15 +35,15 @@
 #include <arpa/inet.h>
 #include <dahdi/user.h>
 
-#include <openbsc/select.h>
-#include <openbsc/msgb.h>
+#include <osmocore/select.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
-#include <openbsc/talloc.h>
+#include <osmocore/talloc.h>
 
 #include "lapd.h"
 
@@ -96,7 +96,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		break;
 	case LAPD_DL_DATA_IND:
 	case LAPD_DL_UNITDATA_IND:
-		if (prim == DL_DATA_IND)
+		if (prim == LAPD_DL_DATA_IND)
 			msg->l2h = msg->data + 2;
 		else
 			msg->l2h = msg->data + 1;
@@ -232,7 +232,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 	ret = write(bfd->fd, tx_buf, ret);
 	if (ret < D_BCHAN_TX_GRAN)
-		fprintf(stderr, "send returns %d instead of %lu\n", ret,
+		fprintf(stderr, "send returns %d instead of %d\n", ret,
 			D_BCHAN_TX_GRAN);
 
 	return ret;
@@ -308,9 +308,12 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 	return rc;
 }
 
+static int dahdi_e1_line_update(struct e1inp_line *line);
+
 struct e1inp_driver dahdi_driver = {
 	.name = "DAHDI",
 	.want_write = ts_want_write,
+	.line_update = &dahdi_e1_line_update,
 };
 
 void dahdi_set_bufinfo(int fd, int as_sigchan)
@@ -408,7 +411,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	return 0;
 }
 
-int mi_e1_line_update(struct e1inp_line *line)
+static int dahdi_e1_line_update(struct e1inp_line *line)
 {
 	int ret;
 
@@ -436,7 +439,7 @@ int mi_e1_line_update(struct e1inp_line *line)
 	return 0;
 }
 
-static __attribute__((constructor)) void on_dso_load_sms(void)
+int e1inp_dahdi_init(void)
 {
 	/* register the driver with the core */
 	e1inp_driver_register(&dahdi_driver);

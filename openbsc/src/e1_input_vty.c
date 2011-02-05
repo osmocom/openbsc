@@ -38,8 +38,9 @@
 
 #include "../bscconfig.h"
 
-#define E1_DRIVER_NAMES		"(misdn|misdn)"
-#define E1_DRIVER_HELP		"mISDN supported E1 Card\n"
+#define E1_DRIVER_NAMES		"(misdn|dahdi)"
+#define E1_DRIVER_HELP		"mISDN supported E1 Card\n" \
+				"DAHDI supported E1/T1/J1 Card\n"
 
 DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	"e1_line <0-255> driver " E1_DRIVER_NAMES,

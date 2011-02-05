@@ -613,6 +613,7 @@ static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 }
 
 void e1inp_misdn_init(void);
+void e1inp_dahdi_init(void);
 
 void e1inp_init(void)
 {
@@ -621,4 +622,5 @@ void e1inp_init(void)
 	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
+	e1inp_dahdi_init();
 }

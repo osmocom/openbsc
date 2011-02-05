@@ -21,8 +21,8 @@ libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
 		trau_frame.c trau_mux.c paging.c \
 		e1_config.c e1_input.c e1_input_vty.c \
-		input/misdn.c input/ipaccess.c handover_logic.c \
-		talloc_ctx.c system_information.c rest_octets.c \
+		input/misdn.c input/ipaccess.c input/dahdi.c input/lapd.c \
+		handover_logic.c talloc_ctx.c system_information.c rest_octets.c \
 		bts_siemens_bs11.c bts_ipaccess_nanobts.c mncc_upqueue.c \
 		bts_unknown.c bsc_version.c bsc_api.c bsc_vty.c meas_rep.c gsm_04_80.c
 
