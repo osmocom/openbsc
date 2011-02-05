@@ -161,40 +161,39 @@ static void lapd_tei_set_state(struct lapd_tei *teip, int newstate)
 
 static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 {
-	int entity = data[0];
-	int ref = data[1];
-	int mt = data[3];
-	int action = data[4] >> 1;
-	int e = data[4] & 1;
-	int tei;
+	uint8_t entity = data[0];
+	uint8_t ref = data[1];
+	uint8_t mt = data[3];
+	uint8_t action = data[4] >> 1;
+	uint8_t e = data[4] & 1;
 	uint8_t resp[8];
 	struct lapd_tei *teip;
 
-	DEBUGP(DMI, "tei mgmt: entity %x, ref %x, mt %x, action %x, e %x\n", entity, ref, mt, action, e);
+	DEBUGP(DMI, "TEIMGR: entity %x, ref %x, mt %x, action %x, e %x\n", entity, ref, mt, action, e);
 
 	switch (mt) {
 	case 0x01:	/* IDENTITY REQUEST */
-		DEBUGP(DMI, "TEIMGR: identity request for TEI %u\n", tei);
+		DEBUGP(DMI, "TEIMGR: identity request for TEI %u\n", action);
 
-		teip = teip_from_tei(li, tei);
+		teip = teip_from_tei(li, action);
 		if (!teip) {
-			LOGP(DMI, LOGL_INFO, "TEI MGR: New TEI %u\n", tei);
+			LOGP(DMI, LOGL_INFO, "TEI MGR: New TEI %u\n", action);
 			teip = talloc_zero(li, struct lapd_tei);
-			teip->tei = tei;
+			teip->tei = action;
 			llist_add(&teip->list, &li->tei_list);
 			lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 		}
 
 		/* Send ACCEPT */
 		memmove(resp, "\xfe\xff\x03\x0f\x00\x00\x02\x00", 8);
-		resp[7] = (tei << 1) | 1;
+		resp[7] = (action << 1) | 1;
 		li->transmit_cb(resp, 8, li->cbdata);
 
 		if (teip->state == LAPD_TEI_NONE)
 			lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 		break;
 	default:
-		LOGP(DMI, LOGL_NOTICE, "tei mgmt: unknown mt %x action %x\n",
+		LOGP(DMI, LOGL_NOTICE, "TEIMGR: unknown mt %x action %x\n",
 		     mt, action);
 		break;
 	};
