@@ -95,6 +95,7 @@ struct e1inp_driver {
 	struct llist_head list;
 	const char *name;
 	int (*want_write)(struct e1inp_ts *ts);
+	int (*line_update)(struct e1inp_line *line);
 	int default_delay;
 };	
 

@@ -383,10 +383,13 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	return ret;
 }
 
+static int mi_e1_line_update(struct e1inp_line *line);
+
 struct e1inp_driver misdn_driver = {
 	.name = "mISDNuser",
 	.want_write = ts_want_write,
 	.default_delay = 50000,
+	.line_update = &mi_e1_line_update,
 };
 
 static int mi_e1_setup(struct e1inp_line *line, int release_l2)
@@ -478,7 +481,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	return 0;
 }
 
-int mi_e1_line_update(struct e1inp_line *line)
+static int mi_e1_line_update(struct e1inp_line *line)
 {
 	struct mISDN_devinfo devinfo;
 	int sk, ret, cnt;

@@ -542,7 +542,10 @@ int e1inp_driver_register(struct e1inp_driver *drv)
 
 int e1inp_line_update(struct e1inp_line *line)
 {
-	return mi_e1_line_update(line);
+	if (line->driver && line->driver->line_update)
+		return line->driver->line_update(line);
+	else
+		return 0;
 }
 
 static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
