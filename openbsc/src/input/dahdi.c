@@ -63,6 +63,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	lapd_mph_type prim;
 	unsigned int sapi, tei;
 	int ilen, ret;
+	uint8_t *idata;
 
 	if (!msg)
 		return -ENOMEM;
@@ -81,7 +82,9 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
-	uint8_t *idata = lapd_receive(msg->data, msg->len, &ilen, &prim, bfd);
+	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
+	if (!idata)
+		return -EIO;
 
 	msgb_pull(msg, 2);
 
@@ -126,7 +129,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 		return 0;
 	}
 
-	e1i_ts->driver.misdn.fd.when |= BSC_FD_WRITE;
+	e1i_ts->driver.dahdi.fd.when |= BSC_FD_WRITE;
 
 	return 0;
 }
@@ -167,7 +170,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	lapd_transmit(sign_link->tei, msg->data, msg->len, bfd);
+	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei, msg->data, msg->len);
 	msgb_free(msg);
 
 	/* set tx delay timer for next event */
@@ -353,7 +356,7 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 
 }
 
-static int dahdi_e1_setup(struct e1inp_line *line, int release_l2)
+static int dahdi_e1_setup(struct e1inp_line *line)
 {
 	int ts, ret;
 
@@ -362,7 +365,7 @@ static int dahdi_e1_setup(struct e1inp_line *line, int release_l2)
 		unsigned int idx = ts-1;
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+		struct bsc_fd *bfd = &e1i_ts->driver.dahdi.fd;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
@@ -382,6 +385,7 @@ static int dahdi_e1_setup(struct e1inp_line *line, int release_l2)
 			}
 			bfd->when = BSC_FD_READ;
 			dahdi_set_bufinfo(bfd->fd, 1);
+			e1i_ts->driver.dahdi.lapd = lapd_instance_alloc(dahdi_write_msg, bfd);
 			break;
 		case E1INP_TS_TYPE_TRAU:
 			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);
@@ -417,24 +421,16 @@ static int dahdi_e1_setup(struct e1inp_line *line, int release_l2)
 
 static int dahdi_e1_line_update(struct e1inp_line *line)
 {
-	int ret;
-
 	if (line->driver != &dahdi_driver)
 		return -EINVAL;
 
-	init_flip_bits();
-
-	ret = dahdi_e1_setup(line, 1);
-	if (ret)
-		return ret;
-
-	lapd_transmit_cb = dahdi_write_msg;
-
-	return 0;
+	return dahdi_e1_setup(line);
 }
 
 int e1inp_dahdi_init(void)
 {
+	init_flip_bits();
+
 	/* register the driver with the core */
 	return e1inp_driver_register(&dahdi_driver);
 }

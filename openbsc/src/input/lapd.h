@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <osmocore/linuxlist.h>
+
 typedef enum {
 	LAPD_MPH_NONE	= 0,
 
@@ -14,10 +16,22 @@ typedef enum {
 
 } lapd_mph_type;
 
-extern uint8_t *lapd_receive(uint8_t *data, int len, int *ilen, lapd_mph_type *prim, void *cbdata);
+struct lapd_instance {
+	struct llist_head list;		/* list of LAPD instances */
+	int network_side;
 
-extern void (*lapd_transmit_cb)(uint8_t *data, int len, void *cbdata);
+	void (*transmit_cb)(uint8_t *data, int len, void *cbdata);
+	void *cbdata;
 
-extern void lapd_transmit(int tei, uint8_t *data, int len, void *cbdata);
+	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
+};
+
+extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data, unsigned int len,
+			     int *ilen, lapd_mph_type *prim);
+
+extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t *data, unsigned int len);
+
+struct lapd_instance *lapd_instance_alloc(void (*tx_cb)(uint8_t *data, int len,
+							void *cbdata), void *cbdata);
 
 #endif /* OPENBSC_LAPD_H */
