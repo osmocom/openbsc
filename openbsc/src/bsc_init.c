@@ -1219,8 +1219,10 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 		if (!is_ipaccess_bts(bts))
 			rc = e1_reconfig_bts(bts);
 
-		if (rc < 0)
+		if (rc < 0) {
+			fprintf(stderr, "Error in E1 input driver setup\n");
 			exit (1);
+		}
 	}
 
 	/* initialize nanoBTS support omce */

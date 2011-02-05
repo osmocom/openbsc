@@ -48,12 +48,19 @@ int e1_reconfig_ts(struct gsm_bts_trx_ts *ts)
 
 	DEBUGP(DMI, "e1_reconfig_ts(%u,%u,%u)\n", ts->trx->bts->nr, ts->trx->nr, ts->nr);
 
-	if (!e1_link->e1_ts)
+	if (!e1_link->e1_ts) {
+		LOGP(DINP, LOGL_ERROR, "TS (%u/%u/%u) without E1 timeslot?\n",
+		     ts->nr, ts->trx->nr, ts->trx->bts->nr);
 		return 0;
+	}
 
 	line = e1inp_line_get(e1_link->e1_nr);
-	if (!line)
+	if (!line) {
+		LOGP(DINP, LOGL_ERROR, "TS (%u/%u/%u) referring to "
+		     "non-existing E1 line %u\n", ts->nr, ts->trx->nr,
+		     ts->trx->bts->nr, e1_link->e1_nr);
 		return -ENOMEM;
+	}
 
 	switch (ts->pchan) {
 	case GSM_PCHAN_TCH_F:
@@ -77,19 +84,29 @@ int e1_reconfig_trx(struct gsm_bts_trx *trx)
 	struct e1inp_sign_link *rsl_link;
 	int i;
 
-	if (!e1_link->e1_ts)
+	if (!e1_link->e1_ts) {
+		LOGP(DINP, LOGL_ERROR, "TRX (%u/%u) RSL link without "
+		     "timeslot?\n", trx->bts->nr, trx->nr);
 		return -EINVAL;
+	}
 
 	/* RSL Link */
 	line = e1inp_line_get(e1_link->e1_nr);
-	if (!line)
+	if (!line) {
+		LOGP(DINP, LOGL_ERROR, "TRX (%u/%u) RSL link referring "
+		     "to non-existing E1 line %u\n", trx->bts->nr,
+		     trx->nr, e1_link->e1_nr);
 		return -ENOMEM;
+	}
 	sign_ts = &line->ts[e1_link->e1_ts-1];
 	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
 	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
 					  trx, trx->rsl_tei, SAPI_RSL);
-	if (!rsl_link)
+	if (!rsl_link) {
+		LOGP(DINP, LOGL_ERROR, "TRX (%u/%u) RSL link creation "
+		     "failed\n", trx->bts->nr, trx->nr);
 		return -ENOMEM;
+	}
 	if (trx->rsl_link)
 		e1inp_sign_link_destroy(trx->rsl_link);
 	trx->rsl_link = rsl_link;
@@ -110,19 +127,28 @@ int e1_reconfig_bts(struct gsm_bts *bts)
 
 	DEBUGP(DMI, "e1_reconfig_bts(%u)\n", bts->nr);
 
-	if (!e1_link->e1_ts)
+	if (!e1_link->e1_ts) {
+		LOGP(DINP, LOGL_ERROR, "BTS %u OML link without timeslot?\n",
+		     bts->nr);
 		return -EINVAL;
+	}
 
 	/* OML link */
 	line = e1inp_line_get(e1_link->e1_nr);
-	if (!line)
+	if (!line) {
+		LOGP(DINP, LOGL_ERROR, "BTS %u OML link referring to "
+		     "non-existing E1 line %u\n", bts->nr, e1_link->e1_nr);
 		return -ENOMEM;
+	}
 	sign_ts = &line->ts[e1_link->e1_ts-1];
 	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
 	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
 					  bts->c0, bts->oml_tei, SAPI_OML);
-	if (!oml_link)
+	if (!oml_link) {
+		LOGP(DINP, LOGL_ERROR, "BTS %u OML link creation failed\n",
+		     bts->nr);
 		return -ENOMEM;
+	}
 	if (bts->oml_link)
 		e1inp_sign_link_destroy(bts->oml_link);
 	bts->oml_link = oml_link;
