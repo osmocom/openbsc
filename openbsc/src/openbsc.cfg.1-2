@@ -6,6 +6,8 @@ password foo
 line vty
  no login
 !
+e1_input
+ e1_line 0 driver misdn
 network
  network country code 1
  mobile network code 1
