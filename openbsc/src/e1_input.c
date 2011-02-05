@@ -54,6 +54,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
+#include "../bscconfig.h"
+
 #define NUM_E1_TS	32
 
 /* list of all E1 drivers */
@@ -622,5 +624,7 @@ void e1inp_init(void)
 	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
+#ifdef HAVE_DAHDI_USER_H
 	e1inp_dahdi_init();
+#endif
 }

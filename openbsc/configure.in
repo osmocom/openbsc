@@ -48,6 +48,8 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.1.19)
 
 dnl checks for header files
 AC_HEADER_STDC
+AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
+
 
 dnl Checks for typedefs, structures and compiler characteristics
 
