@@ -175,8 +175,9 @@ static void lapd_tei_receive(uint8_t * data, int len, void *cbdata)
 			break;
 		}
 	default:
-		DEBUGP(DMI, "tei mgmt: unknown mt %x action %x\n", mt, action);
-		assert(0);
+		LOGP(DMI, LOGL_NOTICE, "tei mgmt: unknown mt %x action %x\n",
+		     mt, action);
+		break;
 	};
 };
 
@@ -244,8 +245,8 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 			cmd = LAPD_CMD_REJ;
 			break;
 		default:
-			DEBUGP(DMI, "unknown S cmd %x\n", data[2]);
-			assert(0);
+			LOGP(DMI, LOGL_ERROR, "unknown LAPD S cmd %x\n", data[2]);
+			return NULL;
 		};
 	} else if ((data[2] & 3) == 3) {
 		typ = LAPD_TYPE_U;
@@ -275,9 +276,9 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 			break;
 
 		default:
-			DEBUGP(DMI, "unknown U cmd %x (pf %x data %x)\n", val,
-				   pf, data[2]);
-			assert(0);
+			LOGP(DMI, LOGL_ERROR, "unknown U cmd %x "
+			     "(pf %x data %x)\n", val, pf, data[2]);
+			return NULL;
 		};
 	};
 
@@ -395,8 +396,7 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 			*prim = LAPD_MPH_DEACTIVATE_IND;
 		lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 #endif
-		DEBUGP(DMI, "frame reject, ignoring\n");
-		assert(0);
+		LOGP(DMI, LOGL_NOTICE, "frame reject, ignoring\n");
 		break;
 	case LAPD_CMD_DISC:
 		// disconnect
@@ -407,18 +407,18 @@ uint8_t *lapd_receive(uint8_t * data, int len, int *ilen, lapd_mph_type * prim,
 		lapd_tei_set_state(teip, LAPD_TEI_NONE);
 		break;
 	default:
-		DEBUGP(DMI, "unknown cmd for tei %d (cmd %x)\n", tei, cmd);
-		assert(0);
+		LOGP(DMI, LOGL_NOTICE, "unknown cmd for tei %d (cmd %x)\n",
+		     tei, cmd);
+		break;
 	}
 
-	//if ((*prim == 0) && (ilen > 0) && (typ != LAPD_TYPE_S)) {
-	//if (cmd == LAPD_CMD_I) {
 	if (typ == LAPD_TYPE_I) {
-		// send rr
-		// Thu Jan 22 19:17:13 2009 <4000> sangoma.c:340 read  (62/25)   4: fa 33 01 0a 
-		// lapd <- S RR sapi 3e tei  25 cmd 0 pf 0 ns  -1 nr   5 ilen 0 teip 0x613800 vs 7 va 5 vr 2 len 4
+		/* send rr
+		 * Thu Jan 22 19:17:13 2009 <4000> sangoma.c:340 read  (62/25)   4: fa 33 01 0a 
+		 * lapd <- S RR sapi 3e tei  25 cmd 0 pf 0 ns  -1 nr   5 ilen 0 teip 0x613800 vs 7 va 5 vr 2 len 4
+		 */
 
-		// interrogating us, send rr
+		/* interrogating us, send rr */
 		DEBUGP(DMI, "Sending RR response\n");
 		resp[l++] = data[0];
 		resp[l++] = (tei << 1) | 1;
@@ -446,7 +446,7 @@ void lapd_transmit(int tei, uint8_t * data, int len, void *cbdata)
 	lapd_tei_t *teip = teip_from_tei(tei);
 	//printf("teip %p\n", teip);
 
-	// prepend stuff
+	/* prepend stuff */
 	uint8_t buf[10000];
 	memset(buf, 0, sizeof(buf));
 	memmove(buf + 4, data, len);
