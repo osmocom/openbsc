@@ -122,7 +122,7 @@ static int ts_want_write(struct e1inp_ts *e1i_ts)
 {
 	/* We never include the DAHDI B-Channel FD into the
 	 * writeset, since it doesn't support poll() based
-	 * write flow control */		
+	 * write flow control */
 	if (e1i_ts->type == E1INP_TS_TYPE_TRAU) {
 		fprintf(stderr, "Trying to write TRAU ts\n");
 		return 0;
@@ -305,7 +305,7 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 			rc = handle_tsX_write(bfd);
 		/* We never include the DAHDI B-Channel FD into the
 		 * writeset, since it doesn't support poll() based
-		 * write flow control */		
+		 * write flow control */
 		break;
 	default:
 		fprintf(stderr, "unknown E1 TS type %u\n", e1i_ts->type);
@@ -396,8 +396,8 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			}
 			dahdi_set_bufinfo(bfd->fd, 0);
 			/* We never include the DAHDI B-Channel FD into the
-	 		* writeset, since it doesn't support poll() based
-	 		* write flow control */		
+			 * writeset, since it doesn't support poll() based
+			 * write flow control */
 			bfd->when = BSC_FD_READ;// | BSC_FD_WRITE;
 			break;
 		}
