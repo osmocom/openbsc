@@ -612,22 +612,41 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 			     nsvc->nsvci);
 	}
 
-	/* We currently only care about signals from the SGSN */
-	if (!nsvc->remote_end_is_sgsn)
-		return 0;
-
-	/* iterate over all BTS peers and send the respective PDU */
-	llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+	if (!nsvc->remote_end_is_sgsn) {
+		/* from BSS to SGSN */
+		peer = peer_by_nsvc(nsvc);
+		if (!peer) {
+			LOGP(DGPRS, LOGL_NOTICE, "signal %u for unknown peer "
+			     "NSEI=%u/NSVCI=%u\n", signal, nsvc->nsei,
+			     nsvc->nsvci);
+			return 0;
+		}
 		switch (signal) {
 		case S_NS_RESET:
-			gprs_ns_tx_reset(peer->nsvc, nssd->cause);
-			break;
 		case S_NS_BLOCK:
-			gprs_ns_tx_block(peer->nsvc, nssd->cause);
+			if (!peer->blocked)
+				break;
+			LOGP(DGPRS, LOGL_NOTICE, "Converting NS_RESET from "
+			     "NSEI=%u/NSVCI=%u into BSSGP_BVC_BLOCK to SGSN\n",
+			     nsvc->nsei, nsvc->nsvci);
+			bssgp_tx_simple_bvci(BSSGP_PDUT_BVC_BLOCK, nsvc->nsei,
+					     peer->bvci, 0);
 			break;
-		case S_NS_UNBLOCK:
-			gprs_ns_tx_unblock(peer->nsvc);
-			break;
+		}
+	} else {
+		/* iterate over all BTS peers and send the respective PDU */
+		llist_for_each_entry(peer, &gbprox_bts_peers, list) {
+			switch (signal) {
+			case S_NS_RESET:
+				gprs_ns_tx_reset(peer->nsvc, nssd->cause);
+				break;
+			case S_NS_BLOCK:
+				gprs_ns_tx_block(peer->nsvc, nssd->cause);
+				break;
+			case S_NS_UNBLOCK:
+				gprs_ns_tx_unblock(peer->nsvc);
+				break;
+			}
 		}
 	}
 	return 0;
