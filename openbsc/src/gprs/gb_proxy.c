@@ -255,7 +255,7 @@ static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 	struct gbprox_peer *from_peer;
 	struct gprs_ra_id raid;
 
-	if (ns_bvci != 0) {
+	if (ns_bvci != 0 && ns_bvci != 1) {
 		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u BVCI=%u is not signalling\n",
 			nsvc->nsei, ns_bvci);
 		return -EINVAL;
@@ -430,7 +430,7 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 	uint16_t bvci;
 	int rc = 0;
 
-	if (ns_bvci != 0) {
+	if (ns_bvci != 0 && ns_bvci != 1) {
 		LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BVCI=%u is not "
 			"signalling\n", nsvc->nsei, ns_bvci);
 		/* FIXME: Send proper error message */
