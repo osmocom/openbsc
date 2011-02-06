@@ -150,7 +150,9 @@ static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
 	new_cb->bssgph = new_msg->_data + (old_cb->bssgph - msg->_data);
 	new_cb->llch = new_msg->_data + (old_cb->llch - msg->_data);
 
-	new_cb->bssgp_cell_id = old_cb->bssgp_cell_id;
+	/* bssgp_cell_id is a pointer into the old msgb, so we need to make
+	 * it a pointer into the new msgb */
+	new_cb->bssgp_cell_id = new_msg->_data + (old_cb->bssgp_cell_id - msg->_data);
 	new_cb->nsei = old_cb->nsei;
 	new_cb->bvci = old_cb->bvci;
 	new_cb->tlli = old_cb->tlli;
