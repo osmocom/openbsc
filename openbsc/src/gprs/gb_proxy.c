@@ -47,6 +47,7 @@ struct gbprox_peer {
 
 	/* BVCI used for Point-to-Point to this peer */
 	uint16_t bvci;
+	int blocked;
 
 	/* Routeing Area that this peer is part of (raw 04.08 encoding) */
 	uint8_t ra[6];
@@ -200,6 +201,30 @@ static int gbprox_relay2peer(struct msgb *old_msg, struct gbprox_peer *peer,
 	strip_ns_hdr(msg);
 
 	return gprs_ns_sendmsg(bssgp_nsi, msg);
+}
+
+static int block_unblock_peer(uint16_t ptp_bvci, uint8_t pdu_type)
+{
+	struct gbprox_peer *peer;
+
+	peer = peer_by_bvci(ptp_bvci);
+	if (!peer) {
+		LOGP(DGPRS, LOGL_ERROR, "BVCI=%u: Cannot find BSS\n",
+			ptp_bvci);
+		return -ENOENT;
+	}
+
+	switch (pdu_type) {
+	case BSSGP_PDUT_BVC_BLOCK_ACK:
+		peer->blocked = 1;
+		break;
+	case BSSGP_PDUT_BVC_UNBLOCK_ACK:
+		peer->blocked = 0;
+		break;
+	default:
+		break;
+	}
+	return 0;
 }
 
 /* Send a message to a peer identified by ptp_bvci but using ns_bvci
@@ -428,8 +453,6 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 		rc = rx_reset_from_sgsn(msg, &tp, nsvc, ns_bvci);
 		break;
 	case BSSGP_PDUT_FLUSH_LL:
-	case BSSGP_PDUT_BVC_BLOCK_ACK:
-	case BSSGP_PDUT_BVC_UNBLOCK_ACK:
 	case BSSGP_PDUT_BVC_RESET_ACK:
 		/* simple case: BVCI IE is mandatory */
 		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
@@ -474,6 +497,22 @@ static int gbprox_rx_sig_from_sgsn(struct msgb *msg, struct gprs_nsvc *nsvc,
 			goto err_no_peer;
 		rc = gbprox_relay2peer(msg, peer, ns_bvci);
 		break;
+	case BSSGP_PDUT_BVC_BLOCK_ACK:
+	case BSSGP_PDUT_BVC_UNBLOCK_ACK:
+		if (!TLVP_PRESENT(&tp, BSSGP_IE_BVCI))
+			goto err_mand_ie;
+		bvci = ntohs(*(uint16_t *)TLVP_VAL(&tp, BSSGP_IE_BVCI));
+		if (bvci == 0) {
+			LOGP(DGPRS, LOGL_NOTICE, "NSEI=%u(SGSN) BSSGP "
+			     "%sBLOCK_ACK for signalling BVCI ?!?\n", nsvc->nsei,
+			     pdu_type == BSSGP_PDUT_BVC_UNBLOCK_ACK ? "UN":"");
+			/* should we send STATUS ? */
+		} else {
+			/* Mark BVC as (un)blocked */
+			block_unblock_peer(bvci, pdu_type);
+		}
+		rc = gbprox_relay2bvci(msg, bvci, ns_bvci);
+		break;
 	case BSSGP_PDUT_SGSN_INVOKE_TRACE:
 		LOGP(DGPRS, LOGL_ERROR,
 		     "NSEI=%u(SGSN) BSSGP INVOKE TRACE not supported\n",nsvc->nsei);
@@ -501,6 +540,7 @@ err_no_peer:
 int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 {
 	int rc;
+	struct gbprox_peer *peer;
 
 	/* Only BVCI=0 messages need special treatment */
 	if (ns_bvci == 0 || ns_bvci == 1) {
@@ -511,18 +551,24 @@ int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci)
 	} else {
 		/* All other BVCI are PTP and thus can be simply forwarded */
 		if (!nsvc->remote_end_is_sgsn) {
-			rc = gbprox_relay2sgsn(msg, ns_bvci);
-		} else {
-			struct gbprox_peer *peer = peer_by_bvci(ns_bvci);
-			if (!peer) {
-				LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
-				     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
-				     nsvc->nsvci, nsvc->nsei);
-				peer = peer_alloc(ns_bvci);
-				peer->nsvc = nsvc;
-			}
-			rc = gbprox_relay2peer(msg, peer, ns_bvci);
+			return gbprox_relay2sgsn(msg, ns_bvci);
 		}
+		/* else: SGSN -> BSS direction */
+		peer = peer_by_bvci(ns_bvci);
+		if (!peer) {
+			LOGP(DGPRS, LOGL_INFO, "Allocationg new peer for "
+			     "BVCI=%u via NSVC=%u/NSEI=%u\n", ns_bvci,
+			     nsvc->nsvci, nsvc->nsei);
+			peer = peer_alloc(ns_bvci);
+			peer->nsvc = nsvc;
+		}
+		if (peer->blocked) {
+			LOGP(DGPRS, LOGL_NOTICE, "Dropping PDU for "
+			     "blocked BVCI=%u via NSVC=%u/NSEI=%u\n",
+			     ns_bvci, nsvc->nsvci, nsvc->nsei);
+			return bssgp_tx_status(BSSGP_CAUSE_BVCI_BLOCKED, NULL, msg);
+		}
+		rc = gbprox_relay2peer(msg, peer, ns_bvci);
 	}
 
 	return rc;
