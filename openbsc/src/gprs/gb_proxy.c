@@ -672,11 +672,13 @@ gDEFUN(show_gbproxy, show_gbproxy_cmd, "show gbproxy",
 			nsvc->nsei, nsvc->nsvci, peer->bvci,
 			raid.mcc, raid.mnc, raid.lac, raid.rac);
 		if (nsvc->ll == GPRS_NS_LL_UDP || nsvc->ll == GPRS_NS_LL_FR_GRE)
-			vty_out(vty, " %s:%u%s",
+			vty_out(vty, " %s:%u",
 				inet_ntoa(nsvc->ip.bts_addr.sin_addr),
-				ntohs(nsvc->ip.bts_addr.sin_port), VTY_NEWLINE);
-		else
-			vty_out(vty, "%s", VTY_NEWLINE);
+				ntohs(nsvc->ip.bts_addr.sin_port));
+		if (peer->blocked)
+			vty_out(vty, " [BVC-BLOCKED]");
+
+		vty_out(vty, "%s", VTY_NEWLINE);
 	}
 	return CMD_SUCCESS;
 }
