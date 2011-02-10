@@ -107,7 +107,7 @@ DEFUN(cfg_net_bsc_token,
 
 DEFUN(cfg_net_bsc_ncc,
       cfg_net_bsc_ncc_cmd,
-      "core-mobile-network-code <0-255>",
+      "core-mobile-network-code <1-999>",
       "Use this network code for the backbone\n" "NCC value\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
@@ -117,7 +117,7 @@ DEFUN(cfg_net_bsc_ncc,
 
 DEFUN(cfg_net_bsc_mcc,
       cfg_net_bsc_mcc_cmd,
-      "core-mobile-country-code <0-255>",
+      "core-mobile-country-code <1-999>",
       "Use this country code for the backbone\n" "MCC value\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
