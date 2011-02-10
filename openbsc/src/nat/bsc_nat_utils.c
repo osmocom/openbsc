@@ -848,7 +848,12 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	memcpy(outptr, &hdr48->data[0], sec_len);
 
 	/* create the new number */
-	strncpy(called.number, new_number, sizeof(called.number));
+	if (strncmp(new_number, "00", 2) == 0) {
+		called.type = 1;
+		strncpy(called.number, new_number + 2, sizeof(called.number));
+	} else {
+		strncpy(called.number, new_number, sizeof(called.number));
+	}
 	gsm48_encode_called(out, &called);
 
 	/* copy thre rest */
