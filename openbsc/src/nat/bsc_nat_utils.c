@@ -819,6 +819,12 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 		return msg;
 	}
 
+	if (strlen(new_number) > sizeof(called.number)) {
+		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
+		talloc_free(new_number);
+		return msg;
+	}
+
 	/*
 	 * Need to create a new message now based on the old onew
 	 * with a new number. We can sadly not patch this in place
