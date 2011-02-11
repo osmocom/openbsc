@@ -26,11 +26,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "lapd.h"
 
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 
 typedef enum {
@@ -158,6 +160,23 @@ static void lapd_tei_set_state(struct lapd_tei *teip, int newstate)
 	teip->state = newstate;
 };
 
+
+int lapd_tei_alloc(struct lapd_instance *li, uint8_t tei)
+{
+	struct lapd_tei *teip;
+
+	teip = talloc_zero(li, struct lapd_tei);
+	if (!teip)
+		return -ENOMEM;
+
+	teip->tei = tei;
+	llist_add(&teip->list, &li->tei_list);
+
+	lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
+
+	return 0;
+}
+
 static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 {
 	uint8_t entity = data[0];
@@ -177,10 +196,7 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		teip = teip_from_tei(li, action);
 		if (!teip) {
 			LOGP(DMI, LOGL_INFO, "TEI MGR: New TEI %u\n", action);
-			teip = talloc_zero(li, struct lapd_tei);
-			teip->tei = action;
-			llist_add(&teip->list, &li->tei_list);
-			lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
+			lapd_tei_alloc(li, action);
 		}
 
 		/* Send ACCEPT */
@@ -370,6 +386,13 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 
 		*prim = LAPD_MPH_ACTIVATE_IND;
 		break;
+	case LAPD_CMD_UA:
+		teip->vs = 0;
+		teip->vr = 0;
+		teip->va = 0;
+		lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
+		*prim = LAPD_MPH_ACTIVATE_IND;
+		break;
 	case LAPD_CMD_RR:
 		teip->va = (nr & 0x7f);
 #if 0
@@ -455,6 +478,29 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	return NULL;
 };
 
+int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
+{
+	struct msgb *msg = msgb_alloc_headroom(1024, 128, "LAPD SABM");
+	if (!msg)
+		return -ENOMEM;
+
+	DEBUGP(DMI, "Sending SABM for TEI=%u, SAPI=%u\n", tei, sapi);
+
+	/* make sure we know the TEI at the time the response comes in */
+	if (!teip_from_tei(li, tei))
+		lapd_tei_alloc(li, tei);
+
+	msgb_put_u8(msg, (sapi << 2) | (li->network_side ? 2 : 0));
+	msgb_put_u8(msg, (tei << 1) | 1);
+	msgb_put_u8(msg, 0x7F);
+
+	li->transmit_cb(msg->data, msg->len, li->cbdata);
+
+	msgb_free(msg);
+
+	return 0;
+}
+
 void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 		   uint8_t *data, unsigned int len)
 {
@@ -484,7 +530,8 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 	li->transmit_cb(buf, len, li->cbdata);
 };
 
-struct lapd_instance *lapd_instance_alloc(void (*tx_cb)(uint8_t *data, int len,
+struct lapd_instance *lapd_instance_alloc(int network_side,
+					  void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata)
 {
 	struct lapd_instance *li;
@@ -495,7 +542,7 @@ struct lapd_instance *lapd_instance_alloc(void (*tx_cb)(uint8_t *data, int len,
 
 	li->transmit_cb = tx_cb;
 	li->cbdata = cbdata;
-	li->network_side = 1;
+	li->network_side = network_side;
 	INIT_LLIST_HEAD(&li->tei_list);
 
 	return li;

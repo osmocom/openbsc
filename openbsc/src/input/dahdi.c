@@ -430,7 +430,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			}
 			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			dahdi_set_bufinfo(bfd->fd, 1);
-			e1i_ts->driver.dahdi.lapd = lapd_instance_alloc(dahdi_write_msg, bfd);
+			e1i_ts->driver.dahdi.lapd = lapd_instance_alloc(1, dahdi_write_msg, bfd);
 			break;
 		case E1INP_TS_TYPE_TRAU:
 			bfd->fd = open(openstr, O_RDWR | O_NONBLOCK);

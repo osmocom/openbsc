@@ -32,7 +32,10 @@ extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data, unsigned i
 extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 			  uint8_t *data, unsigned int len);
 
-struct lapd_instance *lapd_instance_alloc(void (*tx_cb)(uint8_t *data, int len,
+struct lapd_instance *lapd_instance_alloc(int network_side,
+					  void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata);
+
+int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi);
 
 #endif /* OPENBSC_LAPD_H */
