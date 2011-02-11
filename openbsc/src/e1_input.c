@@ -594,10 +594,21 @@ struct e1inp_driver *e1inp_driver_find(const char *name)
 
 int e1inp_line_update(struct e1inp_line *line)
 {
+	struct input_signal_data isd;
+	int rc;
+
 	if (line->driver && line->driver->line_update)
-		return line->driver->line_update(line);
+		rc = line->driver->line_update(line);
 	else
-		return 0;
+		rc = 0;
+
+	/* Send a signal to anyone who is interested in new lines being
+	 * configured */
+	memset(&isd, 0, sizeof(isd));
+	isd.line = line;
+	dispatch_signal(SS_INPUT, S_INP_LINE_INIT, &isd);
+
+	return rc;
 }
 
 static int e1i_sig_cb(unsigned int subsys, unsigned int signal,

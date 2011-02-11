@@ -144,6 +144,7 @@ enum signal_input {
 	S_INP_NONE,
 	S_INP_TEI_UP,
 	S_INP_TEI_DN,
+	S_INP_LINE_INIT,
 };
 
 struct gsm_subscriber;
@@ -244,6 +245,7 @@ struct ho_signal_data {
 struct input_signal_data {
 	int link_type;
 	struct gsm_bts_trx *trx;
+	struct e1inp_line *line;
 };
 
 #endif
