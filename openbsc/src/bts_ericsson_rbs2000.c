@@ -68,7 +68,7 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 
 static void sabm_timer_cb(void *_line);
 
-/* FIXME: we need one per bts, not one global! */
+/* FIXME: we need one per bts (or rather: per signalling TS, not one global! */
 struct timer_list sabm_timer = {
 	.cb = &sabm_timer_cb,
 };
@@ -77,6 +77,7 @@ static void sabm_timer_cb(void *_line)
 {
 	struct e1inp_ts *e1i_ts = _line;
 
+	/* FIXME: use the TEI that was configured via vty */
 	lapd_send_sabm(e1i_ts->driver.dahdi.lapd, 62, 62);
 
 	bsc_schedule_timer(&sabm_timer, 0, 50);
@@ -93,11 +94,13 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_INP_TEI_UP:
-		bsc_del_timer(&sabm_timer);
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
-			if (isd->trx->bts->type == GSM_BTS_TYPE_BS11)
+			if (isd->trx->bts->type == GSM_BTS_TYPE_RBS2000) {
+				/* FIXME: only disable the timer that belong sto this timeslot */
+				bsc_del_timer(&sabm_timer);
 				bootstrap_om_rbs2k(isd->trx->bts);
+			}
 			break;
 		}
 		break;
@@ -105,6 +108,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		/* Right now Ericsson RBS are only supported on DAHDI */
 		if (strcasecmp(isd->line->driver->name, "DAHDI"))
 			break;
+		/* FIXME: properly determine the OML signalling timeslot,
+		 * or rather: all signalling timeslots and start one timer each */
 		sabm_timer.data = &isd->line->ts[1-1];
 		bsc_schedule_timer(&sabm_timer, 0, 50);
 		break;
