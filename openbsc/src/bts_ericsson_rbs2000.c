@@ -77,7 +77,7 @@ static void sabm_timer_cb(void *_line)
 {
 	struct e1inp_ts *e1i_ts = _line;
 
-	lapd_transmit_sabm(e1i_ts->driver.dahdi.lapd, 62, 62);
+	lapd_send_sabm(e1i_ts->driver.dahdi.lapd, 62, 62);
 
 	bsc_schedule_timer(&sabm_timer, 0, 50);
 }
@@ -93,12 +93,14 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_INP_TEI_UP:
+		bsc_del_timer(&sabm_timer);
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type == GSM_BTS_TYPE_BS11)
 				bootstrap_om_rbs2k(isd->trx->bts);
 			break;
 		}
+		break;
 	case S_INP_LINE_INIT:
 		/* Right now Ericsson RBS are only supported on DAHDI */
 		if (strcasecmp(isd->line->driver->name, "DAHDI"))
