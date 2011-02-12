@@ -76,9 +76,21 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_CONNECT_COMPL			= 0x001e,
 	OM2K_MSGT_CONNECT_REJ			= 0x001f,
 
+	OM2K_MSGT_DISABLE_REQ			= 0x0028,
+	OM2K_MSGT_DISABLE_REQ_ACK		= 0x002a,
+	OM2K_MSGT_DISABLE_REQ_REJ		= 0x002b,
+	OM2K_MSGT_DISABLE_RES_ACK		= 0x002c,
+	OM2K_MSGT_DISABLE_RES_NACK		= 0x002d,
+	OM2K_MSGT_DISABLE_RES			= 0x002e,
 	OM2K_MSGT_DISCONNECT_CMD		= 0x0030,
 	OM2K_MSGT_DISCONNECT_COMPL		= 0x0032,
 	OM2K_MSGT_DISCONNECT_REJ		= 0x0033,
+	OM2K_MSGT_ENABLE_REQ			= 0x0034,
+	OM2K_MSGT_ENABLE_REQ_ACK		= 0x0036,
+	OM2K_MSGT_ENABLE_REQ_REJ		= 0x0037,
+	OM2K_MSGT_ENABLE_RES_ACK		= 0x0038,
+	OM2K_MSGT_ENABLE_RES_NACK		= 0x0039,
+	OM2K_MSGT_ENABLE_RES			= 0x003a,
 
 	OM2K_MSGT_FAULT_REP_ACK			= 0x0040,
 	OM2K_MSGT_FAULT_REP_NACK		= 0x0041,
@@ -568,6 +580,16 @@ int abis_om2k_tx_test_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_TEST_REQ);
 }
 
+int abis_om2k_tx_enable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_ENABLE_REQ);
+}
+
+int abis_om2k_tx_disable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_DISABLE_REQ);
+}
+
 int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 			 uint8_t operational)
 {
@@ -681,14 +703,13 @@ static int om2k_rx_start_res(struct msgb *msg)
 	return rc;
 }
 
-static int om2k_rx_op_info(struct msgb *msg)
+static int om2k_rx_op_info_ack(struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-	uint8_t op_info = o2h->data[1];
 
-	DEBUGP(DNM, "Rx MO=%s OPERATIONAL INFO: %u\n", om2k_mo_name(&o2h->mo), op_info);
+	/* FIXME: update Operational state in our structures */
 
-	return abis_om2k_tx_simple(msg->trx->bts, &o2h->mo, OM2K_MSGT_OP_INFO_ACK);
+	return 0;
 }
 
 int abis_om2k_rcvmsg(struct msgb *msg)
@@ -738,8 +759,8 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_START_RES:
 		rc = om2k_rx_start_res(msg);
 		break;
-	case OM2K_MSGT_OP_INFO:
-		rc = om2k_rx_op_info(msg);
+	case OM2K_MSGT_OP_INFO_ACK:
+		rc = om2k_rx_op_info_ack(msg);
 		break;
 	case OM2K_MSGT_IS_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_IS_CONF_RES_ACK);
@@ -752,8 +773,10 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		break;
 	case OM2K_MSGT_START_REQ_ACK:
 		break;
+	case OM2K_MSGT_STATUS_RESP:
+		break;
 	default:
-		LOGP(DNM, LOGL_NOTICE, "Rx unknown OM2000 msg %s\n",
+		LOGP(DNM, LOGL_NOTICE, "Rx unhandled OM2000 msg %s\n",
 			get_value_string(om2k_msgcode_vals, msg_type));
 	}
 

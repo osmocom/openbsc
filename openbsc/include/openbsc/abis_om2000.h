@@ -40,6 +40,8 @@ int abis_om2k_tx_start_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_status_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_connect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_disconnect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_enable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_disable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_test_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 			 uint8_t operational);

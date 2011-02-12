@@ -186,6 +186,26 @@ DEFUN(om2k_disconnect, om2k_disconnect_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(om2k_enable, om2k_enable_cmd,
+	"enable-request",
+	"Enable the MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_enable_req(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
+DEFUN(om2k_disable, om2k_disable_cmd,
+	"disable-request",
+	"Disable the MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_disable_req(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
 DEFUN(om2k_op_info, om2k_op_info_cmd,
 	"operational-info <0-1>",
 	"Set operational information\n")
@@ -221,6 +241,8 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_status_cmd);
 	install_element(OM2K_NODE, &om2k_connect_cmd);
 	install_element(OM2K_NODE, &om2k_disconnect_cmd);
+	install_element(OM2K_NODE, &om2k_enable_cmd);
+	install_element(OM2K_NODE, &om2k_disable_cmd);
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
 
