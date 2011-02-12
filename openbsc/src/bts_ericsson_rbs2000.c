@@ -25,13 +25,16 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/abis_nm.h>
+#include <openbsc/abis_om2000.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/signal.h>
 
+#include "input/lapd.h"
 
 static struct gsm_bts_model model_rbs2k = {
 	.type = GSM_BTS_TYPE_RBS2000,
+	.name = "rbs2000",
+	.oml_rcvmsg = &abis_om2k_rcvmsg,
 };
 
 static void bootstrap_om_rbs2k(struct gsm_bts *bts)

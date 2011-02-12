@@ -16,7 +16,7 @@ endif
 sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libmgcp.a
 
-libbsc_a_SOURCES = abis_rsl.c abis_nm.c gsm_data.c gsm_04_08_utils.c \
+libbsc_a_SOURCES = abis_rsl.c abis_nm.c abis_om2000.c gsm_data.c gsm_04_08_utils.c \
 		chan_alloc.c debug.c socket.c abis_nm_vty.c \
 		gsm_subscriber_base.c subchan_demux.c bsc_rll.c transaction.c \
 		trau_frame.c trau_mux.c paging.c \
