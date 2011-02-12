@@ -29,6 +29,12 @@ struct abis_om2k_mo {
 	uint8_t inst;
 } __attribute__ ((packed));
 
+struct om2k_is_conn_grp {
+	uint16_t icp1;
+	uint16_t icp2;
+	uint8_t cont_idx;
+} __attribute__ ((packed));
+
 extern const struct value_string om2k_mo_class_short_vals[];
 
 int abis_om2k_rcvmsg(struct msgb *msg);
@@ -45,6 +51,8 @@ int abis_om2k_tx_disable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 int abis_om2k_tx_test_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 			 uint8_t operational);
+int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
+			     unsigned int num_cg);
 
 int abis_om2k_vty_init(void);
 

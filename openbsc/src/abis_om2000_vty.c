@@ -227,6 +227,28 @@ DEFUN(om2k_test, om2k_test_cmd,
 	return CMD_SUCCESS;
 }
 
+static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
+				  uint16_t icp2, uint8_t cont_idx)
+{
+	grp->icp1 = htons(icp1);
+	grp->icp2 = htons(icp2);
+	grp->cont_idx = cont_idx;
+}
+
+DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
+	"is-conf-req",
+	"IS Configuration Request\n")
+{
+	struct oml_node_state *oms = vty->index;
+	struct om2k_is_conn_grp grps[3];
+
+	om2k_fill_is_conn_grp(&grps[0], 512,  4, 4);
+	om2k_fill_is_conn_grp(&grps[1], 516,  8, 4);
+	om2k_fill_is_conn_grp(&grps[2], 520, 12, 4);
+
+	abis_om2k_tx_is_conf_req(oms->bts, grps, ARRAY_SIZE(grps));
+	return CMD_SUCCESS;
+}
 
 int abis_om2k_vty_init(void)
 {
@@ -245,6 +267,7 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_disable_cmd);
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
+	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
 
 	return 0;
 }

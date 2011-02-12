@@ -134,6 +134,9 @@ enum abis_om2k_msgtype {
 
 enum abis_om2k_dei {
 	OM2K_DEI_CAL_TIME			= 0x0d,
+	OM2K_DEI_END_LIST_NR			= 0x13,
+	OM2K_DEI_IS_CONN_LIST			= 0x27,
+	OM2K_DEI_LIST_NR			= 0x28,
 	OM2K_DEI_OP_INFO			= 0x2e,
 	OM2K_DEI_NEGOT_REC1			= 0x90,
 	OM2K_DEI_NEGOT_REC2			= 0x91,
@@ -510,6 +513,7 @@ static char *om2k_mo_name(const struct abis_om2k_mo *mo)
 }
 
 const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };
+const struct abis_om2k_mo om2k_mo_is = { OM2K_MO_CLS_IS, 0, 0xFF, 0 };
 
 static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 {
@@ -603,6 +607,25 @@ int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 
 	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(mo),
 		get_value_string(om2k_msgcode_vals, OM2K_MSGT_OP_INFO));
+
+	return abis_om2k_sendmsg(bts, msg);
+}
+
+int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
+			     unsigned int num_cg )
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, &om2k_mo_is, OM2K_MSGT_IS_CONF_REQ,
+		      2 + 2 + TLV_GROSS_LEN(num_cg * sizeof(*cg)));
+
+	msgb_tv_put(msg, OM2K_DEI_LIST_NR, 1);
+	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
+
+	msgb_tlv_put(msg, OM2K_DEI_IS_CONN_LIST,
+		     num_cg * sizeof(*cg), (uint8_t *)cg);
 
 	return abis_om2k_sendmsg(bts, msg);
 }
