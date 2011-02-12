@@ -35,9 +35,13 @@ int abis_om2k_rcvmsg(struct msgb *msg);
 
 extern const struct abis_om2k_mo om2k_mo_cf;
 
-int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, struct abis_om2k_mo *mo);
-int abis_om2k_tx_start_req(struct gsm_bts *bts, struct abis_om2k_mo *mo);
-int abis_om2k_tx_status_req(struct gsm_bts *bts, struct abis_om2k_mo *mo);
+int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_start_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_status_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_connect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_disconnect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
+int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
+			 uint8_t operational);
 
 int abis_om2k_vty_init(void);
 

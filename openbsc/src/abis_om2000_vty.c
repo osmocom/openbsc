@@ -166,6 +166,38 @@ DEFUN(om2k_status, om2k_status_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(om2k_connect, om2k_connect_cmd,
+	"connect-command",
+	"Connect the MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_connect_cmd(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
+DEFUN(om2k_disconnect, om2k_disconnect_cmd,
+	"disconnect-command",
+	"Disconnect the MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_disconnect_cmd(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
+DEFUN(om2k_op_info, om2k_op_info_cmd,
+	"operational-info <0-1>",
+	"Set operational information\n")
+{
+	struct oml_node_state *oms = vty->index;
+	int oper = atoi(argv[0]);
+
+	abis_om2k_tx_op_info(oms->bts, &oms->mo, oper);
+	return CMD_SUCCESS;
+}
+
+
 int abis_om2k_vty_init(void)
 {
 	install_element(ENABLE_NODE, &om2k_class_inst_cmd);
@@ -177,6 +209,9 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_reset_cmd);
 	install_element(OM2K_NODE, &om2k_start_cmd);
 	install_element(OM2K_NODE, &om2k_status_cmd);
+	install_element(OM2K_NODE, &om2k_connect_cmd);
+	install_element(OM2K_NODE, &om2k_disconnect_cmd);
+	install_element(OM2K_NODE, &om2k_op_info_cmd);
 
 	return 0;
 }

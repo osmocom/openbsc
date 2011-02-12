@@ -76,6 +76,10 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_CONNECT_COMPL			= 0x001e,
 	OM2K_MSGT_CONNECT_REJ			= 0x001f,
 
+	OM2K_MSGT_DISCONNECT_CMD		= 0x0030,
+	OM2K_MSGT_DISCONNECT_COMPL		= 0x0032,
+	OM2K_MSGT_DISCONNECT_REJ		= 0x0033,
+
 	OM2K_MSGT_FAULT_REP_ACK			= 0x0040,
 	OM2K_MSGT_FAULT_REP_NACK		= 0x0041,
 	OM2K_MSGT_FAULT_REP			= 0x0042,
@@ -512,7 +516,7 @@ static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 	return abis_om2k_sendmsg(bts, msg);
 }
 
-static int abis_om2k_tx_simple(struct gsm_bts *bts, struct abis_om2k_mo *mo,
+static int abis_om2k_tx_simple(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 				uint8_t msg_type)
 {
 	struct msgb *msg = om2k_msgb_alloc();
@@ -527,23 +531,33 @@ static int abis_om2k_tx_simple(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 	return abis_om2k_sendmsg(bts, msg);
 }
 
-int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 {
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_RESET_CMD);
 }
 
-int abis_om2k_tx_start_req(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+int abis_om2k_tx_start_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 {
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_START_REQ);
 }
 
-int abis_om2k_tx_status_req(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+int abis_om2k_tx_status_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 {
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_STATUS_REQ);
 }
 
-static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
-			        uint8_t operational)
+int abis_om2k_tx_connect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_CONNECT_CMD);
+}
+
+int abis_om2k_tx_disconnect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_DISCONNECT_CMD);
+}
+
+int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
+			 uint8_t operational)
 {
 	struct msgb *msg = om2k_msgb_alloc();
 	struct abis_om2k_hdr *o2k;
@@ -559,7 +573,7 @@ static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 	return abis_om2k_sendmsg(bts, msg);
 }
 
-static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, struct abis_om2k_mo *mo,
+static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 				      uint8_t *data, unsigned int len)
 {
 	struct msgb *msg = om2k_msgb_alloc();
