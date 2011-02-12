@@ -602,13 +602,69 @@ static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, const struct abis_om2
 	return abis_om2k_sendmsg(bts, msg);
 }
 
+struct iwd_version {
+	uint8_t gen_char[3+1];
+	uint8_t rev_char[3+1];
+};
+
+struct iwd_type {
+	uint8_t num_vers;
+	struct iwd_version v[8];
+};
+
 static int om2k_rx_negot_req(struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
-	uint8_t *negot_data = o2h->data+2;
-	uint8_t negot_len = o2h->data[1];
+	struct iwd_type iwd_types[16];
+	uint8_t num_iwd_types = o2h->data[2];
+	uint8_t *cur = o2h->data+3;
+	unsigned int i, v;
 
-	return abis_om2k_tx_negot_req_ack(msg->trx->bts, &o2h->mo, negot_data, negot_len);
+	uint8_t out_buf[1024];
+	uint8_t *out_cur = out_buf+1;
+	uint8_t out_num_types = 0;
+
+	memset(iwd_types, 0, sizeof(iwd_types));
+
+	/* Parse the RBS-supported IWD versions into iwd_types array */
+	for (i = 0; i < num_iwd_types; i++) {
+		uint8_t num_versions = *cur++;
+		uint8_t iwd_type = *cur++;
+
+		iwd_types[iwd_type].num_vers = num_versions;
+
+		for (v = 0; v < num_versions; v++) {
+			struct iwd_version *iwd_v = &iwd_types[iwd_type].v[v];
+
+			memcpy(iwd_v->gen_char, cur, 3);
+			memcpy(iwd_v->rev_char, cur+3, 3);
+			DEBUGP(DNM, "\tIWD Type %u Gen %s Rev %s\n", iwd_type,
+				iwd_v->gen_char, iwd_v->rev_char);
+		}
+	}
+
+	/* Select the last version for each IWD type */
+	for (i = 0; i < ARRAY_SIZE(iwd_types); i++) {
+		struct iwd_type *type = &iwd_types[i];
+		struct iwd_version *last_v;
+
+		if (type->num_vers == 0)
+			continue;
+
+		out_num_types++;
+
+		last_v = &type->v[type->num_vers-1];
+
+		*out_cur++ = i;
+		memcpy(out_cur, last_v->gen_char, 3);
+		out_cur += 3;
+		memcpy(out_cur, last_v->rev_char, 3);
+		out_cur += 3;
+	}
+
+	out_buf[0] = out_num_types;
+
+	return abis_om2k_tx_negot_req_ack(msg->trx->bts, &o2h->mo, out_buf, out_cur - out_buf);
 }
 
 static int om2k_rx_start_res(struct msgb *msg)
