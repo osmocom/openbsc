@@ -44,7 +44,7 @@ extern struct gsm_network *bsc_gsmnet;
 
 static struct cmd_node om2k_node = {
 	OM2K_NODE,
-	"%s(oml)# ",
+	"%s(om2k)# ",
 	1,
 };
 
