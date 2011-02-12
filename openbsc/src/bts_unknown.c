@@ -27,6 +27,8 @@
 
 static struct gsm_bts_model model_unknown = {
 	.type = GSM_BTS_TYPE_UNKNOWN,
+	.name = "unknown",
+	.oml_rcvmsg = &abis_nm_rcvmsg,
 	.nm_att_tlvdef = {
 		.def = {
 		},

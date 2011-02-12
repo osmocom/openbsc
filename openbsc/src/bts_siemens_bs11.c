@@ -31,6 +31,8 @@
 
 static struct gsm_bts_model model_bs11 = {
 	.type = GSM_BTS_TYPE_BS11,
+	.name = "bs11",
+	.oml_rcvmsg = &abis_nm_rcvmsg,
 	.nm_att_tlvdef = {
 		.def = {
 			[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TLV },

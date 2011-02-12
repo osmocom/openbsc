@@ -429,6 +429,8 @@ struct gsm_bts_model {
 	enum gsm_bts_type type;
 	const char *name;
 
+	int (*oml_rcvmsg)(struct msgb *msg);
+
 	struct tlv_definition nm_att_tlvdef;
 
 	struct bitvec features;

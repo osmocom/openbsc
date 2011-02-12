@@ -475,6 +475,7 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		u_int8_t tei, u_int8_t sapi)
 {
 	struct e1inp_sign_link *link;
+	struct gsm_bts *bts;
 	int ret;
 
 	switch (ts->type) {
@@ -492,7 +493,8 @@ int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
 		switch (link->type) {
 		case E1INP_SIGN_OML:
 			msg->trx = link->trx;
-			ret = abis_nm_rcvmsg(msg);
+			bts = msg->trx->bts;
+			ret = bts->model->oml_rcvmsg(msg);
 			break;
 		case E1INP_SIGN_RSL:
 			msg->trx = link->trx;
