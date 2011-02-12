@@ -197,6 +197,16 @@ DEFUN(om2k_op_info, om2k_op_info_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(om2k_test, om2k_test_cmd,
+	"test-request",
+	"Test the MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+
+	abis_om2k_tx_test_req(oms->bts, &oms->mo);
+	return CMD_SUCCESS;
+}
+
 
 int abis_om2k_vty_init(void)
 {
@@ -212,6 +222,7 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_connect_cmd);
 	install_element(OM2K_NODE, &om2k_disconnect_cmd);
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
+	install_element(OM2K_NODE, &om2k_test_cmd);
 
 	return 0;
 }

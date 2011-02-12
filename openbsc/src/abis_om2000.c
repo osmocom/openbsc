@@ -108,6 +108,13 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_STATUS_RESP			= 0x008e,
 	OM2K_MSGT_STATUS_REJ			= 0x008f,
 
+	OM2K_MSGT_TEST_REQ			= 0x0094,
+	OM2K_MSGT_TEST_REQ_ACK			= 0x0096,
+	OM2K_MSGT_TEST_REQ_REJ			= 0x0097,
+	OM2K_MSGT_TEST_RES_ACK			= 0x0098,
+	OM2K_MSGT_TEST_RES_NACK			= 0x0099,
+	OM2K_MSGT_TEST_RES			= 0x009a,
+
 	OM2K_MSGT_NEGOT_REQ_ACK			= 0x0104,
 	OM2K_MSGT_NEGOT_REQ_NACK		= 0x0105,
 	OM2K_MSGT_NEGOT_REQ			= 0x0106,
@@ -554,6 +561,11 @@ int abis_om2k_tx_connect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 int abis_om2k_tx_disconnect_cmd(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 {
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_DISCONNECT_CMD);
+}
+
+int abis_om2k_tx_test_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_TEST_REQ);
 }
 
 int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
