@@ -145,6 +145,7 @@ gDEFUN(ournode_exit,
 		vty->index = NULL;
 		break;
 	case OML_NODE:
+	case OM2K_NODE:
 		vty->node = ENABLE_NODE;
 		talloc_free(vty->index);
 		vty->index = NULL;
@@ -196,6 +197,7 @@ int bsc_vty_is_config_node(struct vty *vty, int node)
 	switch (node) {
 	/* add items that are not config */
 	case OML_NODE:
+	case OM2K_NODE:
 	case SUBSCR_NODE:
 	case CONFIG_NODE:
 		return 0;
