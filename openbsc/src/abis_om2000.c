@@ -637,7 +637,10 @@ static int om2k_rx_negot_req(struct msgb *msg)
 			struct iwd_version *iwd_v = &iwd_types[iwd_type].v[v];
 
 			memcpy(iwd_v->gen_char, cur, 3);
-			memcpy(iwd_v->rev_char, cur+3, 3);
+			cur += 3;
+			memcpy(iwd_v->rev_char, cur, 3);
+			cur += 3;
+
 			DEBUGP(DNM, "\tIWD Type %u Gen %s Rev %s\n", iwd_type,
 				iwd_v->gen_char, iwd_v->rev_char);
 		}
