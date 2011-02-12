@@ -67,6 +67,7 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 		}
 		break;
 	case OML_NODE:
+	case OM2K_NODE:
 		vty->node = ENABLE_NODE;
 		talloc_free(vty->index);
 		vty->index = NULL;
