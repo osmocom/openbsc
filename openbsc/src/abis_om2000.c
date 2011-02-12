@@ -45,7 +45,7 @@
 
 /* use following functions from abis_nm.c:
 	* om2k_msgb_alloc()
-	* abis_nm_sendmsg()
+	* abis_om2k_sendmsg()
  */
 
 struct abis_om2k_mo {
@@ -458,13 +458,20 @@ static struct msgb *om2k_msgb_alloc(void)
 				   "OM2000");
 }
 
+static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
+{
+	msg->trx = bts->c0;
+
+	return _abis_nm_sendmsg(msg);
+}
+
 static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *mo,
 			 uint16_t msg_type, uint8_t attr_len)
 {
 	o2h->om.mdisc = ABIS_OM_MDISC_FOM;
 	o2h->om.placement = ABIS_OM_PLACEMENT_ONLY;
 	o2h->om.sequence = 0;
-	o2h->om.length = sizeof(*o2h) + attr_len;
+	o2h->om.length = 6 + attr_len;
 	o2h->msg_type = htons(msg_type);
 	memcpy(&o2h->mo, mo, sizeof(o2h->mo));
 }
@@ -503,7 +510,7 @@ static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 	msgb_put_u8(msg, tm->tm_min);
 	msgb_put_u8(msg, tm->tm_sec);
 
-	return abis_nm_sendmsg(bts, msg);
+	return abis_om2k_sendmsg(bts, msg);
 }
 
 static int abis_om2k_tx_simple(struct gsm_bts *bts, struct abis_om2k_mo *mo,
@@ -515,7 +522,7 @@ static int abis_om2k_tx_simple(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
 	fill_om2k_hdr(o2k, mo, msg_type, 0);
 
-	return abis_nm_sendmsg(bts, msg);
+	return abis_om2k_sendmsg(bts, msg);
 }
 
 static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
@@ -529,7 +536,7 @@ static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 
 	msgb_tv_put(msg, OM2K_DEI_OP_INFO, operational);
 
-	return abis_nm_sendmsg(bts, msg);
+	return abis_om2k_sendmsg(bts, msg);
 }
 
 
@@ -566,6 +573,7 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	struct gsm_bts *bts = msg->trx->bts;
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	struct abis_om_hdr *oh = &o2h->om;
+	uint16_t msg_type = ntohs(o2h->msg_type);
 	int rc = 0;
 
 	/* Various consistency checks */
@@ -590,10 +598,10 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	}
 
 	DEBUGP(DNM, "MO=%s %s (%s)\n", om2k_mo_name(&o2h->mo),
-		get_value_string(om2k_msgcode_vals, o2h->msg_type),
+		get_value_string(om2k_msgcode_vals, msg_type),
 		hexdump(msg->l2h, msgb_l2len(msg)));
 
-	switch (o2h->msg_type) {
+	switch (msg_type) {
 	case OM2K_MSGT_CAL_TIME_REQ:
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
@@ -623,7 +631,7 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		break;
 	default:
 		LOGP(DNM, LOGL_NOTICE, "Rx unknown OM2000 msg %s\n",
-			get_value_string(om2k_msgcode_vals, o2h->msg_type));
+			get_value_string(om2k_msgcode_vals, msg_type));
 	}
 
 	msgb_free(msg);
