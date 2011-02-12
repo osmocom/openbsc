@@ -22,7 +22,18 @@
  *
  */
 
+struct abis_om2k_mo {
+	uint8_t class;
+	uint8_t bts;
+	uint8_t assoc_so;
+	uint8_t inst;
+} __attribute__ ((packed));
 
 int abis_om2k_rcvmsg(struct msgb *msg);
+
+extern const struct abis_om2k_mo om2k_mo_cf;
+
+int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, struct abis_om2k_mo *mo);
+int abis_om2k_tx_start_req(struct gsm_bts *bts, struct abis_om2k_mo *mo);
 
 #endif /* OPENBCS_ABIS_OM2K_H */

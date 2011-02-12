@@ -38,6 +38,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/abis_om2000.h>
 #include <openbsc/signal.h>
 
 #define OM_ALLOC_SIZE		1024
@@ -47,13 +48,6 @@
 	* om2k_msgb_alloc()
 	* abis_om2k_sendmsg()
  */
-
-struct abis_om2k_mo {
-	uint8_t class;
-	uint8_t bts;
-	uint8_t assoc_so;
-	uint8_t inst;
-} __attribute__ ((packed));
 
 struct abis_om2k_hdr {
 	struct abis_om_hdr om;
@@ -115,6 +109,8 @@ enum abis_om2k_msgtype {
 enum abis_om2k_dei {
 	OM2K_DEI_CAL_TIME			= 0x0d,
 	OM2K_DEI_OP_INFO			= 0x2e,
+	OM2K_DEI_NEGOT_REC1			= 0x90,
+	OM2K_DEI_NEGOT_REC2			= 0x91,
 };
 
 enum abis_om2k_mo_cls {
@@ -487,7 +483,7 @@ static char *om2k_mo_name(const struct abis_om2k_mo *mo)
 	return mo_buf;
 }
 
-static const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };
+const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };
 
 static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 {
@@ -522,7 +518,20 @@ static int abis_om2k_tx_simple(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
 	fill_om2k_hdr(o2k, mo, msg_type, 0);
 
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(mo),
+		get_value_string(om2k_msgcode_vals, msg_type));
+
 	return abis_om2k_sendmsg(bts, msg);
+}
+
+int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_RESET_CMD);
+}
+
+int abis_om2k_tx_start_req(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_START_REQ);
 }
 
 static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
@@ -536,15 +545,36 @@ static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 
 	msgb_tv_put(msg, OM2K_DEI_OP_INFO, operational);
 
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(mo),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_OP_INFO));
+
 	return abis_om2k_sendmsg(bts, msg);
 }
 
+static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, struct abis_om2k_mo *mo,
+				      uint8_t *data, unsigned int len)
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, mo, OM2K_MSGT_NEGOT_REQ_ACK, 2+len);
+
+	msgb_tlv_put(msg, OM2K_DEI_NEGOT_REC2, len, data);
+
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(mo),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_NEGOT_REQ_ACK));
+
+	return abis_om2k_sendmsg(bts, msg);
+}
 
 static int om2k_rx_negot_req(struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
+	uint8_t *negot_data = o2h->data+2;
+	uint8_t negot_len = o2h->data[1];
 
-	/* FIXME */
+	return abis_om2k_tx_negot_req_ack(msg->trx->bts, &o2h->mo, negot_data, negot_len);
 }
 
 static int om2k_rx_start_res(struct msgb *msg)
@@ -563,7 +593,7 @@ static int om2k_rx_op_info(struct msgb *msg)
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	uint8_t op_info = o2h->data[1];
 
-	DEBUGP(DNM, "MO=%s OPERATIONAL INFO: %u\n", om2k_mo_name(&o2h->mo), op_info);
+	DEBUGP(DNM, "Rx MO=%s OPERATIONAL INFO: %u\n", om2k_mo_name(&o2h->mo), op_info);
 
 	return abis_om2k_tx_simple(msg->trx->bts, &o2h->mo, OM2K_MSGT_OP_INFO_ACK);
 }
@@ -597,7 +627,7 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	DEBUGP(DNM, "MO=%s %s (%s)\n", om2k_mo_name(&o2h->mo),
+	DEBUGP(DNM, "Rx MO=%s %s (%s)\n", om2k_mo_name(&o2h->mo),
 		get_value_string(om2k_msgcode_vals, msg_type),
 		hexdump(msg->l2h, msgb_l2len(msg)));
 

@@ -40,6 +40,7 @@ static struct gsm_bts_model model_rbs2k = {
 static void bootstrap_om_rbs2k(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
+	abis_om2k_tx_start_req(bts, &om2k_mo_cf);
 	/* FIXME */
 }
 
