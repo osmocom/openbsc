@@ -100,6 +100,9 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_START_RES_ACK			= 0x0088,
 	OM2K_MSGT_START_RES_NACK		= 0x0089,
 	OM2K_MSGT_START_RES			= 0x008a,
+	OM2K_MSGT_STATUS_REQ			= 0x008c,
+	OM2K_MSGT_STATUS_RESP			= 0x008e,
+	OM2K_MSGT_STATUS_REJ			= 0x008f,
 
 	OM2K_MSGT_NEGOT_REQ_ACK			= 0x0104,
 	OM2K_MSGT_NEGOT_REQ_NACK		= 0x0105,
@@ -435,7 +438,7 @@ static const struct value_string om2k_attr_vals[] = {
 	{ 0, NULL }
 };
 
-static const struct value_string om2k_mo_class_short_vals[] = {
+const struct value_string om2k_mo_class_short_vals[] = {
 	{ 0x01, "TRXC" },
 	{ 0x03, "TS" },
 	{ 0x04, "TF" },
@@ -532,6 +535,11 @@ int abis_om2k_tx_reset_cmd(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 int abis_om2k_tx_start_req(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 {
 	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_START_REQ);
+}
+
+int abis_om2k_tx_status_req(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+{
+	return abis_om2k_tx_simple(bts, mo, OM2K_MSGT_STATUS_REQ);
 }
 
 static int abis_om2k_tx_op_info(struct gsm_bts *bts, struct abis_om2k_mo *mo,
