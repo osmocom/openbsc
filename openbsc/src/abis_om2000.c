@@ -773,7 +773,6 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
 	case OM2K_MSGT_FAULT_REP:
-		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_REQ);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_FAULT_REP_ACK);
 		break;
 	case OM2K_MSGT_NEGOT_REQ:
