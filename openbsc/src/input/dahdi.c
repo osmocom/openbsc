@@ -54,6 +54,40 @@
 
 #define TS1_ALLOC_SIZE	300
 
+/* Corresponds to dahdi/user.h, only PRI related events */
+static const struct value_string dahdi_evt_names[] = {
+	{ DAHDI_EVENT_NONE,		"NONE" },
+	{ DAHDI_EVENT_ALARM,		"ALARM" },
+	{ DAHDI_EVENT_NOALARM,		"NOALARM" },
+	{ DAHDI_EVENT_ABORT,		"HDLC ABORT" },
+	{ DAHDI_EVENT_OVERRUN,		"HDLC OVERRUN" },
+	{ DAHDI_EVENT_BADFCS,		"HDLC BAD FCS" },
+	{ DAHDI_EVENT_REMOVED,		"REMOVED" },
+	{ 0, NULL }
+};
+
+static void handle_dahdi_exception(struct e1inp_ts *ts)
+{
+	int rc, evt;
+
+	rc = ioctl(ts->driver.dahdi.fd.fd, DAHDI_GETEVENT, &evt);
+	if (rc < 0)
+		return;
+
+	LOGP(DMI, LOGL_NOTICE, "Line %u(%s) / TS %u DAHDI EVENT %s\n",
+		ts->line->num, ts->line->name, ts->num,
+		get_value_string(dahdi_evt_names, evt));
+
+	switch (evt) {
+	case DAHDI_EVENT_ALARM:
+		/* FIXME: we should notify the code that the line is gone */
+		break;
+	case DAHDI_EVENT_NOALARM:
+		/* FIXME: alarm has gone, we should re-start the SABM requests */
+		break;
+	}
+}
+
 static int handle_ts1_read(struct bsc_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
@@ -69,7 +103,9 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return -ENOMEM;
 
 	ret = read(bfd->fd, msg->data, TS1_ALLOC_SIZE - 16);
-	if (ret < 0) {
+	if (ret == -1)
+		handle_dahdi_exception(e1i_ts);
+	else if (ret < 0) {
 		perror("read ");
 	}
 	msgb_put(msg, ret - 2);
@@ -145,12 +181,16 @@ static void timeout_ts1_write(void *data)
 static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 {
 	struct bsc_fd *bfd = cbdata;
+	struct e1inp_line *line = bfd->data;
+	unsigned int ts_nr = bfd->priv_nr;
+	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	int ret;
 
 	ret = write(bfd->fd, data, len + 2);
-
-	if (ret < 0)
-		fprintf(stderr, "%s write failed %d\n", __func__, ret);
+	if (ret == -1)
+		handle_dahdi_exception(e1i_ts);
+	else if (ret < 0)
+		LOGP(DMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
 static int handle_ts1_write(struct bsc_fd *bfd)
