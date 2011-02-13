@@ -268,10 +268,12 @@ int _abis_nm_sendmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 
+#if 0
 	/* Check for TRX-specific OML link first */
 	if (msg->trx->oml_link)
 		sign_link = msg->trx->oml_link;
 	else
+#endif
 		sign_link = msg->trx->bts->oml_link;
 
 	e1i_ts = sign_link->ts;
