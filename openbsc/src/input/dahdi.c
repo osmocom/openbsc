@@ -334,12 +334,16 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 
 	switch (e1i_ts->type) {
 	case E1INP_TS_TYPE_SIGN:
+		if (what & BSC_FD_EXCEPT)
+			handle_dahdi_exception(e1i_ts);
 		if (what & BSC_FD_READ)
 			rc = handle_ts1_read(bfd);
 		if (what & BSC_FD_WRITE)
 			rc = handle_ts1_write(bfd);
 		break;
 	case E1INP_TS_TYPE_TRAU:
+		if (what & BSC_FD_EXCEPT)
+			handle_dahdi_exception(e1i_ts);
 		if (what & BSC_FD_READ)
 			rc = handle_tsX_read(bfd);
 		if (what & BSC_FD_WRITE)
@@ -424,7 +428,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 					__func__, openstr, strerror(errno));
 				exit(-1);
 			}
-			bfd->when = BSC_FD_READ;
+			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 			dahdi_set_bufinfo(bfd->fd, 1);
 			e1i_ts->driver.dahdi.lapd = lapd_instance_alloc(dahdi_write_msg, bfd);
 			break;
@@ -439,7 +443,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			/* We never include the DAHDI B-Channel FD into the
 			 * writeset, since it doesn't support poll() based
 			 * write flow control */
-			bfd->when = BSC_FD_READ;// | BSC_FD_WRITE;
+			bfd->when = BSC_FD_READ | BSC_FD_EXCEPT;// | BSC_FD_WRITE;
 			break;
 		}
 
