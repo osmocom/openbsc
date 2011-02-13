@@ -571,6 +571,8 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 
 	isd.link_type = link->type;
 	isd.trx = link->trx;
+	isd.tei = tei;
+	isd.sapi = sapi;
 
 	/* report further upwards */
 	dispatch_signal(SS_INPUT, evt, &isd);

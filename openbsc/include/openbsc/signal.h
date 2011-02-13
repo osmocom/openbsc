@@ -246,6 +246,8 @@ struct ho_signal_data {
 
 struct input_signal_data {
 	int link_type;
+	uint8_t tei;
+	uint8_t sapi;
 	struct gsm_bts_trx *trx;
 	struct e1inp_line *line;
 };
