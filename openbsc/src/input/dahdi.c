@@ -69,6 +69,7 @@ static const struct value_string dahdi_evt_names[] = {
 static void handle_dahdi_exception(struct e1inp_ts *ts)
 {
 	int rc, evt;
+	struct input_signal_data isd;
 
 	rc = ioctl(ts->driver.dahdi.fd.fd, DAHDI_GETEVENT, &evt);
 	if (rc < 0)
@@ -78,12 +79,16 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 		ts->line->num, ts->line->name, ts->num,
 		get_value_string(dahdi_evt_names, evt));
 
+	isd.line = ts->line;
+
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:
-		/* FIXME: we should notify the code that the line is gone */
+		/* we should notify the code that the line is gone */
+		dispatch_signal(SS_INPUT, S_INP_LINE_ALARM, &isd);
 		break;
 	case DAHDI_EVENT_NOALARM:
-		/* FIXME: alarm has gone, we should re-start the SABM requests */
+		/* alarm has gone, we should re-start the SABM requests */
+		dispatch_signal(SS_INPUT, S_INP_LINE_NOALARM, &isd);
 		break;
 	}
 }

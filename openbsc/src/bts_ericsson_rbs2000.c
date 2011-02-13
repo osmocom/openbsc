@@ -53,7 +53,7 @@ static int shutdown_om(struct gsm_bts *bts)
 
 /* Tell LAPD to start start the SAP (send SABM requests) for all signalling
  * timeslots in this line */
-static void start_sabm_in_line(struct e1inp_line *line)
+static void start_sabm_in_line(struct e1inp_line *line, int start)
 {
 	struct e1inp_sign_link *link;
 	int i;
@@ -65,7 +65,10 @@ static void start_sabm_in_line(struct e1inp_line *line)
 			continue;
 
 		llist_for_each_entry(link, &ts->sign.sign_links, list) {
-			lapd_sap_start(ts->driver.dahdi.lapd, link->tei, link->sapi);
+			if (start)
+				lapd_sap_start(ts->driver.dahdi.lapd, link->tei, link->sapi);
+			else
+				lapd_sap_stop(ts->driver.dahdi.lapd, link->tei, link->sapi);
 		}
 	}
 }
@@ -113,7 +116,17 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		/* Right now Ericsson RBS are only supported on DAHDI */
 		if (strcasecmp(isd->line->driver->name, "DAHDI"))
 			break;
-		start_sabm_in_line(isd->line);
+		start_sabm_in_line(isd->line, 1);
+		break;
+	case S_INP_LINE_ALARM:
+		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+			break;
+		start_sabm_in_line(isd->line, 0);
+		break;
+	case S_INP_LINE_NOALARM:
+		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+			break;
+		start_sabm_in_line(isd->line, 1);
 		break;
 	}
 
