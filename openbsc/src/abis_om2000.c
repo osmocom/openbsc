@@ -794,6 +794,9 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_RESET_COMPL:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_REQ);
 		break;
+	case OM2K_MSGT_ENABLE_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_ENABLE_RES_ACK);
+		break;
 	case OM2K_MSGT_START_REQ_ACK:
 		break;
 	case OM2K_MSGT_STATUS_RESP:
