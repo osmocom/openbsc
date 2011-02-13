@@ -574,7 +574,7 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 		bts->c0->nominal_power = 23;
 		break;
 	case GSM_BTS_TYPE_BS11:
-		break;
+	case GSM_BTS_TYPE_RBS2000:
 	case GSM_BTS_TYPE_UNKNOWN:
 		break;
 	}
