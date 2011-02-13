@@ -578,6 +578,7 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 		break;
 	case GSM_BTS_TYPE_RBS2000:
 		INIT_LLIST_HEAD(&bts->rbs2000.is.conn_groups);
+		INIT_LLIST_HEAD(&bts->rbs2000.con.conn_groups);
 		break;
 	}
 

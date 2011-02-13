@@ -227,6 +227,95 @@ DEFUN(om2k_test, om2k_test_cmd,
 	return CMD_SUCCESS;
 }
 
+struct con_conn_group {
+	struct llist_head list;
+
+	uint8_t cg;
+	uint16_t ccp;
+	uint8_t tag;
+	uint8_t tei;
+};
+
+static void add_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
+			 uint8_t tag, uint8_t tei)
+{
+	struct con_conn_group *ent = talloc_zero(bts, struct con_conn_group);
+
+	ent->cg = cg;
+	ent->ccp = ccp;
+	ent->tag = tag;
+	ent->tei = tei;
+
+	llist_add(&ent->list, &bts->rbs2000.con.conn_groups);
+}
+
+static int del_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
+			uint8_t tag, uint8_t tei)
+{
+	struct con_conn_group *grp, *grp2;
+
+	llist_for_each_entry_safe(grp, grp2, &bts->rbs2000.con.conn_groups, list) {
+		if (grp->cg == cg && grp->ccp == ccp && grp->tag == tag
+		    && grp->tei == tei) {
+			llist_del(&grp->list);
+			talloc_free(grp);
+			return 0;
+		}
+	}
+	return -ENOENT;
+}
+
+#define CON_LIST_HELP	"CON connetiton list\n"			\
+			"Add entry to CON list\n"		\
+			"Delete entry from CON list\n"		\
+			"Connection Group Number\n"		\
+			"CON Connection Point\n"		\
+
+DEFUN(om2k_con_list_dec, om2k_con_list_dec_cmd,
+	"con-connection-list (add|del) <1-255> <0-1023> deconcentrated",
+	CON_LIST_HELP "De-concentrated in/outlet\n")
+{
+	struct oml_node_state *oms = vty->index;
+	struct gsm_bts *bts = oms->bts;
+	uint8_t cg = atoi(argv[1]);
+	uint16_t ccp = atoi(argv[2]);
+
+	if (!strcmp(argv[0], "add"))
+		add_con_list(bts, cg, ccp, 0, 0xff);
+	else {
+		if (del_con_list(bts, cg, ccp, 0, 0xff) < 0) {
+			vty_out(vty, "%% No matching CON list entry%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(om2k_con_list_tei, om2k_con_list_tei_cmd,
+	"con-connection-list (add|del) <1-255> <0-1023> tei <0-63>",
+	CON_LIST_HELP "Concentrated in/outlet with TEI\n" "TEI Number\n")
+{
+	struct oml_node_state *oms = vty->index;
+	struct gsm_bts *bts = oms->bts;
+	uint8_t cg = atoi(argv[1]);
+	uint16_t ccp = atoi(argv[2]);
+	uint8_t tei = atoi(argv[3]);
+
+	if (!strcmp(argv[0], "add"))
+		add_con_list(bts, cg, ccp, cg, tei);
+	else {
+		if (del_con_list(bts, cg, ccp, cg, tei) < 0) {
+			vty_out(vty, "%% No matching CON list entry%s",
+				VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}
+
+	return CMD_SUCCESS;
+}
+
 static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
 				  uint16_t icp2, uint8_t cont_idx)
 {
@@ -333,8 +422,8 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_test_cmd);
 	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
 	install_element(OM2K_NODE, &om2k_is_conn_list_cmd);
-
-	//install_element(BTS_NODE, &om2k_is_conn_list_cmd);
+	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
+	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);
 
 	return 0;
 }

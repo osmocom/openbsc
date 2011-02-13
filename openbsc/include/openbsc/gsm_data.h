@@ -581,6 +581,9 @@ struct gsm_bts {
 			struct {
 				struct llist_head conn_groups;
 			} is;
+			struct {
+				struct llist_head conn_groups;
+			} con;
 		} rbs2000;
 	};
 
