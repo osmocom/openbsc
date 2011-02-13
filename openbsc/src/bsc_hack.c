@@ -237,6 +237,7 @@ int main(int argc, char **argv)
 	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
+	bts_model_rbs2k_init();
 
 	e1inp_init();
 

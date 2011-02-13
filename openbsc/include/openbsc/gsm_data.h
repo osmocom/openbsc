@@ -421,6 +421,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_UNKNOWN,
 	GSM_BTS_TYPE_BS11,
 	GSM_BTS_TYPE_NANOBTS,
+	GSM_BTS_TYPE_RBS2000,
 };
 
 struct gsm_bts_model {

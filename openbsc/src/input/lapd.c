@@ -1,9 +1,9 @@
 /* OpenBSC minimal LAPD implementation */
 
 /* (C) 2009 by oystein@homelien.no
- * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by Digium and Matthew Fredrickson <creslin@digium.com>
+ * (C) 2011 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
  *
@@ -23,6 +23,12 @@
  *
  */
 
+/* TODO:
+	* detect RR timeout and set SAP state back to SABM_RETRANSMIT
+	* use of value_string
+	* further code cleanup (spaghetti)
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -33,13 +39,14 @@
 #include <osmocore/linuxlist.h>
 #include <osmocore/talloc.h>
 #include <osmocore/msgb.h>
+#include <osmocore/timer.h>
 #include <openbsc/debug.h>
+
+#define SABM_INTERVAL		0, 300000
 
 typedef enum {
 	LAPD_TEI_NONE = 0,
-
 	LAPD_TEI_ASSIGNED,
-
 	LAPD_TEI_ACTIVE,
 } lapd_tei_state;
 
@@ -93,10 +100,24 @@ const char *lapd_cmd_types[] = {
 
 };
 
+enum lapd_sap_state {
+	SAP_STATE_INACTIVE,
+	SAP_STATE_SABM_RETRANS,
+	SAP_STATE_ACTIVE,
+};
+
+const char *lapd_sap_states[] = {
+	"INACTIVE",
+	"SABM_RETRANS",
+	"ACTIVE",
+};
+
 const char *lapd_msg_types = "?ISU";
 
+/* structure representing an allocated TEI within a LAPD instance */
 struct lapd_tei {
 	struct llist_head list;
+	struct lapd_instance *li;
 
 	uint8_t tei;
 	/* A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S). */
@@ -104,6 +125,19 @@ struct lapd_tei {
 	int va;			/* last acked by peer */
 	int vr;			/* next expected to be received */
 	lapd_tei_state state;
+
+	struct llist_head sap_list;
+};
+
+/* Structure representing a SAP within a TEI. We use this for TE-mode to
+ * re-transmit SABM */
+struct lapd_sap {
+	struct llist_head list;
+	struct lapd_tei *tei;
+	uint8_t sapi;
+	enum lapd_sap_state state;
+
+	struct timer_list sabme_timer;	/* timer to re-transmit SABM message */
 };
 
 /* 3.5.2.2   Send state variable V(S)
@@ -142,6 +176,7 @@ struct lapd_tei {
  * correctly received all I frames numbered up to and including N(R) − 1.
  */
 
+/* Resolve TEI structure from given numeric TEI */
 static struct lapd_tei *teip_from_tei(struct lapd_instance *li, uint8_t tei)
 {
 	struct lapd_tei *lt;
@@ -155,28 +190,87 @@ static struct lapd_tei *teip_from_tei(struct lapd_instance *li, uint8_t tei)
 
 static void lapd_tei_set_state(struct lapd_tei *teip, int newstate)
 {
-	DEBUGP(DMI, "state change on tei %d: %s -> %s\n", teip->tei,
+	DEBUGP(DMI, "state change on TEI %d: %s -> %s\n", teip->tei,
 		   lapd_tei_states[teip->state], lapd_tei_states[newstate]);
 	teip->state = newstate;
 };
 
-
-int lapd_tei_alloc(struct lapd_instance *li, uint8_t tei)
+/* Allocate a new TEI */
+struct lapd_tei *lapd_tei_alloc(struct lapd_instance *li, uint8_t tei)
 {
 	struct lapd_tei *teip;
 
 	teip = talloc_zero(li, struct lapd_tei);
 	if (!teip)
-		return -ENOMEM;
+		return NULL;
 
+	teip->li = li;
 	teip->tei = tei;
 	llist_add(&teip->list, &li->tei_list);
+	INIT_LLIST_HEAD(&teip->sap_list);
 
 	lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 
-	return 0;
+	return teip;
 }
 
+/* Find a SAP within a given TEI */
+static struct lapd_sap *lapd_sap_find(struct lapd_tei *teip, uint8_t sapi)
+{
+	struct lapd_sap *sap;
+
+	llist_for_each_entry(sap, &teip->sap_list, list) {
+		if (sap->sapi == sapi)
+			return sap;
+	}
+
+	return NULL;
+}
+
+static void sabme_timer_cb(void *_sap);
+
+/* Allocate a new SAP within a given TEI */
+static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
+{
+	struct lapd_sap *sap = talloc_zero(teip, struct lapd_sap);
+
+	LOGP(DMI, LOGL_INFO, "Allocating SAP for SAPI=%u / TEI=%u\n",
+		sapi, teip->tei);
+
+	sap->sapi = sapi;
+	sap->tei = teip;
+	sap->sabme_timer.cb = &sabme_timer_cb;
+	sap->sabme_timer.data = sap;
+
+	llist_add(&sap->list, &teip->sap_list);
+
+	return sap;
+}
+
+static void lapd_sap_set_state(struct lapd_tei *teip, uint8_t sapi,
+				enum lapd_sap_state newstate)
+{
+	struct lapd_sap *sap = lapd_sap_find(teip, sapi);
+	if (!sap)
+		return;
+
+	DEBUGP(DMI, "state change on TEI %u / SAPI %u: %s -> %s\n", teip->tei,
+		sapi, lapd_sap_states[sap->state], lapd_sap_states[newstate]);
+	switch (sap->state) {
+	case SAP_STATE_SABM_RETRANS:
+		if (newstate != SAP_STATE_SABM_RETRANS)
+			bsc_del_timer(&sap->sabme_timer);
+		break;
+	default:
+		if (newstate == SAP_STATE_SABM_RETRANS)
+			bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+		break;
+	}
+
+	sap->state = newstate;
+};
+
+/* Input function into TEI manager */
 static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 {
 	uint8_t entity = data[0];
@@ -214,6 +308,7 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 	};
 };
 
+/* General input function for any data received for this LAPD instance */
 uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len,
 		      int *ilen, lapd_mph_type *prim)
 {
@@ -391,6 +486,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		teip->vr = 0;
 		teip->va = 0;
 		lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
+		lapd_sap_set_state(teip, sapi, SAP_STATE_ACTIVE);
 		*prim = LAPD_MPH_ACTIVATE_IND;
 		break;
 	case LAPD_CMD_RR:
@@ -478,17 +574,14 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	return NULL;
 };
 
-int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
+/* low-level function to send a single SABM message */
+static int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 {
 	struct msgb *msg = msgb_alloc_headroom(1024, 128, "LAPD SABM");
 	if (!msg)
 		return -ENOMEM;
 
 	DEBUGP(DMI, "Sending SABM for TEI=%u, SAPI=%u\n", tei, sapi);
-
-	/* make sure we know the TEI at the time the response comes in */
-	if (!teip_from_tei(li, tei))
-		lapd_tei_alloc(li, tei);
 
 	msgb_put_u8(msg, (sapi << 2) | (li->network_side ? 2 : 0));
 	msgb_put_u8(msg, (tei << 1) | 1);
@@ -501,6 +594,61 @@ int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	return 0;
 }
 
+/* timer call-back function for SABM re-transmission */
+static void sabme_timer_cb(void *_sap)
+{
+	struct lapd_sap *sap = _sap;
+
+	lapd_send_sabm(sap->tei->li, sap->tei->tei, sap->sapi);
+
+	if (sap->state == SAP_STATE_SABM_RETRANS)
+		bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+}
+
+/* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
+int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
+{
+	struct lapd_sap *sap;
+	struct lapd_tei *teip;
+
+	teip = teip_from_tei(li, tei);
+	if (!teip)
+		teip = lapd_tei_alloc(li, tei);
+
+	sap = lapd_sap_find(teip, sapi);
+	if (sap)
+		return -EEXIST;
+
+	sap = lapd_sap_alloc(teip, sapi);
+
+	lapd_sap_set_state(teip, sapi, SAP_STATE_SABM_RETRANS);
+
+	return 0;
+}
+
+/* Stop a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
+int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
+{
+	struct lapd_tei *teip;
+	struct lapd_sap *sap;
+
+	teip = teip_from_tei(li, tei);
+	if (!teip)
+		return -ENODEV;
+
+	sap = lapd_sap_find(teip, sapi);
+	if (!sap)
+		return -ENODEV;
+
+	lapd_sap_set_state(teip, sapi, SAP_STATE_INACTIVE);
+
+	llist_del(&sap->list);
+	talloc_free(sap);
+
+	return 0;
+}
+
+/* Transmit Data (I-Frame) on the given LAPD Instance / TEI / SAPI */
 void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 		   uint8_t *data, unsigned int len)
 {
@@ -530,6 +678,7 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 	li->transmit_cb(buf, len, li->cbdata);
 };
 
+/* Allocate a new LAPD instance */
 struct lapd_instance *lapd_instance_alloc(int network_side,
 					  void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata)

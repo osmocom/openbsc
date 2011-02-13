@@ -100,6 +100,11 @@ int e1_reconfig_trx(struct gsm_bts_trx *trx)
 	}
 	sign_ts = &line->ts[e1_link->e1_ts-1];
 	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
+	if (trx->bts->type == GSM_BTS_TYPE_RBS2000) {
+		/* FIXME: where to put the reference of the per-TRX OML? */
+		e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML, trx,
+					trx->rsl_tei, SAPI_OML);
+	}
 	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
 					  trx, trx->rsl_tei, SAPI_RSL);
 	if (!rsl_link) {

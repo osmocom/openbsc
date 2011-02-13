@@ -412,6 +412,7 @@ static const struct value_string bts_types[] = {
 	{ GSM_BTS_TYPE_UNKNOWN,	"unknown" },
 	{ GSM_BTS_TYPE_BS11,	"bs11" },
 	{ GSM_BTS_TYPE_NANOBTS,	"nanobts" },
+	{ GSM_BTS_TYPE_RBS2000,	"rbs2000" },
 	{ 0,			NULL }
 };
 
