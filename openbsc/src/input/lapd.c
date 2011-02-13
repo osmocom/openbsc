@@ -601,7 +601,8 @@ static void sabme_timer_cb(void *_sap)
 
 	lapd_send_sabm(sap->tei->li, sap->tei->tei, sap->sapi);
 
-	bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+	if (sap->state == SAP_STATE_SABM_RETRANS)
+		bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
 }
 
 /* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
@@ -639,7 +640,7 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	if (!sap)
 		return -ENODEV;
 
-	bsc_del_timer(&sap->sabme_timer);
+	lapd_sap_set_state(teip, sapi, SAP_STATE_INACTIVE);
 
 	llist_del(&sap->list);
 	talloc_free(sap);
