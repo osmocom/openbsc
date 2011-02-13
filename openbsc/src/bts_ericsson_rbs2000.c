@@ -31,6 +31,8 @@
 
 #include "input/lapd.h"
 
+#define SABM_INTERVAL		0, 300000
+
 static struct gsm_bts_model model_rbs2k = {
 	.type = GSM_BTS_TYPE_RBS2000,
 	.name = "rbs2000",
@@ -84,7 +86,7 @@ static void sabm_timer_cb(void *_line)
 	/* FIXME: use the TEI that was configured via vty */
 	lapd_send_sabm(e1i_ts->driver.dahdi.lapd, 62, 62);
 
-	bsc_schedule_timer(&sabm_timer, 0, 50);
+	bsc_schedule_timer(&sabm_timer, SABM_INTERVAL);
 }
 
 /* Callback function to be called every time we receive a signal from INPUT */
@@ -115,7 +117,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		/* FIXME: properly determine the OML signalling timeslot,
 		 * or rather: all signalling timeslots and start one timer each */
 		sabm_timer.data = &isd->line->ts[1-1];
-		bsc_schedule_timer(&sabm_timer, 0, 50);
+		bsc_schedule_timer(&sabm_timer, SABM_INTERVAL);
 		break;
 	}
 
