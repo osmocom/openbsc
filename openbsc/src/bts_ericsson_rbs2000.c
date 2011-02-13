@@ -37,10 +37,17 @@ static struct gsm_bts_model model_rbs2k = {
 	.oml_rcvmsg = &abis_om2k_rcvmsg,
 };
 
-static void bootstrap_om_rbs2k(struct gsm_bts *bts)
+static void bootstrap_om_bts(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 	abis_om2k_tx_start_req(bts, &om2k_mo_cf);
+	/* FIXME */
+}
+
+static void bootstrap_om_trx(struct gsm_bts_trx *trx)
+{
+	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for TRX %u/%u\n",
+	     trx->bts->nr, trx->nr);
 	/* FIXME */
 }
 
@@ -106,9 +113,12 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
-			if (isd->trx->bts->type == GSM_BTS_TYPE_RBS2000) {
-				bootstrap_om_rbs2k(isd->trx->bts);
-			}
+			if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
+				break;
+			if (isd->tei == isd->trx->bts->oml_tei)
+				bootstrap_om_bts(isd->trx->bts);
+			else
+				bootstrap_om_trx(isd->trx);
 			break;
 		}
 		break;
