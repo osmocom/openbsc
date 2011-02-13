@@ -577,6 +577,11 @@ struct gsm_bts {
 			} rack;
 			struct gsm_envabtse envabtse[4];
 		} bs11;
+		struct {
+			struct {
+				struct llist_head conn_groups;
+			} is;
+		} rbs2000;
 	};
 
 	/* Not entirely sure how ip.access specific this is */

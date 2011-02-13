@@ -235,23 +235,82 @@ static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
 	grp->cont_idx = cont_idx;
 }
 
-DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
-	"is-conf-req",
-	"IS Configuration Request\n")
+struct is_conn_group {
+	struct llist_head list;
+	uint16_t icp1;
+	uint16_t icp2;
+	uint8_t ci;
+};
+
+DEFUN(om2k_is_conn_list, om2k_is_conn_list_cmd,
+	"is-connection-list (add|del) <0-2047> <0-2047> <0-255>",
+	"Interface Switch Connnection List\n"
+	"Add to IS list\n" "Delete from IS list\n"
+	"ICP1\n" "ICP2\n" "Contiguity Index\n")
 {
 	struct oml_node_state *oms = vty->index;
-	struct om2k_is_conn_grp grps[6];
+	struct gsm_bts *bts = oms->bts;
+	uint16_t icp1 = atoi(argv[1]);
+	uint16_t icp2 = atoi(argv[2]);
+	uint8_t ci = atoi(argv[3]);
+	struct is_conn_group *grp, *grp2;
 
-	/* TRX 0 */
-	om2k_fill_is_conn_grp(&grps[0], 512,  4, 4);
-	om2k_fill_is_conn_grp(&grps[1], 516,  8, 4);
-	om2k_fill_is_conn_grp(&grps[2], 520, 12, 4);
-	/* TRX 1 */
-	om2k_fill_is_conn_grp(&grps[3], 524, 16, 4);
-	om2k_fill_is_conn_grp(&grps[4], 528, 20, 4);
-	om2k_fill_is_conn_grp(&grps[5], 532, 24, 4);
+	if (!strcmp(argv[0], "add")) {
+		grp = talloc_zero(bts, struct is_conn_group);
+		grp->icp1 = icp1;
+		grp->icp2 = icp2;
+		grp->ci = ci;
+		llist_add(&grp->list, &bts->rbs2000.is.conn_groups);
+	} else {
+		llist_for_each_entry_safe(grp, grp2, &bts->rbs2000.is.conn_groups, list) {
+			if (grp->icp1 == icp1 && grp->icp2 == icp2
+			    && grp->ci == ci) {
+				llist_del(&grp->list);
+				talloc_free(grp);
+				return CMD_SUCCESS;
+			}
+		}
+		vty_out(vty, "%% No matching IS Conn Group found!%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
-	abis_om2k_tx_is_conf_req(oms->bts, grps, ARRAY_SIZE(grps));
+	return CMD_SUCCESS;
+}
+
+
+DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
+	"is-conf-req",
+	"Send IS Configuration Request\n")
+{
+	struct oml_node_state *oms = vty->index;
+	struct gsm_bts *bts = oms->bts;
+	struct is_conn_group *grp;
+	unsigned int num_grps = 0, i = 0;
+	struct om2k_is_conn_grp *o2grps;
+
+	/* count number of groups in linked list */
+	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
+		num_grps++;
+
+	if (!num_grps) {
+		vty_out(vty, "%% No IS connection groups configured!%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	/* allocate buffer for oml group array */
+	o2grps = talloc_zero_array(bts, struct om2k_is_conn_grp, num_grps);
+
+	/* fill array with data from linked list */
+	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
+		om2k_fill_is_conn_grp(&o2grps[i++], grp->icp1, grp->icp2, grp->ci);
+
+	/* send the actual OML request */
+	abis_om2k_tx_is_conf_req(oms->bts, o2grps, num_grps);
+
+	talloc_free(o2grps);
+
 	return CMD_SUCCESS;
 }
 
@@ -273,6 +332,9 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
 	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
+	install_element(OM2K_NODE, &om2k_is_conn_list_cmd);
+
+	//install_element(BTS_NODE, &om2k_is_conn_list_cmd);
 
 	return 0;
 }
