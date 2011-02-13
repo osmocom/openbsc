@@ -240,11 +240,16 @@ DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
 	"IS Configuration Request\n")
 {
 	struct oml_node_state *oms = vty->index;
-	struct om2k_is_conn_grp grps[3];
+	struct om2k_is_conn_grp grps[6];
 
+	/* TRX 0 */
 	om2k_fill_is_conn_grp(&grps[0], 512,  4, 4);
 	om2k_fill_is_conn_grp(&grps[1], 516,  8, 4);
 	om2k_fill_is_conn_grp(&grps[2], 520, 12, 4);
+	/* TRX 1 */
+	om2k_fill_is_conn_grp(&grps[3], 524, 16, 4);
+	om2k_fill_is_conn_grp(&grps[4], 528, 20, 4);
+	om2k_fill_is_conn_grp(&grps[5], 532, 24, 4);
 
 	abis_om2k_tx_is_conf_req(oms->bts, grps, ARRAY_SIZE(grps));
 	return CMD_SUCCESS;
