@@ -36,6 +36,11 @@ struct lapd_instance *lapd_instance_alloc(int network_side,
 					  void (*tx_cb)(uint8_t *data, int len,
 							void *cbdata), void *cbdata);
 
-int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi);
+
+/* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
+int lapd_sap_start(struct lapd_instance *li, uint8_t tei, uint8_t sapi);
+
+/* Stop a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */
+int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi);
 
 #endif /* OPENBSC_LAPD_H */

@@ -31,8 +31,6 @@
 
 #include "input/lapd.h"
 
-#define SABM_INTERVAL		0, 300000
-
 static struct gsm_bts_model model_rbs2k = {
 	.type = GSM_BTS_TYPE_RBS2000,
 	.name = "rbs2000",
@@ -50,6 +48,26 @@ static int shutdown_om(struct gsm_bts *bts)
 {
 	/* FIXME */
 	return 0;
+}
+
+
+/* Tell LAPD to start start the SAP (send SABM requests) for all signalling
+ * timeslots in this line */
+static void start_sabm_in_line(struct e1inp_line *line)
+{
+	struct e1inp_sign_link *link;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
+		struct e1inp_ts *ts = &line->ts[i];
+
+		if (ts->type != E1INP_TS_TYPE_SIGN)
+			continue;
+
+		llist_for_each_entry(link, &ts->sign.sign_links, list) {
+			lapd_sap_start(ts->driver.dahdi.lapd, link->tei, link->sapi);
+		}
+	}
 }
 
 /* Callback function to be called every time we receive a signal from INPUT */
@@ -72,23 +90,6 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static void sabm_timer_cb(void *_line);
-
-/* FIXME: we need one per bts (or rather: per signalling TS, not one global! */
-struct timer_list sabm_timer = {
-	.cb = &sabm_timer_cb,
-};
-
-static void sabm_timer_cb(void *_line)
-{
-	struct e1inp_ts *e1i_ts = _line;
-
-	/* FIXME: use the TEI that was configured via vty */
-	lapd_send_sabm(e1i_ts->driver.dahdi.lapd, 62, 62);
-
-	bsc_schedule_timer(&sabm_timer, SABM_INTERVAL);
-}
-
 /* Callback function to be called every time we receive a signal from INPUT */
 static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
@@ -103,8 +104,6 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type == GSM_BTS_TYPE_RBS2000) {
-				/* FIXME: only disable the timer that belong sto this timeslot */
-				bsc_del_timer(&sabm_timer);
 				bootstrap_om_rbs2k(isd->trx->bts);
 			}
 			break;
@@ -114,10 +113,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		/* Right now Ericsson RBS are only supported on DAHDI */
 		if (strcasecmp(isd->line->driver->name, "DAHDI"))
 			break;
-		/* FIXME: properly determine the OML signalling timeslot,
-		 * or rather: all signalling timeslots and start one timer each */
-		sabm_timer.data = &isd->line->ts[1-1];
-		bsc_schedule_timer(&sabm_timer, SABM_INTERVAL);
+		start_sabm_in_line(isd->line);
 		break;
 	}
 
