@@ -60,7 +60,15 @@ static int dummy_config_write(struct vty *v)
 
 /* FIXME: auto-generate those strings from the value_string lists */
 #define OM2K_OBJCLASS_VTY "(trxc|ts|tf|is|con|dp|cf|tx|rx)"
-#define OM2K_OBJCLASS_VTY_HELP "FIXME"
+#define OM2K_OBJCLASS_VTY_HELP 	"TRX Controller\n"	\
+				"Timeslot\n"		\
+				"Timing Function\n"	\
+				"Interface Switch\n"	\
+				"Abis Concentrator\n"	\
+				"Digital Path\n"	\
+				"Central Function\n"	\
+				"Transmitter\n"		\
+				"Receiver\n"
 
 DEFUN(om2k_class_inst, om2k_class_inst_cmd,
 	"bts <0-255> om2000 class " OM2K_OBJCLASS_VTY
