@@ -386,6 +386,8 @@ struct gsm_bts_trx {
 	struct gsm_e1_subslot rsl_e1_link;
 	u_int8_t rsl_tei;
 	struct e1inp_sign_link *rsl_link;
+	/* Some BTS (specifically Ericsson RBS) have a per-TRX OML Link */
+	struct e1inp_sign_link *oml_link;
 
 	struct gsm_nm_state nm_state;
 	struct tlv_parsed nm_attr;

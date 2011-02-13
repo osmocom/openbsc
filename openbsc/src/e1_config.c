@@ -100,10 +100,19 @@ int e1_reconfig_trx(struct gsm_bts_trx *trx)
 	}
 	sign_ts = &line->ts[e1_link->e1_ts-1];
 	e1inp_ts_config(sign_ts, line, E1INP_TS_TYPE_SIGN);
+	/* Ericsson RBS have a per-TRX OML link in parallel to RSL */
 	if (trx->bts->type == GSM_BTS_TYPE_RBS2000) {
-		/* FIXME: where to put the reference of the per-TRX OML? */
-		e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML, trx,
-					trx->rsl_tei, SAPI_OML);
+		struct e1inp_sign_link *oml_link;
+		oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML, trx,
+						  trx->rsl_tei, SAPI_OML);
+		if (!oml_link) {
+			LOGP(DINP, LOGL_ERROR, "TRX (%u/$u) OML link creation "
+				"failed\n", trx->bts->nr, trx->nr);
+			return -ENOMEM;
+		}
+		if (trx->oml_link)
+			e1inp_sign_link_destroy(trx->oml_link);
+		trx->oml_link = oml_link;
 	}
 	rsl_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_RSL,
 					  trx, trx->rsl_tei, SAPI_RSL);

@@ -268,7 +268,12 @@ int _abis_nm_sendmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 
-	sign_link = msg->trx->bts->oml_link;
+	/* Check for TRX-specific OML link first */
+	if (msg->trx->oml_link)
+		sign_link = msg->trx->oml_link;
+	else
+		sign_link = msg->trx->bts->oml_link;
+
 	e1i_ts = sign_link->ts;
 	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
