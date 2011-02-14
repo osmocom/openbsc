@@ -118,12 +118,7 @@ const char *lapd_msg_types = "?ISU";
 struct lapd_tei {
 	struct llist_head list;
 	struct lapd_instance *li;
-
 	uint8_t tei;
-	/* A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S). */
-	int vs;			/* next to be transmitted */
-	int va;			/* last acked by peer */
-	int vr;			/* next expected to be received */
 	lapd_tei_state state;
 
 	struct llist_head sap_list;
@@ -136,6 +131,11 @@ struct lapd_sap {
 	struct lapd_tei *tei;
 	uint8_t sapi;
 	enum lapd_sap_state state;
+
+	/* A valid N(R) value is one that is in the range V(A) ≤ N(R) ≤ V(S). */
+	int vs;			/* next to be transmitted */
+	int va;			/* last acked by peer */
+	int vr;			/* next expected to be received */
 
 	struct timer_list sabme_timer;	/* timer to re-transmit SABM message */
 };
@@ -162,8 +162,8 @@ struct lapd_sap {
  * The value of V(R) shall be incremented by one with the receipt of an error-free, in-sequence I frame
  * whose N(S) equals V(R).
  */
-#define	LAPD_NS(teip) (teip->vs)
-#define	LAPD_NR(teip) (teip->vr)
+#define	LAPD_NS(sap) (sap->vs)
+#define	LAPD_NR(sap) (sap->vr)
 
 /* 3.5.2.4    Send sequence number N(S)
  * Only I frames contain N(S), the send sequence number of transmitted I frames. At the time that an in-
@@ -316,6 +316,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	int pf, ns, nr;
 	uint8_t *contents;
 	struct lapd_tei *teip;
+	struct lapd_sap *sap;
 
 	uint8_t resp[8];
 	int l = 0;
@@ -419,23 +420,28 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		lapd_tei_receive(li, contents, *ilen);
 
 	teip = teip_from_tei(li, tei);
-
-	DEBUGP(DMI, "<- %c %s sapi %x tei %3d cmd %x pf %x ns %3d nr %3d "
-	     "ilen %d teip %p vs %d va %d vr %d len %d\n",
-	     lapd_msg_types[typ], lapd_cmd_types[cmd], sapi, tei, command, pf,
-	     ns, nr, *ilen, teip, teip ? teip->vs : -1, teip ? teip->va : -1,
-	     teip ? teip->vr : -1, len);
-
 	if (!teip) {
 		LOGP(DMI, LOGL_NOTICE, "Unknown TEI %u\n", tei);
 		return NULL;
 	}
 
+	sap = lapd_sap_find(teip, sapi);
+	if (!sap) {
+		LOGP(DMI, LOGL_INFO, "No SAP for TEI=%u / SAPI=%u, "
+			"allocating\n", tei, sapi);
+		sap = lapd_sap_alloc(teip, sapi);
+	}
+
+	DEBUGP(DMI, "<- %c %s sapi %x tei %3d cmd %x pf %x ns %3d nr %3d "
+	     "ilen %d teip %p vs %d va %d vr %d len %d\n",
+	     lapd_msg_types[typ], lapd_cmd_types[cmd], sapi, tei, command, pf,
+	     ns, nr, *ilen, teip, sap->vs, sap->va, sap->vr, len);
+
 	switch (cmd) {
 	case LAPD_CMD_I:
-		if (ns != teip->vr) {
-			DEBUGP(DMI, "ns %d != vr %d\n", ns, teip->vr);
-			if (ns == ((teip->vr - 1) & 0x7f)) {
+		if (ns != sap->vr) {
+			DEBUGP(DMI, "ns %d != vr %d\n", ns, sap->vr);
+			if (ns == ((sap->vr - 1) & 0x7f)) {
 				DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
 				cmd = 0;	// ignore
 			} else {
@@ -443,16 +449,16 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 			};
 		} else {
 			//printf("IN SEQUENCE\n");
-			teip->vr = (ns + 1) & 0x7f;	// FIXME: hack!
+			sap->vr = (ns + 1) & 0x7f;	// FIXME: hack!
 		};
 
 		break;
 	case LAPD_CMD_UI:
 		break;
 	case LAPD_CMD_SABME:
-		teip->vs = 0;
-		teip->vr = 0;
-		teip->va = 0;
+		sap->vs = 0;
+		sap->vr = 0;
+		sap->va = 0;
 
 		// ua
 		resp[l++] = data[0];
@@ -469,10 +475,10 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 				DEBUGP(DMI, "rr in strange state, send rej\n");
 
 				// rej
-				resp[l++] = (teip-> sapi << 2) | (li->network_side ? 0 : 2);
+				resp[l++] = (sap-> sapi << 2) | (li->network_side ? 0 : 2);
 				resp[l++] = (tei << 1) | 1;
 				resp[l++] = 0x09;	//rej
-				resp[l++] = ((teip->vr + 1) << 1) | 0;
+				resp[l++] = ((sap->vr + 1) << 1) | 0;
 				li->transmit_cb(resp, l, li->cbdata);
 				pf = 0;	// dont reply
 #endif
@@ -482,15 +488,15 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		*prim = LAPD_MPH_ACTIVATE_IND;
 		break;
 	case LAPD_CMD_UA:
-		teip->vs = 0;
-		teip->vr = 0;
-		teip->va = 0;
+		sap->vs = 0;
+		sap->vr = 0;
+		sap->va = 0;
 		lapd_tei_set_state(teip, LAPD_TEI_ACTIVE);
 		lapd_sap_set_state(teip, sapi, SAP_STATE_ACTIVE);
 		*prim = LAPD_MPH_ACTIVATE_IND;
 		break;
 	case LAPD_CMD_RR:
-		teip->va = (nr & 0x7f);
+		sap->va = (nr & 0x7f);
 #if 0
 		if (teip->state != LAPD_TEI_ACTIVE) {
 			if (teip->state == LAPD_TEI_ASSIGNED) {
@@ -502,11 +508,11 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 				DEBUGP(DMI, "rr in strange " "state, send rej\n");
 
 				// rej
-				resp[l++] = (teip-> sapi << 2) | (li->network_side ? 0 : 2);
+				resp[l++] = (sap-> sapi << 2) | (li->network_side ? 0 : 2);
 				resp[l++] = (tei << 1) | 1;
 				resp[l++] = 0x09;	//rej
 				resp[l++] =
-				    ((teip->vr + 1) << 1) | 0;
+				    ((sap->vr + 1) << 1) | 0;
 				li->transmit_cb(resp, l, li->cbdata);
 				pf = 0;	// dont reply
 #endif
@@ -518,7 +524,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 			resp[l++] = data[0];
 			resp[l++] = (tei << 1) | 1;
 			resp[l++] = 0x01;	// rr
-			resp[l++] = (LAPD_NR(teip) << 1) | (data[3] & 1);	// pf bit from req
+			resp[l++] = (LAPD_NR(sap) << 1) | (data[3] & 1);	// pf bit from req
 
 			li->transmit_cb(resp, l, li->cbdata);
 
@@ -558,7 +564,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		resp[l++] = data[0];
 		resp[l++] = (tei << 1) | 1;
 		resp[l++] = 0x01;	// rr
-		resp[l++] = (LAPD_NR(teip) << 1) | (data[3] & 1);	// pf bit from req
+		resp[l++] = (LAPD_NR(sap) << 1) | (data[3] & 1);	// pf bit from req
 
 		li->transmit_cb(resp, l, li->cbdata);
 
@@ -652,14 +658,20 @@ int lapd_sap_stop(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 		   uint8_t *data, unsigned int len)
 {
-	//printf("lapd_transmit %d, %d\n", tei, len);
-	//hexdump(data, len);
 	struct lapd_tei *teip = teip_from_tei(li, tei);
+	struct lapd_sap *sap;
 
 	if (!teip) {
 		LOGP(DMI, LOGL_ERROR, "Cannot transmit on non-existing "
 		     "TEI %u\n", tei);
 		return;
+	}
+
+	sap = lapd_sap_find(teip, sapi);
+	if (!sap) {
+		LOGP(DMI, LOGL_INFO, "Tx on unknown SAPI=%u in TEI=%u, "
+			"allocating\n", sapi, tei);
+		sap = lapd_sap_alloc(teip, sapi);
 	}
 
 	/* prepend stuff */
@@ -670,10 +682,10 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 
 	buf[0] = (sapi << 2) | (li->network_side ? 2 : 0);
 	buf[1] = (tei << 1) | 1;
-	buf[2] = (LAPD_NS(teip) << 1);
-	buf[3] = (LAPD_NR(teip) << 1) | 0;
+	buf[2] = (LAPD_NS(sap) << 1);
+	buf[3] = (LAPD_NR(sap) << 1) | 0;
 
-	teip->vs = (teip->vs + 1) & 0x7f;
+	sap->vs = (sap->vs + 1) & 0x7f;
 
 	li->transmit_cb(buf, len, li->cbdata);
 };
