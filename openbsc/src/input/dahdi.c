@@ -403,8 +403,13 @@ void dahdi_set_bufinfo(int fd, int as_sigchan)
 			fprintf(stderr, "Error setting bufinfo\n");
 			exit(-1);
 		}
+	} else {
+		int one = 1;
+		ioctl(fd, DAHDI_HDLCFCSMODE, &one);
+		/* we cannot reliably check for the ioctl return value here
+		 * as this command will fail if the slot _already_ was a
+		 * signalling slot before :( */
 	}
-
 }
 
 static int dahdi_e1_setup(struct e1inp_line *line)
