@@ -333,6 +333,9 @@ static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 		}
 	}
 	config_write_e1_link(vty, &ts->e1_link, "     ");
+
+	if (ts->trx->bts->model->config_write_ts)
+		ts->trx->bts->model->config_write_ts(vty, ts);
 }
 
 static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
@@ -351,6 +354,9 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 	vty_out(vty, "   max_power_red %u%s", trx->max_power_red, VTY_NEWLINE);
 	config_write_e1_link(vty, &trx->rsl_e1_link, "   rsl ");
 	vty_out(vty, "   rsl e1 tei %u%s", trx->rsl_tei, VTY_NEWLINE);
+
+	if (trx->bts->model->config_write_trx)
+		trx->bts->model->config_write_trx(vty, trx);
 
 	for (i = 0; i < TRX_NR_TS; i++)
 		config_write_ts_single(vty, &trx->ts[i]);
@@ -499,6 +505,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	}
 
 	config_write_bts_gprs(vty, bts);
+
+	if (bts->model->config_write_bts)
+		bts->model->config_write_bts(vty, bts);
 
 	llist_for_each_entry(trx, &bts->trx_list, list)
 		config_write_trx_single(vty, trx);

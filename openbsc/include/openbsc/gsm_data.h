@@ -426,6 +426,8 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_RBS2000,
 };
 
+struct vty;
+
 struct gsm_bts_model {
 	struct llist_head list;
 
@@ -433,6 +435,10 @@ struct gsm_bts_model {
 	const char *name;
 
 	int (*oml_rcvmsg)(struct msgb *msg);
+
+	void (*config_write_bts)(struct vty *vty, struct gsm_bts *bts);
+	void (*config_write_trx)(struct vty *vty, struct gsm_bts_trx *trx);
+	void (*config_write_ts)(struct vty *vty, struct gsm_bts_trx_ts *ts);
 
 	struct tlv_definition nm_att_tlvdef;
 
