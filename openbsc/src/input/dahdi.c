@@ -369,7 +369,7 @@ static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
 static int dahdi_e1_line_update(struct e1inp_line *line);
 
 struct e1inp_driver dahdi_driver = {
-	.name = "DAHDI",
+	.name = "dahdi",
 	.want_write = ts_want_write,
 	.line_update = &dahdi_e1_line_update,
 };
