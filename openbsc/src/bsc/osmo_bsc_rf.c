@@ -155,18 +155,42 @@ static void grace_timeout(void *_data)
 	switch_rf_off(rf);
 }
 
-static int enter_grace(struct osmo_bsc_rf_conn *conn)
+static int enter_grace(struct osmo_bsc_rf *rf)
 {
-	struct osmo_bsc_rf *rf = conn->rf;
-
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
 	bsc_schedule_timer(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
 	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
 	     rf->gsm_network->msc_data->mid_call_timeout);
 
-	send_signal(conn->rf, S_RF_GRACE);
+	send_signal(rf, S_RF_GRACE);
 	return 0;
+}
+
+static void rf_delay_cmd_cb(void *data)
+{
+	struct osmo_bsc_rf *rf = data;
+
+	switch (rf->last_request) {
+	case RF_CMD_D_OFF:
+		rf->last_state_command = "RF Direct Off";
+		bsc_del_timer(&rf->rf_check);
+		bsc_del_timer(&rf->grace_timeout);
+		switch_rf_off(rf);
+		break;
+	case RF_CMD_ON:
+		rf->last_state_command = "RF Direct On";
+		bsc_del_timer(&rf->grace_timeout);
+		lock_each_trx(rf->gsm_network, 0);
+		send_signal(rf, S_RF_ON);
+		bsc_schedule_timer(&rf->rf_check, 3, 0);
+		break;
+	case RF_CMD_OFF:
+		rf->last_state_command = "RF Scheduled Off";
+		bsc_del_timer(&rf->rf_check);
+		enter_grace(rf);
+		break;
+	}
 }
 
 static int rf_read_cmd(struct bsc_fd *fd)
@@ -190,22 +214,11 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		handle_query(conn);
 		break;
 	case RF_CMD_D_OFF:
-		conn->rf->last_state_command = "RF Direct Off";
-		bsc_del_timer(&conn->rf->rf_check);
-		bsc_del_timer(&conn->rf->grace_timeout);
-		switch_rf_off(conn->rf);
-		break;
 	case RF_CMD_ON:
-		conn->rf->last_state_command = "RF Direct On";
-		bsc_del_timer(&conn->rf->grace_timeout);
-		lock_each_trx(conn->rf->gsm_network, 0);
-		send_signal(conn->rf, S_RF_ON);
-		bsc_schedule_timer(&conn->rf->rf_check, 3, 0);
-		break;
 	case RF_CMD_OFF:
-		conn->rf->last_state_command = "RF Scheduled Off";
-		bsc_del_timer(&conn->rf->rf_check);
-		enter_grace(conn);
+		conn->rf->last_request = buf[0];
+		if (!bsc_timer_pending(&conn->rf->delay_cmd))
+			bsc_schedule_timer(&conn->rf->delay_cmd, 1, 0);
 		break;
 	default:
 		conn->rf->last_state_command = "Unknown command";
@@ -341,6 +354,10 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	/* check the rf state */
 	rf->rf_check.data = rf;
 	rf->rf_check.cb = rf_check_cb;
+
+	/* delay cmd handling */
+	rf->delay_cmd.data = rf;
+	rf->delay_cmd.cb = rf_delay_cmd_cb;
 
 	return rf;
 }

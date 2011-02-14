@@ -14,6 +14,10 @@ struct osmo_bsc_rf {
 
 	const char *last_state_command;
 
+	/* delay the command */
+	char last_request;
+	struct timer_list delay_cmd;
+
 	/* verify that RF is up as it should be */
 	struct timer_list rf_check;
 
