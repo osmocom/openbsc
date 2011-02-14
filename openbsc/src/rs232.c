@@ -54,7 +54,7 @@ static struct serial_handle _ser_handle, *ser_handle = &_ser_handle;
 static int handle_ser_write(struct bsc_fd *bfd);
 
 /* callback from abis_nm */
-int _abis_nm_sendmsg(struct msgb *msg)
+int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 {
 	struct serial_handle *sh = ser_handle;
 	u_int8_t *lapd;

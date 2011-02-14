@@ -40,6 +40,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_om2000.h>
 #include <openbsc/signal.h>
+#include <openbsc/e1_input.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -483,11 +484,47 @@ static struct msgb *om2k_msgb_alloc(void)
 				   "OM2000");
 }
 
+static char *om2k_mo_name(const struct abis_om2k_mo *mo)
+{
+	static char mo_buf[64];
+
+	memset(mo_buf, 0, sizeof(mo_buf));
+	snprintf(mo_buf, sizeof(mo_buf), "%s/%02x/%02x/%02x",
+		 get_value_string(om2k_mo_class_short_vals, mo->class),
+		 mo->bts, mo->assoc_so, mo->inst);
+	return mo_buf;
+}
+
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
-	msg->trx = bts->c0;
+	struct abis_om2k_hdr *o2h;
+	int to_trx_oml;
 
-	return _abis_nm_sendmsg(msg);
+	msg->l2h = msg->data;
+	o2h = (struct abis_om2k_hdr *) msg->l2h;
+
+	switch (o2h->mo.class) {
+	case OM2K_MO_CLS_TRXC:
+	case OM2K_MO_CLS_TX:
+	case OM2K_MO_CLS_RX:
+	case OM2K_MO_CLS_TS:
+		/* Route through per-TRX OML Link to the appropriate TRX */
+		to_trx_oml = 1;
+		msg->trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
+		if (!msg->trx) {
+			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
+				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
+			return -ENODEV;
+		}
+		break;
+	default:
+		/* Route through the IXU/DXU OML Link */
+		msg->trx = bts->c0;
+		to_trx_oml = 0;
+		break;
+	}
+
+	return _abis_nm_sendmsg(msg, to_trx_oml);
 }
 
 static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *mo,
@@ -499,17 +536,6 @@ static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *
 	o2h->om.length = 6 + attr_len;
 	o2h->msg_type = htons(msg_type);
 	memcpy(&o2h->mo, mo, sizeof(o2h->mo));
-}
-
-static char *om2k_mo_name(const struct abis_om2k_mo *mo)
-{
-	static char mo_buf[64];
-
-	memset(mo_buf, 0, sizeof(mo_buf));
-	snprintf(mo_buf, sizeof(mo_buf), "%s/%02x/%02x/%02x",
-		 get_value_string(om2k_mo_class_short_vals, mo->class),
-		 mo->bts, mo->assoc_so, mo->inst);
-	return mo_buf;
 }
 
 const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };

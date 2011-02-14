@@ -416,7 +416,7 @@ static int abis_nm_queue_msg(struct gsm_bts *bts, struct msgb *msg)
 	/* queue OML messages */
 	if (llist_empty(&bts->abis_queue) && !bts->abis_nm_pend) {
 		bts->abis_nm_pend = OBSC_NM_W_ACK_CB(msg);
-		return _abis_nm_sendmsg(msg);
+		return _abis_nm_sendmsg(msg, 0);
 	} else {
 		msgb_enqueue(&bts->abis_queue, msg);
 		return 0;
@@ -985,7 +985,7 @@ static void abis_nm_queue_send_next(struct gsm_bts *bts)
 	while (!llist_empty(&bts->abis_queue)) {
 		msg = msgb_dequeue(&bts->abis_queue);
 		wait = OBSC_NM_W_ACK_CB(msg);
-		_abis_nm_sendmsg(msg);
+		_abis_nm_sendmsg(msg, 0);
 
 		if (wait)
 			break;

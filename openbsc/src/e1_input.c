@@ -255,7 +255,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 	return 0;
 }
 
-int _abis_nm_sendmsg(struct msgb *msg)
+int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 {
 	struct e1inp_sign_link *sign_link;
 	struct e1inp_driver *e1inp_driver;
@@ -268,12 +268,12 @@ int _abis_nm_sendmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 
-#if 0
 	/* Check for TRX-specific OML link first */
-	if (msg->trx->oml_link)
+	if (to_trx_oml) {
+		if (!msg->trx->oml_link)
+			return -ENODEV;
 		sign_link = msg->trx->oml_link;
-	else
-#endif
+	} else
 		sign_link = msg->trx->bts->oml_link;
 
 	e1i_ts = sign_link->ts;
