@@ -254,7 +254,7 @@ static void add_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
 	ent->tag = tag;
 	ent->tei = tei;
 
-	llist_add(&ent->list, &bts->rbs2000.con.conn_groups);
+	llist_add_tail(&ent->list, &bts->rbs2000.con.conn_groups);
 }
 
 static int del_con_list(struct gsm_bts *bts, uint8_t cg, uint16_t ccp,
@@ -356,7 +356,7 @@ DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 		grp->icp1 = icp1;
 		grp->icp2 = icp2;
 		grp->ci = ci;
-		llist_add(&grp->list, &bts->rbs2000.is.conn_groups);
+		llist_add_tail(&grp->list, &bts->rbs2000.is.conn_groups);
 	} else {
 		llist_for_each_entry_safe(grp, grp2, &bts->rbs2000.is.conn_groups, list) {
 			if (grp->icp1 == icp1 && grp->icp2 == icp2
