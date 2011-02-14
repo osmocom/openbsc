@@ -42,6 +42,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/paging.h>
+#include <openbsc/osmo_bsc_rf.h>
 
 static struct gsm_network *gsmnet;
 
@@ -164,6 +165,10 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 		vty_out(vty, "hr: %d ver: %d, ",
 			net->audio_support[i]->hr, net->audio_support[i]->ver);
 	vty_out(vty, "%s", VTY_NEWLINE);
+
+	/* show rf */
+	vty_out(vty, "  Last RF Command: %s%s",
+		net->rf->last_state_command, VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
