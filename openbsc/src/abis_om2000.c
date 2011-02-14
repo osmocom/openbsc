@@ -73,6 +73,13 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_CAL_TIME_REJ			= 0x0011,
 	OM2K_MSGT_CAL_TIME_REQ			= 0x0012,
 
+	OM2K_MSGT_CON_CONF_REQ			= 0x0014,
+	OM2K_MSGT_CON_CONF_REQ_ACK		= 0x0016,
+	OM2K_MSGT_CON_CONF_REQ_REJ		= 0x0017,
+	OM2K_MSGT_CON_CONF_RES_ACK		= 0x0018,
+	OM2K_MSGT_CON_CONF_RES_NACK		= 0x0019,
+	OM2K_MSGT_CON_CONF_RES			= 0x001a,
+
 	OM2K_MSGT_CONNECT_CMD			= 0x001c,
 	OM2K_MSGT_CONNECT_COMPL			= 0x001e,
 	OM2K_MSGT_CONNECT_REJ			= 0x001f,
@@ -135,6 +142,7 @@ enum abis_om2k_msgtype {
 
 enum abis_om2k_dei {
 	OM2K_DEI_CAL_TIME			= 0x0d,
+	OM2K_DEI_CON_CONN_LIST			= 0x10,
 	OM2K_DEI_END_LIST_NR			= 0x13,
 	OM2K_DEI_IS_CONN_LIST			= 0x27,
 	OM2K_DEI_LIST_NR			= 0x28,
@@ -540,6 +548,7 @@ static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *
 
 const struct abis_om2k_mo om2k_mo_cf = { OM2K_MO_CLS_CF, 0, 0xFF, 0 };
 const struct abis_om2k_mo om2k_mo_is = { OM2K_MO_CLS_IS, 0, 0xFF, 0 };
+const struct abis_om2k_mo om2k_mo_con = { OM2K_MO_CLS_CON, 0, 0xFF, 0 };
 
 static int abis_om2k_cal_time_resp(struct gsm_bts *bts)
 {
@@ -655,6 +664,25 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
 
 	return abis_om2k_sendmsg(bts, msg);
 }
+
+int abis_om2k_tx_con_conf_req(struct gsm_bts *bts, uint8_t *data,
+			     unsigned int len)
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, &om2k_mo_con, OM2K_MSGT_CON_CONF_REQ,
+		      2 + 2 + TLV_GROSS_LEN(len));
+
+	msgb_tv_put(msg, OM2K_DEI_LIST_NR, 1);
+	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
+
+	msgb_tlv_put(msg, OM2K_DEI_CON_CONN_LIST, len, data);
+
+	return abis_om2k_sendmsg(bts, msg);
+}
+
 
 static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 				      uint8_t *data, unsigned int len)
@@ -813,6 +841,9 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_IS_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_IS_CONF_RES_ACK);
 		break;
+	case OM2K_MSGT_CON_CONF_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CON_CONF_RES_ACK);
+		break;
 	case OM2K_MSGT_CONNECT_COMPL:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RESET_CMD);
 		break;
@@ -822,9 +853,20 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_ENABLE_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_ENABLE_RES_ACK);
 		break;
-	case OM2K_MSGT_START_REQ_ACK:
+	case OM2K_MSGT_DISABLE_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_DISABLE_RES_ACK);
+		break;
+	case OM2K_MSGT_TEST_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TEST_RES_ACK);
 		break;
 	case OM2K_MSGT_STATUS_RESP:
+		break;
+	case OM2K_MSGT_START_REQ_ACK:
+	case OM2K_MSGT_CON_CONF_REQ_ACK:
+	case OM2K_MSGT_IS_CONF_REQ_ACK:
+	case OM2K_MSGT_ENABLE_REQ_ACK:
+	case OM2K_MSGT_ALARM_STATUS_REQ_ACK:
+	case OM2K_MSGT_DISABLE_REQ_ACK:
 		break;
 	default:
 		LOGP(DNM, LOGL_NOTICE, "Rx unhandled OM2000 msg %s\n",
