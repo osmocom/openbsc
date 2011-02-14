@@ -31,12 +31,6 @@
 
 #include "input/lapd.h"
 
-static struct gsm_bts_model model_rbs2k = {
-	.type = GSM_BTS_TYPE_RBS2000,
-	.name = "rbs2000",
-	.oml_rcvmsg = &abis_om2k_rcvmsg,
-};
-
 static void bootstrap_om_bts(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
@@ -142,6 +136,18 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	return 0;
 }
+
+static void config_write_bts(struct vty *vty, struct gsm_bts *bts)
+{
+	abis_om2k_config_write_bts(vty, bts);
+}
+
+static struct gsm_bts_model model_rbs2k = {
+	.type = GSM_BTS_TYPE_RBS2000,
+	.name = "rbs2000",
+	.oml_rcvmsg = &abis_om2k_rcvmsg,
+	.config_write_bts = &config_write_bts,
+};
 
 int bts_model_rbs2k_init(void)
 {

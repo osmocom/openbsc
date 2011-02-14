@@ -56,4 +56,7 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
 
 int abis_om2k_vty_init(void);
 
+struct vty;
+void abis_om2k_config_write_bts(struct vty *vty, struct gsm_bts *bts);
+
 #endif /* OPENBCS_ABIS_OM2K_H */

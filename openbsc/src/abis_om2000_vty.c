@@ -339,14 +339,13 @@ struct is_conn_group {
 	uint8_t ci;
 };
 
-DEFUN(om2k_is_conn_list, om2k_is_conn_list_cmd,
+DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 	"is-connection-list (add|del) <0-2047> <0-2047> <0-255>",
 	"Interface Switch Connnection List\n"
 	"Add to IS list\n" "Delete from IS list\n"
 	"ICP1\n" "ICP2\n" "Contiguity Index\n")
 {
-	struct oml_node_state *oms = vty->index;
-	struct gsm_bts *bts = oms->bts;
+	struct gsm_bts *bts = vty->index;
 	uint16_t icp1 = atoi(argv[1]);
 	uint16_t icp2 = atoi(argv[2]);
 	uint8_t ci = atoi(argv[3]);
@@ -411,6 +410,25 @@ DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
 	return CMD_SUCCESS;
 }
 
+void abis_om2k_config_write_bts(struct vty *vty, struct gsm_bts *bts)
+{
+	struct is_conn_group *igrp;
+	struct con_conn_group *cgrp;
+
+	llist_for_each_entry(igrp, &bts->rbs2000.is.conn_groups, list)
+		vty_out(vty, "  is-connection-list add %u %u %u%s",
+			igrp->icp1, igrp->icp2, igrp->ci, VTY_NEWLINE);
+
+	llist_for_each_entry(cgrp, &bts->rbs2000.con.conn_groups, list) {
+		vty_out(vty, "  con-connection-list add %u %u ",
+			cgrp->cg, cgrp->ccp);
+		if (cgrp->tei == 0xff)
+			vty_out(vty, "deconcentrated%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "tei %u%s", cgrp->tei, VTY_NEWLINE);
+	}
+}
+
 int abis_om2k_vty_init(void)
 {
 	install_element(ENABLE_NODE, &om2k_class_inst_cmd);
@@ -429,9 +447,10 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
 	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
-	install_element(OM2K_NODE, &om2k_is_conn_list_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);
+
+	install_element(BTS_NODE, &cfg_bts_is_conn_list_cmd);
 
 	return 0;
 }
