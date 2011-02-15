@@ -76,6 +76,13 @@ static const struct value_string gprs_bssgp_cfg_strs[] = {
 	{ 0,	NULL }
 };
 
+static const struct value_string bts_neigh_mode_strs[] = {
+	{ NL_MODE_AUTOMATIC, "automatic" },
+	{ NL_MODE_MANUAL, "manual" },
+	{ NL_MODE_MANUAL_SI5SEP, "manual-si5" },
+	{ 0, NULL }
+};
+
 struct cmd_node net_node = {
 	GSMNET_NODE,
 	"%s(network)#",
@@ -495,11 +502,18 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  paging free %d%s", bts->paging.free_chans_need, VTY_NEWLINE);
 
 	vty_out(vty, "  neighbor-list mode %s%s",
-		bts->neigh_list_manual_mode ? "manual" : "automatic", VTY_NEWLINE);
-	if (bts->neigh_list_manual_mode) {
+		get_value_string(bts_neigh_mode_strs, bts->neigh_list_manual_mode), VTY_NEWLINE);
+	if (bts->neigh_list_manual_mode != NL_MODE_AUTOMATIC) {
 		for (i = 0; i < 1024; i++) {
 			if (bitvec_get_bit_pos(&bts->si_common.neigh_list, i))
 				vty_out(vty, "  neighbor-list add arfcn %u%s",
+					i, VTY_NEWLINE);
+		}
+	}
+	if (bts->neigh_list_manual_mode == NL_MODE_MANUAL_SI5SEP) {
+		for (i = 0; i < 1024; i++) {
+			if (bitvec_get_bit_pos(&bts->si_common.si5_neigh_list, i))
+				vty_out(vty, "  si5 neighbor-list add arfcn %u%s",
 					i, VTY_NEWLINE);
 		}
 	}
@@ -2136,21 +2150,28 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 }
 
 DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
-	"neighbor-list mode (automatic|manual)",
+	"neighbor-list mode (automatic|manual|manual-si5)",
 	"Neighbor List\n" "Mode of Neighbor List generation\n"
-	"Automatically from all BTS in this OpenBSC\n" "Manual\n")
+	"Automatically from all BTS in this OpenBSC\n" "Manual\n"
+	"Manual with different lists for SI2 and SI5\n")
 {
 	struct gsm_bts *bts = vty->index;
+	int mode = get_string_value(bts_neigh_mode_strs, argv[0]);
 
-	if (!strcmp(argv[0], "manual")) {
+	switch (mode) {
+	case NL_MODE_MANUAL_SI5SEP:
+	case NL_MODE_MANUAL:
 		/* make sure we clear the current list when switching to
 		 * manual mode */
 		if (bts->neigh_list_manual_mode == 0)
 			memset(&bts->si_common.data.neigh_list, 0,
 				sizeof(bts->si_common.data.neigh_list));
-		bts->neigh_list_manual_mode = 1;
-	} else
-		bts->neigh_list_manual_mode = 0;
+		break;
+	default:
+		break;
+	}
+
+	bts->neigh_list_manual_mode = mode;
 
 	return CMD_SUCCESS;
 }
@@ -2179,6 +2200,29 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
+	"si5 neighbor-list (add|del) arfcn <0-1024>",
+	"SI5 Neighbor List\n" "Add to manual SI5 neighbor list\n"
+	"Delete from SI5 manual neighbor list\n" "ARFCN of neighbor\n"
+	"ARFCN of neighbor\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bitvec *bv = &bts->si_common.si5_neigh_list;
+	uint16_t arfcn = atoi(argv[1]);
+
+	if (!bts->neigh_list_manual_mode) {
+		vty_out(vty, "%% Cannot configure neighbor list in "
+			"automatic mode%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!strcmp(argv[0], "add"))
+		bitvec_set_bit_pos(bv, arfcn, 1);
+	else
+		bitvec_set_bit_pos(bv, arfcn, 0);
+
+	return CMD_SUCCESS;
+}
 
 #define TRX_TEXT "Radio Transceiver\n"
 
@@ -2679,6 +2723,7 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_si_static_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
+	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

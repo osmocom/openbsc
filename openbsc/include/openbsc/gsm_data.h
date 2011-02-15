@@ -491,6 +491,12 @@ struct gsm_bts_gprs_nsvc {
 	struct gsm_nm_state nm_state;
 };
 
+enum neigh_list_manual_mode {
+	NL_MODE_AUTOMATIC = 0,
+	NL_MODE_MANUAL = 1,
+	NL_MODE_MANUAL_SI5SEP = 2, /* SI2 and SI5 have separate neighbor lists */
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
@@ -542,7 +548,7 @@ struct gsm_bts {
 		struct gsm_nm_state nm_state;
 	} site_mgr;
 
-	int neigh_list_manual_mode;
+	enum neigh_list_manual_mode neigh_list_manual_mode;
 	/* parameters from which we build SYSTEM INFORMATION */
 	struct {
 		struct gsm48_rach_control rach_control;
@@ -553,10 +559,13 @@ struct gsm_bts {
 		struct gsm48_control_channel_descr chan_desc;
 		struct bitvec neigh_list;
 		struct bitvec cell_alloc;
+		struct bitvec si5_neigh_list;
 		struct {
 			/* bitmask large enough for all possible ARFCN's */
 			u_int8_t neigh_list[1024/8];
 			u_int8_t cell_alloc[1024/8];
+			/* If the user wants a different neighbor list in SI5 than in SI2 */
+			u_int8_t si5_neigh_list[1024/8];
 		} data;
 	} si_common;
 

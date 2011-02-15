@@ -199,16 +199,21 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
+static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int si5)
 {
 	struct gsm_bts *cur_bts;
-	struct bitvec *bv = &bts->si_common.neigh_list;
+	struct bitvec *bv;
+
+	if (si5 && bts->neigh_list_manual_mode == NL_MODE_MANUAL_SI5SEP)
+		bv = &bts->si_common.si5_neigh_list;
+	else
+		bv = &bts->si_common.neigh_list;
 
 	/* Zero-initialize the bit-vector */
 	memset(bv->data, 0, bv->data_len);
 
 	/* Generate list of neighbor cells if we are in automatic mode */
-	if (bts->neigh_list_manual_mode == 0) {
+	if (bts->neigh_list_manual_mode == NL_MODE_AUTOMATIC) {
 		/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
 		llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
 			if (cur_bts == bts)
@@ -259,7 +264,7 @@ static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
 	si2->header.skip_indicator = 0;
 	si2->header.system_information = GSM48_MT_RR_SYSINFO_2;
 
-	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts);
+	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, 0);
 	if (rc < 0)
 		return rc;
 
@@ -376,7 +381,7 @@ static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5->skip_indicator = 0;
 	si5->system_information = GSM48_MT_RR_SYSINFO_5;
-	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts);
+	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, 1);
 	if (rc < 0)
 		return rc;
 

@@ -214,6 +214,9 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
 	bts->si_common.neigh_list.data_len =
 				sizeof(bts->si_common.data.neigh_list);
+	bts->si_common.si5_neigh_list.data = bts->si_common.data.si5_neigh_list;
+	bts->si_common.si5_neigh_list.data_len =
+				sizeof(bts->si_common.data.si5_neigh_list);
 	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
 	bts->si_common.cell_alloc.data_len =
 				sizeof(bts->si_common.data.cell_alloc);
