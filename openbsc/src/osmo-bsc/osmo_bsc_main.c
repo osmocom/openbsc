@@ -50,6 +50,8 @@ static const char *rf_ctl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
+extern void controlif_setup(struct gsm_network *gsmnet, uint16_t port);
+
 static void print_usage()
 {
 	printf("Usage: osmo-bsc\n");
@@ -203,6 +205,8 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
+
+	controlif_setup(bsc_gsmnet, 4249);
 
 	data = bsc_gsmnet->msc_data;
 	if (rf_ctl)
