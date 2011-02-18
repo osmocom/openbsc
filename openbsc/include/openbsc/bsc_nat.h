@@ -67,6 +67,24 @@ enum {
 };
 
 /*
+ * Pending command entry
+ */
+struct bsc_cmd_list {
+	struct llist_head list_entry;
+
+	struct osmo_timer_list timeout;
+
+	/* The NATed ID used on the bsc_con*/
+	int nat_id;
+
+	/* The control connection from which the command originated */
+	struct ctrl_connection *ccon;
+
+	/* The command from the control connection */
+	struct ctrl_cmd *cmd;
+};
+
+/*
  * Per BSC data structure
  */
 struct bsc_connection {
@@ -93,6 +111,10 @@ struct bsc_connection {
 	int number_multiplexes;
 	int max_endpoints;
 	int last_endpoint;
+
+	/* track the pending commands for this BSC */
+	struct llist_head cmd_pending;
+	int last_id;
 
 	/* a back pointer */
 	struct bsc_nat *nat;
