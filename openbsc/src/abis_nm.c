@@ -780,6 +780,8 @@ static int rx_fail_evt_rep(struct msgb *mb)
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct tlv_parsed tp;
+	const uint8_t *p_val;
+	char *p_text;
 
 	DEBUGPC(DNM, "Failure Event Report ");
 	
@@ -789,6 +791,18 @@ static int rx_fail_evt_rep(struct msgb *mb)
 		DEBUGPC(DNM, "Type=%s ", event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
 	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
 		DEBUGPC(DNM, "Severity=%s ", severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
+	if (TLVP_PRESENT(&tp, NM_ATT_PROB_CAUSE)) {
+		p_val = TLVP_VAL(&tp, NM_ATT_PROB_CAUSE);
+		DEBUGPC(DNM, "Probable cause= %02X %02X %02X ", p_val[0], p_val[1], p_val[2]);
+	}
+	if (TLVP_PRESENT(&tp, NM_ATT_ADD_TEXT)) {
+		p_val = TLVP_VAL(&tp, NM_ATT_ADD_TEXT);
+		p_text = talloc_strndup(tall_bsc_ctx, (const char *) p_val, TLVP_LEN(&tp, NM_ATT_ADD_TEXT));
+		if (p_text) {
+			DEBUGPC(DNM, "Additional Text=%s ", p_text);
+			talloc_free(p_text);
+		}
+	}
 
 	DEBUGPC(DNM, "\n");
 
