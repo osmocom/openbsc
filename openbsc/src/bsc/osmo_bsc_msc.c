@@ -174,12 +174,12 @@ int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto
 	return 0;
 }
 
-static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int msc_alink_do_write(struct bsc_fd *fd, struct msgb *msg)
 {
 	int ret;
 
 	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
+	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->data, msg->len));
 
 	ret = write(fd->fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -361,7 +361,7 @@ int osmo_bsc_msc_init(struct gsm_network *network)
 	data->msc_con->connection_loss = msc_connection_was_lost;
 	data->msc_con->connected = msc_connection_connected;
 	data->msc_con->write_queue.read_cb = ipaccess_a_fd_cb;
-	data->msc_con->write_queue.write_cb = msc_sccp_do_write;
+	data->msc_con->write_queue.write_cb = msc_alink_do_write;
 	bsc_msc_connect(data->msc_con);
 
 	return 0;
