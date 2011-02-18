@@ -2504,17 +2504,15 @@ DEFUN(logging_fltr_imsi,
 	LOGGING_STR FILTER_STR
       "Filter log messages by IMSI\n" "IMSI to be used as filter\n")
 {
-	struct telnet_connection *conn;
+	struct log_target *tgt = osmo_log_vty2tgt(vty);
 
-	conn = (struct telnet_connection *) vty->priv;
-	if (!conn->dbg) {
-		vty_out(vty, "Logging was not enabled.%s", VTY_NEWLINE);
+	if (!tgt)
 		return CMD_WARNING;
-	}
 
-	log_set_imsi_filter(conn->dbg, argv[0]);
+	log_set_imsi_filter(tgt, argv[0]);
 	return CMD_SUCCESS;
 }
+
 
 DEFUN(drop_bts,
       drop_bts_cmd,
@@ -2635,6 +2633,7 @@ int bsc_vty_init(void)
 	install_element_ve(&show_paging_cmd);
 
 	logging_vty_add_cmds();
+	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
