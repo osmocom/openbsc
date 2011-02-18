@@ -207,6 +207,8 @@ static void db_sync_timer_cb(void *data)
 
 void talloc_ctx_init(void);
 
+extern int controlif_setup(struct gsm_network *gsmnet, uint16_t port);
+
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
@@ -251,6 +253,7 @@ int main(int argc, char **argv)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
+	controlif_setup(bsc_gsmnet, 4249);
 	/* seed the PRNG */
 	srand(time(NULL));
 
