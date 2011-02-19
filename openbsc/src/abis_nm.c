@@ -2013,7 +2013,6 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 {
 	struct gsm_bts *bts = ts->trx->bts;
 	struct abis_om_hdr *oh;
-	u_int16_t arfcn = htons(ts->trx->arfcn);
 	u_int8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
 	u_int8_t len = 2 + 2;
@@ -2179,7 +2178,7 @@ int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
 {
 	struct abis_om_hdr *oh;
 
-	DEBUGP(DNM, "PEFORM TEST\n");
+	DEBUGP(DNM, "PEFORM TEST %s\n", get_value_string(test_names, test_nr));
 
 	if (!msg)
 		msg = nm_msgb_alloc();

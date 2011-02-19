@@ -33,6 +33,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/abis_om2000.h>
 #include <osmocore/utils.h>
 #include <osmocore/gsm_utils.h>
 #include <openbsc/chan_alloc.h>

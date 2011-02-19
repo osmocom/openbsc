@@ -340,7 +340,6 @@ DEFUN(subscriber_ussd_notify,
 	struct gsm_subscriber_connection *conn;
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	int rc;
 	int level;
 
 	if (!subscr) {

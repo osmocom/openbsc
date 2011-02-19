@@ -39,7 +39,8 @@
 #include <osmocore/select.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
-#include <osmocom/vty//telnet_interface.h>
+#include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/logging.h>
 #include <openbsc/vty.h>
 
 #include <osmocom/vty/command.h>
@@ -151,7 +152,7 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 		perror("Gateway failed to read");
 		return -1;
 	} else if (slen > sizeof(addr)) {
-		fprintf(stderr, "Gateway received message from outerspace: %d %d\n",
+		fprintf(stderr, "Gateway received message from outerspace: %lu %d\n",
 			slen, sizeof(addr));
 		return -1;
 	}

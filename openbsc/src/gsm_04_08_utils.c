@@ -547,7 +547,6 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	u_int8_t *data = gh->data;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct bitvec *nbv = &bts->si_common.neigh_list;

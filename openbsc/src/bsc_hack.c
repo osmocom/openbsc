@@ -37,6 +37,7 @@
 #include <osmocore/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
 
 #include "../bscconfig.h"
@@ -209,6 +210,8 @@ static void db_sync_timer_cb(void *data)
 extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
+extern int bts_model_rbs2k_init(void);
+void talloc_ctx_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 

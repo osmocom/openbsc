@@ -106,7 +106,7 @@ int e1_reconfig_trx(struct gsm_bts_trx *trx)
 		oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML, trx,
 						  trx->rsl_tei, SAPI_OML);
 		if (!oml_link) {
-			LOGP(DINP, LOGL_ERROR, "TRX (%u/$u) OML link creation "
+			LOGP(DINP, LOGL_ERROR, "TRX (%u/%u) OML link creation "
 				"failed\n", trx->bts->nr, trx->nr);
 			return -ENOMEM;
 		}

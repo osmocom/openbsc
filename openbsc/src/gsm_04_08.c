@@ -1610,8 +1610,8 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 			if (rc < 0)
 				return rc;
 			rc = rsl_ipacc_mdcx_to_rtpsock(remote_lchan);
-#warning do we need a check of rc here?
-
+			if (rc < 0)
+				return rc;
 			/* connect them with each other */
 			rtp_socket_proxy(lchan->abis_ip.rtp_socket,
 					 remote_lchan->abis_ip.rtp_socket);
