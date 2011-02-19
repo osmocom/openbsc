@@ -13,7 +13,7 @@ if BUILD_BSC
 SUBDIRS += bsc
 endif
 
-sbin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
+bin_PROGRAMS = bsc_hack bs11_config isdnsync bsc_mgcp
 noinst_LIBRARIES = libbsc.a libmsc.a libvty.a libmgcp.a
 
 libbsc_a_SOURCES = abis_rsl.c abis_nm.c abis_om2000.c gsm_data.c gsm_04_08_utils.c \

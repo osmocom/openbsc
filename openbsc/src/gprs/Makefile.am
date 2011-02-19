@@ -6,9 +6,9 @@ noinst_LIBRARIES = libgb.a
 noinst_HEADERS = gprs_sndcp.h
 
 if HAVE_LIBGTP
-sbin_PROGRAMS = osmo-gbproxy osmo-sgsn
+bin_PROGRAMS = osmo-gbproxy osmo-sgsn
 else
-sbin_PROGRAMS = osmo-gbproxy
+bin_PROGRAMS = osmo-gbproxy
 endif
 
 

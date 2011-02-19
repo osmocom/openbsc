@@ -2,7 +2,7 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
 
-sbin_PROGRAMS = ipaccess-find ipaccess-config ipaccess-proxy
+bin_PROGRAMS = ipaccess-find ipaccess-config ipaccess-proxy
 
 ipaccess_find_SOURCES = ipaccess-find.c
 
