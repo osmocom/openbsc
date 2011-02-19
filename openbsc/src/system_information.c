@@ -209,11 +209,11 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int
 	else
 		bv = &bts->si_common.neigh_list;
 
-	/* Zero-initialize the bit-vector */
-	memset(bv->data, 0, bv->data_len);
-
 	/* Generate list of neighbor cells if we are in automatic mode */
 	if (bts->neigh_list_manual_mode == NL_MODE_AUTOMATIC) {
+		/* Zero-initialize the bit-vector */
+		memset(bv->data, 0, bv->data_len);
+
 		/* first we generate a bitvec of the BCCH ARFCN's in our BSC */
 		llist_for_each_entry(cur_bts, &bts->network->bts_list, list) {
 			if (cur_bts == bts)
