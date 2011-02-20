@@ -1,2 +1,2 @@
-/usr/sbin/bsc_mgcp
+/usr/bin/bsc_mgcp
 /usr/bin/osmo-bsc

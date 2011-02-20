@@ -1,3 +1,3 @@
-/usr/sbin/ipaccess-config
-/usr/sbin/ipaccess-find
-/usr/sbin/ipaccess-proxy
+/usr/bin/ipaccess-config
+/usr/bin/ipaccess-find
+/usr/bin/ipaccess-proxy
