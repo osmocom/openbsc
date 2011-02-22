@@ -206,6 +206,24 @@ DEFUN(show_subscr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(subscriber_send_pending_sms,
+      subscriber_send_pending_sms_cmd,
+      "subscriber " SUBSCR_TYPES " ID sms pending send",
+	SUBSCR_HELP "SMS Operations\n" "Send pending SMS\n")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct gsm_sms *sms;
+
+	sms = db_sms_get_unsent_by_subscr(gsmnet, subscr->id, UINT_MAX);
+	if (sms)
+		gsm411_send_sms_subscr(sms->receiver, sms);
+
+	subscr_put(subscr);
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(subscriber_send_sms,
       subscriber_send_sms_cmd,
       "subscriber " SUBSCR_TYPES " ID sms send .LINE",
@@ -766,6 +784,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
 	install_element(ENABLE_NODE, &smsqueue_clear_cmd);
 	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
+	install_element(ENABLE_NODE, &subscriber_send_pending_sms_cmd);
 
 	return 0;
 }
