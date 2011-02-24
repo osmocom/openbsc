@@ -732,5 +732,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 
 /* called by the telnet interface... we have our own init above */
-void bsc_vty_init()
-{}
+int bsc_vty_init(void)
+{
+	return 0;
+}
