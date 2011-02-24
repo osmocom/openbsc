@@ -1255,7 +1255,7 @@ static void talloc_init_ctx()
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
-	.name 		= "BSC NAT",
+	.name 		= "OsmoBSCNAT",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,

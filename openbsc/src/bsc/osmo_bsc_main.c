@@ -138,7 +138,7 @@ extern int bts_model_nanobts_init(void);
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
-	.name 		= "OpenBSC Osmo BSC",
+	.name 		= "OsmoBSC",
 	.version	= PACKAGE_VERSION,
 	.go_parent_cb	= bsc_vty_go_parent,
 	.is_config_node	= bsc_vty_is_config_node,
