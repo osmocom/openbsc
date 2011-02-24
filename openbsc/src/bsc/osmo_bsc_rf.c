@@ -166,18 +166,22 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		handle_query(conn);
 		break;
 	case RF_CMD_D_OFF:
+		conn->rf->last_state_command = "RF Direct Off";
 		bsc_del_timer(&conn->rf->grace_timeout);
 		switch_rf_off(conn->rf);
 		break;
 	case RF_CMD_ON:
+		conn->rf->last_state_command = "RF Direct On";
 		bsc_del_timer(&conn->rf->grace_timeout);
 		lock_each_trx(conn->rf->gsm_network, 0);
 		send_signal(conn->rf, S_RF_ON);
 		break;
 	case RF_CMD_OFF:
+		conn->rf->last_state_command = "RF Scheduled Off";
 		enter_grace(conn);
 		break;
 	default:
+		conn->rf->last_state_command = "Unknown command";
 		LOGP(DINP, LOGL_ERROR, "Unknown command %d\n", buf[0]);
 		break;
 	}
@@ -305,6 +309,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 
 	rf->gsm_network = net;
 	rf->policy = S_RF_ON;
+	rf->last_state_command = "";
 
 	return rf;
 }

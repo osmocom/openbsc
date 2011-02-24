@@ -12,6 +12,8 @@ struct osmo_bsc_rf {
 	struct bsc_fd listen;
 	struct gsm_network *gsm_network;
 
+	const char *last_state_command;
+
 	/* some handling for the automatic grace switch */
 	struct timer_list grace_timeout;
 };

@@ -47,6 +47,8 @@
 #include <openbsc/paging.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_rsl.h>
+#include <openbsc/osmo_msc_data.h>
+#include <openbsc/osmo_bsc_rf.h>
 
 #include "../bscconfig.h"
 
@@ -185,6 +187,12 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 	network_chan_load(&pl, net);
 	vty_out(vty, "  Current Channel Load:%s", VTY_NEWLINE);
 	dump_pchan_load_vty(vty, "    ", &pl);
+
+	/* show rf */
+	if (net->msc_data)
+		vty_out(vty, "  Last RF Command: %s%s",
+			net->msc_data->rf_ctl->last_state_command,
+			VTY_NEWLINE);
 }
 
 DEFUN(show_net, show_net_cmd, "show network",
