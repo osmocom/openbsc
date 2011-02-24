@@ -106,6 +106,30 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	send_resp(conn, send);
 }
 
+static void rf_check_cb(void *_data)
+{
+	struct gsm_bts *bts;
+	struct osmo_bsc_rf *rf = _data;
+
+	llist_for_each_entry(bts, &rf->gsm_network->bts_list, list) {
+		struct gsm_bts_trx *trx;
+
+		/* don't bother to check a booting or missing BTS */
+		if (!bts->oml_link || !is_ipaccess_bts(bts))
+			continue;
+
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			if (trx->nm_state.availability != NM_AVSTATE_OK ||
+			    trx->nm_state.operational != NM_OPSTATE_ENABLED ||
+			    trx->nm_state.administrative != NM_STATE_UNLOCKED) {
+				LOGP(DNM, LOGL_ERROR, "RF activation failed. Starting again.\n");
+				ipaccess_drop_oml(bts);
+				break;
+			}
+		}
+	}
+}
+
 static void send_signal(struct osmo_bsc_rf *rf, int val)
 {
 	struct rf_signal_data sig;
@@ -167,6 +191,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		break;
 	case RF_CMD_D_OFF:
 		conn->rf->last_state_command = "RF Direct Off";
+		bsc_del_timer(&conn->rf->rf_check);
 		bsc_del_timer(&conn->rf->grace_timeout);
 		switch_rf_off(conn->rf);
 		break;
@@ -175,9 +200,11 @@ static int rf_read_cmd(struct bsc_fd *fd)
 		bsc_del_timer(&conn->rf->grace_timeout);
 		lock_each_trx(conn->rf->gsm_network, 0);
 		send_signal(conn->rf, S_RF_ON);
+		bsc_schedule_timer(&conn->rf->rf_check, 3, 0);
 		break;
 	case RF_CMD_OFF:
 		conn->rf->last_state_command = "RF Scheduled Off";
+		bsc_del_timer(&conn->rf->rf_check);
 		enter_grace(conn);
 		break;
 	default:
@@ -310,6 +337,10 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	rf->gsm_network = net;
 	rf->policy = S_RF_ON;
 	rf->last_state_command = "";
+
+	/* check the rf state */
+	rf->rf_check.data = rf;
+	rf->rf_check.cb = rf_check_cb;
 
 	return rf;
 }
