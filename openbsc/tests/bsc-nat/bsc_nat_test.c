@@ -450,7 +450,7 @@ static void test_mgcp_ass_tracking(void)
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
 	bsc_config_add_lac(bsc->cfg, 2323);
-	bsc->last_endpoint = 0x1a;
+	bsc->last_endpoint = 0x1e;
 	con.bsc = bsc;
 
 	msg = msgb_alloc(4096, "foo");
@@ -475,17 +475,17 @@ static void test_mgcp_ass_tracking(void)
 		abort();
 	}
 
-	if (con.bsc_endp != 0x1b) {
+	if (con.bsc_endp != 0x1) {
 		fprintf(stderr, "Assigned timeslot should have been 1.\n");
 		abort();
 	}
-	if (con.bsc->_endpoint_status[0x1b] != 1) {
+	if (con.bsc->_endpoint_status[0x1] != 1) {
 		fprintf(stderr, "The status on the BSC is wrong.\n");
 		abort();
 	}
 
 	int multiplex, timeslot;
-	mgcp_endpoint_to_timeslot(0x1b, &multiplex, &timeslot);
+	mgcp_endpoint_to_timeslot(0x1, &multiplex, &timeslot);
 
 	uint16_t cic = htons(timeslot & 0x1f);
 	if (memcmp(&cic, &msg->l2h[16], sizeof(cic)) != 0) {
@@ -498,7 +498,7 @@ static void test_mgcp_ass_tracking(void)
 
 	bsc_mgcp_dlcx(&con);
 	if (con.bsc_endp != -1 || con.msc_endp != -1 ||
-	    con.bsc->_endpoint_status[1] != 0 || con.bsc->last_endpoint != 0x1b) {
+	    con.bsc->_endpoint_status[1] != 0 || con.bsc->last_endpoint != 0x1) {
 		fprintf(stderr, "Clearing should remove the mapping.\n");
 		abort();
 	}
