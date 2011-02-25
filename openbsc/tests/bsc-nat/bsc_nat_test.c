@@ -444,6 +444,9 @@ static void test_mgcp_ass_tracking(void)
 	nat->bsc_endpoints = talloc_zero_array(nat,
 					       struct bsc_endpoint,
 					       33);
+	nat->mgcp_cfg = mgcp_config_alloc();
+	nat->mgcp_cfg->number_endpoints = 64;
+
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
 	bsc_config_add_lac(bsc->cfg, 2323);
