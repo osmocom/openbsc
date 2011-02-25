@@ -479,7 +479,7 @@ static void test_mgcp_ass_tracking(void)
 		fprintf(stderr, "Assigned timeslot should have been 1.\n");
 		abort();
 	}
-	if (con.bsc->endpoint_status[0x1b] != 1) {
+	if (con.bsc->_endpoint_status[0x1b] != 1) {
 		fprintf(stderr, "The status on the BSC is wrong.\n");
 		abort();
 	}
@@ -498,7 +498,7 @@ static void test_mgcp_ass_tracking(void)
 
 	bsc_mgcp_dlcx(&con);
 	if (con.bsc_endp != -1 || con.msc_endp != -1 ||
-	    con.bsc->endpoint_status[1] != 0 || con.bsc->last_endpoint != 0x1b) {
+	    con.bsc->_endpoint_status[1] != 0 || con.bsc->last_endpoint != 0x1b) {
 		fprintf(stderr, "Clearing should remove the mapping.\n");
 		abort();
 	}

@@ -38,18 +38,33 @@
 #include <errno.h>
 #include <unistd.h>
 
+static int bsc_init_endps_if_needed(struct bsc_connection *con)
+{
+	/* we have done that */
+	if (con->_endpoint_status)
+		return 0;
+
+	/* we have no config... */
+	if (!con->cfg)
+		return -1;
+
+	con->_endpoint_status = talloc_zero_array(con, char,
+						  (32 * con->cfg->number_multiplexes) + 1);
+	return con->_endpoint_status == NULL;
+}
+
 static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connections *con)
 {
-	const int number_endpoints = ARRAY_SIZE(bsc->endpoint_status);
+	const int number_endpoints = 31 * bsc->cfg->number_multiplexes;
 	int i;
 
-	for (i = 1; i < number_endpoints; ++i) {
+	for (i = 1; i <= number_endpoints; ++i) {
 		int endpoint = (bsc->last_endpoint + i) % number_endpoints;
 		if (endpoint == 0)
 			endpoint = 1;
 
-		if (bsc->endpoint_status[endpoint] == 0) {
-			bsc->endpoint_status[endpoint] = 1;
+		if (bsc->_endpoint_status[endpoint] == 0) {
+			bsc->_endpoint_status[endpoint] = 1;
 			con->bsc_endp = endpoint;
 			bsc->last_endpoint = endpoint;
 			return 0;
@@ -119,6 +134,8 @@ int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
 	}
 
 	con->msc_endp = endp;
+	if (bsc_init_endps_if_needed(con->bsc) != 0)
+		return -1;
 	if (bsc_assign_endpoint(con->bsc, con) != 0)
 		return -1;
 
@@ -202,10 +219,10 @@ void bsc_mgcp_init(struct sccp_connections *con)
 void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
-	if (con->bsc_endp != -1) {
-		if (con->bsc->endpoint_status[con->bsc_endp] != 1)
+	if (con->bsc_endp != -1 && con->bsc->_endpoint_status) {
+		if (con->bsc->_endpoint_status[con->bsc_endp] != 1)
 			LOGP(DNAT, LOGL_ERROR, "Endpoint 0x%x was not in use\n", con->bsc_endp);
-		con->bsc->endpoint_status[con->bsc_endp] = 0;
+		con->bsc->_endpoint_status[con->bsc_endp] = 0;
 		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp);
 		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
 	}

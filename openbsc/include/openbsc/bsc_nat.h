@@ -78,7 +78,7 @@ struct bsc_connection {
 	struct timer_list pong_timeout;
 
 	/* mgcp related code */
-	int endpoint_status[32];
+	char *_endpoint_status;
 	int last_endpoint;
 
 	/* a back pointer */
@@ -123,6 +123,9 @@ struct bsc_config {
 	char *acc_lst_name;
 
 	int forbid_paging;
+
+	/* audio handling */
+	int number_multiplexes;
 
 	/* backpointer */
 	struct bsc_nat *nat;

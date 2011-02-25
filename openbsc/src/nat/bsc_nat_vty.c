@@ -172,15 +172,21 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 	int i;
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		int endpoints;
 		if (!con->cfg)
 			continue;
 		if (con->cfg->nr != nr)
 			continue;
 
+		/* this bsc has no audio endpoints yet */
+		if (!con->_endpoint_status)
+			continue;
+
 		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
-		for (i = 1; i < ARRAY_SIZE(con->endpoint_status); ++i)
+		endpoints = 31 * con->cfg->number_multiplexes;
+		for (i = 1; i <= endpoints; ++i)
 			vty_out(vty, " Endpoint 0x%x %s%s", i,
-				con->endpoint_status[i] == 0 ? "free" : "allocated",
+				con->_endpoint_status[i] == 0 ? "free" : "allocated",
 				VTY_NEWLINE);
 		break;
 	}

@@ -126,6 +126,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 	conf->token = talloc_strdup(conf, token);
 	conf->nr = nat->num_bsc;
 	conf->nat = nat;
+	conf->number_multiplexes = 1;
 
 	INIT_LLIST_HEAD(&conf->lac_list);
 
