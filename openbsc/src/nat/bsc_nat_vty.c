@@ -113,6 +113,7 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
 		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
+	vty_out(vty, "  number-multiplexes %d%s", bsc->number_multiplexes, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -183,7 +184,7 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 			continue;
 
 		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
-		endpoints = 31 * con->cfg->number_multiplexes;
+		endpoints = con->number_endpoints;
 		for (i = 1; i <= endpoints; ++i)
 			vty_out(vty, " Endpoint 0x%x %s%s", i,
 				con->_endpoint_status[i] == 0 ? "free" : "allocated",
@@ -630,6 +631,16 @@ DEFUN(cfg_bsc_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_nr_multip, cfg_bsc_nr_multip_cmd,
+      "number-multiplexes <1-1>",
+      "Number of multiplexes on a BSC\n" "Number of ports\n")
+{
+	struct bsc_config *conf = vty->index;
+
+	conf->number_multiplexes = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bsc_paging,
       cfg_bsc_paging_cmd,
       "paging forbidden (0|1)",
@@ -730,6 +741,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_nr_multip_cmd);
 
 	mgcp_vty_init();
 

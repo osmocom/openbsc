@@ -48,6 +48,7 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 	if (!con->cfg)
 		return -1;
 
+	con->number_endpoints = 31 * con->cfg->number_multiplexes;
 	con->_endpoint_status = talloc_zero_array(con, char,
 						  (32 * con->cfg->number_multiplexes) + 1);
 	return con->_endpoint_status == NULL;
@@ -55,7 +56,7 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 
 static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connections *con)
 {
-	const int number_endpoints = 31 * bsc->cfg->number_multiplexes;
+	const int number_endpoints = bsc->number_endpoints;
 	int i;
 
 	for (i = 1; i <= number_endpoints; ++i) {
