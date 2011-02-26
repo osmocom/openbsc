@@ -170,10 +170,9 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 {
 	struct bsc_connection *con;
 	int nr = atoi(argv[0]);
-	int i;
+	int i, j, endp;
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
-		int endpoints;
 		if (!con->cfg)
 			continue;
 		if (con->cfg->nr != nr)
@@ -184,11 +183,15 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 			continue;
 
 		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
-		endpoints = con->number_endpoints;
-		for (i = 1; i <= endpoints; ++i)
-			vty_out(vty, " Endpoint 0x%x %s%s", i,
-				con->_endpoint_status[i] == 0 ? "free" : "allocated",
+		for (i = 0; i < con->number_multiplexes; ++i) {
+			for (j = 0; j < 32; ++j) {
+				endp = mgcp_timeslot_to_endpoint(i, j);
+				vty_out(vty, " Endpoint 0x%x %s%s", endp,
+					con->_endpoint_status[endp] == 0 
+						? "free" : "allocated",
 				VTY_NEWLINE);
+			}
+		}
 		break;
 	}
 
@@ -632,7 +635,7 @@ DEFUN(cfg_bsc_acc_lst_name,
 }
 
 DEFUN(cfg_bsc_nr_multip, cfg_bsc_nr_multip_cmd,
-      "number-multiplexes <1-1>",
+      "number-multiplexes <1-64>",
       "Number of multiplexes on a BSC\n" "Number of ports\n")
 {
 	struct bsc_config *conf = vty->index;

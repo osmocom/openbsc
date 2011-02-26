@@ -48,7 +48,7 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 	if (!con->cfg)
 		return -1;
 
-	con->number_endpoints = 31 * con->cfg->number_multiplexes;
+	con->number_multiplexes = con->cfg->number_multiplexes;
 	con->_endpoint_status = talloc_zero_array(con, char,
 						  (32 * con->cfg->number_multiplexes) + 1);
 	return con->_endpoint_status == NULL;
@@ -56,13 +56,31 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 
 static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connections *con)
 {
-	const int number_endpoints = bsc->number_endpoints;
+	int multiplex;
+	int timeslot;
+	const int number_endpoints = 32 * bsc->number_multiplexes;
 	int i;
 
-	for (i = 1; i <= number_endpoints; ++i) {
-		int endpoint = (bsc->last_endpoint + i) % number_endpoints;
-		if (endpoint == 0)
-			endpoint = 1;
+	mgcp_endpoint_to_timeslot(bsc->last_endpoint, &multiplex, &timeslot);
+	timeslot += 1;
+
+	for (i = 0; i < number_endpoints; ++i) {
+		int endpoint;
+
+		/* Wrap around timeslots */
+		if (timeslot == 0)
+			timeslot = 1;
+
+		if (timeslot == 0x1f) {
+			timeslot = 1;
+			multiplex += 1;
+		}
+
+		/* Wrap around the multiplex */
+		if (multiplex >= bsc->number_multiplexes)
+			multiplex = 0;
+
+		endpoint = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 
 		if (bsc->_endpoint_status[endpoint] == 0) {
 			bsc->_endpoint_status[endpoint] = 1;
@@ -70,6 +88,8 @@ static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connectio
 			bsc->last_endpoint = endpoint;
 			return 0;
 		}
+
+		timeslot += 1;
 	}
 
 	return -1;

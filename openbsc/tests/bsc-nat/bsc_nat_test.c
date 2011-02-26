@@ -429,6 +429,50 @@ static void test_paging(void)
 	talloc_free(parsed);
 }
 
+static void test_mgcp_allocations(void)
+{
+#if 0
+	struct bsc_connection *bsc;
+	struct bsc_nat *nat;
+	struct sccp_connections con;
+	int i, j;
+
+	fprintf(stderr, "Testing MGCP.\n");
+	memset(&con, 0, sizeof(con));
+
+	nat = bsc_nat_alloc();
+	nat->bsc_endpoints = talloc_zero_array(nat,
+					       struct bsc_endpoint,
+					       65);
+	nat->mgcp_cfg = mgcp_config_alloc();
+	nat->mgcp_cfg->number_endpoints = 64;
+
+	bsc = bsc_connection_alloc(nat);
+	bsc->cfg = bsc_config_alloc(nat, "foo");
+	bsc->cfg->number_multiplexes = 2;
+	bsc_config_add_lac(bsc->cfg, 2323);
+	bsc->last_endpoint = 0x22;
+	con.bsc = bsc;
+
+	bsc_init_endps_if_needed(bsc);
+
+	i  = 1;
+	do {
+		if (bsc_assign_endpoint(bsc, &con) != 0) {
+			fprintf(stderr, "failed to allocate... on iteration %d\n", i);
+			break;
+		}
+		++i;
+	} while(1);
+
+	for (i = 0; i < bsc->cfg->number_multiplexes; ++i) {
+		for (j = 0; j < 32; ++j)
+			printf("%d", bsc->_endpoint_status[i*32 + j]);
+		printf(": %d of %d\n", i*32 + 32, 32 * 8);
+	}
+#endif
+}
+
 static void test_mgcp_ass_tracking(void)
 {
 	struct bsc_connection *bsc;
@@ -964,5 +1008,6 @@ int main(int argc, char **argv)
 	test_cr_filter();
 	test_dt_filter();
 	test_setup_rewrite();
+	test_mgcp_allocations();
 	return 0;
 }

@@ -79,7 +79,7 @@ struct bsc_connection {
 
 	/* mgcp related code */
 	char *_endpoint_status;
-	int number_endpoints;
+	int number_multiplexes;
 	int last_endpoint;
 
 	/* a back pointer */
