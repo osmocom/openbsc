@@ -142,6 +142,11 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 	return conf;
 }
 
+void bsc_config_free(struct bsc_config *cfg)
+{
+	rate_ctr_group_free(cfg->stats.ctrg);
+}
+
 void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
 {
 	struct bsc_lac_entry *lac;

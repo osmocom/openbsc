@@ -377,6 +377,7 @@ static void test_contrack()
 	talloc_free(parsed);
 
 
+	bsc_config_free(con->cfg);
 	talloc_free(nat);
 	msgb_free(msg);
 }
@@ -548,6 +549,7 @@ static void test_mgcp_ass_tracking(void)
 		abort();
 	}
 
+	bsc_config_free(bsc->cfg);
 	talloc_free(nat);
 }
 

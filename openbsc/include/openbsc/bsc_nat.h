@@ -261,6 +261,7 @@ struct bsc_nat {
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
+void bsc_config_free(struct bsc_config *);
 void bsc_config_add_lac(struct bsc_config *cfg, int lac);
 void bsc_config_del_lac(struct bsc_config *cfg, int lac);
 int bsc_config_handles_lac(struct bsc_config *cfg, int lac);
