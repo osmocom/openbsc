@@ -435,7 +435,7 @@ static void test_mgcp_allocations(void)
 	struct bsc_connection *bsc;
 	struct bsc_nat *nat;
 	struct sccp_connections con;
-	int i, j;
+	int i, j, multiplex;
 
 	fprintf(stderr, "Testing MGCP.\n");
 	memset(&con, 0, sizeof(con));
@@ -449,7 +449,7 @@ static void test_mgcp_allocations(void)
 
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
-	bsc->cfg->number_multiplexes = 2;
+	bsc->cfg->max_endpoints = 60;
 	bsc_config_add_lac(bsc->cfg, 2323);
 	bsc->last_endpoint = 0x22;
 	con.bsc = bsc;
@@ -465,7 +465,8 @@ static void test_mgcp_allocations(void)
 		++i;
 	} while(1);
 
-	for (i = 0; i < bsc->cfg->number_multiplexes; ++i) {
+	multiplex = bsc_mgcp_nr_multiplexes(bsc->cfg->max_endpoints);
+	for (i = 0; i < multiplex; ++i) {
 		for (j = 0; j < 32; ++j)
 			printf("%d", bsc->_endpoint_status[i*32 + j]);
 		printf(": %d of %d\n", i*32 + 32, 32 * 8);

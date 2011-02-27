@@ -80,6 +80,7 @@ struct bsc_connection {
 	/* mgcp related code */
 	char *_endpoint_status;
 	int number_multiplexes;
+	int max_endpoints;
 	int last_endpoint;
 
 	/* a back pointer */
@@ -126,7 +127,7 @@ struct bsc_config {
 	int forbid_paging;
 
 	/* audio handling */
-	int number_multiplexes;
+	int max_endpoints;
 
 	/* backpointer */
 	struct bsc_nat *nat;
@@ -306,6 +307,7 @@ struct sccp_connections *bsc_nat_find_con_by_bsc(struct bsc_nat *, struct sccp_s
 /**
  * MGCP/Audio handling
  */
+int bsc_mgcp_nr_multiplexes(int max_endpoints);
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length);
 int bsc_mgcp_assign_patch(struct sccp_connections *, struct msgb *msg);
 void bsc_mgcp_init(struct sccp_connections *);

@@ -38,8 +38,20 @@
 #include <errno.h>
 #include <unistd.h>
 
+int bsc_mgcp_nr_multiplexes(int max_endpoints)
+{
+	int div = max_endpoints / 32;
+
+	if ((max_endpoints % 32) != 0)
+		div += 1;
+
+	return div;
+}
+
 static int bsc_init_endps_if_needed(struct bsc_connection *con)
 {
+	int multiplexes;
+
 	/* we have done that */
 	if (con->_endpoint_status)
 		return 0;
@@ -48,9 +60,10 @@ static int bsc_init_endps_if_needed(struct bsc_connection *con)
 	if (!con->cfg)
 		return -1;
 
-	con->number_multiplexes = con->cfg->number_multiplexes;
-	con->_endpoint_status = talloc_zero_array(con, char,
-						  (32 * con->cfg->number_multiplexes) + 1);
+	multiplexes = bsc_mgcp_nr_multiplexes(con->cfg->max_endpoints);
+	con->number_multiplexes = multiplexes;
+	con->max_endpoints = con->cfg->max_endpoints;
+	con->_endpoint_status = talloc_zero_array(con, char, 32 * multiplexes + 1);
 	return con->_endpoint_status == NULL;
 }
 
@@ -58,7 +71,7 @@ static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connectio
 {
 	int multiplex;
 	int timeslot;
-	const int number_endpoints = 32 * bsc->number_multiplexes;
+	const int number_endpoints = bsc->max_endpoints;
 	int i;
 
 	mgcp_endpoint_to_timeslot(bsc->last_endpoint, &multiplex, &timeslot);
@@ -81,6 +94,14 @@ static int bsc_assign_endpoint(struct bsc_connection *bsc, struct sccp_connectio
 			multiplex = 0;
 
 		endpoint = mgcp_timeslot_to_endpoint(multiplex, timeslot);
+
+		/* Now check if we are allowed to assign this one */
+		if (endpoint >= bsc->max_endpoints) {
+			multiplex = 0;
+			timeslot = 1;
+			endpoint = mgcp_timeslot_to_endpoint(multiplex, timeslot);
+		}
+
 
 		if (bsc->_endpoint_status[endpoint] == 0) {
 			bsc->_endpoint_status[endpoint] = 1;

@@ -113,7 +113,7 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
 		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
-	vty_out(vty, "  number-multiplexes %d%s", bsc->number_multiplexes, VTY_NEWLINE);
+	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -173,6 +173,7 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 	int i, j, endp;
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		int max;
 		if (!con->cfg)
 			continue;
 		if (con->cfg->nr != nr)
@@ -183,7 +184,8 @@ DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
 			continue;
 
 		vty_out(vty, "MGCP Status for %d%s", con->cfg->nr, VTY_NEWLINE);
-		for (i = 0; i < con->number_multiplexes; ++i) {
+		max = bsc_mgcp_nr_multiplexes(con->max_endpoints);
+		for (i = 0; i < max; ++i) {
 			for (j = 0; j < 32; ++j) {
 				endp = mgcp_timeslot_to_endpoint(i, j);
 				vty_out(vty, " Endpoint 0x%x %s%s", endp,
@@ -634,13 +636,13 @@ DEFUN(cfg_bsc_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_bsc_nr_multip, cfg_bsc_nr_multip_cmd,
-      "number-multiplexes <1-64>",
-      "Number of multiplexes on a BSC\n" "Number of ports\n")
+DEFUN(cfg_bsc_max_endps, cfg_bsc_max_endps_cmd,
+      "max-endpoints <1-1024>",
+      "Highest endpoint to use (exclusively)\n" "Number of ports\n")
 {
 	struct bsc_config *conf = vty->index;
 
-	conf->number_multiplexes = atoi(argv[0]);
+	conf->max_endpoints = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -744,7 +746,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
-	install_element(NAT_BSC_NODE, &cfg_bsc_nr_multip_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_max_endps_cmd);
 
 	mgcp_vty_init();
 
