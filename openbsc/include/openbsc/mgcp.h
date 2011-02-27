@@ -1,8 +1,8 @@
 /* A Media Gateway Control Protocol Media Gateway: RFC 3435 */
 
 /*
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -63,6 +63,7 @@ static inline int rtp_calculate_port(int multiplex, int base)
  */
 struct mgcp_endpoint;
 struct mgcp_config;
+struct mgcp_trunk_config;
 
 #define MGCP_ENDP_CRCX 1
 #define MGCP_ENDP_DLCX 2
@@ -78,9 +79,9 @@ struct mgcp_config;
 #define MGCP_POLICY_REJECT	5
 #define MGCP_POLICY_DEFER	6
 
-typedef int (*mgcp_realloc)(struct mgcp_config *cfg, int endpoint);
-typedef int (*mgcp_change)(struct mgcp_config *cfg, int endpoint, int state);
-typedef int (*mgcp_policy)(struct mgcp_config *cfg, int endpoint, int state, const char *transactio_id);
+typedef int (*mgcp_realloc)(struct mgcp_trunk_config *cfg, int endpoint);
+typedef int (*mgcp_change)(struct mgcp_trunk_config *cfg, int endpoint, int state);
+typedef int (*mgcp_policy)(struct mgcp_trunk_config *cfg, int endpoint, int state, const char *transactio_id);
 typedef int (*mgcp_reset)(struct mgcp_config *cfg);
 
 #define PORT_ALLOC_STATIC	0
@@ -101,18 +102,31 @@ struct mgcp_port_range {
 	int last_port;
 };
 
+struct mgcp_trunk_config {
+	struct mgcp_config *cfg;
+
+	int trunk_nr;
+	int trunk_type;
+
+	char *audio_name;
+	int audio_payload;
+	int audio_loop;
+
+	/* spec handling */
+	int force_realloc;
+
+	unsigned int number_endpoints;
+	struct mgcp_endpoint *endpoints;
+};
+
 struct mgcp_config {
 	int source_port;
 	char *local_ip;
 	char *source_addr;
-	unsigned int number_endpoints;
 	char *bts_ip;
 	char *call_agent_addr;
 
 	struct in_addr bts_in;
-	char *audio_name;
-	int audio_payload;
-	int audio_loop;
 
 	/* transcoder handling */
 	char *transcoder_ip;
@@ -126,17 +140,16 @@ struct mgcp_config {
 	struct mgcp_port_range transcoder_ports;
 	int endp_dscp;
 
-	/* spec handling */
-	int force_realloc;
-
 	mgcp_change change_cb;
 	mgcp_policy policy_cb;
 	mgcp_reset reset_cb;
 	mgcp_realloc realloc_cb;
 	void *data;
 
-	struct mgcp_endpoint *endpoints;
 	uint32_t last_call_id;
+
+	/* trunk handling */
+	struct mgcp_trunk_config trunk;
 };
 
 /* config management */

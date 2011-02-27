@@ -156,7 +156,7 @@ int bsc_mgcp_assign_patch(struct sccp_connections *con, struct msgb *msg)
 
 	endp = mgcp_timeslot_to_endpoint(multiplex, timeslot);
 
-	if (endp >= con->bsc->nat->mgcp_cfg->number_endpoints) {
+	if (endp >= con->bsc->nat->mgcp_cfg->trunk.number_endpoints) {
 		LOGP(DNAT, LOGL_ERROR,
 			"MSC attempted to assign bad endpoint 0x%x\n",
 			endp);
@@ -207,9 +207,9 @@ void bsc_mgcp_free_endpoints(struct bsc_nat *nat)
 {
 	int i;
 
-	for (i = 1; i < nat->mgcp_cfg->number_endpoints; ++i){
+	for (i = 1; i < nat->mgcp_cfg->trunk.number_endpoints; ++i){
 		bsc_mgcp_free_endpoint(nat, i);
-		mgcp_free_endp(&nat->mgcp_cfg->endpoints[i]);
+		mgcp_free_endp(&nat->mgcp_cfg->trunk.endpoints[i]);
 	}
 }
 
@@ -294,7 +294,7 @@ struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	return NULL;
 }
 
-int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const char *transaction_id)
+int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, const char *transaction_id)
 {
 	struct bsc_nat *nat;
 	struct bsc_endpoint *bsc_endp;
@@ -302,9 +302,9 @@ int bsc_mgcp_policy_cb(struct mgcp_config *cfg, int endpoint, int state, const c
 	struct mgcp_endpoint *mgcp_endp;
 	struct msgb *bsc_msg;
 
-	nat = cfg->data;
+	nat = tcfg->cfg->data;
 	bsc_endp = &nat->bsc_endpoints[endpoint];
-	mgcp_endp = &nat->mgcp_cfg->endpoints[endpoint];
+	mgcp_endp = &nat->mgcp_cfg->trunk.endpoints[endpoint];
 
 	if (bsc_endp->transaction_id) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
@@ -434,7 +434,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
+	for (i = 1; i < bsc->nat->mgcp_cfg->trunk.number_endpoints; ++i) {
 		if (bsc->nat->bsc_endpoints[i].bsc != bsc)
 			continue;
 		/* no one listening? a bug? */
@@ -443,7 +443,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		if (strcmp(transaction_id, bsc->nat->bsc_endpoints[i].transaction_id) != 0)
 			continue;
 
-		endp = &bsc->nat->mgcp_cfg->endpoints[i];
+		endp = &bsc->nat->mgcp_cfg->trunk.endpoints[i];
 		bsc_endp = &bsc->nat->bsc_endpoints[i];
 		break;
 	}
@@ -713,7 +713,7 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	/* some more MGCP config handling */
 	cfg->data = nat;
 	cfg->policy_cb = bsc_mgcp_policy_cb;
-	cfg->force_realloc = 1;
+	cfg->trunk.force_realloc = 1;
 
 	if (cfg->bts_ip)
 		talloc_free(cfg->bts_ip);
@@ -721,7 +721,7 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 
 	nat->bsc_endpoints = talloc_zero_array(nat,
 					       struct bsc_endpoint,
-					       cfg->number_endpoints + 1);
+					       cfg->trunk.number_endpoints + 1);
 	if (!nat->bsc_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate nat endpoints\n");
 		close(cfg->gw_fd.bfd.fd);
@@ -749,7 +749,7 @@ void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 	if (bsc->cfg)
 		ctr = &bsc->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_CALLS];
 
-	for (i = 1; i < bsc->nat->mgcp_cfg->number_endpoints; ++i) {
+	for (i = 1; i < bsc->nat->mgcp_cfg->trunk.number_endpoints; ++i) {
 		struct bsc_endpoint *bsc_endp = &bsc->nat->bsc_endpoints[i];
 
 		if (bsc_endp->bsc != bsc)
@@ -759,6 +759,6 @@ void bsc_mgcp_clear_endpoints_for(struct bsc_connection *bsc)
 			rate_ctr_inc(ctr);
 
 		bsc_mgcp_free_endpoint(bsc->nat, i);
-		mgcp_free_endp(&bsc->nat->mgcp_cfg->endpoints[i]);
+		mgcp_free_endp(&bsc->nat->mgcp_cfg->trunk.endpoints[i]);
 	}
 }

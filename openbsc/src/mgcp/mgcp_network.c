@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -196,9 +196,9 @@ static int send_transcoder(struct mgcp_rtp_end *end, struct mgcp_config *cfg,
 static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		   struct sockaddr_in *addr, char *buf, int rc)
 {
-	struct mgcp_config *cfg = endp->cfg;
+	struct mgcp_trunk_config *tcfg = endp->tcfg;
 	/* For loop toggle the destination and then dispatch. */
-	if (cfg->audio_loop)
+	if (tcfg->audio_loop)
 		dest = !dest;
 
 	/* Loop based on the conn_mode, maybe undoing the above */

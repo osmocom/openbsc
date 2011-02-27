@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -69,12 +69,14 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->net_ports.range_start, g_cfg->net_ports.range_end, VTY_NEWLINE);
 
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
-	if (g_cfg->audio_payload != -1)
-		vty_out(vty, "  sdp audio payload number %d%s", g_cfg->audio_payload, VTY_NEWLINE);
-	if (g_cfg->audio_name)
-		vty_out(vty, "  sdp audio payload name %s%s", g_cfg->audio_name, VTY_NEWLINE);
-	vty_out(vty, "  loop %u%s", !!g_cfg->audio_loop, VTY_NEWLINE);
-	vty_out(vty, "  number endpoints %u%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
+	if (g_cfg->trunk.audio_payload != -1)
+		vty_out(vty, "  sdp audio payload number %d%s",
+			g_cfg->trunk.audio_payload, VTY_NEWLINE);
+	if (g_cfg->trunk.audio_name)
+		vty_out(vty, "  sdp audio payload name %s%s",
+			g_cfg->trunk.audio_name, VTY_NEWLINE);
+	vty_out(vty, "  loop %u%s", !!g_cfg->trunk.audio_loop, VTY_NEWLINE);
+	vty_out(vty, "  number endpoints %u%s", g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
 		vty_out(vty, "  call agent ip %s%s", g_cfg->call_agent_addr, VTY_NEWLINE);
 	if (g_cfg->transcoder_ip)
@@ -95,9 +97,10 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 {
 	int i;
 
-	vty_out(vty, "MGCP is up and running with %u endpoints:%s", g_cfg->number_endpoints - 1, VTY_NEWLINE);
-	for (i = 1; i < g_cfg->number_endpoints; ++i) {
-		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
+	vty_out(vty, "MGCP is up and running with %u endpoints:%s",
+		g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
+	for (i = 1; i < g_cfg->trunk.number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &g_cfg->trunk.endpoints[i];
 		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
@@ -265,7 +268,7 @@ DEFUN(cfg_mgcp_sdp_payload_number,
       "Set the audio codec to use")
 {
 	unsigned int payload = atoi(argv[0]);
-	g_cfg->audio_payload = payload;
+	g_cfg->trunk.audio_payload = payload;
 	return CMD_SUCCESS;
 }
 
@@ -274,7 +277,7 @@ DEFUN(cfg_mgcp_sdp_payload_name,
       "sdp audio payload name NAME",
       "Set the audio name to use")
 {
-	bsc_replace_string(g_cfg, &g_cfg->audio_name, argv[0]);
+	bsc_replace_string(g_cfg, &g_cfg->trunk.audio_name, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -283,7 +286,7 @@ DEFUN(cfg_mgcp_loop,
       "loop (0|1)",
       "Loop the audio")
 {
-	g_cfg->audio_loop = atoi(argv[0]);
+	g_cfg->trunk.audio_loop = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -293,7 +296,7 @@ DEFUN(cfg_mgcp_number_endp,
       "The number of endpoints to allocate. This is not dynamic.")
 {
 	/* + 1 as we start counting at one */
-	g_cfg->number_endpoints = atoi(argv[0]) + 1;
+	g_cfg->trunk.number_endpoints = atoi(argv[0]) + 1;
 	return CMD_SUCCESS;
 }
 
@@ -351,14 +354,14 @@ DEFUN(loop_endp,
 	struct mgcp_endpoint *endp;
 
 	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
 		vty_out(vty, "Loopback number %s/%d is invalid.%s",
 		argv[0], endp_no, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 
-	endp = &g_cfg->endpoints[endp_no];
+	endp = &g_cfg->trunk.endpoints[endp_no];
 	int loop = atoi(argv[1]);
 
 	if (loop)
@@ -386,13 +389,13 @@ DEFUN(tap_call,
 	int port = 0;
 
 	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
 		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
 		argv[0], endp_no, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	endp = &g_cfg->endpoints[endp_no];
+	endp = &g_cfg->trunk.endpoints[endp_no];
 
 	if (strcmp(argv[1], "bts-in") == 0) {
 		port = MGCP_TAP_BTS_IN;
@@ -422,13 +425,13 @@ DEFUN(free_endp, free_endp_cmd,
 	struct mgcp_endpoint *endp;
 
 	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->number_endpoints) {
+	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
 		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
 		argv[0], endp_no, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	endp = &g_cfg->endpoints[endp_no];
+	endp = &g_cfg->trunk.endpoints[endp_no];
 	mgcp_free_endp(endp);
 	return CMD_SUCCESS;
 }
@@ -492,13 +495,14 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 	}
 
 	if (mgcp_endpoints_allocate(g_cfg) != 0) {
-		fprintf(stderr, "Failed to allocate endpoints: %d. Quitting.\n", g_cfg->number_endpoints);
+		fprintf(stderr, "Failed to allocate endpoints: %d. Quitting.\n",
+		g_cfg->trunk.number_endpoints);
 		return -1;
 	}
 
 	/* early bind */
-	for (i = 1; i < g_cfg->number_endpoints; ++i) {
-		struct mgcp_endpoint *endp = &g_cfg->endpoints[i];
+	for (i = 1; i < g_cfg->trunk.number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &g_cfg->trunk.endpoints[i];
 		int rtp_port;
 
 		if (g_cfg->bts_ports.mode == PORT_ALLOC_STATIC) {

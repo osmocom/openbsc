@@ -105,8 +105,8 @@ static uint32_t generate_call_id(struct mgcp_config *cfg)
 
 	/* callstack can only be of size number_of_endpoints */
 	/* verify that the call id is free, e.g. in case of overrun */
-	for (i = 1; i < cfg->number_endpoints; ++i)
-		if (cfg->endpoints[i].ci == cfg->last_call_id)
+	for (i = 1; i < cfg->trunk.number_endpoints; ++i)
+		if (cfg->trunk.endpoints[i].ci == cfg->last_call_id)
 			return generate_call_id(cfg);
 
 	return cfg->last_call_id;
@@ -187,7 +187,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"a=rtpmap:%d %s\r\n",
 			endp->ci, addr, endp->net_end.local_port,
 			endp->bts_end.payload_type, endp->bts_end.payload_type,
-		        endp->cfg->audio_name);
+		        endp->tcfg->audio_name);
 	return mgcp_create_response_with_data(200, " OK", msg, trans_id, sdp_record);
 }
 
@@ -290,12 +290,12 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 		return NULL;
 
 	mgcp_endp = mgcp_timeslot_to_endpoint(trunk - 1, endp);
-	if (mgcp_endp < 1 || mgcp_endp >= cfg->number_endpoints) {
+	if (mgcp_endp < 1 || mgcp_endp >= cfg->trunk.number_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to find endpoint '%s'\n", mgcp);
 		return NULL;
 	}
 
-	return &cfg->endpoints[mgcp_endp];
+	return &cfg->trunk.endpoints[mgcp_endp];
 }
 
 static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *mgcp)
@@ -307,8 +307,8 @@ static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *
 		return find_e1_endpoint(cfg, mgcp);
 	} else {
 		gw = strtoul(mgcp, &endptr, 16);
-		if (gw > 0 && gw < cfg->number_endpoints && strcmp(endptr, "@mgw") == 0)
-			return &cfg->endpoints[gw];
+		if (gw > 0 && gw < cfg->trunk.number_endpoints && strcmp(endptr, "@mgw") == 0)
+			return &cfg->trunk.endpoints[gw];
 	}
 
 	LOGP(DMGCP, LOGL_ERROR, "Not able to find endpoint: '%s'\n", mgcp);
@@ -494,6 +494,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_msg_ptr data_ptrs[6];
 	int found, i, line_start;
 	const char *trans_id;
+	struct mgcp_trunk_config *tcfg;
 	struct mgcp_endpoint *endp;
 	int error_code = 400;
 
@@ -501,13 +502,15 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	if (found != 0)
 		return create_err_response(510, "CRCX", trans_id);
 
+	tcfg = endp->tcfg;
+
 	if (endp->allocated) {
-		if (cfg->force_realloc) {
+		if (tcfg->force_realloc) {
 			LOGP(DMGCP, LOGL_NOTICE, "Endpoint 0x%x already allocated. Forcing realloc.\n",
 			    ENDPOINT_NUMBER(endp));
 			mgcp_free_endp(endp);
 			if (cfg->realloc_cb)
-				cfg->realloc_cb(cfg, ENDPOINT_NUMBER(endp));
+				cfg->realloc_cb(tcfg, ENDPOINT_NUMBER(endp));
 		} else {
 			LOGP(DMGCP, LOGL_ERROR, "Endpoint is already used. 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
@@ -519,11 +522,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	MSG_TOKENIZE_START
 	switch (msg->l3h[line_start]) {
 	case 'L':
-		endp->local_options = talloc_strdup(cfg->endpoints,
+		endp->local_options = talloc_strdup(tcfg->endpoints,
 			(const char *)&msg->l3h[line_start + 3]);
 		break;
 	case 'C':
-		endp->callid = talloc_strdup(cfg->endpoints,
+		endp->callid = talloc_strdup(tcfg->endpoints,
 			(const char *)&msg->l3h[line_start + 3]);
 		break;
 	case 'M':
@@ -559,11 +562,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		goto error2;
 
 	endp->allocated = 1;
-	endp->bts_end.payload_type = cfg->audio_payload;
+	endp->bts_end.payload_type = tcfg->audio_payload;
 
 	/* policy CB */
 	if (cfg->policy_cb) {
-		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, trans_id)) {
+		switch (cfg->policy_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX, trans_id)) {
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "CRCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
@@ -585,7 +588,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		ENDPOINT_NUMBER(endp), endp->ci,
 		endp->net_end.local_port, endp->bts_end.local_port);
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
+		cfg->change_cb(tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_CRCX);
 
 	create_transcoder(endp);
 	return create_response_with_sdp(endp, "CRCX", trans_id);
@@ -686,7 +689,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* policy CB */
 	if (cfg->policy_cb) {
-		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, trans_id)) {
+		switch (cfg->policy_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX, trans_id)) {
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "MDCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
@@ -708,7 +711,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 	LOGP(DMGCP, LOGL_DEBUG, "Modified endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
+		cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_MDCX);
 	if (silent)
 		goto out_silent;
 
@@ -771,7 +774,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	/* policy CB */
 	if (cfg->policy_cb) {
-		switch (cfg->policy_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, trans_id)) {
+		switch (cfg->policy_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX, trans_id)) {
 		case MGCP_POLICY_REJECT:
 			LOGP(DMGCP, LOGL_NOTICE, "DLCX rejected by policy on 0x%x\n",
 			     ENDPOINT_NUMBER(endp));
@@ -797,7 +800,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	delete_transcoder(endp);
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
-		cfg->change_cb(cfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
+		cfg->change_cb(endp->tcfg, ENDPOINT_NUMBER(endp), MGCP_ENDP_DLCX);
 
 	if (silent)
 		goto out_silent;
@@ -858,12 +861,18 @@ struct mgcp_config *mgcp_config_alloc(void)
 
 	cfg->source_port = 2427;
 	cfg->source_addr = talloc_strdup(cfg, "0.0.0.0");
-	cfg->audio_name = talloc_strdup(cfg, "AMR/8000");
-	cfg->audio_payload = 126;
+
 	cfg->transcoder_remote_base = 4000;
 
 	cfg->bts_ports.base_port = RTP_PORT_DEFAULT;
 	cfg->net_ports.base_port = RTP_PORT_NET_DEFAULT;
+
+	/* default trunk handling */
+	cfg->trunk.cfg = cfg;
+	cfg->trunk.trunk_nr = 0;
+	cfg->trunk.trunk_type = MGCP_TRUNK_VIRTUAL;
+	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
+	cfg->trunk.audio_payload = 126;
 
 	return cfg;
 }
@@ -891,22 +900,26 @@ static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
 
 int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 {
+	struct mgcp_trunk_config *tcfg;
 	int i;
 
+	tcfg = &cfg->trunk;
+
 	/* Initialize all endpoints */
-	cfg->endpoints = _talloc_zero_array(cfg,
+	tcfg->endpoints = _talloc_zero_array(cfg,
 				       sizeof(struct mgcp_endpoint),
-				       cfg->number_endpoints, "endpoints");
-	if (!cfg->endpoints)
+				       tcfg->number_endpoints, "endpoints");
+	if (!tcfg->endpoints)
 		return -1;
 
-	for (i = 0; i < cfg->number_endpoints; ++i) {
-		cfg->endpoints[i].ci = CI_UNUSED;
-		cfg->endpoints[i].cfg = cfg;
-		mgcp_rtp_end_init(&cfg->endpoints[i].net_end);
-		mgcp_rtp_end_init(&cfg->endpoints[i].bts_end);
-		mgcp_rtp_end_init(&cfg->endpoints[i].trans_net);
-		mgcp_rtp_end_init(&cfg->endpoints[i].trans_bts);
+	for (i = 0; i < tcfg->number_endpoints; ++i) {
+		tcfg->endpoints[i].ci = CI_UNUSED;
+		tcfg->endpoints[i].cfg = cfg;
+		tcfg->endpoints[i].tcfg = tcfg;
+		mgcp_rtp_end_init(&tcfg->endpoints[i].net_end);
+		mgcp_rtp_end_init(&tcfg->endpoints[i].bts_end);
+		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_net);
+		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_bts);
 	}
 
 	return 0;
@@ -971,8 +984,8 @@ static void send_msg(struct mgcp_endpoint *endp, int endpoint, int port,
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
 			msg, endpoint, mode, endp->cfg->source_addr,
-			port, endp->cfg->audio_payload,
-			endp->cfg->audio_payload, endp->cfg->audio_name);
+			port, endp->tcfg->audio_payload,
+			endp->tcfg->audio_payload, endp->tcfg->audio_name);
 
 	if (len < 0)
 		return;

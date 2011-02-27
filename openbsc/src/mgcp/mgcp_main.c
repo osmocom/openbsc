@@ -126,7 +126,7 @@ static int mgcp_rsip_cb(struct mgcp_config *cfg)
 	return 0;
 }
 
-static int mgcp_change_cb(struct mgcp_config *cfg, int endpoint, int state)
+static int mgcp_change_cb(struct mgcp_trunk_config *cfg, int endpoint, int state)
 {
 	if (state != MGCP_ENDP_MDCX)
 		return 0;
@@ -172,8 +172,8 @@ static int read_call_agent(struct bsc_fd *fd, unsigned int what)
 		reset_endpoints = 0;
 
 		/* is checking in_addr.s_addr == INADDR_LOOPBACK making it more secure? */
-		for (i = 1; i < cfg->number_endpoints; ++i)
-			mgcp_free_endp(&cfg->endpoints[i]);
+		for (i = 1; i < cfg->trunk.number_endpoints; ++i)
+			mgcp_free_endp(&cfg->trunk.endpoints[i]);
 	}
 
 	return 0;

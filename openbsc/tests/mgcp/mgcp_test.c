@@ -47,7 +47,7 @@ static void test_auep(void)
 	struct msgb *inp;
 	struct msgb *msg;
 	struct mgcp_config *cfg = mgcp_config_alloc();
-	cfg->number_endpoints = 64;
+	cfg->trunk.number_endpoints = 64;
 	mgcp_endpoints_allocate(cfg);
 
 	inp = create_auep1();

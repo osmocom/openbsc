@@ -1,8 +1,8 @@
 /* MGCP Private Data */
 
 /*
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -33,6 +33,11 @@ enum mgcp_connection_mode {
 	MGCP_CONN_SEND_ONLY = 2,
 	MGCP_CONN_RECV_SEND = MGCP_CONN_RECV_ONLY | MGCP_CONN_SEND_ONLY,
 	MGCP_CONN_LOOPBACK  = 4,
+};
+
+enum mgcp_trunk_type {
+	MGCP_TRUNK_VIRTUAL,
+	MGCP_TRUNK_E1,
 };
 
 struct mgcp_rtp_state {
@@ -93,6 +98,7 @@ struct mgcp_endpoint {
 
 	/* backpointer */
 	struct mgcp_config *cfg;
+	struct mgcp_trunk_config *tcfg;
 
 	/* port status for bts/net */
 	struct mgcp_rtp_end bts_end;
@@ -118,7 +124,7 @@ struct mgcp_endpoint {
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
 };
 
-#define ENDPOINT_NUMBER(endp) abs(endp - endp->cfg->endpoints)
+#define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
 
 struct mgcp_msg_ptr {
 	unsigned int start;

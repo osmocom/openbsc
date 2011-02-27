@@ -446,7 +446,7 @@ static void test_mgcp_allocations(void)
 					       struct bsc_endpoint,
 					       65);
 	nat->mgcp_cfg = mgcp_config_alloc();
-	nat->mgcp_cfg->number_endpoints = 64;
+	nat->mgcp_cfg->trunk.number_endpoints = 64;
 
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
@@ -491,7 +491,7 @@ static void test_mgcp_ass_tracking(void)
 					       struct bsc_endpoint,
 					       33);
 	nat->mgcp_cfg = mgcp_config_alloc();
-	nat->mgcp_cfg->number_endpoints = 64;
+	nat->mgcp_cfg->trunk.number_endpoints = 64;
 
 	bsc = bsc_connection_alloc(nat);
 	bsc->cfg = bsc_config_alloc(nat, "foo");
