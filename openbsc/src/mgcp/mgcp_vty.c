@@ -54,6 +54,12 @@ struct cmd_node mgcp_node = {
 	1,
 };
 
+struct cmd_node trunk_node = {
+	TRUNK_NODE,
+	"%s(trunk)#",
+	1,
+};
+
 static int config_write_mgcp(struct vty *vty)
 {
 	vty_out(vty, "mgcp%s", VTY_NEWLINE);
@@ -360,6 +366,78 @@ DEFUN(cfg_mgcp_transcoder_remote_base,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_trunk, cfg_mgcp_trunk_cmd,
+      "trunk <1-64>",
+      "Configure a SS7 trunk\n" "Trunk Nr\n")
+{
+	struct mgcp_trunk_config *trunk;
+	int index = atoi(argv[0]);
+
+	trunk = mgcp_trunk_num(g_cfg, index);
+	if (!trunk)
+		trunk = mgcp_trunk_alloc(g_cfg, index);
+
+	if (!trunk) {
+		vty_out(vty, "%%Unable to allocate trunk %u.%s",
+			index, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->node = TRUNK_NODE;
+	vty->index = trunk;
+	return CMD_SUCCESS;
+}
+
+static int config_write_trunk(struct vty *vty)
+{
+	struct mgcp_trunk_config *trunk;
+
+	llist_for_each_entry(trunk, &g_cfg->trunks, entry) {
+		vty_out(vty, " trunk %d%s", trunk->trunk_nr, VTY_NEWLINE);
+		vty_out(vty, "  sdp audio payload number %d%s",
+			trunk->audio_payload, VTY_NEWLINE);
+		vty_out(vty, "  sdp audio payload name %s%s",
+			trunk->audio_name, VTY_NEWLINE);
+		vty_out(vty, "  loop %d%s",
+			trunk->audio_loop, VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_payload_number,
+      cfg_trunk_payload_number_cmd,
+      "sdp audio payload number <1-255>",
+      "SDP related\n" "Audio\n" "Payload\n" "Payload Number\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	unsigned int payload = atoi(argv[0]);
+
+	trunk->audio_payload = payload;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_payload_name,
+      cfg_trunk_payload_name_cmd,
+      "sdp audio payload name NAME",
+      "SDP related\n" "Audio\n" "Payload\n" "Payload Name\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+
+	bsc_replace_string(g_cfg, &trunk->audio_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_loop,
+      cfg_trunk_loop_cmd,
+      "loop (0|1)",
+      "Loop the audio")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+
+	trunk->audio_loop = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
 
 DEFUN(loop_endp,
       loop_endp_cmd,
@@ -504,14 +582,24 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_transcoder_base_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_dscp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_rtp_ip_tos_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
-	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_agent_addr_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_transcoder_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_transcoder_remote_base_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_number_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
+
+	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
+	install_node(&trunk_node, config_write_trunk);
+	install_default(TRUNK_NODE);
+	install_element(TRUNK_NODE, &ournode_exit_cmd);
+	install_element(TRUNK_NODE, &ournode_end_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_payload_number_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_payload_name_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
+
 	return 0;
 }
 

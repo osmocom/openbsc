@@ -103,6 +103,8 @@ struct mgcp_port_range {
 };
 
 struct mgcp_trunk_config {
+	struct llist_head entry;
+
 	struct mgcp_config *cfg;
 
 	int trunk_nr;
@@ -150,6 +152,7 @@ struct mgcp_config {
 
 	/* trunk handling */
 	struct mgcp_trunk_config trunk;
+	struct llist_head trunks;
 };
 
 /* config management */

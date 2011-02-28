@@ -86,6 +86,9 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 	case MSC_NODE:
 		vty->node = GSMNET_NODE;
 		break;
+	case TRUNK_NODE:
+		vty->node = MGCP_NODE;
+		break;
 	default:
 		vty->node = CONFIG_NODE;
 	}
@@ -154,6 +157,10 @@ gDEFUN(ournode_exit,
 	case MSC_NODE:
 		vty->node = GSMNET_NODE;
 		break;
+	case TRUNK_NODE:
+		vty->node = MGCP_NODE;
+		vty->index = NULL;
+		break;
 	default:
 		break;
 	}
@@ -175,6 +182,7 @@ gDEFUN(ournode_end,
 	case TRX_NODE:
 	case TS_NODE:
 	case MGCP_NODE:
+	case TRUNK_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
 	case NS_NODE:

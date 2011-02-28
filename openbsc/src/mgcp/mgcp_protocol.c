@@ -874,7 +874,40 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->trunk.audio_payload = 126;
 
+	INIT_LLIST_HEAD(&cfg->trunks);
+
 	return cfg;
+}
+
+struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
+{
+	struct mgcp_trunk_config *trunk;
+
+	trunk = talloc_zero(cfg, struct mgcp_trunk_config);
+	if (!trunk) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate.\n");
+		return NULL;
+	}
+
+	trunk->cfg = cfg;
+	trunk->trunk_type = MGCP_TRUNK_E1;
+	trunk->trunk_nr = nr;
+	trunk->audio_name = talloc_strdup(cfg, "AMR/8000");
+	trunk->audio_payload = 126;
+	trunk->number_endpoints = 33;
+	llist_add_tail(&trunk->entry, &cfg->trunks);
+	return trunk;
+}
+
+struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index)
+{
+	struct mgcp_trunk_config *trunk;
+
+	llist_for_each_entry(trunk, &cfg->trunks, entry)
+		if (trunk->trunk_nr == index)
+			return trunk;
+
+	return NULL;
 }
 
 static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
