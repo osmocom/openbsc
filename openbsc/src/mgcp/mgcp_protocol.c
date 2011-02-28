@@ -271,7 +271,8 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 					     const char *mgcp)
 {
 	char *rest = NULL;
-	int trunk, endp, mgcp_endp;
+	struct mgcp_trunk_config *tcfg;
+	int trunk, endp;
 
 	trunk = strtoul(mgcp + 6, &rest, 10);
 	if (rest == NULL || rest[0] != '/' || trunk < 1) {
@@ -289,13 +290,23 @@ static struct mgcp_endpoint *find_e1_endpoint(struct mgcp_config *cfg,
 	if (endp == 1)
 		return NULL;
 
-	mgcp_endp = mgcp_timeslot_to_endpoint(trunk - 1, endp);
-	if (mgcp_endp < 1 || mgcp_endp >= cfg->trunk.number_endpoints) {
+	tcfg = mgcp_trunk_num(cfg, trunk);
+	if (!tcfg) {
+		LOGP(DMGCP, LOGL_ERROR, "The trunk %d is not declared.\n", trunk);
+		return NULL;
+	}
+
+	if (!tcfg->endpoints) {
+		LOGP(DMGCP, LOGL_ERROR, "Endpoints of trunk %d not allocated.\n", trunk);
+		return NULL;
+	}
+
+	if (endp < 1 || endp >= tcfg->number_endpoints) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to find endpoint '%s'\n", mgcp);
 		return NULL;
 	}
 
-	return &cfg->trunk.endpoints[mgcp_endp];
+	return &tcfg->endpoints[endp];
 }
 
 static struct mgcp_endpoint *find_endpoint(struct mgcp_config *cfg, const char *mgcp)
