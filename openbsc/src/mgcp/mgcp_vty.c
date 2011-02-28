@@ -651,29 +651,30 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 	/* early bind */
 	for (i = 1; i < trunk->number_endpoints; ++i) {
 		struct mgcp_endpoint *endp = &trunk->endpoints[i];
-		int rtp_port;
 
 		if (cfg->bts_ports.mode == PORT_ALLOC_STATIC) {
-			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
-						      cfg->bts_ports.base_port);
-			if (mgcp_bind_bts_rtp_port(endp, rtp_port) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+			cfg->last_bts_port += 2;
+			if (mgcp_bind_bts_rtp_port(endp, cfg->last_bts_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL,
+				     "Failed to bind: %d\n", cfg->last_bts_port);
 				return -1;
 			}
 			endp->bts_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 
 		if (cfg->net_ports.mode == PORT_ALLOC_STATIC) {
-			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
-						      cfg->net_ports.base_port);
-			if (mgcp_bind_net_rtp_port(endp, rtp_port) != 0) {
-				LOGP(DMGCP, LOGL_FATAL, "Failed to bind: %d\n", rtp_port);
+			cfg->last_net_port += 2;
+			if (mgcp_bind_net_rtp_port(endp, cfg->last_net_port) != 0) {
+				LOGP(DMGCP, LOGL_FATAL,
+				     "Failed to bind: %d\n", cfg->last_net_port);
 				return -1;
 			}
 			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 
 		if (cfg->transcoder_ip && cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
+			int rtp_port;
+
 			/* network side */
 			rtp_port = rtp_calculate_port(ENDPOINT_NUMBER(endp),
 						      cfg->transcoder_ports.base_port);
@@ -717,6 +718,10 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		fprintf(stderr, "You need to specify a bind address.\n");
 		return -1;
 	}
+
+	/* initialize the last ports */
+	g_cfg->last_bts_port = rtp_calculate_port(0, g_cfg->bts_ports.base_port);
+	g_cfg->last_net_port = rtp_calculate_port(0, g_cfg->net_ports.base_port);
 
 	if (allocate_trunk(&g_cfg->trunk) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to initialize the virtual trunk.\n");

@@ -153,6 +153,10 @@ struct mgcp_config {
 	/* trunk handling */
 	struct mgcp_trunk_config trunk;
 	struct llist_head trunks;
+
+	/* only used for start with a static configuration */
+	int last_net_port;
+	int last_bts_port;
 };
 
 /* config management */
