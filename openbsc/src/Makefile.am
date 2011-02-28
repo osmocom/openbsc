@@ -48,3 +48,5 @@ isdnsync_SOURCES = isdnsync.c
 
 bsc_mgcp_SOURCES = mgcp/mgcp_main.c debug.c
 bsc_mgcp_LDADD = libvty.a libmgcp.a $(LIBOSMOVTY_LIBS)
+
+EXTRA_DIST = input/lapd.h
