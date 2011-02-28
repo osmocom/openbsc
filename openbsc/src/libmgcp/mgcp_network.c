@@ -32,7 +32,6 @@
 #include <osmocore/msgb.h>
 #include <osmocore/select.h>
 
-#include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
