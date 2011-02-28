@@ -690,6 +690,31 @@ DEFUN(test_regex, test_regex_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(set_last_endp, set_last_endp_cmd,
+      "set bsc last-used-endpoint <0-9999999999> <0-1024>",
+      "Set a value\n" "Operate on a BSC\n"
+      "Last used endpoint for an assignment\n" "BSC configuration number\n"
+      "Endpoint number used\n")
+{
+	struct bsc_connection *con;
+	int nr = atoi(argv[0]);
+	int endp = atoi(argv[1]);
+
+
+	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		if (!con->cfg)
+			continue;
+		if (con->cfg->nr != nr)
+			continue;
+
+		con->last_endpoint = endp;
+		vty_out(vty, "Updated the last endpoint for %d to %d.%s",
+			con->cfg->nr, con->last_endpoint, VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -705,6 +730,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&test_regex_cmd);
 	install_element_ve(&show_bsc_mgcp_cmd);
 	install_element_ve(&show_acc_lst_cmd);
+
+	install_element(ENABLE_NODE, &set_last_endp_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
