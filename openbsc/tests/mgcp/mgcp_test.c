@@ -18,6 +18,7 @@
  */
 
 #include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
 
 #include <osmocore/talloc.h>
 #include <string.h>
@@ -48,7 +49,9 @@ static void test_auep(void)
 	struct msgb *msg;
 	struct mgcp_config *cfg = mgcp_config_alloc();
 	cfg->trunk.number_endpoints = 64;
-	mgcp_endpoints_allocate(cfg);
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
 
 	inp = create_auep1();
 	msg = mgcp_handle_message(cfg, inp);

@@ -942,15 +942,12 @@ static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
 	end->rtcp.fd = -1;
 }
 
-int mgcp_endpoints_allocate(struct mgcp_config *cfg)
+int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 {
-	struct mgcp_trunk_config *tcfg;
 	int i;
 
-	tcfg = &cfg->trunk;
-
 	/* Initialize all endpoints */
-	tcfg->endpoints = _talloc_zero_array(cfg,
+	tcfg->endpoints = _talloc_zero_array(tcfg->cfg,
 				       sizeof(struct mgcp_endpoint),
 				       tcfg->number_endpoints, "endpoints");
 	if (!tcfg->endpoints)
@@ -958,7 +955,7 @@ int mgcp_endpoints_allocate(struct mgcp_config *cfg)
 
 	for (i = 0; i < tcfg->number_endpoints; ++i) {
 		tcfg->endpoints[i].ci = CI_UNUSED;
-		tcfg->endpoints[i].cfg = cfg;
+		tcfg->endpoints[i].cfg = tcfg->cfg;
 		tcfg->endpoints[i].tcfg = tcfg;
 		mgcp_rtp_end_init(&tcfg->endpoints[i].net_end);
 		mgcp_rtp_end_init(&tcfg->endpoints[i].bts_end);
