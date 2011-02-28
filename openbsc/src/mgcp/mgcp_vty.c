@@ -672,7 +672,8 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 			endp->net_end.local_alloc = PORT_ALLOC_STATIC;
 		}
 
-		if (cfg->transcoder_ip && cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
+		if (trunk->trunk_type == MGCP_TRUNK_VIRTUAL &&
+		    cfg->transcoder_ip && cfg->transcoder_ports.mode == PORT_ALLOC_STATIC) {
 			int rtp_port;
 
 			/* network side */

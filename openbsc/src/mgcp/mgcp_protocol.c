@@ -475,7 +475,7 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 		return -1;
 	}
 
-	if (endp->cfg->transcoder_ip) {
+	if (endp->cfg->transcoder_ip && endp->tcfg->trunk_type == MGCP_TRUNK_VIRTUAL) {
 		if (allocate_port(endp, &endp->trans_net,
 				  &endp->cfg->transcoder_ports,
 				  mgcp_bind_trans_net_rtp_port) != 0) {
