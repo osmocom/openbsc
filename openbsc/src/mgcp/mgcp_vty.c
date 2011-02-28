@@ -37,12 +37,16 @@
 
 static struct mgcp_config *g_cfg = NULL;
 
-static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int trunk)
+static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int nr)
 {
-	if (trunk != 0)
-		return NULL;
+	struct mgcp_trunk_config *trunk;
 
-	return &cfg->trunk;
+	if (nr == 0)
+		trunk = &cfg->trunk;
+	else
+		trunk = mgcp_trunk_num(cfg, nr);
+
+	return trunk;
 }
 
 /*
@@ -466,6 +470,12 @@ DEFUN(loop_endp,
 		return CMD_WARNING;
 	}
 
+	if (!trunk->endpoints) {
+		vty_out(vty, "%%Trunk %d has no endpoints allocated.%s",
+			trunk->trunk_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
 	int endp_no = strtoul(argv[1], NULL, 16);
 	if (endp_no < 1 || endp_no >= trunk->number_endpoints) {
 		vty_out(vty, "Loopback number %s/%d is invalid.%s",
@@ -506,6 +516,12 @@ DEFUN(tap_call,
 	if (!trunk) {
 		vty_out(vty, "%%Trunk %d not found in the config.%s",
 			atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!trunk->endpoints) {
+		vty_out(vty, "%%Trunk %d has no endpoints allocated.%s",
+			trunk->trunk_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -551,6 +567,12 @@ DEFUN(free_endp, free_endp_cmd,
 	if (!trunk) {
 		vty_out(vty, "%%Trunk %d not found in the config.%s",
 			atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!trunk->endpoints) {
+		vty_out(vty, "%%Trunk %d has no endpoints allocated.%s",
+			trunk->trunk_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
