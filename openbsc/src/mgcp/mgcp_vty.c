@@ -92,16 +92,19 @@ static int config_write_mgcp(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
-      SHOW_STR "Display information about the MGCP Media Gateway")
+static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg)
 {
 	int i;
 
-	vty_out(vty, "MGCP is up and running with %u endpoints:%s",
-		g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
-	for (i = 1; i < g_cfg->trunk.number_endpoints; ++i) {
-		struct mgcp_endpoint *endp = &g_cfg->trunk.endpoints[i];
-		vty_out(vty, " Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s traffic received bts: %u/%u  remote: %u/%u transcoder: %u/%u%s",
+	vty_out(vty, "%s trunk nr %d with %d endpoints:%s",
+		cfg->trunk_type == MGCP_TRUNK_VIRTUAL ? "Virtual" : "E1",
+		cfg->trunk_nr, cfg->number_endpoints - 1, VTY_NEWLINE);
+
+	for (i = 1; i < cfg->number_endpoints; ++i) {
+		struct mgcp_endpoint *endp = &cfg->endpoints[i];
+		vty_out(vty,
+			" Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s "
+			"traffic received bts: %u/%u  remote: %u/%u transcoder: %u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
@@ -111,7 +114,12 @@ DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 	}
+}
 
+DEFUN(show_mcgp, show_mgcp_cmd, "show mgcp",
+      SHOW_STR "Display information about the MGCP Media Gateway")
+{
+	dump_trunk(vty, &g_cfg->trunk);
 	return CMD_SUCCESS;
 }
 
