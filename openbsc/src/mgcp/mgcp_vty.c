@@ -37,6 +37,14 @@
 
 static struct mgcp_config *g_cfg = NULL;
 
+static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int trunk)
+{
+	if (trunk != 0)
+		return NULL;
+
+	return &cfg->trunk;
+}
+
 /*
  * vty code for mgcp below
  */
@@ -355,22 +363,30 @@ DEFUN(cfg_mgcp_transcoder_remote_base,
 
 DEFUN(loop_endp,
       loop_endp_cmd,
-      "loop-endpoint NAME (0|1)",
-      "Loop a given endpoint\n"
+      "loop-endpoint <0-64> NAME (0|1)",
+      "Loop a given endpoint\n" "Trunk number\n"
       "The name in hex of the endpoint\n" "Disable the loop\n" "Enable the loop\n")
 {
+	struct mgcp_trunk_config *trunk;
 	struct mgcp_endpoint *endp;
 
-	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
+	trunk = find_trunk(g_cfg, atoi(argv[0]));
+	if (!trunk) {
+		vty_out(vty, "%%Trunk %d not found in the config.%s",
+			atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	int endp_no = strtoul(argv[1], NULL, 16);
+	if (endp_no < 1 || endp_no >= trunk->number_endpoints) {
 		vty_out(vty, "Loopback number %s/%d is invalid.%s",
-		argv[0], endp_no, VTY_NEWLINE);
+		argv[1], endp_no, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 
-	endp = &g_cfg->trunk.endpoints[endp_no];
-	int loop = atoi(argv[1]);
+	endp = &trunk->endpoints[endp_no];
+	int loop = atoi(argv[2]);
 
 	if (loop)
 		endp->conn_mode = MGCP_CONN_LOOPBACK;
@@ -383,8 +399,8 @@ DEFUN(loop_endp,
 
 DEFUN(tap_call,
       tap_call_cmd,
-      "tap-call ENDPOINT (bts-in|bts-out|net-in|net-out) A.B.C.D <0-65534>",
-      "Forward data on endpoint to a different system\n"
+      "tap-call <0-64> ENDPOINT (bts-in|bts-out|net-in|net-out) A.B.C.D <0-65534>",
+      "Forward data on endpoint to a different system\n" "Trunk number\n"
       "The endpoint in hex\n"
       "Forward the data coming from the bts\n"
       "Forward the data coming from the bts leaving to the network\n"
@@ -393,25 +409,33 @@ DEFUN(tap_call,
       "destination IP of the data\n" "destination port\n")
 {
 	struct mgcp_rtp_tap *tap;
+	struct mgcp_trunk_config *trunk;
 	struct mgcp_endpoint *endp;
 	int port = 0;
 
-	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
-		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
-		argv[0], endp_no, VTY_NEWLINE);
+	trunk = find_trunk(g_cfg, atoi(argv[0]));
+	if (!trunk) {
+		vty_out(vty, "%%Trunk %d not found in the config.%s",
+			atoi(argv[0]), VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	endp = &g_cfg->trunk.endpoints[endp_no];
+	int endp_no = strtoul(argv[1], NULL, 16);
+	if (endp_no < 1 || endp_no >= trunk->number_endpoints) {
+		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
+		argv[1], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
-	if (strcmp(argv[1], "bts-in") == 0) {
+	endp = &trunk->endpoints[endp_no];
+
+	if (strcmp(argv[2], "bts-in") == 0) {
 		port = MGCP_TAP_BTS_IN;
-	} else if (strcmp(argv[1], "bts-out") == 0) {
+	} else if (strcmp(argv[2], "bts-out") == 0) {
 		port = MGCP_TAP_BTS_OUT;
-	} else if (strcmp(argv[1], "net-in") == 0) {
+	} else if (strcmp(argv[2], "net-in") == 0) {
 		port = MGCP_TAP_NET_IN;
-	} else if (strcmp(argv[1], "net-out") == 0) {
+	} else if (strcmp(argv[2], "net-out") == 0) {
 		port = MGCP_TAP_NET_OUT;
 	} else {
 		vty_out(vty, "Unknown mode... tricked vty?%s", VTY_NEWLINE);
@@ -420,26 +444,35 @@ DEFUN(tap_call,
 
 	tap = &endp->taps[port];
 	memset(&tap->forward, 0, sizeof(tap->forward));
-	inet_aton(argv[2], &tap->forward.sin_addr);
-	tap->forward.sin_port = htons(atoi(argv[3]));
+	inet_aton(argv[3], &tap->forward.sin_addr);
+	tap->forward.sin_port = htons(atoi(argv[4]));
 	tap->enabled = 1;
 	return CMD_SUCCESS;
 }
 
 DEFUN(free_endp, free_endp_cmd,
-      "free-endpoint NUMBER",
-      "Free the given endpoint\n" "Endpoint number in hex.\n")
+      "free-endpoint <0-64> NUMBER",
+      "Free the given endpoint\n" "Trunk number\n"
+      "Endpoint number in hex.\n")
 {
+	struct mgcp_trunk_config *trunk;
 	struct mgcp_endpoint *endp;
 
-	int endp_no = strtoul(argv[0], NULL, 16);
-	if (endp_no < 1 || endp_no >= g_cfg->trunk.number_endpoints) {
-		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
-		argv[0], endp_no, VTY_NEWLINE);
+	trunk = find_trunk(g_cfg, atoi(argv[0]));
+	if (!trunk) {
+		vty_out(vty, "%%Trunk %d not found in the config.%s",
+			atoi(argv[0]), VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	endp = &g_cfg->trunk.endpoints[endp_no];
+	int endp_no = strtoul(argv[1], NULL, 16);
+	if (endp_no < 1 || endp_no >= trunk->number_endpoints) {
+		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
+		argv[1], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	endp = &trunk->endpoints[endp_no];
 	mgcp_free_endp(endp);
 	return CMD_SUCCESS;
 }
