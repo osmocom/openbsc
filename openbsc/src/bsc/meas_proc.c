@@ -22,12 +22,12 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <openbsc/msgb.h>
+#include <osmocore/talloc.h>
+#include <osmocore/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/signal.h>
-#include <openbsc/talloc.h>
 
 /* process an already parsed measurement report */
 static int process_meas_rep(struct gsm_meas_rep *mr)

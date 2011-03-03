@@ -1,4 +1,4 @@
-/* mncc_upqueue.c - Pass msgb's up the chain */
+/* trau_upqueue.c - Pass msgb's up the chain */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
@@ -21,7 +21,7 @@
 #include <openbsc/mncc.h>
 #include <openbsc/gsm_data.h>
 
-void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
+void trau_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
 {
 	net->mncc_recv(net, msg);
 }

@@ -6,10 +6,9 @@ Makefile.in
 bscconfig.h
 bscconfig.h.in
 openbsc.pc
-bsc_hack
-bsc_msc_ip
+src/osmo-nitb/osmo-nitb
 bsc_mgcp
-src/bsc/osmo-bsc
+src/osmo-bsc/osmo-bsc
 *.*~
 *.sw?
 
@@ -31,15 +30,15 @@ stamp-h1
 
 # apps and app data
 hlr.sqlite3
-bs11_config
-ipaccess-config
-ipaccess-find
-ipaccess-firmware
-ipaccess-proxy
-isdnsync
-bsc_nat
-osmo-sgsn
-osmo-gbproxy
+src/utils/bs11_config
+src/ipaccess/ipaccess-config
+src/ipaccess/ipaccess-find
+src/ipaccess/ipaccess-firmware
+src/ipaccess/ipaccess-proxy
+src/utils/isdnsync
+src/nat/bsc_nat
+src/gprs/osmo-sgsn
+src/gprs/osmo-gbproxy
 
 #tests
 tests/channel/channel_test

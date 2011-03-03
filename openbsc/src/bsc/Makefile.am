@@ -1,15 +1,21 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAGE_LDFLAGS)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
 
-bin_PROGRAMS = osmo-bsc
+noinst_LIBRARIES = libbsc.a
 
+libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
+			abis_om2000.c abis_om2000_vty.c \
+			abis_rsl.c bsc_rll.c \
+			paging.c \
+			bts_ericsson_rbs2000.c bts_ipaccess_nanobts.c bts_siemens_bs11.c bts_unknown.c \
+			chan_alloc.c \
+			gsm_subscriber_base.c \
+			handover_decision.c handover_logic.c meas_rep.c \
+			rest_octets.c system_information.c \
+			e1_config.c \
+			transaction.c \
+			bsc_api.c bsc_msc.c bsc_vty.c \
+			gsm_04_08_utils.c \
+			bsc_init.c
 
-osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_rf.c osmo_bsc_vty.c osmo_bsc_api.c \
-		   osmo_bsc_grace.c osmo_bsc_msc.c osmo_bsc_sccp.c \
-		   osmo_bsc_filter.c osmo_bsc_bssap.c osmo_bsc_audio.c \
-		   $(top_srcdir)/src/debug.c $(top_srcdir)/src/bsc_msc.c \
-		   $(top_srcdir)/src/bsc_init.c
-osmo_bsc_LDADD = $(top_builddir)/src/libvty.a \
-		 $(top_builddir)/src/libmgcp.a $(top_builddir)/src/libbsc.a \
-		 $(LIBOSMOSCCP_LIBS)

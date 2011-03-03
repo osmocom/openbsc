@@ -16,11 +16,9 @@ libgb_a_SOURCES = gprs_ns.c gprs_ns_frgre.c gprs_ns_vty.c \
 		  gprs_bssgp.c gprs_bssgp_util.c gprs_bssgp_vty.c \
 		  gprs_llc.c gprs_llc_vty.c crc24.c
 
-osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c \
-			$(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
-osmo_gbproxy_LDADD = libgb.a $(top_builddir)/src/libvty.a
+osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c
+osmo_gbproxy_LDADD = libgb.a $(top_builddir)/src/common/libcommon.a
 
 osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
-			sgsn_main.c sgsn_vty.c sgsn_libgtp.c \
-			$(top_srcdir)/src/socket.c $(top_srcdir)/src/debug.c
-osmo_sgsn_LDADD = libgb.a $(top_builddir)/src/libvty.a -lgtp
+			sgsn_main.c sgsn_vty.c sgsn_libgtp.c 
+osmo_sgsn_LDADD = libgb.a $(top_builddir)/src/common/libcommon.a -lgtp

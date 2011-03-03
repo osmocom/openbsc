@@ -75,6 +75,11 @@ struct gsm_lai {
 
 static u_int32_t new_callref = 0x80000001;
 
+void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
+{
+	net->mncc_recv(net, msg);
+}
+
 static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection *conn,
 			      struct gsm_trans *trans)
 {

@@ -1,0 +1,19 @@
+INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
+
+noinst_LIBRARIES = libmsc.a
+
+libmsc_a_SOURCES =	auth.c \
+			db.c \
+			gsm_04_08.c gsm_04_11.c gsm_04_80.c \
+			gsm_subscriber.c \
+			mncc.c mncc_builtin.c mncc_sock.c \
+			rrlp.c \
+			silent_call.c \
+			sms_queue.c \
+			token_auth.c \
+			ussd.c \
+			vty_interface_layer3.c \
+			osmo_msc.c
+
