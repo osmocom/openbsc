@@ -5,5 +5,5 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
 bin_PROGRAMS = bsc_mgcp
 
 bsc_mgcp_SOURCES = mgcp_main.c
-bsc_mgcp_LDADD = $(top_srcdir)/src/common/libcommon.a $(top_srcdir)/src/mgcp/libmgcp.a \
+bsc_mgcp_LDADD = $(top_builddir)/src/common/libcommon.a $(top_builddir)/src/mgcp/libmgcp.a \
 		$(LIBOSMOVTY_LIBS)
