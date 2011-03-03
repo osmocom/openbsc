@@ -36,6 +36,9 @@ struct gsm_audio_support {
 };
 
 struct osmo_msc_data {
+	/* Back pointer */
+	struct gsm_network *network;
+
 	/* Connection data */
 	char *bsc_token;
 	int msc_port;
