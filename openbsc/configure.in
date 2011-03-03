@@ -95,7 +95,8 @@ AC_OUTPUT(
     src/common/Makefile
     src/osmo-nitb/Makefile
     src/osmo-bsc/Makefile
-    src/nat/Makefile
+    src/osmo-bsc_nat/Makefile
+    src/osmo-bsc_mgcp/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
     src/gprs/Makefile

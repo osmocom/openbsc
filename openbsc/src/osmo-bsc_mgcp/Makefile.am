@@ -2,12 +2,8 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
 
-SUBDIRS = common abis mgcp bsc trau osmo-nitb osmo-bsc_mgcp utils ipaccess gprs
+bin_PROGRAMS = bsc_mgcp
 
-# Conditional modules
-if BUILD_NAT
-SUBDIRS += osmo-bsc_nat
-endif
-if BUILD_BSC
-SUBDIRS += osmo-bsc
-endif
+bsc_mgcp_SOURCES = mgcp_main.c
+bsc_mgcp_LDADD = $(top_srcdir)/src/common/libcommon.a $(top_srcdir)/src/mgcp/libmgcp.a \
+		$(LIBOSMOVTY_LIBS)
