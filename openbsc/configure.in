@@ -87,19 +87,19 @@ AC_OUTPUT(
     include/openbsc/Makefile
     include/Makefile
     src/Makefile
-    src/trau/Makefile
-    src/abis/Makefile
-    src/bsc/Makefile
-    src/msc/Makefile
-    src/mgcp/Makefile
-    src/common/Makefile
+    src/libtrau/Makefile
+    src/libabis/Makefile
+    src/libbsc/Makefile
+    src/libmsc/Makefile
+    src/libmgcp/Makefile
+    src/libcommon/Makefile
     src/osmo-nitb/Makefile
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
     src/osmo-bsc_mgcp/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
-    src/gb/Makefile
+    src/libgb/Makefile
     src/gprs/Makefile
     tests/Makefile
     tests/debug/Makefile

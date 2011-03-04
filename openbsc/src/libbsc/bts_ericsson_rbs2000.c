@@ -29,7 +29,7 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/signal.h>
 
-#include "../abis/input/lapd.h"
+#include "../libabis/input/lapd.h"
 
 static void bootstrap_om_bts(struct gsm_bts *bts)
 {

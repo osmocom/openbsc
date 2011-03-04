@@ -4,7 +4,9 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 noinst_PROGRAMS = mgcp_test
 
-mgcp_test_SOURCES = mgcp_test.c \
-			$(top_srcdir)/src/mgcp/mgcp_protocol.c \
-			$(top_srcdir)/src/mgcp/mgcp_network.c
-mgcp_test_LDADD = $(top_builddir)/src/libbsc.a $(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)
+mgcp_test_SOURCES = mgcp_test.c
+
+mgcp_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+		$(top_builddir)/src/libmgcp/libmgcp.a \
+		$(top_builddir)/src/libcommon/libcommon.a \
+		$(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)

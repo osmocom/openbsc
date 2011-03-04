@@ -9,6 +9,10 @@ osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_rf.c osmo_bsc_vty.c osmo_bsc_api.c \
 		   osmo_bsc_grace.c osmo_bsc_msc.c osmo_bsc_sccp.c \
 		   osmo_bsc_filter.c osmo_bsc_bssap.c osmo_bsc_audio.c
 # once again since TRAU uses CC symbol :(
-osmo_bsc_LDADD = ../bsc/libbsc.a ../msc/libmsc.a ../bsc/libbsc.a \
-		../abis/libabis.a ../trau/libtrau.a ../common/libcommon.a \
+osmo_bsc_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+		 $(top_builddir)/src/libmsc/libmsc.a \
+		 $(top_builddir)/src/libbsc/libbsc.a \
+		 $(top_builddir)/src/libabis/libabis.a \
+		 $(top_builddir)/src/libtrau/libtrau.a \
+		 $(top_builddir)/src/libcommon/libcommon.a \
 		 $(LIBOSMOSCCP_LIBS)

@@ -7,7 +7,9 @@ bin_PROGRAMS = osmo-bsc_nat
 
 osmo_bsc_nat_SOURCES = bsc_filter.c bsc_mgcp_utils.c bsc_nat.c bsc_nat_utils.c \
 		  bsc_nat_vty.c bsc_sccp.c bsc_ussd.c
-osmo_bsc_nat_LDADD = $(top_builddir)/src/common/libcommon.a \
-		$(top_builddir)/src/mgcp/libmgcp.a $(top_builddir)/src/bsc/libbsc.a \
-		$(top_builddir)/src/abis/libabis.a $(top_builddir)/src/trau/libtrau.a \
+osmo_bsc_nat_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
+		$(top_builddir)/src/libmgcp/libmgcp.a \
+		$(top_builddir)/src/libbsc/libbsc.a \
+		$(top_builddir)/src/libabis/libabis.a \
+		$(top_builddir)/src/libtrau/libtrau.a \
 		-lrt $(LIBOSMOSCCP_LIBS)

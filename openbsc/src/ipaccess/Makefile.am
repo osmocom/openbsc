@@ -9,11 +9,13 @@ ipaccess_find_SOURCES = ipaccess-find.c
 ipaccess_config_SOURCES = ipaccess-config.c ipaccess-firmware.c network_listen.c
 
 # FIXME: resolve the bogus dependencies patched around here:
-ipaccess_config_LDADD = $(top_builddir)/src/bsc/libbsc.a $(top_builddir)/src/msc/libmsc.a \
-			$(top_builddir)/src/abis/libabis.a $(top_builddir)/src/bsc/libbsc.a \
-			$(top_builddir)/src/trau/libtrau.a \
-			$(top_builddir)/src/common/libcommon.a \
+ipaccess_config_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+			$(top_builddir)/src/libmsc/libmsc.a \
+			$(top_builddir)/src/libabis/libabis.a \
+			$(top_builddir)/src/libbsc/libbsc.a \
+			$(top_builddir)/src/libtrau/libtrau.a \
+			$(top_builddir)/src/libcommon/libcommon.a \
 			-ldl -ldbi $(LIBCRYPT)
 
 ipaccess_proxy_SOURCES = ipaccess-proxy.c
-ipaccess_proxy_LDADD = $(top_builddir)/src/common/libcommon.a
+ipaccess_proxy_LDADD = $(top_builddir)/src/libcommon/libcommon.a

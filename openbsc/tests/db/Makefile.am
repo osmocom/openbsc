@@ -5,5 +5,11 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 noinst_PROGRAMS = db_test
 
 db_test_SOURCES = db_test.c
-db_test_LDADD = $(top_builddir)/src/libbsc.a $(top_builddir)/src/libmsc.a $(top_builddir)/src/libbsc.a $(LIBOSMOCORE_LIBS) -ldl -ldbi
+db_test_LDADD =	$(top_builddir)/src/libbsc/libbsc.a \
+		$(top_builddir)/src/libmsc/libmsc.a \
+		$(top_builddir)/src/libbsc/libbsc.a \
+		$(top_builddir)/src/libabis/libabis.a \
+		$(top_builddir)/src/libtrau/libtrau.a \
+		$(top_builddir)/src/libcommon/libcommon.a \
+		$(LIBOSMOCORE_LIBS) -ldl -ldbi
 
