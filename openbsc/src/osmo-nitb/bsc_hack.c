@@ -211,6 +211,7 @@ extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
 extern int bts_model_rbs2k_init(void);
+extern int bts_model_hslfemto_init(void);
 void talloc_ctx_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
@@ -241,6 +242,7 @@ int main(int argc, char **argv)
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 	bts_model_rbs2k_init();
+	bts_model_hslfemto_init();
 
 	e1inp_init();
 

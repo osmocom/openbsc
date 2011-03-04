@@ -636,11 +636,14 @@ static void error_timeout_cb(void *data)
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 }
 
+static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
+
 /* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
 static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+	int rc;
 
 	if (lchan->state == LCHAN_S_REL_ERR) {
 		LOGP(DRSL, LOGL_NOTICE, "%s is in error state not sending release.\n",
@@ -671,8 +674,15 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 				   msg->trx->bts->network->T3111 + 2, 0);
 	}
 
+	rc =  abis_rsl_sendmsg(msg);
+
 	/* BTS will respond by RF CHAN REL ACK */
-	return abis_rsl_sendmsg(msg);
+
+	/* The HSL Femto seems to 'forget' sending a REL ACK for TS1...TS7 */
+	if (lchan->ts->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO && lchan->ts->nr != 0)
+		rc = rsl_rx_rf_chan_rel_ack(lchan);
+
+	return rc;
 }
 
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)

@@ -424,6 +424,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_BS11,
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
+	GSM_BTS_TYPE_HSL_FEMTO,
 };
 
 struct vty;
@@ -600,6 +601,9 @@ struct gsm_bts {
 				struct llist_head conn_groups;
 			} con;
 		} rbs2000;
+		struct {
+			unsigned long serno;
+		} hsl;
 	};
 
 	/* Not entirely sure how ip.access specific this is */

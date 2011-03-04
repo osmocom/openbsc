@@ -253,6 +253,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  Unit ID: %u/%u/0, OML Stream ID 0x%02x%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id,
 			bts->oml_tei, VTY_NEWLINE);
+	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
+		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
@@ -497,13 +499,19 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				VTY_NEWLINE);
 		}
 	}
-	if (is_ipaccess_bts(bts)) {
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 		vty_out(vty, "  oml ip.access stream_id %u%s", bts->oml_tei, VTY_NEWLINE);
-	} else {
+		break;
+	case GSM_BTS_TYPE_HSL_FEMTO:
+		vty_out(vty, "  hsl serial-number %lu%s", bts->hsl.serno, VTY_NEWLINE);
+		break;
+	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
 		vty_out(vty, "  oml e1 tei %u%s", bts->oml_tei, VTY_NEWLINE);
+		break;
 	}
 
 	/* if we have a limit, write it */
@@ -1580,6 +1588,23 @@ DEFUN(cfg_bts_unit_id,
 
 	bts->ip_access.site_id = site_id;
 	bts->ip_access.bts_id = bts_id;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_serno,
+      cfg_bts_serno_cmd,
+      "hsl serial-number STRING",
+      "Set the HSL Serial Number of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->type != GSM_BTS_TYPE_HSL_FEMTO) {
+		vty_out(vty, "%% BTS is not of HSL type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->hsl.serno = strtoul(argv[0], NULL, 10);
 
 	return CMD_SUCCESS;
 }
@@ -2696,6 +2721,7 @@ int bsc_vty_init(void)
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_serno_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);

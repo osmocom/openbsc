@@ -416,6 +416,7 @@ static const struct value_string bts_types[] = {
 	{ GSM_BTS_TYPE_BS11,	"bs11" },
 	{ GSM_BTS_TYPE_NANOBTS,	"nanobts" },
 	{ GSM_BTS_TYPE_RBS2000,	"rbs2000" },
+	{ GSM_BTS_TYPE_HSL_FEMTO, "hsl_femto" },
 	{ 0,			NULL }
 };
 
@@ -571,6 +572,8 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	bts->model = model;
 
 	switch (bts->type) {
+	case GSM_BTS_TYPE_HSL_FEMTO:
+		bts->c0->rsl_tei = 0;
 	case GSM_BTS_TYPE_NANOBTS:
 		/* Set the default OML Stream ID to 0xff */
 		bts->oml_tei = 0xff;

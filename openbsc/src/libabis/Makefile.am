@@ -7,6 +7,7 @@ noinst_LIBRARIES = libabis.a
 libabis_a_SOURCES = e1_input.c e1_input_vty.c \
 			input/misdn.c		\
 			input/ipaccess.c	\
+			input/hsl.c		\
 			input/dahdi.c		\
 			input/lapd.c
 

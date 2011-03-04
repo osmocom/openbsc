@@ -370,9 +370,14 @@ static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* ip.access nanoBTS needs l2_plen!! */
-	if (is_ipaccess_bts(bts)) {
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
+		break;
+	default:
+		break;
 	}
 
 	si5 = (struct gsm48_system_information_type_5 *) output;
@@ -397,9 +402,14 @@ static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
 	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
 
 	/* ip.access nanoBTS needs l2_plen!! */
-	if (is_ipaccess_bts(bts)) {
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_HSL_FEMTO:
 		*output++ = (l2_plen << 2) | 1;
 		l2_plen++;
+		break;
+	default:
+		break;
 	}
 
 	si6 = (struct gsm48_system_information_type_6 *) output;

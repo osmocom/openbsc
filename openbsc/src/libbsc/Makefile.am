@@ -8,7 +8,11 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			abis_om2000.c abis_om2000_vty.c \
 			abis_rsl.c bsc_rll.c \
 			paging.c \
-			bts_ericsson_rbs2000.c bts_ipaccess_nanobts.c bts_siemens_bs11.c bts_unknown.c \
+			bts_ericsson_rbs2000.c \
+			bts_ipaccess_nanobts.c \
+			bts_siemens_bs11.c \
+			bts_hsl_femtocell.c \
+			bts_unknown.c \
 			chan_alloc.c \
 			gsm_subscriber_base.c \
 			handover_decision.c handover_logic.c meas_rep.c \

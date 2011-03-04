@@ -92,13 +92,14 @@ int bsc_shutdown_net(struct gsm_network *net)
 static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i)
 {
 	struct gsm_bts *bts = trx->bts;
-	int rc;
+	int si_len, rc, j;
 
 	/* Only generate SI if this SI is not in "static" (user-defined) mode */
 	if (!(bts->si_mode_static & (1 << i))) {
 		rc = gsm_generate_si(bts, i);
 		if (rc < 0)
 			return rc;
+		si_len = rc;
 	}
 
 	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
@@ -109,8 +110,25 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 	case SYSINFO_TYPE_5bis:
 	case SYSINFO_TYPE_5ter:
 	case SYSINFO_TYPE_6:
-		rc = rsl_sacch_filling(trx, gsm_sitype2rsl(i),
-				       GSM_BTS_SI(bts, i), rc);
+		if (trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
+			/* HSL has mistaken SACCH INFO MODIFY for SACCH FILLING,
+			 * so we need a special workaround here */
+			/* This assumes a combined BCCH and TCH on TS1...7 */
+			for (j = 0; j < 4; j++)
+				rsl_sacch_info_modify(&trx->ts[0].lchan[j],
+						      gsm_sitype2rsl(i),
+						      GSM_BTS_SI(bts, i), si_len);
+			for (j = 1; j < 8; j++) {
+				rsl_sacch_info_modify(&trx->ts[j].lchan[0],
+						      gsm_sitype2rsl(i),
+						      GSM_BTS_SI(bts, i), si_len);
+				rsl_sacch_info_modify(&trx->ts[j].lchan[1],
+						      gsm_sitype2rsl(i),
+						      GSM_BTS_SI(bts, i), si_len);
+			}
+		} else
+			rc = rsl_sacch_filling(trx, gsm_sitype2rsl(i),
+					       GSM_BTS_SI(bts, i), rc);
 		break;
 	default:
 		rc = rsl_bcch_info(trx, gsm_sitype2rsl(i),
@@ -423,9 +441,16 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
-		bootstrap_bts(bts);
-		if (!is_ipaccess_bts(bts))
+		rc = bootstrap_bts(bts);
+
+		switch (bts->type) {
+		case GSM_BTS_TYPE_NANOBTS:
+		case GSM_BTS_TYPE_HSL_FEMTO:
+			break;
+		default:
 			rc = e1_reconfig_bts(bts);
+			break;
+		}
 
 		if (rc < 0) {
 			fprintf(stderr, "Error in E1 input driver setup\n");
@@ -435,6 +460,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 
 	/* initialize nanoBTS support omce */
 	rc = ipaccess_setup(bsc_gsmnet);
+	rc = hsl_setup(bsc_gsmnet);
 
 	return 0;
 }

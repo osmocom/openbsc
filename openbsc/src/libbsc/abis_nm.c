@@ -1080,6 +1080,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NM_MT_IPACC_RESTART_NACK:
 		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
 		break;
+	case NM_MT_SET_BTS_ATTR_ACK:
+		/* The HSL wants an OPSTART _after_ the SI has been set */
+		if (mb->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
+			abis_nm_opstart(mb->trx->bts, NM_OC_BTS, 255, 255, 255);
+		}
+		break;
 	}
 
 	abis_nm_queue_send_next(mb->trx->bts);
