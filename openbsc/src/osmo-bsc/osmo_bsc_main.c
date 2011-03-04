@@ -41,7 +41,7 @@
 #include <unistd.h>
 
 
-#include "bscconfig.h"
+#include "../../bscconfig.h"
 
 static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;

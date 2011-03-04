@@ -22,7 +22,7 @@
  *
  */
 
-#include "../../bscconfig.h"
+#include "../../../bscconfig.h"
 
 #ifdef HAVE_DAHDI_USER_H
 

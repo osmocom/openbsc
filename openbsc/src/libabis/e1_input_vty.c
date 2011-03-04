@@ -36,7 +36,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/debug.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 #define E1_DRIVER_NAMES		"(misdn|dahdi)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card\n" \

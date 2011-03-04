@@ -17,7 +17,7 @@
  *
  */
 
-#include "bscconfig.h"
+#include "../../bscconfig.h"
 
 const char *openbsc_copyright =
 	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\r\n"

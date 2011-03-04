@@ -54,7 +54,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 #define NUM_E1_TS	32
 

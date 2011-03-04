@@ -40,7 +40,7 @@
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 /* MCC and MNC for the Location Area Identifier */
 static struct log_target *stderr_target;

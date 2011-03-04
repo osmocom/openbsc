@@ -50,7 +50,7 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
 
-#include "../bscconfig.h"
+#include "../../bscconfig.h"
 
 /* FIXME: this should go to some common file */
 static const struct value_string gprs_ns_timer_strs[] = {
