@@ -7,11 +7,13 @@ EXTRA_DIST = bsc_data.c
 noinst_PROGRAMS = bsc_nat_test
 
 bsc_nat_test_SOURCES = bsc_nat_test.c \
-			$(top_srcdir)/src/common_vty.c \
-			$(top_srcdir)/src/nat/bsc_filter.c \
-			$(top_srcdir)/src/nat/bsc_sccp.c \
-			$(top_srcdir)/src/nat/bsc_nat_utils.c \
-			$(top_srcdir)/src/nat/bsc_mgcp_utils.c \
-			$(top_srcdir)/src/mgcp/mgcp_protocol.c \
-			$(top_srcdir)/src/mgcp/mgcp_network.c
-bsc_nat_test_LDADD = $(top_builddir)/src/libbsc.a $(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_filter.c \
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_sccp.c \
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_utils.c \
+			$(top_srcdir)/src/osmo-bsc_nat/bsc_mgcp_utils.c
+bsc_nat_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+			$(top_srcdir)/src/libmgcp/libmgcp.a \
+			$(top_srcdir)/src/libabis/libabis.a \
+			$(top_srcdir)/src/libtrau/libtrau.a \
+			$(top_srcdir)/src/libcommon/libcommon.a \
+			$(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)
