@@ -4,4 +4,4 @@ noinst_PROGRAMS = debug_test
 
 debug_test_SOURCES = debug_test.c
 debug_test_LDADD = 	$(LIBOSMOCORE_LIBS) \
-			$(top_srcdir)/src/libcommon/libcommon.a
+			$(top_builddir)/src/libcommon/libcommon.a
