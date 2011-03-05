@@ -182,13 +182,46 @@ enum abis_om2k_dei {
 	OM2K_DEI_MAIO				= 0x2b,
 	OM2K_DEI_OP_INFO			= 0x2e,
 	OM2K_DEI_POWER				= 0x2f,
+	OM2K_DEI_REASON_CODE			= 0x32,
 	OM2K_DEI_RX_DIVERSITY			= 0x33,
+	OM2K_DEI_RESULT_CODE			= 0x35,
 	OM2K_DEI_TF_MODE			= 0x3a,
 	OM2K_DEI_TS_NR				= 0x3c,
 	OM2K_DEI_EXT_RANGE			= 0x47,
 	OM2K_DEI_NEGOT_REC1			= 0x90,
 	OM2K_DEI_NEGOT_REC2			= 0x91,
 	OM2K_DEI_FS_OFFSET			= 0x98,
+};
+
+const struct tlv_definition om2k_att_tlvdef = {
+	.def = {
+		[OM2K_DEI_BCC] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_BSIC] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_CAL_TIME] =		{ TLV_TYPE_FIXED, 6 },
+		[OM2K_DEI_COMBINATION] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_CON_CONN_LIST] =	{ TLV_TYPE_TLV },
+		[OM2K_DEI_END_LIST_NR] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_FILLING_MARKER] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_FN_OFFSET] =		{ TLV_TYPE_FIXED, 2 },
+		[OM2K_DEI_FREQ_LIST] =		{ TLV_TYPE_TLV },
+		[OM2K_DEI_FREQ_SPEC_RX] =	{ TLV_TYPE_FIXED, 2 },
+		[OM2K_DEI_FREQ_SPEC_TX] =	{ TLV_TYPE_FIXED, 2 },
+		[OM2K_DEI_HSN] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_IS_CONN_LIST] =	{ TLV_TYPE_TLV },
+		[OM2K_DEI_LIST_NR] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_MAIO] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_OP_INFO] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_POWER] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_REASON_CODE] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_RX_DIVERSITY] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_RESULT_CODE] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_TF_MODE] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_TS_NR] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_EXT_RANGE] =		{ TLV_TYPE_TV },
+		[OM2K_DEI_NEGOT_REC1] =		{ TLV_TYPE_TLV },
+		[OM2K_DEI_NEGOT_REC2] =		{ TLV_TYPE_TLV },
+		[OM2K_DEI_FS_OFFSET] =		{ TLV_TYPE_FIXED, 5 },
+	},
 };
 
 static const struct value_string om2k_msgcode_vals[] = {
@@ -520,6 +553,11 @@ static struct msgb *om2k_msgb_alloc(void)
 				   "OM2000");
 }
 
+static int abis_om2k_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
+{
+	return tlv_parse(tp, &om2k_att_tlvdef, buf, len, 0, 0);
+}
+
 static char *om2k_mo_name(const struct abis_om2k_mo *mo)
 {
 	static char mo_buf[64];
@@ -827,6 +865,7 @@ static int put_freq_list(uint8_t *buf, uint16_t arfcn)
 static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
 {
 	uint8_t *cur = list;
+	int len;
 
 	if (ts->hopping.enabled) {
 		unsigned int i;
@@ -837,7 +876,9 @@ static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
 	} else
 		cur += put_freq_list(cur, ts->trx->arfcn);
 
-	return (cur - list);
+	len = cur - list;
+
+	return len;
 }
 
 int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
@@ -978,6 +1019,42 @@ static int om2k_rx_op_info_ack(struct msgb *msg)
 	return 0;
 }
 
+const struct value_string om2k_result_strings[] = {
+	{ 0x02, "Wrong state or out of sequence" },
+	{ 0x03, "File error" },
+	{ 0x04, "Fault, unspecified" },
+	{ 0x05, "Tuning fault" },
+	{ 0x06, "Protocol error" },
+	{ 0x07, "MO not connected" },
+	{ 0x08, "Parameter error" },
+	{ 0x09, "Optional function not supported" },
+	{ 0x0a, "Local access state LOCALLY DISCONNECTED" },
+	{ 0, NULL }
+};
+
+static int om2k_rx_nack(struct msgb *msg)
+{
+	struct abis_om2k_hdr *o2h = msgb_l2(msg);
+	uint16_t msg_type = ntohs(o2h->msg_type);
+	struct tlv_parsed tp;
+
+	LOGP(DNM, LOGL_ERROR, "Rx MO=%s %s", om2k_mo_name(&o2h->mo),
+		get_value_string(om2k_msgcode_vals, msg_type));
+
+	abis_om2k_tlv_parse(&tp, o2h->data, o2h->om.length - 6);
+	if (TLVP_PRESENT(&tp, OM2K_DEI_REASON_CODE))
+		LOGPC(DNM, LOGL_ERROR, ", Reason 0x%02x",
+			*TLVP_VAL(&tp, OM2K_DEI_REASON_CODE));
+
+	if (TLVP_PRESENT(&tp, OM2K_DEI_RESULT_CODE))
+		LOGPC(DNM, LOGL_ERROR, ", Result %s",
+			get_value_string(om2k_result_strings,
+					 *TLVP_VAL(&tp, OM2K_DEI_RESULT_CODE)));
+	LOGPC(DNM, LOGL_ERROR, "\n");
+
+	return 0;
+}
+
 int abis_om2k_rcvmsg(struct msgb *msg)
 {
 	struct gsm_bts *bts = msg->trx->bts;
@@ -1072,6 +1149,18 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_ENABLE_REQ_ACK:
 	case OM2K_MSGT_ALARM_STATUS_REQ_ACK:
 	case OM2K_MSGT_DISABLE_REQ_ACK:
+		break;
+	case OM2K_MSGT_START_REQ_REJ:
+	case OM2K_MSGT_CON_CONF_REQ_REJ:
+	case OM2K_MSGT_IS_CONF_REQ_REJ:
+	case OM2K_MSGT_TX_CONF_REQ_REJ:
+	case OM2K_MSGT_RX_CONF_REQ_REJ:
+	case OM2K_MSGT_TS_CONF_REQ_REJ:
+	case OM2K_MSGT_TF_CONF_REQ_REJ:
+	case OM2K_MSGT_ENABLE_REQ_REJ:
+	case OM2K_MSGT_ALARM_STATUS_REQ_REJ:
+	case OM2K_MSGT_DISABLE_REQ_REJ:
+		rc = om2k_rx_nack(msg);
 		break;
 	default:
 		LOGP(DNM, LOGL_NOTICE, "Rx unhandled OM2000 msg %s\n",
