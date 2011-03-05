@@ -1214,7 +1214,9 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		break;
 	case OM2K_MSGT_START_REQ_REJ:
 	case OM2K_MSGT_CONNECT_REJ:
+	case OM2K_MSGT_OP_INFO_REJ:
 	case OM2K_MSGT_DISCONNECT_REJ:
+	case OM2K_MSGT_TEST_REQ_REJ:
 	case OM2K_MSGT_CON_CONF_REQ_REJ:
 	case OM2K_MSGT_IS_CONF_REQ_REJ:
 	case OM2K_MSGT_TX_CONF_REQ_REJ:
