@@ -214,9 +214,11 @@ enum abis_om2k_dei {
 	OM2K_DEI_EXT_RANGE			= 0x47,
 	OM2K_DEI_REQ_IND			= 0x48,
 	OM2K_DEI_REPL_UNIT_MAP			= 0x50,
+	OM2K_DEI_ICM_BOUND_PARAMS		= 0x74,
 	OM2K_DEI_LSC				= 0x79,
 	OM2K_DEI_LSC_FILT_TIME			= 0x7a,
 	OM2K_DEI_CALL_SUPV_TIME			= 0x7b,
+	OM2K_DEI_ICM_CHAN_RATE			= 0x7e,
 	OM2K_DEI_HW_INFO_SIG			= 0x84,
 	OM2K_DEI_TTA				= 0x87,
 	OM2K_DEI_CAPA_SIG			= 0x8a,
@@ -279,9 +281,11 @@ const struct tlv_definition om2k_att_tlvdef = {
 		[OM2K_DEI_EXT_RANGE] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_REQ_IND] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_REPL_UNIT_MAP] =	{ TLV_TYPE_FIXED, 6 },
+		[OM2K_DEI_ICM_BOUND_PARAMS] =	{ TLV_TYPE_FIXED, 5 },
 		[OM2K_DEI_LSC] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_LSC_FILT_TIME] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_CALL_SUPV_TIME] =	{ TLV_TYPE_TV },
+		[OM2K_DEI_ICM_CHAN_RATE] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_HW_INFO_SIG] =	{ TLV_TYPE_FIXED, 2 },
 		[OM2K_DEI_TTA] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_CAPA_SIG] =		{ TLV_TYPE_FIXED, 2 },
@@ -960,6 +964,8 @@ static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
 	return len;
 }
 
+const uint8_t icm_bound_params[] = { 0x02, 0x06, 0x0c, 0x16, 0x06 };
+
 int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 {
 	struct msgb *msg = om2k_msgb_alloc();
@@ -991,12 +997,25 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 	msgb_tv_put(msg, OM2K_DEI_INTERF_REJ_COMB, 0x00);
 	switch (ts->pchan) {
 	case GSM_PCHAN_CCCH:
-	case GSM_PCHAN_CCCH_SDCCH4:
 		msgb_tv_put(msg, OM2K_DEI_BA_PA_MFRMS, 0x06);
 		msgb_tv_put(msg, OM2K_DEI_BS_AG_BKS_RES, 0x01);
 		msgb_tv_put(msg, OM2K_DEI_DRX_DEV_MAX, 0x05);
 		/* Repeat Paging/IMM.ASS: True, Allow Paging Type 3: Yes, Page for 5 seconds (default) */
 		msgb_tv_put(msg, OM2K_DEI_CCCH_OPTIONS, 0x01);
+		break;
+	case GSM_PCHAN_CCCH_SDCCH4:
+		msgb_tv_put(msg, OM2K_DEI_T3105, 0x04);
+		msgb_tv_put(msg, OM2K_DEI_NY1, 35);
+		msgb_tv_put(msg, OM2K_DEI_BA_PA_MFRMS, 0x06);
+		msgb_tv_put(msg, OM2K_DEI_CBCH_INDICATOR, 0);
+		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
+		msgb_tv_put(msg, OM2K_DEI_BS_AG_BKS_RES, 0x01);
+		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
+		msgb_tv_put(msg, OM2K_DEI_DRX_DEV_MAX, 0x05);
+		/* Repeat Paging/IMM.ASS: True, Allow Paging Type 3: Yes, Page for 5 seconds (default) */
+		msgb_tv_put(msg, OM2K_DEI_CCCH_OPTIONS, 0x01);
+		msgb_tv_fixed_put(msg, OM2K_DEI_ICM_BOUND_PARAMS,
+				  sizeof(icm_bound_params), icm_bound_params);
 		break;
 	case GSM_PCHAN_SDCCH8_SACCH8C:
 		msgb_tv_put(msg, OM2K_DEI_T3105, 0x04);
@@ -1005,15 +1024,22 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
 		/* Disable RF RESOURCE INDICATION on idle channels */
 		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
+		msgb_tv_fixed_put(msg, OM2K_DEI_ICM_BOUND_PARAMS,
+				  sizeof(icm_bound_params), icm_bound_params);
 		break;
 	default:
 		msgb_tv_put(msg, OM2K_DEI_T3105, 0x04);
 		msgb_tv_put(msg, OM2K_DEI_NY1, 35);
-		msgb_tv_put(msg, OM2K_DEI_CBCH_INDICATOR, 0);
 		msgb_tv_put(msg, OM2K_DEI_TSC, ts->trx->bts->tsc);
 		/* Disable RF RESOURCE INDICATION on idle channels */
 		msgb_tv_put(msg, OM2K_DEI_ICM_INDICATOR, 0);
+		msgb_tv_fixed_put(msg, OM2K_DEI_ICM_BOUND_PARAMS,
+				  sizeof(icm_bound_params), icm_bound_params);
 		msgb_tv_put(msg, OM2K_DEI_TTA, 10); /* Timer for Time Alignment */
+		if (ts->pchan == GSM_PCHAN_TCH_H)
+			msgb_tv_put(msg, OM2K_DEI_ICM_CHAN_RATE, 1); /* TCH/H */
+		else
+			msgb_tv_put(msg, OM2K_DEI_ICM_CHAN_RATE, 0); /* TCH/F */
 		msgb_tv_put(msg, OM2K_DEI_LSC, 1); /* enabled */
 		msgb_tv_put(msg, OM2K_DEI_LSC_FILT_TIME, 160);	/* units of 100ms */
 		msgb_tv_put(msg, OM2K_DEI_CALL_SUPV_TIME, 8);
