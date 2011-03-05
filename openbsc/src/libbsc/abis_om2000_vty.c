@@ -449,7 +449,7 @@ DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 			abis_om2k_tx_rx_conf_req(trx);
 			break;
 		case OM2K_MO_CLS_TX:
-			abis_om2k_tx_rx_conf_req(trx);
+			abis_om2k_tx_tx_conf_req(trx);
 			break;
 		default:
 			break;
