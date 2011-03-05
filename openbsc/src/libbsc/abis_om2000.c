@@ -814,6 +814,15 @@ static uint8_t pchan2comb(enum gsm_phys_chan_config pchan)
 	}
 }
 
+static int put_freq_list(uint8_t *buf, uint16_t arfcn)
+{
+	buf[0] = 0x00; /* TX/RX address */
+	buf[1] = (arfcn >> 8);
+	buf[2] = (arfcn & 0xff);
+
+	return 3;
+}
+
 /* Compute a frequency list in OM2000 fomrmat */
 static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
 {
@@ -822,17 +831,12 @@ static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
 	if (ts->hopping.enabled) {
 		unsigned int i;
 		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
-			if (bitvec_get_bit_pos(&ts->hopping.arfcns, i)) {
-				*cur++ = 0x00;
-				*cur++ = i >> 8;
-				*cur++ = i & 0xff;
-			}
+			if (bitvec_get_bit_pos(&ts->hopping.arfcns, i))
+				cur += put_freq_list(cur, i);
 		}
-	} else {
-		*cur++ = 0x00; /* TX/RX address */
-		*cur++ = ts->trx->arfcn >> 8;
-		*cur++ = ts->trx->arfcn && 0xff;
-	}
+	} else
+		cur += put_freq_list(cur, ts->trx->arfcn);
+
 	return (cur - list);
 }
 
@@ -846,6 +850,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 
 	om2k_ts_to_mo(&mo, ts);
 
+	memset(freq_list, 0, sizeof(freq_list));
 	freq_list_len = om2k_gen_freq_list(freq_list, ts);
 	if (freq_list_len < 0)
 		return freq_list_len;
