@@ -654,10 +654,19 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 	case OM2K_MO_CLS_TRXC:
 	case OM2K_MO_CLS_TX:
 	case OM2K_MO_CLS_RX:
-	case OM2K_MO_CLS_TS:
 		/* Route through per-TRX OML Link to the appropriate TRX */
 		to_trx_oml = 1;
 		msg->trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
+		if (!msg->trx) {
+			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
+				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
+			return -ENODEV;
+		}
+		break;
+	case OM2K_MO_CLS_TS:
+		/* Route through per-TRX OML Link to the appropriate TRX */
+		to_trx_oml = 1;
+		msg->trx = gsm_bts_trx_by_nr(bts, o2h->mo.assoc_so);
 		if (!msg->trx) {
 			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
