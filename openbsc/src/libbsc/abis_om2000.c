@@ -719,7 +719,7 @@ static void om2k_trx_to_mo(struct abis_om2k_mo *mo,
 	mo->class = cls;
 	mo->bts = 0;
 	mo->inst = trx->nr;
-	mo->assoc_so = 0;
+	mo->assoc_so = 255;
 }
 
 static void om2k_ts_to_mo(struct abis_om2k_mo *mo,
