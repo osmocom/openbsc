@@ -140,7 +140,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
-			hslfemto_bootstrap_om(isd->trx->bts);
+			if (isd->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO)
+				hslfemto_bootstrap_om(isd->trx->bts);
 			break;
 		}
 	}
