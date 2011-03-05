@@ -117,7 +117,12 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_RESET_CMD		 	= 0x0078,
 	OM2K_MSGT_RESET_COMPL			= 0x007a,
 	OM2K_MSGT_RESET_REJ			= 0x007b,
-
+	OM2K_MSGT_RX_CONF_REQ			= 0x007c,
+	OM2K_MSGT_RX_CONF_REQ_ACK		= 0x007e,
+	OM2K_MSGT_RX_CONF_REQ_REJ		= 0x007f,
+	OM2K_MSGT_RX_CONF_RES_ACK		= 0x0080,
+	OM2K_MSGT_RX_CONF_RES_NACK		= 0x0081,
+	OM2K_MSGT_RX_CONF_RES			= 0x0082,
 	OM2K_MSGT_START_REQ			= 0x0084,
 	OM2K_MSGT_START_REQ_ACK			= 0x0086,
 	OM2K_MSGT_START_REQ_REJ			= 0x0087,
@@ -135,32 +140,47 @@ enum abis_om2k_msgtype {
 	OM2K_MSGT_TEST_RES_NACK			= 0x0099,
 	OM2K_MSGT_TEST_RES			= 0x009a,
 
+	OM2K_MSGT_TS_CONF_REQ			= 0x00a8,
+	OM2K_MSGT_TS_CONF_REQ_ACK		= 0x00aa,
+	OM2K_MSGT_TS_CONF_REQ_REJ		= 0x00ab,
+	OM2K_MSGT_TS_CONF_RES_ACK		= 0x00ac,
+	OM2K_MSGT_TS_CONF_RES_NACK		= 0x00ad,
+	OM2K_MSGT_TS_CONF_RES			= 0x00ae,
+	OM2K_MSGT_TX_CONF_REQ			= 0x00b0,
+	OM2K_MSGT_TX_CONF_REQ_ACK		= 0x00b2,
+	OM2K_MSGT_TX_CONF_REQ_REJ		= 0x00b3,
+	OM2K_MSGT_TX_CONF_RES_ACK		= 0x00b4,
+	OM2K_MSGT_TX_CONF_RES_NACK		= 0x00b5,
+	OM2K_MSGT_TX_CONF_RES			= 0x00b6,
+
 	OM2K_MSGT_NEGOT_REQ_ACK			= 0x0104,
 	OM2K_MSGT_NEGOT_REQ_NACK		= 0x0105,
 	OM2K_MSGT_NEGOT_REQ			= 0x0106,
 };
 
 enum abis_om2k_dei {
+	OM2K_DEI_BCC				= 0x06,
+	OM2K_DEI_BSIC				= 0x09,
 	OM2K_DEI_CAL_TIME			= 0x0d,
+	OM2K_DEI_COMBINATION			= 0x0f,
 	OM2K_DEI_CON_CONN_LIST			= 0x10,
 	OM2K_DEI_END_LIST_NR			= 0x13,
+	OM2K_DEI_FILLING_MARKER			= 0x1c,
+	OM2K_DEI_FN_OFFSET			= 0x1d,
+	OM2K_DEI_FREQ_LIST			= 0x1e,
+	OM2K_DEI_FREQ_SPEC_RX			= 0x1f,
+	OM2K_DEI_FREQ_SPEC_TX			= 0x20,
+	OM2K_DEI_HSN				= 0x21,
 	OM2K_DEI_IS_CONN_LIST			= 0x27,
 	OM2K_DEI_LIST_NR			= 0x28,
+	OM2K_DEI_MAIO				= 0x2b,
 	OM2K_DEI_OP_INFO			= 0x2e,
+	OM2K_DEI_POWER				= 0x2f,
+	OM2K_DEI_RX_DIVERSITY			= 0x33,
+	OM2K_DEI_TS_NR				= 0x3c,
+	OM2K_DEI_EXT_RANGE			= 0x47,
 	OM2K_DEI_NEGOT_REC1			= 0x90,
 	OM2K_DEI_NEGOT_REC2			= 0x91,
-};
-
-enum abis_om2k_mo_cls {
-	OM2K_MO_CLS_TRXC			= 0x01,
-	OM2K_MO_CLS_TS				= 0x03,
-	OM2K_MO_CLS_TF				= 0x04,
-	OM2K_MO_CLS_IS				= 0x05,
-	OM2K_MO_CLS_CON				= 0x06,
-	OM2K_MO_CLS_DP				= 0x07,
-	OM2K_MO_CLS_CF				= 0x0a,
-	OM2K_MO_CLS_TX				= 0x0b,
-	OM2K_MO_CLS_RX				= 0x0c,
 };
 
 static const struct value_string om2k_msgcode_vals[] = {
@@ -683,6 +703,136 @@ int abis_om2k_tx_con_conf_req(struct gsm_bts *bts, uint8_t *data,
 	return abis_om2k_sendmsg(bts, msg);
 }
 
+static void om2k_trx_to_mo(struct abis_om2k_mo *mo,
+			   const struct gsm_bts_trx *trx,
+			   enum abis_om2k_mo_cls cls)
+{
+	mo->class = cls;
+	mo->bts = 0;
+	mo->inst = trx->nr;
+	mo->assoc_so = 0;
+}
+
+static void om2k_ts_to_mo(struct abis_om2k_mo *mo,
+			  const struct gsm_bts_trx_ts *ts)
+{
+	mo->class = OM2K_MO_CLS_TS;
+	mo->bts = 0;
+	mo->inst = ts->nr;
+	mo->assoc_so = ts->trx->nr;
+}
+
+/* Configure a Receiver MO */
+int abis_om2k_tx_rx_conf_req(struct gsm_bts_trx *trx)
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+	struct abis_om2k_mo mo;
+
+	om2k_trx_to_mo(&mo, trx, OM2K_MO_CLS_RX);
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, &mo, OM2K_MSGT_RX_CONF_REQ, 3+2);
+
+	msgb_tv16_put(msg, OM2K_DEI_FREQ_SPEC_RX, trx->arfcn);
+	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x03); /* A+B */
+
+	return abis_om2k_sendmsg(trx->bts, msg);
+}
+
+/* Configure a Transmitter MO */
+int abis_om2k_tx_tx_conf_req(struct gsm_bts_trx *trx)
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+	struct abis_om2k_mo mo;
+
+	om2k_trx_to_mo(&mo, trx, OM2K_MO_CLS_TX);
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, &mo, OM2K_MSGT_TX_CONF_REQ, 3+2+2+2);
+
+	msgb_tv16_put(msg, OM2K_DEI_FREQ_SPEC_TX, trx->arfcn);
+	msgb_tv_put(msg, OM2K_DEI_POWER, trx->nominal_power-trx->max_power_red);
+	msgb_tv_put(msg, OM2K_DEI_FILLING_MARKER, 0);	/* Filling enabled */
+	msgb_tv_put(msg, OM2K_DEI_BCC, trx->bts->bsic & 0x7);
+	/* Dedication Information is optional */
+
+	return abis_om2k_sendmsg(trx->bts, msg);
+}
+
+static uint8_t pchan2comb(enum gsm_phys_chan_config pchan)
+{
+	switch (pchan) {
+	case GSM_PCHAN_CCCH:
+		return 4;
+	case GSM_PCHAN_CCCH_SDCCH4:
+		return 5;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+		return 3;
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_TCH_H:
+	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
+		return 8;
+	default:
+		return 0;
+	}
+}
+
+/* Compute a frequency list in OM2000 fomrmat */
+static int om2k_gen_freq_list(uint8_t *list, struct gsm_bts_trx_ts *ts)
+{
+	uint8_t *cur = list;
+
+	if (ts->hopping.enabled) {
+		unsigned int i;
+		for (i = 0; i < ts->hopping.arfcns.data_len*8; i++) {
+			if (bitvec_get_bit_pos(&ts->hopping.arfcns, i)) {
+				*cur++ = 0x00;
+				*cur++ = i >> 8;
+				*cur++ = i & 0xff;
+			}
+		}
+	} else {
+		*cur++ = 0x00; /* TX/RX address */
+		*cur++ = ts->trx->arfcn >> 8;
+		*cur++ = ts->trx->arfcn && 0xff;
+	}
+	return (cur - list);
+}
+
+int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
+{
+	struct msgb *msg = om2k_msgb_alloc();
+	struct abis_om2k_hdr *o2k;
+	struct abis_om2k_mo mo;
+	uint8_t freq_list[64*3]; /* BA max size: 64 ARFCN */
+	int freq_list_len;
+
+	om2k_ts_to_mo(&mo, ts);
+
+	freq_list_len = om2k_gen_freq_list(freq_list, ts);
+	if (freq_list_len < 0)
+		return freq_list_len;
+
+	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
+	fill_om2k_hdr(o2k, &mo, OM2K_MSGT_TS_CONF_REQ,
+			2+2+TLV_GROSS_LEN(freq_list_len)+2+2+2+2+3+2);
+
+	msgb_tv_put(msg, OM2K_DEI_COMBINATION, pchan2comb(ts->pchan));
+	msgb_tv_put(msg, OM2K_DEI_TS_NR, ts->nr);
+	msgb_tlv_put(msg, OM2K_DEI_FREQ_LIST, freq_list_len, freq_list);
+	msgb_tv_put(msg, OM2K_DEI_HSN, ts->hopping.hsn);
+	msgb_tv_put(msg, OM2K_DEI_MAIO, ts->hopping.maio);
+	msgb_tv_put(msg, OM2K_DEI_BSIC, ts->trx->bts->bsic);
+	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x03); /* A+B */
+	msgb_tv16_put(msg, OM2K_DEI_FN_OFFSET, 0);
+	msgb_tv_put(msg, OM2K_DEI_EXT_RANGE, 0); /* Off */
+	/* Optional: Interference Rejection Combining */
+
+	return abis_om2k_sendmsg(ts->trx->bts, msg);
+}
 
 static int abis_om2k_tx_negot_req_ack(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 				      uint8_t *data, unsigned int len)
@@ -844,6 +994,15 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_CON_CONF_RES:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CON_CONF_RES_ACK);
 		break;
+	case OM2K_MSGT_TX_CONF_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TX_CONF_RES_ACK);
+		break;
+	case OM2K_MSGT_RX_CONF_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RX_CONF_RES_ACK);
+		break;
+	case OM2K_MSGT_TS_CONF_RES:
+		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TS_CONF_RES_ACK);
+		break;
 	case OM2K_MSGT_CONNECT_COMPL:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RESET_CMD);
 		break;
@@ -864,6 +1023,9 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_START_REQ_ACK:
 	case OM2K_MSGT_CON_CONF_REQ_ACK:
 	case OM2K_MSGT_IS_CONF_REQ_ACK:
+	case OM2K_MSGT_TX_CONF_REQ_ACK:
+	case OM2K_MSGT_RX_CONF_REQ_ACK:
+	case OM2K_MSGT_TS_CONF_REQ_ACK:
 	case OM2K_MSGT_ENABLE_REQ_ACK:
 	case OM2K_MSGT_ALARM_STATUS_REQ_ACK:
 	case OM2K_MSGT_DISABLE_REQ_ACK:

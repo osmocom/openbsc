@@ -410,6 +410,59 @@ DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(om2k_conf_req, om2k_conf_req_cmd,
+	"configuration-request",
+	"Send the configuration request for current MO\n")
+{
+	struct oml_node_state *oms = vty->index;
+	struct gsm_bts *bts = oms->bts;
+	struct gsm_bts_trx *trx = NULL;
+	struct gsm_bts_trx_ts *ts = NULL;
+
+	switch (oms->mo.class) {
+	case OM2K_MO_CLS_TS:
+		trx = gsm_bts_trx_by_nr(bts, oms->mo.assoc_so);
+		if (!trx) {
+			vty_out(vty, "%% BTS %u has no TRX %u%s", bts->nr,
+				oms->mo.assoc_so, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		if (oms->mo.inst >= ARRAY_SIZE(trx->ts)) {
+			vty_out(vty, "%% Timeslot %u out of range%s",
+				oms->mo.inst, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		ts = &trx->ts[oms->mo.inst];
+		abis_om2k_tx_ts_conf_req(ts);
+		break;
+	case OM2K_MO_CLS_RX:
+	case OM2K_MO_CLS_TX:
+	case OM2K_MO_CLS_TRXC:
+		trx = gsm_bts_trx_by_nr(bts, oms->mo.inst);
+		if (!trx) {
+			vty_out(vty, "%% BTS %u has no TRX %u%s", bts->nr,
+				oms->mo.inst, VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		switch (oms->mo.class) {
+		case OM2K_MO_CLS_RX:
+			abis_om2k_tx_rx_conf_req(trx);
+			break;
+		case OM2K_MO_CLS_TX:
+			abis_om2k_tx_rx_conf_req(trx);
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		vty_out(vty, "%% Don't know how to configure MO%s",
+			VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
 void abis_om2k_config_write_bts(struct vty *vty, struct gsm_bts *bts)
 {
 	struct is_conn_group *igrp;
@@ -446,6 +499,7 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_disable_cmd);
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
+	install_element(OM2K_NODE, &om2k_conf_req_cmd);
 	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);
