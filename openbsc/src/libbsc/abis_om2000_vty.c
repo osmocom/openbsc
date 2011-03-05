@@ -455,6 +455,9 @@ DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 			break;
 		}
 		break;
+	case OM2K_MO_CLS_TF:
+		abis_om2k_tx_tf_conf_req(bts);
+		break;
 	default:
 		vty_out(vty, "%% Don't know how to configure MO%s",
 			VTY_NEWLINE);
