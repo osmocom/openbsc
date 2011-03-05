@@ -247,7 +247,7 @@ static const struct value_string om2k_msgcode_vals[] = {
 	{ 0x001a, "CON Configuration Result" },
 	{ 0x001c, "Connect Command" },
 	{ 0x001e, "Connect Complete" },
-	{ 0x001f, "Connect Rejecte" },
+	{ 0x001f, "Connect Reject" },
 	{ 0x0028, "Disable Request" },
 	{ 0x002a, "Disable Request Accept" },
 	{ 0x002b, "Disable Request Reject" },
@@ -1151,6 +1151,8 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 	case OM2K_MSGT_DISABLE_REQ_ACK:
 		break;
 	case OM2K_MSGT_START_REQ_REJ:
+	case OM2K_MSGT_CONNECT_REJ:
+	case OM2K_MSGT_DISCONNECT_REJ:
 	case OM2K_MSGT_CON_CONF_REQ_REJ:
 	case OM2K_MSGT_IS_CONF_REQ_REJ:
 	case OM2K_MSGT_TX_CONF_REQ_REJ:
