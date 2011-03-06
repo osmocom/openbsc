@@ -1400,10 +1400,13 @@ static int process_conf_res(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	uint16_t msg_type = ntohs(o2h->msg_type);
+	struct nm_om2k_signal_data nsd;
 	struct tlv_parsed tp;
 	uint8_t acc;
 	unsigned int log_level;
 	int ret;
+
+	memset(&nsd, 0, sizeof(nsd));
 
 	abis_om2k_msg_tlv_parse(&tp, o2h);
 	if (!TLVP_PRESENT(&tp, OM2K_DEI_ACCORDANCE_IND))
@@ -1426,6 +1429,12 @@ static int process_conf_res(struct gsm_bts *bts, struct msgb *msg)
 		om2k_mo_name(&o2h->mo),
 		get_value_string(om2k_msgcode_vals, msg_type),
 		get_value_string(om2k_accordance_strings, acc));
+
+	nsd.bts = bts;
+	nsd.obj = mo2obj(bts, &o2h->mo);
+	nsd.om2k_mo = &o2h->mo;
+	nsd.accordance_ind = acc;
+	dispatch_signal(SS_NM, S_NM_OM2K_CONF_RES, &nsd);
 
 	return ret;
 }
@@ -1490,42 +1499,42 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
 	case OM2K_MSGT_FAULT_REP:
-		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_FAULT_REP_ACK);
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_NEGOT_REQ:
 		rc = om2k_rx_negot_req(msg);
 		break;
 	case OM2K_MSGT_START_RES:
-		process_mo_state(bts, msg);
 		rc = om2k_rx_start_res(msg);
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_OP_INFO_ACK:
 		rc = om2k_rx_op_info_ack(msg);
 		break;
 	case OM2K_MSGT_IS_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_IS_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_CON_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CON_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TX_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TX_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_RX_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RX_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TS_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TS_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_TF_CONF_RES:
-		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TF_CONF_RES_ACK);
+		process_conf_res(bts, msg);
 		break;
 	case OM2K_MSGT_CONNECT_COMPL:
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RESET_CMD);
@@ -1534,16 +1543,16 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_REQ);
 		break;
 	case OM2K_MSGT_ENABLE_RES:
-		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_ENABLE_RES_ACK);
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_DISABLE_RES:
-		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_DISABLE_RES_ACK);
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_TEST_RES:
-		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TEST_RES_ACK);
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_STATUS_RESP:
 		process_mo_state(bts, msg);

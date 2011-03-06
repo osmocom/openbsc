@@ -84,6 +84,7 @@ enum signal_nm {
 	S_NM_TEST_REP,		/* GSM 12.21 Test Report */
 	S_NM_STATECHG_OPER,	/* Operational State changed*/
 	S_NM_STATECHG_ADM,	/* Administrative State changed */
+	S_NM_OM2K_CONF_RES,	/* OM2K Configuration Result */
 };
 
 /* SS_LCHAN signals */
@@ -185,6 +186,14 @@ struct nm_statechg_signal_data {
 	struct abis_om_obj_inst *obj_inst;
 	/* This pointer is vaold for RBS2000 MO */
 	struct abis_om2k_mo *om2k_mo;
+};
+
+struct nm_om2k_signal_data {
+	struct gsm_bts *bts;
+	void *obj;
+	struct abis_om2k_mo *om2k_mo;
+
+	uint8_t accordance_ind;
 };
 
 struct nm_nack_signal_data {
