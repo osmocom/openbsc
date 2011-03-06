@@ -41,11 +41,20 @@ struct abis_om2k_mo {
 	uint8_t inst;
 } __attribute__ ((packed));
 
+/* on-wire format for IS conn group */
 struct om2k_is_conn_grp {
 	uint16_t icp1;
 	uint16_t icp2;
 	uint8_t cont_idx;
 } __attribute__ ((packed));
+
+/* internal data formant for IS conn group */
+struct is_conn_group {
+	struct llist_head list;
+	uint16_t icp1;
+	uint16_t icp2;
+	uint8_t ci;
+};
 
 extern const struct value_string om2k_mo_class_short_vals[];
 
@@ -63,8 +72,7 @@ int abis_om2k_tx_disable_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 int abis_om2k_tx_test_req(struct gsm_bts *bts, const struct abis_om2k_mo *mo);
 int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 			 uint8_t operational);
-int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
-			     unsigned int num_cg);
+int abis_om2k_tx_is_conf_req(struct gsm_bts *bts);
 int abis_om2k_tx_tf_conf_req(struct gsm_bts *bts);
 int abis_om2k_tx_rx_conf_req(struct gsm_bts_trx *trx);
 int abis_om2k_tx_tx_conf_req(struct gsm_bts_trx *trx);

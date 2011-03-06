@@ -954,11 +954,35 @@ int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 	return abis_om2k_sendmsg(bts, msg);
 }
 
-int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
-			     unsigned int num_cg )
+static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
+				  uint16_t icp2, uint8_t cont_idx)
+{
+	grp->icp1 = htons(icp1);
+	grp->icp2 = htons(icp2);
+	grp->cont_idx = cont_idx;
+}
+
+int abis_om2k_tx_is_conf_req(struct gsm_bts *bts)
 {
 	struct msgb *msg = om2k_msgb_alloc();
 	struct abis_om2k_hdr *o2k;
+	struct is_conn_group *grp;
+	unsigned int num_grps = 0, i = 0;
+	struct om2k_is_conn_grp *cg;
+
+	/* count number of groups in linked list */
+	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
+		num_grps++;
+
+	if (!num_grps)
+		return -EINVAL;
+
+	/* allocate buffer for oml group array */
+	cg = talloc_zero_array(bts, struct om2k_is_conn_grp, num_grps);
+
+	/* fill array with data from linked list */
+	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
+		om2k_fill_is_conn_grp(&cg[i++], grp->icp1, grp->icp2, grp->ci);
 
 	o2k = (struct abis_om2k_hdr *) msgb_put(msg, sizeof(*o2k));
 	fill_om2k_hdr(o2k, &om2k_mo_is, OM2K_MSGT_IS_CONF_REQ);
@@ -967,7 +991,9 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts, struct om2k_is_conn_grp *cg,
 	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
 
 	msgb_tlv_put(msg, OM2K_DEI_IS_CONN_LIST,
-		     num_cg * sizeof(*cg), (uint8_t *)cg);
+		     num_grps * sizeof(*cg), (uint8_t *)cg);
+
+	talloc_free(cg);
 
 	return abis_om2k_sendmsg(bts, msg);
 }

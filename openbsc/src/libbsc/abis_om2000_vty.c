@@ -324,21 +324,6 @@ DEFUN(om2k_con_list_tei, om2k_con_list_tei_cmd,
 	return CMD_SUCCESS;
 }
 
-static void om2k_fill_is_conn_grp(struct om2k_is_conn_grp *grp, uint16_t icp1,
-				  uint16_t icp2, uint8_t cont_idx)
-{
-	grp->icp1 = htons(icp1);
-	grp->icp2 = htons(icp2);
-	grp->cont_idx = cont_idx;
-}
-
-struct is_conn_group {
-	struct llist_head list;
-	uint16_t icp1;
-	uint16_t icp2;
-	uint8_t ci;
-};
-
 DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 	"is-connection-list (add|del) <0-2047> <0-2047> <0-255>",
 	"Interface Switch Connnection List\n"
@@ -375,37 +360,6 @@ DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 }
 
 
-static int is_conf_req(struct gsm_bts *bts, struct vty *vty)
-{
-	struct is_conn_group *grp;
-	unsigned int num_grps = 0, i = 0;
-	struct om2k_is_conn_grp *o2grps;
-
-	/* count number of groups in linked list */
-	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
-		num_grps++;
-
-	if (!num_grps) {
-		vty_out(vty, "%% No IS connection groups configured!%s",
-			VTY_NEWLINE);
-		return CMD_WARNING;
-	}
-
-	/* allocate buffer for oml group array */
-	o2grps = talloc_zero_array(bts, struct om2k_is_conn_grp, num_grps);
-
-	/* fill array with data from linked list */
-	llist_for_each_entry(grp, &bts->rbs2000.is.conn_groups, list)
-		om2k_fill_is_conn_grp(&o2grps[i++], grp->icp1, grp->icp2, grp->ci);
-
-	/* send the actual OML request */
-	abis_om2k_tx_is_conf_req(bts, o2grps, num_grps);
-
-	talloc_free(o2grps);
-
-	return CMD_SUCCESS;
-}
-
 DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 	"configuration-request",
 	"Send the configuration request for current MO\n")
@@ -417,7 +371,7 @@ DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 
 	switch (oms->mo.class) {
 	case OM2K_MO_CLS_IS:
-		return is_conf_req(bts, vty);
+		abis_om2k_tx_is_conf_req(bts);
 		break;
 	case OM2K_MO_CLS_TS:
 		trx = gsm_bts_trx_by_nr(bts, oms->mo.assoc_so);
