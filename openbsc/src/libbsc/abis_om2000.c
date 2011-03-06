@@ -868,7 +868,7 @@ int abis_om2k_tx_rx_conf_req(struct gsm_bts_trx *trx)
 	fill_om2k_hdr(o2k, &mo, OM2K_MSGT_RX_CONF_REQ);
 
 	msgb_tv16_put(msg, OM2K_DEI_FREQ_SPEC_RX, trx->arfcn);
-	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x03); /* A+B */
+	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x02); /* A */
 
 	return abis_om2k_sendmsg(trx->bts, msg);
 }
@@ -993,7 +993,7 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 	msgb_tv_put(msg, OM2K_DEI_HSN, ts->hopping.hsn);
 	msgb_tv_put(msg, OM2K_DEI_MAIO, ts->hopping.maio);
 	msgb_tv_put(msg, OM2K_DEI_BSIC, ts->trx->bts->bsic);
-	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x03); /* A+B */
+	msgb_tv_put(msg, OM2K_DEI_RX_DIVERSITY, 0x02); /* A */
 	msgb_tv16_put(msg, OM2K_DEI_FN_OFFSET, 0);
 	msgb_tv_put(msg, OM2K_DEI_EXT_RANGE, 0); /* Off */
 	/* Optional: Interference Rejection Combining */
@@ -1044,10 +1044,9 @@ int abis_om2k_tx_ts_conf_req(struct gsm_bts_trx_ts *ts)
 		else
 			msgb_tv_put(msg, OM2K_DEI_ICM_CHAN_RATE, 0); /* TCH/F */
 		msgb_tv_put(msg, OM2K_DEI_LSC, 1); /* enabled */
-		msgb_tv_put(msg, OM2K_DEI_LSC_FILT_TIME, 160);	/* units of 100ms */
+		msgb_tv_put(msg, OM2K_DEI_LSC_FILT_TIME, 10);	/* units of 100ms */
 		msgb_tv_put(msg, OM2K_DEI_CALL_SUPV_TIME, 8);
 		msgb_tv_put(msg, OM2K_DEI_ENCR_ALG, 0x00);
-		/* FIXME: do we need 9e/9f/a0? */
 		break;
 	}
 
