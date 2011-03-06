@@ -220,6 +220,7 @@ enum abis_om2k_dei {
 	OM2K_DEI_CALL_SUPV_TIME			= 0x7b,
 	OM2K_DEI_ICM_CHAN_RATE			= 0x7e,
 	OM2K_DEI_HW_INFO_SIG			= 0x84,
+	OM2K_DEI_TF_SYNC_SRC			= 0x86,
 	OM2K_DEI_TTA				= 0x87,
 	OM2K_DEI_CAPA_SIG			= 0x8a,
 	OM2K_DEI_NEGOT_REC1			= 0x90,
@@ -287,6 +288,7 @@ const struct tlv_definition om2k_att_tlvdef = {
 		[OM2K_DEI_CALL_SUPV_TIME] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_ICM_CHAN_RATE] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_HW_INFO_SIG] =	{ TLV_TYPE_FIXED, 2 },
+		[OM2K_DEI_TF_SYNC_SRC] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_TTA] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_CAPA_SIG] =		{ TLV_TYPE_FIXED, 2 },
 		[OM2K_DEI_NEGOT_REC1] =		{ TLV_TYPE_TLV },
@@ -910,6 +912,7 @@ int abis_om2k_tx_tf_conf_req(struct gsm_bts *bts)
 	fill_om2k_hdr(o2k, &om2k_mo_tf, OM2K_MSGT_TF_CONF_REQ);
 
 	msgb_tv_put(msg, OM2K_DEI_TF_MODE, OM2K_TF_MODE_STANDALONE);
+	msgb_tv_put(msg, OM2K_DEI_TF_SYNC_SRC, 0x00);
 	msgb_tv_fixed_put(msg, OM2K_DEI_FS_OFFSET,
 			  sizeof(fs_offset_undef), fs_offset_undef);
 
