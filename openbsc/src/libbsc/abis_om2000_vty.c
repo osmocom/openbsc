@@ -375,12 +375,8 @@ DEFUN(cfg_bts_is_conn_list, cfg_bts_is_conn_list_cmd,
 }
 
 
-DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
-	"is-conf-req",
-	"Send IS Configuration Request\n")
+static int is_conf_req(struct gsm_bts *bts, struct vty *vty)
 {
-	struct oml_node_state *oms = vty->index;
-	struct gsm_bts *bts = oms->bts;
 	struct is_conn_group *grp;
 	unsigned int num_grps = 0, i = 0;
 	struct om2k_is_conn_grp *o2grps;
@@ -403,7 +399,7 @@ DEFUN(om2k_is_conf_req, om2k_is_conf_req_cmd,
 		om2k_fill_is_conn_grp(&o2grps[i++], grp->icp1, grp->icp2, grp->ci);
 
 	/* send the actual OML request */
-	abis_om2k_tx_is_conf_req(oms->bts, o2grps, num_grps);
+	abis_om2k_tx_is_conf_req(bts, o2grps, num_grps);
 
 	talloc_free(o2grps);
 
@@ -420,6 +416,9 @@ DEFUN(om2k_conf_req, om2k_conf_req_cmd,
 	struct gsm_bts_trx_ts *ts = NULL;
 
 	switch (oms->mo.class) {
+	case OM2K_MO_CLS_IS:
+		return is_conf_req(bts, vty);
+		break;
 	case OM2K_MO_CLS_TS:
 		trx = gsm_bts_trx_by_nr(bts, oms->mo.assoc_so);
 		if (!trx) {
@@ -503,7 +502,6 @@ int abis_om2k_vty_init(void)
 	install_element(OM2K_NODE, &om2k_op_info_cmd);
 	install_element(OM2K_NODE, &om2k_test_cmd);
 	install_element(OM2K_NODE, &om2k_conf_req_cmd);
-	install_element(OM2K_NODE, &om2k_is_conf_req_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_dec_cmd);
 	install_element(OM2K_NODE, &om2k_con_list_tei_cmd);
 
