@@ -13,11 +13,11 @@ Add the GSM ABIS OML dissector from OpenBSC
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.c
  create mode 100644 epan/dissectors/packet-gsm_abis_oml.h
 
-diff --git a/epan/CMakeLists.txt b/epan/CMakeLists.txt
-index a22406c..0b09335 100644
---- a/epan/CMakeLists.txt
-+++ b/epan/CMakeLists.txt
-@@ -586,6 +586,7 @@ set(DISSECTOR_SRC
+Index: wireshark/epan/CMakeLists.txt
+===================================================================
+--- wireshark.orig/epan/CMakeLists.txt	2011-03-03 14:01:07.000000000 +0100
++++ wireshark/epan/CMakeLists.txt	2011-03-03 14:01:20.000000000 +0100
+@@ -589,6 +589,7 @@ set(DISSECTOR_SRC
  	dissectors/packet-gsm_a_gm.c
  	dissectors/packet-gsm_a_rp.c
  	dissectors/packet-gsm_a_rr.c
@@ -25,11 +25,11 @@ index a22406c..0b09335 100644
  	dissectors/packet-gsm_ipa.c
  	dissectors/packet-gsm_bsslap.c
  	dissectors/packet-gsm_bssmap_le.c
-diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
-index c496b36..7ce83b6 100644
---- a/epan/dissectors/Makefile.common
-+++ b/epan/dissectors/Makefile.common
-@@ -496,6 +496,7 @@ DISSECTOR_SRC = \
+Index: wireshark/epan/dissectors/Makefile.common
+===================================================================
+--- wireshark.orig/epan/dissectors/Makefile.common	2011-03-03 14:01:07.000000000 +0100
++++ wireshark/epan/dissectors/Makefile.common	2011-03-03 14:01:20.000000000 +0100
+@@ -501,6 +501,7 @@ DISSECTOR_SRC = \
  	packet-gsm_a_gm.c	\
  	packet-gsm_a_rp.c	\
  	packet-gsm_a_rr.c	\
@@ -37,12 +37,11 @@ index c496b36..7ce83b6 100644
  	packet-gsm_bsslap.c	\
  	packet-gsm_bssmap_le.c	\
  	packet-gsm_ipa.c	\
-diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
-new file mode 100644
-index 0000000..f0b69e7
---- /dev/null
-+++ b/epan/dissectors/packet-gsm_abis_oml.c
-@@ -0,0 +1,1608 @@
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-03-06 13:12:30.000000000 +0100
+@@ -0,0 +1,1776 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
 + * Copyright 2009-2010 by Harald Welte <laforge@gnumonks.org>
@@ -773,6 +772,12 @@ index 0000000..f0b69e7
 +	{ NM_IPACC_TR_IE_FREQ_ERR,	"Frequency Error" },
 +	{ 0, NULL }
 +};
++
++/* ANSI C does not allow selective initialization of arrays, for that reason,
++ * we initialize these three TLV definitions in proto_register_abis_oml(). */
++static struct tlv_definition nm_att_tlvdef_base;
++static struct tlv_definition nm_att_tlvdev_bs11;
++static struct tlv_definition nm_att_tlvdef_ipa;
 +
 +static const struct tlv_def *
 +find_tlv_tag(guint8 tag)
@@ -1596,6 +1601,168 @@ index 0000000..f0b69e7
 +
 +	module_t *oml_module;
 +
++#define NM_ATT_TLVDEF_BASE(_attr, _type, _fixed_len)			\
++	nm_att_tlvdef_base.def[_attr].type = _type;			\
++	nm_att_tlvdef_base.def[_attr].fixed_len = _fixed_len;		\
++
++	/* From openbsc/src/abis_nm.c, converted to support ANSI C. */
++	NM_ATT_TLVDEF_BASE(NM_ATT_ABIS_CHANNEL,		TLV_TYPE_FIXED,	3);
++	NM_ATT_TLVDEF_BASE(NM_ATT_ADD_INFO,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_ADD_TEXT,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_ADM_STATE,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_ARFCN_LIST,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_AUTON_REPORT,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_AVAIL_STATUS,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_BCCH_ARFCN,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_BSIC,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_BTS_AIR_TIMER,	TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_CCCH_L_I_P,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_CCCH_L_T,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_CHAN_COMB,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_CONN_FAIL_CRIT,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_DEST,			TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_EVENT_TYPE,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_FILE_ID,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_FILE_VERSION,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_GSM_TIME,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_HSN,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_HW_CONFIG,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_HW_DESC,		TLV_TYPE_TLV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_INTAVE_PARAM,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_INTERF_BOUND,		TLV_TYPE_FIXED,	6);
++	NM_ATT_TLVDEF_BASE(NM_ATT_LIST_REQ_ATTR,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MAIO,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MANUF_STATE,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MANUF_THRESH,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MANUF_ID,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MAX_TA,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MDROP_LINK,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MDROP_NEXT,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_NACK_CAUSES,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_NY1,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_OPER_STATE,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_OVERL_PERIOD,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_PHYS_CONF,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_POWER_CLASS,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_POWER_THRESH,		TLV_TYPE_FIXED,	3);
++	NM_ATT_TLVDEF_BASE(NM_ATT_PROB_CAUSE,		TLV_TYPE_FIXED,	3);
++	NM_ATT_TLVDEF_BASE(NM_ATT_RACH_B_THRESH,	TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_LDAVG_SLOTS,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_RAD_SUBC,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_RF_MAXPOWR_R,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SITE_INPUTS,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SITE_OUTPUTS,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SOURCE,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SPEC_PROB,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_START_TIME,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_T200,			TLV_TYPE_FIXED,	7);
++	NM_ATT_TLVDEF_BASE(NM_ATT_TEI,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_TEST_DUR,		TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_TEST_NO,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_TEST_REPORT,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_VSWR_THRESH,		TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEF_BASE(NM_ATT_WINDOW_SIZE,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_TSC,			TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SW_CONFIG,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_SEVERITY,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_GET_ARI,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_HW_CONF_CHG,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_OUTST_ALARM,		TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_FILE_DATA,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_BASE(NM_ATT_MEAS_RES,		TLV_TYPE_TL16V,	0);
++
++	/* BS 11 specifics */
++#define NM_ATT_TLVDEV_BS11(_attr, _type, _fixed_len)		\
++	nm_att_tlvdev_bs11.def[_attr].type = _type;		\
++	nm_att_tlvdev_bs11.def[_attr].fixed_len = _fixed_len;	\
++
++	/* different stndard IEs */
++	NM_ATT_TLVDEV_BS11(NM_ATT_OUTST_ALARM,		TLV_TYPE_TLV,	0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_HW_DESC,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_ARFCN_LIST,		TLV_TYPE_TLV16,	0);
++
++	/* proprietary IEs */
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_ABIS_EXT_TIME,     TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_OM_LAPD_REL_TIMER, TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_SH_LAPD_INT_TIMER, TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_EMERG_TIMER1,      TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_EMERG_TIMER2,      TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_BTSLS_HOPPING,     TLV_TYPE_FIXED, 1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_CELL_ALLOC_NR,     TLV_TYPE_FIXED, 1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_ENA_INTERF_CLASS,  TLV_TYPE_FIXED, 1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_FACCH_QUAL,        TLV_TYPE_FIXED, 1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_TSYNC,             TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_TTRAU,             TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_EXCESSIVE_DISTANCE,TLV_TYPE_TLV,   1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_HOPPING_MODE,      TLV_TYPE_TLV,   1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_RF_RES_IND_PER,    TLV_TYPE_FIXED, 1);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_RADIO_MEAS_GRAN,   TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_RADIO_MEAS_REP,    TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_EMRG_CFG_MEMBER,   TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_TRX_AREA,          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_ESN_FW_CODE_NO,    TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_ESN_HW_CODE_NO,    TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_ESN_PCB_SERIAL,    TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_BOOT_SW_VERS,      TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(0x59,                          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(0xd5,                          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(0xa8,                          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_PASSWORD,          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_TXPWR,             TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_RSSI_OFFS,         TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_LINE_CFG,          TLV_TYPE_TV,    0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_L1_PROT_TYPE,      TLV_TYPE_TV,    0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_BIT_ERR_THESH,     TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_DIVERSITY,         TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_LMT_LOGON_SESSION, TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_LMT_LOGIN_TIME,    TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_LMT_USER_ACC_LEV,  TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_LMT_USER_NAME,     TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_BTS_STATE,         TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_E1_STATE,          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_PLL_MODE,          TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_PLL,               TLV_TYPE_TLV,   0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_CCLK_ACCURACY,     TLV_TYPE_TV,    0);
++	NM_ATT_TLVDEV_BS11(NM_ATT_BS11_CCLK_TYPE,         TLV_TYPE_TV,    0);
++
++	/* ip.access specifics */
++#define NM_ATT_TLVDEF_IPA(_attr, _type, _fixed_len)		\
++	nm_att_tlvdef_ipa.def[_attr].type = _type;		\
++	nm_att_tlvdef_ipa.def[_attr].fixed_len = _fixed_len;	\
++
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_DST_IP,		TLV_TYPE_FIXED,	4);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_DST_IP_PORT,	TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_PRIM_OML_CFG,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_NV_FLAGS,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_FREQ_CTRL,	TLV_TYPE_FIXED,	2);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_SEC_OML_CFG,	TLV_TYPE_FIXED,	6);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_IP_IF_CFG,	TLV_TYPE_FIXED,	8);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_IP_GW_CFG,	TLV_TYPE_FIXED,	12);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_LOCATION,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_UNIT_ID,		TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_UNIT_NAME,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_SNMP_CFG,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_ALM_THRESH_LIST,	TLV_TYPE_TL16V,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_CUR_SW_CFG,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_STREAM_ID,	TLV_TYPE_TV,	0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_RAC,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_OBJ_VERSION,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_GPRS_PAGING_CFG,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_NSEI,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_BVCI,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_NSVCI,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_NS_CFG,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_BSSGP_CFG,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_NS_LINK_CFG,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_RLC_CFG,		TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_SUPP_FEATURES,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_CODING_SCHEMES,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_RLC_CFG_2,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_RLC_CFG_3,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_PAGING_CFG,	TLV_TYPE_FIXED, 2);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_FILE_DATA,	TLV_TYPE_TL16V, 0);
++	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_CGI,		TLV_TYPE_TL16V, 0);
++
 +	/* assign our custom match functions */
 +	oml_fom_msgtype_vse._vs_match = _match_oml_fom_msgtype;
 +	oml_fom_attr_vse._vs_match = _match_oml_fom_attr;
@@ -1651,12 +1818,11 @@ index 0000000..f0b69e7
 +				array_length(oml_fom_attr_vals_bs11)-1;
 +	}
 +}
-diff --git a/epan/dissectors/packet-gsm_abis_oml.h b/epan/dissectors/packet-gsm_abis_oml.h
-new file mode 100644
-index 0000000..3cd2769
---- /dev/null
-+++ b/epan/dissectors/packet-gsm_abis_oml.h
-@@ -0,0 +1,830 @@
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-03-06 13:12:30.000000000 +0100
+@@ -0,0 +1,667 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
 +
@@ -2323,170 +2489,4 @@ index 0000000..3cd2769
 +	NM_IPACC_TR_IE_FREQ_ERR		= 18,
 +};
 +
-+/* From openbsc/src/abis_nm.c */
-+static const struct tlv_definition nm_att_tlvdef_base = {
-+	.def = {
-+		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
-+		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_BCCH_ARFCN] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BSIC] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_HSN] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
-+		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_MAIO] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_MDROP_LINK] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_MDROP_NEXT] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_NY1] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_POWER_THRESH] =		{ TLV_TYPE_FIXED, 3 },
-+		[NM_ATT_PROB_CAUSE] =		{ TLV_TYPE_FIXED, 3 },
-+		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_LDAVG_SLOTS] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_START_TIME] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_T200] =			{ TLV_TYPE_FIXED, 7 },
-+		[NM_ATT_TEI] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_TEST_DUR] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_VSWR_THRESH] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_TSC] =			{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V, 0 },
-+
-+	},
-+};
-+
-+/* BS11 specifics */
-+static const struct tlv_definition nm_att_tlvdev_bs11 = {
-+	.def = {
-+		/* different stndard IEs */
-+		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TLV16, 0 },
-+
-+		/* proprietary IEs */
-+		[NM_ATT_BS11_ABIS_EXT_TIME] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_OM_LAPD_REL_TIMER]={ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BS11_SH_LAPD_INT_TIMER]={ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_EMERG_TIMER1] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_EMERG_TIMER2] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_BTSLS_HOPPING] =	{ TLV_TYPE_FIXED, 1 },
-+		[NM_ATT_BS11_CELL_ALLOC_NR] =	{ TLV_TYPE_FIXED, 1 },
-+		[NM_ATT_BS11_ENA_INTERF_CLASS]= { TLV_TYPE_FIXED, 1 },
-+		[NM_ATT_BS11_FACCH_QUAL] =	{ TLV_TYPE_FIXED, 1 },
-+		[NM_ATT_BS11_TSYNC] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BS11_TTRAU] =		{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BS11_EXCESSIVE_DISTANCE] = { TLV_TYPE_TLV, 1 },
-+		[NM_ATT_BS11_HOPPING_MODE] =	{ TLV_TYPE_TLV, 1 },
-+		[NM_ATT_BS11_RF_RES_IND_PER] =	{ TLV_TYPE_FIXED, 1 },
-+		[NM_ATT_BS11_RADIO_MEAS_GRAN] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_RADIO_MEAS_REP] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_EMRG_CFG_MEMBER] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_TRX_AREA] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_ESN_FW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_ESN_HW_CODE_NO] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_ESN_PCB_SERIAL] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_BOOT_SW_VERS] =	{ TLV_TYPE_TLV, 0 },
-+		[0x59] =			{ TLV_TYPE_TLV, 0 },
-+		[0xd5] =			{ TLV_TYPE_TLV, 0 },
-+		[0xa8] =			{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_PASSWORD] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_TXPWR] =		{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_RSSI_OFFS] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_LINE_CFG] = 	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_BS11_L1_PROT_TYPE] =	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_BS11_BIT_ERR_THESH] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_BS11_DIVERSITY] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_LMT_LOGON_SESSION]={ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_LMT_LOGIN_TIME] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_LMT_USER_ACC_LEV] ={ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_LMT_USER_NAME] =	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_BTS_STATE]	=	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_E1_STATE]	=	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_PLL_MODE]	=	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_PLL]	=	{ TLV_TYPE_TLV, 0 },
-+		[NM_ATT_BS11_CCLK_ACCURACY] =	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_BS11_CCLK_TYPE] =	{ TLV_TYPE_TV, 0 },
-+	},
-+};
-+
-+/* ip.access specifics */
-+static const struct tlv_definition nm_att_tlvdef_ipa = {
-+	.def = {
-+		[NM_ATT_IPACC_DST_IP] =		{ TLV_TYPE_FIXED, 4 },
-+		[NM_ATT_IPACC_DST_IP_PORT] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_PRIM_OML_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_NV_FLAGS] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_FREQ_CTRL] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_SEC_OML_CFG] =	{ TLV_TYPE_FIXED, 6 },
-+		[NM_ATT_IPACC_IP_IF_CFG] =	{ TLV_TYPE_FIXED, 8 },
-+		[NM_ATT_IPACC_IP_GW_CFG] =	{ TLV_TYPE_FIXED, 12 },
-+		[NM_ATT_IPACC_LOCATION] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_UNIT_ID] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_UNIT_NAME] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_SNMP_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_ALM_THRESH_LIST]= { TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_CUR_SW_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_STREAM_ID] =	{ TLV_TYPE_TV, 0 },
-+		[NM_ATT_IPACC_RAC] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_OBJ_VERSION] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_GPRS_PAGING_CFG] ={ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_NSEI] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_BVCI] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_NSVCI] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_NS_CFG] =		{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_BSSGP_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_NS_LINK_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_RLC_CFG] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_SUPP_FEATURES] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_CODING_SCHEMES] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_RLC_CFG_2] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_RLC_CFG_3] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_PAGING_CFG] =	{ TLV_TYPE_FIXED, 2 },
-+		[NM_ATT_IPACC_FILE_DATA] =	{ TLV_TYPE_TL16V, 0 },
-+		[NM_ATT_IPACC_CGI] = 		{ TLV_TYPE_TL16V, 0 },
-+	},
-+};
-+
 +#endif /* _NM_H */
--- 
-1.7.3.4
-
