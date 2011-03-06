@@ -747,6 +747,7 @@ static void update_mo_state(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 
 	memset(&nsd, 0, sizeof(nsd));
 
+	nsd.bts = bts;
 	nsd.obj = mo2obj(bts, mo);
 	nsd.old_state = nm_state;
 	nsd.new_state = &new_state;
@@ -787,6 +788,7 @@ static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 	struct gsm_nm_state *nm_state = mo2nm_state(bts, mo);
 	struct nm_statechg_signal_data nsd;
 
+	nsd.bts = bts;
 	nsd.obj = mo2obj(bts, mo);
 	nsd.old_state = nm_state;
 	nsd.new_state = nm_state;
