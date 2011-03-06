@@ -34,6 +34,13 @@ enum abis_om2k_mo_cls {
 	OM2K_MO_CLS_RX				= 0x0c,
 };
 
+enum om2k_mo_state {
+	OM2K_MO_S_RESET = 0,
+	OM2K_MO_S_STARTED,
+	OM2K_MO_S_ENABLED,
+	OM2K_MO_S_DISABLED,
+};
+
 struct abis_om2k_mo {
 	uint8_t class;
 	uint8_t bts;
@@ -55,6 +62,11 @@ struct is_conn_group {
 	uint16_t icp2;
 	uint8_t ci;
 };
+
+extern const struct abis_om2k_mo om2k_mo_cf;
+extern const struct abis_om2k_mo om2k_mo_is;
+extern const struct abis_om2k_mo om2k_mo_con;
+extern const struct abis_om2k_mo om2k_mo_tf;
 
 extern const struct value_string om2k_mo_class_short_vals[];
 
