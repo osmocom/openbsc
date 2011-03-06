@@ -685,6 +685,8 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	struct gsm_nm_state *nm_state, new_state;
 	struct nm_statechg_signal_data nsd;
 
+	memset(&nsd, 0, sizeof(nsd));
+
 	nsd.obj = objclass2obj(bts, obj_class, obj_inst);
 	if (!nsd.obj)
 		return -EINVAL;

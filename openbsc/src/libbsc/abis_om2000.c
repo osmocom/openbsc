@@ -652,6 +652,149 @@ static char *om2k_mo_name(const struct abis_om2k_mo *mo)
 	return mo_buf;
 }
 
+/* resolve the gsm_nm_state data structure for a given MO */
+static struct gsm_nm_state *
+mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
+{
+	struct gsm_bts_trx *trx;
+	struct gsm_nm_state *nm_state = NULL;
+
+	switch (mo->class) {
+	case OM2K_MO_CLS_TRXC:
+		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		if (!trx)
+			return NULL;
+		nm_state = &trx->nm_state;
+		break;
+	case OM2K_MO_CLS_TS:
+		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		if (!trx)
+			return NULL;
+		if (mo->inst >= ARRAY_SIZE(trx->ts))
+			return NULL;
+		nm_state = &trx->ts[mo->inst].nm_state;
+		break;
+	case OM2K_MO_CLS_TF:
+		nm_state = &bts->rbs2000.tf.nm_state;
+		break;
+	case OM2K_MO_CLS_IS:
+		nm_state = &bts->rbs2000.is.nm_state;
+		break;
+	case OM2K_MO_CLS_CON:
+		nm_state = &bts->rbs2000.con.nm_state;
+		break;
+	case OM2K_MO_CLS_DP:
+		nm_state = &bts->rbs2000.con.nm_state;
+		break;
+	case OM2K_MO_CLS_CF:
+		nm_state = &bts->nm_state;
+		break;
+	case OM2K_MO_CLS_TX:
+		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		if (!trx)
+			return NULL;
+		break;
+	case OM2K_MO_CLS_RX:
+		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		if (!trx)
+			return NULL;
+		break;
+	}
+
+	return nm_state;
+}
+
+static void *mo2obj(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+{
+	struct gsm_bts_trx *trx;
+
+	switch (mo->class) {
+	case OM2K_MO_CLS_TX:
+	case OM2K_MO_CLS_RX:
+	case OM2K_MO_CLS_TRXC:
+		return gsm_bts_trx_num(bts, mo->assoc_so);
+	case OM2K_MO_CLS_TS:
+		trx = gsm_bts_trx_num(bts, mo->assoc_so);
+		if (!trx)
+			return NULL;
+		if (mo->inst >= ARRAY_SIZE(trx->ts))
+			return NULL;
+		return &trx->ts[mo->inst];
+	case OM2K_MO_CLS_TF:
+	case OM2K_MO_CLS_IS:
+	case OM2K_MO_CLS_CON:
+	case OM2K_MO_CLS_DP:
+	case OM2K_MO_CLS_CF:
+		return bts;
+	}
+
+	return NULL;
+}
+
+static void update_mo_state(struct gsm_bts *bts, struct abis_om2k_mo *mo,
+			    uint8_t mo_state)
+{
+	struct gsm_nm_state *nm_state = mo2nm_state(bts, mo);
+	struct gsm_nm_state new_state;
+	struct nm_statechg_signal_data nsd;
+
+	if (!nm_state)
+		return;
+
+	new_state = *nm_state;
+	/* NOTICE: 12.21 Availability state values != OM2000 */
+	new_state.availability = mo_state;
+
+	memset(&nsd, 0, sizeof(nsd));
+
+	nsd.obj = mo2obj(bts, mo);
+	nsd.old_state = nm_state;
+	nsd.new_state = &new_state;
+	nsd.om2k_mo = mo;
+
+	dispatch_signal(SS_NM, S_NM_STATECHG_ADM, &nsd);
+
+	nm_state->availability = new_state.availability;
+}
+
+static void update_op_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
+			    uint8_t op_state)
+{
+	struct gsm_nm_state *nm_state = mo2nm_state(bts, mo);
+	struct gsm_nm_state new_state;
+
+	if (!nm_state)
+		return;
+
+	new_state = *nm_state;
+	switch (op_state) {
+	case 1:
+		new_state.operational = NM_OPSTATE_ENABLED;
+		break;
+	case 0:
+		new_state.operational = NM_OPSTATE_DISABLED;
+		break;
+	default:
+		new_state.operational = NM_OPSTATE_NULL;
+		break;
+	}
+
+	nm_state->operational = new_state.operational;
+}
+
+static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
+{
+	struct gsm_nm_state *nm_state = mo2nm_state(bts, mo);
+	struct nm_statechg_signal_data nsd;
+
+	nsd.obj = mo2obj(bts, mo);
+	nsd.old_state = nm_state;
+	nsd.new_state = nm_state;
+	nsd.om2k_mo = mo;
+
+	dispatch_signal(SS_NM, S_NM_STATECHG_OPER, &nsd);
+}
+
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h;
@@ -804,6 +947,9 @@ int abis_om2k_tx_op_info(struct gsm_bts *bts, const struct abis_om2k_mo *mo,
 
 	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(mo),
 		get_value_string(om2k_msgcode_vals, OM2K_MSGT_OP_INFO));
+
+	/* we update the state here... and send the signal at ACK */
+	update_op_state(bts, mo, operational);
 
 	return abis_om2k_sendmsg(bts, msg);
 }
@@ -1160,7 +1306,11 @@ static int om2k_rx_op_info_ack(struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 
-	/* FIXME: update Operational state in our structures */
+	/* This Acknowledgement does not contain the actual operational state,
+	 * so we signal whatever state we saved when we sent the Op Info
+	 * request */
+
+	signal_op_state(msg->trx->bts, &o2h->mo);
 
 	return 0;
 }
@@ -1268,6 +1418,8 @@ static int process_mo_state(struct gsm_bts *bts, struct msgb *msg)
 		om2k_mo_name(&o2h->mo),
 		get_value_string(om2k_msgcode_vals, msg_type),
 		get_value_string(om2k_mostate_vals, mo_state));
+
+	update_mo_state(bts, &o2h->mo, mo_state);
 
 	return 0;
 }

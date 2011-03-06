@@ -172,12 +172,18 @@ struct ipacc_ack_signal_data {
 	u_int8_t msg_type;	
 };
 
+struct abis_om2k_mo;
+
 struct nm_statechg_signal_data {
 	u_int8_t obj_class;
 	void *obj;
 	struct gsm_nm_state *old_state;
 	struct gsm_nm_state *new_state;
+
+	/* This pointer is vaold for TS 12.21 MO */
 	struct abis_om_obj_inst *obj_inst;
+	/* This pointer is vaold for RBS2000 MO */
+	struct abis_om2k_mo *om2k_mo;
 };
 
 struct nm_nack_signal_data {

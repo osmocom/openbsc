@@ -595,11 +595,19 @@ struct gsm_bts {
 		} bs11;
 		struct {
 			struct {
+				struct gsm_nm_state nm_state;
 				struct llist_head conn_groups;
 			} is;
 			struct {
+				struct gsm_nm_state nm_state;
 				struct llist_head conn_groups;
 			} con;
+			struct {
+				struct gsm_nm_state nm_state;
+			} dp;
+			struct {
+				struct gsm_nm_state nm_state;
+			} tf;
 		} rbs2000;
 		struct {
 			unsigned long serno;
