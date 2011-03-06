@@ -165,6 +165,7 @@ enum abis_om2k_msgtype {
 };
 
 enum abis_om2k_dei {
+	OM2K_DEI_ACCORDANCE_IND			= 0x00,
 	OM2K_DEI_BCC				= 0x06,
 	OM2K_DEI_BS_AG_BKS_RES			= 0x07,
 	OM2K_DEI_BSIC				= 0x09,
@@ -233,6 +234,7 @@ enum abis_om2k_dei {
 
 const struct tlv_definition om2k_att_tlvdef = {
 	.def = {
+		[OM2K_DEI_ACCORDANCE_IND] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_BCC] =		{ TLV_TYPE_TV },
 		[OM2K_DEI_BS_AG_BKS_RES] =	{ TLV_TYPE_TV },
 		[OM2K_DEI_BSIC] =		{ TLV_TYPE_TV },
@@ -632,6 +634,11 @@ static struct msgb *om2k_msgb_alloc(void)
 static int abis_om2k_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
 {
 	return tlv_parse(tp, &om2k_att_tlvdef, buf, len, 0, 0);
+}
+
+static int abis_om2k_msg_tlv_parse(struct tlv_parsed *tp, struct abis_om2k_hdr *oh)
+{
+	return abis_om2k_tlv_parse(tp, oh->data, oh->om.length - 6);
 }
 
 static char *om2k_mo_name(const struct abis_om2k_mo *mo)
@@ -1171,6 +1178,22 @@ const struct value_string om2k_result_strings[] = {
 	{ 0, NULL }
 };
 
+const struct value_string om2k_accordance_strings[] = {
+	{ 0x00, "Data according to request" },
+	{ 0x01, "Data not according to request" },
+	{ 0x02, "Inconsistent MO data" },
+	{ 0x03, "Capability constraint violation" },
+	{ 0, NULL }
+};
+
+const struct value_string om2k_mostate_vals[] = {
+	{ 0x00, "RESET" },
+	{ 0x01, "STARTED" },
+	{ 0x02, "ENABLED" },
+	{ 0x03, "DISABLED" },
+	{ 0, NULL }
+};
+
 static int om2k_rx_nack(struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
@@ -1180,7 +1203,7 @@ static int om2k_rx_nack(struct msgb *msg)
 	LOGP(DNM, LOGL_ERROR, "Rx MO=%s %s", om2k_mo_name(&o2h->mo),
 		get_value_string(om2k_msgcode_vals, msg_type));
 
-	abis_om2k_tlv_parse(&tp, o2h->data, o2h->om.length - 6);
+	abis_om2k_msg_tlv_parse(&tp, o2h);
 	if (TLVP_PRESENT(&tp, OM2K_DEI_REASON_CODE))
 		LOGPC(DNM, LOGL_ERROR, ", Reason 0x%02x",
 			*TLVP_VAL(&tp, OM2K_DEI_REASON_CODE));
@@ -1190,6 +1213,61 @@ static int om2k_rx_nack(struct msgb *msg)
 			get_value_string(om2k_result_strings,
 					 *TLVP_VAL(&tp, OM2K_DEI_RESULT_CODE)));
 	LOGPC(DNM, LOGL_ERROR, "\n");
+
+	return 0;
+}
+
+/* Process a Configuration Result message */
+static int process_conf_res(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om2k_hdr *o2h = msgb_l2(msg);
+	uint16_t msg_type = ntohs(o2h->msg_type);
+	struct tlv_parsed tp;
+	uint8_t acc;
+	unsigned int log_level;
+	int ret;
+
+	abis_om2k_msg_tlv_parse(&tp, o2h);
+	if (!TLVP_PRESENT(&tp, OM2K_DEI_ACCORDANCE_IND))
+		return -EIO;
+
+	acc = *TLVP_VAL(&tp, OM2K_DEI_ACCORDANCE_IND);
+
+	switch (acc) {
+	case 0:
+		log_level = LOGL_DEBUG;
+		ret = 0;
+		break;
+	default:
+		log_level = LOGL_ERROR;
+		ret = -EINVAL;
+		break;
+	}
+
+	LOGP(DNM, log_level, "Rx MO=%s %s, Accordance: %s\n",
+		om2k_mo_name(&o2h->mo),
+		get_value_string(om2k_msgcode_vals, msg_type),
+		get_value_string(om2k_accordance_strings, acc));
+
+	return ret;
+}
+
+static int process_mo_state(struct gsm_bts *bts, struct msgb *msg)
+{
+	struct abis_om2k_hdr *o2h = msgb_l2(msg);
+	uint16_t msg_type = ntohs(o2h->msg_type);
+	struct tlv_parsed tp;
+	uint8_t mo_state;
+
+	abis_om2k_msg_tlv_parse(&tp, o2h);
+	if (!TLVP_PRESENT(&tp, OM2K_DEI_MO_STATE))
+		return -EIO;
+	mo_state = *TLVP_VAL(&tp, OM2K_DEI_MO_STATE);
+
+	LOGP(DNM, LOGL_DEBUG, "Rx MO=%s %s, MO State: %s\n",
+		om2k_mo_name(&o2h->mo),
+		get_value_string(om2k_msgcode_vals, msg_type),
+		get_value_string(om2k_mostate_vals, mo_state));
 
 	return 0;
 }
@@ -1232,33 +1310,41 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_cal_time_resp(bts);
 		break;
 	case OM2K_MSGT_FAULT_REP:
+		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_FAULT_REP_ACK);
 		break;
 	case OM2K_MSGT_NEGOT_REQ:
 		rc = om2k_rx_negot_req(msg);
 		break;
 	case OM2K_MSGT_START_RES:
+		process_mo_state(bts, msg);
 		rc = om2k_rx_start_res(msg);
 		break;
 	case OM2K_MSGT_OP_INFO_ACK:
 		rc = om2k_rx_op_info_ack(msg);
 		break;
 	case OM2K_MSGT_IS_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_IS_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_CON_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_CON_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_TX_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TX_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_RX_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_RX_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_TS_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TS_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_TF_CONF_RES:
+		process_conf_res(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TF_CONF_RES_ACK);
 		break;
 	case OM2K_MSGT_CONNECT_COMPL:
@@ -1268,15 +1354,19 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_START_REQ);
 		break;
 	case OM2K_MSGT_ENABLE_RES:
+		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_ENABLE_RES_ACK);
 		break;
 	case OM2K_MSGT_DISABLE_RES:
+		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_DISABLE_RES_ACK);
 		break;
 	case OM2K_MSGT_TEST_RES:
+		process_mo_state(bts, msg);
 		rc = abis_om2k_tx_simple(bts, &o2h->mo, OM2K_MSGT_TEST_RES_ACK);
 		break;
 	case OM2K_MSGT_STATUS_RESP:
+		process_mo_state(bts, msg);
 		break;
 	case OM2K_MSGT_START_REQ_ACK:
 	case OM2K_MSGT_CON_CONF_REQ_ACK:
