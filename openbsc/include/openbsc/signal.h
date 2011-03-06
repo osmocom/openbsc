@@ -175,6 +175,7 @@ struct ipacc_ack_signal_data {
 struct abis_om2k_mo;
 
 struct nm_statechg_signal_data {
+	struct gsm_bts *bts;
 	u_int8_t obj_class;
 	void *obj;
 	struct gsm_nm_state *old_state;

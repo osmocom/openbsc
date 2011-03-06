@@ -697,6 +697,7 @@ static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
 	new_state = *nm_state;
 	new_state.administrative = adm_state;
 
+	nsd.bts = bts;
 	nsd.obj_class = obj_class;
 	nsd.old_state = nm_state;
 	nsd.new_state = &new_state;
@@ -759,6 +760,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 		nsd.old_state = nm_state;
 		nsd.new_state = &new_state;
 		nsd.obj_inst = &foh->obj_inst;
+		nsd.bts = bts;
 		dispatch_signal(SS_NM, S_NM_STATECHG_OPER, &nsd);
 		nm_state->operational = new_state.operational;
 		nm_state->availability = new_state.availability;
