@@ -29,6 +29,7 @@
 #include <osmocore/talloc.h>
 #include <osmocore/rate_ctr.h>
 #include <osmocore/utils.h>
+#include <osmocom/vty/logging.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -782,7 +783,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 
 /* called by the telnet interface... we have our own init above */
-int bsc_vty_init(void)
+int bsc_vty_init(const struct log_info *cat)
 {
+	logging_vty_add_cmds(cat);
 	return 0;
 }

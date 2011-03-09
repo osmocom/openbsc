@@ -2650,7 +2650,7 @@ DEFUN(pdch_act, pdch_act_cmd,
 extern int bsc_vty_init_extra(void);
 extern const char *openbsc_copyright;
 
-int bsc_vty_init(void)
+int bsc_vty_init(const struct log_info *cat)
 {
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);
@@ -2666,7 +2666,7 @@ int bsc_vty_init(void)
 
 	install_element_ve(&show_paging_cmd);
 
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(cat);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
 
 	install_element(CONFIG_NODE, &cfg_net_cmd);

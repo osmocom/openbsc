@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 	/* This needs to precede handle_options() */
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	bsc_vty_init();
+	bsc_vty_init(&log_info);
 
 	/* parse options */
 	handle_options(argc, argv);
