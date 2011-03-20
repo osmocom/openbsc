@@ -1633,6 +1633,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		}
 		break;
 	case GSM_BTS_TYPE_BS11:
+	case GSM_BTS_TYPE_RBS2000:
 		trau_mux_map_lchan(lchan, remote_lchan);
 		break;
 	default:
@@ -1702,6 +1703,7 @@ static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
 				net, 0);
 		break;
 	case GSM_BTS_TYPE_BS11:
+	case GSM_BTS_TYPE_RBS2000:
 		if (enable)
 			return trau_recv_lchan(lchan, callref);
 		return trau_mux_unmap(NULL, callref);
@@ -2986,6 +2988,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			}
 			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
+		case GSM_BTS_TYPE_RBS2000:
 			return trau_send_frame(trans->conn->lchan, arg);
 		default:
 			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
