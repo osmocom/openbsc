@@ -23,8 +23,8 @@
 #ifndef OPENBSC_MGCP_H
 #define OPENBSC_MGCP_H
 
-#include <osmocore/msgb.h>
-#include <osmocore/write_queue.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/write_queue.h>
 
 #include "debug.h"
 

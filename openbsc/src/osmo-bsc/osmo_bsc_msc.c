@@ -27,7 +27,7 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/signal.h>
 
-#include <osmocore/gsm0808.h>
+#include <osmocom/core/gsm0808.h>
 
 #include <osmocom/sccp/sccp.h>
 

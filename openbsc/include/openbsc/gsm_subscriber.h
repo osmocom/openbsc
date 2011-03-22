@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 #include "gsm_data.h"
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 #define GSM_IMEI_LENGTH 17
 #define GSM_IMSI_LENGTH 17

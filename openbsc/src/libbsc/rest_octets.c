@@ -26,7 +26,7 @@
 #include <errno.h>
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/bitvec.h>
+#include <osmocom/core/bitvec.h>
 #include <openbsc/rest_octets.h>
 
 /* generate SI1 rest octets */

@@ -27,8 +27,8 @@
 #include <errno.h>
 #include <netinet/in.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/gsm48.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>

@@ -30,8 +30,8 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
-#include <osmocore/bitvec.h>
-#include <osmocore/utils.h>
+#include <osmocom/core/bitvec.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/debug.h>
 
 #define GSM48_CELL_CHAN_DESC_SIZE	16

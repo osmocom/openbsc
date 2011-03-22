@@ -31,12 +31,12 @@
 #include <arpa/inet.h>
 
 #include <openbsc/db.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/signal.h>
-#include <osmocore/talloc.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/tlv.h>
+#include <osmocom/core/gsm_utils.h>
+#include <osmocom/core/signal.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>

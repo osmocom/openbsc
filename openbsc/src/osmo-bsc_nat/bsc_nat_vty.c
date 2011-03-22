@@ -26,9 +26,9 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/utils.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/vty/logging.h>
 
 #include <osmocom/sccp/sccp.h>

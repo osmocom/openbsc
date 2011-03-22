@@ -33,12 +33,12 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
 	      int (*cb)(struct bsc_fd *fd, unsigned int what))

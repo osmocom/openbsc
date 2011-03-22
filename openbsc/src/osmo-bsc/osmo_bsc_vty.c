@@ -22,7 +22,7 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 
 #define IPA_STR "IP.ACCESS specific\n"

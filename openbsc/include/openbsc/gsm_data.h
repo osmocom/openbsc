@@ -44,19 +44,19 @@ enum gsm_chreq_reason_t {
 	GSM_CHREQ_REASON_OTHER,
 };
 
-#include <osmocore/timer.h>
+#include <osmocom/core/timer.h>
 #include <openbsc/system_information.h>
 #include <openbsc/rest_octets.h>
 #include <openbsc/mncc.h>
 
-#include <osmocore/tlv.h>
-#include <osmocore/bitvec.h>
-#include <osmocore/statistics.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/utils.h>
-#include <osmocore/rxlev_stat.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/bitvec.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/rxlev_stat.h>
 
-#include <osmocore/protocol/gsm_08_58.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 
 
 #define TRX_NR_TS	8

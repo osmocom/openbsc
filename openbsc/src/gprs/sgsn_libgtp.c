@@ -34,9 +34,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
 #include <openbsc/gsm_04_08_gprs.h>
 
 #include <openbsc/signal.h>

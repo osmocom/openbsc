@@ -20,7 +20,7 @@
  */
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
@@ -31,7 +31,7 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/chan_alloc.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/ipaccess.h>
 
 /* global pointer to the gsm network data structure */

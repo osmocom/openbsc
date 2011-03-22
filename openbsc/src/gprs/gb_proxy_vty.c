@@ -23,7 +23,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>

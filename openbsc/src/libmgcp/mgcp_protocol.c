@@ -29,9 +29,9 @@
 #include <limits.h>
 #include <unistd.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
 
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>

@@ -34,10 +34,10 @@
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/bsc_api.h>
 
-#include <osmocore/gsm0480.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/gsm0480.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
 
 static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 {

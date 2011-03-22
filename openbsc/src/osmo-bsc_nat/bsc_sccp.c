@@ -25,7 +25,7 @@
 
 #include <osmocom/sccp/sccp.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <string.h>
 #include <time.h>

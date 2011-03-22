@@ -25,7 +25,7 @@
 #include <openbsc/auth.h>
 #include <openbsc/gsm_data.h>
 
-#include <osmocore/comp128.h>
+#include <osmocom/gsm/comp128.h>
 
 #include <stdlib.h>
 

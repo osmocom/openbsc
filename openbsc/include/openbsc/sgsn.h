@@ -3,7 +3,7 @@
 
 #include <sys/types.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>

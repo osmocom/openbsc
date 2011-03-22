@@ -22,8 +22,8 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/meas_rep.h>

@@ -25,10 +25,10 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
-#include <osmocore/gsm0480.h>
-#include <osmocore/talloc.h>
-#include <osmocore/tlv.h>
+#include <osmocom/core/protocol/gsm_08_08.h>
+#include <osmocom/core/gsm0480.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/tlv.h>
 
 #include <osmocom/sccp/sccp.h>
 

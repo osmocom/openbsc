@@ -20,7 +20,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <string.h>
 
 static struct msgb *create_auep1()

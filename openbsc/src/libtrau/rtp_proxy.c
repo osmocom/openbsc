@@ -28,10 +28,10 @@
 #include <time.h>        /* clock() */
 #include <sys/utsname.h> /* uname() */
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/msgb.h>
-#include <osmocore/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
 

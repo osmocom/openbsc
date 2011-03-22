@@ -2,7 +2,7 @@
 #define _GSM48_GPRS_H
 
 #include <stdint.h>
-#include <osmocore/protocol/gsm_04_08.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 /* Table 10.4 / 10.4a, GPRS Mobility Management (GMM) */
 #define GSM48_MT_GMM_ATTACH_REQ		0x01

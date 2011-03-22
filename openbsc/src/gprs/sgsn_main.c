@@ -33,11 +33,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/logging.h>
-#include <osmocore/process.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/logging.h>
+#include <osmocom/core/process.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>

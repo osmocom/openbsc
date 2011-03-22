@@ -32,9 +32,9 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define GSM0808_T10_VALUE    6, 0
 

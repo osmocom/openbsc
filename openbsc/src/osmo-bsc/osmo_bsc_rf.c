@@ -26,8 +26,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc_data.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/protocol/gsm_12_21.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>

@@ -29,11 +29,11 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/talloc.h>
-#include <osmocore/gsm0808.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/gsm0808.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/core/protocol/gsm_08_08.h>
 
 #include <osmocom/sccp/sccp.h>
 

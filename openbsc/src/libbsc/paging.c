@@ -39,7 +39,7 @@
 #include <assert.h>
 
 #include <openbsc/paging.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>

@@ -22,7 +22,7 @@
 #include <sys/types.h>
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/abis_nm.h>
 
 static struct gsm_bts_model model_unknown = {

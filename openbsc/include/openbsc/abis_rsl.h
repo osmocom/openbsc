@@ -22,9 +22,9 @@
 #ifndef _RSL_H
 #define _RSL_H
 
-#include <osmocore/protocol/gsm_08_58.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 struct gsm_bts;
 struct gsm_lchan;

@@ -23,8 +23,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
 
-#include <osmocore/write_queue.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/talloc.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>

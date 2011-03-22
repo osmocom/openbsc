@@ -37,7 +37,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/signal.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <osmocom/vty/vty.h>
 

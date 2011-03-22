@@ -22,8 +22,8 @@
 #ifndef BSC_MSC_H
 #define BSC_MSC_H
 
-#include <osmocore/write_queue.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
 
 struct bsc_msc_connection {
 	struct write_queue write_queue;

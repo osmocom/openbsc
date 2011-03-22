@@ -28,10 +28,10 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/timer.h>
-#include <osmocore/rxlev_stat.h>
-#include <osmocore/gsm48_ie.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/gsm/rxlev_stat.h>
+#include <osmocom/gsm/gsm48_ie.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>

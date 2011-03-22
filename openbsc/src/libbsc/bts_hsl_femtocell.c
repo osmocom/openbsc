@@ -24,7 +24,7 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>

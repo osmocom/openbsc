@@ -29,19 +29,19 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_04_08.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/debug.h>
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/rtp_proxy.h>
-#include <osmocore/rsl.h>
+#include <osmocom/gsm/rsl.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128

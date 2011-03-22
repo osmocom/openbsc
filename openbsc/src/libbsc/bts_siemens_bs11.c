@@ -21,7 +21,7 @@
 
 #include <sys/types.h>
 
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>

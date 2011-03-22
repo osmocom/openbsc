@@ -27,8 +27,8 @@
 #include <termios.h>
 #include <fcntl.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/rs232.h>

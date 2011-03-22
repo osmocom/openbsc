@@ -32,11 +32,11 @@
 #include <sys/socket.h>
 
 #include <openbsc/debug.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
-#include <osmocore/process.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/process.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 #include <osmocom/vty/telnet_interface.h>

@@ -36,10 +36,10 @@
 
 #include "lapd.h"
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/talloc.h>
-#include <osmocore/msgb.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
 #include <openbsc/debug.h>
 
 #define SABM_INTERVAL		0, 300000

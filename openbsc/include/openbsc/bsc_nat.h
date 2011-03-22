@@ -25,14 +25,14 @@
 
 #include <sys/types.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
-#include <osmocore/msgfile.h>
-#include <osmocore/timer.h>
-#include <osmocore/write_queue.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/statistics.h>
-#include <osmocore/protocol/gsm_04_08.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/msgfile.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <regex.h>
 

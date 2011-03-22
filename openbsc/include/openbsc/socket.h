@@ -2,7 +2,7 @@
 #define _BSC_SOCKET_H
 
 #include <sys/types.h>
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 
 #ifndef IPPROTO_GRE
 #define IPPROTO_GRE 47

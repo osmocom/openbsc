@@ -1,7 +1,7 @@
 #ifndef _GPRS_GMM_H
 #define _GPRS_GMM_H
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/gprs_sgsn.h>
 
 int gsm48_tx_gsm_deact_pdp_req(struct sgsn_pdp_ctx *pdp, uint8_t sm_cause);

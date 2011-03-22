@@ -27,12 +27,12 @@
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/telnet_interface.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/utils.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/vty.h>
 #include <openbsc/debug.h>
 

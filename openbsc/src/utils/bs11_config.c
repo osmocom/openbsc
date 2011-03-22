@@ -35,10 +35,10 @@
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/debug.h>
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 #include <openbsc/rs232.h>
 
 /* state of our bs11_config application */

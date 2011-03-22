@@ -32,7 +32,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 {

@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <openbsc/vty.h>
 #include <openbsc/gsm_data.h>

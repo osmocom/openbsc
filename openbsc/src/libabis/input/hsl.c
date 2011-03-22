@@ -43,9 +43,9 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -55,7 +55,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define HSL_TCP_PORT	2500
 #define HSL_PROTO_DEBUG	0xdd

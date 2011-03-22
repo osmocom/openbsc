@@ -34,9 +34,9 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/statistics.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/core/rate_ctr.h>
 
 static char *db_basename = NULL;
 static char *db_dirname = NULL;

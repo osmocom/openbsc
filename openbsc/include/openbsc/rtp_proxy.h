@@ -24,8 +24,8 @@
 
 #include <netinet/in.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/select.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/select.h>
 
 #define RTP_PT_GSM_FULL 3
 #define RTP_PT_GSM_HALF 96

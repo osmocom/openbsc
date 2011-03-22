@@ -21,7 +21,7 @@
  */
 
 #include <sys/types.h>
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 #define NR_SUBCH	4
 #define TRAU_FRAME_SIZE	40

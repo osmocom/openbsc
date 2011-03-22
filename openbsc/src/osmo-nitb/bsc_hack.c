@@ -30,11 +30,11 @@
 #include <getopt.h>
 
 #include <openbsc/db.h>
-#include <osmocore/select.h>
-#include <osmocore/process.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/process.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/sms_queue.h>

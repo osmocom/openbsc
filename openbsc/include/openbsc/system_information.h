@@ -1,7 +1,7 @@
 #ifndef _SYSTEM_INFO_H
 #define _SYSTEM_INFO_H
 
-#include <osmocore/utils.h>
+#include <osmocom/core/utils.h>
 
 #define GSM_MACBLOCK_LEN 		23
 

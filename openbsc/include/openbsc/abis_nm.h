@@ -23,8 +23,8 @@
 #define _NM_H
 
 #include <sys/types.h>
-#include <osmocore/tlv.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 struct cell_global_id {
 	u_int16_t mcc;

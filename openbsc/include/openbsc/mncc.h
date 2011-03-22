@@ -24,8 +24,8 @@
 #ifndef _MNCC_H
 #define _MNCC_H
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/mncc.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/gsm/mncc.h>
 
 #include <stdint.h>
 

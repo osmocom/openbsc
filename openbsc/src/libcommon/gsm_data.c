@@ -26,10 +26,10 @@
 
 #include <netinet/in.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/talloc.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/statistics.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/statistics.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>

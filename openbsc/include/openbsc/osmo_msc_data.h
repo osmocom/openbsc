@@ -25,7 +25,7 @@
 
 #include "bsc_msc.h"
 
-#include <osmocore/timer.h>
+#include <osmocom/core/timer.h>
 
 struct osmo_bsc_rf;
 struct gsm_network;

@@ -22,7 +22,7 @@
 #include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>

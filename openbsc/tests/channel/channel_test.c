@@ -22,7 +22,7 @@
 
 #include <assert.h>
 
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/abis_rsl.h>
 

@@ -44,11 +44,11 @@
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/gsm0808.h>
-#include <osmocore/talloc.h>
-#include <osmocore/process.h>
+#include <osmocom/core/gsm0808.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/process.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/core/protocol/gsm_08_08.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/vty.h>

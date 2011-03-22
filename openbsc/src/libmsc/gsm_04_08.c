@@ -49,14 +49,14 @@
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
-#include <osmocore/bitvec.h>
+#include <osmocom/core/bitvec.h>
 
-#include <osmocore/gsm48.h>
-#include <osmocore/gsm0480.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/gsm48.h>
+#include <osmocom/gsm/gsm0480.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/tlv.h>
 
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;

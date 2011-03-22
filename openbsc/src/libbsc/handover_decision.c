@@ -24,14 +24,14 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/handover.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 
 /* issue handover to a cell identified by ARFCN and BSIC */
 static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,

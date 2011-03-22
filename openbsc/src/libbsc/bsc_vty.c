@@ -29,17 +29,17 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_om2000.h>
-#include <osmocore/utils.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/vty.h>
 #include <openbsc/gprs_ns.h>
 #include <openbsc/system_information.h>

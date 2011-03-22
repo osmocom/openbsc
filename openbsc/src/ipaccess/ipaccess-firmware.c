@@ -20,7 +20,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <stdio.h>
 #include <stdlib.h>

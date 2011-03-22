@@ -23,9 +23,9 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/utils.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>

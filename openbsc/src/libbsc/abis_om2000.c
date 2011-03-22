@@ -30,10 +30,10 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
-#include <osmocore/talloc.h>
-#include <osmocore/utils.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>

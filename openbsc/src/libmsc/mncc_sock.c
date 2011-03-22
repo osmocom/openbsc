@@ -30,9 +30,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
-#include <osmocore/protocol/gsm_04_08.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
