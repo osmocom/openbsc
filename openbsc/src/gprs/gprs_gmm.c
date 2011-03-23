@@ -32,8 +32,8 @@
 
 #include <openbsc/db.h>
 #include <osmocom/core/msgb.h>
-#include <osmocom/core/tlv.h>
-#include <osmocom/core/gsm_utils.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/core/signal.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/rate_ctr.h>

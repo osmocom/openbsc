@@ -21,8 +21,8 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/debug.h>
 
-#include <osmocom/core/protocol/gsm_08_08.h>
-#include <osmocom/core/gsm0808.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
+#include <osmocom/gsm/gsm0808.h>
 
 #define return_when_not_connected(conn) \
 	if (!conn->sccp_con) {\

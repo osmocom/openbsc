@@ -2,7 +2,7 @@
 #define _INT_SNDCP_H
 
 #include <stdint.h>
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 /* A fragment queue header, maintaining list of fragments for one N-PDU */
 struct defrag_state {

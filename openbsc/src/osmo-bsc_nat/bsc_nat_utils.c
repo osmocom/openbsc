@@ -31,9 +31,9 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/gsm0808.h>
+#include <osmocom/gsm/gsm0808.h>
 
-#include <osmocom/core/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <osmocom/sccp/sccp.h>
 

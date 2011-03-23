@@ -29,8 +29,8 @@
 #include <osmocom/sccp/sccp.h>
 
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/gsm0808.h>
-#include <osmocom/core/protocol/gsm_08_08.h>
+#include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
