@@ -40,6 +40,7 @@
 #include <osmocore/process.h>
 
 #include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/logging.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -220,7 +221,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(&log_info);
         sgsn_vty_init();
 
 	handle_options(argc, argv);

@@ -47,6 +47,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/logging.h>
 
 #include "../../bscconfig.h"
 
@@ -221,7 +222,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(&log_info);
 	gbproxy_vty_init();
 
 	handle_options(argc, argv);
