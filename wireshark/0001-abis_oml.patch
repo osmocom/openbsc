@@ -15,9 +15,9 @@ Add the GSM ABIS OML dissector from OpenBSC
 
 Index: wireshark/epan/CMakeLists.txt
 ===================================================================
---- wireshark.orig/epan/CMakeLists.txt	2011-03-03 14:01:07.000000000 +0100
-+++ wireshark/epan/CMakeLists.txt	2011-03-03 14:01:20.000000000 +0100
-@@ -589,6 +589,7 @@ set(DISSECTOR_SRC
+--- wireshark.orig/epan/CMakeLists.txt	2011-03-24 20:00:54.000000000 +0100
++++ wireshark/epan/CMakeLists.txt	2011-03-24 20:01:02.000000000 +0100
+@@ -590,6 +590,7 @@
  	dissectors/packet-gsm_a_gm.c
  	dissectors/packet-gsm_a_rp.c
  	dissectors/packet-gsm_a_rr.c
@@ -27,9 +27,9 @@ Index: wireshark/epan/CMakeLists.txt
  	dissectors/packet-gsm_bssmap_le.c
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2011-03-03 14:01:07.000000000 +0100
-+++ wireshark/epan/dissectors/Makefile.common	2011-03-03 14:01:20.000000000 +0100
-@@ -501,6 +501,7 @@ DISSECTOR_SRC = \
+--- wireshark.orig/epan/dissectors/Makefile.common	2011-03-24 20:00:54.000000000 +0100
++++ wireshark/epan/dissectors/Makefile.common	2011-03-24 20:01:02.000000000 +0100
+@@ -503,6 +503,7 @@
  	packet-gsm_a_gm.c	\
  	packet-gsm_a_rp.c	\
  	packet-gsm_a_rr.c	\
@@ -40,11 +40,11 @@ Index: wireshark/epan/dissectors/Makefile.common
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-03-06 13:12:30.000000000 +0100
-@@ -0,0 +1,1776 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-03-24 20:01:48.000000000 +0100
+@@ -0,0 +1,1735 @@
 +/* packet-abis_oml.c
-+ * Routines for packet dissection of GSM A-bis over IP (3GPP TS 12.21)
-+ * Copyright 2009-2010 by Harald Welte <laforge@gnumonks.org>
++ * Routines for packet dissection of GSM A-bis OML (3GPP TS 12.21)
++ * Copyright 2009-2011 by Harald Welte <laforge@gnumonks.org>
 + * Copyright 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
 + * based on A-bis OML code in OpenBSC
 + *
@@ -577,47 +577,6 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ NM_ATT_IPACC_REVOC_DATE,	"IPA Revocation Date" },
 +	{ 0, NULL }
 +};
-+
-+#if 0
-+static gint merge_value_strings(value_string **dst, const value_string *base, const value_string delta)
-+{
-+	const value_string *cur;
-+	guint num_base, num_delta, num_max, num_out;
-+
-+	for (cur = base; cur->value || cur->strptr; cur++)
-+		num_base++;
-+	for (cur = delta; cur->value || cur->strptr; cur++)
-+		num_delta++;
-+	num_max = num_base + num_delta + 1; /* terminating entry */
-+
-+	*dst = g_malloc(sizeof(value_string) * num_max);
-+	if (!*dst)
-+		return -ENOMEM;
-+	/* zero-initialize the entire array so we always are zero-
-+	 * terminated */
-+	memset(*dst, 0, sizeof(value_string * num_max));
-+
-+	/* initialize with the 'base' */
-+	memcpy(*dst, base, sizeof(value_string)*num_base);
-+	num_out = num_base;
-+
-+	/* patch/append the delta */
-+	for (cur = delta; cur->value || cur->strptr; cur++) {
-+		guint idx;
-+		if (match_strval_idx(cur->value, base, &idx)) {
-+			/* the base set already contains a definition,
-+ 			 * we need to override it */
-+			memcpy((*dst)[idx], cur, sizeof(value_string));
-+		} else {
-+			/* append the entry to the end */
-+			memcpy((*dst)[num_out], cur, sizeof(value_string));
-+			num_out++;
-+		}
-+	}
-+
-+	return 0;
-+}
-+#endif
 +
 +static const gchar *
 +_match_oml_fom_msgtype(const guint32 val, const value_string_ext *vs, gint *idx)
@@ -1821,7 +1780,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-03-06 13:12:30.000000000 +0100
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-03-24 20:01:02.000000000 +0100
 @@ -0,0 +1,667 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */
