@@ -27,10 +27,10 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <osmocom/sccp/sccp.h>
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <stdio.h>
 
