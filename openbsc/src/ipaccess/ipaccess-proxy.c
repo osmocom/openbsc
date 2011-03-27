@@ -806,6 +806,11 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 
 	switch (bfd->priv_nr & 0xff) {
 	case OML_FROM_BTS: /* incoming OML data from BTS, forward to BSC OML */
+		/* The BTS started a connection with us but we got no
+		 * IPAC_MSGT_ID_RESP message yet, in that scenario we did not
+		 * allocate the ipa_bts_conn structure. */
+		if (ipbc == NULL)
+			break;
 		ipbc->oml_conn = NULL;
 		bsc_conn = ipbc->bsc_oml_conn;
 		/* close the connection to the BSC */
