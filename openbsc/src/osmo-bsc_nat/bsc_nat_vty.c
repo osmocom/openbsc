@@ -30,6 +30,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/misc.h>
 
 #include <osmocom/sccp/sccp.h>
 

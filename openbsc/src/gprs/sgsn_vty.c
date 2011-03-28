@@ -36,6 +36,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/vty/misc.h>
 
 #include <pdp.h>
 
