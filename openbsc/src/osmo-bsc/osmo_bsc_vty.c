@@ -53,31 +53,31 @@ static int config_write_msc(struct vty *vty)
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	vty_out(vty, " msc%s", VTY_NEWLINE);
+	vty_out(vty, "msc%s", VTY_NEWLINE);
 	if (data->bsc_token)
-		vty_out(vty, "  token %s%s", data->bsc_token, VTY_NEWLINE);
+		vty_out(vty, " token %s%s", data->bsc_token, VTY_NEWLINE);
 	if (data->core_ncc != -1)
-		vty_out(vty, "  core-mobile-network-code %d%s",
+		vty_out(vty, " core-mobile-network-code %d%s",
 			data->core_ncc, VTY_NEWLINE);
 	if (data->core_mcc != -1)
-		vty_out(vty, "  core-mobile-country-code %d%s",
+		vty_out(vty, " core-mobile-country-code %d%s",
 			data->core_mcc, VTY_NEWLINE);
-	vty_out(vty, "  ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
-	vty_out(vty, "  ip %s%s", data->msc_ip, VTY_NEWLINE);
-	vty_out(vty, "  port %d%s", data->msc_port, VTY_NEWLINE);
-	vty_out(vty, "  ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
-	vty_out(vty, "  timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
-	vty_out(vty, "  timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
+	vty_out(vty, " ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
+	vty_out(vty, " ip %s%s", data->msc_ip, VTY_NEWLINE);
+	vty_out(vty, " port %d%s", data->msc_port, VTY_NEWLINE);
+	vty_out(vty, " ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
+	vty_out(vty, " timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
 	if (data->mid_call_txt)
-		vty_out(vty, "  mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
-	vty_out(vty, "  mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
+		vty_out(vty, " mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
+	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
 	if (data->ussd_welcome_txt)
-		vty_out(vty, "  bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
+		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
 
-		vty_out(vty, "  codec-list ");
+		vty_out(vty, " codec-list ");
 		for (i = 0; i < data->audio_length; ++i) {
 			if (i != 0)
 				vty_out(vty, ", ");
@@ -290,7 +290,7 @@ DEFUN(cfg_net_msc_welcome_ussd,
 
 int bsc_vty_init_extra(void)
 {
-	install_element(GSMNET_NODE, &cfg_net_msc_cmd);
+	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
 	install_node(&msc_node, config_write_msc);
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);

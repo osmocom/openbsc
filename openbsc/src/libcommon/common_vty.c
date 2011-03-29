@@ -84,7 +84,7 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 		}
 		break;
 	case MSC_NODE:
-		vty->node = GSMNET_NODE;
+		vty->node = CONFIG_NODE;
 		break;
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
@@ -155,7 +155,7 @@ gDEFUN(ournode_exit,
 		vty->index = NULL;
 		break;
 	case MSC_NODE:
-		vty->node = GSMNET_NODE;
+		vty->node = CONFIG_NODE;
 		break;
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
