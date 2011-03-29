@@ -419,6 +419,19 @@ DEFUN(cfg_nat_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_no_acc_lst_name,
+      cfg_nat_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Remove the access list from the NAT.\n")
+{
+	if (_nat->acc_lst_name) {
+		talloc_free(_nat->acc_lst_name);
+		_nat->acc_lst_name = NULL;
+	}
+
+	return NULL;
+}
+
 DEFUN(cfg_nat_number_rewrite,
       cfg_nat_number_rewrite_cmd,
       "number-rewrite FILENAME",
@@ -638,6 +651,21 @@ DEFUN(cfg_bsc_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_no_acc_lst_name,
+      cfg_bsc_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Remove the access list assigned to the BSC.\n")
+{
+	struct bsc_config *conf = vty->index;
+
+	if (conf->acc_lst_name) {
+		talloc_free(conf->acc_lst_name);
+		conf->acc_lst_name = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bsc_max_endps, cfg_bsc_max_endps_cmd,
       "max-endpoints <1-1024>",
       "Highest endpoint to use (exclusively)\n" "Number of ports\n")
@@ -750,6 +778,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_dscp_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_acc_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
@@ -775,6 +804,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_max_endps_cmd);
 
 	mgcp_vty_init();
