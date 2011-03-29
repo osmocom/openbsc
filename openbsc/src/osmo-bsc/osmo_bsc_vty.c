@@ -69,15 +69,15 @@ static int config_write_msc(struct vty *vty)
 	vty_out(vty, "  timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, "  timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
 	if (data->mid_call_txt)
-		vty_out(vty, "mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
-	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
+		vty_out(vty, "  mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
+	vty_out(vty, "  mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
 	if (data->ussd_welcome_txt)
-		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
+		vty_out(vty, "  bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
 
-		vty_out(vty, " codec_list ");
+		vty_out(vty, "  codec-list ");
 		for (i = 0; i < data->audio_length; ++i) {
 			if (i != 0)
 				vty_out(vty, ", ");
