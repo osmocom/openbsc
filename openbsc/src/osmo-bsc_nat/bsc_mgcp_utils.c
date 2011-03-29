@@ -681,7 +681,8 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	inet_aton(cfg->source_addr, &addr.sin_addr);
 
 	if (bind(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to bind. errno: %d\n", errno);
+		LOGP(DMGCP, LOGL_ERROR, "Failed to bind on %s:%d errno: %d\n",
+		     cfg->source_addr, cfg->source_port, errno);
 		close(cfg->gw_fd.bfd.fd);
 		cfg->gw_fd.bfd.fd = -1;
 		return -1;
