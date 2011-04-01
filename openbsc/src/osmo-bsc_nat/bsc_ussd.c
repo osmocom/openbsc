@@ -1,8 +1,8 @@
 /* USSD Filter Code */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -352,7 +352,7 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 	if (req.text[0] == 0xff)
 		return 0;
 
-	if (strcmp(req.text, con->bsc->nat->ussd_query) != 0)
+	if (regexec(&con->bsc->nat->ussd_query_re, req.text, 0, NULL, 0) == REG_NOMATCH)
 		return 0;
 
 	/* found a USSD query for our subscriber */

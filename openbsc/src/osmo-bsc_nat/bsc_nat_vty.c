@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On-Waves
+/* (C) 2010-2011 by Holger Hans Peter Freyther
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -463,11 +463,11 @@ DEFUN(cfg_nat_ussd_lst_name,
 
 DEFUN(cfg_nat_ussd_query,
       cfg_nat_ussd_query_cmd,
-      "ussd-query QUERY",
+      "ussd-query REGEXP",
       "Set the USSD query to match with the ussd-list-name\n"
       "The query to match")
 {
-	bsc_replace_string(_nat, &_nat->ussd_query, argv[0]);
+	bsc_parse_reg(_nat, &_nat->ussd_query_re, &_nat->ussd_query, argc, argv);
 	return CMD_SUCCESS;
 }
 

@@ -249,6 +249,7 @@ struct bsc_nat {
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
 	char *ussd_query;
+	regex_t ussd_query_re;
 	char *ussd_token;
 	char *ussd_local;
 	struct bsc_fd ussd_listen;
