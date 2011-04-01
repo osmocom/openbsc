@@ -429,7 +429,7 @@ DEFUN(cfg_nat_no_acc_lst_name,
 		_nat->acc_lst_name = NULL;
 	}
 
-	return NULL;
+	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_nat_number_rewrite,
