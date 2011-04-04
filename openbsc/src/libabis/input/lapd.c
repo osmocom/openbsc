@@ -290,7 +290,7 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		teip = teip_from_tei(li, action);
 		if (!teip) {
 			LOGP(DMI, LOGL_INFO, "TEI MGR: New TEI %u\n", action);
-			lapd_tei_alloc(li, action);
+			teip = lapd_tei_alloc(li, action);
 		}
 
 		/* Send ACCEPT */
