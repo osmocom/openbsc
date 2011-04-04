@@ -761,15 +761,18 @@ static void test_cr_filter()
 		nat_lst = bsc_nat_acc_lst_get(nat, "nat");
 		bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
 
-		bsc_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
+		if (bsc_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
-			      &cr_filter[i].nat_imsi_deny);
-		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_allow_re, &bsc_entry->imsi_allow,
+			      &cr_filter[i].nat_imsi_deny) != 0)
+			abort();
+		if (bsc_parse_reg(bsc_entry, &bsc_entry->imsi_allow_re, &bsc_entry->imsi_allow,
 			      cr_filter[i].bsc_imsi_allow ? 1 : 0,
-			      &cr_filter[i].bsc_imsi_allow);
-		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_deny_re, &bsc_entry->imsi_deny,
+			      &cr_filter[i].bsc_imsi_allow) != 0)
+			abort();
+		if (bsc_parse_reg(bsc_entry, &bsc_entry->imsi_deny_re, &bsc_entry->imsi_deny,
 			      cr_filter[i].bsc_imsi_deny ? 1 : 0,
-			      &cr_filter[i].bsc_imsi_deny);
+			      &cr_filter[i].bsc_imsi_deny) != 0)
+			abort();
 
 		parsed = bsc_nat_parse(msg);
 		if (!parsed) {
