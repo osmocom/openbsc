@@ -44,6 +44,7 @@
 #include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/socket.h>
 #include <osmocom/core/talloc.h>
 
 static struct log_target *stderr_target;
@@ -288,43 +289,6 @@ static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int li
 		logp2(ss, lvl, file, line, 0, "unknown ");
 }
 
-/* UDP socket handling */
-
-static int make_sock(struct bsc_fd *bfd, u_int16_t port, int proto, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what),
-		     void *data)
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_DGRAM, proto);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	bfd->data = data;
-	bfd->priv_nr = priv_nr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind socket: %s\n",
-			strerror(errno));
-		return -EIO;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register UDP fd");
-		return ret;
-	}
-	return 0;
-}
-
 static int handle_udp_read(struct bsc_fd *bfd)
 {
 	struct ipa_bts_conn *ipbc = bfd->data;
@@ -494,7 +458,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 
 	/* Create UDP socket for BTS packet injection */
 	udp_port = 10000 + (site_id % 1000)*100 + (bts_id % 100);
-	ret = make_sock(&ipbc->udp_bts_fd, udp_port, IPPROTO_UDP,
+	ret = make_sock(&ipbc->udp_bts_fd, IPPROTO_UDP, INADDR_ANY, udp_port,
 			UDP_TO_BTS, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bts;
@@ -503,7 +467,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 
 	/* Create UDP socket for BSC packet injection */
 	udp_port = 20000 + (site_id % 1000)*100 + (bts_id % 100);
-	ret = make_sock(&ipbc->udp_bsc_fd, udp_port, IPPROTO_UDP,
+	ret = make_sock(&ipbc->udp_bsc_fd, IPPROTO_UDP, INADDR_ANY, udp_port,
 			UDP_TO_BSC, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bsc;
