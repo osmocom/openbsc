@@ -782,14 +782,14 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
-	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, 0, IPA_TCP_PORT_OML,
-			listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_OML, 0, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, 0,
-			IPA_TCP_PORT_RSL, rsl_listen_fd_cb);
+	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_RSL, 0, rsl_listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 

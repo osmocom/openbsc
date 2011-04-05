@@ -451,8 +451,8 @@ int hsl_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for connections */
-	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, 0, HSL_TCP_PORT,
-			listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY, HSL_TCP_PORT,
+			0, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 

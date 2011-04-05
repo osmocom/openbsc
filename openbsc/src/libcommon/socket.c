@@ -40,8 +40,9 @@
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/talloc.h>
 
-int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
-	      int (*cb)(struct bsc_fd *fd, unsigned int what))
+int make_sock(struct bsc_fd *bfd, int proto,
+	      u_int32_t ip, u_int16_t port, int priv_nr,
+	      int (*cb)(struct bsc_fd *fd, unsigned int what), void *data)
 {
 	struct sockaddr_in addr;
 	int ret, on = 1;
@@ -64,7 +65,8 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
 	bfd->fd = socket(AF_INET, type, proto);
 	bfd->cb = cb;
 	bfd->when = BSC_FD_READ;
-	//bfd->data = line;
+	bfd->data = data;
+	bfd->priv_nr = priv_nr;
 
 	if (bfd->fd < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not create socket.\n");
@@ -74,7 +76,7 @@ int make_sock(struct bsc_fd *bfd, int proto, u_int32_t ip, u_int16_t port,
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(port);
-	if (ip)
+	if (ip != INADDR_ANY)
 		addr.sin_addr.s_addr = htonl(ip);
 	else
 		addr.sin_addr.s_addr = INADDR_ANY;
