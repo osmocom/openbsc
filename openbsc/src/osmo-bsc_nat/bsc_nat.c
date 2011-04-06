@@ -525,6 +525,36 @@ send_refuse:
 	bsc_write(bsc, refuse, IPAC_PROTO_SCCP);
 }
 
+/*
+ * Update the auth status. This can be either a CIPHER MODE COMAMND or
+ * a CM Serivce Accept. Maybe also LU Accept or such in the future.
+ */
+static void update_con_authorize(struct sccp_connections *con,
+				 struct bsc_nat_parsed *parsed,
+				 struct msgb *msg)
+{
+	if (!con)
+		return;
+	if (con->authorized)
+		return;
+
+	if (parsed->bssap == BSSAP_MSG_BSS_MANAGEMENT &&
+	    parsed->gsm_type == BSS_MAP_MSG_CIPHER_MODE_CMD) {
+		con->authorized = 1;
+	} else if (parsed->bssap == BSSAP_MSG_DTAP) {
+		uint8_t msg_type;
+		uint32_t len;
+		struct gsm48_hdr *hdr48;
+		hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+		if (!hdr48)
+			return;
+
+		msg_type = hdr48->msg_type & 0xbf;
+		if (hdr48->proto_discr == GSM48_PDISC_MM &&
+		    msg_type == GSM48_MT_MM_CM_SERV_ACC)
+			con->authorized = 1;
+	}
+}
 
 static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *msg)
 {
@@ -600,6 +630,8 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 		LOGP(DNAT, LOGL_ERROR, "Selected BSC not authenticated.\n");
 		return -1;
 	}
+
+	update_con_authorize(con, parsed, msg);
 
 	bsc_send_data(con->bsc, msg->l2h, msgb_l2len(msg), proto);
 	return 0;

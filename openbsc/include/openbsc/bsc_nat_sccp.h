@@ -77,6 +77,7 @@ struct sccp_connections {
 	/* status */
 	int con_type;
 	int con_local;
+	int authorized;
 	int imsi_checked;
 	char *imsi;
 

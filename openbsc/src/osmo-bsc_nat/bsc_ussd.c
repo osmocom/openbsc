@@ -318,6 +318,10 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 	if (!con->imsi)
 		return 0;
 
+	/* We have not verified the IMSI yet */
+	if (!con->authorized)
+		return 0;
+
 	if (!con->bsc->nat->ussd_lst_name)
 		return 0;
 	if (!con->bsc->nat->ussd_query)
