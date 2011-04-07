@@ -131,43 +131,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
-			u_int16_t *trx_id)
-{
-	unsigned long ul;
-	char *endptr;
-	const char *nptr;
-
-	nptr = str;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (site_id)
-		*site_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (bts_id)
-		*bts_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (trx_id)
-		*trx_id = ul & 0xffff;
-
-	return 0;
-}
-
 static struct ipa_bts_conn *find_bts_by_unitid(struct ipa_proxy *ipp,
 						u_int16_t site_id,
 						u_int16_t bts_id)
@@ -495,8 +458,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 		/* lookup BTS, create sign_link, ... */
 		site_id = bts_id = trx_id = 0;
-		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
-			     &site_id, &bts_id, &trx_id);
+		ipaccess_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
+				      &site_id, &bts_id, &trx_id);
 		ipbc = find_bts_by_unitid(ipp, site_id, bts_id);
 		if (!ipbc) {
 			/* We have not found an ipbc (per-bts proxy instance)

@@ -155,8 +155,8 @@ struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
 	return NULL;
 }
 
-static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
-			u_int16_t *trx_id)
+int ipaccess_parse_unitid(const char *str, u_int16_t *site_id,
+			  u_int16_t *bts_id, u_int16_t *trx_id)
 {
 	unsigned long ul;
 	char *endptr;
@@ -274,7 +274,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		/* lookup BTS, create sign_link, ... */
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
-		parse_unitid(unitid, &site_id, &bts_id, &trx_id);
+		ipaccess_parse_unitid(unitid, &site_id, &bts_id, &trx_id);
 		bts = find_bts_by_unitid(e1h->gsmnet, site_id, bts_id);
 		if (!bts) {
 			LOGP(DINP, LOGL_ERROR, "Unable to find BTS configuration for "
