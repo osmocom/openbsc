@@ -131,26 +131,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static const char *idtag_names[] = {
-	[IPAC_IDTAG_SERNR]	= "Serial_Number",
-	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
-	[IPAC_IDTAG_LOCATION1]	= "Location_1",
-	[IPAC_IDTAG_LOCATION2]	= "Location_2",
-	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
-	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
-	[IPAC_IDTAG_IPADDR]	= "IP_Address",
-	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
-	[IPAC_IDTAG_UNIT]	= "Unit_ID",
-};
-
-static const char *ipac_idtag_name(int tag)
-{
-	if (tag >= ARRAY_SIZE(idtag_names))
-		return "unknown";
-
-	return idtag_names[tag];
-}
-
 static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 {
 	u_int8_t t_len;
@@ -161,7 +141,7 @@ static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 		t_len = *cur++;
 		t_tag = *cur++;
 
-		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
+		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
 
 		dec->lv[t_tag].len = t_len;
 		dec->lv[t_tag].val = cur;

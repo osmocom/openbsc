@@ -74,6 +74,7 @@ int ipaccess_send_pong(int fd);
 int ipaccess_send_id_ack(int fd);
 int ipaccess_send_id_req(int fd);
 
+const char *ipaccess_idtag_name(int tag);
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
 
 int ipaccess_drop_oml(struct gsm_bts *bts);

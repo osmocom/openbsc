@@ -100,7 +100,7 @@ static const char *idtag_names[] = {
 	[IPAC_IDTAG_UNIT]	= "Unit_ID",
 };
 
-static const char *ipac_idtag_name(int tag)
+const char *ipaccess_idtag_name(int tag)
 {
 	if (tag >= ARRAY_SIZE(idtag_names))
 		return "unknown";
@@ -126,7 +126,7 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 			return -1;
 		}
 
-		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
+		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
 
 		dec->lv[t_tag].len = t_len;
 		dec->lv[t_tag].val = cur;
