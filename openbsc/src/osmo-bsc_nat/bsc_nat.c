@@ -1365,7 +1365,7 @@ int main(int argc, char **argv)
 
 	/* wait for the BSC */
 	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
-		       5000, ipaccess_listen_bsc_cb);
+		       5000, 0, ipaccess_listen_bsc_cb, nat);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
