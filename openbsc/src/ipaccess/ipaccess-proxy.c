@@ -131,96 +131,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
-static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT,
-					0x01, IPAC_IDTAG_MACADDR,
-					0x01, IPAC_IDTAG_LOCATION1,
-					0x01, IPAC_IDTAG_LOCATION2,
-					0x01, IPAC_IDTAG_EQUIPVERS,
-					0x01, IPAC_IDTAG_SWVERSION,
-					0x01, IPAC_IDTAG_UNITNAME,
-					0x01, IPAC_IDTAG_SERNR,
-				};
-
-static const char *idtag_names[] = {
-	[IPAC_IDTAG_SERNR]	= "Serial_Number",
-	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
-	[IPAC_IDTAG_LOCATION1]	= "Location_1",
-	[IPAC_IDTAG_LOCATION2]	= "Location_2",
-	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
-	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
-	[IPAC_IDTAG_IPADDR]	= "IP_Address",
-	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
-	[IPAC_IDTAG_UNIT]	= "Unit_ID",
-};
-
-static const char *ipac_idtag_name(int tag)
-{
-	if (tag >= ARRAY_SIZE(idtag_names))
-		return "unknown";
-
-	return idtag_names[tag];
-}
-
-static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
-{
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
-
-	while (cur < buf + len) {
-		t_len = *cur++;
-		t_tag = *cur++;
-
-		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
-
-		dec->lv[t_tag].len = t_len;
-		dec->lv[t_tag].val = cur;
-
-		cur += t_len;
-	}
-	return 0;
-}
-
-static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
-			u_int16_t *trx_id)
-{
-	unsigned long ul;
-	char *endptr;
-	const char *nptr;
-
-	nptr = str;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (site_id)
-		*site_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (bts_id)
-		*bts_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (trx_id)
-		*trx_id = ul & 0xffff;
-
-	return 0;
-}
-
 static struct ipa_bts_conn *find_bts_by_unitid(struct ipa_proxy *ipp,
 						u_int16_t site_id,
 						u_int16_t bts_id)
@@ -529,13 +439,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(bfd->fd, pong, sizeof(pong));
-		if (ret < 0)
-			return ret;
-		if (ret < sizeof(pong)) {
-			DEBUGP(DINP, "short write\n");
-			return -EIO;
-		}
+		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -543,8 +447,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
-				 msgb_l2len(msg)-2);
+		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+				     msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
@@ -554,8 +458,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 		/* lookup BTS, create sign_link, ... */
 		site_id = bts_id = trx_id = 0;
-		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
-			     &site_id, &bts_id, &trx_id);
+		ipaccess_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
+				      &site_id, &bts_id, &trx_id);
 		ipbc = find_bts_by_unitid(ipp, site_id, bts_id);
 		if (!ipbc) {
 			/* We have not found an ipbc (per-bts proxy instance)
@@ -618,7 +522,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	default:
 		LOGP(DMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
@@ -628,7 +532,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	return 0;
 }
 
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_proxy_read_msg(struct bsc_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -868,7 +772,7 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 	else
 		btsbsc = "BSC";
 
-	msg = ipaccess_read_msg(bfd, &ret);
+	msg = ipaccess_proxy_read_msg(bfd, &ret);
 	if (!msg) {
 		if (ret == 0) {
 			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
@@ -1025,7 +929,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
 	return 0;
 }
@@ -1075,49 +979,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 		LOGP(DINP, LOGL_ERROR, "Unknown GPRS source: %s\n", inet_ntoa(sock.sin_addr));
 	}
 
-	return 0;
-}
-
-static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	bfd->priv_nr = priv_nr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	if (!listen_ipaddr)
-		addr.sin_addr.s_addr = INADDR_ANY;
-	else
-		inet_aton(listen_ipaddr, &addr.sin_addr);
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR,
-			"Could not bind listen socket for IP %s with error: %s.\n",
-			listen_ipaddr, strerror(errno));
-		return -EIO;
-	}
-
-	ret = listen(bfd->fd, 1);
-	if (ret < 0) {
-		perror("listen");
-		return ret;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
 	return 0;
 }
 
@@ -1206,14 +1067,14 @@ static int ipaccess_proxy_setup(void)
 	ipp->reconn_timer.data = ipp;
 
 	/* Listen for OML connections */
-	ret = make_listen_sock(&ipp->oml_listen_fd, IPA_TCP_PORT_OML,
-				OML_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->oml_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_OML, OML_FROM_BTS, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_listen_sock(&ipp->rsl_listen_fd, IPA_TCP_PORT_RSL,
-				RSL_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_RSL, RSL_FROM_BTS, listen_fd_cb, NULL);
 
 	if (ret < 0)
 		return ret;
@@ -1259,11 +1120,19 @@ static void print_help()
 
 static void print_usage()
 {
-	printf("Usage: ipaccess-proxy\n");
+	printf("Usage: ipaccess-proxy [options]\n");
 }
+
+enum {
+	IPA_PROXY_OPT_LISTEN_NONE	= 0,
+	IPA_PROXY_OPT_LISTEN_IP		= (1 << 0),
+	IPA_PROXY_OPT_BSC_IP		= (1 << 1),
+};
 
 static void handle_options(int argc, char** argv)
 {
+	int options_mask = 0;
+
 	while (1) {
 		int option_index = 0, c;
 		static struct option long_options[] = {
@@ -1289,9 +1158,11 @@ static void handle_options(int argc, char** argv)
 			exit(0);
 		case 'l':
 			listen_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_LISTEN_IP;
 			break;
 		case 'b':
 			bsc_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_BSC_IP;
 			break;
 		case 'g':
 			gprs_ns_ipaddr = optarg;
@@ -1310,14 +1181,19 @@ static void handle_options(int argc, char** argv)
 			break;
 		}
 	}
+	if ((options_mask & (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP))
+		 != (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP)) {
+		printf("ERROR: You have to specify `--listen' and `--bsc' "
+		       "options at least.\n");
+		print_usage();
+		print_help();
+		exit(EXIT_FAILURE);
+	}
 }
 
 int main(int argc, char **argv)
 {
 	int rc;
-
-	listen_ipaddr = "192.168.100.11";
-	bsc_ipaddr = "192.168.100.239";
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 

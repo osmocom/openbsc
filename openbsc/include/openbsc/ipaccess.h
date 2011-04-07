@@ -70,10 +70,13 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
 int ipaccess_rcvmsg_base(struct msgb *msg, struct bsc_fd *bfd);
 struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
+int ipaccess_send_pong(int fd);
 int ipaccess_send_id_ack(int fd);
 int ipaccess_send_id_req(int fd);
 
+const char *ipaccess_idtag_name(int tag);
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
+int ipaccess_parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id, u_int16_t *trx_id);
 
 int ipaccess_drop_oml(struct gsm_bts *bts);
 int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
