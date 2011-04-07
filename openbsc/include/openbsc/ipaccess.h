@@ -31,6 +31,10 @@ enum ipaccess_proto {
 	IPAC_PROTO_MGCP_OLD	= 0xfc,
 };
 
+enum ipaccess_proto_ext {
+	IPAC_PROTO_EXT_CTRL	= 0x00,
+};
+
 enum ipaccess_msgtype {
 	IPAC_MSGT_PING		= 0x00,
 	IPAC_MSGT_PONG		= 0x01,
@@ -70,6 +74,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
 int ipaccess_rcvmsg_base(struct msgb *msg, struct bsc_fd *bfd);
 struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
+void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
 int ipaccess_send_pong(int fd);
 int ipaccess_send_id_ack(int fd);
 int ipaccess_send_id_req(int fd);

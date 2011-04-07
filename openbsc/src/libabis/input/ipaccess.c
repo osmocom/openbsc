@@ -551,6 +551,15 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	return ret;
 }
 
+void ipaccess_prepend_header_ext(struct msgb *msg, int proto)
+{
+	struct ipaccess_head_ext *hh_ext;
+
+	/* prepend the osmo ip.access header extension */
+	hh_ext = (struct ipaccess_head_ext *) msgb_push(msg, sizeof(*hh_ext));
+	hh_ext->proto = proto;
+}
+
 void ipaccess_prepend_header(struct msgb *msg, int proto)
 {
 	struct ipaccess_head *hh;
