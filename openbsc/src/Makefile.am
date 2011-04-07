@@ -1,6 +1,6 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOSCCP_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOSCCP_LIBS)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOSCCP_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOSCCP_LIBS)
 
 sbin_PROGRAMS = bsc_hack bs11_config ipaccess-find ipaccess-config \
                 isdnsync bsc_mgcp ipaccess-proxy \
