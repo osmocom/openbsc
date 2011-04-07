@@ -36,8 +36,7 @@
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-
-static void patch_nm_tables(struct gsm_bts *bts);
+extern int hsl_setup(struct gsm_network *gsmnet);
 
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
