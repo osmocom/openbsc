@@ -131,26 +131,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
-{
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
-
-	while (cur < buf + len) {
-		t_len = *cur++;
-		t_tag = *cur++;
-
-		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
-
-		dec->lv[t_tag].len = t_len;
-		dec->lv[t_tag].val = cur;
-
-		cur += t_len;
-	}
-	return 0;
-}
-
 static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 			u_int16_t *trx_id)
 {
@@ -504,8 +484,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
-				 msgb_l2len(msg)-2);
+		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+				     msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
