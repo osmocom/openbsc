@@ -542,6 +542,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " mid-call-timeout %d%s", gsmnet->mid_call_timeout, VTY_NEWLINE);
 	if (gsmnet->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", gsmnet->ussd_welcome_txt, VTY_NEWLINE);
+	if (gsmnet->rf_ctrl_name)
+		vty_out(vty, " bsc-rf-socket %s%s", gsmnet->rf_ctrl_name, VTY_NEWLINE);
 
 
 	return CMD_SUCCESS;
@@ -1499,6 +1501,17 @@ DEFUN(cfg_net_welcome_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rf_socket,
+      cfg_net_rf_socket_cmd,
+      "bsc-rf-socket PATH",
+      "Set the filename for the RF control interface.\n" "RF Control path\n")
+{
+	if (gsmnet->rf_ctrl_name)
+		talloc_free(gsmnet->rf_ctrl_name);
+	gsmnet->rf_ctrl_name = talloc_strdup(gsmnet, argv[0]);
+	return CMD_SUCCESS;
+}
+
 #define DECLARE_TIMER(number, doc) \
     DEFUN(cfg_net_T##number,					\
       cfg_net_T##number##_cmd,					\
@@ -2324,6 +2337,7 @@ int bsc_vty_init(struct gsm_network *net)
 	install_element(GSMNET_NODE, &cfg_net_mid_call_text_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mid_call_timeout_cmd);
 	install_element(GSMNET_NODE, &cfg_net_welcome_ussd_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rf_socket_cmd);
 
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);

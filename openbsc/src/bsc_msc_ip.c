@@ -1283,7 +1283,14 @@ int main(int argc, char **argv)
 	}
 
 	if (rf_ctl) {
-		bsc_gsmnet->rf = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
+		if (bsc_gsmnet->rf_ctrl_name)
+			talloc_free(bsc_gsmnet->rf_ctrl_name);
+		bsc_gsmnet->rf_ctrl_name = talloc_strdup(bsc_gsmnet, rf_ctl);
+	}
+
+	if (bsc_gsmnet->rf_ctrl_name) {
+		bsc_gsmnet->rf = osmo_bsc_rf_create(bsc_gsmnet->rf_ctrl_name,
+						    bsc_gsmnet);
 		if (!bsc_gsmnet->rf) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);

@@ -702,6 +702,7 @@ struct gsm_network {
 	struct bsc_msc_connection *msc_con;
 	int ping_timeout;
 	int pong_timeout;
+	char *rf_ctrl_name;
 	struct osmo_bsc_rf *rf;
 	char *mid_call_txt;
 	int mid_call_timeout;
