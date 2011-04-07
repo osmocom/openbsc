@@ -1120,11 +1120,19 @@ static void print_help()
 
 static void print_usage()
 {
-	printf("Usage: ipaccess-proxy\n");
+	printf("Usage: ipaccess-proxy [options]\n");
 }
+
+enum {
+	IPA_PROXY_OPT_LISTEN_NONE	= 0,
+	IPA_PROXY_OPT_LISTEN_IP		= (1 << 0),
+	IPA_PROXY_OPT_BSC_IP		= (1 << 1),
+};
 
 static void handle_options(int argc, char** argv)
 {
+	int options_mask = 0;
+
 	while (1) {
 		int option_index = 0, c;
 		static struct option long_options[] = {
@@ -1150,9 +1158,11 @@ static void handle_options(int argc, char** argv)
 			exit(0);
 		case 'l':
 			listen_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_LISTEN_IP;
 			break;
 		case 'b':
 			bsc_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_BSC_IP;
 			break;
 		case 'g':
 			gprs_ns_ipaddr = optarg;
@@ -1171,14 +1181,19 @@ static void handle_options(int argc, char** argv)
 			break;
 		}
 	}
+	if ((options_mask & (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP))
+		 != (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP)) {
+		printf("ERROR: You have to specify `--listen' and `--bsc' "
+		       "options at least.\n");
+		print_usage();
+		print_help();
+		exit(EXIT_FAILURE);
+	}
 }
 
 int main(int argc, char **argv)
 {
 	int rc;
-
-	listen_ipaddr = "192.168.100.11";
-	bsc_ipaddr = "192.168.100.239";
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 
