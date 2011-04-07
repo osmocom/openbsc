@@ -1078,49 +1078,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
-static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	bfd->priv_nr = priv_nr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	if (!listen_ipaddr)
-		addr.sin_addr.s_addr = INADDR_ANY;
-	else
-		inet_aton(listen_ipaddr, &addr.sin_addr);
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR,
-			"Could not bind listen socket for IP %s with error: %s.\n",
-			listen_ipaddr, strerror(errno));
-		return -EIO;
-	}
-
-	ret = listen(bfd->fd, 1);
-	if (ret < 0) {
-		perror("listen");
-		return ret;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
-	return 0;
-}
-
 static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *data)
 {
 	struct sockaddr_in addr;
@@ -1206,14 +1163,14 @@ static int ipaccess_proxy_setup(void)
 	ipp->reconn_timer.data = ipp;
 
 	/* Listen for OML connections */
-	ret = make_listen_sock(&ipp->oml_listen_fd, IPA_TCP_PORT_OML,
-				OML_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->oml_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_OML, OML_FROM_BTS, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_listen_sock(&ipp->rsl_listen_fd, IPA_TCP_PORT_RSL,
-				RSL_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_RSL, RSL_FROM_BTS, listen_fd_cb, NULL);
 
 	if (ret < 0)
 		return ret;
