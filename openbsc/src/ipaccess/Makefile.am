@@ -18,4 +18,9 @@ ipaccess_config_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 			-ldl -ldbi $(LIBCRYPT)
 
 ipaccess_proxy_SOURCES = ipaccess-proxy.c
-ipaccess_proxy_LDADD = $(top_builddir)/src/libcommon/libcommon.a
+ipaccess_proxy_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+		       $(top_builddir)/src/libmsc/libmsc.a \
+		       $(top_builddir)/src/libabis/libabis.a \
+		       $(top_builddir)/src/libbsc/libbsc.a \
+		       $(top_builddir)/src/libtrau/libtrau.a \
+		       $(top_builddir)/src/libcommon/libcommon.a

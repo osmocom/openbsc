@@ -131,19 +131,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
-static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT,
-					0x01, IPAC_IDTAG_MACADDR,
-					0x01, IPAC_IDTAG_LOCATION1,
-					0x01, IPAC_IDTAG_LOCATION2,
-					0x01, IPAC_IDTAG_EQUIPVERS,
-					0x01, IPAC_IDTAG_SWVERSION,
-					0x01, IPAC_IDTAG_UNITNAME,
-					0x01, IPAC_IDTAG_SERNR,
-				};
-
 static const char *idtag_names[] = {
 	[IPAC_IDTAG_SERNR]	= "Serial_Number",
 	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
@@ -529,13 +516,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(bfd->fd, pong, sizeof(pong));
-		if (ret < 0)
-			return ret;
-		if (ret < sizeof(pong)) {
-			DEBUGP(DINP, "short write\n");
-			return -EIO;
-		}
+		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -618,7 +599,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	default:
 		LOGP(DMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
@@ -628,7 +609,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	return 0;
 }
 
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_proxy_read_msg(struct bsc_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -868,7 +849,7 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 	else
 		btsbsc = "BSC";
 
-	msg = ipaccess_read_msg(bfd, &ret);
+	msg = ipaccess_proxy_read_msg(bfd, &ret);
 	if (!msg) {
 		if (ret == 0) {
 			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
@@ -1025,7 +1006,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
 	return 0;
 }

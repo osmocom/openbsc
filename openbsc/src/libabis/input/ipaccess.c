@@ -62,18 +62,31 @@ static struct ia_e1_handle *e1h;
 
 #define TS1_ALLOC_SIZE	900
 
-static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
-static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT,
-					0x01, IPAC_IDTAG_MACADDR,
-					0x01, IPAC_IDTAG_LOCATION1,
-					0x01, IPAC_IDTAG_LOCATION2,
-					0x01, IPAC_IDTAG_EQUIPVERS,
-					0x01, IPAC_IDTAG_SWVERSION,
-					0x01, IPAC_IDTAG_UNITNAME,
-					0x01, IPAC_IDTAG_SERNR,
-				};
+/*
+ * Common propietary IPA messages:
+ *	- PONG: in reply to PING.
+ *	- ID_REQUEST: first messages once OML has been established.
+ *	- ID_ACK: in reply to ID_ACK.
+ */
+const u_int8_t ipa_pong_msg[] = {
+        0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG
+};
+
+const u_int8_t ipa_id_ack_msg[] = {
+        0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
+};
+
+const u_int8_t ipa_id_req_msg[] = {
+        0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
+        0x01, IPAC_IDTAG_UNIT,
+        0x01, IPAC_IDTAG_MACADDR,
+        0x01, IPAC_IDTAG_LOCATION1,
+        0x01, IPAC_IDTAG_LOCATION2,
+        0x01, IPAC_IDTAG_EQUIPVERS,
+        0x01, IPAC_IDTAG_SWVERSION,
+        0x01, IPAC_IDTAG_UNITNAME,
+        0x01, IPAC_IDTAG_SERNR,
+};
 
 static const char *idtag_names[] = {
 	[IPAC_IDTAG_SERNR]	= "Serial_Number",
@@ -179,15 +192,33 @@ static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 	return 0;
 }
 
-/* send the id ack */
+static int ipaccess_send(int fd, const void *msg, size_t msglen)
+{
+	int ret;
+
+	ret = write(fd, msg, msglen);
+	if (ret < 0)
+		return ret;
+	if (ret < msglen) {
+		DEBUGP(DINP, "ipaccess_send: short write\n");
+		return -EIO;
+	}
+	return ret;
+}
+
+int ipaccess_send_pong(int fd)
+{
+	return ipaccess_send(fd, ipa_pong_msg, sizeof(ipa_pong_msg));
+}
+
 int ipaccess_send_id_ack(int fd)
 {
-	return write(fd, id_ack, sizeof(id_ack));
+	return ipaccess_send(fd, ipa_id_ack_msg, sizeof(ipa_id_ack_msg));
 }
 
 int ipaccess_send_id_req(int fd)
 {
-	return write(fd, id_req, sizeof(id_req));
+	return ipaccess_send(fd, ipa_id_req_msg, sizeof(ipa_id_req_msg));
 }
 
 /* base handling of the ip.access protocol */
@@ -199,7 +230,7 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(bfd->fd, pong, sizeof(pong));
+		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -721,7 +752,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		return ret;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
 	return 0;
 }
