@@ -1,6 +1,6 @@
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -179,6 +179,7 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
+	struct osmo_msc_data *data;
 	int rc;
 
 	log_init(&log_info);
@@ -215,9 +216,13 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	if (rf_ctl) {
-		struct osmo_msc_data *data = bsc_gsmnet->msc_data;
-		data->rf_ctl = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
+	data = bsc_gsmnet->msc_data;
+	if (rf_ctl)
+		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctl);
+
+	if (data->rf_ctrl_name) {
+		data->rf_ctl = osmo_bsc_rf_create(data->rf_ctrl_name,
+						  bsc_gsmnet);
 		if (!data->rf_ctl) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);

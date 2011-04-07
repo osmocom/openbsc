@@ -1,5 +1,5 @@
 /* Osmo BSC VTY Configuration */
-/* (C) 2009-2010 by Holger Hans Peter Freyther
+/* (C) 2009-2011 by Holger Hans Peter Freyther
  * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
@@ -73,6 +73,9 @@ static int config_write_msc(struct vty *vty)
 	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
 	if (data->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
+	if (data->rf_ctrl_name)
+		vty_out(vty, " bsc-rf-socket %s%s",
+			data->rf_ctrl_name, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
@@ -288,6 +291,17 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rf_socket,
+      cfg_net_rf_socket_cmd,
+      "bsc-rf-socket PATH",
+      "Set the filename for the RF control interface.\n" "RF Control path\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	bsc_replace_string(data, &data->rf_ctrl_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -306,6 +320,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
 
 	return 0;
 }
