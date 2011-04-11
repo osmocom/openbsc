@@ -697,9 +697,28 @@ static void print_help(void)
 	printf("\n");
 	printf("Miscellaneous commands:\n");
 	printf("  -h --help\t\t\tthis text\n");
+	printf("  -H --HELP\t\t\tPrint parameter details.\n");
 	printf("  -f --firmware FIRMWARE\tProvide firmware information\n");
 	printf("  -w --write-firmware\t\tThis will dump the firmware parts to the filesystem. Use with -f.\n");
 	printf("  -p --loop\t\t\tLoop the tests executed with the --listen command.\n");
+}
+
+static void print_value_string(const struct value_string *val, int size)
+{
+	int i;
+
+	for (i = 0; i < size - 1; ++i) {
+		char sep = val[i + 1].str == NULL ? '.' : ',';
+		printf("%s%c ", val[i].str, sep);
+	}
+	printf("\n");
+}
+
+static void print_options(void)
+{
+
+	printf("Options for NVRAM (-S,-U):\n  ");
+	print_value_string(&ipa_nvflag_strs[0], ARRAY_SIZE(ipa_nvflag_strs));
 }
 
 extern void bts_model_nanobts_init();
@@ -736,6 +755,7 @@ int main(int argc, char **argv)
 			{ "nvattr-set", 1, 0, 'S' },
 			{ "nvattr-unset", 1, 0, 'U' },
 			{ "help", 0, 0, 'h' },
+			{ "HELP", 0, 0, 'H' },
 			{ "listen", 1, 0, 'l' },
 			{ "stream-id", 1, 0, 's' },
 			{ "software", 1, 0, 'd' },
@@ -746,7 +766,7 @@ int main(int argc, char **argv)
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wcp", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wcpH", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -816,6 +836,9 @@ int main(int argc, char **argv)
 		case 'h':
 			print_usage();
 			print_help();
+			exit(0);
+		case 'H':
+			print_options();
 			exit(0);
 		}
 	};
