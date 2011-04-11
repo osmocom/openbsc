@@ -1,7 +1,7 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther
+ * (C) 2009-2011 by Holger Hans Peter Freyther
  * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
@@ -61,6 +61,7 @@ static int oml_state = 0;
 static int dump_files = 0;
 static char *firmware_analysis = NULL;
 static int found_trx = 0;
+static int loop_tests = 0;
 
 struct sw_load {
 	u_int8_t file_id[255];
@@ -166,14 +167,14 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 					    physconf_buf, physconf_len);
 			break;
 		case NM_IPACC_TESTNO_BCCH_INFO:
-#if 0
 			/* re-start full process with CHAN_USAGE */
-			DEBUGP(DNM, "starting next test cycle\n");
-			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
-					    sizeof(phys_conf_min));
-#else
-			exit(0);
-#endif
+			if (loop_tests) {
+				DEBUGP(DNM, "starting next test cycle\n");
+				ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
+						    sizeof(phys_conf_min));
+			} else {
+				exit(0);
+			}
 			break;
 		}
 		break;
@@ -698,6 +699,7 @@ static void print_help(void)
 	printf("  -h --help\t\t\tthis text\n");
 	printf("  -f --firmware FIRMWARE\tProvide firmware information\n");
 	printf("  -w --write-firmware\t\tThis will dump the firmware parts to the filesystem. Use with -f.\n");
+	printf("  -p --loop\t\t\tLoop the tests executed with the --listen command.\n");
 }
 
 extern void bts_model_nanobts_init();
@@ -740,10 +742,11 @@ int main(int argc, char **argv)
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
 			{ "disable-color", 0, 0, 'c'},
+			{ "loop", 0, 0, 'p' },
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wc", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wcp", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -806,6 +809,9 @@ int main(int argc, char **argv)
 			break;
 		case 'c':
 			log_set_use_color(stderr_target, 0);
+			break;
+		case 'p':
+			loop_tests = 1;
 			break;
 		case 'h':
 			print_usage();
