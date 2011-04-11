@@ -35,12 +35,12 @@
 #include <netinet/in.h>
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 static struct log_target *stderr_target;
 

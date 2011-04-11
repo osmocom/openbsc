@@ -31,8 +31,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/select.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>

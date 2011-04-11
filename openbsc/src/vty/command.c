@@ -47,7 +47,7 @@ Boston, MA 02111-1307, USA.  */
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 void *tall_vty_cmd_ctx;
 

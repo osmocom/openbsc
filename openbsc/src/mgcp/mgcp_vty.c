@@ -24,7 +24,7 @@
 
 #include <sys/types.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/mgcp.h>

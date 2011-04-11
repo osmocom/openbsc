@@ -31,12 +31,12 @@
 #include <netinet/in.h>
 
 #include <openbsc/db.h>
-#include <osmocore/msgb.h>
-#include <osmocore/bitvec.h>
-#include <osmocore/tlv.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/bitvec.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/gsm_04_08.h>
@@ -47,12 +47,12 @@
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
-#include <osmocore/talloc.h>
-#include <osmocore/gsm48.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm48.h>
 #include <openbsc/transaction.h>
 #include <openbsc/ussd.h>
 #include <openbsc/silent_call.h>
-#include <osmocore/gsm0480.h>
+#include <osmocom/gsm/gsm0480.h>
 
 void *tall_locop_ctx;
 

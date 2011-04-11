@@ -17,7 +17,7 @@
 #include <vty/vty.h>
 #include <vty/command.h>
 #include <vty/buffer.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 /* our callback, located in telnet_interface.c */
 void vty_event(enum event event, int sock, struct vty *vty);

@@ -23,7 +23,7 @@
 
 #include "gsm_data.h"
 #include <openbsc/debug.h>
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 
 #include <vty/vty.h>
 

@@ -48,10 +48,10 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/osmo_bsc_grace.h>
 
-#include <osmocore/select.h>
-#include <osmocore/talloc.h>
-#include <osmocore/write_queue.h>
-#include <osmocore/gsm0808.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/gsm/gsm0808.h>
 
 #include <osmocom/sccp/sccp.h>
 

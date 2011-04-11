@@ -5,8 +5,8 @@
 
 #include <stdlib.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <openbsc/gsm_data.h>
 
 

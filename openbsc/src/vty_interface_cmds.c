@@ -22,7 +22,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/telnet_interface.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <vty/command.h>
 #include <vty/buffer.h>

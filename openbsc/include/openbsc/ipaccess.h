@@ -2,7 +2,7 @@
 #define _IPACCESS_H
 
 #include "e1_input.h"
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 #define IPA_TCP_PORT_OML	3002
 #define IPA_TCP_PORT_RSL	3003

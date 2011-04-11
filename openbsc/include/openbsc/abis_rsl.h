@@ -23,9 +23,9 @@
 #ifndef _RSL_H
 #define _RSL_H
 
-#include <osmocore/protocol/gsm_08_58.h>
+#include <osmocom/gsm/protocol/gsm_08_58.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
 		  const u_int8_t *data, int len);

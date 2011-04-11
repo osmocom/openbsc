@@ -24,10 +24,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include "gsm_data.h"
 #include "gsm_subscriber.h"
-#include <osmocore/timer.h>
+#include <osmocom/core/timer.h>
 
 /* call once for every gsm_bts... */
 void paging_init(struct gsm_bts *bts);

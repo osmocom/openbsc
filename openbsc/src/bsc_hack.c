@@ -31,10 +31,10 @@
 #include <getopt.h>
 
 #include <openbsc/db.h>
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 
 /* MCC and MNC for the Location Area Identifier */

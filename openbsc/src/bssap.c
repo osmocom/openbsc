@@ -30,7 +30,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/gsm_04_80.h>
 
-#include <osmocore/gsm0808.h>
+#include <osmocom/gsm/gsm0808.h>
 
 #include <osmocom/sccp/sccp.h>
 

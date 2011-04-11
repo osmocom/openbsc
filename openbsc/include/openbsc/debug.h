@@ -2,10 +2,10 @@
 #define _DEBUG_H
 
 #include <stdio.h>
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 #define DEBUG
-#include <osmocore/logging.h>
+#include <osmocom/core/logging.h>
 
 /* Debug Areas of the code */
 enum {

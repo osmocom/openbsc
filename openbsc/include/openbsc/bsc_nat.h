@@ -27,11 +27,11 @@
 #include <sys/types.h>
 #include <osmocom/sccp/sccp_types.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
-#include <osmocore/timer.h>
-#include <osmocore/write_queue.h>
-#include <osmocore/statistics.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/statistics.h>
 
 #include <regex.h>
 

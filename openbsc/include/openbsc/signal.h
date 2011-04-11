@@ -28,7 +28,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 
-#include <osmocore/signal.h>
+#include <osmocom/core/signal.h>
 
 /*
  * Signalling subsystems

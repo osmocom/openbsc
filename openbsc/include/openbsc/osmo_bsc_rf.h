@@ -1,8 +1,8 @@
 #ifndef BSC_MSC_RF
 #define BSC_MSC_RF
 
-#include <osmocore/write_queue.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
 
 struct gsm_network;
 

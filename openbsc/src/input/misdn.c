@@ -41,15 +41,15 @@
 #define PF_ISDN AF_ISDN
 #endif
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define TS1_ALLOC_SIZE	300
 

@@ -36,15 +36,15 @@
 #include <arpa/inet.h>
 
 
-#include <osmocore/select.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 static struct gsm_network *gsmnet;
 

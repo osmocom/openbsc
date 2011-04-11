@@ -1,7 +1,7 @@
 #ifndef _GSM_04_11_H
 #define _GSM_04_11_H
 
-#include <osmocore/protocol/gsm_04_11.h>
+#include <osmocom/gsm/protocol/gsm_04_11.h>
 
 /* SMS deliver PDU */
 struct sms_deliver {

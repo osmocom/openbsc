@@ -25,8 +25,8 @@
 
 #include <netinet/in.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/select.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/select.h>
 
 enum rtp_rx_action {
 	RTP_NONE,

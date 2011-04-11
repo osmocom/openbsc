@@ -29,15 +29,15 @@
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/telnet_interface.h>
 #include <openbsc/vty.h>
 #include <openbsc/ipaccess.h>
