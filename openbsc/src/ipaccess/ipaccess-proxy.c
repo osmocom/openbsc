@@ -1133,6 +1133,9 @@ static void handle_options(int argc, char** argv)
 {
 	int options_mask = 0;
 
+	/* disable explicit missing arguments error output from getopt_long */
+	opterr = 0;
+
 	while (1) {
 		int option_index = 0, c;
 		static struct option long_options[] = {
@@ -1175,6 +1178,18 @@ static void handle_options(int argc, char** argv)
 			break;
 		case 'e':
 			log_set_log_level(stderr_target, atoi(optarg));
+			break;
+		case '?':
+			if (optopt) {
+				printf("ERROR: missing mandatory argument "
+				       "for `%s' option\n", argv[optind-1]);
+			} else {
+				printf("ERROR: unknown option `%s'\n",
+					argv[optind-1]);
+			}
+			print_usage();
+			print_help();
+			exit(EXIT_FAILURE);
 			break;
 		default:
 			/* ignore */
