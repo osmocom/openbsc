@@ -126,7 +126,6 @@ static char *listen_ipaddr;
 static char *bsc_ipaddr;
 static char *gprs_ns_ipaddr;
 
-static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *);
 static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
@@ -389,7 +388,13 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 	if (gprs_ns_ipaddr) {
 		struct sockaddr_in sock;
 		socklen_t len = sizeof(sock);
-		ret = make_gprs_sock(&ipbc->gprs_ns_fd, gprs_ns_cb, ipbc);
+		struct in_addr addr;
+		uint32_t ip;
+
+		inet_aton(listen_ipaddr, &addr);
+		ip = ntohl(addr.s_addr); /* make_sock() needs host byte order */
+		ret = make_sock(&ipbc->gprs_ns_fd, IPPROTO_UDP, ip, 0, 0,
+				gprs_ns_cb, ipbc);
 		if (ret < 0) {
 			LOGP(DINP, LOGL_ERROR, "Creating the GPRS socket failed.\n");
 			goto err_udp_bsc;
@@ -979,37 +984,6 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 		LOGP(DINP, LOGL_ERROR, "Unknown GPRS source: %s\n", inet_ntoa(sock.sin_addr));
 	}
 
-	return 0;
-}
-
-static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *data)
-{
-	struct sockaddr_in addr;
-	int ret;
-
-	bfd->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	bfd->cb = cb;
-	bfd->data = data;
-	bfd->when = BSC_FD_READ;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = 0;
-	inet_aton(listen_ipaddr, &addr.sin_addr);
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR,
-			"Could not bind n socket for IP %s with error: %s.\n",
-			listen_ipaddr, strerror(errno));
-		return -EIO;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
 	return 0;
 }
 
