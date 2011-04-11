@@ -100,7 +100,7 @@ static const char *idtag_names[] = {
 	[IPAC_IDTAG_UNIT]	= "Unit_ID",
 };
 
-const char *ipaccess_idtag_name(int tag)
+const char *ipaccess_idtag_name(uint8_t tag)
 {
 	if (tag >= ARRAY_SIZE(idtag_names))
 		return "unknown";
