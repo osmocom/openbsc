@@ -4,6 +4,12 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = ipaccess-find ipaccess-config ipaccess-proxy
 
+ipaccess_find_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+		      $(top_builddir)/src/libmsc/libmsc.a \
+		      $(top_builddir)/src/libabis/libabis.a \
+		      $(top_builddir)/src/libbsc/libbsc.a \
+		      $(top_builddir)/src/libtrau/libtrau.a \
+		      $(top_builddir)/src/libcommon/libcommon.a
 ipaccess_find_SOURCES = ipaccess-find.c
 
 ipaccess_config_SOURCES = ipaccess-config.c ipaccess-firmware.c network_listen.c

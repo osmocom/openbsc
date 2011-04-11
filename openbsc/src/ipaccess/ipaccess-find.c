@@ -32,26 +32,6 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 
-static const char *idtag_names[] = {
-	[IPAC_IDTAG_SERNR]	= "Serial Number",
-	[IPAC_IDTAG_UNITNAME]	= "Unit Name",
-	[IPAC_IDTAG_LOCATION1]	= "Location 1",
-	[IPAC_IDTAG_LOCATION2]	= "Location 2",
-	[IPAC_IDTAG_EQUIPVERS]	= "Equipment Version",
-	[IPAC_IDTAG_SWVERSION]	= "Software Version",
-	[IPAC_IDTAG_IPADDR]	= "IP Address",
-	[IPAC_IDTAG_MACADDR]	= "MAC Address",
-	[IPAC_IDTAG_UNIT]	= "Unit ID",
-};
-
-static const char *ipac_idtag_name(int tag)
-{
-	if (tag >= ARRAY_SIZE(idtag_names))
-		return "unknown";
-
-	return idtag_names[tag];
-}
-
 static int udp_sock(const char *ifname)
 {
 	int fd, rc, bc = 1;
@@ -133,7 +113,7 @@ static int parse_response(unsigned char *buf, int len)
 		t_len = *cur++;
 		t_tag = *cur++;
 		
-		printf("%s='%s'  ", ipac_idtag_name(t_tag), cur);
+		printf("%s='%s'  ", ipaccess_idtag_name(t_tag), cur);
 
 		cur += t_len;
 	}
