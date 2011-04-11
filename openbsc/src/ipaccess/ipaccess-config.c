@@ -349,6 +349,36 @@ static void nv_put_flags(struct msgb *nmsg, uint16_t nv_flags, uint16_t nv_mask)
 	msgb_put_u8(nmsg, nv_mask >> 8);
 }
 
+/* human-readable test names for the ip.access tests */
+static const struct value_string ipa_test_strs[] = {
+	{ 64, "ccch-usage" },
+	{ 65, "bcch-usage" },
+	{ 66, "freq-sync" },
+	{ 67, "rtp-usage" },
+	{ 68, "rtp-perf" },
+	{ 69, "gprs-ccch" },
+	{ 70, "pccch-usage" },
+	{ 71, "gprs-usage" },
+	{ 72, "esta-mf" },
+	{ 73, "uplink-mf" },
+	{ 74, "dolink-mf" },
+	{ 75, "tbf-details" },
+	{ 76, "tbf-usage" },
+	{ 77, "llc-data" },
+	{ 78, "pdch-usage" },
+	{ 79, "power-control" },
+	{ 80, "link-adaption" },
+	{ 81, "tch-usage" },
+	{ 82, "amr-mf" },
+	{ 83, "rtp-multiplex-perf" },
+	{ 84, "rtp-multiplex-usage" },
+	{ 85, "srtp-multiplex-usage" },
+	{ 86, "abis-traffic" },
+	{ 89, "gprs-multiplex-perf" },
+	{ 90, "gprs-multiplex-usage" },
+	{ 0, NULL },
+};
+
 /* human-readable names for the ip.access nanoBTS NVRAM Flags */
 static const struct value_string ipa_nvflag_strs[] = {
 	{ 0x0001, "static-ip" },
@@ -692,6 +722,7 @@ static void print_help(void)
 	printf("  -S --nvattr-set FLAG\tSet one additional NVRAM attribute\n");
 	printf("  -U --nvattr-unset FLAG\tSet one additional NVRAM attribute\n");
 	printf("  -l --listen TESTNR\t\tPerform specified test number\n");
+	printf("  -L --Listen TEST_NAME\t\tPerform specified test\n");
 	printf("  -s --stream-id ID\t\tSet the IPA Stream Identifier for OML\n");
 	printf("  -d --software FIRMWARE\tDownload firmware into BTS\n");
 	printf("\n");
@@ -719,6 +750,9 @@ static void print_options(void)
 
 	printf("Options for NVRAM (-S,-U):\n  ");
 	print_value_string(&ipa_nvflag_strs[0], ARRAY_SIZE(ipa_nvflag_strs));
+
+	printf("Options for Tests (-L):\n ");
+	print_value_string(&ipa_test_strs[0], ARRAY_SIZE(ipa_test_strs));
 }
 
 extern void bts_model_nanobts_init();
@@ -757,6 +791,7 @@ int main(int argc, char **argv)
 			{ "help", 0, 0, 'h' },
 			{ "HELP", 0, 0, 'H' },
 			{ "listen", 1, 0, 'l' },
+			{ "Listen", 1, 0, 'L' },
 			{ "stream-id", 1, 0, 's' },
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
@@ -766,7 +801,7 @@ int main(int argc, char **argv)
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wcpH", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:L:hs:d:f:wcpH", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -813,6 +848,15 @@ int main(int argc, char **argv)
 		case 'l':
 			net_listen_testnr = atoi(optarg);
 			break;
+		case 'L':
+			net_listen_testnr = get_string_value(ipa_test_strs,
+							     optarg);
+			if (net_listen_testnr < 0) {
+				fprintf(stderr,
+					"The test '%s' is not known. Use -H to"
+					" see available tests.\n", optarg);
+				exit(2);
+			}
 		case 's':
 			stream_id = atoi(optarg);
 			break;
