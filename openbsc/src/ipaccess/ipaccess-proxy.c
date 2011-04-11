@@ -1145,7 +1145,6 @@ static void handle_options(int argc, char** argv)
 			{"log-level", 1, 0, 'e'},
 			{"listen", 1, 0, 'l'},
 			{"bsc", 1, 0, 'b'},
-			{"udp", 1, 0, 'u'},
 			{0, 0, 0, 0}
 		};
 
