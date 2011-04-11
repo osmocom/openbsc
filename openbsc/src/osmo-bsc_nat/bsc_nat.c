@@ -1019,9 +1019,15 @@ exit:
 		/* do we know who is handling this? */
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
-			ipaccess_idtag_parse(&tvp,
+			int ret;
+			ret = ipaccess_idtag_parse(&tvp,
 					     (unsigned char *) msg->l2h + 2,
 					     msgb_l2len(msg) - 2);
+			if (ret < 0) {
+				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
+					"message with malformed TLVs\n");
+				return ret;
+			}
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
 				ipaccess_auth_bsc(&tvp, bsc);
 		}

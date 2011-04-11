@@ -123,7 +123,7 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 
 		if (t_len > len + 1) {
 			LOGP(DMI, LOGL_ERROR, "The tag does not fit: %d\n", t_len);
-			return -1;
+			return -EINVAL;
 		}
 
 		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
@@ -251,7 +251,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
 	struct gsm_bts *bts;
 	char *unitid;
-	int len;
+	int len, ret;
 
 	/* handle base messages */
 	ipaccess_rcvmsg_base(msg, bfd);
@@ -260,10 +260,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
-				 msgb_l2len(msg)-2);
+		ret = ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+					   msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
-
+		if (ret < 0) {
+			LOGP(DINP, LOGL_ERROR, "ignoring IPA response message "
+					       "with malformed TLVs\n");
+			return ret;
+		}
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
 			break;
 
