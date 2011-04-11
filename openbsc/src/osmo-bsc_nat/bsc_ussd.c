@@ -251,7 +251,7 @@ int bsc_ussd_init(struct bsc_nat *nat)
 
 	nat->ussd_listen.data = nat;
 	return make_sock(&nat->ussd_listen, IPPROTO_TCP,
-			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, NULL);
+			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, nat);
 }
 
 static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
