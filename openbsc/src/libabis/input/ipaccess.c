@@ -200,7 +200,7 @@ static int ipaccess_send(int fd, const void *msg, size_t msglen)
 	if (ret < 0)
 		return ret;
 	if (ret < msglen) {
-		DEBUGP(DINP, "ipaccess_send: short write\n");
+		LOGP(DINP, LOGL_ERROR, "ipaccess_send: short write\n");
 		return -EIO;
 	}
 	return ret;
