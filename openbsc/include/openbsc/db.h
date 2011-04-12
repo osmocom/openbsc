@@ -21,6 +21,7 @@
 #define _DB_H
 
 #include <sys/types.h>
+#include "gsm_subscriber.h"
 
 struct gsm_equipment;
 struct gsm_network;
@@ -28,8 +29,6 @@ struct gsm_auth_info;
 struct gsm_auth_tuple;
 struct gsm_sms;
 struct gsm_subscriber;
-
-enum gsm_subscriber_field;
 
 /* one time initialisation */
 int db_init(const char *name);
