@@ -239,7 +239,6 @@ static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
 		LOGP(DMNCC, LOGL_ERROR, "Failed to register new connection fd\n");
 		close(conn_bfd->fd);
 		conn_bfd->fd = -1;
-		state->listen_bfd.when |= ~BSC_FD_READ;
 		return -1;
 	}
 
