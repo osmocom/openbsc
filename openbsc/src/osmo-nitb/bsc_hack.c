@@ -266,7 +266,6 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
-	mncc_sock_init(bsc_gsmnet);
 
 	/* seed the PRNG */
 	srand(time(NULL));
