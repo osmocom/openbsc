@@ -309,6 +309,7 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 {
 	uint32_t len;
 	uint8_t msg_type;
+	uint8_t proto;
 	struct gsm48_hdr *hdr48;
 	struct bsc_nat_acc_lst *lst;
 	struct ussd_request req;
@@ -343,8 +344,9 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 	if (!hdr48)
 		return 0;
 
+	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (hdr48->proto_discr != GSM48_PDISC_NC_SS || msg_type != GSM0480_MTYPE_REGISTER)
+	if (proto != GSM48_PDISC_NC_SS || msg_type != GSM0480_MTYPE_REGISTER)
 		return 0;
 
 	/* now check if it is a IMSI we care about */

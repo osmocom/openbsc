@@ -542,15 +542,16 @@ static void update_con_authorize(struct sccp_connections *con,
 	    parsed->gsm_type == BSS_MAP_MSG_CIPHER_MODE_CMD) {
 		con->authorized = 1;
 	} else if (parsed->bssap == BSSAP_MSG_DTAP) {
-		uint8_t msg_type;
+		uint8_t msg_type, proto;
 		uint32_t len;
 		struct gsm48_hdr *hdr48;
 		hdr48 = bsc_unpack_dtap(parsed, msg, &len);
 		if (!hdr48)
 			return;
 
+		proto = hdr48->proto_discr & 0x0f;
 		msg_type = hdr48->msg_type & 0xbf;
-		if (hdr48->proto_discr == GSM48_PDISC_MM &&
+		if (proto == GSM48_PDISC_MM &&
 		    msg_type == GSM48_MT_MM_CM_SERV_ACC)
 			con->authorized = 1;
 	}
