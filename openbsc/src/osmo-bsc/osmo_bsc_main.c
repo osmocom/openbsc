@@ -115,9 +115,6 @@ static void handle_options(int argc, char **argv)
 		case 'T':
 			log_set_print_timestamp(stderr_target, 1);
 			break;
-		case 'P':
-			ipacc_rtp_direct = 0;
-			break;
 		case 'e':
 			log_set_log_level(stderr_target, atoi(optarg));
 			break;
