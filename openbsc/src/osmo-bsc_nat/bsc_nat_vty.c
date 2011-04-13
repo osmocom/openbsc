@@ -566,7 +566,7 @@ DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
 DEFUN(cfg_lst_imsi_allow,
       cfg_lst_imsi_allow_cmd,
       "access-list NAME imsi-allow [REGEXP]",
-      "Allow IMSIs matching the REGEXP\n"
+      "Add the regexp to the allowed list\n"
       "The name of the access-list\n"
       "The regexp of allowed IMSIs\n")
 {
@@ -589,7 +589,7 @@ DEFUN(cfg_lst_imsi_allow,
 DEFUN(cfg_lst_imsi_deny,
       cfg_lst_imsi_deny_cmd,
       "access-list NAME imsi-deny [REGEXP]",
-      "Allow IMSIs matching the REGEXP\n"
+      "Add the regexp to the deny list\n"
       "The name of the access-list\n"
       "The regexp of to be denied IMSIs\n")
 {
@@ -657,7 +657,7 @@ DEFUN(cfg_bsc_acc_lst_name,
 DEFUN(cfg_bsc_no_acc_lst_name,
       cfg_bsc_no_acc_lst_name_cmd,
       "no access-list-name",
-      NO_STR "Remove the access list assigned to the BSC.\n")
+      NO_STR "Do not use an access-list for the BSC.\n")
 {
 	struct bsc_config *conf = vty->index;
 
