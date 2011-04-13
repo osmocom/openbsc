@@ -54,7 +54,7 @@ extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, struct msgb
 
 static void print_usage()
 {
-	printf("Usage: bsc_msc_ip\n");
+	printf("Usage: osmo-bsc\n");
 }
 
 static void print_help()
