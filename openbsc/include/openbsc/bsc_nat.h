@@ -55,6 +55,16 @@ enum {
 };
 
 /*
+ * Is this terminated to the MSC, to the local machine (release
+ * handling for IMSI filtering) or to a USSD provider?
+ */
+enum {
+	NAT_CON_END_MSC,
+	NAT_CON_END_LOCAL,
+	NAT_CON_END_USSD,
+};
+
+/*
  * Per BSC data structure
  */
 struct bsc_connection {

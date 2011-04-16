@@ -399,7 +399,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 		ipaccess_prepend_header(rlsd, IPAC_PROTO_SCCP);
 		queue_for_msc(con->msc_con, rlsd);
 	}
-	con->con_local = 1;
+	con->con_local = NAT_CON_END_LOCAL;
 	con->msc_con = NULL;
 
 	/* 2. release the BSC side */
@@ -465,7 +465,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 
 		/* declare it local and assign a unique remote_ref */
 		con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
-		con->con_local = 1;
+		con->con_local = NAT_CON_END_LOCAL;
 		con->has_remote_ref = 1;
 		con->remote_ref = con->patched_ref;
 
@@ -942,7 +942,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 					/* hand data to a side channel */
 					if (bsc_check_ussd(con, parsed, msg) == 1) 
-						con->con_local = 2;
+						con->con_local = NAT_CON_END_USSD;
 
 					/*
 					 * Optionally rewrite setup message. This can
@@ -1414,7 +1414,7 @@ int bsc_close_ussd_connections(struct bsc_nat *nat)
 {
 	struct sccp_connections *con;
 	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
-		if (con->con_local != 2)
+		if (con->con_local != NAT_CON_END_USSD)
 			continue;
 		if (!con->bsc)
 			continue;
