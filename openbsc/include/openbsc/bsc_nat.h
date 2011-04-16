@@ -268,6 +268,14 @@ struct bsc_nat {
 	struct bsc_nat_statistics stats;
 };
 
+struct bsc_nat_ussd_con {
+	struct write_queue queue;
+	struct bsc_nat *nat;
+	int authorized;
+
+	struct timer_list auth_timeout;
+};
+
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
