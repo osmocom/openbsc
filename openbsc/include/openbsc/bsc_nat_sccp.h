@@ -80,6 +80,9 @@ struct sccp_connections {
 	int imsi_checked;
 	char *imsi;
 
+	/* remember which Transactions we run over the bypass */
+	char ussd_ti[8];
+
 	/*
 	 * audio handling. Remember if we have ever send a CRCX,
 	 * remember the endpoint used by the MSC and BSC.

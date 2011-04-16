@@ -252,6 +252,30 @@ int bsc_ussd_init(struct bsc_nat *nat)
 			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, nat);
 }
 
+static int forward_ussd_simple(struct sccp_connections *con, struct msgb *input)
+{
+	struct msgb *copy;
+	struct bsc_nat_ussd_con *ussd;
+
+	if (!con->bsc->nat->ussd_con)
+		return -1;
+
+	copy = msgb_alloc_headroom(4096, 128, "forward bts");
+	if (!copy) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		return -1;
+	}
+
+	/* copy the data into the copy */
+	copy->l2h = msgb_put(copy, msgb_l2len(input));
+	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
+
+	/* send it out */
+	ussd = con->bsc->nat->ussd_con;
+	bsc_do_write(&ussd->queue, copy, IPAC_PROTO_SCCP);
+	return 0;
+}
+
 static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
 			struct msgb *input)
 {
@@ -302,6 +326,7 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 	uint32_t len;
 	uint8_t msg_type;
 	uint8_t proto;
+	uint8_t ti;
 	struct gsm48_hdr *hdr48;
 	struct bsc_nat_acc_lst *lst;
 	struct ussd_request req;
@@ -338,30 +363,45 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 
 	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (proto != GSM48_PDISC_NC_SS || msg_type != GSM0480_MTYPE_REGISTER)
+	ti = (hdr48->proto_discr & 0x70) >> 4;
+	if (proto != GSM48_PDISC_NC_SS)
 		return 0;
 
-	/* now check if it is a IMSI we care about */
-	lst = bsc_nat_acc_lst_find(con->bsc->nat, con->bsc->nat->ussd_lst_name);
-	if (!lst)
-		return 0;
+	if (msg_type == GSM0480_MTYPE_REGISTER) {
 
-	if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
-		return 0;
+		/* now check if it is a IMSI we care about */
+		lst = bsc_nat_acc_lst_find(con->bsc->nat,
+					   con->bsc->nat->ussd_lst_name);
+		if (!lst)
+			return 0;
 
-	/* now decode the message and see if we really want to handle it */
-	memset(&req, 0, sizeof(req));
-	if (gsm0480_decode_ussd_request(hdr48, len, &req) != 1)
-		return 0;
-	if (req.text[0] == 0xff)
-		return 0;
+		if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
+			return 0;
 
-	if (regexec(&con->bsc->nat->ussd_query_re, req.text, 0, NULL, 0) == REG_NOMATCH)
-		return 0;
+		/* now decode the message and see if we really want to handle it */
+		memset(&req, 0, sizeof(req));
+		if (gsm0480_decode_ussd_request(hdr48, len, &req) != 1)
+			return 0;
+		if (req.text[0] == 0xff)
+			return 0;
 
-	/* found a USSD query for our subscriber */
-	LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
-	if (forward_ussd(con, &req, msg) != 0)
-		return 0;
-	return 1;
+		if (regexec(&con->bsc->nat->ussd_query_re,
+			    req.text, 0, NULL, 0) == REG_NOMATCH)
+			return 0;
+
+		/* found a USSD query for our subscriber */
+		LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
+		con->ussd_ti[ti] = 1;
+		if (forward_ussd(con, &req, msg) != 0)
+			return 0;
+		return 1;
+	} else if (msg_type == GSM0480_MTYPE_FACILITY && con->ussd_ti[ti]) {
+		LOGP(DNAT, LOGL_NOTICE, "Forwarding message part of TI: %d %s\n",
+		     ti, con->imsi);
+		if (forward_ussd_simple(con, msg) != 0)
+			return 0;
+		return 1;
+	}
+
+	return 0;
 }

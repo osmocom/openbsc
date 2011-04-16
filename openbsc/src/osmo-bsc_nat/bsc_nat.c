@@ -981,6 +981,8 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 					msg = bsc_nat_rewrite_setup(bsc->nat, msg, parsed, con->imsi);
 					talloc_free(parsed);
 					parsed = NULL;
+				} else if (con->con_local == NAT_CON_END_USSD) {
+					bsc_check_ussd(con, parsed, msg);
 				}
 
 				con_bsc = con->bsc;
