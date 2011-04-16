@@ -36,14 +36,6 @@
 #include <string.h>
 #include <unistd.h>
 
-struct bsc_nat_ussd_con {
-	struct write_queue queue;
-	struct bsc_nat *nat;
-	int authorized;
-
-	struct timer_list auth_timeout;
-};
-
 static void ussd_auth_con(struct tlv_parsed *, struct bsc_nat_ussd_con *);
 
 static struct bsc_nat_ussd_con *bsc_nat_ussd_alloc(struct bsc_nat *nat)

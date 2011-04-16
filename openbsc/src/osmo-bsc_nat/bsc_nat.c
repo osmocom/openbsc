@@ -195,15 +195,15 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
-static void nat_send_rlsd_msc(struct sccp_connections *conn)
+static struct msgb *nat_create_rlsd(struct sccp_connections *conn)
 {
 	struct sccp_connection_released *rel;
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "rlsd");
 	if (!msg) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
-		return;
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate released.\n");
+		return NULL;
 	}
 
 	msg->l2h = msgb_put(msg, sizeof(*rel));
@@ -213,15 +213,39 @@ static void nat_send_rlsd_msc(struct sccp_connections *conn)
 	rel->destination_local_reference = conn->remote_ref;
 	rel->source_local_reference = conn->patched_ref;
 
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+	return msg;
+}
 
+static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct sccp_connections *conn)
+{
+	struct msgb *msg;
+
+	if (!nat->ussd_con)
+		return;
+
+	msg = nat_create_rlsd(conn);
+	if (!msg)
+		return;
+
+	bsc_do_write(&nat->ussd_con->queue, msg, IPAC_PROTO_SCCP);
+}
+
+static void nat_send_rlsd_msc(struct sccp_connections *conn)
+{
+	struct msgb *msg;
+
+	msg = nat_create_rlsd(conn);
+	if (!msg)
+		return;
+
+	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 	queue_for_msc(conn->msc_con, msg);
 }
 
 static void nat_send_rlsd_bsc(struct sccp_connections *conn)
 {
-	struct sccp_connection_released *rel;
 	struct msgb *msg;
+	struct sccp_connection_released *rel;
 
 	msg = msgb_alloc_headroom(4096, 128, "rlsd");
 	if (!msg) {
@@ -793,8 +817,13 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 		if (ctr)
 			rate_ctr_inc(ctr);
-		if (sccp_patch->has_remote_ref && !sccp_patch->con_local)
-			nat_send_rlsd_msc(sccp_patch);
+		if (sccp_patch->has_remote_ref) {
+			if (sccp_patch->con_local == NAT_CON_END_MSC)
+				nat_send_rlsd_msc(sccp_patch);
+			else if (sccp_patch->con_local == NAT_CON_END_USSD)
+				nat_send_rlsd_ussd(nat, sccp_patch);
+		}
+
 		sccp_connection_destroy(sccp_patch);
 	}
 
