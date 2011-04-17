@@ -11,3 +11,6 @@ endif
 if BUILD_BSC
 SUBDIRS += osmo-bsc
 endif
+if BUILD_MSC
+SUBDIRS += osmo-msc
+endif
