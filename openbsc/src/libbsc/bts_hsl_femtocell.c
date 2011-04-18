@@ -20,7 +20,6 @@
  *
  */
 
-#include <sys/types.h>
 
 #include <arpa/inet.h>
 

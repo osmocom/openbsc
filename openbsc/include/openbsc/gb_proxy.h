@@ -1,7 +1,6 @@
 #ifndef _GB_PROXY_H
 #define _GB_PROXY_H
 
-#include <sys/types.h>
 
 #include <osmocom/core/msgb.h>
 

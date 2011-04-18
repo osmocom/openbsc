@@ -20,7 +20,6 @@
  */
 
 
-#include <sys/types.h>
 
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/signal.h>

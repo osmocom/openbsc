@@ -26,7 +26,6 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>

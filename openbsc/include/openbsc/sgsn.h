@@ -1,7 +1,6 @@
 #ifndef _SGSN_H
 #define _SGSN_H
 
-#include <sys/types.h>
 
 #include <osmocom/core/msgb.h>
 

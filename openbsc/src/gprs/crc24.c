@@ -19,7 +19,6 @@
  *
  */
 
-#include <sys/types.h>
 #include <openbsc/crc24.h>
 
 /* CRC24 table - FCS */

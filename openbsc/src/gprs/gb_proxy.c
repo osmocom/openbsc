@@ -27,7 +27,6 @@
 #include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
 
 #include <osmocom/core/talloc.h>

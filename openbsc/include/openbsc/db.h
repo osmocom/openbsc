@@ -20,7 +20,6 @@
 #ifndef _DB_H
 #define _DB_H
 
-#include <sys/types.h>
 #include "gsm_subscriber.h"
 
 struct gsm_equipment;

@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
-#include <sys/types.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>

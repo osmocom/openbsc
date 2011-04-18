@@ -19,7 +19,6 @@
  *
  */
 
-#include <sys/types.h>
 
 #include <openbsc/gsm_data.h>
 #include <osmocom/gsm/tlv.h>

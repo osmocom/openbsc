@@ -28,7 +28,6 @@
 #include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>

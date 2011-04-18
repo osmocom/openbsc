@@ -21,7 +21,6 @@
  *
  */
 
-#include <sys/types.h>
 
 #include <osmocom/core/talloc.h>
 

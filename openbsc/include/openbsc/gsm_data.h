@@ -1,7 +1,6 @@
 #ifndef _GSM_DATA_H
 #define _GSM_DATA_H
 
-#include <sys/types.h>
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;

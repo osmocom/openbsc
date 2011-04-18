@@ -1,7 +1,6 @@
 #ifndef _GSM_SUBSCR_H
 #define _GSM_SUBSCR_H
 
-#include <sys/types.h>
 #include "gsm_data.h"
 #include <osmocom/core/linuxlist.h>
 

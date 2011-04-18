@@ -19,7 +19,6 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>

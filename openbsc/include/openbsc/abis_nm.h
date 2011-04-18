@@ -22,7 +22,6 @@
 #ifndef _NM_H
 #define _NM_H
 
-#include <sys/types.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 

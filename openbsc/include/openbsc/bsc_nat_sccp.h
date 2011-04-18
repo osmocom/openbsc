@@ -22,7 +22,6 @@
 #ifndef BSC_NAT_SCCP_H
 #define BSC_NAT_SCCP_H
 
-#include <sys/types.h>
 #include <osmocom/sccp/sccp_types.h>
 
 /*

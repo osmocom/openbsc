@@ -26,7 +26,6 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 

@@ -23,7 +23,6 @@
 
 #include "mgcp.h"
 
-#include <sys/types.h>
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>

@@ -19,7 +19,6 @@
  *
  */
 
-#include <sys/types.h>
 #include <arpa/inet.h>
 
 #include <osmocom/gsm/tlv.h>

@@ -23,7 +23,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 
 #include <openbsc/gsm_04_08.h>
