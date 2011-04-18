@@ -149,4 +149,3 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 
 	return -1;
 }
-

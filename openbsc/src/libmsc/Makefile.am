@@ -15,5 +15,6 @@ libmsc_a_SOURCES =	auth.c \
 			token_auth.c \
 			ussd.c \
 			vty_interface_layer3.c \
+			transaction.c \
 			osmo_msc.c
 

@@ -18,7 +18,6 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			handover_decision.c handover_logic.c meas_rep.c \
 			rest_octets.c system_information.c \
 			e1_config.c \
-			transaction.c \
 			bsc_api.c bsc_msc.c bsc_vty.c \
 			gsm_04_08_utils.c \
 			bsc_init.c
