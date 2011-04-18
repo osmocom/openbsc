@@ -30,7 +30,7 @@
 #include <openbsc/rest_octets.h>
 
 /* generate SI1 rest octets */
-int rest_octets_si1(u_int8_t *data, u_int8_t *nch_pos)
+int rest_octets_si1(uint8_t *data, uint8_t *nch_pos)
 {
 	struct bitvec bv;
 
@@ -88,7 +88,7 @@ static void append_gprs_ind(struct bitvec *bv,
 
 
 /* Generate SI3 Rest Octests (Chapter 10.5.2.34 / Table 10.4.72) */
-int rest_octets_si3(u_int8_t *data, const struct gsm48_si_ro_info *si3)
+int rest_octets_si3(uint8_t *data, const struct gsm48_si_ro_info *si3)
 {
 	struct bitvec bv;
 
@@ -136,7 +136,7 @@ static int append_lsa_params(struct bitvec *bv,
 }
 
 /* Generate SI4 Rest Octets (Chapter 10.5.2.35) */
-int rest_octets_si4(u_int8_t *data, const struct gsm48_si_ro_info *si4)
+int rest_octets_si4(uint8_t *data, const struct gsm48_si_ro_info *si4)
 {
 	struct bitvec bv;
 
@@ -366,7 +366,7 @@ static void append_gprs_pwr_ctrl_pars(struct bitvec *bv,
 }
 
 /* Generate SI13 Rest Octests (04.08 Chapter 10.5.2.37b) */
-int rest_octets_si13(u_int8_t *data, const struct gsm48_si13_info *si13)
+int rest_octets_si13(uint8_t *data, const struct gsm48_si13_info *si13)
 {
 	struct bitvec bv;
 

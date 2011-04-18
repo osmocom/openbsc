@@ -39,7 +39,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 
-static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
+static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, uint8_t tag)
 {
 	uint8_t *data = msgb_push(msgb, 2);
 
@@ -48,8 +48,8 @@ static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, u_int8_t tag)
 	return data;
 }
 
-static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, u_int8_t tag,
-					    u_int8_t value)
+static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, uint8_t tag,
+					    uint8_t value)
 {
 	uint8_t *data = msgb_push(msgb, 3);
 
@@ -67,7 +67,7 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	u_int8_t *ptr8;
+	uint8_t *ptr8;
 	int response_len;
 
 	/* First put the payload text into the message */

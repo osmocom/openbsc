@@ -53,22 +53,22 @@ static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 static char *command, *value;
 struct timer_list status_timer;
 
-static const u_int8_t obj_li_attr[] = {
+static const uint8_t obj_li_attr[] = {
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
 	NM_ATT_BS11_L1_PROT_TYPE, 0x00,
 	NM_ATT_BS11_LINE_CFG, 0x00,
 };
-static const u_int8_t obj_bbsig0_attr[] = {
+static const uint8_t obj_bbsig0_attr[] = {
 	NM_ATT_BS11_RSSI_OFFS, 0x02, 0x00, 0x00,
 	NM_ATT_BS11_DIVERSITY, 0x01, 0x00,
 };
-static const u_int8_t obj_pa0_attr[] = {
+static const uint8_t obj_pa0_attr[] = {
 	NM_ATT_BS11_TXPWR, 0x01, BS11_TRX_POWER_GSM_30mW,
 };
 static const char *trx1_password = "1111111111";
 #define TEI_OML	25
 
-static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
+static const uint8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 
 static struct log_target *stderr_target;
 
@@ -113,8 +113,8 @@ static int create_objects(struct gsm_bts *bts)
 
 static int create_trx1(struct gsm_bts *bts)
 {
-	u_int8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
-	u_int8_t *cur = bbsig1_attr;
+	uint8_t bbsig1_attr[sizeof(obj_bbsig0_attr)+12];
+	uint8_t *cur = bbsig1_attr;
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, 1);
 
 	if (!trx)
@@ -127,7 +127,7 @@ static int create_trx1(struct gsm_bts *bts)
 	sleep(1);
 
 	cur = tlv_put(cur, NM_ATT_BS11_PASSWORD, 10,
-		      (u_int8_t *)trx1_password);
+		      (uint8_t *)trx1_password);
 	memcpy(cur, obj_bbsig0_attr, sizeof(obj_bbsig0_attr));
 	abis_nm_bs11_create_object(bts, BS11_OBJ_BBSIG, 1,
 				   sizeof(bbsig1_attr), bbsig1_attr);
@@ -217,7 +217,7 @@ static const char *bs11_link_state[] = {
 	[0x02]	= "Restoring",
 };
 
-static const char *linkstate_name(u_int8_t linkstate)
+static const char *linkstate_name(uint8_t linkstate)
 {
 	if (linkstate > ARRAY_SIZE(bs11_link_state))
 		return "Unknown";
@@ -234,7 +234,7 @@ static const char *mbccu_load[] = {
 	[5]	= "Load",
 };
 
-static const char *mbccu_load_name(u_int8_t linkstate)
+static const char *mbccu_load_name(uint8_t linkstate)
 {
 	if (linkstate > ARRAY_SIZE(mbccu_load))
 		return "Unknown";
@@ -242,7 +242,7 @@ static const char *mbccu_load_name(u_int8_t linkstate)
 	return mbccu_load[linkstate];
 }
 
-static const char *bts_phase_name(u_int8_t phase)
+static const char *bts_phase_name(uint8_t phase)
 {
 	switch (phase) {
 	case BS11_STATE_WARM_UP:
@@ -280,7 +280,7 @@ static const char *bts_phase_name(u_int8_t phase)
 	}
 }
 
-static const char *trx_power_name(u_int8_t pwr)
+static const char *trx_power_name(uint8_t pwr)
 {
 	switch (pwr) {
 	case BS11_TRX_POWER_GSM_2W:	
@@ -304,7 +304,7 @@ static const char *trx_power_name(u_int8_t pwr)
 	}
 }
 
-static const char *pll_mode_name(u_int8_t mode)
+static const char *pll_mode_name(uint8_t mode)
 {
 	switch (mode) {
 	case BS11_LI_PLL_LOCKED:
@@ -316,7 +316,7 @@ static const char *pll_mode_name(u_int8_t mode)
 	}
 }
 
-static const char *cclk_acc_name(u_int8_t acc)
+static const char *cclk_acc_name(uint8_t acc)
 {
 	switch (acc) {
 	case 0:
@@ -330,7 +330,7 @@ static const char *cclk_acc_name(u_int8_t acc)
 	}
 }
 
-static const char *bport_lcfg_name(u_int8_t lcfg)
+static const char *bport_lcfg_name(uint8_t lcfg)
 {
 	switch (lcfg) {
 	case BS11_LINE_CFG_STAR:
@@ -378,7 +378,7 @@ static const char *obj_name(struct abis_om_fom_hdr *foh)
 static void print_state(struct tlv_parsed *tp)
 {
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_BTS_STATE)) {
-		u_int8_t phase, mbccu;
+		uint8_t phase, mbccu;
 		if (TLVP_LEN(tp, NM_ATT_BS11_BTS_STATE) >= 1) {
 			phase = *TLVP_VAL(tp, NM_ATT_BS11_BTS_STATE);
 			printf("PHASE: %u %-20s ", phase & 0xf,
@@ -392,7 +392,7 @@ static void print_state(struct tlv_parsed *tp)
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_E1_STATE) &&
 	    TLVP_LEN(tp, NM_ATT_BS11_E1_STATE) >= 1) {
-		u_int8_t e1_state = *TLVP_VAL(tp, NM_ATT_BS11_E1_STATE);
+		uint8_t e1_state = *TLVP_VAL(tp, NM_ATT_BS11_E1_STATE);
 		printf("Abis-link: %-9s ", linkstate_name(e1_state & 0xf));
 	}
 	printf("\n");
@@ -420,7 +420,7 @@ static int print_attr(struct tlv_parsed *tp)
 #endif
 	if (TLVP_PRESENT(tp, NM_ATT_ABIS_CHANNEL) &&
 	    TLVP_LEN(tp, NM_ATT_ABIS_CHANNEL) >= 3) {
-		const u_int8_t *chan = TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL);
+		const uint8_t *chan = TLVP_VAL(tp, NM_ATT_ABIS_CHANNEL);
 		printf("\tE1 Channel: Port=%u Timeslot=%u ",
 			chan[0], chan[1]);
 		if (chan[2] == 0xff)
@@ -442,23 +442,23 @@ static int print_attr(struct tlv_parsed *tp)
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_PLL) &&
 	    TLVP_LEN(tp, NM_ATT_BS11_PLL) >= 4) {
-		const u_int8_t *vp = TLVP_VAL(tp, NM_ATT_BS11_PLL);
+		const uint8_t *vp = TLVP_VAL(tp, NM_ATT_BS11_PLL);
 		printf("\tPLL Set Value=%d, Work Value=%d\n",
 			vp[0] << 8 | vp[1], vp[2] << 8 | vp[3]);
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_CCLK_ACCURACY) &&
 	    TLVP_LEN(tp, NM_ATT_BS11_CCLK_ACCURACY) >= 1) {
-		const u_int8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_ACCURACY);
+		const uint8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_ACCURACY);
 		printf("\tCCLK Accuracy: %s (%d)\n", cclk_acc_name(*acc), *acc);
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_CCLK_TYPE) &&
 	    TLVP_LEN(tp, NM_ATT_BS11_CCLK_TYPE) >= 1) {
-		const u_int8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_TYPE);
+		const uint8_t *acc = TLVP_VAL(tp, NM_ATT_BS11_CCLK_TYPE);
 		printf("\tCCLK Type=%d\n", *acc);
 	}
 	if (TLVP_PRESENT(tp, NM_ATT_BS11_LINE_CFG) &&
 	    TLVP_LEN(tp, NM_ATT_BS11_LINE_CFG) >= 1) {
-		const u_int8_t *lcfg = TLVP_VAL(tp, NM_ATT_BS11_LINE_CFG);
+		const uint8_t *lcfg = TLVP_VAL(tp, NM_ATT_BS11_LINE_CFG);
 		printf("\tLine Configuration: %s (%d)\n",
 			bport_lcfg_name(*lcfg), *lcfg);
 	}

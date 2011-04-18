@@ -29,20 +29,20 @@
 
 /* RRLP msPositionReq, nsBased,
  *	Accuracy=60, Method=gps, ResponseTime=2, oneSet */
-static const u_int8_t ms_based_pos_req[] = { 0x40, 0x01, 0x78, 0xa8 };
+static const uint8_t ms_based_pos_req[] = { 0x40, 0x01, 0x78, 0xa8 };
 
 /* RRLP msPositionReq, msBasedPref,
 	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
-static const u_int8_t ms_pref_pos_req[]  = { 0x40, 0x02, 0x79, 0x50 };
+static const uint8_t ms_pref_pos_req[]  = { 0x40, 0x02, 0x79, 0x50 };
 
 /* RRLP msPositionReq, msAssistedPref,
 	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
-static const u_int8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
+static const uint8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
 
 static int send_rrlp_req(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_network *net = conn->bts->network;
-	const u_int8_t *req;
+	const uint8_t *req;
 
 	switch (net->rrlp.mode) {
 	case RRLP_MODE_MS_BASED:

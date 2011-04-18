@@ -44,7 +44,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 int db_sync_subscriber(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
-int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t* token);
+int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t* token);
 int db_subscriber_assoc_imei(struct gsm_subscriber *subscriber, char *imei);
 int db_sync_equipment(struct gsm_equipment *equip);
 int db_subscriber_update(struct gsm_subscriber *subscriber);
@@ -70,8 +70,8 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms);
 
 /* APDU blob storage */
 int db_apdu_blob_store(struct gsm_subscriber *subscr, 
-			u_int8_t apdu_id_flags, u_int8_t len,
-			u_int8_t *apdu);
+			uint8_t apdu_id_flags, uint8_t len,
+			uint8_t *apdu);
 
 /* Statistics counter storage */
 struct counter;

@@ -32,7 +32,7 @@
 #define TOKEN_SMS_TEXT "HAR 2009 GSM.  Register at http://har2009.gnumonks.org/ " \
 			"Your IMSI is %s, auth token is %08X, phone no is %s."
 
-static char *build_sms_string(struct gsm_subscriber *subscr, u_int32_t token)
+static char *build_sms_string(struct gsm_subscriber *subscr, uint32_t token)
 {
 	char *sms_str;
 	unsigned int len;
@@ -63,7 +63,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
-		u_int32_t token;
+		uint32_t token;
 		char *sms_str;
 
 		/* we've seen this subscriber for the first time. */
@@ -97,7 +97,7 @@ unauth:
 		if (rc) {
 			struct gsm_subscriber_connection *conn = connection_for_subscr(subscr);
 			if (conn) {
-				u_int8_t auth_rand[16];
+				uint8_t auth_rand[16];
 				/* kick the subscriber off the network */
 				gsm48_tx_mm_auth_req(conn, auth_rand, 0);
 				gsm48_tx_mm_auth_rej(conn);
@@ -116,7 +116,7 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 	struct sms_signal_data *sig = signal_data;
 	struct gsm_sms *sms = sig->sms;;
 	struct gsm_subscriber_connection *conn;
-	u_int8_t auth_rand[16];
+	uint8_t auth_rand[16];
 
 
 	if (signal != S_SMS_DELIVERED)

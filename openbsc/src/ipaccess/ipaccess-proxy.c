@@ -82,8 +82,8 @@ struct ipa_bts_conn {
 	struct ipa_proxy *ipp;
 	/* the unit ID as determined by CCM */
 	struct {
-		u_int16_t site_id;
-		u_int16_t bts_id;
+		uint16_t site_id;
+		uint16_t bts_id;
 	} unit_id;
 
 	/* incoming connections from BTS */
@@ -106,7 +106,7 @@ struct ipa_bts_conn {
 	uint32_t gprs_orig_ip;
 
 	char *id_tags[0xff];
-	u_int8_t *id_resp;
+	uint8_t *id_resp;
 	unsigned int id_resp_len;
 };
 
@@ -131,8 +131,8 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
 #define PROXY_ALLOC_SIZE	1200
 
 static struct ipa_bts_conn *find_bts_by_unitid(struct ipa_proxy *ipp,
-						u_int16_t site_id,
-						u_int16_t bts_id)
+						uint16_t site_id,
+						uint16_t bts_id)
 {
 	struct ipa_bts_conn *ipbc;
 
@@ -189,7 +189,7 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 #define logp_ipbc_uid(ss, lvl, ipbc, trx_id) _logp_ipbc_uid(ss, lvl, __FILE__, __LINE__, ipbc, trx_id)
 
 static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int line,
-			   struct ipa_bts_conn *ipbc, u_int8_t trx_id)
+			   struct ipa_bts_conn *ipbc, uint8_t trx_id)
 {
 	if (ipbc)
 		logp2(ss, lvl, file, line, 0, "(%u/%u/%u) ", ipbc->unit_id.site_id,
@@ -312,12 +312,12 @@ static int udp_fd_cb(struct bsc_fd *bfd, unsigned int what)
 
 
 static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
-			      u_int16_t site_id, u_int16_t bts_id,
-			      u_int16_t trx_id, struct tlv_parsed *tlvp,
+			      uint16_t site_id, uint16_t bts_id,
+			      uint16_t trx_id, struct tlv_parsed *tlvp,
 			      struct msgb *msg)
 {
 	struct ipa_bts_conn *ipbc;
-	u_int16_t udp_port;
+	uint16_t udp_port;
 	int ret = 0;
 	struct sockaddr_in sin;
 
@@ -437,8 +437,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			   struct bsc_fd *bfd)
 {
 	struct tlv_parsed tlvp;
-	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id, bts_id, trx_id;
+	uint8_t msg_type = *(msg->l2h);
+	uint16_t site_id, bts_id, trx_id;
 	struct ipa_bts_conn *ipbc;
 	int ret = 0;
 
@@ -452,7 +452,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+		ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 				     msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
@@ -749,16 +749,16 @@ static void patch_gprs_msg(struct ipa_bts_conn *ipbc, int priv_nr, struct msgb *
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf5 && msg->l2h[19] == 0xf2) {
 		nsvci = &msg->l2h[23];
-		ipbc->gprs_orig_port =  *(u_int16_t *)(nsvci+8);
-		ipbc->gprs_orig_ip = *(u_int32_t *)(nsvci+10);
-		*(u_int16_t *)(nsvci+8) = htons(ipbc->gprs_local_port);
-		*(u_int32_t *)(nsvci+10) = ipbc->ipp->listen_addr.s_addr;
+		ipbc->gprs_orig_port =  *(uint16_t *)(nsvci+8);
+		ipbc->gprs_orig_ip = *(uint32_t *)(nsvci+10);
+		*(uint16_t *)(nsvci+8) = htons(ipbc->gprs_local_port);
+		*(uint32_t *)(nsvci+10) = ipbc->ipp->listen_addr.s_addr;
 	} else if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf6 && msg->l2h[19] == 0xf2) {
 		nsvci = &msg->l2h[23];
-		*(u_int16_t *)(nsvci+8) = ipbc->gprs_orig_port;
-		*(u_int32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
+		*(uint16_t *)(nsvci+8) = ipbc->gprs_orig_port;
+		*(uint32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
 	}
 }
 

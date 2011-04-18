@@ -142,7 +142,7 @@ DEFUN(sms_send_pend,
 }
 
 static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
-			 u_int8_t tp_pid)
+			 uint8_t tp_pid)
 {
 	struct gsm_sms *sms;
 

@@ -105,9 +105,9 @@ static int bcast_find(int fd)
 
 static int parse_response(unsigned char *buf, int len)
 {
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
+	uint8_t t_len;
+	uint8_t t_tag;
+	uint8_t *cur = buf;
 
 	while (cur < buf + len) {
 		t_len = *cur++;

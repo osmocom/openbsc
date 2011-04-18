@@ -75,37 +75,37 @@ static void *tall_sigl_ctx;
 #define PCAP_OUTPUT		1
 
 struct pcap_hdr {
-	u_int32_t magic_number;
-	u_int16_t version_major;
-	u_int16_t version_minor;
+	uint32_t magic_number;
+	uint16_t version_major;
+	uint16_t version_minor;
 	int32_t  thiszone;
-	u_int32_t sigfigs;
-	u_int32_t snaplen;
-	u_int32_t network;
+	uint32_t sigfigs;
+	uint32_t snaplen;
+	uint32_t network;
 } __attribute__((packed));
 
 struct pcaprec_hdr {
-	u_int32_t ts_sec;
-	u_int32_t ts_usec;
-	u_int32_t incl_len;
-	u_int32_t orig_len;
+	uint32_t ts_sec;
+	uint32_t ts_usec;
+	uint32_t incl_len;
+	uint32_t orig_len;
 } __attribute__((packed));
 
 struct fake_linux_lapd_header {
-        u_int16_t pkttype;
-	u_int16_t hatype;
-	u_int16_t halen;
-	u_int64_t addr;
+        uint16_t pkttype;
+	uint16_t hatype;
+	uint16_t halen;
+	uint64_t addr;
 	int16_t protocol;
 } __attribute__((packed));
 
 struct lapd_header {
-	u_int8_t ea1 : 1;
-	u_int8_t cr : 1;
-	u_int8_t sapi : 6;
-	u_int8_t ea2 : 1;
-	u_int8_t tei : 7;
-	u_int8_t control_foo; /* fake UM's ... */
+	uint8_t ea1 : 1;
+	uint8_t cr : 1;
+	uint8_t sapi : 6;
+	uint8_t ea2 : 1;
+	uint8_t tei : 7;
+	uint8_t control_foo; /* fake UM's ... */
 } __attribute__((packed));
 
 static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
@@ -207,7 +207,7 @@ const char *e1inp_tstype_name(enum e1inp_ts_type tp)
 }
 
 /* callback when a TRAU frame was received */
-static int subch_cb(struct subch_demux *dmx, int ch, u_int8_t *data, int len,
+static int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len,
 		    void *_priv)
 {
 	struct e1inp_ts *e1i_ts = _priv;
@@ -324,7 +324,7 @@ int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
-struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
+struct e1inp_line *e1inp_line_get(uint8_t e1_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -336,7 +336,7 @@ struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 	return NULL;
 }
 
-struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
+struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 {
 	struct e1inp_driver *driver;
 	struct e1inp_line *line;
@@ -373,7 +373,7 @@ struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
 }
 
 #if 0
-struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
+struct e1inp_line *e1inp_line_get_create(uint8_t e1_nr)
 {
 	struct e1inp_line *line;
 	int i;
@@ -397,7 +397,7 @@ struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
 }
 #endif
 
-static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
+static struct e1inp_ts *e1inp_ts_get(uint8_t e1_nr, uint8_t ts_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -408,7 +408,7 @@ static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
 	return &e1i_line->ts[ts_nr-1];
 }
 
-struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr)
+struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr)
 {
 	struct e1inp_ts *e1i_ts = e1inp_ts_get(e1_nr, ts_nr);
 
@@ -421,7 +421,7 @@ struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr)
 /* Signalling Link */
 
 struct e1inp_sign_link *e1inp_lookup_sign_link(struct e1inp_ts *e1i,
-					 	u_int8_t tei, u_int8_t sapi)
+						uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 
@@ -437,8 +437,8 @@ struct e1inp_sign_link *e1inp_lookup_sign_link(struct e1inp_ts *e1i,
 
 struct e1inp_sign_link *
 e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
-			struct gsm_bts_trx *trx, u_int8_t tei,
-			u_int8_t sapi)
+			struct gsm_bts_trx *trx, uint8_t tei,
+			uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 
@@ -479,7 +479,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 
 /* the E1 driver tells us he has received something on a TS */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
-		u_int8_t tei, u_int8_t sapi)
+		uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 	struct gsm_bts *bts;
@@ -562,7 +562,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 }
 
 /* called by driver in case some kind of link state event */
-int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
+int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 	struct input_signal_data isd;

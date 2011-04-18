@@ -39,8 +39,8 @@ void *tall_bsc_ctx;
 
 static LLIST_HEAD(bts_models);
 
-void set_ts_e1link(struct gsm_bts_trx_ts *ts, u_int8_t e1_nr,
-		   u_int8_t e1_ts, u_int8_t e1_ts_ss)
+void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
+		   uint8_t e1_ts, uint8_t e1_ts_ss)
 {
 	ts->e1_link.e1_nr = e1_nr;
 	ts->e1_link.e1_ts = e1_ts;
@@ -184,7 +184,7 @@ static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
 
 struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
-			      u_int8_t tsc, u_int8_t bsic)
+			      uint8_t tsc, uint8_t bsic)
 {
 	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
 	struct gsm_bts_model *model = bts_model_find(type);
@@ -252,7 +252,7 @@ struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
 	return bts;
 }
 
-struct gsm_network *gsm_network_init(u_int16_t country_code, u_int16_t network_code,
+struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
 				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;
@@ -350,7 +350,7 @@ struct gsm_bts *gsm_bts_num(struct gsm_network *net, int num)
 
 /* Get reference to a neighbor cell on a given BCCH ARFCN */
 struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
-				 u_int16_t arfcn, u_int8_t bsic)
+				 uint16_t arfcn, uint8_t bsic)
 {
 	struct gsm_bts *neigh;
 	/* FIXME: use some better heuristics here to determine which cell
@@ -493,7 +493,7 @@ void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
 	raid->rac = bts->gprs.rac;
 }
 
-int gsm48_ra_id_by_bts(u_int8_t *buf, struct gsm_bts *bts)
+int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
 {
 	struct gprs_ra_id raid;
 

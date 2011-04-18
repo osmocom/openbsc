@@ -52,8 +52,8 @@ static int gsm48_sendmsg(struct msgb *msg)
 
 /* Section 9.1.8 / Table 9.9 */
 struct chreq {
-	u_int8_t val;
-	u_int8_t mask;
+	uint8_t val;
+	uint8_t mask;
 	enum chreq_type type;
 };
 
@@ -166,7 +166,7 @@ void gsm_net_update_ctype(struct gsm_network *network)
 	}
 }
 
-enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, u_int8_t ra)
+enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, uint8_t ra)
 {
 	int i;
 	int length;
@@ -190,7 +190,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, u_int8_t ra)
 	return GSM_LCHAN_SDCCH;
 }
 
-enum gsm_chreq_reason_t get_reason_by_chreq(u_int8_t ra, int neci)
+enum gsm_chreq_reason_t get_reason_by_chreq(uint8_t ra, int neci)
 {
 	int i;
 	int length;
@@ -218,7 +218,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	u_int8_t *cause;
+	uint8_t *cause;
 
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_RR;
@@ -239,7 +239,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 }
 
 int send_siemens_mrpci(struct gsm_lchan *lchan,
-		       u_int8_t *classmark2_lv)
+		       uint8_t *classmark2_lv)
 {
 	struct rsl_mrpci mrpci;
 
@@ -260,7 +260,7 @@ int gsm48_extract_mi(uint8_t *classmark2_lv, int length, char *mi_string, uint8_
 	if (length < 1 + *classmark2_lv)
 		return -1;
 
-	u_int8_t *mi_lv = classmark2_lv + *classmark2_lv + 1;
+	uint8_t *mi_lv = classmark2_lv + *classmark2_lv + 1;
 	if (length < 2 + *classmark2_lv + mi_lv[0])
 		return -2;
 
@@ -269,11 +269,11 @@ int gsm48_extract_mi(uint8_t *classmark2_lv, int length, char *mi_string, uint8_
 }
 
 int gsm48_paging_extract_mi(struct gsm48_pag_resp *resp, int length,
-			    char *mi_string, u_int8_t *mi_type)
+			    char *mi_string, uint8_t *mi_type)
 {
 	static const uint32_t classmark_offset =
 		offsetof(struct gsm48_pag_resp, classmark2);
-	u_int8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
+	uint8_t *classmark2_lv = (uint8_t *) &resp->classmark2;
 	return gsm48_extract_mi(classmark2_lv, length - classmark_offset,
 				mi_string, mi_type);
 }
@@ -283,7 +283,7 @@ int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn,
 {
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t *classmark2_lv = gh->data + 1;
+	uint8_t *classmark2_lv = gh->data + 1;
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2_lv);
@@ -312,7 +312,7 @@ int gsm48_send_rr_ciph_mode(struct gsm_lchan *lchan, int want_imeisv)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	u_int8_t ciph_mod_set;
+	uint8_t ciph_mod_set;
 
 	msg->lchan = lchan;
 
@@ -343,7 +343,7 @@ static void gsm48_cell_desc(struct gsm48_cell_desc *cd,
 void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 			   const struct gsm_lchan *lchan)
 {
-	u_int16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
+	uint16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
 	cd->chan_nr = lchan2chan_nr(lchan);
 	if (!lchan->ts->hopping.enabled) {
@@ -364,7 +364,7 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 
 /* Chapter 9.1.15: Handover Command */
 int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
-		      u_int8_t power_command, u_int8_t ho_ref)
+		      uint8_t power_command, uint8_t ho_ref)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -403,7 +403,7 @@ int gsm48_send_ho_cmd(struct gsm_lchan *old_lchan, struct gsm_lchan *new_lchan,
 }
 
 /* Chapter 9.1.2: Assignment Command */
-int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan, u_int8_t power_command)
+int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan, uint8_t power_command)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -443,7 +443,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
 				"without multirate config.\n");
 		} else {
-			u_int8_t *data = msgb_put(msg, 4);
+			uint8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
 			data[1] = 0x2;
 			memcpy(&data[2], &lchan->mr_conf, 2);
@@ -454,7 +454,7 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 }
 
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -479,7 +479,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 			LOGP(DRR, LOGL_ERROR, "BUG: Using multirate codec "
 				"without multirate config.\n");
 		} else {
-			u_int8_t *data = msgb_put(msg, 4);
+			uint8_t *data = msgb_put(msg, 4);
 			data[0] = GSM48_IE_MUL_RATE_CFG;
 			data[1] = 0x2;
 			memcpy(&data[2], &lchan->mr_conf, 2);
@@ -489,7 +489,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, u_int8_t mode)
 	return gsm48_sendmsg(msg);
 }
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, u_int8_t lchan_mode)
+int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode)
 {
 	int rc;
 
@@ -547,7 +547,7 @@ int gsm48_rx_rr_modif_ack(struct msgb *msg)
 int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t *data = gh->data;
+	uint8_t *data = gh->data;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct bitvec *nbv = &bts->si_common.neigh_list;
 	struct gsm_meas_rep_cell *mrc;

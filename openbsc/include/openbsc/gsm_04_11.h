@@ -7,20 +7,20 @@
 
 /* SMS deliver PDU */
 struct sms_deliver {
-	u_int8_t mti:2;		/* message type indicator */
-	u_int8_t mms:1;		/* more messages to send */
-	u_int8_t rp:1;		/* reply path */
-	u_int8_t udhi:1;	/* user data header indicator */
-	u_int8_t sri:1;		/* status report indication */
-	u_int8_t *orig_addr;	/* originating address */
-	u_int8_t pid;		/* protocol identifier */
-	u_int8_t dcs;		/* data coding scheme */
+	uint8_t mti:2;		/* message type indicator */
+	uint8_t mms:1;		/* more messages to send */
+	uint8_t rp:1;		/* reply path */
+	uint8_t udhi:1;	/* user data header indicator */
+	uint8_t sri:1;		/* status report indication */
+	uint8_t *orig_addr;	/* originating address */
+	uint8_t pid;		/* protocol identifier */
+	uint8_t dcs;		/* data coding scheme */
 				/* service centre time stamp */
-	u_int8_t ud_len;	/* user data length */
-	u_int8_t *user_data;	/* user data */
+	uint8_t ud_len;	/* user data length */
+	uint8_t *user_data;	/* user data */
 
-	u_int8_t msg_ref;	/* message reference */
-	u_int8_t *smsc;
+	uint8_t msg_ref;	/* message reference */
+	uint8_t *smsc;
 };
 
 struct msgb;

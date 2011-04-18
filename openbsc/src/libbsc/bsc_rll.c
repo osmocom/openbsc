@@ -37,9 +37,9 @@ struct bsc_rll_req {
 	struct timer_list timer;
 
 	struct gsm_lchan *lchan;
-	u_int8_t link_id;
+	uint8_t link_id;
 
-	void (*cb)(struct gsm_lchan *lchan, u_int8_t link_id,
+	void (*cb)(struct gsm_lchan *lchan, uint8_t link_id,
 		   void *data, enum bsc_rllr_ind);
 	void *data;
 };
@@ -64,13 +64,13 @@ static void timer_cb(void *_rllr)
 }
 
 /* establish a RLL connection with given SAPI / priority */
-int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
-		  void (*cb)(struct gsm_lchan *, u_int8_t, void *,
+int rll_establish(struct gsm_lchan *lchan, uint8_t sapi,
+		  void (*cb)(struct gsm_lchan *, uint8_t, void *,
 			     enum bsc_rllr_ind),
 		  void *data)
 {
 	struct bsc_rll_req *rllr = talloc_zero(tall_bsc_ctx, struct bsc_rll_req);
-	u_int8_t link_id;
+	uint8_t link_id;
 	if (!rllr)
 		return -ENOMEM;
 
@@ -100,7 +100,7 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 
 /* Called from RSL code in case we have received an indication regarding
  * any RLL link */
-void rll_indication(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t type)
+void rll_indication(struct gsm_lchan *lchan, uint8_t link_id, uint8_t type)
 {
 	struct bsc_rll_req *rllr, *rllr2;
 

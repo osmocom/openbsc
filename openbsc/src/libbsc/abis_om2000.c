@@ -631,7 +631,7 @@ static struct msgb *om2k_msgb_alloc(void)
 				   "OM2000");
 }
 
-static int abis_om2k_tlv_parse(struct tlv_parsed *tp, const u_int8_t *buf, int len)
+static int abis_om2k_tlv_parse(struct tlv_parsed *tp, const uint8_t *buf, int len)
 {
 	return tlv_parse(tp, &om2k_att_tlvdef, buf, len, 0, 0);
 }

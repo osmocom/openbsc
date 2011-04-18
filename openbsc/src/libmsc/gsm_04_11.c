@@ -55,7 +55,7 @@
 #define GSM411_ALLOC_HEADROOM	128
 
 void *tall_gsms_ctx;
-static u_int32_t new_callref = 0x40000001;
+static uint32_t new_callref = 0x40000001;
 
 static const struct value_string cp_cause_strs[] = {
 	{ GSM411_CP_CAUSE_NET_FAIL,	"Network Failure" },
@@ -173,7 +173,7 @@ struct msgb *gsm411_msgb_alloc(void)
 				   "GSM 04.11");
 }
 
-static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, u_int8_t link_id)
+static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, uint8_t link_id)
 {
 	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
@@ -192,7 +192,7 @@ static void cp_timer_expired(void *data)
 
 /* Prefix msg with a 04.08/04.11 CP header */
 static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
-			     u_int8_t msg_type)
+			     uint8_t msg_type)
 {
 	struct gsm48_hdr *gh;
 
@@ -228,10 +228,10 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
 static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
-			     u_int8_t rp_msg_type, u_int8_t rp_msg_ref)
+			     uint8_t rp_msg_type, uint8_t rp_msg_ref)
 {
 	struct gsm411_rp_hdr *rp;
-	u_int8_t len = msg->len;
+	uint8_t len = msg->len;
 
 	/* GSM 04.11 RP-DATA header */
 	rp = (struct gsm411_rp_hdr *)msgb_push(msg, sizeof(*rp));
@@ -243,9 +243,9 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 }
 
 /* Turn int into semi-octet representation: 98 => 0x89 */
-static u_int8_t bcdify(u_int8_t value)
+static uint8_t bcdify(uint8_t value)
 {
-	u_int8_t ret;
+	uint8_t ret;
 
 	ret = value / 10;
 	ret |= (value % 10) << 4;
@@ -254,9 +254,9 @@ static u_int8_t bcdify(u_int8_t value)
 }
 
 /* Turn semi-octet representation into int: 0x89 => 98 */
-static u_int8_t unbcdify(u_int8_t value)
+static uint8_t unbcdify(uint8_t value)
 {
-	u_int8_t ret;
+	uint8_t ret;
 
 	if ((value & 0x0F) > 9 || (value >> 4) > 9)
 		LOGP(DSMS, LOGL_ERROR,
@@ -269,7 +269,7 @@ static u_int8_t unbcdify(u_int8_t value)
 }
 
 /* Generate 03.40 TP-SCTS */
-static void gsm340_gen_scts(u_int8_t *scts, time_t time)
+static void gsm340_gen_scts(uint8_t *scts, time_t time)
 {
 	struct tm *tm = localtime(&time);
 
@@ -283,11 +283,11 @@ static void gsm340_gen_scts(u_int8_t *scts, time_t time)
 }
 
 /* Decode 03.40 TP-SCTS (into utc/gmt timestamp) */
-static time_t gsm340_scts(u_int8_t *scts)
+static time_t gsm340_scts(uint8_t *scts)
 {
 	struct tm tm;
 
-	u_int8_t yr = unbcdify(*scts++);
+	uint8_t yr = unbcdify(*scts++);
 
 	if (yr <= 80)
 		tm.tm_year = 100 + yr;
@@ -315,10 +315,10 @@ static unsigned long gsm340_vp_default(void)
 }
 
 /* Decode validity period format 'relative' */
-static unsigned long gsm340_vp_relative(u_int8_t *sms_vp)
+static unsigned long gsm340_vp_relative(uint8_t *sms_vp)
 {
 	/* Chapter 9.2.3.12.1 */
-	u_int8_t vp;
+	uint8_t vp;
 	unsigned long minutes;
 
 	vp = *(sms_vp);
@@ -334,7 +334,7 @@ static unsigned long gsm340_vp_relative(u_int8_t *sms_vp)
 }
 
 /* Decode validity period format 'absolute' */
-static unsigned long gsm340_vp_absolute(u_int8_t *sms_vp)
+static unsigned long gsm340_vp_absolute(uint8_t *sms_vp)
 {
 	/* Chapter 9.2.3.12.2 */
 	time_t expires, now;
@@ -350,9 +350,9 @@ static unsigned long gsm340_vp_absolute(u_int8_t *sms_vp)
 }
 
 /* Decode validity period format 'relative in integer representation' */
-static unsigned long gsm340_vp_relative_integer(u_int8_t *sms_vp)
+static unsigned long gsm340_vp_relative_integer(uint8_t *sms_vp)
 {
-	u_int8_t vp;
+	uint8_t vp;
 	unsigned long minutes;
 	vp = *(sms_vp);
 	if (vp == 0) {
@@ -365,7 +365,7 @@ static unsigned long gsm340_vp_relative_integer(u_int8_t *sms_vp)
 }
 
 /* Decode validity period format 'relative in semi-octet representation' */
-static unsigned long gsm340_vp_relative_semioctet(u_int8_t *sms_vp)
+static unsigned long gsm340_vp_relative_semioctet(uint8_t *sms_vp)
 {
 	unsigned long minutes;
 	minutes = unbcdify(*sms_vp++)*60;  /* hours */
@@ -375,9 +375,9 @@ static unsigned long gsm340_vp_relative_semioctet(u_int8_t *sms_vp)
 }
 
 /* decode validity period. return minutes */
-static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
+static unsigned long gsm340_validity_period(uint8_t sms_vpf, uint8_t *sms_vp)
 {
-	u_int8_t fi; /* functionality indicator */
+	uint8_t fi; /* functionality indicator */
 
 	switch (sms_vpf) {
 	case GSM340_TP_VPF_RELATIVE:
@@ -413,9 +413,9 @@ static unsigned long gsm340_validity_period(u_int8_t sms_vpf, u_int8_t *sms_vp)
 }
 
 /* determine coding alphabet dependent on GSM 03.38 Section 4 DCS */
-enum sms_alphabet gsm338_get_sms_alphabet(u_int8_t dcs)
+enum sms_alphabet gsm338_get_sms_alphabet(uint8_t dcs)
 {
-	u_int8_t cgbits = dcs >> 4;
+	uint8_t cgbits = dcs >> 4;
 	enum sms_alphabet alpha = DCS_NONE;
 
 	if ((cgbits & 0xc) == 0) {
@@ -463,7 +463,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 }
 
 /* generate a TPDU address field compliant with 03.40 sec. 9.1.2.5 */
-static int gsm340_gen_oa(u_int8_t *oa, unsigned int oa_len,
+static int gsm340_gen_oa(uint8_t *oa, unsigned int oa_len,
 			 struct gsm_subscriber *subscr)
 {
 	int len_in_bytes;
@@ -482,10 +482,10 @@ static int gsm340_gen_oa(u_int8_t *oa, unsigned int oa_len,
  * returns total size of TPDU */
 static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 {
-	u_int8_t *smsp;
-	u_int8_t oa[12];	/* max len per 03.40 */
-	u_int8_t oa_len = 0;
-	u_int8_t octet_len;
+	uint8_t *smsp;
+	uint8_t oa[12];	/* max len per 03.40 */
+	uint8_t oa_len = 0;
+	uint8_t octet_len;
 	unsigned int old_msg_len = msg->len;
 
 	/* generate first octet with masked bits */
@@ -552,12 +552,12 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
  * return value > 0: RP CAUSE for ERROR; < 0: silent error; 0 = success */
 static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	u_int8_t *smsp = msgb_sms(msg);
+	uint8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
-	u_int8_t sms_mti, sms_mms, sms_vpf, sms_alphabet, sms_rp;
-	u_int8_t *sms_vp;
-	u_int8_t da_len_bytes;
-	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
+	uint8_t sms_mti, sms_mms, sms_vpf, sms_alphabet, sms_rp;
+	uint8_t *sms_vp;
+	uint8_t da_len_bytes;
+	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
 	counter_inc(conn->bts->network->stats.sms.submitted);
@@ -685,7 +685,7 @@ out:
 	return rc;
 }
 
-static int gsm411_send_rp_ack(struct gsm_trans *trans, u_int8_t msg_ref)
+static int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 
@@ -695,7 +695,7 @@ static int gsm411_send_rp_ack(struct gsm_trans *trans, u_int8_t msg_ref)
 }
 
 static int gsm411_send_rp_error(struct gsm_trans *trans,
-				u_int8_t msg_ref, u_int8_t cause)
+				uint8_t msg_ref, uint8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 
@@ -710,9 +710,9 @@ static int gsm411_send_rp_error(struct gsm_trans *trans,
 /* Receive a 04.11 TPDU inside RP-DATA / user data */
 static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 			  struct gsm411_rp_hdr *rph,
-			  u_int8_t src_len, u_int8_t *src,
-			  u_int8_t dst_len, u_int8_t *dst,
-			  u_int8_t tpdu_len, u_int8_t *tpdu)
+			  uint8_t src_len, uint8_t *src,
+			  uint8_t dst_len, uint8_t *dst,
+			  uint8_t tpdu_len, uint8_t *tpdu)
 {
 	int rc = 0;
 
@@ -743,8 +743,8 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 static int gsm411_rx_rp_data(struct msgb *msg, struct gsm_trans *trans,
 			     struct gsm411_rp_hdr *rph)
 {
-	u_int8_t src_len, dst_len, rpud_len;
-	u_int8_t *src = NULL, *dst = NULL , *rp_ud = NULL;
+	uint8_t src_len, dst_len, rpud_len;
+	uint8_t *src = NULL, *dst = NULL , *rp_ud = NULL;
 
 	/* in the MO case, this should always be zero length */
 	src_len = rph->data[0];
@@ -812,8 +812,8 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 {
 	struct gsm_network *net = trans->conn->bts->network;
 	struct gsm_sms *sms = trans->sms.sms;
-	u_int8_t cause_len = rph->data[0];
-	u_int8_t cause = rph->data[1];
+	uint8_t cause_len = rph->data[0];
+	uint8_t cause = rph->data[1];
 
 	/* Error in response to MT RP_DATA, i.e. the MS did not
 	 * successfully receive the SMS.  We need to investigate
@@ -886,7 +886,7 @@ static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh,
 			     struct gsm_trans *trans)
 {
 	struct gsm411_rp_hdr *rp_data = (struct gsm411_rp_hdr*)&gh->data;
-	u_int8_t msg_type =  rp_data->msg_type & 0x07;
+	uint8_t msg_type =  rp_data->msg_type & 0x07;
 	int rc = 0;
 
 	switch (msg_type) {
@@ -936,10 +936,10 @@ static int gsm411_tx_cp_ack(struct gsm_trans *trans)
 	return rc;
 }
 
-static int gsm411_tx_cp_error(struct gsm_trans *trans, u_int8_t cause)
+static int gsm411_tx_cp_error(struct gsm_trans *trans, uint8_t cause)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
-	u_int8_t *causep;
+	uint8_t *causep;
 
 	LOGP(DSMS, LOGL_NOTICE, "TX CP-ERROR, cause %d (%s)\n", cause,
 		get_value_string(cp_cause_strs, cause));
@@ -955,8 +955,8 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		    struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t msg_type = gh->msg_type;
-	u_int8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
+	uint8_t msg_type = gh->msg_type;
+	uint8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
 	struct gsm_trans *trans;
 	int rc = 0;
 
@@ -1074,8 +1074,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 {
 	struct msgb *msg = gsm411_msgb_alloc();
 	struct gsm_trans *trans;
-	u_int8_t *data, *rp_ud_len;
-	u_int8_t msg_ref = 42;
+	uint8_t *data, *rp_ud_len;
+	uint8_t msg_ref = 42;
 	int transaction_id;
 	int rc;
 
@@ -1108,7 +1108,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	trans->conn = conn;
 
 	/* Hardcode SMSC Originating Address for now */
-	data = (u_int8_t *)msgb_put(msg, 8);
+	data = (uint8_t *)msgb_put(msg, 8);
 	data[0] = 0x07;	/* originator length == 7 */
 	data[1] = 0x91; /* type of number: international, ISDN */
 	data[2] = 0x44; /* 447785016005 */
@@ -1119,11 +1119,11 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	data[7] = 0x50;
 
 	/* Hardcoded Destination Address */
-	data = (u_int8_t *)msgb_put(msg, 1);
+	data = (uint8_t *)msgb_put(msg, 1);
 	data[0] = 0;	/* destination length == 0 */
 
 	/* obtain a pointer for the rp_ud_len, so we can fill it later */
-	rp_ud_len = (u_int8_t *)msgb_put(msg, 1);
+	rp_ud_len = (uint8_t *)msgb_put(msg, 1);
 
 	/* generate the 03.40 TPDU */
 	rc = gsm340_gen_tpdu(msg, sms);

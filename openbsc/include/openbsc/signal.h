@@ -170,14 +170,14 @@ struct scall_signal_data {
 
 struct ipacc_ack_signal_data {
 	struct gsm_bts_trx *trx;
-	u_int8_t msg_type;	
+	uint8_t msg_type;
 };
 
 struct abis_om2k_mo;
 
 struct nm_statechg_signal_data {
 	struct gsm_bts *bts;
-	u_int8_t obj_class;
+	uint8_t obj_class;
 	void *obj;
 	struct gsm_nm_state *old_state;
 	struct gsm_nm_state *new_state;

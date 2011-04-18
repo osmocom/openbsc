@@ -143,7 +143,7 @@ void ts_free(struct gsm_bts_trx_ts *ts)
 	ts->pchan = GSM_PCHAN_NONE;
 }
 
-static const u_int8_t subslots_per_pchan[] = {
+static const uint8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_NONE] = 0,
 	[GSM_PCHAN_CCCH] = 0,
 	[GSM_PCHAN_CCCH_SDCCH4] = 4,
@@ -370,7 +370,7 @@ static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
 	int sapi;
 
 	for (sapi = 1; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
-		u_int8_t link_id;
+		uint8_t link_id;
 		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
 			continue;
 
@@ -401,7 +401,7 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 }
 
 /* called from abis rsl */
-int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id)
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id)
 {
 	if (lchan->state != LCHAN_S_REL_REQ)
 		return -1;

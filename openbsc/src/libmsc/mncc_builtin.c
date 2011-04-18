@@ -40,7 +40,7 @@ void *tall_call_ctx;
 
 static LLIST_HEAD(call_list);
 
-static u_int32_t new_callref = 0x00000001;
+static uint32_t new_callref = 0x00000001;
 
 static void free_call(struct gsm_call *call)
 {
@@ -50,7 +50,7 @@ static void free_call(struct gsm_call *call)
 }
 
 
-static struct gsm_call *get_call_ref(u_int32_t callref)
+static struct gsm_call *get_call_ref(uint32_t callref)
 {
 	struct gsm_call *callt;
 
@@ -168,7 +168,7 @@ static int mncc_setup_cnf(struct gsm_call *call, int msg_type,
 	struct gsm_mncc connect_ack, frame_recv;
 	struct gsm_network *net = call->net;
 	struct gsm_call *remote;
-	u_int32_t refs[2];
+	uint32_t refs[2];
 
 	/* acknowledge connect */
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));

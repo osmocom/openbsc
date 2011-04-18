@@ -266,7 +266,7 @@ void subscr_put_channel(struct gsm_subscriber *subscr)
 
 
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
-					  u_int32_t tmsi)
+					  uint32_t tmsi)
 {
 	char tmsi_string[14];
 	struct gsm_subscriber *subscr;

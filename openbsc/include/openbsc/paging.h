@@ -66,6 +66,6 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 			 struct msgb *msg);
 
 /* update paging load */
-void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t);
+void paging_update_buffer_space(struct gsm_bts *bts, uint16_t);
 
 #endif

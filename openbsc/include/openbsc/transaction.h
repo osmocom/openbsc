@@ -12,10 +12,10 @@ struct gsm_trans {
 	struct llist_head entry;
 
 	/* The protocol within which we live */
-	u_int8_t protocol;
+	uint8_t protocol;
 
 	/* The current transaction ID */
-	u_int8_t transaction_id;
+	uint8_t transaction_id;
 	
 	/* To whom we belong, unique identifier of remote MM entity */
 	struct gsm_subscriber *subscr;
@@ -24,7 +24,7 @@ struct gsm_trans {
 	struct gsm_subscriber_connection *conn;
 
 	/* reference from MNCC or other application */
-	u_int32_t callref;
+	uint32_t callref;
 
 	/* if traffic channel receive was requested */
 	int tch_recv;
@@ -45,7 +45,7 @@ struct gsm_trans {
 			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
 		} cc;
 		struct {
-			u_int8_t link_id;	/* RSL Link ID to be used for this trans */
+			uint8_t link_id;	/* RSL Link ID to be used for this trans */
 			int is_mt;	/* is this a MO (0) or MT (1) transfer */
 			enum gsm411_cp_state cp_state;
 			struct timer_list cp_timer;
@@ -60,16 +60,16 @@ struct gsm_trans {
 
 
 struct gsm_trans *trans_find_by_id(struct gsm_subscriber *subscr,
-				   u_int8_t proto, u_int8_t trans_id);
+				   uint8_t proto, uint8_t trans_id);
 struct gsm_trans *trans_find_by_callref(struct gsm_network *net,
-					u_int32_t callref);
+					uint32_t callref);
 
 struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
-			      u_int8_t protocol, u_int8_t trans_id,
-			      u_int32_t callref);
+			      uint8_t protocol, uint8_t trans_id,
+			      uint32_t callref);
 void trans_free(struct gsm_trans *trans);
 
 int trans_assign_trans_id(struct gsm_subscriber *subscr,
-			  u_int8_t protocol, u_int8_t ti_flag);
+			  uint8_t protocol, uint8_t ti_flag);
 
 #endif

@@ -75,7 +75,7 @@ extern struct gbprox_peer *gbprox_peer_sgsn;
 
 /* call-back function for the NS protocol */
 static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
-		      struct msgb *msg, u_int16_t bvci)
+		      struct msgb *msg, uint16_t bvci)
 {
 	int rc = 0;
 

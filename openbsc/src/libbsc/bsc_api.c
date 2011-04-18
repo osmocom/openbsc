@@ -47,9 +47,9 @@ static void handle_chan_ack(struct gsm_subscriber_connection *conn, struct bsc_a
 static void handle_chan_nack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
 
 /* GSM 08.08 3.2.2.33 */
-static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
+static uint8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 {
-	u_int8_t channel_mode = 0, channel = 0;
+	uint8_t channel_mode = 0, channel = 0;
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
@@ -95,7 +95,7 @@ static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 	return channel_mode << 4 | channel;
 }
 
-static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
+static uint8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 {
 	int mode = 0;
 

@@ -68,15 +68,15 @@ static struct ia_e1_handle *e1h;
  *	- ID_REQUEST: first messages once OML has been established.
  *	- ID_ACK: in reply to ID_ACK.
  */
-const u_int8_t ipa_pong_msg[] = {
+const uint8_t ipa_pong_msg[] = {
         0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG
 };
 
-const u_int8_t ipa_id_ack_msg[] = {
+const uint8_t ipa_id_ack_msg[] = {
         0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
 };
 
-const u_int8_t ipa_id_req_msg[] = {
+const uint8_t ipa_id_req_msg[] = {
         0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
         0x01, IPAC_IDTAG_UNIT,
         0x01, IPAC_IDTAG_MACADDR,
@@ -110,9 +110,9 @@ const char *ipaccess_idtag_name(uint8_t tag)
 
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 {
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
+	uint8_t t_len;
+	uint8_t t_tag;
+	uint8_t *cur = buf;
 
 	memset(dec, 0, sizeof(*dec));
 
@@ -138,7 +138,7 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 }
 
 struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
-				   u_int16_t site_id, u_int16_t bts_id)
+				   uint16_t site_id, uint16_t bts_id)
 {
 	struct gsm_bts *bts;
 
@@ -155,8 +155,8 @@ struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
 	return NULL;
 }
 
-int ipaccess_parse_unitid(const char *str, u_int16_t *site_id,
-			  u_int16_t *bts_id, u_int16_t *trx_id)
+int ipaccess_parse_unitid(const char *str, uint16_t *site_id,
+			  uint16_t *bts_id, uint16_t *trx_id)
 {
 	unsigned long ul;
 	char *endptr;
@@ -225,7 +225,7 @@ int ipaccess_send_id_req(int fd)
 int ipaccess_rcvmsg_base(struct msgb *msg,
 			 struct bsc_fd *bfd)
 {
-	u_int8_t msg_type = *(msg->l2h);
+	uint8_t msg_type = *(msg->l2h);
 	int ret = 0;
 
 	switch (msg_type) {
@@ -247,8 +247,8 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			   struct bsc_fd *bfd)
 {
 	struct tlv_parsed tlvp;
-	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
+	uint8_t msg_type = *(msg->l2h);
+	uint16_t site_id = 0, bts_id = 0, trx_id = 0;
 	struct gsm_bts *bts;
 	char *unitid;
 	int len, ret;
@@ -260,7 +260,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ret = ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
+		ret = ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 					   msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 		if (ret < 0) {
@@ -596,7 +596,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	u_int8_t proto;
+	uint8_t proto;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;

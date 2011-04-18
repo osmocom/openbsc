@@ -32,61 +32,61 @@ struct gsm_subscriber;
 struct gsm_bts_trx_ts;
 
 
-int rsl_bcch_info(struct gsm_bts_trx *trx, u_int8_t type,
-		  const u_int8_t *data, int len);
-int rsl_sacch_filling(struct gsm_bts_trx *trx, u_int8_t type, 
-		      const u_int8_t *data, int len);
-int rsl_chan_activate(struct gsm_bts_trx *trx, u_int8_t chan_nr,
-		      u_int8_t act_type,
+int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
+		  const uint8_t *data, int len);
+int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
+		      const uint8_t *data, int len);
+int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
+		      uint8_t act_type,
 		      struct rsl_ie_chan_mode *chan_mode,
 		      struct rsl_ie_chan_ident *chan_ident,
-		      u_int8_t bs_power, u_int8_t ms_power,
-		      u_int8_t ta);
-int rsl_chan_activate_lchan(struct gsm_lchan *lchan, u_int8_t act_type, 
-			    u_int8_t ta, u_int8_t ho_ref);
+		      uint8_t bs_power, uint8_t ms_power,
+		      uint8_t ta);
+int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
+			    uint8_t ta, uint8_t ho_ref);
 int rsl_chan_mode_modify_req(struct gsm_lchan *ts);
 int rsl_encryption_cmd(struct msgb *msg);
-int rsl_paging_cmd(struct gsm_bts *bts, u_int8_t paging_group, u_int8_t len,
-		   u_int8_t *ms_ident, u_int8_t chan_needed);
-int rsl_imm_assign_cmd(struct gsm_bts *bts, u_int8_t len, u_int8_t *val);
+int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
+		   uint8_t *ms_ident, uint8_t chan_needed);
+int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val);
 
-int rsl_data_request(struct msgb *msg, u_int8_t link_id);
-int rsl_establish_request(struct gsm_lchan *lchan, u_int8_t link_id);
-int rsl_relase_request(struct gsm_lchan *lchan, u_int8_t link_id);
+int rsl_data_request(struct msgb *msg, uint8_t link_id);
+int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id);
+int rsl_relase_request(struct gsm_lchan *lchan, uint8_t link_id);
 
 /* Siemens vendor-specific RSL extensions */
 int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci);
 
 /* ip.access specfic RSL extensions */
 int rsl_ipacc_crcx(struct gsm_lchan *lchan);
-int rsl_ipacc_mdcx(struct gsm_lchan *lchan, u_int32_t ip,
-		   u_int16_t port, u_int8_t rtp_payload2);
+int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip,
+		   uint16_t port, uint8_t rtp_payload2);
 int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan);
 int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
-unsigned int get_paging_group(u_int64_t imsi, unsigned int bs_cc_chans,
+unsigned int get_paging_group(uint64_t imsi, unsigned int bs_cc_chans,
 			      int n_pag_blocks);
 unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
-u_int64_t str_to_imsi(const char *imsi_str);
-u_int8_t lchan2chan_nr(const struct gsm_lchan *lchan);
-int rsl_release_request(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t reason);
+uint64_t str_to_imsi(const char *imsi_str);
+uint8_t lchan2chan_nr(const struct gsm_lchan *lchan);
+int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason);
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
 
 /* to be provided by external code */
 int abis_rsl_sendmsg(struct msgb *msg);
 int rsl_deact_sacch(struct gsm_lchan *lchan);
-int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id);
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id);
 
 /* BCCH related code */
 int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf);
 int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf);
 int rsl_number_of_paging_subchannels(struct gsm_bts *bts);
 
-int rsl_sacch_info_modify(struct gsm_lchan *lchan, u_int8_t type,
-			  const u_int8_t *data, int len);
+int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
+			  const uint8_t *data, int len);
 
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db);
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm);

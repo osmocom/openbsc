@@ -9,9 +9,9 @@
 #define IPA_TCP_PORT_RSL	3003
 
 struct ipaccess_head {
-	u_int16_t len;	/* network byte order */
-	u_int8_t proto;
-	u_int8_t data[0];
+	uint16_t len;	/* network byte order */
+	uint8_t proto;
+	uint8_t data[0];
 } __attribute__ ((packed));
 
 struct ipaccess_head_ext {
@@ -81,7 +81,7 @@ int ipaccess_send_id_req(int fd);
 
 const char *ipaccess_idtag_name(uint8_t tag);
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len);
-int ipaccess_parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id, u_int16_t *trx_id);
+int ipaccess_parse_unitid(const char *str, uint16_t *site_id, uint16_t *bts_id, uint16_t *trx_id);
 
 int ipaccess_drop_oml(struct gsm_bts *bts);
 int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
@@ -92,30 +92,30 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx);
 struct sdp_firmware {
 	char magic[4];
 	char more_magic[2];
-	u_int16_t more_more_magic;
-	u_int32_t header_length;
-	u_int32_t file_length;
+	uint16_t more_more_magic;
+	uint32_t header_length;
+	uint32_t file_length;
 	char sw_part[20];
 	char text1[64];
 	char time[12];
 	char date[14];
 	char text2[10];
 	char version[20];
-	u_int16_t table_offset;
+	uint16_t table_offset;
 	/* stuff i don't know */
 } __attribute__((packed));
 
 struct sdp_header_entry {
-	u_int16_t something1;
+	uint16_t something1;
 	char text1[64];
 	char time[12];
 	char date[14];
 	char text2[10];
 	char version[20];
-	u_int32_t length;
-	u_int32_t addr1;
-	u_int32_t addr2;
-	u_int32_t start;
+	uint32_t length;
+	uint32_t addr1;
+	uint32_t addr2;
+	uint32_t start;
 } __attribute__((packed));
 
 struct sdp_header_item {

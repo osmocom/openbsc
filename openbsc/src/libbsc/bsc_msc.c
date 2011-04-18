@@ -254,6 +254,6 @@ struct msgb *bsc_msc_id_get_resp(const char *token)
 
 	msg->l2h = msgb_v_put(msg, IPAC_MSGT_ID_RESP);
 	msgb_l16tv_put(msg, strlen(token) + 1,
-			IPAC_IDTAG_UNITNAME, (u_int8_t *) token);
+			IPAC_IDTAG_UNITNAME, (uint8_t *) token);
 	return msg;
 }

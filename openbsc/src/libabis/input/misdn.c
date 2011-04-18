@@ -210,7 +210,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct sockaddr_mISDN sa;
 	struct msgb *msg;
 	struct mISDNhead *hh;
-	u_int8_t *l2_data;
+	uint8_t *l2_data;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -260,7 +260,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct mISDNhead *hh;
-	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	uint8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 

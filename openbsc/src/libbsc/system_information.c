@@ -56,7 +56,7 @@ static_assert(sizeof(struct gsm48_system_information_type_13) == 3, _si13_size);
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
 
 /* 10.5.2.13.2: Bit map 0 format */
-static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+static int freq_list_bm0_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 
@@ -77,7 +77,7 @@ static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 }
 
 /* 10.5.2.13.7: Variable bit map format */
-static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 	unsigned int min_arfcn;
@@ -110,7 +110,7 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
+static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 			    const struct gsm_bts *bts)
 {
 	int i, rc, min = 1024, max = -1;
@@ -171,7 +171,7 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
+static int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 	struct bitvec *bv = &bts->si_common.cell_alloc;
@@ -199,7 +199,7 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int si5)
+static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts, int si5)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
@@ -226,7 +226,7 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int
 	return bitvec2freq_list(chan_list, bv, bts);
 }
 
-static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_1 *si1 =
@@ -251,7 +251,7 @@ static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si1) + rc;
 }
 
-static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_2 *si2 =
@@ -298,7 +298,7 @@ static struct gsm48_si_ro_info si_info = {
 	.break_ind = 0,
 };
 
-static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_3 *si3 =
@@ -329,7 +329,7 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si3) + rc;
 }
 
-static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_4 *si4 =
@@ -362,7 +362,7 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si4) + rc;
 }
 
-static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_5 *si5;
 	int rc, l2_plen = 18;
@@ -394,7 +394,7 @@ static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 	return l2_plen;
 }
 
-static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_6 *si6;
 	int l2_plen = 11;
@@ -468,7 +468,7 @@ static struct gsm48_si13_info si13_default = {
 	},
 };
 
-static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_13 *si13 =
 		(struct gsm48_system_information_type_13 *) output;

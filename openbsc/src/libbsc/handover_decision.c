@@ -35,7 +35,7 @@
 
 /* issue handover to a cell identified by ARFCN and BSIC */
 static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
-				  u_int16_t arfcn, u_int8_t bsic)
+				  uint16_t arfcn, uint8_t bsic)
 {
 	struct gsm_bts *new_bts;
 
@@ -53,7 +53,7 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 
 /* did we get a RXLEV for a given cell in the given report? */
 static int rxlev_for_cell_in_rep(struct gsm_meas_rep *mr,
-				 u_int16_t arfcn, u_int8_t bsic)
+				 uint16_t arfcn, uint8_t bsic)
 {
 	int i;
 

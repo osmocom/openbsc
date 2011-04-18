@@ -346,8 +346,8 @@ static unsigned char bs11_attr_radio[] =
  */
 static void patch_nm_tables(struct gsm_bts *bts)
 {
-	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
-	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
+	uint8_t arfcn_low = bts->c0->arfcn & 0xff;
+	uint8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 
 	/* patch ARFCN into BTS Attributes */
 	bs11_attr_bts[69] &= 0xf0;
@@ -364,8 +364,8 @@ static void patch_nm_tables(struct gsm_bts *bts)
 		bs11_attr_bts[33] = bts->rach_b_thresh & 0xff;
 
 	if (bts->rach_ldavg_slots != -1) {
-		u_int8_t avg_high = bts->rach_ldavg_slots & 0xff;
-		u_int8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
+		uint8_t avg_high = bts->rach_ldavg_slots & 0xff;
+		uint8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
 
 		bs11_attr_bts[35] = avg_high;
 		bs11_attr_bts[36] = avg_low;
@@ -425,9 +425,9 @@ static void nm_reconfig_trx(struct gsm_bts_trx *trx)
 			abis_nm_set_radio_attr(trx, bs11_attr_radio,
 					       sizeof(bs11_attr_radio));
 		else {
-			u_int8_t trx1_attr_radio[sizeof(bs11_attr_radio)];
-			u_int8_t arfcn_low = trx->arfcn & 0xff;
-			u_int8_t arfcn_high = (trx->arfcn >> 8) & 0x0f;
+			uint8_t trx1_attr_radio[sizeof(bs11_attr_radio)];
+			uint8_t arfcn_low = trx->arfcn & 0xff;
+			uint8_t arfcn_high = (trx->arfcn >> 8) & 0x0f;
 			memcpy(trx1_attr_radio, bs11_attr_radio,
 				sizeof(trx1_attr_radio));
 

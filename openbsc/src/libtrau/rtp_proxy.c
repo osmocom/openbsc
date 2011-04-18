@@ -60,9 +60,9 @@ enum rtp_bfd_priv {
 
 /* according to RFC 1889 */
 struct rtcp_hdr {
-	u_int8_t byte0;
-	u_int8_t type;
-	u_int16_t length;
+	uint8_t byte0;
+	uint8_t type;
+	uint16_t length;
 } __attribute__((packed));
 
 #define RTCP_TYPE_SDES	202
@@ -72,40 +72,40 @@ struct rtcp_hdr {
 /* according to RFC 3550 */
 struct rtp_hdr {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	u_int8_t  csrc_count:4,
+	uint8_t  csrc_count:4,
 		  extension:1,
 		  padding:1,
 		  version:2;
-	u_int8_t  payload_type:7,
+	uint8_t  payload_type:7,
 		  marker:1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	u_int8_t  version:2,
+	uint8_t  version:2,
 		  padding:1,
 		  extension:1,
 		  csrc_count:4;
-	u_int8_t  marker:1,
+	uint8_t  marker:1,
 		  payload_type:7;
 #endif
-	u_int16_t sequence;
-	u_int32_t timestamp;
-	u_int32_t ssrc;
+	uint16_t sequence;
+	uint32_t timestamp;
+	uint32_t ssrc;
 } __attribute__((packed));
 
 struct rtp_x_hdr {
-	u_int16_t by_profile;
-	u_int16_t length;
+	uint16_t by_profile;
+	uint16_t length;
 } __attribute__((packed));
 
 #define RTP_VERSION	2
 
 /* decode an rtp frame and create a new buffer with payload */
-static int rtp_decode(struct msgb *msg, u_int32_t callref, struct msgb **data)
+static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 {
 	struct msgb *new_msg;
 	struct gsm_data_frame *frame;
 	struct rtp_hdr *rtph = (struct rtp_hdr *)msg->data;
 	struct rtp_x_hdr *rtpxh;
-	u_int8_t *payload;
+	uint8_t *payload;
 	int payload_len;
 	int msg_type;
 	int x_len;
@@ -286,11 +286,11 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 /* iterate over all chunks in one RTCP message, look for CNAME IEs and
  * replace all of those with 'new_cname' */
 static int rtcp_sdes_cname_mangle(struct msgb *msg, struct rtcp_hdr *rh,
-				  u_int16_t *rtcp_len, const char *new_cname)
+				  uint16_t *rtcp_len, const char *new_cname)
 {
-	u_int8_t *rtcp_end;
-	u_int8_t *cur = (u_int8_t *) rh;
-	u_int8_t tag, len = 0;
+	uint8_t *rtcp_end;
+	uint8_t *cur = (uint8_t *) rh;
+	uint8_t tag, len = 0;
 
 	rtcp_end = cur + *rtcp_len;
 	/* move cur to end of RTP header */
@@ -343,7 +343,7 @@ static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
 {
 	struct rtp_sub_socket *rss = &rs->rtcp;
 	struct rtcp_hdr *rtph;
-	u_int16_t old_len;
+	uint16_t old_len;
 	int rc;
 
 	if (!mangle_rtcp_cname)
@@ -572,8 +572,8 @@ out_free:
 	return NULL;
 }
 
-static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, u_int32_t ip,
-				u_int16_t port)
+static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, uint32_t ip,
+				uint16_t port)
 {
 	int rc;
 	socklen_t alen = sizeof(rss->sin_local);
@@ -598,7 +598,7 @@ static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, u_int32_t ip,
 static unsigned int next_udp_port = RTP_PORT_BASE;
 
 /* bind a RTP socket to a local address */
-int rtp_socket_bind(struct rtp_socket *rs, u_int32_t ip)
+int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
 {
 	int rc = -EIO;
 	struct in_addr ia;
@@ -630,7 +630,7 @@ int rtp_socket_bind(struct rtp_socket *rs, u_int32_t ip)
 }
 
 static int rtp_sub_socket_connect(struct rtp_sub_socket *rss,
-				  u_int32_t ip, u_int16_t port)
+				  uint32_t ip, uint16_t port)
 {
 	int rc;
 	socklen_t alen = sizeof(rss->sin_local);
@@ -649,7 +649,7 @@ static int rtp_sub_socket_connect(struct rtp_sub_socket *rss,
 }
 
 /* 'connect' a RTP socket to a remote peer */
-int rtp_socket_connect(struct rtp_socket *rs, u_int32_t ip, u_int16_t port)
+int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 {
 	int rc;
 	struct in_addr ia;
@@ -682,7 +682,7 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 
 /* bind RTP/RTCP socket to application */
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
-			u_int32_t callref)
+			uint32_t callref)
 {
 	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
 		this, callref);

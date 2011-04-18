@@ -182,8 +182,8 @@ static void patch_32(uint8_t *data, const uint32_t val)
  */
 static void patch_nm_tables(struct gsm_bts *bts)
 {
-	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
-	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
+	uint8_t arfcn_low = bts->c0->arfcn & 0xff;
+	uint8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 
 	/* patch ARFCN into BTS Attributes */
 	nanobts_attr_bts[42] &= 0xf0;
@@ -196,8 +196,8 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	}
 
 	if (bts->rach_ldavg_slots != -1) {
-		u_int8_t avg_high = bts->rach_ldavg_slots & 0xff;
-		u_int8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
+		uint8_t avg_high = bts->rach_ldavg_slots & 0xff;
+		uint8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
 
 		nanobts_attr_bts[35] = avg_high;
 		nanobts_attr_bts[36] = avg_low;
@@ -249,7 +249,7 @@ static void patch_nm_tables(struct gsm_bts *bts)
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 {
-	u_int8_t obj_class = nsd->obj_class;
+	uint8_t obj_class = nsd->obj_class;
 	void *obj = nsd->obj;
 	struct gsm_nm_state *new_state = nsd->new_state;
 

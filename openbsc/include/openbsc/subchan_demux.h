@@ -20,7 +20,7 @@
  *
  */
 
-#include <sys/types.h>
+#include <stdint.h>
 #include <osmocom/core/linuxlist.h>
 
 #define NR_SUBCH	4
@@ -32,8 +32,8 @@
 /***********************************************************************/
 
 struct demux_subch {
-	u_int8_t out_bitbuf[TRAU_FRAME_BITS];
-	u_int16_t out_idx; /* next bit to be written in out_bitbuf */
+	uint8_t out_bitbuf[TRAU_FRAME_BITS];
+	uint16_t out_idx; /* next bit to be written in out_bitbuf */
 	/* number of consecutive zeros that we have received (for sync) */
 	unsigned int consecutive_zeros;
 	/* are we in TRAU frame sync or not? */
@@ -42,12 +42,12 @@ struct demux_subch {
 
 struct subch_demux {
 	/* bitmask of currently active subchannels */
-	u_int8_t chan_activ;
+	uint8_t chan_activ;
 	/* one demux_subch struct for every subchannel */
 	struct demux_subch subch[NR_SUBCH];
 	/* callback to be called once we have received a complete
 	 * frame on a given subchannel */
-	int (*out_cb)(struct subch_demux *dmx, int ch, u_int8_t *data, int len,
+	int (*out_cb)(struct subch_demux *dmx, int ch, uint8_t *data, int len,
 		      void *);
 	/* user-provided data, transparently passed to out_cb() */
 	void *data;
@@ -57,7 +57,7 @@ struct subch_demux {
 int subch_demux_init(struct subch_demux *dmx);
 
 /* feed 'len' number of muxed bytes into the demultiplexer */
-int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len);
+int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len);
 
 /* activate decoding/processing for one subchannel */
 int subch_demux_activate(struct subch_demux *dmx, int subch);
@@ -76,7 +76,7 @@ struct subch_txq_entry {
 	unsigned int bit_len;	/* total number of bits in 'bits' */
 	unsigned int next_bit;	/* next bit to be transmitted */
 
-	u_int8_t bits[0];	/* one bit per byte */
+	uint8_t bits[0];	/* one bit per byte */
 };
 
 struct mux_subch {
@@ -92,10 +92,10 @@ struct subch_mux {
 int subchan_mux_init(struct subch_mux *mx);
 
 /* request the output of 'len' multiplexed bytes */
-int subchan_mux_out(struct subch_mux *mx, u_int8_t *data, int len);
+int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len);
 
 /* enqueue some data into one sub-channel of the muxer */
-int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
+int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 			int len);
 
 #endif /* _SUBCH_DEMUX_H */

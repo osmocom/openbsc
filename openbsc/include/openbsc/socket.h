@@ -9,7 +9,7 @@
 #endif
 
 int make_sock(struct bsc_fd *bfd, int proto,
-	      u_int32_t ip, u_int16_t port, int priv_nr,
+	      uint32_t ip, uint16_t port, int priv_nr,
 	      int (*cb)(struct bsc_fd *fd, unsigned int what), void *data);
 
 #endif /* _BSC_SOCKET_H */

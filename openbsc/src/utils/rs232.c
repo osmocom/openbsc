@@ -57,7 +57,7 @@ static int handle_ser_write(struct bsc_fd *bfd);
 int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 {
 	struct serial_handle *sh = ser_handle;
-	u_int8_t *lapd;
+	uint8_t *lapd;
 	unsigned int len;
 
 	msg->l2h = msg->data;

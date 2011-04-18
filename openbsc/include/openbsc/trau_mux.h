@@ -35,14 +35,14 @@ int trau_mux_map_lchan(const struct gsm_lchan *src,
 			const struct gsm_lchan *dst);
 
 /* unmap a TRAU mux map entry */
-int trau_mux_unmap(const struct gsm_e1_subslot *ss, u_int32_t callref);
+int trau_mux_unmap(const struct gsm_e1_subslot *ss, uint32_t callref);
 
 /* we get called by subchan_demux */
 int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
-		   const u_int8_t *trau_bits, int num_bits);
+		   const uint8_t *trau_bits, int num_bits);
 
 /* add a trau receiver */
-int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref);
+int trau_recv_lchan(struct gsm_lchan *lchan, uint32_t callref);
 
 /* send trau from application */
 int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame);

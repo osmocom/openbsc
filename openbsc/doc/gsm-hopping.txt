@@ -12,7 +12,7 @@ specific parameters from channel assignment:
 
 hopping sequence generation (6.2.3):
 
-u_int8_t rntable[114] = {
+uint8_t rntable[114] = {
 	 48,  98,  63,   1,  36,  95,  78, 102,  94,  73,
 	  0,  64,  25,  81,  76,  59, 124,  23, 104, 100,
 	101,  47, 118,  85,  18,  56,  96,  86,  54,   2,
@@ -29,15 +29,15 @@ u_int8_t rntable[114] = {
 /* mai=0 represents lowest ARFCN in the MA */
 
 
-u_int8_t hopping_mai(u_int8_t hsn, u_int32_t fn, u_int8_t maio,
-		     u_int8_t t1, u_int8_t t2, u_int8_t t3_)
+uint8_t hopping_mai(uint8_t hsn, uint32_t fn, uint8_t maio,
+		     uint8_t t1, uint8_t t2, uint8_t t3_)
 {
-	u_int8_t mai;
+	uint8_t mai;
 
 	if (hsn == 0) /* cyclic hopping */
 		mai = (fn + maio) % n;
 	else {
-		u_int32_t m, m_, t_, s;
+		uint32_t m, m_, t_, s;
 
 		m = t2 + rntable[(hsn xor (t1 % 64)) + t3];
 		m_ = m % (2^NBIN);

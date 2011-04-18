@@ -23,7 +23,7 @@
 #include <openbsc/crc24.h>
 
 /* CRC24 table - FCS */
-static const u_int32_t tbl_crc24[256] = {
+static const uint32_t tbl_crc24[256] = {
 	0x00000000, 0x00d6a776, 0x00f64557, 0x0020e221, 0x00b78115, 0x00612663, 0x0041c442, 0x00976334,
 	0x00340991, 0x00e2aee7, 0x00c24cc6, 0x0014ebb0, 0x00838884, 0x00552ff2, 0x0075cdd3, 0x00a36aa5,
 	0x00681322, 0x00beb454, 0x009e5675, 0x0048f103, 0x00df9237, 0x00093541, 0x0029d760, 0x00ff7016,
@@ -60,7 +60,7 @@ static const u_int32_t tbl_crc24[256] = {
 
 #define INIT_CRC24	0xffffff
 
-u_int32_t crc24_calc(u_int32_t fcs, u_int8_t *cp, unsigned int len)
+uint32_t crc24_calc(uint32_t fcs, uint8_t *cp, unsigned int len)
 {
 	while (len--)
 		fcs = (fcs >> 8) ^ tbl_crc24[(fcs ^ *cp++) & 0xff];

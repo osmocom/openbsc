@@ -53,8 +53,8 @@ static int restart;
 static char *prim_oml_ip;
 static char *bts_ip_addr, *bts_ip_mask, *bts_ip_gw;
 static char *unit_id;
-static u_int16_t nv_flags;
-static u_int16_t nv_mask;
+static uint16_t nv_flags;
+static uint16_t nv_mask;
 static char *software = NULL;
 static int sw_load_state = 0;
 static int oml_state = 0;
@@ -64,11 +64,11 @@ static int found_trx = 0;
 static int loop_tests = 0;
 
 struct sw_load {
-	u_int8_t file_id[255];
-	u_int8_t file_id_len;
+	uint8_t file_id[255];
+	uint8_t file_id_len;
 
-	u_int8_t file_version[255];
-	u_int8_t file_version_len;
+	uint8_t file_version[255];
+	uint8_t file_version_len;
 };
 
 static void *tall_ctx_config = NULL;
@@ -76,8 +76,8 @@ static struct sw_load *sw_load1 = NULL;
 static struct sw_load *sw_load2 = NULL;
 
 /*
-static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
-static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
+static uint8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
+static uint8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
 */
 
 /*
@@ -87,7 +87,7 @@ static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0',
  * result. The nanoBTS will send us a NACK when we did something the
  * BTS didn't like.
  */
-static int ipacc_msg_nack(u_int8_t mt)
+static int ipacc_msg_nack(uint8_t mt)
 {
 	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
 	exit(-1);
@@ -103,7 +103,7 @@ static void check_restart_or_exit(struct gsm_bts_trx *trx)
 	}
 }
 
-static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
+static int ipacc_msg_ack(uint8_t mt, struct gsm_bts_trx *trx)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
@@ -182,7 +182,7 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+static int nm_state_event(int evt, uint8_t obj_class, void *obj,
 			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 			  struct abis_om_obj_inst *obj_inst);
 
@@ -495,7 +495,7 @@ out_err:
 	msgb_free(nmsg);
 }
 
-static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+static int nm_state_event(int evt, uint8_t obj_class, void *obj,
 			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 			  struct abis_om_obj_inst *obj_inst)
 {

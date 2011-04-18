@@ -298,7 +298,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	u_int8_t proto;
+	uint8_t proto;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;

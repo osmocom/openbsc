@@ -41,8 +41,8 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	struct sdp_header *header;
 	char buf[4096];
 	int rc, i;
-	u_int16_t table_size;
-	u_int16_t table_offset;
+	uint16_t table_size;
+	uint16_t table_offset;
 	off_t table_start;
 
 

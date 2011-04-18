@@ -52,10 +52,10 @@ int abis_link_event(int event, void *data);
 	signal some event (such as layer 1 connect/disconnect) from the
 	input core to the stack.
 
-int subch_demux_in(mx, const u_int8_t *data, int len);
+int subch_demux_in(mx, const uint8_t *data, int len);
 	receive 'len' bytes from a given E1 timeslot (TRAU frames)
 
-int subchan_mux_out(mx, u_int8_t *data, int len);
+int subchan_mux_out(mx, uint8_t *data, int len);
 	obtain 'len' bytes of output data to be sent on E1 timeslot
 
 Intrface by Input Core for Input Plugins
@@ -112,8 +112,8 @@ struct e1inp_sign_link {
 	struct llist_head tx_list;
 
 	/* SAPI and TEI on the E1 TS */
-	u_int8_t sapi;
-	u_int8_t tei;
+	uint8_t sapi;
+	uint8_t tei;
 }
 
 enum e1inp_ts_type {
@@ -160,7 +160,7 @@ int e1inp_update_ts(struct e1inp_ts *ts);
 
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
-		u_int8_t tei, u_int8_t sapi);
+		uint8_t tei, uint8_t sapi);
 
 /* Send a packet, callback function in the driver */
 int e1driver_tx_ts(struct e1inp_ts *ts, struct msgb *msg)

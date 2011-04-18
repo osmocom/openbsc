@@ -10,7 +10,7 @@
 
 struct gbproxy_config {
 	/* parsed from config file */
-	u_int16_t nsip_sgsn_nsei;
+	uint16_t nsip_sgsn_nsei;
 
 	/* misc */
 	struct gprs_ns_inst *nsi;

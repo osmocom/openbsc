@@ -231,14 +231,14 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 static int invertbits = 1;
 
-static u_int8_t flip_table[256];
+static uint8_t flip_table[256];
 
 static void init_flip_bits(void)
 {
         int i,k;
 
         for (i = 0 ; i < 256 ; i++) {
-                u_int8_t sample = 0 ;
+                uint8_t sample = 0 ;
                 for (k = 0; k<8; k++) {
                         if ( i & 1 << k ) sample |= 0x80 >>  k;
                 }
@@ -246,13 +246,13 @@ static void init_flip_bits(void)
         }
 }
 
-static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
+static uint8_t * flip_buf_bits ( uint8_t * buf , int len)
 {
         int i;
-        u_int8_t * start = buf;
+        uint8_t * start = buf;
 
         for (i = 0 ; i < len; i++) {
-                buf[i] = flip_table[(u_int8_t)buf[i]];
+                buf[i] = flip_table[(uint8_t)buf[i]];
         }
 
         return start;
@@ -265,7 +265,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	u_int8_t tx_buf[D_BCHAN_TX_GRAN];
+	uint8_t tx_buf[D_BCHAN_TX_GRAN];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 

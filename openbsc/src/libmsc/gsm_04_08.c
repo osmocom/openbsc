@@ -61,19 +61,19 @@
 void *tall_locop_ctx;
 void *tall_authciphop_ctx;
 
-int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi);
+int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi);
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
-			   u_int8_t pdisc, u_int8_t msg_type);
+			   uint8_t pdisc, uint8_t msg_type);
 static void schedule_reject(struct gsm_subscriber_connection *conn);
 static void release_anchor(struct gsm_subscriber_connection *conn);
 
 struct gsm_lai {
-	u_int16_t mcc;
-	u_int16_t mnc;
-	u_int16_t lac;
+	uint16_t mcc;
+	uint16_t mnc;
+	uint16_t lac;
 };
 
-static u_int32_t new_callref = 0x80000001;
+static uint32_t new_callref = 0x80000001;
 
 void cc_tx_to_mncc(struct gsm_network *net, struct msgb *msg)
 {
@@ -356,7 +356,7 @@ void gsm0408_clear_all_trans(struct gsm_network *net, int protocol)
 }
 
 /* Chapter 9.2.14 : Send LOCATION UPDATING REJECT */
-int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, u_int8_t cause)
+int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 {
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg;
@@ -380,13 +380,13 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, u_int8_t cause)
 }
 
 /* Chapter 9.2.13 : Send LOCATION UPDATE ACCEPT */
-int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi)
+int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi)
 {
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_loc_area_id *lai;
-	u_int8_t *mid;
+	uint8_t *mid;
 	
 	msg->lchan = conn->lchan;
 
@@ -409,7 +409,7 @@ int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, u_int32_t tmsi)
 }
 
 /* Transmit Chapter 9.2.10 Identity Request */
-static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, u_int8_t id_type)
+static int mm_tx_identity_req(struct gsm_subscriber_connection *conn, uint8_t id_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -432,7 +432,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	struct gsm_lchan *lchan = msg->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct gsm_network *net = bts->network;
-	u_int8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
+	uint8_t mi_type = gh->data[1] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), &gh->data[1], gh->data[0]);
@@ -486,7 +486,7 @@ static void schedule_reject(struct gsm_subscriber_connection *conn)
 	bsc_schedule_timer(&conn->loc_operation->updating_timer, 5, 0);
 }
 
-static const char *lupd_name(u_int8_t type)
+static const char *lupd_name(uint8_t type)
 {
 	switch (type) {
 	case GSM48_LUPD_NORMAL:
@@ -507,7 +507,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	struct gsm48_loc_upd_req *lu;
 	struct gsm_subscriber *subscr = NULL;
 	struct gsm_bts *bts = conn->bts;
-	u_int8_t mi_type;
+	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	int rc;
 
@@ -604,7 +604,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 }
 
 #if 0
-static u_int8_t to_bcd8(u_int8_t val)
+static uint8_t to_bcd8(uint8_t val)
 {
        return ((val / 10) << 4) | (val % 10);
 }
@@ -616,7 +616,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = conn->bts->network;
-	u_int8_t *ptr8;
+	uint8_t *ptr8;
 	int name_len, name_pad;
 #if 0
 	time_t cur_t;
@@ -639,7 +639,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[1] = name_len*2 +1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
-		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
+		ptr16 = (uint16_t *) msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_long[i]);
 
@@ -665,12 +665,12 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 #if 0
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
-		ptr8 = (u_int8_t *) msgb_put(msg, 3);
+		ptr8 = (uint8_t *) msgb_put(msg, 3);
 		ptr8[0] = GSM48_IE_NAME_SHORT;
 		ptr8[1] = name_len*2 + 1;
 		ptr8[2] = 0x90; /* UCS2, no spare bits, no CI */
 
-		ptr16 = (u_int16_t *) msgb_put(msg, name_len*2);
+		ptr16 = (uint16_t *) msgb_put(msg, name_len*2);
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_short[i]);
 #endif
@@ -679,7 +679,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		if (name_pad > 0)
 			name_len++;
 		/* 10.5.3.5a */
-		ptr8 = (u_int8_t *) msgb_put(msg, 3);
+		ptr8 = (uint8_t *) msgb_put(msg, 3);
 		ptr8[0] = GSM48_IE_NAME_SHORT;
 		ptr8[1] = name_len +1;
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
@@ -714,7 +714,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 }
 
 /* Section 9.2.2 */
-int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, u_int8_t *rand, int key_seq)
+int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, int key_seq)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -804,7 +804,7 @@ static int _gsm48_rx_mm_serv_req_sec_cb(
  */
 static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	u_int8_t mi_type;
+	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 
 	struct gsm_bts *bts = conn->bts;
@@ -813,10 +813,10 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	struct gsm48_service_request *req =
 			(struct gsm48_service_request *)gh->data;
 	/* unfortunately in Phase1 the classmark2 length is variable */
-	u_int8_t classmark2_len = gh->data[1];
-	u_int8_t *classmark2 = gh->data+2;
-	u_int8_t mi_len = *(classmark2 + classmark2_len);
-	u_int8_t *mi = (classmark2 + classmark2_len + 1);
+	uint8_t classmark2_len = gh->data[1];
+	uint8_t *classmark2 = gh->data+2;
+	uint8_t mi_len = *(classmark2 + classmark2_len);
+	uint8_t *mi = (classmark2 + classmark2_len + 1);
 
 	DEBUGP(DMM, "<- CM SERVICE REQUEST ");
 	if (msg->data_len < sizeof(struct gsm48_service_request*)) {
@@ -878,7 +878,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
-	u_int8_t mi_type = idi->mi[0] & GSM_MI_TYPE_MASK;
+	uint8_t mi_type = idi->mi[0] & GSM_MI_TYPE_MASK;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
 
@@ -1025,8 +1025,8 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	struct gsm_bts *bts = conn->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_pag_resp *resp;
-	u_int8_t *classmark2_lv = gh->data + 1;
-	u_int8_t mi_type;
+	uint8_t *classmark2_lv = gh->data + 1;
+	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
 	struct gsm_subscriber *subscr = NULL;
 	int rc = 0;
@@ -1068,8 +1068,8 @@ static int gsm48_rx_rr_classmark(struct gsm_subscriber_connection *conn, struct 
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm_subscriber *subscr = conn->subscr;
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
-	u_int8_t cm2_len, cm3_len = 0;
-	u_int8_t *cm2, *cm3 = NULL;
+	uint8_t cm2_len, cm3_len = 0;
+	uint8_t *cm2, *cm3 = NULL;
 
 	DEBUGP(DRR, "CLASSMARK CHANGE ");
 
@@ -1136,9 +1136,9 @@ static int gsm48_rx_rr_meas_rep(struct msgb *msg)
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t apdu_id_flags;
-	u_int8_t apdu_len;
-	u_int8_t *apdu_data;
+	uint8_t apdu_id_flags;
+	uint8_t apdu_len;
+	uint8_t *apdu_data;
 
 	apdu_id_flags = gh->data[0];
 	apdu_len = gh->data[1];
@@ -1256,8 +1256,8 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 	return rc;
 }
 
-int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, u_int8_t apdu_id,
-			   u_int8_t apdu_len, const u_int8_t *apdu)
+int gsm48_send_rr_app_info(struct gsm_subscriber_connection *conn, uint8_t apdu_id,
+			   uint8_t apdu_len, const uint8_t *apdu)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -1300,7 +1300,7 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
-	u_int8_t *cause, *call_state;
+	uint8_t *cause, *call_state;
 
 	gh->msg_type = GSM48_MT_CC_STATUS;
 
@@ -1316,7 +1316,7 @@ static int gsm48_cc_tx_status(struct gsm_trans *trans, void *arg)
 }
 
 static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
-			   u_int8_t pdisc, u_int8_t msg_type)
+			   uint8_t pdisc, uint8_t msg_type)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -1377,7 +1377,7 @@ static int mncc_recvmsg(struct gsm_network *net, struct gsm_trans *trans,
 }
 
 int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
-		     u_int32_t callref, int location, int value)
+		     uint32_t callref, int location, int value)
 {
 	struct gsm_mncc rel;
 
@@ -1475,7 +1475,7 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 	return 0;
 }
 
-static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable);
+static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable);
 
 /* handle audio path for handover */
 static int handle_ho_signal(unsigned int subsys, unsigned int signal,
@@ -1645,7 +1645,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 }
 
 /* bridge channels of two transactions */
-static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
+static int tch_bridge(struct gsm_network *net, uint32_t *refs)
 {
 	struct gsm_trans *trans1 = trans_find_by_callref(net, refs[0]);
 	struct gsm_trans *trans2 = trans_find_by_callref(net, refs[1]);
@@ -1661,7 +1661,7 @@ static int tch_bridge(struct gsm_network *net, u_int32_t *refs)
 }
 
 /* enable receive of channels to MNCC upqueue */
-static int tch_recv_mncc(struct gsm_network *net, u_int32_t callref, int enable)
+static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 {
 	struct gsm_trans *trans;
 	struct gsm_lchan *lchan;
@@ -1823,7 +1823,7 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t msg_type = gh->msg_type & 0xbf;
+	uint8_t msg_type = gh->msg_type & 0xbf;
 	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
 	struct tlv_parsed tp;
 	struct gsm_mncc setup;
@@ -2882,7 +2882,7 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 }
 
 static struct downstate {
-	u_int32_t	states;
+	uint32_t	states;
 	int		type;
 	int		(*rout) (struct gsm_trans *trans, void *arg);
 } downstatelist[] = {
@@ -3154,7 +3154,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 
 static struct datastate {
-	u_int32_t	states;
+	uint32_t	states;
 	int		type;
 	int		(*rout) (struct gsm_trans *trans, struct msgb *msg);
 } datastatelist[] = {
@@ -3210,8 +3210,8 @@ static struct datastate {
 static int gsm0408_rcv_cc(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t msg_type = gh->msg_type & 0xbf;
-	u_int8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
+	uint8_t msg_type = gh->msg_type & 0xbf;
+	uint8_t transaction_id = ((gh->proto_discr & 0xf0) ^ 0x80) >> 4; /* flip */
 	struct gsm_trans *trans = NULL;
 	int i, rc = 0;
 
@@ -3298,7 +3298,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gh->proto_discr & 0x0f;
 	int rc = 0;
 
 	if (silent_call_reroute(conn, msg))

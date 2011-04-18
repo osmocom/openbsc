@@ -37,12 +37,12 @@ struct e1inp_sign_link {
 	struct llist_head tx_list;
 
 	/* SAPI and TEI on the E1 TS */
-	u_int8_t sapi;
-	u_int8_t tei;
+	uint8_t sapi;
+	uint8_t tei;
 
 	union {
 		struct {
-			u_int8_t channel;
+			uint8_t channel;
 		} misdn;
 	} driver;
 };
@@ -125,21 +125,21 @@ struct e1inp_driver *e1inp_driver_find(const char *name);
 int e1inp_line_register(struct e1inp_line *line);
 
 /* get a line by its ID */
-struct e1inp_line *e1inp_line_get(u_int8_t e1_nr);
+struct e1inp_line *e1inp_line_get(uint8_t e1_nr);
 
 /* create a line in the E1 input core */
-struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name);
+struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name);
 
 /* find a sign_link for given TEI and SAPI in a TS */
 struct e1inp_sign_link *
-e1inp_lookup_sign_link(struct e1inp_ts *ts, u_int8_t tei,
-			u_int8_t sapi);
+e1inp_lookup_sign_link(struct e1inp_ts *ts, uint8_t tei,
+			uint8_t sapi);
 
 /* create a new signalling link in a E1 timeslot */
 struct e1inp_sign_link *
 e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
-			struct gsm_bts_trx *trx, u_int8_t tei,
-			u_int8_t sapi);
+			struct gsm_bts_trx *trx, uint8_t tei,
+			uint8_t sapi);
 
 /* configure and initialize one e1inp_ts */
 int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
@@ -150,20 +150,20 @@ int e1inp_update_ts(struct e1inp_ts *ts);
 
 /* Receive a packet from the E1 driver */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
-		u_int8_t tei, u_int8_t sapi);
+		uint8_t tei, uint8_t sapi);
 
 /* called by driver if it wants to transmit on a given TS */
 struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 			 struct e1inp_sign_link **sign_link);
 
 /* called by driver in case some kind of link state event */
-int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi);
+int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi);
 
 /* Write LAPD frames to the fd. */
 void e1_set_pcap_fd(int fd);
 
 /* called by TRAU muxer to obtain the destination mux entity */
-struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr);
+struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr);
 
 void e1inp_sign_link_destroy(struct e1inp_sign_link *link);
 int e1inp_line_update(struct e1inp_line *line);

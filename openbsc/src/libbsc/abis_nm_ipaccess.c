@@ -63,12 +63,12 @@ enum ipa_embedded_att {
 };
 
 /* append an ip.access channel list to the given msgb */
-static int ipa_chan_list_append(struct msgb *msg, u_int8_t ie,
-				u_int16_t *arfcns, int arfcn_count)
+static int ipa_chan_list_append(struct msgb *msg, uint8_t ie,
+				uint16_t *arfcns, int arfcn_count)
 {
 	int i;
-	u_int8_t *u8;
-	u_int16_t *u16;
+	uint8_t *u8;
+	uint16_t *u16;
 
 	/* tag */
 	u8 = msgb_push(msg, 1);

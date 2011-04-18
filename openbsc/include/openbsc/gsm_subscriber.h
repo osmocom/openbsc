@@ -24,24 +24,24 @@ struct gsm_equipment {
 	char name[GSM_NAME_LENGTH];
 
 	struct gsm48_classmark1 classmark1;
-	u_int8_t classmark2_len;
-	u_int8_t classmark2[3];
-	u_int8_t classmark3_len;
-	u_int8_t classmark3[14];
+	uint8_t classmark2_len;
+	uint8_t classmark2[3];
+	uint8_t classmark3_len;
+	uint8_t classmark3[14];
 };
 
 struct gsm_subscriber {
 	struct gsm_network *net;
 	long long unsigned int id;
 	char imsi[GSM_IMSI_LENGTH];
-	u_int32_t tmsi;
-	u_int16_t lac;
+	uint32_t tmsi;
+	uint16_t lac;
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
 
 	/* Temporary field which is not stored in the DB/HLR */
-	u_int32_t flags;
+	uint32_t flags;
 
 	/* Every user can only have one equipment in use at any given
 	 * point in time */
@@ -72,7 +72,7 @@ enum gsm_subscriber_update_reason {
 struct gsm_subscriber *subscr_get(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_put(struct gsm_subscriber *subscr);
 struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
-					  u_int32_t tmsi);
+					  uint32_t tmsi);
 struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 					  const char *imsi);
 struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,

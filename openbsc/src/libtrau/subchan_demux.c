@@ -32,17 +32,17 @@
 
 void *tall_tqe_ctx;
 
-static inline void append_bit(struct demux_subch *sch, u_int8_t bit)
+static inline void append_bit(struct demux_subch *sch, uint8_t bit)
 {
 	sch->out_bitbuf[sch->out_idx++] = bit;
 }
 
 #define SYNC_HDR_BITS	16
-static const u_int8_t nullbytes[SYNC_HDR_BITS];
+static const uint8_t nullbytes[SYNC_HDR_BITS];
 
 /* check if we have just completed the 16 bit zero sync header,
  * in accordance with GSM TS 08.60 Chapter 4.8.1 */
-static int sync_hdr_complete(struct demux_subch *sch, u_int8_t bit)
+static int sync_hdr_complete(struct demux_subch *sch, uint8_t bit)
 {
 	if (bit == 0)
 		sch->consecutive_zeros++;
@@ -83,7 +83,7 @@ int subch_demux_init(struct subch_demux *dmx)
 
 /* input some arbitrary (modulo 4) number of bytes of a 64k E1 channel,
  * split it into the 16k subchannels */
-int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
+int subch_demux_in(struct subch_demux *dmx, uint8_t *data, int len)
 {
 	int i, c;
 
@@ -92,12 +92,12 @@ int subch_demux_in(struct subch_demux *dmx, u_int8_t *data, int len)
 		return -EINVAL;
 
 	for (i = 0; i < len; i++) {
-		u_int8_t inbyte = data[i];
+		uint8_t inbyte = data[i];
 
 		for (c = 0; c < NR_SUBCH; c++) {
 			struct demux_subch *sch = &dmx->subch[c];
-			u_int8_t inbits;
-			u_int8_t bit;
+			uint8_t inbits;
+			uint8_t bit;
 
 			/* ignore inactive subchannels */
 			if (!(dmx->chan_activ & (1 << c)))
@@ -171,7 +171,7 @@ static int alloc_add_idle_frame(struct subch_mux *mx, int sch_nr)
 
 /* return the requested number of bits from the specified subchannel */
 static int get_subch_bits(struct subch_mux *mx, int subch,
-			  u_int8_t *bits, int num_requested)
+			  uint8_t *bits, int num_requested)
 {
 	struct mux_subch *sch = &mx->subch[subch];
 	int num_bits = 0;
@@ -215,9 +215,9 @@ static int get_subch_bits(struct subch_mux *mx, int subch,
 }
 
 /* compact an array of 8 single-bit bytes into one byte of 8 bits */
-static u_int8_t compact_bits(const u_int8_t *bits)
+static uint8_t compact_bits(const uint8_t *bits)
 {
-	u_int8_t ret = 0;
+	uint8_t ret = 0;
 	int i;
 
 	for (i = 0; i < 8; i++)
@@ -227,9 +227,9 @@ static u_int8_t compact_bits(const u_int8_t *bits)
 }
 
 /* obtain a single output byte from the subchannel muxer */
-static int mux_output_byte(struct subch_mux *mx, u_int8_t *byte)
+static int mux_output_byte(struct subch_mux *mx, uint8_t *byte)
 {
-	u_int8_t bits[8];
+	uint8_t bits[8];
 	int rc;
 
 	/* combine two bits of every subchan */
@@ -244,7 +244,7 @@ static int mux_output_byte(struct subch_mux *mx, u_int8_t *byte)
 }
 
 /* Request the output of some muxed bytes from the subchan muxer */
-int subchan_mux_out(struct subch_mux *mx, u_int8_t *data, int len)
+int subchan_mux_out(struct subch_mux *mx, uint8_t *data, int len)
 {
 	int i;
 
@@ -285,7 +285,7 @@ static void tx_queue_evict(struct mux_subch *sch, int num_evict)
 }
 
 /* enqueue some data into the tx_queue of a given subchannel */
-int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const u_int8_t *data,
+int subchan_mux_enqueue(struct subch_mux *mx, int s_nr, const uint8_t *data,
 			int len)
 {
 	struct mux_subch *sch = &mx->subch[s_nr];

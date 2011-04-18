@@ -81,7 +81,7 @@ static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 
 static void page_ms(struct gsm_paging_request *request)
 {
-	u_int8_t mi[128];
+	uint8_t mi[128];
 	unsigned int mi_len;
 	unsigned int page_group;
 
@@ -387,7 +387,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 	} while (1);
 }
 
-void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
+void paging_update_buffer_space(struct gsm_bts *bts, uint16_t free_slots)
 {
 	bsc_del_timer(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
