@@ -93,7 +93,7 @@ static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
 static struct neigh_meas_proc *find_evict_neigh(struct gsm_lchan *lchan)
 {
 	int j, worst = 999999;
-	struct neigh_meas_proc *nmp_worst;
+	struct neigh_meas_proc *nmp_worst = NULL;
 
 	/* first try to find an empty/unused slot */
 	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
@@ -106,7 +106,7 @@ static struct neigh_meas_proc *find_evict_neigh(struct gsm_lchan *lchan)
 	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
 		struct neigh_meas_proc *nmp = &lchan->neigh_meas[j];
 		int avg = neigh_meas_avg(nmp, MAX_WIN_NEIGH_AVG);
-		if (avg < worst) {
+		if (!nmp_worst || avg < worst) {
 			worst = avg;
 			nmp_worst = nmp;
 		}
