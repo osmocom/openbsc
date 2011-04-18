@@ -1,6 +1,6 @@
 /* OpenBSC interface to quagga VTY */
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther
+ * (C) 2009-2011 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -455,7 +455,7 @@ DEFUN(ena_subscr_extension,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	const char *name = argv[2];
+	const char *ext = argv[2];
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -463,7 +463,7 @@ DEFUN(ena_subscr_extension,
 		return CMD_WARNING;
 	}
 
-	strncpy(subscr->extension, name, sizeof(subscr->name));
+	strncpy(subscr->extension, ext, sizeof(subscr->extension));
 	db_sync_subscriber(subscr);
 
 	subscr_put(subscr);
