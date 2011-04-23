@@ -188,6 +188,24 @@ static int msc_alink_do_write(struct bsc_fd *fd, struct msgb *msg)
 	return ret;
 }
 
+static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
+{
+	struct ipaccess_head *hh;
+	struct ipaccess_head_ext *hh_ext;
+
+	hh = (struct ipaccess_head *) msg->data;
+	hh_ext = (struct ipaccess_head_ext *) hh->data;
+	if (msg->len < sizeof(*hh) + sizeof(*hh_ext)) {
+		LOGP(DMSC, LOGL_ERROR, "Packet too short for extended header.\n");
+		return;
+	}
+
+	msg->l2h = hh_ext->data;
+	if (hh_ext->proto == IPAC_PROTO_EXT_MGCP)
+		mgcp_forward(msc, msg);
+
+}
+
 static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 {
 	int error;
@@ -225,6 +243,8 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		sccp_system_incoming(msg);
 	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
 		mgcp_forward(data, msg);
+	} else if (hh->proto == IPAC_PROTO_OSMO) {
+		osmo_ext_handle(data, msg);
 	}
 
 	msgb_free(msg);
