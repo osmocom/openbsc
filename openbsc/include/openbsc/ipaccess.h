@@ -33,6 +33,8 @@ enum ipaccess_proto {
 
 enum ipaccess_proto_ext {
 	IPAC_PROTO_EXT_CTRL	= 0x00,
+	IPAC_PROTO_EXT_MGCP	= 0x01,
+	IPAC_PROTO_EXT_LAC	= 0x02,
 };
 
 enum ipaccess_msgtype {
@@ -64,6 +66,18 @@ struct ipac_msgt_sccp_state {
 	uint8_t trans_id;
 	uint8_t invoke_id;
 	char		imsi[GSM_IMSI_LENGTH];
+} __attribute__((packed));
+
+/*
+ * @add_remove 0 for remove, 1 for add
+ * @nr_lacs Number of extra lacs inside this package
+ * @lac One lac entry
+ */
+struct ipac_ext_lac_cmd {
+	uint8_t add_remove;
+	uint8_t nr_extra_lacs;
+	uint16_t lac;
+	uint8_t data[0];
 } __attribute__((packed));
 
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
