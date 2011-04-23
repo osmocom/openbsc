@@ -1,8 +1,8 @@
 /* BSC Multiplexer/NAT */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -1432,7 +1432,7 @@ int main(int argc, char **argv)
 		return -4;
 
 	/* connect to the MSC */
-	nat->msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port, 0);
+	nat->msc_con = bsc_msc_create(nat, &nat->dests);
 	if (!nat->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);

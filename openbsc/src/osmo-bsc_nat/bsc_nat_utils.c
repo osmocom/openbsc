@@ -2,8 +2,8 @@
 /* BSC Multiplexer/NAT Utilities */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -82,10 +82,17 @@ struct bsc_nat *bsc_nat_alloc(void)
 	if (!nat)
 		return NULL;
 
+	nat->main_dest = talloc_zero(nat, struct bsc_msc_dest);
+	if (!nat->main_dest) {
+		talloc_free(nat);
+		return NULL;
+	}
+
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
 	INIT_LLIST_HEAD(&nat->access_lists);
+	INIT_LLIST_HEAD(&nat->dests);
 
 	nat->stats.sccp.conn = counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = counter_alloc("nat.sccp.calls");
@@ -93,17 +100,20 @@ struct bsc_nat *bsc_nat_alloc(void)
 	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
 	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
 	nat->stats.ussd.reconn = counter_alloc("nat.ussd.conn");
-	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
-	nat->msc_port = 5000;
 	nat->auth_timeout = 2;
 	nat->ping_timeout = 20;
 	nat->pong_timeout = 5;
+
+	llist_add(&nat->main_dest->list, &nat->dests);
+	nat->main_dest->ip = talloc_strdup(nat, "127.0.0.1");
+	nat->main_dest->port = 5000;
+
 	return nat;
 }
 
 void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
 {
-	bsc_replace_string(nat, &nat->msc_ip, ip);
+	bsc_replace_string(nat, &nat->main_dest->ip, ip);
 }
 
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)

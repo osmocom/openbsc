@@ -69,8 +69,8 @@ static int config_write_nat(struct vty *vty)
 	struct bsc_nat_acc_lst *lst;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
-	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
-	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
+	vty_out(vty, " msc ip %s%s", _nat->main_dest->ip, VTY_NEWLINE);
+	vty_out(vty, " msc port %d%s", _nat->main_dest->port, VTY_NEWLINE);
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
@@ -311,8 +311,7 @@ DEFUN(show_msc,
 		return CMD_WARNING;
 	}
 
-	vty_out(vty, "MSC on %s:%d is connected: %d%s\n",
-		_nat->msc_con->ip, _nat->msc_con->port,
+	vty_out(vty, "MSC is connected: %d%s\n",
 		_nat->msc_con->is_connected, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
@@ -357,7 +356,7 @@ DEFUN(cfg_nat_msc_port,
       "msc port <1-65500>",
       "Set the port of the MSC.")
 {
-	_nat->msc_port = atoi(argv[0]);
+	_nat->main_dest->port = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 

@@ -41,9 +41,6 @@ struct osmo_msc_data {
 
 	/* Connection data */
 	char *bsc_token;
-	int msc_port;
-	int msc_ip_dscp;
-	char *msc_ip;
 	int ping_timeout;
 	int pong_timeout;
 	struct timer_list ping_timer;
@@ -56,6 +53,9 @@ struct osmo_msc_data {
 	/* audio codecs */
 	struct gsm_audio_support **audio_support;
 	int audio_length;
+
+	/* destinations */
+	struct llist_head dests;
 
 
 	/* mgcp agent */

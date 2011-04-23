@@ -323,8 +323,7 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 
 	net->mncc_recv = mncc_recv;
 
-	net->msc_data->msc_ip = talloc_strdup(net, "127.0.0.1");
-	net->msc_data->msc_port = 5000;
+	INIT_LLIST_HEAD(&net->msc_data->dests);
 	net->msc_data->ping_timeout = 20;
 	net->msc_data->pong_timeout = 5;
 	net->msc_data->core_ncc = -1;

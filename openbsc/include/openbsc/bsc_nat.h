@@ -1,6 +1,6 @@
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -236,8 +236,8 @@ struct bsc_nat {
 	int mgcp_length;
 
 	/* msc things */
-	char *msc_ip;
-	int msc_port;
+	struct llist_head dests;
+	struct bsc_msc_dest *main_dest;
 	struct bsc_msc_connection *msc_con;
 	char *token;
 

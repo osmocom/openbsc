@@ -399,9 +399,7 @@ int osmo_bsc_msc_init(struct gsm_network *network)
 	if (mgcp_create_port(data) != 0)
 		return -1;
 
-	data->msc_con = bsc_msc_create(data->msc_ip,
-				       data->msc_port,
-				       data->msc_ip_dscp);
+	data->msc_con = bsc_msc_create(data, &data->dests);
 	if (!data->msc_con) {
 		LOGP(DMSC, LOGL_ERROR, "Creating the MSC network connection failed.\n");
 		return -1;

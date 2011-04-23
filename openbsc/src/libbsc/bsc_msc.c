@@ -130,11 +130,24 @@ static void setnonblocking(struct bsc_fd *fd)
 
 int bsc_msc_connect(struct bsc_msc_connection *con)
 {
+	struct bsc_msc_dest *dest;
 	struct bsc_fd *fd;
 	struct sockaddr_in sin;
 	int on = 1, ret;
 
-	LOGP(DMSC, LOGL_NOTICE, "Attempting to connect MSC at %s:%d\n", con->ip, con->port);
+	if (llist_empty(con->dests)) {
+		LOGP(DMSC, LOGL_ERROR, "No MSC connections configured.\n");
+		connection_loss(con);
+		return -1;
+	}
+
+	/* move to the next connection */
+	dest = (struct bsc_msc_dest *) con->dests->next;
+	llist_del(&dest->list);
+	llist_add_tail(&dest->list, con->dests);
+
+	LOGP(DMSC, LOGL_NOTICE, "Attempting to connect MSC at %s:%d\n",
+	     dest->ip, dest->port);
 
 	con->is_connected = 0;
 
@@ -152,15 +165,15 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 
 	/* set the socket priority */
 	ret = setsockopt(fd->fd, IPPROTO_IP, IP_TOS,
-			 &con->prio, sizeof(con->prio));
+			 &dest->dscp, sizeof(dest->dscp));
 	if (ret != 0)
-		LOGP(DMSC, LOGL_ERROR, "Failed to set prio to %d. %s\n",
-		     con->prio, strerror(errno));
+		LOGP(DMSC, LOGL_ERROR, "Failed to set DSCP to %d. %s\n",
+		     dest->dscp, strerror(errno));
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(con->port);
-	inet_aton(con->ip, &sin.sin_addr);
+	sin.sin_port = htons(dest->port);
+	inet_aton(dest->ip, &sin.sin_addr);
 
 	setsockopt(fd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 	ret = connect(fd->fd, (struct sockaddr *) &sin, sizeof(sin));
@@ -194,7 +207,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 	return ret;
 }
 
-struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
+struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dests)
 {
 	struct bsc_msc_connection *con;
 
@@ -204,9 +217,8 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
 		return NULL;
 	}
 
-	con->ip = ip;
-	con->port = port;
-	con->prio = prio;
+	con->dests = dests;
+	con->write_queue.bfd.fd = -1;
 	write_queue_init(&con->write_queue, 100);
 	return con;
 }
