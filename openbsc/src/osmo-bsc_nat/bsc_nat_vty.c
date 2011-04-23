@@ -749,6 +749,17 @@ DEFUN(set_last_endp, set_last_endp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(block_new_conn, block_new_conn_cmd,
+      "nat-block (block|unblock)",
+      "Block the NAT for new connections\n"
+      "Block\n" "Unblock\n")
+{
+	_nat->blocked = argv[0][0] == 'b';
+	vty_out(vty, "%%Going to %s the NAT.%s",
+		_nat->blocked ? "block" : "unblock", VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -766,6 +777,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_acc_lst_cmd);
 
 	install_element(ENABLE_NODE, &set_last_endp_cmd);
+	install_element(ENABLE_NODE, &block_new_conn_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);

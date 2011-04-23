@@ -264,6 +264,9 @@ struct bsc_nat {
 	struct bsc_fd ussd_listen;
 	struct bsc_nat_ussd_con *ussd_con;
 
+	/* for maintainenance */
+	int blocked;
+
 	/* statistics */
 	struct bsc_nat_statistics stats;
 };

@@ -847,6 +847,23 @@ void bsc_close_connection(struct bsc_connection *connection)
 	talloc_free(connection);
 }
 
+static void bsc_maybe_close(struct bsc_connection *bsc)
+{
+	struct sccp_connections *sccp;
+	if (!bsc->nat->blocked)
+		return;
+
+	/* are there any connections left */
+	llist_for_each_entry(sccp, &bsc->nat->sccp_connections, list_entry)
+		if (sccp->bsc == bsc)
+			return;
+
+	/* nothing left, close the BSC */
+	LOGP(DNAT, LOGL_NOTICE, "Cleaning up BSC %d in blocking mode.\n",
+	     bsc->cfg ? bsc->cfg->nr : -1);
+	bsc_close_connection(bsc);
+}
+
 static void ipaccess_close_bsc(void *data)
 {
 	struct sockaddr_in sock;
@@ -1008,6 +1025,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				con_filter = con->con_local;
 			}
 			remove_sccp_src_ref(bsc, msg, parsed);
+			bsc_maybe_close(bsc);
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */
@@ -1168,6 +1186,12 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 		return 0;
 	}
 
+	if (nat->blocked) {
+		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due NAT being blocked.\n");
+		close(fd);
+		return 0;
+	}
+
 	on = 1;
 	rc = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 	if (rc != 0)
@@ -1302,6 +1326,8 @@ static void signal_handler(int signal)
 
 static void sccp_close_unconfirmed(void *_data)
 {
+	int destroyed = 0;
+	struct bsc_connection *bsc, *bsc_tmp;
 	struct sccp_connections *conn, *tmp1;
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -1318,8 +1344,17 @@ static void sccp_close_unconfirmed(void *_data)
 		     sccp_src_ref_to_int(&conn->real_ref),
 		     sccp_src_ref_to_int(&conn->patched_ref));
 		sccp_connection_destroy(conn);
+		destroyed = 1;
 	}
 
+	if (!destroyed)
+		goto out;
+
+	/* now close out any BSC */
+	llist_for_each_entry_safe(bsc, bsc_tmp, &nat->bsc_connections, list_entry)
+		bsc_maybe_close(bsc);
+
+out:
 	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
 }
 
