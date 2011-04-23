@@ -1,8 +1,8 @@
 /*
  * Handle the connection to the MSC. This include ping/timeout/reconnect
  * (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,6 +37,7 @@
 
 
 static void initialize_if_needed(struct bsc_msc_connection *conn);
+static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn);
 static void send_id_get_response(struct osmo_msc_data *data, int fd);
 static void send_ping(struct osmo_msc_data *data);
 
@@ -203,7 +204,8 @@ static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
 	msg->l2h = hh_ext->data;
 	if (hh_ext->proto == IPAC_PROTO_EXT_MGCP)
 		mgcp_forward(msc, msg);
-
+	else if (hh_ext->proto == IPAC_PROTO_EXT_LAC)
+		send_lacs(msc->network, msc->msc_con);
 }
 
 static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
@@ -327,6 +329,39 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
+}
+
+static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn)
+{
+	struct ipac_ext_lac_cmd *lac;
+	struct gsm_bts *bts;
+	struct msgb *msg;
+	int lacs = 0;
+
+	if (llist_empty(&net->bts_list)) {
+		LOGP(DMSC, LOGL_ERROR, "No BTSs configured. Not sending LACs.\n");
+		return;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "LAC Command");
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to create the LAC command.\n");
+		return;
+	}
+
+	lac = (struct ipac_ext_lac_cmd *) msgb_put(msg, sizeof(*lac));
+	lac->add_remove = 1;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (lacs++ == 0)
+			lac->lac = htons(bts->location_area_code);
+		else
+			msgb_put_u16(msg, htons(bts->location_area_code));
+	}
+
+	lac->nr_extra_lacs = lacs - 1;
+	ipaccess_prepend_header_ext(msg, IPAC_PROTO_EXT_LAC);
+	msc_queue_write(conn, msg, IPAC_PROTO_OSMO);
 }
 
 static void initialize_if_needed(struct bsc_msc_connection *conn)

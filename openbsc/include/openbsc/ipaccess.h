@@ -69,7 +69,7 @@ struct ipac_msgt_sccp_state {
 } __attribute__((packed));
 
 /*
- * @add_remove 0 for remove, 1 for add
+ * @add_remove 0 for remove, 1 for add, 3 to asK
  * @nr_lacs Number of extra lacs inside this package
  * @lac One lac entry
  */
