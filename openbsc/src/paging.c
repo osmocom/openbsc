@@ -320,7 +320,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 			break;
 
 		/* skip all currently inactive TRX */
-		if (!trx_is_usable(bts->c0))
+		if (!bts->bootstrapped || !trx_is_usable(bts->c0))
 			continue;
 
 		num_pages++;
@@ -344,6 +344,9 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
+
+	if (!bts->bootstrapped)
+		return;
 
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
@@ -396,8 +399,10 @@ void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 unsigned int paging_pending_requests_nr(struct gsm_bts *bts)
 {
 	unsigned int requests = 0;
-
 	struct gsm_paging_request *req;
+
+	if (!bts->bootstrapped)
+		return 0;
 
 	llist_for_each_entry(req, &bts->paging.pending_requests, entry)
 		++requests;

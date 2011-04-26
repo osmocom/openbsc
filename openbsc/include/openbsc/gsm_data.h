@@ -445,6 +445,9 @@ struct gsm_bts {
 	/* list header in net->bts_list */
 	struct llist_head list;
 
+	/* is this BTS bootstrapped? */
+	int bootstrapped;
+
 	struct gsm_network *network;
 	/* number of ths BTS in network */
 	u_int8_t nr;
