@@ -403,3 +403,16 @@ void paging_update_buffer_space(struct gsm_bts *bts, uint16_t free_slots)
 	bts->paging.available_slots = free_slots;
 	paging_schedule_if_needed(&bts->paging);
 }
+
+unsigned int paging_pending_requests_nr(struct gsm_bts *bts)
+{
+	unsigned int requests = 0;
+	struct gsm_paging_request *req;
+
+	paging_init_if_needed(bts);
+
+	llist_for_each_entry(req, &bts->paging.pending_requests, entry)
+		++requests;
+
+	return requests;
+}

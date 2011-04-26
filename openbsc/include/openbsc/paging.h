@@ -65,4 +65,7 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 /* update paging load */
 void paging_update_buffer_space(struct gsm_bts *bts, uint16_t);
 
+/* pending paging requests */
+unsigned int paging_pending_requests_nr(struct gsm_bts *bts);
+
 #endif

@@ -258,7 +258,8 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	net_dump_nmstate(vty, &bts->nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
 	net_dump_nmstate(vty, &bts->site_mgr.nm_state);
-	vty_out(vty, "  Paging: FIXME pending requests, %u free slots%s",
+	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
+		paging_pending_requests_nr(bts),
 		bts->paging.available_slots, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts)) {
 		vty_out(vty, "  OML Link state: %s.%s",
