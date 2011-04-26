@@ -53,9 +53,6 @@ struct gsm_paging_request {
 	void *cbfn_param;
 };
 
-/* call once for every gsm_bts... */
-void paging_init(struct gsm_bts *bts);
-
 /* schedule paging request */
 int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		   int type, gsm_cbfn *cbfn, void *data);

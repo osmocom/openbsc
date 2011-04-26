@@ -404,8 +404,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	bts->si_common.ncc_permitted = 0xff;
 
-	paging_init(bts);
-
 	return 0;
 }
 

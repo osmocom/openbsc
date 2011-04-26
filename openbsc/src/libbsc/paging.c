@@ -225,8 +225,11 @@ static void paging_worker(void *data)
 	paging_handle_pending_requests(paging_bts);
 }
 
-void paging_init(struct gsm_bts *bts)
+static void paging_init_if_needed(struct gsm_bts *bts)
 {
+	if (bts->paging.bts)
+		return;
+
 	bts->paging.bts = bts;
 	INIT_LLIST_HEAD(&bts->paging.pending_requests);
 	bts->paging.work_timer.cb = paging_worker;
@@ -322,6 +325,9 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		if (!trx_is_usable(bts->c0))
 			continue;
 
+		/* maybe it is the first time we use it */
+		paging_init_if_needed(bts);
+
 		num_pages++;
 
 		/* Trigger paging, pass any error to caller */
@@ -344,6 +350,8 @@ static void _paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *sub
 {
 	struct gsm_bts_paging_state *bts_entry = &bts->paging;
 	struct gsm_paging_request *req, *req2;
+
+	paging_init_if_needed(bts);
 
 	llist_for_each_entry_safe(req, req2, &bts_entry->pending_requests,
 				 entry) {
@@ -389,6 +397,8 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 
 void paging_update_buffer_space(struct gsm_bts *bts, uint16_t free_slots)
 {
+	paging_init_if_needed(bts);
+
 	bsc_del_timer(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
 	paging_schedule_if_needed(&bts->paging);
