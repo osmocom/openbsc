@@ -38,6 +38,8 @@
 #define DIR_BSC 1
 #define DIR_MSC 2
 
+#define PAGIN_GROUP_UNASSIGNED -1
+
 struct sccp_source_reference;
 struct sccp_connections;
 struct bsc_nat_parsed;
@@ -134,6 +136,7 @@ struct bsc_config {
 	char *acc_lst_name;
 
 	int forbid_paging;
+	int paging_group;
 
 	/* audio handling */
 	int max_endpoints;
@@ -149,6 +152,14 @@ struct bsc_config {
 struct bsc_lac_entry {
 	struct llist_head entry;
 	uint16_t lac;
+};
+
+struct bsc_nat_paging_group {
+	struct llist_head entry;
+
+	/* list of lac entries */
+	struct llist_head lists;
+	int nr;
 };
 
 /**
@@ -224,6 +235,9 @@ struct bsc_nat {
 
 	/* access lists */
 	struct llist_head access_lists;
+
+	/* paging groups */
+	struct llist_head paging_groups;
 
 	/* known BSC's */
 	struct llist_head bsc_configs;

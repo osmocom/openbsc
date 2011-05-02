@@ -90,6 +90,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
+	INIT_LLIST_HEAD(&nat->paging_groups);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
 	INIT_LLIST_HEAD(&nat->access_lists);
 	INIT_LLIST_HEAD(&nat->dests);
@@ -137,6 +138,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 	conf->nr = nat->num_bsc;
 	conf->nat = nat;
 	conf->max_endpoints = 32;
+	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
 
 	INIT_LLIST_HEAD(&conf->lac_list);
 
@@ -187,11 +189,33 @@ void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
 		}
 }
 
+static struct bsc_nat_paging_group *bsc_nat_paging_group_num(
+					struct bsc_nat *nat, int group)
+{
+	struct bsc_nat_paging_group *pgroup;
+
+	llist_for_each_entry(pgroup, &nat->paging_groups, entry)
+		if (pgroup->nr == group)
+			return pgroup;
+
+	return NULL;
+}
+
 int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)
 {
+	struct bsc_nat_paging_group *pgroup;
 	struct bsc_lac_entry *entry;
 
 	llist_for_each_entry(entry, &cfg->lac_list, entry)
+		if (entry->lac == lac_nr)
+			return 1;
+
+	/* now lookup the paging group */
+	pgroup = bsc_nat_paging_group_num(cfg->nat, cfg->paging_group);
+	if (!pgroup)
+		return 0;
+
+	llist_for_each_entry(entry, &pgroup->lists, entry)
 		if (entry->lac == lac_nr)
 			return 1;
 
