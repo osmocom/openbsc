@@ -549,6 +549,50 @@ send_refuse:
 	bsc_write(bsc, refuse, IPAC_PROTO_SCCP);
 }
 
+static void bsc_nat_send_paging(struct bsc_connection *bsc, struct msgb *msg)
+{
+	if (bsc->cfg->forbid_paging) {
+		LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
+		return;
+	}
+
+	bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), IPAC_PROTO_SCCP);
+}
+
+static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
+{
+	struct bsc_connection *bsc;
+	const uint8_t *paging_start;
+	int paging_length, i;
+
+	if (bsc_nat_find_paging(msg, &paging_start, &paging_length) != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Could not parse paging message.\n");
+		return;
+	}
+
+	/* This is quite expensive now */
+	for (i = 0; i < paging_length; i += 2) {
+		unsigned int _lac = ntohs(*(unsigned int *) &paging_start[i]);
+		unsigned int paged = 0;
+		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+			if (!bsc->cfg)
+				continue;
+			if (!bsc->authenticated)
+				continue;
+			if (!bsc_config_handles_lac(bsc->cfg, _lac))
+				continue;
+			bsc_nat_send_paging(bsc, msg);
+			paged += 1;
+		}
+
+		/* highlight a possible config issue */
+		if (paged == 0)
+			LOGP(DNAT, LOGL_ERROR, "No BSC for LAC %d/0x%d\n", _lac, _lac);
+
+	}
+}
+
+
 /*
  * Update the auth status. This can be either a CIPHER MODE COMAMND or
  * a CM Serivce Accept. Maybe also LU Accept or such in the future.
@@ -677,16 +721,7 @@ send_to_all:
 	 * message and then send it to the authenticated messages...
 	 */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
-		int lac;
-		bsc = bsc_nat_find_bsc(nat, msg, &lac);
-		if (bsc && bsc->cfg->forbid_paging)
-			LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
-		else if (bsc)
-			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
-		else if (lac != -1)
-			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging on lac: %d/0x%x\n",
-			     lac, lac);
-
+		bsc_nat_handle_paging(nat, msg);
 		goto exit;
 	}
 	/* currently send this to every BSC connected */

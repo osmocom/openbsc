@@ -384,12 +384,9 @@ static void test_contrack()
 
 static void test_paging(void)
 {
-	int lac;
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
-	struct bsc_nat_parsed *parsed;
 	struct bsc_config *cfg;
-	struct msgb *msg;
 
 	fprintf(stderr, "Testing paging by lac.\n");
 
@@ -400,34 +397,20 @@ static void test_paging(void)
 	bsc_config_add_lac(cfg, 23);
 	con->authenticated = 1;
 	llist_add(&con->list_entry, &nat->bsc_connections);
-	msg = msgb_alloc(4096, "test");
-
-	/* Test completely bad input */
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
-		fprintf(stderr, "Should have not found anything.\n");
-		abort();
-	}
 
 	/* Test it by not finding it */
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
-		fprintf(stderr, "Should have not found aynthing.\n");
+	if (bsc_config_handles_lac(cfg, 8213) != 0) {
+		fprintf(stderr, "Should not be handled.\n");
 		abort();
 	}
-	talloc_free(parsed);
 
 	/* Test by finding it */
 	bsc_config_del_lac(cfg, 23);
 	bsc_config_add_lac(cfg, 8213);
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg, &lac) != con) {
+	if (bsc_config_handles_lac(cfg, 8213) == 0) {
 		fprintf(stderr, "Should have found it.\n");
 		abort();
 	}
-	talloc_free(parsed);
 }
 
 static void test_mgcp_allocations(void)

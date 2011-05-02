@@ -208,25 +208,23 @@ void sccp_connection_destroy(struct sccp_connections *conn)
 	talloc_free(conn);
 }
 
-struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, int *lac_out)
+
+int bsc_nat_find_paging(struct msgb *msg,
+			const uint8_t **out_data, int *out_leng)
 {
-	struct bsc_connection *bsc;
 	int data_length;
 	const uint8_t *data;
 	struct tlv_parsed tp;
-	int i = 0;
-
-	*lac_out = -1;
 
 	if (!msg->l3h || msgb_l3len(msg) < 3) {
 		LOGP(DNAT, LOGL_ERROR, "Paging message is too short.\n");
-		return NULL;
+		return -1;
 	}
 
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
 		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
-		return NULL;
+		return -2;
 	}
 
 	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
@@ -234,29 +232,15 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 
 	/* No need to try a different BSS */
 	if (data[0] == CELL_IDENT_BSS) {
-		return NULL;
+		return -3;
 	} else if (data[0] != CELL_IDENT_LAC) {
 		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %d\n", data[0]);
-		return NULL;
+		return -4;
 	}
 
-	/* Currently we only handle one BSC */
-	for (i = 1; i < data_length - 1; i += 2) {
-		unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
-		*lac_out = _lac;
-		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-			if (!bsc->cfg)
-				continue;
-			if (!bsc->authenticated)
-				continue;
-			if (!bsc_config_handles_lac(bsc->cfg, _lac))
-				continue;
-
-			return bsc;
-		}
-	}
-
-	return NULL;
+	*out_data = &data[1];
+	*out_leng = data_length - 1;
+	return 0;
 }
 
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length)
