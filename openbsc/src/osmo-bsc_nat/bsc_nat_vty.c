@@ -50,6 +50,17 @@ static struct cmd_node bsc_node = {
 	1,
 };
 
+static struct cmd_node pgroup_node = {
+	PGROUP_NODE,
+	"%s(paging-group)#",
+	1,
+};
+
+static int config_write_pgroup(struct vty *vty)
+{
+	return CMD_SUCCESS;
+}
+
 static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
 {
 	struct bsc_nat_acc_lst_entry *entry;
@@ -64,9 +75,24 @@ static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
 	}
 }
 
+static void dump_lac(struct vty *vty, struct llist_head *head)
+{
+	struct bsc_lac_entry *lac;
+	llist_for_each_entry(lac, head, entry)
+		vty_out(vty, "  location_area_code %u%s", lac->lac, VTY_NEWLINE);
+}
+
+
+static void write_pgroup_lst(struct vty *vty, struct bsc_nat_paging_group *pgroup)
+{
+	vty_out(vty, " paging-group %d%s", pgroup->nr, VTY_NEWLINE);
+	dump_lac(vty, &pgroup->lists);
+}
+
 static int config_write_nat(struct vty *vty)
 {
 	struct bsc_nat_acc_lst *lst;
+	struct bsc_nat_paging_group *pgroup;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
 	vty_out(vty, " msc ip %s%s", _nat->main_dest->ip, VTY_NEWLINE);
@@ -91,31 +117,27 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->num_rewr_name)
 		vty_out(vty, " number-rewrite %s%s", _nat->num_rewr_name, VTY_NEWLINE);
 
-	llist_for_each_entry(lst, &_nat->access_lists, list) {
+	llist_for_each_entry(lst, &_nat->access_lists, list)
 		write_acc_lst(vty, lst);
-	}
+	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
+		write_pgroup_lst(vty, pgroup);
 
 	return CMD_SUCCESS;
-}
-
-static void dump_lac(struct vty *vty, struct bsc_config *cfg)
-{
-	struct bsc_lac_entry *lac;
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
-		vty_out(vty, "  location_area_code %u%s", lac->lac, VTY_NEWLINE);
 }
 
 static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 {
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
-	dump_lac(vty, bsc);
+	dump_lac(vty, &bsc->lac_list);
 	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
 		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
+	if (bsc->paging_group != -1)
+		vty_out(vty, "  paging-group %d%s", bsc->paging_group, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -523,7 +545,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN", "Set the token")
 }
 
 DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
-      "Set the Location Area Code (LAC) of this BSC")
+      "Add the Location Area Code (LAC) of this BSC\n" "LAC\n")
 {
 	struct bsc_config *tmp;
 	struct bsc_config *conf = vty->index;
@@ -551,7 +573,7 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 
 DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
       "no location_area_code <0-65535>",
-      NO_STR "Set the Location Area Code (LAC) of this BSC")
+      NO_STR "Remove the Location Area Code (LAC) of this BSC\n" "LAC\n")
 {
 	int lac = atoi(argv[0]);
 	struct bsc_config *conf = vty->index;
@@ -704,6 +726,26 @@ DEFUN(cfg_bsc_desc,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_paging_grp,
+      cfg_bsc_paging_grp_cmd,
+      "paging-group <0-1000>",
+      "Use a paging group\n" "Paging Group to use\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->paging_group = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bsc_no_paging_grp,
+      cfg_bsc_no_paging_grp_cmd,
+      "no paging-group",
+      NO_STR "Disable the usage of a paging group.\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Check if the string is matching the current pattern.")
@@ -759,6 +801,70 @@ DEFUN(block_new_conn, block_new_conn_cmd,
 	return CMD_SUCCESS;
 }
 
+/* paging group */
+DEFUN(cfg_nat_pgroup, cfg_nat_pgroup_cmd,
+      "paging-group <0-1000>",
+      "Create a Paging Group\n" "Number of the Group\n")
+{
+	int group = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup;
+	pgroup = bsc_nat_paging_group_num(_nat, group);
+	if (!pgroup)
+		pgroup = bsc_nat_paging_group_create(_nat, group);
+	if (!pgroup) {
+		vty_out(vty, "Failed to create the group.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = pgroup;
+	vty->node = PGROUP_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_pgroup, cfg_nat_no_pgroup_cmd,
+      "no paging-group <0-1000>",
+      NO_STR "Delete paging-group\n")
+{
+	int group = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup;
+	pgroup = bsc_nat_paging_group_num(_nat, group);
+	if (!pgroup) {
+		vty_out(vty, "No such paging group %d.%s", group, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bsc_nat_paging_group_delete(pgroup);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_pgroup_lac, cfg_pgroup_lac_cmd,
+      "location_area_code <0-65535>",
+       "Add the Location Area Code (LAC)\n" "LAC\n")
+{
+	struct bsc_nat_paging_group *pgroup = vty->index;
+
+	int lac = atoi(argv[0]);
+	if (lac == GSM_LAC_RESERVED_DETACHED || lac == GSM_LAC_RESERVED_ALL_BTS) {
+		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
+			lac, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bsc_nat_paging_group_add_lac(pgroup, lac);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_pgroup_no_lac, cfg_pgroup_no_lac_cmd,
+      "no location_area_code <0-65535>",
+      NO_STR "Remove the Location Area Code (LAC)\n" "LAC\n")
+{
+	int lac = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup = vty->index;
+
+	bsc_nat_paging_group_del_lac(pgroup, lac);
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -807,6 +913,13 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
 
+	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
+	install_node(&pgroup_node, config_write_pgroup);
+	install_default(PGROUP_NODE);
+	install_element(PGROUP_NODE, &cfg_pgroup_lac_cmd);
+	install_element(PGROUP_NODE, &cfg_pgroup_no_lac_cmd);
+
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
 	install_node(&bsc_node, config_write_bsc);
@@ -821,6 +934,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_max_endps_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
 
 	mgcp_vty_init();
 

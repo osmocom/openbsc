@@ -159,29 +159,29 @@ void bsc_config_free(struct bsc_config *cfg)
 	rate_ctr_group_free(cfg->stats.ctrg);
 }
 
-void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
+static void _add_lac(void *ctx, struct llist_head *list, int _lac)
 {
 	struct bsc_lac_entry *lac;
 
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
+	llist_for_each_entry(lac, list, entry)
 		if (lac->lac == _lac)
 			return;
 
-	lac = talloc_zero(cfg, struct bsc_lac_entry);
+	lac = talloc_zero(ctx, struct bsc_lac_entry);
 	if (!lac) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
 		return;
 	}
 
 	lac->lac = _lac;
-	llist_add_tail(&lac->entry, &cfg->lac_list);
+	llist_add_tail(&lac->entry, list);
 }
 
-void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
+static void _del_lac(struct llist_head *list, int _lac)
 {
 	struct bsc_lac_entry *lac;
 
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
+	llist_for_each_entry(lac, list, entry)
 		if (lac->lac == _lac) {
 			llist_del(&lac->entry);
 			talloc_free(lac);
@@ -189,8 +189,39 @@ void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
 		}
 }
 
-static struct bsc_nat_paging_group *bsc_nat_paging_group_num(
-					struct bsc_nat *nat, int group)
+void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
+{
+	_add_lac(cfg, &cfg->lac_list, _lac);
+}
+
+void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
+{
+	_del_lac(&cfg->lac_list, _lac);
+}
+
+struct bsc_nat_paging_group *bsc_nat_paging_group_create(struct bsc_nat *nat, int group)
+{
+	struct bsc_nat_paging_group *pgroup;
+
+	pgroup = talloc_zero(nat, struct bsc_nat_paging_group);
+	if (!pgroup) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate a paging group.\n");
+		return NULL;
+	}
+
+	pgroup->nr = group;
+	INIT_LLIST_HEAD(&pgroup->lists);
+	llist_add_tail(&pgroup->entry, &nat->paging_groups);
+	return pgroup;
+}
+
+void bsc_nat_paging_group_delete(struct bsc_nat_paging_group *pgroup)
+{
+	llist_del(&pgroup->entry);
+	talloc_free(pgroup);
+}
+
+struct bsc_nat_paging_group *bsc_nat_paging_group_num(struct bsc_nat *nat, int group)
 {
 	struct bsc_nat_paging_group *pgroup;
 
@@ -199,6 +230,16 @@ static struct bsc_nat_paging_group *bsc_nat_paging_group_num(
 			return pgroup;
 
 	return NULL;
+}
+
+void bsc_nat_paging_group_add_lac(struct bsc_nat_paging_group *pgroup, int lac)
+{
+	_add_lac(pgroup, &pgroup->lists, lac);
+}
+
+void bsc_nat_paging_group_del_lac(struct bsc_nat_paging_group *pgroup, int lac)
+{
+	_del_lac(&pgroup->lists, lac);
 }
 
 int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)

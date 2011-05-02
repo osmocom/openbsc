@@ -387,4 +387,11 @@ int bsc_close_ussd_connections(struct bsc_nat *nat);
 
 struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
 
+/** paging group handling */
+struct bsc_nat_paging_group *bsc_nat_paging_group_num(struct bsc_nat *nat, int group);
+struct bsc_nat_paging_group *bsc_nat_paging_group_create(struct bsc_nat *nat, int group);
+void bsc_nat_paging_group_delete(struct bsc_nat_paging_group *);
+void bsc_nat_paging_group_add_lac(struct bsc_nat_paging_group *grp, int lac);
+void bsc_nat_paging_group_del_lac(struct bsc_nat_paging_group *grp, int lac);
+
 #endif
