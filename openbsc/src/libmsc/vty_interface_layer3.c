@@ -575,6 +575,8 @@ DEFUN(ena_subscr_a3a8,
 	} else {
 		/* Unknown method */
 		subscr_put(subscr);
+		vty_out(vty, "%% Unknown auth method %s%s",
+				alg_str, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
@@ -582,6 +584,8 @@ DEFUN(ena_subscr_a3a8,
 		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
 		if ((rc > maxlen) || (rc < minlen)) {
 			subscr_put(subscr);
+			vty_out(vty, "%% Wrong Ki `%s'%s",
+				ki_str, VTY_NEWLINE);
 			return CMD_WARNING;
 		}
 		ainfo.a3a8_ki_len = rc;
@@ -589,6 +593,7 @@ DEFUN(ena_subscr_a3a8,
 		ainfo.a3a8_ki_len = 0;
 		if (minlen) {
 			subscr_put(subscr);
+			vty_out(vty, "%% Missing Ki argument%s", VTY_NEWLINE);
 			return CMD_WARNING;
 		}
 	}
@@ -601,7 +606,11 @@ DEFUN(ena_subscr_a3a8,
 	db_sync_lastauthtuple_for_subscr(NULL, subscr);
 	subscr_put(subscr);
 
-	return rc ? CMD_WARNING : CMD_SUCCESS;
+	if (rc) {
+		vty_out(vty, "%% Operation has failed%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
 }
 
 DEFUN(subscriber_purge,
