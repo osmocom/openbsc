@@ -325,6 +325,15 @@ DEFUN(cfg_net_rf_socket,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_statistics,
+      show_statistics_cmd,
+      "show statistics",
+      SHOW_STR "Statistics about the BSC\n")
+{
+	openbsc_vty_print_statistics(vty, bsc_gsmnet);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -343,6 +352,8 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
+
+	install_element_ve(&show_statistics_cmd);
 
 	return 0;
 }
