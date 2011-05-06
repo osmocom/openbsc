@@ -307,6 +307,6 @@ int main(int argc, char **argv)
 
 	while (1) {
 		log_reset_context();
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }

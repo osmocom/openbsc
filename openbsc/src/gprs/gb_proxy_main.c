@@ -279,7 +279,7 @@ int main(int argc, char **argv)
 	gbprox_reset_persistent_nsvcs(bssgp_nsi);
 
 	while (1) {
-		rc = bsc_select_main(0);
+		rc = osmo_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

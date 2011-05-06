@@ -66,8 +66,8 @@ struct mgcp_rtp_end {
 	/*
 	 * Each end has a socket...
 	 */
-	struct bsc_fd rtp;
-	struct bsc_fd rtcp;
+	struct osmo_fd rtp;
+	struct osmo_fd rtcp;
 
 	int local_port;
 	int local_alloc;

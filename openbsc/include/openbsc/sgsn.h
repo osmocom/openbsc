@@ -21,9 +21,9 @@ struct sgsn_instance {
 	char *config_file;
 	struct sgsn_config cfg;
 	/* File descriptor wrappers for LibGTP */
-	struct bsc_fd gtp_fd0;
-	struct bsc_fd gtp_fd1c;
-	struct bsc_fd gtp_fd1u;
+	struct osmo_fd gtp_fd0;
+	struct osmo_fd gtp_fd1c;
+	struct osmo_fd gtp_fd1u;
 	/* Timer for libGTP */
 	struct osmo_timer_list gtp_timer;
 	/* GSN instance for libgtp */

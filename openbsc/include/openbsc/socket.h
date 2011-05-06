@@ -7,8 +7,8 @@
 #define IPPROTO_GRE 47
 #endif
 
-int make_sock(struct bsc_fd *bfd, int proto,
+int make_sock(struct osmo_fd *bfd, int proto,
 	      uint32_t ip, uint16_t port, int priv_nr,
-	      int (*cb)(struct bsc_fd *fd, unsigned int what), void *data);
+	      int (*cb)(struct osmo_fd *fd, unsigned int what), void *data);
 
 #endif /* _BSC_SOCKET_H */

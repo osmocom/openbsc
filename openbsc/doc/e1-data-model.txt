@@ -140,7 +140,7 @@ struct e1inp_ts {
 	union {
 		struct {
 			/* mISDN driver has one fd for each ts */
-			struct bsc_fd;
+			struct osmo_fd;
 		} misdn;
 	} driver;
 };

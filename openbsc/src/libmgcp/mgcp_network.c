@@ -255,7 +255,7 @@ static int recevice_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in 
 	return rc;
 }
 
-static int rtp_data_net(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 {
 	char buf[4096];
 	struct sockaddr_in addr;
@@ -327,7 +327,7 @@ static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_
 	}
 }
 
-static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 {
 	char buf[4096];
 	struct sockaddr_in addr;
@@ -381,7 +381,7 @@ static int rtp_data_bts(struct bsc_fd *fd, unsigned int what)
 }
 
 static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,
-			      int dest, struct bsc_fd *fd)
+			      int dest, struct osmo_fd *fd)
 {
 	char buf[4096];
 	struct sockaddr_in addr;
@@ -421,7 +421,7 @@ static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_
 	return send_to(_endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
-static int rtp_data_trans_net(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_trans_net(struct osmo_fd *fd, unsigned int what)
 {
 	struct mgcp_endpoint *endp;
 	endp = (struct mgcp_endpoint *) fd->data;
@@ -429,7 +429,7 @@ static int rtp_data_trans_net(struct bsc_fd *fd, unsigned int what)
 	return rtp_data_transcoder(&endp->trans_net, endp, DEST_NETWORK, fd);
 }
 
-static int rtp_data_trans_bts(struct bsc_fd *fd, unsigned int what)
+static int rtp_data_trans_bts(struct osmo_fd *fd, unsigned int what)
 {
 	struct mgcp_endpoint *endp;
 	endp = (struct mgcp_endpoint *) fd->data;
@@ -437,7 +437,7 @@ static int rtp_data_trans_bts(struct bsc_fd *fd, unsigned int what)
 	return rtp_data_transcoder(&endp->trans_bts, endp, DEST_BTS, fd);
 }
 
-static int create_bind(const char *source_addr, struct bsc_fd *fd, int port)
+static int create_bind(const char *source_addr, struct osmo_fd *fd, int port)
 {
 	struct sockaddr_in addr;
 	int on = 1;
@@ -489,14 +489,14 @@ static int bind_rtp(struct mgcp_config *cfg, struct mgcp_rtp_end *rtp_end, int e
 	set_ip_tos(rtp_end->rtcp.fd, cfg->endp_dscp);
 
 	rtp_end->rtp.when = BSC_FD_READ;
-	if (bsc_register_fd(&rtp_end->rtp) != 0) {
+	if (osmo_fd_register(&rtp_end->rtp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTP port %d on 0x%x\n",
 			rtp_end->local_port, endpno);
 		goto cleanup2;
 	}
 
 	rtp_end->rtcp.when = BSC_FD_READ;
-	if (bsc_register_fd(&rtp_end->rtcp) != 0) {
+	if (osmo_fd_register(&rtp_end->rtcp) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register RTCP port %d on 0x%x\n",
 			rtp_end->local_port + 1, endpno);
 		goto cleanup3;
@@ -505,7 +505,7 @@ static int bind_rtp(struct mgcp_config *cfg, struct mgcp_rtp_end *rtp_end, int e
 	return 0;
 
 cleanup3:
-	bsc_unregister_fd(&rtp_end->rtp);
+	osmo_fd_unregister(&rtp_end->rtp);
 cleanup2:
 	close(rtp_end->rtcp.fd);
 	rtp_end->rtcp.fd = -1;
@@ -517,7 +517,7 @@ cleanup0:
 }
 
 static int int_bind(const char *port,
-		    struct mgcp_rtp_end *end, int (*cb)(struct bsc_fd *, unsigned),
+		    struct mgcp_rtp_end *end, int (*cb)(struct osmo_fd *, unsigned),
 		    struct mgcp_endpoint *_endp, int rtp_port)
 {
 	if (end->rtp.fd != -1 || end->rtcp.fd != -1) {
@@ -564,13 +564,13 @@ int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
 	if (end->rtp.fd != -1) {
 		close(end->rtp.fd);
 		end->rtp.fd = -1;
-		bsc_unregister_fd(&end->rtp);
+		osmo_fd_unregister(&end->rtp);
 	}
 
 	if (end->rtcp.fd != -1) {
 		close(end->rtcp.fd);
 		end->rtcp.fd = -1;
-		bsc_unregister_fd(&end->rtcp);
+		osmo_fd_unregister(&end->rtcp);
 	}
 
 	return 0;

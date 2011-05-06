@@ -92,7 +92,7 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	}
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -184,7 +184,7 @@ static void timeout_ts1_write(void *data)
 
 static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 {
-	struct bsc_fd *bfd = cbdata;
+	struct osmo_fd *bfd = cbdata;
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
@@ -197,7 +197,7 @@ static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 		LOGP(DMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -259,7 +259,7 @@ static uint8_t * flip_buf_bits ( uint8_t * buf , int len)
 
 #define D_BCHAN_TX_GRAN 160
 /* write to a B channel TS */
-static int handle_tsX_write(struct bsc_fd *bfd)
+static int handle_tsX_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -293,7 +293,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 #define D_TSX_ALLOC_SIZE (D_BCHAN_TX_GRAN)
 /* FIXME: read from a B channel TS */
-static int handle_tsX_read(struct bsc_fd *bfd)
+static int handle_tsX_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -329,7 +329,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -420,7 +420,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		unsigned int idx = ts-1;
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.dahdi.fd;
+		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
@@ -463,7 +463,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			return bfd->fd;
 		}
 
-		ret = bsc_register_fd(bfd);
+		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			fprintf(stderr, "could not register FD: %s\n",
 				strerror(ret));

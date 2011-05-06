@@ -903,7 +903,7 @@ int main(int argc, char **argv)
 	status_timer.cb = status_timer_cb;
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	abis_nm_bs11_factory_logon(g_bts, 0);

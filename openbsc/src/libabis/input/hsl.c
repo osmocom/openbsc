@@ -64,7 +64,7 @@
 
 /* data structure for one E1 interface with A-bis */
 struct hsl_e1_handle {
-	struct bsc_fd listen_fd;
+	struct osmo_fd listen_fd;
 	struct gsm_network *gsmnet;
 };
 
@@ -81,7 +81,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	struct e1inp_ts *ts;
 	struct e1inp_line *line;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 
 	if (!bts || !bts->oml_link)
 		return -1;
@@ -92,7 +92,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	e1inp_event(ts, S_INP_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -109,7 +109,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	return -1;
 }
 
-static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct bsc_fd *bfd)
+static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct osmo_fd *bfd)
 {
 	struct e1inp_sign_link *link, *link2;
 	int bts_nr = -1;
@@ -119,7 +119,7 @@ static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct bsc_fd *bfd)
 		e1inp_sign_link_destroy(link);
 	}
 
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -195,7 +195,7 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
 	return 0;
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -290,7 +290,7 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -346,7 +346,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int hsl_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -377,14 +377,14 @@ struct e1inp_driver hsl_driver = {
 };
 
 /* callback of the OML listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
 	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -421,7 +421,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_OML;
 	bfd->cb = hsl_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);

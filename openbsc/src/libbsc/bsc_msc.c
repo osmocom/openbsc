@@ -36,7 +36,7 @@
 
 static void connection_loss(struct bsc_msc_connection *con)
 {
-	struct bsc_fd *fd;
+	struct osmo_fd *fd;
 
 	fd = &con->write_queue.bfd;
 
@@ -59,7 +59,7 @@ static void msc_con_timeout(void *_con)
 }
 
 /* called in the case of a non blocking connect */
-static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
+static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 {
 	int rc;
 	int val;
@@ -102,11 +102,11 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	return 0;
 
 error:
-	bsc_unregister_fd(fd);
+	osmo_fd_unregister(fd);
 	connection_loss(con);
 	return -1;
 }
-static void setnonblocking(struct bsc_fd *fd)
+static void setnonblocking(struct osmo_fd *fd)
 {
 	int flags;
 
@@ -131,7 +131,7 @@ static void setnonblocking(struct bsc_fd *fd)
 int bsc_msc_connect(struct bsc_msc_connection *con)
 {
 	struct bsc_msc_dest *dest;
-	struct bsc_fd *fd;
+	struct osmo_fd *fd;
 	struct sockaddr_in sin;
 	int on = 1, ret;
 
@@ -197,7 +197,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 			con->connected(con);
 	}
 
-	ret = bsc_register_fd(fd);
+	ret = osmo_fd_register(fd);
 	if (ret < 0) {
 		perror("Registering the fd failed");
 		close(fd->fd);
@@ -229,7 +229,7 @@ void bsc_msc_lost(struct bsc_msc_connection *con)
 	osmo_timer_del(&con->timeout_timer);
 
 	if (con->write_queue.bfd.fd >= 0)
-		bsc_unregister_fd(&con->write_queue.bfd);
+		osmo_fd_unregister(&con->write_queue.bfd);
 	connection_loss(con);
 }
 

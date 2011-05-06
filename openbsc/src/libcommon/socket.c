@@ -39,9 +39,9 @@
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/talloc.h>
 
-int make_sock(struct bsc_fd *bfd, int proto,
+int make_sock(struct osmo_fd *bfd, int proto,
 	      uint32_t ip, uint16_t port, int priv_nr,
-	      int (*cb)(struct bsc_fd *fd, unsigned int what), void *data)
+	      int (*cb)(struct osmo_fd *fd, unsigned int what), void *data)
 {
 	struct sockaddr_in addr;
 	int ret, on = 1;
@@ -99,7 +99,7 @@ int make_sock(struct bsc_fd *bfd, int proto,
 		}
 	}
 
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		perror("register_listen_fd");
 		close(bfd->fd);

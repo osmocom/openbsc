@@ -58,7 +58,7 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	}
 
 	close(con->queue.bfd.fd);
-	bsc_unregister_fd(&con->queue.bfd);
+	osmo_fd_unregister(&con->queue.bfd);
 	osmo_timer_del(&con->auth_timeout);
 	write_queue_clear(&con->queue);
 	talloc_free(con);
@@ -95,7 +95,7 @@ static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 	return 0;
 }
 
-static int ussd_read_cb(struct bsc_fd *bfd)
+static int ussd_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_nat_ussd_con *conn = bfd->data;
@@ -191,7 +191,7 @@ static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
 	bsc_do_write(&conn->queue, msg, IPAC_PROTO_IPACCESS);
 }
 
-static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
+static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct bsc_nat_ussd_con *conn;
 	struct bsc_nat *nat;
@@ -225,7 +225,7 @@ static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
 	conn->queue.read_cb = ussd_read_cb;
 	conn->queue.write_cb = bsc_write_cb;
 
-	if (bsc_register_fd(&conn->queue.bfd) < 0) {
+	if (osmo_fd_register(&conn->queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register USSD fd.\n");
 		bsc_nat_ussd_destroy(conn);
 		return -1;

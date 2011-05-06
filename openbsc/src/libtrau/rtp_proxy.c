@@ -482,7 +482,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 
 /* callback for the select.c:bfd_* layer */
-static int rtp_bfd_cb(struct bsc_fd *bfd, unsigned int flags)
+static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 {
 	struct rtp_socket *rs = bfd->data;
 	struct rtp_sub_socket *rss;
@@ -536,7 +536,7 @@ struct rtp_socket *rtp_socket_create(void)
 		goto out_free;
 
 	init_rss(&rs->rtp, rs, rc, RTP_PRIV_RTP);
-	rc = bsc_register_fd(&rs->rtp.bfd);
+	rc = osmo_fd_register(&rs->rtp.bfd);
 	if (rc < 0)
 		goto out_rtp_socket;
 
@@ -545,7 +545,7 @@ struct rtp_socket *rtp_socket_create(void)
 		goto out_rtp_bfd;
 
 	init_rss(&rs->rtcp, rs, rc, RTP_PRIV_RTCP);
-	rc = bsc_register_fd(&rs->rtcp.bfd);
+	rc = osmo_fd_register(&rs->rtcp.bfd);
 	if (rc < 0)
 		goto out_rtcp_socket;
 
@@ -558,11 +558,11 @@ struct rtp_socket *rtp_socket_create(void)
 	return rs;
 
 out_rtcp_bfd:
-	bsc_unregister_fd(&rs->rtcp.bfd);
+	osmo_fd_unregister(&rs->rtcp.bfd);
 out_rtcp_socket:
 	close(rs->rtcp.bfd.fd);
 out_rtp_bfd:
-	bsc_unregister_fd(&rs->rtp.bfd);
+	osmo_fd_unregister(&rs->rtp.bfd);
 out_rtp_socket:
 	close(rs->rtp.bfd.fd);
 out_free:
@@ -713,11 +713,11 @@ int rtp_socket_free(struct rtp_socket *rs)
 	    rs->proxy.other_sock)
 		rs->proxy.other_sock->proxy.other_sock = NULL;
 
-	bsc_unregister_fd(&rs->rtp.bfd);
+	osmo_fd_unregister(&rs->rtp.bfd);
 	close(rs->rtp.bfd.fd);
 	free_tx_queue(&rs->rtp);
 
-	bsc_unregister_fd(&rs->rtcp.bfd);
+	osmo_fd_unregister(&rs->rtcp.bfd);
 	close(rs->rtcp.bfd.fd);
 	free_tx_queue(&rs->rtcp);
 

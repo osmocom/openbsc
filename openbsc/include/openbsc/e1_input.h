@@ -81,15 +81,15 @@ struct e1inp_ts {
 	union {
 		struct {
 			/* mISDN driver has one fd for each ts */
-			struct bsc_fd fd;
+			struct osmo_fd fd;
 		} misdn;
 		struct {
 			/* ip.access driver has one fd for each ts */
-			struct bsc_fd fd;
+			struct osmo_fd fd;
 		} ipaccess;
 		struct {
 			/* DAHDI driver has one fd for each ts */
-			struct bsc_fd fd;
+			struct osmo_fd fd;
 			struct lapd_instance *lapd;
 		} dahdi;
 	} driver;

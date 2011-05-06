@@ -256,7 +256,7 @@ int main(int argc, char **argv)
 	}
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	return 0;

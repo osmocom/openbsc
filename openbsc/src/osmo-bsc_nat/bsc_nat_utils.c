@@ -787,7 +787,7 @@ int bsc_conn_type_to_ctr(struct sccp_connections *conn)
 	return con_to_ctr[conn->con_type];
 }
 
-int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 

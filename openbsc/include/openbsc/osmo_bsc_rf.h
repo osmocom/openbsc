@@ -9,7 +9,7 @@ struct gsm_network;
 struct osmo_bsc_rf {
 	/* the value of signal.h */
 	int policy;
-	struct bsc_fd listen;
+	struct osmo_fd listen;
 	struct gsm_network *gsm_network;
 
 	const char *last_state_command;

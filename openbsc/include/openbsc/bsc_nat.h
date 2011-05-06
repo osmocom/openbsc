@@ -275,7 +275,7 @@ struct bsc_nat {
 	regex_t ussd_query_re;
 	char *ussd_token;
 	char *ussd_local;
-	struct bsc_fd ussd_listen;
+	struct osmo_fd ussd_listen;
 	struct bsc_nat_ussd_con *ussd_con;
 
 	/* for maintainenance */
@@ -363,7 +363,7 @@ uint32_t bsc_mgcp_extract_ci(const char *resp);
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
 int bsc_do_write(struct write_queue *queue, struct msgb *msg, int id);
 int bsc_write_msg(struct write_queue *queue, struct msgb *msg);
-int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg);
+int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
 /* IMSI allow/deny handling */
 int bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv) __attribute__ ((warn_unused_result));

@@ -39,8 +39,8 @@
 
 struct mncc_sock_state {
 	struct gsm_network *net;
-	struct bsc_fd listen_bfd;	/* fd for listen socket */
-	struct bsc_fd conn_bfd;		/* fd for connection to lcr */
+	struct osmo_fd listen_bfd;	/* fd for listen socket */
+	struct osmo_fd conn_bfd;		/* fd for connection to lcr */
 };
 
 /* FIXME: avoid this */
@@ -85,17 +85,17 @@ void mncc_sock_write_pending(void)
 }
 
 /* FIXME: move this to libosmocore */
-int osmo_unixsock_listen(struct bsc_fd *bfd, int type, const char *path);
+int osmo_unixsock_listen(struct osmo_fd *bfd, int type, const char *path);
 
 static void mncc_sock_close(struct mncc_sock_state *state)
 {
-	struct bsc_fd *bfd = &state->conn_bfd;
+	struct osmo_fd *bfd = &state->conn_bfd;
 
 	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has LOST connection\n");
 
 	close(bfd->fd);
 	bfd->fd = -1;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 
 	/* re-enable the generation of ACCEPT for new connections */
 	state->listen_bfd.when |= BSC_FD_READ;
@@ -112,7 +112,7 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 	}
 }
 
-static int mncc_sock_read(struct bsc_fd *bfd)
+static int mncc_sock_read(struct osmo_fd *bfd)
 {
 	struct mncc_sock_state *state = (struct mncc_sock_state *)bfd->data;
 	struct gsm_mncc *mncc_prim;
@@ -149,7 +149,7 @@ close:
 	return -1;
 }
 
-static int mncc_sock_write(struct bsc_fd *bfd)
+static int mncc_sock_write(struct osmo_fd *bfd)
 {
 	struct mncc_sock_state *state = bfd->data;
 	struct gsm_network *net = state->net;
@@ -189,7 +189,7 @@ close:
 	return -1;
 }
 
-static int mncc_sock_cb(struct bsc_fd *bfd, unsigned int flags)
+static int mncc_sock_cb(struct osmo_fd *bfd, unsigned int flags)
 {
 	int rc = 0;
 
@@ -205,10 +205,10 @@ static int mncc_sock_cb(struct bsc_fd *bfd, unsigned int flags)
 }
 
 /* accept a new connection */
-static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
+static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 {
 	struct mncc_sock_state *state = (struct mncc_sock_state *)bfd->data;
-	struct bsc_fd *conn_bfd = &state->conn_bfd;
+	struct osmo_fd *conn_bfd = &state->conn_bfd;
 	struct sockaddr_un un_addr;
 	socklen_t len;
 	int rc;
@@ -234,7 +234,7 @@ static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
 	conn_bfd->cb = mncc_sock_cb;
 	conn_bfd->data = state;
 
-	if (bsc_register_fd(conn_bfd) != 0) {
+	if (osmo_fd_register(conn_bfd) != 0) {
 		LOGP(DMNCC, LOGL_ERROR, "Failed to register new connection fd\n");
 		close(conn_bfd->fd);
 		conn_bfd->fd = -1;
@@ -251,7 +251,7 @@ static int mncc_sock_accept(struct bsc_fd *bfd, unsigned int flags)
 int mncc_sock_init(struct gsm_network *net)
 {
 	struct mncc_sock_state *state;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	int rc;
 
 	state = talloc_zero(tall_bsc_ctx, struct mncc_sock_state);
@@ -275,7 +275,7 @@ int mncc_sock_init(struct gsm_network *net)
 	bfd->cb = mncc_sock_accept;
 	bfd->data = state;
 
-	rc = bsc_register_fd(bfd);
+	rc = osmo_fd_register(bfd);
 	if (rc < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "Could not register listen fd: %d\n", rc);
 		close(bfd->fd);
@@ -289,7 +289,7 @@ int mncc_sock_init(struct gsm_network *net)
 }
 
 /* FIXME: move this to libosmocore */
-int osmo_unixsock_listen(struct bsc_fd *bfd, int type, const char *path)
+int osmo_unixsock_listen(struct osmo_fd *bfd, int type, const char *path)
 {
 	struct sockaddr_un local;
 	unsigned int namelen;

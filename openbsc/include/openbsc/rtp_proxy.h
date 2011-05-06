@@ -48,7 +48,7 @@ struct rtp_sub_socket {
 	struct sockaddr_in sin_local;
 	struct sockaddr_in sin_remote;
 
-	struct bsc_fd bfd;
+	struct osmo_fd bfd;
 	/* linked list of to-be-transmitted msgb's */
 	struct llist_head tx_queue;
 };

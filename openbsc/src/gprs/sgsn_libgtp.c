@@ -505,7 +505,7 @@ int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
 }
 
 /* libgtp select loop integration */
-static int sgsn_gtp_fd_cb(struct bsc_fd *fd, unsigned int what)
+static int sgsn_gtp_fd_cb(struct osmo_fd *fd, unsigned int what)
 {
 	struct sgsn_instance *sgi = fd->data;
 	int rc;
@@ -570,7 +570,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd0.data = sgi;
 	sgi->gtp_fd0.when = BSC_FD_READ;
 	sgi->gtp_fd0.cb = sgsn_gtp_fd_cb;
-	rc = bsc_register_fd(&sgi->gtp_fd0);
+	rc = osmo_fd_register(&sgi->gtp_fd0);
 	if (rc < 0)
 		return rc;
 
@@ -579,7 +579,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd1c.data = sgi;
 	sgi->gtp_fd1c.when = BSC_FD_READ;
 	sgi->gtp_fd1c.cb = sgsn_gtp_fd_cb;
-	bsc_register_fd(&sgi->gtp_fd1c);
+	osmo_fd_register(&sgi->gtp_fd1c);
 	if (rc < 0)
 		return rc;
 
@@ -588,7 +588,7 @@ int sgsn_gtp_init(struct sgsn_instance *sgi)
 	sgi->gtp_fd1u.data = sgi;
 	sgi->gtp_fd1u.when = BSC_FD_READ;
 	sgi->gtp_fd1u.cb = sgsn_gtp_fd_cb;
-	bsc_register_fd(&sgi->gtp_fd1u);
+	osmo_fd_register(&sgi->gtp_fd1u);
 	if (rc < 0)
 		return rc;
 

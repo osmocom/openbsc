@@ -194,7 +194,7 @@ static void rf_delay_cmd_cb(void *data)
 	}
 }
 
-static int rf_read_cmd(struct bsc_fd *fd)
+static int rf_read_cmd(struct osmo_fd *fd)
 {
 	struct osmo_bsc_rf_conn *conn = fd->data;
 	char buf[1];
@@ -203,7 +203,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	rc = read(fd->fd, buf, sizeof(buf));
 	if (rc != sizeof(buf)) {
 		LOGP(DINP, LOGL_ERROR, "Short read %d/%s\n", errno, strerror(errno));
-		bsc_unregister_fd(fd);
+		osmo_fd_unregister(fd);
 		close(fd->fd);
 		write_queue_clear(&conn->queue);
 		talloc_free(conn);
@@ -230,7 +230,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	return 0;
 }
 
-static int rf_write_cmd(struct bsc_fd *fd, struct msgb *msg)
+static int rf_write_cmd(struct osmo_fd *fd, struct msgb *msg)
 {
 	int rc;
 
@@ -243,7 +243,7 @@ static int rf_write_cmd(struct bsc_fd *fd, struct msgb *msg)
 	return 0;
 }
 
-static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
+static int rf_ctl_accept(struct osmo_fd *bfd, unsigned int what)
 {
 	struct osmo_bsc_rf_conn *conn;
 	struct osmo_bsc_rf *rf = bfd->data;
@@ -273,7 +273,7 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 	conn->queue.write_cb = rf_write_cmd;
 	conn->rf = rf;
 
-	if (bsc_register_fd(&conn->queue.bfd) != 0) {
+	if (osmo_fd_register(&conn->queue.bfd) != 0) {
 		close(fd);
 		talloc_free(conn);
 		return -1;
@@ -286,7 +286,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 {
 	unsigned int namelen;
 	struct sockaddr_un local;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct osmo_bsc_rf *rf;
 	int rc;
 
@@ -341,7 +341,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	bfd->cb = rf_ctl_accept;
 	bfd->data = rf;
 
-	if (bsc_register_fd(bfd) != 0) {
+	if (osmo_fd_register(bfd) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register bfd.\n");
 		close(bfd->fd);
 		talloc_free(rf);

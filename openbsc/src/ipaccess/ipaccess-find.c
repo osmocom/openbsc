@@ -141,7 +141,7 @@ static int read_response(int fd)
 	return parse_response(buf+6, len-6);
 }
 
-static int bfd_cb(struct bsc_fd *bfd, unsigned int flags)
+static int bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 {
 	if (flags & BSC_FD_READ)
 		return read_response(bfd->fd);
@@ -156,7 +156,7 @@ static struct osmo_timer_list timer;
 
 static void timer_cb(void *_data)
 {
-	struct bsc_fd *bfd = _data;
+	struct osmo_fd *bfd = _data;
 
 	bfd->when |= BSC_FD_WRITE;
 
@@ -165,7 +165,7 @@ static void timer_cb(void *_data)
 
 int main(int argc, char **argv)
 {
-	struct bsc_fd bfd;
+	struct osmo_fd bfd;
 	char *ifname;
 	int rc;
 
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	bsc_register_fd(&bfd);
+	osmo_fd_register(&bfd);
 
 	timer.cb = timer_cb;
 	timer.data = &bfd;
@@ -197,7 +197,7 @@ int main(int argc, char **argv)
 	printf("Trying to find ip.access BTS by broadcast UDP...\n");
 
 	while (1) {
-		rc = bsc_select_main(0);
+		rc = osmo_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

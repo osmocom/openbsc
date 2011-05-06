@@ -85,7 +85,7 @@ const char *get_prim_name(unsigned int prim)
 	return "UNKNOWN";
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -200,7 +200,7 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -253,7 +253,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 #define BCHAN_TX_GRAN	160
 /* write to a B channel TS */
-static int handle_tsX_write(struct bsc_fd *bfd)
+static int handle_tsX_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -281,7 +281,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 #define TSX_ALLOC_SIZE 4096
 /* FIXME: read from a B channel TS */
-static int handle_tsX_read(struct bsc_fd *bfd)
+static int handle_tsX_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -329,7 +329,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int misdn_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -365,7 +365,7 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	int ret;
 	unsigned int idx = ts-1;
 	struct e1inp_ts *e1i_ts = &line->ts[idx];
-	struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+	struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 
 	fprintf(stdout, "activate bchan\n");
 	if (act)
@@ -400,7 +400,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	for (ts = 1; ts < NUM_E1_TS; ts++) {
 		unsigned int idx = ts-1;
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+		struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 		struct sockaddr_mISDN addr;
 
 		bfd->data = line;
@@ -470,7 +470,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
 			activate_bchan(line, ts, 1);
 
-		ret = bsc_register_fd(bfd);
+		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			fprintf(stderr, "could not register FD: %s\n",
 				strerror(ret));

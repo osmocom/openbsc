@@ -44,7 +44,7 @@ static void send_ping(struct osmo_msc_data *data);
 /*
  * MGCP forwarding code
  */
-static int mgcp_do_read(struct bsc_fd *fd)
+static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct osmo_msc_data *data = (struct osmo_msc_data *) fd->data;
 	struct msgb *mgcp;
@@ -72,7 +72,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	return 0;
 }
 
-static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
@@ -150,7 +150,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 	data->mgcp_agent.read_cb = mgcp_do_read;
 	data->mgcp_agent.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&data->mgcp_agent.bfd) != 0) {
+	if (osmo_fd_register(&data->mgcp_agent.bfd) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Failed to register BFD\n");
 		close(data->mgcp_agent.bfd.fd);
 		data->mgcp_agent.bfd.fd = -1;
@@ -175,7 +175,7 @@ int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto
 	return 0;
 }
 
-static int msc_alink_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int msc_alink_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
@@ -208,7 +208,7 @@ static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
 		send_lacs(msc->network, msc->msc_con);
 }
 
-static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
+static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);

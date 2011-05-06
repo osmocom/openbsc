@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }
 

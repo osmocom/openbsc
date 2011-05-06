@@ -64,7 +64,7 @@
 struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
-static struct bsc_fd bsc_listen;
+static struct osmo_fd bsc_listen;
 static const char *msc_ip = NULL;
 static struct osmo_timer_list sccp_close;
 static int daemonize = 0;
@@ -780,7 +780,7 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
 
-static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
+static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_msc_connection *msc_con;
@@ -818,7 +818,7 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+static int ipaccess_msc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 	rc = write(bfd->fd, msg->data, msg->len);
@@ -875,7 +875,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 	/* close endpoints allocated by this BSC */
 	bsc_mgcp_clear_endpoints_for(connection);
 
-	bsc_unregister_fd(&connection->write_queue.bfd);
+	osmo_fd_unregister(&connection->write_queue.bfd);
 	close(connection->write_queue.bfd.fd);
 	write_queue_clear(&connection->write_queue);
 	llist_del(&connection->list_entry);
@@ -1147,7 +1147,7 @@ exit3:
 	return -1;
 }
 
-static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
+static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_connection *bsc = bfd->data;
@@ -1194,7 +1194,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
 	int fd, rc, on;
@@ -1256,7 +1256,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
 	bsc->write_queue.write_cb = bsc_write_cb;
 	bsc->write_queue.bfd.when = BSC_FD_READ;
-	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
+	if (osmo_fd_register(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
 		close(fd);
 		talloc_free(bsc);
@@ -1514,7 +1514,7 @@ int main(int argc, char **argv)
 	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	return 0;

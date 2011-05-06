@@ -598,7 +598,7 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 	return output;
 }
 
-static int mgcp_do_read(struct bsc_fd *fd)
+static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct bsc_nat *nat;
 	struct msgb *msg, *resp;
@@ -637,7 +637,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	return 0;
 }
 
-static int mgcp_do_write(struct bsc_fd *bfd, struct msgb *msg)
+static int mgcp_do_write(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 
@@ -704,7 +704,7 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	cfg->gw_fd.read_cb = mgcp_do_read;
 	cfg->gw_fd.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&cfg->gw_fd.bfd) != 0) {
+	if (osmo_fd_register(&cfg->gw_fd.bfd) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register MGCP fd.\n");
 		close(cfg->gw_fd.bfd.fd);
 		cfg->gw_fd.bfd.fd = -1;
