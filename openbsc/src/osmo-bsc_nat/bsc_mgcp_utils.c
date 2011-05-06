@@ -478,7 +478,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	if (write_queue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
+	if (osmo_wqueue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
 		msgb_free(output);
 	}
@@ -628,7 +628,7 @@ static int mgcp_do_read(struct osmo_fd *fd)
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp) {
-		if (write_queue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
+		if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Failed to enqueue msg.\n");
 			msgb_free(resp);
 		}
@@ -698,7 +698,7 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 		return -1;
 	}
 
-	write_queue_init(&cfg->gw_fd, 10);
+	osmo_wqueue_init(&cfg->gw_fd, 10);
 	cfg->gw_fd.bfd.when = BSC_FD_READ;
 	cfg->gw_fd.bfd.data = nat;
 	cfg->gw_fd.read_cb = mgcp_do_read;

@@ -60,7 +60,7 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	close(con->queue.bfd.fd);
 	osmo_fd_unregister(&con->queue.bfd);
 	osmo_timer_del(&con->auth_timeout);
-	write_queue_clear(&con->queue);
+	osmo_wqueue_clear(&con->queue);
 	talloc_free(con);
 }
 
@@ -218,7 +218,7 @@ static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	write_queue_init(&conn->queue, 10);
+	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
 	conn->queue.bfd.when = BSC_FD_READ;

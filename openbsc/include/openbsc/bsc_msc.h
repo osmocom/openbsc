@@ -35,7 +35,7 @@ struct bsc_msc_dest {
 
 
 struct bsc_msc_connection {
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 	int is_connected;
 	int is_authenticated;
 	int first_contact;

@@ -26,7 +26,7 @@ struct osmo_bsc_rf {
 };
 
 struct osmo_bsc_rf_conn {
-	struct write_queue queue;
+	struct osmo_wqueue queue;
 	struct osmo_bsc_rf *rf;
 };
 

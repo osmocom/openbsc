@@ -100,7 +100,7 @@ static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 	}
 
 
-	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&con->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
@@ -877,7 +877,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 	osmo_fd_unregister(&connection->write_queue.bfd);
 	close(connection->write_queue.bfd.fd);
-	write_queue_clear(&connection->write_queue);
+	osmo_wqueue_clear(&connection->write_queue);
 	llist_del(&connection->list_entry);
 
 	talloc_free(connection);

@@ -59,7 +59,7 @@ struct osmo_msc_data {
 
 
 	/* mgcp agent */
-	struct write_queue mgcp_agent;
+	struct osmo_wqueue mgcp_agent;
 
 	/* rf ctl related bits */
 	char *mid_call_txt;

@@ -42,7 +42,7 @@ static void connection_loss(struct bsc_msc_connection *con)
 
 	close(fd->fd);
 	fd->fd = -1;
-	fd->cb = write_queue_bfd_cb;
+	fd->cb = osmo_wqueue_bfd_cb;
 	fd->when = 0;
 
 	con->is_connected = 0;
@@ -64,7 +64,7 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 	int rc;
 	int val;
 	struct bsc_msc_connection *con;
-	struct write_queue *queue;
+	struct osmo_wqueue *queue;
 
 	socklen_t len = sizeof(val);
 
@@ -73,7 +73,7 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	queue = container_of(fd, struct write_queue, bfd);
+	queue = container_of(fd, struct osmo_wqueue, bfd);
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
 	/* From here on we will either be connected or reconnect */
@@ -92,7 +92,7 @@ static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 
 
 	/* go to full operation */
-	fd->cb = write_queue_bfd_cb;
+	fd->cb = osmo_wqueue_bfd_cb;
 	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 
 	con->is_connected = 1;
@@ -191,7 +191,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		return ret;
 	} else {
 		fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
-		fd->cb = write_queue_bfd_cb;
+		fd->cb = osmo_wqueue_bfd_cb;
 		con->is_connected = 1;
 		if (con->connected)
 			con->connected(con);
@@ -219,13 +219,13 @@ struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dests)
 
 	con->dests = dests;
 	con->write_queue.bfd.fd = -1;
-	write_queue_init(&con->write_queue, 100);
+	osmo_wqueue_init(&con->write_queue, 100);
 	return con;
 }
 
 void bsc_msc_lost(struct bsc_msc_connection *con)
 {
-	write_queue_clear(&con->write_queue);
+	osmo_wqueue_clear(&con->write_queue);
 	osmo_timer_del(&con->timeout_timer);
 
 	if (con->write_queue.bfd.fd >= 0)

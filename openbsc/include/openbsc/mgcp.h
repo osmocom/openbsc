@@ -135,7 +135,7 @@ struct mgcp_config {
 	struct in_addr transcoder_in;
 	int transcoder_remote_base;
 
-	struct write_queue gw_fd;
+	struct osmo_wqueue gw_fd;
 
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;

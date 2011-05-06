@@ -102,7 +102,7 @@ static void mgcp_forward(struct osmo_msc_data *data, struct msgb *msg)
 
 	msgb_put(mgcp, msgb_l2len(msg));
 	memcpy(mgcp->data, msg->l2h, mgcp->len);
-	if (write_queue_enqueue(&data->mgcp_agent, mgcp) != 0) {
+	if (osmo_wqueue_enqueue(&data->mgcp_agent, mgcp) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Could not queue message to MGCP GW.\n");
 		msgb_free(mgcp);
 	}
@@ -144,7 +144,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 		return -1;
 	}
 
-	write_queue_init(&data->mgcp_agent, 10);
+	osmo_wqueue_init(&data->mgcp_agent, 10);
 	data->mgcp_agent.bfd.when = BSC_FD_READ;
 	data->mgcp_agent.bfd.data = data;
 	data->mgcp_agent.read_cb = mgcp_do_read;
@@ -166,7 +166,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto)
 {
 	ipaccess_prepend_header(msg, proto);
-	if (write_queue_enqueue(&conn->write_queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&conn->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
 		return -1;

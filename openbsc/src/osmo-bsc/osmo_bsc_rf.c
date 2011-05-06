@@ -69,7 +69,7 @@ static void send_resp(struct osmo_bsc_rf_conn *conn, char send)
 	msg->l2h = msgb_put(msg, 1);
 	msg->l2h[0] = send;
 
-	if (write_queue_enqueue(&conn->queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&conn->queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the answer.\n");
 		msgb_free(msg);
 		return;
@@ -205,7 +205,7 @@ static int rf_read_cmd(struct osmo_fd *fd)
 		LOGP(DINP, LOGL_ERROR, "Short read %d/%s\n", errno, strerror(errno));
 		osmo_fd_unregister(fd);
 		close(fd->fd);
-		write_queue_clear(&conn->queue);
+		osmo_wqueue_clear(&conn->queue);
 		talloc_free(conn);
 		return -1;
 	}
@@ -265,7 +265,7 @@ static int rf_ctl_accept(struct osmo_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	write_queue_init(&conn->queue, 10);
+	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
 	conn->queue.bfd.when = BSC_FD_READ | BSC_FD_WRITE;

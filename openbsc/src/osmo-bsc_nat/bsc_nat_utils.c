@@ -124,7 +124,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 		return NULL;
 
 	con->nat = nat;
-	write_queue_init(&con->write_queue, 100);
+	osmo_wqueue_init(&con->write_queue, 100);
 	return con;
 }
 
@@ -335,16 +335,16 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 	return bsc_do_write(&bsc->write_queue, msg, proto);
 }
 
-int bsc_do_write(struct write_queue *queue, struct msgb *msg, int proto)
+int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int proto)
 {
 	/* prepend the header */
 	ipaccess_prepend_header(msg, proto);
 	return bsc_write_msg(queue, msg);
 }
 
-int bsc_write_msg(struct write_queue *queue, struct msgb *msg)
+int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg)
 {
-	if (write_queue_enqueue(queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 		return -1;

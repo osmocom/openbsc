@@ -76,7 +76,7 @@ struct bsc_connection {
 	int authenticated;
 
 	/* the fd we use to communicate */
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 
 	/* the BSS associated */
 	struct bsc_config *cfg;
@@ -286,7 +286,7 @@ struct bsc_nat {
 };
 
 struct bsc_nat_ussd_con {
-	struct write_queue queue;
+	struct osmo_wqueue queue;
 	struct bsc_nat *nat;
 	int authorized;
 
@@ -361,8 +361,8 @@ uint32_t bsc_mgcp_extract_ci(const char *resp);
 
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
-int bsc_do_write(struct write_queue *queue, struct msgb *msg, int id);
-int bsc_write_msg(struct write_queue *queue, struct msgb *msg);
+int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
+int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
 /* IMSI allow/deny handling */
