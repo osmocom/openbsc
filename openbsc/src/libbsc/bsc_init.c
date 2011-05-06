@@ -275,9 +275,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
-			counter_inc(trx->bts->network->stats.bts.oml_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.oml_fail);
 		else if (isd->link_type == E1INP_SIGN_RSL)
-			counter_inc(trx->bts->network->stats.bts.rsl_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.rsl_fail);
 
 		/*
 		 * free all allocated channels. change the nm_state so the

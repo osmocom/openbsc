@@ -250,15 +250,15 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 {
 	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
 	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
-		counter_get(nat->stats.sccp.conn),
-		counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.sccp.conn),
+		osmo_counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
 	vty_out(vty, " MSC Connections %lu%s",
-		counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
 	vty_out(vty, " MSC Connected: %d%s",
 		nat->msc_con->is_connected, VTY_NEWLINE);
 	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
-		counter_get(nat->stats.bsc.reconn),
-		counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.bsc.reconn),
+		osmo_counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
 }
 
 static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)

@@ -1242,7 +1242,7 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-int db_store_counter(struct counter *ctr)
+int db_store_counter(struct osmo_counter *ctr)
 {
 	dbi_result result;
 	char *q_name;

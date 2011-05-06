@@ -95,12 +95,12 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->access_lists);
 	INIT_LLIST_HEAD(&nat->dests);
 
-	nat->stats.sccp.conn = counter_alloc("nat.sccp.conn");
-	nat->stats.sccp.calls = counter_alloc("nat.sccp.calls");
-	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
-	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
-	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
-	nat->stats.ussd.reconn = counter_alloc("nat.ussd.conn");
+	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
+	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
+	nat->stats.bsc.reconn = osmo_counter_alloc("nat.bsc.conn");
+	nat->stats.bsc.auth_fail = osmo_counter_alloc("nat.bsc.auth_fail");
+	nat->stats.msc.reconn = osmo_counter_alloc("nat.msc.conn");
+	nat->stats.ussd.reconn = osmo_counter_alloc("nat.ussd.conn");
 	nat->auth_timeout = 2;
 	nat->ping_timeout = 20;
 	nat->pong_timeout = 5;

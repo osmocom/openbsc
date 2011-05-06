@@ -560,7 +560,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	counter_inc(conn->bts->network->stats.sms.submitted);
+	osmo_counter_inc(conn->bts->network->stats.sms.submitted);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -656,7 +656,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
-		counter_inc(conn->bts->network->stats.sms.no_receiver);
+		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
 		goto out;
 	}
 
@@ -846,10 +846,10 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		 * to store this in our database and wait for a SMMA message */
 		/* FIXME */
 		send_signal(S_SMS_MEM_EXCEEDED, trans, sms, 0);
-		counter_inc(net->stats.sms.rp_err_mem);
+		osmo_counter_inc(net->stats.sms.rp_err_mem);
 	} else {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
-		counter_inc(net->stats.sms.rp_err_other);
+		osmo_counter_inc(net->stats.sms.rp_err_other);
 	}
 
 	sms_free(sms);
@@ -1139,7 +1139,7 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
-	counter_inc(conn->bts->network->stats.sms.delivered);
+	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);

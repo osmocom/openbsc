@@ -209,7 +209,7 @@ static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 	}
 
 	nat = (struct bsc_nat *) bfd->data;
-	counter_inc(nat->stats.ussd.reconn);
+	osmo_counter_inc(nat->stats.ussd.reconn);
 
 	conn = bsc_nat_ussd_alloc(nat);
 	if (!conn) {

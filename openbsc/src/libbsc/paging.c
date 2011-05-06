@@ -262,7 +262,7 @@ static void paging_T3113_expired(void *data)
 		req, req->subscr->imsi);
 
 	/* must be destroyed before calling cbfn, to prevent double free */
-	counter_inc(req->bts->network->stats.paging.expired);
+	osmo_counter_inc(req->bts->network->stats.paging.expired);
 	cbfn_param = req->cbfn_param;
 	cbfn = req->cbfn;
 
@@ -311,7 +311,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
-	counter_inc(network->stats.paging.attempted);
+	osmo_counter_inc(network->stats.paging.attempted);
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -337,7 +337,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	} while (1);
 
 	if (num_pages == 0)
-		counter_inc(network->stats.paging.detached);
+		osmo_counter_inc(network->stats.paging.detached);
 
 	return num_pages;
 }

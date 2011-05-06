@@ -673,37 +673,37 @@ DEFUN(show_stats,
 
 	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
-		counter_get(net->stats.chreq.total),
-		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
+		osmo_counter_get(net->stats.chreq.total),
+		osmo_counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		counter_get(net->stats.loc_upd_type.attach),
-		counter_get(net->stats.loc_upd_type.normal),
-		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.attach),
+		osmo_counter_get(net->stats.loc_upd_type.normal),
+		osmo_counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
 	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		counter_get(net->stats.loc_upd_resp.accept),
-		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_resp.accept),
+		osmo_counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
 	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
 		"%lu completed, %lu failed%s",
-		counter_get(net->stats.handover.attempted),
-		counter_get(net->stats.handover.no_channel),
-		counter_get(net->stats.handover.timeout),
-		counter_get(net->stats.handover.completed),
-		counter_get(net->stats.handover.failed), VTY_NEWLINE);
+		osmo_counter_get(net->stats.handover.attempted),
+		osmo_counter_get(net->stats.handover.no_channel),
+		osmo_counter_get(net->stats.handover.timeout),
+		osmo_counter_get(net->stats.handover.completed),
+		osmo_counter_get(net->stats.handover.failed), VTY_NEWLINE);
 	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		counter_get(net->stats.sms.submitted),
-		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.submitted),
+		osmo_counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
 	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		counter_get(net->stats.sms.delivered),
-		counter_get(net->stats.sms.rp_err_mem),
-		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.delivered),
+		osmo_counter_get(net->stats.sms.rp_err_mem),
+		osmo_counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
 	vty_out(vty, "MO Calls                : %lu setup, %lu connect ack%s",
-		counter_get(net->stats.call.mo_setup),
-		counter_get(net->stats.call.mo_connect_ack), VTY_NEWLINE);
+		osmo_counter_get(net->stats.call.mo_setup),
+		osmo_counter_get(net->stats.call.mo_connect_ack), VTY_NEWLINE);
 	vty_out(vty, "MT Calls                : %lu setup, %lu connect%s",
-		counter_get(net->stats.call.mt_setup),
-		counter_get(net->stats.call.mt_connect), VTY_NEWLINE);
+		osmo_counter_get(net->stats.call.mt_setup),
+		osmo_counter_get(net->stats.call.mt_connect), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 

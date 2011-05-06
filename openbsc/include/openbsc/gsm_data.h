@@ -646,52 +646,52 @@ struct gsm_bts {
 /* Some statistics of our network */
 struct gsmnet_stats {
 	struct {
-		struct counter *total;
-		struct counter *no_channel;
+		struct osmo_counter *total;
+		struct osmo_counter *no_channel;
 	} chreq;
 	struct {
-		struct counter *attempted;
-		struct counter *no_channel;	/* no channel available */
-		struct counter *timeout;		/* T3103 timeout */
-		struct counter *completed;	/* HO COMPL received */
-		struct counter *failed;		/* HO FAIL received */
+		struct osmo_counter *attempted;
+		struct osmo_counter *no_channel;	/* no channel available */
+		struct osmo_counter *timeout;		/* T3103 timeout */
+		struct osmo_counter *completed;	/* HO COMPL received */
+		struct osmo_counter *failed;		/* HO FAIL received */
 	} handover;
 	struct {
-		struct counter *attach;
-		struct counter *normal;
-		struct counter *periodic;
-		struct counter *detach;
+		struct osmo_counter *attach;
+		struct osmo_counter *normal;
+		struct osmo_counter *periodic;
+		struct osmo_counter *detach;
 	} loc_upd_type;
 	struct {
-		struct counter *reject;
-		struct counter *accept;
+		struct osmo_counter *reject;
+		struct osmo_counter *accept;
 	} loc_upd_resp;
 	struct {
-		struct counter *attempted;
-		struct counter *detached;
-		struct counter *completed;
-		struct counter *expired;
+		struct osmo_counter *attempted;
+		struct osmo_counter *detached;
+		struct osmo_counter *completed;
+		struct osmo_counter *expired;
 	} paging;
 	struct {
-		struct counter *submitted; /* MO SMS submissions */
-		struct counter *no_receiver;
-		struct counter *delivered; /* MT SMS deliveries */
-		struct counter *rp_err_mem;
-		struct counter *rp_err_other;
+		struct osmo_counter *submitted; /* MO SMS submissions */
+		struct osmo_counter *no_receiver;
+		struct osmo_counter *delivered; /* MT SMS deliveries */
+		struct osmo_counter *rp_err_mem;
+		struct osmo_counter *rp_err_other;
 	} sms;
 	struct {
-		struct counter *mo_setup;
-		struct counter *mo_connect_ack;
-		struct counter *mt_setup;
-		struct counter *mt_connect;
+		struct osmo_counter *mo_setup;
+		struct osmo_counter *mo_connect_ack;
+		struct osmo_counter *mt_setup;
+		struct osmo_counter *mt_connect;
 	} call;
 	struct {
-		struct counter *rf_fail;
-		struct counter *rll_err;
+		struct osmo_counter *rf_fail;
+		struct osmo_counter *rll_err;
 	} chan;
 	struct {
-		struct counter *oml_fail;
-		struct counter *rsl_fail;
+		struct osmo_counter *oml_fail;
+		struct osmo_counter *rsl_fail;
 	} bts;
 };
 

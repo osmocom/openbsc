@@ -361,7 +361,7 @@ int gsm0408_loc_upd_rej(struct gsm_subscriber_connection *conn, uint8_t cause)
 	struct gsm_bts *bts = conn->bts;
 	struct msgb *msg;
 
-	counter_inc(bts->network->stats.loc_upd_resp.reject);
+	osmo_counter_inc(bts->network->stats.loc_upd_resp.reject);
 
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
@@ -403,7 +403,7 @@ int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	counter_inc(bts->network->stats.loc_upd_resp.accept);
+	osmo_counter_inc(bts->network->stats.loc_upd_resp.accept);
 
 	return gsm48_conn_sendmsg(msg, conn, NULL);
 }
@@ -524,13 +524,13 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
-		counter_inc(bts->network->stats.loc_upd_type.normal);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.normal);
 		break;
 	case GSM48_LUPD_IMSI_ATT:
-		counter_inc(bts->network->stats.loc_upd_type.attach);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.attach);
 		break;
 	case GSM48_LUPD_PERIODIC:
-		counter_inc(bts->network->stats.loc_upd_type.periodic);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.periodic);
 		break;
 	}
 
@@ -886,7 +886,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
 
-	counter_inc(bts->network->stats.loc_upd_type.detach);
+	osmo_counter_inc(bts->network->stats.loc_upd_type.detach);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
@@ -1892,7 +1892,7 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 	     subscr_name(trans->subscr), trans->subscr->extension,
 	     setup.called.number);
 
-	counter_inc(trans->subscr->net->stats.call.mo_setup);
+	osmo_counter_inc(trans->subscr->net->stats.call.mo_setup);
 
 	/* indicate setup to MNCC */
 	mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_IND, &setup);
@@ -1969,7 +1969,7 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	
 	new_cc_state(trans, GSM_CSTATE_CALL_PRESENT);
 
-	counter_inc(trans->subscr->net->stats.call.mt_setup);
+	osmo_counter_inc(trans->subscr->net->stats.call.mt_setup);
 
 	return gsm48_conn_sendmsg(msg, trans->conn, trans);
 }
@@ -2190,7 +2190,7 @@ static int gsm48_cc_rx_connect(struct gsm_trans *trans, struct msgb *msg)
 	}
 
 	new_cc_state(trans, GSM_CSTATE_CONNECT_REQUEST);
-	counter_inc(trans->subscr->net->stats.call.mt_connect);
+	osmo_counter_inc(trans->subscr->net->stats.call.mt_connect);
 
 	return mncc_recvmsg(trans->subscr->net, trans, MNCC_SETUP_CNF, &connect);
 }
@@ -2203,7 +2203,7 @@ static int gsm48_cc_rx_connect_ack(struct gsm_trans *trans, struct msgb *msg)
 	gsm48_stop_cc_timer(trans);
 
 	new_cc_state(trans, GSM_CSTATE_ACTIVE);
-	counter_inc(trans->subscr->net->stats.call.mo_connect_ack);
+	osmo_counter_inc(trans->subscr->net->stats.call.mo_connect_ack);
 	
 	memset(&connect_ack, 0, sizeof(struct gsm_mncc));
 	connect_ack.callref = trans->callref;

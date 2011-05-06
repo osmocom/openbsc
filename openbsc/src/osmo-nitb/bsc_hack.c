@@ -195,7 +195,7 @@ static void signal_handler(int signal)
 }
 
 /* timer handling */
-static int _db_store_counter(struct counter *counter, void *data)
+static int _db_store_counter(struct osmo_counter *counter, void *data)
 {
 	return db_store_counter(counter);
 }
@@ -203,7 +203,7 @@ static int _db_store_counter(struct counter *counter, void *data)
 static void db_sync_timer_cb(void *data)
 {
 	/* store counters to database and re-schedule */
-	counters_for_each(_db_store_counter, NULL);
+	osmo_counters_for_each(_db_store_counter, NULL);
 	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 

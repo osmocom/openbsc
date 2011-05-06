@@ -72,7 +72,7 @@ static const uint8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 static struct log_target *stderr_target;
 
 /* dummy function to keep gsm_data.c happy */
-struct counter *counter_alloc(const char *name)
+struct osmo_counter *osmo_counter_alloc(const char *name)
 {
 	return NULL;
 }

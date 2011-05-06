@@ -922,7 +922,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
-	counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
+	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
 	return rsl_rf_chan_release(msg->lchan, 1);
 }
 
@@ -1268,7 +1268,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lctype = get_ctype_by_chreq(bts->network, rqd_ref->ra);
 	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
 
-	counter_inc(bts->network->stats.chreq.total);
+	osmo_counter_inc(bts->network->stats.chreq.total);
 
 	/*
 	 * We want LOCATION UPDATES to succeed and will assign a TCH
@@ -1281,7 +1281,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
-		counter_inc(bts->network->stats.chreq.no_channel);
+		osmo_counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME gather multiple CHAN RQD and reject up to 4 at the same time */
 		if (bts->network->T3122)
 			rsl_send_imm_ass_rej(bts, 1, rqd_ref, bts->network->T3122 & 0xff);
@@ -1436,7 +1436,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
-		counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
+		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
 		return rsl_rf_chan_release(msg->lchan, 1);
 	}
 

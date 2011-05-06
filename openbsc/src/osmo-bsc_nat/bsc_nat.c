@@ -663,7 +663,7 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
-				counter_inc(nat->stats.sccp.calls);
+				osmo_counter_inc(nat->stats.sccp.calls);
 
 				if (con) {
 					struct rate_ctr_group *ctrg;
@@ -752,7 +752,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
 {
-	counter_inc(nat->stats.msc.reconn);
+	osmo_counter_inc(nat->stats.msc.reconn);
 }
 
 static void msc_send_reset(struct bsc_msc_connection *msc_con)
@@ -1211,7 +1211,7 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 	}
 
 	/* count the reconnect */
-	counter_inc(nat->stats.bsc.reconn);
+	osmo_counter_inc(nat->stats.bsc.reconn);
 
 	/*
 	 * if we are not connected to a msc... just close the socket

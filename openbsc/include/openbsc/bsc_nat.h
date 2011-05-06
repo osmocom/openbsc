@@ -179,21 +179,21 @@ struct bsc_endpoint {
  */
 struct bsc_nat_statistics {
 	struct {
-		struct counter *conn;
-		struct counter *calls;
+		struct osmo_counter *conn;
+		struct osmo_counter *calls;
 	} sccp;
 
 	struct {
-		struct counter *reconn;
-                struct counter *auth_fail;
+		struct osmo_counter *reconn;
+                struct osmo_counter *auth_fail;
 	} bsc;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} msc;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} ussd;
 };
 
