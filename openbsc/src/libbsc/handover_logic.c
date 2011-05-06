@@ -344,7 +344,7 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 
 	sig_ho.old_lchan = ho->old_lchan;
 	sig_ho.new_lchan = new_lchan;
-	dispatch_signal(SS_HO, S_HANDOVER_ACK, &sig_ho);
+	osmo_signal_dispatch(SS_HO, S_HANDOVER_ACK, &sig_ho);
 	return 0;
 }
 
@@ -388,6 +388,6 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
-	register_signal_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
-	register_signal_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }

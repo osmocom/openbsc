@@ -137,7 +137,7 @@ static void send_signal(struct osmo_bsc_rf *rf, int val)
 	sig.net = rf->gsm_network;
 
 	rf->policy = val;
-	dispatch_signal(SS_RF, val, &sig);
+	osmo_signal_dispatch(SS_RF, val, &sig);
 }
 
 static int switch_rf_off(struct osmo_bsc_rf *rf)

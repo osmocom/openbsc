@@ -151,7 +151,7 @@ static void send_signal(int sig_no,
 	sig.trans = trans;
 	sig.sms = sms;
 	sig.paging_result = paging_result;
-	dispatch_signal(SS_SMS, sig_no, &sig);
+	osmo_signal_dispatch(SS_SMS, sig_no, &sig);
 }
 
 /*

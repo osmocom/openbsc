@@ -671,5 +671,5 @@ static void handle_chan_nack(struct gsm_subscriber_connection *conn,
 
 static __attribute__((constructor)) void on_dso_load_bsc(void)
 {
-	register_signal_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
 }

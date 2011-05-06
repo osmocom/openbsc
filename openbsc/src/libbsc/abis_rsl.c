@@ -55,7 +55,7 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 	struct lchan_signal_data sig;
 	sig.lchan = lchan;
 	sig.mr = resp;
-	dispatch_signal(SS_LCHAN, sig_no, &sig);
+	osmo_signal_dispatch(SS_LCHAN, sig_no, &sig);
 }
 
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
@@ -1806,7 +1806,7 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 
 	ipac_parse_rtp(lchan, &tv);
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
 
 	return 0;
 }
@@ -1823,7 +1823,7 @@ static int abis_rsl_rx_ipacc_mdcx_ack(struct msgb *msg)
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	ipac_parse_rtp(lchan, &tv);
-	dispatch_signal(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
 
 	return 0;
 }
@@ -1839,7 +1839,7 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 		print_rsl_cause(LOGL_DEBUG, TLVP_VAL(&tv, RSL_IE_CAUSE),
 				TLVP_LEN(&tv, RSL_IE_CAUSE));
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
 
 	return 0;
 }

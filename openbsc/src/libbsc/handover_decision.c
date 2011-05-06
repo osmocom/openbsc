@@ -293,5 +293,5 @@ static int ho_dec_sig_cb(unsigned int subsys, unsigned int signal,
 
 void on_dso_load_ho_dec(void)
 {
-	register_signal_handler(SS_LCHAN, ho_dec_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, ho_dec_sig_cb, NULL);
 }

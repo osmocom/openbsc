@@ -148,6 +148,6 @@ static int token_sms_cb(unsigned int subsys, unsigned int signal,
 //static __attribute__((constructor)) void on_dso_load_token(void)
 void on_dso_load_token(void)
 {
-	register_signal_handler(SS_SUBSCR, token_subscr_cb, NULL);
-	register_signal_handler(SS_SMS, token_sms_cb, NULL);
+	osmo_signal_register_handler(SS_SUBSCR, token_subscr_cb, NULL);
+	osmo_signal_register_handler(SS_SMS, token_sms_cb, NULL);
 }

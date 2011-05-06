@@ -80,5 +80,5 @@ static int meas_proc_sig_cb(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_meas(void)
 {
-	register_signal_handler(SS_LCHAN, meas_proc_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, meas_proc_sig_cb, NULL);
 }

@@ -439,7 +439,7 @@ static int mm_rx_id_resp(struct gsm_subscriber_connection *conn, struct msgb *ms
 	DEBUGP(DMM, "IDENTITY RESPONSE: mi_type=0x%02x MI(%s)\n",
 		mi_type, mi_string);
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
@@ -520,7 +520,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
@@ -842,7 +842,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
@@ -1190,7 +1190,7 @@ static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 
 	sig.lchan = msg->lchan;
 	sig.mr = NULL;
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
 	/* FIXME: release old channel */
 
 	return 0;
@@ -1207,7 +1207,7 @@ static int gsm48_rx_rr_ho_fail(struct msgb *msg)
 
 	sig.lchan = msg->lchan;
 	sig.mr = NULL;
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, &sig);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, &sig);
 	/* FIXME: release allocated new channel */
 
 	return 0;
@@ -3343,6 +3343,6 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
-	register_signal_handler(SS_HO, handle_ho_signal, NULL);
-	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
+	osmo_signal_register_handler(SS_HO, handle_ho_signal, NULL);
+	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }

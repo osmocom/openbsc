@@ -764,7 +764,7 @@ DEFUN(smsqueue_fail,
 
 int bsc_vty_init_extra(void)
 {
-	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
+	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
 
 	install_element_ve(&show_subscr_cmd);
 	install_element_ve(&show_subscr_cache_cmd);

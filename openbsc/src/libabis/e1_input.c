@@ -576,7 +576,7 @@ int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
 	isd.sapi = sapi;
 
 	/* report further upwards */
-	dispatch_signal(SS_INPUT, evt, &isd);
+	osmo_signal_dispatch(SS_INPUT, evt, &isd);
 	return 0;
 }
 
@@ -612,7 +612,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	 * configured */
 	memset(&isd, 0, sizeof(isd));
 	isd.line = line;
-	dispatch_signal(SS_INPUT, S_INP_LINE_INIT, &isd);
+	osmo_signal_dispatch(SS_INPUT, S_INP_LINE_INIT, &isd);
 
 	return rc;
 }
@@ -639,7 +639,7 @@ void e1inp_init(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
-	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
+	osmo_signal_register_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
 #ifdef HAVE_DAHDI_USER_H

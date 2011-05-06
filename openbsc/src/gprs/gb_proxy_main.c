@@ -98,7 +98,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(1);
 		exit(0);
 		break;
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 	}
 	gbcfg.nsi = bssgp_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
-	register_signal_handler(SS_NS, &gbprox_signal, NULL);
+	osmo_signal_register_handler(SS_NS, &gbprox_signal, NULL);
 
 	rc = gbproxy_parse_config(config_file, &gbcfg);
 	if (rc < 0) {

@@ -753,7 +753,7 @@ static void update_mo_state(struct gsm_bts *bts, struct abis_om2k_mo *mo,
 	nsd.new_state = &new_state;
 	nsd.om2k_mo = mo;
 
-	dispatch_signal(SS_NM, S_NM_STATECHG_ADM, &nsd);
+	osmo_signal_dispatch(SS_NM, S_NM_STATECHG_ADM, &nsd);
 
 	nm_state->availability = new_state.availability;
 }
@@ -794,7 +794,7 @@ static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 	nsd.new_state = nm_state;
 	nsd.om2k_mo = mo;
 
-	dispatch_signal(SS_NM, S_NM_STATECHG_OPER, &nsd);
+	osmo_signal_dispatch(SS_NM, S_NM_STATECHG_OPER, &nsd);
 }
 
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
@@ -1434,7 +1434,7 @@ static int process_conf_res(struct gsm_bts *bts, struct msgb *msg)
 	nsd.obj = mo2obj(bts, &o2h->mo);
 	nsd.om2k_mo = &o2h->mo;
 	nsd.accordance_ind = acc;
-	dispatch_signal(SS_NM, S_NM_OM2K_CONF_RES, &nsd);
+	osmo_signal_dispatch(SS_NM, S_NM_OM2K_CONF_RES, &nsd);
 
 	return ret;
 }

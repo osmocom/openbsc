@@ -105,7 +105,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(1);
 		exit(0);
 		break;

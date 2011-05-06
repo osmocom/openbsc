@@ -83,11 +83,11 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
-		dispatch_signal(SS_INPUT, S_INP_LINE_ALARM, &isd);
+		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_ALARM, &isd);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
-		dispatch_signal(SS_INPUT, S_INP_LINE_NOALARM, &isd);
+		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_NOALARM, &isd);
 		break;
 	}
 }

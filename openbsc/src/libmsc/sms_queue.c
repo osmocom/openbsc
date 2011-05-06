@@ -303,8 +303,8 @@ int sms_queue_start(struct gsm_network *network, int max_pending)
 		return -1;
 	}
 
-	register_signal_handler(SS_SUBSCR, sms_subscr_cb, network);
-	register_signal_handler(SS_SMS, sms_sms_cb, network);
+	osmo_signal_register_handler(SS_SUBSCR, sms_subscr_cb, network);
+	osmo_signal_register_handler(SS_SMS, sms_sms_cb, network);
 
 	network->sms_queue = sms;
 	INIT_LLIST_HEAD(&sms->pending_sms);

@@ -97,7 +97,7 @@ static int subscr_paging_dispatch(unsigned int hooknum, unsigned int event,
 	sig_data.bts	= conn ? conn->bts : NULL;
 	sig_data.conn	= conn;
 	sig_data.paging_result = event;
-	dispatch_signal(
+	osmo_signal_dispatch(
 		SS_PAGING,
 		event == GSM_PAGING_SUCCEEDED ?
 			S_PAGING_SUCCEEDED : S_PAGING_EXPIRED,
@@ -337,7 +337,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 			subscr_name(s), s->lac);
 		rc = db_sync_subscriber(s);
 		db_subscriber_update(s);
-		dispatch_signal(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
+		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_ATTACHED, s);
 		break;
 	case GSM_SUBSCRIBER_UPDATE_DETACHED:
 		/* Only detach if we are currently in this area */
@@ -346,7 +346,7 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		LOGP(DMM, LOGL_INFO, "Subscriber %s DETACHED\n", subscr_name(s));
 		rc = db_sync_subscriber(s);
 		db_subscriber_update(s);
-		dispatch_signal(SS_SUBSCR, S_SUBSCR_DETACHED, s);
+		osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_DETACHED, s);
 		break;
 	default:
 		fprintf(stderr, "subscr_update with unknown reason: %d\n",

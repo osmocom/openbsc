@@ -284,7 +284,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		struct challoc_signal_data sig;
 		sig.bts = bts;
 		sig.type = type;
-		dispatch_signal(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
+		osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
 	}
 
 	return lchan;
@@ -306,7 +306,7 @@ void lchan_free(struct gsm_lchan *lchan)
 		/* We might kill an active channel... */
 		sig.lchan = lchan;
 		sig.mr = NULL;
-		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
+		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
 	}
 
 
@@ -330,7 +330,7 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	sig.lchan = lchan;
 	sig.bts = lchan->ts->trx->bts;
-	dispatch_signal(SS_CHALLOC, S_CHALLOC_FREED, &sig);
+	osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_FREED, &sig);
 
 	if (lchan->conn) {
 		LOGP(DRLL, LOGL_ERROR, "the subscriber connection should be gone.\n");

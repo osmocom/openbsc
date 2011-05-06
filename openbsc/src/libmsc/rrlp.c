@@ -99,6 +99,6 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 
 void on_dso_load_rrlp(void)
 {
-	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
-	register_signal_handler(SS_PAGING, paging_sig_cb, NULL);
+	osmo_signal_register_handler(SS_SUBSCR, subscr_sig_cb, NULL);
+	osmo_signal_register_handler(SS_PAGING, paging_sig_cb, NULL);
 }

@@ -282,7 +282,7 @@ int osmo_bsc_sccp_init(struct gsm_network *gsmnet)
 	sccp_connection_set_incoming(&sccp_ssn_bssap, msc_sccp_accept, NULL);
 	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, gsmnet);
 
-	register_signal_handler(SS_MSC, handle_msc_signal, gsmnet);
+	osmo_signal_register_handler(SS_MSC, handle_msc_signal, gsmnet);
 
 	return 0;
 }

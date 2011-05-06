@@ -82,7 +82,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
 	}
 
 	return 0;
@@ -434,8 +434,8 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	if (rc < 0)
 		return rc;
 
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		rc = bootstrap_bts(bts);

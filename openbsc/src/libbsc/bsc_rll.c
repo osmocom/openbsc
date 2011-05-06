@@ -137,5 +137,5 @@ static int rll_lchan_signal(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_rll(void)
 {
-	register_signal_handler(SS_CHALLOC, rll_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_CHALLOC, rll_lchan_signal, NULL);
 }

@@ -156,7 +156,7 @@ int bts_model_hslfemto_init(void)
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_EGPRS);
 
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 
 	return gsm_bts_model_register(&model_hslfemto);
 }

@@ -306,7 +306,7 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 	msc_ping_timeout_cb(data);
 
 	sig.data = data;
-	dispatch_signal(SS_MSC, S_MSC_CONNECTED, &sig);
+	osmo_signal_dispatch(SS_MSC, S_MSC_CONNECTED, &sig);
 }
 
 /*
@@ -325,7 +325,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 	osmo_timer_del(&data->pong_timer);
 
 	sig.data = data;
-	dispatch_signal(SS_MSC, S_MSC_LOST, &sig);
+	osmo_signal_dispatch(SS_MSC, S_MSC_LOST, &sig);
 
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);

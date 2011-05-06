@@ -583,8 +583,8 @@ int bts_model_bs11_init(void)
 	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HSCSD);
 
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
-	register_signal_handler(SS_GLOBAL, gbl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
 
 	return gsm_bts_model_register(&model_bs11);
 }

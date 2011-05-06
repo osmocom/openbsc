@@ -222,7 +222,7 @@ static int test_rep(void *_msg)
 		msg->trx->ipaccess.test_state = IPAC_TEST_S_IDLE;
 		/* Send signal to notify higher layers of test completion */
 		DEBUGP(DNM, "dispatching S_IPAC_NWL_COMPLETE signal\n");
-		dispatch_signal(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
+		osmo_signal_dispatch(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
 		break;
 	case NM_IPACC_TESTRES_PARTIAL:
 		msg->trx->ipaccess.test_state = IPAC_TEST_S_PARTIAL;
@@ -247,5 +247,5 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 
 void ipac_nwl_init(void)
 {
-	register_signal_handler(SS_NM, nwl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nwl_sig_cb, NULL);
 }

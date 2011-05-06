@@ -257,9 +257,9 @@ int bts_model_rbs2k_init(void)
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HSCSD);
 
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
-	register_signal_handler(SS_GLOBAL, gbl_sig_cb, NULL);
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
 	return gsm_bts_model_register(&model_rbs2k);
 }
