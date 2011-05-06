@@ -50,7 +50,7 @@ enum bs11cfg_state {
 };
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 static char *command, *value;
-struct timer_list status_timer;
+struct osmo_timer_list status_timer;
 
 static const uint8_t obj_li_attr[] = {
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
@@ -731,7 +731,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		abis_nm_bs11_factory_logon(g_bts, 1);
 		break;
 	case STATE_LOGON_ACK:
-		bsc_schedule_timer(&status_timer, 5, 0);
+		osmo_timer_schedule(&status_timer, 5, 0);
 		break;
 	default:
 		break;

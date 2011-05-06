@@ -222,7 +222,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
 	e1i_ts->sign.tx_timer.data = e1i_ts;
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 50000);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, 50000);
 
 	return 0;
 }

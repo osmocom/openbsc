@@ -73,7 +73,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 				struct gsm_paging_request *to_be_deleted)
 {
-	bsc_del_timer(&to_be_deleted->T3113);
+	osmo_timer_del(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
 	talloc_free(to_be_deleted);
@@ -102,8 +102,8 @@ static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)
 	if (llist_empty(&paging_bts->pending_requests))
 		return;
 
-	if (!bsc_timer_pending(&paging_bts->work_timer))
-		bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
+	if (!osmo_timer_pending(&paging_bts->work_timer))
+		osmo_timer_schedule(&paging_bts->work_timer, PAGING_TIMER);
 }
 
 
@@ -192,7 +192,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	if (paging_bts->available_slots == 0) {
 		paging_bts->credit_timer.cb = paging_give_credit;
 		paging_bts->credit_timer.data = paging_bts;
-		bsc_schedule_timer(&paging_bts->credit_timer, 5, 0);
+		osmo_timer_schedule(&paging_bts->credit_timer, 5, 0);
 		return;
 	}
 
@@ -215,7 +215,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	llist_add_tail(&request->entry, &paging_bts->pending_requests);
 
 skip_paging:
-	bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
+	osmo_timer_schedule(&paging_bts->work_timer, PAGING_TIMER);
 }
 
 static void paging_worker(void *data)
@@ -298,7 +298,7 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->cbfn_param = data;
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
-	bsc_schedule_timer(&req->T3113, bts->network->T3113, 0);
+	osmo_timer_schedule(&req->T3113, bts->network->T3113, 0);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 	paging_schedule_if_needed(bts_entry);
 
@@ -399,7 +399,7 @@ void paging_update_buffer_space(struct gsm_bts *bts, uint16_t free_slots)
 {
 	paging_init_if_needed(bts);
 
-	bsc_del_timer(&bts->paging.credit_timer);
+	osmo_timer_del(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
 	paging_schedule_if_needed(&bts->paging);
 }

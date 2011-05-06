@@ -95,8 +95,8 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		LOGP(DMSC, LOGL_DEBUG, "Connection established: %p\n", conn);
 		con_data = (struct osmo_bsc_sccp_con *) conn->data_ctx;
 
-		bsc_del_timer(&con_data->sccp_cc_timeout);
-		bsc_schedule_timer(&con_data->sccp_it_timeout, SCCP_IT_TIMER, 0);
+		osmo_timer_del(&con_data->sccp_cc_timeout);
+		osmo_timer_schedule(&con_data->sccp_it_timeout, SCCP_IT_TIMER, 0);
 
 		send_queued(con_data);
 	}
@@ -122,7 +122,7 @@ static void sccp_it_timeout(void *_data)
 		(struct osmo_bsc_sccp_con *) _data;
 
 	sccp_connection_send_it(data->sccp);
-	bsc_schedule_timer(&data->sccp_it_timeout, SCCP_IT_TIMER, 0);
+	osmo_timer_schedule(&data->sccp_it_timeout, SCCP_IT_TIMER, 0);
 }
 
 static void sccp_cc_timeout(void *_data)
@@ -231,7 +231,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 
 int bsc_open_connection(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 {
-	bsc_schedule_timer(&conn->sccp_cc_timeout, 10, 0);
+	osmo_timer_schedule(&conn->sccp_cc_timeout, 10, 0);
 	sccp_connection_connect(conn->sccp, &sccp_ssn_bssap, msg);
 	msgb_free(msg);
 	return 0;
@@ -246,8 +246,8 @@ int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp)
 		LOGP(DMSC, LOGL_ERROR, "Should have been cleared.\n");
 
 	llist_del(&sccp->entry);
-	bsc_del_timer(&sccp->sccp_it_timeout);
-	bsc_del_timer(&sccp->sccp_cc_timeout);
+	osmo_timer_del(&sccp->sccp_it_timeout);
+	osmo_timer_del(&sccp->sccp_cc_timeout);
 	talloc_free(sccp);
 	return 0;
 }

@@ -340,7 +340,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }

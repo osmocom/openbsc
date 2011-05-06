@@ -538,7 +538,7 @@ static void sgsn_gtp_tmr_start(struct sgsn_instance *sgi)
 	gtp_retranstimeout(sgi->gsn, &next);
 
 	/* re-schedule the timer */
-	bsc_schedule_timer(&sgi->gtp_timer, next.tv_sec, next.tv_usec/1000);
+	osmo_timer_schedule(&sgi->gtp_timer, next.tv_sec, next.tv_usec/1000);
 }
 
 /* timer callback for libgtp retransmissions and ping */

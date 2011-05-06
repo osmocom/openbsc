@@ -57,7 +57,7 @@ struct ipa_proxy {
 	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 	/* the BSC reconnect timer */
-	struct timer_list reconn_timer;
+	struct osmo_timer_list reconn_timer;
 	/* global GPRS NS data */
 	struct in_addr gprs_addr;
 	struct in_addr listen_addr;
@@ -657,7 +657,7 @@ static void reconn_tmr_cb(void *data)
 	return;
 
 reschedule:
-	bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+	osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 }
 
 static void handle_dead_socket(struct bsc_fd *bfd)
@@ -709,13 +709,13 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->bsc_oml_conn = NULL;
 		bsc_conn = ipbc->oml_conn;
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	case RSL_TO_BSC: /* incoming RSL data from BSC, forward to BTS RSL */
 		ipbc->bsc_rsl_conn[trx_id] = NULL;
 		bsc_conn = ipbc->rsl_conn[trx_id];
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	default:
 		bsc_conn = NULL;

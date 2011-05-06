@@ -137,7 +137,7 @@ struct lapd_sap {
 	int va;			/* last acked by peer */
 	int vr;			/* next expected to be received */
 
-	struct timer_list sabme_timer;	/* timer to re-transmit SABM message */
+	struct osmo_timer_list sabme_timer;	/* timer to re-transmit SABM message */
 };
 
 /* 3.5.2.2   Send state variable V(S)
@@ -259,11 +259,11 @@ static void lapd_sap_set_state(struct lapd_tei *teip, uint8_t sapi,
 	switch (sap->state) {
 	case SAP_STATE_SABM_RETRANS:
 		if (newstate != SAP_STATE_SABM_RETRANS)
-			bsc_del_timer(&sap->sabme_timer);
+			osmo_timer_del(&sap->sabme_timer);
 		break;
 	default:
 		if (newstate == SAP_STATE_SABM_RETRANS)
-			bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+			osmo_timer_schedule(&sap->sabme_timer, SABM_INTERVAL);
 		break;
 	}
 
@@ -608,7 +608,7 @@ static void sabme_timer_cb(void *_sap)
 	lapd_send_sabm(sap->tei->li, sap->tei->tei, sap->sapi);
 
 	if (sap->state == SAP_STATE_SABM_RETRANS)
-		bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+		osmo_timer_schedule(&sap->sabme_timer, SABM_INTERVAL);
 }
 
 /* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */

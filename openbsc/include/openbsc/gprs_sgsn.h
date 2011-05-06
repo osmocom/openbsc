@@ -102,7 +102,7 @@ struct sgsn_mm_ctx {
 	uint16_t		nsei;
 	uint16_t		bvci;
 	struct rate_ctr_group	*ctrg;
-	struct timer_list	timer;
+	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */
 	unsigned int		num_T_exp;	/* number of consecutive T expirations */
 
@@ -168,7 +168,7 @@ struct sgsn_pdp_ctx {
 	//uint32_t		charging_id;
 	int			reordering_reqd;
 
-	struct timer_list	timer;
+	struct osmo_timer_list	timer;
 	unsigned int		T;		/* Txxxx number */
 	unsigned int		num_T_exp;	/* number of consecutive T expirations */
 };

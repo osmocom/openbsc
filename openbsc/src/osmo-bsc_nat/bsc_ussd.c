@@ -59,7 +59,7 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 
 	close(con->queue.bfd.fd);
 	bsc_unregister_fd(&con->queue.bfd);
-	bsc_del_timer(&con->auth_timeout);
+	osmo_timer_del(&con->auth_timeout);
 	write_queue_clear(&con->queue);
 	talloc_free(con);
 }
@@ -168,7 +168,7 @@ static void ussd_auth_con(struct tlv_parsed *tvp, struct bsc_nat_ussd_con *conn)
 		bsc_nat_ussd_destroy(conn->nat->ussd_con);
 
 	LOGP(DNAT, LOGL_ERROR, "USSD token specified. USSD provider is connected.\n");
-	bsc_del_timer(&conn->auth_timeout);
+	osmo_timer_del(&conn->auth_timeout);
 	conn->authorized = 1;
 	conn->nat->ussd_con = conn;
 }
@@ -179,7 +179,7 @@ static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
 
 	conn->auth_timeout.data = conn;
 	conn->auth_timeout.cb = ussd_auth_cb;
-	bsc_schedule_timer(&conn->auth_timeout, conn->nat->auth_timeout, 0);
+	osmo_timer_schedule(&conn->auth_timeout, conn->nat->auth_timeout, 0);
 
 	msg = msgb_alloc_headroom(4096, 128, "auth message");
 	if (!msg) {

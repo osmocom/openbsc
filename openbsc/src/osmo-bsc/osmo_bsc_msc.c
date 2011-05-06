@@ -239,7 +239,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(data, bfd->fd);
 		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
-			bsc_del_timer(&data->pong_timer);
+			osmo_timer_del(&data->pong_timer);
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
@@ -278,10 +278,10 @@ static void msc_ping_timeout_cb(void *_data)
 	send_ping(data);
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&data->ping_timer, data->ping_timeout, 0);
+	osmo_timer_schedule(&data->ping_timer, data->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&data->pong_timer, data->pong_timeout, 0);
+	osmo_timer_schedule(&data->pong_timer, data->pong_timeout, 0);
 }
 
 static void msc_pong_timeout_cb(void *_data)
@@ -321,8 +321,8 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
 
 	data = (struct osmo_msc_data *) msc->write_queue.bfd.data;
-	bsc_del_timer(&data->ping_timer);
-	bsc_del_timer(&data->pong_timer);
+	osmo_timer_del(&data->ping_timer);
+	osmo_timer_del(&data->pong_timer);
 
 	sig.data = data;
 	dispatch_signal(SS_MSC, S_MSC_LOST, &sig);

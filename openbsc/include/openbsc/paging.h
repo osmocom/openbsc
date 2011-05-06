@@ -43,7 +43,7 @@ struct gsm_paging_request {
 	int chan_type;
 
 	/* Timer 3113: how long do we try to page? */
-	struct timer_list T3113;
+	struct osmo_timer_list T3113;
 
 	/* How often did we ask the BTS to page? */
 	int attempts;

@@ -47,7 +47,7 @@ struct bsc_handover {
 	struct gsm_lchan *old_lchan;
 	struct gsm_lchan *new_lchan;
 
-	struct timer_list T3103;
+	struct osmo_timer_list T3103;
 
 	uint8_t ho_ref;
 };
@@ -170,7 +170,7 @@ void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan)
 	if (free_lchan)
 		lchan_release(ho->new_lchan, 0, 1);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
 	talloc_free(ho);
 }
@@ -214,7 +214,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
 	ho->T3103.data = ho;
-	bsc_schedule_timer(&ho->T3103, 10, 0);
+	osmo_timer_schedule(&ho->T3103, 10, 0);
 
 	/* create a RTP connection */
 	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
@@ -264,7 +264,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 
 	counter_inc(net->stats.handover.completed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 
 	/* Replace the ho lchan with the primary one */
 	if (ho->old_lchan != new_lchan->conn->lchan)
@@ -302,7 +302,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 
 	counter_inc(net->stats.handover.failed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
 
 	/* release the channel and forget about it */

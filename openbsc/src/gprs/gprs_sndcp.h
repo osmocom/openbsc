@@ -20,7 +20,7 @@ struct defrag_state {
 	/* linked list of defrag_queue_entry: one for each fragment  */
 	struct llist_head frag_list;
 
-	struct timer_list timer;
+	struct osmo_timer_list timer;
 };
 
 /* See 6.7.1.2 Reassembly */

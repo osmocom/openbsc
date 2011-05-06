@@ -53,7 +53,7 @@ static int use_mncc_sock = 0;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
-static struct timer_list db_sync_timer;
+static struct osmo_timer_list db_sync_timer;
 
 extern int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 				 const char *cfg_file);
@@ -204,7 +204,7 @@ static void db_sync_timer_cb(void *data)
 {
 	/* store counters to database and re-schedule */
 	counters_for_each(_db_store_counter, NULL);
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
 extern int bts_model_unknown_init(void);
@@ -285,7 +285,7 @@ int main(int argc, char **argv)
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

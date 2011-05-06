@@ -311,7 +311,7 @@ void lchan_free(struct gsm_lchan *lchan)
 
 
 	/* stop the timer */
-	bsc_del_timer(&lchan->T3101);
+	osmo_timer_del(&lchan->T3101);
 
 	/* clear cached measuement reports */
 	lchan->meas_rep_idx = 0;
@@ -356,9 +356,9 @@ void lchan_free(struct gsm_lchan *lchan)
  */
 void lchan_reset(struct gsm_lchan *lchan)
 {
-	bsc_del_timer(&lchan->T3101);
-	bsc_del_timer(&lchan->T3111);
-	bsc_del_timer(&lchan->error_timer);
+	osmo_timer_del(&lchan->T3101);
+	osmo_timer_del(&lchan->T3111);
+	osmo_timer_del(&lchan->error_timer);
 
 	lchan->type = GSM_LCHAN_NONE;
 	lchan->state = LCHAN_S_NONE;

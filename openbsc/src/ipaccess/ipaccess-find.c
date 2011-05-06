@@ -152,7 +152,7 @@ static int bfd_cb(struct bsc_fd *bfd, unsigned int flags)
 	return 0;
 }
 
-static struct timer_list timer;
+static struct osmo_timer_list timer;
 
 static void timer_cb(void *_data)
 {
@@ -160,7 +160,7 @@ static void timer_cb(void *_data)
 
 	bfd->when |= BSC_FD_WRITE;
 
-	bsc_schedule_timer(&timer, 5, 0);
+	osmo_timer_schedule(&timer, 5, 0);
 }
 
 int main(int argc, char **argv)
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
 	timer.cb = timer_cb;
 	timer.data = &bfd;
 
-	bsc_schedule_timer(&timer, 5, 0);
+	osmo_timer_schedule(&timer, 5, 0);
 
 	printf("Trying to find ip.access BTS by broadcast UDP...\n");
 

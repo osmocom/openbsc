@@ -669,7 +669,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
-		bsc_schedule_timer(&lchan->error_timer,
+		osmo_timer_schedule(&lchan->error_timer,
 				   msg->trx->bts->network->T3111 + 2, 0);
 	}
 
@@ -694,7 +694,7 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
-	bsc_del_timer(&lchan->T3111);
+	osmo_timer_del(&lchan->T3111);
 	/* we have an error timer pending to release that */
 	if (lchan->state != LCHAN_S_REL_ERR)
 		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
@@ -1354,7 +1354,7 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 	lchan->T3101.cb = t3101_expired;
 	lchan->T3101.data = lchan;
-	bsc_schedule_timer(&lchan->T3101, bts->network->T3101, 0);
+	osmo_timer_schedule(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	return rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (uint8_t *) ia);
@@ -1466,7 +1466,7 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	lchan->T3111.cb = t3111_expired;
 	lchan->T3111.data = lchan;
 	bts = lchan->ts->trx->bts;
-	bsc_schedule_timer(&lchan->T3111, bts->network->T3111, 0);
+	osmo_timer_schedule(&lchan->T3111, bts->network->T3111, 0);
 }
 
 /*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST
@@ -1500,7 +1500,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		DEBUGPC(DRLL, "ESTABLISH INDICATION\n");
 		/* lchan is established, stop T3101 */
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_MS;
-		bsc_del_timer(&msg->lchan->T3101);
+		osmo_timer_del(&msg->lchan->T3101);
 		if (msgb_l2len(msg) >
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {

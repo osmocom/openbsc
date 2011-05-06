@@ -16,13 +16,13 @@ struct osmo_bsc_rf {
 
 	/* delay the command */
 	char last_request;
-	struct timer_list delay_cmd;
+	struct osmo_timer_list delay_cmd;
 
 	/* verify that RF is up as it should be */
-	struct timer_list rf_check;
+	struct osmo_timer_list rf_check;
 
 	/* some handling for the automatic grace switch */
-	struct timer_list grace_timeout;
+	struct osmo_timer_list grace_timeout;
 };
 
 struct osmo_bsc_rf_conn {

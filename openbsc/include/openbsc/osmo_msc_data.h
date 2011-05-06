@@ -43,8 +43,8 @@ struct osmo_msc_data {
 	char *bsc_token;
 	int ping_timeout;
 	int pong_timeout;
-	struct timer_list ping_timer;
-	struct timer_list pong_timer;
+	struct osmo_timer_list ping_timer;
+	struct osmo_timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int core_mcc;

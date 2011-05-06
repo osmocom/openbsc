@@ -241,7 +241,7 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	sign_link = msg->trx->rsl_link;
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -276,7 +276,7 @@ int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 		sign_link = msg->trx->bts->oml_link;
 
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -471,7 +471,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	}
 
 	if (link->ts->type == E1INP_TS_TYPE_SIGN)
-		bsc_del_timer(&link->ts->sign.tx_timer);
+		osmo_timer_del(&link->ts->sign.tx_timer);
 
 	talloc_free(link);
 }

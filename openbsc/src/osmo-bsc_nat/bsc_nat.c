@@ -66,7 +66,7 @@ static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
 static struct bsc_fd bsc_listen;
 static const char *msc_ip = NULL;
-static struct timer_list sccp_close;
+static struct osmo_timer_list sccp_close;
 static int daemonize = 0;
 
 const char *openbsc_copyright =
@@ -153,10 +153,10 @@ static void bsc_ping_timeout(void *_bsc)
 	send_ping(bsc);
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&bsc->ping_timeout, bsc->nat->ping_timeout, 0);
+	osmo_timer_schedule(&bsc->ping_timeout, bsc->nat->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&bsc->pong_timeout, bsc->nat->pong_timeout, 0);
+	osmo_timer_schedule(&bsc->pong_timeout, bsc->nat->pong_timeout, 0);
 }
 
 static void start_ping_pong(struct bsc_connection *bsc)
@@ -848,9 +848,9 @@ void bsc_close_connection(struct bsc_connection *connection)
 	struct rate_ctr *ctr = NULL;
 
 	/* stop the timeout timer */
-	bsc_del_timer(&connection->id_timeout);
-	bsc_del_timer(&connection->ping_timeout);
-	bsc_del_timer(&connection->pong_timeout);
+	osmo_timer_del(&connection->id_timeout);
+	osmo_timer_del(&connection->ping_timeout);
+	osmo_timer_del(&connection->pong_timeout);
 
 	if (connection->cfg)
 		ctr = &connection->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_SCCP];
@@ -930,7 +930,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
-			bsc_del_timer(&bsc->id_timeout);
+			osmo_timer_del(&bsc->id_timeout);
 			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
 			     conf->nr, bsc->write_queue.bfd.fd);
 			start_ping_pong(bsc);
@@ -1177,7 +1177,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	/* stop the pong timeout */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg->l2h[0] == IPAC_MSGT_PONG) {
-			bsc_del_timer(&bsc->pong_timeout);
+			osmo_timer_del(&bsc->pong_timeout);
 			msgb_free(msg);
 			return 0;
 		} else if (msg->l2h[0] == IPAC_MSGT_PING) {
@@ -1275,7 +1275,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	bsc->id_timeout.data = bsc;
 	bsc->id_timeout.cb = ipaccess_close_bsc;
-	bsc_schedule_timer(&bsc->id_timeout, nat->auth_timeout, 0);
+	osmo_timer_schedule(&bsc->id_timeout, nat->auth_timeout, 0);
 	return 0;
 }
 
@@ -1391,7 +1391,7 @@ static void sccp_close_unconfirmed(void *_data)
 		bsc_maybe_close(bsc);
 
 out:
-	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
+	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 }
 
 extern void *tall_msgb_ctx;
@@ -1511,7 +1511,7 @@ int main(int argc, char **argv)
 	sccp_set_log_area(DSCCP);
 	sccp_close.cb = sccp_close_unconfirmed;
 	sccp_close.data = NULL;
-	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
+	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 
 	while (1) {
 		bsc_select_main(0);

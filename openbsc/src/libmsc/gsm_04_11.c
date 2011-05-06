@@ -210,7 +210,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		trans->sms.cp_timer.data = trans;
 		trans->sms.cp_timer.cb = cp_timer_expired;
 		/* 5.3.2.1: Set Timer TC1A */
-		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
+		osmo_timer_schedule(&trans->sms.cp_timer, GSM411_TMR_TC1A);
 		DEBUGP(DSMS, "TX: CP-DATA ");
 		break;
 	case GSM411_MT_CP_ACK:
@@ -1008,7 +1008,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 				DEBUGP(DSMS, "Implicit CP-ACK for trans_id=%x\n", i);
 
 				/* Finish it for good */
-				bsc_del_timer(&ptrans->sms.cp_timer);
+				osmo_timer_del(&ptrans->sms.cp_timer);
 				ptrans->sms.cp_state = GSM411_CPS_IDLE;
 				trans_free(ptrans);
 			}
@@ -1039,7 +1039,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
 		/* Stop TC1* after CP-ACK has been received */
-		bsc_del_timer(&trans->sms.cp_timer);
+		osmo_timer_del(&trans->sms.cp_timer);
 
 		if (!trans->sms.is_mt) {
 			/* FIXME: we have sent one CP-DATA, which was now
@@ -1052,7 +1052,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 	case GSM411_MT_CP_ERROR:
 		DEBUGPC(DSMS, "RX SMS CP-ERROR, cause %d (%s)\n", gh->data[0],
 			get_value_string(cp_cause_strs, gh->data[0]));
-		bsc_del_timer(&trans->sms.cp_timer);
+		osmo_timer_del(&trans->sms.cp_timer);
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 		break;
@@ -1208,7 +1208,7 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 		trans->sms.sms = NULL;
 	}
 
-	bsc_del_timer(&trans->sms.cp_timer);
+	osmo_timer_del(&trans->sms.cp_timer);
 }
 
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)

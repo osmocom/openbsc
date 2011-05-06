@@ -25,7 +25,7 @@ struct sgsn_instance {
 	struct bsc_fd gtp_fd1c;
 	struct bsc_fd gtp_fd1u;
 	/* Timer for libGTP */
-	struct timer_list gtp_timer;
+	struct osmo_timer_list gtp_timer;
 	/* GSN instance for libgtp */
 	struct gsn_t *gsn;
 };

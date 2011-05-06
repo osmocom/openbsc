@@ -177,7 +177,7 @@ struct gsm_nm_state {
  *	- Accept/Reject according to global policy
  */
 struct gsm_loc_updating_operation {
-        struct timer_list updating_timer;
+        struct osmo_timer_list updating_timer;
 	unsigned int waiting_for_imsi : 1;
 	unsigned int waiting_for_imei : 1;
 	unsigned int key_seq : 4;
@@ -197,7 +197,7 @@ struct gsm_security_operation {
  * a couple of seconds to work around MSC issues.
  */
 struct gsm_anchor_operation {
-	struct timer_list timeout;
+	struct osmo_timer_list timeout;
 };
 
 /* Maximum number of neighbor cells whose average we track */
@@ -263,7 +263,7 @@ struct gsm_subscriber_connection {
 	struct gsm_bts *bts;
 
 	/* for assignment handling */
-	struct timer_list T10;
+	struct osmo_timer_list T10;
 	struct gsm_lchan *secondary_lchan;
 
 };
@@ -291,9 +291,9 @@ struct gsm_lchan {
 		uint8_t key[MAX_A5_KEY_LEN];
 	} encr;
 
-	struct timer_list T3101;
-	struct timer_list T3111;
-	struct timer_list error_timer;
+	struct osmo_timer_list T3101;
+	struct osmo_timer_list T3111;
+	struct osmo_timer_list error_timer;
 
 	/* AMR bits */
 	struct gsm48_multi_rate_conf mr_conf;
@@ -464,8 +464,8 @@ struct gsm_bts_paging_state {
 	struct llist_head pending_requests;
 	struct gsm_bts *bts;
 
-	struct timer_list work_timer;
-	struct timer_list credit_timer;
+	struct osmo_timer_list work_timer;
+	struct osmo_timer_list credit_timer;
 
 	/* free chans needed */
 	int free_chans_need;

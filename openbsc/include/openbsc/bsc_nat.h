@@ -82,11 +82,11 @@ struct bsc_connection {
 	struct bsc_config *cfg;
 
 	/* a timeout node */
-	struct timer_list id_timeout;
+	struct osmo_timer_list id_timeout;
 
 	/* pong timeout */
-	struct timer_list ping_timeout;
-	struct timer_list pong_timeout;
+	struct osmo_timer_list ping_timeout;
+	struct osmo_timer_list pong_timeout;
 
 	/* mgcp related code */
 	char *_endpoint_status;
@@ -290,7 +290,7 @@ struct bsc_nat_ussd_con {
 	struct bsc_nat *nat;
 	int authorized;
 
-	struct timer_list auth_timeout;
+	struct osmo_timer_list auth_timeout;
 };
 
 /* create and init the structures */

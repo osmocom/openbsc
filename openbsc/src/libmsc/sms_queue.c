@@ -54,8 +54,8 @@ struct gsm_sms_pending {
 };
 
 struct gsm_sms_queue {
-	struct timer_list resend_pending;
-	struct timer_list push_queue;
+	struct osmo_timer_list resend_pending;
+	struct osmo_timer_list push_queue;
 	struct gsm_network *network;
 	int max_fail;
 	int max_pending;
@@ -129,10 +129,10 @@ static void sms_pending_resend(struct gsm_sms_pending *pending)
 	pending->resend = 1;
 
 	smsq = pending->subscr->net->sms_queue;
-	if (bsc_timer_pending(&smsq->resend_pending))
+	if (osmo_timer_pending(&smsq->resend_pending))
 		return;
 
-	bsc_schedule_timer(&smsq->resend_pending, 1, 0);
+	osmo_timer_schedule(&smsq->resend_pending, 1, 0);
 }
 
 static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error)
@@ -288,10 +288,10 @@ static void sms_submit_pending(void *_data)
  */
 int sms_queue_trigger(struct gsm_sms_queue *smsq)
 {
-	if (bsc_timer_pending(&smsq->push_queue))
+	if (osmo_timer_pending(&smsq->push_queue))
 		return 0;
 
-	bsc_schedule_timer(&smsq->push_queue, 1, 0);
+	osmo_timer_schedule(&smsq->push_queue, 1, 0);
 	return 0;
 }
 

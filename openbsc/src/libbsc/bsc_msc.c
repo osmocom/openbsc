@@ -77,7 +77,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
 	/* From here on we will either be connected or reconnect */
-	bsc_del_timer(&con->timeout_timer);
+	osmo_timer_del(&con->timeout_timer);
 
 	/* check the socket state */
 	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
@@ -184,7 +184,7 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		fd->cb = msc_connection_connect;
 		con->timeout_timer.cb = msc_con_timeout;
 		con->timeout_timer.data = con;
-		bsc_schedule_timer(&con->timeout_timer, 20, 0);
+		osmo_timer_schedule(&con->timeout_timer, 20, 0);
 	} else if (ret < 0) {
 		perror("Connection failed");
 		connection_loss(con);
@@ -226,7 +226,7 @@ struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dests)
 void bsc_msc_lost(struct bsc_msc_connection *con)
 {
 	write_queue_clear(&con->write_queue);
-	bsc_del_timer(&con->timeout_timer);
+	osmo_timer_del(&con->timeout_timer);
 
 	if (con->write_queue.bfd.fd >= 0)
 		bsc_unregister_fd(&con->write_queue.bfd);
@@ -246,7 +246,7 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
 	con->reconnect_timer.cb = reconnect_msc;
 	con->reconnect_timer.data = con;
-	bsc_schedule_timer(&con->reconnect_timer, 5, 0);
+	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
 }
 
 struct msgb *bsc_msc_id_get_resp(const char *token)

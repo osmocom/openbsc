@@ -69,7 +69,7 @@ struct e1inp_ts {
 			/* delay for the queue */
 			int delay;
 			/* timer when to dequeue next frame */
-			struct timer_list tx_timer;
+			struct osmo_timer_list tx_timer;
 		} sign;
 		struct {
 			/* subchannel demuxer for frames from E1 */

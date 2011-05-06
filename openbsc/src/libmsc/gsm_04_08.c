@@ -243,7 +243,7 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 	/* No need to keep the connection up */
 	release_anchor(conn);
 
-	bsc_del_timer(&conn->loc_operation->updating_timer);
+	osmo_timer_del(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = NULL;
 	msc_release_connection(conn);
@@ -483,7 +483,7 @@ static void schedule_reject(struct gsm_subscriber_connection *conn)
 {
 	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
 	conn->loc_operation->updating_timer.data = conn;
-	bsc_schedule_timer(&conn->loc_operation->updating_timer, 5, 0);
+	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
 }
 
 static const char *lupd_name(uint8_t type)
@@ -1331,9 +1331,9 @@ static int gsm48_tx_simple(struct gsm_subscriber_connection *conn,
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 {
-	if (bsc_timer_pending(&trans->cc.timer)) {
+	if (osmo_timer_pending(&trans->cc.timer)) {
 		DEBUGP(DCC, "stopping pending timer T%x\n", trans->cc.Tcurrent);
-		bsc_del_timer(&trans->cc.timer);
+		osmo_timer_del(&trans->cc.timer);
 		trans->cc.Tcurrent = 0;
 	}
 }
@@ -1816,7 +1816,7 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 	DEBUGP(DCC, "starting timer T%x with %d seconds\n", current, sec);
 	trans->cc.timer.cb = gsm48_cc_timeout;
 	trans->cc.timer.data = trans;
-	bsc_schedule_timer(&trans->cc.timer, sec, micro);
+	osmo_timer_schedule(&trans->cc.timer, sec, micro);
 	trans->cc.Tcurrent = current;
 }
 
@@ -3269,7 +3269,7 @@ static void release_anchor(struct gsm_subscriber_connection *conn)
 	if (!conn->anch_operation)
 		return;
 
-	bsc_del_timer(&conn->anch_operation->timeout);
+	osmo_timer_del(&conn->anch_operation->timeout);
 	talloc_free(conn->anch_operation);
 	conn->anch_operation = NULL;
 }
@@ -3290,7 +3290,7 @@ int gsm0408_new_conn(struct gsm_subscriber_connection *conn)
 
 	conn->anch_operation->timeout.data = conn;
 	conn->anch_operation->timeout.cb = anchor_timeout;
-	bsc_schedule_timer(&conn->anch_operation->timeout, 5, 0);
+	osmo_timer_schedule(&conn->anch_operation->timeout, 5, 0);
 	return 0;
 }
 
