@@ -489,7 +489,7 @@ static void test_mgcp_ass_tracking(void)
 	if (msg->l2h[16] != 0 ||
 	    msg->l2h[17] != 0x1) {
 		fprintf(stderr, "Input is not as expected.. %s 0x%x\n",
-			hexdump(msg->l2h, msgb_l2len(msg)),
+			osmo_hexdump(msg->l2h, msgb_l2len(msg)),
 			msg->l2h[17]);
 		abort();
 	}
@@ -519,7 +519,7 @@ static void test_mgcp_ass_tracking(void)
 	uint16_t cic = htons(timeslot & 0x1f);
 	if (memcmp(&cic, &msg->l2h[16], sizeof(cic)) != 0) {
 		fprintf(stderr, "Message was not patched properly\n");
-		fprintf(stderr, "data cic: 0x%x %s\n", cic, hexdump(msg->l2h, msgb_l2len(msg)));
+		fprintf(stderr, "data cic: 0x%x %s\n", cic, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 		abort();
 	}
 
@@ -908,7 +908,7 @@ static void test_setup_rewrite()
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
 		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 
@@ -942,7 +942,7 @@ static void test_setup_rewrite()
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
 		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 

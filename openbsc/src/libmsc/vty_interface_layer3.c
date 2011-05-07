@@ -74,7 +74,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		vty_out(vty, "    A3A8 algorithm id: %d%s",
 			ainfo.auth_algo, VTY_NEWLINE);
 		vty_out(vty, "    A3A8 Ki: %s%s",
-			hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			osmo_hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
 			VTY_NEWLINE);
 	}
 
@@ -85,13 +85,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		vty_out(vty, "     seq # : %d%s",
 			atuple.key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			hexdump(atuple.rand, sizeof(atuple.rand)),
+			osmo_hexdump(atuple.rand, sizeof(atuple.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			hexdump(atuple.sres, sizeof(atuple.sres)),
+			osmo_hexdump(atuple.sres, sizeof(atuple.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			hexdump(atuple.kc, sizeof(atuple.kc)),
+			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
 			VTY_NEWLINE);
 	}
 	if (pending)
@@ -581,7 +581,7 @@ DEFUN(ena_subscr_a3a8,
 	}
 
 	if (ki_str) {
-		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		rc = osmo_hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
 		if ((rc > maxlen) || (rc < minlen)) {
 			subscr_put(subscr);
 			vty_out(vty, "%% Wrong Ki `%s'%s",

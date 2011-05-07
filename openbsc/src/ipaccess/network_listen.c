@@ -191,17 +191,17 @@ static int test_rep(void *_msg)
 			last_arfcn = binfo.arfcn;
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2) {
-			DEBUGP(DNM, "BA SI2: %s\n", hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
+			DEBUGP(DNM, "BA SI2: %s\n", osmo_hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2, sizeof(binfo.ba_list_si2),
 						0x8c, FREQ_TYPE_NCELL_2);
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2bis) {
-			DEBUGP(DNM, "BA SI2bis: %s\n", hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
+			DEBUGP(DNM, "BA SI2bis: %s\n", osmo_hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis),
 						0x8e, FREQ_TYPE_NCELL_2bis);
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2ter) {
-			DEBUGP(DNM, "BA SI2ter: %s\n", hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
+			DEBUGP(DNM, "BA SI2ter: %s\n", osmo_hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter),
 						0x8e, FREQ_TYPE_NCELL_2ter);
 		}

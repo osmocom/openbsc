@@ -495,7 +495,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				get_value_string(osmo_sitype_strs, i), VTY_NEWLINE);
 			vty_out(vty, "  system-information %s static %s%s",
 				get_value_string(osmo_sitype_strs, i),
-				hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
+				osmo_osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
 				VTY_NEWLINE);
 		}
 	}
@@ -2171,7 +2171,7 @@ DEFUN(cfg_bts_si_static, cfg_bts_si_static_cmd,
 	memset(bts->si_buf[type], 0x2b, sizeof(bts->si_buf[type]));
 
 	/* Parse the user-specified SI in hex format, [partially] overwriting padding */
-	rc = hexparse(argv[1], bts->si_buf[type], sizeof(bts->si_buf[0]));
+	rc = osmo_hexparse(argv[1], bts->si_buf[type], sizeof(bts->si_buf[0]));
 	if (rc < 0 || rc > sizeof(bts->si_buf[0])) {
 		vty_out(vty, "Error parsing HEXSTRING%s", VTY_NEWLINE);
 		return CMD_WARNING;

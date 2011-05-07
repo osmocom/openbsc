@@ -463,7 +463,7 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 	uint8_t *m_rand, *m_cksn;
 
 	DEBUGP(DMM, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
-		hexdump(rand, 16));
+		osmo_hexdump(rand, 16));
 
 	mmctx2msgid(msg, mm);
 

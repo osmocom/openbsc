@@ -1492,7 +1492,7 @@ int abis_om2k_rcvmsg(struct msgb *msg)
 
 	DEBUGP(DNM, "Rx MO=%s %s (%s)\n", om2k_mo_name(&o2h->mo),
 		get_value_string(om2k_msgcode_vals, msg_type),
-		hexdump(msg->l2h, msgb_l2len(msg)));
+		osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	switch (msg_type) {
 	case OM2K_MSGT_CAL_TIME_REQ:

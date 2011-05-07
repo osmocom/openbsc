@@ -230,7 +230,7 @@ static int handle_udp_read(struct osmo_fd *bfd)
 	}
 	msgb_put(msg, ret);
 	msg->l2h = msg->data + sizeof(*hh);
-	DEBUGP(DMI, "UDP RX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "UDP RX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	if (hh->len != msg->len - sizeof(*hh)) {
 		DEBUGP(DINP, "length (%u/%u) disagrees with header(%u)\n",
@@ -789,7 +789,7 @@ static int handle_tcp_read(struct osmo_fd *bfd)
 
 	msgb_put(msg, ret);
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
-	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, hexdump(msg->data, msg->len));
+	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -861,7 +861,7 @@ static int handle_tcp_write(struct osmo_fd *bfd)
 
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
 	DEBUGPC(DMI, "TX %04x: %s\n", bfd->priv_nr,
-		hexdump(msg->data, msg->len));
+		osmo_hexdump(msg->data, msg->len));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);

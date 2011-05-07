@@ -175,7 +175,7 @@ struct msgb *gsm411_msgb_alloc(void)
 
 static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, uint8_t link_id)
 {
-	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DSMS, "GSM4.11 TX %s\n", osmo_hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
 	return gsm0808_submit_dtap(conn, msg, link_id, 1);
 }
@@ -645,7 +645,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dest_addr,
 	     gsms->user_data_len,
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
-				hexdump(gsms->user_data, gsms->user_data_len));
+				osmo_hexdump(gsms->user_data, gsms->user_data_len));
 
 	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
 
@@ -728,7 +728,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 	}
 	msg->l4h = tpdu;
 
-	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
+	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, osmo_hexdump(dst, dst_len));
 
 	rc = gsm340_rx_tpdu(trans->conn, msg);
 	if (rc == 0)

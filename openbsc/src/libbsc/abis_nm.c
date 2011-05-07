@@ -934,7 +934,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "SW config not found! Can't continue.\n");
 		return -EINVAL;
 	} else {
-		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
+		DEBUGP(DNM, "Found SW config: %s\n", osmo_hexdump(sw_config, sw_config_len));
 	}
 
 		/* Use the first SW_DESCR present in SW config */
@@ -1325,7 +1325,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		len = strlen(line_buf)+2;
 		break;
 	case GSM_BTS_TYPE_NANOBTS: {
-		static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
+		osmo_static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
 		len = read(sw->fd, &seg_buf, IPACC_SEGMENT_SIZE);
 		if (len < 0) {
 			perror("read failed");

@@ -29,8 +29,8 @@
 
 #define PART_LENGTH 138
 
-static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
-static_assert(sizeof(struct sdp_firmware) == 158, _right_header_length);
+osmo_static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
+osmo_static_assert(sizeof(struct sdp_firmware) == 158, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };

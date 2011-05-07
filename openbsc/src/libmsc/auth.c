@@ -38,7 +38,7 @@ _use_xor(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 	if ((l > A38_XOR_MAX_KEY_LEN) || (l < A38_XOR_MIN_KEY_LEN)) {
 		LOGP(DMM, LOGL_ERROR, "Invalid XOR key (len=%d) %s\n",
 			ainfo->a3a8_ki_len,
-			hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
+			osmo_hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
 		return -1;
 	}
 
@@ -56,7 +56,7 @@ _use_comp128_v1(struct gsm_auth_info *ainfo, struct gsm_auth_tuple *atuple)
 	if (ainfo->a3a8_ki_len != A38_COMP128_KEY_LEN) {
 		LOGP(DMM, LOGL_ERROR, "Invalid COMP128v1 key (len=%d) %s\n",
 			ainfo->a3a8_ki_len,
-			hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
+			osmo_hexdump(ainfo->a3a8_ki, ainfo->a3a8_ki_len));
 		return -1;
 	}
 

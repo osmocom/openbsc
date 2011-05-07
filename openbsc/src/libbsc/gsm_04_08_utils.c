@@ -134,7 +134,7 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 };
 
 /* verify that the two tables match */
-static_assert(sizeof(ctype_by_chreq) ==
+osmo_static_assert(sizeof(ctype_by_chreq) ==
 	      sizeof(((struct gsm_network *) NULL)->ctype_by_chreq), assert_size);
 
 /*

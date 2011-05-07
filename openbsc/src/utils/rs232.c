@@ -100,7 +100,7 @@ static int handle_ser_write(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "RS232 TX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "RS232 TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	/* send over serial line */
 	written = write(bfd->fd, msg->data, msg->len);
@@ -173,7 +173,7 @@ static int handle_ser_read(struct osmo_fd *bfd)
 			if (msg->len > LAPD_HDR_LEN)
 				msg->l2h = msg->data + LAPD_HDR_LEN;
 
-			DEBUGP(DMI, "RS232 RX: %s\n", hexdump(msg->data, msg->len));
+			DEBUGP(DMI, "RS232 RX: %s\n", osmo_hexdump(msg->data, msg->len));
 			rc = handle_serial_msg(msg);
 		}
 	}

@@ -129,7 +129,7 @@ static uint16_t build_physconf(uint8_t *physconf_buf, const struct rxlev_stats *
 	num_arfcn = ipac_rxlevstat2whitelist(whitelist, st, 0, 100);
 	arfcnlist_size = num_arfcn * 2;
 	*((uint16_t *) (physconf_buf+2)) = htons(arfcnlist_size);
-	DEBUGP(DNM, "physconf_buf (%s)\n", hexdump(physconf_buf, arfcnlist_size+4));
+	DEBUGP(DNM, "physconf_buf (%s)\n", osmo_hexdump(physconf_buf, arfcnlist_size+4));
 	return arfcnlist_size+4;
 }
 

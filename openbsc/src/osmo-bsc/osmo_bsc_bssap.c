@@ -158,7 +158,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
 		lac = ntohs(read_data16(&data[1]));
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
-		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
+		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", osmo_hexdump(data, data_length));
 		return -1;
 	}
 
@@ -467,13 +467,13 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	header = (struct dtap_header *) msg->l3h;
 	if (sizeof(*header) >= length) {
 		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
-                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
                 return -1;
 	}
 
 	if (header->length > length - sizeof(*header)) {
 		LOGP(DMSC, LOGL_ERROR, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
-                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
 		return -1;
 	}
 
@@ -502,7 +502,7 @@ int bsc_handle_udt(struct gsm_network *network,
 	struct bssmap_header *bs;
 
 	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n",
-		hexdump(msgb->l3h, length));
+		osmo_hexdump(msgb->l3h, length));
 
 	if (length < sizeof(*bs)) {
 		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");

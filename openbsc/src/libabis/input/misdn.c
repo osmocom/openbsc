@@ -162,7 +162,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	case PH_ACTIVATE_IND:
@@ -229,7 +229,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 
 	DEBUGP(DMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
 		sign_link->driver.misdn.channel, sign_link->tei,
-		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
+		sign_link->sapi, osmo_hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
 	/* construct the sockaddr */
 	sa.family = AF_ISDN;
@@ -269,7 +269,7 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
 
 	DEBUGP(DMIB, "BCHAN TX: %s\n",
-		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
+		osmo_hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
@@ -311,7 +311,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		DEBUGP(DMIB, "BCHAN RX: %s\n",
-			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
 	case PH_ACTIVATE_IND:

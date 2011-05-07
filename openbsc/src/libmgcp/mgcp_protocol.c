@@ -604,7 +604,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	return create_response_with_sdp(endp, "CRCX", trans_id);
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
-		    hexdump(msg->l3h, msgb_l3len(msg)),
+		    osmo_hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
 	return create_err_response(error_code, "CRCX", trans_id);
 
@@ -729,7 +729,7 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d %d\n",
-		    hexdump(msg->l3h, msgb_l3len(msg)),
+		    osmo_hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i, msg->l3h[line_start]);
 	return create_err_response(error_code, "MDCX", trans_id);
 
@@ -818,7 +818,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 error:
 	LOGP(DMGCP, LOGL_ERROR, "Malformed line: %s on 0x%x with: line_start: %d %d\n",
-		    hexdump(msg->l3h, msgb_l3len(msg)),
+		    osmo_hexdump(msg->l3h, msgb_l3len(msg)),
 		    ENDPOINT_NUMBER(endp), line_start, i);
 	return create_err_response(error_code, "DLCX", trans_id);
 

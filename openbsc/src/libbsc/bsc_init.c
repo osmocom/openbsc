@@ -102,7 +102,7 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 	}
 
 	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
-		hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
+		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
 
 	switch (i) {
 	case SYSINFO_TYPE_5:

@@ -107,11 +107,11 @@ struct lapd_header {
 	uint8_t control_foo; /* fake UM's ... */
 } __attribute__((packed));
 
-static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, halen) == 4,     halen_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
-static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, halen) == 4,     halen_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
+osmo_static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
 
 
 static int pcap_fd = -1;
@@ -229,12 +229,12 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	if (!msg->trx) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
 	} else if (!msg->trx->rsl_link) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EIO;
 	}

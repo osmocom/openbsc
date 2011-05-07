@@ -218,7 +218,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		return error;
 	}
 
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == HSL_PROTO_DEBUG) {
@@ -330,7 +330,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 	msg->l2h = msg->data;
 	ipaccess_prepend_header(msg, sign_link->tei);
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);

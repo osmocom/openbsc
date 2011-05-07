@@ -688,7 +688,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		printf("\n%sATTRIBUTES:\n", obj_name(foh));
 		abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		rc = print_attr(&tp);
-		//hexdump(foh->data, oh->length-sizeof(*foh));
+		//osmo_hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
 	case NM_MT_BS11_SET_ATTR_ACK:
 		printf("SET ATTRIBUTE ObjClass=0x%02x ObjInst=(%d,%d,%d) ACK\n",

@@ -147,7 +147,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 			msg->l2h = msg->data + 2;
 		else
 			msg->l2h = msg->data + 1;
-		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret));
+		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
 		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
@@ -214,7 +214,7 @@ static int handle_ts1_write(struct osmo_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "TX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei,
 		      sign_link->sapi, msg->data, msg->len);
 	msgb_free(msg);
@@ -277,7 +277,7 @@ static int handle_tsX_write(struct osmo_fd *bfd)
 	}
 
 	DEBUGP(DMIB, "BCHAN TX: %s\n",
-		hexdump(tx_buf, D_BCHAN_TX_GRAN));
+		osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
 	if (invertbits) {
 		flip_buf_bits(tx_buf, ret);
@@ -318,7 +318,7 @@ static int handle_tsX_read(struct osmo_fd *bfd)
 
 	msg->l2h = msg->data;
 	DEBUGP(DMIB, "BCHAN RX: %s\n",
-		hexdump(msgb_l2(msg), ret));
+		osmo_hexdump(msgb_l2(msg), ret));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */

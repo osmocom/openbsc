@@ -799,7 +799,7 @@ static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 		return -1;
 	}
 
-	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -1169,7 +1169,7 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 	}
 
 
-	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
 	hh = (struct ipaccess_head *) msg->data;

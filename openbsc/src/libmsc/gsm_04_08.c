@@ -720,7 +720,7 @@ int gsm48_tx_mm_auth_req(struct gsm_subscriber_connection *conn, uint8_t *rand, 
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
-	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", hexdump(rand, 16));
+	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump(rand, 16));
 
 	msg->lchan = conn->lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -942,7 +942,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 	struct gsm_network *net = conn->bts->network;
 
 	DEBUGP(DMM, "MM AUTHENTICATION RESPONSE (sres = %s): ",
-		hexdump(ar->sres, 4));
+		osmo_hexdump(ar->sres, 4));
 
 	/* Safety check */
 	if (!conn->sec_operation) {
@@ -956,7 +956,7 @@ static int gsm48_rx_mm_auth_resp(struct gsm_subscriber_connection *conn, struct 
 		gsm_cbfn *cb = conn->sec_operation->cb;
 
 		DEBUGPC(DMM, "Invalid (expected %s)\n",
-			hexdump(conn->sec_operation->atuple.sres, 4));
+			osmo_hexdump(conn->sec_operation->atuple.sres, 4));
 
 		if (cb)
 			cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_AUTH_FAILED,
@@ -1145,7 +1145,7 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	apdu_data = gh->data+2;
 	
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
-		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
+		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
 	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
 }

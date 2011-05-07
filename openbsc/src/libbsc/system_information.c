@@ -39,18 +39,18 @@
 /* verify the sizes of the system information type structs */
 
 /* rest octets are not part of the struct */
-static_assert(sizeof(struct gsm48_system_information_type_header) == 3, _si_header_size);
-static_assert(sizeof(struct gsm48_rach_control) == 3, _si_rach_control);
-static_assert(sizeof(struct gsm48_system_information_type_1) == 22, _si1_size);
-static_assert(sizeof(struct gsm48_system_information_type_2) == 23, _si2_size);
-static_assert(sizeof(struct gsm48_system_information_type_3) == 19, _si3_size);
-static_assert(sizeof(struct gsm48_system_information_type_4) == 13, _si4_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_header) == 3, _si_header_size);
+osmo_static_assert(sizeof(struct gsm48_rach_control) == 3, _si_rach_control);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_1) == 22, _si1_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_2) == 23, _si2_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_3) == 19, _si3_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_4) == 13, _si4_size);
 
 /* bs11 forgot the l2 len, 0-6 rest octets */
-static_assert(sizeof(struct gsm48_system_information_type_5) == 18, _si5_size);
-static_assert(sizeof(struct gsm48_system_information_type_6) == 11, _si6_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_5) == 18, _si5_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_6) == 11, _si6_size);
 
-static_assert(sizeof(struct gsm48_system_information_type_13) == 3, _si13_size);
+osmo_static_assert(sizeof(struct gsm48_system_information_type_13) == 3, _si13_size);
 
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
 

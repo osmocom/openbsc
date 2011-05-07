@@ -185,7 +185,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			return -EINVAL;
 		if (memcmp(tf.c_bits, c_bits_check, sizeof(c_bits_check)))
 			DEBUGPC(DMUX, "illegal trau (C1-C5) %s\n",
-				hexdump(tf.c_bits, sizeof(c_bits_check)));
+				osmo_hexdump(tf.c_bits, sizeof(c_bits_check)));
 		msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
 				 "GSM-DATA");
 		if (!msg)

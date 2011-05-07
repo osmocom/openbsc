@@ -85,12 +85,12 @@ static void test_mi_functionality(void)
 	/* imsi code */
 	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_odd);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
-	printf("hex: %s\n", hexdump(mi, mi_len));
+	printf("hex: %s\n", osmo_hexdump(mi, mi_len));
 	COMPARE_STR(mi_parsed, imsi_odd);
 
 	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_even);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
-	printf("hex: %s\n", hexdump(mi, mi_len));
+	printf("hex: %s\n", osmo_hexdump(mi, mi_len));
 	COMPARE_STR(mi_parsed, imsi_even);
 }
 

@@ -109,7 +109,7 @@ static int ussd_read_cb(struct osmo_fd *bfd)
 	}
 
 	LOGP(DNAT, LOGL_NOTICE, "MSG from USSD: %s proto: %d\n",
-		hexdump(msg->data, msg->len), msg->l2h[0]);
+		osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 	hh = (struct ipaccess_head *) msg->data;
 
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
