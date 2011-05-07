@@ -267,7 +267,7 @@ struct bsc_nat {
 
 	/* number rewriting */
 	char *num_rewr_name;
-	struct msg_entries *num_rewr;
+	struct osmo_config_list *num_rewr;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;

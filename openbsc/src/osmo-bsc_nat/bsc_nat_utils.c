@@ -809,7 +809,7 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	uint8_t msg_type, proto;
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
-	struct msg_entry *entry;
+	struct osmo_config_entry *entry;
 	char *new_number = NULL;
 	struct msgb *out, *sccp;
 	uint8_t *outptr;

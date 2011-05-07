@@ -844,8 +844,8 @@ static void test_setup_rewrite()
 	struct bsc_nat *nat = bsc_nat_alloc();
 
 	/* a fake list */
-	struct msg_entries entries;
-	struct msg_entry entry;
+	struct osmo_config_list entries;
+	struct osmo_config_entry entry;
 
 	INIT_LLIST_HEAD(&entries.entry);
 	entry.mcc = "274";
