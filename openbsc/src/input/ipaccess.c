@@ -51,8 +51,8 @@
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
-	struct bsc_fd listen_fd;
-	struct bsc_fd rsl_listen_fd;
+	struct osmo_fd listen_fd;
+	struct osmo_fd rsl_listen_fd;
 	struct gsm_network *gsmnet;
 };
 
@@ -182,7 +182,7 @@ int ipaccess_send_id_req(int fd)
 
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
-			 struct bsc_fd *bfd)
+			 struct osmo_fd *bfd)
 {
 	u_int8_t msg_type = *(msg->l2h);
 	int ret = 0;
@@ -203,7 +203,7 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 }
 
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
-			   struct bsc_fd *bfd)
+			   struct osmo_fd *bfd)
 {
 	struct tlv_parsed tlvp;
 	u_int8_t msg_type = *(msg->l2h);
@@ -243,14 +243,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 						  bts->oml_tei, 0);
 		} else if (bfd->priv_nr == PRIV_RSL) {
 			struct e1inp_ts *e1i_ts;
-			struct bsc_fd *newbfd;
+			struct osmo_fd *newbfd;
 			struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_id);
 
 			/* drop any old rsl connection */
 			ipaccess_drop_rsl(trx);
 
 			if (!bts->oml_link) {
-				bsc_unregister_fd(bfd);
+				osmo_fd_unregister(bfd);
 				close(bfd->fd);
 				bfd->fd = -1;
 				talloc_free(bfd);
@@ -270,10 +270,10 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			newbfd->priv_nr = PRIV_RSL + trx_id;
-			bsc_unregister_fd(bfd);
+			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
 			talloc_free(bfd);
-			bsc_register_fd(newbfd);
+			osmo_fd_register(newbfd);
 		}
 		break;
 	}
@@ -287,7 +287,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
  * read one ipa message from the socket
  * return NULL in case of error
  */
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -343,7 +343,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	struct e1inp_ts *ts;
 	struct e1inp_line *line;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 
 	if (!bts || !bts->oml_link)
 		return -1;
@@ -354,7 +354,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	e1inp_event(ts, EVT_E1_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -373,7 +373,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	return -1;
 }
 
-static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
+static int ipaccess_drop(struct e1inp_ts *ts, struct osmo_fd *bfd)
 {
 	struct e1inp_sign_link *link;
 	int bts_nr;
@@ -385,7 +385,7 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
 		 * handling yet. So we can safely delete this bfd and
 		 * wait for a reconnect.
 		 */
-		bsc_unregister_fd(bfd);
+		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
 		talloc_free(bfd);
@@ -404,7 +404,7 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
 
 	/* error case */
 	LOGP(DINP, LOGL_ERROR, "Failed to find a signalling link for ts: %p\n", ts);
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 	return -1;
@@ -412,7 +412,7 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
 
 int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 {
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct e1inp_ts *ts;
 
 	if (!trx || !trx->rsl_link)
@@ -424,7 +424,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 
 	/* close the socket */
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -435,7 +435,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 	return -1;
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -458,7 +458,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return error;
 	}
 
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -528,7 +528,7 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -563,7 +563,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	msg->l2h = msg->data;
 	ipaccess_prepend_header(msg, sign_link->tei);
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -573,13 +573,13 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -611,14 +611,14 @@ struct e1inp_driver ipaccess_driver = {
 };
 
 /* callback of the OML listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
 	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -655,7 +655,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_OML;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -670,17 +670,17 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	//return e1inp_line_register(line);
 }
 
-static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	int ret;
 
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	bfd = talloc_zero(tall_bsc_ctx, struct bsc_fd);
+	bfd = talloc_zero(tall_bsc_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
@@ -697,7 +697,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -710,8 +710,8 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int make_sock(struct bsc_fd *bfd, u_int16_t port,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
+static int make_sock(struct osmo_fd *bfd, u_int16_t port,
+		     int (*cb)(struct osmo_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
 	int ret, on = 1;
@@ -748,7 +748,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 		return ret;
 	}
 	
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		perror("register_listen_fd");
 		close(bfd->fd);
@@ -761,7 +761,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port,
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 {
 	struct e1inp_ts *e1i_ts = &line->ts[0];
-	struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	int ret, on = 1;
 
 	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -784,7 +784,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 		return ret;
 	}
 
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		close(bfd->fd);
 		return ret;

@@ -30,7 +30,7 @@
 struct telnet_connection {
 	struct llist_head entry;
 	struct gsm_network *network;
-	struct bsc_fd fd;
+	struct osmo_fd fd;
 	struct vty *vty;
 	struct log_target *dbg;
 };

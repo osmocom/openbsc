@@ -37,13 +37,13 @@
 
 static void connection_loss(struct bsc_msc_connection *con)
 {
-	struct bsc_fd *fd;
+	struct osmo_fd *fd;
 
 	fd = &con->write_queue.bfd;
 
 	close(fd->fd);
 	fd->fd = -1;
-	fd->cb = write_queue_bfd_cb;
+	fd->cb = osmo_wqueue_bfd_cb;
 	fd->when = 0;
 
 	con->is_connected = 0;
@@ -59,12 +59,12 @@ static void msc_con_timeout(void *_con)
 }
 
 /* called in the case of a non blocking connect */
-static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
+static int msc_connection_connect(struct osmo_fd *fd, unsigned int what)
 {
 	int rc;
 	int val;
 	struct bsc_msc_connection *con;
-	struct write_queue *queue;
+	struct osmo_wqueue *queue;
 
 	socklen_t len = sizeof(val);
 
@@ -73,11 +73,11 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	queue = container_of(fd, struct write_queue, bfd);
+	queue = container_of(fd, struct osmo_wqueue, bfd);
 	con = container_of(queue, struct bsc_msc_connection, write_queue);
 
 	/* From here on we will either be connected or reconnect */
-	bsc_del_timer(&con->timeout_timer);
+	osmo_timer_del(&con->timeout_timer);
 
 	/* check the socket state */
 	rc = getsockopt(fd->fd, SOL_SOCKET, SO_ERROR, &val, &len);
@@ -92,7 +92,7 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 
 
 	/* go to full operation */
-	fd->cb = write_queue_bfd_cb;
+	fd->cb = osmo_wqueue_bfd_cb;
 	fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
 
 	con->is_connected = 1;
@@ -102,11 +102,11 @@ static int msc_connection_connect(struct bsc_fd *fd, unsigned int what)
 	return 0;
 
 error:
-	bsc_unregister_fd(fd);
+	osmo_fd_unregister(fd);
 	connection_loss(con);
 	return -1;
 }
-static void setnonblocking(struct bsc_fd *fd)
+static void setnonblocking(struct osmo_fd *fd)
 {
 	int flags;
 
@@ -130,7 +130,7 @@ static void setnonblocking(struct bsc_fd *fd)
 
 int bsc_msc_connect(struct bsc_msc_connection *con)
 {
-	struct bsc_fd *fd;
+	struct osmo_fd *fd;
 	struct sockaddr_in sin;
 	int on = 1, ret;
 
@@ -172,20 +172,20 @@ int bsc_msc_connect(struct bsc_msc_connection *con)
 		fd->cb = msc_connection_connect;
 		con->timeout_timer.cb = msc_con_timeout;
 		con->timeout_timer.data = con;
-		bsc_schedule_timer(&con->timeout_timer, 20, 0);
+		osmo_timer_schedule(&con->timeout_timer, 20, 0);
 	} else if (ret < 0) {
 		perror("Connection failed");
 		connection_loss(con);
 		return ret;
 	} else {
 		fd->when = BSC_FD_READ | BSC_FD_EXCEPT;
-		fd->cb = write_queue_bfd_cb;
+		fd->cb = osmo_wqueue_bfd_cb;
 		con->is_connected = 1;
 		if (con->connected)
 			con->connected(con);
 	}
 
-	ret = bsc_register_fd(fd);
+	ret = osmo_fd_register(fd);
 	if (ret < 0) {
 		perror("Registering the fd failed");
 		close(fd->fd);
@@ -209,17 +209,17 @@ struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio)
 	con->ip = ip;
 	con->port = port;
 	con->prio = prio;
-	write_queue_init(&con->write_queue, 100);
+	osmo_wqueue_init(&con->write_queue, 100);
 	return con;
 }
 
 void bsc_msc_lost(struct bsc_msc_connection *con)
 {
-	write_queue_clear(&con->write_queue);
-	bsc_del_timer(&con->timeout_timer);
+	osmo_wqueue_clear(&con->write_queue);
+	osmo_timer_del(&con->timeout_timer);
 
 	if (con->write_queue.bfd.fd >= 0)
-		bsc_unregister_fd(&con->write_queue.bfd);
+		osmo_fd_unregister(&con->write_queue.bfd);
 	connection_loss(con);
 }
 
@@ -236,7 +236,7 @@ void bsc_msc_schedule_connect(struct bsc_msc_connection *con)
 	LOGP(DMSC, LOGL_NOTICE, "Attempting to reconnect to the MSC.\n");
 	con->reconnect_timer.cb = reconnect_msc;
 	con->reconnect_timer.data = con;
-	bsc_schedule_timer(&con->reconnect_timer, 5, 0);
+	osmo_timer_schedule(&con->reconnect_timer, 5, 0);
 }
 
 struct msgb *bsc_msc_id_get_resp(const char *token)

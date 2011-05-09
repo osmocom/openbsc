@@ -165,7 +165,7 @@ static const enum gsm_chreq_reason_t reason_by_chreq[] = {
 };
 
 /* verify that the two tables match */
-static_assert(sizeof(ctype_by_chreq) ==
+osmo_static_assert(sizeof(ctype_by_chreq) ==
 	      sizeof(((struct gsm_network *) NULL)->ctype_by_chreq), assert_size);
 
 /*
@@ -335,9 +335,9 @@ int gsm48_handle_paging_resp(struct msgb *msg, struct gsm_subscriber *subscr)
 	sig_data.bts	= msg->lchan->ts->trx->bts;
 	sig_data.lchan	= msg->lchan;
 
-	counter_inc(bts->network->stats.paging.completed);
+	osmo_counter_inc(bts->network->stats.paging.completed);
 
-	dispatch_signal(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
+	osmo_signal_dispatch(SS_PAGING, S_PAGING_SUCCEEDED, &sig_data);
 
 	/* Stop paging on the bts we received the paging response */
 	paging_request_stop(msg->trx->bts, subscr, msg->lchan);

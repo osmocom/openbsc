@@ -65,14 +65,14 @@ static const char *config_file = "openbsc.cfg";
 static char *msc_address = NULL;
 static struct in_addr local_addr;
 static LLIST_HEAD(active_connections);
-static struct write_queue mgcp_agent;
+static struct osmo_wqueue mgcp_agent;
 static const char *rf_ctl = NULL;
 static int testmode = 0;
 extern int ipacc_rtp_direct;
 
 /* msc handling */
-static struct timer_list msc_ping_timeout;
-static struct timer_list msc_pong_timeout;
+static struct osmo_timer_list msc_ping_timeout;
+static struct osmo_timer_list msc_pong_timeout;
 
 extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, int, void *), const char *cfg_file);
 extern int bsc_shutdown_net(struct gsm_network *net);
@@ -113,9 +113,9 @@ struct bss_sccp_connection_data *bss_sccp_create_data()
 
 void bss_sccp_free_data(struct bss_sccp_connection_data *data)
 {
-	bsc_del_timer(&data->T10);
-	bsc_del_timer(&data->sccp_cc_timeout);
-	bsc_del_timer(&data->sccp_it);
+	osmo_timer_del(&data->T10);
+	osmo_timer_del(&data->sccp_cc_timeout);
+	osmo_timer_del(&data->sccp_it);
 	if (data->sccp)
 		bsc_free_queued(data->sccp);
 	bts_free_queued(data);
@@ -129,7 +129,7 @@ static void sccp_it_fired(void *_data)
 		(struct bss_sccp_connection_data *) _data;
 
 	sccp_connection_send_it(data->sccp);
-	bsc_schedule_timer(&data->sccp_it, SCCP_IT_TIMER, 0);
+	osmo_timer_schedule(&data->sccp_it, SCCP_IT_TIMER, 0);
 }
 
 /* make sure to stop the T10 timer... bss_sccp_free_data is doing that */
@@ -264,12 +264,12 @@ void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		con_data = (struct bss_sccp_connection_data *) conn->data_ctx;
 
 		/* stop the CC timeout */
-		bsc_del_timer(&con_data->sccp_cc_timeout);
+		osmo_timer_del(&con_data->sccp_cc_timeout);
 
 		/* start the inactivity test timer */
 		con_data->sccp_it.cb = sccp_it_fired;
 		con_data->sccp_it.data = con_data;
-		bsc_schedule_timer(&con_data->sccp_it, SCCP_IT_TIMER, 0);
+		osmo_timer_schedule(&con_data->sccp_it, SCCP_IT_TIMER, 0);
 
 		bsc_send_queued(conn);
 	}
@@ -337,7 +337,7 @@ static int open_sccp_connection(struct msgb *layer3)
 	/* Make sure we open the connection */
 	con_data->sccp_cc_timeout.data = con_data;
 	con_data->sccp_cc_timeout.cb = sccp_check_cc;
-	bsc_schedule_timer(&con_data->sccp_cc_timeout, 10, 0);
+	osmo_timer_schedule(&con_data->sccp_cc_timeout, 10, 0);
 
 	/* FIXME: Use transaction for this */
 	/* assign a dummy subscriber */
@@ -723,7 +723,7 @@ static void print_usage()
 static int msc_queue_write(struct msgb *msg, int proto)
 {
 	ipaccess_prepend_header(msg, proto);
-	if (write_queue_enqueue(&bsc_gsmnet->msc_con->write_queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&bsc_gsmnet->msc_con->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
 		return -1;
@@ -732,12 +732,12 @@ static int msc_queue_write(struct msgb *msg, int proto)
 	return 0;
 }
 
-static int msc_sccp_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int msc_sccp_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
 	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->l2h, msgb_l2len(msg)));
+	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = write(bsc_gsmnet->msc_con->write_queue.bfd.fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -754,7 +754,7 @@ static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, v
 /*
  * mgcp forwarding is below
  */
-static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
@@ -767,7 +767,7 @@ static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static int mgcp_do_read(struct bsc_fd *fd)
+static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct msgb *mgcp;
 	int ret;
@@ -811,7 +811,7 @@ static void mgcp_forward(struct msgb *msg)
 
 	msgb_put(mgcp, msgb_l2len(msg));
 	memcpy(mgcp->data, msg->l2h, mgcp->len);
-	if (write_queue_enqueue(&mgcp_agent, mgcp) != 0) {
+	if (osmo_wqueue_enqueue(&mgcp_agent, mgcp) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Could not queue message to MGCP GW.\n");
 		msgb_free(mgcp);
 	}
@@ -852,12 +852,12 @@ static int mgcp_create_port(void)
 		return -1;
 	}
 
-	write_queue_init(&mgcp_agent, 10);
+	osmo_wqueue_init(&mgcp_agent, 10);
 	mgcp_agent.bfd.when = BSC_FD_READ;
 	mgcp_agent.read_cb = mgcp_do_read;
 	mgcp_agent.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&mgcp_agent.bfd) != 0) {
+	if (osmo_fd_register(&mgcp_agent.bfd) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Failed to register BFD\n");
 		close(mgcp_agent.bfd.fd);
 		mgcp_agent.bfd.fd = -1;
@@ -879,7 +879,7 @@ static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
 	struct bssmap_header *bs;
 
-	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n", hexdump(msgb->l3h, length));
+	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n", osmo_hexdump(msgb->l3h, length));
 
 	if (length < sizeof(*bs)) {
 		LOGP(DMSC, LOGL_ERROR, "The header is too short.\n");
@@ -979,8 +979,8 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 		bss_force_close(bss);
 	}
 
-	bsc_del_timer(&msc_ping_timeout);
-	bsc_del_timer(&msc_pong_timeout);
+	osmo_timer_del(&msc_ping_timeout);
+	osmo_timer_del(&msc_pong_timeout);
 
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
@@ -1016,10 +1016,10 @@ static void msc_ping_timeout_cb(void *data)
 	send_ping();
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&msc_ping_timeout, bsc_gsmnet->ping_timeout, 0);
+	osmo_timer_schedule(&msc_ping_timeout, bsc_gsmnet->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&msc_pong_timeout, bsc_gsmnet->pong_timeout, 0);
+	osmo_timer_schedule(&msc_pong_timeout, bsc_gsmnet->pong_timeout, 0);
 }
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
@@ -1036,7 +1036,7 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 /*
  * callback with IP access data
  */
-static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
+static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
@@ -1053,7 +1053,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		return -1;
 	}
 
-	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -1067,7 +1067,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 			send_id_get_response(bfd->fd);
 			test_msc();
 		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
-			bsc_del_timer(&msc_pong_timeout);
+			osmo_timer_del(&msc_pong_timeout);
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
@@ -1273,7 +1273,7 @@ int main(int argc, char **argv)
 	sccp_set_read(&sccp_ssn_bssap, msc_sccp_read, NULL);
 
 	/* initialize ipaccess handling */
-	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
+	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
 
 	fprintf(stderr, "Bootstraping the network. Sending GSM08.08 reset.\n");
 	rc = bsc_bootstrap_network(NULL, config_file);
@@ -1322,7 +1322,7 @@ int main(int argc, char **argv)
 
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }
 

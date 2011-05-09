@@ -124,7 +124,7 @@ struct msgb *gsm411_msgb_alloc(void)
 
 static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, u_int8_t link_id)
 {
-	DEBUGP(DSMS, "GSM4.11 TX %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DSMS, "GSM4.11 TX %s\n", osmo_hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
 	return gsm0808_submit_dtap(conn, msg, link_id);
 }
@@ -159,7 +159,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 		trans->sms.cp_timer.data = trans;
 		trans->sms.cp_timer.cb = cp_timer_expired;
 		/* 5.3.2.1: Set Timer TC1A */
-		bsc_schedule_timer(&trans->sms.cp_timer, GSM411_TMR_TC1A);
+		osmo_timer_schedule(&trans->sms.cp_timer, GSM411_TMR_TC1A);
 		DEBUGP(DSMS, "TX: CP-DATA ");
 		break;
 	case GSM411_MT_CP_ACK:
@@ -404,7 +404,7 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 		return GSM411_RP_CAUSE_MO_NET_OUT_OF_ORDER;
 	}
 	/* dispatch a signal to tell higher level about it */
-	dispatch_signal(SS_SMS, S_SMS_SUBMITTED, gsms);
+	osmo_signal_dispatch(SS_SMS, S_SMS_SUBMITTED, gsms);
 	/* try delivering the SMS right now */
 	//gsm411_send_sms_subscr(gsms->receiver, gsms);
 
@@ -514,7 +514,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	u_int8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */
 	int rc = 0;
 
-	counter_inc(conn->bts->network->stats.sms.submitted);
+	osmo_counter_inc(conn->bts->network->stats.sms.submitted);
 
 	gsms = sms_alloc();
 	if (!gsms)
@@ -595,17 +595,17 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dest_addr,
 	     gsms->user_data_len,
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
-				hexdump(gsms->user_data, gsms->user_data_len));
+				osmo_hexdump(gsms->user_data, gsms->user_data_len));
 
 	gsms->validity_minutes = gsm340_validity_period(sms_vpf, sms_vp);
 
-	dispatch_signal(SS_SMS, 0, gsms);
+	osmo_signal_dispatch(SS_SMS, 0, gsms);
 
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
 		rc = 1; /* cause 1: unknown subscriber */
-		counter_inc(conn->bts->network->stats.sms.no_receiver);
+		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
 		goto out;
 	}
 
@@ -677,7 +677,7 @@ static int gsm411_rx_rp_ud(struct msgb *msg, struct gsm_trans *trans,
 	}
 	msg->l4h = tpdu;
 
-	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, hexdump(dst, dst_len));
+	DEBUGP(DSMS, "DST(%u,%s)\n", dst_len, osmo_hexdump(dst, dst_len));
 
 	rc = gsm340_rx_tpdu(trans->conn, msg);
 	if (rc == 0)
@@ -739,7 +739,7 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	/* mark this SMS as sent in database */
 	db_sms_mark_sent(sms);
 
-	dispatch_signal(SS_SMS, S_SMS_DELIVERED, sms);
+	osmo_signal_dispatch(SS_SMS, S_SMS_DELIVERED, sms);
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -800,10 +800,10 @@ static int gsm411_rx_rp_error(struct msgb *msg, struct gsm_trans *trans,
 		/* MS has not enough memory to store the message.  We need
 		 * to store this in our database and wati for a SMMA message */
 		/* FIXME */
-		dispatch_signal(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
-		counter_inc(net->stats.sms.rp_err_mem);
+		osmo_signal_dispatch(SS_SMS, S_SMS_MEM_EXCEEDED, trans->subscr);
+		osmo_counter_inc(net->stats.sms.rp_err_mem);
 	} else
-		counter_inc(net->stats.sms.rp_err_other);
+		osmo_counter_inc(net->stats.sms.rp_err_other);
 
 	sms_free(sms);
 	trans->sms.sms = NULL;
@@ -825,7 +825,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	/* MS tells us that it has memory for more SMS, we need
 	 * to check if we have any pending messages for it and then
 	 * transfer those */
-	dispatch_signal(SS_SMS, S_SMS_SMMA, trans->subscr);
+	osmo_signal_dispatch(SS_SMS, S_SMS_SMMA, trans->subscr);
 
 	/* check for more messages for this subscriber */
 	assert(msg->lchan->conn.subscr == trans->subscr);
@@ -966,7 +966,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 				DEBUGP(DSMS, "Implicit CP-ACK for trans_id=%x\n", i);
 
 				/* Finish it for good */
-				bsc_del_timer(&ptrans->sms.cp_timer);
+				osmo_timer_del(&ptrans->sms.cp_timer);
 				ptrans->sms.cp_state = GSM411_CPS_IDLE;
 				trans_free(ptrans);
 			}
@@ -997,7 +997,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
 		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
 		/* Stop TC1* after CP-ACK has been received */
-		bsc_del_timer(&trans->sms.cp_timer);
+		osmo_timer_del(&trans->sms.cp_timer);
 
 		if (!trans->sms.is_mt) {
 			/* FIXME: we have sont one CP-DATA, which was now
@@ -1010,7 +1010,7 @@ int gsm0411_rcv_sms(struct msgb *msg, u_int8_t link_id)
 	case GSM411_MT_CP_ERROR:
 		DEBUGPC(DSMS, "RX SMS CP-ERROR, cause %d (%s)\n", gh->data[0],
 			get_value_string(cp_cause_strs, gh->data[0]));
-		bsc_del_timer(&trans->sms.cp_timer);
+		osmo_timer_del(&trans->sms.cp_timer);
 		trans->sms.cp_state = GSM411_CPS_IDLE;
 		trans_free(trans);
 		break;
@@ -1107,7 +1107,7 @@ int gsm411_send_sms_lchan(struct gsm_subscriber_connection *conn, struct gsm_sms
 
 	DEBUGP(DSMS, "TX: SMS DELIVER\n");
 
-	counter_inc(conn->bts->network->stats.sms.delivered);
+	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
 
 	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
@@ -1229,10 +1229,10 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
-	bsc_del_timer(&trans->sms.cp_timer);
+	osmo_timer_del(&trans->sms.cp_timer);
 }
 
 static __attribute__((constructor)) void on_dso_load_sms(void)
 {
-	register_signal_handler(SS_SUBSCR, subscr_sig_cb, NULL);
+	osmo_signal_register_handler(SS_SUBSCR, subscr_sig_cb, NULL);
 }

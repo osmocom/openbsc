@@ -48,7 +48,7 @@ struct bsc_handover {
 	struct gsm_lchan *old_lchan;
 	struct gsm_lchan *new_lchan;
 
-	struct timer_list T3103;
+	struct osmo_timer_list T3103;
 
 	u_int8_t ho_ref;
 };
@@ -97,12 +97,12 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
-	counter_inc(bts->network->stats.handover.attempted);
+	osmo_counter_inc(bts->network->stats.handover.attempted);
 
 	new_lchan = lchan_alloc(bts, old_lchan->type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
-		counter_inc(bts->network->stats.handover.no_channel);
+		osmo_counter_inc(bts->network->stats.handover.no_channel);
 		return -ENOSPC;
 	}
 
@@ -148,7 +148,7 @@ static void ho_T3103_cb(void *_ho)
 	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
-	counter_inc(net->stats.handover.timeout);
+	osmo_counter_inc(net->stats.handover.timeout);
 
 	lchan_free(ho->new_lchan);
 	llist_del(&ho->list);
@@ -178,7 +178,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
 	ho->T3103.data = ho;
-	bsc_schedule_timer(&ho->T3103, 10, 0);
+	osmo_timer_schedule(&ho->T3103, 10, 0);
 
 	/* create a RTP connection */
 	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
@@ -223,9 +223,9 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
 	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
 
-	counter_inc(net->stats.handover.completed);
+	osmo_counter_inc(net->stats.handover.completed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 
 	/* update lchan pointer of transaction */
 	trans_lchan_change(&ho->old_lchan->conn, &new_lchan->conn);
@@ -253,9 +253,9 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 		return -ENODEV;
 	}
 
-	counter_inc(net->stats.handover.failed);
+	osmo_counter_inc(net->stats.handover.failed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
 	conn = &ho->new_lchan->conn;
 	put_subscr_con(conn, 0);
@@ -373,6 +373,6 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
-	register_signal_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
-	register_signal_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }

@@ -818,15 +818,15 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		break;
 	case NM_MT_SW_ACTIVATED_REP:
 		DEBUGPC(DNM, "Software Activated Report\n");
-		dispatch_signal(SS_NM, S_NM_SW_ACTIV_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_SW_ACTIV_REP, mb);
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
 		rx_fail_evt_rep(mb);
-		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_FAIL_REP, mb);
 		break;
 	case NM_MT_TEST_REP:
 		DEBUGPC(DNM, "Test Report\n");
-		dispatch_signal(SS_NM, S_NM_TEST_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_TEST_REP, mb);
 		break;
 	default:
 		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
@@ -925,7 +925,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "SW config not found! Can't continue.\n");
 		return -EINVAL;
 	} else {
-		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
+		DEBUGP(DNM, "Found SW config: %s\n", osmo_hexdump(sw_config, sw_config_len));
 	}
 
 		/* Use the first SW_DESCR present in SW config */
@@ -1031,7 +1031,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
 
-		dispatch_signal(SS_NM, S_NM_NACK, (void*) &mt);
+		osmo_signal_dispatch(SS_NM, S_NM_NACK, (void*) &mt);
 		abis_nm_queue_send_next(mb->trx->bts);
 		return 0;
 	}
@@ -1066,10 +1066,10 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
 		break;
 	case NM_MT_IPACC_RESTART_ACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
 		break;
 	case NM_MT_IPACC_RESTART_NACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
 		break;
 	}
 
@@ -1306,7 +1306,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		len = strlen(line_buf)+2;
 		break;
 	case GSM_BTS_TYPE_NANOBTS: {
-		static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
+		osmo_static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
 		len = read(sw->fd, &seg_buf, IPACC_SEGMENT_SIZE);
 		if (len < 0) {
 			perror("read failed");
@@ -2843,12 +2843,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_GET_NVATTR_NACK:
 		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
-		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &signal);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
 		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
-		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &signal);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;
 	default:
 		break;

@@ -27,7 +27,7 @@
 #include <osmocom/core/timer.h>
 
 struct bsc_msc_connection {
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 	int is_connected;
 	int is_authenticated;
 	const char *ip;
@@ -36,8 +36,8 @@ struct bsc_msc_connection {
 
 	void (*connection_loss) (struct bsc_msc_connection *);
 	void (*connected) (struct bsc_msc_connection *);
-	struct timer_list reconnect_timer;
-	struct timer_list timeout_timer;
+	struct osmo_timer_list reconnect_timer;
+	struct osmo_timer_list timeout_timer;
 };
 
 struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio);

@@ -59,12 +59,12 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			lchan->ts->nr, lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
 		/* increment lchan reference count */
-		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		use_subscr_con(conn);
 		break;
 	case GSM_PAGING_EXPIRED:
 		DEBUGP(DSMS, "expired\n");
-		dispatch_signal(SS_SCALL, S_SCALL_EXPIRED, &sigdata);
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_EXPIRED, &sigdata);
 		break;
 	default:
 		rc = -EINVAL;

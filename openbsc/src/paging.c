@@ -73,7 +73,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 static void paging_remove_request(struct gsm_bts_paging_state *paging_bts,
 				struct gsm_paging_request *to_be_deleted)
 {
-	bsc_del_timer(&to_be_deleted->T3113);
+	osmo_timer_del(&to_be_deleted->T3113);
 	llist_del(&to_be_deleted->entry);
 	subscr_put(to_be_deleted->subscr);
 	talloc_free(to_be_deleted);
@@ -103,8 +103,8 @@ static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)
 	if (llist_empty(&paging_bts->pending_requests))
 		return;
 
-	if (!bsc_timer_pending(&paging_bts->work_timer))
-		bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
+	if (!osmo_timer_pending(&paging_bts->work_timer))
+		osmo_timer_schedule(&paging_bts->work_timer, PAGING_TIMER);
 }
 
 
@@ -193,7 +193,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	if (paging_bts->available_slots == 0) {
 		paging_bts->credit_timer.cb = paging_give_credit;
 		paging_bts->credit_timer.data = paging_bts;
-		bsc_schedule_timer(&paging_bts->credit_timer, 5, 0);
+		osmo_timer_schedule(&paging_bts->credit_timer, 5, 0);
 		return;
 	}
 
@@ -215,7 +215,7 @@ static void paging_handle_pending_requests(struct gsm_bts_paging_state *paging_b
 	llist_add_tail(&request->entry, &paging_bts->pending_requests);
 
 skip_paging:
-	bsc_schedule_timer(&paging_bts->work_timer, PAGING_TIMER);
+	osmo_timer_schedule(&paging_bts->work_timer, PAGING_TIMER);
 }
 
 static void paging_worker(void *data)
@@ -263,13 +263,13 @@ static void paging_T3113_expired(void *data)
 	sig_data.lchan	= NULL;
 
 	/* must be destroyed before calling cbfn, to prevent double free */
-	counter_inc(req->bts->network->stats.paging.expired);
+	osmo_counter_inc(req->bts->network->stats.paging.expired);
 	cbfn_param = req->cbfn_param;
 	cbfn = req->cbfn;
 	paging_remove_request(&req->bts->paging, req);
 
 
-	dispatch_signal(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
+	osmo_signal_dispatch(SS_PAGING, S_PAGING_EXPIRED, &sig_data);
 	if (cbfn)
 		cbfn(GSM_HOOK_RR_PAGING, GSM_PAGING_EXPIRED, NULL, NULL,
 			  cbfn_param);
@@ -296,7 +296,7 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	req->cbfn_param = data;
 	req->T3113.cb = paging_T3113_expired;
 	req->T3113.data = req;
-	bsc_schedule_timer(&req->T3113, bts->network->T3113, 0);
+	osmo_timer_schedule(&req->T3113, bts->network->T3113, 0);
 	llist_add_tail(&req->entry, &bts_entry->pending_requests);
 	paging_schedule_if_needed(bts_entry);
 
@@ -309,7 +309,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	struct gsm_bts *bts = NULL;
 	int num_pages = 0;
 
-	counter_inc(network->stats.paging.attempted);
+	osmo_counter_inc(network->stats.paging.attempted);
 
 	/* start paging subscriber on all BTS within Location Area */
 	do {
@@ -332,7 +332,7 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 	} while (1);
 
 	if (num_pages == 0)
-		counter_inc(network->stats.paging.detached);
+		osmo_counter_inc(network->stats.paging.detached);
 
 	return num_pages;
 }
@@ -391,7 +391,7 @@ void paging_request_stop(struct gsm_bts *_bts, struct gsm_subscriber *subscr,
 
 void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t free_slots)
 {
-	bsc_del_timer(&bts->paging.credit_timer);
+	osmo_timer_del(&bts->paging.credit_timer);
 	bts->paging.available_slots = free_slots;
 	paging_schedule_if_needed(&bts->paging);
 }

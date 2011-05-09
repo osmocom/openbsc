@@ -805,7 +805,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rc = gsm_generate_si(si_tmp, trx->bts, i);
 			if (rc < 0)
 				goto err_out;
-			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+			DEBUGP(DRR, "SI%2u: %s\n", i, osmo_hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, i, si_tmp, sizeof(si_tmp));
 		}
 		if (bts->gprs.mode != BTS_GPRS_NONE) {
@@ -813,7 +813,7 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 			rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_13);
 			if (rc < 0)
 				goto err_out;
-			DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+			DEBUGP(DRR, "SI%2u: %s\n", i, osmo_hexdump(si_tmp, rc));
 			rsl_bcch_info(trx, RSL_SYSTEM_INFO_13, si_tmp, rc);
 		}
 	}
@@ -822,14 +822,14 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_5);
 	if (rc < 0)
 		goto err_out;
-	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+	DEBUGP(DRR, "SI%2u: %s\n", i, osmo_hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_5, si_tmp, rc);
 
 	i = 6;
 	rc = gsm_generate_si(si_tmp, trx->bts, RSL_SYSTEM_INFO_6);
 	if (rc < 0)
 		goto err_out;
-	DEBUGP(DRR, "SI%2u: %s\n", i, hexdump(si_tmp, rc));
+	DEBUGP(DRR, "SI%2u: %s\n", i, osmo_hexdump(si_tmp, rc));
 	rsl_sacch_filling(trx, RSL_SYSTEM_INFO_6, si_tmp, rc);
 
 	return 0;
@@ -963,9 +963,9 @@ void input_event(int event, enum e1inp_sign_type type, struct gsm_bts_trx *trx)
 		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", type, trx);
 
 		if (type == E1INP_SIGN_OML)
-			counter_inc(trx->bts->network->stats.bts.oml_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.oml_fail);
 		else if (type == E1INP_SIGN_RSL)
-			counter_inc(trx->bts->network->stats.bts.rsl_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.rsl_fail);
 
 		/*
 		 * free all allocated channels. change the nm_state so the
@@ -1107,7 +1107,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, int, void *),
 		return rc;
 	}
 
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		bootstrap_bts(bts);

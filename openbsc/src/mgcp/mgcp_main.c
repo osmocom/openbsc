@@ -54,7 +54,7 @@ void subscr_put() { abort(); }
 
 #warning "Make use of the rtp proxy code"
 
-static struct bsc_fd bfd;
+static struct osmo_fd bfd;
 static struct mgcp_config *cfg;
 static int reset_endpoints = 0;
 
@@ -137,7 +137,7 @@ static int mgcp_change_cb(struct mgcp_config *cfg, int endpoint, int state)
 	return 0;
 }
 
-static int read_call_agent(struct bsc_fd *fd, unsigned int what)
+static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 {
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
@@ -240,7 +240,7 @@ int main(int argc, char** argv)
 		}
 
 
-		if (bsc_register_fd(&bfd) != 0) {
+		if (osmo_fd_register(&bfd) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
 			return -1;
 		}
@@ -253,7 +253,7 @@ int main(int argc, char** argv)
 
 	/* main loop */
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 

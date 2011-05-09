@@ -147,7 +147,7 @@ static int bssmap_handle_paging(struct gsm_network *net, struct msgb *msg, unsig
 	if (data_length == 3 && data[0] == CELL_IDENT_LAC) {
 		lac = ntohs(read_data16(&data[1]));
 	} else if (data_length > 1 || (data[0] & 0x0f) != CELL_IDENT_BSS) {
-		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", hexdump(data, data_length));
+		LOGP(DMSC, LOGL_ERROR, "Unsupported Cell Identifier List: %s\n", osmo_hexdump(data, data_length));
 		return -1;
 	}
 
@@ -183,7 +183,7 @@ static int bssmap_handle_clear_command(struct sccp_connection *conn,
 
 	if (msg->lchan) {
 		LOGP(DMSC, LOGL_DEBUG, "Releasing all transactions on %p\n", conn);
-		bsc_del_timer(&msg->lchan->msc_data->T10);
+		osmo_timer_del(&msg->lchan->msc_data->T10);
 		msg->lchan->msc_data->lchan = NULL;
 
 		/* we might got killed during an assignment */
@@ -590,7 +590,7 @@ static int bssmap_handle_assignm_req(struct sccp_connection *conn,
 	/* modify the channel now */
 	msc_data->T10.cb = bssmap_t10_fired;
 	msc_data->T10.data = conn;
-	bsc_schedule_timer(&msc_data->T10, GSM0808_T10_VALUE);
+	osmo_timer_schedule(&msc_data->T10, GSM0808_T10_VALUE);
 
 	/* the mgcp call agent starts counting at one. a bit of a weird mapping */
 	port = mgcp_timeslot_to_endpoint(multiplex, timeslot);
@@ -687,13 +687,13 @@ int dtap_rcvmsg(struct gsm_lchan *lchan, struct msgb *msg, unsigned int length)
 	header = (struct dtap_header *) msg->l3h;
 	if (sizeof(*header) >= length) {
 		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
-                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
                 return -1;
 	}
 
 	if (header->length > length - sizeof(*header)) {
 		LOGP(DMSC, LOGL_ERROR, "The DTAP l4 information does not fit: header: %u length: %u\n", header->length, length);
-                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", hexdump(msg->l3h, length));
+                LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
 		return -1;
 	}
 
@@ -901,7 +901,7 @@ static int bssap_handle_lchan_signal(unsigned int subsys, unsigned int signal,
 				return 0;
 			}
 
-			bsc_del_timer(&lchan->msc_data->T10);
+			osmo_timer_del(&lchan->msc_data->T10);
 			conn = lchan->msc_data->sccp;
 			lchan->msc_data->lchan = NULL;
 			lchan->msc_data = NULL;
@@ -1138,7 +1138,7 @@ void gsm0808_send_assignment_failure(struct gsm_lchan *lchan, u_int8_t cause, u_
 {
 	struct msgb *resp;
 
-	bsc_del_timer(&lchan->msc_data->T10);
+	osmo_timer_del(&lchan->msc_data->T10);
 	bssmap_free_secondary(lchan->msc_data);
 	resp = gsm0808_create_assignment_failure(cause, rr_value);
 	if (!resp) {
@@ -1153,7 +1153,7 @@ void gsm0808_send_assignment_compl(struct gsm_lchan *lchan, u_int8_t rr_cause)
 {
 	struct msgb *resp;
 
-	bsc_del_timer(&lchan->msc_data->T10);
+	osmo_timer_del(&lchan->msc_data->T10);
 	resp = bssmap_create_assignment_completed(lchan, rr_cause);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Creating MSC response failed: %p\n", lchan_get_sccp(lchan));
@@ -1165,5 +1165,5 @@ void gsm0808_send_assignment_compl(struct gsm_lchan *lchan, u_int8_t rr_cause)
 
 static __attribute__((constructor)) void on_dso_load_bssap(void)
 {
-	register_signal_handler(SS_LCHAN, bssap_handle_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, bssap_handle_lchan_signal, NULL);
 }

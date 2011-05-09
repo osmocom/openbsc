@@ -52,7 +52,7 @@ enum bs11cfg_state {
 };
 static enum bs11cfg_state bs11cfg_state = STATE_NONE;
 static char *command, *value;
-struct timer_list status_timer;
+struct osmo_timer_list status_timer;
 
 static const u_int8_t obj_li_attr[] = {
 	NM_ATT_BS11_BIT_ERR_THESH, 0x09, 0x00,
@@ -74,7 +74,7 @@ static const u_int8_t too_fast[] = { 0x12, 0x80, 0x00, 0x00, 0x02, 0x02 };
 static struct log_target *stderr_target;
 
 /* dummy function to keep gsm_data.c happy */
-struct counter *counter_alloc(const char *name)
+struct osmo_counter *osmo_counter_alloc(const char *name)
 {
 	return NULL;
 }
@@ -659,7 +659,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		printf("\n%sATTRIBUTES:\n", obj_name(foh));
 		abis_nm_tlv_parse(&tp, g_bts, foh->data, oh->length-sizeof(*foh));
 		rc = print_attr(&tp);
-		//hexdump(foh->data, oh->length-sizeof(*foh));
+		//osmo_hexdump(foh->data, oh->length-sizeof(*foh));
 		break;
 	case NM_MT_BS11_SET_ATTR_ACK:
 		printf("SET ATTRIBUTE ObjClass=0x%02x ObjInst=(%d,%d,%d) ACK\n",
@@ -687,7 +687,7 @@ int handle_serial_msg(struct msgb *rx_msg)
 		abis_nm_bs11_factory_logon(g_bts, 1);
 		break;
 	case STATE_LOGON_ACK:
-		bsc_schedule_timer(&status_timer, 5, 0);
+		osmo_timer_schedule(&status_timer, 5, 0);
 		break;
 	default:
 		break;
@@ -864,7 +864,7 @@ int main(int argc, char **argv)
 	status_timer.cb = status_timer_cb;
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	abis_nm_bs11_factory_logon(g_bts, 0);

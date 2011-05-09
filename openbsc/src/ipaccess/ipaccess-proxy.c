@@ -47,20 +47,20 @@ static struct log_target *stderr_target;
 /* one instance of an ip.access protocol proxy */
 struct ipa_proxy {
 	/* socket where we listen for incoming OML from BTS */
-	struct bsc_fd oml_listen_fd;
+	struct osmo_fd oml_listen_fd;
 	/* socket where we listen for incoming RSL from BTS */
-	struct bsc_fd rsl_listen_fd;
+	struct osmo_fd rsl_listen_fd;
 	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 	/* the BSC reconnect timer */
-	struct timer_list reconn_timer;
+	struct osmo_timer_list reconn_timer;
 };
 
 /* global pointer to the proxy structure */
 static struct ipa_proxy *ipp;
 
 struct ipa_proxy_conn {
-	struct bsc_fd fd;
+	struct osmo_fd fd;
 	struct llist_head tx_queue;
 	struct ipa_bts_conn *bts_conn;
 };
@@ -88,8 +88,8 @@ struct ipa_bts_conn {
 	struct ipa_proxy_conn *bsc_rsl_conn[MAX_TRX];
 
 	/* UDP sockets for BTS and BSC injection */
-	struct bsc_fd udp_bts_fd;
-	struct bsc_fd udp_bsc_fd;
+	struct osmo_fd udp_bts_fd;
+	struct osmo_fd udp_bsc_fd;
 
 	char *id_tags[0xff];
 	u_int8_t *id_resp;
@@ -273,8 +273,8 @@ static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int li
 
 /* UDP socket handling */
 
-static int make_sock(struct bsc_fd *bfd, u_int16_t port, int proto, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what),
+static int make_sock(struct osmo_fd *bfd, u_int16_t port, int proto, int priv_nr,
+		     int (*cb)(struct osmo_fd *fd, unsigned int what),
 		     void *data)
 {
 	struct sockaddr_in addr;
@@ -300,7 +300,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port, int proto, int priv_nr,
 		return -EIO;
 	}
 
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		perror("register UDP fd");
 		return ret;
@@ -308,7 +308,7 @@ static int make_sock(struct bsc_fd *bfd, u_int16_t port, int proto, int priv_nr,
 	return 0;
 }
 
-static int handle_udp_read(struct bsc_fd *bfd)
+static int handle_udp_read(struct osmo_fd *bfd)
 {
 	struct ipa_bts_conn *ipbc = bfd->data;
 	struct ipa_proxy_conn *other_conn = NULL;
@@ -328,7 +328,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	}
 	if (ret == 0) {
 		DEBUGP(DINP, "UDP peer disappeared, dead socket\n");
-		bsc_unregister_fd(bfd);
+		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
 		msgb_free(msg);
@@ -341,7 +341,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	}
 	msgb_put(msg, ret);
 	msg->l2h = msg->data + sizeof(*hh);
-	DEBUGP(DMI, "UDP RX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "UDP RX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	if (hh->len != msg->len - sizeof(*hh)) {
 		DEBUGP(DINP, "length (%u/%u) disagrees with header(%u)\n",
@@ -399,7 +399,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int handle_udp_write(struct bsc_fd *bfd)
+static int handle_udp_write(struct osmo_fd *bfd)
 {
 	/* not implemented yet */
 	bfd->when &= ~BSC_FD_WRITE;
@@ -408,7 +408,7 @@ static int handle_udp_write(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int udp_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int udp_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -421,7 +421,7 @@ static int udp_fd_cb(struct bsc_fd *bfd, unsigned int what)
 }
 
 
-static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
+static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 			      u_int16_t site_id, u_int16_t bts_id,
 			      u_int16_t trx_id, struct tlv_parsed *tlvp,
 			      struct msgb *msg)
@@ -497,9 +497,9 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 	return 0;
 
 err_udp_bsc:
-	bsc_unregister_fd(&ipbc->udp_bts_fd);
+	osmo_fd_unregister(&ipbc->udp_bts_fd);
 err_udp_bts:
-	bsc_unregister_fd(&ipbc->bsc_oml_conn->fd);
+	osmo_fd_unregister(&ipbc->bsc_oml_conn->fd);
 	close(ipbc->bsc_oml_conn->fd.fd);
 	talloc_free(ipbc->bsc_oml_conn);
 	ipbc->bsc_oml_conn = NULL;
@@ -507,7 +507,7 @@ err_bsc_conn:
 	talloc_free(ipbc->id_resp);
 	talloc_free(ipbc);
 #if 0
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	talloc_free(bfd);
 #endif
@@ -516,7 +516,7 @@ err_out:
 }
 
 static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
-			   struct bsc_fd *bfd)
+			   struct osmo_fd *bfd)
 {
 	struct tlv_parsed tlvp;
 	u_int8_t msg_type = *(msg->l2h);
@@ -621,7 +621,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	return 0;
 }
 
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -742,10 +742,10 @@ static void reconn_tmr_cb(void *data)
 	return;
 
 reschedule:
-	bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+	osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 }
 
-static void handle_dead_socket(struct bsc_fd *bfd)
+static void handle_dead_socket(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;		/* local conn */
 	struct ipa_proxy_conn *bsc_conn;		/* remote conn */
@@ -753,7 +753,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 	unsigned int trx_id = bfd->priv_nr >> 8;
 	struct msgb *msg, *msg2;
 
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -766,7 +766,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->oml_conn = NULL;
 		bsc_conn = ipbc->bsc_oml_conn;
 		/* close the connection to the BSC */
-		bsc_unregister_fd(&bsc_conn->fd);
+		osmo_fd_unregister(&bsc_conn->fd);
 		close(bsc_conn->fd.fd);
 		llist_for_each_entry_safe(msg, msg2, &bsc_conn->tx_queue, list)
 			msgb_free(msg);
@@ -778,7 +778,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->rsl_conn[trx_id] = NULL;
 		bsc_conn = ipbc->bsc_rsl_conn[trx_id];
 		/* close the connection to the BSC */
-		bsc_unregister_fd(&bsc_conn->fd);
+		osmo_fd_unregister(&bsc_conn->fd);
 		close(bsc_conn->fd.fd);
 		llist_for_each_entry_safe(msg, msg2, &bsc_conn->tx_queue, list)
 			msgb_free(msg);
@@ -789,13 +789,13 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->bsc_oml_conn = NULL;
 		bsc_conn = ipbc->oml_conn;
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	case RSL_TO_BSC: /* incoming RSL data from BSC, forward to BTS RSL */
 		ipbc->bsc_rsl_conn[trx_id] = NULL;
 		bsc_conn = ipbc->rsl_conn[trx_id];
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	default:
 		bsc_conn = NULL;
@@ -805,7 +805,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 	talloc_free(ipc);
 }
 
-static int handle_tcp_read(struct bsc_fd *bfd)
+static int handle_tcp_read(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct ipa_bts_conn *ipbc = ipc->bts_conn;
@@ -833,13 +833,13 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 
 	msgb_put(msg, ret);
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
-	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, hexdump(msg->data, msg->len));
+	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		ret = ipaccess_rcvmsg(ipc, msg, bfd);
 		if (ret < 0) {
-			bsc_unregister_fd(bfd);
+			osmo_fd_unregister(bfd);
 			close(bfd->fd);
 			bfd->fd = -1;
 			talloc_free(bfd);
@@ -874,7 +874,7 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 }
 
 /* a TCP socket is ready to be written to */
-static int handle_tcp_write(struct bsc_fd *bfd)
+static int handle_tcp_write(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct ipa_bts_conn *ipbc = ipc->bts_conn;
@@ -900,7 +900,7 @@ static int handle_tcp_write(struct bsc_fd *bfd)
 
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
 	DEBUGPC(DMI, "TX %04x: %s\n", bfd->priv_nr,
-		hexdump(msg->data, msg->len));
+		osmo_hexdump(msg->data, msg->len));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -915,7 +915,7 @@ static int handle_tcp_write(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -931,11 +931,11 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 }
 
 /* callback of the listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	struct ipa_proxy_conn *ipc;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -963,7 +963,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = listen_bfd->priv_nr;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -977,8 +977,8 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	return 0;
 }
 
-static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
+static int make_listen_sock(struct osmo_fd *bfd, u_int16_t port, int priv_nr,
+		     int (*cb)(struct osmo_fd *fd, unsigned int what))
 {
 	struct sockaddr_in addr;
 	int ret, on = 1;
@@ -1011,7 +1011,7 @@ static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 		return ret;
 	}
 
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		perror("register_listen_fd");
 		return ret;
@@ -1023,7 +1023,7 @@ static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
 static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, void *data)
 {
 	struct ipa_proxy_conn *ipc;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	int ret, on = 1;
 
 	ipc = alloc_conn();
@@ -1050,7 +1050,7 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 	}
 
 	/* pre-fill tx_queue with identity request */
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		close(bfd->fd);
 		talloc_free(ipc);
@@ -1123,6 +1123,6 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }

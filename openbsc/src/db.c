@@ -288,7 +288,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	return subscr;
 }
 
-static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
+osmo_static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
 
 static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
@@ -691,10 +691,10 @@ int db_sync_equipment(struct gsm_equipment *equip)
 		equip->imei, classmark1);
 	if (equip->classmark2_len)
 		DEBUGPC(DDB, ", classmark2=%s",
-			hexdump(equip->classmark2, equip->classmark2_len));
+			osmo_hexdump(equip->classmark2, equip->classmark2_len));
 	if (equip->classmark3_len)
 		DEBUGPC(DDB, ", classmark3=%s",
-			hexdump(equip->classmark3, equip->classmark3_len));
+			osmo_hexdump(equip->classmark3, equip->classmark3_len));
 	DEBUGPC(DDB, "\n");
 
 	dbi_conn_quote_binary_copy(conn, equip->classmark2,
@@ -1160,7 +1160,7 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-int db_store_counter(struct counter *ctr)
+int db_store_counter(struct osmo_counter *ctr)
 {
 	dbi_result result;
 	char *q_name;

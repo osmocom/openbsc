@@ -120,7 +120,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "    A3A8 algorithm id: %d%s",
 			ainfo.auth_algo, VTY_NEWLINE);
 		vty_out(vty, "    A3A8 Ki: %s%s",
-			hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			osmo_hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
 			VTY_NEWLINE);
 	}
 
@@ -131,13 +131,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr)
 		vty_out(vty, "     seq # : %d%s",
 			atuple.key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			hexdump(atuple.rand, sizeof(atuple.rand)),
+			osmo_hexdump(atuple.rand, sizeof(atuple.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			hexdump(atuple.sres, sizeof(atuple.sres)),
+			osmo_hexdump(atuple.sres, sizeof(atuple.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			hexdump(atuple.kc, sizeof(atuple.kc)),
+			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
 			VTY_NEWLINE);
 	}
 
@@ -441,7 +441,7 @@ DEFUN(cfg_subscr_a3a8,
 		rc = set_authinfo_for_subscr(NULL, subscr);
 	} else if (!strcasecmp(alg_str, "comp128v1")) {
 		/* Parse hex string Ki */
-		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		rc = osmo_hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
 		if (rc != 16)
 			return CMD_WARNING;
 
@@ -485,28 +485,28 @@ DEFUN(show_stats,
 
 	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		counter_get(net->stats.loc_upd_type.attach),
-		counter_get(net->stats.loc_upd_type.normal),
-		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.attach),
+		osmo_counter_get(net->stats.loc_upd_type.normal),
+		osmo_counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
 	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		counter_get(net->stats.loc_upd_resp.accept),
-		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_resp.accept),
+		osmo_counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
 	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
 		"%lu completed, %lu failed%s",
-		counter_get(net->stats.handover.attempted),
-		counter_get(net->stats.handover.no_channel),
-		counter_get(net->stats.handover.timeout),
-		counter_get(net->stats.handover.completed),
-		counter_get(net->stats.handover.failed), VTY_NEWLINE);
+		osmo_counter_get(net->stats.handover.attempted),
+		osmo_counter_get(net->stats.handover.no_channel),
+		osmo_counter_get(net->stats.handover.timeout),
+		osmo_counter_get(net->stats.handover.completed),
+		osmo_counter_get(net->stats.handover.failed), VTY_NEWLINE);
 	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		counter_get(net->stats.sms.submitted),
-		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.submitted),
+		osmo_counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
 	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		counter_get(net->stats.sms.delivered),
-		counter_get(net->stats.sms.rp_err_mem),
-		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.delivered),
+		osmo_counter_get(net->stats.sms.rp_err_mem),
+		osmo_counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -515,7 +515,7 @@ int bsc_vty_init_extra(struct gsm_network *net)
 {
 	gsmnet = net;
 
-	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
+	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
 
 	install_element(VIEW_NODE, &show_subscr_cmd);
 	install_element(VIEW_NODE, &show_subscr_cache_cmd);

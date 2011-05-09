@@ -720,7 +720,7 @@ int main(int argc, char **argv)
 	gsm_bts_trx_alloc(bts);
 	bts->oml_tei = stream_id;
 	
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 	printf("Trying to connect to ip.access BTS ...\n");
 
 	memset(&sin, 0, sizeof(sin));
@@ -735,7 +735,7 @@ int main(int argc, char **argv)
 	bts->oml_link->ts->sign.delay = 10;
 	bts->c0->rsl_link->ts->sign.delay = 10;
 	while (1) {
-		rc = bsc_select_main(0);
+		rc = osmo_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

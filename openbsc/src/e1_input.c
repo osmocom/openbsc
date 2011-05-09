@@ -110,11 +110,11 @@ struct lapd_header {
 	u_int8_t control_foo; /* fake UM's ... */
 } __attribute__((packed));
 
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->hatype == 2,	hatype_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->halen == 4,		halen_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->addr == 6,		addr_offset);
-static_assert((int)&((struct fake_linux_lapd_header*)NULL)->protocol == 14,	proto_offset);
-static_assert(sizeof(struct fake_linux_lapd_header) == 16,			lapd_header_size);
+osmo_static_assert((int)&((struct fake_linux_lapd_header*)NULL)->hatype == 2,	hatype_offset);
+osmo_static_assert((int)&((struct fake_linux_lapd_header*)NULL)->halen == 4,		halen_offset);
+osmo_static_assert((int)&((struct fake_linux_lapd_header*)NULL)->addr == 6,		addr_offset);
+osmo_static_assert((int)&((struct fake_linux_lapd_header*)NULL)->protocol == 14,	proto_offset);
+osmo_static_assert(sizeof(struct fake_linux_lapd_header) == 16,			lapd_header_size);
 
 
 static int pcap_fd = -1;
@@ -236,19 +236,19 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	if (!msg->trx) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
 	} else if (!msg->trx->rsl_link) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -276,7 +276,7 @@ int _abis_nm_sendmsg(struct msgb *msg)
 
 	sign_link = msg->trx->bts->oml_link;
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -433,7 +433,7 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	}
 
 	if (link->ts->type == E1INP_TS_TYPE_SIGN)
-		bsc_del_timer(&link->ts->sign.tx_timer);
+		osmo_timer_del(&link->ts->sign.tx_timer);
 
 	talloc_free(link);
 }
@@ -565,5 +565,5 @@ static __attribute__((constructor)) void on_dso_load_e1_inp(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
-	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
+	osmo_signal_register_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 }

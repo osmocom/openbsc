@@ -69,7 +69,7 @@ struct e1inp_ts {
 			/* delay for the queue */
 			int delay;
 			/* timer when to dequeue next frame */
-			struct timer_list tx_timer;
+			struct osmo_timer_list tx_timer;
 		} sign;
 		struct {
 			/* subchannel demuxer for frames from E1 */
@@ -81,11 +81,11 @@ struct e1inp_ts {
 	union {
 		struct {
 			/* mISDN driver has one fd for each ts */
-			struct bsc_fd fd;
+			struct osmo_fd fd;
 		} misdn;
 		struct {
 			/* ip.access driver has one fd for each ts */
-			struct bsc_fd fd;
+			struct osmo_fd fd;
 		} ipaccess;
 
 	} driver;

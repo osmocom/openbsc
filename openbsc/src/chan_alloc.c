@@ -297,7 +297,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		struct challoc_signal_data sig;
 		sig.bts = bts;
 		sig.type = type;
-		dispatch_signal(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
+		osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
 	}
 
 	return lchan;
@@ -318,11 +318,11 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	/* We might kill an active channel... */
 	if (lchan->conn.use_count != 0) {
-		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
+		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, lchan);
 		lchan->conn.use_count = 0;
 	}
 
-	bsc_del_timer(&lchan->T3101);
+	osmo_timer_del(&lchan->T3101);
 
 	/* clear cached measuement reports */
 	lchan->meas_rep_idx = 0;
@@ -342,7 +342,7 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	sig.lchan = lchan;
 	sig.bts = lchan->ts->trx->bts;
-	dispatch_signal(SS_CHALLOC, S_CHALLOC_FREED, &sig);
+	osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_FREED, &sig);
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -355,9 +355,9 @@ void lchan_free(struct gsm_lchan *lchan)
  */
 void lchan_reset(struct gsm_lchan *lchan)
 {
-	bsc_del_timer(&lchan->T3101);
-	bsc_del_timer(&lchan->T3111);
-	bsc_del_timer(&lchan->error_timer);
+	osmo_timer_del(&lchan->T3101);
+	osmo_timer_del(&lchan->T3111);
+	osmo_timer_del(&lchan->error_timer);
 
 	lchan->type = GSM_LCHAN_NONE;
 	lchan->state = LCHAN_S_NONE;

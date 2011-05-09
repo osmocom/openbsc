@@ -102,7 +102,7 @@ static void release_loc_updating_req(struct gsm_subscriber_connection *conn)
 	if (!conn->loc_operation)
 		return;
 
-	bsc_del_timer(&conn->loc_operation->updating_timer);
+	osmo_timer_del(&conn->loc_operation->updating_timer);
 	talloc_free(conn->loc_operation);
 	conn->loc_operation = 0;
 	put_subscr_con(conn, 0);
@@ -178,7 +178,7 @@ int gsm0408_loc_upd_rej(struct gsm_lchan *lchan, u_int8_t cause)
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 	struct msgb *msg;
 
-	counter_inc(bts->network->stats.loc_upd_resp.reject);
+	osmo_counter_inc(bts->network->stats.loc_upd_resp.reject);
 
 	msg = gsm48_create_loc_upd_rej(cause);
 	if (!msg) {
@@ -221,7 +221,7 @@ int gsm0408_loc_upd_acc(struct gsm_lchan *lchan, u_int32_t tmsi)
 
 	DEBUGP(DMM, "-> LOCATION UPDATE ACCEPT\n");
 
-	counter_inc(bts->network->stats.loc_upd_resp.accept);
+	osmo_counter_inc(bts->network->stats.loc_upd_resp.accept);
 
 	return gsm48_sendmsg(msg, NULL);
 }
@@ -260,7 +260,7 @@ static int mm_rx_id_resp(struct msgb *msg)
 
 	conn = &lchan->conn;
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, gh->data);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_IMSI:
@@ -304,7 +304,7 @@ static void schedule_reject(struct gsm_subscriber_connection *conn)
 {
 	conn->loc_operation->updating_timer.cb = loc_upd_rej_cb;
 	conn->loc_operation->updating_timer.data = conn;
-	bsc_schedule_timer(&conn->loc_operation->updating_timer, 5, 0);
+	osmo_timer_schedule(&conn->loc_operation->updating_timer, 5, 0);
 }
 
 static const char *lupd_name(u_int8_t type)
@@ -344,17 +344,17 @@ static int mm_rx_loc_upd_req(struct msgb *msg)
 	DEBUGPC(DMM, "mi_type=0x%02x MI(%s) type=%s ", mi_type, mi_string,
 		lupd_name(lu->type));
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, &lu->mi_len);
 
 	switch (lu->type) {
 	case GSM48_LUPD_NORMAL:
-		counter_inc(bts->network->stats.loc_upd_type.normal);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.normal);
 		break;
 	case GSM48_LUPD_IMSI_ATT:
-		counter_inc(bts->network->stats.loc_upd_type.attach);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.attach);
 		break;
 	case GSM48_LUPD_PERIODIC:
-		counter_inc(bts->network->stats.loc_upd_type.periodic);
+		osmo_counter_inc(bts->network->stats.loc_upd_type.periodic);
 		break;
 	}
 
@@ -543,7 +543,7 @@ int gsm48_tx_mm_auth_req(struct gsm_lchan *lchan, u_int8_t *rand, int key_seq)
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
 	struct gsm48_auth_req *ar = (struct gsm48_auth_req *) msgb_put(msg, sizeof(*ar));
 
-	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", hexdump(rand, 16));
+	DEBUGP(DMM, "-> AUTH REQ (rand = %s)\n", osmo_hexdump(rand, 16));
 
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_MM;
@@ -638,7 +638,7 @@ static int gsm48_rx_mm_serv_req(struct msgb *msg)
 	DEBUGPC(DMM, "serv_type=0x%02x mi_type=0x%02x M(%s)\n",
 		req->cm_service_type, mi_type, mi_string);
 
-	dispatch_signal(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
+	osmo_signal_dispatch(SS_SUBSCR, S_SUBSCR_IDENTITY, (classmark2 + classmark2_len));
 
 	if (is_siemens_bts(bts))
 		send_siemens_mrpci(msg->lchan, classmark2-1);
@@ -681,7 +681,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
 		mi_type, mi_string);
 
-	counter_inc(bts->network->stats.loc_upd_type.detach);
+	osmo_counter_inc(bts->network->stats.loc_upd_type.detach);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
@@ -899,7 +899,7 @@ static int gsm48_rx_rr_app_info(struct msgb *msg)
 	apdu_data = gh->data+2;
 	
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
-		apdu_id_flags, apdu_len, hexdump(apdu_data, apdu_len));
+		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
 	return db_apdu_blob_store(msg->lchan->conn.subscr, apdu_id_flags, apdu_len, apdu_data);
 }
@@ -912,7 +912,7 @@ static int gsm48_rx_rr_ho_compl(struct msgb *msg)
 	DEBUGP(DRR, "HANDOVER COMPLETE cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, msg->lchan);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, msg->lchan);
 	/* FIXME: release old channel */
 
 	return 0;
@@ -926,7 +926,7 @@ static int gsm48_rx_rr_ho_fail(struct msgb *msg)
 	DEBUGP(DRR, "HANDOVER FAILED cause = %s\n",
 		rr_cause_name(gh->data[0]));
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, msg->lchan);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, msg->lchan);
 	/* FIXME: release allocated new channel */
 
 	return 0;
@@ -1054,9 +1054,9 @@ static int gsm48_tx_simple(struct gsm_lchan *lchan,
 
 static void gsm48_stop_cc_timer(struct gsm_trans *trans)
 {
-	if (bsc_timer_pending(&trans->cc.timer)) {
+	if (osmo_timer_pending(&trans->cc.timer)) {
 		DEBUGP(DCC, "stopping pending timer T%x\n", trans->cc.Tcurrent);
-		bsc_del_timer(&trans->cc.timer);
+		osmo_timer_del(&trans->cc.timer);
 		trans->cc.Tcurrent = 0;
 	}
 }
@@ -1440,7 +1440,7 @@ static void gsm48_start_cc_timer(struct gsm_trans *trans, int current,
 	DEBUGP(DCC, "starting timer T%x with %d seconds\n", current, sec);
 	trans->cc.timer.cb = gsm48_cc_timeout;
 	trans->cc.timer.data = trans;
-	bsc_schedule_timer(&trans->cc.timer, sec, micro);
+	osmo_timer_schedule(&trans->cc.timer, sec, micro);
 	trans->cc.Tcurrent = current;
 }
 
@@ -2926,6 +2926,6 @@ int bsc_upqueue(struct gsm_network *net)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
-	register_signal_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
-	register_signal_handler(SS_ABISIP, handle_abisip_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, gsm0408_handle_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }

@@ -620,7 +620,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
-		bsc_schedule_timer(&lchan->error_timer,
+		osmo_timer_schedule(&lchan->error_timer,
 				   msg->trx->bts->network->T3111 + 2, 0);
 	}
 
@@ -805,7 +805,7 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 		msg->lchan->rqd_ta = 0;
 	}
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ACTIVATE_ACK, msg->lchan);
 
 	return 0;
 }
@@ -835,7 +835,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_ACTIVATE_NACK, msg->lchan);
 
 	lchan_free(msg->lchan);
 	return 0;
@@ -859,7 +859,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
-	counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
+	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
 	return rsl_rf_chan_release(msg->lchan, 1);
 }
 
@@ -978,7 +978,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 
 	print_meas_rep(mr);
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_MEAS_REP, mr);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_MEAS_REP, mr);
 
 	return 0;
 }
@@ -999,7 +999,7 @@ static int rsl_rx_hando_det(struct msgb *msg)
 	else
 		DEBUGPC(DRSL, "\n");
 
-	dispatch_signal(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
+	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_DETECT, msg->lchan);
 
 	return 0;
 }
@@ -1036,7 +1036,7 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 			LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 				gsm_lchan_name(msg->lchan),
 				gsm_lchans_name(msg->lchan->state));
-		bsc_del_timer(&msg->lchan->T3111);
+		osmo_timer_del(&msg->lchan->T3111);
 		/* we have an error timer pending to release that */
 		if (msg->lchan->state != LCHAN_S_REL_ERR)
 			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
@@ -1173,7 +1173,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lctype = get_ctype_by_chreq(bts->network, rqd_ref->ra);
 	chreq_reason = get_reason_by_chreq(rqd_ref->ra, bts->network->neci);
 
-	counter_inc(bts->network->stats.chreq.total);
+	osmo_counter_inc(bts->network->stats.chreq.total);
 
 	/*
 	 * We want LOCATION UPDATES to succeed and will assign a TCH
@@ -1186,7 +1186,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
-		counter_inc(bts->network->stats.chreq.no_channel);
+		osmo_counter_inc(bts->network->stats.chreq.no_channel);
 		/* FIXME: send some kind of reject ?!? */
 		return -ENOMEM;
 	}
@@ -1255,7 +1255,7 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 	/* Start timer T3101 to wait for GSM48_MT_RR_PAG_RESP */
 	lchan->T3101.cb = t3101_expired;
 	lchan->T3101.data = lchan;
-	bsc_schedule_timer(&lchan->T3101, bts->network->T3101, 0);
+	osmo_timer_schedule(&lchan->T3101, bts->network->T3101, 0);
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	return rsl_imm_assign_cmd(bts, sizeof(ia), (u_int8_t *) &ia);
@@ -1337,7 +1337,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
-		counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
+		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
 		return rsl_rf_chan_release(msg->lchan, 1);
 	}
 
@@ -1367,7 +1367,7 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	lchan->T3111.cb = t3111_expired;
 	lchan->T3111.data = lchan;
 	bts = lchan->ts->trx->bts;
-	bsc_schedule_timer(&lchan->T3111, bts->network->T3111, 0);
+	osmo_timer_schedule(&lchan->T3111, bts->network->T3111, 0);
 }
 
 /*	ESTABLISH INDICATION, LOCATION AREA UPDATE REQUEST
@@ -1401,7 +1401,7 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		DEBUGPC(DRLL, "ESTABLISH INDICATION\n");
 		/* lchan is established, stop T3101 */
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_MS;
-		bsc_del_timer(&msg->lchan->T3101);
+		osmo_timer_del(&msg->lchan->T3101);
 		if (msgb_l2len(msg) >
 		    sizeof(struct abis_rsl_common_hdr) + sizeof(*rllh) &&
 		    rllh->data[0] == RSL_IE_L3_INFO) {
@@ -1658,7 +1658,7 @@ static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
 			goto out_err;
 	}
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_CRCX_ACK, msg->lchan);
 
 	return 0;
 out_err:
@@ -1677,7 +1677,7 @@ static int abis_rsl_rx_ipacc_mdcx_ack(struct msgb *msg)
 
 	rsl_tlv_parse(&tv, dh->data, msgb_l2len(msg)-sizeof(*dh));
 	ipac_parse_rtp(lchan, &tv);
-	dispatch_signal(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_MDCX_ACK, msg->lchan);
 
 	return 0;
 }
@@ -1700,7 +1700,7 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 		lchan->abis_ip.rtp_socket = NULL;
 	}
 
-	dispatch_signal(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
+	osmo_signal_dispatch(SS_ABISIP, S_ABISIP_DLCX_IND, msg->lchan);
 
 	return 0;
 }

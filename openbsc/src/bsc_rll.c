@@ -34,7 +34,7 @@
 
 struct bsc_rll_req {
 	struct llist_head list;
-	struct timer_list timer;
+	struct osmo_timer_list timer;
 
 	struct gsm_lchan *lchan;
 	u_int8_t link_id;
@@ -99,7 +99,7 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 	rllr->timer.cb = &timer_cb;
 	rllr->timer.data = rllr;
 
-	bsc_schedule_timer(&rllr->timer, 10, 0);
+	osmo_timer_schedule(&rllr->timer, 10, 0);
 
 	/* send the RSL RLL ESTablish REQuest */
 	return rsl_establish_request(rllr->lchan, rllr->link_id);
@@ -114,7 +114,7 @@ void rll_indication(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t type)
 	llist_for_each_entry_safe(rllr, rllr2, &bsc_rll_reqs, list) {
 		if (rllr->lchan == lchan &&
 		    (rllr->link_id & LINKID_MASK) == (link_id & LINKID_MASK)) {
-			bsc_del_timer(&rllr->timer);
+			osmo_timer_del(&rllr->timer);
 			complete_rllr(rllr, type);
 			return;
 		}

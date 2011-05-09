@@ -66,6 +66,6 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 			u_int8_t *apdu);
 
 /* Statistics counter storage */
-int db_store_counter(struct counter *ctr);
+int db_store_counter(struct osmo_counter *ctr);
 
 #endif /* _DB_H */

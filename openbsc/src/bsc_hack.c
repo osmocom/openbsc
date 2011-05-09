@@ -47,7 +47,7 @@ extern const char *openbsc_copyright;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
-static struct timer_list db_sync_timer;
+static struct osmo_timer_list db_sync_timer;
 
 extern int bsc_bootstrap_network(int (*mmc_rev)(struct gsm_network *, int, void *),
 				 const char *cfg_file);
@@ -171,7 +171,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -191,7 +191,7 @@ static void signal_handler(int signal)
 }
 
 /* timer handling */
-static int _db_store_counter(struct counter *counter, void *data)
+static int _db_store_counter(struct osmo_counter *counter, void *data)
 {
 	return db_store_counter(counter);
 }
@@ -199,8 +199,8 @@ static int _db_store_counter(struct counter *counter, void *data)
 static void db_sync_timer_cb(void *data)
 {
 	/* store counters to database and re-schedule */
-	counters_for_each(_db_store_counter, NULL);
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_counters_for_each(_db_store_counter, NULL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
 extern int bts_model_unknown_init(void);
@@ -248,7 +248,7 @@ int main(int argc, char **argv)
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	rc = bsc_bootstrap_network(mncc_recv, config_file);
 	if (rc < 0)
@@ -263,6 +263,6 @@ int main(int argc, char **argv)
 	while (1) {
 		bsc_upqueue(bsc_gsmnet);
 		log_reset_context();
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }

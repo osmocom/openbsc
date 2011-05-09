@@ -94,17 +94,17 @@ struct bsc_connection {
 	int authenticated;
 
 	/* the fd we use to communicate */
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 
 	/* the BSS associated */
 	struct bsc_config *cfg;
 
 	/* a timeout node */
-	struct timer_list id_timeout;
+	struct osmo_timer_list id_timeout;
 
 	/* pong timeout */
-	struct timer_list ping_timeout;
-	struct timer_list pong_timeout;
+	struct osmo_timer_list ping_timeout;
+	struct osmo_timer_list pong_timeout;
 
 	/* a back pointer */
 	struct bsc_nat *nat;
@@ -143,12 +143,12 @@ struct sccp_connections {
  */
 struct bsc_config_stats {
 	struct {
-		struct counter *conn;
-		struct counter *calls;
+		struct osmo_counter *conn;
+		struct osmo_counter *calls;
 	} sccp;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} net;
 };
 
@@ -190,17 +190,17 @@ struct bsc_endpoint {
  */
 struct bsc_nat_statistics {
 	struct {
-		struct counter *conn;
-		struct counter *calls;
+		struct osmo_counter *conn;
+		struct osmo_counter *calls;
 	} sccp;
 
 	struct {
-		struct counter *reconn;
-                struct counter *auth_fail;
+		struct osmo_counter *reconn;
+                struct osmo_counter *auth_fail;
 	} bsc;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} msc;
 };
 
@@ -242,7 +242,7 @@ struct bsc_nat {
 
 	/* MGCP config */
 	struct mgcp_config *mgcp_cfg;
-	struct write_queue mgcp_queue;
+	struct osmo_wqueue mgcp_queue;
 	u_int8_t mgcp_msg[4096];
 	int mgcp_length;
 
