@@ -68,6 +68,7 @@ static LLIST_HEAD(active_connections);
 static struct osmo_wqueue mgcp_agent;
 static const char *rf_ctl = NULL;
 static int testmode = 0;
+static int aborted = 0;
 extern int ipacc_rtp_direct;
 
 /* msc handling */
@@ -1174,6 +1175,7 @@ static void signal_handler(int signal)
 	case SIGABRT:
 		/* in case of abort, we want to obtain a talloc report
 		 * and then return to the caller, who will abort the process */
+		aborted = 1;
 	case SIGUSR1:
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
@@ -1230,6 +1232,13 @@ static void test_mode()
 extern int bts_model_unknown_init(void);
 extern int bts_model_bs11_init(void);
 extern int bts_model_nanobts_init(void);
+
+static void crash_on_exit()
+{
+	if (aborted)
+		return;
+	abort();
+}
 
 int main(int argc, char **argv)
 {
@@ -1319,7 +1328,7 @@ int main(int argc, char **argv)
 	bsc_gsmnet->msc_con->write_queue.write_cb = msc_sccp_do_write;
 	bsc_msc_connect(bsc_gsmnet->msc_con);
 
-
+	atexit(crash_on_exit);
 
 	while (1) {
 		osmo_select_main(0);
