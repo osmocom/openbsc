@@ -1,6 +1,1 @@
-src/openbsc.cfg.1-1
-src/openbsc.cfg.1-2
-src/openbsc.cfg.1-2-hopping
-src/openbsc.cfg.gprs
-src/openbsc.cfg.nanobts
-src/openbsc.cfg.nanobts.multitrx
+doc/examples/osmo-nitb
