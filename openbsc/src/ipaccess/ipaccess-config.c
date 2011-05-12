@@ -34,6 +34,7 @@
 #include <arpa/inet.h>
 
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/timer.h>
 #include <openbsc/ipaccess.h>
@@ -761,14 +762,9 @@ int main(int argc, char **argv)
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
 	int rc, option_index = 0, stream_id = 0xff;
-	struct log_target *stderr_target;
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
-	log_set_log_level(stderr_target, 0);
-	log_parse_category_mask(stderr_target, "DNM,0");
+	osmo_init_logging(&log_info);
+	log_parse_category_mask(osmo_stderr_target, "DNM,0");
 	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009-2010 by Harald Welte and others\n");
@@ -871,7 +867,7 @@ int main(int argc, char **argv)
 			dump_files = 1;
 			break;
 		case 'c':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'p':
 			loop_tests = 1;

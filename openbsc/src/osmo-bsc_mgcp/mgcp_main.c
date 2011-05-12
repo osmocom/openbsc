@@ -32,16 +32,19 @@
 #include <sys/socket.h>
 
 #include <openbsc/debug.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/mgcp.h>
+#include <openbsc/mgcp_internal.h>
+#include <openbsc/vty.h>
+
+#include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/process.h>
-#include <openbsc/gsm_data.h>
 #include <osmocom/core/select.h>
-#include <openbsc/mgcp.h>
-#include <openbsc/mgcp_internal.h>
+
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
-#include <openbsc/vty.h>
 
 #include <osmocom/vty/command.h>
 
@@ -193,14 +196,11 @@ int main(int argc, char **argv)
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
-	struct log_target *stderr_target;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_ignore_signals();
+	osmo_init_logging(&log_info);
 
 	cfg = mgcp_config_alloc();
 	if (!cfg)

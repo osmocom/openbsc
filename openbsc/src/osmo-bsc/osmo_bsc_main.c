@@ -26,6 +26,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/process.h>
 
@@ -43,7 +44,6 @@
 
 #include "../../bscconfig.h"
 
-static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static const char *rf_ctl = NULL;
@@ -101,10 +101,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -113,10 +113,10 @@ static void handle_options(int argc, char **argv)
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'r':
 			rf_ctl = optarg;
@@ -179,17 +179,15 @@ int main(int argc, char **argv)
 	struct osmo_msc_data *data;
 	int rc;
 
-	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
+
+	osmo_init_logging(&log_info);
 
 	bts_model_unknown_init();
 	bts_model_bs11_init();
 	bts_model_nanobts_init();
 
 	/* enable filters */
-	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
 	vty_info.copyright = openbsc_copyright;
@@ -245,7 +243,7 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	if (daemonize) {
 		rc = osmo_daemonize();

@@ -44,10 +44,11 @@
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
 
-#include <osmocom/gsm/gsm0808.h>
+#include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/process.h>
 
+#include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <osmocom/vty/telnet_interface.h>
@@ -61,7 +62,6 @@
 #define SCCP_CLOSE_TIME 20
 #define SCCP_CLOSE_TIME_TIMEOUT 19
 
-struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
 static struct osmo_fd bsc_listen;
@@ -1322,16 +1322,16 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'm':
 			msc_ip = optarg;
@@ -1418,10 +1418,7 @@ int main(int argc, char **argv)
 
 	talloc_init_ctx();
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	nat = bsc_nat_alloc();
 	if (!nat) {
@@ -1497,7 +1494,7 @@ int main(int argc, char **argv)
 
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	if (daemonize) {
 		rc = osmo_daemonize();

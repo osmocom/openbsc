@@ -38,6 +38,7 @@
 #include <getopt.h>
 
 #include <openbsc/gsm_data.h>
+#include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/core/msgb.h>
@@ -45,8 +46,6 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 #include <osmocom/core/talloc.h>
-
-static struct log_target *stderr_target;
 
 /* one instance of an ip.access protocol proxy */
 struct ipa_proxy {
@@ -1143,13 +1142,13 @@ static void handle_options(int argc, char** argv)
 			gprs_ns_ipaddr = optarg;
 			break;
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case '?':
 			if (optopt) {
@@ -1184,11 +1183,8 @@ int main(int argc, char **argv)
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
-	log_parse_category_mask(stderr_target, "DINP:DMI");
+	osmo_init_logging(&log_info);
+	log_parse_category_mask(osmo_stderr_target, "DINP:DMI");
 
 	handle_options(argc, argv);
 
@@ -1198,6 +1194,7 @@ int main(int argc, char **argv)
 
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGABRT, &signal_handler);
+	osmo_init_ignore_signals();
 
 	while (1) {
 		osmo_select_main(0);

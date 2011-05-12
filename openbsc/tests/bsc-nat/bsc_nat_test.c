@@ -27,6 +27,7 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 
 #include <osmocom/sccp/sccp.h>
@@ -979,13 +980,8 @@ static void test_setup_rewrite()
 
 int main(int argc, char **argv)
 {
-	struct log_target *stderr_target;
-
 	sccp_set_log_area(DSCCP);
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	test_filter();
 	test_contrack();

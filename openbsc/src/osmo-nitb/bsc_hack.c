@@ -30,6 +30,7 @@
 #include <getopt.h>
 
 #include <openbsc/db.h>
+#include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/process.h>
 #include <openbsc/debug.h>
@@ -43,7 +44,6 @@
 #include "../../bscconfig.h"
 
 /* MCC and MNC for the Location Area Identifier */
-static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
@@ -127,10 +127,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -145,13 +145,13 @@ static void handle_options(int argc, char **argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'm':
 			use_mncc_sock = 1;
@@ -229,14 +229,13 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 
-	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
+
+	osmo_init_logging(&log_info);
 
 	bts_model_unknown_init();
 	bts_model_bs11_init();
@@ -245,9 +244,6 @@ int main(int argc, char **argv)
 	bts_model_hslfemto_init();
 
 	e1inp_init();
-
-	/* enable filters */
-	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
 	vty_init(&vty_info);
@@ -291,7 +287,7 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	/* start the SMS queue */
 	if (sms_queue_start(bsc_gsmnet, 20) != 0)

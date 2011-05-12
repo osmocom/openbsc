@@ -32,6 +32,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
@@ -62,7 +63,6 @@ void subscr_put() { abort(); }
 void *tall_bsc_ctx;
 
 struct gprs_ns_inst *sgsn_nsi;
-static struct log_target *stderr_target;
 static int daemonize = 0;
 const char *openbsc_copyright =
 	"Copyright (C) 2010 Harald Welte and On-Waves\r\n"
@@ -174,10 +174,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -186,10 +186,10 @@ static void handle_options(int argc, char **argv)
 			sgsn_inst.config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		default:
 			/* ignore */
@@ -211,12 +211,9 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_ignore_signals();
+	osmo_init_logging(&log_info);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);

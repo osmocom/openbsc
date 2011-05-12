@@ -20,6 +20,7 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <string.h>
 
@@ -74,11 +75,7 @@ static void test_auep(void)
 
 int main(int argc, char **argv)
 {
-	struct log_target *stderr_target;
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	test_auep();
 	return 0;
