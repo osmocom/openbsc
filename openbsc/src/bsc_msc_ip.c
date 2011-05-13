@@ -48,6 +48,7 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/osmo_bsc_grace.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/write_queue.h>
@@ -1267,7 +1268,7 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	/* attempt to register the local mgcp forward */
 	if (mgcp_create_port() != 0) {
