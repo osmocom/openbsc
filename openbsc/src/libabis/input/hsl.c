@@ -437,12 +437,6 @@ int hsl_setup(struct gsm_network *gsmnet)
 {
 	int ret;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&hsl_driver);
-	if (ret)
-		return ret;
-
 	e1h = talloc_zero(tall_bsc_ctx, struct hsl_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
@@ -456,4 +450,9 @@ int hsl_setup(struct gsm_network *gsmnet)
 		return ret;
 
 	return 0;
+}
+
+void e1inp_hsl_init(void)
+{
+	e1inp_driver_register(&hsl_driver);
 }

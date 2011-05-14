@@ -812,12 +812,6 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 {
 	int ret;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&ipaccess_driver);
-	if (ret)
-		return ret;
-
 	e1h = talloc_zero(tall_bsc_ctx, struct ia_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
@@ -837,4 +831,9 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 		return ret;
 
 	return ret;
+}
+
+void e1inp_ipaccess_init(void)
+{
+	e1inp_driver_register(&ipaccess_driver);
 }
