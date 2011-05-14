@@ -573,6 +573,14 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	bts->type = type;
 	bts->model = model;
 
+	if (model->start && !model->started) {
+		int ret = model->start(bts->network);
+		if (ret < 0)
+			return ret;
+
+		model->started = true;
+	}
+
 	switch (bts->type) {
 	case GSM_BTS_TYPE_HSL_FEMTO:
 		bts->c0->rsl_tei = 0;

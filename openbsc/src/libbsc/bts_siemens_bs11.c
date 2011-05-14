@@ -28,9 +28,12 @@
 #include <openbsc/e1_input.h>
 #include <openbsc/signal.h>
 
+static int bts_model_bs11_start(struct gsm_network *net);
+
 static struct gsm_bts_model model_bs11 = {
 	.type = GSM_BTS_TYPE_BS11,
 	.name = "bs11",
+	.start = bts_model_bs11_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
 	.nm_att_tlvdef = {
 		.def = {
@@ -575,7 +578,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int bts_model_bs11_init(void)
+static int bts_model_bs11_start(struct gsm_network *net)
 {
 	model_bs11.features.data = &model_bs11._features_data[0];
 	model_bs11.features.data_len = sizeof(model_bs11._features_data);
@@ -586,5 +589,10 @@ int bts_model_bs11_init(void)
 	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
 
+	return 0;
+}
+
+int bts_model_bs11_init(void)
+{
 	return gsm_bts_model_register(&model_bs11);
 }

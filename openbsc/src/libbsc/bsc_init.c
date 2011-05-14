@@ -315,6 +315,14 @@ static int bootstrap_bts(struct gsm_bts *bts)
 {
 	int i, n;
 
+	if (bts->model->start && !bts->model->started) {
+		int ret = bts->model->start(bts->network);
+		if (ret < 0)
+			return ret;
+
+		bts->model->started = true;
+	}
+
 	/* FIXME: What about secondary TRX of a BTS?  What about a BTS that has TRX
 	 * in different bands? Why is 'band' a parameter of the BTS and not of the TRX? */
 	switch (bts->band) {
@@ -456,10 +464,5 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			return rc;
 		}
 	}
-
-	/* initialize nanoBTS support omce */
-	rc = ipaccess_setup(bsc_gsmnet);
-	rc = hsl_setup(bsc_gsmnet);
-
 	return 0;
 }

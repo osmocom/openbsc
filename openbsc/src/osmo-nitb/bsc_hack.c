@@ -40,6 +40,7 @@
 #include <openbsc/osmo_msc.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
+#include <openbsc/bss.h>
 
 #include "../../bscconfig.h"
 
@@ -54,10 +55,6 @@ static int use_mncc_sock = 0;
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
 static struct osmo_timer_list db_sync_timer;
-
-extern int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
-				 const char *cfg_file);
-extern int bsc_shutdown_net(struct gsm_network *net);
 
 static void create_pcap_file(char *file)
 {
@@ -207,11 +204,6 @@ static void db_sync_timer_cb(void *data)
 	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
-extern int bts_model_unknown_init(void);
-extern int bts_model_bs11_init(void);
-extern int bts_model_nanobts_init(void);
-extern int bts_model_rbs2k_init(void);
-extern int bts_model_hslfemto_init(void);
 void talloc_ctx_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
@@ -237,12 +229,7 @@ int main(int argc, char **argv)
 
 	osmo_init_logging(&log_info);
 
-	bts_model_unknown_init();
-	bts_model_bs11_init();
-	bts_model_nanobts_init();
-	bts_model_rbs2k_init();
-	bts_model_hslfemto_init();
-
+	bts_init();
 	e1inp_init();
 
 	/* This needs to precede handle_options() */

@@ -50,8 +50,6 @@ static const char *rf_ctl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
-extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, struct msgb *), const char *cfg_file);
-
 static void print_usage()
 {
 	printf("Usage: osmo-bsc\n");
@@ -128,10 +126,6 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
-extern int bts_model_unknown_init(void);
-extern int bts_model_bs11_init(void);
-extern int bts_model_nanobts_init(void);
-
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
 static struct vty_app_info vty_info = {
@@ -183,9 +177,8 @@ int main(int argc, char **argv)
 
 	osmo_init_logging(&log_info);
 
-	bts_model_unknown_init();
-	bts_model_bs11_init();
-	bts_model_nanobts_init();
+	bts_init();
+	e1inp_init();
 
 	/* enable filters */
 

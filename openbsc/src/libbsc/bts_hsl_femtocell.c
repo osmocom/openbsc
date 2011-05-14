@@ -30,8 +30,11 @@
 #include <openbsc/signal.h>
 #include <openbsc/e1_input.h>
 
+static int bts_model_hslfemto_start(struct gsm_network *net);
+
 static struct gsm_bts_model model_hslfemto = {
 	.type = GSM_BTS_TYPE_HSL_FEMTO,
+	.start = bts_model_hslfemto_start,
 	.nm_att_tlvdef = {
 		.def = {
 			/* no HSL specific OML attributes that we know of */
@@ -148,7 +151,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int bts_model_hslfemto_init(void)
+static int bts_model_hslfemto_start(struct gsm_network *net)
 {
 	model_hslfemto.features.data = &model_hslfemto._features_data[0];
 	model_hslfemto.features.data_len = sizeof(model_hslfemto._features_data);
@@ -158,5 +161,11 @@ int bts_model_hslfemto_init(void)
 
 	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 
+	/* Call A-bis input driver, start socket for OML and RSL. */
+	return hsl_setup(net);
+}
+
+int bts_model_hslfemto_init(void)
+{
 	return gsm_bts_model_register(&model_hslfemto);
 }

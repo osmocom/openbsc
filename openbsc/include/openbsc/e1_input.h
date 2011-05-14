@@ -175,6 +175,7 @@ int e1_reconfig_bts(struct gsm_bts *bts);
 
 int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin);
 int ipaccess_setup(struct gsm_network *gsmnet);
+int hsl_setup(struct gsm_network *gsmnet);
 
 extern struct llist_head e1inp_driver_list;
 extern struct llist_head e1inp_line_list;

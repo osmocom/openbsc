@@ -26,10 +26,14 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/e1_input.h> /* for ipaccess_setup() */
+
+static int bts_model_nanobts_start(struct gsm_network *net);
 
 static struct gsm_bts_model model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
+	.start = bts_model_nanobts_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
 	.nm_att_tlvdef = {
 		.def = {
@@ -435,7 +439,7 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int bts_model_nanobts_init(void)
+static int bts_model_nanobts_start(struct gsm_network *net)
 {
 	model_nanobts.features.data = &model_nanobts._features_data[0];
 	model_nanobts.features.data_len = sizeof(model_nanobts._features_data);
@@ -445,5 +449,11 @@ int bts_model_nanobts_init(void)
 
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
+	/* Call A-bis input driver, start server sockets for OML and RSL. */
+	return ipaccess_setup(net);
+}
+
+int bts_model_nanobts_init(void)
+{
 	return gsm_bts_model_register(&model_nanobts);
 }

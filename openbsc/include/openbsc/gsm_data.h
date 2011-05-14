@@ -1,6 +1,7 @@
 #ifndef _GSM_DATA_H
 #define _GSM_DATA_H
 
+#include <stdbool.h>
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
@@ -434,6 +435,8 @@ struct gsm_bts_model {
 	enum gsm_bts_type type;
 	const char *name;
 
+	bool started;
+	int (*start)(struct gsm_network *net);
 	int (*oml_rcvmsg)(struct msgb *msg);
 
 	void (*config_write_bts)(struct vty *vty, struct gsm_bts *bts);

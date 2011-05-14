@@ -242,14 +242,17 @@ static void config_write_bts(struct vty *vty, struct gsm_bts *bts)
 	abis_om2k_config_write_bts(vty, bts);
 }
 
+static int bts_model_rbs2k_start(struct gsm_network *net);
+
 static struct gsm_bts_model model_rbs2k = {
 	.type = GSM_BTS_TYPE_RBS2000,
 	.name = "rbs2000",
+	.start = bts_model_rbs2k_start,
 	.oml_rcvmsg = &abis_om2k_rcvmsg,
 	.config_write_bts = &config_write_bts,
 };
 
-int bts_model_rbs2k_init(void)
+static int bts_model_rbs2k_start(struct gsm_network *net)
 {
 	model_rbs2k.features.data = &model_rbs2k._features_data[0];
 	model_rbs2k.features.data_len = sizeof(model_rbs2k._features_data);
@@ -261,5 +264,10 @@ int bts_model_rbs2k_init(void)
 	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
+	return 0;
+}
+
+int bts_model_rbs2k_init(void)
+{
 	return gsm_bts_model_register(&model_rbs2k);
 }
