@@ -439,7 +439,10 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		rc = bootstrap_bts(bts);
-
+		if (rc < 0) {
+			LOGP(DNM, LOGL_FATAL, "Error bootstrapping BTS\n");
+			return rc;
+		}
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
 		case GSM_BTS_TYPE_HSL_FEMTO:
@@ -448,10 +451,9 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			rc = e1_reconfig_bts(bts);
 			break;
 		}
-
 		if (rc < 0) {
-			fprintf(stderr, "Error in E1 input driver setup\n");
-			exit (1);
+			LOGP(DNM, LOGL_FATAL, "Error enabling E1 input driver\n");
+			return rc;
 		}
 	}
 
