@@ -166,7 +166,7 @@ static void timer_cb(void *_data)
 int main(int argc, char **argv)
 {
 	struct osmo_fd bfd;
-	char *ifname;
+	char *ifname = NULL;
 	int rc;
 
 	printf("ipaccess-find (C) 2009 by Harald Welte\n");
@@ -175,10 +175,9 @@ int main(int argc, char **argv)
 	if (argc < 2) {
 		fprintf(stdout, "you might need to specify the outgoing\n"
 			" network interface, e.g. ``%s eth0''\n", argv[0]);
-		exit(EXIT_FAILURE);
+		ifname = argv[1];
 	}
 
-	ifname = argv[1];
 	bfd.cb = bfd_cb;
 	bfd.when = BSC_FD_READ | BSC_FD_WRITE;
 	bfd.fd = udp_sock(ifname);
