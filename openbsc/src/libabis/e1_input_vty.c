@@ -76,6 +76,9 @@ static int e1inp_config_write(struct vty *vty)
 {
 	struct e1inp_line *line;
 
+	if (llist_empty(&e1inp_line_list))
+		return CMD_SUCCESS;
+
 	vty_out(vty, "e1_input%s", VTY_NEWLINE);
 
 	llist_for_each_entry(line, &e1inp_line_list, list) {
