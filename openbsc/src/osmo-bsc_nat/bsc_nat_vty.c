@@ -38,6 +38,9 @@
 
 static struct bsc_nat *_nat;
 
+
+#define PAGING_STR "Paging\n"
+
 static struct cmd_node nat_node = {
 	NAT_NODE,
 	"%s(nat)#",
@@ -130,14 +133,14 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
 	dump_lac(vty, &bsc->lac_list);
-	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
 		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
 	if (bsc->paging_group != -1)
-		vty_out(vty, "  paging-group %d%s", bsc->paging_group, VTY_NEWLINE);
+		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
+	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -703,7 +706,7 @@ DEFUN(cfg_bsc_max_endps, cfg_bsc_max_endps_cmd,
 DEFUN(cfg_bsc_paging,
       cfg_bsc_paging_cmd,
       "paging forbidden (0|1)",
-      "Forbid sending PAGING REQUESTS to the BSC.")
+      PAGING_STR "Forbid sending PAGING REQUESTS to the BSC.")
 {
 	struct bsc_config *conf = vty->index;
 
@@ -728,18 +731,22 @@ DEFUN(cfg_bsc_desc,
 
 DEFUN(cfg_bsc_paging_grp,
       cfg_bsc_paging_grp_cmd,
-      "paging-group <0-1000>",
-      "Use a paging group\n" "Paging Group to use\n")
+      "paging group <0-1000>",
+      PAGING_STR "Use a paging group\n" "Paging Group to use\n")
 {
 	struct bsc_config *conf = vty->index;
 	conf->paging_group = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
+ALIAS_DEPRECATED(cfg_bsc_paging_grp, cfg_bsc_old_grp_cmd,
+		 "paging-group <0-1000>",
+		 "Use a paging group\n" "Paging Group to use\n")
+
 DEFUN(cfg_bsc_no_paging_grp,
       cfg_bsc_no_paging_grp_cmd,
-      "no paging-group",
-      NO_STR "Disable the usage of a paging group.\n")
+      "no paging group",
+      NO_STR PAGING_STR "Disable the usage of a paging group.\n")
 {
 	struct bsc_config *conf = vty->index;
 	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
@@ -934,6 +941,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_max_endps_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_old_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
 
