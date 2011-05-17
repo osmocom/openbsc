@@ -175,6 +175,7 @@ int main(int argc, char **argv)
 	if (argc < 2) {
 		fprintf(stdout, "you might need to specify the outgoing\n"
 			" network interface, e.g. ``%s eth0''\n", argv[0]);
+	} else {
 		ifname = argv[1];
 	}
 
