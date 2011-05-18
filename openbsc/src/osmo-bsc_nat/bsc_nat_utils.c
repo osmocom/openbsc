@@ -798,6 +798,61 @@ int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
+static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
+				       struct gsm_mncc_number *called)
+{
+	struct osmo_config_entry *entry;
+	char *new_number = NULL;
+
+	if (!nat->num_rewr)
+		return NULL;
+
+	if (called->plan != 1)
+		return NULL;
+	if (called->type == 1)
+		return NULL;
+	if (strncmp(called->number, "00", 2) == 0)
+		return NULL;
+
+	/* need to find a replacement and then fix it */
+	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
+		regex_t reg;
+		regmatch_t matches[2];
+
+		if (entry->mcc[0] != '*' && strncmp(entry->mcc, imsi, 3) != 0)
+			continue;
+		if (entry->mnc[0] != '*' && strncmp(entry->mnc, imsi + 3, 2) != 0)
+			continue;
+
+		if (entry->text[0] == '+') {
+			LOGP(DNAT, LOGL_ERROR,
+				"Plus is not allowed in the number");
+			continue;
+		}
+
+		/* We have an entry for the IMSI. Need to match now */
+		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Regexp '%s' is not valid.\n", entry->option);
+			continue;
+		}
+
+		/* this regexp matches... */
+		if (regexec(&reg, called->number, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(ctx, "%s%s",
+					entry->text,
+					&called->number[matches[1].rm_so]);
+		regfree(&reg);
+
+		if (new_number)
+			break;
+	}
+
+	return new_number;
+}
+
+
 /**
  * Rewrite non global numbers... according to rules based on the IMSI
  */
@@ -809,7 +864,6 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	uint8_t msg_type, proto;
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
-	struct osmo_config_entry *entry;
 	char *new_number = NULL;
 	struct msgb *out, *sccp;
 	uint8_t *outptr;
@@ -817,9 +871,6 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	int sec_len;
 
 	if (!imsi || strlen(imsi) < 5)
-		return msg;
-
-	if (!nat->num_rewr)
 		return msg;
 
 	/* only care about DTAP messages */
@@ -851,47 +902,7 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	if (called.plan != 1)
-		return msg;
-	if (called.type == 1)
-		return msg;
-	if (strncmp(called.number, "00", 2) == 0)
-		return msg;
-
-	/* need to find a replacement and then fix it */
-	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
-		regex_t reg;
-		regmatch_t matches[2];
-
-		if (entry->mcc[0] != '*' && strncmp(entry->mcc, imsi, 3) != 0)
-			continue;
-		if (entry->mnc[0] != '*' && strncmp(entry->mnc, imsi + 3, 2) != 0)
-			continue;
-
-		if (entry->text[0] == '+') {
-			LOGP(DNAT, LOGL_ERROR,
-				"Plus is not allowed in the number");
-			continue;
-		}
-
-		/* We have an entry for the IMSI. Need to match now */
-		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
-			LOGP(DNAT, LOGL_ERROR,
-				"Regexp '%s' is not valid.\n", entry->option);
-			continue;
-		}
-
-		/* this regexp matches... */
-		if (regexec(&reg, called.number, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(msg, "%s%s",
-					entry->text,
-					&called.number[matches[1].rm_so]);
-		regfree(&reg);
-
-		if (new_number)
-			break;
-	}
+	new_number = rewrite_non_international(nat, msg, imsi, &called);
 
 	if (!new_number) {
 		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
