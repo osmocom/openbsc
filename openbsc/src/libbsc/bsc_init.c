@@ -45,16 +45,21 @@ static int oml_msg_nack(struct nm_nack_signal_data *nack)
 
 	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
 
-		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
+		LOGP(DNM, LOGL_ERROR, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
-		exit(-1);
+		goto drop_bts;
 	} else {
 		LOGP(DNM, LOGL_ERROR, "Got a NACK going to drop the OML links.\n");
-		for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
-			struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
-			if (is_ipaccess_bts(bts))
-				ipaccess_drop_oml(bts);
-		}
+		goto drop_bts;
+	}
+
+	return 0;
+
+drop_bts:
+	for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
+		struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
+		if (is_ipaccess_bts(bts))
+			ipaccess_drop_oml(bts);
 	}
 
 	return 0;
