@@ -14,3 +14,10 @@ install-data-hook:
 		mkdir -p "$$(dirname $$j)" && \
 		$(INSTALL_DATA) $(srcdir)/$$f $$j; \
 	done
+
+uninstall-hook:
+	@$(PRE_UNINSTALL)
+	for f in $$($(CFG_FILES)); do \
+		j="$(DESTDIR)$(docdir)/examples/$$f" && \
+		$(RM) $$j; \
+	done
