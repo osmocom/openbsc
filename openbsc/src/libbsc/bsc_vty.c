@@ -35,6 +35,7 @@
 #include <openbsc/abis_om2000.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>

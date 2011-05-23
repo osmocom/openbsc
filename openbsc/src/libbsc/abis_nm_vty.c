@@ -86,7 +86,7 @@ DEFUN(oml_class_inst, oml_class_inst_cmd,
 		return CMD_WARNING;
 
 	oms->bts = bts;
-	oms->obj_class = abis_nm_obj_class_name(argv[1]);
+	oms->obj_class = get_string_value(abis_nm_obj_class_names, argv[1]);
 	oms->obj_inst[0] = atoi(argv[2]);
 	oms->obj_inst[1] = atoi(argv[3]);
 	oms->obj_inst[2] = atoi(argv[4]);
@@ -161,7 +161,7 @@ DEFUN(oml_chg_adm_state, oml_chg_adm_state_cmd,
 	struct oml_node_state *oms = vty->index;
 	enum abis_nm_adm_state state;
 
-	state = abis_nm_adm_state_name(argv[0]);
+	state = get_string_value(abis_nm_adm_state_names, argv[0]);
 
 	abis_nm_chg_adm_state(oms->bts, oms->obj_class, oms->obj_inst[0],
 			      oms->obj_inst[1], oms->obj_inst[2], state);
