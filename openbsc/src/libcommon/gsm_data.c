@@ -29,6 +29,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/statistics.h>
 
 #include <openbsc/gsm_data.h>
@@ -130,7 +131,7 @@ int gsm_bts_model_register(struct gsm_bts_model *model)
 	if (bts_model_find(model->type))
 		return -EEXIST;
 
-	tlv_def_patch(&model->nm_att_tlvdef, &nm_att_tlvdef);
+	tlv_def_patch(&model->nm_att_tlvdef, &abis_nm_att_tlvdef);
 	llist_add_tail(&model->list, &bts_models);
 	return 0;
 }

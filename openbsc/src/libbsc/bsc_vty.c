@@ -132,8 +132,8 @@ static int dummy_config_write(struct vty *v)
 static void net_dump_nmstate(struct vty *vty, struct gsm_nm_state *nms)
 {
 	vty_out(vty,"Oper '%s', Admin %u, Avail '%s'%s",
-		nm_opstate_name(nms->operational), nms->administrative,
-		nm_avail_name(nms->availability), VTY_NEWLINE);
+		abis_nm_opstate_name(nms->operational), nms->administrative,
+		abis_nm_avail_name(nms->availability), VTY_NEWLINE);
 }
 
 static void dump_pchan_load_vty(struct vty *vty, char *prefix,

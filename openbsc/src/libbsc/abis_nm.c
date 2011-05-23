@@ -380,7 +380,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
 		DEBUGPC(DNM, "ADM=%2s ",
-			abis_nm_adm_name(new_state.administrative));
+			abis_nm_adm_state_name(new_state.administrative));
 	}
 	DEBUGPC(DNM, "\n");
 
