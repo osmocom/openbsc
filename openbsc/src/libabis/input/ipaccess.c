@@ -429,12 +429,15 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct osmo_fd *bfd)
 	struct e1inp_sign_link *link;
 	int bts_nr;
 
-	if (!ts) {
+	if (!ts || !bfd->data) {
 		/*
 		 * If we don't have a TS this means that this is a RSL
 		 * connection but we are not past the authentication
 		 * handling yet. So we can safely delete this bfd and
 		 * wait for a reconnect.
+		 * If we don't have bfd->data this means that a RSL
+		 * connection was accept()ed, but nothing was recv()ed
+		 * and the connection gets close()ed.
 		 */
 		osmo_fd_unregister(bfd);
 		close(bfd->fd);
