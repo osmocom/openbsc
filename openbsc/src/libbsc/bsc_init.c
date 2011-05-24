@@ -101,7 +101,7 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 		si_len = rc;
 	}
 
-	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
+	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
 		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
 
 	switch (i) {
@@ -115,22 +115,22 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 			/* This assumes a combined BCCH and TCH on TS1...7 */
 			for (j = 0; j < 4; j++)
 				rsl_sacch_info_modify(&trx->ts[0].lchan[j],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 			for (j = 1; j < 8; j++) {
 				rsl_sacch_info_modify(&trx->ts[j].lchan[0],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 				rsl_sacch_info_modify(&trx->ts[j].lchan[1],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 			}
 		} else
-			rc = rsl_sacch_filling(trx, gsm_sitype2rsl(i),
+			rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
 					       GSM_BTS_SI(bts, i), rc);
 		break;
 	default:
-		rc = rsl_bcch_info(trx, gsm_sitype2rsl(i),
+		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),
 				   GSM_BTS_SI(bts, i), rc);
 		break;
 	}
