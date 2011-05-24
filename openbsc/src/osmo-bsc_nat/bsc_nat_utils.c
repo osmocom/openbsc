@@ -811,8 +811,6 @@ static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const cha
 		return NULL;
 	if (called->type == 1)
 		return NULL;
-	if (strncmp(called->number, "00", 2) == 0)
-		return NULL;
 
 	/* need to find a replacement and then fix it */
 	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
