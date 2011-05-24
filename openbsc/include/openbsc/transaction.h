@@ -5,6 +5,7 @@
 #include <openbsc/gsm_subscriber.h>
 #include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_04_11.h>
+#include <openbsc/mncc.h>
 
 /* One transaction */
 struct gsm_trans {

@@ -34,6 +34,7 @@
 #include <osmocom/core/select.h>
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
+#include <openbsc/mncc.h>
 
 /* attempt to determine byte order */
 #include <sys/param.h>

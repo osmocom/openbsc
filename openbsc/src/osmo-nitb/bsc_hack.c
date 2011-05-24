@@ -41,6 +41,7 @@
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
+#include <openbsc/mncc.h>
 
 #include "../../bscconfig.h"
 

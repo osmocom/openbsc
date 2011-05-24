@@ -28,6 +28,10 @@
  * optimization to routing them externally.
  */
 
+#include <stdint.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/mncc.h>
+
 /* map a TRAU mux map entry */
 int trau_mux_map(const struct gsm_e1_subslot *src,
 		 const struct gsm_e1_subslot *dst);
