@@ -13,11 +13,9 @@
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/rxlev_stat.h>
+#include <osmocom/gsm/sysinfo.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
-
-#include <openbsc/system_information.h>
-#include <openbsc/rest_octets.h>
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
@@ -109,6 +107,8 @@ enum gsm_lchan_state {
 };
 
 #ifdef ROLE_BSC
+
+#include <openbsc/rest_octets.h>
 
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
 
