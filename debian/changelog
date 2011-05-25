@@ -1,5 +1,5 @@
-openbsc (0.9.13-0~jrsantos.1) UNRELEASED; urgency=low
+opensgsn (0.9.13-0~jrsantos.1) unstable; urgency=low
 
-  * Initial release.
+  * Add sarge-compatible debian files
 
- -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Wed, 25 May 2011 14:14:35 -0400
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Wed, 25 May 2011 14:38:49 -4000
