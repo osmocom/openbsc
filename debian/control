@@ -1,0 +1,11 @@
+Source: openbsc
+Section: unknown
+Priority: optional
+Maintainer: unknown <jrsantos@vanu.com>
+Build-Depends: debhelper (>= 4.0.0), autotools-dev, pkg-config, libgtp-dev (>= 0.91-0~jrsantos.1), libosmocore-dev (>= 0.1.30)
+Standards-Version: 3.6.1
+
+Package: opensgsn
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Free Software implementation of the GPRS Serving GPRS Support Node

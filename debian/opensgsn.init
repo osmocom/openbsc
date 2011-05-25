@@ -1,0 +1,45 @@
+#! /bin/sh
+
+set -e
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DESC="Osmocom SGSN"
+NAME=osmo-sgsn
+DAEMON=/usr/bin/$NAME
+SCRIPTNAME=/etc/init.d/opensgsn
+
+test -x $DAEMON || exit 0
+
+d_start() {
+	start-stop-daemon --start --quiet --exec $DAEMON -- -c /etc/sgsn.conf -D
+}
+
+d_stop() {
+	start-stop-daemon --stop --quiet --name $NAME
+}
+
+case "$1" in
+  start)
+	echo -n "Starting $DESC: $NAME"
+	d_start
+	echo "."
+	;;
+  stop)
+	echo -n "Stopping $DESC: $NAME"
+	d_stop
+	echo "."
+	;;
+  restart|force-reload)
+	echo -n "Restarting $DESC: $NAME"
+	d_stop
+	sleep 1
+	d_start
+	echo "."
+	;;
+  *)
+	echo "Usage: $SCRIPTNAME {start|stop|restart|force-reload}" >&2
+	exit 1
+	;;
+esac
+
+exit 0
