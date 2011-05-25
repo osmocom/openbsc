@@ -1,0 +1,25 @@
+INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
+AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
+
+noinst_LIBRARIES = libbsc.a
+
+libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
+			abis_om2000.c abis_om2000_vty.c \
+			abis_rsl.c bsc_rll.c \
+			paging.c \
+			bts_ericsson_rbs2000.c \
+			bts_ipaccess_nanobts.c \
+			bts_siemens_bs11.c \
+			bts_hsl_femtocell.c \
+			bts_unknown.c \
+			chan_alloc.c \
+			gsm_subscriber_base.c \
+			handover_decision.c handover_logic.c meas_rep.c \
+			rest_octets.c system_information.c \
+			e1_config.c \
+			transaction.c \
+			bsc_api.c bsc_msc.c bsc_vty.c \
+			gsm_04_08_utils.c \
+			bsc_init.c
+

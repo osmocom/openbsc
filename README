@@ -1,0 +1,32 @@
+About OpenBSC
+=============
+
+OpenBSC is a minimalistic implementation of the GSM Network, with
+particular emphasis on the functionality typically provided by the BSC,
+MSC, HLR, VLR and SMSC.
+
+Its currently supported interfaces towards the BTS are:
+
+ * Classic A-bis over E1 using a mISDN based E1 interface. In other
+   words, you can connect existing GSM Base Transceiver Station (BTS)
+   through E1 to OpenBSC.  So far, we have only tested the Siemens BS-11
+   Test reports with other BTS are much appreciated!
+
+ * A-bis over IP as used by the ip.access nanoBTS product family
+
+You can find the project documentation at http://openbsc.gnumonks.org/
+
+This project is still in its early days, and there are lots of areas where it
+doesn't behave as per GSM spec.
+
+	Harald Welte <laforge@gnumonks.org>
+
+
+libosmocore
+===========
+
+Please note that as of March 2010, OpenBSC has a dependency to a library
+called "libosmocore".  You can obtain that library from
+
+	git://git.osmocom.org/libosmocore.git
+

@@ -1,0 +1,852 @@
+/* GPRS LLC protocol implementation as per 3GPP TS 04.64 */
+
+/* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
+ *
+ * All Rights Reserved
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
+
+#include <errno.h>
+#include <stdint.h>
+
+#include <osmocore/msgb.h>
+#include <osmocore/linuxlist.h>
+#include <osmocore/timer.h>
+#include <osmocore/talloc.h>
+
+#include <openbsc/gsm_data.h>
+#include <openbsc/debug.h>
+#include <openbsc/gprs_sgsn.h>
+#include <openbsc/gprs_gmm.h>
+#include <openbsc/gprs_bssgp.h>
+#include <openbsc/gprs_llc.h>
+#include <openbsc/crc24.h>
+
+/* Section 8.9.9 LLC layer parameter default values */
+static const struct gprs_llc_params llc_default_params[] = {
+	[1] = {
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 400,
+	},
+	[2] = {
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[3] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 5,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 1520,
+		.mU		= 1520,
+		.kD		= 16,
+		.kU		= 16,
+	},
+	[5] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 10,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 760,
+		.mU		= 760,
+		.kD		= 8,
+		.kU		= 8,
+	},
+	[7] = {
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[8] = {
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 270,
+	},
+	[9] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 20,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 380,
+		.mU		= 380,
+		.kD		= 4,
+		.kU		= 4,
+	},
+	[11] = {
+		.iov_i_exp	= 27,
+		.t200_201	= 40,
+		.n200		= 3,
+		.n201_u		= 500,
+		.n201_i		= 1503,
+		.mD		= 190,
+		.mU		= 190,
+		.kD		= 2,
+		.kU		= 2,
+	},
+};
+
+LLIST_HEAD(gprs_llc_llmes);
+void *llc_tall_ctx;
+
+/* If the TLLI is foreign, return its local version */
+static inline uint32_t tlli_foreign2local(uint32_t tlli)
+{
+	uint32_t new_tlli;
+
+	if (gprs_tlli_type(tlli) == TLLI_FOREIGN) {
+		new_tlli = tlli | 0x40000000;
+		DEBUGP(DLLC, "TLLI 0x%08x is foreign, converting to "
+			"local TLLI 0x%08x\n", tlli, new_tlli);
+	} else
+		new_tlli = tlli;
+
+	return new_tlli;
+}
+
+/* lookup LLC Entity based on DLCI (TLLI+SAPI tuple) */
+static struct gprs_llc_lle *lle_by_tlli_sapi(uint32_t tlli, uint8_t sapi)
+{
+	struct gprs_llc_llme *llme;
+
+	tlli = tlli_foreign2local(tlli);
+
+	llist_for_each_entry(llme, &gprs_llc_llmes, list) {
+		if (llme->tlli == tlli || llme->old_tlli == tlli)
+			return &llme->lle[sapi];
+	}
+	return NULL;
+}
+
+static void lle_init(struct gprs_llc_llme *llme, uint8_t sapi)
+{
+	struct gprs_llc_lle *lle = &llme->lle[sapi];
+
+	lle->llme = llme;
+	lle->sapi = sapi;
+	lle->state = GPRS_LLES_UNASSIGNED;
+
+	/* Initialize according to parameters */
+	memcpy(&lle->params, &llc_default_params[sapi], sizeof(lle->params));
+}
+
+static struct gprs_llc_llme *llme_alloc(uint32_t tlli)
+{
+	struct gprs_llc_llme *llme;
+	uint32_t i;
+
+	llme = talloc_zero(llc_tall_ctx, struct gprs_llc_llme);
+	if (!llme)
+		return NULL;
+
+	llme->tlli = tlli;
+	llme->old_tlli = 0xffffffff;
+	llme->state = GPRS_LLMS_UNASSIGNED;
+
+	for (i = 0; i < ARRAY_SIZE(llme->lle); i++)
+		lle_init(llme, i);
+
+	llist_add(&llme->list, &gprs_llc_llmes);
+
+	return llme;
+}
+
+static void llme_free(struct gprs_llc_llme *llme)
+{
+	llist_del(&llme->list);
+	talloc_free(llme);
+}
+
+enum gprs_llc_cmd {
+	GPRS_LLC_NULL,
+	GPRS_LLC_RR,
+	GPRS_LLC_ACK,
+	GPRS_LLC_RNR,
+	GPRS_LLC_SACK,
+	GPRS_LLC_DM,
+	GPRS_LLC_DISC,
+	GPRS_LLC_UA,
+	GPRS_LLC_SABM,
+	GPRS_LLC_FRMR,
+	GPRS_LLC_XID,
+	GPRS_LLC_UI,
+};
+
+static const struct value_string llc_cmd_strs[] = {
+	{ GPRS_LLC_NULL,	"NULL" },
+	{ GPRS_LLC_RR,		"RR" },
+	{ GPRS_LLC_ACK,		"ACK" },
+	{ GPRS_LLC_RNR,		"RNR" },
+	{ GPRS_LLC_SACK,	"SACK" },
+	{ GPRS_LLC_DM,		"DM" },
+	{ GPRS_LLC_DISC,	"DISC" },
+	{ GPRS_LLC_UA,		"UA" },
+	{ GPRS_LLC_SABM,	"SABM" },
+	{ GPRS_LLC_FRMR,	"FRMR" },
+	{ GPRS_LLC_XID,		"XID" },
+	{ GPRS_LLC_UI,		"UI" },
+	{ 0, NULL }
+};
+
+struct gprs_llc_hdr_parsed {
+	uint8_t sapi;
+	uint8_t is_cmd:1,
+		 ack_req:1,
+		 is_encrypted:1;
+	uint32_t seq_rx;
+	uint32_t seq_tx;
+	uint32_t fcs;
+	uint32_t fcs_calc;
+	uint8_t *data;
+	uint16_t data_len;
+	uint16_t crc_length;
+	enum gprs_llc_cmd cmd;
+};
+
+#define LLC_ALLOC_SIZE 16384
+#define UI_HDR_LEN	3
+#define N202		4
+#define CRC24_LENGTH	3
+
+static int gprs_llc_fcs(uint8_t *data, unsigned int len)
+{
+	uint32_t fcs_calc;
+
+	fcs_calc = crc24_calc(INIT_CRC24, data, len);
+	fcs_calc = ~fcs_calc;
+	fcs_calc &= 0xffffff;
+
+	return fcs_calc;
+}
+
+static void t200_expired(void *data)
+{
+	struct gprs_llc_lle *lle = data;
+
+	/* 8.5.1.3: Expiry of T200 */
+
+	if (lle->retrans_ctr >= lle->params.n200) {
+		/* FIXME: LLGM-STATUS-IND, LL-RELEASE-IND/CNF */
+		lle->state = GPRS_LLES_ASSIGNED_ADM;
+	}
+
+	switch (lle->state) {
+	case GPRS_LLES_LOCAL_EST:
+		/* FIXME: retransmit SABM */
+		/* FIXME: re-start T200 */
+		lle->retrans_ctr++;
+		break;
+	case GPRS_LLES_LOCAL_REL:
+		/* FIXME: retransmit DISC */
+		/* FIXME: re-start T200 */
+		lle->retrans_ctr++;
+		break;
+	}
+
+}
+
+static void t201_expired(void *data)
+{
+	struct gprs_llc_lle *lle = data;
+
+	if (lle->retrans_ctr < lle->params.n200) {
+		/* FIXME: transmit apropriate supervisory frame (8.6.4.1) */
+		/* FIXME: set timer T201 */
+		lle->retrans_ctr++;
+	}
+}
+
+int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
+		  enum gprs_llc_u_cmd u_cmd, int pf_bit)
+{
+	uint8_t *fcs, *llch;
+	uint8_t addr, ctrl;
+	uint32_t fcs_calc;
+
+	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	/* Address Field */
+	addr = sapi & 0xf;
+	if (command)
+		addr |= 0x40;
+
+	/* 6.3 Figure 8 */
+	ctrl = 0xe0 | u_cmd;
+	if (pf_bit)
+		ctrl |= 0x10;
+
+	/* prepend LLC UI header */
+	llch = msgb_push(msg, 2);
+	llch[0] = addr;
+	llch[1] = ctrl;
+
+	/* append FCS to end of frame */
+	fcs = msgb_put(msg, 3);
+	fcs_calc = gprs_llc_fcs(llch, fcs - llch);
+	fcs[0] = fcs_calc & 0xff;
+	fcs[1] = (fcs_calc >> 8) & 0xff;
+	fcs[2] = (fcs_calc >> 16) & 0xff;
+
+	/* Identifiers passed down: (BVCI, NSEI) */
+
+	/* Send BSSGP-DL-UNITDATA.req */
+	return gprs_bssgp_tx_dl_ud(msg, NULL);
+}
+
+/* Send XID response to LLE */
+static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg)
+{
+	/* copy identifiers from LLE to ensure lower layers can route */
+	msgb_tlli(msg) = lle->llme->tlli;
+	msgb_bvci(msg) = lle->llme->bvci;
+	msgb_nsei(msg) = lle->llme->nsei;
+
+	return gprs_llc_tx_u(msg, lle->sapi, 0, GPRS_LLC_U_XID, 1);
+}
+
+/* Transmit a UI frame over the given SAPI */
+int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
+		   void *mmctx)
+{
+	struct gprs_llc_lle *lle;
+	uint8_t *fcs, *llch;
+	uint8_t addr, ctrl[2];
+	uint32_t fcs_calc;
+	uint16_t nu = 0;
+	uint32_t oc;
+
+	/* Identifiers from UP: (TLLI, SAPI) + (BVCI, NSEI) */
+
+	/* look-up or create the LL Entity for this (TLLI, SAPI) tuple */
+	lle = lle_by_tlli_sapi(msgb_tlli(msg), sapi);
+	if (!lle) {
+		struct gprs_llc_llme *llme;
+		LOGP(DLLC, LOGL_ERROR, "LLC TX: unknown TLLI 0x%08x, "
+			"creating LLME on the fly\n", msgb_tlli(msg));
+		llme = llme_alloc(msgb_tlli(msg));
+		lle = &llme->lle[sapi];
+	}
+
+	if (msg->len > lle->params.n201_u) {
+		LOGP(DLLC, LOGL_ERROR, "Cannot Tx %u bytes (N201-U=%u)\n",
+			msg->len, lle->params.n201_u);
+		return -EFBIG;
+	}
+
+	/* Update LLE's (BVCI, NSEI) tuple */
+	lle->llme->bvci = msgb_bvci(msg);
+	lle->llme->nsei = msgb_nsei(msg);
+
+	/* Obtain current values for N(u) and OC */
+	nu = lle->vu_send;
+	oc = lle->oc_ui_send;
+	/* Increment V(U) */
+	lle->vu_send = (lle->vu_send + 1) % 512;
+	/* Increment Overflow Counter, if needed */
+	if ((lle->vu_send + 1) / 512)
+		lle->oc_ui_send += 512;
+
+	/* Address Field */
+	addr = sapi & 0xf;
+	if (command)
+		addr |= 0x40;
+
+	/* Control Field */
+	ctrl[0] = 0xc0;
+	ctrl[0] |= nu >> 6;
+	ctrl[1] = (nu << 2) & 0xfc;
+	ctrl[1] |= 0x01; /* Protected Mode */
+
+	/* prepend LLC UI header */
+	llch = msgb_push(msg, 3);
+	llch[0] = addr;
+	llch[1] = ctrl[0];
+	llch[2] = ctrl[1];
+
+	/* append FCS to end of frame */
+	fcs = msgb_put(msg, 3);
+	fcs_calc = gprs_llc_fcs(llch, fcs - llch);
+	fcs[0] = fcs_calc & 0xff;
+	fcs[1] = (fcs_calc >> 8) & 0xff;
+	fcs[2] = (fcs_calc >> 16) & 0xff;
+
+	/* encrypt information field + FCS, if needed! */
+	if (lle->llme->algo != GPRS_ALGO_GEA0) {
+		uint32_t iov_ui = 0; /* FIXME: randomly select for TLLI */
+		uint16_t crypt_len = (fcs + 3) - (llch + 3);
+		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
+		uint32_t iv;
+		int rc, i;
+		uint64_t kc = *(uint64_t *)&lle->llme->kc;
+
+		/* Compute the 'Input' Paraemeter */
+		iv = gprs_cipher_gen_input_ui(iov_ui, sapi, nu, oc);
+
+		/* Compute the keystream that we need to XOR with the data */
+		rc = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
+				     kc, iv, GPRS_CIPH_SGSN2MS);
+		if (rc < 0) {
+			LOGP(DLLC, LOGL_ERROR, "Error crypting UI frame: %d\n", rc);
+			return rc;
+		}
+
+		/* XOR the cipher output with the information field + FCS */
+		for (i = 0; i < crypt_len; i++)
+			*(llch + 3 + i) ^= cipher_out[i];
+
+		/* Mark frame as encrypted */
+		ctrl[1] |= 0x02;
+	}
+
+	/* Identifiers passed down: (BVCI, NSEI) */
+
+	/* Send BSSGP-DL-UNITDATA.req */
+	return gprs_bssgp_tx_dl_ud(msg, mmctx);
+}
+
+static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
+{
+	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x",
+		gph->sapi, gph->is_cmd ? 'C' : 'R', gph->ack_req ? 'A' : ' ',
+		gph->fcs);
+
+	if (gph->cmd)
+		DEBUGPC(DLLC, "CMD=%s ", get_value_string(llc_cmd_strs, gph->cmd));
+
+	if (gph->data)
+		DEBUGPC(DLLC, "DATA ");
+
+	DEBUGPC(DLLC, "\n");
+}
+static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
+			   struct gprs_llc_lle *lle)
+{
+	switch (gph->cmd) {
+	case GPRS_LLC_SABM: /* Section 6.4.1.1 */
+		lle->v_sent = lle->v_ack = lle->v_recv = 0;
+		if (lle->state == GPRS_LLES_ASSIGNED_ADM) {
+			/* start re-establishment (8.7.1) */
+		}
+		lle->state = GPRS_LLES_REMOTE_EST;
+		/* FIXME: Send UA */
+		lle->state = GPRS_LLES_ABM;
+		/* FIXME: process data */
+		break;
+	case GPRS_LLC_DISC: /* Section 6.4.1.2 */
+		/* FIXME: Send UA */
+		/* terminate ABM */
+		lle->state = GPRS_LLES_ASSIGNED_ADM;
+		break;
+	case GPRS_LLC_UA: /* Section 6.4.1.3 */
+		if (lle->state == GPRS_LLES_LOCAL_EST)
+			lle->state = GPRS_LLES_ABM;
+		break;
+	case GPRS_LLC_DM: /* Section 6.4.1.4: ABM cannot be performed */
+		if (lle->state == GPRS_LLES_LOCAL_EST)
+			lle->state = GPRS_LLES_ASSIGNED_ADM;
+		break;
+	case GPRS_LLC_FRMR: /* Section 6.4.1.5 */
+		break;
+	case GPRS_LLC_XID: /* Section 6.4.1.6 */
+		/* FIXME: implement XID negotiation using SNDCP */
+		{
+			struct msgb *resp;
+			uint8_t *xid;
+			resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+			xid = msgb_put(resp, gph->data_len);
+			memcpy(xid, gph->data, gph->data_len);
+			gprs_llc_tx_xid(lle, resp);
+		}
+		break;
+	case GPRS_LLC_UI:
+		if (gph->seq_tx < lle->vu_recv) {
+			LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+				lle->llme ? lle->llme->tlli : -1,
+				gph->seq_tx, lle->vu_recv);
+			return -EIO;
+		}
+		/* Increment the sequence number that we expect in the next frame */
+		lle->vu_recv = (gph->seq_tx + 1) % 512;
+		/* Increment Overflow Counter */
+		if ((gph->seq_tx + 1) / 512)
+			lle->oc_ui_recv += 512;
+		break;
+	}
+
+	return 0;
+}
+
+/* parse a GPRS LLC header, also check for invalid frames */
+static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
+			      uint8_t *llc_hdr, int len)
+{
+	uint8_t *ctrl = llc_hdr+1;
+	int is_sack = 0;
+
+	if (len <= CRC24_LENGTH)
+		return -EIO;
+
+	ghp->crc_length = len - CRC24_LENGTH;
+
+	ghp->ack_req = 0;
+
+	/* Section 5.5: FCS */
+	ghp->fcs = *(llc_hdr + len - 3);
+	ghp->fcs |= *(llc_hdr + len - 2) << 8;
+	ghp->fcs |= *(llc_hdr + len - 1) << 16;
+
+	/* Section 6.2.1: invalid PD field */
+	if (llc_hdr[0] & 0x80)
+		return -EIO;
+
+	/* This only works for the MS->SGSN direction */
+	if (llc_hdr[0] & 0x40)
+		ghp->is_cmd = 0;
+	else
+		ghp->is_cmd = 1;
+
+	ghp->sapi = llc_hdr[0] & 0xf;
+
+	/* Section 6.2.3: check for reserved SAPI */
+	switch (ghp->sapi) {
+	case 0:
+	case 4:
+	case 6:
+	case 0xa:
+	case 0xc:
+	case 0xd:
+	case 0xf:
+		return -EINVAL;
+	}
+
+	if ((ctrl[0] & 0x80) == 0) {
+		/* I (Information transfer + Supervisory) format */
+		uint8_t k;
+
+		ghp->data = ctrl + 3;
+
+		if (ctrl[0] & 0x40)
+			ghp->ack_req = 1;
+
+		ghp->seq_tx  = (ctrl[0] & 0x1f) << 4;
+		ghp->seq_tx |= (ctrl[1] >> 4);
+
+		ghp->seq_rx  = (ctrl[1] & 0x7) << 6;
+		ghp->seq_rx |= (ctrl[2] >> 2);
+
+		switch (ctrl[2] & 0x03) {
+		case 0:
+			ghp->cmd = GPRS_LLC_RR;
+			break;
+		case 1:
+			ghp->cmd = GPRS_LLC_ACK;
+			break;
+		case 2:
+			ghp->cmd = GPRS_LLC_RNR;
+			break;
+		case 3:
+			ghp->cmd = GPRS_LLC_SACK;
+			k = ctrl[3] & 0x1f;
+			ghp->data += 1 + k;
+			break;
+		}
+		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
+	} else if ((ctrl[0] & 0xc0) == 0x80) {
+		/* S (Supervisory) format */
+		ghp->data = NULL;
+		ghp->data_len = 0;
+
+		if (ctrl[0] & 0x20)
+			ghp->ack_req = 1;
+		ghp->seq_rx  = (ctrl[0] & 0x7) << 6;
+		ghp->seq_rx |= (ctrl[1] >> 2);
+
+		switch (ctrl[1] & 0x03) {
+		case 0:
+			ghp->cmd = GPRS_LLC_RR;
+			break;
+		case 1:
+			ghp->cmd = GPRS_LLC_ACK;
+			break;
+		case 2:
+			ghp->cmd = GPRS_LLC_RNR;
+			break;
+		case 3:
+			ghp->cmd = GPRS_LLC_SACK;
+			break;
+		}
+	} else if ((ctrl[0] & 0xe0) == 0xc0) {
+		/* UI (Unconfirmed Inforamtion) format */
+		ghp->cmd = GPRS_LLC_UI;
+		ghp->data = ctrl + 2;
+		ghp->data_len = (llc_hdr + len - 3) - ghp->data;
+
+		ghp->seq_tx  = (ctrl[0] & 0x7) << 6;
+		ghp->seq_tx |= (ctrl[1] >> 2);
+		if (ctrl[1] & 0x02) {
+			ghp->is_encrypted = 1;
+			/* FIXME: encryption */
+		}
+		if (ctrl[1] & 0x01) {
+			/* FCS over hdr + all inf fields */
+		} else {
+			/* FCS over hdr + N202 octets (4) */
+			if (ghp->crc_length > UI_HDR_LEN + N202)
+				ghp->crc_length = UI_HDR_LEN + N202;
+		}
+	} else {
+		/* U (Unnumbered) format: 1 1 1 P/F M4 M3 M2 M1 */
+		ghp->data = NULL;
+		ghp->data_len = 0;
+
+		switch (ctrl[0] & 0xf) {
+		case GPRS_LLC_U_NULL_CMD:
+			ghp->cmd = GPRS_LLC_NULL;
+			break;
+		case GPRS_LLC_U_DM_RESP:
+			ghp->cmd = GPRS_LLC_DM;
+			break;
+		case GPRS_LLC_U_DISC_CMD:
+			ghp->cmd = GPRS_LLC_DISC;
+			break;
+		case GPRS_LLC_U_UA_RESP:
+			ghp->cmd = GPRS_LLC_UA;
+			break;
+		case GPRS_LLC_U_SABM_CMD:
+			ghp->cmd = GPRS_LLC_SABM;
+			break;
+		case GPRS_LLC_U_FRMR_RESP:
+			ghp->cmd = GPRS_LLC_FRMR;
+			break;
+		case GPRS_LLC_U_XID:
+			ghp->cmd = GPRS_LLC_XID;
+			ghp->data = ctrl + 1;
+			ghp->data_len = (llc_hdr + len - 3) - ghp->data;
+			break;
+		default:
+			return -EIO;
+		}
+	}
+
+	/* FIXME: parse sack frame */
+	if (ghp->cmd == GPRS_LLC_SACK) {
+		LOGP(DLLC, LOGL_NOTICE, "Unsupported SACK frame\n");
+		return -EIO;
+	}
+
+	return 0;
+}
+
+/* receive an incoming LLC PDU (BSSGP-UL-UNITDATA-IND, 7.2.4.2) */
+int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
+{
+	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+	struct gprs_llc_hdr *lh = msgb_llch(msg);
+	struct gprs_llc_hdr_parsed llhp;
+	struct gprs_llc_lle *lle;
+	int rc = 0;
+
+	/* Identifiers from DOWN: NSEI, BVCI, TLLI */
+
+	memset(&llhp, 0, sizeof(llhp));
+	rc = gprs_llc_hdr_parse(&llhp, (uint8_t *) lh, TLVP_LEN(tv, BSSGP_IE_LLC_PDU));
+	gprs_llc_hdr_dump(&llhp);
+	if (rc < 0) {
+		LOGP(DLLC, LOGL_NOTICE, "Error during LLC header parsing\n");
+		return rc;
+	}
+
+	switch (gprs_tlli_type(msgb_tlli(msg))) {
+	case TLLI_LOCAL:
+	case TLLI_FOREIGN:
+	case TLLI_RANDOM:
+	case TLLI_AUXILIARY:
+		break;
+	default:
+		LOGP(DLLC, LOGL_ERROR,
+			"Discarding frame with strange TLLI type\n");
+		break;
+	}
+
+	/* find the LLC Entity for this TLLI+SAPI tuple */
+	lle = lle_by_tlli_sapi(msgb_tlli(msg), llhp.sapi);
+
+	/* 7.2.1.1 LLC belonging to unassigned TLLI+SAPI shall be discarded,
+	 * except UID and XID frames with SAPI=1 */
+	if (!lle) {
+		if (llhp.sapi == GPRS_SAPI_GMM &&
+		    (llhp.cmd == GPRS_LLC_XID || llhp.cmd == GPRS_LLC_UI)) {
+			struct gprs_llc_llme *llme;
+			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
+			llme = llme_alloc(msgb_tlli(msg));
+			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x08x, "
+				"creating LLME on the fly\n", msgb_tlli(msg));
+			lle = &llme->lle[llhp.sapi];
+		} else {
+			LOGP(DLLC, LOGL_NOTICE,
+				"unknown TLLI/SAPI: Silently dropping\n");
+			return 0;
+		}
+	}
+
+	/* decrypt information field + FCS, if needed! */
+	if (llhp.is_encrypted) {
+		uint32_t iov_ui = 0; /* FIXME: randomly select for TLLI */
+		uint16_t crypt_len = llhp.data_len + 3;
+		uint8_t cipher_out[GSM0464_CIPH_MAX_BLOCK];
+		uint32_t iv;
+		uint64_t kc = *(uint64_t *)&lle->llme->kc;
+		int rc, i;
+
+		if (lle->llme->algo == GPRS_ALGO_GEA0) {
+			LOGP(DLLC, LOGL_NOTICE, "encrypted frame for LLC that "
+				"has no KC/Algo! Dropping.\n");
+			return 0;
+		}
+
+		iv = gprs_cipher_gen_input_ui(iov_ui, lle->sapi, llhp.seq_tx,
+						lle->oc_ui_recv);
+		rc = gprs_cipher_run(cipher_out, crypt_len, lle->llme->algo,
+				     kc, iv, GPRS_CIPH_MS2SGSN);
+		if (rc < 0) {
+			LOGP(DLLC, LOGL_ERROR, "Error decrypting frame: %d\n",
+			     rc);
+			return rc;
+		}
+
+		/* XOR the cipher output with the information field + FCS */
+		for (i = 0; i < crypt_len; i++)
+			*(llhp.data + i) ^= cipher_out[i];
+	} else {
+		if (lle->llme->algo != GPRS_ALGO_GEA0) {
+			LOGP(DLLC, LOGL_NOTICE, "unencrypted frame for LLC "
+				"that is supposed to be encrypted. Dropping.\n");
+			return 0;
+		}
+	}
+
+	/* We have to do the FCS check _after_ decryption */
+	llhp.fcs_calc = gprs_llc_fcs((uint8_t *)lh, llhp.crc_length);
+	if (llhp.fcs != llhp.fcs_calc) {
+		LOGP(DLLC, LOGL_INFO, "Dropping frame with invalid FCS\n");
+		return -EIO;
+	}
+
+	/* Update LLE's (BVCI, NSEI) tuple */
+	lle->llme->bvci = msgb_bvci(msg);
+	lle->llme->nsei = msgb_nsei(msg);
+
+	/* Receive and Process the actual LLC frame */
+	rc = gprs_llc_hdr_rx(&llhp, lle);
+	if (rc < 0)
+		return rc;
+
+	/* llhp.data is only set when we need to send LL_[UNIT]DATA_IND up */
+	if (llhp.data) {
+		msgb_gmmh(msg) = llhp.data;
+		switch (llhp.sapi) {
+		case GPRS_SAPI_GMM:
+			/* send LL_UNITDATA_IND to GMM */
+			rc = gsm0408_gprs_rcvmsg(msg, lle->llme);
+			break;
+		case GPRS_SAPI_SNDCP3:
+		case GPRS_SAPI_SNDCP5:
+		case GPRS_SAPI_SNDCP9:
+		case GPRS_SAPI_SNDCP11:
+			/* send LL_DATA_IND/LL_UNITDATA_IND to SNDCP */
+			rc = sndcp_llunitdata_ind(msg, lle, llhp.data, llhp.data_len);
+			break;
+		case GPRS_SAPI_SMS:
+			/* FIXME */
+		case GPRS_SAPI_TOM2:
+		case GPRS_SAPI_TOM8:
+			/* FIXME: send LL_DATA_IND/LL_UNITDATA_IND to TOM */
+		default:
+			LOGP(DLLC, LOGL_NOTICE, "Unsupported SAPI %u\n", llhp.sapi);
+			rc = -EINVAL;
+			break;
+		}
+	}
+
+	return rc;
+}
+
+/* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
+int gprs_llgmm_assign(struct gprs_llc_llme *llme,
+		      uint32_t old_tlli, uint32_t new_tlli,
+		      enum gprs_ciph_algo alg, const uint8_t *kc)
+{
+	unsigned int i;
+
+	/* Update the crypto parameters */
+	llme->algo = alg;
+	if (alg != GPRS_ALGO_GEA0)
+		memcpy(llme->kc, kc, sizeof(llme->kc));
+
+	if (old_tlli == 0xffffffff && new_tlli != 0xffffffff) {
+		/* TLLI Assignment 8.3.1 */
+		/* New TLLI shall be assigned and used when (re)transmitting LLC frames */
+		/* If old TLLI != 0xffffffff was assigned to LLME, then TLLI
+		 * old is unassigned.  Only TLLI new shall be accepted when
+		 * received from peer. */
+		if (llme->old_tlli != 0xffffffff) {
+			llme->old_tlli = 0xffffffff;
+			llme->tlli = new_tlli;
+		} else {
+			/* If TLLI old == 0xffffffff was assigned to LLME, then this is
+			 * TLLI assignmemt according to 8.3.1 */
+			llme->old_tlli = 0xffffffff;
+			llme->tlli = new_tlli;
+			llme->state = GPRS_LLMS_ASSIGNED;
+			/* 8.5.3.1 For all LLE's */
+			for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+				struct gprs_llc_lle *l = &llme->lle[i];
+				l->vu_send = l->vu_recv = 0;
+				l->retrans_ctr = 0;
+				l->state = GPRS_LLES_ASSIGNED_ADM;
+				/* FIXME Set parameters according to table 9 */
+			}
+		}
+	} else if (old_tlli != 0xffffffff && new_tlli != 0xffffffff) {
+		/* TLLI Change 8.3.2 */
+		/* Both TLLI Old and TLLI New are assigned; use New when
+		 * (re)transmitting.  Accept toth Old and New on Rx */
+		llme->old_tlli = llme->tlli;
+		llme->tlli = new_tlli;
+		llme->state = GPRS_LLMS_ASSIGNED;
+	} else if (old_tlli != 0xffffffff && new_tlli == 0xffffffff) {
+		/* TLLI Unassignment 8.3.3) */
+		llme->tlli = llme->old_tlli = 0;
+		llme->state = GPRS_LLMS_UNASSIGNED;
+		for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+			struct gprs_llc_lle *l = &llme->lle[i];
+			l->state = GPRS_LLES_UNASSIGNED;
+		}
+		llme_free(llme);
+	} else
+		return -EINVAL;
+
+	return 0;
+}
+
+int gprs_llc_init(const char *cipher_plugin_path)
+{
+	return gprs_cipher_load(cipher_plugin_path);
+}
