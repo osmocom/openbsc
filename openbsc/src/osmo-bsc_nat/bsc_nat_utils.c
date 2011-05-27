@@ -838,38 +838,18 @@ static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const cha
 /**
  * Rewrite non global numbers... according to rules based on the IMSI
  */
-struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
+static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
+				  struct bsc_nat_parsed *parsed, const char *imsi,
+				  struct gsm48_hdr *hdr48, const uint32_t len)
 {
 	struct tlv_parsed tp;
-	struct gsm48_hdr *hdr48;
-	uint32_t len;
-	uint8_t msg_type, proto;
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
-	char *new_number = NULL;
 	struct msgb *out, *sccp;
+	char *new_number = NULL;
 	uint8_t *outptr;
 	const uint8_t *msgptr;
 	int sec_len;
-
-	if (!imsi || strlen(imsi) < 5)
-		return msg;
-
-	/* only care about DTAP messages */
-	if (parsed->bssap != BSSAP_MSG_DTAP)
-		return msg;
-	if (!parsed->dest_local_ref)
-		return msg;
-
-	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
-	if (!hdr48)
-		return msg;
-
-	proto = hdr48->proto_discr & 0x0f;
-	msg_type = hdr48->msg_type & 0xbf;
-	if (proto != GSM48_PDISC_CC ||
-	    msg_type != GSM48_MT_CC_SETUP)
-		return msg;
 
 	/* decode and rewrite the message */
 	payload_len = len - sizeof(*hdr48);
@@ -957,6 +937,33 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	return sccp;
 }
 
+struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
+{
+	struct gsm48_hdr *hdr48;
+	uint32_t len;
+	uint8_t msg_type, proto;
+
+	if (!imsi || strlen(imsi) < 5)
+		return msg;
+
+	/* only care about DTAP messages */
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return msg;
+	if (!parsed->dest_local_ref)
+		return msg;
+
+	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+	if (!hdr48)
+		return msg;
+
+	proto = hdr48->proto_discr & 0x0f;
+	msg_type = hdr48->msg_type & 0xbf;
+
+	if (proto == GSM48_PDISC_CC && msg_type == GSM48_MT_CC_SETUP)
+		return rewrite_setup(nat, msg, parsed, imsi, hdr48, len);
+
+	return msg;
+}
 static void num_rewr_free_data(struct bsc_nat_num_rewr_entry *entry)
 {
 	regfree(&entry->msisdn_reg);

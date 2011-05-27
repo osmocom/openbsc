@@ -385,7 +385,7 @@ int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_close_ussd_connections(struct bsc_nat *nat);
 
-struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
+struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
 
 /** paging group handling */
 struct bsc_nat_paging_group *bsc_nat_paging_group_num(struct bsc_nat *nat, int group);

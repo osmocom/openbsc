@@ -865,7 +865,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (msg != out) {
 		fprintf(stderr, "FAIL: The message should not have been changed\n");
 		abort();
@@ -891,7 +891,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
 		fprintf(stderr, "FAIL: A new message should be created.\n");
 		abort();
@@ -926,7 +926,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
 		fprintf(stderr, "FAIL: A new message should be created.\n");
 		abort();
@@ -961,7 +961,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (out != msg) {
 		fprintf(stderr, "FAIL: The message should be unchanged.\n");
 		abort();
