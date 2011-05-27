@@ -845,7 +845,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	struct tlv_parsed tp;
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
-	struct msgb *out, *sccp;
+	struct msgb *out;
 	char *new_number = NULL;
 	uint8_t *outptr;
 	const uint8_t *msgptr;
@@ -857,7 +857,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 
 	/* no number, well let us ignore it */
 	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD))
-		return msg;
+		return NULL;
 
 	memset(&called, 0, sizeof(called));
 	gsm48_decode_called(&called,
@@ -868,13 +868,13 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 
 	if (!new_number) {
 		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
-		return msg;
+		return NULL;
 	}
 
 	if (strlen(new_number) > sizeof(called.number)) {
 		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
 		talloc_free(new_number);
-		return msg;
+		return NULL;
 	}
 
 	/*
@@ -887,7 +887,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	if (!out) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
 		talloc_free(new_number);
-		return msg;
+		return NULL;
 	}
 
 	/* copy the header */
@@ -915,26 +915,8 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	outptr = msgb_put(out, sec_len);
 	memcpy(outptr, msgptr, sec_len);
 
-	/* wrap with DTAP, SCCP, then IPA. TODO: Stop copying */
-	gsm0808_prepend_dtap_header(out, 0);
-	sccp = sccp_create_dt1(parsed->dest_local_ref, out->data, out->len);
-	if (!sccp) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
-		talloc_free(new_number);
-		talloc_free(out);
-		return msg;
-	}
-
-	ipaccess_prepend_header(sccp, IPAC_PROTO_SCCP);
-
-	/* give up memory, we are done */
 	talloc_free(new_number);
-	/* the parsed hangs off from msg but it needs to survive */
-	talloc_steal(sccp, parsed);
-	msgb_free(msg);
-	msgb_free(out);
-	out = NULL;
-	return sccp;
+	return out;
 }
 
 struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
@@ -942,6 +924,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 	struct gsm48_hdr *hdr48;
 	uint32_t len;
 	uint8_t msg_type, proto;
+	struct msgb *new_msg = NULL, *sccp;
 
 	if (!imsi || strlen(imsi) < 5)
 		return msg;
@@ -960,10 +943,29 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 	msg_type = hdr48->msg_type & 0xbf;
 
 	if (proto == GSM48_PDISC_CC && msg_type == GSM48_MT_CC_SETUP)
-		return rewrite_setup(nat, msg, parsed, imsi, hdr48, len);
+		new_msg = rewrite_setup(nat, msg, parsed, imsi, hdr48, len);
 
-	return msg;
+	if (!new_msg)
+		return msg;
+
+	/* wrap with DTAP, SCCP, then IPA. TODO: Stop copying */
+	gsm0808_prepend_dtap_header(new_msg, 0);
+	sccp = sccp_create_dt1(parsed->dest_local_ref, new_msg->data, new_msg->len);
+	talloc_free(new_msg);
+
+	if (!sccp) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		return msg;
+	}
+
+	ipaccess_prepend_header(sccp, IPAC_PROTO_SCCP);
+
+	/* the parsed hangs off from msg but it needs to survive */
+	talloc_steal(sccp, parsed);
+	msgb_free(msg);
+	return sccp;
 }
+
 static void num_rewr_free_data(struct bsc_nat_num_rewr_entry *entry)
 {
 	regfree(&entry->msisdn_reg);
