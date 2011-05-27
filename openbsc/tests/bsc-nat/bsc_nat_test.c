@@ -989,15 +989,23 @@ static void test_smsc_rewrite()
 	struct bsc_nat *nat = bsc_nat_alloc();
 
 	/* a fake list */
-	struct osmo_config_list entries;
-	struct osmo_config_entry entry;
+	struct osmo_config_list smsc_entries, dest_entries;
+	struct osmo_config_entry smsc_entry, dest_entry;
 
-	INIT_LLIST_HEAD(&entries.entry);
-	entry.mcc = "^515039";
-	entry.option = "639180000105()";
-	entry.text   = "6666666666667";
-	llist_add_tail(&entry.list, &entries.entry);
-	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, &entries);
+	INIT_LLIST_HEAD(&smsc_entries.entry);
+	INIT_LLIST_HEAD(&dest_entries.entry);
+	smsc_entry.mcc = "^515039";
+	smsc_entry.option = "639180000105()";
+	smsc_entry.text   = "6666666666667";
+	llist_add_tail(&smsc_entry.list, &smsc_entries.entry);
+	dest_entry.mcc = "515";
+	dest_entry.mnc = "03";
+	dest_entry.option = "^0049";
+	dest_entry.text   = "";
+	llist_add_tail(&dest_entry.list, &dest_entries.entry);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, &smsc_entries);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->tpdest_match, &dest_entries);
 
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	parsed = bsc_nat_parse(msg);

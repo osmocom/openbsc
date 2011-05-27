@@ -97,6 +97,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->dests);
 	INIT_LLIST_HEAD(&nat->num_rewr);
 	INIT_LLIST_HEAD(&nat->smsc_rewr);
+	INIT_LLIST_HEAD(&nat->tpdest_match);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
@@ -935,6 +936,12 @@ static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
 	char smsc_addr[30];
 	uint8_t new_addr[12];
 
+
+	uint8_t dest_len;
+	char _dest_nr[30];
+	char *dest_nr;
+	uint8_t dest_match = 0;
+
 	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
 	uint8_t new_addr_len;
@@ -988,6 +995,40 @@ static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
 		return NULL;
 	}
 
+	/* look into the phone number */
+	if ((data_ptr[0] & 0x01) != 1)
+		return NULL;
+
+	if (data_len < 3) {
+		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT is too short.\n");
+		return NULL;
+	}
+
+	dest_len = data_ptr[2];
+	if (data_len < dest_len + 3 || dest_len < 2) {
+		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT can not have TP-DestAddr.\n");
+		return NULL;
+	}
+
+	if ((data_ptr[3] & 0x80) == 0) {
+		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr has extension. Not handled.\n");
+		return NULL;
+	}
+
+	if ((data_ptr[3] & 0x0F) == 0) {
+		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr is not a ISDN number.\n");
+		return NULL;
+	}
+
+	gsm48_decode_bcd_number(_dest_nr + 2, ARRAY_SIZE(_dest_nr) - 2,
+				&data_ptr[2], 1);
+	if ((data_ptr[3] & 0x70) == 0x10) {
+		_dest_nr[0] = _dest_nr[1] = '0';
+		dest_nr = &_dest_nr[0];
+	} else {
+		dest_nr = &_dest_nr[2];
+	}
+
 	/* We will find a new number now */
 	llist_for_each_entry(entry, &nat->smsc_rewr, list) {
 		regmatch_t matches[2];
@@ -1008,6 +1049,25 @@ static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
 
 	if (!new_number)
 		return NULL;
+
+	/*
+	 * now match the number against another list
+	 */
+	llist_for_each_entry(entry, &nat->tpdest_match, list) {
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		if (regexec(&entry->num_reg, dest_nr, 0, NULL, 0) == 0) {
+			dest_match =1;
+			break;
+		}
+	}
+
+	if (!dest_match) {
+		talloc_free(new_number);
+		return NULL;
+	}
 
 	/*
 	 * We need to re-create the patched structure. This is why we have
