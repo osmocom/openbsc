@@ -466,11 +466,11 @@ DEFUN(cfg_nat_number_rewrite,
 	bsc_replace_string(_nat, &_nat->num_rewr_name, argv[0]);
 	if (_nat->num_rewr_name) {
 		rewr = osmo_config_list_parse(_nat, _nat->num_rewr_name);
-		bsc_nat_num_rewr_entry_adapt(_nat, rewr);
+		bsc_nat_num_rewr_entry_adapt(_nat, &_nat->num_rewr, rewr);
 		talloc_free(rewr);
 		return CMD_SUCCESS;
 	} else {
-		bsc_nat_num_rewr_entry_adapt(_nat, NULL);
+		bsc_nat_num_rewr_entry_adapt(_nat, &_nat->num_rewr, NULL);
 		return CMD_SUCCESS;
 	}
 }

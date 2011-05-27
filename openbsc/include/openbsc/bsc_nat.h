@@ -269,6 +269,9 @@ struct bsc_nat {
 	char *num_rewr_name;
 	struct llist_head num_rewr;
 
+	char *smsc_rewr_name;
+	struct llist_head smsc_rewr;
+
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
 	char *ussd_query;
@@ -406,6 +409,6 @@ struct bsc_nat_num_rewr_entry {
 	char *replace;
 };
 
-void bsc_nat_num_rewr_entry_adapt(struct bsc_nat *nat, const struct osmo_config_list *);
+void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
 
 #endif
