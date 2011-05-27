@@ -854,7 +854,7 @@ static void test_setup_rewrite()
 	entry.option = "^0([1-9])";
 	entry.text = "0049";
 	llist_add_tail(&entry.list, &entries.entry);
-	nat->num_rewr = &entries;
+	bsc_nat_num_rewr_entry_adapt(nat, &entries);
 
 	/* verify that nothing changed */
 	msgb_reset(msg);
@@ -917,6 +917,7 @@ static void test_setup_rewrite()
 
 	/* Make sure that a wildcard is matching */
 	entry.mnc = "*";
+	bsc_nat_num_rewr_entry_adapt(nat, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
@@ -951,6 +952,7 @@ static void test_setup_rewrite()
 
 	/* Make sure that a wildcard is matching */
 	entry.mnc = "09";
+	bsc_nat_num_rewr_entry_adapt(nat, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);

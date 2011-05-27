@@ -267,7 +267,7 @@ struct bsc_nat {
 
 	/* number rewriting */
 	char *num_rewr_name;
-	struct osmo_config_list *num_rewr;
+	struct llist_head num_rewr;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
@@ -393,5 +393,19 @@ struct bsc_nat_paging_group *bsc_nat_paging_group_create(struct bsc_nat *nat, in
 void bsc_nat_paging_group_delete(struct bsc_nat_paging_group *);
 void bsc_nat_paging_group_add_lac(struct bsc_nat_paging_group *grp, int lac);
 void bsc_nat_paging_group_del_lac(struct bsc_nat_paging_group *grp, int lac);
+
+/**
+ * Number rewriting support below
+ */
+struct bsc_nat_num_rewr_entry {
+	struct llist_head list;
+
+	regex_t msisdn_reg;
+	regex_t num_reg;
+
+	char *replace;
+};
+
+void bsc_nat_num_rewr_entry_adapt(struct bsc_nat *nat, const struct osmo_config_list *);
 
 #endif

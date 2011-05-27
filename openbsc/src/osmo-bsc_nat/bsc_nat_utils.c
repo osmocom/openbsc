@@ -94,6 +94,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->bsc_configs);
 	INIT_LLIST_HEAD(&nat->access_lists);
 	INIT_LLIST_HEAD(&nat->dests);
+	INIT_LLIST_HEAD(&nat->num_rewr);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
@@ -801,10 +802,10 @@ int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
 				       struct gsm_mncc_number *called)
 {
-	struct osmo_config_entry *entry;
+	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
 
-	if (!nat->num_rewr)
+	if (llist_empty(&nat->num_rewr))
 		return NULL;
 
 	if (called->plan != 1)
@@ -813,36 +814,19 @@ static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const cha
 		return NULL;
 
 	/* need to find a replacement and then fix it */
-	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
-		regex_t reg;
+	llist_for_each_entry(entry, &nat->num_rewr, list) {
 		regmatch_t matches[2];
 
-		if (entry->mcc[0] != '*' && strncmp(entry->mcc, imsi, 3) != 0)
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
 			continue;
-		if (entry->mnc[0] != '*' && strncmp(entry->mnc, imsi + 3, 2) != 0)
-			continue;
-
-		if (entry->text[0] == '+') {
-			LOGP(DNAT, LOGL_ERROR,
-				"Plus is not allowed in the number");
-			continue;
-		}
-
-		/* We have an entry for the IMSI. Need to match now */
-		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
-			LOGP(DNAT, LOGL_ERROR,
-				"Regexp '%s' is not valid.\n", entry->option);
-			continue;
-		}
 
 		/* this regexp matches... */
-		if (regexec(&reg, called->number, 2, matches, 0) == 0 &&
+		if (regexec(&entry->num_reg, called->number, 2, matches, 0) == 0 &&
 		    matches[1].rm_eo != -1)
 			new_number = talloc_asprintf(ctx, "%s%s",
-					entry->text,
+					entry->replace,
 					&called->number[matches[1].rm_so]);
-		regfree(&reg);
-
 		if (new_number)
 			break;
 	}
@@ -973,3 +957,87 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	return sccp;
 }
 
+static void num_rewr_free_data(struct bsc_nat_num_rewr_entry *entry)
+{
+	regfree(&entry->msisdn_reg);
+	regfree(&entry->num_reg);
+	talloc_free(entry->replace);
+}
+
+void bsc_nat_num_rewr_entry_adapt(struct bsc_nat *nat, const struct osmo_config_list *list)
+{
+	struct bsc_nat_num_rewr_entry *entry, *tmp;
+	struct osmo_config_entry *cfg_entry;
+
+	/* free the old data */
+	llist_for_each_entry_safe(entry, tmp, &nat->num_rewr, list) {
+		num_rewr_free_data(entry);
+		llist_del(&entry->list);
+		talloc_free(entry);
+	}
+
+
+	if (!list)
+		return;
+
+	llist_for_each_entry(cfg_entry, &list->entry, list) {
+		char *regexp;
+		if (cfg_entry->text[0] == '+') {
+			LOGP(DNAT, LOGL_ERROR,
+				"Plus is not allowed in the number\n");
+			continue;
+		}
+
+		entry = talloc_zero(nat, struct bsc_nat_num_rewr_entry);
+		if (!entry) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Allication of the num_rewr entry failed.\n");
+			continue;
+		}
+
+		entry->replace = talloc_strdup(entry, cfg_entry->text);
+		if (!entry->replace) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to copy the replacement text.\n");
+			talloc_free(entry);
+			continue;
+		}
+
+		/* we will now build a regexp string */
+		if (cfg_entry->mcc[0] == '^') {
+			regexp = talloc_strdup(entry, cfg_entry->mcc);
+		} else {
+			regexp = talloc_asprintf(entry, "^%s%s",
+					cfg_entry->mcc[0] == '*' ?
+						"[0-9][0-9][0-9]" : cfg_entry->mcc,
+					cfg_entry->mnc[0] == '*' ?
+						"[0-9][0-9]" : cfg_entry->mnc);
+		}
+
+		if (!regexp) {
+			LOGP(DNAT, LOGL_ERROR, "Failed to create a regexp string.\n");
+			talloc_free(entry);
+			continue;
+		}
+
+		if (regcomp(&entry->msisdn_reg, regexp, 0) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to compile regexp '%s'\n", regexp);
+			talloc_free(regexp);
+			talloc_free(entry);
+			continue;
+		}
+
+		talloc_free(regexp);
+		if (regcomp(&entry->num_reg, cfg_entry->option, REG_EXTENDED) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to compile regexp '%s\n'", cfg_entry->option);
+			regfree(&entry->msisdn_reg);
+			talloc_free(entry);
+			continue;
+		}
+
+		/* we have copied the number */
+		llist_add_tail(&entry->list, &nat->num_rewr);
+	}
+}

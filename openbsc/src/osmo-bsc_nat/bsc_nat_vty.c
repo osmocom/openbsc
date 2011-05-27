@@ -461,16 +461,16 @@ DEFUN(cfg_nat_number_rewrite,
       "number-rewrite FILENAME",
       "Set the file with rewriting rules.\n" "Filename")
 {
+	struct osmo_config_list *rewr = NULL;
+
 	bsc_replace_string(_nat, &_nat->num_rewr_name, argv[0]);
 	if (_nat->num_rewr_name) {
-		if (_nat->num_rewr)
-			talloc_free(_nat->num_rewr);
-		_nat->num_rewr = osmo_config_list_parse(_nat, _nat->num_rewr_name);
-		return _nat->num_rewr == NULL ? CMD_WARNING : CMD_SUCCESS;
+		rewr = osmo_config_list_parse(_nat, _nat->num_rewr_name);
+		bsc_nat_num_rewr_entry_adapt(_nat, rewr);
+		talloc_free(rewr);
+		return CMD_SUCCESS;
 	} else {
-		if (_nat->num_rewr)
-			talloc_free(_nat->num_rewr);
-		_nat->num_rewr = NULL;
+		bsc_nat_num_rewr_entry_adapt(_nat, NULL);
 		return CMD_SUCCESS;
 	}
 }
