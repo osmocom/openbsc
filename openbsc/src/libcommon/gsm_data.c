@@ -156,6 +156,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->trx = trx;
 		ts->nr = k;
 		ts->pchan = GSM_PCHAN_NONE;
+		ts->tsc = -1;
 
 		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
 		ts->hopping.arfcns.data = ts->hopping.arfcns_data;

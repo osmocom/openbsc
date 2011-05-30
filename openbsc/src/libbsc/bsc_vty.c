@@ -333,6 +333,8 @@ static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
 	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
+	if (ts->tsc != -1 && ts->tsc != ts->trx->bts->tsc)
+		vty_out(vty, "     training_sequence_code %u%s", ts->tsc, VTY_NEWLINE);
 	if (ts->pchan != GSM_PCHAN_NONE)
 		vty_out(vty, "     phys_chan_config %s%s",
 			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
@@ -685,9 +687,9 @@ DEFUN(show_trx,
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s, TSC %u",
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
-		gsm_pchan_name(ts->pchan));
+		gsm_pchan_name(ts->pchan), ts->tsc);
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
 		vty_out(vty, " (%s mode)",
 			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
@@ -2428,6 +2430,18 @@ DEFUN(cfg_ts_pchan,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_ts_tsc,
+      cfg_ts_tsc_cmd,
+      "training_sequence_code <0-7>",
+      "Training Sequence Code")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->tsc = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 #define HOPPING_STR "Configure frequency hopping\n"
 
 DEFUN(cfg_ts_hopping,
@@ -2780,6 +2794,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(TS_NODE, &ournode_exit_cmd);
 	install_element(TS_NODE, &ournode_end_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_tsc_cmd);
 	install_element(TS_NODE, &cfg_ts_hopping_cmd);
 	install_element(TS_NODE, &cfg_ts_hsn_cmd);
 	install_element(TS_NODE, &cfg_ts_maio_cmd);
