@@ -40,6 +40,7 @@ static struct bsc_nat *_nat;
 
 
 #define PAGING_STR "Paging\n"
+#define SMSC_REWRITE "SMSC Rewriting\n"
 
 static struct cmd_node nat_node = {
 	NAT_NODE,
@@ -119,6 +120,12 @@ static int config_write_nat(struct vty *vty)
 
 	if (_nat->num_rewr_name)
 		vty_out(vty, " number-rewrite %s%s", _nat->num_rewr_name, VTY_NEWLINE);
+	if (_nat->smsc_rewr_name)
+		vty_out(vty, " rewrite-smsc addr %s%s",
+			_nat->smsc_rewr_name, VTY_NEWLINE);
+	if (_nat->tpdest_match_name)
+		vty_out(vty, " rewrite-smsc tp-dest-match %s%s",
+			_nat->tpdest_match_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list)
 		write_acc_lst(vty, lst);
@@ -456,23 +463,52 @@ DEFUN(cfg_nat_no_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+static int replace_rules(struct bsc_nat *nat, char **name,
+			 struct llist_head *head, const char *file)
+{
+	struct osmo_config_list *rewr = NULL;
+
+	bsc_replace_string(nat, name, file);
+	if (*name) {
+		rewr = osmo_config_list_parse(nat, *name);
+		bsc_nat_num_rewr_entry_adapt(nat, head, rewr);
+		talloc_free(rewr);
+		return CMD_SUCCESS;
+	} else {
+		bsc_nat_num_rewr_entry_adapt(nat, head, NULL);
+		return CMD_SUCCESS;
+	}
+}
+
 DEFUN(cfg_nat_number_rewrite,
       cfg_nat_number_rewrite_cmd,
       "number-rewrite FILENAME",
       "Set the file with rewriting rules.\n" "Filename")
 {
-	struct osmo_config_list *rewr = NULL;
+	return replace_rules(_nat, &_nat->num_rewr_name,
+			     &_nat->num_rewr, argv[0]);
+}
 
-	bsc_replace_string(_nat, &_nat->num_rewr_name, argv[0]);
-	if (_nat->num_rewr_name) {
-		rewr = osmo_config_list_parse(_nat, _nat->num_rewr_name);
-		bsc_nat_num_rewr_entry_adapt(_nat, &_nat->num_rewr, rewr);
-		talloc_free(rewr);
-		return CMD_SUCCESS;
-	} else {
-		bsc_nat_num_rewr_entry_adapt(_nat, &_nat->num_rewr, NULL);
-		return CMD_SUCCESS;
-	}
+DEFUN(cfg_nat_smsc_addr,
+      cfg_nat_smsc_addr_cmd,
+      "rewrite-smsc addr FILENAME",
+      SMSC_REWRITE
+      "The SMSC Address to match and replace in RP-DATA\n"
+      "File with rules for the SMSC Address replacing\n")
+{
+	return replace_rules(_nat, &_nat->smsc_rewr_name,
+			     &_nat->smsc_rewr, argv[0]);
+}
+
+DEFUN(cfg_nat_smsc_tpdest,
+      cfg_nat_smsc_tpdest_cmd,
+      "rewrite-smsc tp-dest-match FILENAME",
+      SMSC_REWRITE
+      "Match TP-Destination of a SMS.\n"
+      "File with rules for matching MSISDN and TP-DEST\n")
+{
+	return replace_rules(_nat, &_nat->tpdest_match_name,
+			     &_nat->tpdest_match, argv[0]);
 }
 
 DEFUN(cfg_nat_ussd_lst_name,
@@ -919,6 +955,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_smsc_addr_cmd);
+	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
