@@ -256,9 +256,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
 		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &bts->nm_state);
+	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
-	net_dump_nmstate(vty, &bts->site_mgr.nm_state);
+	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),
 		bts->paging.available_slots, VTY_NEWLINE);
@@ -366,7 +366,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 		vty_out(vty, "   description %s%s", trx->description,
 			VTY_NEWLINE);
 	vty_out(vty, "   rf_locked %u%s",
-		trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
+		trx->mo.nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
 		VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
@@ -617,9 +617,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 		trx->nominal_power, trx->max_power_red,
 		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &trx->nm_state);
+	net_dump_nmstate(vty, &trx->mo.nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
-	net_dump_nmstate(vty, &trx->bb_transc.nm_state);
+	net_dump_nmstate(vty, &trx->bb_transc.mo.nm_state);
 	if (is_ipaccess_bts(trx->bts)) {
 		vty_out(vty, "  ip.access stream ID: 0x%02x%s",
 			trx->rsl_tei, VTY_NEWLINE);
@@ -693,7 +693,7 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
 	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &ts->nm_state);
+	net_dump_nmstate(vty, &ts->mo.nm_state);
 	if (!is_ipaccess_bts(ts->trx->bts))
 		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
 			ts->e1_link.e1_nr, ts->e1_link.e1_ts,

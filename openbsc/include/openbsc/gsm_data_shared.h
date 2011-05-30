@@ -83,6 +83,12 @@ struct gsm_nm_state {
 	uint8_t availability;
 };
 
+struct gsm_abis_mo {
+	const char *name;
+	struct gsm_nm_state nm_state;
+	struct tlv_parsed *nm_attr;
+};
+
 #define MAX_A5_KEY_LEN	(128/8)
 #define A38_XOR_MIN_KEY_LEN	12
 #define A38_XOR_MAX_KEY_LEN	16
@@ -103,7 +109,6 @@ enum gsm_lchan_state {
 	LCHAN_S_REL_ERR,	/* channel is in an error state */
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
-
 
 struct gsm_lchan {
 	/* The TS that we're part of */
@@ -187,7 +192,7 @@ struct gsm_bts_trx_ts {
 	enum gsm_phys_chan_config pchan;
 
 	unsigned int flags;
-	struct gsm_nm_state nm_state;
+	struct gsm_abis_mo mo;
 	struct tlv_parsed nm_attr;
 	uint8_t nm_chan_comb;
 
@@ -227,10 +232,10 @@ struct gsm_bts_trx {
 	/* Some BTS (specifically Ericsson RBS) have a per-TRX OML Link */
 	struct e1inp_sign_link *oml_link;
 
-	struct gsm_nm_state nm_state;
+	struct gsm_abis_mo mo;
 	struct tlv_parsed nm_attr;
 	struct {
-		struct gsm_nm_state nm_state;
+		struct gsm_abis_mo mo;
 	} bb_transc;
 
 	uint16_t arfcn;
@@ -240,10 +245,10 @@ struct gsm_bts_trx {
 	union {
 		struct {
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} bbsig;
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} pa;
 		} bs11;
 		struct {
@@ -316,7 +321,7 @@ struct gsm_bts_paging_state {
 };
 
 struct gsm_envabtse {
-	struct gsm_nm_state nm_state;
+	struct gsm_abis_mo mo;
 };
 
 struct gsm_bts_gprs_nsvc {
@@ -329,7 +334,7 @@ struct gsm_bts_gprs_nsvc {
 	uint16_t remote_port;	/* on the SGSN */
 	uint32_t remote_ip;	/* on the SGSN */
 
-	struct gsm_nm_state nm_state;
+	struct gsm_abis_mo mo;
 };
 
 enum neigh_list_manual_mode {
@@ -369,8 +374,8 @@ struct gsm_bts {
 
 	/* Abis network management O&M handle */
 	struct abis_nm_h *nmh;
-	struct gsm_nm_state nm_state;
-	struct tlv_parsed nm_attr;
+
+	struct gsm_abis_mo mo;
 
 	/* number of this BTS on given E1 link */
 	uint8_t bts_nr;
@@ -382,7 +387,7 @@ struct gsm_bts {
 	struct gsm_bts_trx *c0;
 
 	struct {
-		struct gsm_nm_state nm_state;
+		struct gsm_abis_mo mo;
 	} site_mgr;
 
 	/* bitmask of all SI that are present/valid in si_buf */
@@ -399,27 +404,27 @@ struct gsm_bts {
 		} ip_access;
 		struct {
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} cclk;
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} rack;
 			struct gsm_envabtse envabtse[4];
 		} bs11;
 		struct {
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 				struct llist_head conn_groups;
 			} is;
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 				struct llist_head conn_groups;
 			} con;
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} dp;
 			struct {
-				struct gsm_nm_state nm_state;
+				struct gsm_abis_mo mo;
 			} tf;
 		} rbs2000;
 		struct {
@@ -431,12 +436,12 @@ struct gsm_bts {
 	struct {
 		enum bts_gprs_mode mode;
 		struct {
-			struct gsm_nm_state nm_state;
+			struct gsm_abis_mo mo;
 			uint16_t nsei;
 			uint8_t timer[7];
 		} nse;
 		struct {
-			struct gsm_nm_state nm_state;
+			struct gsm_abis_mo mo;
 			uint16_t bvci;
 			uint8_t timer[11];
 		} cell;
