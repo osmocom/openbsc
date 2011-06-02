@@ -232,8 +232,8 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	}
 }
 
-static int recevice_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *addr,
-			 char *buf, int bufsize)
+static int receive_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *addr,
+			char *buf, int bufsize)
 {
 	int rc;
 	socklen_t slen = sizeof(*addr);
@@ -264,7 +264,7 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 
 	endp = (struct mgcp_endpoint *) fd->data;
 
-	rc = recevice_from(endp, fd->fd, &addr, buf, sizeof(buf));
+	rc = receive_from(endp, fd->fd, &addr, buf, sizeof(buf));
 	if (rc <= 0)
 		return -1;
 
@@ -338,7 +338,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	endp = (struct mgcp_endpoint *) fd->data;
 	cfg = endp->cfg;
 
-	rc = recevice_from(endp, fd->fd, &addr, buf, sizeof(buf));
+	rc = receive_from(endp, fd->fd, &addr, buf, sizeof(buf));
 	if (rc <= 0)
 		return -1;
 
@@ -389,7 +389,7 @@ static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_
 	int rc, proto;
 
 	cfg = _endp->cfg;
-	rc = recevice_from(_endp, fd->fd, &addr, buf, sizeof(buf));
+	rc = receive_from(_endp, fd->fd, &addr, buf, sizeof(buf));
 	if (rc <= 0)
 		return -1;
 
