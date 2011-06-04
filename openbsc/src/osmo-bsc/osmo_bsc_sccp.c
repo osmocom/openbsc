@@ -140,8 +140,16 @@ static void sccp_cc_timeout(void *_data)
 static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg,
 			      void *global_ctx, void *ctx)
 {
-	struct gsm_network *net = (struct gsm_network *) global_ctx;
-	msc_queue_write(net->bsc_data->msc.msc_con, msg, IPAC_PROTO_SCCP);
+	struct bsc_msc_connection *msc_con;
+
+	if (conn) {
+		struct osmo_bsc_sccp_con *bsc_con = conn->data_ctx;
+		msc_con = bsc_con->msc->msc_con;
+	} else {
+		msc_con = ctx;
+	}
+
+	msc_queue_write(msc_con, msg, IPAC_PROTO_SCCP);
 }
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
