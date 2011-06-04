@@ -6,6 +6,8 @@
 #include "bsc_api.h"
 
 struct sccp_connection;
+struct osmo_msc_data;
+struct bsc_msc_connection;
 
 struct osmo_bsc_sccp_con {
 	struct llist_head entry;
@@ -15,7 +17,7 @@ struct osmo_bsc_sccp_con {
 
 	/* SCCP connection realted */
 	struct sccp_connection *sccp;
-	struct bsc_msc_connection *msc_con;
+	struct osmo_msc_data *msc;
 	struct osmo_timer_list sccp_it_timeout;
 	struct osmo_timer_list sccp_cc_timeout;
 
