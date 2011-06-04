@@ -430,10 +430,8 @@ static void send_id_get_response(struct osmo_msc_data *data, int fd)
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);
 }
 
-int osmo_bsc_msc_init(struct gsm_network *network)
+int osmo_bsc_msc_init(struct osmo_msc_data *data)
 {
-	struct osmo_msc_data *data = &network->bsc_data->msc;
-
 	if (mgcp_create_port(data) != 0)
 		return -1;
 

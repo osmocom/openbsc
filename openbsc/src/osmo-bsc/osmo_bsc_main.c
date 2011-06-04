@@ -443,7 +443,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (osmo_bsc_msc_init(bsc_gsmnet) != 0) {
+	if (osmo_bsc_msc_init(&bsc_gsmnet->bsc_data->msc) != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to start up. Exiting.\n");
 		exit(1);
 	}
