@@ -287,6 +287,8 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 	int ret;
 	struct gsm_network *gsmnet = (struct gsm_network *)data;
 	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
+	struct osmo_msc_data *msc;
+
 	if (!bts) {
 		cmd->reply = "bts not found.";
 		return CTRL_CMD_ERROR;
@@ -324,8 +326,10 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 
 	ret = get_bts_loc(cmd, data);
 
-	if (!location_equal(curloc, lastloc))
-		generate_location_state_trap(bts, gsmnet->bsc_data->msc.msc_con);
+	if (!location_equal(curloc, lastloc)) {
+		llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
+			generate_location_state_trap(bts, msc->msc_con);
+	}
 
 	cleanup_locations(&bts->loc_list);
 
