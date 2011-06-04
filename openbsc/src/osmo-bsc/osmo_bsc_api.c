@@ -45,18 +45,18 @@
 	} \
 	bsc_queue_for_msc(conn->sccp_con, resp);
 
-static uint16_t get_network_code_for_msc(struct gsm_network *net)
+static uint16_t get_network_code_for_msc(struct osmo_msc_data *msc)
 {
-	if (net->bsc_data->msc.core_ncc != -1)
-		return net->bsc_data->msc.core_ncc;
-	return net->network_code;
+	if (msc->core_ncc != -1)
+		return msc->core_ncc;
+	return msc->network->network_code;
 }
 
-static uint16_t get_country_code_for_msc(struct gsm_network *net)
+static uint16_t get_country_code_for_msc(struct osmo_msc_data *msc)
 {
-	if (net->bsc_data->msc.core_mcc != -1)
-		return net->bsc_data->msc.core_mcc;
-	return net->country_code;
+	if (msc->core_mcc != -1)
+		return msc->core_mcc;
+	return msc->network->country_code;
 }
 
 static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
@@ -89,14 +89,17 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 			uint16_t chosen_channel)
 {
 	struct msgb *resp;
-	uint16_t network_code = get_network_code_for_msc(conn->bts->network);
-	uint16_t country_code = get_country_code_for_msc(conn->bts->network);
+	uint16_t network_code;
+	uint16_t country_code;
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
 	/* allocate resource for a new connection */
 	if (bsc_create_new_connection(conn) != 0)
 		return BSC_API_CONN_POL_REJECT;
+
+	network_code = get_network_code_for_msc(conn->sccp_con->msc);
+	country_code = get_country_code_for_msc(conn->sccp_con->msc);
 
 	bsc_scan_bts_msg(conn, msg);
 	resp = gsm0808_create_layer3(msg, network_code, country_code,

@@ -182,13 +182,13 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_network *net;
-	struct bsc_msc_connection *msc;
+	struct osmo_msc_data *msc;
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
 
 	net = conn->bts->network;
-	msc = net->bsc_data->msc.msc_con;
-	if (!msc->is_authenticated) {
+	msc = &net->bsc_data->msc;
+	if (!msc->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
 		return -1;
 	}
@@ -225,7 +225,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	INIT_LLIST_HEAD(&bsc_con->sccp_queue);
 
 	bsc_con->sccp = sccp;
-	bsc_con->msc_con = msc;
+	bsc_con->msc = msc;
 	bsc_con->conn = conn;
 	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
