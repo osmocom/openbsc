@@ -36,7 +36,7 @@ static struct osmo_bsc_data *osmo_bsc_data(struct vty *vty)
 
 static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
 {
-	return &bsc_gsmnet->bsc_data->msc;
+	return osmo_msc_data_find(bsc_gsmnet, (int) vty->index);
 }
 
 static struct cmd_node msc_node = {
@@ -48,17 +48,23 @@ static struct cmd_node msc_node = {
 DEFUN(cfg_net_msc, cfg_net_msc_cmd,
       "msc", "Configure MSC details")
 {
-	vty->index = bsc_gsmnet;
-	vty->node = MSC_NODE;
+	int index = 0;
+	struct osmo_msc_data *msc;
 
+	msc = osmo_msc_data_alloc(bsc_gsmnet, index);
+	if (!msc) {
+		vty_out(vty, "%%Failed to allocate MSC data.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = (void *) index;
+	vty->node = MSC_NODE;
 	return CMD_SUCCESS;
 }
 
-static int config_write_msc(struct vty *vty)
+static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 {
 	struct bsc_msc_dest *dest;
-	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
-	struct osmo_msc_data *msc = &bsc->msc;
 
 	vty_out(vty, "msc%s", VTY_NEWLINE);
 	if (msc->bsc_token)
@@ -95,6 +101,15 @@ static int config_write_msc(struct vty *vty)
 	llist_for_each_entry(dest, &msc->dests, list)
 		vty_out(vty, " dest %s %d %d%s", dest->ip, dest->port,
 			dest->dscp, VTY_NEWLINE);
+}
+
+static int config_write_msc(struct vty *vty)
+{
+	struct osmo_msc_data *msc;
+	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
+
+	llist_for_each_entry(msc, &bsc->mscs, entry)
+		write_msc(vty, msc);
 
 	if (bsc->mid_call_txt)
 		vty_out(vty, " mid-call-text %s%s", bsc->mid_call_txt, VTY_NEWLINE);
