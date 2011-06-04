@@ -26,9 +26,9 @@
 
 int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
-	if (!network->msc_data->rf_ctl)
+	if (!network->msc_data->rf_ctrl)
 		return 1;
-	return network->msc_data->rf_ctl->policy == S_RF_ON;
+	return network->msc_data->rf_ctrl->policy == S_RF_ON;
 }
 
 static int handle_sub(struct gsm_lchan *lchan, const char *text)

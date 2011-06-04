@@ -48,7 +48,7 @@
 
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
-static const char *rf_ctl = NULL;
+static const char *rf_ctrl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
@@ -119,7 +119,7 @@ static void handle_options(int argc, char **argv)
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'r':
-			rf_ctl = optarg;
+			rf_ctrl = optarg;
 			break;
 		default:
 			/* ignore */
@@ -370,13 +370,13 @@ int main(int argc, char **argv)
 	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 
 	data = bsc_gsmnet->msc_data;
-	if (rf_ctl)
-		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctl);
+	if (rf_ctrl)
+		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 
 	if (data->rf_ctrl_name) {
-		data->rf_ctl = osmo_bsc_rf_create(data->rf_ctrl_name,
+		data->rf_ctrl = osmo_bsc_rf_create(data->rf_ctrl_name,
 						  bsc_gsmnet);
-		if (!data->rf_ctl) {
+		if (!data->rf_ctrl) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);
 		}
