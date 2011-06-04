@@ -122,13 +122,13 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_network *net;
-	net = conn->bts->network;
+	struct osmo_bsc_sccp_con *bsc;
 
-	if (!net->bsc_data->msc.ussd_welcome_txt)
+	bsc = conn->sccp_con;
+	if (!bsc || !bsc->msc->ussd_welcome_txt);
 		return;
 
-	gsm0480_send_ussdNotify(conn, 1, net->bsc_data->msc.ussd_welcome_txt);
+	gsm0480_send_ussdNotify(conn, 1, bsc->msc->ussd_welcome_txt);
 	gsm0480_send_releaseComplete(conn);
 }
 
@@ -137,6 +137,7 @@ static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
  */
 int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
+	struct osmo_msc_data *msc;
 	struct gsm_network *net;
 	struct gsm48_loc_area_id *lai;
 	struct gsm48_hdr *gh;
@@ -150,10 +151,10 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	gh = (struct gsm48_hdr *) msgb_l3(msg);
 	mtype = gh->msg_type & 0xbf;
 	net = conn->bts->network;
+	msc = conn->sccp_con->msc;
 
 	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
-		if (net->bsc_data->msc.core_ncc != -1 ||
-		    net->bsc_data->msc.core_mcc != -1) {
+		if (msc->core_ncc != -1 || msc->core_mcc != -1) {
 			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
 				lai = (struct gsm48_loc_area_id *) &gh->data[0];
 				gsm48_generate_lai(lai, net->country_code,
