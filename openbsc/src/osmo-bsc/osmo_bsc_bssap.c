@@ -365,7 +365,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	 * the correct value.
 	 */
 	full_rate = 0;
-	msc = &network->bsc_data->msc;
+	msc = conn->msc;
 	for (supported = 0;
 		chan_mode == GSM48_CMODE_SIGN && supported < msc->audio_length;
 		++supported) {
