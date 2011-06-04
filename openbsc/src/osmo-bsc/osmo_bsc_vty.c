@@ -39,6 +39,12 @@ static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
 	return osmo_msc_data_find(bsc_gsmnet, (int) vty->index);
 }
 
+static struct cmd_node bsc_node = {
+	BSC_NODE,
+	"%s(bsc)#",
+	1,
+};
+
 static struct cmd_node msc_node = {
 	MSC_NODE,
 	"%s(config-msc)# ",
@@ -46,9 +52,9 @@ static struct cmd_node msc_node = {
 };
 
 DEFUN(cfg_net_msc, cfg_net_msc_cmd,
-      "msc", "Configure MSC details")
+      "msc [<0-1000>]", "Configure MSC details\n" "MSC connection to configure\n")
 {
-	int index = 0;
+	int index = argc == 1 ? atoi(argv[0]) : 0;
 	struct osmo_msc_data *msc;
 
 	msc = osmo_msc_data_alloc(bsc_gsmnet, index);
@@ -62,11 +68,18 @@ DEFUN(cfg_net_msc, cfg_net_msc_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_bsc, cfg_net_bsc_cmd,
+      "bsc", "Configure BSC\n")
+{
+	vty->node = BSC_NODE;
+	return CMD_SUCCESS;
+}
+
 static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 {
 	struct bsc_msc_dest *dest;
 
-	vty_out(vty, "msc%s", VTY_NEWLINE);
+	vty_out(vty, "msc %d%s", msc->nr, VTY_NEWLINE);
 	if (msc->bsc_token)
 		vty_out(vty, " token %s%s", msc->bsc_token, VTY_NEWLINE);
 	if (msc->core_ncc != -1)
@@ -111,6 +124,14 @@ static int config_write_msc(struct vty *vty)
 	llist_for_each_entry(msc, &bsc->mscs, entry)
 		write_msc(vty, msc);
 
+	return CMD_SUCCESS;
+}
+
+static int config_write_bsc(struct vty *vty)
+{
+	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
+
+	vty_out(vty, "bsc%s", VTY_NEWLINE);
 	if (bsc->mid_call_txt)
 		vty_out(vty, " mid-call-text %s%s", bsc->mid_call_txt, VTY_NEWLINE);
 	vty_out(vty, " mid-call-timeout %d%s", bsc->mid_call_timeout, VTY_NEWLINE);
@@ -296,8 +317,23 @@ DEFUN(cfg_net_msc_pong_time,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_mid_call_text,
-      cfg_net_msc_mid_call_text_cmd,
+DEFUN(cfg_net_msc_welcome_ussd,
+      cfg_net_msc_welcome_ussd_cmd,
+      "bsc-welcome-text .TEXT",
+      "Set the USSD notification to be sent.\n" "Text to be sent\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	char *str = argv_concat(argv, argc, 0);
+	if (!str)
+		return CMD_WARNING;
+
+	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
+	talloc_free(str);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_bsc_mid_call_text,
+      cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
@@ -311,28 +347,13 @@ DEFUN(cfg_net_msc_mid_call_text,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_mid_call_timeout,
-      cfg_net_msc_mid_call_timeout_cmd,
+DEFUN(cfg_net_bsc_mid_call_timeout,
+      cfg_net_bsc_mid_call_timeout_cmd,
       "mid-call-timeout NR",
       "Switch from Grace to Off in NR seconds.\n" "Timeout in seconds\n")
 {
 	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 	data->mid_call_timeout = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
-
-DEFUN(cfg_net_msc_welcome_ussd,
-      cfg_net_msc_welcome_ussd_cmd,
-      "bsc-welcome-text .TEXT",
-      "Set the USSD notification to be sent.\n" "Text to be sent\n")
-{
-	struct osmo_msc_data *data = osmo_msc_data(vty);
-	char *str = argv_concat(argv, argc, 0);
-	if (!str)
-		return CMD_WARNING;
-
-	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
-	talloc_free(str);
 	return CMD_SUCCESS;
 }
 
@@ -376,6 +397,16 @@ DEFUN(show_mscs,
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
+	install_element(CONFIG_NODE, &cfg_net_bsc_cmd);
+
+	install_node(&bsc_node, config_write_bsc);
+	install_default(BSC_NODE);
+	install_element(BSC_NODE, &cfg_net_bsc_mid_call_text_cmd);
+	install_element(BSC_NODE, &cfg_net_bsc_mid_call_timeout_cmd);
+	install_element(BSC_NODE, &cfg_net_rf_socket_cmd);
+
+
+
 	install_node(&msc_node, config_write_msc);
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
@@ -388,10 +419,6 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
-
-	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
-	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
