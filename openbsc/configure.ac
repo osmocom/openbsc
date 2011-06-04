@@ -35,7 +35,7 @@ AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
 
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
     [
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
+        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
         osmo_ac_build_bsc="yes"
     ],
     [

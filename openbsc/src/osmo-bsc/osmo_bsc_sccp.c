@@ -137,9 +137,10 @@ static void sccp_cc_timeout(void *_data)
 	bsc_sccp_force_free(data);
 }
 
-static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
+static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg,
+			      void *global_ctx, void *ctx)
 {
-	struct gsm_network *net = (struct gsm_network *) data;
+	struct gsm_network *net = (struct gsm_network *) global_ctx;
 	msc_queue_write(net->msc_data->msc_con, msg, IPAC_PROTO_SCCP);
 }
 
