@@ -195,7 +195,12 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	struct sccp_connection *sccp;
 
 	net = conn->bts->network;
-	msc = &net->bsc_data->msc;
+	msc = osmo_msc_data_find(net, 0);
+	if (!msc) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to select a MSC.\n");
+		return -1;
+	}
+
 	if (!msc->msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
 		return -1;

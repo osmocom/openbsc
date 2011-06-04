@@ -87,6 +87,7 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 
 	/* Init back pointer */
 	net->bsc_data->network = net;
+	INIT_LLIST_HEAD(&net->bsc_data->mscs);
 
 	net->country_code = country_code;
 	net->network_code = network_code;
@@ -140,14 +141,6 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->stats.bts.rsl_fail = osmo_counter_alloc("net.bts.rsl_fail");
 
 	net->mncc_recv = mncc_recv;
-
-	INIT_LLIST_HEAD(&net->bsc_data->msc.dests);
-	net->bsc_data->msc.ping_timeout = 20;
-	net->bsc_data->msc.pong_timeout = 5;
-	net->bsc_data->msc.core_ncc = -1;
-	net->bsc_data->msc.core_mcc = -1;
-	net->bsc_data->msc.rtp_base = 4000;
-	net->bsc_data->msc.network = net;
 
 	gsm_net_update_ctype(net);
 

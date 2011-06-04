@@ -455,3 +455,43 @@ int osmo_bsc_msc_init(struct osmo_msc_data *data)
 
 	return 0;
 }
+
+struct osmo_msc_data *osmo_msc_data_find(struct gsm_network *net, int nr)
+{
+	struct osmo_msc_data *msc_data;
+
+	llist_for_each_entry(msc_data, &net->bsc_data->mscs, entry)
+		if (msc_data->nr == nr)
+			return msc_data;
+	return NULL;
+}
+
+struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
+{
+	struct osmo_msc_data *msc_data;
+
+	/* check if there is already one */
+	msc_data = osmo_msc_data_find(net, nr);
+	if (msc_data)
+		return msc_data;
+
+	msc_data = talloc_zero(net, struct osmo_msc_data);
+	if (!msc_data)
+		return NULL;
+
+	llist_add_tail(&msc_data->entry, &net->bsc_data->mscs);
+
+	/* Init back pointer */
+	msc_data->network = net;
+
+	INIT_LLIST_HEAD(&msc_data->dests);
+	msc_data->ping_timeout = 20;
+	msc_data->pong_timeout = 5;
+	msc_data->core_ncc = -1;
+	msc_data->core_mcc = -1;
+	msc_data->rtp_base = 4000;
+
+	msc_data->nr = nr;
+
+	return msc_data;
+}
