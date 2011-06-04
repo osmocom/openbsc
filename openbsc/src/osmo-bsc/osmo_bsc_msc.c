@@ -270,6 +270,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 	ipaccess_rcvmsg_base(msg, bfd);
 
 	/* initialize the networking. This includes sending a GSM08.08 message */
+	msg->cb[0] = (unsigned long) data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg->l2h[0] == IPAC_MSGT_ID_ACK)
 			initialize_if_needed(data->msc_con);
