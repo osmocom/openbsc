@@ -372,4 +372,14 @@ int gsm_bts_model_register(struct gsm_bts_model *model);
 struct gsm_subscriber_connection *subscr_con_allocate(struct gsm_lchan *lchan);
 void subscr_con_free(struct gsm_subscriber_connection *conn);
 
+struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net,
+					enum gsm_bts_type type,
+					uint8_t tsc, uint8_t bsic);
+void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
+		   uint8_t e1_ts, uint8_t e1_ts_ss);
+
+void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
+int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
+struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
+
 #endif /* _GSM_DATA_H */

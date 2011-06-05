@@ -1442,8 +1442,8 @@ DEFUN(cfg_bts,
 		return CMD_WARNING;
 	} else if (bts_nr == gsmnet->num_bts) {
 		/* allocate a new one */
-		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
-				    HARDCODED_TSC, HARDCODED_BSIC);
+		bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_UNKNOWN,
+					     HARDCODED_TSC, HARDCODED_BSIC);
 	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 

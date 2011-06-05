@@ -14,6 +14,7 @@
 #include <osmocom/gsm/sysinfo.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
@@ -84,6 +85,8 @@ struct gsm_nm_state {
 };
 
 struct gsm_abis_mo {
+	uint8_t obj_class;
+	struct abis_om_obj_inst obj_inst;
 	const char *name;
 	struct gsm_nm_state nm_state;
 	struct tlv_parsed *nm_attr;
@@ -497,12 +500,10 @@ struct gsm_bts {
 
 
 
-struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
-			      uint8_t tsc, uint8_t bsic);
+struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
-struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
@@ -512,12 +513,6 @@ char *gsm_trx_name(struct gsm_bts_trx *trx);
 char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
 char *gsm_lchan_name(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
-
-void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
-		   uint8_t e1_ts, uint8_t e1_ts_ss);
-
-void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
-int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
 
 
 #endif
