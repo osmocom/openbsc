@@ -23,6 +23,7 @@
 #define _NM_H
 
 #include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/abis_nm.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 struct cell_global_id {
@@ -101,8 +102,6 @@ int abis_nm_conn_mdrop_link(struct gsm_bts *bts, uint8_t e1_port0, uint8_t ts0,
 int abis_nm_perform_test(struct gsm_bts *bts, uint8_t obj_class,
 			 uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
 			 uint8_t test_nr, uint8_t auton_report, struct msgb *msg);
-
-int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan);
 
 /* Siemens / BS-11 specific */
 int abis_nm_bs11_reset_resource(struct gsm_bts *bts);
