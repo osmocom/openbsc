@@ -90,6 +90,7 @@ struct gsm_abis_mo {
 	const char *name;
 	struct gsm_nm_state nm_state;
 	struct tlv_parsed *nm_attr;
+	struct gsm_bts *bts;
 };
 
 #define MAX_A5_KEY_LEN	(128/8)

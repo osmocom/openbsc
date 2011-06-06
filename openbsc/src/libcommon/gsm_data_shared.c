@@ -34,6 +34,11 @@
 
 #include <openbsc/gsm_data.h>
 
+static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts)
+{
+	mo->bts = bts;
+}
+
 static const struct value_string pchan_names[] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },
@@ -112,6 +117,9 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	trx->nr = bts->num_trx++;
 	trx->mo.nm_state.administrative = NM_STATE_UNLOCKED;
 
+	gsm_mo_init(&trx->mo, bts);
+	gsm_mo_init(&trx->bb_transc.mo, bts);
+
 	for (k = 0; k < TRX_NR_TS; k++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[k];
 		int l;
@@ -120,6 +128,8 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->nr = k;
 		ts->pchan = GSM_PCHAN_NONE;
 		ts->tsc = -1;
+
+		gsm_mo_init(&ts->mo, bts);
 
 		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
 		ts->hopping.arfcns.data = ts->hopping.arfcns_data;
@@ -144,6 +154,7 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	return trx;
 }
 
+
 static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
 static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
@@ -160,14 +171,20 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
 
+	gsm_mo_init(&bts->mo, bts);
+	gsm_mo_init(&bts->site_mgr.mo, bts);
+
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
 		bts->gprs.nsvc[i].id = i;
+		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts);
 	}
 	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
 		sizeof(bts->gprs.nse.timer));
+	gsm_mo_init(&bts->gprs.nse.mo, bts);
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
 		sizeof(bts->gprs.cell.timer));
+	gsm_mo_init(&bts->gprs.cell.mo, bts);
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
