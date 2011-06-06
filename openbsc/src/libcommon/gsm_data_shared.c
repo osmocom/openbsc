@@ -34,9 +34,14 @@
 
 #include <openbsc/gsm_data.h>
 
-static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts)
+static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
+			uint8_t obj_class, uint8_t p1, uint8_t p2, uint8_t p3)
 {
 	mo->bts = bts;
+	mo->obj_class = obj_class;
+	mo->obj_inst.bts_nr = p1;
+	mo->obj_inst.trx_nr = p2;
+	mo->obj_inst.ts_nr = p3;
 }
 
 static const struct value_string pchan_names[] = {
@@ -117,8 +122,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 	trx->nr = bts->num_trx++;
 	trx->mo.nm_state.administrative = NM_STATE_UNLOCKED;
 
-	gsm_mo_init(&trx->mo, bts);
-	gsm_mo_init(&trx->bb_transc.mo, bts);
+	gsm_mo_init(&trx->mo, bts, NM_OC_RADIO_CARRIER,
+		    bts->nr, trx->nr, 0xff);
+	gsm_mo_init(&trx->bb_transc.mo, bts, NM_OC_BASEB_TRANSC,
+		    bts->nr, trx->nr, 0xff);
 
 	for (k = 0; k < TRX_NR_TS; k++) {
 		struct gsm_bts_trx_ts *ts = &trx->ts[k];
@@ -129,7 +136,8 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 		ts->pchan = GSM_PCHAN_NONE;
 		ts->tsc = -1;
 
-		gsm_mo_init(&ts->mo, bts);
+		gsm_mo_init(&ts->mo, bts, NM_OC_CHANNEL,
+			    bts->nr, trx->nr, ts->nr);
 
 		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
 		ts->hopping.arfcns.data = ts->hopping.arfcns_data;
@@ -171,20 +179,25 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	INIT_LLIST_HEAD(&bts->trx_list);
 	bts->ms_max_power = 15;	/* dBm */
 
-	gsm_mo_init(&bts->mo, bts);
-	gsm_mo_init(&bts->site_mgr.mo, bts);
+	gsm_mo_init(&bts->mo, bts, NM_OC_BTS,
+			bts->nr, 0xff, 0xff);
+	gsm_mo_init(&bts->site_mgr.mo, bts, NM_OC_SITE_MANAGER,
+			0xff, 0xff, 0xff);
 
 	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
 		bts->gprs.nsvc[i].bts = bts;
 		bts->gprs.nsvc[i].id = i;
-		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts);
+		gsm_mo_init(&bts->gprs.nsvc[i].mo, bts, NM_OC_GPRS_NSVC,
+				bts->nr, i, 0xff);
 	}
 	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
 		sizeof(bts->gprs.nse.timer));
-	gsm_mo_init(&bts->gprs.nse.mo, bts);
+	gsm_mo_init(&bts->gprs.nse.mo, bts, NM_OC_GPRS_NSE,
+			bts->nr, 0xff, 0xff);
 	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
 		sizeof(bts->gprs.cell.timer));
-	gsm_mo_init(&bts->gprs.cell.mo, bts);
+	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
+			bts->nr, 0xff, 0xff);
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
