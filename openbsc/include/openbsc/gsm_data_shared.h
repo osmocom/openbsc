@@ -247,6 +247,10 @@ struct gsm_bts_trx {
 	int nominal_power;		/* in dBm */
 	unsigned int max_power_red;	/* in actual dB */
 
+	struct {
+		void *l1h;
+	} role_bts;
+
 	union {
 		struct {
 			struct {
