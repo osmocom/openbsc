@@ -496,8 +496,8 @@ struct gsm_bts {
 	/* do we use static (user-defined) system information messages? (bitmask) */
 	uint32_t si_mode_static;
 #endif /* ROLE_BSC */
+	void *role;
 };
-
 
 
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
@@ -514,5 +514,16 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
 char *gsm_lchan_name(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
+
+struct gsm_abis_mo *
+gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
+	    struct abis_om_obj_inst *obj_inst);
+
+struct gsm_nm_state *
+gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
+		 struct abis_om_obj_inst *obj_inst);
+void *
+gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
+	     struct abis_om_obj_inst *obj_inst);
 
 #endif
