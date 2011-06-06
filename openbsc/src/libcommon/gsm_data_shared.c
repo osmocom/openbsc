@@ -32,7 +32,7 @@
 #include <osmocom/gsm/abis_nm.h>
 #include <osmocom/core/statistics.h>
 
-#include <openbsc/gsm_data_shared.h>
+#include <openbsc/gsm_data.h>
 
 static const struct value_string pchan_names[] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
