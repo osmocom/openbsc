@@ -364,10 +364,8 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	struct gsm_bts_model *model = bts_model_find(type);
 	struct gsm_bts *bts;
 
-	if (!model && type != GSM_BTS_TYPE_UNKNOWN) {
-		talloc_free(bts);
+	if (!model && type != GSM_BTS_TYPE_UNKNOWN)
 		return NULL;
-	}
 
 	bts = gsm_bts_alloc(net);
 	if (!bts)
