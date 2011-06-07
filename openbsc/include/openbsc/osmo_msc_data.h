@@ -35,11 +35,18 @@ struct gsm_audio_support {
                 ver : 7;
 };
 
+enum {
+	MSC_CON_TYPE_NORMAL,
+	MSC_CON_TYPE_LOCAL,
+};
+
 struct osmo_msc_data {
 	struct llist_head entry;
 
 	/* Back pointer */
 	struct gsm_network *network;
+
+	int type;
 
 	/* Connection data */
 	char *bsc_token;
