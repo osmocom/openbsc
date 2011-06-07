@@ -97,6 +97,25 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 	subscr_put(subscr);
 	return 0;
 }
+struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
+				   struct msgb *msg)
+{
+	struct osmo_bsc_data *bsc;
+	struct osmo_msc_data *msc;
+
+	bsc = conn->bts->network->bsc_data;
+	llist_for_each_entry(msc, &bsc->mscs, entry) {
+		if (!msc->msc_con->is_authenticated)
+			continue;
+
+		/* force round robin by moving it to the end */
+		llist_move_tail(&msc->entry, &bsc->mscs);
+		return msc;
+	}
+
+	return NULL;
+}
+
 
 /**
  * This is used to scan a message for extra functionality of the BSC. This
