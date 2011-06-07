@@ -142,6 +142,8 @@ round_robin:
 	llist_for_each_entry(msc, &bsc->mscs, entry) {
 		if (!msc->msc_con->is_authenticated)
 			continue;
+		if (msc->type != MSC_CON_TYPE_NORMAL)
+			continue;
 
 		/* force round robin by moving it to the end */
 		llist_move_tail(&msc->entry, &bsc->mscs);
