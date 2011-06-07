@@ -405,3 +405,17 @@ unsigned int paging_pending_requests_nr(struct gsm_bts *bts)
 
 	return requests;
 }
+
+/**
+ * Find any paging data for the given subscriber at the given BTS.
+ */
+void *paging_get_data(struct gsm_bts *bts, struct gsm_subscriber *subscr)
+{
+	struct gsm_paging_request *req;
+
+	llist_for_each_entry(req, &bts->paging.pending_requests, entry)
+		if (req->subscr == subscr)
+			return req->cbfn_param;
+
+	return NULL;
+}
