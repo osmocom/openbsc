@@ -36,6 +36,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 			      struct osmo_msc_data *msc);
 int bsc_delete_connection(struct osmo_bsc_sccp_con *sccp);
 
+struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn, struct msgb *);
 int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg);
 int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
