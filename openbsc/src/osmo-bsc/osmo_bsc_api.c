@@ -81,25 +81,6 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 	queue_msg_or_return(resp);
 }
 
-static struct osmo_msc_data *find_msc(struct gsm_subscriber_connection *conn,
-				      struct msgb *msg)
-{
-	struct osmo_bsc_data *bsc;
-	struct osmo_msc_data *msc;
-
-	bsc = conn->bts->network->bsc_data;
-	llist_for_each_entry(msc, &bsc->mscs, entry) {
-		if (!msc->msc_con->is_authenticated)
-			continue;
-
-		/* force round robin by moving it to the end */
-		llist_move_tail(&msc->entry, &bsc->mscs);
-		return msc;
-	}
-
-	return NULL;
-}
-
 /*
  * Instruct to reserve data for a new connectiom, create the complete
  * layer three message, send it to open the connection.
@@ -115,7 +96,7 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
 	/* find the MSC link we want to use */
-	msc = find_msc(conn, msg);
+	msc = bsc_find_msc(conn, msg);
 	if (!msc) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to find a MSC for a connection.\n");
 		return -1;
