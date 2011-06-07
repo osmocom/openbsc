@@ -53,8 +53,9 @@ static void handle_lu_request(struct gsm_subscriber_connection *conn,
 	}
 }
 
-/* we will need to stop the paging request */
-static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
+/* extract a subscriber from the paging response */
+static struct gsm_subscriber *extract_sub(struct gsm_subscriber_connection *conn,
+					  struct msgb *msg)
 {
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
@@ -64,7 +65,7 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 
 	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*resp)) {
 		LOGP(DMSC, LOGL_ERROR, "PagingResponse too small: %u\n", msgb_l3len(msg));
-		return -1;
+		return NULL;
 	}
 
 	gh = msgb_l3(msg);
@@ -88,6 +89,14 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 		break;
 	}
 
+	return subscr;
+}
+
+/* we will need to stop the paging request */
+static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb *msg)
+{
+	struct gsm_subscriber *subscr = extract_sub(conn, msg);
+
 	if (!subscr) {
 		LOGP(DMSC, LOGL_ERROR, "Non active subscriber got paged.\n");
 		return -1;
@@ -100,10 +109,36 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 				   struct msgb *msg)
 {
+	struct gsm48_hdr *gh;
+	int8_t pdisc;
+	uint8_t mtype;
 	struct osmo_bsc_data *bsc;
-	struct osmo_msc_data *msc;
+	struct osmo_msc_data *msc, *pag_msc;
+	struct gsm_subscriber *subscr;
 
 	bsc = conn->bts->network->bsc_data;
+
+	if (msgb_l3len(msg) < sizeof(*gh)) {
+		LOGP(DMSC, LOGL_ERROR, "There is no GSM48 header here.\n");
+		return NULL;
+	}
+
+	gh = msgb_l3(msg);
+	pdisc = gh->proto_discr & 0x0f;
+	mtype = gh->msg_type & 0xbf;
+
+	/*
+	 * We are asked to select a MSC here but they are not equal. We
+	 * want to respond to a paging request on the MSC where we got the
+	 * request from. This is where we need to decide where this connection
+	 * will go.
+	 */
+	if (pdisc == GSM48_PDISC_RR && mtype == GSM48_MT_RR_PAG_RESP)
+		goto paging;
+	else
+		goto round_robin;
+
+round_robin:
 	llist_for_each_entry(msc, &bsc->mscs, entry) {
 		if (!msc->msc_con->is_authenticated)
 			continue;
@@ -113,6 +148,34 @@ struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 		return msc;
 	}
 
+	return NULL;
+
+paging:
+	subscr = extract_sub(conn, msg);
+
+	if (!subscr) {
+		LOGP(DMSC, LOGL_ERROR, "Got paged but no subscriber found.\n");
+		return NULL;
+	}
+
+	pag_msc = paging_get_data(conn->bts, subscr);
+	subscr_put(subscr);
+
+	llist_for_each_entry(msc, &bsc->mscs, entry) {
+		if (msc != pag_msc)
+			continue;
+
+		/*
+		 * We don't check if the MSC is connected. In case it
+		 * is not the connection will be dropped.
+		 */
+
+		/* force round robin by moving it to the end */
+		llist_move_tail(&msc->entry, &bsc->mscs);
+		return msc;
+	}
+
+	LOGP(DMSC, LOGL_ERROR, "Got paged but no request found.\n");
 	return NULL;
 }
 
