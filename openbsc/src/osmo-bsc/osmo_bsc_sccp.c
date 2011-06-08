@@ -161,7 +161,7 @@ static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
 	struct osmo_msc_data *msc = (struct osmo_msc_data *) msgb->cb[0];
-	return bsc_handle_udt(msc->network, msc->msc_con, msgb, length);
+	return bsc_handle_udt(msc, msgb, length);
 }
 
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
