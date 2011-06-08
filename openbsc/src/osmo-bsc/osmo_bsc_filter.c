@@ -106,6 +106,21 @@ static int handle_page_resp(struct gsm_subscriber_connection *conn, struct msgb 
 	subscr_put(subscr);
 	return 0;
 }
+
+static int is_cm_service_for_emerg(struct msgb *msg)
+{
+	struct gsm48_service_request *cm;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+
+	if (msgb_l3len(msg) < sizeof(*gh) + sizeof(*cm)) {
+		LOGP(DMSC, LOGL_ERROR, "CM ServiceRequest does not fit.\n");
+		return 0;
+	}
+
+	cm = (struct gsm48_service_request *) &gh->data[0];
+	return cm->cm_service_type == GSM48_CMSERV_EMERGENCY;
+}
+
 struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 				   struct msgb *msg)
 {
@@ -115,6 +130,7 @@ struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 	struct osmo_bsc_data *bsc;
 	struct osmo_msc_data *msc, *pag_msc;
 	struct gsm_subscriber *subscr;
+	int is_emerg = 0;
 
 	bsc = conn->bts->network->bsc_data;
 
@@ -135,14 +151,19 @@ struct osmo_msc_data *bsc_find_msc(struct gsm_subscriber_connection *conn,
 	 */
 	if (pdisc == GSM48_PDISC_RR && mtype == GSM48_MT_RR_PAG_RESP)
 		goto paging;
-	else
+	else if (pdisc == GSM48_PDISC_MM && mtype == GSM48_MT_MM_CM_SERV_REQ) {
+		is_emerg = is_cm_service_for_emerg(msg);
+		goto round_robin;
+	} else
 		goto round_robin;
 
 round_robin:
 	llist_for_each_entry(msc, &bsc->mscs, entry) {
 		if (!msc->msc_con->is_authenticated)
 			continue;
-		if (msc->type != MSC_CON_TYPE_NORMAL)
+		if (!is_emerg && msc->type != MSC_CON_TYPE_NORMAL)
+			continue;
+		if (is_emerg && !msc->allow_emerg)
 			continue;
 
 		/* force round robin by moving it to the end */
