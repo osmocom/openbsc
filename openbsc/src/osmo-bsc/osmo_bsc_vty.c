@@ -117,6 +117,8 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 
 	vty_out(vty, " type %s%s", msc->type == MSC_CON_TYPE_NORMAL ?
 					"normal" : "local", VTY_NEWLINE);
+	vty_out(vty, " allow-emergency %s%s", msc->allow_emerg ?
+					"allow" : "deny", VTY_NEWLINE);
 }
 
 static int config_write_msc(struct vty *vty)
@@ -351,6 +353,17 @@ DEFUN(cfg_net_msc_type,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_emerg,
+      cfg_net_msc_emerg_cmd,
+      "allow-emergency (allow|deny)",
+      "Allow CM ServiceRequests with type emergency\n"
+      "Allow\n" "Deny\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	data->allow_emerg = strcmp("allow", argv[0]) == 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
@@ -439,6 +452,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_emerg_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
