@@ -98,7 +98,7 @@ enum gsm48_chan_mode gsm88_to_chan_mode(enum gsm0808_permitted_speech speech)
 	return GSM48_CMODE_SPEECH_AMR;
 }
 
-static int bssmap_handle_reset_ack(struct gsm_network *net,
+static int bssmap_handle_reset_ack(struct osmo_msc_data *msc,
 				   struct msgb *msg, unsigned int length)
 {
 	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
@@ -106,7 +106,7 @@ static int bssmap_handle_reset_ack(struct gsm_network *net,
 }
 
 /* GSM 08.08 § 3.2.1.19 */
-static int bssmap_handle_paging(struct gsm_network *net,
+static int bssmap_handle_paging(struct osmo_msc_data *msc,
 				struct msgb *msg, unsigned int payload_length)
 {
 	struct gsm_subscriber *subscr;
@@ -167,7 +167,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 		LOGP(DMSC, LOGL_ERROR, "eMLPP is not handled\n");
 	}
 
-	subscr = subscr_get_or_create(net, mi_string);
+	subscr = subscr_get_or_create(msc->network, mi_string);
 	if (!subscr) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate a subscriber for %s\n", mi_string);
 		return -1;
@@ -177,7 +177,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	subscr->tmsi = tmsi;
 
 	LOGP(DMSC, LOGL_INFO, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
-	paging_request(net, subscr, chan_needed, NULL, NULL);
+	paging_request(msc->network, subscr, chan_needed, NULL, msc);
 	return 0;
 }
 
@@ -395,7 +395,7 @@ reject:
 	return -1;
 }
 
-static int bssmap_rcvmsg_udt(struct gsm_network *net,
+static int bssmap_rcvmsg_udt(struct osmo_msc_data *msc,
 			     struct msgb *msg, unsigned int length)
 {
 	int ret = 0;
@@ -410,11 +410,11 @@ static int bssmap_rcvmsg_udt(struct gsm_network *net,
 
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
-		ret = bssmap_handle_reset_ack(net, msg, length);
+		ret = bssmap_handle_reset_ack(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
-		if (bsc_grace_allow_new_connection(net))
-			ret = bssmap_handle_paging(net, msg, length);
+		if (bsc_grace_allow_new_connection(msc->network))
+			ret = bssmap_handle_paging(msc, msg, length);
 		break;
 	}
 
@@ -499,8 +499,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	return gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
 }
 
-int bsc_handle_udt(struct gsm_network *network,
-		   struct bsc_msc_connection *conn,
+int bsc_handle_udt(struct osmo_msc_data *msc,
 		   struct msgb *msgb, unsigned int length)
 {
 	struct bssmap_header *bs;
@@ -520,7 +519,7 @@ int bsc_handle_udt(struct gsm_network *network,
 	switch (bs->type) {
 	case BSSAP_MSG_BSS_MANAGEMENT:
 		msgb->l4h = &msgb->l3h[sizeof(*bs)];
-		bssmap_rcvmsg_udt(network, msgb, length - sizeof(*bs));
+		bssmap_rcvmsg_udt(msc, msgb, length - sizeof(*bs));
 		break;
 	default:
 		LOGP(DMSC, LOGL_NOTICE, "Unimplemented msg type: %s\n",
