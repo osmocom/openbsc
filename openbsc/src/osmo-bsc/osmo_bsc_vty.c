@@ -114,6 +114,9 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 	llist_for_each_entry(dest, &msc->dests, list)
 		vty_out(vty, " dest %s %d %d%s", dest->ip, dest->port,
 			dest->dscp, VTY_NEWLINE);
+
+	vty_out(vty, " type %s%s", msc->type == MSC_CON_TYPE_NORMAL ?
+					"normal" : "local", VTY_NEWLINE);
 }
 
 static int config_write_msc(struct vty *vty)
@@ -332,6 +335,22 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_type,
+      cfg_net_msc_type_cmd,
+      "type (normal|local)",
+      "Select the MSC type\n"
+      "Plain GSM MSC\n" "Special MSC for local call routing\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	if (strcmp(argv[0], "normal") == 0)
+		data->type = MSC_CON_TYPE_NORMAL;
+	else if (strcmp(argv[0], "local") == 0)
+		data->type = MSC_CON_TYPE_LOCAL;
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
@@ -419,6 +438,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
