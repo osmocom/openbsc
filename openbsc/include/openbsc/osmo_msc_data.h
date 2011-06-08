@@ -46,6 +46,7 @@ struct osmo_msc_data {
 	/* Back pointer */
 	struct gsm_network *network;
 
+	int allow_emerg;
 	int type;
 
 	/* Connection data */
