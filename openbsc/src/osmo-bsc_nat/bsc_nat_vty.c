@@ -19,6 +19,7 @@
  */
 
 #include <openbsc/vty.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 #include <openbsc/bsc_msc.h>
@@ -527,7 +528,7 @@ DEFUN(cfg_nat_ussd_query,
       "Set the USSD query to match with the ussd-list-name\n"
       "The query to match")
 {
-	if (bsc_parse_reg(_nat, &_nat->ussd_query_re, &_nat->ussd_query, argc, argv) != 0)
+	if (gsm_parse_reg(_nat, &_nat->ussd_query_re, &_nat->ussd_query, argc, argv) != 0)
 		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
@@ -641,7 +642,7 @@ DEFUN(cfg_lst_imsi_allow,
 	if (!entry)
 		return CMD_WARNING;
 
-	if (bsc_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]) != 0)
+	if (gsm_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]) != 0)
 		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
@@ -664,7 +665,7 @@ DEFUN(cfg_lst_imsi_deny,
 	if (!entry)
 		return CMD_WARNING;
 
-	if (bsc_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]) != 0)
+	if (gsm_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]) != 0)
 		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
@@ -797,7 +798,7 @@ DEFUN(test_regex, test_regex_cmd,
 	char *str = NULL;
 
 	memset(&reg, 0, sizeof(reg));
-	if (bsc_parse_reg(_nat, &reg, &str, 1, argv) != 0)
+	if (gsm_parse_reg(_nat, &reg, &str, 1, argv) != 0)
 		return CMD_WARNING;
 
 	vty_out(vty, "String matches allow pattern: %d%s",

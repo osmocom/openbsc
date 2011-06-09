@@ -672,31 +672,6 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	}
 }
 
-int bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
-{
-	int ret;
-
-	ret = 0;
-	if (*imsi) {
-		talloc_free(*imsi);
-		*imsi = NULL;
-	}
-	regfree(reg);
-
-	if (argc > 0) {
-		*imsi = talloc_strdup(ctx, argv[0]);
-		ret = regcomp(reg, argv[0], 0);
-
-		/* handle compilation failures */
-		if (ret != 0) {
-			talloc_free(*imsi);
-			*imsi = NULL;
-		}
-	}
-
-	return ret;
-}
-
 static const char *con_types [] = {
 	[NAT_CON_TYPE_NONE] = "n/a",
 	[NAT_CON_TYPE_LU] = "Location Update",
