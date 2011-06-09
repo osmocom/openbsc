@@ -1,6 +1,7 @@
 #ifndef _GSM_DATA_SHAREDH
 #define _GSM_DATA_SHAREDH
 
+#include <regex.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -587,5 +588,13 @@ void gsm_bts_mo_reset(struct gsm_bts *bts);
 
 uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
+
+/*
+ * help with parsing regexps
+ */
+int gsm_parse_reg(void *ctx, regex_t *reg, char **str,
+		int argc, const char **argv) __attribute__ ((warn_unused_result));
+
+
 
 #endif

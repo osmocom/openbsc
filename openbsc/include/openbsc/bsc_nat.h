@@ -393,7 +393,6 @@ int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
 int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
 /* IMSI allow/deny handling */
-int bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv) __attribute__ ((warn_unused_result));
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);

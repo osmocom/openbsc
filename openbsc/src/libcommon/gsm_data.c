@@ -419,3 +419,29 @@ int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
 
 	return gsm48_construct_ra(buf, &raid);
 }
+
+int gsm_parse_reg(void *ctx, regex_t *reg, char **str, int argc, const char **argv)
+{
+	int ret;
+
+	ret = 0;
+	if (*str) {
+		talloc_free(*str);
+		*str = NULL;
+	}
+	regfree(reg);
+
+	if (argc > 0) {
+		*str = talloc_strdup(ctx, argv[0]);
+		ret = regcomp(reg, argv[0], 0);
+
+		/* handle compilation failures */
+		if (ret != 0) {
+			talloc_free(*str);
+			*str = NULL;
+		}
+	}
+
+	return ret;
+}
+
