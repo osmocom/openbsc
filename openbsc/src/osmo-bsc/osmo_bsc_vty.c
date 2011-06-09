@@ -119,6 +119,9 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 					"normal" : "local", VTY_NEWLINE);
 	vty_out(vty, " allow-emergency %s%s", msc->allow_emerg ?
 					"allow" : "deny", VTY_NEWLINE);
+
+	if (msc->local_pref)
+		vty_out(vty, " local-prefix %s%s", msc->local_pref, VTY_NEWLINE);
 }
 
 static int config_write_msc(struct vty *vty)
@@ -364,6 +367,22 @@ DEFUN(cfg_net_msc_emerg,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_msc_local_prefix,
+      cfg_net_msc_local_prefix_cmd,
+      "local-prefix REGEXP",
+      "Prefix for local numbers\n" "REGEXP used\n")
+{
+	struct osmo_msc_data *msc = osmo_msc_data(vty);
+
+	if (gsm_parse_reg(msc, &msc->local_pref_reg, &msc->local_pref, argc, argv) != 0) {
+		vty_out(vty, "%%Failed to parse the regexp: '%s'%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
@@ -453,6 +472,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_emerg_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_local_prefix_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
