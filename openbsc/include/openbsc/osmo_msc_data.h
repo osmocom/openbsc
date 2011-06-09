@@ -27,6 +27,8 @@
 
 #include <osmocom/core/timer.h>
 
+#include <regex.h>
+
 struct osmo_bsc_rf;
 struct gsm_network;
 
@@ -48,6 +50,11 @@ struct osmo_msc_data {
 
 	int allow_emerg;
 	int type;
+
+	/* local call routing */
+	char *local_pref;
+	regex_t local_pref_reg;
+
 
 	/* Connection data */
 	char *bsc_token;
