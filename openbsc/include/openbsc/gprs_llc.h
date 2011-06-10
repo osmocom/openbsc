@@ -140,6 +140,8 @@ struct gprs_llc_llme {
 	uint16_t bvci;
 	uint16_t nsei;
 	struct gprs_llc_lle lle[NUM_SAPIS];
+
+	int suspended;
 };
 
 extern struct llist_head gprs_llc_llmes;
@@ -156,6 +158,8 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 		      uint32_t old_tlli, uint32_t new_tlli,
 		      enum gprs_ciph_algo alg, const uint8_t *kc);
 
+int gprs_llgmm_suspend(struct gprs_llc_llme *llme);
+int gprs_llgmm_resume(struct gprs_llc_llme *llme);
 int gprs_llc_init(const char *cipher_plugin_path);
 int gprs_llc_vty_init(void);
 
