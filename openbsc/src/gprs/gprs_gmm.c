@@ -635,6 +635,21 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 
 	DEBUGP(DMM, "-> GMM ATTACH REQUEST ");
 
+	if (ctx && ((ctx->mm_state == GMM_REGISTERED_NORMAL) ||
+		    (ctx->mm_state == GMM_REGISTERED_SUSPENDED))) {
+		struct sgsn_pdp_ctx *pdp, *pdp2;
+
+		LOGP(DMM, LOGL_NOTICE, "Attach requested by already-attached "
+			"mobile. Deleting existing contexts\n");
+
+		llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
+			sgsn_delete_pdp_ctx(pdp, 1);
+		}
+
+		sgsn_mm_ctx_free(ctx);
+		ctx = NULL;
+	}
+
 	/* As per TS 04.08 Chapter 4.7.1.4, the attach request arrives either
 	 * with a foreign TLLI (P-TMSI that was allocated to the MS before),
 	 * or with random TLLI. */
@@ -784,7 +799,7 @@ static int gsm48_rx_gmm_det_req(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 	llist_for_each_entry_safe(pdp, pdp2, &ctx->pdp_list, list) {
 		LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
 		     "due to GPRS DETACH REQUEST\n", pdp->nsapi);
-		sgsn_delete_pdp_ctx(pdp);
+		sgsn_delete_pdp_ctx(pdp, 0);
 		/* FIXME: the callback wants to transmit a DEACT PDP CTX ACK,
 		 * which is quite stupid for a MS that has just detached.. */
 	}
@@ -879,14 +894,14 @@ static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
 				LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
 					"due to PDP CTX STATUS IE= 0x%02x%02x\n",
 					pdp->nsapi, pdp_status[1], pdp_status[0]);
-				sgsn_delete_pdp_ctx(pdp);
+				sgsn_delete_pdp_ctx(pdp, 0);
 			}
 		} else {
 			if (!(pdp_status[1] & (1 << (pdp->nsapi - 8)))) {
 				LOGP(DMM, LOGL_NOTICE, "Dropping PDP context for NSAPI=%u "
 					"due to PDP CTX STATUS IE= 0x%02x%02x\n",
 					pdp->nsapi, pdp_status[1], pdp_status[0]);
-				sgsn_delete_pdp_ctx(pdp);
+				sgsn_delete_pdp_ctx(pdp, 0);
 			}
 		}
 	}
@@ -1419,7 +1434,7 @@ static int gsm48_rx_gsm_deact_pdp_req(struct sgsn_mm_ctx *mm, struct msgb *msg)
 		return _gsm48_tx_gsm_deact_pdp_acc(mm, transaction_id);
 	}
 
-	return sgsn_delete_pdp_ctx(pdp);
+	return sgsn_delete_pdp_ctx(pdp, 0);
 }
 
 /* Section 9.5.9: Deactivate PDP Context Accept */
@@ -1439,7 +1454,7 @@ static int gsm48_rx_gsm_deact_pdp_ack(struct sgsn_mm_ctx *mm, struct msgb *msg)
 		return 0;
 	}
 
-	return sgsn_delete_pdp_ctx(pdp);
+	return sgsn_delete_pdp_ctx(pdp, 0);
 }
 
 static int gsm48_rx_gsm_status(struct sgsn_mm_ctx *ctx, struct msgb *msg)
@@ -1463,7 +1478,7 @@ static void pdpctx_timer_cb(void *_pdp)
 		if (pdp->num_T_exp >= 4) {
 			LOGP(DMM, LOGL_NOTICE, "T3395 expired >= 5 times\n");
 			pdp->state = PDP_STATE_INACTIVE;
-			sgsn_delete_pdp_ctx(pdp);
+			sgsn_delete_pdp_ctx(pdp, 0);
 			break;
 		}
 		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL); 
