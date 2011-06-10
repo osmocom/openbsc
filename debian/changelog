@@ -1,3 +1,9 @@
+opensgsn (0.9.13-0~jrsantos.2) unstable; urgency=low
+
+  * Fix bug that caused dpkg-gencontrol to fail
+
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Fri, 10 Jun 2011 12:34:43 -0400
+
 opensgsn (0.9.13-0~jrsantos.1) unstable; urgency=low
 
   * Add sarge-compatible debian files
