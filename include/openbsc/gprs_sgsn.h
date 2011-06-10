@@ -51,6 +51,7 @@ enum gprs_t3350_mode {
 };
 
 #define MS_RADIO_ACCESS_CAPA_MAX_LENGTH 255
+#define MS_NETWORK_CAPA_MAX_LENGTH 32
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
@@ -82,7 +83,7 @@ struct sgsn_mm_ctx {
 		uint8_t	len;
 	} ms_radio_access_capa;
 	struct {
-		uint8_t	buf[4];		/* 10.5.5.12 */
+		uint8_t	buf[MS_NETWORK_CAPA_MAX_LENGTH];	/* 10.5.5.12 */
 		uint8_t	len;
 	} ms_network_capa;
 	uint16_t		drx_parms;
