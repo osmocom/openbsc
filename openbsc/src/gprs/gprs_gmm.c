@@ -549,7 +549,6 @@ static int gsm48_gmm_authorize(struct sgsn_mm_ctx *ctx,
 		ctx->t3350_mode = t3350_mode;
 		mmctx_timer_start(ctx, 3350, GSM0408_T3350_SECS);
 #endif
-		ctx->mm_state = GMM_REGISTERED_NORMAL;
 		return gsm48_tx_gmm_att_ack(ctx);
 	} 
 	if (!strlen(ctx->imei)) {
@@ -1044,6 +1043,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	case GSM48_MT_GMM_ATTACH_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
+		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
 		/* Inform LLC layer about new TLLI but keep old active */
@@ -1096,8 +1096,6 @@ static void mmctx_timer_cb(void *_mm)
 	case 3350:	/* waiting for ATTACH COMPLETE */
 		if (mm->num_T_exp >= 5) {
 			LOGP(DMM, LOGL_NOTICE, "T3350 expired >= 5 times\n");
-			mm->mm_state = GMM_DEREGISTERED;
-			/* FIXME: should we return some error? */
 			break;
 		}
 		/* re-transmit the respective msg and re-start timer */
