@@ -208,12 +208,20 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 }
 
 /* SGSN wants to delete a PDP context */
-int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx)
+int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx, int implicit)
 {
 	LOGP(DGPRS, LOGL_ERROR, "Delete PDP Context\n");
 
+	if (implicit != 0) {
+		/* Deactivate the SNDCP layer */
+		sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
+	}
+
 	/* FIXME: decide if we need teardown or not ! */
-	return gtp_delete_context_req(pctx->ggsn->gsn, pctx->lib, pctx, 1);
+	return gtp_delete_context_req(pctx->ggsn->gsn,
+			              pctx->lib,
+				      implicit == 0 ? pctx : NULL,
+				      1);
 }
 
 struct cause_map {
@@ -311,6 +319,10 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 
 	DEBUGP(DGPRS, "Received DELETE PDP CTX CONF, cause=%d(%s)\n",
 		cause, get_value_string(gtp_cause_strs, cause));
+
+	if (!pctx) {
+		return 0;
+	}
 
 	/* Deactivate the SNDCP layer */
 	sndcp_sm_deactivate_ind(&pctx->mm->llme->lle[pctx->sapi], pctx->nsapi);
