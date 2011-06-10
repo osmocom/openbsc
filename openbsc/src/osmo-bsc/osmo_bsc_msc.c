@@ -376,7 +376,7 @@ static void initialize_if_needed(struct bsc_msc_connection *conn)
 			return;
 		}
 
-		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0);
+		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0, NULL);
 		msgb_free(msg);
 		conn->is_authenticated = 1;
 	}
