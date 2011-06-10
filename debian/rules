@@ -14,12 +14,12 @@
 #export DH_VERBOSE=1
 
 # This has to be exported to make some magic below work.
-export DH_OPTIONS=-Dopenbsc
+export DH_OPTIONS
 
 DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
 
 %:
-	dh --with autoreconf $@ 
+	dh --sourcedirectory=openbsc --with autoreconf $@ 
 
 # this requires debhelper 7.0.50 or above, which lenny doesn't have yet!
 #override_dh_auto_configure:
@@ -27,9 +27,9 @@ DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+)
 
 build: build-stamp
 build-stamp:
-	dh build --before configure
-	dh_auto_configure -- --enable-nat --enable-osmo-bsc
-	dh build --after configure
+	dh --sourcedirectory=openbsc --with autoreconf build --before configure
+	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc
+	dh --sourcedirectory=openbsc --with autoreconf build --after configure
 	touch build-stamp
 
 tarball-version:
