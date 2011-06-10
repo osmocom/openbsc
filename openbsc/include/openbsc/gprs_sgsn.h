@@ -50,7 +50,7 @@ enum gprs_t3350_mode {
 	GMM_T3350_MODE_PTMSI_REALL,
 };
 
-#define MS_RADIO_ACCESS_CAPA
+#define MS_RADIO_ACCESS_CAPA_MAX_LENGTH 255
 
 /* According to TS 03.60, Table 5: SGSN MM and PDP Contexts */
 /* Extended by 3GPP TS 23.060, Table 6: SGSN MM and PDP Contexts */
@@ -78,7 +78,7 @@ struct sgsn_mm_ctx {
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
 	struct {
-		uint8_t	buf[52];	/* 10.5.5.12a */
+		uint8_t	buf[MS_RADIO_ACCESS_CAPA_MAX_LENGTH];	/* 10.5.5.12a */
 		uint8_t	len;
 	} ms_radio_access_capa;
 	struct {
