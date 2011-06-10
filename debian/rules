@@ -14,7 +14,12 @@
 #export DH_VERBOSE=1
 
 # This has to be exported to make some magic below work.
-export DH_OPTIONS
+export DH_OPTIONS=-Dopenbsc
+
+DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
+
+%:
+	dh --with autoreconf $@ 
 
 # this requires debhelper 7.0.50 or above, which lenny doesn't have yet!
 #override_dh_auto_configure:
@@ -27,5 +32,6 @@ build-stamp:
 	dh build --after configure
 	touch build-stamp
 
-%:
-	dh $@ 
+tarball-version:
+	git describe --abbrev=4 --match '*.*.*' $(DEB_UPSTREAM_VERSION) | sed 's/-/./;s/\(.*\)-g/\1-/' > .tarball-version
+
