@@ -341,7 +341,7 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		struct gprs_llc_llme *llme;
 		LOGP(DLLC, LOGL_ERROR, "LLC TX: unknown TLLI 0x%08x, "
 			"creating LLME on the fly\n", msgb_tlli(msg));
-		llme = llme_alloc(msgb_tlli(msg));
+		llme = llme_alloc(tlli_foreign2local(msgb_tlli(msg)));
 		lle = &llme->lle[sapi];
 	}
 
