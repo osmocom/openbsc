@@ -1039,10 +1039,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
@@ -1050,19 +1047,14 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
-		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, GPRS_ALGO_GEA0, NULL);
 		rc = 0;
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
@@ -1539,7 +1531,12 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 	int rc = -EINVAL;
 
 	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
+	mmctx = sgsn_mm_ctx_by_tlli(llme->tlli, &ra_id);
+	
+	if (!mmctx && (llme->old_tlli != 0xffffffff)) {
+		mmctx = sgsn_mm_ctx_by_tlli(llme->old_tlli, &ra_id);
+	}
+
 	if (mmctx) {
 		msgid2mmctx(mmctx, msg);
 		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
