@@ -937,6 +937,8 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 
+	gprs_llgmm_suspend(mmctx->llme);
+
 	/* Store new BVCI/NSEI in MM context (FIXME: delay until we ack?) */
 	msgid2mmctx(mmctx, msg);
 	/* Bump the statistics of received signalling msgs for this MM context */
@@ -1027,6 +1029,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
 				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
+		gprs_llgmm_resume(mmctx->llme);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -1037,6 +1040,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
 				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
+		gprs_llgmm_resume(mmctx->llme);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
@@ -1070,6 +1074,7 @@ static void mmctx_timer_cb(void *_mm)
 	case 3350:	/* waiting for ATTACH COMPLETE */
 		if (mm->num_T_exp >= 5) {
 			LOGP(DMM, LOGL_NOTICE, "T3350 expired >= 5 times\n");
+			gprs_llgmm_resume(mm->llme);
 			break;
 		}
 		/* re-transmit the respective msg and re-start timer */
