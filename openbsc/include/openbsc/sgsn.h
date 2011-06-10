@@ -47,7 +47,7 @@ struct sgsn_pdp_ctx *sgsn_create_pdp_ctx(struct sgsn_ggsn_ctx *ggsn,
 					 struct sgsn_mm_ctx *mmctx,
 					 uint16_t nsapi,
 					 struct tlv_parsed *tp);
-int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx);
+int sgsn_delete_pdp_ctx(struct sgsn_pdp_ctx *pctx, int implicit);
 
 /* gprs_sndcp.c */
 
