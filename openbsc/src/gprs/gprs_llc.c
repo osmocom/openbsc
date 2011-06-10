@@ -352,6 +352,12 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		return -EFBIG;
 	}
 
+	if ((sapi != GPRS_SAPI_GMM) && lle->llme->suspended) {
+		LOGP(DLLC, LOGL_DEBUG, "LLC TX: suspended TLLI 0x08x, "
+			"dropping UI frame\n", msgb_tlli(msg));
+		return 0;
+	}
+
 	/* Update LLE's (BVCI, NSEI) tuple */
 	lle->llme->bvci = msgb_bvci(msg);
 	lle->llme->nsei = msgb_nsei(msg);
@@ -900,6 +906,18 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 
 	/* FIXME: Start T200, wait for XID response */
 	return gprs_llc_tx_xid(&llme->lle[1], msg, 1);
+}
+
+int gprs_llgmm_suspend(struct gprs_llc_llme* llme)
+{
+	llme->suspended = 1;
+	return 0;
+}
+
+int gprs_llgmm_resume(struct gprs_llc_llme* llme)
+{
+	llme->suspended = 0;
+	return 0;
 }
 
 int gprs_llc_init(const char *cipher_plugin_path)
