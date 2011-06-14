@@ -1,3 +1,9 @@
+openbsc (0.9.13+deb1-2) osmo-experimental; urgency=low
+
+  * Add build dependency on dh-autoreconf
+
+ -- Jan Lübbe <jluebbe@debian.org>  Tue, 14 Jun 2011 11:30:15 +0200
+
 openbsc (0.9.13+deb1-1) osmo-experimental; urgency=low
 
   * New upstream snapshot
