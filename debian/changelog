@@ -1,3 +1,9 @@
+openbsc (0.9.13+deb1-3) UNRELEASED; urgency=low
+
+  * Readd build dependency on libgtp-dev
+
+ -- Jan Lübbe <jluebbe@debian.org>  Tue, 14 Jun 2011 15:07:15 +0200
+
 openbsc (0.9.13+deb1-2) osmo-experimental; urgency=low
 
   * Add build dependency on dh-autoreconf
