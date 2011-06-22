@@ -920,6 +920,30 @@ int gprs_llgmm_resume(struct gprs_llc_llme* llme)
 	return 0;
 }
 
+void gprs_llgmm_reset_state(struct gprs_llc_llme *llme)
+{
+	unsigned int i;
+
+	if (llme == 0)
+	{
+		LOGP(DLLC, LOGL_ERROR, "LLC TX: trying to reset LLC states "
+			"but passed null llme by gmm\n");
+		return;
+	}
+
+	LOGP(DLLC, LOGL_NOTICE, "LLC RX: reset state variable for TLLI 0x%08x",
+	     llme->tlli);
+	/* 8.5.3.1 For all LLE's */
+	for (i = 0; i < ARRAY_SIZE(llme->lle); i++) {
+		struct gprs_llc_lle *l = &llme->lle[i];
+		l->vu_recv = 0; /* lets not mess with send state variable now */
+		/* l->vu_send = l->vu_recv = 0; */
+		l->retrans_ctr = 0;
+		l->state = GPRS_LLES_ASSIGNED_ADM;
+		/* FIXME Set parameters according to table 9 */
+	}
+}
+
 int gprs_llc_init(const char *cipher_plugin_path)
 {
 	return gprs_cipher_load(cipher_plugin_path);

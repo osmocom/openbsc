@@ -1113,6 +1113,7 @@ static void mmctx_timer_cb(void *_mm)
 		if (mm->num_T_exp >= 5) {
 			LOGP(DMM, LOGL_NOTICE, "T3350 expired >= 5 times\n");
 			gprs_llgmm_resume(mm->llme);
+			gprs_llgmm_reset_state(mm->llme);
 			break;
 		}
 		/* re-transmit the respective msg and re-start timer */
