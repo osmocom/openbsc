@@ -483,17 +483,21 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 		}
 		break;
 	case GPRS_LLC_UI:
-		if (gph->seq_tx < lle->vu_recv) {
-			LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
-				lle->llme ? lle->llme->tlli : -1,
-				gph->seq_tx, lle->vu_recv);
-			return -EIO;
-		}
-		/* Increment the sequence number that we expect in the next frame */
-		lle->vu_recv = (gph->seq_tx + 1) % 512;
-		/* Increment Overflow Counter */
-		if ((gph->seq_tx + 1) / 512)
-			lle->oc_ui_recv += 512;
+                {
+                        int delta = (lle->vu_recv - gph->seq_tx) & 0x1ff;
+                        if (0 < delta && delta < 32) {
+                                LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+                                        lle->llme ? lle->llme->tlli : -1,
+                                        gph->seq_tx, lle->vu_recv);
+                                return -EIO;
+                        }
+                        /* Increment the sequence number that we expect in the next frame */
+                        lle->vu_recv = (gph->seq_tx + 1) & 0x1ff;
+                        /* Increment Overflow Counter */
+                        if (lle->vu_recv == 0) {
+                                lle->oc_ui_recv += 512;
+                        }
+                }
 		break;
 	}
 
