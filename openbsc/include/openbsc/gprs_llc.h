@@ -179,4 +179,20 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 int gprs_llc_init(const char *cipher_plugin_path);
 int gprs_llc_vty_init(void);
 
+/**
+ * \short Check if N(U) should be considered a retransmit
+ *
+ * Implements the range check as of GSM 04.64 8.4.2
+ * Receipt of unacknowledged information.
+ *
+ * @returns Returns 1 if  (V(UR)-32) <= N(U) < V(UR)
+ * @param nu N(U) unconfirmed sequence number of the UI frame
+ * @param vur V(UR) unconfirmend received state variable
+ */
+static inline int gprs_llc_is_retransmit(uint16_t nu, uint16_t vur)
+{
+	int delta = (vur - nu) & 0x1ff;
+	return 0 < delta && delta < 32;
+}
+
 #endif

@@ -112,6 +112,7 @@ AC_OUTPUT(
     tests/channel/Makefile
     tests/bsc-nat/Makefile
     tests/mgcp/Makefile
+    tests/gprs/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
