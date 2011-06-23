@@ -644,7 +644,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
 	msnc = cur;
-	if (msnc_len > 8)
+	if (msnc_len > MS_NETWORK_CAPA_MAX_LENGTH)
 		goto err_inval;
 	cur += msnc_len;
 
@@ -675,7 +675,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* MS Radio Access Capability 10.5.5.12a */
 	ms_ra_acc_cap_len = *cur++;
 	ms_ra_acc_cap = cur;
-	if (ms_ra_acc_cap_len > 51)
+	if (ms_ra_acc_cap_len > MS_RADIO_ACCESS_CAPA_MAX_LENGTH)
 		goto err_inval;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status */
@@ -739,10 +739,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* Even if there is no P-TMSI allocated, the MS will switch from
 	 * foreign TLLI to local TLLI */
 	ctx->tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
-
-	/* Inform LLC layer about new TLLI but keep old active */
-	gprs_llgmm_assign(ctx->llme, ctx->tlli, ctx->tlli_new,
-			  GPRS_ALGO_GEA0, NULL);
 
 	DEBUGPC(DMM, "\n");
 	return ctx ? gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT) : 0;
@@ -953,10 +949,6 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	 * foreign TLLI to local TLLI */
 	mmctx->tlli_new = gprs_tmsi2tlli(mmctx->p_tmsi, TLLI_LOCAL);
 
-	/* Inform LLC layer about new TLLI but keep old active */
-	gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
-			  GPRS_ALGO_GEA0, NULL);
-
 	/* Look at PDP Context Status IE and see if MS's view of
 	 * activated/deactivated NSAPIs agrees with our view */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {
@@ -1016,28 +1008,29 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		DEBUGP(DMM, "-> ATTACH COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
+		/* Inform LLC layer about new TLLI but keep old active */
+		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
+				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
 		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
+		/* Inform LLC layer about new TLLI but keep old active */
+		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
+				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
-		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
-				  GPRS_ALGO_GEA0, NULL);
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Unassign the old TLLI */
+		/* Inform LLC layer about new TLLI but keep old active */
+		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
+				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
-		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, GPRS_ALGO_GEA0, NULL);
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
@@ -1513,7 +1506,12 @@ int gsm0408_gprs_rcvmsg(struct msgb *msg, struct gprs_llc_llme *llme)
 	int rc = -EINVAL;
 
 	bssgp_parse_cell_id(&ra_id, msgb_bcid(msg));
-	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &ra_id);
+	mmctx = sgsn_mm_ctx_by_tlli(llme->tlli, &ra_id);
+	
+	if (!mmctx && (llme->old_tlli != 0xffffffff)) {
+		mmctx = sgsn_mm_ctx_by_tlli(llme->old_tlli, &ra_id);
+	}
+
 	if (mmctx) {
 		msgid2mmctx(mmctx, msg);
 		rate_ctr_inc(&mmctx->ctrg->ctr[GMM_CTR_PKTS_SIG_IN]);
