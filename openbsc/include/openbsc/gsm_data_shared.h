@@ -174,6 +174,8 @@ struct gsm_lchan {
 	uint8_t rqd_ta;
 
 	struct gsm_subscriber_connection *conn;
+#else
+	struct lapdm_channel lapdm_ch;
 #endif
 };
 
@@ -530,5 +532,8 @@ gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 	     struct abis_om_obj_inst *obj_inst);
+
+uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
+uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
 
 #endif

@@ -408,3 +408,42 @@ gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 	}
 	return obj;
 }
+
+/* See Table 10.5.25 of GSM04.08 */
+uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr)
+{
+	uint8_t cbits, chan_nr;
+
+	switch (ts->pchan) {
+	case GSM_PCHAN_TCH_F:
+	case GSM_PCHAN_PDCH:
+	case GSM_PCHAN_TCH_F_PDCH:
+		cbits = 0x01;
+		break;
+	case GSM_PCHAN_TCH_H:
+		cbits = 0x02;
+		cbits += lchan_nr;
+		break;
+	case GSM_PCHAN_CCCH_SDCCH4:
+		cbits = 0x04;
+		cbits += lchan_nr;
+		break;
+	case GSM_PCHAN_SDCCH8_SACCH8C:
+		cbits = 0x08;
+		cbits += lchan_nr;
+		break;
+	default:
+	case GSM_PCHAN_CCCH:
+		cbits = 0x10;
+		break;
+	}
+
+	chan_nr = (cbits << 3) | (ts->nr & 0x7);
+
+	return chan_nr;
+}
+
+uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan)
+{
+	return gsm_ts2chan_nr(lchan->ts, lchan->nr);
+}
