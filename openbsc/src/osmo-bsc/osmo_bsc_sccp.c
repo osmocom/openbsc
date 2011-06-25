@@ -272,8 +272,10 @@ static void bsc_close_connections(struct bsc_msc_connection *msc_con)
 {
 	struct osmo_bsc_sccp_con *con, *tmp;
 
-	llist_for_each_entry_safe(con, tmp, &active_connections, entry)
-		bsc_sccp_force_free(con);
+	llist_for_each_entry_safe(con, tmp, &active_connections, entry) {
+		if (con->msc->msc_con == msc_con)
+			bsc_sccp_force_free(con);
+	}
 }
 
 static int handle_msc_signal(unsigned int subsys, unsigned int signal,
