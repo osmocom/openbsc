@@ -96,8 +96,8 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
 		struct gsm_bts_trx *trx;
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->nm_state.availability == NM_AVSTATE_OK &&
-			    trx->nm_state.operational != NM_STATE_LOCKED) {
+			if (trx->mo.nm_state.availability == NM_AVSTATE_OK &&
+			    trx->mo.nm_state.operational != NM_STATE_LOCKED) {
 					send = RF_CMD_ON;
 					break;
 			}
@@ -120,9 +120,9 @@ static void rf_check_cb(void *_data)
 			continue;
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->nm_state.availability != NM_AVSTATE_OK ||
-			    trx->nm_state.operational != NM_OPSTATE_ENABLED ||
-			    trx->nm_state.administrative != NM_STATE_UNLOCKED) {
+			if (trx->mo.nm_state.availability != NM_AVSTATE_OK ||
+			    trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+			    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
 				LOGP(DNM, LOGL_ERROR, "RF activation failed. Starting again.\n");
 				ipaccess_drop_oml(bts);
 				break;
