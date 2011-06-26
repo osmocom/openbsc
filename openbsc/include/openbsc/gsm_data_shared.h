@@ -157,6 +157,8 @@ struct gsm_lchan {
 		struct rtp_socket *rtp_socket;
 	} abis_ip;
 
+	uint8_t rqd_ta;
+
 #ifdef ROLE_BSC
 	struct osmo_timer_list T3101;
 	struct osmo_timer_list T3111;
@@ -171,11 +173,17 @@ struct gsm_lchan {
 
 	/* GSM Random Access data */
 	struct gsm48_req_ref *rqd_ref;
-	uint8_t rqd_ta;
 
 	struct gsm_subscriber_connection *conn;
 #else
 	struct lapdm_channel lapdm_ch;
+	struct {
+		/* bitmask of all SI that are present/valid in si_buf */
+		uint32_t valid;
+		uint32_t last;
+		/* buffers where we put the pre-computed SI */
+		sysinfo_buf_t buf[_MAX_SYSINFO_TYPE];
+	} si;
 #endif
 };
 
