@@ -54,23 +54,6 @@ void *tall_paging_ctx;
 
 #define PAGING_TIMER 0, 500000
 
-static unsigned int
-gsm0502_calc_paging_group(struct gsm48_control_channel_descr *chan_desc, uint64_t imsi)
-{
-	int ccch_conf;
-	int bs_cc_chans;
-	int blocks;
-	unsigned int group;
-	
-	ccch_conf = chan_desc->ccch_conf;
-	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
-	/* code word + 2, as 2 channels equals 0x0 */
-	blocks = gsm48_number_of_paging_subchannels(chan_desc);
-	group = gsm0502_get_paging_group(imsi, bs_cc_chans, blocks);
-
-	return group;
-}
-
 /*
  * Kill one paging request update the internal list...
  */
