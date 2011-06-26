@@ -38,8 +38,10 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <openbsc/paging.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm48.h>
+
+#include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
@@ -61,7 +63,7 @@ static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *
 	ccch_conf = bts->si_common.chan_desc.ccch_conf;
 	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
 	/* code word + 2, as 2 channels equals 0x0 */
-	blocks = rsl_number_of_paging_subchannels(bts);
+	blocks = gsm48_number_of_paging_subchannels(&bts->si_common.chan_desc);
 	group = get_paging_group(str_to_imsi(subscr->imsi),
 					bs_cc_chans, blocks);
 	return group;

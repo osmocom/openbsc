@@ -45,8 +45,6 @@
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
 
-#define MAX(a, b) (a) >= (b) ? (a) : (b)
-
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
@@ -1894,18 +1892,6 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 	}
 	msgb_free(msg);
 	return rc;
-}
-
-/* From Table 10.5.33 of GSM 04.08 */
-int rsl_number_of_paging_subchannels(struct gsm_bts *bts)
-{
-	if (bts->si_common.chan_desc.ccch_conf == RSL_BCCH_CCCH_CONF_1_C) {
-		return MAX(1, (3 - bts->si_common.chan_desc.bs_ag_blks_res))
-			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
-	} else {
-		return (9 - bts->si_common.chan_desc.bs_ag_blks_res)
-			* (bts->si_common.chan_desc.bs_pa_mfrms + 2);
-	}
 }
 
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,

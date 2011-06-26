@@ -82,7 +82,6 @@ int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id);
 /* BCCH related code */
 int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf);
 int rsl_ccch_conf_to_bs_ccch_sdcch_comb(int ccch_conf);
-int rsl_number_of_paging_subchannels(struct gsm_bts *bts);
 
 int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 			  const uint8_t *data, int len);
