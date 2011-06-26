@@ -66,9 +66,6 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act);
 
 int abis_rsl_rcvmsg(struct msgb *msg);
 
-unsigned int get_paging_group(uint64_t imsi, unsigned int bs_cc_chans,
-			      int n_pag_blocks);
-unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res);
 uint64_t str_to_imsi(const char *imsi_str);
 int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason);
 

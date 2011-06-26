@@ -144,29 +144,6 @@ uint64_t str_to_imsi(const char *imsi_str)
 	return ret;
 }
 
-/* Table 5 Clause 7 TS 05.02 */
-unsigned int n_pag_blocks(int bs_ccch_sdcch_comb, unsigned int bs_ag_blks_res)
-{
-	if (!bs_ccch_sdcch_comb)
-		return 9 - bs_ag_blks_res;
-	else
-		return 3 - bs_ag_blks_res;
-}
-
-/* Chapter 6.5.2 of TS 05.02 */
-unsigned int get_ccch_group(uint64_t imsi, unsigned int bs_cc_chans,
-			    unsigned int n_pag_blocks)
-{
-	return (imsi % 1000) % (bs_cc_chans * n_pag_blocks) / n_pag_blocks;
-}
-
-/* Chapter 6.5.2 of TS 05.02 */
-unsigned int get_paging_group(uint64_t imsi, unsigned int bs_cc_chans,
-			      int n_pag_blocks)
-{
-	return (imsi % 1000) % (bs_cc_chans * n_pag_blocks) % n_pag_blocks;
-}
-
 static struct msgb *rsl_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(RSL_ALLOC_SIZE, RSL_ALLOC_HEADROOM,
