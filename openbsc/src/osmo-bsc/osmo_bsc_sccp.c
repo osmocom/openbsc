@@ -237,7 +237,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 	bsc_con->sccp = sccp;
 	bsc_con->msc = msc;
 	bsc_con->conn = conn;
-	llist_add(&bsc_con->entry, &active_connections);
+	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
 	return 0;
 }
