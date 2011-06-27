@@ -101,7 +101,7 @@ static unsigned char nanobts_attr_bts[] = {
 	NM_ATT_NY1, 10, /* 10 retransmissions of physical config */
 	NM_ATT_BCCH_ARFCN, HARDCODED_ARFCN >> 8, HARDCODED_ARFCN & 0xff,
 	NM_ATT_BSIC, HARDCODED_BSIC,
-	//NM_ATT_IPACC_CGI, 0, 7,  0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x00,
+	NM_ATT_IPACC_CGI, 0, 7,  0x00, 0xf1, 0x10, 0x00, 0x01, 0x00, 0x00,
 };
 
 static unsigned char nanobts_attr_radio[] = {
@@ -210,7 +210,7 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	nanobts_attr_bts[sizeof(nanobts_attr_bts)-11] = bts->bsic;
 
 	/* patch CGI */
-	//abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
+	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
 
 	/* patch the power reduction */
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
