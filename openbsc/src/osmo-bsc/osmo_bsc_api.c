@@ -242,7 +242,7 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	 * We might want to move this connection to a new MSC. Ask someone
 	 * to handle it. If it was handled we will return.
 	 */
-	if (handle_cc_setup(conn, msg) > 1)
+	if (handle_cc_setup(conn, msg) >= 1)
 		return;
 
 	bsc_scan_bts_msg(conn, msg);
