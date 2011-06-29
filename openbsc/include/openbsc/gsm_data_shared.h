@@ -568,6 +568,8 @@ char *gsm_lchan_name(struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 
+void gsm_abis_mo_reset(struct gsm_abis_mo *mo);
+
 struct gsm_abis_mo *
 gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 	    struct abis_om_obj_inst *obj_inst);
@@ -578,6 +580,9 @@ gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
 	     struct abis_om_obj_inst *obj_inst);
+
+/* reset the state of all MO in the BTS */
+void gsm_bts_mo_reset(struct gsm_bts *bts);
 
 uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);

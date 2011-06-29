@@ -34,6 +34,13 @@
 
 #include <openbsc/gsm_data.h>
 
+void gsm_abis_mo_reset(struct gsm_abis_mo *mo)
+{
+	mo->nm_state.administrative = NM_STATE_NULL;
+	mo->nm_state.operational = NM_OPSTATE_NULL;
+	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
+}
+
 static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 			uint8_t obj_class, uint8_t p1, uint8_t p2, uint8_t p3)
 {
@@ -42,9 +49,7 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	mo->obj_inst.bts_nr = p1;
 	mo->obj_inst.trx_nr = p2;
 	mo->obj_inst.ts_nr = p3;
-	mo->nm_state.administrative = NM_STATE_NULL;
-	mo->nm_state.operational = NM_OPSTATE_NULL;
-	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
+	gsm_abis_mo_reset(mo);
 }
 
 static const struct value_string pchan_names[] = {
@@ -215,6 +220,30 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->paging.free_chans_need = -1;
 
 	return bts;
+}
+
+/* reset the state of all MO in the BTS */
+void gsm_bts_mo_reset(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+	unsigned int i;
+
+	gsm_abis_mo_reset(&bts->mo);
+	gsm_abis_mo_reset(&bts->site_mgr.mo);
+	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++)
+		gsm_abis_mo_reset(&bts->gprs.nsvc[i].mo);
+	gsm_abis_mo_reset(&bts->gprs.nse.mo);
+	gsm_abis_mo_reset(&bts->gprs.cell.mo);
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		gsm_abis_mo_reset(&trx->mo);
+		gsm_abis_mo_reset(&trx->bb_transc.mo);
+
+		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
+			struct gsm_bts_trx_ts *ts = &trx->ts[i];
+			gsm_abis_mo_reset(&ts->mo);
+		}
+	}
 }
 
 struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)

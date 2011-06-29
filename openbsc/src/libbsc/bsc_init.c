@@ -292,15 +292,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 					lchan_free(&ts->lchan[lchan_no]);
 				lchan_reset(&ts->lchan[lchan_no]);
 			}
-
-			ts->mo.nm_state.operational = 0;
-			ts->mo.nm_state.availability = 0;
 		}
 
-		trx->mo.nm_state.operational = 0;
-		trx->mo.nm_state.availability = 0;
-		trx->bb_transc.mo.nm_state.operational = 0;
-		trx->bb_transc.mo.nm_state.availability = 0;
+		gsm_bts_mo_reset(trx->bts);
 
 		abis_nm_clear_queue(trx->bts);
 		break;
