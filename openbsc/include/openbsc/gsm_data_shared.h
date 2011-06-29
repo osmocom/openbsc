@@ -114,6 +114,25 @@ enum gsm_lchan_state {
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
+/* BTS ONLY */
+#define MAX_NUM_UL_MEAS	104
+#define LC_UL_M_F_L1_VALID	(1 << 0)
+#define LC_UL_M_F_RES_VALID	(1 << 1)
+
+struct bts_ul_meas {
+	/* BER in units of 0.01%: 10.000 == 100% ber, 0 == 0% ber */
+	uint16_t ber10k;
+	/* timing advance offset (in quarter bits) */
+	int16_t ta_offs_qbits;
+	/* C/I ratio in dB */
+	float c_i;
+	/* flags */
+	uint8_t is_sub:1;
+	/* RSSI in dBm * -1 */
+	uint8_t inv_rssi;
+};
+/* /BTS ONLY */
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -184,8 +203,27 @@ struct gsm_lchan {
 		/* buffers where we put the pre-computed SI */
 		sysinfo_buf_t buf[_MAX_SYSINFO_TYPE];
 	} si;
+	struct {
+		uint8_t flags;
+		/* RSL measurment result number, 0 at lchan_act */
+		uint8_t res_nr;
+		/* current Tx power level of the BTS */
+		uint8_t bts_tx_pwr;
+		/* number of measurements stored in array below */
+		uint8_t num_ul_meas;
+		struct bts_ul_meas uplink[MAX_NUM_UL_MEAS];
+		/* last L1 header from the MS */
+		uint8_t l1_info[2];
+		struct {
+			uint8_t rxlev_full;
+			uint8_t rxlev_sub;
+			uint8_t rxqual_full;
+			uint8_t rxqual_sub;
+		} res;
+	} meas;
 #endif
 };
+
 
 struct gsm_e1_subslot {
 	/* Number of E1 link */
