@@ -7,6 +7,7 @@ noinst_LIBRARIES = libbsc.a
 libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			abis_om2000.c abis_om2000_vty.c \
 			abis_rsl.c bsc_rll.c \
+			filter_abis.c \
 			paging.c \
 			bts_ericsson_rbs2000.c \
 			bts_ipaccess_nanobts.c \

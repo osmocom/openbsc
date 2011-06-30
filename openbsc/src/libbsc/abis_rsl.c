@@ -39,6 +39,7 @@
 #include <openbsc/meas_rep.h>
 #include <openbsc/rtp_proxy.h>
 #include <osmocom/abis/e1_input.h>
+#include <openbsc/filter_abis.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
 
@@ -1900,7 +1901,7 @@ static int abis_rsl_rx_ipacc(struct msgb *msg)
 
 
 /* Entry-point where L2 RSL from BTS enters */
-int abis_rsl_rcvmsg(struct msgb *msg)
+int _abis_rsl_rcvmsg(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh;
 	int rc = 0;
@@ -1944,6 +1945,11 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 	}
 	msgb_free(msg);
 	return rc;
+}
+
+int abis_rsl_rcvmsg(struct msgb *msg)
+{
+	return (filter_is_active() ? filter_send_msg(msg, FILTER_UPLINK_MSG) : _abis_rsl_rcvmsg(msg));
 }
 
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,

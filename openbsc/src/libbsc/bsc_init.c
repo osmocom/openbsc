@@ -35,6 +35,7 @@
 #include <openbsc/ipaccess.h>
 #include <osmocom/gsm/sysinfo.h>
 #include <openbsc/e1_config.h>
+#include <openbsc/filter_abis.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -495,6 +496,10 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	}
 
 	rc = telnet_init(tall_bsc_ctx, bsc_gsmnet, 4242);
+	if (rc < 0)
+		return rc;
+
+	rc = filter_init(tall_bsc_ctx, bsc_gsmnet, 0xab15);
 	if (rc < 0)
 		return rc;
 
