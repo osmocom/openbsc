@@ -5,10 +5,10 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 bin_PROGRAMS = osmo-nitb
 
 osmo_nitb_SOURCES = bsc_hack.c
-osmo_nitb_LDADD = -ldl -ldbi $(LIBCRYPT) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
+osmo_nitb_LDADD = -ldl $(LIBCRYPT) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libmsc/libmsc.a \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
 		$(top_builddir)/src/libabis/libabis.a \
-		$(top_builddir)/src/libcommon/libcommon.a
+		$(top_builddir)/src/libcommon/libcommon.a -ldbi
