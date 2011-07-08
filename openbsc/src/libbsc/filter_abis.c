@@ -66,7 +66,7 @@ static int silentcall_cbfn(unsigned int subsys, unsigned int signal,
 	case S_SCALL_SUCCESS:
 		fm->priv1 = sigdata->conn->lchan->ts->trx;
 		fm->priv2 = sigdata->conn->lchan;
-                fm->chan_nr = lchan2chan_nr(sigdata->conn->lchan);
+                fm->chan_nr = gsm_lchan2chan_nr(sigdata->conn->lchan);
 		fm->error = 0;
 		break;
 	case S_SCALL_EXPIRED:
