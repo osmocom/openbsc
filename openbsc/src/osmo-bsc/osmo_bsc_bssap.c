@@ -276,6 +276,8 @@ static int bssmap_handle_cipher_mode(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
+	return 0;
+
 reject:
 	resp = gsm0808_create_cipher_reject(reject_cause);
 	if (!resp) {
