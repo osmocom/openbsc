@@ -178,7 +178,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	subscr->lac = lac;
 	subscr->tmsi = tmsi;
 
-	LOGP(DMSC, LOGL_DEBUG, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
+	LOGP(DMSC, LOGL_INFO, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
 	paging_request(net, subscr, chan_needed, NULL, NULL);
 	return 0;
 }
@@ -195,7 +195,7 @@ static int bssmap_handle_clear_command(struct osmo_bsc_sccp_con *conn,
 	/* TODO: handle the cause of this package */
 
 	if (conn->conn) {
-		LOGP(DMSC, LOGL_DEBUG, "Releasing all transactions on %p\n", conn);
+		LOGP(DMSC, LOGL_INFO, "Releasing all transactions on %p\n", conn);
 		gsm0808_clear(conn->conn);
 		subscr_con_free(conn->conn);
 		conn->conn = NULL;
@@ -411,6 +411,9 @@ static int bssmap_rcvmsg_udt(struct gsm_network *net,
 		return -1;
 	}
 
+	LOGP(DMSC, LOGL_INFO, "Rx MSC UDT BSSMAP %s\n",
+		gsm0808_bssmap_name(msg->l4h[0]));
+
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_RESET_ACKNOWLEDGE:
 		ret = bssmap_handle_reset_ack(net, msg, length);
@@ -433,6 +436,9 @@ static int bssmap_rcvmsg_dt1(struct osmo_bsc_sccp_con *conn,
 		LOGP(DMSC, LOGL_ERROR, "Not enough room: %d\n", length);
 		return -1;
 	}
+
+	LOGP(DMSC, LOGL_INFO, "Rx MSC DT1 BSSMAP %s\n",
+		gsm0808_bssmap_name(msg->l4h[0]));
 
 	switch (msg->l4h[0]) {
 	case BSS_MAP_MSG_CLEAR_CMD:
@@ -460,6 +466,9 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	struct msgb *gsm48;
 	uint8_t *data;
 
+	LOGP(DMSC, LOGL_DEBUG, "Rx MSC DTAP: %s\n",
+		osmo_hexdump(msg->l3h, length));
+
 	if (!conn->conn) {
 		LOGP(DMSC, LOGL_ERROR, "No subscriber connection available\n");
 		return -1;
@@ -467,7 +476,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 
 	header = (struct dtap_header *) msg->l3h;
 	if (sizeof(*header) >= length) {
-		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %u got: %u\n", sizeof(*header), length);
+		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %lu got: %u\n", sizeof(*header), length);
                 LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
                 return -1;
 	}
@@ -478,7 +487,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 		return -1;
 	}
 
-	LOGP(DMSC, LOGL_DEBUG, "DTAP message: SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
+	LOGP(DMSC, LOGL_INFO, "Rx MSC DTAP, SAPI: %u CHAN: %u\n", header->link_id & 0x07, header->link_id & 0xC0);
 
 	/* forward the data */
 	gsm48 = gsm48_msgb_alloc();
@@ -502,7 +511,7 @@ int bsc_handle_udt(struct gsm_network *network,
 {
 	struct bssmap_header *bs;
 
-	LOGP(DMSC, LOGL_DEBUG, "Incoming SCCP message ftom MSC: %s\n",
+	LOGP(DMSC, LOGL_DEBUG, "Rx MSC UDT: %s\n",
 		osmo_hexdump(msgb->l3h, length));
 
 	if (length < sizeof(*bs)) {
@@ -543,7 +552,8 @@ int bsc_handle_dt1(struct osmo_bsc_sccp_con *conn,
 		dtap_rcvmsg(conn, msg, len);
 		break;
 	default:
-		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l3h[0]);
+		LOGP(DMSC, LOGL_NOTICE, "Unimplemented BSSAP msg type: %s\n",
+			gsm0808_bssap_name(msg->l3h[0]));
 	}
 
 	return -1;
