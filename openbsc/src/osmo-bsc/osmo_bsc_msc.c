@@ -226,7 +226,7 @@ static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 		return -1;
 	}
 
-	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DMI, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
