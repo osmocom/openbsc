@@ -445,7 +445,8 @@ static int bssmap_rcvmsg_dt1(struct osmo_bsc_sccp_con *conn,
 		ret = bssmap_handle_assignm_req(conn, msg, length);
 		break;
 	default:
-		LOGP(DMSC, LOGL_DEBUG, "Unimplemented msg type: %d\n", msg->l4h[0]);
+		LOGP(DMSC, LOGL_NOTICE, "Unimplemented msg type: %s\n",
+			gsm0808_bssmap_name(msg->l4h[0]));
 		break;
 	}
 
@@ -519,7 +520,8 @@ int bsc_handle_udt(struct gsm_network *network,
 		bssmap_rcvmsg_udt(network, msgb, length - sizeof(*bs));
 		break;
 	default:
-		LOGP(DMSC, LOGL_ERROR, "Unimplemented msg type: %d\n", bs->type);
+		LOGP(DMSC, LOGL_NOTICE, "Unimplemented msg type: %s\n",
+			gsm0808_bssmap_name(bs->type));
 	}
 
 	return 0;
