@@ -62,6 +62,8 @@ static void bsc_sapi_n_reject(struct gsm_subscriber_connection *conn, int dlci)
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
+	LOGP(DMSC, LOGL_NOTICE, "Tx MSC SAPI N REJECT DLCI=0x%02x\n", dlci);
+
 	resp = gsm0808_create_sapi_reject(dlci);
 	queue_msg_or_return(resp);
 }
@@ -87,6 +89,8 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	struct msgb *resp;
 	uint16_t network_code = get_network_code_for_msc(conn->bts->network);
 	uint16_t country_code = get_country_code_for_msc(conn->bts->network);
+
+	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
 	/* allocate resource for a new connection */
 	if (bsc_create_new_connection(conn) != 0)
@@ -116,6 +120,8 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
+	LOGP(DMSC, LOGL_INFO, "Tx MSC DTAP LINK_ID=0x%02x\n", link_id);
+
 	bsc_scan_bts_msg(conn, msg);
 	resp = gsm0808_create_dtap(msg, link_id);
 	queue_msg_or_return(resp);
@@ -128,6 +134,8 @@ static void bsc_assign_compl(struct gsm_subscriber_connection *conn, uint8_t rr_
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
+	LOGP(DMSC, LOGL_INFO, "Tx MSC ASSIGN COMPL\n");
+
 	resp = gsm0808_create_assignment_completed(rr_cause, chosen_channel,
 						   encr_alg_id, speech_model);
 	queue_msg_or_return(resp);
@@ -139,6 +147,8 @@ static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 	struct msgb *resp;
 	return_when_not_connected(conn);
 
+	LOGP(DMSC, LOGL_INFO, "Tx MSC ASSIGN FAIL\n");
+
 	resp = gsm0808_create_assignment_failure(cause, rr_cause);
 	queue_msg_or_return(resp);
 }
@@ -147,6 +157,8 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 {
 	struct msgb *resp;
 	return_when_not_connected_val(conn, 1);
+
+	LOGP(DMSC, LOGL_INFO, "Tx MSC CLEAR REQUEST\n");
 
 	resp = gsm0808_create_clear_rqst(GSM0808_CAUSE_RADIO_INTERFACE_FAILURE);
 	if (!resp) {
