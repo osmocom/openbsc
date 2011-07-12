@@ -5,26 +5,6 @@
 
 struct bsc_msc_connection;
 
-enum gsm_phys_chan_config {
-	GSM_PCHAN_NONE,
-	GSM_PCHAN_CCCH,
-	GSM_PCHAN_CCCH_SDCCH4,
-	GSM_PCHAN_TCH_F,
-	GSM_PCHAN_TCH_H,
-	GSM_PCHAN_SDCCH8_SACCH8C,
-	GSM_PCHAN_PDCH,		/* GPRS PDCH */
-	GSM_PCHAN_TCH_F_PDCH,	/* TCH/F if used, PDCH otherwise */
-	GSM_PCHAN_UNKNOWN,
-};
-
-enum gsm_chan_t {
-	GSM_LCHAN_NONE,
-	GSM_LCHAN_SDCCH,
-	GSM_LCHAN_TCH_F,
-	GSM_LCHAN_TCH_H,
-	GSM_LCHAN_UNKNOWN,
-};
-
 /* RRLP mode of operation */
 enum rrlp_mode {
 	RRLP_MODE_NONE,

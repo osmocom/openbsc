@@ -621,7 +621,7 @@ int main(int argc, char **argv)
 	int rc, option_index = 0, stream_id = 0xff;
 	struct log_target *stderr_target;
 
-	log_init(&log_info);
+	log_init(&log_info, NULL);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);

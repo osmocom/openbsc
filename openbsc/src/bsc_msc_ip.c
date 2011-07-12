@@ -748,7 +748,7 @@ static int msc_sccp_do_write(struct osmo_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data)
+static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg, void *data, void *closure)
 {
 	msc_queue_write(msg, IPAC_PROTO_SCCP);
 }
@@ -921,7 +921,7 @@ static void initialize_if_needed(void)
 			return;
 		}
 
-		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0);
+		sccp_write(msg, &sccp_ssn_bssap, &sccp_ssn_bssap, 0, NULL);
 		msgb_free(msg);
 		bsc_gsmnet->msc_con->is_authenticated = 1;
 	}
@@ -1246,7 +1246,7 @@ int main(int argc, char **argv)
 	char *msc;
 	int rc;
 
-	log_init(&log_info);
+	log_init(&log_info, NULL);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);

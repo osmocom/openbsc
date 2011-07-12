@@ -835,7 +835,7 @@ int main(int argc, char **argv)
 	struct gsm_network *gsmnet;
 	int rc;
 
-	log_init(&log_info);
+	log_init(&log_info, NULL);
 	stderr_target = log_target_create_stderr();
 	log_add_target(stderr_target);
 	log_set_all_filter(stderr_target, 1);
