@@ -1181,6 +1181,75 @@ static void bsc_del_pending(struct bsc_cmd_list *pending)
 	talloc_free(pending);
 }
 
+
+static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
+{
+	struct ctrl_cmd *cmd;
+	struct bsc_cmd_list *pending;
+	char *var, *id;
+
+	cmd = ctrl_cmd_parse(bsc, msg);
+	msgb_free(msg);
+
+	if (!cmd) {
+		cmd = talloc_zero(bsc, struct ctrl_cmd);
+		if (!cmd) {
+			LOGP(DNAT, LOGL_ERROR, "OOM!\n");
+			return 0;
+		}
+		cmd->type = CTRL_TYPE_ERROR;
+		cmd->id = "err";
+		cmd->reply = "Failed to parse command.";
+		ctrl_cmd_send(&bsc->write_queue, cmd);
+		talloc_free(cmd);
+		return 0;
+	}
+
+	if (bsc->cfg) {
+		if (!llist_empty(&bsc->cfg->lac_list)) {
+			if (cmd->variable) {
+				var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
+						cmd->variable);
+				if (!var) {
+					cmd->type = CTRL_TYPE_ERROR;
+					cmd->reply = "OOM";
+					goto err;
+				}
+				talloc_free(cmd->variable);
+				cmd->variable = var;
+			}
+
+			/* Find the pending command */
+			pending = bsc_get_pending(bsc, cmd->id);
+			if (pending) {
+				id = talloc_strdup(cmd, pending->cmd->id);
+				if (!id) {
+					cmd->type = CTRL_TYPE_ERROR;
+					cmd->reply = "OOM";
+					goto err;
+				}
+				cmd->id = id;
+				ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+				bsc_del_pending(pending);
+			} else {
+				/* We need to handle TRAPS here */
+				if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
+					LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
+					cmd->type = CTRL_TYPE_ERROR;
+					cmd->reply = "No request outstanding";
+					goto err;
+				}
+			}
+		}
+	}
+	talloc_free(cmd);
+	return 0;
+err:
+	ctrl_cmd_send(&bsc->write_queue, cmd);
+	talloc_free(cmd);
+	return 0;
+}
+
 static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
@@ -1228,72 +1297,8 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 		/* l2h is where the actual command data is expected */
 		msg->l2h = hh_ext->data;
 
-		if (hh_ext->proto == IPAC_PROTO_EXT_CTRL) {
-			struct ctrl_cmd *cmd;
-			struct bsc_cmd_list *pending;
-			char *var, *id;
-
-			cmd = ctrl_cmd_parse(bsc, msg);
-			msgb_free(msg);
-
-			if (!cmd) {
-				cmd = talloc_zero(bsc, struct ctrl_cmd);
-				if (!cmd) {
-					LOGP(DNAT, LOGL_ERROR, "OOM!\n");
-					return 0;
-				}
-				cmd->type = CTRL_TYPE_ERROR;
-				cmd->id = "err";
-				cmd->reply = "Failed to parse command.";
-				ctrl_cmd_send(&bsc->write_queue, cmd);
-				talloc_free(cmd);
-				return 0;
-			}
-
-			if (bsc->cfg) {
-				if (!llist_empty(&bsc->cfg->lac_list)) {
-					if (cmd->variable) {
-						var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
-								cmd->variable);
-						if (!var) {
-							cmd->type = CTRL_TYPE_ERROR;
-							cmd->reply = "OOM";
-							goto err;
-						}
-						talloc_free(cmd->variable);
-						cmd->variable = var;
-					}
-
-					/* Find the pending command */
-					pending = bsc_get_pending(bsc, cmd->id);
-					if (pending) {
-						id = talloc_strdup(cmd, pending->cmd->id);
-						if (!id) {
-							cmd->type = CTRL_TYPE_ERROR;
-							cmd->reply = "OOM";
-							goto err;
-						}
-						cmd->id = id;
-						ctrl_cmd_send(&pending->ccon->write_queue, cmd);
-						bsc_del_pending(pending);
-					} else {
-						/* We need to handle TRAPS here */
-						if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
-							LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
-							cmd->type = CTRL_TYPE_ERROR;
-							cmd->reply = "No request outstanding";
-							goto err;
-						}
-					}
-				}
-			}
-			talloc_free(cmd);
-			return 0;
-err:
-			ctrl_cmd_send(&bsc->write_queue, cmd);
-			talloc_free(cmd);
-			return 0;
-		}
+		if (hh_ext->proto == IPAC_PROTO_EXT_CTRL)
+			return handle_ctrlif_msg(bsc, msg);
 	}
 
 	/* FIXME: Currently no PONG is sent to the BSC */
