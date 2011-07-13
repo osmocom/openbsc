@@ -260,7 +260,7 @@ int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
 		return CTRL_CMD_ERROR;
 	}
 
-	cmd->reply = talloc_asprintf(cmd, "%u", trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0);
+	cmd->reply = talloc_asprintf(cmd, "%u", trx->mo.nm_state.administrative == NM_STATE_LOCKED ? 1 : 0);
 	return CTRL_CMD_REPLY;
 }
 
