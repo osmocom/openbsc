@@ -39,6 +39,7 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
+#include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
@@ -79,6 +80,7 @@ static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int);
 static void msc_send_reset(struct bsc_msc_connection *con);
 static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal);
+static void bsc_del_pending(struct bsc_cmd_list *pending);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
@@ -845,6 +847,7 @@ static int ipaccess_msc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 void bsc_close_connection(struct bsc_connection *connection)
 {
 	struct sccp_connections *sccp_patch, *tmp;
+	struct bsc_cmd_list *cmd_entry, *cmd_tmp;
 	struct rate_ctr *ctr = NULL;
 
 	/* stop the timeout timer */
@@ -870,6 +873,14 @@ void bsc_close_connection(struct bsc_connection *connection)
 		}
 
 		sccp_connection_destroy(sccp_patch);
+	}
+
+	/* Reply to all outstanding commands */
+	llist_for_each_entry_safe(cmd_entry, cmd_tmp, &connection->cmd_pending, list_entry) {
+		cmd_entry->cmd->type = CTRL_TYPE_ERROR;
+		cmd_entry->cmd->reply = "BSC closed the connection";
+		ctrl_cmd_send(&cmd_entry->ccon->write_queue, cmd_entry->cmd);
+		bsc_del_pending(cmd_entry);
 	}
 
 	/* close endpoints allocated by this BSC */
@@ -1147,12 +1158,36 @@ exit3:
 	return -1;
 }
 
+static struct bsc_cmd_list *bsc_get_pending(struct bsc_connection *bsc, char *id_str)
+{
+	struct bsc_cmd_list *cmd_entry;
+	int id = atoi(id_str);
+	if (id == 0)
+		return NULL;
+
+	llist_for_each_entry(cmd_entry, &bsc->cmd_pending, list_entry) {
+		if (cmd_entry->nat_id == id) {
+			return cmd_entry;
+		}
+	}
+	return NULL;
+}
+
+static void bsc_del_pending(struct bsc_cmd_list *pending)
+{
+	llist_del(&pending->list_entry);
+	osmo_timer_del(&pending->timeout);
+	talloc_free(pending->cmd);
+	talloc_free(pending);
+}
+
 static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_connection *bsc = bfd->data;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
 	struct ipaccess_head *hh;
+	struct ipaccess_head_ext *hh_ext;
 
 	if (!msg) {
 		if (error == 0)
@@ -1183,6 +1218,80 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 		} else if (msg->l2h[0] == IPAC_MSGT_PING) {
 			send_pong(bsc);
 			msgb_free(msg);
+			return 0;
+		}
+	/* Message contains the ipaccess_head_ext header, investigate further */
+	} else if (hh->proto == IPAC_PROTO_OSMO &&
+		   msg->len > sizeof(*hh) + sizeof(*hh_ext)) {
+
+		hh_ext = (struct ipaccess_head_ext *) hh->data;
+		/* l2h is where the actual command data is expected */
+		msg->l2h = hh_ext->data;
+
+		if (hh_ext->proto == IPAC_PROTO_EXT_CTRL) {
+			struct ctrl_cmd *cmd;
+			struct bsc_cmd_list *pending;
+			char *var, *id;
+
+			cmd = ctrl_cmd_parse(bsc, msg);
+			msgb_free(msg);
+
+			if (!cmd) {
+				cmd = talloc_zero(bsc, struct ctrl_cmd);
+				if (!cmd) {
+					LOGP(DNAT, LOGL_ERROR, "OOM!\n");
+					return 0;
+				}
+				cmd->type = CTRL_TYPE_ERROR;
+				cmd->id = "err";
+				cmd->reply = "Failed to parse command.";
+				ctrl_cmd_send(&bsc->write_queue, cmd);
+				talloc_free(cmd);
+				return 0;
+			}
+
+			if (bsc->cfg) {
+				if (!llist_empty(&bsc->cfg->lac_list)) {
+					if (cmd->variable) {
+						var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
+								cmd->variable);
+						if (!var) {
+							cmd->type = CTRL_TYPE_ERROR;
+							cmd->reply = "OOM";
+							goto err;
+						}
+						talloc_free(cmd->variable);
+						cmd->variable = var;
+					}
+
+					/* Find the pending command */
+					pending = bsc_get_pending(bsc, cmd->id);
+					if (pending) {
+						id = talloc_strdup(cmd, pending->cmd->id);
+						if (!id) {
+							cmd->type = CTRL_TYPE_ERROR;
+							cmd->reply = "OOM";
+							goto err;
+						}
+						cmd->id = id;
+						ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+						bsc_del_pending(pending);
+					} else {
+						/* We need to handle TRAPS here */
+						if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
+							LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
+							cmd->type = CTRL_TYPE_ERROR;
+							cmd->reply = "No request outstanding";
+							goto err;
+						}
+					}
+				}
+			}
+			talloc_free(cmd);
+			return 0;
+err:
+			ctrl_cmd_send(&bsc->write_queue, cmd);
+			talloc_free(cmd);
 			return 0;
 		}
 	}
@@ -1265,7 +1374,10 @@ static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 
 	LOGP(DNAT, LOGL_NOTICE, "BSC connection on %d with IP: %s\n",
 		fd, inet_ntoa(sa.sin_addr));
+
 	llist_add(&bsc->list_entry, &nat->bsc_connections);
+	bsc->last_id = 0;
+
 	send_id_ack(bsc);
 	send_id_req(bsc);
 	send_mgcp_reset(bsc);
@@ -1412,6 +1524,170 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+static int get_next_free_bsc_id(struct bsc_connection *bsc)
+{
+	int new_id, overflow = 0;
+	struct bsc_cmd_list *pending;
+
+	new_id = bsc->last_id;
+	do {
+		new_id++;
+		if (new_id <= 0) {
+			new_id = 1;
+			overflow++;
+		}
+
+		llist_for_each_entry(pending, &bsc->cmd_pending, list_entry) {
+			if (pending->nat_id == new_id)
+				continue;
+		}
+
+		/* ID is not in use */
+		break;
+	} while ((new_id != bsc->last_id) && (overflow < 2));
+
+	if ((new_id == bsc->last_id) || (overflow == 2)) {
+		return -1;
+	} else {
+		bsc->last_id = new_id;
+		return new_id;
+	}
+}
+
+static void pending_timeout_cb(void *data)
+{
+	struct bsc_cmd_list *pending = data;
+	LOGP(DNAT, LOGL_ERROR, "Command timed out\n");
+	pending->cmd->type = CTRL_TYPE_ERROR;
+	pending->cmd->reply = "Command timed out";
+	ctrl_cmd_send(&pending->ccon->write_queue, pending->cmd);
+
+	bsc_del_pending(pending);
+}
+
+static void ctrl_conn_closed_cb(struct ctrl_connection *connection)
+{
+	struct bsc_connection *bsc;
+	struct bsc_cmd_list *pending, *tmp;
+
+	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+		llist_for_each_entry_safe(pending, tmp, &bsc->cmd_pending, list_entry) {
+			if (pending->ccon == connection)
+				bsc_del_pending(pending);
+		}
+	}
+}
+
+static int forward_to_bsc(struct ctrl_cmd *cmd)
+{
+	int ret = CTRL_CMD_HANDLED;
+	struct ctrl_cmd *bsc_cmd = NULL;
+	struct bsc_connection *bsc;
+	struct bsc_cmd_list *pending;
+	unsigned int lac;
+	char *lac_str, *tmp, *saveptr;
+
+	/* Skip over the beginning (bsc.) */
+	tmp = strtok_r(cmd->variable, ".", &saveptr);
+	lac_str = strtok_r(NULL, ".", &saveptr);
+	if (!lac_str) {
+		cmd->reply = "command incomplete";
+		goto err;
+	}
+	lac = atoi(lac_str);
+
+	tmp = strtok_r(NULL, "\0", &saveptr);
+	if (!tmp) {
+		cmd->reply = "command incomplete";
+		goto err;
+	}
+
+	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+		if (!bsc->cfg)
+			continue;
+		if (!bsc->authenticated)
+			continue;
+		if (bsc_config_handles_lac(bsc->cfg, lac)) {
+			/* Add pending command to list */
+			pending = talloc_zero(bsc, struct bsc_cmd_list);
+			if (!pending) {
+				cmd->reply = "OOM";
+				goto err;
+			}
+
+			pending->nat_id = get_next_free_bsc_id(bsc);
+			if (pending->nat_id < 0) {
+				cmd->reply = "No free ID found";
+				goto err;
+			}
+
+			bsc_cmd = ctrl_cmd_cpy(bsc, cmd);
+			if (!bsc_cmd) {
+				cmd->reply = "Could not forward command";
+				goto err;
+			}
+
+			talloc_free(bsc_cmd->id);
+			bsc_cmd->id = talloc_asprintf(bsc_cmd, "%i", pending->nat_id);
+			if (!bsc_cmd->id) {
+				cmd->reply = "OOM";
+				goto err;
+			}
+
+			talloc_free(bsc_cmd->variable);
+			bsc_cmd->variable = talloc_strdup(bsc_cmd, tmp);
+			if (!bsc_cmd->variable) {
+				cmd->reply = "OOM";
+				goto err;
+			}
+
+			if (ctrl_cmd_send(&bsc->write_queue, bsc_cmd)) {
+				cmd->reply = "Sending failed";
+				goto err;
+			}
+			pending->ccon = cmd->ccon;
+			pending->ccon->closed_cb = ctrl_conn_closed_cb;
+			pending->cmd = cmd;
+
+			/* Setup the timeout */
+			pending->timeout.data = pending;
+			pending->timeout.cb = pending_timeout_cb;
+			/* TODO: Make timeout configurable */
+			osmo_timer_schedule(&pending->timeout, 10, 0);
+			llist_add_tail(&pending->list_entry, &bsc->cmd_pending);
+
+			goto done;
+		}
+	}
+	/* We end up here if there's no bsc to handle our LAC */
+	cmd->reply = "no BSC with this LAC";
+err:
+	ret = CTRL_CMD_ERROR;
+done:
+	if (bsc_cmd)
+		talloc_free(bsc_cmd);
+	return ret;
+
+}
+
+CTRL_CMD_DEFINE(fwd_cmd, "bsc *");
+int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	return forward_to_bsc(cmd);
+}
+
+int set_fwd_cmd(struct ctrl_cmd *cmd, void *data)
+{
+	return forward_to_bsc(cmd);
+}
+
+int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
+extern int controlif_setup(struct gsm_network *gsmnet, uint16_t port);
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -1470,6 +1746,9 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
 	}
+
+	controlif_setup(NULL, 4250);
+	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;

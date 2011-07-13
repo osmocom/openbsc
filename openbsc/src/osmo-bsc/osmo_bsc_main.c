@@ -18,6 +18,7 @@
  *
  */
 
+#include <openbsc/control_cmd.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_bsc.h>
@@ -25,10 +26,12 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
+#include <openbsc/ipaccess.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/process.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -49,6 +52,8 @@ static const char *config_file = "openbsc.cfg";
 static const char *rf_ctl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
+
+extern void controlif_setup(struct gsm_network *gsmnet, uint16_t port);
 
 static void print_usage()
 {
@@ -168,6 +173,164 @@ static void signal_handler(int signal)
 	}
 }
 
+struct location {
+	double lat;
+	double lon;
+	double height;
+	unsigned long age;
+};
+
+static struct location myloc;
+
+CTRL_CMD_DEFINE(net_loc, "location");
+int get_net_loc(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = talloc_asprintf(cmd, "%lu,%f,%f,%f", myloc.age, myloc.lat, myloc.lon, myloc.height);
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+int set_net_loc(struct ctrl_cmd *cmd, void *data)
+{
+	char *saveptr, *lat, *lon, *height, *age, *tmp;
+
+	tmp = talloc_strdup(cmd, cmd->value);
+	if (!tmp)
+		goto oom;
+
+
+	age = strtok_r(tmp, ",", &saveptr);
+	lat = strtok_r(NULL, ",", &saveptr);
+	lon = strtok_r(NULL, ",", &saveptr);
+	height = strtok_r(NULL, "\0", &saveptr);
+
+	myloc.age = atol(age);
+	myloc.lat = atof(lat);
+	myloc.lon = atof(lon);
+	myloc.height = atof(height);
+	talloc_free(tmp);
+
+	return get_net_loc(cmd, data);
+oom:
+	cmd->reply = "OOM";
+	return CTRL_CMD_ERROR;
+}
+
+int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *tmp;
+	int  ret = 0;
+	unsigned long age;
+	double lat, lon, height;
+
+	tmp = talloc_strdup(cmd, value);
+	if (!tmp)
+		return 1;
+
+	agestr = strtok_r(tmp, ",", &saveptr);
+	latstr = strtok_r(NULL, ",", &saveptr);
+	lonstr = strtok_r(NULL, ",", &saveptr);
+	heightstr = strtok_r(NULL, "\0", &saveptr);
+
+	if ((agestr == 0) || (latstr == 0) || (lonstr == 0) || (heightstr == 0))
+		ret = 1;
+
+	age = atol(agestr);
+	lat = atof(latstr);
+	lon = atof(lonstr);
+	height = atof(heightstr);
+	talloc_free(tmp);
+
+	if ((age == 0) || (lat < -90) || (lat > 90) || (lon < -180) || (lon > 180))
+		return 1;
+
+	return ret;
+}
+
+CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
+int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts_trx *trx = cmd->node;
+	if (!trx) {
+		cmd->reply = "trx not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	cmd->reply = talloc_asprintf(cmd, "%u", trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0);
+	return CTRL_CMD_REPLY;
+}
+
+int set_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	int locked = atoi(cmd->value);
+	struct gsm_bts_trx *trx = cmd->node;
+	if (!trx) {
+		cmd->reply = "trx not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	gsm_trx_lock_rf(trx, locked);
+
+	return get_trx_rf_lock(cmd, data);
+}
+
+int verify_trx_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	int locked = atoi(cmd->value);
+
+	if ((locked != 0) && (locked != 1))
+		return 1;
+
+	return 0;
+}
+
+CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
+int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "get only works for the individual trx properties.";
+	return CTRL_CMD_ERROR;
+}
+
+int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+{
+	int locked = atoi(cmd->value);
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+	if (!net) {
+		cmd->reply = "net not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		struct gsm_bts_trx *trx;
+		llist_for_each_entry(trx, &bts->trx_list, list) {
+			gsm_trx_lock_rf(trx, locked);
+		}
+	}
+
+	cmd->reply = talloc_asprintf(cmd, "%u", locked);
+	if (!cmd->reply) {
+		cmd->reply = "OOM.";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	int locked = atoi(cmd->value);
+
+	if ((locked != 0) && (locked != 1))
+		return 1;
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	struct osmo_msc_data *data;
@@ -203,6 +366,11 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
+
+	controlif_setup(bsc_gsmnet, 4249);
+	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
+	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
+	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 
 	data = bsc_gsmnet->msc_data;
 	if (rf_ctl)

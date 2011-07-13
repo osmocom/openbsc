@@ -92,6 +92,7 @@ AC_OUTPUT(
     src/libtrau/Makefile
     src/libabis/Makefile
     src/libbsc/Makefile
+    src/libctrl/Makefile
     src/libmsc/Makefile
     src/libmgcp/Makefile
     src/libcommon/Makefile
