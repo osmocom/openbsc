@@ -1195,14 +1195,12 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 		cmd = talloc_zero(bsc, struct ctrl_cmd);
 		if (!cmd) {
 			LOGP(DNAT, LOGL_ERROR, "OOM!\n");
-			return 0;
+			return -ENOMEM;
 		}
 		cmd->type = CTRL_TYPE_ERROR;
 		cmd->id = "err";
 		cmd->reply = "Failed to parse command.";
-		ctrl_cmd_send(&bsc->write_queue, cmd);
-		talloc_free(cmd);
-		return 0;
+		goto err;
 	}
 
 	if (bsc->cfg) {
