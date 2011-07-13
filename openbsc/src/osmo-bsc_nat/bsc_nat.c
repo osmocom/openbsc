@@ -1203,40 +1203,38 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 		goto err;
 	}
 
-	if (bsc->cfg) {
-		if (!llist_empty(&bsc->cfg->lac_list)) {
-			if (cmd->variable) {
-				var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
-						cmd->variable);
-				if (!var) {
-					cmd->type = CTRL_TYPE_ERROR;
-					cmd->reply = "OOM";
-					goto err;
-				}
-				talloc_free(cmd->variable);
-				cmd->variable = var;
+	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
+		if (cmd->variable) {
+			var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
+					cmd->variable);
+			if (!var) {
+				cmd->type = CTRL_TYPE_ERROR;
+				cmd->reply = "OOM";
+				goto err;
 			}
+			talloc_free(cmd->variable);
+			cmd->variable = var;
+		}
 
-			/* Find the pending command */
-			pending = bsc_get_pending(bsc, cmd->id);
-			if (pending) {
-				id = talloc_strdup(cmd, pending->cmd->id);
-				if (!id) {
-					cmd->type = CTRL_TYPE_ERROR;
-					cmd->reply = "OOM";
-					goto err;
-				}
-				cmd->id = id;
-				ctrl_cmd_send(&pending->ccon->write_queue, cmd);
-				bsc_del_pending(pending);
-			} else {
-				/* We need to handle TRAPS here */
-				if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
-					LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
-					cmd->type = CTRL_TYPE_ERROR;
-					cmd->reply = "No request outstanding";
-					goto err;
-				}
+		/* Find the pending command */
+		pending = bsc_get_pending(bsc, cmd->id);
+		if (pending) {
+			id = talloc_strdup(cmd, pending->cmd->id);
+			if (!id) {
+				cmd->type = CTRL_TYPE_ERROR;
+				cmd->reply = "OOM";
+				goto err;
+			}
+			cmd->id = id;
+			ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+			bsc_del_pending(pending);
+		} else {
+			/* We need to handle TRAPS here */
+			if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
+				LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
+				cmd->type = CTRL_TYPE_ERROR;
+				cmd->reply = "No request outstanding";
+				goto err;
 			}
 		}
 	}
