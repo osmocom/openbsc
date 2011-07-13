@@ -1205,8 +1205,11 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 
 	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
 		if (cmd->variable) {
-			var = talloc_asprintf(cmd, "bsc.%i.%s", ((struct bsc_lac_entry *)bsc->cfg->lac_list.next)->lac,
-					cmd->variable);
+			struct bsc_lac_entry *bsc_lac;
+			bsc_lac = llist_entry(bsc->cfg->lac_list.next,
+					      struct bsc_lac_entry, entry);
+			var = talloc_asprintf(cmd, "bsc.%i.%s", bsc_lac->lac,
+					      cmd->variable);
 			if (!var) {
 				cmd->type = CTRL_TYPE_ERROR;
 				cmd->reply = "OOM";
@@ -1230,8 +1233,10 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 			bsc_del_pending(pending);
 		} else {
 			/* We need to handle TRAPS here */
-			if ((cmd->type != CTRL_TYPE_ERROR) && (cmd->type != CTRL_TYPE_TRAP)) {
-				LOGP(DNAT, LOGL_NOTICE, "Got control message from BSC without pending entry\n");
+			if ((cmd->type != CTRL_TYPE_ERROR) &&
+			    (cmd->type != CTRL_TYPE_TRAP)) {
+				LOGP(DNAT, LOGL_NOTICE, "Got control message "
+					"from BSC without pending entry\n");
 				cmd->type = CTRL_TYPE_ERROR;
 				cmd->reply = "No request outstanding";
 				goto err;
