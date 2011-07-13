@@ -53,8 +53,6 @@ static const char *rf_ctl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
-extern void controlif_setup(struct gsm_network *gsmnet, uint16_t port);
-
 static void print_usage()
 {
 	printf("Usage: osmo-bsc\n");

@@ -1686,8 +1686,6 @@ int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
 	return 0;
 }
 
-extern int controlif_setup(struct gsm_network *gsmnet, uint16_t port);
-
 int main(int argc, char **argv)
 {
 	int rc;
