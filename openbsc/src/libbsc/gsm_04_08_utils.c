@@ -345,7 +345,7 @@ void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 {
 	uint16_t arfcn = lchan->ts->trx->arfcn & 0x3ff;
 
-	cd->chan_nr = lchan2chan_nr(lchan);
+	cd->chan_nr = gsm_lchan2chan_nr(lchan);
 	if (!lchan->ts->hopping.enabled) {
 		cd->h0.tsc = lchan->ts->trx->bts->tsc;
 		cd->h0.h = 0;

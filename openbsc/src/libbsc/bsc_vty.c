@@ -256,9 +256,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
 		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &bts->nm_state);
+	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
-	net_dump_nmstate(vty, &bts->site_mgr.nm_state);
+	net_dump_nmstate(vty, &bts->site_mgr.mo.nm_state);
 	vty_out(vty, "  Paging: %u pending requests, %u free slots%s",
 		paging_pending_requests_nr(bts),
 		bts->paging.available_slots, VTY_NEWLINE);
@@ -333,6 +333,8 @@ static void config_write_e1_link(struct vty *vty, struct gsm_e1_subslot *e1_link
 static void config_write_ts_single(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
 	vty_out(vty, "    timeslot %u%s", ts->nr, VTY_NEWLINE);
+	if (ts->tsc != -1 && ts->tsc != ts->trx->bts->tsc)
+		vty_out(vty, "     training_sequence_code %u%s", ts->tsc, VTY_NEWLINE);
 	if (ts->pchan != GSM_PCHAN_NONE)
 		vty_out(vty, "     phys_chan_config %s%s",
 			gsm_pchan_name(ts->pchan), VTY_NEWLINE);
@@ -366,7 +368,7 @@ static void config_write_trx_single(struct vty *vty, struct gsm_bts_trx *trx)
 		vty_out(vty, "   description %s%s", trx->description,
 			VTY_NEWLINE);
 	vty_out(vty, "   rf_locked %u%s",
-		trx->nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
+		trx->mo.nm_state.administrative == NM_STATE_LOCKED ? 1 : 0,
 		VTY_NEWLINE);
 	vty_out(vty, "   arfcn %u%s", trx->arfcn, VTY_NEWLINE);
 	vty_out(vty, "   nominal power %u%s", trx->nominal_power, VTY_NEWLINE);
@@ -617,9 +619,9 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 		trx->nominal_power, trx->max_power_red,
 		trx->nominal_power - trx->max_power_red, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &trx->nm_state);
+	net_dump_nmstate(vty, &trx->mo.nm_state);
 	vty_out(vty, "  Baseband Transceiver NM State: ");
-	net_dump_nmstate(vty, &trx->bb_transc.nm_state);
+	net_dump_nmstate(vty, &trx->bb_transc.mo.nm_state);
 	if (is_ipaccess_bts(trx->bts)) {
 		vty_out(vty, "  ip.access stream ID: 0x%02x%s",
 			trx->rsl_tei, VTY_NEWLINE);
@@ -685,15 +687,15 @@ DEFUN(show_trx,
 
 static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 {
-	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s",
+	vty_out(vty, "BTS %u, TRX %u, Timeslot %u, phys cfg %s, TSC %u",
 		ts->trx->bts->nr, ts->trx->nr, ts->nr,
-		gsm_pchan_name(ts->pchan));
+		gsm_pchan_name(ts->pchan), ts->tsc);
 	if (ts->pchan == GSM_PCHAN_TCH_F_PDCH)
 		vty_out(vty, " (%s mode)",
 			ts->flags & TS_F_PDCH_MODE ? "PDCH" : "TCH/F");
 	vty_out(vty, "%s", VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
-	net_dump_nmstate(vty, &ts->nm_state);
+	net_dump_nmstate(vty, &ts->mo.nm_state);
 	if (!is_ipaccess_bts(ts->trx->bts))
 		vty_out(vty, "  E1 Line %u, Timeslot %u, Subslot %u%s",
 			ts->e1_link.e1_nr, ts->e1_link.e1_ts,
@@ -1440,8 +1442,8 @@ DEFUN(cfg_bts,
 		return CMD_WARNING;
 	} else if (bts_nr == gsmnet->num_bts) {
 		/* allocate a new one */
-		bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_UNKNOWN,
-				    HARDCODED_TSC, HARDCODED_BSIC);
+		bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_UNKNOWN,
+					     HARDCODED_TSC, HARDCODED_BSIC);
 	} else
 		bts = gsm_bts_num(gsmnet, bts_nr);
 
@@ -2428,6 +2430,18 @@ DEFUN(cfg_ts_pchan,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_ts_tsc,
+      cfg_ts_tsc_cmd,
+      "training_sequence_code <0-7>",
+      "Training Sequence Code")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+
+	ts->tsc = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 #define HOPPING_STR "Configure frequency hopping\n"
 
 DEFUN(cfg_ts_hopping,
@@ -2780,6 +2794,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(TS_NODE, &ournode_exit_cmd);
 	install_element(TS_NODE, &ournode_end_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_tsc_cmd);
 	install_element(TS_NODE, &cfg_ts_hopping_cmd);
 	install_element(TS_NODE, &cfg_ts_hsn_cmd);
 	install_element(TS_NODE, &cfg_ts_maio_cmd);

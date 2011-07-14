@@ -38,8 +38,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <openbsc/paging.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm48.h>
+#include <osmocom/gsm/gsm0502.h>
+
+#include <openbsc/paging.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_rsl.h>
@@ -50,22 +53,6 @@
 void *tall_paging_ctx;
 
 #define PAGING_TIMER 0, 500000
-
-static unsigned int calculate_group(struct gsm_bts *bts, struct gsm_subscriber *subscr)
-{
-	int ccch_conf;
-	int bs_cc_chans;
-	int blocks;
-	unsigned int group;
-	
-	ccch_conf = bts->si_common.chan_desc.ccch_conf;
-	bs_cc_chans = rsl_ccch_conf_to_bs_cc_chans(ccch_conf);
-	/* code word + 2, as 2 channels equals 0x0 */
-	blocks = rsl_number_of_paging_subchannels(bts);
-	group = get_paging_group(str_to_imsi(subscr->imsi),
-					bs_cc_chans, blocks);
-	return group;
-}
 
 /*
  * Kill one paging request update the internal list...
@@ -84,6 +71,7 @@ static void page_ms(struct gsm_paging_request *request)
 	uint8_t mi[128];
 	unsigned int mi_len;
 	unsigned int page_group;
+	struct gsm_bts *bts = request->bts;
 
 	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
 		request->subscr->imsi, request->subscr->tmsi);
@@ -93,8 +81,9 @@ static void page_ms(struct gsm_paging_request *request)
 	else
 		mi_len = gsm48_generate_mid_from_tmsi(mi, request->subscr->tmsi);
 
-	page_group = calculate_group(request->bts, request->subscr);
-	gsm0808_page(request->bts, page_group, mi_len, mi, request->chan_type);
+	page_group = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
+						str_to_imsi(request->subscr->imsi));
+	gsm0808_page(bts, page_group, mi_len, mi, request->chan_type);
 }
 
 static void paging_schedule_if_needed(struct gsm_bts_paging_state *paging_bts)

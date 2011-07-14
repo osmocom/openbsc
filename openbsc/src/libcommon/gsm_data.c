@@ -48,72 +48,6 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
 	ts->e1_link.e1_ts_ss = e1_ts_ss;
 }
 
-static const struct value_string pchan_names[] = {
-	{ GSM_PCHAN_NONE,	"NONE" },
-	{ GSM_PCHAN_CCCH,	"CCCH" },
-	{ GSM_PCHAN_CCCH_SDCCH4,"CCCH+SDCCH4" },
-	{ GSM_PCHAN_TCH_F,	"TCH/F" },
-	{ GSM_PCHAN_TCH_H,	"TCH/H" },
-	{ GSM_PCHAN_SDCCH8_SACCH8C, "SDCCH8" },
-	{ GSM_PCHAN_PDCH,	"PDCH" },
-	{ GSM_PCHAN_TCH_F_PDCH,	"TCH/F_PDCH" },
-	{ GSM_PCHAN_UNKNOWN,	"UNKNOWN" },
-	{ 0,			NULL }
-};
-
-const char *gsm_pchan_name(enum gsm_phys_chan_config c)
-{
-	return get_value_string(pchan_names, c);
-}
-
-enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
-{
-	return get_string_value(pchan_names, name);
-}
-
-static const struct value_string lchant_names[] = {
-	{ GSM_LCHAN_NONE,	"NONE" },
-	{ GSM_LCHAN_SDCCH,	"SDCCH" },
-	{ GSM_LCHAN_TCH_F,	"TCH/F" },
-	{ GSM_LCHAN_TCH_H,	"TCH/H" },
-	{ GSM_LCHAN_UNKNOWN,	"UNKNOWN" },
-	{ 0,			NULL }
-};
-
-const char *gsm_lchant_name(enum gsm_chan_t c)
-{
-	return get_value_string(lchant_names, c);
-}
-
-static const struct value_string lchan_s_names[] = {
-	{ LCHAN_S_NONE,		"NONE" },
-	{ LCHAN_S_ACT_REQ,	"ACTIVATION REQUESTED" },
-	{ LCHAN_S_ACTIVE,	"ACTIVE" },
-	{ LCHAN_S_INACTIVE,	"INACTIVE" },
-	{ LCHAN_S_REL_REQ,	"RELEASE REQUESTED" },
-	{ LCHAN_S_REL_ERR,	"RELEASE DUE ERROR" },
-	{ 0,			NULL }
-};
-
-const char *gsm_lchans_name(enum gsm_lchan_state s)
-{
-	return get_value_string(lchan_s_names, s);
-}
-
-static const struct value_string chreq_names[] = {
-	{ GSM_CHREQ_REASON_EMERG,	"EMERGENCY" },
-	{ GSM_CHREQ_REASON_PAG,		"PAGING" },
-	{ GSM_CHREQ_REASON_CALL,	"CALL" },
-	{ GSM_CHREQ_REASON_LOCATION_UPD,"LOCATION_UPDATE" },
-	{ GSM_CHREQ_REASON_OTHER,	"OTHER" },
-	{ 0,				NULL }
-};
-
-const char *gsm_chreq_name(enum gsm_chreq_reason_t c)
-{
-	return get_value_string(chreq_names, c);
-}
-
 static struct gsm_bts_model *bts_model_find(enum gsm_bts_type type)
 {
 	struct gsm_bts_model *model;
@@ -134,123 +68,6 @@ int gsm_bts_model_register(struct gsm_bts_model *model)
 	tlv_def_patch(&model->nm_att_tlvdef, &abis_nm_att_tlvdef);
 	llist_add_tail(&model->list, &bts_models);
 	return 0;
-}
-
-
-struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
-{
-	struct gsm_bts_trx *trx = talloc_zero(bts, struct gsm_bts_trx);
-	int k;
-
-	if (!trx)
-		return NULL;
-
-	trx->bts = bts;
-	trx->nr = bts->num_trx++;
-	trx->nm_state.administrative = NM_STATE_UNLOCKED;
-
-	for (k = 0; k < TRX_NR_TS; k++) {
-		struct gsm_bts_trx_ts *ts = &trx->ts[k];
-		int l;
-		
-		ts->trx = trx;
-		ts->nr = k;
-		ts->pchan = GSM_PCHAN_NONE;
-
-		ts->hopping.arfcns.data_len = sizeof(ts->hopping.arfcns_data);
-		ts->hopping.arfcns.data = ts->hopping.arfcns_data;
-		ts->hopping.ma.data_len = sizeof(ts->hopping.ma_data);
-		ts->hopping.ma.data = ts->hopping.ma_data;
-
-		for (l = 0; l < TS_MAX_LCHAN; l++) {
-			struct gsm_lchan *lchan;
-			lchan = &ts->lchan[l];
-
-			lchan->ts = ts;
-			lchan->nr = l;
-			lchan->type = GSM_LCHAN_NONE;
-		}
-	}
-
-	if (trx->nr != 0)
-		trx->nominal_power = bts->c0->nominal_power;
-
-	llist_add_tail(&trx->list, &bts->trx_list);
-
-	return trx;
-}
-
-static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
-static const uint8_t bts_cell_timer_default[] =
-				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
-
-struct gsm_bts *gsm_bts_alloc(struct gsm_network *net, enum gsm_bts_type type,
-			      uint8_t tsc, uint8_t bsic)
-{
-	struct gsm_bts *bts = talloc_zero(net, struct gsm_bts);
-	struct gsm_bts_model *model = bts_model_find(type);
-	int i;
-
-	if (!bts)
-		return NULL;
-
-	if (!model && type != GSM_BTS_TYPE_UNKNOWN) {
-		talloc_free(bts);
-		return NULL;
-	}
-
-	bts->network = net;
-	bts->nr = net->num_bts++;
-	bts->type = type;
-	bts->model = model;
-	bts->tsc = tsc;
-	bts->bsic = bsic;
-	bts->num_trx = 0;
-	INIT_LLIST_HEAD(&bts->trx_list);
-	bts->ms_max_power = 15;	/* dBm */
-
-	bts->neigh_list_manual_mode = 0;
-	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
-	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
-	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
-	bts->si_common.neigh_list.data_len =
-				sizeof(bts->si_common.data.neigh_list);
-	bts->si_common.si5_neigh_list.data = bts->si_common.data.si5_neigh_list;
-	bts->si_common.si5_neigh_list.data_len =
-				sizeof(bts->si_common.data.si5_neigh_list);
-	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
-	bts->si_common.cell_alloc.data_len =
-				sizeof(bts->si_common.data.cell_alloc);
-	bts->si_common.rach_control.re = 1; /* no re-establishment */
-	bts->si_common.rach_control.tx_integer = 9;  /* 12 slots spread - 217/115 slots delay */
-	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
-	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
-
-	for (i = 0; i < ARRAY_SIZE(bts->gprs.nsvc); i++) {
-		bts->gprs.nsvc[i].bts = bts;
-		bts->gprs.nsvc[i].id = i;
-	}
-	memcpy(&bts->gprs.nse.timer, bts_nse_timer_default,
-		sizeof(bts->gprs.nse.timer));
-	memcpy(&bts->gprs.cell.timer, bts_cell_timer_default,
-		sizeof(bts->gprs.cell.timer));
-
-	/* create our primary TRX */
-	bts->c0 = gsm_bts_trx_alloc(bts);
-	if (!bts->c0) {
-		talloc_free(bts);
-		return NULL;
-	}
-	bts->c0->ts[0].pchan = GSM_PCHAN_CCCH_SDCCH4;
-
-	bts->rach_b_thresh = -1;
-	bts->rach_ldavg_slots = -1;
-	bts->paging.free_chans_need = -1;
-	INIT_LLIST_HEAD(&bts->abis_queue);
-
-	llist_add_tail(&bts->list, &net->bts_list);
-
-	return bts;
 }
 
 struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
@@ -370,50 +187,6 @@ struct gsm_bts *gsm_bts_neighbor(const struct gsm_bts *bts,
 	return NULL;
 }
 
-struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
-{
-	struct gsm_bts_trx *trx;
-
-	if (num >= bts->num_trx)
-		return NULL;
-
-	llist_for_each_entry(trx, &bts->trx_list, list) {
-		if (trx->nr == num)
-			return trx;
-	}
-
-	return NULL;
-}
-
-static char ts2str[255];
-
-char *gsm_trx_name(struct gsm_bts_trx *trx)
-{
-	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d)",
-		 trx->bts->nr, trx->nr);
-
-	return ts2str;
-}
-
-
-char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
-{
-	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
-		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
-
-	return ts2str;
-}
-
-char *gsm_lchan_name(struct gsm_lchan *lchan)
-{
-	struct gsm_bts_trx_ts *ts = lchan->ts;
-
-	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d,ss=%d)",
-		 ts->trx->bts->nr, ts->trx->nr, ts->nr, lchan->nr);
-
-	return ts2str;
-}
-
 static const struct value_string bts_types[] = {
 	{ GSM_BTS_TYPE_UNKNOWN,	"unknown" },
 	{ GSM_BTS_TYPE_BS11,	"bs11" },
@@ -486,23 +259,6 @@ enum gsm_auth_policy gsm_auth_policy_parse(const char *arg)
 const char *gsm_auth_policy_name(enum gsm_auth_policy policy)
 {
 	return get_value_string(auth_policy_names, policy);
-}
-
-void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
-{
-	raid->mcc = bts->network->country_code;
-	raid->mnc = bts->network->network_code;
-	raid->lac = bts->location_area_code;
-	raid->rac = bts->gprs.rac;
-}
-
-int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
-{
-	struct gprs_ra_id raid;
-
-	gprs_ra_id_by_bts(&raid, bts);
-
-	return gsm48_construct_ra(buf, &raid);
 }
 
 static const struct value_string rrlp_mode_names[] = {
@@ -600,4 +356,65 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 	}
 
 	return 0;
+}
+
+struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_type type,
+					uint8_t tsc, uint8_t bsic)
+{
+	struct gsm_bts_model *model = bts_model_find(type);
+	struct gsm_bts *bts;
+
+	if (!model && type != GSM_BTS_TYPE_UNKNOWN)
+		return NULL;
+
+	bts = gsm_bts_alloc(net);
+	if (!bts)
+		return NULL;
+
+	bts->network = net;
+	bts->nr = net->num_bts++;
+	bts->type = type;
+	bts->model = model;
+	bts->tsc = tsc;
+	bts->bsic = bsic;
+
+	bts->neigh_list_manual_mode = 0;
+	bts->si_common.cell_sel_par.cell_resel_hyst = 2; /* 4 dB */
+	bts->si_common.cell_sel_par.rxlev_acc_min = 0;
+	bts->si_common.neigh_list.data = bts->si_common.data.neigh_list;
+	bts->si_common.neigh_list.data_len =
+				sizeof(bts->si_common.data.neigh_list);
+	bts->si_common.si5_neigh_list.data = bts->si_common.data.si5_neigh_list;
+	bts->si_common.si5_neigh_list.data_len =
+				sizeof(bts->si_common.data.si5_neigh_list);
+	bts->si_common.cell_alloc.data = bts->si_common.data.cell_alloc;
+	bts->si_common.cell_alloc.data_len =
+				sizeof(bts->si_common.data.cell_alloc);
+	bts->si_common.rach_control.re = 1; /* no re-establishment */
+	bts->si_common.rach_control.tx_integer = 9;  /* 12 slots spread - 217/115 slots delay */
+	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
+	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
+
+	llist_add_tail(&bts->list, &net->bts_list);
+
+	INIT_LLIST_HEAD(&bts->abis_queue);
+
+	return bts;
+}
+
+void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
+{
+	raid->mcc = bts->network->country_code;
+	raid->mnc = bts->network->network_code;
+	raid->lac = bts->location_area_code;
+	raid->rac = bts->gprs.rac;
+}
+
+int gsm48_ra_id_by_bts(uint8_t *buf, struct gsm_bts *bts)
+{
+	struct gprs_ra_id raid;
+
+	gprs_ra_id_by_bts(&raid, bts);
+
+	return gsm48_construct_ra(buf, &raid);
 }

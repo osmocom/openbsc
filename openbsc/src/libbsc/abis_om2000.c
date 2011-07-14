@@ -664,7 +664,7 @@ mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);
 		if (!trx)
 			return NULL;
-		nm_state = &trx->nm_state;
+		nm_state = &trx->mo.nm_state;
 		break;
 	case OM2K_MO_CLS_TS:
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);
@@ -672,22 +672,22 @@ mo2nm_state(struct gsm_bts *bts, const struct abis_om2k_mo *mo)
 			return NULL;
 		if (mo->inst >= ARRAY_SIZE(trx->ts))
 			return NULL;
-		nm_state = &trx->ts[mo->inst].nm_state;
+		nm_state = &trx->ts[mo->inst].mo.nm_state;
 		break;
 	case OM2K_MO_CLS_TF:
-		nm_state = &bts->rbs2000.tf.nm_state;
+		nm_state = &bts->rbs2000.tf.mo.nm_state;
 		break;
 	case OM2K_MO_CLS_IS:
-		nm_state = &bts->rbs2000.is.nm_state;
+		nm_state = &bts->rbs2000.is.mo.nm_state;
 		break;
 	case OM2K_MO_CLS_CON:
-		nm_state = &bts->rbs2000.con.nm_state;
+		nm_state = &bts->rbs2000.con.mo.nm_state;
 		break;
 	case OM2K_MO_CLS_DP:
-		nm_state = &bts->rbs2000.con.nm_state;
+		nm_state = &bts->rbs2000.con.mo.nm_state;
 		break;
 	case OM2K_MO_CLS_CF:
-		nm_state = &bts->nm_state;
+		nm_state = &bts->mo.nm_state;
 		break;
 	case OM2K_MO_CLS_TX:
 		trx = gsm_bts_trx_num(bts, mo->assoc_so);

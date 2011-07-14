@@ -402,7 +402,7 @@ static int sw_activ_rep(struct msgb *mb)
 		 * This code is here to make sure that on start
 		 * a TRX remains locked.
 		 */
-		int rc_state = trx->nm_state.administrative;
+		int rc_state = trx->mo.nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
