@@ -185,7 +185,7 @@ static LLIST_HEAD(locations);
 void cleanup_locations()
 {
 	struct location *myloc, *tmp;
-	int i = 0;
+	int invalpos = 0, i = 0;
 
 	LOGP(DCTRL, LOGL_DEBUG, "Checking position list.\n");
 	llist_for_each_entry_safe(myloc, tmp, &locations, list) {
@@ -194,6 +194,17 @@ void cleanup_locations()
 			LOGP(DCTRL, LOGL_DEBUG, "Deleting old position.\n");
 			llist_del(&myloc->list);
 			talloc_free(myloc);
+		} else if (!myloc->valid) { /* Only capture the newest of subsequent invalid positions */
+			invalpos++;
+			if (invalpos > 1) {
+				LOGP(DCTRL, LOGL_DEBUG, "Deleting subsequent invalid position.\n");
+				invalpos--;
+				i--;
+				llist_del(&myloc->list);
+				talloc_free(myloc);
+			}
+		} else {
+			invalpos = 0;
 		}
 	}
 	LOGP(DCTRL, LOGL_DEBUG, "Found %i positions.\n", i);
