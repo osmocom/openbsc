@@ -1076,7 +1076,7 @@ static void signal_handler(int signal)
 	}
 }
 
-static void print_help()
+static void print_help(void)
 {
 	printf(" ipaccess-proxy is a proxy BTS.\n");
 	printf(" -h --help. This help text.\n");
@@ -1090,7 +1090,7 @@ static void print_help()
 	printf(" -V --version. Print the version of OpenBSC.\n");
 }
 
-static void print_usage()
+static void print_usage(void)
 {
 	printf("Usage: ipaccess-proxy [options]\n");
 }
