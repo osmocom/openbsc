@@ -754,7 +754,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			  GPRS_ALGO_GEA0, NULL);
 
 	DEBUGPC(DMM, "\n");
-	return ctx ? gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT) : 0;
+	return gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT);
 
 err_inval:
 	DEBUGPC(DMM, "\n");
