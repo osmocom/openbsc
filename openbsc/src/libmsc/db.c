@@ -250,10 +250,8 @@ int db_fini()
 	dbi_conn_close(conn);
 	dbi_shutdown();
 
-	if (db_dirname)
-	    free(db_dirname);
-	if (db_basename)
-	    free(db_basename);
+	free(db_dirname);
+	free(db_basename);
 	return 0;
 }
 
@@ -276,9 +274,9 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	}
 
 	subscr = subscr_alloc();
-	subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
 	if (!subscr)
 		return NULL;
+	subscr->flags |= GSM_SUBSCRIBER_FIRST_CONTACT;
 	result = dbi_conn_queryf(conn,
 		"INSERT INTO Subscriber "
 		"(imsi, created, updated) "
