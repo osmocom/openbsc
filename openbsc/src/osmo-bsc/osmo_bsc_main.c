@@ -233,7 +233,8 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	lonstr = strtok_r(NULL, ",", &saveptr);
 	heightstr = strtok_r(NULL, "\0", &saveptr);
 
-	if ((agestr == 0) || (latstr == 0) || (lonstr == 0) || (heightstr == 0))
+	if ((agestr == NULL) || (latstr == NULL) ||
+			(lonstr == NULL) || (heightstr == NULL))
 		ret = 1;
 
 	age = atol(agestr);
