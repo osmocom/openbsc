@@ -220,7 +220,6 @@ oom:
 int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *tmp;
-	int  ret = 0;
 	unsigned long age;
 	double lat, lon, height;
 
@@ -235,7 +234,7 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 
 	if ((agestr == NULL) || (latstr == NULL) ||
 			(lonstr == NULL) || (heightstr == NULL))
-		ret = 1;
+		return 1;
 
 	age = atol(agestr);
 	lat = atof(latstr);
@@ -246,7 +245,7 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	if ((age == 0) || (lat < -90) || (lat > 90) || (lon < -180) || (lon > 180))
 		return 1;
 
-	return ret;
+	return 0;
 }
 
 CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
