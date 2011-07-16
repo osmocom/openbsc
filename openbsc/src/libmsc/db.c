@@ -221,7 +221,7 @@ out_err:
 }
 
 
-int db_prepare()
+int db_prepare(void)
 {
 	dbi_result result;
 	int i;
@@ -245,7 +245,7 @@ int db_prepare()
 	return 0;
 }
 
-int db_fini()
+int db_fini(void)
 {
 	dbi_conn_close(conn);
 	dbi_shutdown();
