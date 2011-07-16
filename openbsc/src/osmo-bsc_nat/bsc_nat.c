@@ -1534,34 +1534,39 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+static int bsc_id_unused(int id, struct bsc_connection *bsc)
+{
+	struct bsc_cmd_list *pending;
+
+	llist_for_each_entry(pending, &bsc->cmd_pending, list_entry) {
+		if (pending->nat_id == id)
+			return 0;
+	}
+	return 1;
+}
+
+#define NAT_MAX_CTRL_ID 65535
+
 static int get_next_free_bsc_id(struct bsc_connection *bsc)
 {
 	int new_id, overflow = 0;
-	struct bsc_cmd_list *pending;
 
 	new_id = bsc->last_id;
+
 	do {
 		new_id++;
-		if (new_id <= 0) {
+		if (new_id == NAT_MAX_CTRL_ID) {
 			new_id = 1;
 			overflow++;
 		}
 
-		llist_for_each_entry(pending, &bsc->cmd_pending, list_entry) {
-			if (pending->nat_id == new_id)
-				continue;
+		if (bsc_id_unused(new_id, bsc)) {
+			bsc->last_id = new_id;
+			return new_id;
 		}
+	} while (overflow != 2);
 
-		/* ID is not in use */
-		break;
-	} while ((new_id != bsc->last_id) && (overflow < 2));
-
-	if ((new_id == bsc->last_id) || (overflow == 2)) {
-		return -1;
-	} else {
-		bsc->last_id = new_id;
-		return new_id;
-	}
+	return -1;
 }
 
 static void pending_timeout_cb(void *data)
