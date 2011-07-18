@@ -36,7 +36,6 @@
 
 void gsm_abis_mo_reset(struct gsm_abis_mo *mo)
 {
-	mo->nm_state.administrative = NM_STATE_NULL;
 	mo->nm_state.operational = NM_OPSTATE_NULL;
 	mo->nm_state.availability = NM_AVSTATE_POWER_OFF;
 }

@@ -406,6 +406,9 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	bts->si_common.ncc_permitted = 0xff;
 
+	/* Initialize the BTS state */
+	gsm_bts_mo_reset(bts);
+
 	return 0;
 }
 
