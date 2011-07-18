@@ -30,7 +30,6 @@
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/process.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmocom/sccp/sccp.h>

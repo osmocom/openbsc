@@ -47,7 +47,6 @@
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/process.h>
 
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>

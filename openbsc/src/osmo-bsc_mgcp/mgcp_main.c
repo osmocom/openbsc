@@ -40,7 +40,6 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/process.h>
 #include <osmocom/core/select.h>
 
 #include <osmocom/vty/telnet_interface.h>

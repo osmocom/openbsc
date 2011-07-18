@@ -32,7 +32,6 @@
 #include <openbsc/db.h>
 #include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
-#include <osmocom/core/process.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
 #include <osmocom/core/talloc.h>
