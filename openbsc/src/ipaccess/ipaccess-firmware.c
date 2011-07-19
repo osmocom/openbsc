@@ -59,9 +59,9 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	}
 
 	if (memcmp(firmware_header->more_magic, more_magic, 2) != 0) {
-		fprintf(stderr, "Wrong more magic. Got: 0x%x %x %x %x\n",
+		fprintf(stderr, "Wrong more magic. Got: 0x%x 0x%x vs. 0x%x 0x%x\n",
 			firmware_header->more_magic[0] & 0xff, firmware_header->more_magic[1] & 0xff,
-			firmware_header->more_magic[2] & 0xff, firmware_header->more_magic[3] & 0xff);
+			more_magic[0], more_magic[1]);
 		return -1;
 	}
 

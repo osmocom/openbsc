@@ -1055,11 +1055,14 @@ DEFUN(show_e1ts,
 	}
 	if (argc >= 1) {
 		int num = atoi(argv[0]);
-		llist_for_each_entry(line, &e1inp_line_list, list) {
-			if (line->num == num)
+		struct e1inp_line *l;
+		llist_for_each_entry(l, &e1inp_line_list, list) {
+			if (l->num == num) {
+				line = l;
 				break;
+			}
 		}
-		if (!line || line->num != num) {
+		if (!line) {
 			vty_out(vty, "E1 line %s is invalid%s",
 				argv[0], VTY_NEWLINE);
 			return CMD_WARNING;
@@ -1067,7 +1070,7 @@ DEFUN(show_e1ts,
 	}	
 	if (argc >= 2) {
 		ts_nr = atoi(argv[1]);
-		if (ts_nr > NUM_E1_TS) {
+		if (ts_nr >= NUM_E1_TS) {
 			vty_out(vty, "E1 timeslot %s is invalid%s",
 				argv[1], VTY_NEWLINE);
 			return CMD_WARNING;

@@ -500,8 +500,6 @@ int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
 	rate_ctr_add(&mmctx->ctrg->ctr[GMM_CTR_BYTES_UDATA_IN], npdu_len);
 
 	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
-
-	return gtp_data_req(pdp->ggsn->gsn, pdp->lib, npdu, npdu_len);
 }
 
 /* libgtp select loop integration */

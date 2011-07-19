@@ -11,4 +11,6 @@ osmo_nitb_LDADD = -ldl $(LIBCRYPT) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libtrau/libtrau.a \
 		$(top_builddir)/src/libabis/libabis.a \
-		$(top_builddir)/src/libcommon/libcommon.a -ldbi
+		$(top_builddir)/src/libcommon/libcommon.a \
+		$(top_builddir)/src/libctrl/libctrl.a \
+		-ldbi

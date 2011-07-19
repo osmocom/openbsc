@@ -103,7 +103,7 @@ struct ipa_bts_conn {
 	uint16_t gprs_orig_port;
 	uint32_t gprs_orig_ip;
 
-	char *id_tags[0xff];
+	char *id_tags[256];
 	uint8_t *id_resp;
 	unsigned int id_resp_len;
 };
@@ -488,7 +488,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 				return 0;
 			}
 
-			if (trx_id > MAX_TRX) {
+			if (trx_id >= MAX_TRX) {
 				LOGP(DINP, LOGL_ERROR, "We don't support more "
 				     "than %u TRX\n", MAX_TRX);
 				return -EINVAL;
@@ -1076,7 +1076,7 @@ static void signal_handler(int signal)
 	}
 }
 
-static void print_help()
+static void print_help(void)
 {
 	printf(" ipaccess-proxy is a proxy BTS.\n");
 	printf(" -h --help. This help text.\n");
@@ -1090,7 +1090,7 @@ static void print_help()
 	printf(" -V --version. Print the version of OpenBSC.\n");
 }
 
-static void print_usage()
+static void print_usage(void)
 {
 	printf("Usage: ipaccess-proxy [options]\n");
 }
