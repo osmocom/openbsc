@@ -175,6 +175,11 @@ static const struct log_info_cat default_categories[] = {
 		.description = "GSM 08.08 NAT/Multipkexer",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
+	[DCTRL] = {
+		.name = "DCTRL",
+		.description = "Control interface",
+		.enabled = 1, .loglevel = LOGL_NOTICE,
+	},
 };
 
 enum log_filter {
