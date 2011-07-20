@@ -64,7 +64,6 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 int osmo_bsc_audio_init(struct gsm_network *net)
 {
-	net->hardcoded_rtp_payload = 98;
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, net);
 	return 0;
 }
