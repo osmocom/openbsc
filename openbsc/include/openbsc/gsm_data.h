@@ -283,7 +283,6 @@ struct gsm_network {
 
 	/* MSC data in case we are a true BSC */
 	struct osmo_bsc_data *bsc_data;
-	int hardcoded_rtp_payload;
 
 	/* subscriber related features */
 	int keep_subscr;
