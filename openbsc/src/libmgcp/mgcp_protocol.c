@@ -510,11 +510,48 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_endpoint *endp;
 	int error_code = 400;
 
+	const char *local_options = NULL;
+	const char *callid = NULL;
+	const char *mode = NULL;
+	
+
 	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs), &trans_id, &endp);
 	if (found != 0)
 		return create_err_response(510, "CRCX", trans_id);
 
 	tcfg = endp->tcfg;
+
+	/* parse CallID C: and LocalParameters L: */
+	MSG_TOKENIZE_START
+	switch (msg->l3h[line_start]) {
+	case 'L':
+		local_options = (const char *) &msg->l3h[line_start + 3];
+		break;
+	case 'C':
+		callid = (const char *) &msg->l3h[line_start + 3];
+		break;
+	case 'M':
+		mode = (const char *) & msg->l3h[line_start + 3];
+		break;
+	default:
+		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
+			msg->l3h[line_start], msg->l3h[line_start],
+			ENDPOINT_NUMBER(endp));
+		break;
+	}
+	MSG_TOKENIZE_END
+
+	/* Check required data */
+	if (!callid || !mode) {
+		LOGP(DMGCP, LOGL_ERROR, "Missing callid and mode in CRCX on 0x%x\n",
+		     ENDPOINT_NUMBER(endp));
+		return create_err_response(400, "CRCX", trans_id);
+	}
+
+	/* this appears to be a retransmission, maybe check trans id */
+	if (endp->allocated &&
+	    memcmp(endp->callid, callid, strlen(endp->callid)) == 0)
+		return create_response_with_sdp(endp, "CRCX", trans_id);
 
 	if (endp->allocated) {
 		if (tcfg->force_realloc) {
@@ -530,33 +567,16 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		}
 	}
 
-	/* parse CallID C: and LocalParameters L: */
-	MSG_TOKENIZE_START
-	switch (msg->l3h[line_start]) {
-	case 'L':
-		endp->local_options = talloc_strdup(tcfg->endpoints,
-			(const char *)&msg->l3h[line_start + 3]);
-		break;
-	case 'C':
-		endp->callid = talloc_strdup(tcfg->endpoints,
-			(const char *)&msg->l3h[line_start + 3]);
-		break;
-	case 'M':
-		if (parse_conn_mode((const char *)&msg->l3h[line_start + 3],
-			    &endp->conn_mode) != 0) {
+	/* copy some parameters */
+	endp->callid = talloc_strdup(tcfg->endpoints, callid);
+
+	if (local_options)
+		endp->local_options = talloc_strdup(tcfg->endpoints, local_options);
+
+	if (parse_conn_mode(mode, &endp->conn_mode) != 0) {
 		    error_code = 517;
 		    goto error2;
-		}
-
-		endp->orig_mode = endp->conn_mode;
-		break;
-	default:
-		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
-			msg->l3h[line_start], msg->l3h[line_start],
-			ENDPOINT_NUMBER(endp));
-		break;
 	}
-	MSG_TOKENIZE_END
 
 	/* initialize */
 	endp->net_end.rtp_port = endp->net_end.rtcp_port = endp->bts_end.rtp_port = endp->bts_end.rtcp_port = 0;
