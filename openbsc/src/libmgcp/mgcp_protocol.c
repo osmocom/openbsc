@@ -181,12 +181,14 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 	snprintf(sdp_record, sizeof(sdp_record) - 1,
 			"I: %u\n\n"
 			"v=0\r\n"
+			"o=- %u 23 IN IP4 %s\r\n"
 			"c=IN IP4 %s\r\n"
+			"t=0 0\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
 			"a=rtpmap:%d %s\r\n",
-			endp->ci, addr, endp->net_end.local_port,
-			endp->bts_end.payload_type, endp->bts_end.payload_type,
-		        endp->tcfg->audio_name);
+			endp->ci, endp->ci, addr, addr,
+			endp->net_end.local_port, endp->bts_end.payload_type,
+			endp->bts_end.payload_type, endp->tcfg->audio_name);
 	return mgcp_create_response_with_data(200, " OK", msg, trans_id, sdp_record);
 }
 
