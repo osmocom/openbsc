@@ -243,7 +243,7 @@ static int rf_write_cmd(struct osmo_fd *fd, struct msgb *msg)
 	return 0;
 }
 
-static int rf_ctl_accept(struct osmo_fd *bfd, unsigned int what)
+static int rf_ctrl_accept(struct osmo_fd *bfd, unsigned int what)
 {
 	struct osmo_bsc_rf_conn *conn;
 	struct osmo_bsc_rf *rf = bfd->data;
@@ -338,7 +338,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	}
 
 	bfd->when = BSC_FD_READ;
-	bfd->cb = rf_ctl_accept;
+	bfd->cb = rf_ctrl_accept;
 	bfd->data = rf;
 
 	if (osmo_fd_register(bfd) != 0) {

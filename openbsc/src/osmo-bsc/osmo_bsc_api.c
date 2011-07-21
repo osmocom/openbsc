@@ -24,6 +24,8 @@
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
 
+#include <osmocom/sccp/sccp.h>
+
 #define return_when_not_connected(conn) \
 	if (!conn->sccp_con) {\
 		LOGP(DMSC, LOGL_ERROR, "MSC Connection not present.\n"); \
@@ -102,11 +104,13 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 				     conn->bts->cell_identity);
 	if (!resp) {
 		LOGP(DMSC, LOGL_DEBUG, "Failed to create layer3 message.\n");
+		sccp_connection_free(conn->sccp_con->sccp);
 		bsc_delete_connection(conn->sccp_con);
 		return BSC_API_CONN_POL_REJECT;
 	}
 
 	if (bsc_open_connection(conn->sccp_con, resp) != 0) {
+		sccp_connection_free(conn->sccp_con->sccp);
 		bsc_delete_connection(conn->sccp_con);
 		msgb_free(resp);
 		return BSC_API_CONN_POL_REJECT;

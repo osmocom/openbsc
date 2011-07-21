@@ -2,8 +2,8 @@
 /* The main method to drive it as a standalone process      */
 
 /*
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -58,6 +58,7 @@ void subscr_put() { abort(); }
 #warning "Make use of the rtp proxy code"
 
 static struct mgcp_config *cfg;
+static struct mgcp_trunk_config *reset_trunk;
 static int reset_endpoints = 0;
 static int daemonize = 0;
 
@@ -121,9 +122,10 @@ static void handle_options(int argc, char **argv)
 }
 
 /* simply remember this */
-static int mgcp_rsip_cb(struct mgcp_config *cfg)
+static int mgcp_rsip_cb(struct mgcp_trunk_config *tcfg)
 {
 	reset_endpoints = 1;
+	reset_trunk = tcfg;
 
 	return 0;
 }
@@ -170,12 +172,14 @@ static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 	}
 
 	if (reset_endpoints) {
-		LOGP(DMGCP, LOGL_NOTICE, "Asked to reset endpoints.\n");
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Asked to reset endpoints: %d/%d\n",
+		     reset_trunk->trunk_nr, reset_trunk->trunk_type);
 		reset_endpoints = 0;
 
 		/* is checking in_addr.s_addr == INADDR_LOOPBACK making it more secure? */
-		for (i = 1; i < cfg->trunk.number_endpoints; ++i)
-			mgcp_free_endp(&cfg->trunk.endpoints[i]);
+		for (i = 1; i < reset_trunk->number_endpoints; ++i)
+			mgcp_free_endp(&reset_trunk->endpoints[i]);
 	}
 
 	return 0;
