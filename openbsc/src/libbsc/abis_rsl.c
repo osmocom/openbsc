@@ -1601,9 +1601,8 @@ static uint8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
 	case GSM48_CMODE_SPEECH_AMR:
 		switch (lchan->type) {
 		case GSM_LCHAN_TCH_F:
-			return RTP_PT_AMR_FULL;
 		case GSM_LCHAN_TCH_H:
-			return RTP_PT_AMR_HALF;
+			return RTP_PT_AMR;
 		default:
 			break;
 		}
