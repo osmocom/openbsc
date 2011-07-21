@@ -211,9 +211,6 @@ int db_init(const char *name)
 	if (dbi_conn_connect(conn) < 0)
 		goto out_err;
 
-	// avoid db stalling
-	dbi_conn_query(conn, "PRAGMA synchronous=0");
-
 	return 0;
 
 out_err:
