@@ -578,6 +578,9 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
+#ifdef ROLE_BSC
+	struct scall_signal_data sigdata;
+#endif
 	int rc;
 
 	if (lchan->state == LCHAN_S_REL_ERR) {
@@ -610,6 +613,14 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	}
 
 	rc =  abis_rsl_sendmsg(msg);
+
+#ifdef ROLE_BSC
+	/* Dispatch a S_SCALL_RELEASED signal if this was a silent call */
+	if(lchan->belongs_to_silent_call) {
+		sigdata.data = lchan->silent_call_data;
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_RELEASED, &sigdata);
+        }
+#endif	
 
 	/* BTS will respond by RF CHAN REL ACK */
 #ifdef HSL_SR_1_0

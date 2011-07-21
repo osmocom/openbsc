@@ -194,6 +194,9 @@ struct gsm_lchan {
 	struct gsm48_req_ref *rqd_ref;
 
 	struct gsm_subscriber_connection *conn;
+
+	int belongs_to_silent_call;
+	void *silent_call_data;
 #else
 	struct lapdm_channel lapdm_ch;
 	struct {

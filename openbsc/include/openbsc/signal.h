@@ -120,7 +120,7 @@ enum signal_subscr {
 enum signal_scall {
 	S_SCALL_SUCCESS,
 	S_SCALL_EXPIRED,
-	S_SCALL_DETACHED,
+	S_SCALL_RELEASED,
 };
 
 /* SS_IPAC_NWL signals */

@@ -55,6 +55,8 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
+		conn->lchan->belongs_to_silent_call = 1;
+		conn->lchan->silent_call_data = _data;
 		/* increment lchan reference count */
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		break;

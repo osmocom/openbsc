@@ -660,6 +660,9 @@ static int scall_cbfn(unsigned int subsys, unsigned int signal,
 	case S_SCALL_EXPIRED:
 		vty_out(vty, "%% silent call expired paging%s", VTY_NEWLINE);
 		break;
+	case S_SCALL_RELEASED:
+		vty_out(vty, "%% silent call released%s", VTY_NEWLINE);
+		break;
 	}
 	return 0;
 }
