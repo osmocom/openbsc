@@ -32,8 +32,7 @@
 #define RTP_PT_GSM_FULL 3
 #define RTP_PT_GSM_HALF 96
 #define RTP_PT_GSM_EFR 97
-#define RTP_PT_AMR_FULL 98
-#define RTP_PT_AMR_HALF 99
+#define RTP_PT_AMR 98
 
 enum rtp_rx_action {
 	RTP_NONE,
