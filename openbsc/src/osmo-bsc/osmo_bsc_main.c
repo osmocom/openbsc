@@ -175,6 +175,27 @@ static void signal_handler(int signal)
 	}
 }
 
+void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con)
+{
+	struct ctrl_cmd *trap;
+	struct ctrl_handle *ctrl;
+	struct osmo_msc_data *msc_data;
+
+	msc_data = (struct osmo_msc_data *) msc_con->write_queue.bfd.data;
+	ctrl = msc_data->network->ctrl;
+
+	trap = ctrl_cmd_trap(cmd);
+	if (!trap) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create trap.\n");
+		return;
+	}
+
+	ctrl_cmd_send_to_all(ctrl, trap);
+	ctrl_cmd_send(&msc_con->write_queue, trap);
+
+	talloc_free(trap);
+}
+
 struct location {
 	struct llist_head list;
 	unsigned long age;
@@ -238,7 +259,10 @@ static int get_net_loc(struct ctrl_cmd *cmd, void *data)
 static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *age, *valid, *tmp;
+	struct osmo_msc_data *msc;
 	struct location *myloc;
+	int ret;
+	struct gsm_network *gsmnet = (struct gsm_network *)data;
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
@@ -269,7 +293,13 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	llist_add(&myloc->list, &locations);
 	cleanup_locations();
 
-	return get_net_loc(cmd, data);
+	ret = get_net_loc(cmd, data);
+
+	llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
+		osmo_bsc_send_trap(cmd, msc->msc_con);
+
+	return ret;
+
 oom:
 	cmd->reply = "OOM";
 	return CTRL_CMD_ERROR;
