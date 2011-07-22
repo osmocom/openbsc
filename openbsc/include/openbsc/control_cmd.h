@@ -87,6 +87,7 @@ int ctrl_cmd_send_to_all(struct ctrl_handle *ctrl, struct ctrl_cmd *cmd);
 struct ctrl_cmd *ctrl_cmd_parse(void *ctx, struct msgb *msg);
 struct msgb *ctrl_cmd_make(struct ctrl_cmd *cmd);
 struct ctrl_cmd *ctrl_cmd_cpy(void *ctx, struct ctrl_cmd *cmd);
+struct ctrl_cmd *ctrl_cmd_trap(struct ctrl_cmd *cmd);
 
 #define CTRL_CMD_DEFINE_RANGE(cmdname, cmdstr, dtype, element, min, max) \
 int get_##cmdname(struct ctrl_cmd *cmd, void *data) \
