@@ -1,3 +1,23 @@
+opensgsn (0.9.13-0~jrsantos.3) unstable; urgency=low
+
+  * Allow all IMSIs
+  * gprs: Fix segfault on attach caused by MS Radio Access Capability
+    larger than 14 octets
+  * gprs: Fix possible segfault on attach caused by MS Network
+    Capability larger than 4 octets
+  * gprs: Fix bug where SGSN was sending all LLC UI frames with N(U)=0
+  * gprs: Fix bugs that reset LLC sequence numbers improperly
+  * gprs: Fix bug that caused TLLI to change prematurely
+  * gprs: Delete GMM and PDP contexts if ATTACH_REQUEST received from
+    already-attached MS
+  * gprs: Set GMM state to GMM_REGISTERED_NORMAL after ATTACH_COMPLETE
+    received
+  * gprs: Suspend user data transmission during Routing Area Updating
+  * gprs: Fix LLC UI window
+  * gprs: Reset LLC state when Timer 3350 expires
+
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Fri, 22 Jul 2011 13:07:05 -0400
+
 opensgsn (0.9.13-0~jrsantos.2) unstable; urgency=low
 
   * Fix bug that caused dpkg-gencontrol to fail
