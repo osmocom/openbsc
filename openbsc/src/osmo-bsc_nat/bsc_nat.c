@@ -1224,6 +1224,13 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 			cmd->variable = var;
 		}
 
+		/* We have to handle TRAPs before matching pending */
+		if (cmd->type == CTRL_TYPE_TRAP) {
+			ctrl_cmd_send_to_all(bsc->nat->ctrl, cmd);
+			talloc_free(cmd);
+			return 0;
+		}
+
 		/* Find the pending command */
 		pending = bsc_get_pending(bsc, cmd->id);
 		if (pending) {
