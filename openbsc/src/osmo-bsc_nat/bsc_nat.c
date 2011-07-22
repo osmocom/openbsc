@@ -39,11 +39,13 @@
 #include <openbsc/bsc_msc.h>
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
-#include <openbsc/control_cmd.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
+
+#include <openbsc/control_cmd.h>
+#include <openbsc/control_if.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
@@ -1760,7 +1762,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	controlif_setup(NULL, 4250);
+	nat->ctrl = controlif_setup(NULL, 4250);
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;

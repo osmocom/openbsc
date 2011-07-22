@@ -19,7 +19,6 @@
  */
 
 #include <openbsc/bss.h>
-#include <openbsc/control_cmd.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_bsc.h>
@@ -28,6 +27,9 @@
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 #include <openbsc/ipaccess.h>
+
+#include <openbsc/control_cmd.h>
+#include <openbsc/control_if.h>
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/linuxlist.h>
@@ -425,7 +427,8 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	controlif_setup(bsc_gsmnet, 4249);
+	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
+
 	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
 	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
 	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);

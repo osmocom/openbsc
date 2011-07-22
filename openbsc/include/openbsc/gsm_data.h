@@ -266,6 +266,9 @@ struct gsm_network {
 	/* subscriber related features */
 	int keep_subscr;
 	struct gsm_sms_queue *sms_queue;
+
+	/* control interface */
+	struct ctrl_handle *ctrl;
 };
 
 #define SMS_HDR_SIZE	128

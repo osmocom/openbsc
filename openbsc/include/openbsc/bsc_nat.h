@@ -314,6 +314,9 @@ struct bsc_nat {
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
+
+	/* control interface */
+	struct ctrl_handle *ctrl;
 };
 
 struct bsc_nat_ussd_con {
