@@ -29,6 +29,14 @@ enum ctrl_type {
 	CTRL_TYPE_ERROR
 };
 
+struct ctrl_handle {
+	struct osmo_fd listen_fd;
+	struct gsm_network *gsmnet;
+
+	/* List of control connections */
+	struct llist_head ccon_list;
+};
+
 struct ctrl_connection {
 	struct llist_head list_entry;
 
@@ -149,6 +157,6 @@ struct ctrl_cmd_element cmd_##cmdname = { \
 }
 
 struct gsm_network;
-int controlif_setup(struct gsm_network *gsmnet, uint16_t port);
+struct ctrl_handle *controlif_setup(struct gsm_network *gsmnet, uint16_t port);
 
 #endif /* _CONTROL_CMD_H */

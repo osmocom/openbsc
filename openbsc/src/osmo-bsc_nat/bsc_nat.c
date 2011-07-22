@@ -1750,7 +1750,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	controlif_setup(NULL, 4250);
+	nat->ctrl = controlif_setup(NULL, 4250);
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;

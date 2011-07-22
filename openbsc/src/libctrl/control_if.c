@@ -60,14 +60,6 @@
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/vector.h>
 
-struct ctrl_handle {
-	struct osmo_fd listen_fd;
-	struct gsm_network *gsmnet;
-
-	/* List of control connections */
-	struct llist_head ccon_list;
-};
-
 vector ctrl_node_vec;
 
 int ctrl_cmd_send(struct osmo_wqueue *queue, struct ctrl_cmd *cmd)
@@ -606,33 +598,35 @@ int verify_counter(struct ctrl_cmd *cmd, const char *value, void *data)
 	return 0;
 }
 
-int controlif_setup(struct gsm_network *gsmnet, uint16_t port)
+struct ctrl_handle *controlif_setup(struct gsm_network *gsmnet, uint16_t port)
 {
 	int ret;
 	struct ctrl_handle *ctrl;
 
 	ctrl = talloc_zero(tall_bsc_ctx, struct ctrl_handle);
 	if (!ctrl)
-		return -ENOMEM;
+		return NULL;
 
 	INIT_LLIST_HEAD(&ctrl->ccon_list);
 
 	ctrl->gsmnet = gsmnet;
 
 	ctrl_node_vec = vector_init(5);
-	if (!ctrl_node_vec)
-		return -ENOMEM;
+	if (!ctrl_node_vec) {
+		talloc_free(ctrl);
+		return NULL;
+	}
 
 	/* Listen for control connections */
 	ret = make_sock(&ctrl->listen_fd, IPPROTO_TCP, 0, port,
 			0, listen_fd_cb, ctrl);
 	if (ret < 0) {
 		talloc_free(ctrl);
-		return ret;
+		return NULL;
 	}
 
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_rate_ctr);
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_counter);
 
-	return ret;
+	return ctrl;
 }
