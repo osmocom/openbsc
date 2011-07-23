@@ -190,7 +190,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, uint8_t ra)
 	return GSM_LCHAN_SDCCH;
 }
 
-enum gsm_chreq_reason_t get_reason_by_chreq(uint8_t ra, int neci)
+int get_reason_by_chreq(uint8_t ra, int neci)
 {
 	int i;
 	int length;
