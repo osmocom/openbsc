@@ -30,7 +30,9 @@
 #include <openbsc/debug.h>
 #include <osmocom/core/talloc.h>
 
-uint8_t gsm_fr_map[] = {
+/* this corresponds to teh bit-lengths of the individual codec
+ * parameters as indicated in Table 1.1 of TS 06.10 */
+static const uint8_t gsm_fr_map[] = {
 	6, 6, 5, 5, 4, 4, 3, 3,
 	7, 2, 2, 6, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3,
