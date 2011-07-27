@@ -696,7 +696,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 			struct gprs_llc_llme *llme;
 			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 			llme = llme_alloc(msgb_tlli(msg));
-			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x08x, "
+			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x%08x, "
 				"creating LLME on the fly\n", msgb_tlli(msg));
 			lle = &llme->lle[llhp.sapi];
 		} else {
