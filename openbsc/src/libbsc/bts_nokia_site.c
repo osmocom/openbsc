@@ -42,11 +42,6 @@
 
 /* TODO: put in a separate file ? */
 
-/* TODO: move statics to BTS context */
-static int do_reset = 1;
-/*static*/ int wait_reset = 0;
-struct osmo_timer_list reset_timer;	/* timer to re-start after reset */
-
 #define RESET_INTERVAL      0, 3000000	/* 3 seconds */
 
 extern int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg);
@@ -62,7 +57,7 @@ static void bootstrap_om_bts(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 
-	if (do_reset)
+	if (bts->nokia.do_reset)
 		abis_nm_reset(bts, 1);
 }
 
@@ -1686,7 +1681,7 @@ static void reset_timer_cb(void *_bts)
 	struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;
 	struct e1inp_line *line;
 
-	wait_reset = 0;
+	bts->nokia.wait_reset = 0;
 
 	/* OML link */
 	line = e1inp_line_get(e1_link->e1_nr);
@@ -1730,7 +1725,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	int str_len;
 	int len_data;
 
-	if (wait_reset) {
+	if (bts->nokia.wait_reset) {
 		LOGP(DNM, LOGL_INFO,
 		     "Ignore message while waiting for reset\n");
 		return ret;
@@ -1786,8 +1781,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		/* TODO: the assumption for the following is that no NACK was received */
 
 		/* ACK for reset message ? */
-		if (do_reset != 0) {
-			do_reset = 0;
+		if (bts->nokia.do_reset != 0) {
+			bts->nokia.do_reset = 0;
 
 			/* 
 			   TODO: For the InSite processing the received data is 
@@ -1798,11 +1793,11 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 			   (function handle_ts1_read()) and ignoring the received data.
 			   It seems to be necessary for the MetroSite too.
 			 */
-			wait_reset = 1;
+			bts->nokia.wait_reset = 1;
 
-			reset_timer.cb = &reset_timer_cb;
-			reset_timer.data = bts;
-			osmo_timer_schedule(&reset_timer, RESET_INTERVAL);
+			bts->nokia.reset_timer.cb = &reset_timer_cb;
+			bts->nokia.reset_timer.data = bts;
+			osmo_timer_schedule(&bts->nokia.reset_timer, RESET_INTERVAL);
 
 			struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;
 			struct e1inp_line *line;
