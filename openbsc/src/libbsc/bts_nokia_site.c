@@ -194,482 +194,253 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 
 /* TODO: put in a separate file ? */
 
-static char *get_msg_type_name_string(uint8_t msg_type)
+static const struct value_string nokia_msgt_name[] = {
+	{ 0x80, "NOKIA_BTS_CONF_DATA" },
+	{ 0x81, "NOKIA_BTS_ACK" },
+	{ 0x82, "NOKIA_BTS_OMU_STARTED" },
+	{ 0x83, "NOKIA_BTS_START_DOWNLOAD_REQ" },
+	{ 0x84, "NOKIA_BTS_MF_REQ" },
+	{ 0x85, "NOKIA_BTS_AF_REQ" },
+	{ 0x86, "NOKIA_BTS_RESET_REQ" },
+	{ 0x87, "NOKIA_reserved" },
+	{ 0x88, "NOKIA_BTS_CONF_REQ" },
+	{ 0x89, "NOKIA_BTS_TEST_REQ" },
+	{ 0x8A, "NOKIA_BTS_TEST_REPORT" },
+	{ 0x8B, "NOKIA_reserved" },
+	{ 0x8C, "NOKIA_reserved" },
+	{ 0x8D, "NOKIA_reserved" },
+	{ 0x8E, "NOKIA_BTS_CONF_COMPL" },
+	{ 0x8F, "NOKIA_reserved" },
+	{ 0x90, "NOKIA_BTS_STM_TEST_REQ" },
+	{ 0x91, "NOKIA_BTS_STM_TEST_REPORT" },
+	{ 0x92, "NOKIA_BTS_TRANSMISSION_COMMAND" },
+	{ 0x93, "NOKIA_BTS_TRANSMISSION_ANSWER" },
+	{ 0x94, "NOKIA_BTS_HW_DB_UPLOAD_REQ" },
+	{ 0x95, "NOKIA_BTS_START_HW_DB_DOWNLOAD_REQ" },
+	{ 0x96, "NOKIA_BTS_HW_DB_SAVE_REQ" },
+	{ 0x97, "NOKIA_BTS_FLASH_ERASURE_REQ" },
+	{ 0x98, "NOKIA_BTS_HW_DB_DOWNLOAD_REQ" },
+	{ 0x99, "NOKIA_BTS_PWR_SUPPLY_CONTROL" },
+	{ 0x9A, "NOKIA_BTS_ATTRIBUTE_REQ" },
+	{ 0x9B, "NOKIA_BTS_ATTRIBUTE_REPORT" },
+	{ 0x9C, "NOKIA_BTS_HW_REQ" },
+	{ 0x9D, "NOKIA_BTS_HW_REPORT" },
+	{ 0x9E, "NOKIA_BTS_RTE_TEST_REQ" },
+	{ 0x9F, "NOKIA_BTS_RTE_TEST_REPORT" },
+	{ 0xA0, "NOKIA_BTS_HW_DB_VERIFICATION_REQ" },
+	{ 0xA1, "NOKIA_BTS_CLOCK_REQ" },
+	{ 0xA2, "NOKIA_AC_CIRCUIT_REQ_NACK" },
+	{ 0xA3, "NOKIA_AC_INTERRUPTED" },
+	{ 0xA4, "NOKIA_BTS_NEW_TRE_INFO" },
+	{ 0xA5, "NOKIA_AC_BSC_CIRCUITS_ALLOCATED" },
+	{ 0xA6, "NOKIA_BTS_TRE_POLL_LIST" },
+	{ 0xA7, "NOKIA_AC_CIRCUIT_REQ" },
+	{ 0xA8, "NOKIA_BTS_BLOCK_CTRL_REQ" },
+	{ 0xA9, "NOKIA_BTS_GSM_TIME_REQ" },
+	{ 0xAA, "NOKIA_BTS_GSM_TIME" },
+	{ 0xAB, "NOKIA_BTS_OUTPUT_CONTROL" },
+	{ 0xAC, "NOKIA_BTS_STATE_CHANGED" },
+	{ 0xAD, "NOKIA_BTS_SW_SAVE_REQ" },
+	{ 0xAE, "NOKIA_BTS_ALARM" },
+	{ 0xAF, "NOKIA_BTS_CHA_ADM_STATE" },
+	{ 0xB0, "NOKIA_AC_POOL_SIZE_REPORT" },
+	{ 0xB1, "NOKIA_AC_POOL_SIZE_INQUIRY" },
+	{ 0xB2, "NOKIA_BTS_COMMISS_TEST_COMPLETED" },
+	{ 0xB3, "NOKIA_BTS_COMMISS_TEST_REQ" },
+	{ 0xB4, "NOKIA_BTS_TRANSP_BTS_TO_BSC" },
+	{ 0xB5, "NOKIA_BTS_TRANSP_BSC_TO_BTS" },
+	{ 0xB6, "NOKIA_BTS_LCS_COMMAND" },
+	{ 0xB7, "NOKIA_BTS_LCS_ANSWER" },
+	{ 0xB8, "NOKIA_BTS_LMU_FN_OFFSET_COMMAND" },
+	{ 0xB9, "NOKIA_BTS_LMU_FN_OFFSET_ANSWER" },
+	{ 0, NULL }
+};
+
+static const char *get_msg_type_name_string(uint8_t msg_type)
 {
-	switch (msg_type) {
-	case 0x80:
-		return "NOKIA_BTS_CONF_DATA";
-	case 0x81:
-		return "NOKIA_BTS_ACK";
-	case 0x82:
-		return "NOKIA_BTS_OMU_STARTED";
-	case 0x83:
-		return "NOKIA_BTS_START_DOWNLOAD_REQ";
-	case 0x84:
-		return "NOKIA_BTS_MF_REQ";
-	case 0x85:
-		return "NOKIA_BTS_AF_REQ";
-	case 0x86:
-		return "NOKIA_BTS_RESET_REQ";
-	case 0x87:
-		return "NOKIA_reserved";
-	case 0x88:
-		return "NOKIA_BTS_CONF_REQ";
-	case 0x89:
-		return "NOKIA_BTS_TEST_REQ";
-	case 0x8A:
-		return "NOKIA_BTS_TEST_REPORT";
-	case 0x8B:
-		return "NOKIA_reserved";
-	case 0x8C:
-		return "NOKIA_reserved";
-	case 0x8D:
-		return "NOKIA_reserved";
-	case 0x8E:
-		return "NOKIA_BTS_CONF_COMPL";
-	case 0x8F:
-		return "NOKIA_reserved";
-	case 0x90:
-		return "NOKIA_BTS_STM_TEST_REQ";
-	case 0x91:
-		return "NOKIA_BTS_STM_TEST_REPORT";
-	case 0x92:
-		return "NOKIA_BTS_TRANSMISSION_COMMAND";
-	case 0x93:
-		return "NOKIA_BTS_TRANSMISSION_ANSWER";
-	case 0x94:
-		return "NOKIA_BTS_HW_DB_UPLOAD_REQ";
-	case 0x95:
-		return "NOKIA_BTS_START_HW_DB_DOWNLOAD_REQ";
-	case 0x96:
-		return "NOKIA_BTS_HW_DB_SAVE_REQ";
-	case 0x97:
-		return "NOKIA_BTS_FLASH_ERASURE_REQ";
-	case 0x98:
-		return "NOKIA_BTS_HW_DB_DOWNLOAD_REQ";
-	case 0x99:
-		return "NOKIA_BTS_PWR_SUPPLY_CONTROL";
-	case 0x9A:
-		return "NOKIA_BTS_ATTRIBUTE_REQ";
-	case 0x9B:
-		return "NOKIA_BTS_ATTRIBUTE_REPORT";
-	case 0x9C:
-		return "NOKIA_BTS_HW_REQ";
-	case 0x9D:
-		return "NOKIA_BTS_HW_REPORT";
-	case 0x9E:
-		return "NOKIA_BTS_RTE_TEST_REQ";
-	case 0x9F:
-		return "NOKIA_BTS_RTE_TEST_REPORT";
-	case 0xA0:
-		return "NOKIA_BTS_HW_DB_VERIFICATION_REQ";
-	case 0xA1:
-		return "NOKIA_BTS_CLOCK_REQ";
-	case 0xA2:
-		return "NOKIA_AC_CIRCUIT_REQ_NACK";
-	case 0xA3:
-		return "NOKIA_AC_INTERRUPTED";
-	case 0xA4:
-		return "NOKIA_BTS_NEW_TRE_INFO";
-	case 0xA5:
-		return "NOKIA_AC_BSC_CIRCUITS_ALLOCATED";
-	case 0xA6:
-		return "NOKIA_BTS_TRE_POLL_LIST";
-	case 0xA7:
-		return "NOKIA_AC_CIRCUIT_REQ";
-	case 0xA8:
-		return "NOKIA_BTS_BLOCK_CTRL_REQ";
-	case 0xA9:
-		return "NOKIA_BTS_GSM_TIME_REQ";
-	case 0xAA:
-		return "NOKIA_BTS_GSM_TIME";
-	case 0xAB:
-		return "NOKIA_BTS_OUTPUT_CONTROL";
-	case 0xAC:
-		return "NOKIA_BTS_STATE_CHANGED";
-	case 0xAD:
-		return "NOKIA_BTS_SW_SAVE_REQ";
-	case 0xAE:
-		return "NOKIA_BTS_ALARM";
-	case 0xAF:
-		return "NOKIA_BTS_CHA_ADM_STATE";
-	case 0xB0:
-		return "NOKIA_AC_POOL_SIZE_REPORT";
-	case 0xB1:
-		return "NOKIA_AC_POOL_SIZE_INQUIRY";
-	case 0xB2:
-		return "NOKIA_BTS_COMMISS_TEST_COMPLETED";
-	case 0xB3:
-		return "NOKIA_BTS_COMMISS_TEST_REQ";
-	case 0xB4:
-		return "NOKIA_BTS_TRANSP_BTS_TO_BSC";
-	case 0xB5:
-		return "NOKIA_BTS_TRANSP_BSC_TO_BTS";
-	case 0xB6:
-		return "NOKIA_BTS_LCS_COMMAND";
-	case 0xB7:
-		return "NOKIA_BTS_LCS_ANSWER";
-	case 0xB8:
-		return "NOKIA_BTS_LMU_FN_OFFSET_COMMAND";
-	case 0xB9:
-		return "NOKIA_BTS_LMU_FN_OFFSET_ANSWER";
-	default:
-		return "unknown";
-	}
+	return get_value_string(nokia_msgt_name, msg_type);
 }
 
-static char *get_element_name_string(uint16_t element)
+static const struct value_string nokia_element_name[] = {
+	{ 0x01, "Ny1" },
+	{ 0x02, "T3105_F" },
+	{ 0x03, "Interference band limits" },
+	{ 0x04, "Interference report timer in secs" },
+	{ 0x05, "Channel configuration per TS" },
+	{ 0x06, "BSIC" },
+	{ 0x07, "RACH report timer in secs" },
+	{ 0x08, "Hardware database status" },
+	{ 0x09, "BTS RX level" },
+	{ 0x0A, "ARFN" },
+	{ 0x0B, "STM antenna attenuation" },
+	{ 0x0C, "Cell allocation bitmap" },
+	{ 0x0D, "Radio definition per TS" },
+	{ 0x0E, "Frame number" },
+	{ 0x0F, "Antenna diversity" },
+	{ 0x10, "T3105_D" },
+	{ 0x11, "File format" },
+	{ 0x12, "Last File" },
+	{ 0x13, "BTS type" },
+	{ 0x14, "Erasure mode" },
+	{ 0x15, "Hopping mode" },
+	{ 0x16, "Floating TRX" },
+	{ 0x17, "Power supplies" },
+	{ 0x18, "Reset type" },
+	{ 0x19, "Averaging period" },
+	{ 0x1A, "RBER2" },
+	{ 0x1B, "LAC" },
+	{ 0x1C, "CI" },
+	{ 0x1D, "Failure parameters" },
+	{ 0x1E, "(RF max power reduction)" },
+	{ 0x1F, "Measured RX_SENS" },
+	{ 0x20, "Extended cell radius" },
+	{ 0x21, "reserved" },
+	{ 0x22, "Success-Failure" },
+	{ 0x23, "Ack-Nack" },
+	{ 0x24, "OMU test results" },
+	{ 0x25, "File identity" },
+	{ 0x26, "Generation and version code" },
+	{ 0x27, "SW description" },
+	{ 0x28, "BCCH LEV" },
+	{ 0x29, "Test type" },
+	{ 0x2A, "Subscriber number" },
+	{ 0x2B, "reserved" },
+	{ 0x2C, "HSN" },
+	{ 0x2D, "reserved" },
+	{ 0x2E, "MS RXLEV" },
+	{ 0x2F, "MS TXLEV" },
+	{ 0x30, "RXQUAL" },
+	{ 0x31, "RX SENS" },
+	{ 0x32, "Alarm block" },
+	{ 0x33, "Neighbouring BCCH levels" },
+	{ 0x34, "STM report type" },
+	{ 0x35, "MA" },
+	{ 0x36, "MAIO" },
+	{ 0x37, "H_FLAG" },
+	{ 0x38, "TCH_ARFN" },
+	{ 0x39, "Clock output" },
+	{ 0x3A, "Transmitted power" },
+	{ 0x3B, "Clock sync" },
+	{ 0x3C, "TMS protocol discriminator" },
+	{ 0x3D, "TMS protocol data" },
+	{ 0x3E, "FER" },
+	{ 0x3F, "SWR result" },
+	{ 0x40, "Object identity" },
+	{ 0x41, "STM RX Antenna Test" },
+	{ 0x42, "reserved" },
+	{ 0x43, "reserved" },
+	{ 0x44, "Object current state" },
+	{ 0x45, "reserved" },
+	{ 0x46, "FU channel configuration" },
+	{ 0x47, "reserved" },
+	{ 0x48, "ARFN of a CU" },
+	{ 0x49, "FU radio definition" },
+	{ 0x4A, "reserved" },
+	{ 0x4B, "Severity" },
+	{ 0x4C, "Diversity selection" },
+	{ 0x4D, "RX antenna test" },
+	{ 0x4E, "RX antenna supervision period" },
+	{ 0x4F, "RX antenna state" },
+	{ 0x50, "Sector configuration" },
+	{ 0x51, "Additional info" },
+	{ 0x52, "SWR parameters" },
+	{ 0x53, "HW inquiry mode" },
+	{ 0x54, "reserved" },
+	{ 0x55, "Availability status" },
+	{ 0x56, "reserved" },
+	{ 0x57, "EAC inputs" },
+	{ 0x58, "EAC outputs" },
+	{ 0x59, "reserved" },
+	{ 0x5A, "Position" },
+	{ 0x5B, "HW unit identity" },
+	{ 0x5C, "RF test signal attenuation" },
+	{ 0x5D, "Operational state" },
+	{ 0x5E, "Logical object identity" },
+	{ 0x5F, "reserved" },
+	{ 0x60, "BS_TXPWR_OM" },
+	{ 0x61, "Loop_Duration" },
+	{ 0x62, "LNA_Path_Selection" },
+	{ 0x63, "Serial number" },
+	{ 0x64, "HW version" },
+	{ 0x65, "Obj. identity and obj. state" },
+	{ 0x66, "reserved" },
+	{ 0x67, "EAC input definition" },
+	{ 0x68, "EAC id and text" },
+	{ 0x69, "HW unit status" },
+	{ 0x6A, "SW release version" },
+	{ 0x6B, "FW version" },
+	{ 0x6C, "Bit_Error_Ratio" },
+	{ 0x6D, "RXLEV_with_Attenuation" },
+	{ 0x6E, "RXLEV_without_Attenuation" },
+	{ 0x6F, "reserved" },
+	{ 0x70, "CU_Results" },
+	{ 0x71, "reserved" },
+	{ 0x72, "LNA_Path_Results" },
+	{ 0x73, "RTE Results" },
+	{ 0x74, "Real Time" },
+	{ 0x75, "RX diversity selection" },
+	{ 0x76, "EAC input config" },
+	{ 0x77, "Feature support" },
+	{ 0x78, "File version" },
+	{ 0x79, "Outputs" },
+	{ 0x7A, "FU parameters" },
+	{ 0x7B, "Diagnostic info" },
+	{ 0x7C, "FU BSIC" },
+	{ 0x7D, "TRX Configuration" },
+	{ 0x7E, "Download status" },
+	{ 0x7F, "RX difference limit" },
+	{ 0x80, "TRX HW capability" },
+	{ 0x81, "Common HW config" },
+	{ 0x82, "Autoconfiguration pool size" },
+	{ 0x83, "TRE diagnostic info" },
+	{ 0x84, "TRE object identity" },
+	{ 0x85, "New TRE Info" },
+	{ 0x86, "Acknowledgement period" },
+	{ 0x87, "Synchronization mode" },
+	{ 0x88, "reserved" },
+	{ 0x89, "Block Control Data" },
+	{ 0x8A, "SW load mode" },
+	{ 0x8B, "Recommended recovery action" },
+	{ 0x8C, "BSC BCF id" },
+	{ 0x8D, "Q1 baud rate" },
+	{ 0x8E, "Allocation status" },
+	{ 0x8F, "Functional entity number" },
+	{ 0x90, "Transmission delay" },
+	{ 0x91, "Loop Duration ms" },
+	{ 0x92, "Logical channel" },
+	{ 0x93, "Q1 address" },
+	{ 0x94, "Alarm detail" },
+	{ 0x95, "Cabinet type" },
+	{ 0x96, "HW unit existence" },
+	{ 0x97, "RF power parameters" },
+	{ 0x98, "Message scenario" },
+	{ 0x99, "HW unit max amount" },
+	{ 0x9A, "Master TRX" },
+	{ 0x9B, "Transparent data" },
+	{ 0x9C, "BSC topology info" },
+	{ 0x9D, "Air i/f modulation" },
+	{ 0x9E, "LCS Q1 command data" },
+	{ 0x9F, "Frame number offset" },
+	{ 0xA0, "Abis TSL" },
+	{ 0xA1, "Dynamic pool info" },
+	{ 0xA2, "LCS LLP data" },
+	{ 0xA3, "LCS Q1 answer data" },
+	{ 0xA4, "DFCA FU Radio Definition" },
+	{ 0xA5, "Antenna hopping" },
+	{ 0xA6, "Field record sequence number" },
+	{ 0xA7, "Timeslot offslot" },
+	{ 0xA8, "EPCR capability" },
+	{ 0xA9, "Connectsite optional element" },
+	{ 0xAA, "TSC" },
+	{ 0xAB, "Special TX Power Setting" },
+	{ 0xAC, "Optional sync settings" },
+	{ 0xFA, "Abis If parameters" },
+	{ 0, NULL }
+};
+
+static const char *get_element_name_string(uint16_t element)
 {
-	switch (element) {
-	case 0x01:
-		return "Ny1";
-	case 0x02:
-		return "T3105_F";
-	case 0x03:
-		return "Interference band limits";
-	case 0x04:
-		return "Interference report timer in secs";
-	case 0x05:
-		return "Channel configuration per TS";
-	case 0x06:
-		return "BSIC";
-	case 0x07:
-		return "RACH report timer in secs";
-	case 0x08:
-		return "Hardware database status";
-	case 0x09:
-		return "BTS RX level";
-	case 0x0A:
-		return "ARFN";
-	case 0x0B:
-		return "STM antenna attenuation";
-	case 0x0C:
-		return "Cell allocation bitmap";
-	case 0x0D:
-		return "Radio definition per TS";
-	case 0x0E:
-		return "Frame number";
-	case 0x0F:
-		return "Antenna diversity";
-	case 0x10:
-		return "T3105_D";
-	case 0x11:
-		return "File format";
-	case 0x12:
-		return "Last File";
-	case 0x13:
-		return "BTS type";
-	case 0x14:
-		return "Erasure mode";
-	case 0x15:
-		return "Hopping mode";
-	case 0x16:
-		return "Floating TRX";
-	case 0x17:
-		return "Power supplies";
-	case 0x18:
-		return "Reset type";
-	case 0x19:
-		return "Averaging period";
-	case 0x1A:
-		return "RBER2";
-	case 0x1B:
-		return "LAC";
-	case 0x1C:
-		return "CI";
-	case 0x1D:
-		return "Failure parameters";
-	case 0x1E:
-		return "(RF max power reduction)";
-	case 0x1F:
-		return "Measured RX_SENS";
-	case 0x20:
-		return "Extended cell radius";
-	case 0x21:
-		return "reserved";
-	case 0x22:
-		return "Success-Failure";
-	case 0x23:
-		return "Ack-Nack";
-	case 0x24:
-		return "OMU test results";
-	case 0x25:
-		return "File identity";
-	case 0x26:
-		return "Generation and version code";
-	case 0x27:
-		return "SW description";
-	case 0x28:
-		return "BCCH LEV";
-	case 0x29:
-		return "Test type";
-	case 0x2A:
-		return "Subscriber number";
-	case 0x2B:
-		return "reserved";
-	case 0x2C:
-		return "HSN";
-	case 0x2D:
-		return "reserved";
-	case 0x2E:
-		return "MS RXLEV";
-	case 0x2F:
-		return "MS TXLEV";
-	case 0x30:
-		return "RXQUAL";
-	case 0x31:
-		return "RX SENS";
-	case 0x32:
-		return "Alarm block";
-	case 0x33:
-		return "Neighbouring BCCH levels";
-	case 0x34:
-		return "STM report type";
-	case 0x35:
-		return "MA";
-	case 0x36:
-		return "MAIO";
-	case 0x37:
-		return "H_FLAG";
-	case 0x38:
-		return "TCH_ARFN";
-	case 0x39:
-		return "Clock output";
-	case 0x3A:
-		return "Transmitted power";
-	case 0x3B:
-		return "Clock sync";
-	case 0x3C:
-		return "TMS protocol discriminator";
-	case 0x3D:
-		return "TMS protocol data";
-	case 0x3E:
-		return "FER";
-	case 0x3F:
-		return "SWR result";
-	case 0x40:
-		return "Object identity";
-	case 0x41:
-		return "STM RX Antenna Test";
-	case 0x42:
-		return "reserved";
-	case 0x43:
-		return "reserved";
-	case 0x44:
-		return "Object current state";
-	case 0x45:
-		return "reserved";
-	case 0x46:
-		return "FU channel configuration";
-	case 0x47:
-		return "reserved";
-	case 0x48:
-		return "ARFN of a CU";
-	case 0x49:
-		return "FU radio definition";
-	case 0x4A:
-		return "reserved";
-	case 0x4B:
-		return "Severity";
-	case 0x4C:
-		return "Diversity selection";
-	case 0x4D:
-		return "RX antenna test";
-	case 0x4E:
-		return "RX antenna supervision period";
-	case 0x4F:
-		return "RX antenna state";
-	case 0x50:
-		return "Sector configuration";
-	case 0x51:
-		return "Additional info";
-	case 0x52:
-		return "SWR parameters";
-	case 0x53:
-		return "HW inquiry mode";
-	case 0x54:
-		return "reserved";
-	case 0x55:
-		return "Availability status";
-	case 0x56:
-		return "reserved";
-	case 0x57:
-		return "EAC inputs";
-	case 0x58:
-		return "EAC outputs";
-	case 0x59:
-		return "reserved";
-	case 0x5A:
-		return "Position";
-	case 0x5B:
-		return "HW unit identity";
-	case 0x5C:
-		return "RF test signal attenuation";
-	case 0x5D:
-		return "Operational state";
-	case 0x5E:
-		return "Logical object identity";
-	case 0x5F:
-		return "reserved";
-	case 0x60:
-		return "BS_TXPWR_OM";
-	case 0x61:
-		return "Loop_Duration";
-	case 0x62:
-		return "LNA_Path_Selection";
-	case 0x63:
-		return "Serial number";
-	case 0x64:
-		return "HW version";
-	case 0x65:
-		return "Obj. identity and obj. state";
-	case 0x66:
-		return "reserved";
-	case 0x67:
-		return "EAC input definition";
-	case 0x68:
-		return "EAC id and text";
-	case 0x69:
-		return "HW unit status";
-	case 0x6A:
-		return "SW release version";
-	case 0x6B:
-		return "FW version";
-	case 0x6C:
-		return "Bit_Error_Ratio";
-	case 0x6D:
-		return "RXLEV_with_Attenuation";
-	case 0x6E:
-		return "RXLEV_without_Attenuation";
-	case 0x6F:
-		return "reserved";
-	case 0x70:
-		return "CU_Results";
-	case 0x71:
-		return "reserved";
-	case 0x72:
-		return "LNA_Path_Results";
-	case 0x73:
-		return "RTE Results";
-	case 0x74:
-		return "Real Time";
-	case 0x75:
-		return "RX diversity selection";
-	case 0x76:
-		return "EAC input config";
-	case 0x77:
-		return "Feature support";
-	case 0x78:
-		return "File version";
-	case 0x79:
-		return "Outputs";
-	case 0x7A:
-		return "FU parameters";
-	case 0x7B:
-		return "Diagnostic info";
-	case 0x7C:
-		return "FU BSIC";
-	case 0x7D:
-		return "TRX Configuration";
-	case 0x7E:
-		return "Download status";
-	case 0x7F:
-		return "RX difference limit";
-	case 0x80:
-		return "TRX HW capability";
-	case 0x81:
-		return "Common HW config";
-	case 0x82:
-		return "Autoconfiguration pool size";
-	case 0x83:
-		return "TRE diagnostic info";
-	case 0x84:
-		return "TRE object identity";
-	case 0x85:
-		return "New TRE Info";
-	case 0x86:
-		return "Acknowledgement period";
-	case 0x87:
-		return "Synchronization mode";
-	case 0x88:
-		return "reserved";
-	case 0x89:
-		return "Block Control Data";
-	case 0x8A:
-		return "SW load mode";
-	case 0x8B:
-		return "Recommended recovery action";
-	case 0x8C:
-		return "BSC BCF id";
-	case 0x8D:
-		return "Q1 baud rate";
-	case 0x8E:
-		return "Allocation status";
-	case 0x8F:
-		return "Functional entity number";
-	case 0x90:
-		return "Transmission delay";
-	case 0x91:
-		return "Loop Duration ms";
-	case 0x92:
-		return "Logical channel";
-	case 0x93:
-		return "Q1 address";
-	case 0x94:
-		return "Alarm detail";
-	case 0x95:
-		return "Cabinet type";
-	case 0x96:
-		return "HW unit existence";
-	case 0x97:
-		return "RF power parameters";
-	case 0x98:
-		return "Message scenario";
-	case 0x99:
-		return "HW unit max amount";
-	case 0x9A:
-		return "Master TRX";
-	case 0x9B:
-		return "Transparent data";
-	case 0x9C:
-		return "BSC topology info";
-	case 0x9D:
-		return "Air i/f modulation";
-	case 0x9E:
-		return "LCS Q1 command data";
-	case 0x9F:
-		return "Frame number offset";
-	case 0xA0:
-		return "Abis TSL";
-	case 0xA1:
-		return "Dynamic pool info";
-	case 0xA2:
-		return "LCS LLP data";
-	case 0xA3:
-		return "LCS Q1 answer data";
-	case 0xA4:
-		return "DFCA FU Radio Definition";
-	case 0xA5:
-		return "Antenna hopping";
-	case 0xA6:
-		return "Field record sequence number";
-	case 0xA7:
-		return "Timeslot offslot";
-	case 0xA8:
-		return "EPCR capability";
-	case 0xA9:
-		return "Connectsite optional element";
-	case 0xAA:
-		return "TSC";
-	case 0xAB:
-		return "Special TX Power Setting";
-	case 0xAC:
-		return "Optional sync settings";
-	case 0xFA:
-		return "Abis If parameters";
-	default:
-		return "unknown";
-	}
+	return get_value_string(nokia_element_name, element);
 }
 
 static const struct value_string nokia_bts_types[] = {
