@@ -1634,6 +1634,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		break;
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
+	case GSM_BTS_TYPE_NOKIA_SITE:
 		trau_mux_map_lchan(lchan, remote_lchan);
 		break;
 	default:

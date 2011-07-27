@@ -325,6 +325,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
 	GSM_BTS_TYPE_HSL_FEMTO,
+	GSM_BTS_TYPE_NOKIA_SITE,
 };
 
 struct vty;

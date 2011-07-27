@@ -249,7 +249,18 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
+
+	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
+		rsl_nokia_si_begin(trx);
+	}
+
 	set_system_infos(trx);
+
+	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
+		/* channel unspecific, power reduction in 2 dB steps */
+		rsl_bs_power_control(trx, 0xFF, trx->max_power_red / 2);
+		rsl_nokia_si_end(trx);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 		generate_ma_for_ts(&trx->ts[i]);
@@ -268,6 +279,24 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_INP_TEI_UP:
+		if (isd->link_type == E1INP_SIGN_OML) {
+			/* TODO: this is required for the Nokia BTS, hopping is configured
+			   during OML, other MA is not set.  */
+			struct gsm_bts_trx *cur_trx;
+			/* was static in system_information.c */
+			extern int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts);
+			uint8_t ca[20];
+			/* has to be called before generate_ma_for_ts to
+			  set bts->si_common.cell_alloc */
+			generate_cell_chan_list(ca, trx->bts);
+
+			llist_for_each_entry(cur_trx, &trx->bts->trx_list, list) {
+				int i;
+
+				for (i = 0; i < ARRAY_SIZE(cur_trx->ts); i++)
+					generate_ma_for_ts(&cur_trx->ts[i]);
+			}
+		}
 		if (isd->link_type == E1INP_SIGN_RSL)
 			bootstrap_rsl(trx);
 		break;
