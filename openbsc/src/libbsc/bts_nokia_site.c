@@ -672,58 +672,41 @@ static char *get_element_name_string(uint16_t element)
 	}
 }
 
-static char *get_bts_type_string(uint8_t type)
+static const struct value_string nokia_bts_types[] = {
+	{ 0x0a, 	"MetroSite GSM 900" },
+	{ 0x0b,		"MetroSite GSM 1800" },
+	{ 0x0c,		"MetroSite GSM 1900 (PCS)" },
+	{ 0x0d,		"MetroSite GSM 900 & 1800" },
+	{ 0x0e,		"InSite GSM 900" },
+	{ 0x0f,		"InSite GSM 1800" },
+	{ 0x10,		"InSite GSM 1900" },
+	{ 0x11,		"UltraSite GSM 900" },
+	{ 0x12,		"UltraSite GSM 1800" },
+	{ 0x13,		"UltraSite GSM/US-TDMA 1900" },
+	{ 0x14,		"UltraSite GSM 900 & 1800" },
+	{ 0x16,		"UltraSite GSM/US-TDMA 850" },
+	{ 0x18,		"MetroSite GSM/US-TDMA 850" },
+	{ 0x19,		"UltraSite GSM 800/1900" },
+	{ 0, 		NULL }
+};
+
+static const char *get_bts_type_string(uint8_t type)
 {
-	switch (type) {
-	case 0x0A:
-		return "MetroSite GSM 900";
-	case 0x0B:
-		return "MetroSite GSM 1800";
-	case 0x0C:
-		return "MetroSite GSM 1900 (PCS)";
-	case 0x0D:
-		return "MetroSite GSM 900 & 1800";
-	case 0x0E:
-		return "InSite GSM 900";
-	case 0x0F:
-		return "InSite GSM 1800";
-	case 0x10:
-		return "InSite GSM 1900";
-	case 0x11:
-		return "UltraSite GSM 900";
-	case 0x12:
-		return "UltraSite GSM 1800";
-	case 0x13:
-		return "UltraSite GSM/US-TDMA 1900";
-	case 0x14:
-		return "UltraSite GSM 900 & 1800";
-	case 0x16:
-		return "UltraSite GSM/US-TDMA 850";
-	case 0x18:
-		return "MetroSite GSM/US-TDMA 850";
-	case 0x19:
-		return "UltraSite GSM 800/1900";
-	default:
-		return "unknown";
-	}
+	return get_value_string(nokia_bts_types, type);
 }
 
-static char *get_severity_string(uint8_t severity)
+static const struct value_string nokia_severity[] = {
+	{ 0,	"indeterminate" },
+	{ 1,	"critical" },
+	{ 2,	"major" },
+	{ 3,	"minor" },
+	{ 4,	"warning" },
+	{ 0,	NULL }
+};
+
+static const char *get_severity_string(uint8_t severity)
 {
-	switch (severity) {
-	case 0:
-		return "indeterminate";
-	case 1:
-		return "critical";
-	case 2:
-		return "major";
-	case 3:
-		return "minor";
-	case 4:
-		return "warning";
-	default:
-		return "unknown";
-	}
+	return get_value_string(nokia_severity, severity);
 }
 
 /* TODO: put in a separate file ? */
