@@ -1160,7 +1160,7 @@ DEFUN(cfg_net_ncc,
 
 DEFUN(cfg_net_mnc,
       cfg_net_mnc_cmd,
-      "mobile network code <1-999>",
+      "mobile network code <0-999>",
       "Set the GSM mobile network code")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
