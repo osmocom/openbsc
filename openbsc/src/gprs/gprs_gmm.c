@@ -675,8 +675,9 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* MS Radio Access Capability 10.5.5.12a */
 	ms_ra_acc_cap_len = *cur++;
 	ms_ra_acc_cap = cur;
-	if (ms_ra_acc_cap_len > 51)
+	if (ms_ra_acc_cap_len > 52)
 		goto err_inval;
+	cur += ms_ra_acc_cap_len;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status */
 
@@ -735,8 +736,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	ctx->cell_id = cid;
 	/* Update MM Context with other data */
 	ctx->drx_parms = drx_par;
-	ctx->ms_radio_access_capa.len = ms_ra_acc_cap_len;
-	memcpy(ctx->ms_radio_access_capa.buf, ms_ra_acc_cap, ms_ra_acc_cap_len);
+	ctx->ms_radio_access_capa.len = OSMO_MIN(ms_ra_acc_cap_len,
+					 sizeof((ctx->ms_radio_access_capa.buf)));
+	memcpy(ctx->ms_radio_access_capa.buf, ms_ra_acc_cap,
+		ctx->ms_radio_access_capa.len);
 	ctx->ms_network_capa.len = msnc_len;
 	memcpy(ctx->ms_network_capa.buf, msnc, msnc_len);
 
@@ -910,6 +913,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* MS Radio Access Capability 10.5.5.12a */
 	ms_ra_acc_cap_len = *cur++;
 	ms_ra_acc_cap = cur;
+	if (ms_ra_acc_cap_len > 52)
+		return gsm48_tx_gmm_ra_upd_rej(msg, GMM_CAUSE_PROTO_ERR_UNSPEC);
+	cur += ms_ra_acc_cap_len;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status,
 	 * DRX parameter, MS network capability */

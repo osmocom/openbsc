@@ -78,7 +78,7 @@ struct sgsn_mm_ctx {
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
 	struct {
-		uint8_t	buf[14];	/* 10.5.5.12a */
+		uint8_t	buf[52];	/* 10.5.5.12a */
 		uint8_t	len;
 	} ms_radio_access_capa;
 	struct {
