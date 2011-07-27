@@ -1724,9 +1724,6 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	uint8_t mt = noh->msg_type;
 	int ret = 0;
 	uint16_t ref = ntohs(noh->reference);
-	/* TODO: move statics to BTS context */
-	static int conf = 0;
-	static uint8_t bts_type = 0xFF;
 	uint8_t info[256];
 	uint8_t ack = 0xFF;
 	uint8_t severity = 0xFF;
@@ -1752,11 +1749,12 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 	switch (mt) {
 	case NOKIA_MSG_OMU_STARTED:
-		if (find_element
-		    (noh->data, len_data, NOKIA_EI_BTS_TYPE, &bts_type,
-		     sizeof(uint8_t)) == sizeof(uint8_t))
-			LOGP(DNM, LOGL_INFO, "BTS type = %d (%s)\n", bts_type,
-			     get_bts_type_string(bts_type));
+		if (find_element(noh->data, len_data,
+				 NOKIA_EI_BTS_TYPE, &bts->nokia.bts_type,
+				 sizeof(uint8_t)) == sizeof(uint8_t))
+			LOGP(DNM, LOGL_INFO, "BTS type = %d (%s)\n",
+			     bts->nokia.bts_type,
+			     get_bts_type_string(bts->nokia.bts_type));
 		else
 			LOGP(DNM, LOGL_ERROR, "BTS type not found\n");
 		/* send START_DOWNLOAD_REQ */
@@ -1769,8 +1767,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		abis_nm_ack(bts, ref);
 		abis_nm_queue_send_next(bts);
 		/* send CONF_DATA */
-		abis_nm_send_config(bts, bts_type);
-		conf = 1;
+		abis_nm_send_config(bts, bts->nokia.bts_type);
+		bts->nokia.configured = 1;
 		break;
 	case NOKIA_MSG_ACK:
 		if (find_element
@@ -1822,13 +1820,13 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		}
 
 		/* ACK for CONF DATA message ? */
-		if (conf != 0) {
+		if (bts->nokia.configured != 0) {
 			/* start TRX  (RSL link) */
 
 			struct gsm_e1_subslot *e1_link = &mb->trx->rsl_e1_link;
 			struct e1inp_line *line;
 
-			conf = 0;
+			bts->nokia.configured = 0;
 
 			/* RSL Link */
 			line = e1inp_line_get(e1_link->e1_nr);
