@@ -81,12 +81,12 @@ static int shutdown_om(struct gsm_bts *bts)
 #define SAPI_OML    62
 #define SAPI_RSL    0
 
-/* 
+/*
 
   Tell LAPD to start start the SAP (send SABM requests) for all signalling
-  timeslots in this line 
-  
-  Attention: this has to be adapted for MISDN  
+  timeslots in this line
+
+  Attention: this has to be adapted for mISDN
 */
 
 static void start_sabm_in_line(struct e1inp_line *line, int start, int sapi)
@@ -929,7 +929,7 @@ static uint8_t fu_config_template[] = {
 /* TODO: put in a separate file ? */
 
 /*
-  build the configuration for each TRX  
+  build the configuration for each TRX
 */
 
 static int make_fu_config(struct gsm_bts_trx *trx, uint8_t id,
@@ -977,11 +977,11 @@ static int make_fu_config(struct gsm_bts_trx *trx, uint8_t id,
 
 	/* set BSIC */
 
-	/* 
+	/*
 	   Attention: all TRX except the first one seem to get the TSC
 	   from the CHANNEL ACTIVATION command (in CHANNEL IDENTIFICATION,
-	   GSM 04.08 CHANNEL DESCRIPTION). 
-	   There was a bug in rsl_chan_activate_lchan() setting this parameter.       
+	   GSM 04.08 CHANNEL DESCRIPTION).
+	   There was a bug in rsl_chan_activate_lchan() setting this parameter.
 	 */
 
 	uint8_t bsic = trx->bts->bsic;
@@ -1012,8 +1012,8 @@ static int make_fu_config(struct gsm_bts_trx *trx, uint8_t id,
 		   7 = E-RACH (Talk family)
 		   9 = Dual rate (capability for TCH/F and TCH/H)
 		   10 = reserved for BTS internal use
-		   11 = PBCCH + PCCCH + PDTCH + PACCH + PTCCH (This channel configuration type can be used in GPRS release 2).
-		   0xFF = spare TS 
+		   11 = PBCCH + PCCCH + PDTCH + PACCH + PTCCH (can be used in GPRS release 2).
+		   0xFF = spare TS
 		 */
 
 		if (ts->pchan == GSM_PCHAN_NONE)
@@ -1218,9 +1218,7 @@ void set_real_time(uint8_t * real_time)
 /* TODO: put in a separate file ? */
 
 /*
-
   build the configuration data
-  
 */
 
 static int make_bts_config(uint8_t bts_type, int n_trx, uint8_t * fu_config,
@@ -1706,21 +1704,14 @@ static void reset_timer_cb(void *_bts)
 
 /*
   This is how the configuration is done:
-  
   - start OML link
-  
   - reset BTS
-  
   - receive ACK, wait some time and restart OML link
-  
   - receive OMU STARTED message, send START DOWNLOAD REQ
-  
   - receive CNF REQ message, send CONF DATA
-  
   - receive ACK, start RSL link(s)
-  
   ACK some other messages received from the BTS.
-  
+
   Probably its also possible to configure the BTS without a reset, this 
   has not been tested yet.
 */
