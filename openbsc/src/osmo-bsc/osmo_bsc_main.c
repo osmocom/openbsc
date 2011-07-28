@@ -303,8 +303,8 @@ static int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	height = atof(heightstr);
 	talloc_free(tmp);
 
-	if ((age == 0) || (lat < -90) || (lat > 90) || (lon < -180) ||
-			(lon > 180) || (valid < 0) || (valid > 2))
+	if (((age == 0) && (valid !=0)) || (lat < -90) || (lat > 90) ||
+			(lon < -180) || (lon > 180) || (valid < 0) || (valid > 2))
 		return 1;
 
 	return 0;
