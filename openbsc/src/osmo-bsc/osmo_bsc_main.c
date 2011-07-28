@@ -205,6 +205,12 @@ struct location {
 	double height;
 };
 
+static int location_equal(struct location *a, struct location *b)
+{
+	return ((a->age == b->age) && (a->valid == b->valid) && (a->lat == b->lat) &&
+		(a->lon == b->lon) && (a->height == b->height));
+}
+
 static LLIST_HEAD(locations);
 
 static void cleanup_locations()
@@ -260,7 +266,7 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *age, *valid, *tmp;
 	struct osmo_msc_data *msc;
-	struct location *myloc;
+	struct location *myloc, *lastloc;
 	int ret;
 	struct gsm_network *gsmnet = (struct gsm_network *)data;
 
@@ -289,14 +295,18 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	myloc->height = atof(height);
 	talloc_free(tmp);
 
+	lastloc = llist_entry(locations.next, struct location, list);
+
 	/* Add location to the end of the list */
 	llist_add(&myloc->list, &locations);
-	cleanup_locations();
 
 	ret = get_net_loc(cmd, data);
 
-	llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
-		osmo_bsc_send_trap(cmd, msc->msc_con);
+	if (!location_equal(myloc, lastloc))
+		llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
+			osmo_bsc_send_trap(cmd, msc->msc_con);
+
+	cleanup_locations();
 
 	return ret;
 
