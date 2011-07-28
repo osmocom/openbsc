@@ -187,9 +187,20 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 	talloc_free(trap);
 }
 
+#define LOC_FIX_INVALID 0
+#define LOC_FIX_2D	1
+#define LOC_FIX_3D	2
+
+static const struct value_string valid_names[] = {
+	{ LOC_FIX_INVALID,	"invalid" },
+	{ LOC_FIX_2D,		"fix2d" },
+	{ LOC_FIX_3D,		"fix3d" },
+	{ 0, NULL }
+};
+
 struct location {
 	struct llist_head list;
-	unsigned long age;
+	time_t tstamp;
 	int valid;
 	double lat;
 	double lon;
@@ -198,7 +209,7 @@ struct location {
 
 static int location_equal(struct location *a, struct location *b)
 {
-	return ((a->age == b->age) && (a->valid == b->valid) && (a->lat == b->lat) &&
+	return ((a->tstamp == b->tstamp) && (a->valid == b->valid) && (a->lat == b->lat) &&
 		(a->lon == b->lon) && (a->height == b->height));
 }
 
@@ -216,7 +227,8 @@ void cleanup_locations()
 			LOGP(DCTRL, LOGL_DEBUG, "Deleting old position.\n");
 			llist_del(&myloc->list);
 			talloc_free(myloc);
-		} else if (!myloc->valid) { /* Only capture the newest of subsequent invalid positions */
+		} else if (myloc->valid == LOC_FIX_INVALID) {
+			/* Only capture the newest of subsequent invalid positions */
 			invalpos++;
 			if (invalpos > 1) {
 				LOGP(DCTRL, LOGL_DEBUG, "Deleting subsequent invalid position.\n");
@@ -238,13 +250,14 @@ int get_net_loc(struct ctrl_cmd *cmd, void *data)
 	struct location *myloc;
 
 	if (llist_empty(&locations)) {
-		cmd->reply = talloc_asprintf(cmd, "0,0,0,0,0");
+		cmd->reply = talloc_asprintf(cmd, "0,invalid,0,0,0");
 		return CTRL_CMD_REPLY;
 	} else {
 		myloc = llist_entry(locations.next, struct location, list);
 	}
 
-	cmd->reply = talloc_asprintf(cmd, "%lu,%i,%f,%f,%f", myloc->age, myloc->valid, myloc->lat, myloc->lon, myloc->height);
+	cmd->reply = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", myloc->tstamp,
+			get_value_string(valid_names, myloc->valid), myloc->lat, myloc->lon, myloc->height);
 	if (!cmd->reply) {
 		cmd->reply = "OOM";
 		return CTRL_CMD_ERROR;
@@ -255,7 +268,7 @@ int get_net_loc(struct ctrl_cmd *cmd, void *data)
 
 int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
-	char *saveptr, *lat, *lon, *height, *age, *valid, *tmp;
+	char *saveptr, *lat, *lon, *height, *tstamp, *valid, *tmp;
 	struct location *myloc, *lastloc;
 	int ret;
 	struct gsm_network *gsmnet = (struct gsm_network *)data;
@@ -272,14 +285,14 @@ int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	INIT_LLIST_HEAD(&myloc->list);
 
 
-	age = strtok_r(tmp, ",", &saveptr);
+	tstamp = strtok_r(tmp, ",", &saveptr);
 	valid = strtok_r(NULL, ",", &saveptr);
 	lat = strtok_r(NULL, ",", &saveptr);
 	lon = strtok_r(NULL, ",", &saveptr);
 	height = strtok_r(NULL, "\0", &saveptr);
 
-	myloc->age = atol(age);
-	myloc->valid = atoi(valid);
+	myloc->tstamp = atol(tstamp);
+	myloc->valid = get_string_value(valid_names, valid);
 	myloc->lat = atof(lat);
 	myloc->lon = atof(lon);
 	myloc->height = atof(height);
@@ -306,8 +319,8 @@ oom:
 
 int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 {
-	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *validstr, *tmp;
-	unsigned long age;
+	char *saveptr, *latstr, *lonstr, *heightstr, *tstampstr, *validstr, *tmp;
+	time_t tstamp;
 	int valid;
 	double lat, lon, height;
 
@@ -315,28 +328,32 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	if (!tmp)
 		return 1;
 
-	agestr = strtok_r(tmp, ",", &saveptr);
+	tstampstr = strtok_r(tmp, ",", &saveptr);
 	validstr = strtok_r(NULL, ",", &saveptr);
 	latstr = strtok_r(NULL, ",", &saveptr);
 	lonstr = strtok_r(NULL, ",", &saveptr);
 	heightstr = strtok_r(NULL, "\0", &saveptr);
 
-	if ((agestr == NULL) || (validstr == NULL) || (latstr == NULL) ||
+	if ((tstampstr == NULL) || (validstr == NULL) || (latstr == NULL) ||
 			(lonstr == NULL) || (heightstr == NULL))
-		return 1;
+		goto err;
 
-	age = atol(agestr);
-	valid = atoi(validstr);
+	tstamp = atol(tstampstr);
+	valid = get_string_value(valid_names, validstr);
 	lat = atof(latstr);
 	lon = atof(lonstr);
 	height = atof(heightstr);
 	talloc_free(tmp);
 
-	if (((age == 0) && (valid !=0)) || (lat < -90) || (lat > 90) ||
-			(lon < -180) || (lon > 180) || (valid < 0) || (valid > 2))
-		return 1;
+	if (((tstamp == 0) && (valid != LOC_FIX_INVALID)) || (lat < -90) || (lat > 90) ||
+			(lon < -180) || (lon > 180) || (valid < 0)) {
+		goto err;
+	}
 
 	return 0;
+err:
+		cmd->reply = talloc_strdup(cmd, "The format is <unixtime>,(invalid|fix2d|fix3d),<lat>,<lon>,<height>");
+		return 1;
 }
 
 CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
