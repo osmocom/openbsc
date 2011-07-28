@@ -268,7 +268,7 @@ int main(int argc, char **argv)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
-	controlif_setup(bsc_gsmnet, 4249);
+	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
 	/* seed the PRNG */
 	srand(time(NULL));
 
