@@ -93,6 +93,10 @@ while (len(data)>0):
 if options.monitor:
 	while (True):
 		data = sock.recv(1024)
+		if len(data) == 0:
+			print "Connection is gone."
+			break
+
 		while (len(data)>0):
 			(answer, data) = remove_ipa_ctrl_header(data)
 			print "Got message:", answer
