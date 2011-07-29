@@ -36,7 +36,6 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
-#include <osmocom/core/process.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>

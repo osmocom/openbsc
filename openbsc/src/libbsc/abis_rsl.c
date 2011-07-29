@@ -427,7 +427,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 	 */
 	msgb_v_put(msg, RSL_IE_CHAN_IDENT);
 	len = msgb_put(msg, 1);
-	msgb_tlv_put(msg, GSM48_IE_CHANDESC_2, sizeof(cd), (const uint8_t *) &cd);
+	msgb_tv_fixed_put(msg, GSM48_IE_CHANDESC_2, sizeof(cd), (const uint8_t *) &cd);
 
 	if (lchan->ts->hopping.enabled)
 		msgb_tlv_put(msg, GSM48_IE_MA_AFTER, lchan->ts->hopping.ma_len,

@@ -554,7 +554,8 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 {
 	uint8_t *smsp = msgb_sms(msg);
 	struct gsm_sms *gsms;
-	uint8_t sms_mti, sms_mms, sms_vpf, sms_alphabet, sms_rp;
+	unsigned int sms_alphabet;
+	uint8_t sms_mti, sms_mms, sms_vpf, sms_rp;
 	uint8_t *sms_vp;
 	uint8_t da_len_bytes;
 	uint8_t address_lv[12]; /* according to 03.40 / 9.1.2.5 */

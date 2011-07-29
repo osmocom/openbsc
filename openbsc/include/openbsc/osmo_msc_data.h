@@ -65,7 +65,7 @@ struct osmo_msc_data {
 	char *mid_call_txt;
 	int mid_call_timeout;
 	char *rf_ctrl_name;
-	struct osmo_bsc_rf *rf_ctl;
+	struct osmo_bsc_rf *rf_ctrl;
 
 	/* ussd welcome text */
 	char *ussd_welcome_txt;

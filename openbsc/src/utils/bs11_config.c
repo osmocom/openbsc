@@ -35,6 +35,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/tlv.h>
 #include <openbsc/debug.h>
 #include <osmocom/core/select.h>
@@ -209,35 +210,31 @@ static int swload_cbfn(unsigned int hook, unsigned int event, struct msgb *msg,
 	return 0;
 }
 
-static const char *bs11_link_state[] = {
-	[0x00]	= "Down",
-	[0x01]	= "Up",
-	[0x02]	= "Restoring",
+static const struct value_string bs11_linkst_names[] = {
+	{ 0,	"Down" },
+	{ 1,	"Up" },
+	{ 2,	"Restoring" },
+	{ 0,	NULL }
 };
 
 static const char *linkstate_name(uint8_t linkstate)
 {
-	if (linkstate > ARRAY_SIZE(bs11_link_state))
-		return "Unknown";
-
-	return bs11_link_state[linkstate];
+	return get_value_string(bs11_linkst_names, linkstate);
 }
 
-static const char *mbccu_load[] = {
-	[0]	= "No Load",
-	[1]	= "Load BTSCAC",
-	[2]	= "Load BTSDRX",
-	[3]	= "Load BTSBBX",
-	[4]	= "Load BTSARC",
-	[5]	= "Load",
+static const struct value_string mbccu_load_names[] = {
+	{ 0,	"No Load" },
+	{ 1,	"Load BTSCAC" },
+	{ 2,	"Load BTSDRX" },
+	{ 3,	"Load BTSBBX" },
+	{ 4,	"Load BTSARC" },
+	{ 5,	"Load" },
+	{ 0,	NULL }
 };
 
 static const char *mbccu_load_name(uint8_t linkstate)
 {
-	if (linkstate > ARRAY_SIZE(mbccu_load))
-		return "Unknown";
-
-	return mbccu_load[linkstate];
+	return get_value_string(mbccu_load_names, linkstate);
 }
 
 static const char *bts_phase_name(uint8_t phase)
@@ -899,7 +896,8 @@ int main(int argc, char **argv)
 	status_timer.cb = status_timer_cb;
 
 	while (1) {
-		osmo_select_main(0);
+		if (osmo_select_main(0) < 0)
+			break;
 	}
 
 	abis_nm_bs11_factory_logon(g_bts, 0);

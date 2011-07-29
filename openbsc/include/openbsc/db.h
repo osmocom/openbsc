@@ -31,8 +31,8 @@ struct gsm_subscriber;
 
 /* one time initialisation */
 int db_init(const char *name);
-int db_prepare();
-int db_fini();
+int db_prepare(void);
+int db_fini(void);
 
 /* subscriber management */
 struct gsm_subscriber *db_create_subscriber(struct gsm_network *net,

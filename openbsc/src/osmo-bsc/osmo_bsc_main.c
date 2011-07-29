@@ -29,8 +29,8 @@
 #include <openbsc/ipaccess.h>
 
 #include <osmocom/core/application.h>
+#include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
-#include <osmocom/core/process.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <osmocom/sccp/sccp.h>
@@ -49,7 +49,7 @@
 
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
-static const char *rf_ctl = NULL;
+static const char *rf_ctrl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
@@ -120,7 +120,7 @@ static void handle_options(int argc, char **argv)
 			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'r':
-			rf_ctl = optarg;
+			rf_ctrl = optarg;
 			break;
 		default:
 			/* ignore */
@@ -172,18 +172,57 @@ static void signal_handler(int signal)
 }
 
 struct location {
+	struct llist_head list;
+	unsigned long age;
+	int valid;
 	double lat;
 	double lon;
 	double height;
-	unsigned long age;
 };
 
-static struct location myloc;
+static LLIST_HEAD(locations);
+
+void cleanup_locations()
+{
+	struct location *myloc, *tmp;
+	int invalpos = 0, i = 0;
+
+	LOGP(DCTRL, LOGL_DEBUG, "Checking position list.\n");
+	llist_for_each_entry_safe(myloc, tmp, &locations, list) {
+		i++;
+		if (i > 3) {
+			LOGP(DCTRL, LOGL_DEBUG, "Deleting old position.\n");
+			llist_del(&myloc->list);
+			talloc_free(myloc);
+		} else if (!myloc->valid) { /* Only capture the newest of subsequent invalid positions */
+			invalpos++;
+			if (invalpos > 1) {
+				LOGP(DCTRL, LOGL_DEBUG, "Deleting subsequent invalid position.\n");
+				invalpos--;
+				i--;
+				llist_del(&myloc->list);
+				talloc_free(myloc);
+			}
+		} else {
+			invalpos = 0;
+		}
+	}
+	LOGP(DCTRL, LOGL_DEBUG, "Found %i positions.\n", i);
+}
 
 CTRL_CMD_DEFINE(net_loc, "location");
 int get_net_loc(struct ctrl_cmd *cmd, void *data)
 {
-	cmd->reply = talloc_asprintf(cmd, "%lu,%f,%f,%f", myloc.age, myloc.lat, myloc.lon, myloc.height);
+	struct location *myloc;
+
+	if (llist_empty(&locations)) {
+		cmd->reply = talloc_asprintf(cmd, "0,0,0,0,0");
+		return CTRL_CMD_REPLY;
+	} else {
+		myloc = llist_entry(locations.next, struct location, list);
+	}
+
+	cmd->reply = talloc_asprintf(cmd, "%lu,%i,%f,%f,%f", myloc->age, myloc->valid, myloc->lat, myloc->lon, myloc->height);
 	if (!cmd->reply) {
 		cmd->reply = "OOM";
 		return CTRL_CMD_ERROR;
@@ -194,23 +233,37 @@ int get_net_loc(struct ctrl_cmd *cmd, void *data)
 
 int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
-	char *saveptr, *lat, *lon, *height, *age, *tmp;
+	char *saveptr, *lat, *lon, *height, *age, *valid, *tmp;
+	struct location *myloc;
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
 		goto oom;
 
+	myloc = talloc_zero(tall_bsc_ctx, struct location);
+	if (!myloc) {
+		talloc_free(tmp);
+		goto oom;
+	}
+	INIT_LLIST_HEAD(&myloc->list);
+
 
 	age = strtok_r(tmp, ",", &saveptr);
+	valid = strtok_r(NULL, ",", &saveptr);
 	lat = strtok_r(NULL, ",", &saveptr);
 	lon = strtok_r(NULL, ",", &saveptr);
 	height = strtok_r(NULL, "\0", &saveptr);
 
-	myloc.age = atol(age);
-	myloc.lat = atof(lat);
-	myloc.lon = atof(lon);
-	myloc.height = atof(height);
+	myloc->age = atol(age);
+	myloc->valid = atoi(valid);
+	myloc->lat = atof(lat);
+	myloc->lon = atof(lon);
+	myloc->height = atof(height);
 	talloc_free(tmp);
+
+	/* Add location to the end of the list */
+	llist_add(&myloc->list, &locations);
+	cleanup_locations();
 
 	return get_net_loc(cmd, data);
 oom:
@@ -220,9 +273,9 @@ oom:
 
 int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 {
-	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *tmp;
-	int  ret = 0;
+	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *validstr, *tmp;
 	unsigned long age;
+	int valid;
 	double lat, lon, height;
 
 	tmp = talloc_strdup(cmd, value);
@@ -230,23 +283,27 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 		return 1;
 
 	agestr = strtok_r(tmp, ",", &saveptr);
+	validstr = strtok_r(NULL, ",", &saveptr);
 	latstr = strtok_r(NULL, ",", &saveptr);
 	lonstr = strtok_r(NULL, ",", &saveptr);
 	heightstr = strtok_r(NULL, "\0", &saveptr);
 
-	if ((agestr == 0) || (latstr == 0) || (lonstr == 0) || (heightstr == 0))
-		ret = 1;
+	if ((agestr == NULL) || (validstr == NULL) || (latstr == NULL) ||
+			(lonstr == NULL) || (heightstr == NULL))
+		return 1;
 
 	age = atol(agestr);
+	valid = atoi(validstr);
 	lat = atof(latstr);
 	lon = atof(lonstr);
 	height = atof(heightstr);
 	talloc_free(tmp);
 
-	if ((age == 0) || (lat < -90) || (lat > 90) || (lon < -180) || (lon > 180))
+	if ((age == 0) || (lat < -90) || (lat > 90) || (lon < -180) ||
+			(lon > 180) || (valid < 0) || (valid > 2))
 		return 1;
 
-	return ret;
+	return 0;
 }
 
 CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
@@ -371,13 +428,13 @@ int main(int argc, char **argv)
 	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 
 	data = bsc_gsmnet->msc_data;
-	if (rf_ctl)
-		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctl);
+	if (rf_ctrl)
+		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 
 	if (data->rf_ctrl_name) {
-		data->rf_ctl = osmo_bsc_rf_create(data->rf_ctrl_name,
+		data->rf_ctrl = osmo_bsc_rf_create(data->rf_ctrl_name,
 						  bsc_gsmnet);
-		if (!data->rf_ctl) {
+		if (!data->rf_ctrl) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);
 		}

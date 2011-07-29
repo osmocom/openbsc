@@ -776,7 +776,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 	char seg_buf[256];
 	char *line_buf = seg_buf+2;
 	unsigned char *tlv;
-	uint8_t len;
+	int len;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 

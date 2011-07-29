@@ -189,9 +189,9 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 	dump_pchan_load_vty(vty, "    ", &pl);
 
 	/* show rf */
-	if (net->msc_data && net->msc_data->rf_ctl)
+	if (net->msc_data && net->msc_data->rf_ctrl)
 		vty_out(vty, "  Last RF Command: %s%s",
-			net->msc_data->rf_ctl->last_state_command,
+			net->msc_data->rf_ctrl->last_state_command,
 			VTY_NEWLINE);
 }
 
@@ -1055,11 +1055,14 @@ DEFUN(show_e1ts,
 	}
 	if (argc >= 1) {
 		int num = atoi(argv[0]);
-		llist_for_each_entry(line, &e1inp_line_list, list) {
-			if (line->num == num)
+		struct e1inp_line *l;
+		llist_for_each_entry(l, &e1inp_line_list, list) {
+			if (l->num == num) {
+				line = l;
 				break;
+			}
 		}
-		if (!line || line->num != num) {
+		if (!line) {
 			vty_out(vty, "E1 line %s is invalid%s",
 				argv[0], VTY_NEWLINE);
 			return CMD_WARNING;
@@ -1067,7 +1070,7 @@ DEFUN(show_e1ts,
 	}	
 	if (argc >= 2) {
 		ts_nr = atoi(argv[1]);
-		if (ts_nr > NUM_E1_TS) {
+		if (ts_nr >= NUM_E1_TS) {
 			vty_out(vty, "E1 timeslot %s is invalid%s",
 				argv[1], VTY_NEWLINE);
 			return CMD_WARNING;
@@ -1157,7 +1160,7 @@ DEFUN(cfg_net_ncc,
 
 DEFUN(cfg_net_mnc,
       cfg_net_mnc_cmd,
-      "mobile network code <1-999>",
+      "mobile network code <0-999>",
       "Set the GSM mobile network code")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);

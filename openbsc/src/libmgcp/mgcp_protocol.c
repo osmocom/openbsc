@@ -831,8 +831,20 @@ out_silent:
 
 static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg)
 {
+	struct mgcp_msg_ptr data_ptrs[6];
+	const char *trans_id;
+	struct mgcp_endpoint *endp;
+	int found;
+
+	found = mgcp_analyze_header(cfg, msg, data_ptrs, ARRAY_SIZE(data_ptrs),
+				    &trans_id, &endp);
+	if (found != 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to find the endpoint.\n");
+		return NULL;
+	}
+
 	if (cfg->reset_cb)
-		cfg->reset_cb(cfg);
+		cfg->reset_cb(endp->tcfg);
 	return NULL;
 }
 

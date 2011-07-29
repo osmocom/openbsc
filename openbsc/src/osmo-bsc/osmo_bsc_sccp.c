@@ -264,14 +264,14 @@ static void bsc_close_connections(struct bsc_msc_connection *msc_con)
 static int handle_msc_signal(unsigned int subsys, unsigned int signal,
 			     void *handler_data, void *signal_data)
 {
-	struct osmo_msc_data *data;
+	struct msc_signal_data *msc;
 
 	if (subsys != SS_MSC)
 		return 0;
 
-	data = (struct osmo_msc_data *) signal_data;
+	msc = signal_data;
 	if (signal == S_MSC_LOST)
-		bsc_close_connections(data->msc_con);
+		bsc_close_connections(msc->data->msc_con);
 
 	return 0;
 }

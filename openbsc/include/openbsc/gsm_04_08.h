@@ -1,10 +1,11 @@
 #ifndef _GSM_04_08_H
 #define _GSM_04_08_H
 
-#include <openbsc/meas_rep.h>
-
-#include <osmocom/gsm/protocol/gsm_04_08.h>
 #include <osmocom/gsm/gsm48.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
+
+#include <openbsc/meas_rep.h>
 
 struct msgb;
 struct gsm_bts;
@@ -31,7 +32,8 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg);
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id);
 int gsm0408_new_conn(struct gsm_subscriber_connection *conn);
 enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *bts, uint8_t ra);
-enum gsm_chreq_reason_t get_reason_by_chreq(uint8_t ra, int neci);
+/* don't use "enum gsm_chreq_reason_t" to avoid circular dependency */
+int get_reason_by_chreq(uint8_t ra, int neci);
 void gsm_net_update_ctype(struct gsm_network *net);
 
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn);

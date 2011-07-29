@@ -140,8 +140,14 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 	case TRAU_FT_EFR:
 		/* clear time alignment */
 		memset(fr->c_bits+5, 0, 6);
-		/* FIXME: set UFE appropriately */
-		/* FIXME: SP / BFI in case of DTx */
+		/* set UFE appropriately */
+		fr->c_bits[11] = 1; /* C12 (UFE), good frame (TODO) */
+		/* C13 .. C15 are spare and coded as '1' */
+		memset(fr->c_bits+12, 0x01, 3);
+		/* SP / BFI in case of DTx */
+		fr->c_bits[15] = 1; /* C16 (SP), no DTX (TODO) */
+		/* C17 .. C21 are spare and coded as '1' */
+		memset(fr->c_bits+16, 0x01, 5);
 		break;
 	case TRAU_FT_IDLE_UP:
 		memcpy(fr->c_bits, ft_idle_down_bits, 5);
@@ -246,7 +252,7 @@ static struct decoded_trau_frame fr_idle_frame = {
 	.t_bits = { 1, 1, 1, 1 },
 };
 static uint8_t encoded_idle_frame[TRAU_FRAME_BITS];
-static int dbits_initted;
+static int dbits_initted = 0;
 
 uint8_t *trau_idle_frame(void)
 {
@@ -254,7 +260,27 @@ uint8_t *trau_idle_frame(void)
 	if (!dbits_initted) {
 		/* set all D-bits to 1 */
 		memset(&fr_idle_frame.d_bits, 0x01, 260);
+
+		memset(&fr_idle_frame.c_bits, 0x01, 25); /* spare are set to 1 */
+		/* set Downlink Idle Speech Frame pattern */
+		fr_idle_frame.c_bits[0] = 0; /* C1 */
+		fr_idle_frame.c_bits[1] = 1; /* C2 */
+		fr_idle_frame.c_bits[2] = 1; /* C3 */
+		fr_idle_frame.c_bits[3] = 1; /* C4 */
+		fr_idle_frame.c_bits[4] = 0; /* C5 */
+		/* set no Time Alignment pattern */
+		fr_idle_frame.c_bits[5] = 0; /* C6 */
+		fr_idle_frame.c_bits[6] = 0; /* C7 */
+		fr_idle_frame.c_bits[7] = 0; /* C8 */
+		fr_idle_frame.c_bits[8] = 0; /* C9 */
+		fr_idle_frame.c_bits[9] = 0; /* C10 */
+		fr_idle_frame.c_bits[10] = 0; /* C11 */
+		/* already set to 1, but maybe we need to modify it in the future */
+		fr_idle_frame.c_bits[11] = 1; /* C12 (UFE), good frame */
+		fr_idle_frame.c_bits[15] = 1; /* C16 (SP), no DTX */
+
 		encode_fr(encoded_idle_frame, &fr_idle_frame);
+		dbits_initted = 1; /* set it to 1 to not call it again */
 	}
 	return encoded_idle_frame;
 }

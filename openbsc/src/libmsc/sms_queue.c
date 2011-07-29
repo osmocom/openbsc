@@ -51,6 +51,8 @@ struct gsm_sms_pending {
 	unsigned long long sms_id;
 	int failed_attempts;
 	int resend;
+
+	int no_detach;
 };
 
 struct gsm_sms_queue {
@@ -86,17 +88,24 @@ static int sms_is_in_pending(struct gsm_sms_queue *smsq, struct gsm_sms *sms)
 	return sms_find_pending(smsq, sms) != NULL;
 }
 
-static int sms_subscriber_is_pending(struct gsm_sms_queue *smsq,
-				     struct gsm_subscriber *subscr)
+static struct gsm_sms_pending *sms_subscriber_find_pending(
+					struct gsm_sms_queue *smsq,
+					struct gsm_subscriber *subscr)
 {
 	struct gsm_sms_pending *pending;
 
 	llist_for_each_entry(pending, &smsq->pending_sms, entry) {
 		if (pending->subscr == subscr)
-			return 1;
+			return pending;
 	}
 
-	return 0;
+	return NULL;
+}
+
+static int sms_subscriber_is_pending(struct gsm_sms_queue *smsq,
+				     struct gsm_subscriber *subscr)
+{
+	return sms_subscriber_find_pending(smsq, subscr) != NULL;
 }
 
 static struct gsm_sms_pending *sms_pending_from(struct gsm_sms_queue *smsq,
@@ -146,7 +155,7 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 	if (++pending->failed_attempts < smsq->max_fail)
 		return sms_pending_resend(pending);
 
-	if (paging_error) {
+	if (paging_error && !pending->no_detach) {
 		LOGP(DSMS, LOGL_NOTICE,
 		     "Subscriber %llu is not reachable. Setting LAC=0.\n", pending->subscr->id);
 		pending->subscr->lac = GSM_LAC_RESERVED_DETACHED;
@@ -321,16 +330,41 @@ int sms_queue_start(struct gsm_network *network, int max_pending)
 	return 0;
 }
 
-static int sub_ready_for_sm(struct gsm_subscriber *subscr)
+static int sub_ready_for_sm(struct gsm_network *net, struct gsm_subscriber *subscr)
 {
-	struct gsm_subscriber_connection *conn;
 	struct gsm_sms *sms;
+	struct gsm_sms_pending *pending;
+	struct gsm_subscriber_connection *conn;
 
-	/* A subscriber has attached. Check if there are
-	 * any pending SMS for him to be delivered */
+	/*
+	 * The code used to be very clever and tried to submit
+	 * a SMS during the Location Updating Request. This has
+	 * two issues:
+	 *   1.) The Phone might not be ready yet, e.g. the C155
+	 *       will not respond to the Submit when it is booting.
+	 *   2.) The queue is already trying to submit SMS to the
+	 *	 user and by not responding to the paging request
+	 *	 we will set the LAC back to 0. We would have to
+	 *	 stop the paging and move things over.
+	 *
+	 * We need to be careful in what we try here.
+	 */
+
+	/* check if we have pending requests */
+	pending = sms_subscriber_find_pending(net->sms_queue, subscr);
+	if (pending) {
+		LOGP(DMSC, LOGL_NOTICE,
+		     "Pending paging while subscriber %llu attached.\n",
+		      subscr->id);
+		pending->no_detach = 1;
+		return 0;
+	}
+
 	conn = connection_for_subscr(subscr);
 	if (!conn)
 		return -1;
+
+	/* Now try to deliver any pending SMS to this sub */
 	sms = db_sms_get_unsent_for_subscr(subscr);
 	if (!sms)
 		return -1;
@@ -347,7 +381,7 @@ static int sms_subscr_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	/* this is readyForSM */
-	return sub_ready_for_sm(subscr);
+	return sub_ready_for_sm(handler_data, subscr);
 }
 
 static int sms_sms_cb(unsigned int subsys, unsigned int signal,

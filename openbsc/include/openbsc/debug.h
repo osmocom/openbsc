@@ -35,6 +35,7 @@ enum {
 	DLLC,
 	DSNDCP,
 	DNAT,
+	DCTRL,
 	Debug_LastEntry,
 };
 

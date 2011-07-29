@@ -82,7 +82,7 @@ struct mgcp_trunk_config;
 typedef int (*mgcp_realloc)(struct mgcp_trunk_config *cfg, int endpoint);
 typedef int (*mgcp_change)(struct mgcp_trunk_config *cfg, int endpoint, int state);
 typedef int (*mgcp_policy)(struct mgcp_trunk_config *cfg, int endpoint, int state, const char *transactio_id);
-typedef int (*mgcp_reset)(struct mgcp_config *cfg);
+typedef int (*mgcp_reset)(struct mgcp_trunk_config *cfg);
 
 #define PORT_ALLOC_STATIC	0
 #define PORT_ALLOC_DYNAMIC	1
