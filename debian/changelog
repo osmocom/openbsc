@@ -1,3 +1,11 @@
+opensgsn (0.9.13-0~jrsantos.4) unstable; urgency=low
+
+  * Revert "gprs: Fix bug that caused TLLI to change prematurely"
+  * gprs: Fix premature TLLI change
+  * gprs: Fix retry of ATTACH REQUEST from mobile
+
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Sun, 31 Jul 2011 12:56:09 -0400
+
 opensgsn (0.9.13-0~jrsantos.3) unstable; urgency=low
 
   * Allow all IMSIs
