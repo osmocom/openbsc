@@ -754,6 +754,10 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	 * foreign TLLI to local TLLI */
 	ctx->tlli_new = gprs_tmsi2tlli(ctx->p_tmsi, TLLI_LOCAL);
 
+	/* Inform LLC layer about new TLLI but keep old active */
+	gprs_llgmm_assign(ctx->llme, ctx->tlli, ctx->tlli_new,
+			  GPRS_ALGO_GEA0, NULL);
+
 	DEBUGPC(DMM, "\n");
 	return ctx ? gsm48_gmm_authorize(ctx, GMM_T3350_MODE_ATT) : 0;
 
@@ -965,6 +969,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	 * foreign TLLI to local TLLI */
 	mmctx->tlli_new = gprs_tmsi2tlli(mmctx->p_tmsi, TLLI_LOCAL);
 
+	/* Inform LLC layer about new TLLI but keep old active */
+	gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
+			  GPRS_ALGO_GEA0, NULL);
+
 	/* Look at PDP Context Status IE and see if MS's view of
 	 * activated/deactivated NSAPIs agrees with our view */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {
@@ -1025,9 +1033,6 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->mm_state = GMM_REGISTERED_NORMAL;
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Inform LLC layer about new TLLI but keep old active */
-		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
-				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_resume(mmctx->llme);
 		break;
@@ -1036,9 +1041,6 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		DEBUGP(DMM, "-> ROUTEING AREA UPDATE COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Inform LLC layer about new TLLI but keep old active */
-		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
-				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_resume(mmctx->llme);
 		break;
@@ -1046,9 +1048,6 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
 		mmctx_timer_stop(mmctx, 3350);
 		mmctx->p_tmsi_old = 0;
-		/* Inform LLC layer about new TLLI but keep old active */
-		gprs_llgmm_assign(mmctx->llme, mmctx->tlli, mmctx->tlli_new,
-				GPRS_ALGO_GEA0, NULL);
 		mmctx->tlli = mmctx->tlli_new;
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
