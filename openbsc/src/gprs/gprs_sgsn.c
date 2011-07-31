@@ -108,6 +108,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
 			if ((ctx->p_tmsi | 0xC0000000) == tlli ||
 			     (ctx->p_tmsi_old && (ctx->p_tmsi_old | 0xC0000000) == tlli)) {
+				ctx->tlli = tlli;
 				return ctx;
 			}
 		}
