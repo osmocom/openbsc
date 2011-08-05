@@ -90,7 +90,7 @@ struct ctrl_cmd *ctrl_cmd_cpy(void *ctx, struct ctrl_cmd *cmd);
 struct ctrl_cmd *ctrl_cmd_trap(struct ctrl_cmd *cmd);
 
 #define CTRL_CMD_DEFINE_RANGE(cmdname, cmdstr, dtype, element, min, max) \
-int get_##cmdname(struct ctrl_cmd *cmd, void *data) \
+static int get_##cmdname(struct ctrl_cmd *cmd, void *data) \
 { \
 	dtype *node = data; \
 	cmd->reply = talloc_asprintf(cmd, "%i", node->element); \
@@ -100,14 +100,14 @@ int get_##cmdname(struct ctrl_cmd *cmd, void *data) \
 	} \
 	return CTRL_CMD_REPLY; \
 } \
-int set_##cmdname(struct ctrl_cmd *cmd, void *data) \
+static int set_##cmdname(struct ctrl_cmd *cmd, void *data) \
 { \
 	dtype *node = data; \
 	int tmp = atoi(cmd->value); \
 	node->element = tmp; \
 	return get_##cmdname(cmd, data); \
 } \
-int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *data) \
+static int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *data) \
 { \
 	int tmp = atoi(value); \
 	if ((tmp >= min)&&(tmp <= max)) { \
@@ -124,7 +124,7 @@ struct ctrl_cmd_element cmd_##cmdname = { \
 }
 
 #define CTRL_CMD_DEFINE_STRING(cmdname, cmdstr, dtype, element) \
-int get_##cmdname(struct ctrl_cmd *cmd, dtype *data) \
+static int get_##cmdname(struct ctrl_cmd *cmd, dtype *data) \
 { \
 	cmd->reply = talloc_asprintf(cmd, "%s", data->element); \
 	if (!cmd->reply) { \
@@ -133,7 +133,7 @@ int get_##cmdname(struct ctrl_cmd *cmd, dtype *data) \
 	} \
 	return CTRL_CMD_REPLY; \
 } \
-int set_##cmdname(struct ctrl_cmd *cmd, dtype *data) \
+static int set_##cmdname(struct ctrl_cmd *cmd, dtype *data) \
 { \
 	bsc_replace_string(cmd->node, &data->element, cmd->value); \
 	return get_##cmdname(cmd, data); \
@@ -147,9 +147,9 @@ struct ctrl_cmd_element cmd_##cmdname = { \
 }
 
 #define CTRL_CMD_DEFINE(cmdname, cmdstr) \
-int get_##cmdname(struct ctrl_cmd *cmd, void *data); \
-int set_##cmdname(struct ctrl_cmd *cmd, void *data); \
-int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *data); \
+static int get_##cmdname(struct ctrl_cmd *cmd, void *data); \
+static int set_##cmdname(struct ctrl_cmd *cmd, void *data); \
+static int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *data); \
 struct ctrl_cmd_element cmd_##cmdname = { \
 	.name = cmdstr, \
 	.param = NULL, \
