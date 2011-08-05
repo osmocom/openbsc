@@ -41,6 +41,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
+#include <openbsc/control_cmd.h>
 
 #include "../../bscconfig.h"
 
