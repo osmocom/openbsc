@@ -410,6 +410,8 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 
 	INIT_LLIST_HEAD(&bts->abis_queue);
 
+	INIT_LLIST_HEAD(&bts->loc_list);
+
 	return bts;
 }
 

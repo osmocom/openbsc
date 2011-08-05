@@ -498,10 +498,28 @@ enum neigh_list_manual_mode {
 	NL_MODE_MANUAL_SI5SEP = 2, /* SI2 and SI5 have separate neighbor lists */
 };
 
+enum bts_loc_fix {
+	BTS_LOC_FIX_INVALID = 0,
+	BTS_LOC_FIX_2D = 1,
+	BTS_LOC_FIX_3D = 2,
+};
+
+struct bts_location {
+	struct llist_head list;
+	time_t tstamp;
+	enum bts_loc_fix valid;
+	double lat;
+	double lon;
+	double height;
+};
+
 /* One BTS */
 struct gsm_bts {
 	/* list header in net->bts_list */
 	struct llist_head list;
+
+	/* Geographical location of the BTS */
+	struct llist_head loc_list;
 
 	/* number of ths BTS in network */
 	uint8_t nr;
