@@ -48,47 +48,32 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 	talloc_free(trap);
 }
 
-#define LOC_FIX_INVALID 0
-#define LOC_FIX_2D	1
-#define LOC_FIX_3D	2
-
 static const struct value_string valid_names[] = {
-	{ LOC_FIX_INVALID,	"invalid" },
-	{ LOC_FIX_2D,		"fix2d" },
-	{ LOC_FIX_3D,		"fix3d" },
+	{ BTS_LOC_FIX_INVALID,	"invalid" },
+	{ BTS_LOC_FIX_2D,		"fix2d" },
+	{ BTS_LOC_FIX_3D,		"fix3d" },
 	{ 0, NULL }
 };
 
-struct location {
-	struct llist_head list;
-	time_t tstamp;
-	int valid;
-	double lat;
-	double lon;
-	double height;
-};
-
-static int location_equal(struct location *a, struct location *b)
+static int location_equal(struct bts_location *a, struct bts_location *b)
 {
 	return ((a->tstamp == b->tstamp) && (a->valid == b->valid) && (a->lat == b->lat) &&
 		(a->lon == b->lon) && (a->height == b->height));
 }
 
-static LLIST_HEAD(locations);
-
-static void cleanup_locations()
+static void cleanup_locations(struct llist_head *locations)
 {
-	struct location *myloc, *tmp;
+	struct bts_location *myloc, *tmp;
 	int invalpos = 0, i = 0;
 
 	LOGP(DCTRL, LOGL_DEBUG, "Checking position list.\n");
-	llist_for_each_entry_safe(myloc, tmp, &locations, list) {
+	llist_for_each_entry_safe(myloc, tmp, locations, list) {
 		i++;
 		if (i > 3) {
 			LOGP(DCTRL, LOGL_DEBUG, "Deleting old position.\n");
 			llist_del(&myloc->list);
 			talloc_free(myloc);
-		} else if (myloc->valid == LOC_FIX_INVALID) {
+		} else if (myloc->valid == BTS_LOC_FIX_INVALID) {
 			/* Only capture the newest of subsequent invalid positions */
 			invalpos++;
 			if (invalpos > 1) {
@@ -105,16 +90,21 @@ static void cleanup_locations()
 	LOGP(DCTRL, LOGL_DEBUG, "Found %i positions.\n", i);
 }
 
-CTRL_CMD_DEFINE(net_loc, "location");
-static int get_net_loc(struct ctrl_cmd *cmd, void *data)
+CTRL_CMD_DEFINE(bts_loc, "location");
+static int get_bts_loc(struct ctrl_cmd *cmd, void *data)
 {
-	struct location *curloc;
+	struct bts_location *curloc;
+	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
 
-	if (llist_empty(&locations)) {
+	if (llist_empty(&bts->loc_list)) {
 		cmd->reply = talloc_asprintf(cmd, "0,invalid,0,0,0");
 		return CTRL_CMD_REPLY;
 	} else {
-		curloc = llist_entry(locations.next, struct location, list);
+		curloc = llist_entry(bts->loc_list.next, struct bts_location, list);
 	}
 
 	cmd->reply = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", curloc->tstamp,
@@ -127,18 +117,23 @@ static int get_net_loc(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-static int set_net_loc(struct ctrl_cmd *cmd, void *data)
+static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *tstamp, *valid, *tmp;
-	struct location *curloc, *lastloc;
+	struct bts_location *curloc, *lastloc;
 	int ret;
 	struct gsm_network *gsmnet = (struct gsm_network *)data;
+	struct gsm_bts *bts = (struct gsm_bts *) cmd->node;
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
 
 	tmp = talloc_strdup(cmd, cmd->value);
 	if (!tmp)
 		goto oom;
 
-	curloc = talloc_zero(tall_bsc_ctx, struct location);
+	curloc = talloc_zero(tall_bsc_ctx, struct bts_location);
 	if (!curloc) {
 		talloc_free(tmp);
 		goto oom;
@@ -159,17 +154,17 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	curloc->height = atof(height);
 	talloc_free(tmp);
 
-	lastloc = llist_entry(locations.next, struct location, list);
+	lastloc = llist_entry(bts->loc_list.next, struct bts_location, list);
 
 	/* Add location to the end of the list */
-	llist_add(&curloc->list, &locations);
+	llist_add(&curloc->list, &bts->loc_list);
 
-	ret = get_net_loc(cmd, data);
+	ret = get_bts_loc(cmd, data);
 
 	if (!location_equal(curloc, lastloc))
 		osmo_bsc_send_trap(cmd, gsmnet->msc_data->msc_con);
 
-	cleanup_locations();
+	cleanup_locations(&bts->loc_list);
 
 	return ret;
 
@@ -178,7 +173,7 @@ oom:
 	return CTRL_CMD_ERROR;
 }
 
-static int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	char *saveptr, *latstr, *lonstr, *heightstr, *tstampstr, *validstr, *tmp;
 	time_t tstamp;
@@ -206,7 +201,7 @@ static int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	height = atof(heightstr);
 	talloc_free(tmp);
 
-	if (((tstamp == 0) && (valid != LOC_FIX_INVALID)) || (lat < -90) || (lat > 90) ||
+	if (((tstamp == 0) && (valid != BTS_LOC_FIX_INVALID)) || (lat < -90) || (lat > 90) ||
 			(lon < -180) || (lon > 180) || (valid < 0)) {
 		goto err;
 	}
@@ -301,7 +296,7 @@ int bsc_ctrl_cmds_install()
 {
 	int rc;
 
-	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
+	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
