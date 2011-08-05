@@ -218,13 +218,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = bsc_ctrl_cmds_install(bsc_gsmnet);
+	rc = bsc_ctrl_cmds_install();
 	if (rc < 0) {
 		fprintf(stderr, "Failed to install control commands. Exiting.\n");
 		exit(1);
 	}
 
-	data = bsc_gsmnet->bsc_data;
+	data = bsc_gsmnet->msc_data;
 	if (rf_ctrl)
 		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 

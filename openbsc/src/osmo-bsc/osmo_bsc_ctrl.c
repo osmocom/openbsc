@@ -449,20 +449,20 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
-static int msc_signal_handler(unsigned int subsys, unsigned int signal,
+int bsc_ctrl_cmds_install()
 			void *handler_data, void *signal_data)
 {
-	struct msc_signal_data *msc;
-	struct gsm_network *net;
-	struct gsm_bts *bts;
+	int rc;
 
-	if (subsys != SS_MSC)
-		return 0;
-	if (signal != S_MSC_AUTHENTICATED)
-		return 0;
-
-	msc = signal_data;
-
+	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
+end:
+	return rc;
 	net = msc->data->network;
 	llist_for_each_entry(bts, &net->bts_list, list)
 		generate_location_state_trap(bts, msc->data->msc_con);	

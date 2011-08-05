@@ -1509,9 +1509,15 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	nat->ctrl = bsc_nat_controlif_setup(nat, 4250);
+	nat->ctrl = controlif_setup(NULL, 4250);
 	if (!nat->ctrl) {
-		fprintf(stderr, "Creating the control interface failed.\n");
+		fprintf(stderr, "Failed to initialize the control interface. Exiting.\n");
+		exit(1);
+	}
+
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
+	if (rc) {
+		fprintf(stderr, "Failed to install the control command. Exiting.\n");
 		exit(1);
 	}
 
