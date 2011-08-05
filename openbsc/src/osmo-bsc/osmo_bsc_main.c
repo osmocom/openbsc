@@ -182,7 +182,7 @@ struct location {
 
 static LLIST_HEAD(locations);
 
-void cleanup_locations()
+static void cleanup_locations()
 {
 	struct location *myloc, *tmp;
 	int invalpos = 0, i = 0;
@@ -211,7 +211,7 @@ void cleanup_locations()
 }
 
 CTRL_CMD_DEFINE(net_loc, "location");
-int get_net_loc(struct ctrl_cmd *cmd, void *data)
+static int get_net_loc(struct ctrl_cmd *cmd, void *data)
 {
 	struct location *myloc;
 
@@ -231,7 +231,7 @@ int get_net_loc(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-int set_net_loc(struct ctrl_cmd *cmd, void *data)
+static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *age, *valid, *tmp;
 	struct location *myloc;
@@ -271,7 +271,7 @@ oom:
 	return CTRL_CMD_ERROR;
 }
 
-int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	char *saveptr, *latstr, *lonstr, *heightstr, *agestr, *validstr, *tmp;
 	unsigned long age;
@@ -307,7 +307,7 @@ int verify_net_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 }
 
 CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
-int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
+static int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	struct gsm_bts_trx *trx = cmd->node;
 	if (!trx) {
@@ -319,7 +319,7 @@ int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-int set_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
+static int set_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	int locked = atoi(cmd->value);
 	struct gsm_bts_trx *trx = cmd->node;
@@ -333,7 +333,7 @@ int set_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
 	return get_trx_rf_lock(cmd, data);
 }
 
-int verify_trx_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_trx_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	int locked = atoi(cmd->value);
 
@@ -344,13 +344,13 @@ int verify_trx_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
 }
 
 CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
-int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	cmd->reply = "get only works for the individual trx properties.";
 	return CTRL_CMD_ERROR;
 }
 
-int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
+static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	int locked = atoi(cmd->value);
 	struct gsm_network *net = cmd->node;
@@ -376,7 +376,7 @@ int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	int locked = atoi(cmd->value);
 

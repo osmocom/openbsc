@@ -1686,17 +1686,17 @@ done:
 }
 
 CTRL_CMD_DEFINE(fwd_cmd, "bsc *");
-int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
+static int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
 {
 	return forward_to_bsc(cmd);
 }
 
-int set_fwd_cmd(struct ctrl_cmd *cmd, void *data)
+static int set_fwd_cmd(struct ctrl_cmd *cmd, void *data)
 {
 	return forward_to_bsc(cmd);
 }
 
-int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
+static int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
 {
 	return 0;
 }
