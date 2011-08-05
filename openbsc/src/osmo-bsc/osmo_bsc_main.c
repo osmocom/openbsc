@@ -213,8 +213,16 @@ int main(int argc, char **argv)
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
 	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
+	if (!bsc_gsmnet) {
+		fprintf(stderr, "Failed to init the control interface. Exiting.\n");
+		exit(1);
+	}
 
-	bsc_ctrl_cmds_install();
+	rc = bsc_ctrl_cmds_install();
+	if (rc < 0) {
+		fprintf(stderr, "Failed to install control commands. Exiting.\n");
+		exit(1);
+	}
 
 	data = bsc_gsmnet->bsc_data;
 	if (rf_ctrl)

@@ -304,9 +304,17 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
-void bsc_ctrl_cmds_install()
+int bsc_ctrl_cmds_install()
 {
-	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
-	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
-	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
+	int rc;
+
+	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
+end:
+	return rc;
 }
