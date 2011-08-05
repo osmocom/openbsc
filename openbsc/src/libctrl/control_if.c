@@ -641,21 +641,24 @@ struct ctrl_handle *controlif_setup(struct gsm_network *gsmnet, uint16_t port)
 	ctrl->gsmnet = gsmnet;
 
 	ctrl_node_vec = vector_init(5);
-	if (!ctrl_node_vec) {
-		talloc_free(ctrl);
-		return NULL;
-	}
+	if (!ctrl_node_vec)
+		goto err;
 
 	/* Listen for control connections */
 	ret = make_sock(&ctrl->listen_fd, IPPROTO_TCP, INADDR_LOOPBACK, port,
 			0, listen_fd_cb, ctrl);
-	if (ret < 0) {
-		talloc_free(ctrl);
-		return NULL;
-	}
+	if (ret < 0)
+		goto err;
 
-	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_rate_ctr);
-	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_counter);
+	ret = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_rate_ctr);
+	if (ret)
+		goto err;
+	ret = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_counter);
+	if (ret)
+		goto err;
 
 	return ctrl;
+err:
+	talloc_free(ctrl);
+	return NULL;
 }
