@@ -108,17 +108,17 @@ static void cleanup_locations()
 CTRL_CMD_DEFINE(net_loc, "location");
 static int get_net_loc(struct ctrl_cmd *cmd, void *data)
 {
-	struct location *myloc;
+	struct location *curloc;
 
 	if (llist_empty(&locations)) {
 		cmd->reply = talloc_asprintf(cmd, "0,invalid,0,0,0");
 		return CTRL_CMD_REPLY;
 	} else {
-		myloc = llist_entry(locations.next, struct location, list);
+		curloc = llist_entry(locations.next, struct location, list);
 	}
 
-	cmd->reply = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", myloc->tstamp,
-			get_value_string(valid_names, myloc->valid), myloc->lat, myloc->lon, myloc->height);
+	cmd->reply = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", curloc->tstamp,
+			get_value_string(valid_names, curloc->valid), curloc->lat, curloc->lon, curloc->height);
 	if (!cmd->reply) {
 		cmd->reply = "OOM";
 		return CTRL_CMD_ERROR;
@@ -130,7 +130,7 @@ static int get_net_loc(struct ctrl_cmd *cmd, void *data)
 static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *tstamp, *valid, *tmp;
-	struct location *myloc, *lastloc;
+	struct location *curloc, *lastloc;
 	int ret;
 	struct gsm_network *gsmnet = (struct gsm_network *)data;
 
@@ -138,12 +138,12 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	if (!tmp)
 		goto oom;
 
-	myloc = talloc_zero(tall_bsc_ctx, struct location);
-	if (!myloc) {
+	curloc = talloc_zero(tall_bsc_ctx, struct location);
+	if (!curloc) {
 		talloc_free(tmp);
 		goto oom;
 	}
-	INIT_LLIST_HEAD(&myloc->list);
+	INIT_LLIST_HEAD(&curloc->list);
 
 
 	tstamp = strtok_r(tmp, ",", &saveptr);
@@ -152,21 +152,21 @@ static int set_net_loc(struct ctrl_cmd *cmd, void *data)
 	lon = strtok_r(NULL, ",", &saveptr);
 	height = strtok_r(NULL, "\0", &saveptr);
 
-	myloc->tstamp = atol(tstamp);
-	myloc->valid = get_string_value(valid_names, valid);
-	myloc->lat = atof(lat);
-	myloc->lon = atof(lon);
-	myloc->height = atof(height);
+	curloc->tstamp = atol(tstamp);
+	curloc->valid = get_string_value(valid_names, valid);
+	curloc->lat = atof(lat);
+	curloc->lon = atof(lon);
+	curloc->height = atof(height);
 	talloc_free(tmp);
 
 	lastloc = llist_entry(locations.next, struct location, list);
 
 	/* Add location to the end of the list */
-	llist_add(&myloc->list, &locations);
+	llist_add(&curloc->list, &locations);
 
 	ret = get_net_loc(cmd, data);
 
-	if (!location_equal(myloc, lastloc))
+	if (!location_equal(curloc, lastloc))
 		osmo_bsc_send_trap(cmd, gsmnet->msc_data->msc_con);
 
 	cleanup_locations();
