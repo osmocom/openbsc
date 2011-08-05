@@ -1705,6 +1705,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 		break;
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
+	case GSM_BTS_TYPE_NOKIA_SITE:
 		if (enable)
 			return trau_recv_lchan(lchan, callref);
 		return trau_mux_unmap(NULL, callref);
@@ -2990,6 +2991,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
 		case GSM_BTS_TYPE_RBS2000:
+		case GSM_BTS_TYPE_NOKIA_SITE:
 			return trau_send_frame(trans->conn->lchan, arg);
 		default:
 			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
