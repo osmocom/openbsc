@@ -494,5 +494,8 @@ struct osmo_msc_data *osmo_msc_data_alloc(struct gsm_network *net, int nr)
 	msc_data->nr = nr;
 	msc_data->allow_emerg = 1;
 
+	/* Defaults for the audio setup */
+	msc_data->amr_conf.m5_90 = 1;
+
 	return msc_data;
 }

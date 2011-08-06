@@ -26,6 +26,7 @@
 #include "bsc_msc.h"
 
 #include <osmocom/core/timer.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <regex.h>
 
@@ -68,6 +69,7 @@ struct osmo_msc_data {
 	int rtp_base;
 
 	/* audio codecs */
+	struct gsm48_multi_rate_conf amr_conf;
 	struct gsm_audio_support **audio_support;
 	int audio_length;
 
