@@ -159,19 +159,28 @@ static void bsc_assign_fail(struct gsm_subscriber_connection *conn,
 
 static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause)
 {
+	struct osmo_bsc_sccp_con *sccp;
 	struct msgb *resp;
 	return_when_not_connected_val(conn, 1);
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC CLEAR REQUEST\n");
 
+	/*
+	 * Remove the connection from BSC<->SCCP part, the SCCP part
+	 * will either be cleared by channel release or MSC disconnect
+	 */
+	sccp = conn->sccp_con;
+	sccp->conn = NULL;
+	conn->sccp_con = NULL;
+
 	resp = gsm0808_create_clear_rqst(GSM0808_CAUSE_RADIO_INTERFACE_FAILURE);
 	if (!resp) {
 		LOGP(DMSC, LOGL_ERROR, "Failed to allocate response.\n");
-		return 0;
+		return 1;
 	}
 
-	bsc_queue_for_msc(conn->sccp_con, resp);
-	return 0;
+	bsc_queue_for_msc(sccp, resp);
+	return 1;
 }
 
 static struct bsc_api bsc_handler = {
