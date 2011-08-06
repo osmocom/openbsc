@@ -1,7 +1,7 @@
 /* GSM 08.08 like API for OpenBSC. The bridge from MSC to BSC */
 
-/* (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On-Waves
+/* (C) 2010-2011 by Holger Hans Peter Freyther
+ * (C) 2010-2011 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
@@ -149,6 +149,17 @@ static void assignment_t10_timeout(void *_conn)
 	api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
 }
 
+/**
+ * Handle the multirate config
+ */
+static void handle_mr_config(struct gsm_subscriber_connection *conn,
+			     struct gsm_lchan *lchan)
+{
+	lchan->mr_conf.ver = 1;
+	lchan->mr_conf.icmi = 1;
+	lchan->mr_conf.m5_90 = 1;
+}
+
 /*
  * Start a new assignment and make sure that it is completed within T10 either
  * positively, negatively or by the timeout.
@@ -188,11 +199,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
 
 	/* handle AMR correctly */
-	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
-		new_lchan->mr_conf.ver = 1;
-		new_lchan->mr_conf.icmi = 1;
-		new_lchan->mr_conf.m5_90 = 1;
-	}
+	if (chan_mode == GSM48_CMODE_SPEECH_AMR)
+		handle_mr_config(conn, new_lchan);
 
 	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
@@ -303,8 +311,8 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
  * audio codec type or the allowed rates for the config. It is assumed that
  * this is for audio handling and that when we have a TCH it is capable of
- * handling the audio codec. On top of that it is assumed that we are using
- * AMR 5.9 when assigning a TCH/H.
+ * handling the audio codec. In case AMR is used we will leave the multi
+ * rate configuration to someone else.
  */
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
@@ -317,11 +325,8 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 	} else {
 		LOGP(DMSC, LOGL_NOTICE,
 			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
-		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
-			conn->lchan->mr_conf.ver = 1;
-			conn->lchan->mr_conf.icmi = 1;
-			conn->lchan->mr_conf.m5_90 = 1;
-		}
+		if (chan_mode == GSM48_CMODE_SPEECH_AMR)
+			handle_mr_config(conn, conn->lchan);
 
 		gsm48_lchan_modify(conn->lchan, chan_mode);
 	}
