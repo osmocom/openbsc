@@ -421,11 +421,17 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
+		int dev_nr;
+
+		/* DAHDI device names/numbers just keep incrementing
+		 * even over multiple boards.  So TS1 of the second
+		 * board will be 32 */
+		dev_nr = line->num * (NUM_E1_TS-1) + ts;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
 		bfd->cb = dahdi_fd_cb;
-		snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", ts);
+		snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
 
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:
