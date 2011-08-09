@@ -84,7 +84,7 @@ static int shutdown_om(struct gsm_bts *bts)
   Attention: this has to be adapted for mISDN
 */
 
-static void start_sabm_in_line(struct e1inp_line *line, int start, int sapi)
+void start_sabm_in_line(struct e1inp_line *line, int start, int sapi)
 {
 	struct e1inp_sign_link *link;
 	int i;
@@ -161,6 +161,13 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 				bootstrap_om_trx(isd->trx);
 			break;
 		}
+		break;
+	case S_INP_TEI_UNKNOWN:
+		/* We are receiving LAPD frames with one TEI that we do not
+		 * seem to know, likely that we (the BSC) stopped working
+		 * and lost our local states. However, the BTS is already
+		 * configured, we try to take over the RSL links. */
+		start_sabm_in_line(isd->line, 1, SAPI_RSL);
 		break;
 	}
 
