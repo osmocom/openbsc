@@ -975,6 +975,149 @@ DEFUN(show_lchan_summary,
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
 
+static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
+{
+	vty_out(vty, "E1 Input Driver %s%s", drv->name, VTY_NEWLINE);
+}
+
+DEFUN(show_e1drv,
+      show_e1drv_cmd,
+      "show e1_driver",
+	SHOW_STR "Display information about available E1 drivers\n")
+{
+	struct e1inp_driver *drv;
+
+	llist_for_each_entry(drv, &e1inp_driver_list, list)
+		e1drv_dump_vty(vty, drv);
+
+	return CMD_SUCCESS;
+}
+
+static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line)
+{
+	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
+		line->num, line->name ? line->name : "",
+		line->driver->name, VTY_NEWLINE);
+}
+
+DEFUN(show_e1line,
+      show_e1line_cmd,
+      "show e1_line [line_nr]",
+	SHOW_STR "Display information about a E1 line\n"
+	"E1 Line Number\n")
+{
+	struct e1inp_line *line;
+
+	if (argc >= 1) {
+		int num = atoi(argv[0]);
+		llist_for_each_entry(line, &e1inp_line_list, list) {
+			if (line->num == num) {
+				e1line_dump_vty(vty, line);
+				return CMD_SUCCESS;
+			}
+		}
+		return CMD_WARNING;
+	}	
+	
+	llist_for_each_entry(line, &e1inp_line_list, list)
+		e1line_dump_vty(vty, line);
+
+	return CMD_SUCCESS;
+}
+
+void start_sabm_in_line(struct e1inp_line *line, int start, int sapi);
+
+DEFUN(send_sabm,
+      send_sabm_cmd,
+      "send sabm [line_nr] [sapi]",
+	SHOW_STR "Force sending SABM messages over E1 line\n"
+	"E1 Line Number\n")
+{
+	struct e1inp_line *line;
+	int line_nr, sapi;
+
+	if (argc != 2) {
+		vty_out(vty, "%% missing arguments\n");
+		return CMD_WARNING;
+	}
+	line_nr = atoi(argv[0]);
+	sapi = atoi(argv[1]);
+
+	line = e1inp_line_get(line_nr);
+	if (line == NULL) {
+		vty_out(vty, "%% no E1 line with %d number%s",
+			line_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	start_sabm_in_line(line, 1, sapi);
+
+	return CMD_SUCCESS;
+}
+
+
+static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
+{
+	if (ts->type == E1INP_TS_TYPE_NONE)
+		return;
+	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
+		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
+		VTY_NEWLINE);
+}
+
+DEFUN(show_e1ts,
+      show_e1ts_cmd,
+      "show e1_timeslot [line_nr] [ts_nr]",
+	SHOW_STR "Display information about a E1 timeslot\n"
+	"E1 Line Number\n" "E1 Timeslot Number\n")
+{
+	struct e1inp_line *line = NULL;
+	struct e1inp_ts *ts;
+	int ts_nr;
+
+	if (argc == 0) {
+		llist_for_each_entry(line, &e1inp_line_list, list) {
+			for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+				ts = &line->ts[ts_nr];
+				e1ts_dump_vty(vty, ts);
+			}
+		}
+		return CMD_SUCCESS;
+	}
+	if (argc >= 1) {
+		int num = atoi(argv[0]);
+		struct e1inp_line *l;
+		llist_for_each_entry(l, &e1inp_line_list, list) {
+			if (l->num == num) {
+				line = l;
+				break;
+			}
+		}
+		if (!line) {
+			vty_out(vty, "E1 line %s is invalid%s",
+				argv[0], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+	}	
+	if (argc >= 2) {
+		ts_nr = atoi(argv[1]);
+		if (ts_nr >= NUM_E1_TS) {
+			vty_out(vty, "E1 timeslot %s is invalid%s",
+				argv[1], VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+		ts = &line->ts[ts_nr];
+		e1ts_dump_vty(vty, ts);
+		return CMD_SUCCESS;
+	} else {
+		for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
+			ts = &line->ts[ts_nr];
+			e1ts_dump_vty(vty, ts);
+		}
+		return CMD_SUCCESS;
+	}
+	return CMD_SUCCESS;
+}
+
 static void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
 {
 	vty_out(vty, "Paging on BTS %u%s", pag->bts->nr, VTY_NEWLINE);
@@ -2566,6 +2709,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element_ve(&show_paging_cmd);
+
+	install_element_ve(&send_sabm_cmd);
 
 	logging_vty_add_cmds(cat);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);
