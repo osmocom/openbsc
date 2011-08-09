@@ -31,7 +31,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 
 #include "lapd.h"
@@ -353,14 +352,20 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	nr = -1;
 	if ((data[2] & 1) == 0) {
 		typ = LAPD_TYPE_I;
-		assert(len >= 4);
+		if (len < 4) {
+			LOGP(DMI, LOGL_ERROR, "LAPD I frame, len %d < 4\n", len);
+			return NULL;
+		}
 		ns = data[2] >> 1;
 		nr = data[3] >> 1;
 		pf = data[3] & 1;
 		cmd = LAPD_CMD_I;
 	} else if ((data[2] & 3) == 1) {
 		typ = LAPD_TYPE_S;
-		assert(len >= 4);
+		if (len < 4) {
+			LOGP(DMI, LOGL_ERROR, "LAPD S frame, len %d < 4\n", len);
+			return NULL;
+		}
 		nr = data[3] >> 1;
 		pf = data[3] & 1;
 		switch (data[2]) {
@@ -445,7 +450,9 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 				DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
 				cmd = 0;	// ignore
 			} else {
-				assert(0);
+				LOGP(DMI, LOGL_ERROR, "LAPD: Out of order "
+					"ns %d != vr %d, ignoring\n", ns, sap->vr);
+				return NULL;
 			};
 		} else {
 			//printf("IN SEQUENCE\n");
