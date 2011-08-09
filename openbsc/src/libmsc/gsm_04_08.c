@@ -1602,7 +1602,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr);
 
 	if (bts->type != remote_bts->type) {
-		DEBUGP(DCC, "Cannot switch calls between different BTS types yet\n");
+		LOGP(DCC, LOGL_ERROR, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
 	}
 
@@ -1637,7 +1637,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		trau_mux_map_lchan(lchan, remote_lchan);
 		break;
 	default:
-		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		return -EINVAL;
 	}
 
@@ -1680,7 +1680,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		if (ipacc_rtp_direct) {
-			DEBUGP(DCC, "Error: RTP proxy is disabled\n");
+			LOGP(DCC, LOGL_ERROR, "Error: RTP proxy is disabled\n");
 			return -EINVAL;
 		}
 		/* in case, we don't have a RTP socket yet, we note this
@@ -1709,7 +1709,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 		return trau_mux_unmap(NULL, callref);
 		break;
 	default:
-		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		return -EINVAL;
 	}
 
@@ -2991,7 +2991,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		case GSM_BTS_TYPE_RBS2000:
 			return trau_send_frame(trans->conn->lchan, arg);
 		default:
-			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		}
 		return -EINVAL;
 	}
