@@ -310,8 +310,9 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 };
 
 /* General input function for any data received for this LAPD instance */
-uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len,
-		      int *ilen, lapd_mph_type *prim)
+uint8_t *
+lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len,
+	     int *ilen, lapd_mph_type *prim, int *error)
 {
 	uint8_t sapi, cr, tei, command;
 	int pf, ns, nr;
@@ -327,12 +328,14 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 
 	if (len < 2) {
 		LOGP(DMI, LOGL_ERROR, "LAPD receive len %d < 2, ignoring\n", len);
+		*error = LAPD_ERR_BAD_LEN;
 		return NULL;
 	};
 
 	if ((data[0] & 1) != 0 || (data[1] & 1) != 1) {
 		LOGP(DMI, LOGL_ERROR, "LAPD address field %x/%x not well formed\n",
 			data[0], data[1]);
+		*error = LAPD_ERR_BAD_ADDR;
 		return NULL;
 	};
 
@@ -344,6 +347,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 
 	if (len < 3) {
 		LOGP(DMI, LOGL_ERROR, "LAPD receive len %d < 3, ignoring\n", len);
+		*error = LAPD_ERR_BAD_LEN;
 		return NULL;
 	};
 
@@ -356,6 +360,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		typ = LAPD_TYPE_I;
 		if (len < 4) {
 			LOGP(DMI, LOGL_ERROR, "LAPD I frame, len %d < 4\n", len);
+			*error = LAPD_ERR_BAD_LEN;
 			return NULL;
 		}
 		ns = data[2] >> 1;
@@ -366,6 +371,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		typ = LAPD_TYPE_S;
 		if (len < 4) {
 			LOGP(DMI, LOGL_ERROR, "LAPD S frame, len %d < 4\n", len);
+			*error = LAPD_ERR_BAD_LEN;
 			return NULL;
 		}
 		nr = data[3] >> 1;
@@ -382,6 +388,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 			break;
 		default:
 			LOGP(DMI, LOGL_ERROR, "LAPD unknown S cmd %x\n", data[2]);
+			*error = LAPD_ERR_UNKNOWN_S_CMD;
 			return NULL;
 		};
 	} else if ((data[2] & 3) == 3) {
@@ -414,6 +421,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		default:
 			LOGP(DMI, LOGL_ERROR, "LAPD unknown U cmd %x "
 			     "(pf %x data %x)\n", val, pf, data[2]);
+			*error = LAPD_ERR_UNKNOWN_U_CMD;
 			return NULL;
 		};
 	};
@@ -429,6 +437,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	teip = teip_from_tei(li, tei);
 	if (!teip) {
 		LOGP(DMI, LOGL_NOTICE, "LAPD Unknown TEI %u\n", tei);
+		*error = LAPD_ERR_UNKNOWN_TEI;
 		return NULL;
 	}
 
@@ -587,6 +596,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		return contents;
 	}
 
+	*error = LAPD_ERR_BAD_CMD;
 	return NULL;
 };
 

@@ -570,6 +570,7 @@ int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
 	if (!link)
 		return -EINVAL;
 
+	isd.line = ts->line;
 	isd.link_type = link->type;
 	isd.trx = link->trx;
 	isd.tei = tei;

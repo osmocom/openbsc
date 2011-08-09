@@ -100,7 +100,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
 	lapd_mph_type prim;
 	unsigned int sapi, tei;
-	int ilen, ret;
+	int ilen, ret, error = 0;
 	uint8_t *idata;
 
 	if (!msg)
@@ -122,9 +122,21 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
-	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
-	if (!idata && prim == 0)
-		return -EIO;
+	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim, &error);
+	if (!idata) {
+		switch(error) {
+		case LAPD_ERR_UNKNOWN_TEI:
+			/* We don't know about this TEI, probably the BSC
+			 * lost local states (it crashed or it was stopped),
+			 * notify the driver to see if it can do anything to
+			 * recover the existing signalling links with the BTS.
+			 */
+			e1inp_event(e1i_ts, S_INP_TEI_UNKNOWN, tei, sapi);
+			return -EIO;
+		}
+		if (prim == 0)
+			return -EIO;
+	}
 
 	msgb_pull(msg, 2);
 
