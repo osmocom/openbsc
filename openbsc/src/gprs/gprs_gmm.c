@@ -55,6 +55,8 @@
 
 #define PTMSI_ALLOC
 
+#define GSM0408_T3302           (10 | GPRS_TMR_2SECONDS)
+
 /* Section 11.2.2 / Table 11.4 MM timers netowkr side */
 #define GSM0408_T3322_SECS	6	/* DETACH_REQ -> DETACH_ACC */
 #define GSM0408_T3350_SECS	6	/* waiting for ATT/RAU/TMSI COMPL */
@@ -359,7 +361,7 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	aa = (struct gsm48_attach_ack *) msgb_put(msg, sizeof(*aa));
 	aa->force_stby = 0;	/* not indicated */
 	aa->att_result = 1;	/* GPRS only */
-	aa->ra_upd_timer = GPRS_TMR_MINUTE | 10;
+	aa->ra_upd_timer = GSM0408_T3302;
 	aa->radio_prio = 4;	/* lowest */
 	gsm48_construct_ra(aa->ra_id.digits, &mm->ra);
 
@@ -836,7 +838,7 @@ static int gsm48_tx_gmm_ra_upd_ack(struct sgsn_mm_ctx *mm)
 	rua = (struct gsm48_ra_upd_ack *) msgb_put(msg, sizeof(*rua));
 	rua->force_stby = 0;	/* not indicated */
 	rua->upd_result = 0;	/* RA updated */
-	rua->ra_upd_timer = GPRS_TMR_MINUTE | 10;
+	rua->ra_upd_timer = GSM0408_T3302;
 
 	gsm48_construct_ra(rua->ra_id.digits, &mm->ra);
 
