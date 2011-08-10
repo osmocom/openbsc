@@ -182,6 +182,7 @@ struct gsm_lchan {
 	struct osmo_timer_list T3101;
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
+	struct osmo_timer_list act_timer;
 
 	/* table of neighbor cell measurements */
 	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
