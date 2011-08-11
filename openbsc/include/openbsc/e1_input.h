@@ -8,6 +8,7 @@
 #include <openbsc/gsm_data.h>
 #include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
 #include <openbsc/subchan_demux.h>
 
 #define NUM_E1_TS   32
@@ -18,6 +19,14 @@ enum e1inp_sign_type {
 	E1INP_SIGN_RSL,
 };
 const char *e1inp_signtype_name(enum e1inp_sign_type tp);
+
+enum e1inp_ctr {
+	E1I_CTR_HDLC_ABORT,
+	E1I_CTR_HDLC_BADFCS,
+	E1I_CTR_HDLC_OVERR,
+	E1I_CTR_ALARM,
+	E1I_CTR_REMOVED,
+};
 
 struct e1inp_ts;
 
@@ -107,6 +116,7 @@ struct e1inp_line {
 	struct llist_head list;
 	unsigned int num;
 	const char *name;
+	struct rate_ctr_group *rate_ctr;
 
 	/* array of timestlots */
 	struct e1inp_ts ts[NUM_E1_TS];

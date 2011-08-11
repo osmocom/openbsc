@@ -20,22 +20,26 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/gsm_utils.h>
+
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/logging.h>
+#include <osmocom/vty/misc.h>
 #include <osmocom/vty/telnet_interface.h>
 
-#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
-#include <osmocom/core/utils.h>
-#include <osmocom/gsm/gsm_utils.h>
-#include <osmocom/core/talloc.h>
 #include <openbsc/vty.h>
 #include <openbsc/debug.h>
 
 #include "../../bscconfig.h"
+
+/* CONFIG */
 
 #define E1_DRIVER_NAMES		"(misdn|dahdi)"
 #define E1_DRIVER_HELP		"mISDN supported E1 Card\n" \
@@ -114,6 +118,8 @@ static int e1inp_config_write(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
+/* SHOW */
+
 static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
 {
 	vty_out(vty, "E1 Input Driver %s%s", drv->name, VTY_NEWLINE);
@@ -132,34 +138,43 @@ DEFUN(show_e1drv,
 	return CMD_SUCCESS;
 }
 
-static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line)
+static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line,
+			    int stats)
 {
 	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
 		line->num, line->name ? line->name : "",
 		line->driver->name, VTY_NEWLINE);
+	if (stats)
+		vty_out_rate_ctr_group(vty, " ", line->rate_ctr);
 }
 
 DEFUN(show_e1line,
       show_e1line_cmd,
-      "show e1_line [line_nr]",
+      "show e1_line [line_nr] [stats]",
 	SHOW_STR "Display information about a E1 line\n"
 	"E1 Line Number\n")
 {
 	struct e1inp_line *line;
+	int stats = 0;
 
-	if (argc >= 1) {
+	if (argc >= 1 && strcmp(argv[0], "stats")) {
 		int num = atoi(argv[0]);
+		if (argc >= 2)
+			stats = 1;
 		llist_for_each_entry(line, &e1inp_line_list, list) {
 			if (line->num == num) {
-				e1line_dump_vty(vty, line);
+				e1line_dump_vty(vty, line, stats);
 				return CMD_SUCCESS;
 			}
 		}
 		return CMD_WARNING;
 	}
 
+	if (argc >= 1 && !strcmp(argv[0], "stats"))
+		stats = 1;
+
 	llist_for_each_entry(line, &e1inp_line_list, list)
-		e1line_dump_vty(vty, line);
+		e1line_dump_vty(vty, line, stats);
 
 	return CMD_SUCCESS;
 }

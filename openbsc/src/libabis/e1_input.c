@@ -39,17 +39,19 @@
 #endif
 
 #include <osmocom/core/select.h>
+#include <osmocom/core/linuxlist.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
-#include <osmocom/core/linuxlist.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
-#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
@@ -64,6 +66,31 @@ LLIST_HEAD(e1inp_driver_list);
 LLIST_HEAD(e1inp_line_list);
 
 static void *tall_sigl_ctx;
+
+static const struct rate_ctr_desc e1inp_ctr_d[] = {
+	[E1I_CTR_HDLC_ABORT]  = {
+		"hdlc.abort", 	"ABORT from E1 Layer1"
+	},
+	[E1I_CTR_HDLC_BADFCS] = {
+		"hdlc.bad_fcs",	"Bad Frame Check Sequence"
+	},
+	[E1I_CTR_HDLC_OVERR]  = {
+		"hdlc.overrun",	"HDLC Overrun"
+	},
+	[E1I_CTR_ALARM] = {
+		"alarm", 	"E1 Alarm (Yellow/Red)"
+	},
+	[E1I_CTR_REMOVED] = {
+		"removed", 	"E1 Line removed"
+	},
+};
+
+static const struct rate_ctr_group_desc e1inp_ctr_g_d = {
+	.group_name_prefix = "e1inp",
+	.group_description = "E1 Input subsystem",
+	.num_ctr = ARRAY_SIZE(e1inp_ctr_d),
+	.ctr_desc = e1inp_ctr_d,
+};
 
 /*
  * pcap writing of the misdn load
@@ -360,8 +387,10 @@ struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 		return NULL;
 
 	line->driver = driver;
-
 	line->num = e1_nr;
+
+	line->rate_ctr = rate_ctr_group_alloc(line, &e1inp_ctr_g_d, line->num);
+
 	for (i = 0; i < NUM_E1_TS; i++) {
 		line->ts[i].num = i+1;
 		line->ts[i].line = line;
