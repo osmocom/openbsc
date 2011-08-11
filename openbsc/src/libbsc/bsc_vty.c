@@ -942,7 +942,7 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
 				     lchan_nr++) {
 					lchan = &ts->lchan[lchan_nr];
-					if (lchan->type == GSM_LCHAN_NONE)
+					if ((lchan->type == GSM_LCHAN_NONE) && (lchan->state == LCHAN_S_NONE))
 						continue;
 					dump_cb(vty, lchan);
 				}
