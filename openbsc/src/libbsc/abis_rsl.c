@@ -849,7 +849,7 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 
 	osmo_timer_del(&msg->lchan->act_timer);
 
-	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK",
+	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK ",
 		gsm_lchan_name(msg->lchan));
 
 	/* BTS has rejected channel activation ?!? */
