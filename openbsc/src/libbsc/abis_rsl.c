@@ -185,7 +185,8 @@ static void lchan_act_tmr_cb(void *data)
 	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during activation!\n",
 		gsm_lchan_name(lchan));
 
-	lchan->state = LCHAN_S_NONE;
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
 }
 
 static void lchan_deact_tmr_cb(void *data)
@@ -195,7 +196,8 @@ static void lchan_deact_tmr_cb(void *data)
 	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during deactivation!\n",
 		gsm_lchan_name(lchan));
 
-	lchan->state = LCHAN_S_NONE;
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
 }
 
 
