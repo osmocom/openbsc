@@ -1,3 +1,10 @@
+opensgsn (0.9.13-0~jrsantos.5) unstable; urgency=low
+
+  * gprs: Change T3302 to 20 seconds
+  * gprs: Also check tlli_new in sgsn_mm_ctx_by_tlli
+
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Thu, 11 Aug 2011 02:57:38 -0400
+
 opensgsn (0.9.13-0~jrsantos.4) unstable; urgency=low
 
   * Revert "gprs: Fix bug that caused TLLI to change prematurely"
