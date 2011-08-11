@@ -40,6 +40,8 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/rate_ctr.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -68,6 +70,7 @@ static const struct value_string dahdi_evt_names[] = {
 static void handle_dahdi_exception(struct e1inp_ts *ts)
 {
 	int rc, evt;
+	struct e1inp_line *line = ts->line;
 	struct input_signal_data isd;
 
 	rc = ioctl(ts->driver.dahdi.fd.fd, DAHDI_GETEVENT, &evt);
@@ -84,10 +87,23 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
 		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_ALARM, &isd);
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_ALARM]);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
 		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_NOALARM, &isd);
+		break;
+	case DAHDI_EVENT_ABORT:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_ABORT]);
+		break;
+	case DAHDI_EVENT_OVERRUN:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_OVERR]);
+		break;
+	case DAHDI_EVENT_BADFCS:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_BADFCS]);
+		break;
+	case DAHDI_EVENT_REMOVED:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_REMOVED]);
 		break;
 	}
 }
