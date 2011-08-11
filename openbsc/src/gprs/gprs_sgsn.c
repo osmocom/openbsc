@@ -97,7 +97,7 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 	int tlli_type;
 
 	llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-		if (tlli == ctx->tlli &&
+		if ((tlli == ctx->tlli || tlli == ctx->tlli_new) &&
 		    ra_id_equals(raid, &ctx->ra))
 			return ctx;
 	}
@@ -115,7 +115,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_by_tlli(uint32_t tlli,
 		break;
 	case TLLI_FOREIGN:
 		llist_for_each_entry(ctx, &sgsn_mm_ctxts, list) {
-			if (tlli == tlli_foreign(ctx->tlli) &&
+			if ((tlli == tlli_foreign(ctx->tlli) ||
+                             tlli == tlli_foreign(ctx->tlli_new)) &&
 			    ra_id_equals(raid, &ctx->ra))
 				return ctx;
 		}
