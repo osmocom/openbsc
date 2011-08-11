@@ -69,19 +69,19 @@ static void *tall_sigl_ctx;
 
 static const struct rate_ctr_desc e1inp_ctr_d[] = {
 	[E1I_CTR_HDLC_ABORT]  = {
-		"hdlc.abort", 	"ABORT from E1 Layer1"
+		"hdlc.abort", 	"HDLC abort"
 	},
 	[E1I_CTR_HDLC_BADFCS] = {
-		"hdlc.bad_fcs",	"Bad Frame Check Sequence"
+		"hdlc.bad_fcs",	"HLDC Bad FCS"
 	},
 	[E1I_CTR_HDLC_OVERR]  = {
 		"hdlc.overrun",	"HDLC Overrun"
 	},
 	[E1I_CTR_ALARM] = {
-		"alarm", 	"E1 Alarm (Yellow/Red)"
+		"alarm", 	"Alarm"
 	},
 	[E1I_CTR_REMOVED] = {
-		"removed", 	"E1 Line removed"
+		"removed", 	"Line removed"
 	},
 };
 
