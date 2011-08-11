@@ -863,6 +863,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
 			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+		else
+			rsl_rf_chan_release(msg->lchan, 1);
+
 	} else
 		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 
