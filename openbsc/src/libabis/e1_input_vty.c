@@ -41,9 +41,11 @@
 #define E1_DRIVER_HELP		"mISDN supported E1 Card\n" \
 				"DAHDI supported E1/T1/J1 Card\n"
 
+#define E1_LINE_HELP		"Configure E1/T1/J1 Line\n" "Line Number\n"
+
 DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 	"e1_line <0-255> driver " E1_DRIVER_NAMES,
-	"Configure E1/T1/J1 Line\n" "Line Number\n" "Set driver for this line\n"
+	E1_LINE_HELP "Set driver for this line\n"
 	E1_DRIVER_HELP)
 {
 	struct e1inp_line *line;
@@ -59,6 +61,27 @@ DEFUN(cfg_e1line_driver, cfg_e1_line_driver_cmd,
 		vty_out(vty, "%% Error creating line %d%s", e1_nr, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_e1line_name, cfg_e1_line_name_cmd,
+	"e1_line <0-255> name .LINE",
+	E1_LINE_HELP "Set name for this line\n" "Human readable name\n")
+{
+	struct e1inp_line *line;
+	int e1_nr = atoi(argv[0]);
+
+	line = e1inp_line_get(e1_nr);
+	if (!line) {
+		vty_out(vty, "%% Line %d doesn't exist%s", e1_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	if (line->name) {
+		talloc_free((void *)line->name);
+		line->name = NULL;
+	}
+	line->name = talloc_strdup(line, argv[1]);
 
 	return CMD_SUCCESS;
 }
@@ -84,6 +107,9 @@ static int e1inp_config_write(struct vty *vty)
 	llist_for_each_entry(line, &e1inp_line_list, list) {
 		vty_out(vty, " e1_line %u driver %s%s", line->num,
 			line->driver->name, VTY_NEWLINE);
+		if (line->name)
+			vty_out(vty, " e1_line %u name %s%s", line->num,
+				line->name, VTY_NEWLINE);
 	}
 	return CMD_SUCCESS;
 }
@@ -99,6 +125,7 @@ int e1inp_vty_init(void)
 	install_element(CONFIG_NODE, &cfg_e1inp_cmd);
 	install_node(&e1inp_node, e1inp_config_write);
 	install_element(E1INP_NODE, &cfg_e1_line_driver_cmd);
+	install_element(E1INP_NODE, &cfg_e1_line_name_cmd);
 
 	return 0;
 }
