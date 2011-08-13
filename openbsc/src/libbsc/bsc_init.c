@@ -464,7 +464,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 		return rc;
 	}
 
-	rc = telnet_init(tall_bsc_ctx, bsc_gsmnet, 4242);
+	rc = telnet_init(tall_bsc_ctx, bsc_gsmnet, 4342);
 	if (rc < 0)
 		return rc;
 
