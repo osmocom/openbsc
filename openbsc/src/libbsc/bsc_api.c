@@ -371,7 +371,8 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(conn->lchan);
 
-	api->assign_compl(conn, gh->data[0],
+	if (api->assign_compl)
+		api->assign_compl(conn, gh->data[0],
 			  lchan_to_chosen_channel(conn->lchan),
 			  conn->lchan->encr.alg_id,
 			  chan_mode_to_speech(conn->lchan));
