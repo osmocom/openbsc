@@ -1147,6 +1147,14 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
+#if 1 /* RRLP Server */ 
+        if(apdu_id_flags == 0x00) { /* RRLP */
+                extern int handle_rrlp(struct gsm_subscriber_connection *conn, uint8_t *data, int len);
+                
+                handle_rrlp(conn, apdu_data, apdu_len);         
+        }
+#endif
+
 	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 

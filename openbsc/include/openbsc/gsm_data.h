@@ -271,6 +271,8 @@ struct gsm_network {
 	/* Radio Resource Location Protocol (TS 04.31) */
 	struct {
 		enum rrlp_mode mode;
+		int on_attach;
+		int on_paging;
 	} rrlp;
 
 	/* enable the DTXu and DTXd for this network */
