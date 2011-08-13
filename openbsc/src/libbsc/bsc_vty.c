@@ -575,6 +575,8 @@ static int config_write_net(struct vty *vty)
 	vty_out(vty, " paging any use tch %d%s", gsmnet->pag_any_tch, VTY_NEWLINE);
 	vty_out(vty, " rrlp mode %s%s", rrlp_mode_name(gsmnet->rrlp.mode),
 		VTY_NEWLINE);
+	vty_out(vty, " rrlp on attach %d%s", gsmnet->rrlp.on_attach, VTY_NEWLINE);
+	vty_out(vty, " rrlp on paging %d%s", gsmnet->rrlp.on_paging, VTY_NEWLINE);
 	vty_out(vty, " mm info %u%s", gsmnet->send_mm_info, VTY_NEWLINE);
 	vty_out(vty, " handover %u%s", gsmnet->handover.active, VTY_NEWLINE);
 	vty_out(vty, " handover window rxlev averaging %u%s",
@@ -1147,6 +1149,28 @@ DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	gsmnet->rrlp.mode = rrlp_mode_parse(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_rrlp_on_attach, cfg_net_rrlp_on_attach_cmd,
+      "rrlp on attach (0|1)",
+	"Whether to perform a RRLP position request on SUBSCRIBER ATTACH")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	gsmnet->rrlp.on_attach = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_rrlp_on_paging, cfg_net_rrlp_on_paging_cmd,
+      "rrlp on paging (0|1)",
+	"Whether to perform a RRLP position request on PAGING SUCCESS")
+{
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+
+	gsmnet->rrlp.on_paging = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2584,6 +2608,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
 	install_element(GSMNET_NODE, &cfg_net_neci_cmd);
 	install_element(GSMNET_NODE, &cfg_net_rrlp_mode_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rrlp_on_attach_cmd);
+	install_element(GSMNET_NODE, &cfg_net_rrlp_on_paging_cmd);
 	install_element(GSMNET_NODE, &cfg_net_mm_info_cmd);
 	install_element(GSMNET_NODE, &cfg_net_handover_cmd);
 	install_element(GSMNET_NODE, &cfg_net_ho_win_rxlev_avg_cmd);

@@ -57,6 +57,8 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 		conn->silent_call = 1;
 		/* increment lchan reference count */
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
+		if (conn->bts->network->rrlp.on_paging)
+			send_rrlp_req(conn);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_BUSY:
@@ -88,6 +90,7 @@ struct msg_match {
 static const struct msg_match silent_call_accept[] = {
 	{ GSM48_PDISC_MM, GSM48_MT_MM_LOC_UPD_REQUEST },
 	{ GSM48_PDISC_MM, GSM48_MT_MM_CM_SERV_REQ },
+	{ GSM48_PDISC_RR, GSM48_MT_RR_APP_INFO}, // for RRLP
 };
 
 /* decide if we need to reroute a message as part of a silent call */

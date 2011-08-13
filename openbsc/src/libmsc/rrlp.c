@@ -40,7 +40,7 @@
 #include <arpa/inet.h> 
 
 #define RRLP_SERV_PORT	7890
-#define RRLP_SERV_IP	"192.168.200.22" /* TODO: from config file */
+#define RRLP_SERV_IP	"127.0.0.2" /* TODO: from config file */
 
 #define MAX_RRLP_DATA	256
 
@@ -216,7 +216,7 @@ static int rrlp_serv_cmd(struct gsm_subscriber_connection *conn,
 
 /* ----------------------------------------------- */
 
-static int send_rrlp_req(struct gsm_subscriber_connection *conn);
+int send_rrlp_req(struct gsm_subscriber_connection *conn);
 
 /* TODO: adjust error messages, use logging */
 
@@ -314,7 +314,7 @@ static const uint8_t ms_pref_pos_req[]  = { 0x40, 0x02, 0x79, 0x50 };
 	Accuracy=60, Method=gpsOrEOTD, ResponseTime=5, multipleSets */
 static const uint8_t ass_pref_pos_req[] = { 0x40, 0x03, 0x79, 0x50 };
 
-static int send_rrlp_req(struct gsm_subscriber_connection *conn)
+int send_rrlp_req(struct gsm_subscriber_connection *conn)
 {
 	struct gsm_network *net = conn->bts->network;
 	const uint8_t *req;
@@ -351,7 +351,8 @@ static int subscr_sig_cb(unsigned int subsys, unsigned int signal,
 		conn = connection_for_subscr(subscr);
 		if (!conn)
 			break;
-		send_rrlp_req(conn);
+		if (conn->bts->network->rrlp.on_attach)
+			send_rrlp_req(conn);
 		break;
 	}
 	return 0;
@@ -365,7 +366,8 @@ static int paging_sig_cb(unsigned int subsys, unsigned int signal,
 	switch (signal) {
 	case S_PAGING_SUCCEEDED:
 		/* A subscriber has attached. */
-		send_rrlp_req(psig_data->conn);
+		if (psig_data->conn->bts->network->rrlp.on_paging)
+			send_rrlp_req(psig_data->conn);
 		break;
 	case S_PAGING_EXPIRED:
 		break;
