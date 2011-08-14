@@ -48,6 +48,9 @@ void lchan_reset(struct gsm_lchan *lchan);
 /* Release the given lchan */
 int lchan_release(struct gsm_lchan *lchan, int sach_deact, int reason);
 
+/* Schedule release request timer */
+void lchan_timer_rel_req_schedule(struct gsm_lchan *lchan);
+
 struct load_counter {
 	unsigned int total;
 	unsigned int used;

@@ -655,6 +655,7 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
 
 	osmo_timer_del(&lchan->act_timer);
+	osmo_timer_del(&lchan->rel_timer);
 
 	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
@@ -798,7 +799,8 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason
 	/* 0 is normal release, 1 is local end */
 	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, reason);
 
-	/* FIXME: start some timer in case we don't receive a REL ACK ? */
+	/* Start some timer in case we don't receive a REL ACK ? */
+	lchan_timer_rel_req_schedule(lchan);
 
 	msg->trx = lchan->ts->trx;
 

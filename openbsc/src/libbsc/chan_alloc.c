@@ -397,6 +397,8 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 
 	if (lchan->sach_deact) {
 		gsm48_send_rr_release(lchan);
+		/* Make sure we don't stay in release request state forever. */
+		lchan_timer_rel_req_schedule(lchan);
 		return;
 	}
 
@@ -509,3 +511,20 @@ void network_chan_load(struct pchan_load *pl, struct gsm_network *net)
 		bts_chan_load(pl, bts);
 }
 
+static void lchan_rel_tmr_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Timeout while in release request state!\n",
+		gsm_lchan_name(lchan));
+
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
+}
+
+void lchan_timer_rel_req_schedule(struct gsm_lchan *lchan)
+{
+	lchan->rel_timer.cb = lchan_rel_tmr_cb;
+	lchan->rel_timer.data = lchan;
+	osmo_timer_schedule(&lchan->rel_timer, 4, 0);
+}
