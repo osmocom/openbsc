@@ -29,9 +29,14 @@
 
 extern struct gsm_network *bsc_gsmnet;
 
+static struct osmo_bsc_data *osmo_bsc_data(struct vty *vty)
+{
+	return bsc_gsmnet->bsc_data;
+}
+
 static struct osmo_msc_data *osmo_msc_data(struct vty *vty)
 {
-	return bsc_gsmnet->msc_data;
+	return &bsc_gsmnet->bsc_data->msc;
 }
 
 static struct cmd_node msc_node = {
@@ -52,49 +57,51 @@ DEFUN(cfg_net_msc, cfg_net_msc_cmd,
 static int config_write_msc(struct vty *vty)
 {
 	struct bsc_msc_dest *dest;
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct osmo_bsc_data *bsc = osmo_bsc_data(vty);
+	struct osmo_msc_data *msc = &bsc->msc;
 
 	vty_out(vty, "msc%s", VTY_NEWLINE);
-	if (data->bsc_token)
-		vty_out(vty, " token %s%s", data->bsc_token, VTY_NEWLINE);
-	if (data->core_ncc != -1)
+	if (msc->bsc_token)
+		vty_out(vty, " token %s%s", msc->bsc_token, VTY_NEWLINE);
+	if (msc->core_ncc != -1)
 		vty_out(vty, " core-mobile-network-code %d%s",
-			data->core_ncc, VTY_NEWLINE);
-	if (data->core_mcc != -1)
+			msc->core_ncc, VTY_NEWLINE);
+	if (msc->core_mcc != -1)
 		vty_out(vty, " core-mobile-country-code %d%s",
-			data->core_mcc, VTY_NEWLINE);
-	vty_out(vty, " ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
-	vty_out(vty, " timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
-	vty_out(vty, " timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
-	if (data->mid_call_txt)
-		vty_out(vty, " mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
-	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
-	if (data->ussd_welcome_txt)
-		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
-	if (data->rf_ctrl_name)
-		vty_out(vty, " bsc-rf-socket %s%s",
-			data->rf_ctrl_name, VTY_NEWLINE);
+			msc->core_mcc, VTY_NEWLINE);
+	vty_out(vty, " ip.access rtp-base %d%s", msc->rtp_base, VTY_NEWLINE);
+	vty_out(vty, " timeout-ping %d%s", msc->ping_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout-pong %d%s", msc->pong_timeout, VTY_NEWLINE);
+	if (msc->ussd_welcome_txt)
+		vty_out(vty, " bsc-welcome-text %s%s", msc->ussd_welcome_txt, VTY_NEWLINE);
 
-	if (data->audio_length != 0) {
+	if (msc->audio_length != 0) {
 		int i;
 
 		vty_out(vty, " codec-list ");
-		for (i = 0; i < data->audio_length; ++i) {
+		for (i = 0; i < msc->audio_length; ++i) {
 			if (i != 0)
 				vty_out(vty, ", ");
 
-			if (data->audio_support[i]->hr)
-				vty_out(vty, "hr%.1u", data->audio_support[i]->ver);
+			if (msc->audio_support[i]->hr)
+				vty_out(vty, "hr%.1u", msc->audio_support[i]->ver);
 			else
-				vty_out(vty, "fr%.1u", data->audio_support[i]->ver);
+				vty_out(vty, "fr%.1u", msc->audio_support[i]->ver);
 		}
 		vty_out(vty, "%s", VTY_NEWLINE);
 
 	}
 
-	llist_for_each_entry(dest, &data->dests, list)
+	llist_for_each_entry(dest, &msc->dests, list)
 		vty_out(vty, " dest %s %d %d%s", dest->ip, dest->port,
 			dest->dscp, VTY_NEWLINE);
+
+	if (bsc->mid_call_txt)
+		vty_out(vty, " mid-call-text %s%s", bsc->mid_call_txt, VTY_NEWLINE);
+	vty_out(vty, " mid-call-timeout %d%s", bsc->mid_call_timeout, VTY_NEWLINE);
+	if (bsc->rf_ctrl_name)
+		vty_out(vty, " bsc-rf-socket %s%s",
+			bsc->rf_ctrl_name, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -106,7 +113,7 @@ DEFUN(cfg_net_bsc_token,
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	bsc_replace_string(data, &data->bsc_token, argv[0]);
+	bsc_replace_string(osmo_bsc_data(vty), &data->bsc_token, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -163,7 +170,7 @@ DEFUN(cfg_net_bsc_codec_list,
 
 	/* create a new array */
 	data->audio_support =
-		talloc_zero_array(data, struct gsm_audio_support *, argc);
+		talloc_zero_array(osmo_bsc_data(vty), struct gsm_audio_support *, argc);
 	data->audio_length = argc;
 
 	for (i = 0; i < argc; ++i) {
@@ -211,13 +218,13 @@ DEFUN(cfg_net_msc_dest,
 	struct bsc_msc_dest *dest;
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	dest = talloc_zero(data, struct bsc_msc_dest);
+	dest = talloc_zero(osmo_bsc_data(vty), struct bsc_msc_dest);
 	if (!dest) {
 		vty_out(vty, "%%Failed to create structure.%s", VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
-	dest->ip = talloc_strdup(data, argv[0]);
+	dest->ip = talloc_strdup(dest, argv[0]);
 	if (!dest->ip) {
 		vty_out(vty, "%%Failed to copy dest ip.%s", VTY_NEWLINE);
 		talloc_free(dest);
@@ -279,7 +286,7 @@ DEFUN(cfg_net_msc_mid_call_text,
       "mid-call-text .TEXT",
       "Set the USSD notifcation to be send.\n" "Text to be sent\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 	char *txt = argv_concat(argv, argc, 0);
 	if (!txt)
 		return CMD_WARNING;
@@ -294,7 +301,7 @@ DEFUN(cfg_net_msc_mid_call_timeout,
       "mid-call-timeout NR",
       "Switch from Grace to Off in NR seconds.\n" "Timeout in seconds\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 	data->mid_call_timeout = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
@@ -309,7 +316,7 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	if (!str)
 		return CMD_WARNING;
 
-	bsc_replace_string(data, &data->ussd_welcome_txt, str);
+	bsc_replace_string(osmo_bsc_data(vty), &data->ussd_welcome_txt, str);
 	talloc_free(str);
 	return CMD_SUCCESS;
 }
@@ -319,7 +326,7 @@ DEFUN(cfg_net_rf_socket,
       "bsc-rf-socket PATH",
       "Set the filename for the RF control interface.\n" "RF Control path\n")
 {
-	struct osmo_msc_data *data = osmo_msc_data(vty);
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
 
 	bsc_replace_string(data, &data->rf_ctrl_name, argv[0]);
 	return CMD_SUCCESS;
@@ -348,9 +355,10 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_no_dest_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
 
 	install_element_ve(&show_statistics_cmd);
