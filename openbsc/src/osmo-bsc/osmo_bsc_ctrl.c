@@ -218,7 +218,7 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 	ret = get_bts_loc(cmd, data);
 
 	if (!location_equal(curloc, lastloc))
-		generate_location_state_trap(bts, gsmnet->msc_data->msc_con);
+		generate_location_state_trap(bts, gsmnet->bsc_data->msc.msc_con);
 
 	cleanup_locations(&bts->loc_list);
 

@@ -70,12 +70,12 @@ enum osmo_bsc_rf_adminstate osmo_bsc_rf_get_adminstate_by_bts(struct gsm_bts *bt
 
 enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts)
 {
-	struct osmo_msc_data *msc_data = bts->network->msc_data;
+	struct osmo_bsc_data *bsc_data = bts->network->bsc_data;
 
-	if (!msc_data || !msc_data->rf_ctrl)
+	if (!bsc_data || !bsc_data->rf_ctrl)
 		return OSMO_BSC_RF_POLICY_UNKNOWN;
 
-	switch (msc_data->rf_ctrl->policy) {
+	switch (bsc_data->rf_ctrl->policy) {
 	case S_RF_ON:
 		return OSMO_BSC_RF_POLICY_ON;
 	case S_RF_OFF:
@@ -205,9 +205,9 @@ static int enter_grace(struct osmo_bsc_rf *rf)
 {
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
-	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
+	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->bsc_data->mid_call_timeout, 0);
 	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
-	     rf->gsm_network->msc_data->mid_call_timeout);
+	     rf->gsm_network->bsc_data->mid_call_timeout);
 
 	send_signal(rf, S_RF_GRACE);
 	return 0;

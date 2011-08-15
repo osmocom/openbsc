@@ -57,19 +57,29 @@ struct osmo_msc_data {
 	/* destinations */
 	struct llist_head dests;
 
+	/* ussd welcome text */
+	char *ussd_welcome_txt;
 
 	/* mgcp agent */
 	struct osmo_wqueue mgcp_agent;
+};
+
+/*
+ * Per BSC data.
+ */
+struct osmo_bsc_data {
+	struct gsm_network *network;
+
+	/* msc configuration */
+	struct osmo_msc_data msc;
 
 	/* rf ctl related bits */
 	char *mid_call_txt;
 	int mid_call_timeout;
 	char *rf_ctrl_name;
 	struct osmo_bsc_rf *rf_ctrl;
-
-	/* ussd welcome text */
-	char *ussd_welcome_txt;
 };
+
 
 int osmo_bsc_msc_init(struct gsm_network *network);
 int osmo_bsc_sccp_init(struct gsm_network *gsmnet);
