@@ -1,5 +1,5 @@
-/* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+/* (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -125,10 +125,10 @@ static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
 	struct gsm_network *net;
 	net = conn->bts->network;
 
-	if (!net->msc_data->ussd_welcome_txt)
+	if (!net->bsc_data->msc.ussd_welcome_txt)
 		return;
 
-	gsm0480_send_ussdNotify(conn, 1, net->msc_data->ussd_welcome_txt);
+	gsm0480_send_ussdNotify(conn, 1, net->bsc_data->msc.ussd_welcome_txt);
 	gsm0480_send_releaseComplete(conn);
 }
 
@@ -152,8 +152,8 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	net = conn->bts->network;
 
 	if (mtype == GSM48_MT_MM_LOC_UPD_ACCEPT) {
-		if (net->msc_data->core_ncc != -1 ||
-		    net->msc_data->core_mcc != -1) {
+		if (net->bsc_data->msc.core_ncc != -1 ||
+		    net->bsc_data->msc.core_mcc != -1) {
 			if (msgb_l3len(msg) >= sizeof(*gh) + sizeof(*lai)) {
 				lai = (struct gsm48_loc_area_id *) &gh->data[0];
 				gsm48_generate_lai(lai, net->country_code,

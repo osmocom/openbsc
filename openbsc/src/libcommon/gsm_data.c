@@ -79,14 +79,14 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	if (!net)
 		return NULL;
 
-	net->msc_data = talloc_zero(net, struct osmo_msc_data);
-	if (!net->msc_data) {
+	net->bsc_data = talloc_zero(net, struct osmo_bsc_data);
+	if (!net->bsc_data) {
 		talloc_free(net);
 		return NULL;
 	}
 
 	/* Init back pointer */
-	net->msc_data->network = net;
+	net->bsc_data->network = net;
 
 	net->country_code = country_code;
 	net->network_code = network_code;
@@ -141,12 +141,13 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 
 	net->mncc_recv = mncc_recv;
 
-	INIT_LLIST_HEAD(&net->msc_data->dests);
-	net->msc_data->ping_timeout = 20;
-	net->msc_data->pong_timeout = 5;
-	net->msc_data->core_ncc = -1;
-	net->msc_data->core_mcc = -1;
-	net->msc_data->rtp_base = 4000;
+	INIT_LLIST_HEAD(&net->bsc_data->msc.dests);
+	net->bsc_data->msc.ping_timeout = 20;
+	net->bsc_data->msc.pong_timeout = 5;
+	net->bsc_data->msc.core_ncc = -1;
+	net->bsc_data->msc.core_mcc = -1;
+	net->bsc_data->msc.rtp_base = 4000;
+	net->bsc_data->msc.network = net;
 
 	gsm_net_update_ctype(net);
 

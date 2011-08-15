@@ -26,9 +26,9 @@
 
 int bsc_grace_allow_new_connection(struct gsm_network *network)
 {
-	if (!network->msc_data->rf_ctrl)
+	if (!network->bsc_data->rf_ctrl)
 		return 1;
-	return network->msc_data->rf_ctrl->policy == S_RF_ON;
+	return network->bsc_data->rf_ctrl->policy == S_RF_ON;
 }
 
 static int handle_sub(struct gsm_lchan *lchan, const char *text)
@@ -68,7 +68,7 @@ static int handle_grace(struct gsm_network *network)
 	struct gsm_bts *bts;
 	struct gsm_bts_trx *trx;
 
-	if (!network->msc_data->mid_call_txt)
+	if (!network->bsc_data->mid_call_txt)
 		return 0;
 
 	llist_for_each_entry(bts, &network->bts_list, list) {
@@ -77,7 +77,7 @@ static int handle_grace(struct gsm_network *network)
 				struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; ++lchan_nr) {
 					handle_sub(&ts->lchan[lchan_nr],
-						   network->msc_data->mid_call_txt);
+						   network->bsc_data->mid_call_txt);
 				}
 			}
 		}
