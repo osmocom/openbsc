@@ -19,7 +19,8 @@
 
 #include <osmocom/abis/e1_input.h>
 
-struct osmo_msc_data;
+struct osmo_bsc_data;
+
 struct osmo_bsc_sccp_con;
 struct gsm_sms_queue;
 

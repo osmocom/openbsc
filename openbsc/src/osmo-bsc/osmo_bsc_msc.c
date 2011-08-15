@@ -431,7 +431,7 @@ static void send_id_get_response(struct osmo_msc_data *data, int fd)
 
 int osmo_bsc_msc_init(struct gsm_network *network)
 {
-	struct osmo_msc_data *data = network->msc_data;
+	struct osmo_msc_data *data = &network->bsc_data->msc;
 
 	if (mgcp_create_port(data) != 0)
 		return -1;

@@ -285,7 +285,7 @@ struct gsm_network {
 	int pag_any_tch;
 
 	/* MSC data in case we are a true BSC */
-	struct osmo_msc_data *msc_data;
+	struct osmo_bsc_data *bsc_data;
 
 	/* subscriber related features */
 	int keep_subscr;

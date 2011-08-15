@@ -1,6 +1,6 @@
 /* GSM 08.08 BSSMAP handling						*/
-/* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+/* (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -296,6 +296,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 				     struct msgb *msg, unsigned int length)
 {
 	struct msgb *resp;
+	struct osmo_msc_data *msc;
 	struct gsm_network *network;
 	struct tlv_parsed tp;
 	uint8_t *data;
@@ -357,11 +358,12 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	 * the correct value.
 	 */
 	full_rate = 0;
+	msc = &network->bsc_data->msc;
 	for (supported = 0;
-		chan_mode == GSM48_CMODE_SIGN && supported < network->msc_data->audio_length;
+		chan_mode == GSM48_CMODE_SIGN && supported < msc->audio_length;
 		++supported) {
 
-		int perm_val = audio_support_to_gsm88(network->msc_data->audio_support[supported]);
+		int perm_val = audio_support_to_gsm88(msc->audio_support[supported]);
 		for (i = 2; i < TLVP_LEN(&tp, GSM0808_IE_CHANNEL_TYPE); ++i) {
 			if ((data[i] & 0x7f) == perm_val) {
 				chan_mode = gsm88_to_chan_mode(perm_val);
@@ -380,8 +382,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 
 	/* map it to a MGCP Endpoint and a RTP port */
 	port = mgcp_timeslot_to_endpoint(multiplex, timeslot);
-	conn->rtp_port = rtp_calculate_port(port,
-						network->msc_data->rtp_base);
+	conn->rtp_port = rtp_calculate_port(port, msc->rtp_base);
 
 	return gsm0808_assign_req(conn->conn, chan_mode, full_rate);
 

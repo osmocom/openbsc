@@ -197,9 +197,9 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 	dump_pchan_load_vty(vty, "    ", &pl);
 
 	/* show rf */
-	if (net->msc_data && net->msc_data->rf_ctrl)
+	if (net->bsc_data && net->bsc_data->rf_ctrl)
 		vty_out(vty, "  Last RF Command: %s%s",
-			net->msc_data->rf_ctrl->last_state_command,
+			net->bsc_data->rf_ctrl->last_state_command,
 			VTY_NEWLINE);
 }
 

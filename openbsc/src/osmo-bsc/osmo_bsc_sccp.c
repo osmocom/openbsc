@@ -1,7 +1,7 @@
 /* Interaction with the SCCP subsystem */
 /*
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -141,7 +141,7 @@ static void msc_sccp_write_ipa(struct sccp_connection *conn, struct msgb *msg,
 			      void *global_ctx, void *ctx)
 {
 	struct gsm_network *net = (struct gsm_network *) global_ctx;
-	msc_queue_write(net->msc_data->msc_con, msg, IPAC_PROTO_SCCP);
+	msc_queue_write(net->bsc_data->msc.msc_con, msg, IPAC_PROTO_SCCP);
 }
 
 static int msc_sccp_accept(struct sccp_connection *connection, void *data)
@@ -153,7 +153,7 @@ static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
 	struct gsm_network *net = (struct gsm_network *) data;
-	return bsc_handle_udt(net, net->msc_data->msc_con, msgb, length);
+	return bsc_handle_udt(net, net->bsc_data->msc.msc_con, msgb, length);
 }
 
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
@@ -186,7 +186,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	struct sccp_connection *sccp;
 
 	net = conn->bts->network;
-	if (!net->msc_data->msc_con->is_authenticated) {
+	if (!net->bsc_data->msc.msc_con->is_authenticated) {
 		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
 		return -1;
 	}
@@ -223,7 +223,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	INIT_LLIST_HEAD(&bsc_con->sccp_queue);
 
 	bsc_con->sccp = sccp;
-	bsc_con->msc_con = net->msc_data->msc_con;
+	bsc_con->msc_con = net->bsc_data->msc.msc_con;
 	bsc_con->conn = conn;
 	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;

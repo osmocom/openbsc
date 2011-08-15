@@ -1,5 +1,5 @@
-/* (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+/* (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -47,15 +47,15 @@
 
 static uint16_t get_network_code_for_msc(struct gsm_network *net)
 {
-	if (net->msc_data->core_ncc != -1)
-		return net->msc_data->core_ncc;
+	if (net->bsc_data->msc.core_ncc != -1)
+		return net->bsc_data->msc.core_ncc;
 	return net->network_code;
 }
 
 static uint16_t get_country_code_for_msc(struct gsm_network *net)
 {
-	if (net->msc_data->core_mcc != -1)
-		return net->msc_data->core_mcc;
+	if (net->bsc_data->msc.core_mcc != -1)
+		return net->bsc_data->msc.core_mcc;
 	return net->country_code;
 }
 

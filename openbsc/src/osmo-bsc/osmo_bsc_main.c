@@ -161,13 +161,13 @@ static void signal_handler(int signal)
 		talloc_report_full(tall_bsc_ctx, stderr);
 		break;
 	case SIGUSR2:
-		if (!bsc_gsmnet->msc_data)
+		if (!bsc_gsmnet->bsc_data)
 			return;
-		if (!bsc_gsmnet->msc_data->msc_con)
+		if (!bsc_gsmnet->bsc_data->msc.msc_con)
 			return;
-		if (!bsc_gsmnet->msc_data->msc_con->is_connected)
+		if (!bsc_gsmnet->bsc_data->msc.msc_con->is_connected)
 			return;
-		bsc_msc_lost(bsc_gsmnet->msc_data->msc_con);
+		bsc_msc_lost(bsc_gsmnet->bsc_data->msc.msc_con);
 		break;
 	default:
 		break;
@@ -391,7 +391,7 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 
 int main(int argc, char **argv)
 {
-	struct osmo_msc_data *data;
+	struct osmo_bsc_data *data;
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
@@ -430,7 +430,7 @@ int main(int argc, char **argv)
 	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
 	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 
-	data = bsc_gsmnet->msc_data;
+	data = bsc_gsmnet->bsc_data;
 	if (rf_ctrl)
 		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctrl);
 
