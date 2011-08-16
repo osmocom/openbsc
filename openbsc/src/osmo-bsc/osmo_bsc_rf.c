@@ -1,8 +1,8 @@
 /* RF Ctl handling socket */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -298,9 +298,7 @@ static int rf_read_cmd(struct osmo_fd *fd)
 	case RF_CMD_D_OFF:
 	case RF_CMD_ON:
 	case RF_CMD_OFF:
-		conn->rf->last_request = buf[0];
-		if (!osmo_timer_pending(&conn->rf->delay_cmd))
-			osmo_timer_schedule(&conn->rf->delay_cmd, 1, 0);
+		osmo_bsc_rf_schedule_lock(conn->rf, buf[0]);
 		break;
 	default:
 		conn->rf->last_state_command = "Unknown command";
@@ -444,3 +442,9 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	return rf;
 }
 
+void osmo_bsc_rf_schedule_lock(struct osmo_bsc_rf *rf, char cmd)
+{
+	rf->last_request = cmd;
+	if (!osmo_timer_pending(&rf->delay_cmd))
+		osmo_timer_schedule(&rf->delay_cmd, 1, 0);
+}
