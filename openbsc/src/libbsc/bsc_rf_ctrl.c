@@ -366,6 +366,53 @@ static int rf_ctrl_accept(struct osmo_fd *bfd, unsigned int what)
 	return 0;
 }
 
+static void rf_auto_off_cb(void *_timer)
+{
+	struct osmo_bsc_rf *rf = _timer;
+
+	LOGP(DLINP, LOGL_NOTICE,
+		"Going to switch off RF due lack of a MSC connection.\n");
+	osmo_bsc_rf_schedule_lock(rf, RF_CMD_D_OFF);
+}
+
+static int msc_signal_handler(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct gsm_network *net;
+	struct msc_signal_data *msc;
+	struct osmo_bsc_rf *rf;
+
+	/* check if we want to handle this signal */
+	if (subsys != SS_MSC)
+		return 0;
+
+	net = handler_data;
+	msc = signal_data;
+
+	/* check if we have the needed information */
+	if (!net->bsc_data || !net->bsc_data->rf_ctrl)
+		return 0;
+	if (msc->data->type != MSC_CON_TYPE_NORMAL)
+		return 0;
+
+	rf = net->bsc_data->rf_ctrl;
+	switch (signal) {
+	case S_MSC_LOST:
+		if (net->bsc_data->auto_off_timeout < 0)
+			return 0;
+		if (osmo_timer_pending(&rf->auto_off_timer))
+			return 0;
+		osmo_timer_schedule(&rf->auto_off_timer,
+				net->bsc_data->auto_off_timeout, 0);
+		break;
+	case S_MSC_CONNECTED:
+		osmo_timer_del(&rf->auto_off_timer);
+		break;
+	}
+
+	return 0;
+}
+
 struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net)
 {
 	unsigned int namelen;
@@ -443,6 +490,12 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	/* delay cmd handling */
 	rf->delay_cmd.data = rf;
 	rf->delay_cmd.cb = rf_delay_cmd_cb;
+
+	rf->auto_off_timer.data = rf;
+	rf->auto_off_timer.cb = rf_auto_off_cb;
+
+	/* listen to RF signals */
+	osmo_signal_register_handler(SS_MSC, msc_signal_handler, net);
 
 	return rf;
 }

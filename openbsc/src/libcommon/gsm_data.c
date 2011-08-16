@@ -86,6 +86,7 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	}
 
 	/* Init back pointer */
+	net->bsc_data->auto_off_timeout = -1;
 	net->bsc_data->network = net;
 	INIT_LLIST_HEAD(&net->bsc_data->mscs);
 

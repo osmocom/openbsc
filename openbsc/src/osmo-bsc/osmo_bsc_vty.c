@@ -168,6 +168,10 @@ static int config_write_bsc(struct vty *vty)
 		vty_out(vty, " bsc-rf-socket %s%s",
 			bsc->rf_ctrl_name, VTY_NEWLINE);
 
+	if (bsc->auto_off_timeout != -1)
+		vty_out(vty, " bsc-auto-rf-off %d%s",
+			bsc->auto_off_timeout, VTY_NEWLINE);
+
 	return CMD_SUCCESS;
 }
 
@@ -462,6 +466,26 @@ DEFUN(cfg_net_rf_socket,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rf_off_time,
+      cfg_net_rf_off_time_cmd,
+      "bsc-auto-rf-off <1-65000>",
+      "Disable RF on MSC Connection\n" "Timeout\n")
+{
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
+	data->auto_off_timeout = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_no_rf_off_time,
+      cfg_net_no_rf_off_time_cmd,
+      "no bsc-auto-rf-off",
+      NO_STR "Disable RF on MSC Connection\n")
+{
+	struct osmo_bsc_data *data = osmo_bsc_data(vty);
+	data->auto_off_timeout = -1;
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_statistics,
       show_statistics_cmd,
       "show statistics",
@@ -498,8 +522,8 @@ int bsc_vty_init_extra(void)
 	install_element(BSC_NODE, &cfg_net_bsc_mid_call_text_cmd);
 	install_element(BSC_NODE, &cfg_net_bsc_mid_call_timeout_cmd);
 	install_element(BSC_NODE, &cfg_net_rf_socket_cmd);
-
-
+	install_element(BSC_NODE, &cfg_net_rf_off_time_cmd);
+	install_element(BSC_NODE, &cfg_net_no_rf_off_time_cmd);
 
 	install_node(&msc_node, config_write_msc);
 	install_default(MSC_NODE);
