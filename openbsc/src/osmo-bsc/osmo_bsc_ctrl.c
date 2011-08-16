@@ -460,7 +460,6 @@ int bsc_ctrl_cmds_install()
 	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
 	if (rc)
 		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 end:
 	return rc;
 	net = msc->data->network;
