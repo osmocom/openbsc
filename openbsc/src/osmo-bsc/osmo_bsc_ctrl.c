@@ -1,4 +1,5 @@
 /* (C) 2011 by Daniel Willmann <daniel@totalueberwachung.de>
+ * (C) 2011 by Holger Hans Peter Freyther
  * (C) 2011 by On-Waves
  * All Rights Reserved
  *
@@ -420,6 +421,42 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
+static int msc_signal_handler(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct ctrl_cmd *cmd;
+	struct msc_signal_data *msc;
+	struct gsm_network *net;
+	struct gsm_bts *bts;
+	char *loc_fmt = "net.bts.%i.location";
+
+	if (subsys != SS_MSC)
+		return 0;
+	if (signal != S_MSC_AUTHENTICATED)
+		return 0;
+
+	msc = signal_data;
+	cmd = ctrl_cmd_create(msc->data, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP for location.\n");
+		return 0;
+	}
+
+	cmd->id = "0";
+
+	net = msc->data->network;
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		cmd->node = bts;
+		cmd->variable = talloc_asprintf(cmd, loc_fmt, bts->nr);
+		get_bts_loc(cmd, NULL);
+		osmo_bsc_send_trap(cmd, msc->data->msc_con);
+		talloc_free(cmd->variable);
+	}
+
+	talloc_free(cmd);
+	return 0;
+}
+
 int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
@@ -436,10 +473,14 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	rc = osmo_signal_register_handler(SS_MSC, &msc_connection_status_trap_cb, net);
 	if (rc)
 		goto end;
+	rc = osmo_signal_register_handler(SS_MSC, msc_signal_handler, NULL);
+	if (rc)
+		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_bts_connection_status);
 	if (rc)
 		goto end;
 	rc = osmo_signal_register_handler(SS_L_INPUT, &bts_connection_status_trap_cb, net);
+
 end:
 	return rc;
 }
