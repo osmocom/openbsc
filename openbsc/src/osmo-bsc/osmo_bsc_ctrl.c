@@ -388,18 +388,18 @@ static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	int locked = atoi(cmd->value);
 	struct gsm_network *net = cmd->node;
-	struct gsm_bts *bts;
 	if (!net) {
 		cmd->reply = "net not found.";
 		return CTRL_CMD_ERROR;
 	}
 
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		struct gsm_bts_trx *trx;
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			gsm_trx_lock_rf(trx, locked);
-		}
+	if (!net->bsc_data->rf_ctrl) {
+		cmd->reply = "RF Ctrl not enabled";
+		return CTRL_CMD_ERROR;
 	}
+
+	osmo_bsc_rf_schedule_lock(net->bsc_data->rf_ctrl,
+			locked == 1 ? '0' : '1');
 
 	cmd->reply = talloc_asprintf(cmd, "%u", locked);
 	if (!cmd->reply) {
