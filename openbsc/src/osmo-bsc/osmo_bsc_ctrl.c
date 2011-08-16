@@ -219,43 +219,6 @@ err:
 		return 1;
 }
 
-CTRL_CMD_DEFINE(trx_rf_lock, "rf_locked");
-static int get_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
-{
-	struct gsm_bts_trx *trx = cmd->node;
-	if (!trx) {
-		cmd->reply = "trx not found.";
-		return CTRL_CMD_ERROR;
-	}
-
-	cmd->reply = talloc_asprintf(cmd, "%u", trx->mo.nm_state.administrative == NM_STATE_LOCKED ? 1 : 0);
-	return CTRL_CMD_REPLY;
-}
-
-static int set_trx_rf_lock(struct ctrl_cmd *cmd, void *data)
-{
-	int locked = atoi(cmd->value);
-	struct gsm_bts_trx *trx = cmd->node;
-	if (!trx) {
-		cmd->reply = "trx not found.";
-		return CTRL_CMD_ERROR;
-	}
-
-	gsm_trx_lock_rf(trx, locked);
-
-	return get_trx_rf_lock(cmd, data);
-}
-
-static int verify_trx_rf_lock(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	int locked = atoi(cmd->value);
-
-	if ((locked != 0) && (locked != 1))
-		return 1;
-
-	return 0;
-}
-
 CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
 static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
@@ -307,9 +270,6 @@ int bsc_ctrl_cmds_install()
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
-	if (rc)
-		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
 end:
 	return rc;
 }
