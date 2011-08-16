@@ -99,6 +99,7 @@ struct osmo_bsc_data {
 	int mid_call_timeout;
 	char *rf_ctrl_name;
 	struct osmo_bsc_rf *rf_ctrl;
+	int auto_off_timeout;
 };
 
 

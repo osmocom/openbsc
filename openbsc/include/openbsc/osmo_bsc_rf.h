@@ -42,6 +42,9 @@ struct osmo_bsc_rf {
 
 	/* some handling for the automatic grace switch */
 	struct osmo_timer_list grace_timeout;
+
+	/* auto RF switch-off due lack of MSC connection */
+	struct osmo_timer_list auto_off_timer;
 };
 
 struct osmo_bsc_rf_conn {
