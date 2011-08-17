@@ -28,15 +28,15 @@
 #include <signal.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/process.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/process.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
@@ -47,6 +47,7 @@
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/logging.h>
 
 #include "../../bscconfig.h"
 
@@ -64,7 +65,6 @@ const char *openbsc_copyright =
 	"This is free software: you are free to change and redistribute it.\r\n"
 	"There is NO WARRANTY, to the extent permitted by law.\r\n";
 
-static struct log_target *stderr_target;
 static char *config_file = "osmo_gbproxy.cfg";
 struct gbproxy_config gbcfg;
 static int daemonize = 0;
@@ -74,7 +74,7 @@ extern struct gbprox_peer *gbprox_peer_sgsn;
 
 /* call-back function for the NS protocol */
 static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
-		      struct msgb *msg, u_int16_t bvci)
+		      struct msgb *msg, uint16_t bvci)
 {
 	int rc = 0;
 
@@ -98,7 +98,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(1);
 		exit(0);
 		break;
@@ -162,10 +162,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -174,10 +174,10 @@ static void handle_options(int argc, char **argv)
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'V':
 			print_version(1);
@@ -212,16 +212,13 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(&log_info);
 	gbproxy_vty_init();
 
 	handle_options(argc, argv);
@@ -239,7 +236,7 @@ int main(int argc, char **argv)
 	}
 	gbcfg.nsi = bssgp_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
-	register_signal_handler(SS_NS, &gbprox_signal, NULL);
+	osmo_signal_register_handler(SS_NS, &gbprox_signal, NULL);
 
 	rc = gbproxy_parse_config(config_file, &gbcfg);
 	if (rc < 0) {
@@ -279,7 +276,7 @@ int main(int argc, char **argv)
 	gbprox_reset_persistent_nsvcs(bssgp_nsi);
 
 	while (1) {
-		rc = bsc_select_main(0);
+		rc = osmo_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

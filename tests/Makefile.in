@@ -35,7 +35,7 @@ POST_UNINSTALL = :
 subdir = tests
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -124,6 +124,8 @@ LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBOSMOCORE_CFLAGS = @LIBOSMOCORE_CFLAGS@
 LIBOSMOCORE_LIBS = @LIBOSMOCORE_LIBS@
+LIBOSMOGSM_CFLAGS = @LIBOSMOGSM_CFLAGS@
+LIBOSMOGSM_LIBS = @LIBOSMOGSM_LIBS@
 LIBOSMOSCCP_CFLAGS = @LIBOSMOSCCP_CFLAGS@
 LIBOSMOSCCP_LIBS = @LIBOSMOSCCP_LIBS@
 LIBOSMOVTY_CFLAGS = @LIBOSMOVTY_CFLAGS@

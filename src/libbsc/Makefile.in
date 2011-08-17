@@ -35,7 +35,7 @@ POST_UNINSTALL = :
 subdir = src/libbsc
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -62,9 +62,9 @@ am_libbsc_a_OBJECTS = abis_nm.$(OBJEXT) abis_nm_vty.$(OBJEXT) \
 	gsm_subscriber_base.$(OBJEXT) handover_decision.$(OBJEXT) \
 	handover_logic.$(OBJEXT) meas_rep.$(OBJEXT) \
 	rest_octets.$(OBJEXT) system_information.$(OBJEXT) \
-	e1_config.$(OBJEXT) transaction.$(OBJEXT) bsc_api.$(OBJEXT) \
-	bsc_msc.$(OBJEXT) bsc_vty.$(OBJEXT) gsm_04_08_utils.$(OBJEXT) \
-	bsc_init.$(OBJEXT)
+	e1_config.$(OBJEXT) bsc_api.$(OBJEXT) bsc_msc.$(OBJEXT) \
+	bsc_vty.$(OBJEXT) gsm_04_08_utils.$(OBJEXT) bsc_init.$(OBJEXT) \
+	bts_init.$(OBJEXT)
 libbsc_a_OBJECTS = $(am_libbsc_a_OBJECTS)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
@@ -121,6 +121,8 @@ LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBOSMOCORE_CFLAGS = @LIBOSMOCORE_CFLAGS@
 LIBOSMOCORE_LIBS = @LIBOSMOCORE_LIBS@
+LIBOSMOGSM_CFLAGS = @LIBOSMOGSM_CFLAGS@
+LIBOSMOGSM_LIBS = @LIBOSMOGSM_LIBS@
 LIBOSMOSCCP_CFLAGS = @LIBOSMOSCCP_CFLAGS@
 LIBOSMOSCCP_LIBS = @LIBOSMOSCCP_LIBS@
 LIBOSMOVTY_CFLAGS = @LIBOSMOVTY_CFLAGS@
@@ -190,8 +192,8 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
+AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 noinst_LIBRARIES = libbsc.a
 libbsc_a_SOURCES = abis_nm.c abis_nm_vty.c \
 			abis_om2000.c abis_om2000_vty.c \
@@ -207,10 +209,9 @@ libbsc_a_SOURCES = abis_nm.c abis_nm_vty.c \
 			handover_decision.c handover_logic.c meas_rep.c \
 			rest_octets.c system_information.c \
 			e1_config.c \
-			transaction.c \
 			bsc_api.c bsc_msc.c bsc_vty.c \
 			gsm_04_08_utils.c \
-			bsc_init.c
+			bsc_init.c bts_init.c
 
 all: all-am
 
@@ -272,6 +273,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bsc_vty.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_ericsson_rbs2000.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_hsl_femtocell.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_init.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_ipaccess_nanobts.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_siemens_bs11.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/bts_unknown.Po@am__quote@
@@ -285,7 +287,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/paging.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/rest_octets.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/system_information.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/transaction.Po@am__quote@
 
 .c.o:
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<

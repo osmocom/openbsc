@@ -32,16 +32,19 @@
 #include <sys/socket.h>
 
 #include <openbsc/debug.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
-#include <osmocore/process.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/select.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
+#include <openbsc/vty.h>
+
+#include <osmocom/core/application.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/process.h>
+#include <osmocom/core/select.h>
+
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
-#include <openbsc/vty.h>
 
 #include <osmocom/vty/command.h>
 
@@ -135,7 +138,7 @@ static int mgcp_change_cb(struct mgcp_trunk_config *cfg, int endpoint, int state
 	return 0;
 }
 
-static int read_call_agent(struct bsc_fd *fd, unsigned int what)
+static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 {
 	struct sockaddr_in addr;
 	socklen_t slen = sizeof(addr);
@@ -193,14 +196,11 @@ int main(int argc, char **argv)
 	struct gsm_network dummy_network;
 	struct sockaddr_in addr;
 	int on = 1, rc;
-	struct log_target *stderr_target;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_ignore_signals();
+	osmo_init_logging(&log_info);
 
 	cfg = mgcp_config_alloc();
 	if (!cfg)
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(&log_info);
 	mgcp_vty_init();
 
 	handle_options(argc, argv);
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
 		}
 
 
-		if (bsc_register_fd(&cfg->gw_fd.bfd) != 0) {
+		if (osmo_fd_register(&cfg->gw_fd.bfd) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
 			return -1;
 		}
@@ -275,7 +275,7 @@ int main(int argc, char **argv)
 
 	/* main loop */
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 

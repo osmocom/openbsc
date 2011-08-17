@@ -20,19 +20,21 @@
  *
  */
 
-#include <sys/types.h>
 
 #include <arpa/inet.h>
 
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/signal.h>
 #include <openbsc/e1_input.h>
 
+static int bts_model_hslfemto_start(struct gsm_network *net);
+
 static struct gsm_bts_model model_hslfemto = {
 	.type = GSM_BTS_TYPE_HSL_FEMTO,
+	.start = bts_model_hslfemto_start,
 	.nm_att_tlvdef = {
 		.def = {
 			/* no HSL specific OML attributes that we know of */
@@ -140,7 +142,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	case S_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
-			hslfemto_bootstrap_om(isd->trx->bts);
+			if (isd->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO)
+				hslfemto_bootstrap_om(isd->trx->bts);
 			break;
 		}
 	}
@@ -148,7 +151,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int bts_model_hslfemto_init(void)
+static int bts_model_hslfemto_start(struct gsm_network *net)
 {
 	model_hslfemto.features.data = &model_hslfemto._features_data[0];
 	model_hslfemto.features.data_len = sizeof(model_hslfemto._features_data);
@@ -156,7 +159,13 @@ int bts_model_hslfemto_init(void)
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_EGPRS);
 
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 
+	/* Call A-bis input driver, start socket for OML and RSL. */
+	return hsl_setup(net);
+}
+
+int bts_model_hslfemto_init(void)
+{
 	return gsm_bts_model_register(&model_hslfemto);
 }

@@ -1,21 +1,23 @@
 #ifndef _MEAS_REP_H
 #define _MEAS_REP_H
 
+#include <stdint.h>
+
 #define MRC_F_PROCESSED	0x0001
 
 /* extracted from a L3 measurement report IE */
 struct gsm_meas_rep_cell {
-	u_int8_t rxlev;
-	u_int8_t bsic;
-	u_int8_t neigh_idx;
-	u_int16_t arfcn;
+	uint8_t rxlev;
+	uint8_t bsic;
+	uint8_t neigh_idx;
+	uint16_t arfcn;
 	unsigned int flags;
 };
 
 /* RX Level and RX Quality */
 struct gsm_rx_lev_qual {
-	u_int8_t rx_lev;
-	u_int8_t rx_qual;
+	uint8_t rx_lev;
+	uint8_t rx_qual;
 };
 
 /* unidirectional measumrement report */
@@ -38,7 +40,7 @@ struct gsm_meas_rep {
 	struct gsm_lchan *lchan;
 
 	/* number of the measurement report */
-	u_int8_t nr;
+	uint8_t nr;
 	/* flags, see MEAS_REP_F_* */
 	unsigned int flags;
 
@@ -46,11 +48,11 @@ struct gsm_meas_rep {
 	struct gsm_meas_rep_unidir ul;
 	struct gsm_meas_rep_unidir dl;
 
-	u_int8_t bs_power;
-	u_int8_t ms_timing_offset;
+	uint8_t bs_power;
+	uint8_t ms_timing_offset;
 	struct {
 		int8_t pwr;	/* MS power in dBm */
-		u_int8_t ta;	/* MS timing advance */
+		uint8_t ta;	/* MS timing advance */
 	} ms_l1;
 
 	/* neighbor measurement reports for up to 6 cells */

@@ -19,18 +19,21 @@
  *
  */
 
-#include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_nm.h>
+#include <openbsc/e1_input.h> /* for ipaccess_setup() */
+
+static int bts_model_nanobts_start(struct gsm_network *net);
 
 static struct gsm_bts_model model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
+	.start = bts_model_nanobts_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
 	.nm_att_tlvdef = {
 		.def = {
@@ -182,8 +185,8 @@ static void patch_32(uint8_t *data, const uint32_t val)
  */
 static void patch_nm_tables(struct gsm_bts *bts)
 {
-	u_int8_t arfcn_low = bts->c0->arfcn & 0xff;
-	u_int8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
+	uint8_t arfcn_low = bts->c0->arfcn & 0xff;
+	uint8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 
 	/* patch ARFCN into BTS Attributes */
 	nanobts_attr_bts[42] &= 0xf0;
@@ -196,8 +199,8 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	}
 
 	if (bts->rach_ldavg_slots != -1) {
-		u_int8_t avg_high = bts->rach_ldavg_slots & 0xff;
-		u_int8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
+		uint8_t avg_high = bts->rach_ldavg_slots & 0xff;
+		uint8_t avg_low = (bts->rach_ldavg_slots >> 8) & 0x0f;
 
 		nanobts_attr_bts[35] = avg_high;
 		nanobts_attr_bts[36] = avg_low;
@@ -249,7 +252,7 @@ static void patch_nm_tables(struct gsm_bts *bts)
 /* Callback function to be called whenever we get a GSM 12.21 state change event */
 static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 {
-	u_int8_t obj_class = nsd->obj_class;
+	uint8_t obj_class = nsd->obj_class;
 	void *obj = nsd->obj;
 	struct gsm_nm_state *new_state = nsd->new_state;
 
@@ -257,6 +260,9 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 	struct gsm_bts_trx *trx;
 	struct gsm_bts_trx_ts *ts;
 	struct gsm_bts_gprs_nsvc *nsvc;
+
+	if (nsd->bts->type != GSM_BTS_TYPE_NANOBTS)
+		return 0;
 
 	/* This event-driven BTS setup is currently only required on nanoBTS */
 
@@ -396,7 +402,7 @@ static int sw_activ_rep(struct msgb *mb)
 		 * This code is here to make sure that on start
 		 * a TRX remains locked.
 		 */
-		int rc_state = trx->nm_state.administrative;
+		int rc_state = trx->mo.nm_state.administrative;
 		/* Patch ARFCN into radio attribute */
 		nanobts_attr_radio[5] &= 0xf0;
 		nanobts_attr_radio[5] |= trx->arfcn >> 8;
@@ -433,7 +439,7 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-int bts_model_nanobts_init(void)
+static int bts_model_nanobts_start(struct gsm_network *net)
 {
 	model_nanobts.features.data = &model_nanobts._features_data[0];
 	model_nanobts.features.data_len = sizeof(model_nanobts._features_data);
@@ -441,7 +447,13 @@ int bts_model_nanobts_init(void)
 	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_EGPRS);
 
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
+	/* Call A-bis input driver, start server sockets for OML and RSL. */
+	return ipaccess_setup(net);
+}
+
+int bts_model_nanobts_init(void)
+{
 	return gsm_bts_model_register(&model_nanobts);
 }

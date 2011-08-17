@@ -36,7 +36,7 @@ noinst_PROGRAMS = gsm0408_test$(EXEEXT)
 subdir = tests/gsm0408
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -49,7 +49,8 @@ gsm0408_test_OBJECTS = $(am_gsm0408_test_OBJECTS)
 am__DEPENDENCIES_1 =
 gsm0408_test_DEPENDENCIES = $(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libmsc/libmsc.a \
-	$(top_builddir)/src/libbsc/libbsc.a $(am__DEPENDENCIES_1)
+	$(top_builddir)/src/libbsc/libbsc.a $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
 DEFAULT_INCLUDES = -I.@am__isrc@ -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -108,6 +109,8 @@ LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBOSMOCORE_CFLAGS = @LIBOSMOCORE_CFLAGS@
 LIBOSMOCORE_LIBS = @LIBOSMOCORE_LIBS@
+LIBOSMOGSM_CFLAGS = @LIBOSMOGSM_CFLAGS@
+LIBOSMOGSM_LIBS = @LIBOSMOGSM_LIBS@
 LIBOSMOSCCP_CFLAGS = @LIBOSMOSCCP_CFLAGS@
 LIBOSMOSCCP_LIBS = @LIBOSMOSCCP_LIBS@
 LIBOSMOVTY_CFLAGS = @LIBOSMOVTY_CFLAGS@
@@ -177,12 +180,12 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS)
+AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
 gsm0408_test_SOURCES = gsm0408_test.c
 gsm0408_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 			$(top_builddir)/src/libmsc/libmsc.a \
 			$(top_builddir)/src/libbsc/libbsc.a \
-			$(LIBOSMOCORE_LIBS) -ldbi
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -ldbi
 
 all: all-am
 

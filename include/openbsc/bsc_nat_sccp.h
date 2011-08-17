@@ -22,7 +22,6 @@
 #ifndef BSC_NAT_SCCP_H
 #define BSC_NAT_SCCP_H
 
-#include <sys/types.h>
 #include <osmocom/sccp/sccp_types.h>
 
 /*
@@ -77,8 +76,12 @@ struct sccp_connections {
 	/* status */
 	int con_type;
 	int con_local;
+	int authorized;
 	int imsi_checked;
 	char *imsi;
+
+	/* remember which Transactions we run over the bypass */
+	char ussd_ti[8];
 
 	/*
 	 * audio handling. Remember if we have ever send a CRCX,

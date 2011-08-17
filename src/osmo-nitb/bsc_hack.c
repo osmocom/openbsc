@@ -30,20 +30,22 @@
 #include <getopt.h>
 
 #include <openbsc/db.h>
-#include <osmocore/select.h>
-#include <osmocore/process.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/process.h>
 #include <openbsc/debug.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/vty.h>
+#include <openbsc/bss.h>
+#include <openbsc/mncc.h>
 
 #include "../../bscconfig.h"
 
 /* MCC and MNC for the Location Area Identifier */
-static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
@@ -53,11 +55,7 @@ static int use_mncc_sock = 0;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
-static struct timer_list db_sync_timer;
-
-extern int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
-				 const char *cfg_file);
-extern int bsc_shutdown_net(struct gsm_network *net);
+static struct osmo_timer_list db_sync_timer;
 
 static void create_pcap_file(char *file)
 {
@@ -127,10 +125,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -145,13 +143,13 @@ static void handle_options(int argc, char **argv)
 			create_pcap_file(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'P':
 			ipacc_rtp_direct = 0;
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'm':
 			use_mncc_sock = 1;
@@ -175,7 +173,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -195,7 +193,7 @@ static void signal_handler(int signal)
 }
 
 /* timer handling */
-static int _db_store_counter(struct counter *counter, void *data)
+static int _db_store_counter(struct osmo_counter *counter, void *data)
 {
 	return db_store_counter(counter);
 }
@@ -203,15 +201,10 @@ static int _db_store_counter(struct counter *counter, void *data)
 static void db_sync_timer_cb(void *data)
 {
 	/* store counters to database and re-schedule */
-	counters_for_each(_db_store_counter, NULL);
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_counters_for_each(_db_store_counter, NULL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
-extern int bts_model_unknown_init(void);
-extern int bts_model_bs11_init(void);
-extern int bts_model_nanobts_init(void);
-extern int bts_model_rbs2k_init(void);
-extern int bts_model_hslfemto_init(void);
 void talloc_ctx_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
@@ -229,29 +222,20 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 
-	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
 	talloc_ctx_init();
 	on_dso_load_token();
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
 
-	bts_model_unknown_init();
-	bts_model_bs11_init();
-	bts_model_nanobts_init();
-	bts_model_rbs2k_init();
-	bts_model_hslfemto_init();
+	osmo_init_logging(&log_info);
 
+	bts_init();
 	e1inp_init();
-
-	/* enable filters */
-	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
 	vty_init(&vty_info);
-	bsc_vty_init();
+	bsc_vty_init(&log_info);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -266,7 +250,6 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
-	mncc_sock_init(bsc_gsmnet);
 
 	/* seed the PRNG */
 	srand(time(NULL));
@@ -286,13 +269,13 @@ int main(int argc, char **argv)
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	bsc_schedule_timer(&db_sync_timer, DB_SYNC_INTERVAL);
+	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	/* start the SMS queue */
 	if (sms_queue_start(bsc_gsmnet, 20) != 0)
@@ -308,6 +291,6 @@ int main(int argc, char **argv)
 
 	while (1) {
 		log_reset_context();
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }

@@ -24,18 +24,18 @@
 #include <stdlib.h>
 #include <errno.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/handover.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 
 /* issue handover to a cell identified by ARFCN and BSIC */
 static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
-				  u_int16_t arfcn, u_int8_t bsic)
+				  uint16_t arfcn, uint8_t bsic)
 {
 	struct gsm_bts *new_bts;
 
@@ -53,7 +53,7 @@ static int handover_to_arfcn_bsic(struct gsm_lchan *lchan,
 
 /* did we get a RXLEV for a given cell in the given report? */
 static int rxlev_for_cell_in_rep(struct gsm_meas_rep *mr,
-				 u_int16_t arfcn, u_int8_t bsic)
+				 uint16_t arfcn, uint8_t bsic)
 {
 	int i;
 
@@ -93,7 +93,7 @@ static int neigh_meas_avg(struct neigh_meas_proc *nmp, int window)
 static struct neigh_meas_proc *find_evict_neigh(struct gsm_lchan *lchan)
 {
 	int j, worst = 999999;
-	struct neigh_meas_proc *nmp_worst;
+	struct neigh_meas_proc *nmp_worst = NULL;
 
 	/* first try to find an empty/unused slot */
 	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
@@ -106,7 +106,7 @@ static struct neigh_meas_proc *find_evict_neigh(struct gsm_lchan *lchan)
 	for (j = 0; j < ARRAY_SIZE(lchan->neigh_meas); j++) {
 		struct neigh_meas_proc *nmp = &lchan->neigh_meas[j];
 		int avg = neigh_meas_avg(nmp, MAX_WIN_NEIGH_AVG);
-		if (avg < worst) {
+		if (!nmp_worst || avg < worst) {
 			worst = avg;
 			nmp_worst = nmp;
 		}
@@ -293,5 +293,5 @@ static int ho_dec_sig_cb(unsigned int subsys, unsigned int signal,
 
 void on_dso_load_ho_dec(void)
 {
-	register_signal_handler(SS_LCHAN, ho_dec_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, ho_dec_sig_cb, NULL);
 }

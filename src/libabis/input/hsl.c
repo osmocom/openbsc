@@ -38,14 +38,13 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -55,7 +54,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define HSL_TCP_PORT	2500
 #define HSL_PROTO_DEBUG	0xdd
@@ -65,7 +64,7 @@
 
 /* data structure for one E1 interface with A-bis */
 struct hsl_e1_handle {
-	struct bsc_fd listen_fd;
+	struct osmo_fd listen_fd;
 	struct gsm_network *gsmnet;
 };
 
@@ -82,7 +81,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	struct e1inp_ts *ts;
 	struct e1inp_line *line;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 
 	if (!bts || !bts->oml_link)
 		return -1;
@@ -93,7 +92,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	e1inp_event(ts, S_INP_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -110,7 +109,7 @@ int hsl_drop_oml(struct gsm_bts *bts)
 	return -1;
 }
 
-static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct bsc_fd *bfd)
+static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct osmo_fd *bfd)
 {
 	struct e1inp_sign_link *link, *link2;
 	int bts_nr = -1;
@@ -120,7 +119,7 @@ static int hsl_drop_ts_fd(struct e1inp_ts *ts, struct bsc_fd *bfd)
 		e1inp_sign_link_destroy(link);
 	}
 
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -196,7 +195,7 @@ static int process_hsl_rsl(struct msgb *msg, struct e1inp_line *line)
 	return 0;
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -219,7 +218,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return error;
 	}
 
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == HSL_PROTO_DEBUG) {
@@ -291,14 +290,14 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	u_int8_t proto;
+	uint8_t proto;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -331,7 +330,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	msg->l2h = msg->data;
 	ipaccess_prepend_header(msg, sign_link->tei);
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -341,13 +340,13 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int hsl_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int hsl_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -378,14 +377,14 @@ struct e1inp_driver hsl_driver = {
 };
 
 /* callback of the OML listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
 	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -422,7 +421,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_OML;
 	bfd->cb = hsl_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -438,12 +437,6 @@ int hsl_setup(struct gsm_network *gsmnet)
 {
 	int ret;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&hsl_driver);
-	if (ret)
-		return ret;
-
 	e1h = talloc_zero(tall_bsc_ctx, struct hsl_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
@@ -451,10 +444,15 @@ int hsl_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for connections */
-	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, 0, HSL_TCP_PORT,
-			listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY, HSL_TCP_PORT,
+			0, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	return 0;
+}
+
+void e1inp_hsl_init(void)
+{
+	e1inp_driver_register(&hsl_driver);
 }

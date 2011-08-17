@@ -22,25 +22,33 @@
 #ifndef BSC_MSC_H
 #define BSC_MSC_H
 
-#include <osmocore/write_queue.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/timer.h>
+
+struct bsc_msc_dest {
+	struct llist_head list;
+
+	char *ip;
+	int port;
+	int dscp;
+};
+
 
 struct bsc_msc_connection {
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 	int is_connected;
 	int is_authenticated;
 	int first_contact;
-	const char *ip;
-	int port;
-	int prio;
+
+	struct llist_head *dests;
 
 	void (*connection_loss) (struct bsc_msc_connection *);
 	void (*connected) (struct bsc_msc_connection *);
-	struct timer_list reconnect_timer;
-	struct timer_list timeout_timer;
+	struct osmo_timer_list reconnect_timer;
+	struct osmo_timer_list timeout_timer;
 };
 
-struct bsc_msc_connection *bsc_msc_create(const char *ip, int port, int prio);
+struct bsc_msc_connection *bsc_msc_create(void *ctx, struct llist_head *dest);
 int bsc_msc_connect(struct bsc_msc_connection *);
 void bsc_msc_schedule_connect(struct bsc_msc_connection *);
 

@@ -23,9 +23,9 @@
 #include <errno.h>
 
 #include <openbsc/debug.h>
-#include <osmocore/talloc.h>
-#include <osmocore/timer.h>
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/bsc_rll.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/chan_alloc.h>
@@ -34,12 +34,12 @@
 
 struct bsc_rll_req {
 	struct llist_head list;
-	struct timer_list timer;
+	struct osmo_timer_list timer;
 
 	struct gsm_lchan *lchan;
-	u_int8_t link_id;
+	uint8_t link_id;
 
-	void (*cb)(struct gsm_lchan *lchan, u_int8_t link_id,
+	void (*cb)(struct gsm_lchan *lchan, uint8_t link_id,
 		   void *data, enum bsc_rllr_ind);
 	void *data;
 };
@@ -64,13 +64,13 @@ static void timer_cb(void *_rllr)
 }
 
 /* establish a RLL connection with given SAPI / priority */
-int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
-		  void (*cb)(struct gsm_lchan *, u_int8_t, void *,
+int rll_establish(struct gsm_lchan *lchan, uint8_t sapi,
+		  void (*cb)(struct gsm_lchan *, uint8_t, void *,
 			     enum bsc_rllr_ind),
 		  void *data)
 {
 	struct bsc_rll_req *rllr = talloc_zero(tall_bsc_ctx, struct bsc_rll_req);
-	u_int8_t link_id;
+	uint8_t link_id;
 	if (!rllr)
 		return -ENOMEM;
 
@@ -92,7 +92,7 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 	rllr->timer.cb = &timer_cb;
 	rllr->timer.data = rllr;
 
-	bsc_schedule_timer(&rllr->timer, 10, 0);
+	osmo_timer_schedule(&rllr->timer, 10, 0);
 
 	/* send the RSL RLL ESTablish REQuest */
 	return rsl_establish_request(rllr->lchan, rllr->link_id);
@@ -100,14 +100,14 @@ int rll_establish(struct gsm_lchan *lchan, u_int8_t sapi,
 
 /* Called from RSL code in case we have received an indication regarding
  * any RLL link */
-void rll_indication(struct gsm_lchan *lchan, u_int8_t link_id, u_int8_t type)
+void rll_indication(struct gsm_lchan *lchan, uint8_t link_id, uint8_t type)
 {
 	struct bsc_rll_req *rllr, *rllr2;
 
 	llist_for_each_entry_safe(rllr, rllr2, &bsc_rll_reqs, list) {
 		if (rllr->lchan == lchan &&
 		    (rllr->link_id & LINKID_MASK) == (link_id & LINKID_MASK)) {
-			bsc_del_timer(&rllr->timer);
+			osmo_timer_del(&rllr->timer);
 			complete_rllr(rllr, type);
 			return;
 		}
@@ -127,7 +127,7 @@ static int rll_lchan_signal(unsigned int subsys, unsigned int signal,
 
 	llist_for_each_entry_safe(rllr, rllr2, &bsc_rll_reqs, list) {
 		if (rllr->lchan == challoc->lchan) {
-			bsc_del_timer(&rllr->timer);
+			osmo_timer_del(&rllr->timer);
 			complete_rllr(rllr, BSC_RLLR_IND_ERR_IND);
 		}
 	}
@@ -137,5 +137,5 @@ static int rll_lchan_signal(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_rll(void)
 {
-	register_signal_handler(SS_CHALLOC, rll_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_CHALLOC, rll_lchan_signal, NULL);
 }

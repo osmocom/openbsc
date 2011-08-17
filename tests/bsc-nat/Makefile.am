@@ -1,5 +1,5 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(COVERAGE_CFLAGS)
+AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 EXTRA_DIST = bsc_data.c
@@ -16,4 +16,4 @@ bsc_nat_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 			$(top_srcdir)/src/libabis/libabis.a \
 			$(top_srcdir)/src/libtrau/libtrau.a \
 			$(top_srcdir)/src/libcommon/libcommon.a \
-			$(LIBOSMOCORE_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)
+			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lrt $(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS)

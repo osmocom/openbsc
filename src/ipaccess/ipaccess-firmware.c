@@ -20,7 +20,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -29,8 +29,8 @@
 
 #define PART_LENGTH 138
 
-static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
-static_assert(sizeof(struct sdp_firmware) == 158, _right_header_length);
+osmo_static_assert(sizeof(struct sdp_header_entry) == 138, right_entry);
+osmo_static_assert(sizeof(struct sdp_firmware) == 158, _right_header_length);
 
 /* more magic, the second "int" in the header */
 static char more_magic[] = { 0x10, 0x02 };
@@ -41,8 +41,8 @@ int ipaccess_analyze_file(int fd, const unsigned int st_size, const unsigned int
 	struct sdp_header *header;
 	char buf[4096];
 	int rc, i;
-	u_int16_t table_size;
-	u_int16_t table_offset;
+	uint16_t table_size;
+	uint16_t table_offset;
 	off_t table_start;
 
 

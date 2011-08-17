@@ -77,10 +77,10 @@ enum ns_cause {
 
 /* Our Implementation */
 #include <netinet/in.h>
-#include <osmocore/linuxlist.h>
-#include <osmocore/msgb.h>
-#include <osmocore/timer.h>
-#include <osmocore/select.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/select.h>
 
 #define NS_TIMERS_COUNT 7
 #define NS_TIMERS "(tns-block|tns-block-retries|tns-reset|tns-reset-retries|tns-test|tns-alive|tns-alive-retries)"
@@ -133,13 +133,13 @@ struct gprs_ns_inst {
 
 	/* NS-over-IP specific bits */
 	struct {
-		struct bsc_fd fd;
+		struct osmo_fd fd;
 		uint32_t local_ip;
 		uint16_t local_port;
 	} nsip;
 	/* NS-over-FR-over-GRE-over-IP specific bits */
 	struct {
-		struct bsc_fd fd;
+		struct osmo_fd fd;
 		uint32_t local_ip;
 		int enabled:1;
 	} frgre;
@@ -163,7 +163,7 @@ struct gprs_nsvc {
 	uint32_t state;
 	uint32_t remote_state;
 
-	struct timer_list timer;
+	struct osmo_timer_list timer;
 	enum nsvc_timer_mode timer_mode;
 	int alive_retries;
 

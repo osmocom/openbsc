@@ -1,8 +1,8 @@
 /* BSC Multiplexer/NAT */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -44,14 +44,16 @@
 #include <openbsc/socket.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/gsm0808.h>
-#include <osmocore/talloc.h>
-#include <osmocore/process.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/process.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/vty/logging.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -60,12 +62,11 @@
 #define SCCP_CLOSE_TIME 20
 #define SCCP_CLOSE_TIME_TIMEOUT 19
 
-struct log_target *stderr_target;
 static const char *config_file = "bsc-nat.cfg";
 static struct in_addr local_addr;
-static struct bsc_fd bsc_listen;
+static struct osmo_fd bsc_listen;
 static const char *msc_ip = NULL;
-static struct timer_list sccp_close;
+static struct osmo_timer_list sccp_close;
 static int daemonize = 0;
 
 const char *openbsc_copyright =
@@ -99,7 +100,7 @@ static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 	}
 
 
-	if (write_queue_enqueue(&con->write_queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&con->write_queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
@@ -152,10 +153,10 @@ static void bsc_ping_timeout(void *_bsc)
 	send_ping(bsc);
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&bsc->ping_timeout, bsc->nat->ping_timeout, 0);
+	osmo_timer_schedule(&bsc->ping_timeout, bsc->nat->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&bsc->pong_timeout, bsc->nat->pong_timeout, 0);
+	osmo_timer_schedule(&bsc->pong_timeout, bsc->nat->pong_timeout, 0);
 }
 
 static void start_ping_pong(struct bsc_connection *bsc)
@@ -194,15 +195,15 @@ static void send_id_req(struct bsc_connection *bsc)
 	bsc_send_data(bsc, id_req, sizeof(id_req), IPAC_PROTO_IPACCESS);
 }
 
-static void nat_send_rlsd_msc(struct sccp_connections *conn)
+static struct msgb *nat_create_rlsd(struct sccp_connections *conn)
 {
 	struct sccp_connection_released *rel;
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "rlsd");
 	if (!msg) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate clear command.\n");
-		return;
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate released.\n");
+		return NULL;
 	}
 
 	msg->l2h = msgb_put(msg, sizeof(*rel));
@@ -212,15 +213,39 @@ static void nat_send_rlsd_msc(struct sccp_connections *conn)
 	rel->destination_local_reference = conn->remote_ref;
 	rel->source_local_reference = conn->patched_ref;
 
-	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
+	return msg;
+}
 
+static void nat_send_rlsd_ussd(struct bsc_nat *nat, struct sccp_connections *conn)
+{
+	struct msgb *msg;
+
+	if (!nat->ussd_con)
+		return;
+
+	msg = nat_create_rlsd(conn);
+	if (!msg)
+		return;
+
+	bsc_do_write(&nat->ussd_con->queue, msg, IPAC_PROTO_SCCP);
+}
+
+static void nat_send_rlsd_msc(struct sccp_connections *conn)
+{
+	struct msgb *msg;
+
+	msg = nat_create_rlsd(conn);
+	if (!msg)
+		return;
+
+	ipaccess_prepend_header(msg, IPAC_PROTO_SCCP);
 	queue_for_msc(conn->msc_con, msg);
 }
 
 static void nat_send_rlsd_bsc(struct sccp_connections *conn)
 {
-	struct sccp_connection_released *rel;
 	struct msgb *msg;
+	struct sccp_connection_released *rel;
 
 	msg = msgb_alloc_headroom(4096, 128, "rlsd");
 	if (!msg) {
@@ -398,7 +423,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 		ipaccess_prepend_header(rlsd, IPAC_PROTO_SCCP);
 		queue_for_msc(con->msc_con, rlsd);
 	}
-	con->con_local = 1;
+	con->con_local = NAT_CON_END_LOCAL;
 	con->msc_con = NULL;
 
 	/* 2. release the BSC side */
@@ -464,7 +489,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 
 		/* declare it local and assign a unique remote_ref */
 		con->con_type = NAT_CON_TYPE_LOCAL_REJECT;
-		con->con_local = 1;
+		con->con_local = NAT_CON_END_LOCAL;
 		con->has_remote_ref = 1;
 		con->remote_ref = con->patched_ref;
 
@@ -524,6 +549,82 @@ send_refuse:
 	bsc_write(bsc, refuse, IPAC_PROTO_SCCP);
 }
 
+static void bsc_nat_send_paging(struct bsc_connection *bsc, struct msgb *msg)
+{
+	if (bsc->cfg->forbid_paging) {
+		LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
+		return;
+	}
+
+	bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), IPAC_PROTO_SCCP);
+}
+
+static void bsc_nat_handle_paging(struct bsc_nat *nat, struct msgb *msg)
+{
+	struct bsc_connection *bsc;
+	const uint8_t *paging_start;
+	int paging_length, i, ret;
+
+	ret = bsc_nat_find_paging(msg, &paging_start, &paging_length);
+	if (ret != 0) {
+		LOGP(DNAT, LOGL_ERROR, "Could not parse paging message: %d\n", ret);
+		return;
+	}
+
+	/* This is quite expensive now */
+	for (i = 0; i < paging_length; i += 2) {
+		unsigned int _lac = ntohs(*(unsigned int *) &paging_start[i]);
+		unsigned int paged = 0;
+		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
+			if (!bsc->cfg)
+				continue;
+			if (!bsc->authenticated)
+				continue;
+			if (!bsc_config_handles_lac(bsc->cfg, _lac))
+				continue;
+			bsc_nat_send_paging(bsc, msg);
+			paged += 1;
+		}
+
+		/* highlight a possible config issue */
+		if (paged == 0)
+			LOGP(DNAT, LOGL_ERROR, "No BSC for LAC %d/0x%d\n", _lac, _lac);
+
+	}
+}
+
+
+/*
+ * Update the auth status. This can be either a CIPHER MODE COMAMND or
+ * a CM Serivce Accept. Maybe also LU Accept or such in the future.
+ */
+static void update_con_authorize(struct sccp_connections *con,
+				 struct bsc_nat_parsed *parsed,
+				 struct msgb *msg)
+{
+	if (!con)
+		return;
+	if (con->authorized)
+		return;
+
+	if (parsed->bssap == BSSAP_MSG_BSS_MANAGEMENT &&
+	    parsed->gsm_type == BSS_MAP_MSG_CIPHER_MODE_CMD) {
+		con->authorized = 1;
+	} else if (parsed->bssap == BSSAP_MSG_DTAP) {
+		uint8_t msg_type, proto;
+		uint32_t len;
+		struct gsm48_hdr *hdr48;
+		hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+		if (!hdr48)
+			return;
+
+		proto = hdr48->proto_discr & 0x0f;
+		msg_type = hdr48->msg_type & 0xbf;
+		if (proto == GSM48_PDISC_MM &&
+		    msg_type == GSM48_MT_MM_CM_SERV_ACC)
+			con->authorized = 1;
+	}
+}
 
 static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *msg)
 {
@@ -552,12 +653,17 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 			goto send_to_all;
 			break;
 		case SCCP_MSG_TYPE_RLSD:
+			if (con && con->con_local == NAT_CON_END_USSD) {
+				LOGP(DNAT, LOGL_NOTICE, "RLSD for a USSD connection. Ignoring.\n");
+				con = NULL;
+			}
+			/* fall through */
 		case SCCP_MSG_TYPE_CREF:
 		case SCCP_MSG_TYPE_DT1:
 		case SCCP_MSG_TYPE_IT:
 			con = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 			if (parsed->gsm_type == BSS_MAP_MSG_ASSIGMENT_RQST) {
-				counter_inc(nat->stats.sccp.calls);
+				osmo_counter_inc(nat->stats.sccp.calls);
 
 				if (con) {
 					struct rate_ctr_group *ctrg;
@@ -567,6 +673,10 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 						LOGP(DNAT, LOGL_ERROR, "Failed to assign...\n");
 				} else
 					LOGP(DNAT, LOGL_ERROR, "Assignment command but no BSC.\n");
+			} else if (con && con->con_local == NAT_CON_END_USSD &&
+				   parsed->gsm_type == BSS_MAP_MSG_CLEAR_CMD) {
+				LOGP(DNAT, LOGL_NOTICE, "Clear Command for USSD Connection. Ignoring.\n");
+				con = NULL;
 			}
 			break;
 		case SCCP_MSG_TYPE_CC:
@@ -600,6 +710,8 @@ static int forward_sccp_to_bts(struct bsc_msc_connection *msc_con, struct msgb *
 		return -1;
 	}
 
+	update_con_authorize(con, parsed, msg);
+
 	bsc_send_data(con->bsc, msg->l2h, msgb_l2len(msg), proto);
 	return 0;
 
@@ -610,16 +722,7 @@ send_to_all:
 	 * message and then send it to the authenticated messages...
 	 */
 	if (parsed->ipa_proto == IPAC_PROTO_SCCP && parsed->gsm_type == BSS_MAP_MSG_PAGING) {
-		int lac;
-		bsc = bsc_nat_find_bsc(nat, msg, &lac);
-		if (bsc && bsc->cfg->forbid_paging)
-			LOGP(DNAT, LOGL_DEBUG, "Paging forbidden for BTS: %d\n", bsc->cfg->nr);
-		else if (bsc)
-			bsc_send_data(bsc, msg->l2h, msgb_l2len(msg), parsed->ipa_proto);
-		else if (lac != -1)
-			LOGP(DNAT, LOGL_ERROR, "Could not determine BSC for paging on lac: %d/0x%x\n",
-			     lac, lac);
-
+		bsc_nat_handle_paging(nat, msg);
 		goto exit;
 	}
 	/* currently send this to every BSC connected */
@@ -649,7 +752,7 @@ static void msc_connection_was_lost(struct bsc_msc_connection *con)
 
 static void msc_connection_connected(struct bsc_msc_connection *con)
 {
-	counter_inc(nat->stats.msc.reconn);
+	osmo_counter_inc(nat->stats.msc.reconn);
 }
 
 static void msc_send_reset(struct bsc_msc_connection *msc_con)
@@ -677,7 +780,7 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 	LOGP(DMSC, LOGL_NOTICE, "Scheduled GSM0808 reset msg for the MSC.\n");
 }
 
-static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
+static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_msc_connection *msc_con;
@@ -696,7 +799,7 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 		return -1;
 	}
 
-	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -715,7 +818,7 @@ static int ipaccess_msc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int ipaccess_msc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+static int ipaccess_msc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 	rc = write(bfd->fd, msg->data, msg->len);
@@ -745,9 +848,9 @@ void bsc_close_connection(struct bsc_connection *connection)
 	struct rate_ctr *ctr = NULL;
 
 	/* stop the timeout timer */
-	bsc_del_timer(&connection->id_timeout);
-	bsc_del_timer(&connection->ping_timeout);
-	bsc_del_timer(&connection->pong_timeout);
+	osmo_timer_del(&connection->id_timeout);
+	osmo_timer_del(&connection->ping_timeout);
+	osmo_timer_del(&connection->pong_timeout);
 
 	if (connection->cfg)
 		ctr = &connection->cfg->stats.ctrg->ctr[BCFG_CTR_DROPPED_SCCP];
@@ -759,20 +862,42 @@ void bsc_close_connection(struct bsc_connection *connection)
 
 		if (ctr)
 			rate_ctr_inc(ctr);
-		if (sccp_patch->has_remote_ref && !sccp_patch->con_local)
-			nat_send_rlsd_msc(sccp_patch);
+		if (sccp_patch->has_remote_ref) {
+			if (sccp_patch->con_local == NAT_CON_END_MSC)
+				nat_send_rlsd_msc(sccp_patch);
+			else if (sccp_patch->con_local == NAT_CON_END_USSD)
+				nat_send_rlsd_ussd(nat, sccp_patch);
+		}
+
 		sccp_connection_destroy(sccp_patch);
 	}
 
 	/* close endpoints allocated by this BSC */
 	bsc_mgcp_clear_endpoints_for(connection);
 
-	bsc_unregister_fd(&connection->write_queue.bfd);
+	osmo_fd_unregister(&connection->write_queue.bfd);
 	close(connection->write_queue.bfd.fd);
-	write_queue_clear(&connection->write_queue);
+	osmo_wqueue_clear(&connection->write_queue);
 	llist_del(&connection->list_entry);
 
 	talloc_free(connection);
+}
+
+static void bsc_maybe_close(struct bsc_connection *bsc)
+{
+	struct sccp_connections *sccp;
+	if (!bsc->nat->blocked)
+		return;
+
+	/* are there any connections left */
+	llist_for_each_entry(sccp, &bsc->nat->sccp_connections, list_entry)
+		if (sccp->bsc == bsc)
+			return;
+
+	/* nothing left, close the BSC */
+	LOGP(DNAT, LOGL_NOTICE, "Cleaning up BSC %d in blocking mode.\n",
+	     bsc->cfg ? bsc->cfg->nr : -1);
+	bsc_close_connection(bsc);
 }
 
 static void ipaccess_close_bsc(void *data)
@@ -805,7 +930,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
-			bsc_del_timer(&bsc->id_timeout);
+			osmo_timer_del(&bsc->id_timeout);
 			LOGP(DNAT, LOGL_NOTICE, "Authenticated bsc nr: %d on fd %d\n",
 			     conf->nr, bsc->write_queue.bfd.fd);
 			start_ping_pong(bsc);
@@ -908,16 +1033,18 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 
 					/* hand data to a side channel */
 					if (bsc_check_ussd(con, parsed, msg) == 1) 
-						con->con_local = 2;
+						con->con_local = NAT_CON_END_USSD;
 
 					/*
 					 * Optionally rewrite setup message. This can
 					 * replace the msg and the parsed structure becomes
 					 * invalid.
 					 */
-					msg = bsc_nat_rewrite_setup(bsc->nat, msg, parsed, con->imsi);
+					msg = bsc_nat_rewrite_msg(bsc->nat, msg, parsed, con->imsi);
 					talloc_free(parsed);
 					parsed = NULL;
+				} else if (con->con_local == NAT_CON_END_USSD) {
+					bsc_check_ussd(con, parsed, msg);
 				}
 
 				con_bsc = con->bsc;
@@ -934,6 +1061,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 				con_filter = con->con_local;
 			}
 			remove_sccp_src_ref(bsc, msg, parsed);
+			bsc_maybe_close(bsc);
 			break;
 		case SCCP_MSG_TYPE_UDT:
 			/* simply forward everything */
@@ -986,9 +1114,15 @@ exit:
 		/* do we know who is handling this? */
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
-			ipaccess_idtag_parse(&tvp,
+			int ret;
+			ret = ipaccess_idtag_parse(&tvp,
 					     (unsigned char *) msg->l2h + 2,
 					     msgb_l2len(msg) - 2);
+			if (ret < 0) {
+				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
+					"message with malformed TLVs\n");
+				return ret;
+			}
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
 				ipaccess_auth_bsc(&tvp, bsc);
 		}
@@ -1013,7 +1147,7 @@ exit3:
 	return -1;
 }
 
-static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
+static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_connection *bsc = bfd->data;
@@ -1035,7 +1169,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	}
 
 
-	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DNAT, LOGL_DEBUG, "MSG from BSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* Handle messages from the BSC */
 	hh = (struct ipaccess_head *) msg->data;
@@ -1043,7 +1177,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	/* stop the pong timeout */
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg->l2h[0] == IPAC_MSGT_PONG) {
-			bsc_del_timer(&bsc->pong_timeout);
+			osmo_timer_del(&bsc->pong_timeout);
 			msgb_free(msg);
 			return 0;
 		} else if (msg->l2h[0] == IPAC_MSGT_PING) {
@@ -1060,7 +1194,7 @@ static int ipaccess_bsc_read_cb(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_listen_bsc_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct bsc_connection *bsc;
 	int fd, rc, on;
@@ -1077,13 +1211,19 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	/* count the reconnect */
-	counter_inc(nat->stats.bsc.reconn);
+	osmo_counter_inc(nat->stats.bsc.reconn);
 
 	/*
 	 * if we are not connected to a msc... just close the socket
 	 */
 	if (!bsc_nat_msc_is_connected(nat)) {
 		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due lack of MSC connection.\n");
+		close(fd);
+		return 0;
+	}
+
+	if (nat->blocked) {
+		LOGP(DNAT, LOGL_NOTICE, "Disconnecting BSC due NAT being blocked.\n");
 		close(fd);
 		return 0;
 	}
@@ -1116,7 +1256,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	bsc->write_queue.read_cb = ipaccess_bsc_read_cb;
 	bsc->write_queue.write_cb = bsc_write_cb;
 	bsc->write_queue.bfd.when = BSC_FD_READ;
-	if (bsc_register_fd(&bsc->write_queue.bfd) < 0) {
+	if (osmo_fd_register(&bsc->write_queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register BSC fd.\n");
 		close(fd);
 		talloc_free(bsc);
@@ -1135,7 +1275,7 @@ static int ipaccess_listen_bsc_cb(struct bsc_fd *bfd, unsigned int what)
 	 */
 	bsc->id_timeout.data = bsc;
 	bsc->id_timeout.cb = ipaccess_close_bsc;
-	bsc_schedule_timer(&bsc->id_timeout, nat->auth_timeout, 0);
+	osmo_timer_schedule(&bsc->id_timeout, nat->auth_timeout, 0);
 	return 0;
 }
 
@@ -1182,16 +1322,16 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'c':
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'm':
 			msc_ip = optarg;
@@ -1222,6 +1362,8 @@ static void signal_handler(int signal)
 
 static void sccp_close_unconfirmed(void *_data)
 {
+	int destroyed = 0;
+	struct bsc_connection *bsc, *bsc_tmp;
 	struct sccp_connections *conn, *tmp1;
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
@@ -1238,9 +1380,18 @@ static void sccp_close_unconfirmed(void *_data)
 		     sccp_src_ref_to_int(&conn->real_ref),
 		     sccp_src_ref_to_int(&conn->patched_ref));
 		sccp_connection_destroy(conn);
+		destroyed = 1;
 	}
 
-	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
+	if (!destroyed)
+		goto out;
+
+	/* now close out any BSC */
+	llist_for_each_entry_safe(bsc, bsc_tmp, &nat->bsc_connections, list_entry)
+		bsc_maybe_close(bsc);
+
+out:
+	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 }
 
 extern void *tall_msgb_ctx;
@@ -1267,10 +1418,7 @@ int main(int argc, char **argv)
 
 	talloc_init_ctx();
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	nat = bsc_nat_alloc();
 	if (!nat) {
@@ -1286,7 +1434,7 @@ int main(int argc, char **argv)
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds();
+	logging_vty_add_cmds(&log_info);
 	bsc_nat_vty_init(nat);
 
 
@@ -1317,7 +1465,7 @@ int main(int argc, char **argv)
 		return -4;
 
 	/* connect to the MSC */
-	nat->msc_con = bsc_msc_create(nat->msc_ip, nat->msc_port, 0);
+	nat->msc_con = bsc_msc_create(nat, &nat->dests);
 	if (!nat->msc_con) {
 		fprintf(stderr, "Creating a bsc_msc_connection failed.\n");
 		exit(1);
@@ -1332,7 +1480,7 @@ int main(int argc, char **argv)
 
 	/* wait for the BSC */
 	rc = make_sock(&bsc_listen, IPPROTO_TCP, ntohl(local_addr.s_addr),
-		       5000, ipaccess_listen_bsc_cb);
+		       5000, 0, ipaccess_listen_bsc_cb, nat);
 	if (rc != 0) {
 		fprintf(stderr, "Failed to listen for BSC.\n");
 		exit(1);
@@ -1346,7 +1494,7 @@ int main(int argc, char **argv)
 
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	if (daemonize) {
 		rc = osmo_daemonize();
@@ -1360,10 +1508,10 @@ int main(int argc, char **argv)
 	sccp_set_log_area(DSCCP);
 	sccp_close.cb = sccp_close_unconfirmed;
 	sccp_close.data = NULL;
-	bsc_schedule_timer(&sccp_close, SCCP_CLOSE_TIME, 0);
+	osmo_timer_schedule(&sccp_close, SCCP_CLOSE_TIME, 0);
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	return 0;
@@ -1374,7 +1522,7 @@ int bsc_close_ussd_connections(struct bsc_nat *nat)
 {
 	struct sccp_connections *con;
 	llist_for_each_entry(con, &nat->sccp_connections, list_entry) {
-		if (con->con_local != 2)
+		if (con->con_local != NAT_CON_END_USSD)
 			continue;
 		if (!con->bsc)
 			continue;

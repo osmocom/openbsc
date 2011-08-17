@@ -1,7 +1,7 @@
 /* ip.access nanoBTS configuration tool */
 
 /* (C) 2009-2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther
+ * (C) 2009-2011 by Holger Hans Peter Freyther
  * (C) 2009-2010 by On-Waves
  * All Rights Reserved
  *
@@ -28,15 +28,15 @@
 #include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 
-#include <osmocore/select.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
@@ -44,7 +44,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/network_listen.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 static struct gsm_network *gsmnet;
 
@@ -53,21 +53,22 @@ static int restart;
 static char *prim_oml_ip;
 static char *bts_ip_addr, *bts_ip_mask, *bts_ip_gw;
 static char *unit_id;
-static u_int16_t nv_flags;
-static u_int16_t nv_mask;
+static uint16_t nv_flags;
+static uint16_t nv_mask;
 static char *software = NULL;
 static int sw_load_state = 0;
 static int oml_state = 0;
 static int dump_files = 0;
 static char *firmware_analysis = NULL;
 static int found_trx = 0;
+static int loop_tests = 0;
 
 struct sw_load {
-	u_int8_t file_id[255];
-	u_int8_t file_id_len;
+	uint8_t file_id[255];
+	uint8_t file_id_len;
 
-	u_int8_t file_version[255];
-	u_int8_t file_version_len;
+	uint8_t file_version[255];
+	uint8_t file_version_len;
 };
 
 static void *tall_ctx_config = NULL;
@@ -75,8 +76,8 @@ static struct sw_load *sw_load1 = NULL;
 static struct sw_load *sw_load2 = NULL;
 
 /*
-static u_int8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
-static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
+static uint8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
+static uint8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
 */
 
 /*
@@ -86,7 +87,7 @@ static u_int8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0',
  * result. The nanoBTS will send us a NACK when we did something the
  * BTS didn't like.
  */
-static int ipacc_msg_nack(u_int8_t mt)
+static int ipacc_msg_nack(uint8_t mt)
 {
 	fprintf(stderr, "Failure to set attribute. This seems fatal\n");
 	exit(-1);
@@ -102,7 +103,7 @@ static void check_restart_or_exit(struct gsm_bts_trx *trx)
 	}
 }
 
-static int ipacc_msg_ack(u_int8_t mt, struct gsm_bts_trx *trx)
+static int ipacc_msg_ack(uint8_t mt, struct gsm_bts_trx *trx)
 {
 	if (sw_load_state == 1) {
 		fprintf(stderr, "The new software is activaed.\n");
@@ -129,7 +130,7 @@ static uint16_t build_physconf(uint8_t *physconf_buf, const struct rxlev_stats *
 	num_arfcn = ipac_rxlevstat2whitelist(whitelist, st, 0, 100);
 	arfcnlist_size = num_arfcn * 2;
 	*((uint16_t *) (physconf_buf+2)) = htons(arfcnlist_size);
-	DEBUGP(DNM, "physconf_buf (%s)\n", hexdump(physconf_buf, arfcnlist_size+4));
+	DEBUGP(DNM, "physconf_buf (%s)\n", osmo_hexdump(physconf_buf, arfcnlist_size+4));
 	return arfcnlist_size+4;
 }
 
@@ -166,14 +167,14 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 					    physconf_buf, physconf_len);
 			break;
 		case NM_IPACC_TESTNO_BCCH_INFO:
-#if 0
 			/* re-start full process with CHAN_USAGE */
-			DEBUGP(DNM, "starting next test cycle\n");
-			ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
-					    sizeof(phys_conf_min));
-#else
-			exit(0);
-#endif
+			if (loop_tests) {
+				DEBUGP(DNM, "starting next test cycle\n");
+				ipac_nwl_test_start(trx, net_listen_testnr, phys_conf_min,
+						    sizeof(phys_conf_min));
+			} else {
+				exit(0);
+			}
 			break;
 		}
 		break;
@@ -181,7 +182,7 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+static int nm_state_event(int evt, uint8_t obj_class, void *obj,
 			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 			  struct abis_om_obj_inst *obj_inst);
 
@@ -348,6 +349,36 @@ static void nv_put_flags(struct msgb *nmsg, uint16_t nv_flags, uint16_t nv_mask)
 	msgb_put_u8(nmsg, nv_mask >> 8);
 }
 
+/* human-readable test names for the ip.access tests */
+static const struct value_string ipa_test_strs[] = {
+	{ 64, "ccch-usage" },
+	{ 65, "bcch-usage" },
+	{ 66, "freq-sync" },
+	{ 67, "rtp-usage" },
+	{ 68, "rtp-perf" },
+	{ 69, "gprs-ccch" },
+	{ 70, "pccch-usage" },
+	{ 71, "gprs-usage" },
+	{ 72, "esta-mf" },
+	{ 73, "uplink-mf" },
+	{ 74, "dolink-mf" },
+	{ 75, "tbf-details" },
+	{ 76, "tbf-usage" },
+	{ 77, "llc-data" },
+	{ 78, "pdch-usage" },
+	{ 79, "power-control" },
+	{ 80, "link-adaption" },
+	{ 81, "tch-usage" },
+	{ 82, "amr-mf" },
+	{ 83, "rtp-multiplex-perf" },
+	{ 84, "rtp-multiplex-usage" },
+	{ 85, "srtp-multiplex-usage" },
+	{ 86, "abis-traffic" },
+	{ 89, "gprs-multiplex-perf" },
+	{ 90, "gprs-multiplex-usage" },
+	{ 0, NULL },
+};
+
 /* human-readable names for the ip.access nanoBTS NVRAM Flags */
 static const struct value_string ipa_nvflag_strs[] = {
 	{ 0x0001, "static-ip" },
@@ -464,7 +495,7 @@ out_err:
 	msgb_free(nmsg);
 }
 
-static int nm_state_event(int evt, u_int8_t obj_class, void *obj,
+static int nm_state_event(int evt, uint8_t obj_class, void *obj,
 			  struct gsm_nm_state *old_state, struct gsm_nm_state *new_state,
 			  struct abis_om_obj_inst *obj_inst)
 {
@@ -691,13 +722,37 @@ static void print_help(void)
 	printf("  -S --nvattr-set FLAG\tSet one additional NVRAM attribute\n");
 	printf("  -U --nvattr-unset FLAG\tSet one additional NVRAM attribute\n");
 	printf("  -l --listen TESTNR\t\tPerform specified test number\n");
+	printf("  -L --Listen TEST_NAME\t\tPerform specified test\n");
 	printf("  -s --stream-id ID\t\tSet the IPA Stream Identifier for OML\n");
 	printf("  -d --software FIRMWARE\tDownload firmware into BTS\n");
 	printf("\n");
 	printf("Miscellaneous commands:\n");
 	printf("  -h --help\t\t\tthis text\n");
+	printf("  -H --HELP\t\t\tPrint parameter details.\n");
 	printf("  -f --firmware FIRMWARE\tProvide firmware information\n");
 	printf("  -w --write-firmware\t\tThis will dump the firmware parts to the filesystem. Use with -f.\n");
+	printf("  -p --loop\t\t\tLoop the tests executed with the --listen command.\n");
+}
+
+static void print_value_string(const struct value_string *val, int size)
+{
+	int i;
+
+	for (i = 0; i < size - 1; ++i) {
+		char sep = val[i + 1].str == NULL ? '.' : ',';
+		printf("%s%c ", val[i].str, sep);
+	}
+	printf("\n");
+}
+
+static void print_options(void)
+{
+
+	printf("Options for NVRAM (-S,-U):\n  ");
+	print_value_string(&ipa_nvflag_strs[0], ARRAY_SIZE(ipa_nvflag_strs));
+
+	printf("Options for Tests (-L):\n ");
+	print_value_string(&ipa_test_strs[0], ARRAY_SIZE(ipa_test_strs));
 }
 
 extern void bts_model_nanobts_init();
@@ -707,14 +762,9 @@ int main(int argc, char **argv)
 	struct gsm_bts *bts;
 	struct sockaddr_in sin;
 	int rc, option_index = 0, stream_id = 0xff;
-	struct log_target *stderr_target;
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
-	log_set_log_level(stderr_target, 0);
-	log_parse_category_mask(stderr_target, "DNM,0");
+	osmo_init_logging(&log_info);
+	log_parse_category_mask(osmo_stderr_target, "DNM,0");
 	bts_model_nanobts_init();
 
 	printf("ipaccess-config (C) 2009-2010 by Harald Welte and others\n");
@@ -734,16 +784,19 @@ int main(int argc, char **argv)
 			{ "nvattr-set", 1, 0, 'S' },
 			{ "nvattr-unset", 1, 0, 'U' },
 			{ "help", 0, 0, 'h' },
+			{ "HELP", 0, 0, 'H' },
 			{ "listen", 1, 0, 'l' },
+			{ "Listen", 1, 0, 'L' },
 			{ "stream-id", 1, 0, 's' },
 			{ "software", 1, 0, 'd' },
 			{ "firmware", 1, 0, 'f' },
 			{ "write-firmware", 0, 0, 'w' },
 			{ "disable-color", 0, 0, 'c'},
+			{ "loop", 0, 0, 'p' },
 			{ 0, 0, 0, 0 },
 		};
 
-		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:hs:d:f:wc", long_options,
+		c = getopt_long(argc, argv, "u:o:i:g:rn:S:U:l:L:hs:d:f:wcpH", long_options,
 				&option_index);
 
 		if (c == -1)
@@ -790,6 +843,15 @@ int main(int argc, char **argv)
 		case 'l':
 			net_listen_testnr = atoi(optarg);
 			break;
+		case 'L':
+			net_listen_testnr = get_string_value(ipa_test_strs,
+							     optarg);
+			if (net_listen_testnr < 0) {
+				fprintf(stderr,
+					"The test '%s' is not known. Use -H to"
+					" see available tests.\n", optarg);
+				exit(2);
+			}
 		case 's':
 			stream_id = atoi(optarg);
 			break;
@@ -805,11 +867,17 @@ int main(int argc, char **argv)
 			dump_files = 1;
 			break;
 		case 'c':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
+			break;
+		case 'p':
+			loop_tests = 1;
 			break;
 		case 'h':
 			print_usage();
 			print_help();
+			exit(0);
+		case 'H':
+			print_options();
 			exit(0);
 		}
 	};
@@ -828,16 +896,16 @@ int main(int argc, char **argv)
 	if (!gsmnet)
 		exit(1);
 
-	bts = gsm_bts_alloc(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
-				HARDCODED_BSIC);
+	bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_NANOBTS, HARDCODED_TSC,
+				     HARDCODED_BSIC);
 	/* ip.access supports up to 4 chained TRX */
 	gsm_bts_trx_alloc(bts);
 	gsm_bts_trx_alloc(bts);
 	gsm_bts_trx_alloc(bts);
 	bts->oml_tei = stream_id;
 	
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
-	register_signal_handler(SS_IPAC_NWL, nwl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_IPAC_NWL, nwl_sig_cb, NULL);
 
 	ipac_nwl_init();
 
@@ -855,7 +923,7 @@ int main(int argc, char **argv)
 	bts->oml_link->ts->sign.delay = 10;
 	bts->c0->rsl_link->ts->sign.delay = 10;
 	while (1) {
-		rc = bsc_select_main(0);
+		rc = osmo_select_main(0);
 		if (rc < 0)
 			exit(3);
 	}

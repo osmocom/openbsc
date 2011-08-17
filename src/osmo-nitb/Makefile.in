@@ -36,7 +36,7 @@ bin_PROGRAMS = osmo-nitb$(EXEEXT)
 subdir = src/osmo-nitb
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
-am__aclocal_m4_deps = $(top_srcdir)/configure.in
+am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
@@ -48,7 +48,7 @@ PROGRAMS = $(bin_PROGRAMS)
 am_osmo_nitb_OBJECTS = bsc_hack.$(OBJEXT)
 osmo_nitb_OBJECTS = $(am_osmo_nitb_OBJECTS)
 am__DEPENDENCIES_1 =
-osmo_nitb_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+osmo_nitb_DEPENDENCIES = $(am__DEPENDENCIES_1) $(am__DEPENDENCIES_1) \
 	$(top_builddir)/src/libbsc/libbsc.a \
 	$(top_builddir)/src/libmsc/libmsc.a \
 	$(top_builddir)/src/libbsc/libbsc.a \
@@ -113,6 +113,8 @@ LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBOSMOCORE_CFLAGS = @LIBOSMOCORE_CFLAGS@
 LIBOSMOCORE_LIBS = @LIBOSMOCORE_LIBS@
+LIBOSMOGSM_CFLAGS = @LIBOSMOGSM_CFLAGS@
+LIBOSMOGSM_LIBS = @LIBOSMOGSM_LIBS@
 LIBOSMOSCCP_CFLAGS = @LIBOSMOSCCP_CFLAGS@
 LIBOSMOSCCP_LIBS = @LIBOSMOSCCP_LIBS@
 LIBOSMOVTY_CFLAGS = @LIBOSMOVTY_CFLAGS@
@@ -182,10 +184,10 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
-AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(COVERAGE_LDFLAGS)
+AM_CFLAGS = -Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
+AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 osmo_nitb_SOURCES = bsc_hack.c
-osmo_nitb_LDADD = -ldl -ldbi $(LIBCRYPT) $(LIBOSMOVTY_LIBS) \
+osmo_nitb_LDADD = -ldl -ldbi $(LIBCRYPT) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libmsc/libmsc.a \
 		$(top_builddir)/src/libbsc/libbsc.a \

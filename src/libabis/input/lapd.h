@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 
 typedef enum {
 	LAPD_MPH_NONE	= 0,

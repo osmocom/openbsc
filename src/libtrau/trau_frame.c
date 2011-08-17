@@ -28,10 +28,10 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/debug.h>
 
-static u_int32_t get_bits(const u_int8_t *bitbuf, int offset, int num)
+static uint32_t get_bits(const uint8_t *bitbuf, int offset, int num)
 {
 	int i;
-	u_int32_t ret = 0;
+	uint32_t ret = 0;
 
 	for (i = offset; i < offset + num; i++) {
 		ret = ret << 1;
@@ -42,7 +42,7 @@ static u_int32_t get_bits(const u_int8_t *bitbuf, int offset, int num)
 }
 
 /* Decode according to 3.1.1 */
-static void decode_fr(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
+static void decode_fr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 {
 	int i;
 	int d_idx = 0;
@@ -63,7 +63,7 @@ static void decode_fr(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
 }
 
 /* Decode according to 3.1.2 */
-static void decode_amr(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
+static void decode_amr(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 {
 	int i;
 	int d_idx = 0;
@@ -85,9 +85,9 @@ static void decode_amr(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
 	memcpy(fr->d_bits + d_idx, trau_bits + 305, 11);
 }
 
-int decode_trau_frame(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
+int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits)
 {
-	u_int8_t cbits5 = get_bits(trau_bits, 17, 5);
+	uint8_t cbits5 = get_bits(trau_bits, 17, 5);
 
 	switch (cbits5) {
 	case TRAU_FT_FR_UP:
@@ -120,13 +120,13 @@ int decode_trau_frame(struct decoded_trau_frame *fr, const u_int8_t *trau_bits)
 	return 0;
 }
 
-const u_int8_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
-const u_int8_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
+const uint8_t ft_fr_down_bits[] = { 1, 1, 1, 0, 0 };
+const uint8_t ft_idle_down_bits[] = { 0, 1, 1, 1, 0 };
 
 /* modify an uplink TRAU frame so we can send it downlink */
 int trau_frame_up2down(struct decoded_trau_frame *fr)
 {
-	u_int8_t cbits5 = get_bits(fr->c_bits, 0, 5);
+	uint8_t cbits5 = get_bits(fr->c_bits, 0, 5);
 
 	switch (cbits5) {
 	case TRAU_FT_FR_UP:
@@ -178,7 +178,7 @@ int trau_frame_up2down(struct decoded_trau_frame *fr)
 
 }
 
-static void encode_fr(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
+static void encode_fr(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 {
 	int i;
 	int d_idx = 0;
@@ -205,9 +205,9 @@ static void encode_fr(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
 }
 
 
-int encode_trau_frame(u_int8_t *trau_bits, const struct decoded_trau_frame *fr)
+int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr)
 {
-	u_int8_t cbits5 = get_bits(fr->c_bits, 0, 5);
+	uint8_t cbits5 = get_bits(fr->c_bits, 0, 5);
 	
 	/* 16 bits of sync header */
 	memset(trau_bits, 0, 16);
@@ -245,10 +245,10 @@ static struct decoded_trau_frame fr_idle_frame = {
 	.c_bits = { 0, 1, 1, 1, 0 },	/* IDLE DOWNLINK 3.5.5 */
 	.t_bits = { 1, 1, 1, 1 },
 };
-static u_int8_t encoded_idle_frame[TRAU_FRAME_BITS];
+static uint8_t encoded_idle_frame[TRAU_FRAME_BITS];
 static int dbits_initted;
 
-u_int8_t *trau_idle_frame(void)
+uint8_t *trau_idle_frame(void)
 {
 	/* only initialize during the first call */
 	if (!dbits_initted) {

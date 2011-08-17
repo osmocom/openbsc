@@ -28,15 +28,14 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -52,8 +51,8 @@
 
 /* data structure for one E1 interface with A-bis */
 struct ia_e1_handle {
-	struct bsc_fd listen_fd;
-	struct bsc_fd rsl_listen_fd;
+	struct osmo_fd listen_fd;
+	struct osmo_fd rsl_listen_fd;
 	struct gsm_network *gsmnet;
 };
 
@@ -62,18 +61,31 @@ static struct ia_e1_handle *e1h;
 
 #define TS1_ALLOC_SIZE	900
 
-static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
-static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT,
-					0x01, IPAC_IDTAG_MACADDR,
-					0x01, IPAC_IDTAG_LOCATION1,
-					0x01, IPAC_IDTAG_LOCATION2,
-					0x01, IPAC_IDTAG_EQUIPVERS,
-					0x01, IPAC_IDTAG_SWVERSION,
-					0x01, IPAC_IDTAG_UNITNAME,
-					0x01, IPAC_IDTAG_SERNR,
-				};
+/*
+ * Common propietary IPA messages:
+ *	- PONG: in reply to PING.
+ *	- ID_REQUEST: first messages once OML has been established.
+ *	- ID_ACK: in reply to ID_ACK.
+ */
+const uint8_t ipa_pong_msg[] = {
+        0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG
+};
+
+const uint8_t ipa_id_ack_msg[] = {
+        0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK
+};
+
+const uint8_t ipa_id_req_msg[] = {
+        0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
+        0x01, IPAC_IDTAG_UNIT,
+        0x01, IPAC_IDTAG_MACADDR,
+        0x01, IPAC_IDTAG_LOCATION1,
+        0x01, IPAC_IDTAG_LOCATION2,
+        0x01, IPAC_IDTAG_EQUIPVERS,
+        0x01, IPAC_IDTAG_SWVERSION,
+        0x01, IPAC_IDTAG_UNITNAME,
+        0x01, IPAC_IDTAG_SERNR,
+};
 
 static const char *idtag_names[] = {
 	[IPAC_IDTAG_SERNR]	= "Serial_Number",
@@ -87,7 +99,7 @@ static const char *idtag_names[] = {
 	[IPAC_IDTAG_UNIT]	= "Unit_ID",
 };
 
-static const char *ipac_idtag_name(int tag)
+const char *ipaccess_idtag_name(uint8_t tag)
 {
 	if (tag >= ARRAY_SIZE(idtag_names))
 		return "unknown";
@@ -97,9 +109,9 @@ static const char *ipac_idtag_name(int tag)
 
 int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 {
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
+	uint8_t t_len;
+	uint8_t t_tag;
+	uint8_t *cur = buf;
 
 	memset(dec, 0, sizeof(*dec));
 
@@ -110,10 +122,10 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 
 		if (t_len > len + 1) {
 			LOGP(DMI, LOGL_ERROR, "The tag does not fit: %d\n", t_len);
-			return -1;
+			return -EINVAL;
 		}
 
-		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
+		DEBUGPC(DMI, "%s='%s' ", ipaccess_idtag_name(t_tag), cur);
 
 		dec->lv[t_tag].len = t_len;
 		dec->lv[t_tag].val = cur;
@@ -125,7 +137,7 @@ int ipaccess_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
 }
 
 struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
-				   u_int16_t site_id, u_int16_t bts_id)
+				   uint16_t site_id, uint16_t bts_id)
 {
 	struct gsm_bts *bts;
 
@@ -142,8 +154,8 @@ struct gsm_bts *find_bts_by_unitid(struct gsm_network *net,
 	return NULL;
 }
 
-static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
-			u_int16_t *trx_id)
+int ipaccess_parse_unitid(const char *str, uint16_t *site_id,
+			  uint16_t *bts_id, uint16_t *trx_id)
 {
 	unsigned long ul;
 	char *endptr;
@@ -179,27 +191,45 @@ static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
 	return 0;
 }
 
-/* send the id ack */
+static int ipaccess_send(int fd, const void *msg, size_t msglen)
+{
+	int ret;
+
+	ret = write(fd, msg, msglen);
+	if (ret < 0)
+		return ret;
+	if (ret < msglen) {
+		LOGP(DINP, LOGL_ERROR, "ipaccess_send: short write\n");
+		return -EIO;
+	}
+	return ret;
+}
+
+int ipaccess_send_pong(int fd)
+{
+	return ipaccess_send(fd, ipa_pong_msg, sizeof(ipa_pong_msg));
+}
+
 int ipaccess_send_id_ack(int fd)
 {
-	return write(fd, id_ack, sizeof(id_ack));
+	return ipaccess_send(fd, ipa_id_ack_msg, sizeof(ipa_id_ack_msg));
 }
 
 int ipaccess_send_id_req(int fd)
 {
-	return write(fd, id_req, sizeof(id_req));
+	return ipaccess_send(fd, ipa_id_req_msg, sizeof(ipa_id_req_msg));
 }
 
 /* base handling of the ip.access protocol */
 int ipaccess_rcvmsg_base(struct msgb *msg,
-			 struct bsc_fd *bfd)
+			 struct osmo_fd *bfd)
 {
-	u_int8_t msg_type = *(msg->l2h);
+	uint8_t msg_type = *(msg->l2h);
 	int ret = 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(bfd->fd, pong, sizeof(pong));
+		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -213,14 +243,14 @@ int ipaccess_rcvmsg_base(struct msgb *msg,
 }
 
 static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
-			   struct bsc_fd *bfd)
+			   struct osmo_fd *bfd)
 {
 	struct tlv_parsed tlvp;
-	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id = 0, bts_id = 0, trx_id = 0;
+	uint8_t msg_type = *(msg->l2h);
+	uint16_t site_id = 0, bts_id = 0, trx_id = 0;
 	struct gsm_bts *bts;
 	char *unitid;
-	int len;
+	int len, ret;
 
 	/* handle base messages */
 	ipaccess_rcvmsg_base(msg, bfd);
@@ -229,10 +259,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipaccess_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
-				 msgb_l2len(msg)-2);
+		ret = ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+					   msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
-
+		if (ret < 0) {
+			LOGP(DINP, LOGL_ERROR, "ignoring IPA response message "
+					       "with malformed TLVs\n");
+			return ret;
+		}
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT))
 			break;
 
@@ -243,7 +277,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 		/* lookup BTS, create sign_link, ... */
 		unitid = (char *) TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT);
 		unitid[len - 1] = '\0';
-		parse_unitid(unitid, &site_id, &bts_id, &trx_id);
+		ipaccess_parse_unitid(unitid, &site_id, &bts_id, &trx_id);
 		bts = find_bts_by_unitid(e1h->gsmnet, site_id, bts_id);
 		if (!bts) {
 			LOGP(DINP, LOGL_ERROR, "Unable to find BTS configuration for "
@@ -260,14 +294,14 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 						  bts->oml_tei, 0);
 		} else if (bfd->priv_nr == PRIV_RSL) {
 			struct e1inp_ts *e1i_ts;
-			struct bsc_fd *newbfd;
+			struct osmo_fd *newbfd;
 			struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_id);
 
 			/* drop any old rsl connection */
 			ipaccess_drop_rsl(trx);
 
 			if (!bts->oml_link) {
-				bsc_unregister_fd(bfd);
+				osmo_fd_unregister(bfd);
 				close(bfd->fd);
 				bfd->fd = -1;
 				talloc_free(bfd);
@@ -287,10 +321,10 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
 			/* get rid of our old temporary bfd */
 			memcpy(newbfd, bfd, sizeof(*newbfd));
 			newbfd->priv_nr = PRIV_RSL + trx_id;
-			bsc_unregister_fd(bfd);
+			osmo_fd_unregister(bfd);
 			bfd->fd = -1;
 			talloc_free(bfd);
-			bsc_register_fd(newbfd);
+			osmo_fd_register(newbfd);
 		}
 		break;
 	}
@@ -304,7 +338,7 @@ static int ipaccess_rcvmsg(struct e1inp_line *line, struct msgb *msg,
  * read one ipa message from the socket
  * return NULL in case of error
  */
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -360,7 +394,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	struct gsm_bts_trx *trx;
 	struct e1inp_ts *ts;
 	struct e1inp_line *line;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 
 	if (!bts || !bts->oml_link)
 		return -1;
@@ -371,7 +405,7 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	e1inp_event(ts, S_INP_TEI_DN, bts->oml_link->tei, bts->oml_link->sapi);
 
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -390,19 +424,22 @@ int ipaccess_drop_oml(struct gsm_bts *bts)
 	return -1;
 }
 
-static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
+static int ipaccess_drop(struct e1inp_ts *ts, struct osmo_fd *bfd)
 {
 	struct e1inp_sign_link *link;
 	int bts_nr;
 
-	if (!ts) {
+	if (!ts || !bfd->data) {
 		/*
 		 * If we don't have a TS this means that this is a RSL
 		 * connection but we are not past the authentication
 		 * handling yet. So we can safely delete this bfd and
 		 * wait for a reconnect.
+		 * If we don't have bfd->data this means that a RSL
+		 * connection was accept()ed, but nothing was recv()ed
+		 * and the connection gets close()ed.
 		 */
-		bsc_unregister_fd(bfd);
+		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
 		talloc_free(bfd);
@@ -421,7 +458,7 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
 
 	/* error case */
 	LOGP(DINP, LOGL_ERROR, "Failed to find a signalling link for ts: %p\n", ts);
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 	return -1;
@@ -429,7 +466,7 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct bsc_fd *bfd)
 
 int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 {
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct e1inp_ts *ts;
 
 	if (!trx || !trx->rsl_link)
@@ -441,7 +478,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 
 	/* close the socket */
 	bfd = &ts->driver.ipaccess.fd;
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -452,7 +489,7 @@ int ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 	return -1;
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -475,7 +512,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 		return error;
 	}
 
-	DEBUGP(DMI, "RX %u: %s\n", ts_nr, hexdump(msgb_l2(msg), msgb_l2len(msg)));
+	DEBUGP(DMI, "RX %u: %s\n", ts_nr, osmo_hexdump(msgb_l2(msg), msgb_l2len(msg)));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -520,6 +557,15 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	return ret;
 }
 
+void ipaccess_prepend_header_ext(struct msgb *msg, int proto)
+{
+	struct ipaccess_head_ext *hh_ext;
+
+	/* prepend the osmo ip.access header extension */
+	hh_ext = (struct ipaccess_head_ext *) msgb_push(msg, sizeof(*hh_ext));
+	hh_ext->proto = proto;
+}
+
 void ipaccess_prepend_header(struct msgb *msg, int proto)
 {
 	struct ipaccess_head *hh;
@@ -545,14 +591,14 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct e1inp_sign_link *sign_link;
 	struct msgb *msg;
-	u_int8_t proto;
+	uint8_t proto;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -580,7 +626,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	msg->l2h = msg->data;
 	ipaccess_prepend_header(msg, sign_link->tei);
 
-	DEBUGP(DMI, "TX %u: %s\n", ts_nr, hexdump(msg->l2h, msgb_l2len(msg)));
+	DEBUGP(DMI, "TX %u: %s\n", ts_nr, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -590,13 +636,13 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	e1i_ts->sign.tx_timer.data = e1i_ts;
 
 	/* Reducing this might break the nanoBTS 900 init. */
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -627,14 +673,14 @@ struct e1inp_driver ipaccess_driver = {
 };
 
 /* callback of the OML listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
 	int i;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -671,7 +717,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_OML;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -686,17 +732,17 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	//return e1inp_line_register(line);
 }
 
-static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	int ret;
 
 	if (!(what & BSC_FD_READ))
 		return 0;
 
-	bfd = talloc_zero(tall_bsc_ctx, struct bsc_fd);
+	bfd = talloc_zero(tall_bsc_ctx, struct osmo_fd);
 	if (!bfd)
 		return -ENOMEM;
 
@@ -713,7 +759,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = PRIV_RSL;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -721,7 +767,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 		return ret;
 	}
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
 	return 0;
 }
@@ -730,7 +776,7 @@ static int rsl_listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 {
 	struct e1inp_ts *e1i_ts = &line->ts[0];
-	struct bsc_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
 	int ret, on = 1;
 
 	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -753,7 +799,7 @@ int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
 		return ret;
 	}
 
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		close(bfd->fd);
 		return ret;
@@ -769,12 +815,6 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 {
 	int ret;
 
-	/* register the driver with the core */
-	/* FIXME: do this in the plugin initializer function */
-	ret = e1inp_driver_register(&ipaccess_driver);
-	if (ret)
-		return ret;
-
 	e1h = talloc_zero(tall_bsc_ctx, struct ia_e1_handle);
 	if (!e1h)
 		return -ENOMEM;
@@ -782,16 +822,21 @@ int ipaccess_setup(struct gsm_network *gsmnet)
 	e1h->gsmnet = gsmnet;
 
 	/* Listen for OML connections */
-	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, 0, IPA_TCP_PORT_OML,
-			listen_fd_cb);
+	ret = make_sock(&e1h->listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_OML, 0, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, 0,
-			IPA_TCP_PORT_RSL, rsl_listen_fd_cb);
+	ret = make_sock(&e1h->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_RSL, 0, rsl_listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	return ret;
+}
+
+void e1inp_ipaccess_init(void)
+{
+	e1inp_driver_register(&ipaccess_driver);
 }

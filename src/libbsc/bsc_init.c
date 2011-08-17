@@ -20,7 +20,7 @@
  */
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/abis_nm.h>
@@ -31,13 +31,12 @@
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
 #include <openbsc/chan_alloc.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/ipaccess.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
-
-static void patch_nm_tables(struct gsm_bts *bts);
+extern int hsl_setup(struct gsm_network *gsmnet);
 
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
@@ -83,7 +82,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
 	}
 
 	return 0;
@@ -102,8 +101,8 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 		si_len = rc;
 	}
 
-	DEBUGP(DRR, "SI%s: %s\n", gsm_sitype_name(i),
-		hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
+	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
+		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
 
 	switch (i) {
 	case SYSINFO_TYPE_5:
@@ -116,22 +115,22 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 			/* This assumes a combined BCCH and TCH on TS1...7 */
 			for (j = 0; j < 4; j++)
 				rsl_sacch_info_modify(&trx->ts[0].lchan[j],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 			for (j = 1; j < 8; j++) {
 				rsl_sacch_info_modify(&trx->ts[j].lchan[0],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 				rsl_sacch_info_modify(&trx->ts[j].lchan[1],
-						      gsm_sitype2rsl(i),
+						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 			}
 		} else
-			rc = rsl_sacch_filling(trx, gsm_sitype2rsl(i),
+			rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
 					       GSM_BTS_SI(bts, i), rc);
 		break;
 	default:
-		rc = rsl_bcch_info(trx, gsm_sitype2rsl(i),
+		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),
 				   GSM_BTS_SI(bts, i), rc);
 		break;
 	}
@@ -276,9 +275,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
-			counter_inc(trx->bts->network->stats.bts.oml_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.oml_fail);
 		else if (isd->link_type == E1INP_SIGN_RSL)
-			counter_inc(trx->bts->network->stats.bts.rsl_fail);
+			osmo_counter_inc(trx->bts->network->stats.bts.rsl_fail);
 
 		/*
 		 * free all allocated channels. change the nm_state so the
@@ -293,15 +292,9 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 					lchan_free(&ts->lchan[lchan_no]);
 				lchan_reset(&ts->lchan[lchan_no]);
 			}
-
-			ts->nm_state.operational = 0;
-			ts->nm_state.availability = 0;
 		}
 
-		trx->nm_state.operational = 0;
-		trx->nm_state.availability = 0;
-		trx->bb_transc.nm_state.operational = 0;
-		trx->bb_transc.nm_state.availability = 0;
+		gsm_bts_mo_reset(trx->bts);
 
 		abis_nm_clear_queue(trx->bts);
 		break;
@@ -315,6 +308,14 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 static int bootstrap_bts(struct gsm_bts *bts)
 {
 	int i, n;
+
+	if (bts->model->start && !bts->model->started) {
+		int ret = bts->model->start(bts->network);
+		if (ret < 0)
+			return ret;
+
+		bts->model->started = true;
+	}
 
 	/* FIXME: What about secondary TRX of a BTS?  What about a BTS that has TRX
 	 * in different bands? Why is 'band' a parameter of the BTS and not of the TRX? */
@@ -405,8 +406,6 @@ static int bootstrap_bts(struct gsm_bts *bts)
 
 	bts->si_common.ncc_permitted = 0xff;
 
-	paging_init(bts);
-
 	return 0;
 }
 
@@ -437,12 +436,15 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	if (rc < 0)
 		return rc;
 
-	register_signal_handler(SS_NM, nm_sig_cb, NULL);
-	register_signal_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		rc = bootstrap_bts(bts);
-
+		if (rc < 0) {
+			LOGP(DNM, LOGL_FATAL, "Error bootstrapping BTS\n");
+			return rc;
+		}
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
 		case GSM_BTS_TYPE_HSL_FEMTO:
@@ -451,16 +453,10 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			rc = e1_reconfig_bts(bts);
 			break;
 		}
-
 		if (rc < 0) {
-			fprintf(stderr, "Error in E1 input driver setup\n");
-			exit (1);
+			LOGP(DNM, LOGL_FATAL, "Error enabling E1 input driver\n");
+			return rc;
 		}
 	}
-
-	/* initialize nanoBTS support omce */
-	rc = ipaccess_setup(bsc_gsmnet);
-	rc = hsl_setup(bsc_gsmnet);
-
 	return 0;
 }

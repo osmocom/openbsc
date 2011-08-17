@@ -28,16 +28,16 @@
 #include <time.h>
 #include <netinet/in.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
-#include <osmocore/gsm_utils.h>
+#include <osmocom/gsm/gsm_utils.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/transaction.h>
 #include <openbsc/rtp_proxy.h>
 
@@ -47,9 +47,9 @@ struct bsc_handover {
 	struct gsm_lchan *old_lchan;
 	struct gsm_lchan *new_lchan;
 
-	struct timer_list T3103;
+	struct osmo_timer_list T3103;
 
-	u_int8_t ho_ref;
+	uint8_t ho_ref;
 };
 
 static LLIST_HEAD(bsc_handovers);
@@ -85,7 +85,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 {
 	struct gsm_lchan *new_lchan;
 	struct bsc_handover *ho;
-	static u_int8_t ho_ref;
+	static uint8_t ho_ref;
 	int rc;
 
 	/* don't attempt multiple handovers for the same lchan at
@@ -96,7 +96,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	DEBUGP(DHO, "(old_lchan on BTS %u, new BTS %u)\n",
 		old_lchan->ts->trx->bts->nr, bts->nr);
 
-	counter_inc(bts->network->stats.handover.attempted);
+	osmo_counter_inc(bts->network->stats.handover.attempted);
 
 	if (!old_lchan->conn) {
 		LOGP(DHO, LOGL_ERROR, "Old lchan lacks connection data.\n");
@@ -106,7 +106,7 @@ int bsc_handover_start(struct gsm_lchan *old_lchan, struct gsm_bts *bts)
 	new_lchan = lchan_alloc(bts, old_lchan->type, 0);
 	if (!new_lchan) {
 		LOGP(DHO, LOGL_NOTICE, "No free channel\n");
-		counter_inc(bts->network->stats.handover.no_channel);
+		osmo_counter_inc(bts->network->stats.handover.no_channel);
 		return -ENOSPC;
 	}
 
@@ -170,7 +170,7 @@ void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan)
 	if (free_lchan)
 		lchan_release(ho->new_lchan, 0, 1);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
 	talloc_free(ho);
 }
@@ -182,7 +182,7 @@ static void ho_T3103_cb(void *_ho)
 	struct gsm_network *net = ho->new_lchan->ts->trx->bts->network;
 
 	DEBUGP(DHO, "HO T3103 expired\n");
-	counter_inc(net->stats.handover.timeout);
+	osmo_counter_inc(net->stats.handover.timeout);
 
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
@@ -214,7 +214,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */
 	ho->T3103.cb = ho_T3103_cb;
 	ho->T3103.data = ho;
-	bsc_schedule_timer(&ho->T3103, 10, 0);
+	osmo_timer_schedule(&ho->T3103, 10, 0);
 
 	/* create a RTP connection */
 	if (is_ipaccess_bts(new_lchan->ts->trx->bts))
@@ -262,9 +262,9 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	     ho->old_lchan->ts->trx->bts->nr, new_lchan->ts->trx->bts->nr,
 	     ho->old_lchan->ts->trx->arfcn, new_lchan->ts->trx->arfcn);
 
-	counter_inc(net->stats.handover.completed);
+	osmo_counter_inc(net->stats.handover.completed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 
 	/* Replace the ho lchan with the primary one */
 	if (ho->old_lchan != new_lchan->conn->lchan)
@@ -300,9 +300,9 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 		return -ENODEV;
 	}
 
-	counter_inc(net->stats.handover.failed);
+	osmo_counter_inc(net->stats.handover.failed);
 
-	bsc_del_timer(&ho->T3103);
+	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
 
 	/* release the channel and forget about it */
@@ -344,7 +344,7 @@ static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
 
 	sig_ho.old_lchan = ho->old_lchan;
 	sig_ho.new_lchan = new_lchan;
-	dispatch_signal(SS_HO, S_HANDOVER_ACK, &sig_ho);
+	osmo_signal_dispatch(SS_HO, S_HANDOVER_ACK, &sig_ho);
 	return 0;
 }
 
@@ -388,6 +388,6 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
-	register_signal_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
-	register_signal_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
+	osmo_signal_register_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }

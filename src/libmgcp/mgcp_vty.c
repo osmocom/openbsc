@@ -21,17 +21,12 @@
  *
  */
 
-#include <sys/types.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
-#include <openbsc/debug.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 #include <openbsc/vty.h>
-
-#include <osmocom/vty/command.h>
-#include <osmocom/vty/vty.h>
 
 #include <string.h>
 

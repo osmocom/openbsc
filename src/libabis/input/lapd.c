@@ -36,10 +36,10 @@
 
 #include "lapd.h"
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/talloc.h>
-#include <osmocore/msgb.h>
-#include <osmocore/timer.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
 #include <openbsc/debug.h>
 
 #define SABM_INTERVAL		0, 300000
@@ -137,7 +137,7 @@ struct lapd_sap {
 	int va;			/* last acked by peer */
 	int vr;			/* next expected to be received */
 
-	struct timer_list sabme_timer;	/* timer to re-transmit SABM message */
+	struct osmo_timer_list sabme_timer;	/* timer to re-transmit SABM message */
 };
 
 /* 3.5.2.2   Send state variable V(S)
@@ -259,11 +259,11 @@ static void lapd_sap_set_state(struct lapd_tei *teip, uint8_t sapi,
 	switch (sap->state) {
 	case SAP_STATE_SABM_RETRANS:
 		if (newstate != SAP_STATE_SABM_RETRANS)
-			bsc_del_timer(&sap->sabme_timer);
+			osmo_timer_del(&sap->sabme_timer);
 		break;
 	default:
 		if (newstate == SAP_STATE_SABM_RETRANS)
-			bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+			osmo_timer_schedule(&sap->sabme_timer, SABM_INTERVAL);
 		break;
 	}
 
@@ -290,7 +290,7 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 		teip = teip_from_tei(li, action);
 		if (!teip) {
 			LOGP(DMI, LOGL_INFO, "TEI MGR: New TEI %u\n", action);
-			lapd_tei_alloc(li, action);
+			teip = lapd_tei_alloc(li, action);
 		}
 
 		/* Send ACCEPT */
@@ -608,7 +608,7 @@ static void sabme_timer_cb(void *_sap)
 	lapd_send_sabm(sap->tei->li, sap->tei->tei, sap->sapi);
 
 	if (sap->state == SAP_STATE_SABM_RETRANS)
-		bsc_schedule_timer(&sap->sabme_timer, SABM_INTERVAL);
+		osmo_timer_schedule(&sap->sabme_timer, SABM_INTERVAL);
 }
 
 /* Start a (user-side) SAP for the specified TEI/SAPI on the LAPD instance */

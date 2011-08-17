@@ -24,8 +24,10 @@
 
 #include <netinet/in.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/select.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/select.h>
+
+#include <openbsc/mncc.h>
 
 #define RTP_PT_GSM_FULL 3
 #define RTP_PT_GSM_HALF 96
@@ -48,7 +50,7 @@ struct rtp_sub_socket {
 	struct sockaddr_in sin_local;
 	struct sockaddr_in sin_remote;
 
-	struct bsc_fd bfd;
+	struct osmo_fd bfd;
 	/* linked list of to-be-transmitted msgb's */
 	struct llist_head tx_queue;
 };
@@ -67,23 +69,23 @@ struct rtp_socket {
 		} proxy;
 		struct {
 			struct gsm_network *net;
-			u_int32_t callref;
+			uint32_t callref;
 		} receive;
 	};
 	enum rtp_tx_action tx_action;
 	struct {
-		u_int16_t sequence;
-		u_int32_t timestamp;
-		u_int32_t ssrc;
+		uint16_t sequence;
+		uint32_t timestamp;
+		uint32_t ssrc;
 		struct timeval last_tv;
 	} transmit;
 };
 
 struct rtp_socket *rtp_socket_create(void);
-int rtp_socket_bind(struct rtp_socket *rs, u_int32_t ip);
-int rtp_socket_connect(struct rtp_socket *rs, u_int32_t ip, u_int16_t port);
+int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip);
+int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port);
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other);
-int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, u_int32_t callref);
+int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, uint32_t callref);
 int rtp_socket_free(struct rtp_socket *rs);
 int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame);
 

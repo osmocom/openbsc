@@ -29,7 +29,6 @@
 #include <signal.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
@@ -39,25 +38,25 @@
 #include <getopt.h>
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/select.h>
-#include <osmocore/tlv.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/select.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/ipaccess.h>
-#include <osmocore/talloc.h>
-
-static struct log_target *stderr_target;
+#include <openbsc/socket.h>
+#include <osmocom/core/talloc.h>
 
 /* one instance of an ip.access protocol proxy */
 struct ipa_proxy {
 	/* socket where we listen for incoming OML from BTS */
-	struct bsc_fd oml_listen_fd;
+	struct osmo_fd oml_listen_fd;
 	/* socket where we listen for incoming RSL from BTS */
-	struct bsc_fd rsl_listen_fd;
+	struct osmo_fd rsl_listen_fd;
 	/* list of BTS's (struct ipa_bts_conn */
 	struct llist_head bts_list;
 	/* the BSC reconnect timer */
-	struct timer_list reconn_timer;
+	struct osmo_timer_list reconn_timer;
 	/* global GPRS NS data */
 	struct in_addr gprs_addr;
 	struct in_addr listen_addr;
@@ -67,7 +66,7 @@ struct ipa_proxy {
 static struct ipa_proxy *ipp;
 
 struct ipa_proxy_conn {
-	struct bsc_fd fd;
+	struct osmo_fd fd;
 	struct llist_head tx_queue;
 	struct ipa_bts_conn *bts_conn;
 };
@@ -81,8 +80,8 @@ struct ipa_bts_conn {
 	struct ipa_proxy *ipp;
 	/* the unit ID as determined by CCM */
 	struct {
-		u_int16_t site_id;
-		u_int16_t bts_id;
+		uint16_t site_id;
+		uint16_t bts_id;
 	} unit_id;
 
 	/* incoming connections from BTS */
@@ -94,18 +93,18 @@ struct ipa_bts_conn {
 	struct ipa_proxy_conn *bsc_rsl_conn[MAX_TRX];
 
 	/* UDP sockets for BTS and BSC injection */
-	struct bsc_fd udp_bts_fd;
-	struct bsc_fd udp_bsc_fd;
+	struct osmo_fd udp_bts_fd;
+	struct osmo_fd udp_bsc_fd;
 
 	/* NS data */
 	struct in_addr bts_addr;
-	struct bsc_fd gprs_ns_fd;
+	struct osmo_fd gprs_ns_fd;
 	int gprs_local_port;
 	uint16_t gprs_orig_port;
 	uint32_t gprs_orig_ip;
 
 	char *id_tags[0xff];
-	u_int8_t *id_resp;
+	uint8_t *id_resp;
 	unsigned int id_resp_len;
 };
 
@@ -125,104 +124,13 @@ static char *listen_ipaddr;
 static char *bsc_ipaddr;
 static char *gprs_ns_ipaddr;
 
-static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *);
-static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what);
+static int gprs_ns_cb(struct osmo_fd *bfd, unsigned int what);
 
 #define PROXY_ALLOC_SIZE	1200
 
-static const u_int8_t pong[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_PONG };
-static const u_int8_t id_ack[] = { 0, 1, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_ACK };
-static const u_int8_t id_req[] = { 0, 17, IPAC_PROTO_IPACCESS, IPAC_MSGT_ID_GET,
-					0x01, IPAC_IDTAG_UNIT,
-					0x01, IPAC_IDTAG_MACADDR,
-					0x01, IPAC_IDTAG_LOCATION1,
-					0x01, IPAC_IDTAG_LOCATION2,
-					0x01, IPAC_IDTAG_EQUIPVERS,
-					0x01, IPAC_IDTAG_SWVERSION,
-					0x01, IPAC_IDTAG_UNITNAME,
-					0x01, IPAC_IDTAG_SERNR,
-				};
-
-static const char *idtag_names[] = {
-	[IPAC_IDTAG_SERNR]	= "Serial_Number",
-	[IPAC_IDTAG_UNITNAME]	= "Unit_Name",
-	[IPAC_IDTAG_LOCATION1]	= "Location_1",
-	[IPAC_IDTAG_LOCATION2]	= "Location_2",
-	[IPAC_IDTAG_EQUIPVERS]	= "Equipment_Version",
-	[IPAC_IDTAG_SWVERSION]	= "Software_Version",
-	[IPAC_IDTAG_IPADDR]	= "IP_Address",
-	[IPAC_IDTAG_MACADDR]	= "MAC_Address",
-	[IPAC_IDTAG_UNIT]	= "Unit_ID",
-};
-
-static const char *ipac_idtag_name(int tag)
-{
-	if (tag >= ARRAY_SIZE(idtag_names))
-		return "unknown";
-
-	return idtag_names[tag];
-}
-
-static int ipac_idtag_parse(struct tlv_parsed *dec, unsigned char *buf, int len)
-{
-	u_int8_t t_len;
-	u_int8_t t_tag;
-	u_int8_t *cur = buf;
-
-	while (cur < buf + len) {
-		t_len = *cur++;
-		t_tag = *cur++;
-
-		DEBUGPC(DMI, "%s='%s' ", ipac_idtag_name(t_tag), cur);
-
-		dec->lv[t_tag].len = t_len;
-		dec->lv[t_tag].val = cur;
-
-		cur += t_len;
-	}
-	return 0;
-}
-
-static int parse_unitid(const char *str, u_int16_t *site_id, u_int16_t *bts_id,
-			u_int16_t *trx_id)
-{
-	unsigned long ul;
-	char *endptr;
-	const char *nptr;
-
-	nptr = str;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (site_id)
-		*site_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (bts_id)
-		*bts_id = ul & 0xffff;
-
-	if (*endptr++ != '/')
-		return -EINVAL;
-
-	nptr = endptr;
-	ul = strtoul(nptr, &endptr, 10);
-	if (endptr <= nptr)
-		return -EINVAL;
-	if (trx_id)
-		*trx_id = ul & 0xffff;
-
-	return 0;
-}
-
 static struct ipa_bts_conn *find_bts_by_unitid(struct ipa_proxy *ipp,
-						u_int16_t site_id,
-						u_int16_t bts_id)
+						uint16_t site_id,
+						uint16_t bts_id)
 {
 	struct ipa_bts_conn *ipbc;
 
@@ -279,7 +187,7 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 #define logp_ipbc_uid(ss, lvl, ipbc, trx_id) _logp_ipbc_uid(ss, lvl, __FILE__, __LINE__, ipbc, trx_id)
 
 static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int line,
-			   struct ipa_bts_conn *ipbc, u_int8_t trx_id)
+			   struct ipa_bts_conn *ipbc, uint8_t trx_id)
 {
 	if (ipbc)
 		logp2(ss, lvl, file, line, 0, "(%u/%u/%u) ", ipbc->unit_id.site_id,
@@ -288,44 +196,7 @@ static void _logp_ipbc_uid(unsigned int ss, unsigned int lvl, char *file, int li
 		logp2(ss, lvl, file, line, 0, "unknown ");
 }
 
-/* UDP socket handling */
-
-static int make_sock(struct bsc_fd *bfd, u_int16_t port, int proto, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what),
-		     void *data)
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_DGRAM, proto);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	bfd->data = data;
-	bfd->priv_nr = priv_nr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	addr.sin_addr.s_addr = INADDR_ANY;
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind socket: %s\n",
-			strerror(errno));
-		return -EIO;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register UDP fd");
-		return ret;
-	}
-	return 0;
-}
-
-static int handle_udp_read(struct bsc_fd *bfd)
+static int handle_udp_read(struct osmo_fd *bfd)
 {
 	struct ipa_bts_conn *ipbc = bfd->data;
 	struct ipa_proxy_conn *other_conn = NULL;
@@ -345,7 +216,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	}
 	if (ret == 0) {
 		DEBUGP(DINP, "UDP peer disappeared, dead socket\n");
-		bsc_unregister_fd(bfd);
+		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
 		msgb_free(msg);
@@ -358,7 +229,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	}
 	msgb_put(msg, ret);
 	msg->l2h = msg->data + sizeof(*hh);
-	DEBUGP(DMI, "UDP RX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "UDP RX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	if (hh->len != msg->len - sizeof(*hh)) {
 		DEBUGP(DINP, "length (%u/%u) disagrees with header(%u)\n",
@@ -416,7 +287,7 @@ static int handle_udp_read(struct bsc_fd *bfd)
 	return 0;
 }
 
-static int handle_udp_write(struct bsc_fd *bfd)
+static int handle_udp_write(struct osmo_fd *bfd)
 {
 	/* not implemented yet */
 	bfd->when &= ~BSC_FD_WRITE;
@@ -425,7 +296,7 @@ static int handle_udp_write(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int udp_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int udp_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -438,13 +309,13 @@ static int udp_fd_cb(struct bsc_fd *bfd, unsigned int what)
 }
 
 
-static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
-			      u_int16_t site_id, u_int16_t bts_id,
-			      u_int16_t trx_id, struct tlv_parsed *tlvp,
+static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
+			      uint16_t site_id, uint16_t bts_id,
+			      uint16_t trx_id, struct tlv_parsed *tlvp,
 			      struct msgb *msg)
 {
 	struct ipa_bts_conn *ipbc;
-	u_int16_t udp_port;
+	uint16_t udp_port;
 	int ret = 0;
 	struct sockaddr_in sin;
 
@@ -494,7 +365,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 
 	/* Create UDP socket for BTS packet injection */
 	udp_port = 10000 + (site_id % 1000)*100 + (bts_id % 100);
-	ret = make_sock(&ipbc->udp_bts_fd, udp_port, IPPROTO_UDP,
+	ret = make_sock(&ipbc->udp_bts_fd, IPPROTO_UDP, INADDR_ANY, udp_port,
 			UDP_TO_BTS, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bts;
@@ -503,7 +374,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 
 	/* Create UDP socket for BSC packet injection */
 	udp_port = 20000 + (site_id % 1000)*100 + (bts_id % 100);
-	ret = make_sock(&ipbc->udp_bsc_fd, udp_port, IPPROTO_UDP,
+	ret = make_sock(&ipbc->udp_bsc_fd, IPPROTO_UDP, INADDR_ANY, udp_port,
 			UDP_TO_BSC, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bsc;
@@ -515,7 +386,13 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 	if (gprs_ns_ipaddr) {
 		struct sockaddr_in sock;
 		socklen_t len = sizeof(sock);
-		ret = make_gprs_sock(&ipbc->gprs_ns_fd, gprs_ns_cb, ipbc);
+		struct in_addr addr;
+		uint32_t ip;
+
+		inet_aton(listen_ipaddr, &addr);
+		ip = ntohl(addr.s_addr); /* make_sock() needs host byte order */
+		ret = make_sock(&ipbc->gprs_ns_fd, IPPROTO_UDP, ip, 0, 0,
+				gprs_ns_cb, ipbc);
 		if (ret < 0) {
 			LOGP(DINP, LOGL_ERROR, "Creating the GPRS socket failed.\n");
 			goto err_udp_bsc;
@@ -536,9 +413,9 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct bsc_fd *bfd,
 	return 0;
 
 err_udp_bsc:
-	bsc_unregister_fd(&ipbc->udp_bts_fd);
+	osmo_fd_unregister(&ipbc->udp_bts_fd);
 err_udp_bts:
-	bsc_unregister_fd(&ipbc->bsc_oml_conn->fd);
+	osmo_fd_unregister(&ipbc->bsc_oml_conn->fd);
 	close(ipbc->bsc_oml_conn->fd.fd);
 	talloc_free(ipbc->bsc_oml_conn);
 	ipbc->bsc_oml_conn = NULL;
@@ -546,7 +423,7 @@ err_bsc_conn:
 	talloc_free(ipbc->id_resp);
 	talloc_free(ipbc);
 #if 0
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	talloc_free(bfd);
 #endif
@@ -555,23 +432,17 @@ err_out:
 }
 
 static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
-			   struct bsc_fd *bfd)
+			   struct osmo_fd *bfd)
 {
 	struct tlv_parsed tlvp;
-	u_int8_t msg_type = *(msg->l2h);
-	u_int16_t site_id, bts_id, trx_id;
+	uint8_t msg_type = *(msg->l2h);
+	uint16_t site_id, bts_id, trx_id;
 	struct ipa_bts_conn *ipbc;
 	int ret = 0;
 
 	switch (msg_type) {
 	case IPAC_MSGT_PING:
-		ret = write(bfd->fd, pong, sizeof(pong));
-		if (ret < 0)
-			return ret;
-		if (ret < sizeof(pong)) {
-			DEBUGP(DINP, "short write\n");
-			return -EIO;
-		}
+		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
 		DEBUGP(DMI, "PONG!\n");
@@ -579,8 +450,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	case IPAC_MSGT_ID_RESP:
 		DEBUGP(DMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
-		ipac_idtag_parse(&tlvp, (u_int8_t *)msg->l2h + 2,
-				 msgb_l2len(msg)-2);
+		ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
+				     msgb_l2len(msg)-2);
 		DEBUGP(DMI, "\n");
 
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
@@ -590,8 +461,8 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 
 		/* lookup BTS, create sign_link, ... */
 		site_id = bts_id = trx_id = 0;
-		parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
-			     &site_id, &bts_id, &trx_id);
+		ipaccess_parse_unitid((char *)TLVP_VAL(&tlvp, IPAC_IDTAG_UNIT),
+				      &site_id, &bts_id, &trx_id);
 		ipbc = find_bts_by_unitid(ipp, site_id, bts_id);
 		if (!ipbc) {
 			/* We have not found an ipbc (per-bts proxy instance)
@@ -654,7 +525,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		break;
 	case IPAC_MSGT_ID_ACK:
 		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
-		ret = write(bfd->fd, id_ack, sizeof(id_ack));
+		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	default:
 		LOGP(DMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
@@ -664,7 +535,7 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 	return 0;
 }
 
-struct msgb *ipaccess_read_msg(struct bsc_fd *bfd, int *error)
+struct msgb *ipaccess_proxy_read_msg(struct osmo_fd *bfd, int *error)
 {
 	struct msgb *msg = msgb_alloc(PROXY_ALLOC_SIZE, "Abis/IP");
 	struct ipaccess_head *hh;
@@ -785,10 +656,10 @@ static void reconn_tmr_cb(void *data)
 	return;
 
 reschedule:
-	bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+	osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 }
 
-static void handle_dead_socket(struct bsc_fd *bfd)
+static void handle_dead_socket(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;		/* local conn */
 	struct ipa_proxy_conn *bsc_conn;		/* remote conn */
@@ -796,7 +667,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 	unsigned int trx_id = bfd->priv_nr >> 8;
 	struct msgb *msg, *msg2;
 
-	bsc_unregister_fd(bfd);
+	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
 
@@ -806,10 +677,15 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 
 	switch (bfd->priv_nr & 0xff) {
 	case OML_FROM_BTS: /* incoming OML data from BTS, forward to BSC OML */
+		/* The BTS started a connection with us but we got no
+		 * IPAC_MSGT_ID_RESP message yet, in that scenario we did not
+		 * allocate the ipa_bts_conn structure. */
+		if (ipbc == NULL)
+			break;
 		ipbc->oml_conn = NULL;
 		bsc_conn = ipbc->bsc_oml_conn;
 		/* close the connection to the BSC */
-		bsc_unregister_fd(&bsc_conn->fd);
+		osmo_fd_unregister(&bsc_conn->fd);
 		close(bsc_conn->fd.fd);
 		llist_for_each_entry_safe(msg, msg2, &bsc_conn->tx_queue, list)
 			msgb_free(msg);
@@ -821,7 +697,7 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->rsl_conn[trx_id] = NULL;
 		bsc_conn = ipbc->bsc_rsl_conn[trx_id];
 		/* close the connection to the BSC */
-		bsc_unregister_fd(&bsc_conn->fd);
+		osmo_fd_unregister(&bsc_conn->fd);
 		close(bsc_conn->fd.fd);
 		llist_for_each_entry_safe(msg, msg2, &bsc_conn->tx_queue, list)
 			msgb_free(msg);
@@ -832,13 +708,13 @@ static void handle_dead_socket(struct bsc_fd *bfd)
 		ipbc->bsc_oml_conn = NULL;
 		bsc_conn = ipbc->oml_conn;
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	case RSL_TO_BSC: /* incoming RSL data from BSC, forward to BTS RSL */
 		ipbc->bsc_rsl_conn[trx_id] = NULL;
 		bsc_conn = ipbc->rsl_conn[trx_id];
 		/* start reconnect timer */
-		bsc_schedule_timer(&ipp->reconn_timer, 5, 0);
+		osmo_timer_schedule(&ipp->reconn_timer, 5, 0);
 		break;
 	default:
 		bsc_conn = NULL;
@@ -871,20 +747,20 @@ static void patch_gprs_msg(struct ipa_bts_conn *ipbc, int priv_nr, struct msgb *
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf5 && msg->l2h[19] == 0xf2) {
 		nsvci = &msg->l2h[23];
-		ipbc->gprs_orig_port =  *(u_int16_t *)(nsvci+8);
-		ipbc->gprs_orig_ip = *(u_int32_t *)(nsvci+10);
-		*(u_int16_t *)(nsvci+8) = htons(ipbc->gprs_local_port);
-		*(u_int32_t *)(nsvci+10) = ipbc->ipp->listen_addr.s_addr;
+		ipbc->gprs_orig_port =  *(uint16_t *)(nsvci+8);
+		ipbc->gprs_orig_ip = *(uint32_t *)(nsvci+10);
+		*(uint16_t *)(nsvci+8) = htons(ipbc->gprs_local_port);
+		*(uint32_t *)(nsvci+10) = ipbc->ipp->listen_addr.s_addr;
 	} else if (msg->l2h[0] == 0x10 && msg->l2h[1] == 0x80 &&
 	    msg->l2h[2] == 0x00 && msg->l2h[3] == 0x15 &&
 	    msg->l2h[18] == 0xf6 && msg->l2h[19] == 0xf2) {
 		nsvci = &msg->l2h[23];
-		*(u_int16_t *)(nsvci+8) = ipbc->gprs_orig_port;
-		*(u_int32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
+		*(uint16_t *)(nsvci+8) = ipbc->gprs_orig_port;
+		*(uint32_t *)(nsvci+10) = ipbc->gprs_orig_ip;
 	}
 }
 
-static int handle_tcp_read(struct bsc_fd *bfd)
+static int handle_tcp_read(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct ipa_bts_conn *ipbc = ipc->bts_conn;
@@ -899,7 +775,7 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 	else
 		btsbsc = "BSC";
 
-	msg = ipaccess_read_msg(bfd, &ret);
+	msg = ipaccess_proxy_read_msg(bfd, &ret);
 	if (!msg) {
 		if (ret == 0) {
 			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
@@ -912,13 +788,13 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 
 	msgb_put(msg, ret);
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
-	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, hexdump(msg->data, msg->len));
+	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		ret = ipaccess_rcvmsg(ipc, msg, bfd);
 		if (ret < 0) {
-			bsc_unregister_fd(bfd);
+			osmo_fd_unregister(bfd);
 			close(bfd->fd);
 			bfd->fd = -1;
 			talloc_free(bfd);
@@ -958,7 +834,7 @@ static int handle_tcp_read(struct bsc_fd *bfd)
 }
 
 /* a TCP socket is ready to be written to */
-static int handle_tcp_write(struct bsc_fd *bfd)
+static int handle_tcp_write(struct osmo_fd *bfd)
 {
 	struct ipa_proxy_conn *ipc = bfd->data;
 	struct ipa_bts_conn *ipbc = ipc->bts_conn;
@@ -984,7 +860,7 @@ static int handle_tcp_write(struct bsc_fd *bfd)
 
 	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
 	DEBUGPC(DMI, "TX %04x: %s\n", bfd->priv_nr,
-		hexdump(msg->data, msg->len));
+		osmo_hexdump(msg->data, msg->len));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
@@ -999,7 +875,7 @@ static int handle_tcp_write(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -1015,11 +891,11 @@ static int ipaccess_fd_cb(struct bsc_fd *bfd, unsigned int what)
 }
 
 /* callback of the listening filedescriptor */
-static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
+static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	struct ipa_proxy_conn *ipc;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct sockaddr_in sa;
 	socklen_t sa_len = sizeof(sa);
 
@@ -1047,7 +923,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	bfd->priv_nr = listen_bfd->priv_nr;
 	bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
@@ -1056,7 +932,7 @@ static int listen_fd_cb(struct bsc_fd *listen_bfd, unsigned int what)
 	}
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
-	ret = write(bfd->fd, id_req, sizeof(id_req));
+	ret = ipaccess_send_id_req(bfd->fd);
 
 	return 0;
 }
@@ -1078,7 +954,7 @@ static void send_ns(int fd, const char *buf, int size, struct in_addr ip, int po
 	}
 }
 
-static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
+static int gprs_ns_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct ipa_bts_conn *bts;
 	char buf[4096];
@@ -1109,85 +985,11 @@ static int gprs_ns_cb(struct bsc_fd *bfd, unsigned int what)
 	return 0;
 }
 
-static int make_listen_sock(struct bsc_fd *bfd, u_int16_t port, int priv_nr,
-		     int (*cb)(struct bsc_fd *fd, unsigned int what))
-{
-	struct sockaddr_in addr;
-	int ret, on = 1;
-
-	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	bfd->cb = cb;
-	bfd->when = BSC_FD_READ;
-	bfd->priv_nr = priv_nr;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	if (!listen_ipaddr)
-		addr.sin_addr.s_addr = INADDR_ANY;
-	else
-		inet_aton(listen_ipaddr, &addr.sin_addr);
-
-	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR,
-			"Could not bind listen socket for IP %s with error: %s.\n",
-			listen_ipaddr, strerror(errno));
-		return -EIO;
-	}
-
-	ret = listen(bfd->fd, 1);
-	if (ret < 0) {
-		perror("listen");
-		return ret;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
-	return 0;
-}
-
-static int make_gprs_sock(struct bsc_fd *bfd, int (*cb)(struct bsc_fd*,unsigned int), void *data)
-{
-	struct sockaddr_in addr;
-	int ret;
-
-	bfd->fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	bfd->cb = cb;
-	bfd->data = data;
-	bfd->when = BSC_FD_READ;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = 0;
-	inet_aton(listen_ipaddr, &addr.sin_addr);
-
-	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
-	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR,
-			"Could not bind n socket for IP %s with error: %s.\n",
-			listen_ipaddr, strerror(errno));
-		return -EIO;
-	}
-
-	ret = bsc_register_fd(bfd);
-	if (ret < 0) {
-		perror("register_listen_fd");
-		return ret;
-	}
-	return 0;
-}
-
 /* Actively connect to a BSC.  */
 static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, void *data)
 {
 	struct ipa_proxy_conn *ipc;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	int ret, on = 1;
 
 	ipc = alloc_conn();
@@ -1215,7 +1017,7 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 	}
 
 	/* pre-fill tx_queue with identity request */
-	ret = bsc_register_fd(bfd);
+	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
 		close(bfd->fd);
 		talloc_free(ipc);
@@ -1237,14 +1039,14 @@ static int ipaccess_proxy_setup(void)
 	ipp->reconn_timer.data = ipp;
 
 	/* Listen for OML connections */
-	ret = make_listen_sock(&ipp->oml_listen_fd, IPA_TCP_PORT_OML,
-				OML_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->oml_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_OML, OML_FROM_BTS, listen_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 
 	/* Listen for RSL connections */
-	ret = make_listen_sock(&ipp->rsl_listen_fd, IPA_TCP_PORT_RSL,
-				RSL_FROM_BTS, listen_fd_cb);
+	ret = make_sock(&ipp->rsl_listen_fd, IPPROTO_TCP, INADDR_ANY,
+			IPA_TCP_PORT_RSL, RSL_FROM_BTS, listen_fd_cb, NULL);
 
 	if (ret < 0)
 		return ret;
@@ -1290,11 +1092,22 @@ static void print_help()
 
 static void print_usage()
 {
-	printf("Usage: ipaccess-proxy\n");
+	printf("Usage: ipaccess-proxy [options]\n");
 }
+
+enum {
+	IPA_PROXY_OPT_LISTEN_NONE	= 0,
+	IPA_PROXY_OPT_LISTEN_IP		= (1 << 0),
+	IPA_PROXY_OPT_BSC_IP		= (1 << 1),
+};
 
 static void handle_options(int argc, char** argv)
 {
+	int options_mask = 0;
+
+	/* disable explicit missing arguments error output from getopt_long */
+	opterr = 0;
+
 	while (1) {
 		int option_index = 0, c;
 		static struct option long_options[] = {
@@ -1304,7 +1117,6 @@ static void handle_options(int argc, char** argv)
 			{"log-level", 1, 0, 'e'},
 			{"listen", 1, 0, 'l'},
 			{"bsc", 1, 0, 'b'},
-			{"udp", 1, 0, 'u'},
 			{0, 0, 0, 0}
 		};
 
@@ -1320,26 +1132,48 @@ static void handle_options(int argc, char** argv)
 			exit(0);
 		case 'l':
 			listen_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_LISTEN_IP;
 			break;
 		case 'b':
 			bsc_ipaddr = optarg;
+			options_mask |= IPA_PROXY_OPT_BSC_IP;
 			break;
 		case 'g':
 			gprs_ns_ipaddr = optarg;
 			break;
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
+			break;
+		case '?':
+			if (optopt) {
+				printf("ERROR: missing mandatory argument "
+				       "for `%s' option\n", argv[optind-1]);
+			} else {
+				printf("ERROR: unknown option `%s'\n",
+					argv[optind-1]);
+			}
+			print_usage();
+			print_help();
+			exit(EXIT_FAILURE);
 			break;
 		default:
 			/* ignore */
 			break;
 		}
+	}
+	if ((options_mask & (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP))
+		 != (IPA_PROXY_OPT_LISTEN_IP | IPA_PROXY_OPT_BSC_IP)) {
+		printf("ERROR: You have to specify `--listen' and `--bsc' "
+		       "options at least.\n");
+		print_usage();
+		print_help();
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -1347,16 +1181,10 @@ int main(int argc, char **argv)
 {
 	int rc;
 
-	listen_ipaddr = "192.168.100.11";
-	bsc_ipaddr = "192.168.100.239";
-
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
-	log_parse_category_mask(stderr_target, "DINP:DMI");
+	osmo_init_logging(&log_info);
+	log_parse_category_mask(osmo_stderr_target, "DINP:DMI");
 
 	handle_options(argc, argv);
 
@@ -1366,8 +1194,9 @@ int main(int argc, char **argv)
 
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGABRT, &signal_handler);
+	osmo_init_ignore_signals();
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }

@@ -2,8 +2,8 @@
 /* BSC Multiplexer/NAT Utilities */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -29,11 +29,12 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/linuxlist.h>
-#include <osmocore/talloc.h>
-#include <osmocore/gsm0808.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm0808.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_04_11.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -82,28 +83,42 @@ struct bsc_nat *bsc_nat_alloc(void)
 	if (!nat)
 		return NULL;
 
+	nat->main_dest = talloc_zero(nat, struct bsc_msc_dest);
+	if (!nat->main_dest) {
+		talloc_free(nat);
+		return NULL;
+	}
+
 	INIT_LLIST_HEAD(&nat->sccp_connections);
 	INIT_LLIST_HEAD(&nat->bsc_connections);
+	INIT_LLIST_HEAD(&nat->paging_groups);
 	INIT_LLIST_HEAD(&nat->bsc_configs);
 	INIT_LLIST_HEAD(&nat->access_lists);
+	INIT_LLIST_HEAD(&nat->dests);
+	INIT_LLIST_HEAD(&nat->num_rewr);
+	INIT_LLIST_HEAD(&nat->smsc_rewr);
+	INIT_LLIST_HEAD(&nat->tpdest_match);
 
-	nat->stats.sccp.conn = counter_alloc("nat.sccp.conn");
-	nat->stats.sccp.calls = counter_alloc("nat.sccp.calls");
-	nat->stats.bsc.reconn = counter_alloc("nat.bsc.conn");
-	nat->stats.bsc.auth_fail = counter_alloc("nat.bsc.auth_fail");
-	nat->stats.msc.reconn = counter_alloc("nat.msc.conn");
-	nat->stats.ussd.reconn = counter_alloc("nat.ussd.conn");
-	nat->msc_ip = talloc_strdup(nat, "127.0.0.1");
-	nat->msc_port = 5000;
+	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
+	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
+	nat->stats.bsc.reconn = osmo_counter_alloc("nat.bsc.conn");
+	nat->stats.bsc.auth_fail = osmo_counter_alloc("nat.bsc.auth_fail");
+	nat->stats.msc.reconn = osmo_counter_alloc("nat.msc.conn");
+	nat->stats.ussd.reconn = osmo_counter_alloc("nat.ussd.conn");
 	nat->auth_timeout = 2;
 	nat->ping_timeout = 20;
 	nat->pong_timeout = 5;
+
+	llist_add(&nat->main_dest->list, &nat->dests);
+	nat->main_dest->ip = talloc_strdup(nat, "127.0.0.1");
+	nat->main_dest->port = 5000;
+
 	return nat;
 }
 
 void bsc_nat_set_msc_ip(struct bsc_nat *nat, const char *ip)
 {
-	bsc_replace_string(nat, &nat->msc_ip, ip);
+	bsc_replace_string(nat, &nat->main_dest->ip, ip);
 }
 
 struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
@@ -113,7 +128,7 @@ struct bsc_connection *bsc_connection_alloc(struct bsc_nat *nat)
 		return NULL;
 
 	con->nat = nat;
-	write_queue_init(&con->write_queue, 100);
+	osmo_wqueue_init(&con->write_queue, 100);
 	return con;
 }
 
@@ -127,6 +142,7 @@ struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token)
 	conf->nr = nat->num_bsc;
 	conf->nat = nat;
 	conf->max_endpoints = 32;
+	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
 
 	INIT_LLIST_HEAD(&conf->lac_list);
 
@@ -147,29 +163,29 @@ void bsc_config_free(struct bsc_config *cfg)
 	rate_ctr_group_free(cfg->stats.ctrg);
 }
 
-void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
+static void _add_lac(void *ctx, struct llist_head *list, int _lac)
 {
 	struct bsc_lac_entry *lac;
 
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
+	llist_for_each_entry(lac, list, entry)
 		if (lac->lac == _lac)
 			return;
 
-	lac = talloc_zero(cfg, struct bsc_lac_entry);
+	lac = talloc_zero(ctx, struct bsc_lac_entry);
 	if (!lac) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
 		return;
 	}
 
 	lac->lac = _lac;
-	llist_add_tail(&lac->entry, &cfg->lac_list);
+	llist_add_tail(&lac->entry, list);
 }
 
-void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
+static void _del_lac(struct llist_head *list, int _lac)
 {
 	struct bsc_lac_entry *lac;
 
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
+	llist_for_each_entry(lac, list, entry)
 		if (lac->lac == _lac) {
 			llist_del(&lac->entry);
 			talloc_free(lac);
@@ -177,11 +193,74 @@ void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
 		}
 }
 
+void bsc_config_add_lac(struct bsc_config *cfg, int _lac)
+{
+	_add_lac(cfg, &cfg->lac_list, _lac);
+}
+
+void bsc_config_del_lac(struct bsc_config *cfg, int _lac)
+{
+	_del_lac(&cfg->lac_list, _lac);
+}
+
+struct bsc_nat_paging_group *bsc_nat_paging_group_create(struct bsc_nat *nat, int group)
+{
+	struct bsc_nat_paging_group *pgroup;
+
+	pgroup = talloc_zero(nat, struct bsc_nat_paging_group);
+	if (!pgroup) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate a paging group.\n");
+		return NULL;
+	}
+
+	pgroup->nr = group;
+	INIT_LLIST_HEAD(&pgroup->lists);
+	llist_add_tail(&pgroup->entry, &nat->paging_groups);
+	return pgroup;
+}
+
+void bsc_nat_paging_group_delete(struct bsc_nat_paging_group *pgroup)
+{
+	llist_del(&pgroup->entry);
+	talloc_free(pgroup);
+}
+
+struct bsc_nat_paging_group *bsc_nat_paging_group_num(struct bsc_nat *nat, int group)
+{
+	struct bsc_nat_paging_group *pgroup;
+
+	llist_for_each_entry(pgroup, &nat->paging_groups, entry)
+		if (pgroup->nr == group)
+			return pgroup;
+
+	return NULL;
+}
+
+void bsc_nat_paging_group_add_lac(struct bsc_nat_paging_group *pgroup, int lac)
+{
+	_add_lac(pgroup, &pgroup->lists, lac);
+}
+
+void bsc_nat_paging_group_del_lac(struct bsc_nat_paging_group *pgroup, int lac)
+{
+	_del_lac(&pgroup->lists, lac);
+}
+
 int bsc_config_handles_lac(struct bsc_config *cfg, int lac_nr)
 {
+	struct bsc_nat_paging_group *pgroup;
 	struct bsc_lac_entry *entry;
 
 	llist_for_each_entry(entry, &cfg->lac_list, entry)
+		if (entry->lac == lac_nr)
+			return 1;
+
+	/* now lookup the paging group */
+	pgroup = bsc_nat_paging_group_num(cfg->nat, cfg->paging_group);
+	if (!pgroup)
+		return 0;
+
+	llist_for_each_entry(entry, &pgroup->lists, entry)
 		if (entry->lac == lac_nr)
 			return 1;
 
@@ -198,25 +277,23 @@ void sccp_connection_destroy(struct sccp_connections *conn)
 	talloc_free(conn);
 }
 
-struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, int *lac_out)
+
+int bsc_nat_find_paging(struct msgb *msg,
+			const uint8_t **out_data, int *out_leng)
 {
-	struct bsc_connection *bsc;
 	int data_length;
 	const uint8_t *data;
 	struct tlv_parsed tp;
-	int i = 0;
-
-	*lac_out = -1;
 
 	if (!msg->l3h || msgb_l3len(msg) < 3) {
 		LOGP(DNAT, LOGL_ERROR, "Paging message is too short.\n");
-		return NULL;
+		return -1;
 	}
 
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
 		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
-		return NULL;
+		return -2;
 	}
 
 	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST);
@@ -224,29 +301,15 @@ struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, i
 
 	/* No need to try a different BSS */
 	if (data[0] == CELL_IDENT_BSS) {
-		return NULL;
+		return -3;
 	} else if (data[0] != CELL_IDENT_LAC) {
 		LOGP(DNAT, LOGL_ERROR, "Unhandled cell ident discrminator: %d\n", data[0]);
-		return NULL;
+		return -4;
 	}
 
-	/* Currently we only handle one BSC */
-	for (i = 1; i < data_length - 1; i += 2) {
-		unsigned int _lac = ntohs(*(unsigned int *) &data[i]);
-		*lac_out = _lac;
-		llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-			if (!bsc->cfg)
-				continue;
-			if (!bsc->authenticated)
-				continue;
-			if (!bsc_config_handles_lac(bsc->cfg, _lac))
-				continue;
-
-			return bsc;
-		}
-	}
-
-	return NULL;
+	*out_data = &data[1];
+	*out_leng = data_length - 1;
+	return 0;
 }
 
 int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int length)
@@ -276,16 +339,16 @@ int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int proto)
 	return bsc_do_write(&bsc->write_queue, msg, proto);
 }
 
-int bsc_do_write(struct write_queue *queue, struct msgb *msg, int proto)
+int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int proto)
 {
 	/* prepend the header */
 	ipaccess_prepend_header(msg, proto);
 	return bsc_write_msg(queue, msg);
 }
 
-int bsc_write_msg(struct write_queue *queue, struct msgb *msg)
+int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg)
 {
-	if (write_queue_enqueue(queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 		return -1;
@@ -500,7 +563,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
 	int len;
-	uint8_t msg_type;
+	uint8_t msg_type, proto;
 
 	*con_type = NAT_CON_TYPE_NONE;
 	*imsi = NULL;
@@ -538,18 +601,19 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 
 	hdr48 = (struct gsm48_hdr *) TLVP_VAL(&tp, GSM0808_IE_LAYER_3_INFORMATION);
 
+	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
 		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48), imsi);
-	} else if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	} else if (proto == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
 					     con_type, imsi);
-	} else if (hdr48->proto_discr == GSM48_PDISC_RR &&
+	} else if (proto == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
 		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48), imsi);
@@ -583,7 +647,7 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
 {
 	uint32_t len;
-	uint8_t msg_type;
+	uint8_t msg_type, proto;
 	struct gsm48_hdr *hdr48;
 
 	if (con->imsi_checked)
@@ -597,8 +661,9 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	if (!hdr48)
 		return -1;
 
+	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (hdr48->proto_discr == GSM48_PDISC_MM &&
+	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_ID_RESP) {
 		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
 	} else {
@@ -606,8 +671,11 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	}
 }
 
-void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
+int bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv)
 {
+	int ret;
+
+	ret = 0;
 	if (*imsi) {
 		talloc_free(*imsi);
 		*imsi = NULL;
@@ -616,8 +684,16 @@ void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **
 
 	if (argc > 0) {
 		*imsi = talloc_strdup(ctx, argv[0]);
-		regcomp(reg, argv[0], 0);
+		ret = regcomp(reg, argv[0], 0);
+
+		/* handle compilation failures */
+		if (ret != 0) {
+			talloc_free(*imsi);
+			*imsi = NULL;
+		}
 	}
+
+	return ret;
 }
 
 static const char *con_types [] = {
@@ -715,7 +791,7 @@ int bsc_conn_type_to_ctr(struct sccp_connections *conn)
 	return con_to_ctr[conn->con_type];
 }
 
-int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
+int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 
@@ -726,44 +802,57 @@ int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
+static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
+				       struct gsm_mncc_number *called)
+{
+	struct bsc_nat_num_rewr_entry *entry;
+	char *new_number = NULL;
+
+	if (llist_empty(&nat->num_rewr))
+		return NULL;
+
+	if (called->plan != 1)
+		return NULL;
+	if (called->type == 1)
+		return NULL;
+
+	/* need to find a replacement and then fix it */
+	llist_for_each_entry(entry, &nat->num_rewr, list) {
+		regmatch_t matches[2];
+
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		/* this regexp matches... */
+		if (regexec(&entry->num_reg, called->number, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(ctx, "%s%s",
+					entry->replace,
+					&called->number[matches[1].rm_so]);
+		if (new_number)
+			break;
+	}
+
+	return new_number;
+}
+
+
 /**
  * Rewrite non global numbers... according to rules based on the IMSI
  */
-struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
+static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
+				  struct bsc_nat_parsed *parsed, const char *imsi,
+				  struct gsm48_hdr *hdr48, const uint32_t len)
 {
 	struct tlv_parsed tp;
-	struct gsm48_hdr *hdr48;
-	uint32_t len;
-	uint8_t msg_type;
 	unsigned int payload_len;
 	struct gsm_mncc_number called;
-	struct msg_entry *entry;
+	struct msgb *out;
 	char *new_number = NULL;
-	struct msgb *out, *sccp;
 	uint8_t *outptr;
 	const uint8_t *msgptr;
 	int sec_len;
-
-	if (!imsi || strlen(imsi) < 5)
-		return msg;
-
-	if (!nat->num_rewr)
-		return msg;
-
-	/* only care about DTAP messages */
-	if (parsed->bssap != BSSAP_MSG_DTAP)
-		return msg;
-	if (!parsed->dest_local_ref)
-		return msg;
-
-	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
-	if (!hdr48)
-		return msg;
-
-	msg_type = hdr48->msg_type & 0xbf;
-	if (hdr48->proto_discr != GSM48_PDISC_CC ||
-	    msg_type != GSM48_MT_CC_SETUP)
-		return msg;
 
 	/* decode and rewrite the message */
 	payload_len = len - sizeof(*hdr48);
@@ -771,64 +860,24 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 
 	/* no number, well let us ignore it */
 	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD))
-		return msg;
+		return NULL;
 
 	memset(&called, 0, sizeof(called));
 	gsm48_decode_called(&called,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	if (called.plan != 1)
-		return msg;
-	if (called.type == 1)
-		return msg;
-	if (strncmp(called.number, "00", 2) == 0)
-		return msg;
-
-	/* need to find a replacement and then fix it */
-	llist_for_each_entry(entry, &nat->num_rewr->entry, list) {
-		regex_t reg;
-		regmatch_t matches[2];
-
-		if (entry->mcc[0] != '*' && strncmp(entry->mcc, imsi, 3) != 0)
-			continue;
-		if (entry->mnc[0] != '*' && strncmp(entry->mnc, imsi + 3, 2) != 0)
-			continue;
-
-		if (entry->text[0] == '+') {
-			LOGP(DNAT, LOGL_ERROR,
-				"Plus is not allowed in the number");
-			continue;
-		}
-
-		/* We have an entry for the IMSI. Need to match now */
-		if (regcomp(&reg, entry->option, REG_EXTENDED) != 0) {
-			LOGP(DNAT, LOGL_ERROR,
-				"Regexp '%s' is not valid.\n", entry->option);
-			continue;
-		}
-
-		/* this regexp matches... */
-		if (regexec(&reg, called.number, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(msg, "%s%s",
-					entry->text,
-					&called.number[matches[1].rm_so]);
-		regfree(&reg);
-
-		if (new_number)
-			break;
-	}
+	new_number = rewrite_non_international(nat, msg, imsi, &called);
 
 	if (!new_number) {
 		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
-		return msg;
+		return NULL;
 	}
 
 	if (strlen(new_number) > sizeof(called.number)) {
 		LOGP(DNAT, LOGL_ERROR, "Number is too long for structure.\n");
 		talloc_free(new_number);
-		return msg;
+		return NULL;
 	}
 
 	/*
@@ -841,7 +890,7 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	if (!out) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
 		talloc_free(new_number);
-		return msg;
+		return NULL;
 	}
 
 	/* copy the header */
@@ -869,25 +918,324 @@ struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct
 	outptr = msgb_put(out, sec_len);
 	memcpy(outptr, msgptr, sec_len);
 
+	talloc_free(new_number);
+	return out;
+}
+
+static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
+				 struct bsc_nat_parsed *parsed, const char *imsi,
+				 struct gsm48_hdr *hdr48, const uint32_t len)
+{
+	unsigned int payload_len;
+	unsigned int cp_len;
+
+	uint8_t ref;
+	uint8_t orig_addr_len, *orig_addr_ptr;
+	uint8_t dest_addr_len, *dest_addr_ptr;
+	uint8_t data_len, *data_ptr;
+	char smsc_addr[30];
+	uint8_t new_addr[12];
+
+
+	uint8_t dest_len;
+	char _dest_nr[30];
+	char *dest_nr;
+	uint8_t dest_match = 0;
+
+	struct bsc_nat_num_rewr_entry *entry;
+	char *new_number = NULL;
+	uint8_t new_addr_len;
+	struct gsm48_hdr *new_hdr48;
+	struct msgb *out;
+
+	payload_len = len - sizeof(*hdr48);
+	if (payload_len < 1) {
+		LOGP(DNAT, LOGL_ERROR, "SMS too short for things. %d\n", payload_len);
+		return NULL;
+	}
+
+	cp_len = hdr48->data[0];
+	if (payload_len + 1 < cp_len) {
+		LOGP(DNAT, LOGL_ERROR, "SMS RPDU can not fit in: %d %d\n", cp_len, payload_len);
+		return NULL;
+	}
+
+	if (hdr48->data[1] != GSM411_MT_RP_DATA_MO)
+		return NULL;
+
+	if (cp_len < 5) {
+		LOGP(DNAT, LOGL_ERROR, "RD-DATA can not fit in the CP len: %d\n", cp_len);
+		return NULL;
+	}
+
+	ref = hdr48->data[2];
+	orig_addr_len = hdr48->data[3];
+	orig_addr_ptr = &hdr48->data[4];
+
+	/* the +1 is for checking if the following element has some space */
+	if (cp_len < 3 + orig_addr_len + 1) {
+		LOGP(DNAT, LOGL_ERROR, "RP-Originator addr does not fit: %d\n", orig_addr_len);
+		return NULL;
+	}
+
+	dest_addr_len = hdr48->data[3 + orig_addr_len + 1];
+	dest_addr_ptr = &hdr48->data[3 + orig_addr_len + 2];
+
+	if (cp_len < 3 + orig_addr_len + 1 + dest_addr_len + 1) {
+		LOGP(DNAT, LOGL_ERROR, "RP-Destination addr does not fit: %d\n", dest_addr_len);
+		return NULL;
+	}
+	gsm48_decode_bcd_number(smsc_addr, ARRAY_SIZE(smsc_addr), dest_addr_ptr - 1, 1);
+
+	data_len = hdr48->data[3 + orig_addr_len + 1 + dest_addr_len + 1];
+	data_ptr = &hdr48->data[3 + orig_addr_len + 1 + dest_addr_len + 2];
+
+	if (cp_len < 3 + orig_addr_len + 1 + dest_addr_len + 1 + data_len) {
+		LOGP(DNAT, LOGL_ERROR, "RP-Data does not fit: %d\n", data_len);
+		return NULL;
+	}
+
+	/* look into the phone number */
+	if ((data_ptr[0] & 0x01) != 1)
+		return NULL;
+
+	if (data_len < 3) {
+		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT is too short.\n");
+		return NULL;
+	}
+
+	dest_len = data_ptr[2];
+	if (data_len < dest_len + 3 || dest_len < 2) {
+		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT can not have TP-DestAddr.\n");
+		return NULL;
+	}
+
+	if ((data_ptr[3] & 0x80) == 0) {
+		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr has extension. Not handled.\n");
+		return NULL;
+	}
+
+	if ((data_ptr[3] & 0x0F) == 0) {
+		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr is not a ISDN number.\n");
+		return NULL;
+	}
+
+	gsm48_decode_bcd_number(_dest_nr + 2, ARRAY_SIZE(_dest_nr) - 2,
+				&data_ptr[2], 1);
+	if ((data_ptr[3] & 0x70) == 0x10) {
+		_dest_nr[0] = _dest_nr[1] = '0';
+		dest_nr = &_dest_nr[0];
+	} else {
+		dest_nr = &_dest_nr[2];
+	}
+
+	/* We will find a new number now */
+	llist_for_each_entry(entry, &nat->smsc_rewr, list) {
+		regmatch_t matches[2];
+
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		/* this regexp matches... */
+		if (regexec(&entry->num_reg, smsc_addr, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(msg, "%s%s",
+					entry->replace,
+					&smsc_addr[matches[1].rm_so]);
+		if (new_number)
+			break;
+	}
+
+	if (!new_number)
+		return NULL;
+
+	/*
+	 * now match the number against another list
+	 */
+	llist_for_each_entry(entry, &nat->tpdest_match, list) {
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		if (regexec(&entry->num_reg, dest_nr, 0, NULL, 0) == 0) {
+			dest_match =1;
+			break;
+		}
+	}
+
+	if (!dest_match) {
+		talloc_free(new_number);
+		return NULL;
+	}
+
+	/*
+	 * We need to re-create the patched structure. This is why we have
+	 * saved the above pointers.
+	 */
+	out = msgb_alloc_headroom(4096, 128, "changed-smsc");
+	if (!out) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		return NULL;
+	}
+
+	out->l3h = out->data;
+	msgb_v_put(out, GSM411_MT_RP_DATA_MO);
+	msgb_v_put(out, ref);
+	msgb_lv_put(out, orig_addr_len, orig_addr_ptr);
+
+	/*
+	 * Copy the new number. We let libosmocore encode it, then set
+	 * the extension followed after the length. For our convenience
+	 * we let the TLV code re-add the length so we start copying
+	 * from &new_addr[1].
+	 */
+	new_addr_len = gsm48_encode_bcd_number(new_addr, ARRAY_SIZE(new_addr),
+					       1, new_number);
+	new_addr[1] = 0x91;
+	msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
+
+	msgb_lv_put(out, data_len, data_ptr);
+
+	new_hdr48 = (struct gsm48_hdr *) msgb_push(out, sizeof(*hdr48) + 1);
+	memcpy(new_hdr48, hdr48, sizeof(*hdr48));
+	new_hdr48->data[0] = msgb_l3len(out);
+
+	talloc_free(new_number);
+	return out;
+}
+
+struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *parsed, const char *imsi)
+{
+	struct gsm48_hdr *hdr48;
+	uint32_t len;
+	uint8_t msg_type, proto;
+	struct msgb *new_msg = NULL, *sccp;
+
+	if (!imsi || strlen(imsi) < 5)
+		return msg;
+
+	/* only care about DTAP messages */
+	if (parsed->bssap != BSSAP_MSG_DTAP)
+		return msg;
+	if (!parsed->dest_local_ref)
+		return msg;
+
+	hdr48 = bsc_unpack_dtap(parsed, msg, &len);
+	if (!hdr48)
+		return msg;
+
+	proto = hdr48->proto_discr & 0x0f;
+	msg_type = hdr48->msg_type & 0xbf;
+
+	if (proto == GSM48_PDISC_CC && msg_type == GSM48_MT_CC_SETUP)
+		new_msg = rewrite_setup(nat, msg, parsed, imsi, hdr48, len);
+	else if (proto == GSM48_PDISC_SMS && msg_type == GSM411_MT_CP_DATA)
+		new_msg = rewrite_smsc(nat, msg, parsed, imsi, hdr48, len);
+
+	if (!new_msg)
+		return msg;
+
 	/* wrap with DTAP, SCCP, then IPA. TODO: Stop copying */
-	gsm0808_prepend_dtap_header(out, 0);
-	sccp = sccp_create_dt1(parsed->dest_local_ref, out->data, out->len);
+	gsm0808_prepend_dtap_header(new_msg, 0);
+	sccp = sccp_create_dt1(parsed->dest_local_ref, new_msg->data, new_msg->len);
+	talloc_free(new_msg);
+
 	if (!sccp) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
-		talloc_free(new_number);
-		talloc_free(out);
 		return msg;
 	}
 
 	ipaccess_prepend_header(sccp, IPAC_PROTO_SCCP);
 
-	/* give up memory, we are done */
-	talloc_free(new_number);
 	/* the parsed hangs off from msg but it needs to survive */
 	talloc_steal(sccp, parsed);
 	msgb_free(msg);
-	msgb_free(out);
-	out = NULL;
 	return sccp;
 }
 
+static void num_rewr_free_data(struct bsc_nat_num_rewr_entry *entry)
+{
+	regfree(&entry->msisdn_reg);
+	regfree(&entry->num_reg);
+	talloc_free(entry->replace);
+}
+
+void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head,
+				  const struct osmo_config_list *list)
+{
+	struct bsc_nat_num_rewr_entry *entry, *tmp;
+	struct osmo_config_entry *cfg_entry;
+
+	/* free the old data */
+	llist_for_each_entry_safe(entry, tmp, head, list) {
+		num_rewr_free_data(entry);
+		llist_del(&entry->list);
+		talloc_free(entry);
+	}
+
+
+	if (!list)
+		return;
+
+	llist_for_each_entry(cfg_entry, &list->entry, list) {
+		char *regexp;
+		if (cfg_entry->text[0] == '+') {
+			LOGP(DNAT, LOGL_ERROR,
+				"Plus is not allowed in the number\n");
+			continue;
+		}
+
+		entry = talloc_zero(ctx, struct bsc_nat_num_rewr_entry);
+		if (!entry) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Allication of the num_rewr entry failed.\n");
+			continue;
+		}
+
+		entry->replace = talloc_strdup(entry, cfg_entry->text);
+		if (!entry->replace) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to copy the replacement text.\n");
+			talloc_free(entry);
+			continue;
+		}
+
+		/* we will now build a regexp string */
+		if (cfg_entry->mcc[0] == '^') {
+			regexp = talloc_strdup(entry, cfg_entry->mcc);
+		} else {
+			regexp = talloc_asprintf(entry, "^%s%s",
+					cfg_entry->mcc[0] == '*' ?
+						"[0-9][0-9][0-9]" : cfg_entry->mcc,
+					cfg_entry->mnc[0] == '*' ?
+						"[0-9][0-9]" : cfg_entry->mnc);
+		}
+
+		if (!regexp) {
+			LOGP(DNAT, LOGL_ERROR, "Failed to create a regexp string.\n");
+			talloc_free(entry);
+			continue;
+		}
+
+		if (regcomp(&entry->msisdn_reg, regexp, 0) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to compile regexp '%s'\n", regexp);
+			talloc_free(regexp);
+			talloc_free(entry);
+			continue;
+		}
+
+		talloc_free(regexp);
+		if (regcomp(&entry->num_reg, cfg_entry->option, REG_EXTENDED) != 0) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Failed to compile regexp '%s\n'", cfg_entry->option);
+			regfree(&entry->msisdn_reg);
+			talloc_free(entry);
+			continue;
+		}
+
+		/* we have copied the number */
+		llist_add_tail(&entry->list, head);
+	}
+}

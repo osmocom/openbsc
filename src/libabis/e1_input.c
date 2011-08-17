@@ -26,7 +26,6 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
@@ -39,18 +38,18 @@
 #define PF_ISDN AF_ISDN
 #endif
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/subchan_demux.h>
 #include <openbsc/trau_frame.h>
 #include <openbsc/trau_mux.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/misdn.h>
 
@@ -75,44 +74,44 @@ static void *tall_sigl_ctx;
 #define PCAP_OUTPUT		1
 
 struct pcap_hdr {
-	u_int32_t magic_number;
-	u_int16_t version_major;
-	u_int16_t version_minor;
+	uint32_t magic_number;
+	uint16_t version_major;
+	uint16_t version_minor;
 	int32_t  thiszone;
-	u_int32_t sigfigs;
-	u_int32_t snaplen;
-	u_int32_t network;
+	uint32_t sigfigs;
+	uint32_t snaplen;
+	uint32_t network;
 } __attribute__((packed));
 
 struct pcaprec_hdr {
-	u_int32_t ts_sec;
-	u_int32_t ts_usec;
-	u_int32_t incl_len;
-	u_int32_t orig_len;
+	uint32_t ts_sec;
+	uint32_t ts_usec;
+	uint32_t incl_len;
+	uint32_t orig_len;
 } __attribute__((packed));
 
 struct fake_linux_lapd_header {
-        u_int16_t pkttype;
-	u_int16_t hatype;
-	u_int16_t halen;
-	u_int64_t addr;
+        uint16_t pkttype;
+	uint16_t hatype;
+	uint16_t halen;
+	uint64_t addr;
 	int16_t protocol;
 } __attribute__((packed));
 
 struct lapd_header {
-	u_int8_t ea1 : 1;
-	u_int8_t cr : 1;
-	u_int8_t sapi : 6;
-	u_int8_t ea2 : 1;
-	u_int8_t tei : 7;
-	u_int8_t control_foo; /* fake UM's ... */
+	uint8_t ea1 : 1;
+	uint8_t cr : 1;
+	uint8_t sapi : 6;
+	uint8_t ea2 : 1;
+	uint8_t tei : 7;
+	uint8_t control_foo; /* fake UM's ... */
 } __attribute__((packed));
 
-static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, halen) == 4,     halen_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr_offset);
-static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
-static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, hatype) == 2,    hatype_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, halen) == 4,     halen_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, addr) == 6,      addr_offset);
+osmo_static_assert(offsetof(struct fake_linux_lapd_header, protocol) == 14, proto_offset);
+osmo_static_assert(sizeof(struct fake_linux_lapd_header) == 16,	       lapd_header_size);
 
 
 static int pcap_fd = -1;
@@ -207,7 +206,7 @@ const char *e1inp_tstype_name(enum e1inp_ts_type tp)
 }
 
 /* callback when a TRAU frame was received */
-static int subch_cb(struct subch_demux *dmx, int ch, u_int8_t *data, int len,
+static int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len,
 		    void *_priv)
 {
 	struct e1inp_ts *e1i_ts = _priv;
@@ -230,19 +229,19 @@ int abis_rsl_sendmsg(struct msgb *msg)
 
 	if (!msg->trx) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EINVAL;
 	} else if (!msg->trx->rsl_link) {
 		LOGP(DRSL, LOGL_ERROR, "rsl_sendmsg: msg->trx->rsl_link == NULL: %s\n",
-			hexdump(msg->data, msg->len));
+			osmo_hexdump(msg->data, msg->len));
 		talloc_free(msg);
 		return -EIO;
 	}
 
 	sign_link = msg->trx->rsl_link;
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -277,7 +276,7 @@ int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 		sign_link = msg->trx->bts->oml_link;
 
 	e1i_ts = sign_link->ts;
-	if (!bsc_timer_pending(&e1i_ts->sign.tx_timer)) {
+	if (!osmo_timer_pending(&e1i_ts->sign.tx_timer)) {
 		/* notify the driver we have something to write */
 		e1inp_driver = sign_link->ts->line->driver;
 		e1inp_driver->want_write(e1i_ts);
@@ -324,7 +323,7 @@ int e1inp_ts_config(struct e1inp_ts *ts, struct e1inp_line *line,
 	return 0;
 }
 
-struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
+struct e1inp_line *e1inp_line_get(uint8_t e1_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -336,7 +335,7 @@ struct e1inp_line *e1inp_line_get(u_int8_t e1_nr)
 	return NULL;
 }
 
-struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
+struct e1inp_line *e1inp_line_create(uint8_t e1_nr, const char *driver_name)
 {
 	struct e1inp_driver *driver;
 	struct e1inp_line *line;
@@ -373,7 +372,7 @@ struct e1inp_line *e1inp_line_create(u_int8_t e1_nr, const char *driver_name)
 }
 
 #if 0
-struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
+struct e1inp_line *e1inp_line_get_create(uint8_t e1_nr)
 {
 	struct e1inp_line *line;
 	int i;
@@ -397,7 +396,7 @@ struct e1inp_line *e1inp_line_get_create(u_int8_t e1_nr)
 }
 #endif
 
-static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
+static struct e1inp_ts *e1inp_ts_get(uint8_t e1_nr, uint8_t ts_nr)
 {
 	struct e1inp_line *e1i_line;
 
@@ -408,7 +407,7 @@ static struct e1inp_ts *e1inp_ts_get(u_int8_t e1_nr, u_int8_t ts_nr)
 	return &e1i_line->ts[ts_nr-1];
 }
 
-struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr)
+struct subch_mux *e1inp_get_mux(uint8_t e1_nr, uint8_t ts_nr)
 {
 	struct e1inp_ts *e1i_ts = e1inp_ts_get(e1_nr, ts_nr);
 
@@ -421,7 +420,7 @@ struct subch_mux *e1inp_get_mux(u_int8_t e1_nr, u_int8_t ts_nr)
 /* Signalling Link */
 
 struct e1inp_sign_link *e1inp_lookup_sign_link(struct e1inp_ts *e1i,
-					 	u_int8_t tei, u_int8_t sapi)
+						uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 
@@ -437,8 +436,8 @@ struct e1inp_sign_link *e1inp_lookup_sign_link(struct e1inp_ts *e1i,
 
 struct e1inp_sign_link *
 e1inp_sign_link_create(struct e1inp_ts *ts, enum e1inp_sign_type type,
-			struct gsm_bts_trx *trx, u_int8_t tei,
-			u_int8_t sapi)
+			struct gsm_bts_trx *trx, uint8_t tei,
+			uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 
@@ -472,14 +471,14 @@ void e1inp_sign_link_destroy(struct e1inp_sign_link *link)
 	}
 
 	if (link->ts->type == E1INP_TS_TYPE_SIGN)
-		bsc_del_timer(&link->ts->sign.tx_timer);
+		osmo_timer_del(&link->ts->sign.tx_timer);
 
 	talloc_free(link);
 }
 
 /* the E1 driver tells us he has received something on a TS */
 int e1inp_rx_ts(struct e1inp_ts *ts, struct msgb *msg,
-		u_int8_t tei, u_int8_t sapi)
+		uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 	struct gsm_bts *bts;
@@ -562,7 +561,7 @@ struct msgb *e1inp_tx_ts(struct e1inp_ts *e1i_ts,
 }
 
 /* called by driver in case some kind of link state event */
-int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
+int e1inp_event(struct e1inp_ts *ts, int evt, uint8_t tei, uint8_t sapi)
 {
 	struct e1inp_sign_link *link;
 	struct input_signal_data isd;
@@ -577,7 +576,7 @@ int e1inp_event(struct e1inp_ts *ts, int evt, u_int8_t tei, u_int8_t sapi)
 	isd.sapi = sapi;
 
 	/* report further upwards */
-	dispatch_signal(SS_INPUT, evt, &isd);
+	osmo_signal_dispatch(SS_INPUT, evt, &isd);
 	return 0;
 }
 
@@ -613,7 +612,7 @@ int e1inp_line_update(struct e1inp_line *line)
 	 * configured */
 	memset(&isd, 0, sizeof(isd));
 	isd.line = line;
-	dispatch_signal(SS_INPUT, S_INP_LINE_INIT, &isd);
+	osmo_signal_dispatch(SS_INPUT, S_INP_LINE_INIT, &isd);
 
 	return rc;
 }
@@ -635,15 +634,19 @@ static int e1i_sig_cb(unsigned int subsys, unsigned int signal,
 
 void e1inp_misdn_init(void);
 void e1inp_dahdi_init(void);
+void e1inp_ipaccess_init(void);
+void e1inp_hsl_init(void);
 
 void e1inp_init(void)
 {
 	tall_sigl_ctx = talloc_named_const(tall_bsc_ctx, 1,
 					   "e1inp_sign_link");
-	register_signal_handler(SS_GLOBAL, e1i_sig_cb, NULL);
+	osmo_signal_register_handler(SS_GLOBAL, e1i_sig_cb, NULL);
 
 	e1inp_misdn_init();
 #ifdef HAVE_DAHDI_USER_H
 	e1inp_dahdi_init();
 #endif
+	e1inp_ipaccess_init();
+	e1inp_hsl_init();
 }

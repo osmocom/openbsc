@@ -27,11 +27,10 @@
 #include <errno.h>
 #include <sys/fcntl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
 
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>

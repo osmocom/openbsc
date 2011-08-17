@@ -20,7 +20,7 @@
  *
  */
 
-#include <sys/types.h>
+#include <stdint.h>
 
 /* 21 for FR/EFR, 25 for AMR, 15 for OM, 15 for data, 13 for E-data, 21 idle */
 #define MAX_C_BITS	25
@@ -34,11 +34,11 @@
 #define MAX_M_BITS	2
 
 struct decoded_trau_frame {
-	u_int8_t c_bits[MAX_C_BITS];
-	u_int8_t d_bits[MAX_D_BITS];
-	u_int8_t t_bits[MAX_T_BITS];
-	u_int8_t s_bits[MAX_S_BITS];
-	u_int8_t m_bits[MAX_M_BITS];
+	uint8_t c_bits[MAX_C_BITS];
+	uint8_t d_bits[MAX_D_BITS];
+	uint8_t t_bits[MAX_T_BITS];
+	uint8_t s_bits[MAX_S_BITS];
+	uint8_t m_bits[MAX_M_BITS];
 };
 
 #define TRAU_FT_FR_UP		0x02	/* 0 0 0 1 0 - 3.5.1.1.1 */
@@ -55,10 +55,10 @@ struct decoded_trau_frame {
 #define TRAU_FT_IDLE_DOWN	0x0e	/* 0 1 1 1 0 - 3.5.5 */
 
 
-int decode_trau_frame(struct decoded_trau_frame *fr, const u_int8_t *trau_bits);
-int encode_trau_frame(u_int8_t *trau_bits, const struct decoded_trau_frame *fr);
+int decode_trau_frame(struct decoded_trau_frame *fr, const uint8_t *trau_bits);
+int encode_trau_frame(uint8_t *trau_bits, const struct decoded_trau_frame *fr);
 int trau_frame_up2down(struct decoded_trau_frame *fr);
-u_int8_t *trau_idle_frame(void);
+uint8_t *trau_idle_frame(void);
 
 
 #endif /* _TRAU_FRAME_H */

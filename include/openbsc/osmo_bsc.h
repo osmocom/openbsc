@@ -16,8 +16,8 @@ struct osmo_bsc_sccp_con {
 	/* SCCP connection realted */
 	struct sccp_connection *sccp;
 	struct bsc_msc_connection *msc_con;
-	struct timer_list sccp_it_timeout;
-	struct timer_list sccp_cc_timeout;
+	struct osmo_timer_list sccp_it_timeout;
+	struct osmo_timer_list sccp_cc_timeout;
 
 	struct llist_head sccp_queue;
 	unsigned int sccp_queue_size;
