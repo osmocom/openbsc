@@ -25,7 +25,7 @@
 
 #include "bsc_msc.h"
 
-#include <osmocore/timer.h>
+#include <osmocom/core/timer.h>
 
 struct osmo_bsc_rf;
 struct gsm_network;
@@ -36,15 +36,15 @@ struct gsm_audio_support {
 };
 
 struct osmo_msc_data {
+	/* Back pointer */
+	struct gsm_network *network;
+
 	/* Connection data */
 	char *bsc_token;
-	int msc_port;
-	int msc_ip_dscp;
-	char *msc_ip;
 	int ping_timeout;
 	int pong_timeout;
-	struct timer_list ping_timer;
-	struct timer_list pong_timer;
+	struct osmo_timer_list ping_timer;
+	struct osmo_timer_list pong_timer;
 	struct bsc_msc_connection *msc_con;
 	int core_ncc;
 	int core_mcc;
@@ -54,13 +54,17 @@ struct osmo_msc_data {
 	struct gsm_audio_support **audio_support;
 	int audio_length;
 
+	/* destinations */
+	struct llist_head dests;
+
 
 	/* mgcp agent */
-	struct write_queue mgcp_agent;
+	struct osmo_wqueue mgcp_agent;
 
 	/* rf ctl related bits */
 	char *mid_call_txt;
 	int mid_call_timeout;
+	char *rf_ctrl_name;
 	struct osmo_bsc_rf *rf_ctl;
 
 	/* ussd welcome text */

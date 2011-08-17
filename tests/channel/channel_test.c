@@ -22,7 +22,7 @@
 
 #include <assert.h>
 
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/abis_rsl.h>
 
@@ -56,7 +56,7 @@ int main(int argc, char **argv)
 	network = gsm_network_init(1, 1, NULL);
 	if (!network)
 		exit(1);
-	bts = gsm_bts_alloc(network, GSM_BTS_TYPE_BS11, 0, 0);
+	bts = gsm_bts_alloc(network);
 	bts->location_area_code = 23;
 
 	/* Create a dummy subscriber */
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
 	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 }
 

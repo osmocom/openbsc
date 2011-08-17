@@ -23,10 +23,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include "gsm_data.h"
 #include "gsm_subscriber.h"
-#include <osmocore/timer.h>
+#include <osmocom/core/timer.h>
 
 /**
  * A pending paging request
@@ -43,7 +43,7 @@ struct gsm_paging_request {
 	int chan_type;
 
 	/* Timer 3113: how long do we try to page? */
-	struct timer_list T3113;
+	struct osmo_timer_list T3113;
 
 	/* How often did we ask the BTS to page? */
 	int attempts;
@@ -52,9 +52,6 @@ struct gsm_paging_request {
 	gsm_cbfn *cbfn;
 	void *cbfn_param;
 };
-
-/* call once for every gsm_bts... */
-void paging_init(struct gsm_bts *bts);
 
 /* schedule paging request */
 int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
@@ -66,6 +63,9 @@ void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 			 struct msgb *msg);
 
 /* update paging load */
-void paging_update_buffer_space(struct gsm_bts *bts, u_int16_t);
+void paging_update_buffer_space(struct gsm_bts *bts, uint16_t);
+
+/* pending paging requests */
+unsigned int paging_pending_requests_nr(struct gsm_bts *bts);
 
 #endif

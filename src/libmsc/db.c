@@ -34,9 +34,9 @@
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/statistics.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/core/rate_ctr.h>
 
 static char *db_basename = NULL;
 static char *db_dirname = NULL;
@@ -297,7 +297,7 @@ struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 	return subscr;
 }
 
-static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
+osmo_static_assert(sizeof(unsigned char) == sizeof(struct gsm48_classmark1), classmark1_size);
 
 static int get_equipment_by_subscr(struct gsm_subscriber *subscr)
 {
@@ -737,17 +737,17 @@ int db_sync_equipment(struct gsm_equipment *equip)
 	dbi_result result;
 	unsigned char *cm2, *cm3;
 	char *q_imei;
-	u_int8_t classmark1;
+	uint8_t classmark1;
 
 	memcpy(&classmark1, &equip->classmark1, sizeof(classmark1));
 	DEBUGP(DDB, "Sync Equipment IMEI=%s, classmark1=%02x",
 		equip->imei, classmark1);
 	if (equip->classmark2_len)
 		DEBUGPC(DDB, ", classmark2=%s",
-			hexdump(equip->classmark2, equip->classmark2_len));
+			osmo_hexdump(equip->classmark2, equip->classmark2_len));
 	if (equip->classmark3_len)
 		DEBUGPC(DDB, ", classmark3=%s",
-			hexdump(equip->classmark3, equip->classmark3_len));
+			osmo_hexdump(equip->classmark3, equip->classmark3_len));
 	DEBUGPC(DDB, "\n");
 
 	dbi_conn_quote_binary_copy(conn, equip->classmark2,
@@ -821,7 +821,7 @@ int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber)
 int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
 {
 	dbi_result result = NULL;
-	u_int32_t try;
+	uint32_t try;
 
 	for (;;) {
 		try = (rand()%(GSM_MAX_EXTEN-GSM_MIN_EXTEN+1)+GSM_MIN_EXTEN);
@@ -855,10 +855,10 @@ int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber)
  * an error.
  */
 
-int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, u_int32_t *token)
+int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t *token)
 {
 	dbi_result result;
-	u_int32_t try;
+	uint32_t try;
 
 	for (;;) {
 		try = rand();
@@ -1060,7 +1060,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
 	user_data = dbi_result_get_binary(result, "user_data");
 	if (sms->user_data_len > sizeof(sms->user_data))
-		sms->user_data_len = (u_int8_t) sizeof(sms->user_data);
+		sms->user_data_len = (uint8_t) sizeof(sms->user_data);
 	memcpy(sms->user_data, user_data, sms->user_data_len);
 
 	text = dbi_result_get_string(result, "text");
@@ -1219,8 +1219,8 @@ int db_sms_inc_deliver_attempts(struct gsm_sms *sms)
 }
 
 int db_apdu_blob_store(struct gsm_subscriber *subscr,
-			u_int8_t apdu_id_flags, u_int8_t len,
-			u_int8_t *apdu)
+			uint8_t apdu_id_flags, uint8_t len,
+			uint8_t *apdu)
 {
 	dbi_result result;
 	unsigned char *q_apdu;
@@ -1242,7 +1242,7 @@ int db_apdu_blob_store(struct gsm_subscriber *subscr,
 	return 0;
 }
 
-int db_store_counter(struct counter *ctr)
+int db_store_counter(struct osmo_counter *ctr)
 {
 	dbi_result result;
 	char *q_name;

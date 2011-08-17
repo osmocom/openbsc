@@ -1,9 +1,9 @@
 #ifndef _GSM_04_80_H
 #define _GSM_04_80_H
 
-#include <osmocore/msgb.h>
-#include <osmocore/protocol/gsm_04_80.h>
-#include <osmocore/gsm0480.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/protocol/gsm_04_80.h>
+#include <osmocom/gsm/gsm0480.h>
 
 struct gsm_subscriber_connection;
 

@@ -1,6 +1,6 @@
 /* Osmo BSC VTY Configuration */
-/* (C) 2009-2010 by Holger Hans Peter Freyther
- * (C) 2009-2010 by On-Waves
+/* (C) 2009-2011 by Holger Hans Peter Freyther
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 
 #define IPA_STR "IP.ACCESS specific\n"
@@ -51,33 +51,34 @@ DEFUN(cfg_net_msc, cfg_net_msc_cmd,
 
 static int config_write_msc(struct vty *vty)
 {
+	struct bsc_msc_dest *dest;
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	vty_out(vty, " msc%s", VTY_NEWLINE);
+	vty_out(vty, "msc%s", VTY_NEWLINE);
 	if (data->bsc_token)
-		vty_out(vty, "  token %s%s", data->bsc_token, VTY_NEWLINE);
+		vty_out(vty, " token %s%s", data->bsc_token, VTY_NEWLINE);
 	if (data->core_ncc != -1)
-		vty_out(vty, "  core-mobile-network-code %d%s",
+		vty_out(vty, " core-mobile-network-code %d%s",
 			data->core_ncc, VTY_NEWLINE);
 	if (data->core_mcc != -1)
-		vty_out(vty, "  core-mobile-country-code %d%s",
+		vty_out(vty, " core-mobile-country-code %d%s",
 			data->core_mcc, VTY_NEWLINE);
-	vty_out(vty, "  ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
-	vty_out(vty, "  ip %s%s", data->msc_ip, VTY_NEWLINE);
-	vty_out(vty, "  port %d%s", data->msc_port, VTY_NEWLINE);
-	vty_out(vty, "  ip-dscp %d%s", data->msc_ip_dscp, VTY_NEWLINE);
-	vty_out(vty, "  timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
-	vty_out(vty, "  timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
+	vty_out(vty, " ip.access rtp-base %d%s", data->rtp_base, VTY_NEWLINE);
+	vty_out(vty, " timeout-ping %d%s", data->ping_timeout, VTY_NEWLINE);
+	vty_out(vty, " timeout-pong %d%s", data->pong_timeout, VTY_NEWLINE);
 	if (data->mid_call_txt)
-		vty_out(vty, "mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
+		vty_out(vty, " mid-call-text %s%s", data->mid_call_txt, VTY_NEWLINE);
 	vty_out(vty, " mid-call-timeout %d%s", data->mid_call_timeout, VTY_NEWLINE);
 	if (data->ussd_welcome_txt)
 		vty_out(vty, " bsc-welcome-text %s%s", data->ussd_welcome_txt, VTY_NEWLINE);
+	if (data->rf_ctrl_name)
+		vty_out(vty, " bsc-rf-socket %s%s",
+			data->rf_ctrl_name, VTY_NEWLINE);
 
 	if (data->audio_length != 0) {
 		int i;
 
-		vty_out(vty, " codec_list ");
+		vty_out(vty, " codec-list ");
 		for (i = 0; i < data->audio_length; ++i) {
 			if (i != 0)
 				vty_out(vty, ", ");
@@ -90,6 +91,10 @@ static int config_write_msc(struct vty *vty)
 		vty_out(vty, "%s", VTY_NEWLINE);
 
 	}
+
+	llist_for_each_entry(dest, &data->dests, list)
+		vty_out(vty, " dest %s %d %d%s", dest->ip, dest->port,
+			dest->dscp, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -197,34 +202,55 @@ error:
 	return CMD_ERR_INCOMPLETE;
 }
 
-DEFUN(cfg_net_msc_ip,
-      cfg_net_msc_ip_cmd,
-      "ip A.B.C.D", "Set the MSC/MUX IP address.")
+DEFUN(cfg_net_msc_dest,
+      cfg_net_msc_dest_cmd,
+      "dest A.B.C.D <1-65000> <0-255>",
+      "Add a destination to a MUX/MSC\n"
+      "IP Address\n" "Port\n" "DSCP\n")
 {
+	struct bsc_msc_dest *dest;
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
-	bsc_replace_string(data, &data->msc_ip, argv[0]);
+	dest = talloc_zero(data, struct bsc_msc_dest);
+	if (!dest) {
+		vty_out(vty, "%%Failed to create structure.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	dest->ip = talloc_strdup(data, argv[0]);
+	if (!dest->ip) {
+		vty_out(vty, "%%Failed to copy dest ip.%s", VTY_NEWLINE);
+		talloc_free(dest);
+		return CMD_WARNING;
+	}
+
+	dest->port = atoi(argv[1]);
+	dest->dscp = atoi(argv[2]);
+	llist_add_tail(&dest->list, &data->dests);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_msc_port,
-      cfg_net_msc_port_cmd,
-      "port <1-65000>",
-      "Set the MSC/MUX port.")
+DEFUN(cfg_net_msc_no_dest,
+      cfg_net_msc_no_dest_cmd,
+      "no dest A.B.C.D <1-65000> <0-255>",
+      NO_STR "Remove a destination to a MUX/MSC\n"
+      "IP Address\n" "Port\n" "DSCP\n")
 {
+	struct bsc_msc_dest *dest, *tmp;
 	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->msc_port = atoi(argv[0]);
-	return CMD_SUCCESS;
-}
 
+	int port = atoi(argv[1]);
+	int dscp = atoi(argv[2]);
 
-DEFUN(cfg_net_msc_prio,
-      cfg_net_msc_prio_cmd,
-      "ip-dscp <0-255>",
-      "Set the IP_TOS socket attribite")
-{
-	struct osmo_msc_data *data = osmo_msc_data(vty);
-	data->msc_ip_dscp = atoi(argv[0]);
+	llist_for_each_entry_safe(dest, tmp, &data->dests, list) {
+		if (port != dest->port || dscp != dest->dscp
+		    || strcmp(dest->ip, argv[0]) != 0)
+			continue;
+
+		llist_del(&dest->list);
+		talloc_free(dest);
+	}
+
 	return CMD_SUCCESS;
 }
 
@@ -288,9 +314,29 @@ DEFUN(cfg_net_msc_welcome_ussd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_net_rf_socket,
+      cfg_net_rf_socket_cmd,
+      "bsc-rf-socket PATH",
+      "Set the filename for the RF control interface.\n" "RF Control path\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	bsc_replace_string(data, &data->rf_ctrl_name, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_statistics,
+      show_statistics_cmd,
+      "show statistics",
+      SHOW_STR "Statistics about the BSC\n")
+{
+	openbsc_vty_print_statistics(vty, bsc_gsmnet);
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
-	install_element(GSMNET_NODE, &cfg_net_msc_cmd);
+	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
 	install_node(&msc_node, config_write_msc);
 	install_default(MSC_NODE);
 	install_element(MSC_NODE, &cfg_net_bsc_token_cmd);
@@ -298,14 +344,16 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_bsc_mcc_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_rtp_base_cmd);
 	install_element(MSC_NODE, &cfg_net_bsc_codec_list_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_ip_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_port_cmd);
-	install_element(MSC_NODE, &cfg_net_msc_prio_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_dest_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_no_dest_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_ping_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_pong_time_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_text_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
+	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
+
+	install_element_ve(&show_statistics_cmd);
 
 	return 0;
 }

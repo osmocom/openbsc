@@ -27,7 +27,6 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
@@ -40,9 +39,9 @@
 #define PF_ISDN AF_ISDN
 #endif
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -86,7 +85,7 @@ const char *get_prim_name(unsigned int prim)
 	return "UNKNOWN";
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -163,7 +162,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 	case DL_DATA_IND:
 	case DL_UNITDATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
-		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, l2addr.tei, l2addr.sapi);
 		break;
 	case PH_ACTIVATE_IND:
@@ -201,7 +200,7 @@ static void timeout_ts1_write(void *data)
 	ts_want_write(e1i_ts);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -210,7 +209,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	struct sockaddr_mISDN sa;
 	struct msgb *msg;
 	struct mISDNhead *hh;
-	u_int8_t *l2_data;
+	uint8_t *l2_data;
 	int ret;
 
 	bfd->when &= ~BSC_FD_WRITE;
@@ -230,7 +229,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 	DEBUGP(DMI, "TX channel(%d) TEI(%d) SAPI(%d): %s\n",
 		sign_link->driver.misdn.channel, sign_link->tei,
-		sign_link->sapi, hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
+		sign_link->sapi, osmo_hexdump(l2_data, msg->len - MISDN_HEADER_LEN));
 
 	/* construct the sockaddr */
 	sa.family = AF_ISDN;
@@ -247,20 +246,20 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
 	e1i_ts->sign.tx_timer.data = e1i_ts;
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, e1i_ts->sign.delay);
 
 	return ret;
 }
 
 #define BCHAN_TX_GRAN	160
 /* write to a B channel TS */
-static int handle_tsX_write(struct bsc_fd *bfd)
+static int handle_tsX_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
 	struct mISDNhead *hh;
-	u_int8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
+	uint8_t tx_buf[BCHAN_TX_GRAN + sizeof(*hh)];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 
@@ -270,7 +269,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	subchan_mux_out(mx, tx_buf+sizeof(*hh), BCHAN_TX_GRAN);
 
 	DEBUGP(DMIB, "BCHAN TX: %s\n",
-		hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
+		osmo_hexdump(tx_buf+sizeof(*hh), BCHAN_TX_GRAN));
 
 	ret = send(bfd->fd, tx_buf, sizeof(*hh) + BCHAN_TX_GRAN, 0);
 	if (ret < sizeof(*hh) + BCHAN_TX_GRAN)
@@ -282,7 +281,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 #define TSX_ALLOC_SIZE 4096
 /* FIXME: read from a B channel TS */
-static int handle_tsX_read(struct bsc_fd *bfd)
+static int handle_tsX_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -312,7 +311,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 	case PH_DATA_IND:
 		msg->l2h = msg->data + MISDN_HEADER_LEN;
 		DEBUGP(DMIB, "BCHAN RX: %s\n",
-			hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
+			osmo_hexdump(msgb_l2(msg), ret - MISDN_HEADER_LEN));
 		ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 		break;
 	case PH_ACTIVATE_IND:
@@ -330,7 +329,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int misdn_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int misdn_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -366,7 +365,7 @@ static int activate_bchan(struct e1inp_line *line, int ts, int act)
 	int ret;
 	unsigned int idx = ts-1;
 	struct e1inp_ts *e1i_ts = &line->ts[idx];
-	struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+	struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 
 	fprintf(stdout, "activate bchan\n");
 	if (act)
@@ -401,7 +400,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 	for (ts = 1; ts < NUM_E1_TS; ts++) {
 		unsigned int idx = ts-1;
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.misdn.fd;
+		struct osmo_fd *bfd = &e1i_ts->driver.misdn.fd;
 		struct sockaddr_mISDN addr;
 
 		bfd->data = line;
@@ -471,7 +470,7 @@ static int mi_e1_setup(struct e1inp_line *line, int release_l2)
 		if (e1i_ts->type == E1INP_TS_TYPE_TRAU)
 			activate_bchan(line, ts, 1);
 
-		ret = bsc_register_fd(bfd);
+		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			fprintf(stderr, "could not register FD: %s\n",
 				strerror(ret));

@@ -27,10 +27,11 @@
 #include <openbsc/bsc_nat.h>
 #include <openbsc/bsc_nat_sccp.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/talloc.h>
 
 #include <osmocom/sccp/sccp.h>
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <stdio.h>
 
@@ -384,12 +385,9 @@ static void test_contrack()
 
 static void test_paging(void)
 {
-	int lac;
 	struct bsc_nat *nat;
 	struct bsc_connection *con;
-	struct bsc_nat_parsed *parsed;
 	struct bsc_config *cfg;
-	struct msgb *msg;
 
 	fprintf(stderr, "Testing paging by lac.\n");
 
@@ -400,34 +398,20 @@ static void test_paging(void)
 	bsc_config_add_lac(cfg, 23);
 	con->authenticated = 1;
 	llist_add(&con->list_entry, &nat->bsc_connections);
-	msg = msgb_alloc(4096, "test");
-
-	/* Test completely bad input */
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
-		fprintf(stderr, "Should have not found anything.\n");
-		abort();
-	}
 
 	/* Test it by not finding it */
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg, &lac) != 0) {
-		fprintf(stderr, "Should have not found aynthing.\n");
+	if (bsc_config_handles_lac(cfg, 8213) != 0) {
+		fprintf(stderr, "Should not be handled.\n");
 		abort();
 	}
-	talloc_free(parsed);
 
 	/* Test by finding it */
 	bsc_config_del_lac(cfg, 23);
 	bsc_config_add_lac(cfg, 8213);
-	copy_to_msg(msg, paging_by_lac_cmd, sizeof(paging_by_lac_cmd));
-	parsed = bsc_nat_parse(msg);
-	if (bsc_nat_find_bsc(nat, msg, &lac) != con) {
+	if (bsc_config_handles_lac(cfg, 8213) == 0) {
 		fprintf(stderr, "Should have found it.\n");
 		abort();
 	}
-	talloc_free(parsed);
 }
 
 static void test_mgcp_allocations(void)
@@ -506,7 +490,7 @@ static void test_mgcp_ass_tracking(void)
 	if (msg->l2h[16] != 0 ||
 	    msg->l2h[17] != 0x1) {
 		fprintf(stderr, "Input is not as expected.. %s 0x%x\n",
-			hexdump(msg->l2h, msgb_l2len(msg)),
+			osmo_hexdump(msg->l2h, msgb_l2len(msg)),
 			msg->l2h[17]);
 		abort();
 	}
@@ -536,7 +520,7 @@ static void test_mgcp_ass_tracking(void)
 	uint16_t cic = htons(timeslot & 0x1f);
 	if (memcmp(&cic, &msg->l2h[16], sizeof(cic)) != 0) {
 		fprintf(stderr, "Message was not patched properly\n");
-		fprintf(stderr, "data cic: 0x%x %s\n", cic, hexdump(msg->l2h, msgb_l2len(msg)));
+		fprintf(stderr, "data cic: 0x%x %s\n", cic, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 		abort();
 	}
 
@@ -761,15 +745,18 @@ static void test_cr_filter()
 		nat_lst = bsc_nat_acc_lst_get(nat, "nat");
 		bsc_lst = bsc_nat_acc_lst_get(nat, "bsc");
 
-		bsc_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
+		if (bsc_parse_reg(nat_entry, &nat_entry->imsi_deny_re, &nat_entry->imsi_deny,
 			      cr_filter[i].nat_imsi_deny ? 1 : 0,
-			      &cr_filter[i].nat_imsi_deny);
-		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_allow_re, &bsc_entry->imsi_allow,
+			      &cr_filter[i].nat_imsi_deny) != 0)
+			abort();
+		if (bsc_parse_reg(bsc_entry, &bsc_entry->imsi_allow_re, &bsc_entry->imsi_allow,
 			      cr_filter[i].bsc_imsi_allow ? 1 : 0,
-			      &cr_filter[i].bsc_imsi_allow);
-		bsc_parse_reg(bsc_entry, &bsc_entry->imsi_deny_re, &bsc_entry->imsi_deny,
+			      &cr_filter[i].bsc_imsi_allow) != 0)
+			abort();
+		if (bsc_parse_reg(bsc_entry, &bsc_entry->imsi_deny_re, &bsc_entry->imsi_deny,
 			      cr_filter[i].bsc_imsi_deny ? 1 : 0,
-			      &cr_filter[i].bsc_imsi_deny);
+			      &cr_filter[i].bsc_imsi_deny) != 0)
+			abort();
 
 		parsed = bsc_nat_parse(msg);
 		if (!parsed) {
@@ -858,8 +845,8 @@ static void test_setup_rewrite()
 	struct bsc_nat *nat = bsc_nat_alloc();
 
 	/* a fake list */
-	struct msg_entries entries;
-	struct msg_entry entry;
+	struct osmo_config_list entries;
+	struct osmo_config_entry entry;
 
 	INIT_LLIST_HEAD(&entries.entry);
 	entry.mcc = "274";
@@ -867,7 +854,7 @@ static void test_setup_rewrite()
 	entry.option = "^0([1-9])";
 	entry.text = "0049";
 	llist_add_tail(&entry.list, &entries.entry);
-	nat->num_rewr = &entries;
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 
 	/* verify that nothing changed */
 	msgb_reset(msg);
@@ -878,7 +865,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (msg != out) {
 		fprintf(stderr, "FAIL: The message should not have been changed\n");
 		abort();
@@ -904,7 +891,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
 		fprintf(stderr, "FAIL: A new message should be created.\n");
 		abort();
@@ -922,7 +909,7 @@ static void test_setup_rewrite()
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
 		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 
@@ -930,6 +917,7 @@ static void test_setup_rewrite()
 
 	/* Make sure that a wildcard is matching */
 	entry.mnc = "*";
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
@@ -938,7 +926,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
 		fprintf(stderr, "FAIL: A new message should be created.\n");
 		abort();
@@ -956,7 +944,7 @@ static void test_setup_rewrite()
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
 		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", hexdump(out->data, out->len));
+		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 
@@ -964,6 +952,7 @@ static void test_setup_rewrite()
 
 	/* Make sure that a wildcard is matching */
 	entry.mnc = "09";
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
 	msg = msgb_alloc(4096, "test_dt_filter");
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
@@ -972,7 +961,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	out = bsc_nat_rewrite_setup(nat, msg, parsed, imsi);
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (out != msg) {
 		fprintf(stderr, "FAIL: The message should be unchanged.\n");
 		abort();
@@ -991,15 +980,61 @@ static void test_setup_rewrite()
 	msgb_free(out);
 }
 
+static void test_smsc_rewrite()
+{
+	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
+	struct bsc_nat_parsed *parsed;
+	const char *imsi = "515039900406700";
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+
+	/* a fake list */
+	struct osmo_config_list smsc_entries, dest_entries;
+	struct osmo_config_entry smsc_entry, dest_entry;
+
+	INIT_LLIST_HEAD(&smsc_entries.entry);
+	INIT_LLIST_HEAD(&dest_entries.entry);
+	smsc_entry.mcc = "^515039";
+	smsc_entry.option = "639180000105()";
+	smsc_entry.text   = "6666666666667";
+	llist_add_tail(&smsc_entry.list, &smsc_entries.entry);
+	dest_entry.mcc = "515";
+	dest_entry.mnc = "03";
+	dest_entry.option = "^0049";
+	dest_entry.text   = "";
+	llist_add_tail(&dest_entry.list, &dest_entries.entry);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, &smsc_entries);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->tpdest_match, &dest_entries);
+
+	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		fprintf(stderr, "FAIL: Could not parse SMS\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (out == msg) {
+		fprintf(stderr, "FAIL: This should have changed.\n");
+		abort();
+	}
+
+	if (out->len != ARRAY_SIZE(smsc_rewrite_patched)) {
+		fprintf(stderr, "FAIL: The size should match.\n");
+		abort();
+	}
+
+	if (memcmp(out->data, smsc_rewrite_patched, out->len) != 0) {
+		fprintf(stderr, "FAIL: the data should be changed.\n");
+		abort();
+	}
+}
+
 int main(int argc, char **argv)
 {
-	struct log_target *stderr_target;
-
 	sccp_set_log_area(DSCCP);
-	log_init(&log_info);
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
-	log_set_all_filter(stderr_target, 1);
+	osmo_init_logging(&log_info);
 
 	test_filter();
 	test_contrack();
@@ -1011,6 +1046,7 @@ int main(int argc, char **argv)
 	test_cr_filter();
 	test_dt_filter();
 	test_setup_rewrite();
+	test_smsc_rewrite();
 	test_mgcp_allocations();
 	return 0;
 }

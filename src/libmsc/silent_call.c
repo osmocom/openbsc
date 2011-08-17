@@ -24,7 +24,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
@@ -56,13 +56,13 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
 		/* increment lchan reference count */
-		dispatch_signal(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_SUCCESS, &sigdata);
 		break;
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_BUSY:
 	case GSM_PAGING_OOM:
 		DEBUGP(DSMS, "expired\n");
-		dispatch_signal(SS_SCALL, S_SCALL_EXPIRED, &sigdata);
+		osmo_signal_dispatch(SS_SCALL, S_SCALL_EXPIRED, &sigdata);
 		break;
 	default:
 		rc = -EINVAL;
@@ -80,8 +80,8 @@ int silent_call_rx(struct gsm_subscriber_connection *conn, struct msgb *msg)
 }
 
 struct msg_match {
-	u_int8_t pdisc;
-	u_int8_t msg_type;
+	uint8_t pdisc;
+	uint8_t msg_type;
 };
 
 /* list of messages that are handled inside OpenBSC, even in a silent call */
@@ -94,7 +94,7 @@ static const struct msg_match silent_call_accept[] = {
 int silent_call_reroute(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
-	u_int8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t pdisc = gh->proto_discr & 0x0f;
 	int i;
 
 	/* if we're not part of a silent call, never reroute */

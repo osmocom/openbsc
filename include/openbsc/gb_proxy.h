@@ -1,16 +1,15 @@
 #ifndef _GB_PROXY_H
 #define _GB_PROXY_H
 
-#include <sys/types.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 #include <openbsc/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
 struct gbproxy_config {
 	/* parsed from config file */
-	u_int16_t nsip_sgsn_nsei;
+	uint16_t nsip_sgsn_nsei;
 
 	/* misc */
 	struct gprs_ns_inst *nsi;

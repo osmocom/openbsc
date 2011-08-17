@@ -32,13 +32,13 @@
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 static int ts_is_usable(struct gsm_bts_trx_ts *ts)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(ts->trx->bts)) {
-		if (!nm_is_running(&ts->nm_state))
+		if (!nm_is_running(&ts->mo.nm_state))
 			return 0;
 	}
 
@@ -49,8 +49,8 @@ int trx_is_usable(struct gsm_bts_trx *trx)
 {
 	/* FIXME: How does this behave for BS-11 ? */
 	if (is_ipaccess_bts(trx->bts)) {
-		if (!nm_is_running(&trx->nm_state) ||
-		    !nm_is_running(&trx->bb_transc.nm_state))
+		if (!nm_is_running(&trx->mo.nm_state) ||
+		    !nm_is_running(&trx->bb_transc.mo.nm_state))
 			return 0;
 	}
 
@@ -143,7 +143,7 @@ void ts_free(struct gsm_bts_trx_ts *ts)
 	ts->pchan = GSM_PCHAN_NONE;
 }
 
-static const u_int8_t subslots_per_pchan[] = {
+static const uint8_t subslots_per_pchan[] = {
 	[GSM_PCHAN_NONE] = 0,
 	[GSM_PCHAN_CCCH] = 0,
 	[GSM_PCHAN_CCCH_SDCCH4] = 4,
@@ -284,7 +284,7 @@ struct gsm_lchan *lchan_alloc(struct gsm_bts *bts, enum gsm_chan_t type,
 		struct challoc_signal_data sig;
 		sig.bts = bts;
 		sig.type = type;
-		dispatch_signal(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
+		osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_ALLOC_FAIL, &sig);
 	}
 
 	return lchan;
@@ -306,12 +306,12 @@ void lchan_free(struct gsm_lchan *lchan)
 		/* We might kill an active channel... */
 		sig.lchan = lchan;
 		sig.mr = NULL;
-		dispatch_signal(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
+		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
 	}
 
 
 	/* stop the timer */
-	bsc_del_timer(&lchan->T3101);
+	osmo_timer_del(&lchan->T3101);
 
 	/* clear cached measuement reports */
 	lchan->meas_rep_idx = 0;
@@ -330,7 +330,7 @@ void lchan_free(struct gsm_lchan *lchan)
 
 	sig.lchan = lchan;
 	sig.bts = lchan->ts->trx->bts;
-	dispatch_signal(SS_CHALLOC, S_CHALLOC_FREED, &sig);
+	osmo_signal_dispatch(SS_CHALLOC, S_CHALLOC_FREED, &sig);
 
 	if (lchan->conn) {
 		LOGP(DRLL, LOGL_ERROR, "the subscriber connection should be gone.\n");
@@ -356,9 +356,9 @@ void lchan_free(struct gsm_lchan *lchan)
  */
 void lchan_reset(struct gsm_lchan *lchan)
 {
-	bsc_del_timer(&lchan->T3101);
-	bsc_del_timer(&lchan->T3111);
-	bsc_del_timer(&lchan->error_timer);
+	osmo_timer_del(&lchan->T3101);
+	osmo_timer_del(&lchan->T3111);
+	osmo_timer_del(&lchan->error_timer);
 
 	lchan->type = GSM_LCHAN_NONE;
 	lchan->state = LCHAN_S_NONE;
@@ -370,7 +370,7 @@ static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
 	int sapi;
 
 	for (sapi = 1; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
-		u_int8_t link_id;
+		uint8_t link_id;
 		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
 			continue;
 
@@ -401,7 +401,7 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 }
 
 /* called from abis rsl */
-int rsl_lchan_rll_release(struct gsm_lchan *lchan, u_int8_t link_id)
+int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id)
 {
 	if (lchan->state != LCHAN_S_REL_REQ)
 		return -1;
@@ -465,8 +465,8 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 		int i;
 
 		/* skip administratively deactivated tranxsceivers */
-		if (!nm_is_running(&trx->nm_state) ||
-		    !nm_is_running(&trx->bb_transc.nm_state))
+		if (!nm_is_running(&trx->mo.nm_state) ||
+		    !nm_is_running(&trx->bb_transc.mo.nm_state))
 			continue;
 
 		for (i = 0; i < ARRAY_SIZE(trx->ts); i++) {
@@ -475,7 +475,7 @@ void bts_chan_load(struct pchan_load *cl, const struct gsm_bts *bts)
 			int j;
 
 			/* skip administratively deactivated timeslots */
-			if (!nm_is_running(&ts->nm_state))
+			if (!nm_is_running(&ts->mo.nm_state))
 				continue;
 
 			for (j = 0; j < subslots_per_pchan[ts->pchan]; j++) {

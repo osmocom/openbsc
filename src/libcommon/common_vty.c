@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include <openbsc/vty.h>
 #include <openbsc/gsm_data.h>
@@ -83,8 +83,11 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 			vty->index = bsc_config->nat;
 		}
 		break;
+	case PGROUP_NODE:
+		vty->node = NAT_NODE;
+		break;
 	case MSC_NODE:
-		vty->node = GSMNET_NODE;
+		vty->node = CONFIG_NODE;
 		break;
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
@@ -139,6 +142,9 @@ gDEFUN(ournode_exit,
 			vty->index = bsc_config->nat;
 		}
 		break;
+	case PGROUP_NODE:
+		vty->node = NAT_NODE;
+		break;
 	case MGCP_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
@@ -155,7 +161,7 @@ gDEFUN(ournode_exit,
 		vty->index = NULL;
 		break;
 	case MSC_NODE:
-		vty->node = GSMNET_NODE;
+		vty->node = CONFIG_NODE;
 		break;
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
@@ -189,6 +195,7 @@ gDEFUN(ournode_end,
 	case VTY_NODE:
 	case NAT_NODE:
 	case NAT_BSC_NODE:
+	case PGROUP_NODE:
 	case MSC_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;

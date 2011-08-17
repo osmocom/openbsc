@@ -19,7 +19,6 @@
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/types.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
@@ -27,12 +26,12 @@
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/telnet_interface.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/e1_input.h>
-#include <osmocore/utils.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/vty.h>
 #include <openbsc/debug.h>
 
@@ -76,6 +75,9 @@ DEFUN(cfg_e1inp, cfg_e1inp_cmd,
 static int e1inp_config_write(struct vty *vty)
 {
 	struct e1inp_line *line;
+
+	if (llist_empty(&e1inp_line_list))
+		return CMD_SUCCESS;
 
 	vty_out(vty, "e1_input%s", VTY_NEWLINE);
 

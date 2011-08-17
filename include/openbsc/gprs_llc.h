@@ -99,8 +99,8 @@ struct gprs_llc_lle {
 
 	enum gprs_llc_lle_state state;
 
-	struct timer_list t200;
-	struct timer_list t201;	/* wait for acknowledgement */
+	struct osmo_timer_list t200;
+	struct osmo_timer_list t201;	/* wait for acknowledgement */
 
 	uint16_t v_sent;
 	uint16_t v_ack;

@@ -23,40 +23,23 @@
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>
-#include <sys/types.h>
 #include <netinet/in.h>
 
+#include <osmocom/core/bitvec.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/gsm/sysinfo.h>
+
+#include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
-#include <osmocore/bitvec.h>
-#include <osmocore/utils.h>
-#include <openbsc/debug.h>
 
-#define GSM48_CELL_CHAN_DESC_SIZE	16
-#define GSM_MACBLOCK_PADDING		0x2b
-
-/* verify the sizes of the system information type structs */
-
-/* rest octets are not part of the struct */
-static_assert(sizeof(struct gsm48_system_information_type_header) == 3, _si_header_size);
-static_assert(sizeof(struct gsm48_rach_control) == 3, _si_rach_control);
-static_assert(sizeof(struct gsm48_system_information_type_1) == 22, _si1_size);
-static_assert(sizeof(struct gsm48_system_information_type_2) == 23, _si2_size);
-static_assert(sizeof(struct gsm48_system_information_type_3) == 19, _si3_size);
-static_assert(sizeof(struct gsm48_system_information_type_4) == 13, _si4_size);
-
-/* bs11 forgot the l2 len, 0-6 rest octets */
-static_assert(sizeof(struct gsm48_system_information_type_5) == 18, _si5_size);
-static_assert(sizeof(struct gsm48_system_information_type_6) == 11, _si6_size);
-
-static_assert(sizeof(struct gsm48_system_information_type_13) == 3, _si13_size);
 
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
 
 /* 10.5.2.13.2: Bit map 0 format */
-static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+static int freq_list_bm0_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 
@@ -77,7 +60,7 @@ static int freq_list_bm0_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 }
 
 /* 10.5.2.13.7: Variable bit map format */
-static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
+static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 {
 	unsigned int byte, bit;
 	unsigned int min_arfcn;
@@ -110,7 +93,7 @@ static int freq_list_bmrel_set_arfcn(u_int8_t *chan_list, unsigned int arfcn)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
+static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 			    const struct gsm_bts *bts)
 {
 	int i, rc, min = 1024, max = -1;
@@ -171,7 +154,7 @@ static int bitvec2freq_list(u_int8_t *chan_list, struct bitvec *bv,
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
+static int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 	struct bitvec *bv = &bts->si_common.cell_alloc;
@@ -199,7 +182,7 @@ static int generate_cell_chan_list(u_int8_t *chan_list, struct gsm_bts *bts)
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int si5)
+static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts, int si5)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
@@ -226,7 +209,7 @@ static int generate_bcch_chan_list(u_int8_t *chan_list, struct gsm_bts *bts, int
 	return bitvec2freq_list(chan_list, bv, bts);
 }
 
-static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_1 *si1 =
@@ -251,7 +234,7 @@ static int generate_si1(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si1) + rc;
 }
 
-static int generate_si2(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_2 *si2 =
@@ -298,7 +281,7 @@ static struct gsm48_si_ro_info si_info = {
 	.break_ind = 0,
 };
 
-static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_3 *si3 =
@@ -329,7 +312,7 @@ static int generate_si3(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si3) + rc;
 }
 
-static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si4(uint8_t *output, struct gsm_bts *bts)
 {
 	int rc;
 	struct gsm48_system_information_type_4 *si4 =
@@ -362,7 +345,7 @@ static int generate_si4(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof(*si4) + rc;
 }
 
-static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_5 *si5;
 	int rc, l2_plen = 18;
@@ -394,7 +377,7 @@ static int generate_si5(u_int8_t *output, struct gsm_bts *bts)
 	return l2_plen;
 }
 
-static int generate_si6(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si6(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_6 *si6;
 	int l2_plen = 11;
@@ -468,7 +451,7 @@ static struct gsm48_si13_info si13_default = {
 	},
 };
 
-static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
+static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 {
 	struct gsm48_system_information_type_13 *si13 =
 		(struct gsm48_system_information_type_13 *) output;
@@ -492,54 +475,6 @@ static int generate_si13(u_int8_t *output, struct gsm_bts *bts)
 	return sizeof (*si13) + ret;
 }
 
-static const uint8_t sitype2rsl[_MAX_SYSINFO_TYPE] = {
-	[SYSINFO_TYPE_1]	= RSL_SYSTEM_INFO_1,
-	[SYSINFO_TYPE_2]	= RSL_SYSTEM_INFO_2,
-	[SYSINFO_TYPE_3]	= RSL_SYSTEM_INFO_3,
-	[SYSINFO_TYPE_4]	= RSL_SYSTEM_INFO_4,
-	[SYSINFO_TYPE_5]	= RSL_SYSTEM_INFO_5,
-	[SYSINFO_TYPE_6]	= RSL_SYSTEM_INFO_6,
-	[SYSINFO_TYPE_7]	= RSL_SYSTEM_INFO_7,
-	[SYSINFO_TYPE_8]	= RSL_SYSTEM_INFO_8,
-	[SYSINFO_TYPE_9]	= RSL_SYSTEM_INFO_9,
-	[SYSINFO_TYPE_10]	= RSL_SYSTEM_INFO_10,
-	[SYSINFO_TYPE_13]	= RSL_SYSTEM_INFO_13,
-	[SYSINFO_TYPE_16]	= RSL_SYSTEM_INFO_16,
-	[SYSINFO_TYPE_17]	= RSL_SYSTEM_INFO_17,
-	[SYSINFO_TYPE_18]	= RSL_SYSTEM_INFO_18,
-	[SYSINFO_TYPE_19]	= RSL_SYSTEM_INFO_19,
-	[SYSINFO_TYPE_20]	= RSL_SYSTEM_INFO_20,
-	[SYSINFO_TYPE_2bis]	= RSL_SYSTEM_INFO_2bis,
-	[SYSINFO_TYPE_2ter]	= RSL_SYSTEM_INFO_2ter,
-	[SYSINFO_TYPE_2quater]	= RSL_SYSTEM_INFO_2quater,
-	[SYSINFO_TYPE_5bis]	= RSL_SYSTEM_INFO_5bis,
-	[SYSINFO_TYPE_5ter]	= RSL_SYSTEM_INFO_5ter,
-};
-
-static const uint8_t rsl2sitype[0xff] = {
-	[RSL_SYSTEM_INFO_1] = SYSINFO_TYPE_1,
-	[RSL_SYSTEM_INFO_2] = SYSINFO_TYPE_2,
-	[RSL_SYSTEM_INFO_3] = SYSINFO_TYPE_3,
-	[RSL_SYSTEM_INFO_4] = SYSINFO_TYPE_4,
-	[RSL_SYSTEM_INFO_5] = SYSINFO_TYPE_5,
-	[RSL_SYSTEM_INFO_6] = SYSINFO_TYPE_6,
-	[RSL_SYSTEM_INFO_7] = SYSINFO_TYPE_7,
-	[RSL_SYSTEM_INFO_8] = SYSINFO_TYPE_8,
-	[RSL_SYSTEM_INFO_9] = SYSINFO_TYPE_9,
-	[RSL_SYSTEM_INFO_10] = SYSINFO_TYPE_10,
-	[RSL_SYSTEM_INFO_13] = SYSINFO_TYPE_13,
-	[RSL_SYSTEM_INFO_16] = SYSINFO_TYPE_16,
-	[RSL_SYSTEM_INFO_17] = SYSINFO_TYPE_17,
-	[RSL_SYSTEM_INFO_18] = SYSINFO_TYPE_18,
-	[RSL_SYSTEM_INFO_19] = SYSINFO_TYPE_19,
-	[RSL_SYSTEM_INFO_20] = SYSINFO_TYPE_20,
-	[RSL_SYSTEM_INFO_2bis] = SYSINFO_TYPE_2bis,
-	[RSL_SYSTEM_INFO_2ter] = SYSINFO_TYPE_2ter,
-	[RSL_SYSTEM_INFO_2quater] = SYSINFO_TYPE_2quater,
-	[RSL_SYSTEM_INFO_5bis] = SYSINFO_TYPE_5bis,
-	[RSL_SYSTEM_INFO_5ter] = SYSINFO_TYPE_5ter,
-};
-
 typedef int (*gen_si_fn_t)(uint8_t *output, struct gsm_bts *bts);
 
 static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
@@ -551,41 +486,6 @@ static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_6] = &generate_si6,
 	[SYSINFO_TYPE_13] = &generate_si13,
 };
-
-const struct value_string osmo_sitype_strs[_MAX_SYSINFO_TYPE] = {
-	{ SYSINFO_TYPE_1,	"1" },
-	{ SYSINFO_TYPE_2,	"2" },
-	{ SYSINFO_TYPE_3,	"3" },
-	{ SYSINFO_TYPE_4,	"4" },
-	{ SYSINFO_TYPE_5,	"5" },
-	{ SYSINFO_TYPE_6,	"6" },
-	{ SYSINFO_TYPE_7,	"7" },
-	{ SYSINFO_TYPE_8,	"8" },
-	{ SYSINFO_TYPE_9,	"9" },
-	{ SYSINFO_TYPE_10,	"10" },
-	{ SYSINFO_TYPE_13,	"13" },
-	{ SYSINFO_TYPE_16,	"16" },
-	{ SYSINFO_TYPE_17,	"17" },
-	{ SYSINFO_TYPE_18,	"18" },
-	{ SYSINFO_TYPE_19,	"19" },
-	{ SYSINFO_TYPE_20,	"20" },
-	{ SYSINFO_TYPE_2bis,	"2bis" },
-	{ SYSINFO_TYPE_2ter,	"2ter" },
-	{ SYSINFO_TYPE_2quater,	"2quater" },
-	{ SYSINFO_TYPE_5bis,	"5bis" },
-	{ SYSINFO_TYPE_5ter,	"5ter" },
-	{ 0, NULL }
-};
-
-uint8_t gsm_sitype2rsl(enum osmo_sysinfo_type si_type)
-{
-	return sitype2rsl[si_type];
-}
-
-const char *gsm_sitype_name(enum osmo_sysinfo_type si_type)
-{
-	return get_value_string(osmo_sitype_strs, si_type);
-}
 
 int gsm_generate_si(struct gsm_bts *bts, enum osmo_sysinfo_type si_type)
 {

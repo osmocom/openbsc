@@ -28,10 +28,10 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/timer.h>
-#include <osmocore/rxlev_stat.h>
-#include <osmocore/gsm48_ie.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/gsm/rxlev_stat.h>
+#include <osmocom/gsm/gsm48_ie.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -191,17 +191,17 @@ static int test_rep(void *_msg)
 			last_arfcn = binfo.arfcn;
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2) {
-			DEBUGP(DNM, "BA SI2: %s\n", hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
+			DEBUGP(DNM, "BA SI2: %s\n", osmo_hexdump(binfo.ba_list_si2, sizeof(binfo.ba_list_si2)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2, sizeof(binfo.ba_list_si2),
 						0x8c, FREQ_TYPE_NCELL_2);
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2bis) {
-			DEBUGP(DNM, "BA SI2bis: %s\n", hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
+			DEBUGP(DNM, "BA SI2bis: %s\n", osmo_hexdump(binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2bis, sizeof(binfo.ba_list_si2bis),
 						0x8e, FREQ_TYPE_NCELL_2bis);
 		}
 		if (binfo.info_type & IPAC_BINF_NEIGH_BA_SI2ter) {
-			DEBUGP(DNM, "BA SI2ter: %s\n", hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
+			DEBUGP(DNM, "BA SI2ter: %s\n", osmo_hexdump(binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter)));
 			gsm48_decode_freq_list(nwl_si_freq, binfo.ba_list_si2ter, sizeof(binfo.ba_list_si2ter),
 						0x8e, FREQ_TYPE_NCELL_2ter);
 		}
@@ -222,7 +222,7 @@ static int test_rep(void *_msg)
 		msg->trx->ipaccess.test_state = IPAC_TEST_S_IDLE;
 		/* Send signal to notify higher layers of test completion */
 		DEBUGP(DNM, "dispatching S_IPAC_NWL_COMPLETE signal\n");
-		dispatch_signal(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
+		osmo_signal_dispatch(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
 		break;
 	case NM_IPACC_TESTRES_PARTIAL:
 		msg->trx->ipaccess.test_state = IPAC_TEST_S_PARTIAL;
@@ -247,5 +247,5 @@ static int nwl_sig_cb(unsigned int subsys, unsigned int signal,
 
 void ipac_nwl_init(void)
 {
-	register_signal_handler(SS_NM, nwl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, nwl_sig_cb, NULL);
 }

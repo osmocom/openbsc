@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On-Waves
+/* (C) 2010-2011 by Holger Hans Peter Freyther
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,15 +26,21 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/utils.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/utils.h>
+#include <osmocom/vty/logging.h>
+#include <osmocom/vty/misc.h>
 
 #include <osmocom/sccp/sccp.h>
 
 #include <stdlib.h>
 
 static struct bsc_nat *_nat;
+
+
+#define PAGING_STR "Paging\n"
+#define SMSC_REWRITE "SMSC Rewriting\n"
 
 static struct cmd_node nat_node = {
 	NAT_NODE,
@@ -47,6 +53,17 @@ static struct cmd_node bsc_node = {
 	"%s(bsc)#",
 	1,
 };
+
+static struct cmd_node pgroup_node = {
+	PGROUP_NODE,
+	"%s(paging-group)#",
+	1,
+};
+
+static int config_write_pgroup(struct vty *vty)
+{
+	return CMD_SUCCESS;
+}
 
 static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
 {
@@ -62,13 +79,28 @@ static void write_acc_lst(struct vty *vty, struct bsc_nat_acc_lst *lst)
 	}
 }
 
+static void dump_lac(struct vty *vty, struct llist_head *head)
+{
+	struct bsc_lac_entry *lac;
+	llist_for_each_entry(lac, head, entry)
+		vty_out(vty, "  location_area_code %u%s", lac->lac, VTY_NEWLINE);
+}
+
+
+static void write_pgroup_lst(struct vty *vty, struct bsc_nat_paging_group *pgroup)
+{
+	vty_out(vty, " paging-group %d%s", pgroup->nr, VTY_NEWLINE);
+	dump_lac(vty, &pgroup->lists);
+}
+
 static int config_write_nat(struct vty *vty)
 {
 	struct bsc_nat_acc_lst *lst;
+	struct bsc_nat_paging_group *pgroup;
 
 	vty_out(vty, "nat%s", VTY_NEWLINE);
-	vty_out(vty, " msc ip %s%s", _nat->msc_ip, VTY_NEWLINE);
-	vty_out(vty, " msc port %d%s", _nat->msc_port, VTY_NEWLINE);
+	vty_out(vty, " msc ip %s%s", _nat->main_dest->ip, VTY_NEWLINE);
+	vty_out(vty, " msc port %d%s", _nat->main_dest->port, VTY_NEWLINE);
 	vty_out(vty, " timeout auth %d%s", _nat->auth_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout ping %d%s", _nat->ping_timeout, VTY_NEWLINE);
 	vty_out(vty, " timeout pong %d%s", _nat->pong_timeout, VTY_NEWLINE);
@@ -88,32 +120,34 @@ static int config_write_nat(struct vty *vty)
 
 	if (_nat->num_rewr_name)
 		vty_out(vty, " number-rewrite %s%s", _nat->num_rewr_name, VTY_NEWLINE);
+	if (_nat->smsc_rewr_name)
+		vty_out(vty, " rewrite-smsc addr %s%s",
+			_nat->smsc_rewr_name, VTY_NEWLINE);
+	if (_nat->tpdest_match_name)
+		vty_out(vty, " rewrite-smsc tp-dest-match %s%s",
+			_nat->tpdest_match_name, VTY_NEWLINE);
 
-	llist_for_each_entry(lst, &_nat->access_lists, list) {
+	llist_for_each_entry(lst, &_nat->access_lists, list)
 		write_acc_lst(vty, lst);
-	}
+	llist_for_each_entry(pgroup, &_nat->paging_groups, entry)
+		write_pgroup_lst(vty, pgroup);
 
 	return CMD_SUCCESS;
-}
-
-static void dump_lac(struct vty *vty, struct bsc_config *cfg)
-{
-	struct bsc_lac_entry *lac;
-	llist_for_each_entry(lac, &cfg->lac_list, entry)
-		vty_out(vty, "  location_area_code %u%s", lac->lac, VTY_NEWLINE);
 }
 
 static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 {
 	vty_out(vty, " bsc %u%s", bsc->nr, VTY_NEWLINE);
 	vty_out(vty, "  token %s%s", bsc->token, VTY_NEWLINE);
-	dump_lac(vty, bsc);
-	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
+	dump_lac(vty, &bsc->lac_list);
 	if (bsc->description)
 		vty_out(vty, "  description %s%s", bsc->description, VTY_NEWLINE);
 	if (bsc->acc_lst_name)
 		vty_out(vty, "  access-list-name %s%s", bsc->acc_lst_name, VTY_NEWLINE);
 	vty_out(vty, "  max-endpoints %d%s", bsc->max_endpoints, VTY_NEWLINE);
+	if (bsc->paging_group != -1)
+		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
+	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -226,15 +260,15 @@ static void dump_stat_total(struct vty *vty, struct bsc_nat *nat)
 {
 	vty_out(vty, "NAT statistics%s", VTY_NEWLINE);
 	vty_out(vty, " SCCP Connections %lu total, %lu calls%s",
-		counter_get(nat->stats.sccp.conn),
-		counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.sccp.conn),
+		osmo_counter_get(nat->stats.sccp.calls), VTY_NEWLINE);
 	vty_out(vty, " MSC Connections %lu%s",
-		counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.msc.reconn), VTY_NEWLINE);
 	vty_out(vty, " MSC Connected: %d%s",
 		nat->msc_con->is_connected, VTY_NEWLINE);
 	vty_out(vty, " BSC Connections %lu total, %lu auth failed.%s",
-		counter_get(nat->stats.bsc.reconn),
-		counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
+		osmo_counter_get(nat->stats.bsc.reconn),
+		osmo_counter_get(nat->stats.bsc.auth_fail), VTY_NEWLINE);
 }
 
 static void dump_stat_bsc(struct vty *vty, struct bsc_config *conf)
@@ -309,8 +343,7 @@ DEFUN(show_msc,
 		return CMD_WARNING;
 	}
 
-	vty_out(vty, "MSC on %s:%d is connected: %d%s\n",
-		_nat->msc_con->ip, _nat->msc_con->port,
+	vty_out(vty, "MSC is connected: %d%s\n",
 		_nat->msc_con->is_connected, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
@@ -355,7 +388,7 @@ DEFUN(cfg_nat_msc_port,
       "msc port <1-65500>",
       "Set the port of the MSC.")
 {
-	_nat->msc_port = atoi(argv[0]);
+	_nat->main_dest->port = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -417,23 +450,65 @@ DEFUN(cfg_nat_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_no_acc_lst_name,
+      cfg_nat_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Remove the access list from the NAT.\n")
+{
+	if (_nat->acc_lst_name) {
+		talloc_free(_nat->acc_lst_name);
+		_nat->acc_lst_name = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int replace_rules(struct bsc_nat *nat, char **name,
+			 struct llist_head *head, const char *file)
+{
+	struct osmo_config_list *rewr = NULL;
+
+	bsc_replace_string(nat, name, file);
+	if (*name) {
+		rewr = osmo_config_list_parse(nat, *name);
+		bsc_nat_num_rewr_entry_adapt(nat, head, rewr);
+		talloc_free(rewr);
+		return CMD_SUCCESS;
+	} else {
+		bsc_nat_num_rewr_entry_adapt(nat, head, NULL);
+		return CMD_SUCCESS;
+	}
+}
+
 DEFUN(cfg_nat_number_rewrite,
       cfg_nat_number_rewrite_cmd,
       "number-rewrite FILENAME",
       "Set the file with rewriting rules.\n" "Filename")
 {
-	bsc_replace_string(_nat, &_nat->num_rewr_name, argv[0]);
-	if (_nat->num_rewr_name) {
-		if (_nat->num_rewr)
-			talloc_free(_nat->num_rewr);
-		_nat->num_rewr = msg_entry_parse(_nat, _nat->num_rewr_name);
-		return _nat->num_rewr == NULL ? CMD_WARNING : CMD_SUCCESS;
-	} else {
-		if (_nat->num_rewr)
-			talloc_free(_nat->num_rewr);
-		_nat->num_rewr = NULL;
-		return CMD_SUCCESS;
-	}
+	return replace_rules(_nat, &_nat->num_rewr_name,
+			     &_nat->num_rewr, argv[0]);
+}
+
+DEFUN(cfg_nat_smsc_addr,
+      cfg_nat_smsc_addr_cmd,
+      "rewrite-smsc addr FILENAME",
+      SMSC_REWRITE
+      "The SMSC Address to match and replace in RP-DATA\n"
+      "File with rules for the SMSC Address replacing\n")
+{
+	return replace_rules(_nat, &_nat->smsc_rewr_name,
+			     &_nat->smsc_rewr, argv[0]);
+}
+
+DEFUN(cfg_nat_smsc_tpdest,
+      cfg_nat_smsc_tpdest_cmd,
+      "rewrite-smsc tp-dest-match FILENAME",
+      SMSC_REWRITE
+      "Match TP-Destination of a SMS.\n"
+      "File with rules for matching MSISDN and TP-DEST\n")
+{
+	return replace_rules(_nat, &_nat->tpdest_match_name,
+			     &_nat->tpdest_match, argv[0]);
 }
 
 DEFUN(cfg_nat_ussd_lst_name,
@@ -448,11 +523,12 @@ DEFUN(cfg_nat_ussd_lst_name,
 
 DEFUN(cfg_nat_ussd_query,
       cfg_nat_ussd_query_cmd,
-      "ussd-query QUERY",
+      "ussd-query REGEXP",
       "Set the USSD query to match with the ussd-list-name\n"
       "The query to match")
 {
-	bsc_replace_string(_nat, &_nat->ussd_query, argv[0]);
+	if (bsc_parse_reg(_nat, &_nat->ussd_query_re, &_nat->ussd_query, argc, argv) != 0)
+		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
 
@@ -508,7 +584,7 @@ DEFUN(cfg_bsc_token, cfg_bsc_token_cmd, "token TOKEN", "Set the token")
 }
 
 DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
-      "Set the Location Area Code (LAC) of this BSC")
+      "Add the Location Area Code (LAC) of this BSC\n" "LAC\n")
 {
 	struct bsc_config *tmp;
 	struct bsc_config *conf = vty->index;
@@ -536,7 +612,7 @@ DEFUN(cfg_bsc_lac, cfg_bsc_lac_cmd, "location_area_code <0-65535>",
 
 DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
       "no location_area_code <0-65535>",
-      NO_STR "Set the Location Area Code (LAC) of this BSC")
+      NO_STR "Remove the Location Area Code (LAC) of this BSC\n" "LAC\n")
 {
 	int lac = atoi(argv[0]);
 	struct bsc_config *conf = vty->index;
@@ -550,7 +626,7 @@ DEFUN(cfg_bsc_no_lac, cfg_bsc_no_lac_cmd,
 DEFUN(cfg_lst_imsi_allow,
       cfg_lst_imsi_allow_cmd,
       "access-list NAME imsi-allow [REGEXP]",
-      "Allow IMSIs matching the REGEXP\n"
+      "Add the regexp to the allowed list\n"
       "The name of the access-list\n"
       "The regexp of allowed IMSIs\n")
 {
@@ -565,14 +641,15 @@ DEFUN(cfg_lst_imsi_allow,
 	if (!entry)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]);
+	if (bsc_parse_reg(acc, &entry->imsi_allow_re, &entry->imsi_allow, argc - 1, &argv[1]) != 0)
+		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
 
 DEFUN(cfg_lst_imsi_deny,
       cfg_lst_imsi_deny_cmd,
       "access-list NAME imsi-deny [REGEXP]",
-      "Allow IMSIs matching the REGEXP\n"
+      "Add the regexp to the deny list\n"
       "The name of the access-list\n"
       "The regexp of to be denied IMSIs\n")
 {
@@ -587,7 +664,8 @@ DEFUN(cfg_lst_imsi_deny,
 	if (!entry)
 		return CMD_WARNING;
 
-	bsc_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]);
+	if (bsc_parse_reg(acc, &entry->imsi_deny_re, &entry->imsi_deny, argc - 1, &argv[1]) != 0)
+		return CMD_WARNING;
 	return CMD_SUCCESS;
 }
 
@@ -636,6 +714,21 @@ DEFUN(cfg_bsc_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_no_acc_lst_name,
+      cfg_bsc_no_acc_lst_name_cmd,
+      "no access-list-name",
+      NO_STR "Do not use an access-list for the BSC.\n")
+{
+	struct bsc_config *conf = vty->index;
+
+	if (conf->acc_lst_name) {
+		talloc_free(conf->acc_lst_name);
+		conf->acc_lst_name = NULL;
+	}
+
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_bsc_max_endps, cfg_bsc_max_endps_cmd,
       "max-endpoints <1-1024>",
       "Highest endpoint to use (exclusively)\n" "Number of ports\n")
@@ -649,7 +742,7 @@ DEFUN(cfg_bsc_max_endps, cfg_bsc_max_endps_cmd,
 DEFUN(cfg_bsc_paging,
       cfg_bsc_paging_cmd,
       "paging forbidden (0|1)",
-      "Forbid sending PAGING REQUESTS to the BSC.")
+      PAGING_STR "Forbid sending PAGING REQUESTS to the BSC.")
 {
 	struct bsc_config *conf = vty->index;
 
@@ -672,6 +765,30 @@ DEFUN(cfg_bsc_desc,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_paging_grp,
+      cfg_bsc_paging_grp_cmd,
+      "paging group <0-1000>",
+      PAGING_STR "Use a paging group\n" "Paging Group to use\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->paging_group = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+ALIAS_DEPRECATED(cfg_bsc_paging_grp, cfg_bsc_old_grp_cmd,
+		 "paging-group <0-1000>",
+		 "Use a paging group\n" "Paging Group to use\n")
+
+DEFUN(cfg_bsc_no_paging_grp,
+      cfg_bsc_no_paging_grp_cmd,
+      "no paging group",
+      NO_STR PAGING_STR "Disable the usage of a paging group.\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->paging_group = PAGIN_GROUP_UNASSIGNED;
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Check if the string is matching the current pattern.")
@@ -680,7 +797,8 @@ DEFUN(test_regex, test_regex_cmd,
 	char *str = NULL;
 
 	memset(&reg, 0, sizeof(reg));
-	bsc_parse_reg(_nat, &reg, &str, 1, argv);
+	if (bsc_parse_reg(_nat, &reg, &str, 1, argv) != 0)
+		return CMD_WARNING;
 
 	vty_out(vty, "String matches allow pattern: %d%s",
 		regexec(&reg, argv[1], 0, NULL, 0) == 0, VTY_NEWLINE);
@@ -715,6 +833,81 @@ DEFUN(set_last_endp, set_last_endp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(block_new_conn, block_new_conn_cmd,
+      "nat-block (block|unblock)",
+      "Block the NAT for new connections\n"
+      "Block\n" "Unblock\n")
+{
+	_nat->blocked = argv[0][0] == 'b';
+	vty_out(vty, "%%Going to %s the NAT.%s",
+		_nat->blocked ? "block" : "unblock", VTY_NEWLINE);
+	return CMD_SUCCESS;
+}
+
+/* paging group */
+DEFUN(cfg_nat_pgroup, cfg_nat_pgroup_cmd,
+      "paging-group <0-1000>",
+      "Create a Paging Group\n" "Number of the Group\n")
+{
+	int group = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup;
+	pgroup = bsc_nat_paging_group_num(_nat, group);
+	if (!pgroup)
+		pgroup = bsc_nat_paging_group_create(_nat, group);
+	if (!pgroup) {
+		vty_out(vty, "Failed to create the group.%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	vty->index = pgroup;
+	vty->node = PGROUP_NODE;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_pgroup, cfg_nat_no_pgroup_cmd,
+      "no paging-group <0-1000>",
+      NO_STR "Delete paging-group\n")
+{
+	int group = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup;
+	pgroup = bsc_nat_paging_group_num(_nat, group);
+	if (!pgroup) {
+		vty_out(vty, "No such paging group %d.%s", group, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bsc_nat_paging_group_delete(pgroup);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_pgroup_lac, cfg_pgroup_lac_cmd,
+      "location_area_code <0-65535>",
+       "Add the Location Area Code (LAC)\n" "LAC\n")
+{
+	struct bsc_nat_paging_group *pgroup = vty->index;
+
+	int lac = atoi(argv[0]);
+	if (lac == GSM_LAC_RESERVED_DETACHED || lac == GSM_LAC_RESERVED_ALL_BTS) {
+		vty_out(vty, "%% LAC %d is reserved by GSM 04.08%s",
+			lac, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bsc_nat_paging_group_add_lac(pgroup, lac);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_pgroup_no_lac, cfg_pgroup_no_lac_cmd,
+      "no location_area_code <0-65535>",
+      NO_STR "Remove the Location Area Code (LAC)\n" "LAC\n")
+{
+	int lac = atoi(argv[0]);
+	struct bsc_nat_paging_group *pgroup = vty->index;
+
+	bsc_nat_paging_group_del_lac(pgroup, lac);
+	return CMD_SUCCESS;
+}
+
 int bsc_nat_vty_init(struct bsc_nat *nat)
 {
 	_nat = nat;
@@ -732,6 +925,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_acc_lst_cmd);
 
 	install_element(ENABLE_NODE, &set_last_endp_cmd);
+	install_element(ENABLE_NODE, &block_new_conn_cmd);
 
 	/* nat group */
 	install_element(CONFIG_NODE, &cfg_nat_cmd);
@@ -748,6 +942,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_dscp_cmd);
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_acc_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);
@@ -760,6 +955,15 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 	/* number rewriting */
 	install_element(NAT_NODE, &cfg_nat_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_smsc_addr_cmd);
+	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
+
+	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
+	install_node(&pgroup_node, config_write_pgroup);
+	install_default(PGROUP_NODE);
+	install_element(PGROUP_NODE, &cfg_pgroup_lac_cmd);
+	install_element(PGROUP_NODE, &cfg_pgroup_no_lac_cmd);
 
 	/* BSC subgroups */
 	install_element(NAT_NODE, &cfg_bsc_cmd);
@@ -773,7 +977,11 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_desc_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_acc_lst_name_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_acc_lst_name_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_max_endps_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_old_grp_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
 
 	mgcp_vty_init();
 
@@ -782,7 +990,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 
 
 /* called by the telnet interface... we have our own init above */
-int bsc_vty_init(void)
+int bsc_vty_init(const struct log_info *cat)
 {
+	logging_vty_add_cmds(cat);
 	return 0;
 }

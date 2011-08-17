@@ -21,7 +21,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/trau_frame.h>
@@ -29,9 +28,9 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/debug.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
-u_int8_t gsm_fr_map[] = {
+uint8_t gsm_fr_map[] = {
 	6, 6, 5, 5, 4, 4, 3, 3,
 	7, 2, 2, 6, 3, 3, 3, 3,
 	3, 3, 3, 3, 3, 3, 3, 3,
@@ -53,7 +52,7 @@ struct upqueue_entry {
 	struct llist_head list;
 	struct gsm_network *net;
 	struct gsm_e1_subslot src;
-	u_int32_t callref;
+	uint32_t callref;
 };
 
 static LLIST_HEAD(ss_map);
@@ -102,7 +101,7 @@ int trau_mux_map_lchan(const struct gsm_lchan *src,
 
 
 /* unmap one particular subslot from another subslot */
-int trau_mux_unmap(const struct gsm_e1_subslot *ss, u_int32_t callref)
+int trau_mux_unmap(const struct gsm_e1_subslot *ss, uint32_t callref)
 {
 	struct map_entry *me, *me2;
 	struct upqueue_entry *ue, *ue2;
@@ -156,14 +155,14 @@ lookup_trau_upqueue(const struct gsm_e1_subslot *src)
 	return NULL;
 }
 
-static const u_int8_t c_bits_check[] = { 0, 0, 0, 1, 0 };
+static const uint8_t c_bits_check[] = { 0, 0, 0, 1, 0 };
 
 /* we get called by subchan_demux */
 int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
-		   const u_int8_t *trau_bits, int num_bits)
+		   const uint8_t *trau_bits, int num_bits)
 {
 	struct decoded_trau_frame tf;
-	u_int8_t trau_bits_out[TRAU_FRAME_BITS];
+	uint8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = lookup_trau_mux_map(src_e1_ss);
 	struct subch_mux *mx;
 	struct upqueue_entry *ue;
@@ -186,7 +185,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			return -EINVAL;
 		if (memcmp(tf.c_bits, c_bits_check, sizeof(c_bits_check)))
 			DEBUGPC(DMUX, "illegal trau (C1-C5) %s\n",
-				hexdump(tf.c_bits, sizeof(c_bits_check)));
+				osmo_hexdump(tf.c_bits, sizeof(c_bits_check)));
 		msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
 				 "GSM-DATA");
 		if (!msg)
@@ -231,7 +230,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 }
 
 /* add receiver instance for lchan and callref */
-int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref)
+int trau_recv_lchan(struct gsm_lchan *lchan, uint32_t callref)
 {
 	struct gsm_e1_subslot *src_ss;
 	struct upqueue_entry *ue;
@@ -260,7 +259,7 @@ int trau_recv_lchan(struct gsm_lchan *lchan, u_int32_t callref)
 
 int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 {
-	u_int8_t trau_bits_out[TRAU_FRAME_BITS];
+	uint8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = &lchan->ts->e1_link;
 	struct subch_mux *mx;
 	int i, j, k, l, o;

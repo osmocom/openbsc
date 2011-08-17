@@ -31,12 +31,12 @@
 #include <arpa/inet.h>
 
 #include <openbsc/db.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/signal.h>
-#include <osmocore/talloc.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/signal.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/rate_ctr.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -210,7 +210,7 @@ static void mmctx_timer_cb(void *_mm);
 static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 				unsigned int seconds)
 {
-	if (bsc_timer_pending(&mm->timer))
+	if (osmo_timer_pending(&mm->timer))
 		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
 			"timer %u pending\n", T, mm->T);
 	mm->T = T;
@@ -220,7 +220,7 @@ static void mmctx_timer_start(struct sgsn_mm_ctx *mm, unsigned int T,
 	mm->timer.data = mm;
 	mm->timer.cb = &mmctx_timer_cb;
 
-	bsc_schedule_timer(&mm->timer, seconds, 0);
+	osmo_timer_schedule(&mm->timer, seconds, 0);
 }
 
 static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
@@ -228,7 +228,7 @@ static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
 	if (mm->T != T)
 		LOGP(DMM, LOGL_ERROR, "Stopping MM timer %u but "
 			"%u is running\n", T, mm->T);
-	bsc_del_timer(&mm->timer);
+	osmo_timer_del(&mm->timer);
 }
 
 /* Send a message through the underlying layer */
@@ -465,7 +465,7 @@ static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 	uint8_t *m_rand, *m_cksn;
 
 	DEBUGP(DMM, "<- GPRS AUTH AND CIPHERING REQ (rand = %s)\n",
-		hexdump(rand, 16));
+		osmo_hexdump(rand, 16));
 
 	mmctx2msgid(msg, mm);
 
@@ -1091,7 +1091,7 @@ static void mmctx_timer_cb(void *_mm)
 			/* FIXME */
 			break;
 		}
-		bsc_schedule_timer(&mm->timer, GSM0408_T3350_SECS, 0);
+		osmo_timer_schedule(&mm->timer, GSM0408_T3350_SECS, 0);
 		break;
 	case 3360:	/* waiting for AUTH AND CIPH RESP */
 		if (mm->num_T_exp >= 5) {
@@ -1100,7 +1100,7 @@ static void mmctx_timer_cb(void *_mm)
 			break;
 		}
 		/* FIXME: re-transmit the respective msg and re-start timer */
-		bsc_schedule_timer(&mm->timer, GSM0408_T3360_SECS, 0);
+		osmo_timer_schedule(&mm->timer, GSM0408_T3360_SECS, 0);
 		break;
 	case 3370:	/* waiting for IDENTITY RESPONSE */
 		if (mm->num_T_exp >= 5) {
@@ -1111,7 +1111,7 @@ static void mmctx_timer_cb(void *_mm)
 		}
 		/* re-tranmit IDENTITY REQUEST and re-start timer */
 		gsm48_tx_gmm_id_req(mm, mm->t3370_id_type);
-		bsc_schedule_timer(&mm->timer, GSM0408_T3370_SECS, 0);
+		osmo_timer_schedule(&mm->timer, GSM0408_T3370_SECS, 0);
 		break;
 	default:
 		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",
@@ -1126,7 +1126,7 @@ static void pdpctx_timer_cb(void *_mm);
 static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 				unsigned int seconds)
 {
-	if (bsc_timer_pending(&pdp->timer))
+	if (osmo_timer_pending(&pdp->timer))
 		LOGP(DMM, LOGL_ERROR, "Starting MM timer %u while old "
 			"timer %u pending\n", T, pdp->T);
 	pdp->T = T;
@@ -1136,7 +1136,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 	pdp->timer.data = pdp;
 	pdp->timer.cb = &pdpctx_timer_cb;
 
-	bsc_schedule_timer(&pdp->timer, seconds, 0);
+	osmo_timer_schedule(&pdp->timer, seconds, 0);
 }
 
 
@@ -1461,7 +1461,7 @@ static void pdpctx_timer_cb(void *_pdp)
 			break;
 		}
 		gsm48_tx_gsm_deact_pdp_req(pdp, GSM_CAUSE_NET_FAIL); 
-		bsc_schedule_timer(&pdp->timer, GSM0408_T3395_SECS, 0);
+		osmo_timer_schedule(&pdp->timer, GSM0408_T3395_SECS, 0);
 		break;
 	default:
 		LOGP(DMM, LOGL_ERROR, "timer expired in unknown mode %u\n",

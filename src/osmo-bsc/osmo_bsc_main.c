@@ -1,6 +1,6 @@
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -26,8 +26,9 @@
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/process.h>
+#include <osmocom/core/application.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/process.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -43,18 +44,15 @@
 
 #include "../../bscconfig.h"
 
-static struct log_target *stderr_target;
 struct gsm_network *bsc_gsmnet = 0;
 static const char *config_file = "openbsc.cfg";
 static const char *rf_ctl = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 
-extern int bsc_bootstrap_network(int (*layer4)(struct gsm_network *, struct msgb *), const char *cfg_file);
-
 static void print_usage()
 {
-	printf("Usage: bsc_msc_ip\n");
+	printf("Usage: osmo-bsc\n");
 }
 
 static void print_help()
@@ -101,10 +99,10 @@ static void handle_options(int argc, char **argv)
 			print_help();
 			exit(0);
 		case 's':
-			log_set_use_color(stderr_target, 0);
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'd':
-			log_parse_category_mask(stderr_target, optarg);
+			log_parse_category_mask(osmo_stderr_target, optarg);
 			break;
 		case 'D':
 			daemonize = 1;
@@ -113,13 +111,10 @@ static void handle_options(int argc, char **argv)
 			config_file = strdup(optarg);
 			break;
 		case 'T':
-			log_set_print_timestamp(stderr_target, 1);
-			break;
-		case 'P':
-			ipacc_rtp_direct = 0;
+			log_set_print_timestamp(osmo_stderr_target, 1);
 			break;
 		case 'e':
-			log_set_log_level(stderr_target, atoi(optarg));
+			log_set_log_level(osmo_stderr_target, atoi(optarg));
 			break;
 		case 'r':
 			rf_ctl = optarg;
@@ -130,10 +125,6 @@ static void handle_options(int argc, char **argv)
 		}
 	}
 }
-
-extern int bts_model_unknown_init(void);
-extern int bts_model_bs11_init(void);
-extern int bts_model_nanobts_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
 
@@ -152,7 +143,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
-		dispatch_signal(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -179,24 +170,22 @@ static void signal_handler(int signal)
 
 int main(int argc, char **argv)
 {
+	struct osmo_msc_data *data;
 	int rc;
 
-	log_init(&log_info);
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
-	stderr_target = log_target_create_stderr();
-	log_add_target(stderr_target);
 
-	bts_model_unknown_init();
-	bts_model_bs11_init();
-	bts_model_nanobts_init();
+	osmo_init_logging(&log_info);
+
+	bts_init();
+	e1inp_init();
 
 	/* enable filters */
-	log_set_all_filter(stderr_target, 1);
 
 	/* This needs to precede handle_options() */
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	bsc_vty_init();
+	bsc_vty_init(&log_info);
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -215,9 +204,13 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	if (rf_ctl) {
-		struct osmo_msc_data *data = bsc_gsmnet->msc_data;
-		data->rf_ctl = osmo_bsc_rf_create(rf_ctl, bsc_gsmnet);
+	data = bsc_gsmnet->msc_data;
+	if (rf_ctl)
+		bsc_replace_string(data, &data->rf_ctrl_name, rf_ctl);
+
+	if (data->rf_ctrl_name) {
+		data->rf_ctl = osmo_bsc_rf_create(data->rf_ctrl_name,
+						  bsc_gsmnet);
 		if (!data->rf_ctl) {
 			fprintf(stderr, "Failed to create the RF service.\n");
 			exit(1);
@@ -243,7 +236,7 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
-	signal(SIGPIPE, SIG_IGN);
+	osmo_init_ignore_signals();
 
 	if (daemonize) {
 		rc = osmo_daemonize();
@@ -254,7 +247,7 @@ int main(int argc, char **argv)
 	}
 
 	while (1) {
-		bsc_select_main(0);
+		osmo_select_main(0);
 	}
 
 	return 0;

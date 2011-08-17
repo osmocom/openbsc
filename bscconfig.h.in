@@ -1,7 +1,10 @@
-/* bscconfig.h.in.  Generated from configure.in by autoheader.  */
+/* bscconfig.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define to 1 if you have the <dahdi/user.h> header file. */
 #undef HAVE_DAHDI_USER_H
+
+/* Define to 1 if you have the <dbi/dbd.h> header file. */
+#undef HAVE_DBI_DBD_H
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H

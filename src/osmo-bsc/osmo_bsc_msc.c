@@ -1,8 +1,8 @@
 /*
  * Handle the connection to the MSC. This include ping/timeout/reconnect
  * (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2010 by On-Waves
+ * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/signal.h>
 
-#include <osmocore/gsm0808.h>
+#include <osmocom/gsm/gsm0808.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -37,13 +37,14 @@
 
 
 static void initialize_if_needed(struct bsc_msc_connection *conn);
+static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn);
 static void send_id_get_response(struct osmo_msc_data *data, int fd);
 static void send_ping(struct osmo_msc_data *data);
 
 /*
  * MGCP forwarding code
  */
-static int mgcp_do_read(struct bsc_fd *fd)
+static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct osmo_msc_data *data = (struct osmo_msc_data *) fd->data;
 	struct msgb *mgcp;
@@ -71,7 +72,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	return 0;
 }
 
-static int mgcp_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int mgcp_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
@@ -101,7 +102,7 @@ static void mgcp_forward(struct osmo_msc_data *data, struct msgb *msg)
 
 	msgb_put(mgcp, msgb_l2len(msg));
 	memcpy(mgcp->data, msg->l2h, mgcp->len);
-	if (write_queue_enqueue(&data->mgcp_agent, mgcp) != 0) {
+	if (osmo_wqueue_enqueue(&data->mgcp_agent, mgcp) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Could not queue message to MGCP GW.\n");
 		msgb_free(mgcp);
 	}
@@ -143,13 +144,13 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 		return -1;
 	}
 
-	write_queue_init(&data->mgcp_agent, 10);
+	osmo_wqueue_init(&data->mgcp_agent, 10);
 	data->mgcp_agent.bfd.when = BSC_FD_READ;
 	data->mgcp_agent.bfd.data = data;
 	data->mgcp_agent.read_cb = mgcp_do_read;
 	data->mgcp_agent.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&data->mgcp_agent.bfd) != 0) {
+	if (osmo_fd_register(&data->mgcp_agent.bfd) != 0) {
 		LOGP(DMGCP, LOGL_FATAL, "Failed to register BFD\n");
 		close(data->mgcp_agent.bfd.fd);
 		data->mgcp_agent.bfd.fd = -1;
@@ -165,7 +166,7 @@ static int mgcp_create_port(struct osmo_msc_data *data)
 int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto)
 {
 	ipaccess_prepend_header(msg, proto);
-	if (write_queue_enqueue(&conn->write_queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&conn->write_queue, msg) != 0) {
 		LOGP(DMSC, LOGL_FATAL, "Failed to queue IPA/%d\n", proto);
 		msgb_free(msg);
 		return -1;
@@ -174,12 +175,12 @@ int msc_queue_write(struct bsc_msc_connection *conn, struct msgb *msg, int proto
 	return 0;
 }
 
-static int msc_alink_do_write(struct bsc_fd *fd, struct msgb *msg)
+static int msc_alink_do_write(struct osmo_fd *fd, struct msgb *msg)
 {
 	int ret;
 
 	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", hexdump(msg->data, msg->len));
+	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", osmo_hexdump(msg->data, msg->len));
 
 	ret = write(fd->fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -188,7 +189,26 @@ static int msc_alink_do_write(struct bsc_fd *fd, struct msgb *msg)
 	return ret;
 }
 
-static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
+static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
+{
+	struct ipaccess_head *hh;
+	struct ipaccess_head_ext *hh_ext;
+
+	hh = (struct ipaccess_head *) msg->data;
+	hh_ext = (struct ipaccess_head_ext *) hh->data;
+	if (msg->len < sizeof(*hh) + sizeof(*hh_ext)) {
+		LOGP(DMSC, LOGL_ERROR, "Packet too short for extended header.\n");
+		return;
+	}
+
+	msg->l2h = hh_ext->data;
+	if (hh_ext->proto == IPAC_PROTO_EXT_MGCP)
+		mgcp_forward(msc, msg);
+	else if (hh_ext->proto == IPAC_PROTO_EXT_LAC)
+		send_lacs(msc->network, msc->msc_con);
+}
+
+static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct msgb *msg = ipaccess_read_msg(bfd, &error);
@@ -206,7 +226,7 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		return -1;
 	}
 
-	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DMSC, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;
@@ -219,12 +239,14 @@ static int ipaccess_a_fd_cb(struct bsc_fd *bfd)
 		else if (msg->l2h[0] == IPAC_MSGT_ID_GET) {
 			send_id_get_response(data, bfd->fd);
 		} else if (msg->l2h[0] == IPAC_MSGT_PONG) {
-			bsc_del_timer(&data->pong_timer);
+			osmo_timer_del(&data->pong_timer);
 		}
 	} else if (hh->proto == IPAC_PROTO_SCCP) {
 		sccp_system_incoming(msg);
 	} else if (hh->proto == IPAC_PROTO_MGCP_OLD) {
 		mgcp_forward(data, msg);
+	} else if (hh->proto == IPAC_PROTO_OSMO) {
+		osmo_ext_handle(data, msg);
 	}
 
 	msgb_free(msg);
@@ -256,10 +278,10 @@ static void msc_ping_timeout_cb(void *_data)
 	send_ping(data);
 
 	/* send another ping in 20 seconds */
-	bsc_schedule_timer(&data->ping_timer, data->ping_timeout, 0);
+	osmo_timer_schedule(&data->ping_timer, data->ping_timeout, 0);
 
 	/* also start a pong timer */
-	bsc_schedule_timer(&data->pong_timer, data->pong_timeout, 0);
+	osmo_timer_schedule(&data->pong_timer, data->pong_timeout, 0);
 }
 
 static void msc_pong_timeout_cb(void *_data)
@@ -284,7 +306,7 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 	msc_ping_timeout_cb(data);
 
 	sig.data = data;
-	dispatch_signal(SS_MSC, S_MSC_CONNECTED, &sig);
+	osmo_signal_dispatch(SS_MSC, S_MSC_CONNECTED, &sig);
 }
 
 /*
@@ -299,14 +321,47 @@ static void msc_connection_was_lost(struct bsc_msc_connection *msc)
 	LOGP(DMSC, LOGL_ERROR, "Lost MSC connection. Freing stuff.\n");
 
 	data = (struct osmo_msc_data *) msc->write_queue.bfd.data;
-	bsc_del_timer(&data->ping_timer);
-	bsc_del_timer(&data->pong_timer);
+	osmo_timer_del(&data->ping_timer);
+	osmo_timer_del(&data->pong_timer);
 
 	sig.data = data;
-	dispatch_signal(SS_MSC, S_MSC_LOST, &sig);
+	osmo_signal_dispatch(SS_MSC, S_MSC_LOST, &sig);
 
 	msc->is_authenticated = 0;
 	bsc_msc_schedule_connect(msc);
+}
+
+static void send_lacs(struct gsm_network *net, struct bsc_msc_connection *conn)
+{
+	struct ipac_ext_lac_cmd *lac;
+	struct gsm_bts *bts;
+	struct msgb *msg;
+	int lacs = 0;
+
+	if (llist_empty(&net->bts_list)) {
+		LOGP(DMSC, LOGL_ERROR, "No BTSs configured. Not sending LACs.\n");
+		return;
+	}
+
+	msg = msgb_alloc_headroom(4096, 128, "LAC Command");
+	if (!msg) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to create the LAC command.\n");
+		return;
+	}
+
+	lac = (struct ipac_ext_lac_cmd *) msgb_put(msg, sizeof(*lac));
+	lac->add_remove = 1;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (lacs++ == 0)
+			lac->lac = htons(bts->location_area_code);
+		else
+			msgb_put_u16(msg, htons(bts->location_area_code));
+	}
+
+	lac->nr_extra_lacs = lacs - 1;
+	ipaccess_prepend_header_ext(msg, IPAC_PROTO_EXT_LAC);
+	msc_queue_write(conn, msg, IPAC_PROTO_OSMO);
 }
 
 static void initialize_if_needed(struct bsc_msc_connection *conn)
@@ -344,9 +399,7 @@ int osmo_bsc_msc_init(struct gsm_network *network)
 	if (mgcp_create_port(data) != 0)
 		return -1;
 
-	data->msc_con = bsc_msc_create(data->msc_ip,
-				       data->msc_port,
-				       data->msc_ip_dscp);
+	data->msc_con = bsc_msc_create(data, &data->dests);
 	if (!data->msc_con) {
 		LOGP(DMSC, LOGL_ERROR, "Creating the MSC network connection failed.\n");
 		return -1;

@@ -59,11 +59,11 @@
 #include <arpa/inet.h>
 
 #include <openbsc/gsm_data.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
-#include <osmocore/talloc.h>
-#include <osmocore/select.h>
-#include <osmocore/rate_ctr.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/rate_ctr.h>
 #include <openbsc/debug.h>
 #include <openbsc/signal.h>
 #include <openbsc/gprs_ns.h>
@@ -166,13 +166,13 @@ struct gprs_nsvc *nsvc_create(struct gprs_ns_inst *nsi, uint16_t nsvci)
 
 void nsvc_delete(struct gprs_nsvc *nsvc)
 {
-	if (bsc_timer_pending(&nsvc->timer))
-		bsc_del_timer(&nsvc->timer);
+	if (osmo_timer_pending(&nsvc->timer))
+		osmo_timer_del(&nsvc->timer);
 	llist_del(&nsvc->list);
 	talloc_free(nsvc);
 }
 
-static void ns_dispatch_signal(struct gprs_nsvc *nsvc, unsigned int signal,
+static void ns_osmo_signal_dispatch(struct gprs_nsvc *nsvc, unsigned int signal,
 			       uint8_t cause)
 {
 	struct ns_signal_data nssd;
@@ -180,7 +180,7 @@ static void ns_dispatch_signal(struct gprs_nsvc *nsvc, unsigned int signal,
 	nssd.nsvc = nsvc;
 	nssd.cause = cause;
 
-	dispatch_signal(SS_NS, signal, &nssd);
+	osmo_signal_dispatch(SS_NS, signal, &nssd);
 }
 
 /* Section 10.3.2, Table 13 */
@@ -405,11 +405,11 @@ static void nsvc_start_timer(struct gprs_nsvc *nsvc, enum nsvc_timer_mode mode)
 		nsvc->nsei, get_value_string(timer_mode_strs, mode),
 		seconds);
 		
-	if (bsc_timer_pending(&nsvc->timer))
-		bsc_del_timer(&nsvc->timer);
+	if (osmo_timer_pending(&nsvc->timer))
+		osmo_timer_del(&nsvc->timer);
 
 	nsvc->timer_mode = mode;
-	bsc_schedule_timer(&nsvc->timer, seconds, 0);
+	osmo_timer_schedule(&nsvc->timer, seconds, 0);
 }
 
 static void gprs_ns_timer_cb(void *data)
@@ -437,8 +437,8 @@ static void gprs_ns_timer_cb(void *data)
 				"NSEI=%u Tns-alive expired more then "
 				"%u times, blocking NS-VC\n", nsvc->nsei,
 				nsvc->nsi->timeout[NS_TOUT_TNS_ALIVE_RETRIES]);
-			ns_dispatch_signal(nsvc, S_NS_ALIVE_EXP, 0);
-			ns_dispatch_signal(nsvc, S_NS_BLOCK, NS_CAUSE_NSVC_BLOCKED);
+			ns_osmo_signal_dispatch(nsvc, S_NS_ALIVE_EXP, 0);
+			ns_osmo_signal_dispatch(nsvc, S_NS_BLOCK, NS_CAUSE_NSVC_BLOCKED);
 			return;
 		}
 		/* Tns-test case: send NS-ALIVE PDU */
@@ -631,7 +631,7 @@ static int gprs_ns_rx_reset(struct gprs_nsvc *nsvc, struct msgb *msg)
 
 	/* inform interested parties about the fact that this NSVC
 	 * has received RESET */
-	ns_dispatch_signal(nsvc, S_NS_RESET, *cause);
+	ns_osmo_signal_dispatch(nsvc, S_NS_RESET, *cause);
 
 	return gprs_ns_tx_reset_ack(nsvc);
 }
@@ -665,7 +665,7 @@ static int gprs_ns_rx_block(struct gprs_nsvc *nsvc, struct msgb *msg)
 	cause = (uint8_t *) TLVP_VAL(&tp, NS_IE_CAUSE);
 	//nsvci = (uint16_t *) TLVP_VAL(&tp, NS_IE_VCI);
 
-	ns_dispatch_signal(nsvc, S_NS_BLOCK, *cause);
+	ns_osmo_signal_dispatch(nsvc, S_NS_BLOCK, *cause);
 	rate_ctr_inc(&nsvc->ctrg->ctr[NS_CTR_BLOCKED]);
 
 	return gprs_ns_tx_simple(nsvc, NS_PDUT_BLOCK_ACK);
@@ -786,7 +786,7 @@ int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 		rate_ctr_inc(&nsvc->ctrg->ctr[NS_CTR_BLOCKED]);
 		if (nsvc->persistent || nsvc->remote_end_is_sgsn) {
 			/* stop RESET timer */
-			bsc_del_timer(&nsvc->timer);
+			osmo_timer_del(&nsvc->timer);
 		}
 		/* Initiate TEST proc.: Send ALIVE and start timer */
 		rc = gprs_ns_tx_simple(nsvc, NS_PDUT_ALIVE);
@@ -796,7 +796,7 @@ int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 		/* Section 7.2: unblocking procedure */
 		LOGP(DNS, LOGL_INFO, "NSEI=%u Rx NS UNBLOCK\n", nsvc->nsei);
 		nsvc->state &= ~NSE_S_BLOCKED;
-		ns_dispatch_signal(nsvc, S_NS_UNBLOCK, 0);
+		ns_osmo_signal_dispatch(nsvc, S_NS_UNBLOCK, 0);
 		rc = gprs_ns_tx_simple(nsvc, NS_PDUT_UNBLOCK_ACK);
 		break;
 	case NS_PDUT_UNBLOCK_ACK:
@@ -804,7 +804,7 @@ int gprs_ns_rcvmsg(struct gprs_ns_inst *nsi, struct msgb *msg,
 		/* mark NS-VC as unblocked + active */
 		nsvc->state = NSE_S_ALIVE;
 		nsvc->remote_state = NSE_S_ALIVE;
-		ns_dispatch_signal(nsvc, S_NS_UNBLOCK, 0);
+		ns_osmo_signal_dispatch(nsvc, S_NS_UNBLOCK, 0);
 		break;
 	case NS_PDUT_BLOCK:
 		rc = gprs_ns_rx_block(nsvc, msg);
@@ -858,7 +858,7 @@ void gprs_ns_destroy(struct gprs_ns_inst *nsi)
  * We don't support Size Procedure, Configuration Procedure, ChangeWeight Procedure */
 
 /* Read a single NS-over-IP message */
-static struct msgb *read_nsip_msg(struct bsc_fd *bfd, int *error,
+static struct msgb *read_nsip_msg(struct osmo_fd *bfd, int *error,
 				  struct sockaddr_in *saddr)
 {
 	struct msgb *msg = gprs_ns_msgb_alloc();
@@ -890,7 +890,7 @@ static struct msgb *read_nsip_msg(struct bsc_fd *bfd, int *error,
 	return msg;
 }
 
-static int handle_nsip_read(struct bsc_fd *bfd)
+static int handle_nsip_read(struct osmo_fd *bfd)
 {
 	int error;
 	struct sockaddr_in saddr;
@@ -907,7 +907,7 @@ static int handle_nsip_read(struct bsc_fd *bfd)
 	return error;
 }
 
-static int handle_nsip_write(struct bsc_fd *bfd)
+static int handle_nsip_write(struct osmo_fd *bfd)
 {
 	/* FIXME: actually send the data here instead of nsip_sendmsg() */
 	return -EIO;
@@ -928,7 +928,7 @@ static int nsip_sendmsg(struct gprs_nsvc *nsvc, struct msgb *msg)
 }
 
 /* UDP Port 23000 carries the LLC-in-BSSGP-in-NS protocol stack */
-static int nsip_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int nsip_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -946,7 +946,7 @@ int gprs_ns_nsip_listen(struct gprs_ns_inst *nsi)
 	int ret;
 
 	ret = make_sock(&nsi->nsip.fd, IPPROTO_UDP, nsi->nsip.local_ip,
-			nsi->nsip.local_port, nsip_fd_cb);
+			nsi->nsip.local_port, 0, nsip_fd_cb, NULL);
 	if (ret < 0)
 		return ret;
 

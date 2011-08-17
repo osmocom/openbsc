@@ -70,8 +70,8 @@ static void test_mi_functionality(void)
 {
 	const char *imsi_odd  = "987654321098763";
 	const char *imsi_even = "9876543210987654";
-	const u_int32_t tmsi = 0xfabeacd0;
-	u_int8_t mi[128];
+	const uint32_t tmsi = 0xfabeacd0;
+	uint8_t mi[128];
 	unsigned int mi_len;
 	char mi_parsed[GSM48_MI_SIZE];
 
@@ -80,17 +80,17 @@ static void test_mi_functionality(void)
 	/* tmsi code */
 	mi_len = gsm48_generate_mid_from_tmsi(mi, tmsi);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len - 2);
-	COMPARE((u_int32_t)strtoul(mi_parsed, NULL, 10), ==, tmsi);
+	COMPARE((uint32_t)strtoul(mi_parsed, NULL, 10), ==, tmsi);
 
 	/* imsi code */
 	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_odd);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
-	printf("hex: %s\n", hexdump(mi, mi_len));
+	printf("hex: %s\n", osmo_hexdump(mi, mi_len));
 	COMPARE_STR(mi_parsed, imsi_odd);
 
 	mi_len = gsm48_generate_mid_from_imsi(mi, imsi_even);
 	gsm48_mi_to_string(mi_parsed, sizeof(mi_parsed), mi + 2, mi_len -2);
-	printf("hex: %s\n", hexdump(mi, mi_len));
+	printf("hex: %s\n", osmo_hexdump(mi, mi_len));
 	COMPARE_STR(mi_parsed, imsi_even);
 }
 

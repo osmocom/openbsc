@@ -33,14 +33,13 @@
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <dahdi/user.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -48,7 +47,7 @@
 #include <openbsc/subchan_demux.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/signal.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #include "lapd.h"
 
@@ -84,16 +83,16 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	switch (evt) {
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
-		dispatch_signal(SS_INPUT, S_INP_LINE_ALARM, &isd);
+		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_ALARM, &isd);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
-		dispatch_signal(SS_INPUT, S_INP_LINE_NOALARM, &isd);
+		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_NOALARM, &isd);
 		break;
 	}
 }
 
-static int handle_ts1_read(struct bsc_fd *bfd)
+static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -148,7 +147,7 @@ static int handle_ts1_read(struct bsc_fd *bfd)
 			msg->l2h = msg->data + 2;
 		else
 			msg->l2h = msg->data + 1;
-		DEBUGP(DMI, "RX: %s\n", hexdump(msgb_l2(msg), ret));
+		DEBUGP(DMI, "RX: %s\n", osmo_hexdump(msgb_l2(msg), ret));
 		ret = e1inp_rx_ts(e1i_ts, msg, tei, sapi);
 		break;
 	default:
@@ -185,7 +184,7 @@ static void timeout_ts1_write(void *data)
 
 static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 {
-	struct bsc_fd *bfd = cbdata;
+	struct osmo_fd *bfd = cbdata;
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
@@ -198,7 +197,7 @@ static void dahdi_write_msg(uint8_t *data, int len, void *cbdata)
 		LOGP(DMI, LOGL_NOTICE, "%s write failed %d\n", __func__, ret);
 }
 
-static int handle_ts1_write(struct bsc_fd *bfd)
+static int handle_ts1_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -215,7 +214,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "TX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "TX: %s\n", osmo_hexdump(msg->data, msg->len));
 	lapd_transmit(e1i_ts->driver.dahdi.lapd, sign_link->tei,
 		      sign_link->sapi, msg->data, msg->len);
 	msgb_free(msg);
@@ -223,7 +222,7 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 	/* set tx delay timer for next event */
 	e1i_ts->sign.tx_timer.cb = timeout_ts1_write;
 	e1i_ts->sign.tx_timer.data = e1i_ts;
-	bsc_schedule_timer(&e1i_ts->sign.tx_timer, 0, 50000);
+	osmo_timer_schedule(&e1i_ts->sign.tx_timer, 0, 50000);
 
 	return 0;
 }
@@ -231,14 +230,14 @@ static int handle_ts1_write(struct bsc_fd *bfd)
 
 static int invertbits = 1;
 
-static u_int8_t flip_table[256];
+static uint8_t flip_table[256];
 
 static void init_flip_bits(void)
 {
         int i,k;
 
         for (i = 0 ; i < 256 ; i++) {
-                u_int8_t sample = 0 ;
+                uint8_t sample = 0 ;
                 for (k = 0; k<8; k++) {
                         if ( i & 1 << k ) sample |= 0x80 >>  k;
                 }
@@ -246,13 +245,13 @@ static void init_flip_bits(void)
         }
 }
 
-static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
+static uint8_t * flip_buf_bits ( uint8_t * buf , int len)
 {
         int i;
-        u_int8_t * start = buf;
+        uint8_t * start = buf;
 
         for (i = 0 ; i < len; i++) {
-                buf[i] = flip_table[(u_int8_t)buf[i]];
+                buf[i] = flip_table[(uint8_t)buf[i]];
         }
 
         return start;
@@ -260,12 +259,12 @@ static u_int8_t * flip_buf_bits ( u_int8_t * buf , int len)
 
 #define D_BCHAN_TX_GRAN 160
 /* write to a B channel TS */
-static int handle_tsX_write(struct bsc_fd *bfd)
+static int handle_tsX_write(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
 	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
-	u_int8_t tx_buf[D_BCHAN_TX_GRAN];
+	uint8_t tx_buf[D_BCHAN_TX_GRAN];
 	struct subch_mux *mx = &e1i_ts->trau.mux;
 	int ret;
 
@@ -278,7 +277,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 	}
 
 	DEBUGP(DMIB, "BCHAN TX: %s\n",
-		hexdump(tx_buf, D_BCHAN_TX_GRAN));
+		osmo_hexdump(tx_buf, D_BCHAN_TX_GRAN));
 
 	if (invertbits) {
 		flip_buf_bits(tx_buf, ret);
@@ -294,7 +293,7 @@ static int handle_tsX_write(struct bsc_fd *bfd)
 
 #define D_TSX_ALLOC_SIZE (D_BCHAN_TX_GRAN)
 /* FIXME: read from a B channel TS */
-static int handle_tsX_read(struct bsc_fd *bfd)
+static int handle_tsX_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -319,7 +318,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 
 	msg->l2h = msg->data;
 	DEBUGP(DMIB, "BCHAN RX: %s\n",
-		hexdump(msgb_l2(msg), ret));
+		osmo_hexdump(msgb_l2(msg), ret));
 	ret = e1inp_rx_ts(e1i_ts, msg, 0, 0);
 	/* physical layer indicates that data has been sent,
 	 * we thus can send some more data */
@@ -330,7 +329,7 @@ static int handle_tsX_read(struct bsc_fd *bfd)
 }
 
 /* callback from select.c in case one of the fd's can be read/written */
-static int dahdi_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int dahdi_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
@@ -421,7 +420,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		unsigned int idx = ts-1;
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
-		struct bsc_fd *bfd = &e1i_ts->driver.dahdi.fd;
+		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
@@ -464,7 +463,7 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 			return bfd->fd;
 		}
 
-		ret = bsc_register_fd(bfd);
+		ret = osmo_fd_register(bfd);
 		if (ret < 0) {
 			fprintf(stderr, "could not register FD: %s\n",
 				strerror(ret));

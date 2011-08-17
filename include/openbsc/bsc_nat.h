@@ -1,6 +1,6 @@
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,21 +23,22 @@
 
 #include "mgcp.h"
 
-#include <sys/types.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
-#include <osmocore/msgfile.h>
-#include <osmocore/timer.h>
-#include <osmocore/write_queue.h>
-#include <osmocore/rate_ctr.h>
-#include <osmocore/statistics.h>
-#include <osmocore/protocol/gsm_04_08.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/msgfile.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/write_queue.h>
+#include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/statistics.h>
+#include <osmocom/gsm/protocol/gsm_04_08.h>
 
 #include <regex.h>
 
 #define DIR_BSC 1
 #define DIR_MSC 2
+
+#define PAGIN_GROUP_UNASSIGNED -1
 
 struct sccp_source_reference;
 struct sccp_connections;
@@ -56,6 +57,16 @@ enum {
 };
 
 /*
+ * Is this terminated to the MSC, to the local machine (release
+ * handling for IMSI filtering) or to a USSD provider?
+ */
+enum {
+	NAT_CON_END_MSC,
+	NAT_CON_END_LOCAL,
+	NAT_CON_END_USSD,
+};
+
+/*
  * Per BSC data structure
  */
 struct bsc_connection {
@@ -65,17 +76,17 @@ struct bsc_connection {
 	int authenticated;
 
 	/* the fd we use to communicate */
-	struct write_queue write_queue;
+	struct osmo_wqueue write_queue;
 
 	/* the BSS associated */
 	struct bsc_config *cfg;
 
 	/* a timeout node */
-	struct timer_list id_timeout;
+	struct osmo_timer_list id_timeout;
 
 	/* pong timeout */
-	struct timer_list ping_timeout;
-	struct timer_list pong_timeout;
+	struct osmo_timer_list ping_timeout;
+	struct osmo_timer_list pong_timeout;
 
 	/* mgcp related code */
 	char *_endpoint_status;
@@ -125,6 +136,7 @@ struct bsc_config {
 	char *acc_lst_name;
 
 	int forbid_paging;
+	int paging_group;
 
 	/* audio handling */
 	int max_endpoints;
@@ -140,6 +152,14 @@ struct bsc_config {
 struct bsc_lac_entry {
 	struct llist_head entry;
 	uint16_t lac;
+};
+
+struct bsc_nat_paging_group {
+	struct llist_head entry;
+
+	/* list of lac entries */
+	struct llist_head lists;
+	int nr;
 };
 
 /**
@@ -159,21 +179,21 @@ struct bsc_endpoint {
  */
 struct bsc_nat_statistics {
 	struct {
-		struct counter *conn;
-		struct counter *calls;
+		struct osmo_counter *conn;
+		struct osmo_counter *calls;
 	} sccp;
 
 	struct {
-		struct counter *reconn;
-                struct counter *auth_fail;
+		struct osmo_counter *reconn;
+                struct osmo_counter *auth_fail;
 	} bsc;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} msc;
 
 	struct {
-		struct counter *reconn;
+		struct osmo_counter *reconn;
 	} ussd;
 };
 
@@ -216,6 +236,9 @@ struct bsc_nat {
 	/* access lists */
 	struct llist_head access_lists;
 
+	/* paging groups */
+	struct llist_head paging_groups;
+
 	/* known BSC's */
 	struct llist_head bsc_configs;
 	int num_bsc;
@@ -227,8 +250,8 @@ struct bsc_nat {
 	int mgcp_length;
 
 	/* msc things */
-	char *msc_ip;
-	int msc_port;
+	struct llist_head dests;
+	struct bsc_msc_dest *main_dest;
 	struct bsc_msc_connection *msc_con;
 	char *token;
 
@@ -244,18 +267,35 @@ struct bsc_nat {
 
 	/* number rewriting */
 	char *num_rewr_name;
-	struct msg_entries *num_rewr;
+	struct llist_head num_rewr;
+
+	char *smsc_rewr_name;
+	struct llist_head smsc_rewr;
+	char *tpdest_match_name;
+	struct llist_head tpdest_match;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;
 	char *ussd_query;
+	regex_t ussd_query_re;
 	char *ussd_token;
 	char *ussd_local;
-	struct bsc_fd ussd_listen;
+	struct osmo_fd ussd_listen;
 	struct bsc_nat_ussd_con *ussd_con;
+
+	/* for maintainenance */
+	int blocked;
 
 	/* statistics */
 	struct bsc_nat_statistics stats;
+};
+
+struct bsc_nat_ussd_con {
+	struct osmo_wqueue queue;
+	struct bsc_nat *nat;
+	int authorized;
+
+	struct osmo_timer_list auth_timeout;
 };
 
 /* create and init the structures */
@@ -285,7 +325,7 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg);
  */
 int bsc_nat_filter_ipa(int direction, struct msgb *msg, struct bsc_nat_parsed *parsed);
 int bsc_nat_vty_init(struct bsc_nat *nat);
-struct bsc_connection *bsc_nat_find_bsc(struct bsc_nat *nat, struct msgb *msg, int *_lac);
+int bsc_nat_find_paging(struct msgb *msg, const uint8_t **,int *len);
 
 /**
  * Content filtering.
@@ -326,12 +366,12 @@ uint32_t bsc_mgcp_extract_ci(const char *resp);
 
 
 int bsc_write(struct bsc_connection *bsc, struct msgb *msg, int id);
-int bsc_do_write(struct write_queue *queue, struct msgb *msg, int id);
-int bsc_write_msg(struct write_queue *queue, struct msgb *msg);
-int bsc_write_cb(struct bsc_fd *bfd, struct msgb *msg);
+int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int id);
+int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg);
+int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg);
 
 /* IMSI allow/deny handling */
-void bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv);
+int bsc_parse_reg(void *ctx, regex_t *reg, char **imsi, int argc, const char **argv) __attribute__ ((warn_unused_result));
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_find(struct bsc_nat *nat, const char *name);
 struct bsc_nat_acc_lst *bsc_nat_acc_lst_get(struct bsc_nat *nat, const char *name);
 void bsc_nat_acc_lst_delete(struct bsc_nat_acc_lst *lst);
@@ -350,6 +390,27 @@ int bsc_ussd_init(struct bsc_nat *nat);
 int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed, struct msgb *msg);
 int bsc_close_ussd_connections(struct bsc_nat *nat);
 
-struct msgb *bsc_nat_rewrite_setup(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
+struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct bsc_nat_parsed *, const char *imsi);
+
+/** paging group handling */
+struct bsc_nat_paging_group *bsc_nat_paging_group_num(struct bsc_nat *nat, int group);
+struct bsc_nat_paging_group *bsc_nat_paging_group_create(struct bsc_nat *nat, int group);
+void bsc_nat_paging_group_delete(struct bsc_nat_paging_group *);
+void bsc_nat_paging_group_add_lac(struct bsc_nat_paging_group *grp, int lac);
+void bsc_nat_paging_group_del_lac(struct bsc_nat_paging_group *grp, int lac);
+
+/**
+ * Number rewriting support below
+ */
+struct bsc_nat_num_rewr_entry {
+	struct llist_head list;
+
+	regex_t msisdn_reg;
+	regex_t num_reg;
+
+	char *replace;
+};
+
+void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
 
 #endif

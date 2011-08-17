@@ -1,8 +1,8 @@
 /* USSD Filter Code */
 
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2011 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -25,24 +25,16 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/socket.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
-#include <osmocore/gsm0480.h>
-#include <osmocore/talloc.h>
-#include <osmocore/tlv.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
+#include <osmocom/gsm/gsm0480.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <osmocom/sccp/sccp.h>
 
 #include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
-
-struct bsc_nat_ussd_con {
-	struct write_queue queue;
-	struct bsc_nat *nat;
-	int authorized;
-
-	struct timer_list auth_timeout;
-};
 
 static void ussd_auth_con(struct tlv_parsed *, struct bsc_nat_ussd_con *);
 
@@ -66,9 +58,9 @@ static void bsc_nat_ussd_destroy(struct bsc_nat_ussd_con *con)
 	}
 
 	close(con->queue.bfd.fd);
-	bsc_unregister_fd(&con->queue.bfd);
-	bsc_del_timer(&con->auth_timeout);
-	write_queue_clear(&con->queue);
+	osmo_fd_unregister(&con->queue.bfd);
+	osmo_timer_del(&con->auth_timeout);
+	osmo_wqueue_clear(&con->queue);
 	talloc_free(con);
 }
 
@@ -103,7 +95,7 @@ static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 	return 0;
 }
 
-static int ussd_read_cb(struct bsc_fd *bfd)
+static int ussd_read_cb(struct osmo_fd *bfd)
 {
 	int error;
 	struct bsc_nat_ussd_con *conn = bfd->data;
@@ -117,15 +109,21 @@ static int ussd_read_cb(struct bsc_fd *bfd)
 	}
 
 	LOGP(DNAT, LOGL_NOTICE, "MSG from USSD: %s proto: %d\n",
-		hexdump(msg->data, msg->len), msg->l2h[0]);
+		osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 	hh = (struct ipaccess_head *) msg->data;
 
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
 		if (msg->l2h[0] == IPAC_MSGT_ID_RESP) {
 			struct tlv_parsed tvp;
-			ipaccess_idtag_parse(&tvp,
+			int ret;
+			ret = ipaccess_idtag_parse(&tvp,
 					     (unsigned char *) msg->l2h + 2,
 					     msgb_l2len(msg) - 2);
+			if (ret < 0) {
+				LOGP(DNAT, LOGL_ERROR, "ignoring IPA response "
+					"message with malformed TLVs\n");
+				return ret;
+			}
 			if (TLVP_PRESENT(&tvp, IPAC_IDTAG_UNITNAME))
 				ussd_auth_con(&tvp, conn);
 		}
@@ -170,7 +168,7 @@ static void ussd_auth_con(struct tlv_parsed *tvp, struct bsc_nat_ussd_con *conn)
 		bsc_nat_ussd_destroy(conn->nat->ussd_con);
 
 	LOGP(DNAT, LOGL_ERROR, "USSD token specified. USSD provider is connected.\n");
-	bsc_del_timer(&conn->auth_timeout);
+	osmo_timer_del(&conn->auth_timeout);
 	conn->authorized = 1;
 	conn->nat->ussd_con = conn;
 }
@@ -181,7 +179,7 @@ static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
 
 	conn->auth_timeout.data = conn;
 	conn->auth_timeout.cb = ussd_auth_cb;
-	bsc_schedule_timer(&conn->auth_timeout, conn->nat->auth_timeout, 0);
+	osmo_timer_schedule(&conn->auth_timeout, conn->nat->auth_timeout, 0);
 
 	msg = msgb_alloc_headroom(4096, 128, "auth message");
 	if (!msg) {
@@ -193,7 +191,7 @@ static void ussd_start_auth(struct bsc_nat_ussd_con *conn)
 	bsc_do_write(&conn->queue, msg, IPAC_PROTO_IPACCESS);
 }
 
-static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
+static int ussd_listen_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	struct bsc_nat_ussd_con *conn;
 	struct bsc_nat *nat;
@@ -211,7 +209,7 @@ static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
 	}
 
 	nat = (struct bsc_nat *) bfd->data;
-	counter_inc(nat->stats.ussd.reconn);
+	osmo_counter_inc(nat->stats.ussd.reconn);
 
 	conn = bsc_nat_ussd_alloc(nat);
 	if (!conn) {
@@ -220,14 +218,14 @@ static int ussd_listen_cb(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	write_queue_init(&conn->queue, 10);
+	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
 	conn->queue.bfd.when = BSC_FD_READ;
 	conn->queue.read_cb = ussd_read_cb;
 	conn->queue.write_cb = bsc_write_cb;
 
-	if (bsc_register_fd(&conn->queue.bfd) < 0) {
+	if (osmo_fd_register(&conn->queue.bfd) < 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to register USSD fd.\n");
 		bsc_nat_ussd_destroy(conn);
 		return -1;
@@ -251,7 +249,31 @@ int bsc_ussd_init(struct bsc_nat *nat)
 
 	nat->ussd_listen.data = nat;
 	return make_sock(&nat->ussd_listen, IPPROTO_TCP,
-			 ntohl(addr.s_addr), 5001, ussd_listen_cb);
+			 ntohl(addr.s_addr), 5001, 0, ussd_listen_cb, nat);
+}
+
+static int forward_ussd_simple(struct sccp_connections *con, struct msgb *input)
+{
+	struct msgb *copy;
+	struct bsc_nat_ussd_con *ussd;
+
+	if (!con->bsc->nat->ussd_con)
+		return -1;
+
+	copy = msgb_alloc_headroom(4096, 128, "forward bts");
+	if (!copy) {
+		LOGP(DNAT, LOGL_ERROR, "Allocation failed, not forwarding.\n");
+		return -1;
+	}
+
+	/* copy the data into the copy */
+	copy->l2h = msgb_put(copy, msgb_l2len(input));
+	memcpy(copy->l2h, input->l2h, msgb_l2len(input));
+
+	/* send it out */
+	ussd = con->bsc->nat->ussd_con;
+	bsc_do_write(&ussd->queue, copy, IPAC_PROTO_SCCP);
+	return 0;
 }
 
 static int forward_ussd(struct sccp_connections *con, const struct ussd_request *req,
@@ -303,6 +325,8 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 {
 	uint32_t len;
 	uint8_t msg_type;
+	uint8_t proto;
+	uint8_t ti;
 	struct gsm48_hdr *hdr48;
 	struct bsc_nat_acc_lst *lst;
 	struct ussd_request req;
@@ -316,6 +340,10 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 		return 0;
 
 	if (!con->imsi)
+		return 0;
+
+	/* We have not verified the IMSI yet */
+	if (!con->authorized)
 		return 0;
 
 	if (!con->bsc->nat->ussd_lst_name)
@@ -333,31 +361,47 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 	if (!hdr48)
 		return 0;
 
+	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (hdr48->proto_discr != GSM48_PDISC_NC_SS || msg_type != GSM0480_MTYPE_REGISTER)
+	ti = (hdr48->proto_discr & 0x70) >> 4;
+	if (proto != GSM48_PDISC_NC_SS)
 		return 0;
 
-	/* now check if it is a IMSI we care about */
-	lst = bsc_nat_acc_lst_find(con->bsc->nat, con->bsc->nat->ussd_lst_name);
-	if (!lst)
-		return 0;
+	if (msg_type == GSM0480_MTYPE_REGISTER) {
 
-	if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
-		return 0;
+		/* now check if it is a IMSI we care about */
+		lst = bsc_nat_acc_lst_find(con->bsc->nat,
+					   con->bsc->nat->ussd_lst_name);
+		if (!lst)
+			return 0;
 
-	/* now decode the message and see if we really want to handle it */
-	memset(&req, 0, sizeof(req));
-	if (gsm0480_decode_ussd_request(hdr48, len, &req) != 1)
-		return 0;
-	if (req.text[0] == 0xff)
-		return 0;
+		if (bsc_nat_lst_check_allow(lst, con->imsi) != 0)
+			return 0;
 
-	if (strcmp(req.text, con->bsc->nat->ussd_query) != 0)
-		return 0;
+		/* now decode the message and see if we really want to handle it */
+		memset(&req, 0, sizeof(req));
+		if (gsm0480_decode_ussd_request(hdr48, len, &req) != 1)
+			return 0;
+		if (req.text[0] == 0xff)
+			return 0;
 
-	/* found a USSD query for our subscriber */
-	LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
-	if (forward_ussd(con, &req, msg) != 0)
-		return 0;
-	return 1;
+		if (regexec(&con->bsc->nat->ussd_query_re,
+			    req.text, 0, NULL, 0) == REG_NOMATCH)
+			return 0;
+
+		/* found a USSD query for our subscriber */
+		LOGP(DNAT, LOGL_NOTICE, "Found USSD query for %s\n", con->imsi);
+		con->ussd_ti[ti] = 1;
+		if (forward_ussd(con, &req, msg) != 0)
+			return 0;
+		return 1;
+	} else if (msg_type == GSM0480_MTYPE_FACILITY && con->ussd_ti[ti]) {
+		LOGP(DNAT, LOGL_NOTICE, "Forwarding message part of TI: %d %s\n",
+		     ti, con->imsi);
+		if (forward_ussd_simple(con, msg) != 0)
+			return 0;
+		return 1;
+	}
+
+	return 0;
 }

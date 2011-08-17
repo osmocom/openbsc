@@ -25,9 +25,10 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc_data.h>
+#include <openbsc/ipaccess.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/protocol/gsm_12_21.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -68,7 +69,7 @@ static void send_resp(struct osmo_bsc_rf_conn *conn, char send)
 	msg->l2h = msgb_put(msg, 1);
 	msg->l2h[0] = send;
 
-	if (write_queue_enqueue(&conn->queue, msg) != 0) {
+	if (osmo_wqueue_enqueue(&conn->queue, msg) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the answer.\n");
 		msgb_free(msg);
 		return;
@@ -95,8 +96,8 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
 		struct gsm_bts_trx *trx;
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->nm_state.availability == NM_AVSTATE_OK &&
-			    trx->nm_state.operational != NM_STATE_LOCKED) {
+			if (trx->mo.nm_state.availability == NM_AVSTATE_OK &&
+			    trx->mo.nm_state.operational != NM_STATE_LOCKED) {
 					send = RF_CMD_ON;
 					break;
 			}
@@ -119,9 +120,9 @@ static void rf_check_cb(void *_data)
 			continue;
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
-			if (trx->nm_state.availability != NM_AVSTATE_OK ||
-			    trx->nm_state.operational != NM_OPSTATE_ENABLED ||
-			    trx->nm_state.administrative != NM_STATE_UNLOCKED) {
+			if (trx->mo.nm_state.availability != NM_AVSTATE_OK ||
+			    trx->mo.nm_state.operational != NM_OPSTATE_ENABLED ||
+			    trx->mo.nm_state.administrative != NM_STATE_UNLOCKED) {
 				LOGP(DNM, LOGL_ERROR, "RF activation failed. Starting again.\n");
 				ipaccess_drop_oml(bts);
 				break;
@@ -136,7 +137,7 @@ static void send_signal(struct osmo_bsc_rf *rf, int val)
 	sig.net = rf->gsm_network;
 
 	rf->policy = val;
-	dispatch_signal(SS_RF, val, &sig);
+	osmo_signal_dispatch(SS_RF, val, &sig);
 }
 
 static int switch_rf_off(struct osmo_bsc_rf *rf)
@@ -159,7 +160,7 @@ static int enter_grace(struct osmo_bsc_rf *rf)
 {
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
-	bsc_schedule_timer(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
+	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
 	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
 	     rf->gsm_network->msc_data->mid_call_timeout);
 
@@ -174,26 +175,26 @@ static void rf_delay_cmd_cb(void *data)
 	switch (rf->last_request) {
 	case RF_CMD_D_OFF:
 		rf->last_state_command = "RF Direct Off";
-		bsc_del_timer(&rf->rf_check);
-		bsc_del_timer(&rf->grace_timeout);
+		osmo_timer_del(&rf->rf_check);
+		osmo_timer_del(&rf->grace_timeout);
 		switch_rf_off(rf);
 		break;
 	case RF_CMD_ON:
 		rf->last_state_command = "RF Direct On";
-		bsc_del_timer(&rf->grace_timeout);
+		osmo_timer_del(&rf->grace_timeout);
 		lock_each_trx(rf->gsm_network, 0);
 		send_signal(rf, S_RF_ON);
-		bsc_schedule_timer(&rf->rf_check, 3, 0);
+		osmo_timer_schedule(&rf->rf_check, 3, 0);
 		break;
 	case RF_CMD_OFF:
 		rf->last_state_command = "RF Scheduled Off";
-		bsc_del_timer(&rf->rf_check);
+		osmo_timer_del(&rf->rf_check);
 		enter_grace(rf);
 		break;
 	}
 }
 
-static int rf_read_cmd(struct bsc_fd *fd)
+static int rf_read_cmd(struct osmo_fd *fd)
 {
 	struct osmo_bsc_rf_conn *conn = fd->data;
 	char buf[1];
@@ -202,9 +203,9 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	rc = read(fd->fd, buf, sizeof(buf));
 	if (rc != sizeof(buf)) {
 		LOGP(DINP, LOGL_ERROR, "Short read %d/%s\n", errno, strerror(errno));
-		bsc_unregister_fd(fd);
+		osmo_fd_unregister(fd);
 		close(fd->fd);
-		write_queue_clear(&conn->queue);
+		osmo_wqueue_clear(&conn->queue);
 		talloc_free(conn);
 		return -1;
 	}
@@ -217,8 +218,8 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	case RF_CMD_ON:
 	case RF_CMD_OFF:
 		conn->rf->last_request = buf[0];
-		if (!bsc_timer_pending(&conn->rf->delay_cmd))
-			bsc_schedule_timer(&conn->rf->delay_cmd, 1, 0);
+		if (!osmo_timer_pending(&conn->rf->delay_cmd))
+			osmo_timer_schedule(&conn->rf->delay_cmd, 1, 0);
 		break;
 	default:
 		conn->rf->last_state_command = "Unknown command";
@@ -229,7 +230,7 @@ static int rf_read_cmd(struct bsc_fd *fd)
 	return 0;
 }
 
-static int rf_write_cmd(struct bsc_fd *fd, struct msgb *msg)
+static int rf_write_cmd(struct osmo_fd *fd, struct msgb *msg)
 {
 	int rc;
 
@@ -242,7 +243,7 @@ static int rf_write_cmd(struct bsc_fd *fd, struct msgb *msg)
 	return 0;
 }
 
-static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
+static int rf_ctl_accept(struct osmo_fd *bfd, unsigned int what)
 {
 	struct osmo_bsc_rf_conn *conn;
 	struct osmo_bsc_rf *rf = bfd->data;
@@ -264,7 +265,7 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 		return -1;
 	}
 
-	write_queue_init(&conn->queue, 10);
+	osmo_wqueue_init(&conn->queue, 10);
 	conn->queue.bfd.data = conn;
 	conn->queue.bfd.fd = fd;
 	conn->queue.bfd.when = BSC_FD_READ | BSC_FD_WRITE;
@@ -272,7 +273,7 @@ static int rf_ctl_accept(struct bsc_fd *bfd, unsigned int what)
 	conn->queue.write_cb = rf_write_cmd;
 	conn->rf = rf;
 
-	if (bsc_register_fd(&conn->queue.bfd) != 0) {
+	if (osmo_fd_register(&conn->queue.bfd) != 0) {
 		close(fd);
 		talloc_free(conn);
 		return -1;
@@ -285,7 +286,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 {
 	unsigned int namelen;
 	struct sockaddr_un local;
-	struct bsc_fd *bfd;
+	struct osmo_fd *bfd;
 	struct osmo_bsc_rf *rf;
 	int rc;
 
@@ -340,7 +341,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	bfd->cb = rf_ctl_accept;
 	bfd->data = rf;
 
-	if (bsc_register_fd(bfd) != 0) {
+	if (osmo_fd_register(bfd) != 0) {
 		LOGP(DINP, LOGL_ERROR, "Failed to register bfd.\n");
 		close(bfd->fd);
 		talloc_free(rf);

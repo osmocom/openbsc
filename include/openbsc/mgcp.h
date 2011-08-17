@@ -23,8 +23,8 @@
 #ifndef OPENBSC_MGCP_H
 #define OPENBSC_MGCP_H
 
-#include <osmocore/msgb.h>
-#include <osmocore/write_queue.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/write_queue.h>
 
 #include "debug.h"
 
@@ -135,7 +135,7 @@ struct mgcp_config {
 	struct in_addr transcoder_in;
 	int transcoder_remote_base;
 
-	struct write_queue gw_fd;
+	struct osmo_wqueue gw_fd;
 
 	struct mgcp_port_range bts_ports;
 	struct mgcp_port_range net_ports;

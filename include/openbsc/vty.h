@@ -35,12 +35,14 @@ enum bsc_vty_node {
 	MSC_NODE,
 	OM2K_NODE,
 	TRUNK_NODE,
+	PGROUP_NODE,
 };
 
 extern int bsc_vty_is_config_node(struct vty *vty, int node);
 extern void bsc_replace_string(void *ctx, char **dst, const char *newstr);
 
-int bsc_vty_init(void);
+struct log_info;
+int bsc_vty_init(const struct log_info *cat);
 int bsc_vty_init_extra(void);
 
 #endif

@@ -1,9 +1,8 @@
 #ifndef _SGSN_H
 #define _SGSN_H
 
-#include <sys/types.h>
 
-#include <osmocore/msgb.h>
+#include <osmocom/core/msgb.h>
 
 #include <openbsc/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
@@ -22,11 +21,11 @@ struct sgsn_instance {
 	char *config_file;
 	struct sgsn_config cfg;
 	/* File descriptor wrappers for LibGTP */
-	struct bsc_fd gtp_fd0;
-	struct bsc_fd gtp_fd1c;
-	struct bsc_fd gtp_fd1u;
+	struct osmo_fd gtp_fd0;
+	struct osmo_fd gtp_fd1c;
+	struct osmo_fd gtp_fd1u;
 	/* Timer for libGTP */
-	struct timer_list gtp_timer;
+	struct osmo_timer_list gtp_timer;
 	/* GSN instance for libgtp */
 	struct gsn_t *gsn;
 };

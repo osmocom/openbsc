@@ -32,9 +32,9 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
 
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 
 #define GSM0808_T10_VALUE    6, 0
 
@@ -47,9 +47,9 @@ static void handle_chan_ack(struct gsm_subscriber_connection *conn, struct bsc_a
 static void handle_chan_nack(struct gsm_subscriber_connection *conn, struct bsc_api *bsc, struct  gsm_lchan *lchan);
 
 /* GSM 08.08 3.2.2.33 */
-static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
+static uint8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 {
-	u_int8_t channel_mode = 0, channel = 0;
+	uint8_t channel_mode = 0, channel = 0;
 
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
@@ -95,7 +95,7 @@ static u_int8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 	return channel_mode << 4 | channel;
 }
 
-static u_int8_t chan_mode_to_speech(struct gsm_lchan *lchan)
+static uint8_t chan_mode_to_speech(struct gsm_lchan *lchan)
 {
 	int mode = 0;
 
@@ -325,7 +325,7 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 	/* we will now start the timer to complete the assignment */
 	conn->T10.cb = assignment_t10_timeout;
 	conn->T10.data = conn;
-	bsc_schedule_timer(&conn->T10, GSM0808_T10_VALUE);
+	osmo_timer_schedule(&conn->T10, GSM0808_T10_VALUE);
 	return 0;
 
 error:
@@ -358,7 +358,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	}
 
 	/* swap channels */
-	bsc_del_timer(&conn->T10);
+	osmo_timer_del(&conn->T10);
 
 	lchan_release(conn->lchan, 0, 1);
 	conn->lchan = conn->secondary_lchan;
@@ -387,7 +387,7 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 	}
 
 	/* stop the timer and release it */
-	bsc_del_timer(&conn->T10);
+	osmo_timer_del(&conn->T10);
 	lchan_release(conn->secondary_lchan, 0, 1);
 	conn->secondary_lchan = NULL;
 
@@ -435,7 +435,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			handle_ass_fail(conn, msg);
 			break;
 		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
-			bsc_del_timer(&conn->T10);
+			osmo_timer_del(&conn->T10);
 			rc = gsm48_rx_rr_modif_ack(msg);
 			if (rc < 0 && api->assign_fail) {
 				api->assign_fail(conn,
@@ -536,7 +536,7 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 	conn->ho_lchan = NULL;
 	conn->bts = NULL;
 
-	bsc_del_timer(&conn->T10);
+	osmo_timer_del(&conn->T10);
 
 	return 0;
 }
@@ -621,7 +621,7 @@ static void handle_release(struct gsm_subscriber_connection *conn,
 	int destruct = 1;
 
 	if (conn->secondary_lchan == lchan) {
-		bsc_del_timer(&conn->T10);
+		osmo_timer_del(&conn->T10);
 		conn->secondary_lchan = NULL;
 
 		bsc->assign_fail(conn,
@@ -671,5 +671,5 @@ static void handle_chan_nack(struct gsm_subscriber_connection *conn,
 
 static __attribute__((constructor)) void on_dso_load_bsc(void)
 {
-	register_signal_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
+	osmo_signal_register_handler(SS_LCHAN, bsc_handle_lchan_signal, NULL);
 }

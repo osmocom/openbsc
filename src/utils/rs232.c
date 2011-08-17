@@ -27,8 +27,8 @@
 #include <termios.h>
 #include <fcntl.h>
 
-#include <osmocore/select.h>
-#include <osmocore/msgb.h>
+#include <osmocom/core/select.h>
+#include <osmocom/core/msgb.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/rs232.h>
@@ -36,7 +36,7 @@
 /* adaption layer from GSM 08.59 + 12.21 to RS232 */
 
 struct serial_handle {
-	struct bsc_fd fd;
+	struct osmo_fd fd;
 	struct llist_head tx_queue;
 
 	struct msgb *rx_msg;
@@ -51,13 +51,13 @@ static struct serial_handle _ser_handle, *ser_handle = &_ser_handle;
 
 #define LAPD_HDR_LEN	10
 
-static int handle_ser_write(struct bsc_fd *bfd);
+static int handle_ser_write(struct osmo_fd *bfd);
 
 /* callback from abis_nm */
 int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 {
 	struct serial_handle *sh = ser_handle;
-	u_int8_t *lapd;
+	uint8_t *lapd;
 	unsigned int len;
 
 	msg->l2h = msg->data;
@@ -88,7 +88,7 @@ int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 }
 
 /* select.c callback in case we can write to the RS232 */
-static int handle_ser_write(struct bsc_fd *bfd)
+static int handle_ser_write(struct osmo_fd *bfd)
 {
 	struct serial_handle *sh = bfd->data;
 	struct msgb *msg;
@@ -100,7 +100,7 @@ static int handle_ser_write(struct bsc_fd *bfd)
 		return 0;
 	}
 
-	DEBUGP(DMI, "RS232 TX: %s\n", hexdump(msg->data, msg->len));
+	DEBUGP(DMI, "RS232 TX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	/* send over serial line */
 	written = write(bfd->fd, msg->data, msg->len);
@@ -119,7 +119,7 @@ static int handle_ser_write(struct bsc_fd *bfd)
 #define SERIAL_ALLOC_SIZE	300
 
 /* select.c callback in case we can read from the RS232 */
-static int handle_ser_read(struct bsc_fd *bfd)
+static int handle_ser_read(struct osmo_fd *bfd)
 {
 	struct serial_handle *sh = bfd->data;
 	struct msgb *msg;
@@ -173,7 +173,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 			if (msg->len > LAPD_HDR_LEN)
 				msg->l2h = msg->data + LAPD_HDR_LEN;
 
-			DEBUGP(DMI, "RS232 RX: %s\n", hexdump(msg->data, msg->len));
+			DEBUGP(DMI, "RS232 RX: %s\n", osmo_hexdump(msg->data, msg->len));
 			rc = handle_serial_msg(msg);
 		}
 	}
@@ -182,7 +182,7 @@ static int handle_ser_read(struct bsc_fd *bfd)
 }
 
 /* select.c callback */
-static int serial_fd_cb(struct bsc_fd *bfd, unsigned int what)
+static int serial_fd_cb(struct osmo_fd *bfd, unsigned int what)
 {
 	int rc = 0;
 
@@ -237,7 +237,7 @@ int rs232_setup(const char *serial_port, unsigned int delay_ms,
 	ser_handle->fd.data = ser_handle;
 	ser_handle->delay_ms = delay_ms;
 	ser_handle->bts = bts;
-	rc = bsc_register_fd(&ser_handle->fd);
+	rc = osmo_fd_register(&ser_handle->fd);
 	if (rc < 0) {
 		fprintf(stderr, "could not register FD: %s\n",
 			strerror(rc));

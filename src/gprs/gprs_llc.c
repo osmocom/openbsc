@@ -22,10 +22,10 @@
 #include <errno.h>
 #include <stdint.h>
 
-#include <osmocore/msgb.h>
-#include <osmocore/linuxlist.h>
-#include <osmocore/timer.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/linuxlist.h>
+#include <osmocom/core/timer.h>
+#include <osmocom/core/talloc.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>

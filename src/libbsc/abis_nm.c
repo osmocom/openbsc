@@ -30,16 +30,16 @@
 #include <time.h>
 #include <limits.h>
 
-#include <sys/types.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
-#include <osmocore/msgb.h>
-#include <osmocore/tlv.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/gsm/abis_nm.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
@@ -48,302 +48,7 @@
 #define OM_HEADROOM_SIZE	128
 #define IPACC_SEGMENT_SIZE	245
 
-/* unidirectional messages from BTS to BSC */
-static const enum abis_nm_msgtype reports[] = {
-	NM_MT_SW_ACTIVATED_REP,
-	NM_MT_TEST_REP,
-	NM_MT_STATECHG_EVENT_REP,
-	NM_MT_FAILURE_EVENT_REP,
-};
-
-/* messages without ACK/NACK */
-static const enum abis_nm_msgtype no_ack_nack[] = {
-	NM_MT_MEAS_RES_REQ,
-	NM_MT_STOP_MEAS,
-	NM_MT_START_MEAS,
-};
-
-/* Messages related to software load */
-static const enum abis_nm_msgtype sw_load_msgs[] = {
-	NM_MT_LOAD_INIT_ACK,
-	NM_MT_LOAD_INIT_NACK,
-	NM_MT_LOAD_SEG_ACK,
-	NM_MT_LOAD_ABORT,
-	NM_MT_LOAD_END_ACK,
-	NM_MT_LOAD_END_NACK,
-	//NM_MT_SW_ACT_REQ,
-	NM_MT_ACTIVATE_SW_ACK,
-	NM_MT_ACTIVATE_SW_NACK,
-	NM_MT_SW_ACTIVATED_REP,
-};
-
-static const enum abis_nm_msgtype nacks[] = {
-	NM_MT_LOAD_INIT_NACK,
-	NM_MT_LOAD_END_NACK,
-	NM_MT_SW_ACT_REQ_NACK,
-	NM_MT_ACTIVATE_SW_NACK,
-	NM_MT_ESTABLISH_TEI_NACK,
-	NM_MT_CONN_TERR_SIGN_NACK,
-	NM_MT_DISC_TERR_SIGN_NACK,
-	NM_MT_CONN_TERR_TRAF_NACK,
-	NM_MT_DISC_TERR_TRAF_NACK,
-	NM_MT_CONN_MDROP_LINK_NACK,
-	NM_MT_DISC_MDROP_LINK_NACK,
-	NM_MT_SET_BTS_ATTR_NACK,
-	NM_MT_SET_RADIO_ATTR_NACK,
-	NM_MT_SET_CHAN_ATTR_NACK,
-	NM_MT_PERF_TEST_NACK,
-	NM_MT_SEND_TEST_REP_NACK,
-	NM_MT_STOP_TEST_NACK,
-	NM_MT_STOP_EVENT_REP_NACK,
-	NM_MT_REST_EVENT_REP_NACK,
-	NM_MT_CHG_ADM_STATE_NACK,
-	NM_MT_CHG_ADM_STATE_REQ_NACK,
-	NM_MT_REP_OUTST_ALARMS_NACK,
-	NM_MT_CHANGEOVER_NACK,
-	NM_MT_OPSTART_NACK,
-	NM_MT_REINIT_NACK,
-	NM_MT_SET_SITE_OUT_NACK,
-	NM_MT_CHG_HW_CONF_NACK,
-	NM_MT_GET_ATTR_NACK,
-	NM_MT_SET_ALARM_THRES_NACK,
-	NM_MT_BS11_BEGIN_DB_TX_NACK,
-	NM_MT_BS11_END_DB_TX_NACK,
-	NM_MT_BS11_CREATE_OBJ_NACK,
-	NM_MT_BS11_DELETE_OBJ_NACK,
-};
-
-static const struct value_string nack_names[] = {
-	{ NM_MT_LOAD_INIT_NACK,		"SOFTWARE LOAD INIT" },
-	{ NM_MT_LOAD_END_NACK,		"SOFTWARE LOAD END" },
-	{ NM_MT_SW_ACT_REQ_NACK,	"SOFTWARE ACTIVATE REQUEST" },
-	{ NM_MT_ACTIVATE_SW_NACK,	"ACTIVATE SOFTWARE" },
-	{ NM_MT_ESTABLISH_TEI_NACK,	"ESTABLISH TEI" },
-	{ NM_MT_CONN_TERR_SIGN_NACK,	"CONNECT TERRESTRIAL SIGNALLING" },
-	{ NM_MT_DISC_TERR_SIGN_NACK,	"DISCONNECT TERRESTRIAL SIGNALLING" },
-	{ NM_MT_CONN_TERR_TRAF_NACK,	"CONNECT TERRESTRIAL TRAFFIC" },
-	{ NM_MT_DISC_TERR_TRAF_NACK,	"DISCONNECT TERRESTRIAL TRAFFIC" },
-	{ NM_MT_CONN_MDROP_LINK_NACK,	"CONNECT MULTI-DROP LINK" },
-	{ NM_MT_DISC_MDROP_LINK_NACK,	"DISCONNECT MULTI-DROP LINK" },
-	{ NM_MT_SET_BTS_ATTR_NACK,	"SET BTS ATTRIBUTE" },
-	{ NM_MT_SET_RADIO_ATTR_NACK,	"SET RADIO ATTRIBUTE" },
-	{ NM_MT_SET_CHAN_ATTR_NACK,	"SET CHANNEL ATTRIBUTE" },
-	{ NM_MT_PERF_TEST_NACK,		"PERFORM TEST" },
-	{ NM_MT_SEND_TEST_REP_NACK,	"SEND TEST REPORT" },
-	{ NM_MT_STOP_TEST_NACK,		"STOP TEST" },
-	{ NM_MT_STOP_EVENT_REP_NACK,	"STOP EVENT REPORT" },
-	{ NM_MT_REST_EVENT_REP_NACK,	"RESET EVENT REPORT" },
-	{ NM_MT_CHG_ADM_STATE_NACK,	"CHANGE ADMINISTRATIVE STATE" },
-	{ NM_MT_CHG_ADM_STATE_REQ_NACK,
-				"CHANGE ADMINISTRATIVE STATE REQUEST" },
-	{ NM_MT_REP_OUTST_ALARMS_NACK,	"REPORT OUTSTANDING ALARMS" },
-	{ NM_MT_CHANGEOVER_NACK,	"CHANGEOVER" },
-	{ NM_MT_OPSTART_NACK,		"OPSTART" },
-	{ NM_MT_REINIT_NACK,		"REINIT" },
-	{ NM_MT_SET_SITE_OUT_NACK,	"SET SITE OUTPUT" },
-	{ NM_MT_CHG_HW_CONF_NACK,	"CHANGE HARDWARE CONFIGURATION" },
-	{ NM_MT_GET_ATTR_NACK,		"GET ATTRIBUTE" },
-	{ NM_MT_SET_ALARM_THRES_NACK,	"SET ALARM THRESHOLD" },
-	{ NM_MT_BS11_BEGIN_DB_TX_NACK,	"BS11 BEGIN DATABASE TRANSMISSION" },
-	{ NM_MT_BS11_END_DB_TX_NACK,	"BS11 END DATABASE TRANSMISSION" },
-	{ NM_MT_BS11_CREATE_OBJ_NACK,	"BS11 CREATE OBJECT" },
-	{ NM_MT_BS11_DELETE_OBJ_NACK,	"BS11 DELETE OBJECT" },
-	{ 0,				NULL }
-};
-
-/* Chapter 9.4.36 */
-static const struct value_string nack_cause_names[] = {
-	/* General Nack Causes */
-	{ NM_NACK_INCORR_STRUCT,	"Incorrect message structure" },
-	{ NM_NACK_MSGTYPE_INVAL,	"Invalid message type value" },
-	{ NM_NACK_OBJCLASS_INVAL,	"Invalid Object class value" },
-	{ NM_NACK_OBJCLASS_NOTSUPP,	"Object class not supported" },
-	{ NM_NACK_BTSNR_UNKN,		"BTS no. unknown" },
-	{ NM_NACK_TRXNR_UNKN,		"Baseband Transceiver no. unknown" },
-	{ NM_NACK_OBJINST_UNKN,		"Object Instance unknown" },
-	{ NM_NACK_ATTRID_INVAL,		"Invalid attribute identifier value" },
-	{ NM_NACK_ATTRID_NOTSUPP,	"Attribute identifier not supported" },
-	{ NM_NACK_PARAM_RANGE,		"Parameter value outside permitted range" },
-	{ NM_NACK_ATTRLIST_INCONSISTENT,"Inconsistency in attribute list" },
-	{ NM_NACK_SPEC_IMPL_NOTSUPP,	"Specified implementation not supported" },
-	{ NM_NACK_CANT_PERFORM,		"Message cannot be performed" },
-	/* Specific Nack Causes */
-	{ NM_NACK_RES_NOTIMPL,		"Resource not implemented" },
-	{ NM_NACK_RES_NOTAVAIL,		"Resource not available" },
-	{ NM_NACK_FREQ_NOTAVAIL,	"Frequency not available" },
-	{ NM_NACK_TEST_NOTSUPP,		"Test not supported" },
-	{ NM_NACK_CAPACITY_RESTR,	"Capacity restrictions" },
-	{ NM_NACK_PHYSCFG_NOTPERFORM,	"Physical configuration cannot be performed" },
-	{ NM_NACK_TEST_NOTINIT,		"Test not initiated" },
-	{ NM_NACK_PHYSCFG_NOTRESTORE,	"Physical configuration cannot be restored" },
-	{ NM_NACK_TEST_NOSUCH,		"No such test" },
-	{ NM_NACK_TEST_NOSTOP,		"Test cannot be stopped" },
-	{ NM_NACK_MSGINCONSIST_PHYSCFG,	"Message inconsistent with physical configuration" },
-	{ NM_NACK_FILE_INCOMPLETE,	"Complete file notreceived" },
-	{ NM_NACK_FILE_NOTAVAIL,	"File not available at destination" },
-	{ NM_NACK_FILE_NOTACTIVATE,	"File cannot be activate" },
-	{ NM_NACK_REQ_NOT_GRANT,	"Request not granted" },
-	{ NM_NACK_WAIT,			"Wait" },
-	{ NM_NACK_NOTH_REPORT_EXIST,	"Nothing reportable existing" },
-	{ NM_NACK_MEAS_NOTSUPP,		"Measurement not supported" },
-	{ NM_NACK_MEAS_NOTSTART,	"Measurement not started" },
-	{ 0,				NULL }
-};
-
-static const char *nack_cause_name(u_int8_t cause)
-{
-	return get_value_string(nack_cause_names, cause);
-}
-
-/* Chapter 9.4.16: Event Type */
-static const struct value_string event_type_names[] = {
-	{ NM_EVT_COMM_FAIL,		"communication failure" },
-	{ NM_EVT_QOS_FAIL,		"quality of service failure" },
-	{ NM_EVT_PROC_FAIL,		"processing failure" },
-	{ NM_EVT_EQUIP_FAIL,		"equipment failure" },
-	{ NM_EVT_ENV_FAIL,		"environment failure" },
-	{ 0,				NULL }
-};
-
-static const char *event_type_name(u_int8_t cause)
-{
-	return get_value_string(event_type_names, cause);
-}
-
-/* Chapter 9.4.63: Perceived Severity */
-static const struct value_string severity_names[] = {
-	{ NM_SEVER_CEASED,		"failure ceased" },
-	{ NM_SEVER_CRITICAL,		"critical failure" },
-	{ NM_SEVER_MAJOR,		"major failure" },
-	{ NM_SEVER_MINOR,		"minor failure" },
-	{ NM_SEVER_WARNING,		"warning level failure" },
-	{ NM_SEVER_INDETERMINATE,	"indeterminate failure" },
-	{ 0,				NULL }
-};
-
-static const char *severity_name(u_int8_t cause)
-{
-	return get_value_string(severity_names, cause);
-}
-
-/* Attributes that the BSC can set, not only get, according to Section 9.4 */
-static const enum abis_nm_attr nm_att_settable[] = {
-	NM_ATT_ADD_INFO,
-	NM_ATT_ADD_TEXT,
-	NM_ATT_DEST,
-	NM_ATT_EVENT_TYPE,
-	NM_ATT_FILE_DATA,
-	NM_ATT_GET_ARI,
-	NM_ATT_HW_CONF_CHG,
-	NM_ATT_LIST_REQ_ATTR,
-	NM_ATT_MDROP_LINK,
-	NM_ATT_MDROP_NEXT,
-	NM_ATT_NACK_CAUSES,
-	NM_ATT_OUTST_ALARM,
-	NM_ATT_PHYS_CONF,
-	NM_ATT_PROB_CAUSE,
-	NM_ATT_RAD_SUBC,
-	NM_ATT_SOURCE,
-	NM_ATT_SPEC_PROB,
-	NM_ATT_START_TIME,
-	NM_ATT_TEST_DUR,
-	NM_ATT_TEST_NO,
-	NM_ATT_TEST_REPORT,
-	NM_ATT_WINDOW_SIZE,
-	NM_ATT_SEVERITY,
-	NM_ATT_MEAS_RES,
-	NM_ATT_MEAS_TYPE,
-};
-
-const struct tlv_definition nm_att_tlvdef = {
-	.def = {
-		[NM_ATT_ABIS_CHANNEL] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_ADD_INFO] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_ADD_TEXT] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_ADM_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_ARFCN_LIST]=		{ TLV_TYPE_TL16V },
-		[NM_ATT_AUTON_REPORT] =		{ TLV_TYPE_TV },
-		[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_BCCH_ARFCN] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_BSIC] =			{ TLV_TYPE_TV },
-		[NM_ATT_BTS_AIR_TIMER] =	{ TLV_TYPE_TV },
-		[NM_ATT_CCCH_L_I_P] =		{ TLV_TYPE_TV },
-		[NM_ATT_CCCH_L_T] =		{ TLV_TYPE_TV },
-		[NM_ATT_CHAN_COMB] =		{ TLV_TYPE_TV },
-		[NM_ATT_CONN_FAIL_CRIT] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_DEST] =			{ TLV_TYPE_TL16V },
-		[NM_ATT_EVENT_TYPE] =		{ TLV_TYPE_TV },
-		[NM_ATT_FILE_DATA] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_FILE_ID] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_FILE_VERSION] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_GSM_TIME] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_HSN] =			{ TLV_TYPE_TV },
-		[NM_ATT_HW_CONFIG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_HW_DESC] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_INTAVE_PARAM] =		{ TLV_TYPE_TV },
-		[NM_ATT_INTERF_BOUND] =		{ TLV_TYPE_FIXED, 6 },
-		[NM_ATT_LIST_REQ_ATTR] =	{ TLV_TYPE_TL16V },
-		[NM_ATT_MAIO] =			{ TLV_TYPE_TV },
-		[NM_ATT_MANUF_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_MANUF_THRESH] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_MANUF_ID] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_MAX_TA] =		{ TLV_TYPE_TV },
-		[NM_ATT_MDROP_LINK] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_MDROP_NEXT] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_NACK_CAUSES] =		{ TLV_TYPE_TV },
-		[NM_ATT_NY1] =			{ TLV_TYPE_TV },
-		[NM_ATT_OPER_STATE] =		{ TLV_TYPE_TV },
-		[NM_ATT_OVERL_PERIOD] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_PHYS_CONF] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_POWER_CLASS] =		{ TLV_TYPE_TV },
-		[NM_ATT_POWER_THRESH] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_PROB_CAUSE] =		{ TLV_TYPE_FIXED, 3 },
-		[NM_ATT_RACH_B_THRESH] =	{ TLV_TYPE_TV },
-		[NM_ATT_LDAVG_SLOTS] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_RAD_SUBC] =		{ TLV_TYPE_TV },
-		[NM_ATT_RF_MAXPOWR_R] =		{ TLV_TYPE_TV },
-		[NM_ATT_SITE_INPUTS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SITE_OUTPUTS] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SOURCE] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SPEC_PROB] =		{ TLV_TYPE_TV },
-		[NM_ATT_START_TIME] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_T200] =			{ TLV_TYPE_FIXED, 7 },
-		[NM_ATT_TEI] =			{ TLV_TYPE_TV },
-		[NM_ATT_TEST_DUR] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_TEST_NO] =		{ TLV_TYPE_TV },
-		[NM_ATT_TEST_REPORT] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_VSWR_THRESH] =		{ TLV_TYPE_FIXED, 2 },
-		[NM_ATT_WINDOW_SIZE] = 		{ TLV_TYPE_TV },
-		[NM_ATT_TSC] =			{ TLV_TYPE_TV },
-		[NM_ATT_SW_CONFIG] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_SEVERITY] = 		{ TLV_TYPE_TV },
-		[NM_ATT_GET_ARI] =		{ TLV_TYPE_TL16V },
-		[NM_ATT_HW_CONF_CHG] = 		{ TLV_TYPE_TL16V },
-		[NM_ATT_OUTST_ALARM] =		{ TLV_TYPE_TV },
-		[NM_ATT_MEAS_RES] =		{ TLV_TYPE_TL16V },
-	},
-};
-
-static const enum abis_nm_chan_comb chcomb4pchan[] = {
-	[GSM_PCHAN_CCCH]	= NM_CHANC_mainBCCH,
-	[GSM_PCHAN_CCCH_SDCCH4]	= NM_CHANC_BCCHComb,
-	[GSM_PCHAN_TCH_F]	= NM_CHANC_TCHFull,
-	[GSM_PCHAN_TCH_H]	= NM_CHANC_TCHHalf,
-	[GSM_PCHAN_SDCCH8_SACCH8C] = NM_CHANC_SDCCH,
-	[GSM_PCHAN_PDCH]	= NM_CHANC_IPAC_PDCH,
-	[GSM_PCHAN_TCH_F_PDCH]	= NM_CHANC_IPAC_TCHFull_PDCH,
-	/* FIXME: bounds check */
-};
-
-int abis_nm_chcomb4pchan(enum gsm_phys_chan_config pchan)
-{
-	if (pchan < ARRAY_SIZE(chcomb4pchan))
-		return chcomb4pchan[pchan];
-
-	return -EINVAL;
-}
-
-int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const u_int8_t *buf, int len)
+int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const uint8_t *buf, int len)
 {
 	if (!bts->model)
 		return -EIO;
@@ -373,13 +78,13 @@ static int is_ack_nack(enum abis_nm_msgtype mt)
 /* is this msgtype a report ? */
 static int is_report(enum abis_nm_msgtype mt)
 {
-	return is_in_arr(mt, reports, ARRAY_SIZE(reports));
+	return is_in_arr(mt, abis_nm_reports, ARRAY_SIZE(abis_nm_reports));
 }
 
 #define MT_ACK(x)	(x+1)
 #define MT_NACK(x)	(x+2)
 
-static void fill_om_hdr(struct abis_om_hdr *oh, u_int8_t len)
+static void fill_om_hdr(struct abis_om_hdr *oh, uint8_t len)
 {
 	oh->mdisc = ABIS_OM_MDISC_FOM;
 	oh->placement = ABIS_OM_PLACEMENT_ONLY;
@@ -387,9 +92,9 @@ static void fill_om_hdr(struct abis_om_hdr *oh, u_int8_t len)
 	oh->length = len;
 }
 
-static void fill_om_fom_hdr(struct abis_om_hdr *oh, u_int8_t len,
-			    u_int8_t msg_type, u_int8_t obj_class,
-			    u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr)
+static void fill_om_fom_hdr(struct abis_om_hdr *oh, uint8_t len,
+			    uint8_t msg_type, uint8_t obj_class,
+			    uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr)
 {
 	struct abis_om_fom_hdr *foh =
 			(struct abis_om_fom_hdr *) oh->data;
@@ -438,90 +143,6 @@ static int abis_nm_sendmsg_direct(struct gsm_bts *bts, struct msgb *msg)
 
 static int abis_nm_rcvmsg_sw(struct msgb *mb);
 
-const struct value_string abis_nm_obj_class_names[] = {
-	{ NM_OC_SITE_MANAGER,	"SITE-MANAGER" },
-	{ NM_OC_BTS,		"BTS" },
-	{ NM_OC_RADIO_CARRIER,	"RADIO-CARRIER" },
-	{ NM_OC_BASEB_TRANSC,	"BASEBAND-TRANSCEIVER" },
-	{ NM_OC_CHANNEL,	"CHANNEL" },
-	{ NM_OC_BS11_ADJC,	"ADJC" },
-	{ NM_OC_BS11_HANDOVER,	"HANDOVER" },
-	{ NM_OC_BS11_PWR_CTRL,	"POWER-CONTROL" },
-	{ NM_OC_BS11_BTSE,	"BTSE" },
-	{ NM_OC_BS11_RACK,	"RACK" },
-	{ NM_OC_BS11_TEST,	"TEST" },
-	{ NM_OC_BS11_ENVABTSE,	"ENVABTSE" },
-	{ NM_OC_BS11_BPORT,	"BPORT" },
-	{ NM_OC_GPRS_NSE,	"GPRS-NSE" },
-	{ NM_OC_GPRS_CELL,	"GPRS-CELL" },
-	{ NM_OC_GPRS_NSVC,	"GPRS-NSVC" },
-	{ NM_OC_BS11,		"SIEMENSHW" },
-	{ 0,			NULL }
-};
-
-static const char *obj_class_name(u_int8_t oc)
-{
-	return get_value_string(abis_nm_obj_class_names, oc);
-}
-
-const char *nm_opstate_name(u_int8_t os)
-{
-	switch (os) {
-	case NM_OPSTATE_DISABLED:
-		return "Disabled";
-	case NM_OPSTATE_ENABLED:
-		return "Enabled";
-	case NM_OPSTATE_NULL:
-		return "NULL";
-	default:
-		return "RFU";
-	}
-}
-
-/* Chapter 9.4.7 */
-static const struct value_string avail_names[] = {
-	{ 0, 	"In test" },
-	{ 1,	"Failed" },
-	{ 2,	"Power off" },
-	{ 3,	"Off line" },
-	/* Not used */
-	{ 5,	"Dependency" },
-	{ 6,	"Degraded" },
-	{ 7,	"Not installed" },
-	{ 0xff, "OK" },
-	{ 0,	NULL }
-};
-
-const char *nm_avail_name(u_int8_t avail)
-{
-	return get_value_string(avail_names, avail);
-}
-
-static struct value_string test_names[] = {
-	/* FIXME: standard test names */
-	{ NM_IPACC_TESTNO_CHAN_USAGE, "Channel Usage" },
-	{ NM_IPACC_TESTNO_BCCH_CHAN_USAGE, "BCCH Channel Usage" },
-	{ NM_IPACC_TESTNO_FREQ_SYNC, "Frequency Synchronization" },
-	{ NM_IPACC_TESTNO_BCCH_INFO, "BCCH Info" },
-	{ NM_IPACC_TESTNO_TX_BEACON, "Transmit Beacon" },
-	{ NM_IPACC_TESTNO_SYSINFO_MONITOR, "System Info Monitor" },
-	{ NM_IPACC_TESTNO_BCCCH_MONITOR, "BCCH Monitor" },
-	{ 0, NULL }
-};
-
-const struct value_string abis_nm_adm_state_names[] = {
-	{ NM_STATE_LOCKED,	"Locked" },
-	{ NM_STATE_UNLOCKED,	"Unlocked" },
-	{ NM_STATE_SHUTDOWN,	"Shutdown" },
-	{ NM_STATE_NULL,	"NULL" },
-	{ 0, NULL }
-};
-
-const char *nm_adm_name(u_int8_t adm)
-{
-	return get_value_string(abis_nm_adm_state_names, adm);
-}
-
 int nm_is_running(struct gsm_nm_state *s) {
 	return (s->operational == NM_OPSTATE_ENABLED) && (
 		(s->availability == NM_AVSTATE_OK) ||
@@ -529,177 +150,32 @@ int nm_is_running(struct gsm_nm_state *s) {
 	);
 }
 
-static void debugp_foh(struct abis_om_fom_hdr *foh)
-{
-	DEBUGP(DNM, "OC=%s(%02x) INST=(%02x,%02x,%02x) ",
-		obj_class_name(foh->obj_class), foh->obj_class,
-		foh->obj_inst.bts_nr, foh->obj_inst.trx_nr,
-		foh->obj_inst.ts_nr);
-}
-
-/* obtain the gsm_nm_state data structure for a given object instance */
-static struct gsm_nm_state *
-objclass2nmstate(struct gsm_bts *bts, u_int8_t obj_class,
-		 struct abis_om_obj_inst *obj_inst)
-{
-	struct gsm_bts_trx *trx;
-	struct gsm_nm_state *nm_state = NULL;
-
-	switch (obj_class) {
-	case NM_OC_BTS:
-		nm_state = &bts->nm_state;
-		break;
-	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		nm_state = &trx->nm_state;
-		break;
-	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		nm_state = &trx->bb_transc.nm_state;
-		break;
-	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		if (obj_inst->ts_nr >= TRX_NR_TS)
-			return NULL;
-		nm_state = &trx->ts[obj_inst->ts_nr].nm_state;
-		break;
-	case NM_OC_SITE_MANAGER:
-		nm_state = &bts->site_mgr.nm_state;
-		break;
-	case NM_OC_BS11:
-		switch (obj_inst->bts_nr) {
-		case BS11_OBJ_CCLK:
-			nm_state = &bts->bs11.cclk.nm_state;
-			break;
-		case BS11_OBJ_BBSIG:
-			if (obj_inst->ts_nr > bts->num_trx)
-				return NULL;
-			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-			nm_state = &trx->bs11.bbsig.nm_state;
-			break;
-		case BS11_OBJ_PA:
-			if (obj_inst->ts_nr > bts->num_trx)
-				return NULL;
-			trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-			nm_state = &trx->bs11.pa.nm_state;
-			break;
-		default:
-			return NULL;
-		}
-	case NM_OC_BS11_RACK:
-		nm_state = &bts->bs11.rack.nm_state;
-		break;
-	case NM_OC_BS11_ENVABTSE:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->bs11.envabtse))
-			return NULL;
-		nm_state = &bts->bs11.envabtse[obj_inst->trx_nr].nm_state;
-		break;
-	case NM_OC_GPRS_NSE:
-		nm_state = &bts->gprs.nse.nm_state;
-		break;
-	case NM_OC_GPRS_CELL:
-		nm_state = &bts->gprs.cell.nm_state;
-		break;
-	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
-			return NULL;
-		nm_state = &bts->gprs.nsvc[obj_inst->trx_nr].nm_state;
-		break;
-	}
-	return nm_state;
-}
-
-/* obtain the in-memory data structure of a given object instance */
-static void *
-objclass2obj(struct gsm_bts *bts, u_int8_t obj_class,
-	     struct abis_om_obj_inst *obj_inst)
-{
-	struct gsm_bts_trx *trx;
-	void *obj = NULL;
-
-	switch (obj_class) {
-	case NM_OC_BTS:
-		obj = bts;
-		break;
-	case NM_OC_RADIO_CARRIER:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		obj = trx;
-		break;
-	case NM_OC_BASEB_TRANSC:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		obj = &trx->bb_transc;
-		break;
-	case NM_OC_CHANNEL:
-		if (obj_inst->trx_nr >= bts->num_trx) {
-			DEBUGPC(DNM, "TRX %u does not exist ", obj_inst->trx_nr);
-			return NULL;
-		}
-		trx = gsm_bts_trx_num(bts, obj_inst->trx_nr);
-		if (obj_inst->ts_nr >= TRX_NR_TS)
-			return NULL;
-		obj = &trx->ts[obj_inst->ts_nr];
-		break;
-	case NM_OC_SITE_MANAGER:
-		obj = &bts->site_mgr;
-		break;
-	case NM_OC_GPRS_NSE:
-		obj = &bts->gprs.nse;
-		break;
-	case NM_OC_GPRS_CELL:
-		obj = &bts->gprs.cell;
-		break;
-	case NM_OC_GPRS_NSVC:
-		if (obj_inst->trx_nr >= ARRAY_SIZE(bts->gprs.nsvc))
-			return NULL;
-		obj = &bts->gprs.nsvc[obj_inst->trx_nr];
-		break;
-	}
-	return obj;
-}
-
 /* Update the administrative state of a given object in our in-memory data
  * structures and send an event to the higher layer */
-static int update_admstate(struct gsm_bts *bts, u_int8_t obj_class,
-			   struct abis_om_obj_inst *obj_inst, u_int8_t adm_state)
+static int update_admstate(struct gsm_bts *bts, uint8_t obj_class,
+			   struct abis_om_obj_inst *obj_inst, uint8_t adm_state)
 {
 	struct gsm_nm_state *nm_state, new_state;
 	struct nm_statechg_signal_data nsd;
 
-	nsd.obj = objclass2obj(bts, obj_class, obj_inst);
+	memset(&nsd, 0, sizeof(nsd));
+
+	nsd.obj = gsm_objclass2obj(bts, obj_class, obj_inst);
 	if (!nsd.obj)
 		return -EINVAL;
-	nm_state = objclass2nmstate(bts, obj_class, obj_inst);
+	nm_state = gsm_objclass2nmstate(bts, obj_class, obj_inst);
 	if (!nm_state)
 		return -1;
 
 	new_state = *nm_state;
 	new_state.administrative = adm_state;
 
+	nsd.bts = bts;
 	nsd.obj_class = obj_class;
 	nsd.old_state = nm_state;
 	nsd.new_state = &new_state;
 	nsd.obj_inst = obj_inst;
-	dispatch_signal(SS_NM, S_NM_STATECHG_ADM, &nsd);
+	osmo_signal_dispatch(SS_NM, S_NM_STATECHG_ADM, &nsd);
 
 	nm_state->administrative = adm_state;
 
@@ -718,7 +194,7 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 
 	memset(&new_state, 0, sizeof(new_state));
 
-	nm_state = objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
+	nm_state = gsm_objclass2nmstate(bts, foh->obj_class, &foh->obj_inst);
 	if (!nm_state) {
 		DEBUGPC(DNM, "unknown object class\n");
 		return -EINVAL;
@@ -729,20 +205,24 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 	abis_nm_tlv_parse(&tp, bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_OPER_STATE)) {
 		new_state.operational = *TLVP_VAL(&tp, NM_ATT_OPER_STATE);
-		DEBUGPC(DNM, "OP_STATE=%s ", nm_opstate_name(new_state.operational));
+		DEBUGPC(DNM, "OP_STATE=%s ",
+			abis_nm_opstate_name(new_state.operational));
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_AVAIL_STATUS)) {
 		if (TLVP_LEN(&tp, NM_ATT_AVAIL_STATUS) == 0)
 			new_state.availability = 0xff;
 		else
 			new_state.availability = *TLVP_VAL(&tp, NM_ATT_AVAIL_STATUS);
-		DEBUGPC(DNM, "AVAIL=%s(%02x) ", nm_avail_name(new_state.availability),
+		DEBUGPC(DNM, "AVAIL=%s(%02x) ",
+			abis_nm_avail_name(new_state.availability),
 			new_state.availability);
 	} else
 		new_state.availability = 0xff;
 	if (TLVP_PRESENT(&tp, NM_ATT_ADM_STATE)) {
 		new_state.administrative = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
-		DEBUGPC(DNM, "ADM=%2s ", nm_adm_name(new_state.administrative));
+		DEBUGPC(DNM, "ADM=%2s ",
+			get_value_string(abis_nm_adm_state_names,
+					 new_state.administrative));
 	}
 	DEBUGPC(DNM, "\n");
 
@@ -752,12 +232,13 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 		/* Update the operational state of a given object in our in-memory data
  		* structures and send an event to the higher layer */
 		struct nm_statechg_signal_data nsd;
-		nsd.obj = objclass2obj(bts, foh->obj_class, &foh->obj_inst);
+		nsd.obj = gsm_objclass2obj(bts, foh->obj_class, &foh->obj_inst);
 		nsd.obj_class = foh->obj_class;
 		nsd.old_state = nm_state;
 		nsd.new_state = &new_state;
 		nsd.obj_inst = &foh->obj_inst;
-		dispatch_signal(SS_NM, S_NM_STATECHG_OPER, &nsd);
+		nsd.bts = bts;
+		osmo_signal_dispatch(SS_NM, S_NM_STATECHG_OPER, &nsd);
 		nm_state->operational = new_state.operational;
 		nm_state->availability = new_state.availability;
 		if (nm_state->administrative == 0)
@@ -783,28 +264,30 @@ static int rx_fail_evt_rep(struct msgb *mb)
 	const uint8_t *p_val;
 	char *p_text;
 
-	DEBUGPC(DNM, "Failure Event Report ");
+	LOGPC(DNM, LOGL_ERROR, "Failure Event Report ");
 	
 	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
-		DEBUGPC(DNM, "Type=%s ", event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
+		LOGPC(DNM, LOGL_ERROR, "Type=%s ",
+		      abis_nm_event_type_name(*TLVP_VAL(&tp, NM_ATT_EVENT_TYPE)));
 	if (TLVP_PRESENT(&tp, NM_ATT_SEVERITY))
-		DEBUGPC(DNM, "Severity=%s ", severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
+		LOGPC(DNM, LOGL_ERROR, "Severity=%s ",
+		      abis_nm_severity_name(*TLVP_VAL(&tp, NM_ATT_SEVERITY)));
 	if (TLVP_PRESENT(&tp, NM_ATT_PROB_CAUSE)) {
 		p_val = TLVP_VAL(&tp, NM_ATT_PROB_CAUSE);
-		DEBUGPC(DNM, "Probable cause= %02X %02X %02X ", p_val[0], p_val[1], p_val[2]);
+		LOGPC(DNM, LOGL_ERROR, "Probable cause= %02X %02X %02X ", p_val[0], p_val[1], p_val[2]);
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_ADD_TEXT)) {
 		p_val = TLVP_VAL(&tp, NM_ATT_ADD_TEXT);
 		p_text = talloc_strndup(tall_bsc_ctx, (const char *) p_val, TLVP_LEN(&tp, NM_ATT_ADD_TEXT));
 		if (p_text) {
-			DEBUGPC(DNM, "Additional Text=%s ", p_text);
+			LOGPC(DNM, LOGL_ERROR, "Additional Text=%s ", p_text);
 			talloc_free(p_text);
 		}
 	}
 
-	DEBUGPC(DNM, "\n");
+	LOGPC(DNM, LOGL_ERROR, "\n");
 
 	return 0;
 }
@@ -812,9 +295,9 @@ static int rx_fail_evt_rep(struct msgb *mb)
 static int abis_nm_rcvmsg_report(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	u_int8_t mt = foh->msg_type;
+	uint8_t mt = foh->msg_type;
 
-	debugp_foh(foh);
+	abis_nm_debugp_foh(DNM, foh);
 
 	//nmh->cfg->report_cb(mb, foh);
 
@@ -824,15 +307,15 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 		break;
 	case NM_MT_SW_ACTIVATED_REP:
 		DEBUGPC(DNM, "Software Activated Report\n");
-		dispatch_signal(SS_NM, S_NM_SW_ACTIV_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_SW_ACTIV_REP, mb);
 		break;
 	case NM_MT_FAILURE_EVENT_REP:
 		rx_fail_evt_rep(mb);
-		dispatch_signal(SS_NM, S_NM_FAIL_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_FAIL_REP, mb);
 		break;
 	case NM_MT_TEST_REP:
 		DEBUGPC(DNM, "Test Report\n");
-		dispatch_signal(SS_NM, S_NM_TEST_REP, mb);
+		osmo_signal_dispatch(SS_NM, S_NM_TEST_REP, mb);
 		break;
 	default:
 		DEBUGPC(DNM, "reporting NM MT 0x%02x\n", mt);
@@ -844,13 +327,13 @@ static int abis_nm_rcvmsg_report(struct msgb *mb)
 }
 
 /* Activate the specified software into the BTS */
-static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1,
-			     u_int8_t i2, const u_int8_t *sw_desc, u_int8_t swdesc_len)
+static int ipacc_sw_activate(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0, uint8_t i1,
+			     uint8_t i2, const uint8_t *sw_desc, uint8_t swdesc_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = swdesc_len;
-	u_int8_t *trailer;
+	uint8_t len = swdesc_len;
+	uint8_t *trailer;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_ACTIVATE_SW, obj_class, i0, i1, i2);
@@ -861,7 +344,7 @@ static int ipacc_sw_activate(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i
 	return abis_nm_sendmsg(bts, msg);
 }
 
-static int abis_nm_parse_sw_descr(const u_int8_t *sw_descr, int sw_descr_len)
+static int abis_nm_parse_sw_descr(const uint8_t *sw_descr, int sw_descr_len)
 {
 	static const struct tlv_definition sw_descr_def = {
 		.def = {
@@ -870,9 +353,9 @@ static int abis_nm_parse_sw_descr(const u_int8_t *sw_descr, int sw_descr_len)
 		},
 	};
 
-	u_int8_t tag;
-	u_int16_t tag_len;
-	const u_int8_t *val;
+	uint8_t tag;
+	uint16_t tag_len;
+	const uint8_t *val;
 	int ofs = 0, len;
 
 	/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
@@ -909,10 +392,10 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct tlv_parsed tp;
-	const u_int8_t *sw_config;
+	const uint8_t *sw_config;
 	int ret, sw_config_len, sw_descr_len;
 
-	debugp_foh(foh);
+	abis_nm_debugp_foh(DNM, foh);
 
 	DEBUGPC(DNM, "SW Activate Request: ");
 
@@ -931,7 +414,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "SW config not found! Can't continue.\n");
 		return -EINVAL;
 	} else {
-		DEBUGP(DNM, "Found SW config: %s\n", hexdump(sw_config, sw_config_len));
+		DEBUGP(DNM, "Found SW config: %s\n", osmo_hexdump(sw_config, sw_config_len));
 	}
 
 		/* Use the first SW_DESCR present in SW config */
@@ -952,7 +435,7 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
 	struct tlv_parsed tp;
-	u_int8_t adm_state;
+	uint8_t adm_state;
 
 	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
@@ -973,12 +456,12 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) &&
 	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) >= 1) {
-		u_int8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
+		uint8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
 		DEBUGPC(DNM, "LOG%s ", onoff ? "ON" : "OFF");
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV) &&
 	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV) >= 1) {
-		u_int8_t level = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV);
+		uint8_t level = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_USER_ACC_LEV);
 		DEBUGPC(DNM, "Level=%u ", level);
 	}
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_USER_NAME) &&
@@ -1013,34 +496,34 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	u_int8_t mt = foh->msg_type;
+	uint8_t mt = foh->msg_type;
 	int ret = 0;
 
 	/* check for unsolicited message */
 	if (is_report(mt))
 		return abis_nm_rcvmsg_report(mb);
 
-	if (is_in_arr(mt, sw_load_msgs, ARRAY_SIZE(sw_load_msgs)))
+	if (is_in_arr(mt, abis_nm_sw_load_msgs, ARRAY_SIZE(abis_nm_sw_load_msgs)))
 		return abis_nm_rcvmsg_sw(mb);
 
-	if (is_in_arr(mt, nacks, ARRAY_SIZE(nacks))) {
+	if (is_in_arr(mt, abis_nm_nacks, ARRAY_SIZE(abis_nm_nacks))) {
 		struct nm_nack_signal_data nack_data;
 		struct tlv_parsed tp;
 
-		debugp_foh(foh);
+		abis_nm_debugp_foh(DNM, foh);
 
-		DEBUGPC(DNM, "%s NACK ", get_value_string(nack_names, mt));
+		DEBUGPC(DNM, "%s NACK ", abis_nm_nack_name(mt));
 
 		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, "CAUSE=%s\n",
-				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
 
 		nack_data.msg = mb;
 		nack_data.mt = mt;
-		dispatch_signal(SS_NM, S_NM_NACK, &nack_data);
+		osmo_signal_dispatch(SS_NM, S_NM_NACK, &nack_data);
 		abis_nm_queue_send_next(mb->trx->bts);
 		return 0;
 	}
@@ -1075,10 +558,10 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		DEBUGP(DNM, "CONN MDROP LINK ACK\n");
 		break;
 	case NM_MT_IPACC_RESTART_ACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_ACK, NULL);
 		break;
 	case NM_MT_IPACC_RESTART_NACK:
-		dispatch_signal(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_RESTART_NACK, NULL);
 		break;
 	case NM_MT_SET_BTS_ATTR_ACK:
 		/* The HSL wants an OPSTART _after_ the SI has been set */
@@ -1134,7 +617,7 @@ int abis_nm_rcvmsg(struct msgb *msg)
 		return -EINVAL;
 	}
 #if 0
-	unsigned int l2_len = msg->tail - (u_int8_t *)msgb_l2(msg);
+	unsigned int l2_len = msg->tail - (uint8_t *)msgb_l2(msg);
 	unsigned int hlen = sizeof(*oh) + sizeof(struct abis_om_fom_hdr);
 	if (oh->length + hlen > l2_len) {
 		LOGP(DNM, LOGL_ERROR, "ABIS OML truncated message (%u > %u)\n",
@@ -1215,17 +698,17 @@ struct abis_nm_sw {
 	int forced;
 
 	/* this will become part of the SW LOAD INITIATE */
-	u_int8_t obj_class;
-	u_int8_t obj_instance[3];
+	uint8_t obj_class;
+	uint8_t obj_instance[3];
 
-	u_int8_t file_id[255];
-	u_int8_t file_id_len;
+	uint8_t file_id[255];
+	uint8_t file_id_len;
 
-	u_int8_t file_version[255];
-	u_int8_t file_version_len;
+	uint8_t file_version[255];
+	uint8_t file_version_len;
 
-	u_int8_t window_size;
-	u_int8_t seg_in_window;
+	uint8_t window_size;
+	uint8_t seg_in_window;
 
 	int fd;
 	FILE *stream;
@@ -1256,7 +739,7 @@ static int sw_load_init(struct abis_nm_sw *sw)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = 3*2 + sw->file_id_len + sw->file_version_len;
+	uint8_t len = 3*2 + sw->file_id_len + sw->file_version_len;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_LOAD_INIT, sw->obj_class,
@@ -1293,7 +776,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 	char seg_buf[256];
 	char *line_buf = seg_buf+2;
 	unsigned char *tlv;
-	u_int8_t len;
+	uint8_t len;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 
@@ -1314,7 +797,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 
 		len = strlen(line_buf) + 2;
 		tlv = msgb_put(msg, TLV_GROSS_LEN(len));
-		tlv_put(tlv, NM_ATT_BS11_FILE_DATA, len, (u_int8_t *)seg_buf);
+		tlv_put(tlv, NM_ATT_BS11_FILE_DATA, len, (uint8_t *)seg_buf);
 		/* BS11 wants CR + LF in excess of the TLV length !?! */
 		tlv[1] -= 2;
 
@@ -1322,7 +805,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 		len = strlen(line_buf)+2;
 		break;
 	case GSM_BTS_TYPE_NANOBTS: {
-		static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
+		osmo_static_assert(sizeof(seg_buf) >= IPACC_SEGMENT_SIZE, buffer_big_enough);
 		len = read(sw->fd, &seg_buf, IPACC_SEGMENT_SIZE);
 		if (len < 0) {
 			perror("read failed");
@@ -1333,7 +816,7 @@ static int sw_load_segment(struct abis_nm_sw *sw)
 			sw->last_seg = 1;
 
 		++sw->seg_in_window;
-		msgb_tl16v_put(msg, NM_ATT_IPACC_FILE_DATA, len, (const u_int8_t *) seg_buf);
+		msgb_tl16v_put(msg, NM_ATT_IPACC_FILE_DATA, len, (const uint8_t *) seg_buf);
 		len += 3;
 		break;
 	}
@@ -1355,7 +838,7 @@ static int sw_load_end(struct abis_nm_sw *sw)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
+	uint8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_LOAD_END, sw->obj_class,
@@ -1371,7 +854,7 @@ static int sw_activate(struct abis_nm_sw *sw)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
+	uint8_t len = 2*2 + sw->file_id_len + sw->file_version_len;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, len, NM_MT_ACTIVATE_SW, sw->obj_class,
@@ -1671,7 +1154,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 
 /* Load the specified software into the BTS */
 int abis_nm_software_load(struct gsm_bts *bts, int trx_nr, const char *fname,
-			  u_int8_t win_size, int forced,
+			  uint8_t win_size, int forced,
 			  gsm_cbfn *cbfn, void *cb_data)
 {
 	struct abis_nm_sw *sw = &g_sw;
@@ -1772,8 +1255,8 @@ int abis_nm_software_activate(struct gsm_bts *bts, const char *fname,
 	return sw_activate(sw);
 }
 
-static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
-		       u_int8_t ts_nr, u_int8_t subslot_nr)
+static void fill_nm_channel(struct abis_nm_channel *ch, uint8_t bts_port,
+		       uint8_t ts_nr, uint8_t subslot_nr)
 {
 	ch->attrib = NM_ATT_ABIS_CHANNEL;
 	ch->bts_port = bts_port;
@@ -1781,13 +1264,13 @@ static void fill_nm_channel(struct abis_nm_channel *ch, u_int8_t bts_port,
 	ch->subslot = subslot_nr;	
 }
 
-int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
-			  u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot,
-			  u_int8_t tei)
+int abis_nm_establish_tei(struct gsm_bts *bts, uint8_t trx_nr,
+			  uint8_t e1_port, uint8_t e1_timeslot, uint8_t e1_subslot,
+			  uint8_t tei)
 {
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
-	u_int8_t len = sizeof(*ch) + 2;
+	uint8_t len = sizeof(*ch) + 2;
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
@@ -1804,7 +1287,7 @@ int abis_nm_establish_tei(struct gsm_bts *bts, u_int8_t trx_nr,
 
 /* connect signalling of one (BTS,TRX) to a particular timeslot on the E1 */
 int abis_nm_conn_terr_sign(struct gsm_bts_trx *trx,
-			   u_int8_t e1_port, u_int8_t e1_timeslot, u_int8_t e1_subslot)
+			   uint8_t e1_port, uint8_t e1_timeslot, uint8_t e1_subslot)
 {
 	struct gsm_bts *bts = trx->bts;
 	struct abis_om_hdr *oh;
@@ -1829,8 +1312,8 @@ int abis_nm_disc_terr_sign(struct abis_nm_h *h, struct abis_om_obj_inst *inst,
 #endif
 
 int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
-			   u_int8_t e1_port, u_int8_t e1_timeslot,
-			   u_int8_t e1_subslot)
+			   uint8_t e1_port, uint8_t e1_timeslot,
+			   uint8_t e1_subslot)
 {
 	struct gsm_bts *bts = ts->trx->bts;
 	struct abis_om_hdr *oh;
@@ -1854,17 +1337,17 @@ int abis_nm_conn_terr_traf(struct gsm_bts_trx_ts *ts,
 #if 0
 int abis_nm_disc_terr_traf(struct abis_nm_h *h, struct abis_om_obj_inst *inst,
 			   struct abis_nm_abis_channel *chan,
-			   u_int8_t subchan)
+			   uint8_t subchan)
 {
 }
 #endif
 
 /* Chapter 8.6.1 */
-int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len)
+int abis_nm_set_bts_attr(struct gsm_bts *bts, uint8_t *attr, int attr_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t *cur;
+	uint8_t *cur;
 
 	DEBUGP(DNM, "Set BTS Attr (bts=%d)\n", bts->nr);
 
@@ -1877,11 +1360,11 @@ int abis_nm_set_bts_attr(struct gsm_bts *bts, u_int8_t *attr, int attr_len)
 }
 
 /* Chapter 8.6.2 */
-int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len)
+int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, uint8_t *attr, int attr_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t *cur;
+	uint8_t *cur;
 
 	DEBUGP(DNM, "Set TRX Attr (bts=%d,trx=%d)\n", trx->bts->nr, trx->nr);
 
@@ -1894,7 +1377,7 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, u_int8_t *attr, int attr_len
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
-static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
+static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 {
 	int i;
 
@@ -2029,13 +1512,13 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 }
 
 /* Chapter 8.6.3 */
-int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
+int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 {
 	struct gsm_bts *bts = ts->trx->bts;
 	struct abis_om_hdr *oh;
-	u_int8_t zero = 0x00;
+	uint8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t len = 2 + 2;
+	uint8_t len = 2 + 2;
 
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		len += 4 + 2 + 2 + 3;
@@ -2075,20 +1558,23 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, u_int8_t chan_comb)
 			}
 		}
 	}
-	msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
+	if (ts->tsc == -1)
+		msgb_tv_put(msg, NM_ATT_TSC, bts->tsc);	/* training sequence */
+	else
+		msgb_tv_put(msg, NM_ATT_TSC, ts->tsc);	/* training sequence */
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		msgb_tlv_put(msg, 0x59, 1, &zero);
 
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
-			u_int8_t i2, u_int8_t i3, int nack, u_int8_t *attr, int att_len)
+int abis_nm_sw_act_req_ack(struct gsm_bts *bts, uint8_t obj_class, uint8_t i1,
+			uint8_t i2, uint8_t i3, int nack, uint8_t *attr, int att_len)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t msgtype = NM_MT_SW_ACT_REQ_ACK;
-	u_int8_t len = att_len;
+	uint8_t msgtype = NM_MT_SW_ACT_REQ_ACK;
+	uint8_t len = att_len;
 
 	if (nack) {
 		len += 2;
@@ -2099,7 +1585,7 @@ int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 	fill_om_fom_hdr(oh, att_len, msgtype, obj_class, i1, i2, i3);
 
 	if (attr) {
-		u_int8_t *ptr = msgb_put(msg, att_len);
+		uint8_t *ptr = msgb_put(msg, att_len);
 		memcpy(ptr, attr, att_len);
 	}
 	if (nack)
@@ -2108,11 +1594,11 @@ int abis_nm_sw_act_req_ack(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i1,
 	return abis_nm_sendmsg_direct(bts, msg);
 }
 
-int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
+int abis_nm_raw_msg(struct gsm_bts *bts, int len, uint8_t *rawmsg)
 {
 	struct msgb *msg = nm_msgb_alloc();
 	struct abis_om_hdr *oh;
-	u_int8_t *data;
+	uint8_t *data;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, sizeof(*oh));
 	fill_om_hdr(oh, len);
@@ -2123,7 +1609,7 @@ int abis_nm_raw_msg(struct gsm_bts *bts, int len, u_int8_t *rawmsg)
 }
 
 /* Siemens specific commands */
-static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
+static int __simple_cmd(struct gsm_bts *bts, uint8_t msg_type)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2136,7 +1622,7 @@ static int __simple_cmd(struct gsm_bts *bts, u_int8_t msg_type)
 }
 
 /* Chapter 8.9.2 */
-int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8_t i1, u_int8_t i2)
+int abis_nm_opstart(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0, uint8_t i1, uint8_t i2)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2144,15 +1630,15 @@ int abis_nm_opstart(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0, u_int8
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
 
-	debugp_foh((struct abis_om_fom_hdr *) oh->data);
+	abis_nm_debugp_foh(DNM, (struct abis_om_fom_hdr *) oh->data);
 	DEBUGPC(DNM, "Sending OPSTART\n");
 
 	return abis_nm_sendmsg(bts, msg);
 }
 
 /* Chapter 8.8.5 */
-int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
-			  u_int8_t i1, u_int8_t i2, enum abis_nm_adm_state adm_state)
+int abis_nm_chg_adm_state(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0,
+			  uint8_t i1, uint8_t i2, enum abis_nm_adm_state adm_state)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2164,12 +1650,12 @@ int abis_nm_chg_adm_state(struct gsm_bts *bts, u_int8_t obj_class, u_int8_t i0,
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0,
-			    u_int8_t e1_port1, u_int8_t ts1)
+int abis_nm_conn_mdrop_link(struct gsm_bts *bts, uint8_t e1_port0, uint8_t ts0,
+			    uint8_t e1_port1, uint8_t ts1)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t *attr;
+	uint8_t *attr;
 
 	DEBUGP(DNM, "CONNECT MDROP LINK E1=(%u,%u) -> E1=(%u, %u)\n",
 		e1_port0, ts0, e1_port1, ts1);
@@ -2192,13 +1678,13 @@ int abis_nm_conn_mdrop_link(struct gsm_bts *bts, u_int8_t e1_port0, u_int8_t ts0
 }
 
 /* Chapter 8.7.1 */
-int abis_nm_perform_test(struct gsm_bts *bts, u_int8_t obj_class,
-			 u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
-			 u_int8_t test_nr, u_int8_t auton_report, struct msgb *msg)
+int abis_nm_perform_test(struct gsm_bts *bts, uint8_t obj_class,
+			 uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
+			 uint8_t test_nr, uint8_t auton_report, struct msgb *msg)
 {
 	struct abis_om_hdr *oh;
 
-	DEBUGP(DNM, "PEFORM TEST %s\n", get_value_string(test_names, test_nr));
+	DEBUGP(DNM, "PEFORM TEST %s\n", abis_nm_test_name(test_nr));
 
 	if (!msg)
 		msg = nm_msgb_alloc();
@@ -2237,12 +1723,12 @@ int abis_nm_bs11_restart(struct gsm_bts *bts)
 
 
 struct bs11_date_time {
-	u_int16_t	year;
-	u_int8_t	month;
-	u_int8_t	day;
-	u_int8_t	hour;
-	u_int8_t	min;
-	u_int8_t	sec;
+	uint16_t	year;
+	uint8_t	month;
+	uint8_t	day;
+	uint8_t	hour;
+	uint8_t	min;
+	uint8_t	sec;
 } __attribute__((packed));
 
 
@@ -2275,12 +1761,12 @@ int abis_nm_bs11_db_transmission(struct gsm_bts *bts, int begin)
 }
 
 int abis_nm_bs11_create_object(struct gsm_bts *bts,
-				enum abis_bs11_objtype type, u_int8_t idx,
-				u_int8_t attr_len, const u_int8_t *attr)
+				enum abis_bs11_objtype type, uint8_t idx,
+				uint8_t attr_len, const uint8_t *attr)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t *cur;
+	uint8_t *cur;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, attr_len, NM_MT_BS11_CREATE_OBJ,
@@ -2292,7 +1778,7 @@ int abis_nm_bs11_create_object(struct gsm_bts *bts,
 }
 
 int abis_nm_bs11_delete_object(struct gsm_bts *bts,
-				enum abis_bs11_objtype type, u_int8_t idx)
+				enum abis_bs11_objtype type, uint8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2304,11 +1790,11 @@ int abis_nm_bs11_delete_object(struct gsm_bts *bts,
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
+int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, uint8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t zero = 0x00;
+	uint8_t zero = 0x00;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 3, NM_MT_BS11_CREATE_OBJ,
@@ -2318,7 +1804,7 @@ int abis_nm_bs11_create_envaBTSE(struct gsm_bts *bts, u_int8_t idx)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
+int abis_nm_bs11_create_bport(struct gsm_bts *bts, uint8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2330,7 +1816,7 @@ int abis_nm_bs11_create_bport(struct gsm_bts *bts, u_int8_t idx)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx)
+int abis_nm_bs11_delete_bport(struct gsm_bts *bts, uint8_t idx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2342,7 +1828,7 @@ int abis_nm_bs11_delete_bport(struct gsm_bts *bts, u_int8_t idx)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-static const u_int8_t sm_attr[] = { NM_ATT_TEI, NM_ATT_ABIS_CHANNEL };
+static const uint8_t sm_attr[] = { NM_ATT_TEI, NM_ATT_ABIS_CHANNEL };
 int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh;
@@ -2357,9 +1843,9 @@ int abis_nm_bs11_get_oml_tei_ts(struct gsm_bts *bts)
 }
 
 /* like abis_nm_conn_terr_traf + set_tei */
-int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port,
-			  u_int8_t e1_timeslot, u_int8_t e1_subslot,
-			  u_int8_t tei)
+int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, uint8_t e1_port,
+			  uint8_t e1_timeslot, uint8_t e1_subslot,
+			  uint8_t tei)
 {
 	struct abis_om_hdr *oh;
 	struct abis_nm_channel *ch;
@@ -2376,7 +1862,7 @@ int abis_nm_bs11_conn_oml_tei(struct gsm_bts *bts, u_int8_t e1_port,
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, u_int8_t level)
+int abis_nm_bs11_set_trx_power(struct gsm_bts_trx *trx, uint8_t level)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2393,7 +1879,7 @@ int abis_nm_bs11_get_trx_power(struct gsm_bts_trx *trx)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t attr = NM_ATT_BS11_TXPWR;
+	uint8_t attr = NM_ATT_BS11_TXPWR;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
@@ -2407,7 +1893,7 @@ int abis_nm_bs11_get_pll_mode(struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t attr[] = { NM_ATT_BS11_PLL_MODE };
+	uint8_t attr[] = { NM_ATT_BS11_PLL_MODE };
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
@@ -2421,7 +1907,7 @@ int abis_nm_bs11_get_cclk(struct gsm_bts *bts)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t attr[] = { NM_ATT_BS11_CCLK_ACCURACY,
+	uint8_t attr[] = { NM_ATT_BS11_CCLK_ACCURACY,
 			    NM_ATT_BS11_CCLK_TYPE };
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
@@ -2433,7 +1919,7 @@ int abis_nm_bs11_get_cclk(struct gsm_bts *bts)
 
 }
 
-//static const u_int8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
+//static const uint8_t bs11_logon_c7[] = { 0x07, 0xd9, 0x01, 0x11, 0x0d, 0x10, 0x20 };
 
 int abis_nm_bs11_factory_logon(struct gsm_bts *bts, int on)
 {
@@ -2445,7 +1931,7 @@ int abis_nm_bs11_infield_logon(struct gsm_bts *bts, int on)
 	return abis_nm_bs11_logon(bts, 0x03, "FIELD  ", on);
 }
 
-int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, int on)
+int abis_nm_bs11_logon(struct gsm_bts *bts, uint8_t level, const char *name, int on)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2455,16 +1941,16 @@ int abis_nm_bs11_logon(struct gsm_bts *bts, u_int8_t level, const char *name, in
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	if (on) {
-		u_int8_t len = 3*2 + sizeof(bdt)
+		uint8_t len = 3*2 + sizeof(bdt)
 				+ 1 + strlen(name);
 		fill_om_fom_hdr(oh, len, NM_MT_BS11_LMT_LOGON,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_LOGIN_TIME,
-			     sizeof(bdt), (u_int8_t *) &bdt);
+			     sizeof(bdt), (uint8_t *) &bdt);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_ACC_LEV,
 			     1, &level);
 		msgb_tlv_put(msg, NM_ATT_BS11_LMT_USER_NAME,
-			     strlen(name), (u_int8_t *)name);
+			     strlen(name), (uint8_t *)name);
 	} else {
 		fill_om_fom_hdr(oh, 0, NM_MT_BS11_LMT_LOGOFF,
 				NM_OC_BS11_BTSE, 0xff, 0xff, 0xff);
@@ -2485,7 +1971,7 @@ int abis_nm_bs11_set_trx1_pw(struct gsm_bts *bts, const char *password)
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+strlen(password), NM_MT_BS11_SET_ATTR,
 			NM_OC_BS11, BS11_OBJ_TRX1, 0x00, 0x00);
-	msgb_tlv_put(msg, NM_ATT_BS11_PASSWORD, 10, (const u_int8_t *)password);
+	msgb_tlv_put(msg, NM_ATT_BS11_PASSWORD, 10, (const uint8_t *)password);
 
 	return abis_nm_sendmsg(bts, msg);
 }
@@ -2495,7 +1981,7 @@ int abis_nm_bs11_set_pll_locked(struct gsm_bts *bts, int locked)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg;
-	u_int8_t tlv_value;
+	uint8_t tlv_value;
 	
 	msg = nm_msgb_alloc();
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
@@ -2518,7 +2004,7 @@ int abis_nm_bs11_set_pll(struct gsm_bts *bts, int value)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg;
-	u_int8_t tlv_value[2];
+	uint8_t tlv_value[2];
 
 	msg = nm_msgb_alloc();
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
@@ -2545,7 +2031,7 @@ void *tall_fle_ctx;
 struct abis_nm_bs11_sw {
 	struct gsm_bts *bts;
 	char swl_fname[PATH_MAX];
-	u_int8_t win_size;
+	uint8_t win_size;
 	int forced;
 	struct llist_head file_list;
 	gsm_cbfn *user_cb;	/* specified by the user */
@@ -2671,7 +2157,7 @@ static int bs11_swload_cbfn(unsigned int hook, unsigned int event,
  * files that are part of a software release.  We need to upload first
  * the list file, and then each file that is listed in the list file */
 int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
-			  u_int8_t win_size, int forced, gsm_cbfn *cbfn)
+			  uint8_t win_size, int forced, gsm_cbfn *cbfn)
 {
 	struct abis_nm_bs11_sw *bs11_sw = g_bs11_sw;
 	struct file_list_entry *fle;
@@ -2701,7 +2187,7 @@ int abis_nm_bs11_load_swl(struct gsm_bts *bts, const char *fname,
 }
 
 #if 0
-static u_int8_t req_attr_btse[] = {
+static uint8_t req_attr_btse[] = {
 	NM_ATT_ADM_STATE, NM_ATT_BS11_LMT_LOGON_SESSION,
 	NM_ATT_BS11_LMT_LOGIN_TIME, NM_ATT_BS11_LMT_USER_ACC_LEV,
 	NM_ATT_BS11_LMT_USER_NAME,
@@ -2712,14 +2198,14 @@ static u_int8_t req_attr_btse[] = {
 
 	NM_ATT_BS11_SW_LOAD_STORED };
 
-static u_int8_t req_attr_btsm[] = {
+static uint8_t req_attr_btsm[] = {
 	NM_ATT_ABIS_CHANNEL, NM_ATT_TEI, NM_ATT_BS11_ABIS_EXT_TIME,
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xce, NM_ATT_FILE_ID,
 	NM_ATT_FILE_VERSION, NM_ATT_OPER_STATE, 0xe8, NM_ATT_BS11_ALL_TEST_CATG,
 	NM_ATT_SW_DESCR, NM_ATT_GET_ARI };
 #endif
 	
-static u_int8_t req_attr[] = {
+static uint8_t req_attr[] = {
 	NM_ATT_ADM_STATE, NM_ATT_AVAIL_STATUS, 0xa8, NM_ATT_OPER_STATE,
 	0xd5, 0xa1, NM_ATT_BS11_ESN_FW_CODE_NO, NM_ATT_BS11_ESN_HW_CODE_NO,
 	0x42, NM_ATT_BS11_ESN_PCB_SERIAL, NM_ATT_BS11_PLL };
@@ -2749,16 +2235,16 @@ int abis_nm_bs11_set_ext_time(struct gsm_bts *bts)
 	/* SiemensHW CCTRL object */
 	fill_om_fom_hdr(oh, 2+sizeof(aet), NM_MT_BS11_SET_ATTR, NM_OC_SITE_MANAGER,
 			0xff, 0xff, 0xff);
-	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), (u_int8_t *) &aet);
+	msgb_tlv_put(msg, NM_ATT_BS11_ABIS_EXT_TIME, sizeof(aet), (uint8_t *) &aet);
 
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_get_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport)
+int abis_nm_bs11_get_bport_line_cfg(struct gsm_bts *bts, uint8_t bport)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	u_int8_t attr = NM_ATT_BS11_LINE_CFG;
+	uint8_t attr = NM_ATT_BS11_LINE_CFG;
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
 	fill_om_fom_hdr(oh, 2+sizeof(attr), NM_MT_GET_ATTR,
@@ -2768,7 +2254,7 @@ int abis_nm_bs11_get_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport)
 	return abis_nm_sendmsg(bts, msg);
 }
 
-int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, u_int8_t bport, enum abis_bs11_line_cfg line_cfg)
+int abis_nm_bs11_set_bport_line_cfg(struct gsm_bts *bts, uint8_t bport, enum abis_bs11_line_cfg line_cfg)
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
@@ -2792,7 +2278,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	struct in_addr addr;
 	struct abis_om_hdr *oh = msgb_l2(msg);
 	struct abis_om_fom_hdr *foh;
-	u_int8_t idstrlen = oh->data[0];
+	uint8_t idstrlen = oh->data[0];
 	struct tlv_parsed tp;
 	struct ipacc_ack_signal_data signal;
 
@@ -2804,7 +2290,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
 	abis_nm_tlv_parse(&tp, msg->trx->bts, foh->data, oh->length-sizeof(*foh));
 
-	debugp_foh(foh);
+	abis_nm_debugp_foh(DNM, foh);
 
 	DEBUGPC(DNM, "IPACCESS(0x%02x): ", foh->msg_type);
 
@@ -2819,7 +2305,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		}
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_DST_IP_PORT))
 			DEBUGPC(DNM, "PORT=%u ",
-				ntohs(*((u_int16_t *)
+				ntohs(*((uint16_t *)
 					TLVP_VAL(&tp, NM_ATT_IPACC_DST_IP_PORT))));
 		if (TLVP_PRESENT(&tp, NM_ATT_IPACC_STREAM_ID))
 			DEBUGPC(DNM, "STREAM=0x%02x ",
@@ -2830,7 +2316,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		LOGP(DNM, LOGL_ERROR, "RSL CONNECT NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, " CAUSE=%s\n",
-				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			DEBUGPC(DNM, "\n");
 		break;
@@ -2842,7 +2328,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		LOGP(DNM, LOGL_ERROR, "SET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
-				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
@@ -2854,7 +2340,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		LOGPC(DNM, LOGL_ERROR, "GET NVATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
-				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
@@ -2865,7 +2351,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 		LOGPC(DNM, LOGL_ERROR, "SET ATTR NACK ");
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			LOGPC(DNM, LOGL_ERROR, " CAUSE=%s\n",
-				nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
+				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
 		else
 			LOGPC(DNM, LOGL_ERROR, "\n");
 		break;
@@ -2881,12 +2367,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_GET_NVATTR_NACK:
 		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
-		dispatch_signal(SS_NM, S_NM_IPACC_NACK, &signal);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
 		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
-		dispatch_signal(SS_NM, S_NM_IPACC_ACK, &signal);
+		osmo_signal_dispatch(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;
 	default:
 		break;
@@ -2896,15 +2382,15 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 }
 
 /* send an ip-access manufacturer specific message */
-int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
-			 u_int8_t obj_class, u_int8_t bts_nr,
-			 u_int8_t trx_nr, u_int8_t ts_nr,
-			 u_int8_t *attr, int attr_len)
+int abis_nm_ipaccess_msg(struct gsm_bts *bts, uint8_t msg_type,
+			 uint8_t obj_class, uint8_t bts_nr,
+			 uint8_t trx_nr, uint8_t ts_nr,
+			 uint8_t *attr, int attr_len)
 {
 	struct msgb *msg = nm_msgb_alloc();
 	struct abis_om_hdr *oh;
 	struct abis_om_fom_hdr *foh;
-	u_int8_t *data;
+	uint8_t *data;
 
 	/* construct the 12.21 OM header, observe the erroneous length */
 	oh = (struct abis_om_hdr *) msgb_put(msg, sizeof(*oh));
@@ -2933,7 +2419,7 @@ int abis_nm_ipaccess_msg(struct gsm_bts *bts, u_int8_t msg_type,
 }
 
 /* set some attributes in NVRAM */
-int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
+int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, uint8_t *attr,
 				int attr_len)
 {
 	return abis_nm_ipaccess_msg(trx->bts, NM_MT_IPACC_SET_NVATTR,
@@ -2942,10 +2428,10 @@ int abis_nm_ipaccess_set_nvattr(struct gsm_bts_trx *trx, u_int8_t *attr,
 }
 
 int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
-				 u_int32_t ip, u_int16_t port, u_int8_t stream)
+				 uint32_t ip, uint16_t port, uint8_t stream)
 {
 	struct in_addr ia;
-	u_int8_t attr[] = { NM_ATT_IPACC_STREAM_ID, 0,
+	uint8_t attr[] = { NM_ATT_IPACC_STREAM_ID, 0,
 			    NM_ATT_IPACC_DST_IP_PORT, 0, 0,
 			    NM_ATT_IPACC_DST_IP, 0, 0, 0, 0 };
 
@@ -2955,7 +2441,7 @@ int abis_nm_ipaccess_rsl_connect(struct gsm_bts_trx *trx,
 	attr[1] = stream;
 	attr[3] = port >> 8;
 	attr[4] = port & 0xff;
-	*(u_int32_t *)(attr+6) = ia.s_addr;
+	*(uint32_t *)(attr+6) = ia.s_addr;
 
 	/* if ip == 0, we use the default IP */
 	if (ip == 0)
@@ -2982,28 +2468,28 @@ int abis_nm_ipaccess_restart(struct gsm_bts_trx *trx)
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
-int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, u_int8_t obj_class,
-				u_int8_t bts_nr, u_int8_t trx_nr, u_int8_t ts_nr,
-				u_int8_t *attr, u_int8_t attr_len)
+int abis_nm_ipaccess_set_attr(struct gsm_bts *bts, uint8_t obj_class,
+				uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
+				uint8_t *attr, uint8_t attr_len)
 {
 	return abis_nm_ipaccess_msg(bts, NM_MT_IPACC_SET_ATTR,
 				    obj_class, bts_nr, trx_nr, ts_nr,
 				     attr, attr_len);
 }
 
-void abis_nm_ipaccess_cgi(u_int8_t *buf, struct gsm_bts *bts)
+void abis_nm_ipaccess_cgi(uint8_t *buf, struct gsm_bts *bts)
 {
 	/* we simply reuse the GSM48 function and overwrite the RAC
 	 * with the Cell ID */
 	gsm48_ra_id_by_bts(buf, bts);
-	*((u_int16_t *)(buf + 5)) = htons(bts->cell_identity);
+	*((uint16_t *)(buf + 5)) = htons(bts->cell_identity);
 }
 
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked)
 {
 	int new_state = locked ? NM_STATE_LOCKED : NM_STATE_UNLOCKED;
 
-	trx->nm_state.administrative = new_state;
+	trx->mo.nm_state.administrative = new_state;
 	if (!trx->bts || !trx->bts->oml_link)
 		return;
 
@@ -3021,12 +2507,12 @@ static const struct value_string ipacc_testres_names[] = {
 	{ 0,				NULL }
 };
 
-const char *ipacc_testres_name(u_int8_t res)
+const char *ipacc_testres_name(uint8_t res)
 {
 	return get_value_string(ipacc_testres_names, res);
 }
 
-void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
+void ipac_parse_cgi(struct cell_global_id *cid, const uint8_t *buf)
 {
 	cid->mcc = (buf[0] & 0xf) * 100;
 	cid->mcc += (buf[0] >> 4) *  10;
@@ -3041,15 +2527,15 @@ void ipac_parse_cgi(struct cell_global_id *cid, const u_int8_t *buf)
 		cid->mnc += (buf[1] >> 4) *   1;
 	}
 
-	cid->lac = ntohs(*((u_int16_t *)&buf[3]));
-	cid->ci = ntohs(*((u_int16_t *)&buf[5]));
+	cid->lac = ntohs(*((uint16_t *)&buf[3]));
+	cid->ci = ntohs(*((uint16_t *)&buf[5]));
 }
 
 /* parse BCCH information IEI from wire format to struct ipac_bcch_info */
-int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
+int ipac_parse_bcch_info(struct ipac_bcch_info *binf, uint8_t *buf)
 {
-	u_int8_t *cur = buf;
-	u_int16_t len;
+	uint8_t *cur = buf;
+	uint16_t len;
 
 	memset(binf, 0, sizeof(*binf));
 
@@ -3057,10 +2543,10 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 		return -EINVAL;
 	cur++;
 
-	len = ntohs(*(u_int16_t *)cur);
+	len = ntohs(*(uint16_t *)cur);
 	cur += 2;
 
-	binf->info_type = ntohs(*(u_int16_t *)cur);
+	binf->info_type = ntohs(*(uint16_t *)cur);
 	cur += 2;
 
 	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
@@ -3078,15 +2564,15 @@ int ipac_parse_bcch_info(struct ipac_bcch_info *binf, u_int8_t *buf)
 	cur++;
 
 	if (binf->info_type & IPAC_BINF_FREQ_ERR_QUAL)
-		binf->freq_err = ntohs(*(u_int16_t *)cur);
+		binf->freq_err = ntohs(*(uint16_t *)cur);
 	cur += 2;
 
 	if (binf->info_type & IPAC_BINF_FRAME_OFFSET)
-		binf->frame_offset = ntohs(*(u_int16_t *)cur);
+		binf->frame_offset = ntohs(*(uint16_t *)cur);
 	cur += 2;
 
 	if (binf->info_type & IPAC_BINF_FRAME_NR_OFFSET)
-		binf->frame_nr_offset = ntohl(*(u_int32_t *)cur);
+		binf->frame_nr_offset = ntohl(*(uint32_t *)cur);
 	cur += 4;
 
 #if 0

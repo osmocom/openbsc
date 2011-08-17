@@ -23,7 +23,7 @@
 #ifndef OPENBSC_MGCP_DATA_H
 #define OPENBSC_MGCP_DATA_H
 
-#include <osmocore/select.h>
+#include <osmocom/core/select.h>
 
 #define CI_UNUSED 0
 
@@ -66,8 +66,8 @@ struct mgcp_rtp_end {
 	/*
 	 * Each end has a socket...
 	 */
-	struct bsc_fd rtp;
-	struct bsc_fd rtcp;
+	struct osmo_fd rtp;
+	struct osmo_fd rtcp;
 
 	int local_port;
 	int local_alloc;

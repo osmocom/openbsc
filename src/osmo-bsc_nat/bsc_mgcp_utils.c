@@ -28,9 +28,9 @@
 
 #include <osmocom/sccp/sccp.h>
 
-#include <osmocore/talloc.h>
-#include <osmocore/gsm0808.h>
-#include <osmocore/protocol/gsm_08_08.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/gsm/gsm0808.h>
+#include <osmocom/gsm/protocol/gsm_08_08.h>
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -478,7 +478,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	if (write_queue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
+	if (osmo_wqueue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
 		msgb_free(output);
 	}
@@ -598,7 +598,7 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 	return output;
 }
 
-static int mgcp_do_read(struct bsc_fd *fd)
+static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct bsc_nat *nat;
 	struct msgb *msg, *resp;
@@ -628,7 +628,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 
 	/* we do have a direct answer... e.g. AUEP */
 	if (resp) {
-		if (write_queue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
+		if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
 			LOGP(DMGCP, LOGL_ERROR, "Failed to enqueue msg.\n");
 			msgb_free(resp);
 		}
@@ -637,7 +637,7 @@ static int mgcp_do_read(struct bsc_fd *fd)
 	return 0;
 }
 
-static int mgcp_do_write(struct bsc_fd *bfd, struct msgb *msg)
+static int mgcp_do_write(struct osmo_fd *bfd, struct msgb *msg)
 {
 	int rc;
 
@@ -681,7 +681,8 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 	inet_aton(cfg->source_addr, &addr.sin_addr);
 
 	if (bind(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to bind. errno: %d\n", errno);
+		LOGP(DMGCP, LOGL_ERROR, "Failed to bind on %s:%d errno: %d\n",
+		     cfg->source_addr, cfg->source_port, errno);
 		close(cfg->gw_fd.bfd.fd);
 		cfg->gw_fd.bfd.fd = -1;
 		return -1;
@@ -697,13 +698,13 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 		return -1;
 	}
 
-	write_queue_init(&cfg->gw_fd, 10);
+	osmo_wqueue_init(&cfg->gw_fd, 10);
 	cfg->gw_fd.bfd.when = BSC_FD_READ;
 	cfg->gw_fd.bfd.data = nat;
 	cfg->gw_fd.read_cb = mgcp_do_read;
 	cfg->gw_fd.write_cb = mgcp_do_write;
 
-	if (bsc_register_fd(&cfg->gw_fd.bfd) != 0) {
+	if (osmo_fd_register(&cfg->gw_fd.bfd) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to register MGCP fd.\n");
 		close(cfg->gw_fd.bfd.fd);
 		cfg->gw_fd.bfd.fd = -1;

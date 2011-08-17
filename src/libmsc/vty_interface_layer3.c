@@ -1,6 +1,6 @@
 /* OpenBSC interface to quagga VTY */
 /* (C) 2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther
+ * (C) 2009-2011 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <unistd.h>
-#include <sys/types.h>
 
 #include <osmocom/vty/command.h>
 #include <osmocom/vty/buffer.h>
@@ -29,17 +28,17 @@
 
 #include <arpa/inet.h>
 
-#include <osmocore/linuxlist.h>
+#include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/silent_call.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/e1_input.h>
 #include <openbsc/abis_nm.h>
-#include <osmocore/gsm_utils.h>
-#include <osmocore/utils.h>
+#include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/core/utils.h>
 #include <openbsc/db.h>
-#include <osmocore/talloc.h>
+#include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
@@ -75,7 +74,7 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		vty_out(vty, "    A3A8 algorithm id: %d%s",
 			ainfo.auth_algo, VTY_NEWLINE);
 		vty_out(vty, "    A3A8 Ki: %s%s",
-			hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
+			osmo_hexdump(ainfo.a3a8_ki, ainfo.a3a8_ki_len),
 			VTY_NEWLINE);
 	}
 
@@ -86,13 +85,13 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 		vty_out(vty, "     seq # : %d%s",
 			atuple.key_seq, VTY_NEWLINE);
 		vty_out(vty, "     RAND  : %s%s",
-			hexdump(atuple.rand, sizeof(atuple.rand)),
+			osmo_hexdump(atuple.rand, sizeof(atuple.rand)),
 			VTY_NEWLINE);
 		vty_out(vty, "     SRES  : %s%s",
-			hexdump(atuple.sres, sizeof(atuple.sres)),
+			osmo_hexdump(atuple.sres, sizeof(atuple.sres)),
 			VTY_NEWLINE);
 		vty_out(vty, "     Kc    : %s%s",
-			hexdump(atuple.kc, sizeof(atuple.kc)),
+			osmo_hexdump(atuple.kc, sizeof(atuple.kc)),
 			VTY_NEWLINE);
 	}
 	if (pending)
@@ -142,7 +141,7 @@ DEFUN(sms_send_pend,
 }
 
 static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
-			 u_int8_t tp_pid)
+			 uint8_t tp_pid)
 {
 	struct gsm_sms *sms;
 
@@ -456,7 +455,7 @@ DEFUN(ena_subscr_extension,
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr =
 			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
-	const char *name = argv[2];
+	const char *ext = argv[2];
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
@@ -464,7 +463,7 @@ DEFUN(ena_subscr_extension,
 		return CMD_WARNING;
 	}
 
-	strncpy(subscr->extension, name, sizeof(subscr->name));
+	strncpy(subscr->extension, ext, sizeof(subscr->extension));
 	db_sync_subscriber(subscr);
 
 	subscr_put(subscr);
@@ -576,13 +575,17 @@ DEFUN(ena_subscr_a3a8,
 	} else {
 		/* Unknown method */
 		subscr_put(subscr);
+		vty_out(vty, "%% Unknown auth method %s%s",
+				alg_str, VTY_NEWLINE);
 		return CMD_WARNING;
 	}
 
 	if (ki_str) {
-		rc = hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
+		rc = osmo_hexparse(ki_str, ainfo.a3a8_ki, sizeof(ainfo.a3a8_ki));
 		if ((rc > maxlen) || (rc < minlen)) {
 			subscr_put(subscr);
+			vty_out(vty, "%% Wrong Ki `%s'%s",
+				ki_str, VTY_NEWLINE);
 			return CMD_WARNING;
 		}
 		ainfo.a3a8_ki_len = rc;
@@ -590,6 +593,7 @@ DEFUN(ena_subscr_a3a8,
 		ainfo.a3a8_ki_len = 0;
 		if (minlen) {
 			subscr_put(subscr);
+			vty_out(vty, "%% Missing Ki argument%s", VTY_NEWLINE);
 			return CMD_WARNING;
 		}
 	}
@@ -602,7 +606,11 @@ DEFUN(ena_subscr_a3a8,
 	db_sync_lastauthtuple_for_subscr(NULL, subscr);
 	subscr_put(subscr);
 
-	return rc ? CMD_WARNING : CMD_SUCCESS;
+	if (rc) {
+		vty_out(vty, "%% Operation has failed%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
 }
 
 DEFUN(subscriber_purge,
@@ -665,37 +673,37 @@ DEFUN(show_stats,
 
 	openbsc_vty_print_statistics(vty, net);
 	vty_out(vty, "Channel Requests        : %lu total, %lu no channel%s",
-		counter_get(net->stats.chreq.total),
-		counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
+		osmo_counter_get(net->stats.chreq.total),
+		osmo_counter_get(net->stats.chreq.no_channel), VTY_NEWLINE);
 	vty_out(vty, "Location Update         : %lu attach, %lu normal, %lu periodic%s",
-		counter_get(net->stats.loc_upd_type.attach),
-		counter_get(net->stats.loc_upd_type.normal),
-		counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.attach),
+		osmo_counter_get(net->stats.loc_upd_type.normal),
+		osmo_counter_get(net->stats.loc_upd_type.periodic), VTY_NEWLINE);
 	vty_out(vty, "IMSI Detach Indications : %lu%s",
-		counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_type.detach), VTY_NEWLINE);
 	vty_out(vty, "Location Update Response: %lu accept, %lu reject%s",
-		counter_get(net->stats.loc_upd_resp.accept),
-		counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
+		osmo_counter_get(net->stats.loc_upd_resp.accept),
+		osmo_counter_get(net->stats.loc_upd_resp.reject), VTY_NEWLINE);
 	vty_out(vty, "Handover                : %lu attempted, %lu no_channel, %lu timeout, "
 		"%lu completed, %lu failed%s",
-		counter_get(net->stats.handover.attempted),
-		counter_get(net->stats.handover.no_channel),
-		counter_get(net->stats.handover.timeout),
-		counter_get(net->stats.handover.completed),
-		counter_get(net->stats.handover.failed), VTY_NEWLINE);
+		osmo_counter_get(net->stats.handover.attempted),
+		osmo_counter_get(net->stats.handover.no_channel),
+		osmo_counter_get(net->stats.handover.timeout),
+		osmo_counter_get(net->stats.handover.completed),
+		osmo_counter_get(net->stats.handover.failed), VTY_NEWLINE);
 	vty_out(vty, "SMS MO                  : %lu submitted, %lu no receiver%s",
-		counter_get(net->stats.sms.submitted),
-		counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.submitted),
+		osmo_counter_get(net->stats.sms.no_receiver), VTY_NEWLINE);
 	vty_out(vty, "SMS MT                  : %lu delivered, %lu no memory, %lu other error%s",
-		counter_get(net->stats.sms.delivered),
-		counter_get(net->stats.sms.rp_err_mem),
-		counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
+		osmo_counter_get(net->stats.sms.delivered),
+		osmo_counter_get(net->stats.sms.rp_err_mem),
+		osmo_counter_get(net->stats.sms.rp_err_other), VTY_NEWLINE);
 	vty_out(vty, "MO Calls                : %lu setup, %lu connect ack%s",
-		counter_get(net->stats.call.mo_setup),
-		counter_get(net->stats.call.mo_connect_ack), VTY_NEWLINE);
+		osmo_counter_get(net->stats.call.mo_setup),
+		osmo_counter_get(net->stats.call.mo_connect_ack), VTY_NEWLINE);
 	vty_out(vty, "MT Calls                : %lu setup, %lu connect%s",
-		counter_get(net->stats.call.mt_setup),
-		counter_get(net->stats.call.mt_connect), VTY_NEWLINE);
+		osmo_counter_get(net->stats.call.mt_setup),
+		osmo_counter_get(net->stats.call.mt_connect), VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -756,7 +764,7 @@ DEFUN(smsqueue_fail,
 
 int bsc_vty_init_extra(void)
 {
-	register_signal_handler(SS_SCALL, scall_cbfn, NULL);
+	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
 
 	install_element_ve(&show_subscr_cmd);
 	install_element_ve(&show_subscr_cache_cmd);
