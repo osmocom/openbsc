@@ -39,12 +39,19 @@
 #include <osmocom/core/timer.h>
 #include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/signal.h>
+#include <openbsc/debug.h>
+#include <openbsc/network_listen.h>
+#include <osmocom/abis/ipaccess.h>
+#include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/network_listen.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/abis/abis.h>
 
 static struct gsm_network *gsmnet;
 
@@ -79,6 +86,86 @@ static struct sw_load *sw_load2 = NULL;
 static uint8_t prim_oml_attr[] = { 0x95, 0x00, 7, 0x88, 192, 168, 100, 11, 0x00, 0x00 };
 static uint8_t unit_id_attr[] = { 0x91, 0x00, 9, '2', '3', '4', '2', '/' , '0', '/', '0', 0x00 };
 */
+
+extern int ipaccess_fd_cb(struct osmo_fd *bfd, unsigned int what);
+extern struct e1inp_line_ops ipaccess_e1inp_line_ops;
+
+/* Actively connect to a BTS.  Currently used by ipaccess-config.c */
+static int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa)
+{
+	struct e1inp_ts *e1i_ts = &line->ts[0];
+	struct osmo_fd *bfd = &e1i_ts->driver.ipaccess.fd;
+	int ret, on = 1;
+
+	bfd->fd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	bfd->cb = ipaccess_fd_cb;
+	bfd->when = BSC_FD_READ | BSC_FD_WRITE;
+	bfd->data = line;
+	bfd->priv_nr = E1INP_SIGN_OML;
+
+	if (bfd->fd < 0) {
+		LOGP(DLINP, LOGL_ERROR, "could not create TCP socket.\n");
+		return -EIO;
+	}
+
+	setsockopt(bfd->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
+	if (ret < 0) {
+		LOGP(DLINP, LOGL_ERROR, "could not connect socket\n");
+		close(bfd->fd);
+		return ret;
+	}
+
+	ret = osmo_fd_register(bfd);
+	if (ret < 0) {
+		close(bfd->fd);
+		return ret;
+	}
+	return ret;
+	//return e1inp_line_register(line);
+}
+
+/* configure pseudo E1 line in ip.access style and connect to BTS */
+static int ia_config_connect(struct gsm_bts *bts, struct sockaddr_in *sin)
+{
+	struct e1inp_line *line;
+	struct e1inp_ts *sign_ts, *rsl_ts;
+	struct e1inp_sign_link *oml_link, *rsl_link;
+
+	line = talloc_zero(tall_bsc_ctx, struct e1inp_line);
+	if (!line)
+		return -ENOMEM;
+
+	line->driver = e1inp_driver_find("ipa");
+	if (!line->driver) {
+		fprintf(stderr, "cannot `ipa' driver, giving up.\n");
+		return -EINVAL;
+	}
+	line->ops = &ipaccess_e1inp_line_ops;
+
+	/* create E1 timeslots for signalling and TRAU frames */
+	e1inp_ts_config_sign(&line->ts[1-1], line);
+	e1inp_ts_config_sign(&line->ts[2-1], line);
+
+	/* create signalling links for TS1 */
+	sign_ts = &line->ts[1-1];
+	rsl_ts = &line->ts[2-1];
+	oml_link = e1inp_sign_link_create(sign_ts, E1INP_SIGN_OML,
+					  bts->c0, 0xff, 0);
+	rsl_link = e1inp_sign_link_create(rsl_ts, E1INP_SIGN_RSL,
+					  bts->c0, 0, 0);
+
+	/* create back-links from bts/trx */
+	bts->oml_link = oml_link;
+	bts->c0->rsl_link = rsl_link;
+
+	/* default port at BTS for incoming connections is 3006 */
+	if (sin->sin_port == 0)
+		sin->sin_port = htons(3006);
+
+	return ipaccess_connect(line, sin);
+}
 
 /*
  * Callback function for NACK on the OML NM
@@ -891,6 +978,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "you have to specify the IP address of the BTS. Use --help for more information\n");
 		exit(2);
 	}
+	libosmo_abis_init(tall_ctx_config);
 
 	gsmnet = gsm_network_init(1, 1, NULL);
 	if (!gsmnet)

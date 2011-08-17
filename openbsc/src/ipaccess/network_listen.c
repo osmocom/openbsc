@@ -37,7 +37,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 
 #define WHITELIST_MAX_SIZE ((NUM_ARFCNS*2)+2+1)
 

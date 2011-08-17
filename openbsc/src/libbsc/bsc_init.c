@@ -82,7 +82,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
 	}
 
 	return 0;
@@ -274,11 +274,11 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_bts_trx *trx = isd->trx;
 	int ts_no, lchan_no;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return -EINVAL;
 
 	switch (signal) {
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
 		if (isd->link_type == E1INP_SIGN_OML) {
 			/* TODO: this is required for the Nokia BTS, hopping is configured
 			   during OML, other MA is not set.  */
@@ -300,8 +300,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		if (isd->link_type == E1INP_SIGN_RSL)
 			bootstrap_rsl(trx);
 		break;
-	case S_INP_TEI_DN:
-		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
+	case S_L_INP_TEI_DN:
+		LOGP(DLMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
 			osmo_counter_inc(trx->bts->network->stats.bts.oml_fail);
@@ -469,7 +469,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 		return rc;
 
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		rc = bootstrap_bts(bts);
@@ -477,14 +477,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			LOGP(DNM, LOGL_FATAL, "Error bootstrapping BTS\n");
 			return rc;
 		}
-		switch (bts->type) {
-		case GSM_BTS_TYPE_NANOBTS:
-		case GSM_BTS_TYPE_HSL_FEMTO:
-			break;
-		default:
-			rc = e1_reconfig_bts(bts);
-			break;
-		}
+		rc = e1_reconfig_bts(bts);
 		if (rc < 0) {
 			LOGP(DNM, LOGL_FATAL, "Error enabling E1 input driver\n");
 			return rc;

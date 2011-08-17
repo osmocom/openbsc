@@ -318,13 +318,13 @@ int bsc_write_mgcp(struct bsc_connection *bsc, const uint8_t *data, unsigned int
 	struct msgb *msg;
 
 	if (length > 4096 - 128) {
-		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
+		LOGP(DLINP, LOGL_ERROR, "Can not send message of that size.\n");
 		return -1;
 	}
 
 	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
 	if (!msg) {
-		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
 		return -1;
 	}
 
@@ -350,7 +350,7 @@ int bsc_do_write(struct osmo_wqueue *queue, struct msgb *msg, int proto)
 int bsc_write_msg(struct osmo_wqueue *queue, struct msgb *msg)
 {
 	if (osmo_wqueue_enqueue(queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 		return -1;
 	}

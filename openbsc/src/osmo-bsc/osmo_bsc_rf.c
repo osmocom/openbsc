@@ -62,7 +62,7 @@ static void send_resp(struct osmo_bsc_rf_conn *conn, char send)
 
 	msg = msgb_alloc(10, "RF Query");
 	if (!msg) {
-		LOGP(DINP, LOGL_ERROR, "Failed to allocate response msg.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to allocate response msg.\n");
 		return;
 	}
 
@@ -70,7 +70,7 @@ static void send_resp(struct osmo_bsc_rf_conn *conn, char send)
 	msg->l2h[0] = send;
 
 	if (osmo_wqueue_enqueue(&conn->queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the answer.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to enqueue the answer.\n");
 		msgb_free(msg);
 		return;
 	}
@@ -152,7 +152,7 @@ static void grace_timeout(void *_data)
 {
 	struct osmo_bsc_rf *rf = (struct osmo_bsc_rf *) _data;
 
-	LOGP(DINP, LOGL_NOTICE, "Grace timeout. Disabling the TRX.\n");
+	LOGP(DLINP, LOGL_NOTICE, "Grace timeout. Disabling the TRX.\n");
 	switch_rf_off(rf);
 }
 
@@ -161,7 +161,7 @@ static int enter_grace(struct osmo_bsc_rf *rf)
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
 	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->msc_data->mid_call_timeout, 0);
-	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
+	LOGP(DLINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
 	     rf->gsm_network->msc_data->mid_call_timeout);
 
 	send_signal(rf, S_RF_GRACE);
@@ -202,7 +202,7 @@ static int rf_read_cmd(struct osmo_fd *fd)
 
 	rc = read(fd->fd, buf, sizeof(buf));
 	if (rc != sizeof(buf)) {
-		LOGP(DINP, LOGL_ERROR, "Short read %d/%s\n", errno, strerror(errno));
+		LOGP(DLINP, LOGL_ERROR, "Short read %d/%s\n", errno, strerror(errno));
 		osmo_fd_unregister(fd);
 		close(fd->fd);
 		osmo_wqueue_clear(&conn->queue);
@@ -223,7 +223,7 @@ static int rf_read_cmd(struct osmo_fd *fd)
 		break;
 	default:
 		conn->rf->last_state_command = "Unknown command";
-		LOGP(DINP, LOGL_ERROR, "Unknown command %d\n", buf[0]);
+		LOGP(DLINP, LOGL_ERROR, "Unknown command %d\n", buf[0]);
 		break;
 	}
 
@@ -236,7 +236,7 @@ static int rf_write_cmd(struct osmo_fd *fd, struct msgb *msg)
 
 	rc = write(fd->fd, msg->data, msg->len);
 	if (rc != msg->len) {
-		LOGP(DINP, LOGL_ERROR, "Short write %d/%s\n", errno, strerror(errno));
+		LOGP(DLINP, LOGL_ERROR, "Short write %d/%s\n", errno, strerror(errno));
 		return -1;
 	}
 
@@ -253,14 +253,14 @@ static int rf_ctrl_accept(struct osmo_fd *bfd, unsigned int what)
 
 	fd = accept(bfd->fd, (struct sockaddr *) &addr, &len);
 	if (fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to accept. errno: %d/%s\n",
+		LOGP(DLINP, LOGL_ERROR, "Failed to accept. errno: %d/%s\n",
 		     errno, strerror(errno));
 		return -1;
 	}
 
 	conn = talloc_zero(rf, struct osmo_bsc_rf_conn);
 	if (!conn) {
-		LOGP(DINP, LOGL_ERROR, "Failed to allocate mem.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to allocate mem.\n");
 		close(fd);
 		return -1;
 	}
@@ -292,14 +292,14 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 
 	rf = talloc_zero(NULL, struct osmo_bsc_rf);
 	if (!rf) {
-		LOGP(DINP, LOGL_ERROR, "Failed to create osmo_bsc_rf.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to create osmo_bsc_rf.\n");
 		return NULL;
 	}
 
 	bfd = &rf->listen;
 	bfd->fd = socket(AF_UNIX, SOCK_STREAM, 0);
 	if (bfd->fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "Can not create socket. %d/%s\n",
+		LOGP(DLINP, LOGL_ERROR, "Can not create socket. %d/%s\n",
 		     errno, strerror(errno));
 		return NULL;
 	}
@@ -323,7 +323,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 
 	rc = bind(bfd->fd, (struct sockaddr *) &local, namelen);
 	if (rc != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to bind '%s' errno: %d/%s\n",
+		LOGP(DLINP, LOGL_ERROR, "Failed to bind '%s' errno: %d/%s\n",
 		     local.sun_path, errno, strerror(errno));
 		close(bfd->fd);
 		talloc_free(rf);
@@ -331,7 +331,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	}
 
 	if (listen(bfd->fd, 0) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to listen: %d/%s\n", errno, strerror(errno));
+		LOGP(DLINP, LOGL_ERROR, "Failed to listen: %d/%s\n", errno, strerror(errno));
 		close(bfd->fd);
 		talloc_free(rf);
 		return NULL;
@@ -342,7 +342,7 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	bfd->data = rf;
 
 	if (osmo_fd_register(bfd) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to register bfd.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to register bfd.\n");
 		close(bfd->fd);
 		talloc_free(rf);
 		return NULL;

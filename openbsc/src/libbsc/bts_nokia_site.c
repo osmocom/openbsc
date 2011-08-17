@@ -33,12 +33,12 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/signal.h>
 
 #include <osmocom/core/timer.h>
 
-#include "../libabis/input/lapd.h"
+#include <osmocom/abis/lapd.h>
 
 /* TODO: put in a separate file ? */
 
@@ -48,7 +48,7 @@ extern int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg);
 /* was static in system_information.c */
 extern int generate_cell_chan_list(uint8_t * chan_list, struct gsm_bts *bts);
 
-static void abis_nm_queue_send_next(struct gsm_bts *bts);
+static void nokia_abis_nm_queue_send_next(struct gsm_bts *bts);
 static void reset_timer_cb(void *_bts);
 static int abis_nm_reset(struct gsm_bts *bts, uint16_t ref);
 static int dump_elements(uint8_t * data, int len);
@@ -120,7 +120,7 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct gsm_bts *bts;
 
-	if (subsys != SS_GLOBAL)
+	if (subsys != SS_L_GLOBAL)
 		return 0;
 
 	switch (signal) {
@@ -140,16 +140,16 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct input_signal_data *isd = signal_data;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return 0;
 
 	switch (signal) {
-	case S_INP_LINE_INIT:
+	case S_L_INP_LINE_INIT:
 		start_sabm_in_line(isd->line, 1, SAPI_OML);	/* start only OML */
 		break;
-	case S_INP_TEI_DN:
+	case S_L_INP_TEI_DN:
 		break;
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type != GSM_BTS_TYPE_NOKIA_SITE)
@@ -162,7 +162,7 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 			break;
 		}
 		break;
-	case S_INP_TEI_UNKNOWN:
+	case S_L_INP_TEI_UNKNOWN:
 		/* We are receiving LAPD frames with one TEI that we do not
 		 * seem to know, likely that we (the BSC) stopped working
 		 * and lost our local states. However, the BTS is already
@@ -1235,7 +1235,7 @@ static int abis_nm_send_multi_segments(struct gsm_bts *bts, uint8_t msg_type,
 		if (ret < 0)
 			return ret;
 
-		abis_nm_queue_send_next(bts);
+		nokia_abis_nm_queue_send_next(bts);
 
 		/* next segment */
 		len_remain -= len_to_send;
@@ -1415,7 +1415,7 @@ static int dump_elements(uint8_t * data, int len)
 
 /* taken from abis_nm.c */
 
-static void abis_nm_queue_send_next(struct gsm_bts *bts)
+static void nokia_abis_nm_queue_send_next(struct gsm_bts *bts)
 {
 	int wait = 0;
 	struct msgb *msg;
@@ -1423,7 +1423,7 @@ static void abis_nm_queue_send_next(struct gsm_bts *bts)
 	while (!llist_empty(&bts->abis_queue)) {
 		msg = msgb_dequeue(&bts->abis_queue);
 		wait = OBSC_NM_W_ACK_CB(msg);
-		_abis_nm_sendmsg(msg, 0);
+		abis_sendmsg(msg);
 
 		if (wait)
 			break;
@@ -1445,9 +1445,9 @@ static void reset_timer_cb(void *_bts)
 	bts->nokia.wait_reset = 0;
 
 	/* OML link */
-	line = e1inp_line_get(e1_link->e1_nr);
+	line = e1inp_line_find(e1_link->e1_nr);
 	if (!line) {
-		LOGP(DINP, LOGL_ERROR, "BTS %u OML link referring to "
+		LOGP(DLINP, LOGL_ERROR, "BTS %u OML link referring to "
 		     "non-existing E1 line %u\n", bts->nr, e1_link->e1_nr);
 		return;
 	}
@@ -1522,7 +1522,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 	case NOKIA_MSG_CONF_REQ:
 		/* send ACK */
 		abis_nm_ack(bts, ref);
-		abis_nm_queue_send_next(bts);
+		nokia_abis_nm_queue_send_next(bts);
 		/* send CONF_DATA */
 		abis_nm_send_config(bts, bts->nokia.bts_type);
 		bts->nokia.configured = 1;
@@ -1564,9 +1564,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 			struct gsm_e1_subslot *e1_link = &bts->oml_e1_link;
 			struct e1inp_line *line;
 			/* OML link */
-			line = e1inp_line_get(e1_link->e1_nr);
+			line = e1inp_line_find(e1_link->e1_nr);
 			if (!line) {
-				LOGP(DINP, LOGL_ERROR,
+				LOGP(DLINP, LOGL_ERROR,
 				     "BTS %u OML link referring to "
 				     "non-existing E1 line %u\n", bts->nr,
 				     e1_link->e1_nr);
@@ -1587,9 +1587,9 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 			bts->nokia.configured = 0;
 
 			/* RSL Link */
-			line = e1inp_line_get(e1_link->e1_nr);
+			line = e1inp_line_find(e1_link->e1_nr);
 			if (!line) {
-				LOGP(DINP, LOGL_ERROR,
+				LOGP(DLINP, LOGL_ERROR,
 				     "TRX (%u/%u) RSL link referring "
 				     "to non-existing E1 line %u\n",
 				     sign_link->trx->bts->nr, sign_link->trx->nr,
@@ -1643,7 +1643,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	}
 
-	abis_nm_queue_send_next(bts);
+	nokia_abis_nm_queue_send_next(bts);
 
 	return ret;
 }
@@ -1696,11 +1696,17 @@ int abis_nokia_rcvmsg(struct msgb *msg)
 
 static int bts_model_nokia_site_start(struct gsm_network *net);
 
+static void bts_model_nokia_site_e1line_bind_ops(struct e1inp_line *line)
+{
+	e1inp_line_bind_ops(line, &bts_isdn_e1inp_line_ops);
+}
+
 static struct gsm_bts_model model_nokia_site = {
 	.type = GSM_BTS_TYPE_NOKIA_SITE,
 	.name = "nokia_site",
 	.start = bts_model_nokia_site_start,
-	.oml_rcvmsg = &abis_nokia_rcvmsg
+	.oml_rcvmsg = &abis_nokia_rcvmsg,
+	.e1line_bind_ops = &bts_model_nokia_site_e1line_bind_ops,
 };
 
 static struct gsm_network *my_net;
@@ -1714,8 +1720,8 @@ static int bts_model_nokia_site_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&model_nokia_site, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_nokia_site, BTS_FEAT_HSCSD);
 
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
-	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
 	my_net = net;

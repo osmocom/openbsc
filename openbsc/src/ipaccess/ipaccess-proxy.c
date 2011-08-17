@@ -210,12 +210,12 @@ static int handle_udp_read(struct osmo_fd *bfd)
 	ret = recv(bfd->fd, msg->data, msg->data_len, 0);
 	if (ret < 0) {
 		if (errno != EAGAIN)
-			LOGP(DINP, LOGL_ERROR, "recv error  %s\n", strerror(errno));
+			LOGP(DLINP, LOGL_ERROR, "recv error  %s\n", strerror(errno));
 		msgb_free(msg);
 		return ret;
 	}
 	if (ret == 0) {
-		DEBUGP(DINP, "UDP peer disappeared, dead socket\n");
+		DEBUGP(DLINP, "UDP peer disappeared, dead socket\n");
 		osmo_fd_unregister(bfd);
 		close(bfd->fd);
 		bfd->fd = -1;
@@ -223,16 +223,16 @@ static int handle_udp_read(struct osmo_fd *bfd)
 		return -EIO;
 	}
 	if (ret < sizeof(*hh)) {
-		DEBUGP(DINP, "could not even read header!?!\n");
+		DEBUGP(DLINP, "could not even read header!?!\n");
 		msgb_free(msg);
 		return -EIO;
 	}
 	msgb_put(msg, ret);
 	msg->l2h = msg->data + sizeof(*hh);
-	DEBUGP(DMI, "UDP RX: %s\n", osmo_hexdump(msg->data, msg->len));
+	DEBUGP(DLMI, "UDP RX: %s\n", osmo_hexdump(msg->data, msg->len));
 
 	if (hh->len != msg->len - sizeof(*hh)) {
-		DEBUGP(DINP, "length (%u/%u) disagrees with header(%u)\n",
+		DEBUGP(DLINP, "length (%u/%u) disagrees with header(%u)\n",
 			msg->len, msg->len - 3, hh->len);
 		msgb_free(msg);
 		return -EIO;
@@ -247,7 +247,7 @@ static int handle_udp_read(struct osmo_fd *bfd)
 			other_conn = ipbc->rsl_conn[0];
 			break;
 		default:
-			DEBUGP(DINP, "Unknown protocol 0x%02x, sending to "
+			DEBUGP(DLINP, "Unknown protocol 0x%02x, sending to "
 				"OML FD\n", hh->proto);
 			/* fall through */
 		case IPAC_PROTO_IPACCESS:
@@ -264,7 +264,7 @@ static int handle_udp_read(struct osmo_fd *bfd)
 			other_conn = ipbc->bsc_rsl_conn[0];
 			break;
 		default:
-			DEBUGP(DINP, "Unknown protocol 0x%02x, sending to "
+			DEBUGP(DLINP, "Unknown protocol 0x%02x, sending to "
 				"OML FD\n", hh->proto);
 		case IPAC_PROTO_IPACCESS:
 		case IPAC_PROTO_OML:
@@ -273,7 +273,7 @@ static int handle_udp_read(struct osmo_fd *bfd)
 		}
 		break;
 	default:
-		DEBUGP(DINP, "Unknown filedescriptor priv_nr=%04x\n", bfd->priv_nr);
+		DEBUGP(DLINP, "Unknown filedescriptor priv_nr=%04x\n", bfd->priv_nr);
 		break;
 	}
 
@@ -323,12 +323,12 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 	sin.sin_family = AF_INET;
 	inet_aton(bsc_ipaddr, &sin.sin_addr);
 
-	DEBUGP(DINP, "(%u/%u/%u) New BTS connection: ",
+	DEBUGP(DLINP, "(%u/%u/%u) New BTS connection: ",
 		site_id, bts_id, trx_id);
 
 	/* OML needs to be established before RSL */
 	if ((bfd->priv_nr & 0xff) != OML_FROM_BTS) {
-		DEBUGPC(DINP, "Not a OML connection ?!?\n");
+		DEBUGPC(DLINP, "Not a OML connection ?!?\n");
 		return -EIO;
 	}
 
@@ -339,7 +339,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 		goto err_out;
 	}
 
-	DEBUGPC(DINP, "Created BTS Conn data structure\n");
+	DEBUGPC(DLINP, "Created BTS Conn data structure\n");
 	ipbc->ipp = ipp;
 	ipbc->unit_id.site_id = site_id;
 	ipbc->unit_id.bts_id = bts_id;
@@ -360,7 +360,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 		goto err_bsc_conn;
 	}
 
-	DEBUGP(DINP, "(%u/%u/%u) OML Connected to BSC\n",
+	DEBUGP(DLINP, "(%u/%u/%u) OML Connected to BSC\n",
 		site_id, bts_id, trx_id);
 
 	/* Create UDP socket for BTS packet injection */
@@ -369,7 +369,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 			UDP_TO_BTS, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bts;
-	DEBUGP(DINP, "(%u/%u/%u) Created UDP socket for injection "
+	DEBUGP(DLINP, "(%u/%u/%u) Created UDP socket for injection "
 		"towards BTS at port %u\n", site_id, bts_id, trx_id, udp_port);
 
 	/* Create UDP socket for BSC packet injection */
@@ -378,7 +378,7 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 			UDP_TO_BSC, udp_fd_cb, ipbc);
 	if (ret < 0)
 		goto err_udp_bsc;
-	DEBUGP(DINP, "(%u/%u/%u) Created UDP socket for injection "
+	DEBUGP(DLINP, "(%u/%u/%u) Created UDP socket for injection "
 		"towards BSC at port %u\n", site_id, bts_id, trx_id, udp_port);
 
 
@@ -394,13 +394,13 @@ static int ipbc_alloc_connect(struct ipa_proxy_conn *ipc, struct osmo_fd *bfd,
 		ret = make_sock(&ipbc->gprs_ns_fd, IPPROTO_UDP, ip, 0, 0,
 				gprs_ns_cb, ipbc);
 		if (ret < 0) {
-			LOGP(DINP, LOGL_ERROR, "Creating the GPRS socket failed.\n");
+			LOGP(DLINP, LOGL_ERROR, "Creating the GPRS socket failed.\n");
 			goto err_udp_bsc;
 		}
 
 		ret = getsockname(ipbc->gprs_ns_fd.fd, (struct sockaddr* ) &sock, &len);
 		ipbc->gprs_local_port = ntohs(sock.sin_port);
-		LOGP(DINP, LOGL_NOTICE,
+		LOGP(DLINP, LOGL_NOTICE,
 			"Created GPRS NS Socket. Listening on: %s:%d\n",
 			inet_ntoa(sock.sin_addr), ipbc->gprs_local_port);
 
@@ -445,17 +445,17 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 		ret = ipaccess_send_pong(bfd->fd);
 		break;
 	case IPAC_MSGT_PONG:
-		DEBUGP(DMI, "PONG!\n");
+		DEBUGP(DLMI, "PONG!\n");
 		break;
 	case IPAC_MSGT_ID_RESP:
-		DEBUGP(DMI, "ID_RESP ");
+		DEBUGP(DLMI, "ID_RESP ");
 		/* parse tags, search for Unit ID */
 		ipaccess_idtag_parse(&tlvp, (uint8_t *)msg->l2h + 2,
 				     msgb_l2len(msg)-2);
-		DEBUGP(DMI, "\n");
+		DEBUGP(DLMI, "\n");
 
 		if (!TLVP_PRESENT(&tlvp, IPAC_IDTAG_UNIT)) {
-			LOGP(DINP, LOGL_ERROR, "No Unit ID in ID RESPONSE !?!\n");
+			LOGP(DLINP, LOGL_ERROR, "No Unit ID in ID RESPONSE !?!\n");
 			return -EIO;
 		}
 
@@ -479,17 +479,17 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 			sin.sin_family = AF_INET;
 			inet_aton(bsc_ipaddr, &sin.sin_addr);
 
-			DEBUGP(DINP, "Identified BTS %u/%u/%u\n",
+			DEBUGP(DLINP, "Identified BTS %u/%u/%u\n",
 				site_id, bts_id, trx_id);
 
 			if ((bfd->priv_nr & 0xff) != RSL_FROM_BTS) {
-				LOGP(DINP, LOGL_ERROR, "Second OML connection from "
+				LOGP(DLINP, LOGL_ERROR, "Second OML connection from "
 				     "same BTS ?!?\n");
 				return 0;
 			}
 
 			if (trx_id >= MAX_TRX) {
-				LOGP(DINP, LOGL_ERROR, "We don't support more "
+				LOGP(DLINP, LOGL_ERROR, "We don't support more "
 				     "than %u TRX\n", MAX_TRX);
 				return -EINVAL;
 			}
@@ -505,30 +505,30 @@ static int ipaccess_rcvmsg(struct ipa_proxy_conn *ipc, struct msgb *msg,
 				connect_bsc(&sin, RSL_TO_BSC | (trx_id << 8), ipbc);
 			if (!ipbc->bsc_oml_conn)
 				return -EIO;
-			DEBUGP(DINP, "(%u/%u/%u) Connected RSL to BSC\n",
+			DEBUGP(DLINP, "(%u/%u/%u) Connected RSL to BSC\n",
 				site_id, bts_id, trx_id);
 		}
 		break;
 	case IPAC_MSGT_ID_GET:
-		DEBUGP(DMI, "ID_GET\n");
+		DEBUGP(DLMI, "ID_GET\n");
 		if ((bfd->priv_nr & 0xff) != OML_TO_BSC &&
 		    (bfd->priv_nr & 0xff) != RSL_TO_BSC) {
-			DEBUGP(DINP, "IDentity REQuest from BTS ?!?\n");
+			DEBUGP(DLINP, "IDentity REQuest from BTS ?!?\n");
 			return -EIO;
 		}
 		ipbc = ipc->bts_conn;
 		if (!ipbc) {
-			DEBUGP(DINP, "ID_GET from BSC before we have ID_RESP from BTS\n");
+			DEBUGP(DLINP, "ID_GET from BSC before we have ID_RESP from BTS\n");
 			return -EIO;
 		}
 		ret = write(bfd->fd, ipbc->id_resp, ipbc->id_resp_len);
 		break;
 	case IPAC_MSGT_ID_ACK:
-		DEBUGP(DMI, "ID_ACK? -> ACK!\n");
+		DEBUGP(DLMI, "ID_ACK? -> ACK!\n");
 		ret = ipaccess_send_id_ack(bfd->fd);
 		break;
 	default:
-		LOGP(DMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
+		LOGP(DLMI, LOGL_ERROR, "Unhandled IPA type; %d\n", msg_type);
 		return 1;
 		break;
 	}
@@ -551,7 +551,7 @@ struct msgb *ipaccess_proxy_read_msg(struct osmo_fd *bfd, int *error)
 	ret = recv(bfd->fd, msg->data, 3, 0);
 	if (ret < 0) {
 		if (errno != EAGAIN)
-			LOGP(DINP, LOGL_ERROR, "recv error: %s\n", strerror(errno));
+			LOGP(DLINP, LOGL_ERROR, "recv error: %s\n", strerror(errno));
 		msgb_free(msg);
 		*error = ret;
 		return NULL;
@@ -568,7 +568,7 @@ struct msgb *ipaccess_proxy_read_msg(struct osmo_fd *bfd, int *error)
 	len = ntohs(hh->len);
 	ret = recv(bfd->fd, msg->l2h, len, 0);
 	if (ret < len) {
-		LOGP(DINP, LOGL_ERROR, "short read!\n");
+		LOGP(DLINP, LOGL_ERROR, "short read!\n");
 		msgb_free(msg);
 		*error = -EIO;
 		return NULL;
@@ -611,7 +611,7 @@ static void reconn_tmr_cb(void *data)
 	struct sockaddr_in sin;
 	int i;
 
-	DEBUGP(DINP, "Running reconnect timer\n");
+	DEBUGP(DLINP, "Running reconnect timer\n");
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
@@ -621,13 +621,13 @@ static void reconn_tmr_cb(void *data)
 		/* if OML to BSC is dead, try to restore it */
 		if (ipbc->oml_conn && !ipbc->bsc_oml_conn) {
 			sin.sin_port = htons(IPA_TCP_PORT_OML);
-			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, 0);
-			LOGPC(DINP, LOGL_NOTICE, "OML Trying to reconnect\n");
+			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, 0);
+			LOGPC(DLINP, LOGL_NOTICE, "OML Trying to reconnect\n");
 			ipbc->bsc_oml_conn = connect_bsc(&sin, OML_TO_BSC, ipbc);
 			if (!ipbc->bsc_oml_conn)
 				goto reschedule;
-			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, 0);
-			LOGPC(DINP, LOGL_NOTICE, "OML Reconnected\n");
+			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, 0);
+			LOGPC(DLINP, LOGL_NOTICE, "OML Reconnected\n");
 		}
 		/* if we (still) don't have a OML connection, skip RSL */
 		if (!ipbc->oml_conn || !ipbc->bsc_oml_conn)
@@ -644,13 +644,13 @@ static void reconn_tmr_cb(void *data)
 			priv_nr &= ~0xff;
 			priv_nr |= RSL_TO_BSC;
 			sin.sin_port = htons(IPA_TCP_PORT_RSL);
-			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
-			LOGPC(DINP, LOGL_NOTICE, "RSL Trying to reconnect\n");
+			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
+			LOGPC(DLINP, LOGL_NOTICE, "RSL Trying to reconnect\n");
 			ipbc->bsc_rsl_conn[i] = connect_bsc(&sin, priv_nr, ipbc);
 			if (!ipbc->bsc_rsl_conn)
 				goto reschedule;
-			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
-			LOGPC(DINP, LOGL_NOTICE, "RSL Reconnected\n");
+			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, priv_nr >> 8);
+			LOGPC(DLINP, LOGL_NOTICE, "RSL Reconnected\n");
 		}
 	}
 	return;
@@ -778,8 +778,8 @@ static int handle_tcp_read(struct osmo_fd *bfd)
 	msg = ipaccess_proxy_read_msg(bfd, &ret);
 	if (!msg) {
 		if (ret == 0) {
-			logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
-			LOGPC(DINP, LOGL_NOTICE, "%s disappeared, "
+			logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
+			LOGPC(DLINP, LOGL_NOTICE, "%s disappeared, "
 			     "dead socket\n", btsbsc);
 			handle_dead_socket(bfd);
 		}
@@ -787,8 +787,8 @@ static int handle_tcp_read(struct osmo_fd *bfd)
 	}
 
 	msgb_put(msg, ret);
-	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
-	DEBUGPC(DMI, "RX<-%s: %s\n", btsbsc, osmo_hexdump(msg->data, msg->len));
+	logp_ipbc_uid(DLMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
+	DEBUGPC(DLMI, "RX<-%s: %s\n", btsbsc, osmo_hexdump(msg->data, msg->len));
 
 	hh = (struct ipaccess_head *) msg->data;
 	if (hh->proto == IPAC_PROTO_IPACCESS) {
@@ -809,7 +809,7 @@ static int handle_tcp_read(struct osmo_fd *bfd)
 	}
 
 	if (!ipbc) {
-		LOGP(DINP, LOGL_ERROR,
+		LOGP(DLINP, LOGL_ERROR,
 		     "received %s packet but no ipc->bts_conn?!?\n", btsbsc);
 		msgb_free(msg);
 		return -EIO;
@@ -824,8 +824,8 @@ static int handle_tcp_read(struct osmo_fd *bfd)
 		/* mark respective filedescriptor as 'we want to write' */
 		bsc_conn->fd.when |= BSC_FD_WRITE;
 	} else {
-		logp_ipbc_uid(DINP, LOGL_INFO, ipbc, bfd->priv_nr >> 8);
-		LOGPC(DINP, LOGL_INFO, "Dropping packet from %s, "
+		logp_ipbc_uid(DLINP, LOGL_INFO, ipbc, bfd->priv_nr >> 8);
+		LOGPC(DLINP, LOGL_INFO, "Dropping packet from %s, "
 		     "since remote connection is dead\n", btsbsc);
 		msgb_free(msg);
 	}
@@ -858,16 +858,16 @@ static int handle_tcp_write(struct osmo_fd *bfd)
 	llist_del(lh);
 	msg = llist_entry(lh, struct msgb, list);
 
-	logp_ipbc_uid(DMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
-	DEBUGPC(DMI, "TX %04x: %s\n", bfd->priv_nr,
+	logp_ipbc_uid(DLMI, LOGL_DEBUG, ipbc, bfd->priv_nr >> 8);
+	DEBUGPC(DLMI, "TX %04x: %s\n", bfd->priv_nr,
 		osmo_hexdump(msg->data, msg->len));
 
 	ret = send(bfd->fd, msg->data, msg->len, 0);
 	msgb_free(msg);
 
 	if (ret == 0) {
-		logp_ipbc_uid(DINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
-		LOGP(DINP, LOGL_NOTICE, "%s disappeared, dead socket\n", btsbsc);
+		logp_ipbc_uid(DLINP, LOGL_NOTICE, ipbc, bfd->priv_nr >> 8);
+		LOGP(DLINP, LOGL_NOTICE, "%s disappeared, dead socket\n", btsbsc);
 		handle_dead_socket(bfd);
 	}
 
@@ -907,7 +907,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 		perror("accept");
 		return ret;
 	}
-	DEBUGP(DINP, "accept()ed new %s link from %s\n",
+	DEBUGP(DLINP, "accept()ed new %s link from %s\n",
 		(listen_bfd->priv_nr & 0xff) == OML_FROM_BTS ? "OML" : "RSL",
 		inet_ntoa(sa.sin_addr));
 
@@ -925,7 +925,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not register FD\n");
+		LOGP(DLINP, LOGL_ERROR, "could not register FD\n");
 		close(bfd->fd);
 		talloc_free(ipc);
 		return ret;
@@ -950,7 +950,7 @@ static void send_ns(int fd, const char *buf, int size, struct in_addr ip, int po
 
 	ret = sendto(fd, buf, size, 0, (struct sockaddr *) &addr, len);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to forward GPRS message.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to forward GPRS message.\n");
 	}
 }
 
@@ -965,7 +965,7 @@ static int gprs_ns_cb(struct osmo_fd *bfd, unsigned int what)
 	/* 1. get the data... */
 	ret = recvfrom(bfd->fd, buf, sizeof(buf), 0, (struct sockaddr *) &sock, &len);
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to recv GPRS NS msg: %s.\n", strerror(errno));
+		LOGP(DLINP, LOGL_ERROR, "Failed to recv GPRS NS msg: %s.\n", strerror(errno));
 		return -1;
 	}
 
@@ -973,13 +973,13 @@ static int gprs_ns_cb(struct osmo_fd *bfd, unsigned int what)
 
 	/* 2. figure out where to send it to */
 	if (memcmp(&sock.sin_addr, &ipp->gprs_addr, sizeof(sock.sin_addr)) == 0) {
-		LOGP(DINP, LOGL_DEBUG, "GPRS NS msg from network.\n");
+		LOGP(DLINP, LOGL_DEBUG, "GPRS NS msg from network.\n");
 		send_ns(bfd->fd, buf, ret, bts->bts_addr, 23000);
 	} else if (memcmp(&sock.sin_addr, &bts->bts_addr, sizeof(sock.sin_addr)) == 0) {
-		LOGP(DINP, LOGL_DEBUG, "GPRS NS msg from BTS.\n");
+		LOGP(DLINP, LOGL_DEBUG, "GPRS NS msg from BTS.\n");
 		send_ns(bfd->fd, buf, ret, ipp->gprs_addr, 23000);
 	} else {
-		LOGP(DINP, LOGL_ERROR, "Unknown GPRS source: %s\n", inet_ntoa(sock.sin_addr));
+		LOGP(DLINP, LOGL_ERROR, "Unknown GPRS source: %s\n", inet_ntoa(sock.sin_addr));
 	}
 
 	return 0;
@@ -1009,7 +1009,7 @@ static struct ipa_proxy_conn *connect_bsc(struct sockaddr_in *sa, int priv_nr, v
 
 	ret = connect(bfd->fd, (struct sockaddr *) sa, sizeof(*sa));
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "Could not connect socket: %s\n",
+		LOGP(DLINP, LOGL_ERROR, "Could not connect socket: %s\n",
 		     inet_ntoa(sa->sin_addr));
 		close(bfd->fd);
 		talloc_free(ipc);
@@ -1184,7 +1184,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "ipaccess-proxy");
 
 	osmo_init_logging(&log_info);
-	log_parse_category_mask(osmo_stderr_target, "DINP:DMI");
+	log_parse_category_mask(osmo_stderr_target, "DLINP:DLMI");
 
 	handle_options(argc, argv);
 

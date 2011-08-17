@@ -225,16 +225,6 @@ struct gsm_lchan {
 #endif
 };
 
-
-struct gsm_e1_subslot {
-	/* Number of E1 link */
-	uint8_t	e1_nr;
-	/* Number of E1 TS inside E1 link */
-	uint8_t	e1_ts;
-	/* Sub-slot within the E1 TS, 0xff if full TS */
-	uint8_t	e1_ts_ss;
-};
-
 #define TS_F_PDCH_MODE	0x1000
 /* One Timeslot in a TRX */
 struct gsm_bts_trx_ts {
@@ -340,6 +330,8 @@ struct gsm_bts_model {
 	bool started;
 	int (*start)(struct gsm_network *net);
 	int (*oml_rcvmsg)(struct msgb *msg);
+
+	void (*e1line_bind_ops)(struct e1inp_line *line);
 
 	void (*config_write_bts)(struct vty *vty, struct gsm_bts *bts);
 	void (*config_write_trx)(struct vty *vty, struct gsm_bts_trx *trx);

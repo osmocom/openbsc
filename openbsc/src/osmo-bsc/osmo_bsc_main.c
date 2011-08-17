@@ -146,7 +146,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -396,7 +396,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	bts_init();
-	e1inp_init();
+	libosmo_abis_init(tall_bsc_ctx);
 
 	/* enable filters */
 

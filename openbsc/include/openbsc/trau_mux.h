@@ -50,3 +50,6 @@ int trau_recv_lchan(struct gsm_lchan *lchan, uint32_t callref);
 
 /* send trau from application */
 int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame);
+
+/* callback invoked if we receive TRAU frames */
+int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len, void *_priv);

@@ -23,10 +23,10 @@
 #include <string.h>
 
 #include <openbsc/gsm_data.h>
-#include <openbsc/trau_frame.h>
+#include <osmocom/abis/trau_frame.h>
 #include <openbsc/trau_mux.h>
-#include <openbsc/subchan_demux.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/subchan_demux.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/debug.h>
 #include <osmocom/core/talloc.h>
 
@@ -70,7 +70,7 @@ int trau_mux_map(const struct gsm_e1_subslot *src,
 
 	me = talloc(tall_map_ctx, struct map_entry);
 	if (!me) {
-		LOGP(DMIB, LOGL_FATAL, "Out of memory\n");
+		LOGP(DLMIB, LOGL_FATAL, "Out of memory\n");
 		return -ENOMEM;
 	}
 
@@ -186,7 +186,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 		if (!ue->callref)
 			return -EINVAL;
 		if (memcmp(tf.c_bits, c_bits_check, sizeof(c_bits_check)))
-			DEBUGPC(DMUX, "illegal trau (C1-C5) %s\n",
+			DEBUGPC(DLMUX, "illegal trau (C1-C5) %s\n",
 				osmo_hexdump(tf.c_bits, sizeof(c_bits_check)));
 		msg = msgb_alloc(sizeof(struct gsm_data_frame) + 33,
 				 "GSM-DATA");
@@ -230,6 +230,20 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 	/* and send it to the muxer */
 	return subchan_mux_enqueue(mx, dst_e1_ss->e1_ts_ss, trau_bits_out,
 				   TRAU_FRAME_BITS);
+}
+
+/* callback when a TRAU frame was received */
+int subch_cb(struct subch_demux *dmx, int ch, uint8_t *data, int len,
+	     void *_priv)
+{
+	struct e1inp_ts *e1i_ts = _priv;
+	struct gsm_e1_subslot src_ss;
+
+	src_ss.e1_nr = e1i_ts->line->num;
+	src_ss.e1_ts = e1i_ts->num;
+	src_ss.e1_ts_ss = ch;
+
+	return trau_mux_input(&src_ss, data, len);
 }
 
 /* add receiver instance for lchan and callref */
@@ -301,7 +315,7 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 		}
 		break;
 	default:
-		DEBUGPC(DMUX, "unsupported message type %d\n",
+		DEBUGPC(DLMUX, "unsupported message type %d\n",
 			frame->msg_type);
 		return -EINVAL;
 	}

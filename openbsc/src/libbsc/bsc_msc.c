@@ -21,10 +21,12 @@
 
 #include <openbsc/bsc_msc.h>
 #include <openbsc/debug.h>
-#include <openbsc/ipaccess.h>
+#include <osmocom/abis/ipaccess.h>
 
 #include <osmocom/core/write_queue.h>
 #include <osmocom/core/talloc.h>
+
+#include <osmocom/gsm/tlv.h>
 
 #include <arpa/inet.h>
 #include <sys/socket.h>

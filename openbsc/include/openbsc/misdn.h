@@ -19,7 +19,7 @@
 #ifndef MISDN_H
 #define MISDN_H
 
-#include "e1_input.h"
+#include <osmocom/abis/e1_input.h>
 
 int mi_setup(int cardnr,  struct e1inp_line *line, int release_l2);
 int mi_e1_line_update(struct e1inp_line *line);

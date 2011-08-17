@@ -26,15 +26,27 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/signal.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/e1_input.h> /* for ipaccess_setup() */
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/gsm/tlv.h>
+#include <osmocom/core/msgb.h>
+#include <osmocom/core/talloc.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/abis_nm.h>
+#include <openbsc/abis_rsl.h>
+#include <openbsc/debug.h>
+#include <osmocom/abis/subchan_demux.h>
+#include <osmocom/abis/ipaccess.h>
+#include <osmocom/core/logging.h>
 
 static int bts_model_nanobts_start(struct gsm_network *net);
+static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
 
 static struct gsm_bts_model model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
 	.start = bts_model_nanobts_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
+	.e1line_bind_ops = bts_model_nanobts_e1line_bind_ops, 
 	.nm_att_tlvdef = {
 		.def = {
 			/* ip.access specifics */
@@ -440,6 +452,8 @@ static int nm_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static struct gsm_network *ipaccess_gsmnet;
+
 static int bts_model_nanobts_start(struct gsm_network *net)
 {
 	model_nanobts.features.data = &model_nanobts._features_data[0];
@@ -450,11 +464,185 @@ static int bts_model_nanobts_start(struct gsm_network *net)
 
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
-	/* Call A-bis input driver, start server sockets for OML and RSL. */
-	return ipaccess_setup(net);
+	ipaccess_gsmnet = net;
+	return 0;
 }
 
 int bts_model_nanobts_init(void)
 {
 	return gsm_bts_model_register(&model_nanobts);
+}
+
+#define OML_UP         0x0001
+#define RSL_UP         0x0002
+
+static struct gsm_bts *
+find_bts_by_unitid(struct gsm_network *net, uint16_t site_id, uint16_t bts_id)
+{
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (!is_ipaccess_bts(bts))
+			continue;
+
+		if (bts->ip_access.site_id == site_id &&
+		    bts->ip_access.bts_id == bts_id)
+			return bts;
+	}
+	return NULL;
+}
+
+/* These are exported because they are used by the VTY interface. */
+void ipaccess_drop_rsl(struct gsm_bts_trx *trx)
+{
+	if (!trx->rsl_link)
+		return;
+
+	e1inp_sign_link_destroy(trx->rsl_link);
+	trx->rsl_link = NULL;
+}
+
+void ipaccess_drop_oml(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+	struct e1inp_line *line;
+
+	if (!bts->oml_link)
+		return;
+
+	line = bts->oml_link->ts->line;
+
+	e1inp_sign_link_destroy(bts->oml_link);
+	bts->oml_link = NULL;
+
+	/* we have issues reconnecting RSL, drop everything. */
+	llist_for_each_entry(trx, &bts->trx_list, list)
+		ipaccess_drop_rsl(trx);
+
+	bts->ip_access.flags = 0;
+}
+
+/* This function is called once the OML/RSL link becomes up. */
+static struct e1inp_sign_link *
+ipaccess_sign_link_up(void *unit_data, struct e1inp_line *line,
+		      enum e1inp_sign_type type)
+{
+	struct gsm_bts *bts;
+	struct ipaccess_unit *dev = unit_data;
+	struct e1inp_sign_link *sign_link = NULL;
+
+	bts = find_bts_by_unitid(ipaccess_gsmnet, dev->site_id, dev->bts_id);
+	if (!bts) {
+		LOGP(DLINP, LOGL_ERROR, "Unable to find BTS configuration for "
+			" %u/%u/%u, disconnecting\n", dev->site_id,
+			dev->bts_id, dev->trx_id);
+		return NULL;
+	}
+	DEBUGP(DLINP, "Identified BTS %u/%u/%u\n",
+			dev->site_id, dev->bts_id, dev->trx_id);
+
+	switch(type) {
+	case E1INP_SIGN_OML:
+		/* remove old OML signal link for this BTS. */
+		ipaccess_drop_oml(bts);
+
+		/* create new OML link. */
+		sign_link = bts->oml_link =
+			e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML - 1],
+						E1INP_SIGN_OML, bts->c0,
+						bts->oml_tei, 0);
+		break;
+	case E1INP_SIGN_RSL: {
+		struct e1inp_ts *ts;
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, dev->trx_id);
+
+		/* no OML link set yet? give up. */
+		if (!bts->oml_link)
+			return NULL;
+
+		/* remove old RSL link for this TRX. */
+		ipaccess_drop_rsl(trx);
+
+		/* set new RSL link for this TRX. */
+		line = bts->oml_link->ts->line;
+		ts = &line->ts[E1INP_SIGN_RSL + dev->trx_id - 1];
+		e1inp_ts_config_sign(ts, line);
+		sign_link = trx->rsl_link =
+				e1inp_sign_link_create(ts, E1INP_SIGN_RSL,
+						       trx, trx->rsl_tei, 0);
+		trx->rsl_link->ts->sign.delay = 0;
+		break;
+	}
+	default:
+		break;
+	}
+	return sign_link;
+}
+
+static void ipaccess_sign_link_down(struct e1inp_line *line)
+{
+	/* No matter what link went down, we close both signal links. */
+	struct e1inp_ts *ts = &line->ts[E1INP_SIGN_OML-1];
+	struct e1inp_sign_link *link;
+
+	llist_for_each_entry(link, &ts->sign.sign_links, list) {
+		struct gsm_bts *bts = link->trx->bts;
+
+		ipaccess_drop_oml(bts);
+		/* Yes, we only use the first element of the list. */
+		break;
+	}
+}
+
+/* This function is called if we receive one OML/RSL message. */
+static int ipaccess_sign_link(struct msgb *msg)
+{
+	int ret = 0;
+	struct e1inp_sign_link *link = msg->dst;
+	struct e1inp_ts *e1i_ts = link->ts;
+
+	switch (link->type) {
+	case E1INP_SIGN_RSL:
+		if (!(link->trx->bts->ip_access.flags &
+					(RSL_UP << link->trx->nr))) {
+			e1inp_event(e1i_ts, S_L_INP_TEI_UP,
+					link->tei, link->sapi);
+			link->trx->bts->ip_access.flags |=
+					(RSL_UP << link->trx->nr);
+		}
+	        ret = abis_rsl_rcvmsg(msg);
+	        break;
+	case E1INP_SIGN_OML:
+		if (!(link->trx->bts->ip_access.flags & OML_UP)) {
+			e1inp_event(e1i_ts, S_L_INP_TEI_UP,
+					link->tei, link->sapi);
+			link->trx->bts->ip_access.flags |= OML_UP;
+		}
+	        ret = abis_nm_rcvmsg(msg);
+	        break;
+	default:
+		LOGP(DLINP, LOGL_ERROR, "Unknown signal link type %d\n",
+			link->type);
+		msgb_free(msg);
+		break;
+	}
+	return ret;
+}
+
+/* not static, ipaccess-config needs it. */
+struct e1inp_line_ops ipaccess_e1inp_line_ops = {
+	.cfg = {
+		.ipa = {
+			.addr = "0.0.0.0",
+			.role = E1INP_LINE_R_BSC,
+		},
+	},
+	.sign_link_up	= ipaccess_sign_link_up,
+	.sign_link_down	= ipaccess_sign_link_down,
+	.sign_link	= ipaccess_sign_link,
+};
+
+static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line)
+{
+        e1inp_line_bind_ops(line, &ipaccess_e1inp_line_ops);
 }

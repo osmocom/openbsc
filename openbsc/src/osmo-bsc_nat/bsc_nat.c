@@ -48,6 +48,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 
+#include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm0808.h>
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 
@@ -56,6 +57,8 @@
 #include <osmocom/vty/logging.h>
 
 #include <osmocom/sccp/sccp.h>
+
+#include <osmocom/abis/ipa.h>
 
 #include "../../bscconfig.h"
 
@@ -95,14 +98,14 @@ struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 static void queue_for_msc(struct bsc_msc_connection *con, struct msgb *msg)
 {
 	if (!con) {
-		LOGP(DINP, LOGL_ERROR, "No MSC Connection assigned. Check your code.\n");
+		LOGP(DLINP, LOGL_ERROR, "No MSC Connection assigned. Check your code.\n");
 		msgb_free(msg);
 		return;
 	}
 
 
 	if (osmo_wqueue_enqueue(&con->write_queue, msg) != 0) {
-		LOGP(DINP, LOGL_ERROR, "Failed to enqueue the write.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to enqueue the write.\n");
 		msgb_free(msg);
 	}
 }
@@ -361,13 +364,13 @@ static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsig
 	struct msgb *msg;
 
 	if (length > 4096 - 128) {
-		LOGP(DINP, LOGL_ERROR, "Can not send message of that size.\n");
+		LOGP(DLINP, LOGL_ERROR, "Can not send message of that size.\n");
 		return;
 	}
 
 	msg = msgb_alloc_headroom(4096, 128, "to-bsc");
 	if (!msg) {
-		LOGP(DINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
+		LOGP(DLINP, LOGL_ERROR, "Failed to allocate memory for BSC msg.\n");
 		return;
 	}
 
@@ -783,18 +786,19 @@ static void msc_send_reset(struct bsc_msc_connection *msc_con)
 
 static int ipaccess_msc_read_cb(struct osmo_fd *bfd)
 {
-	int error;
 	struct bsc_msc_connection *msc_con;
-	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct msgb *msg;
 	struct ipaccess_head *hh;
+	int ret;
 
 	msc_con = (struct bsc_msc_connection *) bfd->data;
 
-	if (!msg) {
-		if (error == 0)
+	ret = ipa_msg_recv(bfd->fd, &msg);
+	if (ret <= 0) {
+		if (ret == 0)
 			LOGP(DNAT, LOGL_FATAL, "The connection the MSC was lost, exiting\n");
 		else
-			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
+			LOGP(DNAT, LOGL_ERROR, "Failed to parse ip access message: %d\n", ret);
 
 		bsc_msc_lost(msc_con);
 		return -1;
@@ -1252,21 +1256,22 @@ err:
 
 static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
-	int error;
 	struct bsc_connection *bsc = bfd->data;
-	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct msgb *msg;
 	struct ipaccess_head *hh;
 	struct ipaccess_head_ext *hh_ext;
+	int ret;
 
-	if (!msg) {
-		if (error == 0)
+	ret = ipa_msg_recv(bfd->fd, &msg);
+	if (ret <= 0) {
+		if (ret == 0)
 			LOGP(DNAT, LOGL_ERROR,
 			     "The connection to the BSC Nr: %d was lost. Cleaning it\n",
 			     bsc->cfg ? bsc->cfg->nr : -1);
 		else
 			LOGP(DNAT, LOGL_ERROR,
 			     "Stream error on BSC Nr: %d. Failed to parse ip access message: %d\n",
-			     bsc->cfg ? bsc->cfg->nr : -1, error);
+			     bsc->cfg ? bsc->cfg->nr : -1, ret);
 
 		bsc_close_connection(bsc);
 		return -1;

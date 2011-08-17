@@ -95,26 +95,6 @@ static const struct log_info_cat default_categories[] = {
 		.description = "Radio Measurement Processing",
 		.enabled = 0, .loglevel = LOGL_NOTICE,
 	},
-	[DMI] = {
-		.name = "DMI",
-		.description = "A-bis Input Driver for Signalling",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
-	},
-	[DMIB] = {
-		.name = "DMIB",
-		.description = "A-bis Input Driver for B-Channels (voice)",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
-	},
-	[DMUX] = {
-		.name = "DMUX",
-		.description = "A-bis B-Subchannel TRAU Frame Multiplex",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
-	[DINP] = {
-		.name = "DINP",
-		.description = "A-bis Intput Subsystem",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
 	[DSCCP] = {
 		.name = "DSCCP",
 		.description = "SCCP Protocol",

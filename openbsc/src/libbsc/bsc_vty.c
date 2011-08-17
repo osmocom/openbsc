@@ -30,7 +30,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_om2000.h>
 #include <osmocom/core/utils.h>
@@ -506,10 +506,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	case GSM_BTS_TYPE_NANOBTS:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
-		vty_out(vty, "  oml ip.access stream_id %u%s", bts->oml_tei, VTY_NEWLINE);
+		vty_out(vty, "  oml ip.access stream_id %u line %u%s",
+			bts->oml_tei, bts->oml_e1_link.e1_nr, VTY_NEWLINE);
 		break;
 	case GSM_BTS_TYPE_HSL_FEMTO:
 		vty_out(vty, "  hsl serial-number %lu%s", bts->hsl.serno, VTY_NEWLINE);
+		vty_out(vty, "  oml hsl line %u%s",
+			bts->oml_e1_link.e1_nr, VTY_NEWLINE);
 		break;
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
@@ -1507,12 +1510,12 @@ DEFUN(cfg_bts_serno,
 
 DEFUN(cfg_bts_stream_id,
       cfg_bts_stream_id_cmd,
-      "oml ip.access stream_id <0-255>",
+      "oml ip.access stream_id <0-255> line E1_LINE",
 	OML_STR IPA_STR
       "Set the ip.access Stream ID of the OML link of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int stream_id = atoi(argv[0]);
+	int stream_id = atoi(argv[0]), linenr = atoi(argv[1]);
 
 	if (!is_ipaccess_bts(bts)) {
 		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
@@ -1520,6 +1523,27 @@ DEFUN(cfg_bts_stream_id,
 	}
 
 	bts->oml_tei = stream_id;
+	/* This is used by e1inp_bind_ops callback for each BTS model. */
+	bts->oml_e1_link.e1_nr = linenr;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_hsl_oml,
+      cfg_bts_hsl_oml_cmd,
+      "oml hsl line E1_LINE",
+      OML_STR "HSL femto Specific Options"
+      "Set OML link of this HSL femto BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int linenr = atoi(argv[0]);
+
+	if (!(bts->type == GSM_BTS_TYPE_HSL_FEMTO)) {
+		vty_out(vty, "%% BTS is not of HSL type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->oml_e1_link.e1_nr = linenr;
 
 	return CMD_SUCCESS;
 }
@@ -2624,6 +2648,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_serno_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_hsl_oml_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);

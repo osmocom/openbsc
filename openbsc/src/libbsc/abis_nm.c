@@ -43,7 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -112,6 +112,26 @@ static struct msgb *nm_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(OM_ALLOC_SIZE, OM_HEADROOM_SIZE,
 				   "OML");
+}
+
+int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
+{
+	struct e1inp_sign_link *sign_link = msg->dst;
+
+	msg->l2h = msg->data;
+
+	if (!msg->dst) {
+		LOGP(DNM, LOGL_ERROR, "%s: msg->dst == NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	/* Check for TRX-specific OML link first */
+	if (to_trx_oml) {
+		if (!sign_link->trx->oml_link)
+			return -ENODEV;
+		msg->dst = sign_link->trx->oml_link;
+	}
+	return abis_sendmsg(msg);
 }
 
 /* Send a OML NM Message from BSC to BTS */
@@ -480,7 +500,7 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	return 0;
 }
 
-static void abis_nm_queue_send_next(struct gsm_bts *bts)
+void abis_nm_queue_send_next(struct gsm_bts *bts)
 {
 	int wait = 0;
 	struct msgb *msg;

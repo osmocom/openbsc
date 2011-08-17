@@ -68,7 +68,7 @@ int make_sock(struct osmo_fd *bfd, int proto,
 	bfd->priv_nr = priv_nr;
 
 	if (bfd->fd < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not create socket.\n");
+		LOGP(DLINP, LOGL_ERROR, "could not create socket.\n");
 		return -EIO;
 	}
 
@@ -84,7 +84,7 @@ int make_sock(struct osmo_fd *bfd, int proto,
 
 	ret = bind(bfd->fd, (struct sockaddr *) &addr, sizeof(addr));
 	if (ret < 0) {
-		LOGP(DINP, LOGL_ERROR, "could not bind socket %s\n",
+		LOGP(DLINP, LOGL_ERROR, "could not bind socket %s\n",
 			strerror(errno));
 		close(bfd->fd);
 		return -EIO;

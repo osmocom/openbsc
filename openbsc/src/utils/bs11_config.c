@@ -41,6 +41,12 @@
 #include <osmocom/core/select.h>
 #include <openbsc/rs232.h>
 #include <osmocom/core/application.h>
+#include <osmocom/core/talloc.h>
+#include <osmocom/abis/abis.h>
+#include <osmocom/abis/e1_input.h>
+
+static void *tall_bs11cfg_ctx;
+static struct e1inp_sign_link *oml_link;
 
 /* state of our bs11_config application */
 enum bs11cfg_state {
@@ -638,8 +644,9 @@ static int handle_state_resp(enum abis_bs11_phase state)
 }
 
 /* handle a fully-received message/packet from the RS232 port */
-int handle_serial_msg(struct msgb *rx_msg)
+static int abis_nm_bs11cfg_rcvmsg(struct msgb *rx_msg)
 {
+	struct e1inp_sign_link *link = rx_msg->dst;
 	struct abis_om_hdr *oh;
 	struct abis_om_fom_hdr *foh;
 	struct tlv_parsed tp;
@@ -719,6 +726,8 @@ int handle_serial_msg(struct msgb *rx_msg)
 		perror("ERROR in main loop");
 		//break;
 	}
+	/* flush the queue of pending messages to be sent. */
+	abis_nm_queue_send_next(link->trx->bts);
 	if (rc == 1)
 		return rc;
 
@@ -864,11 +873,21 @@ static void signal_handler(int signal)
 	}
 }
 
+static int bs11cfg_sign_link(struct msgb *msg)
+{
+	msg->dst = oml_link;
+	return abis_nm_bs11cfg_rcvmsg(msg);
+}
+
+struct e1inp_line_ops bs11cfg_e1inp_line_ops = {
+	.sign_link	= bs11cfg_sign_link,
+};
+
 extern int bts_model_bs11_init(void);
 int main(int argc, char **argv)
 {
 	struct gsm_network *gsmnet;
-	int rc;
+	struct e1inp_line *line;
 
 	osmo_init_logging(&log_info);
 	handle_options(argc, argv);
@@ -882,11 +901,35 @@ int main(int argc, char **argv)
 	g_bts = gsm_bts_alloc_register(gsmnet, GSM_BTS_TYPE_BS11, HARDCODED_TSC,
 					HARDCODED_BSIC);
 
-	rc = rs232_setup(serial_port, delay_ms, g_bts);
-	if (rc < 0) {
-		fprintf(stderr, "Problem setting up serial port\n");
+	/* Override existing OML callback handler to set our own. */
+	g_bts->model->oml_rcvmsg = abis_nm_bs11cfg_rcvmsg;
+
+	libosmo_abis_init(tall_bs11cfg_ctx);
+
+	/* Initialize virtual E1 line over rs232. */
+	line = talloc_zero(tall_bs11cfg_ctx, struct e1inp_line);
+	if (!line) {
+		fprintf(stderr, "Unable to allocate memory for virtual E1 line\n");
 		exit(1);
 	}
+	/* set the serial port. */
+	bs11cfg_e1inp_line_ops.cfg.rs232.port = serial_port;
+	bs11cfg_e1inp_line_ops.cfg.rs232.delay = delay_ms;
+
+	line->driver = e1inp_driver_find("rs232");
+	if (!line->driver) {
+		fprintf(stderr, "cannot find `rs232' driver, giving up.\n");
+		exit(1);
+	}
+	e1inp_line_bind_ops(line, &bs11cfg_e1inp_line_ops);
+
+	/* configure and create signalling link for OML. */
+	e1inp_ts_config_sign(&line->ts[0], line);
+	g_bts->oml_link = oml_link =
+		e1inp_sign_link_create(&line->ts[0], E1INP_SIGN_OML,
+					g_bts->c0, TEI_OML, 0);
+
+	e1inp_line_update(line);
 
 	signal(SIGINT, &signal_handler);
 
@@ -903,9 +946,4 @@ int main(int argc, char **argv)
 	abis_nm_bs11_factory_logon(g_bts, 0);
 
 	exit(0);
-}
-
-/* dummy to be able to compile */
-void gsm_net_update_ctype(struct gsm_network *net)
-{
 }

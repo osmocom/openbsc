@@ -41,7 +41,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
-#include <openbsc/trau_frame.h>
+#include <osmocom/abis/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/transaction.h>
@@ -49,7 +49,7 @@
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
 #include <osmocom/gsm/gsm48.h>

@@ -38,7 +38,7 @@
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/rtp_proxy.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/gsm/rsl.h>
 #include <osmocom/core/talloc.h>
 

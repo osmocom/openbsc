@@ -46,6 +46,7 @@ AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
+PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.0.2)
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -90,7 +91,6 @@ AC_OUTPUT(
     include/Makefile
     src/Makefile
     src/libtrau/Makefile
-    src/libabis/Makefile
     src/libbsc/Makefile
     src/libctrl/Makefile
     src/libmsc/Makefile
