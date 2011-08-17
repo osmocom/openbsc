@@ -1474,7 +1474,8 @@ static void reset_timer_cb(void *_bts)
 
 static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
-	struct gsm_bts *bts = mb->trx->bts;
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)mb->dst;
+	struct gsm_bts *bts = sign_link->trx->bts;
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_nokia_hdr *noh = msgb_l3(mb);
 	uint8_t mt = noh->msg_type;
@@ -1579,7 +1580,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		if (bts->nokia.configured != 0) {
 			/* start TRX  (RSL link) */
 
-			struct gsm_e1_subslot *e1_link = &mb->trx->rsl_e1_link;
+			struct gsm_e1_subslot *e1_link =
+					&sign_link->trx->rsl_e1_link;
 			struct e1inp_line *line;
 
 			bts->nokia.configured = 0;
@@ -1590,7 +1592,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 				LOGP(DINP, LOGL_ERROR,
 				     "TRX (%u/%u) RSL link referring "
 				     "to non-existing E1 line %u\n",
-				     mb->trx->bts->nr, mb->trx->nr,
+				     sign_link->trx->bts->nr, sign_link->trx->nr,
 				     e1_link->e1_nr);
 				return -ENOMEM;
 			}

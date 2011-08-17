@@ -49,6 +49,7 @@
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
 #include <osmocom/gsm/gsm48.h>
@@ -94,17 +95,22 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 
 
 	if (msg->lchan) {
-		msg->trx = msg->lchan->ts->trx;
+		struct e1inp_sign_link *sign_link =
+				msg->lchan->ts->trx->rsl_link;
+
+		msg->dst = sign_link;
 		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
-				"Sending '%s' to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
+				"Sending '%s' to MS.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr & 0xf0,
 				gsm48_cc_msg_name(gh->msg_type));
 		else
 			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
-				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
+				"Sending 0x%02x to MS.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr, gh->msg_type);
 	}
 
@@ -874,6 +880,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->lchan->ts->trx->rsl_link;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
@@ -907,7 +914,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	}
 
 	if (subscr) {
-		subscr_update(subscr, msg->trx->bts,
+		subscr_update(subscr, sign_link->trx->bts,
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 

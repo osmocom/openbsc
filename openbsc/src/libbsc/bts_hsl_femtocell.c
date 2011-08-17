@@ -98,20 +98,20 @@ static int hslfemto_bootstrap_om(struct gsm_bts *bts)
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(l1_msg));
 	memcpy(msg->data, l1_msg, sizeof(l1_msg));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 
 #if 1
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(conn_trau_msg));
 	memcpy(msg->data, conn_trau_msg, sizeof(conn_trau_msg));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 #endif
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(conn_trau_msg2));
 	memcpy(msg->data, conn_trau_msg2, sizeof(conn_trau_msg2));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 
 	*((uint16_t *)oml_arfcn_bsic+10) = htons(bts->c0->arfcn);
@@ -120,7 +120,7 @@ static int hslfemto_bootstrap_om(struct gsm_bts *bts)
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(oml_arfcn_bsic));
 	memcpy(msg->data, oml_arfcn_bsic, sizeof(oml_arfcn_bsic));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	_abis_nm_sendmsg(msg, 0);
 
 	/* Delay the OPSTART until after SI have been set via RSL */

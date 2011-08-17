@@ -799,6 +799,7 @@ static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg;
 	struct abis_om2k_hdr *o2h;
 	int to_trx_oml;
 
@@ -814,8 +815,8 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 	case OM2K_MO_CLS_RX:
 		/* Route through per-TRX OML Link to the appropriate TRX */
 		to_trx_oml = 1;
-		msg->trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
-		if (!msg->trx) {
+		sign_link->trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
+		if (!sign_link->trx) {
 			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
@@ -824,8 +825,8 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 	case OM2K_MO_CLS_TS:
 		/* Route through per-TRX OML Link to the appropriate TRX */
 		to_trx_oml = 1;
-		msg->trx = gsm_bts_trx_by_nr(bts, o2h->mo.assoc_so);
-		if (!msg->trx) {
+		sign_link->trx = gsm_bts_trx_by_nr(bts, o2h->mo.assoc_so);
+		if (!sign_link->trx) {
 			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
@@ -833,7 +834,7 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	default:
 		/* Route through the IXU/DXU OML Link */
-		msg->trx = bts->c0;
+		sign_link->trx = bts->c0;
 		to_trx_oml = 0;
 		break;
 	}
@@ -1263,6 +1264,7 @@ struct iwd_type {
 
 static int om2k_rx_negot_req(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	struct iwd_type iwd_types[16];
 	uint8_t num_iwd_types = o2h->data[2];
@@ -1316,29 +1318,31 @@ static int om2k_rx_negot_req(struct msgb *msg)
 
 	out_buf[0] = out_num_types;
 
-	return abis_om2k_tx_negot_req_ack(msg->trx->bts, &o2h->mo, out_buf, out_cur - out_buf);
+	return abis_om2k_tx_negot_req_ack(sign_link->trx->bts, &o2h->mo, out_buf, out_cur - out_buf);
 }
 
 static int om2k_rx_start_res(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	int rc;
 
-	rc = abis_om2k_tx_simple(msg->trx->bts, &o2h->mo, OM2K_MSGT_START_RES_ACK);
-	rc = abis_om2k_tx_op_info(msg->trx->bts, &o2h->mo, 1);
+	rc = abis_om2k_tx_simple(sign_link->trx->bts, &o2h->mo, OM2K_MSGT_START_RES_ACK);
+	rc = abis_om2k_tx_op_info(sign_link->trx->bts, &o2h->mo, 1);
 
 	return rc;
 }
 
 static int om2k_rx_op_info_ack(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 
 	/* This Acknowledgement does not contain the actual operational state,
 	 * so we signal whatever state we saved when we sent the Op Info
 	 * request */
 
-	signal_op_state(msg->trx->bts, &o2h->mo);
+	signal_op_state(sign_link->trx->bts, &o2h->mo);
 
 	return 0;
 }
@@ -1463,7 +1467,8 @@ static int process_mo_state(struct gsm_bts *bts, struct msgb *msg)
 
 int abis_om2k_rcvmsg(struct msgb *msg)
 {
-	struct gsm_bts *bts = msg->trx->bts;
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
+	struct gsm_bts *bts = sign_link->trx->bts;
 	struct abis_om2k_hdr *o2h = msgb_l2(msg);
 	struct abis_om_hdr *oh = &o2h->om;
 	uint16_t msg_type = ntohs(o2h->msg_type);

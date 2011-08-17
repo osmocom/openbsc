@@ -532,20 +532,20 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 		msgb_free(msg);
 		return -EIO;
 	}
-	msg->trx = link->trx;
+	msg->dst = link;
 
 	switch (link->type) {
 	case E1INP_SIGN_RSL:
-		if (!(msg->trx->bts->ip_access.flags & (RSL_UP << msg->trx->nr))) {
+		if (!(link->trx->bts->ip_access.flags & (RSL_UP << link->trx->nr))) {
 			e1inp_event(e1i_ts, S_INP_TEI_UP, link->tei, link->sapi);
-			msg->trx->bts->ip_access.flags |= (RSL_UP << msg->trx->nr);
+			link->trx->bts->ip_access.flags |= (RSL_UP << link->trx->nr);
 		}
 		ret = abis_rsl_rcvmsg(msg);
 		break;
 	case E1INP_SIGN_OML:
-		if (!(msg->trx->bts->ip_access.flags & OML_UP)) {
+		if (!(link->trx->bts->ip_access.flags & OML_UP)) {
 			e1inp_event(e1i_ts, S_INP_TEI_UP, link->tei, link->sapi);
-			msg->trx->bts->ip_access.flags |= OML_UP;
+			link->trx->bts->ip_access.flags |= OML_UP;
 		}
 		ret = abis_nm_rcvmsg(msg);
 		break;

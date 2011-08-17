@@ -373,7 +373,8 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 static int sw_activ_rep(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	struct gsm_bts *bts = mb->trx->bts;
+	struct e1inp_sign_link *sign_link = mb->dst;
+	struct gsm_bts *bts = sign_link->trx->bts;
 	struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, foh->obj_inst.trx_nr);
 
 	if (!trx)

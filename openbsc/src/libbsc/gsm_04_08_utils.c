@@ -44,7 +44,7 @@ int ipacc_rtp_direct = 1;
 static int gsm48_sendmsg(struct msgb *msg)
 {
 	if (msg->lchan)
-		msg->trx = msg->lchan->ts->trx;
+		msg->dst = msg->lchan->ts->trx->rsl_link;
 
 	msg->l3h = msg->data;
 	return rsl_data_request(msg, 0);

@@ -38,8 +38,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/rtp_proxy.h>
+#include <openbsc/e1_input.h>
 #include <osmocom/gsm/rsl.h>
-
 #include <osmocom/core/talloc.h>
 
 #define RSL_ALLOC_SIZE		1024
@@ -215,7 +215,7 @@ int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
 	msgb_tlv_put(msg, RSL_IE_FULL_BCCH_INFO, len, data);
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -233,7 +233,7 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
 	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -252,7 +252,7 @@ int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 	msgb_tv_put(msg, RSL_IE_SYSINFO_TYPE, type);
 	msgb_tl16v_put(msg, RSL_IE_L3_INFO, len, data);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -279,7 +279,7 @@ int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 
 	msgb_tv_put(msg, RSL_IE_BS_POWER, lchan->bs_power);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -308,7 +308,7 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 
 	msgb_tv_put(msg, RSL_IE_MS_POWER, lchan->ms_power);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -407,7 +407,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
 	msgb_tv_put(msg, RSL_IE_MS_POWER, ms_power);
 	msgb_tv_put(msg, RSL_IE_TIMING_ADVANCE, ta);
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -486,7 +486,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 		msgb_tlv_put(msg, RSL_IE_MR_CONFIG, sizeof(lchan->mr_conf),
 			     (uint8_t *) &lchan->mr_conf);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -525,7 +525,7 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 			     (uint8_t *) &lchan->mr_conf);
 	}
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -557,7 +557,7 @@ int rsl_encryption_cmd(struct msgb *msg)
 	init_dchan_hdr(dh, RSL_MT_ENCR_CMD);
 	dh->chan_nr = chan_nr;
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -573,7 +573,7 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 	dh->chan_nr = gsm_lchan2chan_nr(lchan);
 
 	msg->lchan = lchan;
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	DEBUGP(DRSL, "%s DEACTivate SACCH CMD\n", gsm_lchan_name(lchan));
 
@@ -615,7 +615,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	dh->chan_nr = gsm_lchan2chan_nr(lchan);
 
 	msg->lchan = lchan;
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
 
@@ -625,11 +625,13 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 		 * be a problem when we have reassigned the channel to someone else and then can
 		 * not figure out who used this channel.
 		 */
+		struct e1inp_sign_link *sign_link = msg->dst;
+
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
 		osmo_timer_schedule(&lchan->error_timer,
-				   msg->trx->bts->network->T3111 + 2, 0);
+				   sign_link->trx->bts->network->T3111 + 2, 0);
 	}
 
 	/* Start another timer or assume the BTS sends a ACK/NACK? */
@@ -683,7 +685,7 @@ int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
 	msgb_tlv_put(msg, RSL_IE_MS_IDENTITY, len-2, ms_ident+2);
 	msgb_tv_put(msg, RSL_IE_CHAN_NEEDED, chan_needed);
 
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -727,7 +729,7 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 		break;
 	}
 
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -747,7 +749,7 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 	DEBUGP(DRSL, "%s TX Siemens MRPCI 0x%02x\n",
 		gsm_lchan_name(lchan), *(uint8_t *)mrpci);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -765,7 +767,7 @@ int rsl_data_request(struct msgb *msg, uint8_t link_id)
 	rsl_rll_push_l3(msg, RSL_MT_DATA_REQ, gsm_lchan2chan_nr(msg->lchan),
 			link_id, 1);
 
-	msg->trx = msg->lchan->ts->trx;
+	msg->dst = msg->lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -778,7 +780,7 @@ int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id)
 
 	msg = rsl_rll_simple(RSL_MT_EST_REQ, gsm_lchan2chan_nr(lchan),
 			     link_id, 0);
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -800,7 +802,7 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason
 
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -998,9 +1000,11 @@ static int rsl_rx_meas_res(struct msgb *msg)
 			*TLVP_VAL(&tp, RSL_IE_MS_TIMING_OFFSET);
 
 	if (TLVP_PRESENT(&tp, RSL_IE_L1_INFO)) {
+		struct e1inp_sign_link *sign_link = msg->dst;
+
 		val = TLVP_VAL(&tp, RSL_IE_L1_INFO);
 		mr->flags |= MEAS_REP_F_MS_L1;
-		mr->ms_l1.pwr = ms_pwr_dbm(msg->trx->bts->band, val[0] >> 3);
+		mr->ms_l1.pwr = ms_pwr_dbm(sign_link->trx->bts->band, val[0] >> 3);
 		if (val[0] & 0x04)
 			mr->flags |= MEAS_REP_F_FPC;
 		mr->ms_l1.ta = val[1];
@@ -1045,8 +1049,9 @@ static int abis_rsl_rx_dchan(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	int rc = 0;
 	char *ts_name;
+	struct e1inp_sign_link *sign_link = msg->dst;
 
-	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr);
 	ts_name = gsm_lchan_name(msg->lchan);
 
 	switch (rslh->c.msg_type) {
@@ -1113,8 +1118,9 @@ static int rsl_rx_error_rep(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
 	struct tlv_parsed tp;
+	struct e1inp_sign_link *sign_link = msg->dst;
 
-	LOGP(DRSL, LOGL_ERROR, "%s ERROR REPORT ", gsm_trx_name(msg->trx));
+	LOGP(DRSL, LOGL_ERROR, "%s ERROR REPORT ", gsm_trx_name(sign_link->trx));
 
 	rsl_tlv_parse(&tp, rslh->data, msgb_l2len(msg)-sizeof(*rslh));
 
@@ -1130,6 +1136,7 @@ static int rsl_rx_error_rep(struct msgb *msg)
 static int abis_rsl_rx_trx(struct msgb *msg)
 {
 	struct abis_rsl_common_hdr *rslh = msgb_l2(msg);
+	struct e1inp_sign_link *sign_link = msg->dst;
 	int rc = 0;
 
 	switch (rslh->msg_type) {
@@ -1138,12 +1145,12 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	case RSL_MT_RF_RES_IND:
 		/* interference on idle channels of TRX */
-		//DEBUGP(DRSL, "%s RF Resource Indication\n", gsm_trx_name(msg->trx));
+		//DEBUGP(DRSL, "%s RF Resource Indication\n", gsm_trx_name(sign_link->trx));
 		break;
 	case RSL_MT_OVERLOAD:
 		/* indicate CCCH / ACCH / processor overload */
 		LOGP(DRSL, LOGL_ERROR, "%s CCCH/ACCH/CPU Overload\n",
-		     gsm_trx_name(msg->trx));
+		     gsm_trx_name(sign_link->trx));
 		break;
 	case 0x42: /* Nokia specific: SI End ACK */
 		LOGP(DRSL, LOGL_INFO, "Nokia SI End ACK\n");
@@ -1153,7 +1160,7 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "%s Unknown Abis RSL TRX message "
-			"type 0x%02x\n", gsm_trx_name(msg->trx), rslh->msg_type);
+			"type 0x%02x\n", gsm_trx_name(sign_link->trx), rslh->msg_type);
 		return -EINVAL;
 	}
 	return rc;
@@ -1219,7 +1226,8 @@ static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 /* MS has requested a channel on the RACH */
 static int rsl_rx_chan_rqd(struct msgb *msg)
 {
-	struct gsm_bts *bts = msg->trx->bts;
+	struct e1inp_sign_link *sign_link = msg->dst;
+	struct gsm_bts *bts = sign_link->trx->bts;
 	struct abis_rsl_dchan_hdr *rqd_hdr = msgb_l2(msg);
 	struct gsm48_req_ref *rqd_ref;
 	enum gsm_chan_t lctype;
@@ -1346,6 +1354,7 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 /* MS has requested a channel on the RACH */
 static int rsl_rx_ccch_load(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	uint16_t pg_buf_space;
 	uint16_t rach_slot_count = -1;
@@ -1355,11 +1364,11 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
 		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
-		if (is_ipaccess_bts(msg->trx->bts) && pg_buf_space == 0xffff) {
+		if (is_ipaccess_bts(sign_link->trx->bts) && pg_buf_space == 0xffff) {
 			/* paging load below configured threshold, use 50 as default */
 			pg_buf_space = 50;
 		}
-		paging_update_buffer_space(msg->trx->bts, pg_buf_space);
+		paging_update_buffer_space(sign_link->trx->bts, pg_buf_space);
 		break;
 	case RSL_IE_RACH_LOAD:
 		if (msg->data_len >= 7) {
@@ -1377,10 +1386,11 @@ static int rsl_rx_ccch_load(struct msgb *msg)
 
 static int abis_rsl_rx_cchan(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
 	int rc = 0;
 
-	msg->lchan = lchan_lookup(msg->trx, rslh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rslh->chan_nr);
 
 	switch (rslh->c.msg_type) {
 	case RSL_MT_CHAN_RQD:
@@ -1460,12 +1470,13 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 
 static int abis_rsl_rx_rll(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	int rc = 0;
 	char *ts_name;
 	uint8_t sapi = rllh->link_id & 7;
 
-	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr);
 	ts_name = gsm_lchan_name(msg->lchan);
 	DEBUGP(DRLL, "%s SAPI=%u ", ts_name, sapi);
 	
@@ -1683,7 +1694,7 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 		gsm_lchan_name(lchan), lchan->abis_ip.speech_mode,
 		lchan->abis_ip.rtp_payload);
 
-	msg->trx = lchan->ts->trx;
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -1725,8 +1736,8 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip, uint16_t port,
 	msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD, lchan->abis_ip.rtp_payload);
 	if (rtp_payload2)
 		msgb_tv_put(msg, RSL_IE_IPAC_RTP_PAYLOAD2, rtp_payload2);
-	
-	msg->trx = lchan->ts->trx;
+
+	msg->dst = lchan->ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -1764,7 +1775,7 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 	DEBUGP(DRSL, "%s IPAC_PDCH_%sACT\n", gsm_ts_name(ts),
 		act ? "" : "DE");
 
-	msg->trx = ts->trx;
+	msg->dst = ts->trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -1829,11 +1840,12 @@ static int abis_rsl_rx_ipacc_dlcx_ind(struct msgb *msg)
 
 static int abis_rsl_rx_ipacc(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
 	char *ts_name;
 	int rc = 0;
 
-	msg->lchan = lchan_lookup(msg->trx, rllh->chan_nr);
+	msg->lchan = lchan_lookup(sign_link->trx, rllh->chan_nr);
 	ts_name = gsm_lchan_name(msg->lchan);
 	
 	switch (rllh->c.msg_type) {
@@ -1949,7 +1961,7 @@ int rsl_nokia_si_begin(struct gsm_bts_trx *trx)
 	ch->msg_discr = ABIS_RSL_MDISC_TRX;
 	ch->msg_type = 0x40; /* Nokia SI Begin */
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -1965,7 +1977,7 @@ int rsl_nokia_si_end(struct gsm_bts_trx *trx)
 
 	msgb_tv_put(msg, 0xFD, 0x00); /* Nokia Pagemode Info, No paging reorganisation required */
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -1982,7 +1994,7 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 	msgb_tv_put(msg, RSL_IE_CHAN_NR, channel);
 	msgb_tv_put(msg, RSL_IE_BS_POWER, reduction); /* reduction in 2dB steps */
 
-	msg->trx = trx;
+	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
 }

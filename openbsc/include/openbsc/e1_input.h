@@ -195,4 +195,6 @@ void e1inp_init(void);
 
 int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml);
 
+int abis_sendmsg(struct msgb *msg);
+
 #endif /* _E1_INPUT_H */
