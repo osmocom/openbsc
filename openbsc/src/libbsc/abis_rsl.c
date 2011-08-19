@@ -178,6 +178,29 @@ static void print_rsl_cause(int lvl, const uint8_t *cause_v, uint8_t cause_len)
 		LOGPC(DRSL, lvl, "%02x ", cause_v[i]);
 }
 
+static void lchan_act_tmr_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during activation!\n",
+		gsm_lchan_name(lchan));
+
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
+}
+
+static void lchan_deact_tmr_cb(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during deactivation!\n",
+		gsm_lchan_name(lchan));
+
+	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
+}
+
+
 /* Send a BCCH_INFO message as per Chapter 8.5.1 */
 int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
 		  const uint8_t *data, int len)
@@ -609,6 +632,11 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 				   msg->trx->bts->network->T3111 + 2, 0);
 	}
 
+	/* Start another timer or assume the BTS sends a ACK/NACK? */
+	lchan->act_timer.cb = lchan_deact_tmr_cb;
+	lchan->act_timer.data = lchan;
+	osmo_timer_schedule(&lchan->act_timer, 4, 0);
+
 	rc =  abis_rsl_sendmsg(msg);
 
 	/* BTS will respond by RF CHAN REL ACK */
@@ -625,6 +653,8 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 {
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
+
+	osmo_timer_del(&lchan->act_timer);
 
 	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
@@ -791,6 +821,8 @@ static int rsl_rx_chan_act_ack(struct msgb *msg)
 	if (rslh->ie_chan != RSL_IE_CHAN_NR)
 		return -EINVAL;
 
+	osmo_timer_del(&msg->lchan->act_timer);
+
 	if (msg->lchan->state != LCHAN_S_ACT_REQ)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN ACT ACK, but state %s\n",
 			gsm_lchan_name(msg->lchan),
@@ -815,7 +847,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 	struct abis_rsl_dchan_hdr *dh = msgb_l2(msg);
 	struct tlv_parsed tp;
 
-	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK",
+	osmo_timer_del(&msg->lchan->act_timer);
+
+	LOGP(DRSL, LOGL_ERROR, "%s CHANNEL ACTIVATE NACK ",
 		gsm_lchan_name(msg->lchan));
 
 	/* BTS has rejected channel activation ?!? */
@@ -829,6 +863,9 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
 			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+		else
+			rsl_rf_chan_release(msg->lchan, 1);
+
 	} else
 		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
 
@@ -1108,6 +1145,12 @@ static int abis_rsl_rx_trx(struct msgb *msg)
 		LOGP(DRSL, LOGL_ERROR, "%s CCCH/ACCH/CPU Overload\n",
 		     gsm_trx_name(msg->trx));
 		break;
+	case 0x42: /* Nokia specific: SI End ACK */
+		LOGP(DRSL, LOGL_INFO, "Nokia SI End ACK\n");
+		break;
+	case 0x43: /* Nokia specific: SI End NACK */
+		LOGP(DRSL, LOGL_INFO, "Nokia SI End NACK\n");
+		break;
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "%s Unknown Abis RSL TRX message "
 			"type 0x%02x\n", gsm_trx_name(msg->trx), rslh->msg_type);
@@ -1251,7 +1294,11 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->rsl_cmode = RSL_CMOD_SPD_SIGN;
 	lchan->tch_mode = GSM48_CMODE_SIGN;
 
-	/* FIXME: Start another timer or assume the BTS sends a ACK/NACK? */
+	/* Start another timer or assume the BTS sends a ACK/NACK? */
+	lchan->act_timer.cb = lchan_act_tmr_cb;
+	lchan->act_timer.data = lchan;
+	osmo_timer_schedule(&lchan->act_timer, 4, 0);
+
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
 
 	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
@@ -1891,4 +1938,51 @@ int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
 	cb_cmd->trx = bts->c0;
 
 	return abis_rsl_sendmsg(cb_cmd);
+}
+
+int rsl_nokia_si_begin(struct gsm_bts_trx *trx)
+{
+	struct abis_rsl_common_hdr *ch;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	ch = (struct abis_rsl_common_hdr *) msgb_put(msg, sizeof(*ch));
+	ch->msg_discr = ABIS_RSL_MDISC_TRX;
+	ch->msg_type = 0x40; /* Nokia SI Begin */
+
+	msg->trx = trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_nokia_si_end(struct gsm_bts_trx *trx)
+{
+	struct abis_rsl_common_hdr *ch;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	ch = (struct abis_rsl_common_hdr *) msgb_put(msg, sizeof(*ch));
+	ch->msg_discr = ABIS_RSL_MDISC_TRX;
+	ch->msg_type = 0x41;  /* Nokia SI End */
+
+	msgb_tv_put(msg, 0xFD, 0x00); /* Nokia Pagemode Info, No paging reorganisation required */
+
+	msg->trx = trx;
+
+	return abis_rsl_sendmsg(msg);
+}
+
+int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction)
+{
+	struct abis_rsl_common_hdr *ch;
+	struct msgb *msg = rsl_msgb_alloc();
+
+	ch = (struct abis_rsl_common_hdr *) msgb_put(msg, sizeof(*ch));
+	ch->msg_discr = ABIS_RSL_MDISC_DED_CHAN;
+	ch->msg_type = RSL_MT_BS_POWER_CONTROL;
+
+	msgb_tv_put(msg, RSL_IE_CHAN_NR, channel);
+	msgb_tv_put(msg, RSL_IE_BS_POWER, reduction); /* reduction in 2dB steps */
+
+	msg->trx = trx;
+
+	return abis_rsl_sendmsg(msg);
 }

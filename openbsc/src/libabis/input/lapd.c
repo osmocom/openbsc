@@ -31,7 +31,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <errno.h>
 
 #include "lapd.h"
@@ -190,7 +189,7 @@ static struct lapd_tei *teip_from_tei(struct lapd_instance *li, uint8_t tei)
 
 static void lapd_tei_set_state(struct lapd_tei *teip, int newstate)
 {
-	DEBUGP(DMI, "state change on TEI %d: %s -> %s\n", teip->tei,
+	LOGP(DMI, LOGL_INFO, "LAPD state change on TEI %d: %s -> %s\n", teip->tei,
 		   lapd_tei_states[teip->state], lapd_tei_states[newstate]);
 	teip->state = newstate;
 };
@@ -234,7 +233,7 @@ static struct lapd_sap *lapd_sap_alloc(struct lapd_tei *teip, uint8_t sapi)
 {
 	struct lapd_sap *sap = talloc_zero(teip, struct lapd_sap);
 
-	LOGP(DMI, LOGL_INFO, "Allocating SAP for SAPI=%u / TEI=%u\n",
+	LOGP(DMI, LOGL_INFO, "LAPD Allocating SAP for SAPI=%u / TEI=%u\n",
 		sapi, teip->tei);
 
 	sap->sapi = sapi;
@@ -254,8 +253,9 @@ static void lapd_sap_set_state(struct lapd_tei *teip, uint8_t sapi,
 	if (!sap)
 		return;
 
-	DEBUGP(DMI, "state change on TEI %u / SAPI %u: %s -> %s\n", teip->tei,
-		sapi, lapd_sap_states[sap->state], lapd_sap_states[newstate]);
+	LOGP(DMI, LOGL_INFO, "LAPD state change on TEI %u / SAPI %u: "
+		"%s -> %s\n", teip->tei, sapi,
+		lapd_sap_states[sap->state], lapd_sap_states[newstate]);
 	switch (sap->state) {
 	case SAP_STATE_SABM_RETRANS:
 		if (newstate != SAP_STATE_SABM_RETRANS)
@@ -281,11 +281,12 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 	uint8_t resp[8];
 	struct lapd_tei *teip;
 
-	DEBUGP(DMI, "TEIMGR: entity %x, ref %x, mt %x, action %x, e %x\n", entity, ref, mt, action, e);
+	DEBUGP(DMI, "LAPD TEIMGR: entity %x, ref %x, mt %x, action %x, e %x\n",
+		entity, ref, mt, action, e);
 
 	switch (mt) {
 	case 0x01:	/* IDENTITY REQUEST */
-		DEBUGP(DMI, "TEIMGR: identity request for TEI %u\n", action);
+		DEBUGP(DMI, "LAPD TEIMGR: identity request for TEI %u\n", action);
 
 		teip = teip_from_tei(li, action);
 		if (!teip) {
@@ -302,15 +303,16 @@ static void lapd_tei_receive(struct lapd_instance *li, uint8_t *data, int len)
 			lapd_tei_set_state(teip, LAPD_TEI_ASSIGNED);
 		break;
 	default:
-		LOGP(DMI, LOGL_NOTICE, "TEIMGR: unknown mt %x action %x\n",
+		LOGP(DMI, LOGL_NOTICE, "LAPD TEIMGR: unknown mt %x action %x\n",
 		     mt, action);
 		break;
 	};
 };
 
 /* General input function for any data received for this LAPD instance */
-uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len,
-		      int *ilen, lapd_mph_type *prim)
+uint8_t *
+lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len,
+	     int *ilen, lapd_mph_type *prim, int *error)
 {
 	uint8_t sapi, cr, tei, command;
 	int pf, ns, nr;
@@ -325,13 +327,15 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	*prim = 0;
 
 	if (len < 2) {
-		DEBUGP(DMI, "len %d < 2\n", len);
+		LOGP(DMI, LOGL_ERROR, "LAPD receive len %d < 2, ignoring\n", len);
+		*error = LAPD_ERR_BAD_LEN;
 		return NULL;
 	};
 
 	if ((data[0] & 1) != 0 || (data[1] & 1) != 1) {
-		DEBUGP(DMI, "address field %x/%x not well formed\n", data[0],
-			   data[1]);
+		LOGP(DMI, LOGL_ERROR, "LAPD address field %x/%x not well formed\n",
+			data[0], data[1]);
+		*error = LAPD_ERR_BAD_ADDR;
 		return NULL;
 	};
 
@@ -342,7 +346,8 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	//DEBUGP(DMI, "  address sapi %x tei %d cmd %d cr %d\n", sapi, tei, command, cr);
 
 	if (len < 3) {
-		DEBUGP(DMI, "len %d < 3\n", len);
+		LOGP(DMI, LOGL_ERROR, "LAPD receive len %d < 3, ignoring\n", len);
+		*error = LAPD_ERR_BAD_LEN;
 		return NULL;
 	};
 
@@ -353,14 +358,22 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	nr = -1;
 	if ((data[2] & 1) == 0) {
 		typ = LAPD_TYPE_I;
-		assert(len >= 4);
+		if (len < 4) {
+			LOGP(DMI, LOGL_ERROR, "LAPD I frame, len %d < 4\n", len);
+			*error = LAPD_ERR_BAD_LEN;
+			return NULL;
+		}
 		ns = data[2] >> 1;
 		nr = data[3] >> 1;
 		pf = data[3] & 1;
 		cmd = LAPD_CMD_I;
 	} else if ((data[2] & 3) == 1) {
 		typ = LAPD_TYPE_S;
-		assert(len >= 4);
+		if (len < 4) {
+			LOGP(DMI, LOGL_ERROR, "LAPD S frame, len %d < 4\n", len);
+			*error = LAPD_ERR_BAD_LEN;
+			return NULL;
+		}
 		nr = data[3] >> 1;
 		pf = data[3] & 1;
 		switch (data[2]) {
@@ -374,7 +387,8 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 			cmd = LAPD_CMD_REJ;
 			break;
 		default:
-			LOGP(DMI, LOGL_ERROR, "unknown LAPD S cmd %x\n", data[2]);
+			LOGP(DMI, LOGL_ERROR, "LAPD unknown S cmd %x\n", data[2]);
+			*error = LAPD_ERR_UNKNOWN_S_CMD;
 			return NULL;
 		};
 	} else if ((data[2] & 3) == 3) {
@@ -405,8 +419,9 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 			break;
 
 		default:
-			LOGP(DMI, LOGL_ERROR, "unknown U cmd %x "
+			LOGP(DMI, LOGL_ERROR, "LAPD unknown U cmd %x "
 			     "(pf %x data %x)\n", val, pf, data[2]);
+			*error = LAPD_ERR_UNKNOWN_U_CMD;
 			return NULL;
 		};
 	};
@@ -421,13 +436,14 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 
 	teip = teip_from_tei(li, tei);
 	if (!teip) {
-		LOGP(DMI, LOGL_NOTICE, "Unknown TEI %u\n", tei);
+		LOGP(DMI, LOGL_NOTICE, "LAPD Unknown TEI %u\n", tei);
+		*error = LAPD_ERR_UNKNOWN_TEI;
 		return NULL;
 	}
 
 	sap = lapd_sap_find(teip, sapi);
 	if (!sap) {
-		LOGP(DMI, LOGL_INFO, "No SAP for TEI=%u / SAPI=%u, "
+		LOGP(DMI, LOGL_INFO, "LAPD No SAP for TEI=%u / SAPI=%u, "
 			"allocating\n", tei, sapi);
 		sap = lapd_sap_alloc(teip, sapi);
 	}
@@ -440,12 +456,15 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 	switch (cmd) {
 	case LAPD_CMD_I:
 		if (ns != sap->vr) {
-			DEBUGP(DMI, "ns %d != vr %d\n", ns, sap->vr);
+			DEBUGP(DMI, "LAPD ns %d != vr %d\n", ns, sap->vr);
 			if (ns == ((sap->vr - 1) & 0x7f)) {
-				DEBUGP(DMI, "DOUBLE FRAME, ignoring\n");
+				LOGP(DMI, LOGL_NOTICE, "LAPD double frame, "
+					"ignoring\n");
 				cmd = 0;	// ignore
 			} else {
-				assert(0);
+				LOGP(DMI, LOGL_ERROR, "LAPD Out of order "
+					"ns %d != vr %d, ignoring\n", ns, sap->vr);
+				return NULL;
 			};
 		} else {
 			//printf("IN SEQUENCE\n");
@@ -560,7 +579,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		 */
 
 		/* interrogating us, send rr */
-		DEBUGP(DMI, "Sending RR response\n");
+		DEBUGP(DMI, "LAPD Sending RR response\n");
 		resp[l++] = data[0];
 		resp[l++] = (tei << 1) | 1;
 		resp[l++] = 0x01;	// rr
@@ -577,6 +596,7 @@ uint8_t *lapd_receive(struct lapd_instance *li, uint8_t * data, unsigned int len
 		return contents;
 	}
 
+	*error = LAPD_ERR_BAD_CMD;
 	return NULL;
 };
 
@@ -587,7 +607,7 @@ static int lapd_send_sabm(struct lapd_instance *li, uint8_t tei, uint8_t sapi)
 	if (!msg)
 		return -ENOMEM;
 
-	DEBUGP(DMI, "Sending SABM for TEI=%u, SAPI=%u\n", tei, sapi);
+	LOGP(DMI, LOGL_INFO, "LAPD Sending SABM for TEI=%u, SAPI=%u\n", tei, sapi);
 
 	msgb_put_u8(msg, (sapi << 2) | (li->network_side ? 2 : 0));
 	msgb_put_u8(msg, (tei << 1) | 1);
@@ -662,15 +682,15 @@ void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 	struct lapd_sap *sap;
 
 	if (!teip) {
-		LOGP(DMI, LOGL_ERROR, "Cannot transmit on non-existing "
-		     "TEI %u\n", tei);
+		LOGP(DMI, LOGL_ERROR, "LAPD Cannot transmit on "
+		     "non-existing TEI %u\n", tei);
 		return;
 	}
 
 	sap = lapd_sap_find(teip, sapi);
 	if (!sap) {
-		LOGP(DMI, LOGL_INFO, "Tx on unknown SAPI=%u in TEI=%u, "
-			"allocating\n", sapi, tei);
+		LOGP(DMI, LOGL_INFO, "LAPD Tx on unknown SAPI=%u "
+		     "in TEI=%u, allocating\n", sapi, tei);
 		sap = lapd_sap_alloc(teip, sapi);
 	}
 

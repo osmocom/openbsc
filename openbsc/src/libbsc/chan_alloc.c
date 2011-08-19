@@ -299,6 +299,10 @@ void lchan_free(struct gsm_lchan *lchan)
 	sig.type = lchan->type;
 	lchan->type = GSM_LCHAN_NONE;
 
+	if (lchan->state != LCHAN_S_NONE) {
+		LOGP(DRLL, LOGL_NOTICE, "Freeing lchan with state %s - setting to NONE\n", gsm_lchans_name(lchan->state));
+		lchan->state = LCHAN_S_NONE;
+	}
 
 	if (lchan->conn) {
 		struct lchan_signal_data sig;

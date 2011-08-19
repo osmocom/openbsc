@@ -26,8 +26,20 @@ struct lapd_instance {
 	struct llist_head tei_list;	/* list of TEI in this LAPD instance */
 };
 
-extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data, unsigned int len,
-			     int *ilen, lapd_mph_type *prim);
+enum lapd_recv_errors {
+	LAPD_ERR_NONE = 0,
+	LAPD_ERR_BAD_LEN,
+	LAPD_ERR_BAD_ADDR,
+	LAPD_ERR_UNKNOWN_S_CMD,
+	LAPD_ERR_UNKNOWN_U_CMD,
+	LAPD_ERR_UNKNOWN_TEI,
+	LAPD_ERR_BAD_CMD,
+	__LAPD_ERR_MAX
+};
+
+extern uint8_t *lapd_receive(struct lapd_instance *li, uint8_t *data,
+			     unsigned int len, int *ilen, lapd_mph_type *prim,
+			     int *error);
 
 extern void lapd_transmit(struct lapd_instance *li, uint8_t tei, uint8_t sapi,
 			  uint8_t *data, unsigned int len);

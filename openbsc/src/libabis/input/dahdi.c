@@ -40,6 +40,8 @@
 
 #include <osmocom/core/select.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/rate_ctr.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
@@ -68,6 +70,7 @@ static const struct value_string dahdi_evt_names[] = {
 static void handle_dahdi_exception(struct e1inp_ts *ts)
 {
 	int rc, evt;
+	struct e1inp_line *line = ts->line;
 	struct input_signal_data isd;
 
 	rc = ioctl(ts->driver.dahdi.fd.fd, DAHDI_GETEVENT, &evt);
@@ -84,10 +87,23 @@ static void handle_dahdi_exception(struct e1inp_ts *ts)
 	case DAHDI_EVENT_ALARM:
 		/* we should notify the code that the line is gone */
 		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_ALARM, &isd);
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_ALARM]);
 		break;
 	case DAHDI_EVENT_NOALARM:
 		/* alarm has gone, we should re-start the SABM requests */
 		osmo_signal_dispatch(SS_INPUT, S_INP_LINE_NOALARM, &isd);
+		break;
+	case DAHDI_EVENT_ABORT:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_ABORT]);
+		break;
+	case DAHDI_EVENT_OVERRUN:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_OVERR]);
+		break;
+	case DAHDI_EVENT_BADFCS:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_HDLC_BADFCS]);
+		break;
+	case DAHDI_EVENT_REMOVED:
+		rate_ctr_inc(&line->rate_ctr->ctr[E1I_CTR_REMOVED]);
 		break;
 	}
 }
@@ -100,7 +116,7 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	struct msgb *msg = msgb_alloc(TS1_ALLOC_SIZE, "DAHDI TS1");
 	lapd_mph_type prim;
 	unsigned int sapi, tei;
-	int ilen, ret;
+	int ilen, ret, error = 0;
 	uint8_t *idata;
 
 	if (!msg)
@@ -122,9 +138,21 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 
 	DEBUGP(DMI, "<= len = %d, sapi(%d) tei(%d)", ret, sapi, tei);
 
-	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim);
-	if (!idata && prim == 0)
-		return -EIO;
+	idata = lapd_receive(e1i_ts->driver.dahdi.lapd, msg->data, msg->len, &ilen, &prim, &error);
+	if (!idata) {
+		switch(error) {
+		case LAPD_ERR_UNKNOWN_TEI:
+			/* We don't know about this TEI, probably the BSC
+			 * lost local states (it crashed or it was stopped),
+			 * notify the driver to see if it can do anything to
+			 * recover the existing signalling links with the BTS.
+			 */
+			e1inp_event(e1i_ts, S_INP_TEI_UNKNOWN, tei, sapi);
+			return -EIO;
+		}
+		if (prim == 0)
+			return -EIO;
+	}
 
 	msgb_pull(msg, 2);
 
@@ -421,11 +449,17 @@ static int dahdi_e1_setup(struct e1inp_line *line)
 		char openstr[128];
 		struct e1inp_ts *e1i_ts = &line->ts[idx];
 		struct osmo_fd *bfd = &e1i_ts->driver.dahdi.fd;
+		int dev_nr;
+
+		/* DAHDI device names/numbers just keep incrementing
+		 * even over multiple boards.  So TS1 of the second
+		 * board will be 32 */
+		dev_nr = line->num * (NUM_E1_TS-1) + ts;
 
 		bfd->data = line;
 		bfd->priv_nr = ts;
 		bfd->cb = dahdi_fd_cb;
-		snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", ts);
+		snprintf(openstr, sizeof(openstr), "/dev/dahdi/%d", dev_nr);
 
 		switch (e1i_ts->type) {
 		case E1INP_TS_TYPE_NONE:

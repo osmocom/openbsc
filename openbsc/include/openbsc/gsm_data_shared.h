@@ -182,6 +182,7 @@ struct gsm_lchan {
 	struct osmo_timer_list T3101;
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
+	struct osmo_timer_list act_timer;
 
 	/* table of neighbor cell measurements */
 	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
@@ -325,6 +326,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
 	GSM_BTS_TYPE_HSL_FEMTO,
+	GSM_BTS_TYPE_NOKIA_SITE,
 };
 
 struct vty;
@@ -487,6 +489,13 @@ struct gsm_bts {
 		struct {
 			unsigned long serno;
 		} hsl;
+		struct {
+			uint8_t bts_type;
+			int configured:1,
+			    do_reset:1,
+			    wait_reset:1;
+			struct osmo_timer_list reset_timer;
+		} nokia;
 	};
 
 	/* Not entirely sure how ip.access specific this is */

@@ -165,6 +165,13 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 
 		bfd->when &= ~BSC_FD_WRITE;
 
+		/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
+		if (!msgb_length(msg)) {
+			LOGP(DMNCC, LOGL_ERROR, "message type (%d) with ZERO "
+				"bytes!\n", mncc_prim->msg_type);
+			goto dontsend;
+		}
+
 		/* try to send it over the socket */
 		rc = write(bfd->fd, msgb_data(msg), msgb_length(msg));
 		if (rc == 0)
@@ -176,6 +183,8 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 			}
 			goto close;
 		}
+
+dontsend:
 		/* _after_ we send it, we can deueue */
 		msg2 = msgb_dequeue(&net->upqueue);
 		assert(msg == msg2);

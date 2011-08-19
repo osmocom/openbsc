@@ -90,5 +90,12 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm);
 int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
 		       uint8_t cb_command, const uint8_t *data, int len);
 
+/* some Nokia specific stuff */
+int rsl_nokia_si_begin(struct gsm_bts_trx *trx);
+int rsl_nokia_si_end(struct gsm_bts_trx *trx);
+
+/* required for Nokia BTS power control */
+int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction);
+
 #endif /* RSL_MT_H */
 
