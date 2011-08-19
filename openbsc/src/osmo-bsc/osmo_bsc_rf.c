@@ -97,7 +97,7 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 		struct gsm_bts_trx *trx;
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->mo.nm_state.availability == NM_AVSTATE_OK &&
-			    trx->mo.nm_state.operational != NM_STATE_LOCKED) {
+			    trx->mo.nm_state.operational != NM_OPSTATE_DISABLED) {
 					send = RF_CMD_ON;
 					break;
 			}
