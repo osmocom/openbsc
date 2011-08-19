@@ -42,6 +42,51 @@
 #define RF_CMD_D_OFF 'd'
 #define RF_CMD_ON_G  'g'
 
+enum osmo_bsc_rf_opstate osmo_bsc_rf_get_opstate_by_bts(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED)
+			return OSMO_BSC_RF_OPSTATE_OPERATIONAL;
+	}
+
+	/* No trx were active, so this bts is disabled */
+	return OSMO_BSC_RF_OPSTATE_INOPERATIONAL;
+}
+
+enum osmo_bsc_rf_adminstate osmo_bsc_rf_get_adminstate_by_bts(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
+			return OSMO_BSC_RF_ADMINSTATE_UNLOCKED;
+	}
+
+	/* All trx administrative states were locked */
+	return OSMO_BSC_RF_ADMINSTATE_LOCKED;
+}
+
+enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts)
+{
+	struct osmo_msc_data *msc_data = bts->network->msc_data;
+
+	if (!msc_data || !msc_data->rf_ctrl)
+		return OSMO_BSC_RF_POLICY_UNKNOWN;
+
+	switch (msc_data->rf_ctrl->policy) {
+	case S_RF_ON:
+		return OSMO_BSC_RF_POLICY_ON;
+	case S_RF_OFF:
+		return OSMO_BSC_RF_POLICY_OFF;
+	case S_RF_GRACE:
+		return OSMO_BSC_RF_POLICY_GRACE;
+	default:
+		return OSMO_BSC_RF_POLICY_UNKNOWN;
+	}
+}
+
 static int lock_each_trx(struct gsm_network *net, int lock)
 {
 	struct gsm_bts *bts;

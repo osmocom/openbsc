@@ -53,6 +53,7 @@ static int get_bts_loc(struct ctrl_cmd *cmd, void *data);
 static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_connection *msc_con)
 {
 	struct ctrl_cmd *cmd;
+	char *oper, *admin, *policy;
 
 	cmd = ctrl_cmd_create(msc_con, CTRL_TYPE_TRAP);
 
@@ -62,6 +63,33 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	/* Prepare the location reply */
 	cmd->node = bts;
 	get_bts_loc(cmd, NULL);
+
+	if (osmo_bsc_rf_get_opstate_by_bts(bts) == OSMO_BSC_RF_OPSTATE_OPERATIONAL)
+		oper = "operational";
+	else
+		oper = "inoperational";
+
+	if (osmo_bsc_rf_get_adminstate_by_bts(bts) == OSMO_BSC_RF_ADMINSTATE_LOCKED)
+		admin = "locked";
+	else
+		admin = "unlocked";
+
+	switch (osmo_bsc_rf_get_policy_by_bts(bts)) {
+	case OSMO_BSC_RF_POLICY_OFF:
+		policy = "off";
+		break;
+	case OSMO_BSC_RF_POLICY_ON:
+		policy = "on";
+		break;
+	case OSMO_BSC_RF_POLICY_GRACE:
+		policy = "grace";
+		break;
+	case OSMO_BSC_RF_POLICY_UNKNOWN:
+		policy = "unknown";
+		break;
+	}
+
+	cmd->reply = talloc_asprintf_append(cmd->reply, ",%s,%s,%s", oper, admin, policy);
 
 	osmo_bsc_send_trap(cmd, msc_con);
 }
