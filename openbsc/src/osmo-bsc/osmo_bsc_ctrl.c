@@ -53,6 +53,29 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 	talloc_free(trap);
 }
 
+static int get_bts_loc(struct ctrl_cmd *cmd, void *data);
+
+static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_connection *msc_con)
+{
+	struct ctrl_cmd *cmd;
+
+	cmd = ctrl_cmd_create(msc_con, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP command.\n");
+		return;
+	}
+
+	cmd->id = "0";
+	cmd->variable = talloc_asprintf(cmd, "net.bts.%i.location-state", bts->nr);
+
+	/* Prepare the location reply */
+	cmd->node = bts;
+	get_bts_loc(cmd, NULL);
+
+	osmo_bsc_send_trap(cmd, msc_con);
+	talloc_free(cmd);
+}
+
 static const struct value_string valid_names[] = {
 	{ BTS_LOC_FIX_INVALID,	"invalid" },
 	{ BTS_LOC_FIX_2D,	"fix2d" },
@@ -169,7 +192,7 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 
 	if (!location_equal(curloc, lastloc))
 		llist_for_each_entry(msc, &gsmnet->bsc_data->mscs, entry)
-			osmo_bsc_send_trap(cmd, msc->msc_con);
+			generate_location_state_trap(bts, msc->msc_con);
 
 	cleanup_locations(&bts->loc_list);
 
