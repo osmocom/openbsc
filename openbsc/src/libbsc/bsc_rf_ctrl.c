@@ -28,6 +28,7 @@
 #include <openbsc/ipaccess.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/utils.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
 #include <sys/socket.h>
@@ -41,6 +42,86 @@
 #define RF_CMD_ON    '1'
 #define RF_CMD_D_OFF 'd'
 #define RF_CMD_ON_G  'g'
+
+static const struct value_string opstate_names[] = {
+	{ OSMO_BSC_RF_OPSTATE_INOPERATIONAL, "inoperational" },
+	{ OSMO_BSC_RF_OPSTATE_OPERATIONAL, "operational" },
+	{ 0, NULL }
+};
+
+static const struct value_string adminstate_names[] = {
+	{ OSMO_BSC_RF_ADMINSTATE_UNLOCKED, "unlocked" },
+	{ OSMO_BSC_RF_ADMINSTATE_LOCKED, "locked" },
+	{ 0, NULL }
+};
+
+static const struct value_string policy_names[] = {
+	{ OSMO_BSC_RF_POLICY_OFF, "off" },
+	{ OSMO_BSC_RF_POLICY_ON, "on" },
+	{ OSMO_BSC_RF_POLICY_GRACE, "grace" },
+	{ OSMO_BSC_RF_POLICY_UNKNOWN, "unknown" },
+	{ 0, NULL }
+};
+
+const char *osmo_bsc_rf_get_opstate_name(enum osmo_bsc_rf_opstate opstate)
+{
+	return get_value_string(opstate_names, opstate);
+}
+
+const char *osmo_bsc_rf_get_adminstate_name(enum osmo_bsc_rf_adminstate adminstate)
+{
+	return get_value_string(adminstate_names, adminstate);
+}
+
+const char *osmo_bsc_rf_get_policy_name(enum osmo_bsc_rf_policy policy)
+{
+	return get_value_string(policy_names, policy);
+}
+
+enum osmo_bsc_rf_opstate osmo_bsc_rf_get_opstate_by_bts(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.operational == NM_OPSTATE_ENABLED)
+			return OSMO_BSC_RF_OPSTATE_OPERATIONAL;
+	}
+
+	/* No trx were active, so this bts is disabled */
+	return OSMO_BSC_RF_OPSTATE_INOPERATIONAL;
+}
+
+enum osmo_bsc_rf_adminstate osmo_bsc_rf_get_adminstate_by_bts(struct gsm_bts *bts)
+{
+	struct gsm_bts_trx *trx;
+
+	llist_for_each_entry(trx, &bts->trx_list, list) {
+		if (trx->mo.nm_state.administrative == NM_STATE_UNLOCKED)
+			return OSMO_BSC_RF_ADMINSTATE_UNLOCKED;
+	}
+
+	/* All trx administrative states were locked */
+	return OSMO_BSC_RF_ADMINSTATE_LOCKED;
+}
+
+enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts)
+{
+	struct osmo_bsc_data *bsc_data = bts->network->bsc_data;
+
+	if (!bsc_data || !bsc_data->rf_ctrl)
+		return OSMO_BSC_RF_POLICY_UNKNOWN;
+
+	switch (bsc_data->rf_ctrl->policy) {
+	case S_RF_ON:
+		return OSMO_BSC_RF_POLICY_ON;
+	case S_RF_OFF:
+		return OSMO_BSC_RF_POLICY_OFF;
+	case S_RF_GRACE:
+		return OSMO_BSC_RF_POLICY_GRACE;
+	default:
+		return OSMO_BSC_RF_POLICY_UNKNOWN;
+	}
+}
 
 static int lock_each_trx(struct gsm_network *net, int lock)
 {
