@@ -75,8 +75,8 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 
 static const struct value_string valid_names[] = {
 	{ BTS_LOC_FIX_INVALID,	"invalid" },
-	{ BTS_LOC_FIX_2D,		"fix2d" },
-	{ BTS_LOC_FIX_3D,		"fix3d" },
+	{ BTS_LOC_FIX_2D,	"fix2d" },
+	{ BTS_LOC_FIX_3D,	"fix3d" },
 	{ 0, NULL }
 };
 
