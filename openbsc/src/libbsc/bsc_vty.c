@@ -36,6 +36,7 @@
 #include <osmocom/core/utils.h>
 #include <osmocom/gsm/gsm_utils.h>
 #include <osmocom/gsm/abis_nm.h>
+#include <osmocom/abis/ipaccess.h>
 #include <openbsc/chan_alloc.h>
 #include <openbsc/meas_rep.h>
 #include <openbsc/db.h>
@@ -45,7 +46,6 @@
 #include <openbsc/system_information.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>
-#include <openbsc/ipaccess.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
