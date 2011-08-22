@@ -56,6 +56,10 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	char *oper, *admin, *policy;
 
 	cmd = ctrl_cmd_create(msc_con, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create TRAP command.\n");
+		return;
+	}
 
 	cmd->id = "0";
 	cmd->variable = talloc_asprintf(cmd, "net.bts.%i.location-state", bts->nr);
@@ -92,6 +96,7 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	cmd->reply = talloc_asprintf_append(cmd->reply, ",%s,%s,%s", oper, admin, policy);
 
 	osmo_bsc_send_trap(cmd, msc_con);
+	talloc_free(cmd);
 }
 
 static const struct value_string valid_names[] = {
