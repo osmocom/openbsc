@@ -1,3 +1,11 @@
+opensgsn (0.9.14-0~jrsantos.1) unstable; urgency=low
+
+  * New upstream version 0.9.14
+  * Update libosmocore package dependency to 0.3.2
+  * Add dependency on libdbi package
+
+ -- Jonathan Santos <jrsantos@jonathanrsantos.com>  Tue, 23 Aug 2011 12:35:20 -0400
+
 opensgsn (0.9.13-0~jrsantos.5) unstable; urgency=low
 
   * gprs: Change T3302 to 20 seconds
