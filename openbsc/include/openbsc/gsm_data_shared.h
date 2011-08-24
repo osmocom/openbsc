@@ -17,6 +17,8 @@
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
 
+#include <osmocom/abis/e1_input.h>
+
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
 struct gsm_sms_queue;
