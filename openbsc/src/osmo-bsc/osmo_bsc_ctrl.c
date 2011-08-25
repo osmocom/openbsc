@@ -42,6 +42,11 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 	ctrl = msc_data->network->ctrl;
 
 	trap = ctrl_cmd_trap(cmd);
+	if (!trap) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to create trap.\n");
+		return;
+	}
+
 	ctrl_cmd_send_to_all(ctrl, trap);
 	ctrl_cmd_send(&msc_con->write_queue, trap);
 
