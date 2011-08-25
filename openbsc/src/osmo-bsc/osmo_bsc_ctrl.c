@@ -67,7 +67,7 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	}
 
 	cmd->id = "0";
-	cmd->variable = talloc_asprintf(cmd, "net.bts.%i.location-state", bts->nr);
+	cmd->variable = talloc_asprintf(cmd, "bts.%i.location-state", bts->nr);
 
 	/* Prepare the location reply */
 	cmd->node = bts;
@@ -299,7 +299,7 @@ int bsc_ctrl_cmds_install()
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
 	if (rc)
 		goto end;
-	rc = ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
 end:
 	return rc;
 }
