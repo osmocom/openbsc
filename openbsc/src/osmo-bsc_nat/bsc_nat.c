@@ -1210,11 +1210,8 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 
 	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
 		if (cmd->variable) {
-			struct bsc_lac_entry *bsc_lac;
-			bsc_lac = llist_entry(bsc->cfg->lac_list.next,
-					      struct bsc_lac_entry, entry);
-			var = talloc_asprintf(cmd, "bsc.%i.%s", bsc_lac->lac,
-					      cmd->variable);
+			var = talloc_asprintf(cmd, "net.0.bsc.%i.%s", bsc->cfg->nr,
+					   cmd->variable);
 			if (!var) {
 				cmd->type = CTRL_TYPE_ERROR;
 				cmd->reply = "OOM";
@@ -1608,17 +1605,19 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 	struct ctrl_cmd *bsc_cmd = NULL;
 	struct bsc_connection *bsc;
 	struct bsc_cmd_list *pending;
-	unsigned int lac;
-	char *lac_str, *tmp, *saveptr;
+	unsigned int nr;
+	char *nr_str, *tmp, *saveptr;
 
 	/* Skip over the beginning (bsc.) */
 	tmp = strtok_r(cmd->variable, ".", &saveptr);
-	lac_str = strtok_r(NULL, ".", &saveptr);
-	if (!lac_str) {
+	tmp = strtok_r(NULL, ".", &saveptr);
+	tmp = strtok_r(NULL, ".", &saveptr);
+	nr_str = strtok_r(NULL, ".", &saveptr);
+	if (!nr_str) {
 		cmd->reply = "command incomplete";
 		goto err;
 	}
-	lac = atoi(lac_str);
+	nr = atoi(nr_str);
 
 	tmp = strtok_r(NULL, "\0", &saveptr);
 	if (!tmp) {
@@ -1631,7 +1630,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 			continue;
 		if (!bsc->authenticated)
 			continue;
-		if (bsc_config_handles_lac(bsc->cfg, lac)) {
+		if (bsc->cfg->nr == nr) {
 			/* Add pending command to list */
 			pending = talloc_zero(bsc, struct bsc_cmd_list);
 			if (!pending) {
@@ -1684,7 +1683,7 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 		}
 	}
 	/* We end up here if there's no bsc to handle our LAC */
-	cmd->reply = "no BSC with this LAC";
+	cmd->reply = "no BSC with this nr";
 err:
 	ret = CTRL_CMD_ERROR;
 done:
@@ -1694,7 +1693,7 @@ done:
 
 }
 
-CTRL_CMD_DEFINE(fwd_cmd, "bsc *");
+CTRL_CMD_DEFINE(fwd_cmd, "net 0 bsc *");
 static int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
 {
 	return forward_to_bsc(cmd);
