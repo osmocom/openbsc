@@ -70,9 +70,9 @@ static void start_sabm_in_line(struct e1inp_line *line, int start)
 
 		llist_for_each_entry(link, &ts->sign.sign_links, list) {
 			if (start)
-				lapd_sap_start(ts->driver.dahdi.lapd, link->tei, link->sapi);
+				lapd_sap_start(ts->lapd, link->tei, link->sapi);
 			else
-				lapd_sap_stop(ts->driver.dahdi.lapd, link->tei, link->sapi);
+				lapd_sap_stop(ts->lapd, link->tei, link->sapi);
 		}
 	}
 }
