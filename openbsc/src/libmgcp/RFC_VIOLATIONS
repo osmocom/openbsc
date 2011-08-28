@@ -1,0 +1,9 @@
+The MGCP implementation is not complete and has various bugs:
+
+
+- CallID/ConnID is only verified if present but things work
+  when they are left out.
+- DLCX without ConnID should delete all connections on the
+  endpoint.
+- AUEP should report more details of the endpoint, e.g. if it
+  is available or in use right now.
