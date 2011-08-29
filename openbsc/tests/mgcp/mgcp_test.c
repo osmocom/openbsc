@@ -116,43 +116,75 @@ static struct msgb *from(const uint8_t *data, uint16_t len)
 	return msg;
 }
 
-#define FROM(array) \
-	from(array, sizeof(array))
+struct pdata {
+	const uint8_t *data;
+	uint16_t len;
+};
 
-void test_compress()
+static const struct pdata marker_normal[] = {
+	{ .data = packet_1, .len = sizeof(packet_1), },
+	{ .data = packet_2, .len = sizeof(packet_2), },
+	{ .data = packet_3, .len = sizeof(packet_3), },
+	{ .data = packet_4, .len = sizeof(packet_4), },
+};
+
+struct estate {
+	const struct pdata *data;
+	int plen;
+
+	const struct mgcp_rtp_compr_state state;
+	int output_size;
+};
+
+static const struct estate test_scenarious[] = {
+	{ .data = marker_normal, .plen = ARRAY_SIZE(marker_normal),
+	  .output_size = 17 *4 + 3 + 4 *1,
+	  .state = {
+		.last_ts = UCHAR_MAX,
+		.generated_ssrc = 0x6f0fb1da,
+		.sequence = 52103,
+		.timestamp = 4157323848u,
+	  },
+	},
+	{ .data = &marker_normal[1], .plen = ARRAY_SIZE(marker_normal) - 1,
+	  .output_size = 17 * 3 + 3,
+	  .state = {
+		.last_ts = UCHAR_MAX,
+		.generated_ssrc = 0x6f0fb1da,
+		.sequence = 52104,
+		.timestamp = 4157324008u,
+	  },
+	},
+};
+
+static void test_compress_one(const struct estate *edata, char *t)
 {
+	const struct pdata *data = edata->data;
+	const int len = edata->plen;
+
 	int i = 0;
 	struct msgb *msg;
-
-	struct msgb *msg1 = FROM(packet_1);
-	struct msgb *msg2 = FROM(packet_2);
-	struct msgb *msg3 = FROM(packet_3);
-	struct msgb *msg4 = FROM(packet_4);
-
+	struct msgb *msgs[len];
 	struct llist_head list;
-	INIT_LLIST_HEAD(&list);
-	msgb_enqueue(&list, msg1);
-	msgb_enqueue(&list, msg2);
-	msgb_enqueue(&list, msg3);
-	msgb_enqueue(&list, msg4);
 
-	struct mgcp_rtp_compr_state state;
-	memset(&state, 0, sizeof(state));
-	state.last_ts = UCHAR_MAX;
-	state.generated_ssrc = 0x6f0fb1da;
-	state.sequence = 52103;
-	state.timestamp = 4157323848u;
+	INIT_LLIST_HEAD(&list);
+
+	for (i = 0; i < len; ++i) {
+		msgs[i] = from(data[i].data, data[i].len);
+		msgb_enqueue(&list, msgs[i]);
+	}
 
 	struct msgb *out = msgb_alloc_headroom(4096, 128, "out");
 	out->l2h = msgb_put(out, 0);
 
+	struct mgcp_rtp_compr_state state = edata->state;
 	int rc = rtp_compress(&state, out, 23, &list);
-	if (rc != 4) {
-		fprintf(stderr, "Result is not 4: %d\n", rc);
+	if (rc != len) {
+		fprintf(stderr, "Result is not %d: %d\n", len, rc);
 		abort();
 	}
 
-	if (msgb_l2len(out) != (17*4 + 3)) {
+	if (msgb_l2len(out) != edata->output_size) {
 		fprintf(stderr, "Result is wrong size: %d\n", msgb_l2len(out));
 		abort();
 	}
@@ -160,47 +192,50 @@ void test_compress()
 	printf("output is: %s\n", osmo_hexdump(out->l2h, msgb_l2len(out)));
 
 
-	list = rtp_decompress(&state, out);
+	INIT_LLIST_HEAD(&list);
+	if (rtp_decompress(&state, &list, out) != 0) {
+		fprintf(stderr, "Failed to decompress the code.\n");
+		abort();
+	}
 
+	i = 0;
 	llist_for_each_entry(msg, &list, list) {
-		const uint8_t *data;
-		int len;
+		const struct pdata *got_data = &data[i];
 
-		switch (++i) {
-		case 1:
-			data = packet_1;
-			len = sizeof(packet_1);
-			break;
-		case 2:
-			data = packet_2;
-			len = sizeof(packet_2);
-			break;
-		case 3:
-			data = packet_3;
-			len = sizeof(packet_3);
-			break;
-		case 4:
-			data = packet_4;
-			len = sizeof(packet_4);
-			break;
-		default:
-			fprintf(stderr, "Should not be reached.\n");
-			abort();
-		}
-
-		if (msgb_l2len(msg) != len) {
+		if (msgb_l2len(msg) != got_data->len) {
 			fprintf(stderr, "Wrong len for %d %d\n", i, msgb_l2len(msg));
 			abort();
 		}
 
-		if (memcmp(msg->l2h, data, len) != 0) {
+		if (memcmp(msg->l2h, got_data->data, len) != 0) {
 			fprintf(stderr, "Wrong data for %d, '%s'\n",
 				i, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 			abort();
 		}
+
+		i += 1;
+	}
+
+	if (len != i) {
+		fprintf(stderr, "Failed to decode all packets: %d vs. %d\n", len, i);
 	}
 
 	msgb_free(out);
+}
+
+void test_compress()
+{
+	/**
+	 * This tests that we correctly encode/decode a marker bit
+	 */
+	test_compress_one(&test_scenarious[0], "Test marker");
+
+
+	/**
+	 * This tests the code path that will go through a smaller encoding
+	 */
+	test_compress_one(&test_scenarious[1], "No marker");
+
 }
 
 int main(int argc, char **argv)

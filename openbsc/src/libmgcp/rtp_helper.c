@@ -23,9 +23,16 @@
 #include <openbsc/mgcp_internal.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/gsm/tlv.h>
 
 #include <string.h>
 
+enum RTP_EXTRA_FRAME {
+	/** Set a marker bit on the RFC */
+	RTP_EXTRA_MARKER = 0x1,
+
+	/** Maybe add a bit to mention no further extension bits? */
+};
 
 struct reduced_rtp_hdr {
 	/** I will need to be inflated to the SSRC */
@@ -65,7 +72,125 @@ static void fill_rtp_state(struct rtp_hdr *hdr,
 	hdr->timestamp = htonl(state->timestamp);
 	state->timestamp += 160;
 }
-			   
+
+static void write_compressed_big(struct reduced_rtp_hdr *reduced_hdr,
+				 struct msgb *msg,
+				 struct llist_head *rtp_packets)
+{
+	struct msgb *rtp, *tmp;
+
+	reduced_hdr->type = 1;
+
+	llist_for_each_entry_safe(rtp, tmp, rtp_packets, list) {
+		struct rtp_hdr *hdr = (struct rtp_hdr *) rtp->l2h;
+		uint32_t len = msgb_l2len(rtp) - sizeof(*hdr);
+		uint8_t *data;
+
+		msgb_v_put(msg, hdr->marker ? RTP_EXTRA_MARKER : 0);
+		data = msgb_put(msg, len);
+		memcpy(data, hdr->data, len);
+
+		llist_del(&rtp->list);
+		talloc_free(rtp);
+	}
+}
+
+
+/**
+ * I write a simple 3 byte header followed by the payloads of the
+ * single RTP packets. This is assumed to be AMR.
+ */
+static void write_compressed_slim(struct reduced_rtp_hdr *reduced_hdr,
+				  struct msgb *msg,
+				  struct llist_head *rtp_packets)
+{
+	struct msgb *rtp, *tmp;
+
+	reduced_hdr->type = 0;
+
+	llist_for_each_entry_safe(rtp, tmp, rtp_packets, list) {
+		struct rtp_hdr *hdr = (struct rtp_hdr *) rtp->l2h;
+		uint32_t len = msgb_l2len(rtp) - sizeof(*hdr);
+		uint8_t *data = msgb_put(msg, len);
+		memcpy(data, hdr->data, len);
+
+		llist_del(&rtp->list);
+		talloc_free(rtp);
+	}
+}
+
+static int read_compressed_big(struct msgb *msg,
+			       struct reduced_rtp_hdr *rhdr,
+			       struct llist_head *list,
+			       struct mgcp_rtp_compr_state *state)
+{
+	int i;
+
+	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 18) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Payloads do not fit. %d\n", rhdr->payloads);
+		return -3;
+	}
+
+	for (i = 0; i < rhdr->payloads; ++i) {
+		struct rtp_hdr *hdr;
+		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
+		if (!out) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
+			continue;
+		}
+
+		out->l2h = msgb_put(out, 0);
+		hdr = msgb_put_struct(out, struct rtp_hdr);
+		fill_rtp_hdr(hdr);
+		fill_rtp_state(hdr, state);
+
+		/* re-apply the marker bit */
+		if (rhdr->data[i * 18] & RTP_EXTRA_MARKER)
+			hdr->marker = 1;
+
+		out->l3h = msgb_put(out, 17);
+		memcpy(out->l3h, &rhdr->data[i * 18], 17);
+		msgb_enqueue(list, out);
+	}
+
+	return 0;
+}
+
+static int read_compressed_slim(struct msgb *msg,
+				struct reduced_rtp_hdr *rhdr,
+				struct llist_head *list,
+				struct mgcp_rtp_compr_state *state)
+{
+	int i;
+
+	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 17) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Payloads do not fit. %d\n", rhdr->payloads);
+		return -3;
+	}
+
+	for (i = 0; i < rhdr->payloads; ++i) {
+		struct rtp_hdr *hdr;
+		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
+		if (!out) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
+			continue;
+		}
+
+		out->l2h = msgb_put(out, 0);
+		hdr = msgb_put_struct(out, struct rtp_hdr);
+		fill_rtp_hdr(hdr);
+		fill_rtp_state(hdr, state);
+
+		out->l3h = msgb_put(out, 17);
+		memcpy(out->l3h, &rhdr->data[i * 17], 17);
+		msgb_enqueue(list, out);
+	}
+
+	return 0;
+}
+
 
 /**
  * I try to compress these packets into one single stream. I have various
@@ -87,11 +212,11 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 	struct msgb *rtp, *tmp;
 	struct reduced_rtp_hdr *reduced_hdr;
 	uint16_t last_sequence = 0;
-	int count = 0;
-	uint8_t *data;
+	int count = 0, marker = 0;
 
 	/*
-	 * sanity check if everything is a RTP packet
+	 * sanity check if everything is a RTP packet, or if we need to do
+	 * something special.
 	 */
 	llist_for_each_entry_safe(rtp, tmp, rtp_packets, list) {
 		struct rtp_hdr *hdr;
@@ -124,6 +249,9 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 			continue;
 		}
 
+		if (hdr->marker)
+			marker = 1;
+
 		last_sequence = sequence;
 		count += 1;
 	}
@@ -135,66 +263,35 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 	reduced_hdr = msgb_put_struct(msg, struct reduced_rtp_hdr);
 	reduced_hdr->endp = endp;
 	reduced_hdr->sequence_no = ++state->last_ts % UCHAR_MAX;
-	reduced_hdr->type = 0;
 	reduced_hdr->payloads = count;
 
-
-	llist_for_each_entry_safe(rtp, tmp, rtp_packets, list) {
-		struct rtp_hdr *hdr = (struct rtp_hdr *) rtp->l2h;
-		uint32_t len = msgb_l2len(rtp) - sizeof(*hdr);
-		data = msgb_put(msg, len);
-		memcpy(data, hdr->data, len);
-
-		llist_del(&rtp->list);
-		talloc_free(rtp);
-	}
+	if (marker)
+		write_compressed_big(reduced_hdr, msg, rtp_packets);
+	else
+		write_compressed_slim(reduced_hdr, msg, rtp_packets);
 
 	return count;
 }
 
-struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state,
-				  struct msgb *msg)
+int rtp_decompress(struct mgcp_rtp_compr_state *state,
+		   struct llist_head *list,
+		   struct msgb *msg)
 {
 	struct reduced_rtp_hdr *rhdr;
-	int i;
-	struct llist_head list;
-	INIT_LLIST_HEAD(&list);
 
 	if (msgb_l2len(msg) < sizeof(*rhdr)) {
 		LOGP(DMGCP, LOGL_ERROR, "Compressed header does not fit.\n");
-		return list;
+		return -1;
 	}
 
 	rhdr = (struct reduced_rtp_hdr *) msg->l2h;
-	if (rhdr->type != 0) {
+	if (rhdr->type == 0)
+		return read_compressed_slim(msg, rhdr, list, state);
+	else if (rhdr->type == 1)
+		return read_compressed_big(msg, rhdr, list, state);
+	else {
 		LOGP(DMGCP, LOGL_ERROR,
 		     "Type %d is not known.\n", rhdr->type);
-		return list;
+		return -2;
 	}
-
-	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 17) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Payloads do not fit. %d\n", rhdr->payloads);
-		return list;
-	}
-
-	for (i = 0; i < rhdr->payloads; ++i) {
-		struct rtp_hdr *hdr;
-		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
-		if (!out) {
-			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
-			continue;
-		}
-
-		out->l2h = msgb_put(out, 0);
-		hdr = msgb_put_struct(out, struct rtp_hdr);
-		fill_rtp_hdr(hdr);
-		fill_rtp_state(hdr, state);
-
-		out->l3h = msgb_put(out, 17);
-		memcpy(out->l3h, &rhdr->data[i * 17], 17);
-		msgb_enqueue(&list, out);
-	}
-
-	return list;
 }
