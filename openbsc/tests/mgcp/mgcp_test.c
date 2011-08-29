@@ -121,6 +121,9 @@ static struct msgb *from(const uint8_t *data, uint16_t len)
 
 void test_compress()
 {
+	int i = 0;
+	struct msgb *msg;
+
 	struct msgb *msg1 = FROM(packet_1);
 	struct msgb *msg2 = FROM(packet_2);
 	struct msgb *msg3 = FROM(packet_3);
@@ -136,6 +139,9 @@ void test_compress()
 	struct mgcp_rtp_compr_state state;
 	memset(&state, 0, sizeof(state));
 	state.last_ts = UCHAR_MAX;
+	state.generated_ssrc = 0x6f0fb1da;
+	state.sequence = 52103;
+	state.timestamp = 4157323848u;
 
 	struct msgb *out = msgb_alloc_headroom(4096, 128, "out");
 	out->l2h = msgb_put(out, 0);
@@ -154,7 +160,45 @@ void test_compress()
 	printf("output is: %s\n", osmo_hexdump(out->l2h, msgb_l2len(out)));
 
 
-	list = rtp_decompress(&state, NULL, out);
+	list = rtp_decompress(&state, out);
+
+	llist_for_each_entry(msg, &list, list) {
+		const uint8_t *data;
+		int len;
+
+		switch (++i) {
+		case 1:
+			data = packet_1;
+			len = sizeof(packet_1);
+			break;
+		case 2:
+			data = packet_2;
+			len = sizeof(packet_2);
+			break;
+		case 3:
+			data = packet_3;
+			len = sizeof(packet_3);
+			break;
+		case 4:
+			data = packet_4;
+			len = sizeof(packet_4);
+			break;
+		default:
+			fprintf(stderr, "Should not be reached.\n");
+			abort();
+		}
+
+		if (msgb_l2len(msg) != len) {
+			fprintf(stderr, "Wrong len for %d %d\n", i, msgb_l2len(msg));
+			abort();
+		}
+
+		if (memcmp(msg->l2h, data, len) != 0) {
+			fprintf(stderr, "Wrong data for %d, '%s'\n",
+				i, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
+			abort();
+		}
+	}
 
 	msgb_free(out);
 }

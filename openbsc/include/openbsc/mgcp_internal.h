@@ -175,7 +175,7 @@ struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
 
 int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 		 int endpoint, struct llist_head *rtp_packets);
-struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state, void *ctx,
+struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state,
 				  struct msgb *msg);
 
 

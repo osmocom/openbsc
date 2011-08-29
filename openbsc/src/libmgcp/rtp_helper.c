@@ -44,6 +44,29 @@ struct reduced_rtp_hdr {
 #define msgb_put_struct(msg, str) \
 	(str *) msgb_put(msg, sizeof(str))
 
+
+static void fill_rtp_hdr(struct rtp_hdr *hdr)
+{
+	hdr->csrc_count = 0;
+	hdr->extension = 0;
+	hdr->padding = 0;
+	hdr->version = RTP_VERSION;
+
+	/* detect stop of silence? */
+	hdr->marker = 0;
+	hdr->payload_type = 98;
+}
+
+static void fill_rtp_state(struct rtp_hdr *hdr,
+			   struct mgcp_rtp_compr_state *state)
+{
+	hdr->ssrc = htonl(state->generated_ssrc);
+	hdr->sequence = htons(state->sequence++);
+	hdr->timestamp = htonl(state->timestamp);
+	state->timestamp += 160;
+}
+			   
+
 /**
  * I try to compress these packets into one single stream. I have various
  * limitations. I do not support packets that jump backwards, the rtp_packets
@@ -77,6 +100,15 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 		if (msgb_l2len(rtp) < sizeof(struct rtp_hdr)) {
 			LOGP(DMGCP, LOGL_ERROR,
 			     "Packet is too small on %d/0x%x\n", endp, endp);
+			llist_del(&rtp->list);
+			talloc_free(rtp);
+			continue;
+		}
+
+		if (msgb_l2len(rtp) < sizeof(struct rtp_hdr) + 17) {
+			LOGP(DMGCP, LOGL_ERROR,
+			     "We assume every payload is 17 byte: %d\n",
+			     msgb_l2len(rtp) - sizeof(struct rtp_hdr));
 			llist_del(&rtp->list);
 			talloc_free(rtp);
 			continue;
@@ -120,11 +152,49 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 	return count;
 }
 
-struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state, void *ctx,
+struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state,
 				  struct msgb *msg)
 {
+	struct reduced_rtp_hdr *rhdr;
+	int i;
 	struct llist_head list;
 	INIT_LLIST_HEAD(&list);
+
+	if (msgb_l2len(msg) < sizeof(*rhdr)) {
+		LOGP(DMGCP, LOGL_ERROR, "Compressed header does not fit.\n");
+		return list;
+	}
+
+	rhdr = (struct reduced_rtp_hdr *) msg->l2h;
+	if (rhdr->type != 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Type %d is not known.\n", rhdr->type);
+		return list;
+	}
+
+	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 17) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Payloads do not fit. %d\n", rhdr->payloads);
+		return list;
+	}
+
+	for (i = 0; i < rhdr->payloads; ++i) {
+		struct rtp_hdr *hdr;
+		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
+		if (!out) {
+			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
+			continue;
+		}
+
+		out->l2h = msgb_put(out, 0);
+		hdr = msgb_put_struct(out, struct rtp_hdr);
+		fill_rtp_hdr(hdr);
+		fill_rtp_state(hdr, state);
+
+		out->l3h = msgb_put(out, 17);
+		memcpy(out->l3h, &rhdr->data[i * 17], 17);
+		msgb_enqueue(&list, out);
+	}
 
 	return list;
 }
