@@ -262,7 +262,9 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 
 	reduced_hdr = msgb_put_struct(msg, struct reduced_rtp_hdr);
 	reduced_hdr->endp = endp;
-	reduced_hdr->sequence_no = ++state->last_ts % UCHAR_MAX;
+
+	state->last_ts = (state->last_ts + 1) % UCHAR_MAX;
+	reduced_hdr->sequence_no = state->last_ts;
 	reduced_hdr->payloads = count;
 
 	if (marker)
@@ -285,6 +287,20 @@ int rtp_decompress(struct mgcp_rtp_compr_state *state,
 	}
 
 	rhdr = (struct reduced_rtp_hdr *) msg->l2h;
+
+	/* check if the state is matching */
+	/**
+	 * We will need some simple state with a bit of history. We will start
+	 * with last_ts == -1, then we initialize it to the expected ts, and
+	 * when we get something we didn't expect we will need to guess if this
+	 * is a late arrival (due re-ordering or such) or if that is just some
+	 * packet loss and we continue. E.g. we need to check if the sequence_no
+	 * is above or below our state... but as the counter wraps, e.g. if we
+	 * wait for 512 but we get 2, we have jumped to the future...
+	 * This will require some testing/simulation
+	 */
+#warning "TODO: Deal with late arrivals, reset the state and accept late as new"
+
 	if (rhdr->type == 0)
 		return read_compressed_slim(msg, rhdr, list, state);
 	else if (rhdr->type == 1)
