@@ -23,7 +23,13 @@
 #ifndef OPENBSC_MGCP_DATA_H
 #define OPENBSC_MGCP_DATA_H
 
+#include <osmocom/core/msgb.h>
 #include <osmocom/core/select.h>
+
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#include <stdint.h>
 
 #define CI_UNUSED 0
 
@@ -51,6 +57,18 @@ struct mgcp_rtp_state {
 	int seq_offset;
 	uint32_t last_timestamp;
 	int32_t  timestamp_offset;
+};
+
+/**
+ * I hold the state of the RTP compression.
+ */
+struct mgcp_rtp_compr_state {
+	uint32_t generated_ssrc;
+	uint32_t timestamp;
+	uint16_t sequence;
+
+	/* on wire it is 8bit, so we can see overruns here */
+	int16_t last_ts;
 };
 
 struct mgcp_rtp_end {
@@ -122,6 +140,11 @@ struct mgcp_endpoint {
 
 	/* tap for the endpoint */
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
+
+	/* compression for this endpoint */
+	int compr_enabled;
+	struct mgcp_rtp_compr_state compr_loc_state;
+	struct mgcp_rtp_compr_state compr_rem_state;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
@@ -149,6 +172,11 @@ static inline int endp_back_channel(int endpoint)
 
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int index);
 struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
+
+int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
+		 int endpoint, struct llist_head *rtp_packets);
+struct llist_head rtp_decompress(struct mgcp_rtp_compr_state *state, void *ctx,
+				  struct msgb *msg);
 
 
 #endif

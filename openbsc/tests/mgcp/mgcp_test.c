@@ -22,6 +22,8 @@
 
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
+
+#include <limits.h>
 #include <string.h>
 
 static struct msgb *create_auep1()
@@ -73,10 +75,95 @@ static void test_auep(void)
 	talloc_free(cfg);
 }
 
+/**
+ * Sample RTP data
+ */
+
+static const uint8_t packet_1[] = {
+	0x80, 0xe2, 0xcb, 0x87, 0xf7, 0xcb, 0xba, 0x48,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0xb2, 0xb6,
+	0xf8, 0x7b, 0x04, 0x81, 0x69, 0xf1, 0xdd, 0x33,
+	0xd4, 0xd9, 0x45, 0x5c, 0x54,
+};
+
+
+static const uint8_t packet_2[] = {
+	0x80, 0x62, 0xcb, 0x88, 0xf7, 0xcb, 0xba, 0xe8,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0x3d, 0xb6,
+	0xf8, 0x08, 0x77, 0xfd, 0xeb, 0x51, 0xc7, 0x3f,
+	0xb3, 0x82, 0x56, 0x56, 0x64,
+};
+
+static const uint8_t packet_3[] = {
+	0x80, 0x62, 0xcb, 0x89, 0xf7, 0xcb, 0xbb, 0x88,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0xb2, 0xb6,
+	0xf8, 0x7e, 0x01, 0x01, 0x7e, 0x06, 0x63, 0xb5,
+	0xc7, 0x41, 0x65, 0xa0, 0x10
+};
+
+static const uint8_t packet_4[] = {
+	0x80, 0x62, 0xcb, 0x8a, 0xf7, 0xcb, 0xbc, 0x28,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0x3d, 0xb6,
+	0xf8, 0x1c, 0x63, 0xf9, 0xe9, 0x71, 0xc3, 0x3f,
+	0x13, 0x0e, 0x5e, 0x56, 0x6c
+};
+
+static struct msgb *from(const uint8_t *data, uint16_t len)
+{
+	struct msgb *msg = msgb_alloc_headroom(4096, 128, "from");
+	msg->l2h = msgb_put(msg, len);
+	memcpy(msg->l2h, data, len);
+	return msg;
+}
+
+#define FROM(array) \
+	from(array, sizeof(array))
+
+void test_compress()
+{
+	struct msgb *msg1 = FROM(packet_1);
+	struct msgb *msg2 = FROM(packet_2);
+	struct msgb *msg3 = FROM(packet_3);
+	struct msgb *msg4 = FROM(packet_4);
+
+	struct llist_head list;
+	INIT_LLIST_HEAD(&list);
+	msgb_enqueue(&list, msg1);
+	msgb_enqueue(&list, msg2);
+	msgb_enqueue(&list, msg3);
+	msgb_enqueue(&list, msg4);
+
+	struct mgcp_rtp_compr_state state;
+	memset(&state, 0, sizeof(state));
+	state.last_ts = UCHAR_MAX;
+
+	struct msgb *out = msgb_alloc_headroom(4096, 128, "out");
+	out->l2h = msgb_put(out, 0);
+
+	int rc = rtp_compress(&state, out, 23, &list);
+	if (rc != 4) {
+		fprintf(stderr, "Result is not 4: %d\n", rc);
+		abort();
+	}
+
+	if (msgb_l2len(out) != (17*4 + 3)) {
+		fprintf(stderr, "Result is wrong size: %d\n", msgb_l2len(out));
+		abort();
+	}
+
+	printf("output is: %s\n", osmo_hexdump(out->l2h, msgb_l2len(out)));
+
+
+	list = rtp_decompress(&state, NULL, out);
+
+	msgb_free(out);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
 	test_auep();
+	test_compress();
 	return 0;
 }

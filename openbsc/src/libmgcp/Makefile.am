@@ -4,4 +4,4 @@ AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 
 noinst_LIBRARIES = libmgcp.a
 
-libmgcp_a_SOURCES = mgcp_protocol.c mgcp_network.c mgcp_vty.c
+libmgcp_a_SOURCES = mgcp_protocol.c mgcp_network.c mgcp_vty.c rtp_helper.c
