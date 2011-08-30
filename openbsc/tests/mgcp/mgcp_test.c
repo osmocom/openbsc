@@ -190,9 +190,9 @@ static const struct estate test_scenarious[] = {
 		.timestamp = 4157324008u,
 	  },
 	},
-	/* this is testing the bigger encoding due the marker */
+	/* this is testing the bigger encoding due the marker, and ts adjustment */
 	{ .data = shorter_marker, .plen = ARRAY_SIZE(shorter_marker),
-	  .output_size = 17 * 3 + 7 * 1 + 3 + 4 * 1,
+	  .output_size = 17 * 3 + 7 * 1 + 3 + 4 * 1 + 3,
 	  .state = {
 	  	.last_ts = UCHAR_MAX,
 		.generated_ssrc = 0x6f0fb1da,
@@ -266,7 +266,7 @@ static void test_compress_one(const struct estate *edata, char *t)
 			abort();
 		}
 
-		if (memcmp(msg->l2h, got_data->data, len) != 0) {
+		if (memcmp(msg->l2h, got_data->data, got_data->len) != 0) {
 			fprintf(stderr, "Wrong data for %d, '%s'\n",
 				i, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 			abort();

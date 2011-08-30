@@ -31,6 +31,9 @@ enum RTP_EXTRA_FRAME {
 	/** Set a marker bit on the RFC */
 	RTP_EXTRA_MARKER = 0x1,
 
+	/** Time adjustments */
+	RTP_TS_ADJUSTMENT = 0x2,
+
 	/** Maybe add a bit to mention no further extension bits? */
 };
 
@@ -105,6 +108,13 @@ static void write_compressed_big(struct reduced_rtp_hdr *reduced_hdr,
 		uint32_t len = msgb_l2len(rtp) - sizeof(*hdr);
 		uint8_t *data;
 
+		if (hdr->marker && rtp->cb[0] != 0) {
+			uint16_t ts = rtp->cb[0];
+			msgb_v_put(msg, RTP_TS_ADJUSTMENT);
+			msgb_put_u16(msg, htons(ts));
+			reduced_hdr->payloads += 1;
+		}
+
 		msgb_v_put(msg, hdr->marker ? RTP_EXTRA_MARKER : 0);
 		data = msgb_put(msg, len);
 		memcpy(data, hdr->data, len);
@@ -152,8 +162,29 @@ static int read_compressed_big(struct msgb *msg,
 		struct msgb *out;
 		int alen;
 
+		if (len < offset + 1) {
+			LOGP(DMGCP, LOGL_ERROR, "Can not fit Type in %d\n", i);
+			goto clean_all;
+		}
+
+#warning "TODO: Cleanup, dispatch on the header type to a specific handler"
+
+		if (rhdr->data[offset] & RTP_TS_ADJUSTMENT) {
+			uint16_t ts_adj;
+			if (len < offset + 1 + 2) {
+				LOGP(DMGCP, LOGL_ERROR,
+				     "Can not fit TS adjustment payload in %d\n", i);
+				goto clean_all;
+			}
+
+			ts_adj = rhdr->data[offset + 1] << 8 | rhdr->data[offset + 2];
+			state->timestamp += ntohs(ts_adj);
+			offset += 3;
+			continue;
+		}
+
 		if (len < offset + 1 + sizeof(struct amr_toc)) {
-			LOGP(DMGCP, LOGL_ERROR, "Can not fit RTP/AMR in %d\n", i);
+			LOGP(DMGCP, LOGL_ERROR, "Can not fit AMR payload in %d\n", i);
 			goto clean_all;
 		}
 
@@ -313,8 +344,17 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 			continue;
 		}
 
-		if (hdr->marker)
+		if (hdr->marker) {
 			marker = 1;
+
+			uint16_t ts_off = abs(state->timestamp -
+					      ntohl(hdr->timestamp));
+			if (state->timestamp != 0 && ts_off > 160) {
+				LOGP(DMGCP, LOGL_NOTICE,
+				     "Timestamp jumped: %d\n", ts_off);
+				rtp->cb[0] = ts_off - 160;
+			}
+		}
 
 		state->generated_ssrc = ntohl(hdr->ssrc);
 		state->timestamp = ntohl(hdr->timestamp);
