@@ -209,6 +209,8 @@ static int maybe_send_queue(struct mgcp_endpoint *endp,
 		goto cleanup;
 	}
 
+	out->l2h = msgb_put(out, 0);
+
 	/* Attempt to compress the samples */
 	rc = rtp_compress(&endp->compr_loc_state, out,
 			  ENDPOINT_NUMBER(endp), &endp->compr_queue);
