@@ -56,9 +56,14 @@
 			} else if (i - line_start > 2		\
 			    && islower(msg->l3h[line_start])	\
 			    && msg->l3h[line_start + 1] == '=') { \
-			} else if (i - line_start < 3		\
+			} else if (msg->l3h[line_start] == 'X'	\
+			    && (i - line_start < 2		\
+			    || msg->l3h[line_start + 1] != '-'))\
+				goto error;			\
+			else if (msg->l3h[line_start] != 'X' && \
+			    (  i - line_start < 3		\
 			    || msg->l3h[line_start + 1] != ':'	\
-			    || msg->l3h[line_start + 2] != ' ')	\
+			    || msg->l3h[line_start + 2] != ' '))\
 				goto error;			\
 								\
 			msg->l3h[i] = '\0';			\
@@ -509,6 +514,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 	struct mgcp_trunk_config *tcfg;
 	struct mgcp_endpoint *endp;
 	int error_code = 400;
+	int encr = 0;
 
 	const char *local_options = NULL;
 	const char *callid = NULL;
@@ -532,6 +538,11 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		break;
 	case 'M':
 		mode = (const char *) & msg->l3h[line_start + 3];
+		break;
+	case 'X':
+		if (strcmp((const char *) &msg->l3h[line_start],
+			   "X-ow-encr: 1") == 0)
+			encr = 1;
 		break;
 	default:
 		LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
@@ -595,6 +606,7 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	endp->allocated = 1;
 	endp->bts_end.payload_type = tcfg->audio_payload;
+	endp->compr_enabled = 1;
 
 	/* policy CB */
 	if (cfg->policy_cb) {
@@ -994,6 +1006,9 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 		mgcp_rtp_end_init(&tcfg->endpoints[i].bts_end);
 		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_net);
 		mgcp_rtp_end_init(&tcfg->endpoints[i].trans_bts);
+
+		tcfg->endpoints[i].compr_loc_state.last_ts = -1;
+		tcfg->endpoints[i].compr_rem_state.last_ts = -1;
 	}
 
 	return 0;
@@ -1028,6 +1043,13 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	endp->allow_patch = 0;
 
 	memset(&endp->taps, 0, sizeof(endp->taps));
+
+	endp->compr_enabled = 0;
+	memset(&endp->compr_loc_state, 0, sizeof(endp->compr_loc_state));
+	endp->compr_loc_state.last_ts = -1;
+
+	memset(&endp->compr_rem_state, 0, sizeof(endp->compr_rem_state));
+	endp->compr_rem_state.last_ts = -1;
 }
 
 static int send_trans(struct mgcp_config *cfg, const char *buf, int len)
