@@ -306,6 +306,8 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 	bsc_endp = &nat->bsc_endpoints[endpoint];
 	mgcp_endp = &nat->mgcp_cfg->trunk.endpoints[endpoint];
 
+	int compr = 0;
+
 	if (bsc_endp->transaction_id) {
 		LOGP(DMGCP, LOGL_ERROR, "Endpoint 0x%x had pending transaction: '%s'\n",
 		     endpoint, bsc_endp->transaction_id);
@@ -337,10 +339,14 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 		}
 	}
 
+	if (nat->mgcp_cfg->trunk.compress_dir == COMPR_BTS
+	    && sccp->bsc->cfg->allow_compr)
+		compr = 1;
+
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length, sccp->bsc_endp,
 				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port,
-				   sccp->bsc->cfg->allow_compr);
+				   compr);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -363,7 +369,7 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 		}
 
 		/* enable the compression on this endpoint */
-		if (sccp->bsc->cfg->allow_compr)
+		if (compr)
 			mgcp_endp->compr_enabled = 1;
 
 		/* send the message and a fake MDCX to force sending of a dummy packet */
