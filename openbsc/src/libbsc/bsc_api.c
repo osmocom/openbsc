@@ -136,12 +136,12 @@ static void assignment_t10_timeout(void *_conn)
 
 	LOGP(DMSC, LOGL_ERROR, "Assigment T10 timeout on %p\n", conn);
 
-	/* normal release on the secondary channel */
-	if (conn->secondary_lchan) {
+	/*
+	 * normal release on the secondary channel but only if the
+	 * secondary_channel has not been released by the handle_chan_nack.
+	 */
+	if (conn->secondary_lchan)
 		lchan_release(conn->secondary_lchan, 0, 1);
-	} else {
-		LOGP(DMSC, LOGL_NOTICE, "Secondary lchan is NULL, not releasing\n");
-	}
 	conn->secondary_lchan = NULL;
 
 	/* inform them about the failure */
