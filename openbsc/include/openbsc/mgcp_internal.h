@@ -182,6 +182,7 @@ int rtp_decompress(struct mgcp_rtp_compr_state *state, struct llist_head *list,
 		   struct msgb *msg);
 
 
+const char *mgcp_compr_name(int);
 void mgcp_msgb_clear_queue(struct llist_head *list);
 struct msgb *mgcp_msgb_alloc(void);
 

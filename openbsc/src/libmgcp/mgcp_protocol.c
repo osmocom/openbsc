@@ -1159,3 +1159,17 @@ int mgcp_reset_transcoder(struct mgcp_config *cfg)
 
 	return send_trans(cfg, mgcp_reset, sizeof mgcp_reset -1);
 }
+
+const char *mgcp_compr_name(int name)
+{
+	switch (name) {
+	case COMPR_NONE:
+		return "none";
+	case COMPR_NET:
+		return "net";
+	case COMPR_BTS:
+		return "bts";
+	default:
+		return "bug";
+	}
+}

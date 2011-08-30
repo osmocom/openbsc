@@ -102,6 +102,11 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->transcoder_ports.range_start, g_cfg->transcoder_ports.range_end, VTY_NEWLINE);
 	vty_out(vty, "  transcoder-remote-base %u%s", g_cfg->transcoder_remote_base, VTY_NEWLINE);
 
+	/* Compression */
+	vty_out(vty, "  allow-compression %s%s",
+		mgcp_compr_name(g_cfg->trunk.compress_dir), VTY_NEWLINE);
+	
+
 	return CMD_SUCCESS;
 }
 
@@ -376,6 +381,30 @@ DEFUN(cfg_mgcp_transcoder_remote_base,
 	return CMD_SUCCESS;
 }
 
+#define COMPR_STR \
+		"Allow Compression\n" \
+		"No Compression\n" "Compress data to the network\n" \
+		"Compress data to the BTS/BSC\n"
+
+static void parse_compression(struct mgcp_trunk_config *trunk, const char *da)
+{
+	if (strcmp(da, "none") == 0)
+		trunk->compress_dir = COMPR_NONE;
+	else if (strcmp(da, "net") == 0)
+		trunk->compress_dir = COMPR_NET;
+	else if (strcmp(da, "bts") == 0)
+		trunk->compress_dir = COMPR_BTS;
+}
+
+DEFUN(cfg_mgcp_compr,
+      cfg_mgcp_compr_cmd,
+      "allow-compression (none|net|bts)",
+      COMPR_STR)
+{
+	parse_compression(&g_cfg->trunk, argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(cfg_mgcp_trunk, cfg_mgcp_trunk_cmd,
       "trunk <1-64>",
       "Configure a SS7 trunk\n" "Trunk Nr\n")
@@ -410,6 +439,8 @@ static int config_write_trunk(struct vty *vty)
 			trunk->audio_name, VTY_NEWLINE);
 		vty_out(vty, "  loop %d%s",
 			trunk->audio_loop, VTY_NEWLINE);
+		vty_out(vty, "  allow-compression %s%s",
+			mgcp_compr_name(g_cfg->trunk.compress_dir), VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -446,6 +477,16 @@ DEFUN(cfg_trunk_loop,
 	struct mgcp_trunk_config *trunk = vty->index;
 
 	trunk->audio_loop = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_compr,
+      cfg_trunk_compr_cmd,
+      "allow-compression (none|net|bts)",
+      COMPR_STR)
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	parse_compression(trunk, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -618,6 +659,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_compr_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -627,6 +669,7 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_payload_number_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_payload_name_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_compr_cmd);
 
 	return 0;
 }
