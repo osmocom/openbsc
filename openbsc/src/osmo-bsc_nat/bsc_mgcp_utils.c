@@ -538,7 +538,7 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
 	char buf[128];
 	char *running, *token;
 	struct msgb *output;
-	int is_crcx;
+	int is_crcx = 0;
 
 	if (length > 4096 - 128) {
 		LOGP(DMGCP, LOGL_ERROR, "Input is too long.\n");
