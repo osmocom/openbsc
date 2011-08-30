@@ -251,6 +251,7 @@ static void test_compress_one(const struct estate *edata, char *t)
 
 
 	INIT_LLIST_HEAD(&list);
+	state = edata->state;
 	if (rtp_decompress(&state, &list, out) != 0) {
 		fprintf(stderr, "Failed to decompress the code.\n");
 		abort();

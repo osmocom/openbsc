@@ -316,6 +316,9 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 		if (hdr->marker)
 			marker = 1;
 
+		state->generated_ssrc = ntohl(hdr->ssrc);
+		state->timestamp = ntohl(hdr->timestamp);
+		state->sequence = ntohs(hdr->sequence);
 		last_sequence = sequence;
 		count += 1;
 	}
