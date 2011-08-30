@@ -145,6 +145,9 @@ struct mgcp_endpoint {
 	int compr_enabled;
 	struct mgcp_rtp_compr_state compr_loc_state;
 	struct mgcp_rtp_compr_state compr_rem_state;
+	/* right now one can only compress in one direction */
+	struct llist_head compr_queue;
+	int compr_queue_size;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
@@ -178,5 +181,8 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 int rtp_decompress(struct mgcp_rtp_compr_state *state, struct llist_head *list,
 		   struct msgb *msg);
 
+
+void mgcp_msgb_clear_queue(struct llist_head *list);
+struct msgb *mgcp_msgb_alloc(void);
 
 #endif

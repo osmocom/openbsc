@@ -132,7 +132,7 @@ static const struct mgcp_request mgcp_requests [] = {
 	MGCP_REQUEST("RSIP", handle_rsip, "ReSetInProgress")
 };
 
-static struct msgb *mgcp_msgb_alloc(void)
+struct msgb *mgcp_msgb_alloc(void)
 {
 	struct msgb *msg;
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
@@ -1009,6 +1009,7 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *tcfg)
 
 		tcfg->endpoints[i].compr_loc_state.last_ts = -1;
 		tcfg->endpoints[i].compr_rem_state.last_ts = -1;
+		INIT_LLIST_HEAD(&tcfg->endpoints[i].compr_queue);
 	}
 
 	return 0;
@@ -1045,6 +1046,9 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	memset(&endp->taps, 0, sizeof(endp->taps));
 
 	endp->compr_enabled = 0;
+	mgcp_msgb_clear_queue(&endp->compr_queue);
+	endp->compr_queue_size = 0;
+
 	memset(&endp->compr_loc_state, 0, sizeof(endp->compr_loc_state));
 	endp->compr_loc_state.last_ts = -1;
 

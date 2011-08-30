@@ -119,6 +119,8 @@ struct mgcp_trunk_config {
 
 	unsigned int number_endpoints;
 	struct mgcp_endpoint *endpoints;
+
+	enum { COMPR_NONE, COMPR_BTS, COMPR_NET } compress_dir;
 };
 
 struct mgcp_config {

@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -55,6 +56,8 @@ enum {
 
 #define DUMMY_LOAD 0x23
 
+static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
+		   struct sockaddr_in *addr, char *buf, int rc);
 
 static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 {
@@ -72,6 +75,16 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 
 	return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 			endp->net_end.rtp_port, buf, 1);
+}
+
+void mgcp_msgb_clear_queue(struct llist_head *head)
+{
+	struct msgb *msg;
+
+	while (!llist_empty(head)) {
+		msg = msgb_dequeue(head);
+		msgb_free(msg);
+	}
 }
 
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
@@ -166,6 +179,184 @@ static int send_transcoder(struct mgcp_rtp_end *end, struct mgcp_config *cfg,
 	return rc;
 }
 
+static struct msgb *from_data(char *buf, int rc)
+{
+	struct msgb *msg = mgcp_msgb_alloc();
+	if (!msg) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate.\n");
+		return NULL;
+	}
+
+	msg->l2h = msgb_put(msg, rc);
+	memcpy(msg->l2h, buf, rc);
+	return msg;
+}
+
+static int maybe_send_queue(struct mgcp_endpoint *endp,
+			    struct mgcp_rtp_end *rtp_end)
+{
+	struct msgb *out;
+	int rc;
+
+	/* Queue up to four messages per endpoint */
+	if (++endp->compr_queue_size != 4)
+		return 0;
+
+	/* Allocate the outgoing data */
+	out = mgcp_msgb_alloc();
+	if (!out) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to allocate.\n");
+		goto cleanup;
+	}
+
+	/* Attempt to compress the samples */
+	rc = rtp_compress(&endp->compr_loc_state, out,
+			  ENDPOINT_NUMBER(endp), &endp->compr_queue);
+	if (rc == 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to compress. %d\n", rc);
+		goto cleanup;
+	}
+
+	/* send them out */
+	rc = udp_send(rtp_end->rtp.fd, &rtp_end->addr, rtp_end->rtp_port,
+		      (char *) out->l2h, msgb_l2len(out));
+
+	/* cleanup */
+	msgb_free(out);
+	assert(llist_empty(&endp->compr_queue));
+	endp->compr_queue_size = 0;
+	return 1;
+
+cleanup:
+	mgcp_msgb_clear_queue(&endp->compr_queue);
+	endp->compr_queue_size = 0;
+	return 0;
+}
+
+static int queue_for_compr_net(struct mgcp_endpoint *endp, char *buf, int rc)
+{
+	struct msgb *msg = from_data(buf, rc);
+	if (!msg)
+		return -1;
+
+	msgb_enqueue(&endp->compr_queue, msg);
+	return maybe_send_queue(endp, &endp->net_end);
+}
+
+static int queue_for_compr_bts(struct mgcp_endpoint *endp, char *buf, int rc)
+{
+	struct msgb *msg = from_data(buf, rc);
+	if (!msg)
+		return -1;
+
+	msgb_enqueue(&endp->compr_queue, msg);
+	return maybe_send_queue(endp, &endp->net_end);
+}
+
+static int dispatch_from_net(struct osmo_fd *fd, int proto,
+			     struct sockaddr_in *addr,
+			     struct mgcp_endpoint *endp,
+			     char *buf, int rc)
+{
+	endp->net_end.packets += 1;
+
+	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
+	if (endp->is_transcoded)
+		return send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
+	else {
+		return send_to(endp, DEST_BTS, proto == PROTO_RTP, addr, &buf[0], rc);
+	}
+}
+
+static int handle_compr_net(struct osmo_fd *fd, int proto,
+			    struct sockaddr_in *addr,
+			    struct mgcp_endpoint *endp,
+			    char *buf, int rc)
+{
+	struct msgb *msg, *tmp;
+	struct llist_head out_list;
+	INIT_LLIST_HEAD(&out_list);
+
+	msg = from_data(buf, rc);
+	if (!msg) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to allocate buffer for decode on %d/0x%x\n",
+		     ENDPOINT_NUMBER(endp), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	rc = rtp_decompress(&endp->compr_rem_state, &out_list, msg);
+	msgb_free(msg);
+
+	if (rc != 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to decode RTP stream %d/0x%x\n",
+		     ENDPOINT_NUMBER(endp), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	llist_for_each_entry_safe(msg, tmp, &out_list, list) {
+		dispatch_from_net(fd, proto, addr, endp, (char *) msg->l2h, msgb_l2len(msg));
+		llist_del(&msg->list);
+		msgb_free(msg);
+	}
+
+	return 0;
+}
+
+static int dispatch_from_bts(struct osmo_fd *fd, int proto,
+			     struct sockaddr_in *addr,
+			     struct mgcp_endpoint *endp,
+			     char *buf, int rc)
+{
+	/* do this before the loop handling */
+	endp->bts_end.packets += 1;
+
+	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
+	if (endp->is_transcoded)
+		return send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
+	else
+		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, addr, &buf[0], rc);
+}
+
+static int handle_compr_bts(struct osmo_fd *fd, int proto,
+			    struct sockaddr_in *addr,
+			    struct mgcp_endpoint *endp,
+			    char *buf, int rc)
+{
+	struct msgb *msg, *tmp;
+	struct llist_head out_list;
+	INIT_LLIST_HEAD(&out_list);
+
+#warning "REMOVE code duplication here..."
+
+	msg = from_data(buf, rc);
+	if (!msg) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to allocate buffer for decode on %d/0x%x\n",
+		     ENDPOINT_NUMBER(endp), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	rc = rtp_decompress(&endp->compr_rem_state, &out_list, msg);
+	msgb_free(msg);
+
+	if (rc != 0) {
+		LOGP(DMGCP, LOGL_ERROR,
+		     "Failed to decode RTP stream %d/0x%x\n",
+		     ENDPOINT_NUMBER(endp), ENDPOINT_NUMBER(endp));
+		return -1;
+	}
+
+	llist_for_each_entry_safe(msg, tmp, &out_list, list) {
+		dispatch_from_bts(fd, proto, addr, endp, (char *) msg->l2h, msgb_l2len(msg));
+		llist_del(&msg->list);
+		msgb_free(msg);
+	}
+
+	return 0;
+}
+
 static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 		   struct sockaddr_in *addr, char *buf, int rc)
 {
@@ -185,9 +376,11 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					addr, buf, rc);
 			forward_data(endp->net_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
+			if (tcfg->compress_dir == COMPR_NET && endp->compr_enabled)
+				return queue_for_compr_net(endp, buf, rc);
 			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 					endp->net_end.rtp_port, buf, rc);
-		} else {
+		} else if (!endp->compr_enabled) {
 			return udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
 					endp->net_end.rtcp_port, buf, rc);
 		}
@@ -198,13 +391,17 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					addr, buf, rc);
 			forward_data(endp->bts_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
+			if (tcfg->compress_dir == COMPR_BTS && endp->compr_enabled)
+				return queue_for_compr_bts(endp, buf, rc);
 			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtp_port, buf, rc);
-		} else {
+		} else if (!endp->compr_enabled) {
 			return udp_send(endp->bts_end.rtcp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtcp_port, buf, rc);
 		}
 	}
+
+	return -1;
 }
 
 static int receive_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *addr,
@@ -266,13 +463,11 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	}
 
 	proto = fd == &endp->net_end.rtp ? PROTO_RTP : PROTO_RTCP;
-	endp->net_end.packets += 1;
 
-	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+	if (endp->compr_enabled && endp->tcfg->compress_dir == COMPR_NET)
+		return handle_compr_net(fd, proto, &addr, endp, buf, rc);
+
+	return dispatch_from_net(fd, proto, &addr, endp, buf, rc);
 }
 
 static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_in *addr)
@@ -345,14 +540,10 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 		return 0;
 	}
 
-	/* do this before the loop handling */
-	endp->bts_end.packets += 1;
+	if (endp->compr_enabled && endp->tcfg->compress_dir == COMPR_BTS)
+		return handle_compr_bts(fd, proto, &addr, endp, buf, rc);
 
-	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
+	return dispatch_from_bts(fd, proto, &addr, endp, buf, rc);
 }
 
 static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,

@@ -221,11 +221,7 @@ static int read_compressed_big(struct msgb *msg,
 	return 0;
 
 clean_all:
-	while (llist_empty(list)) {
-		struct msgb *msg = msgb_dequeue(list);
-		talloc_free(msg);
-	}
-
+	mgcp_msgb_clear_queue(list);
 	return -8;
 }
 
@@ -276,11 +272,7 @@ static int read_compressed_slim(struct msgb *msg,
 	return 0;
 
 clean_all:
-	while (llist_empty(list)) {
-		struct msgb *msg = msgb_dequeue(list);
-		talloc_free(msg);
-	}
-
+	mgcp_msgb_clear_queue(list);
 	return -8;
 }
 
