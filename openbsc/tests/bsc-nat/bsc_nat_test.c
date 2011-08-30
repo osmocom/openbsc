@@ -581,10 +581,11 @@ static void test_mgcp_rewrite(void)
 		const char *patc = mgcp_messages[i].patch;
 		const char *ip = mgcp_messages[i].ip;
 		const int port = mgcp_messages[i].port;
+		int compr = mgcp_messages[i].allow_compr;
 
 		char *input = strdup(orig);
 
-		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e, ip, port);
+		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e, ip, port, compr);
 		if (msgb_l2len(output) != strlen(patc)) {
 			fprintf(stderr, "Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
 			fprintf(stderr, "String '%s' vs '%s'\n", (const char *) output->l2h, patc);

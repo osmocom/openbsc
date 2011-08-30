@@ -339,7 +339,8 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 
 	/* we need to generate a new and patched message */
 	bsc_msg = bsc_mgcp_rewrite((char *) nat->mgcp_msg, nat->mgcp_length, sccp->bsc_endp,
-				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port);
+				   nat->mgcp_cfg->source_addr, mgcp_endp->bts_end.local_port,
+				   sccp->bsc->cfg->allow_compr);
 	if (!bsc_msg) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to patch the msg.\n");
 		return MGCP_POLICY_CONT;
@@ -471,7 +472,8 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 	 * with the value of 0 should be no problem.
 	 */
 	output = bsc_mgcp_rewrite((char * ) msg->l2h, msgb_l2len(msg), -1,
-				  bsc->nat->mgcp_cfg->source_addr, endp->net_end.local_port);
+				  bsc->nat->mgcp_cfg->source_addr, endp->net_end.local_port,
+				  bsc->cfg->allow_compr);
 
 	if (!output) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to rewrite MGCP msg.\n");
@@ -523,7 +525,8 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 }
 
 /* we need to replace some strings... */
-struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char *ip, int port)
+struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint,
+			      const char *ip, int port, int allow_compr)
 {
 	static const char *crcx_str = "CRCX ";
 	static const char *dlcx_str = "DLCX ";
@@ -535,6 +538,7 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 	char buf[128];
 	char *running, *token;
 	struct msgb *output;
+	int is_crcx;
 
 	if (length > 4096 - 128) {
 		LOGP(DMGCP, LOGL_ERROR, "Input is too long.\n");
@@ -555,11 +559,21 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 		int cr = len > 0 && token[len - 1] == '\r';
 
 		if (strncmp(crcx_str, token, (sizeof crcx_str) - 1) == 0) {
+			is_crcx = 1;
 			patch_mgcp(output, "CRCX", token, endpoint, len, cr);
 		} else if (strncmp(dlcx_str, token, (sizeof dlcx_str) - 1) == 0) {
 			patch_mgcp(output, "DLCX", token, endpoint, len, cr);
 		} else if (strncmp(mdcx_str, token, (sizeof mdcx_str) - 1) == 0) {
 			patch_mgcp(output, "MDCX", token, endpoint, len, cr);
+		} else if (strncmp("C:", token, 2) == 0 && is_crcx && allow_compr) {
+			output->l3h = msgb_put(output, len + 1);
+			memcpy(output->l3h, token, len);
+			output->l3h[len] = '\n';
+
+			snprintf(buf, sizeof(buf) - 1,
+				 "X-ow-encr: 1%s", cr ? "\r\n" : "\n");
+			output->l3h = msgb_put(output, strlen(buf));
+			memcpy(output->l3h, buf, strlen(buf));
 		} else if (strncmp(ip_str, token, (sizeof ip_str) - 1) == 0) {
 			output->l3h = msgb_put(output, strlen(ip_str));
 			memcpy(output->l3h, ip_str, strlen(ip_str));

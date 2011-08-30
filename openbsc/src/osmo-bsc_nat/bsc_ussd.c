@@ -386,7 +386,7 @@ int bsc_check_ussd(struct sccp_connections *con, struct bsc_nat_parsed *parsed,
 			return 0;
 
 		if (regexec(&con->bsc->nat->ussd_query_re,
-			    req.text, 0, NULL, 0) == REG_NOMATCH)
+			    (const char *) req.text, 0, NULL, 0) == REG_NOMATCH)
 			return 0;
 
 		/* found a USSD query for our subscriber */

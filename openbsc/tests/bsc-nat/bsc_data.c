@@ -125,6 +125,7 @@ static const uint8_t smsc_rewrite_patched[] = {
 /* nothing to patch */
 static const char crcx[] = "CRCX 23265295 8@mgw MGCP 1.0\r\nC: 394b0439fb\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n";
 static const char crcx_patched[] = "CRCX 23265295 1e@mgw MGCP 1.0\r\nC: 394b0439fb\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n";
+static const char crcx_patched_compr[] = "CRCX 23265295 1e@mgw MGCP 1.0\r\nC: 394b0439fb\r\nX-ow-encr: 1\r\nL: p:20, a:AMR, nt:IN\r\nM: recvonly\r\n";
 
 
 /* patch the ip and port */
@@ -148,6 +149,7 @@ struct mgcp_patch_test {
 	const char *patch;
 	const char *ip;
 	const int port;
+	int allow_compr;
 };
 
 static const struct mgcp_patch_test mgcp_messages[] = {
@@ -156,6 +158,13 @@ static const struct mgcp_patch_test mgcp_messages[] = {
 		.patch = crcx_patched,
 		.ip = "0.0.0.0",
 		.port = 2323,
+	},
+	{
+		.orig = crcx,
+		.patch = crcx_patched_compr,
+		.ip = "0.0.0.0",
+		.port = 2323,
+		.allow_compr = 1,
 	},
 	{
 		.orig = crcx_resp,

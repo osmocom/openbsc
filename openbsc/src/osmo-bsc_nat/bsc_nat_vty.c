@@ -149,6 +149,8 @@ static void config_write_bsc_single(struct vty *vty, struct bsc_config *bsc)
 	if (bsc->paging_group != -1)
 		vty_out(vty, "  paging group %d%s", bsc->paging_group, VTY_NEWLINE);
 	vty_out(vty, "  paging forbidden %d%s", bsc->forbid_paging, VTY_NEWLINE);
+	if (bsc->allow_compr)
+		vty_out(vty, "  allow-compression allow%s", VTY_NEWLINE);
 }
 
 static int config_write_bsc(struct vty *vty)
@@ -790,6 +792,16 @@ DEFUN(cfg_bsc_no_paging_grp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bsc_allow_compr,
+      cfg_bsc_allow_compr_cmd,
+      "allow-compression (forbid|allow)",
+      "Allow RTP compression for this BSC\n" "Forbid\n" "Allow\n")
+{
+	struct bsc_config *conf = vty->index;
+	conf->allow_compr = argv[0][0] == 'a' ? 1 : 0;
+	return CMD_SUCCESS;
+}
+
 DEFUN(test_regex, test_regex_cmd,
       "test regex PATTERN STRING",
       "Check if the string is matching the current pattern.")
@@ -983,6 +995,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_BSC_NODE, &cfg_bsc_old_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_paging_grp_cmd);
 	install_element(NAT_BSC_NODE, &cfg_bsc_no_paging_grp_cmd);
+	install_element(NAT_BSC_NODE, &cfg_bsc_allow_compr_cmd);
 
 	mgcp_vty_init();
 
