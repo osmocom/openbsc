@@ -252,7 +252,7 @@ static int queue_for_compr_bts(struct mgcp_endpoint *endp, char *buf, int rc)
 		return -1;
 
 	msgb_enqueue(&endp->compr_queue, msg);
-	return maybe_send_queue(endp, &endp->net_end);
+	return maybe_send_queue(endp, &endp->bts_end);
 }
 
 static int dispatch_from_net(struct osmo_fd *fd, int proto,
