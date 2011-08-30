@@ -89,8 +89,12 @@ static int guess_amr_size(const uint8_t *_data)
 {
 	const struct amr_toc *toc;
 	toc = (struct amr_toc *) _data;
+	/* SID */
 	if (toc->ft_bits == 8 && toc->f_bit == 0 && toc->q_bit == 1)
 		return 7;
+	/* 5.15 */
+	if (toc->ft_bits == 1 && toc->f_bit == 0 && toc->q_bit == 1)
+		return 15;
 
 	return 17;
 }
@@ -317,9 +321,9 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 		}
 
 		payload_len = msgb_l2len(rtp) - sizeof(struct rtp_hdr);
-		if (payload_len != 7 && payload_len != 17) {
+		if (payload_len != 7 && payload_len != 17 && payload_len != 15) {
 			LOGP(DMGCP, LOGL_ERROR,
-			     "We assume every payload is 17 or 7 byte: %d\n",
+			     "We assume every payload is 17,7,5 byte: %d\n",
 			     msgb_l2len(rtp) - sizeof(struct rtp_hdr));
 			llist_del(&rtp->list);
 			talloc_free(rtp);
