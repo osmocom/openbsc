@@ -339,7 +339,7 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 		}
 	}
 
-	if (nat->mgcp_cfg->trunk.compress_dir == COMPR_BTS
+	if (mgcp_endp->tcfg->compress_dir == COMPR_BTS
 	    && sccp->bsc->cfg->allow_compr)
 		compr = 1;
 
