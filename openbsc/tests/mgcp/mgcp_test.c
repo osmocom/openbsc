@@ -108,6 +108,34 @@ static const uint8_t packet_4[] = {
 	0x13, 0x0e, 0x5e, 0x56, 0x6c
 };
 
+/** test with some silence detection and clock jump */
+static const uint8_t packet_short_1[] = {
+	0x80, 0x62, 0xcc, 0xc2, 0xf7, 0xcd, 0x4f, 0xe8,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0xff, 0x52,
+	0x38, 0xaf, 0xab, 0xa7, 0xfd, 0xf6, 0x5f, 0xfd,
+	0xf4, 0xac, 0x03, 0xe2, 0xec,
+};
+
+static const uint8_t packet_short_2[] = {
+	0x80, 0x62, 0xcc, 0xc3, 0xf7, 0xcd, 0x50, 0x88,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0x83, 0x58,
+	0x53, 0x5f, 0xfe, 0x65, 0xe3, 0x99, 0x9d, 0xdc,
+	0xcb, 0xda, 0x9b, 0xab, 0x7c
+};
+
+static const uint8_t packet_short_3[] = {
+	0x80, 0x62, 0xcc, 0xc4, 0xf7, 0xcd, 0x51, 0x28,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x44, 0x00, 0x00,
+	0x00, 0x00, 0x04,
+};
+
+static const uint8_t packet_short_4[] = {
+	0x80, 0xe2, 0xcc, 0xc5, 0xf7, 0xcd, 0x52, 0x68,
+	0x6f, 0x0f, 0xb1, 0xda, 0x00, 0x14, 0x44, 0x7b,
+	0xd5, 0xfd, 0xbd, 0xf5, 0x65, 0x77, 0x9f, 0xb3,
+	0xc2, 0x90, 0x83, 0x37, 0x88,
+};
+
 static struct msgb *from(const uint8_t *data, uint16_t len)
 {
 	struct msgb *msg = msgb_alloc_headroom(4096, 128, "from");
@@ -126,6 +154,13 @@ static const struct pdata marker_normal[] = {
 	{ .data = packet_2, .len = sizeof(packet_2), },
 	{ .data = packet_3, .len = sizeof(packet_3), },
 	{ .data = packet_4, .len = sizeof(packet_4), },
+};
+
+static const struct pdata shorter_marker[] = {
+	{ .data = packet_short_1, .len = sizeof(packet_short_1) },
+	{ .data = packet_short_2, .len = sizeof(packet_short_2) },
+	{ .data = packet_short_3, .len = sizeof(packet_short_3) },
+	{ .data = packet_short_4, .len = sizeof(packet_short_4) },
 };
 
 struct estate {
@@ -155,6 +190,26 @@ static const struct estate test_scenarious[] = {
 		.timestamp = 4157324008u,
 	  },
 	},
+	/* this is testing the bigger encoding due the marker */
+	{ .data = shorter_marker, .plen = ARRAY_SIZE(shorter_marker),
+	  .output_size = 17 * 3 + 7 * 1 + 3 + 4 * 1,
+	  .state = {
+	  	.last_ts = UCHAR_MAX,
+		.generated_ssrc = 0x6f0fb1da,
+		.sequence = 52418,
+		.timestamp = 4157427688u,
+	  },
+	},
+	/* without the marker set, should be slim encoding */
+	{ .data = shorter_marker, .plen = ARRAY_SIZE(shorter_marker) -1 ,
+	  .output_size = 17 * 2 + 7 * 1 + 3,
+	  .state = {
+	  	.last_ts = UCHAR_MAX,
+		.generated_ssrc = 0x6f0fb1da,
+		.sequence = 52418,
+		.timestamp = 4157427688u,
+	  },
+	},
 };
 
 static void test_compress_one(const struct estate *edata, char *t)
@@ -168,6 +223,8 @@ static void test_compress_one(const struct estate *edata, char *t)
 	struct llist_head list;
 
 	INIT_LLIST_HEAD(&list);
+
+	printf("TESTING: %s\n", t);
 
 	for (i = 0; i < len; ++i) {
 		msgs[i] = from(data[i].data, data[i].len);
@@ -185,7 +242,8 @@ static void test_compress_one(const struct estate *edata, char *t)
 	}
 
 	if (msgb_l2len(out) != edata->output_size) {
-		fprintf(stderr, "Result is wrong size: %d\n", msgb_l2len(out));
+		fprintf(stderr, "Result is wrong size: %d %d\n",
+			edata->output_size, msgb_l2len(out));
 		abort();
 	}
 
@@ -212,6 +270,7 @@ static void test_compress_one(const struct estate *edata, char *t)
 				i, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 			abort();
 		}
+		printf("Matched %s\n", osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 
 		i += 1;
 	}
@@ -236,6 +295,12 @@ void test_compress()
 	 */
 	test_compress_one(&test_scenarious[1], "No marker");
 
+
+	/**
+	 * Test some shorter payloads, also a time jump at the end
+	 */
+	test_compress_one(&test_scenarious[2], "Shortened and Jump");
+	test_compress_one(&test_scenarious[3], "Only shortened for slim");
 }
 
 int main(int argc, char **argv)

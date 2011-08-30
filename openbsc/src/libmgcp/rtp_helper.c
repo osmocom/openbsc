@@ -48,6 +48,15 @@ struct reduced_rtp_hdr {
 	uint8_t		data[0];
 } __attribute__((packed));
 
+struct amr_toc {
+	uint8_t		reserved : 4,
+			cmd : 4;
+	uint8_t 	na : 2,
+			q_bit : 1,
+			ft_bits: 4,
+			f_bit : 1;
+} __attribute__((packed));
+
 #define msgb_put_struct(msg, str) \
 	(str *) msgb_put(msg, sizeof(str))
 
@@ -71,6 +80,16 @@ static void fill_rtp_state(struct rtp_hdr *hdr,
 	hdr->sequence = htons(state->sequence++);
 	hdr->timestamp = htonl(state->timestamp);
 	state->timestamp += 160;
+}
+
+static int guess_amr_size(const uint8_t *_data)
+{
+	const struct amr_toc *toc;
+	toc = (struct amr_toc *) _data;
+	if (toc->ft_bits == 8 && toc->f_bit == 0 && toc->q_bit == 1)
+		return 7;
+
+	return 17;
 }
 
 static void write_compressed_big(struct reduced_rtp_hdr *reduced_hdr,
@@ -125,20 +144,25 @@ static int read_compressed_big(struct msgb *msg,
 			       struct mgcp_rtp_compr_state *state)
 {
 	int i;
-
-	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 18) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Payloads do not fit. %d\n", rhdr->payloads);
-		return -3;
-	}
+	uint16_t offset = 0;
+	const uint16_t len = msgb_l2len(msg) - sizeof(*rhdr);
 
 	for (i = 0; i < rhdr->payloads; ++i) {
 		struct rtp_hdr *hdr;
-		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
+		struct msgb *out;
+		int alen;
+
+		if (len < offset + 1 + sizeof(struct amr_toc)) {
+			LOGP(DMGCP, LOGL_ERROR, "Can not fit RTP/AMR in %d\n", i);
+			goto clean_all;
+		}
+
+		out = msgb_alloc_headroom(4096, 128, "RTP decompr");
 		if (!out) {
 			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
-			continue;
+			goto clean_all;
 		}
+
 
 		out->l2h = msgb_put(out, 0);
 		hdr = msgb_put_struct(out, struct rtp_hdr);
@@ -146,15 +170,32 @@ static int read_compressed_big(struct msgb *msg,
 		fill_rtp_state(hdr, state);
 
 		/* re-apply the marker bit */
-		if (rhdr->data[i * 18] & RTP_EXTRA_MARKER)
+		if (rhdr->data[offset] & RTP_EXTRA_MARKER)
 			hdr->marker = 1;
+		offset += 1;
 
-		out->l3h = msgb_put(out, 17);
-		memcpy(out->l3h, &rhdr->data[i * 18], 17);
+		/* guess the size of the AMR payload */
+		alen = guess_amr_size(&rhdr->data[offset]);
+		if (len < offset + alen) {
+			LOGP(DMGCP, LOGL_ERROR, "Payload does not fit.\n");
+			goto clean_all;
+		}
+
+		out->l3h = msgb_put(out, alen);
+		memcpy(out->l3h, &rhdr->data[offset], alen);
 		msgb_enqueue(list, out);
+		offset += alen;
 	}
 
 	return 0;
+
+clean_all:
+	while (llist_empty(list)) {
+		struct msgb *msg = msgb_dequeue(list);
+		talloc_free(msg);
+	}
+
+	return -8;
 }
 
 static int read_compressed_slim(struct msgb *msg,
@@ -164,15 +205,20 @@ static int read_compressed_slim(struct msgb *msg,
 {
 	int i;
 
-	if (msgb_l2len(msg) < sizeof(*rhdr) + rhdr->payloads * 17) {
-		LOGP(DMGCP, LOGL_ERROR,
-		     "Payloads do not fit. %d\n", rhdr->payloads);
-		return -3;
-	}
+	uint16_t offset = 0;
+	const uint16_t len = msgb_l2len(msg) - sizeof(*rhdr);
 
 	for (i = 0; i < rhdr->payloads; ++i) {
 		struct rtp_hdr *hdr;
-		struct msgb *out = msgb_alloc_headroom(4096, 128, "RTP decompr");
+		struct msgb *out;
+		int alen;
+
+		if (len < offset + 1 + sizeof(struct amr_toc)) {
+			LOGP(DMGCP, LOGL_ERROR, "Can not fit RTP/AMR in %d\n", i);
+			goto clean_all;
+		}
+
+		out = msgb_alloc_headroom(4096, 128, "RTP decompr");
 		if (!out) {
 			LOGP(DMGCP, LOGL_ERROR, "Failed to allocate: %d\n", i);
 			continue;
@@ -183,12 +229,28 @@ static int read_compressed_slim(struct msgb *msg,
 		fill_rtp_hdr(hdr);
 		fill_rtp_state(hdr, state);
 
-		out->l3h = msgb_put(out, 17);
-		memcpy(out->l3h, &rhdr->data[i * 17], 17);
+		/* guess the size of the AMR payload */
+		alen = guess_amr_size(&rhdr->data[offset]);
+		if (len < offset + alen) {
+			LOGP(DMGCP, LOGL_ERROR, "Payload does not fit.\n");
+			goto clean_all;
+		}
+
+		out->l3h = msgb_put(out, alen);
+		memcpy(out->l3h, &rhdr->data[offset], alen);
 		msgb_enqueue(list, out);
+		offset += alen;
 	}
 
 	return 0;
+
+clean_all:
+	while (llist_empty(list)) {
+		struct msgb *msg = msgb_dequeue(list);
+		talloc_free(msg);
+	}
+
+	return -8;
 }
 
 
@@ -221,6 +283,7 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 	llist_for_each_entry_safe(rtp, tmp, rtp_packets, list) {
 		struct rtp_hdr *hdr;
 		uint16_t sequence;
+		uint16_t payload_len;
 
 		if (msgb_l2len(rtp) < sizeof(struct rtp_hdr)) {
 			LOGP(DMGCP, LOGL_ERROR,
@@ -230,9 +293,10 @@ int rtp_compress(struct mgcp_rtp_compr_state *state, struct msgb *msg,
 			continue;
 		}
 
-		if (msgb_l2len(rtp) < sizeof(struct rtp_hdr) + 17) {
+		payload_len = msgb_l2len(rtp) - sizeof(struct rtp_hdr);
+		if (payload_len != 7 && payload_len != 17) {
 			LOGP(DMGCP, LOGL_ERROR,
-			     "We assume every payload is 17 byte: %d\n",
+			     "We assume every payload is 17 or 7 byte: %d\n",
 			     msgb_l2len(rtp) - sizeof(struct rtp_hdr));
 			llist_del(&rtp->list);
 			talloc_free(rtp);
