@@ -606,7 +606,9 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	endp->allocated = 1;
 	endp->bts_end.payload_type = tcfg->audio_payload;
-	endp->compr_enabled = 1;
+
+	if (encr)
+		endp->compr_enabled = 1;
 
 	/* policy CB */
 	if (cfg->policy_cb) {
