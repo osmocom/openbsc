@@ -362,6 +362,10 @@ int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, 
 			mgcp_endp->bts_end.addr = sock.sin_addr;
 		}
 
+		/* enable the compression on this endpoint */
+		if (sccp->bsc->cfg->allow_compr)
+			mgcp_endp->compr_enabled = 1;
+
 		/* send the message and a fake MDCX to force sending of a dummy packet */
 		bsc_write(sccp->bsc, bsc_msg, IPAC_PROTO_MGCP_OLD);
 		bsc_mgcp_send_mdcx(sccp->bsc, sccp->bsc_endp, mgcp_endp);
