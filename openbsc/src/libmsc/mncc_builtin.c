@@ -30,6 +30,7 @@
 #include <openbsc/gsm_04_08.h>
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
+#include <openbsc/mncc_int.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/transaction.h>
@@ -40,6 +41,10 @@ void *tall_call_ctx;
 static LLIST_HEAD(call_list);
 
 static uint32_t new_callref = 0x00000001;
+
+struct mncc_int mncc_int = {
+	.def_codec = { GSM48_CMODE_SPEECH_EFR, GSM48_CMODE_SPEECH_V1 },
+};
 
 static void free_call(struct gsm_call *call)
 {
@@ -60,6 +65,15 @@ static struct gsm_call *get_call_ref(uint32_t callref)
 	return NULL;
 }
 
+static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
+{
+	/* FIXME: check codec capabilities of the phone */
+
+	if (setup->lchan_type == GSM_LCHAN_TCH_F)
+		return mncc_int.def_codec[0];
+	else
+		return mncc_int.def_codec[1];
+}
 
 /* on incoming call, look up database and send setup to remote subscr. */
 static int mncc_setup_ind(struct gsm_call *call, int msg_type,
@@ -112,7 +126,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	/* modify mode */
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
-	mncc.lchan_mode = GSM48_CMODE_SPEECH_EFR;
+	mncc.lchan_mode = determine_lchan_mode(setup);
 	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
 
@@ -346,7 +360,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		break;
 	case MNCC_CALL_CONF_IND:
 		/* we now need to MODIFY the channel */
-		data->lchan_mode = GSM48_CMODE_SPEECH_EFR;
+		data->lchan_mode = determine_lchan_mode(data);
 		mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, data);
 		break;
 	case MNCC_ALERT_IND:
