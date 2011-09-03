@@ -665,7 +665,7 @@ static void handle_chan_ack(struct gsm_subscriber_connection *conn,
 		return;
 
 	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: %p\n", lchan);
-	gsm48_send_rr_ass_cmd(conn->lchan, lchan, 0x3);
+	gsm48_send_rr_ass_cmd(conn->lchan, lchan, lchan->ms_power);
 }
 
 static void handle_chan_nack(struct gsm_subscriber_connection *conn,
