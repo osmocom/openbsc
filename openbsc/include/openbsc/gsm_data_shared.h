@@ -77,6 +77,7 @@ enum bts_gprs_mode {
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
+struct osmo_rtp_socket;
 struct rtp_socket;
 struct bsc_api;
 
@@ -176,7 +177,11 @@ struct gsm_lchan {
 		uint8_t rtp_payload;
 		uint8_t rtp_payload2;
 		uint8_t speech_mode;
+#ifdef ROLE_BSC
 		struct rtp_socket *rtp_socket;
+#else
+		struct osmo_rtp_socket *rtp_socket;
+#endif
 	} abis_ip;
 
 	uint8_t rqd_ta;
@@ -200,6 +205,7 @@ struct gsm_lchan {
 	struct gsm_subscriber_connection *conn;
 #else
 	struct lapdm_channel lapdm_ch;
+	struct llist_head dl_tch_queue;
 	struct {
 		/* bitmask of all SI that are present/valid in si_buf */
 		uint32_t valid;
