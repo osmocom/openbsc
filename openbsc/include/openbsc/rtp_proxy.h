@@ -54,7 +54,7 @@ struct rtp_sub_socket {
 	struct llist_head tx_queue;
 };
 
-struct rtp_socket {
+struct osmo_rtp_socket {
 	struct llist_head list;
 
 	struct rtp_sub_socket rtp;
@@ -64,7 +64,7 @@ struct rtp_socket {
 	enum rtp_rx_action rx_action;
 	union {
 		struct {
-			struct rtp_socket *other_sock;
+			struct osmo_rtp_socket *other_sock;
 		} proxy;
 		struct {
 			struct gsm_network *net;
@@ -80,12 +80,12 @@ struct rtp_socket {
 	} transmit;
 };
 
-struct rtp_socket *rtp_socket_create(void);
-int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip);
-int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port);
-int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other);
-int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net, uint32_t callref);
-int rtp_socket_free(struct rtp_socket *rs);
-int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame);
+struct osmo_rtp_socket *rtp_socket_create(void);
+int rtp_socket_bind(struct osmo_rtp_socket *rs, uint32_t ip);
+int rtp_socket_connect(struct osmo_rtp_socket *rs, uint32_t ip, uint16_t port);
+int rtp_socket_proxy(struct osmo_rtp_socket *this, struct osmo_rtp_socket *other);
+int rtp_socket_upstream(struct osmo_rtp_socket *this, struct gsm_network *net, uint32_t callref);
+int rtp_socket_free(struct osmo_rtp_socket *rs);
+int rtp_send_frame(struct osmo_rtp_socket *rs, struct gsm_data_frame *frame);
 
 #endif /* _RTP_PROXY_H */

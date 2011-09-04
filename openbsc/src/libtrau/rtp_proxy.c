@@ -206,7 +206,7 @@ static void tv_difference(struct timeval *diff, const struct timeval *from,
 }
 
 /* encode and send a rtp frame */
-int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
+int rtp_send_frame(struct osmo_rtp_socket *rs, struct gsm_data_frame *frame)
 {
 	struct rtp_sub_socket *rss = &rs->rtp;
 	struct msgb *msg;
@@ -339,7 +339,7 @@ static int rtcp_sdes_cname_mangle(struct msgb *msg, struct rtcp_hdr *rh,
 	return 0;
 }
 
-static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
+static int rtcp_mangle(struct msgb *msg, struct osmo_rtp_socket *rs)
 {
 	struct rtp_sub_socket *rss = &rs->rtcp;
 	struct rtcp_hdr *rtph;
@@ -376,7 +376,7 @@ static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
 }
 
 /* read from incoming RTP/RTCP socket */
-static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
+static int rtp_socket_read(struct osmo_rtp_socket *rs, struct rtp_sub_socket *rss)
 {
 	int rc;
 	struct msgb *msg = msgb_alloc(RTP_ALLOC_SIZE, "RTP/RTCP");
@@ -458,7 +458,7 @@ out_free:
 }
 
 /* write from tx_queue to RTP/RTCP socket */
-static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
+static int rtp_socket_write(struct osmo_rtp_socket *rs, struct rtp_sub_socket *rss)
 {
 	struct msgb *msg;
 	int written;
@@ -485,7 +485,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 /* callback for the select.c:bfd_* layer */
 static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 {
-	struct rtp_socket *rs = bfd->data;
+	struct osmo_rtp_socket *rs = bfd->data;
 	struct rtp_sub_socket *rss;
 
 	switch (bfd->priv_nr) {
@@ -509,7 +509,7 @@ static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 }
 
 static void init_rss(struct rtp_sub_socket *rss,
-		     struct rtp_socket *rs, int fd, int priv_nr)
+		     struct osmo_rtp_socket *rs, int fd, int priv_nr)
 {
 	/* initialize bfd */
 	rss->bfd.fd = fd;
@@ -518,14 +518,14 @@ static void init_rss(struct rtp_sub_socket *rss,
 	rss->bfd.cb = rtp_bfd_cb;
 }
 
-struct rtp_socket *rtp_socket_create(void)
+struct osmo_rtp_socket *rtp_socket_create(void)
 {
 	int rc;
-	struct rtp_socket *rs;
+	struct osmo_rtp_socket *rs;
 
 	DEBUGP(DLMUX, "rtp_socket_create(): ");
 
-	rs = talloc_zero(tall_bsc_ctx, struct rtp_socket);
+	rs = talloc_zero(tall_bsc_ctx, struct osmo_rtp_socket);
 	if (!rs)
 		return NULL;
 
@@ -598,7 +598,7 @@ static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, uint32_t ip,
 static unsigned int next_udp_port = RTP_PORT_BASE;
 
 /* bind a RTP socket to a local address */
-int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
+int rtp_socket_bind(struct osmo_rtp_socket *rs, uint32_t ip)
 {
 	int rc = -EIO;
 	struct in_addr ia;
@@ -649,7 +649,7 @@ static int rtp_sub_socket_connect(struct rtp_sub_socket *rss,
 }
 
 /* 'connect' a RTP socket to a remote peer */
-int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
+int rtp_socket_connect(struct osmo_rtp_socket *rs, uint32_t ip, uint16_t port)
 {
 	int rc;
 	struct in_addr ia;
@@ -666,7 +666,7 @@ int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 }
 
 /* bind two RTP/RTCP sockets together */
-int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
+int rtp_socket_proxy(struct osmo_rtp_socket *this, struct osmo_rtp_socket *other)
 {
 	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, other=%p)\n",
 		this, other);
@@ -681,7 +681,7 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 }
 
 /* bind RTP/RTCP socket to application */
-int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
+int rtp_socket_upstream(struct osmo_rtp_socket *this, struct gsm_network *net,
 			uint32_t callref)
 {
 	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
@@ -705,7 +705,7 @@ static void free_tx_queue(struct rtp_sub_socket *rss)
 		msgb_free(msg);
 }
 
-int rtp_socket_free(struct rtp_socket *rs)
+int rtp_socket_free(struct osmo_rtp_socket *rs)
 {
 	DEBUGP(DLMUX, "rtp_socket_free(rs=%p)\n", rs);
 

@@ -98,6 +98,12 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 		struct e1inp_sign_link *sign_link =
 				msg->lchan->ts->trx->rsl_link;
 
+		if (!sign_link) {
+			LOGP(DCC, LOGL_NOTICE, "gsm48_conn_sendmsg() "
+				"for non-existant sign_link\n");
+			msgb_free(msg);
+			return -EIO;
+		}
 		msg->dst = sign_link;
 		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
@@ -1488,7 +1494,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable);
 static int handle_ho_signal(unsigned int subsys, unsigned int signal,
 			    void *handler_data, void *signal_data)
 {
-	struct rtp_socket *old_rs, *new_rs, *other_rs;
+	struct osmo_rtp_socket *old_rs, *new_rs, *other_rs;
 	struct ho_signal_data *sig = signal_data;
 
 	if (subsys != SS_HO || signal != S_HANDOVER_ACK)

@@ -112,7 +112,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	/* modify mode */
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
-	mncc.lchan_mode = GSM48_CMODE_SPEECH_EFR;
+	mncc.lchan_mode = GSM48_CMODE_SPEECH_V1;
 	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
 
@@ -346,7 +346,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		break;
 	case MNCC_CALL_CONF_IND:
 		/* we now need to MODIFY the channel */
-		data->lchan_mode = GSM48_CMODE_SPEECH_EFR;
+		data->lchan_mode = GSM48_CMODE_SPEECH_V1;
 		mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, data);
 		break;
 	case MNCC_ALERT_IND:

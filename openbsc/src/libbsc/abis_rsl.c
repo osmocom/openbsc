@@ -1740,7 +1740,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip, uint16_t port,
 /* tell BTS to connect RTP stream to our local RTP socket */
 int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 {
-	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
+	struct osmo_rtp_socket *rs = lchan->abis_ip.rtp_socket;
 	int rc;
 
 	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
