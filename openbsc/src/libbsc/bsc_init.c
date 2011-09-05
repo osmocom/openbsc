@@ -33,6 +33,8 @@
 #include <openbsc/chan_alloc.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/ipaccess.h>
+#include <osmocom/gsm/sysinfo.h>
+#include <openbsc/e1_config.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
