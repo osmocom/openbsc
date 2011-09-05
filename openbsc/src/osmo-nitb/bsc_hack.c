@@ -42,6 +42,10 @@
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
+#include <openbsc/token_auth.h>
+#include <openbsc/handover_decision.h>
+#include <openbsc/rrlp.h>
+#include <openbsc/control_if.h>
 
 #include "../../bscconfig.h"
 
