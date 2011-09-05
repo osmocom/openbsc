@@ -35,6 +35,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/mncc.h>
+#include <openbsc/trau_upqueue.h>
 
 /* attempt to determine byte order */
 #include <sys/param.h>

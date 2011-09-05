@@ -29,6 +29,7 @@
 #include <osmocom/abis/e1_input.h>
 #include <openbsc/debug.h>
 #include <osmocom/core/talloc.h>
+#include <openbsc/trau_upqueue.h>
 
 /* this corresponds to teh bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 06.10 */
