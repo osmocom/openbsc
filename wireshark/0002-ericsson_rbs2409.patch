@@ -15,11 +15,11 @@ Add Ericsson RBS2409 dissector
  create mode 100644 epan/dissectors/packet-ehdlc.c
  create mode 100644 epan/dissectors/packet-gsm_abis_om2000.c
 
-diff --git a/epan/CMakeLists.txt b/epan/CMakeLists.txt
-index 0b09335..9217ec0 100644
---- a/epan/CMakeLists.txt
-+++ b/epan/CMakeLists.txt
-@@ -184,6 +184,8 @@ set(DIRTY_PIDL_DISSECTOR_SRC
+Index: wireshark/epan/CMakeLists.txt
+===================================================================
+--- wireshark.orig/epan/CMakeLists.txt	2011-09-06 13:37:42.000000000 +0200
++++ wireshark/epan/CMakeLists.txt	2011-09-06 13:53:22.000000000 +0200
+@@ -180,6 +180,8 @@
  	dissectors/packet-dcerpc-eventlog.c
  	dissectors/packet-dcerpc-lsa.c
  	dissectors/packet-dcerpc-winreg.c
@@ -28,11 +28,11 @@ index 0b09335..9217ec0 100644
  )
  set(ASN1_DISSECTOR_SRC
  	dissectors/packet-acp133.c
-diff --git a/epan/dissectors/Makefile.common b/epan/dissectors/Makefile.common
-index 7ce83b6..4c7094b 100644
---- a/epan/dissectors/Makefile.common
-+++ b/epan/dissectors/Makefile.common
-@@ -67,6 +67,8 @@ DIRTY_PIDL_DISSECTOR_SRC = \
+Index: wireshark/epan/dissectors/Makefile.common
+===================================================================
+--- wireshark.orig/epan/dissectors/Makefile.common	2011-09-06 13:37:42.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2011-09-06 13:53:22.000000000 +0200
+@@ -67,6 +67,8 @@
  	packet-dcerpc-dnsserver.c 	\
  	packet-dcerpc-eventlog.c \
  	packet-dcerpc-lsa.c \
@@ -41,12 +41,11 @@ index 7ce83b6..4c7094b 100644
  	packet-dcerpc-winreg.c
  
  #
-diff --git a/epan/dissectors/packet-ehdlc.c b/epan/dissectors/packet-ehdlc.c
-new file mode 100644
-index 0000000..40bb3ab
---- /dev/null
-+++ b/epan/dissectors/packet-ehdlc.c
-@@ -0,0 +1,319 @@
+Index: wireshark/epan/dissectors/packet-ehdlc.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-ehdlc.c	2011-09-06 13:37:48.000000000 +0200
+@@ -0,0 +1,321 @@
 +/* packet-ehdlc.c
 + * Routines for packet dissection of Ericsson HDLC as used in A-bis over IP
 + * Copyright 2010 by Harald Welte <laforge@gnumonks.org>
@@ -242,6 +241,8 @@ index 0000000..40bb3ab
 +					    len-header_length, FALSE);
 +		}
 +
++		if (len == 0)
++			len = 1;
 +		offset += len;
 +	}
 +}
@@ -366,11 +367,10 @@ index 0000000..40bb3ab
 +
 +	ehdlc_handle = create_dissector_handle(dissect_ehdlc, proto_ehdlc);
 +}
-diff --git a/epan/dissectors/packet-gsm_abis_om2000.c b/epan/dissectors/packet-gsm_abis_om2000.c
-new file mode 100644
-index 0000000..bf67aea
---- /dev/null
-+++ b/epan/dissectors/packet-gsm_abis_om2000.c
+Index: wireshark/epan/dissectors/packet-gsm_abis_om2000.c
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ wireshark/epan/dissectors/packet-gsm_abis_om2000.c	2011-09-06 13:37:48.000000000 +0200
 @@ -0,0 +1,1439 @@
 +/* packet-abis_om2000.c
 + * Routines for packet dissection of Ericsson A-bis OML (OM 2000)
@@ -1811,11 +1811,11 @@ index 0000000..bf67aea
 +		/* preferences have been changed */
 +	}
 +}
-diff --git a/epan/dissectors/packet-gsm_abis_oml.c b/epan/dissectors/packet-gsm_abis_oml.c
-index f0b69e7..46a9fad 100644
---- a/epan/dissectors/packet-gsm_abis_oml.c
-+++ b/epan/dissectors/packet-gsm_abis_oml.c
-@@ -119,9 +119,12 @@ static int ett_oml_fom_att = -1;
+Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-gsm_abis_oml.c	2011-09-06 13:37:42.000000000 +0200
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-09-06 13:56:14.000000000 +0200
+@@ -119,9 +119,12 @@
  
  /* Decode things as nanoBTS traces */
  static gboolean global_oml_use_nano_bts = TRUE;
@@ -1828,7 +1828,7 @@ index f0b69e7..46a9fad 100644
  /* TS 12.21 Chapter 8.1 / TS 08.59 */
  static const value_string oml_msg_disc_vals[] = {
  	{ ABIS_OM_MDISC_FOM,	"Formatted O&M" },
-@@ -1196,6 +1199,7 @@ dissect_abis_oml(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+@@ -1161,6 +1164,7 @@
  	top_tree = tree;
  	if (tree) {
  		u_int8_t msg_disc = tvb_get_guint8(tvb, offset);
@@ -1836,7 +1836,7 @@ index f0b69e7..46a9fad 100644
  
  		ti = proto_tree_add_item(tree, proto_abis_oml, tvb, 0, -1, FALSE);
  		oml_tree = proto_item_add_subtree(ti, ett_oml);
-@@ -1209,6 +1213,14 @@ dissect_abis_oml(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+@@ -1174,6 +1178,14 @@
  		proto_tree_add_item(oml_tree, hf_oml_length, tvb, offset++,
  				    1, TRUE);
  
@@ -1851,7 +1851,7 @@ index f0b69e7..46a9fad 100644
  		switch (msg_disc) {
  		case ABIS_OM_MDISC_FOM:
  			offset = dissect_oml_fom(tvb, pinfo, oml_tree,
-@@ -1222,6 +1234,8 @@ dissect_abis_oml(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree)
+@@ -1187,6 +1199,8 @@
  		default:
  			break;
  		}
@@ -1860,7 +1860,7 @@ index f0b69e7..46a9fad 100644
  	}
  }
  
-@@ -1569,6 +1583,11 @@ proto_register_abis_oml(void)
+@@ -1696,6 +1710,11 @@
  		    "Use nanoBTS definitions",
  		    "Use ipaccess nanoBTS specific definitions for OML",
  		    &global_oml_use_nano_bts);
@@ -1872,18 +1872,18 @@ index f0b69e7..46a9fad 100644
  }
  
  /* This function is called once at startup and every time the user hits
-@@ -1605,4 +1624,6 @@ proto_reg_handoff_abis_oml(void)
+@@ -1732,4 +1751,6 @@
  		oml_fom_attr_vse._vs_num_entries =
  				array_length(oml_fom_attr_vals_bs11)-1;
  	}
 +
 +	sub_om2000 = find_dissector("gsm_abis_om2000");
  }
-diff --git a/epan/dissectors/packet-l2tp.c b/epan/dissectors/packet-l2tp.c
-index 4380bbc..0ebcd9d 100644
---- a/epan/dissectors/packet-l2tp.c
-+++ b/epan/dissectors/packet-l2tp.c
-@@ -148,6 +148,7 @@ static enum_val_t l2tpv3_cookies[] = {
+Index: wireshark/epan/dissectors/packet-l2tp.c
+===================================================================
+--- wireshark.orig/epan/dissectors/packet-l2tp.c	2011-09-06 13:37:42.000000000 +0200
++++ wireshark/epan/dissectors/packet-l2tp.c	2011-09-06 13:37:48.000000000 +0200
+@@ -148,6 +148,7 @@
  #define L2TPv3_PROTOCOL_AAL5    6
  #define L2TPv3_PROTOCOL_LAPD    7
  #define L2TPv3_PROTOCOL_DOCSIS_DMPT 8
@@ -1891,7 +1891,7 @@ index 4380bbc..0ebcd9d 100644
  
  static enum_val_t l2tpv3_protocols[] = {
      {"eth",     "Ethernet",     L2TPv3_PROTOCOL_ETH},
-@@ -159,6 +160,7 @@ static enum_val_t l2tpv3_protocols[] = {
+@@ -159,6 +160,7 @@
      {"aal5",    "AAL5",         L2TPv3_PROTOCOL_AAL5},
      {"lapd",    "LAPD",         L2TPv3_PROTOCOL_LAPD},
      {"docsis-dmpt", "DOCSIS-DMPT", L2TPv3_PROTOCOL_DOCSIS_DMPT},
@@ -1899,7 +1899,7 @@ index 4380bbc..0ebcd9d 100644
      {NULL, NULL, 0}
  };
  
-@@ -583,6 +585,7 @@ static dissector_handle_t atm_oam_handle;
+@@ -583,6 +585,7 @@
  static dissector_handle_t llc_handle;
  static dissector_handle_t lapd_handle;
  static dissector_handle_t mp2t_handle;
@@ -1907,7 +1907,7 @@ index 4380bbc..0ebcd9d 100644
  static dissector_handle_t data_handle;
  
  /*
-@@ -1498,6 +1501,9 @@ process_l2tpv3_data(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
+@@ -1495,6 +1498,9 @@
  	case L2TPv3_PROTOCOL_LAPD:
  		call_dissector(lapd_handle, next_tvb, pinfo, tree);
  		break;
@@ -1917,13 +1917,10 @@ index 4380bbc..0ebcd9d 100644
  	default:
  		call_dissector(data_handle, next_tvb, pinfo, tree);
  		break;
-@@ -2171,5 +2177,6 @@ proto_reg_handoff_l2tp(void)
+@@ -2167,5 +2173,6 @@
  	llc_handle = find_dissector("llc");
  	lapd_handle = find_dissector("lapd");
  	mp2t_handle = find_dissector("mp2t");
 +	ehdlc_handle = find_dissector("ehdlc");
  	data_handle = find_dissector("data");
  }
--- 
-1.7.3.4
-
