@@ -135,6 +135,17 @@ struct bts_ul_meas {
 	/* RSSI in dBm * -1 */
 	uint8_t inv_rssi;
 };
+
+struct amr_mode {
+	uint8_t mode;
+	uint8_t threshold;
+	uint8_t hysteresis;
+};
+struct amr_multirate_conf {
+	uint8_t gsm48_ie[2];
+	struct amr_mode mode[4];
+	uint8_t num_modes;
+};
 /* /BTS ONLY */
 
 struct gsm_lchan {
@@ -231,6 +242,9 @@ struct gsm_lchan {
 			uint8_t rxqual_sub;
 		} res;
 	} meas;
+	struct {
+		struct amr_multirate_conf amr_mr;
+	} tch;
 #endif
 };
 
