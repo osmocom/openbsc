@@ -121,6 +121,7 @@ struct mgcp_trunk_config {
 	struct mgcp_endpoint *endpoints;
 
 	enum { COMPR_NONE, COMPR_BTS, COMPR_NET } compress_dir;
+	unsigned int compress_batch;
 };
 
 struct mgcp_config {

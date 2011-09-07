@@ -105,7 +105,9 @@ static int config_write_mgcp(struct vty *vty)
 	/* Compression */
 	vty_out(vty, "  allow-compression %s%s",
 		mgcp_compr_name(g_cfg->trunk.compress_dir), VTY_NEWLINE);
-	
+	if (g_cfg->trunk.compress_dir != COMPR_NONE)
+		vty_out(vty, "  compression batching %u%s",
+			g_cfg->trunk.compress_batch, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -405,6 +407,17 @@ DEFUN(cfg_mgcp_compr,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_compr_batch,
+      cfg_mgcp_compr_batch_cmd,
+      "compression batching <1-15>",
+      COMPR_STR)
+{
+	g_cfg->trunk.compress_batch = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
+
 DEFUN(cfg_mgcp_trunk, cfg_mgcp_trunk_cmd,
       "trunk <1-64>",
       "Configure a SS7 trunk\n" "Trunk Nr\n")
@@ -487,6 +500,16 @@ DEFUN(cfg_trunk_compr,
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	parse_compression(trunk, argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_compr_batch,
+      cfg_trunk_compr_batch_cmd,
+      "compression batching <1-4>",
+      COMPR_STR)
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->compress_batch = atoi(argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -660,6 +683,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_compr_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_compr_batch_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -670,6 +694,7 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_payload_name_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_compr_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_compr_batch_cmd);
 
 	return 0;
 }
@@ -733,6 +758,9 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 			endp->trans_bts.local_alloc = PORT_ALLOC_STATIC;
 		}
 	}
+
+	/* default batching _if_ compression is enabled */
+	trunk->compress_batch = 4;
 
 	return 0;
 }

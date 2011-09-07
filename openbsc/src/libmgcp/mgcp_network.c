@@ -199,7 +199,7 @@ static int maybe_send_queue(struct mgcp_endpoint *endp,
 	int rc;
 
 	/* Queue up to four messages per endpoint */
-	if (++endp->compr_queue_size != 4)
+	if (++endp->compr_queue_size < endp->tcfg->compress_batch)
 		return 0;
 
 	/* Allocate the outgoing data */
