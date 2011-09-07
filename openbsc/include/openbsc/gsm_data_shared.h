@@ -244,6 +244,10 @@ struct gsm_lchan {
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
+		struct {
+			uint8_t buf[16];
+			uint8_t len;
+		} last_sid;
 	} tch;
 #endif
 };
