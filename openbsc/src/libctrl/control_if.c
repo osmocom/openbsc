@@ -63,15 +63,14 @@
 #include <osmocom/abis/ipa.h>
 
 struct ctrl_handle {
-	struct osmo_fd listen_fd;
+	struct ipa_server_link *ipa_link;
 	struct gsm_network *gsmnet;
 };
 
 vector ctrl_node_vec;
 
-int ctrl_cmd_send(struct osmo_wqueue *queue, struct ctrl_cmd *cmd)
+int ctrl_cmd_send(struct ipa_server_conn *ipa_server_conn, struct ctrl_cmd *cmd)
 {
-	int ret;
 	struct msgb *msg;
 
 	msg = ctrl_cmd_make(cmd);
@@ -83,12 +82,8 @@ int ctrl_cmd_send(struct osmo_wqueue *queue, struct ctrl_cmd *cmd)
 	ipaccess_prepend_header_ext(msg, IPAC_PROTO_EXT_CTRL);
 	ipaccess_prepend_header(msg, IPAC_PROTO_OSMO);
 
-	ret = osmo_wqueue_enqueue(queue, msg);
-	if (ret != 0) {
-		LOGP(DCTRL, LOGL_ERROR, "Failed to enqueue the command.\n");
-		msgb_free(msg);
-	}
-	return ret;
+	ipa_server_conn_send(ipa_server_conn, msg);
+	return 0;
 }
 
 int ctrl_cmd_handle(struct ctrl_cmd *cmd, void *data)
@@ -192,43 +187,14 @@ err:
 	return ret;
 }
 
-static void control_close_conn(struct ctrl_connection *ccon)
-{
-	close(ccon->write_queue.bfd.fd);
-	osmo_fd_unregister(&ccon->write_queue.bfd);
-	if (ccon->closed_cb)
-		ccon->closed_cb(ccon);
-	talloc_free(ccon);
-}
-
-static int handle_control_read(struct osmo_fd * bfd)
+static int
+handle_control_read(struct ipa_server_conn *ipa_server_conn, struct msgb *msg)
 {
 	int ret = -1;
-	struct osmo_wqueue *queue;
-	struct ctrl_connection *ccon;
 	struct ipaccess_head *iph;
 	struct ipaccess_head_ext *iph_ext;
-	struct msgb *msg;
 	struct ctrl_cmd *cmd;
-	struct ctrl_handle *ctrl = bfd->data;
-
-	queue = container_of(bfd, struct osmo_wqueue, bfd);
-	ccon = container_of(queue, struct ctrl_connection, write_queue);
-
-	ret = ipa_msg_recv(bfd->fd, &msg);
-	if (ret <= 0) {
-		if (ret == 0)
-			LOGP(DCTRL, LOGL_INFO, "The control connection was closed\n");
-		else
-			LOGP(DCTRL, LOGL_ERROR, "Failed to parse ip access message: %d\n", ret);
-
-		goto err;
-	}
-
-	if (msg->len < sizeof(*iph) + sizeof(*iph_ext)) {
-		LOGP(DCTRL, LOGL_ERROR, "The message is too short.\n");
-		goto err;
-	}
+	struct ctrl_handle *ctrl = ipa_server_conn->data;
 
 	iph = (struct ipaccess_head *) msg->data;
 	if (iph->proto != IPAC_PROTO_OSMO) {
@@ -244,23 +210,23 @@ static int handle_control_read(struct osmo_fd * bfd)
 
 	msg->l2h = iph_ext->data;
 
-	cmd = ctrl_cmd_parse(ccon, msg);
+	cmd = ctrl_cmd_parse(ipa_server_conn, msg);
 
 	if (cmd) {
-		cmd->ccon = ccon;
+		cmd->ipa_link = ipa_server_conn;
 		if (ctrl_cmd_handle(cmd, ctrl->gsmnet) != CTRL_CMD_HANDLED) {
-			ctrl_cmd_send(queue, cmd);
+			ctrl_cmd_send(ipa_server_conn, cmd);
 			talloc_free(cmd);
 		}
 	} else {
-		cmd = talloc_zero(ccon, struct ctrl_cmd);
+		cmd = talloc_zero(ipa_server_conn, struct ctrl_cmd);
 		if (!cmd)
 			goto err;
 		LOGP(DCTRL, LOGL_ERROR, "Command parser error.\n");
 		cmd->type = CTRL_TYPE_ERROR;
 		cmd->id = "err";
 		cmd->reply = "Command parser error.";
-		ctrl_cmd_send(queue, cmd);
+		ctrl_cmd_send(ipa_server_conn, cmd);
 		talloc_free(cmd);
 	}
 
@@ -268,82 +234,31 @@ static int handle_control_read(struct osmo_fd * bfd)
 	return 0;
 
 err:
-	control_close_conn(ccon);
+	ipa_server_conn_destroy(ipa_server_conn);
 	msgb_free(msg);
 	return ret;
 }
 
-static int control_write_cb(struct osmo_fd *bfd, struct msgb *msg)
+static int ctrl_accept_cb(struct ipa_server_link *ipa_link, int fd)
 {
-	int rc;
+	int ret, on = 1;
+	struct ipa_server_conn *ipa_peer_link;
 
-	rc = write(bfd->fd, msg->data, msg->len);
-	if (rc != msg->len)
-		LOGP(DCTRL, LOGL_ERROR, "Failed to write message to the control connection.\n");
-
-	return rc;
-}
-
-static struct ctrl_connection *ctrl_connection_alloc(void *ctx)
-{
-	struct ctrl_connection *ccon = talloc_zero(ctx, struct ctrl_connection);
-	if (!ccon)
-		return NULL;
-
-	osmo_wqueue_init(&ccon->write_queue, 100);
-	/* Error handling here? */
-
-	INIT_LLIST_HEAD(&ccon->cmds);
-	return ccon;
-}
-
-static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
-{
-	int ret, fd, on;
-	struct ctrl_connection *ccon;
-	struct sockaddr_in sa;
-	socklen_t sa_len = sizeof(sa);
-
-
-	if (!(what & BSC_FD_READ))
-		return 0;
-
-	fd = accept(listen_bfd->fd, (struct sockaddr *) &sa, &sa_len);
-	if (fd < 0) {
-		perror("accept");
-		return fd;
-	}
-	LOGP(DCTRL, LOGL_INFO, "accept()ed new control connection from %s\n",
-		inet_ntoa(sa.sin_addr));
-
-	on = 1;
 	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
 	if (ret != 0) {
 		LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
 		close(fd);
 		return ret;
 	}
-	ccon = ctrl_connection_alloc(listen_bfd->data);
-	if (!ccon) {
-		LOGP(DCTRL, LOGL_ERROR, "Failed to allocate.\n");
-		close(fd);
-		return -1;
+	ipa_peer_link = ipa_server_conn_create(tall_bsc_ctx, ipa_link, fd,
+						handle_control_read,
+						ipa_link->data);
+	if (!ipa_peer_link) {
+		LOGP(DCTRL, LOGL_ERROR, "Failed to register peer connection.\n");
+		return -ENOMEM;
 	}
 
-	ccon->write_queue.bfd.data = listen_bfd->data;
-	ccon->write_queue.bfd.fd = fd;
-	ccon->write_queue.bfd.when = BSC_FD_READ;
-	ccon->write_queue.read_cb = handle_control_read;
-	ccon->write_queue.write_cb = control_write_cb;
-
-	ret = osmo_fd_register(&ccon->write_queue.bfd);
-	if (ret < 0) {
-		LOGP(DCTRL, LOGL_ERROR, "Could not register FD.\n");
-		close(ccon->write_queue.bfd.fd);
-		talloc_free(ccon);
-	}
-
-	return ret;
+	return 0;
 }
 
 static uint64_t get_rate_ctr_value(const struct rate_ctr *ctr, int intv)
@@ -601,7 +516,6 @@ static int verify_counter(struct ctrl_cmd *cmd, const char *value, void *data)
 
 int controlif_setup(struct gsm_network *gsmnet, uint16_t port)
 {
-	int ret;
 	struct ctrl_handle *ctrl;
 
 	ctrl = talloc_zero(tall_bsc_ctx, struct ctrl_handle);
@@ -615,15 +529,21 @@ int controlif_setup(struct gsm_network *gsmnet, uint16_t port)
 		return -ENOMEM;
 
 	/* Listen for control connections */
-	ret = make_sock(&ctrl->listen_fd, IPPROTO_TCP, INADDR_LOOPBACK, port,
-			0, listen_fd_cb, ctrl);
-	if (ret < 0) {
+	ctrl->ipa_link = ipa_server_link_create(ctrl, NULL,
+						"127.0.0.1", port,
+						ctrl_accept_cb, ctrl);
+	if (!ctrl->ipa_link) {
 		talloc_free(ctrl);
-		return ret;
+		return -ENOMEM;
+	}
+
+	if (ipa_server_link_open(ctrl->ipa_link) < 0) {
+		talloc_free(ctrl);
+		return -EIO;
 	}
 
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_rate_ctr);
 	ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_counter);
 
-	return ret;
+	return 0;
 }
