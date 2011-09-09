@@ -241,15 +241,8 @@ err:
 
 static int ctrl_accept_cb(struct ipa_server_link *ipa_link, int fd)
 {
-	int ret, on = 1;
 	struct ipa_server_conn *ipa_peer_link;
 
-	ret = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on));
-	if (ret != 0) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to set TCP_NODELAY: %s\n", strerror(errno));
-		close(fd);
-		return ret;
-	}
 	ipa_peer_link = ipa_server_conn_create(tall_bsc_ctx, ipa_link, fd,
 						handle_control_read,
 						ipa_link->data);
