@@ -254,7 +254,10 @@ int main(int argc, char **argv)
 		exit(1);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
-	controlif_setup(bsc_gsmnet, 4249);
+	if (controlif_setup(bsc_gsmnet, 4249) < 0) {
+		fprintf(stderr, "CTRL: Cannot bind to port 4249\n");
+		exit(1);
+	}
 	/* seed the PRNG */
 	srand(time(NULL));
 

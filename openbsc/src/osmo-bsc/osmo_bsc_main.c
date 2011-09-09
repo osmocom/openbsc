@@ -422,7 +422,11 @@ int main(int argc, char **argv)
 	}
 	bsc_api_init(bsc_gsmnet, osmo_bsc_api());
 
-	controlif_setup(bsc_gsmnet, 4249);
+	if (controlif_setup(bsc_gsmnet, 4249) < 0) {
+		fprintf(stderr, "CTRL: Cannot bind to port 4249\n");
+		exit(1);
+	}
+
 	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_loc);
 	ctrl_cmd_install(CTRL_NODE_NET, &cmd_net_rf_lock);
 	ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rf_lock);
