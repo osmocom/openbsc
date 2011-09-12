@@ -270,6 +270,7 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 	return 0;
 }
 
+/*! \brief process incoming 08.08 DTAP from MSC (send via BTS to MS) */
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, int link_id, int allow_sach)
 {
@@ -294,7 +295,9 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	}
 
 	msg->l3h = msg->data;
+	/* is requested SAPI already up? */
 	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
+		/* Establish L2 for additional SAPI */
 		OBSC_LINKID_CB(msg) = link_id;
 		if (rll_establish(msg->lchan, sapi, rll_ind_cb, msg) != 0) {
 			msgb_free(msg);
@@ -303,6 +306,7 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 		}
 		return 0;
 	} else {
+		/* Directly forward via RLL/RSL to BTS */
 		return rsl_data_request(msg, link_id);
 	}
 }
@@ -469,6 +473,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 		api->dtap(conn, link_id, msg);
 }
 
+/*! \brief RSL has received a DATA INDICATION with L3 from MS */
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;
@@ -484,8 +489,11 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 
 	if (lchan->conn) {
+		/* if we already have a connection, forward via DTAP to
+		 * MSC */
 		dispatch_dtap(lchan->conn, link_id, msg);
 	} else {
+		/* allocate a new connection */
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);
 		if (!lchan->conn) {
@@ -493,6 +501,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 			return -1;
 		}
 
+		/* fwd via bsc_api to send COMPLETE L3 INFO to MSC */
 		rc = api->compl_l3(lchan->conn, msg, 0);
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
@@ -505,6 +514,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 	return 0;
 }
 
+/*! \brief We received a GSM 08.08 CIPHER MODE from the MSC */
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			const uint8_t *key, int len, int include_imeisv)
 {
