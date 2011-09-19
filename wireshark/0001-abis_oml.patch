@@ -41,7 +41,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
 +++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-09-06 13:56:21.000000000 +0200
-@@ -0,0 +1,1744 @@
+@@ -0,0 +1,1746 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis OML (3GPP TS 12.21)
 + * Copyright 2009-2011 by Harald Welte <laforge@gnumonks.org>
@@ -588,6 +588,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		ret = match_strval_idx(val, _oml_fom_msgtype_vals, &idx);
 +		if (!ret)
 +			return NULL;
++		return &(_oml_fom_msgtype_vals[idx]);
 +	}
 +	return &(vs->_vs_p[idx]);
 +}
@@ -602,6 +603,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +		ret = match_strval_idx(val, _oml_fom_attr_vals, &idx);
 +		if (!ret)
 +			return NULL;
++		return &(_oml_fom_attr_vals[idx]);
 +	}
 +	return &(vs->_vs_p[idx]);
 +}
