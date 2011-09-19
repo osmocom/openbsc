@@ -245,7 +245,7 @@ void gsm_bts_mo_reset(struct gsm_bts *bts)
 	}
 }
 
-struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
+struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num)
 {
 	struct gsm_bts_trx *trx;
 
@@ -262,7 +262,7 @@ struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num)
 
 static char ts2str[255];
 
-char *gsm_trx_name(struct gsm_bts_trx *trx)
+char *gsm_trx_name(const struct gsm_bts_trx *trx)
 {
 	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d)",
 		 trx->bts->nr, trx->nr);
@@ -271,7 +271,7 @@ char *gsm_trx_name(struct gsm_bts_trx *trx)
 }
 
 
-char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
+char *gsm_ts_name(const struct gsm_bts_trx_ts *ts)
 {
 	snprintf(ts2str, sizeof(ts2str), "(bts=%d,trx=%d,ts=%d)",
 		 ts->trx->bts->nr, ts->trx->nr, ts->nr);
@@ -279,7 +279,7 @@ char *gsm_ts_name(struct gsm_bts_trx_ts *ts)
 	return ts2str;
 }
 
-char *gsm_lchan_name(struct gsm_lchan *lchan)
+char *gsm_lchan_name(const struct gsm_lchan *lchan)
 {
 	struct gsm_bts_trx_ts *ts = lchan->ts;
 
@@ -292,7 +292,7 @@ char *gsm_lchan_name(struct gsm_lchan *lchan)
 /* obtain the MO structure for a given object instance */
 struct gsm_abis_mo *
 gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
-	    struct abis_om_obj_inst *obj_inst)
+	    const struct abis_om_obj_inst *obj_inst)
 {
 	struct gsm_bts_trx *trx;
 	struct gsm_abis_mo *mo = NULL;
@@ -373,7 +373,7 @@ gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
 /* obtain the gsm_nm_state data structure for a given object instance */
 struct gsm_nm_state *
 gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
-		 struct abis_om_obj_inst *obj_inst)
+		 const struct abis_om_obj_inst *obj_inst)
 {
 	struct gsm_abis_mo *mo;
 
@@ -387,7 +387,7 @@ gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
 /* obtain the in-memory data structure of a given object instance */
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-	     struct abis_om_obj_inst *obj_inst)
+	     const struct abis_om_obj_inst *obj_inst)
 {
 	struct gsm_bts_trx *trx;
 	void *obj = NULL;

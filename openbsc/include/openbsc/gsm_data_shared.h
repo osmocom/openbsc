@@ -584,15 +584,15 @@ struct gsm_bts {
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 
-struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
+struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
-char *gsm_trx_name(struct gsm_bts_trx *trx);
-char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
-char *gsm_lchan_name(struct gsm_lchan *lchan);
+char *gsm_trx_name(const struct gsm_bts_trx *trx);
+char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
+char *gsm_lchan_name(const struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 
@@ -600,14 +600,14 @@ void gsm_abis_mo_reset(struct gsm_abis_mo *mo);
 
 struct gsm_abis_mo *
 gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
-	    struct abis_om_obj_inst *obj_inst);
+	    const struct abis_om_obj_inst *obj_inst);
 
 struct gsm_nm_state *
 gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
-		 struct abis_om_obj_inst *obj_inst);
+		 const struct abis_om_obj_inst *obj_inst);
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-	     struct abis_om_obj_inst *obj_inst);
+	     const struct abis_om_obj_inst *obj_inst);
 
 /* reset the state of all MO in the BTS */
 void gsm_bts_mo_reset(struct gsm_bts *bts);
