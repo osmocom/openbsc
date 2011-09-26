@@ -160,7 +160,7 @@ int abis_nm_vty_init(void);
 
 void abis_nm_clear_queue(struct gsm_bts *bts);
 
-int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml);
+int _abis_nm_sendmsg(struct msgb *msg);
 
 void abis_nm_queue_send_next(struct gsm_bts *bts);	/* for bs11_config. */
 

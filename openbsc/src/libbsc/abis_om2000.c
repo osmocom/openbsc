@@ -799,8 +799,8 @@ static void signal_op_state(struct gsm_bts *bts, struct abis_om2k_mo *mo)
 
 static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
-	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg;
 	struct abis_om2k_hdr *o2h;
+	struct gsm_bts_trx *trx;
 	int to_trx_oml;
 
 	msg->l2h = msg->data;
@@ -814,9 +814,8 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 	case OM2K_MO_CLS_TX:
 	case OM2K_MO_CLS_RX:
 		/* Route through per-TRX OML Link to the appropriate TRX */
-		to_trx_oml = 1;
-		sign_link->trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
-		if (!sign_link->trx) {
+		trx = gsm_bts_trx_by_nr(bts, o2h->mo.inst);
+		if (!trx) {
 			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
@@ -824,9 +823,8 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	case OM2K_MO_CLS_TS:
 		/* Route through per-TRX OML Link to the appropriate TRX */
-		to_trx_oml = 1;
-		sign_link->trx = gsm_bts_trx_by_nr(bts, o2h->mo.assoc_so);
-		if (!sign_link->trx) {
+		trx = gsm_bts_trx_by_nr(bts, o2h->mo.assoc_so);
+		if (!trx) {
 			LOGP(DNM, LOGL_ERROR, "MO=%s Tx Dropping msg to "
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
@@ -834,12 +832,12 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 		break;
 	default:
 		/* Route through the IXU/DXU OML Link */
-		sign_link->trx = bts->c0;
-		to_trx_oml = 0;
+		trx = bts->c0;
 		break;
 	}
+	msg->dst = trx->oml_link;
 
-	return _abis_nm_sendmsg(msg, to_trx_oml);
+	return _abis_nm_sendmsg(msg);
 }
 
 static void fill_om2k_hdr(struct abis_om2k_hdr *o2h, const struct abis_om2k_mo *mo,

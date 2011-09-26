@@ -114,10 +114,8 @@ static struct msgb *nm_msgb_alloc(void)
 				   "OML");
 }
 
-int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
+int _abis_nm_sendmsg(struct msgb *msg)
 {
-	struct e1inp_sign_link *sign_link = msg->dst;
-
 	msg->l2h = msg->data;
 
 	if (!msg->dst) {
@@ -125,12 +123,6 @@ int _abis_nm_sendmsg(struct msgb *msg, int to_trx_oml)
 		return -EINVAL;
 	}
 
-	/* Check for TRX-specific OML link first */
-	if (to_trx_oml) {
-		if (!sign_link->trx->oml_link)
-			return -ENODEV;
-		msg->dst = sign_link->trx->oml_link;
-	}
 	return abis_sendmsg(msg);
 }
 
@@ -142,7 +134,7 @@ static int abis_nm_queue_msg(struct gsm_bts *bts, struct msgb *msg)
 	/* queue OML messages */
 	if (llist_empty(&bts->abis_queue) && !bts->abis_nm_pend) {
 		bts->abis_nm_pend = OBSC_NM_W_ACK_CB(msg);
-		return _abis_nm_sendmsg(msg, 0);
+		return _abis_nm_sendmsg(msg);
 	} else {
 		msgb_enqueue(&bts->abis_queue, msg);
 		return 0;
@@ -508,7 +500,7 @@ void abis_nm_queue_send_next(struct gsm_bts *bts)
 	while (!llist_empty(&bts->abis_queue)) {
 		msg = msgb_dequeue(&bts->abis_queue);
 		wait = OBSC_NM_W_ACK_CB(msg);
-		_abis_nm_sendmsg(msg, 0);
+		_abis_nm_sendmsg(msg);
 
 		if (wait)
 			break;
