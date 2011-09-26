@@ -84,7 +84,7 @@ static int shutdown_om(struct gsm_bts *bts)
   Attention: this has to be adapted for mISDN
 */
 
-void start_sabm_in_line(struct e1inp_line *line, int start, int sapi)
+static void start_sabm_in_line(struct e1inp_line *line, int start, int sapi)
 {
 	struct e1inp_sign_link *link;
 	int i;

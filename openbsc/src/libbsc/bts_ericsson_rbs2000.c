@@ -120,20 +120,17 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		}
 		break;
 	case S_L_INP_LINE_INIT:
-		/* Right now Ericsson RBS are only supported on DAHDI */
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+	case S_L_INP_LINE_NOALARM:
+		if (strcasecmp(isd->line->driver->name, "DAHDI")
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
 			break;
 		start_sabm_in_line(isd->line, 1);
 		break;
 	case S_L_INP_LINE_ALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+		if (strcasecmp(isd->line->driver->name, "DAHDI")
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
 			break;
 		start_sabm_in_line(isd->line, 0);
-		break;
-	case S_L_INP_LINE_NOALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
-			break;
-		start_sabm_in_line(isd->line, 1);
 		break;
 	}
 
