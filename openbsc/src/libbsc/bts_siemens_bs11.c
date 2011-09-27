@@ -562,28 +562,6 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
-/* Tell LAPD to start start the SAP (send SABM requests) for all signalling
- * timeslots in this line */
-static void start_sabm_in_line(struct e1inp_line *line, int start)
-{
-	struct e1inp_sign_link *link;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(line->ts); i++) {
-		struct e1inp_ts *ts = &line->ts[i];
-
-		if (ts->type != E1INP_TS_TYPE_SIGN)
-			continue;
-
-		llist_for_each_entry(link, &ts->sign.sign_links, list) {
-			if (start)
-				lapd_sap_start(ts->lapd, link->tei, link->sapi);
-			else
-				lapd_sap_stop(ts->lapd, link->tei, link->sapi);
-		}
-	}
-}
-
 /* Callback function to be called every time we receive a signal from INPUT */
 static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 		      void *handler_data, void *signal_data)
@@ -601,19 +579,6 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 				bootstrap_om_bs11(isd->trx->bts);
 			break;
 		}
-	case S_L_INP_LINE_INIT:
-	case S_L_INP_LINE_NOALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI")
-		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
-			break;
-		start_sabm_in_line(isd->line, 1);
-		break;
-	case S_L_INP_LINE_ALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI")
-		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
-			break;
-		start_sabm_in_line(isd->line, 0);
-		break;
 	}
 
 	return 0;
