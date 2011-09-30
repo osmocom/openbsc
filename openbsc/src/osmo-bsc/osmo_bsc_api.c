@@ -205,10 +205,10 @@ static int handle_cc_setup(struct gsm_subscriber_connection *conn,
 	gsm48_decode_called(&called,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
-	if (called.plan != 1)
+	if (called.plan != 1 && called.plan != 0)
 		return 0;
 
-	if (called.type == 1) {
+	if (called.plan == 1 && called.type == 1) {
 		_dest_nr[0] = _dest_nr[1] = '0';
 		memcpy(_dest_nr + 2, called.number, sizeof(called.number));
 	} else
