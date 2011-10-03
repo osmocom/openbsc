@@ -52,6 +52,14 @@
 
 #include "../../bscconfig.h"
 
+
+#define NETWORK_STR "Configure the GSM network\n"
+#define CODE_CMD_STR "Code commands\n"
+#define NAME_CMD_STR "Name Commands\n"
+#define NAME_STR "Name to use\n"
+#define LCHAN_NR_STR "Logical Channel Number\n"
+
+
 /* FIXME: this should go to some common file */
 static const struct value_string gprs_ns_timer_strs[] = {
 	{ 0, "tns-block" },
@@ -959,7 +967,7 @@ DEFUN(show_lchan,
       "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
-	"Logical Channel Number\n")
+	LCHAN_NR_STR)
 
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
@@ -969,8 +977,9 @@ DEFUN(show_lchan_summary,
       show_lchan_summary_cmd,
       "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
+        "Short summary\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
-	"Logical Channel Number\n")
+        LCHAN_NR_STR)
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
 }
@@ -1133,8 +1142,6 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-#define NETWORK_STR "Configure the GSM network\n"
-
 DEFUN(cfg_net,
       cfg_net_cmd,
       "network", NETWORK_STR)
@@ -1145,11 +1152,13 @@ DEFUN(cfg_net,
 	return CMD_SUCCESS;
 }
 
-
 DEFUN(cfg_net_ncc,
       cfg_net_ncc_cmd,
       "network country code <1-999>",
-      "Set the GSM network country code")
+      "Set the GSM network country code\n"
+      "Country commands\n"
+      CODE_CMD_STR
+      "Network Country Code to use\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1161,7 +1170,10 @@ DEFUN(cfg_net_ncc,
 DEFUN(cfg_net_mnc,
       cfg_net_mnc_cmd,
       "mobile network code <0-999>",
-      "Set the GSM mobile network code")
+      "Set the GSM mobile network code\n"
+      "Network Commands\n"
+      CODE_CMD_STR
+      "Mobile Network Code to use\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1173,7 +1185,7 @@ DEFUN(cfg_net_mnc,
 DEFUN(cfg_net_name_short,
       cfg_net_name_short_cmd,
       "short name NAME",
-      "Set the short GSM network name")
+      "Set the short GSM network name\n" NAME_CMD_STR NAME_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1184,7 +1196,7 @@ DEFUN(cfg_net_name_short,
 DEFUN(cfg_net_name_long,
       cfg_net_name_long_cmd,
       "long name NAME",
-      "Set the long GSM network name")
+      "Set the long GSM network name\n" NAME_CMD_STR NAME_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1301,11 +1313,13 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
 #define HO_WIN_RXLEV_STR HO_WIN_STR "Received Level Averaging\n"
 #define HO_WIN_RXQUAL_STR HO_WIN_STR "Received Quality Averaging\n"
 #define HO_PBUDGET_STR HANDOVER_STR "Power Budget\n"
+#define HO_AVG_COUNT_STR "Amount to use for Averaging\n"
 
 DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
       "handover window rxlev averaging <1-10>",
 	HO_WIN_RXLEV_STR
-	"How many RxLev measurements are used for averaging")
+	"How many RxLev measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
@@ -1315,7 +1329,8 @@ DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
 DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
       "handover window rxqual averaging <1-10>",
 	HO_WIN_RXQUAL_STR
-	"How many RxQual measurements are used for averaging")
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
@@ -1324,8 +1339,9 @@ DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
 
 DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
       "handover window rxlev neighbor averaging <1-10>",
-	HO_WIN_RXLEV_STR
-	"How many RxQual measurements are used for averaging")
+	HO_WIN_RXLEV_STR "Neighbor\n"
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
@@ -1335,7 +1351,8 @@ DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
 DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
       "handover power budget interval <1-99>",
 	HO_PBUDGET_STR
-	"How often to check if we have a better cell (SACCH frames)")
+	"How often to check if we have a better cell (SACCH frames)\n"
+	"Interval\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_interval = atoi(argv[0]);
@@ -1345,7 +1362,8 @@ DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
 DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
       "handover power budget hysteresis <0-999>",
 	HO_PBUDGET_STR
-	"How many dB does a neighbor to be stronger to become a HO candidate")
+	"How many dB does a neighbor to be stronger to become a HO candidate\n"
+	"Hysteresis\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
@@ -1355,7 +1373,8 @@ DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
 DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
       "handover maximum distance <0-9999>",
 	HANDOVER_STR
-	"How big is the maximum timing advance before HO is forced")
+	"How big is the maximum timing advance before HO is forced\n"
+	"Distance\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.max_distance = atoi(argv[0]);
@@ -1365,7 +1384,10 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
 DEFUN(cfg_net_pag_any_tch,
       cfg_net_pag_any_tch_cmd,
       "paging any use tch (0|1)",
-      "Assign a TCH when receiving a Paging Any request")
+      "Assign a TCH when receiving a Paging Any request\n"
+      "Any Channel\n" "Use\n" "TCH\n"
+      "Do not use TCH for Paging Request Any\n"
+      "Do use TCH for Paging Request Any\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->pag_any_tch = atoi(argv[0]);
@@ -1378,7 +1400,7 @@ DEFUN(cfg_net_pag_any_tch,
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
       "Configure GSM Timers\n"					\
-      doc)							\
+      doc "Timer Value\n")					\
 {								\
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
@@ -1393,24 +1415,24 @@ DEFUN(cfg_net_pag_any_tch,
 	return CMD_SUCCESS;					\
 }
 
-DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.")
-DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.")
-DECLARE_TIMER(3105, "Currently not used.")
-DECLARE_TIMER(3107, "Currently not used.")
-DECLARE_TIMER(3109, "Currently not used.")
-DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.")
-DECLARE_TIMER(3113, "Set the time to try paging a subscriber.")
-DECLARE_TIMER(3115, "Currently not used.")
-DECLARE_TIMER(3117, "Currently not used.")
-DECLARE_TIMER(3119, "Currently not used.")
-DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT")
-DECLARE_TIMER(3141, "Currently not used.")
+DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.\n")
+DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.\n")
+DECLARE_TIMER(3105, "Currently not used.\n")
+DECLARE_TIMER(3107, "Currently not used.\n")
+DECLARE_TIMER(3109, "Currently not used.\n")
+DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.\n")
+DECLARE_TIMER(3113, "Set the time to try paging a subscriber.\n")
+DECLARE_TIMER(3115, "Currently not used.\n")
+DECLARE_TIMER(3117, "Currently not used.\n")
+DECLARE_TIMER(3119, "Currently not used.\n")
+DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT\n")
+DECLARE_TIMER(3141, "Currently not used.\n")
 
 DEFUN(cfg_net_dtx,
       cfg_net_dtx_cmd,
       "dtx-used (0|1)",
       "Enable the usage of DTX.\n"
-      "DTX is enabled/disabled")
+      "DTX is disabled\n" "DTX is enabled\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->dtx_enabled = atoi(argv[0]);
@@ -1466,7 +1488,7 @@ DEFUN(cfg_bts,
 DEFUN(cfg_bts_type,
       cfg_bts_type_cmd,
       "type TYPE",
-      "Set the BTS type\n")
+      "Set the BTS type\n" "Type\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int rc;
@@ -1481,7 +1503,7 @@ DEFUN(cfg_bts_type,
 DEFUN(cfg_bts_band,
       cfg_bts_band_cmd,
       "band BAND",
-      "Set the frequency band of this BTS\n")
+      "Set the frequency band of this BTS\n" "Frequency band\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int band = gsm_band_parse(argv[0]);
