@@ -5,7 +5,8 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		 bsc_rll.h mncc.h transaction.h ussd.h gsm_04_80.h \
 		 silent_call.h mgcp.h meas_rep.h rest_octets.h \
 		 system_information.h handover.h mgcp_internal.h \
-		 vty.h socket.h \
+		 vty.h socket.h e1_config.h trau_upqueue.h token_auth.h \
+		 handover_decision.h rrlp.h control_if.h \
 		crc24.h gprs_bssgp.h gprs_llc.h gprs_ns.h gprs_gmm.h \
 		gb_proxy.h gprs_sgsn.h gsm_04_08_gprs.h sgsn.h \
 		gprs_ns_frgre.h auth.h osmo_msc.h bsc_msc.h bsc_nat.h \
