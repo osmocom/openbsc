@@ -60,5 +60,7 @@ int sgsn_rx_sndcp_ud_ind(struct gprs_ra_id *ra_id, int32_t tlli, uint8_t nsapi,
 			 struct msgb *msg, uint32_t npdu_len, uint8_t *npdu);
 int sndcp_unitdata_req(struct msgb *msg, struct gprs_llc_lle *lle, uint8_t nsapi,
 			void *mmcontext);
+int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
+			 uint8_t *hdr, uint16_t len);
 
 #endif

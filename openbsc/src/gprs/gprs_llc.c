@@ -34,6 +34,7 @@
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
+#include <openbsc/sgsn.h>
 
 /* Section 8.9.9 LLC layer parameter default values */
 static const struct gprs_llc_params llc_default_params[] = {
@@ -498,7 +499,6 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 			      uint8_t *llc_hdr, int len)
 {
 	uint8_t *ctrl = llc_hdr+1;
-	int is_sack = 0;
 
 	if (len <= CRC24_LENGTH)
 		return -EIO;
@@ -658,7 +658,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
-	struct gprs_llc_hdr *lh = msgb_llch(msg);
+	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_lle *lle;
 	int rc = 0;
