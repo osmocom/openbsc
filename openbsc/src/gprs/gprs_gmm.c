@@ -231,7 +231,7 @@ static void mmctx_timer_stop(struct sgsn_mm_ctx *mm, unsigned int T)
 
 /* Send a message through the underlying layer */
 static int gsm48_gmm_sendmsg(struct msgb *msg, int command,
-			     const struct sgsn_mm_ctx *mm)
+			     struct sgsn_mm_ctx *mm)
 {
 	if (mm)
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PKTS_SIG_OUT]);
@@ -598,7 +598,7 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 			struct sgsn_mm_ctx *ictx;
 			ictx = sgsn_mm_ctx_by_imsi(mi_string);
 			if (ictx) {
-				DEBUGP(DMM, "Deleting old MM Context for same IMSI ",
+				DEBUGP(DMM, "Deleting old MM Context for same IMSI "
 				       "p_tmsi_old=0x%08x, p_tmsi_new=0x%08x\n",
 					ictx->p_tmsi, ctx->p_tmsi);
 				gprs_llgmm_assign(ictx->llme, ictx->tlli,
@@ -867,7 +867,7 @@ static int gsm48_tx_gmm_ra_upd_rej(struct msgb *old_msg, uint8_t cause)
 }
 
 static void process_ms_ctx_status(struct sgsn_mm_ctx *mmctx,
-				  uint8_t *pdp_status)
+				  const uint8_t *pdp_status)
 {
 	struct sgsn_pdp_ctx *pdp, *pdp2;
 	/* 24.008 4.7.5.1.3: If the PDP context status information element is
@@ -984,7 +984,7 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* Look at PDP Context Status IE and see if MS's view of
 	 * activated/deactivated NSAPIs agrees with our view */
 	if (TLVP_PRESENT(&tp, GSM48_IE_GMM_PDP_CTX_STATUS)) {
-		uint8_t *pdp_status = TLVP_VAL(&tp, GSM48_IE_GMM_PDP_CTX_STATUS);
+		const uint8_t *pdp_status = TLVP_VAL(&tp, GSM48_IE_GMM_PDP_CTX_STATUS);
 		process_ms_ctx_status(mmctx, pdp_status);
 	}
 
@@ -1043,6 +1043,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
 				  GPRS_ALGO_GEA0, NULL);
+		rc = 0;
 		break;
 	case GSM48_MT_GMM_RA_UPD_COMPL:
 		/* only in case SGSN offered new P-TMSI */
@@ -1053,6 +1054,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		mmctx->tlli = mmctx->tlli_new;
 		gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new,
 				  GPRS_ALGO_GEA0, NULL);
+		rc = 0;
 		break;
 	case GSM48_MT_GMM_PTMSI_REALL_COMPL:
 		DEBUGP(DMM, "-> PTMSI REALLLICATION COMPLETE\n");
@@ -1061,6 +1063,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		/* Unassign the old TLLI */
 		mmctx->tlli = mmctx->tlli_new;
 		//gprs_llgmm_assign(mmctx->llme, 0xffffffff, mmctx->tlli_new, GPRS_ALGO_GEA0, NULL);
+		rc = 0;
 		break;
 	case GSM48_MT_GMM_AUTH_CIPH_RESP:
 		rc = gsm48_rx_gmm_auth_ciph_resp(mmctx, msg);
