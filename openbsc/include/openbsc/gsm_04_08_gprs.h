@@ -378,6 +378,4 @@ struct gsm48_qos {
 };
 
 
-int gprs_tlli_type(uint32_t tlli);
-
 #endif /* _GSM48_GPRS_H */
