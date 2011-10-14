@@ -37,7 +37,6 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/logging.h>
-#include <osmocom/core/process.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
@@ -201,7 +200,6 @@ static void handle_options(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
-	struct sockaddr_in sin;
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");

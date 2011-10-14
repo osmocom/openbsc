@@ -566,11 +566,15 @@ static int sndcp_ll_reset_ind(struct gprs_sndcp_entity *se)
 {
 	/* treat all outstanding SNDCP-LLC request type primitives as not sent */
 	/* reset all SNDCP XID parameters to default values */
+	LOGP(DSNDCP, LOGL_NOTICE, "not implemented.\n");
+	return 0;
 }
 
 static int sndcp_ll_status_ind()
 {
 	/* inform the SM sub-layer by means of SNSM-STATUS.req */
+	LOGP(DSNDCP, LOGL_NOTICE, "not implemented.\n");
+	return 0;
 }
 
 #if 0
