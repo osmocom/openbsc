@@ -78,7 +78,14 @@ struct sgsn_mm_ctx {
 	/* CKSN */
 	enum gprs_ciph_algo	ciph_algo;
 	struct {
-		uint8_t	buf[52];	/* 10.5.5.12a */
+		/* TS 23.060 version 9.7.0 Release 9 section 6.14.1.1
+		 * states: To allow for the addition of future radio
+		 * technologies, frequency bands, and other
+		 * enhancements, the SGSN shall store the MS radio
+		 * access capability even if it is larger than specified
+		 * in TS 24.008 [13], up to a maximum size of 255
+		 * octets. */
+		uint8_t	buf[255];	/* 10.5.5.12a */
 		uint8_t	len;
 	} ms_radio_access_capa;
 	struct {

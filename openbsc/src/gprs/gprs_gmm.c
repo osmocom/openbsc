@@ -675,8 +675,6 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* MS Radio Access Capability 10.5.5.12a */
 	ms_ra_acc_cap_len = *cur++;
 	ms_ra_acc_cap = cur;
-	if (ms_ra_acc_cap_len > 52)
-		goto err_inval;
 	cur += ms_ra_acc_cap_len;
 
 	/* Optional: Old P-TMSI Signature, Requested READY timer, TMSI Status */
