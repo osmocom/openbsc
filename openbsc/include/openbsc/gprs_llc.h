@@ -27,6 +27,23 @@ enum gprs_llc_u_cmd {
 	GPRS_LLC_U_NULL_CMD		= 0x00,
 };
 
+/* Section 6.4.1.6 / Table 6 */
+enum gprs_llc_xid_type {
+	GPRS_LLC_XID_T_VERSION		= 0,
+	GPRS_LLC_XID_T_IOV_UI		= 1,
+	GPRS_LLC_XID_T_IOV_I		= 2,
+	GPRS_LLC_XID_T_T200		= 3,
+	GPRS_LLC_XID_T_N200		= 4,
+	GPRS_LLC_XID_T_N201_U		= 5,
+	GPRS_LLC_XID_T_N201_I		= 6,
+	GPRS_LLC_XID_T_mD		= 7,
+	GPRS_LLC_XID_T_mU		= 8,
+	GPRS_LLC_XID_T_kD		= 9,
+	GPRS_LLC_XID_T_kU		= 10,
+	GPRS_LLC_XID_T_L3_PAR		= 11,
+	GPRS_LLC_XID_T_RESET		= 12,
+};
+
 /* TS 04.64 Section 7.1.2 Table 7: LLC layer primitives (GMM/SNDCP/SMS/TOM) */
 /* TS 04.65 Section 5.1.2 Table 2: Service primitives used by SNDCP */
 enum gprs_llc_primitive {
@@ -150,6 +167,9 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv);
 /* LL-UNITDATA.req */
 int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 		   void *mmctx);
+
+/* Chapter 7.2.1.2 LLGMM-RESET.req */
+int gprs_llgmm_reset(struct gprs_llc_llme *llme);
 
 /* 04.64 Chapter 7.2.1.1 LLGMM-ASSIGN */
 int gprs_llgmm_assign(struct gprs_llc_llme *llme,
