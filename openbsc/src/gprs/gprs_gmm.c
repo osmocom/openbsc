@@ -644,7 +644,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 	/* MS network capability 10.5.5.12 */
 	msnc_len = *cur++;
 	msnc = cur;
-	if (msnc_len > 8)
+	if (msnc_len > 32)
 		goto err_inval;
 	cur += msnc_len;
 

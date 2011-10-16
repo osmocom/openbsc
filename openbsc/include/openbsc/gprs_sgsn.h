@@ -89,7 +89,14 @@ struct sgsn_mm_ctx {
 		uint8_t	len;
 	} ms_radio_access_capa;
 	struct {
-		uint8_t	buf[4];		/* 10.5.5.12 */
+		/* TS 23.060 version 9.7.0 Release 9 section 6.14.2
+		 * states: To allow for the addition of future features,
+		 * the SGSN shall store the UE Network Capability and
+		 * the MS Network Capability even if either or both is
+		 * larger than specified in TS 24.008 [13]/TS 24.301
+		 * [102], up to a maximum size of 32 octets for each IE.
+		 */
+		uint8_t	buf[32];	/* 10.5.5.12 */
 		uint8_t	len;
 	} ms_network_capa;
 	uint16_t		drx_parms;
