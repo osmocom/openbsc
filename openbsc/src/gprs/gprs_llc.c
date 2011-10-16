@@ -896,7 +896,7 @@ int gprs_llgmm_reset(struct gprs_llc_llme *llme)
 	/* First XID component must be RESET */
 	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
 	/* randomly select new IOV-UI */
-	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, &random);
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
 
 	/* FIXME: Start T200, wait for XID response */
 	return gprs_llc_tx_xid(&llme->lle[1], msg, 1);
