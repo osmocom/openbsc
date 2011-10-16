@@ -1,6 +1,7 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include -I$(top_builddir)
 AM_CFLAGS=-Wall -fno-strict-aliasing $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOVTY_CFLAGS) $(COVERAGE_CFLAGS)
-AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS) $(COVERAGE_LDFLAGS)
+AM_LDFLAGS = $(COVERAGE_LDFLAGS)
+OSMO_LIBS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(LIBOSMOVTY_LIBS)
 
 noinst_HEADERS = gprs_sndcp.h
 
@@ -12,11 +13,12 @@ endif
 
 osmo_gbproxy_SOURCES = gb_proxy.c gb_proxy_main.c gb_proxy_vty.c
 osmo_gbproxy_LDADD = 	$(top_builddir)/src/libgb/libgb.a \
-			$(top_builddir)/src/libcommon/libcommon.a
+			$(top_builddir)/src/libcommon/libcommon.a \
+			$(OSMO_LIBS)
 
 osmo_sgsn_SOURCES =	gprs_gmm.c gprs_sgsn.c gprs_sndcp.c gprs_sndcp_vty.c \
 			sgsn_main.c sgsn_vty.c sgsn_libgtp.c \
 			gprs_llc.c gprs_llc_vty.c crc24.c
 osmo_sgsn_LDADD = 	$(top_builddir)/src/libgb/libgb.a \
 			$(top_builddir)/src/libcommon/libcommon.a \
-			-lgtp
+			-lgtp $(OSMO_LIBS)
