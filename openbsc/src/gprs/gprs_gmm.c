@@ -992,6 +992,9 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 		process_ms_ctx_status(mmctx, pdp_status);
 	}
 
+	/* Make sure we are NORMAL (i.e. not SUSPENDED anymore) */
+	mmctx->mm_state = GMM_REGISTERED_NORMAL;
+
 	/* Send RA UPDATE ACCEPT */
 	return gsm48_tx_gmm_ra_upd_ack(mmctx);
 }
