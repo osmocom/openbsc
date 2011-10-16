@@ -945,6 +945,10 @@ static int gsm48_rx_gmm_ra_upd_req(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	/* Look-up the MM context based on old RA-ID and TLLI */
 	mmctx = sgsn_mm_ctx_by_tlli(msgb_tlli(msg), &old_ra_id);
 	if (!mmctx || mmctx->mm_state == GMM_DEREGISTERED) {
+		/* send a XID reset to re-set all LLC sequence numbers
+		 * in the MS */
+		DEBUGPC(DMM, " LLC XID RESET ");
+		gprs_llgmm_reset(llme);
 		/* The MS has to perform GPRS attach */
 		DEBUGPC(DMM, " REJECT\n");
 		/* Device is still IMSI atached for CS but initiate GPRS ATTACH */
@@ -1015,6 +1019,7 @@ static int gsm0408_rcv_gmm(struct sgsn_mm_ctx *mmctx, struct msgb *msg,
 	    gh->msg_type != GSM48_MT_GMM_ATTACH_REQ &&
 	    gh->msg_type != GSM48_MT_GMM_RA_UPD_REQ) {
 		LOGP(DMM, LOGL_NOTICE, "Cannot handle GMM for unknown MM CTX\n");
+		gprs_llgmm_reset(llme);
 		return gsm48_tx_gmm_status_oldmsg(msg, GMM_CAUSE_MS_ID_NOT_DERIVED);
 	}
 
