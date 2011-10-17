@@ -263,6 +263,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 			bts->oml_tei, VTY_NEWLINE);
 	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
 		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
+	else if (bts->type == GSM_BTS_TYPE_NOKIA_SITE)
+		vty_out(vty, "  Skip Reset: %d%s",
+			bts->nokia.skip_reset, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
@@ -521,6 +524,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  hsl serial-number %lu%s", bts->hsl.serno, VTY_NEWLINE);
 		vty_out(vty, "  oml hsl line %u%s",
 			bts->oml_e1_link.e1_nr, VTY_NEWLINE);
+		break;
+	case GSM_BTS_TYPE_NOKIA_SITE:
+		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
 		break;
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
@@ -1523,6 +1529,23 @@ DEFUN(cfg_bts_serno,
 	}
 
 	bts->hsl.serno = strtoul(argv[0], NULL, 10);
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_nokia_site_skip_reset,
+      cfg_bts_nokia_site_skip_reset_cmd,
+      "nokia_site skip-reset (0|1)",
+      "Skip the reset step during bootstrap process of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->type != GSM_BTS_TYPE_NOKIA_SITE) {
+		vty_out(vty, "%% BTS is not of Nokia *Site type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->nokia.skip_reset = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
@@ -2669,6 +2692,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_serno_cmd);
+	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
 	install_element(BTS_NODE, &cfg_bts_hsl_oml_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);

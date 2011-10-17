@@ -57,8 +57,11 @@ static void bootstrap_om_bts(struct gsm_bts *bts)
 {
 	LOGP(DNM, LOGL_NOTICE, "bootstrapping OML for BTS %u\n", bts->nr);
 
-	if (bts->nokia.do_reset)
-		abis_nm_reset(bts, 1);
+	if (!bts->nokia.skip_reset) {
+		if (!bts->nokia.did_reset)
+			abis_nm_reset(bts, 1);
+	} else
+		bts->nokia.did_reset = 1;
 }
 
 static void bootstrap_om_trx(struct gsm_bts_trx *trx)
@@ -1543,8 +1546,8 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		/* TODO: the assumption for the following is that no NACK was received */
 
 		/* ACK for reset message ? */
-		if (bts->nokia.do_reset != 0) {
-			bts->nokia.do_reset = 0;
+		if (!bts->nokia.did_reset) {
+			bts->nokia.did_reset = 1;
 
 			/* 
 			   TODO: For the InSite processing the received data is 
