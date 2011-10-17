@@ -364,7 +364,8 @@ static int nm_statechg_event(int evt, struct nm_statechg_signal_data *nsd)
 		/* We skip NSVC1 since we only use NSVC0 */
 		if (nsvc->id == 1)
 			break;
-		if (new_state->availability == NM_AVSTATE_OFF_LINE) {
+		if ((new_state->availability == NM_AVSTATE_OFF_LINE) ||
+		    (new_state->availability == NM_AVSTATE_DEPENDENCY)) {
 			abis_nm_ipaccess_set_attr(bts, obj_class, bts->bts_nr,
 						  nsvc->id, 0xff,
 						  nanobts_attr_nsvc0,
