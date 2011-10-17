@@ -420,7 +420,7 @@ static struct gsm48_si13_info si13_default = {
 		.t3192		= 200,
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
-		.ext_info_present = 1,
+		.ext_info_present = 0,
 		.ext_info = {
 			/* The values below are just guesses ! */
 			.egprs_supported = 0,
