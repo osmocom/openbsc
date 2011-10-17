@@ -42,7 +42,7 @@
 
 /* TODO: put in a separate file ? */
 
-#define RESET_INTERVAL      0, 3000000	/* 3 seconds */
+#define RESET_INTERVAL      15, 0	/* 15 seconds */
 
 extern int abis_nm_sendmsg(struct gsm_bts *bts, struct msgb *msg);
 /* was static in system_information.c */
