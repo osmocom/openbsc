@@ -17,10 +17,6 @@ AC_PROG_RANLIB
 dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
-AC_SEARCH_LIBS(gtp_new, gtp,
-    [LIBCRYPT="-lgtp"; AC_SUBST([GPRS_LIBGTP], [1])])
-
-AM_CONDITIONAL(HAVE_LIBGTP, test "x$GPRS_LIBGTP" != "x")
 
 
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
@@ -47,6 +43,10 @@ PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
+
+found_libgtp=yes
+PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
+AM_CONDITIONAL(HAVE_LIBGTP, test "$found_libgtp" = yes)
 
 dnl checks for header files
 AC_HEADER_STDC
