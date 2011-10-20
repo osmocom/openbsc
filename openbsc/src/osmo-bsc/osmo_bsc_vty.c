@@ -495,6 +495,23 @@ DEFUN(show_statistics,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_mscs,
+      show_mscs_cmd,
+      "show mscs",
+      SHOW_STR "MSC Connections and State\n")
+{
+	struct osmo_msc_data *msc;
+	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
+		vty_out(vty, "MSC Nr: %d is connected: %d auth: %d.%s",
+			msc->nr,
+			msc->msc_con ? msc->msc_con->is_connected : -1,
+			msc->msc_con ? msc->msc_con->is_authenticated : -1,
+			VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -533,6 +550,7 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_amr_4_75_cmd);
 
 	install_element_ve(&show_statistics_cmd);
+	install_element_ve(&show_mscs_cmd);
 
 	return 0;
 }
