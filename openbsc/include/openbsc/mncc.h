@@ -96,6 +96,8 @@ struct gsm_call {
 #define GSM_TCHF_FRAME		0x0300
 #define GSM_TCHF_FRAME_EFR	0x0301
 
+#define MNCC_SOCKET_HELLO	0x0400
+
 #define GSM_MAX_FACILITY	128
 #define GSM_MAX_SSVERSION	128
 #define GSM_MAX_USERUSER	128
@@ -156,6 +158,12 @@ struct gsm_data_frame {
 	uint32_t	msg_type;
 	uint32_t	callref;
 	unsigned char	data[0];
+};
+
+#define MNCC_SOCK_VERSION	1
+struct gsm_mncc_hello {
+	uint32_t	msg_type;
+	uint32_t	version;
 };
 
 char *get_mncc_name(int value);

@@ -203,6 +203,29 @@ static int mncc_sock_cb(struct osmo_fd *bfd, unsigned int flags)
 	return rc;
 }
 
+/**
+ * Send a version indication to the remote.
+ */
+static void queue_hello(struct mncc_sock_state *mncc)
+{
+	struct gsm_mncc_hello *hello;
+	struct msgb *msg;
+
+	msg = msgb_alloc(512, "mncc hello");
+	if (!msg) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to allocate hello.\n");
+		mncc_sock_close(mncc);
+		return;
+	}
+
+	hello = (struct gsm_mncc_hello *) msgb_put(msg, sizeof(*hello));
+	hello->msg_type = MNCC_SOCKET_HELLO;
+	hello->version = MNCC_SOCK_VERSION;
+
+	msgb_enqueue(&mncc->net->upqueue, msg);
+	mncc->conn_bfd.when |= BSC_FD_WRITE;
+}
+
 /* accept a new connection */
 static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 {
@@ -243,6 +266,7 @@ static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has connection with external "
 		"call control application\n");
 
+	queue_hello(state);
 	return 0;
 }
 
