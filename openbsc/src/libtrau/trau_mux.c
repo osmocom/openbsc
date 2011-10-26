@@ -31,7 +31,7 @@
 #include <osmocom/core/talloc.h>
 #include <openbsc/trau_upqueue.h>
 
-/* this corresponds to teh bit-lengths of the individual codec
+/* this corresponds to the bit-lengths of the individual codec
  * parameters as indicated in Table 1.1 of TS 06.10 */
 static const uint8_t gsm_fr_map[] = {
 	6, 6, 5, 5, 4, 4, 3, 3,
