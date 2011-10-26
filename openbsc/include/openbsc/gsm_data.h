@@ -11,6 +11,8 @@
 
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
 
+struct mncc_sock_state;
+
 /* the data structure stored in msgb->cb for openbsc apps */
 struct openbsc_msgb_cb {
 	unsigned char *bssgph;
@@ -247,6 +249,7 @@ struct gsm_network {
 	struct gsmnet_stats stats;
 
 	/* layer 4 */
+	struct mncc_sock_state *mncc_state;
 	int (*mncc_recv) (struct gsm_network *net, struct msgb *msg);
 	struct llist_head upqueue;
 	struct llist_head trans_list;

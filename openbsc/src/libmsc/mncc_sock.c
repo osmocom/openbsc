@@ -43,9 +43,6 @@ struct mncc_sock_state {
 	struct osmo_fd conn_bfd;		/* fd for connection to lcr */
 };
 
-/* FIXME: avoid this */
-static struct mncc_sock_state *g_state;
-
 /* input from CC code into mncc_sock */
 int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 {
@@ -53,7 +50,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	int msg_type = mncc_in->msg_type;
 
 	/* Check if we currently have a MNCC handler connected */
-	if (g_state->conn_bfd.fd < 0) {
+	if (net->mncc_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
 			"but socket is gone\n", get_mncc_name(msg_type));
 		if (msg_type != GSM_TCHF_FRAME &&
@@ -75,13 +72,8 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 
 	/* Actually enqueue the message and mark socket write need */
 	msgb_enqueue(&net->upqueue, msg);
-	g_state->conn_bfd.when |= BSC_FD_WRITE;
+	net->mncc_state->conn_bfd.when |= BSC_FD_WRITE;
 	return 0;
-}
-
-void mncc_sock_write_pending(void)
-{
-	g_state->conn_bfd.when |= BSC_FD_WRITE;
 }
 
 /* FIXME: move this to libosmocore */
@@ -292,7 +284,7 @@ int mncc_sock_init(struct gsm_network *net)
 		return rc;
 	}
 
-	g_state = state;
+	net->mncc_state = state;
 
 	return 0;
 }
