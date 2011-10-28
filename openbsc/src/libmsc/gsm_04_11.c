@@ -6,6 +6,7 @@
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
  * (C) 2010 by On-Waves
+ * (C) 2011 by Andreas Eversberg <jolly@eversberg.eu>
  *
  * All Rights Reserved
  *
@@ -61,25 +62,8 @@
 extern int smpp_try_deliver(struct gsm_sms *sms);
 #endif
 
-#define GSM411_ALLOC_SIZE	1024
-#define GSM411_ALLOC_HEADROOM	128
-
 void *tall_gsms_ctx;
 static uint32_t new_callref = 0x40000001;
-
-static const struct value_string cp_cause_strs[] = {
-	{ GSM411_CP_CAUSE_NET_FAIL,	"Network Failure" },
-	{ GSM411_CP_CAUSE_CONGESTION,	"Congestion" },
-	{ GSM411_CP_CAUSE_INV_TRANS_ID,	"Invalid Transaction ID" },
-	{ GSM411_CP_CAUSE_SEMANT_INC_MSG, "Semantically Incorrect Message" },
-	{ GSM411_CP_CAUSE_INV_MAND_INF,	"Invalid Mandatory Information" },
-	{ GSM411_CP_CAUSE_MSGTYPE_NOTEXIST, "Message Type doesn't exist" },
-	{ GSM411_CP_CAUSE_MSG_INCOMP_STATE,
-				"Message incompatible with protocol state" },
-	{ GSM411_CP_CAUSE_IE_NOTEXIST,	"IE does not exist" },
-	{ GSM411_CP_CAUSE_PROTOCOL_ERR,	"Protocol Error" },
-	{ 0, 0 }
-};
 
 static const struct value_string rp_cause_strs[] = {
 	{ GSM411_RP_CAUSE_MO_NUM_UNASSIGNED, "(MO) Number not assigned" },
@@ -169,27 +153,11 @@ static void send_signal(int sig_no,
 	osmo_signal_dispatch(SS_SMS, sig_no, &sig);
 }
 
-struct msgb *gsm411_msgb_alloc(void)
-{
-	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM,
-				   "GSM 04.11");
-}
-
 static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, uint8_t link_id)
 {
 	DEBUGP(DLSMS, "GSM4.11 TX %s\n", osmo_hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
 	return gsm0808_submit_dtap(conn, msg, link_id, 1);
-}
-
-/* SMC TC1* is expired */
-static void cp_timer_expired(void *data)
-{
-	struct gsm_trans *trans = data;
-
-	DEBUGP(DLSMS, "SMC Timer TC1* is expired, calling trans_free()\n");
-	/* FIXME: we need to re-transmit the last CP-DATA 1..3 times */
-	trans_free(trans);
 }
 
 /* Prefix msg with a 04.08/04.11 CP header */
@@ -203,34 +171,44 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	gh->proto_discr = trans->protocol | (trans->transaction_id<<4);
 	gh->msg_type = msg_type;
 
-	/* mobile originating */
-	switch (gh->msg_type) {
-	case GSM411_MT_CP_DATA:
-		/* 5.2.3.1.2: enter MO-wait for CP-ack */
-		/* 5.2.3.2.3: enter MT-wait for CP-ACK */
-		trans->sms.cp_state = GSM411_CPS_WAIT_CP_ACK;
-		trans->sms.cp_timer.data = trans;
-		trans->sms.cp_timer.cb = cp_timer_expired;
-		/* 5.3.2.1: Set Timer TC1A */
-		osmo_timer_schedule(&trans->sms.cp_timer, GSM411_TMR_TC1A);
-		DEBUGP(DLSMS, "TX: CP-DATA ");
-		break;
-	case GSM411_MT_CP_ACK:
-		DEBUGP(DLSMS, "TX: CP-ACK ");
-		break;
-	case GSM411_MT_CP_ERROR:
-		DEBUGP(DLSMS, "TX: CP-ERROR ");
-		break;
-	}
-
-	DEBUGPC(DLSMS, "trans=%x\n", trans->transaction_id);
+	DEBUGP(DLSMS, "sending CP message (trans=%x)\n", trans->transaction_id);
 
 	return gsm411_sendmsg(trans->conn, msg, trans->sms.link_id);
 }
 
+/* mm_send: receive MMCCSMS sap message from SMC */
+static int gsm411_mm_send(struct gsm411_smc_inst *inst, int msg_type,
+			struct msgb *msg, int cp_msg_type)
+{
+	struct gsm_trans *trans =
+		container_of(inst, struct gsm_trans, sms.smc_inst);
+	int rc = 0;
+
+	switch (msg_type) {
+	case GSM411_MMSMS_EST_REQ:
+		/* recycle msg */
+		rc = gsm411_smc_recv(inst, GSM411_MMSMS_EST_CNF, msg, 0);
+		msgb_free(msg); /* upper layer does not free msg */
+		break;
+	case GSM411_MMSMS_DATA_REQ:
+		rc = gsm411_cp_sendmsg(msg, trans, cp_msg_type);
+		break;
+	case GSM411_MMSMS_REL_REQ:
+		msgb_free(msg);
+		trans_free(trans);
+		break;
+	default:
+		msgb_free(msg);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
 /* Prefix msg with a RP-DATA header and send as CP-DATA */
-static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
-			     uint8_t rp_msg_type, uint8_t rp_msg_ref)
+static int gsm411_rp_sendmsg(struct gsm411_smc_inst *inst, struct msgb *msg,
+			     uint8_t rp_msg_type, uint8_t rp_msg_ref,
+			     int mnsms_msg_type)
 {
 	struct gsm411_rp_hdr *rp;
 	uint8_t len = msg->len;
@@ -241,7 +219,7 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	rp->msg_type = rp_msg_type;
 	rp->msg_ref = rp_msg_ref; /* FIXME: Choose randomly */
 
-	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_DATA);
+	return gsm411_smc_send(inst, mnsms_msg_type, msg);
 }
 
 static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
@@ -497,7 +475,8 @@ static int gsm411_send_rp_ack(struct gsm_trans *trans, uint8_t msg_ref)
 
 	DEBUGP(DLSMS, "TX: SMS RP ACK\n");
 
-	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_ACK_MT, msg_ref);
+	return gsm411_rp_sendmsg(&trans->sms.smc_inst, msg, GSM411_MT_RP_ACK_MT,
+		msg_ref, GSM411_MNSMS_DATA_REQ);
 }
 
 static int gsm411_send_rp_error(struct gsm_trans *trans,
@@ -510,7 +489,8 @@ static int gsm411_send_rp_error(struct gsm_trans *trans,
 	LOGP(DLSMS, LOGL_NOTICE, "TX: SMS RP ERROR, cause %d (%s)\n", cause,
 		get_value_string(rp_cause_strs, cause));
 
-	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_ERROR_MT, msg_ref);
+	return gsm411_rp_sendmsg(&trans->sms.smc_inst, msg,
+		GSM411_MT_RP_ERROR_MT, msg_ref, GSM411_MNSMS_DATA_REQ);
 }
 
 /* Receive a 04.11 TPDU inside RP-DATA / user data */
@@ -684,6 +664,7 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	return rc;
 }
 
+/* receive CP DATA */
 static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh,
 			     struct gsm_trans *trans)
 {
@@ -721,35 +702,37 @@ static int gsm411_rx_cp_data(struct msgb *msg, struct gsm48_hdr *gh,
 	return rc;
 }
 
-/* send CP-ACK to given transaction */
-static int gsm411_tx_cp_ack(struct gsm_trans *trans)
+/* receive MNCCSMS sap message from SMC
+ * NOTE: Message is freed by sender
+ */
+static int gsm411_mn_recv(struct gsm411_smc_inst *inst, int msg_type,
+			struct msgb *msg)
 {
-	struct msgb *msg = gsm411_msgb_alloc();
-	int rc;
+	struct gsm_trans *trans =
+		container_of(inst, struct gsm_trans, sms.smc_inst);
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	int rc = 0;
 
-	rc = gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ACK);
-
-	if (trans->sms.is_mt) {
-		/* If this is a MT SMS DELIVER, we can clear transaction here */
-		trans->sms.cp_state = GSM411_CPS_IDLE;
-		//trans_free(trans);
+	switch (msg_type) {
+	case GSM411_MNSMS_EST_IND:
+	case GSM411_MNSMS_DATA_IND:
+		DEBUGP(DLSMS, "MNSMS-DATA/EST-IND\n");
+		rc = gsm411_rx_cp_data(msg, gh, trans);
+		break;
+	case GSM411_MNSMS_ERROR_IND:
+		if (gh)
+			DEBUGP(DLSMS, "MNSMS-ERROR-IND, cause %d (%s)\n",
+				gh->data[0],
+				get_value_string(gsm411_cp_cause_strs,
+				gh->data[0]));
+		else
+			DEBUGP(DLSMS, "MNSMS-ERROR-IND, no cause\n");
+		break;
+	default:
+		rc = -EINVAL;
 	}
 
 	return rc;
-}
-
-static int gsm411_tx_cp_error(struct gsm_trans *trans, uint8_t cause)
-{
-	struct msgb *msg = gsm411_msgb_alloc();
-	uint8_t *causep;
-
-	LOGP(DLSMS, LOGL_NOTICE, "TX CP-ERROR, cause %d (%s)\n", cause,
-		get_value_string(cp_cause_strs, cause));
-
-	causep = msgb_put(msg, 1);
-	*causep = cause;
-
-	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_ERROR);
 }
 
 /* Entry point for incoming GSM48_PDISC_SMS from abis_rsl.c */
@@ -760,111 +743,63 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 	uint8_t msg_type = gh->msg_type;
 	uint8_t transaction_id = ((gh->proto_discr >> 4) ^ 0x8); /* flip */
 	struct gsm_trans *trans;
+	int new_trans = 0;
 	int rc = 0;
 
 	if (!conn->subscr)
 		return -EIO;
 		/* FIXME: send some error message */
 
-	DEBUGP(DLSMS, "trans_id=%x ", transaction_id);
+	DEBUGP(DLSMS, "receiving data (trans_id=%x)\n", transaction_id);
 	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
 	if (!trans) {
-		DEBUGPC(DLSMS, "(new) ");
+		DEBUGP(DLSMS, " -> (new transaction)\n");
 		trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
 				    transaction_id, new_callref++);
 		if (!trans) {
-			DEBUGPC(DLSMS, "No memory for trans\n");
+			DEBUGP(DLSMS, " -> No memory for trans\n");
 			/* FIXME: send some error message */
 			return -ENOMEM;
 		}
-		trans->sms.cp_state = GSM411_CPS_IDLE;
+		gsm411_smc_init(&trans->sms.smc_inst, 0, 1,
+			gsm411_mn_recv, gsm411_mm_send);
 		trans->sms.rp_state = GSM411_RPS_IDLE;
-		trans->sms.is_mt = 0;
 		trans->sms.link_id = UM_SAPI_SMS;
 
 		trans->conn = conn;
+
+		new_trans = 1;
 	}
 
-	switch(msg_type) {
-	case GSM411_MT_CP_DATA:
-		DEBUGPC(DLSMS, "RX SMS CP-DATA\n");
+	/* 5.4: For MO, if a CP-DATA is received for a new
+	 * transaction, equals reception of an implicit
+	 * last CP-ACK for previous transaction */
+	if (trans->sms.smc_inst.cp_state == GSM411_CPS_IDLE
+	 && msg_type == GSM411_MT_CP_DATA) {
+		int i;
+		struct gsm_trans *ptrans;
 
-		/* 5.4: For MO, if a CP-DATA is received for a new
-		 * transaction, equals reception of an implicit
-		 * last CP-ACK for previous transaction */
-		if (trans->sms.cp_state == GSM411_CPS_IDLE) {
-			int i;
-			struct gsm_trans *ptrans;
+		/* Scan through all remote initiated transactions */
+		for (i=8; i<15; i++) {
+			if (i == transaction_id)
+				continue;
 
-			/* Scan through all remote initiated transactions */
-			for (i=8; i<15; i++) {
-				if (i == transaction_id)
-					continue;
+			ptrans = trans_find_by_id(conn->subscr,
+			                          GSM48_PDISC_SMS, i);
+			if (!ptrans)
+				continue;
 
-				ptrans = trans_find_by_id(conn->subscr,
-				                          GSM48_PDISC_SMS, i);
-				if (!ptrans)
-					continue;
+			DEBUGP(DLSMS, "Implicit CP-ACK for trans_id=%x\n", i);
 
-				DEBUGP(DLSMS, "Implicit CP-ACK for trans_id=%x\n", i);
-
-				/* Finish it for good */
-				osmo_timer_del(&ptrans->sms.cp_timer);
-				ptrans->sms.cp_state = GSM411_CPS_IDLE;
-				trans_free(ptrans);
-			}
+			/* Finish it for good */
+			trans_free(ptrans);
 		}
-
-		/* 5.2.3.1.3: MO state exists when SMC has received
-		 * CP-DATA, including sending of the assoc. CP-ACK */
-		/* 5.2.3.2.4: MT state exists when SMC has received
-		 * CP-DATA, including sending of the assoc. CP-ACK */
-		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
-
-		/* SMC instance acknowledges the CP-DATA frame */
-		gsm411_tx_cp_ack(trans);
-		
-		rc = gsm411_rx_cp_data(msg, gh, trans);
-#if 0
-		/* Send CP-ACK or CP-ERORR in response */
-		if (rc < 0) {
-			rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_NET_FAIL);
-		} else
-			rc = gsm411_tx_cp_ack(trans);
-#endif
-		break;
-	case GSM411_MT_CP_ACK:
-		/* previous CP-DATA in this transaction was confirmed */
-		DEBUGPC(DLSMS, "RX SMS CP-ACK\n");
-		/* 5.2.3.1.3: MO state exists when SMC has received CP-ACK */
-		/* 5.2.3.2.4: MT state exists when SMC has received CP-ACK */
-		trans->sms.cp_state = GSM411_CPS_MM_ESTABLISHED;
-		/* Stop TC1* after CP-ACK has been received */
-		osmo_timer_del(&trans->sms.cp_timer);
-
-		if (!trans->sms.is_mt) {
-			/* FIXME: we have sent one CP-DATA, which was now
-			 * acknowledged.  Check if we want to transfer more,
-			 * i.e. multi-part message */
-			trans->sms.cp_state = GSM411_CPS_IDLE;
-			trans_free(trans);
-		}
-		break;
-	case GSM411_MT_CP_ERROR:
-		DEBUGPC(DLSMS, "RX SMS CP-ERROR, cause %d (%s)\n", gh->data[0],
-			get_value_string(cp_cause_strs, gh->data[0]));
-		osmo_timer_del(&trans->sms.cp_timer);
-		trans->sms.cp_state = GSM411_CPS_IDLE;
-		trans_free(trans);
-		break;
-	default:
-		DEBUGPC(DLSMS, "RX Unimplemented CP msg_type: 0x%02x\n", msg_type);
-		rc = gsm411_tx_cp_error(trans, GSM411_CP_CAUSE_MSGTYPE_NOTEXIST);
-		trans->sms.cp_state = GSM411_CPS_IDLE;
-		trans_free(trans);
-		break;
 	}
+
+	gsm411_smc_recv(&trans->sms.smc_inst,
+		(new_trans) ? GSM411_MMSMS_EST_IND : GSM411_MMSMS_DATA_IND,
+		msg, msg_type);
 
 	return rc;
 }
@@ -881,7 +816,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	int transaction_id;
 	int rc;
 
-	transaction_id = trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
+	transaction_id =
+		trans_assign_trans_id(conn->subscr, GSM48_PDISC_SMS, 0);
 	if (transaction_id == -1) {
 		LOGP(DLSMS, LOGL_ERROR, "No available transaction ids\n");
 		send_signal(S_SMS_UNKNOWN_ERROR, NULL, sms, 0);
@@ -901,9 +837,9 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 		/* FIXME: send some error message */
 		return -ENOMEM;
 	}
-	trans->sms.cp_state = GSM411_CPS_IDLE;
+	gsm411_smc_init(&trans->sms.smc_inst, sms->id, 1,
+		gsm411_mn_recv, gsm411_mm_send);
 	trans->sms.rp_state = GSM411_RPS_IDLE;
-	trans->sms.is_mt = 1;
 	trans->sms.sms = sms;
 	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
@@ -931,8 +867,9 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	rc = gsm340_gen_tpdu(msg, sms);
 	if (rc < 0) {
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, sms, 0);
-		trans_free(trans);
 		sms_free(sms);
+		trans->sms.sms = NULL;
+		trans_free(trans);
 		msgb_free(msg);
 		return rc;
 	}
@@ -944,7 +881,8 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	osmo_counter_inc(conn->bts->network->stats.sms.delivered);
 	db_sms_inc_deliver_attempts(trans->sms.sms);
 
-	return gsm411_rp_sendmsg(msg, trans, GSM411_MT_RP_DATA_MT, msg_ref);
+	return gsm411_rp_sendmsg(&trans->sms.smc_inst, msg,
+		GSM411_MT_RP_DATA_MT, msg_ref, GSM411_MNSMS_EST_REQ);
 	/* FIXME: enter 'wait for RP-ACK' state, start TR1N */
 }
 
@@ -1003,14 +941,17 @@ int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,
 
 void _gsm411_sms_trans_free(struct gsm_trans *trans)
 {
+	/* cleanup SMS instance */
+	gsm411_smc_clear(&trans->sms.smc_inst);
+	trans->sms.smc_inst.mn_recv = NULL;
+	trans->sms.smc_inst.mm_send = NULL;
+
 	if (trans->sms.sms) {
 		LOGP(DLSMS, LOGL_ERROR, "Transaction contains SMS.\n");
 		send_signal(S_SMS_UNKNOWN_ERROR, trans, trans->sms.sms, 0);
 		sms_free(trans->sms.sms);
 		trans->sms.sms = NULL;
 	}
-
-	osmo_timer_del(&trans->sms.cp_timer);
 }
 
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
@@ -1024,7 +965,8 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 		if (trans->conn == conn) {
 			struct gsm_sms *sms = trans->sms.sms;
 			if (!sms) {
-				LOGP(DLSMS, LOGL_ERROR, "SAPI Reject but no SMS.\n");
+				LOGP(DLSMS, LOGL_ERROR, "SAPI Reject but no "
+					"SMS.\n");
 				continue;
 			}
 

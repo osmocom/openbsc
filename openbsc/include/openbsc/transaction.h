@@ -6,6 +6,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_04_11.h>
 #include <openbsc/mncc.h>
+#include <osmocom/gsm/gsm0411_smc.h>
 
 /* One transaction */
 struct gsm_trans {
@@ -48,10 +49,9 @@ struct gsm_trans {
 		struct {
 			uint8_t link_id;	/* RSL Link ID to be used for this trans */
 			int is_mt;	/* is this a MO (0) or MT (1) transfer */
-			enum gsm411_cp_state cp_state;
-			struct osmo_timer_list cp_timer;
-
 			enum gsm411_rp_state rp_state;
+
+			struct gsm411_smc_inst smc_inst;
 
 			struct gsm_sms *sms;
 		} sms;
