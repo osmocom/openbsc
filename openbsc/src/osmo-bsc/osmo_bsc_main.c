@@ -218,7 +218,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	rc = bsc_ctrl_cmds_install();
+	rc = bsc_ctrl_cmds_install(bsc_gsmnet);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to install control commands. Exiting.\n");
 		exit(1);

@@ -23,8 +23,10 @@
 #include <openbsc/osmo_bsc.h>
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/osmo_msc_data.h>
+#include <openbsc/signal.h>
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/signal.h>
 #include <osmocom/core/talloc.h>
 
 #include <stdio.h>
@@ -52,6 +54,63 @@ void osmo_bsc_send_trap(struct ctrl_cmd *cmd, struct bsc_msc_connection *msc_con
 
 	talloc_free(trap);
 }
+
+CTRL_CMD_DEFINE(msc_connection_status, "msc_connection_status");
+static int msc_connection_status = 0;
+
+static int get_msc_connection_status(struct ctrl_cmd *cmd, void *data)
+{
+	if (msc_connection_status)
+		cmd->reply = "connected";
+	else
+		cmd->reply = "disconnected";
+	return CTRL_CMD_REPLY;
+}
+
+static int set_msc_connection_status(struct ctrl_cmd *cmd, void *data)
+{
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_msc_connection_status(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	cmd->reply = "Read-only property";
+	return 1;
+}
+
+static int msc_connection_status_trap_cb(unsigned int subsys, unsigned int signal, void *handler_data, void *signal_data)
+{
+	struct ctrl_cmd *cmd;
+	struct gsm_network *gsmnet = (struct gsm_network *)handler_data;
+
+	if (signal == S_MSC_LOST && msc_connection_status == 1) {
+		LOGP(DCTRL, LOGL_DEBUG, "MSC connection lost, sending TRAP.\n");
+		msc_connection_status = 0;
+	} else if (signal == S_MSC_CONNECTED && msc_connection_status == 0) {
+		LOGP(DCTRL, LOGL_DEBUG, "MSC connection (re)established, sending TRAP.\n");
+		msc_connection_status = 1;
+	} else {
+		return 0;
+	}
+
+	cmd = ctrl_cmd_create(tall_bsc_ctx, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Trap creation failed.\n");
+		return 0;
+	}
+
+	cmd->id = "0";
+	cmd->variable = "msc_connection_status";
+
+	get_msc_connection_status(cmd, NULL);
+
+	ctrl_cmd_send_to_all(gsmnet->ctrl, cmd);
+
+	talloc_free(cmd);
+
+	return 0;
+}
+
 
 static int get_bts_loc(struct ctrl_cmd *cmd, void *data);
 
@@ -292,7 +351,7 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
-int bsc_ctrl_cmds_install()
+int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
 
@@ -300,6 +359,12 @@ int bsc_ctrl_cmds_install()
 	if (rc)
 		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_rf_lock);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_msc_connection_status);
+	if (rc)
+		goto end;
+	rc = osmo_signal_register_handler(SS_MSC, &msc_connection_status_trap_cb, net);
 end:
 	return rc;
 }
