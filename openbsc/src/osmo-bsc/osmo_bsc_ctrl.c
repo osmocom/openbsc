@@ -111,6 +111,75 @@ static int msc_connection_status_trap_cb(unsigned int subsys, unsigned int signa
 	return 0;
 }
 
+CTRL_CMD_DEFINE(bts_connection_status, "bts_connection_status");
+static int bts_connection_status = 0;
+
+static int get_bts_connection_status(struct ctrl_cmd *cmd, void *data)
+{
+	if (bts_connection_status)
+		cmd->reply = "connected";
+	else
+		cmd->reply = "disconnected";
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_connection_status(struct ctrl_cmd *cmd, void *data)
+{
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_bts_connection_status(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	cmd->reply = "Read-only property";
+	return 1;
+}
+
+static int bts_connection_status_trap_cb(unsigned int subsys, unsigned int signal, void *handler_data, void *signal_data)
+{
+	struct ctrl_cmd *cmd;
+	struct gsm_network *gsmnet = (struct gsm_network *)handler_data;
+	struct gsm_bts *bts;
+	int bts_current_status;
+
+	if (signal != S_L_INP_TEI_DN && signal != S_L_INP_TEI_UP) {
+		return 0;
+	}
+
+	bts_current_status = 0;
+	/* Check if OML on at least one BTS is up */
+	llist_for_each_entry(bts, &gsmnet->bts_list, list) {
+		if (bts->oml_link) {
+			bts_current_status = 1;
+			break;
+		}
+	}
+	if (bts_connection_status == 0 && bts_current_status == 1) {
+		LOGP(DCTRL, LOGL_DEBUG, "BTS connection (re)established, sending TRAP.\n");
+	} else if (bts_connection_status == 1 && bts_current_status == 0) {
+		LOGP(DCTRL, LOGL_DEBUG, "No more BTS connected, sending TRAP.\n");
+	} else {
+		return 0;
+	}
+
+	cmd = ctrl_cmd_create(tall_bsc_ctx, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DCTRL, LOGL_ERROR, "Trap creation failed.\n");
+		return 0;
+	}
+
+	bts_connection_status = bts_current_status;
+
+	cmd->id = "0";
+	cmd->variable = "bts_connection_status";
+
+	get_bts_connection_status(cmd, NULL);
+
+	ctrl_cmd_send_to_all(gsmnet->ctrl, cmd);
+
+	talloc_free(cmd);
+
+	return 0;
+}
 
 static int get_bts_loc(struct ctrl_cmd *cmd, void *data);
 
@@ -365,6 +434,12 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	if (rc)
 		goto end;
 	rc = osmo_signal_register_handler(SS_MSC, &msc_connection_status_trap_cb, net);
+	if (rc)
+		goto end;
+	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_bts_connection_status);
+	if (rc)
+		goto end;
+	rc = osmo_signal_register_handler(SS_L_INPUT, &bts_connection_status_trap_cb, net);
 end:
 	return rc;
 }
