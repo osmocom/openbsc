@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <netinet/tcp.h>
 #include <string.h>
 #include <time.h>
 #include <sys/fcntl.h>
@@ -678,7 +679,7 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 {
 	int ret;
 	int idx = 0;
-	int i;
+	int i, val;
 	struct e1inp_line *line;
 	struct e1inp_ts *e1i_ts;
 	struct osmo_fd *bfd;
@@ -725,6 +726,30 @@ static int listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 		talloc_free(line);
 		return ret;
 	}
+
+	/* Enable TCP keepalive to find out if the connection is gone */
+	val = 1;
+        ret = setsockopt(bfd->fd, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DINP, LOGL_NOTICE, "Failed to set keepalive: %s\n", strerror(errno));
+	else
+		LOGP(DINP, LOGL_NOTICE, "Keepalive is set: %i\n", ret);
+
+#if defined(TCP_KEEPIDLE) && defined(TCP_KEEPINTVL) && defined(TCP_KEEPCNT)
+	/* The following options are not portable! */
+	val = 30;
+	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPIDLE, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DINP, LOGL_NOTICE, "Failed to set keepalive idle time: %s\n", strerror(errno));
+	val = 3;
+	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPINTVL, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DINP, LOGL_NOTICE, "Failed to set keepalive interval: %s\n", strerror(errno));
+	val = 10;
+	ret = setsockopt(bfd->fd, IPPROTO_TCP, TCP_KEEPCNT, &val, sizeof(val));
+	if (ret < 0)
+		LOGP(DINP, LOGL_NOTICE, "Failed to set keepalive count: %s\n", strerror(errno));
+#endif
 
 	/* Request ID. FIXME: request LOCATION, HW/SW VErsion, Unit Name, Serno */
 	ret = ipaccess_send_id_req(bfd->fd);
