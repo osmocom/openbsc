@@ -141,7 +141,7 @@ static int bts_connection_status_trap_cb(unsigned int subsys, unsigned int signa
 	struct gsm_bts *bts;
 	int bts_current_status;
 
-	if (!signal == S_INP_TEI_DN && !signal == S_INP_TEI_UP) {
+	if (signal != S_INP_TEI_DN && signal != S_INP_TEI_UP) {
 		return 0;
 	}
 
@@ -166,6 +166,8 @@ static int bts_connection_status_trap_cb(unsigned int subsys, unsigned int signa
 		LOGP(DCTRL, LOGL_ERROR, "Trap creation failed.\n");
 		return 0;
 	}
+
+	bts_connection_status = bts_current_status;
 
 	cmd->id = "0";
 	cmd->variable = "bts_connection_status";
