@@ -65,7 +65,9 @@ DEFUN(cfg_gbproxy,
 DEFUN(cfg_nsip_sgsn_nsei,
       cfg_nsip_sgsn_nsei_cmd,
       "sgsn nsei <0-65534>",
-      "Set the NSEI to be used in the connection with the SGSN")
+      "SGSN information\n"
+      "NSEI to be used in the connection with the SGSN\n"
+      "The NSEI\n")
 {
 	unsigned int port = atoi(argv[0]);
 
