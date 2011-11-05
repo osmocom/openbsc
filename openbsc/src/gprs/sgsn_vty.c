@@ -129,7 +129,8 @@ static int config_write_sgsn(struct vty *vty)
 	return CMD_SUCCESS;
 }
 
-#define SGSN_STR	"Configure the SGSN"
+#define SGSN_STR	"Configure the SGSN\n"
+#define GGSN_STR	"Configure the GGSN information\n"
 
 DEFUN(cfg_sgsn, cfg_sgsn_cmd,
 	"sgsn",
@@ -142,7 +143,8 @@ DEFUN(cfg_sgsn, cfg_sgsn_cmd,
 DEFUN(cfg_sgsn_bind_addr, cfg_sgsn_bind_addr_cmd,
 	"gtp local-ip A.B.C.D",
 	"GTP Parameters\n"
-	"Set the IP address for the local GTP bind\n")
+	"Set the IP address for the local GTP bind\n"
+	"IPv4 Address\n")
 {
 	inet_aton(argv[0], &g_cfg->gtp_listenaddr.sin_addr);
 
@@ -151,7 +153,7 @@ DEFUN(cfg_sgsn_bind_addr, cfg_sgsn_bind_addr_cmd,
 
 DEFUN(cfg_ggsn_remote_ip, cfg_ggsn_remote_ip_cmd,
 	"ggsn <0-255> remote-ip A.B.C.D",
-	"")
+	GGSN_STR "GGSN Number\n" IP_STR "IPv4 Address\n")
 {
 	uint32_t id = atoi(argv[0]);
 	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
@@ -175,7 +177,8 @@ DEFUN(cfg_ggsn_remote_port, cfg_ggsn_remote_port_cmd,
 
 DEFUN(cfg_ggsn_gtp_version, cfg_ggsn_gtp_version_cmd,
 	"ggsn <0-255> gtp-version (0|1)",
-	"")
+	GGSN_STR "GGSN Number\n" "GTP Version\n"
+	"Version 0\n" "Version 1\n")
 {
 	uint32_t id = atoi(argv[0]);
 	struct sgsn_ggsn_ctx *ggc = sgsn_ggsn_ctx_find_alloc(id);
@@ -311,7 +314,7 @@ DEFUN(show_ggsn, show_ggsn_cmd,
 
 DEFUN(show_pdpctx_all, show_pdpctx_all_cmd,
 	"show pdp-context all",
-	SHOW_STR "Display information on PDP Context\n")
+	SHOW_STR "Display information on PDP Context\n" "Show everything\n")
 {
 	struct sgsn_pdp_ctx *pdp;
 
