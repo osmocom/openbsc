@@ -481,6 +481,7 @@ static void loc_upd_rej_cb(void *data)
 	struct gsm_lchan *lchan = conn->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
+	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
 	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 	release_loc_updating_req(conn);
 }
