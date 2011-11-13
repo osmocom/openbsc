@@ -509,7 +509,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				get_value_string(osmo_sitype_strs, i), VTY_NEWLINE);
 			vty_out(vty, "  system-information %s static %s%s",
 				get_value_string(osmo_sitype_strs, i),
-				osmo_osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
+				osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
 				VTY_NEWLINE);
 		}
 	}
