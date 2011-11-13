@@ -56,6 +56,7 @@ static const char *config_file = "openbsc.cfg";
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 static int use_mncc_sock = 0;
+static int use_db_counter = 1;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -95,6 +96,7 @@ static void print_help()
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
 	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
+	printf("  -C --no-dbcounter Disable regular syncing of counters to database\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -115,10 +117,11 @@ static void handle_options(int argc, char **argv)
 			{"rtp-proxy", 0, 0, 'P'},
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
+			{"no-dbcounter", 0, 0, 'C'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:m",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mC",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -157,6 +160,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'm':
 			use_mncc_sock = 1;
+			break;
+		case 'C':
+			use_db_counter = 0;
 			break;
 		case 'V':
 			print_version(1);
@@ -273,7 +279,8 @@ int main(int argc, char **argv)
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
+	if (use_db_counter)
+		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
