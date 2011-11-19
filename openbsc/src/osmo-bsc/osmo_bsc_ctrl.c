@@ -397,7 +397,7 @@ static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 	}
 
 	if (!net->bsc_data->rf_ctrl) {
-		cmd->reply = "RF Ctrl not enabled";
+		cmd->reply = "RF Ctrl is not enabled in the BSC Configuration";
 		return CTRL_CMD_ERROR;
 	}
 
