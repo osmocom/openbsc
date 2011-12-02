@@ -603,12 +603,17 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	return gsm0408_authorize(conn, msg);
 }
 
-#if 0
-static uint8_t to_bcd8(uint8_t val)
+/* Turn int into semi-octet representation: 98 => 0x89 */
+static uint8_t bcdify(uint8_t value)
 {
-       return ((val / 10) << 4) | (val % 10);
+        uint8_t ret;
+
+        ret = value / 10;
+        ret |= (value % 10) << 4;
+
+        return ret;
 }
-#endif
+
 
 /* Section 9.2.15a */
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
@@ -616,13 +621,14 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = conn->bts->network;
+	struct gsm_bts *bts = conn->bts;
 	uint8_t *ptr8;
 	int name_len, name_pad;
-#if 0
+
 	time_t cur_t;
-	struct tm* cur_time;
-	int tz15min;
-#endif
+	struct tm* gmt_time;
+	struct tm* local_time;
+	int tzunits;
 
 	msg->lchan = conn->lchan;
 
@@ -689,24 +695,48 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 
 	}
 
-#if 0
 	/* Section 10.5.3.9 */
 	cur_t = time(NULL);
-	cur_time = gmtime(&cur_t);
+	gmt_time = gmtime(&cur_t);
+
 	ptr8 = msgb_put(msg, 8);
 	ptr8[0] = GSM48_IE_NET_TIME_TZ;
-	ptr8[1] = to_bcd8(cur_time->tm_year % 100);
-	ptr8[2] = to_bcd8(cur_time->tm_mon);
-	ptr8[3] = to_bcd8(cur_time->tm_mday);
-	ptr8[4] = to_bcd8(cur_time->tm_hour);
-	ptr8[5] = to_bcd8(cur_time->tm_min);
-	ptr8[6] = to_bcd8(cur_time->tm_sec);
-	/* 02.42: coded as BCD encoded signed value in units of 15 minutes */
-	tz15min = (cur_time->tm_gmtoff)/(60*15);
-	ptr8[7] = to_bcd8(tz15min);
-	if (tz15min < 0)
-		ptr8[7] |= 0x80;
-#endif
+	ptr8[1] = bcdify(gmt_time->tm_year % 100);
+	ptr8[2] = bcdify(gmt_time->tm_mon + 1);
+	ptr8[3] = bcdify(gmt_time->tm_mday);
+	ptr8[4] = bcdify(gmt_time->tm_hour);
+	ptr8[5] = bcdify(gmt_time->tm_min);
+	ptr8[6] = bcdify(gmt_time->tm_sec);
+
+	if (bts->tz_bts_specific) {
+		/* Convert tzhr and tzmn to units */
+		if (bts->tzhr < 0) {
+			tzunits = ((bts->tzhr/-1)*4);
+			tzunits = tzunits + (bts->tzmn/15);
+			ptr8[7] = bcdify(tzunits);
+			/* Set negative time */
+			ptr8[7] |= 0x08;
+		}
+		else {
+			tzunits = bts->tzhr*4;
+			tzunits = tzunits + (bts->tzmn/15);
+			ptr8[7] = bcdify(tzunits);
+		}
+	}
+	else {
+		/* Need to get GSM offset and convert into 15 min units */
+		/* This probably breaks if gmtoff returns a value not evenly divisible by 15? */
+		local_time = localtime(&cur_t);
+		tzunits = (local_time->tm_gmtoff/60)/15;
+		if (tzunits < 0) {
+			tzunits = tzunits/-1;
+			ptr8[7] = bcdify(tzunits);
+			/* Flip it to negative */
+			ptr8[7] |= 0x08;
+		}
+		else
+			ptr8[7] = bcdify(tzunits);
+	}
 
 	DEBUGP(DMM, "-> MM INFO\n");
 
