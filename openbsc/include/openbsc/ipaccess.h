@@ -1,7 +1,7 @@
 #ifndef _IPACCESS_H
 #define _IPACCESS_H
 
-#include "e1_input.h"
+#include <osmocom/abis/e1_input.h>
 #include "gsm_subscriber.h"
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/gsm/protocol/ipaccess.h>
@@ -26,13 +26,10 @@ struct ipac_ext_lac_cmd {
 	uint8_t data[0];
 } __attribute__((packed));
 
-int ipaccess_connect(struct e1inp_line *line, struct sockaddr_in *sa);
-
 /*
  * methods for parsing and sending a message
  */
 int ipaccess_rcvmsg_base(struct msgb *msg, struct osmo_fd *bfd);
-struct msgb *ipaccess_read_msg(struct osmo_fd *bfd, int *error);
 void ipaccess_prepend_header(struct msgb *msg, int proto);
 void ipaccess_prepend_header_ext(struct msgb *msg, int proto);
 int ipaccess_send_pong(int fd);

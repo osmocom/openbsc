@@ -37,6 +37,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
+#include <osmocom/abis/e1_input.h>
 
 #define WHITELIST_MAX_SIZE ((NUM_ARFCNS*2)+2+1)
 
@@ -129,6 +130,7 @@ static int test_rep(void *_msg)
 	uint16_t test_rep_len, ferr_list_len;
 	struct ipacc_ferr_elem *ife;
 	struct ipac_bcch_info binfo;
+	struct e1inp_sign_link *sign_link = (struct e1inp_sign_link *)msg->dst;
 	int i, rc;
 
 	DEBUGP(DNM, "TEST REPORT: ");
@@ -168,7 +170,7 @@ static int test_rep(void *_msg)
 			uint16_t arfcn = cu & 0x3ff;
 			uint8_t rxlev = cu >> 10;
 			DEBUGP(DNM, "==> ARFCN %4u, RxLev %2u\n", arfcn, rxlev);
-			rxlev_stat_input(&msg->trx->ipaccess.rxlev_stat,
+			rxlev_stat_input(&sign_link->trx->ipaccess.rxlev_stat,
 					 arfcn, rxlev);
 		}
 		break;
@@ -219,13 +221,14 @@ static int test_rep(void *_msg)
 	case NM_IPACC_TESTRES_STOPPED:
 	case NM_IPACC_TESTRES_TIMEOUT:
 	case NM_IPACC_TESTRES_NO_CHANS:
-		msg->trx->ipaccess.test_state = IPAC_TEST_S_IDLE;
+		sign_link->trx->ipaccess.test_state = IPAC_TEST_S_IDLE;
 		/* Send signal to notify higher layers of test completion */
 		DEBUGP(DNM, "dispatching S_IPAC_NWL_COMPLETE signal\n");
-		osmo_signal_dispatch(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE, msg->trx);
+		osmo_signal_dispatch(SS_IPAC_NWL, S_IPAC_NWL_COMPLETE,
+					sign_link->trx);
 		break;
 	case NM_IPACC_TESTRES_PARTIAL:
-		msg->trx->ipaccess.test_state = IPAC_TEST_S_PARTIAL;
+		sign_link->trx->ipaccess.test_state = IPAC_TEST_S_PARTIAL;
 		break;
 	}
 

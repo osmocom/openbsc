@@ -15,9 +15,9 @@ Add the GSM ABIS OML dissector from OpenBSC
 
 Index: wireshark/epan/CMakeLists.txt
 ===================================================================
---- wireshark.orig/epan/CMakeLists.txt	2011-03-24 20:00:54.000000000 +0100
-+++ wireshark/epan/CMakeLists.txt	2011-03-24 20:01:02.000000000 +0100
-@@ -590,6 +590,7 @@
+--- wireshark.orig/epan/CMakeLists.txt	2011-09-06 12:30:00.000000000 +0200
++++ wireshark/epan/CMakeLists.txt	2011-09-06 13:56:18.000000000 +0200
+@@ -591,6 +591,7 @@
  	dissectors/packet-gsm_a_gm.c
  	dissectors/packet-gsm_a_rp.c
  	dissectors/packet-gsm_a_rr.c
@@ -27,9 +27,9 @@ Index: wireshark/epan/CMakeLists.txt
  	dissectors/packet-gsm_bssmap_le.c
 Index: wireshark/epan/dissectors/Makefile.common
 ===================================================================
---- wireshark.orig/epan/dissectors/Makefile.common	2011-03-24 20:00:54.000000000 +0100
-+++ wireshark/epan/dissectors/Makefile.common	2011-03-24 20:01:02.000000000 +0100
-@@ -503,6 +503,7 @@
+--- wireshark.orig/epan/dissectors/Makefile.common	2011-09-06 12:29:41.000000000 +0200
++++ wireshark/epan/dissectors/Makefile.common	2011-09-06 13:56:18.000000000 +0200
+@@ -509,6 +509,7 @@
  	packet-gsm_a_gm.c	\
  	packet-gsm_a_rp.c	\
  	packet-gsm_a_rr.c	\
@@ -40,8 +40,8 @@ Index: wireshark/epan/dissectors/Makefile.common
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-03-24 20:01:48.000000000 +0100
-@@ -0,0 +1,1735 @@
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.c	2011-09-06 13:56:21.000000000 +0200
+@@ -0,0 +1,1746 @@
 +/* packet-abis_oml.c
 + * Routines for packet dissection of GSM A-bis OML (3GPP TS 12.21)
 + * Copyright 2009-2011 by Harald Welte <laforge@gnumonks.org>
@@ -578,24 +578,34 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	{ 0, NULL }
 +};
 +
-+static const gchar *
-+_match_oml_fom_msgtype(const guint32 val, const value_string_ext *vs, gint *idx)
++static const value_string *
++_match_oml_fom_msgtype(const guint32 val, const value_string_ext *vs)
 +{
 +	const char *ret;
-+	ret = match_strval_idx(val, vs->_vs_p, idx);
-+	if (!ret)
-+		ret = match_strval_idx(val, _oml_fom_msgtype_vals, idx);
-+	return ret;
++	gint idx;
++	ret = match_strval_idx(val, vs->_vs_p, &idx);
++	if (!ret) {
++		ret = match_strval_idx(val, _oml_fom_msgtype_vals, &idx);
++		if (!ret)
++			return NULL;
++		return &(_oml_fom_msgtype_vals[idx]);
++	}
++	return &(vs->_vs_p[idx]);
 +}
 +
-+static const gchar *
-+_match_oml_fom_attr(const guint32 val, const value_string_ext *vs, gint *idx)
++static const value_string *
++_match_oml_fom_attr(const guint32 val, const value_string_ext *vs)
 +{
 +	const char *ret;
-+	ret = match_strval_idx(val, vs->_vs_p, idx);
-+	if (!ret)
-+		ret = match_strval_idx(val, _oml_fom_attr_vals, idx);
-+	return ret;
++	gint idx;
++	ret = match_strval_idx(val, vs->_vs_p, &idx);
++	if (!ret) {
++		ret = match_strval_idx(val, _oml_fom_attr_vals, &idx);
++		if (!ret)
++			return NULL;
++		return &(_oml_fom_attr_vals[idx]);
++	}
++	return &(vs->_vs_p[idx]);
 +}
 +
 +/* Section 9.4.4: Administrative State */
@@ -757,7 +767,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +/* Parse the ip.access specific BCCH Information IE embedded into the Test
 + * Report IE */
 +static gint
-+ipacc_tr_ie_bcch(tvbuff_t *tvb, proto_tree *att_tree, int offset)
++ipacc_tr_ie_bcch(tvbuff_t *tvb, packet_info *pinfo, proto_tree *att_tree,
++		 int offset)
 +{
 +	guint16 binfo_type, tmp;
 +
@@ -794,7 +805,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_bsic,
 +			    tvb, offset++, 1, TRUE);
 +
-+	de_lai(tvb, att_tree, offset, 5, NULL, 0);
++	de_lai(tvb, att_tree, pinfo, offset, 5, NULL, 0);
 +	offset += 5;
 +
 +	proto_tree_add_item(att_tree, hf_attr_ipa_tr_cell_id,
@@ -852,7 +863,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +
 +/* Parse the ip.access specific format of the standard test report IE */
 +static gint
-+dissect_ipacc_test_rep(proto_tree *tree, tvbuff_t *tvb)
++dissect_ipacc_test_rep(proto_tree *tree, packet_info *pinfo, tvbuff_t *tvb)
 +{
 +	gint offset = 0;
 +
@@ -880,7 +891,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +						 	att_tree, offset);
 +			break;
 +		case NM_IPACC_TR_IE_BCCH_INFO:
-+			offset = ipacc_tr_ie_bcch(tvb,
++			offset = ipacc_tr_ie_bcch(tvb, pinfo,
 +						  att_tree, offset);
 +			break;
 +		default:
@@ -1038,7 +1049,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +					    offset, len, TRUE);
 +			break;
 +		case NM_ATT_TEST_REPORT:
-+			dissect_ipacc_test_rep(att_tree, sub_tvb);
++			dissect_ipacc_test_rep(att_tree, pinfo, sub_tvb);
 +			break;
 +		case NM_ATT_TEST_NO:
 +			proto_tree_add_item(att_tree, hf_attr_test_no, tvb,
@@ -1723,8 +1734,8 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 +	NM_ATT_TLVDEF_IPA(NM_ATT_IPACC_CGI,		TLV_TYPE_TL16V, 0);
 +
 +	/* assign our custom match functions */
-+	oml_fom_msgtype_vse._vs_match = _match_oml_fom_msgtype;
-+	oml_fom_attr_vse._vs_match = _match_oml_fom_attr;
++	oml_fom_msgtype_vse._vs_match2 = _match_oml_fom_msgtype;
++	oml_fom_attr_vse._vs_match2 = _match_oml_fom_attr;
 +
 +	proto_abis_oml = proto_register_protocol("GSM A-bis OML", "A-bis OML",
 +						 "gsm_abis_oml");
@@ -1780,7 +1791,7 @@ Index: wireshark/epan/dissectors/packet-gsm_abis_oml.c
 Index: wireshark/epan/dissectors/packet-gsm_abis_oml.h
 ===================================================================
 --- /dev/null	1970-01-01 00:00:00.000000000 +0000
-+++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-03-24 20:01:02.000000000 +0100
++++ wireshark/epan/dissectors/packet-gsm_abis_oml.h	2011-09-06 12:30:44.000000000 +0200
 @@ -0,0 +1,667 @@
 +/* GSM Network Management messages on the A-bis interface
 + * 3GPP TS 12.21 version 8.0.0 Release 1999 / ETSI TS 100 623 V8.0.0 */

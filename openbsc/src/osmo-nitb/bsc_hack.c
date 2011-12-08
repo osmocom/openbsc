@@ -33,7 +33,8 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
 #include <openbsc/debug.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/abis.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/signal.h>
 #include <openbsc/osmo_msc.h>
@@ -41,6 +42,10 @@
 #include <openbsc/vty.h>
 #include <openbsc/bss.h>
 #include <openbsc/mncc.h>
+#include <openbsc/token_auth.h>
+#include <openbsc/handover_decision.h>
+#include <openbsc/rrlp.h>
+#include <openbsc/control_if.h>
 
 #include "../../bscconfig.h"
 
@@ -51,6 +56,7 @@ static const char *config_file = "openbsc.cfg";
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 static int use_mncc_sock = 0;
+static int use_db_counter = 1;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
@@ -90,6 +96,7 @@ static void print_help()
 	printf("  -P --rtp-proxy Enable the RTP Proxy code inside OpenBSC\n");
 	printf("  -e --log-level number. Set a global loglevel.\n");
 	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
+	printf("  -C --no-dbcounter Disable regular syncing of counters to database\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -110,10 +117,11 @@ static void handle_options(int argc, char **argv)
 			{"rtp-proxy", 0, 0, 'P'},
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
+			{"no-dbcounter", 0, 0, 'C'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:m",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mC",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -153,6 +161,9 @@ static void handle_options(int argc, char **argv)
 		case 'm':
 			use_mncc_sock = 1;
 			break;
+		case 'C':
+			use_db_counter = 0;
+			break;
 		case 'V':
 			print_version(1);
 			exit(0);
@@ -172,7 +183,7 @@ static void signal_handler(int signal)
 	switch (signal) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(3);
 		exit(0);
 		break;
@@ -227,10 +238,9 @@ int main(int argc, char **argv)
 	on_dso_load_rrlp();
 	on_dso_load_ho_dec();
 
+	libosmo_abis_init(tall_bsc_ctx);
 	osmo_init_logging(&log_info);
-
 	bts_init();
-	e1inp_init();
 
 	/* This needs to precede handle_options() */
 	vty_init(&vty_info);
@@ -269,7 +279,8 @@ int main(int argc, char **argv)
 	/* setup the timer */
 	db_sync_timer.cb = db_sync_timer_cb;
 	db_sync_timer.data = NULL;
-	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
+	if (use_db_counter)
+		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);

@@ -34,6 +34,7 @@
 #include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
+#include <openbsc/sgsn.h>
 
 /* Section 8.9.9 LLC layer parameter default values */
 static const struct gprs_llc_params llc_default_params[] = {
@@ -311,14 +312,15 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 }
 
 /* Send XID response to LLE */
-static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg)
+static int gprs_llc_tx_xid(struct gprs_llc_lle *lle, struct msgb *msg,
+			   int command)
 {
 	/* copy identifiers from LLE to ensure lower layers can route */
 	msgb_tlli(msg) = lle->llme->tlli;
 	msgb_bvci(msg) = lle->llme->bvci;
 	msgb_nsei(msg) = lle->llme->nsei;
 
-	return gprs_llc_tx_u(msg, lle->sapi, 0, GPRS_LLC_U_XID, 1);
+	return gprs_llc_tx_u(msg, lle->sapi, command, GPRS_LLC_U_XID, 1);
 }
 
 /* Transmit a UI frame over the given SAPI */
@@ -421,6 +423,54 @@ int gprs_llc_tx_ui(struct msgb *msg, uint8_t sapi, int command,
 	return gprs_bssgp_tx_dl_ud(msg, mmctx);
 }
 
+/* According to 6.4.1.6 / Figure 11 */
+static int msgb_put_xid_par(struct msgb *msg, uint8_t type, uint8_t length, uint8_t *data)
+{
+	uint8_t header_len = 1;
+	uint8_t *cur;
+
+	/* type is a 5-bit field... */
+	if (type > 0x1f)
+		return -EINVAL;
+
+	if (length > 3)
+		header_len = 2;
+
+	cur = msgb_put(msg, length + header_len);
+
+	/* build the header without or with XL bit */
+	if (length <= 3) {
+		*cur++ = (type << 2) | (length & 3);
+	} else {
+		*cur++ = 0x80 | (type << 2) | (length >> 6);
+		*cur++ = (length << 2);
+	}
+
+	/* copy over the payload of the parameter*/
+	memcpy(cur, data, length);
+
+	return length + header_len;
+}
+
+static void rx_llc_xid(struct gprs_llc_lle *lle,
+			struct gprs_llc_hdr_parsed *gph)
+{
+	/* FIXME: 8.5.3.3: check if XID is invalid */
+	if (gph->is_cmd) {
+		/* FIXME: implement XID negotiation using SNDCP */
+		struct msgb *resp;
+		uint8_t *xid;
+		resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+		xid = msgb_put(resp, gph->data_len);
+		memcpy(xid, gph->data, gph->data_len);
+		gprs_llc_tx_xid(lle, resp, 0);
+	} else {
+		/* FIXME: if we had sent a XID reset, send
+		 * LLGMM-RESET.conf to GMM */
+		/* FIXME: implement XID negotiation using SNDCP */
+	}
+}
+
 static void gprs_llc_hdr_dump(struct gprs_llc_hdr_parsed *gph)
 {
 	DEBUGP(DLLC, "LLC SAPI=%u %c %c FCS=0x%06x",
@@ -465,15 +515,7 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 	case GPRS_LLC_FRMR: /* Section 6.4.1.5 */
 		break;
 	case GPRS_LLC_XID: /* Section 6.4.1.6 */
-		/* FIXME: implement XID negotiation using SNDCP */
-		{
-			struct msgb *resp;
-			uint8_t *xid;
-			resp = msgb_alloc_headroom(4096, 1024, "LLC_XID");
-			xid = msgb_put(resp, gph->data_len);
-			memcpy(xid, gph->data, gph->data_len);
-			gprs_llc_tx_xid(lle, resp);
-		}
+		rx_llc_xid(lle, gph);
 		break;
 	case GPRS_LLC_UI:
 		if (gph->seq_tx < lle->vu_recv) {
@@ -498,7 +540,6 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 			      uint8_t *llc_hdr, int len)
 {
 	uint8_t *ctrl = llc_hdr+1;
-	int is_sack = 0;
 
 	if (len <= CRC24_LENGTH)
 		return -EIO;
@@ -658,7 +699,7 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
-	struct gprs_llc_hdr *lh = msgb_llch(msg);
+	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_lle *lle;
 	int rc = 0;
@@ -696,7 +737,7 @@ int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 			struct gprs_llc_llme *llme;
 			/* FIXME: don't use the TLLI but the 0xFFFF unassigned? */
 			llme = llme_alloc(msgb_tlli(msg));
-			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x08x, "
+			LOGP(DLLC, LOGL_DEBUG, "LLC RX: unknown TLLI 0x%08x, "
 				"creating LLME on the fly\n", msgb_tlli(msg));
 			lle = &llme->lle[llhp.sapi];
 		} else {
@@ -844,6 +885,21 @@ int gprs_llgmm_assign(struct gprs_llc_llme *llme,
 		return -EINVAL;
 
 	return 0;
+}
+
+/* Chapter 7.2.1.2 LLGMM-RESET.req */
+int gprs_llgmm_reset(struct gprs_llc_llme *llme)
+{
+	struct msgb *msg = msgb_alloc_headroom(4096, 1024, "LLC_XID");
+	int random = rand();
+
+	/* First XID component must be RESET */
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_RESET, 0, NULL);
+	/* randomly select new IOV-UI */
+	msgb_put_xid_par(msg, GPRS_LLC_XID_T_IOV_UI, 4, (uint8_t *) &random);
+
+	/* FIXME: Start T200, wait for XID response */
+	return gprs_llc_tx_xid(&llme->lle[1], msg, 1);
 }
 
 int gprs_llc_init(const char *cipher_plugin_path)

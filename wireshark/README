@@ -1,7 +1,7 @@
 These are patches to wireshark to add/enhance the GSM support.
 
 == Basic ==
-The patches apply to SVN revision r35476 and were created
+The patches apply to SVN revision r38894 and were created
 using git format-patch. They can be either applied via the
 patch command or using git am on a git clone of wireshark.
 

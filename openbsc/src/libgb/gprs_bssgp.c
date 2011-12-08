@@ -43,17 +43,6 @@
 
 void *bssgp_tall_ctx = NULL;
 
-#define BVC_F_BLOCKED	0x0001
-
-enum bssgp_ctr {
-	BSSGP_CTR_PKTS_IN,
-	BSSGP_CTR_PKTS_OUT,
-	BSSGP_CTR_BYTES_IN,
-	BSSGP_CTR_BYTES_OUT,
-	BSSGP_CTR_BLOCKED,
-	BSSGP_CTR_DISCARDED,
-};
-
 static const struct rate_ctr_desc bssgp_ctr_description[] = {
 	{ "packets.in",	"Packets at BSSGP Level ( In)" },
 	{ "packets.out","Packets at BSSGP Level (Out)" },
@@ -232,6 +221,18 @@ uint16_t bssgp_parse_cell_id(struct gprs_ra_id *raid, const uint8_t *buf)
 	return ntohs(*(uint16_t *) (buf+6));
 }
 
+int bssgp_create_cell_id(uint8_t *buf, const struct gprs_ra_id *raid,
+			 uint16_t cid)
+{
+	uint16_t *out_cid = (uint16_t *) (buf + 6);
+	/* 6 octets RAC */
+	gsm48_construct_ra(buf, raid);
+	/* 2 octets CID */
+	*out_cid = htons(cid);
+
+	return 8;
+}
+
 /* Chapter 8.4 BVC-Reset Procedure */
 static int bssgp_rx_bvc_reset(struct msgb *msg, struct tlv_parsed *tp,	
 			      uint16_t ns_bvci)
@@ -257,7 +258,7 @@ static int bssgp_rx_bvc_reset(struct msgb *msg, struct tlv_parsed *tp,
 	 * informs us about its RAC + Cell ID, so we can create a mapping */
 	if (bvci != 0 && bvci != 1) {
 		if (!TLVP_PRESENT(tp, BSSGP_IE_CELL_ID)) {
-			LOGP(DBSSGP, LOGL_ERROR, "BSSGP BVCI=%u RESET "
+			LOGP(DBSSGP, LOGL_ERROR, "BSSGP BVCI=%u Rx RESET "
 				"missing mandatory IE\n", bvci);
 			return -EINVAL;
 		}
@@ -289,7 +290,7 @@ static int bssgp_rx_bvc_block(struct msgb *msg, struct tlv_parsed *tp)
 		return 0;
 	}
 
-	LOGP(DBSSGP, LOGL_INFO, "BSSGP BVCI=%u BVC-BLOCK\n", bvci);
+	LOGP(DBSSGP, LOGL_INFO, "BSSGP Rx BVCI=%u BVC-BLOCK\n", bvci);
 
 	ptp_ctx = btsctx_by_bvci_nsei(bvci, msgb_nsei(msg));
 	if (!ptp_ctx)
@@ -343,7 +344,7 @@ static int bssgp_rx_ul_ud(struct msgb *msg, struct tlv_parsed *tp,
 	/* extract TLLI and parse TLV IEs */
 	msgb_tlli(msg) = ntohl(budh->tlli);
 
-	DEBUGP(DBSSGP, "BSSGP TLLI=0x%08x UPLINK-UNITDATA\n", msgb_tlli(msg));
+	DEBUGP(DBSSGP, "BSSGP TLLI=0x%08x Rx UPLINK-UNITDATA\n", msgb_tlli(msg));
 
 	/* Cell ID and LLC_PDU are the only mandatory IE */
 	if (!TLVP_PRESENT(tp, BSSGP_IE_CELL_ID) ||
@@ -414,7 +415,7 @@ static int bssgp_rx_resume(struct msgb *msg, struct tlv_parsed *tp,
 	tlli = ntohl(*(uint32_t *)TLVP_VAL(tp, BSSGP_IE_TLLI));
 	suspend_ref = *TLVP_VAL(tp, BSSGP_IE_SUSPEND_REF_NR);
 
-	DEBUGP(DBSSGP, "BSSGP BVCI=%u TLLI=0x%08x RESUME\n", ctx->bvci, tlli);
+	DEBUGP(DBSSGP, "BSSGP BVCI=%u TLLI=0x%08x Rx RESUME\n", ctx->bvci, tlli);
 
 	gsm48_parse_ra(&raid, TLVP_VAL(tp, BSSGP_IE_ROUTEING_AREA));
 
@@ -445,7 +446,7 @@ static int bssgp_rx_llc_disc(struct msgb *msg, struct tlv_parsed *tp,
 	if (TLVP_PRESENT(tp, BSSGP_IE_TLLI))
 		tlli = ntohl(*(uint32_t *)TLVP_VAL(tp, BSSGP_IE_TLLI));
 
-	DEBUGP(DBSSGP, "BSSGP BVCI=%u TLLI=%08x LLC DISCARDED\n",
+	DEBUGP(DBSSGP, "BSSGP BVCI=%u TLLI=%08x Rx LLC DISCARDED\n",
 		ctx->bvci, tlli);
 
 	rate_ctr_inc(&ctx->ctrg->ctr[BSSGP_CTR_DISCARDED]);
@@ -579,7 +580,7 @@ static int gprs_bssgp_rx_sign(struct msgb *msg, struct tlv_parsed *tp,
 		break;
 	case BSSGP_PDUT_FLUSH_LL_ACK:
 		/* BSS informs us it has performed LL FLUSH */
-		DEBUGP(DBSSGP, "BSSGP BVCI=%u Rx FLUSH LL ACK\n", bctx->bvci);
+		DEBUGP(DBSSGP, "BSSGP Rx BVCI=%u FLUSH LL ACK\n", bctx->bvci);
 		/* FIXME: send NM_FLUSH_LL.res to NM */
 		break;
 	case BSSGP_PDUT_LLC_DISCARD:

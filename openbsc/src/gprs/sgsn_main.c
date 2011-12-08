@@ -37,7 +37,6 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/logging.h>
-#include <osmocom/core/process.h>
 
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
@@ -105,7 +104,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(1);
 		exit(0);
 		break;
@@ -201,7 +200,6 @@ static void handle_options(int argc, char **argv)
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
-	struct sockaddr_in sin;
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 0, "osmo_sgsn");

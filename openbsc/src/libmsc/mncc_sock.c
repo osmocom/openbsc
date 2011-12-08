@@ -43,9 +43,6 @@ struct mncc_sock_state {
 	struct osmo_fd conn_bfd;		/* fd for connection to lcr */
 };
 
-/* FIXME: avoid this */
-static struct mncc_sock_state *g_state;
-
 /* input from CC code into mncc_sock */
 int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 {
@@ -53,7 +50,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	int msg_type = mncc_in->msg_type;
 
 	/* Check if we currently have a MNCC handler connected */
-	if (g_state->conn_bfd.fd < 0) {
+	if (net->mncc_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
 			"but socket is gone\n", get_mncc_name(msg_type));
 		if (msg_type != GSM_TCHF_FRAME &&
@@ -75,13 +72,8 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 
 	/* Actually enqueue the message and mark socket write need */
 	msgb_enqueue(&net->upqueue, msg);
-	g_state->conn_bfd.when |= BSC_FD_WRITE;
+	net->mncc_state->conn_bfd.when |= BSC_FD_WRITE;
 	return 0;
-}
-
-void mncc_sock_write_pending(void)
-{
-	g_state->conn_bfd.when |= BSC_FD_WRITE;
 }
 
 /* FIXME: move this to libosmocore */
@@ -99,8 +91,6 @@ static void mncc_sock_close(struct mncc_sock_state *state)
 
 	/* re-enable the generation of ACCEPT for new connections */
 	state->listen_bfd.when |= BSC_FD_READ;
-
-	/* FIXME: make sure we don't enqueue anymore */
 
 	/* release all exisitng calls */
 	gsm0408_clear_all_trans(state->net, GSM48_PDISC_CC);
@@ -165,6 +155,13 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 
 		bfd->when &= ~BSC_FD_WRITE;
 
+		/* bug hunter 8-): maybe someone forgot msgb_put(...) ? */
+		if (!msgb_length(msg)) {
+			LOGP(DMNCC, LOGL_ERROR, "message type (%d) with ZERO "
+				"bytes!\n", mncc_prim->msg_type);
+			goto dontsend;
+		}
+
 		/* try to send it over the socket */
 		rc = write(bfd->fd, msgb_data(msg), msgb_length(msg));
 		if (rc == 0)
@@ -176,6 +173,8 @@ static int mncc_sock_write(struct osmo_fd *bfd)
 			}
 			goto close;
 		}
+
+dontsend:
 		/* _after_ we send it, we can deueue */
 		msg2 = msgb_dequeue(&net->upqueue);
 		assert(msg == msg2);
@@ -202,6 +201,29 @@ static int mncc_sock_cb(struct osmo_fd *bfd, unsigned int flags)
 		rc = mncc_sock_write(bfd);
 
 	return rc;
+}
+
+/**
+ * Send a version indication to the remote.
+ */
+static void queue_hello(struct mncc_sock_state *mncc)
+{
+	struct gsm_mncc_hello *hello;
+	struct msgb *msg;
+
+	msg = msgb_alloc(512, "mncc hello");
+	if (!msg) {
+		LOGP(DMNCC, LOGL_ERROR, "Failed to allocate hello.\n");
+		mncc_sock_close(mncc);
+		return;
+	}
+
+	hello = (struct gsm_mncc_hello *) msgb_put(msg, sizeof(*hello));
+	hello->msg_type = MNCC_SOCKET_HELLO;
+	hello->version = MNCC_SOCK_VERSION;
+
+	msgb_enqueue(&mncc->net->upqueue, msg);
+	mncc->conn_bfd.when |= BSC_FD_WRITE;
 }
 
 /* accept a new connection */
@@ -244,6 +266,7 @@ static int mncc_sock_accept(struct osmo_fd *bfd, unsigned int flags)
 	LOGP(DMNCC, LOGL_NOTICE, "MNCC Socket has connection with external "
 		"call control application\n");
 
+	queue_hello(state);
 	return 0;
 }
 
@@ -283,7 +306,7 @@ int mncc_sock_init(struct gsm_network *net)
 		return rc;
 	}
 
-	g_state = state;
+	net->mncc_state = state;
 
 	return 0;
 }

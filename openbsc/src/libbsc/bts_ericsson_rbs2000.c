@@ -26,10 +26,10 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_om2000.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/signal.h>
 
-#include "../libabis/input/lapd.h"
+#include <osmocom/abis/lapd.h>
 
 static void bootstrap_om_bts(struct gsm_bts *bts)
 {
@@ -70,9 +70,9 @@ static void start_sabm_in_line(struct e1inp_line *line, int start)
 
 		llist_for_each_entry(link, &ts->sign.sign_links, list) {
 			if (start)
-				lapd_sap_start(ts->driver.dahdi.lapd, link->tei, link->sapi);
+				lapd_sap_start(ts->lapd, link->tei, link->sapi);
 			else
-				lapd_sap_stop(ts->driver.dahdi.lapd, link->tei, link->sapi);
+				lapd_sap_stop(ts->lapd, link->tei, link->sapi);
 		}
 	}
 }
@@ -83,7 +83,7 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct gsm_bts *bts;
 
-	if (subsys != SS_GLOBAL)
+	if (subsys != SS_L_GLOBAL)
 		return 0;
 
 	switch (signal) {
@@ -103,11 +103,11 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct input_signal_data *isd = signal_data;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return 0;
 
 	switch (signal) {
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type != GSM_BTS_TYPE_RBS2000)
@@ -119,21 +119,18 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 			break;
 		}
 		break;
-	case S_INP_LINE_INIT:
-		/* Right now Ericsson RBS are only supported on DAHDI */
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+	case S_L_INP_LINE_INIT:
+	case S_L_INP_LINE_NOALARM:
+		if (strcasecmp(isd->line->driver->name, "DAHDI")
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
 			break;
 		start_sabm_in_line(isd->line, 1);
 		break;
-	case S_INP_LINE_ALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
+	case S_L_INP_LINE_ALARM:
+		if (strcasecmp(isd->line->driver->name, "DAHDI")
+		 && strcasecmp(isd->line->driver->name, "MISDN_LAPD"))
 			break;
 		start_sabm_in_line(isd->line, 0);
-		break;
-	case S_INP_LINE_NOALARM:
-		if (strcasecmp(isd->line->driver->name, "DAHDI"))
-			break;
-		start_sabm_in_line(isd->line, 1);
 		break;
 	}
 
@@ -244,12 +241,18 @@ static void config_write_bts(struct vty *vty, struct gsm_bts *bts)
 
 static int bts_model_rbs2k_start(struct gsm_network *net);
 
+static void bts_model_rbs2k_e1line_bind_ops(struct e1inp_line *line)
+{
+	e1inp_line_bind_ops(line, &bts_isdn_e1inp_line_ops);
+}
+
 static struct gsm_bts_model model_rbs2k = {
 	.type = GSM_BTS_TYPE_RBS2000,
 	.name = "rbs2000",
 	.start = bts_model_rbs2k_start,
 	.oml_rcvmsg = &abis_om2k_rcvmsg,
 	.config_write_bts = &config_write_bts,
+	.e1line_bind_ops = &bts_model_rbs2k_e1line_bind_ops,
 };
 
 static int bts_model_rbs2k_start(struct gsm_network *net)
@@ -260,8 +263,8 @@ static int bts_model_rbs2k_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_rbs2k, BTS_FEAT_HSCSD);
 
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
-	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
 
 	return 0;

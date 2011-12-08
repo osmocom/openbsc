@@ -30,7 +30,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <openbsc/gsm_data.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_om2000.h>
 #include <osmocom/core/utils.h>
@@ -51,6 +51,14 @@
 #include <openbsc/osmo_bsc_rf.h>
 
 #include "../../bscconfig.h"
+
+
+#define NETWORK_STR "Configure the GSM network\n"
+#define CODE_CMD_STR "Code commands\n"
+#define NAME_CMD_STR "Name Commands\n"
+#define NAME_STR "Name to use\n"
+#define LCHAN_NR_STR "Logical Channel Number\n"
+
 
 /* FIXME: this should go to some common file */
 static const struct value_string gprs_ns_timer_strs[] = {
@@ -255,6 +263,9 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 			bts->oml_tei, VTY_NEWLINE);
 	else if (bts->type == GSM_BTS_TYPE_HSL_FEMTO)
 		vty_out(vty, "  Serial Number: %lu%s", bts->hsl.serno, VTY_NEWLINE);
+	else if (bts->type == GSM_BTS_TYPE_NOKIA_SITE)
+		vty_out(vty, "  Skip Reset: %d%s",
+			bts->nokia.skip_reset, VTY_NEWLINE);
 	vty_out(vty, "  NM State: ");
 	net_dump_nmstate(vty, &bts->mo.nm_state);
 	vty_out(vty, "  Site Mgr NM State: ");
@@ -437,6 +448,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
+	if (bts->tz_bts_specific != 0)
+		vty_out(vty, "  timezone %d %d%s", bts->tzhr, bts->tzmn, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  cell reselection hysteresis %u%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
@@ -498,7 +511,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				get_value_string(osmo_sitype_strs, i), VTY_NEWLINE);
 			vty_out(vty, "  system-information %s static %s%s",
 				get_value_string(osmo_sitype_strs, i),
-				osmo_osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
+				osmo_hexdump_nospc(bts->si_buf[i], sizeof(bts->si_buf[i])),
 				VTY_NEWLINE);
 		}
 	}
@@ -506,10 +519,16 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	case GSM_BTS_TYPE_NANOBTS:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
-		vty_out(vty, "  oml ip.access stream_id %u%s", bts->oml_tei, VTY_NEWLINE);
+		vty_out(vty, "  oml ip.access stream_id %u line %u%s",
+			bts->oml_tei, bts->oml_e1_link.e1_nr, VTY_NEWLINE);
 		break;
 	case GSM_BTS_TYPE_HSL_FEMTO:
 		vty_out(vty, "  hsl serial-number %lu%s", bts->hsl.serno, VTY_NEWLINE);
+		vty_out(vty, "  oml hsl line %u%s",
+			bts->oml_e1_link.e1_nr, VTY_NEWLINE);
+		break;
+	case GSM_BTS_TYPE_NOKIA_SITE:
+		vty_out(vty, "  nokia_site skip-reset %d%s", bts->nokia.skip_reset, VTY_NEWLINE);
 		break;
 	default:
 		config_write_e1_link(vty, &bts->oml_e1_link, "  oml ");
@@ -942,7 +961,7 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
 				     lchan_nr++) {
 					lchan = &ts->lchan[lchan_nr];
-					if (lchan->type == GSM_LCHAN_NONE)
+					if ((lchan->type == GSM_LCHAN_NONE) && (lchan->state == LCHAN_S_NONE))
 						continue;
 					dump_cb(vty, lchan);
 				}
@@ -959,7 +978,7 @@ DEFUN(show_lchan,
       "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
-	"Logical Channel Number\n")
+	LCHAN_NR_STR)
 
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_full_vty);
@@ -969,123 +988,11 @@ DEFUN(show_lchan_summary,
       show_lchan_summary_cmd,
       "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
+        "Short summary\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
-	"Logical Channel Number\n")
+        LCHAN_NR_STR)
 {
 	return lchan_summary(vty, argc, argv, lchan_dump_short_vty);
-}
-
-static void e1drv_dump_vty(struct vty *vty, struct e1inp_driver *drv)
-{
-	vty_out(vty, "E1 Input Driver %s%s", drv->name, VTY_NEWLINE);
-}
-
-DEFUN(show_e1drv,
-      show_e1drv_cmd,
-      "show e1_driver",
-	SHOW_STR "Display information about available E1 drivers\n")
-{
-	struct e1inp_driver *drv;
-
-	llist_for_each_entry(drv, &e1inp_driver_list, list)
-		e1drv_dump_vty(vty, drv);
-
-	return CMD_SUCCESS;
-}
-
-static void e1line_dump_vty(struct vty *vty, struct e1inp_line *line)
-{
-	vty_out(vty, "E1 Line Number %u, Name %s, Driver %s%s",
-		line->num, line->name ? line->name : "",
-		line->driver->name, VTY_NEWLINE);
-}
-
-DEFUN(show_e1line,
-      show_e1line_cmd,
-      "show e1_line [line_nr]",
-	SHOW_STR "Display information about a E1 line\n"
-	"E1 Line Number\n")
-{
-	struct e1inp_line *line;
-
-	if (argc >= 1) {
-		int num = atoi(argv[0]);
-		llist_for_each_entry(line, &e1inp_line_list, list) {
-			if (line->num == num) {
-				e1line_dump_vty(vty, line);
-				return CMD_SUCCESS;
-			}
-		}
-		return CMD_WARNING;
-	}	
-	
-	llist_for_each_entry(line, &e1inp_line_list, list)
-		e1line_dump_vty(vty, line);
-
-	return CMD_SUCCESS;
-}
-
-static void e1ts_dump_vty(struct vty *vty, struct e1inp_ts *ts)
-{
-	if (ts->type == E1INP_TS_TYPE_NONE)
-		return;
-	vty_out(vty, "E1 Timeslot %2u of Line %u is Type %s%s",
-		ts->num, ts->line->num, e1inp_tstype_name(ts->type),
-		VTY_NEWLINE);
-}
-
-DEFUN(show_e1ts,
-      show_e1ts_cmd,
-      "show e1_timeslot [line_nr] [ts_nr]",
-	SHOW_STR "Display information about a E1 timeslot\n"
-	"E1 Line Number\n" "E1 Timeslot Number\n")
-{
-	struct e1inp_line *line = NULL;
-	struct e1inp_ts *ts;
-	int ts_nr;
-
-	if (argc == 0) {
-		llist_for_each_entry(line, &e1inp_line_list, list) {
-			for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
-				ts = &line->ts[ts_nr];
-				e1ts_dump_vty(vty, ts);
-			}
-		}
-		return CMD_SUCCESS;
-	}
-	if (argc >= 1) {
-		int num = atoi(argv[0]);
-		struct e1inp_line *l;
-		llist_for_each_entry(l, &e1inp_line_list, list) {
-			if (l->num == num) {
-				line = l;
-				break;
-			}
-		}
-		if (!line) {
-			vty_out(vty, "E1 line %s is invalid%s",
-				argv[0], VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-	}	
-	if (argc >= 2) {
-		ts_nr = atoi(argv[1]);
-		if (ts_nr >= NUM_E1_TS) {
-			vty_out(vty, "E1 timeslot %s is invalid%s",
-				argv[1], VTY_NEWLINE);
-			return CMD_WARNING;
-		}
-		ts = &line->ts[ts_nr];
-		e1ts_dump_vty(vty, ts);
-		return CMD_SUCCESS;
-	} else {
-		for (ts_nr = 0; ts_nr < NUM_E1_TS; ts_nr++) {
-			ts = &line->ts[ts_nr];
-			e1ts_dump_vty(vty, ts);
-		}
-		return CMD_SUCCESS;
-	}
-	return CMD_SUCCESS;
 }
 
 static void paging_dump_vty(struct vty *vty, struct gsm_paging_request *pag)
@@ -1133,8 +1040,6 @@ DEFUN(show_paging,
 	return CMD_SUCCESS;
 }
 
-#define NETWORK_STR "Configure the GSM network\n"
-
 DEFUN(cfg_net,
       cfg_net_cmd,
       "network", NETWORK_STR)
@@ -1145,11 +1050,13 @@ DEFUN(cfg_net,
 	return CMD_SUCCESS;
 }
 
-
 DEFUN(cfg_net_ncc,
       cfg_net_ncc_cmd,
       "network country code <1-999>",
-      "Set the GSM network country code")
+      "Set the GSM network country code\n"
+      "Country commands\n"
+      CODE_CMD_STR
+      "Network Country Code to use\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1160,8 +1067,11 @@ DEFUN(cfg_net_ncc,
 
 DEFUN(cfg_net_mnc,
       cfg_net_mnc_cmd,
-      "mobile network code <1-999>",
-      "Set the GSM mobile network code")
+      "mobile network code <0-999>",
+      "Set the GSM mobile network code\n"
+      "Network Commands\n"
+      CODE_CMD_STR
+      "Mobile Network Code to use\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1173,7 +1083,7 @@ DEFUN(cfg_net_mnc,
 DEFUN(cfg_net_name_short,
       cfg_net_name_short_cmd,
       "short name NAME",
-      "Set the short GSM network name")
+      "Set the short GSM network name\n" NAME_CMD_STR NAME_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1184,7 +1094,7 @@ DEFUN(cfg_net_name_short,
 DEFUN(cfg_net_name_long,
       cfg_net_name_long_cmd,
       "long name NAME",
-      "Set the long GSM network name")
+      "Set the long GSM network name\n" NAME_CMD_STR NAME_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1301,11 +1211,13 @@ DEFUN(cfg_net_handover, cfg_net_handover_cmd,
 #define HO_WIN_RXLEV_STR HO_WIN_STR "Received Level Averaging\n"
 #define HO_WIN_RXQUAL_STR HO_WIN_STR "Received Quality Averaging\n"
 #define HO_PBUDGET_STR HANDOVER_STR "Power Budget\n"
+#define HO_AVG_COUNT_STR "Amount to use for Averaging\n"
 
 DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
       "handover window rxlev averaging <1-10>",
 	HO_WIN_RXLEV_STR
-	"How many RxLev measurements are used for averaging")
+	"How many RxLev measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg = atoi(argv[0]);
@@ -1315,7 +1227,8 @@ DEFUN(cfg_net_ho_win_rxlev_avg, cfg_net_ho_win_rxlev_avg_cmd,
 DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
       "handover window rxqual averaging <1-10>",
 	HO_WIN_RXQUAL_STR
-	"How many RxQual measurements are used for averaging")
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxqual_avg = atoi(argv[0]);
@@ -1324,8 +1237,9 @@ DEFUN(cfg_net_ho_win_rxqual_avg, cfg_net_ho_win_rxqual_avg_cmd,
 
 DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
       "handover window rxlev neighbor averaging <1-10>",
-	HO_WIN_RXLEV_STR
-	"How many RxQual measurements are used for averaging")
+	HO_WIN_RXLEV_STR "Neighbor\n"
+	"How many RxQual measurements are used for averaging\n"
+	HO_AVG_COUNT_STR)
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.win_rxlev_avg_neigh = atoi(argv[0]);
@@ -1335,7 +1249,8 @@ DEFUN(cfg_net_ho_win_rxlev_neigh_avg, cfg_net_ho_win_rxlev_avg_neigh_cmd,
 DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
       "handover power budget interval <1-99>",
 	HO_PBUDGET_STR
-	"How often to check if we have a better cell (SACCH frames)")
+	"How often to check if we have a better cell (SACCH frames)\n"
+	"Interval\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_interval = atoi(argv[0]);
@@ -1345,7 +1260,8 @@ DEFUN(cfg_net_ho_pwr_interval, cfg_net_ho_pwr_interval_cmd,
 DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
       "handover power budget hysteresis <0-999>",
 	HO_PBUDGET_STR
-	"How many dB does a neighbor to be stronger to become a HO candidate")
+	"How many dB does a neighbor to be stronger to become a HO candidate\n"
+	"Hysteresis\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.pwr_hysteresis = atoi(argv[0]);
@@ -1355,7 +1271,8 @@ DEFUN(cfg_net_ho_pwr_hysteresis, cfg_net_ho_pwr_hysteresis_cmd,
 DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
       "handover maximum distance <0-9999>",
 	HANDOVER_STR
-	"How big is the maximum timing advance before HO is forced")
+	"How big is the maximum timing advance before HO is forced\n"
+	"Distance\n" "Number\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->handover.max_distance = atoi(argv[0]);
@@ -1365,7 +1282,10 @@ DEFUN(cfg_net_ho_max_distance, cfg_net_ho_max_distance_cmd,
 DEFUN(cfg_net_pag_any_tch,
       cfg_net_pag_any_tch_cmd,
       "paging any use tch (0|1)",
-      "Assign a TCH when receiving a Paging Any request")
+      "Assign a TCH when receiving a Paging Any request\n"
+      "Any Channel\n" "Use\n" "TCH\n"
+      "Do not use TCH for Paging Request Any\n"
+      "Do use TCH for Paging Request Any\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->pag_any_tch = atoi(argv[0]);
@@ -1378,7 +1298,7 @@ DEFUN(cfg_net_pag_any_tch,
       cfg_net_T##number##_cmd,					\
       "timer t" #number  " <0-65535>",				\
       "Configure GSM Timers\n"					\
-      doc)							\
+      doc "Timer Value\n")					\
 {								\
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);	\
 	int value = atoi(argv[0]);				\
@@ -1393,24 +1313,24 @@ DEFUN(cfg_net_pag_any_tch,
 	return CMD_SUCCESS;					\
 }
 
-DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.")
-DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.")
-DECLARE_TIMER(3105, "Currently not used.")
-DECLARE_TIMER(3107, "Currently not used.")
-DECLARE_TIMER(3109, "Currently not used.")
-DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.")
-DECLARE_TIMER(3113, "Set the time to try paging a subscriber.")
-DECLARE_TIMER(3115, "Currently not used.")
-DECLARE_TIMER(3117, "Currently not used.")
-DECLARE_TIMER(3119, "Currently not used.")
-DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT")
-DECLARE_TIMER(3141, "Currently not used.")
+DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.\n")
+DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.\n")
+DECLARE_TIMER(3105, "Currently not used.\n")
+DECLARE_TIMER(3107, "Currently not used.\n")
+DECLARE_TIMER(3109, "Currently not used.\n")
+DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.\n")
+DECLARE_TIMER(3113, "Set the time to try paging a subscriber.\n")
+DECLARE_TIMER(3115, "Currently not used.\n")
+DECLARE_TIMER(3117, "Currently not used.\n")
+DECLARE_TIMER(3119, "Currently not used.\n")
+DECLARE_TIMER(3122, "Waiting time (seconds) after IMM ASS REJECT\n")
+DECLARE_TIMER(3141, "Currently not used.\n")
 
 DEFUN(cfg_net_dtx,
       cfg_net_dtx_cmd,
       "dtx-used (0|1)",
       "Enable the usage of DTX.\n"
-      "DTX is enabled/disabled")
+      "DTX is disabled\n" "DTX is enabled\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	gsmnet->dtx_enabled = atoi(argv[0]);
@@ -1466,7 +1386,7 @@ DEFUN(cfg_bts,
 DEFUN(cfg_bts_type,
       cfg_bts_type_cmd,
       "type TYPE",
-      "Set the BTS type\n")
+      "Set the BTS type\n" "Type\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int rc;
@@ -1481,7 +1401,7 @@ DEFUN(cfg_bts_type,
 DEFUN(cfg_bts_band,
       cfg_bts_band_cmd,
       "band BAND",
-      "Set the frequency band of this BTS\n")
+      "Set the frequency band of this BTS\n" "Frequency band\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int band = gsm_band_parse(argv[0]);
@@ -1577,6 +1497,31 @@ DEFUN(cfg_bts_bsic,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_timezone,
+      cfg_bts_timezone_cmd,
+      "timezone <-19-19> (0|15|30|45)",
+      "Set the Timezone Offset of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int tzhr = atoi(argv[0]);
+	int tzmn = atoi(argv[1]);
+
+	bts->tzhr = tzhr;
+	bts->tzmn = tzmn;
+	bts->tz_bts_specific=1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_timezone,
+      cfg_bts_no_timezone_cmd,
+      "no timezone",
+      "disable bts specific timezone\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->tz_bts_specific=0;
+	return CMD_SUCCESS;
+}
 
 DEFUN(cfg_bts_unit_id,
       cfg_bts_unit_id_cmd,
@@ -1615,17 +1560,34 @@ DEFUN(cfg_bts_serno,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_nokia_site_skip_reset,
+      cfg_bts_nokia_site_skip_reset_cmd,
+      "nokia_site skip-reset (0|1)",
+      "Skip the reset step during bootstrap process of this BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	if (bts->type != GSM_BTS_TYPE_NOKIA_SITE) {
+		vty_out(vty, "%% BTS is not of Nokia *Site type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->nokia.skip_reset = atoi(argv[0]);
+
+	return CMD_SUCCESS;
+}
+
 #define OML_STR	"Organization & Maintenance Link\n"
 #define IPA_STR "ip.access Specific Options\n"
 
 DEFUN(cfg_bts_stream_id,
       cfg_bts_stream_id_cmd,
-      "oml ip.access stream_id <0-255>",
+      "oml ip.access stream_id <0-255> line E1_LINE",
 	OML_STR IPA_STR
       "Set the ip.access Stream ID of the OML link of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int stream_id = atoi(argv[0]);
+	int stream_id = atoi(argv[0]), linenr = atoi(argv[1]);
 
 	if (!is_ipaccess_bts(bts)) {
 		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
@@ -1633,6 +1595,27 @@ DEFUN(cfg_bts_stream_id,
 	}
 
 	bts->oml_tei = stream_id;
+	/* This is used by e1inp_bind_ops callback for each BTS model. */
+	bts->oml_e1_link.e1_nr = linenr;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_hsl_oml,
+      cfg_bts_hsl_oml_cmd,
+      "oml hsl line E1_LINE",
+      OML_STR "HSL femto Specific Options"
+      "Set OML link of this HSL femto BTS\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int linenr = atoi(argv[0]);
+
+	if (!(bts->type == GSM_BTS_TYPE_HSL_FEMTO)) {
+		vty_out(vty, "%% BTS is not of HSL type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts->oml_e1_link.e1_nr = linenr;
 
 	return CMD_SUCCESS;
 }
@@ -2678,10 +2661,6 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element_ve(&show_lchan_summary_cmd);
 	install_element_ve(&logging_fltr_imsi_cmd);
 
-	install_element_ve(&show_e1drv_cmd);
-	install_element_ve(&show_e1line_cmd);
-	install_element_ve(&show_e1ts_cmd);
-
 	install_element_ve(&show_paging_cmd);
 
 	logging_vty_add_cmds(cat);
@@ -2739,8 +2718,12 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_serno_cmd);
+	install_element(BTS_NODE, &cfg_bts_nokia_site_skip_reset_cmd);
 	install_element(BTS_NODE, &cfg_bts_stream_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_hsl_oml_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_cmd);
 	install_element(BTS_NODE, &cfg_bts_oml_e1_tei_cmd);
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);

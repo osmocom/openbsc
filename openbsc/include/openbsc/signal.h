@@ -40,14 +40,12 @@ enum signal_subsystems {
 	SS_LCHAN,
 	SS_SUBSCR,
 	SS_SCALL,
-	SS_GLOBAL,
 	SS_CHALLOC,
 	SS_NS,
 	SS_IPAC_NWL,
 	SS_RF,
 	SS_MSC,
 	SS_HO,
-	SS_INPUT,
 };
 
 /* SS_PAGING signals */
@@ -129,7 +127,6 @@ enum signal_ipaccess {
 };
 
 enum signal_global {
-	S_GLOBAL_SHUTDOWN,
 	S_GLOBAL_BTS_CLOSE_OM,
 };
 
@@ -138,16 +135,6 @@ enum signal_rf {
 	S_RF_OFF,
 	S_RF_ON,
 	S_RF_GRACE,
-};
-
-/* SS_INPUT signals */
-enum signal_input {
-	S_INP_NONE,
-	S_INP_TEI_UP,
-	S_INP_TEI_DN,
-	S_INP_LINE_INIT,
-	S_INP_LINE_ALARM,
-	S_INP_LINE_NOALARM,
 };
 
 struct gsm_subscriber;
@@ -258,14 +245,6 @@ enum signal_ho {
 struct ho_signal_data {
 	struct gsm_lchan *old_lchan;
 	struct gsm_lchan *new_lchan;
-};
-
-struct input_signal_data {
-	int link_type;
-	uint8_t tei;
-	uint8_t sapi;
-	struct gsm_bts_trx *trx;
-	struct e1inp_line *line;
 };
 
 #endif

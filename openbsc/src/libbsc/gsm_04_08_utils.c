@@ -44,7 +44,7 @@ int ipacc_rtp_direct = 1;
 static int gsm48_sendmsg(struct msgb *msg)
 {
 	if (msg->lchan)
-		msg->trx = msg->lchan->ts->trx;
+		msg->dst = msg->lchan->ts->trx->rsl_link;
 
 	msg->l3h = msg->data;
 	return rsl_data_request(msg, 0);
@@ -190,7 +190,7 @@ enum gsm_chan_t get_ctype_by_chreq(struct gsm_network *network, uint8_t ra)
 	return GSM_LCHAN_SDCCH;
 }
 
-enum gsm_chreq_reason_t get_reason_by_chreq(uint8_t ra, int neci)
+int get_reason_by_chreq(uint8_t ra, int neci)
 {
 	int i;
 	int length;

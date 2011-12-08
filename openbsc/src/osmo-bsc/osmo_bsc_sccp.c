@@ -81,7 +81,7 @@ static void msc_outgoing_sccp_state(struct sccp_connection *conn, int old_state)
 		con_data = (struct osmo_bsc_sccp_con *) conn->data_ctx;
 		if(con_data->conn) {
 			LOGP(DMSC, LOGL_ERROR,
-				"ERROR: The lchan is still associated\n.");
+				"ERROR: The lchan is still associated.\n");
 			gsm0808_clear(con_data->conn);
 			subscr_con_free(con_data->conn);
 			con_data->conn = NULL;
@@ -225,7 +225,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
 	bsc_con->sccp = sccp;
 	bsc_con->msc_con = net->msc_data->msc_con;
 	bsc_con->conn = conn;
-	llist_add(&bsc_con->entry, &active_connections);
+	llist_add_tail(&bsc_con->entry, &active_connections);
 	conn->sccp_con = bsc_con;
 	return 0;
 }

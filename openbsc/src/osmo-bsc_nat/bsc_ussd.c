@@ -32,6 +32,8 @@
 
 #include <osmocom/sccp/sccp.h>
 
+#include <osmocom/abis/ipa.h>
+
 #include <sys/socket.h>
 #include <string.h>
 #include <unistd.h>
@@ -97,12 +99,13 @@ static int forward_sccp(struct bsc_nat *nat, struct msgb *msg)
 
 static int ussd_read_cb(struct osmo_fd *bfd)
 {
-	int error;
 	struct bsc_nat_ussd_con *conn = bfd->data;
-	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct msgb *msg;
 	struct ipaccess_head *hh;
+	int ret;
 
-	if (!msg) {
+	ret = ipa_msg_recv(bfd->fd, &msg);
+	if (ret <= 0) {
 		LOGP(DNAT, LOGL_ERROR, "USSD Connection was lost.\n");
 		bsc_nat_ussd_destroy(conn);
 		return -1;

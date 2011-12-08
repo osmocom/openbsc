@@ -43,6 +43,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/misdn.h>
 #include <openbsc/signal.h>
+#include <osmocom/abis/e1_input.h>
 
 #define OM_ALLOC_SIZE		1024
 #define OM_HEADROOM_SIZE	128
@@ -113,15 +114,27 @@ static struct msgb *nm_msgb_alloc(void)
 				   "OML");
 }
 
+int _abis_nm_sendmsg(struct msgb *msg)
+{
+	msg->l2h = msg->data;
+
+	if (!msg->dst) {
+		LOGP(DNM, LOGL_ERROR, "%s: msg->dst == NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	return abis_sendmsg(msg);
+}
+
 /* Send a OML NM Message from BSC to BTS */
 static int abis_nm_queue_msg(struct gsm_bts *bts, struct msgb *msg)
 {
-	msg->trx = bts->c0;
+	msg->dst = bts->oml_link;
 
 	/* queue OML messages */
 	if (llist_empty(&bts->abis_queue) && !bts->abis_nm_pend) {
 		bts->abis_nm_pend = OBSC_NM_W_ACK_CB(msg);
-		return _abis_nm_sendmsg(msg, 0);
+		return _abis_nm_sendmsg(msg);
 	} else {
 		msgb_enqueue(&bts->abis_queue, msg);
 		return 0;
@@ -186,7 +199,8 @@ static int abis_nm_rx_statechg_rep(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
-	struct gsm_bts *bts = mb->trx->bts;
+	struct e1inp_sign_link *sign_link = mb->dst;
+	struct gsm_bts *bts = sign_link->trx->bts;
 	struct tlv_parsed tp;
 	struct gsm_nm_state *nm_state, new_state;
 
@@ -260,13 +274,14 @@ static int rx_fail_evt_rep(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 	const uint8_t *p_val;
 	char *p_text;
 
 	LOGPC(DNM, LOGL_ERROR, "Failure Event Report ");
 	
-	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	if (TLVP_PRESENT(&tp, NM_ATT_EVENT_TYPE))
 		LOGPC(DNM, LOGL_ERROR, "Type=%s ",
@@ -391,6 +406,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 	const uint8_t *sw_config;
 	int ret, sw_config_len, sw_descr_len;
@@ -401,13 +417,13 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 
 	DEBUGP(DNM, "Software Activate Request, ACKing and Activating\n");
 
-	ret = abis_nm_sw_act_req_ack(mb->trx->bts, foh->obj_class,
+	ret = abis_nm_sw_act_req_ack(sign_link->trx->bts, foh->obj_class,
 				      foh->obj_inst.bts_nr,
 				      foh->obj_inst.trx_nr,
 				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
 
-	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
 	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
 	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
@@ -422,7 +438,7 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	if (sw_descr_len < 0)
 		return -EINVAL;
 
-	return ipacc_sw_activate(mb->trx->bts, foh->obj_class,
+	return ipacc_sw_activate(sign_link->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
@@ -434,26 +450,28 @@ static int abis_nm_rx_chg_adm_state_ack(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 	uint8_t adm_state;
 
-	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (!TLVP_PRESENT(&tp, NM_ATT_ADM_STATE))
 		return -EINVAL;
 
 	adm_state = *TLVP_VAL(&tp, NM_ATT_ADM_STATE);
 
-	return update_admstate(mb->trx->bts, foh->obj_class, &foh->obj_inst, adm_state);
+	return update_admstate(sign_link->trx->bts, foh->obj_class, &foh->obj_inst, adm_state);
 }
 
 static int abis_nm_rx_lmt_event(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 
 	DEBUGP(DNM, "LMT Event ");
-	abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 	if (TLVP_PRESENT(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) &&
 	    TLVP_LEN(&tp, NM_ATT_BS11_LMT_LOGON_SESSION) >= 1) {
 		uint8_t onoff = *TLVP_VAL(&tp, NM_ATT_BS11_LMT_LOGON_SESSION);
@@ -474,7 +492,7 @@ static int abis_nm_rx_lmt_event(struct msgb *mb)
 	return 0;
 }
 
-static void abis_nm_queue_send_next(struct gsm_bts *bts)
+void abis_nm_queue_send_next(struct gsm_bts *bts)
 {
 	int wait = 0;
 	struct msgb *msg;
@@ -482,7 +500,7 @@ static void abis_nm_queue_send_next(struct gsm_bts *bts)
 	while (!llist_empty(&bts->abis_queue)) {
 		msg = msgb_dequeue(&bts->abis_queue);
 		wait = OBSC_NM_W_ACK_CB(msg);
-		_abis_nm_sendmsg(msg, 0);
+		_abis_nm_sendmsg(msg);
 
 		if (wait)
 			break;
@@ -496,6 +514,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	uint8_t mt = foh->msg_type;
 	int ret = 0;
 
@@ -514,7 +533,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		DEBUGPC(DNM, "%s NACK ", abis_nm_nack_name(mt));
 
-		abis_nm_tlv_parse(&tp, mb->trx->bts, foh->data, oh->length-sizeof(*foh));
+		abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 		if (TLVP_PRESENT(&tp, NM_ATT_NACK_CAUSES))
 			DEBUGPC(DNM, "CAUSE=%s\n",
 				abis_nm_nack_cause_name(*TLVP_VAL(&tp, NM_ATT_NACK_CAUSES)));
@@ -524,7 +543,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		nack_data.msg = mb;
 		nack_data.mt = mt;
 		osmo_signal_dispatch(SS_NM, S_NM_NACK, &nack_data);
-		abis_nm_queue_send_next(mb->trx->bts);
+		abis_nm_queue_send_next(sign_link->trx->bts);
 		return 0;
 	}
 #if 0
@@ -565,13 +584,13 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 		break;
 	case NM_MT_SET_BTS_ATTR_ACK:
 		/* The HSL wants an OPSTART _after_ the SI has been set */
-		if (mb->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
-			abis_nm_opstart(mb->trx->bts, NM_OC_BTS, 255, 255, 255);
+		if (sign_link->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO) {
+			abis_nm_opstart(sign_link->trx->bts, NM_OC_BTS, 255, 255, 255);
 		}
 		break;
 	}
 
-	abis_nm_queue_send_next(mb->trx->bts);
+	abis_nm_queue_send_next(sign_link->trx->bts);
 	return ret;
 }
 
@@ -580,12 +599,13 @@ static int abis_nm_rx_ipacc(struct msgb *mb);
 static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 {
 	int rc;
-	int bts_type = mb->trx->bts->type;
+	struct e1inp_sign_link *sign_link = mb->dst;
+	int bts_type = sign_link->trx->bts->type;
 
 	switch (bts_type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		rc = abis_nm_rx_ipacc(mb);
-		abis_nm_queue_send_next(mb->trx->bts);
+		abis_nm_queue_send_next(sign_link->trx->bts);
 		break;
 	default:
 		LOGP(DNM, LOGL_ERROR, "don't know how to parse OML for this "
@@ -1006,6 +1026,7 @@ static int sw_fill_window(struct abis_nm_sw *sw)
 static int abis_nm_rcvmsg_sw(struct msgb *mb)
 {
 	struct abis_om_fom_hdr *foh = msgb_l3(mb);
+	struct e1inp_sign_link *sign_link = mb->dst;
 	int rc = -1;
 	struct abis_nm_sw *sw = &g_sw;
 	enum sw_state old_state = sw->state;
@@ -1023,7 +1044,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 					 sw->cb_data, NULL);
 			rc = sw_fill_window(sw);
 			sw->state = SW_STATE_WAIT_SEGACK;
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		case NM_MT_LOAD_INIT_NACK:
 			if (sw->forced) {
@@ -1044,7 +1065,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 						 sw->cb_data, NULL);
 				sw->state = SW_STATE_ERROR;
 			}
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		}
 		break;
@@ -1065,7 +1086,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->state = SW_STATE_WAIT_ENDACK;
 				rc = sw_load_end(sw);
 			}
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		case NM_MT_LOAD_ABORT:
 			if (sw->cbfn)
@@ -1087,7 +1108,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 					 NM_MT_LOAD_END_ACK, mb,
 					 sw->cb_data, NULL);
 			rc = 0;
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		case NM_MT_LOAD_END_NACK:
 			if (sw->forced) {
@@ -1107,7 +1128,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 						 NM_MT_LOAD_END_NACK, mb,
 						 sw->cb_data, NULL);
 			}
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		}
 	case SW_STATE_WAIT_ACTACK:
@@ -1121,7 +1142,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_ACTIVATE_SW_ACK, mb,
 					 sw->cb_data, NULL);
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		case NM_MT_ACTIVATE_SW_NACK:
 			DEBUGP(DNM, "Activate Software NACK\n");
@@ -1131,7 +1152,7 @@ static int abis_nm_rcvmsg_sw(struct msgb *mb)
 				sw->cbfn(GSM_HOOK_NM_SWLOAD,
 					 NM_MT_ACTIVATE_SW_NACK, mb,
 					 sw->cb_data, NULL);
-			abis_nm_queue_send_next(mb->trx->bts);
+			abis_nm_queue_send_next(sign_link->trx->bts);
 			break;
 		}
 	case SW_STATE_NONE:
@@ -2281,6 +2302,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	uint8_t idstrlen = oh->data[0];
 	struct tlv_parsed tp;
 	struct ipacc_ack_signal_data signal;
+	struct e1inp_sign_link *sign_link = msg->dst;
 
 	if (strncmp((char *)&oh->data[1], ipaccess_magic, idstrlen)) {
 		LOGP(DNM, LOGL_ERROR, "id string is not com.ipaccess !?!\n");
@@ -2288,7 +2310,7 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	}
 
 	foh = (struct abis_om_fom_hdr *) (oh->data + 1 + idstrlen);
-	abis_nm_tlv_parse(&tp, msg->trx->bts, foh->data, oh->length-sizeof(*foh));
+	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 
 	abis_nm_debugp_foh(DNM, foh);
 
@@ -2365,12 +2387,12 @@ static int abis_nm_rx_ipacc(struct msgb *msg)
 	case NM_MT_IPACC_RSL_CONNECT_NACK:
 	case NM_MT_IPACC_SET_NVATTR_NACK:
 	case NM_MT_IPACC_GET_NVATTR_NACK:
-		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
+		signal.trx = gsm_bts_trx_by_nr(sign_link->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		osmo_signal_dispatch(SS_NM, S_NM_IPACC_NACK, &signal);
 		break;
 	case NM_MT_IPACC_SET_NVATTR_ACK:
-		signal.trx = gsm_bts_trx_by_nr(msg->trx->bts, foh->obj_inst.trx_nr);
+		signal.trx = gsm_bts_trx_by_nr(sign_link->trx->bts, foh->obj_inst.trx_nr);
 		signal.msg_type = foh->msg_type;
 		osmo_signal_dispatch(SS_NM, S_NM_IPACC_ACK, &signal);
 		break;

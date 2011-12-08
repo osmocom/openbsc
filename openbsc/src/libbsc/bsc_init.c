@@ -33,6 +33,8 @@
 #include <openbsc/chan_alloc.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/ipaccess.h>
+#include <osmocom/gsm/sysinfo.h>
+#include <openbsc/e1_config.h>
 
 /* global pointer to the gsm network data structure */
 extern struct gsm_network *bsc_gsmnet;
@@ -45,16 +47,21 @@ static int oml_msg_nack(struct nm_nack_signal_data *nack)
 
 	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
 
-		LOGP(DNM, LOGL_FATAL, "Failed to set BTS attributes. That is fatal. "
+		LOGP(DNM, LOGL_ERROR, "Failed to set BTS attributes. That is fatal. "
 				"Was the bts type and frequency properly specified?\n");
-		exit(-1);
+		goto drop_bts;
 	} else {
 		LOGP(DNM, LOGL_ERROR, "Got a NACK going to drop the OML links.\n");
-		for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
-			struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
-			if (is_ipaccess_bts(bts))
-				ipaccess_drop_oml(bts);
-		}
+		goto drop_bts;
+	}
+
+	return 0;
+
+drop_bts:
+	for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
+		struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
+		if (is_ipaccess_bts(bts))
+			ipaccess_drop_oml(bts);
 	}
 
 	return 0;
@@ -82,7 +89,7 @@ int bsc_shutdown_net(struct gsm_network *net)
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		LOGP(DNM, LOGL_NOTICE, "shutting down OML for BTS %u\n", bts->nr);
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_GLOBAL_BTS_CLOSE_OM, bts);
 	}
 
 	return 0;
@@ -249,7 +256,18 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
 		bsc_gsmnet->network_code, trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
+
+	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
+		rsl_nokia_si_begin(trx);
+	}
+
 	set_system_infos(trx);
+
+	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
+		/* channel unspecific, power reduction in 2 dB steps */
+		rsl_bs_power_control(trx, 0xFF, trx->max_power_red / 2);
+		rsl_nokia_si_end(trx);
+	}
 
 	for (i = 0; i < ARRAY_SIZE(trx->ts); i++)
 		generate_ma_for_ts(&trx->ts[i]);
@@ -263,16 +281,34 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	struct gsm_bts_trx *trx = isd->trx;
 	int ts_no, lchan_no;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return -EINVAL;
 
 	switch (signal) {
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
+		if (isd->link_type == E1INP_SIGN_OML) {
+			/* TODO: this is required for the Nokia BTS, hopping is configured
+			   during OML, other MA is not set.  */
+			struct gsm_bts_trx *cur_trx;
+			/* was static in system_information.c */
+			extern int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts);
+			uint8_t ca[20];
+			/* has to be called before generate_ma_for_ts to
+			  set bts->si_common.cell_alloc */
+			generate_cell_chan_list(ca, trx->bts);
+
+			llist_for_each_entry(cur_trx, &trx->bts->trx_list, list) {
+				int i;
+
+				for (i = 0; i < ARRAY_SIZE(cur_trx->ts); i++)
+					generate_ma_for_ts(&cur_trx->ts[i]);
+			}
+		}
 		if (isd->link_type == E1INP_SIGN_RSL)
 			bootstrap_rsl(trx);
 		break;
-	case S_INP_TEI_DN:
-		LOGP(DMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
+	case S_L_INP_TEI_DN:
+		LOGP(DLMI, LOGL_ERROR, "Lost some E1 TEI link: %d %p\n", isd->link_type, trx);
 
 		if (isd->link_type == E1INP_SIGN_OML)
 			osmo_counter_inc(trx->bts->network->stats.bts.oml_fail);
@@ -440,7 +476,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 		return rc;
 
 	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 
 	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
 		rc = bootstrap_bts(bts);
@@ -448,14 +484,7 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 			LOGP(DNM, LOGL_FATAL, "Error bootstrapping BTS\n");
 			return rc;
 		}
-		switch (bts->type) {
-		case GSM_BTS_TYPE_NANOBTS:
-		case GSM_BTS_TYPE_HSL_FEMTO:
-			break;
-		default:
-			rc = e1_reconfig_bts(bts);
-			break;
-		}
+		rc = e1_reconfig_bts(bts);
 		if (rc < 0) {
 			LOGP(DNM, LOGL_FATAL, "Error enabling E1 input driver\n");
 			return rc;

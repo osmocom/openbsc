@@ -25,16 +25,22 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_nm.h>
-#include <openbsc/e1_input.h>
+#include <osmocom/abis/e1_input.h>
 #include <openbsc/signal.h>
 
 static int bts_model_bs11_start(struct gsm_network *net);
+
+static void bts_model_bs11_e1line_bind_ops(struct e1inp_line *line)
+{
+	e1inp_line_bind_ops(line, &bts_isdn_e1inp_line_ops);
+}
 
 static struct gsm_bts_model model_bs11 = {
 	.type = GSM_BTS_TYPE_BS11,
 	.name = "bs11",
 	.start = bts_model_bs11_start,
 	.oml_rcvmsg = &abis_nm_rcvmsg,
+	.e1line_bind_ops = bts_model_bs11_e1line_bind_ops,
 	.nm_att_tlvdef = {
 		.def = {
 			[NM_ATT_AVAIL_STATUS] =		{ TLV_TYPE_TLV },
@@ -542,7 +548,7 @@ static int gbl_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct gsm_bts *bts;
 
-	if (subsys != SS_GLOBAL)
+	if (subsys != SS_L_GLOBAL)
 		return 0;
 
 	switch (signal) {
@@ -562,11 +568,11 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct input_signal_data *isd = signal_data;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return 0;
 
 	switch (signal) {
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type == GSM_BTS_TYPE_BS11)
@@ -586,8 +592,8 @@ static int bts_model_bs11_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HOPPING);
 	gsm_btsmodel_set_feature(&model_bs11, BTS_FEAT_HSCSD);
 
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
-	osmo_signal_register_handler(SS_GLOBAL, gbl_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_GLOBAL, gbl_sig_cb, NULL);
 
 	return 0;
 }

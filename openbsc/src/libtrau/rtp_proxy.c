@@ -35,6 +35,7 @@
 #include <openbsc/debug.h>
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/mncc.h>
+#include <openbsc/trau_upqueue.h>
 
 /* attempt to determine byte order */
 #include <sys/param.h>
@@ -111,25 +112,25 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	int x_len;
 
 	if (msg->len < 12) {
-		DEBUGPC(DMUX, "received RTP frame too short (len = %d)\n",
+		DEBUGPC(DLMUX, "received RTP frame too short (len = %d)\n",
 			msg->len);
 		return -EINVAL;
 	}
 	if (rtph->version != RTP_VERSION) {
-		DEBUGPC(DMUX, "received RTP version %d not supported.\n",
+		DEBUGPC(DLMUX, "received RTP version %d not supported.\n",
 			rtph->version);
 		return -EINVAL;
 	}
 	payload = msg->data + sizeof(struct rtp_hdr) + (rtph->csrc_count << 2);
 	payload_len = msg->len - sizeof(struct rtp_hdr) - (rtph->csrc_count << 2);
 	if (payload_len < 0) {
-		DEBUGPC(DMUX, "received RTP frame too short (len = %d, "
+		DEBUGPC(DLMUX, "received RTP frame too short (len = %d, "
 			"csrc count = %d)\n", msg->len, rtph->csrc_count);
 		return -EINVAL;
 	}
 	if (rtph->extension) {
 		if (payload_len < sizeof(struct rtp_x_hdr)) {
-			DEBUGPC(DMUX, "received RTP frame too short for "
+			DEBUGPC(DLMUX, "received RTP frame too short for "
 				"extension header\n");
 			return -EINVAL;
 		}
@@ -138,20 +139,20 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		payload += x_len;
 		payload_len -= x_len;
 		if (payload_len < 0) {
-			DEBUGPC(DMUX, "received RTP frame too short, "
+			DEBUGPC(DLMUX, "received RTP frame too short, "
 				"extension header exceeds frame length\n");
 			return -EINVAL;
 		}
 	}
 	if (rtph->padding) {
 		if (payload_len < 0) {
-			DEBUGPC(DMUX, "received RTP frame too short for "
+			DEBUGPC(DLMUX, "received RTP frame too short for "
 				"padding length\n");
 			return -EINVAL;
 		}
 		payload_len -= payload[payload_len - 1];
 		if (payload_len < 0) {
-			DEBUGPC(DMUX, "received RTP frame with padding "
+			DEBUGPC(DLMUX, "received RTP frame with padding "
 				"greater than payload\n");
 			return -EINVAL;
 		}
@@ -161,7 +162,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	case RTP_PT_GSM_FULL:
 		msg_type = GSM_TCHF_FRAME;
 		if (payload_len != 33) {
-			DEBUGPC(DMUX, "received RTP full rate frame with "
+			DEBUGPC(DLMUX, "received RTP full rate frame with "
 				"payload length != 32 (len = %d)\n",
 				payload_len);
 			return -EINVAL;
@@ -171,7 +172,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		msg_type = GSM_TCHF_FRAME_EFR;
 		break;
 	default:
-		DEBUGPC(DMUX, "received RTP frame with unknown payload "
+		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
 			"type %d\n", rtph->payload_type);
 		return -EINVAL;
 	}
@@ -235,7 +236,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		duration = 160;
 		break;
 	default:
-		DEBUGPC(DMUX, "unsupported message type %d\n",
+		DEBUGPC(DLMUX, "unsupported message type %d\n",
 			frame->msg_type);
 		return -EINVAL;
 	}
@@ -254,7 +255,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		if (abs(frame_diff) > 1) {
 			long int frame_diff_excess = frame_diff - 1;
 
-			LOGP(DMUX, LOGL_NOTICE,
+			LOGP(DLMUX, LOGL_NOTICE,
 				"Correcting frame difference of %ld frames\n", frame_diff_excess);
 			rs->transmit.sequence += frame_diff_excess;
 			rs->transmit.timestamp += frame_diff_excess * duration;
@@ -355,7 +356,7 @@ static int rtcp_mangle(struct msgb *msg, struct rtp_socket *rs)
 	while ((void *)rtph + sizeof(*rtph) <= (void *)msg->data + msg->len) {
 		old_len = (ntohs(rtph->length) + 1) * 4;
 		if ((void *)rtph + old_len > (void *)msg->data + msg->len) {
-			DEBUGPC(DMUX, "received RTCP packet too short for "
+			DEBUGPC(DLMUX, "received RTCP packet too short for "
 				"length element\n");
 			return -EINVAL;
 		}
@@ -471,7 +472,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 
 	written = write(rss->bfd.fd, msg->data, msg->len);
 	if (written < msg->len) {
-		LOGP(DMIB, LOGL_ERROR, "short write");
+		LOGP(DLMIB, LOGL_ERROR, "short write");
 		msgb_free(msg);
 		return -EIO;
 	}
@@ -523,7 +524,7 @@ struct rtp_socket *rtp_socket_create(void)
 	int rc;
 	struct rtp_socket *rs;
 
-	DEBUGP(DMUX, "rtp_socket_create(): ");
+	DEBUGP(DLMUX, "rtp_socket_create(): ");
 
 	rs = talloc_zero(tall_bsc_ctx, struct rtp_socket);
 	if (!rs)
@@ -550,7 +551,7 @@ struct rtp_socket *rtp_socket_create(void)
 	if (rc < 0)
 		goto out_rtcp_socket;
 
-	DEBUGPC(DMUX, "success\n");
+	DEBUGPC(DLMUX, "success\n");
 
 	rc = rtp_socket_bind(rs, INADDR_ANY);
 	if (rc < 0)
@@ -568,7 +569,7 @@ out_rtp_socket:
 	close(rs->rtp.bfd.fd);
 out_free:
 	talloc_free(rs);
-	DEBUGPC(DMUX, "failed\n");
+	DEBUGPC(DLMUX, "failed\n");
 	return NULL;
 }
 
@@ -604,7 +605,7 @@ int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
 	struct in_addr ia;
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DMUX, "rtp_socket_bind(rs=%p, IP=%s): ", rs,
+	DEBUGP(DLMUX, "rtp_socket_bind(rs=%p, IP=%s): ", rs,
 		inet_ntoa(ia));
 
 	/* try to bind to a consecutive pair of ports */
@@ -619,12 +620,12 @@ int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
 			break;
 	}
 	if (rc < 0) {
-		DEBUGPC(DMUX, "failed\n");
+		DEBUGPC(DLMUX, "failed\n");
 		return rc;
 	}
 
 	ia.s_addr = rs->rtp.sin_local.sin_addr.s_addr;
-	DEBUGPC(DMUX, "BOUND_IP=%s, BOUND_PORT=%u\n",
+	DEBUGPC(DLMUX, "BOUND_IP=%s, BOUND_PORT=%u\n",
 		inet_ntoa(ia), ntohs(rs->rtp.sin_local.sin_port));
 	return ntohs(rs->rtp.sin_local.sin_port);
 }
@@ -655,7 +656,7 @@ int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 	struct in_addr ia;
 
 	ia.s_addr = htonl(ip);
-	DEBUGP(DMUX, "rtp_socket_connect(rs=%p, ip=%s, port=%u)\n",
+	DEBUGP(DLMUX, "rtp_socket_connect(rs=%p, ip=%s, port=%u)\n",
 		rs, inet_ntoa(ia), port);
 
 	rc = rtp_sub_socket_connect(&rs->rtp, ip, port);
@@ -668,7 +669,7 @@ int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 /* bind two RTP/RTCP sockets together */
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 {
-	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, other=%p)\n",
+	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, other=%p)\n",
 		this, other);
 
 	this->rx_action = RTP_PROXY;
@@ -684,7 +685,7 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
 			uint32_t callref)
 {
-	DEBUGP(DMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
+	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, callref=%u)\n",
 		this, callref);
 
 	if (callref) {
@@ -707,7 +708,7 @@ static void free_tx_queue(struct rtp_sub_socket *rss)
 
 int rtp_socket_free(struct rtp_socket *rs)
 {
-	DEBUGP(DMUX, "rtp_socket_free(rs=%p)\n", rs);
+	DEBUGP(DLMUX, "rtp_socket_free(rs=%p)\n", rs);
 
 	/* make sure we don't leave references dangling to us */
 	if (rs->rx_action == RTP_PROXY &&

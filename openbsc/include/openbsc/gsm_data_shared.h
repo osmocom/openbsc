@@ -1,6 +1,7 @@
 #ifndef _GSM_DATA_SHAREDH
 #define _GSM_DATA_SHAREDH
 
+#include <regex.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -15,6 +16,8 @@
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+
+#include <osmocom/abis/e1_input.h>
 
 struct osmo_msc_data;
 struct osmo_bsc_sccp_con;
@@ -74,6 +77,7 @@ enum bts_gprs_mode {
 struct gsm_lchan;
 struct gsm_subscriber;
 struct gsm_mncc;
+struct osmo_rtp_socket;
 struct rtp_socket;
 struct bsc_api;
 
@@ -131,6 +135,17 @@ struct bts_ul_meas {
 	/* RSSI in dBm * -1 */
 	uint8_t inv_rssi;
 };
+
+struct amr_mode {
+	uint8_t mode;
+	uint8_t threshold;
+	uint8_t hysteresis;
+};
+struct amr_multirate_conf {
+	uint8_t gsm48_ie[2];
+	struct amr_mode mode[4];
+	uint8_t num_modes;
+};
 /* /BTS ONLY */
 
 struct gsm_lchan {
@@ -173,7 +188,11 @@ struct gsm_lchan {
 		uint8_t rtp_payload;
 		uint8_t rtp_payload2;
 		uint8_t speech_mode;
+#ifdef ROLE_BSC
 		struct rtp_socket *rtp_socket;
+#else
+		struct osmo_rtp_socket *rtp_socket;
+#endif
 	} abis_ip;
 
 	uint8_t rqd_ta;
@@ -182,6 +201,7 @@ struct gsm_lchan {
 	struct osmo_timer_list T3101;
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
+	struct osmo_timer_list act_timer;
 
 	/* table of neighbor cell measurements */
 	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];
@@ -199,6 +219,7 @@ struct gsm_lchan {
 	void *silent_call_data;
 #else
 	struct lapdm_channel lapdm_ch;
+	struct llist_head dl_tch_queue;
 	struct {
 		/* bitmask of all SI that are present/valid in si_buf */
 		uint32_t valid;
@@ -224,17 +245,14 @@ struct gsm_lchan {
 			uint8_t rxqual_sub;
 		} res;
 	} meas;
+	struct {
+		struct amr_multirate_conf amr_mr;
+		struct {
+			uint8_t buf[16];
+			uint8_t len;
+		} last_sid;
+	} tch;
 #endif
-};
-
-
-struct gsm_e1_subslot {
-	/* Number of E1 link */
-	uint8_t	e1_nr;
-	/* Number of E1 TS inside E1 link */
-	uint8_t	e1_ts;
-	/* Sub-slot within the E1 TS, 0xff if full TS */
-	uint8_t	e1_ts_ss;
 };
 
 #define TS_F_PDCH_MODE	0x1000
@@ -328,6 +346,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_NANOBTS,
 	GSM_BTS_TYPE_RBS2000,
 	GSM_BTS_TYPE_HSL_FEMTO,
+	GSM_BTS_TYPE_NOKIA_SITE,
 };
 
 struct vty;
@@ -341,6 +360,8 @@ struct gsm_bts_model {
 	bool started;
 	int (*start)(struct gsm_network *net);
 	int (*oml_rcvmsg)(struct msgb *msg);
+
+	void (*e1line_bind_ops)(struct e1inp_line *line);
 
 	void (*config_write_bts)(struct vty *vty, struct gsm_bts *bts);
 	void (*config_write_trx)(struct vty *vty, struct gsm_bts_trx *trx);
@@ -455,6 +476,11 @@ struct gsm_bts {
 	/* buffers where we put the pre-computed SI */
 	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 
+	/* TimeZone hours, mins, and bts specific */
+	int tzhr;
+	int tzmn;
+	int tz_bts_specific;
+
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
 		struct {
@@ -490,6 +516,14 @@ struct gsm_bts {
 		struct {
 			unsigned long serno;
 		} hsl;
+		struct {
+			uint8_t bts_type;
+			int configured:1,
+			    skip_reset:1,
+			    did_reset:1,
+			    wait_reset:1;
+			struct osmo_timer_list reset_timer;
+		} nokia;
 	};
 
 	/* Not entirely sure how ip.access specific this is */
@@ -559,15 +593,15 @@ struct gsm_bts {
 struct gsm_bts *gsm_bts_alloc(void *talloc_ctx);
 struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts);
 
-struct gsm_bts_trx *gsm_bts_trx_num(struct gsm_bts *bts, int num);
+struct gsm_bts_trx *gsm_bts_trx_num(const struct gsm_bts *bts, int num);
 
 const char *gsm_pchan_name(enum gsm_phys_chan_config c);
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name);
 const char *gsm_lchant_name(enum gsm_chan_t c);
 const char *gsm_chreq_name(enum gsm_chreq_reason_t c);
-char *gsm_trx_name(struct gsm_bts_trx *trx);
-char *gsm_ts_name(struct gsm_bts_trx_ts *ts);
-char *gsm_lchan_name(struct gsm_lchan *lchan);
+char *gsm_trx_name(const struct gsm_bts_trx *trx);
+char *gsm_ts_name(const struct gsm_bts_trx_ts *ts);
+char *gsm_lchan_name(const struct gsm_lchan *lchan);
 const char *gsm_lchans_name(enum gsm_lchan_state s);
 
 
@@ -575,19 +609,27 @@ void gsm_abis_mo_reset(struct gsm_abis_mo *mo);
 
 struct gsm_abis_mo *
 gsm_objclass2mo(struct gsm_bts *bts, uint8_t obj_class,
-	    struct abis_om_obj_inst *obj_inst);
+	    const struct abis_om_obj_inst *obj_inst);
 
 struct gsm_nm_state *
 gsm_objclass2nmstate(struct gsm_bts *bts, uint8_t obj_class,
-		 struct abis_om_obj_inst *obj_inst);
+		 const struct abis_om_obj_inst *obj_inst);
 void *
 gsm_objclass2obj(struct gsm_bts *bts, uint8_t obj_class,
-	     struct abis_om_obj_inst *obj_inst);
+	     const struct abis_om_obj_inst *obj_inst);
 
 /* reset the state of all MO in the BTS */
 void gsm_bts_mo_reset(struct gsm_bts *bts);
 
 uint8_t gsm_ts2chan_nr(const struct gsm_bts_trx_ts *ts, uint8_t lchan_nr);
 uint8_t gsm_lchan2chan_nr(const struct gsm_lchan *lchan);
+
+/*
+ * help with parsing regexps
+ */
+int gsm_parse_reg(void *ctx, regex_t *reg, char **str,
+		int argc, const char **argv) __attribute__ ((warn_unused_result));
+
+
 
 #endif

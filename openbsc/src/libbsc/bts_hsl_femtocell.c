@@ -28,13 +28,18 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/signal.h>
-#include <openbsc/e1_input.h>
+#include <openbsc/debug.h>
+#include <osmocom/core/logging.h>
+#include <osmocom/abis/e1_input.h>
+#include <osmocom/abis/ipaccess.h>
 
 static int bts_model_hslfemto_start(struct gsm_network *net);
+static void bts_model_hslfemto_e1line_bind_ops(struct e1inp_line *line);
 
 static struct gsm_bts_model model_hslfemto = {
 	.type = GSM_BTS_TYPE_HSL_FEMTO,
 	.start = bts_model_hslfemto_start,
+	.e1line_bind_ops = &bts_model_hslfemto_e1line_bind_ops,
 	.nm_att_tlvdef = {
 		.def = {
 			/* no HSL specific OML attributes that we know of */
@@ -98,20 +103,20 @@ static int hslfemto_bootstrap_om(struct gsm_bts *bts)
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(l1_msg));
 	memcpy(msg->data, l1_msg, sizeof(l1_msg));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 
 #if 1
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(conn_trau_msg));
 	memcpy(msg->data, conn_trau_msg, sizeof(conn_trau_msg));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 #endif
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(conn_trau_msg2));
 	memcpy(msg->data, conn_trau_msg2, sizeof(conn_trau_msg2));
-	msg->trx = bts->c0;
+	msg->dst = bts->c0->rsl_link;
 	abis_rsl_sendmsg(msg);
 
 	*((uint16_t *)oml_arfcn_bsic+10) = htons(bts->c0->arfcn);
@@ -120,8 +125,8 @@ static int hslfemto_bootstrap_om(struct gsm_bts *bts)
 	msg = hsl_alloc_msgb();
 	cur = msgb_put(msg, sizeof(oml_arfcn_bsic));
 	memcpy(msg->data, oml_arfcn_bsic, sizeof(oml_arfcn_bsic));
-	msg->trx = bts->c0;
-	_abis_nm_sendmsg(msg, 0);
+	msg->dst = bts->c0->rsl_link;
+	abis_sendmsg(msg);
 
 	/* Delay the OPSTART until after SI have been set via RSL */
 	//abis_nm_opstart(bts, NM_OC_BTS, 255, 255, 255);
@@ -135,11 +140,11 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 {
 	struct input_signal_data *isd = signal_data;
 
-	if (subsys != SS_INPUT)
+	if (subsys != SS_L_INPUT)
 		return 0;
 
 	switch (signal) {
-	case S_INP_TEI_UP:
+	case S_L_INP_TEI_UP:
 		switch (isd->link_type) {
 		case E1INP_SIGN_OML:
 			if (isd->trx->bts->type == GSM_BTS_TYPE_HSL_FEMTO)
@@ -151,6 +156,8 @@ static int inp_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static struct gsm_network *hsl_gsmnet;
+
 static int bts_model_hslfemto_start(struct gsm_network *net)
 {
 	model_hslfemto.features.data = &model_hslfemto._features_data[0];
@@ -159,13 +166,147 @@ static int bts_model_hslfemto_start(struct gsm_network *net)
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_GPRS);
 	gsm_btsmodel_set_feature(&model_hslfemto, BTS_FEAT_EGPRS);
 
-	osmo_signal_register_handler(SS_INPUT, inp_sig_cb, NULL);
+	osmo_signal_register_handler(SS_L_INPUT, inp_sig_cb, NULL);
 
-	/* Call A-bis input driver, start socket for OML and RSL. */
-	return hsl_setup(net);
+	hsl_gsmnet = net;
+	return 0;
 }
 
 int bts_model_hslfemto_init(void)
 {
 	return gsm_bts_model_register(&model_hslfemto);
+}
+
+#define OML_UP		0x0001
+#define RSL_UP		0x0002
+
+struct gsm_bts *find_bts_by_serno(struct gsm_network *net, uint64_t serno)
+{
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (bts->type != GSM_BTS_TYPE_HSL_FEMTO)
+			continue;
+
+		if (serno == bts->hsl.serno)
+			return bts;
+	}
+	return NULL;
+}
+
+/* This function is called once the OML/RSL link becomes up. */
+static struct e1inp_sign_link *
+hsl_sign_link_up(void *unit_data, struct e1inp_line *line,
+		 enum e1inp_sign_type type)
+{
+	struct hsl_unit *dev = unit_data;
+	struct gsm_bts *bts;
+
+	bts = find_bts_by_serno(hsl_gsmnet, dev->serno);
+	if (!bts) {
+		LOGP(DLINP, LOGL_ERROR, "Unable to find BTS config for "
+				"serial number %lx\n", dev->serno);
+		return NULL;
+	}
+	DEBUGP(DLINP, "Identified HSL BTS Serial Number %lx\n", dev->serno);
+
+	/* we shouldn't hardcode it, but HSL femto also hardcodes it... */
+	bts->oml_tei = 255;
+	bts->c0->rsl_tei = 0;
+	bts->oml_link = e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
+					       E1INP_SIGN_OML, bts->c0,
+					       bts->oml_tei, 0);
+	bts->c0->rsl_link = e1inp_sign_link_create(&line->ts[E1INP_SIGN_OML-1],
+						   E1INP_SIGN_RSL, bts->c0,
+						   bts->c0->rsl_tei, 0);
+	e1inp_event(&line->ts[E1INP_SIGN_OML-1], S_L_INP_TEI_UP, 255, 0);
+	e1inp_event(&line->ts[E1INP_SIGN_OML-1], S_L_INP_TEI_UP, 0, 0);
+	bts->ip_access.flags |= OML_UP;
+	bts->ip_access.flags |= (RSL_UP << 0);
+
+	return bts->oml_link;
+}
+
+void hsl_drop_oml(struct gsm_bts *bts)
+{
+	struct e1inp_line *line;
+
+	if (!bts->oml_link)
+		return;
+
+	line = bts->oml_link->ts->line;
+	e1inp_sign_link_destroy(bts->oml_link);
+	bts->oml_link = NULL;
+
+	e1inp_sign_link_destroy(bts->c0->rsl_link);
+	bts->c0->rsl_link = NULL;
+
+	bts->ip_access.flags = 0;
+}
+
+static void hsl_sign_link_down(struct e1inp_line *line)
+{
+	/* No matter what link went down, we close both signal links. */
+	struct e1inp_ts *ts = &line->ts[E1INP_SIGN_OML-1];
+	struct e1inp_sign_link *link;
+
+	llist_for_each_entry(link, &ts->sign.sign_links, list) {
+		struct gsm_bts *bts = link->trx->bts;
+
+		hsl_drop_oml(bts);
+		/* Yes, we only use the first element of the list. */
+		break;
+       }
+}
+
+/* This function is called if we receive one OML/RSL message. */
+static int hsl_sign_link(struct msgb *msg)
+{
+	int ret = 0;
+	struct e1inp_sign_link *link = msg->dst;
+	struct e1inp_ts *e1i_ts = link->ts;
+
+	switch (link->type) {
+	case E1INP_SIGN_OML:
+		if (!(link->trx->bts->ip_access.flags & OML_UP)) {
+			e1inp_event(e1i_ts, S_L_INP_TEI_UP,
+					link->tei, link->sapi);
+			link->trx->bts->ip_access.flags |= OML_UP;
+		}
+		ret = abis_nm_rcvmsg(msg);
+		break;
+	case E1INP_SIGN_RSL:
+		if (!(link->trx->bts->ip_access.flags &
+			(RSL_UP << link->trx->nr))) {
+			e1inp_event(e1i_ts, S_L_INP_TEI_UP,
+					link->tei, link->sapi);
+			link->trx->bts->ip_access.flags |=
+					(RSL_UP << link->trx->nr);
+		}
+		ret = abis_rsl_rcvmsg(msg);
+		break;
+	default:
+		LOGP(DLINP, LOGL_ERROR, "Unknown signal link type %d\n",
+			link->type);
+		msgb_free(msg);
+	break;
+	}
+	return ret;
+}
+
+static struct e1inp_line_ops hsl_e1inp_line_ops = {
+	.cfg = {
+		.ipa = {
+			.addr	= "0.0.0.0",
+			.role	= E1INP_LINE_R_BSC,
+		},
+	},
+       .sign_link_up	= hsl_sign_link_up,
+       .sign_link_down	= hsl_sign_link_down,
+       .sign_link	= hsl_sign_link,
+};
+
+static void bts_model_hslfemto_e1line_bind_ops(struct e1inp_line *line)
+{
+	e1inp_line_bind_ops(line, &hsl_e1inp_line_ops);
 }

@@ -9,18 +9,25 @@
 #define BSC_API_CONN_POL_REJECT	1
 
 struct bsc_api {
+	/*! \brief BTS->MSC: tell MSC a SAPI was not established */
 	void (*sapi_n_reject)(struct gsm_subscriber_connection *conn, int dlci);
+	/*! \brief MS->MSC: Tell MSC that ciphering has been enabled */
 	void (*cipher_mode_compl)(struct gsm_subscriber_connection *conn,
 				  struct msgb *msg, uint8_t chosen_encr);
+	/*! \brief MS->MSC: New MM context with L3 payload */
 	int (*compl_l3)(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, uint16_t chosen_channel); 
+	/*! \brief MS->BSC/MSC: Um L3 message */
 	void (*dtap)(struct gsm_subscriber_connection *conn, uint8_t link_id,
 			struct msgb *msg);
+	/*! \brief BSC->MSC: Assignment of lchan successful */
 	void (*assign_compl)(struct gsm_subscriber_connection *conn,
 			  uint8_t rr_cause, uint8_t chosen_channel,
 			  uint8_t encr_alg_id, uint8_t speech_mode);
+	/*! \brief BSC->MSC: Assignment of lchan failed */
 	void (*assign_fail)(struct gsm_subscriber_connection *conn,
 			 uint8_t cause, uint8_t *rr_cause);
+	/*! \brief BSC->MSC: RR conn has been cleared */
 	int (*clear_request)(struct gsm_subscriber_connection *conn,
 			      uint32_t cause);
 };

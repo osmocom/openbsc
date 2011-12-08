@@ -98,7 +98,7 @@ struct bsc_nat_parsed *bsc_nat_parse(struct msgb *msg)
 
 	/* do a size check on the input */
 	if (ntohs(hh->len) != msgb_l2len(msg)) {
-		LOGP(DINP, LOGL_ERROR, "Wrong input length?\n");
+		LOGP(DLINP, LOGL_ERROR, "Wrong input length?\n");
 		talloc_free(parsed);
 		return NULL;
 	}

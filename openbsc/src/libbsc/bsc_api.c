@@ -1,7 +1,7 @@
 /* GSM 08.08 like API for OpenBSC. The bridge from MSC to BSC */
 
-/* (C) 2010 by Holger Hans Peter Freyther
- * (C) 2010 by On-Waves
+/* (C) 2010-2011 by Holger Hans Peter Freyther
+ * (C) 2010-2011 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  *
  * All Rights Reserved
@@ -136,13 +136,28 @@ static void assignment_t10_timeout(void *_conn)
 
 	LOGP(DMSC, LOGL_ERROR, "Assigment T10 timeout on %p\n", conn);
 
-	/* normal release on the secondary channel */
-	lchan_release(conn->secondary_lchan, 0, 1);
+	/*
+	 * normal release on the secondary channel but only if the
+	 * secondary_channel has not been released by the handle_chan_nack.
+	 */
+	if (conn->secondary_lchan)
+		lchan_release(conn->secondary_lchan, 0, 1);
 	conn->secondary_lchan = NULL;
 
 	/* inform them about the failure */
 	api = conn->bts->network->bsc_api;
 	api->assign_fail(conn, GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE, NULL);
+}
+
+/**
+ * Handle the multirate config
+ */
+static void handle_mr_config(struct gsm_subscriber_connection *conn,
+			     struct gsm_lchan *lchan)
+{
+	lchan->mr_conf.ver = 1;
+	lchan->mr_conf.icmi = 1;
+	lchan->mr_conf.m5_90 = 1;
 }
 
 /*
@@ -184,11 +199,8 @@ static int handle_new_assignment(struct gsm_subscriber_connection *conn, int cha
 	new_lchan->rsl_cmode = RSL_CMOD_SPD_SPEECH;
 
 	/* handle AMR correctly */
-	if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
-		new_lchan->mr_conf.ver = 1;
-		new_lchan->mr_conf.icmi = 1;
-		new_lchan->mr_conf.m5_90 = 1;
-	}
+	if (chan_mode == GSM48_CMODE_SPEECH_AMR)
+		handle_mr_config(conn, new_lchan);
 
 	if (rsl_chan_activate_lchan(new_lchan, 0x1, 0, 0) < 0) {
 		LOGP(DHO, LOGL_ERROR, "could not activate channel\n");
@@ -258,6 +270,7 @@ int bsc_api_init(struct gsm_network *network, struct bsc_api *api)
 	return 0;
 }
 
+/*! \brief process incoming 08.08 DTAP from MSC (send via BTS to MS) */
 int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 			struct msgb *msg, int link_id, int allow_sach)
 {
@@ -273,7 +286,7 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 
 	sapi = link_id & 0x7;
 	msg->lchan = conn->lchan;
-	msg->trx = msg->lchan->ts->trx;
+	msg->dst = msg->lchan->ts->trx->rsl_link;
 
 	/* If we are on a TCH and need to submit a SMS (on SAPI=3) we need to use the SACH */
 	if (allow_sach && sapi != 0) {
@@ -282,7 +295,9 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	}
 
 	msg->l3h = msg->data;
+	/* is requested SAPI already up? */
 	if (conn->lchan->sapis[sapi] == LCHAN_SAPI_UNUSED) {
+		/* Establish L2 for additional SAPI */
 		OBSC_LINKID_CB(msg) = link_id;
 		if (rll_establish(msg->lchan, sapi, rll_ind_cb, msg) != 0) {
 			msgb_free(msg);
@@ -291,6 +306,7 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 		}
 		return 0;
 	} else {
+		/* Directly forward via RLL/RSL to BTS */
 		return rsl_data_request(msg, link_id);
 	}
 }
@@ -299,8 +315,8 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
  * audio codec type or the allowed rates for the config. It is assumed that
  * this is for audio handling and that when we have a TCH it is capable of
- * handling the audio codec. On top of that it is assumed that we are using
- * AMR 5.9 when assigning a TCH/H.
+ * handling the audio codec. In case AMR is used we will leave the multi
+ * rate configuration to someone else.
  */
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
@@ -313,11 +329,8 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 	} else {
 		LOGP(DMSC, LOGL_NOTICE,
 			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
-		if (chan_mode == GSM48_CMODE_SPEECH_AMR) {
-			conn->lchan->mr_conf.ver = 1;
-			conn->lchan->mr_conf.icmi = 1;
-			conn->lchan->mr_conf.m5_90 = 1;
-		}
+		if (chan_mode == GSM48_CMODE_SPEECH_AMR)
+			handle_mr_config(conn, conn->lchan);
 
 		gsm48_lchan_modify(conn->lchan, chan_mode);
 	}
@@ -367,7 +380,8 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(conn->lchan);
 
-	api->assign_compl(conn, gh->data[0],
+	if (api->assign_compl)
+		api->assign_compl(conn, gh->data[0],
 			  lchan_to_chosen_channel(conn->lchan),
 			  conn->lchan->encr.alg_id,
 			  chan_mode_to_speech(conn->lchan));
@@ -459,6 +473,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 		api->dtap(conn, link_id, msg);
 }
 
+/*! \brief RSL has received a DATA INDICATION with L3 from MS */
 int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 {
 	int rc;
@@ -474,8 +489,11 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 
 
 	if (lchan->conn) {
+		/* if we already have a connection, forward via DTAP to
+		 * MSC */
 		dispatch_dtap(lchan->conn, link_id, msg);
 	} else {
+		/* allocate a new connection */
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);
 		if (!lchan->conn) {
@@ -483,6 +501,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 			return -1;
 		}
 
+		/* fwd via bsc_api to send COMPLETE L3 INFO to MSC */
 		rc = api->compl_l3(lchan->conn, msg, 0);
 
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
@@ -495,6 +514,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 	return 0;
 }
 
+/*! \brief We received a GSM 08.08 CIPHER MODE from the MSC */
 int gsm0808_cipher_mode(struct gsm_subscriber_connection *conn, int cipher,
 			const uint8_t *key, int len, int include_imeisv)
 {
@@ -655,7 +675,7 @@ static void handle_chan_ack(struct gsm_subscriber_connection *conn,
 		return;
 
 	LOGP(DMSC, LOGL_NOTICE, "Sending assignment on chan: %p\n", lchan);
-	gsm48_send_rr_ass_cmd(conn->lchan, lchan, 0x3);
+	gsm48_send_rr_ass_cmd(conn->lchan, lchan, lchan->ms_power);
 }
 
 static void handle_chan_nack(struct gsm_subscriber_connection *conn,

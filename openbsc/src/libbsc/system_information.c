@@ -154,7 +154,7 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts)
+/* static*/ int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
 	struct bitvec *bv = &bts->si_common.cell_alloc;
@@ -420,7 +420,7 @@ static struct gsm48_si13_info si13_default = {
 		.t3192		= 200,
 		.drx_timer_max	= 3,
 		.bs_cv_max	= 15,
-		.ext_info_present = 1,
+		.ext_info_present = 0,
 		.ext_info = {
 			/* The values below are just guesses ! */
 			.egprs_supported = 0,

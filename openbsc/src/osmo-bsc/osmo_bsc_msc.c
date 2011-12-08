@@ -34,6 +34,8 @@
 
 #include <osmocom/sccp/sccp.h>
 
+#include <osmocom/abis/ipa.h>
+
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
@@ -183,7 +185,7 @@ static int msc_alink_do_write(struct osmo_fd *fd, struct msgb *msg)
 	int ret;
 
 	LOGP(DMSC, LOGL_DEBUG, "Sending SCCP to MSC: %u\n", msgb_l2len(msg));
-	LOGP(DMI, LOGL_DEBUG, "MSC TX %s\n", osmo_hexdump(msg->data, msg->len));
+	LOGP(DLMI, LOGL_DEBUG, "MSC TX %s\n", osmo_hexdump(msg->data, msg->len));
 
 	ret = write(fd->fd, msg->data, msg->len);
 	if (ret < msg->len)
@@ -244,23 +246,24 @@ static void osmo_ext_handle(struct osmo_msc_data *msc, struct msgb *msg)
 
 static int ipaccess_a_fd_cb(struct osmo_fd *bfd)
 {
-	int error;
-	struct msgb *msg = ipaccess_read_msg(bfd, &error);
+	struct msgb *msg;
 	struct ipaccess_head *hh;
 	struct osmo_msc_data *data = (struct osmo_msc_data *) bfd->data;
+	int ret;
 
-	if (!msg) {
-		if (error == 0) {
+	ret = ipa_msg_recv(bfd->fd, &msg);
+	if (ret <= 0) {
+		if (ret == 0) {
 			LOGP(DMSC, LOGL_ERROR, "The connection to the MSC was lost.\n");
 			bsc_msc_lost(data->msc_con);
 			return -1;
 		}
 
-		LOGP(DMSC, LOGL_ERROR, "Failed to parse ip access message: %d\n", error);
+		LOGP(DMSC, LOGL_ERROR, "Failed to parse ip access message: %d\n", ret);
 		return -1;
 	}
 
-	LOGP(DMI, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
+	LOGP(DLMI, LOGL_DEBUG, "From MSC: %s proto: %d\n", osmo_hexdump(msg->data, msg->len), msg->l2h[0]);
 
 	/* handle base message handling */
 	hh = (struct ipaccess_head *) msg->data;

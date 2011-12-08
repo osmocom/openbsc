@@ -7,8 +7,11 @@
 #include <osmocom/core/select.h>
 
 #include <openbsc/rest_octets.h>
+#include <osmocom/abis/e1_input.h>
 
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
+
+struct mncc_sock_state;
 
 /* the data structure stored in msgb->cb for openbsc apps */
 struct openbsc_msgb_cb {
@@ -246,6 +249,7 @@ struct gsm_network {
 	struct gsmnet_stats stats;
 
 	/* layer 4 */
+	struct mncc_sock_state *mncc_state;
 	int (*mncc_recv) (struct gsm_network *net, struct msgb *msg);
 	struct llist_head upqueue;
 	struct llist_head trans_list;
@@ -283,7 +287,6 @@ struct gsm_network {
 
 	/* MSC data in case we are a true BSC */
 	struct osmo_msc_data *msc_data;
-	int hardcoded_rtp_payload;
 
 	/* subscriber related features */
 	int keep_subscr;
@@ -381,5 +384,8 @@ void set_ts_e1link(struct gsm_bts_trx_ts *ts, uint8_t e1_nr,
 void gsm_trx_lock_rf(struct gsm_bts_trx *trx, int locked);
 int gsm_bts_has_feature(struct gsm_bts *bts, enum gsm_bts_features feat);
 struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
+
+/* generic E1 line operations for all ISDN-based BTS. */
+extern struct e1inp_line_ops bts_isdn_e1inp_line_ops;
 
 #endif /* _GSM_DATA_H */

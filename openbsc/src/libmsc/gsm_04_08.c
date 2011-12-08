@@ -41,7 +41,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/paging.h>
 #include <openbsc/signal.h>
-#include <openbsc/trau_frame.h>
+#include <osmocom/abis/trau_frame.h>
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/transaction.h>
@@ -49,6 +49,7 @@
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
+#include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
 #include <osmocom/gsm/gsm48.h>
@@ -94,17 +95,22 @@ static int gsm48_conn_sendmsg(struct msgb *msg, struct gsm_subscriber_connection
 
 
 	if (msg->lchan) {
-		msg->trx = msg->lchan->ts->trx;
+		struct e1inp_sign_link *sign_link =
+				msg->lchan->ts->trx->rsl_link;
+
+		msg->dst = sign_link;
 		if ((gh->proto_discr & GSM48_PDISC_MASK) == GSM48_PDISC_CC)
 			DEBUGP(DCC, "(bts %d trx %d ts %d ti %02x) "
-				"Sending '%s' to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
+				"Sending '%s' to MS.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr & 0xf0,
 				gsm48_cc_msg_name(gh->msg_type));
 		else
 			DEBUGP(DCC, "(bts %d trx %d ts %d pd %02x) "
-				"Sending 0x%02x to MS.\n", msg->trx->bts->nr,
-				msg->trx->nr, msg->lchan->ts->nr,
+				"Sending 0x%02x to MS.\n",
+				sign_link->trx->bts->nr,
+				sign_link->trx->nr, msg->lchan->ts->nr,
 				gh->proto_discr, gh->msg_type);
 	}
 
@@ -475,6 +481,7 @@ static void loc_upd_rej_cb(void *data)
 	struct gsm_lchan *lchan = conn->lchan;
 	struct gsm_bts *bts = lchan->ts->trx->bts;
 
+	LOGP(DMM, LOGL_DEBUG, "Location Updating Request procedure timedout.\n");
 	gsm0408_loc_upd_rej(conn, bts->network->reject_cause);
 	release_loc_updating_req(conn);
 }
@@ -603,12 +610,17 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	return gsm0408_authorize(conn, msg);
 }
 
-#if 0
-static uint8_t to_bcd8(uint8_t val)
+/* Turn int into semi-octet representation: 98 => 0x89 */
+static uint8_t bcdify(uint8_t value)
 {
-       return ((val / 10) << 4) | (val % 10);
+        uint8_t ret;
+
+        ret = value / 10;
+        ret |= (value % 10) << 4;
+
+        return ret;
 }
-#endif
+
 
 /* Section 9.2.15a */
 int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
@@ -616,13 +628,14 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm_network *net = conn->bts->network;
+	struct gsm_bts *bts = conn->bts;
 	uint8_t *ptr8;
 	int name_len, name_pad;
-#if 0
+
 	time_t cur_t;
-	struct tm* cur_time;
-	int tz15min;
-#endif
+	struct tm* gmt_time;
+	struct tm* local_time;
+	int tzunits;
 
 	msg->lchan = conn->lchan;
 
@@ -689,24 +702,48 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 
 	}
 
-#if 0
 	/* Section 10.5.3.9 */
 	cur_t = time(NULL);
-	cur_time = gmtime(&cur_t);
+	gmt_time = gmtime(&cur_t);
+
 	ptr8 = msgb_put(msg, 8);
 	ptr8[0] = GSM48_IE_NET_TIME_TZ;
-	ptr8[1] = to_bcd8(cur_time->tm_year % 100);
-	ptr8[2] = to_bcd8(cur_time->tm_mon);
-	ptr8[3] = to_bcd8(cur_time->tm_mday);
-	ptr8[4] = to_bcd8(cur_time->tm_hour);
-	ptr8[5] = to_bcd8(cur_time->tm_min);
-	ptr8[6] = to_bcd8(cur_time->tm_sec);
-	/* 02.42: coded as BCD encoded signed value in units of 15 minutes */
-	tz15min = (cur_time->tm_gmtoff)/(60*15);
-	ptr8[7] = to_bcd8(tz15min);
-	if (tz15min < 0)
-		ptr8[7] |= 0x80;
-#endif
+	ptr8[1] = bcdify(gmt_time->tm_year % 100);
+	ptr8[2] = bcdify(gmt_time->tm_mon + 1);
+	ptr8[3] = bcdify(gmt_time->tm_mday);
+	ptr8[4] = bcdify(gmt_time->tm_hour);
+	ptr8[5] = bcdify(gmt_time->tm_min);
+	ptr8[6] = bcdify(gmt_time->tm_sec);
+
+	if (bts->tz_bts_specific) {
+		/* Convert tzhr and tzmn to units */
+		if (bts->tzhr < 0) {
+			tzunits = ((bts->tzhr/-1)*4);
+			tzunits = tzunits + (bts->tzmn/15);
+			ptr8[7] = bcdify(tzunits);
+			/* Set negative time */
+			ptr8[7] |= 0x08;
+		}
+		else {
+			tzunits = bts->tzhr*4;
+			tzunits = tzunits + (bts->tzmn/15);
+			ptr8[7] = bcdify(tzunits);
+		}
+	}
+	else {
+		/* Need to get GSM offset and convert into 15 min units */
+		/* This probably breaks if gmtoff returns a value not evenly divisible by 15? */
+		local_time = localtime(&cur_t);
+		tzunits = (local_time->tm_gmtoff/60)/15;
+		if (tzunits < 0) {
+			tzunits = tzunits/-1;
+			ptr8[7] = bcdify(tzunits);
+			/* Flip it to negative */
+			ptr8[7] |= 0x08;
+		}
+		else
+			ptr8[7] = bcdify(tzunits);
+	}
 
 	DEBUGP(DMM, "-> MM INFO\n");
 
@@ -874,6 +911,7 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 
 static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 {
+	struct e1inp_sign_link *sign_link = msg->lchan->ts->trx->rsl_link;
 	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
@@ -907,7 +945,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	}
 
 	if (subscr) {
-		subscr_update(subscr, msg->trx->bts,
+		subscr_update(subscr, sign_link->trx->bts,
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
@@ -1602,7 +1640,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		remote_bts->nr, remote_lchan->ts->trx->nr, remote_lchan->ts->nr);
 
 	if (bts->type != remote_bts->type) {
-		DEBUGP(DCC, "Cannot switch calls between different BTS types yet\n");
+		LOGP(DCC, LOGL_ERROR, "Cannot switch calls between different BTS types yet\n");
 		return -EINVAL;
 	}
 
@@ -1634,10 +1672,11 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 		break;
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
+	case GSM_BTS_TYPE_NOKIA_SITE:
 		trau_mux_map_lchan(lchan, remote_lchan);
 		break;
 	default:
-		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		return -EINVAL;
 	}
 
@@ -1680,7 +1719,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
 		if (ipacc_rtp_direct) {
-			DEBUGP(DCC, "Error: RTP proxy is disabled\n");
+			LOGP(DCC, LOGL_ERROR, "Error: RTP proxy is disabled\n");
 			return -EINVAL;
 		}
 		/* in case, we don't have a RTP socket yet, we note this
@@ -1704,12 +1743,13 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 		break;
 	case GSM_BTS_TYPE_BS11:
 	case GSM_BTS_TYPE_RBS2000:
+	case GSM_BTS_TYPE_NOKIA_SITE:
 		if (enable)
 			return trau_recv_lchan(lchan, callref);
 		return trau_mux_unmap(NULL, callref);
 		break;
 	default:
-		DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+		LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		return -EINVAL;
 	}
 
@@ -1830,6 +1870,8 @@ static int gsm48_cc_rx_setup(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&setup, 0, sizeof(struct gsm_mncc));
 	setup.callref = trans->callref;
+	if (trans->conn && trans->conn->lchan)
+		setup.lchan_type = trans->conn->lchan->type;
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 	/* emergency setup is identified by msg_type */
 	if (msg_type == GSM48_MT_CC_EMERG_SETUP)
@@ -1986,6 +2028,8 @@ static int gsm48_cc_rx_call_conf(struct gsm_trans *trans, struct msgb *msg)
 
 	memset(&call_conf, 0, sizeof(struct gsm_mncc));
 	call_conf.callref = trans->callref;
+	if (trans->conn && trans->conn->lchan)
+		call_conf.lchan_type = trans->conn->lchan->type;
 	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
 #if 0
 	/* repeat */
@@ -2989,9 +3033,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
 		case GSM_BTS_TYPE_BS11:
 		case GSM_BTS_TYPE_RBS2000:
+		case GSM_BTS_TYPE_NOKIA_SITE:
 			return trau_send_frame(trans->conn->lchan, arg);
 		default:
-			DEBUGP(DCC, "Unknown BTS type %u\n", bts->type);
+			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
 		}
 		return -EINVAL;
 	}
