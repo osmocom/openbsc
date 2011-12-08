@@ -62,19 +62,13 @@ static int silentcall_cbfn(unsigned int subsys, unsigned int signal,
 	fm = (struct filter_silentcall_resp *) newmsg->tail;
 	msgb_put(newmsg, sizeof(*fm));
 
-	switch (signal) {
-	case S_SCALL_SUCCESS:
+	fm->state = (uint8_t) signal;
+	fm->scall_id = (uint8_t) ((int) sigdata->data & 0xff);
+
+	if(signal == S_SCALL_SUCCESS) {
 		fm->priv1 = sigdata->conn->lchan->ts->trx;
 		fm->priv2 = sigdata->conn->lchan;
-                fm->chan_nr = gsm_lchan2chan_nr(sigdata->conn->lchan);
-		fm->error = 0;
-		break;
-	case S_SCALL_EXPIRED:
-		fm->priv1 = NULL;
-		fm->priv2 = NULL;
-                fm->chan_nr = 0;
-		fm->error = 1;
-		break;
+		fm->chan_nr = gsm_lchan2chan_nr(sigdata->conn->lchan);
 	}
 
 	msgb_enqueue(&tx_msg_list, newmsg);
@@ -263,8 +257,8 @@ static int process_silentcall_message(struct filter_silentcall_req *sc_req, stru
 	}
 
 	if(sc_req->activate) {
-		LOGP(0, LOGL_DEBUG, "starting silent call\n");
-		rc = gsm_silent_call_start(subscr, (void *) fd, sc_req->channel_type);
+		LOGP(0, LOGL_DEBUG, "starting silent call with id %d\n", sc_req->scall_id);
+		rc = gsm_silent_call_start(subscr, (void *) ((int)sc_req->scall_id), sc_req->channel_type);
 	} else {
 		LOGP(0, LOGL_DEBUG, "stopping silent call\n");
 		rc = gsm_silent_call_stop(subscr);

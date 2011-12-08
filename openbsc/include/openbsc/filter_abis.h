@@ -32,17 +32,19 @@ struct filter_msg {
 #define FILTER_SUBSCR_ID_TYPE_ID	3
 
 struct filter_silentcall_req {
-	uint8_t activate;
+	uint8_t activate; /* start call if true, stop call otherwise */
+	uint8_t scall_id; /* will be returned in resp (only for call start) */
 	uint8_t channel_type;
 	uint8_t subscr_id_type;
 	uint8_t subscr_id[0];
 } __attribute__ ((packed));
 
 struct filter_silentcall_resp {
-	void *priv1; /* trx from msgb  */
-	void *priv2; /* lchan from msgb  */
-	uint8_t	chan_nr; /* chan_nr for abis rsl hdr */
-	uint8_t error;
+	void *priv1; /* trx from msgb (NULL on error) */
+	void *priv2; /* lchan from msgb (NULL on error)  */
+	uint8_t state; /* one of the signal_scall values from signal.h  */
+	uint8_t scall_id; /* scall_id from start req */
+	uint8_t	chan_nr; /* chan_nr for abis rsl hdr (only on call start) */
 } __attribute__ ((packed));
 
 int filter_init(void *tall_ctx, void *priv, int port);
