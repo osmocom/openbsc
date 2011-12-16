@@ -1008,6 +1008,9 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		if (val[0] & 0x04)
 			mr->flags |= MEAS_REP_F_FPC;
 		mr->ms_l1.ta = val[1];
+		/* BS11 reports TA shifted by 2 bits */
+		if (msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11)
+			mr->ms_l1.ta >>= 2;
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
 		msg->l3h = (uint8_t *) TLVP_VAL(&tp, RSL_IE_L3_INFO);
@@ -1307,12 +1310,16 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	lchan->act_timer.data = lchan;
 	osmo_timer_schedule(&lchan->act_timer, 4, 0);
 
+	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
+		"r=%s ra=0x%02x ta=%d\n", gsm_lchan_name(lchan), arfcn, subch,
+		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
+		rqd_ref->ra, rqd_ta);
+
+	/* BS11 requires TA shifted by 2 bits */
+	if (bts->type == GSM_BTS_TYPE_BS11)
+		rqd_ta <<= 2;
 	rsl_chan_activate_lchan(lchan, 0x00, rqd_ta, 0);
 
-	DEBUGP(DRSL, "%s Activating ARFCN(%u) SS(%u) lctype %s "
-		"r=%s ra=0x%02x\n", gsm_lchan_name(lchan), arfcn, subch,
-		gsm_lchant_name(lchan->type), gsm_chreq_name(chreq_reason),
-		rqd_ref->ra);
 	return 0;
 }
 
