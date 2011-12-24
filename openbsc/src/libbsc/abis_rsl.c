@@ -1008,8 +1008,9 @@ static int rsl_rx_meas_res(struct msgb *msg)
 		if (val[0] & 0x04)
 			mr->flags |= MEAS_REP_F_FPC;
 		mr->ms_l1.ta = val[1];
-		/* BS11 reports TA shifted by 2 bits */
-		if (msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11)
+		/* BS11 and Nokia reports TA shifted by 2 bits */
+		if (msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_BS11
+		 || msg->lchan->ts->trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE)
 			mr->ms_l1.ta >>= 2;
 	}
 	if (TLVP_PRESENT(&tp, RSL_IE_L3_INFO)) {
