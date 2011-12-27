@@ -389,7 +389,7 @@ static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
 		link_id = sapi;
 		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
 			link_id |= 0x40;
-		rsl_release_request(lchan, link_id, lchan->release_mode);
+		rsl_release_request(lchan, link_id, RSL_REL_LOCAL_END);
 		return 0;
 	}
 
