@@ -903,6 +903,47 @@ static void lchan_dump_short_vty(struct vty *vty, struct gsm_lchan *lchan)
 		VTY_NEWLINE);
 }
 
+
+static int dump_lchan_trx_ts(struct gsm_bts_trx_ts *ts, struct vty *vty,
+			     void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int lchan_nr;
+	for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN; lchan_nr++) {
+		struct gsm_lchan *lchan = &ts->lchan[lchan_nr];
+		if ((lchan->type == GSM_LCHAN_NONE) && (lchan->state == LCHAN_S_NONE))
+			continue;
+		dump_cb(vty, lchan);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int dump_lchan_trx(struct gsm_bts_trx *trx, struct vty *vty,
+			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int ts_nr;
+
+	for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
+		struct gsm_bts_trx_ts *ts = &trx->ts[ts_nr];
+		dump_lchan_trx_ts(ts, vty, dump_cb);
+	}
+
+	return CMD_SUCCESS;
+}
+
+static int dump_lchan_bts(struct gsm_bts *bts, struct vty *vty,
+			  void (*dump_cb)(struct vty *, struct gsm_lchan *))
+{
+	int trx_nr;
+
+	for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
+		struct gsm_bts_trx *trx = gsm_bts_trx_num(bts, trx_nr);
+		dump_lchan_trx(trx, vty, dump_cb);
+	}
+
+	return CMD_SUCCESS;
+}
+
 static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			 void (*dump_cb)(struct vty *, struct gsm_lchan *))
 {
@@ -922,6 +963,9 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			return CMD_WARNING;
 		}
 		bts = gsm_bts_num(net, bts_nr);
+
+		if (argc == 1)
+			return dump_lchan_bts(bts, vty, dump_cb);
 	}
 	if (argc >= 2) {
 		trx_nr = atoi(argv[1]);
@@ -931,6 +975,9 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			return CMD_WARNING;
 		}
 		trx = gsm_bts_trx_num(bts, trx_nr);
+
+		if (argc == 2)
+			return dump_lchan_trx(trx, vty, dump_cb);
 	}
 	if (argc >= 3) {
 		ts_nr = atoi(argv[2]);
@@ -940,6 +987,9 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 			return CMD_WARNING;
 		}
 		ts = &trx->ts[ts_nr];
+
+		if (argc == 3)
+			return dump_lchan_trx_ts(ts, vty, dump_cb);
 	}
 	if (argc >= 4) {
 		lchan_nr = atoi(argv[3]);
@@ -952,21 +1002,11 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 		dump_cb(vty, lchan);
 		return CMD_SUCCESS;
 	}
+
+
 	for (bts_nr = 0; bts_nr < net->num_bts; bts_nr++) {
 		bts = gsm_bts_num(net, bts_nr);
-		for (trx_nr = 0; trx_nr < bts->num_trx; trx_nr++) {
-			trx = gsm_bts_trx_num(bts, trx_nr);
-			for (ts_nr = 0; ts_nr < TRX_NR_TS; ts_nr++) {
-				ts = &trx->ts[ts_nr];
-				for (lchan_nr = 0; lchan_nr < TS_MAX_LCHAN;
-				     lchan_nr++) {
-					lchan = &ts->lchan[lchan_nr];
-					if ((lchan->type == GSM_LCHAN_NONE) && (lchan->state == LCHAN_S_NONE))
-						continue;
-					dump_cb(vty, lchan);
-				}
-			}
-		}
+		dump_lchan_bts(bts, vty, dump_cb);
 	}
 
 	return CMD_SUCCESS;
