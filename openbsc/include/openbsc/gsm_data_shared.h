@@ -177,7 +177,9 @@ struct gsm_lchan {
 	/* Established data link layer services */
 	uint8_t sapis[8];
 	int sach_deact;
-	int release_reason;
+
+	/** GSM 08.58 9.3.20 */
+	int release_mode;
 
 	struct {
 		uint32_t bound_ip;

@@ -338,7 +338,7 @@ void lchan_free(struct gsm_lchan *lchan)
 	}
 
 	lchan->sach_deact = 0;
-	lchan->release_reason = 0;
+	lchan->release_mode = 0;
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
@@ -377,7 +377,7 @@ static int _lchan_release_next_sapi(struct gsm_lchan *lchan)
 		link_id = sapi;
 		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
 			link_id |= 0x40;
-		rsl_release_request(lchan, link_id, lchan->release_reason);
+		rsl_release_request(lchan, link_id, lchan->release_mode);
 		return 0;
 	}
 
@@ -396,7 +396,7 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 		return;
 	}
 
-	rsl_release_request(lchan, 0, lchan->release_reason);
+	rsl_release_request(lchan, 0, lchan->release_mode);
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 }
 
@@ -412,13 +412,13 @@ int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id)
 }
 
 /* Consider releasing the channel now */
-int lchan_release(struct gsm_lchan *lchan, int sach_deact, int reason)
+int lchan_release(struct gsm_lchan *lchan, int sach_deact, int mode)
 {
 	DEBUGP(DRLL, "%s starting release sequence\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 
 	lchan->conn = NULL;
-	lchan->release_reason = reason;
+	lchan->release_mode = mode;
 	lchan->sach_deact = sach_deact;
 	_lchan_handle_release(lchan);
 	return 1;
