@@ -56,21 +56,20 @@ bsc_api.c:gsm0808_clear
 	* Release the primary lchan with normal release, SACH deactivate
 
 chan_alloc.c:lchan_release(chan, sacch_deactivate, reason)
-	* Start release procedure. It is working in steps with callbacks
-          coming from the abis_rsl.c code.
-        * Release all SAPI's > 0, wait for them to be released
-	* Send SACH Deactivate on SAPI=0
-	* Finally Release the channel
+	* Start the release procedure. It is working in steps with callbacks
+	  coming from the abis_rsl.c code.
+	* Release all SAPI's > 0 as local end (The BTS should send a
+	  REL_CONF a message)
+	* Send SACH Deactivate on SAPI=0 if required.
+	* It should start T3109 but it does not.
+	* abis_rsl.c schedules the RSL_MT_RF_CHAN_REL once all SAPI's are
+	  released and after T3111 has timed out or there is an error.
 
 RX of RELease INDication:
         * Calls internal rsl_handle_release which might release the RF.
-        * Informs chan_alloc.c about the release with
-          rsl_lchan_rll_release.
 
-RX of RELease CONFimem:
+RX of RELease CONFirmation:
         * Calls internal rsl_handle_release which might release the RF.
-        * Informs chan_alloc.c about the release with
-          rsl_lchan_rll_release.
 
 * RX of RF_CHAN_REL_ACK
 	* call lchan_free()

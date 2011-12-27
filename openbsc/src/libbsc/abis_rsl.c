@@ -2,6 +2,7 @@
  * 3GPP TS 08.58 version 8.6.0 Release 1999 / ETSI TS 100 596 V8.6.0 */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2012 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -1581,7 +1582,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
 		rsl_handle_release(msg->lchan);
-		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_REL_CONF:
 		/* BTS informs us of having received UA from MS,
@@ -1589,7 +1589,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		rsl_handle_release(msg->lchan);
-		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
@@ -2057,4 +2056,31 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+/**
+ * Release all allocated SAPIs starting from @param start and
+ * release them with the given release mode. Once the release
+ * confirmation arrives it will be attempted to release the
+ * the RF channel.
+ */
+int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
+			enum rsl_rel_mode release_mode)
+{
+	int no_sapi = 1;
+	int sapi;
+
+	for (sapi = start; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		uint8_t link_id;
+		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
+			continue;
+
+		link_id = sapi;
+		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+		rsl_release_request(lchan, link_id, release_mode);
+		no_sapi = 0;
+	}
+
+	return no_sapi;
 }
