@@ -60,11 +60,36 @@ static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	gsm0408_dispatch(conn, msg);
 }
 
+static void msc_assign_compl(struct gsm_subscriber_connection *conn,
+			     uint8_t rr_cause, uint8_t chosen_channel,
+			     uint8_t encr_alg_id, uint8_t speec)
+{
+	/*
+	 * The mncc code is not doing assignment requests and
+	 * we should not end here. See MNCC_LCHAN_MODIFY
+	 */
+	LOGP(DMSC, LOGL_ERROR,
+	     "Assignment complete should not have been reached.\n");
+}
+
+static void msc_assign_fail(struct gsm_subscriber_connection *conn,
+			    uint8_t cause, uint8_t *rr_cause)
+{
+	/*
+	 * The mncc code is not doing assignment requests and
+	 * we should not end here. See MNCC_LCHAN_MODIFY
+	 */
+	LOGP(DMSC, LOGL_ERROR,
+	     "Assignment fail should not have been reached.\n");
+}
+
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
-	.clear_request = msc_clear_request,
 	.compl_l3 = msc_compl_l3,
 	.dtap  = msc_dtap,
+	.clear_request = msc_clear_request,
+	.assign_compl = msc_assign_compl,
+	.assign_fail = msc_assign_fail,
 };
 
 struct bsc_api *msc_bsc_api() {

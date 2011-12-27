@@ -380,8 +380,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	if (is_ipaccess_bts(conn->bts) && conn->lchan->tch_mode != GSM48_CMODE_SIGN)
 		rsl_ipacc_crcx(conn->lchan);
 
-	if (api->assign_compl)
-		api->assign_compl(conn, gh->data[0],
+	api->assign_compl(conn, gh->data[0],
 			  lchan_to_chosen_channel(conn->lchan),
 			  conn->lchan->encr.alg_id,
 			  chan_mode_to_speech(conn->lchan));
@@ -451,15 +450,16 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 			osmo_timer_del(&conn->T10);
 			rc = gsm48_rx_rr_modif_ack(msg);
-			if (rc < 0 && api->assign_fail) {
+			if (rc < 0) {
 				api->assign_fail(conn,
 						 GSM0808_CAUSE_NO_RADIO_RESOURCE_AVAILABLE,
 						 NULL);
-			} else if (rc >= 0 && api->assign_compl)
+			} else if (rc >= 0) {
 				api->assign_compl(conn, 0,
 						  lchan_to_chosen_channel(conn->lchan),
 						  conn->lchan->encr.alg_id,
 						  chan_mode_to_speech(conn->lchan));
+			}
 			return;
 			break;
 		}
