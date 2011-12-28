@@ -231,11 +231,7 @@ int gsm48_send_rr_release(struct gsm_lchan *lchan)
 		lchan->nr, lchan->type);
 
 	/* Send actual release request to MS */
-	gsm48_sendmsg(msg);
-	/* FIXME: Start Timer T3109 */
-
-	/* Deactivate the SACCH on the BTS side */
-	return rsl_deact_sacch(lchan);
+	return gsm48_sendmsg(msg);
 }
 
 int send_siemens_mrpci(struct gsm_lchan *lchan,

@@ -217,6 +217,7 @@ struct gsm_lchan {
 
 #ifdef ROLE_BSC
 	struct osmo_timer_list T3101;
+	struct osmo_timer_list T3109;
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
 	struct osmo_timer_list act_timer;

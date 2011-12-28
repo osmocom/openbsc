@@ -61,7 +61,8 @@ chan_alloc.c:lchan_release(chan, sacch_deactivate, reason)
 	* Release all SAPI's > 0 as local end (The BTS should send a
 	  REL_CONF a message)
 	* Send SACH Deactivate on SAPI=0 if required.
-	* It should start T3109 but it does not.
+	* Start T3109 (stop it when the main signalling link is disconnected)
+	  or when the channel released. On timeout start the error handling.
 	* abis_rsl.c schedules the RSL_MT_RF_CHAN_REL once all SAPI's are
 	  released and after T3111 has timed out or there is an error.
 

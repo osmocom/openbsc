@@ -362,6 +362,7 @@ void lchan_free(struct gsm_lchan *lchan)
 void lchan_reset(struct gsm_lchan *lchan)
 {
 	osmo_timer_del(&lchan->T3101);
+	osmo_timer_del(&lchan->T3109);
 	osmo_timer_del(&lchan->T3111);
 	osmo_timer_del(&lchan->error_timer);
 
@@ -376,7 +377,7 @@ void lchan_reset(struct gsm_lchan *lchan)
 
 /* Drive the release process of the lchan */
 static void _lchan_handle_release(struct gsm_lchan *lchan,
-				  int sach_deact, int mode)
+				  int sacch_deact, int mode)
 {
 	/* Release all SAPIs on the local end and continue */
 	rsl_release_sapis_from(lchan, 1, RSL_REL_LOCAL_END);
@@ -386,10 +387,15 @@ static void _lchan_handle_release(struct gsm_lchan *lchan,
 	 * release indication from the BTS or just take it down (e.g.
 	 * on assignment requests)
 	 */
-	if (sach_deact)
+	if (sacch_deact) {
 		gsm48_send_rr_release(lchan);
-	else
+
+		/* Deactivate the SACCH on the BTS side */
+		rsl_deact_sacch(lchan);
+		rsl_start_t3109(lchan);
+	} else {
 		rsl_release_request(lchan, 0, mode);
+	}
 }
 
 /* Consider releasing the channel now */

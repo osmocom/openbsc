@@ -99,6 +99,7 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 
 int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
 				enum rsl_rel_mode release_mode);
+int rsl_start_t3109(struct gsm_lchan *lchan);
 
 #endif /* RSL_MT_H */
 
