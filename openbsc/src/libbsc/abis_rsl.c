@@ -667,13 +667,33 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
 
 	if (error) {
-		/*
-		 * the nanoBTS sends RLL release indications after the channel release. This can
-		 * be a problem when we have reassigned the channel to someone else and then can
-		 * not figure out who used this channel.
-		 */
 		struct e1inp_sign_link *sign_link = msg->dst;
 
+		/*
+		 * FIXME: GSM 04.08 gives us two options for the abnormal
+		 * chanel release. This can be either like in the non-existent
+		 * sub-lcuase 3.5.1 or for the main signalling link deactivate
+		 * the SACCH, start timer T3109 and consider the channel as
+		 * released.
+		 *
+		 * This code is doing the later for all raido links and not
+		 * only the main link. Right now all SAPIs are released on the
+		 * local end, the SACCH will be de-activated and right now the
+		 * T3111 will be started. First T3109 should be started and then
+		 * the T3111.
+		 *
+		 * TODO: Move this out of the function.
+		 */
+
+		/*
+		 * sacch de-activate and "local end release"
+		 */
+		rsl_deact_sacch(lchan);
+		rsl_release_sapis_from(lchan, 0, RSL_REL_LOCAL_END);
+
+		/*
+		 * TODO: start T3109 now.
+		 */
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
@@ -1508,7 +1528,11 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	int sapi;
 	struct gsm_bts *bts;
 
-	/* maybe we have only brought down one RLL */
+	/*
+	 * Maybe only one link/SAPI was releasd or the error handling
+	 * was activated. Just return now and let the other code handle
+	 * it.
+	 */
 	if (lchan->state != LCHAN_S_REL_REQ)
 		return;
 
