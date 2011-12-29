@@ -1284,7 +1284,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		LOGP(DRSL, LOGL_NOTICE, "%s lchan_alloc() returned channel "
 		     "in state %s\n", gsm_lchan_name(lchan),
 		     gsm_lchans_name(lchan->state));
-	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 
 	/* save the RACH data as we need it after the CHAN ACT ACK */
 	lchan->rqd_ref = talloc_zero(bts, struct gsm48_req_ref);
@@ -1294,6 +1293,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		return -ENOMEM;
 	}
 
+	rsl_lchan_set_state(lchan, LCHAN_S_ACT_REQ);
 	memcpy(lchan->rqd_ref, rqd_ref, sizeof(*rqd_ref));
 	lchan->rqd_ta = rqd_ta;
 
