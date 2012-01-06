@@ -1,0 +1,21 @@
+Testing BSS Filtering.
+Going to test item: 0
+Going to test item: 1
+Going to test item: 2
+Going to test item: 3
+Going to test item: 4
+Going to test item: 5
+Going to test item: 6
+Going to test item: 7
+Going to test item: 8
+Going to test item: 9
+Going to test item: 10
+Going to test item: 11
+Going to test item: 12
+Testing connection tracking.
+Testing paging by lac.
+Testing MGCP.
+Testing finding of a BSC Connection
+Testing rewriting MGCP messages.
+Testing MGCP response parsing.
+Testing execution completed.

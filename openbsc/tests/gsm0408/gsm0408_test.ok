@@ -1,0 +1,5 @@
+Testing test location area identifier
+Testing parsing and generating TMSI/IMSI
+hex: 17 08 99 78 56 34 12 90 78 36 
+hex: 17 09 91 78 56 34 12 90 78 56 f4 
+Done.
