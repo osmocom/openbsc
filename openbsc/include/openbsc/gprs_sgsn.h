@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
+#include <osmocom/core/timer.h>
+
 #include <osmocom/gsm/gsm48.h>
 
 #include <osmocom/crypt/gprs_cipher.h>
