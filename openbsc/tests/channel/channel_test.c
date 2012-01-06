@@ -22,9 +22,15 @@
 
 #include <assert.h>
 
+#include <osmocom/core/application.h>
 #include <osmocom/core/select.h>
-#include <openbsc/gsm_subscriber.h>
+
 #include <openbsc/abis_rsl.h>
+#include <openbsc/debug.h>
+#include <openbsc/gsm_subscriber.h>
+
+static int s_end = 0;
+static struct gsm_subscriber_connection s_conn;
 
 /* our handler */
 static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, void *data, void *param)
@@ -32,16 +38,17 @@ static int subscr_cb(unsigned int hook, unsigned int event, struct msgb *msg, vo
 	assert(hook == 101);
 	assert(event == 200);
 	assert(msg == (void*)0x1323L);
-	assert(data == (void*)0x4242L);
+	assert(data == &s_conn);
 	assert(param == (void*)0x2342L);
 	printf("Reached, didn't crash, test passed\n");
+	s_end = true;
 	return 0;
 }
 
 /* mock object for testing, directly invoke the cb... maybe later through the timer */
 void paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscriber, int type, gsm_cbfn *cbfn, void *data)
 {
-	cbfn(101, 200, (void*)0x1323L, (void*)0x4242L, data);
+	cbfn(101, 200, (void*)0x1323L, &s_conn, data);
 }
 
 
@@ -49,6 +56,8 @@ int main(int argc, char **argv)
 {
 	struct gsm_network *network;
 	struct gsm_bts *bts;
+
+	osmo_init_logging(&log_info);
 
 	printf("Testing the gsm_subscriber chan logic\n");
 
@@ -67,9 +76,11 @@ int main(int argc, char **argv)
 	/* Ask for a channel... */
 	subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, subscr_cb, (void*)0x2342L);
 
-	while (1) {
+	while (!s_end) {
 		osmo_select_main(0);
 	}
+
+	return EXIT_SUCCESS;
 }
 
 void _abis_nm_sendmsg() {}
