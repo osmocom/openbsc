@@ -48,7 +48,11 @@ static void test_auep(void)
 {
 	struct msgb *inp;
 	struct msgb *msg;
-	struct mgcp_config *cfg = mgcp_config_alloc();
+	struct mgcp_config *cfg;
+
+	printf("Testing AUEP\n");
+
+	cfg = mgcp_config_alloc();
 	cfg->trunk.number_endpoints = 64;
 	mgcp_endpoints_allocate(&cfg->trunk);
 
@@ -78,5 +82,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	test_auep();
-	return 0;
+
+	printf("Done\n");
+	return EXIT_SUCCESS;
 }
