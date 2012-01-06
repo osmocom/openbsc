@@ -229,25 +229,25 @@ static void test_filter(void)
 
 
 	/* start testinh with proper messages */
-	fprintf(stderr, "Testing BSS Filtering.\n");
+	printf("Testing BSS Filtering.\n");
 	for (i = 0; i < ARRAY_SIZE(results); ++i) {
 		int result;
 		struct bsc_nat_parsed *parsed;
 		struct msgb *msg = msgb_alloc(4096, "test-message");
 
-		fprintf(stderr, "Going to test item: %d\n", i);
+		printf("Going to test item: %d\n", i);
 		memcpy(msg->data, results[i].data, results[i].length);
 		msg->l2h = msgb_put(msg, results[i].length);
 
 		parsed = bsc_nat_parse(msg);
 		if (!parsed) {
-			fprintf(stderr, "FAIL: Failed to parse the message\n");
+			printf("FAIL: Failed to parse the message\n");
 			continue;
 		}
 
 		result = bsc_nat_filter_ipa(results[i].dir, msg, parsed);
 		if (result != results[i].result) {
-			fprintf(stderr, "FAIL: Not the expected result got: %d wanted: %d\n",
+			printf("FAIL: Not the expected result got: %d wanted: %d\n",
 				result, results[i].result);
 		}
 
@@ -265,12 +265,17 @@ static void copy_to_msg(struct msgb *msg, const uint8_t *data, unsigned int leng
 }
 
 #define VERIFY(con_found, con, msg, ver, str) \
-	if (!con_found || con_found->bsc != con) { \
-		fprintf(stderr, "Failed to find the con: %p\n", con_found); \
-		abort(); \
-	} \
+	if (!con_found) {						\
+		printf("Failed to find connection.\n");			\
+		abort();						\
+	}								\
+	if (con_found->bsc != con) {					\
+		printf("Got connection of the wrong BSC: %d\n",		\
+			con_found->bsc->cfg->nr);			\
+		abort();						\
+	}								\
 	if (memcmp(msg->data, ver, sizeof(ver)) != 0) { \
-		fprintf(stderr, "Failed to patch the %s msg.\n", str); \
+		printf("Failed to patch the %s msg.\n", str); 		\
 		abort(); \
 	}
 
@@ -284,7 +289,7 @@ static void test_contrack()
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
-	fprintf(stderr, "Testing connection tracking.\n");
+	printf("Testing connection tracking.\n");
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
 	con->cfg = bsc_config_alloc(nat, "foo");
@@ -300,25 +305,31 @@ static void test_contrack()
 	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
 	if (con_found != NULL) {
-		fprintf(stderr, "Con should not exist %p\n", con_found);
+		printf("Con should not exist realref(%u)\n",
+		       sccp_src_ref_to_int(&con_found->real_ref));
 		abort();
 	}
 	rc_con = create_sccp_src_ref(con, parsed);
 	if (!rc_con) {
-		fprintf(stderr, "Failed to create a ref\n");
+		printf("Failed to create a ref\n");
 		abort();
 	}
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
-	if (!con_found || con_found->bsc != con) {
-		fprintf(stderr, "Failed to find the con: %p\n", con_found);
+	if (!con_found) {
+		printf("Failed to find connection.\n");
+		abort();
+	}
+	if (con_found->bsc != con) {
+		printf("Got connection of the wrong BSC: %d\n",
+			con_found->bsc->cfg->nr);
 		abort();
 	}
 	if (con_found != rc_con) {
-		fprintf(stderr, "Failed to find the right connection.\n");
+		printf("Failed to find the right connection.\n");
 		abort();
 	}
 	if (memcmp(msg->data, bsc_cr_patched, sizeof(bsc_cr_patched)) != 0) {
-		fprintf(stderr, "Failed to patch the BSC CR msg.\n");
+		printf("Failed to patch the BSC CR msg.\n");
 		abort();
 	}
 	talloc_free(parsed);
@@ -329,7 +340,7 @@ static void test_contrack()
 	con_found = patch_sccp_src_ref_to_bsc(msg, parsed, nat);
 	VERIFY(con_found, con, msg, msc_cc_patched, "MSC CC");
 	if (update_sccp_src_ref(con_found, parsed) != 0) {
-		fprintf(stderr, "Failed to update the SCCP con.\n");
+		printf("Failed to update the SCCP con.\n");
 		abort();
 	}
 
@@ -355,12 +366,17 @@ static void test_contrack()
 	copy_to_msg(msg, bsc_rlc, sizeof(bsc_rlc));
 	parsed = bsc_nat_parse(msg);
 	con_found = patch_sccp_src_ref_to_msc(msg, parsed, con);
-	if (!con_found || con_found->bsc != con) {
-		fprintf(stderr, "Failed to find the con: %p\n", con_found);
+	if (!con_found) {
+		printf("Failed to find connection.\n");
+		abort();
+	}
+	if (con_found->bsc != con) {
+		printf("Got connection of the wrong BSC: %d\n",
+			con_found->bsc->cfg->nr);
 		abort();
 	}
 	if (memcmp(msg->data, bsc_rlc_patched, sizeof(bsc_rlc_patched)) != 0) {
-		fprintf(stderr, "Failed to patch the BSC CR msg.\n");
+		printf("Failed to patch the BSC CR msg.\n");
 		abort();
 	}
 	remove_sccp_src_ref(con, msg, parsed);
@@ -372,7 +388,8 @@ static void test_contrack()
 
 	/* verify that it is gone */
 	if (con_found != NULL) {
-		fprintf(stderr, "Con should be gone. %p\n", con_found);
+		printf("Con should not exist real_ref(%u)\n",
+		       sccp_src_ref_to_int(&con_found->real_ref));
 		abort();
 	}
 	talloc_free(parsed);
@@ -389,7 +406,7 @@ static void test_paging(void)
 	struct bsc_connection *con;
 	struct bsc_config *cfg;
 
-	fprintf(stderr, "Testing paging by lac.\n");
+	printf("Testing paging by lac.\n");
 
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
@@ -401,7 +418,7 @@ static void test_paging(void)
 
 	/* Test it by not finding it */
 	if (bsc_config_handles_lac(cfg, 8213) != 0) {
-		fprintf(stderr, "Should not be handled.\n");
+		printf("Should not be handled.\n");
 		abort();
 	}
 
@@ -409,7 +426,7 @@ static void test_paging(void)
 	bsc_config_del_lac(cfg, 23);
 	bsc_config_add_lac(cfg, 8213);
 	if (bsc_config_handles_lac(cfg, 8213) == 0) {
-		fprintf(stderr, "Should have found it.\n");
+		printf("Should have found it.\n");
 		abort();
 	}
 }
@@ -422,7 +439,7 @@ static void test_mgcp_allocations(void)
 	struct sccp_connections con;
 	int i, j, multiplex;
 
-	fprintf(stderr, "Testing MGCP.\n");
+	printf("Testing MGCP.\n");
 	memset(&con, 0, sizeof(con));
 
 	nat = bsc_nat_alloc();
@@ -444,7 +461,7 @@ static void test_mgcp_allocations(void)
 	i  = 1;
 	do {
 		if (bsc_assign_endpoint(bsc, &con) != 0) {
-			fprintf(stderr, "failed to allocate... on iteration %d\n", i);
+			printf("failed to allocate... on iteration %d\n", i);
 			break;
 		}
 		++i;
@@ -467,7 +484,7 @@ static void test_mgcp_ass_tracking(void)
 	struct bsc_nat_parsed *parsed;
 	struct msgb *msg;
 
-	fprintf(stderr, "Testing MGCP.\n");
+	printf("Testing MGCP.\n");
 	memset(&con, 0, sizeof(con));
 
 	nat = bsc_nat_alloc();
@@ -489,28 +506,28 @@ static void test_mgcp_ass_tracking(void)
 
 	if (msg->l2h[16] != 0 ||
 	    msg->l2h[17] != 0x1) {
-		fprintf(stderr, "Input is not as expected.. %s 0x%x\n",
+		printf("Input is not as expected.. %s 0x%x\n",
 			osmo_hexdump(msg->l2h, msgb_l2len(msg)),
 			msg->l2h[17]);
 		abort();
 	}
 
 	if (bsc_mgcp_assign_patch(&con, msg) != 0) {
-		fprintf(stderr, "Failed to handle assignment.\n");
+		printf("Failed to handle assignment.\n");
 		abort();
 	}
 
 	if (con.msc_endp != 1) {
-		fprintf(stderr, "Timeslot should be 1.\n");
+		printf("Timeslot should be 1.\n");
 		abort();
 	}
 
 	if (con.bsc_endp != 0x1) {
-		fprintf(stderr, "Assigned timeslot should have been 1.\n");
+		printf("Assigned timeslot should have been 1.\n");
 		abort();
 	}
 	if (con.bsc->_endpoint_status[0x1] != 1) {
-		fprintf(stderr, "The status on the BSC is wrong.\n");
+		printf("The status on the BSC is wrong.\n");
 		abort();
 	}
 
@@ -519,8 +536,8 @@ static void test_mgcp_ass_tracking(void)
 
 	uint16_t cic = htons(timeslot & 0x1f);
 	if (memcmp(&cic, &msg->l2h[16], sizeof(cic)) != 0) {
-		fprintf(stderr, "Message was not patched properly\n");
-		fprintf(stderr, "data cic: 0x%x %s\n", cic, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
+		printf("Message was not patched properly\n");
+		printf("data cic: 0x%x %s\n", cic, osmo_hexdump(msg->l2h, msgb_l2len(msg)));
 		abort();
 	}
 
@@ -529,7 +546,7 @@ static void test_mgcp_ass_tracking(void)
 	bsc_mgcp_dlcx(&con);
 	if (con.bsc_endp != -1 || con.msc_endp != -1 ||
 	    con.bsc->_endpoint_status[1] != 0 || con.bsc->last_endpoint != 0x1) {
-		fprintf(stderr, "Clearing should remove the mapping.\n");
+		printf("Clearing should remove the mapping.\n");
 		abort();
 	}
 
@@ -544,7 +561,7 @@ static void test_mgcp_find(void)
 	struct bsc_connection *con;
 	struct sccp_connections *sccp_con;
 
-	fprintf(stderr, "Testing finding of a BSC Connection\n");
+	printf("Testing finding of a BSC Connection\n");
 
 	nat = bsc_nat_alloc();
 	con = bsc_connection_alloc(nat);
@@ -557,12 +574,12 @@ static void test_mgcp_find(void)
 	llist_add(&sccp_con->list_entry, &nat->sccp_connections);
 
 	if (bsc_mgcp_find_con(nat, 11) != NULL) {
-		fprintf(stderr, "Found the wrong connection.\n");
+		printf("Found the wrong connection.\n");
 		abort();
 	}
 
 	if (bsc_mgcp_find_con(nat, 12) != sccp_con) {
-		fprintf(stderr, "Didn't find the connection\n");
+		printf("Didn't find the connection\n");
 		abort();
 	}
 
@@ -574,7 +591,7 @@ static void test_mgcp_rewrite(void)
 {
 	int i;
 	struct msgb *output;
-	fprintf(stderr, "Test rewriting MGCP messages.\n");
+	printf("Testing rewriting MGCP messages.\n");
 
 	for (i = 0; i < ARRAY_SIZE(mgcp_messages); ++i) {
 		const char *orig = mgcp_messages[i].orig;
@@ -586,13 +603,13 @@ static void test_mgcp_rewrite(void)
 
 		output = bsc_mgcp_rewrite(input, strlen(input), 0x1e, ip, port);
 		if (msgb_l2len(output) != strlen(patc)) {
-			fprintf(stderr, "Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
-			fprintf(stderr, "String '%s' vs '%s'\n", (const char *) output->l2h, patc);
+			printf("Wrong sizes for test: %d  %d != %d != %d\n", i, msgb_l2len(output), strlen(patc), strlen(orig));
+			printf("String '%s' vs '%s'\n", (const char *) output->l2h, patc);
 			abort();
 		}
 
 		if (memcmp(output->l2h, patc, msgb_l2len(output)) != 0) {
-			fprintf(stderr, "Broken on %d msg: '%s'\n", i, (const char *) output->l2h);
+			printf("Broken on %d msg: '%s'\n", i, (const char *) output->l2h);
 			abort();
 		}
 
@@ -606,26 +623,26 @@ static void test_mgcp_parse(void)
 	int code, ci;
 	char transaction[60];
 
-	fprintf(stderr, "Test MGCP response parsing.\n");
+	printf("Testing MGCP response parsing.\n");
 
 	if (bsc_mgcp_parse_response(crcx_resp, &code, transaction) != 0) {
-		fprintf(stderr, "Failed to parse CRCX resp.\n");
+		printf("Failed to parse CRCX resp.\n");
 		abort();
 	}
 
 	if (code != 200) {
-		fprintf(stderr, "Failed to parse the CODE properly. Got: %d\n", code);
+		printf("Failed to parse the CODE properly. Got: %d\n", code);
 		abort();
 	}
 
 	if (strcmp(transaction, "23265295") != 0) {
-		fprintf(stderr, "Failed to parse transaction id: '%s'\n", transaction);
+		printf("Failed to parse transaction id: '%s'\n", transaction);
 		abort();
 	}
 
 	ci = bsc_mgcp_extract_ci(crcx_resp);
 	if (ci != 1) {
-		fprintf(stderr, "Failed to parse the CI. Got: %d\n", ci);
+		printf("Failed to parse the CI. Got: %d\n", ci);
 		abort();
 	}
 }
@@ -760,18 +777,18 @@ static void test_cr_filter()
 
 		parsed = bsc_nat_parse(msg);
 		if (!parsed) {
-			fprintf(stderr, "FAIL: Failed to parse the message\n");
+			printf("FAIL: Failed to parse the message\n");
 			abort();
 		}
 
 		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype, &imsi);
 		if (res != cr_filter[i].result) {
-			fprintf(stderr, "FAIL: Wrong result %d for test %d.\n", res, i);
+			printf("FAIL: Wrong result %d for test %d.\n", res, i);
 			abort();
 		}
 
 		if (contype != cr_filter[i].contype) {
-			fprintf(stderr, "FAIL: Wrong contype %d for test %d.\n", res, contype);
+			printf("FAIL: Wrong contype %d for test %d.\n", res, contype);
 			abort();
 		}
 
@@ -801,23 +818,23 @@ static void test_dt_filter()
 
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
 	if (parsed->bssap != BSSAP_MSG_DTAP) {
-		fprintf(stderr, "FAIL: It should be dtap\n");
+		printf("FAIL: It should be dtap\n");
 		abort();
 	}
 
 	/* gsm_type is actually the size of the dtap */
 	if (parsed->gsm_type < msgb_l3len(msg) - 3) {
-		fprintf(stderr, "FAIL: Not enough space for the content\n");
+		printf("FAIL: Not enough space for the content\n");
 		abort();
 	}
 
 	if (bsc_nat_filter_dt(bsc, msg, con, parsed) != 1) {
-		fprintf(stderr, "FAIL: Should have passed..\n");
+		printf("FAIL: Should have passed..\n");
 		abort();
 	}
 
@@ -861,23 +878,23 @@ static void test_setup_rewrite()
 	copy_to_msg(msg, cc_setup_international, ARRAY_SIZE(cc_setup_international));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
 	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (msg != out) {
-		fprintf(stderr, "FAIL: The message should not have been changed\n");
+		printf("FAIL: The message should not have been changed\n");
 		abort();
 	}
 
 	if (out->len != ARRAY_SIZE(cc_setup_international)) {
-		fprintf(stderr, "FAIL: Length of message changed\n");
+		printf("FAIL: Length of message changed\n");
 		abort();
 	}
 
 	if (memcmp(out->data, cc_setup_international, out->len) != 0) {
-		fprintf(stderr, "FAIL: Content modified..\n");
+		printf("FAIL: Content modified..\n");
 		abort();
 	}
 	talloc_free(parsed);
@@ -887,29 +904,29 @@ static void test_setup_rewrite()
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
 	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
-		fprintf(stderr, "FAIL: A new message should be created.\n");
+		printf("FAIL: A new message should be created.\n");
 		abort();
 	}
 
 	if (msg == out) {
-		fprintf(stderr, "FAIL: The message should have changed\n");
+		printf("FAIL: The message should have changed\n");
 		abort();
 	}
 
 	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
-		fprintf(stderr, "FAIL: Length is wrong.\n");
+		printf("FAIL: Length is wrong.\n");
 		abort();
 	}
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
-		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
+		printf("FAIL: Data is wrong.\n");
+		printf("Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 
@@ -922,29 +939,29 @@ static void test_setup_rewrite()
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
 	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (!out) {
-		fprintf(stderr, "FAIL: A new message should be created.\n");
+		printf("FAIL: A new message should be created.\n");
 		abort();
 	}
 
 	if (msg == out) {
-		fprintf(stderr, "FAIL: The message should have changed\n");
+		printf("FAIL: The message should have changed\n");
 		abort();
 	}
 
 	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
-		fprintf(stderr, "FAIL: Length is wrong.\n");
+		printf("FAIL: Length is wrong.\n");
 		abort();
 	}
 
 	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
-		fprintf(stderr, "FAIL: Data is wrong.\n");
-		fprintf(stderr, "Data was: %s\n", osmo_hexdump(out->data, out->len));
+		printf("FAIL: Data is wrong.\n");
+		printf("Data was: %s\n", osmo_hexdump(out->data, out->len));
 		abort();
 	}
 
@@ -957,23 +974,23 @@ static void test_setup_rewrite()
 	copy_to_msg(msg, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse ID resp\n");
+		printf("FAIL: Could not parse ID resp\n");
 		abort();
 	}
 
 	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (out != msg) {
-		fprintf(stderr, "FAIL: The message should be unchanged.\n");
+		printf("FAIL: The message should be unchanged.\n");
 		abort();
 	}
 
 	if (out->len != ARRAY_SIZE(cc_setup_national)) {
-		fprintf(stderr, "FAIL: Foo\n");
+		printf("FAIL: Foo\n");
 		abort();
 	}
 
 	if (memcmp(out->data, cc_setup_national, ARRAY_SIZE(cc_setup_national)) != 0) {
-		fprintf(stderr, "FAIL: The message should really be unchanged.\n");
+		printf("FAIL: The message should really be unchanged.\n");
 		abort();
 	}
 
@@ -1010,23 +1027,23 @@ static void test_smsc_rewrite()
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
-		fprintf(stderr, "FAIL: Could not parse SMS\n");
+		printf("FAIL: Could not parse SMS\n");
 		abort();
 	}
 
 	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
 	if (out == msg) {
-		fprintf(stderr, "FAIL: This should have changed.\n");
+		printf("FAIL: This should have changed.\n");
 		abort();
 	}
 
 	if (out->len != ARRAY_SIZE(smsc_rewrite_patched)) {
-		fprintf(stderr, "FAIL: The size should match.\n");
+		printf("FAIL: The size should match.\n");
 		abort();
 	}
 
 	if (memcmp(out->data, smsc_rewrite_patched, out->len) != 0) {
-		fprintf(stderr, "FAIL: the data should be changed.\n");
+		printf("FAIL: the data should be changed.\n");
 		abort();
 	}
 }
@@ -1048,5 +1065,7 @@ int main(int argc, char **argv)
 	test_setup_rewrite();
 	test_smsc_rewrite();
 	test_mgcp_allocations();
+
+	printf("Testing execution completed.\n");
 	return 0;
 }
