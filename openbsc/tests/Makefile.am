@@ -9,7 +9,7 @@ endif
 
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
-$(srcdir)/package.m4: $(top_srcdir)/configure.ac $(top_builddir)/config.log
+$(builddir)/package.m4: $(top_srcdir)/configure.ac $(top_builddir)/config.log
 	:;{ \
                echo '# Signature of the current package.' && \
                echo 'm4_define([AT_PACKAGE_NAME],' && \
@@ -25,10 +25,10 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac $(top_builddir)/config.log
                echo 'm4_define([AT_PACKAGE_URL],' && \
                echo '  [$(PACKAGE_URL)])'; \
                $(ENABLE_NAT_TEST) \
-             } >'$(srcdir)/package.m4'
+             } >'$(builddir)/package.m4'
 
-EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)
-TESTSUITE = $(srcdir)/testsuite
+EXTRA_DIST = testsuite.at $(builddir)/package.m4 $(TESTSUITE)
+TESTSUITE = $(builddir)/testsuite
 
 check-local: atconfig $(TESTSUITE)
 	$(SHELL) '$(TESTSUITE)' $(TESTSUITEFLAGS)
@@ -41,9 +41,11 @@ clean-local:
 	test ! -f '$(TESTSUITE)' || \
 		$(SHELL) '$(TESTSUITE)' --clean
 	$(RM) -f atconfig
+	$(RM) $(TESTSUITE)
+	$(RM) $(builddir)/package.m4
 
 AUTOM4TE = $(SHELL) $(top_srcdir)/missing --run autom4te
 AUTOTEST = $(AUTOM4TE) --language=autotest
-$(TESTSUITE): $(srcdir)/testsuite.at $(srcdir)/package.m4
+$(TESTSUITE): $(srcdir)/testsuite.at $(builddir)/package.m4
 	$(AUTOTEST) -I '$(srcdir)' -o $@.tmp $@.at
 	mv $@.tmp $@
