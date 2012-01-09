@@ -29,6 +29,7 @@ AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Require
         osmo_ac_build_nat="no"
     ])
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
+AC_SUBST(osmo_ac_build_nat)
 
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
     [
@@ -106,6 +107,7 @@ AC_OUTPUT(
     src/libgb/Makefile
     src/gprs/Makefile
     tests/Makefile
+    tests/atlocal
     tests/debug/Makefile
     tests/gsm0408/Makefile
     tests/db/Makefile

@@ -2,14 +2,11 @@ SUBDIRS = debug gsm0408 db channel mgcp gprs
 
 if BUILD_NAT
 SUBDIRS += bsc-nat
-ENABLE_NAT_TEST = echo 'm4_define([ENABLE_NAT_TEST], [1])';
-else
-ENABLE_NAT_TEST = echo '';
 endif
 
 
 # The `:;' works around a Bash 3.2 bug when the output is not writeable.
-$(srcdir)/package.m4: $(top_srcdir)/configure.ac $(top_builddir)/config.log
+$(srcdir)/package.m4: $(top_srcdir)/configure.ac
 	:;{ \
                echo '# Signature of the current package.' && \
                echo 'm4_define([AT_PACKAGE_NAME],' && \
@@ -24,7 +21,6 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac $(top_builddir)/config.log
                echo '  [$(PACKAGE_BUGREPORT)])'; \
                echo 'm4_define([AT_PACKAGE_URL],' && \
                echo '  [$(PACKAGE_URL)])'; \
-               $(ENABLE_NAT_TEST) \
              } >'$(srcdir)/package.m4'
 
 EXTRA_DIST = testsuite.at $(srcdir)/package.m4 $(TESTSUITE)

@@ -54,6 +54,7 @@ tests/timer/timer_test
 tests/gprs/gprs_test
 
 tests/atconfig
+tests/atlocal
 tests/package.m4
 tests/testsuite
 tests/testsuite.log
