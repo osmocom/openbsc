@@ -1075,10 +1075,11 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 		return NULL;
 	}
 
-	/* look into the phone number */
-	if ((data_ptr[0] & 0x01) != 1)
+	/* TP-PDU starts here */
+	if ((data_ptr[0] & 0x03) != GSM340_SMS_SUBMIT_MS2SC)
 		return NULL;
 
+	/* look into the phone number */
 	dest_len = data_ptr[2];
 	if (data_len < dest_len + 3 || dest_len < 2) {
 		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT can not have TP-DestAddr.\n");
