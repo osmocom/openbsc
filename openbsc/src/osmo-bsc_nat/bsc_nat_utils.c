@@ -635,8 +635,10 @@ struct gsm48_hdr *bsc_unpack_dtap(struct bsc_nat_parsed *parsed,
 		return NULL;
 	}
 
-	if (*len < sizeof(struct gsm48_hdr)) {
-		LOGP(DNAT, LOGL_ERROR, "GSM48 header does not fit.\n");
+	if (msgb_l3len(msg) - 3 < msg->l3h[2]) {
+		LOGP(DNAT, LOGL_ERROR,
+		     "GSM48 payload does not fit: %d %d\n",
+		     msg->l3h[2], msgb_l3len(msg) - 3);
 		return NULL;
 	}
 
