@@ -898,9 +898,66 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 	return out;
 }
 
-static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
-				 struct bsc_nat_parsed *parsed, const char *imsi,
-				 struct gsm48_hdr *hdr48, const uint32_t len)
+/**
+ * Find a new SMSC address, returns an allocated string that needs to be
+ * freed or is NULL.
+ */
+static char *find_new_smsc(struct bsc_nat *nat, void *ctx, const char *imsi,
+			   const char *smsc_addr, const char *dest_nr)
+{
+	struct bsc_nat_num_rewr_entry *entry;
+	char *new_number = NULL;
+	uint8_t dest_match = 0;
+
+	/* We will find a new number now */
+	llist_for_each_entry(entry, &nat->smsc_rewr, list) {
+		regmatch_t matches[2];
+
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		/* this regexp matches... */
+		if (regexec(&entry->num_reg, smsc_addr, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(ctx, "%s%s",
+					entry->replace,
+					&smsc_addr[matches[1].rm_so]);
+		if (new_number)
+			break;
+	}
+
+	if (!new_number)
+		return NULL;
+
+	/*
+	 * now match the number against another list
+	 */
+	llist_for_each_entry(entry, &nat->tpdest_match, list) {
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		if (regexec(&entry->num_reg, dest_nr, 0, NULL, 0) == 0) {
+			dest_match = 1;
+			break;
+		}
+	}
+
+	if (!dest_match) {
+		talloc_free(new_number);
+		return NULL;
+	}
+
+	return new_number;
+}
+
+/**
+ * Parse the SMS and check if it needs to be rewritten
+ */
+static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
+				struct bsc_nat_parsed *parsed, const char *imsi,
+				struct gsm48_hdr *hdr48, const uint32_t len)
 {
 	unsigned int payload_len;
 	unsigned int cp_len;
@@ -916,9 +973,7 @@ static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
 	uint8_t dest_len;
 	char _dest_nr[30];
 	char *dest_nr;
-	uint8_t dest_match = 0;
 
-	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
 	uint8_t new_addr_len;
 	struct gsm48_hdr *new_hdr48;
@@ -1005,46 +1060,9 @@ static struct msgb *rewrite_smsc(struct bsc_nat *nat, struct msgb *msg,
 		dest_nr = &_dest_nr[2];
 	}
 
-	/* We will find a new number now */
-	llist_for_each_entry(entry, &nat->smsc_rewr, list) {
-		regmatch_t matches[2];
-
-		/* check the IMSI match */
-		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
-			continue;
-
-		/* this regexp matches... */
-		if (regexec(&entry->num_reg, smsc_addr, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(msg, "%s%s",
-					entry->replace,
-					&smsc_addr[matches[1].rm_so]);
-		if (new_number)
-			break;
-	}
-
+	new_number = find_new_smsc(nat, msg, imsi, smsc_addr, dest_nr);
 	if (!new_number)
 		return NULL;
-
-	/*
-	 * now match the number against another list
-	 */
-	llist_for_each_entry(entry, &nat->tpdest_match, list) {
-		/* check the IMSI match */
-		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
-			continue;
-
-		if (regexec(&entry->num_reg, dest_nr, 0, NULL, 0) == 0) {
-			dest_match =1;
-			break;
-		}
-	}
-
-	if (!dest_match) {
-		talloc_free(new_number);
-		return NULL;
-	}
-
 	/*
 	 * We need to re-create the patched structure. This is why we have
 	 * saved the above pointers.
@@ -1107,7 +1125,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 	if (proto == GSM48_PDISC_CC && msg_type == GSM48_MT_CC_SETUP)
 		new_msg = rewrite_setup(nat, msg, parsed, imsi, hdr48, len);
 	else if (proto == GSM48_PDISC_SMS && msg_type == GSM411_MT_CP_DATA)
-		new_msg = rewrite_smsc(nat, msg, parsed, imsi, hdr48, len);
+		new_msg = rewrite_sms(nat, msg, parsed, imsi, hdr48, len);
 
 	if (!new_msg)
 		return msg;
