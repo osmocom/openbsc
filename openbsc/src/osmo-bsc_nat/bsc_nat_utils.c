@@ -952,6 +952,52 @@ static char *find_new_smsc(struct bsc_nat *nat, void *ctx, const char *imsi,
 	return new_number;
 }
 
+static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
+				   struct gsm48_hdr *old_hdr48,
+				   const uint8_t *orig_addr_ptr,
+				   int orig_addr_len, const char *new_number,
+				   const uint8_t *data_ptr, int data_len)
+{
+	uint8_t new_addr_len;
+	struct gsm48_hdr *new_hdr48;
+	uint8_t new_addr[12];
+	struct msgb *out;
+
+	/*
+	 * We need to re-create the patched structure. This is why we have
+	 * saved the above pointers.
+	 */
+	out = msgb_alloc_headroom(4096, 128, "changed-smsc");
+	if (!out) {
+		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
+		return NULL;
+	}
+
+	out->l3h = out->data;
+	msgb_v_put(out, GSM411_MT_RP_DATA_MO);
+	msgb_v_put(out, ref);
+	msgb_lv_put(out, orig_addr_len, orig_addr_ptr);
+
+	/*
+	 * Copy the new number. We let libosmocore encode it, then set
+	 * the extension followed after the length. For our convenience
+	 * we let the TLV code re-add the length so we start copying
+	 * from &new_addr[1].
+	 */
+	new_addr_len = gsm48_encode_bcd_number(new_addr, ARRAY_SIZE(new_addr),
+					       1, new_number);
+	new_addr[1] = 0x91;
+	msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
+
+	msgb_lv_put(out, data_len, data_ptr);
+
+	new_hdr48 = (struct gsm48_hdr *) msgb_push(out, sizeof(*new_hdr48) + 1);
+	memcpy(new_hdr48, old_hdr48, sizeof(*old_hdr48));
+	new_hdr48->data[0] = msgb_l3len(out);
+
+	return out;
+}
+
 /**
  * Parse the SMS and check if it needs to be rewritten
  */
@@ -967,7 +1013,6 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	uint8_t dest_addr_len, *dest_addr_ptr;
 	uint8_t data_len, *data_ptr;
 	char smsc_addr[30];
-	uint8_t new_addr[12];
 
 
 	uint8_t dest_len;
@@ -975,8 +1020,6 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	char *dest_nr;
 
 	char *new_number = NULL;
-	uint8_t new_addr_len;
-	struct gsm48_hdr *new_hdr48;
 	struct msgb *out;
 
 	payload_len = len - sizeof(*hdr48);
@@ -1063,38 +1106,10 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	new_number = find_new_smsc(nat, msg, imsi, smsc_addr, dest_nr);
 	if (!new_number)
 		return NULL;
-	/*
-	 * We need to re-create the patched structure. This is why we have
-	 * saved the above pointers.
-	 */
-	out = msgb_alloc_headroom(4096, 128, "changed-smsc");
-	if (!out) {
-		LOGP(DNAT, LOGL_ERROR, "Failed to allocate.\n");
-		return NULL;
-	}
 
-	out->l3h = out->data;
-	msgb_v_put(out, GSM411_MT_RP_DATA_MO);
-	msgb_v_put(out, ref);
-	msgb_lv_put(out, orig_addr_len, orig_addr_ptr);
-
-	/*
-	 * Copy the new number. We let libosmocore encode it, then set
-	 * the extension followed after the length. For our convenience
-	 * we let the TLV code re-add the length so we start copying
-	 * from &new_addr[1].
-	 */
-	new_addr_len = gsm48_encode_bcd_number(new_addr, ARRAY_SIZE(new_addr),
-					       1, new_number);
-	new_addr[1] = 0x91;
-	msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
-
-	msgb_lv_put(out, data_len, data_ptr);
-
-	new_hdr48 = (struct gsm48_hdr *) msgb_push(out, sizeof(*hdr48) + 1);
-	memcpy(new_hdr48, hdr48, sizeof(*hdr48));
-	new_hdr48->data[0] = msgb_l3len(out);
-
+	out = sms_create_new(GSM411_MT_RP_DATA_MO, ref, hdr48,
+			orig_addr_ptr, orig_addr_len,
+			new_number, data_ptr, data_len);
 	talloc_free(new_number);
 	return out;
 }
