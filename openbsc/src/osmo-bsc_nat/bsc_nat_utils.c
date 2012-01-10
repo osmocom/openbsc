@@ -907,7 +907,7 @@ static char *find_new_smsc(struct bsc_nat *nat, void *ctx, const char *imsi,
 {
 	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
-	uint8_t dest_match = 0;
+	uint8_t dest_match = llist_empty(&nat->tpdest_match);
 
 	/* We will find a new number now */
 	llist_for_each_entry(entry, &nat->smsc_rewr, list) {
