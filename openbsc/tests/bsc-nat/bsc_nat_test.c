@@ -264,6 +264,23 @@ static void copy_to_msg(struct msgb *msg, const uint8_t *data, unsigned int leng
 	memcpy(msg->l2h, data, msgb_l2len(msg));
 }
 
+static void verify_msg(struct msgb *out, const uint8_t *ref, int ref_len)
+{
+	if (out->len != ref_len) {
+		printf("FAIL: The size should match.\n");
+		abort();
+	}
+
+	if (memcmp(out->data, ref, out->len) != 0) {
+		printf("FAIL: the data should be changed.\n");
+		printf("%s\n", osmo_hexdump(out->data, out->len));
+		printf("Wanted\n");
+		printf("%s\n", osmo_hexdump(ref, ref_len));
+		abort();
+	}
+}
+
+
 #define VERIFY(con_found, con, msg, ver, str) \
 	if (!con_found) {						\
 		printf("Failed to find connection.\n");			\
@@ -888,15 +905,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	if (out->len != ARRAY_SIZE(cc_setup_international)) {
-		printf("FAIL: Length of message changed\n");
-		abort();
-	}
-
-	if (memcmp(out->data, cc_setup_international, out->len) != 0) {
-		printf("FAIL: Content modified..\n");
-		abort();
-	}
+	verify_msg(out, cc_setup_international, ARRAY_SIZE(cc_setup_international));
 	talloc_free(parsed);
 
 	/* verify that something in the message changes */
@@ -919,17 +928,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
-		printf("FAIL: Length is wrong.\n");
-		abort();
-	}
-
-	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
-		printf("FAIL: Data is wrong.\n");
-		printf("Data was: %s\n", osmo_hexdump(out->data, out->len));
-		abort();
-	}
-
+	verify_msg(out, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
 	msgb_free(out);
 
 	/* Make sure that a wildcard is matching */
@@ -954,17 +953,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	if (out->len != ARRAY_SIZE(cc_setup_national_patched)) {
-		printf("FAIL: Length is wrong.\n");
-		abort();
-	}
-
-	if (memcmp(cc_setup_national_patched, out->data, out->len) != 0) {
-		printf("FAIL: Data is wrong.\n");
-		printf("Data was: %s\n", osmo_hexdump(out->data, out->len));
-		abort();
-	}
-
+	verify_msg(out, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
 	msgb_free(out);
 
 	/* Make sure that a wildcard is matching */
@@ -984,16 +973,7 @@ static void test_setup_rewrite()
 		abort();
 	}
 
-	if (out->len != ARRAY_SIZE(cc_setup_national)) {
-		printf("FAIL: Foo\n");
-		abort();
-	}
-
-	if (memcmp(out->data, cc_setup_national, ARRAY_SIZE(cc_setup_national)) != 0) {
-		printf("FAIL: The message should really be unchanged.\n");
-		abort();
-	}
-
+	verify_msg(out, cc_setup_national, ARRAY_SIZE(cc_setup_national));
 	msgb_free(out);
 }
 
@@ -1037,15 +1017,8 @@ static void test_smsc_rewrite()
 		abort();
 	}
 
-	if (out->len != ARRAY_SIZE(smsc_rewrite_patched)) {
-		printf("FAIL: The size should match.\n");
-		abort();
-	}
-
-	if (memcmp(out->data, smsc_rewrite_patched, out->len) != 0) {
-		printf("FAIL: the data should be changed.\n");
-		abort();
-	}
+	verify_msg(out, smsc_rewrite_patched, ARRAY_SIZE(smsc_rewrite_patched));
+	msgb_free(out);
 }
 
 int main(int argc, char **argv)
