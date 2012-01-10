@@ -1042,6 +1042,7 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 		return NULL;
 	}
 
+	/* RP */
 	ref = hdr48->data[2];
 	orig_addr_len = hdr48->data[3];
 	orig_addr_ptr = &hdr48->data[4];
@@ -1090,7 +1091,7 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	}
 
 	if ((data_ptr[3] & 0x0F) == 0) {
-		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr is not a ISDN number.\n");
+		LOGP(DNAT, LOGL_ERROR, "TP-DestAddr is of unknown type.\n");
 		return NULL;
 	}
 
