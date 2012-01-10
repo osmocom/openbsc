@@ -18,4 +18,7 @@ Testing MGCP.
 Testing finding of a BSC Connection
 Testing rewriting MGCP messages.
 Testing MGCP response parsing.
+Testing SMSC rewriting.
+Attempting to only rewrite the HDR
+Attempting to change nothing.
 Testing execution completed.

@@ -98,6 +98,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->num_rewr);
 	INIT_LLIST_HEAD(&nat->smsc_rewr);
 	INIT_LLIST_HEAD(&nat->tpdest_match);
+	INIT_LLIST_HEAD(&nat->sms_clear_tp_srr);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
@@ -954,11 +955,35 @@ static char *find_new_smsc(struct bsc_nat *nat, void *ctx, const char *imsi,
 	return new_number;
 }
 
+/**
+ * Clear the TP-SRR from the TPDU header
+ */
+static uint8_t sms_new_tpdu_hdr(struct bsc_nat *nat, const char *imsi,
+				const char *dest_nr, uint8_t hdr)
+{
+	struct bsc_nat_num_rewr_entry *entry;
+
+	/* We will find a new number now */
+	llist_for_each_entry(entry, &nat->sms_clear_tp_srr, list) {
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+		if (regexec(&entry->num_reg, dest_nr, 0, NULL, 0) != 0)
+			continue;
+
+		/* matched phone number and imsi */
+		return hdr & ~0x20;
+	}
+
+	return hdr;
+}
+
 static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
 				   struct gsm48_hdr *old_hdr48,
 				   const uint8_t *orig_addr_ptr,
 				   int orig_addr_len, const char *new_number,
-				   const uint8_t *data_ptr, int data_len)
+				   const uint8_t *data_ptr, int data_len,
+				   uint8_t tpdu_first_byte)
 {
 	uint8_t new_addr_len;
 	struct gsm48_hdr *new_hdr48;
@@ -991,8 +1016,11 @@ static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
 	new_addr[1] = 0x91;
 	msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
 
-	msgb_lv_put(out, data_len, data_ptr);
+	/* patch in the new TPDU header value */
+	msgb_v_put(out, data_len);
+	msgb_tv_fixed_put(out, tpdu_first_byte, data_len - 1, &data_ptr[1]);
 
+	/* prepend GSM 04.08 header */
 	new_hdr48 = (struct gsm48_hdr *) msgb_push(out, sizeof(*new_hdr48) + 1);
 	memcpy(new_hdr48, old_hdr48, sizeof(*old_hdr48));
 	new_hdr48->data[0] = msgb_l3len(out);
@@ -1022,6 +1050,7 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	char *dest_nr;
 
 	char *new_number = NULL;
+	uint8_t tpdu_hdr;
 	struct msgb *out;
 
 	payload_len = len - sizeof(*hdr48);
@@ -1107,13 +1136,19 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 		dest_nr = &_dest_nr[2];
 	}
 
+	/**
+	 * Call functions to rewrite the data
+	 */
+	tpdu_hdr = sms_new_tpdu_hdr(nat, imsi, dest_nr, data_ptr[0]);
 	new_number = find_new_smsc(nat, msg, imsi, smsc_addr, dest_nr);
-	if (!new_number)
+
+	if (tpdu_hdr == data_ptr[0] && !new_number)
 		return NULL;
 
 	out = sms_create_new(GSM411_MT_RP_DATA_MO, ref, hdr48,
 			orig_addr_ptr, orig_addr_len,
-			new_number, data_ptr, data_len);
+			new_number ? new_number : smsc_addr,
+			data_ptr, data_len, tpdu_hdr);
 	talloc_free(new_number);
 	return out;
 }

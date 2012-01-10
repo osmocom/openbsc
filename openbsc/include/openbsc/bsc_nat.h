@@ -295,6 +295,8 @@ struct bsc_nat {
 	struct llist_head smsc_rewr;
 	char *tpdest_match_name;
 	struct llist_head tpdest_match;
+	char *sms_clear_tp_srr_name;
+	struct llist_head sms_clear_tp_srr;
 
 	/* USSD messages  we want to match */
 	char *ussd_lst_name;

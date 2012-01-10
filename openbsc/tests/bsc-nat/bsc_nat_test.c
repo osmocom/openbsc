@@ -986,11 +986,12 @@ static void test_smsc_rewrite()
 	struct bsc_nat *nat = bsc_nat_alloc();
 
 	/* a fake list */
-	struct osmo_config_list smsc_entries, dest_entries;
-	struct osmo_config_entry smsc_entry, dest_entry;
+	struct osmo_config_list smsc_entries, dest_entries, clear_entries;
+	struct osmo_config_entry smsc_entry, dest_entry, clear_entry;
 
 	INIT_LLIST_HEAD(&smsc_entries.entry);
 	INIT_LLIST_HEAD(&dest_entries.entry);
+	INIT_LLIST_HEAD(&clear_entries.entry);
 	smsc_entry.mcc = "^515039";
 	smsc_entry.option = "639180000105()";
 	smsc_entry.text   = "6666666666667";
@@ -1000,10 +1001,20 @@ static void test_smsc_rewrite()
 	dest_entry.option = "^0049";
 	dest_entry.text   = "";
 	llist_add_tail(&dest_entry.list, &dest_entries.entry);
+	clear_entry.mcc = "^515039";
+	clear_entry.option = "^0049";
+	clear_entry.text   = "";
+	llist_add_tail(&clear_entry.list, &clear_entries.entry);
 
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, &smsc_entries);
 	bsc_nat_num_rewr_entry_adapt(nat, &nat->tpdest_match, &dest_entries);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_clear_tp_srr, &clear_entries);
 
+	printf("Testing SMSC rewriting.\n");
+
+	/*
+	 * Check if the SMSC address is changed
+	 */
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
@@ -1018,6 +1029,46 @@ static void test_smsc_rewrite()
 	}
 
 	verify_msg(out, smsc_rewrite_patched, ARRAY_SIZE(smsc_rewrite_patched));
+	msgb_free(out);
+
+	/* clear out the filter for SMSC */
+	printf("Attempting to only rewrite the HDR\n");
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->smsc_rewr, NULL);
+	msg = msgb_alloc(4096, "SMSC rewrite");
+	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse SMS\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (out == msg) {
+		printf("FAIL: This should have changed.\n");
+		abort();
+	}
+
+	verify_msg(out, smsc_rewrite_patched_hdr, ARRAY_SIZE(smsc_rewrite_patched_hdr));
+	msgb_free(out);
+
+	/* clear out the next filter */
+	printf("Attempting to change nothing.\n");
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_clear_tp_srr, NULL);
+	msg = msgb_alloc(4096, "SMSC rewrite");
+	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse SMS\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (out != msg) {
+		printf("FAIL: This should not have changed.\n");
+		abort();
+	}
+
+	verify_msg(out, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	msgb_free(out);
 }
 
