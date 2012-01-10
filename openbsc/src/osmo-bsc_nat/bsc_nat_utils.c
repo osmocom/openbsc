@@ -1124,6 +1124,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 	uint32_t len;
 	uint8_t msg_type, proto;
 	struct msgb *new_msg = NULL, *sccp;
+	uint8_t link_id;
 
 	if (!imsi || strlen(imsi) < 5)
 		return msg;
@@ -1138,6 +1139,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 	if (!hdr48)
 		return msg;
 
+	link_id = msg->l3h[1];
 	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
 
@@ -1150,7 +1152,7 @@ struct msgb *bsc_nat_rewrite_msg(struct bsc_nat *nat, struct msgb *msg, struct b
 		return msg;
 
 	/* wrap with DTAP, SCCP, then IPA. TODO: Stop copying */
-	gsm0808_prepend_dtap_header(new_msg, 0);
+	gsm0808_prepend_dtap_header(new_msg, link_id);
 	sccp = sccp_create_dt1(parsed->dest_local_ref, new_msg->data, new_msg->len);
 	talloc_free(new_msg);
 
