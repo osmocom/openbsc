@@ -1279,7 +1279,7 @@ void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head,
 		talloc_free(regexp);
 		if (regcomp(&entry->num_reg, cfg_entry->option, REG_EXTENDED) != 0) {
 			LOGP(DNAT, LOGL_ERROR,
-				"Failed to compile regexp '%s\n'", cfg_entry->option);
+				"Failed to compile regexp '%s'\n", cfg_entry->option);
 			regfree(&entry->msisdn_reg);
 			talloc_free(entry);
 			continue;
