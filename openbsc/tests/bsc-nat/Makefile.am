@@ -2,7 +2,7 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
-EXTRA_DIST = bsc_nat_test.ok
+EXTRA_DIST = bsc_nat_test.ok bsc_data.c
 
 noinst_PROGRAMS = bsc_nat_test
 
