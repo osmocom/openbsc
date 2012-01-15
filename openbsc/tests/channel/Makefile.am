@@ -1,5 +1,5 @@
 INCLUDES = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS)
+AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOABIS_CFLAGS)
 
 EXTRA_DIST = channel_test.ok
 

@@ -7,7 +7,6 @@
 #include <osmocom/core/select.h>
 
 #include <openbsc/rest_octets.h>
-#include <osmocom/abis/e1_input.h>
 
 #define OBSC_NM_W_ACK_CB(__msgb) (__msgb)->cb[3]
 
