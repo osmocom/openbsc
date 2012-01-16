@@ -83,6 +83,12 @@ struct osmo_counter *osmo_counter_alloc(const char *name)
 	return NULL;
 }
 
+/* dummy function to keep rtp_proxy.c happy */
+int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_frame *data)
+{
+	return 0;
+}
+
 int handle_serial_msg(struct msgb *rx_msg);
 
 /* create all objects for an initial configuration */

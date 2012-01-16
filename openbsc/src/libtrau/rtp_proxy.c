@@ -430,7 +430,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		other_rss->bfd.when |= BSC_FD_WRITE;
 		break;
 
-	case RTP_RECV_UPSTREAM:
+	case RTP_RECV_UPSTREAM: /* from BTS to application */
 		if (!rs->receive.callref || !rs->receive.net) {
 			rc = -EIO;
 			goto out_free;
@@ -457,6 +457,24 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			goto out_free;
 		msgb_free(msg);
 		trau_tx_to_mncc(rs->receive.net, new_msg);
+		break;
+
+	case RTP_RECV_APP: /* from remote application */
+		if (!rs->receive.callref || !rs->receive.net) {
+			rc = -EIO;
+			goto out_free;
+		}
+		if (rss->bfd.priv_nr != RTP_PRIV_RTP) {
+			rc = ENOTSUP;
+			goto out_free;
+		}
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg);
+		if (rc < 0)
+			goto out_free;
+		msgb_free(msg);
+		tch_frame_down(rs->receive.net, rs->receive.callref,
+			(struct gsm_data_frame *) new_msg->data);
+		msgb_free(new_msg);
 		break;
 
 	case RTP_NONE: /* if socket exists, but disabled by app */

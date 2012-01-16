@@ -1406,8 +1406,15 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
+	/* Be sure to unmap upstream traffic for our callref only. */
 	if (trans->conn)
-		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref);
+		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref_keep);
+
+	/* free application RTP socket */
+	if (trans->cc.rs) {
+		rtp_socket_free(trans->cc.rs);
+		trans->cc.rs = NULL;
+	}
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1508,6 +1515,7 @@ static int switch_for_handover(struct gsm_lchan *old_lchan,
 		new_rs->receive = old_rs->receive;
 		break;
 	case RTP_NONE:
+	case RTP_RECV_APP:
 		break;
 	}
 
@@ -1751,6 +1759,47 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	}
 
 	return 0;
+}
+
+/* handle tch frame from application */
+int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_frame *data)
+{
+	struct gsm_trans *trans;
+	struct gsm_bts *bts;
+
+	/* Find callref */
+	trans = trans_find_by_callref(net, data->callref);
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
+		return -EIO;
+	}
+	if (!trans->conn) {
+		LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
+		return 0;
+	}
+	if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
+	 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
+		/* This should be LOGL_ERROR or NOTICE, but
+		 * unfortuantely it happens for a couple of frames at
+		 * the beginning of every RTP connection */
+		LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/TCH_H\n");
+		return 0;
+	}
+	bts = trans->conn->lchan->ts->trx->bts;
+	if (!is_e1_bts(bts)) {
+		if (!trans->conn->lchan->abis_ip.rtp_socket) {
+			DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
+			return 0;
+		}
+		if (trans->conn->lchan->abis_ip.rtp_socket->receive.callref != callref) {
+			/* Drop frame, if not our callref. This happens, if
+			 * the call is on hold or retrieved by another
+			 * transaction. */
+			return 0;
+		}
+		return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, data);
+	} else
+		return trau_send_frame(trans->conn->lchan, data);
 }
 
 static int gsm48_cc_rx_status_enq(struct gsm_trans *trans, struct msgb *msg)
@@ -3201,7 +3250,6 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
 	struct gsm_subscriber_connection *conn = NULL;
-	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
 
 	DEBUGP(DMNCC, "receive message %s\n", get_mncc_name(msg_type));
@@ -3225,46 +3273,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	case GSM_TCHF_FRAME_EFR:
 	case GSM_TCHH_FRAME:
 	case GSM_TCH_FRAME_AMR:
-		/* Find callref */
-		trans = trans_find_by_callref(net, data->callref);
-		if (!trans) {
-			LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
-			return -EIO;
-		}
-		log_set_context(BSC_CTX_SUBSCR, trans->subscr);
-		if (!trans->conn) {
-			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
-			return 0;
-		}
-		if (!trans->conn->lchan) {
-			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without lchan\n");
-			return 0;
-		}
-		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
-		 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
-			/* This should be LOGL_ERROR or NOTICE, but
-			 * unfortuantely it happens for a couple of frames at
-			 * the beginning of every RTP connection */
-			LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/TCH_H\n");
-			return 0;
-		}
-		bts = trans->conn->lchan->ts->trx->bts;
-		switch (bts->type) {
-		case GSM_BTS_TYPE_NANOBTS:
-		case GSM_BTS_TYPE_OSMO_SYSMO:
-			if (!trans->conn->lchan->abis_ip.rtp_socket) {
-				DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
-				return 0;
-			}
-			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
-		case GSM_BTS_TYPE_BS11:
-		case GSM_BTS_TYPE_RBS2000:
-		case GSM_BTS_TYPE_NOKIA_SITE:
-			return trau_send_frame(trans->conn->lchan, arg);
-		default:
-			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
-		}
-		return -EINVAL;
+		return tch_frame_down(net, data->callref, (struct gsm_data_frame *) arg);
 	}
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));
