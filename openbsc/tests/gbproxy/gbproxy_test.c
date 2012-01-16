@@ -431,6 +431,12 @@ static const unsigned char llc_ui_ll11_dns_resp_dl[] = {
 	0x76, 0x65, 0x72, 0xc0, 0x14, 0xaa, 0xdf, 0x31
 };
 
+/* dummy function to keep rtp_proxy.c happy */
+//int tch_frame_down()
+//{
+//	return 0;
+//}
+
 static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text,
 				struct sockaddr_in *peer, const unsigned char* data,
 				size_t data_len);
