@@ -40,8 +40,9 @@
 
 enum rtp_rx_action {
 	RTP_NONE,
-	RTP_PROXY,
-	RTP_RECV_UPSTREAM,
+	RTP_PROXY, /* forward from BTS to BTS */
+	RTP_RECV_UPSTREAM, /* forward to application */
+	RTP_RECV_APP, /* receive RTP frames from application */
 };
 
 enum rtp_tx_action {

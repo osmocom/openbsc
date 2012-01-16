@@ -34,6 +34,12 @@
 
 #define SGSN_NSEI 0x0100
 
+/* dummy function to keep rtp_proxy.c happy */
+int tch_frame_down()
+{
+	return 0;
+}
+
 struct gbproxy_config gbcfg;
 
 static int gprs_process_message(struct gprs_ns_inst *nsi, const char *text,

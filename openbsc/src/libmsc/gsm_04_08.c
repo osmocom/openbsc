@@ -1359,8 +1359,15 @@ void _gsm48_cc_trans_free(struct gsm_trans *trans)
 	}
 	if (trans->cc.state != GSM_CSTATE_NULL)
 		new_cc_state(trans, GSM_CSTATE_NULL);
+	/* Be sure to unmap upstream traffic for our callref only. */
 	if (trans->conn)
-		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref);
+		trau_mux_unmap(&trans->conn->lchan->ts->e1_link, trans->callref_keep);
+
+	/* free application RTP socket */
+	if (trans->cc.rs) {
+		rtp_socket_free(trans->cc.rs);
+		trans->cc.rs = NULL;
+	}
 }
 
 static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg);
@@ -1478,6 +1485,7 @@ static int switch_for_handover(struct gsm_lchan *old_lchan,
 		new_rs->receive = old_rs->receive;
 		break;
 	case RTP_NONE:
+	case RTP_RECV_APP:
 		break;
 	}
 
@@ -1700,6 +1708,153 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 	}
 
 	return 0;
+}
+
+static int mncc_rtp_create(struct gsm_network *net, uint32_t callref,
+	struct gsm_trans *trans, struct rtp_socket *rs,
+	struct gsm_mncc_rtp *mncc)
+{
+	/* use RTP instead of MNCC socket, for traffic
+	 * open application RTP socket */
+	if (rs) {
+		LOGP(DCC, LOGL_ERROR, "RTP already created.\n");
+		return -EIO;
+	}
+	rs = trans->cc.rs = rtp_socket_create();
+	if (!rs) {
+		LOGP(DCC, LOGL_ERROR, "RTP socket creation failed.\n");
+		/* reply with IP/port = 0 */
+		mncc->ip = 0;
+		mncc->port = 0;
+		mncc_recvmsg(net, trans, MNCC_RTP_CREATE,
+			(struct gsm_mncc *)mncc);
+		return -EIO;
+	}
+	rs->rx_action = RTP_RECV_APP;
+	rs->receive.net = net;
+	rs->receive.callref = callref;
+	/* reply with bound IP/port */
+	mncc->ip = ntohl(rs->rtp.sin_local.sin_addr.s_addr);
+	mncc->port = ntohs(rs->rtp.sin_local.sin_port);
+	mncc_recvmsg(net, trans, MNCC_RTP_CREATE, (struct gsm_mncc *)mncc);
+
+	return 0;
+}
+
+static int mncc_rtp_connect(struct gsm_network *net, struct gsm_trans *trans,
+	struct rtp_socket *rs, struct gsm_mncc_rtp *mncc)
+{
+	int rc;
+
+	if (!rs) {
+		LOGP(DCC, LOGL_ERROR, "RTP not created.\n");
+		return -EIO;
+	}
+	rc = rtp_socket_connect(trans->cc.rs, mncc->ip, mncc->port);
+	if (rc < 0) {
+		LOGP(DCC, LOGL_ERROR, "RTP socket connect failed.\n");
+		/* reply with IP/port = 0 */
+		mncc->ip = 0;
+		mncc->port = 0;
+		mncc_recvmsg(net, trans, MNCC_RTP_CONNECT,
+			(struct gsm_mncc *)mncc);
+		return -EIO;
+	}
+	/* reply with local IP/port */
+	mncc->ip = ntohl(rs->rtp.sin_local.sin_addr.s_addr);
+	mncc->port = ntohs(rs->rtp.sin_local.sin_port);
+	mncc_recvmsg(net, trans, MNCC_RTP_CONNECT, (struct gsm_mncc *)mncc);
+
+	return 0;
+}
+
+static int mncc_rtp_free(struct gsm_network *net, struct gsm_trans *trans,
+	struct rtp_socket *rs, struct gsm_mncc_rtp *mncc)
+{
+	if (!rs) {
+		LOGP(DCC, LOGL_ERROR, "RTP not created.\n");
+		return -EIO;
+	}
+	rtp_socket_free(trans->cc.rs);
+	trans->cc.rs = NULL;
+	/* reply */
+	mncc_recvmsg(net, trans, MNCC_RTP_FREE, (struct gsm_mncc *)mncc);
+
+	return 0;
+}
+
+/* handle RTP requests of application */
+static int mncc_rtp(struct gsm_network *net, uint32_t callref,
+	struct gsm_mncc_rtp *mncc)
+{
+	struct rtp_socket *rs;
+	struct gsm_trans *trans;
+	int rc = -EINVAL;
+
+	/* Find callref */
+	trans = trans_find_by_callref(net, callref);
+	if (!trans) {
+		LOGP(DCC, LOGL_ERROR, "Unknown transaction for callref=%d\n",
+			callref);
+		return -EINVAL;
+	}
+
+	rs = trans->cc.rs;
+
+	switch (mncc->msg_type) {
+	case MNCC_RTP_CREATE:
+		rc = mncc_rtp_create(net, callref, trans, rs, mncc);
+		break;
+	case MNCC_RTP_CONNECT:
+		rc = mncc_rtp_connect(net, trans, rs, mncc);
+		break;
+	case MNCC_RTP_FREE:
+		rc = mncc_rtp_free(net, trans, rs, mncc);
+		break;
+	}
+
+	return rc;
+}
+
+/* handle tch frame from application */
+int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_frame *data)
+{
+	struct gsm_trans *trans;
+	struct gsm_bts *bts;
+
+	/* Find callref */
+	trans = trans_find_by_callref(net, data->callref);
+	if (!trans) {
+		LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
+		return -EIO;
+	}
+	if (!trans->conn) {
+		LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
+		return 0;
+	}
+	if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
+	 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
+		/* This should be LOGL_ERROR or NOTICE, but
+		 * unfortuantely it happens for a couple of frames at
+		 * the beginning of every RTP connection */
+		LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/TCH_H\n");
+		return 0;
+	}
+	bts = trans->conn->lchan->ts->trx->bts;
+	if (!is_e1_bts(bts)) {
+		if (!trans->conn->lchan->abis_ip.rtp_socket) {
+			DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
+			return 0;
+		}
+		if (trans->conn->lchan->abis_ip.rtp_socket->receive.callref != callref) {
+			/* Drop frame, if not our callref. This happens, if
+			 * the call is on hold or retrieved by another
+			 * transaction. */
+			return 0;
+		}
+		return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, data);
+	} else
+		return trau_send_frame(trans->conn->lchan, data);
 }
 
 static int gsm48_cc_rx_status_enq(struct gsm_trans *trans, struct msgb *msg)
@@ -2937,7 +3092,6 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 	int i, rc = 0;
 	struct gsm_trans *trans = NULL, *transt;
 	struct gsm_subscriber_connection *conn = NULL;
-	struct gsm_bts *bts = NULL;
 	struct gsm_mncc *data = arg, rel;
 
 	DEBUGP(DMNCC, "receive message %s\n", get_mncc_name(msg_type));
@@ -2950,46 +3104,15 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return tch_recv_mncc(net, data->callref, 0);
 	case MNCC_FRAME_RECV:
 		return tch_recv_mncc(net, data->callref, 1);
+	case MNCC_RTP_CREATE:
+	case MNCC_RTP_CONNECT:
+	case MNCC_RTP_FREE:
+		return mncc_rtp(net, data->callref, (struct gsm_mncc_rtp *) arg);
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
 	case GSM_TCHH_FRAME:
 	case GSM_TCH_FRAME_AMR:
-		/* Find callref */
-		trans = trans_find_by_callref(net, data->callref);
-		if (!trans) {
-			LOGP(DMNCC, LOGL_ERROR, "TCH frame for non-existing trans\n");
-			return -EIO;
-		}
-		log_set_context(BSC_CTX_SUBSCR, trans->subscr);
-		if (!trans->conn) {
-			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
-			return 0;
-		}
-		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
-		 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
-			/* This should be LOGL_ERROR or NOTICE, but
-			 * unfortuantely it happens for a couple of frames at
-			 * the beginning of every RTP connection */
-			LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/TCH_H\n");
-			return 0;
-		}
-		bts = trans->conn->lchan->ts->trx->bts;
-		switch (bts->type) {
-		case GSM_BTS_TYPE_NANOBTS:
-		case GSM_BTS_TYPE_OSMO_SYSMO:
-			if (!trans->conn->lchan->abis_ip.rtp_socket) {
-				DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
-				return 0;
-			}
-			return rtp_send_frame(trans->conn->lchan->abis_ip.rtp_socket, arg);
-		case GSM_BTS_TYPE_BS11:
-		case GSM_BTS_TYPE_RBS2000:
-		case GSM_BTS_TYPE_NOKIA_SITE:
-			return trau_send_frame(trans->conn->lchan, arg);
-		default:
-			LOGP(DCC, LOGL_ERROR, "Unknown BTS type %u\n", bts->type);
-		}
-		return -EINVAL;
+		return tch_frame_down(net, data->callref, (struct gsm_data_frame *) arg);
 	}
 
 	memset(&rel, 0, sizeof(struct gsm_mncc));

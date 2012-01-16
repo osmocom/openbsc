@@ -92,6 +92,9 @@ struct gsm_call {
 #define MNCC_FRAME_RECV		0x0201
 #define MNCC_FRAME_DROP		0x0202
 #define MNCC_LCHAN_MODIFY	0x0203
+#define MNCC_RTP_CREATE		0x0204
+#define MNCC_RTP_CONNECT	0x0205
+#define MNCC_RTP_FREE		0x0206
 
 #define GSM_TCHF_FRAME		0x0300
 #define GSM_TCHF_FRAME_EFR	0x0301
@@ -163,7 +166,7 @@ struct gsm_data_frame {
 	unsigned char	data[0];
 };
 
-#define MNCC_SOCK_VERSION	4
+#define MNCC_SOCK_VERSION	5
 struct gsm_mncc_hello {
 	uint32_t	msg_type;
 	uint32_t	version;
@@ -177,6 +180,13 @@ struct gsm_mncc_hello {
 	uint32_t	signal_offset;
 	uint32_t	emergency_offset;
 	uint32_t	lchan_type_offset;
+};
+
+struct gsm_mncc_rtp {
+	uint32_t	msg_type;
+	uint32_t	callref;
+	uint32_t	ip;
+	uint16_t	port;
 };
 
 char *get_mncc_name(int value);
