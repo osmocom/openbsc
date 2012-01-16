@@ -31,6 +31,7 @@
 #include <openbsc/handover.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_04_08.h>
+#include <osmocom/abis/trau_frame.h>
 #include <openbsc/trau_mux.h>
 
 #include <osmocom/gsm/protocol/gsm_08_08.h>

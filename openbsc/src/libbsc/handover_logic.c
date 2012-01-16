@@ -39,6 +39,7 @@
 #include <openbsc/signal.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/transaction.h>
+#include <osmocom/abis/trau_frame.h>
 #include <openbsc/trau_mux.h>
 
 struct bsc_handover {
