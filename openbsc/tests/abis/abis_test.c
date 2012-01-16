@@ -27,6 +27,12 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/debug.h>
 
+/* dummy function to keep rtp_proxy.c happy */
+int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_frame *data)
+{
+	return 0;
+}
+
 static const uint8_t simple_config[] = {
 	/*0, 13, */
 	66, 18, 0, 3, 1, 2, 3, 19, 0, 3, 3, 4, 5,

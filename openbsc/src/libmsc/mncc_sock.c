@@ -37,6 +37,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/mncc.h>
 #include <openbsc/gsm_data.h>
+#include <openbsc/transaction.h>
+#include <openbsc/rtp_proxy.h>
 
 struct mncc_sock_state {
 	struct gsm_network *net;
@@ -50,12 +52,27 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	struct gsm_mncc *mncc_in = (struct gsm_mncc *) msgb_data(msg);
 	int msg_type = mncc_in->msg_type;
 
+	/* L4 uses RTP for this transaction, we send our data via RTP,
+	 * otherwise we send it through MNCC interface */
+	if (msg_type == GSM_TCHF_FRAME
+	 || msg_type == GSM_TCHF_FRAME_EFR
+	 || msg_type == GSM_TCHF_FRAME_HR) {
+		struct gsm_trans *trans = trans_find_by_callref(net, mncc_in->callref);
+
+		if (trans && trans->cc.rs) {
+			rtp_send_frame(trans->cc.rs, (struct gsm_data_frame *) mncc_in);
+			msgb_free(msg);
+			return 0;
+		}
+	}
+
 	/* Check if we currently have a MNCC handler connected */
 	if (net->mncc_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
 			"but socket is gone\n", get_mncc_name(msg_type));
-		if (msg_type != GSM_TCHF_FRAME &&
-		    msg_type != GSM_TCHF_FRAME_EFR) {
+		if (msg_type != GSM_TCHF_FRAME
+		 && msg_type != GSM_TCHF_FRAME_EFR
+		 && msg_type != GSM_TCHF_FRAME_HR) {
 			/* release the request */
 			struct gsm_mncc mncc_out;
 			memset(&mncc_out, 0, sizeof(mncc_out));

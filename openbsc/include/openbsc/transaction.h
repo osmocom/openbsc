@@ -28,6 +28,7 @@ struct gsm_trans {
 
 	/* reference from MNCC or other application */
 	uint32_t callref;
+	uint32_t callref_keep; /* to remember callref, even if it is removed */
 
 	/* if traffic channel receive was requested */
 	int tch_recv;
@@ -46,6 +47,7 @@ struct gsm_trans {
 			int T308_second;	/* used to send release again */
 			struct osmo_timer_list timer;
 			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
+			struct rtp_socket *rs;	/* L4 traffic via RTP */
 		} cc;
 		struct {
 			struct gsm411_smc_inst smc_inst;

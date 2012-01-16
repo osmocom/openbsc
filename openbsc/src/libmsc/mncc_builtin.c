@@ -342,6 +342,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	switch (msg_type) {
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
+	case GSM_TCHF_FRAME_HR:
 		break;
 	default:
 		DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
@@ -410,6 +411,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		break;
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
+	case GSM_TCHF_FRAME_HR:
 		rc = mncc_rcv_tchf(call, msg_type, arg);
 		break;
 	default:

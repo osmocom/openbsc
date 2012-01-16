@@ -78,6 +78,7 @@ struct gsm_trans *trans_alloc(struct gsm_subscriber *subscr,
 	trans->protocol = protocol;
 	trans->transaction_id = trans_id;
 	trans->callref = callref;
+	trans->callref_keep = callref;
 
 	llist_add_tail(&trans->entry, &subscr->net->trans_list);
 

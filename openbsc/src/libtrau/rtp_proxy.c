@@ -169,13 +169,28 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		msg_type = GSM_TCHF_FRAME;
 		if (payload_len != 33) {
 			DEBUGPC(DLMUX, "received RTP full rate frame with "
-				"payload length != 32 (len = %d)\n",
+				"payload length != 33 (len = %d)\n",
 				payload_len);
 			return -EINVAL;
 		}
 		break;
 	case RTP_PT_GSM_EFR:
 		msg_type = GSM_TCHF_FRAME_EFR;
+		if (payload_len != 31) {
+			DEBUGPC(DLMUX, "received RTP extended full rate frame "
+				"with payload length != 31 (len = %d)\n",
+				payload_len);
+			return -EINVAL;
+		}
+		break;
+	case RTP_PT_GSM_HALF:
+		msg_type = GSM_TCHF_FRAME_HR;
+		if (payload_len != 14) {
+			DEBUGPC(DLMUX, "received RTP half rate frame with "
+				"payload length != 14 (len = %d)\n",
+				payload_len);
+			return -EINVAL;
+		}
 		break;
 	default:
 		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
@@ -242,6 +257,11 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	case GSM_TCHF_FRAME_EFR:
 		payload_type = RTP_PT_GSM_EFR;
 		payload_len = 31;
+		duration = 160;
+		break;
+	case GSM_TCHF_FRAME_HR:
+		payload_type = RTP_PT_GSM_HALF;
+		payload_len = 14;
 		duration = 160;
 		break;
 	default:
@@ -426,7 +446,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		other_rss->bfd.when |= BSC_FD_WRITE;
 		break;
 
-	case RTP_RECV_UPSTREAM:
+	case RTP_RECV_UPSTREAM: /* from BTS to application */
 		if (!rs->receive.callref || !rs->receive.net) {
 			rc = -EIO;
 			goto out_free;
@@ -453,6 +473,24 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			goto out_free;
 		msgb_free(msg);
 		trau_tx_to_mncc(rs->receive.net, new_msg);
+		break;
+
+	case RTP_RECV_L4: /* from L4 */
+		if (!rs->receive.callref || !rs->receive.net) {
+			rc = -EIO;
+			goto out_free;
+		}
+		if (rss->bfd.priv_nr != RTP_PRIV_RTP) {
+			rc = ENOTSUP;
+			goto out_free;
+		}
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg);
+		if (rc < 0)
+			goto out_free;
+		msgb_free(msg);
+		tch_frame_down(rs->receive.net, rs->receive.callref,
+			(struct gsm_data_frame *) new_msg->data);
+		msgb_free(new_msg);
 		break;
 
 	case RTP_NONE: /* if socket exists, but disabled by app */

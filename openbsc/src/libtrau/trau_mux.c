@@ -122,7 +122,9 @@ int trau_mux_unmap(const struct gsm_e1_subslot *ss, uint32_t callref)
 			llist_del(&ue->list);
 			return 0;
 		}
-		if (ss && !memcmp(&ue->src, ss, sizeof(*ss))) {
+		/* Only release, if no callref is given. We must ensure that
+		 * only the transaction's upstream is removed, if exists. */
+		if (ss && !callref && !memcmp(&ue->src, ss, sizeof(*ss))) {
 			llist_del(&ue->list);
 			return 0;
 		}
@@ -280,6 +282,7 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 	uint8_t trau_bits_out[TRAU_FRAME_BITS];
 	struct gsm_e1_subslot *dst_e1_ss = &lchan->ts->e1_link;
 	struct subch_mux *mx;
+	struct upqueue_entry *ue;
 	int i, j, k, l, o;
 	unsigned char *data = frame->data;
 	struct decoded_trau_frame tf;
@@ -287,6 +290,15 @@ int trau_send_frame(struct gsm_lchan *lchan, struct gsm_data_frame *frame)
 	mx = e1inp_get_mux(dst_e1_ss->e1_nr, dst_e1_ss->e1_ts);
 	if (!mx)
 		return -EINVAL;
+	if (!(ue = lookup_trau_upqueue(dst_e1_ss))) {
+		/* Call might be on hold, so we drop frames. */
+		return 0;
+	}
+	if (ue->callref != frame->callref) {
+		/* Slot has different transaction, due to
+		 * another call. (Ours is on hold.) */
+		return 0;
+	}
 
 	switch (frame->msg_type) {
 	case GSM_TCHF_FRAME:
