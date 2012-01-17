@@ -30,6 +30,7 @@
 #include <openbsc/abis_nm.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/debug.h>
+#include <openbsc/rtp_proxy.h>
 #include <openbsc/signal.h>
 
 #include <osmocom/core/talloc.h>
@@ -309,6 +310,12 @@ void lchan_free(struct gsm_lchan *lchan)
 		osmo_signal_dispatch(SS_LCHAN, S_LCHAN_UNEXPECTED_RELEASE, &sig);
 	}
 
+	if (lchan->abis_ip.rtp_socket) {
+		LOGP(DRLL, LOGL_ERROR, "%s RTP Proxy Socket remained open.\n",
+			gsm_lchan_name(lchan));
+		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+	}
 
 	/* stop the timer */
 	osmo_timer_del(&lchan->T3101);
@@ -362,6 +369,11 @@ void lchan_reset(struct gsm_lchan *lchan)
 
 	lchan->type = GSM_LCHAN_NONE;
 	lchan->state = LCHAN_S_NONE;
+
+	if (lchan->abis_ip.rtp_socket) {
+		rtp_socket_free(lchan->abis_ip.rtp_socket);
+		lchan->abis_ip.rtp_socket = NULL;
+	}
 }
 
 /* release the next allocated SAPI or return 0 */
