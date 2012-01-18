@@ -1071,7 +1071,10 @@ static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
 		msgb_v_put(out, data_ptr[1]);
 
 		/* encode the new number and put it */
-		sms_encode_addr_element(out, new_dest_nr, 0x81, 1);
+		if (strncmp(new_dest_nr, "00", 2) == 0)
+			sms_encode_addr_element(out, new_dest_nr + 2, 0x91, 1);
+		else
+			sms_encode_addr_element(out, new_dest_nr, 0x81, 1);
 
 		/* Copy the rest after the TP-DS */
 		data = msgb_put(out, data_len - 2 - 1 - old_dest_len);
