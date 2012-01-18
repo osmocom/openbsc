@@ -267,7 +267,11 @@ static void copy_to_msg(struct msgb *msg, const uint8_t *data, unsigned int leng
 static void verify_msg(struct msgb *out, const uint8_t *ref, int ref_len)
 {
 	if (out->len != ref_len) {
-		printf("FAIL: The size should match.\n");
+		printf("FAIL: The size should match: %d vs. %d\n",
+			out->len, ref_len);
+		printf("%s\n", osmo_hexdump(out->data, out->len));
+		printf("Wanted\n");
+		printf("%s\n", osmo_hexdump(ref, ref_len));
 		abort();
 	}
 
