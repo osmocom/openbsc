@@ -981,7 +981,7 @@ static void test_setup_rewrite()
 	msgb_free(out);
 }
 
-static void test_smsc_rewrite()
+static void test_sms_smsc_rewrite()
 {
 	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
 	struct bsc_nat_parsed *parsed;
@@ -1076,6 +1076,49 @@ static void test_smsc_rewrite()
 	msgb_free(out);
 }
 
+static void test_sms_number_rewrite(void)
+{
+	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
+	struct bsc_nat_parsed *parsed;
+	const char *imsi = "515039900406700";
+
+	struct bsc_nat *nat = bsc_nat_alloc();
+
+	/* a fake list */
+	struct osmo_config_list num_entries;
+	struct osmo_config_entry num_entry;
+
+	INIT_LLIST_HEAD(&num_entries.entry);
+	num_entry.mcc = "^515039";
+	num_entry.option = "^0049()";
+	num_entry.text   = "0032";
+	llist_add_tail(&num_entry.list, &num_entries.entry);
+
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_num_rewr, &num_entries);
+
+	printf("Testing SMS TP-DA rewriting.\n");
+
+	/*
+	 * Check if the SMSC address is changed
+	 */
+	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse SMS\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (out == msg) {
+		printf("FAIL: This should have changed.\n");
+		abort();
+	}
+
+	verify_msg(out, smsc_rewrite_num_patched,
+		   ARRAY_SIZE(smsc_rewrite_num_patched));
+	msgb_free(out);
+}
+
 int main(int argc, char **argv)
 {
 	sccp_set_log_area(DSCCP);
@@ -1091,7 +1134,8 @@ int main(int argc, char **argv)
 	test_cr_filter();
 	test_dt_filter();
 	test_setup_rewrite();
-	test_smsc_rewrite();
+	test_sms_smsc_rewrite();
+	test_sms_number_rewrite();
 	test_mgcp_allocations();
 
 	printf("Testing execution completed.\n");

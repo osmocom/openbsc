@@ -99,6 +99,7 @@ struct bsc_nat *bsc_nat_alloc(void)
 	INIT_LLIST_HEAD(&nat->smsc_rewr);
 	INIT_LLIST_HEAD(&nat->tpdest_match);
 	INIT_LLIST_HEAD(&nat->sms_clear_tp_srr);
+	INIT_LLIST_HEAD(&nat->sms_num_rewr);
 
 	nat->stats.sccp.conn = osmo_counter_alloc("nat.sccp.conn");
 	nat->stats.sccp.calls = osmo_counter_alloc("nat.sccp.calls");
@@ -781,12 +782,37 @@ int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
-static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
-				       struct gsm_mncc_number *called)
+static char *match_and_rewrite_number(void *ctx, const char *number,
+				      const char *imsi,
+				      struct llist_head *list)
 {
 	struct bsc_nat_num_rewr_entry *entry;
 	char *new_number = NULL;
 
+	/* need to find a replacement and then fix it */
+	llist_for_each_entry(entry, list, list) {
+		regmatch_t matches[2];
+
+		/* check the IMSI match */
+		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
+			continue;
+
+		/* this regexp matches... */
+		if (regexec(&entry->num_reg, number, 2, matches, 0) == 0 &&
+		    matches[1].rm_eo != -1)
+			new_number = talloc_asprintf(ctx, "%s%s",
+					entry->replace,
+					&number[matches[1].rm_so]);
+		if (new_number)
+			break;
+	}
+
+	return new_number;
+}
+
+static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
+				       struct gsm_mncc_number *called)
+{
 	if (llist_empty(&nat->num_rewr))
 		return NULL;
 
@@ -795,25 +821,8 @@ static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const cha
 	if (called->type == 1)
 		return NULL;
 
-	/* need to find a replacement and then fix it */
-	llist_for_each_entry(entry, &nat->num_rewr, list) {
-		regmatch_t matches[2];
-
-		/* check the IMSI match */
-		if (regexec(&entry->msisdn_reg, imsi, 0, NULL, 0) != 0)
-			continue;
-
-		/* this regexp matches... */
-		if (regexec(&entry->num_reg, called->number, 2, matches, 0) == 0 &&
-		    matches[1].rm_eo != -1)
-			new_number = talloc_asprintf(ctx, "%s%s",
-					entry->replace,
-					&called->number[matches[1].rm_so]);
-		if (new_number)
-			break;
-	}
-
-	return new_number;
+	return match_and_rewrite_number(ctx, called->number,
+					imsi, &nat->num_rewr);
 }
 
 
@@ -978,16 +987,53 @@ static uint8_t sms_new_tpdu_hdr(struct bsc_nat *nat, const char *imsi,
 	return hdr;
 }
 
+/**
+ * Check if we need to rewrite the number. For this SMS.
+ */
+static char *sms_new_dest_nr(struct bsc_nat *nat, void *ctx,
+			     const char *imsi, const char *dest_nr)
+{
+	return match_and_rewrite_number(ctx, dest_nr, imsi,
+					&nat->sms_num_rewr);
+}
+
+/**
+ * This is a helper for GSM 04.11 8.2.5.2 Destination address element
+ */
+void sms_encode_addr_element(struct msgb *out, const char *new_number,
+			     int format, int tp_data)
+{
+	uint8_t new_addr_len;
+	uint8_t new_addr[26];
+
+	/*
+	 * Copy the new number. We let libosmocore encode it, then set
+	 * the extension followed after the length. Depending on if
+	 * we want to write RP we will let the TLV code add the
+	 * length for us or we need to use strlen... This is not very clear
+	 * as of 03.40 and 04.11.
+	 */
+	new_addr_len = gsm48_encode_bcd_number(new_addr, ARRAY_SIZE(new_addr),
+					       1, new_number);
+	new_addr[1] = format;
+	if (tp_data) {
+		uint8_t *data = msgb_put(out, new_addr_len);
+		memcpy(data, new_addr, new_addr_len);
+		data[0] = strlen(new_number);
+	} else {
+		msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
+	}
+}
+
 static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
 				   struct gsm48_hdr *old_hdr48,
 				   const uint8_t *orig_addr_ptr,
 				   int orig_addr_len, const char *new_number,
 				   const uint8_t *data_ptr, int data_len,
-				   uint8_t tpdu_first_byte)
+				   uint8_t tpdu_first_byte,
+				   const int old_dest_len, const char *new_dest_nr)
 {
-	uint8_t new_addr_len;
 	struct gsm48_hdr *new_hdr48;
-	uint8_t new_addr[12];
 	struct msgb *out;
 
 	/*
@@ -1000,30 +1046,48 @@ static struct msgb *sms_create_new(uint8_t type, uint8_t ref,
 		return NULL;
 	}
 
-	out->l3h = out->data;
+	out->l2h = out->data;
 	msgb_v_put(out, GSM411_MT_RP_DATA_MO);
 	msgb_v_put(out, ref);
 	msgb_lv_put(out, orig_addr_len, orig_addr_ptr);
 
-	/*
-	 * Copy the new number. We let libosmocore encode it, then set
-	 * the extension followed after the length. For our convenience
-	 * we let the TLV code re-add the length so we start copying
-	 * from &new_addr[1].
-	 */
-	new_addr_len = gsm48_encode_bcd_number(new_addr, ARRAY_SIZE(new_addr),
-					       1, new_number);
-	new_addr[1] = 0x91;
-	msgb_lv_put(out, new_addr_len - 1, new_addr + 1);
+	sms_encode_addr_element(out, new_number, 0x91, 0);
 
-	/* patch in the new TPDU header value */
-	msgb_v_put(out, data_len);
-	msgb_tv_fixed_put(out, tpdu_first_byte, data_len - 1, &data_ptr[1]);
+
+	/* Patch the TPDU from here on */
+
+	/**
+	 * Do we need to put a new TP-Destination-Address (TP-DA) here or
+	 * can we copy the old thing? For the TP-DA we need to find out the
+	 * new size.
+	 */
+	if (new_dest_nr) {
+		uint8_t *data, *new_size;
+
+		/* reserve the size and write the header */
+		new_size = msgb_put(out, 1);
+		out->l3h = new_size + 1;
+		msgb_v_put(out, tpdu_first_byte);
+		msgb_v_put(out, data_ptr[1]);
+
+		/* encode the new number and put it */
+		sms_encode_addr_element(out, new_dest_nr, 0x81, 1);
+
+		/* Copy the rest after the TP-DS */
+		data = msgb_put(out, data_len - 2 - 1 - old_dest_len);
+		memcpy(data, &data_ptr[2 + 1 + old_dest_len], data_len - 2 - 1 - old_dest_len);
+
+		/* fill in the new size */
+		new_size[0] = msgb_l3len(out);
+	} else {
+		msgb_v_put(out, data_len);
+		msgb_tv_fixed_put(out, tpdu_first_byte, data_len - 1, &data_ptr[1]);
+	}
 
 	/* prepend GSM 04.08 header */
 	new_hdr48 = (struct gsm48_hdr *) msgb_push(out, sizeof(*new_hdr48) + 1);
 	memcpy(new_hdr48, old_hdr48, sizeof(*old_hdr48));
-	new_hdr48->data[0] = msgb_l3len(out);
+	new_hdr48->data[0] = msgb_l2len(out);
 
 	return out;
 }
@@ -1045,9 +1109,10 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	char smsc_addr[30];
 
 
-	uint8_t dest_len;
+	uint8_t dest_len, orig_dest_len;
 	char _dest_nr[30];
 	char *dest_nr;
+	char *new_dest_nr;
 
 	char *new_number = NULL;
 	uint8_t tpdu_hdr;
@@ -1110,8 +1175,12 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	if ((data_ptr[0] & 0x03) != GSM340_SMS_SUBMIT_MS2SC)
 		return NULL;
 
-	/* look into the phone number */
-	dest_len = data_ptr[2];
+	/*
+	 * look into the phone number. The length is in semi-octets, we will
+	 * need to add the byte for the number type as well.
+	 */
+	orig_dest_len = data_ptr[2];
+	dest_len = ((orig_dest_len + 1) / 2) + 1;
 	if (data_len < dest_len + 3 || dest_len < 2) {
 		LOGP(DNAT, LOGL_ERROR, "SMS-SUBMIT can not have TP-DestAddr.\n");
 		return NULL;
@@ -1127,8 +1196,15 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 		return NULL;
 	}
 
+	/**
+	 * Besides of what I think I read in GSM 03.40 and 04.11 the TP-DA
+	 * contains the semi-octets as length (strlen), change it to the
+	 * the number of bytes, but then change it back.
+	 */
+	data_ptr[2] = dest_len;
 	gsm48_decode_bcd_number(_dest_nr + 2, ARRAY_SIZE(_dest_nr) - 2,
 				&data_ptr[2], 1);
+	data_ptr[2] = orig_dest_len;
 	if ((data_ptr[3] & 0x70) == 0x10) {
 		_dest_nr[0] = _dest_nr[1] = '0';
 		dest_nr = &_dest_nr[0];
@@ -1141,15 +1217,18 @@ static struct msgb *rewrite_sms(struct bsc_nat *nat, struct msgb *msg,
 	 */
 	tpdu_hdr = sms_new_tpdu_hdr(nat, imsi, dest_nr, data_ptr[0]);
 	new_number = find_new_smsc(nat, msg, imsi, smsc_addr, dest_nr);
+	new_dest_nr = sms_new_dest_nr(nat, msg, imsi, dest_nr);
 
-	if (tpdu_hdr == data_ptr[0] && !new_number)
+	if (tpdu_hdr == data_ptr[0] && !new_number && !new_dest_nr)
 		return NULL;
 
 	out = sms_create_new(GSM411_MT_RP_DATA_MO, ref, hdr48,
 			orig_addr_ptr, orig_addr_len,
 			new_number ? new_number : smsc_addr,
-			data_ptr, data_len, tpdu_hdr);
+			data_ptr, data_len, tpdu_hdr,
+			dest_len, new_dest_nr);
 	talloc_free(new_number);
+	talloc_free(new_dest_nr);
 	return out;
 }
 
