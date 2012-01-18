@@ -130,6 +130,9 @@ static int config_write_nat(struct vty *vty)
 	if (_nat->sms_clear_tp_srr_name)
 		vty_out(vty, " sms-clear-tp-srr %s%s",
 			_nat->sms_clear_tp_srr_name, VTY_NEWLINE);
+	if (_nat->sms_num_rewr_name)
+		vty_out(vty, " sms-number-rewrite %s%s",
+			_nat->sms_num_rewr_name, VTY_NEWLINE);
 
 	llist_for_each_entry(lst, &_nat->access_lists, list)
 		write_acc_lst(vty, lst);
@@ -535,6 +538,28 @@ DEFUN(cfg_nat_no_sms_clear_tpsrr,
 	_nat->sms_clear_tp_srr_name = NULL;
 
 	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->sms_clear_tp_srr, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_sms_number_rewrite,
+      cfg_nat_sms_number_rewrite_cmd,
+      "sms-number-rewrite FILENAME",
+      "SMS TP-DA Number rewriting\n"
+      "Files with rules for matching MSISDN\n")
+{
+	return replace_rules(_nat, &_nat->sms_num_rewr_name,
+			     &_nat->sms_num_rewr, argv[0]);
+}
+
+DEFUN(cfg_nat_no_sms_number_rewrite,
+      cfg_nat_no_sms_number_rewrite_cmd,
+      "no sms-number-rewrite",
+      NO_STR "Disable SMS TP-DA rewriting\n")
+{
+	talloc_free(_nat->sms_num_rewr_name);
+	_nat->sms_num_rewr_name = NULL;
+
+	bsc_nat_num_rewr_entry_adapt(NULL, &_nat->sms_num_rewr, NULL);
 	return CMD_SUCCESS;
 }
 
@@ -986,6 +1011,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_smsc_tpdest_cmd);
 	install_element(NAT_NODE, &cfg_nat_sms_clear_tpsrr_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_sms_clear_tpsrr_cmd);
+	install_element(NAT_NODE, &cfg_nat_sms_number_rewrite_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_sms_number_rewrite_cmd);
 
 	install_element(NAT_NODE, &cfg_nat_pgroup_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
