@@ -527,7 +527,7 @@ DEFUN(cfg_nat_sms_clear_tpsrr,
 
 DEFUN(cfg_nat_no_sms_clear_tpsrr,
       cfg_nat_no_sms_clear_tpsrr_cmd,
-      "sms-clear-tp-srr",
+      "no sms-clear-tp-srr",
       NO_STR
       "SMS TPDU Sender Report Request clearing\n")
 {
