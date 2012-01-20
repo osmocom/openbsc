@@ -133,12 +133,10 @@ static int bssmap_handle_paging(struct gsm_network *net,
 		return -1;
 	}
 
-	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI)) {
-		gsm48_mi_to_string(mi_string, sizeof(mi_string),
-			   TLVP_VAL(&tp, GSM0808_IE_TMSI), TLVP_LEN(&tp, GSM0808_IE_TMSI));
-		tmsi = strtoul(mi_string, NULL, 10);
+	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI) &&
+	    TLVP_LEN(&tp, GSM0808_IE_TMSI) == 4) {
+		tmsi = ntohl(*(uint32_t *) TLVP_VAL(&tp, GSM0808_IE_TMSI));
 	}
-
 
 	/*
 	 * parse the IMSI
