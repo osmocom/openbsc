@@ -242,7 +242,10 @@ struct msgb *trau_decode_fr(uint32_t callref,
 		i++;
 		j++;
 	}
-	frame->msg_type = GSM_TCHF_FRAME;
+	if (tf->c_bits[11]) /* BFI */
+		frame->msg_type = GSM_BAD_FRAME;
+	else
+		frame->msg_type = GSM_TCHF_FRAME;
 	frame->callref = callref;
 	msgb_put(msg, sizeof(struct gsm_data_frame) + 33);
 
