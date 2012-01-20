@@ -99,6 +99,7 @@ struct gsm_call {
 #define GSM_TCHF_FRAME		0x0300
 #define GSM_TCHF_FRAME_EFR	0x0301
 #define GSM_TCHF_FRAME_HR	0x0302
+#define GSM_TCHF_BAD_FRAME	0x03ff
 
 #define MNCC_SOCKET_HELLO	0x0400
 

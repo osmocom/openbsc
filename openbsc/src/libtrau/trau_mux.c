@@ -215,7 +215,10 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			i++;
 			j++;
 		}
-		frame->msg_type = GSM_TCHF_FRAME;
+		if (tf.c_bits[11]) /* BFI */
+			frame->msg_type = GSM_TCHF_BAD_FRAME;
+		else
+			frame->msg_type = GSM_TCHF_FRAME;
 		frame->callref = ue->callref;
 		msgb_put(msg, sizeof(struct gsm_data_frame) + 33);
 		trau_tx_to_mncc(ue->net, msg);

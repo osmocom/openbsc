@@ -56,7 +56,8 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	 * otherwise we send it through MNCC interface */
 	if (msg_type == GSM_TCHF_FRAME
 	 || msg_type == GSM_TCHF_FRAME_EFR
-	 || msg_type == GSM_TCHF_FRAME_HR) {
+	 || msg_type == GSM_TCHF_FRAME_HR
+	 || msg_type == GSM_TCHF_BAD_FRAME) {
 		struct gsm_trans *trans = trans_find_by_callref(net, mncc_in->callref);
 
 		if (trans && trans->cc.rs) {
@@ -72,7 +73,8 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 			"but socket is gone\n", get_mncc_name(msg_type));
 		if (msg_type != GSM_TCHF_FRAME
 		 && msg_type != GSM_TCHF_FRAME_EFR
-		 && msg_type != GSM_TCHF_FRAME_HR) {
+		 && msg_type != GSM_TCHF_FRAME_HR
+		 && msg_type != GSM_TCHF_BAD_FRAME) {
 			/* release the request */
 			struct gsm_mncc mncc_out;
 			memset(&mncc_out, 0, sizeof(mncc_out));
