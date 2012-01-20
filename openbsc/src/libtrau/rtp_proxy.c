@@ -206,6 +206,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int payload_type;
 	int payload_len;
 	int duration; /* in samples */
+	int is_bfi = 0;
 
 	if (rs->tx_action != RTP_SEND_DOWNSTREAM) {
 		/* initialize sequences */
@@ -236,6 +237,12 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		payload_len = frame->data[0];
 		duration = RTP_GSM_DURATION;
 		break;
+	case GSM_BAD_FRAME:
+		payload_type = 0;
+		payload_len = 0;
+		duration = RTP_GSM_DURATION;
+		is_bfi = 1;
+		break;
 	default:
 		DEBUGPC(DLMUX, "unsupported message type %d\n",
 			frame->msg_type);
@@ -246,6 +253,13 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		DEBUGPC(DLMUX, "RTP payload too large (%d octets)\n",
 			payload_len);
 		return -EINVAL;
+	}
+
+	if (is_bfi) {
+		/* In case of a bad frame, just count and drop packet. */
+		rs->transmit.timestamp += duration;
+		rs->transmit.sequence++;
+		return 0;
 	}
 
 	msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len, "RTP-GSM");
