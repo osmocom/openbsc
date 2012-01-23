@@ -24,6 +24,7 @@
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
+#include <openbsc/db.h>
 
 #include <openbsc/gsm_04_11.h>
 
@@ -83,6 +84,25 @@ static void msc_assign_fail(struct gsm_subscriber_connection *conn,
 	     "Assignment fail should not have been reached.\n");
 }
 
+static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
+			      const uint8_t *cm2, uint8_t cm2_len,
+			      const uint8_t *cm3, uint8_t cm3_len)
+{
+	struct gsm_subscriber *subscr = conn->subscr;
+
+	if (subscr) {
+		subscr->equipment.classmark2_len = cm2_len;
+		memcpy(subscr->equipment.classmark2, cm2, cm2_len);
+		if (cm3) {
+			subscr->equipment.classmark3_len = cm3_len;
+			memcpy(subscr->equipment.classmark3, cm3, cm3_len);
+		}
+		db_sync_equipment(&subscr->equipment);
+	}
+}
+
+
+
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
 	.compl_l3 = msc_compl_l3,
@@ -90,6 +110,7 @@ static struct bsc_api msc_handler = {
 	.clear_request = msc_clear_request,
 	.assign_compl = msc_assign_compl,
 	.assign_fail = msc_assign_fail,
+	.classmark_chg = msc_classmark_chg,
 };
 
 struct bsc_api *msc_bsc_api() {

@@ -418,6 +418,44 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 			 rr_failure);
 }
 
+static void handle_classmark_chg(struct gsm_subscriber_connection *conn,
+				 struct msgb *msg)
+{
+	struct bsc_api *api = msg->lchan->ts->trx->bts->network->bsc_api;
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
+	uint8_t cm2_len, cm3_len = 0;
+	uint8_t *cm2, *cm3 = NULL;
+
+	DEBUGP(DRR, "CLASSMARK CHANGE ");
+
+	/* classmark 2 */
+	cm2_len = gh->data[0];
+	cm2 = &gh->data[1];
+	DEBUGPC(DRR, "CM2(len=%u) ", cm2_len);
+
+	if (payload_len > cm2_len + 1) {
+		/* we must have a classmark3 */
+		if (gh->data[cm2_len+1] != 0x20) {
+			DEBUGPC(DRR, "ERR CM3 TAG\n");
+			return -EINVAL;
+		}
+		if (cm2_len > 3) {
+			DEBUGPC(DRR, "CM2 too long!\n");
+			return -EINVAL;
+		}
+
+		cm3_len = gh->data[cm2_len+2];
+		cm3 = &gh->data[cm2_len+3];
+		if (cm3_len > 14) {
+			DEBUGPC(DRR, "CM3 len %u too long!\n", cm3_len);
+			return -EINVAL;
+		}
+		DEBUGPC(DRR, "CM3(len=%u)\n", cm3_len);
+	}
+	api->classmark_chg(conn, cm2, cm2_len, cm3, cm3_len);
+}
+
 static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			  uint8_t link_id, struct msgb *msg)
 {
@@ -460,6 +498,10 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 						  conn->lchan->encr.alg_id,
 						  chan_mode_to_speech(conn->lchan));
 			}
+			return;
+			break;
+		case GSM48_MT_RR_CLSM_CHG:
+			handle_classmark_chg(conn, msg);
 			return;
 			break;
 		}

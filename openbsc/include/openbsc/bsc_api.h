@@ -30,6 +30,10 @@ struct bsc_api {
 	/*! \brief BSC->MSC: RR conn has been cleared */
 	int (*clear_request)(struct gsm_subscriber_connection *conn,
 			      uint32_t cause);
+	/*! \brief BSC->MSC: Classmark Update */
+	void (*classmark_chg)(struct gsm_subscriber_connection *conn,
+			      const uint8_t *cm2, uint8_t cm2_len,
+			      const uint8_t *cm3, uint8_t cm3_len);
 };
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api);

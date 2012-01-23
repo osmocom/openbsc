@@ -1101,53 +1101,6 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	return rc;
 }
 
-static int gsm48_rx_rr_classmark(struct gsm_subscriber_connection *conn, struct msgb *msg)
-{
-	struct gsm48_hdr *gh = msgb_l3(msg);
-	struct gsm_subscriber *subscr = conn->subscr;
-	unsigned int payload_len = msgb_l3len(msg) - sizeof(*gh);
-	uint8_t cm2_len, cm3_len = 0;
-	uint8_t *cm2, *cm3 = NULL;
-
-	DEBUGP(DRR, "CLASSMARK CHANGE ");
-
-	/* classmark 2 */
-	cm2_len = gh->data[0];
-	cm2 = &gh->data[1];
-	DEBUGPC(DRR, "CM2(len=%u) ", cm2_len);
-
-	if (payload_len > cm2_len + 1) {
-		/* we must have a classmark3 */
-		if (gh->data[cm2_len+1] != 0x20) {
-			DEBUGPC(DRR, "ERR CM3 TAG\n");
-			return -EINVAL;
-		}
-		if (cm2_len > 3) {
-			DEBUGPC(DRR, "CM2 too long!\n");
-			return -EINVAL;
-		}
-		
-		cm3_len = gh->data[cm2_len+2];
-		cm3 = &gh->data[cm2_len+3];
-		if (cm3_len > 14) {
-			DEBUGPC(DRR, "CM3 len %u too long!\n", cm3_len);
-			return -EINVAL;
-		}
-		DEBUGPC(DRR, "CM3(len=%u)\n", cm3_len);
-	}
-	if (subscr) {
-		subscr->equipment.classmark2_len = cm2_len;
-		memcpy(subscr->equipment.classmark2, cm2, cm2_len);
-		if (cm3) {
-			subscr->equipment.classmark3_len = cm3_len;
-			memcpy(subscr->equipment.classmark3, cm3, cm3_len);
-		}
-		db_sync_equipment(&subscr->equipment);
-	}
-
-	return 0;
-}
-
 static int gsm48_rx_rr_status(struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1258,9 +1211,6 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 	int rc = 0;
 
 	switch (gh->msg_type) {
-	case GSM48_MT_RR_CLSM_CHG:
-		rc = gsm48_rx_rr_classmark(conn, msg);
-		break;
 	case GSM48_MT_RR_GPRS_SUSP_REQ:
 		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 		break;
