@@ -69,4 +69,7 @@ struct msgb *gsm48_create_loc_upd_rej(uint8_t cause);
 void gsm48_lchan2chan_desc(struct gsm48_chan_desc *cd,
 			   const struct gsm_lchan *lchan);
 
+void release_security_operation(struct gsm_subscriber_connection *conn);
+void allocate_security_operation(struct gsm_subscriber_connection *conn);
+
 #endif

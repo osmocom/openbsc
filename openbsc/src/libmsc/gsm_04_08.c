@@ -134,7 +134,7 @@ int gsm48_cc_tx_notify_ss(struct gsm_trans *trans, const char *message)
 	return gsm48_conn_sendmsg(ss_notify, trans->conn, trans);
 }
 
-static void release_security_operation(struct gsm_subscriber_connection *conn)
+void release_security_operation(struct gsm_subscriber_connection *conn)
 {
 	if (!conn->sec_operation)
 		return;
@@ -144,7 +144,7 @@ static void release_security_operation(struct gsm_subscriber_connection *conn)
 	msc_release_connection(conn);
 }
 
-static void allocate_security_operation(struct gsm_subscriber_connection *conn)
+void allocate_security_operation(struct gsm_subscriber_connection *conn)
 {
 	conn->sec_operation = talloc_zero(tall_authciphop_ctx,
 	                                  struct gsm_security_operation);
@@ -1101,29 +1101,6 @@ static int gsm48_rx_rr_pag_resp(struct gsm_subscriber_connection *conn, struct m
 	return rc;
 }
 
-static int gsm48_rx_rr_status(struct msgb *msg)
-{
-	struct gsm48_hdr *gh = msgb_l3(msg);
-
-	DEBUGP(DRR, "STATUS rr_cause = %s\n",
-		rr_cause_name(gh->data[0]));
-
-	return 0;
-}
-
-static int gsm48_rx_rr_meas_rep(struct msgb *msg)
-{
-	struct gsm_meas_rep *meas_rep = lchan_next_meas_rep(msg->lchan);
-
-	/* This shouldn't actually end up here, as RSL treats
-	 * L3 Info of 08.58 MEASUREMENT REPORT different by calling
-	 * directly into gsm48_parse_meas_rep */
-	DEBUGP(DMEAS, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
-	gsm48_parse_meas_rep(meas_rep, msg);
-
-	return 0;
-}
-
 static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	struct gsm48_hdr *gh = msgb_l3(msg);
@@ -1141,69 +1118,6 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
 }
 
-/* Chapter 9.1.10 Ciphering Mode Complete */
-static int gsm48_rx_rr_ciph_m_compl(struct gsm_subscriber_connection *conn, struct msgb *msg)
-{
-	gsm_cbfn *cb;
-	int rc = 0;
-
-	DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
-
-	/* Safety check */
-	if (!conn->sec_operation) {
-		DEBUGP(DRR, "No authentication/cipher operation in progress !!!\n");
-		return -EIO;
-	}
-
-	/* FIXME: check for MI (if any) */
-
-	/* Call back whatever was in progress (if anything) ... */
-	cb = conn->sec_operation->cb;
-	if (cb) {
-		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
-			NULL, conn, conn->sec_operation->cb_data);
-	}
-
-	/* Complete the operation */
-	release_security_operation(conn);
-
-	return rc;
-}
-
-/* Chapter 9.1.16 Handover complete */
-static int gsm48_rx_rr_ho_compl(struct msgb *msg)
-{
-	struct lchan_signal_data sig;
-	struct gsm48_hdr *gh = msgb_l3(msg);
-
-	DEBUGP(DRR, "HANDOVER COMPLETE cause = %s\n",
-		rr_cause_name(gh->data[0]));
-
-	sig.lchan = msg->lchan;
-	sig.mr = NULL;
-	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_COMPL, &sig);
-	/* FIXME: release old channel */
-
-	return 0;
-}
-
-/* Chapter 9.1.17 Handover Failure */
-static int gsm48_rx_rr_ho_fail(struct msgb *msg)
-{
-	struct lchan_signal_data sig;
-	struct gsm48_hdr *gh = msgb_l3(msg);
-
-	DEBUGP(DRR, "HANDOVER FAILED cause = %s\n",
-		rr_cause_name(gh->data[0]));
-
-	sig.lchan = msg->lchan;
-	sig.mr = NULL;
-	osmo_signal_dispatch(SS_LCHAN, S_LCHAN_HANDOVER_FAIL, &sig);
-	/* FIXME: release allocated new channel */
-
-	return 0;
-}
-
 /* Receive a GSM 04.08 Radio Resource (RR) message */
 static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
@@ -1211,32 +1125,14 @@ static int gsm0408_rcv_rr(struct gsm_subscriber_connection *conn, struct msgb *m
 	int rc = 0;
 
 	switch (gh->msg_type) {
-	case GSM48_MT_RR_GPRS_SUSP_REQ:
-		DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
-		break;
 	case GSM48_MT_RR_PAG_RESP:
 		rc = gsm48_rx_rr_pag_resp(conn, msg);
-		break;
-	case GSM48_MT_RR_STATUS:
-		rc = gsm48_rx_rr_status(msg);
-		break;
-	case GSM48_MT_RR_MEAS_REP:
-		rc = gsm48_rx_rr_meas_rep(msg);
 		break;
 	case GSM48_MT_RR_APP_INFO:
 		rc = gsm48_rx_rr_app_info(conn, msg);
 		break;
-	case GSM48_MT_RR_CIPH_M_COMPL:
-		rc = gsm48_rx_rr_ciph_m_compl(conn, msg);
-		break;
-	case GSM48_MT_RR_HANDO_COMPL:
-		rc = gsm48_rx_rr_ho_compl(msg);
-		break;
-	case GSM48_MT_RR_HANDO_FAIL:
-		rc = gsm48_rx_rr_ho_fail(msg);
-		break;
 	default:
-		LOGP(DRR, LOGL_NOTICE, "Unimplemented "
+		LOGP(DRR, LOGL_NOTICE, "MSC: Unimplemented "
 			"GSM 04.08 RR msg type 0x%02x\n", gh->msg_type);
 		break;
 	}

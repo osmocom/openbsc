@@ -101,6 +101,34 @@ static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
 	}
 }
 
+static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
+			     struct msgb *msg, uint8_t alg_id)
+{
+	gsm_cbfn *cb;
+
+	DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
+
+	/* Safety check */
+	if (!conn->sec_operation) {
+		DEBUGP(DRR, "No authentication/cipher operation in progress !!!\n");
+		return;
+	}
+
+	/* FIXME: check for MI (if any) */
+
+	/* Call back whatever was in progress (if anything) ... */
+	cb = conn->sec_operation->cb;
+	if (cb) {
+		int rc;
+		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+			NULL, conn, conn->sec_operation->cb_data);
+
+	}
+
+	/* Complete the operation */
+	release_security_operation(conn);
+}
+
 
 
 static struct bsc_api msc_handler = {
@@ -111,6 +139,7 @@ static struct bsc_api msc_handler = {
 	.assign_compl = msc_assign_compl,
 	.assign_fail = msc_assign_fail,
 	.classmark_chg = msc_classmark_chg,
+	.cipher_mode_compl = msc_ciph_m_compl,
 };
 
 struct bsc_api *msc_bsc_api() {
