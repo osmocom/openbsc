@@ -349,11 +349,6 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		goto reject;
 	}
 
-	if (data[1] != GSM0808_SPEECH_FULL_PREF && data[1] != GSM0808_SPEECH_HALF_PREF) {
-		LOGP(DMSC, LOGL_ERROR, "ChannelType full not allowed: %d\n", data[1]);
-		goto reject;
-	}
-
 	/*
 	 * go through the list of preferred codecs of our gsm network
 	 * and try to find it among the permitted codecs. If we found
