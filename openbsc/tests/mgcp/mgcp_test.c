@@ -25,7 +25,21 @@
 #include <string.h>
 
 #define AUEP1	"AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
+#define AUEP1_RET "200 158663169 OK\r\n"
 #define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
+#define AUEP2_RET "500 18983213 FAIL\r\n"
+
+
+struct mgcp_test {
+	const char *name;
+	const char *req;
+	const char *exp_resp;
+};
+
+const struct mgcp_test tests[] = {
+	{ "AUEP1", AUEP1, AUEP1_RET },
+	{ "AUEP2", AUEP2, AUEP2_RET },
+};
 
 static struct msgb *create_msg(const char *str)
 {
@@ -39,33 +53,30 @@ static struct msgb *create_msg(const char *str)
 
 static void test_auep(void)
 {
-	struct msgb *inp;
-	struct msgb *msg;
 	struct mgcp_config *cfg;
-
-	printf("Testing AUEP\n");
+	int i;
 
 	cfg = mgcp_config_alloc();
+
 	cfg->trunk.number_endpoints = 64;
 	mgcp_endpoints_allocate(&cfg->trunk);
 
 	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
 
-	inp = create_msg(AUEP1);
-	msg = mgcp_handle_message(cfg, inp);
-	msgb_free(inp);
-	if (strcmp((char *) msg->data, "200 158663169 OK\r\n") != 0)
-		printf("Result1 failed '%s'\n", (char *) msg->data);
-	/* Verify that the endpoint is fine */
-	msgb_free(msg);
+	for (i = 0; i < ARRAY_SIZE(tests); i++) {
+		const struct mgcp_test *t = &tests[i];
+		struct msgb *inp;
+		struct msgb *msg;
 
-	inp = create_msg(AUEP2);
-	msg = mgcp_handle_message(cfg, inp);
-	msgb_free(inp);
-	/* Verify that the endpoint is not fine */
-	if (strcmp((char *) msg->data, "500 18983213 FAIL\r\n") != 0)
-		printf("Result2 failed '%s'\n", (char *) msg->data);
-	msgb_free(msg);
+		printf("Testing %s\n", t->name);
+
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+	}
 
 	talloc_free(cfg);
 }
