@@ -24,22 +24,15 @@
 #include <osmocom/core/talloc.h>
 #include <string.h>
 
-static struct msgb *create_auep1()
+#define AUEP1	"AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
+#define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
+
+static struct msgb *create_msg(const char *str)
 {
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n");
-	msg->l2h = msgb_put(msg, len);
-	return msg;
-}
-
-static struct msgb *create_auep2()
-{
-	struct msgb *msg;
-
-	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n");
+	int len = sprintf((char *)msg->data, str);
 	msg->l2h = msgb_put(msg, len);
 	return msg;
 }
@@ -58,7 +51,7 @@ static void test_auep(void)
 
 	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
 
-	inp = create_auep1();
+	inp = create_msg(AUEP1);
 	msg = mgcp_handle_message(cfg, inp);
 	msgb_free(inp);
 	if (strcmp((char *) msg->data, "200 158663169 OK\r\n") != 0)
@@ -66,7 +59,7 @@ static void test_auep(void)
 	/* Verify that the endpoint is fine */
 	msgb_free(msg);
 
-	inp = create_auep2();
+	inp = create_msg(AUEP2);
 	msg = mgcp_handle_message(cfg, inp);
 	msgb_free(inp);
 	/* Verify that the endpoint is not fine */
