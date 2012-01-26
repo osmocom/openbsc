@@ -29,6 +29,33 @@
 #define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
 #define AUEP2_RET "500 18983213 FAIL\r\n"
 
+#define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
+		 "M: sendrecv\r\n"		\
+		 "C: 2\r\n"			\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP 97\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"
+
+#define CRCX_RET "200 2 OK\r\n"			\
+		 "I: 1\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
+
+
+#define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
+		 "M: sendrecv\r"		\
+		 "C: 2\r\r"			\
+		 "v=0\r"			\
+		 "c=IN IP4 123.12.12.123\r"	\
+		 "m=audio 5904 RTP/AVP 97\r"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r"
 
 struct mgcp_test {
 	const char *name;
@@ -39,6 +66,8 @@ struct mgcp_test {
 const struct mgcp_test tests[] = {
 	{ "AUEP1", AUEP1, AUEP1_RET },
 	{ "AUEP2", AUEP2, AUEP2_RET },
+	{ "CRCX", CRCX, CRCX_RET },
+	{ "CRCX_ZYN", CRCX_ZYN, CRCX_RET },
 };
 
 static struct msgb *create_msg(const char *str)
