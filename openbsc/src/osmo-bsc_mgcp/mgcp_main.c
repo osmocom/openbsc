@@ -256,6 +256,17 @@ int main(int argc, char **argv)
 			return -1;
 		}
 
+		if (cfg->call_agent_addr) {
+			addr.sin_port = htons(2727);
+			inet_aton(cfg->call_agent_addr, &addr.sin_addr);
+			if (connect(cfg->gw_fd.bfd.fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+				LOGP(DMGCP, LOGL_ERROR, "Failed to connect to: '%s'. errno: %d\n",
+				     cfg->call_agent_addr, errno);
+				close(cfg->gw_fd.bfd.fd);
+				cfg->gw_fd.bfd.fd = -1;
+				return -1;
+			}
+		}
 
 		if (osmo_fd_register(&cfg->gw_fd.bfd) != 0) {
 			LOGP(DMGCP, LOGL_FATAL, "Failed to register the fd\n");
