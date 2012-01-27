@@ -30,6 +30,7 @@
 #include <unistd.h>
 
 #include <sys/socket.h>
+#include <sys/signal.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -196,6 +197,15 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+static void sig_handler(int sig)
+{
+	if (sig != SIGHUP)
+		return;
+
+	LOGP(DMGCP, LOGL_NOTICE, "SIGHUP received, resetting all endpoints\n");
+	mgcp_send_reset_all(cfg);
+}
+
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
@@ -205,6 +215,7 @@ int main(int argc, char **argv)
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "mgcp-callagent");
 
 	osmo_init_ignore_signals();
+	signal(SIGHUP, &sig_handler);
 	osmo_init_logging(&log_info);
 
 	cfg = mgcp_config_alloc();

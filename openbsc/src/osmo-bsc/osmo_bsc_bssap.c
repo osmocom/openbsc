@@ -29,6 +29,7 @@
 #include <osmocom/gsm/protocol/gsm_08_08.h>
 #include <osmocom/gsm/gsm0808.h>
 
+#include <sys/signal.h>
 #include <arpa/inet.h>
 
 static uint16_t read_data16(const uint8_t *data)
@@ -102,6 +103,11 @@ static int bssmap_handle_reset_ack(struct gsm_network *net,
 				   struct msgb *msg, unsigned int length)
 {
 	LOGP(DMSC, LOGL_NOTICE, "Reset ACK from MSC\n");
+
+	/* notify bsc_mgcp to reset all end-points */
+	if (net->msc_data->bsc_mgcp.pid)
+		kill(net->msc_data->bsc_mgcp.pid, SIGHUP);
+
 	return 0;
 }
 
