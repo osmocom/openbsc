@@ -49,13 +49,13 @@
 		 "a=rtpmap:126 AMR/8000\r\n"
 
 
-#define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
-		 "M: sendrecv\r"		\
-		 "C: 2\r\r"			\
-		 "v=0\r"			\
-		 "c=IN IP4 123.12.12.123\r"	\
-		 "m=audio 5904 RTP/AVP 97\r"	\
-		 "a=rtpmap:97 GSM-EFR/8000\r"
+#define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\n"	\
+		 "M: sendrecv\n"		\
+		 "C: 2\n\n"			\
+		 "v=0\n"			\
+		 "c=IN IP4 123.12.12.123\n"	\
+		 "m=audio 5904 RTP/AVP 97\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\n"
 
 struct mgcp_test {
 	const char *name;
