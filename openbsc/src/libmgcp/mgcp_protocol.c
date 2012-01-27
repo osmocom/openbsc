@@ -436,6 +436,50 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 	return 0;
 }
 
+
+static int handle_sdp_line(struct mgcp_endpoint *endp, char *line)
+{
+	int port;
+	int payload;
+	char ipv4[16];
+
+	if (!line || strlen(line) < 2 || line[1] != '=') {
+		LOGP(DMGCP, LOGL_NOTICE, "Strange SDP line: `%s' without `='"
+		     "on 0x%x\n", line, ENDPOINT_NUMBER(endp));
+		return 0;
+	}
+
+	switch (line[0]) {
+	case 'a':
+	case 'o':
+	case 's':
+	case 't':
+	case 'v':
+		/* skip these SDP attributes */
+		break;
+	case 'm':
+		if (sscanf(line, "m=audio %d RTP/AVP %d", &port, &payload) == 2) {
+			endp->net_end.rtp_port = htons(port);
+			endp->net_end.rtcp_port = htons(port + 1);
+			endp->net_end.payload_type = payload;
+		} else
+			return -1;
+		break;
+	case 'c':
+		if (sscanf(line, "c=IN IP4 %15s", ipv4) == 1) {
+			inet_aton(ipv4, &endp->net_end.addr);
+		} else
+			return -1;
+		break;
+	default:
+		LOGP(DMGCP, LOGL_NOTICE, "Unhandled SDP line: `%s', on 0x%x\n",
+		     line, ENDPOINT_NUMBER(endp));
+		break;
+	}
+
+	return 0;
+}
+
 static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 {
 	const char *trans_id;
@@ -457,23 +501,38 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 				return create_err_response(510, "CRCX", trans_id);
 
 			tcfg = endp->tcfg;
+
+			/* initialize */
+			endp->net_end.rtp_port = endp->net_end.rtcp_port =
+				endp->bts_end.rtp_port =
+				endp->bts_end.rtcp_port = 0;
+			/* set to zero until we get the info */
+			memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
+
 			continue;
 		}
 
-		switch (line[0]) {
-		case 'L':
-			local_options = (const char *) line + 3;
-			break;
-		case 'C':
-			callid = (const char *) line + 3;
-			break;
-		case 'M':
-			mode = (const char *) line + 3;
-			break;
-		default:
-			LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
-				*line, *line, ENDPOINT_NUMBER(endp));
-			break;
+		if (strlen(line) >= 1 && islower(line[0])) {
+			if (handle_sdp_line(endp, line) < 0) {
+				error_code = 509;
+				goto error2;
+			}
+		} else {
+			switch (line[0]) {
+			case 'L':
+				local_options = (const char *) line + 3;
+				break;
+			case 'C':
+				callid = (const char *) line + 3;
+				break;
+			case 'M':
+				mode = (const char *) line + 3;
+				break;
+			default:
+				LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
+					*line, *line, ENDPOINT_NUMBER(endp));
+				break;
+			}
 		}
 	}
 
@@ -513,12 +572,6 @@ static struct msgb *handle_create_con(struct mgcp_config *cfg, struct msgb *msg)
 		    error_code = 517;
 		    goto error2;
 	}
-
-	/* initialize */
-	endp->net_end.rtp_port = endp->net_end.rtcp_port = endp->bts_end.rtp_port = endp->bts_end.rtcp_port = 0;
-
-	/* set to zero until we get the info */
-	memset(&endp->net_end.addr, 0, sizeof(endp->net_end.addr));
 
 	/* bind to the port now */
 	if (allocate_ports(endp) != 0)
@@ -591,63 +644,41 @@ static struct msgb *handle_modify_con(struct mgcp_config *cfg, struct msgb *msg)
 			}
 		}
 
-		switch (line[0]) {
-		case 'C': {
-			if (verify_call_id(endp, line + 3) != 0)
+		if (strlen(line) >= 1 && islower(line[0])) {
+			if (handle_sdp_line(endp, line) < 0) {
+				error_code = 509;
 				goto error3;
-			break;
-		}
-		case 'I': {
-			if (verify_ci(endp, line + 3) != 0)
-				goto error3;
-			break;
-		}
-		case 'L':
-			/* skip */
-			break;
-		case 'M':
-			if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
-			    error_code = 517;
-			    goto error3;
 			}
-			endp->orig_mode = endp->conn_mode;
-			break;
-		case 'Z':
-			silent = strcmp("noanswer", line + 3) == 0;
-			break;
-		case '\0':
-			/* SDP file begins */
-			break;
-		case 'a':
-		case 'o':
-		case 's':
-		case 't':
-		case 'v':
-			/* skip these SDP attributes */
-			break;
-		case 'm': {
-			int port;
-			int payload;
-
-			if (sscanf(line, "m=audio %d RTP/AVP %d", &port, &payload) == 2) {
-				endp->net_end.rtp_port = htons(port);
-				endp->net_end.rtcp_port = htons(port + 1);
-				endp->net_end.payload_type = payload;
+		} else {
+			switch (line[0]) {
+			case 'C': {
+				if (verify_call_id(endp, line + 3) != 0)
+					goto error3;
+				break;
 			}
-			break;
-		}
-		case 'c': {
-			char ipv4[16];
-
-			if (sscanf(line, "c=IN IP4 %15s", ipv4) == 1) {
-				inet_aton(ipv4, &endp->net_end.addr);
+			case 'I': {
+				if (verify_ci(endp, line + 3) != 0)
+					goto error3;
+				break;
 			}
-			break;
-		}
-		default:
-			LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
-				line[0], line[0], ENDPOINT_NUMBER(endp));
-			break;
+			case 'L':
+				/* skip */
+				break;
+			case 'M':
+				if (parse_conn_mode(line + 3, &endp->conn_mode) != 0) {
+				    error_code = 517;
+				    goto error3;
+				}
+				endp->orig_mode = endp->conn_mode;
+				break;
+			case 'Z':
+				silent = strcmp("noanswer", line + 3) == 0;
+				break;
+			default:
+				LOGP(DMGCP, LOGL_NOTICE, "Unhandled option: '%c'/%d on 0x%x\n",
+					line[0], line[0], ENDPOINT_NUMBER(endp));
+				break;
+			}
 		}
 	}
 
