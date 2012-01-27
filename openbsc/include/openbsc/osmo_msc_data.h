@@ -69,6 +69,13 @@ struct osmo_msc_data {
 
 	/* ussd welcome text */
 	char *ussd_welcome_txt;
+
+	/* osmo-bsc_mgcp related */
+	struct {
+		char *path;
+		char *config_path;
+		pid_t pid;
+	} bsc_mgcp;
 };
 
 int osmo_bsc_msc_init(struct gsm_network *network);

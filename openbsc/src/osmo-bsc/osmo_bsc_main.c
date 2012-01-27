@@ -138,15 +138,44 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-extern int bsc_shutdown_net(struct gsm_network *net);
-static void signal_handler(int signal)
+static int spawn_mgcp(void)
 {
-	fprintf(stdout, "signal %u received\n", signal);
+	pid_t pid;
+	struct osmo_msc_data *data = bsc_gsmnet->msc_data;
 
-	switch (signal) {
+	if (!data->bsc_mgcp.path) {
+		LOGP(DMGCP, LOGL_NOTICE,
+		     "Config file instructs us to not start osmo-bsc_mgcp!\n");
+		return 0;
+	}
+
+	pid = fork();
+	if (pid == 0) {
+		execlp(data->bsc_mgcp.path, "osmo-bsc_mgcp", "-c",
+			data->bsc_mgcp.config_path, NULL);
+		/* only in case of error we ever end up here */
+		fprintf(stderr, "Unable to exec() mgcp `%s`: %s\n",
+			data->bsc_mgcp.path, strerror(errno));
+		exit(1);
+	} else {
+		data->bsc_mgcp.pid = pid;
+		return 0;
+	}
+}
+
+extern int bsc_shutdown_net(struct gsm_network *net);
+static void signal_handler(int signum)
+{
+	fprintf(stdout, "signal %u received\n", signum);
+
+	switch (signum) {
 	case SIGINT:
 		bsc_shutdown_net(bsc_gsmnet);
 		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
+		if (bsc_gsmnet->msc_data && bsc_gsmnet->msc_data->bsc_mgcp.pid) {
+			signal(SIGCHLD, SIG_IGN);
+			kill(bsc_gsmnet->msc_data->bsc_mgcp.pid, SIGTERM);
+		}
 		sleep(3);
 		exit(0);
 		break;
@@ -165,6 +194,12 @@ static void signal_handler(int signal)
 		if (!bsc_gsmnet->msc_data->msc_con->is_connected)
 			return;
 		bsc_msc_lost(bsc_gsmnet->msc_data->msc_con);
+		break;
+	case SIGCHLD:
+		/* bsc_mgcp seems to have died */
+		/* sleep for some time to avoid fork bomb */
+		sleep(1);
+		spawn_mgcp();
 		break;
 	default:
 		break;
@@ -459,7 +494,10 @@ int main(int argc, char **argv)
 	signal(SIGABRT, &signal_handler);
 	signal(SIGUSR1, &signal_handler);
 	signal(SIGUSR2, &signal_handler);
+	signal(SIGCHLD, &signal_handler);
 	osmo_init_ignore_signals();
+
+	spawn_mgcp();
 
 	if (daemonize) {
 		rc = osmo_daemonize();

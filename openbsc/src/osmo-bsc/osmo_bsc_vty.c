@@ -18,6 +18,8 @@
  *
  */
 
+#include <sys/signal.h>
+
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
@@ -325,6 +327,61 @@ DEFUN(cfg_net_rf_socket,
 	return CMD_SUCCESS;
 }
 
+#define MGCP_STR	"Configuration of the osmo-bsc_mgcp\n"
+
+DEFUN(cfg_net_msc_mgcp, cfg_net_msc_mgcp_cmd,
+      "bsc-mgcp executable PATH", MGCP_STR
+      "Set the filename / path of the osmo-bsc_mgcp executable.\n"
+      "filename / path of the osmo-bsc_mgcp executable\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+	int equal = 0;
+
+	if (data->bsc_mgcp.path && !strcmp(data->bsc_mgcp.path, argv[0]))
+		equal = 1;
+
+	bsc_replace_string(data, &data->bsc_mgcp.path, argv[0]);
+
+	if (equal)
+		return CMD_SUCCESS;
+
+	if (data->bsc_mgcp.pid) {
+		kill(data->bsc_mgcp.pid, SIGTERM);
+		data->bsc_mgcp.pid = 0;
+		/* we will get SIGCHLD and re-spawn new path */
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_no_mgcp, cfg_net_msc_no_mgcp_cmd,
+      "no bsc-mgcp executable", NO_STR MGCP_STR
+      "Do not start osmo-bsc_mgcp from osmo-bsc\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	talloc_free(data->bsc_mgcp.path);
+	data->bsc_mgcp.path = NULL;
+
+	if (data->bsc_mgcp.pid) {
+		kill(data->bsc_mgcp.pid, SIGTERM);
+		data->bsc_mgcp.pid = 0;
+		/* SIGCHLD handler will not try to respawn, as path == NULL */
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_net_msc_cfg_mgcp, cfg_net_msc_mgcp_cfg_cmd,
+      "bsc-mgcp config-file PATH", MGCP_STR
+      "Set the filename / path of the osmo-bsc_mgcp config file\n"
+      "filename / path of the osmo-bsc_mgcp config file\n")
+{
+	struct osmo_msc_data *data = osmo_msc_data(vty);
+
+	bsc_replace_string(data, &data->bsc_mgcp.config_path, argv[0]);
+	return CMD_SUCCESS;
+}
+
 DEFUN(show_statistics,
       show_statistics_cmd,
       "show statistics",
@@ -352,6 +409,11 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_mid_call_timeout_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_welcome_ussd_cmd);
 	install_element(MSC_NODE, &cfg_net_rf_socket_cmd);
+
+	/* FIXME: this should probably be a global MGCP node? */
+	install_element(MSC_NODE, &cfg_net_msc_mgcp_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_no_mgcp_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_mgcp_cfg_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 

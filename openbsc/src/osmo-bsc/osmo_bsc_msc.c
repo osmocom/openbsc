@@ -37,6 +37,7 @@
 #include <osmocom/abis/ipa.h>
 
 #include <sys/socket.h>
+#include <sys/signal.h>
 #include <netinet/tcp.h>
 #include <unistd.h>
 
@@ -341,6 +342,10 @@ static void msc_connection_connected(struct bsc_msc_connection *con)
 
 	data = (struct osmo_msc_data *) con->write_queue.bfd.data;
 	msc_ping_timeout_cb(data);
+
+	/* notify bsc_mgcp to reset all end-points */
+	if (data->bsc_mgcp.pid)
+		kill(data->bsc_mgcp.pid, SIGHUP);
 
 	sig.data = data;
 	osmo_signal_dispatch(SS_MSC, S_MSC_CONNECTED, &sig);
