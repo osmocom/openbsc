@@ -131,9 +131,6 @@ struct mgcp_msg_ptr {
 	unsigned int length;
 };
 
-int mgcp_analyze_header(struct mgcp_config *cfg, struct msgb *msg,
-			struct mgcp_msg_ptr *ptr, int size,
-			const char **transaction_id, struct mgcp_endpoint **endp);
 int mgcp_send_dummy(struct mgcp_endpoint *endp);
 int mgcp_bind_bts_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
 int mgcp_bind_net_rtp_port(struct mgcp_endpoint *endp, int rtp_port);
