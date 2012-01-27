@@ -80,6 +80,8 @@ static void print_help()
 	printf("Some useful help...\n");
 	printf(" -h --help is printing this text.\n");
 	printf(" -c --config-file filename The config file to use.\n");
+	printf(" -D --daemonize Fork the process into a background daemon\n");
+	printf(" -V --version Print the version number\n");
 }
 
 static void handle_options(int argc, char **argv)
