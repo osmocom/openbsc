@@ -2242,7 +2242,7 @@ DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
 }
 
 DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
-	"neighbor-list (add|del) arfcn <0-1024>",
+	"neighbor-list (add|del) arfcn <0-1023>",
 	"Neighbor List\n" "Add to manual neighbor list\n"
 	"Delete from manual neighbor list\n" "ARFCN of neighbor\n"
 	"ARFCN of neighbor\n")
@@ -2266,7 +2266,7 @@ DEFUN(cfg_bts_neigh, cfg_bts_neigh_cmd,
 }
 
 DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
-	"si5 neighbor-list (add|del) arfcn <0-1024>",
+	"si5 neighbor-list (add|del) arfcn <0-1023>",
 	"SI5 Neighbor List\n" "Add to manual SI5 neighbor list\n"
 	"Delete from SI5 manual neighbor list\n" "ARFCN of neighbor\n"
 	"ARFCN of neighbor\n")
@@ -2346,7 +2346,7 @@ DEFUN(cfg_trx,
 
 DEFUN(cfg_trx_arfcn,
       cfg_trx_arfcn_cmd,
-      "arfcn <0-1024>",
+      "arfcn <0-1023>",
       "Set the ARFCN for this TRX\n")
 {
 	int arfcn = atoi(argv[0]);

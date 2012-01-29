@@ -208,7 +208,7 @@ static int generate_ma_for_ts(struct gsm_bts_trx_ts *ts)
 
 	/* count the number of ARFCNs in the cell channel allocation */
 	num_cell_arfcns = 0;
-	for (i = 1; i < 1024; i++) {
+	for (i = 0; i < 1024; i++) {
 		if (bitvec_get_bit_pos(cell_chan, i))
 			num_cell_arfcns++;
 	}
@@ -219,7 +219,7 @@ static int generate_ma_for_ts(struct gsm_bts_trx_ts *ts)
 		ts->hopping.ma_len++;
 
 	n_chan = 0;
-	for (i = 1; i < 1024; i++) {
+	for (i = 0; i < 1024; i++) {
 		if (!bitvec_get_bit_pos(cell_chan, i))
 			continue;
 		/* set the corresponding bit in the MA */
