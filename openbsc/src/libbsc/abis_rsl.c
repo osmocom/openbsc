@@ -1242,7 +1242,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	int is_lu;
 
 	uint16_t arfcn;
-	uint8_t ts_number, subch;
+	uint8_t subch;
 
 	/* parse request reference to be used in immediate assign */
 	if (rqd_hdr->data[0] != RSL_IE_REQ_REFERENCE)
@@ -1297,7 +1297,6 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 	memcpy(lchan->rqd_ref, rqd_ref, sizeof(*rqd_ref));
 	lchan->rqd_ta = rqd_ta;
 
-	ts_number = lchan->ts->nr;
 	arfcn = lchan->ts->trx->arfcn;
 	subch = lchan->nr;
 	
