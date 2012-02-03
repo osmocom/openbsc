@@ -1359,30 +1359,34 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 	return rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (uint8_t *) ia);
 }
 
-/* MS has requested a channel on the RACH */
+/* current load on the CCCH */
 static int rsl_rx_ccch_load(struct msgb *msg)
 {
 	struct e1inp_sign_link *sign_link = msg->dst;
 	struct abis_rsl_dchan_hdr *rslh = msgb_l2(msg);
-	uint16_t pg_buf_space;
-	uint16_t rach_slot_count = -1;
-	uint16_t rach_busy_count = -1;
-	uint16_t rach_access_count = -1;
+	struct ccch_signal_data sd;
+
+	sd.bts = sign_link->trx->bts;
+	sd.rach_slot_count = -1;
+	sd.rach_busy_count = -1;
+	sd.rach_access_count = -1;
 
 	switch (rslh->data[0]) {
 	case RSL_IE_PAGING_LOAD:
-		pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
-		if (is_ipaccess_bts(sign_link->trx->bts) && pg_buf_space == 0xffff) {
+		sd.pg_buf_space = rslh->data[1] << 8 | rslh->data[2];
+		if (is_ipaccess_bts(sign_link->trx->bts) && sd.pg_buf_space == 0xffff) {
 			/* paging load below configured threshold, use 50 as default */
-			pg_buf_space = 50;
+			sd.pg_buf_space = 50;
 		}
-		paging_update_buffer_space(sign_link->trx->bts, pg_buf_space);
+		paging_update_buffer_space(sign_link->trx->bts, sd.pg_buf_space);
+		osmo_signal_dispatch(SS_CCCH, S_CCCH_PAGING_LOAD, &sd);
 		break;
 	case RSL_IE_RACH_LOAD:
 		if (msg->data_len >= 7) {
-			rach_slot_count = rslh->data[2] << 8 | rslh->data[3];
-			rach_busy_count = rslh->data[4] << 8 | rslh->data[5];
-			rach_access_count = rslh->data[6] << 8 | rslh->data[7];
+			sd.rach_slot_count = rslh->data[2] << 8 | rslh->data[3];
+			sd.rach_busy_count = rslh->data[4] << 8 | rslh->data[5];
+			sd.rach_access_count = rslh->data[6] << 8 | rslh->data[7];
+			osmo_signal_dispatch(SS_CCCH, S_CCCH_RACH_LOAD, &sd);
 		}
 		break;
 	default:

@@ -46,6 +46,7 @@ enum signal_subsystems {
 	SS_RF,
 	SS_MSC,
 	SS_HO,
+	SS_CCCH,
 };
 
 /* SS_PAGING signals */
@@ -245,6 +246,20 @@ enum signal_ho {
 struct ho_signal_data {
 	struct gsm_lchan *old_lchan;
 	struct gsm_lchan *new_lchan;
+};
+
+/* SS_CCCH signals */
+enum signal_ccch {
+	S_CCCH_PAGING_LOAD,
+	S_CCCH_RACH_LOAD,
+};
+
+struct ccch_signal_data {
+	struct gsm_bts *bts;
+	uint16_t pg_buf_space;
+	uint16_t rach_slot_count;
+	uint16_t rach_busy_count;
+	uint16_t rach_access_count;
 };
 
 #endif
