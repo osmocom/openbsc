@@ -1590,8 +1590,6 @@ static uint8_t ipa_smod_s_for_lchan(struct gsm_lchan *lchan)
 
 static uint8_t ipa_rtp_pt_for_lchan(struct gsm_lchan *lchan)
 {
-	struct gsm_network *net = lchan->ts->trx->bts->network;
-
 	switch (lchan->tch_mode) {
 	case GSM48_CMODE_SPEECH_V1:
 		switch (lchan->type) {
