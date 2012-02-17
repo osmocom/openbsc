@@ -106,7 +106,7 @@ struct rtp_x_hdr {
 #define RTP_VERSION	2
 
 /* decode an rtp frame and create a new buffer with payload */
-static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
+static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, int msg_type)
 {
 	struct msgb *new_msg;
 	struct gsm_data_frame *frame;
@@ -114,7 +114,6 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	struct rtp_x_hdr *rtpxh;
 	uint8_t *payload;
 	int payload_len;
-	int msg_type;
 	int x_len;
 	int is_amr = 0;
 
@@ -165,9 +164,31 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 		}
 	}
 
-	switch (rtph->payload_type) {
-	case RTP_PT_GSM_FULL:
-		msg_type = GSM_TCHF_FRAME;
+	/* If no explicit frame type is given, select frame type from
+	 * payload type. */
+	if (!msg_type) {
+		switch (rtph->payload_type) {
+		case RTP_PT_GSM_FULL:
+			msg_type = GSM_TCHF_FRAME;
+			break;
+		case RTP_PT_GSM_EFR:
+			msg_type = GSM_TCHF_FRAME_EFR;
+			break;
+		case RTP_PT_GSM_HALF:
+			msg_type = GSM_TCHH_FRAME;
+			break;
+		case RTP_PT_AMR:
+			msg_type = GSM_TCH_FRAME_AMR;
+			break;
+		default:
+			DEBUGPC(DLMUX, "received RTP frame with unknown "
+				"payload type %d\n", rtph->payload_type);
+			return -EINVAL;
+		}
+	}
+
+	switch (msg_type) {
+	case GSM_TCHF_FRAME:
 		if (payload_len != RTP_LEN_GSM_FULL) {
 			DEBUGPC(DLMUX, "received RTP full rate frame with "
 				"payload length != %d (len = %d)\n",
@@ -175,8 +196,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
-	case RTP_PT_GSM_EFR:
-		msg_type = GSM_TCHF_FRAME_EFR;
+	case GSM_TCHF_FRAME_EFR:
 		if (payload_len != RTP_LEN_GSM_EFR) {
 			DEBUGPC(DLMUX, "received RTP extended full rate frame "
 				"with payload length != %d (len = %d)\n",
@@ -184,8 +204,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
-	case RTP_PT_GSM_HALF:
-		msg_type = GSM_TCHH_FRAME;
+	case GSM_TCHH_FRAME:
 		if (payload_len != RTP_LEN_GSM_HALF) {
 			DEBUGPC(DLMUX, "received RTP half rate frame with "
 				"payload length != %d (len = %d)\n",
@@ -193,12 +212,11 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
-	case RTP_PT_AMR:
+	case GSM_TCH_FRAME_AMR:
 		is_amr = 1;
 		break;
 	default:
-		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
-			"type %d\n", rtph->payload_type);
+		DEBUGPC(DLMUX, "Forced message type %x unknown\n", msg_type);
 		return -EINVAL;
 	}
 
@@ -246,6 +264,10 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int payload_len;
 	int duration; /* in samples */
 	int is_amr = 0, is_bfi = 0;
+	uint8_t dynamic_pt = 0;
+
+	if (rs->rx_action == RTP_RECV_APP)
+		dynamic_pt = rs->receive.payload_type;
 
 	if (rs->tx_action != RTP_SEND_DOWNSTREAM) {
 		/* initialize sequences */
@@ -262,17 +284,17 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCHF_FRAME_EFR:
-		payload_type = RTP_PT_GSM_EFR;
+		payload_type = (dynamic_pt) ? : RTP_PT_GSM_EFR;
 		payload_len = RTP_LEN_GSM_EFR;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCHH_FRAME:
-		payload_type = RTP_PT_GSM_HALF;
+		payload_type = (dynamic_pt) ? : RTP_PT_GSM_HALF;
 		payload_len = RTP_LEN_GSM_HALF;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCH_FRAME_AMR:
-		payload_type = RTP_PT_AMR;
+		payload_type = (dynamic_pt) ? : RTP_PT_AMR;
 		payload_len = frame->data[0];
 		duration = RTP_GSM_DURATION;
 		is_amr = 1;
@@ -495,7 +517,7 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			rc = -EINVAL;
 			goto out_free;
 		}
-		rc = rtp_decode(msg, rs->receive.callref, &new_msg);
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg, 0);
 		if (rc < 0)
 			goto out_free;
 		msgb_free(msg);
@@ -511,7 +533,8 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 			rc = ENOTSUP;
 			goto out_free;
 		}
-		rc = rtp_decode(msg, rs->receive.callref, &new_msg);
+		rc = rtp_decode(msg, rs->receive.callref, &new_msg,
+			rs->receive.msg_type);
 		if (rc < 0)
 			goto out_free;
 		msgb_free(msg);
