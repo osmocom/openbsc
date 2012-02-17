@@ -1711,6 +1711,8 @@ static int mncc_rtp(struct gsm_network *net, uint32_t callref, struct gsm_mncc_r
 			mncc_recvmsg(net, trans, MNCC_RTP_CONNECT, (struct gsm_mncc *)mncc);
 			return -EIO;
 		}
+		rs->receive.msg_type = mncc->payload_msg_type;
+		rs->receive.payload_type = mncc->payload_type;
 		/* reply with local IP/port */
 		mncc->ip = ntohl(rs->rtp.sin_local.sin_addr.s_addr);
 		mncc->port = ntohs(rs->rtp.sin_local.sin_port);
