@@ -100,8 +100,9 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 
 	memset(chan_list, 0, 16);
 
-	/* GSM900-only handsets only support 'bit map 0 format' */
-	if (bts->band == GSM_BAND_900) {
+	/* P-GSM-only handsets only support 'bit map 0 format' */
+	if (bts->band == GSM_BAND_900
+	 && bts->c0->arfcn >= 1 && bts->c0->arfcn <= 124) {
 		chan_list[0] = 0;
 
 		for (i = 0; i < bv->data_len*8; i++) {
