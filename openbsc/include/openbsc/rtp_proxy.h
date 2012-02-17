@@ -74,6 +74,8 @@ struct rtp_socket {
 		struct {
 			struct gsm_network *net;
 			uint32_t callref;
+			uint8_t payload_type; /* dynamic PT */
+			int msg_type; /* message type for dynamic PT */
 		} receive;
 	};
 	enum rtp_tx_action tx_action;

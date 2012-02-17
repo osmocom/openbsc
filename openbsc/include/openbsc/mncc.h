@@ -187,6 +187,8 @@ struct gsm_mncc_rtp {
 	uint32_t	callref;
 	uint32_t	ip;
 	uint16_t	port;
+	uint32_t	payload_type;
+	uint32_t	payload_msg_type;
 };
 
 char *get_mncc_name(int value);
