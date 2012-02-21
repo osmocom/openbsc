@@ -48,6 +48,12 @@
 
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 
+static int filter_abis_rsl_sendmsg(struct msgb *msg)
+{
+	msg->l2h = msg->data;
+	return (filter_is_active() ? filter_send_msg(msg, FILTER_DOWNLINK_MSG) : abis_rsl_sendmsg(msg));
+}
+
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 			      struct gsm_meas_rep *resp)
 {
@@ -219,7 +225,7 @@ int rsl_bcch_info(struct gsm_bts_trx *trx, uint8_t type,
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
@@ -237,7 +243,7 @@ int rsl_sacch_filling(struct gsm_bts_trx *trx, uint8_t type,
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
@@ -256,7 +262,7 @@ int rsl_sacch_info_modify(struct gsm_lchan *lchan, uint8_t type,
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
@@ -283,7 +289,7 @@ int rsl_chan_bs_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int db)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
@@ -312,7 +318,7 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
@@ -411,7 +417,7 @@ int rsl_chan_activate(struct gsm_bts_trx *trx, uint8_t chan_nr,
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 #endif
 
@@ -490,7 +496,7 @@ int rsl_chan_activate_lchan(struct gsm_lchan *lchan, uint8_t act_type,
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Chapter 8.4.9: Modify channel mode on BTS side */
@@ -529,7 +535,7 @@ int rsl_chan_mode_modify_req(struct gsm_lchan *lchan)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Chapter 8.4.6: Send the encryption command with given L3 info */
@@ -561,7 +567,7 @@ int rsl_encryption_cmd(struct msgb *msg)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Chapter 8.4.5 / 4.6: Deactivate the SACCH after 04.08 RR CHAN RELEASE */
@@ -579,7 +585,7 @@ int rsl_deact_sacch(struct gsm_lchan *lchan)
 
 	DEBUGP(DRSL, "%s DEACTivate SACCH CMD\n", gsm_lchan_name(lchan));
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 static void error_timeout_cb(void *data)
@@ -644,7 +650,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	lchan->act_timer.data = lchan;
 	osmo_timer_schedule(&lchan->act_timer, 4, 0);
 
-	rc =  abis_rsl_sendmsg(msg);
+	rc =  filter_abis_rsl_sendmsg(msg);
 
 #ifdef ROLE_BSC
 	/* Dispatch a S_SCALL_RELEASED signal if this was a silent call */
@@ -700,7 +706,7 @@ int rsl_paging_cmd(struct gsm_bts *bts, uint8_t paging_group, uint8_t len,
 
 	msg->dst = bts->c0->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int imsi_str2bcd(uint8_t *bcd_out, const char *str_in)
@@ -744,7 +750,7 @@ int rsl_imm_assign_cmd(struct gsm_bts *bts, uint8_t len, uint8_t *val)
 
 	msg->dst = bts->c0->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Send Siemens specific MS RF Power Capability Indication */
@@ -764,7 +770,7 @@ int rsl_siemens_mrpci(struct gsm_lchan *lchan, struct rsl_mrpci *mrpci)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 
@@ -782,7 +788,7 @@ int rsl_data_request(struct msgb *msg, uint8_t link_id)
 
 	msg->dst = msg->lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Send "ESTABLISH REQUEST" message with given L3 Info payload */
@@ -795,7 +801,7 @@ int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id)
 			     link_id, 0);
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* Chapter 8.3.7 Request the release of multiframe mode of RLL connection.
@@ -817,7 +823,7 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int state)
@@ -1713,7 +1719,7 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip, uint16_t port,
@@ -1756,7 +1762,7 @@ int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip, uint16_t port,
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 /* tell BTS to connect RTP stream to our local RTP socket */
@@ -1794,7 +1800,7 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act)
 
 	msg->dst = ts->trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 static int abis_rsl_rx_ipacc_crcx_ack(struct msgb *msg)
@@ -1971,7 +1977,7 @@ int rsl_sms_cb_command(struct gsm_bts *bts, uint8_t chan_number,
 
 	cb_cmd->trx = bts->c0;
 
-	return abis_rsl_sendmsg(cb_cmd);
+	return filter_abis_rsl_sendmsg(cb_cmd);
 }
 
 int rsl_nokia_si_begin(struct gsm_bts_trx *trx)
@@ -1985,7 +1991,7 @@ int rsl_nokia_si_begin(struct gsm_bts_trx *trx)
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_nokia_si_end(struct gsm_bts_trx *trx)
@@ -2001,7 +2007,7 @@ int rsl_nokia_si_end(struct gsm_bts_trx *trx)
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }
 
 int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction)
@@ -2018,5 +2024,5 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 
 	msg->dst = trx->rsl_link;
 
-	return abis_rsl_sendmsg(msg);
+	return filter_abis_rsl_sendmsg(msg);
 }

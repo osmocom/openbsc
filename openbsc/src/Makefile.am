@@ -3,7 +3,7 @@ AM_CFLAGS=-Wall $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOGSM_CFLAGS) 
 AM_LDFLAGS = $(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) $(COVERAGE_LDFLAGS)
 
 #SUBDIRS = libcommon libmgcp libbsc libmsc libtrau libctrl osmo-nitb osmo-bsc_mgcp utils ipaccess libgb gprs
-SUBDIRS = libcommon libmgcp libbsc libmsc libtrau libctrl osmo-nitb osmo-bsc_mgcp utils libgb gprs
+SUBDIRS = libcommon libmgcp libbsc libmsc libtrau libctrl osmo-nitb osmo-bsc_mgcp libgb gprs
 
 # Conditional modules
 if BUILD_NAT

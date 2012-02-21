@@ -291,8 +291,8 @@ static int route_message(struct msgb *msg) {
 		LOGP(0, LOGL_DEBUG, "routing uplink msg to _abis_rsl_rcvmsg\n");
 		rc = _abis_rsl_rcvmsg(msg);
 	} else if(fh->msg_type == FILTER_DOWNLINK_MSG) {
-		LOGP(0, LOGL_DEBUG, "routing downlink msg to _abis_rsl_sendmsg\n");
-		rc = _abis_rsl_sendmsg(msg);
+		LOGP(0, LOGL_DEBUG, "routing downlink msg to abis_rsl_sendmsg\n");
+		rc = abis_rsl_sendmsg(msg);
 	} else {
 		LOGP(0, LOGL_ERROR, "unknown msg type %d\n", fh->msg_type);
 		msgb_free(msg);
