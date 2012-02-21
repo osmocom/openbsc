@@ -518,8 +518,9 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 		rx_llc_xid(lle, gph);
 		break;
 	case GPRS_LLC_UI:
-		if (gph->seq_tx < lle->vu_recv) {
-			LOGP(DLLC, LOGL_NOTICE, "TLLI=%08x dropping UI, vurecv %u <= %u\n",
+		if (gprs_llc_is_retransmit(gph->seq_tx, lle->vu_recv)) {
+			LOGP(DLLC, LOGL_NOTICE,
+				"TLLI=%08x dropping UI, N(U=%d) not in window V(URV(UR:%d).\n",
 				lle->llme ? lle->llme->tlli : -1,
 				gph->seq_tx, lle->vu_recv);
 			return -EIO;

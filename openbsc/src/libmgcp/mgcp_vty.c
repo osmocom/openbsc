@@ -637,12 +637,68 @@ DEFUN(free_endp, free_endp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(reset_endp, reset_endp_cmd,
+      "reset-endpoint <0-64> NUMBER",
+      "Reset the given endpoint\n" "Trunk number\n"
+      "Endpoint number in hex.\n")
+{
+	struct mgcp_trunk_config *trunk;
+	struct mgcp_endpoint *endp;
+	int endp_no, rc;
+
+	trunk = find_trunk(g_cfg, atoi(argv[0]));
+	if (!trunk) {
+		vty_out(vty, "%%Trunk %d not found in the config.%s",
+			atoi(argv[0]), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	if (!trunk->endpoints) {
+		vty_out(vty, "%%Trunk %d has no endpoints allocated.%s",
+			trunk->trunk_nr, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	endp_no = strtoul(argv[1], NULL, 16);
+	if (endp_no < 1 || endp_no >= trunk->number_endpoints) {
+		vty_out(vty, "Endpoint number %s/%d is invalid.%s",
+		argv[1], endp_no, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	endp = &trunk->endpoints[endp_no];
+	rc = mgcp_send_reset_ep(endp, ENDPOINT_NUMBER(endp));
+	if (rc < 0) {
+		vty_out(vty, "Error %d sending reset.%s", rc, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
+DEFUN(reset_all_endp, reset_all_endp_cmd,
+      "reset-all-endpoints",
+      "Reset all endpoints\n")
+{
+	int rc;
+
+	rc = mgcp_send_reset_all(g_cfg);
+	if (rc < 0) {
+		vty_out(vty, "Error %d during endpoint reset.%s",
+			rc, VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	return CMD_SUCCESS;
+}
+
+
 int mgcp_vty_init(void)
 {
 	install_element_ve(&show_mgcp_cmd);
 	install_element(ENABLE_NODE, &loop_endp_cmd);
 	install_element(ENABLE_NODE, &tap_call_cmd);
 	install_element(ENABLE_NODE, &free_endp_cmd);
+	install_element(ENABLE_NODE, &reset_endp_cmd);
+	install_element(ENABLE_NODE, &reset_all_endp_cmd);
 
 	install_element(CONFIG_NODE, &cfg_mgcp_cmd);
 	install_node(&mgcp_node, config_write_mgcp);

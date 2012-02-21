@@ -1087,6 +1087,36 @@ static void send_dlcx(struct mgcp_endpoint *endp, int endpoint)
 	send_trans(endp->cfg, buf, len);
 }
 
+static int send_agent(struct mgcp_config *cfg, const char *buf, int len)
+{
+	return write(cfg->gw_fd.bfd.fd, buf, len);
+}
+
+int mgcp_send_reset_all(struct mgcp_config *cfg)
+{
+	static const char mgcp_reset[] = {
+	    "RSIP 1 *@mgw MGCP 1.0\r\n"
+	};
+
+	return send_agent(cfg, mgcp_reset, sizeof mgcp_reset -1);
+}
+
+int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint)
+{
+	char buf[128];
+	int len;
+
+	len = snprintf(buf, sizeof(buf),
+			"RSIP 39 %x@mgw MGCP 1.0\r\n"
+			, endpoint);
+	if (len < 0)
+		return len;
+
+	buf[sizeof(buf) - 1] = '\0';
+
+	return send_agent(endp->cfg, buf, len);
+}
+
 static void create_transcoder(struct mgcp_endpoint *endp)
 {
 	int port;

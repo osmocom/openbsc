@@ -2,6 +2,8 @@ INCLUDES = $(all_includes) -I$(top_srcdir)/include
 AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
+EXTRA_DIST = db_test.ok
+
 noinst_PROGRAMS = db_test
 
 db_test_SOURCES = db_test.c

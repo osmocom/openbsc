@@ -133,12 +133,10 @@ static int bssmap_handle_paging(struct gsm_network *net,
 		return -1;
 	}
 
-	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI)) {
-		gsm48_mi_to_string(mi_string, sizeof(mi_string),
-			   TLVP_VAL(&tp, GSM0808_IE_TMSI), TLVP_LEN(&tp, GSM0808_IE_TMSI));
-		tmsi = strtoul(mi_string, NULL, 10);
+	if (TLVP_PRESENT(&tp, GSM0808_IE_TMSI) &&
+	    TLVP_LEN(&tp, GSM0808_IE_TMSI) == 4) {
+		tmsi = ntohl(*(uint32_t *) TLVP_VAL(&tp, GSM0808_IE_TMSI));
 	}
-
 
 	/*
 	 * parse the IMSI
@@ -348,11 +346,6 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	data = (uint8_t *) TLVP_VAL(&tp, GSM0808_IE_CHANNEL_TYPE);
 	if ((data[0] & 0xf) != 0x1) {
 		LOGP(DMSC, LOGL_ERROR, "ChannelType != speech: %d\n", data[0]);
-		goto reject;
-	}
-
-	if (data[1] != GSM0808_SPEECH_FULL_PREF && data[1] != GSM0808_SPEECH_HALF_PREF) {
-		LOGP(DMSC, LOGL_ERROR, "ChannelType full not allowed: %d\n", data[1]);
 		goto reject;
 	}
 

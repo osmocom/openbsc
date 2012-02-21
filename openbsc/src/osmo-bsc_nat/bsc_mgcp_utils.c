@@ -507,6 +507,9 @@ uint32_t bsc_mgcp_extract_ci(const char *str)
 	return ci;
 }
 
+/**
+ * Create a new MGCPCommand based on the input and endpoint from a message
+ */
 static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 		       int endp, int len, int cr)
 {
@@ -516,6 +519,11 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 
 	buf[0] = buf[39] = '\0';
 	ret = sscanf(tok, "%*s %s", buf);
+	if (ret != 1) {
+		LOGP(DMGCP, LOGL_ERROR,
+			"Failed to find Endpoint in: %s\n", tok);
+		return;
+	}
 
 	slen = sprintf((char *) output->l3h, "%s %s %x@mgw MGCP 1.0%s",
 			op, buf, endp, cr ? "\r\n" : "\n");

@@ -39,7 +39,6 @@
 #include <openbsc/signal.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/transaction.h>
-#include <openbsc/rtp_proxy.h>
 
 struct bsc_handover {
 	struct llist_head list;

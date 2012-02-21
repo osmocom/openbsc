@@ -24,6 +24,7 @@
 #include <openbsc/bsc_api.h>
 #include <openbsc/debug.h>
 #include <openbsc/transaction.h>
+#include <openbsc/db.h>
 
 #include <openbsc/gsm_04_11.h>
 
@@ -60,11 +61,85 @@ static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 	gsm0408_dispatch(conn, msg);
 }
 
+static void msc_assign_compl(struct gsm_subscriber_connection *conn,
+			     uint8_t rr_cause, uint8_t chosen_channel,
+			     uint8_t encr_alg_id, uint8_t speec)
+{
+	/*
+	 * The mncc code is not doing assignment requests and
+	 * we should not end here. See MNCC_LCHAN_MODIFY
+	 */
+	LOGP(DMSC, LOGL_ERROR,
+	     "Assignment complete should not have been reached.\n");
+}
+
+static void msc_assign_fail(struct gsm_subscriber_connection *conn,
+			    uint8_t cause, uint8_t *rr_cause)
+{
+	/*
+	 * The mncc code is not doing assignment requests and
+	 * we should not end here. See MNCC_LCHAN_MODIFY
+	 */
+	LOGP(DMSC, LOGL_ERROR,
+	     "Assignment fail should not have been reached.\n");
+}
+
+static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
+			      const uint8_t *cm2, uint8_t cm2_len,
+			      const uint8_t *cm3, uint8_t cm3_len)
+{
+	struct gsm_subscriber *subscr = conn->subscr;
+
+	if (subscr) {
+		subscr->equipment.classmark2_len = cm2_len;
+		memcpy(subscr->equipment.classmark2, cm2, cm2_len);
+		if (cm3) {
+			subscr->equipment.classmark3_len = cm3_len;
+			memcpy(subscr->equipment.classmark3, cm3, cm3_len);
+		}
+		db_sync_equipment(&subscr->equipment);
+	}
+}
+
+static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
+			     struct msgb *msg, uint8_t alg_id)
+{
+	gsm_cbfn *cb;
+
+	DEBUGP(DRR, "CIPHERING MODE COMPLETE\n");
+
+	/* Safety check */
+	if (!conn->sec_operation) {
+		DEBUGP(DRR, "No authentication/cipher operation in progress !!!\n");
+		return;
+	}
+
+	/* FIXME: check for MI (if any) */
+
+	/* Call back whatever was in progress (if anything) ... */
+	cb = conn->sec_operation->cb;
+	if (cb) {
+		int rc;
+		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+			NULL, conn, conn->sec_operation->cb_data);
+
+	}
+
+	/* Complete the operation */
+	release_security_operation(conn);
+}
+
+
+
 static struct bsc_api msc_handler = {
 	.sapi_n_reject = msc_sapi_n_reject,
-	.clear_request = msc_clear_request,
 	.compl_l3 = msc_compl_l3,
 	.dtap  = msc_dtap,
+	.clear_request = msc_clear_request,
+	.assign_compl = msc_assign_compl,
+	.assign_fail = msc_assign_fail,
+	.classmark_chg = msc_classmark_chg,
+	.cipher_mode_compl = msc_ciph_m_compl,
 };
 
 struct bsc_api *msc_bsc_api() {

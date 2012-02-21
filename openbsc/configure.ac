@@ -4,6 +4,7 @@ AC_INIT([openbsc],
 	[openbsc-devel@lists.openbsc.org])
 
 AM_INIT_AUTOMAKE([dist-bzip2])
+AC_CONFIG_TESTDIR(tests)
 
 dnl kernel style compile messages
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -28,6 +29,7 @@ AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Require
         osmo_ac_build_nat="no"
     ])
 AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
+AC_SUBST(osmo_ac_build_nat)
 
 AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
     [
@@ -105,12 +107,14 @@ AC_OUTPUT(
     src/libgb/Makefile
     src/gprs/Makefile
     tests/Makefile
+    tests/atlocal
     tests/debug/Makefile
     tests/gsm0408/Makefile
     tests/db/Makefile
     tests/channel/Makefile
     tests/bsc-nat/Makefile
     tests/mgcp/Makefile
+    tests/gprs/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

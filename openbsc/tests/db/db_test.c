@@ -17,38 +17,50 @@
  *
  */
 
+#include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/gsm_subscriber.h>
+
+#include <osmocom/core/application.h>
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+static struct gsm_network dummy_net;
+
+#define SUBSCR_PUT(sub) \
+	sub->net = &dummy_net;	\
+	subscr_put(sub);
+
 #define COMPARE(original, copy) \
 	if (original->id != copy->id) \
-		fprintf(stderr, "Ids do not match in %s:%d %llu %llu\n", \
+		printf("Ids do not match in %s:%d %llu %llu\n", \
 			__FUNCTION__, __LINE__, original->id, copy->id); \
 	if (original->lac != copy->lac) \
-		fprintf(stderr, "LAC do not match in %s:%d %d %d\n", \
+		printf("LAC do not match in %s:%d %d %d\n", \
 			__FUNCTION__, __LINE__, original->lac, copy->lac); \
 	if (original->authorized != copy->authorized) \
-		fprintf(stderr, "Authorize do not match in %s:%d %d %d\n", \
+		printf("Authorize do not match in %s:%d %d %d\n", \
 			__FUNCTION__, __LINE__, original->authorized, \
 			copy->authorized); \
 	if (strcmp(original->imsi, copy->imsi) != 0) \
-		fprintf(stderr, "IMSIs do not match in %s:%d '%s' '%s'\n", \
+		printf("IMSIs do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->imsi, copy->imsi); \
 	if (original->tmsi != copy->tmsi) \
-		fprintf(stderr, "TMSIs do not match in %s:%d '%u' '%u'\n", \
+		printf("TMSIs do not match in %s:%d '%u' '%u'\n", \
 			__FUNCTION__, __LINE__, original->tmsi, copy->tmsi); \
 	if (strcmp(original->name, copy->name) != 0) \
-		fprintf(stderr, "names do not match in %s:%d '%s' '%s'\n", \
+		printf("names do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->name, copy->name); \
 	if (strcmp(original->extension, copy->extension) != 0) \
-		fprintf(stderr, "names do not match in %s:%d '%s' '%s'\n", \
+		printf("names do not match in %s:%d '%s' '%s'\n", \
 			__FUNCTION__, __LINE__, original->extension, copy->extension); \
 
-int main() {
+int main()
+{
+	printf("Testing subscriber database code.\n");
+	osmo_init_logging(&log_info);
 
 	if (db_init("hlr.sqlite3")) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
@@ -70,8 +82,8 @@ int main() {
 	db_sync_subscriber(alice);
 	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice->imsi);
 	COMPARE(alice, alice_db);
-	subscr_put(alice_db);
-	subscr_put(alice);
+	SUBSCR_PUT(alice_db);
+	SUBSCR_PUT(alice);
 
 	alice_imsi = "3693245423445";
 	alice = db_create_subscriber(NULL, alice_imsi);
@@ -81,8 +93,8 @@ int main() {
 	db_sync_subscriber(alice);
 	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
-	subscr_put(alice);
-	subscr_put(alice_db);
+	SUBSCR_PUT(alice);
+	SUBSCR_PUT(alice_db);
 
 	alice_imsi = "9993245423445";
 	alice = db_create_subscriber(NULL, alice_imsi);
@@ -93,11 +105,12 @@ int main() {
 	db_subscriber_assoc_imei(alice, "6543560920");
 	alice_db = db_get_subscriber(NULL, GSM_SUBSCRIBER_IMSI, alice_imsi);
 	COMPARE(alice, alice_db);
-	subscr_put(alice);
-	subscr_put(alice_db);
+	SUBSCR_PUT(alice);
+	SUBSCR_PUT(alice_db);
 
 	db_fini();
 
+	printf("Done\n");
 	return 0;
 }
 

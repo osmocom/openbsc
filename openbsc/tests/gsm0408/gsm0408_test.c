@@ -99,5 +99,6 @@ int main(int argc, char **argv)
 	test_location_area_identifier();
 	test_mi_functionality();
 
-	exit(0);
+	printf("Done.\n");
+	return EXIT_SUCCESS;
 }

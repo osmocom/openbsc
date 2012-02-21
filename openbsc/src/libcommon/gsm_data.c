@@ -347,12 +347,13 @@ int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type)
 		bts->oml_tei = 0xff;
 		bts->c0->nominal_power = 23;
 		break;
-	case GSM_BTS_TYPE_BS11:
-	case GSM_BTS_TYPE_UNKNOWN:
-		break;
 	case GSM_BTS_TYPE_RBS2000:
 		INIT_LLIST_HEAD(&bts->rbs2000.is.conn_groups);
 		INIT_LLIST_HEAD(&bts->rbs2000.con.conn_groups);
+		break;
+	case GSM_BTS_TYPE_BS11:
+	case GSM_BTS_TYPE_UNKNOWN:
+	case GSM_BTS_TYPE_NOKIA_SITE:
 		break;
 	}
 

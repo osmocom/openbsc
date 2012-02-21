@@ -422,12 +422,18 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 				      foh->obj_inst.trx_nr,
 				      foh->obj_inst.ts_nr, 0,
 				      foh->data, oh->length-sizeof(*foh));
+	if (ret != 0) {
+		LOGP(DNM, LOGL_ERROR,
+			"Sending SW ActReq ACK failed: %d\n", ret);
+		return ret;
+	}
 
 	abis_nm_tlv_parse(&tp, sign_link->trx->bts, foh->data, oh->length-sizeof(*foh));
 	sw_config = TLVP_VAL(&tp, NM_ATT_SW_CONFIG);
 	sw_config_len = TLVP_LEN(&tp, NM_ATT_SW_CONFIG);
 	if (!TLVP_PRESENT(&tp, NM_ATT_SW_CONFIG)) {
-		DEBUGP(DNM, "SW config not found! Can't continue.\n");
+		LOGP(DNM, LOGL_ERROR,
+			"SW config not found! Can't continue.\n");
 		return -EINVAL;
 	} else {
 		DEBUGP(DNM, "Found SW config: %s\n", osmo_hexdump(sw_config, sw_config_len));

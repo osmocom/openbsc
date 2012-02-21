@@ -183,6 +183,19 @@ static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t ca
 	return 1;
 }
 
+static void bsc_cm_update(struct gsm_subscriber_connection *conn,
+			  const uint8_t *cm2, uint8_t cm2_len,
+			  const uint8_t *cm3, uint8_t cm3_len)
+{
+	struct osmo_bsc_sccp_con *sccp;
+	struct msgb *resp;
+	return_when_not_connected_val(conn, 1);
+
+	resp = gsm0808_create_classmark_update(cm2, cm2_len, cm3, cm3_len);
+
+	queue_msg_or_return(resp);
+}
+
 static struct bsc_api bsc_handler = {
 	.sapi_n_reject = bsc_sapi_n_reject,
 	.cipher_mode_compl = bsc_cipher_mode_compl,
@@ -191,6 +204,7 @@ static struct bsc_api bsc_handler = {
 	.assign_compl = bsc_assign_compl,
 	.assign_fail = bsc_assign_fail,
 	.clear_request = bsc_clear_request,
+	.classmark_chg = bsc_cm_update,
 };
 
 struct bsc_api *osmo_bsc_api()

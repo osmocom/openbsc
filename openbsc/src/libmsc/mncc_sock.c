@@ -2,6 +2,7 @@
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
  * (C) 2009 by Andreas Eversberg <Andreas.Eversberg@versatel.de>
+ * (C) 2012 by Holger Hans Peter Freyther
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -221,6 +222,12 @@ static void queue_hello(struct mncc_sock_state *mncc)
 	hello = (struct gsm_mncc_hello *) msgb_put(msg, sizeof(*hello));
 	hello->msg_type = MNCC_SOCKET_HELLO;
 	hello->version = MNCC_SOCK_VERSION;
+	hello->mncc_size = sizeof(struct gsm_mncc);
+	hello->data_frame_size = sizeof(struct gsm_data_frame);
+	hello->called_offset = offsetof(struct gsm_mncc, called);
+	hello->signal_offset = offsetof(struct gsm_mncc, signal);
+	hello->emergency_offset = offsetof(struct gsm_mncc, emergency);
+	hello->lchan_type_offset = offsetof(struct gsm_mncc, lchan_type);
 
 	msgb_enqueue(&mncc->net->upqueue, msg);
 	mncc->conn_bfd.when |= BSC_FD_WRITE;

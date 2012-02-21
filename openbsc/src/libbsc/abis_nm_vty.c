@@ -133,28 +133,6 @@ DEFUN(oml_classnum_inst, oml_classnum_inst_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(oml_attrib_get, oml_attrib_get_cmd,
-	"attribute get <0-255>",
-	"OML Attribute Actions\n" "Get a single OML Attribute\n"
-	"OML Attribute Number\n")
-{
-	struct oml_node_state *oms = vty->index;
-
-	/* FIXME */
-	return CMD_SUCCESS;
-}
-
-DEFUN(oml_attrib_set, oml_attrib_set_cmd,
-	"attribute set <0-255> .HEX",
-	"OML Attribute Actions\n" "Set a single OML Attribute\n"
-	"OML Attribute Number\n")
-{
-	struct oml_node_state *oms = vty->index;
-
-	/* FIXME */
-	return CMD_SUCCESS;
-}
-
 DEFUN(oml_chg_adm_state, oml_chg_adm_state_cmd,
 	"change-adm-state (locked|unlocked|shutdown|null)",
 	"Change the Administrative State\n"
@@ -190,8 +168,6 @@ int abis_nm_vty_init(void)
 
 	install_default(OML_NODE);
 	install_element(OML_NODE, &ournode_exit_cmd);
-	install_element(OML_NODE, &oml_attrib_get_cmd);
-	install_element(OML_NODE, &oml_attrib_set_cmd);
 	install_element(OML_NODE, &oml_chg_adm_state_cmd);
 	install_element(OML_NODE, &oml_opstart_cmd);
 

@@ -801,7 +801,6 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 {
 	struct abis_om2k_hdr *o2h;
 	struct gsm_bts_trx *trx;
-	int to_trx_oml;
 
 	msg->l2h = msg->data;
 	o2h = (struct abis_om2k_hdr *) msg->l2h;

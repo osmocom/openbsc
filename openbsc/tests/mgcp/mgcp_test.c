@@ -24,51 +24,88 @@
 #include <osmocom/core/talloc.h>
 #include <string.h>
 
-static struct msgb *create_auep1()
+#define AUEP1	"AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
+#define AUEP1_RET "200 158663169 OK\r\n"
+#define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
+#define AUEP2_RET "500 18983213 FAIL\r\n"
+
+#define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
+		 "M: sendrecv\r\n"		\
+		 "C: 2\r\n"			\
+		 "\r\n"				\
+		 "v=0\r\n"			\
+		 "c=IN IP4 123.12.12.123\r\n"	\
+		 "m=audio 5904 RTP/AVP 97\r\n"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r\n"
+
+#define CRCX_RET "200 2 OK\r\n"			\
+		 "I: 1\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
+
+
+#define CRCX_ZYN "CRCX 2 1@mgw MGCP 1.0\r"	\
+		 "M: sendrecv\r"		\
+		 "C: 2\r\r"			\
+		 "v=0\r"			\
+		 "c=IN IP4 123.12.12.123\r"	\
+		 "m=audio 5904 RTP/AVP 97\r"	\
+		 "a=rtpmap:97 GSM-EFR/8000\r"
+
+struct mgcp_test {
+	const char *name;
+	const char *req;
+	const char *exp_resp;
+};
+
+const struct mgcp_test tests[] = {
+	{ "AUEP1", AUEP1, AUEP1_RET },
+	{ "AUEP2", AUEP2, AUEP2_RET },
+	{ "CRCX", CRCX, CRCX_RET },
+	{ "CRCX_ZYN", CRCX_ZYN, CRCX_RET },
+};
+
+static struct msgb *create_msg(const char *str)
 {
 	struct msgb *msg;
 
 	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n");
-	msg->l2h = msgb_put(msg, len);
-	return msg;
-}
-
-static struct msgb *create_auep2()
-{
-	struct msgb *msg;
-
-	msg = msgb_alloc_headroom(4096, 128, "MGCP msg");
-	int len = sprintf((char *)msg->data, "AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n");
+	int len = sprintf((char *)msg->data, str);
 	msg->l2h = msgb_put(msg, len);
 	return msg;
 }
 
 static void test_auep(void)
 {
-	struct msgb *inp;
-	struct msgb *msg;
-	struct mgcp_config *cfg = mgcp_config_alloc();
+	struct mgcp_config *cfg;
+	int i;
+
+	cfg = mgcp_config_alloc();
+
 	cfg->trunk.number_endpoints = 64;
 	mgcp_endpoints_allocate(&cfg->trunk);
 
 	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
 
-	inp = create_auep1();
-	msg = mgcp_handle_message(cfg, inp);
-	msgb_free(inp);
-	if (strcmp((char *) msg->data, "200 158663169 OK\r\n") != 0)
-		printf("Result1 failed '%s'\n", (char *) msg->data);
-	/* Verify that the endpoint is fine */
-	msgb_free(msg);
+	for (i = 0; i < ARRAY_SIZE(tests); i++) {
+		const struct mgcp_test *t = &tests[i];
+		struct msgb *inp;
+		struct msgb *msg;
 
-	inp = create_auep2();
-	msg = mgcp_handle_message(cfg, inp);
-	msgb_free(inp);
-	/* Verify that the endpoint is not fine */
-	if (strcmp((char *) msg->data, "500 18983213 FAIL\r\n") != 0)
-		printf("Result2 failed '%s'\n", (char *) msg->data);
-	msgb_free(msg);
+		printf("Testing %s\n", t->name);
+
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+	}
 
 	talloc_free(cfg);
 }
@@ -78,5 +115,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	test_auep();
-	return 0;
+
+	printf("Done\n");
+	return EXIT_SUCCESS;
 }

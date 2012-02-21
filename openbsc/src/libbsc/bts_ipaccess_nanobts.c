@@ -506,12 +506,9 @@ void ipaccess_drop_rsl(struct gsm_bts_trx *trx)
 void ipaccess_drop_oml(struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	struct e1inp_line *line;
 
 	if (!bts->oml_link)
 		return;
-
-	line = bts->oml_link->ts->line;
 
 	e1inp_sign_link_destroy(bts->oml_link);
 	bts->oml_link = NULL;

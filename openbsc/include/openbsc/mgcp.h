@@ -190,5 +190,8 @@ static inline void mgcp_endpoint_to_timeslot(int endpoint, int *multiplex, int *
 	*timeslot = endpoint % 32;
 }
 
+int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint);
+int mgcp_send_reset_all(struct mgcp_config *cfg);
+
 
 #endif

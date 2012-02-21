@@ -111,7 +111,7 @@ struct gsm_abis_mo {
 /* state of a logical channel */
 enum gsm_lchan_state {
 	LCHAN_S_NONE,		/* channel is not active */
-	LCHAN_S_ACT_REQ,	/* channel activatin requested */
+	LCHAN_S_ACT_REQ,	/* channel activation requested */
 	LCHAN_S_ACTIVE,		/* channel is active and operational */
 	LCHAN_S_REL_REQ,	/* channel release has been requested */
 	LCHAN_S_REL_ERR,	/* channel is in an error state */
@@ -177,7 +177,9 @@ struct gsm_lchan {
 	/* Established data link layer services */
 	uint8_t sapis[8];
 	int sach_deact;
-	int release_reason;
+
+	/** GSM 08.58 9.3.20 */
+	int release_mode;
 
 	struct {
 		uint32_t bound_ip;
@@ -302,7 +304,11 @@ struct gsm_bts_trx {
 	/* how do we talk RSL with this TRX? */
 	struct gsm_e1_subslot rsl_e1_link;
 	uint8_t rsl_tei;
+#ifdef ROLE_BSC
 	struct e1inp_sign_link *rsl_link;
+#else
+	struct ipabis_link *rsl_link;
+#endif
 	/* Some BTS (specifically Ericsson RBS) have a per-TRX OML Link */
 	struct e1inp_sign_link *oml_link;
 

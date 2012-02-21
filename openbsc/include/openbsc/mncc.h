@@ -160,10 +160,20 @@ struct gsm_data_frame {
 	unsigned char	data[0];
 };
 
-#define MNCC_SOCK_VERSION	1
+#define MNCC_SOCK_VERSION	2
 struct gsm_mncc_hello {
 	uint32_t	msg_type;
 	uint32_t	version;
+
+	/* send the sizes of the structs */
+	uint32_t	mncc_size;
+	uint32_t	data_frame_size;
+
+	/* send some offsets */
+	uint32_t	called_offset;
+	uint32_t	signal_offset;
+	uint32_t	emergency_offset;
+	uint32_t	lchan_type_offset;
 };
 
 char *get_mncc_name(int value);

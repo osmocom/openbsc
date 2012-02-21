@@ -332,11 +332,9 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	char buf[4096];
 	struct sockaddr_in addr;
 	struct mgcp_endpoint *endp;
-	struct mgcp_config *cfg;
 	int rc, proto;
 
 	endp = (struct mgcp_endpoint *) fd->data;
-	cfg = endp->cfg;
 
 	rc = receive_from(endp, fd->fd, &addr, buf, sizeof(buf));
 	if (rc <= 0)
