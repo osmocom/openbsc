@@ -66,7 +66,7 @@ static int silentcall_cbfn(unsigned int subsys, unsigned int signal,
 	fm->scall_id = (uint8_t) ((int) sigdata->data & 0xff);
 
 	if(signal == S_SCALL_SUCCESS) {
-		fm->priv1 = sigdata->conn->lchan->ts->trx;
+		fm->priv1 = sigdata->conn->lchan->ts->trx->rsl_link;
 		fm->priv2 = sigdata->conn->lchan;
 		fm->chan_nr = gsm_lchan2chan_nr(sigdata->conn->lchan);
 	}
