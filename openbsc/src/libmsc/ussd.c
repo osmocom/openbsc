@@ -54,7 +54,7 @@ int handle_rcv_ussd(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	if (req.text[0] == 0xFF)  /* Release-Complete */
 		return 0;
 
-	if (strstr(USSD_TEXT_OWN_NUMBER, req.text) != NULL) {
+	if (!strcmp(USSD_TEXT_OWN_NUMBER, (const char *)req.text)) {
 		DEBUGP(DMM, "USSD: Own number requested\n");
 		rc = send_own_number(conn, msg, &req);
 	} else {
