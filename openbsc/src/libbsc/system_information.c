@@ -74,16 +74,12 @@ static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 	if (arfcn == min_arfcn)
 		return 0;
 
-	if (arfcn < min_arfcn) {
-		LOGP(DRR, LOGL_ERROR, "arfcn(%u) < min(%u)\n", arfcn, min_arfcn);
-		return -EINVAL;
-	}
-	if (arfcn > min_arfcn + 111) {
+	if (((arfcn - min_arfcn) & 1023) > 111) {
 		LOGP(DRR, LOGL_ERROR, "arfcn(%u) > min(%u) + 111\n", arfcn, min_arfcn);
 		return -EINVAL;
 	}
 
-	bitno = (arfcn - min_arfcn);
+	bitno = (arfcn - min_arfcn) & 1023;
 	byte = bitno / 8;
 	bit = bitno % 8;
 
@@ -94,18 +90,22 @@ static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
-			    const struct gsm_bts *bts)
+			    const struct gsm_bts *bts, int bis, int ter)
 {
-	int i, rc, min = 1024, max = -1;
+	int i, rc, min = -1, max = -1, pgsm = 0;
 
 	memset(chan_list, 0, 16);
 
-	/* GSM900-only handsets only support 'bit map 0 format' */
-	if (bts->band == GSM_BAND_900) {
+	if (bts->band == GSM_BAND_900
+	 && bts->c0->arfcn >= 1 && bts->c0->arfcn <= 124)
+		pgsm = 1;
+	/* P-GSM-only handsets only support 'bit map 0 format' */
+	if (!bis && !ter && pgsm) {
 		chan_list[0] = 0;
 
 		for (i = 0; i < bv->data_len*8; i++) {
-			if (bitvec_get_bit_pos(bv, i)) {
+			if (i >= 1 && i <= 124
+			 && bitvec_get_bit_pos(bv, i)) {
 				rc = freq_list_bm0_set_arfcn(chan_list, i);
 				if (rc < 0)
 					return rc;
@@ -118,10 +118,30 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 	chan_list[0] = 0x8e;
 
 	for (i = 0; i < bv->data_len*8; i++) {
-		if (bitvec_get_bit_pos(bv, i)) {
-			if (i < min)
+		/* in case of SI2 or SI5 allow all neighbours in same band
+		 * in case of SI*bis, allow neighbours in same band ouside pgsm
+		 * in case of SI*ter, allow neighbours in different bands
+		 */
+		if (bitvec_get_bit_pos(bv, i)
+		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
+		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
+		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+			/* 955..1023 < 0..885 */
+			if (min < 0)
 				min = i;
-			if (i > max)
+			if (i >= 955 && min < 955)
+				min = i;
+			if (i >= 955 && min >= 955 && i < min)
+				min = i;
+			if (i < 955 && min < 955 && i < min)
+				min = i;
+			if (max < 0)
+				max = i;
+			if (i < 955 && max >= 955)
+				max = i;
+			if (i >= 955 && max >= 955 && i > max)
+				max = i;
+			if (i < 955 && max < 955 && i > max)
 				max = i;
 		}
 	}
@@ -132,7 +152,7 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 		return 0;
 	}
 
-	if ((max - min) > 111) {
+	if (((max - min) & 1023) > 111) {
 		LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, "
 			"distance > 111\n", min, max);
 		return -EINVAL;
@@ -143,7 +163,11 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 	chan_list[2] = (min & 1) << 7;
 
 	for (i = 0; i < bv->data_len*8; i++) {
-		if (bitvec_get_bit_pos(bv, i)) {
+		/* see notes above */
+		if (bitvec_get_bit_pos(bv, i)
+		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
+		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
+		  || (ter && gsm_arfcn2band(i) != bts->band))) {
 			rc = freq_list_bmrel_set_arfcn(chan_list, i);
 			if (rc < 0)
 				return rc;
@@ -178,11 +202,12 @@ static int generate_cell_chan_list(uint8_t *chan_list, struct gsm_bts *bts)
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
-	return bitvec2freq_list(chan_list, bv, bts);
+	return bitvec2freq_list(chan_list, bv, bts, 0, 0);
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
-static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts, int si5)
+static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts,
+	int si5, int bis, int ter)
 {
 	struct gsm_bts *cur_bts;
 	struct bitvec *bv;
@@ -206,7 +231,28 @@ static int generate_bcch_chan_list(uint8_t *chan_list, struct gsm_bts *bts, int 
 	}
 
 	/* then we generate a GSM 04.08 frequency list from the bitvec */
-	return bitvec2freq_list(chan_list, bv, bts);
+	return bitvec2freq_list(chan_list, bv, bts, bis, ter);
+}
+
+static int list_arfcn(uint8_t *chan_list, uint8_t mask, char *text)
+{
+	int n = 0, i;
+	struct gsm_sysinfo_freq freq[1024];
+
+	memset(freq, 0, sizeof(freq));
+	gsm48_decode_freq_list(freq, chan_list, 16, 0xce, 1);
+	for (i = 0; i < 1024; i++) {
+		if (freq[i].mask) {
+			if (!n)
+				LOGP(DRR, LOGL_INFO, "%s", text);
+			LOGPC(DRR, LOGL_INFO, " %d", i);
+			n++;
+		}
+	}
+	if (n)
+		LOGPC(DRR, LOGL_INFO, "\n");
+
+	return n;
 }
 
 static int generate_si1(uint8_t *output, struct gsm_bts *bts)
@@ -225,6 +271,7 @@ static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 	rc = generate_cell_chan_list(si1->cell_channel_description, bts);
 	if (rc < 0)
 		return rc;
+	list_arfcn(si1->cell_channel_description, 0xce, "Serving cell:");
 
 	si1->rach_control = bts->si_common.rach_control;
 
@@ -247,14 +294,75 @@ static int generate_si2(uint8_t *output, struct gsm_bts *bts)
 	si2->header.skip_indicator = 0;
 	si2->header.system_information = GSM48_MT_RR_SYSINFO_2;
 
-	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, 0);
+	rc = generate_bcch_chan_list(si2->bcch_frequency_list, bts, 0, 0, 0);
 	if (rc < 0)
 		return rc;
+	list_arfcn(si2->bcch_frequency_list, 0xce,
+		"Neighbour cells in same band:");
 
 	si2->ncc_permitted = bts->si_common.ncc_permitted;
 	si2->rach_control = bts->si_common.rach_control;
 
 	return sizeof(*si2);
+}
+
+static int generate_si2bis(uint8_t *output, struct gsm_bts *bts)
+{
+	int rc;
+	struct gsm48_system_information_type_2bis *si2b =
+		(struct gsm48_system_information_type_2bis *) output;
+	int n;
+
+	memset(si2b, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	si2b->header.l2_plen = (22 << 2) | 1;
+	si2b->header.rr_protocol_discriminator = GSM48_PDISC_RR;
+	si2b->header.skip_indicator = 0;
+	si2b->header.system_information = GSM48_MT_RR_SYSINFO_2bis;
+
+	rc = generate_bcch_chan_list(si2b->bcch_frequency_list, bts, 0, 1, 0);
+	if (rc < 0)
+		return rc;
+	n = list_arfcn(si2b->bcch_frequency_list, 0xce,
+		"Neighbour cells in same band, but outside P-GSM:");
+	if (n) {
+		/* indicate in SI2 and SI2bis: there is an extension */
+		struct gsm48_system_information_type_2 *si2 =
+			(struct gsm48_system_information_type_2 *)
+				bts->si_buf[SYSINFO_TYPE_2];
+		si2->bcch_frequency_list[0] |= 0x20;
+		si2b->bcch_frequency_list[0] |= 0x20;
+	} else
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_2bis);
+
+	si2b->rach_control = bts->si_common.rach_control;
+
+	return sizeof(*si2b);
+}
+
+static int generate_si2ter(uint8_t *output, struct gsm_bts *bts)
+{
+	int rc;
+	struct gsm48_system_information_type_2ter *si2t =
+		(struct gsm48_system_information_type_2ter *) output;
+	int n;
+
+	memset(si2t, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	si2t->header.l2_plen = (22 << 2) | 1;
+	si2t->header.rr_protocol_discriminator = GSM48_PDISC_RR;
+	si2t->header.skip_indicator = 0;
+	si2t->header.system_information = GSM48_MT_RR_SYSINFO_2ter;
+
+	rc = generate_bcch_chan_list(si2t->ext_bcch_frequency_list, bts, 0, 0, 1);
+	if (rc < 0)
+		return rc;
+	n = list_arfcn(si2t->ext_bcch_frequency_list, 0x8e,
+		"Neighbour cells in different band:");
+	if (!n)
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_2ter);
+
+	return sizeof(*si2t);
 }
 
 static struct gsm48_si_ro_info si_info = {
@@ -302,6 +410,13 @@ static int generate_si3(uint8_t *output, struct gsm_bts *bts)
 	si3->cell_options = bts->si_common.cell_options;
 	si3->cell_sel_par = bts->si_common.cell_sel_par;
 	si3->rach_control = bts->si_common.rach_control;
+
+	if ((bts->si_valid & (1 << SYSINFO_TYPE_2ter))) {
+		LOGP(DRR, LOGL_INFO, "SI 2ter is included.\n");
+		si_info.si2ter_indicator = 1;
+	} else {
+		si_info.si2ter_indicator = 0;
+	}
 
 	/* SI3 Rest Octets (10.5.2.34), containing
 		CBQ, CELL_RESELECT_OFFSET, TEMPORARY_OFFSET, PENALTY_TIME
@@ -369,9 +484,92 @@ static int generate_si5(uint8_t *output, struct gsm_bts *bts)
 	si5->rr_protocol_discriminator = GSM48_PDISC_RR;
 	si5->skip_indicator = 0;
 	si5->system_information = GSM48_MT_RR_SYSINFO_5;
-	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, 1);
+	rc = generate_bcch_chan_list(si5->bcch_frequency_list, bts, 1, 0, 0);
 	if (rc < 0)
 		return rc;
+	list_arfcn(si5->bcch_frequency_list, 0xce,
+		"Neighbour cells in same band:");
+
+	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
+	return l2_plen;
+}
+
+static int generate_si5bis(uint8_t *output, struct gsm_bts *bts)
+{
+	struct gsm48_system_information_type_5bis *si5b;
+	int rc, l2_plen = 18;
+	int n;
+
+	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	/* ip.access nanoBTS needs l2_plen!! */
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_HSL_FEMTO:
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+		break;
+	default:
+		break;
+	}
+
+	si5b = (struct gsm48_system_information_type_5bis *) output;
+
+	/* l2 pseudo length, not part of msg: 18 */
+	si5b->rr_protocol_discriminator = GSM48_PDISC_RR;
+	si5b->skip_indicator = 0;
+	si5b->system_information = GSM48_MT_RR_SYSINFO_5bis;
+	rc = generate_bcch_chan_list(si5b->bcch_frequency_list, bts, 1, 1, 0);
+	if (rc < 0)
+		return rc;
+	n = list_arfcn(si5b->bcch_frequency_list, 0xce,
+		"Neighbour cells in same band, but outside P-GSM:");
+	if (n) {
+		/* indicate in SI5 and SI5bis: there is an extension */
+		struct gsm48_system_information_type_5 *si5 =
+			(struct gsm48_system_information_type_5 *)
+				bts->si_buf[SYSINFO_TYPE_5];
+		si5->bcch_frequency_list[0] |= 0x20;
+		si5b->bcch_frequency_list[0] |= 0x20;
+	} else
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_5bis);
+
+	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
+	return l2_plen;
+}
+
+static int generate_si5ter(uint8_t *output, struct gsm_bts *bts)
+{
+	struct gsm48_system_information_type_5ter *si5t;
+	int rc, l2_plen = 18;
+	int n;
+
+	memset(output, GSM_MACBLOCK_PADDING, GSM_MACBLOCK_LEN);
+
+	/* ip.access nanoBTS needs l2_plen!! */
+	switch (bts->type) {
+	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_HSL_FEMTO:
+		*output++ = (l2_plen << 2) | 1;
+		l2_plen++;
+		break;
+	default:
+		break;
+	}
+
+	si5t = (struct gsm48_system_information_type_5ter *) output;
+
+	/* l2 pseudo length, not part of msg: 18 */
+	si5t->rr_protocol_discriminator = GSM48_PDISC_RR;
+	si5t->skip_indicator = 0;
+	si5t->system_information = GSM48_MT_RR_SYSINFO_5ter;
+	rc = generate_bcch_chan_list(si5t->bcch_frequency_list, bts, 1, 0, 1);
+	if (rc < 0)
+		return rc;
+	n = list_arfcn(si5t->bcch_frequency_list, 0x8e,
+		"Neighbour cells in different band:");
+	if (!n)
+		bts->si_valid &= ~(1 << SYSINFO_TYPE_5ter);
 
 	/* 04.08 9.1.37: L2 Pseudo Length of 18 */
 	return l2_plen;
@@ -480,9 +678,13 @@ typedef int (*gen_si_fn_t)(uint8_t *output, struct gsm_bts *bts);
 static const gen_si_fn_t gen_si_fn[_MAX_SYSINFO_TYPE] = {
 	[SYSINFO_TYPE_1] = &generate_si1,
 	[SYSINFO_TYPE_2] = &generate_si2,
+	[SYSINFO_TYPE_2bis] = &generate_si2bis,
+	[SYSINFO_TYPE_2ter] = &generate_si2ter,
 	[SYSINFO_TYPE_3] = &generate_si3,
 	[SYSINFO_TYPE_4] = &generate_si4,
 	[SYSINFO_TYPE_5] = &generate_si5,
+	[SYSINFO_TYPE_5bis] = &generate_si5bis,
+	[SYSINFO_TYPE_5ter] = &generate_si5ter,
 	[SYSINFO_TYPE_6] = &generate_si6,
 	[SYSINFO_TYPE_13] = &generate_si13,
 };
