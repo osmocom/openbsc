@@ -84,7 +84,7 @@ static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);
 		if (msg)
-			talloc_free(msg);
+			msgb_free(msg);
 		rc = -EIO;
 		break;
 	}
