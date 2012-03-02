@@ -521,10 +521,10 @@ struct gsm_bts {
 		} hsl;
 		struct {
 			uint8_t bts_type;
-			int configured:1,
-			    skip_reset:1,
-			    did_reset:1,
-			    wait_reset:1;
+			unsigned int configured:1,
+				skip_reset:1,
+				did_reset:1,
+				wait_reset:1;
 			struct osmo_timer_list reset_timer;
 		} nokia;
 	};
