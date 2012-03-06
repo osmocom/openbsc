@@ -95,18 +95,10 @@ int bsc_shutdown_net(struct gsm_network *net)
 	return 0;
 }
 
-static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i)
+static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 {
 	struct gsm_bts *bts = trx->bts;
-	int si_len, rc, j;
-
-	/* Only generate SI if this SI is not in "static" (user-defined) mode */
-	if (!(bts->si_mode_static & (1 << i))) {
-		rc = gsm_generate_si(bts, i);
-		if (rc < 0)
-			return rc;
-		si_len = rc;
-	}
+	int rc, j;
 
 	DEBUGP(DRR, "SI%s: %s\n", get_value_string(osmo_sitype_strs, i),
 		osmo_hexdump(GSM_BTS_SI(bts, i), GSM_MACBLOCK_LEN));
@@ -134,11 +126,11 @@ static int generate_and_rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i
 			}
 		} else
 			rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
-					       GSM_BTS_SI(bts, i), rc);
+					       GSM_BTS_SI(bts, i), si_len);
 		break;
 	default:
 		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),
-				   GSM_BTS_SI(bts, i), rc);
+				   GSM_BTS_SI(bts, i), si_len);
 		break;
 	}
 
@@ -150,6 +142,8 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 {
 	int i, rc;
 	struct gsm_bts *bts = trx->bts;
+	uint8_t gen_si[_MAX_SYSINFO_TYPE], n_si = 0, n;
+	int si_len[_MAX_SYSINFO_TYPE];
 
 	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
@@ -159,26 +153,55 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	if (trx == bts->c0) {
 		/* 1...4 are always present on a C0 TRX */
-		for (i = SYSINFO_TYPE_1; i <= SYSINFO_TYPE_4; i++)
-			bts->si_valid |= (1 << i);
+		gen_si[n_si++] = SYSINFO_TYPE_1;
+		gen_si[n_si++] = SYSINFO_TYPE_2;
+		gen_si[n_si++] = SYSINFO_TYPE_2bis;
+		gen_si[n_si++] = SYSINFO_TYPE_2ter;
+		gen_si[n_si++] = SYSINFO_TYPE_3;
+		gen_si[n_si++] = SYSINFO_TYPE_4;
 
 		/* 13 is always present on a C0 TRX of a GPRS BTS */
 		if (bts->gprs.mode != BTS_GPRS_NONE)
-			bts->si_valid |= (1 << SYSINFO_TYPE_13);
+			gen_si[n_si++] = SYSINFO_TYPE_13;
 	}
 
 	/* 5 and 6 are always present on every TRX */
-	bts->si_valid |= (1 << SYSINFO_TYPE_5);
-	bts->si_valid |= (1 << SYSINFO_TYPE_6);
+	gen_si[n_si++] = SYSINFO_TYPE_5;
+	gen_si[n_si++] = SYSINFO_TYPE_5bis;
+	gen_si[n_si++] = SYSINFO_TYPE_5ter;
+	gen_si[n_si++] = SYSINFO_TYPE_6;
 
-	/* Second, we generate and send the selected SI via RSL */
+	/* Second, we generate the selected SI via RSL */
+
+	for (n = 0; n < n_si; n++) {
+		i = gen_si[n];
+		bts->si_valid |= (1 << i);
+		/* Only generate SI if this SI is not in "static" (user-defined) mode */
+		if (!(bts->si_mode_static & (1 << i))) {
+			rc = gsm_generate_si(bts, i);
+			if (rc < 0)
+				goto err_out;
+			si_len[i] = rc;
+		} else {
+			if (i == SYSINFO_TYPE_5 || i == SYSINFO_TYPE_5bis
+			 || i == SYSINFO_TYPE_5ter)
+				si_len[i] = 18;
+			else if (i == SYSINFO_TYPE_6)
+				si_len[i] = 11;
+			else
+				si_len[i] = 23;
+		}
+	}
+
+	/* Third, we send the selected SI via RSL */
+
 	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
 		if (!(bts->si_valid & (1 << i)))
 			continue;
 
-		rc = generate_and_rsl_si(trx, i);
+		rc = rsl_si(trx, i, si_len[i]);
 		if (rc < 0)
-			goto err_out;
+			return rc;
 	}
 
 	return 0;

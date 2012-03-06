@@ -418,7 +418,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	}
 
 out_free:
-	talloc_free(msg);
+	msgb_free(msg);
 
 	return rc;
 }
