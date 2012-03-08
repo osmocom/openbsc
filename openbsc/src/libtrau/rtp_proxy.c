@@ -236,19 +236,65 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 	return 0;
 }
 
-/* "to - from" */
-static void tv_difference(struct timeval *diff, const struct timeval *from,
-			  const struct timeval *__to)
-{
-	struct timeval _to = *__to, *to = &_to;
+#define USEC_1S 1000000
+#define USEC_10MS 10000
+#define USEC_20MS 20000
+#define SAMPLES_1S 8000
+#define USEC_SAMPLE 125
 
-	if (to->tv_usec < from->tv_usec) {
-		to->tv_sec -= 1;
-		to->tv_usec += 1000000;
+/* add usec to tv */
+static void tv_add_usec(struct timeval *tv, long int usec)
+{
+	struct timeval tv_add;
+
+	tv_add.tv_sec = usec / USEC_1S;
+	tv_add.tv_usec = usec % USEC_1S;
+	timeradd(tv, &tv_add, tv);
+}
+
+static int correct_timestamp(struct rtp_socket *rs, int duration)
+{
+	struct timeval tv, tv_diff;
+	long int usec_diff, frame_diff;
+	int usec_duration = duration * USEC_SAMPLE;
+
+	gettimeofday(&tv, NULL);
+	timersub(&tv, &rs->transmit.last_tv, &tv_diff);
+
+	usec_diff = tv_diff.tv_sec * USEC_1S + tv_diff.tv_usec;
+	frame_diff = (usec_diff + (usec_duration >> 1)) / usec_duration; /* round */
+
+	/* Drop frame, if current time to too much in advance of the last_tv.
+	 * < 0 means that the time difference in frames must be at lease 2
+	 * frames below the expected difference of 1.
+	 */
+	if (frame_diff < 0)
+		return -1;
+
+	/* Increment last_tv by the duration of one frame. */
+	tv_add_usec(&rs->transmit.last_tv, usec_duration);
+
+	/* Increment last_tv, if the current time is too much afterwards.
+	 * Also increment timestamp and sequence number of RTP socket state.
+	 * > 2 means that the time difference in frames must be at least 2
+	 * frames above the expected difference of 1.
+	 */
+	if (frame_diff > 2) {
+		long int frame_diff_excess = frame_diff - 1;
+		long int sample_diff_excess = frame_diff_excess * duration;
+
+		/* correct last_tv */
+		tv_add_usec(&rs->transmit.last_tv,
+			sample_diff_excess * USEC_SAMPLE);
+		LOGP(DLMUX, LOGL_NOTICE,
+			"Correcting timestamp difference of %ld frames "
+			"(to %s)\n", frame_diff_excess,
+			(rs->rx_action == RTP_RECV_APP) ? "app" : "BTS");
+		rs->transmit.sequence += frame_diff_excess;
+		rs->transmit.timestamp += sample_diff_excess;
 	}
 
-	diff->tv_usec = to->tv_usec - from->tv_usec;
-	diff->tv_sec = to->tv_sec - from->tv_sec;
+	return 0;
 }
 
 /*! \brief encode and send a rtp frame
@@ -265,6 +311,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int duration; /* in samples */
 	int is_amr = 0, is_bfi = 0;
 	uint8_t dynamic_pt = 0;
+	int rc;
 
 	if (rs->rx_action == RTP_RECV_APP)
 		dynamic_pt = rs->receive.payload_type;
@@ -275,6 +322,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		rs->transmit.ssrc = rand();
 		rs->transmit.sequence = random();
 		rs->transmit.timestamp = random();
+		gettimeofday(&rs->transmit.last_tv, NULL);
 	}
 
 	switch (frame->msg_type) {
@@ -311,26 +359,9 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		return -EINVAL;
 	}
 
-	{
-		struct timeval tv, tv_diff;
-		long int usec_diff, frame_diff;
-
-		gettimeofday(&tv, NULL);
-		tv_difference(&tv_diff, &rs->transmit.last_tv, &tv);
-		rs->transmit.last_tv = tv;
-
-		usec_diff = tv_diff.tv_sec * 1000000 + tv_diff.tv_usec;
-		frame_diff = (usec_diff / 20000);
-
-		if (abs(frame_diff) > 1) {
-			long int frame_diff_excess = frame_diff - 1;
-
-			LOGP(DLMUX, LOGL_NOTICE,
-				"Correcting frame difference of %ld frames\n", frame_diff_excess);
-			rs->transmit.sequence += frame_diff_excess;
-			rs->transmit.timestamp += frame_diff_excess * duration;
-		}
-	}
+	rc = correct_timestamp(rs, duration);
+	if (rc)
+		return 0;
 
 	if (is_bfi) {
 		/* In case of a bad frame, just count and drop packt. */
