@@ -116,6 +116,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 	int payload_len;
 	int msg_type;
 	int x_len;
+	int is_amr = 0;
 
 	if (msg->len < 12) {
 		DEBUGPC(DLMUX, "received RTP frame too short (len = %d)\n",
@@ -192,21 +193,26 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data)
 			return -EINVAL;
 		}
 		break;
+	case RTP_PT_AMR:
+		is_amr = 1;
+		break;
 	default:
 		DEBUGPC(DLMUX, "received RTP frame with unknown payload "
 			"type %d\n", rtph->payload_type);
 		return -EINVAL;
 	}
 
-	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + payload_len,
-				"GSM-DATA");
+	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + payload_len +
+		is_amr, "GSM-DATA");
 	if (!new_msg)
 		return -ENOMEM;
 	frame = (struct gsm_data_frame *)(new_msg->data);
 	frame->msg_type = msg_type;
 	frame->callref = callref;
-	memcpy(frame->data, payload, payload_len);
-	msgb_put(new_msg, sizeof(struct gsm_data_frame) + payload_len);
+	if (is_amr)
+		frame->data[0] = payload_len;
+	memcpy(frame->data + is_amr, payload, payload_len);
+	msgb_put(new_msg, sizeof(struct gsm_data_frame) + is_amr + payload_len);
 
 	*data = new_msg;
 	return 0;
@@ -239,6 +245,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int payload_type;
 	int payload_len;
 	int duration; /* in samples */
+	int is_amr = 0;
 
 	if (rs->tx_action != RTP_SEND_DOWNSTREAM) {
 		/* initialize sequences */
@@ -263,6 +270,12 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		payload_type = RTP_PT_GSM_HALF;
 		payload_len = RTP_LEN_GSM_HALF;
 		duration = RTP_GSM_DURATION;
+		break;
+	case GSM_TCH_FRAME_AMR:
+		payload_type = RTP_PT_AMR;
+		payload_len = frame->data[0];
+		duration = RTP_GSM_DURATION;
+		is_amr = 1;
 		break;
 	default:
 		DEBUGPC(DLMUX, "unsupported message type %d\n",
@@ -305,7 +318,8 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	rtph->timestamp = htonl(rs->transmit.timestamp);
 	rs->transmit.timestamp += duration;
 	rtph->ssrc = htonl(rs->transmit.ssrc);
-	memcpy(msg->data + sizeof(struct rtp_hdr), frame->data, payload_len);
+	memcpy(msg->data + sizeof(struct rtp_hdr), frame->data + is_amr,
+		payload_len);
 	msgb_put(msg, sizeof(struct rtp_hdr) + payload_len);
 	msgb_enqueue(&rss->tx_queue, msg);
 	rss->bfd.when |= BSC_FD_WRITE;
