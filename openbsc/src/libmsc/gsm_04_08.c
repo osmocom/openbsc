@@ -3031,7 +3031,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		return mncc_rtp(net, data->callref, (struct gsm_mncc_rtp *) arg);
 	case GSM_TCHF_FRAME:
 	case GSM_TCHF_FRAME_EFR:
-	case GSM_TCHF_FRAME_HR:
+	case GSM_TCHH_FRAME:
+	case GSM_TCH_FRAME_AMR:
 		return tch_frame_down(net, data->callref, (struct gsm_data_frame *) arg);
 	}
 

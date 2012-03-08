@@ -115,6 +115,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 	uint8_t *payload;
 	int payload_len;
 	int x_len;
+	int amr = 0;
 
 	if (msg->len < 12) {
 		DEBUGPC(DLMUX, "received RTP frame too short (len = %d)\n",
@@ -174,7 +175,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 			msg_type = GSM_TCHF_FRAME_EFR;
 			break;
 		case RTP_PT_GSM_HALF:
-			msg_type = GSM_TCHF_FRAME_HR;
+			msg_type = GSM_TCHH_FRAME;
 			break;
 		default:
 			DEBUGPC(DLMUX, "received RTP frame with unknown "
@@ -200,7 +201,7 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 			return -EINVAL;
 		}
 		break;
-	case GSM_TCHF_FRAME_HR:
+	case GSM_TCHH_FRAME:
 		if (payload_len != 14) {
 			DEBUGPC(DLMUX, "received RTP half rate frame with "
 				"payload length != 14 (len = %d)\n",
@@ -208,20 +209,25 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 			return -EINVAL;
 		}
 		break;
+	case GSM_TCH_FRAME_AMR:
+		amr = 1;
+		break;
 	default:
 		DEBUGPC(DLMUX, "Forced message type %x unknown\n", msg_type);
 		return -EINVAL;
 	}
 
-	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + payload_len,
+	new_msg = msgb_alloc(sizeof(struct gsm_data_frame) + payload_len + amr,
 				"GSM-DATA");
 	if (!new_msg)
 		return -ENOMEM;
 	frame = (struct gsm_data_frame *)(new_msg->data);
 	frame->msg_type = msg_type;
 	frame->callref = callref;
-	memcpy(frame->data, payload, payload_len);
-	msgb_put(new_msg, sizeof(struct gsm_data_frame) + payload_len);
+	if (amr)
+		frame->data[0] = payload_len;
+	memcpy(frame->data + amr, payload, payload_len);
+	msgb_put(new_msg, sizeof(struct gsm_data_frame) + amr + payload_len);
 
 	*data = new_msg;
 	return 0;
@@ -269,6 +275,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int payload_len;
 	int duration; /* in samples */
 	uint8_t dynamic_pt = 0;
+	int amr = 0;
 
 	if (rs->rx_action == RTP_RECV_L4)
 		dynamic_pt = rs->receive.payload_type;
@@ -293,12 +300,18 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		payload_len = 31;
 		duration = 160;
 		break;
-	case GSM_TCHF_FRAME_HR:
+	case GSM_TCHH_FRAME:
 		payload_type = (dynamic_pt) ? : RTP_PT_GSM_HALF;
 		payload_len = 14;
 		duration = 160;
 		break;
-	case GSM_TCHF_BAD_FRAME:
+	case GSM_TCH_FRAME_AMR:
+		payload_type = (dynamic_pt) ? : RTP_PT_AMR;
+		payload_len = frame->data[0];
+		duration = 160;
+		amr = 1;
+		break;
+	case GSM_BAD_FRAME:
 		/* in case of a bad frame, just count and drop packt */
 		payload_type = 0;
 		payload_len = 0;
@@ -342,7 +355,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		}
 	}
 
-	if (frame->msg_type == GSM_TCHF_BAD_FRAME)
+	if (frame->msg_type == GSM_BAD_FRAME)
 		return 0;
 
 	msg = msgb_alloc(sizeof(struct rtp_hdr) + payload_len, "RTP-GSM-FULL");
@@ -359,7 +372,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	rtph->timestamp = htonl(rs->transmit.timestamp);
 	rs->transmit.timestamp += duration;
 	rtph->ssrc = htonl(rs->transmit.ssrc);
-	memcpy(msg->data + sizeof(struct rtp_hdr), frame->data, payload_len);
+	memcpy(msg->data + sizeof(struct rtp_hdr), frame->data + amr, payload_len);
 	msgb_put(msg, sizeof(struct rtp_hdr) + payload_len);
 	msgb_enqueue(&rss->tx_queue, msg);
 	rss->bfd.when |= BSC_FD_WRITE;

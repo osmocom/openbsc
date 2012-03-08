@@ -216,7 +216,7 @@ int trau_mux_input(struct gsm_e1_subslot *src_e1_ss,
 			j++;
 		}
 		if (tf.c_bits[11]) /* BFI */
-			frame->msg_type = GSM_TCHF_BAD_FRAME;
+			frame->msg_type = GSM_BAD_FRAME;
 		else
 			frame->msg_type = GSM_TCHF_FRAME;
 		frame->callref = ue->callref;
