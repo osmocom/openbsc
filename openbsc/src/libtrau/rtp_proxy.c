@@ -210,6 +210,67 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 	return 0;
 }
 
+#define USEC_1S 1000000
+#define USEC_10MS 10000
+#define USEC_20MS 20000
+#define SAMPLES_1S 8000
+#define USEC_SAMPLE 125
+
+/* add usec to tv */
+static void tv_add_usec(struct timeval *tv, long int usec)
+{
+	struct timeval tv_add;
+
+	tv_add.tv_sec = usec / USEC_1S;
+	tv_add.tv_usec = usec % USEC_1S;
+	timeradd(tv, &tv_add, tv);
+}
+
+static int correct_timestamp(struct rtp_socket *rs, int duration)
+{
+	struct timeval tv, tv_diff;
+	long int usec_diff, frame_diff;
+	int usec_duration = duration * USEC_SAMPLE;
+
+	gettimeofday(&tv, NULL);
+	timersub(&tv, &rs->transmit.last_tv, &tv_diff);
+
+	usec_diff = tv_diff.tv_sec * USEC_1S + tv_diff.tv_usec;
+	frame_diff = (usec_diff + (usec_duration >> 1)) / usec_duration; /* round */
+
+	/* Drop frame, if current time to too much in advance of the last_tv.
+	 * < 0 means that the time difference in frames must be at lease 2
+	 * frames below the expected difference of 1.
+	 */
+	if (frame_diff < 0)
+		return -1;
+
+	/* Increment last_tv by the duration of one frame. */
+	tv_add_usec(&rs->transmit.last_tv, usec_duration);
+
+	/* Increment last_tv, if the current time is too much afterwards.
+	 * Also increment timestamp and sequence number of RTP socket state.
+	 * > 2 means that the time difference in frames must be at least 2
+	 * frames above the expected difference of 1.
+	 */
+	if (frame_diff > 2) {
+		long int frame_diff_excess = frame_diff - 1;
+		long int sample_diff_excess = frame_diff_excess * duration;
+
+		/* correct last_tv */
+		tv_add_usec(&rs->transmit.last_tv,
+			sample_diff_excess * USEC_SAMPLE);
+		LOGP(DLMUX, LOGL_NOTICE,
+			"Correcting timestamp difference of %ld frames "
+			"(to %s)\n", frame_diff_excess,
+			(rs->rx_action == RTP_RECV_APP) ? "app" : "BTS");
+		rs->transmit.sequence += frame_diff_excess;
+		rs->transmit.timestamp += sample_diff_excess;
+	}
+
+	return 0;
+}
+
 /*! \brief encode and send a rtp frame
  *  \param[in] rs RTP socket through which we shall send
  *  \param[in] frame GSM RTP frame to be sent
@@ -225,6 +286,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 	int duration; /* in samples */
 	int is_bfi = 0;
 	uint8_t dynamic_pt = 0;
+	int rc;
 
 	if (rs->rx_action == RTP_RECV_APP)
 		dynamic_pt = rs->receive.payload_type;
@@ -235,6 +297,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		rs->transmit.ssrc = rand();
 		rs->transmit.sequence = random();
 		rs->transmit.timestamp = random();
+		gettimeofday(&rs->transmit.last_tv, NULL);
 	}
 
 	switch (frame->msg_type) {
@@ -275,6 +338,10 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 			payload_len);
 		return -EINVAL;
 	}
+
+	rc = correct_timestamp(rs, duration);
+	if (rc)
+		return 0;
 
 	if (is_bfi) {
 		/* In case of a bad frame, just count and drop packet. */
