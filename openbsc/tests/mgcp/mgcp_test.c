@@ -80,7 +80,7 @@ static struct msgb *create_msg(const char *str)
 	return msg;
 }
 
-static void test_auep(void)
+static void test_messages(void)
 {
 	struct mgcp_config *cfg;
 	int i;
@@ -114,7 +114,7 @@ int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
-	test_auep();
+	test_messages();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;
