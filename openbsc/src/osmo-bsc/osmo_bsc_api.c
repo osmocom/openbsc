@@ -187,9 +187,8 @@ static void bsc_cm_update(struct gsm_subscriber_connection *conn,
 			  const uint8_t *cm2, uint8_t cm2_len,
 			  const uint8_t *cm3, uint8_t cm3_len)
 {
-	struct osmo_bsc_sccp_con *sccp;
 	struct msgb *resp;
-	return_when_not_connected_val(conn, 1);
+	return_when_not_connected(conn);
 
 	resp = gsm0808_create_classmark_update(cm2, cm2_len, cm3, cm3_len);
 
