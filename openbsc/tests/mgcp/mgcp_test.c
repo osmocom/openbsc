@@ -28,6 +28,16 @@
 #define AUEP1_RET "200 158663169 OK\r\n"
 #define AUEP2	"AUEP 18983213 ds/e1-2/1@172.16.6.66 MGCP 1.0\r\n"
 #define AUEP2_RET "500 18983213 FAIL\r\n"
+#define EMPTY	"\r\n"
+#define EMPTY_RET NULL
+#define SHORT	"CRCX \r\n"
+#define SHORT_RET "510 000000 FAIL\r\n"
+
+#define SHORT2	"CRCX 1"
+#define SHORT2_RET "510 000000 FAIL\r\n"
+#define SHORT3	"CRCX 1 1@mgw"
+#define SHORT4	"CRCX 1 1@mgw MGCP"
+#define SHORT5	"CRCX 1 1@mgw MGCP 1.0"
 
 #define CRCX	 "CRCX 2 1@mgw MGCP 1.0\r\n"	\
 		 "M: sendrecv\r\n"		\
@@ -68,6 +78,11 @@ const struct mgcp_test tests[] = {
 	{ "AUEP2", AUEP2, AUEP2_RET },
 	{ "CRCX", CRCX, CRCX_RET },
 	{ "CRCX_ZYN", CRCX_ZYN, CRCX_RET },
+	{ "EMPTY", EMPTY, EMPTY_RET },
+	{ "SHORT1", SHORT, SHORT_RET },
+	{ "SHORT2", SHORT2, SHORT2_RET },
+	{ "SHORT3", SHORT3, SHORT2_RET },
+	{ "SHORT4", SHORT4, SHORT2_RET },
 };
 
 static struct msgb *create_msg(const char *str)
@@ -102,7 +117,10 @@ static void test_messages(void)
 		inp = create_msg(t->req);
 		msg = mgcp_handle_message(cfg, inp);
 		msgb_free(inp);
-		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+		if (!t->exp_resp) {
+			if (msg)
+				printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		} else if (strcmp((char *) msg->data, t->exp_resp) != 0)
 			printf("%s failed '%s'\n", t->name, (char *) msg->data);
 		msgb_free(msg);
 	}
