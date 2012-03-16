@@ -470,7 +470,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 
 	header = (struct dtap_header *) msg->l3h;
 	if (sizeof(*header) >= length) {
-		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %lu got: %u\n", sizeof(*header), length);
+		LOGP(DMSC, LOGL_ERROR, "The DTAP header does not fit. Wanted: %zu got: %u\n", sizeof(*header), length);
                 LOGP(DMSC, LOGL_ERROR, "hex: %s\n", osmo_hexdump(msg->l3h, length));
                 return -1;
 	}

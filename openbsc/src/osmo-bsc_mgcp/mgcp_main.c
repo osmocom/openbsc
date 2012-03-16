@@ -158,8 +158,8 @@ static int read_call_agent(struct osmo_fd *fd, unsigned int what)
 		perror("Gateway failed to read");
 		return -1;
 	} else if (slen > sizeof(addr)) {
-		fprintf(stderr, "Gateway received message from outerspace: %lu %lu\n",
-			(unsigned long int)slen, sizeof(addr));
+		fprintf(stderr, "Gateway received message from outerspace: %zu %zu\n",
+			slen, sizeof(addr));
 		return -1;
 	}
 
