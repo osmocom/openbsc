@@ -18,6 +18,7 @@
  *
  */
 
+#include <openbsc/bss.h>
 #include <openbsc/control_cmd.h>
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -32,6 +33,8 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
+
+#include <osmocom/abis/abis.h>
 
 #include <osmocom/sccp/sccp.h>
 
