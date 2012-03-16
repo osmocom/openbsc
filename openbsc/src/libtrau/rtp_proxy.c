@@ -392,7 +392,16 @@ static int rtp_socket_read(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 		return -ENOMEM;
 
 	rc = read(rss->bfd.fd, msg->data, RTP_ALLOC_SIZE);
-	if (rc <= 0) {
+	if (rc == 0) {
+		rss->bfd.when &= ~BSC_FD_READ;
+		goto out_free;
+	} else if (rc < 0) {
+		/* Ignore "connection refused". this happens, If we open the
+		 * socket faster than the remote side. */
+		if (errno == ECONNREFUSED)
+			goto out_free;
+		DEBUGPC(DLMUX, "Read of RTP socket (%p) failed (errno %d, "
+			"%s)\n", rs, errno, strerror(errno));
 		rss->bfd.when &= ~BSC_FD_READ;
 		goto out_free;
 	}
