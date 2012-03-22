@@ -1249,9 +1249,19 @@ static void new_cc_state(struct gsm_trans *trans, int state)
 	if (state > 31 || state < 0)
 		return;
 
-	DEBUGP(DCC, "new state %s -> %s\n",
-		gsm48_cc_state_name(trans->cc.state),
-		gsm48_cc_state_name(state));
+	if (trans->subscr) {
+		if (state != GSM_CSTATE_NULL &&
+		    trans->cc.state == GSM_CSTATE_NULL)
+			trans->subscr->active_cc_transactions++;
+		else if(state == GSM_CSTATE_NULL &&
+			trans->cc.state != GSM_CSTATE_NULL)
+			trans->subscr->active_cc_transactions--;
+	}
+
+	DEBUGP(DCC, "new state %s -> %s, %d active transactions\n",
+	       gsm48_cc_state_name(trans->cc.state),
+	       gsm48_cc_state_name(state),
+	       trans->subscr->active_cc_transactions);
 
 	trans->cc.state = state;
 }
@@ -3076,6 +3086,29 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			return mncc_release_ind(net, NULL, data->callref,
 						GSM48_CAUSE_LOC_PRN_S_LU,
 						GSM48_CC_CAUSE_DEST_OOO);
+		}
+		/* If subscriber is "busy" */
+		if (subscr->active_cc_transactions) {
+			int rc;
+			uint8_t ss_status = 0;
+			rc = db_ss_interrogate_status(subscr,
+						      GSM0902_SS_CODE_CW,
+						      GSM0902_TS_CODE_TELEPHONY,
+						      &ss_status);
+			DEBUGP(DCC, "(bts - trx - ts - ti -- sub %s) "
+			       "Received '%s' from MNCC with "
+			       "busy subscriber %s, cw ss_status: %X\n",
+			       data->called.number, get_mncc_name(msg_type),
+			       data->called.number, ss_status);
+			if(rc < 0 || (ss_status != (GSM0902_SS_STATUS_P_BIT | 
+						    GSM0902_SS_STATUS_A_BIT))) {
+				subscr_put(subscr);
+				/* User busy */
+				return mncc_release_ind(net, NULL,
+							data->callref,
+							GSM48_CAUSE_LOC_USER,
+							GSM48_CC_CAUSE_USER_BUSY);
+			}
 		}
 		/* Create transaction */
 		trans = trans_alloc(net, subscr, GSM48_PDISC_CC, 0xff, data->callref);
