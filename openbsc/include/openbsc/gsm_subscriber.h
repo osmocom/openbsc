@@ -48,6 +48,7 @@ struct gsm_subscriber {
 
 	/* for internal management */
 	int use_count;
+	int active_cc_transactions;
 	struct llist_head entry;
 
 	/* pending requests */
