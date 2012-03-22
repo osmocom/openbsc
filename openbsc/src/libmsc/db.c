@@ -38,6 +38,8 @@
 #include <osmocom/core/statistics.h>
 #include <osmocom/core/rate_ctr.h>
 
+#include <osmocom/gsm/protocol/gsm_09_02.h>
+
 /* Semi-Private-Interface (SPI) for the subscriber code */
 void subscr_direct_free(struct gsm_subscriber *subscr);
 
@@ -173,6 +175,15 @@ static const char *create_stmts[] = {
 		"rand BLOB NOT NULL, "
 		"sres BLOB NOT NULL, "
 		"kc BLOB NOT NULL "
+		")",
+	"CREATE TABLE IF NOT EXISTS SS_Status ("
+		"id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, "
+		"subscriber INTEGER NOT NULL, "
+		"ss_code TINYINT UNSIGNED NOT NULL, "
+		"bs_code TINYINT UNSIGNED, "
+		"ss_status TINYINT UNSIGNED NOT NULL, "
+		"UNIQUE(subscriber, ss_code, bs_code), "
+		"FOREIGN KEY(subscriber) REFERENCES Subscriber (id) ON DELETE CASCADE ON UPDATE CASCADE "
 		")",
 };
 
@@ -1722,5 +1733,83 @@ int db_store_rate_ctr_group(struct rate_ctr_group *ctrg)
 
 	free(q_prefix);
 
+	return 0;
+}
+
+int db_ss_interrogate_status(struct gsm_subscriber *subscr, uint8_t ss_code, uint8_t bs_code, uint8_t *ss_status)
+{
+	char buf[32];
+	dbi_result result;
+
+	/* Copy the id to a string as queryf with %llu is failing */
+	sprintf(buf, "%llu", subscr->id);
+	result = dbi_conn_queryf(conn,
+				 "SELECT ss_status FROM SS_Status "
+				 "WHERE subscriber = %s "
+				 "AND ss_code = %i AND bs_code = %i",
+				 buf, ss_code, bs_code);
+
+	if (!result) {
+		LOGP(DDB,
+		     LOGL_ERROR,
+		     "Failed to query ss_status for subscriber %llu, "
+		     "ss code 0x%02X, bs code 0x%02X\n",
+		     subscr->id, ss_code, bs_code);
+		return -EIO;
+	}
+	if (!dbi_result_next_row(result)) {
+		DEBUGP(DDB,
+		       "Failed to find ss_status for subscriber %llu, "
+		       "ss code 0x%02X, bs code 0x%02X\n",
+		       subscr->id, ss_code, bs_code);
+		dbi_result_free(result);
+		return -ENOENT;
+	}
+
+	*ss_status = dbi_result_get_uint(result, "ss_status");
+	DEBUGP(DDB,
+	       "Found ss_status for subscriber %llu, "
+	       "ss code 0x%02X, bs code 0x%02X: P:%d R:%d A:%d Q:%d\n",
+	       subscr->id, ss_code, bs_code,
+	       (*ss_status & GSM0902_SS_STATUS_P_BIT) && 1,
+	       (*ss_status & GSM0902_SS_STATUS_R_BIT) && 1,
+	       (*ss_status & GSM0902_SS_STATUS_A_BIT) && 1,
+	       (*ss_status & GSM0902_SS_STATUS_Q_BIT) && 1);
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_ss_set_status(struct gsm_subscriber *subscr, uint8_t ss_code, uint8_t bs_code, uint8_t ss_status)
+{
+	char buf[32];
+	dbi_result result;
+
+	/* Copy the id to a string as queryf with %llu is failing */
+	sprintf(buf, "%llu", subscr->id);
+
+	result = dbi_conn_queryf(conn,
+				 "UPDATE SS_Status SET ss_status = %i "
+				 "WHERE subscriber = %s AND "
+				 "ss_code = %i AND bs_code = %i",
+				 ss_status, buf, ss_code, bs_code);
+
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to set ss_status for subscriber %llu\n",
+		     subscr->id);
+		return -EIO;
+	}
+
+	DEBUGP(DDB,
+	       "Set ss_status for subscriber %llu, "
+	       "ss code 0x%02X, bs code 0x%02X: P:%d R:%d A:%d Q:%d\n",
+	       subscr->id, ss_code, bs_code,
+	       (ss_status & GSM0902_SS_STATUS_P_BIT) && 1,
+	       (ss_status & GSM0902_SS_STATUS_R_BIT) && 1,
+	       (ss_status & GSM0902_SS_STATUS_A_BIT) && 1,
+	       (ss_status & GSM0902_SS_STATUS_Q_BIT) && 1);
+
+	dbi_result_free(result);
 	return 0;
 }

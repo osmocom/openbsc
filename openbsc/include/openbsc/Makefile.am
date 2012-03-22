@@ -2,7 +2,7 @@ noinst_HEADERS = abis_nm.h abis_rsl.h db.h gsm_04_08.h gsm_data.h \
 		 gsm_subscriber.h gsm_04_11.h debug.h signal.h \
 		 misdn.h chan_alloc.h paging.h ctrl.h \
 		 trau_mux.h rs232.h openbscdefines.h rtp_proxy.h \
-		 bsc_rll.h mncc.h transaction.h ussd.h gsm_04_80.h \
+		 bsc_rll.h mncc.h transaction.h ss.h gsm_04_80.h \
 		 silent_call.h mgcp.h meas_rep.h rest_octets.h \
 		 system_information.h handover.h mgcp_internal.h \
 		 vty.h socket.h e1_config.h trau_upqueue.h token_auth.h \

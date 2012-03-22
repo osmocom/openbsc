@@ -39,31 +39,10 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 
-static inline unsigned char *msgb_wrap_with_TL(struct msgb *msgb, uint8_t tag)
-{
-	uint8_t *data = msgb_push(msgb, 2);
-
-	data[0] = tag;
-	data[1] = msgb->len - 2;
-	return data;
-}
-
-static inline unsigned char *msgb_push_TLV1(struct msgb *msgb, uint8_t tag,
-					    uint8_t value)
-{
-	uint8_t *data = msgb_push(msgb, 3);
-
-	data[0] = tag;
-	data[1] = 1;
-	data[2] = value;
-	return data;
-}
-
-
 /* Send response to a mobile-originated ProcessUnstructuredSS-Request */
 int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
-			       const struct msgb *in_msg, const char *response_text,
-			       const struct ussd_request *req)
+			       const char *response_text,
+			       const struct ss_request *req)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
@@ -109,16 +88,47 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 	return gsm0808_submit_dtap(conn, msg, 0, 0);
 }
 
-int gsm0480_send_ussd_reject(struct gsm_subscriber_connection *conn,
-			     const struct msgb *in_msg,
-			     const struct ussd_request *req)
+/* Send response to a mobile-originated Invoke */
+int gsm0480_send_ss_return_result(struct gsm_subscriber_connection *conn,
+                                  const struct ss_request *req,
+                                  struct msgb *msg)
+{
+	struct gsm48_hdr *gh;
+
+	/* Pre-pend the operation code */
+	msgb_push_TLV1(msg, GSM0480_OPERATION_CODE, req->opcode);
+
+	/* Wrap the contents as a sequence */
+	msgb_wrap_with_TL(msg, GSM_0480_SEQUENCE_TAG);
+
+	/* Pre-pend the invoke ID */
+	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+
+	/* Wrap this up as a Return Result component */
+	msgb_wrap_with_TL(msg, GSM0480_CTYPE_RETURN_RESULT);
+
+	/* Wrap the component in a Facility message */
+	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+
+	/* And finally pre-pend the L3 header */
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS | req->transaction_id
+					| (1<<7);  /* TI direction = 1 */
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
+}
+
+int gsm0480_send_ss_reject(struct gsm_subscriber_connection *conn,
+			   const struct ss_request *req,
+			   uint8_t problem_category,
+			   uint8_t problem_code)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 
 	/* First insert the problem code */
-	msgb_push_TLV1(msg, GSM_0480_PROBLEM_CODE_TAG_GENERAL,
-			GSM_0480_GEN_PROB_CODE_UNRECOGNISED);
+	msgb_push_TLV1(msg, problem_category, problem_code);
 
 	/* Before it insert the invoke ID */
 	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);

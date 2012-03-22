@@ -79,4 +79,8 @@ int db_store_counter(struct osmo_counter *ctr);
 struct rate_ctr_group;
 int db_store_rate_ctr_group(struct rate_ctr_group *ctrg);
 
+/* Supplementary Services */
+int db_ss_interrogate_status(struct gsm_subscriber *subscr, uint8_t ss_code, uint8_t bs_code, uint8_t *ss_status);
+int db_ss_set_status(struct gsm_subscriber *subscr, uint8_t ss_code, uint8_t bs_code, uint8_t ss_status);
+
 #endif /* _DB_H */

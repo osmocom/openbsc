@@ -47,7 +47,7 @@
 #include <openbsc/trau_mux.h>
 #include <openbsc/rtp_proxy.h>
 #include <openbsc/transaction.h>
-#include <openbsc/ussd.h>
+#include <openbsc/ss.h>
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
@@ -3357,7 +3357,7 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		break;
 	case GSM48_PDISC_NC_SS:
 		release_anchor(conn);
-		rc = handle_rcv_ussd(conn, msg);
+		rc = handle_rcv_ss(conn, msg);
 		break;
 	default:
 		LOGP(DRLL, LOGL_NOTICE, "Unknown "
