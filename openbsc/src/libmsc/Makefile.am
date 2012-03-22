@@ -13,7 +13,7 @@ libmsc_a_SOURCES =	auth.c \
 			silent_call.c \
 			sms_queue.c \
 			token_auth.c \
-			ussd.c \
+			ss.c \
 			vty_interface_layer3.c \
 			transaction.c \
 			osmo_msc.c
