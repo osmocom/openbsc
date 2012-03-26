@@ -1078,15 +1078,15 @@ static void test_sms_smsc_rewrite()
 
 static void test_sms_number_rewrite(void)
 {
-	struct msgb *msg = msgb_alloc(4096, "SMSC rewrite"), *out;
+	struct msgb *msg, *out;
 	struct bsc_nat_parsed *parsed;
 	const char *imsi = "515039900406700";
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 
 	/* a fake list */
-	struct osmo_config_list num_entries;
-	struct osmo_config_entry num_entry;
+	struct osmo_config_list num_entries, clear_entries;
+	struct osmo_config_entry num_entry, clear_entry;
 
 	INIT_LLIST_HEAD(&num_entries.entry);
 	num_entry.mcc = "^515039";
@@ -1101,6 +1101,7 @@ static void test_sms_number_rewrite(void)
 	/*
 	 * Check if the SMSC address is changed
 	 */
+ 	msg = msgb_alloc(4096, "SMSC rewrite");
 	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
 	parsed = bsc_nat_parse(msg);
 	if (!parsed) {
@@ -1116,6 +1117,34 @@ static void test_sms_number_rewrite(void)
 
 	verify_msg(out, smsc_rewrite_num_patched,
 		   ARRAY_SIZE(smsc_rewrite_num_patched));
+	msgb_free(out);
+
+	/*
+	 * Now with TP-SRR rewriting enabled
+	 */
+	INIT_LLIST_HEAD(&clear_entries.entry);
+	clear_entry.mcc = "^515039";
+	clear_entry.option = "";
+	clear_entry.text   = "";
+	llist_add_tail(&clear_entry.list, &clear_entries.entry);
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->sms_clear_tp_srr, &clear_entries);
+
+ 	msg = msgb_alloc(4096, "SMSC rewrite");
+	copy_to_msg(msg, smsc_rewrite, ARRAY_SIZE(smsc_rewrite));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse SMS\n");
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (out == msg) {
+		printf("FAIL: This should have changed.\n");
+		abort();
+	}
+
+	verify_msg(out, smsc_rewrite_num_patched_tp_srr,
+		   ARRAY_SIZE(smsc_rewrite_num_patched_tp_srr));
 	msgb_free(out);
 }
 
