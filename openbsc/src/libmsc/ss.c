@@ -125,9 +125,9 @@ static int change_ss_activation(struct gsm_subscriber_connection *conn, uint8_t 
 
 	if(rc < 0 || !(ss_status & GSM0902_SS_STATUS_P_BIT)) {
 		DEBUGP(DMM, "SS 0x%02X not provisioned\n", req->ss_code);
-		return gsm0480_send_ss_reject(conn, req,
-					      GSM_0480_PROBLEM_CODE_TAG_INVOKE,
-					      GSM_0480_INVOKE_PROB_CODE_UNRECOGNISED_OPERATION);
+		return gsm0480_send_ss_return_error(conn, req,
+                                                    GSM0480_ERR_CODE_SS_SUBSCRIPTION_VIOLATION,
+                                                    NULL);
 	}
 
 	ss_status &= ~GSM0902_SS_STATUS_A_BIT;
@@ -160,9 +160,9 @@ static int interrogate_ss(struct gsm_subscriber_connection *conn, const struct s
 
 	if(rc < 0 || !(ss_status & GSM0902_SS_STATUS_P_BIT)) {
 		DEBUGP(DMM, "SS 0x%02X not provisioned\n", req->ss_code);
-		return gsm0480_send_ss_reject(conn, req,
-					      GSM_0480_PROBLEM_CODE_TAG_INVOKE,
-					      GSM_0480_INVOKE_PROB_CODE_UNRECOGNISED_OPERATION);
+		return gsm0480_send_ss_return_error(conn, req,
+                                                    GSM0480_ERR_CODE_SS_SUBSCRIPTION_VIOLATION,
+                                                    NULL);
 	}
 
 	msg = gsm48_msgb_alloc();
