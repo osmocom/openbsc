@@ -90,8 +90,8 @@ int gsm0480_send_ussd_response(struct gsm_subscriber_connection *conn,
 
 /* Send response to a mobile-originated Invoke */
 int gsm0480_send_ss_return_result(struct gsm_subscriber_connection *conn,
-                                  const struct ss_request *req,
-                                  struct msgb *msg)
+				  const struct ss_request *req,
+				  struct msgb *msg)
 {
 	struct gsm48_hdr *gh;
 
@@ -135,6 +135,38 @@ int gsm0480_send_ss_reject(struct gsm_subscriber_connection *conn,
 
 	/* Wrap this up as a Reject component */
 	msgb_wrap_with_TL(msg, GSM0480_CTYPE_REJECT);
+
+	/* Wrap the component in a Facility message */
+	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);
+
+	/* And finally pre-pend the L3 header */
+	gh = (struct gsm48_hdr *) msgb_push(msg, sizeof(*gh));
+	gh->proto_discr = GSM48_PDISC_NC_SS;
+	gh->proto_discr |= req->transaction_id | (1<<7);  /* TI direction = 1 */
+	gh->msg_type = GSM0480_MTYPE_RELEASE_COMPLETE;
+
+	return gsm0808_submit_dtap(conn, msg, 0, 0);
+}
+
+int gsm0480_send_ss_return_error(struct gsm_subscriber_connection *conn,
+				 const struct ss_request *req,
+				 uint8_t error_code,
+				 struct msgb *parameters)
+{
+	struct msgb *msg = parameters;
+	struct gsm48_hdr *gh;
+
+	if(!msg)
+		msg = gsm48_msgb_alloc();
+
+	/* Pre-pend the error code */
+	msgb_push_TLV1(msg, GSM_0480_ERROR_CODE_TAG, error_code);
+
+	/* Before it insert the invoke ID */
+	msgb_push_TLV1(msg, GSM0480_COMPIDTAG_INVOKE_ID, req->invoke_id);
+
+	/* Wrap this up as a Reject component */
+	msgb_wrap_with_TL(msg, GSM0480_CTYPE_RETURN_ERROR);
 
 	/* Wrap the component in a Facility message */
 	msgb_wrap_with_TL(msg, GSM0480_IE_FACILITY);

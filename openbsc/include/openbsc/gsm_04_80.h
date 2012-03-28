@@ -38,6 +38,10 @@ int gsm0480_send_ss_reject(struct gsm_subscriber_connection *conn,
 			   const struct ss_request *request,
 			   uint8_t problem_category,
 			   uint8_t problem_code);
+int gsm0480_send_ss_return_error(struct gsm_subscriber_connection *conn,
+				 const struct ss_request *req,
+				 uint8_t error_code,
+				 struct msgb *parameters);
 
 int gsm0480_send_ussdNotify(struct gsm_subscriber_connection *conn, int level, const char *text);
 int gsm0480_send_releaseComplete(struct gsm_subscriber_connection *conn);
