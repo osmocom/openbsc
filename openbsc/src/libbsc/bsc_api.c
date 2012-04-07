@@ -313,19 +313,37 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 	}
 }
 
+/*
+ * \brief Check if the given channel is compatible with the mode/fullrate
+ *
+ * NOTE: This code is only written with TCH/F and TCH/H in mind. This means
+ * that it will not work for CSD, handover. This also assume that the lchan
+ * is either TCH or SDCCH.
+ */
+static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int full_rate)
+{
+	if (lchan->type == GSM_LCHAN_SDCCH)
+		return 1;
+	if (full_rate && lchan->type != GSM_LCHAN_TCH_F)
+		return 1;
+
+	return 0;
+}
+
 /**
  * Send a GSM08.08 Assignment Request. Right now this does not contain the
  * audio codec type or the allowed rates for the config. It is assumed that
- * this is for audio handling and that when we have a TCH it is capable of
- * handling the audio codec. In case AMR is used we will leave the multi
- * rate configuration to someone else.
+ * this is for audio handling only. In case the current channel does not allow
+ * the selected mode a new one will be allocated.
+ *
+ * TODO: add multirate configuration, work for more than audio.
  */
 int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
 
-	if (conn->lchan->type == GSM_LCHAN_SDCCH) {
+	if (chan_compat_with_mode(conn->lchan, chan_mode, full_rate) != 0) {
 		if (handle_new_assignment(conn, chan_mode, full_rate) != 0)
 			goto error;
 	} else {
