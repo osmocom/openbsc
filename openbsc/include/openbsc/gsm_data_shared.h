@@ -252,6 +252,8 @@ struct gsm_lchan {
 			uint8_t len;
 		} last_sid;
 	} tch;
+	/* BTS-side ciphering state (rx only, bi-directional, ...) */
+	uint8_t ciph_state;
 #endif
 };
 
