@@ -29,6 +29,8 @@
 #include <time.h>
 #include <netinet/in.h>
 
+#include "bscconfig.h"
+
 #include <openbsc/auth.h>
 #include <openbsc/db.h>
 #include <openbsc/debug.h>
@@ -734,7 +736,12 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		/* Need to get GSM offset and convert into 15 min units */
 		/* This probably breaks if gmtoff returns a value not evenly divisible by 15? */
 		local_time = localtime(&cur_t);
+#ifdef HAVE_TM_GMTOFF_IN_TM
 		tzunits = (local_time->tm_gmtoff/60)/15;
+#else
+#warning find a portable way to obtain the timezone offset
+		tzunits = 0;
+#endif
 		if (tzunits < 0) {
 			tzunits = tzunits/-1;
 			ptr8[7] = bcdify(tzunits);
