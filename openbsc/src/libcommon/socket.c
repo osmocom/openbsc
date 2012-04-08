@@ -54,9 +54,11 @@ int make_sock(struct osmo_fd *bfd, int proto,
 	case IPPROTO_UDP:
 		type = SOCK_DGRAM;
 		break;
+#ifdef IPPROTO_GRE
 	case IPPROTO_GRE:
 		type = SOCK_RAW;
 		break;
+#endif
 	default:
 		return -EINVAL;
 	}
