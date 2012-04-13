@@ -7,7 +7,7 @@ bscconfig.h
 bscconfig.h.in
 openbsc.pc
 src/osmo-nitb/osmo-nitb
-bsc_mgcp
+src/osmo-bsc_mgcp/osmo-bsc_mgcp
 src/osmo-bsc/osmo-bsc
 *.*~
 *.sw?
