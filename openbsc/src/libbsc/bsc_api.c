@@ -618,7 +618,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);
 		if (!lchan->conn) {
-			lchan_release(lchan, 0, 0);
+			lchan_release(lchan, 1, 0);
 			return -1;
 		}
 
@@ -628,7 +628,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
 			lchan->conn->lchan = NULL;
 			subscr_con_free(lchan->conn);
-			lchan_release(lchan, 0, 0);
+			lchan_release(lchan, 1, 0);
 		}
 	}
 
