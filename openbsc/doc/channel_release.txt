@@ -55,7 +55,7 @@ bsc_api.c:gsm0808_clear
 	* Release a channel used for handover
 	* Release the primary lchan with normal release, SACH deactivate
 
-chan_alloc.c:lchan_release(chan, sach_deactivate, reason)
+chan_alloc.c:lchan_release(chan, sacch_deactivate, reason)
 	* Start release procedure. It is working in steps with callbacks
           coming from the abis_rsl.c code.
         * Release all SAPI's > 0, wait for them to be released

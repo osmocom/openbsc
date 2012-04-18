@@ -344,7 +344,7 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->conn = NULL;
 	}
 
-	lchan->sach_deact = 0;
+	lchan->sacch_deact = 0;
 	lchan->release_mode = 0;
 
 	/* FIXME: ts_free() the timeslot, if we're the last logical
@@ -403,7 +403,7 @@ static void _lchan_handle_release(struct gsm_lchan *lchan)
 	if (_lchan_release_next_sapi(lchan) == 0)
 		return;
 
-	if (lchan->sach_deact) {
+	if (lchan->sacch_deact) {
 		gsm48_send_rr_release(lchan);
 		return;
 	}
@@ -424,14 +424,14 @@ int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id)
 }
 
 /* Consider releasing the channel now */
-int lchan_release(struct gsm_lchan *lchan, int sach_deact, int mode)
+int lchan_release(struct gsm_lchan *lchan, int sacch_deact, int mode)
 {
 	DEBUGP(DRLL, "%s starting release sequence\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_REL_REQ);
 
 	lchan->conn = NULL;
 	lchan->release_mode = mode;
-	lchan->sach_deact = sach_deact;
+	lchan->sacch_deact = sacch_deact;
 	_lchan_handle_release(lchan);
 	return 1;
 }
