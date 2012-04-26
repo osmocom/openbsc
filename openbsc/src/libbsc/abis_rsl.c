@@ -783,6 +783,9 @@ int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id)
 			     link_id, 0);
 	msg->dst = lchan->ts->trx->rsl_link;
 
+	DEBUGP(DRLL, "%s RSL RLL ESTABLISH REQ (link_id=0x%02x)\n",
+		gsm_lchan_name(lchan), link_id);
+
 	return abis_rsl_sendmsg(msg);
 }
 
@@ -804,6 +807,9 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->dst = lchan->ts->trx->rsl_link;
+
+	DEBUGP(DRLL, "%s RSL RLL RELEASE REQ (link_id=0x%02x, reason=%u)\n",
+		gsm_lchan_name(lchan), link_id, reason);
 
 	return abis_rsl_sendmsg(msg);
 }
