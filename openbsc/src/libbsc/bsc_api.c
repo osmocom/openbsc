@@ -534,7 +534,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			DEBUGP(DRR, "GRPS SUSPEND REQUEST\n");
 			break;
 		case GSM48_MT_RR_STATUS:
-			DEBUGP(DRR, "RR STATUS (cause: %s)\n",
+			LOGP(DRR, LOGL_NOTICE, "RR STATUS (cause: %s)\n",
 				rr_cause_name(gh->data[0]));
 			break;
 		case GSM48_MT_RR_MEAS_REP:
