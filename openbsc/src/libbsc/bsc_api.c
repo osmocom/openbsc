@@ -541,7 +541,7 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			/* This shouldn't actually end up here, as RSL treats
 			* L3 Info of 08.58 MEASUREMENT REPORT different by calling
 			* directly into gsm48_parse_meas_rep */
-			LOGP(LOGL_ERROR, DMEAS, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
+			LOGP(DMEAS, LOGL_ERROR, "DIRECT GSM48 MEASUREMENT REPORT ?!? ");
 			break;
 		case GSM48_MT_RR_HANDO_COMPL:
 			handle_rr_ho_compl(msg);
