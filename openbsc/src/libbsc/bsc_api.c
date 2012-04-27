@@ -587,9 +587,11 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 			break;
 		case GSM48_MT_RR_ASS_COMPL:
 			handle_ass_compl(conn, msg);
+			return;
 			break;
 		case GSM48_MT_RR_ASS_FAIL:
 			handle_ass_fail(conn, msg);
+			return;
 			break;
 		case GSM48_MT_RR_CHAN_MODE_MODIF_ACK:
 			osmo_timer_del(&conn->T10);
