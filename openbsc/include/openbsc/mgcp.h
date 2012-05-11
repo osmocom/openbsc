@@ -114,6 +114,8 @@ struct mgcp_trunk_config {
 	int audio_payload;
 	int audio_loop;
 
+	int omit_rtcp;
+
 	/* spec handling */
 	int force_realloc;
 

@@ -82,6 +82,10 @@ static int config_write_mgcp(struct vty *vty)
 			g_cfg->net_ports.range_start, g_cfg->net_ports.range_end, VTY_NEWLINE);
 
 	vty_out(vty, "  rtp ip-dscp %d%s", g_cfg->endp_dscp, VTY_NEWLINE);
+	if (g_cfg->trunk.omit_rtcp)
+		vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
+	else
+		vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
 	if (g_cfg->trunk.audio_payload != -1)
 		vty_out(vty, "  sdp audio-payload number %d%s",
 			g_cfg->trunk.audio_payload, VTY_NEWLINE);
@@ -368,6 +372,24 @@ DEFUN(cfg_mgcp_number_endp,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_omit_rtcp,
+      cfg_mgcp_omit_rtcp_cmd,
+      "rtcp-omit",
+      "Drop RTCP packets in both directions")
+{
+	g_cfg->trunk.omit_rtcp = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_no_omit_rtcp,
+      cfg_mgcp_no_omit_rtcp_cmd,
+      "no rtcp-omit",
+      NO_STR "Drop RTCP packets in both directions")
+{
+	g_cfg->trunk.omit_rtcp = 0;
+	return CMD_SUCCESS;
+}
+
 #define CALL_AGENT_STR "Callagent information\n"
 DEFUN(cfg_mgcp_agent_addr,
       cfg_mgcp_agent_addr_cmd,
@@ -454,6 +476,10 @@ static int config_write_trunk(struct vty *vty)
 			trunk->audio_name, VTY_NEWLINE);
 		vty_out(vty, "  loop %d%s",
 			trunk->audio_loop, VTY_NEWLINE);
+		if (trunk->omit_rtcp)
+			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
+		else
+			vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;
@@ -500,6 +526,26 @@ DEFUN(cfg_trunk_loop,
 	struct mgcp_trunk_config *trunk = vty->index;
 
 	trunk->audio_loop = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_omit_rtcp,
+      cfg_trunk_omit_rtcp_cmd,
+      "rtcp-omit",
+      "Drop RTCP packets in both directions")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->omit_rtcp = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_no_omit_rtcp,
+      cfg_trunk_no_omit_rtcp_cmd,
+      "no rtcp-omit",
+      "Drop RTCP packets in both directions")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	trunk->omit_rtcp = 0;
 	return CMD_SUCCESS;
 }
 
@@ -731,6 +777,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_payload_name_cmd_old);
 	install_element(MGCP_NODE, &cfg_mgcp_loop_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_omit_rtcp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_no_omit_rtcp_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -742,6 +790,8 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_payload_number_cmd_old);
 	install_element(TRUNK_NODE, &cfg_trunk_payload_name_cmd_old);
 	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_omit_rtcp_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_no_omit_rtcp_cmd);
 
 	return 0;
 }

@@ -212,7 +212,7 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
 			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 					endp->net_end.rtp_port, buf, rc);
-		} else {
+		} else if (!tcfg->omit_rtcp) {
 			return udp_send(endp->net_end.rtcp.fd, &endp->net_end.addr,
 					endp->net_end.rtcp_port, buf, rc);
 		}
@@ -225,7 +225,7 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
 			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtp_port, buf, rc);
-		} else {
+		} else if (!tcfg->omit_rtcp) {
 			return udp_send(endp->bts_end.rtcp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtcp_port, buf, rc);
 		}

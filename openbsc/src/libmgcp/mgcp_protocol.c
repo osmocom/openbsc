@@ -850,6 +850,7 @@ struct mgcp_config *mgcp_config_alloc(void)
 	cfg->trunk.trunk_type = MGCP_TRUNK_VIRTUAL;
 	cfg->trunk.audio_name = talloc_strdup(cfg, "AMR/8000");
 	cfg->trunk.audio_payload = 126;
+	cfg->trunk.omit_rtcp = 0;
 
 	INIT_LLIST_HEAD(&cfg->trunks);
 
@@ -872,6 +873,7 @@ struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int nr)
 	trunk->audio_name = talloc_strdup(cfg, "AMR/8000");
 	trunk->audio_payload = 126;
 	trunk->number_endpoints = 33;
+	trunk->omit_rtcp = 0;
 	llist_add_tail(&trunk->entry, &cfg->trunks);
 	return trunk;
 }
