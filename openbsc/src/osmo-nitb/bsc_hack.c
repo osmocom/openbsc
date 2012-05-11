@@ -1,7 +1,7 @@
 /* A hackish minimal BSC (+MSC +HLR) implementation */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -46,13 +46,16 @@
 #include <openbsc/handover_decision.h>
 #include <openbsc/rrlp.h>
 #include <openbsc/control_if.h>
+#include <openbsc/osmo_bsc_rf.h>
 
 #include "../../bscconfig.h"
 
 /* MCC and MNC for the Location Area Identifier */
 struct gsm_network *bsc_gsmnet = 0;
+static struct osmo_bsc_rf *rf_ctrl;
 static const char *database_name = "hlr.sqlite3";
 static const char *config_file = "openbsc.cfg";
+static const char *rf_ctrl_name = NULL;
 extern const char *openbsc_copyright;
 static int daemonize = 0;
 static int use_mncc_sock = 0;
@@ -97,6 +100,7 @@ static void print_help()
 	printf("  -e --log-level number. Set a global loglevel.\n");
 	printf("  -m --mncc-sock Disable built-in MNCC handler and offer socket\n");
 	printf("  -C --no-dbcounter Disable regular syncing of counters to database\n");
+	printf("  -r --rf-ctl NAME. A unix domain socket to listen for cmds.\n");
 }
 
 static void handle_options(int argc, char **argv)
@@ -118,10 +122,11 @@ static void handle_options(int argc, char **argv)
 			{"log-level", 1, 0, 'e'},
 			{"mncc-sock", 0, 0, 'm'},
 			{"no-dbcounter", 0, 0, 'C'},
+			{"rf-ctl", 1, 0, 'r'},
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mC",
+		c = getopt_long(argc, argv, "hd:Dsl:ar:p:TPVc:e:mCr:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -167,6 +172,9 @@ static void handle_options(int argc, char **argv)
 		case 'V':
 			print_version(1);
 			exit(0);
+			break;
+		case 'r':
+			rf_ctrl_name = optarg;
 			break;
 		default:
 			/* ignore */
@@ -263,6 +271,14 @@ int main(int argc, char **argv)
 	controlif_setup(bsc_gsmnet, 4249);
 	/* seed the PRNG */
 	srand(time(NULL));
+
+	if (rf_ctrl_name) {
+		rf_ctrl = osmo_bsc_rf_create(rf_ctrl_name, bsc_gsmnet);
+		if (!rf_ctrl) {
+			fprintf(stderr, "Failed to create the RF service.\n");
+			exit(1);
+		}
+	}
 
 	if (db_init(database_name)) {
 		printf("DB: Failed to init database. Please check the option settings.\n");
