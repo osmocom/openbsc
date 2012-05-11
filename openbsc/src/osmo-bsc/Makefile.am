@@ -5,7 +5,7 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 bin_PROGRAMS = osmo-bsc
 
 
-osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_rf.c osmo_bsc_vty.c osmo_bsc_api.c \
+osmo_bsc_SOURCES = osmo_bsc_main.c osmo_bsc_vty.c osmo_bsc_api.c \
 		   osmo_bsc_grace.c osmo_bsc_msc.c osmo_bsc_sccp.c \
 		   osmo_bsc_filter.c osmo_bsc_bssap.c osmo_bsc_audio.c
 # once again since TRAU uses CC symbol :(
