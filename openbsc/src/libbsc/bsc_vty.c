@@ -94,6 +94,13 @@ static const struct value_string bts_neigh_mode_strs[] = {
 	{ 0, NULL }
 };
 
+const struct value_string bts_loc_fix_names[] = {
+	{ BTS_LOC_FIX_INVALID,	"invalid" },
+	{ BTS_LOC_FIX_2D,	"fix2d" },
+	{ BTS_LOC_FIX_3D,	"fix3d" },
+	{ 0, NULL }
+};
+
 struct cmd_node net_node = {
 	GSMNET_NODE,
 	"%s(network)#",
