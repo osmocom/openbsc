@@ -212,13 +212,6 @@ static void generate_location_state_trap(struct gsm_bts *bts, struct bsc_msc_con
 	talloc_free(cmd);
 }
 
-static const struct value_string valid_names[] = {
-	{ BTS_LOC_FIX_INVALID,	"invalid" },
-	{ BTS_LOC_FIX_2D,	"fix2d" },
-	{ BTS_LOC_FIX_3D,	"fix3d" },
-	{ 0, NULL }
-};
-
 static int location_equal(struct bts_location *a, struct bts_location *b)
 {
 	return ((a->tstamp == b->tstamp) && (a->valid == b->valid) && (a->lat == b->lat) &&
@@ -272,7 +265,7 @@ static int get_bts_loc(struct ctrl_cmd *cmd, void *data)
 	}
 
 	cmd->reply = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", curloc->tstamp,
-			get_value_string(valid_names, curloc->valid), curloc->lat, curloc->lon, curloc->height);
+			get_value_string(bts_loc_fix_names, curloc->valid), curloc->lat, curloc->lon, curloc->height);
 	if (!cmd->reply) {
 		cmd->reply = "OOM";
 		return CTRL_CMD_ERROR;
@@ -313,7 +306,7 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 	height = strtok_r(NULL, "\0", &saveptr);
 
 	curloc->tstamp = atol(tstamp);
-	curloc->valid = get_string_value(valid_names, valid);
+	curloc->valid = get_string_value(bts_loc_fix_names, valid);
 	curloc->lat = atof(lat);
 	curloc->lon = atof(lon);
 	curloc->height = atof(height);
@@ -361,7 +354,7 @@ static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 		goto err;
 
 	tstamp = atol(tstampstr);
-	valid = get_string_value(valid_names, validstr);
+	valid = get_string_value(bts_loc_fix_names, validstr);
 	lat = atof(latstr);
 	lon = atof(lonstr);
 	height = atof(heightstr);

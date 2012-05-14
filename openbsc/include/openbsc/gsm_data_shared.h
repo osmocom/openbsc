@@ -521,6 +521,8 @@ enum bts_loc_fix {
 	BTS_LOC_FIX_3D = 2,
 };
 
+extern const struct value_string bts_loc_fix_names[];
+
 struct bts_location {
 	struct llist_head list;
 	time_t tstamp;

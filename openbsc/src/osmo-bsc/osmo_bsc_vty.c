@@ -24,6 +24,8 @@
 
 #include <osmocom/core/talloc.h>
 
+#include <time.h>
+
 
 #define IPA_STR "IP.ACCESS specific\n"
 
@@ -512,6 +514,45 @@ DEFUN(show_mscs,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_pos,
+      show_pos_cmd,
+      "show position",
+      SHOW_STR "Position information of the BTS\n")
+{
+	struct gsm_bts *bts;
+	struct bts_location *curloc;
+	struct tm time;
+	char timestr[50];
+
+	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
+		if (llist_empty(&bts->loc_list)) {
+			vty_out(vty, "BTS Nr: %d position invalid%s", bts->nr,
+				VTY_NEWLINE);
+			continue;
+		}
+		curloc = llist_entry(bts->loc_list.next, struct bts_location, list);
+		if (gmtime_r(&curloc->tstamp, &time) == NULL) {
+			vty_out(vty, "Time conversion failed for BTS %d%s", bts->nr,
+				VTY_NEWLINE);
+			continue;
+		}
+		if (asctime_r(&time, timestr) == NULL) {
+			vty_out(vty, "Time conversion failed for BTS %d%s", bts->nr,
+				VTY_NEWLINE);
+			continue;
+		}
+		/* Last character in asctime is \n */
+		timestr[strlen(timestr)-1] = 0;
+
+		vty_out(vty, "BTS Nr: %d position: %s time: %s%s", bts->nr,
+			get_value_string(bts_loc_fix_names, curloc->valid), timestr,
+			VTY_NEWLINE);
+		vty_out(vty, " lat: %f lon: %f height: %f%s", curloc->lat, curloc->lon,
+			curloc->height, VTY_NEWLINE);
+	}
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -551,6 +592,7 @@ int bsc_vty_init_extra(void)
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
+	install_element_ve(&show_pos_cmd);
 
 	return 0;
 }
