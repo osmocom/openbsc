@@ -43,6 +43,8 @@ extern struct gsm_network *bsc_gsmnet;
 static int bts_model_nanobts_start(struct gsm_network *net);
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
 
+void ipaccess_drop_oml(struct gsm_bts *bts);
+
 struct gsm_bts_model bts_model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
@@ -408,9 +410,16 @@ static int sw_activ_rep(struct msgb *mb)
 				      NM_STATE_UNLOCKED);
 		abis_nm_opstart(trx->bts, foh->obj_class,
 				trx->bts->bts_nr, trx->nr, 0xff);
-		/* TRX software is active, tell it to initiate RSL Link */
-		abis_nm_ipaccess_rsl_connect(trx, trx->bts->ip_access.rsl_ip,
-					     3003, trx->rsl_tei);
+		/* HACK: RF handling */
+		if (trx->mo.nm_state.administrative == NM_STATE_LOCKED) {
+			LOGP(DLINP, LOGL_DEBUG, "Dropping BTS due RF disable.\n");
+			ipaccess_drop_oml(trx->bts);
+		} else {
+			/* TRX software is active, tell it to initiate RSL Link */
+			abis_nm_ipaccess_rsl_connect(trx,
+						     trx->bts->ip_access.rsl_ip,
+						     3003, trx->rsl_tei);
+		}
 		break;
 	case NM_OC_RADIO_CARRIER: {
 		/*
