@@ -371,6 +371,41 @@ err:
 		return 1;
 }
 
+CTRL_CMD_DEFINE(bts_rf_state, "rf_state");
+static int get_bts_rf_state(struct ctrl_cmd *cmd, void *data)
+{
+	const char *oper, *admin, *policy;
+	struct gsm_bts *bts = cmd->node;
+
+	if (!bts) {
+		cmd->reply = "bts not found.";
+		return CTRL_CMD_ERROR;
+	}
+
+	oper = osmo_bsc_rf_get_opstate_name(osmo_bsc_rf_get_opstate_by_bts(bts));
+	admin = osmo_bsc_rf_get_adminstate_name(osmo_bsc_rf_get_adminstate_by_bts(bts));
+	policy = osmo_bsc_rf_get_policy_name(osmo_bsc_rf_get_policy_by_bts(bts));
+
+	cmd->reply = talloc_asprintf(cmd, "%s,%s,%s", oper, admin, policy);
+	if (!cmd->reply) {
+		cmd->reply = "OOM.";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_rf_state(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "set is unimplemented";
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_bts_rf_state(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
 CTRL_CMD_DEFINE(net_rf_lock, "rf_locked");
 static int get_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
@@ -439,6 +474,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
 
+	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rf_state);
+	if (rc)
+		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_loc);
 	if (rc)
 		goto end;
