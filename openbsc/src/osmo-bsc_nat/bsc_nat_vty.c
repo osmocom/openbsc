@@ -36,6 +36,7 @@
 #include <osmocom/sccp/sccp.h>
 
 #include <stdlib.h>
+#include <time.h>
 
 static struct bsc_nat *_nat;
 
@@ -198,6 +199,224 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 	}
 
 	return CMD_SUCCESS;
+}
+
+struct bts_stat_data {
+	struct vty *vty;
+	int bsc_nr;
+	int bts_nr;
+};
+
+int nat_forward_to_bsc(struct ctrl_cmd *cmd, void *data,
+		void (*callback)(void *data, struct ctrl_cmd *cmd));
+static void show_bts_stat_cb(void *data, struct ctrl_cmd *cmd);
+
+static void show_bts_rfstat_cb(void *data, struct ctrl_cmd *cmd)
+{
+	struct bts_stat_data *bts_stat = (struct bts_stat_data *)data;
+	struct vty *vty = bts_stat->vty;
+	struct ctrl_cmd *cmd2;
+	char *oper, *admin, *rfpol;
+
+	if (cmd->type == CTRL_TYPE_GET_REPLY) {
+		oper = strsep(&cmd->reply, ",");
+		if (!oper) {
+			vty_out(vty, "Error decoding RF state for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		admin = strsep(&cmd->reply, ",");
+		if (!admin) {
+			vty_out(vty, "Error decoding RF state for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		rfpol = strsep(&cmd->reply, ",");
+		if (!rfpol) {
+			vty_out(vty, "Error decoding RF state for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+
+		vty_out(vty, " RF: %s, Administrative: %s, Policy: %s%s",
+			oper, admin, rfpol, VTY_NEWLINE);
+
+		bts_stat->bts_nr++;
+		cmd2 = ctrl_cmd_create(bts_stat->vty, CTRL_TYPE_GET);
+		if (!cmd2) {
+			vty_out(vty, "Could not send followup command BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		cmd2->id = talloc_strdup(cmd2, "1");
+		cmd2->variable = talloc_asprintf(cmd2, "net.0.bsc.%d.bts.%d.location",
+			bts_stat->bsc_nr, bts_stat->bts_nr);
+		nat_forward_to_bsc(cmd2, bts_stat, &show_bts_stat_cb);
+		return;
+	}
+out:
+	vty_out(vty, " Error: %s%s", cmd->reply, VTY_NEWLINE);
+	talloc_free(bts_stat);
+}
+
+static void show_bts_stat_cb(void *data, struct ctrl_cmd *cmd)
+{
+	struct bts_stat_data *bts_stat = (struct bts_stat_data *)data;
+	struct vty *vty = bts_stat->vty;
+	struct ctrl_cmd *cmd2;
+	char *fixstate, timestr[50], *lat, *lon, *height, *tmp;
+	struct tm time;
+	time_t tstamp;
+
+	if (cmd->type == CTRL_TYPE_GET_REPLY) {
+
+		tmp = strsep(&cmd->reply, ",");
+		if (!tmp) {
+			vty_out(vty, "Error decoding position for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		tstamp = atol(tmp);
+
+		fixstate = strsep(&cmd->reply, ",");
+		if (!fixstate) {
+			vty_out(vty, "Error decoding position for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		lat = strsep(&cmd->reply, ",");
+		if (!lat) {
+			vty_out(vty, "Error decoding position for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		lon = strsep(&cmd->reply, ",");
+		if (!lon) {
+			vty_out(vty, "Error decoding position for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		height = strsep(&cmd->reply, ",");
+		if (!height) {
+			vty_out(vty, "Error decoding position for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+
+		if (gmtime_r(&tstamp, &time) == NULL) {
+			vty_out(vty, "Time conversion failed for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+
+		if (asctime_r(&time, timestr) == NULL) {
+			vty_out(vty, "Time conversion failed for BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+
+		timestr[strlen(timestr)-1] = 0;
+
+		vty_out(vty, "%sBSC nr: %d, BTS nr: %d%s", VTY_NEWLINE,
+			bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+		vty_out(vty, " Position: %s, time: %s, lat: %s, lon: %s, height: %s%s",
+			fixstate, timestr, lat, lon, height, VTY_NEWLINE);
+
+		cmd2 = ctrl_cmd_create(bts_stat->vty, CTRL_TYPE_GET);
+		if (!cmd2) {
+			vty_out(vty, "Could not send followup command BSC %d, BTS %d%s",
+				bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+			goto out;
+		}
+		cmd2->id = talloc_strdup(cmd, "1");
+		cmd2->variable = talloc_asprintf(cmd2, "net.0.bsc.%d.bts.%d.rf_state",
+			bts_stat->bsc_nr, bts_stat->bts_nr);
+		nat_forward_to_bsc(cmd2, bts_stat, &show_bts_rfstat_cb);
+		return;
+	}
+out:
+	vty_out(vty, "%sEnd of query%s", VTY_NEWLINE, VTY_NEWLINE);
+	talloc_free(bts_stat);
+}
+
+DEFUN(show_bsc_stat_nr, show_bsc_stat_nr_cmd, "show bsc by-id NR bts status",
+      SHOW_STR "Display status of BSC NR")
+{
+	int nr = -1;
+	struct ctrl_cmd *cmd;
+	struct bsc_connection *con;
+	struct bts_stat_data *bts_stat;
+
+	nr = atoi(argv[0]);
+
+	bts_stat = talloc_zero(vty, struct bts_stat_data);
+	if (!bts_stat)
+		return CMD_WARNING;
+
+	bts_stat->vty = vty;
+	bts_stat->bsc_nr = nr;
+	bts_stat->bts_nr = 0;
+
+	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		if ((!con->cfg) || (con->cfg->nr != bts_stat->bsc_nr))
+			continue;
+		cmd = ctrl_cmd_create(vty, CTRL_TYPE_GET);
+		if (!cmd)
+			goto out;
+		cmd->id = talloc_strdup(cmd, "1");
+		cmd->variable = talloc_asprintf(cmd, "net.0.bsc.%d.bts.%d.location",
+				bts_stat->bsc_nr, bts_stat->bts_nr);
+		nat_forward_to_bsc(cmd, bts_stat, &show_bts_stat_cb);
+		return CMD_SUCCESS;
+	}
+	vty_out(vty, "Could not find BSC %d%s", bts_stat->bsc_nr, VTY_NEWLINE);
+out:
+	talloc_free(bts_stat);
+	return CMD_WARNING;
+}
+
+DEFUN(show_bsc_stat_lac, show_bsc_stat_lac_cmd, "show bsc by-lac LAC bts status",
+      SHOW_STR "Display status of BSC by LAC")
+{
+	int lac = -1;
+	struct ctrl_cmd *cmd;
+	struct bsc_connection *con;
+	struct bts_stat_data *bts_stat;
+	struct bsc_lac_entry *laclist;
+
+	lac = atoi(argv[0]);
+
+	bts_stat = talloc_zero(vty, struct bts_stat_data);
+	if (!bts_stat)
+		return CMD_WARNING;
+
+	bts_stat->vty = vty;
+	bts_stat->bts_nr = 0;
+
+	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
+		if (!con->cfg)
+			continue;
+		llist_for_each_entry(laclist, &con->cfg->lac_list, entry) {
+			if (laclist->lac == lac) {
+				cmd = ctrl_cmd_create(vty, CTRL_TYPE_GET);
+				if (!cmd) {
+					vty_out(vty, "Could not send command BSC %d, BTS %d%s",
+						bts_stat->bsc_nr, bts_stat->bts_nr, VTY_NEWLINE);
+
+					goto out;
+				}
+				cmd->id = talloc_strdup(cmd, "1");
+				cmd->variable = talloc_asprintf(cmd, "net.0.bsc.%d.bts.%d.location",
+						bts_stat->bsc_nr, bts_stat->bts_nr);
+				nat_forward_to_bsc(cmd, bts_stat, &show_bts_stat_cb);
+				return CMD_SUCCESS;
+			}
+		}
+	}
+	vty_out(vty, "Could not find BSC with LAC %d%s", lac, VTY_NEWLINE);
+out:
+	talloc_free(bts_stat);
+	return CMD_WARNING;
 }
 
 DEFUN(show_bsc_mgcp, show_bsc_mgcp_cmd, "show bsc mgcp NR",
@@ -917,6 +1136,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&show_sccp_cmd);
 	install_element_ve(&show_bsc_cmd);
 	install_element_ve(&show_bsc_cfg_cmd);
+	install_element_ve(&show_bsc_stat_nr_cmd);
+	install_element_ve(&show_bsc_stat_lac_cmd);
 	install_element_ve(&show_stats_cmd);
 	install_element_ve(&show_stats_lac_cmd);
 	install_element_ve(&close_bsc_cmd);
