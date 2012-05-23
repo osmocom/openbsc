@@ -32,6 +32,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <openbsc/control_cmd.h>
 
 #include <regex.h>
 
@@ -79,6 +80,10 @@ struct bsc_cmd_list {
 
 	/* The control connection from which the command originated */
 	struct ctrl_connection *ccon;
+
+	/* Callback to call when the command completes */
+	void (*callback)(void *data, struct ctrl_cmd *cmd);
+	void *data;
 
 	/* The command from the control connection */
 	struct ctrl_cmd *cmd;

@@ -878,7 +878,10 @@ void bsc_close_connection(struct bsc_connection *connection)
 	llist_for_each_entry_safe(cmd_entry, cmd_tmp, &connection->cmd_pending, list_entry) {
 		cmd_entry->cmd->type = CTRL_TYPE_ERROR;
 		cmd_entry->cmd->reply = "BSC closed the connection";
-		ctrl_cmd_send(&cmd_entry->ccon->write_queue, cmd_entry->cmd);
+		if (cmd_entry->ccon)
+			ctrl_cmd_send(&cmd_entry->ccon->write_queue, cmd_entry->cmd);
+		if (cmd_entry->callback)
+			cmd_entry->callback(cmd_entry->data, cmd_entry->cmd);
 		bsc_del_pending(cmd_entry);
 	}
 
@@ -1232,7 +1235,10 @@ static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
 				goto err;
 			}
 			cmd->id = id;
-			ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+			if (pending->ccon)
+				ctrl_cmd_send(&pending->ccon->write_queue, cmd);
+			if (pending->callback)
+				pending->callback(pending->data, cmd);
 			bsc_del_pending(pending);
 		} else {
 			/* We need to handle TRAPS here */
@@ -1574,7 +1580,10 @@ static void pending_timeout_cb(void *data)
 	LOGP(DNAT, LOGL_ERROR, "Command timed out\n");
 	pending->cmd->type = CTRL_TYPE_ERROR;
 	pending->cmd->reply = "Command timed out";
-	ctrl_cmd_send(&pending->ccon->write_queue, pending->cmd);
+	if (pending->ccon)
+		ctrl_cmd_send(&pending->ccon->write_queue, pending->cmd);
+	if (pending->callback)
+		pending->callback(pending->data, pending->cmd);
 
 	bsc_del_pending(pending);
 }
@@ -1592,7 +1601,8 @@ static void ctrl_conn_closed_cb(struct ctrl_connection *connection)
 	}
 }
 
-static int forward_to_bsc(struct ctrl_cmd *cmd)
+int nat_forward_to_bsc(struct ctrl_cmd *cmd, void *data,
+		void (*callback)(void *data, struct ctrl_cmd *cmd))
 {
 	int ret = CTRL_CMD_HANDLED;
 	struct ctrl_cmd *bsc_cmd = NULL;
@@ -1661,15 +1671,19 @@ static int forward_to_bsc(struct ctrl_cmd *cmd)
 				cmd->reply = "Sending failed";
 				goto err;
 			}
-			pending->ccon = cmd->ccon;
-			pending->ccon->closed_cb = ctrl_conn_closed_cb;
 			pending->cmd = cmd;
+			pending->ccon = cmd->ccon;
+			pending->callback = callback;
+			pending->data = data;
+			if (pending->ccon)
+				pending->ccon->closed_cb = ctrl_conn_closed_cb;
 
 			/* Setup the timeout */
 			pending->timeout.data = pending;
 			pending->timeout.cb = pending_timeout_cb;
 			/* TODO: Make timeout configurable */
 			osmo_timer_schedule(&pending->timeout, 10, 0);
+
 			llist_add_tail(&pending->list_entry, &bsc->cmd_pending);
 
 			goto done;
@@ -1689,12 +1703,12 @@ done:
 CTRL_CMD_DEFINE(fwd_cmd, "net 0 bsc *");
 static int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
 {
-	return forward_to_bsc(cmd);
+	return nat_forward_to_bsc(cmd, NULL, NULL);
 }
 
 static int set_fwd_cmd(struct ctrl_cmd *cmd, void *data)
 {
-	return forward_to_bsc(cmd);
+	return nat_forward_to_bsc(cmd, NULL, NULL);
 }
 
 static int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
