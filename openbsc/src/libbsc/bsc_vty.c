@@ -1503,17 +1503,12 @@ DEFUN(cfg_bts_lac,
 
 DEFUN(cfg_bts_tsc,
       cfg_bts_tsc_cmd,
-      "training_sequence_code <0-255>",
+      "training_sequence_code <0-7>",
       "Set the Training Sequence Code (TSC) of this BTS\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int tsc = atoi(argv[0]);
 
-	if (tsc < 0 || tsc > 0xff) {
-		vty_out(vty, "%% TSC %d is not in the valid range (0-255)%s",
-			tsc, VTY_NEWLINE);
-		return CMD_WARNING;
-	}
 	bts->tsc = tsc;
 
 	return CMD_SUCCESS;
