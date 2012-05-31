@@ -1907,6 +1907,7 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 
 	if (msgb_l2len(msg) < sizeof(*rslh)) {
 		DEBUGP(DRSL, "Truncated RSL message with l2len: %u\n", msgb_l2len(msg));
+		msgb_free(msg);
 		return -1;
 	}
 
@@ -1935,7 +1936,7 @@ int abis_rsl_rcvmsg(struct msgb *msg)
 	default:
 		LOGP(DRSL, LOGL_NOTICE, "unknown RSL message discriminator "
 			"0x%02x\n", rslh->msg_discr);
-		return -EINVAL;
+		rc = -EINVAL;
 	}
 	msgb_free(msg);
 	return rc;
