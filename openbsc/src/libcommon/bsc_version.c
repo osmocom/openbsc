@@ -20,7 +20,7 @@
 #include "../../bscconfig.h"
 
 const char *openbsc_copyright =
-	"Copyright (C) 2008-2010 Harald Welte, Holger Freyther\r\n"
+	"Copyright (C) 2008-2012 Harald Welte, Holger Freyther\r\n"
 	"Contributions by Daniel Willmann, Jan Lübbe, Stefan Schmidt\r\n"
 	"Dieter Spaar, Andreas Eversberg, Sylvain Munaut\r\n\r\n"
 	"License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>\r\n"
