@@ -357,6 +357,9 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	uint8_t arfcn_low = bts->c0->arfcn & 0xff;
 	uint8_t arfcn_high = (bts->c0->arfcn >> 8) & 0x0f;
 
+	/* T3105 attribute in units of 10ms */
+	bs11_attr_bts[2] = bts->network->T3105 / 10;
+
 	/* patch ARFCN into BTS Attributes */
 	bs11_attr_bts[69] &= 0xf0;
 	bs11_attr_bts[69] |= arfcn_high;

@@ -1355,7 +1355,7 @@ DEFUN(cfg_net_pag_any_tch,
 
 DECLARE_TIMER(3101, "Set the timeout value for IMMEDIATE ASSIGNMENT.\n")
 DECLARE_TIMER(3103, "Set the timeout value for HANDOVER.\n")
-DECLARE_TIMER(3105, "Currently not used.\n")
+DECLARE_TIMER(3105, "Set the timer for repetition of PHYSICAL INFORMATION.\n")
 DECLARE_TIMER(3107, "Currently not used.\n")
 DECLARE_TIMER(3109, "Currently not used.\n")
 DECLARE_TIMER(3111, "Set the RSL timeout to wait before releasing the RF Channel.\n")

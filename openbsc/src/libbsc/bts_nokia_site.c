@@ -541,13 +541,13 @@ static uint8_t fu_config_template[] = {
 	/* ID = 0x02 (T3105_F) */
 	/* length = 2 */
 	/* [16] */
-	0x00, 0x28,
+	0x00, 0x28, /* FIXME: use net->T3105 */
 
 	0x50, 0x02,
 	/* ID = 0x10 (T3105_D) */
 	/* length = 2 */
 	/* [20] */
-	0x00, 0x28,
+	0x00, 0x28, /* FIXME: use net->T3105 */
 
 	0x43, 0x05,
 	/* ID = 0x03 (Interference band limits) */
