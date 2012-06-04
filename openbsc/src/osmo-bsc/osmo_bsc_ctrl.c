@@ -274,7 +274,7 @@ static int get_bts_loc(struct ctrl_cmd *cmd, void *data)
 	return CTRL_CMD_REPLY;
 }
 
-static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
+int osmo_bsc_set_bts_loc(struct ctrl_cmd *cmd, void *data)
 {
 	char *saveptr, *lat, *lon, *height, *tstamp, *valid, *tmp;
 	struct bts_location *curloc, *lastloc;
@@ -332,6 +332,11 @@ static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
 oom:
 	cmd->reply = "OOM";
 	return CTRL_CMD_ERROR;
+}
+
+static int set_bts_loc(struct ctrl_cmd *cmd, void *data)
+{
+	return osmo_bsc_set_bts_loc(cmd, data);
 }
 
 static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)

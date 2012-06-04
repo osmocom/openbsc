@@ -18,6 +18,7 @@
  *
  */
 
+#include <openbsc/control_cmd.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/vty.h>
@@ -553,6 +554,48 @@ DEFUN(show_pos,
 	return CMD_SUCCESS;
 }
 
+int osmo_bsc_set_bts_loc(struct ctrl_cmd *cmd, void *data);
+
+DEFUN(set_pos,
+      set_pos_cmd,
+      "set bts NR fix (invalid|fix2d|fix3d) lat LAT lon LON",
+      SHOW_STR "Set position for the BTS\n")
+{
+	int bts_nr, ret;
+	const char *fixstate;
+	float lat, lon, height;
+
+	struct ctrl_cmd *cmd;
+	struct gsm_bts *bts;
+
+	bts_nr = atoi(argv[0]);
+	fixstate = argv[1];
+	lat = atof(argv[2]);
+	lon = atof(argv[3]);
+	height = 0;
+
+	llist_for_each_entry(bts, &bsc_gsmnet->bts_list, list) {
+		if (bts->nr != bts_nr) {
+			continue;
+		}
+
+		cmd = ctrl_cmd_create(vty, CTRL_TYPE_SET);
+		if (!cmd)
+			return CMD_WARNING;
+
+		cmd->node = bts;
+		cmd->value = talloc_asprintf(cmd, "%lu,%s,%f,%f,%f", 0l, fixstate,
+				lat, lon, height);
+		ret = osmo_bsc_set_bts_loc(cmd, bsc_gsmnet);
+		talloc_free(cmd);
+
+		break;
+
+	}
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	install_element(CONFIG_NODE, &cfg_net_msc_cmd);
@@ -593,6 +636,7 @@ int bsc_vty_init_extra(void)
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);
 	install_element_ve(&show_pos_cmd);
+	install_element_ve(&set_pos_cmd);
 
 	return 0;
 }
