@@ -142,7 +142,7 @@ static int lock_each_trx(struct gsm_network *net, int lock)
 		}
 
 		// HACK: always drop the connection...
-		if (is_ipaccess_bts(bts))
+		if (lock == 1 && is_ipaccess_bts(bts))
 			ipaccess_drop_oml(bts);
 	}
 
