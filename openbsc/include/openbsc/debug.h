@@ -40,8 +40,6 @@ enum {
 #define BSC_CTX_SUBSCR	1
 #define BSC_CTX_BTS	2
 #define BSC_CTX_SCCP	3
-#define BSC_CTX_NSVC	4
-#define BSC_CTX_BVC	5
 
 /* target */
 

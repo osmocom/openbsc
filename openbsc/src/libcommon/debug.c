@@ -30,6 +30,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/utils.h>
 #include <osmocom/core/logging.h>
+#include <osmocom/gprs/gprs_msgb.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
@@ -173,8 +174,8 @@ static int filter_fn(const struct log_context *ctx,
 		     struct log_target *tar)
 {
 	struct gsm_subscriber *subscr = ctx->ctx[BSC_CTX_SUBSCR];
-	const struct gprs_nsvc *nsvc = ctx->ctx[BSC_CTX_NSVC];
-	const struct gprs_nsvc *bvc = ctx->ctx[BSC_CTX_BVC];
+	const struct gprs_nsvc *nsvc = ctx->ctx[GPRS_CTX_NSVC];
+	const struct gprs_nsvc *bvc = ctx->ctx[GPRS_CTX_BVC];
 
 	if ((tar->filter_map & (1 << FLT_IMSI)) != 0
 	    && subscr && strcmp(subscr->imsi, tar->filter_data[FLT_IMSI]) == 0)
