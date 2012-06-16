@@ -229,7 +229,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);
+	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb, tall_bsc_ctx);
 	if (!bssgp_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);

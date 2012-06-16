@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb);
+	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb, tall_bsc_ctx);
 	if (!sgsn_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);

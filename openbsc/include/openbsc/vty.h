@@ -26,8 +26,6 @@ enum bsc_vty_node {
 	MGCP_NODE,
 	GBPROXY_NODE,
 	SGSN_NODE,
-	NS_NODE,
-	BSSGP_NODE,
 	OML_NODE,
 	NAT_NODE,
 	NAT_BSC_NODE,

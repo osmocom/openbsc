@@ -147,8 +147,6 @@ gDEFUN(ournode_exit,
 	case MGCP_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
-	case NS_NODE:
-	case BSSGP_NODE:
 	case NAT_NODE:
 		vty->node = CONFIG_NODE;
 		vty->index = NULL;
@@ -191,7 +189,6 @@ gDEFUN(ournode_end,
 	case TRUNK_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
-	case NS_NODE:
 	case VTY_NODE:
 	case NAT_NODE:
 	case NAT_BSC_NODE:
