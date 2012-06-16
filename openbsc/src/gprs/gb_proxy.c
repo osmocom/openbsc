@@ -596,7 +596,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	struct gprs_nsvc *nsvc = nssd->nsvc;
 	struct gbprox_peer *peer;
 
-	if (subsys != SS_NS)
+	if (subsys != SS_L_NS)
 		return 0;
 
 	if (signal == S_NS_RESET && nsvc->nsei == gbcfg.nsip_sgsn_nsei) {

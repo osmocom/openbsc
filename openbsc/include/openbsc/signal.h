@@ -41,7 +41,6 @@ enum signal_subsystems {
 	SS_SUBSCR,
 	SS_SCALL,
 	SS_CHALLOC,
-	SS_NS,
 	SS_IPAC_NWL,
 	SS_RF,
 	SS_MSC,
@@ -213,18 +212,6 @@ struct lchan_signal_data {
 	struct gsm_lchan *lchan;
 	/* Measurement reports on this lchan */
 	struct gsm_meas_rep *mr;
-};
-
-enum signal_ns {
-	S_NS_RESET,
-	S_NS_BLOCK,
-	S_NS_UNBLOCK,
-	S_NS_ALIVE_EXP,	/* Tns-alive expired more than N times */
-};
-
-struct ns_signal_data {
-	struct gprs_nsvc *nsvc;
-	uint8_t cause;
 };
 
 /* MSC signals */

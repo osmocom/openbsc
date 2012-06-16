@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 	gprs_bssgp_vty_init();
 	gprs_llc_vty_init();
 	gprs_sndcp_vty_init();
-	/* FIXME: register signal handler for SS_NS */
+	/* FIXME: register signal handler for SS_L_NS */
 
 	rc = sgsn_parse_config(sgsn_inst.config_file, &sgsn_inst.cfg);
 	if (rc < 0) {
