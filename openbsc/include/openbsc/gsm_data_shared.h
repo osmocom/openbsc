@@ -255,6 +255,14 @@ struct gsm_lchan {
 	/* BTS-side ciphering state (rx only, bi-directional, ...) */
 	uint8_t ciph_state;
 	uint8_t loopback;
+	struct {
+		uint8_t active;
+		uint8_t ref;
+		/* T3105: PHYS INF retransmission */
+		struct osmo_timer_list t3105;
+		/* counts up to Ny1 */
+		unsigned int phys_info_count;
+	} ho;
 #endif
 };
 
