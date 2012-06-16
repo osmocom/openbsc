@@ -28,7 +28,7 @@
 
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
-#include <openbsc/gprs_ns.h>
+#include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/vty.h>
 #include <openbsc/gsm_04_08_gprs.h>

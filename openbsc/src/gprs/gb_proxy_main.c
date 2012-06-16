@@ -37,10 +37,11 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
 
+#include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/gprs_ns.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
 

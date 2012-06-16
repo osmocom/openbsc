@@ -38,6 +38,9 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/logging.h>
 
+#include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/logging.h>
 
@@ -45,8 +48,6 @@
 #include <openbsc/debug.h>
 #include <openbsc/vty.h>
 #include <openbsc/sgsn.h>
-#include <openbsc/gprs_ns.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 
 #include <gtp.h>

@@ -4,7 +4,7 @@
 
 #include <osmocom/core/msgb.h>
 
-#include <openbsc/gprs_ns.h>
+#include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
 struct gbproxy_config {

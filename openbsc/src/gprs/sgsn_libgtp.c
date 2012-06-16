@@ -36,13 +36,13 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
-#include <openbsc/gsm_04_08_gprs.h>
+#include <osmocom/gprs/gprs_bssgp.h>
 
+#include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
 

@@ -25,11 +25,12 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_sgsn.h>
-#include <openbsc/gprs_ns.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gsm_04_08_gprs.h>
 #include <openbsc/gprs_gmm.h>

@@ -26,12 +26,12 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/talloc.h>
+#include <osmocom/gprs/gprs_bssgp.h>
 
 #include <openbsc/gsm_data.h>
 #include <openbsc/debug.h>
 #include <openbsc/gprs_sgsn.h>
 #include <openbsc/gprs_gmm.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gprs_llc.h>
 #include <openbsc/crc24.h>
 #include <openbsc/sgsn.h>

@@ -41,7 +41,7 @@
 #include <openbsc/db.h>
 #include <osmocom/core/talloc.h>
 #include <openbsc/vty.h>
-#include <openbsc/gprs_ns.h>
+#include <osmocom/gprs/gprs_ns.h>
 #include <openbsc/system_information.h>
 #include <openbsc/debug.h>
 #include <openbsc/paging.h>

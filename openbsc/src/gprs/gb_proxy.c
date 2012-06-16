@@ -32,10 +32,11 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/select.h>
 
+#include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/gprs_ns.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/gb_proxy.h>
 
 struct gbprox_peer {
