@@ -122,7 +122,7 @@ static void peer_free(struct gbprox_peer *peer)
 /* FIXME: this needs to go to libosmocore/msgb.c */
 static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
 {
-	struct openbsc_msgb_cb *old_cb, *new_cb;
+	struct libgb_msgb_cb *old_cb, *new_cb;
 	struct msgb *new_msg;
 
 	new_msg = msgb_alloc(msg->data_len, name);
@@ -144,8 +144,8 @@ static struct msgb *msgb_copy(const struct msgb *msg, const char *name)
 	new_msg->l4h = new_msg->_data + (msg->l4h - msg->_data);
 
 	/* copy GB specific data */
-	old_cb = OBSC_MSGB_CB(msg);
-	new_cb = OBSC_MSGB_CB(new_msg);
+	old_cb = LIBGB_MSGB_CB(msg);
+	new_cb = LIBGB_MSGB_CB(new_msg);
 
 	new_cb->bssgph = new_msg->_data + (old_cb->bssgph - msg->_data);
 	new_cb->llch = new_msg->_data + (old_cb->llch - msg->_data);
