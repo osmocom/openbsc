@@ -615,8 +615,8 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 	if (signal == S_NS_ALIVE_EXP && nsvc->remote_end_is_sgsn) {
 		LOGP(DGPRS, LOGL_NOTICE, "Tns alive expired too often, "
 			"re-starting RESET procedure\n");
-		nsip_connect(nsvc->nsi, &nsvc->ip.bts_addr, nsvc->nsei,
-			     nsvc->nsvci);
+		gprs_ns_nsip_connect(nsvc->nsi, &nsvc->ip.bts_addr,
+				  nsvc->nsei, nsvc->nsvci);
 	}
 
 	if (!nsvc->remote_end_is_sgsn) {

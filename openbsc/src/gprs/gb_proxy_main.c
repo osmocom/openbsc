@@ -246,7 +246,7 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	if (!nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
+	if (!gprs_nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
 		LOGP(DGPRS, LOGL_FATAL, "You cannot proxy to NSEI %u "
 			"without creating that NSEI before\n",
 			gbcfg.nsip_sgsn_nsei);
