@@ -37,10 +37,11 @@
 #include <osmocom/core/select.h>
 #include <osmocom/core/rate_ctr.h>
 
+#include <osmocom/gprs/gprs_ns.h>
+#include <osmocom/gprs/gprs_bssgp.h>
+
 #include <openbsc/signal.h>
 #include <openbsc/debug.h>
-#include <openbsc/gprs_ns.h>
-#include <openbsc/gprs_bssgp.h>
 #include <openbsc/vty.h>
 #include <openbsc/gb_proxy.h>
 
@@ -79,12 +80,12 @@ static int proxy_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
-		rc = gbprox_rcvmsg(msg, nsvc, bvci);
+		rc = gbprox_rcvmsg(msg, nsvc->nsei, bvci, nsvc->nsvci);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);
 		if (msg)
-			talloc_free(msg);
+			msgb_free(msg);
 		rc = -EIO;
 		break;
 	}
@@ -97,7 +98,7 @@ static void signal_handler(int signal)
 
 	switch (signal) {
 	case SIGINT:
-		osmo_signal_dispatch(SS_GLOBAL, S_GLOBAL_SHUTDOWN, NULL);
+		osmo_signal_dispatch(SS_L_GLOBAL, S_L_GLOBAL_SHUTDOWN, NULL);
 		sleep(1);
 		exit(0);
 		break;
@@ -199,6 +200,31 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
+/* default categories */
+static struct log_info_cat gprs_categories[] = {
+	[DGPRS] = {
+		.name = "DGPRS",
+		.description = "GPRS Packet Service",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+	[DNS] = {
+		.name = "DNS",
+		.description = "GPRS Network Service (NS)",
+		.enabled = 1, .loglevel = LOGL_INFO,
+	},
+	[DBSSGP] = {
+		.name = "DBSSGP",
+		.description = "GPRS BSS Gateway Protocol (BSSGP)",
+		.enabled = 1, .loglevel = LOGL_DEBUG,
+	},
+};
+
+static const struct log_info gprs_log_info = {
+	.filter_fn = gprs_log_filter_fn,
+	.cat = gprs_categories,
+	.num_cat = ARRAY_SIZE(gprs_categories),
+};
+
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
@@ -213,11 +239,11 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	osmo_init_logging(&log_info);
+	osmo_init_logging(&gprs_log_info);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(&log_info);
+	logging_vty_add_cmds(&gprs_log_info);
 	gbproxy_vty_init();
 
 	handle_options(argc, argv);
@@ -228,14 +254,16 @@ int main(int argc, char **argv)
 	if (rc < 0)
 		exit(1);
 
-	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb);
+	bssgp_nsi = gprs_ns_instantiate(&proxy_ns_cb, tall_bsc_ctx);
 	if (!bssgp_nsi) {
 		LOGP(DGPRS, LOGL_ERROR, "Unable to instantiate NS\n");
 		exit(1);
 	}
 	gbcfg.nsi = bssgp_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
-	osmo_signal_register_handler(SS_NS, &gbprox_signal, NULL);
+	gprs_ns_set_log_ss(DNS);
+	bssgp_set_log_ss(DBSSGP);
+	osmo_signal_register_handler(SS_L_NS, &gbprox_signal, NULL);
 
 	rc = gbproxy_parse_config(config_file, &gbcfg);
 	if (rc < 0) {
@@ -243,7 +271,7 @@ int main(int argc, char **argv)
 		exit(2);
 	}
 
-	if (!nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
+	if (!gprs_nsvc_by_nsei(gbcfg.nsi, gbcfg.nsip_sgsn_nsei)) {
 		LOGP(DGPRS, LOGL_FATAL, "You cannot proxy to NSEI %u "
 			"without creating that NSEI before\n",
 			gbcfg.nsip_sgsn_nsei);

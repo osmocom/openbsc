@@ -45,6 +45,7 @@ AC_SUBST(osmo_ac_build_bsc)
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.1)
 
 dnl checks for header files
 AC_HEADER_STDC
@@ -101,7 +102,6 @@ AC_OUTPUT(
     src/osmo-bsc_mgcp/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
-    src/libgb/Makefile
     src/gprs/Makefile
     tests/Makefile
     tests/debug/Makefile

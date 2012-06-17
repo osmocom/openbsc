@@ -4,7 +4,7 @@
 
 #include <osmocom/core/msgb.h>
 
-#include <openbsc/gprs_ns.h>
+#include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/vty/command.h>
 
 struct gbproxy_config {
@@ -17,6 +17,8 @@ struct gbproxy_config {
 
 extern struct gbproxy_config gbcfg;
 extern struct cmd_element show_gbproxy_cmd;
+extern struct cmd_element delete_gb_bvci_cmd;
+extern struct cmd_element delete_gb_nsei_cmd;
 
 /* gb_proxy_vty .c */
 
@@ -27,7 +29,7 @@ int gbproxy_parse_config(const char *config_file, struct gbproxy_config *cfg);
 /* gb_proxy.c */
 
 /* Main input function for Gb proxy */
-int gbprox_rcvmsg(struct msgb *msg, struct gprs_nsvc *nsvc, uint16_t ns_bvci);
+int gbprox_rcvmsg(struct msgb *msg, uint16_t nsei, uint16_t ns_bvci, uint16_t nsvci);
 
 int gbprox_signal(unsigned int subsys, unsigned int signal,
 		  void *handler_data, void *signal_data);
@@ -35,4 +37,7 @@ int gbprox_signal(unsigned int subsys, unsigned int signal,
 /* Reset all persistent NS-VC's */
 int gbprox_reset_persistent_nsvcs(struct gprs_ns_inst *nsi);
 
+int gbprox_dump_global(FILE *stream, int indent, int verbose);
+int gbprox_dump_peers(FILE *stream, int indent, int verbose);
+void gbprox_reset();
 #endif

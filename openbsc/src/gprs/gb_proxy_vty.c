@@ -24,9 +24,10 @@
 
 #include <osmocom/core/talloc.h>
 
+#include <osmocom/gprs/gprs_ns.h>
+
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
-#include <openbsc/gprs_ns.h>
 #include <openbsc/vty.h>
 
 #include <osmocom/vty/command.h>
@@ -39,7 +40,7 @@ static struct gbproxy_config *g_cfg = NULL;
  */
 static struct cmd_node gbproxy_node = {
 	GBPROXY_NODE,
-	"%s(gbproxy)#",
+	"%s(config-gbproxy)# ",
 	1,
 };
 
@@ -65,7 +66,9 @@ DEFUN(cfg_gbproxy,
 DEFUN(cfg_nsip_sgsn_nsei,
       cfg_nsip_sgsn_nsei_cmd,
       "sgsn nsei <0-65534>",
-      "Set the NSEI to be used in the connection with the SGSN")
+      "SGSN information\n"
+      "NSEI to be used in the connection with the SGSN\n"
+      "The NSEI\n")
 {
 	unsigned int port = atoi(argv[0]);
 
@@ -77,11 +80,12 @@ int gbproxy_vty_init(void)
 {
 	install_element_ve(&show_gbproxy_cmd);
 
+	install_element(ENABLE_NODE, &delete_gb_bvci_cmd);
+	install_element(ENABLE_NODE, &delete_gb_nsei_cmd);
+
 	install_element(CONFIG_NODE, &cfg_gbproxy_cmd);
 	install_node(&gbproxy_node, config_write_gbproxy);
-	install_default(GBPROXY_NODE);
-	install_element(GBPROXY_NODE, &ournode_exit_cmd);
-	install_element(GBPROXY_NODE, &ournode_end_cmd);
+	vty_install_default(GBPROXY_NODE);
 	install_element(GBPROXY_NODE, &cfg_nsip_sgsn_nsei_cmd);
 
 	return 0;
