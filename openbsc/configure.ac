@@ -45,6 +45,7 @@ PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.1)
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
@@ -114,9 +115,6 @@ AM_CONFIG_HEADER(bscconfig.h)
 AC_OUTPUT(
     openbsc.pc
     include/openbsc/Makefile
-    include/osmocom/Makefile
-    include/osmocom/gprs/Makefile
-    include/osmocom/gprs/protocol/Makefile
     include/Makefile
     src/Makefile
     src/libtrau/Makefile
@@ -131,7 +129,6 @@ AC_OUTPUT(
     src/osmo-bsc_mgcp/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
-    src/libgb/Makefile
     src/gprs/Makefile
     tests/Makefile
     tests/atlocal
