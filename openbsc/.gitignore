@@ -1,4 +1,5 @@
 *.o
+*.lo
 *.a
 .deps
 Makefile
@@ -11,17 +12,22 @@ src/osmo-bsc_mgcp/osmo-bsc_mgcp
 src/osmo-bsc/osmo-bsc
 *.*~
 *.sw?
+.libs
 
 #configure
 aclocal.m4
 autom4te.cache/
 config.log
 config.status
+config.guess
+config.sub
 configure
 depcomp
 install-sh
 missing
 stamp-h1
+libtool
+ltmain.sh
 
 # git-version-gen magic
 .tarball-version
