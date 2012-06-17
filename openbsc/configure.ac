@@ -116,6 +116,7 @@ AC_OUTPUT(
     include/openbsc/Makefile
     include/osmocom/Makefile
     include/osmocom/gprs/Makefile
+    include/osmocom/gprs/protocol/Makefile
     include/Makefile
     src/Makefile
     src/libtrau/Makefile
