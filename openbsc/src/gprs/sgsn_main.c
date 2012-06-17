@@ -88,7 +88,7 @@ static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 	switch (event) {
 	case GPRS_NS_EVT_UNIT_DATA:
 		/* hand the message into the BSSGP implementation */
-		rc = gprs_bssgp_rcvmsg(msg);
+		rc = bssgp_rcvmsg(msg);
 		break;
 	default:
 		LOGP(DGPRS, LOGL_ERROR, "SGSN: Unknown event %u from NS\n", event);
@@ -320,7 +320,7 @@ int main(int argc, char **argv)
 		exit(1);
 
 	gprs_ns_set_log_ss(DNS);
-	gprs_bssgp_set_log_ss(DBSSGP);
+	bssgp_set_log_ss(DBSSGP);
 
 	sgsn_nsi = gprs_ns_instantiate(&sgsn_ns_cb, tall_bsc_ctx);
 	if (!sgsn_nsi) {
@@ -332,7 +332,7 @@ int main(int argc, char **argv)
 	gprs_llc_init("/usr/local/lib/osmocom/crypt/");
 
 	gprs_ns_vty_init(bssgp_nsi);
-	gprs_bssgp_vty_init();
+	bssgp_vty_init();
 	gprs_llc_vty_init();
 	gprs_sndcp_vty_init();
 	/* FIXME: register signal handler for SS_L_NS */

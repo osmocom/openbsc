@@ -446,7 +446,7 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 		pinfo.ptmsi = &mm->p_tmsi;
 		pinfo.drx_params = mm->drx_parms;
 		pinfo.qos[0] = 0; // FIXME
-		rc = gprs_bssgp_tx_paging(mm->nsei, 0, &pinfo);
+		rc = bssgp_tx_paging(mm->nsei, 0, &pinfo);
 		rate_ctr_inc(&mm->ctrg->ctr[GMM_CTR_PAGING_PS]);
 		/* FIXME: queue the packet we received from GTP */
 		break;

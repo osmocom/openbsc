@@ -51,7 +51,7 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
 
-	return gprs_bssgp_tx_dl_ud(msg, 1000, &dup);
+	return bssgp_tx_dl_ud(msg, 1000, &dup);
 }
 
 

@@ -262,7 +262,7 @@ int main(int argc, char **argv)
 	gbcfg.nsi = bssgp_nsi;
 	gprs_ns_vty_init(bssgp_nsi);
 	gprs_ns_set_log_ss(DNS);
-	gprs_bssgp_set_log_ss(DBSSGP);
+	bssgp_set_log_ss(DBSSGP);
 	osmo_signal_register_handler(SS_L_NS, &gbprox_signal, NULL);
 
 	rc = gbproxy_parse_config(config_file, &gbcfg);
