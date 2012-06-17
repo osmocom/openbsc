@@ -48,7 +48,6 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 	dup.drx_parms = mmctx->drx_parms;
 	dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
 	dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
-	dup.pdu_lifetime = 1000; /* centi-seconds */
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
 
@@ -328,7 +327,7 @@ int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 	/* Identifiers passed down: (BVCI, NSEI) */
 
 	/* Send BSSGP-DL-UNITDATA.req */
-	return _bssgp_tx_dl_ud(msg, 1000, NULL);
+	return _bssgp_tx_dl_ud(msg, NULL);
 }
 
 /* Send XID response to LLE */

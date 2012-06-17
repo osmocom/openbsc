@@ -246,6 +246,11 @@ static int gbprox_relay2bvci(struct msgb *msg, uint16_t ptp_bvci,
 	return gbprox_relay2peer(msg, peer, ns_bvci);
 }
 
+int bssgp_prim_cb(struct osmo_prim_hdr *oph, void *ctx)
+{
+	return 0;
+}
+
 /* Receive an incoming signalling message from a BSS-side NS-VC */
 static int gbprox_rx_sig_from_bss(struct msgb *msg, struct gprs_nsvc *nsvc,
 				  uint16_t ns_bvci)

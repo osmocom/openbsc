@@ -49,6 +49,7 @@
 #include <openbsc/vty.h>
 #include <openbsc/sgsn.h>
 #include <openbsc/gprs_llc.h>
+#include <openbsc/gprs_gmm.h>
 
 #include <gtp.h>
 
@@ -97,6 +98,34 @@ static int sgsn_ns_cb(enum gprs_ns_evt event, struct gprs_nsvc *nsvc,
 		break;
 	}
 	return rc;
+}
+
+/* call-back function for the BSSGP protocol */
+int bssgp_prim_cb(struct osmo_prim_hdr *oph, void *ctx)
+{
+	struct osmo_bssgp_prim *bp;
+	bp = container_of(oph, struct osmo_bssgp_prim, oph);
+
+	switch (oph->sap) {
+	case SAP_BSSGP_LL:
+		switch (oph->primitive) {
+		case PRIM_BSSGP_UL_UD:
+			return gprs_llc_rcvmsg(oph->msg, bp->tp);
+		}
+		break;
+	case SAP_BSSGP_GMM:
+		switch (oph->primitive) {
+		case PRIM_BSSGP_GMM_SUSPEND:
+			return gprs_gmm_rx_suspend(bp->ra_id, bp->tlli);
+		case PRIM_BSSGP_GMM_RESUME:
+			return gprs_gmm_rx_resume(bp->ra_id, bp->tlli,
+						  *bp->u.resume.suspend_ref);
+		}
+		break;
+	case SAP_BSSGP_NM:
+		break;
+	}
+	return 0;
 }
 
 static void signal_handler(int signal)
