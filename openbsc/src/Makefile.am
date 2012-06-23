@@ -9,5 +9,5 @@ if BUILD_NAT
 SUBDIRS += osmo-bsc_nat
 endif
 if BUILD_BSC
-SUBDIRS += osmo-bsc
+SUBDIRS += osmo-bsc osmo-ganc
 endif
