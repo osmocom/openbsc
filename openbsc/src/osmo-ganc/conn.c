@@ -58,8 +58,11 @@ static int server_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	conn->queue.read_cb = slave_read_cb;
 	conn->queue.write_cb = slave_write_cb;
 
+	conn->queue.bfd.fd = rc;
 	conn->queue.bfd.when = BSC_FD_READ | BSC_FD_WRITE;
 	conn->queue.bfd.data = conn;
+
+	osmo_fd_register(&conn->queue.bfd);
 
 	conn->remote.host = talloc_strdup(conn, inet_ntoa(sa.sin_addr));
 	conn->remote.port = ntohs(sa.sin_port);
