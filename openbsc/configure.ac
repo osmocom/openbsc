@@ -132,6 +132,7 @@ AC_OUTPUT(
     src/osmo-bsc/Makefile
     src/osmo-bsc_nat/Makefile
     src/osmo-bsc_mgcp/Makefile
+    src/osmo-ganc/Makefile
     src/ipaccess/Makefile
     src/utils/Makefile
     src/gprs/Makefile
