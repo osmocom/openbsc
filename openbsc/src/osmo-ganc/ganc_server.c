@@ -10,6 +10,7 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/protocol/gsm_44_318.h>
+#include <osmocom/gsm/gsm48.h>
 
 #include "conn.h"
 #include "ganc_data.h"
@@ -21,14 +22,41 @@ static struct msgb *unc_msgb_alloc(void)
 
 static int unc_peer_tx(struct gan_peer *peer, struct msgb *msg)
 {
+	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr*) msg->data;
+
+	/* compute and fill-in length */
+	msg->l2h = msg->data;
+	gh->len = htons(msgb_l2len(msg)-2);
+	
 	return osmo_conn_enqueue(peer->conn, msg);
+}
+
+static int tx_unc_reg_acc(struct gan_peer *peer)
+{
+	struct msgb *msg = unc_msgb_alloc();
+	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr*) msg->data;
+
+	if (!msg)
+		return -ENOMEM;
+
+	gh->pdisc = GA_PDISC_RC;
+	gh->msg_type = GA_MT_RC_REGISTER_ACCEPT;
+
+#if 0
+	msgb_tlv_put(msg, GA_IE_GERAN_CELL_ID,,);
+	msgb_tlv_put(msg, GA_IE_LAC,,);
+	msgb_tlv_put(msg, GA_IE_GANC_CTRL_CH_DESC,,);
+	msgb_tlv_put(msg, GA_IE_TU3910_TIMER,,);
+	msgb_tlv_put(msg, GA_IE_TU3906_TIMER,,);
+#endif
+	return unc_peer_tx(peer, msg);
 }
 
 static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 			    const char *ganc_host)
 {
 	struct msgb *msg = unc_msgb_alloc();
-	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr*) msg->l2h;
+	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr*) msg->data;
 
 	if (!msg)
 		return -ENOMEM;
@@ -47,11 +75,11 @@ static int rx_unc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 {
 	struct tlv_parsed tp;
 
-	tlv_parse(&tp, &tvlv_att_def, gh->data, msg->len - sizeof(*gh), 0, 0);
+	tlv_parse(&tp, &tvlv_att_def, gh->data, htons(gh->len), 0, 0);
 
 	if (TLVP_PRESENT(&tp, GA_IE_MI)) {
 		char mi_string[32];
-		gsm48_mi_to_string(&mi_string, sizeof(mi_string),
+		gsm48_mi_to_string(mi_string, sizeof(mi_string),
 				   TLVP_VAL(&tp, GA_IE_MI), TLVP_LEN(&tp, GA_IE_MI));
 
 		printf("DISCOVERY from %s\n", mi_string);
@@ -82,8 +110,8 @@ static int rx_unc_msg(struct gan_peer *peer, struct msgb *msg)
 
 	switch (gh->pdisc) {
 	case GA_PDISC_RC:
-		return rx_unc_rc(peer, msg, gh);
 	case GA_PDISC_CSR:
+		return rx_unc_rc(peer, msg, gh);
 	case GA_PDISC_PSR:
 	default:
 		break;
@@ -95,30 +123,35 @@ static int rx_unc_msg(struct gan_peer *peer, struct msgb *msg)
 static int unc_read_cb(struct osmo_conn *conn)
 {
 	struct msgb *msg;
-	struct gan_rc_csr_hdr *gh;
-	int rc;
+	int rc, len;
 
 	msg = msgb_alloc_headroom(1024 + 128, 128, "UNC Read");
 	if (!msg)
 		return -ENOMEM;
 
-	gh = (struct gan_rc_csr_hdr *) msg->data;
-	rc = read(conn->queue.bfd.fd, msg->data, sizeof(gh->len));
+	rc = read(conn->queue.bfd.fd, msg->data, 2);
 	if (rc <= 0) {
 		msgb_free(msg);
+		osmo_conn_close(conn);
 		return rc;
-	} else if (rc != sizeof(gh->len)) {
+	} else if (rc != 2) {
 		msgb_free(msg);
+		fprintf(stderr, "unable to read 2 length bytes\n");
 		return -EIO;
 	}
 	msg->l2h = msg->data;
 	msgb_put(msg, rc);
 
-	rc = read(conn->queue.bfd.fd, msg->data, ntohs(gh->len));
-	if (rc <= 0)
-		return rc;
-	else if (rc != ntohs(gh->len)) {
+	len = ntohs(*(uint16_t *)msg->data);
+
+	rc = read(conn->queue.bfd.fd, msg->data+2, len);
+	if (rc < 0) {
 		msgb_free(msg);
+		osmo_conn_close(conn);
+		return rc;
+	} else if (rc != len) {
+		msgb_free(msg);
+		fprintf(stderr, "unable to read %u bytes following len\n", len);
 		return -EIO;
 	}
 
