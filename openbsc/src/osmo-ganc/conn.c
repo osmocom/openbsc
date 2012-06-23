@@ -129,6 +129,7 @@ void osmo_conn_close(struct osmo_conn *conn)
 {
 	close(conn->queue.bfd.fd);
 	osmo_wqueue_clear(&conn->queue);
+	osmo_fd_unregister(&conn->queue.bfd);
 	llist_del(&conn->list);
 
 	talloc_free(conn);
