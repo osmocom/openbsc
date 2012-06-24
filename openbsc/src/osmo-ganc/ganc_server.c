@@ -260,8 +260,26 @@ static int rx_csr_ul_direct_xfer(struct gan_peer *peer, struct msgb *msg,
 		sapi = *TLVP_VAL(tp, GA_IE_SAPI_ID) & 0x7;
 
 	if (TLVP_PRESENT(tp, GA_IE_L3_MSG))
-		printf("\tL3: %s\n", osmo_hexdump(TLVP_VAL(tp, GA_IE_L3_MSG),
-						  TLVP_LEN(tp, GA_IE_L3_MSG)));
+		printf("\tL3(%u): %s\n", sapi,
+		       osmo_hexdump(TLVP_VAL(tp, GA_IE_L3_MSG),
+				    TLVP_LEN(tp, GA_IE_L3_MSG)));
+	return 0;
+}
+
+/* 10.1.27 GA-CSR CLASSMARK CHANGE */
+static int rx_csr_cm_chg(struct gan_peer *peer, struct msgb *msg,
+			 struct tlv_parsed *tp)
+{
+	if (TLVP_PRESENT(tp, GA_IE_MS_CLASSMARK2) &&
+	    TLVP_LEN(tp, GA_IE_MS_CLASSMARK2) == 3)
+		memcpy(peer->cm2, TLVP_VAL(tp, GA_IE_MS_CLASSMARK2), 3);
+
+	if (TLVP_PRESENT(tp, GA_IE_MS_CLASSMARK3)) {
+		peer->cm3.len = TLVP_LEN(tp, GA_IE_MS_CLASSMARK3);
+		peer->cm3.val = talloc_memdup(peer,
+					TLVP_VAL(tp, GA_IE_MS_CLASSMARK3),
+					peer->cm3.len);
+	}
 	return 0;
 }
 
@@ -283,6 +301,10 @@ static int rx_unc_rc_csr(struct gan_peer *peer, struct msgb *msg,
 		return rx_rc_deregister(peer, msg, tp);
 	case GA_MT_CSR_UL_DIRECT_XFER:
 		return rx_csr_ul_direct_xfer(peer, msg, tp);
+	case GA_MT_CSR_CM_CHANGE:
+		return rx_csr_cm_chg(peer, msg, tp);
+	case GA_MT_RC_KEEPALIVE:
+		break;
 	default:
 		printf("\tunhandled!\n");
 		break;

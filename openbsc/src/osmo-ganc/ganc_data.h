@@ -39,6 +39,11 @@ struct gan_peer {
 	enum ganc_state csr_state;
 	char imsi[16+1];
 	uint8_t gan_classmark[2];
+	uint8_t cm2[3];
+	struct {
+		unsigned int len;
+		uint8_t *val;
+	} cm3;
 };
 
 struct ganc_net {
