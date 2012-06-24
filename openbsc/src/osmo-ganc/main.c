@@ -1,3 +1,5 @@
+/* OsmoGANC - Osmocom GAN/UMA Controller */
+
 /* (C) 2012 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
