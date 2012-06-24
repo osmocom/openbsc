@@ -6,13 +6,6 @@
 
 struct ganc_bts;
 
-struct gan_peer {
-	struct llist_head list;
-	struct osmo_conn *conn;
-	struct ganc_bts *bts;
-	uint8_t gan_release;
-};
-
 enum ganc_net_timer {
 	T3212,
 	TU3901,
@@ -30,6 +23,19 @@ enum ganc_net_timer {
 	TU4002,
 	TU4003,
 	_NUM_GANC_TIMER
+};
+
+enum ganc_state {
+	GA_S_CSR_IDLE,
+	GA_S_CSR_DEDICATED,
+};
+
+struct gan_peer {
+	struct llist_head list;
+	struct osmo_conn *conn;
+	struct ganc_bts *bts;
+	uint8_t gan_release;
+	enum ganc_state csr_state;
 };
 
 struct ganc_net {
