@@ -4,7 +4,7 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = osmo-ganc
 
-osmo_ganc_SOURCES = conn.c ganc_server.c main.c
+osmo_ganc_SOURCES = conn.c ganc_server.c ganc_data.c main.c
 
 osmo_ganc_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
 		  $(LIBOSMOSCCP_LIBS) $(LIBOSMOCORE_LIBS) \

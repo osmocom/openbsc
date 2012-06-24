@@ -39,6 +39,8 @@
 #include <openbsc/signal.h>
 #include <openbsc/vty.h>
 
+#include "ganc_data.h"
+
 
 static const char *config_file = "osmo-ganc.cfg";
 static const char *rf_ctrl = NULL;
@@ -162,6 +164,9 @@ void gsm_net_update_ctype(struct gsm_network *network)
 {
 }
 
+struct ganc_bts *g_ganc_bts;
+struct ganc_net *g_ganc_net;
+
 int main(int argc, char **argv)
 {
 	struct osmo_msc_data *msc;
@@ -169,6 +174,11 @@ int main(int argc, char **argv)
 	int rc;
 
 	tall_bsc_ctx = talloc_named_const(NULL, 1, "openbsc");
+
+	g_ganc_net = talloc_zero(tall_bsc_ctx, struct ganc_net);
+	ganc_net_init(g_ganc_net);
+	g_ganc_bts = talloc_zero(g_ganc_net, struct ganc_bts);
+	ganc_bts_init(g_ganc_bts, g_ganc_net);
 
 	osmo_init_logging(&log_info);
 
