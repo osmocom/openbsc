@@ -161,9 +161,27 @@ static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 	return unc_peer_tx(peer, msg);
 }
 
-static int rx_unc_discovery_req(struct gan_peer *peer, struct msgb *msg,
-				struct gan_rc_csr_hdr *gh)
+/* 10.1.13 GA-CSR REQUEST ACCEPT */
+static int tx_csr_request_acc(struct gan_peer *peer)
 {
+	struct msgb *msg = unc_msgb_alloc();
+
+	printf("<- GA-CSR REQUEST ACCEPT\n");
+
+	if (!msg)
+		return -ENOMEM;
+
+	push_rc_csr_hdr(msg, GA_PDISC_CSR, GA_MT_CSR_REQUEST_ACCEPT);
+
+	peer->csr_state = GA_S_CSR_DEDICATED;
+
+	return unc_peer_tx(peer, msg);
+}
+
+/* 10.1.2 GA-RC DISCOVERY REQUEST */
+static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg)
+{
+	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr *) msg->l2h;
 	struct tlv_parsed tp;
 	int rc;
 
@@ -184,22 +202,65 @@ static int rx_unc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 				"laforge.gnumonks.org");
 }
 
-static int rx_unc_register_req(struct gan_peer *peer, struct msgb *msg,
-			       struct gan_rc_csr_hdr *gh)
+/* 10.1.5 GA-RC REGISTER REQUEST */
+static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg)
 {
 	printf("-> GA-RC REGISTER REQUEST\n");
 
 	return tx_unc_reg_acc(peer);
 }
 
-static int rx_unc_rc(struct gan_peer *peer, struct msgb *msg, struct gan_rc_csr_hdr *gh)
+/* 10.1.12 GA CSR REQUEST */
+static int rx_csr_request(struct gan_peer *peer, struct msgb *msg)
+{
+	printf("-> GA-CSR REQUEST\n");
+
+	return tx_csr_request_acc(peer);
+}
+
+/* 10.1.37 GA-CSR CLEAR REQUEST */
+static int rx_csr_clear_req(struct gan_peer *peer, struct msgb *msg)
+{
+	printf("-> GA-CSR CLEAR REQUEST\n");
+
+	/* FIXME: request core network to release all dedicated resources */
+	return 0;
+}
+
+/* 10.1.20 GA-CSR RELEASE COMPLETE */
+static int rx_csr_rel_compl(struct gan_peer *peer, struct msgb *msg)
+{
+	printf("-> GA-CSR RELEASE COMPLETE\n");
+
+	peer->csr_state = GA_S_CSR_IDLE;
+
+	return 0;
+}
+
+/* 10.1.9 GA-RC DEREGISTER */
+static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg)
+{
+	/* Release all resources, MS will TCP disconnect */
+	return 0;
+}
+
+static int rx_unc_rc_csr(struct gan_peer *peer, struct msgb *msg,
+			 struct gan_rc_csr_hdr *gh)
 {
 	switch (gh->msg_type) {
 	case GA_MT_RC_DISCOVERY_REQUEST:
-		return rx_unc_discovery_req(peer, msg, gh);
+		return rx_rc_discovery_req(peer, msg);
 	case GA_MT_RC_REGISTER_REQUEST:
-		return rx_unc_register_req(peer, msg, gh);
+		return rx_rc_register_req(peer, msg);
+	case GA_MT_CSR_REQUEST:
+		return rx_csr_request(peer, msg);
+	case GA_MT_CSR_CLEAR_REQ:
+		return rx_csr_clear_req(peer, msg);
+	case GA_MT_CSR_RELEASE_COMPL:
+		return rx_csr_rel_compl(peer, msg);
 	case GA_MT_RC_DEREGISTER:
+		return rx_rc_deregister(peer, msg);
+	default:
 		break;
 	}
 
@@ -215,7 +276,7 @@ static int rx_unc_msg(struct gan_peer *peer, struct msgb *msg)
 	switch (gh->pdisc) {
 	case GA_PDISC_RC:
 	case GA_PDISC_CSR:
-		return rx_unc_rc(peer, msg, gh);
+		return rx_unc_rc_csr(peer, msg, gh);
 	case GA_PDISC_PSR:
 	default:
 		break;
