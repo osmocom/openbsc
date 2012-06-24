@@ -31,11 +31,14 @@ enum ganc_state {
 };
 
 struct gan_peer {
-	struct llist_head list;
-	struct osmo_conn *conn;
-	struct ganc_bts *bts;
-	uint8_t gan_release;
+	struct llist_head list;		/* list of all peers */
+	struct osmo_conn *conn;		/* TCP connection */
+	struct ganc_bts *bts;		/* BTS to which we belong */
+
+	uint8_t gan_release;		/* UMA/GAN release version */
 	enum ganc_state csr_state;
+	char imsi[16+1];
+	uint8_t gan_classmark[2];
 };
 
 struct ganc_net {
