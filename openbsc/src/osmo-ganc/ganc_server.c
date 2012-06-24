@@ -29,10 +29,13 @@
 #include <osmocom/core/msgb.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/protocol/gsm_44_318.h>
+#include <osmocom/gsm/gan.h>
 #include <osmocom/gsm/gsm48.h>
 
 #include "conn.h"
 #include "ganc_data.h"
+
+static struct tlv_definition tlv_att_def;
 
 static void push_rc_csr_hdr(struct msgb *msg, uint8_t pdisc, uint8_t msgt)
 {
@@ -57,7 +60,7 @@ static int unc_peer_tx(struct gan_peer *peer, struct msgb *msg)
 	gh->len = htons(msgb_l2len(msg)-2);
 
 	if (peer->gan_release == 0) {
-		/* shomehow old pre-GAN UMA doesn't like RC */
+		/* shomehow old pre-GAN UMA doesn't have RC */
 		if (gh->pdisc == GA_PDISC_RC)
 			gh->pdisc = GA_PDISC_CSR;
 	}
@@ -104,6 +107,7 @@ static void gsm48_cell_desc(struct gsm48_cell_desc *cd, uint8_t bsic, uint16_t a
 	cd->arfcn_lo = arfcn & 0xff;
 }
 
+/* 10.1.6: GA-RC REGISTER ACCEPT */
 static int tx_unc_reg_acc(struct gan_peer *peer)
 {
 	struct msgb *msg = unc_msgb_alloc();
@@ -143,6 +147,7 @@ static int tx_unc_reg_acc(struct gan_peer *peer)
 	return unc_peer_tx(peer, msg);
 }
 
+/* 10.1.3: GA-RC DISCOVERY ACCEPT */
 static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 			    const char *ganc_host)
 {
@@ -179,88 +184,107 @@ static int tx_csr_request_acc(struct gan_peer *peer)
 }
 
 /* 10.1.2 GA-RC DISCOVERY REQUEST */
-static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg)
+static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
+				struct tlv_parsed *tp)
 {
-	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr *) msg->l2h;
-	struct tlv_parsed tp;
-	int rc;
-
-	printf("-> GA-RC DISCOVERY REQUEST\n");
-	rc = tlv_parse(&tp, &tvlv_att_def, gh->data, htons(gh->len), 0, 0);
-	if (rc < 0)
-		fprintf(stderr, "error %d during tlv_parse\n", rc);
-
-	if (TLVP_PRESENT(&tp, GA_IE_MI)) {
-		char mi_string[32];
-		gsm48_mi_to_string(mi_string, sizeof(mi_string),
-				   TLVP_VAL(&tp, GA_IE_MI), TLVP_LEN(&tp, GA_IE_MI));
-
-		printf("DISCOVERY from %s\n", mi_string);
+	if (TLVP_PRESENT(tp, GA_IE_MI)) {
+		gsm48_mi_to_string(peer->imsi, sizeof(peer->imsi),
+				   TLVP_VAL(tp, GA_IE_MI), TLVP_LEN(tp, GA_IE_MI));
+		printf("\tfrom %s\n", peer->imsi);
 	}
+	if (TLVP_PRESENT(tp, GA_IE_GAN_RELEASE_IND))
+		peer->gan_release = *TLVP_VAL(tp, GA_IE_GAN_RELEASE_IND);
+	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
+		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
 	return tx_unc_disco_acc(peer, "segw.uma.sysmocom.de",
 				"laforge.gnumonks.org");
 }
 
 /* 10.1.5 GA-RC REGISTER REQUEST */
-static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg)
+static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
+			      struct tlv_parsed *tp)
 {
-	printf("-> GA-RC REGISTER REQUEST\n");
+	if (TLVP_PRESENT(tp, GA_IE_MI)) {
+		gsm48_mi_to_string(peer->imsi, sizeof(peer->imsi),
+				   TLVP_VAL(tp, GA_IE_MI), TLVP_LEN(tp, GA_IE_MI));
+		printf("\tfrom %s\n", peer->imsi);
+	}
+	if (TLVP_PRESENT(tp, GA_IE_GAN_RELEASE_IND))
+		peer->gan_release = *TLVP_VAL(tp, GA_IE_GAN_RELEASE_IND);
+	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
+		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
 	return tx_unc_reg_acc(peer);
 }
 
 /* 10.1.12 GA CSR REQUEST */
-static int rx_csr_request(struct gan_peer *peer, struct msgb *msg)
+static int rx_csr_request(struct gan_peer *peer, struct msgb *msg,
+			  struct tlv_parsed *tp)
 {
-	printf("-> GA-CSR REQUEST\n");
-
 	return tx_csr_request_acc(peer);
 }
 
 /* 10.1.37 GA-CSR CLEAR REQUEST */
-static int rx_csr_clear_req(struct gan_peer *peer, struct msgb *msg)
+static int rx_csr_clear_req(struct gan_peer *peer, struct msgb *msg,
+			    struct tlv_parsed *tp)
 {
-	printf("-> GA-CSR CLEAR REQUEST\n");
-
 	/* FIXME: request core network to release all dedicated resources */
 	return 0;
 }
 
 /* 10.1.20 GA-CSR RELEASE COMPLETE */
-static int rx_csr_rel_compl(struct gan_peer *peer, struct msgb *msg)
+static int rx_csr_rel_compl(struct gan_peer *peer, struct msgb *msg,
+			    struct tlv_parsed *tp)
 {
-	printf("-> GA-CSR RELEASE COMPLETE\n");
-
 	peer->csr_state = GA_S_CSR_IDLE;
 
 	return 0;
 }
 
 /* 10.1.9 GA-RC DEREGISTER */
-static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg)
+static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg,
+			    struct tlv_parsed *tp)
 {
 	/* Release all resources, MS will TCP disconnect */
 	return 0;
 }
 
+/* 10.1.23 GA-CSR UL DIRECT XFER */
+static int rx_csr_ul_direct_xfer(struct gan_peer *peer, struct msgb *msg,
+				 struct tlv_parsed *tp)
+{
+	uint8_t sapi = 0;
+
+	if (TLVP_PRESENT(tp, GA_IE_SAPI_ID))
+		sapi = *TLVP_VAL(tp, GA_IE_SAPI_ID) & 0x7;
+
+	if (TLVP_PRESENT(tp, GA_IE_L3_MSG))
+		printf("\tL3: %s\n", osmo_hexdump(TLVP_VAL(tp, GA_IE_L3_MSG),
+						  TLVP_LEN(tp, GA_IE_L3_MSG)));
+	return 0;
+}
+
 static int rx_unc_rc_csr(struct gan_peer *peer, struct msgb *msg,
-			 struct gan_rc_csr_hdr *gh)
+			 struct gan_rc_csr_hdr *gh, struct tlv_parsed *tp)
 {
 	switch (gh->msg_type) {
 	case GA_MT_RC_DISCOVERY_REQUEST:
-		return rx_rc_discovery_req(peer, msg);
+		return rx_rc_discovery_req(peer, msg, tp);
 	case GA_MT_RC_REGISTER_REQUEST:
-		return rx_rc_register_req(peer, msg);
+		return rx_rc_register_req(peer, msg, tp);
 	case GA_MT_CSR_REQUEST:
-		return rx_csr_request(peer, msg);
+		return rx_csr_request(peer, msg, tp);
 	case GA_MT_CSR_CLEAR_REQ:
-		return rx_csr_clear_req(peer, msg);
+		return rx_csr_clear_req(peer, msg, tp);
 	case GA_MT_CSR_RELEASE_COMPL:
-		return rx_csr_rel_compl(peer, msg);
+		return rx_csr_rel_compl(peer, msg, tp);
 	case GA_MT_RC_DEREGISTER:
-		return rx_rc_deregister(peer, msg);
+		return rx_rc_deregister(peer, msg, tp);
+	case GA_MT_CSR_UL_DIRECT_XFER:
+		return rx_csr_ul_direct_xfer(peer, msg, tp);
 	default:
+		printf("\tunhandled!\n");
 		break;
 	}
 
@@ -270,13 +294,23 @@ static int rx_unc_rc_csr(struct gan_peer *peer, struct msgb *msg,
 static int rx_unc_msg(struct gan_peer *peer, struct msgb *msg)
 {
 	struct gan_rc_csr_hdr *gh = (struct gan_rc_csr_hdr *) msg->l2h;
+	struct tlv_parsed tp;
+	int len = ntohs(gh->len);
+	int rc;
 
-	printf("PDISC=%u TYPE=%u\n", gh->pdisc, gh->msg_type);
+	printf("-> (%u) %s\n", gh->pdisc, get_value_string(gan_msgt_vals, gh->msg_type));
+
+	if (len > 2) {
+		rc = tlv_parse(&tp, &tlv_att_def, gh->data, len - 2, 0, 0);
+		if (rc < 0)
+			fprintf(stderr, "error %d during tlv_parse\n", rc);
+	} else
+		memset(&tp, 0, sizeof(tp));
 
 	switch (gh->pdisc) {
 	case GA_PDISC_RC:
 	case GA_PDISC_CSR:
-		return rx_unc_rc_csr(peer, msg, gh);
+		return rx_unc_rc_csr(peer, msg, gh, &tp);
 	case GA_PDISC_PSR:
 	default:
 		break;
@@ -340,6 +374,10 @@ static void unc_accept_cb(struct osmo_conn *conn)
 int ganc_server_start(const char *host, uint16_t port)
 {
 	struct osmo_link *link;
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(tlv_att_def.def); i++)
+		tlv_att_def.def[i].type = TLV_TYPE_TLV;
 
 	link = osmo_link_create(NULL, host, port, unc_read_cb, 10);
 	if (!link)
