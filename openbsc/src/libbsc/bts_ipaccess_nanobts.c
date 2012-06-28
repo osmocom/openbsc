@@ -123,6 +123,7 @@ static unsigned char nanobts_attr_radio[] = {
 
 static unsigned char nanobts_attr_nse[] = {
 	NM_ATT_IPACC_NSEI, 0, 2,  0x03, 0x9d, /* NSEI 925 */
+	/* all timers in seconds */
 	NM_ATT_IPACC_NS_CFG, 0, 7,  3,  /* (un)blocking timer (Tns-block) */
 				    3,  /* (un)blocking retries */
 				    3,  /* reset timer (Tns-reset) */
@@ -130,11 +131,12 @@ static unsigned char nanobts_attr_nse[] = {
 				    30,  /* test timer (Tns-test) */
 				    3,  /* alive timer (Tns-alive) */
 				    10, /* alive retrires */
+	/* all timers in seconds, unless otherwise stated */
 	NM_ATT_IPACC_BSSGP_CFG, 0, 11,
 				    3,  /* blockimg timer (T1) */
 				    3,  /* blocking retries */
 				    3,  /* unblocking retries */
-				    3,  /* reset timer */
+				    3,  /* reset timer (T2) */
 				    3,  /* reset retries */
 				    10, /* suspend timer (T3) in 100ms */
 				    3,  /* suspend retries */
@@ -150,11 +152,12 @@ static unsigned char nanobts_attr_cell[] = {
 		5,	/* repeat time (50ms) */
 		3,	/* repeat count */
 	NM_ATT_IPACC_BVCI, 0, 2,  0x03, 0x9d, /* BVCI 925 */
+	/* all timers in seconds, unless otherwise stated */
 	NM_ATT_IPACC_RLC_CFG, 0, 9,
 		20, 	/* T3142 */
 		5, 	/* T3169 */
 		5,	/* T3191 */
-		200,	/* T3193 */
+		200,	/* T3193 (units of 10ms) */
 		5,	/* T3195 */
 		10,	/* N3101 */
 		4,	/* N3103 */
