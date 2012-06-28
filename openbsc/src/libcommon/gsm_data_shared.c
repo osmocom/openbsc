@@ -173,6 +173,28 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 static const uint8_t bts_nse_timer_default[] = { 3, 3, 3, 3, 30, 3, 10 };
 static const uint8_t bts_cell_timer_default[] =
 				{ 3, 3, 3, 3, 3, 10, 3, 10, 3, 10, 3 };
+static const struct gprs_rlc_cfg rlc_cfg_default = {
+	.parameter = {
+		[RLC_T3142] = 20,
+		[RLC_T3169] = 5,
+		[RLC_T3191] = 5,
+		[RLC_T3193] = 200, /* 10ms */
+		[RLC_T3195] = 5,
+		[RLC_N3101] = 10,
+		[RLC_N3103] = 4,
+		[RLC_N3105] = 8,
+		[CV_COUNTDOWN] = 15,
+		[T_DL_TBF_EXT] = 250 * 10, /* ms */
+		[T_UL_TBF_EXT] = 250 * 10, /* ms */
+	},
+	.paging = {
+		.repeat_time = 5 * 50, /* ms */
+		.repeat_count = 3,
+	},
+	.cs_mask = 0x1fff,
+	.initial_cs = 2,
+	.initial_mcs = 6,
+};
 
 struct gsm_bts *gsm_bts_alloc(void *ctx)
 {
@@ -205,6 +227,8 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 		sizeof(bts->gprs.cell.timer));
 	gsm_mo_init(&bts->gprs.cell.mo, bts, NM_OC_GPRS_CELL,
 			bts->nr, 0xff, 0xff);
+	memcpy(&bts->gprs.cell.rlc_cfg, &rlc_cfg_default,
+		sizeof(bts->gprs.cell.rlc_cfg));
 
 	/* create our primary TRX */
 	bts->c0 = gsm_bts_trx_alloc(bts);
