@@ -47,8 +47,8 @@ struct gan_peer {
 };
 
 struct ganc_net {
-	uint8_t country_code;
-	uint8_t network_code;
+	uint16_t country_code;
+	uint16_t network_code;
 
 	uint16_t timer[_NUM_GANC_TIMER];
 
