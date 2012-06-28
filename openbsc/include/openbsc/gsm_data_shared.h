@@ -433,6 +433,50 @@ struct gsm_bts_gprs_nsvc {
 	struct gsm_abis_mo mo;
 };
 
+enum gprs_rlc_par {
+	RLC_T3142,
+	RLC_T3169,
+	RLC_T3191,
+	RLC_T3193,
+	RLC_T3195,
+	RLC_N3101,
+	RLC_N3103,
+	RLC_N3105,
+	CV_COUNTDOWN,
+	T_DL_TBF_EXT,	/* ms */
+	T_UL_TBF_EXT,	/* ms */
+	_NUM_RLC_PAR
+};
+
+enum gprs_cs {
+	GPRS_CS1,
+	GPRS_CS2,
+	GPRS_CS3,
+	GPRS_CS4,
+	GPRS_MCS1,
+	GPRS_MCS2,
+	GPRS_MCS3,
+	GPRS_MCS4,
+	GPRS_MCS5,
+	GPRS_MCS6,
+	GPRS_MCS7,
+	GPRS_MCS8,
+	GPRS_MCS9,
+	_NUM_GRPS_CS
+};
+
+struct gprs_rlc_cfg {
+	uint16_t parameter[_NUM_RLC_PAR];
+	struct {
+		uint16_t repeat_time; /* ms */
+		uint8_t repeat_count;
+	} paging;
+	uint32_t cs_mask; /* bitmask of gprs_cs */
+	uint8_t initial_cs;
+	uint8_t initial_mcs;
+};
+
+
 enum neigh_list_manual_mode {
 	NL_MODE_AUTOMATIC = 0,
 	NL_MODE_MANUAL = 1,
@@ -553,6 +597,7 @@ struct gsm_bts {
 			struct gsm_abis_mo mo;
 			uint16_t bvci;
 			uint8_t timer[11];
+			struct gprs_rlc_cfg rlc_cfg;
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
 		uint8_t rac;
