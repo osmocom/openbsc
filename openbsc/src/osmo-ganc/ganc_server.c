@@ -147,6 +147,28 @@ static int tx_unc_reg_acc(struct gan_peer *peer)
 	return unc_peer_tx(peer, msg);
 }
 
+static int push_fqdn_or_ip(struct msgb *msg, const char *host,
+			   uint8_t fqdn_att, uint8_t ip_att)
+{
+	struct in_addr ia;
+	int rc;
+
+	rc = inet_aton(host, &ia);
+	if (rc == 0) {
+		/* it is not an IP address */
+		msgb_tlv_put(msg, fqdn_att, strlen(host)+1,
+			     (uint8_t *) host);
+	} else {
+		uint8_t buf[5];
+
+		buf[0] = 0x21; /* Type: IPv4 */
+		memcpy(buf+1, &ia, 4);
+		msgb_tlv_put(msg, ip_att, sizeof(buf), buf);
+	}
+
+	return rc;
+}
+
 /* 10.1.3: GA-RC DISCOVERY ACCEPT */
 static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 			    const char *ganc_host)
@@ -159,9 +181,10 @@ static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 		return -ENOMEM;
 
 	push_rc_csr_hdr(msg, GA_PDISC_RC, GA_MT_RC_DISCOVERY_ACCEPT);
-
-	msgb_tlv_put(msg, GA_IE_DEF_SEGW_FQDN, strlen(segw_host)+1, (uint8_t *) segw_host);
-	msgb_tlv_put(msg, GA_IE_DEF_GANC_FQDN, strlen(ganc_host)+1, (uint8_t *) ganc_host);
+	push_fqdn_or_ip(msg, segw_host,
+			GA_IE_DEF_SEGW_FQDN, GA_IE_DEF_SEGW_IP);
+	push_fqdn_or_ip(msg, ganc_host,
+			GA_IE_DEF_GANC_FQDN, GA_IE_DEF_GANC_IP);
 
 	return unc_peer_tx(peer, msg);
 }
