@@ -78,6 +78,9 @@ static void build_gan_cch_desc(struct gan_cch_desc_ie *ie, struct ganc_bts *bts)
 {
 	struct ganc_net *net = bts->net;
 
+	/* properly initialize to zero */
+	memset(&ie, 0, sizeof(ie));
+
 	ie->ecmc = 0;	/* Early Classmark allowed */
 	ie->nmo = 0;	/* NMO 1 */
 	if (net->gprs.mode != 0)
