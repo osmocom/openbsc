@@ -14,8 +14,8 @@ void ganc_bts_init(struct ganc_bts *bts, struct ganc_net *net)
 
 void ganc_net_init(struct ganc_net *net)
 {
-	net->country_code = 1;
-	net->network_code = 1;
+	net->country_code = 901;
+	net->network_code = 70;
 
 	net->timer[TU3901] = 30;	/* seconds */
 	net->timer[TU3902] = 30;	/* seconds */
