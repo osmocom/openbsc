@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <errno.h>
+#include <assert.h>
 
 #include <arpa/inet.h>
 
@@ -188,6 +189,38 @@ static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 			GA_IE_DEF_SEGW_FQDN, GA_IE_DEF_SEGW_IP);
 	push_fqdn_or_ip(msg, ganc_host,
 			GA_IE_DEF_GANC_FQDN, GA_IE_DEF_GANC_IP);
+
+	return unc_peer_tx(peer, msg);
+}
+
+/* 10.1.25 GA-CSR DOWNLINK DIRECT TRANSFER */
+static int tx_csr_dl_direct_xfer(struct gan_peer *peer, struct msgb *msg)
+{
+	printf("<- GA-CSR DL DIRECT TRANSFER\n");
+
+	/* tag and length of L3 info */
+	assert(msgb_l3len(msg) <= 255);
+	msgb_tv_push(msg, GA_IE_L3_MSG, msgb_l3len(msg));
+
+	push_rc_csr_hdr(msg, GA_PDISC_CSR, GA_MT_CSR_DL_DIRECT_XFER);
+
+	return unc_peer_tx(peer, msg);
+}
+
+/* 10.1.21 GA-CSR PAGING REQUEST */
+static int tx_csr_paging_req(struct gan_peer *peer, uint8_t mi_len,
+			     uint8_t *mi, uint8_t chan_needed)
+{
+	struct msgb *msg = unc_msgb_alloc();
+
+	printf("<- GA-CSR PAGING REQ\n");
+
+	if (!msg)
+		return -ENOMEM;
+
+	push_rc_csr_hdr(msg, GA_PDISC_CSR, GA_MT_CSR_PAGING_REQ);
+	msgb_tlv_put(msg, GA_IE_CHAN_NEEDED, 1, &chan_needed);
+	msgb_tlv_put(msg, GA_IE_MI, mi_len, mi);
 
 	return unc_peer_tx(peer, msg);
 }
