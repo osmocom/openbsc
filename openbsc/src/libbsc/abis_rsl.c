@@ -918,11 +918,15 @@ static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
 		prefix, mru->full.rx_qual, prefix, mru->sub.rx_qual);
 }
 
-static void print_meas_rep(struct gsm_meas_rep *mr)
+static void print_meas_rep(struct gsm_lchan *lchan, struct gsm_meas_rep *mr)
 {
 	int i;
+	char *name = "";
 
-	DEBUGP(DMEAS, "MEASUREMENT RESULT NR=%d ", mr->nr);
+	if (lchan && lchan->conn && lchan->conn->subscr)
+		name = subscr_name(lchan->conn->subscr);
+
+	DEBUGP(DMEAS, "[%s] MEASUREMENT RESULT NR=%d ", name, mr->nr);
 
 	if (mr->flags & MEAS_REP_F_DL_DTX)
 		DEBUGPC(DMEAS, "DTXd ");
@@ -1027,7 +1031,7 @@ static int rsl_rx_meas_res(struct msgb *msg)
 			return rc;
 	}
 
-	print_meas_rep(mr);
+	print_meas_rep(msg->lchan, mr);
 
 	send_lchan_signal(S_LCHAN_MEAS_REP, msg->lchan, mr);
 
