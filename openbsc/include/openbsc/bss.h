@@ -15,4 +15,5 @@ extern int bts_model_rbs2k_init(void);
 extern int bts_model_nanobts_init(void);
 extern int bts_model_hslfemto_init(void);
 extern int bts_model_nokia_site_init(void);
+extern int bts_model_sysmobts_init(void);
 #endif

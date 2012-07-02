@@ -610,6 +610,7 @@ static int abis_nm_rcvmsg_manuf(struct msgb *mb)
 
 	switch (bts_type) {
 	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
 		rc = abis_nm_rx_ipacc(mb);
 		abis_nm_queue_send_next(sign_link->trx->bts);
 		break;
@@ -1531,6 +1532,9 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 			break;
 		}
 		return -EINVAL;
+	case GSM_BTS_TYPE_OSMO_SYSMO:
+		/* no known restrictions */
+		return 0;
 	default:
 		/* unknown BTS type */
 		return 0;

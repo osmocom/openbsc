@@ -1500,6 +1500,7 @@ static int tch_map(struct gsm_lchan *lchan, struct gsm_lchan *remote_lchan)
 	// todo: map between different bts types
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
 		if (!ipacc_rtp_direct) {
 			/* connect the TCH's to our RTP proxy */
 			rc = rsl_ipacc_mdcx_to_rtpsock(lchan);
@@ -1571,6 +1572,7 @@ static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable)
 
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
 		if (ipacc_rtp_direct) {
 			LOGP(DCC, LOGL_ERROR, "Error: RTP proxy is disabled\n");
 			return -EINVAL;
@@ -2879,6 +2881,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 		bts = trans->conn->lchan->ts->trx->bts;
 		switch (bts->type) {
 		case GSM_BTS_TYPE_NANOBTS:
+		case GSM_BTS_TYPE_OSMO_SYSMO:
 			if (!trans->conn->lchan->abis_ip.rtp_socket) {
 				DEBUGP(DMNCC, "TCH frame to lchan without RTP connection\n");
 				return 0;

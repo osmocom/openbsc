@@ -517,6 +517,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	}
 	switch (bts->type) {
 	case GSM_BTS_TYPE_NANOBTS:
+	case GSM_BTS_TYPE_OSMO_SYSMO:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
 		vty_out(vty, "  oml ip.access stream_id %u line %u%s",
