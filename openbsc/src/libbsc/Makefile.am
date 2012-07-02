@@ -14,6 +14,7 @@ libbsc_a_SOURCES =	abis_nm.c abis_nm_vty.c \
 			bts_nokia_site.c \
 			bts_hsl_femtocell.c \
 			bts_unknown.c \
+			bts_sysmobts.c \
 			chan_alloc.c \
 			gsm_subscriber_base.c \
 			handover_decision.c handover_logic.c meas_rep.c \

@@ -41,7 +41,7 @@
 static int bts_model_nanobts_start(struct gsm_network *net);
 static void bts_model_nanobts_e1line_bind_ops(struct e1inp_line *line);
 
-static struct gsm_bts_model model_nanobts = {
+struct gsm_bts_model bts_model_nanobts = {
 	.type = GSM_BTS_TYPE_NANOBTS,
 	.name = "nanobts",
 	.start = bts_model_nanobts_start,
@@ -438,7 +438,7 @@ static int sw_activ_rep(struct msgb *mb)
 }
 
 /* Callback function to be called every time we receive a signal from NM */
-static int nm_sig_cb(unsigned int subsys, unsigned int signal,
+int bts_ipa_nm_sig_cb(unsigned int subsys, unsigned int signal,
 		     void *handler_data, void *signal_data)
 {
 	if (subsys != SS_NM)
@@ -460,13 +460,14 @@ static struct gsm_network *ipaccess_gsmnet;
 
 static int bts_model_nanobts_start(struct gsm_network *net)
 {
-	model_nanobts.features.data = &model_nanobts._features_data[0];
-	model_nanobts.features.data_len = sizeof(model_nanobts._features_data);
+	bts_model_nanobts.features.data = &bts_model_nanobts._features_data[0];
+	bts_model_nanobts.features.data_len =
+				sizeof(bts_model_nanobts._features_data);
 
-	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_GPRS);
-	gsm_btsmodel_set_feature(&model_nanobts, BTS_FEAT_EGPRS);
+	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_GPRS);
+	gsm_btsmodel_set_feature(&bts_model_nanobts, BTS_FEAT_EGPRS);
 
-	osmo_signal_register_handler(SS_NM, nm_sig_cb, NULL);
+	osmo_signal_register_handler(SS_NM, bts_ipa_nm_sig_cb, NULL);
 
 	ipaccess_gsmnet = net;
 	return 0;
@@ -474,7 +475,7 @@ static int bts_model_nanobts_start(struct gsm_network *net)
 
 int bts_model_nanobts_init(void)
 {
-	return gsm_bts_model_register(&model_nanobts);
+	return gsm_bts_model_register(&bts_model_nanobts);
 }
 
 #define OML_UP         0x0001
