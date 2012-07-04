@@ -1173,10 +1173,11 @@ DEFUN(cfg_net_reject_cause,
 
 DEFUN(cfg_net_encryption,
       cfg_net_encryption_cmd,
-      "encryption a5 (0|1|2)",
+      "encryption a5 (0|1|2|3)",
 	"Encryption options\n"
 	"A5 encryption\n" "A5/0: No encryption\n"
-	"A5/1: Encryption\n" "A5/2: Export-grade Encryption\n")
+	"A5/1: Encryption\n" "A5/2: Export-grade Encryption\n"
+	"A5/3: 'New' Secure Encryption\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
