@@ -43,11 +43,16 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 	struct bssgp_dl_ud_par dup;
 	const uint8_t qos_profile_default[3] = { 0x00, 0x00, 0x20 };
 
-	dup.tlli = NULL;
-	dup.imsi = mmctx->imsi;
-	dup.drx_parms = mmctx->drx_parms;
-	dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
-	dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
+	memset(&dup, 0, sizeof(dup));
+	/* before we have received some identity from the MS, we might
+	 * not yet have a MMC context (e.g. XID negotiation of primarly
+	 * LLC connection fro GMM sapi). */
+	if (mmctx) {
+		dup.imsi = mmctx->imsi;
+		dup.drx_parms = mmctx->drx_parms;
+		dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
+		dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
+	}
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));
 
