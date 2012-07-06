@@ -229,7 +229,7 @@ static int ho_chan_activ_nack(struct gsm_lchan *new_lchan)
 
 	ho = bsc_ho_by_new_lchan(new_lchan);
 	if (!ho) {
-		LOGP(DHO, LOGL_ERROR, "unable to find HO record\n");
+		LOGP(DHO, LOGL_INFO, "ACT NACK: unable to find HO record\n");
 		return -ENODEV;
 	}
 
