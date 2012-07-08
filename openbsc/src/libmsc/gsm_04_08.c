@@ -708,18 +708,18 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	ptr8[5] = bcdify(gmt_time->tm_min);
 	ptr8[6] = bcdify(gmt_time->tm_sec);
 
-	if (bts->tz_bts_specific) {
-		/* Convert tzhr and tzmn to units */
-		if (bts->tzhr < 0) {
-			tzunits = ((bts->tzhr/-1)*4);
-			tzunits = tzunits + (bts->tzmn/15);
+	if (bts->tz.override) {
+		/* Convert tz.hr and tz.mn to units */
+		if (bts->tz.hr < 0) {
+			tzunits = ((bts->tz.hr/-1)*4);
+			tzunits = tzunits + (bts->tz.mn/15);
 			ptr8[7] = bcdify(tzunits);
 			/* Set negative time */
 			ptr8[7] |= 0x08;
 		}
 		else {
-			tzunits = bts->tzhr*4;
-			tzunits = tzunits + (bts->tzmn/15);
+			tzunits = bts->tz.hr*4;
+			tzunits = tzunits + (bts->tz.mn/15);
 			ptr8[7] = bcdify(tzunits);
 		}
 	}

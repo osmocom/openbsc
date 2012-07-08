@@ -474,8 +474,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	vty_out(vty, "  training_sequence_code %u%s", bts->tsc, VTY_NEWLINE);
 	vty_out(vty, "  base_station_id_code %u%s", bts->bsic, VTY_NEWLINE);
-	if (bts->tz_bts_specific != 0)
-		vty_out(vty, "  timezone %d %d%s", bts->tzhr, bts->tzmn, VTY_NEWLINE);
+	if (bts->tz.override != 0)
+		vty_out(vty, "  timezone %d %d%s", bts->tz.hr, bts->tz.mn, VTY_NEWLINE);
 	vty_out(vty, "  ms max power %u%s", bts->ms_max_power, VTY_NEWLINE);
 	vty_out(vty, "  cell reselection hysteresis %u%s",
 		bts->si_common.cell_sel_par.cell_resel_hyst*2, VTY_NEWLINE);
@@ -1681,9 +1681,9 @@ DEFUN(cfg_bts_timezone,
 	int tzhr = atoi(argv[0]);
 	int tzmn = atoi(argv[1]);
 
-	bts->tzhr = tzhr;
-	bts->tzmn = tzmn;
-	bts->tz_bts_specific=1;
+	bts->tz.hr = tzhr;
+	bts->tz.mn = tzmn;
+	bts->tz.override = 1;
 
 	return CMD_SUCCESS;
 }
@@ -1694,7 +1694,9 @@ DEFUN(cfg_bts_no_timezone,
       "disable bts specific timezone\n")
 {
 	struct gsm_bts *bts = vty->index;
-	bts->tz_bts_specific=0;
+
+	bts->tz.override = 0;
+
 	return CMD_SUCCESS;
 }
 
