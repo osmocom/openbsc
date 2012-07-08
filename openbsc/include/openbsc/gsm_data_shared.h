@@ -537,9 +537,11 @@ struct gsm_bts {
 	sysinfo_buf_t si_buf[_MAX_SYSINFO_TYPE];
 
 	/* TimeZone hours, mins, and bts specific */
-	int tzhr;
-	int tzmn;
-	int tz_bts_specific;
+	struct {
+		int hr;
+		int mn;
+		int override;
+	} tz;
 
 	/* ip.accesss Unit ID's have Site/BTS/TRX layout */
 	union {
