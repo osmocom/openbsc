@@ -916,10 +916,9 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 			_gsm48_rx_mm_serv_req_sec_cb, NULL);
 }
 
-static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
+static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
-	struct e1inp_sign_link *sign_link = msg->lchan->ts->trx->rsl_link;
-	struct gsm_bts *bts = msg->lchan->ts->trx->bts;
+	struct gsm_bts *bts = conn->bts;
 	struct gsm48_hdr *gh = msgb_l3(msg);
 	struct gsm48_imsi_detach_ind *idi =
 				(struct gsm48_imsi_detach_ind *) gh->data;
@@ -952,7 +951,7 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	}
 
 	if (subscr) {
-		subscr_update(subscr, sign_link->trx->bts,
+		subscr_update(subscr, bts,
 				GSM_SUBSCRIBER_UPDATE_DETACHED);
 		DEBUGP(DMM, "Subscriber: %s\n", subscr_name(subscr));
 
@@ -966,7 +965,8 @@ static int gsm48_rx_mm_imsi_detach_ind(struct msgb *msg)
 	/* FIXME: iterate over all transactions and release them,
 	 * imagine an IMSI DETACH happening during an active call! */
 
-	/* subscriber is detached: should we release lchan? */
+	release_anchor(conn);
+	msc_release_connection(conn);
 	return 0;
 }
 
@@ -1047,7 +1047,7 @@ static int gsm0408_rcv_mm(struct gsm_subscriber_connection *conn, struct msgb *m
 		release_loc_updating_req(conn);
 		break;
 	case GSM48_MT_MM_IMSI_DETACH_IND:
-		rc = gsm48_rx_mm_imsi_detach_ind(msg);
+		rc = gsm48_rx_mm_imsi_detach_ind(conn, msg);
 		break;
 	case GSM48_MT_MM_CM_REEST_REQ:
 		DEBUGP(DMM, "CM REESTABLISH REQUEST: Not implemented\n");
