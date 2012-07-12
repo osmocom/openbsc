@@ -278,7 +278,7 @@ static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
 	return tx_unc_disco_acc(peer, "segw.uma.sysmocom.de",
-				"laforge.gnumonks.org");
+				"ganc-laforge.gnumonks.org");
 }
 
 /* 10.1.5 GA-RC REGISTER REQUEST */
