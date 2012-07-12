@@ -31,7 +31,7 @@ enum ganc_state {
 };
 
 struct gan_peer {
-	struct llist_head list;		/* list of all peers */
+	struct llist_head entry;	/* list of all peers */
 	struct osmo_conn *conn;		/* TCP connection */
 	struct ganc_bts *bts;		/* BTS to which we belong */
 
@@ -44,6 +44,9 @@ struct gan_peer {
 		unsigned int len;
 		uint8_t *val;
 	} cm3;
+
+	/* bsc structures */
+	struct osmo_bsc_sccp_con *sccp_con;
 };
 
 struct ganc_net {
@@ -57,6 +60,12 @@ struct ganc_net {
 	struct {
 		int mode;
 	} gprs;
+
+	/* msc configuration */
+	struct llist_head mscs;
+
+	/* list of all peers */
+	struct llist_head peers;
 };
 
 struct ganc_bts {
@@ -72,5 +81,9 @@ void ganc_net_init(struct ganc_net *net);
 void ganc_bts_init(struct ganc_bts *bts, struct ganc_net *net);
 
 extern struct ganc_bts *g_ganc_bts;
+
+struct osmo_msc_data *ganc_msc_data_find(struct ganc_net *net, int nr);
+struct osmo_msc_data *ganc_msc_data_alloc(struct ganc_net *net, int nr);
+
 
 #endif
