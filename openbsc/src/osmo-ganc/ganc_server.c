@@ -211,6 +211,23 @@ static int tx_csr_dl_direct_xfer(struct gan_peer *peer, struct msgb *msg)
 	return unc_peer_tx(peer, msg);
 }
 
+/* 10.1.19 GA-CSR RELEASE */
+
+static int tx_csr_release(struct gan_peer *peer, uint8_t cause)
+{
+	struct msgb *msg = unc_msgb_alloc();
+
+	printf("<- GA-CSR RELEASE\n");
+
+	if (!msg)
+		return -ENOMEM;
+
+	push_rc_csr_hdr(msg, GA_PDISC_CSR, GA_MT_CSR_RELEASE);
+	msgb_tlv_put(msg, GA_IE_RR_CAUSE, 1, &cause);
+
+	return unc_peer_tx(peer, msg);
+}
+
 /* 10.1.21 GA-CSR PAGING REQUEST */
 static int tx_csr_paging_req(struct gan_peer *peer, uint8_t mi_len,
 			     uint8_t *mi, uint8_t chan_needed)
