@@ -31,4 +31,7 @@ void ganc_net_init(struct ganc_net *net)
 	net->timer[TU4002] = 5;		/* seconds */
 	net->timer[TU4003] = 5;	
 	net->timer[T3212] = 1;		/* 6 minutes */
+
+	INIT_LLIST_HEAD(&net->mscs);
+	INIT_LLIST_HEAD(&net->peers);
 }
