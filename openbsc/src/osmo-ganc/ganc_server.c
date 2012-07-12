@@ -90,7 +90,11 @@ static void build_gan_cch_desc(struct gan_cch_desc_ie *ie, struct ganc_bts *bts)
 		ie->gprs = 1;	/* No GPRS */
 	ie->dtm = 0;	/* No Dual Transfer Mode */
 	ie->att = 1;	/* IMSI attach/detach shall be used */
+#if 0
 	ie->mscr = 1;	/* Release 99 onwards */
+#else
+	ie->mscr = 0;	/* To avoid problems with 2-bit sequence number */
+#endif
 	ie->t3212 = net->timer[T3212];
 	ie->rac = bts->routing_area_code;
 	ie->sgsnr = 1;	/* Release 99 onwards */
