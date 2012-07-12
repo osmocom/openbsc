@@ -470,6 +470,11 @@ static void unc_accept_cb(struct osmo_conn *conn)
 	peer->bts = g_ganc_bts;
 	peer->conn = conn;
 	conn->priv = peer;
+
+	peer->sccp_con = NULL;
+
+	/* TODO: remove from list when closed */
+	llist_add_tail(&peer->entry, &g_ganc_bts->net->peers);
 }
 
 
