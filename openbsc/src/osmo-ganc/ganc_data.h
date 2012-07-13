@@ -3,6 +3,7 @@
 
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/timer.h>
+#include <osmocom/gsm/gsm48.h>
 #include "conn.h"
 
 struct ganc_bts;
@@ -46,6 +47,11 @@ struct gan_peer {
 		unsigned int len;
 		uint8_t *val;
 	} cm3;
+	uint8_t *ms_radio_id;
+	uint8_t *ap_radio_id;
+	char *ap_serv_name;
+	struct gprs_ra_id ra_id;
+	uint16_t cell_id;
 
 	struct osmo_timer_list keepalive_timer;
 
