@@ -66,18 +66,20 @@ static struct gan_peer *gan_peer_by_imsi_f(const char *imsi, uint32_t flag)
 /* destroy a peer, including anything that may hang off it */
 static void gan_peer_destroy(struct gan_peer *peer)
 {
+	struct osmo_conn *conn = peer->conn;
+
 	if (!peer)
 		return;
 
 	osmo_timer_del(&peer->keepalive_timer);
 	llist_del(&peer->entry);
 
-	if (peer->conn) {
-		osmo_conn_close(peer->conn);
-		peer->conn = NULL;
-	}
-
 	talloc_free(peer);
+
+	/* we can only free conn after peer, as peer is a sub-object of
+	 * ocnn in the talloc hierarchical allocator */
+	if (conn)
+		osmo_conn_close(peer->conn);
 }
 
 static struct msgb *unc_msgb_alloc(void)
@@ -334,6 +336,8 @@ static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
 	if (TLVP_PRESENT(tp, GA_IE_MI)) {
 		struct gan_peer *stale_peer;
 		char imsi[sizeof(peer->imsi)];
+
+		memset(imsi, 0, sizeof(imsi));
 		gsm48_mi_to_string(imsi, sizeof(imsi),
 				   TLVP_VAL(tp, GA_IE_MI), TLVP_LEN(tp, GA_IE_MI));
 		printf("\tfrom %s\n", imsi);
