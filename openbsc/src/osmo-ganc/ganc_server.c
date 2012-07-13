@@ -473,6 +473,7 @@ static int unc_read_cb(struct osmo_conn *conn)
 	msgb_put(msg, rc);
 
 	return rx_unc_msg(conn->priv, msg);
+	/* FIXME: we have to free the msgb!! */
 }
 
 static void unc_accept_cb(struct osmo_conn *conn)
