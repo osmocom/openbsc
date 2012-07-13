@@ -190,6 +190,7 @@ int main(int argc, char **argv)
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
 	//bsc_vty_init(&log_info);
+	ganc_vty_init_extra();
 
 	/* parse options */
 	handle_options(argc, argv);
@@ -202,6 +203,10 @@ int main(int argc, char **argv)
 
 
 	ganc_server_start(NULL, 14001);
+
+	rc = telnet_init(tall_bsc_ctx, g_ganc_net, 4251);
+	if (rc < 0)
+		exit(23);
 
 #if 0
 	llist_for_each_entry(msc, &bsc_gsmnet->bsc_data->mscs, entry) {
