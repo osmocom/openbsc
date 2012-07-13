@@ -48,6 +48,22 @@ static void push_rc_csr_hdr(struct msgb *msg, uint8_t pdisc, uint8_t msgt)
 	gh->msg_type = msgt;
 }
 
+/* Find the matching gan_peer from the specified IMSI, if any */
+static struct gan_peer *gan_peer_by_imsi_f(const char *imsi, uint32_t flag)
+{
+	struct gan_peer *peer;
+
+	llist_for_each_entry(peer, &g_ganc_bts->net->peers, entry) {
+		if (strlen(peer->imsi) && !strcmp(peer->imsi, imsi)) {
+			if (!flag || (peer->flags & flag))
+				return peer;
+		}
+	}
+
+	return NULL;
+}
+
+/* destroy a peer, including anything that may hang off it */
 static void gan_peer_destroy(struct gan_peer *peer)
 {
 	if (!peer)
@@ -55,6 +71,12 @@ static void gan_peer_destroy(struct gan_peer *peer)
 
 	osmo_timer_del(&peer->keepalive_timer);
 	llist_del(&peer->entry);
+
+	if (peer->conn) {
+		osmo_conn_close(peer->conn);
+		peer->conn = NULL;
+	}
+
 	talloc_free(peer);
 }
 
@@ -310,15 +332,27 @@ static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
 			      struct tlv_parsed *tp)
 {
 	if (TLVP_PRESENT(tp, GA_IE_MI)) {
-		gsm48_mi_to_string(peer->imsi, sizeof(peer->imsi),
+		struct gan_peer *stale_peer;
+		char imsi[sizeof(peer->imsi)];
+		gsm48_mi_to_string(imsi, sizeof(imsi),
 				   TLVP_VAL(tp, GA_IE_MI), TLVP_LEN(tp, GA_IE_MI));
-		printf("\tfrom %s\n", peer->imsi);
+		printf("\tfrom %s\n", imsi);
+
+		/* find any old/stale peer for the same imsi */
+		stale_peer = gan_peer_by_imsi_f(imsi, GAN_PF_REGISTERED);
+		if (stale_peer) {
+			printf("\t destroying stale old gan_peer\n");
+			gan_peer_destroy(stale_peer);
+		}
+
+		memcpy(peer->imsi, imsi, sizeof(peer->imsi));
 	}
 	if (TLVP_PRESENT(tp, GA_IE_GAN_RELEASE_IND))
 		peer->gan_release = *TLVP_VAL(tp, GA_IE_GAN_RELEASE_IND);
 	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
+	peer->flags |= GAN_PF_REGISTERED;
 	peer->bts = select_bts(peer);
 	osmo_timer_schedule(&peer->keepalive_timer,
 			    peer->bts->net->timer[TU3906]*2, 0);
@@ -367,6 +401,7 @@ static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg,
 			    struct tlv_parsed *tp)
 {
 	/* Release all resources, MS will TCP disconnect */
+	peer->flags &= ~GAN_PF_REGISTERED;
 
 	/* not all MS really close the TPC connection, we have to
 	 * release the TCP connection locally by release_timer! */
@@ -477,8 +512,10 @@ static int unc_read_cb(struct osmo_conn *conn)
 	rc = read(conn->queue.bfd.fd, msg->data, 2);
 	if (rc <= 0) {
 		msgb_free(msg);
-		gan_peer_destroy(conn->priv);
-		osmo_conn_close(conn);
+		if (conn->priv)
+			gan_peer_destroy(conn->priv);
+		else
+			osmo_conn_close(conn);
 		return rc;
 	} else if (rc != 2) {
 		msgb_free(msg);
@@ -493,7 +530,10 @@ static int unc_read_cb(struct osmo_conn *conn)
 	rc = read(conn->queue.bfd.fd, msg->data+2, len);
 	if (rc < 0) {
 		msgb_free(msg);
-		osmo_conn_close(conn);
+		if (conn->priv)
+			gan_peer_destroy(conn->priv);
+		else
+			osmo_conn_close(conn);
 		return rc;
 	} else if (rc != len) {
 		msgb_free(msg);
