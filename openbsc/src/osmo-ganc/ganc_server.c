@@ -28,6 +28,7 @@
 #include <osmocom/core/socket.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/msgb.h>
+#include <osmocom/core/timer.h>
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/protocol/gsm_44_318.h>
 #include <osmocom/gsm/gan.h>
@@ -52,6 +53,7 @@ static void gan_peer_destroy(struct gan_peer *peer)
 	if (!peer)
 		return;
 
+	osmo_timer_del(&peer->keepalive_timer);
 	llist_del(&peer->entry);
 	talloc_free(peer);
 }
@@ -186,6 +188,14 @@ static int push_fqdn_or_ip(struct msgb *msg, const char *host,
 	return rc;
 }
 
+static struct ganc_bts *select_bts(struct gan_peer *peer)
+{
+	/* FIXME: we need to select the virtual BTS based on MAC address
+	 * and/or ESSID of the AP */
+
+	return g_ganc_bts;
+}
+
 /* 10.1.3: GA-RC DISCOVERY ACCEPT */
 static int tx_unc_disco_acc(struct gan_peer *peer, const char *segw_host,
 			    const char *ganc_host)
@@ -288,9 +298,9 @@ static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
-	/* FIXME: we need to select the virtual BTS based on MAC address
-	 * and/or ESSID of the AP */
-	bts = peer->bts = g_ganc_bts;
+	bts = select_bts(peer);
+	osmo_timer_schedule(&peer->keepalive_timer,
+			    bts->net->timer[TU3906]*2, 0);
 
 	return tx_unc_disco_acc(peer, bts->segw_host, bts->ganc_host);
 }
@@ -309,6 +319,10 @@ static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
 	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
+	peer->bts = select_bts(peer);
+	osmo_timer_schedule(&peer->keepalive_timer,
+			    peer->bts->net->timer[TU3906]*2, 0);
+
 	return tx_unc_reg_acc(peer);
 }
 
@@ -317,6 +331,18 @@ static int rx_csr_request(struct gan_peer *peer, struct msgb *msg,
 			  struct tlv_parsed *tp)
 {
 	return tx_csr_request_acc(peer);
+}
+
+/* 10.1.14 GA RC KEEP ALIVE */
+static int rx_rc_keepalive(struct gan_peer *peer, struct msgb *msg,
+			   struct tlv_parsed *tp)
+{
+	struct ganc_net *net = peer->bts->net;
+
+	/* re-schedule the timer at twice the TU3906 value */
+	osmo_timer_schedule(&peer->keepalive_timer, net->timer[TU3906]*2, 0);
+
+	return 0;
 }
 
 /* 10.1.37 GA-CSR CLEAR REQUEST */
@@ -342,9 +368,8 @@ static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg,
 {
 	/* Release all resources, MS will TCP disconnect */
 
-	/* FIXME: not all MS really close the TPC connection, we have to
-	 * release the TCP connection locally! */
-	gan_peer_destroy(peer);
+	/* not all MS really close the TPC connection, we have to
+	 * release the TCP connection locally by release_timer! */
 	return 0;
 }
 
@@ -402,6 +427,7 @@ static int rx_unc_rc_csr(struct gan_peer *peer, struct msgb *msg,
 	case GA_MT_CSR_CM_CHANGE:
 		return rx_csr_cm_chg(peer, msg, tp);
 	case GA_MT_RC_KEEPALIVE:
+		return rx_rc_keepalive(peer, msg, tp);
 		break;
 	default:
 		printf("\tunhandled!\n");
@@ -481,17 +507,31 @@ static int unc_read_cb(struct osmo_conn *conn)
 	/* FIXME: we have to free the msgb!! */
 }
 
+static void peer_keepalive_cb(void *_peer)
+{
+	struct gan_peer *peer = _peer;
+
+	printf("=== Timeout for Peer %s, destroying\n", peer->imsi);
+
+	gan_peer_destroy(peer);
+}
+
 static void unc_accept_cb(struct osmo_conn *conn)
 {
 	struct gan_peer *peer = talloc_zero(conn, struct gan_peer);
 	printf("accepted connection\n");
 
-	/* FIXME: later we may have different BTS with different ARFCN/BSIC/... */
-	peer->bts = g_ganc_bts;
+	peer->bts = NULL;
 	peer->conn = conn;
 	conn->priv = peer;
 
 	peer->sccp_con = NULL;
+
+	/* start keepalive timer at hard-coded 5*30 seconds until we later
+	 * change it to a TU3906 derived value */
+	peer->keepalive_timer.cb = peer_keepalive_cb;
+	peer->keepalive_timer.data = peer;
+	osmo_timer_schedule(&peer->keepalive_timer, 5*30, 0);
 
 	/* TODO: remove from list when closed */
 	llist_add_tail(&peer->entry, &g_ganc_bts->net->peers);
