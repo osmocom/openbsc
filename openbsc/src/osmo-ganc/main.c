@@ -34,6 +34,7 @@
 #include <osmocom/core/linuxlist.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/vty/vty.h>
+#include <osmocom/vty/telnet_interface.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -201,6 +202,12 @@ int main(int argc, char **argv)
 	/* initialize SCCP */
 	sccp_set_log_area(DSCCP);
 
+	struct telnet_connection dummy_conn;
+	rc = vty_read_config_file(config_file, &dummy_conn);
+	if (rc < 0) {
+		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
+		return rc;
+	}
 
 	ganc_server_start(NULL, 14001);
 
