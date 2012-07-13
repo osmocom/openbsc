@@ -333,6 +333,8 @@ static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
 			      struct tlv_parsed *tp)
 {
+	uint8_t *cur;
+
 	if (TLVP_PRESENT(tp, GA_IE_MI)) {
 		struct gan_peer *stale_peer;
 		char imsi[sizeof(peer->imsi)];
@@ -355,6 +357,44 @@ static int rx_rc_register_req(struct gan_peer *peer, struct msgb *msg,
 		peer->gan_release = *TLVP_VAL(tp, GA_IE_GAN_RELEASE_IND);
 	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
+	if (TLVP_PRESENT(tp, GA_IE_RADIO_IE) &&
+	    TLVP_LEN(tp, GA_IE_RADIO_IE) >= 7 &&
+	    (*TLVP_VAL(tp, GA_IE_RADIO_IE) & 0x0F) == 0x00) {
+		if (peer->ms_radio_id)
+			talloc_free(peer->ms_radio_id);
+		peer->ap_radio_id = talloc_memdup(peer,
+						TLVP_VAL(tp, GA_IE_RADIO_IE)+1,
+						TLVP_LEN(tp, GA_IE_RADIO_IE)-1);
+	}
+	if (TLVP_PRESENT(tp, GA_IE_MS_RADIO_ID) &&
+	    TLVP_LEN(tp, GA_IE_MS_RADIO_ID) >= 7 &&
+	    (*TLVP_VAL(tp, GA_IE_MS_RADIO_ID) & 0x0F) == 0x00) {
+		if (peer->ms_radio_id)
+			talloc_free(peer->ms_radio_id);
+		peer->ms_radio_id = talloc_memdup(peer,
+					  TLVP_VAL(tp, GA_IE_MS_RADIO_ID)+1,
+					  TLVP_LEN(tp, GA_IE_MS_RADIO_ID)-1);
+	}
+	if (TLVP_PRESENT(tp, GA_IE_AP_SERV_NAME) &&
+	    TLVP_LEN(tp, GA_IE_AP_SERV_NAME) >= 1) {
+		if (peer->ap_serv_name)
+			talloc_free(peer->ap_serv_name);
+		/* strndup copies len bytes + adds zero */
+		peer->ap_serv_name = talloc_strndup(peer,
+					TLVP_VAL(tp, GA_IE_AP_SERV_NAME)+1,
+					TLVP_LEN(tp, GA_IE_AP_SERV_NAME)-1);
+	}
+	if (TLVP_PRESENT(tp, GA_IE_LAC) && TLVP_LEN(tp, GA_IE_LAC) >= 5) {
+		struct gsm48_loc_area_id *lai;
+		lai = TLVP_VAL(tp, GA_IE_LAC);
+		gsm48_decode_lai(lai, &peer->ra_id.mcc, &peer->ra_id.mnc,
+				 &peer->ra_id.lac);
+	}
+	if (TLVP_PRESENT(tp, GA_IE_RAC) && TLVP_LEN(tp, GA_IE_RAC) >= 2)
+		peer->ra_id.rac = ntohs(TLVP_VAL(tp, GA_IE_RAC));
+	if (TLVP_PRESENT(tp, GA_IE_GERAN_CELL_ID) &&
+	    TLVP_LEN(tp, GA_IE_GERAN_CELL_ID) >= 2)
+		peer->cell_id = ntohs(*(uint16_t *)TLVP_VAL(tp, GA_IE_GERAN_CELL_ID));
 
 	peer->flags |= GAN_PF_REGISTERED;
 	peer->bts = select_bts(peer);
