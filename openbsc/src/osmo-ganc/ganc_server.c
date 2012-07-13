@@ -47,6 +47,15 @@ static void push_rc_csr_hdr(struct msgb *msg, uint8_t pdisc, uint8_t msgt)
 	gh->msg_type = msgt;
 }
 
+static void gan_peer_destroy(struct gan_peer *peer)
+{
+	if (!peer)
+		return;
+
+	llist_del(&peer->entry);
+	talloc_free(peer);
+}
+
 static struct msgb *unc_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(1024+128, 128, "GANC Tx");
@@ -327,6 +336,10 @@ static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg,
 			    struct tlv_parsed *tp)
 {
 	/* Release all resources, MS will TCP disconnect */
+
+	/* FIXME: not all MS really close the TPC connection, we have to
+	 * release the TCP connection locally! */
+	gan_peer_destroy(peer);
 	return 0;
 }
 
@@ -433,6 +446,7 @@ static int unc_read_cb(struct osmo_conn *conn)
 	rc = read(conn->queue.bfd.fd, msg->data, 2);
 	if (rc <= 0) {
 		msgb_free(msg);
+		gan_peer_destroy(conn->priv);
 		osmo_conn_close(conn);
 		return rc;
 	} else if (rc != 2) {
