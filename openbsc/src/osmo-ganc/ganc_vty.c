@@ -23,6 +23,7 @@
 #include <openbsc/vty.h>
 
 #include <osmocom/core/talloc.h>
+#include <osmocom/core/timer.h>
 #include <osmocom/sccp/sccp.h>
 
 #include <openbsc/osmo_bsc.h>
@@ -36,11 +37,19 @@ const struct value_string ganc_state_names[] = {
 	{ 0, NULL }
 };
 
-static void show_peer(struct vty *vty, struct gan_peer *peer)
+static void show_peer(struct vty *vty, struct gan_peer *peer,
+		      struct timeval *now)
 {
-	vty_out(vty, "IMSI: %s, State: %s%s", peer->imsi,
+	struct timeval rem;
+	int rc;
+
+	/* we determine the time once globally if we leave the select
+	 * loop, and not for every peer we display */
+	rc = osmo_timer_remaining(&peer->keepalive_timer, NULL, now);
+
+	vty_out(vty, "IMSI: %s, State: %s, Timeout: %u s%s", peer->imsi,
 		get_value_string(ganc_state_names, peer->csr_state),
-		VTY_NEWLINE);
+		rc == 0 ? (int) rem.tv_sec : 0, VTY_NEWLINE);
 	if (peer->conn) {
 		struct osmo_conn *conn = peer->conn;
 		vty_out(vty, " GAN MS Remote IP/Port: %s:%u%s",
@@ -77,9 +86,12 @@ DEFUN(show_gan_peer, show_gan_peer_cmd,
 	SHOW_STR "GANC Peers (MS attached to the GANC)")
 {
 	struct gan_peer *peer;
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
 
 	llist_for_each_entry(peer, &g_ganc_bts->net->peers, entry)
-		show_peer(vty, peer);
+		show_peer(vty, peer, &now);
 
 	return CMD_SUCCESS;
 }
