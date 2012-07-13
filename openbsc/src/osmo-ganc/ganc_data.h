@@ -38,6 +38,7 @@ struct gan_peer {
 
 	uint8_t gan_release;		/* UMA/GAN release version */
 	enum ganc_state csr_state;
+	uint32_t flags;
 	char imsi[16+1];
 	uint8_t gan_classmark[2];
 	uint8_t cm2[3];
@@ -50,6 +51,10 @@ struct gan_peer {
 
 	/* bsc structures */
 	struct osmo_bsc_sccp_con *sccp_con;
+};
+
+enum gan_peer_flag {
+	GAN_PF_REGISTERED	= 0x00000001,
 };
 
 struct ganc_net {
