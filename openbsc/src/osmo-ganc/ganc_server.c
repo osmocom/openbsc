@@ -37,8 +37,6 @@
 #include "conn.h"
 #include "ganc_data.h"
 
-static struct tlv_definition tlv_att_def;
-
 static void push_rc_csr_hdr(struct msgb *msg, uint8_t pdisc, uint8_t msgt)
 {
 	struct gan_rc_csr_hdr *gh = 
@@ -246,8 +244,7 @@ static int tx_csr_dl_direct_xfer(struct gan_peer *peer, struct msgb *msg)
 	printf("<- GA-CSR DL DIRECT TRANSFER\n");
 
 	/* tag and length of L3 info */
-	assert(msgb_l3len(msg) <= 255);
-	msgb_tv_push(msg, GA_IE_L3_MSG, msgb_l3len(msg));
+	msgb_vtvl_gan_push(msg, GA_IE_L3_MSG, msgb_l3len(msg));
 
 	push_rc_csr_hdr(msg, GA_PDISC_CSR, GA_MT_CSR_DL_DIRECT_XFER);
 
@@ -526,7 +523,7 @@ static int rx_unc_msg(struct gan_peer *peer, struct msgb *msg)
 	printf("-> (%u) %s\n", gh->pdisc, get_value_string(gan_msgt_vals, gh->msg_type));
 
 	if (len > 2) {
-		rc = tlv_parse(&tp, &tlv_att_def, gh->data, len - 2, 0, 0);
+		rc = tlv_parse(&tp, &vtvlv_gan_att_def, gh->data, len - 2, 0, 0);
 		if (rc < 0)
 			fprintf(stderr, "error %d during tlv_parse\n", rc);
 	} else
@@ -625,10 +622,6 @@ static void unc_accept_cb(struct osmo_conn *conn)
 int ganc_server_start(const char *host, uint16_t port)
 {
 	struct osmo_link *link;
-	int i;
-
-	for (i = 0; i < ARRAY_SIZE(tlv_att_def.def); i++)
-		tlv_att_def.def[i].type = TLV_TYPE_TLV;
 
 	link = osmo_link_create(NULL, host, port, unc_read_cb, 10);
 	if (!link)
