@@ -75,12 +75,19 @@ struct ganc_bts {
 	uint16_t cell_identity;
 	uint8_t bsic;
 	uint16_t arfcn;
+
+	char *description;
+
+	char *segw_host;
+	char *ganc_host;
+	uint16_t ganc_port;
 };
 
 void ganc_net_init(struct ganc_net *net);
 void ganc_bts_init(struct ganc_bts *bts, struct ganc_net *net);
 
 extern struct ganc_bts *g_ganc_bts;
+extern struct ganc_net *g_ganc_net;
 
 struct osmo_msc_data *ganc_msc_data_find(struct ganc_net *net, int nr);
 struct osmo_msc_data *ganc_msc_data_alloc(struct ganc_net *net, int nr);
