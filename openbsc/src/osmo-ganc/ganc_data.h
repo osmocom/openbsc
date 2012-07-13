@@ -2,6 +2,7 @@
 #define _GANC_DATA_H
 
 #include <osmocom/core/linuxlist.h>
+#include <osmocom/core/timer.h>
 #include "conn.h"
 
 struct ganc_bts;
@@ -44,6 +45,8 @@ struct gan_peer {
 		unsigned int len;
 		uint8_t *val;
 	} cm3;
+
+	struct osmo_timer_list keepalive_timer;
 
 	/* bsc structures */
 	struct osmo_bsc_sccp_con *sccp_con;
