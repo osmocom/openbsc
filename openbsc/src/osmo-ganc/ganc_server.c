@@ -276,6 +276,8 @@ static int tx_csr_request_acc(struct gan_peer *peer)
 static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 				struct tlv_parsed *tp)
 {
+	struct ganc_bts *bts;
+
 	if (TLVP_PRESENT(tp, GA_IE_MI)) {
 		gsm48_mi_to_string(peer->imsi, sizeof(peer->imsi),
 				   TLVP_VAL(tp, GA_IE_MI), TLVP_LEN(tp, GA_IE_MI));
@@ -286,8 +288,11 @@ static int rx_rc_discovery_req(struct gan_peer *peer, struct msgb *msg,
 	if (TLVP_PRESENT(tp, GA_IE_GAN_CM) && TLVP_LEN(tp, GA_IE_GAN_CM) >=2)
 		memcpy(peer->gan_classmark, TLVP_VAL(tp, GA_IE_GAN_CM), 2);
 
-	return tx_unc_disco_acc(peer, "segw.uma.sysmocom.de",
-				"ganc-laforge.gnumonks.org");
+	/* FIXME: we need to select the virtual BTS based on MAC address
+	 * and/or ESSID of the AP */
+	bts = peer->bts = g_ganc_bts;
+
+	return tx_unc_disco_acc(peer, bts->segw_host, bts->ganc_host);
 }
 
 /* 10.1.5 GA-RC REGISTER REQUEST */
