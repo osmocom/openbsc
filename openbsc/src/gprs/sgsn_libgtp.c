@@ -317,6 +317,10 @@ static int delete_pdp_conf(struct pdp_t *pdp, void *cbp, int cause)
 	/* Confirm deactivation of PDP context to MS */
 	rc = gsm48_tx_gsm_deact_pdp_acc(pctx);
 
+	/* unlink the now non-existing library handle from the pdp
+	 * context */
+	pctx->lib = NULL;
+
 	sgsn_pdp_ctx_free(pctx);
 
 	return rc;
@@ -422,10 +426,16 @@ static int cb_data_ind(struct pdp_t *lib, void *packet, unsigned int len)
 
 	pdp = lib->priv;
 	if (!pdp) {
-		DEBUGP(DGPRS, "GTP DATA IND from GGSN for unknown PDP\n");
+		LOGP(DGPRS, LOGL_NOTICE,
+		     "GTP DATA IND from GGSN for unknown PDP\n");
 		return -EIO;
 	}
 	mm = pdp->mm;
+	if (!mm) {
+		LOGP(DGPRS, LOGL_ERROR,
+		     "PDP context (imsi=%s) without MM context!\n", mm->imsi);
+		return -EIO;
+	}
 
 	msg = msgb_alloc_headroom(len+256, 128, "GTP->SNDCP");
 	ud = msgb_put(msg, len);

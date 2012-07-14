@@ -25,6 +25,7 @@
 #include <osmocom/core/talloc.h>
 #include <osmocom/core/timer.h>
 #include <osmocom/core/rate_ctr.h>
+#include <osmocom/core/backtrace.h>
 #include <osmocom/gprs/gprs_ns.h>
 #include <osmocom/gprs/gprs_bssgp.h>
 
@@ -240,12 +241,26 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 	return pdp;
 }
 
+#include <pdp.h>
 /* you probably want to call sgsn_delete_pdp_ctx() instead */
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 {
 	rate_ctr_group_free(pdp->ctrg);
 	llist_del(&pdp->list);
 	llist_del(&pdp->g_list);
+
+	/* _if_ we still have a library handle, at least set it to NULL
+	 * to avoid any dereferences of the now-deleted PDP context from
+	 * sgsn_libgtp:cb_data_ind() */
+	if (pdp->lib) {
+		struct pdp_t *lib = pdp->lib;
+		LOGP(DGPRS, LOGL_NOTICE, "freeing PDP context that still "
+		     "has a libgtp handle attached to it, this shouldn't "
+		     "happen!\n");
+		osmo_generate_backtrace();
+		lib->priv = NULL;
+	}
+
 	talloc_free(pdp);
 }
 
