@@ -173,6 +173,8 @@ struct sgsn_mm_ctx *sgsn_mm_ctx_alloc(uint32_t tlli,
 	return ctx;
 }
 
+/* this is a hard _free_ function, it doesn't clean up the PDP contexts
+ * in libgtp! */
 void sgsn_mm_ctx_free(struct sgsn_mm_ctx *mm)
 {
 	struct sgsn_pdp_ctx *pdp, *pdp2;
@@ -215,6 +217,7 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_by_tid(const struct sgsn_mm_ctx *mm,
 	return NULL;
 }
 
+/* you don't want to use this directly, call sgsn_create_pdp_ctx() */
 struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 					uint8_t nsapi)
 {
@@ -237,6 +240,7 @@ struct sgsn_pdp_ctx *sgsn_pdp_ctx_alloc(struct sgsn_mm_ctx *mm,
 	return pdp;
 }
 
+/* you probably want to call sgsn_delete_pdp_ctx() instead */
 void sgsn_pdp_ctx_free(struct sgsn_pdp_ctx *pdp)
 {
 	rate_ctr_group_free(pdp->ctrg);
@@ -359,6 +363,7 @@ static void drop_one_pdp(struct sgsn_pdp_ctx *pdp)
 		/* FIXME: GPRS paging in case MS is SUSPENDED */
 		LOGP(DGPRS, LOGL_NOTICE, "Hard-dropping PDP ctx due to GGSN "
 			"recovery\n");
+		/* FIXME: how to tell this to libgtp? */
 		sgsn_pdp_ctx_free(pdp);
 	}
 }

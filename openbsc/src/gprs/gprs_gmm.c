@@ -604,6 +604,9 @@ static int gsm48_rx_gmm_id_resp(struct sgsn_mm_ctx *ctx, struct msgb *msg)
 					ictx->p_tmsi, ctx->p_tmsi);
 				gprs_llgmm_assign(ictx->llme, ictx->tlli,
 						  0xffffffff, GPRS_ALGO_GEA0, NULL);
+				/* FIXME: this is a hard free, we don't
+				 * clean-up any PDP contexts on the
+				 * libgtp side */
 				sgsn_mm_ctx_free(ictx);
 			}
 		}
