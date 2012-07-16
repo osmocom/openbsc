@@ -1119,7 +1119,7 @@ static int gsm48_rx_rr_app_info(struct gsm_subscriber_connection *conn, struct m
 	apdu_len = gh->data[1];
 	apdu_data = gh->data+2;
 	
-	DEBUGP(DNM, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
+	DEBUGP(DRR, "RX APPLICATION INFO id/flags=0x%02x apdu_len=%u apdu=%s",
 		apdu_id_flags, apdu_len, osmo_hexdump(apdu_data, apdu_len));
 
 	return db_apdu_blob_store(conn->subscr, apdu_id_flags, apdu_len, apdu_data);
