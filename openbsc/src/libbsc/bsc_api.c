@@ -577,6 +577,12 @@ static void dispatch_dtap(struct gsm_subscriber_connection *conn,
 		case GSM48_MT_RR_CLSM_CHG:
 			handle_classmark_chg(conn, msg);
 			break;
+		case GSM48_MT_RR_APP_INFO:
+			/* Passing RR APP INFO to MSC, not quite
+			 * according to spec */
+			if (api->dtap)
+				api->dtap(conn, link_id, msg);
+			break;
 		default:
 			/* Normally, a MSC should never receive RR
 			 * messages, but we'd rather forward what we
