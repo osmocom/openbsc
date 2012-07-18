@@ -407,7 +407,7 @@ static int rx_rc_deregister(struct gan_peer *peer, struct msgb *msg,
 	/* Release all resources, MS will TCP disconnect */
 	peer->flags &= ~GAN_PF_REGISTERED;
 
-	/* not all MS really close the TPC connection, we have to
+	/* not all MS really close the TCP connection, we have to
 	 * release the TCP connection locally by release_timer! */
 	return 0;
 }
