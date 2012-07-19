@@ -230,7 +230,7 @@ static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
 	struct osmo_bsc_sccp_con *bsc_con;
 
 	bsc_con = conn->sccp_con;
-	if (!bsc_con || !bsc_con->msc->ussd_welcome_txt);
+	if (!bsc_con || !bsc_con->msc->ussd_welcome_txt)
 		return;
 
 	gsm0480_send_ussdNotify(conn, 1, bsc_con->msc->ussd_welcome_txt);
