@@ -227,13 +227,13 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 
 static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
 {
-	struct osmo_bsc_sccp_con *bsc;
+	struct osmo_bsc_sccp_con *bsc_con;
 
-	bsc = conn->sccp_con;
-	if (!bsc || !bsc->msc->ussd_welcome_txt);
+	bsc_con = conn->sccp_con;
+	if (!bsc_con || !bsc_con->msc->ussd_welcome_txt);
 		return;
 
-	gsm0480_send_ussdNotify(conn, 1, bsc->msc->ussd_welcome_txt);
+	gsm0480_send_ussdNotify(conn, 1, bsc_con->msc->ussd_welcome_txt);
 	gsm0480_send_releaseComplete(conn);
 }
 
