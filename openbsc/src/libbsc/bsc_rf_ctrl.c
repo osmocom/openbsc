@@ -1,8 +1,8 @@
 /* RF Ctl handling socket */
 
 /* (C) 2010 by Harald Welte <laforge@gnumonks.org>
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -129,6 +129,14 @@ static int lock_each_trx(struct gsm_network *net, int lock)
 
 	llist_for_each_entry(bts, &net->bts_list, list) {
 		struct gsm_bts_trx *trx;
+
+		/* Exclude the BTS from the global lock */
+		if (bts->excl_from_rf_lock) {
+			LOGP(DLINP, LOGL_DEBUG,
+				"Excluding BTS(%d) from trx lock.\n", bts->nr);
+			continue;
+		}
+
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			gsm_trx_lock_rf(trx, lock);
 		}
@@ -176,6 +184,13 @@ static void handle_query(struct osmo_bsc_rf_conn *conn)
 
 	llist_for_each_entry(bts, &conn->rf->gsm_network->bts_list, list) {
 		struct gsm_bts_trx *trx;
+
+		/* Exclude the BTS from the global lock */
+		if (bts->excl_from_rf_lock) {
+			LOGP(DLINP, LOGL_DEBUG,
+				"Excluding BTS(%d) from query.\n", bts->nr);
+			continue;
+		}
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->mo.nm_state.availability == NM_AVSTATE_OK &&
 			    trx->mo.nm_state.operational != NM_OPSTATE_DISABLED) {
@@ -199,6 +214,13 @@ static void rf_check_cb(void *_data)
 		/* don't bother to check a booting or missing BTS */
 		if (!bts->oml_link || !is_ipaccess_bts(bts))
 			continue;
+
+		/* Exclude the BTS from the global lock */
+		if (bts->excl_from_rf_lock) {
+			LOGP(DLINP, LOGL_DEBUG,
+				"Excluding BTS(%d) from query.\n", bts->nr);
+			continue;
+		}
 
 		llist_for_each_entry(trx, &bts->trx_list, list) {
 			if (trx->mo.nm_state.availability != NM_AVSTATE_OK ||
@@ -233,7 +255,7 @@ static void grace_timeout(void *_data)
 {
 	struct osmo_bsc_rf *rf = (struct osmo_bsc_rf *) _data;
 
-	LOGP(DLINP, LOGL_NOTICE, "Grace timeout. Disabling the TRX.\n");
+	LOGP(DLINP, LOGL_NOTICE, "Grace timeout. Going to disable all BTS/TRX.\n");
 	switch_rf_off(rf);
 }
 
