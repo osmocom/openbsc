@@ -262,14 +262,14 @@ static void grace_timeout(void *_data)
 static int enter_grace(struct osmo_bsc_rf *rf)
 {
 	if (osmo_timer_pending(&rf->grace_timeout)) {
-		LOGP(DLINP, LOGL_NOTICE, "RF Grace timer is pending. Not restarting.\n");
+		LOGP(DINP, LOGL_NOTICE, "RF Grace timer is pending. Not restarting.\n");
 		return 0;
 	}
 
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
 	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->bsc_data->mid_call_timeout, 0);
-	LOGP(DLINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
+	LOGP(DINP, LOGL_NOTICE, "Going to switch RF off in %d seconds.\n",
 	     rf->gsm_network->bsc_data->mid_call_timeout);
 
 	send_signal(rf, S_RF_GRACE);
