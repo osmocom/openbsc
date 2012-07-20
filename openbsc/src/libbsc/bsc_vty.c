@@ -1218,7 +1218,9 @@ DEFUN(cfg_net_rrlp_mode, cfg_net_rrlp_mode_cmd,
 
 DEFUN(cfg_net_mm_info, cfg_net_mm_info_cmd,
       "mm info (0|1)",
-	"Whether to send MM INFO after LOC UPD ACCEPT")
+	"Mobility Management\n"
+	"Send MM INFO after LOC UPD ACCEPT\n"
+	"Disable\n" "Enable\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
@@ -1462,7 +1464,7 @@ DEFUN(cfg_bts_band,
 DEFUN(cfg_bts_ci,
       cfg_bts_ci_cmd,
       "cell_identity <0-65535>",
-      "Set the Cell identity of this BTS\n")
+      "Set the Cell identity of this BTS\n" "Cell Identity\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int ci = atoi(argv[0]);
@@ -1480,7 +1482,7 @@ DEFUN(cfg_bts_ci,
 DEFUN(cfg_bts_lac,
       cfg_bts_lac_cmd,
       "location_area_code <0-65535>",
-      "Set the Location Area Code (LAC) of this BTS\n")
+      "Set the Location Area Code (LAC) of this BTS\n" "LAC\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int lac = atoi(argv[0]);
@@ -1506,7 +1508,7 @@ DEFUN(cfg_bts_lac,
 DEFUN(cfg_bts_tsc,
       cfg_bts_tsc_cmd,
       "training_sequence_code <0-7>",
-      "Set the Training Sequence Code (TSC) of this BTS\n")
+      "Set the Training Sequence Code (TSC) of this BTS\n" "TSC\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int tsc = atoi(argv[0]);
