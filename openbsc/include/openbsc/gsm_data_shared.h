@@ -567,6 +567,9 @@ struct gsm_bts {
 
 	/* do we use static (user-defined) system information messages? (bitmask) */
 	uint32_t si_mode_static;
+
+	/* exclude the BTS from the global RF Lock handling */
+	int excl_from_rf_lock;
 #endif /* ROLE_BSC */
 	void *role;
 };

@@ -548,6 +548,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 
 	config_write_bts_gprs(vty, bts);
 
+	if (bts->excl_from_rf_lock)
+		vty_out(vty, "  rf-lock-exclude%s", VTY_NEWLINE);
+
 	if (bts->model->config_write_bts)
 		bts->model->config_write_bts(vty, bts);
 
@@ -2286,6 +2289,28 @@ DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 	return CMD_SUCCESS;
 }
 
+#define EXCL_RFLOCK_STR "Exclude this BTS from the global RF Lock\n"
+
+DEFUN(cfg_bts_excl_rf_lock,
+      cfg_bts_excl_rf_lock_cmd,
+      "rf-lock-exclude",
+      EXCL_RFLOCK_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->excl_from_rf_lock = 1;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_no_excl_rf_lock,
+      cfg_bts_no_excl_rf_lock_cmd,
+      "no rf-lock-exclude",
+      NO_STR EXCL_RFLOCK_STR)
+{
+	struct gsm_bts *bts = vty->index;
+	bts->excl_from_rf_lock = 0;
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -2798,6 +2823,8 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_neigh_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
+	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
+	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
