@@ -208,7 +208,7 @@ DEFUN(show_subscr,
 
 DEFUN(subscriber_send_pending_sms,
       subscriber_send_pending_sms_cmd,
-      "subscriber " SUBSCR_TYPES " ID sms pending send",
+      "subscriber " SUBSCR_TYPES " ID sms pending-send",
 	SUBSCR_HELP "SMS Operations\n" "Send pending SMS\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -733,7 +733,7 @@ DEFUN(smsqueue_trigger,
 DEFUN(smsqueue_max,
       smsqueue_max_cmd,
       "sms-queue max-pending <1-500>",
-      "SMS Queue\n" "SMS to attempt to deliver at the same time\n")
+      "SMS Queue\n" "SMS to deliver in parallel\n" "Amount\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
@@ -755,7 +755,7 @@ DEFUN(smsqueue_clear,
 DEFUN(smsqueue_fail,
       smsqueue_fail_cmd,
       "sms-queue max-failure <1-500>",
-      "SMS Queue\n" "Set maximum amount of failures\n")
+      "SMS Queue\n" "Maximum amount of delivery failures\n" "Amount\n")
 {
 	struct gsm_network *net = gsmnet_from_vty(vty);
 
