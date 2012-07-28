@@ -30,6 +30,8 @@
 
 #include <string.h>
 
+#define RTCP_OMIT_STR "Drop RTCP packets in both directions\n"
+
 static struct mgcp_config *g_cfg = NULL;
 
 static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int nr)
@@ -375,7 +377,7 @@ DEFUN(cfg_mgcp_number_endp,
 DEFUN(cfg_mgcp_omit_rtcp,
       cfg_mgcp_omit_rtcp_cmd,
       "rtcp-omit",
-      "Drop RTCP packets in both directions")
+      RTCP_OMIT_STR)
 {
 	g_cfg->trunk.omit_rtcp = 1;
 	return CMD_SUCCESS;
@@ -384,7 +386,7 @@ DEFUN(cfg_mgcp_omit_rtcp,
 DEFUN(cfg_mgcp_no_omit_rtcp,
       cfg_mgcp_no_omit_rtcp_cmd,
       "no rtcp-omit",
-      NO_STR "Drop RTCP packets in both directions")
+      NO_STR RTCP_OMIT_STR)
 {
 	g_cfg->trunk.omit_rtcp = 0;
 	return CMD_SUCCESS;
@@ -532,7 +534,7 @@ DEFUN(cfg_trunk_loop,
 DEFUN(cfg_trunk_omit_rtcp,
       cfg_trunk_omit_rtcp_cmd,
       "rtcp-omit",
-      "Drop RTCP packets in both directions")
+      RTCP_OMIT_STR)
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	trunk->omit_rtcp = 1;
@@ -542,7 +544,7 @@ DEFUN(cfg_trunk_omit_rtcp,
 DEFUN(cfg_trunk_no_omit_rtcp,
       cfg_trunk_no_omit_rtcp_cmd,
       "no rtcp-omit",
-      "Drop RTCP packets in both directions")
+      NO_STR RTCP_OMIT_STR)
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	trunk->omit_rtcp = 0;
