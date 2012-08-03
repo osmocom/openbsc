@@ -121,7 +121,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, payload_length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_IMSI)) {
-		LOGP(DMSC, LOGL_ERROR, "Mandantory IMSI not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandatory IMSI not present.\n");
 		return -1;
 	} else if ((TLVP_VAL(&tp, GSM0808_IE_IMSI)[0] & GSM_MI_TYPE_MASK) != GSM_MI_TYPE_IMSI) {
 		LOGP(DMSC, LOGL_ERROR, "Wrong content in the IMSI\n");
@@ -129,7 +129,7 @@ static int bssmap_handle_paging(struct gsm_network *net,
 	}
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER_LIST)) {
-		LOGP(DMSC, LOGL_ERROR, "Mandantory CELL IDENTIFIER LIST not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandatory CELL IDENTIFIER LIST not present.\n");
 		return -1;
 	}
 
@@ -313,7 +313,7 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
-		LOGP(DMSC, LOGL_ERROR, "Mandantory channel type not present.\n");
+		LOGP(DMSC, LOGL_ERROR, "Mandatory channel type not present.\n");
 		goto reject;
 	}
 
