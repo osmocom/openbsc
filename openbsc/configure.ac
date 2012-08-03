@@ -45,7 +45,7 @@ PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
-PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.1)
+PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.2)
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)

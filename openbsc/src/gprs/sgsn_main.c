@@ -119,7 +119,7 @@ int bssgp_prim_cb(struct osmo_prim_hdr *oph, void *ctx)
 			return gprs_gmm_rx_suspend(bp->ra_id, bp->tlli);
 		case PRIM_BSSGP_GMM_RESUME:
 			return gprs_gmm_rx_resume(bp->ra_id, bp->tlli,
-						  *bp->u.resume.suspend_ref);
+						  bp->u.resume.suspend_ref);
 		}
 		break;
 	case SAP_BSSGP_NM:
