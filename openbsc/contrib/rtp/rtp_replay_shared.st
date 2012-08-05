@@ -4,19 +4,58 @@ Simple UDP replay from the state files
 
 PackageLoader fileInPackage: #Sockets.
 
+Object subclass: SDPUtils [
+    "Look into using PetitParser."
+    SDPUtils class >> findPort: aSDP [
+        aSDP linesDo: [:line |
+            (line startsWith: 'm=audio ') ifTrue: [
+                | stream |
+                stream := line readStream
+                            skip: 'm=audio ' size;
+                            yourself.
+                ^ Number readFrom: stream.
+            ]
+        ].
+
+        ^ self error: 'Not found'.
+    ]
+
+    SDPUtils class >> findHost: aSDP [
+        aSDP linesDo: [:line |
+            (line startsWith: 'c=IN IP4 ') ifTrue: [
+                | stream |
+                ^ stream := line readStream
+                            skip: 'c=IN IP4 ' size;
+                            upToEnd.
+            ]
+        ].
+
+        ^ self error: 'Not found'.
+    ]
+]
+
 Object subclass: RTPReplay [
-    | filename |
+    | filename socket |
     RTPReplay class >> on: aFile [
         ^ self new
+            initialize;
             file: aFile; yourself
+    ]
+
+    initialize [
+        socket := Sockets.DatagramSocket new.
     ]
 
     file: aFile [ 
         filename := aFile
     ]
 
+    localPort [
+        ^ socket port
+    ]
+
     streamAudio: aHost port: aPort [
-        | file last_time last_image udp_send socket dest |
+        | file last_time last_image udp_send dest |
 
         last_time := nil.
         last_image := nil.
@@ -24,7 +63,6 @@ Object subclass: RTPReplay [
 
         "Send the payload"
         dest := Sockets.SocketAddress byName: aHost.
-        socket := Sockets.DatagramSocket new.
         udp_send := [:payload | | datagram |
             datagram := Sockets.Datagram data: payload contents address: dest port: aPort.
             socket nextPut: datagram
@@ -57,7 +95,8 @@ Object subclass: RTPReplay [
 
                     "How long to wait?"
                     wait_image := last_image + ((time - last_time) * 1000).
-                    [ wait_image > Time millisecondClockValue ] whileTrue: [].
+                    [ wait_image > Time millisecondClockValue ]
+                        whileTrue: [Processor yield].
 
                     udp_send value: data.
                     last_time := time.
