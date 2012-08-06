@@ -7,6 +7,7 @@ problems:
 * therefore, we can have e.g. both the BSC and the OML interface send a
   SET ATTRIBUTE message, where the responses would end up at the wrong
   query.
+* The BTS has 10s to ACK/NACK a command. We do not run any timers.
 
 the only possible solutions i can imagine:
 * have some kind of exclusive locking, where the OML interface gets blocked
