@@ -26,7 +26,7 @@ def dump_doc(end, port, filename):
 
 	# Now write everything until the end to the file
 	out = open(filename, 'w')
-	out.write(xml[18:len(filename)*-1])
+	out.write(xml[18:len(end)*-1])
 	out.close()
 
 
