@@ -1370,6 +1370,25 @@ int abis_nm_disc_terr_traf(struct abis_nm_h *h, struct abis_om_obj_inst *inst,
 }
 #endif
 
+/* Chapter 8.11.1 */
+int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class,
+			uint8_t bts_nr, uint8_t trx_nr, uint8_t ts_nr,
+			uint8_t *attr, uint8_t attr_len)
+{
+	struct abis_om_hdr *oh;
+	struct msgb *msg = nm_msgb_alloc();
+	uint8_t *cur;
+
+	DEBUGP(DNM, "Get Attr (bts=%d)\n", bts->nr);
+
+	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	fill_om_fom_hdr(oh, attr_len, NM_MT_GET_ATTR, obj_class,
+			bts_nr, trx_nr, ts_nr);
+	msgb_tl16v_put(msg, NM_ATT_LIST_REQ_ATTR, attr_len, attr);
+
+	return abis_nm_sendmsg(bts, msg);
+}
+
 /* Chapter 8.6.1 */
 int abis_nm_set_bts_attr(struct gsm_bts *bts, uint8_t *attr, int attr_len)
 {
