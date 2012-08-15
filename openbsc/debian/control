@@ -2,7 +2,7 @@ Source: openbsc
 Section: net
 Priority: optional
 Maintainer: Harald Welte <laforge@gnumonks.org>
-Build-Depends: debhelper (>= 7.0.0~), autotools-dev, pkg-config, libgtp, libosmocore-dev, libosmo-sccp-dev, libdbi0-dev
+Build-Depends: debhelper (>= 7.0.0~), autotools-dev, pkg-config, libgtp-dev, libosmocore-dev, libosmo-sccp-dev, libdbi0-dev, dh-autoreconf, libosmo-abis-dev
 Standards-Version: 3.8.4
 Homepage: http://openbsc.osmocom.org/
 Vcs-Git: git://bs11-abis.gnumonks.org/openbsc.git

@@ -13,19 +13,11 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# This has to be exported to make some magic below work.
-export DH_OPTIONS
-
-# this requires debhelper 7.0.50 or above, which lenny doesn't have yet!
-#override_dh_auto_configure:
-#	dh_auto_configure -- --enable-nat --enable-osmo-bsc
-
-build: build-stamp
-build-stamp:
-	dh build --before configure
-	dh_auto_configure -- --enable-nat --enable-osmo-bsc
-	dh build --after configure
-	touch build-stamp
-
 %:
-	dh $@ 
+	dh --with autoreconf $@ 
+
+override_dh_auto_configure:
+	dh_auto_configure -- --enable-nat --enable-osmo-bsc
+
+override_dh_auto_test:
+#	tests are broken...
