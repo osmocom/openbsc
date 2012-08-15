@@ -1,3 +1,9 @@
+openbsc (0.12.0+git26-1) precise; urgency=low
+
+  * Fix version issue.
+
+ -- Eric Butler <eric@codebutler.com>  Tue, 14 Aug 2012 21:00:51 -0700
+
 openbsc (0.12.0+git26) precise; urgency=low
 
   * Updated ubuntu package.

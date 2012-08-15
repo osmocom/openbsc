@@ -13,10 +13,15 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+DEBIAN  := $(shell dpkg-parsechangelog | grep ^Version: | cut -d' ' -f2)
+DEBVERS := $(shell echo '$(DEBIAN)' | cut -d- -f1)
+VERSION := $(shell echo '$(DEBVERS)' | sed -e 's/[+-].*//' -e 's/~//g')
+
 %:
 	dh --with autoreconf $@ 
 
 override_dh_auto_configure:
+	echo $(VERSION) > .tarball-version
 	dh_auto_configure -- --enable-nat --enable-osmo-bsc
 
 override_dh_auto_test:
