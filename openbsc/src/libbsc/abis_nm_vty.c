@@ -63,7 +63,24 @@ static int dummy_config_write(struct vty *v)
 
 /* FIXME: auto-generate those strings from the value_string lists */
 #define NM_OBJCLASS_VTY "(site-manager|bts|radio-carrier|baseband-transceiver|channel|adjc|handover|power-contorl|btse|rack|test|envabtse|bport|gprs-nse|gprs-cell|gprs-nsvc|siemenshw)"
-#define NM_OBJCLASS_VTY_HELP "FIXME"
+#define NM_OBJCLASS_VTY_HELP	"Site Manager Object\n"			\
+				"BTS Object\n"				\
+				"Radio Carrier Object\n"		\
+				"Baseband Transceiver Object\n"		\
+				"Channel (Timeslot) Object\n"		\
+				"Adjacent Object (Siemens)\n"		\
+				"Handover Object (Siemens)\n"		\
+				"Power Control Object (Siemens)\n"	\
+				"BTSE Object (Siemens)\n"		\
+				"Rack Object (Siemens)\n"		\
+				"Test Object (Siemens)\n"		\
+				"ENVABTSE Object (Siemens)\n"		\
+				"BPORT Object (Siemens)\n"		\
+				"GPRS NSE Object (ip.access/osmo-bts)\n"	\
+				"GPRS Cell Object (ip.acecss/osmo-bts)\n"	\
+				"GPRS NSVC Object (ip.acecss/osmo-bts)\n"	\
+				"SIEMENSHW Object (Siemens)\n"
+
 
 DEFUN(oml_class_inst, oml_class_inst_cmd,
 	"bts <0-255> oml class " NM_OBJCLASS_VTY

@@ -107,7 +107,8 @@ static void subscr_dump_full_vty(struct vty *vty, struct gsm_subscriber *subscr,
 DEFUN(show_subscr_cache,
       show_subscr_cache_cmd,
       "show subscriber cache",
-	SHOW_STR "Display contents of subscriber cache\n")
+	SHOW_STR "Show information about subscribers\n"
+	"Display contents of subscriber cache\n")
 {
 	struct gsm_subscriber *subscr;
 
@@ -122,6 +123,7 @@ DEFUN(show_subscr_cache,
 DEFUN(sms_send_pend,
       sms_send_pend_cmd,
       "sms send pending",
+      "SMS related comamnds\n" "SMS Sending related commands\n"
       "Send all pending SMS")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
@@ -349,10 +351,12 @@ DEFUN(subscriber_silent_call_stop,
 DEFUN(subscriber_ussd_notify,
       subscriber_ussd_notify_cmd,
       "subscriber " SUBSCR_TYPES " ID ussd-notify (0|1|2) .TEXT",
-      SUBSCR_HELP "USSD Notify\n"
+      SUBSCR_HELP "Send a USSD notify to the subscriber\n"
       "Subscriber ID\n"
-      "Alerting Level\n"
-      "Text Message to send\n")
+      "Alerting Level 0\n"
+      "Alerting Level 1\n"
+      "Alerting Level 2\n"
+      "Text of USSD message to send\n")
 {
 	char *text;
 	struct gsm_subscriber_connection *conn;

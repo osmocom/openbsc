@@ -216,7 +216,9 @@ DEFUN(om2k_disable, om2k_disable_cmd,
 
 DEFUN(om2k_op_info, om2k_op_info_cmd,
 	"operational-info <0-1>",
-	"Set operational information\n")
+	"Set operational information\n"
+	"Set operational info to 0\n"
+	"Set operational info to 1\n")
 {
 	struct oml_node_state *oms = vty->index;
 	int oper = atoi(argv[0]);
