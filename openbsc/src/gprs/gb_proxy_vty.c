@@ -40,7 +40,7 @@ static struct gbproxy_config *g_cfg = NULL;
  */
 static struct cmd_node gbproxy_node = {
 	GBPROXY_NODE,
-	"%s(gbproxy)#",
+	"%s(config-gbproxy)# ",
 	1,
 };
 

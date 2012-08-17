@@ -51,13 +51,13 @@ static struct mgcp_trunk_config *find_trunk(struct mgcp_config *cfg, int nr)
  */
 struct cmd_node mgcp_node = {
 	MGCP_NODE,
-	"%s(mgcp)#",
+	"%s(config-mgcp)# ",
 	1,
 };
 
 struct cmd_node trunk_node = {
 	TRUNK_NODE,
-	"%s(trunk)#",
+	"%s(config-mgcp-trunk)# ",
 	1,
 };
 

@@ -106,7 +106,7 @@ static char *gprs_pdpaddr2str(uint8_t *pdpa, uint8_t len)
 
 static struct cmd_node sgsn_node = {
 	SGSN_NODE,
-	"%s(sgsn)#",
+	"%s(config-sgsn)# ",
 	1,
 };
 

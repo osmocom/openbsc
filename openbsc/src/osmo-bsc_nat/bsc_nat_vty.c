@@ -47,19 +47,19 @@ static struct bsc_nat *_nat;
 
 static struct cmd_node nat_node = {
 	NAT_NODE,
-	"%s(nat)#",
+	"%s(config-nat)# ",
 	1,
 };
 
 static struct cmd_node bsc_node = {
 	NAT_BSC_NODE,
-	"%s(bsc)#",
+	"%s(config-nat-bsc)# ",
 	1,
 };
 
 static struct cmd_node pgroup_node = {
 	PGROUP_NODE,
-	"%s(paging-group)#",
+	"%s(config-nat-paging-group)# ",
 	1,
 };
 
@@ -1042,6 +1042,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_no_pgroup_cmd);
 	install_node(&pgroup_node, config_write_pgroup);
 	install_default(PGROUP_NODE);
+	install_element(PGROUP_NODE, &ournode_exit_cmd);
+	install_element(PGROUP_NODE, &ournode_end_cmd);
 	install_element(PGROUP_NODE, &cfg_pgroup_lac_cmd);
 	install_element(PGROUP_NODE, &cfg_pgroup_no_lac_cmd);
 

@@ -97,25 +97,25 @@ static const struct value_string bts_neigh_mode_strs[] = {
 
 struct cmd_node net_node = {
 	GSMNET_NODE,
-	"%s(network)#",
+	"%s(config-net)# ",
 	1,
 };
 
 struct cmd_node bts_node = {
 	BTS_NODE,
-	"%s(bts)#",
+	"%s(config-net-bts)# ",
 	1,
 };
 
 struct cmd_node trx_node = {
 	TRX_NODE,
-	"%s(trx)#",
+	"%s(config-net-bts-trx)# ",
 	1,
 };
 
 struct cmd_node ts_node = {
 	TS_NODE,
-	"%s(ts)#",
+	"%s(config-net-bts-trx-ts)# ",
 	1,
 };
 
