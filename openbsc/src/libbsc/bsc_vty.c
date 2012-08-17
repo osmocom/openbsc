@@ -1434,7 +1434,7 @@ DEFUN(cfg_bts,
 
 DEFUN(cfg_bts_type,
       cfg_bts_type_cmd,
-      "type TYPE",
+      "type TYPE", /* dynamically created */
       "Set the BTS type\n" "Type\n")
 {
 	struct gsm_bts *bts = vty->index;
@@ -2853,6 +2853,18 @@ int bsc_vty_init(const struct log_info *cat)
 					   gsm_pchant_descs,
 					   "Physical Channel Combination\n",
 					   "\n", "", 0);
+
+	cfg_bts_type_cmd.string =
+		vty_cmd_string_from_valstr(tall_bsc_ctx,
+					   bts_type_names,
+					   "type (", "|", ")",
+					   VTY_DO_LOWER);
+	cfg_bts_type_cmd.doc =
+		vty_cmd_string_from_valstr(tall_bsc_ctx,
+					   bts_type_descs,
+					   "BTS Vendor/Type\n",
+					   "\n", "", 0);
+
 
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);

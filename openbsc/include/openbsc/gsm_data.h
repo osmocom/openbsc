@@ -365,4 +365,7 @@ struct gsm_bts_trx *gsm_bts_trx_by_nr(struct gsm_bts *bts, int nr);
 /* generic E1 line operations for all ISDN-based BTS. */
 extern struct e1inp_line_ops bts_isdn_e1inp_line_ops;
 
+extern const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE+1];
+extern const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1];
+
 #endif /* _GSM_DATA_H */

@@ -363,6 +363,7 @@ enum gsm_bts_type {
 	GSM_BTS_TYPE_HSL_FEMTO,
 	GSM_BTS_TYPE_NOKIA_SITE,
 	GSM_BTS_TYPE_OSMO_SYSMO,
+	_NUM_GSM_BTS_TYPE
 };
 
 struct vty;
