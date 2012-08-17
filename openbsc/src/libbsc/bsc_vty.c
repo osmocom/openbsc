@@ -1549,7 +1549,7 @@ DEFUN(cfg_bts_timezone,
       "Timezone offset (00 minutes)\n"
       "Timezone offset (15 minutes)\n"
       "Timezone offset (30 minutes)\n"
-      "Timezone offset (60 minutes)\n"
+      "Timezone offset (45 minutes)\n"
       )
 {
 	struct gsm_bts *bts = vty->index;
@@ -1681,12 +1681,13 @@ DEFUN(cfg_bts_hsl_oml,
 	return CMD_SUCCESS;
 }
 
-#define OML_E1_STR OML_STR "E1 Line\n"
+#define OML_E1_STR OML_STR "OML E1/T1 Configuration\n"
 
 DEFUN(cfg_bts_oml_e1,
       cfg_bts_oml_e1_cmd,
       "oml e1 line E1_LINE timeslot <1-31> sub-slot (0|1|2|3|full)",
-	OML_E1_STR OML_E1_STR
+	OML_E1_STR
+      "E1/T1 line number to be used for OML\n"
       "E1/T1 line number to be used for OML\n"
       "E1/T1 timeslot to be used for OML\n"
       "E1/T1 timeslot to be used for OML\n"
@@ -1757,7 +1758,10 @@ DEFUN(cfg_bts_rach_max_trans,
 	RACH_STR
       "Set the maximum number of RACH burst transmissions\n"
       "Set the maximum number of RACH burst transmissions\n"
-      "Maximum number of RACH burst transmissions\n")
+      "Maximum number of 1 RACH burst transmissions\n"
+      "Maximum number of 2 RACH burst transmissions\n"
+      "Maximum number of 4 RACH burst transmissions\n"
+      "Maximum number of 7 RACH burst transmissions\n")
 {
 	struct gsm_bts *bts = vty->index;
 	bts->si_common.rach_control.max_trans = rach_max_trans_val2raw(atoi(argv[0]));
@@ -1829,7 +1833,8 @@ DEFUN(cfg_bts_rach_ec_allowed, cfg_bts_rach_ec_allowed_cmd,
 DEFUN(cfg_bts_ms_max_power, cfg_bts_ms_max_power_cmd,
       "ms max power <0-40>",
       "MS Options\n"
-      "Maximum transmit power of the MS in dBm\n"
+      "Maximum transmit power of the MS\n"
+      "Maximum transmit power of the MS\n"
       "Maximum transmit power of the MS in dBm")
 {
 	struct gsm_bts *bts = vty->index;
@@ -2658,7 +2663,8 @@ DEFUN(cfg_ts_e1_subslot,
       "E1/T1 channel connected to this on-air timeslot\n"
       "E1/T1 channel connected to this on-air timeslot\n"
       "E1/T1 line connected to this on-air timeslot\n"
-      "E1/T1 line connected to this on-air timeslot\n"
+      "E1/T1 timeslot connected to this on-air timeslot\n"
+      "E1/T1 timeslot connected to this on-air timeslot\n"
       "E1/T1 sub-slot connected to this on-air timeslot\n"
       "E1/T1 sub-slot 0 connected to this on-air timeslot\n"
       "E1/T1 sub-slot 1 connected to this on-air timeslot\n"

@@ -352,7 +352,6 @@ DEFUN(subscriber_ussd_notify,
       subscriber_ussd_notify_cmd,
       "subscriber " SUBSCR_TYPES " ID ussd-notify (0|1|2) .TEXT",
       SUBSCR_HELP "Send a USSD notify to the subscriber\n"
-      "Subscriber ID\n"
       "Alerting Level 0\n"
       "Alerting Level 1\n"
       "Alerting Level 2\n"
