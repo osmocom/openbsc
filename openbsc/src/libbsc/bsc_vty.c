@@ -25,6 +25,7 @@
 #include <osmocom/vty/vty.h>
 #include <osmocom/vty/logging.h>
 #include <osmocom/vty/telnet_interface.h>
+#include <osmocom/vty/misc.h>
 
 #include <arpa/inet.h>
 
@@ -2555,6 +2556,25 @@ DEFUN(cfg_ts,
 
 DEFUN(cfg_ts_pchan,
       cfg_ts_pchan_cmd,
+      "phys_chan_config PCHAN", /* dynamically generated! */
+      "Physical Channel configuration (TCH/SDCCH/...)")
+{
+	struct gsm_bts_trx_ts *ts = vty->index;
+	int pchanc;
+
+	pchanc = gsm_pchan_parse(argv[0]);
+	if (pchanc < 0)
+		return CMD_WARNING;
+
+	ts->pchan = pchanc;
+
+	return CMD_SUCCESS;
+}
+
+/* used for backwards compatibility with old config files that still
+ * have uppercase pchan type names */
+DEFUN_HIDDEN(cfg_ts_pchan_compat,
+      cfg_ts_pchan_compat_cmd,
       "phys_chan_config PCHAN",
       "Physical Channel configuration (TCH/SDCCH/...)")
 {
@@ -2569,6 +2589,8 @@ DEFUN(cfg_ts_pchan,
 
 	return CMD_SUCCESS;
 }
+
+
 
 DEFUN(cfg_ts_tsc,
       cfg_ts_tsc_cmd,
@@ -2821,6 +2843,17 @@ extern const char *openbsc_copyright;
 
 int bsc_vty_init(const struct log_info *cat)
 {
+	cfg_ts_pchan_cmd.string =
+		vty_cmd_string_from_valstr(tall_bsc_ctx,
+					   gsm_pchant_names,
+					   "phys_chan_config (", "|", ")",
+					   VTY_DO_LOWER);
+	cfg_ts_pchan_cmd.doc =
+		vty_cmd_string_from_valstr(tall_bsc_ctx,
+					   gsm_pchant_descs,
+					   "Physical Channel Combination\n",
+					   "\n", "", 0);
+
 	install_element_ve(&show_net_cmd);
 	install_element_ve(&show_bts_cmd);
 	install_element_ve(&show_trx_cmd);
@@ -2948,6 +2981,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(TS_NODE, &ournode_exit_cmd);
 	install_element(TS_NODE, &ournode_end_cmd);
 	install_element(TS_NODE, &cfg_ts_pchan_cmd);
+	install_element(TS_NODE, &cfg_ts_pchan_compat_cmd);
 	install_element(TS_NODE, &cfg_ts_tsc_cmd);
 	install_element(TS_NODE, &cfg_ts_hopping_cmd);
 	install_element(TS_NODE, &cfg_ts_hsn_cmd);

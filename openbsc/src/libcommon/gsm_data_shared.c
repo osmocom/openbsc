@@ -51,7 +51,7 @@ static void gsm_mo_init(struct gsm_abis_mo *mo, struct gsm_bts *bts,
 	gsm_abis_mo_reset(mo);
 }
 
-static const struct value_string pchan_names[] = {
+const struct value_string gsm_pchant_names[10] = {
 	{ GSM_PCHAN_NONE,	"NONE" },
 	{ GSM_PCHAN_CCCH,	"CCCH" },
 	{ GSM_PCHAN_CCCH_SDCCH4,"CCCH+SDCCH4" },
@@ -64,17 +64,31 @@ static const struct value_string pchan_names[] = {
 	{ 0,			NULL }
 };
 
+const struct value_string gsm_pchant_descs[10] = {
+	{ GSM_PCHAN_NONE,	"Physical Channel not configured" },
+	{ GSM_PCHAN_CCCH,	"FCCH + SCH + BCCH + CCCH (Comb. IV)" },
+	{ GSM_PCHAN_CCCH_SDCCH4,
+		"FCCH + SCH + BCCH + CCCH + 4 SDCCH + 2 SACCH (Comb. V)" },
+	{ GSM_PCHAN_TCH_F,	"TCH/F + FACCH/F + SACCH (Comb. I)" },
+	{ GSM_PCHAN_TCH_H,	"2 TCH/H + 2 FACCH/H + 2 SACCH (Comb. II)" },
+	{ GSM_PCHAN_SDCCH8_SACCH8C, "8 SDCCH + 4 SACCH (Comb. VII)" },
+	{ GSM_PCHAN_PDCH,	"Packet Data Channel for GPRS/EDGE" },
+	{ GSM_PCHAN_TCH_F_PDCH,	"Dynamic TCH/F or GPRS PDCH" },
+	{ GSM_PCHAN_UNKNOWN,	"Unknown / Unsupported channel combination" },
+	{ 0,			NULL }
+};
+
 const char *gsm_pchan_name(enum gsm_phys_chan_config c)
 {
-	return get_value_string(pchan_names, c);
+	return get_value_string(gsm_pchant_names, c);
 }
 
 enum gsm_phys_chan_config gsm_pchan_parse(const char *name)
 {
-	return get_string_value(pchan_names, name);
+	return get_string_value(gsm_pchant_names, name);
 }
 
-static const struct value_string lchant_names[] = {
+const struct value_string gsm_lchant_names[6] = {
 	{ GSM_LCHAN_NONE,	"NONE" },
 	{ GSM_LCHAN_SDCCH,	"SDCCH" },
 	{ GSM_LCHAN_TCH_F,	"TCH/F" },
@@ -85,7 +99,7 @@ static const struct value_string lchant_names[] = {
 
 const char *gsm_lchant_name(enum gsm_chan_t c)
 {
-	return get_value_string(lchant_names, c);
+	return get_value_string(gsm_lchant_names, c);
 }
 
 static const struct value_string lchan_s_names[] = {
