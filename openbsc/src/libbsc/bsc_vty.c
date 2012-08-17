@@ -289,7 +289,7 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 	dump_pchan_load_vty(vty, "    ", &pl);
 }
 
-DEFUN(show_bts, show_bts_cmd, "show bts [number]",
+DEFUN(show_bts, show_bts_cmd, "show bts <0-255>",
 	SHOW_STR "Display information about a BTS\n"
 		"BTS number")
 {
@@ -654,7 +654,7 @@ static void trx_dump_vty(struct vty *vty, struct gsm_bts_trx *trx)
 
 DEFUN(show_trx,
       show_trx_cmd,
-      "show trx [bts_nr] [trx_nr]",
+      "show trx <0-255> <0-255>",
 	SHOW_STR "Display information about a TRX\n"
 	"BTS Number\n"
 	"TRX Number\n")
@@ -725,7 +725,7 @@ static void ts_dump_vty(struct vty *vty, struct gsm_bts_trx_ts *ts)
 
 DEFUN(show_ts,
       show_ts_cmd,
-      "show timeslot [bts_nr] [trx_nr] [ts_nr]",
+      "show timeslot <0-255> <0-255> <0-7>",
 	SHOW_STR "Display information about a TS\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n")
 {
@@ -1017,7 +1017,7 @@ static int lchan_summary(struct vty *vty, int argc, const char **argv,
 
 DEFUN(show_lchan,
       show_lchan_cmd,
-      "show lchan [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+      "show lchan <0-255> <0-255> <0-7> [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
 	LCHAN_NR_STR)
@@ -1028,7 +1028,7 @@ DEFUN(show_lchan,
 
 DEFUN(show_lchan_summary,
       show_lchan_summary_cmd,
-      "show lchan summary [bts_nr] [trx_nr] [ts_nr] [lchan_nr]",
+      "show lchan summary <0-255> <0-255> <0-7> [lchan_nr]",
 	SHOW_STR "Display information about a logical channel\n"
         "Short summary\n"
 	"BTS Number\n" "TRX Number\n" "Timeslot Number\n"
@@ -1053,7 +1053,7 @@ static void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
 
 DEFUN(show_paging,
       show_paging_cmd,
-      "show paging [bts_nr]",
+      "show paging <0-255>",
 	SHOW_STR "Display information about paging reuqests of a BTS\n"
 	"BTS Number\n")
 {
@@ -1400,7 +1400,7 @@ DEFUN(cfg_net_subscr_keep,
 /* per-BTS configuration */
 DEFUN(cfg_bts,
       cfg_bts_cmd,
-      "bts BTS_NR",
+      "bts <0-255>",
       "Select a BTS to configure\n"
 	"BTS Number\n")
 {
@@ -2386,7 +2386,7 @@ DEFUN(cfg_bts_si5_neigh, cfg_bts_si5_neigh_cmd,
 /* per TRX configuration */
 DEFUN(cfg_trx,
       cfg_trx_cmd,
-      "trx TRX_NR",
+      "trx <0-255>",
 	TRX_TEXT
       "Select a TRX to configure")
 {
