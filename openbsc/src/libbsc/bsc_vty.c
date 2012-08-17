@@ -1666,7 +1666,8 @@ DEFUN(cfg_bts_hsl_oml,
       cfg_bts_hsl_oml_cmd,
       "oml hsl line E1_LINE",
       OML_STR "HSL femto Specific Options\n"
-      "Set OML link of this HSL femto BTS\n")
+      "Set OML link of this HSL femto BTS\n"
+      "Virtual E1/T1 line number\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int linenr = atoi(argv[0]);
@@ -2040,7 +2041,7 @@ DEFUN(cfg_bts_gprs_nsvc_lport, cfg_bts_gprs_nsvc_lport_cmd,
 	"GPRS NS Local UDP Port\n"
 	"GPRS NS Local UDP Port\n"
 	"GPRS NS Local UDP Port\n"
-	"GPRS NS Local UDP Port\n")
+	"GPRS NS Local UDP Port Number\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
@@ -2060,7 +2061,8 @@ DEFUN(cfg_bts_gprs_nsvc_rport, cfg_bts_gprs_nsvc_rport_cmd,
 	GPRS_TEXT NSVC_TEXT
 	"GPRS NS Remote UDP Port\n"
 	"GPRS NS Remote UDP Port\n"
-	"GPRS NS Remote UDP Port")
+	"GPRS NS Remote UDP Port\n"
+	"GPRS NS Remote UDP Port Number\n")
 {
 	struct gsm_bts *bts = vty->index;
 	int idx = atoi(argv[0]);
@@ -2414,7 +2416,8 @@ DEFUN(cfg_trx,
 DEFUN(cfg_trx_arfcn,
       cfg_trx_arfcn_cmd,
       "arfcn <0-1023>",
-      "Set the ARFCN for this TRX\n")
+      "Set the ARFCN for this TRX\n"
+      "Absolute Radio Frequency Channel Number\n")
 {
 	int arfcn = atoi(argv[0]);
 	struct gsm_bts_trx *trx = vty->index;
