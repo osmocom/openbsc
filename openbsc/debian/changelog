@@ -1,3 +1,9 @@
+openbsc (0.12.0+git26-3) precise; urgency=low
+
+  * Fix init script.
+
+ -- Eric Butler <eric@codebutler.com>  Sun, 19 Aug 2012 16:05:44 -0700
+
 openbsc (0.12.0+git26-2) precise; urgency=low
 
   * Fix libdbi package dependency.
