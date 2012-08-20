@@ -1,2 +1,3 @@
 CONFIG_FILE="/etc/osmocom/osmo-nitb.cfg"
-DAEMON_ARGS="-m"
+HLR_FILE="/var/lib/osmocom/hlr.sqlite3"
+DAEMON_ARGS="-m -P"

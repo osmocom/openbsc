@@ -1,3 +1,9 @@
+openbsc (0.12.0+git26-4) precise; urgency=low
+
+  * Specify HLR path and enable RTP proxy.
+
+ -- Eric Butler <eric@codebutler.com>  Mon, 20 Aug 2012 00:21:07 -0700
+
 openbsc (0.12.0+git26-3) precise; urgency=low
 
   * Fix init script.
