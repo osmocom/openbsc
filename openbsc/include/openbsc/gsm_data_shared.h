@@ -149,6 +149,18 @@ struct amr_multirate_conf {
 };
 /* /BTS ONLY */
 
+enum lchan_csd_mode {
+	LCHAN_CSD_M_NT,
+	LCHAN_CSD_M_T_1200_75,
+	LCHAN_CSD_M_T_600,
+	LCHAN_CSD_M_T_1200,
+	LCHAN_CSD_M_T_2400,
+	LCHAN_CSD_M_T_9600,
+	LCHAN_CSD_M_T_14400,
+	LCHAN_CSD_M_T_29000,
+	LCHAN_CSD_M_T_32000,
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -160,6 +172,7 @@ struct gsm_lchan {
 	enum rsl_cmod_spd rsl_cmode;
 	/* If TCH, traffic channel mode */
 	enum gsm48_chan_mode tch_mode;
+	enum lchan_csd_mode csd_mode;
 	/* State */
 	enum gsm_lchan_state state;
 	/* Power levels for MS and BTS */
