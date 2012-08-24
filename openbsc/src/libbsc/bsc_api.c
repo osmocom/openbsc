@@ -321,11 +321,11 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int full_rate)
 {
 	if (lchan->type == GSM_LCHAN_SDCCH)
-		return 1;
+		return 0;
 	if (full_rate && lchan->type != GSM_LCHAN_TCH_F)
-		return 1;
+		return 0;
 
-	return 0;
+	return 1;
 }
 
 /**
@@ -341,7 +341,7 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
 
-	if (chan_compat_with_mode(conn->lchan, chan_mode, full_rate) != 0) {
+	if (!chan_compat_with_mode(conn->lchan, chan_mode, full_rate)) {
 		if (handle_new_assignment(conn, chan_mode, full_rate) != 0)
 			goto error;
 	} else {
