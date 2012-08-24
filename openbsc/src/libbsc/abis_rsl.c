@@ -363,14 +363,53 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 		cm->chan_rate = RSL_CMOD_SP_GSM3;
 		break;
 	case GSM48_CMODE_DATA_14k5:
-		cm->chan_rate = RSL_CMOD_SP_NT_14k5;
-		break;
 	case GSM48_CMODE_DATA_12k0:
-		cm->chan_rate = RSL_CMOD_SP_NT_12k0;
-		break;
 	case GSM48_CMODE_DATA_6k0:
-		cm->chan_rate = RSL_CMOD_SP_NT_6k0;
-		break;
+		switch (lchan->csd_mode) {
+		case LCHAN_CSD_M_NT:
+			/* non-transparent CSD with RLP */
+			switch (lchan->tch_mode) {
+			case GSM48_CMODE_DATA_14k5:
+				cm->chan_rate = RSL_CMOD_SP_NT_14k5;
+				break;
+			case GSM48_CMODE_DATA_12k0:
+				cm->chan_rate = RSL_CMOD_SP_NT_12k0;
+				break;
+			case GSM48_CMODE_DATA_6k0:
+				cm->chan_rate = RSL_CMOD_SP_NT_6k0;
+				break;
+			default:
+				return -EINVAL;
+			}
+			break;
+			/* transparent data services below */
+		case LCHAN_CSD_M_T_1200_75:
+			cm->chan_rate = RSL_CMOD_CSD_T_1200_75;
+			break;
+		case LCHAN_CSD_M_T_600:
+			cm->chan_rate = RSL_CMOD_CSD_T_600;
+			break;
+		case LCHAN_CSD_M_T_1200:
+			cm->chan_rate = RSL_CMOD_CSD_T_1200;
+			break;
+		case LCHAN_CSD_M_T_2400:
+			cm->chan_rate = RSL_CMOD_CSD_T_2400;
+			break;
+		case LCHAN_CSD_M_T_9600:
+			cm->chan_rate = RSL_CMOD_CSD_T_9600;
+			break;
+		case LCHAN_CSD_M_T_14400:
+			cm->chan_rate = RSL_CMOD_CSD_T_14400;
+			break;
+		case LCHAN_CSD_M_T_29000:
+			cm->chan_rate = RSL_CMOD_CSD_T_29000;
+			break;
+		case LCHAN_CSD_M_T_32000:
+			cm->chan_rate = RSL_CMOD_CSD_T_32000;
+			break;
+		default:
+			return -EINVAL;
+		}
 	default:
 		return -EINVAL;
 	}
