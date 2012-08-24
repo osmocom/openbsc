@@ -313,19 +313,44 @@ int gsm0808_submit_dtap(struct gsm_subscriber_connection *conn,
 
 /*
  * \brief Check if the given channel is compatible with the mode/fullrate
- *
- * NOTE: This code is only written with TCH/F and TCH/H in mind. This means
- * that it will not work for CSD, handover, etc. This also assumes that the
- * type of the lchan is either a TCH or a SDCCH.
  */
 static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int full_rate)
 {
-	if (lchan->type == GSM_LCHAN_SDCCH)
-		return 0;
-	if (full_rate && lchan->type != GSM_LCHAN_TCH_F)
-		return 0;
+	switch (chan_mode) {
+	case GSM48_CMODE_SIGN:
+		/* signalling is always possible */
+		return 1;
+	case GSM48_CMODE_SPEECH_V1:
+	case GSM48_CMODE_SPEECH_AMR:
+	case GSM48_CMODE_DATA_3k6:
+	case GSM48_CMODE_DATA_6k0:
+		/* these services can all run on TCH/H, but we may have
+		 * an explicit override by the 'full_rate' argument */
+		switch (lchan->type) {
+		case GSM_LCHAN_TCH_F:
+			return 1;
+		case GSM_LCHAN_TCH_H:
+			if (full_rate)
+				return 0;
+			else
+				return 1;
+			break;
+		default:
+			return 0;
+		}
+		break;
+	case GSM48_CMODE_DATA_12k0:
+	case GSM48_CMODE_DATA_14k5:
+	case GSM48_CMODE_SPEECH_EFR:
+		/* these services all explicitly require a TCH/F */
+		if (lchan->type == GSM_LCHAN_TCH_F)
+			return 1;
+		else
+			return 0;
+		break;
+	}
 
-	return 1;
+	return 0;
 }
 
 /**
