@@ -123,18 +123,18 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	call->remote_ref = remote->callref;
 	remote->remote_ref = call->callref;
 
+	/* send call proceeding */
+	memset(&mncc, 0, sizeof(struct gsm_mncc));
+	mncc.callref = call->callref;
+	DEBUGP(DMNCC, "(call %x) Accepting call.\n", call->callref);
+	mncc_tx_to_cc(call->net, MNCC_CALL_PROC_REQ, &mncc);
+
 	/* modify mode */
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
 	mncc.lchan_mode = determine_lchan_mode(setup);
 	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
-
-	/* send call proceeding */
-	memset(&mncc, 0, sizeof(struct gsm_mncc));
-	mncc.callref = call->callref;
-	DEBUGP(DMNCC, "(call %x) Accepting call.\n", call->callref);
-	mncc_tx_to_cc(call->net, MNCC_CALL_PROC_REQ, &mncc);
 
 	/* send setup to remote */
 //	setup->fields |= MNCC_F_SIGNAL;
