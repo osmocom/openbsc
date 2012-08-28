@@ -439,11 +439,14 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 {
 	struct e1inp_line *line = bfd->data;
 	unsigned int ts_nr = bfd->priv_nr;
-	struct e1inp_ts *e1i_ts = &line->ts[ts_nr-1];
+	struct e1inp_ts *e1i_ts = NULL;
 	struct e1inp_sign_link *link;
 	struct msgb *msg;
 	struct ipaccess_head *hh;
 	int ret = 0, error;
+
+	if (line)
+		e1i_ts = &line->ts[ts_nr-1];
 
 	msg = ipaccess_read_msg(bfd, &error);
 	if (!msg) {
@@ -470,6 +473,12 @@ static int handle_ts1_read(struct osmo_fd *bfd)
 	}
 	/* BIG FAT WARNING: bfd might no longer exist here, since ipaccess_rcvmsg()
 	 * might have free'd it !!! */
+
+	if (!e1i_ts) {
+		LOGP(DINP, LOGL_ERROR, "no matching line for fd %d", bfd->fd);
+		msgb_free(msg);
+		return -EIO;
+	}
 
 	link = e1inp_lookup_sign_link(e1i_ts, hh->proto, 0);
 	if (!link) {
@@ -695,7 +704,7 @@ static int rsl_listen_fd_cb(struct osmo_fd *listen_bfd, unsigned int what)
 	}
 	LOGP(DINP, LOGL_NOTICE, "accept()ed new RSL link from %s\n", inet_ntoa(sa.sin_addr));
 	bfd->priv_nr = PRIV_RSL;
-	bfd->cb = ipaccess_fd_cb;
+	 bfd->cb = ipaccess_fd_cb;
 	bfd->when = BSC_FD_READ;
 	ret = osmo_fd_register(bfd);
 	if (ret < 0) {
