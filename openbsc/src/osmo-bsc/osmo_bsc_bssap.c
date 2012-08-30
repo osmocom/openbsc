@@ -299,7 +299,6 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 {
 	struct msgb *resp;
 	struct osmo_msc_data *msc;
-	struct gsm_network *network;
 	struct tlv_parsed tp;
 	uint8_t *data;
 	uint16_t cic;
@@ -313,7 +312,6 @@ static int bssmap_handle_assignm_req(struct osmo_bsc_sccp_con *conn,
 		return -1;
 	}
 
-	network = conn->conn->bts->network;
 	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l4h + 1, length - 1, 0, 0);
 
 	if (!TLVP_PRESENT(&tp, GSM0808_IE_CHANNEL_TYPE)) {
