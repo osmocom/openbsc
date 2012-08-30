@@ -24,9 +24,11 @@
 #include <openbsc/gsm_04_80.h>
 #include <openbsc/signal.h>
 
-int bsc_grace_allow_new_connection(struct gsm_network *network)
+int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *bts)
 {
 	if (!network->bsc_data->rf_ctrl)
+		return 1;
+	if (bts && bts->excl_from_rf_lock)
 		return 1;
 	return network->bsc_data->rf_ctrl->policy == S_RF_ON;
 }
