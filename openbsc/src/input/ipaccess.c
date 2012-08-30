@@ -403,10 +403,12 @@ static int ipaccess_drop(struct e1inp_ts *ts, struct osmo_fd *bfd)
 	}
 
 	/* error case */
-	LOGP(DINP, LOGL_ERROR, "Failed to find a signalling link for ts: %p\n", ts);
+	LOGP(DINP, LOGL_ERROR,
+		"Failed to find a signalling link for ts: %p %p\n", ts);
 	osmo_fd_unregister(bfd);
 	close(bfd->fd);
 	bfd->fd = -1;
+	talloc_free(ts->line);
 	return -1;
 }
 
