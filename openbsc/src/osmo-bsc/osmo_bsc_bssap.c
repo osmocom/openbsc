@@ -413,7 +413,7 @@ static int bssmap_rcvmsg_udt(struct osmo_msc_data *msc,
 		ret = bssmap_handle_reset_ack(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
-		if (bsc_grace_allow_new_connection(msc->network))
+		if (bsc_grace_allow_new_connection(msc->network, NULL))
 			ret = bssmap_handle_paging(msc, msg, length);
 		break;
 	}
