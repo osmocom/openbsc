@@ -111,6 +111,7 @@ struct mgcp_trunk_config {
 	int trunk_nr;
 	int trunk_type;
 
+	char *audio_fmtp_extra;
 	char *audio_name;
 	int audio_payload;
 	int audio_loop;

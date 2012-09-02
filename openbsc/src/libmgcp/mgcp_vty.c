@@ -94,6 +94,9 @@ static int config_write_mgcp(struct vty *vty)
 	if (g_cfg->trunk.audio_name)
 		vty_out(vty, "  sdp audio-payload name %s%s",
 			g_cfg->trunk.audio_name, VTY_NEWLINE);
+	if (g_cfg->trunk.audio_fmtp_extra)
+		vty_out(vty, "  sdp audio fmtp-extra %s%s",
+			g_cfg->trunk.audio_fmtp_extra, VTY_NEWLINE);
 	vty_out(vty, "  loop %u%s", !!g_cfg->trunk.audio_loop, VTY_NEWLINE);
 	vty_out(vty, "  number endpoints %u%s", g_cfg->trunk.number_endpoints - 1, VTY_NEWLINE);
 	if (g_cfg->call_agent_addr)
@@ -321,6 +324,19 @@ ALIAS_DEPRECATED(cfg_mgcp_rtp_ip_dscp, cfg_mgcp_rtp_ip_tos_cmd,
       RTP_STR
       "Apply IP_TOS to the audio stream\n" "The DSCP value\n")
 
+DEFUN(cfg_mgcp_sdp_fmtp_extra,
+      cfg_mgcp_sdp_fmtp_extra_cmd,
+      "sdp audio fmtp-extra .NAME",
+      "Add extra fmtp for the SDP file\n")
+{
+	char *txt = argv_concat(argv, argc, 0);
+	if (!txt)
+		return CMD_WARNING;
+
+	bsc_replace_string(g_cfg, &g_cfg->trunk.audio_fmtp_extra, txt);
+	talloc_free(txt);
+	return CMD_SUCCESS;
+}
 
 #define SDP_STR "SDP File related options\n"
 #define AUDIO_STR "Audio payload options\n"
@@ -481,8 +497,26 @@ static int config_write_trunk(struct vty *vty)
 			vty_out(vty, "  rtcp-omit%s", VTY_NEWLINE);
 		else
 			vty_out(vty, "  no rtcp-omit%s", VTY_NEWLINE);
+		if (trunk->audio_fmtp_extra)
+			vty_out(vty, "   sdp audio fmtp-extra %s%s",
+				trunk->audio_fmtp_extra, VTY_NEWLINE);
 	}
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_trunk_sdp_fmtp_extra,
+      cfg_trunk_sdp_fmtp_extra_cmd,
+      "sdp audio fmtp-extra .NAME",
+      "Add extra fmtp for the SDP file\n")
+{
+	struct mgcp_trunk_config *trunk = vty->index;
+	char *txt = argv_concat(argv, argc, 0);
+	if (!txt)
+		return CMD_WARNING;
+
+	bsc_replace_string(g_cfg, &trunk->audio_fmtp_extra, txt);
+	talloc_free(txt);
 	return CMD_SUCCESS;
 }
 
@@ -780,6 +814,7 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_number_endp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_omit_rtcp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_omit_rtcp_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_sdp_fmtp_extra_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -793,6 +828,7 @@ int mgcp_vty_init(void)
 	install_element(TRUNK_NODE, &cfg_trunk_loop_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_omit_rtcp_cmd);
 	install_element(TRUNK_NODE, &cfg_trunk_no_omit_rtcp_cmd);
+	install_element(TRUNK_NODE, &cfg_trunk_sdp_fmtp_extra_cmd);
 
 	return 0;
 }

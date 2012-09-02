@@ -67,7 +67,9 @@ struct mgcp_rtp_end {
 	/* in network byte order */
 	int rtp_port, rtcp_port;
 
+	/* per endpoint data */
 	int payload_type;
+	char *fmtp_extra;
 
 	/*
 	 * Each end has a socket...

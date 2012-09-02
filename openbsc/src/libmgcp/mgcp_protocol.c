@@ -190,6 +190,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 					     const char *msg, const char *trans_id)
 {
 	const char *addr = endp->cfg->local_ip;
+	const char *fmtp_extra = endp->bts_end.fmtp_extra;
 	char sdp_record[4096];
 
 	if (!addr)
@@ -202,10 +203,12 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 			"c=IN IP4 %s\r\n"
 			"t=0 0\r\n"
 			"m=audio %d RTP/AVP %d\r\n"
-			"a=rtpmap:%d %s\r\n",
+			"a=rtpmap:%d %s\r\n"
+			"%s%s",
 			endp->ci, endp->ci, addr, addr,
 			endp->net_end.local_port, endp->bts_end.payload_type,
-			endp->bts_end.payload_type, endp->tcfg->audio_name);
+			endp->bts_end.payload_type, endp->tcfg->audio_name,
+			fmtp_extra ? fmtp_extra : "", fmtp_extra ? "\r\n" : "");
 	return create_resp(endp, 200, " OK", msg, trans_id, NULL, sdp_record);
 }
 
@@ -587,6 +590,8 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 
 	endp->allocated = 1;
 	endp->bts_end.payload_type = tcfg->audio_payload;
+	endp->bts_end.fmtp_extra = talloc_strdup(tcfg->endpoints,
+						tcfg->audio_fmtp_extra);
 
 	/* policy CB */
 	if (p->cfg->policy_cb) {
@@ -958,6 +963,8 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
 	end->local_alloc = -1;
+	talloc_free(end->fmtp_extra);
+	end->fmtp_extra = NULL;
 }
 
 static void mgcp_rtp_end_init(struct mgcp_rtp_end *end)
