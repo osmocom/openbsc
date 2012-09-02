@@ -1,8 +1,8 @@
 /* MGCP Private Data */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -61,7 +61,9 @@ struct mgcp_rtp_end {
 	/* in network byte order */
 	int rtp_port, rtcp_port;
 
+	/* per endpoint data */
 	int payload_type;
+	char *fmtp_extra;
 
 	/*
 	 * Each end has a socket...
