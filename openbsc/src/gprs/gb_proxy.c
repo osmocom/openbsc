@@ -39,6 +39,13 @@
 #include <openbsc/debug.h>
 #include <openbsc/gb_proxy.h>
 
+static uint16_t tlvp_val16_unal(const struct tlv_parsed *tp, int pos)
+{
+	uint16_t res;
+	memcpy(&res, TLVP_VAL(tp, pos), sizeof(res));
+	return res;
+}
+
 struct gbprox_peer {
 	struct llist_head list;
 
