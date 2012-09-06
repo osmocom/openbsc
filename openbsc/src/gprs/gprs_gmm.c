@@ -707,6 +707,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			ctx = sgsn_mm_ctx_alloc(0, &ra_id);
 			if (!ctx)
 				return gsm48_tx_gmm_att_rej_oldmsg(msg, GMM_CAUSE_NET_FAIL);
+			bssgp_fc_ms_init(&ctx->fc, msgb_bvci(msg), msgb_nsei(msg));
 			strncpy(ctx->imsi, mi_string, sizeof(ctx->imsi));
 #endif
 		}
@@ -725,6 +726,7 @@ static int gsm48_rx_gmm_att_req(struct sgsn_mm_ctx *ctx, struct msgb *msg,
 			 * Context will not have an IMSI ultil ID RESP is received */
 			ctx = sgsn_mm_ctx_alloc(msgb_tlli(msg), &ra_id);
 			ctx->p_tmsi = tmsi;
+			bssgp_fc_ms_init(&ctx->fc, msgb_bvci(msg), msgb_nsei(msg));
 		}
 		ctx->tlli = msgb_tlli(msg);
 		ctx->llme = llme;

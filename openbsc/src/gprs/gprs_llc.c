@@ -52,6 +52,7 @@ static int _bssgp_tx_dl_ud(struct msgb *msg, struct sgsn_mm_ctx *mmctx)
 		dup.drx_parms = mmctx->drx_parms;
 		dup.ms_ra_cap.len = mmctx->ms_radio_access_capa.len;
 		dup.ms_ra_cap.v = mmctx->ms_radio_access_capa.buf;
+		dup.fc = &mmctx->fc;
 	}
 	memcpy(&dup.qos_profile, qos_profile_default,
 		sizeof(qos_profile_default));

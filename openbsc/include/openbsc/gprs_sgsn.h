@@ -7,6 +7,7 @@
 #include <osmocom/core/timer.h>
 
 #include <osmocom/gsm/gsm48.h>
+#include <osmocom/gprs/gprs_bssgp.h>
 
 #include <osmocom/crypt/gprs_cipher.h>
 
@@ -110,6 +111,8 @@ struct sgsn_mm_ctx {
 
 	enum gprs_t3350_mode	t3350_mode;
 	uint8_t			t3370_id_type;
+
+	struct bssgp_flow_control fc;
 };
 
 /* look-up a SGSN MM context based on TLLI + RAI */
