@@ -999,6 +999,9 @@ int abis_om2k_tx_is_conf_req(struct gsm_bts *bts)
 
 	talloc_free(cg);
 
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_is),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_IS_CONF_REQ));
+
 	return abis_om2k_sendmsg(bts, msg);
 }
 
@@ -1015,6 +1018,9 @@ int abis_om2k_tx_con_conf_req(struct gsm_bts *bts, uint8_t *data,
 	msgb_tv_put(msg, OM2K_DEI_END_LIST_NR, 1);
 
 	msgb_tlv_put(msg, OM2K_DEI_CON_CONN_LIST, len, data);
+
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_con),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_CON_CONF_REQ));
 
 	return abis_om2k_sendmsg(bts, msg);
 }
@@ -1098,6 +1104,9 @@ int abis_om2k_tx_tf_conf_req(struct gsm_bts *bts)
 	msgb_tv_put(msg, OM2K_DEI_TF_SYNC_SRC, 0x00);
 	msgb_tv_fixed_put(msg, OM2K_DEI_FS_OFFSET,
 			  sizeof(fs_offset_undef), fs_offset_undef);
+
+	DEBUGP(DNM, "Tx MO=%s %s\n", om2k_mo_name(&om2k_mo_tf),
+		get_value_string(om2k_msgcode_vals, OM2K_MSGT_TF_CONF_REQ));
 
 	return abis_om2k_sendmsg(bts, msg);
 }
