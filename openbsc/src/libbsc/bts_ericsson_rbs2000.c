@@ -170,7 +170,7 @@ static void nm_statechg_evt(unsigned int signal,
 			break;
 		if (nsd->new_state->availability == OM2K_MO_S_STARTED) {
 			/* TF has started, configure + enable it */
-			abis_om2k_tx_is_conf_req(nsd->bts);
+			abis_om2k_tx_tf_conf_req(nsd->bts);
 		}
 		break;
 	case OM2K_MO_CLS_TRXC:
