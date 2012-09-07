@@ -822,6 +822,7 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
 		}
+		msg->dst = trx->oml_link;
 		break;
 	case OM2K_MO_CLS_TS:
 		/* Route through per-TRX OML Link to the appropriate TRX */
@@ -831,13 +832,13 @@ static int abis_om2k_sendmsg(struct gsm_bts *bts, struct msgb *msg)
 				"non-existing TRX\n", om2k_mo_name(&o2h->mo));
 			return -ENODEV;
 		}
+		msg->dst = trx->oml_link;
 		break;
 	default:
 		/* Route through the IXU/DXU OML Link */
-		trx = bts->c0;
+		msg->dst = bts->oml_link;
 		break;
 	}
-	msg->dst = trx->oml_link;
 
 	return _abis_nm_sendmsg(msg);
 }
