@@ -20,6 +20,7 @@
  *
  */
 
+#include <inttypes.h>
 
 #include <arpa/inet.h>
 
@@ -204,10 +205,10 @@ hsl_sign_link_up(void *unit_data, struct e1inp_line *line,
 	bts = find_bts_by_serno(hsl_gsmnet, dev->serno);
 	if (!bts) {
 		LOGP(DLINP, LOGL_ERROR, "Unable to find BTS config for "
-				"serial number %lx\n", dev->serno);
+				"serial number %"PRIx64"\n", dev->serno);
 		return NULL;
 	}
-	DEBUGP(DLINP, "Identified HSL BTS Serial Number %lx\n", dev->serno);
+	DEBUGP(DLINP, "Identified HSL BTS Serial Number %"PRIx64"\n", dev->serno);
 
 	/* we shouldn't hardcode it, but HSL femto also hardcodes it... */
 	bts->oml_tei = 255;
