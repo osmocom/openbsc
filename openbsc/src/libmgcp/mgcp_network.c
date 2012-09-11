@@ -230,6 +230,8 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					endp->bts_end.rtcp_port, buf, rc);
 		}
 	}
+
+	return 0;
 }
 
 static int receive_from(struct mgcp_endpoint *endp, int fd, struct sockaddr_in *addr,
