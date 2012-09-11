@@ -124,6 +124,7 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 						      osmo_sitype2rsl(i),
 						      GSM_BTS_SI(bts, i), si_len);
 			}
+			rc = 0;
 		} else
 			rc = rsl_sacch_filling(trx, osmo_sitype2rsl(i),
 					       GSM_BTS_SI(bts, i), si_len);
