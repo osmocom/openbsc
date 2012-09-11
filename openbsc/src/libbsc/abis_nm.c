@@ -1377,7 +1377,6 @@ int abis_nm_get_attr(struct gsm_bts *bts, uint8_t obj_class,
 {
 	struct abis_om_hdr *oh;
 	struct msgb *msg = nm_msgb_alloc();
-	uint8_t *cur;
 
 	DEBUGP(DNM, "Get Attr (bts=%d)\n", bts->nr);
 
@@ -2586,7 +2585,7 @@ void ipac_parse_cgi(struct cell_global_id *cid, const uint8_t *buf)
 int ipac_parse_bcch_info(struct ipac_bcch_info *binf, uint8_t *buf)
 {
 	uint8_t *cur = buf;
-	uint16_t len;
+	uint16_t len __attribute__((unused));
 
 	memset(binf, 0, sizeof(*binf));
 

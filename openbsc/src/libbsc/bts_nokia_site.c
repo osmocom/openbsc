@@ -51,7 +51,7 @@ extern int generate_cell_chan_list(uint8_t * chan_list, struct gsm_bts *bts);
 static void nokia_abis_nm_queue_send_next(struct gsm_bts *bts);
 static void reset_timer_cb(void *_bts);
 static int abis_nm_reset(struct gsm_bts *bts, uint16_t ref);
-static int dump_elements(uint8_t * data, int len);
+static int dump_elements(uint8_t * data, int len) __attribute__((unused));
 
 static void bootstrap_om_bts(struct gsm_bts *bts)
 {
@@ -1307,7 +1307,7 @@ static int find_element(uint8_t * data, int len, uint16_t id, uint8_t * value,
 	uint8_t ub;
 	int idx = 0;
 	int found = 0;
-	int constructed;
+	int constructed __attribute__((unused));
 	uint16_t id_value;
 
 	for (;;) {

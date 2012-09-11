@@ -518,7 +518,6 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	struct gsm_bts *bts = conn->bts;
 	uint8_t mi_type;
 	char mi_string[GSM48_MI_SIZE];
-	int rc;
 
  	lu = (struct gsm48_loc_upd_req *) gh->data;
 
@@ -562,7 +561,7 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 	case GSM_MI_TYPE_IMSI:
 		DEBUGPC(DMM, "\n");
 		/* we always want the IMEI, too */
-		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
+		mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
 		conn->loc_operation->waiting_for_imei = 1;
 
 		/* look up subscriber based on IMSI, create if not found */
@@ -578,11 +577,11 @@ static int mm_rx_loc_upd_req(struct gsm_subscriber_connection *conn, struct msgb
 					    tmsi_from_string(mi_string));
 		if (!subscr) {
 			/* send IDENTITY REQUEST message to get IMSI */
-			rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMSI);
+			mm_tx_identity_req(conn, GSM_MI_TYPE_IMSI);
 			conn->loc_operation->waiting_for_imsi = 1;
 		}
 		/* we always want the IMEI, too */
-		rc = mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
+		mm_tx_identity_req(conn, GSM_MI_TYPE_IMEI);
 		conn->loc_operation->waiting_for_imei = 1;
 		break;
 	case GSM_MI_TYPE_IMEI:

@@ -194,7 +194,6 @@ static void ho_T3103_cb(void *_ho)
 static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 {
 	struct bsc_handover *ho;
-	int rc;
 
 	/* we need to check if this channel activation is related to
 	 * a handover at all (and if, which particular handover) */
@@ -207,7 +206,7 @@ static int ho_chan_activ_ack(struct gsm_lchan *new_lchan)
 	/* we can now send the 04.08 HANDOVER COMMAND to the MS
 	 * using the old lchan */
 
-	rc = gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
+	gsm48_send_ho_cmd(ho->old_lchan, new_lchan, 0, ho->ho_ref);
 
 	/* start T3103.  We can continue either with T3103 expiration,
 	 * 04.08 HANDOVER COMPLETE or 04.08 HANDOVER FAIL */

@@ -119,8 +119,7 @@ static void msc_ciph_m_compl(struct gsm_subscriber_connection *conn,
 	/* Call back whatever was in progress (if anything) ... */
 	cb = conn->sec_operation->cb;
 	if (cb) {
-		int rc;
-		rc = cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
+		cb(GSM_HOOK_RR_SECURITY, GSM_SECURITY_SUCCEEDED,
 			NULL, conn, conn->sec_operation->cb_data);
 
 	}
