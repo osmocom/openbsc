@@ -161,7 +161,7 @@ static int msc_sccp_accept(struct sccp_connection *connection, void *data)
 static int msc_sccp_read(struct msgb *msgb, unsigned int length, void *data)
 {
 	struct osmo_msc_data *msc = (struct osmo_msc_data *) msgb->cb[0];
-	return bsc_handle_udt(msc->network, msc->msc_con, msgb, length);
+	return bsc_handle_udt(msc, msgb, length);
 }
 
 int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
@@ -187,22 +187,19 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 	return 0;
 }
 
-int bsc_create_new_connection(struct gsm_subscriber_connection *conn)
+int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
+			      struct osmo_msc_data *msc)
 {
 	struct gsm_network *net;
-	struct osmo_msc_data *msc;
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
 
 	net = conn->bts->network;
-	msc = osmo_msc_data_find(net, 0);
-	if (!msc) {
-		LOGP(DMSC, LOGL_ERROR, "Failed to select a MSC.\n");
-		return -1;
-	}
 
+	/* This should not trigger */
 	if (!msc->msc_con->is_authenticated) {
-		LOGP(DMSC, LOGL_ERROR, "Not connected to a MSC. Not forwarding data.\n");
+		LOGP(DMSC, LOGL_ERROR,
+		     "How did this happen? MSC is not connected. Dropping.\n");
 		return -1;
 	}
 
@@ -272,8 +269,10 @@ static void bsc_close_connections(struct bsc_msc_connection *msc_con)
 {
 	struct osmo_bsc_sccp_con *con, *tmp;
 
-	llist_for_each_entry_safe(con, tmp, &active_connections, entry)
-		bsc_sccp_force_free(con);
+	llist_for_each_entry_safe(con, tmp, &active_connections, entry) {
+		if (con->msc->msc_con == msc_con)
+			bsc_sccp_force_free(con);
+	}
 }
 
 static int handle_msc_signal(unsigned int subsys, unsigned int signal,

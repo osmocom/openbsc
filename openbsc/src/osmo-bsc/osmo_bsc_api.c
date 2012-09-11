@@ -89,13 +89,21 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 			uint16_t chosen_channel)
 {
 	struct msgb *resp;
+	struct osmo_msc_data *msc;
 	uint16_t network_code;
 	uint16_t country_code;
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
+	/* find the MSC link we want to use */
+	msc = bsc_find_msc(conn, msg);
+	if (!msc) {
+		LOGP(DMSC, LOGL_ERROR, "Failed to find a MSC for a connection.\n");
+		return -1;
+	}
+
 	/* allocate resource for a new connection */
-	if (bsc_create_new_connection(conn) != 0)
+	if (bsc_create_new_connection(conn, msc) != 0)
 		return BSC_API_CONN_POL_REJECT;
 
 	network_code = get_network_code_for_msc(conn->sccp_con->msc);
