@@ -125,13 +125,12 @@ static void dump_trunk(struct vty *vty, struct mgcp_trunk_config *cfg)
 		struct mgcp_endpoint *endp = &cfg->endpoints[i];
 		vty_out(vty,
 			" Endpoint 0x%.2x: CI: %d net: %u/%u bts: %u/%u on %s "
-			"traffic received bts: %u/%u  remote: %u/%u transcoder: %u/%u%s",
+			"traffic received bts: %u  remote: %u transcoder: %u/%u%s",
 			i, endp->ci,
 			ntohs(endp->net_end.rtp_port), ntohs(endp->net_end.rtcp_port),
 			ntohs(endp->bts_end.rtp_port), ntohs(endp->bts_end.rtcp_port),
 			inet_ntoa(endp->bts_end.addr),
-			endp->bts_end.packets, endp->bts_state.lost_no,
-			endp->net_end.packets, endp->net_state.lost_no,
+			endp->bts_end.packets, endp->net_end.packets,
 			endp->trans_net.packets, endp->trans_bts.packets,
 			VTY_NEWLINE);
 	}
