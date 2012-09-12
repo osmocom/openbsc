@@ -46,6 +46,7 @@ struct mgcp_rtp_state {
 
 	uint32_t orig_ssrc;
 	uint32_t ssrc;
+	int first_seq_no;
 	uint16_t seq_no;
 	int seq_offset;
 	uint32_t last_timestamp;
