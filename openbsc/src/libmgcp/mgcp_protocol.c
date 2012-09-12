@@ -967,6 +967,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	}
 
 	end->packets = 0;
+	end->octets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
