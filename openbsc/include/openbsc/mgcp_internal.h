@@ -55,6 +55,7 @@ struct mgcp_rtp_state {
 struct mgcp_rtp_end {
 	/* statistics */
 	unsigned int packets;
+	unsigned int octets;
 	struct in_addr addr;
 
 	/* in network byte order */

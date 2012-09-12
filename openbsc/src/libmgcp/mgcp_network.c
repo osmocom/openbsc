@@ -296,6 +296,7 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 
 	proto = fd == &endp->net_end.rtp ? PROTO_RTP : PROTO_RTCP;
 	endp->net_end.packets += 1;
+	endp->net_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
 	if (endp->is_transcoded)
@@ -374,6 +375,7 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 
 	/* do this before the loop handling */
 	endp->bts_end.packets += 1;
+	endp->bts_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
 	if (endp->is_transcoded)
