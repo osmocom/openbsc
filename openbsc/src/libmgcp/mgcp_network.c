@@ -120,6 +120,7 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 	timestamp = ntohl(rtp_hdr->timestamp);
 
 	if (!state->initialized) {
+		state->first_seq_no = seq;
 		state->seq_no = seq - 1;
 		state->ssrc = state->orig_ssrc = rtp_hdr->ssrc;
 		state->initialized = 1;
