@@ -145,11 +145,7 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 		rtp_hdr->timestamp = htonl(timestamp);
 	}
 
-	/* seq changed, now compare if we have lost something */
-	if (state->seq_no + 1u != seq)
-		state->lost_no = abs(seq - (state->seq_no + 1));
 	state->seq_no = seq;
-
 	state->last_timestamp = timestamp;
 
 	if (payload < 0)
