@@ -67,6 +67,13 @@
 		 "m=audio 5904 RTP/AVP 97\r"	\
 		 "a=rtpmap:97 GSM-EFR/8000\r"
 
+#define DLCX	 "DLCX 7 1@mgw MGCP 1.0\r\n"	\
+		 "C: 2\r\n"
+
+#define DLCX_RET "250 7 OK\r\n"			\
+		 "P: PS=0, OS=0, PR=0, OR=0\r\n"
+
+
 struct mgcp_test {
 	const char *name;
 	const char *req;
@@ -83,6 +90,7 @@ const struct mgcp_test tests[] = {
 	{ "SHORT2", SHORT2, SHORT2_RET },
 	{ "SHORT3", SHORT3, SHORT2_RET },
 	{ "SHORT4", SHORT4, SHORT2_RET },
+	{ "DLCX", DLCX, DLCX_RET },
 };
 
 static struct msgb *create_msg(const char *str)
