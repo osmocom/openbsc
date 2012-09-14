@@ -253,7 +253,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 		       bsc->nat->mgcp_cfg->source_addr,
 		       endp->bts_end.local_port);
 	if (len < 0) {
-		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
+		LOGP(DMGCP, LOGL_ERROR, "snprintf for MDCX failed.\n");
 		return;
 	}
 
