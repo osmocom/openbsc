@@ -1377,9 +1377,12 @@ int abis_nm_set_radio_attr(struct gsm_bts_trx *trx, uint8_t *attr, int attr_len)
 	return abis_nm_sendmsg(trx->bts, msg);
 }
 
-static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
+static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb,
+			const char **reason)
 {
 	int i;
+
+	*reason = "Reason unknown";
 
 	/* As it turns out, the BS-11 has some very peculiar restrictions
 	 * on the channel combinations it allows */
@@ -1389,6 +1392,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 		case NM_CHANC_TCHHalf:
 		case NM_CHANC_TCHHalf2:
 			/* not supported */
+			*reason = "TCH/H is not supported.";
 			return -EINVAL;
 		case NM_CHANC_SDCCH:
 			/* only one SDCCH/8 per TRX */
@@ -1396,34 +1400,45 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 				if (i == ts->nr)
 					continue;
 				if (ts->trx->ts[i].nm_chan_comb ==
-				    NM_CHANC_SDCCH)
+				    NM_CHANC_SDCCH) {
+					*reason = "Only one SDCCH/8 per TRX allowed.";
 					return -EINVAL;
+				}
 			}
 			/* not allowed for TS0 of BCCH-TRX */
 			if (ts->trx == ts->trx->bts->c0 &&
-			    ts->nr == 0)
-					return -EINVAL;
+			    ts->nr == 0) {
+				*reason = "SDCCH/8 must be on TS0.";
+				return -EINVAL;
+			}
+
 			/* not on the same TRX that has a BCCH+SDCCH4
 			 * combination */
 			if (ts->trx == ts->trx->bts->c0 &&
 			    (ts->trx->ts[0].nm_chan_comb == 5 ||
-			     ts->trx->ts[0].nm_chan_comb == 8))
-					return -EINVAL;
+			     ts->trx->ts[0].nm_chan_comb == 8)) {
+				*reason = "SDCCH/8 and BCCH must be on the same TRX.";
+				return -EINVAL;
+			}
 			break;
 		case NM_CHANC_mainBCCH:
 		case NM_CHANC_BCCHComb:
 			/* allowed only for TS0 of C0 */
-			if (ts->trx != ts->trx->bts->c0 ||
-			    ts->nr != 0)
+			if (ts->trx != ts->trx->bts->c0 || ts->nr != 0) {
+				*reason = "Main BCCH must be on TS0.";
 				return -EINVAL;
+			}
 			break;
 		case NM_CHANC_BCCH:
 			/* allowed only for TS 2/4/6 of C0 */
-			if (ts->trx != ts->trx->bts->c0)
+			if (ts->trx != ts->trx->bts->c0) {
+				*reason = "BCCH must be on C0.";
 				return -EINVAL;
-			if (ts->nr != 2 && ts->nr != 4 &&
-			    ts->nr != 6)
+			}
+			if (ts->nr != 2 && ts->nr != 4 && ts->nr != 6) {
+				*reason = "BCCH must be on TS 2/4/6.";
 				return -EINVAL;
+			}
 			break;
 		case 8: /* this is not like 08.58, but in fact
 			 * FCCH+SCH+BCCH+CCCH+SDCCH/4+SACCH/C4+CBCH */
@@ -1443,6 +1458,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 					return 0;
 					break;
 				default:
+					*reason = "TS0 of TRX0 must carry a BCCH.";
 					return -EINVAL;
 				}
 			} else {
@@ -1452,6 +1468,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 				case NM_CHANC_IPAC_TCHFull_TCHHalf:
 					return 0;
 				default:
+					*reason = "TS0 must carry a TCH/F or TCH/H.";
 					return -EINVAL;
 				}
 			}
@@ -1463,6 +1480,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 					if (ts->trx->ts[0].nm_chan_comb ==
 					    NM_CHANC_mainBCCH)
 						return 0;
+					*reason = "TS0 must be the main BCCH for CBCH.";
 					return -EINVAL;
 				case NM_CHANC_SDCCH:
 				case NM_CHANC_TCHFull:
@@ -1470,6 +1488,9 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 				case NM_CHANC_IPAC_TCHFull_TCHHalf:
 				case NM_CHANC_IPAC_TCHFull_PDCH:
 					return 0;
+				default:
+					*reason = "TS1 must carry a CBCH, SDCCH or TCH.";
+					return -EINVAL;
 				}
 			} else {
 				switch (chan_comb) {
@@ -1479,6 +1500,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 				case NM_CHANC_IPAC_TCHFull_TCHHalf:
 					return 0;
 				default:
+					*reason = "TS1 must carry a SDCCH or TCH.";
 					return -EINVAL;
 				}
 			}
@@ -1498,11 +1520,14 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 			case NM_CHANC_IPAC_TCHFull_PDCH:
 				if (ts->trx->nr == 0)
 					return 0;
-				else
+				else {
+					*reason = "PDCH must be on TRX0.";
 					return -EINVAL;
+				}
 			}
 			break;
 		}
+		*reason = "Unknown combination";
 		return -EINVAL;
 	default:
 		/* unknown BTS type */
@@ -1519,14 +1544,17 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 	uint8_t zero = 0x00;
 	struct msgb *msg = nm_msgb_alloc();
 	uint8_t len = 2 + 2;
+	const char *reason = NULL;
 
 	if (bts->type == GSM_BTS_TYPE_BS11)
 		len += 4 + 2 + 2 + 3;
 
 	DEBUGP(DNM, "Set Chan Attr %s\n", gsm_ts_name(ts));
-	if (verify_chan_comb(ts, chan_comb) < 0) {
+	if (verify_chan_comb(ts, chan_comb, &reason) < 0) {
 		msgb_free(msg);
-		LOGP(DNM, LOGL_ERROR, "Invalid Channel Combination!!!\n");
+		LOGP(DNM, LOGL_ERROR,
+			"Invalid Channel Combination %d on %s. Reason: %s\n",
+			chan_comb, gsm_ts_name(ts), reason);
 		return -EINVAL;
 	}
 	ts->nm_chan_comb = chan_comb;
