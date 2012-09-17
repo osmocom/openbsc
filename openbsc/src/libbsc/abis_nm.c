@@ -1575,7 +1575,7 @@ int abis_nm_set_channel_attr(struct gsm_bts_trx_ts *ts, uint8_t chan_comb)
 	DEBUGP(DNM, "Set Chan Attr %s\n", gsm_ts_name(ts));
 	if (verify_chan_comb(ts, chan_comb) < 0) {
 		msgb_free(msg);
-		DEBUGP(DNM, "Invalid Channel Combination!!!\n");
+		LOGP(DNM, LOGL_ERROR, "Invalid Channel Combination!!!\n");
 		return -EINVAL;
 	}
 	ts->nm_chan_comb = chan_comb;
