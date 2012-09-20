@@ -80,6 +80,7 @@ static void print_help()
 	printf("Some useful help...\n");
 	printf(" -h --help is printing this text.\n");
 	printf(" -c --config-file filename The config file to use.\n");
+	printf(" -s --disable-color\n");
 	printf(" -D --daemonize Fork the process into a background daemon\n");
 	printf(" -V --version Print the version number\n");
 }
@@ -93,6 +94,7 @@ static void handle_options(int argc, char **argv)
 			{"config-file", 1, 0, 'c'},
 			{"daemonize", 0, 0, 'D'},
 			{"version", 0, 0, 'V'},
+			{"disable-color", 0, 0, 's'},
 			{0, 0, 0, 0},
 		};
 
@@ -108,6 +110,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'c':
 			config_file = talloc_strdup(tall_bsc_ctx, optarg);
+			break;
+		case 's':
+			log_set_use_color(osmo_stderr_target, 0);
 			break;
 		case 'V':
 			print_version(1);

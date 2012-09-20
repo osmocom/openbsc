@@ -4,6 +4,6 @@ Description=OpenBSC MGCP
 [Service]
 Type=simple
 Restart=always
-ExecStart=/usr/bin/osmo-bsc_mgcp -c /etc/osmocom/osmo-bsc-mgcp.cfg
+ExecStart=/usr/bin/osmo-bsc_mgcp -s -c /etc/osmocom/osmo-bsc-mgcp.cfg
 Restart=always
 RestartSec=2
