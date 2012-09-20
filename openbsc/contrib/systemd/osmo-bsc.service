@@ -1,0 +1,10 @@
+[Unit]
+Description=OpenBSC BSC
+Requires=osmo-bsc-mgcp.service
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/osmo-bsc -c /etc/osmocom/osmo-bsc.cfg -s
+Restart=always
+RestartSec=2
