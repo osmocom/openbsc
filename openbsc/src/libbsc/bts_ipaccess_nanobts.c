@@ -157,7 +157,7 @@ static unsigned char nanobts_attr_cell[] = {
 		20, 	/* T3142 */
 		5, 	/* T3169 */
 		5,	/* T3191 */
-		200,	/* T3193 (units of 10ms) */
+		160,	/* T3193 (units of 10ms) */
 		5,	/* T3195 */
 		10,	/* N3101 */
 		4,	/* N3103 */
