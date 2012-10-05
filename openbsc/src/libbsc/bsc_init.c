@@ -43,7 +43,7 @@ extern int hsl_setup(struct gsm_network *gsmnet);
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
 {
-	int i;
+	struct gsm_bts *bts;
 
 	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
 
@@ -58,11 +58,13 @@ static int oml_msg_nack(struct nm_nack_signal_data *nack)
 	return 0;
 
 drop_bts:
-	for (i = 0; i < bsc_gsmnet->num_bts; ++i) {
-		struct gsm_bts *bts = gsm_bts_num(bsc_gsmnet, i);
-		if (is_ipaccess_bts(bts))
-			ipaccess_drop_oml(bts);
-	}
+	if (!nack->msg || !nack->msg->trx)
+		return 0;
+
+	bts = nack->msg->trx->bts;
+
+	if (is_ipaccess_bts(bts))
+		ipaccess_drop_oml(bts);
 
 	return 0;
 }
