@@ -67,12 +67,15 @@ static struct gsm_call *get_call_ref(uint32_t callref)
 
 static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
 {
-	/* FIXME: check codec capabilities of the phone */
-
-	if (setup->lchan_type == GSM_LCHAN_TCH_F)
-		return mncc_int.def_codec[0];
-	else
-		return mncc_int.def_codec[1];
+	if (setup->bearer_cap.transfer == GSM_MNCC_BCAP_UNR_DIG) {
+		return GSM48_CMODE_DATA_12k0;
+	} else {
+		/* FIXME: check codec capabilities of the phone */
+		if (setup->lchan_type == GSM_LCHAN_TCH_F)
+			return mncc_int.def_codec[0];
+		else
+			return mncc_int.def_codec[1];
+	}
 }
 
 /* on incoming call, look up database and send setup to remote subscr. */
@@ -81,6 +84,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 {
 	struct gsm_mncc mncc;
 	struct gsm_call *remote;
+	struct gsm_mncc_bearer_cap *bc = &setup->bearer_cap;
 
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
@@ -90,7 +94,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 		return 0;
 	
 	/* transfer mode 1 would be packet mode, which was never specified */
-	if (setup->bearer_cap.mode != 0) {
+	if (bc->mode != 0) {
 		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We don't support "
 			"packet mode\n", call->callref);
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
@@ -98,10 +102,24 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 		goto out_reject;
 	}
 
-	/* we currently only do speech */
-	if (setup->bearer_cap.transfer != GSM_MNCC_BCAP_SPEECH) {
+	/* we currently only support V.110/transp./9.6 or speech */
+	if (bc->transfer == GSM_MNCC_BCAP_UNR_DIG) {
+		if ((bc->data.rate_adaption != GSM48_BCAP_RA_V110_X30)
+		    || (!bc->data.async)
+		    || (bc->data.user_rate != GSM48_BCAP_UR_9600)
+		    || (bc->data.interm_rate != GSM48_BCAP_IR_16k)
+		    || (bc->data.transp != GSM48_BCAP_TR_TRANSP)
+		    || (bc->data.modem_type != GSM48_BCAP_MT_NONE)) {
+			LOGP(DMNCC, LOGL_NOTICE, "(call %x) We only support "
+				"data with V.110/transp./9.6kbit/s\n",
+				call->callref);
+			mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+					GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+			goto out_reject;
+		}
+	} else if (bc->transfer != GSM_MNCC_BCAP_SPEECH) {
 		LOGP(DMNCC, LOGL_NOTICE, "(call %x) We only support "
-			"voice calls\n", call->callref);
+			"voice and data calls\n", call->callref);
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
 		goto out_reject;
@@ -127,6 +145,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	memset(&mncc, 0, sizeof(struct gsm_mncc));
 	mncc.callref = call->callref;
 	mncc.lchan_mode = determine_lchan_mode(setup);
+	mncc.lchan_csd_mode = LCHAN_CSD_M_T_9600;
 	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
 
@@ -304,6 +323,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	int callref;
 	struct gsm_call *call = NULL, *callt;
 	int rc = 0;
+	struct gsm_trans *trans;
 
 	/* Special messages */
 	switch(msg_type) {
@@ -359,8 +379,23 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	case MNCC_SETUP_COMPL_IND:
 		break;
 	case MNCC_CALL_CONF_IND:
+		/* if no bearer capability returned, we use the ie from the
+		   setup message to determine channel mode */
+		if(!(data->fields & MNCC_F_BEARER_CAP)) {
+			trans = trans_find_by_callref(call->net, call->callref);
+			if (!trans) {
+				LOGP(DMNCC, LOGL_ERROR, "No transaction?!?\n");
+				goto out_free;
+			}
+			memcpy(&data->bearer_cap, &trans->cc.msg.bearer_cap,
+				sizeof(struct gsm_mncc_bearer_cap));
+			data->fields &= MNCC_F_BEARER_CAP;
+		}
+
 		/* we now need to MODIFY the channel */
 		data->lchan_mode = determine_lchan_mode(data);
+		data->lchan_csd_mode = LCHAN_CSD_M_T_9600;
+
 		mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, data);
 		break;
 	case MNCC_ALERT_IND:

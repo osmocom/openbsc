@@ -1835,6 +1835,9 @@ static int gsm48_cc_tx_setup(struct gsm_trans *trans, void *arg)
 	}
 	trans->transaction_id = trans_id;
 
+	/* save setup msg for later reference */
+	memcpy(&trans->cc.msg, setup, sizeof(struct gsm_mncc));
+
 	gh->msg_type = GSM48_MT_CC_SETUP;
 
 	gsm48_start_cc_timer(trans, 0x303, GSM48_T303);
