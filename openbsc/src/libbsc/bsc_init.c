@@ -129,6 +129,11 @@ static int rsl_si(struct gsm_bts_trx *trx, enum osmo_sysinfo_type i, int si_len)
 					       GSM_BTS_SI(bts, i), si_len);
 		break;
 	default:
+		if (bts->c0 != trx)
+			LOGP(DRR, LOGL_ERROR,
+				"Attempting to set BCCH SI%s on wrong BTS/TRX (%d/%d)\n",
+				get_value_string(osmo_sitype_strs, i),
+				bts->nr, trx->nr);
 		rc = rsl_bcch_info(trx, osmo_sitype2rsl(i),
 				   GSM_BTS_SI(bts, i), si_len);
 		break;
@@ -148,6 +153,9 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 	bts->si_common.cell_sel_par.ms_txpwr_max_ccch =
 			ms_pwr_ctl_lvl(bts->band, bts->ms_max_power);
 	bts->si_common.cell_sel_par.neci = bts->network->neci;
+
+	/* Zero, forget the state of the SIs */
+	bts->si_valid = 0;
 
 	/* First, we determine which of the SI messages we actually need */
 
