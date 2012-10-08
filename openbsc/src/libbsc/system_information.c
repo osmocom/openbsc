@@ -634,7 +634,7 @@ static struct gsm48_si13_info si13_default = {
 		},
 	},
 	.pwr_ctrl_pars = {
-		.alpha		= 10,	/* a = 1.0 */
+		.alpha		= 0,	/* a = 0.0 */
 		.t_avg_w	= 16,
 		.t_avg_t	= 16,
 		.pc_meas_chan	= 0, 	/* downling measured on CCCH */
