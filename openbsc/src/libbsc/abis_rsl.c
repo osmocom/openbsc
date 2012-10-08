@@ -410,6 +410,7 @@ static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 		default:
 			return -EINVAL;
 		}
+		break;
 	default:
 		return -EINVAL;
 	}
