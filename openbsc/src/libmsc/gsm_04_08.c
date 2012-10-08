@@ -2777,7 +2777,8 @@ static int _gsm48_lchan_modify(struct gsm_trans *trans, void *arg)
 {
 	struct gsm_mncc *mode = arg;
 
-	return gsm0808_assign_req(trans->conn, mode->lchan_mode, 1);
+	return gsm0808_assign_req(trans->conn, mode->lchan_mode,
+					mode->lchan_csd_mode, 1);
 }
 
 static struct downstate {

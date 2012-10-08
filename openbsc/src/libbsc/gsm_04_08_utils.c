@@ -454,7 +454,8 @@ int gsm48_send_rr_ass_cmd(struct gsm_lchan *dest_lchan, struct gsm_lchan *lchan,
 }
 
 /* 9.1.5 Channel mode modify: Modify the mode on the MS side */
-int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
+int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode,
+				uint8_t csd_mode)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh = (struct gsm48_hdr *) msgb_put(msg, sizeof(*gh));
@@ -464,6 +465,7 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	DEBUGP(DRR, "-> CHANNEL MODE MODIFY mode=0x%02x\n", mode);
 
 	lchan->tch_mode = mode;
+	lchan->csd_mode = csd_mode;
 	msg->lchan = lchan;
 	gh->proto_discr = GSM48_PDISC_RR;
 	gh->msg_type = GSM48_MT_RR_CHAN_MODE_MODIF;
@@ -489,11 +491,12 @@ int gsm48_tx_chan_mode_modify(struct gsm_lchan *lchan, uint8_t mode)
 	return gsm48_sendmsg(msg);
 }
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode)
+int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode,
+			uint8_t lchan_csd_mode)
 {
 	int rc;
 
-	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode);
+	rc = gsm48_tx_chan_mode_modify(lchan, lchan_mode, lchan_csd_mode);
 	if (rc < 0)
 		return rc;
 

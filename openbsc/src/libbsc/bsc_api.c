@@ -361,7 +361,8 @@ static int chan_compat_with_mode(struct gsm_lchan *lchan, int chan_mode, int ful
  *
  * TODO: Add multirate configuration, make it work for more than audio.
  */
-int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, int full_rate)
+int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode,
+			int csd_mode, int full_rate)
 {
 	struct bsc_api *api;
 	api = conn->bts->network->bsc_api;
@@ -371,11 +372,11 @@ int gsm0808_assign_req(struct gsm_subscriber_connection *conn, int chan_mode, in
 			goto error;
 	} else {
 		LOGP(DMSC, LOGL_NOTICE,
-			"Sending ChanModify for speech %d %d\n", chan_mode, full_rate);
+			"Sending ChanModify for mode %d %d\n", chan_mode, full_rate);
 		if (chan_mode == GSM48_CMODE_SPEECH_AMR)
 			handle_mr_config(conn, conn->lchan);
 
-		gsm48_lchan_modify(conn->lchan, chan_mode);
+		gsm48_lchan_modify(conn->lchan, chan_mode, csd_mode);
 	}
 
 	/* we will now start the timer to complete the assignment */

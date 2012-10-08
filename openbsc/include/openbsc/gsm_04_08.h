@@ -60,7 +60,7 @@ int gsm48_extract_mi(uint8_t *classmark2, int length, char *mi_string, uint8_t *
 int gsm48_paging_extract_mi(struct gsm48_pag_resp *pag, int length, char *mi_string, uint8_t *mi_type);
 int gsm48_handle_paging_resp(struct gsm_subscriber_connection *conn, struct msgb *msg, struct gsm_subscriber *subscr);
 
-int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode);
+int gsm48_lchan_modify(struct gsm_lchan *lchan, uint8_t lchan_mode, uint8_t lchan_csd_mode);
 int gsm48_rx_rr_modif_ack(struct msgb *msg);
 int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg);
 

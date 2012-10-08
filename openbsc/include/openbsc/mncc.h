@@ -152,6 +152,7 @@ struct gsm_mncc {
 
 	unsigned char	lchan_type;
 	unsigned char	lchan_mode;
+	unsigned char	lchan_csd_mode;
 };
 
 struct gsm_data_frame {
