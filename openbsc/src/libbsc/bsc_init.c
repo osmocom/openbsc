@@ -214,9 +214,9 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	return 0;
 err_out:
-	LOGP(DRR, LOGL_ERROR, "Cannot generate SI %u for BTS %u, most likely "
+	LOGP(DRR, LOGL_ERROR, "Cannot generate SI%s for BTS %u, most likely "
 		"a problem with neighbor cell list generation\n",
-		i, bts->nr);
+		get_value_string(osmo_sitype_strs, i), bts->nr);
 	return rc;
 }
 
