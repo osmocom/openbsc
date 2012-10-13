@@ -138,6 +138,7 @@ AC_OUTPUT(
     tests/bsc-nat/Makefile
     tests/mgcp/Makefile
     tests/gprs/Makefile
+    tests/si/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
