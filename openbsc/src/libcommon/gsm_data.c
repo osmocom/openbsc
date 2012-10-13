@@ -390,6 +390,9 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->si_common.rach_control.tx_integer = 9;  /* 12 slots spread - 217/115 slots delay */
 	bts->si_common.rach_control.max_trans = 3; /* 7 retransmissions */
 	bts->si_common.rach_control.t2 = 4; /* no emergency calls */
+	bts->si_common.chan_desc.att = 1; /* attachment required */
+	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5; /* paging frames */
+	bts->si_common.chan_desc.bs_ag_blks_res = 1; /* reserved AGCH blocks */
 
 	llist_add_tail(&bts->list, &net->bts_list);
 

@@ -391,10 +391,7 @@ static int bootstrap_bts(struct gsm_bts *bts)
 			"GSM networks and should only be used in a RF "
 			"shielded environment such as a faraday cage!\n\n");
 
-	/* Control Channel Description */
-	bts->si_common.chan_desc.att = 1;
-	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5;
-	bts->si_common.chan_desc.bs_ag_blks_res = 1;
+	/* Control Channel Description is set from vty/config */
 
 	/* T3212 is set from vty/config */
 
@@ -405,6 +402,9 @@ static int bootstrap_bts(struct gsm_bts *bts)
 	switch (n) {
 	case 0:
 		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_C;
+		/* Limit reserved block to 2 on combined channel */
+		if (bts->si_common.chan_desc.bs_ag_blks_res > 2)
+			bts->si_common.chan_desc.bs_ag_blks_res = 2;
 		break;
 	case 1:
 		bts->si_common.chan_desc.ccch_conf = RSL_BCCH_CCCH_CONF_1_NC;

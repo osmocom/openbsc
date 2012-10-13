@@ -266,6 +266,12 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 		VTY_NEWLINE);
 	if (bts->si_common.rach_control.cell_bar)
 		vty_out(vty, "  CELL IS BARRED%s", VTY_NEWLINE);
+	vty_out(vty, "Channel Description Attachment: %s%s",
+		(bts->si_common.chan_desc.att) ? "yes" : "no", VTY_NEWLINE);
+	vty_out(vty, "Channel Description BS-PA-MFRMS: %u%s",
+		bts->si_common.chan_desc.bs_pa_mfrms + 2, VTY_NEWLINE);
+	vty_out(vty, "Channel Description BS-AG_BLKS-RES: %u%s",
+		bts->si_common.chan_desc.bs_ag_blks_res, VTY_NEWLINE);
 	vty_out(vty, "System Information present: 0x%08x, static: 0x%08x%s",
 		bts->si_valid, bts->si_mode_static, VTY_NEWLINE);
 	if (is_ipaccess_bts(bts))
@@ -500,6 +506,13 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  rach max transmission %u%s",
 		rach_max_trans_raw2val(bts->si_common.rach_control.max_trans),
 		VTY_NEWLINE);
+
+	vty_out(vty, "  channel-descrption attach %u%s",
+		bts->si_common.chan_desc.att, VTY_NEWLINE);
+	vty_out(vty, "  channel-descrption bs-pa-mfrms %u%s",
+		bts->si_common.chan_desc.bs_pa_mfrms + 2, VTY_NEWLINE);
+	vty_out(vty, "  channel-descrption bs-ag-blks-res %u%s",
+		bts->si_common.chan_desc.bs_ag_blks_res, VTY_NEWLINE);
 
 	if (bts->rach_b_thresh != -1)
 		vty_out(vty, "  rach nm busy threshold %u%s",
@@ -1772,6 +1785,49 @@ DEFUN(cfg_bts_rach_max_trans,
 	return CMD_SUCCESS;
 }
 
+#define CD_STR "Channel Description\n"
+
+DEFUN(cfg_bts_chan_desc_att,
+      cfg_bts_chan_desc_att_cmd,
+      "channel-descrption attach (0|1)",
+	CD_STR
+      "Set if attachment is required\n"
+      "Attachment is NOT required\n"
+      "Attachment is required (standard)\n")
+{
+	struct gsm_bts *bts = vty->index;
+	bts->si_common.chan_desc.att = atoi(argv[0]);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_chan_desc_bs_pa_mfrms,
+      cfg_bts_chan_desc_bs_pa_mfrms_cmd,
+      "channel-descrption bs-pa-mfrms <2-9>",
+	CD_STR
+      "Set number of multiframe periods for paging groups\n"
+      "Number of multiframe periods for paging groups\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int bs_pa_mfrms = atoi(argv[0]);
+
+	bts->si_common.chan_desc.bs_pa_mfrms = bs_pa_mfrms - 2;
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_chan_desc_bs_ag_blks_res,
+      cfg_bts_chan_desc_bs_ag_blks_res_cmd,
+      "channel-descrption bs-ag-blks-res <0-7>",
+	CD_STR
+      "Set number of blocks reserved for access grant\n"
+      "Number of blocks reserved for access grant\n")
+{
+	struct gsm_bts *bts = vty->index;
+	int bs_ag_blks_res = atoi(argv[0]);
+
+	bts->si_common.chan_desc.bs_ag_blks_res = bs_ag_blks_res;
+	return CMD_SUCCESS;
+}
+
 #define NM_STR "Network Management\n"
 
 DEFUN(cfg_bts_rach_nm_b_thresh,
@@ -2835,6 +2891,9 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_challoc_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_tx_integer_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_max_trans_cmd);
+	install_element(BTS_NODE, &cfg_bts_chan_desc_att_cmd);
+	install_element(BTS_NODE, &cfg_bts_chan_desc_bs_pa_mfrms_cmd);
+	install_element(BTS_NODE, &cfg_bts_chan_desc_bs_ag_blks_res_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_nm_b_thresh_cmd);
 	install_element(BTS_NODE, &cfg_bts_rach_nm_ldavg_cmd);
 	install_element(BTS_NODE, &cfg_bts_cell_barred_cmd);
