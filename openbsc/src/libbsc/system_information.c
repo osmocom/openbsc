@@ -2,6 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2012 Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -34,6 +35,7 @@
 #include <openbsc/gsm_data.h>
 #include <openbsc/abis_rsl.h>
 #include <openbsc/rest_octets.h>
+#include <openbsc/arfcn_range_encode.h>
 
 
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
@@ -88,11 +90,105 @@ static int freq_list_bmrel_set_arfcn(uint8_t *chan_list, unsigned int arfcn)
 	return 0;
 }
 
+/* generate a variable bitmap */
+static int enc_freq_lst_var_bitmap(uint8_t *chan_list,
+				struct bitvec *bv, const struct gsm_bts *bts,
+				int bis, int ter, int min, int pgsm)
+{
+	int i;
+
+	/* set it to 'Variable bitmap format' */
+	chan_list[0] = 0x8e;
+
+	chan_list[0] |= (min >> 9) & 1;
+	chan_list[1] = (min >> 1);
+	chan_list[2] = (min & 1) << 7;
+
+	for (i = 0; i < bv->data_len*8; i++) {
+		/* see notes in bitvec2freq_list */
+		if (bitvec_get_bit_pos(bv, i)
+		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
+		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
+		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+			int rc = freq_list_bmrel_set_arfcn(chan_list, i);
+			if (rc < 0)
+				return rc;
+		}
+	}
+
+	return 0;
+}
+
+/* generate a frequency list with the range 512 format */
+static int enc_freq_lst_range(uint8_t *chan_list,
+				struct bitvec *bv, const struct gsm_bts *bts,
+				int bis, int ter, int pgsm)
+{
+	int arfcns[RANGE_ENC_MAX_ARFCNS];
+	int w[RANGE_ENC_MAX_ARFCNS];
+	int f0_included = 0;
+	int arfcns_used = 0;
+	int i, rc, range, f0;
+
+	/*
+	 * Select ARFCNs according to the rules in bitvec2freq_list
+	 */
+	for (i = 0; i < bv->data_len * 8; ++i) {
+		/* More ARFCNs than the maximum */
+		if (arfcns_used > ARRAY_SIZE(arfcns))
+			return -1;
+		/* Check if we can select it? */
+		if (bitvec_get_bit_pos(bv, i)
+		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
+		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
+		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+			arfcns[arfcns_used++] = i;
+		}
+	}
+
+	/*
+	 * Check if the given list of ARFCNs can be encoded.
+	 */
+	range = range_enc_determine_range(arfcns, arfcns_used, &f0);
+	if (range == ARFCN_RANGE_INVALID)
+		return -2;
+
+	/*
+	 * Manipulate the ARFCN list according to the rules in J4 depending
+	 * on the selected range.
+	 */
+	arfcns_used = range_enc_filter_arfcns(range, arfcns, arfcns_used,
+				f0, &f0_included);
+
+	memset(w, 0, sizeof(w));
+	rc = range_enc_arfcns(range, arfcns, arfcns_used, w, 0);
+	if (rc != 0)
+		return -3;
+
+	/* Select the range and the amount of bits needed */
+	switch (range) {
+	case ARFCN_RANGE_128:
+		return range_enc_range128(chan_list, f0, w);
+		break;
+	case ARFCN_RANGE_256:
+		return range_enc_range256(chan_list, f0, w);
+		break;
+	case ARFCN_RANGE_512:
+		return range_enc_range512(chan_list, f0, w);
+		break;
+	case ARFCN_RANGE_1024:
+		return range_enc_range1024(chan_list, f0, f0_included, w);
+		break;
+	default:
+		return -4;
+	};
+}
+
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */
 static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 			    const struct gsm_bts *bts, int bis, int ter)
 {
-	int i, rc, min = -1, max = -1, pgsm = 0;
+	int i, rc, min = -1, max = -1, pgsm = 0, arfcns = 0;
 
 	memset(chan_list, 0, 16);
 
@@ -114,9 +210,6 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 		return 0;
 	}
 
-	/* We currently only support the 'Variable bitmap format' */
-	chan_list[0] = 0x8e;
-
 	for (i = 0; i < bv->data_len*8; i++) {
 		/* in case of SI2 or SI5 allow all neighbours in same band
 		 * in case of SI*bis, allow neighbours in same band ouside pgsm
@@ -126,6 +219,9 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
 		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
 		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+			/* count the arfcns we want to carry */
+			arfcns += 1;
+
 			/* 955..1023 < 0..885 */
 			if (min < 0)
 				min = i;
@@ -152,29 +248,19 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 		return 0;
 	}
 
-	if (((max - min) & 1023) > 111) {
-		LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, "
-			"distance > 111\n", min, max);
-		return -EINVAL;
-	}
+	/* Now find the best encoding */
+	if (((max - min) & 1023) <= 111)
+		return enc_freq_lst_var_bitmap(chan_list, bv, bts, bis,
+				ter, min, pgsm);
 
-	chan_list[0] |= (min >> 9) & 1;
-	chan_list[1] = (min >> 1);
-	chan_list[2] = (min & 1) << 7;
+	/* Attempt to do the range encoding */
+	rc = enc_freq_lst_range(chan_list, bv, bts, bis, ter, pgsm);
+	if (rc == 0)
+		return 0;
 
-	for (i = 0; i < bv->data_len*8; i++) {
-		/* see notes above */
-		if (bitvec_get_bit_pos(bv, i)
-		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
-		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
-		  || (ter && gsm_arfcn2band(i) != bts->band))) {
-			rc = freq_list_bmrel_set_arfcn(chan_list, i);
-			if (rc < 0)
-				return rc;
-		}
-	}
-
-	return 0;
+	LOGP(DRR, LOGL_ERROR, "min_arfcn=%u, max_arfcn=%u, arfcns=%d "
+		"can not generate ARFCN list", min, max, arfcns);
+	return -EINVAL;
 }
 
 /* generate a cell channel list as per Section 10.5.2.1b of 04.08 */

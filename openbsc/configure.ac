@@ -111,6 +111,7 @@ AC_OUTPUT(
     tests/channel/Makefile
     tests/bsc-nat/Makefile
     tests/mgcp/Makefile
+    tests/si/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)
