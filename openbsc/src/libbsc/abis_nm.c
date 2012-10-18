@@ -635,13 +635,16 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	if (oh->placement != ABIS_OM_PLACEMENT_ONLY) {
 		LOGP(DNM, LOGL_ERROR, "ABIS OML placement 0x%x not supported\n",
 			oh->placement);
-		if (oh->placement != ABIS_OM_PLACEMENT_FIRST)
-			return -EINVAL;
+		if (oh->placement != ABIS_OM_PLACEMENT_FIRST) {
+			rc = -EINVAL;
+			goto err;
+		}
 	}
 	if (oh->sequence != 0) {
 		LOGP(DNM, LOGL_ERROR, "ABIS OML sequence 0x%x != 0x00\n",
 			oh->sequence);
-		return -EINVAL;
+		rc = -EINVAL;
+		goto err;
 	}
 #if 0
 	unsigned int l2_len = msg->tail - (uint8_t *)msgb_l2(msg);
@@ -671,9 +674,10 @@ int abis_nm_rcvmsg(struct msgb *msg)
 	default:
 		LOGP(DNM, LOGL_ERROR, "unknown ABIS OML message discriminator 0x%x\n",
 			oh->mdisc);
-		return -EINVAL;
+		rc = -EINVAL;
+		break;
 	}
-
+err:
 	msgb_free(msg);
 	return rc;
 }
