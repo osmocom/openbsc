@@ -120,14 +120,14 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 	timestamp = ntohl(rtp_hdr->timestamp);
 
 	if (!state->initialized) {
-		state->first_seq_no = seq;
-		state->seq_no = seq - 1;
+		state->base_seq = seq;
+		state->max_seq = seq - 1;
 		state->ssrc = state->orig_ssrc = rtp_hdr->ssrc;
 		state->initialized = 1;
 		state->last_timestamp = timestamp;
 	} else if (state->ssrc != rtp_hdr->ssrc) {
 		state->ssrc = rtp_hdr->ssrc;
-		state->seq_offset = (state->seq_no + 1) - seq;
+		state->seq_offset = (state->max_seq + 1) - seq;
 		state->timestamp_offset = state->last_timestamp - timestamp;
 		state->patch = endp->allow_patch;
 		LOGP(DMGCP, LOGL_NOTICE,
@@ -146,7 +146,7 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 		rtp_hdr->timestamp = htonl(timestamp);
 	}
 
-	state->seq_no = seq;
+	state->max_seq = seq;
 	state->last_timestamp = timestamp;
 
 	if (payload < 0)
