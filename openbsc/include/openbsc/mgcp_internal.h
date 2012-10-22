@@ -1,8 +1,8 @@
 /* MGCP Private Data */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -150,6 +150,9 @@ static inline int endp_back_channel(int endpoint)
 
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int index);
 struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
+
+void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
+			uint32_t *expected, int *loss);
 
 
 #endif

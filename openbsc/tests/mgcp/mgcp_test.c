@@ -1,6 +1,6 @@
 /*
- * (C) 2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2011 by On-Waves
+ * (C) 2011-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2011-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,6 +23,7 @@
 #include <osmocom/core/application.h>
 #include <osmocom/core/talloc.h>
 #include <string.h>
+#include <limits.h>
 
 #define AUEP1	"AUEP 158663169 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
 #define AUEP1_RET "200 158663169 OK\r\n"
@@ -71,7 +72,7 @@
 		 "C: 2\r\n"
 
 #define DLCX_RET "250 7 OK\r\n"			\
-		 "P: PS=0, OS=0, PR=0, OR=0\r\n"
+		 "P: PS=0, OS=0, PR=0, OR=0, PL=0\r\n"
 
 
 struct mgcp_test {
@@ -136,11 +137,64 @@ static void test_messages(void)
 	talloc_free(cfg);
 }
 
+struct pl_test {
+	int		cycles;
+	uint16_t	base_seq;
+	uint16_t	max_seq;
+	uint32_t	packets;
+
+	uint32_t	expected;
+	int		loss;
+};
+
+static const struct pl_test pl_test_dat[] = {
+	/* basic.. just one package */
+	{ .cycles = 0, .base_seq = 0, .max_seq = 0, .packets = 1, .expected = 1, .loss = 0},
+	/* some packages and a bit of loss */
+	{ .cycles = 0, .base_seq = 0, .max_seq = 100, .packets = 100, .expected = 101, .loss = 1},
+	/* wrap around */
+	{ .cycles = 1<<16, .base_seq = 0xffff, .max_seq = 2, .packets = 4, .expected = 4, .loss = 0},
+	/* min loss */
+	{ .cycles = 0, .base_seq = 0, .max_seq = 0, .packets = UINT_MAX, .expected = 1, .loss = INT_MIN },
+	/* max loss, with wrap around on expected max */
+	{ .cycles = INT_MAX, .base_seq = 0, .max_seq = UINT16_MAX, .packets = 0, .expected = ((uint32_t)(INT_MAX) + UINT16_MAX + 1), .loss = INT_MAX }, 
+};
+
+static void test_packet_loss_calc(void)
+{
+	int i;
+	printf("Testing packet loss calculation.\n");
+
+	for (i = 0; i < ARRAY_SIZE(pl_test_dat); ++i) {
+		uint32_t expected;
+		int loss;
+		struct mgcp_rtp_state state;
+		struct mgcp_rtp_end rtp;
+		memset(&state, 0, sizeof(state));
+		memset(&rtp, 0, sizeof(rtp));
+
+		state.initialized = 1;
+		state.base_seq = pl_test_dat[i].base_seq;
+		state.max_seq = pl_test_dat[i].max_seq;
+		state.cycles = pl_test_dat[i].cycles;
+
+		rtp.packets = pl_test_dat[i].packets;
+		mgcp_state_calc_loss(&state, &rtp, &expected, &loss);
+
+		if (loss != pl_test_dat[i].loss || expected != pl_test_dat[i].expected) {
+			printf("FAIL: Wrong exp/loss at idx(%d) Loss(%d vs. %d) Exp(%u vs. %u)\n",
+				i, loss, pl_test_dat[i].loss,
+				expected, pl_test_dat[i].expected);
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 
 	test_messages();
+	test_packet_loss_calc();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

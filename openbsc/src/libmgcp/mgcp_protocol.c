@@ -1121,8 +1121,14 @@ int mgcp_reset_transcoder(struct mgcp_config *cfg)
 
 void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
 {
-	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u",
+	uint32_t expected;
+	int ploss;
+	mgcp_state_calc_loss(&endp->net_state, &endp->net_end,
+				&expected, &ploss);
+
+	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d",
 			endp->bts_end.packets, endp->bts_end.octets,
-			endp->net_end.packets, endp->net_end.octets);
+			endp->net_end.packets, endp->net_end.octets,
+			ploss);
 	msg[size - 1] = '\0';
 }
