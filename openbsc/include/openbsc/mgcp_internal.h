@@ -156,5 +156,8 @@ static inline int endp_back_channel(int endpoint)
 struct mgcp_trunk_config *mgcp_trunk_alloc(struct mgcp_config *cfg, int index);
 struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
 
+void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
+			uint32_t *expected, int *loss);
+
 
 #endif

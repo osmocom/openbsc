@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -601,4 +601,32 @@ int mgcp_free_rtp_port(struct mgcp_rtp_end *end)
 	}
 
 	return 0;
+}
+
+
+void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
+			struct mgcp_rtp_end *end, uint32_t *expected,
+			int *loss)
+{
+	*expected = state->cycles + state->max_seq;
+	*expected = *expected - state->base_seq + 1;
+
+	if (!state->initialized) {
+		*expected = 0;
+		*loss = 0;
+		return;
+	}
+
+	/*
+	 * Make sure the sign is correct and use the biggest
+	 * positive/negative number that fits.
+	 */
+	*loss = *expected - end->packets;
+	if (*expected < end->packets) {
+		if (*loss > 0)
+			*loss = INT_MIN;
+	} else {
+		if (*loss < 0)
+			*loss = INT_MAX;
+	}
 }
