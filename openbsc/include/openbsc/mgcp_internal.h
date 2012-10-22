@@ -50,6 +50,7 @@ struct mgcp_rtp_state {
 	uint16_t base_seq;
 	uint16_t max_seq;
 	int seq_offset;
+	int cycles;
 
 	uint32_t last_timestamp;
 	int32_t  timestamp_offset;
