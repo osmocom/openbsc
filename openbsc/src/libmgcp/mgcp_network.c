@@ -67,6 +67,10 @@ struct rtp_hdr {
 	uint32_t ssrc;
 } __attribute__((packed));
 
+#define RTP_SEQ_MOD		(1 << 16)
+#define RTP_MAX_DROPOUT		3000
+#define RTP_MAX_MISORDER	100
+
 
 enum {
 	DEST_NETWORK = 0,
@@ -110,7 +114,7 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
 			    int payload, struct sockaddr_in *addr, char *data, int len)
 {
-	uint16_t seq;
+	uint16_t seq, udelta;
 	uint32_t timestamp;
 	struct rtp_hdr *rtp_hdr;
 
@@ -147,6 +151,21 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 
 		timestamp += state->timestamp_offset;
 		rtp_hdr->timestamp = htonl(timestamp);
+	}
+
+	/*
+	 * The below takes the shape of the validation from Appendix A. Check
+	 * if there is something weird with the sequence number, otherwise check
+	 * for a wrap around in the sequence number.
+	 */
+	udelta = seq - state->max_seq;
+	if (udelta < RTP_MAX_DROPOUT) {
+		if (seq < state->max_seq)
+			state->cycles += RTP_SEQ_MOD;
+	} else if (udelta <= RTP_SEQ_MOD + RTP_MAX_MISORDER) {
+		LOGP(DMGCP, LOGL_NOTICE,
+			"RTP seqno made a very large jump on 0x%x delta: %u\n",
+			ENDPOINT_NUMBER(endp), udelta);
 	}
 
 	state->max_seq = seq;
