@@ -105,6 +105,14 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 			endp->net_end.rtp_port, buf, 1);
 }
 
+/**
+ * The RFC 3550 Appendix A assumes there are multiple sources but
+ * some of the supported endpoints (e.g. the nanoBTS) can only handle
+ * one source and this code will patch packages to appear as if there
+ * is only one source.
+ * There is also no probation period for new sources. Every package
+ * we receive will be seen as a switch in streams.
+ */
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
 			    int payload, struct sockaddr_in *addr, char *data, int len)
 {
