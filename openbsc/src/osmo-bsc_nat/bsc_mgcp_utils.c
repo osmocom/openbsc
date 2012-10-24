@@ -318,7 +318,7 @@ struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	return NULL;
 }
 
-int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, const char *transaction_id)
+static int bsc_mgcp_policy_cb(struct mgcp_trunk_config *tcfg, int endpoint, int state, const char *transaction_id)
 {
 	struct bsc_nat *nat;
 	struct bsc_endpoint *bsc_endp;
