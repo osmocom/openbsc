@@ -323,6 +323,30 @@ static void test_packet_loss_calc(void)
 	}
 }
 
+static void test_mgcp_stats(void)
+{
+	printf("Testing stat parsing\n");
+
+	uint32_t bps, bos, pr, _or, jitter;
+	struct msgb *msg;
+	int loss;
+	int rc;
+
+	msg = create_msg(DLCX_RET);
+	rc = mgcp_parse_stats(msg, &bps, &bos, &pr, &_or, &loss, &jitter);
+	printf("Parsing result: %d\n", rc);
+	if (bps != 0 || bos != 0 || pr != 0 ||  _or != 0 || loss != 0 || jitter != 0)
+		printf("FAIL: Parsing failed1.\n");
+	msgb_free(msg);
+
+	msg = create_msg("250 7 OK\r\nP: PS=10, OS=20, PR=30, OR=40, PL=-3, JI=40\r\n");
+	rc = mgcp_parse_stats(msg, &bps, &bos, &pr, &_or, &loss, &jitter);
+	printf("Parsing result: %d\n", rc);
+	if (bps != 10 || bos != 20 || pr != 30 || _or != 40 || loss != -3 || jitter != 40)
+		printf("FAIL: Parsing failed2.\n");
+	msgb_free(msg);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
@@ -331,6 +355,7 @@ int main(int argc, char **argv)
 	test_retransmission();
 	test_packet_loss_calc();
 	test_rqnt_cb();
+	test_mgcp_stats();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;

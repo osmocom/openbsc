@@ -49,6 +49,7 @@
 #include <openbsc/ipaccess.h>
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
+#include <openbsc/control_cmd.h>
 
 #include <osmocom/sccp/sccp.h>
 
@@ -276,14 +277,20 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 	bsc_write_mgcp(bsc, (uint8_t *) buf, len);
 }
 
-static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
+static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint, int trans)
 {
 	char buf[2096];
 	int len;
 
+	/*
+	 * The following is a bit of a spec violation. According to the
+	 * MGCP grammar the transaction id is are upto 9 digits but we
+	 * prefix it with an alpha numeric value so we can easily recognize
+	 * it as a response.
+	 */
 	len = snprintf(buf, sizeof(buf),
-		       "DLCX 26 %x@mgw MGCP 1.0\r\n"
-		       "Z: noanswer\r\n", endpoint);
+		       "DLCX nat-%u %x@mgw MGCP 1.0\r\n",
+			trans, endpoint);
 	if (len < 0) {
 		LOGP(DMGCP, LOGL_ERROR, "snprintf for DLCX failed.\n");
 		return;
@@ -298,18 +305,153 @@ void bsc_mgcp_init(struct sccp_connections *con)
 	con->bsc_endp = -1;
 }
 
+/**
+ * This code will remember the network side of the audio statistics and
+ * once the internal DLCX response arrives this can be combined with the
+ * the BSC side and forwarded as a trap.
+ */
+static void remember_pending_dlcx(struct sccp_connections *con, uint32_t transaction)
+{
+	struct bsc_nat_call_stats *stats;
+	struct bsc_connection *bsc = con->bsc;
+	struct mgcp_endpoint *endp;
+
+	stats = talloc_zero(bsc, struct bsc_nat_call_stats);
+	if (!stats) {
+		LOGP(DNAT, LOGL_NOTICE,
+			"Failed to allocate statistics for endpoint 0x%x\n",
+			con->msc_endp);
+		return;
+	}
+
+	/* take the endpoint here */
+	endp = &bsc->nat->mgcp_cfg->trunk.endpoints[con->msc_endp];
+
+	stats->remote_ref = con->remote_ref;
+	stats->src_ref = con->patched_ref;
+
+	stats->ci = endp->ci;
+	stats->bts_rtp_port = endp->bts_end.rtp_port;
+	stats->bts_addr = endp->bts_end.addr;
+	stats->net_rtp_port = endp->net_end.rtp_port;
+	stats->net_addr = endp->net_end.addr;
+
+	stats->net_ps = endp->net_end.packets;
+	stats->net_os = endp->net_end.octets;
+	stats->bts_pr = endp->bts_end.packets;
+	stats->bts_or = endp->bts_end.octets;
+	mgcp_state_calc_loss(&endp->bts_state, &endp->bts_end,
+				&stats->bts_expected, &stats->bts_loss);
+	stats->bts_jitter = mgcp_state_calc_jitter(&endp->bts_state);
+
+	stats->trans_id = transaction;
+	stats->msc_endpoint = con->msc_endp;
+
+	bsc->pending_dlcx_count += 1;
+	llist_add_tail(&stats->entry, &bsc->pending_dlcx);
+}
+
 void bsc_mgcp_dlcx(struct sccp_connections *con)
 {
 	/* send a DLCX down the stream */
 	if (con->bsc_endp != -1 && con->bsc->_endpoint_status) {
+		LOGP(DNAT, LOGL_NOTICE,
+			"Endpoint 0x%x was still allocated on bsc: %d. Freeing it.\n",
+			con->bsc_endp, con->bsc->cfg->nr);
 		if (con->bsc->_endpoint_status[con->bsc_endp] != 1)
 			LOGP(DNAT, LOGL_ERROR, "Endpoint 0x%x was not in use\n", con->bsc_endp);
+		remember_pending_dlcx(con, con->bsc->next_transaction);
 		con->bsc->_endpoint_status[con->bsc_endp] = 0;
-		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp);
+		bsc_mgcp_send_dlcx(con->bsc, con->bsc_endp, con->bsc->next_transaction++);
 		bsc_mgcp_free_endpoint(con->bsc->nat, con->msc_endp);
 	}
 
 	bsc_mgcp_init(con);
+
+}
+
+/*
+ * Search for the pending request
+ */
+static void handle_dlcx_response(struct bsc_connection *bsc, struct msgb *msg,
+			int code, const char *transaction)
+{
+	uint32_t trans_id = UINT32_MAX;
+	uint32_t b_ps, b_os, n_pr, n_or, jitter;
+	int loss;
+	struct bsc_nat_call_stats *tmp, *stat = NULL;
+	struct ctrl_cmd *cmd;
+
+	/* parse the transaction identifier */
+	int rc = sscanf(transaction, "nat-%u", &trans_id);
+	if (rc != 1) {
+		LOGP(DNAT, LOGL_ERROR, "Can not parse transaction id: '%s'\n",
+			transaction);
+		return;
+	}
+
+	/* find the answer for the request we made */
+	llist_for_each_entry(tmp, &bsc->pending_dlcx, entry) {
+		if (trans_id != tmp->trans_id)
+			continue;
+
+		stat = tmp;
+		break;
+	}
+
+	if (!stat) {
+		LOGP(DNAT, LOGL_ERROR,
+			"Can not find transaction for: %u\n", trans_id);
+		return;
+	}
+
+	/* attempt to parse the data now */
+	rc = mgcp_parse_stats(msg, &b_ps, &b_os, &n_pr, &n_or, &loss, &jitter);
+	if (rc != 0)
+		LOGP(DNAT, LOGL_ERROR,
+			"Can not parse connection statistics: %d\n", rc);
+
+	/* send a trap now */
+	cmd = ctrl_cmd_create(bsc, CTRL_TYPE_TRAP);
+	if (!cmd) {
+		LOGP(DNAT, LOGL_ERROR,
+			"Creating a ctrl cmd failed.\n");
+		goto free_stat;
+	}
+
+	cmd->id = "0";
+	cmd->variable = "nat.call_stats.v1";
+	cmd->reply = talloc_asprintf(cmd,
+			"bsc_id=%d,mg_ip_addr=%s,mg_port=%d,",
+			bsc->cfg->nr, inet_ntoa(stat->net_addr),
+			stat->net_rtp_port);
+	cmd->reply = talloc_asprintf_append(cmd->reply,
+			"endpoint_ip_addr=%s,endpoint_port=%d,",
+			inet_ntoa(stat->bts_addr),
+			stat->bts_rtp_port);
+	cmd->reply = talloc_asprintf_append(cmd->reply,
+			"nat_pkt_in=%u,nat_pkt_out=%u,"
+			"nat_bytes_in=%u,nat_bytes_out=%u,"
+			"nat_jitter=%u,nat_pkt_lost=%d,",
+			stat->bts_pr, stat->net_ps,
+			stat->bts_or, stat->net_os,
+			stat->bts_jitter, stat->bts_loss);
+	cmd->reply = talloc_asprintf_append(cmd->reply,
+			"bsc_pkt_in=%u,bsc_pkt_out=%u,"
+			"bsc_bytes_in=%u,bsc_bytes_out=%u,"
+			"bsc_jitter=%u,bsc_pkt_lost=%d",
+			n_pr, b_ps,
+			n_or, b_os,
+			jitter, loss);
+
+	/* send it and be done */
+	ctrl_cmd_send_to_all(bsc->nat->ctrl, cmd);
+	talloc_free(cmd);
+
+free_stat:
+	bsc->pending_dlcx_count -= 1;
+	llist_del(&stat->entry);
+	talloc_free(stat);
 }
 
 
@@ -330,7 +472,8 @@ struct sccp_connections *bsc_mgcp_find_con(struct bsc_nat *nat, int endpoint)
 	if (con)
 		return con;
 
-	LOGP(DMGCP, LOGL_ERROR, "Failed to find the connection.\n");
+	LOGP(DMGCP, LOGL_ERROR,
+		"Failed to find the connection for endpoint: 0x%x\n", endpoint);
 	return NULL;
 }
 
@@ -435,7 +578,7 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
 				ENDPOINT_NUMBER(endp));
 		} else {
 			if (con->bsc == bsc) {
-				bsc_mgcp_send_dlcx(bsc, con->bsc_endp);
+				bsc_mgcp_send_dlcx(bsc, con->bsc_endp, con->bsc->next_transaction++);
 			} else {
 				LOGP(DMGCP, LOGL_ERROR,
 					"Endpoint belongs to a different BSC\n");
@@ -452,6 +595,9 @@ static void free_chan_downstream(struct mgcp_endpoint *endp, struct bsc_endpoint
  * this transaction and if it belongs to the BSC. Then we will
  * need to patch the content to point to the local network and we
  * need to update the I: that was assigned by the BSS.
+ *
+ * Only responses to CRCX and DLCX should arrive here. The DLCX
+ * needs to be handled specially to combine the two statistics.
  */
 void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 {
@@ -486,6 +632,11 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		endp = &bsc->nat->mgcp_cfg->trunk.endpoints[i];
 		bsc_endp = &bsc->nat->bsc_endpoints[i];
 		break;
+	}
+
+	if (!bsc_endp && strncmp("nat-", transaction_id, 4) == 0) {
+		handle_dlcx_response(bsc, msg, code, transaction_id);
+		return;
 	}
 
 	if (!bsc_endp) {
@@ -523,8 +674,11 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
 {
+	int rc;
 	/* we want to parse two strings */
-	return sscanf(str, "%3d %59s\n", code, transaction) != 2;
+	rc = sscanf(str, "%3d %59s\n", code, transaction) != 2;
+	transaction[59] = '\0';
+	return rc;
 }
 
 uint32_t bsc_mgcp_extract_ci(const char *str)

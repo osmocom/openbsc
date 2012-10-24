@@ -172,6 +172,7 @@ int mgcp_endpoints_allocate(struct mgcp_trunk_config *cfg);
 void mgcp_free_endp(struct mgcp_endpoint *endp);
 int mgcp_reset_transcoder(struct mgcp_config *cfg);
 void mgcp_format_stats(struct mgcp_endpoint *endp, char *stats, size_t size);
+int mgcp_parse_stats(struct msgb *msg, uint32_t *ps, uint32_t *os, uint32_t *pr, uint32_t *_or, int *loss, uint32_t *jitter);
 
 /*
  * format helper functions

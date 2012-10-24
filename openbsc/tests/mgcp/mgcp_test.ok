@@ -25,4 +25,7 @@ Re-transmitting MDCX3
 Testing DLCX
 Re-transmitting DLCX
 Testing packet loss calculation.
+Testing stat parsing
+Parsing result: 0
+Parsing result: 0
 Done

@@ -206,10 +206,11 @@ DEFUN(show_bsc, show_bsc_cmd, "show bsc connections",
 
 	llist_for_each_entry(con, &_nat->bsc_connections, list_entry) {
 		getpeername(con->write_queue.bfd.fd, (struct sockaddr *) &sock, &len);
-		vty_out(vty, "BSC nr: %d auth: %d fd: %d peername: %s%s",
+		vty_out(vty, "BSC nr: %d auth: %d fd: %d peername: %s pending-stats: %u%s",
 			con->cfg ? con->cfg->nr : -1,
 			con->authenticated, con->write_queue.bfd.fd,
-			inet_ntoa(sock.sin_addr), VTY_NEWLINE);
+			inet_ntoa(sock.sin_addr), con->pending_dlcx_count,
+			VTY_NEWLINE);
 	}
 
 	return CMD_SUCCESS;

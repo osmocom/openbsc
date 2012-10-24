@@ -32,6 +32,7 @@
 #include <osmocom/core/rate_ctr.h>
 #include <osmocom/core/statistics.h>
 #include <osmocom/gsm/protocol/gsm_04_08.h>
+#include <osmocom/sccp/sccp_types.h>
 
 #include <regex.h>
 
@@ -111,6 +112,9 @@ struct bsc_connection {
 	int number_multiplexes;
 	int max_endpoints;
 	int last_endpoint;
+	int next_transaction;
+	uint32_t pending_dlcx_count;
+	struct llist_head pending_dlcx;
 
 	/* track the pending commands for this BSC */
 	struct llist_head cmd_pending;
@@ -330,6 +334,33 @@ struct bsc_nat_ussd_con {
 	int authorized;
 
 	struct osmo_timer_list auth_timeout;
+};
+
+struct bsc_nat_call_stats {
+	struct llist_head entry;
+
+	struct sccp_source_reference remote_ref;
+	struct sccp_source_reference src_ref; /* as seen by the MSC */
+
+	/* mgcp options */
+	uint32_t ci;
+	int bts_rtp_port;
+	int net_rtp_port;
+	struct in_addr bts_addr;
+	struct in_addr net_addr;
+
+
+	/* as witnessed by the NAT */
+	uint32_t net_ps;
+	uint32_t net_os;
+	uint32_t bts_pr;
+	uint32_t bts_or;
+	uint32_t bts_expected;
+	uint32_t bts_jitter;
+	int      bts_loss;
+
+	uint32_t trans_id;
+	int msc_endpoint;
 };
 
 struct bsc_nat_reject_cause {

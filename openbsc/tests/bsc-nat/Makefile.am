@@ -14,6 +14,7 @@ bsc_nat_test_SOURCES = bsc_nat_test.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_nat_rewrite.c \
 			$(top_srcdir)/src/osmo-bsc_nat/bsc_mgcp_utils.c
 bsc_nat_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
+			$(top_srcdir)/src/libctrl/libctrl.a \
 			$(top_srcdir)/src/libmgcp/libmgcp.a \
 			$(top_srcdir)/src/libtrau/libtrau.a \
 			$(top_srcdir)/src/libcommon/libcommon.a \
