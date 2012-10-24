@@ -40,6 +40,7 @@
 /* attempt to determine byte order */
 #include <sys/param.h>
 #include <limits.h>
+#include <time.h>
 
 #ifndef __BYTE_ORDER
 #error "__BYTE_ORDER should be defined by someone"
@@ -85,6 +86,29 @@ enum {
 #define DUMMY_LOAD 0x23
 
 
+/**
+ * This does not need to be a precision timestamp and
+ * is allowed to wrap quite fast. The returned value is
+ * milli seconds now.
+ */
+uint32_t get_current_ts(void)
+{
+	struct timespec tp;
+	uint64_t ret;
+
+	memset(&tp, 0, sizeof(tp));
+	if (clock_gettime(CLOCK_MONOTONIC, &tp) != 0)
+		LOGP(DMGCP, LOGL_NOTICE,
+			"Getting the clock failed.\n");
+
+	/* convert it to useconds */
+	ret = tp.tv_sec;
+	ret *= 1000;
+	ret += tp.tv_nsec / 1000 / 1000;
+
+	return ret;
+}
+
 static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 {
 	struct sockaddr_in out;
@@ -114,6 +138,8 @@ int mgcp_send_dummy(struct mgcp_endpoint *endp)
 static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *state,
 			    int payload, struct sockaddr_in *addr, char *data, int len)
 {
+	uint32_t arrival_time;
+	int32_t transit, d;
 	uint16_t seq, udelta;
 	uint32_t timestamp;
 	struct rtp_hdr *rtp_hdr;
@@ -124,6 +150,7 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 	rtp_hdr = (struct rtp_hdr *) data;
 	seq = ntohs(rtp_hdr->sequence);
 	timestamp = ntohl(rtp_hdr->timestamp);
+	arrival_time = get_current_ts();
 
 	if (!state->initialized) {
 		state->base_seq = seq;
@@ -131,6 +158,8 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 		state->ssrc = state->orig_ssrc = rtp_hdr->ssrc;
 		state->initialized = 1;
 		state->last_timestamp = timestamp;
+		state->jitter = 0;
+		state->transit = arrival_time - timestamp;
 	} else if (state->ssrc != rtp_hdr->ssrc) {
 		state->ssrc = rtp_hdr->ssrc;
 		state->seq_offset = (state->max_seq + 1) - seq;
@@ -167,6 +196,19 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 			"RTP seqno made a very large jump on 0x%x delta: %u\n",
 			ENDPOINT_NUMBER(endp), udelta);
 	}
+
+	/*
+	 * calculate the jitter between the two packages. The TS should be
+	 * taken closer to the read function. This was taken from the
+	 * Appendix A of RFC 3550. The local timestamp has a usec resolution.
+	 */
+	transit = arrival_time - timestamp;
+	d = transit - state->transit;
+	state->transit = transit;
+	if (d < 0)
+		d = -d;
+	state->jitter += d - ((state->jitter + 8) >> 4);
+
 
 	state->max_seq = seq;
 	state->last_timestamp = timestamp;

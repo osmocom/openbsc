@@ -54,6 +54,8 @@ struct mgcp_rtp_state {
 
 	uint32_t last_timestamp;
 	int32_t  timestamp_offset;
+	uint32_t jitter;
+	int32_t transit;
 };
 
 struct mgcp_rtp_end {

@@ -6,5 +6,5 @@ bin_PROGRAMS = bsc_mgcp
 
 bsc_mgcp_SOURCES = mgcp_main.c
 bsc_mgcp_LDADD = $(top_builddir)/src/libcommon/libcommon.a \
-		 $(top_builddir)/src/libmgcp/libmgcp.a \
+		 $(top_builddir)/src/libmgcp/libmgcp.a -lrt \
 		 $(LIBOSMOVTY_LIBS) $(LIBOSMOCORE_LIBS)
