@@ -160,6 +160,7 @@ struct mgcp_trunk_config *mgcp_trunk_num(struct mgcp_config *cfg, int index);
 
 void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 			uint32_t *expected, int *loss);
+uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
 
 
 #endif

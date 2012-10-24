@@ -672,3 +672,10 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *state,
 			*loss = INT_MAX;
 	}
 }
+
+uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *state)
+{
+	if (!state->initialized)
+		return 0;
+	return state->jitter >> 4;
+}
