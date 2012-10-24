@@ -42,7 +42,13 @@
 #include <limits.h>
 
 #ifndef __BYTE_ORDER
-#error "__BYTE_ORDER should be defined by someone"
+# ifdef __APPLE__
+#  define __BYTE_ORDER __DARWIN_BYTE_ORDER
+#  define __LITTLE_ENDIAN __DARWIN_LITTLE_ENDIAN
+#  define __BIG_ENDIAN __DARWIN_BIG_ENDIAN
+# else
+#  error "__BYTE_ORDER should be defined by someone"
+# endif
 #endif
 
 static LLIST_HEAD(rtp_sockets);
