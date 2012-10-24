@@ -1,6 +1,30 @@
+/**
+ * This file contains helper routines for MGCP Gateway handling.
+ *
+ * The first thing to remember is that each BSC has its own namespace/range
+ * of endpoints. Whenever a BSSMAP ASSIGNMENT REQUEST is received this code
+ * will be called to select an endpoint on the BSC. The mapping from original
+ * multiplex/timeslot to BSC multiplex'/timeslot' will be stored.
+ *
+ * The second part is to take messages on the public MGCP GW interface
+ * and forward them to the right BSC. This requires the MSC to first
+ * assign the timeslot. This assumption has been true so far. We are using
+ * the policy_cb of the MGCP protocol code to decide if the request should
+ * be immediately answered or delayed. An extension "Z: noanswer" is used
+ * to request the BSC to not respond. This is saving some bytes of bandwidth
+ * and as we are using TCP to forward the message we know it will arrive.
+ * The mgcp_do_read method reads these messages and hands them to the protocol
+ * parsing code which will call the mentioned policy_cb. The bsc_mgcp_forward
+ * method is used on the way back from the BSC to the network.
+ *
+ * The third part is to patch messages forwarded to the BSC. This includes
+ * the endpoint number, the ports to be used inside the SDP file and maybe
+ * some other bits.
+ *
+ */
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
