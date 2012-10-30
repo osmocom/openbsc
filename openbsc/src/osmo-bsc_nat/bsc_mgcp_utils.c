@@ -257,7 +257,7 @@ static void bsc_mgcp_send_mdcx(struct bsc_connection *bsc, int port, struct mgcp
 		return;
 	}
 
-	#warning "The MDCX is not send to the BSC. It should"
+	bsc_write_mgcp(bsc, (uint8_t *) buf, len);
 }
 
 static void bsc_mgcp_send_dlcx(struct bsc_connection *bsc, int endpoint)
