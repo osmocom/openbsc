@@ -51,8 +51,6 @@ struct gsm_sms_pending {
 	unsigned long long sms_id;
 	int failed_attempts;
 	int resend;
-
-	int no_detach;
 };
 
 struct gsm_sms_queue {
@@ -154,16 +152,6 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 	smsq = pending->subscr->net->sms_queue;
 	if (++pending->failed_attempts < smsq->max_fail)
 		return sms_pending_resend(pending);
-
-	if (paging_error && !pending->no_detach) {
-		LOGP(DSMS, LOGL_NOTICE,
-		     "Subscriber %llu is not reachable. Setting LAC=0.\n", pending->subscr->id);
-		pending->subscr->lac = GSM_LAC_RESERVED_DETACHED;
-		db_sync_subscriber(pending->subscr);
-
-		/* Workaround a failing sync */
-		db_subscriber_update(pending->subscr);
-	}
 
 	sms_pending_free(pending);
 	smsq->pending -= 1;
@@ -356,7 +344,6 @@ static int sub_ready_for_sm(struct gsm_network *net, struct gsm_subscriber *subs
 		LOGP(DMSC, LOGL_NOTICE,
 		     "Pending paging while subscriber %llu attached.\n",
 		      subscr->id);
-		pending->no_detach = 1;
 		return 0;
 	}
 
