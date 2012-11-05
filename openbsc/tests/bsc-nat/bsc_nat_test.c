@@ -1242,3 +1242,9 @@ int main(int argc, char **argv)
 	printf("Testing execution completed.\n");
 	return 0;
 }
+
+/* stub */
+void bsc_nat_send_mgcp_to_msc(struct bsc_nat *nat, struct msgb *msg)
+{
+	abort();
+}

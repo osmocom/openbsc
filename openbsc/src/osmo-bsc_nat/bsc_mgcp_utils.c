@@ -62,12 +62,20 @@
 #include <errno.h>
 #include <unistd.h>
 
-static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
+static void send_direct(struct bsc_nat *nat, struct msgb *output)
 {
 	if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, output) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
 		msgb_free(output);
 	}
+}
+
+static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
+{
+	if (nat->mgcp_ipa)
+		bsc_nat_send_mgcp_to_msc(nat, output);
+	else
+		send_direct(nat, output);
 }
 
 int bsc_mgcp_nr_multiplexes(int max_endpoints)
@@ -656,6 +664,38 @@ copy:
 	return output;
 }
 
+/*
+ * This comes from the MSC and we will now parse it. The caller needs
+ * to free the msgb.
+ */
+void bsc_nat_handle_mgcp(struct bsc_nat *nat, struct msgb *msg)
+{
+	struct msgb *resp;
+
+	if (!nat->mgcp_ipa) {
+		LOGP(DMGCP, LOGL_ERROR, "MGCP message not allowed on IPA.\n");
+		return;
+	}
+
+	if (msgb_l2len(msg) > sizeof(nat->mgcp_msg) - 1) {
+		LOGP(DMGCP, LOGL_ERROR, "MGCP msg too big for handling.\n");
+		return;
+	}
+
+	memcpy(nat->mgcp_msg, msg->l2h, msgb_l2len(msg));
+	nat->mgcp_length = msgb_l2len(msg);
+	nat->mgcp_msg[nat->mgcp_length] = '\0';
+
+	/* now handle the message */
+	resp = mgcp_handle_message(nat->mgcp_cfg, msg);
+
+	/* we do have a direct answer... e.g. AUEP */
+	if (resp)
+		mgcp_queue_for_call_agent(nat, resp);
+
+	return;
+}
+
 static int mgcp_do_read(struct osmo_fd *fd)
 {
 	struct bsc_nat *nat;
@@ -705,21 +745,10 @@ static int mgcp_do_write(struct osmo_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
-int bsc_mgcp_nat_init(struct bsc_nat *nat)
+static int init_mgcp_socket(struct bsc_nat *nat, struct mgcp_config *cfg)
 {
-	int on;
 	struct sockaddr_in addr;
-	struct mgcp_config *cfg = nat->mgcp_cfg;
-
-	if (!cfg->call_agent_addr) {
-		LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
-		return -1;
-	}
-
-	if (cfg->bts_ip) {
-		LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
-		return -1;
-	}
+	int on;
 
 	cfg->gw_fd.bfd.fd = socket(AF_INET, SOCK_DGRAM, 0);
 	if (cfg->gw_fd.bfd.fd < 0) {
@@ -764,6 +793,31 @@ int bsc_mgcp_nat_init(struct bsc_nat *nat)
 		cfg->gw_fd.bfd.fd = -1;
 		return -1;
 	}
+
+	return 0;
+}
+
+int bsc_mgcp_nat_init(struct bsc_nat *nat)
+{
+	struct mgcp_config *cfg = nat->mgcp_cfg;
+
+	if (!cfg->call_agent_addr) {
+		LOGP(DMGCP, LOGL_ERROR, "The BSC nat requires the call agent ip to be set.\n");
+		return -1;
+	}
+
+	if (cfg->bts_ip) {
+		LOGP(DMGCP, LOGL_ERROR, "Do not set the BTS ip for the nat.\n");
+		return -1;
+	}
+
+	/* initialize the MGCP socket */
+	if (!nat->mgcp_ipa) {
+		int rc =  init_mgcp_socket(nat, cfg);
+		if (rc != 0)
+			return rc;
+	}
+
 
 	/* some more MGCP config handling */
 	cfg->data = nat;

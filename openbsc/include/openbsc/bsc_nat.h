@@ -270,6 +270,7 @@ struct bsc_nat {
 	struct mgcp_config *mgcp_cfg;
 	uint8_t mgcp_msg[4096];
 	int mgcp_length;
+	int mgcp_ipa;
 
 	/* msc things */
 	struct llist_head dests;
@@ -462,6 +463,9 @@ struct bsc_nat_barr_entry {
 
 int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
 int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
+
+void bsc_nat_send_mgcp_to_msc(struct bsc_nat *bsc_nat, struct msgb *msg);
+void bsc_nat_handle_mgcp(struct bsc_nat *bsc, struct msgb *msg);
 
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port);
 void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending);
