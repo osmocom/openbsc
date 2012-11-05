@@ -62,6 +62,14 @@
 #include <errno.h>
 #include <unistd.h>
 
+static void mgcp_queue_for_call_agent(struct bsc_nat *nat, struct msgb *output)
+{
+	if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, output) != 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
+		msgb_free(output);
+	}
+}
+
 int bsc_mgcp_nr_multiplexes(int max_endpoints)
 {
 	int div = max_endpoints / 32;
@@ -502,10 +510,7 @@ void bsc_mgcp_forward(struct bsc_connection *bsc, struct msgb *msg)
 		return;
 	}
 
-	if (osmo_wqueue_enqueue(&bsc->nat->mgcp_cfg->gw_fd, output) != 0) {
-		LOGP(DMGCP, LOGL_ERROR, "Failed to queue MGCP msg.\n");
-		msgb_free(output);
-	}
+	mgcp_queue_for_call_agent(bsc->nat, output);
 }
 
 int bsc_mgcp_parse_response(const char *str, int *code, char transaction[60])
@@ -680,12 +685,8 @@ static int mgcp_do_read(struct osmo_fd *fd)
 	msgb_free(msg);
 
 	/* we do have a direct answer... e.g. AUEP */
-	if (resp) {
-		if (osmo_wqueue_enqueue(&nat->mgcp_cfg->gw_fd, resp) != 0) {
-			LOGP(DMGCP, LOGL_ERROR, "Failed to enqueue msg.\n");
-			msgb_free(resp);
-		}
-	}
+	if (resp)
+		mgcp_queue_for_call_agent(nat, resp);
 
 	return 0;
 }
