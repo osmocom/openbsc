@@ -441,4 +441,8 @@ struct bsc_nat_num_rewr_entry {
 
 void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
 
+struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port);
+void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending);
+int bsc_nat_handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg);
+
 #endif

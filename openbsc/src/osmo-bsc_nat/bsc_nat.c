@@ -84,7 +84,6 @@ static struct bsc_nat *nat;
 static void bsc_send_data(struct bsc_connection *bsc, const uint8_t *data, unsigned int length, int);
 static void msc_send_reset(struct bsc_msc_connection *con);
 static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal);
-static void bsc_del_pending(struct bsc_cmd_list *pending);
 
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num)
 {
@@ -885,7 +884,7 @@ void bsc_close_connection(struct bsc_connection *connection)
 		cmd_entry->cmd->type = CTRL_TYPE_ERROR;
 		cmd_entry->cmd->reply = "BSC closed the connection";
 		ctrl_cmd_send(&cmd_entry->ccon->write_queue, cmd_entry->cmd);
-		bsc_del_pending(cmd_entry);
+		bsc_nat_ctrl_del_pending(cmd_entry);
 	}
 
 	/* close endpoints allocated by this BSC */
@@ -1163,103 +1162,6 @@ exit3:
 	return -1;
 }
 
-static struct bsc_cmd_list *bsc_get_pending(struct bsc_connection *bsc, char *id_str)
-{
-	struct bsc_cmd_list *cmd_entry;
-	int id = atoi(id_str);
-	if (id == 0)
-		return NULL;
-
-	llist_for_each_entry(cmd_entry, &bsc->cmd_pending, list_entry) {
-		if (cmd_entry->nat_id == id) {
-			return cmd_entry;
-		}
-	}
-	return NULL;
-}
-
-static void bsc_del_pending(struct bsc_cmd_list *pending)
-{
-	llist_del(&pending->list_entry);
-	osmo_timer_del(&pending->timeout);
-	talloc_free(pending->cmd);
-	talloc_free(pending);
-}
-
-
-static int handle_ctrlif_msg(struct bsc_connection *bsc, struct msgb *msg)
-{
-	struct ctrl_cmd *cmd;
-	struct bsc_cmd_list *pending;
-	char *var, *id;
-
-	cmd = ctrl_cmd_parse(bsc, msg);
-	msgb_free(msg);
-
-	if (!cmd) {
-		cmd = talloc_zero(bsc, struct ctrl_cmd);
-		if (!cmd) {
-			LOGP(DNAT, LOGL_ERROR, "OOM!\n");
-			return -ENOMEM;
-		}
-		cmd->type = CTRL_TYPE_ERROR;
-		cmd->id = "err";
-		cmd->reply = "Failed to parse command.";
-		goto err;
-	}
-
-	if (bsc->cfg && !llist_empty(&bsc->cfg->lac_list)) {
-		if (cmd->variable) {
-			var = talloc_asprintf(cmd, "net.0.bsc.%i.%s", bsc->cfg->nr,
-					   cmd->variable);
-			if (!var) {
-				cmd->type = CTRL_TYPE_ERROR;
-				cmd->reply = "OOM";
-				goto err;
-			}
-			talloc_free(cmd->variable);
-			cmd->variable = var;
-		}
-
-		/* We have to handle TRAPs before matching pending */
-		if (cmd->type == CTRL_TYPE_TRAP) {
-			ctrl_cmd_send_to_all(bsc->nat->ctrl, cmd);
-			talloc_free(cmd);
-			return 0;
-		}
-
-		/* Find the pending command */
-		pending = bsc_get_pending(bsc, cmd->id);
-		if (pending) {
-			id = talloc_strdup(cmd, pending->cmd->id);
-			if (!id) {
-				cmd->type = CTRL_TYPE_ERROR;
-				cmd->reply = "OOM";
-				goto err;
-			}
-			cmd->id = id;
-			ctrl_cmd_send(&pending->ccon->write_queue, cmd);
-			bsc_del_pending(pending);
-		} else {
-			/* We need to handle TRAPS here */
-			if ((cmd->type != CTRL_TYPE_ERROR) &&
-			    (cmd->type != CTRL_TYPE_TRAP)) {
-				LOGP(DNAT, LOGL_NOTICE, "Got control message "
-					"from BSC without pending entry\n");
-				cmd->type = CTRL_TYPE_ERROR;
-				cmd->reply = "No request outstanding";
-				goto err;
-			}
-		}
-	}
-	talloc_free(cmd);
-	return 0;
-err:
-	ctrl_cmd_send(&bsc->write_queue, cmd);
-	talloc_free(cmd);
-	return 0;
-}
-
 static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 {
 	struct bsc_connection *bsc = bfd->data;
@@ -1309,7 +1211,7 @@ static int ipaccess_bsc_read_cb(struct osmo_fd *bfd)
 		msg->l2h = hh_ext->data;
 
 		if (hh_ext->proto == IPAC_PROTO_EXT_CTRL)
-			return handle_ctrlif_msg(bsc, msg);
+			return bsc_nat_handle_ctrlif_msg(bsc, msg);
 	}
 
 	/* FIXME: Currently no PONG is sent to the BSC */
@@ -1540,175 +1442,6 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-static int bsc_id_unused(int id, struct bsc_connection *bsc)
-{
-	struct bsc_cmd_list *pending;
-
-	llist_for_each_entry(pending, &bsc->cmd_pending, list_entry) {
-		if (pending->nat_id == id)
-			return 0;
-	}
-	return 1;
-}
-
-#define NAT_MAX_CTRL_ID 65535
-
-static int get_next_free_bsc_id(struct bsc_connection *bsc)
-{
-	int new_id, overflow = 0;
-
-	new_id = bsc->last_id;
-
-	do {
-		new_id++;
-		if (new_id == NAT_MAX_CTRL_ID) {
-			new_id = 1;
-			overflow++;
-		}
-
-		if (bsc_id_unused(new_id, bsc)) {
-			bsc->last_id = new_id;
-			return new_id;
-		}
-	} while (overflow != 2);
-
-	return -1;
-}
-
-static void pending_timeout_cb(void *data)
-{
-	struct bsc_cmd_list *pending = data;
-	LOGP(DNAT, LOGL_ERROR, "Command timed out\n");
-	pending->cmd->type = CTRL_TYPE_ERROR;
-	pending->cmd->reply = "Command timed out";
-	ctrl_cmd_send(&pending->ccon->write_queue, pending->cmd);
-
-	bsc_del_pending(pending);
-}
-
-static void ctrl_conn_closed_cb(struct ctrl_connection *connection)
-{
-	struct bsc_connection *bsc;
-	struct bsc_cmd_list *pending, *tmp;
-
-	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-		llist_for_each_entry_safe(pending, tmp, &bsc->cmd_pending, list_entry) {
-			if (pending->ccon == connection)
-				bsc_del_pending(pending);
-		}
-	}
-}
-
-static int forward_to_bsc(struct ctrl_cmd *cmd)
-{
-	int ret = CTRL_CMD_HANDLED;
-	struct ctrl_cmd *bsc_cmd = NULL;
-	struct bsc_connection *bsc;
-	struct bsc_cmd_list *pending;
-	unsigned int nr;
-	char *nr_str, *tmp, *saveptr;
-
-	/* Skip over the beginning (bsc.) */
-	tmp = strtok_r(cmd->variable, ".", &saveptr);
-	tmp = strtok_r(NULL, ".", &saveptr);
-	tmp = strtok_r(NULL, ".", &saveptr);
-	nr_str = strtok_r(NULL, ".", &saveptr);
-	if (!nr_str) {
-		cmd->reply = "command incomplete";
-		goto err;
-	}
-	nr = atoi(nr_str);
-
-	tmp = strtok_r(NULL, "\0", &saveptr);
-	if (!tmp) {
-		cmd->reply = "command incomplete";
-		goto err;
-	}
-
-	llist_for_each_entry(bsc, &nat->bsc_connections, list_entry) {
-		if (!bsc->cfg)
-			continue;
-		if (!bsc->authenticated)
-			continue;
-		if (bsc->cfg->nr == nr) {
-			/* Add pending command to list */
-			pending = talloc_zero(bsc, struct bsc_cmd_list);
-			if (!pending) {
-				cmd->reply = "OOM";
-				goto err;
-			}
-
-			pending->nat_id = get_next_free_bsc_id(bsc);
-			if (pending->nat_id < 0) {
-				cmd->reply = "No free ID found";
-				goto err;
-			}
-
-			bsc_cmd = ctrl_cmd_cpy(bsc, cmd);
-			if (!bsc_cmd) {
-				cmd->reply = "Could not forward command";
-				goto err;
-			}
-
-			talloc_free(bsc_cmd->id);
-			bsc_cmd->id = talloc_asprintf(bsc_cmd, "%i", pending->nat_id);
-			if (!bsc_cmd->id) {
-				cmd->reply = "OOM";
-				goto err;
-			}
-
-			talloc_free(bsc_cmd->variable);
-			bsc_cmd->variable = talloc_strdup(bsc_cmd, tmp);
-			if (!bsc_cmd->variable) {
-				cmd->reply = "OOM";
-				goto err;
-			}
-
-			if (ctrl_cmd_send(&bsc->write_queue, bsc_cmd)) {
-				cmd->reply = "Sending failed";
-				goto err;
-			}
-			pending->ccon = cmd->ccon;
-			pending->ccon->closed_cb = ctrl_conn_closed_cb;
-			pending->cmd = cmd;
-
-			/* Setup the timeout */
-			pending->timeout.data = pending;
-			pending->timeout.cb = pending_timeout_cb;
-			/* TODO: Make timeout configurable */
-			osmo_timer_schedule(&pending->timeout, 10, 0);
-			llist_add_tail(&pending->list_entry, &bsc->cmd_pending);
-
-			goto done;
-		}
-	}
-	/* We end up here if there's no bsc to handle our LAC */
-	cmd->reply = "no BSC with this nr";
-err:
-	ret = CTRL_CMD_ERROR;
-done:
-	if (bsc_cmd)
-		talloc_free(bsc_cmd);
-	return ret;
-
-}
-
-CTRL_CMD_DEFINE(fwd_cmd, "net 0 bsc *");
-static int get_fwd_cmd(struct ctrl_cmd *cmd, void *data)
-{
-	return forward_to_bsc(cmd);
-}
-
-static int set_fwd_cmd(struct ctrl_cmd *cmd, void *data)
-{
-	return forward_to_bsc(cmd);
-}
-
-static int verify_fwd_cmd(struct ctrl_cmd *cmd, const char *value, void *data)
-{
-	return 0;
-}
-
 int main(int argc, char **argv)
 {
 	int rc;
@@ -1768,17 +1501,7 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-	nat->ctrl = controlif_setup(NULL, 4250);
-	if (!nat->ctrl) {
-		fprintf(stderr, "Failed to initialize the control interface. Exiting.\n");
-		exit(1);
-	}
-
-	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_fwd_cmd);
-	if (rc) {
-		fprintf(stderr, "Failed to install the control command. Exiting.\n");
-		exit(1);
-	}
+	nat->ctrl = bsc_nat_controlif_setup(nat, 4250);
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;
