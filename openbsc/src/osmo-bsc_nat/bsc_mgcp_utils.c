@@ -563,12 +563,18 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 
 	static const char *ip_str = "c=IN IP4 ";
 	static const char *aud_str = "m=audio ";
+	static const char *fmt_str = "a=fmtp: ";
 
 	char buf[128];
 	char *running, *token;
 	struct msgb *output;
 
-	if (length > 4096 - 128) {
+	/* keep state to add the a=fmtp line */
+	int found_fmtp = 0;
+	int payload = -1;
+	int cr = 1;
+
+	if (length > 4096 - 256) {
 		LOGP(DMGCP, LOGL_ERROR, "Input is too long.\n");
 		return NULL;
 	}
@@ -584,7 +590,7 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 	output->l3h = output->l2h;
 	for (token = strsep(&running, "\n"); running; token = strsep(&running, "\n")) {
 		int len = strlen(token);
-		int cr = len > 0 && token[len - 1] == '\r';
+		cr = len > 0 && token[len - 1] == '\r';
 
 		if (strncmp(crcx_str, token, (sizeof crcx_str) - 1) == 0) {
 			patch_mgcp(output, "CRCX", token, endpoint, len, cr);
@@ -607,7 +613,6 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 				output->l3h[0] = '\n';
 			}
 		} else if (strncmp(aud_str, token, (sizeof aud_str) - 1) == 0) {
-			int payload;
 			if (sscanf(token, "m=audio %*d RTP/AVP %d", &payload) != 1) {
 				LOGP(DMGCP, LOGL_ERROR, "Could not parsed audio line.\n");
 				msgb_free(output);
@@ -620,11 +625,27 @@ struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char 
 
 			output->l3h = msgb_put(output, strlen(buf));
 			memcpy(output->l3h, buf, strlen(buf));
+		} else if (strncmp(fmt_str, token, (sizeof fmt_str) - 1) == 0) {
+			found_fmtp = 1;
+			goto copy;
 		} else {
+copy:
 			output->l3h = msgb_put(output, len + 1);
 			memcpy(output->l3h, token, len);
 			output->l3h[len] = '\n';
 		}
+	}
+
+	/*
+	 * the above code made sure that we have 128 bytes lefts. So we can
+	 * safely append another line.
+	 */
+	if (!found_fmtp && payload != -1) {
+		snprintf(buf, sizeof(buf) - 1, "a=fmtp:%d mode-set=2%s",
+			payload, cr ? "\r\n" : "\n");
+		buf[sizeof(buf) - 1] = '\0';
+		output->l3h = msgb_put(output, strlen(buf));
+		memcpy(output->l3h, buf, strlen(buf));
 	}
 
 	return output;
