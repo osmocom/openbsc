@@ -20,6 +20,10 @@ VERSION := $(shell echo '$(DEBVERS)' | sed -e 's/[+-].*//' -e 's/~//g')
 %:
 	dh --sourcedirectory=openbsc --with autoreconf $@
 
+# This is needed for debian stable (squeeze)
+override_dh_autoreconf:
+	cd openbsc && autoreconf --install --force
+
 override_dh_auto_configure:
 	echo $(VERSION) > openbsc/.tarball-version
 	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc
