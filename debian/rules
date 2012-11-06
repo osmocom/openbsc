@@ -18,11 +18,11 @@ DEBVERS := $(shell echo '$(DEBIAN)' | cut -d- -f1)
 VERSION := $(shell echo '$(DEBVERS)' | sed -e 's/[+-].*//' -e 's/~//g')
 
 %:
-	dh --with autoreconf $@ 
+	dh --sourcedirectory=openbsc --with autoreconf $@
 
 override_dh_auto_configure:
-	echo $(VERSION) > .tarball-version
-	dh_auto_configure -- --enable-nat --enable-osmo-bsc
+	echo $(VERSION) > openbsc/.tarball-version
+	dh_auto_configure --sourcedirectory=openbsc -- --enable-nat --enable-osmo-bsc
 
 override_dh_auto_test:
 #	tests are broken...
