@@ -557,13 +557,13 @@ static void patch_mgcp(struct msgb *output, const char *op, const char *tok,
 /* we need to replace some strings... */
 struct msgb *bsc_mgcp_rewrite(char *input, int length, int endpoint, const char *ip, int port)
 {
-	static const char *crcx_str = "CRCX ";
-	static const char *dlcx_str = "DLCX ";
-	static const char *mdcx_str = "MDCX ";
+	static const char crcx_str[] = "CRCX ";
+	static const char dlcx_str[] = "DLCX ";
+	static const char mdcx_str[] = "MDCX ";
 
-	static const char *ip_str = "c=IN IP4 ";
-	static const char *aud_str = "m=audio ";
-	static const char *fmt_str = "a=fmtp: ";
+	static const char ip_str[] = "c=IN IP4 ";
+	static const char aud_str[] = "m=audio ";
+	static const char fmt_str[] = "a=fmtp:";
 
 	char buf[128];
 	char *running, *token;
