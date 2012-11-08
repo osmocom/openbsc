@@ -16,5 +16,6 @@ libmsc_a_SOURCES =	auth.c \
 			ussd.c \
 			vty_interface_layer3.c \
 			transaction.c \
+			smpp_smsc.c smpp_openbsc.c \
 			osmo_msc.c
 

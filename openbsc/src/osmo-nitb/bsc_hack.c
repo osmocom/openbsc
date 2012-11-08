@@ -313,6 +313,9 @@ int main(int argc, char **argv)
 	if (sms_queue_start(bsc_gsmnet, 20) != 0)
 		return -1;
 
+	if (smpp_openbsc_init(bsc_gsmnet, 6040) < 0)
+		return -1;
+
 	if (daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {
