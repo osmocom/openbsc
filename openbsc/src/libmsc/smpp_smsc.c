@@ -46,6 +46,31 @@ enum emse_bind {
 	ESME_BIND_TX = 0x02,
 };
 
+/*! \brief increaes the use/reference count */
+void smpp_esme_get(struct osmo_esme *esme)
+{
+	esme->use++;
+}
+
+static void esme_destroy(struct osmo_esme *esme)
+{
+	osmo_wqueue_clear(&esme->wqueue);
+	if (esme->wqueue.bfd.fd >= 0) {
+		osmo_fd_unregister(&esme->wqueue.bfd);
+		close(esme->wqueue.bfd.fd);
+	}
+	llist_del(&esme->list);
+	talloc_free(esme);
+}
+
+/*! \brief decrease the use/reference count, free if it is 0 */
+void smpp_esme_put(struct osmo_esme *esme)
+{
+	esme->use--;
+	if (esme->use <= 0)
+		esme_destroy(esme);
+}
+
 static struct osmo_esme *
 esme_by_system_id(const struct smsc *smsc, char *system_id)
 {
@@ -59,6 +84,7 @@ esme_by_system_id(const struct smsc *smsc, char *system_id)
 }
 
 
+/*! \brief initialize the libsmpp34 data structure for a response */
 #define INIT_RESP(type, resp, req) 		{ \
 	memset((resp), 0, sizeof(*(resp)));	  \
 	(resp)->command_length	= 0;		  \
@@ -67,6 +93,7 @@ esme_by_system_id(const struct smsc *smsc, char *system_id)
 	(resp)->sequence_number	= (req)->sequence_number;	\
 }
 
+/*! \brief pack a libsmpp34 data strcutrure and send it to the ESME */
 #define PACK_AND_SEND(esme, ptr)	pack_and_send(esme, (ptr)->command_id, ptr)
 static int pack_and_send(struct osmo_esme *esme, uint32_t type, void *ptr)
 {
@@ -87,6 +114,7 @@ static int pack_and_send(struct osmo_esme *esme, uint32_t type, void *ptr)
 	return osmo_wqueue_enqueue(&esme->wqueue, msg);
 }
 
+/*! \brief transmit a generic NACK to a remote ESME */
 static int smpp_tx_gen_nack(struct osmo_esme *esme, uint32_t seq, uint32_t status)
 {
 	struct generic_nack_t nack;
@@ -99,19 +127,21 @@ static int smpp_tx_gen_nack(struct osmo_esme *esme, uint32_t seq, uint32_t statu
 	return PACK_AND_SEND(esme, &nack);
 }
 
+/*! \brief retrieve SMPP command ID from a msgb */
 static inline uint32_t smpp_msgb_cmdid(struct msgb *msg)
 {
 	uint8_t *tmp = msgb_data(msg) + 4;
 	return ntohl(*(uint32_t *)tmp);
 }
 
+/*! \brief retrieve SMPP sequence number from a msgb */
 static inline uint32_t smpp_msgb_seq(struct msgb *msg)
 {
 	uint8_t *tmp = msgb_data(msg);
 	return ntohl(*(uint32_t *)tmp);
 }
 
-
+/*! \brief handle an incoming SMPP generic NACK */
 static int smpp_handle_gen_nack(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct generic_nack_t nack;
@@ -129,6 +159,7 @@ static int smpp_handle_gen_nack(struct osmo_esme *esme, struct msgb *msg)
 	return 0;
 }
 
+/*! \brief handle an incoming SMPP BIND RECEIVER */
 static int smpp_handle_bind_rx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_receiver_t bind;
@@ -165,6 +196,7 @@ err:
 	return 0;
 }
 
+/*! \brief handle an incoming SMPP BIND TRANSMITTER */
 static int smpp_handle_bind_tx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_transmitter_t bind;
@@ -212,6 +244,7 @@ err:
 	return PACK_AND_SEND(esme, &bind_r);
 }
 
+/*! \brief handle an incoming SMPP BIND TRANSCEIVER */
 static int smpp_handle_bind_trx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_transceiver_t bind;
@@ -247,6 +280,7 @@ err:
 	return 0;
 }
 
+/*! \brief handle an incoming SMPP UNBIND */
 static int smpp_handle_unbind(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct unbind_t unbind;
@@ -272,7 +306,7 @@ err:
 	return PACK_AND_SEND(esme, &unbind_r);
 }
 
-
+/*! \brief handle an incoming SMPP ENQUIRE LINK */
 static int smpp_handle_enq_link(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct enquire_link_t enq;
@@ -291,6 +325,7 @@ static int smpp_handle_enq_link(struct osmo_esme *esme, struct msgb *msg)
 	return PACK_AND_SEND(esme, &enq_r);
 }
 
+/*! \brief send a SUBMIT-SM RESPONSE to a remote ESME */
 int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 		     uint32_t command_status, char *msg_id)
 {
@@ -306,6 +341,7 @@ int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 	return PACK_AND_SEND(esme, &submit_r);
 }
 
+/*! \brief handle an incoming SMPP SUBMIT-SM */
 static int smpp_handle_submit(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct submit_sm_t submit;
@@ -336,7 +372,7 @@ static int smpp_handle_submit(struct osmo_esme *esme, struct msgb *msg)
 	return rc;
 }
 
-/* one complete SMPP PDU from the ESME has been received */
+/*! \brief one complete SMPP PDU from the ESME has been received */
 static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg)
 {
 	uint32_t cmd_id = smpp_msgb_cmdid(msg);
@@ -388,16 +424,7 @@ static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg)
 	return rc;
 }
 
-static void esme_destroy(struct osmo_esme *esme)
-{
-	osmo_wqueue_clear(&esme->wqueue);
-	osmo_fd_unregister(&esme->wqueue.bfd);
-	close(esme->wqueue.bfd.fd);
-	llist_del(&esme->list);
-	talloc_free(esme);
-}
-
-/* call-back when per-ESME TCP socket has some data to be read */
+/* !\brief call-back when per-ESME TCP socket has some data to be read */
 static int esme_link_read_cb(struct osmo_fd *ofd)
 {
 	struct osmo_esme *esme = ofd->data;
@@ -456,7 +483,10 @@ static int esme_link_read_cb(struct osmo_fd *ofd)
 	return 0;
 dead_socket:
 	msgb_free(esme->read_msg);
-	esme_destroy(esme);
+	osmo_fd_unregister(&esme->wqueue.bfd);
+	close(esme->wqueue.bfd.fd);
+	esme->wqueue.bfd.fd = -1;
+	smpp_esme_put(esme);
 
 	return 0;
 }
@@ -469,7 +499,10 @@ static void esme_link_write_cb(struct osmo_fd *ofd, struct msgb *msg)
 
 	rc = write(ofd->fd, msgb_data(msg), msgb_length(msg));
 	if (rc == 0) {
-		esme_destroy(esme);
+		osmo_fd_unregister(&esme->wqueue.bfd);
+		close(esme->wqueue.bfd.fd);
+		esme->wqueue.bfd.fd = -1;
+		smpp_esme_put(esme);
 	} else if (rc < msgb_length(msg)) {
 		LOGP(DSMPP, LOGL_ERROR, "%s: Short write\n", esme->system_id);
 		return;
@@ -484,6 +517,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 	if (!esme)
 		return -ENOMEM;
 
+	smpp_esme_get(esme);
 	esme->smsc = smsc;
 	osmo_wqueue_init(&esme->wqueue, 10);
 	esme->wqueue.bfd.fd = fd;
@@ -518,6 +552,7 @@ static int smsc_fd_cb(struct osmo_fd *ofd, unsigned int what)
 	return link_accept_cb(ofd->data, rc, &sa, sa_len);
 }
 
+/*! \brief Initialize the SMSC-side SMPP implementation */
 int smpp_smsc_init(struct smsc *smsc, uint16_t port)
 {
 	int rc;

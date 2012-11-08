@@ -43,7 +43,7 @@
 
 #include "smpp_smsc.h"
 
-
+/*! \brief find gsm_subscriber for a given SMPP NPI/TON/Address */
 static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 					    uint8_t npi, uint8_t ton, const char *addr)
 {
@@ -65,6 +65,7 @@ static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 	return subscr;
 }
 
+/*! \brief find a TLV with given tag in list of libsmpp34 TLVs */
 struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 {
 	struct tlv_t *t;
@@ -76,7 +77,7 @@ struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 	return NULL;
 }
 
-/* convert from submit_sm_t to gsm_sms */
+/*! \brief convert from submit_sm_t to gsm_sms */
 static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			 const struct submit_sm_t *submit)
 {
@@ -156,6 +157,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	return ESME_ROK;
 }
 
+/*! \brief handle incoming libsmpp34 ssubmit_sm_t from remote ESME */
 int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		       struct submit_sm_resp_t *submit_r)
 {
@@ -167,6 +169,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		submit_r->command_status = rc;
 		return 0;
 	}
+	smpp_esme_get(esme);
 	sms->smpp.esme = esme;
 	/* FIXME: TP-PID */
 
@@ -195,6 +198,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	return rc;
 }
 
+/*! \brief signal handler for status of attempted SMS deliveries */
 static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
@@ -235,7 +239,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 	return rc;
 }
 
-
+/*! \brief Initialize the OpenBSC SMPP interface */
 int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 {
 	struct smsc *smsc = talloc_zero(net, struct smsc);

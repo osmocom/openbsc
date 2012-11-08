@@ -21,6 +21,8 @@ struct osmo_esme {
 	struct llist_head list;
 	struct smsc *smsc;
 
+	int use;
+
 	struct osmo_wqueue wqueue;
 	struct sockaddr_storage sa;
 	socklen_t sa_len;
@@ -45,6 +47,9 @@ struct smsc {
 
 
 int smpp_smsc_init(struct smsc *smsc, uint16_t port);
+
+void smpp_esme_get(struct osmo_esme *esme);
+void smpp_esme_put(struct osmo_esme *esme);
 
 int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 		     uint32_t command_status, char *msg_id);

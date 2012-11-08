@@ -117,6 +117,8 @@ void sms_free(struct gsm_sms *sms)
 		subscr_put(sms->sender);
 	if (sms->receiver)
 		subscr_put(sms->receiver);
+	if (sms->smpp.esme)
+		smpp_esme_put(sms->smpp.esme);
 
 	talloc_free(sms);
 }
