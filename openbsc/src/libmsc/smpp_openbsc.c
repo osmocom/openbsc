@@ -128,27 +128,26 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 #warning Implement reply path
 	}
 
-	switch (submit->data_coding) {
-	case 0x00:
-	case 0x01: /* GSM default alphabet */
+	if (submit->data_coding == 0x00 ||	/* SMSC default */
+	    submit->data_coding == 0x01 ||	/* GSM default alphabet */
+	    (submit->data_coding & 0xFC) == 0xF0) { /* 03.38 DCS default */
 		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
 		strncpy(sms->text, (char *)sms_msg,
 			OSMO_MIN(sizeof(sms->text)-1, sms_msg_len));
 		sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
-		break;
-	case 0x02:
-	case 0x04: /* 8-bit binary */
+	} else if (submit->data_coding == 0x02 ||
+		   submit->data_coding == 0x04 ||
+		   (submit->data_coding & 0xFC) == 0xF4) { /* 03.38 DCS 8bit */
+		/* 8-bit binary */
 		sms->data_coding_scheme = GSM338_DCS_1111_8BIT_DATA;
 		memcpy(sms->user_data, sms_msg, sms_msg_len);
 		sms->user_data_len = sms_msg_len;
-		break;
-	case 0x80: /* UCS-2 */
+	} else if (submit->data_coding == 0x80) {
+		/* UCS-2 */
 		sms->data_coding_scheme = (2 << 2);
 		memcpy(sms->user_data, sms_msg, submit->sm_length);
 		sms->user_data_len = sms_msg_len;
-		break;
-		/* FIXME */
-	default:
+	} else {
 		sms_free(sms);
 		return ESME_RUNKNOWNERR;
 	}
@@ -171,7 +170,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	}
 	smpp_esme_get(esme);
 	sms->smpp.esme = esme;
-	/* FIXME: TP-PID */
+	sms->protocol_id = submit->protocol_id;
 
 	switch (submit->esm_class & 3) {
 	case 0: /* default */
