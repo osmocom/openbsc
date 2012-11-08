@@ -46,6 +46,9 @@ struct smsc {
 
 int smpp_smsc_init(struct smsc *smsc, uint16_t port);
 
+int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
+		     uint32_t command_status, char *msg_id);
+
 int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 			struct submit_sm_resp_t *submit_r);
 

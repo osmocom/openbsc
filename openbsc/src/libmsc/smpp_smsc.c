@@ -46,6 +46,17 @@ enum emse_bind {
 	ESME_BIND_TX = 0x02,
 };
 
+static struct osmo_esme *
+esme_by_system_id(const struct smsc *smsc, char *system_id)
+{
+	struct osmo_esme *e;
+
+	llist_for_each_entry(e, &smsc->esme_list, list) {
+		if (!strcmp(e->system_id, system_id))
+			return e;
+	}
+	return NULL;
+}
 
 
 #define INIT_RESP(type, resp, req) 		{ \
@@ -278,6 +289,21 @@ static int smpp_handle_enq_link(struct osmo_esme *esme, struct msgb *msg)
 	INIT_RESP(ENQUIRE_LINK_RESP, &enq_r, &enq);
 
 	return PACK_AND_SEND(esme, &enq_r);
+}
+
+int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
+		     uint32_t command_status, char *msg_id)
+{
+	struct submit_sm_resp_t submit_r;
+
+	memset(&submit_r, 0, sizeof(submit_r));
+	submit_r.command_length	= 0;
+	submit_r.command_id	= SUBMIT_SM_RESP;
+	submit_r.command_status	= command_status;
+	submit_r.sequence_number= sequence_nr;
+	snprintf(submit_r.message_id, sizeof(submit_r.message_id), "%s", msg_id);
+
+	return PACK_AND_SEND(esme, &submit_r);
 }
 
 static int smpp_handle_submit(struct osmo_esme *esme, struct msgb *msg)

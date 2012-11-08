@@ -38,6 +38,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/db.h>
 #include <openbsc/gsm_04_11.h>
+#include <openbsc/gsm_data.h>
+#include <openbsc/signal.h>
 
 #include "smpp_smsc.h"
 
@@ -111,6 +113,8 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	}
 
 	sms = sms_alloc();
+	sms->source = SMS_SOURCE_SMPP;
+	sms->smpp.sequence_nr = submit->sequence_number;
 	sms->receiver = subscr_get(dest);
 	strncpy(sms->dest_addr, dest->extension, sizeof(sms->dest_addr)-1);
 	sms->sender = subscr_get_by_id(net, 1);
@@ -163,6 +167,7 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		submit_r->command_status = rc;
 		return 0;
 	}
+	sms->smpp.esme = esme;
 	/* FIXME: TP-PID */
 
 	switch (submit->esm_class & 3) {
@@ -182,10 +187,51 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		rc = 0;
 		break;
 	case 2: /* forward (i.e. transaction) mode */
-		/* FIXME */
+		sms->smpp.transaction_mode = 1;
+		gsm411_send_sms_subscr(sms->receiver, sms);
 		rc = 1; /* don't send any response yet */
 		break;
 	}
+	return rc;
+}
+
+static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct gsm_network *network = handler_data;
+	struct sms_signal_data *sig_sms = signal_data;
+	struct gsm_sms *sms = sig_sms->sms;
+	int rc = 0;
+
+	if (!sms)
+		return 0;
+
+	if (sms->source != SMS_SOURCE_SMPP)
+		return 0;
+
+	switch (signal) {
+	case S_SMS_UNKNOWN_ERROR:
+		if (sms->smpp.transaction_mode) {
+			/* Send back the SUBMIT-SM response with apropriate error */
+			LOGP(DSMS, LOGL_INFO, "SMPP SUBMIT-SM: Error\n");
+			rc = smpp_tx_submit_r(sms->smpp.esme,
+					      sms->smpp.sequence_nr,
+					      ESME_RDELIVERYFAILURE,
+					      sms->smpp.msg_id);
+		}
+		break;
+	case S_SMS_DELIVERED:
+		/* SMS layer tells us the delivery has been completed */
+		if (sms->smpp.transaction_mode) {
+			/* Send back the SUBMIT-SM response */
+			LOGP(DSMS, LOGL_INFO, "SMPP SUBMIT-SM: Success\n");
+			rc = smpp_tx_submit_r(sms->smpp.esme,
+					      sms->smpp.sequence_nr,
+					      ESME_ROK, sms->smpp.msg_id);
+		}
+		break;
+	}
+
 	return rc;
 }
 
@@ -200,6 +246,8 @@ int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 	rc = smpp_smsc_init(smsc, port);
 	if (rc < 0)
 		talloc_free(smsc);
+
+	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, net);
 
 	return rc;
 }

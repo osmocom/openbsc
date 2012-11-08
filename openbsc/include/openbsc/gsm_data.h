@@ -271,12 +271,29 @@ struct gsm_network {
 	struct ctrl_handle *ctrl;
 };
 
+struct osmo_esme;
+
+enum gsm_sms_source_id {
+	SMS_SOURCE_UNKNOWN = 0,
+	SMS_SOURCE_MS,		/* received from MS */
+	SMS_SOURCE_VTY,		/* received from VTY */
+	SMS_SOURCE_SMPP,	/* received via SMPP */
+};
+
 #define SMS_HDR_SIZE	128
 #define SMS_TEXT_SIZE	256
 struct gsm_sms {
 	unsigned long long id;
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
+	enum gsm_sms_source_id source;
+
+	struct {
+		struct osmo_esme *esme;
+		uint32_t sequence_nr;
+		int transaction_mode;
+		char msg_id[16];
+	} smpp;
 
 	unsigned long validity_minutes;
 	uint8_t reply_path_req;
