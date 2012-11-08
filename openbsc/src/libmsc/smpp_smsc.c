@@ -41,6 +41,11 @@
 
 #include <openbsc/debug.h>
 
+/*! \brief Ugly wrapper. libsmpp34 should do this itself! */
+#define SMPP34_UNPACK(rc, type, str, data, len)		\
+	memset(str, 0, sizeof(*str));			\
+	rc = smpp34_unpack(type, str, data, len)
+
 enum emse_bind {
 	ESME_BIND_RX = 0x01,
 	ESME_BIND_TX = 0x02,
@@ -148,8 +153,8 @@ static int smpp_handle_gen_nack(struct osmo_esme *esme, struct msgb *msg)
 	char buf[SMALL_BUFF];
 	int rc;
 
-	rc = smpp34_unpack(GENERIC_NACK, &nack, msgb_data(msg),
-			   msgb_length(msg));
+	SMPP34_UNPACK(rc, GENERIC_NACK, &nack, msgb_data(msg),
+			 msgb_length(msg));
 	if (rc < 0)
 		return rc;
 
@@ -166,7 +171,7 @@ static int smpp_handle_bind_rx(struct osmo_esme *esme, struct msgb *msg)
 	struct bind_receiver_resp_t bind_r;
 	int rc;
 
-	rc = smpp34_unpack(BIND_RECEIVER, &bind, msgb_data(msg),
+	SMPP34_UNPACK(rc, BIND_RECEIVER, &bind, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0)
 		return rc;
@@ -204,7 +209,7 @@ static int smpp_handle_bind_tx(struct osmo_esme *esme, struct msgb *msg)
 	struct tlv_t tlv;
 	int rc;
 
-	rc = smpp34_unpack(BIND_TRANSMITTER, &bind, msgb_data(msg),
+	SMPP34_UNPACK(rc, BIND_TRANSMITTER, &bind, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0) {
 		printf("error during unpack: %s\n", smpp34_strerror);
@@ -251,7 +256,7 @@ static int smpp_handle_bind_trx(struct osmo_esme *esme, struct msgb *msg)
 	struct bind_transceiver_resp_t bind_r;
 	int rc;
 
-	rc = smpp34_unpack(BIND_TRANSCEIVER, &bind, msgb_data(msg),
+	SMPP34_UNPACK(rc, BIND_TRANSCEIVER, &bind, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0)
 		return rc;
@@ -287,7 +292,7 @@ static int smpp_handle_unbind(struct osmo_esme *esme, struct msgb *msg)
 	struct unbind_resp_t unbind_r;
 	int rc;
 
-	rc = smpp34_unpack(UNBIND, &unbind, msgb_data(msg),
+	SMPP34_UNPACK(rc, UNBIND, &unbind, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0)
 		return rc;
@@ -313,7 +318,7 @@ static int smpp_handle_enq_link(struct osmo_esme *esme, struct msgb *msg)
 	struct enquire_link_resp_t enq_r;
 	int rc;
 
-	rc = smpp34_unpack(ENQUIRE_LINK, &enq, msgb_data(msg),
+	SMPP34_UNPACK(rc, ENQUIRE_LINK, &enq, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0)
 		return rc;
@@ -348,7 +353,8 @@ static int smpp_handle_submit(struct osmo_esme *esme, struct msgb *msg)
 	struct submit_sm_resp_t submit_r;
 	int rc;
 
-	rc = smpp34_unpack(SUBMIT_SM, &submit, msgb_data(msg),
+	memset(&submit, 0, sizeof(submit));
+	SMPP34_UNPACK(rc, SUBMIT_SM, &submit, msgb_data(msg),
 			   msgb_length(msg));
 	if (rc < 0)
 		return rc;
