@@ -341,9 +341,45 @@ int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 	submit_r.command_id	= SUBMIT_SM_RESP;
 	submit_r.command_status	= command_status;
 	submit_r.sequence_number= sequence_nr;
-	snprintf(submit_r.message_id, sizeof(submit_r.message_id), "%s", msg_id);
+	snprintf((char *) submit_r.message_id, sizeof(submit_r.message_id), "%s", msg_id);
 
 	return PACK_AND_SEND(esme, &submit_r);
+}
+
+static const struct value_string smpp_avail_strs[] = {
+	{ 0,	"Available" },
+	{ 1,	"Denied" },
+	{ 2,	"Unavailable" },
+	{ 0,	NULL }
+};
+
+/*! \brief send an ALERT_NOTIFICATION to a remote ESME */
+int smpp_tx_alert(struct osmo_esme *esme, uint8_t ton, uint8_t npi,
+		  const char *addr, uint8_t avail_status)
+{
+	struct alert_notification_t alert;
+	struct tlv_t tlv;
+
+	memset(&alert, 0, sizeof(alert));
+	alert.command_length	= 0;
+	alert.command_id	= ALERT_NOTIFICATION;
+	alert.command_status	= ESME_ROK;
+	alert.sequence_number	= esme->own_seq_nr++;
+	alert.source_addr_ton 	= ton;
+	alert.source_addr_npi	= npi;
+	snprintf(alert.source_addr, sizeof(alert.source_addr), "%s", addr);
+
+	tlv.tag = TLVID_ms_availability_status;
+	tlv.length = sizeof(uint8_t);
+	tlv.value.val08 = avail_status;
+	build_tlv(&alert.tlv, &tlv);
+
+	LOGP(DSMPP, LOGL_DEBUG, "[%s] Tx ALERT_NOTIFICATION (%s/%u/%u): %s\n",
+		esme->system_id, alert.source_addr, alert.source_addr_ton,
+		alert.source_addr_npi,
+		get_value_string(smpp_avail_strs, avail_status));
+
+	return PACK_AND_SEND(esme, &alert);
 }
 
 /*! \brief handle an incoming SMPP SUBMIT-SM */
@@ -524,6 +560,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 		return -ENOMEM;
 
 	smpp_esme_get(esme);
+	esme->own_seq_nr = rand();
 	esme->smsc = smsc;
 	osmo_wqueue_init(&esme->wqueue, 10);
 	esme->wqueue.bfd.fd = fd;

@@ -23,6 +23,8 @@ struct osmo_esme {
 
 	int use;
 
+	uint32_t own_seq_nr;
+
 	struct osmo_wqueue wqueue;
 	struct sockaddr_storage sa;
 	socklen_t sa_len;
@@ -53,6 +55,9 @@ void smpp_esme_put(struct osmo_esme *esme);
 
 int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 		     uint32_t command_status, char *msg_id);
+
+int smpp_tx_alert(struct osmo_esme *esme, uint8_t ton, uint8_t npi,
+		  const char *addr, uint8_t avail_status);
 
 int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 			struct submit_sm_resp_t *submit_r);

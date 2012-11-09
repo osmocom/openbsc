@@ -238,6 +238,40 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 	return rc;
 }
 
+/*! \brief signal handler for subscriber related signals */
+static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
+			  void *handler_data, void *signal_data)
+{
+	struct gsm_subscriber *subscr = signal_data;
+	struct smsc *smsc = handler_data;
+	struct osmo_esme *esme;
+	uint8_t smpp_avail_status;
+
+	/* determine the smpp_avail_status depending on attach/detach */
+	switch (signal) {
+	case S_SUBSCR_ATTACHED:
+		smpp_avail_status = 0;
+		break;
+	case S_SUBSCR_DETACHED:
+		smpp_avail_status = 2;
+		break;
+	default:
+		return 0;
+	}
+
+	llist_for_each_entry(esme, &smsc->esme_list, list) {
+		/* we currently send an alert notification to each ESME that is
+		 * connected, and do not require a (non-existant) delivery
+		 * pending flag to be set before,  FIXME: make this VTY
+		 * configurable */
+		smpp_tx_alert(esme, TON_Subscriber_Number,
+				NPI_Land_Mobile_E212, subscr->imsi,
+				smpp_avail_status);
+	}
+
+	return 0;
+}
+
 /*! \brief Initialize the OpenBSC SMPP interface */
 int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 {
@@ -251,7 +285,7 @@ int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 		talloc_free(smsc);
 
 	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, net);
+	osmo_signal_register_handler(SS_SUBSCR, smpp_subscr_cb, smsc);
 
 	return rc;
 }
-
