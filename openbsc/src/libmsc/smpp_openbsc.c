@@ -101,6 +101,8 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	if (t) {
 		if (submit->sm_length) {
 			/* ERROR: we cannot have botH! */
+			LOGP(DSMS, LOGL_ERROR, "SMPP Cannot have payload in "
+				"TLV _and_ in the header\n");
 			return ESME_ROPTPARNOTALLWD;
 		}
 		sms_msg = t->value.octet;
@@ -131,10 +133,20 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	if (submit->data_coding == 0x00 ||	/* SMSC default */
 	    submit->data_coding == 0x01 ||	/* GSM default alphabet */
 	    (submit->data_coding & 0xFC) == 0xF0) { /* 03.38 DCS default */
+		uint8_t ud_len = 0;
 		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
+		if (sms->ud_hdr_ind) {
+			ud_len = *sms_msg + 1;
+			printf("copying %u bytes user data...\n", ud_len);
+			memcpy(sms->user_data, sms_msg,
+				OSMO_MIN(ud_len, sizeof(sms->user_data)));
+			sms_msg += ud_len;
+			sms_msg_len -= ud_len;
+		}
 		strncpy(sms->text, (char *)sms_msg,
 			OSMO_MIN(sizeof(sms->text)-1, sms_msg_len));
-		sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
+		printf("encoding 7bit to offset %u text(%s)\n", ud_len, sms->text);
+		sms->user_data_len = gsm_7bit_encode(sms->user_data+ud_len, sms->text);
 	} else if (submit->data_coding == 0x02 ||
 		   submit->data_coding == 0x04 ||
 		   (submit->data_coding & 0xFC) == 0xF4) { /* 03.38 DCS 8bit */
@@ -149,6 +161,8 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		sms->user_data_len = sms_msg_len;
 	} else {
 		sms_free(sms);
+		LOGP(DSMS, LOGL_ERROR, "SMPP Unknown Data Coding 0x%02x\n",
+			submit->data_coding);
 		return ESME_RUNKNOWNERR;
 	}
 
@@ -189,6 +203,8 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		rc = 0;
 		break;
 	case 2: /* forward (i.e. transaction) mode */
+		LOGP(DSMS, LOGL_DEBUG, "SMPP SUBMIT-SM: Forwarding in "
+			"real time (Transaction/Forward mode)\n");
 		sms->smpp.transaction_mode = 1;
 		gsm411_send_sms_subscr(sms->receiver, sms);
 		rc = 1; /* don't send any response yet */
