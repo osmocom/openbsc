@@ -118,7 +118,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	sms = sms_alloc();
 	sms->source = SMS_SOURCE_SMPP;
 	sms->smpp.sequence_nr = submit->sequence_number;
-	sms->receiver = subscr_get(dest);
+	sms->receiver = dest;
 	strncpy(sms->dest_addr, dest->extension, sizeof(sms->dest_addr)-1);
 	sms->sender = subscr_get_by_id(net, 1);
 
