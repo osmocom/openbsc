@@ -39,6 +39,7 @@
 
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/gsm_utils.h>
+#include <osmocom/gsm/gsm0411_utils.h>
 
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
@@ -250,221 +251,6 @@ static int gsm411_rp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 	return gsm411_cp_sendmsg(msg, trans, GSM411_MT_CP_DATA);
 }
 
-/* Turn int into semi-octet representation: 98 => 0x89 */
-static uint8_t bcdify(uint8_t value)
-{
-	uint8_t ret;
-
-	ret = value / 10;
-	ret |= (value % 10) << 4;
-
-	return ret;
-}
-
-/* Turn semi-octet representation into int: 0x89 => 98 */
-static uint8_t unbcdify(uint8_t value)
-{
-	uint8_t ret;
-
-	if ((value & 0x0F) > 9 || (value >> 4) > 9)
-		LOGP(DSMS, LOGL_ERROR,
-		     "unbcdify got too big nibble: 0x%02X\n", value);
-
-	ret = (value&0x0F)*10;
-	ret += value>>4;
-
-	return ret;
-}
-
-/* Generate 03.40 TP-SCTS */
-static void gsm340_gen_scts(uint8_t *scts, time_t time)
-{
-	struct tm *tm = localtime(&time);
-
-	*scts++ = bcdify(tm->tm_year % 100);
-	*scts++ = bcdify(tm->tm_mon + 1);
-	*scts++ = bcdify(tm->tm_mday);
-	*scts++ = bcdify(tm->tm_hour);
-	*scts++ = bcdify(tm->tm_min);
-	*scts++ = bcdify(tm->tm_sec);
-#ifdef HAVE_TM_GMTOFF_IN_TM
-	*scts++ = bcdify(tm->tm_gmtoff/(60*15));
-#else
-#warning find a portable way to obtain timezone offset
-	*scts++ = 0;
-#endif
-}
-
-/* Decode 03.40 TP-SCTS (into utc/gmt timestamp) */
-static time_t gsm340_scts(uint8_t *scts)
-{
-	struct tm tm;
-
-	uint8_t yr = unbcdify(*scts++);
-
-	if (yr <= 80)
-		tm.tm_year = 100 + yr;
-	else
-		tm.tm_year = yr;
-	tm.tm_mon  = unbcdify(*scts++) - 1;
-	tm.tm_mday = unbcdify(*scts++);
-	tm.tm_hour = unbcdify(*scts++);
-	tm.tm_min  = unbcdify(*scts++);
-	tm.tm_sec  = unbcdify(*scts++);
-	/* according to gsm 03.40 time zone is
-	   "expressed in quarters of an hour" */
-#ifdef HAVE_TM_GMTOFF_IN_TM
-	tm.tm_gmtoff = unbcdify(*scts++) * 15*60;
-#endif
-
-	return mktime(&tm);
-}
-
-/* Return the default validity period in minutes */
-static unsigned long gsm340_vp_default(void)
-{
-	unsigned long minutes;
-	/* Default validity: two days */
-	minutes = 24 * 60 * 2;
-	return minutes;
-}
-
-/* Decode validity period format 'relative' */
-static unsigned long gsm340_vp_relative(uint8_t *sms_vp)
-{
-	/* Chapter 9.2.3.12.1 */
-	uint8_t vp;
-	unsigned long minutes;
-
-	vp = *(sms_vp);
-	if (vp <= 143)
-		minutes = vp + 1 * 5;
-	else if (vp <= 167)
-		minutes = 12*60 + (vp-143) * 30;
-	else if (vp <= 196)
-		minutes = vp-166 * 60 * 24;
-	else
-		minutes = vp-192 * 60 * 24 * 7;
-	return minutes;
-}
-
-/* Decode validity period format 'absolute' */
-static unsigned long gsm340_vp_absolute(uint8_t *sms_vp)
-{
-	/* Chapter 9.2.3.12.2 */
-	time_t expires, now;
-	unsigned long minutes;
-
-	expires = gsm340_scts(sms_vp);
-	now = time(NULL);
-	if (expires <= now)
-		minutes = 0;
-	else
-		minutes = (expires-now)/60;
-	return minutes;
-}
-
-/* Decode validity period format 'relative in integer representation' */
-static unsigned long gsm340_vp_relative_integer(uint8_t *sms_vp)
-{
-	uint8_t vp;
-	unsigned long minutes;
-	vp = *(sms_vp);
-	if (vp == 0) {
-		LOGP(DSMS, LOGL_ERROR,
-		     "reserved relative_integer validity period\n");
-		return gsm340_vp_default();
-	}
-	minutes = vp/60;
-	return minutes;
-}
-
-/* Decode validity period format 'relative in semi-octet representation' */
-static unsigned long gsm340_vp_relative_semioctet(uint8_t *sms_vp)
-{
-	unsigned long minutes;
-	minutes = unbcdify(*sms_vp++)*60;  /* hours */
-	minutes += unbcdify(*sms_vp++);    /* minutes */
-	minutes += unbcdify(*sms_vp++)/60; /* seconds */
-	return minutes;
-}
-
-/* decode validity period. return minutes */
-static unsigned long gsm340_validity_period(uint8_t sms_vpf, uint8_t *sms_vp)
-{
-	uint8_t fi; /* functionality indicator */
-
-	switch (sms_vpf) {
-	case GSM340_TP_VPF_RELATIVE:
-		return gsm340_vp_relative(sms_vp);
-	case GSM340_TP_VPF_ABSOLUTE:
-		return gsm340_vp_absolute(sms_vp);
-	case GSM340_TP_VPF_ENHANCED:
-		/* Chapter 9.2.3.12.3 */
-		fi = *sms_vp++;
-		/* ignore additional fi */
-		if (fi & (1<<7)) sms_vp++;
-		/* read validity period format */
-		switch (fi & 0x7) {
-		case 0x0:
-			return gsm340_vp_default(); /* no vpf specified */
-		case 0x1:
-			return gsm340_vp_relative(sms_vp);
-		case 0x2:
-			return gsm340_vp_relative_integer(sms_vp);
-		case 0x3:
-			return gsm340_vp_relative_semioctet(sms_vp);
-		default:
-			/* The GSM spec says that the SC should reject any
-			   unsupported and/or undefined values. FIXME */
-			LOGP(DSMS, LOGL_ERROR,
-			     "Reserved enhanced validity period format\n");
-			return gsm340_vp_default();
-		}
-	case GSM340_TP_VPF_NONE:
-	default:
-		return gsm340_vp_default();
-	}
-}
-
-/* determine coding alphabet dependent on GSM 03.38 Section 4 DCS */
-enum sms_alphabet gsm338_get_sms_alphabet(uint8_t dcs)
-{
-	uint8_t cgbits = dcs >> 4;
-	enum sms_alphabet alpha = DCS_NONE;
-
-	if ((cgbits & 0xc) == 0) {
-		if (cgbits & 2) {
-			LOGP(DSMS, LOGL_NOTICE,
-			     "Compressed SMS not supported yet\n");
-			return 0xffffffff;
-		}
-
-		switch ((dcs >> 2)&0x03) {
-		case 0:
-			alpha = DCS_7BIT_DEFAULT;
-			break;
-		case 1:
-			alpha = DCS_8BIT_DATA;
-			break;
-		case 2:
-			alpha = DCS_UCS2;
-			break;
-		}
-	} else if (cgbits == 0xc || cgbits == 0xd)
-		alpha = DCS_7BIT_DEFAULT;
-	else if (cgbits == 0xe)
-		alpha = DCS_UCS2;
-	else if (cgbits == 0xf) {
-		if (dcs & 4)
-			alpha = DCS_8BIT_DATA;
-		else
-			alpha = DCS_7BIT_DEFAULT;
-	}
-
-	return alpha;
-}
-
 static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 {
 	if (db_sms_store(gsms) != 0) {
@@ -478,19 +264,11 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 }
 
 /* generate a TPDU address field compliant with 03.40 sec. 9.1.2.5 */
-static int gsm340_gen_oa(uint8_t *oa, unsigned int oa_len,
+static int gsm340_gen_oa_sub(uint8_t *oa, unsigned int oa_len,
 			 struct gsm_subscriber *subscr)
 {
-	int len_in_bytes;
-
-	oa[1] = 0xb9; /* networks-specific number, private numbering plan */
-
-	len_in_bytes = gsm48_encode_bcd_number(oa, oa_len, 1, subscr->extension);
-
-	/* GSM 03.40 tells us the length is in 'useful semi-octets' */
-	oa[0] = strlen(subscr->extension) & 0xff;
-
-	return len_in_bytes;
+	/* network specific, private numbering plan */
+	return gsm340_gen_oa(oa, oa_len, 0x3, 0x9, subscr->extension);
 }
 
 /* generate a msgb containing a TPDU derived from struct gsm_sms,
@@ -518,7 +296,7 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 		*smsp |= 0x40;
 	
 	/* generate originator address */
-	oa_len = gsm340_gen_oa(oa, sizeof(oa), sms->sender);
+	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), sms->sender);
 	smsp = msgb_put(msg, oa_len);
 	memcpy(smsp, oa, oa_len);
 
