@@ -153,7 +153,7 @@ static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
 
 	/* store in database for the queue */
 	if (db_sms_store(sms) != 0) {
-		LOGP(DSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
+		LOGP(DLSMS, LOGL_ERROR, "Failed to store SMS in Database\n");
 		sms_free(sms);
 		return CMD_WARNING;
 	}

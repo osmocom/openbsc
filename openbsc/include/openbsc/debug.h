@@ -16,7 +16,6 @@ enum {
 	DRSL,
 	DNM,
 	DMNCC,
-	DSMS,
 	DPAG,
 	DMEAS,
 	DSCCP,

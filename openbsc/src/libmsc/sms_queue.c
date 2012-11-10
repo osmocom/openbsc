@@ -130,7 +130,7 @@ static void sms_pending_free(struct gsm_sms_pending *pending)
 static void sms_pending_resend(struct gsm_sms_pending *pending)
 {
 	struct gsm_sms_queue *smsq;
-	LOGP(DSMS, LOGL_DEBUG,
+	LOGP(DLSMS, LOGL_DEBUG,
 	     "Scheduling resend of SMS %llu.\n", pending->sms_id);
 
 	pending->resend = 1;
@@ -146,7 +146,7 @@ static void sms_pending_failed(struct gsm_sms_pending *pending, int paging_error
 {
 	struct gsm_sms_queue *smsq;
 
-	LOGP(DSMS, LOGL_NOTICE, "Sending SMS %llu failed %d times.\n",
+	LOGP(DLSMS, LOGL_NOTICE, "Sending SMS %llu failed %d times.\n",
 	     pending->sms_id, pending->failed_attempts);
 
 	smsq = pending->subscr->net->sms_queue;
@@ -217,7 +217,7 @@ static void sms_submit_pending(void *_data)
 	unsigned long long first_sub = 0;
 	int attempted = 0, rounds = 0;
 
-	LOGP(DSMS, LOGL_NOTICE, "Attempting to send %d SMS\n", attempts);
+	LOGP(DLSMS, LOGL_NOTICE, "Attempting to send %d SMS\n", attempts);
 
 	do {
 		struct gsm_sms_pending *pending;
@@ -249,7 +249,7 @@ static void sms_submit_pending(void *_data)
 
 		/* no need to send a pending sms */
 		if (sms_is_in_pending(smsq, sms)) {
-			LOGP(DSMS, LOGL_DEBUG,
+			LOGP(DLSMS, LOGL_DEBUG,
 			     "SMSqueue with pending sms: %llu. Skipping\n", sms->id);
 			sms_free(sms);
 			continue;
@@ -257,7 +257,7 @@ static void sms_submit_pending(void *_data)
 
 		/* no need to send a SMS with the same receiver */
 		if (sms_subscriber_is_pending(smsq, sms->receiver)) {
-			LOGP(DSMS, LOGL_DEBUG,
+			LOGP(DLSMS, LOGL_DEBUG,
 			     "SMSqueue with pending sub: %llu. Skipping\n", sms->receiver->id);
 			sms_free(sms);
 			continue;
@@ -265,7 +265,7 @@ static void sms_submit_pending(void *_data)
 
 		pending = sms_pending_from(smsq, sms);
 		if (!pending) {
-			LOGP(DSMS, LOGL_ERROR,
+			LOGP(DLSMS, LOGL_ERROR,
 			     "Failed to create pending SMS entry.\n");
 			sms_free(sms);
 			continue;
@@ -277,7 +277,7 @@ static void sms_submit_pending(void *_data)
 		gsm411_send_sms_subscr(sms->receiver, sms);
 	} while (attempted < attempts && rounds < 1000);
 
-	LOGP(DSMS, LOGL_DEBUG, "SMSqueue added %d messages in %d rounds\n", attempted, rounds);
+	LOGP(DLSMS, LOGL_DEBUG, "SMSqueue added %d messages in %d rounds\n", attempted, rounds);
 }
 
 /*
@@ -442,12 +442,12 @@ static int sms_sms_cb(unsigned int subsys, unsigned int signal,
 			sms_queue_trigger(network->sms_queue);
 			break;
 		default:
-			LOGP(DSMS, LOGL_ERROR, "Unhandled result: %d\n",
+			LOGP(DLSMS, LOGL_ERROR, "Unhandled result: %d\n",
 			     sig_sms->paging_result);
 		}
 		break;
 	default:
-		LOGP(DSMS, LOGL_ERROR, "Unhandled result: %d\n",
+		LOGP(DLSMS, LOGL_ERROR, "Unhandled result: %d\n",
 		     sig_sms->paging_result);
 	}
 
@@ -471,7 +471,7 @@ int sms_queue_stats(struct gsm_sms_queue *smsq, struct vty *vty)
 
 int sms_queue_set_max_pending(struct gsm_sms_queue *smsq, int max_pending)
 {
-	LOGP(DSMS, LOGL_NOTICE, "SMSqueue old max: %d new: %d\n",
+	LOGP(DLSMS, LOGL_NOTICE, "SMSqueue old max: %d new: %d\n",
 	     smsq->max_pending, max_pending);
 	smsq->max_pending = max_pending;
 	return 0;
@@ -479,7 +479,7 @@ int sms_queue_set_max_pending(struct gsm_sms_queue *smsq, int max_pending)
 
 int sms_queue_set_max_failure(struct gsm_sms_queue *smsq, int max_fail)
 {
-	LOGP(DSMS, LOGL_NOTICE, "SMSqueue max failure old: %d new: %d\n",
+	LOGP(DLSMS, LOGL_NOTICE, "SMSqueue max failure old: %d new: %d\n",
 	     smsq->max_fail, max_fail);
 	smsq->max_fail = max_fail;
 	return 0;
@@ -490,7 +490,7 @@ int sms_queue_clear(struct gsm_sms_queue *smsq)
 	struct gsm_sms_pending *pending, *tmp;
 
 	llist_for_each_entry_safe(pending, tmp, &smsq->pending_sms, entry) {
-		LOGP(DSMS, LOGL_NOTICE,
+		LOGP(DLSMS, LOGL_NOTICE,
 		     "SMSqueue clearing for sub %llu\n", pending->subscr->id);
 		sms_pending_free(pending);
 	}

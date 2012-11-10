@@ -45,14 +45,14 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	if (hooknum != GSM_HOOK_RR_PAGING)
 		return -EINVAL;
 
-	DEBUGP(DSMS, "paging_cb_silent: ");
+	DEBUGP(DLSMS, "paging_cb_silent: ");
 
 	sigdata.conn = conn;
 	sigdata.data = _data;
 
 	switch (event) {
 	case GSM_PAGING_SUCCEEDED:
-		DEBUGPC(DSMS, "success, using Timeslot %u on ARFCN %u\n",
+		DEBUGPC(DLSMS, "success, using Timeslot %u on ARFCN %u\n",
 			conn->lchan->ts->nr, conn->lchan->ts->trx->arfcn);
 		conn->silent_call = 1;
 		/* increment lchan reference count */
@@ -61,7 +61,7 @@ static int paging_cb_silent(unsigned int hooknum, unsigned int event,
 	case GSM_PAGING_EXPIRED:
 	case GSM_PAGING_BUSY:
 	case GSM_PAGING_OOM:
-		DEBUGP(DSMS, "expired\n");
+		DEBUGP(DLSMS, "expired\n");
 		osmo_signal_dispatch(SS_SCALL, S_SCALL_EXPIRED, &sigdata);
 		break;
 	default:

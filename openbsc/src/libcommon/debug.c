@@ -79,12 +79,6 @@ static const struct log_info_cat default_categories[] = {
 		.color = "\033[1;39m",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
-	[DSMS] = {
-		.name = "DSMS",
-		.description = "Layer3 Short Message Service (SMS)",
-		.color = "\033[1;37m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
 	[DPAG]	= {
 		.name = "DPAG",
 		.description = "Paging Subsystem",
