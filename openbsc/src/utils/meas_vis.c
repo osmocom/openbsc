@@ -39,17 +39,18 @@ struct ms_state {
 	struct ms_state_uni dl;
 };
 
-struct slider {
-	struct ms_state *ms;
-};
-
 struct state {
 	struct osmo_fd udp_ofd;
 	struct llist_head ms_list;
 
 	CDKSCREEN *cdkscreen;
 	WINDOW *curses_win;
-	struct slider sliders[8];
+
+	CDKLABEL *cdk_title;
+	char *title;
+
+	CDKLABEL *cdk_header;
+	char header[256];
 };
 
 static struct state g_st;
@@ -194,11 +195,13 @@ void write_uni(struct ms_state *ms, struct ms_state_uni *msu,
 	color = A_REVERSE | COLOR_PAIR(lev_col) | ' ';
 	snprintf(label, sizeof(label), "%s %s ", ms->imsi, dir_str[dir]);
 	msu->cdk = newCDKSlider(g_st.cdkscreen, 0, row, NULL, label, color,
-				  COLS-50, rxlev2dbm(lq->rx_lev), -110, -47,
+				  COLS-40, rxlev2dbm(lq->rx_lev), -110, -47,
 				  1, 2, FALSE, FALSE);
 	//IsVisibleObj(ms->ul.cdk) = FALSE;
-	snprintf(msu->label, sizeof(msu->label), "</%d>%1d<!%d> %-2d %3u",
-		 qual_col, lq->rx_qual, qual_col, pwr, now - msu->last_update);
+	snprintf(msu->label, sizeof(msu->label), "</%d>%1d<!%d> %3d %2u %2u %4u",
+		 qual_col, lq->rx_qual, qual_col, pwr,
+		 ms->mr.ms_l1.ta, ms->mr.ms_timing_offset,
+		 now - msu->last_update);
 	msu->cdk_label = newCDKLabel(g_st.cdkscreen, RIGHT, row,
 					msu->_lbl, 1, FALSE, FALSE);
 }
@@ -207,6 +210,7 @@ static void update_sliders(void)
 {
 	int num_vis_sliders = 0;
 	struct ms_state *ms;
+#define HEADER_LINES 2
 
 	/* remove all sliders */
 	llist_for_each_entry(ms, &g_st.ms_list, list) {
@@ -217,7 +221,7 @@ static void update_sliders(void)
 
 	llist_for_each_entry(ms, &g_st.ms_list, list) {
 		struct gsm_rx_lev_qual *lq;
-		unsigned int row = num_vis_sliders*3;
+		unsigned int row = HEADER_LINES + num_vis_sliders*3;
 
 		if (ms->mr.flags & MEAS_REP_F_UL_DTX)
 			lq = &ms->mr.ul.sub;
@@ -255,6 +259,8 @@ const struct value_string col_strs[] = {
 int main(int argc, char **argv)
 {
 	int rc;
+	char *header[1];
+	char *title[1];
 
 	printf("sizeof(gsm_meas_rep)=%u\n", sizeof(struct gsm_meas_rep));
 	printf("sizeof(meas_feed_meas)=%u\n", sizeof(struct meas_feed_meas));
@@ -263,6 +269,14 @@ int main(int argc, char **argv)
 	g_st.curses_win = initscr();
 	g_st.cdkscreen = initCDKScreen(g_st.curses_win);
 	initCDKColor();
+
+	g_st.title = "OpenBSC link quality monitor";
+	title[0] = g_st.title;
+	g_st.cdk_title = newCDKLabel(g_st.cdkscreen, CENTER, 0, title, 1, FALSE, FALSE);
+
+	snprintf(g_st.header, sizeof(g_st.header), "Q Pwr TA TO Time");
+	header[0] = g_st.header;
+	g_st.cdk_header = newCDKLabel(g_st.cdkscreen, RIGHT, 1, header, 1, FALSE, FALSE);
 
 #if 0
 	int i;
