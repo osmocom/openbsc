@@ -154,28 +154,51 @@ static const char *dir_str[2] = {
 	[DIR_DL]	= "DL",
 };
 
+static int colpair_by_qual(uint8_t rx_qual)
+{
+	if (rx_qual == 0)
+		return 24;
+	else if (rx_qual <= 4)
+		return 32;
+	else
+		return 16;
+}
+
+static int colpair_by_lev(int rx_lev)
+{
+	if (rx_lev < -95)
+		return 16;
+	else if (rx_lev < -80)
+		return 32;
+	else
+		return 24;
+}
+
+
 void write_uni(struct ms_state *ms, struct ms_state_uni *msu,
 		struct gsm_rx_lev_qual *lq, int dir, int row)
 {
 
 	char label[128];
 	time_t now = time(NULL);
+	int qual_col = colpair_by_qual(lq->rx_qual);
+	int lev_col = colpair_by_lev(rxlev2dbm(lq->rx_lev));
 	int color, pwr;
 
 	if (dir == DIR_UL) {
-		color = A_REVERSE | COLOR_PAIR (29) | ' ';
 		pwr = ms->mr.ms_l1.pwr;
 	} else {
-		color = A_REVERSE | COLOR_PAIR (19) | ' ',
 		pwr = ms->mr.bs_power;
 	}
 
+	color = A_REVERSE | COLOR_PAIR(lev_col) | ' ';
 	snprintf(label, sizeof(label), "%s %s ", ms->imsi, dir_str[dir]);
 	msu->cdk = newCDKSlider(g_st.cdkscreen, 0, row, NULL, label, color,
-				  -30, rxlev2dbm(lq->rx_lev), -110, -47,
+				  COLS-50, rxlev2dbm(lq->rx_lev), -110, -47,
 				  1, 2, FALSE, FALSE);
 	//IsVisibleObj(ms->ul.cdk) = FALSE;
-	snprintf(msu->label, sizeof(msu->label), "%-2d %3u", pwr, now - msu->last_update);
+	snprintf(msu->label, sizeof(msu->label), "</%d>%1d<!%d> %-2d %3u",
+		 qual_col, lq->rx_qual, qual_col, pwr, now - msu->last_update);
 	msu->cdk_label = newCDKLabel(g_st.cdkscreen, RIGHT, row,
 					msu->_lbl, 1, FALSE, FALSE);
 }
@@ -217,6 +240,18 @@ static void update_sliders(void)
 
 }
 
+const struct value_string col_strs[] = {
+	{ COLOR_WHITE,	"white" },
+	{ COLOR_RED,	"red" },
+	{ COLOR_GREEN,	"green" },
+	{ COLOR_YELLOW,	"yellow" },
+	{ COLOR_BLUE,	"blue" },
+	{ COLOR_MAGENTA,"magenta" },
+	{ COLOR_CYAN,	"cyan" },
+	{ COLOR_BLACK, 	"black" },
+	{ 0, NULL }
+};
+
 int main(int argc, char **argv)
 {
 	int rc;
@@ -228,6 +263,20 @@ int main(int argc, char **argv)
 	g_st.curses_win = initscr();
 	g_st.cdkscreen = initCDKScreen(g_st.curses_win);
 	initCDKColor();
+
+#if 0
+	int i;
+	for (i = 0; i < 64; i++) {
+		short f, b;
+		pair_content(i, &f, &b);
+		attron(COLOR_PAIR(i));
+		printw("%u: %u (%s) ", i, f, get_value_string(col_strs, f));
+		printw("%u (%s)\n\r", b, get_value_string(col_strs, b));
+	}
+	refresh();
+	getch();
+	exit(0);
+#endif
 
 	g_st.udp_ofd.cb = udp_fd_cb;
 	rc =  osmo_sock_init_ofd(&g_st.udp_ofd, AF_INET, SOCK_DGRAM, IPPROTO_UDP, NULL, 8888, OSMO_SOCK_F_BIND);
