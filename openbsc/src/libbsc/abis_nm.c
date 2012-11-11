@@ -548,6 +548,7 @@ static int abis_nm_rcvmsg_fom(struct msgb *mb)
 
 		nack_data.msg = mb;
 		nack_data.mt = mt;
+		nack_data.bts = sign_link->trx->bts;
 		osmo_signal_dispatch(SS_NM, S_NM_NACK, &nack_data);
 		abis_nm_queue_send_next(sign_link->trx->bts);
 		return 0;

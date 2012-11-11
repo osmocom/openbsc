@@ -43,8 +43,6 @@ extern int hsl_setup(struct gsm_network *gsmnet);
 /* Callback function for NACK on the OML NM */
 static int oml_msg_nack(struct nm_nack_signal_data *nack)
 {
-	struct gsm_bts *bts;
-
 	if (nack->mt == NM_MT_SET_BTS_ATTR_NACK) {
 
 		LOGP(DNM, LOGL_ERROR, "Failed to set BTS attributes. That is fatal. "
@@ -58,13 +56,13 @@ static int oml_msg_nack(struct nm_nack_signal_data *nack)
 	return 0;
 
 drop_bts:
-	if (!nack->msg || !nack->msg->trx)
+	if (!nack->bts) {
+		LOGP(DNM, LOGL_ERROR, "Unknown bts. Can not drop it.\n");
 		return 0;
+	}
 
-	bts = nack->msg->trx->bts;
-
-	if (is_ipaccess_bts(bts))
-		ipaccess_drop_oml(bts);
+	if (is_ipaccess_bts(nack->bts))
+		ipaccess_drop_oml(nack->bts);
 
 	return 0;
 }

@@ -185,6 +185,7 @@ struct nm_om2k_signal_data {
 
 struct nm_nack_signal_data {
 	struct msgb *msg;
+	struct gsm_bts *bts;
 	uint8_t mt;
 };
 
