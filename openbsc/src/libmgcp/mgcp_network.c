@@ -337,8 +337,10 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 
 	if (memcmp(&addr.sin_addr, &endp->net_end.addr, sizeof(addr.sin_addr)) != 0) {
 		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong address %s on 0x%x\n",
-			inet_ntoa(addr.sin_addr), ENDPOINT_NUMBER(endp));
+			"Endpoint 0x%x data from wrong address %s vs. ",
+			ENDPOINT_NUMBER(endp), inet_ntoa(addr.sin_addr));
+		LOGPC(DMGCP, LOGL_ERROR,
+			"%s\n", inet_ntoa(endp->net_end.addr));
 		return -1;
 	}
 
