@@ -356,7 +356,7 @@ void bsc_mgcp_dlcx(struct sccp_connections *con)
 	/* send a DLCX down the stream */
 	if (con->bsc_endp != -1 && con->bsc->_endpoint_status) {
 		LOGP(DNAT, LOGL_NOTICE,
-			"Endpoint 0x%x was still allocated on bsc: %d. Freeing it.\n",
+			"Endpoint 0x%x was allocated for bsc: %d. Freeing it.\n",
 			con->bsc_endp, con->bsc->cfg->nr);
 		if (con->bsc->_endpoint_status[con->bsc_endp] != 1)
 			LOGP(DNAT, LOGL_ERROR, "Endpoint 0x%x was not in use\n", con->bsc_endp);
