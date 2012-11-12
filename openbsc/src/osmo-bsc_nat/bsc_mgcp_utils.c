@@ -435,7 +435,7 @@ static void handle_dlcx_response(struct bsc_connection *bsc, struct msgb *msg,
 	}
 
 	cmd->id = "0";
-	cmd->variable = "nat.call_stats.v1";
+	cmd->variable = "nat.call_stats.v2";
 	cmd->reply = talloc_asprintf(cmd,
 			"bsc_id=%d,mg_ip_addr=%s,mg_port=%d,",
 			bsc->cfg->nr, inet_ntoa(stat->net_addr),
@@ -454,10 +454,14 @@ static void handle_dlcx_response(struct bsc_connection *bsc, struct msgb *msg,
 	cmd->reply = talloc_asprintf_append(cmd->reply,
 			"bsc_pkt_in=%u,bsc_pkt_out=%u,"
 			"bsc_bytes_in=%u,bsc_bytes_out=%u,"
-			"bsc_jitter=%u,bsc_pkt_lost=%d",
+			"bsc_jitter=%u,bsc_pkt_lost=%d,",
 			n_pr, b_ps,
 			n_or, b_os,
 			jitter, loss);
+	cmd->reply = talloc_asprintf_append(cmd->reply,
+			"sccp_src_ref=%u,sccp_dst_ref=%u",
+			sccp_src_ref_to_int(&stat->src_ref),
+			sccp_src_ref_to_int(&stat->remote_ref));
 
 	/* send it and be done */
 	ctrl_cmd_send_to_all(bsc->nat->ctrl, cmd);
