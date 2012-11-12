@@ -107,9 +107,9 @@ static struct msgb *mgcp_msgb_alloc(void)
 	return msg;
 }
 
-struct msgb *mgcp_create_response_with_data(int code, const char *txt,
-					    const char *msg, const char *trans,
-					    const char *data)
+static struct msgb *create_resp(int code, const char *txt, const char *msg,
+				const char *trans, const char *param,
+				const char *sdp)
 {
 	int len;
 	struct msgb *res;
@@ -118,10 +118,12 @@ struct msgb *mgcp_create_response_with_data(int code, const char *txt,
 	if (!res)
 		return NULL;
 
-	if (data) {
-		len = snprintf((char *) res->data, 2048, "%d %s%s\r\n%s", code, trans, txt, data);
-	} else {
-		len = snprintf((char *) res->data, 2048, "%d %s%s\r\n", code, trans, txt);
+	len = snprintf((char *) res->data, 2048, "%d %s%s%s\r\n%s",
+			code, trans, txt, param ? param : "", sdp ? sdp : "");
+	if (len < 0) {
+		LOGP(DMGCP, LOGL_ERROR, "Failed to sprintf MGCP response.\n");
+		msgb_free(res);
+		return NULL;
 	}
 
 	res->l2h = msgb_put(res, len);
@@ -129,9 +131,22 @@ struct msgb *mgcp_create_response_with_data(int code, const char *txt,
 	return res;
 }
 
+struct msgb *mgcp_create_response_with_data(int code, const char *txt,
+					    const char *msg, const char *trans,
+					    const char *data)
+{
+	return create_resp(code, txt, msg, trans, NULL, data);
+}
+
+static struct msgb *create_ok_resp_with_param(int code, const char *msg,
+					const char *trans, const char *param)
+{
+	return create_resp(code, " OK", msg, trans, param, NULL);
+}
+
 static struct msgb *create_ok_response(int code, const char *msg, const char *trans)
 {
-	return mgcp_create_response_with_data(code, " OK", msg, trans, NULL);
+	return create_ok_resp_with_param(code, msg, trans, NULL);
 }
 
 static struct msgb *create_err_response(int code, const char *msg, const char *trans)
@@ -707,6 +722,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	int error_code = 400;
 	int silent = 0;
 	char *line, *save;
+	char stats[1048];
 
 	for_each_line((char *) msg->l3h, line, save) {
 		/* skip first line */
@@ -769,6 +785,9 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 	LOGP(DMGCP, LOGL_DEBUG, "Deleted endpoint on: 0x%x Server: %s:%u\n",
 		ENDPOINT_NUMBER(endp), inet_ntoa(endp->net_end.addr), ntohs(endp->net_end.rtp_port));
 
+	/* save the statistics of the current call */
+	mgcp_format_stats(endp, stats, sizeof(stats));
+
 	delete_transcoder(endp);
 	mgcp_free_endp(endp);
 	if (cfg->change_cb)
@@ -776,7 +795,7 @@ static struct msgb *handle_delete_con(struct mgcp_config *cfg, struct msgb *msg)
 
 	if (silent)
 		goto out_silent;
-	return create_ok_response(250, "DLCX", trans_id);
+	return create_ok_resp_with_param(250, "DLCX", trans_id, stats);
 
 error3:
 	return create_err_response(error_code, "DLCX", trans_id);
@@ -897,6 +916,7 @@ static void mgcp_rtp_end_reset(struct mgcp_rtp_end *end)
 	}
 
 	end->packets = 0;
+	end->octets = 0;
 	memset(&end->addr, 0, sizeof(end->addr));
 	end->rtp_port = end->rtcp_port = 0;
 	end->payload_type = -1;
@@ -1097,4 +1117,19 @@ int mgcp_reset_transcoder(struct mgcp_config *cfg)
 	};
 
 	return send_trans(cfg, mgcp_reset, sizeof mgcp_reset -1);
+}
+
+void mgcp_format_stats(struct mgcp_endpoint *endp, char *msg, size_t size)
+{
+	uint32_t expected, jitter;
+	int ploss;
+	mgcp_state_calc_loss(&endp->net_state, &endp->net_end,
+				&expected, &ploss);
+	jitter = mgcp_state_calc_jitter(&endp->net_state);
+
+	snprintf(msg, size, "\r\nP: PS=%u, OS=%u, PR=%u, OR=%u, PL=%d, JI=%d",
+			endp->bts_end.packets, endp->bts_end.octets,
+			endp->net_end.packets, endp->net_end.octets,
+			ploss, jitter);
+	msg[size - 1] = '\0';
 }

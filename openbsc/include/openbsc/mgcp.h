@@ -168,6 +168,7 @@ int mgcp_vty_init(void);
 int mgcp_endpoints_allocate(struct mgcp_trunk_config *cfg);
 void mgcp_free_endp(struct mgcp_endpoint *endp);
 int mgcp_reset_transcoder(struct mgcp_config *cfg);
+void mgcp_format_stats(struct mgcp_endpoint *endp, char *stats, size_t size);
 
 /*
  * format helper functions
