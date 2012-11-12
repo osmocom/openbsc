@@ -347,6 +347,21 @@ static void remember_pending_dlcx(struct sccp_connections *con, uint32_t transac
 	stats->trans_id = transaction;
 	stats->msc_endpoint = con->msc_endp;
 
+	/*
+	 * Too many pending requests.. let's remove the first two items.
+	 */
+	if (!llist_empty(&bsc->pending_dlcx) &&
+			bsc->pending_dlcx_count >= bsc->cfg->max_endpoints * 3) {
+		struct bsc_nat_call_stats *tmp;
+		LOGP(DNAT, LOGL_ERROR,
+			"Too many(%d) pending DLCX responses on BSC: %d\n",
+			bsc->pending_dlcx_count, bsc->cfg->nr);
+		bsc->pending_dlcx_count -= 1;
+		tmp = (struct bsc_nat_call_stats *) bsc->pending_dlcx.next;
+		llist_del(&tmp->entry);
+		talloc_free(tmp);
+	}
+
 	bsc->pending_dlcx_count += 1;
 	llist_add_tail(&stats->entry, &bsc->pending_dlcx);
 }
