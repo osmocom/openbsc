@@ -435,10 +435,11 @@ static void handle_dlcx_response(struct bsc_connection *bsc, struct msgb *msg,
 	}
 
 	cmd->id = "0";
-	cmd->variable = "nat.call_stats.v2";
+	cmd->variable = talloc_asprintf(cmd, "net.0.bsc.%d.call_stats.v2",
+				bsc->cfg->nr);
 	cmd->reply = talloc_asprintf(cmd,
-			"bsc_id=%d,mg_ip_addr=%s,mg_port=%d,",
-			bsc->cfg->nr, inet_ntoa(stat->net_addr),
+			"mg_ip_addr=%s,mg_port=%d,",
+			inet_ntoa(stat->net_addr),
 			stat->net_rtp_port);
 	cmd->reply = talloc_asprintf_append(cmd->reply,
 			"endpoint_ip_addr=%s,endpoint_port=%d,",
