@@ -84,6 +84,10 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS(dahdi/user.h,,AC_MSG_WARN(DAHDI input driver will not be built))
 AC_CHECK_HEADERS(dbi/dbd.h,,AC_MSG_ERROR(DBI library is not installed))
 
+found_cdk=yes
+AC_CHECK_HEADERS(cdk/cdk.h,,found_cdk=no)
+AM_CONDITIONAL(HAVE_LIBCDK, test "$found_cdk" = yes)
+
 
 dnl Checks for typedefs, structures and compiler characteristics
 
