@@ -1448,7 +1448,7 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 		/* FIXME gather multiple CHAN RQD and reject up to 4 at the same time */
 		if (bts->network->T3122)
 			rsl_send_imm_ass_rej(bts, 1, rqd_ref, bts->network->T3122 & 0xff);
-		return -ENOMEM;
+		return 0;
 	}
 
 	if (lchan->state != LCHAN_S_NONE)
