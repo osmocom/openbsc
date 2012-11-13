@@ -662,7 +662,7 @@ static void error_timeout_cb(void *data)
 	}
 
 	/* go back to the none state */
-	LOGP(DRSL, LOGL_NOTICE, "%s is back in operation.\n", gsm_lchan_name(lchan));
+	LOGP(DRSL, LOGL_INFO, "%s is back in operation.\n", gsm_lchan_name(lchan));
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
 }
 
