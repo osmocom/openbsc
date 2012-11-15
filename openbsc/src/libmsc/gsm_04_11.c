@@ -169,19 +169,6 @@ static void send_signal(int sig_no,
 	osmo_signal_dispatch(SS_SMS, sig_no, &sig);
 }
 
-/*
- * This should be called whenever all SMS to a given subscriber
- * on a given connection has been sent. This will inform the higher
- * layers that a channel can be given up.
- */
-static void gsm411_release_conn(struct gsm_subscriber_connection *conn)
-{
-	if (!conn)
-		return;
-
-	subscr_put_channel(conn->subscr);
-}
-
 struct msgb *gsm411_msgb_alloc(void)
 {
 	return msgb_alloc_headroom(GSM411_ALLOC_SIZE, GSM411_ALLOC_HEADROOM,
@@ -618,8 +605,6 @@ static int gsm411_rx_rp_ack(struct msgb *msg, struct gsm_trans *trans,
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms(trans->conn, sms);
-	else
-		gsm411_release_conn(trans->conn);
 
 	/* free the transaction here */
 	trans_free(trans);
@@ -695,8 +680,6 @@ static int gsm411_rx_rp_smma(struct msgb *msg, struct gsm_trans *trans,
 	sms = db_sms_get_unsent_for_subscr(trans->subscr);
 	if (sms)
 		gsm411_send_sms(trans->conn, sms);
-	else
-		gsm411_release_conn(trans->conn);
 
 	return rc;
 }
@@ -1032,11 +1015,9 @@ void _gsm411_sms_trans_free(struct gsm_trans *trans)
 
 void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 {
-	struct gsm_subscriber *subscr;
 	struct gsm_network *net;
 	struct gsm_trans *trans, *tmp;
 
-	subscr = subscr_get(conn->subscr);
 	net = conn->bts->network;
 
 	llist_for_each_entry_safe(trans, tmp, &net->trans_list, entry)
@@ -1052,8 +1033,5 @@ void gsm411_sapi_n_reject(struct gsm_subscriber_connection *conn)
 			trans->sms.sms = NULL;
 			trans_free(trans);
 		}
-
-	subscr_put_channel(subscr);
-	subscr_put(subscr);
 }
 
