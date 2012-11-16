@@ -41,12 +41,23 @@ AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo B
     ])
 AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
 
+AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
+    [
+        PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
+        osmo_ac_build_smpp="yes"
+	AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
+    ],
+    [
+        osmo_ac_build_smpp="no"
+    ])
+AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
+
+
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
 PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.2)
-PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)

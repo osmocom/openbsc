@@ -16,6 +16,8 @@ libmsc_a_SOURCES =	auth.c \
 			ussd.c \
 			vty_interface_layer3.c \
 			transaction.c \
-			smpp_smsc.c smpp_openbsc.c \
 			osmo_msc.c
 
+if BUILD_SMPP
+libmsc_a_SOURCES += smpp_smsc.c smpp_openbsc.c
+endif
