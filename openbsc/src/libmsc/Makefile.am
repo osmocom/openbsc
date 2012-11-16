@@ -18,3 +18,6 @@ libmsc_a_SOURCES =	auth.c \
 			transaction.c \
 			osmo_msc.c
 
+if BUILD_SMPP
+libmsc_a_SOURCES += smpp_smsc.c smpp_openbsc.c
+endif
