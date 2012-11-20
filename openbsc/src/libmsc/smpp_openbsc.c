@@ -288,6 +288,14 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static struct smsc *g_smsc;
+
+struct smsc *smsc_from_vty(struct vty *v)
+{
+	/* FIXME: this is ugly */
+	return g_smsc;
+}
+
 /*! \brief Initialize the OpenBSC SMPP interface */
 int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 {
@@ -302,6 +310,10 @@ int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 
 	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, net);
 	osmo_signal_register_handler(SS_SUBSCR, smpp_subscr_cb, smsc);
+
+	g_smsc = smsc;
+
+	smpp_vty_init();
 
 	return rc;
 }

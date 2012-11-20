@@ -254,6 +254,11 @@ int main(int argc, char **argv)
 	vty_init(&vty_info);
 	bsc_vty_init(&log_info);
 
+#ifdef BUILD_SMPP
+	if (smpp_openbsc_init(bsc_gsmnet, 0) < 0)
+		return -1;
+#endif
+
 	/* parse options */
 	handle_options(argc, argv);
 
@@ -312,10 +317,7 @@ int main(int argc, char **argv)
 	/* start the SMS queue */
 	if (sms_queue_start(bsc_gsmnet, 20) != 0)
 		return -1;
-#ifdef BUILD_SMPP
-	if (smpp_openbsc_init(bsc_gsmnet, 6040) < 0)
-		return -1;
-#endif
+
 	if (daemonize) {
 		rc = osmo_daemonize();
 		if (rc < 0) {

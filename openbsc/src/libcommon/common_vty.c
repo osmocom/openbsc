@@ -89,6 +89,11 @@ enum node_type bsc_vty_go_parent(struct vty *vty)
 	case TRUNK_NODE:
 		vty->node = MGCP_NODE;
 		break;
+	case SMPP_ESME_NODE:
+		vty->node = SMPP_NODE;
+		vty->index = NULL;
+		break;
+	case SMPP_NODE:
 	case MSC_NODE:
 	case MNCC_INT_NODE:
 	default:
@@ -144,6 +149,11 @@ gDEFUN(ournode_exit,
 	case PGROUP_NODE:
 		vty->node = NAT_NODE;
 		break;
+	case SMPP_ESME_NODE:
+		vty->node = SMPP_NODE;
+		vty->index = NULL;
+		break;
+	case SMPP_NODE:
 	case MGCP_NODE:
 	case GBPROXY_NODE:
 	case SGSN_NODE:
@@ -196,6 +206,8 @@ gDEFUN(ournode_end,
 	case PGROUP_NODE:
 	case MSC_NODE:
 	case MNCC_INT_NODE:
+	case SMPP_NODE:
+	case SMPP_ESME_NODE:
 	case BSC_NODE:
 		vty_config_unlock(vty);
 		vty->node = ENABLE_NODE;
