@@ -38,6 +38,16 @@ static const uint8_t dual_config[] = {
 	66, 18, 0, 3, 9, 7, 5, 19, 0, 3, 6, 7, 8,
 };
 
+static const uint8_t load_config[] = {
+	0x42, 0x12, 0x00, 0x08, 0x31, 0x36, 0x38, 0x64,
+	0x34, 0x37, 0x32, 0x00, 0x13, 0x00, 0x0b, 0x76,
+	0x32, 0x30, 0x30, 0x62, 0x31, 0x34, 0x33, 0x64,
+	0x30, 0x00, 0x42, 0x12, 0x00, 0x08, 0x31, 0x36,
+	0x38, 0x64, 0x34, 0x37, 0x32, 0x00, 0x13, 0x00,
+	0x0b, 0x76, 0x32, 0x30, 0x30, 0x62, 0x31, 0x34,
+	0x33, 0x64, 0x31, 0x00
+};
+
 static void test_simple_sw_config(void)
 {
 	struct abis_nm_sw_descr descr[1];
@@ -107,12 +117,53 @@ static void test_dual_sw_config(void)
 	printf("file_ver: %s\n", osmo_hexdump(descr[1].file_ver, descr[1].file_ver_len));
 }
 
+static void test_sw_selection(void)
+{
+	struct abis_nm_sw_descr descr[8], tmp;
+	int rc, pos;
+
+	rc = abis_nm_parse_sw_config(load_config, ARRAY_SIZE(load_config),
+				&descr[0], ARRAY_SIZE(descr));
+	if (rc != 2) {
+		printf("FAILED to parse the File Id/File version\n");
+		abort();
+	}
+
+	printf("Start: %u len: %zu\n", descr[0].start - dual_config, descr[0].len);
+	printf("file_id:  %s\n", osmo_hexdump(descr[0].file_id, descr[0].file_id_len));
+	printf("file_ver: %s\n", osmo_hexdump(descr[0].file_ver, descr[0].file_ver_len));
+
+	printf("Start: %u len: %zu\n", descr[1].start - dual_config, descr[1].len);
+	printf("file_id:  %s\n", osmo_hexdump(descr[1].file_id, descr[1].file_id_len));
+	printf("file_ver: %s\n", osmo_hexdump(descr[1].file_ver, descr[1].file_ver_len));
+
+	/* start */
+	pos = abis_nm_select_newest_sw(descr, rc);
+	if (pos != 1) {
+		printf("Selected the wrong version: %d\n", pos);
+		abort();
+	}
+	printf("SELECTED: %d\n", pos);
+
+	/* shuffle */
+	tmp = descr[0];
+	descr[0] = descr[1];
+	descr[1] = tmp;
+	pos = abis_nm_select_newest_sw(descr, rc);
+	if (pos != 0) {
+		printf("Selected the wrong version: %d\n", pos);
+		abort();
+	}
+	printf("SELECTED: %d\n", pos);
+}
+
 int main(int argc, char **argv)
 {
 	osmo_init_logging(&log_info);
 	test_simple_sw_config();
 	test_simple_sw_short();
 	test_dual_sw_config();
+	test_sw_selection();
 
 	return EXIT_SUCCESS;
 }

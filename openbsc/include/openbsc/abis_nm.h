@@ -181,5 +181,6 @@ void abis_nm_queue_send_next(struct gsm_bts *bts);	/* for bs11_config. */
 
 int abis_nm_parse_sw_config(const uint8_t *data, const size_t len,
 			struct abis_nm_sw_descr *res, const int res_len);
+int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw, const size_t len);
 
 #endif /* _NM_H */

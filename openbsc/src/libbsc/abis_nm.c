@@ -421,6 +421,22 @@ int abis_nm_parse_sw_config(const uint8_t *sw_descr, const size_t sw_descr_len,
 	return desc_pos;
 }
 
+int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw_descr,
+				const size_t size)
+{
+	int res = 0;
+	int i;
+
+	for (i = 1; i < size; ++i) {
+		if (memcmp(sw_descr[res].file_ver, sw_descr[i].file_ver,
+			OSMO_MIN(sw_descr[i].file_ver_len, sw_descr[res].file_ver_len)) < 0) {
+			res = i;
+		}
+	}
+
+	return res;
+}
+
 static int abis_nm_rx_sw_act_req(struct msgb *mb)
 {
 	struct abis_om_hdr *oh = msgb_l2(mb);
@@ -428,8 +444,8 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 	const uint8_t *sw_config;
-	int ret, sw_config_len;
-	struct abis_nm_sw_descr sw_descr[1];
+	int ret, sw_config_len, len;
+	struct abis_nm_sw_descr sw_descr[5];
 
 	abis_nm_debugp_foh(DNM, foh);
 
@@ -460,18 +476,21 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	}
 
 	/* Parse up to two sw descriptions from the data */
-	ret = abis_nm_parse_sw_config(sw_config, sw_config_len,
+	len = abis_nm_parse_sw_config(sw_config, sw_config_len,
 				&sw_descr[0], ARRAY_SIZE(sw_descr));
-	if (ret <= 0) {
+	if (len <= 0) {
 		LOGP(DNM, LOGL_ERROR, "Failed to parse SW Config.\n");
 		return -EINVAL;
 	}
+
+	ret = abis_nm_select_newest_sw(&sw_descr[0], len);
+	DEBUGP(DNM, "Selected sw description %d of %d\n", ret, len);
 
 	return ipacc_sw_activate(sign_link->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 sw_descr[0].start, sw_descr[0].len);
+				 sw_descr[ret].start, sw_descr[ret].len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */
