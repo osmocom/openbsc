@@ -118,9 +118,18 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	sms = sms_alloc();
 	sms->source = SMS_SOURCE_SMPP;
 	sms->smpp.sequence_nr = submit->sequence_number;
+
+	/* fill in the destination address */
 	sms->receiver = dest;
-	strncpy(sms->dest_addr, dest->extension, sizeof(sms->dest_addr)-1);
+	sms->dst.ton = submit->dest_addr_ton;
+	sms->dst.npi = submit->dest_addr_npi;
+	strncpy(sms->dst.addr, dest->extension, sizeof(sms->dst.addr)-1);
+
+	/* fill in the source address */
 	sms->sender = subscr_get_by_id(net, 1);
+	sms->src.ton = submit->source_addr_ton;
+	sms->src.npi = submit->source_addr_npi;
+	strncpy(sms->src.addr, (char *)submit->source_addr, sizeof(sms->src.addr)-1);
 
 	if (submit->esm_class & 0x40)
 		sms->ud_hdr_ind = 1;
@@ -312,9 +321,9 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
 			 sms->sender->extension);
 	}
 
-	deliver.dest_addr_ton	= sms->destination.ton;
-	deliver.dest_addr_npi	= sms->destination.npi;
-	memcpy(deliver.destination_addr, sms->destination.addr,
+	deliver.dest_addr_ton	= sms->dst.ton;
+	deliver.dest_addr_npi	= sms->dst.npi;
+	memcpy(deliver.destination_addr, sms->dst.addr,
 		sizeof(deliver.destination_addr));
 
 	deliver.esm_class	= 1;	/* datagram mode */
@@ -368,9 +377,9 @@ int smpp_try_deliver(struct gsm_sms *sms)
 	struct osmo_smpp_addr dst;
 
 	memset(&dst, 0, sizeof(dst));
-	dst.ton = sms->destination.ton;
-	dst.npi = sms->destination.npi;
-	memcpy(dst.addr, sms->destination.addr, sizeof(dst.addr));
+	dst.ton = sms->dst.ton;
+	dst.npi = sms->dst.npi;
+	memcpy(dst.addr, sms->dst.addr, sizeof(dst.addr));
 
 	esme = smpp_route(g_smsc, &dst);
 	if (!esme)

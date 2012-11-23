@@ -143,12 +143,13 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, int dcs, const ch
 
 	/* FIXME: don't use ID 1 static */
 	sms->sender = subscr_get_by_id(receiver->net, 1);
+	strncpy(sms->src.addr, sms->sender->extension, sizeof(sms->src.addr)-1);
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
 	sms->ud_hdr_ind = 0;
 	sms->protocol_id = 0; /* implicit */
 	sms->data_coding_scheme = dcs;
-	strncpy(sms->dest_addr, receiver->extension, sizeof(sms->dest_addr)-1);
+	strncpy(sms->dst.addr, receiver->extension, sizeof(sms->dst.addr)-1);
 	/* Generate user_data */
 	sms->user_data_len = gsm_7bit_encode(sms->user_data, sms->text);
 
@@ -270,10 +271,10 @@ static int gsm340_rx_sms_submit(struct msgb *msg, struct gsm_sms *gsms)
 
 /* generate a TPDU address field compliant with 03.40 sec. 9.1.2.5 */
 static int gsm340_gen_oa_sub(uint8_t *oa, unsigned int oa_len,
-			 struct gsm_subscriber *subscr)
+			 const struct gsm_sms_addr *src)
 {
 	/* network specific, private numbering plan */
-	return gsm340_gen_oa(oa, oa_len, 0x3, 0x9, subscr->extension);
+	return gsm340_gen_oa(oa, oa_len, src->ton, src->npi, src->addr);
 }
 
 /* generate a msgb containing a TPDU derived from struct gsm_sms,
@@ -299,9 +300,9 @@ static int gsm340_gen_tpdu(struct msgb *msg, struct gsm_sms *sms)
 	/* TP-UDHI (indicating TP-UD contains a header) */
 	if (sms->ud_hdr_ind)
 		*smsp |= 0x40;
-	
+
 	/* generate originator address */
-	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), sms->sender);
+	oa_len = gsm340_gen_oa_sub(oa, sizeof(oa), &sms->src);
 	smsp = msgb_put(msg, oa_len);
 	memcpy(smsp, oa, oa_len);
 
@@ -392,11 +393,11 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* mangle first byte to reflect length in bytes, not digits */
 	address_lv[0] = da_len_bytes - 1;
 
-	gsms->destination.ton = (address_lv[1] >> 4) & 7;
-	gsms->destination.npi = address_lv[1] & 0xF;
+	gsms->dst.ton = (address_lv[1] >> 4) & 7;
+	gsms->dst.npi = address_lv[1] & 0xF;
 	/* convert to real number */
-	gsm48_decode_bcd_number(gsms->destination.addr,
-				sizeof(gsms->destination.addr), address_lv, 1);
+	gsm48_decode_bcd_number(gsms->dst.addr,
+				sizeof(gsms->dst.addr), address_lv, 1);
 	smsp += da_len_bytes;
 
 	gsms->protocol_id = *smsp++;
@@ -449,7 +450,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	     "MR: 0x%02x PID: 0x%02x, DCS: 0x%02x, DA: %s, "
 	     "UserDataLength: 0x%02x, UserData: \"%s\"\n",
 	     subscr_name(gsms->sender), sms_mti, sms_vpf, gsms->msg_ref,
-	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dest_addr,
+	     gsms->protocol_id, gsms->data_coding_scheme, gsms->dst.addr,
 	     gsms->user_data_len,
 			sms_alphabet == DCS_7BIT_DEFAULT ? gsms->text :
 				osmo_hexdump(gsms->user_data, gsms->user_data_len));
@@ -460,7 +461,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	send_signal(0, NULL, gsms, 0);
 
 	/* determine gsms->receiver based on dialled number */
-	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
+	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
 		rc = smpp_try_deliver(gsms);

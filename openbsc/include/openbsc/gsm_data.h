@@ -293,7 +293,7 @@ struct gsm_sms {
 	unsigned long long id;
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
-	struct gsm_sms_addr destination;
+	struct gsm_sms_addr src, dst;
 	enum gsm_sms_source_id source;
 
 	struct {
@@ -310,8 +310,6 @@ struct gsm_sms {
 	uint8_t protocol_id;
 	uint8_t data_coding_scheme;
 	uint8_t msg_ref;
-	char dest_addr[20+1];	/* DA LV is 12 bytes max, i.e. 10 bytes
-				 * BCD == 20 bytes string */
 	uint8_t user_data_len;
 	uint8_t user_data[SMS_TEXT_SIZE];
 

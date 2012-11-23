@@ -993,7 +993,7 @@ int db_sms_store(struct gsm_sms *sms)
 	/* FIXME: generate validity timestamp based on validity_minutes */
 
 	dbi_conn_quote_string_copy(conn, (char *)sms->text, &q_text);
-	dbi_conn_quote_string_copy(conn, (char *)sms->dest_addr, &q_daddr);
+	dbi_conn_quote_string_copy(conn, (char *)sms->dst.addr, &q_daddr);
 	dbi_conn_quote_binary_copy(conn, sms->user_data, sms->user_data_len,
 				   &q_udata);
 	/* FIXME: correct validity period */
@@ -1035,6 +1035,7 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	sender_id = dbi_result_get_ulonglong(result, "sender_id");
 	sms->sender = subscr_get_by_id(net, sender_id);
+	strncpy(sms->src.addr, sms->sender->extension, sizeof(sms->src.addr)-1);
 
 	receiver_id = dbi_result_get_ulonglong(result, "receiver_id");
 	sms->receiver = subscr_get_by_id(net, receiver_id);
@@ -1051,8 +1052,8 @@ static struct gsm_sms *sms_from_result(struct gsm_network *net, dbi_result resul
 
 	daddr = dbi_result_get_string(result, "dest_addr");
 	if (daddr) {
-		strncpy(sms->dest_addr, daddr, sizeof(sms->dest_addr));
-		sms->dest_addr[sizeof(sms->dest_addr)-1] = '\0';
+		strncpy(sms->dst.addr, daddr, sizeof(sms->dst.addr));
+		sms->dst.addr[sizeof(sms->dst.addr)-1] = '\0';
 	}
 
 	sms->user_data_len = dbi_result_get_field_length(result, "user_data");
