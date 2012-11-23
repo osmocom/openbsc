@@ -282,10 +282,18 @@ enum gsm_sms_source_id {
 
 #define SMS_HDR_SIZE	128
 #define SMS_TEXT_SIZE	256
+
+struct gsm_sms_addr {
+	uint8_t ton;
+	uint8_t npi;
+	char addr[21+1];
+};
+
 struct gsm_sms {
 	unsigned long long id;
 	struct gsm_subscriber *sender;
 	struct gsm_subscriber *receiver;
+	struct gsm_sms_addr destination;
 	enum gsm_sms_source_id source;
 
 	struct {

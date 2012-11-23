@@ -51,6 +51,71 @@ enum emse_bind {
 	ESME_BIND_TX = 0x02,
 };
 
+const struct value_string smpp_status_strs[] = {
+	{ ESME_ROK,		"No Error" },
+	{ ESME_RINVMSGLEN,	"Message Length is invalid" },
+	{ ESME_RINVCMDLEN,	"Command Length is invalid" },
+	{ ESME_RINVCMDID,	"Invalid Command ID" },
+	{ ESME_RINVBNDSTS,	"Incorrect BIND Status for given command" },
+	{ ESME_RALYBND,		"ESME Already in Bound State" },
+	{ ESME_RINVPRTFLG,	"Invalid Priority Flag" },
+	{ ESME_RINVREGDLVFLG,	"Invalid Registered Delivery Flag" },
+	{ ESME_RSYSERR,		"System Error" },
+	{ ESME_RINVSRCADR,	"Invalid Source Address" },
+	{ ESME_RINVDSTADR,	"Invalid Destination Address" },
+	{ ESME_RINVMSGID,	"Message ID is invalid" },
+	{ ESME_RBINDFAIL,	"Bind failed" },
+	{ ESME_RINVPASWD,	"Invalid Password" },
+	{ ESME_RINVSYSID,	"Invalid System ID" },
+	{ ESME_RCANCELFAIL,	"Cancel SM Failed" },
+	{ ESME_RREPLACEFAIL,	"Replace SM Failed" },
+	{ ESME_RMSGQFUL,	"Message Queue Full" },
+	{ ESME_RINVSERTYP,	"Invalid Service Type" },
+	{ ESME_RINVNUMDESTS,	"Invalid number of destinations" },
+	{ ESME_RINVDLNAME,	"Invalid Distribution List name" },
+	{ ESME_RINVDESTFLAG,	"Destination flag is invalid" },
+	{ ESME_RINVSUBREP,	"Invalid submit with replace request" },
+	{ ESME_RINVESMCLASS,	"Invalid esm_class field data" },
+	{ ESME_RCNTSUBDL,	"Cannot Submit to Distribution List" },
+	{ ESME_RSUBMITFAIL,	"submit_sm or submit_multi failed" },
+	{ ESME_RINVSRCTON,	"Invalid Source address TON" },
+	{ ESME_RINVSRCNPI,	"Invalid Sourec address NPI" },
+	{ ESME_RINVDSTTON,	"Invalid Destination address TON" },
+	{ ESME_RINVDSTNPI,	"Invalid Desetination address NPI" },
+	{ ESME_RINVSYSTYP,	"Invalid system_type field" },
+	{ ESME_RINVREPFLAG,	"Invalid replace_if_present field" },
+	{ ESME_RINVNUMMSGS,	"Invalid number of messages" },
+	{ ESME_RTHROTTLED,	"Throttling error (ESME has exceeded message limits)" },
+	{ ESME_RINVSCHED,	"Invalid Scheduled Delivery Time" },
+	{ ESME_RINVEXPIRY,	"Invalid message validity period (Expiry time)" },
+	{ ESME_RINVDFTMSGID,	"Predefined Message Invalid or Not Found" },
+	{ ESME_RX_T_APPN,	"ESME Receiver Temporary App Error Code" },
+	{ ESME_RX_P_APPN,	"ESME Receiver Permanent App Error Code" },
+	{ ESME_RX_R_APPN,	"ESME Receiver Reject Message Error Code" },
+	{ ESME_RQUERYFAIL,	"query_sm request failed" },
+	{ ESME_RINVOPTPARSTREAM,"Error in the optional part of the PDU Body" },
+	{ ESME_ROPTPARNOTALLWD,	"Optional Parameter not allowed" },
+	{ ESME_RINVPARLEN,	"Invalid Parameter Length" },
+	{ ESME_RMISSINGOPTPARAM,"Expected Optional Parameter missing" },
+	{ ESME_RINVOPTPARAMVAL,	"Invalid Optional Parameter Value" },
+	{ ESME_RDELIVERYFAILURE,"Delivery Failure (used for data_sm_resp)" },
+	{ ESME_RUNKNOWNERR,	"Unknown Error" },
+	{ 0, NULL }
+};
+
+/*! \brief compare if two SMPP addresses are equal */
+int smpp_addr_eq(const struct osmo_smpp_addr *a,
+		 const struct osmo_smpp_addr *b)
+{
+	if (a->ton == b->ton &&
+	    a->npi == b->npi &&
+	    !strcmp(a->addr, b->addr))
+		return 1;
+
+	return 0;
+}
+
+
 struct osmo_smpp_acl *smpp_acl_by_system_id(struct smsc *smsc,
 					    const char *sys_id)
 {
@@ -80,26 +145,89 @@ struct osmo_smpp_acl *smpp_acl_alloc(struct smsc *smsc, const char *sys_id)
 
 	acl->smsc = smsc;
 	strcpy(acl->system_id, sys_id);
+	INIT_LLIST_HEAD(&acl->route_list);
 
-	llist_add(&acl->list, &smsc->acl_list);
+	llist_add_tail(&acl->list, &smsc->acl_list);
 
 	return acl;
 }
 
 void smpp_acl_delete(struct osmo_smpp_acl *acl)
 {
-	struct osmo_esme *esme, *e2;
-	struct smsc *smsc = acl->smsc;
+	struct osmo_smpp_route *r, *r2;
 
 	llist_del(&acl->list);
 
-	llist_for_each_entry_safe(esme, e2, &smsc->esme_list, list) {
-		if (!strcmp(acl->system_id, esme->system_id)) {
-			/* FIXME: drop connection */
-		}
+	/* kill any active ESMEs */
+	if (acl->esme) {
+		struct osmo_esme *esme = acl->esme;
+		osmo_fd_unregister(&esme->wqueue.bfd);
+		close(esme->wqueue.bfd.fd);
+		esme->wqueue.bfd.fd = -1;
+		esme->acl = NULL;
+		smpp_esme_put(esme);
+	}
+
+	/* delete all routes for this ACL */
+	llist_for_each_entry_safe(r, r2, &acl->route_list, list) {
+		llist_del(&r->list);
+		llist_del(&r->global_list);
+		talloc_free(r);
 	}
 
 	talloc_free(acl);
+}
+
+static struct osmo_smpp_route *route_alloc(struct osmo_smpp_acl *acl)
+{
+	struct osmo_smpp_route *r;
+
+	r = talloc_zero(acl, struct osmo_smpp_route);
+	if (!r)
+		return NULL;
+
+	llist_add_tail(&r->list, &acl->route_list);
+	llist_add_tail(&r->global_list, &acl->smsc->route_list);
+
+	return r;
+}
+
+int smpp_route_pfx_add(struct osmo_smpp_acl *acl,
+			const struct osmo_smpp_addr *pfx)
+{
+	struct osmo_smpp_route *r;
+
+	llist_for_each_entry(r, &acl->route_list, list) {
+		if (r->type == SMPP_ROUTE_PREFIX &&
+		    smpp_addr_eq(&r->u.prefix, pfx))
+			return -EEXIST;
+	}
+
+	r = route_alloc(acl);
+	if (!r)
+		return -ENOMEM;
+	r->type = SMPP_ROUTE_PREFIX;
+	r->acl = acl;
+	memcpy(&r->u.prefix, pfx, sizeof(r->u.prefix));
+
+	return 0;
+}
+
+int smpp_route_pfx_del(struct osmo_smpp_acl *acl,
+		       const struct osmo_smpp_addr *pfx)
+{
+	struct osmo_smpp_route *r, *r2;
+
+	llist_for_each_entry_safe(r, r2, &acl->route_list, list) {
+		if (r->type == SMPP_ROUTE_PREFIX &&
+		    smpp_addr_eq(&r->u.prefix, pfx)) {
+			llist_del(&r->list);
+			talloc_free(r);
+			return 0;
+		}
+	}
+
+	return -ENODEV;
 }
 
 
@@ -120,6 +248,15 @@ static void esme_destroy(struct osmo_esme *esme)
 	talloc_free(esme);
 }
 
+static uint32_t esme_inc_seq_nr(struct osmo_esme *esme)
+{
+	esme->own_seq_nr++;
+	if (esme->own_seq_nr > 0x7fffffff)
+		esme->own_seq_nr = 1;
+
+	return esme->own_seq_nr;
+}
+
 /*! \brief decrease the use/reference count, free if it is 0 */
 void smpp_esme_put(struct osmo_esme *esme)
 {
@@ -137,6 +274,62 @@ esme_by_system_id(const struct smsc *smsc, char *system_id)
 		if (!strcmp(e->system_id, system_id))
 			return e;
 	}
+	return NULL;
+}
+
+/*! \brief try to find a SMPP route (ESME) for given destination */
+struct osmo_esme *
+smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest)
+{
+	struct osmo_smpp_route *r;
+	struct osmo_smpp_acl *acl = NULL;
+
+	DEBUGP(DSMPP, "Looking up route for (%u/%u/%s)\n",
+		dest->ton, dest->npi, dest->addr);
+
+	/* search for a specific route */
+	llist_for_each_entry(r, &smsc->route_list, global_list) {
+		switch (r->type) {
+		case SMPP_ROUTE_PREFIX:
+			DEBUGP(DSMPP, "Checking prefix route (%u/%u/%s)->%s\n",
+				r->u.prefix.ton, r->u.prefix.npi, r->u.prefix.addr,
+				r->acl->system_id);
+			if (r->u.prefix.ton == dest->ton &&
+			    r->u.prefix.npi == dest->npi &&
+			    !strncmp(r->u.prefix.addr, dest->addr,
+				     strlen(r->u.prefix.addr))) {
+				DEBUGP(DSMPP, "Found prefix route ACL\n");
+				acl = r->acl;
+			}
+			break;
+		default:
+			break;
+		}
+
+		if (acl)
+			break;
+	}
+
+	if (!acl) {
+		/* check for default route */
+		if (smsc->def_route) {
+			DEBUGP(DSMPP, "Using existing default route\n");
+			acl = smsc->def_route;
+		}
+	}
+
+	if (acl && acl->esme) {
+		struct osmo_esme *esme;
+		DEBUGP(DSMPP, "ACL even has ESME, we can route to it!\n");
+		esme = acl->esme;
+		if (esme->bind_flags & ESME_BIND_RX)
+			return esme;
+		else
+			LOGP(DSMPP, LOGL_NOTICE, "[%s] is matching route, "
+			     "but not bound for Rx, discarding MO SMS\n",
+				     esme->system_id);
+	}
+
 	return NULL;
 }
 
@@ -223,12 +416,49 @@ static int smpp_handle_gen_nack(struct osmo_esme *esme, struct msgb *msg)
 	return 0;
 }
 
+static int _process_bind(struct osmo_esme *esme, uint8_t if_version,
+			 uint32_t bind_flags, const char *sys_id,
+			 const char *passwd)
+{
+	struct osmo_smpp_acl *acl;
+
+	if (if_version != SMPP_VERSION)
+		return ESME_RSYSERR;
+
+	if (esme->bind_flags)
+		return ESME_RALYBND;
+
+	esme->smpp_version = if_version;
+	snprintf(esme->system_id, sizeof(esme->system_id), "%s", sys_id);
+
+	acl = smpp_acl_by_system_id(esme->smsc, esme->system_id);
+	if (!esme->smsc->accept_all) {
+		if (!acl) {
+			/* This system is unknown */
+			return ESME_RINVSYSID;
+		} else {
+			if (strlen(acl->passwd) &&
+			    strcmp(acl->passwd, passwd)) {
+				return ESME_RINVPASWD;
+			}
+		}
+	}
+	if (acl) {
+		esme->acl = acl;
+		acl->esme = esme;
+	}
+
+	esme->bind_flags = bind_flags;
+
+	return ESME_ROK;
+}
+
+
 /*! \brief handle an incoming SMPP BIND RECEIVER */
 static int smpp_handle_bind_rx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_receiver_t bind;
 	struct bind_receiver_resp_t bind_r;
-	struct osmo_smpp_acl *acl;
 	int rc;
 
 	SMPP34_UNPACK(rc, BIND_RECEIVER, &bind, msgb_data(msg),
@@ -244,41 +474,11 @@ static int smpp_handle_bind_rx(struct osmo_esme *esme, struct msgb *msg)
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx BIND Rx from (Version %02x)\n",
 		bind.system_id, bind.interface_version);
 
-	if (bind.interface_version != SMPP_VERSION) {
-		bind_r.command_status = ESME_RSYSERR;
-		goto err;
-	}
+	rc = _process_bind(esme, bind.interface_version, ESME_BIND_RX,
+			   (const char *)bind.system_id, (const char *)bind.password);
+	bind_r.command_status = rc;
 
-	if (esme->bind_flags) {
-		bind_r.command_status = ESME_RALYBND;
-		goto err;
-	}
-
-	esme->smpp_version = bind.interface_version;
-	snprintf(esme->system_id, sizeof(esme->system_id), "%s",
-		 bind.system_id);
-
-	acl = smpp_acl_by_system_id(esme->smsc, esme->system_id);
-	if (!esme->smsc->accept_all) {
-		if (!acl) {
-			/* This system is unknown */
-			bind_r.command_status = ESME_RINVSYSID;
-			goto err;
-		} else {
-			if (strlen(acl->passwd) &&
-			    strcmp(acl->passwd, (char *)bind.password)) {
-				bind_r.command_status = ESME_RINVPASWD;
-				goto err;
-			}
-			esme->acl = acl;
-			if (acl->default_route)
-				esme->smsc->def_route = esme;
-		}
-	}
-
-	esme->bind_flags = ESME_BIND_RX;
-err:
-	return 0;
+	return PACK_AND_SEND(esme, &bind_r);
 }
 
 /*! \brief handle an incoming SMPP BIND TRANSMITTER */
@@ -286,7 +486,6 @@ static int smpp_handle_bind_tx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_transmitter_t bind;
 	struct bind_transmitter_resp_t bind_r;
-	struct osmo_smpp_acl *acl;
 	struct tlv_t tlv;
 	int rc;
 
@@ -303,36 +502,9 @@ static int smpp_handle_bind_tx(struct osmo_esme *esme, struct msgb *msg)
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx BIND Tx (Version %02x)\n",
 		bind.system_id, bind.interface_version);
 
-	if (bind.interface_version != SMPP_VERSION) {
-		bind_r.command_status = ESME_RSYSERR;
-		goto err;
-	}
-
-	if (esme->bind_flags) {
-		bind_r.command_status = ESME_RALYBND;
-		goto err;
-	}
-
-	esme->smpp_version = bind.interface_version;
-	snprintf(esme->system_id, sizeof(esme->system_id), "%s", bind.system_id);
-
-	acl = smpp_acl_by_system_id(esme->smsc, esme->system_id);
-	if (!esme->smsc->accept_all) {
-		if (!acl) {
-			/* This system is unknown */
-			bind_r.command_status = ESME_RINVSYSID;
-			goto err;
-		} else {
-			if (strlen(acl->passwd) &&
-			    strcmp(acl->passwd, (char *)bind.password)) {
-				bind_r.command_status = ESME_RINVPASWD;
-				goto err;
-			}
-			esme->acl = acl;
-		}
-	}
-
-	esme->bind_flags = ESME_BIND_TX;
+	rc = _process_bind(esme, bind.interface_version, ESME_BIND_TX,
+			   (const char *)bind.system_id, (const char *)bind.password);
+	bind_r.command_status = rc;
 
 	/* build response */
 	snprintf((char *)bind_r.system_id, sizeof(bind_r.system_id), "%s",
@@ -344,7 +516,6 @@ static int smpp_handle_bind_tx(struct osmo_esme *esme, struct msgb *msg)
 	tlv.value.val16 = esme->smpp_version;
 	build_tlv(&bind_r.tlv, &tlv);
 
-err:
 	return PACK_AND_SEND(esme, &bind_r);
 }
 
@@ -353,7 +524,6 @@ static int smpp_handle_bind_trx(struct osmo_esme *esme, struct msgb *msg)
 {
 	struct bind_transceiver_t bind;
 	struct bind_transceiver_resp_t bind_r;
-	struct osmo_smpp_acl *acl;
 	int rc;
 
 	SMPP34_UNPACK(rc, BIND_TRANSCEIVER, &bind, msgb_data(msg),
@@ -369,41 +539,11 @@ static int smpp_handle_bind_trx(struct osmo_esme *esme, struct msgb *msg)
 	LOGP(DSMPP, LOGL_INFO, "[%s] Rx BIND Trx (Version %02x)\n",
 		bind.system_id, bind.interface_version);
 
-	if (bind.interface_version != SMPP_VERSION) {
-		bind_r.command_status = ESME_RSYSERR;
-		goto err;
-	}
+	rc = _process_bind(esme, bind.interface_version, ESME_BIND_RX|ESME_BIND_TX,
+			   (const char *)bind.system_id, (const char *)bind.password);
+	bind_r.command_status = rc;
 
-	if (esme->bind_flags) {
-		bind_r.command_status = ESME_RALYBND;
-		goto err;
-	}
-
-	esme->smpp_version = bind.interface_version;
-	snprintf(esme->system_id, sizeof(esme->system_id), "%s", bind.system_id);
-
-	acl = smpp_acl_by_system_id(esme->smsc, esme->system_id);
-	if (!esme->smsc->accept_all) {
-		if (!acl) {
-			/* This system is unknown */
-			bind_r.command_status = ESME_RINVSYSID;
-			goto err;
-		} else {
-			if (strlen(acl->passwd) &&
-			    strcmp(acl->passwd, (char *)bind.password)) {
-				bind_r.command_status = ESME_RINVPASWD;
-				goto err;
-			}
-			esme->acl = acl;
-			if (acl->default_route)
-				esme->smsc->def_route = esme;
-		}
-	}
-
-	esme->bind_flags |= ESME_BIND_TX | ESME_BIND_RX;
-
-err:
-	return 0;
+	return PACK_AND_SEND(esme, &bind_r);
 }
 
 /*! \brief handle an incoming SMPP UNBIND */
@@ -431,8 +571,6 @@ static int smpp_handle_unbind(struct osmo_esme *esme, struct msgb *msg)
 	}
 
 	esme->bind_flags = 0;
-	if (esme->smsc->def_route == esme)
-		esme->smsc->def_route = NULL;
 err:
 	return PACK_AND_SEND(esme, &unbind_r);
 }
@@ -495,7 +633,7 @@ int smpp_tx_alert(struct osmo_esme *esme, uint8_t ton, uint8_t npi,
 	alert.command_length	= 0;
 	alert.command_id	= ALERT_NOTIFICATION;
 	alert.command_status	= ESME_ROK;
-	alert.sequence_number	= esme->own_seq_nr++;
+	alert.sequence_number	= esme_inc_seq_nr(esme);
 	alert.source_addr_ton 	= ton;
 	alert.source_addr_npi	= npi;
 	snprintf((char *)alert.source_addr, sizeof(alert.source_addr), "%s", addr);
@@ -511,6 +649,36 @@ int smpp_tx_alert(struct osmo_esme *esme, uint8_t ton, uint8_t npi,
 		get_value_string(smpp_avail_strs, avail_status));
 
 	return PACK_AND_SEND(esme, &alert);
+}
+
+/* \brief send a DELIVER-SM message to given ESME */
+int smpp_tx_deliver(struct osmo_esme *esme, struct deliver_sm_t *deliver)
+{
+	deliver->sequence_number = esme_inc_seq_nr(esme);
+
+	return PACK_AND_SEND(esme, deliver);
+}
+
+/*! \brief handle an incoming SMPP DELIVER-SM RESPONSE */
+static int smpp_handle_deliver_resp(struct osmo_esme *esme, struct msgb *msg)
+{
+	struct deliver_sm_resp_t deliver_r;
+	int rc;
+
+	memset(&deliver_r, 0, sizeof(deliver_r));
+	SMPP34_UNPACK(rc, DELIVER_SM_RESP, &deliver_r, msgb_data(msg),
+			   msgb_length(msg));
+	if (rc < 0) {
+		LOGP(DSMPP, LOGL_ERROR, "[%s] Error in smpp34_unpack():%s\n",
+			esme->system_id, smpp34_strerror);
+		return rc;
+	}
+
+	LOGP(DSMPP, LOGL_INFO, "[%s] Rx DELIVER-SM RESP (%s)\n",
+		esme->system_id, get_value_string(smpp_status_strs,
+						  deliver_r.command_status));
+
+	return 0;
 }
 
 /*! \brief handle an incoming SMPP SUBMIT-SM */
@@ -579,6 +747,9 @@ static int smpp_pdu_rx(struct osmo_esme *esme, struct msgb *msg)
 		break;
 	case SUBMIT_SM:
 		rc = smpp_handle_submit(esme, msg);
+		break;
+	case DELIVER_SM_RESP:
+		rc = smpp_handle_deliver_resp(esme, msg);
 		break;
 	case DELIVER_SM:
 		break;
@@ -698,6 +869,7 @@ static int link_accept_cb(struct smsc *smsc, int fd,
 
 	smpp_esme_get(esme);
 	esme->own_seq_nr = rand();
+	esme_inc_seq_nr(esme);
 	esme->smsc = smsc;
 	osmo_wqueue_init(&esme->wqueue, 10);
 	esme->wqueue.bfd.fd = fd;
@@ -746,6 +918,7 @@ int smpp_smsc_init(struct smsc *smsc, uint16_t port)
 	if (smsc->listen_ofd.fd <= 0) {
 		INIT_LLIST_HEAD(&smsc->esme_list);
 		INIT_LLIST_HEAD(&smsc->acl_list);
+		INIT_LLIST_HEAD(&smsc->route_list);
 		smsc->listen_ofd.data = smsc;
 		smsc->listen_ofd.cb = smsc_fd_cb;
 	} else {

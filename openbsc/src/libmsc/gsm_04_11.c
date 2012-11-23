@@ -56,6 +56,11 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/bsc_api.h>
 
+#ifdef BUILD_SMPP
+#include "smpp_smsc.h"
+extern int smpp_try_deliver(struct gsm_sms *sms);
+#endif
+
 #define GSM411_ALLOC_SIZE	1024
 #define GSM411_ALLOC_HEADROOM	128
 
@@ -377,13 +382,21 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 		LOGP(DLSMS, LOGL_ERROR, "Destination Address > 12 bytes ?!?\n");
 		rc = GSM411_RP_CAUSE_SEMANT_INC_MSG;
 		goto out;
+	} else if (da_len_bytes < 4) {
+		LOGP(DLSMS, LOGL_ERROR, "Destination Address < 4 bytes ?!?\n");
+		rc = GSM411_RP_CAUSE_SEMANT_INC_MSG;
+		goto out;
 	}
 	memset(address_lv, 0, sizeof(address_lv));
 	memcpy(address_lv, smsp, da_len_bytes);
 	/* mangle first byte to reflect length in bytes, not digits */
 	address_lv[0] = da_len_bytes - 1;
+
+	gsms->destination.ton = (address_lv[1] >> 4) & 7;
+	gsms->destination.npi = address_lv[1] & 0xF;
 	/* convert to real number */
-	gsm48_decode_bcd_number(gsms->dest_addr, sizeof(gsms->dest_addr), address_lv, 1);
+	gsm48_decode_bcd_number(gsms->destination.addr,
+				sizeof(gsms->destination.addr), address_lv, 1);
 	smsp += da_len_bytes;
 
 	gsms->protocol_id = *smsp++;
@@ -449,8 +462,19 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	/* determine gsms->receiver based on dialled number */
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dest_addr);
 	if (!gsms->receiver) {
+#ifdef BUILD_SMPP
+		rc = smpp_try_deliver(gsms);
+		if (rc == 1) {
+			rc = 1; /* cause 1: unknown subscriber */
+			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+		} else if (rc < 0) {
+			rc = 21; /* cause 21: short message transfer rejected */
+			/* FIXME: handle the error somehow? */
+		}
+#else
 		rc = 1; /* cause 1: unknown subscriber */
 		osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
+#endif
 		goto out;
 	}
 

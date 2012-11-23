@@ -66,7 +66,7 @@ static struct gsm_subscriber *subscr_by_dst(struct gsm_network *net,
 }
 
 /*! \brief find a TLV with given tag in list of libsmpp34 TLVs */
-struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
+static struct tlv_t *find_tlv(struct tlv_t *head, uint16_t tag)
 {
 	struct tlv_t *t;
 
@@ -217,7 +217,6 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 			void *handler_data, void *signal_data)
 {
-	struct gsm_network *network = handler_data;
 	struct sms_signal_data *sig_sms = signal_data;
 	struct gsm_sms *sms = sig_sms->sms;
 	int rc = 0;
@@ -288,7 +287,97 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
+{
+	struct deliver_sm_t deliver;
+	uint8_t dcs;
+
+	memset(&deliver, 0, sizeof(deliver));
+	deliver.command_length	= 0;
+	deliver.command_id	= DELIVER_SM;
+	deliver.command_status	= ESME_ROK;
+
+	strcpy((char *)deliver.service_type, "CMT");
+	if (esme->acl && esme->acl->deliver_src_imsi) {
+		deliver.source_addr_ton	= TON_Subscriber_Number;
+		deliver.source_addr_npi = NPI_Land_Mobile_E212;
+		snprintf((char *)deliver.source_addr,
+			sizeof(deliver.source_addr), "%s",
+			sms->sender->imsi);
+	} else {
+		deliver.source_addr_ton = TON_Network_Specific;
+		deliver.source_addr_npi = NPI_ISDN_E163_E164;
+		snprintf((char *)deliver.source_addr,
+			 sizeof(deliver.source_addr), "%s",
+			 sms->sender->extension);
+	}
+
+	deliver.dest_addr_ton	= sms->destination.ton;
+	deliver.dest_addr_npi	= sms->destination.npi;
+	memcpy(deliver.destination_addr, sms->destination.addr,
+		sizeof(deliver.destination_addr));
+
+	deliver.esm_class	= 1;	/* datagram mode */
+	if (sms->ud_hdr_ind)
+		deliver.esm_class |= 0x40;
+	if (sms->reply_path_req)
+		deliver.esm_class |= 0x80;
+
+	deliver.protocol_id 	= sms->protocol_id;
+	deliver.priority_flag	= 0;
+	deliver.registered_delivery = 0;
+
+	dcs = sms->data_coding_scheme;
+	if (dcs == GSM338_DCS_1111_7BIT ||
+	   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 0)) {
+		uint8_t *src = sms->user_data;
+		uint8_t *dst = deliver.short_message;
+		uint8_t src_byte_len = sms->user_data_len;
+
+		/* SMPP has this strange notion of putting 7bit SMS in
+		 * an octet-aligned mode */
+		deliver.data_coding = 0x01;
+		if (sms->ud_hdr_ind) {
+			uint8_t udh_len = sms->user_data[0];
+			src += udh_len + 1;
+			dst += udh_len + 1;
+			src_byte_len -= udh_len + 1;
+			memcpy(dst, sms->user_data, udh_len + 1);
+			deliver.sm_length = udh_len + 1;
+		}
+		deliver.sm_length += gsm_7bit_decode((char *)dst, src, src_byte_len);
+	} else if (dcs == GSM338_DCS_1111_8BIT_DATA ||
+		   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 4)) {
+		deliver.data_coding = 0x02;
+		deliver.sm_length = sms->user_data_len;
+		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
+	} else if ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 8) {
+		deliver.data_coding = 0x08;	/* UCS-2 */
+		deliver.sm_length = sms->user_data_len;
+		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
+	}
+
+	return smpp_tx_deliver(esme, &deliver);
+}
+
 static struct smsc *g_smsc;
+
+int smpp_try_deliver(struct gsm_sms *sms)
+{
+	struct osmo_esme *esme;
+	struct osmo_smpp_addr dst;
+
+	memset(&dst, 0, sizeof(dst));
+	dst.ton = sms->destination.ton;
+	dst.npi = sms->destination.npi;
+	memcpy(dst.addr, sms->destination.addr, sizeof(dst.addr));
+
+	esme = smpp_route(g_smsc, &dst);
+	if (!esme)
+		return 1; /* unknown subscriber */
+
+	return deliver_to_esme(esme, sms);
+}
 
 struct smsc *smsc_from_vty(struct vty *v)
 {

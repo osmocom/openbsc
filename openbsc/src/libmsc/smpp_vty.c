@@ -18,7 +18,9 @@
  *
  */
 
+#include <ctype.h>
 #include <string.h>
+#include <errno.h>
 #include <netdb.h>
 #include <sys/socket.h>
 
@@ -195,17 +197,116 @@ DEFUN(cfg_esme_no_passwd, cfg_esme_no_passwd_cmd,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_esme_route, cfg_esme_route_cmd,
-	"route DESTINATION",
-	"Configure a route for MO-SMS to be sent to this ESME\n"
-	"Destination phone number")
+static int osmo_is_digits(const char *str)
+{
+	int i;
+	for (i = 0; i < strlen(str); i++) {
+		if (!isdigit(str[i]))
+			return 0;
+	}
+	return 1;
+}
+
+static const struct value_string route_errstr[] = {
+	{ -EEXIST,	"Route already exists" },
+	{ -ENODEV,	"Route does not exist" },
+	{ -ENOMEM,	"No memory" },
+	{ -EINVAL,	"Invalid" },
+	{ 0, NULL }
+};
+
+static const struct value_string smpp_ton_str_short[] = {
+	{ TON_Unknown,		"unknown" },
+	{ TON_International,	"international" },
+	{ TON_National,		"national" },
+	{ TON_Network_Specific,	"network" },
+	{ TON_Subscriber_Number,"subscriber" },
+	{ TON_Alphanumeric,	"alpha" },
+	{ TON_Abbreviated,	"abbrev" },
+	{ 0, NULL }
+};
+
+static const struct value_string smpp_npi_str_short[] = {
+	{ NPI_Unknown,		"unknown" },
+	{ NPI_ISDN_E163_E164,	"isdn" },
+	{ NPI_Data_X121,	"x121" },
+	{ NPI_Telex_F69,	"f69" },
+	{ NPI_Land_Mobile_E212,	"e212" },
+	{ NPI_National,		"national" },
+	{ NPI_Private,		"private" },
+	{ NPI_ERMES,		"ermes" },
+	{ NPI_Internet_IP,	"ip" },
+	{ NPI_WAP_Client_Id,	"wap" },
+	{ 0, NULL }
+};
+
+
+#define SMPP_ROUTE_STR "Configure a route for MO-SMS to be sent to this ESME\n"
+#define SMPP_ROUTE_P_STR "Prefix-match route\n"
+#define SMPP_PREFIX_STR "Destination number prefix\n"
+
+#define TON_CMD "(unknown|international|national|network|subscriber|alpha|abbrev)"
+#define NPI_CMD "(unknown|isdn|x121|f69|e212|national|private|ermes|ip|wap)"
+#define TON_STR "FIXME"
+#define NPI_STR "FIXME"
+
+DEFUN(cfg_esme_route_pfx, cfg_esme_route_pfx_cmd,
+	"route prefix " TON_CMD " " NPI_CMD " PREFIX",
+	SMPP_ROUTE_P_STR TON_STR NPI_STR SMPP_PREFIX_STR)
 {
 	struct osmo_smpp_acl *acl = vty->index;
+	struct osmo_smpp_addr pfx;
+	int rc;
 
-	/* FIXME: check if DESTINATION is all-digits */
+	/* check if DESTINATION is all-digits */
+	if (!osmo_is_digits(argv[2])) {
+		vty_out(vty, "%% PREFIX has to be numeric%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pfx.ton = get_string_value(smpp_ton_str_short, argv[0]);
+	pfx.npi = get_string_value(smpp_npi_str_short, argv[1]);
+	snprintf(pfx.addr, sizeof(pfx.addr), "%s", argv[2]);
+
+	rc = smpp_route_pfx_add(acl, &pfx);
+	if (rc < 0) {
+		vty_out(vty, "%% error adding prefix route: %s%s",
+			get_value_string(route_errstr, rc), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_esme_no_route_pfx, cfg_esme_no_route_pfx_cmd,
+	"no route prefix " TON_CMD " " NPI_CMD " PREFIX",
+	NO_STR SMPP_ROUTE_P_STR TON_STR NPI_STR SMPP_PREFIX_STR)
+{
+	struct osmo_smpp_acl *acl = vty->index;
+	struct osmo_smpp_addr pfx;
+	int rc;
+
+	/* check if DESTINATION is all-digits */
+	if (!osmo_is_digits(argv[2])) {
+		vty_out(vty, "%% PREFIX has to be numeric%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	pfx.ton = get_string_value(smpp_ton_str_short, argv[0]);
+	pfx.npi = get_string_value(smpp_npi_str_short, argv[1]);
+	snprintf(pfx.addr, sizeof(pfx.addr), "%s", argv[2]);
+
+	rc = smpp_route_pfx_del(acl, &pfx);
+	if (rc < 0) {
+		vty_out(vty, "%% error removing prefix route: %s%s",
+			get_value_string(route_errstr, rc), VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+
+}
+
 
 DEFUN(cfg_esme_defaultroute, cfg_esme_defaultroute_cmd,
 	"default-route",
@@ -214,6 +315,9 @@ DEFUN(cfg_esme_defaultroute, cfg_esme_defaultroute_cmd,
 	struct osmo_smpp_acl *acl = vty->index;
 
 	acl->default_route = 1;
+
+	if (!acl->smsc->def_route)
+		acl->smsc->def_route = acl;
 
 	return CMD_SUCCESS;
 }
@@ -228,7 +332,7 @@ DEFUN(cfg_no_esme_defaultroute, cfg_esme_no_defaultroute_cmd,
 
 	/* remove currently active default route, if it was created by
 	 * this ACL */
-	if (acl->smsc->def_route && acl->smsc->def_route->acl == acl)
+	if (acl->smsc->def_route && acl->smsc->def_route == acl)
 		acl->smsc->def_route = NULL;
 
 	return CMD_SUCCESS;
@@ -244,8 +348,11 @@ static void dump_one_esme(struct vty *vty, struct osmo_esme *esme)
 		    host, sizeof(host), serv, sizeof(serv), NI_NUMERICSERV);
 
 	vty_out(vty, "ESME System ID: %s, Password: %s, SMPP Version %02x%s",
-		esme->system_id, esme->acl->passwd, esme->smpp_version, VTY_NEWLINE);
+		esme->system_id, esme->acl ? esme->acl->passwd : "",
+		esme->smpp_version, VTY_NEWLINE);
 	vty_out(vty, "  Connected from: %s:%s%s", host, serv, VTY_NEWLINE);
+	if (esme->smsc->def_route == esme->acl)
+		vty_out(vty, "  Is current default route%s", VTY_NEWLINE);
 }
 
 DEFUN(show_esme, show_esme_cmd,
@@ -261,13 +368,35 @@ DEFUN(show_esme, show_esme_cmd,
 	return CMD_SUCCESS;
 }
 
+static void write_esme_route_single(struct vty *vty, struct osmo_smpp_route *r)
+{
+	switch (r->type) {
+	case SMPP_ROUTE_PREFIX:
+		vty_out(vty, "   route prefix %s ",
+			get_value_string(smpp_ton_str_short, r->u.prefix.ton));
+		vty_out(vty, "%s %s%s",
+			get_value_string(smpp_npi_str_short, r->u.prefix.npi),
+			r->u.prefix.addr, VTY_NEWLINE);
+		break;
+	case SMPP_ROUTE_NONE:
+		break;
+	}
+}
+
 static void config_write_esme_single(struct vty *vty, struct osmo_smpp_acl *acl)
 {
+	struct osmo_smpp_route *r;
+
 	vty_out(vty, " esme %s%s", acl->system_id, VTY_NEWLINE);
 	if (strlen(acl->passwd))
 		vty_out(vty, "  password %s%s", acl->passwd, VTY_NEWLINE);
 	if (acl->default_route)
 		vty_out(vty, "  default-route%s", VTY_NEWLINE);
+	if (acl->deliver_src_imsi)
+		vty_out(vty, "  deliver-src-imsi%s", VTY_NEWLINE);
+
+	llist_for_each_entry(r, &acl->route_list, list)
+		write_esme_route_single(vty, r);
 }
 
 static int config_write_esme(struct vty *v)
@@ -297,7 +426,8 @@ int smpp_vty_init(void)
 	install_default(SMPP_ESME_NODE);
 	install_element(SMPP_ESME_NODE, &cfg_esme_passwd_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_passwd_cmd);
-	install_element(SMPP_ESME_NODE, &cfg_esme_route_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_route_pfx_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_no_route_pfx_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_defaultroute_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_defaultroute_cmd);
 	install_element(SMPP_ESME_NODE, &ournode_exit_cmd);

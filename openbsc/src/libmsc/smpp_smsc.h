@@ -22,6 +22,12 @@ enum esme_read_state {
 
 struct osmo_smpp_acl;
 
+struct osmo_smpp_addr {
+	uint8_t ton;
+	uint8_t npi;
+	char addr[21+1];
+};
+
 struct osmo_esme {
 	struct llist_head list;
 	struct smsc *smsc;
@@ -48,28 +54,53 @@ struct osmo_esme {
 struct osmo_smpp_acl {
 	struct llist_head list;
 	struct smsc *smsc;
+	struct osmo_esme *esme;
 	char *description;
 	char system_id[SMPP_SYS_ID_LEN+1];
 	char passwd[SMPP_PASSWD_LEN+1];
 	int default_route;
+	int deliver_src_imsi;
+	struct llist_head route_list;
 };
+
+enum osmo_smpp_rtype {
+	SMPP_ROUTE_NONE,
+	SMPP_ROUTE_PREFIX,
+};
+
+struct osmo_smpp_route {
+	struct llist_head list;	/*!< in acl.route_list */
+	struct llist_head global_list; /*!< in smsc->route_list */
+	struct osmo_smpp_acl *acl;
+	enum osmo_smpp_rtype type;
+	union {
+		struct osmo_smpp_addr prefix;
+	} u;
+};
+
 
 struct smsc {
 	struct osmo_fd listen_ofd;
 	struct llist_head esme_list;
 	struct llist_head acl_list;
+	struct llist_head route_list;
 	uint16_t listen_port;
 	char system_id[SMPP_SYS_ID_LEN+1];
 	int accept_all;
-	struct osmo_esme *def_route;
+	struct osmo_smpp_acl *def_route;
 	void *priv;
 };
 
+int smpp_addr_eq(const struct osmo_smpp_addr *a,
+		 const struct osmo_smpp_addr *b);
 
 int smpp_smsc_init(struct smsc *smsc, uint16_t port);
 
 void smpp_esme_get(struct osmo_esme *esme);
 void smpp_esme_put(struct osmo_esme *esme);
+
+struct osmo_esme *
+smpp_route(const struct smsc *smsc, const struct osmo_smpp_addr *dest);
 
 struct osmo_smpp_acl *smpp_acl_alloc(struct smsc *smsc, const char *sys_id);
 struct osmo_smpp_acl *smpp_acl_by_system_id(struct smsc *smsc,
@@ -82,7 +113,13 @@ int smpp_tx_submit_r(struct osmo_esme *esme, uint32_t sequence_nr,
 int smpp_tx_alert(struct osmo_esme *esme, uint8_t ton, uint8_t npi,
 		  const char *addr, uint8_t avail_status);
 
+int smpp_tx_deliver(struct osmo_esme *esme, struct deliver_sm_t *deliver);
+
 int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 			struct submit_sm_resp_t *submit_r);
 
+int smpp_route_pfx_add(struct osmo_smpp_acl *acl,
+		       const struct osmo_smpp_addr *pfx);
+int smpp_route_pfx_del(struct osmo_smpp_acl *acl,
+		       const struct osmo_smpp_addr *pfx);
 #endif
