@@ -53,7 +53,13 @@ static int msc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	gsm0408_dispatch(conn, msg);
 
 	/* TODO: do better */
-	return BSC_API_CONN_POL_ACCEPT;
+	if (conn->silent_call)
+		return BSC_API_CONN_POL_ACCEPT;
+	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
+		return BSC_API_CONN_POL_ACCEPT;
+	if (trans_has_conn(conn))
+		return BSC_API_CONN_POL_ACCEPT;
+	return BSC_API_CONN_POL_REJECT;
 }
 
 static void msc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
@@ -162,10 +168,8 @@ void msc_release_connection(struct gsm_subscriber_connection *conn)
 	if (conn->loc_operation || conn->sec_operation || conn->anch_operation)
 		return;
 
-	llist_for_each_entry(trans, &conn->bts->network->trans_list, entry) {
-		if (trans->conn == conn)
-			return;
-	}
+	if (trans_has_conn(conn))
+		return;
 
 	/* no more connections, asking to release the channel */
 	conn->in_release = 1;

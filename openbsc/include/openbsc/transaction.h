@@ -72,5 +72,6 @@ void trans_free(struct gsm_trans *trans);
 
 int trans_assign_trans_id(struct gsm_subscriber *subscr,
 			  uint8_t protocol, uint8_t ti_flag);
+int trans_has_conn(const struct gsm_subscriber_connection *conn);
 
 #endif

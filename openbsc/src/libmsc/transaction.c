@@ -149,3 +149,14 @@ int trans_assign_trans_id(struct gsm_subscriber *subscr,
 
 	return -1;
 }
+
+int trans_has_conn(const struct gsm_subscriber_connection *conn)
+{
+	struct gsm_trans *trans;
+
+	llist_for_each_entry(trans, &conn->bts->network->trans_list, entry)
+		if (trans->conn == conn)
+			return 1;
+
+	return 0;
+}
