@@ -142,7 +142,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	if (submit->data_coding == 0x00 ||	/* SMSC default */
 	    submit->data_coding == 0x01 ||	/* GSM default alphabet */
 	    (submit->data_coding & 0xFC) == 0xF0) { /* 03.38 DCS default */
-		uint8_t ud_len = 0;
+		uint8_t ud_len = 0, padbits = 0;
 		sms->data_coding_scheme = GSM338_DCS_1111_7BIT;
 		if (sms->ud_hdr_ind) {
 			ud_len = *sms_msg + 1;
@@ -151,11 +151,12 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 				OSMO_MIN(ud_len, sizeof(sms->user_data)));
 			sms_msg += ud_len;
 			sms_msg_len -= ud_len;
+			padbits = 7 - (ud_len % 7);
 		}
-		strncpy(sms->text, (char *)sms_msg,
-			OSMO_MIN(sizeof(sms->text)-1, sms_msg_len));
-		printf("encoding 7bit to offset %u text(%s)\n", ud_len, sms->text);
-		sms->user_data_len = gsm_7bit_encode(sms->user_data+ud_len, sms->text);
+		gsm_septets2octets(sms->user_data+ud_len, sms_msg,
+				   sms_msg_len, padbits);
+		sms->user_data_len = (ud_len*8 + padbits)/7 + sms_msg_len;/* SEPTETS */
+		/* FIXME: sms->text */
 	} else if (submit->data_coding == 0x02 ||
 		   submit->data_coding == 0x04 ||
 		   (submit->data_coding & 0xFC) == 0xF4) { /* 03.38 DCS 8bit */
@@ -296,6 +297,38 @@ static int smpp_subscr_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+/* GSM 03.38 6.2.1 Character expanding (no decode!) */
+static int gsm_7bit_expand(char *text, const uint8_t *user_data, uint8_t septet_l, uint8_t ud_hdr_ind)
+{
+	int i = 0;
+	int shift = 0;
+	uint8_t c;
+
+	/* skip the user data header */
+	if (ud_hdr_ind) {
+		/* get user data header length + 1 (for the 'user data header length'-field) */
+		shift = ((user_data[0] + 1) * 8) / 7;
+		if ((((user_data[0] + 1) * 8) % 7) != 0)
+			shift++;
+		septet_l = septet_l - shift;
+	}
+
+	for (i = 0; i < septet_l; i++) {
+		c =
+			((user_data[((i + shift) * 7 + 7) >> 3] <<
+			  (7 - (((i + shift) * 7 + 7) & 7))) |
+			 (user_data[((i + shift) * 7) >> 3] >>
+			  (((i + shift) * 7) & 7))) & 0x7f;
+
+		*(text++) = c;
+	}
+
+	*text = '\0';
+
+	return i;
+}
+
+
 static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
 {
 	struct deliver_sm_t deliver;
@@ -339,22 +372,22 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
 	dcs = sms->data_coding_scheme;
 	if (dcs == GSM338_DCS_1111_7BIT ||
 	   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 0)) {
-		uint8_t *src = sms->user_data;
 		uint8_t *dst = deliver.short_message;
-		uint8_t src_byte_len = sms->user_data_len;
 
 		/* SMPP has this strange notion of putting 7bit SMS in
 		 * an octet-aligned mode */
 		deliver.data_coding = 0x01;
 		if (sms->ud_hdr_ind) {
-			uint8_t udh_len = sms->user_data[0];
-			src += udh_len + 1;
-			dst += udh_len + 1;
-			src_byte_len -= udh_len + 1;
-			memcpy(dst, sms->user_data, udh_len + 1);
-			deliver.sm_length = udh_len + 1;
+			/* length (bytes) of UDH inside UD */
+			uint8_t udh_len = sms->user_data[0] + 1;
+
+			/* copy over the UDH */
+			memcpy(dst, sms->user_data, udh_len);
+			dst += udh_len;
+			deliver.sm_length = udh_len;
 		}
-		deliver.sm_length += gsm_7bit_decode((char *)dst, src, src_byte_len);
+		/* add decoded text */
+		deliver.sm_length += gsm_7bit_expand((char *)dst, sms->user_data, sms->user_data_len, sms->ud_hdr_ind);
 	} else if (dcs == GSM338_DCS_1111_8BIT_DATA ||
 		   ((dcs & 0xE0000000) == 0 && (dcs & 0xC) == 4)) {
 		deliver.data_coding = 0x02;
