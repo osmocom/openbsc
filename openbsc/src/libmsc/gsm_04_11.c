@@ -122,11 +122,11 @@ static void send_signal(int sig_no,
 	osmo_signal_dispatch(SS_SMS, sig_no, &sig);
 }
 
-static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg, uint8_t link_id)
+static int gsm411_sendmsg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 {
 	DEBUGP(DLSMS, "GSM4.11 TX %s\n", osmo_hexdump(msg->data, msg->len));
 	msg->l3h = msg->data;
-	return gsm0808_submit_dtap(conn, msg, link_id, 1);
+	return gsm0808_submit_dtap(conn, msg, UM_SAPI_SMS, 1);
 }
 
 /* Prefix msg with a 04.08/04.11 CP header */
@@ -142,7 +142,7 @@ static int gsm411_cp_sendmsg(struct msgb *msg, struct gsm_trans *trans,
 
 	DEBUGP(DLSMS, "sending CP message (trans=%x)\n", trans->transaction_id);
 
-	return gsm411_sendmsg(trans->conn, msg, trans->sms.link_id);
+	return gsm411_sendmsg(trans->conn, msg);
 }
 
 /* mm_send: receive MMCCSMS sap message from SMC */
@@ -774,7 +774,6 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 			gsm411_mn_recv, gsm411_mm_send);
 		gsm411_smr_init(&trans->sms.smr_inst, 0, 1,
 			gsm411_rl_recv, gsm411_mn_send);
-		trans->sms.link_id = UM_SAPI_SMS;
 
 		trans->conn = conn;
 
@@ -851,7 +850,6 @@ int gsm411_send_sms(struct gsm_subscriber_connection *conn, struct gsm_sms *sms)
 	gsm411_smr_init(&trans->sms.smr_inst, sms->id, 1,
 		gsm411_rl_recv, gsm411_mn_send);
 	trans->sms.sms = sms;
-	trans->sms.link_id = UM_SAPI_SMS;	/* FIXME: main or SACCH ? */
 
 	trans->conn = conn;
 

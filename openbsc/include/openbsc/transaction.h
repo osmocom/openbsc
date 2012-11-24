@@ -48,8 +48,6 @@ struct gsm_trans {
 			struct gsm_mncc msg;	/* stores setup/disconnect/release message */
 		} cc;
 		struct {
-			uint8_t link_id;	/* RSL Link ID to be used for this trans */
-
 			struct gsm411_smc_inst smc_inst;
 			struct gsm411_smr_inst smr_inst;
 
