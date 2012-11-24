@@ -91,7 +91,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 			     submit->dest_addr_ton,
 			     (const char *)submit->destination_addr);
 	if (!dest) {
-		LOGP(DSMS, LOGL_NOTICE, "SMPP SUBMIT-SM for unknown subscriber: "
+		LOGP(DLSMS, LOGL_NOTICE, "SMPP SUBMIT-SM for unknown subscriber: "
 		     "%s (NPI=%u)\n", submit->destination_addr,
 		     submit->dest_addr_npi);
 		return ESME_RINVDSTADR;
@@ -101,7 +101,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 	if (t) {
 		if (submit->sm_length) {
 			/* ERROR: we cannot have botH! */
-			LOGP(DSMS, LOGL_ERROR, "SMPP Cannot have payload in "
+			LOGP(DLSMS, LOGL_ERROR, "SMPP Cannot have payload in "
 				"TLV _and_ in the header\n");
 			return ESME_ROPTPARNOTALLWD;
 		}
@@ -171,7 +171,7 @@ static int submit_to_sms(struct gsm_sms **psms, struct gsm_network *net,
 		sms->user_data_len = sms_msg_len;
 	} else {
 		sms_free(sms);
-		LOGP(DSMS, LOGL_ERROR, "SMPP Unknown Data Coding 0x%02x\n",
+		LOGP(DLSMS, LOGL_ERROR, "SMPP Unknown Data Coding 0x%02x\n",
 			submit->data_coding);
 		return ESME_RUNKNOWNERR;
 	}
@@ -202,18 +202,18 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	case 3: /* store-and-forward */
 		rc = db_sms_store(sms);
 		if (rc < 0) {
-			LOGP(DSMS, LOGL_ERROR, "SMPP SUBMIT-SM: Unable to "
+			LOGP(DLSMS, LOGL_ERROR, "SMPP SUBMIT-SM: Unable to "
 				"store SMS in database\n");
 			sms_free(sms);
 			submit_r->command_status = ESME_RSYSERR;
 			return 0;
 		}
 		strcpy((char *)submit_r->message_id, "msg_id_not_implemented");
-		LOGP(DSMS, LOGL_INFO, "SMPP SUBMIT-SM: Stored in DB\n");
+		LOGP(DLSMS, LOGL_INFO, "SMPP SUBMIT-SM: Stored in DB\n");
 		rc = 0;
 		break;
 	case 2: /* forward (i.e. transaction) mode */
-		LOGP(DSMS, LOGL_DEBUG, "SMPP SUBMIT-SM: Forwarding in "
+		LOGP(DLSMS, LOGL_DEBUG, "SMPP SUBMIT-SM: Forwarding in "
 			"real time (Transaction/Forward mode)\n");
 		sms->smpp.transaction_mode = 1;
 		gsm411_send_sms_subscr(sms->receiver, sms);
@@ -241,7 +241,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 	case S_SMS_UNKNOWN_ERROR:
 		if (sms->smpp.transaction_mode) {
 			/* Send back the SUBMIT-SM response with apropriate error */
-			LOGP(DSMS, LOGL_INFO, "SMPP SUBMIT-SM: Error\n");
+			LOGP(DLSMS, LOGL_INFO, "SMPP SUBMIT-SM: Error\n");
 			rc = smpp_tx_submit_r(sms->smpp.esme,
 					      sms->smpp.sequence_nr,
 					      ESME_RDELIVERYFAILURE,
@@ -252,7 +252,7 @@ static int smpp_sms_cb(unsigned int subsys, unsigned int signal,
 		/* SMS layer tells us the delivery has been completed */
 		if (sms->smpp.transaction_mode) {
 			/* Send back the SUBMIT-SM response */
-			LOGP(DSMS, LOGL_INFO, "SMPP SUBMIT-SM: Success\n");
+			LOGP(DLSMS, LOGL_INFO, "SMPP SUBMIT-SM: Success\n");
 			rc = smpp_tx_submit_r(sms->smpp.esme,
 					      sms->smpp.sequence_nr,
 					      ESME_ROK, sms->smpp.msg_id);
