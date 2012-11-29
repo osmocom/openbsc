@@ -1,8 +1,8 @@
 /* A Media Gateway Control Protocol Media Gateway: RFC 3435 */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -83,6 +83,7 @@ typedef int (*mgcp_realloc)(struct mgcp_trunk_config *cfg, int endpoint);
 typedef int (*mgcp_change)(struct mgcp_trunk_config *cfg, int endpoint, int state);
 typedef int (*mgcp_policy)(struct mgcp_trunk_config *cfg, int endpoint, int state, const char *transactio_id);
 typedef int (*mgcp_reset)(struct mgcp_trunk_config *cfg);
+typedef int (*mgcp_rqnt)(struct mgcp_endpoint *endp, char tone, const char *data);
 
 #define PORT_ALLOC_STATIC	0
 #define PORT_ALLOC_DYNAMIC	1
@@ -148,6 +149,7 @@ struct mgcp_config {
 	mgcp_policy policy_cb;
 	mgcp_reset reset_cb;
 	mgcp_realloc realloc_cb;
+	mgcp_rqnt rqnt_cb;
 	void *data;
 
 	uint32_t last_call_id;

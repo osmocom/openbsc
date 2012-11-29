@@ -2,8 +2,8 @@
 /* The protocol implementation */
 
 /*
- * (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+ * (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -822,6 +822,15 @@ static struct msgb *handle_rsip(struct mgcp_config *cfg, struct msgb *msg)
 	return NULL;
 }
 
+static char extract_tone(const char *line)
+{
+	const char *str = strstr(line, "D/");
+	if (!str)
+		return CHAR_MAX;
+
+	return str[2];
+}
+
 /*
  * This can request like DTMF detection and forward, fax detection... it
  * can also request when the notification should be send and such. We don't
@@ -831,18 +840,45 @@ static struct msgb *handle_noti_req(struct mgcp_config *cfg, struct msgb *msg)
 {
 	const char *trans_id;
 	struct mgcp_endpoint *endp;
-	int found;
-	char *data = strtok((char *) msg->l3h, "\r\n");
+	int found, res = 0;
+	char *line, *save;
+	char tone = 0;
 
-	found = mgcp_analyze_header(cfg, data, &trans_id, &endp);
-	if (found != 0)
-		return create_err_response(400, "RQNT", trans_id);
+	for_each_line((char *) msg->l3h, line, save) {
+		/* skip first line */
+		if ((char *) msg->l3h == line) {
+			found = mgcp_analyze_header(cfg, line, &trans_id,
+						&endp);
+			if (found != 0)
+				return create_err_response(400, "RQNT",
+						trans_id);
 
-	if (!endp->allocated) {
-		LOGP(DMGCP, LOGL_ERROR, "Endpoint is not used. 0x%x\n", ENDPOINT_NUMBER(endp));
-		return create_err_response(400, "RQNT", trans_id);
+			if (!endp->allocated) {
+				LOGP(DMGCP, LOGL_ERROR,
+					"Endpoint is not used. 0x%x\n",
+					ENDPOINT_NUMBER(endp));
+				return create_err_response(400, "RQNT",
+						trans_id);
+			}
+		}
+
+		switch (line[0]) {
+		case 'S':
+			tone = extract_tone(line);
+			break;
+		}
 	}
-	return create_ok_response(200, "RQNT", trans_id);
+
+	/* we didn't see a signal request with a tone */
+	if (tone == CHAR_MAX)
+		return create_ok_response(200, "RQNT", trans_id);
+
+	if (cfg->rqnt_cb)
+		res = cfg->rqnt_cb(endp, tone, (const char *) msg->l3h);
+
+	return res == 0 ?
+		create_ok_response(200, "RQNT", trans_id) :
+		create_err_response(res, "RQNT", trans_id);
 }
 
 struct mgcp_config *mgcp_config_alloc(void)
