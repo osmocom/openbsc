@@ -74,6 +74,15 @@
 #define DLCX_RET "250 7 OK\r\n"			\
 		 "P: PS=0, OS=0, PR=0, OR=0, PL=0, JI=0\r\n"
 
+#define RQNT	 "RQNT 186908780 1@mgw MGCP 1.0\r\n"	\
+		 "X: B244F267488\r\n"			\
+		 "S: D/9\r\n"
+
+#define RQNT2	 "RQNT 186908780 1@mgw MGCP 1.0\r\n"	\
+		 "X: ADD4F26746F\r\n"			\
+		 "R: D/[0-9#*](N), G/ft, fxr/t38\r\n"
+
+#define RQNT_RET "200 186908780 OK\r\n"
 
 struct mgcp_test {
 	const char *name;
@@ -91,6 +100,8 @@ const struct mgcp_test tests[] = {
 	{ "SHORT2", SHORT2, SHORT2_RET },
 	{ "SHORT3", SHORT3, SHORT2_RET },
 	{ "SHORT4", SHORT4, SHORT2_RET },
+	{ "RQNT1", RQNT, RQNT_RET },
+	{ "RQNT2", RQNT2, RQNT_RET },
 	{ "DLCX", DLCX, DLCX_RET },
 };
 
@@ -134,6 +145,52 @@ static void test_messages(void)
 		msgb_free(msg);
 	}
 
+	talloc_free(cfg);
+}
+
+static int rqnt_cb(struct mgcp_endpoint *endp, char _tone, const char *data)
+{
+	ptrdiff_t tone = _tone;
+	endp->cfg->data = (void *) tone;
+	return 0;
+}
+
+static void test_rqnt_cb(void)
+{
+	struct mgcp_config *cfg;
+	struct msgb *inp, *msg;
+
+	cfg = mgcp_config_alloc();
+	cfg->rqnt_cb = rqnt_cb;
+
+	cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	inp = create_msg(CRCX);
+	msgb_free(mgcp_handle_message(cfg, inp));
+	msgb_free(inp);
+
+	/* send the RQNT and check for the CB */
+	inp = create_msg(RQNT);
+	msg = mgcp_handle_message(cfg, inp);
+	if (strncmp((const char *) msg->l2h, "200", 3) != 0) {
+		printf("FAILED: message is not 200. '%s'\n", msg->l2h);
+		abort();
+	}
+
+	if (cfg->data != (void *) '9') {
+		printf("FAILED: callback not called: %p\n", cfg->data);
+		abort();
+	}
+
+	msgb_free(msg);
+	msgb_free(inp);
+
+	inp = create_msg(DLCX);
+	msgb_free(mgcp_handle_message(cfg, inp));
+	msgb_free(inp);
 	talloc_free(cfg);
 }
 
@@ -195,6 +252,7 @@ int main(int argc, char **argv)
 
 	test_messages();
 	test_packet_loss_calc();
+	test_rqnt_cb();
 
 	printf("Done\n");
 	return EXIT_SUCCESS;
