@@ -459,7 +459,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	struct dtap_header *header;
 	struct msgb *gsm48;
 	uint8_t *data;
-	int rc;
+	int rc, dtap_rc;
 
 	LOGP(DMSC, LOGL_DEBUG, "Rx MSC DTAP: %s\n",
 		osmo_hexdump(msg->l3h, length));
@@ -497,9 +497,10 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 
 	/* pass it to the filter for extra actions */
 	rc = bsc_scan_msc_msg(conn->conn, gsm48);
-	gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
+	dtap_rc = gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
 	if (rc == BSS_SEND_USSD)
 		bsc_send_welcome_ussd(conn->conn);
+	return dtap_rc;
 }
 
 int bsc_handle_udt(struct osmo_msc_data *msc,
