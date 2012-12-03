@@ -1,6 +1,6 @@
 /* GSM 08.08 BSSMAP handling						*/
-/* (C) 2009-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2009-2011 by On-Waves
+/* (C) 2009-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2009-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -459,6 +459,7 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	struct dtap_header *header;
 	struct msgb *gsm48;
 	uint8_t *data;
+	int rc;
 
 	LOGP(DMSC, LOGL_DEBUG, "Rx MSC DTAP: %s\n",
 		osmo_hexdump(msg->l3h, length));
@@ -495,8 +496,10 @@ static int dtap_rcvmsg(struct osmo_bsc_sccp_con *conn,
 	memcpy(data, msg->l3h + sizeof(*header), length - sizeof(*header));
 
 	/* pass it to the filter for extra actions */
-	bsc_scan_msc_msg(conn->conn, gsm48);
-	return gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
+	rc = bsc_scan_msc_msg(conn->conn, gsm48);
+	gsm0808_submit_dtap(conn->conn, gsm48, header->link_id, 1);
+	if (rc == BSS_SEND_USSD)
+		bsc_send_welcome_ussd(conn->conn);
 }
 
 int bsc_handle_udt(struct osmo_msc_data *msc,

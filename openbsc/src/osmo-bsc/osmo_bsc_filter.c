@@ -225,23 +225,30 @@ int bsc_scan_bts_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 	return 0;
 }
 
-static void send_welcome_ussd(struct gsm_subscriber_connection *conn)
+static int send_welcome_ussd(struct gsm_subscriber_connection *conn)
 {
 	struct osmo_bsc_sccp_con *bsc_con;
 
 	bsc_con = conn->sccp_con;
 	if (!bsc_con) {
 		LOGP(DMSC, LOGL_DEBUG, "No SCCP connection associated.\n");
-		return;
+		return 0;
 	}
 
 	if (!bsc_con->msc->ussd_welcome_txt) {
 		LOGP(DMSC, LOGL_DEBUG, "No USSD Welcome text defined.\n");
-		return;
+		return 0;
 	}
 
-	gsm0480_send_ussdNotify(conn, 1, bsc_con->msc->ussd_welcome_txt);
+	return BSS_SEND_USSD;
+}
+
+int bsc_send_welcome_ussd(struct gsm_subscriber_connection *conn)
+{
+	gsm0480_send_ussdNotify(conn, 1, conn->sccp_con->msc->ussd_welcome_txt);
 	gsm0480_send_releaseComplete(conn);
+
+	return 0;
 }
 
 /**
@@ -276,7 +283,8 @@ int bsc_scan_msc_msg(struct gsm_subscriber_connection *conn, struct msgb *msg)
 		}
 
 		if (conn->sccp_con->new_subscriber)
-			send_welcome_ussd(conn);
+			return send_welcome_ussd(conn);
+		return 0;
 	}
 
 	return 0;
