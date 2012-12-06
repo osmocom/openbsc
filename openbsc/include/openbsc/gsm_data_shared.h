@@ -196,8 +196,8 @@ struct gsm_lchan {
 	uint8_t sapis[8];
 	int sacch_deact;
 
-	/** GSM 08.58 9.3.20 */
-	int release_mode;
+	/* Release handling */
+	enum rsl_rel_mode release_mode;
 
 	struct {
 		uint32_t bound_ip;

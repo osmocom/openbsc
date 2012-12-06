@@ -46,7 +46,7 @@ void lchan_free(struct gsm_lchan *lchan);
 void lchan_reset(struct gsm_lchan *lchan);
 
 /* Release the given lchan */
-int lchan_release(struct gsm_lchan *lchan, int sacch_deact, int release_mode);
+int lchan_release(struct gsm_lchan *lchan, int sacch_deact, enum rsl_rel_mode release_mode);
 
 struct load_counter {
 	unsigned int total;
