@@ -56,6 +56,14 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 	osmo_signal_dispatch(SS_LCHAN, sig_no, &sig);
 }
 
+static void do_lchan_free(struct gsm_lchan *lchan)
+{
+	/* we have an error timer pending to release that */
+	if (lchan->state != LCHAN_S_REL_ERR)
+		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
+}
+
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
 {
 	/* mask off the transparent bit ? */
@@ -196,9 +204,7 @@ static void lchan_deact_tmr_cb(void *data)
 	LOGP(DRSL, LOGL_ERROR, "%s Timeout during deactivation!\n",
 		gsm_lchan_name(lchan));
 
-	if (lchan->state != LCHAN_S_REL_ERR)
-		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
-	lchan_free(lchan);
+	do_lchan_free(lchan);
 }
 
 
@@ -696,17 +702,15 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
 
+	/* Stop all pending timers */
 	osmo_timer_del(&lchan->act_timer);
+	osmo_timer_del(&lchan->T3111);
 
 	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
-	osmo_timer_del(&lchan->T3111);
-	/* we have an error timer pending to release that */
-	if (lchan->state != LCHAN_S_REL_ERR)
-		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
-	lchan_free(lchan);
+	do_lchan_free(lchan);
 
 	return 0;
 }
