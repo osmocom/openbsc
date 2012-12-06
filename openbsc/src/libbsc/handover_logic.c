@@ -167,7 +167,7 @@ void bsc_clear_handover(struct gsm_subscriber_connection *conn, int free_lchan)
 	conn->ho_lchan = NULL;
 
 	if (free_lchan)
-		lchan_release(ho->new_lchan, 0, 1);
+		lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
 
 	osmo_timer_del(&ho->T3103);
 	llist_del(&ho->list);
@@ -185,7 +185,7 @@ static void ho_T3103_cb(void *_ho)
 
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
-	lchan_release(ho->new_lchan, 0, 1);
+	lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
 	llist_del(&ho->list);
 	talloc_free(ho);
 }
@@ -276,7 +276,7 @@ static int ho_gsm48_ho_compl(struct gsm_lchan *new_lchan)
 	ho->old_lchan->conn = NULL;
 
 	rsl_lchan_set_state(ho->old_lchan, LCHAN_S_INACTIVE);
-	lchan_release(ho->old_lchan, 0, 1);
+	lchan_release(ho->old_lchan, 0, RSL_REL_LOCAL_END);
 
 	/* do something to re-route the actual speech frames ! */
 
@@ -306,7 +306,7 @@ static int ho_gsm48_ho_fail(struct gsm_lchan *old_lchan)
 	/* release the channel and forget about it */
 	ho->new_lchan->conn->ho_lchan = NULL;
 	ho->new_lchan->conn = NULL;
-	lchan_release(ho->new_lchan, 0, 1);
+	lchan_release(ho->new_lchan, 0, RSL_REL_LOCAL_END);
 
 	talloc_free(ho);
 
