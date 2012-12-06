@@ -120,6 +120,7 @@ enum gsm_lchan_state {
 	LCHAN_S_ACTIVE,		/* channel is active and operational */
 	LCHAN_S_REL_REQ,	/* channel release has been requested */
 	LCHAN_S_REL_ERR,	/* channel is in an error state */
+	LCHAN_S_BROKEN,		/* channel is somehow unusable */
 	LCHAN_S_INACTIVE,	/* channel is set inactive */
 };
 
@@ -219,6 +220,7 @@ struct gsm_lchan {
 	struct osmo_timer_list T3111;
 	struct osmo_timer_list error_timer;
 	struct osmo_timer_list act_timer;
+	uint8_t error_cause;
 
 	/* table of neighbor cell measurements */
 	struct neigh_meas_proc neigh_meas[MAX_NEIGH_MEAS];

@@ -935,19 +935,18 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		const uint8_t *cause = TLVP_VAL(&tp, RSL_IE_CAUSE);
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+		msg->lchan->error_cause = *cause;
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
 		else
 			rsl_rf_chan_release(msg->lchan, 1);
 
 	} else
-		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	send_lchan_signal(S_LCHAN_ACTIVATE_NACK, msg->lchan, NULL);
-
-	lchan_free(msg->lchan);
 	return 0;
 }
 

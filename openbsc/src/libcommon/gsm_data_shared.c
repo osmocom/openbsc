@@ -109,6 +109,7 @@ static const struct value_string lchan_s_names[] = {
 	{ LCHAN_S_INACTIVE,	"INACTIVE" },
 	{ LCHAN_S_REL_REQ,	"RELEASE REQUESTED" },
 	{ LCHAN_S_REL_ERR,	"RELEASE DUE ERROR" },
+	{ LCHAN_S_BROKEN,	"BROKEN UNUSABLE" },
 	{ 0,			NULL }
 };
 
