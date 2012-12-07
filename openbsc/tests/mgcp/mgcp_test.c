@@ -103,11 +103,12 @@
 		 "X: B244F267488\r\n"			\
 		 "S: D/9\r\n"
 
-#define RQNT2	 "RQNT 186908780 1@mgw MGCP 1.0\r\n"	\
+#define RQNT2	 "RQNT 186908781 1@mgw MGCP 1.0\r\n"	\
 		 "X: ADD4F26746F\r\n"			\
 		 "R: D/[0-9#*](N), G/ft, fxr/t38\r\n"
 
-#define RQNT_RET "200 186908780 OK\r\n"
+#define RQNT1_RET "200 186908780 OK\r\n"
+#define RQNT2_RET "200 186908781 OK\r\n"
 
 struct mgcp_test {
 	const char *name;
@@ -129,8 +130,16 @@ static const struct mgcp_test tests[] = {
 	{ "SHORT2", SHORT2, SHORT2_RET },
 	{ "SHORT3", SHORT3, SHORT2_RET },
 	{ "SHORT4", SHORT4, SHORT2_RET },
-	{ "RQNT1", RQNT, RQNT_RET },
-	{ "RQNT2", RQNT2, RQNT_RET },
+	{ "RQNT1", RQNT, RQNT1_RET },
+	{ "RQNT2", RQNT2, RQNT2_RET },
+	{ "DLCX", DLCX, DLCX_RET },
+};
+
+static const struct mgcp_test retransmit[] = {
+	{ "CRCX", CRCX, CRCX_RET },
+	{ "RQNT1", RQNT, RQNT1_RET },
+	{ "RQNT2", RQNT2, RQNT2_RET },
+	{ "MDCX3", MDCX3, MDCX3_RET },
 	{ "DLCX", DLCX, DLCX_RET },
 };
 
@@ -177,7 +186,46 @@ static void test_messages(void)
 	talloc_free(cfg);
 }
 
-static int rqnt_cb(struct mgcp_endpoint *endp, char _tone, const char *data)
+static void test_retransmission(void)
+{
+	struct mgcp_config *cfg;
+	int i;
+
+	cfg = mgcp_config_alloc();
+
+	cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	for (i = 0; i < ARRAY_SIZE(retransmit); i++) {
+		const struct mgcp_test *t = &retransmit[i];
+		struct msgb *inp;
+		struct msgb *msg;
+
+		printf("Testing %s\n", t->name);
+
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+
+		/* Retransmit... */
+		printf("Re-transmitting %s\n", t->name);
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+	}
+
+	talloc_free(cfg);
+}
+
+static int rqnt_cb(struct mgcp_endpoint *endp, char _tone)
 {
 	ptrdiff_t tone = _tone;
 	endp->cfg->data = (void *) tone;
@@ -280,6 +328,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	test_messages();
+	test_retransmission();
 	test_packet_loss_calc();
 	test_rqnt_cb();
 

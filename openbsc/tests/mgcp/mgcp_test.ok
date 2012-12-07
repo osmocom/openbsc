@@ -14,5 +14,15 @@ Testing SHORT4
 Testing RQNT1
 Testing RQNT2
 Testing DLCX
+Testing CRCX
+Re-transmitting CRCX
+Testing RQNT1
+Re-transmitting RQNT1
+Testing RQNT2
+Re-transmitting RQNT2
+Testing MDCX3
+Re-transmitting MDCX3
+Testing DLCX
+Re-transmitting DLCX
 Testing packet loss calculation.
 Done
