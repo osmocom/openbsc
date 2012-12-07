@@ -68,6 +68,16 @@
 		 "m=audio 5904 RTP/AVP 97\r"	\
 		 "a=rtpmap:97 GSM-EFR/8000\r"
 
+#define CRCX_ZYN_RET "200 2 OK\r\n"		\
+		 "I: 2\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 2 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
+
 #define DLCX	 "DLCX 7 1@mgw MGCP 1.0\r\n"	\
 		 "C: 2\r\n"
 
@@ -90,11 +100,12 @@ struct mgcp_test {
 	const char *exp_resp;
 };
 
-const struct mgcp_test tests[] = {
+static const struct mgcp_test tests[] = {
 	{ "AUEP1", AUEP1, AUEP1_RET },
 	{ "AUEP2", AUEP2, AUEP2_RET },
 	{ "CRCX", CRCX, CRCX_RET },
-	{ "CRCX_ZYN", CRCX_ZYN, CRCX_RET },
+	{ "DLCX", DLCX, DLCX_RET },
+	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET },
 	{ "EMPTY", EMPTY, EMPTY_RET },
 	{ "SHORT1", SHORT, SHORT_RET },
 	{ "SHORT2", SHORT2, SHORT2_RET },
