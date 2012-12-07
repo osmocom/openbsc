@@ -221,7 +221,7 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 	struct msgb *resp = NULL;
 
 	if (msgb_l2len(msg) < 4) {
-		LOGP(DMGCP, LOGL_ERROR, "mgs too short: %d\n", msg->len);
+		LOGP(DMGCP, LOGL_ERROR, "msg too short: %d\n", msg->len);
 		return NULL;
 	}
 
