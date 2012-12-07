@@ -182,6 +182,7 @@ static struct msgb *create_response_with_sdp(struct mgcp_endpoint *endp,
 struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
 {
         int code;
+	int i, handled = 0;
 	struct msgb *resp = NULL;
 
 	if (msgb_l2len(msg) < 4) {
@@ -192,19 +193,21 @@ struct msgb *mgcp_handle_message(struct mgcp_config *cfg, struct msgb *msg)
         /* attempt to treat it as a response */
         if (sscanf((const char *)&msg->l2h[0], "%3d %*s", &code) == 1) {
 		LOGP(DMGCP, LOGL_DEBUG, "Response: Code: %d\n", code);
-	} else {
-		int i, handled = 0;
-		msg->l3h = &msg->l2h[4];
-		for (i = 0; i < ARRAY_SIZE(mgcp_requests); ++i)
-			if (strncmp(mgcp_requests[i].name, (const char *) &msg->l2h[0], 4) == 0) {
-				handled = 1;
-				resp = mgcp_requests[i].handle_request(cfg, msg);
-				break;
-			}
-		if (!handled) {
-			LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->l2h[0]);
+		return NULL;
+	}
+
+	msg->l3h = &msg->l2h[4];
+
+	for (i = 0; i < ARRAY_SIZE(mgcp_requests); ++i) {
+		if (strncmp(mgcp_requests[i].name, (const char *) &msg->l2h[0], 4) == 0) {
+			handled = 1;
+			resp = mgcp_requests[i].handle_request(cfg, msg);
+			break;
 		}
 	}
+
+	if (!handled)
+		LOGP(DMGCP, LOGL_NOTICE, "MSG with type: '%.4s' not handled\n", &msg->l2h[0]);
 
 	return resp;
 }
