@@ -1032,15 +1032,11 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	endp->ci = CI_UNUSED;
 	endp->allocated = 0;
 
-	if (endp->callid) {
-		talloc_free(endp->callid);
-		endp->callid = NULL;
-	}
+	talloc_free(endp->callid);
+	endp->callid = NULL;
 
-	if (endp->local_options) {
-		talloc_free(endp->local_options);
-		endp->local_options = NULL;
-	}
+	talloc_free(endp->local_options);
+	endp->local_options = NULL;
 
 	mgcp_rtp_end_reset(&endp->bts_end);
 	mgcp_rtp_end_reset(&endp->net_end);
