@@ -34,6 +34,21 @@
 #define SHORT	"CRCX \r\n"
 #define SHORT_RET "510 000000 FAIL\r\n"
 
+#define MDCX_WRONG_EP "MDCX 18983213 ds/e1-3/1@172.16.6.66 MGCP 1.0\r\n"
+#define MDCX_ERR_RET "510 18983213 FAIL\r\n"
+#define MDCX_UNALLOCATED "MDCX 18983214 ds/e1-1/2@172.16.6.66 MGCP 1.0\r\n"
+#define MDCX_RET "400 18983214 FAIL\r\n"
+#define MDCX3 "MDCX 18983215 1@mgw MGCP 1.0\r\n"
+#define MDCX3_RET "200 18983215 OK\r\n"		\
+		 "I: 1\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 1 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
+
 #define SHORT2	"CRCX 1"
 #define SHORT2_RET "510 000000 FAIL\r\n"
 #define SHORT3	"CRCX 1 1@mgw"
@@ -68,6 +83,16 @@
 		 "m=audio 5904 RTP/AVP 97\r"	\
 		 "a=rtpmap:97 GSM-EFR/8000\r"
 
+#define CRCX_ZYN_RET "200 2 OK\r\n"		\
+		 "I: 2\n"			\
+		 "\n"				\
+		 "v=0\r\n"			\
+		 "o=- 2 23 IN IP4 0.0.0.0\r\n"	\
+		 "c=IN IP4 0.0.0.0\r\n"		\
+		 "t=0 0\r\n"			\
+		 "m=audio 0 RTP/AVP 126\r\n"	\
+		 "a=rtpmap:126 AMR/8000\r\n"
+
 #define DLCX	 "DLCX 7 1@mgw MGCP 1.0\r\n"	\
 		 "C: 2\r\n"
 
@@ -78,11 +103,12 @@
 		 "X: B244F267488\r\n"			\
 		 "S: D/9\r\n"
 
-#define RQNT2	 "RQNT 186908780 1@mgw MGCP 1.0\r\n"	\
+#define RQNT2	 "RQNT 186908781 1@mgw MGCP 1.0\r\n"	\
 		 "X: ADD4F26746F\r\n"			\
 		 "R: D/[0-9#*](N), G/ft, fxr/t38\r\n"
 
-#define RQNT_RET "200 186908780 OK\r\n"
+#define RQNT1_RET "200 186908780 OK\r\n"
+#define RQNT2_RET "200 186908781 OK\r\n"
 
 struct mgcp_test {
 	const char *name;
@@ -90,18 +116,30 @@ struct mgcp_test {
 	const char *exp_resp;
 };
 
-const struct mgcp_test tests[] = {
+static const struct mgcp_test tests[] = {
 	{ "AUEP1", AUEP1, AUEP1_RET },
 	{ "AUEP2", AUEP2, AUEP2_RET },
+	{ "MDCX1", MDCX_WRONG_EP, MDCX_ERR_RET },
+	{ "MDCX2", MDCX_UNALLOCATED, MDCX_RET },
 	{ "CRCX", CRCX, CRCX_RET },
-	{ "CRCX_ZYN", CRCX_ZYN, CRCX_RET },
+	{ "MDCX3", MDCX3, MDCX3_RET },
+	{ "DLCX", DLCX, DLCX_RET },
+	{ "CRCX_ZYN", CRCX_ZYN, CRCX_ZYN_RET },
 	{ "EMPTY", EMPTY, EMPTY_RET },
 	{ "SHORT1", SHORT, SHORT_RET },
 	{ "SHORT2", SHORT2, SHORT2_RET },
 	{ "SHORT3", SHORT3, SHORT2_RET },
 	{ "SHORT4", SHORT4, SHORT2_RET },
-	{ "RQNT1", RQNT, RQNT_RET },
-	{ "RQNT2", RQNT2, RQNT_RET },
+	{ "RQNT1", RQNT, RQNT1_RET },
+	{ "RQNT2", RQNT2, RQNT2_RET },
+	{ "DLCX", DLCX, DLCX_RET },
+};
+
+static const struct mgcp_test retransmit[] = {
+	{ "CRCX", CRCX, CRCX_RET },
+	{ "RQNT1", RQNT, RQNT1_RET },
+	{ "RQNT2", RQNT2, RQNT2_RET },
+	{ "MDCX3", MDCX3, MDCX3_RET },
 	{ "DLCX", DLCX, DLCX_RET },
 };
 
@@ -148,7 +186,46 @@ static void test_messages(void)
 	talloc_free(cfg);
 }
 
-static int rqnt_cb(struct mgcp_endpoint *endp, char _tone, const char *data)
+static void test_retransmission(void)
+{
+	struct mgcp_config *cfg;
+	int i;
+
+	cfg = mgcp_config_alloc();
+
+	cfg->trunk.number_endpoints = 64;
+	mgcp_endpoints_allocate(&cfg->trunk);
+
+	mgcp_endpoints_allocate(mgcp_trunk_alloc(cfg, 1));
+
+	for (i = 0; i < ARRAY_SIZE(retransmit); i++) {
+		const struct mgcp_test *t = &retransmit[i];
+		struct msgb *inp;
+		struct msgb *msg;
+
+		printf("Testing %s\n", t->name);
+
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+
+		/* Retransmit... */
+		printf("Re-transmitting %s\n", t->name);
+		inp = create_msg(t->req);
+		msg = mgcp_handle_message(cfg, inp);
+		msgb_free(inp);
+		if (strcmp((char *) msg->data, t->exp_resp) != 0)
+			printf("%s failed '%s'\n", t->name, (char *) msg->data);
+		msgb_free(msg);
+	}
+
+	talloc_free(cfg);
+}
+
+static int rqnt_cb(struct mgcp_endpoint *endp, char _tone)
 {
 	ptrdiff_t tone = _tone;
 	endp->cfg->data = (void *) tone;
@@ -251,6 +328,7 @@ int main(int argc, char **argv)
 	osmo_init_logging(&log_info);
 
 	test_messages();
+	test_retransmission();
 	test_packet_loss_calc();
 	test_rqnt_cb();
 

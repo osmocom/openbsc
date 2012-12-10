@@ -126,6 +126,10 @@ struct mgcp_endpoint {
 	/* SSRC/seq/ts patching for loop */
 	int allow_patch;
 
+	/* fields for re-transmission */
+	char *last_trans;
+	char *last_response;
+
 	/* tap for the endpoint */
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
 };
