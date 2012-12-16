@@ -965,7 +965,6 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	 * imagine an IMSI DETACH happening during an active call! */
 
 	release_anchor(conn);
-	msc_release_connection(conn);
 	return 0;
 }
 
