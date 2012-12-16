@@ -196,7 +196,7 @@ static void patch_and_count(struct mgcp_endpoint *endp, struct mgcp_rtp_state *s
 	if (udelta < RTP_MAX_DROPOUT) {
 		if (seq < state->max_seq)
 			state->cycles += RTP_SEQ_MOD;
-	} else if (udelta <= RTP_SEQ_MOD + RTP_MAX_MISORDER) {
+	} else if (udelta <= RTP_SEQ_MOD - RTP_MAX_MISORDER) {
 		LOGP(DMGCP, LOGL_NOTICE,
 			"RTP seqno made a very large jump on 0x%x delta: %u\n",
 			ENDPOINT_NUMBER(endp), udelta);
