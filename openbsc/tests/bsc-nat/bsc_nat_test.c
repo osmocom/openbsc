@@ -1,8 +1,8 @@
 /*
  * BSC NAT Message filtering
  *
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2012 by On-Waves
  *
  * All Rights Reserved
  *
@@ -761,6 +761,7 @@ static void test_cr_filter()
 	struct bsc_nat_parsed *parsed;
 	struct bsc_nat_acc_lst *nat_lst, *bsc_lst;
 	struct bsc_nat_acc_lst_entry *nat_entry, *bsc_entry;
+	struct bsc_nat_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -802,7 +803,8 @@ static void test_cr_filter()
 			abort();
 		}
 
-		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype, &imsi);
+		memset(&cause, 0, sizeof(cause));
+		res = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &contype, &imsi, &cause);
 		if (res != cr_filter[i].result) {
 			printf("FAIL: Wrong result %d for test %d.\n", res, i);
 			abort();
@@ -825,6 +827,7 @@ static void test_dt_filter()
 	int i;
 	struct msgb *msg = msgb_alloc(4096, "test_dt_filter");
 	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_reject_cause cause;
 
 	struct bsc_nat *nat = bsc_nat_alloc();
 	struct bsc_connection *bsc = bsc_connection_alloc(nat);
@@ -854,7 +857,8 @@ static void test_dt_filter()
 		abort();
 	}
 
-	if (bsc_nat_filter_dt(bsc, msg, con, parsed) != 1) {
+	memset(&cause, 0, sizeof(cause));
+	if (bsc_nat_filter_dt(bsc, msg, con, parsed, &cause) != 1) {
 		printf("FAIL: Should have passed..\n");
 		abort();
 	}
@@ -869,7 +873,8 @@ static void test_dt_filter()
 			continue;
 
 		con->imsi_checked = 0;
-		bsc_nat_filter_dt(bsc, msg, con, parsed);
+		memset(&cause, 0, sizeof(cause));
+		bsc_nat_filter_dt(bsc, msg, con, parsed, &cause);
 	}
 }
 

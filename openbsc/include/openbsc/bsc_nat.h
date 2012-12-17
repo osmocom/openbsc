@@ -327,6 +327,11 @@ struct bsc_nat_ussd_con {
 	struct osmo_timer_list auth_timeout;
 };
 
+struct bsc_nat_reject_cause {
+	int lu_reject_cause;
+	int cm_reject_cause;
+};
+
 /* create and init the structures */
 struct bsc_config *bsc_config_alloc(struct bsc_nat *nat, const char *token);
 struct bsc_config *bsc_config_num(struct bsc_nat *nat, int num);
@@ -360,9 +365,11 @@ int bsc_nat_find_paging(struct msgb *msg, const uint8_t **,int *len);
  * Content filtering.
  */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			   struct bsc_nat_parsed *, int *con_type, char **imsi);
+			struct bsc_nat_parsed *, int *con_type, char **imsi,
+			struct bsc_nat_reject_cause *cause);
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-		      struct sccp_connections *con, struct bsc_nat_parsed *parsed);
+			struct sccp_connections *con, struct bsc_nat_parsed *parsed,
+			struct bsc_nat_reject_cause *cause);
 
 /**
  * SCCP patching and handling

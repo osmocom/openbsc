@@ -2,8 +2,8 @@
  * Access filtering
  */
 /*
- * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2011 by On-Waves
+ * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -223,8 +223,8 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 
 /* Filter out CR data... */
 int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
-			   struct bsc_nat_parsed *parsed, int *con_type,
-			   char **imsi)
+			struct bsc_nat_parsed *parsed, int *con_type,
+			char **imsi, struct bsc_nat_reject_cause *cause)
 {
 	struct tlv_parsed tp;
 	struct gsm48_hdr *hdr48;
@@ -233,6 +233,8 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	uint8_t msg_type, proto;
 
 	*con_type = NAT_CON_TYPE_NONE;
+	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
+	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 	*imsi = NULL;
 
 	if (parsed->gsm_type != BSS_MAP_MSG_COMPLETE_LAYER_3) {
@@ -292,11 +294,15 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 }
 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
-		      struct sccp_connections *con, struct bsc_nat_parsed *parsed)
+		struct sccp_connections *con, struct bsc_nat_parsed *parsed,
+		struct bsc_nat_reject_cause *cause)
 {
 	uint32_t len;
 	uint8_t msg_type, proto;
 	struct gsm48_hdr *hdr48;
+
+	cause->cm_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
+	cause->lu_reject_cause = GSM48_REJECT_PLMN_NOT_ALLOWED;
 
 	if (con->imsi_checked)
 		return 0;
