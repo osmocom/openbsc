@@ -99,7 +99,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string,
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc,
 			     uint8_t *data, unsigned int length,
-			     char **imsi, struct bsc_nat_reject_cause *cause)
+			     char **imsi)
 {
 	uint8_t mi_type;
 	struct gsm48_loc_upd_req *lu;
@@ -123,13 +123,12 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc,
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string, cause);
+	return 1;
 }
 
 static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 				 uint8_t *data, unsigned int length,
-				 int *con_type, char **imsi,
-				 struct bsc_nat_reject_cause *cause)
+				 int *con_type, char **imsi)
 {
 	static const uint32_t classmark_offset =
 				offsetof(struct gsm48_service_request, classmark);
@@ -162,12 +161,11 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 		return 0;
 
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string, cause);
+	return 1;
 }
 
 static int _cr_check_pag_resp(struct bsc_connection *bsc,
-			      uint8_t *data, unsigned int length,
-			      char **imsi, struct bsc_nat_reject_cause *cause)
+			      uint8_t *data, unsigned int length, char **imsi)
 {
 	struct gsm48_pag_resp *resp;
 	char mi_string[GSM48_MI_SIZE];
@@ -189,7 +187,7 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc,
 		return 0;
 
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string, cause);
+	return 1;
 }
 
 static int _dt_check_id_resp(struct bsc_connection *bsc,
@@ -199,7 +197,6 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 {
 	char mi_string[GSM48_MI_SIZE];
 	uint8_t mi_type;
-	int ret;
 
 	if (length < 2) {
 		LOGP(DNAT, LOGL_ERROR, "mi does not fit.\n");
@@ -217,10 +214,9 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	ret = auth_imsi(bsc, mi_string, cause);
 	con->imsi_checked = 1;
 	con->imsi = talloc_strdup(con, mi_string);
-	return ret;
+	return auth_imsi(bsc, mi_string, cause);
 }
 
 
@@ -232,7 +228,7 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	struct tlv_parsed tp;
 	struct gsm48_hdr *hdr48;
 	int hdr48_len;
-	int len;
+	int len, ret = 0;
 	uint8_t msg_type, proto;
 
 	*con_type = NAT_CON_TYPE_NONE;
@@ -278,24 +274,35 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
-		return _cr_check_loc_upd(bsc, &hdr48->data[0],
-					hdr48_len - sizeof(*hdr48), imsi, cause);
+		ret = _cr_check_loc_upd(bsc, &hdr48->data[0],
+					hdr48_len - sizeof(*hdr48), imsi);
 	} else if (proto == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
-		return _cr_check_cm_serv_req(bsc, &hdr48->data[0],
+		ret = _cr_check_cm_serv_req(bsc, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
-					     con_type, imsi, cause);
+					     con_type, imsi);
 	} else if (proto == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
-		return _cr_check_pag_resp(bsc, &hdr48->data[0],
-					hdr48_len - sizeof(*hdr48), imsi, cause);
+		ret = _cr_check_pag_resp(bsc, &hdr48->data[0],
+					hdr48_len - sizeof(*hdr48), imsi);
 	} else {
 		/* We only want to filter the above, let other things pass */
 		*con_type = NAT_CON_TYPE_OTHER;
 		return 0;
 	}
+
+	/* check if we are done */
+	if (ret != 1)
+		return ret;
+
+	/* the memory allocation failed */
+	if (!*imsi)
+		return -1;
+
+	/* now check the imsi */
+	return auth_imsi(bsc, *imsi, cause);
 }
 
 int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
@@ -322,11 +329,9 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 
 	proto = hdr48->proto_discr & 0x0f;
 	msg_type = hdr48->msg_type & 0xbf;
-	if (proto == GSM48_PDISC_MM &&
-	    msg_type == GSM48_MT_MM_ID_RESP) {
-		return _dt_check_id_resp(bsc, &hdr48->data[0],
-					len - sizeof(*hdr48), con, cause);
-	} else {
+	if (proto != GSM48_PDISC_MM || msg_type != GSM48_MT_MM_ID_RESP)
 		return 0;
-	}
+
+	return _dt_check_id_resp(bsc, &hdr48->data[0],
+					len - sizeof(*hdr48), con, cause);
 }
