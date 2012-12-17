@@ -52,7 +52,8 @@ static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string)
 }
 
 /* apply white/black list */
-static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
+static int auth_imsi(struct bsc_connection *bsc, const char *mi_string,
+		struct bsc_nat_reject_cause *cause)
 {
 	/*
 	 * Now apply blacklist/whitelist of the BSC and the NAT.
@@ -98,7 +99,7 @@ static int auth_imsi(struct bsc_connection *bsc, const char *mi_string)
 
 static int _cr_check_loc_upd(struct bsc_connection *bsc,
 			     uint8_t *data, unsigned int length,
-			     char **imsi)
+			     char **imsi, struct bsc_nat_reject_cause *cause)
 {
 	uint8_t mi_type;
 	struct gsm48_loc_upd_req *lu;
@@ -122,12 +123,13 @@ static int _cr_check_loc_upd(struct bsc_connection *bsc,
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), lu->mi, lu->mi_len);
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string);
+	return auth_imsi(bsc, mi_string, cause);
 }
 
 static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 				 uint8_t *data, unsigned int length,
-				 int *con_type, char **imsi)
+				 int *con_type, char **imsi,
+				 struct bsc_nat_reject_cause *cause)
 {
 	static const uint32_t classmark_offset =
 				offsetof(struct gsm48_service_request, classmark);
@@ -160,12 +162,12 @@ static int _cr_check_cm_serv_req(struct bsc_connection *bsc,
 		return 0;
 
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string);
+	return auth_imsi(bsc, mi_string, cause);
 }
 
 static int _cr_check_pag_resp(struct bsc_connection *bsc,
 			      uint8_t *data, unsigned int length,
-			      char **imsi)
+			      char **imsi, struct bsc_nat_reject_cause *cause)
 {
 	struct gsm48_pag_resp *resp;
 	char mi_string[GSM48_MI_SIZE];
@@ -187,12 +189,13 @@ static int _cr_check_pag_resp(struct bsc_connection *bsc,
 		return 0;
 
 	*imsi = talloc_strdup(bsc, mi_string);
-	return auth_imsi(bsc, mi_string);
+	return auth_imsi(bsc, mi_string, cause);
 }
 
 static int _dt_check_id_resp(struct bsc_connection *bsc,
 			     uint8_t *data, unsigned int length,
-			     struct sccp_connections *con)
+			     struct sccp_connections *con,
+			     struct bsc_nat_reject_cause *cause)
 {
 	char mi_string[GSM48_MI_SIZE];
 	uint8_t mi_type;
@@ -214,7 +217,7 @@ static int _dt_check_id_resp(struct bsc_connection *bsc,
 	if (mi_type != GSM_MI_TYPE_IMSI)
 		return 0;
 
-	ret = auth_imsi(bsc, mi_string);
+	ret = auth_imsi(bsc, mi_string, cause);
 	con->imsi_checked = 1;
 	con->imsi = talloc_strdup(con, mi_string);
 	return ret;
@@ -275,17 +278,19 @@ int bsc_nat_filter_sccp_cr(struct bsc_connection *bsc, struct msgb *msg,
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_LOC_UPD_REQUEST) {
 		*con_type = NAT_CON_TYPE_LU;
-		return _cr_check_loc_upd(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48), imsi);
+		return _cr_check_loc_upd(bsc, &hdr48->data[0],
+					hdr48_len - sizeof(*hdr48), imsi, cause);
 	} else if (proto == GSM48_PDISC_MM &&
 		  msg_type == GSM48_MT_MM_CM_SERV_REQ) {
 		*con_type = NAT_CON_TYPE_CM_SERV_REQ;
 		return _cr_check_cm_serv_req(bsc, &hdr48->data[0],
 					     hdr48_len - sizeof(*hdr48),
-					     con_type, imsi);
+					     con_type, imsi, cause);
 	} else if (proto == GSM48_PDISC_RR &&
 		   msg_type == GSM48_MT_RR_PAG_RESP) {
 		*con_type = NAT_CON_TYPE_PAG_RESP;
-		return _cr_check_pag_resp(bsc, &hdr48->data[0], hdr48_len - sizeof(*hdr48), imsi);
+		return _cr_check_pag_resp(bsc, &hdr48->data[0],
+					hdr48_len - sizeof(*hdr48), imsi, cause);
 	} else {
 		/* We only want to filter the above, let other things pass */
 		*con_type = NAT_CON_TYPE_OTHER;
@@ -319,7 +324,8 @@ int bsc_nat_filter_dt(struct bsc_connection *bsc, struct msgb *msg,
 	msg_type = hdr48->msg_type & 0xbf;
 	if (proto == GSM48_PDISC_MM &&
 	    msg_type == GSM48_MT_MM_ID_RESP) {
-		return _dt_check_id_resp(bsc, &hdr48->data[0], len - sizeof(*hdr48), con);
+		return _dt_check_id_resp(bsc, &hdr48->data[0],
+					len - sizeof(*hdr48), con, cause);
 	} else {
 		return 0;
 	}
