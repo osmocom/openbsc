@@ -53,7 +53,7 @@ AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface
 AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
 
 
-PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.3.2)
+PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.5.3.60)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
