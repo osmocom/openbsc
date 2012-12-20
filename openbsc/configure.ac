@@ -19,45 +19,38 @@ dnl checks for libraries
 AC_SEARCH_LIBS(crypt, crypt,
     [LIBCRYPT="-lcrypt"; AC_DEFINE([VTY_CRYPT_PW], [], [Use crypt functionality of vty.])])
 
-
-AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
-    [
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
-        osmo_ac_build_nat="yes"
-    ],
-    [
-        osmo_ac_build_nat="no"
-    ])
-AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
-AC_SUBST(osmo_ac_build_nat)
-
-AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
-    [
-        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
-        osmo_ac_build_bsc="yes"
-    ],
-    [
-        osmo_ac_build_bsc="no"
-    ])
-AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
-
-AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
-    [
-        PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
-        osmo_ac_build_smpp="yes"
-	AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
-    ],
-    [
-        osmo_ac_build_smpp="no"
-    ])
-AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
-
-
 PKG_CHECK_MODULES(LIBOSMOCORE, libosmocore >= 0.5.3.60)
 PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
 PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.2)
+
+# Enabke/disable the NAT?
+AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],
+    [osmo_ac_build_nat="$enableval"],[osmo_ac_build_nat="no"])
+if test "$osmo_ac_build_nat" = "yes" ; then
+        PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.2)
+fi
+AM_CONDITIONAL(BUILD_NAT, test "x$osmo_ac_build_nat" = "xyes")
+AC_SUBST(osmo_ac_build_nat)
+
+# Enable/disable the BSC?
+AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo BSC])],
+    [osmo_ac_build_bsc="$enableval"])
+if test "$osmo_ac_build_bsc" = "yes" ; then
+    PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
+fi
+AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
+
+# Enable/disable smpp support in the nitb?
+AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],
+    [osmo_ac_build_smpp="$enableval"])
+if test "$osmo_ac_build_smpp" = "yes" ; then
+    PKG_CHECK_MODULES(LIBSMPP34, libsmpp34 >= 1.10)
+    AC_DEFINE(BUILD_SMPP, 1, [Define if we want to build SMPP])
+fi
+AM_CONDITIONAL(BUILD_SMPP, test "x$osmo_ac_build_smpp" = "xyes")
+
 
 found_libgtp=yes
 PKG_CHECK_MODULES(LIBGTP, libgtp, , found_libgtp=no)
