@@ -359,7 +359,8 @@ static int ipacc_sw_activate(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0,
 	return abis_nm_sendmsg(bts, msg);
 }
 
-static int abis_nm_parse_sw_descr(const uint8_t *sw_descr, int sw_descr_len)
+int abis_nm_parse_sw_config(const uint8_t *sw_descr, const size_t sw_descr_len,
+			struct abis_nm_sw_descr *desc, const int res_len)
 {
 	static const struct tlv_definition sw_descr_def = {
 		.def = {
@@ -368,38 +369,72 @@ static int abis_nm_parse_sw_descr(const uint8_t *sw_descr, int sw_descr_len)
 		},
 	};
 
-	uint8_t tag;
-	uint16_t tag_len;
-	const uint8_t *val;
-	int ofs = 0, len;
+	size_t pos = 0;
+	int desc_pos = 0;
 
-	/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
-	 * nested nature and the fact you have to assume it contains only two sub
-	 * tags NM_ATT_FILE_VERSION & NM_ATT_FILE_ID to parse it */
+	for (pos = 0; pos < sw_descr_len && desc_pos < res_len; ++desc_pos) {
+		uint8_t tag;
+		uint16_t tag_len;
+		const uint8_t *val;
+		int len;
 
-	if (sw_descr[0] != NM_ATT_SW_DESCR) {
-		DEBUGP(DNM, "SW_DESCR attribute identifier not found!\n");
-		return -1;
+		memset(&desc[desc_pos], 0, sizeof(desc[desc_pos]));
+		desc[desc_pos].start = &sw_descr[pos];
+
+		/* Classic TLV parsing doesn't work well with SW_DESCR because of it's
+		 * nested nature and the fact you have to assume it contains only two sub
+		 * tags NM_ATT_FILE_VERSION & NM_ATT_FILE_ID to parse it */
+		if (sw_descr[pos] != NM_ATT_SW_DESCR) {
+			LOGP(DNM, LOGL_ERROR,
+				"SW_DESCR attribute identifier not found!\n");
+			return -1;
+		}
+
+		pos += 1;
+		len = tlv_parse_one(&tag, &tag_len, &val,
+			&sw_descr_def, &sw_descr[pos], sw_descr_len - pos);
+		if (len < 0 || (tag != NM_ATT_FILE_ID)) {
+			LOGP(DNM, LOGL_ERROR,
+				"FILE_ID attribute identifier not found!\n");
+			return -2;
+		}
+		desc[desc_pos].file_id = val;
+		desc[desc_pos].file_id_len = tag_len;
+		pos += len;
+
+
+		len = tlv_parse_one(&tag, &tag_len, &val,
+			&sw_descr_def, &sw_descr[pos], sw_descr_len - pos);
+		if (len < 0 || (tag != NM_ATT_FILE_VERSION)) {
+			LOGP(DNM, LOGL_ERROR,
+				"FILE_VERSION attribute identifier not found!\n");
+			return -3;
+		}
+		desc[desc_pos].file_ver = val;
+		desc[desc_pos].file_ver_len = tag_len;
+		pos += len;
+
+		/* final size */
+		desc[desc_pos].len = &sw_descr[pos] - desc[desc_pos].start;
 	}
-	ofs += 1;
 
-	len = tlv_parse_one(&tag, &tag_len, &val,
-		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
-	if (len < 0 || (tag != NM_ATT_FILE_ID)) {
-		DEBUGP(DNM, "FILE_ID attribute identifier not found!\n");
-		return -2;
+	return desc_pos;
+}
+
+int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw_descr,
+				const size_t size)
+{
+	int res = 0;
+	int i;
+
+	for (i = 1; i < size; ++i) {
+		if (memcmp(sw_descr[res].file_ver, sw_descr[i].file_ver,
+			OSMO_MIN(sw_descr[i].file_ver_len, sw_descr[res].file_ver_len)) < 0) {
+			res = i;
+		}
 	}
-	ofs += len;
 
-	len = tlv_parse_one(&tag, &tag_len, &val,
-		&sw_descr_def, &sw_descr[ofs], sw_descr_len-ofs);
-	if (len < 0 || (tag != NM_ATT_FILE_VERSION)) {
-		DEBUGP(DNM, "FILE_VERSION attribute identifier not found!\n");
-		return -3;
-	}
-	ofs += len;
-
-	return ofs;
+	return res;
 }
 
 static int abis_nm_rx_sw_act_req(struct msgb *mb)
@@ -409,7 +444,8 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 	struct e1inp_sign_link *sign_link = mb->dst;
 	struct tlv_parsed tp;
 	const uint8_t *sw_config;
-	int ret, sw_config_len, sw_descr_len;
+	int ret, sw_config_len, len;
+	struct abis_nm_sw_descr sw_descr[5];
 
 	abis_nm_debugp_foh(DNM, foh);
 
@@ -439,16 +475,22 @@ static int abis_nm_rx_sw_act_req(struct msgb *mb)
 		DEBUGP(DNM, "Found SW config: %s\n", osmo_hexdump(sw_config, sw_config_len));
 	}
 
-		/* Use the first SW_DESCR present in SW config */
-	sw_descr_len = abis_nm_parse_sw_descr(sw_config, sw_config_len);
-	if (sw_descr_len < 0)
+	/* Parse up to two sw descriptions from the data */
+	len = abis_nm_parse_sw_config(sw_config, sw_config_len,
+				&sw_descr[0], ARRAY_SIZE(sw_descr));
+	if (len <= 0) {
+		LOGP(DNM, LOGL_ERROR, "Failed to parse SW Config.\n");
 		return -EINVAL;
+	}
+
+	ret = abis_nm_select_newest_sw(&sw_descr[0], len);
+	DEBUGP(DNM, "Selected sw description %d of %d\n", ret, len);
 
 	return ipacc_sw_activate(sign_link->trx->bts, foh->obj_class,
 				 foh->obj_inst.bts_nr,
 				 foh->obj_inst.trx_nr,
 				 foh->obj_inst.ts_nr,
-				 sw_config, sw_descr_len);
+				 sw_descr[ret].start, sw_descr[ret].len);
 }
 
 /* Receive a CHANGE_ADM_STATE_ACK, parse the TLV and update local state */

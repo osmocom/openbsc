@@ -151,6 +151,7 @@ AC_OUTPUT(
     tests/mgcp/Makefile
     tests/gprs/Makefile
     tests/si/Makefile
+    tests/abis/Makefile
     doc/Makefile
     doc/examples/Makefile
     Makefile)

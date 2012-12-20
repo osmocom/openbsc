@@ -66,6 +66,18 @@ struct abis_nm_cfg {
 	int (*sw_act_req)(struct msgb *);
 };
 
+struct abis_nm_sw_descr {
+	/* where does it start? how long is it? */
+	const uint8_t	*start;
+	size_t		len;
+
+	/* the parsed data */
+	const uint8_t 	*file_id;
+	uint16_t	file_id_len;
+	const uint8_t	*file_ver;
+	uint16_t	file_ver_len;
+};
+
 extern int abis_nm_rcvmsg(struct msgb *msg);
 
 int abis_nm_tlv_parse(struct tlv_parsed *tp, struct gsm_bts *bts, const uint8_t *buf, int len);
@@ -166,5 +178,9 @@ void abis_nm_clear_queue(struct gsm_bts *bts);
 int _abis_nm_sendmsg(struct msgb *msg);
 
 void abis_nm_queue_send_next(struct gsm_bts *bts);	/* for bs11_config. */
+
+int abis_nm_parse_sw_config(const uint8_t *data, const size_t len,
+			struct abis_nm_sw_descr *res, const int res_len);
+int abis_nm_select_newest_sw(const struct abis_nm_sw_descr *sw, const size_t len);
 
 #endif /* _NM_H */
