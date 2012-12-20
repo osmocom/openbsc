@@ -19,6 +19,10 @@
 
 #include <osmocom/abis/e1_input.h>
 
+#ifndef ROLE_BSC
+#include <osmocom/gsm/lapdm.h>
+#endif
+
 struct osmo_bsc_data;
 
 struct osmo_bsc_sccp_con;
