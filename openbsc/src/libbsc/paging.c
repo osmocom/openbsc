@@ -73,6 +73,10 @@ static void page_ms(struct gsm_paging_request *request)
 	unsigned int page_group;
 	struct gsm_bts *bts = request->bts;
 
+	/* the bts is down.. we will just wait for the paging to expire */
+	if (!bts->oml_link)
+		return;
+
 	LOGP(DPAG, LOGL_INFO, "Going to send paging commands: imsi: '%s' tmsi: '0x%x'\n",
 		request->subscr->imsi, request->subscr->tmsi);
 
