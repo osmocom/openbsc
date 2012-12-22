@@ -103,8 +103,10 @@ void trans_free(struct gsm_trans *trans)
 		trans->paging_request = NULL;
 	}
 
-	if (trans->subscr)
+	if (trans->subscr) {
 		subscr_put(trans->subscr);
+		trans->subscr = NULL;
+	}
 
 	llist_del(&trans->entry);
 
