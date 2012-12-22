@@ -339,13 +339,24 @@ void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t caus
 	release_security_operation(conn);
 	release_anchor(conn);
 
-	/* Free all transactions that are associated with the released lchan */
-	/* FIXME: this is not neccessarily the right thing to do, we should
-	 * only set trans->lchan to NULL and wait for another lchan to be
-	 * established to the same MM entity (phone/subscriber) */
+	/*
+	 * Free all transactions that are associated with the released
+	 * connection. The transaction code will inform the CC or SMS
+	 * facilities that will send the release indications. As part of
+	 * the CC REL_IND the remote leg might be released and this will
+	 * trigger the call to trans_free. This is something the llist
+	 * macro can not handle and we will need to re-iterate the list.
+	 *
+	 * TODO: Move the trans_list into the subscriber connection and
+	 * create a pending list for MT transactions. These exist before
+	 * we have a subscriber connection.
+	 */
+restart:
 	llist_for_each_entry_safe(trans, temp, &conn->bts->network->trans_list, entry) {
-		if (trans->conn == conn)
+		if (trans->conn == conn) {
 			trans_free(trans);
+			goto restart;
+		}
 	}
 }
 
