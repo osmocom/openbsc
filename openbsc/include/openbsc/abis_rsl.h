@@ -67,13 +67,13 @@ int rsl_ipacc_pdch_activate(struct gsm_bts_trx_ts *ts, int act);
 int abis_rsl_rcvmsg(struct msgb *msg);
 
 uint64_t str_to_imsi(const char *imsi_str);
-int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason);
+int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id,
+			enum rsl_rel_mode release_mode);
 
 int rsl_lchan_set_state(struct gsm_lchan *lchan, int);
 
 /* to be provided by external code */
 int rsl_deact_sacch(struct gsm_lchan *lchan);
-int rsl_lchan_rll_release(struct gsm_lchan *lchan, uint8_t link_id);
 
 /* BCCH related code */
 int rsl_ccch_conf_to_bs_cc_chans(int ccch_conf);
@@ -95,6 +95,11 @@ int rsl_nokia_si_end(struct gsm_bts_trx *trx);
 
 /* required for Nokia BTS power control */
 int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduction);
+
+
+int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
+				enum rsl_rel_mode release_mode);
+int rsl_start_t3109(struct gsm_lchan *lchan);
 
 #endif /* RSL_MT_H */
 

@@ -141,7 +141,7 @@ static void assignment_t10_timeout(void *_conn)
 	 * secondary_channel has not been released by the handle_chan_nack.
 	 */
 	if (conn->secondary_lchan)
-		lchan_release(conn->secondary_lchan, 0, 1);
+		lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
 	conn->secondary_lchan = NULL;
 
 	/* inform them about the failure */
@@ -416,7 +416,7 @@ static void handle_ass_compl(struct gsm_subscriber_connection *conn,
 	/* swap channels */
 	osmo_timer_del(&conn->T10);
 
-	lchan_release(conn->lchan, 0, 1);
+	lchan_release(conn->lchan, 0, RSL_REL_LOCAL_END);
 	conn->lchan = conn->secondary_lchan;
 	conn->secondary_lchan = NULL;
 
@@ -444,7 +444,7 @@ static void handle_ass_fail(struct gsm_subscriber_connection *conn,
 
 	/* stop the timer and release it */
 	osmo_timer_del(&conn->T10);
-	lchan_release(conn->secondary_lchan, 0, 1);
+	lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
 	conn->secondary_lchan = NULL;
 
 	gh = msgb_l3(msg);
@@ -649,7 +649,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 		rc = BSC_API_CONN_POL_REJECT;
 		lchan->conn = subscr_con_allocate(msg->lchan);
 		if (!lchan->conn) {
-			lchan_release(lchan, 1, 0);
+			lchan_release(lchan, 1, RSL_REL_NORMAL);
 			return -1;
 		}
 
@@ -659,7 +659,7 @@ int gsm0408_rcvmsg(struct msgb *msg, uint8_t link_id)
 		if (rc != BSC_API_CONN_POL_ACCEPT) {
 			lchan->conn->lchan = NULL;
 			subscr_con_free(lchan->conn);
-			lchan_release(lchan, 1, 0);
+			lchan_release(lchan, 1, RSL_REL_NORMAL);
 		}
 	}
 
@@ -698,10 +698,10 @@ int gsm0808_clear(struct gsm_subscriber_connection *conn)
 		bsc_clear_handover(conn, 1);
 
 	if (conn->secondary_lchan)
-		lchan_release(conn->secondary_lchan, 0, 1);
+		lchan_release(conn->secondary_lchan, 0, RSL_REL_LOCAL_END);
 
 	if (conn->lchan)
-		lchan_release(conn->lchan, 1, 0);
+		lchan_release(conn->lchan, 1, RSL_REL_NORMAL);
 
 	conn->lchan = NULL;
 	conn->secondary_lchan = NULL;

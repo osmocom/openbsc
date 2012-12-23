@@ -2,6 +2,7 @@
  * 3GPP TS 08.58 version 8.6.0 Release 1999 / ETSI TS 100 596 V8.6.0 */
 
 /* (C) 2008-2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2012 by Holger Hans Peter Freyther
  *
  * All Rights Reserved
  *
@@ -45,6 +46,11 @@
 #define RSL_ALLOC_SIZE		1024
 #define RSL_ALLOC_HEADROOM	128
 
+enum sacch_deact {
+	SACCH_NONE,
+	SACCH_DEACTIVATE,
+};
+
 static int rsl_send_imm_assignment(struct gsm_lchan *lchan);
 
 static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
@@ -54,6 +60,14 @@ static void send_lchan_signal(int sig_no, struct gsm_lchan *lchan,
 	sig.lchan = lchan;
 	sig.mr = resp;
 	osmo_signal_dispatch(SS_LCHAN, sig_no, &sig);
+}
+
+static void do_lchan_free(struct gsm_lchan *lchan)
+{
+	/* we have an error timer pending to release that */
+	if (lchan->state != LCHAN_S_REL_ERR)
+		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
+	lchan_free(lchan);
 }
 
 static uint8_t mdisc_by_msgtype(uint8_t msg_type)
@@ -182,7 +196,7 @@ static void lchan_act_tmr_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during activation!\n",
+	LOGP(DRSL, LOGL_ERROR, "%s Timeout during activation!\n",
 		gsm_lchan_name(lchan));
 
 	rsl_lchan_set_state(lchan, LCHAN_S_NONE);
@@ -193,12 +207,10 @@ static void lchan_deact_tmr_cb(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	LOGP(DRSL, LOGL_NOTICE, "%s Timeout during deactivation!\n",
+	LOGP(DRSL, LOGL_ERROR, "%s Timeout during deactivation!\n",
 		gsm_lchan_name(lchan));
 
-	if (lchan->state != LCHAN_S_REL_ERR)
-		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
-	lchan_free(lchan);
+	do_lchan_free(lchan);
 }
 
 
@@ -637,11 +649,15 @@ static void error_timeout_cb(void *data)
 static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan);
 
 /* Chapter 8.4.14 / 4.7: Tell BTS to release the radio channel */
-static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
+static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
+				enum sacch_deact deact_sacch)
 {
 	struct abis_rsl_dchan_hdr *dh;
 	struct msgb *msg;
 	int rc;
+
+	/* Stop timers that should lead to a channel release */
+	osmo_timer_del(&lchan->T3109);
 
 	if (lchan->state == LCHAN_S_REL_ERR) {
 		LOGP(DRSL, LOGL_NOTICE, "%s is in error state not sending release.\n",
@@ -660,13 +676,34 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error)
 	DEBUGP(DRSL, "%s RF Channel Release CMD due error %d\n", gsm_lchan_name(lchan), error);
 
 	if (error) {
-		/*
-		 * the nanoBTS sends RLL release indications after the channel release. This can
-		 * be a problem when we have reassigned the channel to someone else and then can
-		 * not figure out who used this channel.
-		 */
 		struct e1inp_sign_link *sign_link = msg->dst;
 
+		/*
+		 * FIXME: GSM 04.08 gives us two options for the abnormal
+		 * chanel release. This can be either like in the non-existent
+		 * sub-lcuase 3.5.1 or for the main signalling link deactivate
+		 * the SACCH, start timer T3109 and consider the channel as
+		 * released.
+		 *
+		 * This code is doing the later for all raido links and not
+		 * only the main link. Right now all SAPIs are released on the
+		 * local end, the SACCH will be de-activated and right now the
+		 * T3111 will be started. First T3109 should be started and then
+		 * the T3111.
+		 *
+		 * TODO: Move this out of the function.
+		 */
+
+		/*
+		 * sacch de-activate and "local end release"
+		 */
+		if (deact_sacch == SACCH_DEACTIVATE)
+			rsl_deact_sacch(lchan);
+		rsl_release_sapis_from(lchan, 0, RSL_REL_LOCAL_END);
+
+		/*
+		 * TODO: start T3109 now.
+		 */
 		rsl_lchan_set_state(lchan, LCHAN_S_REL_ERR);
 		lchan->error_timer.data = lchan;
 		lchan->error_timer.cb = error_timeout_cb;
@@ -696,17 +733,15 @@ static int rsl_rx_rf_chan_rel_ack(struct gsm_lchan *lchan)
 
 	DEBUGP(DRSL, "%s RF CHANNEL RELEASE ACK\n", gsm_lchan_name(lchan));
 
+	/* Stop all pending timers */
 	osmo_timer_del(&lchan->act_timer);
+	osmo_timer_del(&lchan->T3111);
 
 	if (lchan->state != LCHAN_S_REL_REQ && lchan->state != LCHAN_S_REL_ERR)
 		LOGP(DRSL, LOGL_NOTICE, "%s CHAN REL ACK but state %s\n",
 			gsm_lchan_name(lchan),
 			gsm_lchans_name(lchan->state));
-	osmo_timer_del(&lchan->T3111);
-	/* we have an error timer pending to release that */
-	if (lchan->state != LCHAN_S_REL_ERR)
-		rsl_lchan_set_state(lchan, LCHAN_S_NONE);
-	lchan_free(lchan);
+	do_lchan_free(lchan);
 
 	return 0;
 }
@@ -833,7 +868,8 @@ int rsl_establish_request(struct gsm_lchan *lchan, uint8_t link_id)
    RELEASE CONFIRM, which we in turn use to trigger RSL CHANNEL RELEASE,
    which in turn is acknowledged by RSL CHANNEL RELEASE ACK, which calls
    lchan_free() */
-int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason)
+int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id,
+			enum rsl_rel_mode release_mode)
 {
 
 	struct msgb *msg;
@@ -841,14 +877,14 @@ int rsl_release_request(struct gsm_lchan *lchan, uint8_t link_id, uint8_t reason
 	msg = rsl_rll_simple(RSL_MT_REL_REQ, gsm_lchan2chan_nr(lchan),
 			     link_id, 0);
 	/* 0 is normal release, 1 is local end */
-	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, reason);
+	msgb_tv_put(msg, RSL_IE_RELEASE_MODE, release_mode);
 
 	/* FIXME: start some timer in case we don't receive a REL ACK ? */
 
 	msg->dst = lchan->ts->trx->rsl_link;
 
 	DEBUGP(DRLL, "%s RSL RLL RELEASE REQ (link_id=0x%02x, reason=%u)\n",
-		gsm_lchan_name(lchan), link_id, reason);
+		gsm_lchan_name(lchan), link_id, release_mode);
 
 	return abis_rsl_sendmsg(msg);
 }
@@ -909,19 +945,18 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		const uint8_t *cause = TLVP_VAL(&tp, RSL_IE_CAUSE);
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
+		msg->lchan->error_cause = *cause;
 		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
-			rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+			rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
 		else
-			rsl_rf_chan_release(msg->lchan, 1);
+			rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 
 	} else
-		rsl_lchan_set_state(msg->lchan, LCHAN_S_NONE);
+		rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
 	send_lchan_signal(S_LCHAN_ACTIVATE_NACK, msg->lchan, NULL);
-
-	lchan_free(msg->lchan);
 	return 0;
 }
 
@@ -944,7 +979,7 @@ static int rsl_rx_conn_fail(struct msgb *msg)
 	LOGPC(DRSL, LOGL_NOTICE, "\n");
 	/* FIXME: only free it after channel release ACK */
 	osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rf_fail);
-	return rsl_rf_chan_release(msg->lchan, 1);
+	return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 }
 
 static void print_meas_rep_uni(struct gsm_meas_rep_unidir *mru,
@@ -1225,7 +1260,7 @@ static void t3101_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	rsl_rf_chan_release(lchan, 1);
+	rsl_rf_chan_release(lchan, 1, SACCH_DEACTIVATE);
 }
 
 /* If T3111 expires, we will send the RF Channel Request */
@@ -1233,7 +1268,17 @@ static void t3111_expired(void *data)
 {
 	struct gsm_lchan *lchan = data;
 
-	rsl_rf_chan_release(lchan, 0);
+	rsl_rf_chan_release(lchan, 0, SACCH_NONE);
+}
+
+/* If T3109 expires the MS has not send a UA/UM do the error release */
+static void t3109_expired(void *data)
+{
+	struct gsm_lchan *lchan = data;
+
+	LOGP(DRSL, LOGL_ERROR,
+		"%s SACCH deactivation timeout.\n", gsm_lchan_name(lchan));
+	rsl_rf_chan_release(lchan, 1, SACCH_NONE);
 }
 
 #define GSM48_LEN2PLEN(a)	(((a) << 2) | 1)
@@ -1491,7 +1536,7 @@ static int rsl_rx_rll_err_ind(struct msgb *msg)
 
 	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
 		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
-		return rsl_rf_chan_release(msg->lchan, 1);
+		return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 	}
 
 	return 0;
@@ -1502,7 +1547,11 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	int sapi;
 	struct gsm_bts *bts;
 
-	/* maybe we have only brought down one RLL */
+	/*
+	 * Maybe only one link/SAPI was releasd or the error handling
+	 * was activated. Just return now and let the other code handle
+	 * it.
+	 */
 	if (lchan->state != LCHAN_S_REL_REQ)
 		return;
 
@@ -1515,8 +1564,8 @@ static void rsl_handle_release(struct gsm_lchan *lchan)
 	}
 
 
-
-	/* wait a bit to send the RF Channel Release */
+	/* Stop T3109 and wait for T3111 before re-using the channel */
+	osmo_timer_del(&lchan->T3109);
 	lchan->T3111.cb = t3111_expired;
 	lchan->T3111.data = lchan;
 	bts = lchan->ts->trx->bts;
@@ -1576,7 +1625,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		rll_indication(msg->lchan, rllh->link_id,
 				  BSC_RLLR_IND_REL_IND);
 		rsl_handle_release(msg->lchan);
-		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_REL_CONF:
 		/* BTS informs us of having received UA from MS,
@@ -1584,7 +1632,6 @@ static int abis_rsl_rx_rll(struct msgb *msg)
 		DEBUGPC(DRLL, "RELEASE CONFIRMATION\n");
 		msg->lchan->sapis[rllh->link_id & 0x7] = LCHAN_SAPI_UNUSED;
 		rsl_handle_release(msg->lchan);
-		rsl_lchan_rll_release(msg->lchan, rllh->link_id);
 		break;
 	case RSL_MT_ERROR_IND:
 		rc = rsl_rx_rll_err_ind(msg);
@@ -2052,4 +2099,45 @@ int rsl_bs_power_control(struct gsm_bts_trx *trx, uint8_t channel, uint8_t reduc
 	msg->dst = trx->rsl_link;
 
 	return abis_rsl_sendmsg(msg);
+}
+
+/**
+ * Release all allocated SAPIs starting from @param start and
+ * release them with the given release mode. Once the release
+ * confirmation arrives it will be attempted to release the
+ * the RF channel.
+ */
+int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
+			enum rsl_rel_mode release_mode)
+{
+	int no_sapi = 1;
+	int sapi;
+
+	for (sapi = start; sapi < ARRAY_SIZE(lchan->sapis); ++sapi) {
+		uint8_t link_id;
+		if (lchan->sapis[sapi] == LCHAN_SAPI_UNUSED)
+			continue;
+
+		link_id = sapi;
+		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
+			link_id |= 0x40;
+		rsl_release_request(lchan, link_id, release_mode);
+		no_sapi = 0;
+	}
+
+	return no_sapi;
+}
+
+int rsl_start_t3109(struct gsm_lchan *lchan)
+{
+	struct gsm_bts *bts = lchan->ts->trx->bts;
+
+	/* Disabled, mostly legacy code */
+	if (bts->network->T3109 == 0)
+		return -1;
+
+	lchan->T3109.cb = t3109_expired;
+	lchan->T3109.data = lchan;
+	osmo_timer_schedule(&lchan->T3109, bts->network->T3109, 0);
+	return 0;
 }
