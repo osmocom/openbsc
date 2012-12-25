@@ -39,7 +39,7 @@
 
 void *tall_sub_req_ctx;
 
-extern struct llist_head *subscr_bsc_active_subscriber(void);
+extern struct llist_head *subscr_bsc_active_subscribers(void);
 
 int gsm48_secure_channel(struct gsm_subscriber_connection *conn, int key_seq,
                          gsm_cbfn *cb, void *cb_data);
@@ -272,7 +272,7 @@ struct gsm_subscriber *subscr_get_by_tmsi(struct gsm_network *net,
 	struct gsm_subscriber *subscr;
 
 	/* we might have a record in memory already */
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (tmsi == subscr->tmsi)
 			return subscr_get(subscr);
 	}
@@ -286,7 +286,7 @@ struct gsm_subscriber *subscr_get_by_imsi(struct gsm_network *net,
 {
 	struct gsm_subscriber *subscr;
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (strcmp(subscr->imsi, imsi) == 0)
 			return subscr_get(subscr);
 	}
@@ -299,7 +299,7 @@ struct gsm_subscriber *subscr_get_by_extension(struct gsm_network *net,
 {
 	struct gsm_subscriber *subscr;
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (strcmp(subscr->extension, ext) == 0)
 			return subscr_get(subscr);
 	}
@@ -314,7 +314,7 @@ struct gsm_subscriber *subscr_get_by_id(struct gsm_network *net,
 	char buf[32];
 	sprintf(buf, "%llu", id);
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (subscr->id == id)
 			return subscr_get(subscr);
 	}

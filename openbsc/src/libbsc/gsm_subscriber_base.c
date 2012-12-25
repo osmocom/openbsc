@@ -35,7 +35,7 @@ LLIST_HEAD(active_subscribers);
 void *tall_subscr_ctx;
 
 /* for the gsm_subscriber.c */
-struct llist_head *subscr_bsc_active_subscriber(void)
+struct llist_head *subscr_bsc_active_subscribers(void)
 {
 	return &active_subscribers;
 }
@@ -95,7 +95,7 @@ struct gsm_subscriber *subscr_get_or_create(struct gsm_network *net,
 {
 	struct gsm_subscriber *subscr;
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
 			return subscr_get(subscr);
 	}
@@ -113,7 +113,7 @@ struct gsm_subscriber *subscr_active_by_tmsi(struct gsm_network *net, uint32_t t
 {
 	struct gsm_subscriber *subscr;
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (subscr->tmsi == tmsi && subscr->net == net)
 			return subscr_get(subscr);
 	}
@@ -125,7 +125,7 @@ struct gsm_subscriber *subscr_active_by_imsi(struct gsm_network *net, const char
 {
 	struct gsm_subscriber *subscr;
 
-	llist_for_each_entry(subscr, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry(subscr, subscr_bsc_active_subscribers(), entry) {
 		if (strcmp(subscr->imsi, imsi) == 0 && subscr->net == net)
 			return subscr_get(subscr);
 	}
@@ -138,7 +138,7 @@ int subscr_purge_inactive(struct gsm_network *net)
 	struct gsm_subscriber *subscr, *tmp;
 	int purged = 0;
 
-	llist_for_each_entry_safe(subscr, tmp, subscr_bsc_active_subscriber(), entry) {
+	llist_for_each_entry_safe(subscr, tmp, subscr_bsc_active_subscribers(), entry) {
 		if (subscr->net == net && subscr->use_count <= 0) {
 			subscr_free(subscr);
 			purged += 1;
