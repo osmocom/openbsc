@@ -560,8 +560,8 @@ int gsm48_parse_meas_rep(struct gsm_meas_rep *rep, struct msgb *msg)
 
 	rep->dl.full.rx_lev = data[0] & 0x3f;
 	rep->dl.sub.rx_lev = data[1] & 0x3f;
-	rep->dl.full.rx_qual = (data[3] >> 4) & 0x7;
-	rep->dl.sub.rx_qual = (data[3] >> 1) & 0x7;
+	rep->dl.full.rx_qual = (data[2] >> 4) & 0x7;
+	rep->dl.sub.rx_qual = (data[2] >> 1) & 0x7;
 
 	rep->num_cell = ((data[3] >> 6) & 0x3) | ((data[2] & 0x01) << 2);
 	if (rep->num_cell < 1 || rep->num_cell > 6)
