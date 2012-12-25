@@ -393,6 +393,8 @@ static void _lchan_handle_release(struct gsm_lchan *lchan,
 		/* Deactivate the SACCH on the BTS side */
 		rsl_deact_sacch(lchan);
 		rsl_start_t3109(lchan);
+	} else if (lchan->sapis[0] == LCHAN_SAPI_UNUSED) {
+		rsl_direct_rf_release(lchan);
 	} else {
 		rsl_release_request(lchan, 0, mode);
 	}

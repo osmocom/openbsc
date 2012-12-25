@@ -2141,3 +2141,25 @@ int rsl_start_t3109(struct gsm_lchan *lchan)
 	osmo_timer_schedule(&lchan->T3109, bts->network->T3109, 0);
 	return 0;
 }
+
+/**
+ * \brief directly RF Channel Release the lchan
+ *
+ * When no SAPI was allocated, directly release the logical channel. This
+ * should only be called from chan_alloc.c on channel release handling. In
+ * case no SAPI was established the RF Channel can be directly released,
+ */
+int rsl_direct_rf_release(struct gsm_lchan *lchan)
+{
+	int i;
+	for (i = 0; i < ARRAY_SIZE(lchan->sapis); ++i) {
+		if (lchan->sapis[i] != LCHAN_SAPI_UNUSED) {
+			LOGP(DRSL, LOGL_ERROR, "%s SAPI(%d) still allocated.\n",
+				gsm_lchan_name(lchan), i);
+			return -1;
+		}
+	}
+
+	/* Now release it */
+	return rsl_rf_chan_release(lchan, 0, SACCH_NONE);
+}

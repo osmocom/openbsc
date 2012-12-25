@@ -101,5 +101,7 @@ int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
 				enum rsl_rel_mode release_mode);
 int rsl_start_t3109(struct gsm_lchan *lchan);
 
+int rsl_direct_rf_release(struct gsm_lchan *lchan);
+
 #endif /* RSL_MT_H */
 
