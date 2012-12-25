@@ -46,6 +46,7 @@
 #include <openbsc/chan_alloc.h>
 #include <openbsc/sms_queue.h>
 #include <openbsc/mncc_int.h>
+#include <openbsc/handover.h>
 
 extern struct gsm_network *gsmnet_from_vty(struct vty *v);
 
@@ -540,6 +541,57 @@ DEFUN(ena_subscr_kick,
 	return CMD_SUCCESS;
 }
 
+DEFUN(ena_subscr_handover,
+      ena_subscr_handover_cmd,
+      "subscriber " SUBSCR_TYPES " ID handover BTS_NR",
+	SUBSCR_HELP "Handover the active connection\n"
+	"Number of the BTS to handover to\n")
+{
+	int ret;
+	struct gsm_subscriber_connection *conn;
+	struct gsm_bts *bts;
+	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_subscriber *subscr =
+			get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+
+	if (!subscr) {
+		vty_out(vty, "%% No subscriber found for %s %s.%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	conn = connection_for_subscr(subscr);
+	if (!conn) {
+		vty_out(vty, "%% No active connection for subscriber %s %s.%s",
+			argv[0], argv[1], VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(gsmnet, atoi(argv[2]));
+	if (!bts) {
+		vty_out(vty, "%% BTS with number(%d) could not be found.%s",
+			atoi(argv[2]), VTY_NEWLINE);
+		subscr_put(subscr);
+		return CMD_WARNING;
+	}
+
+	/* now start the handover */
+	ret = bsc_handover_start(conn->lchan, bts);
+	if (ret != 0) {
+		vty_out(vty, "%% Handover failed with errno %d.%s",
+			ret, VTY_NEWLINE);
+	} else {
+		vty_out(vty, "%% Handover started from %s",
+			gsm_lchan_name(conn->lchan));
+		vty_out(vty, " to %s.%s", gsm_lchan_name(conn->ho_lchan),
+			VTY_NEWLINE);
+	}
+
+	subscr_put(subscr);
+	return CMD_SUCCESS;
+}
+
 #define A3A8_ALG_TYPES "(none|xor|comp128v1)"
 #define A3A8_ALG_HELP 			\
 	"Use No A3A8 algorithm\n"	\
@@ -854,6 +906,7 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &ena_subscr_clear_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_pend_cmd);
 	install_element(ENABLE_NODE, &ena_subscr_kick_cmd);
+	install_element(ENABLE_NODE, &ena_subscr_handover_cmd);
 	install_element(ENABLE_NODE, &subscriber_purge_cmd);
 	install_element(ENABLE_NODE, &smsqueue_trigger_cmd);
 	install_element(ENABLE_NODE, &smsqueue_max_cmd);
