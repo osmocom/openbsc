@@ -42,6 +42,8 @@ static char *db_basename = NULL;
 static char *db_dirname = NULL;
 static dbi_conn conn;
 
+#define SCHEMA_REVISION "3"
+
 static char *create_stmts[] = {
 	"CREATE TABLE IF NOT EXISTS Meta ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -51,7 +53,7 @@ static char *create_stmts[] = {
 	"INSERT OR IGNORE INTO Meta "
 		"(key, value) "
 		"VALUES "
-		"('revision', '2')",
+		"('revision', " SCHEMA_REVISION ")",
 	"CREATE TABLE IF NOT EXISTS Subscriber ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
 		"created TIMESTAMP NOT NULL, "
@@ -61,7 +63,8 @@ static char *create_stmts[] = {
 		"extension TEXT UNIQUE, "
 		"authorized INTEGER NOT NULL DEFAULT 0, "
 		"tmsi TEXT UNIQUE, "
-		"lac INTEGER NOT NULL DEFAULT 0"
+		"lac INTEGER NOT NULL DEFAULT 0, "
+		"expire_lu TIMESTAMP DEFAULT NULL"
 		")",
 	"CREATE TABLE IF NOT EXISTS AuthToken ("
 		"id INTEGER PRIMARY KEY AUTOINCREMENT, "
@@ -158,10 +161,39 @@ void db_error_func(dbi_conn conn, void *data)
 	LOGP(DDB, LOGL_ERROR, "DBI: %s\n", msg);
 }
 
+static int update_db_revision_2(void)
+{
+	dbi_result result;
+
+	result = dbi_conn_query(conn,
+				"ALTER TABLE Subscriber "
+				"ADD COLUMN expire_lu "
+				"TIMESTAMP DEFAULT NULL");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed to alter table Subscriber (upgrade vom rev 2).\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	result = dbi_conn_query(conn,
+				"UPDATE Meta "
+				"SET value = '3' "
+				"WHERE key = 'revision'");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR,
+		     "Failed set new revision (upgrade vom rev 2).\n");
+		return -EINVAL;
+	}
+	dbi_result_free(result);
+
+	return 0;
+}
+
 static int check_db_revision(void)
 {
 	dbi_result result;
-	const char *rev;
+	const char *rev_s;
 
 	result = dbi_conn_query(conn,
 				"SELECT value FROM Meta WHERE key='revision'");
@@ -172,11 +204,37 @@ static int check_db_revision(void)
 		dbi_result_free(result);
 		return -EINVAL;
 	}
-	rev = dbi_result_get_string(result, "value");
-	if (!rev || atoi(rev) != 2) {
+	rev_s = dbi_result_get_string(result, "value");
+	if (!rev_s) {
 		dbi_result_free(result);
 		return -EINVAL;
 	}
+	if (!strcmp(rev_s, "2")) {
+		if (update_db_revision_2()) {
+			LOGP(DDB, LOGL_FATAL, "Failed to update database from schema revision '%s'.\n", rev_s);
+			dbi_result_free(result);
+			return -EINVAL;
+		}
+	} else if (!strcmp(rev_s, SCHEMA_REVISION)) {
+		/* everything is fine */
+	} else {
+		LOGP(DDB, LOGL_FATAL, "Invalid database schema revision '%s'.\n", rev_s);
+		dbi_result_free(result);
+		return -EINVAL;
+	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+static int db_configure(void)
+{
+	dbi_result result;
+
+	result = dbi_conn_query(conn,
+				"PRAGMA synchronous = FULL");
+	if (!result)
+		return -EINVAL;
 
 	dbi_result_free(result);
 	return 0;
@@ -241,6 +299,8 @@ int db_prepare(void)
 			"please update your database schema\n");
                 return -1;
 	}
+
+	db_configure();
 
 	return 0;
 }
@@ -575,6 +635,12 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
 	subscr->lac = dbi_result_get_uint(result, "lac");
+
+	if (!dbi_result_field_is_null(result, "expire_lu"))
+		subscr->expire_lu = dbi_result_get_datetime(result, "expire_lu");
+	else
+		subscr->expire_lu = 0;
+
 	subscr->authorized = dbi_result_get_uint(result, "authorized");
 }
 
@@ -707,13 +773,15 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 		"extension = %s, "
 		"authorized = %i, "
 		"tmsi = %s, "
-		"lac = %i "
+		"lac = %i, "
+		"expire_lu = datetime(%i, 'unixepoch') "
 		"WHERE imsi = %s ",
 		q_name,
 		q_extension,
 		subscriber->authorized,
 		q_tmsi,
 		subscriber->lac,
+		subscriber->expire_lu,
 		subscriber->imsi);
 
 	free(q_tmsi);
@@ -771,6 +839,29 @@ int db_sync_equipment(struct gsm_equipment *equip)
 		LOGP(DDB, LOGL_ERROR, "Failed to update Equipment\n");
 		return -EIO;
 	}
+
+	dbi_result_free(result);
+	return 0;
+}
+
+int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsigned int id))
+{
+	dbi_result result;
+
+	result = dbi_conn_query(conn,
+			"SELECT id "
+			"FROM Subscriber "
+			"WHERE lac != 0 AND "
+				"( expire_lu is NULL "
+				"OR expire_lu < datetime('now') ) "
+			"LIMIT 1");
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "Failed to get expired subscribers\n");
+		return -EIO;
+	}
+
+	while (dbi_result_next_row(result))
+		callback(priv, dbi_result_get_ulonglong(result, "id"));
 
 	dbi_result_free(result);
 	return 0;

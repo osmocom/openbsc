@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <time.h>
 
 #include <osmocom/core/talloc.h>
 
@@ -333,6 +334,21 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 		s->net = bts->network;
 		/* Indicate "attached to LAC" */
 		s->lac = bts->location_area_code;
+
+		/* FIXME: We should allow 0 for T3212 as well to disable the
+		 * location update period. In that case we will need a way to
+		 * indicate that in the database and then reenable that value in
+		 * VTY.
+		 */
+
+		/* Table 10.5.33: The T3212 timeout value field is coded as the
+		 * binary representation of the timeout value for
+		 * periodic updating in decihours. Mark the subscriber as
+		 * inactive if it missed two consecutive location updates.
+		 * Timeout is twice the t3212 value plus one minute */
+		s->expire_lu = time(NULL) +
+			(bts->si_common.chan_desc.t3212 * 60 * 6 * 2) + 60;
+
 		LOGP(DMM, LOGL_INFO, "Subscriber %s ATTACHED LAC=%u\n",
 			subscr_name(s), s->lac);
 		rc = db_sync_subscriber(s);
@@ -362,6 +378,25 @@ int subscr_update(struct gsm_subscriber *s, struct gsm_bts *bts, int reason)
 void subscr_update_from_db(struct gsm_subscriber *sub)
 {
 	db_subscriber_update(sub);
+}
+
+static void subscr_expire_callback(void *data, long long unsigned int id)
+{
+	struct gsm_network *net = data;
+	struct gsm_subscriber *s =
+		subscr_get_by_id(net, id);
+
+	LOGP(DMM, LOGL_NOTICE, "Expiring inactive subscriber %s (ID %i)\n",
+			subscr_name(s), id);
+	s->lac = GSM_LAC_RESERVED_DETACHED;
+	db_sync_subscriber(s);
+
+	subscr_put(s);
+}
+
+void subscr_expire(struct gsm_network *net)
+{
+	db_subscriber_expire(net, subscr_expire_callback);
 }
 
 int subscr_pending_requests(struct gsm_subscriber *sub)

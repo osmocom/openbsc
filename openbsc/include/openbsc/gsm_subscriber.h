@@ -38,6 +38,7 @@ struct gsm_subscriber {
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];
 	int authorized;
+	time_t expire_lu;
 
 	/* Temporary field which is not stored in the DB/HLR */
 	uint32_t flags;
@@ -98,6 +99,7 @@ char *subscr_name(struct gsm_subscriber *subscr);
 
 int subscr_purge_inactive(struct gsm_network *net);
 void subscr_update_from_db(struct gsm_subscriber *subscr);
+void subscr_expire(struct gsm_network *net);
 
 /* internal */
 struct gsm_subscriber *subscr_alloc(void);
