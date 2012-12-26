@@ -71,23 +71,11 @@ static void msc_assign_compl(struct gsm_subscriber_connection *conn,
 			     uint8_t rr_cause, uint8_t chosen_channel,
 			     uint8_t encr_alg_id, uint8_t speec)
 {
-	/*
-	 * The mncc code is not doing assignment requests and
-	 * we should not end here. See MNCC_LCHAN_MODIFY
-	 */
-	LOGP(DMSC, LOGL_ERROR,
-	     "Assignment complete should not have been reached.\n");
 }
 
 static void msc_assign_fail(struct gsm_subscriber_connection *conn,
 			    uint8_t cause, uint8_t *rr_cause)
 {
-	/*
-	 * The mncc code is not doing assignment requests and
-	 * we should not end here. See MNCC_LCHAN_MODIFY
-	 */
-	LOGP(DMSC, LOGL_ERROR,
-	     "Assignment fail should not have been reached.\n");
 }
 
 static void msc_classmark_chg(struct gsm_subscriber_connection *conn,
