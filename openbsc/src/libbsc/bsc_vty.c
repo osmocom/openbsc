@@ -490,9 +490,8 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 				(sp->penalty_time*20)+20, VTY_NEWLINE);
 	}
 
-	if (bts->si_common.chan_desc.t3212)
-		vty_out(vty, "  periodic location update %u%s",
-			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
+	vty_out(vty, "  periodic location update %u%s",
+		bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -2018,7 +2017,7 @@ DEFUN(cfg_bts_penalty_time_rsvd, cfg_bts_penalty_time_rsvd_cmd,
 }
 
 DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
-      "periodic location update <0-1530>",
+      "periodic location update <6-1530>",
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n"
       "Periodic Location Updating Interval\n"
