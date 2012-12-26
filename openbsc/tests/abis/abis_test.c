@@ -129,11 +129,11 @@ static void test_sw_selection(void)
 		abort();
 	}
 
-	printf("Start: %u len: %zu\n", descr[0].start - dual_config, descr[0].len);
+	printf("Start: %u len: %zu\n", descr[0].start - load_config, descr[0].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[0].file_id, descr[0].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[0].file_ver, descr[0].file_ver_len));
 
-	printf("Start: %u len: %zu\n", descr[1].start - dual_config, descr[1].len);
+	printf("Start: %u len: %zu\n", descr[1].start - load_config, descr[1].len);
 	printf("file_id:  %s\n", osmo_hexdump(descr[1].file_id, descr[1].file_id_len));
 	printf("file_ver: %s\n", osmo_hexdump(descr[1].file_ver, descr[1].file_ver_len));
 
