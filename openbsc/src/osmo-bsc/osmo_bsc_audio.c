@@ -45,6 +45,10 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 
 	switch (signal) {
 	case S_ABISIP_CRCX_ACK:
+		/*
+		 * TODO: handle handover here... then the audio should go to
+		 * the old mgcp port..
+		 */
 		/* we can ask it to connect now */
 		LOGP(DMSC, LOGL_DEBUG, "Connecting BTS to port: %d conn: %d\n",
 		     con->sccp_con->rtp_port, lchan->abis_ip.conn_id);

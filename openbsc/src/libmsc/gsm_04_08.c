@@ -2,7 +2,7 @@
  * 3GPP TS 04.08 version 7.21.0 Release 1998 / ETSI TS 100 940 V7.21.0 */
 
 /* (C) 2008-2009 by Harald Welte <laforge@gnumonks.org>
- * (C) 2008-2010 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2008-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
  *
  * All Rights Reserved
  *
@@ -51,6 +51,7 @@
 #include <openbsc/silent_call.h>
 #include <openbsc/bsc_api.h>
 #include <openbsc/osmo_msc.h>
+#include <openbsc/handover.h>
 #include <osmocom/abis/e1_input.h>
 #include <osmocom/core/bitvec.h>
 
@@ -1378,14 +1379,10 @@ static int setup_trig_pag_evt(unsigned int hooknum, unsigned int event,
 static int tch_recv_mncc(struct gsm_network *net, uint32_t callref, int enable);
 
 /* handle audio path for handover */
-static int handle_ho_signal(unsigned int subsys, unsigned int signal,
-			    void *handler_data, void *signal_data)
+static int switch_for_handover(struct gsm_lchan *old_lchan,
+			struct gsm_lchan *new_lchan)
 {
 	struct rtp_socket *old_rs, *new_rs, *other_rs;
-	struct ho_signal_data *sig = signal_data;
-
-	if (subsys != SS_HO || signal != S_HANDOVER_ACK)
-		return 0;
 
 	if (ipacc_rtp_direct) {
 		LOGP(DHO, LOGL_ERROR, "unable to handover in direct RTP mode\n");
@@ -1393,15 +1390,15 @@ static int handle_ho_signal(unsigned int subsys, unsigned int signal,
 	}
 
 	/* RTP Proxy mode */
-	new_rs = sig->new_lchan->abis_ip.rtp_socket;
-	old_rs = sig->old_lchan->abis_ip.rtp_socket;
+	new_rs = new_lchan->abis_ip.rtp_socket;
+	old_rs = old_lchan->abis_ip.rtp_socket;
 
 	if (!new_rs) {
 		LOGP(DHO, LOGL_ERROR, "no RTP socket for new_lchan\n");
 		return -EIO;
 	}
 
-	rsl_ipacc_mdcx_to_rtpsock(sig->new_lchan);
+	rsl_ipacc_mdcx_to_rtpsock(new_lchan);
 
 	if (!old_rs) {
 		LOGP(DHO, LOGL_ERROR, "no RTP socket for old_lchan\n");
@@ -1413,7 +1410,7 @@ static int handle_ho_signal(unsigned int subsys, unsigned int signal,
 	new_rs->tx_action = old_rs->tx_action;
 	new_rs->transmit = old_rs->transmit;
 
-	switch (sig->old_lchan->abis_ip.rtp_socket->rx_action) {
+	switch (old_lchan->abis_ip.rtp_socket->rx_action) {
 	case RTP_PROXY:
 		other_rs = old_rs->proxy.other_sock;
 		rtp_socket_proxy(new_rs, other_rs);
@@ -1435,7 +1432,7 @@ static int handle_ho_signal(unsigned int subsys, unsigned int signal,
 static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				 void *handler_data, void *signal_data)
 {
-	struct gsm_lchan *lchan = signal_data;
+	struct gsm_lchan *lchan = signal_data, *old_lchan;
 	int rc;
 	struct gsm_network *net;
 	struct gsm_trans *trans;
@@ -1476,6 +1473,17 @@ static int handle_abisip_signal(unsigned int subsys, unsigned int signal,
 				tch_recv_mncc(net, trans->callref, 1);
 			}
 		}
+
+		/*
+		 * TODO: this appears to be too early? Why not until after
+		 * the handover detect or the handover complete?
+		 *
+		 * Do we have a handover pending for this new lchan? In that
+		 * case re-route the audio from the old channel to the new one.
+		 */
+		old_lchan = bsc_handover_pending(lchan);
+		if (old_lchan)
+			switch_for_handover(old_lchan, lchan);
 		break;
 	case S_ABISIP_DLCX_IND:
 		/* the BTS tells us a RTP stream has been disconnected */
@@ -3253,6 +3261,5 @@ int gsm0408_dispatch(struct gsm_subscriber_connection *conn, struct msgb *msg)
  */
 static __attribute__((constructor)) void on_dso_load_0408(void)
 {
-	osmo_signal_register_handler(SS_HO, handle_ho_signal, NULL);
 	osmo_signal_register_handler(SS_ABISIP, handle_abisip_signal, NULL);
 }

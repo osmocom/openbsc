@@ -329,23 +329,6 @@ static int ho_rsl_detect(struct gsm_lchan *new_lchan)
 	return 0;
 }
 
-static int ho_ipac_crcx_ack(struct gsm_lchan *new_lchan)
-{
-	struct bsc_handover *ho;
-	struct ho_signal_data sig_ho;
-
-	ho = bsc_ho_by_new_lchan(new_lchan);
-	if (!ho) {
-		/* it is perfectly normal, we have CRCX even in non-HO cases */
-		return 0;
-	}
-
-	sig_ho.old_lchan = ho->old_lchan;
-	sig_ho.new_lchan = new_lchan;
-	osmo_signal_dispatch(SS_HO, S_HANDOVER_ACK, &sig_ho);
-	return 0;
-}
-
 static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			   void *handler_data, void *signal_data)
 {
@@ -369,14 +352,6 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 			return ho_gsm48_ho_fail(lchan);
 		}
 		break;
-	case SS_ABISIP:
-		lchan = signal_data;
-		switch (signal) {
-		case S_ABISIP_CRCX_ACK:
-			return ho_ipac_crcx_ack(lchan);
-			break;
-		}
-		break;
 	default:
 		break;
 	}
@@ -384,8 +359,16 @@ static int ho_logic_sig_cb(unsigned int subsys, unsigned int signal,
 	return 0;
 }
 
+struct gsm_lchan *bsc_handover_pending(struct gsm_lchan *new_lchan)
+{
+	struct bsc_handover *ho;
+	ho = bsc_ho_by_new_lchan(new_lchan);
+	if (!ho)
+		return NULL;
+	return ho->old_lchan;
+}
+
 static __attribute__((constructor)) void on_dso_load_ho_logic(void)
 {
 	osmo_signal_register_handler(SS_LCHAN, ho_logic_sig_cb, NULL);
-	osmo_signal_register_handler(SS_ABISIP, ho_logic_sig_cb, NULL);
 }

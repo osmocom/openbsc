@@ -226,16 +226,6 @@ struct msc_signal_data {
 	struct osmo_msc_data *data;
 };
 
-/* handover */
-enum signal_ho {
-	S_HANDOVER_ACK,
-};
-
-struct ho_signal_data {
-	struct gsm_lchan *old_lchan;
-	struct gsm_lchan *new_lchan;
-};
-
 /* SS_CCCH signals */
 enum signal_ccch {
 	S_CCCH_PAGING_LOAD,
