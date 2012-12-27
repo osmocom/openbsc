@@ -909,6 +909,10 @@ static int gsm48_rx_mm_serv_req(struct gsm_subscriber_connection *conn, struct m
 	if (!subscr)
 		return gsm48_tx_mm_serv_rej(conn,
 					    GSM48_REJECT_IMSI_UNKNOWN_IN_HLR);
+	else if (subscr->lac == GSM_LAC_RESERVED_DETACHED)
+		/* If the subscriber is not attached, reject service */
+		return gsm48_tx_mm_serv_rej(conn,
+					    GSM48_REJECT_IMSI_UNKNOWN_IN_VLR);
 
 	if (!conn->subscr)
 		conn->subscr = subscr;
