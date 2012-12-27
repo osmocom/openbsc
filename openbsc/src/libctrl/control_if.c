@@ -43,6 +43,8 @@
 #include <openbsc/debug.h>
 #include <openbsc/gsm_data.h>
 #include <openbsc/ipaccess.h>
+#include <openbsc/db.h>
+
 #include <openbsc/socket.h>
 #include <osmocom/abis/subchan_demux.h>
 
@@ -608,6 +610,31 @@ static int verify_rate_ctr(struct ctrl_cmd *cmd, const char *value, void *data)
 	return 0;
 }
 
+/* active subscribers */
+CTRL_CMD_DEFINE(active_subscribers, "active_subscribers");
+static int get_active_subscribers(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = talloc_asprintf(cmd, "%d", db_get_active_subscribers());
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		goto err;
+	}
+
+	return CTRL_CMD_REPLY;
+err:
+	return CTRL_CMD_ERROR;
+}
+
+static int verify_active_subscribers(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	return 0;
+}
+
+static int set_active_subscribers(struct ctrl_cmd *cmd, void *data)
+{
+	return 0;
+}
+
 /* counter */
 CTRL_CMD_DEFINE(counter, "counter *");
 static int get_counter(struct ctrl_cmd *cmd, void *data)
@@ -693,6 +720,9 @@ struct ctrl_handle *controlif_setup(struct gsm_network *gsmnet, uint16_t port)
 	if (ret)
 		goto err_vec;
 	ret = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_counter);
+	if (ret)
+		goto err_vec;
+	ret = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_active_subscribers);
 	if (ret)
 		goto err_vec;
 

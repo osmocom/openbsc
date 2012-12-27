@@ -315,6 +315,28 @@ int db_fini(void)
 	return 0;
 }
 
+int db_get_active_subscribers(void) {
+	dbi_result result;
+	const char *res;
+	unsigned subscriber = 0;
+	result = dbi_conn_queryf(conn,
+                 "SELECT COUNT(ID) AS C FROM Subscriber WHERE LAC != 0 AND AUTHORIZED=1");
+
+	if (!result) {
+		LOGP(DDB, LOGL_ERROR, "failed to get active subscribers\n");
+		return subscriber;
+	}
+	if (!dbi_result_next_row(result)) {
+		dbi_result_free(result);
+		LOGP(DDB, LOGL_ERROR, "dbi_result_next_row() returned NULL\n");
+		return subscriber;
+	}
+	res = dbi_result_get_string(result, "C");
+	subscriber = atoi(res);
+
+	return subscriber;
+}
+
 struct gsm_subscriber *db_create_subscriber(struct gsm_network *net, char *imsi)
 {
 	dbi_result result;

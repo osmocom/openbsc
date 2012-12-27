@@ -34,6 +34,7 @@ def send(sck, data):
 	if verbose:
 		print "Sending \"%s\"" %(data)
 	data = prefix_ipa_ctrl_header(data)
+	print data.encode("hex")
 	sck.send(data)
 
 def do_set(var, value, id, sck):
@@ -83,6 +84,7 @@ if options.cmd_set:
 if options.cmd_get:
 	if len(args) != 1:
 		parser.error("Get requires the var argument")
+	print options.id
 	do_get(args[0], options.id, sock)
 
 data = sock.recv(1024)
