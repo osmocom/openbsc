@@ -29,7 +29,7 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn, struct msgb *msg);
 
 struct gsm_sms *sms_alloc(void);
 void sms_free(struct gsm_sms *sms);
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, int dcs, const char *text);
+struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, struct gsm_subscriber *sender, int dcs, const char *text);
 
 void _gsm411_sms_trans_free(struct gsm_trans *trans);
 int gsm411_send_sms_subscr(struct gsm_subscriber *subscr,

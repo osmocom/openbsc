@@ -63,6 +63,7 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 		return 0;
 
 	if (subscr->flags & GSM_SUBSCRIBER_FIRST_CONTACT) {
+		struct gsm_subscriber *sender;
 		uint32_t token;
 		char *sms_str;
 
@@ -79,7 +80,13 @@ static int token_subscr_cb(unsigned int subsys, unsigned int signal,
 			goto unauth;
 		}
 
-		sms = sms_from_text(subscr, 0, sms_str);
+
+		/* FIXME: don't use ID 1 static */
+		sender = subscr_get_by_id(subscr->net, 1);
+
+		sms = sms_from_text(subscr, sender, 0, sms_str);
+
+		subscr_put(sender);
 		talloc_free(sms_str);
 		if (!sms) {
 			rc = -ENOMEM;
