@@ -144,12 +144,13 @@ DEFUN(sms_send_pend,
 	return CMD_SUCCESS;
 }
 
-static int _send_sms_str(struct gsm_subscriber *receiver, char *str,
-			 uint8_t tp_pid)
+static int _send_sms_str(struct gsm_subscriber *receiver,
+                         struct gsm_subscriber *sender,
+                         char *str, uint8_t tp_pid)
 {
 	struct gsm_sms *sms;
 
-	sms = sms_from_text(receiver, 0, str);
+	sms = sms_from_text(receiver, sender, 0, str);
 	sms->protocol_id = tp_pid;
 
 	/* store in database for the queue */
@@ -229,24 +230,39 @@ DEFUN(subscriber_send_pending_sms,
 
 DEFUN(subscriber_send_sms,
       subscriber_send_sms_cmd,
-      "subscriber " SUBSCR_TYPES " ID sms send .LINE",
+      "subscriber " SUBSCR_TYPES " ID sms sender " SUBSCR_TYPES " SENDER_ID send .LINE",
 	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct gsm_subscriber *sender = get_subscr_by_argv(gsmnet, argv[2], argv[3]);
 	char *str;
 	int rc;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
+		rc = CMD_WARNING;
+		goto err;
 	}
-	str = argv_concat(argv, argc, 2);
-	rc = _send_sms_str(subscr, str, 0);
+
+	if (!sender) {
+		vty_out(vty, "%% No sender found for %s %s%s",
+			argv[2], argv[3], VTY_NEWLINE);
+		rc = CMD_WARNING;
+		goto err;
+	}
+
+	str = argv_concat(argv, argc, 4);
+	rc = _send_sms_str(subscr, sender, str, 0);
 	talloc_free(str);
 
-	subscr_put(subscr);
+err:
+	if (sender)
+		subscr_put(sender);
+
+	if (subscr)
+		subscr_put(subscr);
 
 	return rc;
 }
@@ -259,20 +275,34 @@ DEFUN(subscriber_silent_sms,
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
+	struct gsm_subscriber *sender = get_subscr_by_argv(gsmnet, argv[2], argv[3]);
 	char *str;
 	int rc;
 
 	if (!subscr) {
 		vty_out(vty, "%% No subscriber found for %s %s%s",
 			argv[0], argv[1], VTY_NEWLINE);
-		return CMD_WARNING;
+		rc = CMD_WARNING;
+		goto err;
 	}
 
-	str = argv_concat(argv, argc, 2);
-	rc = _send_sms_str(subscr, str, 64);
+	if (!sender) {
+		vty_out(vty, "%% No sender found for %s %s%s",
+			argv[2], argv[3], VTY_NEWLINE);
+		rc = CMD_WARNING;
+		goto err;
+	}
+
+	str = argv_concat(argv, argc, 4);
+	rc = _send_sms_str(subscr, sender, str, 64);
 	talloc_free(str);
 
-	subscr_put(subscr);
+err:
+	if (sender)
+		subscr_put(sender);
+
+	if (subscr)
+		subscr_put(subscr);
 
 	return rc;
 }

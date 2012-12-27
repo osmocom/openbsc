@@ -84,7 +84,9 @@ void sms_free(struct gsm_sms *sms)
 	talloc_free(sms);
 }
 
-struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, int dcs, const char *text)
+struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver,
+                              struct gsm_subscriber *sender,
+                              int dcs, const char *text)
 {
 	struct gsm_sms *sms = sms_alloc();
 
@@ -94,8 +96,7 @@ struct gsm_sms *sms_from_text(struct gsm_subscriber *receiver, int dcs, const ch
 	sms->receiver = subscr_get(receiver);
 	strncpy(sms->text, text, sizeof(sms->text)-1);
 
-	/* FIXME: don't use ID 1 static */
-	sms->sender = subscr_get_by_id(receiver->net, 1);
+	sms->sender = subscr_get(sender);
 	strncpy(sms->src.addr, sms->sender->extension, sizeof(sms->src.addr)-1);
 	sms->reply_path_req = 0;
 	sms->status_rep_req = 0;
