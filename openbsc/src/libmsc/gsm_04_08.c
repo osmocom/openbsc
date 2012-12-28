@@ -938,26 +938,28 @@ static int gsm48_rx_mm_imsi_detach_ind(struct gsm_subscriber_connection *conn, s
 	struct gsm_subscriber *subscr = NULL;
 
 	gsm48_mi_to_string(mi_string, sizeof(mi_string), idi->mi, idi->mi_len);
-	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s): ",
+	DEBUGP(DMM, "IMSI DETACH INDICATION: mi_type=0x%02x MI(%s)",
 		mi_type, mi_string);
 
 	osmo_counter_inc(bts->network->stats.loc_upd_type.detach);
 
 	switch (mi_type) {
 	case GSM_MI_TYPE_TMSI:
+		DEBUGPC(DMM, "\n");
 		subscr = subscr_get_by_tmsi(bts->network,
 					    tmsi_from_string(mi_string));
 		break;
 	case GSM_MI_TYPE_IMSI:
+		DEBUGPC(DMM, "\n");
 		subscr = subscr_get_by_imsi(bts->network, mi_string);
 		break;
 	case GSM_MI_TYPE_IMEI:
 	case GSM_MI_TYPE_IMEISV:
 		/* no sim card... FIXME: what to do ? */
-		DEBUGPC(DMM, "unimplemented mobile identity type\n");
+		DEBUGPC(DMM, ": unimplemented mobile identity type\n");
 		break;
 	default:	
-		DEBUGPC(DMM, "unknown mobile identity type\n");
+		DEBUGPC(DMM, ": unknown mobile identity type\n");
 		break;
 	}
 
