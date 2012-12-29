@@ -344,7 +344,6 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->conn = NULL;
 	}
 
-	lchan->sacch_deact = 0;
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }

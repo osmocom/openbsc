@@ -204,7 +204,6 @@ struct gsm_lchan {
 
 	/* Established data link layer services */
 	uint8_t sapis[8];
-	int sacch_deact;
 
 	struct {
 		uint32_t bound_ip;
