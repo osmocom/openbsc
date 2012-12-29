@@ -166,6 +166,15 @@ enum lchan_csd_mode {
 	LCHAN_CSD_M_T_32000,
 };
 
+/* State of the SAPIs in the lchan */
+enum lchan_sapi_state {
+	LCHAN_SAPI_S_NONE,
+	LCHAN_SAPI_S_REQ,
+	LCHAN_SAPI_S_ASSIGNED,
+	LCHAN_SAPI_S_REL,
+	LCHAN_SAPI_S_ERROR,
+};
+
 struct gsm_lchan {
 	/* The TS that we're part of */
 	struct gsm_bts_trx_ts *ts;
@@ -235,6 +244,10 @@ struct gsm_lchan {
 
 	struct gsm_subscriber_connection *conn;
 #else
+	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.
+	 * Currently we don't share these headers so this is a magic number. */
+	uint8_t sapis_dl[23];
+	uint8_t sapis_ul[23];
 	struct lapdm_channel lapdm_ch;
 	struct llist_head dl_tch_queue;
 	struct {
