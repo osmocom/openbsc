@@ -41,6 +41,7 @@ struct gsm_subscriber *db_get_subscriber(struct gsm_network *net,
 					 enum gsm_subscriber_field field,
 					 const char *subscr);
 int db_sync_subscriber(struct gsm_subscriber *subscriber);
+int db_subscriber_expire(void *priv, void (*callback)(void *priv, long long unsigned int id));
 int db_subscriber_alloc_tmsi(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_exten(struct gsm_subscriber *subscriber);
 int db_subscriber_alloc_token(struct gsm_subscriber *subscriber, uint32_t* token);

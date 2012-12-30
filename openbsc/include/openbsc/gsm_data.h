@@ -247,6 +247,9 @@ struct gsm_network {
 	int T3122;
 	int T3141;
 
+	/* timer to expire old location updates */
+	struct osmo_timer_list subscr_expire_timer;
+
 	/* Radio Resource Location Protocol (TS 04.31) */
 	struct {
 		enum rrlp_mode mode;
