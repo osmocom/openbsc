@@ -63,6 +63,8 @@ static int use_db_counter = 1;
 
 /* timer to store statistics */
 #define DB_SYNC_INTERVAL	60, 0
+#define EXPIRE_INTERVAL		10, 0
+
 static struct osmo_timer_list db_sync_timer;
 
 static void create_pcap_file(char *file)
@@ -223,6 +225,12 @@ static void db_sync_timer_cb(void *data)
 	osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
 }
 
+static void subscr_expire_cb(void *data)
+{
+	subscr_expire(bsc_gsmnet);
+	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
+}
+
 void talloc_ctx_init(void);
 
 extern enum node_type bsc_vty_go_parent(struct vty *vty);
@@ -307,6 +315,10 @@ int main(int argc, char **argv)
 	db_sync_timer.data = NULL;
 	if (use_db_counter)
 		osmo_timer_schedule(&db_sync_timer, DB_SYNC_INTERVAL);
+
+	bsc_gsmnet->subscr_expire_timer.cb = subscr_expire_cb;
+	bsc_gsmnet->subscr_expire_timer.data = NULL;
+	osmo_timer_schedule(&bsc_gsmnet->subscr_expire_timer, EXPIRE_INTERVAL);
 
 	signal(SIGINT, &signal_handler);
 	signal(SIGABRT, &signal_handler);
