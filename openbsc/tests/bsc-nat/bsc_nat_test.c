@@ -1153,6 +1153,72 @@ static void test_sms_number_rewrite(void)
 	msgb_free(out);
 }
 
+static void test_barr_list_parsing(void)
+{
+	int rc;
+	int cm, lu;
+	struct rb_node *node;
+	struct rb_root root = RB_ROOT;
+	struct osmo_config_list *lst = osmo_config_list_parse(NULL, "barr.cfg");
+	if (lst == NULL)
+		abort();
+
+	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	if (rc != 0)
+		abort();
+	talloc_free(lst);
+
+
+	for (node = rb_first(&root); node; node = rb_next(node)) {
+		struct bsc_nat_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
+			entry->cm_reject_cause, entry->lu_reject_cause);
+	}
+
+	/* do the look up now.. */
+	rc = bsc_nat_barr_find(&root, "12123119", &cm, &lu);
+	if (!rc) {
+		printf("Failed to find the IMSI.\n");
+		abort();
+	}
+
+	if (cm != 3 || lu != 4) {
+		printf("Found CM(%d) and LU(%d)\n", cm, lu);
+		abort();
+	}
+
+	/* empty and check that it is empty */
+	bsc_nat_barr_adapt(NULL, &root, NULL);
+	if (!RB_EMPTY_ROOT(&root)) {
+		printf("Failed to empty the list.\n");
+		abort();
+	}
+
+	/* check that dup results in an error */
+	lst = osmo_config_list_parse(NULL, "barr_dup.cfg");
+	if (lst == NULL) {
+		printf("Failed to parse list with dups\n");
+		abort();
+	}
+
+	rc = bsc_nat_barr_adapt(NULL, &root, lst);
+	if (rc != -1) {
+		printf("It should have failed due dup\n");
+		abort();
+	}
+	talloc_free(lst);
+
+	/* dump for reference */
+	for (node = rb_first(&root); node; node = rb_next(node)) {
+		struct bsc_nat_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+		printf("IMSI: %s CM: %d LU: %d\n", entry->imsi,
+			entry->cm_reject_cause, entry->lu_reject_cause);
+
+	}
+}
+
 int main(int argc, char **argv)
 {
 	sccp_set_log_area(DSCCP);
@@ -1171,6 +1237,7 @@ int main(int argc, char **argv)
 	test_sms_smsc_rewrite();
 	test_sms_number_rewrite();
 	test_mgcp_allocations();
+	test_barr_list_parsing();
 
 	printf("Testing execution completed.\n");
 	return 0;

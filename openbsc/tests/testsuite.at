@@ -34,6 +34,8 @@ AT_CLEANUP
 AT_SETUP([bsc-nat])
 AT_KEYWORDS([bsc-nat])
 AT_CHECK([test "$enable_nat_test" != no || exit 77])
+cp $abs_srcdir/bsc-nat/barr.cfg .
+cp $abs_srcdir/bsc-nat/barr_dup.cfg .
 cat $abs_srcdir/bsc-nat/bsc_nat_test.ok > expout
 AT_CHECK([$abs_top_builddir/tests/bsc-nat/bsc_nat_test], [], [expout], [ignore])
 AT_CLEANUP

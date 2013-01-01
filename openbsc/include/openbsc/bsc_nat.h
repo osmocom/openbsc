@@ -287,6 +287,10 @@ struct bsc_nat {
 	/* filter */
 	char *acc_lst_name;
 
+	/* Barring of subscribers with a rb tree */
+	struct rb_root imsi_black_list;
+	char *imsi_black_list_fn;
+
 	/* number rewriting */
 	char *num_rewr_name;
 	struct llist_head num_rewr;
@@ -447,6 +451,17 @@ struct bsc_nat_num_rewr_entry {
 };
 
 void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head, const struct osmo_config_list *);
+
+struct bsc_nat_barr_entry {
+	struct rb_node node;
+
+	char *imsi;
+	int cm_reject_cause;
+	int lu_reject_cause;
+};
+
+int bsc_nat_barr_adapt(void *ctx, struct rb_root *rbtree, const struct osmo_config_list *);
+int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu);
 
 struct ctrl_handle *bsc_nat_controlif_setup(struct bsc_nat *nat, int port);
 void bsc_nat_ctrl_del_pending(struct bsc_cmd_list *pending);

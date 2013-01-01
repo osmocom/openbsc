@@ -22,4 +22,17 @@ Testing SMSC rewriting.
 Attempting to only rewrite the HDR
 Attempting to change nothing.
 Testing SMS TP-DA rewriting.
+IMSI: 12123115 CM: 3 LU: 4
+IMSI: 12123116 CM: 3 LU: 4
+IMSI: 12123117 CM: 3 LU: 4
+IMSI: 12123118 CM: 3 LU: 4
+IMSI: 12123119 CM: 3 LU: 4
+IMSI: 12123120 CM: 3 LU: 4
+IMSI: 12123123 CM: 3 LU: 1
+IMSI: 12123124 CM: 3 LU: 2
+IMSI: 12123125 CM: 3 LU: 3
+IMSI: 12123126 CM: 3 LU: 4
+IMSI: 12123127 CM: 3 LU: 5
+IMSI: 12123128 CM: 3 LU: 6
+IMSI: 12123124 CM: 3 LU: 2
 Testing execution completed.

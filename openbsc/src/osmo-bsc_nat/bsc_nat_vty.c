@@ -1,6 +1,6 @@
 /* OpenBSC NAT interface to quagga VTY */
-/* (C) 2010-2011 by Holger Hans Peter Freyther
- * (C) 2010-2011 by On-Waves
+/* (C) 2010-2012 by Holger Hans Peter Freyther
+ * (C) 2010-2012 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -112,6 +112,9 @@ static int config_write_nat(struct vty *vty)
 	vty_out(vty, " ip-dscp %d%s", _nat->bsc_ip_dscp, VTY_NEWLINE);
 	if (_nat->acc_lst_name)
 		vty_out(vty, " access-list-name %s%s", _nat->acc_lst_name, VTY_NEWLINE);
+	if (_nat->imsi_black_list_fn)
+		vty_out(vty, " imsi-black-list-file-name %s%s",
+			_nat->imsi_black_list_fn, VTY_NEWLINE);
 	if (_nat->ussd_lst_name)
 		vty_out(vty, " ussd-list-name %s%s", _nat->ussd_lst_name, VTY_NEWLINE);
 	if (_nat->ussd_query)
@@ -486,6 +489,42 @@ DEFUN(cfg_nat_no_acc_lst_name,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_nat_imsi_black_list_fn,
+      cfg_nat_imsi_black_list_fn_cmd,
+      "imsi-black-list-file-name NAME",
+      "IMSI black listing\n" "Filename IMSI and reject-cause\n")
+{
+
+	bsc_replace_string(_nat, &_nat->imsi_black_list_fn, argv[0]);
+	if (_nat->imsi_black_list_fn) {
+		int rc;
+		struct osmo_config_list *rewr = NULL;
+		rewr = osmo_config_list_parse(_nat, _nat->imsi_black_list_fn);
+		rc = bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, rewr);
+		if (rc != 0) {
+			vty_out(vty, "%%There was an error parsing the list."
+				" Please see the error log.%s", VTY_NEWLINE);
+			return CMD_WARNING;
+		}
+
+		return CMD_SUCCESS;
+	}
+
+	bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_nat_no_imsi_black_list_fn,
+      cfg_nat_no_imsi_black_list_fn_cmd,
+      "no imsi-black-list-file-name",
+      NO_STR "Remove the imsi-black-list\n")
+{
+	talloc_free(_nat->imsi_black_list_fn);
+	_nat->imsi_black_list_fn = NULL;
+	bsc_nat_barr_adapt(_nat, &_nat->imsi_black_list, NULL);
+	return CMD_SUCCESS;
+}
+
 static int replace_rules(struct bsc_nat *nat, char **name,
 			 struct llist_head *head, const char *file)
 {
@@ -774,6 +813,27 @@ DEFUN(show_acc_lst,
 	return CMD_SUCCESS;
 }
 
+DEFUN(show_bar_lst,
+      show_bar_lst_cmd,
+      "show imsi-black-list",
+      SHOW_STR "IMSIs barred from the network\n")
+{
+	struct rb_node *node;
+
+	vty_out(vty, "IMSIs barred from the network:%s", VTY_NEWLINE);
+
+	for (node = rb_first(&_nat->imsi_black_list); node; node = rb_next(node)) {
+		struct bsc_nat_barr_entry *entry;
+		entry = rb_entry(node, struct bsc_nat_barr_entry, node);
+
+		vty_out(vty, " IMSI(%s) CM-Reject-Cause(%d) LU-Reject-Cause(%d)%s",
+			entry->imsi, entry->cm_reject_cause, entry->lu_reject_cause,
+			VTY_NEWLINE);
+	}
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_bsc_acc_lst_name,
       cfg_bsc_acc_lst_name_cmd,
@@ -999,6 +1059,7 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element_ve(&test_regex_cmd);
 	install_element_ve(&show_bsc_mgcp_cmd);
 	install_element_ve(&show_acc_lst_cmd);
+	install_element_ve(&show_bar_lst_cmd);
 
 	install_element(ENABLE_NODE, &set_last_endp_cmd);
 	install_element(ENABLE_NODE, &block_new_conn_cmd);
@@ -1019,6 +1080,8 @@ int bsc_nat_vty_init(struct bsc_nat *nat)
 	install_element(NAT_NODE, &cfg_nat_bsc_ip_tos_cmd);
 	install_element(NAT_NODE, &cfg_nat_acc_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_no_acc_lst_name_cmd);
+	install_element(NAT_NODE, &cfg_nat_imsi_black_list_fn_cmd);
+	install_element(NAT_NODE, &cfg_nat_no_imsi_black_list_fn_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_lst_name_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_query_cmd);
 	install_element(NAT_NODE, &cfg_nat_ussd_token_cmd);

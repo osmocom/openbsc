@@ -37,6 +37,91 @@
 
 #include <osmocom/sccp/sccp.h>
 
+int bsc_nat_barr_find(struct rb_root *root, const char *imsi, int *cm, int *lu)
+{
+	struct bsc_nat_barr_entry *n;
+	n = rb_entry(root->rb_node, struct bsc_nat_barr_entry, node);
+
+	while (n) {
+		int rc = strcmp(imsi, n->imsi);
+		if (rc == 0) {
+			*cm = n->cm_reject_cause;
+			*lu = n->lu_reject_cause;
+			return 1;
+		}
+
+		n = rb_entry(
+			(rc < 0) ? n->node.rb_left : n->node.rb_right,
+			struct bsc_nat_barr_entry, node);
+	};
+
+	return 0;
+}
+
+static int insert_barr_node(struct bsc_nat_barr_entry *entry, struct rb_root *root)
+{
+	struct rb_node **new = &root->rb_node, *parent = NULL;
+
+	while (*new) {
+		int rc;
+		struct bsc_nat_barr_entry *this;
+		this = rb_entry(*new, struct bsc_nat_barr_entry, node);
+		parent = *new;
+
+		rc = strcmp(entry->imsi, this->imsi);
+		if (rc < 0)
+			new = &((*new)->rb_left);
+		else if (rc > 0)
+			new = &((*new)->rb_right);
+		else {
+			LOGP(DNAT, LOGL_ERROR,
+				"Duplicate entry for IMSI(%s)\n", entry->imsi);
+			talloc_free(entry);
+			return -1;
+		}
+	}
+
+	rb_link_node(&entry->node, parent, new);
+	rb_insert_color(&entry->node, root);
+	return 0;
+}
+
+int bsc_nat_barr_adapt(void *ctx, struct rb_root *root,
+			const struct osmo_config_list *list)
+{
+	struct osmo_config_entry *cfg_entry;
+	int err = 0;
+
+	/* free the old data */
+	while (!RB_EMPTY_ROOT(root)) {
+		struct rb_node *node = rb_first(root);
+		rb_erase(node, root);
+		talloc_free(node);
+	}
+
+	if (!list)
+		return 0;
+
+	/* now adapt the new list */
+	llist_for_each_entry(cfg_entry, &list->entry, list) {
+		struct bsc_nat_barr_entry *entry;
+		entry = talloc_zero(ctx, struct bsc_nat_barr_entry);
+		if (!entry) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Allocation of the barr entry failed.\n");
+			continue;
+		}
+
+		entry->imsi = talloc_strdup(entry, cfg_entry->mcc);
+		entry->cm_reject_cause = atoi(cfg_entry->mnc);
+		entry->lu_reject_cause = atoi(cfg_entry->option);
+		err |= insert_barr_node(entry, root);
+	}
+
+	return err;
+}
+
+
 static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string)
 {
 	struct bsc_nat_acc_lst_entry *entry;
@@ -52,43 +137,56 @@ static int lst_check_deny(struct bsc_nat_acc_lst *lst, const char *mi_string)
 }
 
 /* apply white/black list */
-static int auth_imsi(struct bsc_connection *bsc, const char *mi_string,
+static int auth_imsi(struct bsc_connection *bsc, const char *imsi,
 		struct bsc_nat_reject_cause *cause)
 {
 	/*
 	 * Now apply blacklist/whitelist of the BSC and the NAT.
-	 * 1.) Allow directly if the IMSI is allowed at the BSC
-	 * 2.) Reject if the IMSI is not allowed at the BSC
-	 * 3.) Reject if the IMSI not allowed at the global level.
-	 * 4.) Allow directly if the IMSI is allowed at the global level
+	 * 1.) Check the global IMSI barr list
+	 * 2.) Allow directly if the IMSI is allowed at the BSC
+	 * 3.) Reject if the IMSI is not allowed at the BSC
+	 * 4.) Reject if the IMSI not allowed at the global level.
+	 * 5.) Allow directly if the IMSI is allowed at the global level
 	 */
+	int cm, lu;
 	struct bsc_nat_acc_lst *nat_lst = NULL;
 	struct bsc_nat_acc_lst *bsc_lst = NULL;
+
+	/* 1. global check for barred imsis */
+	if (bsc_nat_barr_find(&bsc->nat->imsi_black_list, imsi, &cm, &lu)) {
+		cause->cm_reject_cause = cm;
+		cause->lu_reject_cause = lu;
+		LOGP(DNAT, LOGL_DEBUG,
+			"Blocking subscriber IMSI %s with CM: %d LU: %d\n",
+			imsi, cm, lu);
+		return -1;
+	}
+
 
 	bsc_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->cfg->acc_lst_name);
 	nat_lst = bsc_nat_acc_lst_find(bsc->nat, bsc->nat->acc_lst_name);
 
 
 	if (bsc_lst) {
-		/* 1. BSC allow */
-		if (bsc_nat_lst_check_allow(bsc_lst, mi_string) == 0)
+		/* 2. BSC allow */
+		if (bsc_nat_lst_check_allow(bsc_lst, imsi) == 0)
 			return 1;
 
-		/* 2. BSC deny */
-		if (lst_check_deny(bsc_lst, mi_string) == 0) {
+		/* 3. BSC deny */
+		if (lst_check_deny(bsc_lst, imsi) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
+			     "Filtering %s by imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
 			rate_ctr_inc(&bsc_lst->stats->ctr[ACC_LIST_BSC_FILTER]);
 			return -2;
 		}
 
 	}
 
-	/* 3. NAT deny */
+	/* 4. NAT deny */
 	if (nat_lst) {
-		if (lst_check_deny(nat_lst, mi_string) == 0) {
+		if (lst_check_deny(nat_lst, imsi) == 0) {
 			LOGP(DNAT, LOGL_ERROR,
-			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", mi_string, bsc->cfg->nr);
+			     "Filtering %s by nat imsi_deny on bsc nr: %d.\n", imsi, bsc->cfg->nr);
 			rate_ctr_inc(&nat_lst->stats->ctr[ACC_LIST_NAT_FILTER]);
 			return -3;
 		}
