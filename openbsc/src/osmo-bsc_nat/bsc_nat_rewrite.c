@@ -576,7 +576,7 @@ void bsc_nat_num_rewr_entry_adapt(void *ctx, struct llist_head *head,
 		entry = talloc_zero(ctx, struct bsc_nat_num_rewr_entry);
 		if (!entry) {
 			LOGP(DNAT, LOGL_ERROR,
-				"Allication of the num_rewr entry failed.\n");
+				"Allocation of the num_rewr entry failed.\n");
 			continue;
 		}
 
