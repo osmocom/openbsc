@@ -475,7 +475,7 @@ static void bsc_send_con_refuse(struct bsc_connection *bsc,
 
 	if (con_type == NAT_CON_TYPE_LU)
 		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
-	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ)
+	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ || con_type == NAT_CON_TYPE_SSA)
 		payload = gsm48_create_mm_serv_rej(cause->cm_reject_cause);
 	else {
 		LOGP(DNAT, LOGL_ERROR, "Unknown connection type: %d\n", con_type);
