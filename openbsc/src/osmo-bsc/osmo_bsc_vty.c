@@ -75,6 +75,24 @@ DEFUN(cfg_net_bsc, cfg_net_bsc_cmd,
 	return CMD_SUCCESS;
 }
 
+static void write_msc_amr_options(struct vty *vty, struct osmo_msc_data *msc)
+{
+#define WRITE_AMR(vty, msc, name, var) \
+	vty_out(vty, " amr-config %s %s%s", \
+		name, msc->amr_conf.var ? "allowed" : "forbidden", \
+		VTY_NEWLINE);
+
+	WRITE_AMR(vty, msc, "12_2k", m12_2);
+	WRITE_AMR(vty, msc, "10_2k", m10_2);
+	WRITE_AMR(vty, msc, "7_95k", m7_95);
+	WRITE_AMR(vty, msc, "7_40k", m7_40);
+	WRITE_AMR(vty, msc, "6_70k", m6_70);
+	WRITE_AMR(vty, msc, "5_90k", m5_90);
+	WRITE_AMR(vty, msc, "5_15k", m5_15);
+	WRITE_AMR(vty, msc, "4_75k", m4_75);
+#undef WRITE_AMR
+}
+
 static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 {
 	struct bsc_msc_dest *dest;
@@ -122,6 +140,9 @@ static void write_msc(struct vty *vty, struct osmo_msc_data *msc)
 
 	if (msc->local_pref)
 		vty_out(vty, " local-prefix %s%s", msc->local_pref, VTY_NEWLINE);
+
+	/* write amr options */
+	write_msc_amr_options(vty, msc);
 }
 
 static int config_write_msc(struct vty *vty)
@@ -383,6 +404,28 @@ DEFUN(cfg_net_msc_local_prefix,
 	return CMD_SUCCESS;
 }
 
+#define AMR_CONF_STR "AMR Multirate Configuration\n"
+#define AMR_COMMAND(name) \
+	DEFUN(cfg_net_msc_amr_##name,					\
+	  cfg_net_msc_amr_##name##_cmd,					\
+	  "amr-config " #name "k (allowed|forbidden)",			\
+	  AMR_CONF_STR "Bitrate\n" "Allowed\n" "Forbidden\n")		\
+{									\
+	struct osmo_msc_data *msc = osmo_msc_data(vty);			\
+									\
+	msc->amr_conf.m##name = strcmp(argv[0], "allowed") == 0; 	\
+	return CMD_SUCCESS;						\
+}
+
+AMR_COMMAND(12_2)
+AMR_COMMAND(10_2)
+AMR_COMMAND(7_95)
+AMR_COMMAND(7_40)
+AMR_COMMAND(6_70)
+AMR_COMMAND(5_90)
+AMR_COMMAND(5_15)
+AMR_COMMAND(4_75)
+
 DEFUN(cfg_net_bsc_mid_call_text,
       cfg_net_bsc_mid_call_text_cmd,
       "mid-call-text .TEXT",
@@ -473,6 +516,14 @@ int bsc_vty_init_extra(void)
 	install_element(MSC_NODE, &cfg_net_msc_type_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_emerg_cmd);
 	install_element(MSC_NODE, &cfg_net_msc_local_prefix_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_12_2_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_10_2_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_7_95_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_7_40_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_6_70_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_5_90_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_5_15_cmd);
+	install_element(MSC_NODE, &cfg_net_msc_amr_4_75_cmd);
 
 	install_element_ve(&show_statistics_cmd);
 	install_element_ve(&show_mscs_cmd);

@@ -155,6 +155,12 @@ static void assignment_t10_timeout(void *_conn)
 static void handle_mr_config(struct gsm_subscriber_connection *conn,
 			     struct gsm_lchan *lchan)
 {
+	struct bsc_api *api;
+	api = conn->bts->network->bsc_api;
+
+	if (api->mr_config)
+		return api->mr_config(conn, &lchan->mr_conf);
+
 	lchan->mr_conf.ver = 1;
 	lchan->mr_conf.icmi = 1;
 	lchan->mr_conf.m5_90 = 1;

@@ -316,6 +316,34 @@ static void bsc_cm_update(struct gsm_subscriber_connection *conn,
 	queue_msg_or_return(resp);
 }
 
+static void bsc_mr_config(struct gsm_subscriber_connection *conn,
+			  struct gsm48_multi_rate_conf *conf)
+{
+	struct osmo_msc_data *msc;
+
+	if (!conn->sccp_con) {
+		LOGP(DMSC, LOGL_ERROR,
+		     "No msc data available on conn %p. Audio will be broken.\n",
+		     conn);
+		return;
+	}
+
+	msc = conn->sccp_con->msc;
+
+	conf->ver = 1;
+	conf->icmi = 1;
+
+	/* maybe gcc see's it is copy of _one_ byte */
+	conf->m4_75 = msc->amr_conf.m4_75;
+	conf->m5_15 = msc->amr_conf.m5_15;
+	conf->m5_90 = msc->amr_conf.m5_90;
+	conf->m6_70 = msc->amr_conf.m6_70;
+	conf->m7_40 = msc->amr_conf.m7_40;
+	conf->m7_95 = msc->amr_conf.m7_95;
+	conf->m10_2 = msc->amr_conf.m10_2;
+	conf->m12_2 = msc->amr_conf.m12_2;
+}
+
 static struct bsc_api bsc_handler = {
 	.sapi_n_reject = bsc_sapi_n_reject,
 	.cipher_mode_compl = bsc_cipher_mode_compl,
@@ -325,6 +353,7 @@ static struct bsc_api bsc_handler = {
 	.assign_fail = bsc_assign_fail,
 	.clear_request = bsc_clear_request,
 	.classmark_chg = bsc_cm_update,
+	.mr_config = bsc_mr_config,
 };
 
 struct bsc_api *osmo_bsc_api()

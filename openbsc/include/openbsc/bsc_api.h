@@ -34,6 +34,13 @@ struct bsc_api {
 	void (*classmark_chg)(struct gsm_subscriber_connection *conn,
 			      const uint8_t *cm2, uint8_t cm2_len,
 			      const uint8_t *cm3, uint8_t cm3_len);
+
+	/**
+	 * Configure the multirate setting on this channel. If it is
+	 * not implemented AMR5.9 will be used.
+	 */
+	void (*mr_config)(struct gsm_subscriber_connection *conn,
+			  struct gsm48_multi_rate_conf *conf);
 };
 
 int bsc_api_init(struct gsm_network *network, struct bsc_api *api);
