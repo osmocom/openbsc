@@ -1,6 +1,6 @@
 /*
- * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2012 by On-Waves
+ * (C) 2010-2013 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2013 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,6 +23,9 @@
 
 #include "gsm_data.h"
 
+struct osmo_msc_data;
+
 int bsc_grace_allow_new_connection(struct gsm_network *net, struct gsm_bts *bts);
+int bsc_grace_paging_request(struct gsm_subscriber *sub, int type, struct osmo_msc_data *msc);
 
 #endif
