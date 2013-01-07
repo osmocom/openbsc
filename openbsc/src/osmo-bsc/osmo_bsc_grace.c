@@ -1,6 +1,6 @@
 /*
- * (C) 2010 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010 by On-Waves
+ * (C) 2010-2013 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2013 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -22,15 +22,57 @@
 #include <openbsc/osmo_bsc_rf.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/gsm_04_80.h>
+#include <openbsc/gsm_subscriber.h>
+#include <openbsc/paging.h>
 #include <openbsc/signal.h>
 
 int bsc_grace_allow_new_connection(struct gsm_network *network, struct gsm_bts *bts)
 {
 	if (!network->bsc_data->rf_ctrl)
 		return 1;
-	if (bts && bts->excl_from_rf_lock)
+	if (bts->excl_from_rf_lock)
 		return 1;
 	return network->bsc_data->rf_ctrl->policy == S_RF_ON;
+}
+
+/**
+ * Try to not page if everything the cell is not on.
+ */
+int bsc_grace_paging_request(struct gsm_subscriber *subscr, int chan_needed,
+				struct osmo_msc_data *msc)
+{
+	struct gsm_bts *bts = NULL;
+
+	if (!subscr->net->bsc_data->rf_ctrl)
+		goto page;
+	if (subscr->net->bsc_data->rf_ctrl->policy == S_RF_ON)
+		goto page;
+
+	/*
+	 * Check if there is any BTS that is on for the given lac. Start
+	 * with NULL and iterate through all bts.
+	 */
+	do {
+		bts = gsm_bts_by_lac(subscr->net, subscr->lac, bts);
+		if (!bts)
+			break;
+
+		/*
+		 * continue if the BTS is not excluded from the lock
+		 */
+		if (!bts->excl_from_rf_lock)
+			continue;
+
+		/*
+		 * now page on this bts
+		 */
+		paging_request_bts(bts, subscr, chan_needed, NULL, msc);
+	} while (1);
+
+	/* All bts are either off or in the grace period */
+	return 0;
+page:
+	return paging_request(subscr->net, subscr, chan_needed, NULL, msc);
 }
 
 static int handle_sub(struct gsm_lchan *lchan, const char *text)

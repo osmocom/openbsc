@@ -177,7 +177,7 @@ static int bssmap_handle_paging(struct osmo_msc_data *msc,
 	subscr->tmsi = tmsi;
 
 	LOGP(DMSC, LOGL_INFO, "Paging request from MSC IMSI: '%s' TMSI: '0x%x/%u' LAC: 0x%x\n", mi_string, tmsi, tmsi, lac);
-	paging_request(msc->network, subscr, chan_needed, NULL, msc);
+	bsc_grace_paging_request(subscr, chan_needed, msc);
 	return 0;
 }
 
@@ -413,8 +413,7 @@ static int bssmap_rcvmsg_udt(struct osmo_msc_data *msc,
 		ret = bssmap_handle_reset_ack(msc, msg, length);
 		break;
 	case BSS_MAP_MSG_PAGING:
-		if (bsc_grace_allow_new_connection(msc->network, NULL))
-			ret = bssmap_handle_paging(msc, msg, length);
+		ret = bssmap_handle_paging(msc, msg, length);
 		break;
 	}
 
