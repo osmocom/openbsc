@@ -45,6 +45,10 @@
 	} \
 	bsc_queue_for_msc(conn->sccp_con, resp);
 
+static int bsc_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
+static int complete_layer3(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, struct osmo_msc_data *msc);
+
 static uint16_t get_network_code_for_msc(struct osmo_msc_data *msc)
 {
 	if (msc->core_ncc != -1)
@@ -88,10 +92,7 @@ static void bsc_cipher_mode_compl(struct gsm_subscriber_connection *conn,
 static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg,
 			uint16_t chosen_channel)
 {
-	struct msgb *resp;
 	struct osmo_msc_data *msc;
-	uint16_t network_code;
-	uint16_t country_code;
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC COMPL L3\n");
 
@@ -101,6 +102,16 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 		LOGP(DMSC, LOGL_ERROR, "Failed to find a MSC for a connection.\n");
 		return -1;
 	}
+
+	return complete_layer3(conn, msg, msc);
+}
+
+static int complete_layer3(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg, struct osmo_msc_data *msc)
+{
+	struct msgb *resp;
+	uint16_t network_code;
+	uint16_t country_code;
 
 	/* allocate resource for a new connection */
 	if (bsc_create_new_connection(conn, msc) != 0)
@@ -130,6 +141,96 @@ static int bsc_compl_l3(struct gsm_subscriber_connection *conn, struct msgb *msg
 	return BSC_API_CONN_POL_ACCEPT;
 }
 
+/*
+ * Plastic surgery... we want to give up the current connection
+ */
+static int move_to_msc(struct gsm_subscriber_connection *_conn,
+		       struct msgb *msg, struct osmo_msc_data *msc)
+{
+	struct osmo_bsc_sccp_con *old_con = _conn->sccp_con;
+
+	/*
+	 * 1. Give up the old connection.
+	 * This happens by sending a clear request to the MSC,
+	 * it should end with the MSC releasing the connection.
+	 */
+	old_con->conn = NULL;
+	bsc_clear_request(_conn, 0);
+
+	/*
+	 * 2. Attempt to create a new connection to the local
+	 * MSC. If it fails the caller will need to handle this
+	 * properly.
+	 */
+	_conn->sccp_con = NULL;
+	if (complete_layer3(_conn, msg, msc) != BSC_API_CONN_POL_ACCEPT) {
+		gsm0808_clear(_conn);
+		subscr_con_free(_conn);
+		return 1;
+	}
+
+	return 2;
+}
+
+static int handle_cc_setup(struct gsm_subscriber_connection *conn,
+			   struct msgb *msg)
+{
+	struct gsm48_hdr *gh = msgb_l3(msg);
+	uint8_t pdisc = gh->proto_discr & 0x0f;
+	uint8_t mtype = gh->msg_type & 0xbf;
+
+	struct osmo_msc_data *msc;
+	struct gsm_mncc_number called;
+	struct tlv_parsed tp;
+	unsigned payload_len;
+
+	char _dest_nr[35];
+
+	/*
+	 * Do we have a setup message here? if not return fast.
+	 */
+	if (pdisc != GSM48_PDISC_CC || mtype != GSM48_MT_CC_SETUP)
+		return 0;
+
+	payload_len = msgb_l3len(msg) - sizeof(*gh);
+
+	tlv_parse(&tp, &gsm48_att_tlvdef, gh->data, payload_len, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM48_IE_CALLED_BCD)) {
+		LOGP(DMSC, LOGL_ERROR, "Called BCD not present in setup.\n");
+		return -1;
+	}
+
+	memset(&called, 0, sizeof(called));
+	gsm48_decode_called(&called,
+			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
+
+	if (called.plan != 1 && called.plan != 0)
+		return 0;
+
+	if (called.plan == 1 && called.type == 1) {
+		_dest_nr[0] = _dest_nr[1] = '0';
+		memcpy(_dest_nr + 2, called.number, sizeof(called.number));
+	} else
+		memcpy(_dest_nr, called.number, sizeof(called.number));
+
+	/*
+	 * Check if the connection should be moved...
+	 */
+	llist_for_each_entry(msc, &conn->bts->network->bsc_data->mscs, entry) {
+		if (msc->type != MSC_CON_TYPE_LOCAL)
+			continue;
+		if (!msc->local_pref)
+			continue;
+		if (regexec(&msc->local_pref_reg, _dest_nr, 0, NULL, 0) != 0)
+			continue;
+
+		return move_to_msc(conn, msg, msc);
+	}
+
+	return 0;
+}
+
+
 static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, struct msgb *msg)
 {
 	struct msgb *resp;
@@ -137,7 +238,16 @@ static void bsc_dtap(struct gsm_subscriber_connection *conn, uint8_t link_id, st
 
 	LOGP(DMSC, LOGL_INFO, "Tx MSC DTAP LINK_ID=0x%02x\n", link_id);
 
+	/*
+	 * We might want to move this connection to a new MSC. Ask someone
+	 * to handle it. If it was handled we will return.
+	 */
+	if (handle_cc_setup(conn, msg) >= 1)
+		return;
+
 	bsc_scan_bts_msg(conn, msg);
+
+
 	resp = gsm0808_create_dtap(msg, link_id);
 	queue_msg_or_return(resp);
 }
