@@ -1,8 +1,8 @@
 /* BSC Multiplexer/NAT */
 
 /*
- * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2011 by On-Waves
+ * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2012 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -416,7 +416,9 @@ static void bsc_stat_reject(int filter, struct bsc_connection *bsc, int normal)
  * 2.) Give up on the BSC side
  *  2.1) Depending on the con type reject the service, or just close it
  */
-static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connections *con)
+static void bsc_send_con_release(struct bsc_connection *bsc,
+		struct sccp_connections *con,
+		struct bsc_nat_reject_cause *cause)
 {
 	struct msgb *rlsd;
 	/* 1. release the network */
@@ -434,7 +436,7 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 	/* 2. release the BSC side */
 	if (con->con_type == NAT_CON_TYPE_LU) {
 		struct msgb *payload, *udt;
-		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
 
 		if (payload) {
 			gsm0808_prepend_dtap_header(payload, 0);
@@ -465,15 +467,16 @@ static void bsc_send_con_release(struct bsc_connection *bsc, struct sccp_connect
 }
 
 static void bsc_send_con_refuse(struct bsc_connection *bsc,
-				struct bsc_nat_parsed *parsed, int con_type)
+			struct bsc_nat_parsed *parsed, int con_type,
+			struct bsc_nat_reject_cause *cause)
 {
 	struct msgb *payload;
 	struct msgb *refuse;
 
 	if (con_type == NAT_CON_TYPE_LU)
-		payload = gsm48_create_loc_upd_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
-	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ)
-		payload = gsm48_create_mm_serv_rej(GSM48_REJECT_PLMN_NOT_ALLOWED);
+		payload = gsm48_create_loc_upd_rej(cause->lu_reject_cause);
+	else if (con_type == NAT_CON_TYPE_CM_SERV_REQ || con_type == NAT_CON_TYPE_SSA)
+		payload = gsm48_create_mm_serv_rej(cause->cm_reject_cause);
 	else {
 		LOGP(DNAT, LOGL_ERROR, "Unknown connection type: %d\n", con_type);
 		payload = NULL;
@@ -980,6 +983,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 	struct bsc_connection *con_bsc = NULL;
 	int con_type;
 	struct bsc_nat_parsed *parsed;
+	struct bsc_nat_reject_cause cause;
 
 	/* Parse and filter messages */
 	parsed = bsc_nat_parse(msg);
@@ -1010,7 +1014,9 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 		struct sccp_connections *con;
 		switch (parsed->sccp_type) {
 		case SCCP_MSG_TYPE_CR:
-			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed, &con_type, &imsi);
+			memset(&cause, 0, sizeof(cause));
+			filter = bsc_nat_filter_sccp_cr(bsc, msg, parsed,
+						&con_type, &imsi, &cause);
 			if (filter < 0) {
 				bsc_stat_reject(filter, bsc, 0);
 				goto exit3;
@@ -1038,10 +1044,12 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			if (con) {
 				/* only filter non local connections */
 				if (!con->con_local) {
-					filter = bsc_nat_filter_dt(bsc, msg, con, parsed);
+					memset(&cause, 0, sizeof(cause));
+					filter = bsc_nat_filter_dt(bsc, msg,
+							con, parsed, &cause);
 					if (filter < 0) {
 						bsc_stat_reject(filter, bsc, 1);
-						bsc_send_con_release(bsc, con);
+						bsc_send_con_release(bsc, con, &cause);
 						con = NULL;
 						goto exit2;
 					}
@@ -1156,7 +1164,7 @@ exit3:
 	/* send a SCCP Connection Refused */
 	if (imsi)
 		talloc_free(imsi);
-	bsc_send_con_refuse(bsc, parsed, con_type);
+	bsc_send_con_refuse(bsc, parsed, con_type, &cause);
 	talloc_free(parsed);
 	msgb_free(msg);
 	return -1;
