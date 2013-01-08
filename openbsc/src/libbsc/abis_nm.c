@@ -1507,7 +1507,7 @@ static int verify_chan_comb(struct gsm_bts_trx_ts *ts, uint8_t chan_comb,
 
 			/* not on the same TRX that has a BCCH+SDCCH4
 			 * combination */
-			if (ts->trx == ts->trx->bts->c0 &&
+			if (ts->trx != ts->trx->bts->c0 &&
 			    (ts->trx->ts[0].nm_chan_comb == 5 ||
 			     ts->trx->ts[0].nm_chan_comb == 8)) {
 				*reason = "SDCCH/8 and BCCH must be on the same TRX.";
