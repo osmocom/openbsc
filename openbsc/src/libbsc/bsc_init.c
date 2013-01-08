@@ -176,9 +176,11 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	for (n = 0; n < n_si; n++) {
 		i = gen_si[n];
-		bts->si_valid |= (1 << i);
 		/* Only generate SI if this SI is not in "static" (user-defined) mode */
 		if (!(bts->si_mode_static & (1 << i))) {
+			/* Set SI as being valid. gsm_generate_si() might unset
+			 * it, if SI is not required. */
+			bts->si_valid |= (1 << i);
 			rc = gsm_generate_si(bts, i);
 			if (rc < 0)
 				goto err_out;
@@ -196,10 +198,10 @@ static int set_system_infos(struct gsm_bts_trx *trx)
 
 	/* Third, we send the selected SI via RSL */
 
-	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
+	for (n = 0; n < n_si; n++) {
+		i = gen_si[n];
 		if (!(bts->si_valid & (1 << i)))
 			continue;
-
 		rc = rsl_si(trx, i, si_len[i]);
 		if (rc < 0)
 			return rc;
