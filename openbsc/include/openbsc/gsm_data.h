@@ -433,4 +433,7 @@ extern struct e1inp_line_ops bts_isdn_e1inp_line_ops;
 extern const struct value_string bts_type_names[_NUM_GSM_BTS_TYPE+1];
 extern const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1];
 
+/* control interface handling */
+int bsc_base_ctrl_cmds_install(void);
+
 #endif /* _GSM_DATA_H */

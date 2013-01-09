@@ -605,6 +605,9 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
 
+	rc = bsc_base_ctrl_cmds_install();
+	if (rc)
+		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rf_state);
 	if (rc)
 		goto end;
