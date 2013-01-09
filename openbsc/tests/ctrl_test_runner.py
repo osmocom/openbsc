@@ -246,6 +246,26 @@ class TestCtrlBSC(TestCtrlBase):
         self.assertEquals(r['mtype'], 'ERROR')
         self.assertEquals(r['error'], 'Value must be even')
 
+    def testTrxArfcn(self):
+        r = self.do_get('bts.0.trx.0.arfcn')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.arfcn')
+        self.assertEquals(r['value'], '871')
+
+        r = self.do_set('bts.0.trx.0.arfcn', '873')
+        self.assertEquals(r['mtype'], 'SET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.arfcn')
+        self.assertEquals(r['value'], '873')
+
+        r = self.do_get('bts.0.trx.0.arfcn')
+        self.assertEquals(r['mtype'], 'GET_REPLY')
+        self.assertEquals(r['var'], 'bts.0.trx.0.arfcn')
+        self.assertEquals(r['value'], '873')
+
+        r = self.do_set('bts.0.trx.0.arfcn', '2000')
+        self.assertEquals(r['mtype'], 'ERROR')
+        self.assertEquals(r['error'], 'Input not within the range')
+
     def testRfLock(self):
         r = self.do_get('bts.0.rf_state')
         self.assertEquals(r['mtype'], 'GET_REPLY')
