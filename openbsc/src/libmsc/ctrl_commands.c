@@ -28,6 +28,7 @@
 
 CTRL_CMD_DEFINE_RANGE(bts_mnc, "mnc", struct gsm_bts, network_code, 0, 999);
 CTRL_CMD_DEFINE_RANGE(bts_mcc, "mcc", struct gsm_bts, country_code, 1, 999);
+CTRL_CMD_DEFINE_RANGE(trx_arfcn, "arfcn", struct gsm_bts_trx, arfcn, 0, 1023);
 CTRL_CMD_DEFINE_STRING(bts_short_name, "short-name", struct gsm_bts, name_short);
 CTRL_CMD_DEFINE_STRING(bts_long_name, "long-name", struct gsm_bts, name_long);
 CTRL_CMD_DEFINE_STRING(bts_description, "description", struct gsm_bts, description);
@@ -94,6 +95,8 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_description);
+
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
