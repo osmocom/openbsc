@@ -198,6 +198,9 @@ oom:
 }
 CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 
+/* BTS related commands below here */
+CTRL_CMD_VTY_STRING(bts_description, "description", struct gsm_bts, description);
+
 int bsc_base_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -220,6 +223,8 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3119);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3122);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3141);
+
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_description);
 
 	return rc;
 }
