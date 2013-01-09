@@ -36,6 +36,8 @@ struct gsm_subscriber {
 	long long unsigned int id;
 	char imsi[GSM_IMSI_LENGTH];
 	uint32_t tmsi;
+	uint16_t mnc;
+	uint16_t mcc;
 	uint16_t lac;
 	char name[GSM_NAME_LENGTH];
 	char extension[GSM_EXTENSION_LENGTH];

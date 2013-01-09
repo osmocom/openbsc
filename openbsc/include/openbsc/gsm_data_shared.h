@@ -731,6 +731,12 @@ struct gsm_bts {
 	struct bts_codec_conf codec;
 #endif /* ROLE_BSC */
 	void *role;
+
+	/* hacks for some network tweaks... */
+	uint16_t country_code;
+	uint16_t network_code;
+	char *name_long;
+	char *name_short;
 };
 
 

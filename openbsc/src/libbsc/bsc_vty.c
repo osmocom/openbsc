@@ -182,13 +182,8 @@ static void net_dump_vty(struct vty *vty, struct gsm_network *net)
 {
 	struct pchan_load pl;
 
-	vty_out(vty, "BSC is on Country Code %u, Network Code %u "
-		"and has %u BTS%s", net->country_code, net->network_code,
+	vty_out(vty, "BSC has %u BTS%s",
 		net->num_bts, VTY_NEWLINE);
-	vty_out(vty, "  Long network name: '%s'%s",
-		net->name_long, VTY_NEWLINE);
-	vty_out(vty, "  Short network name: '%s'%s",
-		net->name_short, VTY_NEWLINE);
 	vty_out(vty, "  Authentication policy: %s%s",
 		gsm_auth_policy_name(net->auth_policy), VTY_NEWLINE);
 	vty_out(vty, "  Location updating reject cause: %u%s",
@@ -251,12 +246,16 @@ static void bts_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct pchan_load pl;
 
-	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u LAC %u, "
+	vty_out(vty, "BTS %u is of %s type in band %s, has CI %u MCC %u MNC %u LAC %u, "
 		"BSIC %u, TSC %u and %u TRX%s",
 		bts->nr, btstype2str(bts->type), gsm_band_name(bts->band),
-		bts->cell_identity,
+		bts->cell_identity, bts->country_code, bts->network_code,
 		bts->location_area_code, bts->bsic, bts->tsc,
 		bts->num_trx, VTY_NEWLINE);
+	vty_out(vty, "Long network name: '%s'%s",
+		bts->name_long, VTY_NEWLINE);
+	vty_out(vty, "Short network name: '%s'%s",
+		bts->name_short, VTY_NEWLINE);
 	vty_out(vty, "Description: %s%s",
 		bts->description ? bts->description : "(null)", VTY_NEWLINE);
 	vty_out(vty, "MS Max power: %u dBm%s", bts->ms_max_power, VTY_NEWLINE);
@@ -487,6 +486,10 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
 	if (bts->description)
 		vty_out(vty, "  description %s%s", bts->description, VTY_NEWLINE);
+	vty_out(vty, "  network country code %u%s", bts->country_code, VTY_NEWLINE);
+	vty_out(vty, "  mobile network code %u%s", bts->network_code, VTY_NEWLINE);
+	vty_out(vty, "  short name %s%s", bts->name_short, VTY_NEWLINE);
+	vty_out(vty, "  long name %s%s", bts->name_long, VTY_NEWLINE);
 	vty_out(vty, "  band %s%s", gsm_band_name(bts->band), VTY_NEWLINE);
 	vty_out(vty, "  cell_identity %u%s", bts->cell_identity, VTY_NEWLINE);
 	vty_out(vty, "  location_area_code %u%s", bts->location_area_code,
@@ -669,10 +672,6 @@ static int config_write_net(struct vty *vty)
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 
 	vty_out(vty, "network%s", VTY_NEWLINE);
-	vty_out(vty, " network country code %u%s", gsmnet->country_code, VTY_NEWLINE);
-	vty_out(vty, " mobile network code %u%s", gsmnet->network_code, VTY_NEWLINE);
-	vty_out(vty, " short name %s%s", gsmnet->name_short, VTY_NEWLINE);
-	vty_out(vty, " long name %s%s", gsmnet->name_long, VTY_NEWLINE);
 	vty_out(vty, " auth policy %s%s", gsm_auth_policy_name(gsmnet->auth_policy), VTY_NEWLINE);
 	vty_out(vty, " location updating reject cause %u%s",
 		gsmnet->reject_cause, VTY_NEWLINE);
@@ -1209,55 +1208,55 @@ DEFUN(cfg_net,
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_ncc,
-      cfg_net_ncc_cmd,
+DEFUN(cfg_bts_ncc,
+      cfg_bts_ncc_cmd,
       "network country code <1-999>",
       "Set the GSM network country code\n"
       "Country commands\n"
       CODE_CMD_STR
       "Network Country Code to use\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = vty->index;
 
-	gsmnet->country_code = atoi(argv[0]);
+	bts->country_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_mnc,
-      cfg_net_mnc_cmd,
+DEFUN(cfg_bts_mnc,
+      cfg_bts_mnc_cmd,
       "mobile network code <0-999>",
       "Set the GSM mobile network code\n"
       "Network Commands\n"
       CODE_CMD_STR
       "Mobile Network Code to use\n")
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = vty->index;
 
-	gsmnet->network_code = atoi(argv[0]);
+	bts->network_code = atoi(argv[0]);
 
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_name_short,
-      cfg_net_name_short_cmd,
+DEFUN(cfg_bts_name_short,
+      cfg_bts_name_short_cmd,
       "short name NAME",
       "Set the short GSM network name\n" NAME_CMD_STR NAME_STR)
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = vty->index;
 
-	bsc_replace_string(gsmnet, &gsmnet->name_short, argv[0]);
+	bsc_replace_string(bts, &bts->name_short, argv[0]);
 	return CMD_SUCCESS;
 }
 
-DEFUN(cfg_net_name_long,
-      cfg_net_name_long_cmd,
+DEFUN(cfg_bts_name_long,
+      cfg_bts_name_long_cmd,
       "long name NAME",
       "Set the long GSM network name\n" NAME_CMD_STR NAME_STR)
 {
-	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
+	struct gsm_bts *bts = vty->index;
 
-	bsc_replace_string(gsmnet, &gsmnet->name_long, argv[0]);
+	bsc_replace_string(bts, &bts->name_long, argv[0]);
 	return CMD_SUCCESS;
 }
 
@@ -3281,10 +3280,6 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(CONFIG_NODE, &cfg_net_cmd);
 	install_node(&net_node, config_write_net);
 	vty_install_default(GSMNET_NODE);
-	install_element(GSMNET_NODE, &cfg_net_ncc_cmd);
-	install_element(GSMNET_NODE, &cfg_net_mnc_cmd);
-	install_element(GSMNET_NODE, &cfg_net_name_short_cmd);
-	install_element(GSMNET_NODE, &cfg_net_name_long_cmd);
 	install_element(GSMNET_NODE, &cfg_net_auth_policy_cmd);
 	install_element(GSMNET_NODE, &cfg_net_reject_cause_cmd);
 	install_element(GSMNET_NODE, &cfg_net_encryption_cmd);
@@ -3317,6 +3312,10 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(GSMNET_NODE, &cfg_bts_cmd);
 	install_node(&bts_node, config_write_bts);
 	vty_install_default(BTS_NODE);
+	install_element(BTS_NODE, &cfg_bts_ncc_cmd);
+	install_element(BTS_NODE, &cfg_bts_mnc_cmd);
+	install_element(BTS_NODE, &cfg_bts_name_short_cmd);
+	install_element(BTS_NODE, &cfg_bts_name_long_cmd);
 	install_element(BTS_NODE, &cfg_bts_type_cmd);
 	install_element(BTS_NODE, &cfg_description_cmd);
 	install_element(BTS_NODE, &cfg_no_description_cmd);

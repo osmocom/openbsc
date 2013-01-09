@@ -82,6 +82,8 @@ static const char *create_stmts[] = {
 		"extension TEXT UNIQUE, "
 		"authorized INTEGER NOT NULL DEFAULT 0, "
 		"tmsi TEXT UNIQUE, "
+		"mnc INTEGER NOT NULL DEFAULT 0, "
+		"mcc INTEGER NOT NULL DEFAULT 0, "
 		"lac INTEGER NOT NULL DEFAULT 0, "
 		"expire_lu TIMESTAMP DEFAULT NULL"
 		")",
@@ -817,6 +819,8 @@ static void db_set_from_query(struct gsm_subscriber *subscr, dbi_conn result)
 		strncpy(subscr->extension, string, GSM_EXTENSION_LENGTH);
 
 	subscr->lac = dbi_result_get_ulonglong(result, "lac");
+	subscr->mcc = dbi_result_get_uint(result, "mcc");
+	subscr->mnc = dbi_result_get_uint(result, "mnc");
 
 	if (!dbi_result_field_is_null(result, "expire_lu"))
 		subscr->expire_lu = dbi_result_get_datetime(result, "expire_lu");
@@ -889,9 +893,9 @@ struct gsm_subscriber *db_get_subscriber(enum gsm_subscriber_field field,
 	subscr->id = dbi_result_get_ulonglong(result, "id");
 
 	db_set_from_query(subscr, result);
-	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, AUTH %u\n",
+	DEBUGP(DDB, "Found Subscriber: ID %llu, IMSI %s, NAME '%s', TMSI %u, EXTEN '%s', LAC %hu, MNC %u, MCC %u, AUTH %u\n",
 		subscr->id, subscr->imsi, subscr->name, subscr->tmsi, subscr->extension,
-		subscr->lac, subscr->authorized);
+		subscr->lac, subscr->mnc, subscr->mcc, subscr->authorized);
 	dbi_result_free(result);
 
 	get_equipment_by_subscr(subscr);
@@ -956,6 +960,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"authorized = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
+			"mnc = %u, "
+			"mcc = %u, "
 			"expire_lu = NULL "
 			"WHERE imsi = %s ",
 			q_name,
@@ -963,6 +969,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			subscriber->authorized,
 			q_tmsi,
 			subscriber->lac,
+			subscriber->mnc,
+			subscriber->mcc,
 			subscriber->imsi);
 	} else {
 		result = dbi_conn_queryf(conn,
@@ -973,6 +981,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			"authorized = %i, "
 			"tmsi = %s, "
 			"lac = %i, "
+			"mnc = %u, "
+			"mcc = %u, "
 			"expire_lu = datetime(%i, 'unixepoch') "
 			"WHERE imsi = %s ",
 			q_name,
@@ -980,6 +990,8 @@ int db_sync_subscriber(struct gsm_subscriber *subscriber)
 			subscriber->authorized,
 			q_tmsi,
 			subscriber->lac,
+			subscriber->mnc,
+			subscriber->mcc,
 			(int) subscriber->expire_lu,
 			subscriber->imsi);
 	}

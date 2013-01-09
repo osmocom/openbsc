@@ -61,10 +61,10 @@ static int verify_vty_description_string(struct ctrl_cmd *cmd,
 	return 0;
 }
 
-CTRL_CMD_DEFINE_RANGE(net_mnc, "mnc", struct gsm_network, network_code, 0, 999);
-CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
-CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
-CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
+CTRL_CMD_DEFINE_RANGE(bts_mnc, "mnc", struct gsm_bts, network_code, 0, 999);
+CTRL_CMD_DEFINE_RANGE(bts_mcc, "mcc", struct gsm_bts, country_code, 1, 999);
+CTRL_CMD_VTY_STRING(bts_short_name, "short-name", struct gsm_bts, name_short);
+CTRL_CMD_VTY_STRING(bts_long_name, "long-name", struct gsm_bts, name_long);
 
 static int verify_net_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
 {
@@ -95,7 +95,7 @@ static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
 
-static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, void *d)
+static int verify_bts_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, void *d)
 {
 	char *tmp, *saveptr, *mcc, *mnc;
 
@@ -112,15 +112,15 @@ static int verify_net_mcc_mnc_apply(struct ctrl_cmd *cmd, const char *value, voi
 	return 0;
 }
 
-static int get_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
+static int get_bts_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 {
 	cmd->reply = "Write only attribute";
 	return CTRL_CMD_ERROR;
 }
 
-static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
+static int set_bts_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 {
-	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts = cmd->node;
 	char *tmp, *saveptr, *mcc_str, *mnc_str;
 	int mcc, mnc;
 
@@ -137,21 +137,25 @@ static int set_net_mcc_mnc_apply(struct ctrl_cmd *cmd, void *data)
 
 	talloc_free(tmp);
 
-	if (net->network_code == mnc && net->country_code == mcc) {
+	if (bts->network_code == mnc && bts->country_code == mcc) {
 		cmd->reply = "Nothing changed";
 		return CTRL_CMD_REPLY;
 	}
 
-	net->network_code = mnc;
-	net->country_code = mcc;
+	bts->network_code = mnc;
+	bts->country_code = mcc;
 
-	return set_net_apply_config(cmd, data);
+	if (is_ipaccess_bts(bts))
+		ipaccess_drop_oml(bts);
+
+	cmd->reply = "Tried to drop the BTS";
+	return CTRL_CMD_REPLY;
 
 oom:
 	cmd->reply = "OOM";
 	return CTRL_CMD_ERROR;
 }
-CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
+CTRL_CMD_DEFINE(bts_mcc_mnc_apply, "mcc-mnc-apply");
 
 /* TRX related commands below here */
 CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
@@ -196,12 +200,12 @@ CTRL_CMD_DEFINE(trx_max_power, "max-power-reduction");
 int bsc_base_ctrl_cmds_install(void)
 {
 	int rc = 0;
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mnc);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
-	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc_mnc_apply);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_net_apply_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_mnc);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_mcc);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_short_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_long_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_mcc_mnc_apply);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;

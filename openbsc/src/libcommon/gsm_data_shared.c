@@ -276,6 +276,12 @@ struct gsm_bts *gsm_bts_alloc(void *ctx)
 	bts->rach_ldavg_slots = -1;
 	bts->paging.free_chans_need = -1;
 
+	/* hacks */
+	bts->network_code = 1;
+	bts->country_code = 1;
+	bts->name_long = talloc_strdup(bts, "OpenBSC");
+	bts->name_short = talloc_strdup(bts, "OpenBSC");
+
 	return bts;
 }
 

@@ -205,10 +205,6 @@ enum gsm_auth_policy {
 
 struct gsm_network {
 	/* global parameters */
-	uint16_t country_code;
-	uint16_t network_code;
-	char *name_long;
-	char *name_short;
 	enum gsm_auth_policy auth_policy;
 	enum gsm48_reject_value reject_cause;
 	int a5_encryption;
@@ -328,8 +324,7 @@ struct gsm_sms {
 	char text[SMS_TEXT_SIZE];
 };
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *));
+struct gsm_network *gsm_network_init(int (*mncc_recv)(struct gsm_network *, struct msgb *));
 int gsm_set_bts_type(struct gsm_bts *bts, enum gsm_bts_type type);
 
 /* Get reference to a neighbor cell on a given BCCH ARFCN */
