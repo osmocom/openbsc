@@ -20,6 +20,7 @@
  */
 
 #include <openbsc/control_cmd.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
@@ -63,6 +64,35 @@ CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
 
+static int verify_net_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int get_net_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (!is_ipaccess_bts(bts))
+			continue;
+
+		ipaccess_drop_oml(bts);
+	}
+
+	cmd->reply = "Tried to drop the BTS";
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
+
 int bsc_base_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -70,6 +100,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 
 	return rc;
 }
