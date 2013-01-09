@@ -392,6 +392,7 @@ static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_
 	return 0;
 }
 CTRL_CMD_DEFINE(trx_max_power, "bs-power-reduction");
+CTRL_CMD_DEFINE_RANGE(trx_arfcn, "arfcn", struct gsm_bts_trx, arfcn, 0, 1023);
 
 
 
@@ -429,5 +430,7 @@ int bsc_base_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_t200);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);
+
 	return rc;
 }
