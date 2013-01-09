@@ -22,6 +22,8 @@
 #include <openbsc/control_cmd.h>
 #include <openbsc/gsm_data.h>
 
+#include <osmocom/vty/misc.h>
+
 #define CTRL_CMD_VTY_STRING(cmdname, cmdstr, dtype, element) \
 	CTRL_HELPER_GET_STRING(cmdname, dtype, element) \
 	CTRL_HELPER_SET_STRING(cmdname, dtype, element) \
@@ -63,6 +65,31 @@ CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
 
+static int verify_net_save_config(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int set_net_save_config(struct ctrl_cmd *cmd, void *data)
+{
+	int rc = osmo_vty_save_config_file();
+	cmd->reply = talloc_asprintf(cmd, "%d", rc);
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int get_net_save_config(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+CTRL_CMD_DEFINE(net_save_config, "save-configuration");
+
 int bsc_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -70,6 +97,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
 
 	return rc;
 }
