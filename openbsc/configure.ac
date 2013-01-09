@@ -40,7 +40,7 @@ AC_ARG_ENABLE([osmo-bsc], [AS_HELP_STRING([--enable-osmo-bsc], [Build the Osmo B
 if test "$osmo_ac_build_bsc" = "yes" ; then
     PKG_CHECK_MODULES(LIBOSMOSCCP, libosmo-sccp >= 0.0.6)
 fi
-AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "xyes")
+AM_CONDITIONAL(BUILD_BSC, test "x$osmo_ac_build_bsc" = "NOT_DISABLED")
 
 # Enable/disable smpp support in the nitb?
 AC_ARG_ENABLE([smpp], [AS_HELP_STRING([--enable-smpp], [Build the SMPP interface])],

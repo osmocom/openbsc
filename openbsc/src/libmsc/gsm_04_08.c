@@ -417,8 +417,8 @@ int gsm0408_loc_upd_acc(struct gsm_subscriber_connection *conn, uint32_t tmsi)
 	gh->msg_type = GSM48_MT_MM_LOC_UPD_ACCEPT;
 
 	lai = (struct gsm48_loc_area_id *) msgb_put(msg, sizeof(*lai));
-	gsm48_generate_lai(lai, bts->network->country_code,
-		     bts->network->network_code, bts->location_area_code);
+	gsm48_generate_lai(lai, bts->country_code,
+		     bts->network_code, bts->location_area_code);
 
 	mid = msgb_put(msg, GSM48_MID_TMSI_LEN);
 	gsm48_generate_mid_from_tmsi(mid, tmsi);
@@ -642,7 +642,6 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 {
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
-	struct gsm_network *net = conn->bts->network;
 	struct gsm_bts *bts = conn->bts;
 	uint8_t *ptr8;
 	int name_len, name_pad;
@@ -658,7 +657,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 	gh->proto_discr = GSM48_PDISC_MM;
 	gh->msg_type = GSM48_MT_MM_INFO;
 
-	if (net->name_long) {
+	if (bts->name_long) {
 #if 0
 		name_len = strlen(net->name_long);
 		/* 10.5.3.5a */
@@ -674,8 +673,8 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		/* FIXME: Use Cell Broadcast, not UCS-2, since
 		 * UCS-2 is only supported by later revisions of the spec */
 #endif
-		name_len = (strlen(net->name_long)*7)/8;
-		name_pad = (8 - strlen(net->name_long)*7)%8;
+		name_len = (strlen(bts->name_long)*7)/8;
+		name_pad = (8 - strlen(bts->name_long)*7)%8;
 		if (name_pad > 0)
 			name_len++;
 		/* 10.5.3.5a */
@@ -685,11 +684,11 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode(ptr8, net->name_long);
+		gsm_7bit_encode(ptr8, bts->name_long);
 
 	}
 
-	if (net->name_short) {
+	if (bts->name_short) {
 #if 0
 		name_len = strlen(net->name_short);
 		/* 10.5.3.5a */
@@ -702,8 +701,8 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		for (i = 0; i < name_len; i++)
 			ptr16[i] = htons(net->name_short[i]);
 #endif
-		name_len = (strlen(net->name_short)*7)/8;
-		name_pad = (8 - strlen(net->name_short)*7)%8;
+		name_len = (strlen(bts->name_short)*7)/8;
+		name_pad = (8 - strlen(bts->name_short)*7)%8;
 		if (name_pad > 0)
 			name_len++;
 		/* 10.5.3.5a */
@@ -713,7 +712,7 @@ int gsm48_tx_mm_info(struct gsm_subscriber_connection *conn)
 		ptr8[2] = 0x80 | name_pad; /* Cell Broadcast DCS, no CI */
 
 		ptr8 = msgb_put(msg, name_len);
-		gsm_7bit_encode(ptr8, net->name_short);
+		gsm_7bit_encode(ptr8, bts->name_short);
 
 	}
 

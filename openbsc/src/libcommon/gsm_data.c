@@ -70,8 +70,7 @@ int gsm_bts_model_register(struct gsm_bts_model *model)
 	return 0;
 }
 
-struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_code,
-				     int (*mncc_recv)(struct gsm_network *, struct msgb *))
+struct gsm_network *gsm_network_init(int (*mncc_recv)(struct gsm_network *, struct msgb *))
 {
 	struct gsm_network *net;
 
@@ -90,8 +89,6 @@ struct gsm_network *gsm_network_init(uint16_t country_code, uint16_t network_cod
 	net->bsc_data->network = net;
 	INIT_LLIST_HEAD(&net->bsc_data->mscs);
 
-	net->country_code = country_code;
-	net->network_code = network_code;
 	net->num_bts = 0;
 	net->reject_cause = GSM48_REJECT_ROAMING_NOT_ALLOWED;
 	net->T3101 = GSM_T3101_DEFAULT;
@@ -419,8 +416,8 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 
 void gprs_ra_id_by_bts(struct gprs_ra_id *raid, struct gsm_bts *bts)
 {
-	raid->mcc = bts->network->country_code;
-	raid->mnc = bts->network->network_code;
+	raid->mcc = bts->country_code;
+	raid->mnc = bts->network_code;
 	raid->lac = bts->location_area_code;
 	raid->rac = bts->gprs.rac;
 }

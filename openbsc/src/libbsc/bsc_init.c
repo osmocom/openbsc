@@ -260,8 +260,8 @@ static void bootstrap_rsl(struct gsm_bts_trx *trx)
 
 	LOGP(DRSL, LOGL_NOTICE, "bootstrapping RSL for BTS/TRX (%u/%u) "
 		"on ARFCN %u using MCC=%u MNC=%u LAC=%u CID=%u BSIC=%u TSC=%u\n",
-		trx->bts->nr, trx->nr, trx->arfcn, bsc_gsmnet->country_code,
-		bsc_gsmnet->network_code, trx->bts->location_area_code,
+		trx->bts->nr, trx->nr, trx->arfcn, trx->bts->country_code,
+		trx->bts->network_code, trx->bts->location_area_code,
 		trx->bts->cell_identity, trx->bts->bsic, trx->bts->tsc);
 
 	if (trx->bts->type == GSM_BTS_TYPE_NOKIA_SITE) {
@@ -463,12 +463,10 @@ int bsc_bootstrap_network(int (*mncc_recv)(struct gsm_network *, struct msgb *),
 	int rc;
 
 	/* initialize our data structures */
-	bsc_gsmnet = gsm_network_init(1, 1, mncc_recv);
+	bsc_gsmnet = gsm_network_init(mncc_recv);
 	if (!bsc_gsmnet)
 		return -ENOMEM;
 
-	bsc_gsmnet->name_long = talloc_strdup(bsc_gsmnet, "OpenBSC");
-	bsc_gsmnet->name_short = talloc_strdup(bsc_gsmnet, "OpenBSC");
 
 	/* our vty command code expects vty->priv to point to a telnet_connection */
 	dummy_conn.priv = bsc_gsmnet;
