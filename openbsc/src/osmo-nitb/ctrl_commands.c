@@ -20,6 +20,7 @@
  */
 
 #include <openbsc/control_cmd.h>
+#include <openbsc/ipaccess.h>
 #include <openbsc/gsm_data.h>
 
 #include <osmocom/vty/misc.h>
@@ -90,6 +91,35 @@ static int get_net_save_config(struct ctrl_cmd *cmd, void *data)
 
 CTRL_CMD_DEFINE(net_save_config, "save-configuration");
 
+static int verify_net_apply_config(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	return 0;
+}
+
+static int get_net_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	cmd->reply = "Write only attribute";
+	return CTRL_CMD_ERROR;
+}
+
+static int set_net_apply_config(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_network *net = cmd->node;
+	struct gsm_bts *bts;
+
+	llist_for_each_entry(bts, &net->bts_list, list) {
+		if (!is_ipaccess_bts(bts))
+			continue;
+
+		ipaccess_drop_oml(bts);
+	}
+
+	cmd->reply = "Tried to drop the BTS";
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_CMD_DEFINE(net_apply_config, "apply-configuration");
+
 int bsc_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -97,6 +127,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_mcc);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_short_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
 
 	return rc;
