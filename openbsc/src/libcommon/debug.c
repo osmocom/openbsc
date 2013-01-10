@@ -147,7 +147,7 @@ static const struct log_info_cat default_categories[] = {
 	},
 	[DNAT] = {
 		.name = "DNAT",
-		.description = "GSM 08.08 NAT/Multipkexer",
+		.description = "GSM 08.08 NAT/Multiplexer",
 		.enabled = 1, .loglevel = LOGL_NOTICE,
 	},
 	[DCTRL] = {
