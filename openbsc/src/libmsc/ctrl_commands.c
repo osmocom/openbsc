@@ -30,10 +30,41 @@ CTRL_CMD_DEFINE_RANGE(bts_mnc, "mnc", struct gsm_bts, network_code, 0, 999);
 CTRL_CMD_DEFINE_RANGE(bts_mcc, "mcc", struct gsm_bts, country_code, 1, 999);
 CTRL_CMD_DEFINE_RANGE(bts_unit_id, "unit-id", struct gsm_bts,
 		ip_access.site_id, 0, 65534);
+CTRL_CMD_DEFINE(bts_band, "band");
 CTRL_CMD_DEFINE_RANGE(trx_arfcn, "arfcn", struct gsm_bts_trx, arfcn, 0, 1023);
 CTRL_CMD_DEFINE_STRING(bts_short_name, "short-name", struct gsm_bts, name_short);
 CTRL_CMD_DEFINE_STRING(bts_long_name, "long-name", struct gsm_bts, name_long);
 CTRL_CMD_DEFINE_STRING(bts_description, "description", struct gsm_bts, description);
+
+static int verify_bts_band(struct ctrl_cmd *cmd, const char *value, void *d)
+{
+	int band = gsm_band_parse(value);
+	if (band < 0)
+		return -1;
+	return 0;
+}
+
+static int set_bts_band(struct ctrl_cmd *cmd, void *d)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	int band = gsm_band_parse(cmd->value);
+	if (band < 0) {
+		cmd->reply = "Failed to parse GSM band";
+		return CTRL_CMD_ERROR;
+	}
+
+	bts->band = band;
+	return get_bts_band(cmd, d);
+}
+
+static int get_bts_band(struct ctrl_cmd *cmd, void *d)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	cmd->reply = talloc_strdup(cmd, gsm_band_name(bts->band));
+	return CTRL_CMD_REPLY;
+}
 
 static int verify_net_save_config(struct ctrl_cmd *cmd, const char *v, void *d)
 {
@@ -98,6 +129,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_description);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_unit_id);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_band);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_arfcn);
 
