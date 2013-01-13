@@ -762,6 +762,18 @@ int gsm0411_rcv_sms(struct gsm_subscriber_connection *conn,
 	DEBUGP(DLSMS, "receiving data (trans_id=%x)\n", transaction_id);
 	trans = trans_find_by_id(conn->subscr, GSM48_PDISC_SMS,
 				 transaction_id);
+
+	/*
+	 * A transaction we created but don't know about?
+	 */
+	if (!trans && (transaction_id & 0x8) == 0) {
+		LOGP(DLSMS, LOGL_ERROR, "trans_id=%x allocated by us but known "
+			"to us anymore. We are ignoring it, maybe a CP-ERROR "
+			"from a MS?\n",
+			transaction_id);
+		return -EINVAL;
+	}
+
 	if (!trans) {
 		DEBUGP(DLSMS, " -> (new transaction)\n");
 		trans = trans_alloc(conn->subscr, GSM48_PDISC_SMS,
