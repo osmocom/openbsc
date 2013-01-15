@@ -1510,6 +1510,10 @@ int main(int argc, char **argv)
 	}
 
 	nat->ctrl = bsc_nat_controlif_setup(nat, 4250);
+	if (!nat->ctrl) {
+		fprintf(stderr, "Creating the control interface failed.\n");
+		exit(1);
+	}
 
 	nat->msc_con->connection_loss = msc_connection_was_lost;
 	nat->msc_con->connected = msc_connection_connected;
