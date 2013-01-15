@@ -1,4 +1,5 @@
 /* (C) 2011 by Daniel Willmann <daniel@totalueberwachung.de>
+ * (C) 2011 by Holger Hans Peter Freyther
  * (C) 2011 by On-Waves
  * All Rights Reserved
  *
@@ -388,18 +389,18 @@ static int set_net_rf_lock(struct ctrl_cmd *cmd, void *data)
 {
 	int locked = atoi(cmd->value);
 	struct gsm_network *net = cmd->node;
-	struct gsm_bts *bts;
 	if (!net) {
 		cmd->reply = "net not found.";
 		return CTRL_CMD_ERROR;
 	}
 
-	llist_for_each_entry(bts, &net->bts_list, list) {
-		struct gsm_bts_trx *trx;
-		llist_for_each_entry(trx, &bts->trx_list, list) {
-			gsm_trx_lock_rf(trx, locked);
-		}
+	if (!net->bsc_data->rf_ctrl) {
+		cmd->reply = "RF Ctrl is not enabled in the BSC Configuration";
+		return CTRL_CMD_ERROR;
 	}
+
+	osmo_bsc_rf_schedule_lock(net->bsc_data->rf_ctrl,
+			locked == 1 ? '0' : '1');
 
 	cmd->reply = talloc_asprintf(cmd, "%u", locked);
 	if (!cmd->reply) {
@@ -420,6 +421,27 @@ static int verify_net_rf_lock(struct ctrl_cmd *cmd, const char *value, void *dat
 	return 0;
 }
 
+static int msc_signal_handler(unsigned int subsys, unsigned int signal,
+			void *handler_data, void *signal_data)
+{
+	struct msc_signal_data *msc;
+	struct gsm_network *net;
+	struct gsm_bts *bts;
+
+	if (subsys != SS_MSC)
+		return 0;
+	if (signal != S_MSC_AUTHENTICATED)
+		return 0;
+
+	msc = signal_data;
+
+	net = msc->data->network;
+	llist_for_each_entry(bts, &net->bts_list, list)
+		generate_location_state_trap(bts, msc->data->msc_con);	
+
+	return 0;
+}
+
 int bsc_ctrl_cmds_install(struct gsm_network *net)
 {
 	int rc;
@@ -436,10 +458,14 @@ int bsc_ctrl_cmds_install(struct gsm_network *net)
 	rc = osmo_signal_register_handler(SS_MSC, &msc_connection_status_trap_cb, net);
 	if (rc)
 		goto end;
+	rc = osmo_signal_register_handler(SS_MSC, msc_signal_handler, NULL);
+	if (rc)
+		goto end;
 	rc = ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_bts_connection_status);
 	if (rc)
 		goto end;
 	rc = osmo_signal_register_handler(SS_L_INPUT, &bts_connection_status_trap_cb, net);
+
 end:
 	return rc;
 }

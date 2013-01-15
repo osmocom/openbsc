@@ -56,5 +56,6 @@ enum osmo_bsc_rf_opstate osmo_bsc_rf_get_opstate_by_bts(struct gsm_bts *bts);
 enum osmo_bsc_rf_adminstate osmo_bsc_rf_get_adminstate_by_bts(struct gsm_bts *bts);
 enum osmo_bsc_rf_policy osmo_bsc_rf_get_policy_by_bts(struct gsm_bts *bts);
 struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net);
+void osmo_bsc_rf_schedule_lock(struct osmo_bsc_rf *rf, char cmd);
 
 #endif

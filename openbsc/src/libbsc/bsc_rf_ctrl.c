@@ -239,6 +239,11 @@ static void grace_timeout(void *_data)
 
 static int enter_grace(struct osmo_bsc_rf *rf)
 {
+	if (osmo_timer_pending(&rf->grace_timeout)) {
+		LOGP(DLINP, LOGL_NOTICE, "RF Grace timer is pending. Not restarting.\n");
+		return 0;
+	}
+
 	rf->grace_timeout.cb = grace_timeout;
 	rf->grace_timeout.data = rf;
 	osmo_timer_schedule(&rf->grace_timeout, rf->gsm_network->bsc_data->mid_call_timeout, 0);
@@ -298,9 +303,7 @@ static int rf_read_cmd(struct osmo_fd *fd)
 	case RF_CMD_D_OFF:
 	case RF_CMD_ON:
 	case RF_CMD_OFF:
-		conn->rf->last_request = buf[0];
-		if (!osmo_timer_pending(&conn->rf->delay_cmd))
-			osmo_timer_schedule(&conn->rf->delay_cmd, 1, 0);
+		osmo_bsc_rf_schedule_lock(conn->rf, buf[0]);
 		break;
 	default:
 		conn->rf->last_state_command = "Unknown command";
@@ -444,3 +447,9 @@ struct osmo_bsc_rf *osmo_bsc_rf_create(const char *path, struct gsm_network *net
 	return rf;
 }
 
+void osmo_bsc_rf_schedule_lock(struct osmo_bsc_rf *rf, char cmd)
+{
+	rf->last_request = cmd;
+	if (!osmo_timer_pending(&rf->delay_cmd))
+		osmo_timer_schedule(&rf->delay_cmd, 1, 0);
+}

@@ -422,12 +422,16 @@ static void initialize_if_needed(struct bsc_msc_connection *conn)
 
 static void send_id_get_response(struct osmo_msc_data *data, int fd)
 {
+	struct msc_signal_data sig;
 	struct msgb *msg;
 
 	msg = bsc_msc_id_get_resp(data->bsc_token);
 	if (!msg)
 		return;
 	msc_queue_write(data->msc_con, msg, IPAC_PROTO_IPACCESS);
+
+	sig.data = data;
+	osmo_signal_dispatch(SS_MSC, S_MSC_AUTHENTICATED, &sig);
 }
 
 int osmo_bsc_msc_init(struct osmo_msc_data *data)
