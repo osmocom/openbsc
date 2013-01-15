@@ -1368,6 +1368,7 @@ static void handle_options(int argc, char **argv)
 		static struct option long_options[] = {
 			{"help", 0, 0, 'h'},
 			{"debug", 1, 0, 'd'},
+			{"daemonize", 0, 0, 'D'},
 			{"config-file", 1, 0, 'c'},
 			{"disable-color", 0, 0, 's'},
 			{"timestamp", 0, 0, 'T'},
@@ -1376,7 +1377,7 @@ static void handle_options(int argc, char **argv)
 			{0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hd:sTPc:m:l:",
+		c = getopt_long(argc, argv, "hd:sTPc:m:l:D",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -1391,6 +1392,9 @@ static void handle_options(int argc, char **argv)
 			break;
 		case 'd':
 			log_parse_category_mask(osmo_stderr_target, optarg);
+			break;
+		case 'D':
+			daemonize = 1;
 			break;
 		case 'c':
 			config_file = strdup(optarg);
