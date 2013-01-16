@@ -1525,16 +1525,26 @@ static int abis_rsl_rx_cchan(struct msgb *msg)
 
 static int rsl_rx_rll_err_ind(struct msgb *msg)
 {
+	struct tlv_parsed tp;
 	struct abis_rsl_rll_hdr *rllh = msgb_l2(msg);
-	uint8_t *rlm_cause = rllh->data;
+	uint8_t rlm_cause;
 
+	rsl_tlv_parse(&tp, rllh->data, msgb_l2len(msg) - sizeof(*rllh));
+	if (!TLVP_PRESENT(&tp, RSL_IE_RLM_CAUSE)) {
+		LOGP(DRLL, LOGL_ERROR,
+			"%s ERROR INDICATION without mandantory cause.\n",
+			gsm_lchan_name(msg->lchan));
+		return -1;
+	}
+
+	rlm_cause = *TLVP_VAL(&tp, RSL_IE_RLM_CAUSE);
 	LOGP(DRLL, LOGL_ERROR, "%s ERROR INDICATION cause=%s\n",
 		gsm_lchan_name(msg->lchan),
-		rsl_rlm_cause_name(rlm_cause[1]));
+		rsl_rlm_cause_name(rlm_cause));
 
 	rll_indication(msg->lchan, rllh->link_id, BSC_RLLR_IND_ERR_IND);
 
-	if (rlm_cause[1] == RLL_CAUSE_T200_EXPIRED) {
+	if (rlm_cause == RLL_CAUSE_T200_EXPIRED) {
 		osmo_counter_inc(msg->lchan->ts->trx->bts->network->stats.chan.rll_err);
 		return rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 	}
