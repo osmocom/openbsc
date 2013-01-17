@@ -1,0 +1,74 @@
+openbsc (0.9.14~z10) UNRELEASED; urgency=low
+
+  * New BSC for SI testing on PCS1900
+  * Add a VTY command for paging debugging
+  * Merge MGCP accounting patches
+  * Rebuild against a split libosmocore library
+  * New USSD command for connection loss (on all kind of channels)
+  * Fix the init code for two bts coming up at the same time
+  * Jacobs changes for USSD
+  * Jacobs TimeZone changes and cherry-picks
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Thu, 19 Sep 2013 15:37:06 +0100
+
+openbsc (0.12.0+git26-7) unstable; urgency=low
+
+  * 64bit fix for the MGCP rewriting
+
+ -- Holger Hans Peter Freyther <holger@freyther.de>  Wed, 07 Nov 2012 11:39:34 +0100
+
+openbsc (0.12.0+git26-6) precise; urgency=low
+
+  * Added init script for osmocom-sgsn. 
+
+ -- Eric Butler <eric@codebutler.com>  Fri, 24 Aug 2012 21:04:32 -0700
+
+openbsc (0.12.0+git26-5) precise; urgency=low
+
+  * Don't enable MNCC sock by default.
+  * Automatically create important directories.
+  * Fix init script 'stop' command.
+
+ -- Eric Butler <eric@codebutler.com>  Fri, 24 Aug 2012 20:56:33 -0700
+
+openbsc (0.12.0+git26-4) precise; urgency=low
+
+  * Specify HLR path and enable RTP proxy.
+
+ -- Eric Butler <eric@codebutler.com>  Mon, 20 Aug 2012 00:21:07 -0700
+
+openbsc (0.12.0+git26-3) precise; urgency=low
+
+  * Fix init script.
+
+ -- Eric Butler <eric@codebutler.com>  Sun, 19 Aug 2012 16:05:44 -0700
+
+openbsc (0.12.0+git26-2) precise; urgency=low
+
+  * Fix libdbi package dependency.
+
+ -- Eric Butler <eric@codebutler.com>  Wed, 15 Aug 2012 00:35:37 -0700
+
+openbsc (0.12.0+git26-1) precise; urgency=low
+
+  * Fix version issue.
+
+ -- Eric Butler <eric@codebutler.com>  Tue, 14 Aug 2012 21:00:51 -0700
+
+openbsc (0.12.0+git26) precise; urgency=low
+
+  * Updated ubuntu package.
+
+ -- Eric Butler <eric@codebutler.com>  Tue, 14 Aug 2012 17:36:51 -0700
+
+openbsc (0.9.13.115.eb113-1) natty; urgency=low
+
+  * New upstream release
+
+ -- Harald Welte <laforge@gnumonks.org>  Wed, 11 May 2011 18:41:24 +0000
+
+openbsc (0.9.4-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Harald Welte <laforge@gnumonks.org>  Tue, 24 Aug 2010 13:34:24 +0200
