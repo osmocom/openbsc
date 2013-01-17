@@ -38,6 +38,18 @@
 #include <openbsc/arfcn_range_encode.h>
 
 
+static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
+			const int pgsm, const int arfcn)
+{
+	if (!bis && !ter && gsm_arfcn2band(arfcn) == bts->band)
+		return 1;
+	if (bis && pgsm && gsm_arfcn2band(arfcn) == bts->band && (arfcn < 1 || arfcn > 124))
+		return 1;
+	if (ter && gsm_arfcn2band(arfcn) != bts->band)
+		return 1;
+	return 0;
+}
+
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
 
 /* 10.5.2.13.2: Bit map 0 format */
@@ -138,12 +150,8 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 		if (arfcns_used > ARRAY_SIZE(arfcns))
 			return -1;
 		/* Check if we can select it? */
-		if (bitvec_get_bit_pos(bv, i)
-		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
-		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
-		  || (ter && gsm_arfcn2band(i) != bts->band))) {
+		if (bitvec_get_bit_pos(bv, i) && use_arfcn(bts, bis, ter, pgsm, i))
 			arfcns[arfcns_used++] = i;
-		}
 	}
 
 	/*
@@ -215,31 +223,30 @@ static int bitvec2freq_list(uint8_t *chan_list, struct bitvec *bv,
 		 * in case of SI*bis, allow neighbours in same band ouside pgsm
 		 * in case of SI*ter, allow neighbours in different bands
 		 */
-		if (bitvec_get_bit_pos(bv, i)
-		 && ((!bis && !ter && gsm_arfcn2band(i) == bts->band)
-		  || (bis && pgsm && gsm_arfcn2band(i) == bts->band && (i < 1 || i > 124))
-		  || (ter && gsm_arfcn2band(i) != bts->band))) {
-			/* count the arfcns we want to carry */
-			arfcns += 1;
+		if (!bitvec_get_bit_pos(bv, i))
+			continue;
+		if (!use_arfcn(bts, bis, ter, pgsm, i))
+			continue;
+		/* count the arfcns we want to carry */
+		arfcns += 1;
 
-			/* 955..1023 < 0..885 */
-			if (min < 0)
-				min = i;
-			if (i >= 955 && min < 955)
-				min = i;
-			if (i >= 955 && min >= 955 && i < min)
-				min = i;
-			if (i < 955 && min < 955 && i < min)
-				min = i;
-			if (max < 0)
-				max = i;
-			if (i < 955 && max >= 955)
-				max = i;
-			if (i >= 955 && max >= 955 && i > max)
-				max = i;
-			if (i < 955 && max < 955 && i > max)
-				max = i;
-		}
+		/* 955..1023 < 0..885 */
+		if (min < 0)
+			min = i;
+		if (i >= 955 && min < 955)
+			min = i;
+		if (i >= 955 && min >= 955 && i < min)
+			min = i;
+		if (i < 955 && min < 955 && i < min)
+			min = i;
+		if (max < 0)
+			max = i;
+		if (i < 955 && max >= 955)
+			max = i;
+		if (i >= 955 && max >= 955 && i > max)
+			max = i;
+		if (i < 955 && max < 955 && i > max)
+			max = i;
 	}
 
 	if (max == -1) {
