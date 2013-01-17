@@ -37,15 +37,35 @@
 #include <openbsc/rest_octets.h>
 #include <openbsc/arfcn_range_encode.h>
 
+/*
+ * DCS1800 and PCS1900 have overlapping ARFCNs. We would need to set the
+ * ARFCN_PCS flag on the 1900 ARFCNs but this would increase cell_alloc
+ * and other arrays to make sure (ARFCN_PCS + 1024)/8 ARFCNs fit into the
+ * array. DCS1800 and PCS1900 can not be used at the same time so conserve
+ * memory and do the below.
+ */
+static int band_compatible(const struct gsm_bts *bts, int arfcn)
+{
+	enum gsm_band band = gsm_arfcn2band(arfcn);
+
+	/* normal case */
+	if (band == bts->band)
+		return 1;
+	/* deal with ARFCN_PCS not set */
+	if (band == GSM_BAND_1800 && bts->band == GSM_BAND_1900)
+		return 1;
+
+	return 0;
+}
 
 static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
 			const int pgsm, const int arfcn)
 {
-	if (!bis && !ter && gsm_arfcn2band(arfcn) == bts->band)
+	if (!bis && !ter && band_compatible(bts, arfcn))
 		return 1;
-	if (bis && pgsm && gsm_arfcn2band(arfcn) == bts->band && (arfcn < 1 || arfcn > 124))
+	if (bis && pgsm && band_compatible(bts, arfcn) && (arfcn < 1 || arfcn > 124))
 		return 1;
-	if (ter && gsm_arfcn2band(arfcn) != bts->band)
+	if (ter && !band_compatible(bts, arfcn))
 		return 1;
 	return 0;
 }
