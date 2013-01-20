@@ -185,9 +185,11 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		       struct submit_sm_resp_t *submit_r)
 {
 	struct gsm_sms *sms;
+	struct gsm_network *net = esme->smsc->priv;
+	struct sms_signal_data sig;
 	int rc = -1;
 
-	rc = submit_to_sms(&sms, esme->smsc->priv, submit);
+	rc = submit_to_sms(&sms, net, submit);
 	if (rc != ESME_ROK) {
 		submit_r->command_status = rc;
 		return 0;
@@ -210,6 +212,9 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 		}
 		strcpy((char *)submit_r->message_id, "msg_id_not_implemented");
 		LOGP(DLSMS, LOGL_INFO, "SMPP SUBMIT-SM: Stored in DB\n");
+
+		memset(&sig, 0, sizeof(sig));
+		osmo_signal_dispatch(SS_SMS, S_SMS_SUBMITTED, &sig);
 		rc = 0;
 		break;
 	case 2: /* forward (i.e. transaction) mode */
