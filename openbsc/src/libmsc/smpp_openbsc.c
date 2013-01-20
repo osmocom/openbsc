@@ -203,10 +203,11 @@ int handle_smpp_submit(struct osmo_esme *esme, struct submit_sm_t *submit,
 	case 1: /* datagram */
 	case 3: /* store-and-forward */
 		rc = db_sms_store(sms);
+		sms_free(sms);
+		sms = NULL;
 		if (rc < 0) {
 			LOGP(DLSMS, LOGL_ERROR, "SMPP SUBMIT-SM: Unable to "
 				"store SMS in database\n");
-			sms_free(sms);
 			submit_r->command_status = ESME_RSYSERR;
 			return 0;
 		}
