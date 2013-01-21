@@ -344,6 +344,7 @@ void lchan_free(struct gsm_lchan *lchan)
 		lchan->conn = NULL;
 	}
 
+	lchan->sacch_deact = 0;
 	/* FIXME: ts_free() the timeslot, if we're the last logical
 	 * channel using it */
 }
@@ -390,6 +391,11 @@ static void _lchan_handle_release(struct gsm_lchan *lchan,
 		gsm48_send_rr_release(lchan);
 
 		/* Deactivate the SACCH on the BTS side */
+		if (lchan->sacch_deact)
+			LOGP(DRLL, LOGL_ERROR,
+				"%s sacch already deactivated?!\n",
+				gsm_lchan_name(lchan));
+		lchan->sacch_deact = 1;
 		rsl_deact_sacch(lchan);
 		rsl_start_t3109(lchan);
 	} else if (lchan->sapis[0] == LCHAN_SAPI_UNUSED) {

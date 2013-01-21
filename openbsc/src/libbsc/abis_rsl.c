@@ -697,7 +697,7 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 		/*
 		 * sacch de-activate and "local end release"
 		 */
-		if (deact_sacch == SACCH_DEACTIVATE)
+		if (deact_sacch == SACCH_DEACTIVATE && !lchan->sacch_deact)
 			rsl_deact_sacch(lchan);
 		rsl_release_sapis_from(lchan, 0, RSL_REL_LOCAL_END);
 
