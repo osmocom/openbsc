@@ -119,7 +119,8 @@ static int config_write_smpp(struct vty *vty)
 
 	vty_out(vty, "smpp%s", VTY_NEWLINE);
 	vty_out(vty, " local-tcp-port %u%s", smsc->listen_port, VTY_NEWLINE);
-	vty_out(vty, " system-id %s%s", smsc->system_id, VTY_NEWLINE);
+	if (smsc->system_id)
+		vty_out(vty, " system-id %s%s", smsc->system_id, VTY_NEWLINE);
 	vty_out(vty, " policy %s%s",
 		smsc->accept_all ? "accept-all" : "closed", VTY_NEWLINE);
 
