@@ -108,7 +108,7 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	}
 
 	/* create remote call */
-	if (!(remote = talloc(tall_call_ctx, struct gsm_call))) {
+	if (!(remote = talloc_zero(tall_call_ctx, struct gsm_call))) {
 		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
 				GSM48_CC_CAUSE_RESOURCE_UNAVAIL);
 		goto out_reject;
