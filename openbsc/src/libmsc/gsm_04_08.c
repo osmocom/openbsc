@@ -2300,8 +2300,6 @@ static int gsm48_cc_tx_release(struct gsm_trans *trans, void *arg)
 
 	gh->msg_type = GSM48_MT_CC_RELEASE;
 
-	trans->callref = 0;
-	
 	gsm48_stop_cc_timer(trans);
 	gsm48_start_cc_timer(trans, 0x308, GSM48_T308);
 
