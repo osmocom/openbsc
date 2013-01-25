@@ -1291,6 +1291,8 @@ int mncc_release_ind(struct gsm_network *net, struct gsm_trans *trans,
 	memset(&rel, 0, sizeof(rel));
 	rel.callref = callref;
 	mncc_set_cause(&rel, location, value);
+	if (trans && trans->cc.state == GSM_CSTATE_RELEASE_REQ)
+		return mncc_recvmsg(net, trans, MNCC_REL_CNF, &rel);
 	return mncc_recvmsg(net, trans, MNCC_REL_IND, &rel);
 }
 
