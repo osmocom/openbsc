@@ -209,6 +209,7 @@ static void lchan_deact_tmr_cb(void *data)
 
 	LOGP(DRSL, LOGL_ERROR, "%s Timeout during deactivation!\n",
 		gsm_lchan_name(lchan));
+	abort();
 
 	do_lchan_free(lchan);
 }
@@ -697,8 +698,10 @@ static int rsl_rf_chan_release(struct gsm_lchan *lchan, int error,
 		/*
 		 * sacch de-activate and "local end release"
 		 */
-		if (deact_sacch == SACCH_DEACTIVATE && !lchan->sacch_deact)
+		if (deact_sacch == SACCH_DEACTIVATE) {
 			rsl_deact_sacch(lchan);
+			rsl_deact_sacch(lchan);
+		}
 		rsl_release_sapis_from(lchan, 0, RSL_REL_LOCAL_END);
 
 		/*
@@ -946,13 +949,17 @@ static int rsl_rx_chan_act_nack(struct msgb *msg)
 		print_rsl_cause(LOGL_ERROR, cause,
 				TLVP_LEN(&tp, RSL_IE_CAUSE));
 		msg->lchan->error_cause = *cause;
-		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC)
+		if (*cause != RSL_ERR_RCH_ALR_ACTV_ALLOC) {
 			rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
+			abort();
+		}
 		else
 			rsl_rf_chan_release(msg->lchan, 1, SACCH_DEACTIVATE);
 
-	} else
+	} else {
+		abort();
 		rsl_lchan_set_state(msg->lchan, LCHAN_S_BROKEN);
+	}
 
 	LOGPC(DRSL, LOGL_ERROR, "\n");
 
@@ -1448,6 +1455,13 @@ static int rsl_send_imm_assignment(struct gsm_lchan *lchan)
 	lchan->T3101.cb = t3101_expired;
 	lchan->T3101.data = lchan;
 	osmo_timer_schedule(&lchan->T3101, bts->network->T3101, 0);
+
+#if 0
+	if (lchan->type == GSM_LCHAN_TCH_F && lchan->ts->nr >= 0 && lchan->ts->nr <= 6) {
+		printf("Just not sending the immediate assignment..\n");
+		return 0;
+	}
+#endif
 
 	/* send IMMEDIATE ASSIGN CMD on RSL to BTS (to send on CCCH to MS) */
 	return rsl_imm_assign_cmd(bts, sizeof(*ia)+ia->mob_alloc_len, (uint8_t *) ia);
@@ -2131,6 +2145,7 @@ int rsl_release_sapis_from(struct gsm_lchan *lchan, int start,
 		link_id = sapi;
 		if (lchan->type == GSM_LCHAN_TCH_F || lchan->type == GSM_LCHAN_TCH_H)
 			link_id |= 0x40;
+		rsl_deact_sacch(lchan);
 		rsl_release_request(lchan, link_id, release_mode);
 		no_sapi = 0;
 	}

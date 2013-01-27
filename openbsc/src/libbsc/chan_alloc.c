@@ -300,7 +300,6 @@ void lchan_free(struct gsm_lchan *lchan)
 	sig.type = lchan->type;
 	lchan->type = GSM_LCHAN_NONE;
 
-
 	if (lchan->conn) {
 		struct lchan_signal_data sig;
 
@@ -396,7 +395,10 @@ static void _lchan_handle_release(struct gsm_lchan *lchan,
 				"%s sacch already deactivated?!\n",
 				gsm_lchan_name(lchan));
 		lchan->sacch_deact = 1;
+		rsl_chan_mode_modify_req(lchan);
 		rsl_deact_sacch(lchan);
+		rsl_deact_sacch(lchan);
+		rsl_chan_mode_modify_req(lchan);
 		rsl_start_t3109(lchan);
 	} else if (lchan->sapis[0] == LCHAN_SAPI_UNUSED) {
 		rsl_direct_rf_release(lchan);
