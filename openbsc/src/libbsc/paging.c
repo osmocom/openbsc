@@ -1,5 +1,5 @@
 /* Paging helper and manager.... */
-/* (C) 2009 by Holger Hans Peter Freyther <zecke@selfish.org>
+/* (C) 2009,2013 by Holger Hans Peter Freyther <zecke@selfish.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -298,6 +298,26 @@ static int _paging_request(struct gsm_bts *bts, struct gsm_subscriber *subscr,
 	return 0;
 }
 
+int paging_request_bts(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+		int type, gsm_cbfn *cbfn, void *data)
+{
+	int rc;
+
+	/* skip all currently inactive TRX */
+	if (!trx_is_usable(bts->c0))
+		return 0;
+
+	/* maybe it is the first time we use it */
+	paging_init_if_needed(bts);
+
+
+	/* Trigger paging, pass any error to the caller */
+	rc = _paging_request(bts, subscr, type, cbfn, data);
+	if (rc < 0)
+		return rc;
+	return 1;
+}
+
 int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		   int type, gsm_cbfn *cbfn, void *data)
 {
@@ -314,19 +334,10 @@ int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		if (!bts)
 			break;
 
-		/* skip all currently inactive TRX */
-		if (!trx_is_usable(bts->c0))
-			continue;
-
-		/* maybe it is the first time we use it */
-		paging_init_if_needed(bts);
-
-		num_pages++;
-
-		/* Trigger paging, pass any error to caller */
-		rc = _paging_request(bts, subscr, type, cbfn, data);
+		rc = paging_request_bts(bts, subscr, type, cbfn, data);
 		if (rc < 0)
 			return rc;
+		num_pages += rc;
 	} while (1);
 
 	if (num_pages == 0)

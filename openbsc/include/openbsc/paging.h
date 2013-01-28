@@ -56,6 +56,8 @@ struct gsm_paging_request {
 /* schedule paging request */
 int paging_request(struct gsm_network *network, struct gsm_subscriber *subscr,
 		   int type, gsm_cbfn *cbfn, void *data);
+int paging_request_bts(struct gsm_bts *bts, struct gsm_subscriber *subscr,
+		int type, gsm_cbfn *cbfn, void *data);
 
 /* stop paging requests */
 void paging_request_stop(struct gsm_bts *bts, struct gsm_subscriber *subscr,

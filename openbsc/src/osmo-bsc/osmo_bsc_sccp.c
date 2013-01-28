@@ -190,11 +190,8 @@ int bsc_queue_for_msc(struct osmo_bsc_sccp_con *conn, struct msgb *msg)
 int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 			      struct osmo_msc_data *msc)
 {
-	struct gsm_network *net;
 	struct osmo_bsc_sccp_con *bsc_con;
 	struct sccp_connection *sccp;
-
-	net = conn->bts->network;
 
 	/* This should not trigger */
 	if (!msc->msc_con->is_authenticated) {
@@ -203,7 +200,7 @@ int bsc_create_new_connection(struct gsm_subscriber_connection *conn,
 		return -1;
 	}
 
-	if (!bsc_grace_allow_new_connection(net)) {
+	if (!bsc_grace_allow_new_connection(conn->bts->network, conn->bts)) {
 		LOGP(DMSC, LOGL_NOTICE, "BSC in grace period. No new connections.\n");
 		return -1;
 	}
