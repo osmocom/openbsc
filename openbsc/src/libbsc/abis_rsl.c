@@ -1785,6 +1785,9 @@ static void ipac_parse_rtp(struct gsm_lchan *lchan, struct tlv_parsed *tv)
 	}
 }
 
+/*! \brief Issue IPA RSL CRCX to configure RTP on BTS side
+ *  \param[in] lchan Logical Channel for which we issue CRCX
+ */
 int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 {
 	struct msgb *msg = rsl_msgb_alloc();
@@ -1810,6 +1813,12 @@ int rsl_ipacc_crcx(struct gsm_lchan *lchan)
 	return abis_rsl_sendmsg(msg);
 }
 
+/*! \brief Issue IPA RSL MDCX to configure MGW-side of RTP
+ *  \param[in] lchan Logical Channel for which we issue MDCX
+ *  \param[in] ip Remote (MGW) IP address for RTP
+ *  \param[in] port Remote (MGW) UDP port number for RTP
+ *  \param[in] rtp_payload2 Contents of RTP PAYLOAD 2 IE
+ */
 int rsl_ipacc_mdcx(struct gsm_lchan *lchan, uint32_t ip, uint16_t port,
 		   uint8_t rtp_payload2)
 {

@@ -1,6 +1,6 @@
 /* RTP proxy handling for ip.access nanoBTS */
 
-/* (C) 2009 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2009-2013 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -212,7 +212,10 @@ static void tv_difference(struct timeval *diff, const struct timeval *from,
 	diff->tv_sec = to->tv_sec - from->tv_sec;
 }
 
-/* encode and send a rtp frame */
+/*! \brief encode and send a rtp frame
+ *  \param[in] rs RTP socket through which we shall send
+ *  \param[in] frame GSM RTP frame to be sent
+ */
 int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 {
 	struct rtp_sub_socket *rss = &rs->rtp;
@@ -464,7 +467,7 @@ out_free:
 	return rc;
 }
 
-/* write from tx_queue to RTP/RTCP socket */
+/* \brief write from tx_queue to RTP/RTCP socket */
 static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 {
 	struct msgb *msg;
@@ -489,7 +492,7 @@ static int rtp_socket_write(struct rtp_socket *rs, struct rtp_sub_socket *rss)
 }
 
 
-/* callback for the select.c:bfd_* layer */
+/*! \brief callback for the select.c:bfd_* layer */
 static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 {
 	struct rtp_socket *rs = bfd->data;
@@ -515,6 +518,7 @@ static int rtp_bfd_cb(struct osmo_fd *bfd, unsigned int flags)
 	return 0;
 }
 
+/*! \brief initialize one rtp sub-socket */
 static void init_rss(struct rtp_sub_socket *rss,
 		     struct rtp_socket *rs, int fd, int priv_nr)
 {
@@ -525,6 +529,7 @@ static void init_rss(struct rtp_sub_socket *rss,
 	rss->bfd.cb = rtp_bfd_cb;
 }
 
+/*! \brief create a new RTP/RTCP socket and bind it */
 struct rtp_socket *rtp_socket_create(void)
 {
 	int rc;
@@ -604,7 +609,10 @@ static int rtp_sub_socket_bind(struct rtp_sub_socket *rss, uint32_t ip,
 #define RTP_PORT_BASE	30000
 static unsigned int next_udp_port = RTP_PORT_BASE;
 
-/* bind a RTP socket to a local address */
+/*! \brief bind a RTP socket to a specific local address
+ *  \param[in] rs RTP socket to be bound
+ *  \param[in] ip local IP address to which socket is to be bound
+ */
 int rtp_socket_bind(struct rtp_socket *rs, uint32_t ip)
 {
 	int rc = -EIO;
@@ -655,7 +663,11 @@ static int rtp_sub_socket_connect(struct rtp_sub_socket *rss,
 			   &alen);
 }
 
-/* 'connect' a RTP socket to a remote peer */
+/*! \brief 'connect' a RTP socket to a remote peer
+ *  \param[in] rs RTP socket to be connected
+ *  \param[in] ip remote IP address to which to connect
+ *  \param[in] port remote UDP port number to which to connect
+ */
 int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 {
 	int rc;
@@ -672,7 +684,10 @@ int rtp_socket_connect(struct rtp_socket *rs, uint32_t ip, uint16_t port)
 	return rtp_sub_socket_connect(&rs->rtcp, ip, port+1);
 }
 
-/* bind two RTP/RTCP sockets together */
+/*! \brief bind two RTP/RTCP sockets together in the proxy
+ *  \param[in] this First RTP socket
+ *  \param[in] other Second RTP socket
+ */
 int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 {
 	DEBUGP(DLMUX, "rtp_socket_proxy(this=%p, other=%p)\n",
@@ -687,7 +702,11 @@ int rtp_socket_proxy(struct rtp_socket *this, struct rtp_socket *other)
 	return 0;
 }
 
-/* bind RTP/RTCP socket to application */
+/*! \brief bind RTP/RTCP socket to application, disabling proxy
+ *  \param[in] this RTP socket
+ *  \param[in] net gsm_network argument to trau_tx_to_mncc()
+ *  \param[in] callref callref argument to trau_tx_to_mncc()
+ */
 int rtp_socket_upstream(struct rtp_socket *this, struct gsm_network *net,
 			uint32_t callref)
 {
@@ -712,6 +731,9 @@ static void free_tx_queue(struct rtp_sub_socket *rss)
 		msgb_free(msg);
 }
 
+/*! \brief Free/release a previously allocated RTP socket
+ *  \param[in[] rs RTP/RTCP socket to be released
+ */
 int rtp_socket_free(struct rtp_socket *rs)
 {
 	DEBUGP(DLMUX, "rtp_socket_free(rs=%p)\n", rs);
