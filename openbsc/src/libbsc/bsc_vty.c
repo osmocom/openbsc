@@ -27,6 +27,8 @@
 #include <osmocom/vty/telnet_interface.h>
 #include <osmocom/vty/misc.h>
 
+#include <osmocom/gsm/gsm0502.h>
+
 #include <arpa/inet.h>
 
 #include <osmocom/core/linuxlist.h>
@@ -50,6 +52,8 @@
 #include <openbsc/abis_rsl.h>
 #include <openbsc/osmo_msc_data.h>
 #include <openbsc/osmo_bsc_rf.h>
+
+#include <inttypes.h>
 
 #include "../../bscconfig.h"
 
@@ -1147,6 +1151,36 @@ DEFUN(show_paging,
 		bts_paging_dump_vty(vty, bts);
 	}
 
+	return CMD_SUCCESS;
+}
+
+DEFUN(show_paging_group,
+      show_paging_group_cmd,
+      "show paging-group <0-255> IMSI",
+      SHOW_STR "Display the paging group\n"
+      "BTS Number\n" "IMSI\n")
+{
+	struct gsm_network *net = gsmnet_from_vty(vty);
+	struct gsm_bts *bts;
+	unsigned int page_group;
+	int bts_nr = atoi(argv[0]);
+
+	if (bts_nr >= net->num_bts) {
+		vty_out(vty, "%% can't find BTS %s%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	bts = gsm_bts_num(net, bts_nr);
+	if (!bts) {
+		vty_out(vty, "%% can't find BTS %s%s", argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	page_group = gsm0502_calc_paging_group(&bts->si_common.chan_desc,
+						str_to_imsi(argv[1]));
+	vty_out(vty, "%%Paging group for IMSI %" PRIu64 " on BTS #%d is %u%s",
+		str_to_imsi(argv[1]), bts->nr,
+		page_group, VTY_NEWLINE);
 	return CMD_SUCCESS;
 }
 
@@ -3095,6 +3129,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element_ve(&logging_fltr_imsi_cmd);
 
 	install_element_ve(&show_paging_cmd);
+	install_element_ve(&show_paging_group_cmd);
 
 	logging_vty_add_cmds(cat);
 	install_element(CFG_LOG_NODE, &logging_fltr_imsi_cmd);

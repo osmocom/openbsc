@@ -224,6 +224,12 @@ class TestVTYNITB(TestVTYGenericBSC):
         res = self.vty.command('show subscriber imsi '+imsi)
         self.assert_(res.find("    IMSI: "+imsi) > 0)
 
+    def testShowPagingGroup(self):
+        res = self.vty.command("show paging-group 255 1234567")
+        self.assertEqual(res, "% can't find BTS 255")
+        res = self.vty.command("show paging-group 0 1234567")
+        self.assertEquals(res, "%Paging group for IMSI 1234567 on BTS #0 is 7")
+
 class TestVTYBSC(TestVTYGenericBSC):
 
     def vty_command(self):
