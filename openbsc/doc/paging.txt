@@ -1,0 +1,48 @@
+
+GSM Paging implementation in OpenBSC
+
+== Code structure ==
+
+The code is implemented in the libbsc/paging.c file. The external
+interface is documented/specified in the include/openbsc/paging.h
+header file. The code is used by the NITB and BSC application.
+
+
+== Implementation ==
+
+Paging can be initiated in two ways. The standard way is to page by
+LAC. Each BTS has its own list/queue of outstanding paging operation.
+When a subscriber is paged one "struct paging_request" per BTS will
+be allocated and added to the tail of the list. The BTS is supposed
+to be configured to not repeat the paging.
+
+A paging_request will remain in the queue until a paging response or at
+the expiry of the T3113. Every 500 milliseconds a RSL paging command is
+send to the BTS. The 500 milliseconds is a throttling to not crash the
+ip.access nanoBTS. Once one paging_request has been handled it will be
+put at the end of the queue/list and the available slots for the BTS
+will be decreased.
+
+The available slots will be updated based on the paging load information
+element of the CCCH Load indication. If no paging slots are considered
+to be available and no load indication is sent a timer is started. The
+current timeout is 500 milliseconds and at the expiry of the timer the
+available slots will be set to 20.
+
+OpenBSC has the " paging free <-1-1024>" configuration option. In case
+there are less free channels than required no paging request will be
+sent to the BTS. Instead it will be attempted to send the paging request
+at the next timeout (500 milliseconds).
+
+== Limitation ==
+
+The paging throughput could be higher but this has lead to crashes on the
+ip.access nanoBTS in the past.
+
+== Configuration ==
+
+=== ip.access nanoBTS ===
+
+The current CCCH Load indication threshold is 10% and the period is 1 second.
+The code can be found inside the src/libbsc/bts_ipaccess_nanobts.c inside the
+nanobts_attr_bts array.
