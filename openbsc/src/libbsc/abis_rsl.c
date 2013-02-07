@@ -1295,7 +1295,7 @@ static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 	/* create IMMEDIATE ASSIGN REJECT 04.08 message */
 	memset(iar, 0, sizeof(*iar));
 	iar->proto_discr = GSM48_PDISC_RR;
-	iar->msg_type = GSM48_MT_RR_IMM_ASS;
+	iar->msg_type = GSM48_MT_RR_IMM_ASS_REJ;
 	iar->page_mode = GSM48_PM_SAME;
 
 	memcpy(&iar->req_ref1, &rqd_refs[0], sizeof(iar->req_ref1));
@@ -1319,7 +1319,10 @@ static int rsl_send_imm_ass_rej(struct gsm_bts *bts,
 		memcpy(&iar->req_ref4, &rqd_refs[0], sizeof(iar->req_ref4));
 	iar->wait_ind4 = wait_ind;
 
-	return rsl_imm_assign_cmd(bts, sizeof(iar), (uint8_t *) iar);
+	/* we need to subtract 1 byte from sizeof(*iar) since ia includes the l2_plen field */
+	iar->l2_plen = GSM48_LEN2PLEN((sizeof(*iar)-1));
+
+	return rsl_imm_assign_cmd(bts, sizeof(*iar), (uint8_t *) iar);
 }
 
 /* MS has requested a channel on the RACH */

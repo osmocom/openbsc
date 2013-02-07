@@ -192,6 +192,7 @@ enum gsm_auth_policy {
 #define GSM_T3101_DEFAULT 10
 #define GSM_T3105_DEFAULT 40
 #define GSM_T3113_DEFAULT 60
+#define GSM_T3122_DEFAULT 10
 
 struct gsm_network {
 	/* global parameters */
