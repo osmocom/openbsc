@@ -37,6 +37,7 @@ apps = [
 	(4242, "src/osmo-bsc/osmo-bsc", "doc/examples/osmo-bsc/osmo-bsc.cfg", "OsmoBSC", "bsc"),
 	(4243, "src/osmo-bsc_mgcp/osmo-bsc_mgcp", "doc/examples/osmo-bsc_mgcp/mgcp.cfg", "OpenBSC MGCP", "mgcp"),
 	(4244, "src/osmo-bsc_nat/osmo-bsc_nat", "doc/examples/osmo-bsc_nat/osmo-bsc_nat.cfg", "OsmoBSCNAT", "nat"), 
+	(4245, "src/gprs/osmo-sgsn", "doc/examples/osmo-sgsn/osmo-sgsn.cfg", "OsmoSGSN", "sgsn"), 
 	(4246, "src/gprs/osmo-gbproxy", "doc/examples/osmo-gbproxy/osmo-gbproxy.cfg", "OsmoGbProxy", "gbproxy"),
 ]
 
