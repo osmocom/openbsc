@@ -911,6 +911,18 @@ DEFUN(mnccint_def_codec_h,
 	return CMD_SUCCESS;
 }
 
+/* this is just for backwards compatibility as the sms code moved into
+ * libosmocore and old config files no longer parse... */
+DEFUN_DEPRECATED(log_level_sms, log_level_sms_cmd,
+	"logging level sms (everything|debug|info|notice|error|fatal)",
+	".HIDDEN")
+{
+	vty_out(vty, "%% 'logging level sms' is now called 'logging level "
+		"lsms', please update your config %s", VTY_NEWLINE);
+
+	return CMD_SUCCESS;
+}
+
 int bsc_vty_init_extra(void)
 {
 	osmo_signal_register_handler(SS_SCALL, scall_cbfn, NULL);
@@ -951,6 +963,8 @@ int bsc_vty_init_extra(void)
 	install_element(MNCC_INT_NODE, &ournode_end_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_f_cmd);
 	install_element(MNCC_INT_NODE, &mnccint_def_codec_h_cmd);
+
+	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 
 	return 0;
 }
