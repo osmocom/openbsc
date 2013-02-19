@@ -1,5 +1,5 @@
 AM_CPPFLAGS = $(all_includes) -I$(top_srcdir)/include
-AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(COVERAGE_CFLAGS)
+AM_CFLAGS=-Wall -ggdb3 $(LIBOSMOCORE_CFLAGS) $(LIBOSMOGSM_CFLAGS) $(LIBOSMOSCCP_CFLAGS) $(LIBOSMOABIS_CFLAGS) $(LIBOSMONETIF_CFLAGS) $(COVERAGE_CFLAGS)
 AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 EXTRA_DIST = bsc_nat_test.ok bsc_data.c barr.cfg barr_dup.cfg
@@ -20,4 +20,4 @@ bsc_nat_test_LDADD = $(top_builddir)/src/libbsc/libbsc.a \
 			$(top_srcdir)/src/libcommon/libcommon.a \
 			$(LIBOSMOCORE_LIBS) $(LIBOSMOGSM_LIBS) -lrt \
 			$(LIBOSMOSCCP_LIBS) $(LIBOSMOVTY_LIBS) \
-			$(LIBOSMOABIS_LIBS)
+			$(LIBOSMOABIS_LIBS) $(LIBOSMONETIF_LIBS)

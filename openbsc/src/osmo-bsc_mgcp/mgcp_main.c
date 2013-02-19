@@ -47,6 +47,8 @@
 
 #include <osmocom/vty/command.h>
 
+#include <openbsc/osmux.h>
+
 #include "../../bscconfig.h"
 
 /* this is here for the vty... it will never be called */
@@ -233,7 +235,12 @@ int main(int argc, char **argv)
 
 	/* set some callbacks */
 	cfg->reset_cb = mgcp_rsip_cb;
-	cfg->change_cb = mgcp_change_cb;
+
+	/* Osmux needs a custom function to push holes in the firewall */
+	if (!cfg->osmux)
+		cfg->change_cb = mgcp_change_cb;
+	else
+		cfg->change_cb = osmux_change_cb;
 
         /* we need to bind a socket */
         if (rc == 0) {
@@ -281,6 +288,14 @@ int main(int argc, char **argv)
 		}
 
 		LOGP(DMGCP, LOGL_NOTICE, "Configured for MGCP.\n");
+	}
+
+	if (cfg->osmux) {
+		if (!osmux_init(OSMUX_ROLE_BSC, cfg)) {
+			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
+			return -1;
+		}
+		LOGP(DMGCP, LOGL_NOTICE, "OSMUX has been ENABLED.\n");
 	}
 
 	/* initialisation */

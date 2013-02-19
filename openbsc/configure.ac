@@ -24,6 +24,7 @@ PKG_CHECK_MODULES(LIBOSMOVTY, libosmovty >= 0.3.0)
 PKG_CHECK_MODULES(LIBOSMOGSM, libosmogsm >= 0.6.0)
 PKG_CHECK_MODULES(LIBOSMOABIS, libosmoabis >= 0.1.0)
 PKG_CHECK_MODULES(LIBOSMOGB, libosmogb >= 0.5.2)
+PKG_CHECK_MODULES(LIBOSMONETIF, libosmo-netif >= 0.0.1)
 
 # Enabke/disable the NAT?
 AC_ARG_ENABLE([nat], [AS_HELP_STRING([--enable-nat], [Build the BSC NAT. Requires SCCP])],

@@ -96,6 +96,15 @@ struct mgcp_rtp_tap {
 	struct sockaddr_in forward;
 };
 
+enum mgcp_type {
+	MGCP_RTP = 0,	/* default */
+	MGCP_RTP_TRANSCODED,
+	MGCP_OSMUX_BSC,
+	MGCP_OSMUX_BSC_NAT,
+};
+
+#include <openbsc/osmux.h>
+
 struct mgcp_endpoint {
 	int allocated;
 	uint32_t ci;
@@ -119,7 +128,9 @@ struct mgcp_endpoint {
 	 */
 	struct mgcp_rtp_end trans_bts;
 	struct mgcp_rtp_end trans_net;
-	int is_transcoded;
+
+	/* see enum mgcp_type */
+	enum mgcp_type type;
 
 	/* sequence bits */
 	struct mgcp_rtp_state net_state;
@@ -134,6 +145,9 @@ struct mgcp_endpoint {
 
 	/* tap for the endpoint */
 	struct mgcp_rtp_tap taps[MGCP_TAP_COUNT];
+
+	/* osmux internal to unbatch messages for this endpoint */
+	struct osmux osmux;
 };
 
 #define ENDPOINT_NUMBER(endp) abs(endp - endp->tcfg->endpoints)
@@ -163,5 +177,6 @@ void mgcp_state_calc_loss(struct mgcp_rtp_state *s, struct mgcp_rtp_end *,
 			uint32_t *expected, int *loss);
 uint32_t mgcp_state_calc_jitter(struct mgcp_rtp_state *);
 
+#define DUMMY_LOAD 0x23
 
 #endif

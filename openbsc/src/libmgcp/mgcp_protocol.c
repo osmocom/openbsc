@@ -500,7 +500,7 @@ static int allocate_ports(struct mgcp_endpoint *endp)
 		}
 
 		/* remember that we have set up transcoding */
-		endp->is_transcoded = 1;
+		endp->type = MGCP_RTP_TRANSCODED;
 	}
 
 	return 0;
@@ -587,6 +587,23 @@ static struct msgb *handle_create_con(struct mgcp_parse_data *p)
 	endp->ci = generate_call_id(p->cfg);
 	if (endp->ci == CI_UNUSED)
 		goto error2;
+
+	/* If osmux is enabled, initialize. RTP SSRC is allocated per
+	 * circuit ID. We cannot use endp->ci since two BSCs may select
+	 * the same, so divide the RTP SSRC space (2^32) by the 256 possible
+	 * circuit IDs, then randomly select one value from that window.
+	 *
+	 * This is the probability of having a clash:
+	 * 1/16777216 = 0.00000005960464477539
+	 */
+	if (tcfg->cfg->osmux) {
+		static uint32_t rtp_ssrc_winlen = UINT32_MAX / 256;
+
+		srand(time(NULL));
+		osmux_xfrm_output_init(&endp->osmux.out,
+					(endp->ci * rtp_ssrc_winlen) +
+					(random() % rtp_ssrc_winlen));
+	}
 
 	endp->allocated = 1;
 	endp->bts_end.payload_type = tcfg->audio_payload;
@@ -1014,7 +1031,6 @@ void mgcp_free_endp(struct mgcp_endpoint *endp)
 	mgcp_rtp_end_reset(&endp->net_end);
 	mgcp_rtp_end_reset(&endp->trans_net);
 	mgcp_rtp_end_reset(&endp->trans_bts);
-	endp->is_transcoded = 0;
 
 	memset(&endp->net_state, 0, sizeof(endp->net_state));
 	memset(&endp->bts_state, 0, sizeof(endp->bts_state));
@@ -1118,7 +1134,7 @@ static void create_transcoder(struct mgcp_endpoint *endp)
 	int in_endp = ENDPOINT_NUMBER(endp);
 	int out_endp = endp_back_channel(in_endp);
 
-	if (!endp->is_transcoded)
+	if (endp->type != MGCP_RTP_TRANSCODED)
 		return;
 
 	send_msg(endp, in_endp, endp->trans_bts.local_port, "CRCX", "sendrecv");
@@ -1140,7 +1156,7 @@ static void delete_transcoder(struct mgcp_endpoint *endp)
 	int in_endp = ENDPOINT_NUMBER(endp);
 	int out_endp = endp_back_channel(in_endp);
 
-	if (!endp->is_transcoded)
+	if (endp->type != MGCP_RTP_TRANSCODED)
 		return;
 
 	send_dlcx(endp, in_endp);

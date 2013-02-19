@@ -773,6 +773,46 @@ DEFUN(reset_all_endp, reset_all_endp_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_mgcp_osmux,
+      cfg_mgcp_osmux_cmd,
+      "osmux (on|off)",
+      "Set on/off osmux translator\n")
+{
+	if (strcmp(argv[0], "on") == 0)
+		g_cfg->osmux = 1;
+	else if (strcmp(argv[0], "off") == 0)
+		g_cfg->osmux = 0;
+	else {
+		vty_out(vty, "Only on/off allowed for osmux option.%s",
+			VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_mgcp_osmux_batch_factor,
+      cfg_mgcp_osmux_batch_factor_cmd,
+      "osmux batch-factor <1-4>",
+      "Set osmux batch factor\n")
+{
+	char *end = NULL;
+	uint64_t ret;
+
+	ret = strtoull(argv[0], &end, 10);
+	if (ret == UINT64_MAX) {
+		vty_out(vty, "%s out of valid batch factor range <1-4>.%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	} else if (*end) {
+		vty_out(vty, "%s cannot be converted to number.%s",
+			argv[0], VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+	g_cfg->osmux_batch = ret;
+
+	return CMD_SUCCESS;
+}
 
 int mgcp_vty_init(void)
 {
@@ -817,6 +857,8 @@ int mgcp_vty_init(void)
 	install_element(MGCP_NODE, &cfg_mgcp_omit_rtcp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_no_omit_rtcp_cmd);
 	install_element(MGCP_NODE, &cfg_mgcp_sdp_fmtp_extra_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_cmd);
+	install_element(MGCP_NODE, &cfg_mgcp_osmux_batch_factor_cmd);
 
 	install_element(MGCP_NODE, &cfg_mgcp_trunk_cmd);
 	install_node(&trunk_node, config_write_trunk);
@@ -893,6 +935,15 @@ static int allocate_trunk(struct mgcp_trunk_config *trunk)
 			}
 			endp->trans_bts.local_alloc = PORT_ALLOC_STATIC;
 		}
+		if (cfg->osmux) {
+			/* If there is any call-agent address set, we assume
+			 * this mgcp code runs from BSC-NAT.
+			 */
+			if (cfg->call_agent_addr)
+				endp->type = MGCP_OSMUX_BSC_NAT;
+			else
+				endp->type = MGCP_OSMUX_BSC;
+		}
 	}
 
 	return 0;
@@ -918,6 +969,9 @@ int mgcp_parse_config(const char *config_file, struct mgcp_config *cfg)
 		fprintf(stderr, "You need to specify a bind address.\n");
 		return -1;
 	}
+	/* If no batch factor specified for OSMUX, default to 4 messages */
+	if (g_cfg->osmux && !g_cfg->osmux_batch)
+		g_cfg->osmux_batch = 4;
 
 	/* initialize the last ports */
 	g_cfg->last_bts_port = rtp_calculate_port(0, g_cfg->bts_ports.base_port);

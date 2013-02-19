@@ -162,6 +162,11 @@ struct mgcp_config {
 	/* only used for start with a static configuration */
 	int last_net_port;
 	int last_bts_port;
+
+	/* osmux translator: 0 means disabled, 1 means enabled */
+	int osmux;
+	/* osmux batch factor: from 0 to 4 maximum */
+	int osmux_batch;
 };
 
 /* config management */
@@ -199,5 +204,13 @@ static inline void mgcp_endpoint_to_timeslot(int endpoint, int *multiplex, int *
 int mgcp_send_reset_ep(struct mgcp_endpoint *endp, int endpoint);
 int mgcp_send_reset_all(struct mgcp_config *cfg);
 
+enum {
+	MGCP_DEST_NET = 0,
+	MGCP_DEST_BTS = 1,
+};
+
+int mgcp_create_bind(const char *source_addr, struct osmo_fd *fd, int port);
+int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp, struct sockaddr_in *addr, char *buf, int rc);
+int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len);
 
 #endif

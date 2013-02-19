@@ -62,6 +62,8 @@
 
 #include <osmocom/abis/ipa.h>
 
+#include <openbsc/osmux.h>
+
 #include "../../bscconfig.h"
 
 #define SCCP_CLOSE_TIME 20
@@ -1522,6 +1524,14 @@ int main(int argc, char **argv)
 	if (mgcp_parse_config(config_file, nat->mgcp_cfg) < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
 		return -3;
+	}
+
+	if (nat->mgcp_cfg->osmux) {
+		if (!osmux_init(OSMUX_ROLE_BSC_NAT, nat->mgcp_cfg)) {
+			LOGP(DMGCP, LOGL_ERROR, "Cannot init OSMUX\n");
+			return -1;
+		}
+		LOGP(DMGCP, LOGL_NOTICE, "OSMUX has been ENABLED.\n");
 	}
 
 	/* over rule the VTY config */

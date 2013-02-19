@@ -35,6 +35,9 @@
 #include <openbsc/mgcp.h>
 #include <openbsc/mgcp_internal.h>
 
+#include <openbsc/mgcp.h>
+#include <openbsc/osmux.h>
+
 #warning "Make use of the rtp proxy code"
 
 /* attempt to determine byte order */
@@ -78,19 +81,10 @@ struct rtp_hdr {
 #define RTP_MAX_DROPOUT		3000
 #define RTP_MAX_MISORDER	100
 
-
-enum {
-	DEST_NETWORK = 0,
-	DEST_BTS = 1,
-};
-
 enum {
 	PROTO_RTP,
 	PROTO_RTCP,
 };
-
-#define DUMMY_LOAD 0x23
-
 
 /**
  * This does not need to be a precision timestamp and
@@ -115,7 +109,7 @@ uint32_t get_current_ts(void)
 	return ret;
 }
 
-static int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
+int udp_send(int fd, struct in_addr *addr, int port, char *buf, int len)
 {
 	struct sockaddr_in out;
 	out.sin_family = AF_INET;
@@ -263,8 +257,8 @@ static int send_transcoder(struct mgcp_rtp_end *end, struct mgcp_config *cfg,
 	return rc;
 }
 
-static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
-		   struct sockaddr_in *addr, char *buf, int rc)
+int mgcp_send(struct mgcp_endpoint *endp, int dest, int is_rtp,
+	      struct sockaddr_in *addr, char *buf, int rc)
 {
 	struct mgcp_trunk_config *tcfg = endp->tcfg;
 	/* For loop toggle the destination and then dispatch. */
@@ -275,13 +269,19 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 	if (endp->conn_mode == MGCP_CONN_LOOPBACK)
 		dest = !dest;
 
-	if (dest == DEST_NETWORK) {
+	if (dest == MGCP_DEST_NET) {
 		if (is_rtp) {
 			patch_and_count(endp, &endp->bts_state,
 					endp->net_end.payload_type,
 					addr, buf, rc);
 			forward_data(endp->net_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_NET_OUT], buf, rc);
+
+			LOGP(DMGCP, LOGL_DEBUG, "delivering RTP to Network"
+						"via addr=%s, port=%u\n",
+				inet_ntoa(endp->net_end.addr),
+				ntohs(endp->net_end.rtp_port));
+
 			return udp_send(endp->net_end.rtp.fd, &endp->net_end.addr,
 					endp->net_end.rtp_port, buf, rc);
 		} else if (!tcfg->omit_rtcp) {
@@ -295,6 +295,12 @@ static int send_to(struct mgcp_endpoint *endp, int dest, int is_rtp,
 					addr, buf, rc);
 			forward_data(endp->bts_end.rtp.fd,
 				     &endp->taps[MGCP_TAP_BTS_OUT], buf, rc);
+
+			LOGP(DMGCP, LOGL_DEBUG, "delivering RTP to BTS"
+						"via addr=%s, port=%u\n",
+				inet_ntoa(endp->bts_end.addr),
+				ntohs(endp->bts_end.rtp_port));
+
 			return udp_send(endp->bts_end.rtp.fd, &endp->bts_end.addr,
 					endp->bts_end.rtp_port, buf, rc);
 		} else if (!tcfg->omit_rtcp) {
@@ -351,12 +357,20 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	if (endp->net_end.rtp_port != addr.sin_port &&
-	    endp->net_end.rtcp_port != addr.sin_port) {
-		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong source port %d on 0x%x\n",
-			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
-		return -1;
+	switch(endp->type) {
+	case MGCP_RTP:
+	case MGCP_RTP_TRANSCODED:
+		if (endp->net_end.rtp_port != addr.sin_port &&
+		    endp->net_end.rtcp_port != addr.sin_port) {
+			LOGP(DMGCP, LOGL_ERROR,
+				"Data from wrong source port %d on 0x%x\n",
+				ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
+			return -1;
+		}
+		break;
+	case MGCP_OSMUX_BSC:
+	case MGCP_OSMUX_BSC_NAT:
+		break;
 	}
 
 	/* throw away the dummy message */
@@ -371,10 +385,23 @@ static int rtp_data_net(struct osmo_fd *fd, unsigned int what)
 	endp->net_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_NET_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+	switch(endp->type) {
+	case MGCP_RTP_TRANSCODED:
+		rc = send_transcoder(&endp->trans_net, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
+		break;
+	case MGCP_RTP:
+		rc = mgcp_send(endp, MGCP_DEST_BTS, proto == PROTO_RTP, &addr, &buf[0], rc);
+		break;
+	case MGCP_OSMUX_BSC_NAT:
+		/* BSC-NAT -> BSC: translate to OSMUX */
+		rc = osmux_xfrm_to_osmux(MGCP_DEST_BTS, buf, rc, endp);
+		break;
+	default:
+		LOGP(DMGCP, LOGL_ERROR, "unknown endpoint type %d\n",
+			endp->type);
+		break;
+	}
+	return rc;
 }
 
 static void discover_bts(struct mgcp_endpoint *endp, int proto, struct sockaddr_in *addr)
@@ -430,12 +457,20 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 		return -1;
 	}
 
-	if (endp->bts_end.rtp_port != addr.sin_port &&
-	    endp->bts_end.rtcp_port != addr.sin_port) {
-		LOGP(DMGCP, LOGL_ERROR,
-			"Data from wrong bts source port %d on 0x%x\n",
-			ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
-		return -1;
+	switch(endp->type) {
+	case MGCP_RTP:
+	case MGCP_RTP_TRANSCODED:
+		if (endp->bts_end.rtp_port != addr.sin_port &&
+		    endp->bts_end.rtcp_port != addr.sin_port) {
+			LOGP(DMGCP, LOGL_ERROR,
+				"Data from wrong bts source port %d on 0x%x\n",
+				ntohs(addr.sin_port), ENDPOINT_NUMBER(endp));
+			return -1;
+		}
+		break;
+	case MGCP_OSMUX_BSC:
+	case MGCP_OSMUX_BSC_NAT:
+		break;
 	}
 
 	/* throw away the dummy message */
@@ -450,10 +485,23 @@ static int rtp_data_bts(struct osmo_fd *fd, unsigned int what)
 	endp->bts_end.octets += rc;
 
 	forward_data(fd->fd, &endp->taps[MGCP_TAP_BTS_IN], buf, rc);
-	if (endp->is_transcoded)
-		return send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
-	else
-		return send_to(endp, DEST_NETWORK, proto == PROTO_RTP, &addr, &buf[0], rc);
+	switch(endp->type) {
+	case MGCP_RTP_TRANSCODED:
+		rc = send_transcoder(&endp->trans_bts, endp->cfg, proto == PROTO_RTP, &buf[0], rc);
+		break;
+	case MGCP_RTP:
+		rc = mgcp_send(endp, MGCP_DEST_NET, proto == PROTO_RTP, &addr, &buf[0], rc);
+		break;
+	case MGCP_OSMUX_BSC:
+		/* BTS -> BSC, translate to OSMUX */
+		rc = osmux_xfrm_to_osmux(MGCP_DEST_NET, buf, rc, endp);
+		break;
+	default:
+		LOGP(DMGCP, LOGL_ERROR, "unknown endpoit type %d\n",
+			endp->type);
+		break;
+	}
+	return rc;
 }
 
 static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_endp,
@@ -494,7 +542,7 @@ static int rtp_data_transcoder(struct mgcp_rtp_end *end, struct mgcp_endpoint *_
 	}
 
 	end->packets += 1;
-	return send_to(_endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
+	return mgcp_send(_endp, dest, proto == PROTO_RTP, &addr, &buf[0], rc);
 }
 
 static int rtp_data_trans_net(struct osmo_fd *fd, unsigned int what)
@@ -502,7 +550,7 @@ static int rtp_data_trans_net(struct osmo_fd *fd, unsigned int what)
 	struct mgcp_endpoint *endp;
 	endp = (struct mgcp_endpoint *) fd->data;
 
-	return rtp_data_transcoder(&endp->trans_net, endp, DEST_NETWORK, fd);
+	return rtp_data_transcoder(&endp->trans_net, endp, MGCP_DEST_NET, fd);
 }
 
 static int rtp_data_trans_bts(struct osmo_fd *fd, unsigned int what)
@@ -510,10 +558,10 @@ static int rtp_data_trans_bts(struct osmo_fd *fd, unsigned int what)
 	struct mgcp_endpoint *endp;
 	endp = (struct mgcp_endpoint *) fd->data;
 
-	return rtp_data_transcoder(&endp->trans_bts, endp, DEST_BTS, fd);
+	return rtp_data_transcoder(&endp->trans_bts, endp, MGCP_DEST_BTS, fd);
 }
 
-static int create_bind(const char *source_addr, struct osmo_fd *fd, int port)
+int mgcp_create_bind(const char *source_addr, struct osmo_fd *fd, int port)
 {
 	struct sockaddr_in addr;
 	int on = 1;
@@ -549,13 +597,13 @@ static int set_ip_tos(int fd, int tos)
 
 static int bind_rtp(struct mgcp_config *cfg, struct mgcp_rtp_end *rtp_end, int endpno)
 {
-	if (create_bind(cfg->source_addr, &rtp_end->rtp, rtp_end->local_port) != 0) {
+	if (mgcp_create_bind(cfg->source_addr, &rtp_end->rtp, rtp_end->local_port) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTP port: %s:%d on 0x%x\n",
 		       cfg->source_addr, rtp_end->local_port, endpno);
 		goto cleanup0;
 	}
 
-	if (create_bind(cfg->source_addr, &rtp_end->rtcp, rtp_end->local_port + 1) != 0) {
+	if (mgcp_create_bind(cfg->source_addr, &rtp_end->rtcp, rtp_end->local_port + 1) != 0) {
 		LOGP(DMGCP, LOGL_ERROR, "Failed to create RTCP port: %s:%d on 0x%x\n",
 		       cfg->source_addr, rtp_end->local_port + 1, endpno);
 		goto cleanup1;
