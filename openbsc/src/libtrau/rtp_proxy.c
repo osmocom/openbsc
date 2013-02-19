@@ -202,9 +202,9 @@ static int rtp_decode(struct msgb *msg, uint32_t callref, struct msgb **data, in
 		}
 		break;
 	case GSM_TCHH_FRAME:
-		if (payload_len != 14) {
+		if (payload_len != 15) {
 			DEBUGPC(DLMUX, "received RTP half rate frame with "
-				"payload length != 14 (len = %d)\n",
+				"payload length != 15 (len = %d)\n",
 				payload_len);
 			return -EINVAL;
 		}
@@ -302,7 +302,7 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 		break;
 	case GSM_TCHH_FRAME:
 		payload_type = (dynamic_pt) ? : RTP_PT_GSM_HALF;
-		payload_len = 14;
+		payload_len = 15;
 		duration = 160;
 		break;
 	case GSM_TCH_FRAME_AMR:
