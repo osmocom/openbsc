@@ -293,6 +293,8 @@ struct gsm_lchan {
 		/* counts up to Ny1 */
 		unsigned int phys_info_count;
 	} ho;
+	/* S counter for link loss */
+	int s;
 #endif
 };
 
