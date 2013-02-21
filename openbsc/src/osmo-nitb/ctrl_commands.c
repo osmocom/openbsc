@@ -146,6 +146,8 @@ CTRL_CMD_DEFINE_RANGE(bts_unit_id, "unit-id", struct gsm_bts,
 		ip_access.site_id, 0, 65534);
 CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts,
 		location_area_code, 0, 65535);
+CTRL_CMD_DEFINE_RANGE(bts_ci, "cell-identity", struct gsm_bts,
+		cell_identity, 0, 65535);
 
 
 int bsc_ctrl_cmds_install(void)
@@ -173,6 +175,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_description);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_unit_id);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 
 	return rc;
 }
