@@ -202,6 +202,8 @@ CTRL_CMD_DEFINE(net_mcc_mnc_apply, "mcc-mnc-apply");
 CTRL_CMD_VTY_STRING(bts_description, "description", struct gsm_bts, description);
 CTRL_CMD_DEFINE_RANGE(bts_unit_id, "unit-id", struct gsm_bts,
 		ip_access.site_id, 0, 65534);
+CTRL_CMD_DEFINE_RANGE(bts_lac, "location-area-code", struct gsm_bts,
+		location_area_code, 0, 65535);
 
 int bsc_base_ctrl_cmds_install(void)
 {
@@ -228,6 +230,7 @@ int bsc_base_ctrl_cmds_install(void)
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_description);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_unit_id);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 
 	return rc;
 }
