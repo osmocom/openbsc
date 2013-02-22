@@ -472,3 +472,37 @@ int gsm_parse_reg(void *ctx, regex_t *reg, char **str, int argc, const char **ar
 	return ret;
 }
 
+static const struct value_string bts_neigh_mode_strs[] = {
+	{ NL_MODE_AUTOMATIC, "automatic" },
+	{ NL_MODE_MANUAL, "manual" },
+	{ NL_MODE_MANUAL_SI5SEP, "manual-si5" },
+	{ 0, NULL }
+};
+
+const char *bts_neigh_mode_string(enum neigh_list_manual_mode mode)
+{
+	return get_value_string(bts_neigh_mode_strs, mode);
+}
+
+int bts_neigh_mode_value(const char *string)
+{
+	return get_string_value(bts_neigh_mode_strs, string);
+}
+
+void bts_set_neigh_mode(struct gsm_bts *bts, int mode)
+{
+	switch (mode) {
+	case NL_MODE_MANUAL_SI5SEP:
+	case NL_MODE_MANUAL:
+		/* make sure we clear the current list when switching to
+		 * manual mode */
+		if (bts->neigh_list_manual_mode == 0)
+			memset(&bts->si_common.data.neigh_list, 0,
+				sizeof(bts->si_common.data.neigh_list));
+		break;
+	default:
+		break;
+	}
+
+	bts->neigh_list_manual_mode = mode;
+}

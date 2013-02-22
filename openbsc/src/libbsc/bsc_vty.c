@@ -88,13 +88,6 @@ static const struct value_string gprs_bssgp_cfg_strs[] = {
 	{ 0,	NULL }
 };
 
-static const struct value_string bts_neigh_mode_strs[] = {
-	{ NL_MODE_AUTOMATIC, "automatic" },
-	{ NL_MODE_MANUAL, "manual" },
-	{ NL_MODE_MANUAL_SI5SEP, "manual-si5" },
-	{ 0, NULL }
-};
-
 const struct value_string bts_loc_fix_names[] = {
 	{ BTS_LOC_FIX_INVALID,	"invalid" },
 	{ BTS_LOC_FIX_2D,	"fix2d" },
@@ -582,7 +575,7 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  paging free %d%s", bts->paging.free_chans_need, VTY_NEWLINE);
 
 	vty_out(vty, "  neighbor-list mode %s%s",
-		get_value_string(bts_neigh_mode_strs, bts->neigh_list_manual_mode), VTY_NEWLINE);
+		bts_neigh_mode_string(bts->neigh_list_manual_mode), VTY_NEWLINE);
 	if (bts->neigh_list_manual_mode != NL_MODE_AUTOMATIC) {
 		for (i = 0; i < 1024; i++) {
 			if (bitvec_get_bit_pos(&bts->si_common.neigh_list, i))
@@ -2469,23 +2462,9 @@ DEFUN(cfg_bts_neigh_mode, cfg_bts_neigh_mode_cmd,
 	"Manual with different lists for SI2 and SI5\n")
 {
 	struct gsm_bts *bts = vty->index;
-	int mode = get_string_value(bts_neigh_mode_strs, argv[0]);
+	int mode = bts_neigh_mode_value(argv[0]);
 
-	switch (mode) {
-	case NL_MODE_MANUAL_SI5SEP:
-	case NL_MODE_MANUAL:
-		/* make sure we clear the current list when switching to
-		 * manual mode */
-		if (bts->neigh_list_manual_mode == 0)
-			memset(&bts->si_common.data.neigh_list, 0,
-				sizeof(bts->si_common.data.neigh_list));
-		break;
-	default:
-		break;
-	}
-
-	bts->neigh_list_manual_mode = mode;
-
+	bts_set_neigh_mode(bts, mode);
 	return CMD_SUCCESS;
 }
 

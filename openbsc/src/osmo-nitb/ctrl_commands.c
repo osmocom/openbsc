@@ -151,6 +151,33 @@ CTRL_CMD_DEFINE_RANGE(bts_ci, "cell-identity", struct gsm_bts,
 CTRL_CMD_DEFINE_RANGE(bts_ms_max_power, "ms-max-power", struct gsm_bts,
 		ms_max_power, 0, 40);
 
+static int verify_bts_neighbor_mode(struct ctrl_cmd *cmd, const char *v, void *d)
+{
+	if (bts_neigh_mode_value(v) >= 0)
+		return 0;
+	cmd->reply = "Illegal neighbor mode";
+	return -1;
+}
+
+static int get_bts_neighbor_mode(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+	cmd->reply = talloc_strdup(cmd, bts_neigh_mode_string(bts->neigh_list_manual_mode));
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_neighbor_mode(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+	enum neigh_list_manual_mode mode;
+
+	mode = bts_neigh_mode_value(cmd->value);
+	bts_set_neigh_mode(bts, mode);
+
+	return get_bts_neighbor_mode(cmd, data);
+}
+CTRL_CMD_DEFINE(bts_neighbor_mode, "neighbor-mode");
+
 
 int bsc_ctrl_cmds_install(void)
 {
@@ -179,6 +206,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_lac);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ms_max_power);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_mode);
 
 	return rc;
 }
