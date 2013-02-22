@@ -218,6 +218,29 @@ CTRL_CMD_RAW(bts_neighbor_del, "neighbor-del", NULL,
 		set_bts_neighbor_del, verify_bts_neighbor_del);
 
 
+/* TRX related commands below here */
+CTRL_HELPER_GET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
+CTRL_HELPER_SET_INT(trx_max_power, struct gsm_bts_trx, max_power_red);
+static int verify_trx_max_power(struct ctrl_cmd *cmd, const char *value, void *_data)
+{
+	int tmp = atoi(value);
+
+	if (tmp < 0 || tmp > 22) {
+		cmd->reply = "Value must be between 0 and 22";
+		return -1;
+	}
+
+	if (tmp & 1) {
+		cmd->reply = "Value must be even";
+		return -1;
+	}
+
+	return 0;
+}
+CTRL_CMD_DEFINE(trx_max_power, "bs-power-reduction");
+
+
+
 int bsc_ctrl_cmds_install(void)
 {
 	int rc = 0;
@@ -249,5 +272,6 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_add);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_del);
 
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_max_power);
 	return rc;
 }
