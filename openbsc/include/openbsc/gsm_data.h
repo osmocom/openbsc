@@ -436,4 +436,9 @@ extern const struct value_string bts_type_descs[_NUM_GSM_BTS_TYPE+1];
 /* control interface handling */
 int bsc_base_ctrl_cmds_install(void);
 
+/* neighbor list helpers */
+const char *bts_neigh_mode_string(enum neigh_list_manual_mode mode);
+int bts_neigh_mode_value(const char *string);
+void bts_set_neigh_mode(struct gsm_bts *bts, int mode);
+
 #endif /* _GSM_DATA_H */
