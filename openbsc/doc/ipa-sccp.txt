@@ -1,0 +1,94 @@
+
+IPA SCCP message flow in the BSC
+
+February, 2013		Holger Hans Peter Freyther
+
+CONTENTS
+
+1. SCCP inside the IPA header
+2. Supported SCCP message types
+3. Receiving SCCP messages
+4. Sending SCCP messages
+
+
+1. SCCP inside the IPA header
+
+Many Soft-MSCs implement something that is called SCCP/lite. This means
+that SCCP messages are transported inside a small multiplexing protocol
+over TCP/IP. This is an alternative to a full SIGTRAN implementation.
+
+The multiplexing protocol is the same as used with the sysmoBTS and the
+ip.access nanoBTS. It is a three byte header with two bytes for the length
+in network byte order and one byte for the type. The type to be used for
+SCCP is 0xFD.
+
+	struct ipa_header {
+		uint16_t length_in_network_order;
+		uint8_t  type;
+	} __attribute__((packed));
+
+
+
+2. Supported SCCP message types
+
+To implement GSM 08.08 only a subset of SCCP messages need to be implemented.
+For transporting paging and reset messages SCCP UDT messages are used. For
+the connections with a Mobile Station (MS) a SCCP connection is opened. This
+means that the SCCP CR, SCCP CC, SCCP CREF, SCCP RLC, SCCP RLSD, SCCP DT1
+and SCCP IT messages are supported.
+
+
+3. Receiving SCCP UDT messages
+
+This is an illustration of the flow of messages. The IPA multiplexing protocol
+is used for various protocols. This means there is a central place where the
+multiplexing stream terminates. The stream is terminated in the osmo_bsc_msc.c
+file and the ipaccess_a_fd_cb method. For SCCP messages the SCCP dispatching
+sccp_system_incoming method is called. This function is implemented in the
+libosmo-sccp library.
+
+To receive UDT messages osmo_bsc_sccp.c:osmo_bsc_sccp_init is using the
+sccp_set_read function to register a callback for UDT messages. The callback
+is msc_sccp_read and it is calling bsc_handle_udt that is implemented in the
+osmo_bsc_bssap.c. This function will handle the GSM 08.08 BSSAP messages.
+Currently only the reset acknowledge and the paging messages are handled.
+
+The BSC currently does not accept incoming SCCP messages and is only opening
+SCCP connections to the MSC. When opening a connection the callbacks for state
+changes (connection confirmed, released, release complete) are set and a routine
+for handling incoming data. This registration is done in the osmo_bsc_sccp.c
+file and the bsc_create_new_connection method. The name of the callback is
+msc_outgoing_sccp_data and this will call bsc_handle_dt1 that is implemented
+in the osmo_bsc_bssap.c file. This will forward the messages to the right
+Mobile Station (MS).
+
+
+4. Sending SCCP messages
+
+There are three parts to sending that will be explained below. The first part
+is to send an entire SCCP frame (which includes the GSM 08.08 data) to the
+MSC. This is done by first registering the low level sending. sccp_system_init
+is called with the function that is responsible for sending a message. The
+msc_sccp_write_ipa will call the msc_queue_write function with the data and
+the right MSC connection. Below the msc_queue_write the IPA header will be
+prepended to the msg and then send to the MSC.
+
+The BSC supports multiple different A-link connections, the decision to pick
+the right MSC is done in this method. It is either done via the SCCP connection
+or the ctx pointer.
+
+When the BSC is starting a BSS RESET message will be sent to the MSC. The reset
+is created in osmo_bsc_msc.c:initialize_if_needed and sccp_write is called with
+the GSM 08.08 data and the connection to use. The libosmo-sccp library will
+embed it into a SCCP UDT message and call the msc_sccp_write_ipa method.
+
+When a new SCCP connection is to be created the bsc_create_new_connection
+in the osmo_bsc_sccp.c file. The sccp_connection_socket method will create
+the context for a SCCP connection. The state and data callback will be used
+to be notified about data and changes. Once the connection is configured the
+bsc_open_connection will be called that will ask the libosmo-sccp library to
+create a SCCP CR message using the sccp_connection_connect method. For active
+connections the sccp_connection_write method will be called.
+
+
+
