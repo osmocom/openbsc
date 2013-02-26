@@ -178,6 +178,45 @@ static int set_bts_neighbor_mode(struct ctrl_cmd *cmd, void *data)
 }
 CTRL_CMD_DEFINE(bts_neighbor_mode, "neighbor-mode");
 
+static int set_bts_neighbor_add(struct ctrl_cmd *cmd, void *data)
+{
+	int arfcn;
+	struct gsm_bts *bts = cmd->node;
+
+	if (bts->neigh_list_manual_mode != NL_MODE_MANUAL) {
+		cmd->reply = "neighbor-mode must be manual";
+		return CTRL_CMD_ERROR;
+	}
+
+	arfcn = atoi(cmd->value);
+	bitvec_set_bit_pos(&bts->si_common.neigh_list, arfcn, 1);
+	cmd->reply = "Added";
+	return CTRL_CMD_REPLY;
+}
+
+static int set_bts_neighbor_del(struct ctrl_cmd *cmd, void *data)
+{
+	int arfcn;
+	struct gsm_bts *bts = cmd->node;
+
+	if (bts->neigh_list_manual_mode != NL_MODE_MANUAL) {
+		cmd->reply = "neighbor-mode must be manual";
+		return CTRL_CMD_ERROR;
+	}
+
+	arfcn = atoi(cmd->value);
+	bitvec_set_bit_pos(&bts->si_common.neigh_list, arfcn, 0);
+	cmd->reply = "Removed";
+	return CTRL_CMD_REPLY;
+}
+
+CTRL_HELPER_VERIFY_RANGE(bts_neighbor_add, 0, 1023);
+CTRL_HELPER_VERIFY_RANGE(bts_neighbor_del, 0, 1023);
+CTRL_CMD_RAW(bts_neighbor_add, "neighbor-add", NULL,
+		set_bts_neighbor_add, verify_bts_neighbor_add);
+CTRL_CMD_RAW(bts_neighbor_del, "neighbor-del", NULL,
+		set_bts_neighbor_del, verify_bts_neighbor_del);
+
 
 int bsc_ctrl_cmds_install(void)
 {
@@ -207,6 +246,8 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ci);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_ms_max_power);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_mode);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_add);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_del);
 
 	return rc;
 }
