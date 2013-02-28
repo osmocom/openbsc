@@ -36,6 +36,14 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = verify_vty_description_string, \
 }
 
+CTRL_HELPER_VERIFY_RANGE(net_timer, 0, 65535);
+#define CTRL_CMD_TIMER(timer) \
+		CTRL_HELPER_GET_INT(net_timer_t##timer, struct gsm_network, T##timer); \
+		CTRL_HELPER_SET_INT(net_timer_t##timer, struct gsm_network, T##timer); \
+		CTRL_CMD_RAW(net_timer_t##timer, "t"#timer, \
+			get_net_timer_t##timer, set_net_timer_t##timer, \
+			verify_net_timer);
+
 /**
  * Check that there are no newlines or comments or other things
  * that could make the VTY configuration unparsable.
@@ -65,6 +73,18 @@ CTRL_CMD_DEFINE_RANGE(net_mnc, "mnc", struct gsm_network, network_code, 0, 999);
 CTRL_CMD_DEFINE_RANGE(net_mcc, "mcc", struct gsm_network, country_code, 1, 999);
 CTRL_CMD_VTY_STRING(net_short_name, "short-name", struct gsm_network, name_short);
 CTRL_CMD_VTY_STRING(net_long_name, "long-name", struct gsm_network, name_long);
+CTRL_CMD_TIMER(3101);
+CTRL_CMD_TIMER(3103);
+CTRL_CMD_TIMER(3105);
+CTRL_CMD_TIMER(3107);
+CTRL_CMD_TIMER(3109);
+CTRL_CMD_TIMER(3111);
+CTRL_CMD_TIMER(3113);
+CTRL_CMD_TIMER(3115);
+CTRL_CMD_TIMER(3117);
+CTRL_CMD_TIMER(3119);
+CTRL_CMD_TIMER(3122);
+CTRL_CMD_TIMER(3141);
 
 static int verify_net_save_config(struct ctrl_cmd *cmd, const char *v, void *d)
 {
@@ -129,6 +149,18 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_long_name);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_apply_config);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_save_config);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3101);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3103);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3105);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3107);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3109);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3111);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3113);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3115);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3117);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3119);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3122);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_timer_t3141);
 
 	return rc;
 }

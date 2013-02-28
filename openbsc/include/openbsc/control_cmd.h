@@ -158,18 +158,20 @@ static struct ctrl_cmd_element cmd_##cmdname = { \
 	.verify = NULL, \
 }
 
+#define CTRL_CMD_RAW(cmdname, cmdstr, cmdget, cmdset, cmdverify) \
+static struct ctrl_cmd_element cmd_##cmdname = { \
+	.name = cmdstr, \
+	.param = NULL, \
+	.get = cmdget, \
+	.set = cmdset, \
+	.verify = cmdverify, \
+}
+
 #define CTRL_CMD_DEFINE(cmdname, cmdstr) \
 static int get_##cmdname(struct ctrl_cmd *cmd, void *data); \
 static int set_##cmdname(struct ctrl_cmd *cmd, void *data); \
 static int verify_##cmdname(struct ctrl_cmd *cmd, const char *value, void *data); \
-static struct ctrl_cmd_element cmd_##cmdname = { \
-	.name = cmdstr, \
-	.param = NULL, \
-	.get = &get_##cmdname, \
-	.set = &set_##cmdname, \
-	.verify = &verify_##cmdname, \
-}
-
+	CTRL_CMD_RAW(cmdname, cmdstr, get_##cmdname, set_##cmdname, verify_##cmdname)
 struct gsm_network;
 
 #endif /* _CONTROL_CMD_H */
