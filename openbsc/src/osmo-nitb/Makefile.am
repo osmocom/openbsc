@@ -7,7 +7,7 @@ AM_LDFLAGS = $(COVERAGE_LDFLAGS)
 
 bin_PROGRAMS = osmo-nitb
 
-osmo_nitb_SOURCES = bsc_hack.c ctrl_commands.c
+osmo_nitb_SOURCES = bsc_hack.c ctrl_commands.c ctrl_commands_dummy.c
 osmo_nitb_LDADD = \
 		$(top_builddir)/src/libbsc/libbsc.a \
 		$(top_builddir)/src/libmsc/libmsc.a \

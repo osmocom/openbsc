@@ -68,6 +68,7 @@ static int use_db_counter = 1;
 static struct osmo_timer_list db_sync_timer;
 
 extern int bsc_ctrl_cmds_install(void);
+extern int bsc_ctrl_cmds_install_dummies(void);
 
 static void create_pcap_file(char *file)
 {
@@ -294,6 +295,10 @@ int main(int argc, char **argv)
 
 	if (bsc_ctrl_cmds_install() != 0) {
 		printf("Failed to initialize the control commands. Exiting.\n");
+		return -1;
+	}
+	if (bsc_ctrl_cmds_install_dummies() != 0) {
+		printf("Failed to initialize the control commands dummies. Exiting.\n");
 		return -1;
 	}
 
