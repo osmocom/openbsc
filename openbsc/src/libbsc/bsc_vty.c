@@ -1069,6 +1069,9 @@ static void bts_paging_dump_vty(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_paging_request *pag;
 
+	if (!bts->paging.bts)
+		return;
+
 	llist_for_each_entry(pag, &bts->paging.pending_requests, entry)
 		paging_dump_vty(vty, pag);
 }
