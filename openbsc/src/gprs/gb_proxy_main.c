@@ -201,31 +201,6 @@ static struct vty_app_info vty_info = {
 	.is_config_node	= bsc_vty_is_config_node,
 };
 
-/* default categories */
-static struct log_info_cat gprs_categories[] = {
-	[DGPRS] = {
-		.name = "DGPRS",
-		.description = "GPRS Packet Service",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-	[DNS] = {
-		.name = "DNS",
-		.description = "GPRS Network Service (NS)",
-		.enabled = 1, .loglevel = LOGL_INFO,
-	},
-	[DBSSGP] = {
-		.name = "DBSSGP",
-		.description = "GPRS BSS Gateway Protocol (BSSGP)",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-};
-
-static const struct log_info gprs_log_info = {
-	.filter_fn = gprs_log_filter_fn,
-	.cat = gprs_categories,
-	.num_cat = ARRAY_SIZE(gprs_categories),
-};
-
 int main(int argc, char **argv)
 {
 	struct gsm_network dummy_network;
@@ -240,11 +215,11 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 	osmo_init_ignore_signals();
 
-	osmo_init_logging(&gprs_log_info);
+	osmo_init_logging(&log_info);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(&gprs_log_info);
+	logging_vty_add_cmds(&log_info);
 	gbproxy_vty_init();
 
 	handle_options(argc, argv);

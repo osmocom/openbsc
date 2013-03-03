@@ -231,64 +231,6 @@ static void handle_options(int argc, char **argv)
 	}
 }
 
-/* default categories */
-static struct log_info_cat gprs_categories[] = {
-	[DMM] = {
-		.name = "DMM",
-		.description = "Layer3 Mobility Management (MM)",
-		.color = "\033[1;33m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
-	[DPAG]	= {
-		.name = "DPAG",
-		.description = "Paging Subsystem",
-		.color = "\033[1;38m",
-		.enabled = 1, .loglevel = LOGL_NOTICE,
-	},
-	[DMEAS] = {
-		.name = "DMEAS",
-		.description = "Radio Measurement Processing",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
-	},
-	[DREF] = {
-		.name = "DREF",
-		.description = "Reference Counting",
-		.enabled = 0, .loglevel = LOGL_NOTICE,
-	},
-	[DGPRS] = {
-		.name = "DGPRS",
-		.description = "GPRS Packet Service",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-	[DNS] = {
-		.name = "DNS",
-		.description = "GPRS Network Service (NS)",
-		.enabled = 1, .loglevel = LOGL_INFO,
-	},
-	[DBSSGP] = {
-		.name = "DBSSGP",
-		.description = "GPRS BSS Gateway Protocol (BSSGP)",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-	[DLLC] = {
-		.name = "DLLC",
-		.description = "GPRS Logical Link Control Protocol (LLC)",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-	[DSNDCP] = {
-		.name = "DSNDCP",
-		.description = "GPRS Sub-Network Dependent Control Protocol (SNDCP)",
-		.enabled = 1, .loglevel = LOGL_DEBUG,
-	},
-};
-
-static const struct log_info gprs_log_info = {
-	.filter_fn = gprs_log_filter_fn,
-	.cat = gprs_categories,
-	.num_cat = ARRAY_SIZE(gprs_categories),
-};
-
-
 int main(int argc, char **argv)
 {
 	struct ctrl_handle *ctrl;
@@ -304,11 +246,11 @@ int main(int argc, char **argv)
 	signal(SIGUSR2, &signal_handler);
 
 	osmo_init_ignore_signals();
-	osmo_init_logging(&gprs_log_info);
+	osmo_init_logging(&log_info);
 
 	vty_info.copyright = openbsc_copyright;
 	vty_init(&vty_info);
-	logging_vty_add_cmds(&gprs_log_info);
+	logging_vty_add_cmds(&log_info);
         sgsn_vty_init();
 
 	handle_options(argc, argv);
