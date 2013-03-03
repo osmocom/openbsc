@@ -327,7 +327,8 @@ ALIAS_DEPRECATED(cfg_mgcp_rtp_ip_dscp, cfg_mgcp_rtp_ip_tos_cmd,
 DEFUN(cfg_mgcp_sdp_fmtp_extra,
       cfg_mgcp_sdp_fmtp_extra_cmd,
       "sdp audio fmtp-extra .NAME",
-      "Add extra fmtp for the SDP file\n")
+      "Add extra fmtp for the SDP file\n" "Audio\n" "Fmtp-extra\n"
+      "Extra Information\n")
 {
 	char *txt = argv_concat(argv, argc, 0);
 	if (!txt)
@@ -508,7 +509,8 @@ static int config_write_trunk(struct vty *vty)
 DEFUN(cfg_trunk_sdp_fmtp_extra,
       cfg_trunk_sdp_fmtp_extra_cmd,
       "sdp audio fmtp-extra .NAME",
-      "Add extra fmtp for the SDP file\n")
+      "Add extra fmtp for the SDP file\n" "Audio\n" "Fmtp-extra\n"
+      "Extra Information\n")
 {
 	struct mgcp_trunk_config *trunk = vty->index;
 	char *txt = argv_concat(argv, argc, 0);

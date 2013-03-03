@@ -180,7 +180,7 @@ static int config_write_bsc(struct vty *vty)
 DEFUN(cfg_net_bsc_token,
       cfg_net_bsc_token_cmd,
       "token TOKEN",
-      "A token for the BSC to be sent to the MSC")
+      "A token for the BSC to be sent to the MSC\n" "A token\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 
@@ -335,7 +335,8 @@ DEFUN(cfg_net_msc_no_dest,
 DEFUN(cfg_net_msc_ping_time,
       cfg_net_msc_ping_time_cmd,
       "timeout-ping NR",
-      "Set the PING interval, negative for not sending PING")
+      "Set the PING interval, negative for not sending PING\n"
+      "Timeout in seconds\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->ping_timeout = atoi(argv[0]);
@@ -345,7 +346,7 @@ DEFUN(cfg_net_msc_ping_time,
 DEFUN(cfg_net_msc_pong_time,
       cfg_net_msc_pong_time_cmd,
       "timeout-pong NR",
-      "Set the time to wait for a PONG.")
+      "Set the time to wait for a PONG\n" "Timeout in seconds\n")
 {
 	struct osmo_msc_data *data = osmo_msc_data(vty);
 	data->pong_timeout = atoi(argv[0]);

@@ -231,7 +231,7 @@ DEFUN(subscriber_send_pending_sms,
 DEFUN(subscriber_send_sms,
       subscriber_send_sms_cmd,
       "subscriber " SUBSCR_TYPES " ID sms sender " SUBSCR_TYPES " SENDER_ID send .LINE",
-	SUBSCR_HELP "SMS Operations\n" "Send SMS\n" "Actual SMS Text")
+	SUBSCR_HELP "SMS Operations\n" SUBSCR_HELP "Send SMS\n" "Actual SMS Text\n")
 {
 	struct gsm_network *gsmnet = gsmnet_from_vty(vty);
 	struct gsm_subscriber *subscr = get_subscr_by_argv(gsmnet, argv[0], argv[1]);
@@ -911,11 +911,13 @@ DEFUN(mnccint_def_codec_h,
 	return CMD_SUCCESS;
 }
 
+#define OBSOLETE_MSG "Obsolete\n"
 /* this is just for backwards compatibility as the sms code moved into
  * libosmocore and old config files no longer parse... */
 DEFUN_DEPRECATED(log_level_sms, log_level_sms_cmd,
 	"logging level sms (everything|debug|info|notice|error|fatal)",
-	".HIDDEN")
+	".HIDDEN\n" OBSOLETE_MSG OBSOLETE_MSG OBSOLETE_MSG OBSOLETE_MSG
+	OBSOLETE_MSG OBSOLETE_MSG OBSOLETE_MSG OBSOLETE_MSG)
 {
 	vty_out(vty, "%% 'logging level sms' is now called 'logging level "
 		"lsms', please update your config %s", VTY_NEWLINE);

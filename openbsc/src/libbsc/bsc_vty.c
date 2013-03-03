@@ -2644,7 +2644,7 @@ DEFUN(cfg_ts,
 DEFUN(cfg_ts_pchan,
       cfg_ts_pchan_cmd,
       "phys_chan_config PCHAN", /* dynamically generated! */
-      "Physical Channel configuration (TCH/SDCCH/...)")
+      "Physical Channel configuration (TCH/SDCCH/...)\n" "Physical Channel\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
 	int pchanc;
@@ -2663,7 +2663,7 @@ DEFUN(cfg_ts_pchan,
 DEFUN_HIDDEN(cfg_ts_pchan_compat,
       cfg_ts_pchan_compat_cmd,
       "phys_chan_config PCHAN",
-      "Physical Channel configuration (TCH/SDCCH/...)")
+      "Physical Channel configuration (TCH/SDCCH/...)\n" "Physical Channel\n")
 {
 	struct gsm_bts_trx_ts *ts = vty->index;
 	int pchanc;
