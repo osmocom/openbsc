@@ -48,6 +48,7 @@ DUMMY_COMMAND(net_trap_meas_enable, "trap-measurement-reports-enable");
 /* BTS related commands below here */
 DUMMY_COMMAND(bts_drop, "drop");
 DUMMY_COMMAND(bts_rflock, "rflock");
+DUMMY_COMMAND(bts_handover_imsi, "handover-subscriber-imsi");
 
 /* TRX related commands below here */
 DUMMY_COMMAND(trx_drop, "drop");
@@ -60,6 +61,7 @@ int bsc_ctrl_cmds_install_dummies(void)
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rflock);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_handover_imsi);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rflock);
