@@ -45,12 +45,23 @@ int dummy_verify(struct ctrl_cmd *cmd, const char *value, void *data)
 /* ROOT related commands below here */
 DUMMY_COMMAND(net_trap_meas_enable, "trap-measurement-reports-enable");
 
+/* BTS related commands below here */
+DUMMY_COMMAND(bts_drop, "drop");
+DUMMY_COMMAND(bts_rflock, "rflock");
 
+/* TRX related commands below here */
+DUMMY_COMMAND(trx_drop, "drop");
+DUMMY_COMMAND(trx_rflock, "rflock");
 int bsc_ctrl_cmds_install_dummies(void)
 {
 	int rc = 0;
 
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_trap_meas_enable);
 
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_drop);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rflock);
+
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_drop);
+	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rflock);
 	return rc;
 }
