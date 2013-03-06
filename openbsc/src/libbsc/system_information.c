@@ -190,6 +190,26 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 	if (range == ARFCN_RANGE_INVALID)
 		return -2;
 
+	switch (range) {
+	case ARFCN_RANGE_128:
+	case ARFCN_RANGE_256:
+		if (arfcns_used >= 18) {
+			LOGP(DRR, LOGL_ERROR,
+				"Range encoding only available for 512 and"
+				" too may ARFNCS: %d.\n", arfcns_used);
+			return -3;
+		}
+
+		LOGP(DRR, LOGL_NOTICE,
+			"Range encoding 128, 256 not implemented using 512.\n");
+		range = ARFCN_RANGE_512;
+		break;
+	case ARFCN_RANGE_1024:
+		LOGP(DRR, LOGL_ERROR,
+			"Range encoding 1024 is not implemented.\n");
+		return -4;
+	}
+
 	/*
 	 * Manipulate the ARFCN list according to the rules in J4 depending
 	 * on the selected range.
@@ -200,9 +220,10 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 	memset(w, 0, sizeof(w));
 	rc = range_enc_arfcns(range, arfcns, arfcns_used, w, 0);
 	if (rc != 0)
-		return -3;
+		return -5;
 
 	/* Select the range and the amount of bits needed */
+	/* NOTE: we force the range to 512 right now */
 	switch (range) {
 	case ARFCN_RANGE_128:
 		return range_enc_range128(chan_list, f0, w);
@@ -217,7 +238,7 @@ static int enc_freq_lst_range(uint8_t *chan_list,
 		return range_enc_range1024(chan_list, f0, f0_included, w);
 		break;
 	default:
-		return -4;
+		return -6;
 	};
 }
 
