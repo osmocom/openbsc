@@ -30,7 +30,7 @@
 #include <openbsc/rest_octets.h>
 
 /* generate SI1 rest octets */
-int rest_octets_si1(uint8_t *data, uint8_t *nch_pos)
+int rest_octets_si1(uint8_t *data, uint8_t *nch_pos, int is1800_net)
 {
 	struct bitvec bv;
 
@@ -44,7 +44,12 @@ int rest_octets_si1(uint8_t *data, uint8_t *nch_pos)
 	} else
 		bitvec_set_bit(&bv, L);
 
-	bitvec_spare_padding(&bv, 7);
+	if (is1800_net)
+		bitvec_set_bit(&bv, L);
+	else
+		bitvec_set_bit(&bv, H);
+
+	bitvec_spare_padding(&bv, 6);
 	return bv.data_len;
 }
 
