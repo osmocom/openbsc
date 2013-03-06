@@ -58,6 +58,15 @@ static int band_compatible(const struct gsm_bts *bts, int arfcn)
 	return 0;
 }
 
+static int is_dcs_net(const struct gsm_bts *bts)
+{
+	if (bts->band == GSM_BAND_850)
+		return 0;
+	if (bts->band == GSM_BAND_1900)
+		return 0;
+	return 1;
+}
+
 static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
 			const int pgsm, const int arfcn)
 {
@@ -388,8 +397,11 @@ static int generate_si1(uint8_t *output, struct gsm_bts *bts)
 
 	si1->rach_control = bts->si_common.rach_control;
 
-	/* SI1 Rest Octets (10.5.2.32), contains NCH position */
-	rc = rest_octets_si1(si1->rest_octets, NULL);
+	/*
+	 * SI1 Rest Octets (10.5.2.32), contains NCH position and band
+	 * indicator but that is not in the 04.08.
+	 */
+	rc = rest_octets_si1(si1->rest_octets, NULL, is_dcs_net(bts));
 
 	return sizeof(*si1) + rc;
 }
