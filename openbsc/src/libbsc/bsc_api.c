@@ -88,7 +88,8 @@ static uint8_t lchan_to_chosen_channel(struct gsm_lchan *lchan)
 		channel = 0x9;
 		break;
 	case GSM_LCHAN_UNKNOWN:
-		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %p\n", lchan);
+	default:
+		LOGP(DMSC, LOGL_ERROR, "Unknown lchan type: %u\n", lchan->type);
 		break;
 	}
 

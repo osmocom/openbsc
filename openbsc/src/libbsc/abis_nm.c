@@ -1745,12 +1745,14 @@ static int __simple_cmd(struct gsm_bts *bts, uint8_t msg_type)
 int abis_nm_opstart(struct gsm_bts *bts, uint8_t obj_class, uint8_t i0, uint8_t i1, uint8_t i2)
 {
 	struct abis_om_hdr *oh;
+	struct abis_om_fom_hdr *foh;
 	struct msgb *msg = nm_msgb_alloc();
 
 	oh = (struct abis_om_hdr *) msgb_put(msg, ABIS_OM_FOM_HDR_SIZE);
+	foh = (struct abis_om_fom_hdr *) oh->data;
 	fill_om_fom_hdr(oh, 0, NM_MT_OPSTART, obj_class, i0, i1, i2);
 
-	abis_nm_debugp_foh(DNM, (struct abis_om_fom_hdr *) oh->data);
+	abis_nm_debugp_foh(DNM, foh);
 	DEBUGPC(DNM, "Sending OPSTART\n");
 
 	return abis_nm_sendmsg(bts, msg);

@@ -43,8 +43,6 @@
 
 static void vty_dump_sne(struct vty *vty, struct gprs_sndcp_entity *sne)
 {
-	unsigned int i;
-
 	vty_out(vty, " TLLI %08x SAPI=%u NSAPI=%u:%s",
 		sne->lle->llme->tlli, sne->lle->sapi, sne->nsapi, VTY_NEWLINE);
 	vty_out(vty, "  Defrag: npdu=%u highest_seg=%u seg_have=0x%08x tot_len=%u%s",
