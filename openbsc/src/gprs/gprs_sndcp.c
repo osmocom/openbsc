@@ -561,6 +561,7 @@ int sndcp_llunitdata_ind(struct msgb *msg, struct gprs_llc_lle *lle,
 	return sgsn_rx_sndcp_ud_ind(&sne->ra_id, lle->llme->tlli, sne->nsapi, msg, npdu_len, npdu);
 }
 
+#if 0
 /* Section 5.1.2.1 LL-RESET.ind */
 static int sndcp_ll_reset_ind(struct gprs_sndcp_entity *se)
 {
@@ -577,7 +578,6 @@ static int sndcp_ll_status_ind()
 	return 0;
 }
 
-#if 0
 static struct sndcp_state_list {{
 	uint32_t	states;
 	unsigned int	type;

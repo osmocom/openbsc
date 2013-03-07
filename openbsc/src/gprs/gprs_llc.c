@@ -308,6 +308,7 @@ static int gprs_llc_fcs(uint8_t *data, unsigned int len)
 	return fcs_calc;
 }
 
+#if 0
 static void t200_expired(void *data)
 {
 	struct gprs_llc_lle *lle = data;
@@ -330,6 +331,8 @@ static void t200_expired(void *data)
 		/* FIXME: re-start T200 */
 		lle->retrans_ctr++;
 		break;
+	default:
+		;
 	}
 
 }
@@ -344,6 +347,7 @@ static void t201_expired(void *data)
 		lle->retrans_ctr++;
 	}
 }
+#endif
 
 int gprs_llc_tx_u(struct msgb *msg, uint8_t sapi, int command,
 		  enum gprs_llc_u_cmd u_cmd, int pf_bit)
@@ -620,6 +624,8 @@ static int gprs_llc_hdr_rx(struct gprs_llc_hdr_parsed *gph,
 		if ((gph->seq_tx + 1) / 512)
 			lle->oc_ui_recv += 512;
 		break;
+	default:
+		;
 	}
 
 	return 0;
@@ -788,7 +794,9 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 /* receive an incoming LLC PDU (BSSGP-UL-UNITDATA-IND, 7.2.4.2) */
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
+#if 0
 	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+#endif
 	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_lle *lle;

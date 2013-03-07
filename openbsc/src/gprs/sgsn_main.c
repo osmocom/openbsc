@@ -55,6 +55,10 @@
 
 #include "../../bscconfig.h"
 
+/* FIXME: put into seperate header file */
+int gprs_sndcp_vty_init(void);
+int sgsn_gtp_init(struct sgsn_instance *sgi);
+
 /* this is here for the vty... it will never be called */
 void subscr_put() { abort(); }
 

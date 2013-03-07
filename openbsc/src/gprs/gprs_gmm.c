@@ -347,7 +347,10 @@ static int gsm48_tx_gmm_att_ack(struct sgsn_mm_ctx *mm)
 	struct msgb *msg = gsm48_msgb_alloc();
 	struct gsm48_hdr *gh;
 	struct gsm48_attach_ack *aa;
-	uint8_t *ptsig, *mid;
+	uint8_t *mid;
+#if 0
+	uint8_t *ptsig;
+#endif
 
 	DEBUGP(DMM, "<- GPRS ATTACH ACCEPT (new P-TMSI=0x%08x)\n", mm->p_tmsi);
 
@@ -454,6 +457,7 @@ static int gsm48_tx_gmm_id_req(struct sgsn_mm_ctx *mm, uint8_t id_type)
 	return gsm48_gmm_sendmsg(msg, 1, mm);
 }
 
+#if 0
 /* Section 9.4.9: Authentication and Ciphering Request */
 static int gsm48_tx_gmm_auth_ciph_req(struct sgsn_mm_ctx *mm, uint8_t *rand,
 				      uint8_t key_seq, uint8_t algo)
@@ -513,6 +517,7 @@ static int gsm48_tx_gmm_auth_ciph_rej(struct sgsn_mm_ctx *mm)
 
 	return gsm48_gmm_sendmsg(msg, 0, mm);
 }
+#endif
 
 /* Section 9.4.10: Authentication and Ciphering Response */
 static int gsm48_rx_gmm_auth_ciph_resp(struct sgsn_mm_ctx *ctx,
@@ -1166,6 +1171,7 @@ static void pdpctx_timer_start(struct sgsn_pdp_ctx *pdp, unsigned int T,
 }
 
 
+#if 0
 static void msgb_put_pdp_addr_ipv4(struct msgb *msg, uint32_t ipaddr)
 {
 	uint8_t v[6];
@@ -1186,6 +1192,7 @@ static void msgb_put_pdp_addr_ppp(struct msgb *msg)
 
 	msgb_tlv_put(msg, GSM48_IE_GSM_PDP_ADDR, sizeof(v), v);
 }
+#endif
 
 /* Section 9.5.2: Ativate PDP Context Accept */
 int gsm48_tx_gsm_act_pdp_acc(struct sgsn_pdp_ctx *pdp)
