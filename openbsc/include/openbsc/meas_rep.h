@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include <osmocom/gsm/meas_rep.h>
+
 #define MRC_F_PROCESSED	0x0001
 
 /* extracted from a L3 measurement report IE */
@@ -12,18 +14,6 @@ struct gsm_meas_rep_cell {
 	uint8_t neigh_idx;
 	uint16_t arfcn;
 	unsigned int flags;
-};
-
-/* RX Level and RX Quality */
-struct gsm_rx_lev_qual {
-	uint8_t rx_lev;
-	uint8_t rx_qual;
-};
-
-/* unidirectional measumrement report */
-struct gsm_meas_rep_unidir {
-	struct gsm_rx_lev_qual full;
-	struct gsm_rx_lev_qual sub;
 };
 
 #define MEAS_REP_F_UL_DTX	0x01
@@ -58,17 +48,6 @@ struct gsm_meas_rep {
 	/* neighbor measurement reports for up to 6 cells */
 	int num_cell;
 	struct gsm_meas_rep_cell cell[6];
-};
-
-enum meas_rep_field {
-	MEAS_REP_DL_RXLEV_FULL,
-	MEAS_REP_DL_RXLEV_SUB,
-	MEAS_REP_DL_RXQUAL_FULL,
-	MEAS_REP_DL_RXQUAL_SUB,
-	MEAS_REP_UL_RXLEV_FULL,
-	MEAS_REP_UL_RXLEV_SUB,
-	MEAS_REP_UL_RXQUAL_FULL,
-	MEAS_REP_UL_RXQUAL_SUB,
 };
 
 /* obtain an average over the last 'num' fields in the meas reps */

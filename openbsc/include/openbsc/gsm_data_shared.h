@@ -13,6 +13,7 @@
 #include <osmocom/gsm/tlv.h>
 #include <osmocom/gsm/rxlev_stat.h>
 #include <osmocom/gsm/sysinfo.h>
+#include <osmocom/gsm/meas_rep.h>
 
 #include <osmocom/gsm/protocol/gsm_08_58.h>
 #include <osmocom/gsm/protocol/gsm_12_21.h>
@@ -275,12 +276,7 @@ struct gsm_lchan {
 		struct bts_ul_meas uplink[MAX_NUM_UL_MEAS];
 		/* last L1 header from the MS */
 		uint8_t l1_info[2];
-		struct {
-			uint8_t rxlev_full;
-			uint8_t rxlev_sub;
-			uint8_t rxqual_full;
-			uint8_t rxqual_sub;
-		} res;
+		struct gsm_meas_rep_unidir ul_res;
 	} meas;
 	struct {
 		struct amr_multirate_conf amr_mr;
