@@ -797,6 +797,9 @@ static int gprs_llc_hdr_parse(struct gprs_llc_hdr_parsed *ghp,
 /* receive an incoming LLC PDU (BSSGP-UL-UNITDATA-IND, 7.2.4.2) */
 int gprs_llc_rcvmsg(struct msgb *msg, struct tlv_parsed *tv)
 {
+#if 0
+	struct bssgp_ud_hdr *udh = (struct bssgp_ud_hdr *) msgb_bssgph(msg);
+#endif
 	struct gprs_llc_hdr *lh = (struct gprs_llc_hdr *) msgb_llch(msg);
 	struct gprs_llc_hdr_parsed llhp;
 	struct gprs_llc_lle *lle;
