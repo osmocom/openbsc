@@ -329,7 +329,7 @@ int rsl_chan_ms_power_ctrl(struct gsm_lchan *lchan, unsigned int fpc, int dbm)
 static int channel_mode_from_lchan(struct rsl_ie_chan_mode *cm,
 				   struct gsm_lchan *lchan)
 {
-	memset(cm, 0, sizeof(cm));
+	memset(cm, 0, sizeof(*cm));
 
 	/* FIXME: what to do with data calls ? */
 	if (lchan->ts->trx->bts->network->dtx_enabled)
