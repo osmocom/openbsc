@@ -593,6 +593,17 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		}
 	}
 
+	vty_out(vty, "  codec-support fr");
+	if (bts->codec.hr)
+		vty_out(vty, " hr");
+	if (bts->codec.efr)
+		vty_out(vty, " efr");
+	if (bts->codec.afs)
+		vty_out(vty, " afs");
+	if (bts->codec.ahs)
+		vty_out(vty, " ahs");
+	vty_out(vty, "%s", VTY_NEWLINE);
+
 	config_write_bts_gprs(vty, bts);
 
 	if (bts->excl_from_rf_lock)
@@ -2502,6 +2513,169 @@ DEFUN(cfg_bts_no_excl_rf_lock,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_bts_codec1, cfg_bts_codec1_cmd,
+	"codec-support (fr|hr|efr|afs|ahs)",
+	"Codec Support settings\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->afs = 0;
+	codec->ahs = 0;
+	for (i = 0; i < 1; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "afs"))
+			codec->afs = 1;
+		if (!strcmp(argv[i], "ahs"))
+			codec->ahs = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec2, cfg_bts_codec2_cmd,
+	"codec-support (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)",
+	"Codec Support settings\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->afs = 0;
+	codec->ahs = 0;
+	for (i = 0; i < 2; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "afs"))
+			codec->afs = 1;
+		if (!strcmp(argv[i], "ahs"))
+			codec->ahs = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec3, cfg_bts_codec3_cmd,
+	"codec-support (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)"
+	" (fr|hr|efr|afs|ahs)",
+	"Codec Support settings\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->afs = 0;
+	codec->ahs = 0;
+	for (i = 0; i < 3; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "afs"))
+			codec->afs = 1;
+		if (!strcmp(argv[i], "ahs"))
+			codec->ahs = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec4, cfg_bts_codec4_cmd,
+	"codec-support (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)"
+	" (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)",
+	"Codec Support settings\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->afs = 0;
+	codec->ahs = 0;
+	for (i = 0; i < 4; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "afs"))
+			codec->afs = 1;
+		if (!strcmp(argv[i], "ahs"))
+			codec->ahs = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_codec5, cfg_bts_codec5_cmd,
+	"codec-support (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)"
+	" (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs) (fr|hr|efr|afs|ahs)",
+	"Codec Support settings\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n"
+	"Full Rate (mandatory)\nHalf Rate\nEnhanced Full Rate\n"
+	"Adaptive Multirate on TCH/F\nAdaptive Multirate on TCH/H\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct bts_codec_conf *codec = &bts->codec;
+	int i;
+
+	codec->hr = 0;
+	codec->efr = 0;
+	codec->afs = 0;
+	codec->ahs = 0;
+	for (i = 0; i < 5; i++) {
+		if (!strcmp(argv[i], "hr"))
+			codec->hr = 1;
+		if (!strcmp(argv[i], "efr"))
+			codec->efr = 1;
+		if (!strcmp(argv[i], "afs"))
+			codec->afs = 1;
+		if (!strcmp(argv[i], "ahs"))
+			codec->ahs = 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -3099,6 +3273,11 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec1_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec2_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec3_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec4_cmd);
+	install_element(BTS_NODE, &cfg_bts_codec5_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
