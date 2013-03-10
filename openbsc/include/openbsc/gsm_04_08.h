@@ -24,6 +24,20 @@ static inline struct msgb *gsm48_msgb_alloc(void)
 				   "GSM 04.08");
 }
 
+static inline int get_radio_link_timeout(struct gsm48_cell_options *cell_options)
+{
+	return (cell_options->radio_link_timeout + 1) << 2;
+}
+
+static inline void set_radio_link_timeout(struct gsm48_cell_options *cell_options, int value)
+{
+	if (value < 4)
+		value = 4;
+	if (value > 64)
+		value = 64;
+	cell_options->radio_link_timeout = (value >> 2) - 1;
+}
+
 /* config options controlling the behaviour of the lower leves */
 void gsm0408_allow_everyone(int allow);
 void gsm0408_clear_request(struct gsm_subscriber_connection *conn, uint32_t cause);
