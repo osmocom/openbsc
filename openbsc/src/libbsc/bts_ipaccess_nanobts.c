@@ -231,6 +231,10 @@ static void patch_nm_tables(struct gsm_bts *bts)
 	/* patch CGI */
 	abis_nm_ipaccess_cgi(nanobts_attr_bts+sizeof(nanobts_attr_bts)-7, bts);
 
+	/* patch CON_FAIL_CRIT */
+	nanobts_attr_bts[13] =
+		get_radio_link_timeout(&bts->si_common.cell_options);
+
 	/* patch the power reduction */
 	nanobts_attr_radio[1] = bts->c0->max_power_red / 2;
 
