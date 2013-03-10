@@ -48,6 +48,9 @@ DUMMY_COMMAND(net_silent_call, "silent-call-start");
 DUMMY_COMMAND(net_sub_query, "subscriber-show-by-imsi");
 DUMMY_COMMAND(net_sub_auth, "subscriber-modify-by-imsi");
 DUMMY_COMMAND(net_sub_add, "subscriber-add-by-imsi");
+DUMMY_COMMAND(net_log_enable, "logging-state");
+DUMMY_COMMAND(net_log_cat_list, "logging-categories-list");
+DUMMY_COMMAND(net_log_cat_level, "logging-category-level");
 
 /* BTS related commands below here */
 DUMMY_COMMAND(bts_drop, "drop");
@@ -66,6 +69,9 @@ int bsc_ctrl_cmds_install_dummies(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_query);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_auth);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_add);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_log_enable);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_log_cat_list);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_log_cat_level);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rflock);
