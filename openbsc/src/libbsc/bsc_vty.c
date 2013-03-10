@@ -513,6 +513,9 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  periodic location update %u%s",
 			bts->si_common.chan_desc.t3212 * 6, VTY_NEWLINE);
 
+	vty_out(vty, "  radio-link-timeout %d%s",
+		(bts->si_common.cell_options.radio_link_timeout + 1) << 2,
+		VTY_NEWLINE);
 	vty_out(vty, "  channel allocator %s%s",
 		bts->chan_alloc_reverse ? "descending" : "ascending",
 		VTY_NEWLINE);
@@ -2062,6 +2065,19 @@ DEFUN(cfg_bts_no_per_loc_upd, cfg_bts_no_per_loc_upd_cmd,
 	struct gsm_bts *bts = vty->index;
 
 	bts->si_common.chan_desc.t3212 = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_radio_link_timeout, cfg_bts_radio_link_timeout_cmd,
+	"radio-link-timeout <4-64>",
+	"Radio link timeout criterion (BTS side)\n"
+	"Radio link timeout value (lost SACCH block)\n")
+{
+	struct gsm_bts *bts = vty->index;
+
+	bts->si_common.cell_options.radio_link_timeout = (atoi(argv[0])>>2) - 1;
+
 	return CMD_SUCCESS;
 }
 
@@ -3254,6 +3270,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_temp_ofs_inf_cmd);
 	install_element(BTS_NODE, &cfg_bts_penalty_time_cmd);
 	install_element(BTS_NODE, &cfg_bts_penalty_time_rsvd_cmd);
+	install_element(BTS_NODE, &cfg_bts_radio_link_timeout_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_mode_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_ns_timer_cmd);
 	install_element(BTS_NODE, &cfg_bts_gprs_rac_cmd);
