@@ -333,6 +333,8 @@ struct gsm_bts *gsm_bts_alloc_register(struct gsm_network *net, enum gsm_bts_typ
 	bts->si_common.chan_desc.bs_pa_mfrms = RSL_BS_PA_MFRMS_5; /* paging frames */
 	bts->si_common.chan_desc.bs_ag_blks_res = 1; /* reserved AGCH blocks */
 	bts->si_common.chan_desc.t3212 = 5; /* Use 30 min periodic update interval as sane default */
+	set_radio_link_timeout(&bts->si_common.cell_options, 32);
+				/* Use RADIO LINK TIMEOUT of 32 seconds */
 
 	llist_add_tail(&bts->list, &net->bts_list);
 
