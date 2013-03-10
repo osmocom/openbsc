@@ -45,11 +45,14 @@ int dummy_verify(struct ctrl_cmd *cmd, const char *value, void *data)
 /* ROOT related commands below here */
 DUMMY_COMMAND(net_trap_meas_enable, "trap-measurement-reports-enable");
 DUMMY_COMMAND(net_silent_call, "silent-call-start");
+DUMMY_COMMAND(net_sub_query, "subscriber-show-by-imsi");
+DUMMY_COMMAND(net_sub_auth, "subscriber-modify-by-imsi");
+DUMMY_COMMAND(net_sub_add, "subscriber-add-by-imsi");
 
 /* BTS related commands below here */
 DUMMY_COMMAND(bts_drop, "drop");
 DUMMY_COMMAND(bts_rflock, "rflock");
-DUMMY_COMMAND(bts_handover_imsi, "handover-subscriber-imsi");
+DUMMY_COMMAND(bts_handover_imsi, "subscriber-handover-by-imsi");
 
 /* TRX related commands below here */
 DUMMY_COMMAND(trx_drop, "drop");
@@ -60,6 +63,9 @@ int bsc_ctrl_cmds_install_dummies(void)
 
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_trap_meas_enable);
 	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_silent_call);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_query);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_auth);
+	rc |= ctrl_cmd_install(CTRL_NODE_ROOT, &cmd_net_sub_add);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rflock);
