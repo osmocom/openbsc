@@ -54,8 +54,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	if (net->mncc_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
 			"but socket is gone\n", get_mncc_name(msg_type));
-		if (msg_type != GSM_TCHF_FRAME &&
-		    msg_type != GSM_TCHF_FRAME_EFR) {
+		if (!mncc_is_data_frame(msg_type)) {
 			/* release the request */
 			struct gsm_mncc mncc_out;
 			memset(&mncc_out, 0, sizeof(mncc_out));

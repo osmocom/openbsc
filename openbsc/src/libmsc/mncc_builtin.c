@@ -273,8 +273,8 @@ static int mncc_rel_cnf(struct gsm_call *call, int msg_type, struct gsm_mncc *re
 	return 0;
 }
 
-/* receiving a TCH/F frame from the BSC code */
-static int mncc_rcv_tchf(struct gsm_call *call, int msg_type,
+/* receiving a (speech) traffic frame from the BSC code */
+static int mncc_rcv_data(struct gsm_call *call, int msg_type,
 			 struct gsm_data_frame *dfr)
 {
 	struct gsm_trans *remote_trans;
@@ -339,15 +339,13 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		DEBUGP(DMNCC, "(call %x) Call created.\n", call->callref);
 	}
 
-	switch (msg_type) {
-	case GSM_TCHF_FRAME:
-	case GSM_TCHF_FRAME_EFR:
-		break;
-	default:
-		DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
-			get_mncc_name(msg_type));
-		break;
+	if (mncc_is_data_frame(msg_type)) {
+		rc = mncc_rcv_data(call, msg_type, arg);
+		goto out_free;
 	}
+
+	DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
+		get_mncc_name(msg_type));
 
 	switch(msg_type) {
 	case MNCC_SETUP_IND:
@@ -407,10 +405,6 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		DEBUGP(DMNCC, "(call %x) Rejecting RETRIEVE with cause %d\n",
 			call->callref, data->cause.value);
 		rc = mncc_tx_to_cc(net, MNCC_RETRIEVE_REJ, data);
-		break;
-	case GSM_TCHF_FRAME:
-	case GSM_TCHF_FRAME_EFR:
-		rc = mncc_rcv_tchf(call, msg_type, arg);
 		break;
 	default:
 		LOGP(DMNCC, LOGL_NOTICE, "(call %x) Message unhandled\n", callref);
