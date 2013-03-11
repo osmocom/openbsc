@@ -3005,6 +3005,10 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without conn\n");
 			return 0;
 		}
+		if (!trans->conn->lchan) {
+			LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without lchan\n");
+			return 0;
+		}
 		if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
 		 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
 			/* This should be LOGL_ERROR or NOTICE, but
