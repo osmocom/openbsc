@@ -203,4 +203,12 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg);
 
 int mncc_sock_init(struct gsm_network *gsmnet);
 
+#define mncc_is_data_frame(msg_type) \
+	(msg_type == GSM_TCHF_FRAME \
+		|| msg_type == GSM_TCHF_FRAME_EFR \
+		|| msg_type == GSM_TCHH_FRAME \
+		|| msg_type == GSM_TCH_FRAME_AMR \
+		|| msg_type == GSM_BAD_FRAME)
+
+
 #endif

@@ -54,11 +54,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 
 	/* L4 uses RTP for this transaction, we send our data via RTP,
 	 * otherwise we send it through MNCC interface */
-	if (msg_type == GSM_TCHF_FRAME
-	 || msg_type == GSM_TCHF_FRAME_EFR
-	 || msg_type == GSM_TCHH_FRAME
-	 || msg_type == GSM_TCH_FRAME_AMR
-	 || msg_type == GSM_BAD_FRAME) {
+	if (mncc_is_data_frame(msg_type)) {
 		struct gsm_trans *trans = trans_find_by_callref(net, mncc_in->callref);
 
 		if (trans && trans->cc.rs) {
@@ -72,11 +68,7 @@ int mncc_sock_from_cc(struct gsm_network *net, struct msgb *msg)
 	if (net->mncc_state->conn_bfd.fd < 0) {
 		LOGP(DMNCC, LOGL_ERROR, "mncc_sock receives %s for external CC app "
 			"but socket is gone\n", get_mncc_name(msg_type));
-		if (msg_type != GSM_TCHF_FRAME
-		 && msg_type != GSM_TCHF_FRAME_EFR
-		 && msg_type != GSM_TCHH_FRAME
-		 && msg_type != GSM_TCH_FRAME_AMR
-		 && msg_type != GSM_BAD_FRAME) {
+		if (mncc_is_data_frame(msg_type)) {
 			/* release the request */
 			struct gsm_mncc mncc_out;
 			memset(&mncc_out, 0, sizeof(mncc_out));

@@ -339,17 +339,9 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 		DEBUGP(DMNCC, "(call %x) Call created.\n", call->callref);
 	}
 
-	switch (msg_type) {
-	case GSM_TCHF_FRAME:
-	case GSM_TCHF_FRAME_EFR:
-	case GSM_TCHH_FRAME:
-	case GSM_TCH_FRAME_AMR:
-		break;
-	default:
+	if (!mncc_is_data_frame(msg_type))
 		DEBUGP(DMNCC, "(call %x) Received message %s\n", call->callref,
 			get_mncc_name(msg_type));
-		break;
-	}
 
 	switch(msg_type) {
 	case MNCC_SETUP_IND:
