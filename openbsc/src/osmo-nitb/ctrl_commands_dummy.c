@@ -56,6 +56,9 @@ DUMMY_COMMAND(net_log_cat_level, "logging-category-level");
 DUMMY_COMMAND(bts_drop, "drop");
 DUMMY_COMMAND(bts_rflock, "rflock");
 DUMMY_COMMAND(bts_handover_imsi, "subscriber-handover-by-imsi");
+DUMMY_COMMAND(bts_cell_sel_hyst, "cell-reselection-hysteris");
+DUMMY_COMMAND(bts_cell_sel_offset, "cell-reselection-offset");
+
 
 /* TRX related commands below here */
 DUMMY_COMMAND(trx_drop, "drop");
@@ -76,6 +79,8 @@ int bsc_ctrl_cmds_install_dummies(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_rflock);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_handover_imsi);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_cell_sel_hyst);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_cell_sel_offset);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rflock);
