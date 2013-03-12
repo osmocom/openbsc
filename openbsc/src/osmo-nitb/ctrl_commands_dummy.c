@@ -58,6 +58,7 @@ DUMMY_COMMAND(bts_rflock, "rflock");
 DUMMY_COMMAND(bts_handover_imsi, "subscriber-handover-by-imsi");
 DUMMY_COMMAND(bts_cell_sel_hyst, "cell-reselection-hysteris");
 DUMMY_COMMAND(bts_cell_sel_offset, "cell-reselection-offset");
+DUMMY_COMMAND(bts_cell_barred, "cell-barred");
 
 
 /* TRX related commands below here */
@@ -81,6 +82,7 @@ int bsc_ctrl_cmds_install_dummies(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_handover_imsi);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_cell_sel_hyst);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_cell_sel_offset);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_cell_barred);
 
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_drop);
 	rc |= ctrl_cmd_install(CTRL_NODE_TRX, &cmd_trx_rflock);
