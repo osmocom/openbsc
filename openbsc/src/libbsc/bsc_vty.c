@@ -540,6 +540,12 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	case GSM_BTS_TYPE_OSMO_SYSMO:
 		vty_out(vty, "  ip.access unit_id %u %u%s",
 			bts->ip_access.site_id, bts->ip_access.bts_id, VTY_NEWLINE);
+		if (bts->ip_access.rsl_ip) {
+			struct in_addr ia;
+			ia.s_addr = htonl(bts->ip_access.rsl_ip);
+			vty_out(vty, "  ip.access rsl-ip %s%s", inet_ntoa(ia),
+				VTY_NEWLINE);
+		}
 		vty_out(vty, "  oml ip.access stream_id %u line %u%s",
 			bts->oml_tei, bts->oml_e1_link.e1_nr, VTY_NEWLINE);
 		break;
@@ -1625,6 +1631,28 @@ DEFUN(cfg_bts_unit_id,
 
 	return CMD_SUCCESS;
 }
+
+DEFUN(cfg_bts_rsl_ip,
+      cfg_bts_rsl_ip_cmd,
+      "ip.access rsl-ip A.B.C.D",
+      "Abis/IP specific options\n"
+      "Set the IPA RSL IP Address of the BSC\n"
+      "Destination IP address for RSL connection\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct in_addr ia;
+
+	if (!is_ipaccess_bts(bts)) {
+		vty_out(vty, "%% BTS is not of ip.access type%s", VTY_NEWLINE);
+		return CMD_WARNING;
+	}
+
+	inet_aton(argv[0], &ia);
+	bts->ip_access.rsl_ip = ntohl(ia.s_addr);
+
+	return CMD_SUCCESS;
+}
+
 
 DEFUN(cfg_bts_serno,
       cfg_bts_serno_cmd,
@@ -3022,6 +3050,7 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_tsc_cmd);
 	install_element(BTS_NODE, &cfg_bts_bsic_cmd);
 	install_element(BTS_NODE, &cfg_bts_unit_id_cmd);
+	install_element(BTS_NODE, &cfg_bts_rsl_ip_cmd);
 	install_element(BTS_NODE, &cfg_bts_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_timezone_cmd);
 	install_element(BTS_NODE, &cfg_bts_serno_cmd);

@@ -602,6 +602,7 @@ struct gsm_bts {
 			uint16_t site_id;
 			uint16_t bts_id;
 			uint32_t flags;
+			uint32_t rsl_ip;
 		} ip_access;
 		struct {
 			struct {

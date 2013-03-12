@@ -407,7 +407,8 @@ static int sw_activ_rep(struct msgb *mb)
 		abis_nm_opstart(trx->bts, foh->obj_class,
 				trx->bts->bts_nr, trx->nr, 0xff);
 		/* TRX software is active, tell it to initiate RSL Link */
-		abis_nm_ipaccess_rsl_connect(trx, 0, 3003, trx->rsl_tei);
+		abis_nm_ipaccess_rsl_connect(trx, trx->bts->ip_access.rsl_ip,
+					     3003, trx->rsl_tei);
 		break;
 	case NM_OC_RADIO_CARRIER: {
 		/*
