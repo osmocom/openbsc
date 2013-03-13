@@ -1,6 +1,6 @@
 /* OpenBSC SMPP 3.4 interface, SMSC-side implementation */
 
-/* (C) 2012 by Harald Welte <laforge@gnumonks.org>
+/* (C) 2012-2013 by Harald Welte <laforge@gnumonks.org>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 #include <osmocom/core/logging.h>
 #include <osmocom/core/talloc.h>
 #include <osmocom/gsm/protocol/gsm_04_11.h>
+#include <osmocom/gsm/protocol/smpp34_osmocom.h>
 
 #include <openbsc/gsm_subscriber.h>
 #include <openbsc/debug.h>
@@ -335,7 +336,80 @@ static int gsm_7bit_expand(char *text, const uint8_t *user_data, uint8_t septet_
 }
 
 
-static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
+/* FIXME: libsmpp34 helpers, they should  be part of libsmpp34! */
+void append_tlv(tlv_t **req_tlv, uint16_t tag,
+	        const uint8_t *data, uint16_t len)
+{
+	tlv_t tlv;
+
+	memset(&tlv, 0, sizeof(tlv));
+	tlv.tag = tag;
+	tlv.length = len;
+	memcpy(tlv.value.octet, data, tlv.length);
+	build_tlv(req_tlv, &tlv);
+}
+void append_tlv_u8(tlv_t **req_tlv, uint16_t tag, uint8_t val)
+{
+	tlv_t tlv;
+
+	memset(&tlv, 0, sizeof(tlv));
+	tlv.tag = tag;
+	tlv.length = 1;
+	tlv.value.val08 = val;
+	build_tlv(req_tlv, &tlv);
+}
+void append_tlv_u16(tlv_t **req_tlv, uint16_t tag, uint16_t val)
+{
+	tlv_t tlv;
+
+	memset(&tlv, 0, sizeof(tlv));
+	tlv.tag = tag;
+	tlv.length = 2;
+	tlv.value.val16 = htons(val);
+	build_tlv(req_tlv, &tlv);
+}
+
+/* Append the Osmocom vendor-specific additional TLVs to a SMPP msg */
+static void append_osmo_tlvs(tlv_t **req_tlv, const struct gsm_lchan *lchan)
+{
+	int idx = calc_initial_idx(ARRAY_SIZE(lchan->meas_rep),
+				   lchan->meas_rep_idx, 1);
+	const struct gsm_meas_rep *mr = &lchan->meas_rep[idx];
+	const struct gsm_meas_rep_unidir *ul_meas = &mr->ul;
+	const struct gsm_meas_rep_unidir *dl_meas = &mr->dl;
+
+	/* Osmocom vendor-specific SMPP34 extensions */
+	append_tlv_u16(req_tlv, TLVID_osmo_arfcn, lchan->ts->trx->arfcn);
+	if (mr->flags & MEAS_REP_F_MS_L1) {
+		uint8_t ms_dbm;
+		append_tlv_u8(req_tlv, TLVID_osmo_ta, mr->ms_l1.ta);
+		ms_dbm = ms_pwr_dbm(lchan->ts->trx->bts->band, mr->ms_l1.pwr);
+		append_tlv_u8(req_tlv, TLVID_osmo_ms_l1_txpwr, ms_dbm);
+	} else if (mr->flags & MEAS_REP_F_MS_TO)
+		append_tlv_u8(req_tlv, TLVID_osmo_ta, mr->ms_timing_offset);
+
+	append_tlv_u16(req_tlv, TLVID_osmo_rxlev_ul,
+		       rxlev2dbm(ul_meas->full.rx_lev));
+	append_tlv_u8(req_tlv, TLVID_osmo_rxqual_ul, ul_meas->full.rx_qual);
+
+	if (mr->flags & MEAS_REP_F_DL_VALID) {
+		append_tlv_u16(req_tlv, TLVID_osmo_rxlev_dl,
+			       rxlev2dbm(dl_meas->full.rx_lev));
+		append_tlv_u8(req_tlv, TLVID_osmo_rxqual_dl,
+			      dl_meas->full.rx_qual);
+	}
+
+	if (lchan->conn && lchan->conn->subscr) {
+		struct gsm_subscriber *subscr = lchan->conn->subscr;
+		size_t imei_len = strlen(subscr->equipment.imei);
+		if (imei_len)
+			append_tlv(req_tlv, TLVID_osmo_imei,
+				   (uint8_t *)subscr->equipment.imei, imei_len+1);
+	}
+}
+
+static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms,
+			   struct gsm_subscriber_connection *conn)
 {
 	struct deliver_sm_t deliver;
 	uint8_t dcs;
@@ -405,12 +479,15 @@ static int deliver_to_esme(struct osmo_esme *esme, struct gsm_sms *sms)
 		memcpy(deliver.short_message, sms->user_data, deliver.sm_length);
 	}
 
+	if (esme->acl->osmocom_ext && conn && conn->lchan)
+		append_osmo_tlvs(&deliver.tlv, conn->lchan);
+
 	return smpp_tx_deliver(esme, &deliver);
 }
 
 static struct smsc *g_smsc;
 
-int smpp_try_deliver(struct gsm_sms *sms)
+int smpp_try_deliver(struct gsm_sms *sms, struct gsm_subscriber_connection *conn)
 {
 	struct osmo_esme *esme;
 	struct osmo_smpp_addr dst;
@@ -424,7 +501,7 @@ int smpp_try_deliver(struct gsm_sms *sms)
 	if (!esme)
 		return 1; /* unknown subscriber */
 
-	return deliver_to_esme(esme, sms);
+	return deliver_to_esme(esme, sms, conn);
 }
 
 struct smsc *smsc_from_vty(struct vty *v)

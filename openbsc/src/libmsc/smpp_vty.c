@@ -339,6 +339,28 @@ DEFUN(cfg_no_esme_defaultroute, cfg_esme_no_defaultroute_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_esme_osmo_ext, cfg_esme_osmo_ext_cmd,
+	"osmocom-extensions",
+	"Enable the use of Osmocom SMPP Extensions for this ESME")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->osmocom_ext = 1;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_esme_no_osmo_ext, cfg_esme_no_osmo_ext_cmd,
+	"no osmocom-extensions", NO_STR
+	"Disable the use of Osmocom SMPP Extensions for this ESME")
+{
+	struct osmo_smpp_acl *acl = vty->index;
+
+	acl->osmocom_ext = 0;
+
+	return CMD_SUCCESS;
+}
+
 static void dump_one_esme(struct vty *vty, struct osmo_esme *esme)
 {
 	char host[128], serv[128];
@@ -395,6 +417,8 @@ static void config_write_esme_single(struct vty *vty, struct osmo_smpp_acl *acl)
 		vty_out(vty, "  default-route%s", VTY_NEWLINE);
 	if (acl->deliver_src_imsi)
 		vty_out(vty, "  deliver-src-imsi%s", VTY_NEWLINE);
+	if (acl->osmocom_ext)
+		vty_out(vty, "  osmocom-extensions%s", VTY_NEWLINE);
 
 	llist_for_each_entry(r, &acl->route_list, list)
 		write_esme_route_single(vty, r);
@@ -431,6 +455,8 @@ int smpp_vty_init(void)
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_route_pfx_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_defaultroute_cmd);
 	install_element(SMPP_ESME_NODE, &cfg_esme_no_defaultroute_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_osmo_ext_cmd);
+	install_element(SMPP_ESME_NODE, &cfg_esme_no_osmo_ext_cmd);
 	install_element(SMPP_ESME_NODE, &ournode_exit_cmd);
 
 	install_element_ve(&show_esme_cmd);

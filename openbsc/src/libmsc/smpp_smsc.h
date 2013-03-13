@@ -60,6 +60,7 @@ struct osmo_smpp_acl {
 	char passwd[SMPP_PASSWD_LEN+1];
 	int default_route;
 	int deliver_src_imsi;
+	int osmocom_ext;
 	struct llist_head route_list;
 };
 

@@ -57,7 +57,8 @@
 
 #ifdef BUILD_SMPP
 #include "smpp_smsc.h"
-extern int smpp_try_deliver(struct gsm_sms *sms);
+extern int smpp_try_deliver(struct gsm_sms *sms,
+			    struct gsm_subscriber_connection *conn);
 #endif
 
 void *tall_gsms_ctx;
@@ -395,7 +396,7 @@ static int gsm340_rx_tpdu(struct gsm_subscriber_connection *conn, struct msgb *m
 	gsms->receiver = subscr_get_by_extension(conn->bts->network, gsms->dst.addr);
 	if (!gsms->receiver) {
 #ifdef BUILD_SMPP
-		rc = smpp_try_deliver(gsms);
+		rc = smpp_try_deliver(gsms, conn);
 		if (rc == 1) {
 			rc = 1; /* cause 1: unknown subscriber */
 			osmo_counter_inc(conn->bts->network->stats.sms.no_receiver);
