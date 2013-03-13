@@ -279,7 +279,9 @@ int main(int argc, char **argv)
 		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
+#ifdef BUILD_SMPP
 	smpp_openbsc_set_net(bsc_gsmnet);
+#endif
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
 	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);
