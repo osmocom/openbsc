@@ -263,7 +263,7 @@ int main(int argc, char **argv)
 	bsc_vty_init(&log_info);
 
 #ifdef BUILD_SMPP
-	if (smpp_openbsc_init(bsc_gsmnet, 0) < 0)
+	if (smpp_openbsc_init(tall_bsc_ctx, 0) < 0)
 		return -1;
 #endif
 
@@ -279,6 +279,7 @@ int main(int argc, char **argv)
 		rc = bsc_bootstrap_network(int_mncc_recv, config_file);
 	if (rc < 0)
 		exit(1);
+	smpp_openbsc_set_net(bsc_gsmnet);
 	bsc_api_init(bsc_gsmnet, msc_bsc_api());
 
 	bsc_gsmnet->ctrl = controlif_setup(bsc_gsmnet, 4249);

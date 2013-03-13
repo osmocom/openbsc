@@ -434,18 +434,16 @@ struct smsc *smsc_from_vty(struct vty *v)
 }
 
 /*! \brief Initialize the OpenBSC SMPP interface */
-int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
+int smpp_openbsc_init(void *ctx, uint16_t port)
 {
-	struct smsc *smsc = talloc_zero(net, struct smsc);
+	struct smsc *smsc = talloc_zero(ctx, struct smsc);
 	int rc;
-
-	smsc->priv = net;
 
 	rc = smpp_smsc_init(smsc, port);
 	if (rc < 0)
 		talloc_free(smsc);
 
-	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, net);
+	osmo_signal_register_handler(SS_SMS, smpp_sms_cb, smsc);
 	osmo_signal_register_handler(SS_SUBSCR, smpp_subscr_cb, smsc);
 
 	g_smsc = smsc;
@@ -453,4 +451,9 @@ int smpp_openbsc_init(struct gsm_network *net, uint16_t port)
 	smpp_vty_init();
 
 	return rc;
+}
+
+void smpp_openbsc_set_net(struct gsm_network *net)
+{
+	g_smsc->priv = net;
 }
