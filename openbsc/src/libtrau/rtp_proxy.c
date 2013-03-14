@@ -239,26 +239,35 @@ int rtp_send_frame(struct rtp_socket *rs, struct gsm_data_frame *frame)
 
 	switch (frame->msg_type) {
 	case GSM_TCHF_FRAME:
+		if ((frame->data[0] >> 4) != 0xd)
+			goto bfi;
 		payload_type = RTP_PT_GSM_FULL;
 		payload_len = RTP_LEN_GSM_FULL;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCHF_FRAME_EFR:
+		if ((frame->data[0] >> 4) != 0xc)
+			goto bfi;
 		payload_type = (dynamic_pt) ? : RTP_PT_GSM_EFR;
 		payload_len = RTP_LEN_GSM_EFR;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCHH_FRAME:
+		if ((frame->data[0] & 0xf0) != 0x00)
+			goto bfi;
 		payload_type = (dynamic_pt) ? : RTP_PT_GSM_HALF;
 		payload_len = RTP_LEN_GSM_HALF;
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_TCH_FRAME_AMR:
+		if ((frame->data[2] & 0x04) != 0x04)
+			goto bfi;
 		payload_type = (dynamic_pt) ? : RTP_PT_AMR;
 		payload_len = frame->data[0];
 		duration = RTP_GSM_DURATION;
 		break;
 	case GSM_BAD_FRAME:
+bfi:
 		payload_type = 0;
 		payload_len = 0;
 		duration = RTP_GSM_DURATION;
