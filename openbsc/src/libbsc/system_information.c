@@ -44,6 +44,7 @@
  * array. DCS1800 and PCS1900 can not be used at the same time so conserve
  * memory and do the below.
  */
+#if 0
 static int band_compatible(const struct gsm_bts *bts, int arfcn)
 {
 	enum gsm_band band = gsm_arfcn2band(arfcn);
@@ -57,6 +58,7 @@ static int band_compatible(const struct gsm_bts *bts, int arfcn)
 
 	return 0;
 }
+#endif
 
 static int is_dcs_net(const struct gsm_bts *bts)
 {
@@ -70,6 +72,11 @@ static int is_dcs_net(const struct gsm_bts *bts)
 static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
 			const int pgsm, const int arfcn)
 {
+	if (bis || ter)
+		return 0;
+	return 1;
+#if 0
+	Correct but somehow broken with either the nanoBTS or the iPhone5
 	if (!bis && !ter && band_compatible(bts, arfcn))
 		return 1;
 	if (bis && pgsm && band_compatible(bts, arfcn) && (arfcn < 1 || arfcn > 124))
@@ -77,6 +84,7 @@ static int use_arfcn(const struct gsm_bts *bts, const int bis, const int ter,
 	if (ter && !band_compatible(bts, arfcn))
 		return 1;
 	return 0;
+#endif
 }
 
 /* Frequency Lists as per TS 04.08 10.5.2.13 */
