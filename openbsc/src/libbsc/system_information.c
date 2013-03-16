@@ -791,6 +791,7 @@ static int generate_si13(uint8_t *output, struct gsm_bts *bts)
 	si13->header.system_information = GSM48_MT_RR_SYSINFO_13;
 
 	si13_default.no_pbcch.rac = bts->gprs.rac;
+	si13_default.no_pbcch.net_ctrl_ord = bts->gprs.net_ctrl_ord;
 
 	ret = rest_octets_si13(si13->rest_octets, &si13_default);
 	if (ret < 0)

@@ -658,6 +658,7 @@ struct gsm_bts {
 		} cell;
 		struct gsm_bts_gprs_nsvc nsvc[2];
 		uint8_t rac;
+		uint8_t net_ctrl_ord;
 	} gprs;
 
 	/* RACH NM values */
