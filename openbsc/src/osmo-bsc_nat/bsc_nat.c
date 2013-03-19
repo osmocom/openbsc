@@ -943,8 +943,26 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		return;
 	}
 
+	if (len <= 0) {
+		LOGP(DNAT, LOGL_ERROR, "Token with length zero on fd: %d\n",
+			bsc->write_queue.bfd.fd);
+		return;
+	}
+
+	if (token[len - 1] != '\0') {
+		LOGP(DNAT, LOGL_ERROR, "Token not null terminated on fd: %d\n",
+			bsc->write_queue.bfd.fd);
+		return;
+	}
+
 	llist_for_each_entry(conf, &bsc->nat->bsc_configs, entry) {
-		if (strncmp(conf->token, token, len) == 0) {
+		/*
+		 * Add the '\0' of the token for the memcmp, the IPA messages
+		 * for some reason added null termination.
+		 */
+		const int token_len = strlen(conf->token) + 1;
+
+		if (token_len == len && memcmp(conf->token, token, token_len) == 0) {
 			rate_ctr_inc(&conf->stats.ctrg->ctr[BCFG_CTR_NET_RECONN]);
 			bsc->authenticated = 1;
 			bsc->cfg = conf;
@@ -956,7 +974,7 @@ static void ipaccess_auth_bsc(struct tlv_parsed *tvp, struct bsc_connection *bsc
 		}
 	}
 
-	LOGP(DNAT, LOGL_ERROR, "No bsc found for token %s on fd: %d.\n", token,
+	LOGP(DNAT, LOGL_ERROR, "No bsc found for token '%s' on fd: %d.\n", token,
 	     bsc->write_queue.bfd.fd);
 }
 
