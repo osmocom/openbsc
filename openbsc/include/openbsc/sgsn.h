@@ -16,6 +16,7 @@ struct sgsn_config {
 	/* misc */
 	struct gprs_ns_inst *nsi;
 
+	int acl_enabled;
 	struct llist_head imsi_acl;
 };
 

@@ -131,6 +131,8 @@ static int config_write_sgsn(struct vty *vty)
 			gctx->gtp_version, VTY_NEWLINE);
 	}
 
+	vty_out(vty, " auth-policy %s%s",
+		g_cfg->acl_enabled ? "closed" : "accept-all", VTY_NEWLINE);
 	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
 		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
@@ -392,6 +394,20 @@ DEFUN(imsi_acl, cfg_imsi_acl_cmd,
 	return CMD_SUCCESS;
 }
 
+DEFUN(cfg_auth_policy, cfg_auth_policy_cmd,
+	"auth-policy (accept-all|closed)",
+	"Autorization Policy of SGSN\n"
+	"Accept all IMSIs (DANGEROUS\n"
+	"Accept only home network subscribers or those in ACL\n")
+{
+	if (!strcmp(argv[0], "accept-all"))
+		g_cfg->acl_enabled = 0;
+	else
+		g_cfg->acl_enabled = 1;
+
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -410,6 +426,7 @@ int sgsn_vty_init(void)
 	//install_element(SGSN_NODE, &cfg_ggsn_remote_port_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
 	install_element(SGSN_NODE, &cfg_imsi_acl_cmd);
+	install_element(SGSN_NODE, &cfg_auth_policy_cmd);
 
 	return 0;
 }
