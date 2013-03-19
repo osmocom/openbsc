@@ -75,6 +75,7 @@ static struct sgsn_instance sgsn_inst = {
 	.config_file = "osmo_sgsn.cfg",
 	.cfg = {
 		.gtp_statedir = "./",
+		.acl_enabled = 1,
 	},
 };
 struct sgsn_instance *sgsn = &sgsn_inst;

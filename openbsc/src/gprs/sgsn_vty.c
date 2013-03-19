@@ -1,5 +1,5 @@
 /*
- * (C) 2010 by Harald Welte <laforge@gnumonks.org>
+ * (C) 2010-2013 by Harald Welte <laforge@gnumonks.org>
  * (C) 2010 by On-Waves
  * All Rights Reserved
  *
@@ -41,6 +41,10 @@
 
 static struct sgsn_config *g_cfg = NULL;
 
+struct imsi_acl_entry {
+	struct llist_head list;
+	char imsi[16+1];
+};
 
 #define GSM48_MAX_APN_LEN	102	/* 10.5.6.1 */
 static char *gprs_apn2str(uint8_t *apn, unsigned int len)
@@ -113,6 +117,7 @@ static struct cmd_node sgsn_node = {
 static int config_write_sgsn(struct vty *vty)
 {
 	struct sgsn_ggsn_ctx *gctx;
+	struct imsi_acl_entry *acl;
 
 	vty_out(vty, "sgsn%s", VTY_NEWLINE);
 
@@ -125,6 +130,9 @@ static int config_write_sgsn(struct vty *vty)
 		vty_out(vty, " ggsn %u gtp-version %u%s", gctx->id,
 			gctx->gtp_version, VTY_NEWLINE);
 	}
+
+	llist_for_each_entry(acl, &g_cfg->imsi_acl, list)
+		vty_out(vty, " imsi-acl add %s%s", acl->imsi, VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
@@ -317,6 +325,73 @@ DEFUN(show_pdpctx_all, show_pdpctx_all_cmd,
 	return CMD_SUCCESS;
 }
 
+/* temporary IMSI ACL hack */
+struct imsi_acl_entry *sgsn_acl_lookup(const char *imsi)
+{
+	struct imsi_acl_entry *acl;
+	llist_for_each_entry(acl, &g_cfg->imsi_acl, list) {
+		if (!strcmp(imsi, acl->imsi))
+			return acl;
+	}
+	return NULL;
+}
+
+int sgsn_acl_add(const char *imsi)
+{
+	struct imsi_acl_entry *acl;
+
+	if (sgsn_acl_lookup(imsi))
+		return -EEXIST;
+
+	acl = talloc_zero(NULL, struct imsi_acl_entry);
+	if (!acl)
+		return -ENOMEM;
+	strncpy(acl->imsi, imsi, sizeof(acl->imsi));
+
+	llist_add(&acl->list, &g_cfg->imsi_acl);
+
+	return 0;
+}
+
+int sgsn_acl_del(const char *imsi)
+{
+	struct imsi_acl_entry *acl;
+
+	acl = sgsn_acl_lookup(imsi);
+	if (!acl)
+		return -ENODEV;
+
+	llist_del(&acl->list);
+	talloc_free(acl);
+
+	return 0;
+}
+
+
+DEFUN(imsi_acl, cfg_imsi_acl_cmd,
+	"imsi-acl (add|del) IMSI",
+	"Access Control List of foreign IMSIs\n"
+	"Add IMSI to ACL\n"
+	"Remove IMSI from ACL\n"
+	"IMSI of subscriber\n")
+{
+	const char *op = argv[0];
+	const char *imsi = argv[1];
+	int rc;
+
+	if (!strcmp(op, "add"))
+		rc = sgsn_acl_add(imsi);
+	else
+		rc = sgsn_acl_del(imsi);
+
+	if (rc < 0) {
+		vty_out(vty, "%% unable to %s ACL\n", op);
+		return CMD_WARNING;
+	}
+
+	return CMD_SUCCESS;
+}
+
 int sgsn_vty_init(void)
 {
 	install_element_ve(&show_sgsn_cmd);
@@ -334,6 +409,7 @@ int sgsn_vty_init(void)
 	install_element(SGSN_NODE, &cfg_ggsn_remote_ip_cmd);
 	//install_element(SGSN_NODE, &cfg_ggsn_remote_port_cmd);
 	install_element(SGSN_NODE, &cfg_ggsn_gtp_version_cmd);
+	install_element(SGSN_NODE, &cfg_imsi_acl_cmd);
 
 	return 0;
 }
@@ -343,6 +419,8 @@ int sgsn_parse_config(const char *config_file, struct sgsn_config *cfg)
 	int rc;
 
 	g_cfg = cfg;
+	INIT_LLIST_HEAD(&g_cfg->imsi_acl);
+
 	rc = vty_read_config_file(config_file, NULL);
 	if (rc < 0) {
 		fprintf(stderr, "Failed to parse the config file: '%s'\n", config_file);
