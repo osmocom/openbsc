@@ -853,7 +853,6 @@ void gprs_ns_destroy(struct gprs_ns_inst *nsi)
 	talloc_free(nsi);
 }
 
-
 /* NS-over-IP code, according to 3GPP TS 48.016 Chapter 6.2
  * We don't support Size Procedure, Configuration Procedure, ChangeWeight Procedure */
 
@@ -951,6 +950,15 @@ int gprs_ns_nsip_listen(struct gprs_ns_inst *nsi)
 		return ret;
 
 	nsi->nsip.fd.data = nsi;
+
+	ret = setsockopt(nsi->nsip.fd.fd, IPPROTO_IP, IP_TOS,
+				&nsi->nsip.dscp, sizeof(nsi->nsip.dscp));
+	if (ret < 0)
+		LOGP(DNS, LOGL_ERROR,
+			"Failed to set the DSCP to %d with ret(%d) errno(%d)\n",
+			nsi->nsip.dscp, ret, errno);
+
+
 
 	return ret;
 }
