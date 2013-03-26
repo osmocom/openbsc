@@ -459,7 +459,9 @@ static void config_write_bts_gprs(struct vty *vty, struct gsm_bts *bts)
 static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 {
 	struct gsm_bts_trx *trx;
-	int i;
+	struct amr_multirate_conf *mr;
+	struct gsm48_multi_rate_conf *mr_conf;
+	int i, num;
 
 	vty_out(vty, " bts %u%s", bts->nr, VTY_NEWLINE);
 	vty_out(vty, "  type %s%s", btstype2str(bts->type), VTY_NEWLINE);
@@ -606,6 +608,108 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 	if (bts->codec.ahs)
 		vty_out(vty, " ahs");
 	vty_out(vty, "%s", VTY_NEWLINE);
+
+	mr = &bts->mr_full;
+	mr_conf = (struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+	if (mr->gsm48_ie[1]) {
+		num = 0;
+		vty_out(vty, "  amr tch-f modes");
+		for (i = 0; i < 8; i++) {
+			if ((mr->gsm48_ie[1] & (1 << i))) {
+				vty_out(vty, " %d", i);
+				num++;
+			}
+		}
+		vty_out(vty, "%s", VTY_NEWLINE);
+		if (num > 3)
+			num = 3;
+		if (num > 1) {
+			vty_out(vty, "  amr tch-f threshold ms");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].threshold_ms);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-f hysteresis ms");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].hysteresis_ms);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-f threshold bts");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].threshold_bts);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-f hysteresis bts");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].hysteresis_bts);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+		}
+		vty_out(vty, "  amr tch-f start-mode ");
+		if (mr_conf->icmi) {
+			num = 0;
+			for (i = 0; i < 8 && num < 4; i++) {
+				if ((mr->gsm48_ie[1] & (1 << i)))
+					num++;
+				if (mr_conf->smod == num - 1) {
+					vty_out(vty, "%d%s", num, VTY_NEWLINE);
+					break;
+				}
+			}
+		} else
+			vty_out(vty, "auto%s", VTY_NEWLINE);
+	}
+
+	mr = &bts->mr_half;
+	mr_conf = (struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+	if (mr->gsm48_ie[1]) {
+		num = 0;
+		vty_out(vty, "  amr tch-h modes");
+		for (i = 0; i < 6; i++) {
+			if ((mr->gsm48_ie[1] & (1 << i))) {
+				vty_out(vty, " %d", i);
+				num++;
+			}
+		}
+		vty_out(vty, "%s", VTY_NEWLINE);
+		if (num > 3)
+			num = 3;
+		if (num > 1) {
+			vty_out(vty, "  amr tch-h threshold ms");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].threshold_ms);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-h hysteresis ms");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].hysteresis_ms);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-h threshold bts");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].threshold_bts);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+			vty_out(vty, "  amr tch-h hysteresis bts");
+			for (i = 0; i < num - 1; i++) {
+				vty_out(vty, " %d", mr->mode[i].hysteresis_bts);
+			}
+			vty_out(vty, "%s", VTY_NEWLINE);
+		}
+		vty_out(vty, "  amr tch-h start-mode ");
+		if (mr_conf->icmi) {
+			num = 0;
+			for (i = 0; i < 6 && num < 4; i++) {
+				if ((mr->gsm48_ie[1] & (1 << i)))
+					num++;
+				if (mr_conf->smod == num - 1) {
+					vty_out(vty, "%d%s", num, VTY_NEWLINE);
+					break;
+				}
+			}
+		} else
+			vty_out(vty, "auto%s", VTY_NEWLINE);
+	}
 
 	config_write_bts_gprs(vty, bts);
 
@@ -2692,6 +2796,483 @@ DEFUN(cfg_bts_codec5, cfg_bts_codec5_cmd,
 	return CMD_SUCCESS;
 }
 
+#define AMR_TEXT "Adaptive Multi Rate settings\n"
+
+DEFUN(cfg_bts_amr_fr_modes1, cfg_bts_amr_fr_modes1_cmd,
+	"amr tch-f modes (0|1|2|3|4|5|6|7)",
+	AMR_TEXT "Full Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_modes2, cfg_bts_amr_fr_modes2_cmd,
+	"amr tch-f modes (0|1|2|3|4|5|6|7) (0|1|2|3|4|5|6|7)",
+	AMR_TEXT "Full Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_modes3, cfg_bts_amr_fr_modes3_cmd,
+	"amr tch-f modes (0|1|2|3|4|5|6|7) (0|1|2|3|4|5|6|7) (0|1|2|3|4|5|6|7)",
+	AMR_TEXT "Full Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[2]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_modes4, cfg_bts_amr_fr_modes4_cmd,
+	"amr tch-f modes (0|1|2|3|4|5|6|7) (0|1|2|3|4|5|6|7) (0|1|2|3|4|5|6|7) "
+	"(0|1|2|3|4|5|6|7)",
+	AMR_TEXT "Full Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n10,2k\n12,2k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[2]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[3]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_start_mode, cfg_bts_amr_fr_start_mode_cmd,
+	"amr tch-f start-mode (auto|1|2|3|4)",
+	AMR_TEXT "Full Rate\n"
+	"Initial codec to use with AMR\n"
+	"Automatically\nFirst codec\nSecond codec\nThird codec\nFourth codec\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	if (argv[0][0] == 'a')
+		mr_conf->icmi = 0;
+	else {
+		mr_conf->icmi = 1;
+		mr_conf->smod = atoi(argv[0]) - 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_thres1, cfg_bts_amr_fr_thres1_cmd,
+	"amr tch-f threshold (ms|bts) <0-63>",
+	AMR_TEXT "Full Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_thres2, cfg_bts_amr_fr_thres2_cmd,
+	"amr tch-f threshold (ms|bts) <0-63> <0-63>",
+	AMR_TEXT "Full Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+		mr->mode[1].threshold_ms = atoi(argv[1]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+		mr->mode[1].threshold_bts = atoi(argv[1]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_thres3, cfg_bts_amr_fr_thres3_cmd,
+	"amr tch-f threshold (ms|bts) <0-63> <0-63> <0-63>",
+	AMR_TEXT "Full Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n"
+	"Hysteresis between codec 3 and 4\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+		mr->mode[1].threshold_ms = atoi(argv[1]);
+		mr->mode[2].threshold_ms = atoi(argv[2]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+		mr->mode[1].threshold_bts = atoi(argv[1]);
+		mr->mode[2].threshold_bts = atoi(argv[2]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_hyst1, cfg_bts_amr_fr_hyst1_cmd,
+	"amr tch-f hysteresis (ms|bts) <0-15>",
+	AMR_TEXT "Full Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_hyst2, cfg_bts_amr_fr_hyst2_cmd,
+	"amr tch-f hysteresis (ms|bts) <0-15> <0-15>",
+	AMR_TEXT "Full Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+		mr->mode[1].hysteresis_ms = atoi(argv[1]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+		mr->mode[1].hysteresis_bts = atoi(argv[1]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_fr_hyst3, cfg_bts_amr_fr_hyst3_cmd,
+	"amr tch-f hysteresis (ms|bts) <0-15> <0-15> <0-15>",
+	AMR_TEXT "Full Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n"
+	"Hysteresis between codec 3 and 4\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_full;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+		mr->mode[1].hysteresis_ms = atoi(argv[1]);
+		mr->mode[2].hysteresis_ms = atoi(argv[2]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+		mr->mode[1].hysteresis_bts = atoi(argv[1]);
+		mr->mode[2].hysteresis_bts = atoi(argv[2]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_modes1, cfg_bts_amr_hr_modes1_cmd,
+	"amr tch-h modes (0|1|2|3|4|5)",
+	AMR_TEXT "Half Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_modes2, cfg_bts_amr_hr_modes2_cmd,
+	"amr tch-h modes (0|1|2|3|4|5) (0|1|2|3|4|5)",
+	AMR_TEXT "Half Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_modes3, cfg_bts_amr_hr_modes3_cmd,
+	"amr tch-h modes (0|1|2|3|4|5) (0|1|2|3|4|5) (0|1|2|3|4|5)",
+	AMR_TEXT "Half Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[2]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_modes4, cfg_bts_amr_hr_modes4_cmd,
+	"amr tch-h modes (0|1|2|3|4|5) (0|1|2|3|4|5) (0|1|2|3|4|5) "
+	"(0|1|2|3|4|5)",
+	AMR_TEXT "Half Rate\n"
+	"Codec modes to use with AMR codec\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n"
+	"4,75k\n5,15k\n5,90k\n6,70k\n7,40k\n7,95k\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	mr->gsm48_ie[1] = 0;
+	mr->gsm48_ie[1] |= 1 << atoi(argv[0]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[1]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[2]);
+	mr->gsm48_ie[1] |= 1 << atoi(argv[3]);
+	mr_conf->icmi = 0;
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_start_mode, cfg_bts_amr_hr_start_mode_cmd,
+	"amr tch-h start-mode (auto|1|2|3|4)",
+	AMR_TEXT "Half Rate\n"
+	"Initial codec to use with AMR\n"
+	"Automatically\nFirst codec\nSecond codec\nThird codec\nFourth codec\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+	struct gsm48_multi_rate_conf *mr_conf =
+				(struct gsm48_multi_rate_conf *) mr->gsm48_ie;
+
+	if (argv[0][0] == 'a')
+		mr_conf->icmi = 0;
+	else {
+		mr_conf->icmi = 1;
+		mr_conf->smod = atoi(argv[0]) - 1;
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_thres1, cfg_bts_amr_hr_thres1_cmd,
+	"amr tch-h threshold (ms|bts) <0-63>",
+	AMR_TEXT "Half Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_thres2, cfg_bts_amr_hr_thres2_cmd,
+	"amr tch-h threshold (ms|bts) <0-63> <0-63>",
+	AMR_TEXT "Half Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+		mr->mode[1].threshold_ms = atoi(argv[1]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+		mr->mode[1].threshold_bts = atoi(argv[1]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_thres3, cfg_bts_amr_hr_thres3_cmd,
+	"amr tch-h threshold (ms|bts) <0-63> <0-63> <0-63>",
+	AMR_TEXT "Half Rate\n"
+	"AMR threshold between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n"
+	"Hysteresis between codec 3 and 4\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].threshold_ms = atoi(argv[0]);
+		mr->mode[1].threshold_ms = atoi(argv[1]);
+		mr->mode[2].threshold_ms = atoi(argv[2]);
+	} else {
+		mr->mode[0].threshold_bts = atoi(argv[0]);
+		mr->mode[1].threshold_bts = atoi(argv[1]);
+		mr->mode[2].threshold_bts = atoi(argv[2]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_hyst1, cfg_bts_amr_hr_hyst1_cmd,
+	"amr tch-h hysteresis (ms|bts) <0-15>",
+	AMR_TEXT "Half Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_hyst2, cfg_bts_amr_hr_hyst2_cmd,
+	"amr tch-h hysteresis (ms|bts) <0-15> <0-15>",
+	AMR_TEXT "Half Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+		mr->mode[1].hysteresis_ms = atoi(argv[1]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+		mr->mode[1].hysteresis_bts = atoi(argv[1]);
+	}
+
+	return CMD_SUCCESS;
+}
+
+DEFUN(cfg_bts_amr_hr_hyst3, cfg_bts_amr_hr_hyst3_cmd,
+	"amr tch-h hysteresis (ms|bts) <0-15> <0-15> <0-15>",
+	AMR_TEXT "Half Rate\n"
+	"AMR hysteresis between codecs\n"
+	"MS side\nBTS side\n"
+	"Hysteresis between codec 1 and 2\n"
+	"Hysteresis between codec 2 and 3\n"
+	"Hysteresis between codec 3 and 4\n")
+{
+	struct gsm_bts *bts = vty->index;
+	struct amr_multirate_conf *mr = &bts->mr_half;
+
+	if (argv[0][0]=='m') {
+		mr->mode[0].hysteresis_ms = atoi(argv[0]);
+		mr->mode[1].hysteresis_ms = atoi(argv[1]);
+		mr->mode[2].hysteresis_ms = atoi(argv[2]);
+	} else {
+		mr->mode[0].hysteresis_bts = atoi(argv[0]);
+		mr->mode[1].hysteresis_bts = atoi(argv[1]);
+		mr->mode[2].hysteresis_bts = atoi(argv[2]);
+	}
+
+	return CMD_SUCCESS;
+}
+
 #define TRX_TEXT "Radio Transceiver\n"
 
 /* per TRX configuration */
@@ -3295,6 +3876,28 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_codec3_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec4_cmd);
 	install_element(BTS_NODE, &cfg_bts_codec5_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_modes1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_modes2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_modes3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_modes4_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_thres1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_thres2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_thres3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_hyst1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_hyst2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_hyst3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_fr_start_mode_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_modes1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_modes2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_modes3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_modes4_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_thres1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_thres2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_thres3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst1_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst2_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_hyst3_cmd);
+	install_element(BTS_NODE, &cfg_bts_amr_hr_start_mode_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);
