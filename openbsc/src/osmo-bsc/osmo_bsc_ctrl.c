@@ -359,6 +359,7 @@ static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	lon = atof(lonstr);
 	height = atof(heightstr);
 	talloc_free(tmp);
+	tmp = NULL;
 
 	if (((tstamp == 0) && (valid != BTS_LOC_FIX_INVALID)) || (lat < -90) || (lat > 90) ||
 			(lon < -180) || (lon > 180) || (valid < 0)) {
@@ -366,9 +367,11 @@ static int verify_bts_loc(struct ctrl_cmd *cmd, const char *value, void *data)
 	}
 
 	return 0;
+
 err:
-		cmd->reply = talloc_strdup(cmd, "The format is <unixtime>,(invalid|fix2d|fix3d),<lat>,<lon>,<height>");
-		return 1;
+	talloc_free(tmp);
+	cmd->reply = talloc_strdup(cmd, "The format is <unixtime>,(invalid|fix2d|fix3d),<lat>,<lon>,<height>");
+	return 1;
 }
 
 CTRL_CMD_DEFINE(bts_rf_state, "rf_state");
