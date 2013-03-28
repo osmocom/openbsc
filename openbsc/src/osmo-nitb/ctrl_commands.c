@@ -217,6 +217,102 @@ CTRL_CMD_RAW(bts_neighbor_add, "neighbor-add", NULL,
 CTRL_CMD_RAW(bts_neighbor_del, "neighbor-del", NULL,
 		set_bts_neighbor_del, verify_bts_neighbor_del);
 
+static int bts_t200_get(struct ctrl_cmd *cmd, void *data)
+{
+	struct gsm_bts *bts = cmd->node;
+
+	cmd->reply = talloc_asprintf(cmd,
+			"%u,%u,%u,%u,%u,%u,%u",
+			bts->t200.sdcch,
+			bts->t200.facch_fullrate,
+			bts->t200.facch_halfrate,
+			bts->t200.sacch_with_tch_sapi0,
+			bts->t200.sacch_with_sdcch,
+			bts->t200.sdcch_with_sapi3,
+			bts->t200.sacch_with_tch_sapi3);
+
+	if (!cmd->reply) {
+		cmd->reply = "OOM";
+		return CTRL_CMD_ERROR;
+	}
+
+	return CTRL_CMD_REPLY;
+}
+
+static int bts_t200_set(struct ctrl_cmd *cmd, void *data)
+{
+	char *saveptr, *tmp, *item;
+	struct gsm_bts *bts = cmd->node;
+
+	tmp = talloc_strdup(cmd, cmd->value);
+	if (!tmp)
+		goto out;
+
+	item = strtok_r(tmp, ",", &saveptr);
+	bts->t200.sdcch = atoi(item);
+
+	item = strtok_r(NULL, ",", &saveptr);
+	bts->t200.facch_fullrate = atoi(item);
+
+	item = strtok_r(NULL, ",", &saveptr);
+	bts->t200.facch_halfrate = atoi(item);
+
+	item = strtok_r(NULL, ",", &saveptr);
+	bts->t200.sacch_with_tch_sapi0 = atoi(item);
+
+	item = strtok_r(NULL, ",", &saveptr);
+	bts->t200.sacch_with_sdcch = atoi(item);
+
+	item = strtok_r(NULL, ",", &saveptr);
+	bts->t200.sdcch_with_sapi3 = atoi(item);
+
+	item = strtok_r(NULL, "\0", &saveptr);
+	bts->t200.sacch_with_tch_sapi3 = atoi(item);
+
+	talloc_free(tmp);
+out:
+	return bts_t200_get(cmd, data);
+}
+
+static int bts_t200_verify(struct ctrl_cmd *cmd, const char *value, void *data)
+{
+	char *saveptr, *tmpstr, *tmp;
+
+	tmp = talloc_strdup(cmd, value);
+	if (!tmp)
+		return 1;
+
+#define CHECK(str) \
+		if (!str || atoi(str) == 0) \
+			goto error;
+
+	tmpstr = strtok_r(tmp, ",", &saveptr);
+	CHECK(tmpstr)
+	tmpstr = strtok_r(NULL, ",", &saveptr);
+	CHECK(tmpstr);
+	tmpstr = strtok_r(NULL, ",", &saveptr);
+	CHECK(tmpstr);
+	tmpstr = strtok_r(NULL, ",", &saveptr);
+	CHECK(tmpstr);
+	tmpstr = strtok_r(NULL, ",", &saveptr);
+	CHECK(tmpstr);
+	tmpstr = strtok_r(NULL, ",", &saveptr);
+	CHECK(tmpstr);
+	tmpstr = strtok_r(NULL, "\0", &saveptr);
+	CHECK(tmpstr);
+#undef CHECK
+
+	talloc_free(tmp);
+	return 0;
+
+error:
+	cmd->reply = "Number of arguments are wrong. Range is 1-255.\n";
+	talloc_free(tmp);
+	return 1;
+}
+
+CTRL_CMD_RAW(bts_t200, "t200", bts_t200_get, bts_t200_set, bts_t200_verify);
+
 
 int bsc_ctrl_cmds_install(void)
 {
@@ -248,6 +344,7 @@ int bsc_ctrl_cmds_install(void)
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_mode);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_add);
 	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_neighbor_del);
+	rc |= ctrl_cmd_install(CTRL_NODE_BTS, &cmd_bts_t200);
 
 	return rc;
 }
