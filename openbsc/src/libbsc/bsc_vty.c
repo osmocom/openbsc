@@ -527,6 +527,18 @@ static void config_write_bts_single(struct vty *vty, struct gsm_bts *bts)
 		vty_out(vty, "  cell barred 1%s", VTY_NEWLINE);
 	if ((bts->si_common.rach_control.t2 & 0x4) == 0)
 		vty_out(vty, "  rach emergency call allowed 1%s", VTY_NEWLINE);
+
+#define T200_OUT(vty, bts, name, var) \
+		vty_out(vty, "  t200 %s %u%s", name, bts->t200.var, VTY_NEWLINE);
+	T200_OUT(vty, bts, "sdcch", sdcch);
+	T200_OUT(vty, bts, "facch fullrate", facch_fullrate);
+	T200_OUT(vty, bts, "facch halfrate", facch_halfrate);
+	T200_OUT(vty, bts, "sacch tch sapi0", sacch_with_tch_sapi0);
+	T200_OUT(vty, bts, "sacch sdcch", sacch_with_sdcch);
+	T200_OUT(vty, bts, "sdcch sapi3", sdcch_with_sapi3);
+	T200_OUT(vty, bts, "sacch tch sapi3", sacch_with_tch_sapi3);
+#undef T200_OUT
+
 	for (i = SYSINFO_TYPE_1; i < _MAX_SYSINFO_TYPE; i++) {
 		if (bts->si_mode_static & (1 << i)) {
 			vty_out(vty, "  system-information %s mode static%s",
@@ -2074,6 +2086,32 @@ DEFUN(cfg_bts_per_loc_upd, cfg_bts_per_loc_upd_cmd,
 	return CMD_SUCCESS;
 }
 
+#define T200_TEXT	"T200 LAPDm timeouts\n"
+#define FACCH_TEXT	"FACCH\n"
+#define SDCCH_TEXT	"SDCCH\n"
+#define SACCH_TEXT	"SACCH\n"
+
+#define DECLARE_T200(name, var, doc, unit) 				\
+		DEFUN(cfg_bts_t200_##var,				\
+			cfg_bts_t200_##var##_cmd,			\
+			"t200 " name " <0-255>",			\
+			T200_TEXT doc "T200 value in units\n")		\
+{									\
+	struct gsm_bts *bts = vty->index;				\
+	bts->t200.var = atoi(argv[0]);					\
+	return CMD_SUCCESS;						\
+}
+
+DECLARE_T200("sdcch", sdcch, SDCCH_TEXT, 5)
+DECLARE_T200("facch fullrate", facch_fullrate, FACCH_TEXT "fullrate\n", 5)
+DECLARE_T200("facch halfrate", facch_halfrate, FACCH_TEXT "halfrate\n", 5)
+DECLARE_T200("sacch tch sapi0", sacch_with_tch_sapi0, SACCH_TEXT "tch\n" "SAPI0\n", 10)
+DECLARE_T200("sacch sdcch", sacch_with_sdcch, SACCH_TEXT "sdcch\n", 10)
+DECLARE_T200("sdcch sapi3", sdcch_with_sapi3, SDCCH_TEXT "SAPI3\n", 5)
+DECLARE_T200("sacch tch sapi3", sacch_with_tch_sapi3, SACCH_TEXT "tch\n" "SAPI3\n", 10)
+#undef DECLARE_T200
+
+
 #define GPRS_TEXT	"GPRS Packet Network\n"
 
 DEFUN(cfg_bts_prs_bvci, cfg_bts_gprs_bvci_cmd,
@@ -3120,6 +3158,13 @@ int bsc_vty_init(const struct log_info *cat)
 	install_element(BTS_NODE, &cfg_bts_si5_neigh_cmd);
 	install_element(BTS_NODE, &cfg_bts_excl_rf_lock_cmd);
 	install_element(BTS_NODE, &cfg_bts_no_excl_rf_lock_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_sdcch_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_facch_fullrate_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_facch_halfrate_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_sacch_with_tch_sapi0_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_sacch_with_sdcch_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_sdcch_with_sapi3_cmd);
+	install_element(BTS_NODE, &cfg_bts_t200_sacch_with_tch_sapi3_cmd);
 
 	install_element(BTS_NODE, &cfg_trx_cmd);
 	install_node(&trx_node, dummy_config_write);

@@ -261,6 +261,20 @@ static void patch_nm_tables(struct gsm_bts *bts)
 		nanobts_attr_cell[29] = 0x8f;
 		nanobts_attr_cell[30] = 0xff;
 	}
+
+	if (nanobts_attr_bts[14] != NM_ATT_T200) {
+		LOGP(DNM, LOGL_ERROR,
+			"Patching T200 at the wrong place! Got %u\n\n",
+			nanobts_attr_bts[14]);
+	} else {
+		nanobts_attr_bts[14 + 1] = bts->t200.sdcch;
+		nanobts_attr_bts[14 + 2] = bts->t200.facch_fullrate;
+		nanobts_attr_bts[14 + 3] = bts->t200.facch_halfrate;
+		nanobts_attr_bts[14 + 4] = bts->t200.sacch_with_tch_sapi0;
+		nanobts_attr_bts[14 + 5] = bts->t200.sacch_with_sdcch;
+		nanobts_attr_bts[14 + 6] = bts->t200.sdcch_with_sapi3;
+		nanobts_attr_bts[14 + 7] = bts->t200.sacch_with_tch_sapi3;
+	}
 }
 
 

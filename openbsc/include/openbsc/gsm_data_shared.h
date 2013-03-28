@@ -707,6 +707,15 @@ struct gsm_bts {
 
 	/* exclude the BTS from the global RF Lock handling */
 	int excl_from_rf_lock;
+	struct {
+		uint8_t sdcch;
+		uint8_t facch_fullrate;
+		uint8_t facch_halfrate;
+		uint8_t sacch_with_tch_sapi0;
+		uint8_t sacch_with_sdcch;
+		uint8_t sdcch_with_sapi3;
+		uint8_t sacch_with_tch_sapi3;
+	} t200;
 #endif /* ROLE_BSC */
 	void *role;
 };
