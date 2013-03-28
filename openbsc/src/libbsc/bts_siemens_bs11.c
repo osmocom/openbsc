@@ -387,6 +387,21 @@ static void patch_nm_tables(struct gsm_bts *bts)
 
 	/* patch the power reduction */
 	bs11_attr_radio[5] = bts->c0->max_power_red / 2;
+
+	/* patch the T200 */
+	if (bs11_attr_bts[39] != NM_ATT_T200) {
+		LOGP(DNM, LOGL_ERROR,
+			"Patching T200 at the wrong place! Got %u\n\n",
+			bs11_attr_bts[39]);
+	} else {
+		bs11_attr_bts[39 + 1] = bts->t200.sdcch;
+		bs11_attr_bts[39 + 2] = bts->t200.facch_fullrate;
+		bs11_attr_bts[39 + 3] = bts->t200.facch_halfrate;
+		bs11_attr_bts[39 + 4] = bts->t200.sacch_with_tch_sapi0;
+		bs11_attr_bts[39 + 5] = bts->t200.sacch_with_sdcch;
+		bs11_attr_bts[39 + 6] = bts->t200.sdcch_with_sapi3;
+		bs11_attr_bts[39 + 7] = bts->t200.sacch_with_tch_sapi3;
+	}
 }
 
 
