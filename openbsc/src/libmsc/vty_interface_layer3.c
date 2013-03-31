@@ -864,6 +864,7 @@ DEFUN(smsqueue_fail,
 }
 
 
+#if 0
 DEFUN(cfg_mncc_int, cfg_mncc_int_cmd,
       "mncc-int", "Configure internal MNCC handler")
 {
@@ -878,53 +879,13 @@ static struct cmd_node mncc_int_node = {
 	1,
 };
 
-static const struct value_string tchf_codec_names[] = {
-	{ GSM48_CMODE_SPEECH_V1,	"fr" },
-	{ GSM48_CMODE_SPEECH_EFR,	"efr" },
-	{ GSM48_CMODE_SPEECH_AMR,	"amr" },
-	{ 0, NULL }
-};
-
-static const struct value_string tchh_codec_names[] = {
-	{ GSM48_CMODE_SPEECH_V1,	"hr" },
-	{ GSM48_CMODE_SPEECH_AMR,	"amr" },
-	{ 0, NULL }
-};
-
 static int config_write_mncc_int(struct vty *vty)
 {
 	vty_out(vty, "mncc-int%s", VTY_NEWLINE);
-	vty_out(vty, " default-codec tch-f %s%s",
-		get_value_string(tchf_codec_names, mncc_int.def_codec[0]),
-		VTY_NEWLINE);
-	vty_out(vty, " default-codec tch-h %s%s",
-		get_value_string(tchh_codec_names, mncc_int.def_codec[1]),
-		VTY_NEWLINE);
 
 	return CMD_SUCCESS;
 }
-
-DEFUN(mnccint_def_codec_f,
-      mnccint_def_codec_f_cmd,
-      "default-codec tch-f (fr|efr|amr)",
-      "Set default codec\n" "Codec for TCH/F\n"
-      "Full-Rate\n" "Enhanced Full-Rate\n" "Adaptive Multi-Rate\n")
-{
-	mncc_int.def_codec[0] = get_string_value(tchf_codec_names, argv[0]);
-
-	return CMD_SUCCESS;
-}
-
-DEFUN(mnccint_def_codec_h,
-      mnccint_def_codec_h_cmd,
-      "default-codec tch-h (hr|amr)",
-      "Set default codec\n" "Codec for TCH/H\n"
-      "Half-Rate\n" "Adaptive Multi-Rate\n")
-{
-	mncc_int.def_codec[1] = get_string_value(tchh_codec_names, argv[0]);
-
-	return CMD_SUCCESS;
-}
+#endif
 
 #define OBSOLETE_MSG "Obsolete\n"
 /* this is just for backwards compatibility as the sms code moved into
@@ -973,13 +934,13 @@ int bsc_vty_init_extra(void)
 	install_element(ENABLE_NODE, &smsqueue_fail_cmd);
 	install_element(ENABLE_NODE, &subscriber_send_pending_sms_cmd);
 
+#if 0
 	install_element(CONFIG_NODE, &cfg_mncc_int_cmd);
 	install_node(&mncc_int_node, config_write_mncc_int);
 	install_default(MNCC_INT_NODE);
 	install_element(MNCC_INT_NODE, &ournode_exit_cmd);
 	install_element(MNCC_INT_NODE, &ournode_end_cmd);
-	install_element(MNCC_INT_NODE, &mnccint_def_codec_f_cmd);
-	install_element(MNCC_INT_NODE, &mnccint_def_codec_h_cmd);
+#endif
 
 	install_element(CFG_LOG_NODE, &log_level_sms_cmd);
 
