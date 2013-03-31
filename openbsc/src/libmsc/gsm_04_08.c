@@ -3089,7 +3089,7 @@ static int tch_rtp_create(struct gsm_network *net, uint32_t callref)
 	if (lchan->tch_mode == GSM48_CMODE_SIGN) {
 		trans->conn->mncc_rtp_create_pending = 1;
 		return gsm0808_assign_req(trans->conn,
-				mncc_codec_for_mode(lchan->type),
+				GSM48_CMODE_SPEECH_V1,
 				lchan->type != GSM_LCHAN_TCH_H);
 	}
 
@@ -3355,6 +3355,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 		/* If subscriber has no lchan */
 		if (!conn) {
+			uint8_t type;
+
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
 				/* Transaction of our lchan? */
@@ -3374,9 +3376,20 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
+			switch (data->lchan_type) {
+			case GSM_LCHAN_TCH_F:
+				type = RSL_CHANNEED_TCH_F;
+				break;
+			case GSM_LCHAN_TCH_H:
+				type = RSL_CHANNEED_TCH_ForH;
+				break;
+			default:
+				type = RSL_CHANNEED_SDCCH;
+			}
+
 			/* Request a channel */
 			trans->paging_request = subscr_request_channel(subscr,
-							RSL_CHANNEED_TCH_F, setup_trig_pag_evt,
+							type, setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
