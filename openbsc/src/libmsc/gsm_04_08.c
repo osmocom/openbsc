@@ -3208,6 +3208,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 		/* If subscriber has no lchan */
 		if (!conn) {
+			uint8_t type;
+
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
 				/* Transaction of our lchan? */
@@ -3227,9 +3229,20 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			/* store setup informations until paging was successfull */
 			memcpy(&trans->cc.msg, data, sizeof(struct gsm_mncc));
 
+			switch (data->lchan_type) {
+			case GSM_LCHAN_TCH_F:
+				type = RSL_CHANNEED_TCH_F;
+				break;
+			case GSM_LCHAN_TCH_H:
+				type = RSL_CHANNEED_TCH_ForH;
+				break;
+			default:
+				type = RSL_CHANNEED_SDCCH;
+			}
+
 			/* Request a channel */
 			trans->paging_request = subscr_request_channel(subscr,
-							RSL_CHANNEED_TCH_F, setup_trig_pag_evt,
+							type, setup_trig_pag_evt,
 							trans);
 			if (!trans->paging_request) {
 				LOGP(DCC, LOGL_ERROR, "Failed to allocate paging token.\n");
@@ -3237,6 +3250,7 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 				trans_free(trans);
 				return 0;
 			}
+
 			subscr_put(subscr);
 			return 0;
 		}
