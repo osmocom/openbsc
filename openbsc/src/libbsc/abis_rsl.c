@@ -1385,6 +1385,12 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype, is_lu);
+	if (!lchan && (rqd_ref->ra & 0xf0) == 0x30) {
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x, retrying with %s\n",
+		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra, gsm_lchant_name(GSM_LCHAN_TCH_F));
+		lctype = GSM_LCHAN_TCH_F;
+		lchan = lchan_alloc(bts, lctype, is_lu);
+	}
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
@@ -1888,6 +1894,11 @@ int rsl_ipacc_mdcx_to_rtpsock(struct gsm_lchan *lchan)
 {
 	struct rtp_socket *rs = lchan->abis_ip.rtp_socket;
 	int rc;
+
+	if (!rs) {
+		LOGP(DRSL, LOGL_ERROR, "LCHAN has not rtp_socket\n");
+		return -EINVAL;
+	}
 
 	rc = rsl_ipacc_mdcx(lchan, ntohl(rs->rtp.sin_local.sin_addr.s_addr),
 				ntohs(rs->rtp.sin_local.sin_port),
