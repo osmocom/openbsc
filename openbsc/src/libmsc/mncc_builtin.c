@@ -42,10 +42,6 @@ static LLIST_HEAD(call_list);
 
 static uint32_t new_callref = 0x00000001;
 
-struct mncc_int mncc_int = {
-	.def_codec = { GSM48_CMODE_SPEECH_V1, GSM48_CMODE_SPEECH_V1 },
-};
-
 static void free_call(struct gsm_call *call)
 {
 	llist_del(&call->entry);
@@ -65,14 +61,53 @@ static struct gsm_call *get_call_ref(uint32_t callref)
 	return NULL;
 }
 
-static uint8_t determine_lchan_mode(struct gsm_mncc *setup)
+static void store_bearer_cap(struct gsm_call *call, struct gsm_mncc *mncc)
 {
-	/* FIXME: check codec capabilities of the phone */
+	call->lchan_type = mncc->lchan_type;
+	memcpy(&call->bcap, &mncc->bearer_cap, sizeof(struct gsm_mncc_bearer_cap));
+}
 
-	if (setup->lchan_type == GSM_LCHAN_TCH_F)
-		return mncc_int.def_codec[0];
-	else
-		return mncc_int.def_codec[1];
+#define is_speech_ver_tch_h(speech_ver) ((speech_ver & 1) == 1)
+
+#define speech_ver_to_lchan_mode(speech_ver) (((speech_ver & 0xe) << 4) | 1)
+
+static int determine_lchan_mode(struct gsm_call *calling,
+						struct gsm_call *called)
+{
+	int i, j;
+
+	/* FIXME: dynamic channel configuration */
+	if (calling->lchan_type != called->lchan_type) {
+		LOGP(DMNCC, LOGL_NOTICE, "Not equal lchan_types\n");
+		return -ENOTSUP;
+	}
+	if (calling->lchan_type != GSM_LCHAN_TCH_F
+	 && calling->lchan_type != GSM_LCHAN_TCH_H) {
+		LOGP(DMNCC, LOGL_NOTICE, "Not TCH lchan_types\n");
+		return -ENOTSUP;
+	}
+
+	/* select best codec, as prefered by the caller and supporte by both. */
+	for (i = 0; calling->bcap.speech_ver[i] >= 0; i++) {
+		/* omit capability of different channel type
+		 * FIXME: dynamic channel configuration */
+		if (calling->lchan_type == GSM_LCHAN_TCH_F
+		 && is_speech_ver_tch_h(calling->bcap.speech_ver[i]))
+			continue;
+		if (calling->lchan_type == GSM_LCHAN_TCH_H
+		 && !is_speech_ver_tch_h(calling->bcap.speech_ver[i]))
+			continue;
+		for (j = 0; called->bcap.speech_ver[j] >= 0; j++) {
+			if (calling->bcap.speech_ver[i]
+			  == called->bcap.speech_ver[j]) {
+				/* convert speech version to lchan mode */
+				return speech_ver_to_lchan_mode(
+					calling->bcap.speech_ver[i]);
+			}
+		}
+	}
+
+	return -ENOTSUP;
 }
 
 /* on incoming call, look up database and send setup to remote subscr. */
@@ -129,12 +164,8 @@ static int mncc_setup_ind(struct gsm_call *call, int msg_type,
 	DEBUGP(DMNCC, "(call %x) Accepting call.\n", call->callref);
 	mncc_tx_to_cc(call->net, MNCC_CALL_PROC_REQ, &mncc);
 
-	/* modify mode */
-	memset(&mncc, 0, sizeof(struct gsm_mncc));
-	mncc.callref = call->callref;
-	mncc.lchan_mode = determine_lchan_mode(setup);
-	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
-	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
+	/* store bearer capabilites of supported modes */
+	store_bearer_cap(call, setup);
 
 	/* send setup to remote */
 //	setup->fields |= MNCC_F_SIGNAL;
@@ -149,6 +180,50 @@ out_reject:
 	return 0;
 }
 
+static int mncc_call_conf_ind(struct gsm_call *call, int msg_type,
+			  struct gsm_mncc *conf)
+{
+	struct gsm_call *remote;
+	struct gsm_mncc mncc;
+	int mode;
+
+	memset(&mncc, 0, sizeof(struct gsm_mncc));
+	mncc.callref = call->callref;
+
+	/* send alerting to remote */
+	if (!(remote = get_call_ref(call->remote_ref)))
+		return 0;
+
+	/* store bearer capabilites of supported modes */
+	store_bearer_cap(call, conf);
+
+	mode = determine_lchan_mode(call, remote);
+	if (mode < 0) {
+		LOGP(DMNCC, LOGL_NOTICE, "(call %x,%x) There is no commonly "
+			"supported speech version\n", call->callref,
+			remote->callref);
+		mncc_set_cause(&mncc, GSM48_CAUSE_LOC_PRN_S_LU,
+				GSM48_CC_CAUSE_BEARER_CA_UNAVAIL);
+		goto out_release;
+	}
+
+	/* modify mode */
+	mncc.lchan_mode = mode;
+	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", call->callref);
+	mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, &mncc);
+	mncc.callref = remote->callref;
+	DEBUGP(DMNCC, "(call %x) Modify channel mode.\n", remote->callref);
+	mncc_tx_to_cc(remote->net, MNCC_LCHAN_MODIFY, &mncc);
+
+	return 0;
+
+out_release:
+	mncc_tx_to_cc(call->net, MNCC_REL_REQ, &mncc);
+	free_call(call);
+	mncc_tx_to_cc(remote->net, MNCC_REL_REQ, &mncc);
+	free_call(remote);
+	return 0;
+}
 static int mncc_alert_ind(struct gsm_call *call, int msg_type,
 			  struct gsm_mncc *alert)
 {
@@ -357,9 +432,7 @@ int int_mncc_recv(struct gsm_network *net, struct msgb *msg)
 	case MNCC_SETUP_COMPL_IND:
 		break;
 	case MNCC_CALL_CONF_IND:
-		/* we now need to MODIFY the channel */
-		data->lchan_mode = determine_lchan_mode(data);
-		mncc_tx_to_cc(call->net, MNCC_LCHAN_MODIFY, data);
+		rc = mncc_call_conf_ind(call, msg_type, arg);
 		break;
 	case MNCC_ALERT_IND:
 		rc = mncc_alert_ind(call, msg_type, arg);

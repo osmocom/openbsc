@@ -3211,6 +3211,8 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 
 		/* If subscriber has no lchan */
 		if (!conn) {
+			uint8_t type;
+
 			/* find transaction with this subscriber already paging */
 			llist_for_each_entry(transt, &net->trans_list, entry) {
 				/* Transaction of our lchan? */
@@ -3240,7 +3242,18 @@ int mncc_tx_to_cc(struct gsm_network *net, int msg_type, void *arg)
 			}
 
 			*trans->paging_request = subscr->net;
-			subscr_get_channel(subscr, RSL_CHANNEED_TCH_F, setup_trig_pag_evt, trans->paging_request);
+
+			switch (data->lchan_type) {
+			case GSM_LCHAN_TCH_F:
+				type = RSL_CHANNEED_TCH_F;
+				break;
+			case GSM_LCHAN_TCH_H:
+				type = RSL_CHANNEED_TCH_ForH;
+				break;
+			default:
+				type = RSL_CHANNEED_SDCCH;
+			}
+			subscr_get_channel(subscr, type, setup_trig_pag_evt, trans->paging_request);
 
 			subscr_put(subscr);
 			return 0;
