@@ -1418,6 +1418,16 @@ static int rsl_rx_chan_rqd(struct msgb *msg)
 
 	/* check availability / allocate channel */
 	lchan = lchan_alloc(bts, lctype, is_lu);
+	if (!lchan && lctype == GSM_LCHAN_TCH_H) {
+		/* no TCH/H available, try fallback to TCH/F */
+		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for "
+			"%s 0x%x, retrying with %s\n",
+			msg->lchan->ts->trx->bts->nr,
+			gsm_lchant_name(lctype),
+			rqd_ref->ra, gsm_lchant_name(GSM_LCHAN_TCH_F));
+		lctype = GSM_LCHAN_TCH_F;
+		lchan = lchan_alloc(bts, lctype, is_lu);
+	}
 	if (!lchan) {
 		LOGP(DRSL, LOGL_NOTICE, "BTS %d CHAN RQD: no resources for %s 0x%x\n",
 		     msg->lchan->ts->trx->bts->nr, gsm_lchant_name(lctype), rqd_ref->ra);
