@@ -1776,11 +1776,12 @@ int tch_frame_down(struct gsm_network *net, uint32_t callref, struct gsm_data_fr
 		LOGP(DMNCC, LOGL_NOTICE, "TCH frame for trans without lchan\n");
 		return 0;
 	}
-	if (trans->conn->lchan->type != GSM_LCHAN_TCH_F) {
+	if (trans->conn->lchan->type != GSM_LCHAN_TCH_F
+	 && trans->conn->lchan->type != GSM_LCHAN_TCH_H) {
 		/* This should be LOGL_ERROR or NOTICE, but
 		 * unfortuantely it happens for a couple of frames at
 		 * the beginning of every RTP connection */
-		LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F\n");
+		LOGP(DMNCC, LOGL_DEBUG, "TCH frame for lchan != TCH_F/H\n");
 		return 0;
 	}
 	bts = trans->conn->lchan->ts->trx->bts;
