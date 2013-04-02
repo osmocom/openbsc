@@ -1,8 +1,8 @@
 /*
  * BSC NAT Message filtering
  *
- * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2012 by On-Waves
+ * (C) 2010-2013 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2013 by On-Waves
  *
  * All Rights Reserved
  *
@@ -984,6 +984,62 @@ static void test_setup_rewrite()
 	}
 
 	verify_msg(out, cc_setup_national, ARRAY_SIZE(cc_setup_national));
+	msgb_free(out);
+
+	/* Now see what happens to an international number */
+	entry.mnc = "*";
+	entry.option = "^\\+[0-9][0-9]([1-9])";
+	entry.text = "0036";
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
+	msg = msgb_alloc(4096, "test_dt_filter");
+	copy_to_msg(msg, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse ID resp %d\n", __LINE__);
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (!out) {
+		printf("FAIL: A new message should be created %d.\n", __LINE__);
+		abort();
+	}
+
+	if (msg == out) {
+		printf("FAIL: The message should have changed %d\n", __LINE__);
+		abort();
+	}
+
+	verify_msg(out, cc_setup_national_patched_patched,
+			ARRAY_SIZE(cc_setup_national_patched_patched));
+	msgb_free(out);
+
+	/* go from international back to national */
+	entry.mnc = "*";
+	entry.option = "^\\+([0-9])";
+	entry.text = "36";
+	bsc_nat_num_rewr_entry_adapt(nat, &nat->num_rewr, &entries);
+	msg = msgb_alloc(4096, "test_dt_filter");
+	copy_to_msg(msg, cc_setup_national_patched, ARRAY_SIZE(cc_setup_national_patched));
+	parsed = bsc_nat_parse(msg);
+	if (!parsed) {
+		printf("FAIL: Could not parse ID resp %d\n", __LINE__);
+		abort();
+	}
+
+	out = bsc_nat_rewrite_msg(nat, msg, parsed, imsi);
+	if (!out) {
+		printf("FAIL: A new message should be created %d.\n", __LINE__);
+		abort();
+	}
+
+	if (msg == out) {
+		printf("FAIL: The message should have changed %d\n", __LINE__);
+		abort();
+	}
+
+	verify_msg(out, cc_setup_national_again,
+			ARRAY_SIZE(cc_setup_national_again));
 	msgb_free(out);
 }
 

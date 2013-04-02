@@ -2,8 +2,8 @@
  * Message rewriting functionality
  */
 /*
- * (C) 2010-2011 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2011 by On-Waves
+ * (C) 2010-2013 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2013 by On-Waves
  * All Rights Reserved
  *
  * This program is free software; you can redistribute it and/or modify
@@ -65,18 +65,27 @@ static char *match_and_rewrite_number(void *ctx, const char *number,
 	return new_number;
 }
 
-static char *rewrite_non_international(struct bsc_nat *nat, void *ctx, const char *imsi,
+static char *rewrite_isdn_number(struct bsc_nat *nat, void *ctx, const char *imsi,
 				       struct gsm_mncc_number *called)
 {
+	char *number = called->number;
+
 	if (llist_empty(&nat->num_rewr))
 		return NULL;
 
+	/* only ISDN plan */
 	if (called->plan != 1)
 		return NULL;
-	if (called->type == 1)
-		return NULL;
 
-	return match_and_rewrite_number(ctx, called->number,
+	/* international, prepend */
+	if (called->type == 1) {
+		char int_number[sizeof(called->number) + 2];
+		int_number[0] = '+';
+		memcpy(&int_number[1], number, strlen(number) + 1);
+		number = int_number;
+	}
+
+	return match_and_rewrite_number(ctx, number,
 					imsi, &nat->num_rewr);
 }
 
@@ -110,7 +119,7 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 			    TLVP_VAL(&tp, GSM48_IE_CALLED_BCD) - 1);
 
 	/* check if it looks international and stop */
-	new_number = rewrite_non_international(nat, msg, imsi, &called);
+	new_number = rewrite_isdn_number(nat, msg, imsi, &called);
 
 	if (!new_number) {
 		LOGP(DNAT, LOGL_DEBUG, "No IMSI match found, returning message.\n");
@@ -150,6 +159,9 @@ static struct msgb *rewrite_setup(struct bsc_nat *nat, struct msgb *msg,
 		called.type = 1;
 		strncpy(called.number, new_number + 2, sizeof(called.number));
 	} else {
+		/* rewrite international to unknown */
+		if (called.type == 1)
+			called.type = 0;
 		strncpy(called.number, new_number, sizeof(called.number));
 	}
 	gsm48_encode_called(out, &called);
