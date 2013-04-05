@@ -7,7 +7,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = openbsc.pc
 
 BUILT_SOURCES = $(top_srcdir)/.version
-EXTRA_DIST = git-version-gen
+EXTRA_DIST = git-version-gen osmoappdesc.py
 $(top_srcdir)/.version:
 	echo $(VERSION) > $@-t && mv $@-t $@
 dist-hook:
