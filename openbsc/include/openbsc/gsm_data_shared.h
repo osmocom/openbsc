@@ -246,6 +246,7 @@ struct gsm_lchan {
 #else
 	/* Number of different GsmL1_Sapi_t used in osmo_bts_sysmo is 23.
 	 * Currently we don't share these headers so this is a magic number. */
+	struct llist_head sapi_cmds;
 	uint8_t sapis_dl[23];
 	uint8_t sapis_ul[23];
 	struct lapdm_channel lapdm_ch;

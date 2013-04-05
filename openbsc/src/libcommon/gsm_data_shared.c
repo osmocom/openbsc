@@ -173,6 +173,10 @@ struct gsm_bts_trx *gsm_bts_trx_alloc(struct gsm_bts *bts)
 			lchan->ts = ts;
 			lchan->nr = l;
 			lchan->type = GSM_LCHAN_NONE;
+
+#ifndef ROLE_BSC
+			INIT_LLIST_HEAD(&lchan->sapi_cmds);
+#endif
 		}
 	}
 
