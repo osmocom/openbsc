@@ -77,7 +77,7 @@ static void gan_peer_destroy(struct gan_peer *peer)
 	/* we can only free conn after peer, as peer is a sub-object of
 	 * ocnn in the talloc hierarchical allocator */
 	if (conn)
-		osmo_conn_close(peer->conn);
+		osmo_conn_close(conn);
 }
 
 static struct msgb *unc_msgb_alloc(void)
