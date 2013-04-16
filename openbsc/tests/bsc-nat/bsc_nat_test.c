@@ -28,6 +28,7 @@
 #include <openbsc/bsc_nat_sccp.h>
 
 #include <osmocom/core/application.h>
+#include <osmocom/core/backtrace.h>
 #include <osmocom/core/talloc.h>
 
 #include <osmocom/sccp/sccp.h>
@@ -1276,6 +1277,39 @@ static void test_barr_list_parsing(void)
 	}
 }
 
+static void test_nat_extract_lac()
+{
+	int res;
+	struct bsc_connection *bsc;
+	struct bsc_nat *nat;
+	struct nat_sccp_connection con;
+	struct bsc_nat_parsed *parsed;
+	struct msgb *msg = msgb_alloc(4096, "test-message");
+
+	printf("Testing LAC extraction from SCCP CR\n");
+
+	/* initialize the testcase */
+	nat = bsc_nat_alloc();
+	bsc = bsc_connection_alloc(nat);
+	bsc->cfg = bsc_config_alloc(nat, "foo");
+
+	memset(&con, 0, sizeof(con));
+	con.bsc = bsc;
+
+	/* create the SCCP CR */
+	msg->l2h = msgb_put(msg, ARRAY_SIZE(bssmap_cr));
+	memcpy(msg->l2h, bssmap_cr, ARRAY_SIZE(bssmap_cr));
+
+	/* parse it and pass it on */
+	parsed = bsc_nat_parse(msg);
+	res = bsc_nat_extract_lac(bsc, &con, parsed, msg);
+	OSMO_ASSERT(res == 0);
+
+	/* verify the LAC */
+	OSMO_ASSERT(con.lac == 8210);
+	OSMO_ASSERT(con.ci == 50000);
+}
+
 int main(int argc, char **argv)
 {
 	sccp_set_log_area(DSCCP);
@@ -1295,6 +1329,7 @@ int main(int argc, char **argv)
 	test_sms_number_rewrite();
 	test_mgcp_allocations();
 	test_barr_list_parsing();
+	test_nat_extract_lac();
 
 	printf("Testing execution completed.\n");
 	return 0;

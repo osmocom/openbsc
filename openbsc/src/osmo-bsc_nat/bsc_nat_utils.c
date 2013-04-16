@@ -502,3 +502,65 @@ int bsc_write_cb(struct osmo_fd *bfd, struct msgb *msg)
 	return rc;
 }
 
+static void extract_lac(const uint8_t *data, uint16_t *lac, uint16_t *ci)
+{
+	memcpy(lac, &data[0], sizeof(*lac));
+	memcpy(ci, &data[2], sizeof(*ci));
+
+	*lac = ntohs(*lac);
+	*ci = ntohs(*ci);
+}
+
+int bsc_nat_extract_lac(struct bsc_connection *bsc,
+			struct nat_sccp_connection *con,
+			struct bsc_nat_parsed *parsed, struct msgb *msg)
+{
+	int data_length;
+	const uint8_t *data;
+	struct tlv_parsed tp;
+	uint16_t lac, ci;
+
+	if (parsed->gsm_type != BSS_MAP_MSG_COMPLETE_LAYER_3) {
+		LOGP(DNAT, LOGL_ERROR, "Can only extract LAC from Complete Layer3\n");
+		return -1;
+	}
+
+	if (!msg->l3h || msgb_l3len(msg) < 3) {
+		LOGP(DNAT, LOGL_ERROR, "Complete Layer3 mssage is too short.\n");
+		return -1;
+	}
+
+	tlv_parse(&tp, gsm0808_att_tlvdef(), msg->l3h + 3, msgb_l3len(msg) - 3, 0, 0);
+	if (!TLVP_PRESENT(&tp, GSM0808_IE_CELL_IDENTIFIER)) {
+		LOGP(DNAT, LOGL_ERROR, "No CellIdentifier List inside paging msg.\n");
+		return -2;
+	}
+
+	data_length = TLVP_LEN(&tp, GSM0808_IE_CELL_IDENTIFIER);
+	data = TLVP_VAL(&tp, GSM0808_IE_CELL_IDENTIFIER);
+
+	/* Attemt to get the LAC/CI from it */
+	if (data[0] == CELL_IDENT_WHOLE_GLOBAL) {
+		if (data_length != 8) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Ident too short: %d\n", data_length);
+			return -3;
+		}
+		extract_lac(&data[1 + 3], &lac, &ci);
+	} else if (data[0] == CELL_IDENT_LAC_AND_CI) {
+		if (data_length != 5) {
+			LOGP(DNAT, LOGL_ERROR,
+				"Ident too short: %d\n", data_length);
+			return -3;
+		}
+		extract_lac(&data[1], &lac, &ci);
+	} else {
+		LOGP(DNAT, LOGL_ERROR,
+			"Unhandled cell identifier: %d\n", data[0]);
+		return -1;
+	}
+
+	con->lac = lac;
+	con->ci = ci;
+	return 0;
+}

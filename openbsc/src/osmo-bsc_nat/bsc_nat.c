@@ -1,8 +1,8 @@
 /* BSC Multiplexer/NAT */
 
 /*
- * (C) 2010-2012 by Holger Hans Peter Freyther <zecke@selfish.org>
- * (C) 2010-2012 by On-Waves
+ * (C) 2010-2013 by Holger Hans Peter Freyther <zecke@selfish.org>
+ * (C) 2010-2013 by On-Waves
  * (C) 2009 by Harald Welte <laforge@gnumonks.org>
  * All Rights Reserved
  *
@@ -1056,6 +1056,7 @@ static int forward_sccp_to_msc(struct bsc_connection *bsc, struct msgb *msg)
 			con_msc = con->msc_con;
 			con->con_type = con_type;
 			con->imsi_checked = filter;
+			bsc_nat_extract_lac(bsc, con, parsed, msg);
 			if (imsi)
 				con->imsi = talloc_steal(con, imsi);
 			imsi = NULL;

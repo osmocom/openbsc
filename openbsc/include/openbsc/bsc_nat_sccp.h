@@ -80,6 +80,9 @@ struct nat_sccp_connection {
 	int imsi_checked;
 	char *imsi;
 
+	uint16_t lac;
+	uint16_t ci;
+
 	/* remember which Transactions we run over the bypass */
 	char ussd_ti[8];
 
